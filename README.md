@@ -2,7 +2,7 @@
 GANAK is a probabilistic exact model counter. It takes in a CNF formula `F` and a confidence parameter `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`.
 
 ## Static Binary
-The static binary of GANAK and MIS is given in bin directory (tested on ubuntu 18.04, Fedora 21 and CentOS 6.9).
+The static binary of GANAK and MIS is given in static_bin directory (tested on ubuntu 18.04, Fedora 21 and CentOS 6.9).
 
 ## Running GANAK
 You can run GANAK by using 'ganak.py' Python script present in static_bin directory. A simple invocation looks as follows:

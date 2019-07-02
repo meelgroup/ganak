@@ -16,7 +16,6 @@ python3 ganak.py -h
 ```
 
 ## Benchmarks
-Few toy benchmarks are given in benchmarks directory.
-
+Few toy benchmarks are given in benchmarks directory. Benchmarks used in experimental analysis of GANAK can be found [here](https://drive.google.com/file/d/15dUJI55drFH_0-4-qWjoF_YR0amb3xnK/view?usp=sharing)
 ## Issues, questions, bugs, etc.
 Please click on "issues" at the top and [create a new issue](https://github.com/meelgroup/ganak/issues). All issues are responded to promptly.

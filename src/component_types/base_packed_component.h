@@ -101,10 +101,10 @@ public:
 
   ~BasePackedComponent() {
     if (data_){
-      delete data_;
+      delete [] data_;
     }
     if (clhashkey_){
-      delete clhashkey_;
+      delete [] clhashkey_;
     }
   }
   static void outbit(unsigned v){
@@ -188,10 +188,10 @@ public:
     // we should make sure that this component is not present in the component stack anymore!
     assert(isDeletable());
     if (data_)
-      delete data_;
+      delete [] data_;
     data_ = nullptr;
     if (clhashkey_){
-      delete clhashkey_;
+      delete [] clhashkey_;
     }
     clhashkey_ = nullptr;
   }

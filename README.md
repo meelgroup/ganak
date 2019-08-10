@@ -42,9 +42,9 @@ Please click on "issues" at the top and [create a new issue](https://github.com/
 ## How to Cite
 ```
 @inproceedings{SRSM19,
-author={Sharma, Shubham and  Roy, Subhajit and  Soos, Mate and  Meel, Kuldeep S.},
 title={GANAK: A Scalable Probabilistic Exact Model Counter},
-booktitle={Proceedings of International Joint Conference on Artificial Intelligence (IJCAI),
+author={Sharma, Shubham and  Roy, Subhajit and  Soos, Mate and  Meel, Kuldeep S.},
+booktitle={Proceedings of International Joint Conference on Artificial Intelligence (IJCAI)},
 month={8},
 year={2019}
 }

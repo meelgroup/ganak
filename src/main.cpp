@@ -17,6 +17,8 @@ int main(int argc, char *argv[]) {
   string input_file;
   Solver theSolver;
 
+  cout << "c Outputting solution to console" << endl;
+  cout << "c GANAK version 1.0.0" << endl;
 
   if (argc <= 1) {
     cout << "Usage: ganak [options] [CNF_File]" << endl;

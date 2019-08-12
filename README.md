@@ -2,7 +2,6 @@
 GANAK is a probabilistic exact model counter. It takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`.
 
 ## Installation
-The static binary of ProbsharpSAT and MIS is given in bin directory (tested on ubuntu 18.04, Fedora 21 and CentOS 6.9).
 
 ### Compiling in Linux
 

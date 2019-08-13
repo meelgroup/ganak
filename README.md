@@ -32,11 +32,15 @@ The usage instructions and default values to arguments can be found by running:
 python3 ganak.py -h
 ```
 
+## Weight Format
+GANAK supports providing weights in CNF itself. Weight of a literal is in [0,1], specified by line starting with 'w' <space> literal <space> weight. For example to give weight 0.5 to literal l use the following format:
+`w l 0.5`
+
+While weights for both positive and negative literals should be specified, if weight of only positive literal is specified, GANAK assumes it to be normalized and assigns weight of negative literal as 1 - weight(l). By default, weight of every literal l is set to 1 if the weight of l or -l is not given in CNF. Some examples are available in benchmarks directory for reference.
+
 ## Benchmarks
 Few toy benchmarks are given in benchmarks directory. Full list of benchmarks used for our experiments is available [here](https://drive.google.com/file/d/15dUJI55drFH_0-4-qWjoF_YR0amb3xnK/view?usp=sharing)
 
-## Weighted Model Counting
-For weighted model counting please checkout to wmc branch.
 
 ## Issues, questions, bugs, etc.
 Please click on "issues" at the top and [create a new issue](https://github.com/meelgroup/ganak/issues). All issues are responded to promptly.

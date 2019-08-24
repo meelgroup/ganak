@@ -158,7 +158,7 @@ public:
     creation_time_ = time;
   }
 
-  void set_model_count(const mpz_class &rn, unsigned time) {
+  void set_model_count(const mpf_class &rn, unsigned time) {
     model_count_ = rn;
     length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
   }

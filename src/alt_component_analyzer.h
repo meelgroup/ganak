@@ -14,6 +14,7 @@
 #include "component_types/component.h"
 #include "component_types/base_packed_component.h"
 #include "component_types/component_archetype.h"
+#include "solver_config.h"
 
 
 
@@ -22,14 +23,19 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
+#include <set>
 
 using namespace std;
 
 class AltComponentAnalyzer {
 public:
 	AltComponentAnalyzer(DataAndStatistics &statistics,
-        LiteralIndexedVector<TriValue> & lit_values) :
-        statistics_(statistics), literal_values_(lit_values) {
+        LiteralIndexedVector<TriValue> & lit_values,
+        SolverConfiguration & config,
+        vector<Variable> & variables,
+        set <unsigned> & independent_support) :
+        statistics_(statistics), literal_values_(lit_values), config_(config),
+        variables_(variables), independent_support_(independent_support) {
   }
 
   unsigned scoreOf(VariableIndex v) {
@@ -91,7 +97,24 @@ public:
     recordComponentOf(v);
 
     if (search_stack_.size() == 1) {
-      archetype_.stack_level().includeSolution(2);
+      if (config_.perform_projectedmodelcounting){
+        if (independent_support_.find(v) !=  independent_support_.end()){
+          if (variables_[v].get_weight() == 2){
+            archetype_.stack_level().includeSolution(2);
+          }
+          else{
+            archetype_.stack_level().includeSolution(1);
+          }
+        }
+      }
+      else{
+        if (variables_[v].get_weight() == 2){
+          archetype_.stack_level().includeSolution(2);
+        }
+        else{
+          archetype_.stack_level().includeSolution(1);
+        }
+      }
       archetype_.setVar_in_other_comp(v);
       return false;
     }
@@ -116,6 +139,10 @@ public:
 
 private:
   DataAndStatistics &statistics_;
+  SolverConfiguration &config_;
+  vector<Variable> & variables_;
+  set <unsigned> & independent_support_;
+
 
   // the id of the last clause
   // note that clause ID is the clause number,

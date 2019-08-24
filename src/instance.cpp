@@ -107,10 +107,19 @@ void Instance::compactClauses() {
   statistics_.num_binary_clauses_ = bin_links >> 1;
 }
 
-void Instance::compactVariables() {
-  var_map.resize(variables_.size(), 0);
+
+void Instance::compactVariables(vector<unsigned> *var_map, vector<unsigned> *rev_map) {
+  
+  vector<Variable> temp_variables_;
+  for (auto v: variables_){
+    temp_variables_.push_back(v);
+  }
+  
+  var_map->resize(variables_.size(), 0);
+  rev_map->resize(variables_.size(), 0);
   unsigned last_ofs = 0;
   unsigned num_isolated = 0;
+  unsigned num_isolated_special = 0;
   LiteralIndexedVector<vector<LiteralID> > _tmp_bin_links(1);
   LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
 
@@ -121,16 +130,22 @@ void Instance::compactVariables() {
   for (unsigned v = 1; v < variables_.size(); v++)
     if (isActive(v)) {
       if (isolated(v)) {
-        num_isolated++;
+        if(!mpf_cmp_d(variables_[v].get_weight().get_mpf_t(), 2)){
+          num_isolated++;
+        }
+        else{
+          num_isolated_special++;
+        }
         continue;
       }
       last_ofs++;
-      var_map[v] = last_ofs;
+      (*var_map)[v] = last_ofs;
+      (*rev_map)[last_ofs] = v;
     }
   vector <unsigned> temp;
   for (auto it=independent_support_.begin(); it!=independent_support_.end(); ++it){
-    if(var_map[*it] != 0){
-      temp.push_back(var_map[*it]);
+    if((*var_map)[*it] != 0){
+      temp.push_back((*var_map)[*it]);
     }
   }
   independent_support_.clear();
@@ -138,7 +153,16 @@ void Instance::compactVariables() {
     independent_support_.insert(*it);
   }
   variables_.clear();
-  variables_.resize(last_ofs + 1);
+  variables_.push_back(Variable());
+  for (int i = 1; i <= last_ofs;i++){
+    variables_.push_back(temp_variables_[(*rev_map)[i]]);
+  }
+
+  int i =0;
+  // for (auto v : variables_){
+  //   cout<< "var weight: " << i <<" "<< variables_[i].get_weight()<< endl;
+  //   i++;
+  // }
   occurrence_lists_.clear();
   occurrence_lists_.resize(variables_.size());
   literals_.clear();
@@ -149,12 +173,12 @@ void Instance::compactVariables() {
   unsigned bin_links = 0;
   LiteralID newlit;
   for (auto l = LiteralID(0, false); l != _tmp_bin_links.end_lit(); l.inc()) {
-    if (var_map[l.var()] != 0) {
-      newlit = LiteralID(var_map[l.var()], l.sign());
+    if ((*var_map)[l.var()] != 0) {
+      newlit = LiteralID((*var_map)[l.var()], l.sign());
       for (auto it = _tmp_bin_links[l].begin(); *it != SENTINEL_LIT; it++) {
-        assert(var_map[it->var()] != 0);
+        assert((*var_map)[it->var()] != 0);
         literals_[newlit].addBinLinkTo(
-            LiteralID(var_map[it->var()], it->sign()));
+            LiteralID((*var_map)[it->var()], it->sign()));
       }
       bin_links += literals_[newlit].binary_links_.size() - 1;
     }
@@ -162,6 +186,7 @@ void Instance::compactVariables() {
 
   vector<ClauseOfs> clause_ofs;
   clause_ofs.reserve(statistics_.num_long_clauses_);
+  // clear watch links and occurrence lists
   for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
@@ -173,12 +198,12 @@ void Instance::compactVariables() {
   }
 
   for (auto ofs : clause_ofs) {
-    literal(LiteralID(var_map[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
+    literal(LiteralID((*var_map)[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
         ofs);
-    literal(LiteralID(var_map[(beginOf(ofs) + 1)->var()],
+    literal(LiteralID((*var_map)[(beginOf(ofs) + 1)->var()],
             (beginOf(ofs) + 1)->sign())).addWatchLinkTo(ofs);
     for (auto it_lit = beginOf(ofs); *it_lit != SENTINEL_LIT; it_lit++) {
-      *it_lit = LiteralID(var_map[it_lit->var()], it_lit->sign());
+      *it_lit = LiteralID((*var_map)[it_lit->var()], it_lit->sign());
       occurrence_lists_[*it_lit].push_back(ofs);
     }
   }
@@ -186,15 +211,11 @@ void Instance::compactVariables() {
   literal_values_.clear();
   literal_values_.resize(variables_.size(), X_TRI);
   unit_clauses_.clear();
-
-  statistics_.num_variables_ = variables_.size() - 1 + num_isolated;
+  statistics_.num_variables_ = variables_.size() - 1 + num_isolated + num_isolated_special;
 
   statistics_.num_used_variables_ = num_variables();
-  statistics_.num_free_variables_ = num_isolated;
-  cout << "Indep Support: ";
-  for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it) 
-        cout << ' ' << *it;
-  cout << endl;
+  statistics_.num_free_unweighted_variables_ = num_isolated;
+  statistics_.num_free_weighted_variables_ = num_isolated_special;
 }
 
 void Instance::compactConflictLiteralPool(){
@@ -266,7 +287,9 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
 
 bool Instance::createfromFile(const string &file_name) {
   unsigned int nVars, nCls;
+  unsigned nVarsWeighted = 0;
   int lit;
+  mpf_class weight;
   unsigned max_ignore = 1000000;
   unsigned clauses_added = 0;
   LiteralID llit;
@@ -295,15 +318,29 @@ bool Instance::createfromFile(const string &file_name) {
 
   literals.reserve(10000);
   while (input_file >> c){
-    if (c == 'p'){
+    if (c == 'w'){
+      input_file >> lit;
+      input_file >> weight;
+      if (abs(lit) >= variables_.size()){
+        int newsize = 2*variables_.size()>lit ? 2*variables_.size() : lit+1;
+        variables_.resize(newsize);   // table doubling or (literal_index+1), whichever is greater
+      }
+      if (lit < 0){
+        variables_[-1*lit].assign_weight(1-weight);
+      }
+      else{
+        variables_[lit].assign_weight(weight);
+      }
+    }
+    else if (c == 'p'){
       break;
     }
-    if (input_file >> idstring && c == 'c' && idstring == "ind" ){
+    else if (input_file >> idstring && c == 'c' && idstring == "ind" ){
       while ((input_file >> lit) && lit != 0){
         independent_support_.insert(lit);
       }
     }
-    if (idstring == "p")
+    else if (idstring == "p")
       break;
     input_file.ignore(max_ignore, '\n');
   }
@@ -324,7 +361,17 @@ bool Instance::createfromFile(const string &file_name) {
   literals_.resize(nVars + 1);
 
   while ((input_file >> c) && clauses_added < nCls) {
-    if (c == 'c' && input_file >> idstring && idstring == "ind"){
+    if (c == 'w'){
+      input_file >> lit;
+      input_file >> weight;
+      if (lit < 0){
+        variables_[-1*lit].assign_weight(1-weight);
+      }
+      else{
+        variables_[lit].assign_weight(weight);
+      }
+    }
+    else if (c == 'c' && input_file >> idstring && idstring == "ind"){
       while ((input_file >> lit) && lit != 0){
         independent_support_.insert(lit);
       }
@@ -369,7 +416,14 @@ bool Instance::createfromFile(const string &file_name) {
       }
     }
     input_file.ignore(max_ignore, '\n');
-  } 
+  }
+  // int i = 0;
+  // for (auto v: variables_){
+  //   if(i > 0){
+  //     cout <<i << " " << v.weight_ << endl;
+  //   }
+  //   i++;
+  // }
   ///END NEW
   input_file.close();
   //  /// END FILE input
@@ -378,6 +432,7 @@ bool Instance::createfromFile(const string &file_name) {
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = nVars - num_variables();
 
+
   statistics_.num_original_clauses_ = nCls;
 
   statistics_.num_original_binary_clauses_ = statistics_.num_binary_clauses_;
@@ -385,6 +440,7 @@ bool Instance::createfromFile(const string &file_name) {
       unit_clauses_.size();
 
   original_lit_pool_size_ = literal_pool_.size();
+
   return true;
 }
 

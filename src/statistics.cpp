@@ -13,7 +13,9 @@
 using namespace std;
 
 void DataAndStatistics::print_final_solution_count() {
-  cout << final_solution_count_.get_str();
+  mp_exp_t exp;
+  std::string significand = final_solution_count_.get_str(exp);
+  cout <<  significand << "x10^" << exp-(int)significand.size();
 }
 
 void DataAndStatistics::writeToFile(const string & file_name) {
@@ -26,7 +28,8 @@ void DataAndStatistics::writeToFile(const string & file_name) {
   out << "<td>" << num_decisions_ << "</td>" << endl;
   out << "<td>" << time_elapsed_ << "</td>" << endl;
 
-  string s = final_solution_count_.get_str();
+  mp_exp_t exp;
+  string s = final_solution_count_.get_str(exp);
   if (final_solution_count_ == 0)
     s = "UNSAT";
   out << "<td>" << s << "</td>" << endl;

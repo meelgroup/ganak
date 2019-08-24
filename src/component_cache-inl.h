@@ -134,7 +134,7 @@ void ComponentCache::removeFromDescendantsTree(CacheEntryID id) {
   }
 }
 
-void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count) {
+void ComponentCache::storeValueOf(CacheEntryID id, const mpf_class &model_count) {
   considerCacheResize();
   unsigned table_ofs = tableEntry(id);
   // when storing the new model count the size of the model count

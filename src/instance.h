@@ -61,7 +61,7 @@ protected:
   // removes all set variables and essentially reinitiallizes all
   // further data
   void compactClauses();
-  void compactVariables();
+  void compactVariables(vector<unsigned> *var_map,vector<unsigned> *rev_map);
   void cleanClause(ClauseOfs cl_ofs);
 
   /////////////////////////////////////////////////////////

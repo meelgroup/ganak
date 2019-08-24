@@ -43,6 +43,8 @@ public:
   // number of variables that actually occurs in clauses
   unsigned long num_used_variables_ = 0;
   unsigned long num_free_variables_ = 0;
+  unsigned long num_free_unweighted_variables_ = 0;
+  unsigned long num_free_weighted_variables_ = 0;
 
   /// different clause counts
 
@@ -162,7 +164,7 @@ public:
   unsigned long cache_MB_memory_usage() {
       return cache_bytes_memory_usage() / 1000000;
   }
-  mpz_class final_solution_count_ = 0;
+  mpf_class final_solution_count_ = 0;
 
   double implicitBCP_miss_rate() {
       if(num_failed_literal_tests_ == 0) return 0.0;
@@ -179,12 +181,11 @@ public:
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
-  void set_final_solution_count(const mpz_class &count) {
-    // set final_solution_count_ = count * 2^(num_variables_ - num_used_variables_)
-    mpz_mul_2exp(final_solution_count_.get_mpz_t (),count.get_mpz_t (), num_variables_ - num_used_variables_);
+  void set_final_solution_count(const mpf_class &count) {
+    mpf_mul_2exp(final_solution_count_.get_mpf_t (),count.get_mpf_t (), num_free_unweighted_variables_);
   }
 
-  const mpz_class &final_solution_count() const {
+  const mpf_class &final_solution_count() const {
     return final_solution_count_;
   }
 

@@ -105,6 +105,8 @@ public:
 private:
 	SolverConfiguration config_;
 	bool isindependent = true;
+	vector<unsigned> var_map;
+	vector<unsigned> rev_map;
 
 	DecisionStack stack_; // decision stack
 	vector<LiteralID> literal_stack_;
@@ -112,7 +114,7 @@ private:
 	StopWatch stopwatch_;
 
 	ComponentManager comp_manager_ = ComponentManager(config_,
-			statistics_, literal_values_);
+			statistics_, literal_values_, variables_, independent_support_);
 
 	// the last time conflict clauses have been deleted
 	unsigned long last_ccl_deletion_time_ = 0;

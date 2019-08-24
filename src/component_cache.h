@@ -130,7 +130,7 @@ public:
 
 
   // store the number in model_count as the model count of CacheEntryID id
-  inline void storeValueOf(CacheEntryID id, const mpz_class &model_count);
+  inline void storeValueOf(CacheEntryID id, const mpf_class &model_count);
 
   bool deleteEntries();
 

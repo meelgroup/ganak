@@ -30,9 +30,9 @@ typedef AltComponentAnalyzer ComponentAnalyzer;
 class ComponentManager {
 public:
   ComponentManager(SolverConfiguration &config, DataAndStatistics &statistics,
-        LiteralIndexedVector<TriValue> & lit_values) :
+        LiteralIndexedVector<TriValue> & lit_values, vector<Variable> & variables, set <unsigned> & independent_support) :
         config_(config), statistics_(statistics), cache_(statistics, config_),
-        ana_(statistics,lit_values) {
+        ana_(statistics,lit_values,config_, variables, independent_support), variables_(variables),partial_solution_(1),saved_partial_solution_(1) {
   }
 
   void initialize(LiteralIndexedVector<Literal> & literals,
@@ -42,7 +42,7 @@ public:
       return ana_.scoreOf(v);
   }
 
-  void cacheModelCountOf(unsigned stack_comp_id, const mpz_class &value) {
+  void cacheModelCountOf(unsigned stack_comp_id, const mpf_class &value) {
     if (config_.perform_component_caching)
       cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
   }
@@ -87,6 +87,10 @@ public:
 
   inline void decreasecachescore(Component &comp);
 
+  inline void save_partial_solution();
+
+  inline mpf_class get_saved_partial_sol();
+
   void gatherStatistics(){
     cache_.compute_byte_size_infrasture();
   }
@@ -115,7 +119,10 @@ private:
   vector<Component *> component_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
+  vector<Variable> & variables_;
   vector<float> cachescore_;
+  mpf_class partial_solution_;
+  mpf_class saved_partial_solution_;
 };
 
   float ComponentManager::cacheScoreOf(VariableIndex v){
@@ -157,6 +164,16 @@ private:
     top.includeSolution(1);
     return false;
   }
+
+  void ComponentManager::save_partial_solution(){
+    saved_partial_solution_ = partial_solution_;
+    partial_solution_ = 1;
+  }
+
+  mpf_class ComponentManager::get_saved_partial_sol(){
+    return saved_partial_solution_;
+}
+
 
 
   void ComponentManager::recordRemainingCompsFor(StackLevel &top) {

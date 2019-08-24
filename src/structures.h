@@ -11,6 +11,7 @@
 #include <vector>
 #include <iostream>
 #include "primitive_types.h"
+#include <gmpxx.h>
 using namespace std;
 
 
@@ -173,10 +174,19 @@ public:
 
 
 struct Variable {
+  mpf_class weight_ = 2;
   Antecedent ante;
   int decision_level = INVALID_DL;
   bool polarity = false;
   bool set = false;
+
+  public:
+    void assign_weight(const mpf_class &weight){
+      weight_ = weight;
+    }
+    const mpf_class &get_weight() const {
+      return weight_;
+  }
 };
 
 // for now Clause Header is just a dummy

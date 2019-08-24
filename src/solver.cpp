@@ -111,7 +111,7 @@ bool Solver::prepFailedLiteralTest() {
 
 void Solver::HardWireAndCompact() {
 	compactClauses();
-	compactVariables();
+	compactVariables(&var_map, &rev_map);
 	literal_stack_.clear();
 
 	for (auto l = LiteralID(1, false); l != literals_.end_lit(); l.inc()) {
@@ -156,6 +156,7 @@ void Solver::solve(const string &file_name) {
 	if (!config_.quiet)
 		cout << endl << "Preprocessing .." << flush;
 	bool notfoundUNSAT = simplePreProcess();
+	comp_manager_.save_partial_solution();
 	if (!config_.quiet)
 		cout << " DONE" << endl;
 
@@ -178,7 +179,7 @@ void Solver::solve(const string &file_name) {
 			cout << "-1" << endl;
 			exit(1);
 		}
-		statistics_.set_final_solution_count(stack_.top().getTotalModelCount());
+		statistics_.set_final_solution_count(stack_.top().getTotalModelCount() * comp_manager_.get_saved_partial_sol());
 		statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
 
 	} else {

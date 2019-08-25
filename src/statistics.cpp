@@ -45,7 +45,7 @@ void DataAndStatistics::printShort() {
   cout << "clauses (removed) \t\t\t" << num_original_clauses_ << " ("
       << num_original_clauses_ - num_clauses() << ")" << endl;
   cout << "decisions \t\t\t\t" << num_decisions_ << endl;
-  cout << "Max. decision level \t\t\t\t" << max_decision_level_ << endl;
+  cout << "Max. decision level \t\t\t" << max_decision_level_ << endl;
   cout << "conflicts \t\t\t\t" << num_conflicts_ << endl;
   cout << "conflict clauses (all/bin/unit) \t";
   cout << num_conflict_clauses();

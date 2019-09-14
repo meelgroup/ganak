@@ -191,9 +191,9 @@ void Instance::compactVariables() {
 
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = num_isolated;
-  cout << "Indep Support: ";
-  for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it) 
-        cout << ' ' << *it;
+  // cout << "Indep Support: ";
+  // for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it) 
+  //       cout << ' ' << *it;
   cout << endl;
 }
 

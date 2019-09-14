@@ -58,7 +58,7 @@ def main():
     cmd += "-delta " + str(args.DELTA) + " "
     new_cmd = cmd
     if (not args.noIS):
-        cmd += "-maxdec " + "5000000" + " " + "500" + " "   #number of decisions and number of conflicts
+        cmd += " -p -maxdec " + "5000000" + " " + "500" + " "   #number of decisions and number of conflicts
     
     #setting the range of clhash family (= m*64)
     m = 1
@@ -88,7 +88,6 @@ def main():
         os.system(tmp_cmd)
         cmd = new_cmd
         cmd += "-m " + str(m) + " "
-        cmd += "-p "
         cmd += args.DIMACSCNF + " > outputfile 2>&1 "
         # print(cmd)
         os.system(cmd)
@@ -105,10 +104,8 @@ def main():
         print("Change the hash range to 64x",m)
         cmd = new_cmd
         cmd += "-m " + str(m) + " "
-        if(mis_calculated):
-            cmd += "-p "
-        elif (not args.noIS):
-            cmd += "-maxdec " + "5000000" + " " + "500" + " " #number of decisions and number of conflicts
+        if (not args.noIS):
+            cmd += " -p -maxdec " + "5000000" + " " + "500" + " " #number of decisions and number of conflicts
         cmd += args.DIMACSCNF + " > outputfile 2>&1 "
         # print(cmd)
         os.system(cmd)
@@ -132,7 +129,6 @@ def main():
             total_user_time += float(re.findall(r"User time.*",text)[0].split(":")[1])
             cmd = new_cmd
             cmd += "-m " + str(m) + " "
-            cmd += "-p " 
             cmd += args.DIMACSCNF + " > outputfile 2>&1 "
             # print(cmd)
             os.system(cmd)

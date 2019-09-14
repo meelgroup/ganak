@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     cout << "\t -pol [Polarity]\t Polarity: true, false, default, polaritycache (Default: polaritycache)" << endl;
     cout << "\t -EDR\t\t\t turn on EDR variable branching heuristic" << endl;
     cout << "\t -LSO [n]\t\t learn and start over after n decisions (Default: 5000)" << endl;
-    cout << "\t -p\t\t\t perform projected model counting (Default: false)" << endl;
+    cout << "\t -p\t\t\t turn off projected model counting (Default: false)" << endl;
     cout << "\t -maxdec [n] [m] \t terminate after n decision if conflict is less than m "<<endl;
     cout << "\t" << endl;
     return -1;
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     else if (strcmp(argv[i], "-noCSVSADS") == 0)
       theSolver.config().use_csvsads = false;
     else if (strcmp(argv[i], "-p") == 0)
-      theSolver.config().perform_projectedmodelcounting = true;
+      theSolver.config().perform_projectedmodelcounting = false;
     else if (strcmp(argv[i], "-EDR") == 0){
       theSolver.config().use_csvsads = false;
       theSolver.config().use_edr = true;

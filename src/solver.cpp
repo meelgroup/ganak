@@ -153,6 +153,22 @@ void Solver::solve(const string &file_name) {
 		cout << "Solving " << file_name << endl;
 		statistics_.printShortFormulaInfo();
 	}
+	if (!config_.quiet){
+		if (independent_support_.size() == 0)
+			cout << "Sampling set not present!" << endl;
+		else
+		{
+			if (!config_.perform_projectedmodelcounting)
+				cout << "Warning! Sampling set is present but projected model counting is turned off by the user "<< endl;
+			else
+				cout << "Sampling set is present, performing projected model counting "<< endl;
+			cout << "Sampling set size: " << independent_support_.size() << endl; 
+			cout << "Sampling set: ";
+			for (auto it= independent_support_.begin(); it != independent_support_.end(); ++it) 
+        cout << ' ' << *it; 
+			cout << endl;
+		}
+	}
 	if (!config_.quiet)
 		cout << endl << "Preprocessing .." << flush;
 	bool notfoundUNSAT = simplePreProcess();

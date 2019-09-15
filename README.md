@@ -31,6 +31,16 @@ The usage instructions and default values to arguments can be found by running:
 ```bash
 python3 ganak.py -h
 ```
+### Sampling Set
+For some applications, one is not interested in solutions over all the variables and instead interested in counting the number of unique solutions to a subset of variables, called sampling set. GANAK allows you to specify the sampling set using the following modified version of DIMACS format:
+
+```
+$ cat myfile.cnf
+c ind 1 3 4 6 7 8 10 0
+p cnf 500 1
+3 4 0
+```
+Above, using the `c ind` line, we declare that only variables 1, 3, 4, 6, 7, 8 and 10 form part of the sampling set out of the CNF's 500 variables `1,2...500`. This line must end with a 0. The solution that GANAK will be giving is essentially answering the question: how many different combination of settings to this variables are there that satisfy this problem? Naturally, if your sampling set only contains 7 variables, then the maximum number of solutions can only be at most 2^7 = 128. This is true even if your CNF has thousands of variables.
 
 ## Benchmarks
 Few toy benchmarks are given in benchmarks directory. Full list of benchmarks used for our experiments is available [here](https://drive.google.com/file/d/15dUJI55drFH_0-4-qWjoF_YR0amb3xnK/view?usp=sharing)

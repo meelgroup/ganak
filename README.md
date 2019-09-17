@@ -1,6 +1,7 @@
-# GANAK- model counter
-GANAK is a probabilistic exact model counter. It takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`.
+# GANAK- A Probabilistic Exact (Weighted and UnWeighted) Model Counter
+GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`.
 
+To read more about technical algorithms in Ganak, please refer to [our paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf) 
 
 #### New: Support Added for Weighted Model Counting: Please checkout to wmc branch.
 

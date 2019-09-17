@@ -1,6 +1,10 @@
 # GANAK- model counter
 GANAK is a probabilistic exact model counter. It takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`.
 
+
+### New: Support Added for Weighted Model Counting 
+Please checkout to wmc branch.
+
 ## Installation
 
 ### Compiling in Linux
@@ -45,8 +49,6 @@ Above, using the `c ind` line, we declare that only variables 1, 3, 4, 6, 7, 8 a
 ## Benchmarks
 Few toy benchmarks are given in benchmarks directory. Full list of benchmarks used for our experiments is available [here](https://drive.google.com/file/d/15dUJI55drFH_0-4-qWjoF_YR0amb3xnK/view?usp=sharing)
 
-## Weighted Model Counting
-For weighted model counting please checkout to wmc branch.
 
 ## Issues, questions, bugs, etc.
 Please click on "issues" at the top and [create a new issue](https://github.com/meelgroup/ganak/issues). All issues are responded to promptly.

@@ -22,9 +22,12 @@ def main():
     parser.add_argument("-lso ", type=int, default=5000, help="use learn and start over heuristic after LSO decisions", dest='LSO')
     parser.add_argument("-delta ", type=float, default=0.05, help="the confidence parameter", dest='DELTA')
     parser.add_argument("-seed", type=int, default=1000, help="seed for randomness", dest='seed')
+    parser.add_argument("-p", help="calculate projected model counting [Warning! IS will be turned off]", dest='performprojection', action='store_true')
     args = parser.parse_args()
     total_user_time = 0
     mis_calculated = False
+    if (args.performprojection):
+        args.noIS = True
     if not (args.DIMACSCNF):
         parser.error("Please provide the CNF formula file")
     if ( (not args.noCSVSADS) and args.EDR):

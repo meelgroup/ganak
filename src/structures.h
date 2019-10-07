@@ -9,6 +9,7 @@
 #define STRUCTURES_H_
 
 #include <vector>
+#include <unordered_map>
 #include <iostream>
 #include "primitive_types.h"
 #include <gmpxx.h>
@@ -73,11 +74,11 @@ public:
   int val() const {
     return (sign() ? var() : -1*var());
   }
+
   unsigned raw() const { return value_;}
 
 private:
   unsigned value_;
-
   template <class _T> friend class LiteralIndexedVector;
 };
 
@@ -93,7 +94,6 @@ public:
   void increaseActivity(unsigned u = 1){
     activity_score_+= u;
   }
-
   void removeWatchLinkTo(ClauseOfs clause_ofs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
           if (*it == clause_ofs) {
@@ -182,9 +182,14 @@ struct Variable {
 
   public:
     void assign_weight(const mpf_class &weight){
+      // cout << "weight "<< weight<< " "<<weight_<< endl;
       weight_ = weight;
     }
     const mpf_class &get_weight() const {
+      // cout <<"Ahem! "<< mpf_cmp_d(weight_.get_mpf_t(), 2) << endl; 
+      // if(!mpf_cmp_d(weight_.get_mpf_t(), 2)){
+      //   return weight_ - 1;
+      // }
       return weight_;
   }
 };
@@ -195,6 +200,7 @@ class ClauseHeader {
   unsigned creation_time_; // number of conflicts seen at creation time
   unsigned score_;
   unsigned length_;
+  unsigned LBDscore_;
 public:
 
   void increaseScore() {
@@ -206,12 +212,19 @@ public:
   unsigned score() {
       return score_;
   }
+  unsigned LBD_score() {
+    return LBDscore_;
+  }
 
   unsigned creation_time() {
       return creation_time_;
   }
   unsigned length(){ return length_;}
   void set_length(unsigned length){ length_ = length;}
+  
+  void set_LBD_score(unsigned score) {
+    LBDscore_ = score;
+  }
 
   void set_creation_time(unsigned time) {
     creation_time_ = time;

@@ -8,7 +8,8 @@
 #include "component_management.h"
 
 void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
-    vector<LiteralID> &lit_pool, unsigned num_variables){
+    vector<LiteralID> &lit_pool, unsigned int num_variables) {
+      cout << "Doing Initialization "<< endl;
 
   ana_.initialize(literals, lit_pool);
   // BEGIN CACHE INIT
@@ -21,13 +22,17 @@ void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
   assert(component_stack_.size() == 2);
   component_stack_.back()->createAsDummyComponent(ana_.max_variable_id(),
       ana_.max_clause_id());
-
-
-  cache_.init(*component_stack_.back(), seedforCLHASH);
+  if (config_.usecachetencoding || config_.useIsomorphicComponentCaching){
+    component_stack_.back()->setisomorphism(false);
+    component_stack_.back()->createAsDummyComponentEncoding(ana_.max_variable_id(),
+    ana_.max_clause_id(),ana_.clsidtoofs(),lit_pool);
+  }
+  cache_.init(keyforHash,*component_stack_.back());
   cachescore_.reserve(num_variables + 5);
   for (unsigned i = 0 ; i < (num_variables + 5); i++){
     cachescore_.push_back(0);
   }
+  // cout << "cachescore size "<< cachescore_.size()<<endl;
 }
 
 

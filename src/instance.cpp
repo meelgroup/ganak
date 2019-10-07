@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sys/stat.h>
 
+
 using namespace std;
 
 void Instance::cleanClause(ClauseOfs cl_ofs) {
@@ -42,14 +43,16 @@ void Instance::cleanClause(ClauseOfs cl_ofs) {
     // if it has become binary, transform it to binary and delete it
   } else if (length == 2) {
     addBinaryClause(*beginOf(cl_ofs), *(beginOf(cl_ofs) + 1));
+    if (!isoCC){
     *beginOf(cl_ofs) = SENTINEL_LIT;
+    }
   }
 }
 
 void Instance::compactClauses() {
   vector<ClauseOfs> clause_ofs;
   clause_ofs.reserve(statistics_.num_long_clauses_);
-
+  
   // clear watch links and occurrence lists
   for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
       it_lit++) {
@@ -70,6 +73,7 @@ void Instance::compactClauses() {
   occurrence_lists_.clear();
   occurrence_lists_.resize(variables_.size());
 
+  // cout << "[Instance::compactClauses()]"<< endl;
   vector<LiteralID> tmp_pool = literal_pool_;
   literal_pool_.clear();
   literal_pool_.push_back(SENTINEL_LIT);
@@ -85,9 +89,11 @@ void Instance::compactClauses() {
       literal(*(it + 1)).addWatchLinkTo(new_ofs);
       num_clauses++;
       for (; *it != SENTINEL_LIT; it++) {
+        // cout << (*it).val()<< " ";
         literal_pool_.push_back(*it);
         occurrence_lists_[*it].push_back(new_ofs);
       }
+      // cout << "0 "<< endl;
       literal_pool_.push_back(SENTINEL_LIT);
     }
   }
@@ -97,8 +103,10 @@ void Instance::compactClauses() {
   for (auto &l : literals_) {
     tmp_bin.clear();
     for (auto it = l.binary_links_.begin(); *it != SENTINEL_LIT; it++)
-      if (isActive(*it))
+      if (isActive(*it)){
+        // cout << "BIN "<< (*it).val() << " 0"<< endl;  
         tmp_bin.push_back(*it);
+      }
     bin_links += tmp_bin.size();
     tmp_bin.push_back(SENTINEL_LIT);
     l.binary_links_ = tmp_bin;
@@ -106,7 +114,6 @@ void Instance::compactClauses() {
   statistics_.num_long_clauses_ = num_clauses;
   statistics_.num_binary_clauses_ = bin_links >> 1;
 }
-
 
 void Instance::compactVariables(vector<unsigned> *var_map, vector<unsigned> *rev_map) {
   
@@ -143,25 +150,27 @@ void Instance::compactVariables(vector<unsigned> *var_map, vector<unsigned> *rev
       (*rev_map)[last_ofs] = v;
     }
   vector <unsigned> temp;
-  for (auto it=independent_support_.begin(); it!=independent_support_.end(); ++it){
+  for (auto it=statistics_.independent_support_.begin(); it!=statistics_.independent_support_.end(); ++it){
     if((*var_map)[*it] != 0){
       temp.push_back((*var_map)[*it]);
     }
   }
-  independent_support_.clear();
+  statistics_.independent_support_.clear();
   for (auto it=temp.begin(); it!=temp.end(); ++it){
-    independent_support_.insert(*it);
+    statistics_.independent_support_.insert(*it);
   }
   variables_.clear();
   variables_.push_back(Variable());
   for (int i = 1; i <= last_ofs;i++){
     variables_.push_back(temp_variables_[(*rev_map)[i]]);
+    // cout << "var map "<< i << " " << (*rev_map)[i]<<endl; 
   }
-
-  int i =0;
+  // cout << endl;
+  // variables_.resize(last_ofs + 1);
+  // int i =0;
   // for (auto v : variables_){
-  //   cout<< "var weight: " << i <<" "<< variables_[i].get_weight()<< endl;
-  //   i++;
+    // cout<< "var weight: " << i <<" "<< variables_[i].get_weight()<< endl;
+    // i++;
   // }
   occurrence_lists_.clear();
   occurrence_lists_.resize(variables_.size());
@@ -177,6 +186,11 @@ void Instance::compactVariables(vector<unsigned> *var_map, vector<unsigned> *rev
       newlit = LiteralID((*var_map)[l.var()], l.sign());
       for (auto it = _tmp_bin_links[l].begin(); *it != SENTINEL_LIT; it++) {
         assert((*var_map)[it->var()] != 0);
+        // cout << "[Compact Instance::addBinaryClause] ";
+        // literal_pool_.push_back(newlit);
+        // literal_pool_.push_back(LiteralID((*var_map)[it->var()], it->sign()));
+        // literal_pool_.push_back(SENTINEL_LIT);
+        // cout << newlit.val() << " " << LiteralID((*var_map)[it->var()], it->sign()).val() << endl;
         literals_[newlit].addBinLinkTo(
             LiteralID((*var_map)[it->var()], it->sign()));
       }
@@ -244,15 +258,45 @@ void Instance::compactConflictLiteralPool(){
   literal_pool_.erase(write_pos,literal_pool_.end());
 }
 
+
+
+//bool Instance::deleteConflictClauses() {
+//  statistics_.times_conflict_clauses_cleaned_++;
+//  vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
+//  conflict_clauses_.clear();
+//  vector<double> tmp_ratios;
+//  double score, lifetime;
+//  for(auto clause_ofs: tmp_conflict_clauses){
+//    score = getHeaderOf(clause_ofs).score();
+//    lifetime = statistics_.num_conflicts_ - getHeaderOf(clause_ofs).creation_time();
+//    tmp_ratios.push_back(score/lifetime/(getHeaderOf(clause_ofs).length()));
+//  }
+//  vector<double> tmp_ratiosB = tmp_ratios;
+//
+//  sort(tmp_ratiosB.begin(), tmp_ratiosB.end());
+//
+//  double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
+//
+//  for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
+//    if(tmp_ratios[i] < cutoff){
+//      if(!markClauseDeleted(tmp_conflict_clauses[i]))
+//        conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+//    } else
+//      conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+//  }
+//  return true;
+//}
+
 bool Instance::deleteConflictClauses() {
   statistics_.times_conflict_clauses_cleaned_++;
   vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
   conflict_clauses_.clear();
   vector<double> tmp_ratios;
-  double score, lifetime;
+  double score;
+  // double lifetime;
   for(auto clause_ofs: tmp_conflict_clauses){
     score = getHeaderOf(clause_ofs).score();
-    lifetime = statistics_.num_conflicts_ - getHeaderOf(clause_ofs).creation_time();
+    // lifetime = statistics_.num_conflicts_ - getHeaderOf(clause_ofs).creation_time();
    // tmp_ratios.push_back(score/lifetime);
     tmp_ratios.push_back(score);
 
@@ -264,11 +308,16 @@ bool Instance::deleteConflictClauses() {
   double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
 
   for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
-    if(tmp_ratios[i] < cutoff){
-      if(!markClauseDeleted(tmp_conflict_clauses[i]))
+    // cout << " The LBD score is " << getHeaderOf(tmp_conflict_clauses[i]).LBD_score() << endl;
+    if(tmp_ratios[i] < cutoff && 
+    getHeaderOf(tmp_conflict_clauses[i]).LBD_score() > 3){
+      if(!markClauseDeleted(tmp_conflict_clauses[i])){
         conflict_clauses_.push_back(tmp_conflict_clauses[i]);
-    } else
+      }
+    } 
+    else{
       conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+    }
   }
   return true;
 }
@@ -284,6 +333,52 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
   return true;
 }
 
+bool Instance::create_independent_support_from_file(const string &file_name){
+  char v;
+  int var;
+  struct stat filestatus;
+  statistics_.independent_support_.clear();
+  ///Begin File input
+  ifstream input_file(file_name);
+  if (!input_file) {
+    cerr << "Cannot open file: " << file_name <<" using all the variables as Independent Support"<< endl;
+    for (unsigned v = 1; v < variables_.size(); v++){
+      statistics_.independent_support_.insert(v);
+    }
+    return 1;
+  }
+  stat(file_name.c_str(), &filestatus);
+  if (input_file >> v && v != 'v'){
+    cerr << "Invalid Independent Support file using all the variables as Independent Support" << endl;
+    for (unsigned v = 1; v < variables_.size(); v++){
+      statistics_.independent_support_.insert(v);
+    }
+    ///END NEW
+    input_file.close();
+  //  /// END FILE input
+    return 1;
+  }
+  bool novarpresent = true;
+  while ((input_file >> var) && var != 0){
+    novarpresent = false;
+    statistics_.independent_support_.insert(var);
+    // independent_support_[var] = true; 
+  }
+  if (novarpresent){
+    cerr << "Invalid Independent Support file using all the variables as Independent Support" << endl;
+    for (unsigned v = 1; v < variables_.size(); v++){
+      statistics_.independent_support_.insert(v);
+    }
+    ///END NEW
+    // cout << "Reading of Independent Support finished sucessfully " << endl;
+    input_file.close();
+  //  /// END FILE input
+    return 1;
+  }
+  cout << "Reading of Independent Support finished sucessfully " << endl;
+  input_file.close();
+  return 1;
+}
 
 bool Instance::createfromFile(const string &file_name) {
   unsigned int nVars, nCls;
@@ -296,7 +391,7 @@ bool Instance::createfromFile(const string &file_name) {
   vector<LiteralID> literals;
   string idstring;
   char c;
-  independent_support_.clear();
+
   // clear everything
   literal_pool_.clear();
   literal_pool_.push_back(SENTINEL_LIT);
@@ -315,9 +410,11 @@ bool Instance::createfromFile(const string &file_name) {
 
   struct stat filestatus;
   stat(file_name.c_str(), &filestatus);
-
+  variables_.reserve(10000);
+  variables_.resize(10000);
   literals.reserve(10000);
-  while (input_file >> c){
+
+  while (input_file >> c && c != 'p'){
     if (c == 'w'){
       input_file >> lit;
       input_file >> weight;
@@ -331,22 +428,13 @@ bool Instance::createfromFile(const string &file_name) {
       else{
         variables_[lit].assign_weight(weight);
       }
+      // cout << c << " " << lit << " "<< weight<<" "<<1-weight<< endl;
     }
-    else if (c == 'p'){
-      break;
-    }
-    else if (input_file >> idstring && c == 'c' && idstring == "ind" ){
-      while ((input_file >> lit) && lit != 0){
-        independent_support_.insert(lit);
-      }
-    }
-    else if (idstring == "p")
-      break;
     input_file.ignore(max_ignore, '\n');
   }
   if (!(input_file >> idstring && idstring == "cnf" && input_file >> nVars
       && input_file >> nCls)) {
-    cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
+    cerr << "Invalid CNF file" << endl;
     exit(0);
   }
 
@@ -370,53 +458,58 @@ bool Instance::createfromFile(const string &file_name) {
       else{
         variables_[lit].assign_weight(weight);
       }
+      // cout << c << " " << lit << " "<< weight<<" "<<1-weight<< endl;
     }
-    else if (c == 'c' && input_file >> idstring && idstring == "ind"){
-      while ((input_file >> lit) && lit != 0){
-        independent_support_.insert(lit);
-      }
-    }
-    else if ((c == '-') || isdigit(c)) {
+    else{
       input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
-      literals.clear();
-      bool skip_clause = false;
-      while ((input_file >> lit) && lit != 0) {
-        bool duplicate_literal = false;
-        for (auto i : literals) {
-          if (i.toInt() == lit) {
-            duplicate_literal = true;
-            break;
+      if ((c == '-') || isdigit(c)) {
+        literals.clear();
+        bool skip_clause = false;
+        while ((input_file >> lit) && lit != 0) {
+          bool duplicate_literal = false;
+          for (auto i : literals) {
+            if (i.toInt() == lit) {
+              duplicate_literal = true;
+              break;
+            }
+            if (i.toInt() == -lit) {
+              skip_clause = true;
+              break;
+            }
           }
-          if (i.toInt() == -lit) {
-            skip_clause = true;
-            break;
+          if (!duplicate_literal) {
+            literals.push_back(lit);
           }
         }
-        if (!duplicate_literal) {
-          literals.push_back(lit);
+        if (!skip_clause) {
+          assert(!literals.empty());
+          clauses_added++;
+          statistics_.incorporateClauseData(literals);
+          ClauseOfs cl_ofs = addClause(literals);
+          if (literals.size() >= 3)
+            for (auto l : literals)
+              occurrence_lists_[l].push_back(cl_ofs);
         }
-      }
-      if (!skip_clause) {
-        assert(!literals.empty());
-        clauses_added++;
-        statistics_.incorporateClauseData(literals);
-        ClauseOfs cl_ofs = addClause(literals);
-        if (literals.size() >= 3)
-          for (auto l : literals)
-            occurrence_lists_[l].push_back(cl_ofs);
       }
     }
     input_file.ignore(max_ignore, '\n');
   }
   input_file.unget();
-  while (input_file >> c){
-    if (c == 'c' && input_file >> idstring && idstring == "ind"){
-      while ((input_file >> lit) && lit != 0){
-        independent_support_.insert(lit);
+  while (input_file >> c) {
+    if (c == 'w'){
+      input_file >> lit;
+      input_file >> weight;
+      if (lit < 0){
+        variables_[-1*lit].assign_weight(1-weight);
       }
+      else{
+        variables_[lit].assign_weight(weight);
+      }
+      // cout << c << " " << lit << " "<< weight<<" "<<1-weight<< endl;
     }
     input_file.ignore(max_ignore, '\n');
   }
+  // cout << "weights"<<endl;
   // int i = 0;
   // for (auto v: variables_){
   //   if(i > 0){
@@ -430,8 +523,7 @@ bool Instance::createfromFile(const string &file_name) {
 
   statistics_.num_variables_ = statistics_.num_original_variables_ = nVars;
   statistics_.num_used_variables_ = num_variables();
-  statistics_.num_free_variables_ = nVars - num_variables();
-
+  statistics_.num_free_unweighted_variables_ = nVars - num_variables();
 
   statistics_.num_original_clauses_ = nCls;
 
@@ -440,7 +532,6 @@ bool Instance::createfromFile(const string &file_name) {
       unit_clauses_.size();
 
   original_lit_pool_size_ = literal_pool_.size();
-
   return true;
 }
 

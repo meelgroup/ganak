@@ -24,7 +24,6 @@ enum retStateT {
 };
 
 
-
 class StopWatch {
 public:
 
@@ -75,7 +74,6 @@ private:
 
   timeval interval_length_;
   timeval last_interval_start_;
-	
 
   // if we have started and then stopped the watch, this returns
   // the elapsed time
@@ -88,7 +86,6 @@ public:
 	Solver() {
 		stopwatch_.setTimeBound(config_.time_bound_seconds);
 	}
-
 	void solve(const string & file_name);
 
 	SolverConfiguration &config() {
@@ -101,20 +98,17 @@ public:
 	void setTimeBound(long int i) {
 		stopwatch_.setTimeBound(i);
 	}
-
-private:
-	SolverConfiguration config_;
 	bool isindependent = true;
 	vector<unsigned> var_map;
 	vector<unsigned> rev_map;
-
+private:
+	SolverConfiguration config_;
 	DecisionStack stack_; // decision stack
 	vector<LiteralID> literal_stack_;
-
 	StopWatch stopwatch_;
 
 	ComponentManager comp_manager_ = ComponentManager(config_,
-			statistics_, literal_values_, variables_, independent_support_);
+			statistics_, literal_values_, variables_);
 
 	// the last time conflict clauses have been deleted
 	unsigned long last_ccl_deletion_time_ = 0;
@@ -134,8 +128,6 @@ private:
 
 	void decideLiteral();
 	bool bcp();
-
-
 	 void decayActivitiesOf(Component & comp) {
 	   for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++) {
 	          literal(LiteralID(*it,true)).activity_score_ *=0.5;
@@ -148,7 +140,7 @@ private:
 	// this is the actual BCP algorithm
 	// starts propagating all literal in literal_stack_
 	// beginingg at offset start_at_stack_ofs
-	bool BCP(unsigned start_at_stack_ofs);
+	bool BCP(unsigned start_at_stack_ofs, bool is_preprocessing);
 
 	retStateT backtrack();
 
@@ -160,18 +152,78 @@ private:
 	/////////////////////////////////////////////
 	//  BEGIN small helper functions
 	/////////////////////////////////////////////
-
+	
 	float scoreOf(VariableIndex v) {
 		float score = comp_manager_.scoreOf(v);
-		score += 10.0 * literal(LiteralID(v, true)).activity_score_;
-		score += 10.0 * literal(LiteralID(v, false)).activity_score_;
+		score +=   10.0 * literal(LiteralID(v, true)).activity_score_;
+		score +=  10.0 * literal(LiteralID(v, false)).activity_score_;	
 //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, true)).activity_score_;
 //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, false)).activity_score_;
 
 		return score;
-	}
+		
+		
+		// float score = 0; 
+		
+		// score += 10.0 * literal(LiteralID(v, true)).activity_score_;
+		// score += 10.0 * literal(LiteralID(v, false)).activity_score_;
+		// score += comp_manager_.scoreOf(v);
+		// if (statistics_.num_conflicts_ < 100){
+			// score += comp_manager_.scoreOf(v,false);
+		// }
+		// else{
+		// 	score += comp_manager_.scoreOf(v,true);
+		// }
+		// if (score == 0){
+		// 	score += comp_manager_.scoreOf(v,false);
+		// }
+		// else{
+		// 	score += comp_manager_.scoreOf(v,true);
+		// }
+//		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, true)).activity_score_;
+//		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, false)).activity_score_;
 
-	bool setLiteralIfFree(LiteralID lit,
+		// return score;
+	}
+	void unSet(LiteralID lit, bool change_partial_solution) {
+		var(lit).ante = Antecedent(NOT_A_CLAUSE);
+		var(lit).decision_level = INVALID_DL;
+		literal_values_[lit] = X_TRI;
+		literal_values_[lit.neg()] = X_TRI;
+		if (change_partial_solution){
+			if(config_.useindependentsupport){
+				if(statistics_.independent_support_.count(lit.var()) != 0){
+					if (var(lit).polarity){
+						// cout << "Polarity is true for "<< lit.var() << endl;
+						if(!(stack_.top().getbranchvarsigned() == lit.var())){
+							comp_manager_.remove_partial_solution(lit.var());
+						}
+					}
+					else{
+						if(!(stack_.top().getbranchvarsigned() == -1*lit.var())){
+							comp_manager_.remove_partial_solution(-1*lit.var());
+						}
+						// cout << "Polarity is false for "<< lit.var() << endl;
+					}
+				}
+			}
+			else{
+				if (var(lit).polarity){
+					// cout << "Polarity is true for "<< lit.var() << endl;
+					if(!(stack_.top().getbranchvarsigned() == lit.var())){
+						comp_manager_.remove_partial_solution(lit.var());
+					}
+				}
+				else{
+					if(!(stack_.top().getbranchvarsigned() == -1*lit.var())){
+						comp_manager_.remove_partial_solution(-1*lit.var());
+					}
+						// cout << "Polarity is false for "<< lit.var() << endl;
+				}
+			}
+		}
+  }
+	bool setLiteralIfFree(LiteralID lit, bool partial_include,
 			Antecedent ant = Antecedent(NOT_A_CLAUSE)) {
 		if (literal_values_[lit] != X_TRI)
 			return false;
@@ -184,6 +236,31 @@ private:
 			getHeaderOf(ant.asCl()).increaseScore();
 		literal_values_[lit] = T_TRI;
 		literal_values_[lit.neg()] = F_TRI;
+		if (partial_include){
+			if(config_.useindependentsupport){
+				if(statistics_.independent_support_.count(lit.var()) != 0)
+				{
+					if (var(lit).polarity){
+						cout << "Polarity is true for "<< lit.var() << endl;
+						comp_manager_.include_partial_solution(lit.var());
+					}
+					else{
+						cout << "Polarity is false for "<< lit.var() << endl;
+						comp_manager_.include_partial_solution(-1*lit.var());
+					}
+				}
+			}
+			else{
+				if (var(lit).polarity){
+					// cout << "Polarity is true for "<< lit.var() << endl;
+					comp_manager_.include_partial_solution(lit.var());
+				}
+				else{
+					// cout << "Polarity is false for "<< lit.var() << endl;
+					comp_manager_.include_partial_solution(-1*lit.var());
+				}
+			}
+		}
 		return true;
 	}
 
@@ -224,9 +301,32 @@ private:
 		return literal_stack_[stack_.top().literal_stack_ofs()];
 	}
 
-	void reactivateTOS() {
-		for (auto it = TOSLiteralsBegin(); it != literal_stack_.end(); it++)
-			unSet(*it);
+	void reactivateTOS(bool weightremove) {
+		for (auto it = TOSLiteralsBegin(); it != literal_stack_.end(); it++){
+			unSet(*it,weightremove);
+			if (config_.useindependentsupport){
+				if (statistics_.independent_support_.count((*it).var()) != 0){
+					if (var(*it).polarity){
+						// cout << "Polarity is true for "<< lit.var() << endl;
+						comp_manager_.include_partial_solution((*it).var());
+					}
+					else{
+						// cout << "Polarity is false for "<< lit.var() << endl;
+						comp_manager_.include_partial_solution(-1*(*it).var());
+					}
+				}
+			}
+			else{
+				if (var(*it).polarity){
+					// cout << "Polarity is true for "<< lit.var() << endl;
+					comp_manager_.include_partial_solution((*it).var());
+				}
+				else{
+					// cout << "Polarity is false for "<< lit.var() << endl;
+					comp_manager_.include_partial_solution(-1*(*it).var());
+				}
+			}
+		}
 		comp_manager_.cleanRemainingComponentsOf(stack_.top());
 		literal_stack_.resize(stack_.top().literal_stack_ofs());
 		stack_.top().resetRemainingComps();
@@ -238,18 +338,18 @@ private:
 		// s.t. after the tentative BCP call, we can learn a conflict clause
 		// relative to the assignment of *jt
 		stack_.startFailedLitTest();
-		setLiteralIfFree(lit);
+		setLiteralIfFree(lit, true);
 
 		assert(!hasAntecedent(lit));
 
-		bool bSucceeded = BCP(sz);
+		bool bSucceeded = BCP(sz,false);
 		if (!bSucceeded)
 			recordAllUIPCauses();
 
 		stack_.stopFailedLitTest();
 
 		while (literal_stack_.size() > sz) {
-			unSet(literal_stack_.back());
+			unSet(literal_stack_.back(),true);
 			literal_stack_.pop_back();
 		}
 		return bSucceeded;

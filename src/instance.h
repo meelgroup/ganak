@@ -11,18 +11,12 @@
 #include "statistics.h"
 #include "structures.h"
 #include "containers.h"
-#include <set>
+
 #include <assert.h>
+#include <set>
 
 class Instance {
 protected:
-
-  void unSet(LiteralID lit) {
-    var(lit).ante = Antecedent(NOT_A_CLAUSE);
-    var(lit).decision_level = INVALID_DL;
-    literal_values_[lit] = X_TRI;
-    literal_values_[lit.neg()] = X_TRI;
-  }
 
   Antecedent & getAntecedent(LiteralID lit) {
     return variables_[lit.var()].ante;
@@ -76,9 +70,13 @@ protected:
   unsigned int num_variables() {
     return variables_.size() - 1;
   }
-
+  void setisocc(){ isoCC = true;}
   bool createfromFile(const string &file_name);
+
+  bool create_independent_support_from_file(const string &file_name);
+
   DataAndStatistics statistics_;
+  bool isoCC = false;
 
   /** literal_pool_: the literals of all clauses are stored here
    *   INVARIANT: first and last entries of literal_pool_ are a SENTINEL_LIT
@@ -87,11 +85,6 @@ protected:
    *   terminated by SENTINEL_LIT
    */
   vector<LiteralID> literal_pool_;
-
-  set <unsigned> independent_support_;
-
-  vector<unsigned> var_map;
-
 
   // this is to determine the starting offset of
   // conflict clauses
@@ -106,6 +99,9 @@ protected:
 
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> literal_values_;
+  // vector<VariableIndex> independent_support_;
+  // set<unsigned> independent_support_;
+  // unordered_map<VariableIndex,bool> independent_support_;
 
   void decayActivities() {
     for (auto l_it = literals_.begin(); l_it != literals_.end(); l_it++)
@@ -210,15 +206,34 @@ protected:
 };
 
 ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
+  // cout << "[Instance::addClause]"<<endl;
+  set<unsigned> decisionset;
+  decisionset.clear();
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     assert(!isUnitClause(literals[0].neg()));
+    //
+    // literal_pool_.push_back(literals[0]);
+    // literal_pool_.push_back(SENTINEL_LIT);
+    //
     unit_clauses_.push_back(literals[0]);
+    // ClauseOfs cl_ofs = literal_pool_.size();
     return 0;
   }
   if (literals.size() == 2) {
+    //
+    if(isoCC){
+      for (auto l : literals){
+        literal_pool_.push_back(l);
+      }
+      literal_pool_.push_back(SENTINEL_LIT);
+      addBinaryClause(literals[0], literals[1]);
+      ClauseOfs cl_ofs = literal_pool_.size();
+      return cl_ofs;
+    }
     addBinaryClause(literals[0], literals[1]);
     return 0;
+    //
   }
   for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
     literal_pool_.push_back(0);
@@ -227,12 +242,15 @@ ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
   for (auto l : literals) {
     literal_pool_.push_back(l);
     literal(l).increaseActivity(1);
+    decisionset.insert(var(l).decision_level);
   }
   // make an end: SENTINEL_LIT
   literal_pool_.push_back(SENTINEL_LIT);
   literal(literals[0]).addWatchLinkTo(cl_ofs);
   literal(literals[1]).addWatchLinkTo(cl_ofs);
   getHeaderOf(cl_ofs).set_creation_time(statistics_.num_conflicts_);
+  getHeaderOf(cl_ofs).set_LBD_score(decisionset.size());
+
   return cl_ofs;
 }
 
@@ -254,6 +272,8 @@ Antecedent Instance::addUIPConflictClause(vector<LiteralID> &literals) {
   }
 
 bool Instance::addBinaryClause(LiteralID litA, LiteralID litB) {
+  // cout << "[Instance::addBinaryClause] ";
+  //   cout << litA.val() << " " << litB.val() << endl;
    if (literal(litA).hasBinaryLinkTo(litB))
      return false;
    literal(litA).addBinLinkTo(litB);

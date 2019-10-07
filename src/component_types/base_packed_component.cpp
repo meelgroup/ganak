@@ -39,7 +39,7 @@ void BasePackedComponent::adjustPackSize(unsigned int maxVarId,
   else{
     _bits_of_data_size = log2(maxVarId + maxClId) + 1;
   }
-
+  
   _variable_mask = _clause_mask = _data_size_mask = 0;
   for (unsigned int i = 0; i < _bits_per_variable; i++)
     _variable_mask = (_variable_mask << 1) + 1;

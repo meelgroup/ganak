@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <gmpxx.h>
+#include <set>
 
 #include "structures.h"
 #include "component_types/cacheable_component.h"
@@ -35,17 +36,13 @@ public:
   unsigned long num_original_binary_clauses_ = 0;
   unsigned long num_original_unit_clauses_ = 0;
 
-  //This variable is used to periodically increase cache scores
   unsigned long numcachedec_ = 0;
-
   // number of variables remaining
   unsigned long num_variables_ = 0;
   // number of variables that actually occurs in clauses
   unsigned long num_used_variables_ = 0;
-  unsigned long num_free_variables_ = 0;
-  unsigned long num_free_unweighted_variables_ = 0;
   unsigned long num_free_weighted_variables_ = 0;
-
+  unsigned long num_free_unweighted_variables_ = 0;
   /// different clause counts
 
   // number of clauses after preprocessing
@@ -58,7 +55,7 @@ public:
   unsigned long times_conflict_clauses_cleaned_ = 0;
 
   unsigned long num_unit_clauses_ = 0;
-  unsigned long max_decision_level_ = 0;
+
   /// number of all decisions made
   unsigned long num_decisions_ = 0;
   /// number of all implications derived
@@ -68,10 +65,16 @@ public:
   unsigned long num_failed_literal_tests_ = 0;
   // number of all conflicts occurred
   unsigned long num_conflicts_ = 0;
-
+  
+  //maximum decision level
+  unsigned long max_decision_level_ = 0;
   // number of clauses overall learned
   unsigned num_clauses_learned_ = 0;
+  set <unsigned> independent_support_;
 
+
+  //for CSVSADS
+  float activityparam = 1;
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
@@ -80,6 +83,8 @@ public:
 
   uint64_t num_cached_components_ = 0;
   uint64_t total_num_cached_components_ = 0;
+
+
   uint64_t sum_size_cached_components_ = 0;
 
   // the number of bytes occupied by all
@@ -104,17 +109,24 @@ public:
 
   uint64_t overall_num_cache_stores_ = 0;
   /*end statistics */
-
   void print_cache_state(){
     cout << "printing cache state " << endl;
+    cout << "cache_bytes_memory_usage "<<cache_infrastructure_bytes_memory_usage_<< " "<<sum_bytes_cached_components_<<endl;
     cout <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
   }
 
   bool cache_full(){
-    return cache_bytes_memory_usage() >= maximum_cache_size_bytes_;
+    activityparam = 1 -  (1.0 * cache_bytes_memory_usage() )/ (10*maximum_cache_size_bytes_);
+    bool ret = cache_bytes_memory_usage() >= maximum_cache_size_bytes_;
+    if (ret) {
+        // cout <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
+        cout << "Cache full!!" << endl;
+    }
+    return ret;
   }
 
   uint64_t cache_bytes_memory_usage(){
+    // cout << "cache_bytes_memory_usage "<<cache_infrastructure_bytes_memory_usage_<< " "<<sum_bytes_cached_components_<<endl;
     return cache_infrastructure_bytes_memory_usage_
            + sum_bytes_cached_components_;
   }
@@ -124,13 +136,23 @@ public:
              + overall_bytes_components_stored_;
     }
 
-  void incorporate_cache_store(CacheableComponent &ccomp, bool pccflag){
-    if (pccflag){
-      sum_bytes_cached_components_ += ccomp.SizeInBytes_CLHASH();
-    }
-    else{
-      sum_bytes_cached_components_ += ccomp.SizeInBytes();
-    }
+  void incorporate_cachetencoding_cache_store(CacheableComponent &ccomp){
+    sum_bytes_cached_components_ += ccomp.SizeInBytes_hacked();
+    num_cached_components_++;
+    total_num_cached_components_++;
+    overall_bytes_components_stored_ += ccomp.SizeInBytes_hacked();
+
+    sys_overhead_sum_bytes_cached_components_ += ccomp.SizeInBytes_hacked();
+    sys_overhead_overall_bytes_components_stored_ += ccomp.SizeInBytes_hacked();
+
+
+    sum_bytes_pure_cached_component_data_ += 8; //since we are using 8 bytes hash
+    overall_bytes_pure_stored_component_data_ += 8; // simiarly
+  }
+  void incorporate_cache_store(CacheableComponent &ccomp){
+    // cout << "Cannot come "<< endl;
+    // exit(3);
+    sum_bytes_cached_components_ += ccomp.SizeInBytes();
     sum_size_cached_components_ += ccomp.num_variables();
     num_cached_components_++;
     total_num_cached_components_++;
@@ -143,21 +165,24 @@ public:
     sum_bytes_pure_cached_component_data_ += ccomp.data_only_byte_size();
     overall_bytes_pure_stored_component_data_ += ccomp.data_only_byte_size();
   }
-  void incorporate_cache_erase(CacheableComponent &ccomp, bool pccflag){
-    if (pccflag){
-      sum_bytes_cached_components_ -= ccomp.SizeInBytes_CLHASH();
-    }
-    else{
-      sum_bytes_cached_components_ -= ccomp.SizeInBytes();
-    }
-    sum_size_cached_components_ -= ccomp.num_variables();
-    num_cached_components_--;
-    sum_bytes_pure_cached_component_data_ -= ccomp.data_only_byte_size();
+  void incorporate_cache_erase(CacheableComponent &ccomp){
+      //assert(ccomp.get_hacked());
+      if (sum_bytes_cached_components_ < 100){
+        return;
+      }
+      sum_bytes_cached_components_ -= ccomp.SizeInBytes_hacked(); //ccomp.SizeInBytes();
+      // cout << " incorporate_cache_erase " <<sum_bytes_cached_components_<< " "<<ccomp.SizeInBytes_hacked()<< endl;
+      // exit(3);
 
-    sys_overhead_sum_bytes_cached_components_ -= ccomp.sys_overhead_SizeInBytes();
+      sum_size_cached_components_ -= ccomp.num_variables();
+      num_cached_components_--;
+      sum_bytes_pure_cached_component_data_ -= ccomp.data_only_byte_size();
+
+      sys_overhead_sum_bytes_cached_components_ -= ccomp.sys_overhead_SizeInBytes();
   }
 
   void incorporate_cache_hit(CacheableComponent &ccomp){
+      // cout << " Cache Hit " << ccomp.compute_cachetclhash() << endl;
       num_cache_hits_++;
       sum_cache_hit_sizes_ += ccomp.num_variables();
   }

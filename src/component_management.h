@@ -9,20 +9,19 @@
 #define COMPONENT_MANAGEMENT_H_
 
 
+
 #include "component_types/component.h"
 #include "component_cache.h"
 #include "alt_component_analyzer.h"
 //#include "component_analyzer.h"
 
-// #include <vector>
+#include <vector>
 #include <unordered_map>
-#include <random>
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
 #include "clhash/clhash.h"
 #include "solver_config.h"
-
 using namespace std;
 
 typedef AltComponentAnalyzer ComponentAnalyzer;
@@ -30,21 +29,63 @@ typedef AltComponentAnalyzer ComponentAnalyzer;
 class ComponentManager {
 public:
   ComponentManager(SolverConfiguration &config, DataAndStatistics &statistics,
-        LiteralIndexedVector<TriValue> & lit_values, vector<Variable> & variables, set <unsigned> & independent_support) :
-        config_(config), statistics_(statistics), cache_(statistics, config_),
-        ana_(statistics,lit_values,config_, variables, independent_support), variables_(variables),partial_solution_(1),saved_partial_solution_(1) {
+        LiteralIndexedVector<TriValue> & lit_values, vector<Variable> & variables) :
+        config_(config), statistics_(statistics), cache_(statistics, config),
+        ana_(statistics,lit_values,config_, variables), variables_(variables),partial_solution_(1),saved_partial_solution_(1) {
   }
 
   void initialize(LiteralIndexedVector<Literal> & literals,
-        vector<LiteralID> &lit_pool, unsigned num_variables);
+        vector<LiteralID> &lit_pool, unsigned int num_variables);
 
-  unsigned scoreOf(VariableIndex v) {
-      return ana_.scoreOf(v);
+  float cacheScoreOf(VariableIndex v){
+    return cachescore_[v];
   }
 
+  float scoreOf(VariableIndex v) {
+        return ana_.scoreOf(v);
+    // if(config_.allowactivitydecrease){
+    //     cout << "[component management]" << 5.0*ana_.scoreOf(v) << " "<< 0.1*cachescore_[v]<< endl;  
+    //     return 5.0*ana_.scoreOf(v) + 0.05*cachescore_[v];
+    // }
+    // else{
+    //     cout << "[component management]" << ana_.scoreOf(v) << endl;
+    //   }
+  }
+  void increasecachescores(){
+    // cout << "Doing increase "<<endl;
+    for (unsigned i = 0; i< cachescore_.size();i++){
+      cachescore_[i] *= 0.5;
+    }
+  }
+  void decreasecachescore(Component &comp){
+    // cout << "Doing decrease "<< endl;
+    for(vector<VariableIndex>::const_iterator it = comp.varsBegin();
+     *it != varsSENTINEL; it++){
+        cachescore_[*it] -= 1;
+     }
+  }
+  void printcomp(unsigned stack_comp_id){
+    component_stack_[stack_comp_id]->printHash();
+    cout << "Num vars :"<< component_stack_[stack_comp_id]->num_variables()<< endl;
+    cout << "bliss hash :";
+     component_stack_[stack_comp_id]->printblissHash();
+  }
   void cacheModelCountOf(unsigned stack_comp_id, const mpf_class &value) {
-    if (config_.perform_component_caching)
+    if (config_.perform_component_caching){
+      // if (component_stack_[stack_comp_id]->getuseisomorphism()){
+      //   cout << "hash: "<< endl;
+      //   component_stack_[stack_comp_id]->printHash();
+      //   cout << "blisshash: ";
+      //   component_stack_[stack_comp_id]->printblissHash();
+      //   cout << "Count: "<< value<< endl;
+      // }
+      // else{
+      //   cout << "hash: "<< endl;
+      //   component_stack_[stack_comp_id]->printHash();
+      //   cout << "Count: "<< value<< endl;
+      // }
       cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
+    }
   }
 
   Component & superComponentOf(StackLevel &lev) {
@@ -70,49 +111,45 @@ public:
     assert(component_stack_.size() > top.currentRemainingComponent());
     return *component_stack_[top.currentRemainingComponent()];
   }
-
+  
   // checks for the next yet to explore remaining component of top
   // returns true if a non-trivial non-cached component
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all components have been processed;
   inline bool findNextRemainingComponentOf(StackLevel &top);
 
+  inline void include_solution(int lit, StackLevel &top);
+
+  inline void multiply_partial_solution(StackLevel &top);
+
+  inline void include_partial_solution(int lit);
+
+  inline void save_partial_solution();
+
+  inline void remove_partial_solution(int lit);
+
   inline void recordRemainingCompsFor(StackLevel &top);
 
   inline void sortComponentStackRange(unsigned start, unsigned end);
 
-  inline float cacheScoreOf(VariableIndex v);
-
-  inline void increasecachescores();
-
-  inline void decreasecachescore(Component &comp);
-
-  inline void save_partial_solution();
-
   inline mpf_class get_saved_partial_sol();
 
   void gatherStatistics(){
+//     statistics_.cache_bytes_memory_usage_ =
+//	     cache_.recompute_bytes_memory_usage();
     cache_.compute_byte_size_infrasture();
   }
 
   void removeAllCachePollutionsOf(StackLevel &top);
 
-  vector<void *> seedforCLHASH;
+  void * keyforHash;
 
-  void getrandomseedforclhash(){
-    std::random_device rd;     //Get a random seed from the OS entropy device, or whatever
-    std::mt19937_64 eng(rd()); //Use the 64-bit Mersenne Twister 19937 generator
-                             //and seed it with entropy.
-    std::uniform_int_distribution<unsigned long long> distr;
-    seedforCLHASH.reserve(config_.hashrange);
-    for (int i=0; i< config_.hashrange;i++){
-      seedforCLHASH[i] =
-      get_random_key_for_clhash(distr(eng),distr(eng));
-    }
+  void getrandomkeyforhash(){
+    keyforHash =
+    get_random_key_for_clhash(UINT64_C(0x23a23cf5033c3c81),UINT64_C(0xb3816f6a2c68e530));
 }
 
 private:
-
   SolverConfiguration &config_;
   DataAndStatistics &statistics_;
 
@@ -121,27 +158,13 @@ private:
   ComponentAnalyzer ana_;
   vector<Variable> & variables_;
   vector<float> cachescore_;
+
   mpf_class partial_solution_;
   mpf_class saved_partial_solution_;
 };
 
-  float ComponentManager::cacheScoreOf(VariableIndex v){
-    return cachescore_[v];
-  }
 
-  void ComponentManager::increasecachescores(){
-    for (unsigned i = 0; i< cachescore_.size();i++){
-      cachescore_[i] *= 0.5;
-    }
-  }
-  void ComponentManager::decreasecachescore(Component &comp){
-    for(vector<VariableIndex>::const_iterator it = comp.varsBegin();
-     *it != varsSENTINEL; it++){
-        cachescore_[*it] -= 1;
-     }
-  }
-
-  void ComponentManager::sortComponentStackRange(unsigned start, unsigned end){
+void ComponentManager::sortComponentStackRange(unsigned start, unsigned end){
     assert(start <= end);
     // sort the remaining components for processing
     for (unsigned i = start; i < end; i++)
@@ -151,70 +174,180 @@ private:
           swap(component_stack_[i], component_stack_[j]);
       }
   }
-
-  bool ComponentManager::findNextRemainingComponentOf(StackLevel &top) {
-    // record Remaining Components if there are none!
+bool ComponentManager::findNextRemainingComponentOf(StackLevel &top) {
+    
     if (component_stack_.size() <= top.remaining_components_ofs())
       recordRemainingCompsFor(top);
+
     assert(!top.branch_found_unsat());
-    if (top.hasUnprocessedComponents())
+    // cout << "Number of components "<< top.remaining_components_ofs() << endl;
+    if (top.hasUnprocessedComponents()) {
+#ifdef VERB
+        cout << "findNextRemainingComponentOf: Has unprocessed component" << endl;
+#endif
       return true;
+    }
     // if no component remains
     // make sure, at least that the current branch is considered SAT
-    top.includeSolution(1);
+    // cout << "Variable component management: " << top.getbranchvarsigned()<< " "<< partial_solution_ <<endl;
+    // include_partial_solution(top.getbranchvarsigned());
+    top.includeSolution(partial_solution_);
+    partial_solution_ = 1;
+    #ifdef VERB
+    cout << "findNextRemainingComponentOf "<<partial_solution_<< endl;
+    cout << "findNextRemainingComponentOf: no component remains" << endl;
+    #endif
     return false;
   }
 
-  void ComponentManager::save_partial_solution(){
-    saved_partial_solution_ = partial_solution_;
-    partial_solution_ = 1;
-  }
-
-  mpf_class ComponentManager::get_saved_partial_sol(){
-    return saved_partial_solution_;
+void ComponentManager::save_partial_solution(){
+  saved_partial_solution_ = partial_solution_;
+  cout << "Save Partial Solution: "<< partial_solution_<< endl;
+  partial_solution_ = 1;
+  // cout << "Partial Solution: "<< partial_solution_<< endl;
 }
 
+mpf_class ComponentManager::get_saved_partial_sol(){
+  return saved_partial_solution_;
+}
 
+void ComponentManager::multiply_partial_solution(StackLevel &top){
+  // cout << "Partial Solution "<< partial_solution_ << endl; 
+  top.includeSolution(partial_solution_);
+  partial_solution_ = 1;
+}
+void ComponentManager::remove_partial_solution(int lit){
+  mpf_class w = 0;
+  if(lit > 0){
+    w = variables_[lit].get_weight();
+    if(!mpf_cmp_d(w.get_mpf_t(), 2)){
+      partial_solution_ /= 1;
+    }
+    else{
+      partial_solution_ /= w;
+    }
+  }
+  else{
+    w = variables_[-1*lit].get_weight();
+    if(!mpf_cmp_d(w.get_mpf_t(), 2)){
+      partial_solution_ /= 1;
+    }
+    else{
+      partial_solution_ /= 1 - w;
+    }
+  }
+}
+void ComponentManager::include_solution(int lit, StackLevel &top){
+  mpf_class w = 0;
+  if(lit > 0){
+    w = variables_[lit].get_weight();
+    if(!mpf_cmp_d(w.get_mpf_t(), 2)){
+      top.includeSolution(1);
+    }
+    else{
+      top.includeSolution(w);
+    }
+  }
+  else{
+    w = variables_[-1*lit].get_weight();
+    if(!mpf_cmp_d(w.get_mpf_t(), 2)){
+      top.includeSolution(1);
+    }
+    else{
+      top.includeSolution(1 - w);
+    }
+  }
+}
 
-  void ComponentManager::recordRemainingCompsFor(StackLevel &top) {
-    Component & super_comp = superComponentOf(top);
-    unsigned new_comps_start_ofs = component_stack_.size();
+void ComponentManager::include_partial_solution(int lit){
+  // cout << "include partial solution "<< lit <<"partial solution before "<<partial_solution_<<
+  // " partial solution after ";
+  mpf_class w = 0;
+  if(lit > 0){
+    w = variables_[lit].get_weight();
+    if(!mpf_cmp_d(w.get_mpf_t(), 2)){
+      partial_solution_ *= 1;
+    }
+    else{
+      partial_solution_ *= w;
+    }
+  }
+  else{
+    w = variables_[-1*lit].get_weight();
+    if(!mpf_cmp_d(w.get_mpf_t(), 2)){
+      partial_solution_ *= 1;
+    }
+    else{
+      partial_solution_ *= 1 - w;
+    }
+  }
+  // cout << partial_solution_ << endl;
+  // if (lit == 1 || lit == -1){
+  //   cout <<"Weight of 1 "<< w << endl; 
+  // }
+}
 
-    ana_.setupAnalysisContext(top, super_comp);
+void ComponentManager::recordRemainingCompsFor(StackLevel &top) {
+    // cout <<"[ComponentManager::recordRemainingCompsFor]"<<endl;
+   Component & super_comp = superComponentOf(top);
+   unsigned new_comps_start_ofs = component_stack_.size();
 
-    for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++){
-      if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)){
-
-        Component *p_new_comp = ana_.makeComponentFromArcheType();
-        CacheableComponent *packed_comp = NULL;
-        if (config_.perform_pcc){
-          packed_comp = new CacheableComponent(seedforCLHASH,ana_.getArchetype().current_comp_for_caching_);
-        }
-        else{
-          packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
-        }  
-        if (!cache_.manageNewComponent(top, *packed_comp)){
-          component_stack_.push_back(p_new_comp);
-          p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
-        }
-        else {
-          //cache score should be decreased since we have a cache hit
-          if(config_.use_csvsads){
+   ana_.setupAnalysisContext(top, super_comp);
+   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++)
+     if (ana_.isUnseenAndActive(*vt) &&
+         ana_.exploreRemainingCompOf(*vt)){
+       Component *p_new_comp = ana_.makeComponentFromArcheType();
+       CacheableComponent *packed_comp = NULL;
+       if (config_.useIsomorphicComponentCaching){
+        //  cout << "New Component"<< endl;
+        //  ana_.getArchetype().current_comp_for_caching_.printHash();
+         if (ana_.getArchetype().current_comp_for_caching_.getuseisomorphism() ==false){
+          packed_comp = new CacheableComponent(keyforHash,
+         ana_.getArchetype().current_comp_for_caching_.getHash());
+         }
+         else{
+          //  cout << "Num variables "<< ana_.getArchetype().current_comp_for_caching_.num_variables()<< endl;
+           packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_.getblissHash(),
+           ana_.getArchetype().current_comp_for_caching_.num_variables());
+         }
+       }
+       
+       else if (config_.usecachetencoding){
+         packed_comp = new CacheableComponent(keyforHash,
+         ana_.getArchetype().current_comp_for_caching_.getHash());
+        //  cout << "New Component"<< endl;
+        //  ana_.getArchetype().current_comp_for_caching_.printHash();
+       }
+      // //  else 
+      else if (config_.usepcc){
+        packed_comp = new CacheableComponent(keyforHash,
+        ana_.getArchetype().current_comp_for_caching_);
+       }
+       else{
+         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
+       }
+         if (!cache_.manageNewComponent(top, *packed_comp)){
+            component_stack_.push_back(p_new_comp);
+            p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
+         }
+         else {
+           if(config_.allowactivitydecrease){
             statistics_.numcachedec_++;
 				    if(statistics_.numcachedec_ % 128 == 0){
 					    increasecachescores();
-			      }
-            for (vector<VariableIndex>::const_iterator it = p_new_comp->varsBegin(); *it != varsSENTINEL; it++){
+			    	}
+            for (vector<VariableIndex>::const_iterator it = p_new_comp->varsBegin(); 
+            *it != varsSENTINEL; it++){
               cachescore_[*it] -= 1;
             }
-          }
-          delete packed_comp;
-          delete p_new_comp;
-        }
-      }
-    }
-    top.set_unprocessed_components_end(component_stack_.size());
-    sortComponentStackRange(new_comps_start_ofs, component_stack_.size());
-  }
+           }
+           delete packed_comp;
+           delete p_new_comp;
+         }
+     }
+
+   top.set_unprocessed_components_end(component_stack_.size());
+   sortComponentStackRange(new_comps_start_ofs, component_stack_.size());
+}
 
 #endif /* COMPONENT_MANAGEMENT_H_ */

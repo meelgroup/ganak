@@ -14,7 +14,6 @@
 #include "component_types/component.h"
 #include "component_types/base_packed_component.h"
 #include "component_types/component_archetype.h"
-#include "solver_config.h"
 
 
 
@@ -23,7 +22,6 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
-#include <set>
 
 using namespace std;
 
@@ -32,10 +30,9 @@ public:
 	AltComponentAnalyzer(DataAndStatistics &statistics,
         LiteralIndexedVector<TriValue> & lit_values,
         SolverConfiguration & config,
-        vector<Variable> & variables,
-        set <unsigned> & independent_support) :
+        vector<Variable> & variables) :
         statistics_(statistics), literal_values_(lit_values), config_(config),
-        variables_(variables), independent_support_(independent_support) {
+        variables_(variables) {
   }
 
   unsigned scoreOf(VariableIndex v) {
@@ -97,8 +94,8 @@ public:
     recordComponentOf(v);
 
     if (search_stack_.size() == 1) {
-      if (config_.perform_projectedmodelcounting){
-        if (independent_support_.find(v) !=  independent_support_.end()){
+      if (config_.useindependentsupport){
+        if (statistics_.independent_support_.find(v) !=  statistics_.independent_support_.end()){
           if (variables_[v].get_weight() == 2){
             archetype_.stack_level().includeSolution(2);
           }
@@ -123,7 +120,13 @@ public:
 
 
   inline Component *makeComponentFromArcheType(){
-    return archetype_.makeComponentFromState(search_stack_.size());
+    if (config_.usecachetencoding || config_.useIsomorphicComponentCaching){
+      return archetype_.makeComponentFromState(search_stack_.size(), map_clause_id_to_ofs_, 
+      literal_pool_, literal_values_);
+    }
+    else{
+      return archetype_.makeComponentFromState(search_stack_.size());
+    }
   }
 
   unsigned max_clause_id(){
@@ -131,6 +134,9 @@ public:
   }
   unsigned max_variable_id(){
     return max_variable_id_;
+  }
+  vector<unsigned> &clsidtoofs(){
+    return map_clause_id_to_ofs_;
   }
 
   ComponentArchetype &getArchetype(){
@@ -141,9 +147,6 @@ private:
   DataAndStatistics &statistics_;
   SolverConfiguration &config_;
   vector<Variable> & variables_;
-  set <unsigned> & independent_support_;
-
-
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool
@@ -162,6 +165,9 @@ private:
   // in one contiguous chunk of memory
   vector<unsigned> unified_variable_links_lists_pool_;
 
+  vector<LiteralID> literal_pool_;
+
+  vector<unsigned> map_clause_id_to_ofs_;
 
   vector<unsigned> variable_link_list_offsets_;
 
@@ -169,7 +175,7 @@ private:
 
   vector<unsigned> var_frequency_scores_;
 
-  ComponentArchetype  archetype_;
+  ComponentArchetype  archetype_= ComponentArchetype(config_);
 
   vector<VariableIndex> search_stack_;
 

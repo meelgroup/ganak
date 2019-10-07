@@ -8,11 +8,10 @@
 #ifndef COMPONENT_ARCHETYPE_H_
 #define COMPONENT_ARCHETYPE_H_
 
-
 #include "../primitive_types.h"
 #include "component.h"
-
-
+#include "../solver_config.h"
+#include "../containers.h"
 #include "cacheable_component.h"
 
 
@@ -21,8 +20,8 @@
 
 #include <cstring>
 #include <algorithm>
-
-
+#include <map>
+#include <unordered_map>
 
 #include <iostream>
 // State values for variables found during component
@@ -46,10 +45,11 @@ class StackLevel;
 
 class ComponentArchetype {
 public:
-  ComponentArchetype() {
+  ComponentArchetype(SolverConfiguration &config ) :
+  config_(config) {
   }
-  ComponentArchetype(StackLevel &stack_level, Component &super_comp) :
-      p_super_comp_(&super_comp), p_stack_level_(&stack_level) {
+  ComponentArchetype(StackLevel &stack_level, Component &super_comp, SolverConfiguration &config) :
+      p_super_comp_(&super_comp), p_stack_level_(&stack_level), config_(config) {
   }
 
   void reInitialize(StackLevel &stack_level, Component &super_comp) {
@@ -157,7 +157,84 @@ public:
   }
 
 
-  Component *makeComponentFromState(unsigned stack_size) {
+  Component *makeComponentFromState(unsigned stack_size,vector<unsigned> &map_clause_id_to_ofs_,
+   vector<LiteralID> &literal_pool_, LiteralIndexedVector<TriValue> & literal_values_) {
+  if (config_.usecachetencoding)
+    {
+      Component *p_new_comp = new Component();
+      p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
+      current_comp_for_caching_.clear();
+      for (auto v_it = super_comp().varsBegin(); *v_it != varsSENTINEL;  v_it++)
+        if (var_seen(*v_it)) { //we have to put a var into our component
+          p_new_comp->addVar(*v_it);
+          current_comp_for_caching_.addVar(*v_it);
+          p_new_comp->Addhash(*v_it);
+          current_comp_for_caching_.Addhash(*v_it);
+          setVar_in_other_comp(*v_it);
+        }
+      p_new_comp->closeVariableData();
+      current_comp_for_caching_.closeVariableData();
+      for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
+      {
+        if (clause_seen(*it_cl)) 
+        {
+          p_new_comp->addCl(*it_cl);
+          if(!clause_all_lits_active(*it_cl))
+          {
+        auto iit = literal_pool_[map_clause_id_to_ofs_[*it_cl]];
+        int i=0;
+        while (iit != SENTINEL_LIT)
+        {
+          if (literal_values_[iit] == X_TRI)
+          {
+            p_new_comp->Addhash(iit.val());
+            current_comp_for_caching_.Addhash(iit.val());
+          }
+          i+=1;
+          iit = literal_pool_[map_clause_id_to_ofs_[*it_cl]+i];
+        }
+        current_comp_for_caching_.Addhash(0);
+        p_new_comp->Addhash(0);
+            current_comp_for_caching_.addCl(*it_cl);
+          }
+          setClause_in_other_comp(*it_cl);
+        }
+      }
+      // current_comp_for_caching_.Addhash(2*current_comp_for_caching_.num_variables());
+      // current_comp_for_caching_.Addhash(0);
+      // p_new_comp->Addhash(2*current_comp_for_caching_.num_variables());
+      // p_new_comp->Addhash(0);
+      p_new_comp->closeClauseData();
+      current_comp_for_caching_.closeClauseData();
+      return p_new_comp;
+   }
+   else{
+    Component *p_new_comp = new Component();
+    p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
+    current_comp_for_caching_.clear();
+
+    for (auto v_it = super_comp().varsBegin(); *v_it != varsSENTINEL;  v_it++)
+      if (var_seen(*v_it)) { //we have to put a var into our component
+        p_new_comp->addVar(*v_it);
+        current_comp_for_caching_.addVar(*v_it);
+        setVar_in_other_comp(*v_it);
+      }
+    p_new_comp->closeVariableData();
+    current_comp_for_caching_.closeVariableData();
+
+    for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
+      if (clause_seen(*it_cl)) {
+        p_new_comp->addCl(*it_cl);
+           if(!clause_all_lits_active(*it_cl))
+             current_comp_for_caching_.addCl(*it_cl);
+        setClause_in_other_comp(*it_cl);
+      }
+    p_new_comp->closeClauseData();
+    current_comp_for_caching_.closeClauseData();
+    return p_new_comp;
+   }
+  }
+Component *makeComponentFromState(unsigned stack_size) {
     Component *p_new_comp = new Component();
     p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
     current_comp_for_caching_.clear();
@@ -209,7 +286,7 @@ public:
 private:
   Component *p_super_comp_;
   StackLevel *p_stack_level_;
-
+  SolverConfiguration &config_;
   static CA_SearchState *seen_;
   static unsigned seen_byte_size_;
 

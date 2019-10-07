@@ -17,19 +17,18 @@ sudo apt-get install libmpc-dev
 mkdir build && cd build
 cmake ..
 make
-cp ../bin/ganak.py .
 ```
 
 
 ## Usage
-You can run GANAK by using 'ganak.py' Python script. A simple invocation looks as follows:
+A simple invocation of weighted ganak looks as follows:
 ```bash
-python3 ganak.py <cnffile>
+./ganak -cs 2000 <cnf>
 ```
 
 The usage instructions and default values to arguments can be found by running:
 ```bash
-python3 ganak.py -h
+./ganak
 ```
 
 ## Weight Format

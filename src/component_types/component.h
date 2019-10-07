@@ -7,11 +7,13 @@
 
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
-
+#include<iostream>
 #include <assert.h>
 #include <vector>
+#include <unordered_map>
 
 #include "../primitive_types.h"
+#include "../structures.h"
 
 using namespace std;
 
@@ -81,16 +83,74 @@ public:
       addVar(idvar);
     closeVariableData();
     if (max_clause_id > 0)
-      for (unsigned idcl = 1; idcl <= max_clause_id; idcl++)
+      for (unsigned idcl = 1; idcl <= max_clause_id; idcl++){
         addCl(idcl);
+      }
     closeClauseData();
   }
-
+  void createAsDummyComponentEncoding(unsigned max_var_id, unsigned max_clause_id,
+  vector<unsigned> &map_clause_id_to_ofs_,vector<LiteralID> &literal_pool_)
+   {
+    for (unsigned idcl = 1; idcl <= max_clause_id; idcl++){
+      auto iit = literal_pool_[map_clause_id_to_ofs_[idcl]];
+      int i=0;
+      while (iit != SENTINEL_LIT)
+          {
+            Addhash(iit.val());
+            i+=1;
+            iit = literal_pool_[map_clause_id_to_ofs_[idcl]+i];
+          }
+          Addhash(0);
+    }
+   }
   void clear() {
+    hashkey.clear();
     clauses_ofs_ = 0;
     data_.clear();
   }
 
+  void Addhash(int lit)
+  {
+      hashkey.push_back(lit);
+  }
+  
+  void printHash()
+  {
+    int i = 0;
+    for(i = 0; i < hashkey.size();i++){
+          cout << hashkey[i] << " ";
+        }
+    if (i > 0){
+      cout << endl;
+    }
+  }
+
+  vector<int>& getHash()
+  {
+    return hashkey;
+  }
+
+  void setisomorphism(bool input){
+    useisomorphism = input;
+  }
+
+  void Addblisshash(int bliss_hash){
+    blisshash = bliss_hash;
+  }
+
+  void printblissHash(){
+    if (useisomorphism){
+      cout << blisshash << endl;
+    }
+  }
+
+  int getblissHash(){
+    return blisshash;
+  }
+
+  bool getuseisomorphism(){
+    return useisomorphism;
+  }
 private:
   // data_ stores the component data:
   // for better cache performance the
@@ -101,6 +161,9 @@ private:
   // in the data!
   vector<unsigned> data_;
   unsigned clauses_ofs_ = 0;
+  vector<int> hashkey;
+  bool useisomorphism = false;
+  unsigned int blisshash = 0;
   // id_ will identify denote the entry in the cacheable component database,
   // where a Packed version of this component is stored
   // yet this does not imply that the model count of this component is already known

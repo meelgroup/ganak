@@ -27,12 +27,11 @@ void DataAndStatistics::writeToFile(const string & file_name) {
   out << "<td>" << num_original_clauses_ << "</td>" << endl;
   out << "<td>" << num_decisions_ << "</td>" << endl;
   out << "<td>" << time_elapsed_ << "</td>" << endl;
-
   mp_exp_t exp;
   string s = final_solution_count_.get_str(exp);
   if (final_solution_count_ == 0)
     s = "UNSAT";
-  out << "<td>" << s << "</td>" << endl;
+  out << "<td>" << s <<"x10^"<< exp-(int)s.size() << "</td>" << endl;
   out << "</tr>" << endl;
 }
 
@@ -53,7 +52,9 @@ void DataAndStatistics::printShort() {
   cout << "conflict clauses (all/bin/unit) \t";
   cout << num_conflict_clauses();
   cout << "/" << num_binary_conflict_clauses_ << "/" << num_unit_clauses_
-      << endl << endl;
+      << endl;
+  cout << "number of times conflict clause removed \t"
+  << times_conflict_clauses_cleaned_<<endl << endl;
   cout << "failed literals found by implicit BCP \t "
       << num_failed_literals_detected_ << endl;
 
@@ -62,6 +63,7 @@ void DataAndStatistics::printShort() {
   cout << endl;
   cout << "bytes cache size     \t" << cache_bytes_memory_usage()  << "\t"
       << endl;
+
   cout << "bytes cache (overall) \t" << overall_cache_bytes_memory_stored()
       << "" << endl;
   cout << "bytes cache components (overall) \t"  << overall_bytes_components_stored_ << ""<< endl;
@@ -69,6 +71,7 @@ void DataAndStatistics::printShort() {
       << (cache_infrastructure_bytes_memory_usage_) << "/"
       << sum_bytes_cached_components_  << "\t" << endl;
 
+  cout << "Num cache dec \t"<< numcachedec_<<endl;
   cout << "bytes pure comp data (curr)    " << sum_bytes_pure_cached_component_data_  << "" << endl;
   cout << "bytes pure comp data (overall) " <<overall_bytes_pure_stored_component_data_ << "" << endl;
 
@@ -76,9 +79,8 @@ void DataAndStatistics::printShort() {
   cout << "bytes cache with sysoverh (overall) " << sys_overhead_overall_bytes_components_stored_ << "" << endl;
 
 
-  cout << "cache (lookup / stores / hits) \t\t\t" << num_cache_look_ups_ << "/"
-      << total_num_cached_components_ << "/"
-      << num_cache_hits_ << endl;
+  cout << "cache (lookup / stores / hits) \t\t\t" << num_cache_look_ups_ << "/" 
+  << total_num_cached_components_ << "/" << num_cache_hits_ << endl;
   cout << "cache miss rate " << cache_miss_rate() * 100 << "%" << endl;
   cout << " avg. variable count (stores / hits) \t" << getAvgComponentSize()
       << "/" << getAvgCacheHitSize() << endl << endl;

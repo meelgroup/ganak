@@ -61,20 +61,20 @@ template <class T>
 
 class BasePackedComponent {
 public:
+  // void set_hacked(const uint64_t _old_size, const uint64_t _old_num_vars) {
+  //   old_size = _old_size;
+  //   old_num_vars = _old_num_vars;
+  //   delete[] data_;
+  //   data_ = nullptr;
+  //   hack_deleted = true;
+  // }
 
-
-  void set_hacked(const uint64_t _old_size, const uint64_t _old_num_vars) {
-    old_size = _old_size;
-    old_num_vars = _old_num_vars;
-    delete[] data_;
-    data_ = nullptr;
-  }
-
-  bool get_hacked(){
-    if(old_size)
-      return true;
-    return false;
-  }
+  // bool get_hacked() {
+  //     if(hack_deleted) {
+  //         assert(data_ == nullptr);
+  //     }
+  //     return hack_deleted;
+  // }
 
   static unsigned bits_per_variable() {
     return _bits_per_variable;
@@ -100,12 +100,8 @@ public:
   BasePackedComponent(unsigned creation_time): creation_time_(creation_time) {}
 
   ~BasePackedComponent() {
-    if (data_){
+    if (data_)
       delete [] data_;
-    }
-    if (clhashkey_){
-      delete [] clhashkey_;
-    }
   }
   static void outbit(unsigned v){
    for(auto i=0; i<32;i++){
@@ -145,13 +141,13 @@ public:
     return creation_time_;
   }
 
-  const mpz_class &model_count() const {
+  const mpf_class &model_count() const {
     return model_count_;
   }
 
   unsigned alloc_of_model_count() const{
-        return sizeof(mpz_class)
-               + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+        return sizeof(mpf_class)
+               + model_count_.get_mpf_t()->_mp_size * sizeof(mp_limb_t);
   }
 
   void set_creation_time(unsigned time) {
@@ -190,13 +186,13 @@ public:
     if (data_)
       delete [] data_;
     data_ = nullptr;
-    if (clhashkey_){
-      delete [] clhashkey_;
-    }
-    clhashkey_ = nullptr;
   }
 
   static unsigned _debug_static_val;
+  // unsigned char sha1_hashkey_[20];
+  uint64_t clhash_key_;
+  // uint64_t number_variables;
+  void * random_key_;
 
 protected:
   // data_ contains in packed form the variable indices
@@ -206,17 +202,15 @@ protected:
   // clauses begin at clauses_ofs_
   unsigned* data_ = nullptr;
 
-  uint64_t* clhashkey_ = nullptr;
-  // vector <uint64_t> clhash_key_;
-
   unsigned hashkey_ = 0;
-
-  mpz_class model_count_;
-
-  unsigned creation_time_ = 1;
-  unsigned hack_ = 0;
+  bool hack_deleted = false;
+  bool hack_cachet = false;
   unsigned old_size = 0;
   unsigned old_num_vars = 0;
+
+  mpf_class model_count_;
+
+  unsigned creation_time_ = 1;
 
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1

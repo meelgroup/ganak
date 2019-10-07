@@ -233,7 +233,7 @@ add_subdirectory(src)
 
 add_executable (ganak src/main.cpp)
 SET_TARGET_PROPERTIES(ganak PROPERTIES LINK_SEARCH_START_STATIC 1)
-target_link_libraries (ganak libganak ${GMP_LIB} ${GMPXX_LIB})
+target_link_libraries (ganak libganak -lgmp -lgmpxx)
 SET_TARGET_PROPERTIES(ganak PROPERTIES LINK_SEARCH_START_STATIC 0)
 
 # /usr/lib/ccache/bin/c++ -static CMakeFiles/ganak.dir/src/main.cpp.o  -o ganak src/liblibganak.a  -Wl,-Bdynamic -lgmp -lgmpxx -Wl,-Bstatic src/component_types/libcomponent_types.a

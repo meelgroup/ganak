@@ -1,5 +1,5 @@
 # GANAK- A Probabilistic Exact Model Counter
-GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`.
+GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`. GANAK supports projected model counting (see below). 
 
 To read more about technical algorithms in Ganak, please refer to [our paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf) 
 
@@ -35,7 +35,7 @@ The usage instructions and default values to arguments can be found by running:
 ```bash
 python3 ganak.py -h
 ```
-### Sampling Set
+### Projected Model Counting
 For some applications, one is not interested in solutions over all the variables and instead interested in counting the number of unique solutions to a subset of variables, called sampling set. GANAK allows you to specify the sampling set using the following modified version of DIMACS format:
 
 ```

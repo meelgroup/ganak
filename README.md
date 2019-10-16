@@ -21,19 +21,18 @@ sudo apt-get install libmpc-dev
 mkdir build && cd build
 cmake ..
 make
-cp ../bin/ganak.py .
 ```
 
 
 ## Usage
 You can run GANAK by using 'ganak.py' Python script. A simple invocation looks as follows:
 ```bash
-python3 ganak.py <cnffile>
+python3 ../bin/ganak.py <cnffile>
 ```
 
 The usage instructions and default values to arguments can be found by running:
 ```bash
-python3 ganak.py -h
+python3 ../bin/ganak.py -h
 ```
 ### Projected Model Counting
 For some applications, one is not interested in solutions over all the variables and instead interested in counting the number of unique solutions to a subset of variables, called sampling set. GANAK allows you to specify the sampling set using the following modified version of DIMACS format:

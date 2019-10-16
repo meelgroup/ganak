@@ -22,14 +22,19 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
+#include <set>
 
 using namespace std;
 
 class AltComponentAnalyzer {
 public:
 	AltComponentAnalyzer(DataAndStatistics &statistics,
-        LiteralIndexedVector<TriValue> & lit_values) :
-        statistics_(statistics), literal_values_(lit_values) {
+        LiteralIndexedVector<TriValue> & lit_values,
+        set <unsigned> & independent_support,
+        bool &perform_projected_model_count) :
+        statistics_(statistics), literal_values_(lit_values),
+        independent_support_(independent_support),
+        perform_projected_model_count_(perform_projected_model_count) {
   }
 
   unsigned scoreOf(VariableIndex v) {
@@ -91,7 +96,12 @@ public:
     recordComponentOf(v);
 
     if (search_stack_.size() == 1) {
-      archetype_.stack_level().includeSolution(2);
+      if (independent_support_.count(v) == 0 && perform_projected_model_count_) {
+        cout << "archetype_.stack_level().includeSolution(2) "<<perform_projected_model_count_ << endl;
+        archetype_.stack_level().includeSolution(1);
+      } else {
+        archetype_.stack_level().includeSolution(2);
+      }
       archetype_.setVar_in_other_comp(v);
       return false;
     }
@@ -139,6 +149,10 @@ private:
   vector<unsigned> variable_link_list_offsets_;
 
   LiteralIndexedVector<TriValue> & literal_values_;
+
+  set <unsigned> & independent_support_;
+
+  bool & perform_projected_model_count_;
 
   vector<unsigned> var_frequency_scores_;
 

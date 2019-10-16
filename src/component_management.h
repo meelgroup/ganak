@@ -30,9 +30,10 @@ typedef AltComponentAnalyzer ComponentAnalyzer;
 class ComponentManager {
 public:
   ComponentManager(SolverConfiguration &config, DataAndStatistics &statistics,
-        LiteralIndexedVector<TriValue> & lit_values) :
+        LiteralIndexedVector<TriValue> & lit_values,
+        set <unsigned> & independent_support_, bool & perform_projected_model_counting) :
         config_(config), statistics_(statistics), cache_(statistics, config_),
-        ana_(statistics,lit_values) {
+        ana_(statistics,lit_values, independent_support_, perform_projected_model_counting) {
   }
 
   void initialize(LiteralIndexedVector<Literal> & literals,

@@ -55,8 +55,12 @@ bool Solver::simplePreProcess() {
 	assert(literal_stack_.size() == 0);
 	unsigned start_ofs = 0;
 //BEGIN process unit clauses
-	for (auto lit : unit_clauses_)
+	for (auto lit : unit_clauses_) {
+		if (isUnitClause(lit.neg())) {
+			return false;
+		}
 		setLiteralIfFree(lit);
+	}
 //END process unit clauses
 	bool succeeded = BCP(start_ofs);
 

@@ -212,7 +212,7 @@ protected:
 ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
-    assert(!isUnitClause(literals[0].neg()));
+    // assert(!isUnitClause(literals[0].neg()));
     unit_clauses_.push_back(literals[0]);
     return 0;
   }

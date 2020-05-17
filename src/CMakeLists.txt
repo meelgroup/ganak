@@ -63,10 +63,17 @@ endif()
 add_executable (ganak-bin
     main.cpp
 )
+
+if(NOT BUILD_SHARED_LIBS)
+    SET_TARGET_PROPERTIES(ganak-bin PROPERTIES LINK_SEARCH_START_STATIC 1)
+endif()
 target_link_libraries (ganak-bin
-    ganak ${GMP_LIB} ${GMPXX_LIB})
+${GMP_LIB} ${GMPXX_LIB} ${LDL} #/usr/lib/ld-linux-x86-64.so.2
+ganak
+)
 
 set_target_properties(ganak-bin PROPERTIES
     OUTPUT_NAME ganak
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
     INSTALL_RPATH_USE_LINK_PATH TRUE)
+

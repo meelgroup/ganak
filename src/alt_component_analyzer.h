@@ -97,7 +97,6 @@ public:
 
     if (search_stack_.size() == 1) {
       if (independent_support_.count(v) == 0 && perform_projected_model_count_) {
-        cout << "archetype_.stack_level().includeSolution(2) "<<perform_projected_model_count_ << endl;
         archetype_.stack_level().includeSolution(1);
       } else {
         archetype_.stack_level().includeSolution(2);

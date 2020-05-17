@@ -13,7 +13,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
 
     while (statistics_.cache_full()){
       if (!config_.quiet){
-        cout << "Cache full!!" << endl;
+        cout << "c Cache full!!" << endl;
       }
       deleteEntries();
     }

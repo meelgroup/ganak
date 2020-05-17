@@ -52,16 +52,19 @@ bool Solver::simplePreProcess() {
 
 	if (!config_.perform_pre_processing)
 		return true;
+
 	assert(literal_stack_.size() == 0);
 	unsigned start_ofs = 0;
-//BEGIN process unit clauses
+
+    //begin process unit clauses
 	for (auto lit : unit_clauses_) {
 		if (isUnitClause(lit.neg())) {
 			return false;
 		}
 		setLiteralIfFree(lit);
 	}
-//END process unit clauses
+    //end process unit clauses
+
 	bool succeeded = BCP(start_ofs);
 
 	if (succeeded)
@@ -69,6 +72,7 @@ bool Solver::simplePreProcess() {
 
 	if (succeeded)
 		HardWireAndCompact();
+
 	return succeeded;
 }
 
@@ -154,33 +158,37 @@ void Solver::solve(const string &file_name) {
 	initStack(num_variables());
 
 	if (!config_.quiet) {
-		cout << "Solving " << file_name << endl;
+		cout << "c Solving " << file_name << endl;
 		statistics_.printShortFormulaInfo();
 	}
 	if (!config_.quiet) {
 		if (independent_support_.size() == 0) {
-			cout << "Sampling set not present! So doing total model counting." << endl;
+			cout << "c Sampling set not present! So doing total model counting." << endl;
       config_.perform_projectedmodelcounting = false;
     } else {
 			if (!config_.perform_projectedmodelcounting) {
-				cout << "Warning! Sampling set is present but projected model counting"
+				cout << "c Warning! Sampling set is present but projected model counting"
              << " is turned off by the user so solver is not doing projected model counting."<< endl;
       } else {
-				cout << "Sampling set is present, performing projected model counting "<< endl;
+            cout << "c Sampling set is present, performing projected model counting "<< endl;
       }
-			cout << "Sampling set size: " << independent_support_.size() << endl; 
-			cout << "Sampling set: ";
+			cout << "c Sampling set size: " << independent_support_.size() << endl;
+			cout << "c Sampling set: ";
 			for (auto it= independent_support_.begin(); it != independent_support_.end(); ++it) {
         cout << ' ' << *it;
       }
-			cout << endl;
+			cout << "c " << endl;
 		}
 	}
-	if (!config_.quiet)
-		cout << endl << "Preprocessing .." << flush;
-	bool notfoundUNSAT = simplePreProcess();
 	if (!config_.quiet) {
-		cout << " DONE" << endl;
+        cout << "c " << endl;
+		cout << "c Preprocessing .." << endl;
+    }
+
+	bool notfoundUNSAT = simplePreProcess();
+
+    if (!config_.quiet) {
+		cout << "c DONE" << endl;
   }
 
 	if (notfoundUNSAT) {
@@ -212,7 +220,7 @@ void Solver::solve(const string &file_name) {
 	} else {
 		statistics_.exit_state_ = SUCCESS;
 		statistics_.set_final_solution_count(0.0);
-		cout << endl << " FOUND UNSAT DURING PREPROCESSING " << endl;
+		cout << endl << "c FOUND UNSAT DURING PREPROCESSING " << endl;
 	}
 
 	stopwatch_.stop();
@@ -449,7 +457,7 @@ void Solver::decideLiteral() {
 	statistics_.num_decisions_++;
 	if(config_.maxdecterminate){
 		if (statistics_.num_decisions_ > config_.maxdec && statistics_.num_conflicts_ < config_.minconflicts_){
-			cout<<"Terminating solver because the number of decisions exceeds the given value of "<< config_.maxdec <<  
+			cout<<"c Terminating solver because the number of decisions exceeds the given value of "<< config_.maxdec <<
 			" and conflicts is less than "<< config_.minconflicts_<< endl;
 			exit(1);
 		}
@@ -466,7 +474,7 @@ void Solver::decideLiteral() {
 	if (stack_.get_decision_level() > statistics_.max_decision_level_){
 		statistics_.max_decision_level_ = stack_.get_decision_level();
 		if (statistics_.max_decision_level_ % 25 == 0){
-			cout << "Max decision level :" << statistics_.max_decision_level_<<endl;
+			cout << "c Max decision level :" << statistics_.max_decision_level_<<endl;
 		}
 	}
 }
@@ -481,7 +489,7 @@ retStateT Solver::backtrack() {
 	if(config_.use_lso && statistics_.num_decisions_ >= config_.lsoafterdecisions){
 		config_.use_lso = false;
 		if(!config_.quiet){
-			cout << "Doing Restart"<< endl;
+			cout << "c Doing Restart"<< endl;
 		}
 		do{
 			if (stack_.top().branch_found_unsat() || stack_.top().anotherCompProcessible()){
@@ -565,14 +573,14 @@ retStateT Solver::backtrack() {
 
 			if (!stack_.top().isSecondBranch()) {
 				if (stack_.get_decision_level() == 1){
-					cout << "We have solved halfed" << endl;
+					cout << "c We have solved halfed" << endl;
 					config_.maxdecterminate = false;
 					config_.use_lso = false;
 				}
 				LiteralID aLit = TOS_decLit();
 				assert(stack_.get_decision_level() > 0);
 				if (stack_.get_decision_level() == 1){
-					cout << "We have solved halfed" << endl;
+					cout << "c We have solved halfed" << endl;
 					config_.use_lso = false;
 				}
 				stack_.top().changeBranch();
@@ -634,7 +642,7 @@ retStateT Solver::resolveConflict() {
 
 	// DEBUG
 	if (uip_clauses_.back().size() == 0)
-		cout << " EMPTY CLAUSE FOUND" << endl;
+		cout << "c EMPTY CLAUSE FOUND" << endl;
 	// END DEBUG
 
 	stack_.top().mark_branch_unsat();
@@ -642,7 +650,7 @@ retStateT Solver::resolveConflict() {
 	// maybe the other branch had some solutions
 	if (stack_.top().isSecondBranch()) {
 		if (stack_.get_decision_level() == 1){
-			cout << "We have solved halfed" << endl;
+			cout << "c We have solved halfed" << endl;
 			config_.use_lso = false;
 		}
 		return BACKTRACK;

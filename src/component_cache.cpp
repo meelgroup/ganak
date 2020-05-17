@@ -81,13 +81,13 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 	}
 
 	if (statistics_.maximum_cache_size_bytes_ > free_ram) {
-		cout << endl <<" WARNING: Maximum cache size larger than free RAM available" << endl;
-		cout << " Free RAM " << free_ram / 1000000 << "MB" << endl;
+		cout <<" c WARNING: Maximum cache size larger than free RAM available" << endl;
+		cout << "c Free RAM " << free_ram / 1000000 << "MB" << endl;
 	}
 
-	cout << "Maximum cache size:\t"
-			<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl
-			<< endl;
+	cout << "c Maximum cache size:\t"
+			<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
+    cout << "c " << endl;
 
 	assert(!statistics_.cache_full());
 

@@ -1,4 +1,5 @@
 #include "solver.h"
+#include "GitSHA1.h"
 
 #include <iostream>
 
@@ -91,12 +92,12 @@ int main(int argc, char *argv[]) {
       }
       else{
         theSolver.config().hashrange = atol(argv[i + 1]);
-        cout << "The value of hashrange is 64x"<<theSolver.config().hashrange<< endl;
+        cout << "c The value of hashrange is 64x"<<theSolver.config().hashrange<< endl;
       }
     }
     else if (strcmp(argv[i], "-delta") == 0){
       if (argc <= i + 1){
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       else{
@@ -133,23 +134,23 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(argv[i], "-t") == 0) {
       if (argc <= i + 1) {
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       theSolver.config().time_bound_seconds = atol(argv[i + 1]);
       if (theSolver.config().verbose)
-        cout << "time bound set to" << theSolver.config().time_bound_seconds << "s\n";
+        cout << "c time bound set to" << theSolver.config().time_bound_seconds << "s" << endl;
      }
     else if (strcmp(argv[i], "-cs") == 0) {
       if (argc <= i + 1) {
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       theSolver.statistics().maximum_cache_size_bytes_ = atol(argv[i + 1]) * (uint64_t) 1000000;
     }
     else if (strcmp(argv[i], "-maxdec") == 0){
       if (argc <= i + 2) {
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       else{
@@ -161,6 +162,9 @@ int main(int argc, char *argv[]) {
       input_file = argv[i];
   }
 
+
+  cout << "c ganak GIT revision: " << SharpSAT::get_version_sha1() << endl;
+  cout << "c ganak build env: " << SharpSAT::get_compilation_env() << endl;
   theSolver.solve(input_file);
   return 0;
 }

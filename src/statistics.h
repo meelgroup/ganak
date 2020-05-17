@@ -105,7 +105,7 @@ public:
   /*end statistics */
 
   void print_cache_state(){
-    cout << "printing cache state " << endl;
+    cout << "c printing cache state " << endl;
     cout <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
   }
 
@@ -221,11 +221,11 @@ public:
   void printShort();
 
   void printShortFormulaInfo() {
-    cout << "variables (all/used/free): \t";
+    cout << "c variables (all/used/free): \t";
     cout << num_variables_ << "/" << num_used_variables_ << "/";
     cout << num_variables_ - num_used_variables_ << endl;
 
-    cout << "clauses (all/long/binary/unit): ";
+    cout << "c clauses (all/long/binary/unit): ";
     cout << num_clauses() << "/" << num_long_clauses_;
     cout << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
   }

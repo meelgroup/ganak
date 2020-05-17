@@ -198,7 +198,7 @@ void Instance::compactVariables() {
   // cout << "Indep Support: ";
   // for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it) 
   //       cout << ' ' << *it;
-  cout << endl;
+  cout << "c " << endl;
 }
 
 void Instance::compactConflictLiteralPool(){

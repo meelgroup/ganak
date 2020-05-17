@@ -64,11 +64,8 @@ add_executable (ganak-bin
     main.cpp
 )
 
-if(NOT BUILD_SHARED_LIBS)
-    SET_TARGET_PROPERTIES(ganak-bin PROPERTIES LINK_SEARCH_START_STATIC 1)
-endif()
 target_link_libraries (ganak-bin
-${GMP_LIB} ${GMPXX_LIB} ${LDL} #/usr/lib/ld-linux-x86-64.so.2
+${GMP_LIB} ${GMPXX_LIB}
 ganak
 )
 

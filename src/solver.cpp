@@ -164,8 +164,7 @@ void Solver::solve(const string &file_name) {
     } else {
 			if (!config_.perform_projectedmodelcounting) {
 				cout << "Warning! Sampling set is present but projected model counting"
-             << " is turned off by the user so solver itself is doing projected model counting."<< endl;
-        config_.perform_projectedmodelcounting = true;
+             << " is turned off by the user so solver is not doing projected model counting."<< endl;
       } else {
 				cout << "Sampling set is present, performing projected model counting "<< endl;
       }

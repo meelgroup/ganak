@@ -302,16 +302,25 @@ bool Instance::createfromFile(const string &file_name) {
     if (c == 'p'){
       break;
     }
-    if (input_file >> idstring && c == 'c' && idstring == "ind" ){
+
+    input_file >> idstring;
+    if (c == 'c' &&
+        idstring == "ind" )
+    {
       while ((input_file >> lit) && lit != 0){
         independent_support_.insert(lit);
       }
     }
+
     if (idstring == "p")
       break;
     input_file.ignore(max_ignore, '\n');
   }
-  if (!(input_file >> idstring && idstring == "cnf" && input_file >> nVars
+
+  if (!
+      (input_file >> idstring &&
+      (idstring == "cnf" || idstring == "pcnf")
+      && input_file >> nVars
       && input_file >> nCls)) {
     cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
     exit(0);
@@ -328,11 +337,26 @@ bool Instance::createfromFile(const string &file_name) {
   literals_.resize(nVars + 1);
 
   while ((input_file >> c) && clauses_added < nCls) {
-    if (c == 'c' && input_file >> idstring && idstring == "ind"){
+    //Parse old projection
+    if (c == 'c' &&
+        input_file >> idstring &&
+        idstring == "ind"){
       while ((input_file >> lit) && lit != 0){
         independent_support_.insert(lit);
       }
     }
+
+    //Parse new projection
+    if (c == 'v') {
+      input_file.unget();
+      input_file >> idstring;
+      assert(idstring == "vp");
+      while ((input_file >> lit) && lit != 0){
+        independent_support_.insert(lit);
+      }
+    }
+
+    //Parse clause
     else if ((c == '-') || isdigit(c)) {
       input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
       literals.clear();
@@ -366,15 +390,19 @@ bool Instance::createfromFile(const string &file_name) {
     input_file.ignore(max_ignore, '\n');
   }
   input_file.unget();
+
   while (input_file >> c){
-    if (c == 'c' && input_file >> idstring && idstring == "ind"){
+    if (c == 'c' &&
+        input_file >> idstring &&
+        idstring == "ind"){
       while ((input_file >> lit) && lit != 0){
         independent_support_.insert(lit);
       }
     }
     input_file.ignore(max_ignore, '\n');
-  } 
-  ///END NEW
+  }
+
+
   input_file.close();
   //  /// END FILE input
 

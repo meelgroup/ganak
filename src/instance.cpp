@@ -268,6 +268,34 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
 }
 
 
+void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c)
+{
+    string idstring;
+    int lit;
+    //Parse old projection
+    if (c == 'c' &&
+        input_file >> idstring &&
+        idstring == "ind"){
+      while ((input_file >> lit) && lit != 0){
+          if (!pcnf) {
+            independent_support_.insert(lit);
+          }
+      }
+    }
+
+    //Parse new projection
+    if (c == 'v') {
+      input_file.unget();
+      input_file >> idstring;
+      assert(idstring == "vp");
+      while ((input_file >> lit) && lit != 0){
+        if (pcnf) {
+            independent_support_.insert(lit);
+        }
+      }
+    }
+}
+
 bool Instance::createfromFile(const string &file_name) {
   unsigned int nVars, nCls;
   int lit;
@@ -287,7 +315,6 @@ bool Instance::createfromFile(const string &file_name) {
   literal_values_.clear();
   unit_clauses_.clear();
 
-  ///BEGIN File input
   ifstream input_file(file_name);
   if (!input_file) {
     cerr << "Cannot open file: " << file_name << endl;
@@ -345,31 +372,10 @@ bool Instance::createfromFile(const string &file_name) {
   literals_.resize(nVars + 1);
 
   while ((input_file >> c) && clauses_added < nCls) {
-    //Parse old projection
-    if (c == 'c' &&
-        input_file >> idstring &&
-        idstring == "ind"){
-      while ((input_file >> lit) && lit != 0){
-          if (!pcnf) {
-            independent_support_.insert(lit);
-          }
-      }
-    }
-
-    //Parse new projection
-    if (c == 'v') {
-      input_file.unget();
-      input_file >> idstring;
-      assert(idstring == "vp");
-      while ((input_file >> lit) && lit != 0){
-        if (pcnf) {
-            independent_support_.insert(lit);
-        }
-      }
-    }
+    parseProjection(pcnf, input_file, c);
 
     //Parse clause
-    else if ((c == '-') || isdigit(c)) {
+    if ((c == '-') || isdigit(c)) {
       input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
       literals.clear();
       bool skip_clause = false;
@@ -404,16 +410,7 @@ bool Instance::createfromFile(const string &file_name) {
   input_file.unget();
 
   while (input_file >> c){
-    if (c == 'c' &&
-        input_file >> idstring &&
-        idstring == "ind"){
-      while ((input_file >> lit) && lit != 0){
-          if (!pcnf) {
-            independent_support_.insert(lit);
-          }
-      }
-    }
-    input_file.ignore(max_ignore, '\n');
+    parseProjection(pcnf, input_file, c);
   }
 
 

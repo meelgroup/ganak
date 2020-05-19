@@ -317,10 +317,18 @@ bool Instance::createfromFile(const string &file_name) {
     input_file.ignore(max_ignore, '\n');
   }
 
-  if (!
-      (input_file >> idstring &&
-      (idstring == "cnf" || idstring == "pcnf")
-      && input_file >> nVars
+  input_file >> idstring;
+  if (!(idstring == "cnf" || idstring == "pcnf"))
+  {
+    cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
+    exit(0);
+  }
+  bool pcnf = false;
+  if (idstring == "pcnf") {
+      pcnf = true;
+      independent_support_.clear();
+  }
+  if (!(input_file >> nVars
       && input_file >> nCls)) {
     cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
     exit(0);
@@ -342,7 +350,9 @@ bool Instance::createfromFile(const string &file_name) {
         input_file >> idstring &&
         idstring == "ind"){
       while ((input_file >> lit) && lit != 0){
-        independent_support_.insert(lit);
+          if (!pcnf) {
+            independent_support_.insert(lit);
+          }
       }
     }
 
@@ -352,7 +362,9 @@ bool Instance::createfromFile(const string &file_name) {
       input_file >> idstring;
       assert(idstring == "vp");
       while ((input_file >> lit) && lit != 0){
-        independent_support_.insert(lit);
+        if (pcnf) {
+            independent_support_.insert(lit);
+        }
       }
     }
 
@@ -396,7 +408,9 @@ bool Instance::createfromFile(const string &file_name) {
         input_file >> idstring &&
         idstring == "ind"){
       while ((input_file >> lit) && lit != 0){
-        independent_support_.insert(lit);
+          if (!pcnf) {
+            independent_support_.insert(lit);
+          }
       }
     }
     input_file.ignore(max_ignore, '\n');

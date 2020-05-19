@@ -175,9 +175,9 @@ void Solver::solve(const string &file_name) {
 			cout << "c Sampling set size: " << independent_support_.size() << endl;
 			cout << "c Sampling set: ";
 			for (auto it= independent_support_.begin(); it != independent_support_.end(); ++it) {
-        cout << ' ' << *it;
-      }
-			cout << "c " << endl;
+                cout << ' ' << *it;
+            }
+			cout << endl;
 		}
 	}
 	if (!config_.quiet) {

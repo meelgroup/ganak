@@ -201,6 +201,21 @@ foreach (build_config ${build_types})
     endforeach()
 endforeach()
 
+option(ENABLE_ASSERTIONS "Build with assertions enabled" ON)
+message(STATUS "build type is ${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(ENABLE_ASSERTIONS OFF)
+endif()
+
+if (ENABLE_ASSERTIONS)
+    # NDEBUG was already removed.
+else()
+    # Note this definition doesn't appear in the cache variables.
+    add_definitions(-DNDEBUG)
+    add_cxx_flag_if_supported("-fno-stack-protector")
+    add_definitions(-D_FORTIFY_SOURCE=0)
+endif()
+
 if (NOT WIN32)
     if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT COVERAGE)
         #dd_cxx_flag_if_supported("-fvisibility=hidden")

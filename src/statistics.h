@@ -216,9 +216,9 @@ public:
   }
 
   void print_final_solution_count();
-  void writeToFile(const string & file_name);
+  void writeToFile(const string & file_name, bool pmc=true);
 
-  void printShort();
+  void printShort(bool pmc=true);
 
   void printShortFormulaInfo() {
     cout << "c variables (all/used/free): \t";

@@ -139,7 +139,7 @@ bool ComponentCache::deleteEntries() {
 			scores.push_back((double) (*it)->creation_time());
 		}
 	if (scores.empty()){
-		cout<< "Memory out!"<<endl;
+		cout<< "c Memory out!"<<endl;
 		assert(!scores.empty());
 	}
 	sort(scores.begin(), scores.end());
@@ -189,7 +189,6 @@ bool ComponentCache::deleteEntries() {
 
 	statistics_.num_cached_components_ = entry_base_.size();
 	compute_byte_size_infrasture();
-	//cout << " \t entries: "<< entry_base_.size() - free_entry_base_slots_.size()<< endl;
 	return true;
 }
 
@@ -203,7 +202,7 @@ uint64_t ComponentCache::compute_byte_size_infrasture() {
   return statistics_.cache_infrastructure_bytes_memory_usage_;
 }
 
-void ComponentCache::debug_dump_data(){
+void ComponentCache::debug_dump_data() {
     cout << "sizeof (CacheableComponent *, CacheEntryID) "
          << sizeof(CacheableComponent *) << ", "
          << sizeof(CacheEntryID) << endl;

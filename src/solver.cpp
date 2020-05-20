@@ -37,12 +37,14 @@ timeval StopWatch::getElapsedTime() {
 
 
 void Solver::print(vector<LiteralID> &vec) {
+	cout << "c ";
 	for (auto l : vec)
 		cout << l.toInt() << " ";
 	cout << endl;
 }
 
 void Solver::print(vector<unsigned> &vec) {
+  cout << "c ";
 	for (auto l : vec)
 		cout << l << " ";
 	cout << endl;
@@ -170,24 +172,24 @@ void Solver::solve(const string &file_name) {
 				cout << "c Warning! Sampling set is present but projected model counting"
              << " is turned off by the user so solver is not doing projected model counting."<< endl;
       } else {
-            cout << "c Sampling set is present, performing projected model counting "<< endl;
+        cout << "c Sampling set is present, performing projected model counting "<< endl;
       }
 			cout << "c Sampling set size: " << independent_support_.size() << endl;
 			cout << "c Sampling set: ";
 			for (auto it= independent_support_.begin(); it != independent_support_.end(); ++it) {
-                cout << ' ' << *it;
-            }
+        cout << ' ' << *it;
+      }
 			cout << endl;
 		}
 	}
 	if (!config_.quiet) {
-        cout << "c " << endl;
+    cout << "c " << endl;
 		cout << "c Preprocessing .." << endl;
     }
 
 	bool notfoundUNSAT = simplePreProcess();
 
-    if (!config_.quiet) {
+  if (!config_.quiet) {
 		cout << "c DONE" << endl;
   }
 
@@ -207,7 +209,7 @@ void Solver::solve(const string &file_name) {
 		statistics_.exit_state_ = countSAT();
 
 		if(statistics_.exit_state_ == CHANGEHASH){
-			cout << "-1" << endl;
+			cout << "ERROR: We need to change the hash range (-1)" << endl;
 			exit(1);
 		}
 		if (config_.perform_projectedmodelcounting) {
@@ -227,9 +229,16 @@ void Solver::solve(const string &file_name) {
 	statistics_.time_elapsed_ = stopwatch_.getElapsedSeconds();
 
 	comp_manager_.gatherStatistics();
-	statistics_.writeToFile("data.out");
-	if (!config_.quiet)
-		statistics_.printShort();
+  string writefile;
+  if (config_.perform_projectedmodelcounting) {
+    writefile = "out.pmc";
+  } else {
+    writefile = "out.mc";
+  }
+	statistics_.writeToFile(writefile, config_.perform_projectedmodelcounting);
+	if (!config_.quiet) {
+		statistics_.printShort(config_.perform_projectedmodelcounting);
+  }
 }
 
 SOLVER_StateT Solver::countSAT() {
@@ -242,31 +251,33 @@ SOLVER_StateT Solver::countSAT() {
 				return CHANGEHASH;
 			}
 			decideLiteral();
-			if (stopwatch_.timeBoundBroken())
+			if (stopwatch_.timeBoundBroken()) {
 				return TIMEOUT;
-			if (stopwatch_.interval_tick())
-				printOnlineStats();
-
+      }
 			while (!bcp()) {
 				state = resolveConflict();
-				if (state == BACKTRACK)
+				if (state == BACKTRACK) {
 					break;
+        }
 			}
-			if (state == BACKTRACK)
+			if (state == BACKTRACK) {
 				break;
+      }
 		}
 
 		state = backtrack();
-		if (state == RESTART)
+		if (state == RESTART) {
 			continue;
-		else if (state == EXIT)
+    } else if (state == EXIT) {
 			return SUCCESS;
+    }
 		while (state != PROCESS_COMPONENT && !bcp()) {
 			state = resolveConflict();
 			if (state == BACKTRACK) {
 				state = backtrack();
-				if (state == EXIT)
+				if (state == EXIT) {
 					return SUCCESS;
+        }
 			}
 		}
 	}
@@ -449,10 +460,6 @@ void Solver::decideLiteral() {
 	LiteralID theLit(max_score_var, polarity);
 	stack_.top().setbranchvariable(max_score_var);
 
-	#ifdef VERB
-	cout << "deciding on: " << theLit.val()<< " "<< max_score <<endl;
-	#endif
-
 	setLiteralIfFree(theLit);
 	statistics_.num_decisions_++;
 	if(config_.maxdecterminate){
@@ -474,15 +481,12 @@ void Solver::decideLiteral() {
 	if (stack_.get_decision_level() > statistics_.max_decision_level_){
 		statistics_.max_decision_level_ = stack_.get_decision_level();
 		if (statistics_.max_decision_level_ % 25 == 0){
-			cout << "c Max decision level :" << statistics_.max_decision_level_<<endl;
+			cout << "c Max decision level :" << statistics_.max_decision_level_ << endl;
 		}
 	}
 }
 
 retStateT Solver::backtrack() {
-	#ifdef VERB
-    cout << "->backtracking " << stack_.top().getbranchvar() << endl;
-  #endif
 	assert(
 			stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
 
@@ -529,10 +533,7 @@ retStateT Solver::backtrack() {
 						return PROCESS_COMPONENT;
 					}
 				}
-				// cout <<  "Backtracking to IND SUPP" << endl;
-
-				// cout<<stack_.top().getbranchvar()<<" "<<statistics_.independent_support_.count(stack_.top().getbranchvar())<<endl;
-			}
+		  }
 			isindependent = true;
 			if (!stack_.top().isSecondBranch()) {
 				LiteralID aLit = TOS_decLit();
@@ -832,7 +833,7 @@ bool Solver::implicitBCP() {
 							it != uip_clauses_.rend(); it++) {
 						// DEBUG
 						if (it->size() == 0)
-							cout << "EMPTY CLAUSE FOUND" << endl;
+							cout << "c EMPTY CLAUSE FOUND" << endl;
 						// END DEBUG
 						setLiteralIfFree(it->front(),
 								addUIPConflictClause(*it));
@@ -935,16 +936,11 @@ void Solver::recordLastUIPCauses() {
 			if (!hasAntecedent(curr_lit)) {
 				// this should be the decision literal when in first branch
 				// or it is a literal decided to explore in failed literal testing
-				//assert(stack_.TOS_decLit() == curr_lit);
-//				cout << "R" << curr_lit.toInt() << "S"
-//				     << var(curr_lit).ante.isAnt() << " "  << endl;
 				break;
 			}
 		}
 
 		assert(hasAntecedent(curr_lit));
-
-		//cout << "{" << curr_lit.toInt() << "}";
 		if (getAntecedent(curr_lit).isAClause()) {
 			updateActivities(getAntecedent(curr_lit).asCl());
 			assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
@@ -975,10 +971,6 @@ void Solver::recordLastUIPCauses() {
 		}
 		curr_lit = NOT_A_LIT;
 	}
-
-//	cout << "T" << curr_lit.toInt() << "U "
-//     << var(curr_lit).decision_level << ", " << stack_.get_decision_level() << endl;
-//	cout << "V"  << var(curr_lit).ante.isAnt() << " "  << endl;
 	minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, seen);
 
 //	if (var(curr_lit).decision_level > assertion_level_)

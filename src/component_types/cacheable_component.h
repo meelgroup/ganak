@@ -45,13 +45,11 @@ public:
   }
 
   unsigned long SizeInBytes() const {
-    // cout << "Size Divided "<< sizeof(GenericCacheableComponent<T_Component>) <<endl;
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size();
   }
 
   unsigned long SizeInBytes_CLHASH() const {
-    // cout << "Size Divided CLHASH "<< sizeof(GenericCacheableComponent<T_Component>) <<endl;
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size_CLHASH();
   }

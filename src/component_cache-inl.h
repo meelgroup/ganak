@@ -156,14 +156,11 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   if (config_.perform_pcc){
     statistics_.sum_bytes_cached_components_ += entry(id).SizeInBytes_CLHASH();
     statistics_.overall_bytes_components_stored_ += entry(id).SizeInBytes_CLHASH();
-    // cout << "Size CLHASH" << entry(id).SizeInBytes_CLHASH()<< endl;
   }
   else{
     statistics_.sum_bytes_cached_components_ += entry(id).SizeInBytes();
     statistics_.overall_bytes_components_stored_ += entry(id).SizeInBytes();
-    // cout << "Size " << entry(id).SizeInBytes()<< endl;
   }
-  // cout << "Sys overhead Size "<< entry(id).sys_overhead_SizeInBytes()<< endl;
   statistics_.sys_overhead_sum_bytes_cached_components_ += entry(id).sys_overhead_SizeInBytes();
   statistics_.sys_overhead_overall_bytes_components_stored_ += entry(id).sys_overhead_SizeInBytes();
 }

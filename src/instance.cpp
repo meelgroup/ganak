@@ -195,10 +195,6 @@ void Instance::compactVariables() {
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = num_isolated;
   statistics_.num_free_projected_variables_ = num_pisolated;
-  // cout << "Indep Support: ";
-  // for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it) 
-  //       cout << ' ' << *it;
-  cout << "c " << endl;
 }
 
 void Instance::compactConflictLiteralPool(){

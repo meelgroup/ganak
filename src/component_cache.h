@@ -155,8 +155,6 @@ private:
     // otherwise the table_size_mask_ doesn't work
     assert((table_.size() & (table_.size() - 1)) == 0);
     table_size_mask_ = table_.size() - 1;
-    // if (!config_.quiet)
-    //   cout << "ts " << table_.size() << " " << table_size_mask_ << endl;
     unsigned collisions = 0;
     for (unsigned id = 2; id < entry_base_.size(); id++)
       if (entry_base_[id] != nullptr ){
@@ -168,8 +166,6 @@ private:
         table_[table_ofs] = id;
        }
     }
-    // if(!config_.quiet)
-    //   cout << "coll " << collisions << endl;
   }
 
   unsigned tableEntry(CacheEntryID id){

@@ -1,3 +1,3 @@
-rm -rf CMake* cmake sharpSAT
+rm -rf CMake* cmake ganak
 cmake ..
 make -j4

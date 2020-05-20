@@ -163,8 +163,8 @@ int main(int argc, char *argv[]) {
   }
 
 
-  cout << "c ganak GIT revision: " << SharpSAT::get_version_sha1() << endl;
-  cout << "c ganak build env: " << SharpSAT::get_compilation_env() << endl;
+  cout << "c ganak GIT revision: " << Ganak::get_version_sha1() << endl;
+  cout << "c ganak build env: " << Ganak::get_compilation_env() << endl;
   theSolver.solve(input_file);
   return 0;
 }

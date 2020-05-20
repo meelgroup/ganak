@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-namespace SharpSAT {
+namespace Ganak {
 
 const char* get_version_sha1();
 const char* get_version_tag();

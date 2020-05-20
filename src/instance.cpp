@@ -290,14 +290,15 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c)
       assert(idstring == "vp");
       while ((input_file >> lit) && lit != 0){
         if (pcnf) {
-            independent_support_.insert(lit);
+          independent_support_.insert(lit);
         }
       }
     }
 }
 
 bool Instance::createfromFile(const string &file_name) {
-  unsigned int nVars, nCls;
+  // Number of variable, clauses and projected variables.
+  unsigned int nVars, nCls, nPVars;
   int lit;
   unsigned max_ignore = 1000000;
   unsigned clauses_added = 0;
@@ -334,7 +335,7 @@ bool Instance::createfromFile(const string &file_name) {
     if (c == 'c' &&
         idstring == "ind" )
     {
-      while ((input_file >> lit) && lit != 0){
+      while ((input_file >> lit) && lit != 0) {
         independent_support_.insert(lit);
       }
     }
@@ -352,13 +353,21 @@ bool Instance::createfromFile(const string &file_name) {
   }
   bool pcnf = false;
   if (idstring == "pcnf") {
-      pcnf = true;
-      independent_support_.clear();
+    pcnf = true;
+    independent_support_.clear();
   }
-  if (!(input_file >> nVars
-      && input_file >> nCls)) {
-    cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
-    exit(0);
+  if (pcnf) {
+    if (!(input_file >> nVars
+          && input_file >> nCls && input_file >> nPVars)) {
+      cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
+      exit(0);
+    }
+  } else {
+    if (!(input_file >> nVars
+        && input_file >> nCls)) {
+      cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
+      exit(0);
+    }
   }
 
   variables_.resize(nVars + 1);

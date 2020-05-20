@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(argv[i], "-LSO") == 0){
       if (argc <= i + 1){
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       else{
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(argv[i], "-seed") == 0){
       if (argc <= i + 1){
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       else{
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(argv[i], "-m") == 0){
       if (argc <= i + 1){
-        cout << " wrong parameters" << endl;
+        cout << "ERROR: wrong parameters" << endl;
         return -1;
       }
       else{
@@ -102,12 +102,12 @@ int main(int argc, char *argv[]) {
       }
       else{
         theSolver.config().delta = stof(argv[i + 1]);
-        cout << "The value of delta is "<< theSolver.config().delta<< endl; 
+        cout << "c The value of delta is "<< theSolver.config().delta << endl; 
       }
     }
     else if (strcmp(argv[i], "-pol") == 0) {
       if (argc <= i + 1) {
-        cout << " must give polarity type" << endl;
+        cout << "ERROR: must give polarity type" << endl;
         return -1;
       }
       bool found = false;

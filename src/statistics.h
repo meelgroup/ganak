@@ -104,9 +104,9 @@ public:
   uint64_t overall_num_cache_stores_ = 0;
   /*end statistics */
 
-  void print_cache_state(){
+  void print_cache_state() {
     cout << "c printing cache state " << endl;
-    cout <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
+    cout << "c " <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
   }
 
   bool cache_full(){

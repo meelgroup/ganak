@@ -264,32 +264,31 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
 }
 
 
-void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c)
-{
-    string idstring;
-    int lit;
-    //Parse old projection
-    if (c == 'c' &&
-        input_file >> idstring &&
-        idstring == "ind"){
-      while ((input_file >> lit) && lit != 0){
-          if (!pcnf) {
-            independent_support_.insert(lit);
-          }
+void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
+  string idstring;
+  int lit;
+  //Parse old projection
+  if (c == 'c' &&
+      input_file >> idstring &&
+      idstring == "ind") {
+    while ((input_file >> lit) && lit != 0) {
+      if (!pcnf) {
+        independent_support_.insert(lit);
       }
     }
+  }
 
-    //Parse new projection
-    if (c == 'v') {
-      input_file.unget();
-      input_file >> idstring;
+  //Parse new projection
+  if (c == 'v') {
+    input_file.unget();
+    input_file >> idstring;
+    if (pcnf) {
       assert(idstring == "vp");
-      while ((input_file >> lit) && lit != 0){
-        if (pcnf) {
-          independent_support_.insert(lit);
-        }
+      while ((input_file >> lit) && lit != 0) {
+        independent_support_.insert(lit);
       }
     }
+  }
 }
 
 bool Instance::createfromFile(const string &file_name) {

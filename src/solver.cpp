@@ -574,14 +574,12 @@ retStateT Solver::backtrack() {
 
 			if (!stack_.top().isSecondBranch()) {
 				if (stack_.get_decision_level() == 1){
-					cout << "c We have solved halfed" << endl;
 					config_.maxdecterminate = false;
 					config_.use_lso = false;
 				}
 				LiteralID aLit = TOS_decLit();
 				assert(stack_.get_decision_level() > 0);
-				if (stack_.get_decision_level() == 1){
-					cout << "c We have solved halfed" << endl;
+				if (stack_.get_decision_level() == 1) {
 					config_.use_lso = false;
 				}
 				stack_.top().changeBranch();
@@ -650,8 +648,7 @@ retStateT Solver::resolveConflict() {
 	//BEGIN Backtracking
 	// maybe the other branch had some solutions
 	if (stack_.top().isSecondBranch()) {
-		if (stack_.get_decision_level() == 1){
-			cout << "c We have solved halfed" << endl;
+		if (stack_.get_decision_level() == 1) {
 			config_.use_lso = false;
 		}
 		return BACKTRACK;

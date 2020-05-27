@@ -229,25 +229,26 @@ bool Instance::deleteConflictClauses() {
   conflict_clauses_.clear();
   vector<double> tmp_ratios;
   double score, lifetime;
-  for(auto clause_ofs: tmp_conflict_clauses){
+  for(auto clause_ofs: tmp_conflict_clauses) {
     score = getHeaderOf(clause_ofs).score();
     lifetime = statistics_.num_conflicts_ - getHeaderOf(clause_ofs).creation_time();
    // tmp_ratios.push_back(score/lifetime);
     tmp_ratios.push_back(score);
-
   }
   vector<double> tmp_ratiosB = tmp_ratios;
 
   sort(tmp_ratiosB.begin(), tmp_ratiosB.end());
 
-  double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
+  if (tmp_ratiosB.size()) {
+    double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
 
-  for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
-    if(tmp_ratios[i] < cutoff){
-      if(!markClauseDeleted(tmp_conflict_clauses[i]))
+    for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
+      if(tmp_ratios[i] < cutoff){
+        if(!markClauseDeleted(tmp_conflict_clauses[i]))
+          conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+      } else
         conflict_clauses_.push_back(tmp_conflict_clauses[i]);
-    } else
-      conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+    }
   }
   return true;
 }

@@ -10,7 +10,7 @@
 
 #include <assert.h>
 #include <vector>
-#include <unordered_map>
+
 #include "../primitive_types.h"
 
 #include "difference_packed_component.h"
@@ -35,30 +35,23 @@ class GenericCacheableComponent: public T_Component {
 public:
   GenericCacheableComponent() {
   }
+
   GenericCacheableComponent(Component &comp) :
       T_Component(comp) {
   }
-  GenericCacheableComponent(unsigned int graphhash, unsigned int num_variables) :
-      T_Component(graphhash,num_variables) {
+
+  GenericCacheableComponent(vector <void*>  &randomseedforCLHASH,Component &comp) :
+      T_Component(randomseedforCLHASH,comp) {
   }
-  GenericCacheableComponent(void* random,vector<int>& key) :
-      T_Component(random,key) {
-  }
-  GenericCacheableComponent(void* random,Component &comp) :
-      T_Component(random,comp) {
-  }
+
   unsigned long SizeInBytes() const {
-    // cout <<"SizeInBytes() "<<sizeof(GenericCacheableComponent<T_Component>) << " "<<
-    // T_Component::raw_data_byte_size()<<endl;
-    // exit(3); 
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size();
   }
 
-  unsigned long SizeInBytes_hacked() const {
-    // cout <<"SizeInBytes_hacked "<<  sizeof(GenericCacheableComponent<T_Component>) << " "<< T_Component::raw_model_count_byte_size()<< endl;
+  unsigned long SizeInBytes_CLHASH() const {
     return sizeof(GenericCacheableComponent<T_Component>)
-    + T_Component::raw_model_count_byte_size();
+        + T_Component::raw_data_byte_size_CLHASH();
   }
 
   // the 48 = 16*3 in overhead stems from the three parts of the component
@@ -103,30 +96,11 @@ public:
   CacheEntryID next_bucket_element() {
       return next_bucket_element_;
   }
-  void setalreadystore(){
-    alreadystore = false;
-  }
-  void setcachemodelcount( const mpz_class & model){
-    stored_model_count = model;
-  }
-  bool check(const mpz_class &model_count){
-    if (alreadystore){
-      return true;
-    }
-    else{
-      if(model_count != stored_model_count){
-        cout << "Error " << model_count << " "<< stored_model_count<< endl;  
-        exit(3);
-        return false;
-      }
-    }
-  }
 
 private:
 
   CacheEntryID next_bucket_element_ = 0;
-  bool alreadystore = true;
-  mpz_class stored_model_count;
+
   // theFather and theDescendants:
   // each CCacheEntry is a Node in a tree which represents the relationship
   // of the components stored

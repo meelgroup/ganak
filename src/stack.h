@@ -37,8 +37,8 @@ class StackLevel {
   // also, all processed, can be found
   // in [unprocessed_components_end_, component_stack.size())
   unsigned unprocessed_components_end_ = 0;
+
   unsigned branch_variable_ = 0;
-  bool first_polarity_ = false; 
 public:
 
   bool hasUnprocessedComponents() {
@@ -63,35 +63,6 @@ public:
     unprocessed_components_end_ = end;
     assert(remaining_components_ofs_ <= unprocessed_components_end_);
   }
-
-  unsigned getbranchvar(){
-    return branch_variable_;
-  }
-  int getbranchvarsigned(){
-    if (active_branch_){
-      if(first_polarity_){
-        return -1*branch_variable_;
-      }
-      else{
-        return branch_variable_;
-      }
-    }
-    else{
-      if(first_polarity_){
-        return branch_variable_;
-      }
-      else{
-        return -1*branch_variable_;
-      }
-    }
-  }
-  
-  void setbranchvariable(unsigned max_score_var, bool polarity){
-    branch_variable_ = max_score_var;
-    first_polarity_ = polarity;
-  };
-
-
 
   StackLevel(unsigned super_comp, unsigned lit_stack_ofs,
       unsigned comp_stack_ofs) :
@@ -122,31 +93,48 @@ public:
     return literal_stack_ofs_;
   }
   void includeSolution(const mpf_class &solutions) {
-    // cout << "include Solution "<< solutions << " ";
+    // cout << "Debug: includeSolution " << solutions;
     if (branch_found_unsat_[active_branch_]) {
       assert(branch_model_count_[active_branch_] == 0);
       return;
     }
-    if (solutions == 0)
+    if (solutions == 0) {
       branch_found_unsat_[active_branch_] = true;
-    if (branch_model_count_[active_branch_] == 0)
-      branch_model_count_[active_branch_] = solutions;
-    else
-      branch_model_count_[active_branch_] *= solutions;
-    // cout << branch_model_count_[active_branch_]  << endl;
-  }
-  void includeSolution(unsigned solutions) {
-    if (branch_found_unsat_[active_branch_]) {
-      assert(branch_model_count_[active_branch_] == 0);
-      return;
     }
-    if (solutions == 0)
-      branch_found_unsat_[active_branch_] = true;
-    if (branch_model_count_[active_branch_] == 0)
+    if (branch_model_count_[active_branch_] == 0) {
       branch_model_count_[active_branch_] = solutions;
-    else
+    } else {
       branch_model_count_[active_branch_] *= solutions;
+    }
+    // cout << " for variable branch " << branch_variable_ << " the branch sol is " << branch_model_count_[active_branch_] << endl;
+
   }
+  // void includeSolution(const mpz_class &solutions) {
+  //   if (branch_found_unsat_[active_branch_]) {
+  //     assert(branch_model_count_[active_branch_] == 0);
+  //     return;
+  //   }
+  //   if (solutions == 0)
+  //     branch_found_unsat_[active_branch_] = true;
+  //   if (branch_model_count_[active_branch_] == 0)
+  //     branch_model_count_[active_branch_] = solutions;
+  //   else
+  //     branch_model_count_[active_branch_] *= solutions;
+
+  // }
+  // void includeSolution(unsigned solutions) {
+  //   if (branch_found_unsat_[active_branch_]) {
+  //     assert(branch_model_count_[active_branch_] == 0);
+  //     return;
+  //   }
+  //   if (solutions == 0)
+  //     branch_found_unsat_[active_branch_] = true;
+  //   if (branch_model_count_[active_branch_] == 0)
+  //     branch_model_count_[active_branch_] = solutions;
+  //   else
+  //     branch_model_count_[active_branch_] *= solutions;
+
+  // }
 
   bool branch_found_unsat() {
     return branch_found_unsat_[active_branch_];
@@ -155,17 +143,27 @@ public:
     branch_found_unsat_[active_branch_] = true;
   }
 
+  const mpf_class getBranchSols() const {
+    return branch_model_count_[active_branch_];
+  }
+
+  unsigned getbranchvar(){
+    return branch_variable_;
+  }
+
+  void setbranchvariable(unsigned max_score_var){
+    branch_variable_ = max_score_var;
+  }
 //  void set_both_branches_unsat(){
 //	  branch_found_unsat_[0] =
 //			  branch_found_unsat_[1] = true;
 //	  branch_model_count_[0] = branch_model_count_[1] = 0;
 //	  active_branch_ = 1;
 //  }
-  const mpf_class getBranchSols() const {
-    return branch_model_count_[active_branch_];
-  }
   const mpf_class getTotalModelCount() const {
-    // cout << "total "<< branch_model_count_[0] << " "<< branch_model_count_[1]<< endl;
+    // cout << "Debug: the total model count for " << branch_variable_ << " decision is "
+    //      << branch_model_count_[0] << " " <<  branch_model_count_[1] << " "
+    //      << branch_model_count_[0] + branch_model_count_[1] << endl;
     return branch_model_count_[0] + branch_model_count_[1];
   }
 };

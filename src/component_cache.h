@@ -8,7 +8,6 @@
 #ifndef COMPONENT_CACHE_H_
 #define COMPONENT_CACHE_H_
 
-
 #include "component_types/cacheable_component.h"
 #include "statistics.h"
 #include "solver_config.h"
@@ -24,6 +23,7 @@ public:
 
   ComponentCache(DataAndStatistics &statistics, SolverConfiguration &config);
 
+
   ~ComponentCache() {
    // debug_dump_data();
     for (auto &pentry : entry_base_)
@@ -31,7 +31,7 @@ public:
             delete pentry;
   }
 
-  void init(void * keyforHash,Component &super_comp);
+  void init(Component &super_comp, vector <void*>  &randomseedforCLHASH);
 
   // compute the size in bytes of the component cache from scratch
   // the value is stored in bytes_memory_usage_
@@ -71,78 +71,58 @@ public:
   // check quickly if the model count of the component is cached
   // if so, incorporate it into the model count of top
   // if not, store the packed version of it in the entry_base of the cache
+  // bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
+  //   statistics_.num_cache_look_ups_++;
+  //   unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
+
+  //   CacheEntryID act_id = table_[table_ofs];
+  //   while(act_id){
+  //     if (entry(act_id).equals(packed_comp)) {
+  //       statistics_.incorporate_cache_hit(packed_comp);
+  //       top.includeSolution(entry(act_id).model_count());
+  //       return true;
+  //     }
+  //     act_id = entry(act_id).next_bucket_element();
+  //   }
+  //   return false;
+  // }
+
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
-      statistics_.num_cache_look_ups_++;
-      uint64_t clhash_key = NULL;
-
-      if (config_.usecachetencoding || config_.useIsomorphicComponentCaching){
-          unsigned table_ofs =  packed_comp.compute_cachetclhash() & table_size_mask_;
-          // cout << packed_comp.compute_cachetclhash() <<" "<<  table_size_mask_<< " "<< (packed_comp.compute_cachetclhash() & table_size_mask_)<< endl;
-          CacheEntryID act_id = table_[table_ofs];
-          if (!act_id) {
-              return false;
-          }
-          clhash_key = packed_comp.compute_cachetclhash();
-           while(act_id){
-             bool check = false;
-             if (config_.useIsomorphicComponentCaching){
-              //  cout << "[useIsomorphicComponentCaching] "<< packed_comp.getvar()<< endl;
-               check = entry(act_id).equals(clhash_key,packed_comp.getvar());
-             }
-             else{
-              check = entry(act_id).equals(clhash_key);
-             }
-            if (check) {
-              // packed_comp.setalreadystore();
-              // packed_comp.setcachemodelcount(entry(act_id).model_count());
-              // return false;
-            statistics_.incorporate_cache_hit(packed_comp);
-            top.includeSolution(entry(act_id).model_count());
-            // cout << "Cache Hit " <<top.getbranchvar() << " "<< entry(act_id).model_count()<<endl;
-            return true;
-          }
-          act_id = entry(act_id).next_bucket_element();
-        }
+    statistics_.num_cache_look_ups_++;
+    uint64_t *clhash_key;
+    unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
+    CacheEntryID act_id = table_[table_ofs];
+    if (config_.perform_pcc){
+      if (!act_id) {
         return false;
+      } 
+      clhash_key = packed_comp.compute_clhash();
+      while(act_id){
+        if (entry(act_id).equals(packed_comp, clhash_key)) {
+          statistics_.incorporate_cache_hit(packed_comp);
+          top.includeSolution(entry(act_id).model_count());
+          return true;
+        }
+        act_id = entry(act_id).next_bucket_element();
       }
-      else if (config_.usepcc){
-          unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
-          CacheEntryID act_id = table_[table_ofs];
-          if (!act_id) {
-              return false;
-          }
-          clhash_key = packed_comp.compute_clhash();
-          while(act_id){
-            //  if (entry(act_id).equals(packed_comp, sha1_hashkey_dash)) {
-              if (entry(act_id).equals(packed_comp, clhash_key)) {
-              statistics_.incorporate_cache_hit(packed_comp);
-              top.includeSolution(entry(act_id).model_count());
-              //  cout << "Cache Hit " <<top.getbranchvar() << " "<< entry(act_id).model_count()<<endl;
-              return true;
-            }
-            act_id = entry(act_id).next_bucket_element();
-          }
-          return false;
+      return false;
+    }
+    else{
+      while(act_id){
+        if (entry(act_id).equals(packed_comp)) {
+          statistics_.incorporate_cache_hit(packed_comp);
+          top.includeSolution(entry(act_id).model_count());
+          return true;
+        }
+        act_id = entry(act_id).next_bucket_element();
       }
-      else{
-          unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
-          CacheEntryID act_id = table_[table_ofs];
-          while(act_id){
-            if (entry(act_id).equals(packed_comp)) {
-              statistics_.incorporate_cache_hit(packed_comp);
-              top.includeSolution(entry(act_id).model_count());
-              return true;
-            }
-          act_id = entry(act_id).next_bucket_element();
-          }
-          return false;
-      }
+      return false;
+    }
   }
-
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    statistics_.incorporate_cache_erase(*entry_base_[id]);
+    statistics_.incorporate_cache_erase(*entry_base_[id], config_.perform_pcc && entry_base_[id]->get_hacked());
     delete entry_base_[id];
     entry_base_[id] = nullptr;
     free_entry_base_slots_.push_back(id);
@@ -175,7 +155,6 @@ private:
     // otherwise the table_size_mask_ doesn't work
     assert((table_.size() & (table_.size() - 1)) == 0);
     table_size_mask_ = table_.size() - 1;
-    cout << "ts " << table_.size() << " " << table_size_mask_ << endl;
     unsigned collisions = 0;
     for (unsigned id = 2; id < entry_base_.size(); id++)
       if (entry_base_[id] != nullptr ){
@@ -187,28 +166,10 @@ private:
         table_[table_ofs] = id;
        }
     }
-    cout << "coll " << collisions << endl;
   }
-  // void reHashTablehacked(){
-  //   table_hacked_.clear();
-  //   for (unsigned id = 2; id < entry_base_.size(); id++){
-  //       if (entry_base_[id] != nullptr ){
-  //           entry_base_[id]->set_next_bucket_element(0);
-  //           if(entry_base_[id]->modelCountFound()) {
-  //               unsigned table_ofs=tableEntry(id);
-  //               entry_base_[id]->set_next_bucket_element(table_hacked_[table_ofs]);
-  //               table_hacked_[table_ofs] = id;
-  //           }
-  //       }
-  //    }
-  //  }
 
   unsigned tableEntry(CacheEntryID id){
-    if (config_.usecachetencoding || config_.useIsomorphicComponentCaching){
-      return entry(id).compute_cachetclhash() & table_size_mask_;
-    }
     return entry(id).hashkey() & table_size_mask_;
-    // return entry(id).hashkey();
   }
   void add_descendant(CacheEntryID compid, CacheEntryID descendantid) {
       assert(descendantid != entry(compid).first_descendant());
@@ -228,7 +189,6 @@ private:
   // the actual hash table
   // by means of which the cache is accessed
   vector<CacheEntryID> table_;
-  // unordered_map<unsigned,CacheEntryID> table_hacked_;
 
   unsigned table_size_mask_;
 

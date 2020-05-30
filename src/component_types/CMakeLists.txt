@@ -5,6 +5,4 @@ SET(component_types_SOURCES
 	component_archetype.cpp
 )
 
-ADD_LIBRARY(component_types
-${component_types_SOURCES}
-)
+ADD_LIBRARY(component_types ${component_types_SOURCES})

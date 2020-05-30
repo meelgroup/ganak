@@ -45,8 +45,8 @@ class NewComponentAnalyzer;
 class NewComponentAnalyzer {
 public:
 	NewComponentAnalyzer(DataAndStatistics &statistics,
-        LiteralIndexedVector<TriValue> & lit_values, SolverConfiguration &config) :
-        statistics_(statistics), literal_values_(lit_values), config_(config) {
+        LiteralIndexedVector<TriValue> & lit_values) :
+        statistics_(statistics), literal_values_(lit_values) {
   }
 
   unsigned scoreOf(VariableIndex v) {
@@ -101,8 +101,7 @@ public:
 
 
   inline Component *makeComponentFromArcheType(){
-    return archetype_.makeComponentFromState(search_stack_.size(),map_clause_id_to_ofs_,
-    literal_pool_, literal_values_);
+    return archetype_.makeComponentFromState(search_stack_.size());
   }
 
   unsigned max_clause_id(){
@@ -130,7 +129,7 @@ public:
 
 private:
   DataAndStatistics &statistics_;
-  SolverConfiguration &config_;
+
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool
@@ -160,7 +159,7 @@ private:
 
   vector<unsigned> var_frequency_scores_;
 
-  ComponentArchetype  archetype_ =  ComponentArchetype(config_);
+  ComponentArchetype  archetype_;
 
   vector<VariableIndex> search_stack_;
 

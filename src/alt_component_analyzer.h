@@ -22,6 +22,7 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
+#include <set>
 
 using namespace std;
 
@@ -29,9 +30,13 @@ class AltComponentAnalyzer {
 public:
 	AltComponentAnalyzer(DataAndStatistics &statistics,
         LiteralIndexedVector<TriValue> & lit_values,
-        SolverConfiguration & config,
+        set <unsigned> & independent_support,
+        bool &perform_projected_model_count,
         vector<Variable> & variables) :
-        statistics_(statistics), literal_values_(lit_values), config_(config),
+
+        statistics_(statistics), literal_values_(lit_values),
+        independent_support_(independent_support),
+        perform_projected_model_count_(perform_projected_model_count),
         variables_(variables) {
   }
 
@@ -94,23 +99,11 @@ public:
     recordComponentOf(v);
 
     if (search_stack_.size() == 1) {
-      if (config_.useindependentsupport){
-        if (statistics_.independent_support_.find(v) !=  statistics_.independent_support_.end()){
-          if (variables_[v].get_weight() == 2){
-            archetype_.stack_level().includeSolution(2);
-          }
-          else{
-            archetype_.stack_level().includeSolution(1);
-          }
-        }
-      }
-      else{
-        if (variables_[v].get_weight() == 2){
-          archetype_.stack_level().includeSolution(2);
-        }
-        else{
-          archetype_.stack_level().includeSolution(1);
-        }
+      if (independent_support_.count(v) == 0 && perform_projected_model_count_) {
+        archetype_.stack_level().includeSolution(1);
+      } else {
+        mpf_class weight = variables_[v].get_weight(true) + variables_[v].get_weight(false);
+        archetype_.stack_level().includeSolution(weight);
       }
       archetype_.setVar_in_other_comp(v);
       return false;
@@ -120,13 +113,7 @@ public:
 
 
   inline Component *makeComponentFromArcheType(){
-    if (config_.usecachetencoding || config_.useIsomorphicComponentCaching){
-      return archetype_.makeComponentFromState(search_stack_.size(), map_clause_id_to_ofs_, 
-      literal_pool_, literal_values_);
-    }
-    else{
-      return archetype_.makeComponentFromState(search_stack_.size());
-    }
+    return archetype_.makeComponentFromState(search_stack_.size());
   }
 
   unsigned max_clause_id(){
@@ -135,9 +122,6 @@ public:
   unsigned max_variable_id(){
     return max_variable_id_;
   }
-  vector<unsigned> &clsidtoofs(){
-    return map_clause_id_to_ofs_;
-  }
 
   ComponentArchetype &getArchetype(){
     return archetype_;
@@ -145,8 +129,8 @@ public:
 
 private:
   DataAndStatistics &statistics_;
-  SolverConfiguration &config_;
   vector<Variable> & variables_;
+
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool
@@ -165,17 +149,18 @@ private:
   // in one contiguous chunk of memory
   vector<unsigned> unified_variable_links_lists_pool_;
 
-  vector<LiteralID> literal_pool_;
-
-  vector<unsigned> map_clause_id_to_ofs_;
 
   vector<unsigned> variable_link_list_offsets_;
 
   LiteralIndexedVector<TriValue> & literal_values_;
 
+  set <unsigned> & independent_support_;
+
+  bool & perform_projected_model_count_;
+
   vector<unsigned> var_frequency_scores_;
 
-  ComponentArchetype  archetype_= ComponentArchetype(config_);
+  ComponentArchetype  archetype_;
 
   vector<VariableIndex> search_stack_;
 

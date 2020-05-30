@@ -12,7 +12,7 @@
 
 void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
     vector<LiteralID> &lit_pool) {
-      // cout << "Using ALT Component analyzer" <<endl;
+
   max_variable_id_ = literals.end_lit().var() - 1;
 
   search_stack_.reserve(max_variable_id_ + 1);
@@ -20,15 +20,11 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
   variable_occurrence_lists_pool_.clear();
   variable_link_list_offsets_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
-  literal_pool_.reserve(lit_pool.size());
 
   vector<vector<ClauseOfs> > occs(max_variable_id_ + 1);
   vector<vector<unsigned> > occ_long_clauses(max_variable_id_ + 1);
   vector<vector<unsigned> > occ_ternary_clauses(max_variable_id_ + 1);
 
-  map_clause_id_to_ofs_.clear();
-  map_clause_id_to_ofs_.push_back(0);
-  ClauseOfs current_clause_ofs = 0;
   vector<unsigned> tmp;
   max_clause_id_ = 0;
   unsigned curr_clause_length = 0;
@@ -36,40 +32,22 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
 
   for (auto it_lit = lit_pool.begin(); it_lit < lit_pool.end(); it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
-      // cout<< endl;
-    // }
-      if (it_lit + 1 == lit_pool.end()){
-        literal_pool_.push_back(SENTINEL_LIT);
+
+      if (it_lit + 1 == lit_pool.end())
         break;
-      }
 
       max_clause_id_++;
-      literal_pool_.push_back(SENTINEL_LIT);
-      for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++){
-        literal_pool_.push_back(0);
-      }
-      current_clause_ofs = literal_pool_.size();
       it_lit += ClauseHeader::overheadInLits();
       it_curr_cl_st = it_lit + 1;
       curr_clause_length = 0;
 
-      assert(map_clause_id_to_ofs_.size() == max_clause_id_);
-      map_clause_id_to_ofs_.push_back(current_clause_ofs);
-
     } else {
-      // cout << (*it_lit).val() << " ";
       assert(it_lit->var() <= max_variable_id_);
-      literal_pool_.push_back(*it_lit);
       curr_clause_length++;
-      tmp.clear();
+
       getClause(tmp,it_curr_cl_st, *it_lit);
 
-      if(config_.useIsomorphicComponentCaching || config_.usecachetencoding){
-        assert(tmp.size() >= 1);
-      }
-      else{
-        assert(tmp.size() > 1);
-      }
+      assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
       //if(false){
@@ -86,85 +64,6 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
 
     }
   }
-  // exit(3);
-
-// void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
-//     vector<LiteralID> &lit_pool) {
-
-//   max_variable_id_ = literals.end_lit().var() - 1;
-
-//   search_stack_.reserve(max_variable_id_ + 1);
-//   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
-//   variable_occurrence_lists_pool_.clear();
-//   variable_link_list_offsets_.clear();
-//   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
-//   literal_pool_.reserve(lit_pool.size());
-
-//   vector<vector<ClauseOfs> > occs(max_variable_id_ + 1);
-//   vector<vector<unsigned> > occ_long_clauses(max_variable_id_ + 1);
-//   vector<vector<unsigned> > occ_ternary_clauses(max_variable_id_ + 1);
-
-//   map_clause_id_to_ofs_.clear();
-//   map_clause_id_to_ofs_.push_back(0);
-//   ClauseOfs current_clause_ofs = 0;
-
-//   vector<unsigned> tmp;
-//   max_clause_id_ = 0;
-//   unsigned curr_clause_length = 0;
-//   auto it_curr_cl_st = lit_pool.begin();
-
-//   for (auto it_lit = lit_pool.begin(); it_lit < lit_pool.end(); it_lit++) {
-//     if (*it_lit == SENTINEL_LIT) 
-//     {
-
-//       if (it_lit + 1 == lit_pool.end())
-//       {
-//         literal_pool_.push_back(SENTINEL_LIT);
-//         break;
-//       }
-
-//       max_clause_id_++;
-//       literal_pool_.push_back(SENTINEL_LIT);
-//       for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
-//       {
-//         literal_pool_.push_back(0);
-//       }
-//       current_clause_ofs = literal_pool_.size();
-//       it_lit += ClauseHeader::overheadInLits();
-//       it_curr_cl_st = it_lit + 1;
-//       curr_clause_length = 0;
-//       assert(map_clause_id_to_ofs_.size() == max_clause_id_);
-//       map_clause_id_to_ofs_.push_back(current_clause_ofs);
-
-//     } 
-//     else 
-//     {
-//       assert(it_lit->var() <= max_variable_id_);
-//       literal_pool_.push_back(*it_lit);
-//       curr_clause_length++;
-
-//       getClause(tmp,it_curr_cl_st, *it_lit);
-
-//       assert(tmp.size() > 1);
-
-//       if(tmp.size() == 2) 
-//       {
-//       //if(false){
-//         occ_ternary_clauses[it_lit->var()].push_back(max_clause_id_);
-//         occ_ternary_clauses[it_lit->var()].insert(occ_ternary_clauses[it_lit->var()].end(),
-//             tmp.begin(), tmp.end());
-//       } 
-//       else 
-//       {
-//         occs[it_lit->var()].push_back(max_clause_id_);
-//         occs[it_lit->var()].push_back(occ_long_clauses[it_lit->var()].size());
-//         occ_long_clauses[it_lit->var()].insert(occ_long_clauses[it_lit->var()].end(),
-//             tmp.begin(), tmp.end());
-//         occ_long_clauses[it_lit->var()].push_back(SENTINEL_LIT.raw());
-//       }
-
-//     }
-//   }
 
   ComponentArchetype::initArrays(max_variable_id_, max_clause_id_);
   // the unified link list
@@ -264,12 +163,11 @@ void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     unsigned *p = beginOfLinkList(*vt);
     for (; *p; p++) {
       if(manageSearchOccurrenceOf(LiteralID(*p,true))){
-        // cout << "[AltComponentAnalyzer::recordComponentOf] Bin clauses "<< *p << " "<< *vt <<" 0"<< endl;
         var_frequency_scores_[*p]++;
         var_frequency_scores_[*vt]++;
       }
     }
-    // //END traverse binary clauses
+    //END traverse binary clauses
 
     for ( p++; *p ; p+=3) {
       if(archetype_.clause_unseen_in_sup_comp(*p)){

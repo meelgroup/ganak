@@ -54,15 +54,12 @@ SolverConfiguration &config) :
 		statistics_(statistics), config_(config) {
 }
 
-void ComponentCache::init(void* keyforHash,Component &super_comp) {
+void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforCLHASH){
 
-    // cout << sizeof(CacheableComponent) << " " << sizeof(mpz_class) << endl;
-	// CacheableComponent &packed_super_comp = ;
-    CacheableComponent &packed_super_comp = *new CacheableComponent(keyforHash,super_comp);
-	if (config_.usecachetencoding){
-		packed_super_comp = *new CacheableComponent(keyforHash,
-         super_comp.getHash());
-		//  super_comp.printHash();
+  CacheableComponent &packed_super_comp = *new CacheableComponent(super_comp);
+	
+	if (config_.perform_pcc){
+		packed_super_comp = *new CacheableComponent(randomseedforCLHASH,super_comp);
 	}
 	my_time_ = 1;
 
@@ -77,20 +74,20 @@ void ComponentCache::init(void* keyforHash,Component &super_comp) {
 	free_entry_base_slots_.reserve(10000);
 
 	uint64_t free_ram = freeram();
-	uint64_t max_cache_bound = 95 * (free_ram / 100);
+	uint64_t max_cache_bound = 80 * (free_ram / 100);
 
 	if (statistics_.maximum_cache_size_bytes_ == 0) {
 	  statistics_.maximum_cache_size_bytes_ = max_cache_bound;
 	}
 
 	if (statistics_.maximum_cache_size_bytes_ > free_ram) {
-		cout << endl <<" WARNING: Maximum cache size larger than free RAM available" << endl;
-		cout << " Free RAM " << free_ram / 1000000 << "MB" << endl;
+		cout <<"c WARNING: Maximum cache size larger than free RAM available" << endl;
+		cout << "c Free RAM " << free_ram / 1000000 << "MB" << endl;
 	}
 
-	cout << "Maximum cache size:\t"
-			<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl
-			<< endl;
+	cout << "c Maximum cache size:\t"
+			<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
+    cout << "c " << endl;
 
 	assert(!statistics_.cache_full());
 
@@ -99,15 +96,10 @@ void ComponentCache::init(void* keyforHash,Component &super_comp) {
 
 	entry_base_.push_back(&packed_super_comp);
 
-	if (config_.usecachetencoding){
-		statistics_.incorporate_cachetencoding_cache_store(packed_super_comp);
-	}
-	else{
-		statistics_.incorporate_cache_store(packed_super_comp);
-	}
-	compute_byte_size_infrasture();
-	// statistics_.print_cache_state();
+	statistics_.incorporate_cache_store(packed_super_comp, config_.perform_pcc && packed_super_comp.get_hacked());
+
 	super_comp.set_id(1);
+	compute_byte_size_infrasture();
 }
 
 void ComponentCache::test_descendantstree_consistency() {
@@ -141,69 +133,28 @@ void ComponentCache::test_descendantstree_consistency() {
 
 bool ComponentCache::deleteEntries() {
   assert(statistics_.cache_full());
-	// statistics_.print_cache_state();
-	
-	int entriesremoved = 0;
-	if(config_.tworandom){
-		vector<int> vect; 
-		for (unsigned id = 2; id < entry_base_.size(); id++)
-		{
-			vect.push_back(id);
-		}		
-		random_shuffle (vect.begin(), vect.end());
-		for (unsigned it = 0; it < vect.size()-1;it+=2){
-			if (entry_base_[it] != nullptr && entry_base_[it+1] != nullptr){
-				if ((double) entry_base_[it]->creation_time() < (double) entry_base_[it+1]->creation_time()){
-					if (entry_base_[it+1]->isDeletable()){
-						removeFromDescendantsTree(it+1);
-						eraseEntry(it+1);
-						entriesremoved ++;
-					}
-				}
-				else{
-					if (entry_base_[it]->isDeletable()){
-						removeFromDescendantsTree(it);
-						eraseEntry(it);
-						entriesremoved ++;
-					}
-				}
-			}
-			// cout << vect[it] << " " << vect[it+1]<< endl;
+	vector<double> scores;
+	for (auto it = entry_base_.begin() + 1; it != entry_base_.end(); it++)
+		if (*it != nullptr && (*it)->isDeletable()) {
+			scores.push_back((double) (*it)->creation_time());
 		}
+	if (scores.empty()){
+		cout<< "c Memory out!"<<endl;
+		assert(!scores.empty());
 	}
-
-	
-	else{
-		vector<double> scores;
-		for (auto it = entry_base_.begin() + 1; it != entry_base_.end(); it++)
-		{
-			if (*it != nullptr && (*it)->isDeletable()) {
-				scores.push_back((double) (*it)->creation_time());
-			}
-		}
-		if (scores.empty()){
-			cout<< "Memory out!"<<endl;
-			assert(!scores.empty());
-		}
-		sort(scores.begin(), scores.end());
-		double cutoff = scores[scores.size() / 2];
-
-	//cout << "cutoff" << cutoff  << " entries: "<< entry_base_.size()<< endl;
-
+	sort(scores.begin(), scores.end());
+	double cutoff = scores[scores.size() / 2];
 	// first : go through the EntryBase and mark the entries to be deleted as deleted (i.e. EMPTY
 	// note we start at index 2,
 	// since index 1 is the whole formula,
 	// should always stay here!
-		for (unsigned id = 2; id < entry_base_.size(); id++)
-			if (entry_base_[id] != nullptr &&
-		    	entry_base_[id]->isDeletable() &&
-		      	(double) entry_base_[id]->creation_time() <= cutoff) {
-					removeFromDescendantsTree(id);
-					eraseEntry(id);
-					entriesremoved ++;
-        	}
-	}
-	// cout << "Entries removed "<< entriesremoved << " total entries "<< entry_base_.size() << endl;
+	for (unsigned id = 2; id < entry_base_.size(); id++)
+		if (entry_base_[id] != nullptr &&
+		    entry_base_[id]->isDeletable() &&
+		      (double) entry_base_[id]->creation_time() <= cutoff) {
+				removeFromDescendantsTree(id);
+				eraseEntry(id);
+        }
 	// then go through the Hash Table and erase all Links to empty entries
 
 
@@ -212,23 +163,24 @@ bool ComponentCache::deleteEntries() {
 #endif
 
 	reHashTable(table_.size());
-	// reHashTablehacked();
 	statistics_.sum_size_cached_components_ = 0;
 	statistics_.sum_bytes_cached_components_ = 0;
-	statistics_.sys_overhead_sum_bytes_cached_components_ =0;
+	 statistics_.sys_overhead_sum_bytes_cached_components_ =0;
 
 	statistics_.sum_bytes_pure_cached_component_data_ = 0;
 
 	for (unsigned id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
-			// cout << "sum_size_cached_components_ + "<<entry_base_[id]->num_variables() <<
-			// " sum_bytes_cached_components_ + "<< entry_base_[id]->SizeInBytes() << " sum_bytes_pure_cached_component_data_ +"
-			// <<  entry_base_[id]->data_only_byte_size() << " sys_overhead_sum_bytes_cached_components_ + "<<
-			//  entry_base_[id]->sys_overhead_SizeInBytes()<< endl;
 			statistics_.sum_size_cached_components_ +=
 					entry_base_[id]->num_variables();
-			statistics_.sum_bytes_cached_components_ +=
+			if(config_.perform_pcc && entry_base_[id]->get_hacked()){
+				statistics_.sum_bytes_cached_components_ +=
+					entry_base_[id]->SizeInBytes_CLHASH();
+			}
+			else{
+				statistics_.sum_bytes_cached_components_ +=
 			    entry_base_[id]->SizeInBytes();
+			}
 			statistics_.sum_bytes_pure_cached_component_data_ +=
 			    entry_base_[id]->data_only_byte_size();
 			 statistics_.sys_overhead_sum_bytes_cached_components_ +=
@@ -237,34 +189,24 @@ bool ComponentCache::deleteEntries() {
 
 	statistics_.num_cached_components_ = entry_base_.size();
 	compute_byte_size_infrasture();
-	// statistics_.print_cache_state();
-	//cout << " \t entries: "<< entry_base_.size() - free_entry_base_slots_.size()<< endl;
 	return true;
 }
 
 
 uint64_t ComponentCache::compute_byte_size_infrasture() {
-	// cout << "[ComponentCache::compute_byte_size_infrasture] " <<
-	// sizeof(ComponentCache) << " " << sizeof(CacheEntryID)* table_.capacity() << " "
-	// <<" "<< sizeof(CacheableComponent *) << " "<< entry_base_.capacity()
-	// <<" " << sizeof(CacheableComponent *)* entry_base_.capacity() << 
-	// " "<< sizeof(CacheEntryID) * free_entry_base_slots_.capacity()<< endl;
   statistics_.cache_infrastructure_bytes_memory_usage_ =
       sizeof(ComponentCache)
       + sizeof(CacheEntryID)* table_.capacity()
-	//   + sizeof(CacheEntryID)* table_hacked_.size()
-	//   + table_hacked_.bucket_count() * (sizeof(size_t) + sizeof(void*))
       + sizeof(CacheableComponent *)* entry_base_.capacity()
       + sizeof(CacheEntryID) * free_entry_base_slots_.capacity();
   return statistics_.cache_infrastructure_bytes_memory_usage_;
 }
 
-void ComponentCache::debug_dump_data(){
+void ComponentCache::debug_dump_data() {
     cout << "sizeof (CacheableComponent *, CacheEntryID) "
          << sizeof(CacheableComponent *) << ", "
          << sizeof(CacheEntryID) << endl;
     cout << "table (size/capacity) " << table_.size()
-	// cout << "table (size) " << table_hacked_.size();
          << "/" << table_.capacity() << endl;
     cout << "entry_base_ (size/capacity) " << entry_base_.size()
              << "/" << entry_base_.capacity() << endl;

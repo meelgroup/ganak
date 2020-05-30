@@ -1,4 +1,24 @@
-cmake_minimum_required (VERSION 2.8)
+# Copyright (c) 2017, Mate Soos
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+cmake_minimum_required (VERSION 3.3)
 project (ganak) 
 
 # -----------------------------------------------------------------------------
@@ -7,7 +27,7 @@ project (ganak)
 set(build_types Debug Release RelWithDebInfo MinSizeRel)
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "You can choose the type of build, options are:${build_types}")
-    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE String
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
         "Options are ${build_types}"
         FORCE
     )
@@ -17,7 +37,46 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Doing a ${CMAKE_BUILD_TYPE} build")
 
+# contains some library search cmake scripts
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(STATICCOMPILE "Compile to static executable" OFF)
+if (STATICCOMPILE)
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
+    if(NOT BUILD_SHARED_LIBS)
+        MESSAGE(STATUS "Compiling for static library use")
+        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--whole-archive -ldl -Wl,--no-whole-archive -static ")
+            #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+        endif()
+
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+
+        # removing -rdynamic that's automatically added
+        foreach (language CXX C)
+            set(VAR_TO_MODIFY "CMAKE_SHARED_LIBRARY_LINK_${language}_FLAGS")
+            string(REGEX REPLACE "(^| )-rdynamic($| )"
+                                 " "
+                                 replacement
+                                 "${${VAR_TO_MODIFY}}")
+            #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
+            set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
+        endforeach()
+    else()
+        add_definitions(-DBOOST_TEST_DYN_LINK)
+        MESSAGE(STATUS "Compiling for dynamic library use")
+    endif()
+endif()
+
+
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Windows") AND (STATICCOMPILE))
+    set(Boost_USE_STATIC_LIBS ON)
+endif()
+
 
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
@@ -42,11 +101,11 @@ if (NOT MSVC)
     add_compile_options( -pthread )
 
     add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O2>")
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-mtune=native>")
+    #add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-mtune=native>")
 
     add_compile_options("$<$<CONFIG:RELEASE>:-O2>")
     add_compile_options("$<$<CONFIG:RELEASE>:-g0>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-mtune=native>")
+    #add_compile_options("$<$<CONFIG:RELEASE>:-mtune=native>")
 
     add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
 
@@ -127,7 +186,6 @@ endif()
 # -----------------------------------------------------------------------------
 # Option to enable/disable assertions
 # -----------------------------------------------------------------------------
-
 # Filter out definition of NDEBUG from the default build configuration flags.
 # We will add this ourselves if we want to disable assertions
 foreach (build_config ${build_types})
@@ -143,50 +201,20 @@ foreach (build_config ${build_types})
     endforeach()
 endforeach()
 
-
-find_library(GMP_LIB gmp)
-find_library(GMPXX_LIB gmpxx)
-#find_library(OPENSSL_LIB  libcrypto.so libssl.so)
-
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
-    if(STATICCOMPILE)
-        MESSAGE(STATUS "Compiling for static library use")
-        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -static ")
-        endif()
-
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-
-        # removing -rdynamic that's automatically added
-        foreach (language CXX C)
-            set(VAR_TO_MODIFY "CMAKE_SHARED_LIBRARY_LINK_${language}_FLAGS")
-            string(REGEX REPLACE "(^| )-rdynamic($| )"
-                                 " "
-                                 replacement
-                                 "${${VAR_TO_MODIFY}}")
-            #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
-            set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
-        endforeach()
-        SET(BUILD_SHARED_LIBRARIES OFF)
-        SET(CMAKE_EXE_LINKER_FLAGS "-static")
-    else()
-        add_definitions(-DBOOST_TEST_DYN_LINK)
-        MESSAGE(STATUS "Compiling for dynamic library use")
-    endif()
+option(ENABLE_ASSERTIONS "Build with assertions enabled" ON)
+message(STATUS "build type is ${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(ENABLE_ASSERTIONS OFF)
 endif()
 
-
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Windows") AND (STATICCOMPILE))
-    set(Boost_USE_STATIC_LIBS ON)
+if (ENABLE_ASSERTIONS)
+    # NDEBUG was already removed.
+else()
+    # Note this definition doesn't appear in the cache variables.
+    add_definitions(-DNDEBUG)
+    add_cxx_flag_if_supported("-fno-stack-protector")
+    add_definitions(-D_FORTIFY_SOURCE=0)
 endif()
-
-IF(UNIX)
-  IF(APPLE)
-    include_directories(/opt/local/include)
-  ELSE(APPLE)
-  ENDIF(APPLE)
-ELSE(UNIX)
-ENDIF(UNIX)
 
 if (NOT WIN32)
     if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT COVERAGE)
@@ -229,12 +257,36 @@ if (NOT WIN32)
     add_c_flag_if_supported("-mpclmul")
 endif()
 
+find_library(GMP_LIB gmp)
+find_library(GMPXX_LIB gmpxx)
+
+# -----------------------------------------------------------------------------
+# Add GIT version
+# -----------------------------------------------------------------------------
+function(SetVersionNumber PREFIX VERSION_MAJOR VERSION_MINOR VERSION_PATCH)
+  set(${PREFIX}_VERSION_MAJOR ${VERSION_MAJOR} PARENT_SCOPE)
+  set(${PREFIX}_VERSION_MINOR ${VERSION_MINOR} PARENT_SCOPE)
+  set(${PREFIX}_VERSION_PATCH ${VERSION_PATCH} PARENT_SCOPE)
+  set(${PREFIX}_VERSION
+        "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+        PARENT_SCOPE)
+endfunction()
+
+find_program (GIT_EXECUTABLE git)
+if (GIT_EXECUTABLE)
+  include(GetGitRevisionDescription)
+  get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+  MESSAGE(STATUS "GIT hash found: ${GIT_SHA1}")
+else()
+  set(GIT_SHA "GIT-hash-notfound")
+endif()
+set(GANAK_FULL_VERSION "1.0.1")
+
+string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
+SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})
+MESSAGE(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
+MESSAGE(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
+MESSAGE(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
+MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
+
 add_subdirectory(src)
-
-add_executable (ganak src/main.cpp)
-SET_TARGET_PROPERTIES(ganak PROPERTIES LINK_SEARCH_START_STATIC 1)
-target_link_libraries (ganak libganak -lgmp -lgmpxx)
-SET_TARGET_PROPERTIES(ganak PROPERTIES LINK_SEARCH_START_STATIC 0)
-
-# /usr/lib/ccache/bin/c++ -static CMakeFiles/ganak.dir/src/main.cpp.o  -o ganak src/liblibganak.a  -Wl,-Bdynamic -lgmp -lgmpxx -Wl,-Bstatic src/component_types/libcomponent_types.a
-

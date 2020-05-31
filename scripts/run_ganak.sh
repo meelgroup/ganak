@@ -1,55 +1,67 @@
 #!/bin/bash
 # set -x
 
-tout_be=100
-tout_ganak=0
+tout_be=600
+tout_ganak=1800
 input_file=$1
-rm -f proj*
+rm -f independent*
 rm -f out*
 rm -f newfile*
 rm -f input*
-
-echo "c Trying to run Ganak on $input_file  with  timeout: ${tout_ganak}"
-echo "../bin/ganak -t $tout_ganak $input_file > output"
-`../bin/ganak $input_file > output` > /dev/null 2>&1
+rm -rf *.out
+run_ganak=true
+hash_range=1
+while [[ $run_ganak == "true" ]]; do
+    echo "c Trying to run Ganak on $input_file  with  timeout: ${tout_ganak}"
+    # echo "c Command: ../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 0 500 $input_file > output"
+    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 0 500 $input_file > output` > /dev/null 2>&1
+    # cat output
+    hash_error=`grep "ERROR: We need to change the hash range" output`
+    if [[ $hash_error == *"ERROR: We need to change the hash range"* ]]; then
+        let hash_range=2*hash_range
+        continue
+    fi
+    run_ganak=false
+done
+useIS=`grep "Terminating solver because the number of decisions" output`
+if [[ $useIS == *"Terminating solver because the number of decisions"* ]]; then
+    echo "c Ganak's initial run is not sucessful, we will have to run arjun"
+    rm -rf independent_support
+    touch independent_support
+    # echo "c Command: ../bin/doalarm $tout_be ../bin/arjun $input_file > independent_support"
+    `../bin/doalarm $tout_be ../bin/arjun $input_file > independent_support` > /dev/null 2>&1
+    touch newfile
+    grep -v "^c ind" $input_file > newfile
+    grep "^vp" independent_support >> newfile
+    sed -i 's/vp/s c ind/g' newfile
+   # mv newfile $input_file
+    echo "c arjun's run is successful! Run ganak again."
+    run_ganak=true
+    input_file=newfile
+fi
+hash_range=1
+while [[ $run_ganak == "true" ]]; do
+    echo "c Trying to run Ganak on $input_file  with  timeout: ${tout_ganak}"
+    # echo "c Command: ../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range $input_file > output"
+    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range $input_file > output` > /dev/null 2>&1
+    # cat output
+    hash_error=`grep "ERROR: We need to change the hash range" output`
+    if [[ $hash_error == *"ERROR: We need to change the hash range"* ]]; then
+        let hash_range=2*hash_range
+        continue
+    fi
+    run_ganak=false
+done
 sed -i 's/s pmc/s mc/g' output
 found=`grep "s mc" output`
-cat output
 if [[ $found == *"s mc"* ]]; then
     cat output
+    rm -rf independent_support
+    rm -rf newfile
+    rm -rf output
     exit 0
 fi
+rm -rf independent_support
+rm -rf newfile
+rm -rf output
 echo "c Ganak did NOT work"
-
-# echo "c Getting indep support, timeout: ${tout_be}"
-# grep -v "^c" - | sed "s/pcnf/cnf/" | grep -v "^vp" > inputfile
-# rm -f projection
-# touch projection
-# `./bin/doalarm ${tout_be_relaxed} ./bin/b_plus_e -B=projection -cpu-lim=${tout_be} inputfile` > /dev/null 2>&1
-# sed -i "s/V/vp/" projection
-# found=`grep "vp .* 0$" projection`
-
-# echo "c found is: $found"
-# if [[ $found == *"vp"* ]]; then
-#     echo "c OK, B+E succeeded"
-#     cp inputfile newfile2
-#     cat projection >> newfile2
-# else
-#     echo "c WARNING B+E did NOT succeed"
-#     cp inputfile newfile2
-# fi
-
-# sed 's/vp/c ind/g' newfile2 | sed 's/ pcnf/ cnf/g' > newfile3
-
-# echo "c Trying a short run for appromc, timeout: ${tout_shortapproxmc}"
-
-# `./bin/doalarm ${tout_shortapproxmc} ./bin/approxmc --delta 0.2 newfile3 > output` > /dev/null 2>&1
-# found=`grep "s mc" output`
-# if [[ $found == *"s mc"* ]]; then
-#     cat output
-#     exit 0
-# fi
-
-# echo "c Running ApproxMC"
-# ./bin/approxmc --delta 0.2 newfile3
-# exit 0

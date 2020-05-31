@@ -69,6 +69,7 @@ public:
 
   void setTimeBound(long int seconds)
   {
+    cout << "c Setting the timout to: " << seconds << endl;
     time_bound_ = seconds;
   }
   long int getTimeBound();

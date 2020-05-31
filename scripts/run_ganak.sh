@@ -1,7 +1,7 @@
 #!/bin/bash
 # set -x
 
-tout_be=600
+tout_arjun=600
 tout_ganak=1800
 input_file=$1
 rm -f independent*
@@ -28,8 +28,8 @@ if [[ $useIS == *"Terminating solver because the number of decisions"* ]]; then
     echo "c Ganak's initial run is not sucessful, we will have to run arjun"
     rm -rf independent_support
     touch independent_support
-    # echo "c Command: ../bin/doalarm $tout_be ../bin/arjun $input_file > independent_support"
-    `../bin/doalarm $tout_be ../bin/arjun $input_file > independent_support` > /dev/null 2>&1
+    # echo "c Command: ../bin/doalarm $tout_arjun ../bin/arjun $input_file > independent_support"
+    `../bin/doalarm $tout_arjun ../bin/arjun $input_file > independent_support` > /dev/null 2>&1
     touch newfile
     grep -v "^c ind" $input_file > newfile
     grep "^vp" independent_support >> newfile

@@ -331,7 +331,6 @@ bool Instance::createfromFile(const string &file_name) {
   // Number of variable, clauses and projected variables.
   unsigned int nVars, nCls, nPVars;
   int lit;
-  bool is_sat = true;
   unsigned max_ignore = 1000000;
   unsigned clauses_added = 0;
   LiteralID llit;
@@ -435,7 +434,6 @@ bool Instance::createfromFile(const string &file_name) {
           }
           if (i.toInt() == -lit) {
             skip_clause = true;
-            is_sat = false;
             break;
           }
         }
@@ -481,7 +479,7 @@ bool Instance::createfromFile(const string &file_name) {
       unit_clauses_.size();
 
   original_lit_pool_size_ = literal_pool_.size();
-  return is_sat;
+  return true;
 }
 
 

@@ -13,9 +13,8 @@ run_ganak=true
 hash_range=1
 while [[ $run_ganak == "true" ]]; do
     echo "c Trying to run Ganak on $input_file  with  timeout: ${tout_ganak}"
-    # echo "c Command: ../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 0 500 $input_file > output"
-    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 0 500 $input_file > output` > /dev/null 2>&1
-    # cat output
+    # echo "c Command: ../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 5000000 500 $input_file > output"
+    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 5000000 500 $input_file > output` > /dev/null 2>&1
     hash_error=`grep "ERROR: We need to change the hash range" output`
     if [[ $hash_error == *"ERROR: We need to change the hash range"* ]]; then
         let hash_range=2*hash_range

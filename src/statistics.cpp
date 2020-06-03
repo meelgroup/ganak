@@ -125,7 +125,7 @@ void DataAndStatistics::printShort(const bool pmc) {
       << "/" << getAvgCacheHitSize() << endl;
   cout << "c " << endl;
   cout << "c " << endl;
-  cout << "c # solutions " << endl;
+  cout << "c time: " << time_elapsed_ << "s" << endl;
   if (pmc) {
     cout << "s pmc " << std::flush;
   } else {
@@ -133,7 +133,4 @@ void DataAndStatistics::printShort(const bool pmc) {
   }
   print_final_solution_count();
   cout << endl;
-  cout << "c # END" << endl;
-  cout << "c " << endl;
-  cout << "c time: " << time_elapsed_ << "s" << endl;
 }

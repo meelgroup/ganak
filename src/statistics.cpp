@@ -13,7 +13,8 @@
 using namespace std;
 
 void DataAndStatistics::print_final_solution_count() {
-  cout << final_solution_count_;
+  // cout << final_solution_count_;
+  gmp_printf ("%.Ff", final_solution_count_);
 }
 
 void DataAndStatistics::writeToFile(const string & file_name, const bool pmc) {

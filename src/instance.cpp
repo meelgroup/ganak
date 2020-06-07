@@ -292,8 +292,16 @@ void Instance::parseWeights(ifstream& input_file, char& c) {
   if (c == 'w') {
     input_file >> literal;
     input_file >> weight;
-    input_file >> delimiter;
-    assert(delimiter == 0);
+    char eofchar;
+    input_file.get(eofchar);
+    if (eofchar == '\n') {
+      input_file.unget();
+      cout << "c invalid weight format" << endl; 
+    } else {
+      input_file.unget();
+      input_file >> delimiter;
+      assert(delimiter == 0);
+    }
     const unsigned index = literal < 0 ? -1 * literal : literal;
     variables_[index].assign_weight(weight, literal > 0);
   }

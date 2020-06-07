@@ -267,7 +267,13 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
 void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
   string idstring;
   int lit;
+  char eolchar;
   //Parse old projection
+  if (c == 'c' && input_file.get(eolchar) && eolchar == '\n') {
+    input_file.unget();
+    return;
+  }
+  input_file.unget();
   if (c == 'c' &&
       input_file >> idstring &&
       idstring == "ind") {

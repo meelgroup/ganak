@@ -180,32 +180,32 @@ void Solver::solve(const string &file_name)
     cout << "c Solving " << file_name << endl;
     statistics_.printShortFormulaInfo();
   }
-  if (!config_.quiet)
+  if (independent_support_.size() == 0)
   {
-    if (independent_support_.size() == 0)
+    if (!config_.quiet)
     {
       cout << "c Sampling set not present! So doing total model counting." << endl;
-      config_.perform_projectedmodelcounting = false;
+    }
+    config_.perform_projectedmodelcounting = false;
+  }
+  else if (!config_.quiet)
+  {
+    if (!config_.perform_projectedmodelcounting)
+    {
+      cout << "c Warning! Sampling set is present but projected model counting"
+           << " is turned off by the user so solver is not doing projected model counting." << endl;
     }
     else
     {
-      if (!config_.perform_projectedmodelcounting)
-      {
-        cout << "c Warning! Sampling set is present but projected model counting"
-             << " is turned off by the user so solver is not doing projected model counting." << endl;
-      }
-      else
-      {
-        cout << "c Sampling set is present, performing projected model counting " << endl;
-      }
-      cout << "c Sampling set size: " << independent_support_.size() << endl;
-      cout << "c Sampling set: ";
-      for (auto it = independent_support_.begin(); it != independent_support_.end(); ++it)
-      {
-        cout << ' ' << *it;
-      }
-      cout << endl;
+      cout << "c Sampling set is present, performing projected model counting " << endl;
     }
+    cout << "c Sampling set size: " << independent_support_.size() << endl;
+    cout << "c Sampling set: ";
+    for (auto it = independent_support_.begin(); it != independent_support_.end(); ++it)
+    {
+      cout << ' ' << *it;
+    }
+    cout << endl;
   }
   if (!config_.quiet)
   {
@@ -264,9 +264,7 @@ void Solver::solve(const string &file_name)
     writefile = "out.mc";
   }
   statistics_.writeToFile(writefile, config_.perform_projectedmodelcounting);
-  if (!config_.quiet) {
-    statistics_.printShort(config_.perform_projectedmodelcounting);
-  }
+  statistics_.printShort(config_.perform_projectedmodelcounting);
 }
 
 SOLVER_StateT Solver::countSAT() {

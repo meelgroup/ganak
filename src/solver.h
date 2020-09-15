@@ -221,10 +221,8 @@ private:
 			if (config_.perform_projectedmodelcounting) {
 				if (independent_support_.count(lit.var()) != 0) {
 					if (var(lit).polarity) {
-						cout << "Polarity is true for "<< lit.var() << endl;
 						comp_manager_.include_partial_solution(lit.var());
 					} else {
-						cout << "Polarity is false for "<< lit.var() << endl;
 						comp_manager_.include_partial_solution(-1*lit.var());
 					}
 				}

@@ -69,6 +69,16 @@ protected:
     return variables_.size() - 1;
   }
 
+  void printWeights() {
+    static uint var = 1;
+    for (auto it = variables_.begin() + 1;
+					 it != variables_.end(); it++) {
+      cout << "c Weight of +" << var << " " << (*it).pos_weight_ << endl;
+      cout << "c Weight of -" << var << " " << (*it).neg_weight_ << endl;
+      ++var;
+    }
+  }
+
   bool createfromFile(const string &file_name);
   void parseProjection(bool pcnf, ifstream& input_file, char& c);
   void parseWeights(ifstream& input_file, char& c);

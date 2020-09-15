@@ -183,6 +183,7 @@ void Solver::solve(const string &file_name) {
       }
 			cout << endl;
 		}
+		printWeights();
 	}
 	if (!config_.quiet) {
     cout << "c " << endl;
@@ -212,17 +213,6 @@ void Solver::solve(const string &file_name) {
 
 		comp_manager_.initialize(literals_, literal_pool_, num_variables());
   
-    for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
-					 *it != varsSENTINEL; it++) {
-      LiteralID posLit(*it, true);
-      cout << "c Weight of +" << *it << " : " << var(posLit).get_weight(true) << endl;
-      cout << "c Weight of -" << *it << " : " << var(posLit.neg()).get_weight(false) << endl;
-    }
-    // cout << "c printing clause id :";
-    // for (auto it = comp_manager_.superComponentOf(stack_.top()).clsBegin();
-		// 			 *it != clsSENTINEL ; it++) {
-    //     cout << *it << " ";
-    // }
     cout << endl;
 		statistics_.exit_state_ = countSAT();
 

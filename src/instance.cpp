@@ -121,6 +121,7 @@ void Instance::compactVariables() {
   unsigned num_isolated = 0;
   unsigned num_unweighted = 0;
   unsigned num_pisolated = 0;
+  unsigned num_unweighted_pisolated = 0;
   LiteralIndexedVector<vector<LiteralID> > _tmp_bin_links(1);
   LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
 
@@ -128,11 +129,14 @@ void Instance::compactVariables() {
     _tmp_bin_links.push_back(l.binary_links_);
 
   assert(_tmp_bin_links.size() == literals_.size());
-  for (unsigned v = 1; v < variables_.size(); v++)
+  for (unsigned v = 1; v < variables_.size(); v++) {
     if (isActive(v)) {
       if (isolated(v)) {
         if (independent_support_.find(v) != independent_support_.end()) {
           num_pisolated ++;
+        }
+        if ((independent_support_.find(v) != independent_support_.end()) && (!mpf_cmp_d(variables_[v].get_weight(true).get_mpf_t(), 1.0))) {
+          ++num_unweighted_pisolated;
         }
         if (!mpf_cmp_d(variables_[v].get_weight(true).get_mpf_t(), 1.0)) {
           num_unweighted++;
@@ -144,6 +148,7 @@ void Instance::compactVariables() {
       var_map[v] = last_ofs;
       rev_map[last_ofs] = v;
     }
+  }
   vector <unsigned> temp;
   for (auto it=independent_support_.begin(); it!=independent_support_.end(); ++it){
     if(var_map[*it] != 0){
@@ -212,6 +217,7 @@ void Instance::compactVariables() {
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = num_isolated;
   statistics_.num_free_projected_variables_ = num_pisolated;
+  statistics_.num_free_unweighted_projected_variables_ = num_unweighted_pisolated;
   statistics_.num_free_unweighted_variables_ = num_unweighted;
   assert (num_unweighted <= num_isolated);
   statistics_.num_free_weighted_variables_ = num_isolated - num_unweighted;
@@ -311,7 +317,15 @@ void Instance::parseWeights(ifstream& input_file, char& c) {
 void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
   string idstring;
   int lit;
+  char eolchar;
   //Parse old projection
+  if (c == 'c' && input_file.get(eolchar) && eolchar == '\n') {
+    input_file.unget();
+    return;
+  }
+  if (c == 'c') {
+    input_file.unget();
+  }
   if (c == 'c' &&
       input_file >> idstring &&
       idstring == "ind") {
@@ -392,9 +406,9 @@ bool Instance::createfromFile(const string &file_name) {
   }
   bool pcnf = false;
   bool wcnf = false;
+  independent_support_.clear();
   if (idstring == "pcnf") {
     pcnf = true;
-    independent_support_.clear();
   } else if (idstring == "wcnf") {
     wcnf = true;
   }
@@ -411,7 +425,7 @@ bool Instance::createfromFile(const string &file_name) {
       exit(0);
     }
   }
-
+  wcnf = true;
   variables_.resize(nVars + 1);
   literal_values_.resize(nVars + 1, X_TRI);
   literal_pool_.reserve(filestatus.st_size);
@@ -427,7 +441,6 @@ bool Instance::createfromFile(const string &file_name) {
     if (wcnf) {
       parseWeights(input_file, c);
     }
-
     //Parse clause
     if ((c == '-') || isdigit(c)) {
       input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
@@ -458,13 +471,11 @@ bool Instance::createfromFile(const string &file_name) {
           for (auto l : literals)
             occurrence_lists_[l].push_back(cl_ofs);
       } else {
-
       }
     }
     input_file.ignore(max_ignore, '\n');
   }
   input_file.unget();
-
   while (input_file >> c){
     parseProjection(pcnf, input_file, c);
     if (wcnf) {

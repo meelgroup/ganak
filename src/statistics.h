@@ -44,6 +44,7 @@ public:
   unsigned long num_used_variables_ = 0;
   unsigned long num_free_variables_ = 0;
   unsigned long num_free_projected_variables_ = 0;
+  unsigned long num_free_unweighted_projected_variables_ = 0;
   unsigned long num_free_weighted_variables_ = 0;
   unsigned long num_free_unweighted_variables_ = 0;
 
@@ -192,7 +193,7 @@ public:
      mpf_mul_2exp(
       final_solution_count_.get_mpf_t (),
       count.get_mpf_t (),
-      num_free_unweighted_variables_);
+      num_free_unweighted_projected_variables_);
   }
 
   // void set_final_solution_count_projected(const mpz_class &count) {

@@ -273,7 +273,9 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
     input_file.unget();
     return;
   }
-  input_file.unget();
+  if (c == 'c') {
+    input_file.unget();
+  }
   if (c == 'c' &&
       input_file >> idstring &&
       idstring == "ind") {

@@ -1,4 +1,4 @@
-rm -rf CMake* cmake ganak Makefile cmake_install.cmake
+rm -rf CMake* src cmake* ganak* sharp* Make*
 cmake -DSTATICCOMPILE=ON ..
 make -j4
 strip ganak

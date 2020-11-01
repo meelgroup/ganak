@@ -1,8 +1,9 @@
 #!/bin/bash
 # set -x
 
-tout_arjun=600
-tout_ganak=1800
+tout_arjun=100
+tout_ganak=5000
+maximum_component_cache_size=2000
 input_file=$1
 rm -f independent*
 rm -f out*
@@ -14,7 +15,7 @@ hash_range=1
 while [[ $run_ganak == "true" ]]; do
     echo "c Trying to run Ganak on $input_file  with  timeout: ${tout_ganak}"
     # echo "c Command: ../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 5000000 500 $input_file > output"
-    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -maxdec 5000000 500 $input_file > output` > /dev/null 2>&1
+    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range -cs $maximum_component_cache_size -maxdec 5000000 500 $input_file > output` > /dev/null 2>&1
     hash_error=`grep "ERROR: We need to change the hash range" output`
     if [[ $hash_error == *"ERROR: We need to change the hash range"* ]]; then
         let hash_range=2*hash_range
@@ -42,7 +43,7 @@ hash_range=1
 while [[ $run_ganak == "true" ]]; do
     echo "c Trying to run Ganak on $input_file  with  timeout: ${tout_ganak}"
     # echo "c Command: ../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range $input_file > output"
-    `../bin/doalarm $tout_ganak ../bin/ganak -m $hash_range $input_file > output` > /dev/null 2>&1
+    `../bin/doalarm $tout_ganak ../bin/ganak -cs $maximum_component_cache_size -m $hash_range $input_file > output` > /dev/null 2>&1
     # cat output
     hash_error=`grep "ERROR: We need to change the hash range" output`
     if [[ $hash_error == *"ERROR: We need to change the hash range"* ]]; then

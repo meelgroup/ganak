@@ -11,8 +11,11 @@
 #include "statistics.h"
 #include "structures.h"
 #include "containers.h"
-#include <set>
+
+
 #include <assert.h>
+#include <memory>
+#include <set>
 
 class Instance {
 protected:
@@ -87,7 +90,7 @@ protected:
    *   Clauses begin with a ClauseHeader structure followed by the literals
    *   terminated by SENTINEL_LIT
    */
-  vector<LiteralID> literal_pool_;
+  shared_ptr<vector<LiteralID>> literal_pool_;
 
   set <unsigned> independent_support_;
 
@@ -108,7 +111,8 @@ protected:
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> literal_values_;
 
-  void decayActivities() {
+
+void decayActivities() {
     for (auto l_it = literals_.begin(); l_it != literals_.end(); l_it++)
       l_it->activity_score_ *= 0.5;
 
@@ -153,14 +157,14 @@ protected:
     return true;
   }
 
-  inline ClauseIndex addClause(vector<LiteralID> &literals);
+  inline ClauseIndex addClause(vector<LiteralID> &literals, bool original);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
   // literal stored in literals
   inline Antecedent addUIPConflictClause(vector<LiteralID> &literals);
 
-  inline bool addBinaryClause(LiteralID litA, LiteralID litB);
+  inline bool addBinaryClause(LiteralID litA, LiteralID litB, bool original);
 
   /////////////////////////////////////////////////////////
   // BEGIN access to variables, literals, clauses
@@ -187,19 +191,19 @@ protected:
   }
 
   vector<LiteralID>::const_iterator beginOf(ClauseOfs cl_ofs) const {
-    return literal_pool_.begin() + cl_ofs;
+    return literal_pool_->begin() + cl_ofs;
   }
   vector<LiteralID>::iterator beginOf(ClauseOfs cl_ofs) {
-    return literal_pool_.begin() + cl_ofs;
+    return literal_pool_->begin() + cl_ofs;
   }
 
-  decltype(literal_pool_.begin()) conflict_clauses_begin() {
-     return literal_pool_.begin() + original_lit_pool_size_;
+  decltype(literal_pool_->begin()) conflict_clauses_begin() {
+     return literal_pool_->begin() + original_lit_pool_size_;
    }
 
   ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) {
-    return *reinterpret_cast<ClauseHeader *>(&literal_pool_[cl_ofs
-        - ClauseHeader::overheadInLits()]);
+    return *reinterpret_cast<ClauseHeader *>(
+      &(*literal_pool_)[cl_ofs - ClauseHeader::overheadInLits()]);
   }
 
   bool isSatisfied(ClauseOfs cl_ofs) {
@@ -210,7 +214,7 @@ protected:
   }
 };
 
-ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
+ClauseIndex Instance::addClause(vector<LiteralID> &literals, bool original) {
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     // assert(!isUnitClause(literals[0].neg()));
@@ -218,19 +222,19 @@ ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
     return 0;
   }
   if (literals.size() == 2) {
-    addBinaryClause(literals[0], literals[1]);
+    addBinaryClause(literals[0], literals[1], original);
     return 0;
   }
   for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
-    literal_pool_.push_back(0);
-  ClauseOfs cl_ofs = literal_pool_.size();
+    literal_pool_->push_back(0);
+  ClauseOfs cl_ofs = literal_pool_->size();
 
   for (auto l : literals) {
-    literal_pool_.push_back(l);
+    literal_pool_->push_back(l);
     literal(l).increaseActivity(1);
   }
   // make an end: SENTINEL_LIT
-  literal_pool_.push_back(SENTINEL_LIT);
+  literal_pool_->push_back(SENTINEL_LIT);
   literal(literals[0]).addWatchLinkTo(cl_ofs);
   literal(literals[1]).addWatchLinkTo(cl_ofs);
   getHeaderOf(cl_ofs).set_creation_time(statistics_.num_conflicts_);
@@ -241,7 +245,7 @@ ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
 Antecedent Instance::addUIPConflictClause(vector<LiteralID> &literals) {
     Antecedent ante(NOT_A_CLAUSE);
     statistics_.num_clauses_learned_++;
-    ClauseOfs cl_ofs = addClause(literals);
+    ClauseOfs cl_ofs = addClause(literals, false);
     if (cl_ofs != 0) {
       conflict_clauses_.push_back(cl_ofs);
       getHeaderOf(cl_ofs).set_length(literals.size());
@@ -254,11 +258,11 @@ Antecedent Instance::addUIPConflictClause(vector<LiteralID> &literals) {
     return ante;
   }
 
-bool Instance::addBinaryClause(LiteralID litA, LiteralID litB) {
+bool Instance::addBinaryClause(LiteralID litA, LiteralID litB, bool original) {
    if (literal(litA).hasBinaryLinkTo(litB))
      return false;
-   literal(litA).addBinLinkTo(litB);
-   literal(litB).addBinLinkTo(litA);
+   literal(litA).addBinLinkTo(litB, original);
+   literal(litB).addBinLinkTo(litA, original);
    literal(litA).increaseActivity();
    literal(litB).increaseActivity();
    return true;

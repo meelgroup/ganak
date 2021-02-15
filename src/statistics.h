@@ -43,7 +43,6 @@ public:
   // number of variables that actually occurs in clauses
   unsigned long num_used_variables_ = 0;
   unsigned long num_free_variables_ = 0;
-  unsigned long num_free_projected_variables_ = 0;
 
   /// different clause counts
 
@@ -104,18 +103,21 @@ public:
   uint64_t overall_num_cache_stores_ = 0;
   /*end statistics */
 
-  void print_cache_state() {
-    cout << "c printing cache state " << endl;
-    cout << "c " <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
+  void print_cache_state(){
+    cout << "printing cache state " << endl;
+    cout <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
   }
 
   bool cache_full(){
+    // cout << "cache_bytes_memory_usage() :" << cache_bytes_memory_usage()
+    //       << " maximum_cache_size_bytes_:"  << maximum_cache_size_bytes_ << endl; 
     return cache_bytes_memory_usage() >= maximum_cache_size_bytes_;
   }
 
   uint64_t cache_bytes_memory_usage(){
     return cache_infrastructure_bytes_memory_usage_
-           + sum_bytes_cached_components_;
+           + sum_bytes_cached_components_
+           + sys_overhead_sum_bytes_cached_components_;
   }
 
   uint64_t overall_cache_bytes_memory_stored(){
@@ -123,38 +125,29 @@ public:
              + overall_bytes_components_stored_;
     }
 
-  void incorporate_cache_store(CacheableComponent &ccomp, bool pccflag){
-    if (pccflag){
-      sum_bytes_cached_components_ += ccomp.SizeInBytes_CLHASH();
-    }
-    else{
-      sum_bytes_cached_components_ += ccomp.SizeInBytes();
-    }
-    sum_size_cached_components_ += ccomp.num_variables();
-    num_cached_components_++;
-    total_num_cached_components_++;
-    overall_bytes_components_stored_ += ccomp.SizeInBytes();
-    overall_num_cache_stores_ += ccomp.num_variables();
-    sys_overhead_sum_bytes_cached_components_ += ccomp.sys_overhead_SizeInBytes();
-    sys_overhead_overall_bytes_components_stored_ += ccomp.sys_overhead_SizeInBytes();
+    void incorporate_cache_store(CacheableComponent &ccomp) {
+        sum_bytes_cached_components_ += ccomp.SizeInBytes();
+        sum_size_cached_components_ += ccomp.num_variables();
+        num_cached_components_++;
+        total_num_cached_components_++;
+        overall_bytes_components_stored_ += ccomp.SizeInBytes();
+        overall_num_cache_stores_ += ccomp.num_variables();
+        sys_overhead_sum_bytes_cached_components_ += ccomp.sys_overhead_SizeInBytes();
+        sys_overhead_overall_bytes_components_stored_ += ccomp.sys_overhead_SizeInBytes();
 
 
-    sum_bytes_pure_cached_component_data_ += ccomp.data_only_byte_size();
-    overall_bytes_pure_stored_component_data_ += ccomp.data_only_byte_size();
-  }
-  void incorporate_cache_erase(CacheableComponent &ccomp, bool pccflag){
-    if (pccflag){
-      sum_bytes_cached_components_ -= ccomp.SizeInBytes_CLHASH();
+        sum_bytes_pure_cached_component_data_ += ccomp.data_only_byte_size();
+        overall_bytes_pure_stored_component_data_ += ccomp.data_only_byte_size();
     }
-    else{
-      sum_bytes_cached_components_ -= ccomp.SizeInBytes();
-    }
-    sum_size_cached_components_ -= ccomp.num_variables();
-    num_cached_components_--;
-    sum_bytes_pure_cached_component_data_ -= ccomp.data_only_byte_size();
 
-    sys_overhead_sum_bytes_cached_components_ -= ccomp.sys_overhead_SizeInBytes();
-  }
+    void incorporate_cache_erase(CacheableComponent &ccomp) {
+        sum_bytes_cached_components_ -= ccomp.SizeInBytes();
+        sum_size_cached_components_ -= ccomp.num_variables();
+        num_cached_components_--;
+        sum_bytes_pure_cached_component_data_ -= ccomp.data_only_byte_size();
+
+        sys_overhead_sum_bytes_cached_components_ -= ccomp.sys_overhead_SizeInBytes();
+    }
 
   void incorporate_cache_hit(CacheableComponent &ccomp){
       num_cache_hits_++;
@@ -180,19 +173,9 @@ public:
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
-  void set_final_solution_count_projected(const mpz_class &count) {
-    mpz_mul_2exp(
-      final_solution_count_.get_mpz_t (),
-      count.get_mpz_t (),
-      num_free_projected_variables_);
-  }
-
   void set_final_solution_count(const mpz_class &count) {
     // set final_solution_count_ = count * 2^(num_variables_ - num_used_variables_)
-    mpz_mul_2exp(
-      final_solution_count_.get_mpz_t (),
-      count.get_mpz_t (),
-      num_variables_ - num_used_variables_);
+    mpz_mul_2exp(final_solution_count_.get_mpz_t (),count.get_mpz_t (), num_variables_ - num_used_variables_);
   }
 
   const mpz_class &final_solution_count() const {
@@ -216,16 +199,16 @@ public:
   }
 
   void print_final_solution_count();
-  void writeToFile(const string & file_name, bool pmc=true);
+  void writeToFile(const string & file_name);
 
-  void printShort(bool pmc=true);
+  void printShort();
 
   void printShortFormulaInfo() {
-    cout << "c variables (all/used/free): \t";
+    cout << "variables (all/used/free): \t";
     cout << num_variables_ << "/" << num_used_variables_ << "/";
     cout << num_variables_ - num_used_variables_ << endl;
 
-    cout << "c clauses (all/long/binary/unit): ";
+    cout << "clauses (all/long/binary/unit): ";
     cout << num_clauses() << "/" << num_long_clauses_;
     cout << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
   }

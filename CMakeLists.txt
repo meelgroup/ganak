@@ -1,23 +1,3 @@
-# Copyright (c) 2017, Mate Soos
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
 cmake_minimum_required (VERSION 3.3)
 project (ganak) 
 
@@ -27,7 +7,7 @@ project (ganak)
 set(build_types Debug Release RelWithDebInfo MinSizeRel)
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "You can choose the type of build, options are:${build_types}")
-    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE String
         "Options are ${build_types}"
         FORCE
     )
@@ -44,6 +24,7 @@ option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(STATICCOMPILE "Compile to static executable" OFF)
 if (STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
+    set(Boost_USE_STATIC_LIBS ON)
 endif()
 
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
@@ -78,6 +59,7 @@ if ((${CMAKE_SYSTEM_NAME} MATCHES "Windows") AND (STATICCOMPILE))
 endif()
 
 
+
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 macro(add_cxx_flag_if_supported flagname)
@@ -100,18 +82,18 @@ if (NOT MSVC)
     add_compile_options( -g)
     add_compile_options( -pthread )
 
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O2>")
+    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O3>")
     #add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-mtune=native>")
 
-    add_compile_options("$<$<CONFIG:RELEASE>:-O2>")
+    add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
     add_compile_options("$<$<CONFIG:RELEASE>:-g0>")
     #add_compile_options("$<$<CONFIG:RELEASE>:-mtune=native>")
 
     add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
 
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -O2")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O2")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -O3")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
     endif()
 
 else()
@@ -257,8 +239,15 @@ if (NOT WIN32)
     add_c_flag_if_supported("-mpclmul")
 endif()
 
+
 find_library(GMP_LIB gmp)
 find_library(GMPXX_LIB gmpxx)
+find_library(NAUTY_LIB nauty.a ${PROJECT_SOURCE_DIR}/lib/)
+find_library(IGRAPH_LIB libigraph.a ${PROJECT_SOURCE_DIR}/lib/)
+
+set (boost_components "")
+set(boost_components ${boost_components} program_options)
+find_package(Boost 1.46 COMPONENTS ${boost_components})
 
 # -----------------------------------------------------------------------------
 # Add GIT version
@@ -280,7 +269,7 @@ if (GIT_EXECUTABLE)
 else()
   set(GIT_SHA "GIT-hash-notfound")
 endif()
-set(GANAK_FULL_VERSION "1.0.1")
+set(GANAK_FULL_VERSION "2.0.0")
 
 string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
 SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})

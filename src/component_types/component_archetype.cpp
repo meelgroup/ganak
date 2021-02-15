@@ -8,4 +8,5 @@
 #include "component_archetype.h"
 
 CA_SearchState *ComponentArchetype::seen_ = nullptr;
+unsigned* ComponentArchetype::idMap_ = nullptr;
 unsigned ComponentArchetype::seen_byte_size_ = 0;

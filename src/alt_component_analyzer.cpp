@@ -10,8 +10,9 @@
 
 
 
-void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
-    vector<LiteralID> &lit_pool) {
+void AltComponentAnalyzer::initialize(
+  LiteralIndexedVector<Literal> & literals,
+  shared_ptr<vector<LiteralID>> literal_pool) {
 
   max_variable_id_ = literals.end_lit().var() - 1;
 
@@ -20,29 +21,45 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
   variable_occurrence_lists_pool_.clear();
   variable_link_list_offsets_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
+  literal_pool_ = literal_pool;
+  literals_ = literals;
 
   vector<vector<ClauseOfs> > occs(max_variable_id_ + 1);
   vector<vector<unsigned> > occ_long_clauses(max_variable_id_ + 1);
   vector<vector<unsigned> > occ_ternary_clauses(max_variable_id_ + 1);
 
+  map_clause_id_to_ofs_.clear();
+  map_clause_id_to_ofs_.push_back(0);
+  ClauseOfs current_clause_ofs = 0;
+
   vector<unsigned> tmp;
   max_clause_id_ = 0;
   unsigned curr_clause_length = 0;
-  auto it_curr_cl_st = lit_pool.begin();
+  auto it_curr_cl_st = literal_pool_->begin();
 
-  for (auto it_lit = lit_pool.begin(); it_lit < lit_pool.end(); it_lit++) {
+  unsigned offset = 0;
+  for (auto it_lit = literal_pool_->begin(); it_lit < literal_pool_->end(); it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
 
-      if (it_lit + 1 == lit_pool.end())
+      if (it_lit + 1 == literal_pool_->end()) {
+        ++offset;
         break;
+      }
 
-      max_clause_id_++;
+      ++max_clause_id_;
+      ++offset;
+      for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++) {
+        ++offset;
+      }
+      current_clause_ofs = offset;
       it_lit += ClauseHeader::overheadInLits();
       it_curr_cl_st = it_lit + 1;
       curr_clause_length = 0;
-
+      assert(map_clause_id_to_ofs_.size() == max_clause_id_);
+      map_clause_id_to_ofs_.push_back(current_clause_ofs);
     } else {
       assert(it_lit->var() <= max_variable_id_);
+      ++offset;
       curr_clause_length++;
 
       getClause(tmp,it_curr_cl_st, *it_lit);

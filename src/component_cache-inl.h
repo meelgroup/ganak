@@ -8,52 +8,39 @@
 #ifndef COMPONENT_CACHE_INL_H_
 #define COMPONENT_CACHE_INL_H_
 
-CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryID super_comp_id){
-    CacheEntryID id;
+CacheEntryID ComponentCache::storeAsEntry(
+  CacheableComponent &ccomp,
+  CacheEntryID super_comp_id) {
 
-    while (statistics_.cache_full()){
-      if (!config_.quiet){
-        cout << "c Cache full!!" << endl;
-      }
-      deleteEntries();
+  CacheEntryID id;
+  while (statistics_.cache_full()) {
+    if (!config_.quiet) {
+      cout << "Cache full!!" << endl;
     }
-
-    assert(!statistics_.cache_full());
-
-    ccomp.set_creation_time(my_time_++);
-
-    if (free_entry_base_slots_.empty()) {
-        if (entry_base_.capacity() == entry_base_.size()) {
-            entry_base_.reserve(2 * entry_base_.size());
-            compute_byte_size_infrasture();
-        }
-        entry_base_.push_back(&ccomp);
-        id = entry_base_.size() - 1;
-    } else {
-        id = free_entry_base_slots_.back();
-        assert(id < entry_base_.size());
-        assert(entry_base_[id] == nullptr);
-        free_entry_base_slots_.pop_back();
-        entry_base_[id] = &ccomp;
+    deleteEntries();
+  }
+  assert(!statistics_.cache_full());
+  ccomp.set_creation_time(my_time_++);
+  if (free_entry_base_slots_.empty()) {
+    if (entry_base_.capacity() == entry_base_.size()) {
+      entry_base_.reserve(2 * entry_base_.size());
+      compute_byte_size_infrasture();
     }
-
-    entry(id).set_father(super_comp_id);
-    add_descendant(super_comp_id, id);
-
-    assert(hasEntry(id));
-    assert(hasEntry(super_comp_id));
-
-    statistics_.incorporate_cache_store(ccomp, config_.perform_pcc && ccomp.get_hacked());
-
-  #ifdef DEBUG
-      for (unsigned u = 2; u < entry_base_.size(); u++)
-            if (entry_base_[u] != nullptr) {
-              assert(entry_base_[u]->father() != id);
-              assert(entry_base_[u]->first_descendant() != id);
-              assert(entry_base_[u]->next_sibling() != id);
-            }
-  #endif
-    return id;
+    entry_base_.push_back(&ccomp);
+    id = entry_base_.size() - 1;
+  } else {
+    id = free_entry_base_slots_.back();
+    assert(id < entry_base_.size());
+    assert(entry_base_[id] == nullptr);
+    free_entry_base_slots_.pop_back();
+    entry_base_[id] = &ccomp;
+  }
+  entry(id).set_father(super_comp_id);
+  add_descendant(super_comp_id, id);
+  assert(hasEntry(id));
+  assert(hasEntry(super_comp_id));
+  statistics_.incorporate_cache_store(ccomp);
+  return id;
 }
 
 void ComponentCache::cleanPollutionsInvolving(CacheEntryID id) {
@@ -135,34 +122,32 @@ void ComponentCache::removeFromDescendantsTree(CacheEntryID id) {
 }
 
 void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count) {
-  considerCacheResize();
-  unsigned table_ofs = tableEntry(id);
-  // when storing the new model count the size of the model count
-  // and hence that of the component will change
-  statistics_.sum_bytes_cached_components_ -= entry(id).SizeInBytes();
-  statistics_.overall_bytes_components_stored_ -= entry(id).SizeInBytes();
+    considerCacheResize();
+    unsigned table_ofs = tableEntry(id);
+    // when storing the new model count the size of the model count
+    // and hence that of the component will change
+    statistics_.sum_bytes_cached_components_ -= entry(id).SizeInBytes();
+    statistics_.overall_bytes_components_stored_ -= entry(id).SizeInBytes();
+    // statistics_.sum_bytes_cached_components_ -= (sizeof(entry(id)) + entry(id).SizeInBytes());
+    // statistics_.overall_bytes_components_stored_ -= (sizeof(entry(id)) + entry(id).SizeInBytes());
+    // statistics_.sys_overhead_sum_bytes_cached_components_ -= entry(id).sys_overhead_SizeInBytes();
+    // statistics_.sys_overhead_overall_bytes_components_stored_ -= entry(id).sys_overhead_SizeInBytes();
 
-  statistics_.sys_overhead_sum_bytes_cached_components_ -= entry(id).sys_overhead_SizeInBytes();
-  statistics_.sys_overhead_overall_bytes_components_stored_ -= entry(id).sys_overhead_SizeInBytes();
-  if (config_.perform_pcc)
-    entry(id).set_hacked(entry(id).SizeInBytes(), entry(id).num_variables());
+    //std::cout << "storing model count " << model_count << " of " << id << "\n";
+    entry(id).set_model_count(model_count, my_time_);
+    entry(id).set_creation_time(my_time_);
 
-  entry(id).set_model_count(model_count,my_time_);
-  entry(id).set_creation_time(my_time_);
+    entry(id).set_next_bucket_element(table_[table_ofs]);
+    table_[table_ofs] = id;
 
-  entry(id).set_next_bucket_element(table_[table_ofs]);
-  table_[table_ofs] = id;
-
-  if (config_.perform_pcc){
-    statistics_.sum_bytes_cached_components_ += entry(id).SizeInBytes_CLHASH();
-    statistics_.overall_bytes_components_stored_ += entry(id).SizeInBytes_CLHASH();
-  }
-  else{
     statistics_.sum_bytes_cached_components_ += entry(id).SizeInBytes();
     statistics_.overall_bytes_components_stored_ += entry(id).SizeInBytes();
-  }
-  statistics_.sys_overhead_sum_bytes_cached_components_ += entry(id).sys_overhead_SizeInBytes();
-  statistics_.sys_overhead_overall_bytes_components_stored_ += entry(id).sys_overhead_SizeInBytes();
+    // statistics_.sum_bytes_cached_components_ += (sizeof(entry(id)) + entry(id).SizeInBytes());
+    // statistics_.overall_bytes_components_stored_ += (sizeof(entry(id)) + entry(id).SizeInBytes());
+    // cout << "Size " << entry(id).SizeInBytes()<< endl;
+    // cout << "Sys overhead Size "<< entry(id).sys_overhead_SizeInBytes()<< endl;
+    statistics_.sys_overhead_sum_bytes_cached_components_ += entry(id).sys_overhead_SizeInBytes();
+    statistics_.sys_overhead_overall_bytes_components_stored_ += entry(id).sys_overhead_SizeInBytes();
 }
 
 

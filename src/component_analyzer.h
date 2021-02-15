@@ -12,7 +12,7 @@
 
 #include "statistics.h"
 #include "component_types/component.h"
-#include "component_types/base_packed_component.h"
+#include "component_types/cacheable_component.h"
 #include "component_types/component_archetype.h"
 
 

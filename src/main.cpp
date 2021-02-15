@@ -12,18 +12,15 @@
 
 using namespace std;
 
-int main(int argc, char *argv[])
-{
+
+int main(int argc, char *argv[]) {
 
   string input_file;
   Solver theSolver;
 
-  cout << "c Outputting solution to console" << endl;
-  cout << "c GANAK version 1.0.0" << endl;
 
-  if (argc <= 1)
-  {
-    cout << "Usage: ganak [options] [CNF_File]" << endl;
+  if (argc <= 1) {
+    cout << "Usage: sym_ganak [options] [CNF_File]" << endl;
     cout << "Options: " << endl;
     cout << "\t -noPP  \t\t turn off preprocessing" << endl;
     cout << "\t -q     \t\t quiet mode" << endl;
@@ -33,14 +30,19 @@ int main(int argc, char *argv[])
     cout << "\t -noIBCP\t\t turn off implicit BCP" << endl;
     cout << "\t -noPCC\t\t\t turn off probabilistic component caching" << endl;
     cout << "\t -seed [n]\t\t set random seed to n (Default: 1000)" << endl;
-    cout << "\t -m [n] \t\t set the range of hash function (= 64 x n) (Default: 1) " << endl;
-    cout << "\t -delta [n] \t\t set the confidence parameter to n (Default: 0.05) " << endl;
+    cout << "\t -m [n] \t\t set the range of hash function (= 64 x n) (Default: 1) "<<endl;
+    cout << "\t -delta [n] \t\t set the confidence parameter to n (Default: 0.05) "<<endl;
     cout << "\t -noCSVSADS\t\t turn off CSVSADS variable branching heuristic" << endl;
+    cout << "\t -isoCS \t\t Use Isomorphism CSVSADS (conflicts with -noCSVSADS)" << endl;
     cout << "\t -pol [Polarity]\t Polarity: true, false, default, polaritycache (Default: polaritycache)" << endl;
     cout << "\t -EDR\t\t\t turn on EDR variable branching heuristic" << endl;
     cout << "\t -LSO [n]\t\t learn and start over after n decisions (Default: 5000)" << endl;
-    cout << "\t -noPMC\t\t\t turn off projected model counting " << endl;
-    cout << "\t -maxdec [n] [m] \t terminate after n decision if conflict is less than m " << endl;
+    cout << "\t -noPMC\t\t\t turn off projected model counting" << endl;
+    cout << "\t -maxdec [n] [m] \t terminate after n decision if conflict is less than m "<<endl;
+    cout << "\t -useSTD \t\t use STD encoding for component caching "<< endl;
+    cout << "\t -useIsoCC \t\t enable isomorphic component caching." << endl;
+    cout << "\t -isoLB [n] \t\t use isomorphic component caching only for components of size at least n (must be used with -useIsoCC)." << endl;
+    cout << "\t -isoUB [n] \t\t use isomorphic component caching only for components of size at most n (must be used with -useIsoCC)." << endl;
     cout << "\t" << endl;
     return -1;
   }
@@ -60,22 +62,20 @@ int main(int argc, char *argv[])
       theSolver.config().perform_pcc = false;
     } else if (strcmp(argv[i], "-noCSVSADS") == 0) {
       theSolver.config().use_csvsads = false;
+    } else if (strcmp(argv[i], "-isoCS") == 0) {
+        theSolver.config().use_icsvsads = true;
+        theSolver.config().use_csvsads = true;
     } else if (strcmp(argv[i], "-noPMC") == 0) {
       theSolver.config().perform_projectedmodelcounting = false;
     } else if (strcmp(argv[i], "-EDR") == 0) {
       theSolver.config().use_csvsads = false;
       theSolver.config().use_edr = true;
-    } else if (strcmp(argv[i], "-t") == 0) {
-      if (argc <= i + 1)
-      {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      }
-      theSolver.config().time_bound_seconds = atol(argv[i + 1]);
-      cout << "c time bound set to " << theSolver.config().time_bound_seconds << "s" << endl;
+    } else if (strcmp(argv[i], "-useSTD") == 0) {
+      cout << "Using STD encoding for component caching." << endl;
+      theSolver.config().use_std = true;
     } else if (strcmp(argv[i], "-LSO") == 0) {
       if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
+        cout << " wrong parameters" << endl;
         return -1;
       } else {
         theSolver.config().lsoafterdecisions = atol(argv[i + 1]);
@@ -85,83 +85,112 @@ int main(int argc, char *argv[])
       }
     } else if (strcmp(argv[i], "-seed") == 0) {
       if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
+        cout << " wrong parameters" << endl;
         return -1;
       } else {
         theSolver.config().randomseed = atol(argv[i + 1]);
       }
     } else if (strcmp(argv[i], "-m") == 0) {
       if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
+        cout << " wrong parameters" << endl;
         return -1;
       } else {
         theSolver.config().hashrange = atol(argv[i + 1]);
-        cout << "c The value of hashrange is 64x" << theSolver.config().hashrange << endl;
+        cout << "The value of hashrange is 64x"<<theSolver.config().hashrange<< endl;
       }
     } else if (strcmp(argv[i], "-delta") == 0) {
       if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
+        cout << " wrong parameters" << endl;
         return -1;
       } else {
         theSolver.config().delta = stof(argv[i + 1]);
-        cout << "c The value of delta is " << theSolver.config().delta << endl;
+        cout << "The value of delta is "<< theSolver.config().delta<< endl; 
       }
     } else if (strcmp(argv[i], "-pol") == 0) {
       if (argc <= i + 1) {
-        cout << "ERROR: must give polarity type" << endl;
+        cout << " must give polarity type" << endl;
         return -1;
       }
       bool found = false;
       if (strcmp(argv[i + 1], "true") == 0) {
-        theSolver.config().polarity_config = polar_true;
-        found = true;
-      }
-      if (strcmp(argv[i + 1], "false") == 0) {
-        theSolver.config().polarity_config = polar_false;
-        found = true;
-      }
-      if (strcmp(argv[i + 1], "default") == 0) {
-        theSolver.config().polarity_config = polar_default;
-        found = true;
-      }
-      if (strcmp(argv[i + 1], "polaritycache") == 0) {
-        theSolver.config().polarity_config = polaritycache;
-        found = true;
+          theSolver.config().polarity_config = polar_true;
+          found = true;
+      } else if (strcmp(argv[i + 1], "false") == 0) {
+          theSolver.config().polarity_config = polar_false;
+          found = true;
+      } else if (strcmp(argv[i + 1], "default") == 0) {
+          theSolver.config().polarity_config = polar_default;
+          found = true;
+      } else if (strcmp(argv[i + 1], "polaritycache") == 0) {
+          theSolver.config().polarity_config = polaritycache;
+          found = true;
       }
       if (!found) {
-        cout << "ERROR: The option to '-pol' you gave, '" << argv[i + 1] << "' cannot be parsed" << endl;
-        exit(-1);
+          cout << "ERROR: The option to '-pol' you gave, '" << argv[i + 1] << "' cannot be parsed" << endl;
+          exit(-1);
       }
-    }
-    else if (strcmp(argv[i], "-cs") == 0)
-    {
-      if (argc <= i + 1)
-      {
-        cout << "ERROR: wrong parameters" << endl;
+    } else if (strcmp(argv[i], "-t") == 0) {
+      if (argc <= i + 1) {
+        cout << " wrong parameters" << endl;
         return -1;
       }
-      theSolver.statistics().maximum_cache_size_bytes_ = atol(argv[i + 1]) * (uint64_t)1000000;
-    }
-    else if (strcmp(argv[i], "-maxdec") == 0)
-    {
-      if (argc <= i + 2)
-      {
-        cout << "ERROR: wrong parameters" << endl;
+      theSolver.config().time_bound_seconds = atol(argv[i + 1]);
+      if (theSolver.config().verbose) {
+        cout << "time bound set to " << theSolver.config().time_bound_seconds << " s\n";
+      }
+    } else if (strcmp(argv[i], "-cs") == 0) {
+      if (argc <= i + 1) {
+        cout << " wrong parameters" << endl;
         return -1;
       }
-      else
-      {
+      theSolver.statistics().maximum_cache_size_bytes_ = atol(argv[i + 1]) * (uint64_t) 1000000;
+    } else if (strcmp(argv[i], "-maxdec") == 0) {
+      if (argc <= i + 2) {
+        cout << " wrong parameters" << endl;
+        return -1;
+      } else {
         theSolver.config().maxdec = atol(argv[i + 1]);
         theSolver.config().minconflicts_ = atol(argv[i + 2]);
         theSolver.config().maxdecterminate = true;
       }
-    }
-    else
+    } else if (strcmp(argv[i], "-useIsoCC") == 0) {
+      theSolver.config().use_isocc = true;
+      if (theSolver.config().verbose) cout << "Using isomorphic component caching." << endl;
+    } else if (strcmp(argv[i], "-isoLB") == 0) {
+      if (argc <= i + 1) {
+        cout << " wrong parameters" << endl;
+        return -1;
+      }
+      theSolver.config().use_isocc = true;
+      theSolver.config().isocc_lb = atol(argv[i + 1]);
+      if (theSolver.config().verbose) {
+        cout << "isoCC lower bound set to " << theSolver.config().isocc_lb << endl;
+      }
+    } else if (strcmp(argv[i], "-isoUB") == 0) {
+      if (argc <= i + 1) {
+        cout << " wrong parameters" << endl;
+        return -1;
+      }
+      theSolver .config().use_isocc = true;
+      theSolver.config().isocc_ub = atol(argv[i + 1]);
+      theSolver.config().isocc_ub_set = true;
+      if (theSolver.config().verbose) {
+        cout << "isoCC upper bound set to " << theSolver.config().isocc_ub << endl;
+      }
+    } else {
       input_file = argv[i];
+    }
   }
 
-  cout << "c ganak GIT revision: " << Ganak::get_version_sha1() << endl;
-  cout << "c ganak build env: " << Ganak::get_compilation_env() << endl;
+  // Fixing configuration
+  if (theSolver.config().use_isocc && theSolver.config().perform_projectedmodelcounting) {
+      theSolver.config().perform_projectedmodelcounting = false;
+      cout << "useIsoCC is incompatible with projected model counting (PMC). PMC has been disabled." << endl;
+  }
+
+  // Start
+  cout << "c sym_ganak GIT revision: " << SymGanak::get_version_sha1() << endl;
+  cout << "c sym_ganak build env: " << SymGanak::get_compilation_env() << endl;
   theSolver.solve(input_file);
   return 0;
 }

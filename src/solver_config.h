@@ -25,17 +25,25 @@ struct SolverConfiguration {
   bool perform_pre_processing = true;
   bool perform_pcc = true;
   bool use_csvsads = true;
+  bool use_icsvsads = false;
   bool use_edr = false;
+  bool use_std = false;
   bool use_lso = true;
   bool verbose = false;
   bool perform_projectedmodelcounting = true;
   // quiet = true will override verbose;
   bool quiet = false;
   bool maxdecterminate = false;
-
+  // Whether to use isomorphic component caching?
+  bool use_isocc = false;
 
   unsigned long time_bound_seconds = 100000;
   unsigned long randomseed = 1000;
+
+  // isoCC lower and upper bounds.
+  bool isocc_ub_set = false;
+  unsigned int isocc_lb = 0;
+  unsigned int isocc_ub;
   
   unsigned hashrange = 1;
   unsigned lsoafterdecisions = 5000;

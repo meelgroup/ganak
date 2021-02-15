@@ -7,12 +7,16 @@
 
 #include "component_management.h"
 
-void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
-    vector<LiteralID> &lit_pool, unsigned num_variables){
+void ComponentManager::initialize(
+  LiteralIndexedVector<Literal> & literals,
+  shared_ptr<vector<LiteralID>> literal_pool,
+  unsigned num_variables) {
 
-  ana_.initialize(literals, lit_pool);
+  ana_.initialize(literals, literal_pool);
   // BEGIN CACHE INIT
-  CacheableComponent::adjustPackSize(ana_.max_variable_id(), ana_.max_clause_id());
+  PackedComponent::adjustPackSize(
+    ana_.max_variable_id(),
+    ana_.max_clause_id());
 
   component_stack_.clear();
   component_stack_.reserve(ana_.max_variable_id() + 2);
@@ -23,13 +27,20 @@ void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
       ana_.max_clause_id());
 
 
-  cache_.init(*component_stack_.back(), seedforCLHASH);
+  cache_.init(*component_stack_.back());
   cachescore_.reserve(num_variables + 5);
   for (unsigned i = 0 ; i < (num_variables + 5); i++){
     cachescore_.push_back(0);
   }
 }
 
+void ComponentManager::destroy() {
+  while(component_stack_.size() > 0) {
+    delete component_stack_.back();
+    component_stack_.pop_back();
+  }
+  
+}
 
 void ComponentManager::removeAllCachePollutionsOf(StackLevel &top) {
   // all processed components are found in

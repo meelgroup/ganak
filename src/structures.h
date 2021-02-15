@@ -70,9 +70,11 @@ public:
     cout << (sign() ? " " : "-") << var() << " ";
   }
   int val() const {
-    return (sign() ? var() : -1*var());
+    return (sign() ? var() : -1 * var());
   }
   unsigned raw() const { return value_;}
+
+  explicit operator unsigned() const { return value_;}
 
 private:
   unsigned value_;
@@ -88,6 +90,11 @@ public:
   vector<LiteralID> binary_links_ = vector<LiteralID>(1,SENTINEL_LIT);
   vector<ClauseOfs> watch_list_ = vector<ClauseOfs>(1,SENTINEL_CL);
   float activity_score_ = 0.0f;
+
+  /**
+   * The number of binary_links that were originally in the component (so not learned binary clauses).
+   */
+  unsigned binary_links_orig_size = 0;
 
   void increaseActivity(unsigned u = 1){
     activity_score_+= u;
@@ -114,9 +121,17 @@ public:
     watch_list_.push_back(clause_ofs);
   }
 
-  void addBinLinkTo(LiteralID lit) {
-    binary_links_.back() = lit;
-    binary_links_.push_back(SENTINEL_LIT);
+  /**
+   * Add binary link to lit.
+   * @param lit The literal to add a link to.
+   * @param original Whether to count this as part of the original non-learned binary clauses.
+   * Once this has been called with false, it should always be called with false from then on.
+   */
+  void addBinLinkTo(LiteralID lit, bool original) {
+      binary_links_.back() = lit;
+      binary_links_.push_back(SENTINEL_LIT);
+      if (original)
+          binary_links_orig_size++;
   }
 
   void resetWatchList(){

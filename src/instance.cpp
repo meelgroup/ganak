@@ -41,7 +41,7 @@ void Instance::cleanClause(ClauseOfs cl_ofs) {
     *beginOf(cl_ofs) = SENTINEL_LIT;
     // if it has become binary, transform it to binary and delete it
   } else if (length == 2) {
-    addBinaryClause(*beginOf(cl_ofs), *(beginOf(cl_ofs) + 1));
+    addBinaryClause(*beginOf(cl_ofs), *(beginOf(cl_ofs) + 1), true);
     *beginOf(cl_ofs) = SENTINEL_LIT;
   }
 }
@@ -51,13 +51,13 @@ void Instance::compactClauses() {
   clause_ofs.reserve(statistics_.num_long_clauses_);
 
   // clear watch links and occurrence lists
-  for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
+  for (auto it_lit = literal_pool_->begin(); it_lit != literal_pool_->end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
-      if (it_lit + 1 == literal_pool_.end())
+      if (it_lit + 1 == literal_pool_->end())
         break;
       it_lit += ClauseHeader::overheadInLits();
-      clause_ofs.push_back(1 + it_lit - literal_pool_.begin());
+      clause_ofs.push_back(1 + it_lit - literal_pool_->begin());
     }
   }
 
@@ -70,25 +70,25 @@ void Instance::compactClauses() {
   occurrence_lists_.clear();
   occurrence_lists_.resize(variables_.size());
 
-  vector<LiteralID> tmp_pool = literal_pool_;
-  literal_pool_.clear();
-  literal_pool_.push_back(SENTINEL_LIT);
+  vector<LiteralID> tmp_pool = *(literal_pool_.get());
+  literal_pool_->clear();
+  literal_pool_->push_back(SENTINEL_LIT);
   ClauseOfs new_ofs;
   unsigned num_clauses = 0;
   for (auto ofs : clause_ofs) {
     auto it = (tmp_pool.begin() + ofs);
     if (*it != SENTINEL_LIT) {
       for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
-        literal_pool_.push_back(0);
-      new_ofs = literal_pool_.size();
+        literal_pool_->push_back(0);
+      new_ofs = literal_pool_->size();
       literal(*it).addWatchLinkTo(new_ofs);
       literal(*(it + 1)).addWatchLinkTo(new_ofs);
       num_clauses++;
       for (; *it != SENTINEL_LIT; it++) {
-        literal_pool_.push_back(*it);
+        literal_pool_->push_back(*it);
         occurrence_lists_[*it].push_back(new_ofs);
       }
-      literal_pool_.push_back(SENTINEL_LIT);
+      literal_pool_->push_back(SENTINEL_LIT);
     }
   }
 
@@ -102,6 +102,7 @@ void Instance::compactClauses() {
     bin_links += tmp_bin.size();
     tmp_bin.push_back(SENTINEL_LIT);
     l.binary_links_ = tmp_bin;
+    l.binary_links_orig_size = tmp_bin.size();
   }
   statistics_.num_long_clauses_ = num_clauses;
   statistics_.num_binary_clauses_ = bin_links >> 1;
@@ -111,7 +112,6 @@ void Instance::compactVariables() {
   var_map.resize(variables_.size(), 0);
   unsigned last_ofs = 0;
   unsigned num_isolated = 0;
-  unsigned num_pisolated = 0;
   LiteralIndexedVector<vector<LiteralID> > _tmp_bin_links(1);
   LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
 
@@ -122,8 +122,6 @@ void Instance::compactVariables() {
   for (unsigned v = 1; v < variables_.size(); v++)
     if (isActive(v)) {
       if (isolated(v)) {
-        if (independent_support_.find(v) != independent_support_.end())
-          num_pisolated ++;
         num_isolated++;
         continue;
       }
@@ -157,7 +155,7 @@ void Instance::compactVariables() {
       for (auto it = _tmp_bin_links[l].begin(); *it != SENTINEL_LIT; it++) {
         assert(var_map[it->var()] != 0);
         literals_[newlit].addBinLinkTo(
-            LiteralID(var_map[it->var()], it->sign()));
+            LiteralID(var_map[it->var()], it->sign()), true);
       }
       bin_links += literals_[newlit].binary_links_.size() - 1;
     }
@@ -165,13 +163,13 @@ void Instance::compactVariables() {
 
   vector<ClauseOfs> clause_ofs;
   clause_ofs.reserve(statistics_.num_long_clauses_);
-  for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
+  for (auto it_lit = literal_pool_->begin(); it_lit != literal_pool_->end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
-      if (it_lit + 1 == literal_pool_.end())
+      if (it_lit + 1 == literal_pool_->end())
         break;
       it_lit += ClauseHeader::overheadInLits();
-      clause_ofs.push_back(1 + it_lit - literal_pool_.begin());
+      clause_ofs.push_back(1 + it_lit - literal_pool_->begin());
     }
   }
 
@@ -194,7 +192,10 @@ void Instance::compactVariables() {
 
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = num_isolated;
-  statistics_.num_free_projected_variables_ = num_pisolated;
+  cout << "Indep Support: ";
+  for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it)
+        cout << ' ' << *it;
+  cout << endl;
 }
 
 void Instance::compactConflictLiteralPool(){
@@ -205,7 +206,7 @@ void Instance::compactConflictLiteralPool(){
     auto read_pos = beginOf(clause_ofs) - ClauseHeader::overheadInLits();
     for(unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
       *(write_pos++) = *(read_pos++);
-    ClauseOfs new_ofs =  write_pos - literal_pool_.begin();
+    ClauseOfs new_ofs =  write_pos - literal_pool_->begin();
     conflict_clauses_.push_back(new_ofs);
     // first substitute antecedent if clause_ofs implied something
     if(isAntecedentOf(clause_ofs, *beginOf(clause_ofs)))
@@ -220,7 +221,7 @@ void Instance::compactConflictLiteralPool(){
       *(write_pos++) = *(read_pos++);
     *(write_pos++) = SENTINEL_LIT;
   }
-  literal_pool_.erase(write_pos,literal_pool_.end());
+  literal_pool_->erase(write_pos,literal_pool_->end());
 }
 
 bool Instance::deleteConflictClauses() {
@@ -228,26 +229,26 @@ bool Instance::deleteConflictClauses() {
   vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
   conflict_clauses_.clear();
   vector<double> tmp_ratios;
-  double score, lifetime;
+  double score;
   for(auto clause_ofs: tmp_conflict_clauses){
     score = getHeaderOf(clause_ofs).score();
-    lifetime = statistics_.num_conflicts_ - getHeaderOf(clause_ofs).creation_time();
-   // tmp_ratios.push_back(score/lifetime);
     tmp_ratios.push_back(score);
 
   }
-  vector<double> tmp_ratiosB = tmp_ratios;
+  if (tmp_ratios.size()) {
+    vector<double> tmp_ratiosB = tmp_ratios;
 
-  sort(tmp_ratiosB.begin(), tmp_ratiosB.end());
+    sort(tmp_ratiosB.begin(), tmp_ratiosB.end());
 
-  double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
+    double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
 
-  for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
-    if(tmp_ratios[i] < cutoff){
-      if(!markClauseDeleted(tmp_conflict_clauses[i]))
+    for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
+      if(tmp_ratios[i] < cutoff){
+        if(!markClauseDeleted(tmp_conflict_clauses[i]))
+          conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+      } else
         conflict_clauses_.push_back(tmp_conflict_clauses[i]);
-    } else
-      conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+    }
   }
   return true;
 }
@@ -263,7 +264,6 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
   return true;
 }
 
-
 void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
   string idstring;
   int lit;
@@ -273,9 +273,7 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
     input_file.unget();
     return;
   }
-  if (c == 'c') {
-    input_file.unget();
-  }
+  input_file.unget();
   if (c == 'c' &&
       input_file >> idstring &&
       idstring == "ind") {
@@ -299,8 +297,8 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
   }
 }
 
+
 bool Instance::createfromFile(const string &file_name) {
-  // Number of variable, clauses and projected variables.
   unsigned int nVars, nCls, nPVars;
   int lit;
   unsigned max_ignore = 1000000;
@@ -311,14 +309,15 @@ bool Instance::createfromFile(const string &file_name) {
   char c;
   independent_support_.clear();
   // clear everything
-  literal_pool_.clear();
-  literal_pool_.push_back(SENTINEL_LIT);
+  literal_pool_->clear();
+  literal_pool_->push_back(SENTINEL_LIT);
 
   variables_.clear();
   variables_.push_back(Variable()); //initializing the Sentinel
   literal_values_.clear();
   unit_clauses_.clear();
 
+  ///BEGIN File input
   ifstream input_file(file_name);
   if (!input_file) {
     cerr << "Cannot open file: " << file_name << endl;
@@ -333,21 +332,15 @@ bool Instance::createfromFile(const string &file_name) {
     if (c == 'p'){
       break;
     }
-
-    input_file >> idstring;
-    if (c == 'c' &&
-        idstring == "ind" )
-    {
-      while ((input_file >> lit) && lit != 0) {
+    if (input_file >> idstring && c == 'c' && idstring == "ind" ){
+      while ((input_file >> lit) && lit != 0){
         independent_support_.insert(lit);
       }
     }
-
     if (idstring == "p")
       break;
     input_file.ignore(max_ignore, '\n');
   }
-
   input_file >> idstring;
   if (!(idstring == "cnf" || idstring == "pcnf"))
   {
@@ -375,7 +368,7 @@ bool Instance::createfromFile(const string &file_name) {
 
   variables_.resize(nVars + 1);
   literal_values_.resize(nVars + 1, X_TRI);
-  literal_pool_.reserve(filestatus.st_size);
+  literal_pool_->reserve(filestatus.st_size);
   conflict_clauses_.reserve(2*nCls);
   occurrence_lists_.clear();
   occurrence_lists_.resize(nVars + 1);
@@ -385,8 +378,6 @@ bool Instance::createfromFile(const string &file_name) {
 
   while ((input_file >> c) && clauses_added < nCls) {
     parseProjection(pcnf, input_file, c);
-
-    //Parse clause
     if ((c == '-') || isdigit(c)) {
       input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
       literals.clear();
@@ -408,10 +399,12 @@ bool Instance::createfromFile(const string &file_name) {
         }
       }
       if (!skip_clause) {
-        assert(!literals.empty());
+        if (literals.empty()) {
+          return false;
+        }
         clauses_added++;
         statistics_.incorporateClauseData(literals);
-        ClauseOfs cl_ofs = addClause(literals);
+        ClauseOfs cl_ofs = addClause(literals, true);
         if (literals.size() >= 3)
           for (auto l : literals)
             occurrence_lists_[l].push_back(cl_ofs);
@@ -420,12 +413,11 @@ bool Instance::createfromFile(const string &file_name) {
     input_file.ignore(max_ignore, '\n');
   }
   input_file.unget();
-
   while (input_file >> c){
     parseProjection(pcnf, input_file, c);
-  }
-
-
+    input_file.ignore(max_ignore, '\n');
+  } 
+  ///END NEW
   input_file.close();
   //  /// END FILE input
 
@@ -439,8 +431,6 @@ bool Instance::createfromFile(const string &file_name) {
   statistics_.num_original_unit_clauses_ = statistics_.num_unit_clauses_ =
       unit_clauses_.size();
 
-  original_lit_pool_size_ = literal_pool_.size();
+  original_lit_pool_size_ = literal_pool_->size();
   return true;
 }
-
-

@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <vector>
+#include <iostream>
 
 #include "../primitive_types.h"
 
@@ -89,6 +90,19 @@ public:
   void clear() {
     clauses_ofs_ = 0;
     data_.clear();
+    data_.shrink_to_fit();
+  }
+
+  void printcomp() {
+    if (!data_.empty()) {
+      cout << "HC encoding: " << endl;
+      for (unsigned int i : data_) {
+        cout << i << " ";
+        if (i == 0) {
+          cout << endl;
+        }
+      }
+    }
   }
 
 private:
@@ -100,6 +114,7 @@ private:
   // this order has to be taken care of on filling
   // in the data!
   vector<unsigned> data_;
+
   unsigned clauses_ofs_ = 0;
   // id_ will identify denote the entry in the cacheable component database,
   // where a Packed version of this component is stored

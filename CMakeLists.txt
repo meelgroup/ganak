@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.3)
-project (ganak) 
+project (sym_ganak) 
 
 # -----------------------------------------------------------------------------
 # Make RelWithDebInfo the default build type if otherwise not set
@@ -269,7 +269,7 @@ if (GIT_EXECUTABLE)
 else()
   set(GIT_SHA "GIT-hash-notfound")
 endif()
-set(GANAK_FULL_VERSION "2.0.0")
+set(GANAK_FULL_VERSION "1.0.0")
 
 string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
 SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})

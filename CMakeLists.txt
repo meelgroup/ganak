@@ -18,7 +18,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.10 FATAL_ERROR)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
+
+enable_language( CXX )
+
+message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
+message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
+
+if(POLICY CMP0048)
+    #policy for VERSION in cmake 3.0
+    cmake_policy(SET CMP0048 NEW)
+endif()
+
+
+if(POLICY CMP0022)
+    cmake_policy(SET CMP0022 NEW)
+endif()
+
+if(POLICY CMP0046)
+    cmake_policy(SET CMP0046 NEW)
+endif()
+
+if(POLICY CMP0026)
+    cmake_policy(SET CMP0026 NEW)
+endif()
+
+if(POLICY CMP0104)
+    cmake_policy(SET CMP0104 NEW)
+endif()
+
+
 project (ganak) 
 
 # -----------------------------------------------------------------------------

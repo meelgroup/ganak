@@ -263,7 +263,7 @@ void Solver::solve(const string &file_name)
   } else {
     writefile = "out.mc";
   }
-  statistics_.writeToFile(writefile, config_.perform_projectedmodelcounting);
+//  statistics_.writeToFile(writefile, config_.perform_projectedmodelcounting);
   statistics_.printShort(config_.perform_projectedmodelcounting);
 }
 

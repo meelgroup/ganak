@@ -65,6 +65,11 @@ void DataAndStatistics::writeToFile(const string & file_name, const bool pmc) {
       << "/" << getAvgCacheHitSize() << endl;
   out << "c " << endl;
   out << "c " << endl;
+  if (final_solution_count_ == 0) {
+    out << "s UNSATISFIABLE " << endl;
+  } else {
+    out << "s SATISFIABLE " << endl;
+  }
   out << "c # solutions " << endl;
   if (pmc) {
     out << "s pmc " << std::flush;
@@ -127,6 +132,11 @@ void DataAndStatistics::printShort(const bool pmc) {
   cout << "c " << endl;
   cout << "c " << endl;
   cout << "c time: " << time_elapsed_ << "s" << endl;
+  if (final_solution_count_ == 0) {
+    cout << "s UNSATISFIABLE " << endl;
+  } else {
+    cout << "s SATISFIABLE " << endl;
+  }
   if (pmc) {
     cout << "s pmc " << std::flush;
   } else {

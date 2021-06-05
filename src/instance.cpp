@@ -112,6 +112,7 @@ void Instance::compactVariables() {
   var_map.resize(variables_.size(), 0);
   unsigned last_ofs = 0;
   unsigned num_isolated = 0;
+  unsigned num_pisolated = 0;
   LiteralIndexedVector<vector<LiteralID> > _tmp_bin_links(1);
   LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
 
@@ -122,6 +123,10 @@ void Instance::compactVariables() {
   for (unsigned v = 1; v < variables_.size(); v++)
     if (isActive(v)) {
       if (isolated(v)) {
+        if (independent_support_.find(v) != independent_support_.end()) {
+          num_pisolated ++;
+        }
+        
         num_isolated++;
         continue;
       }
@@ -192,10 +197,13 @@ void Instance::compactVariables() {
 
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = num_isolated;
+  statistics_.num_free_projected_variables_ = num_pisolated;
+/*
   cout << "Indep Support: ";
   for (auto it=independent_support_.begin(); it != independent_support_.end(); ++it)
         cout << ' ' << *it;
   cout << endl;
+*/
 }
 
 void Instance::compactConflictLiteralPool(){

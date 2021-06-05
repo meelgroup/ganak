@@ -250,7 +250,12 @@ void Solver::solve(const string &file_name)
       cout << "-1" << endl;
       exit(1);
     }
-    statistics_.set_final_solution_count(stack_.top().getTotalModelCount());
+    if (config_.perform_projectedmodelcounting) {
+      statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount());
+    } else {
+      statistics_.set_final_solution_count(stack_.top().getTotalModelCount());
+    }
+
     statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
   }
   else

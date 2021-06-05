@@ -43,6 +43,7 @@ public:
   // number of variables that actually occurs in clauses
   unsigned long num_used_variables_ = 0;
   unsigned long num_free_variables_ = 0;
+  unsigned long num_free_projected_variables_ = 0;
 
   /// different clause counts
 
@@ -171,6 +172,10 @@ public:
 
   unsigned long clause_deletion_interval() {
     return 10000 + 10 * times_conflict_clauses_cleaned_;
+  }
+
+  void set_final_solution_count_projected(const mpz_class &count) {
+    mpz_mul_2exp(final_solution_count_.get_mpz_t (), count.get_mpz_t (), num_free_projected_variables_);
   }
 
   void set_final_solution_count(const mpz_class &count) {

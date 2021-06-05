@@ -116,8 +116,10 @@ private:
 	  ComponentManager(
 	    config_,
 	    statistics_,
-		literal_values_,
-		literals_);
+            literal_values_,
+            literals_,
+            independent_support_,
+            config_.perform_projectedmodelcounting);
 
 	// the last time conflict clauses have been deleted
 	unsigned long last_ccl_deletion_time_ = 0;

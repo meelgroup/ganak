@@ -16,6 +16,7 @@
 // #include <vector>
 #include <unordered_map>
 #include <random>
+#include <set>
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
@@ -35,8 +36,13 @@ class ComponentManager
 {
 public:
   ComponentManager(SolverConfiguration &config, DataAndStatistics &statistics,
-                   LiteralIndexedVector<TriValue> &lit_values, LiteralIndexedVector<Literal> &literals) : config_(config), statistics_(statistics), cache_(statistics, config_),
-                                                                                                          ana_(statistics, lit_values, config_, literals)
+                   LiteralIndexedVector<TriValue> &lit_values,
+                   LiteralIndexedVector<Literal> &literals,
+                   std::set<unsigned> &independent_support,
+                   bool perform_projected_model_counting) : config_(config),
+                                                            statistics_(statistics),
+                                                            cache_(statistics, config_),
+                                                            ana_(statistics, lit_values, independent_support, perform_projected_model_counting, config_, literals)
   {
   }
   ~ComponentManager() {

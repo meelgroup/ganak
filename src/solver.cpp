@@ -192,6 +192,9 @@ void Solver::solve(const string &file_name) {
 
 	if (notfoundUNSAT) {
     notfoundUNSAT = simplePreProcess();
+		if (!config_.quiet) {
+			cout << "c Preprocessing done" << endl;
+		}
     comp_manager_.save_partial_solution();
   }
   
@@ -517,7 +520,7 @@ retStateT Solver::backtrack() {
 			}
 			reactivateTOS();
 			stack_.pop_back();
-		}while (stack_.get_decision_level() > 0);
+		} while (stack_.get_decision_level() > 0);
 		statistics_.num_decisions_ = 0;
     comp_manager_.reset_solutions();
 		return RESTART;
@@ -717,7 +720,7 @@ retStateT Solver::resolveConflict() {
 
 	stack_.top().changeBranch();
 	LiteralID lit = TOS_decLit();
-	reactivateTOS();
+	reactivateTOS(false /* include_partial_solution */);
 	setLiteralIfFree(lit.neg(), false /* partial_include */, ant);
 //END Backtracking
 	return RESOLVED;

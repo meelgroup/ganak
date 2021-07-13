@@ -309,7 +309,7 @@ void Instance::parseWeights(ifstream& input_file, char& c) {
       assert(delimiter == 0);
     }
     const unsigned index = literal < 0 ? -1 * literal : literal;
-    variables_[index].assign_weight(weight, literal > 0);
+    variables_[index].assign_weight(weight, literal > 0, index);
   }
 }
 

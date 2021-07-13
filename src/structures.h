@@ -183,11 +183,30 @@ struct Variable {
   bool set = false;
 
   public:
-    void assign_weight(const mpf_class &weight, const bool lit_sign) {
+    void assign_weight(const mpf_class &weight, const bool lit_sign, const int index) {
+      // cout << " Assigning weight " << weight << " to literal " << (lit_sign == false ? -1 * index : index) << endl;
       if (lit_sign) {
+        if (mpf_cmp_d(pos_weight_.get_mpf_t(), 1.0)) {
+          if (!mpf_cmp(pos_weight_.get_mpf_t(), weight.get_mpf_t())) {
+            cerr << "The sum of positive and negative literal is not equal to 1 for variable " << index
+                 << " pos weight " << weight << " neg weight " <<  neg_weight_  <<  endl;
+            exit(-1);
+          }
+          return;
+        }
         pos_weight_ = weight;
+        neg_weight_ = 1 - weight;
       } else {
+        if (mpf_cmp_d(neg_weight_.get_mpf_t(), 1.0)) {
+          if (!mpf_cmp(neg_weight_.get_mpf_t(), weight.get_mpf_t())) {
+            cerr << "The sum of positive and negative literal is not equal to 1 for variable " << index
+                 << " pos weight " << pos_weight_ << " neg weight " <<  weight  <<  endl;
+            exit(-1);
+          }
+          return;
+        }
         neg_weight_ = weight;
+        pos_weight_ = 1 - weight;
       }
     }
     const mpf_class &get_weight(const bool lit_sign) const {

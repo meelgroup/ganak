@@ -275,22 +275,24 @@ private:
 		return literal_stack_[stack_.top().literal_stack_ofs()];
 	}
 
-	void reactivateTOS() {
+	void reactivateTOS(const bool include_partial_sol = true) {
 		for (auto it = TOSLiteralsBegin(); it != literal_stack_.end(); it++) {
 			unSet(*it);
-      if (config_.perform_projectedmodelcounting) {
-				if (independent_support_.count((*it).var()) != 0) {
+			if (include_partial_sol) {
+				if (config_.perform_projectedmodelcounting) {
+					if (independent_support_.count((*it).var()) != 0) {
+						if (var(*it).polarity) {
+							comp_manager_.include_partial_solution((*it).var());
+						} else {
+							comp_manager_.include_partial_solution(-1*(*it).var());
+						}
+					}
+				} else {
 					if (var(*it).polarity) {
 						comp_manager_.include_partial_solution((*it).var());
 					} else {
 						comp_manager_.include_partial_solution(-1*(*it).var());
 					}
-				}
-			} else {
-				if (var(*it).polarity) {
-					comp_manager_.include_partial_solution((*it).var());
-				} else {
-					comp_manager_.include_partial_solution(-1*(*it).var());
 				}
 			}
     }
@@ -299,28 +301,6 @@ private:
 		stack_.top().resetRemainingComps();
 	}
 
-	bool fail_test(LiteralID lit) {
-		unsigned sz = literal_stack_.size();
-		// we increase the decLev artificially
-		// s.t. after the tentative BCP call, we can learn a conflict clause
-		// relative to the assignment of *jt
-		stack_.startFailedLitTest();
-		setLiteralIfFree(lit);
-
-		assert(!hasAntecedent(lit));
-
-		bool bSucceeded = BCP(sz);
-		if (!bSucceeded)
-			recordAllUIPCauses();
-
-		stack_.stopFailedLitTest();
-
-		while (literal_stack_.size() > sz) {
-			unSet(literal_stack_.back());
-			literal_stack_.pop_back();
-		}
-		return bSucceeded;
-	}
 	/////////////////////////////////////////////
 	//  BEGIN conflict analysis
 	/////////////////////////////////////////////

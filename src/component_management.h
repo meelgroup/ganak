@@ -106,7 +106,7 @@ public:
     partial_solution_ = 1;
   }
 
-  void multiply_partial_solution(StackLevel &top){
+  void multiply_partial_solution(StackLevel &top) {
     top.includeSolution(partial_solution_);
     partial_solution_ = 1;
   }
@@ -186,6 +186,7 @@ private:
     }
    partial_solution_ /= w;
   }
+
   void ComponentManager::include_partial_solution(int lit) {
     mpf_class w = 0;
     if (lit > 0) {

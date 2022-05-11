@@ -302,7 +302,6 @@ void Instance::parseWeights(ifstream& input_file, char& c) {
     input_file.get(eofchar);
     if (eofchar == '\n') {
       input_file.unget();
-      cout << "c invalid weight format" << endl; 
     } else {
       input_file.unget();
       input_file >> delimiter;

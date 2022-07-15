@@ -552,7 +552,7 @@ retStateT Solver::backtrack() {
           }
         }
       }
-      isindependent = true;
+//       isindependent = true;
       if (!stack_.top().isSecondBranch()) {
         LiteralID aLit = TOS_decLit();
         assert(stack_.get_decision_level() > 0);

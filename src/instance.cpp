@@ -394,6 +394,10 @@ bool Instance::createfromFile(const string &file_name) {
       literals.clear();
       bool skip_clause = false;
       while ((input_file >> lit) && lit != 0) {
+        if (std::abs(lit) > (int)nVars) {
+          cout << "ERROR! CNF contains literal " << lit << " but that has a larger variable than what the header claimed: " << nVars << ". Please fix the header `p cnf ...`. Exiting." << endl;
+          exit(-1);
+        }
         bool duplicate_literal = false;
         for (auto i : literals) {
           if (i.toInt() == lit) {

@@ -383,11 +383,13 @@ bool Instance::createfromFile(const string &file_name) {
   literals_.clear();
   literals_.resize(nVars + 1);
 
-  while ((input_file >> c) && clauses_added < nCls) {
+  unsigned clauses_in_file = 0;
+  while ((input_file >> c)) {
     parseProjection(pcnf, input_file, c);
 
     //Parse clause
     if ((c == '-') || isdigit(c)) {
+      clauses_in_file++;
       input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
       literals.clear();
       bool skip_clause = false;
@@ -407,9 +409,15 @@ bool Instance::createfromFile(const string &file_name) {
           literals.push_back(lit);
         }
       }
+
+      if (clauses_in_file > nCls) {
+        cout << "ERROR! CNF header says there will be only " << nCls << " clauses, but there are more in the CNF. Please fix the CNF header `p cnf ...`" << endl;
+        exit(-1);
+      }
+
+      clauses_added++;
       if (!skip_clause) {
         assert(!literals.empty());
-        clauses_added++;
         statistics_.incorporateClauseData(literals);
         ClauseOfs cl_ofs = addClause(literals);
         if (literals.size() >= 3)

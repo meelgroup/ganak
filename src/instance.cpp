@@ -428,6 +428,10 @@ bool Instance::createfromFile(const string &file_name) {
     input_file.ignore(max_ignore, '\n');
   }
   input_file.unget();
+  if (nCls != clauses_in_file) {
+    cout << "ERROR! Header claimed there are " << nCls << " clauses in the file, but there were only " << clauses_added << ". Please fix the header `p cnf ...`. Exiting." << endl;
+    exit(-1);
+  }
 
   while (input_file >> c){
     parseProjection(pcnf, input_file, c);

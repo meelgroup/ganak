@@ -186,19 +186,11 @@ void Solver::solve(const string &file_name)
     {
       cout << "c Sampling set not present! So doing total model counting." << endl;
     }
-    config_.perform_projectedmodelcounting = false;
+    assert(false && "You must provide indep support");
   }
   else if (!config_.quiet)
   {
-    if (!config_.perform_projectedmodelcounting)
-    {
-      cout << "c Warning! Sampling set is present but projected model counting"
-           << " is turned off by the user so solver is not doing projected model counting." << endl;
-    }
-    else
-    {
-      cout << "c Sampling set is present, performing projected model counting " << endl;
-    }
+    cout << "c Sampling set is present, performing projected model counting " << endl;
     cout << "c Sampling set size: " << independent_support_.size() << endl;
     cout << "c Sampling set: ";
     for (auto it = independent_support_.begin(); it != independent_support_.end(); ++it)
@@ -240,11 +232,7 @@ void Solver::solve(const string &file_name)
       cout << "ERROR: We need to change the hash range (-1)" << endl;
       exit(1);
     }
-    if (config_.perform_projectedmodelcounting) {
-      statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount());
-    } else {
-      statistics_.set_final_solution_count(stack_.top().getTotalModelCount());
-    }
+    statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount());
     statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
     statistics_.exit_state_ = SUCCESS;
@@ -258,13 +246,8 @@ void Solver::solve(const string &file_name)
 
   comp_manager_.gatherStatistics();
   string writefile;
-  if (config_.perform_projectedmodelcounting) {
-    writefile = "out.pmc";
-  } else {
-    writefile = "out.mc";
-  }
-//  statistics_.writeToFile(writefile, config_.perform_projectedmodelcounting);
-  statistics_.printShort(config_.perform_projectedmodelcounting);
+  writefile = "out.pmc";
+  statistics_.printShort();
 }
 
 SOLVER_StateT Solver::countSAT() {
@@ -322,112 +305,34 @@ void Solver::decideLiteral() {
   unsigned max_score_var = *it;
   float max_score = scoreOf(*(it));
   float score;
-  if (config_.perform_projectedmodelcounting)
-  {
-    isindependent = true;
-    bool isindependent_support_present = false;
-    while (*it != varsSENTINEL &&
-             independent_support_.find(*it) == independent_support_.end()) {
-      it++;
-    }
-    if (*it != varsSENTINEL) {
-      isindependent_support_present = true;
-      max_score_var = *it;
-      max_score = scoreOf(*it);
-    }
-    while (*it != varsSENTINEL) {
-      if (independent_support_.find(*it) != independent_support_.end()) {
-        isindependent_support_present = true;
-        score = scoreOf(*it);
-        if (score > max_score) {
-          max_score = score;
-          max_score_var = *it;
-        }
-      }
-      it++;
-    }
-    if (isindependent_support_present && config_.use_csvsads) {
-      float cachescore = comp_manager_.cacheScoreOf(max_score_var);
-      for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
-           *it != varsSENTINEL; it++) {
-        if (independent_support_.find(*it) != independent_support_.end()) {
-          score = scoreOf(*it);
-          if (score > max_score * config_.csvsads_param) {
-            if (comp_manager_.cacheScoreOf(*it) > cachescore) {
-              isindependent_support_present = true;
-              max_score_var = *it;
-              cachescore = comp_manager_.cacheScoreOf(*it);
-            }
-          }
-        }
-      }
-      max_score = score;
-    } else if (!isindependent_support_present) {
-      isindependent = false;
-      max_score = -1;
-      score = -1;
-      for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
-           *it != varsSENTINEL; it++) {
-        score = scoreOf(*it);
-        if (score > max_score) {
-          max_score = score;
-          max_score_var = *it;
-        }
-      }
-      if (config_.use_csvsads) {
-        float cachescore = comp_manager_.cacheScoreOf(max_score_var);
-        for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
-             *it != varsSENTINEL; it++) {
-          score = scoreOf(*it);
-          if (score > max_score * config_.csvsads_param) {
-            if (comp_manager_.cacheScoreOf(*it) > cachescore) {
-              max_score_var = *it;
-              cachescore = comp_manager_.cacheScoreOf(*it);
-            }
-          }
-        }
-        max_score = score;
-      }
-    }
-  } else if (config_.use_edr) {
-    vector<unsigned> bucket;
-    double he_param = 1.0 - 0.1 * exp(-0.0001 * statistics_.num_decisions_);
-    if (statistics_.num_decisions_ > 20000) {
-      config_.use_edr = false;
-    }
-    for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
-         *it != varsSENTINEL; it++) {
-      score = scoreOf(*it);
-      if (score > max_score) {
-        max_score = score;
-      }
-    }
-    if (max_score == 0) {
-      max_score = -1;
-    }
-    for (auto it =
-             comp_manager_.superComponentOf(stack_.top()).varsBegin();
-         *it != varsSENTINEL; it++) {
-      score = scoreOf(*it);
-      if ((1.0 * score) / max_score > he_param) {
-        bucket.push_back(*it);
-      }
-    }
-    max_score_var = bucket[rand() % bucket.size()];
-  } else {
-    for (auto it =
-             comp_manager_.superComponentOf(stack_.top()).varsBegin();
-         *it != varsSENTINEL; it++) {
+
+  isindependent = true;
+  while (*it != varsSENTINEL &&
+           independent_support_.find(*it) == independent_support_.end()) {
+    it++;
+  }
+
+  if (*it != varsSENTINEL) {
+    max_score_var = *it;
+    max_score = scoreOf(*it);
+  }
+
+  while (*it != varsSENTINEL) {
+    if (independent_support_.find(*it) != independent_support_.end()) {
       score = scoreOf(*it);
       if (score > max_score) {
         max_score = score;
         max_score_var = *it;
       }
     }
-    if (config_.use_csvsads) {
-      float cachescore = comp_manager_.cacheScoreOf(max_score_var);
-      for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
-           *it != varsSENTINEL; it++) {
+    it++;
+  }
+
+  if (config_.use_csvsads) {
+    float cachescore = comp_manager_.cacheScoreOf(max_score_var);
+    for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
+         *it != varsSENTINEL; it++) {
+      if (independent_support_.find(*it) != independent_support_.end()) {
         score = scoreOf(*it);
         if (score > max_score * config_.csvsads_param) {
           if (comp_manager_.cacheScoreOf(*it) > cachescore) {
@@ -436,9 +341,10 @@ void Solver::decideLiteral() {
           }
         }
       }
-      max_score = score;
     }
+    max_score = score;
   }
+
   // this assert should always hold,
   // if not then there is a bug in the logic of countSAT();
   assert(max_score_var != 0);
@@ -527,116 +433,62 @@ retStateT Solver::backtrack() {
     statistics_.num_decisions_ = 0;
     return RESTART;
   }
-  if (!isindependent && config_.perform_projectedmodelcounting) {
-    do {
-      if (stack_.top().branch_found_unsat()) {
-        comp_manager_.removeAllCachePollutionsOf(stack_.top());
-      } else if (stack_.top().anotherCompProcessible()) {
-        return PROCESS_COMPONENT;
-      }
-      if (stack_.top().getBranchSols() != 0 && isindependent == false) {
-        while (independent_support_.count(stack_.top().getbranchvar()) == 0) {
-          if (stack_.get_decision_level() <= 0) {
-            break;
-          }
-          reactivateTOS();
-          assert(stack_.size() >= 2);
-          (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
-          stack_.pop_back();
-          // step to the next component not yet processed
-          stack_.top().nextUnprocessedComponent();
-          assert(
-              stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
-          if (stack_.top().anotherCompProcessible()) {
-            return PROCESS_COMPONENT;
-          }
+  assert(isindependent);
+  do {
+    if (stack_.top().branch_found_unsat()) {
+      comp_manager_.removeAllCachePollutionsOf(stack_.top());
+    } else if (stack_.top().anotherCompProcessible()) {
+      return PROCESS_COMPONENT;
+    }
+    if (stack_.top().getBranchSols() != 0 && isindependent == false) {
+      while (independent_support_.count(stack_.top().getbranchvar()) == 0) {
+        if (stack_.get_decision_level() <= 0) {
+          break;
         }
-      }
-//       isindependent = true;
-      if (!stack_.top().isSecondBranch()) {
-        LiteralID aLit = TOS_decLit();
-        assert(stack_.get_decision_level() > 0);
-        stack_.top().changeBranch();
         reactivateTOS();
-        setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
-        return RESOLVED;
-      }
-      comp_manager_.cacheModelCountOf(stack_.top().super_component(),
-                                      stack_.top().getTotalModelCount());
-      if (config_.use_csvsads) {
-        statistics_.numcachedec_++;
-        if (statistics_.numcachedec_ % 128 == 0) {
-          comp_manager_.increasecachescores();
+        assert(stack_.size() >= 2);
+        (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
+        stack_.pop_back();
+        // step to the next component not yet processed
+        stack_.top().nextUnprocessedComponent();
+        assert(
+            stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
+        if (stack_.top().anotherCompProcessible()) {
+          return PROCESS_COMPONENT;
         }
-        comp_manager_.decreasecachescore(comp_manager_.superComponentOf(stack_.top()));
       }
-      if (stack_.get_decision_level() <= 0) {
-        break;
-      }
+    }
+//     isindependent = true;
+    if (!stack_.top().isSecondBranch()) {
+      LiteralID aLit = TOS_decLit();
+      assert(stack_.get_decision_level() > 0);
+      stack_.top().changeBranch();
       reactivateTOS();
-      assert(stack_.size() >= 2);
-      (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
-      stack_.pop_back();
-      // step to the next component not yet processed
-      stack_.top().nextUnprocessedComponent();
-
-      assert(
-          stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
-    } while (stack_.get_decision_level() >= 0);
-  } else {
-    do {
-      if (stack_.top().branch_found_unsat()) {
-        comp_manager_.removeAllCachePollutionsOf(stack_.top());
-      } else if (stack_.top().anotherCompProcessible()) {
-        return PROCESS_COMPONENT;
+      setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
+      return RESOLVED;
+    }
+    comp_manager_.cacheModelCountOf(stack_.top().super_component(),
+                                    stack_.top().getTotalModelCount());
+    if (config_.use_csvsads) {
+      statistics_.numcachedec_++;
+      if (statistics_.numcachedec_ % 128 == 0) {
+        comp_manager_.increasecachescores();
       }
+      comp_manager_.decreasecachescore(comp_manager_.superComponentOf(stack_.top()));
+    }
+    if (stack_.get_decision_level() <= 0) {
+      break;
+    }
+    reactivateTOS();
+    assert(stack_.size() >= 2);
+    (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
+    stack_.pop_back();
+    // step to the next component not yet processed
+    stack_.top().nextUnprocessedComponent();
 
-      if (!stack_.top().isSecondBranch()) {
-        if (stack_.get_decision_level() == 1) {
-          cout << "c We have solved halfed" << endl;
-          config_.maxdecterminate = false;
-          config_.use_lso = false;
-        }
-        LiteralID aLit = TOS_decLit();
-        assert(stack_.get_decision_level() > 0);
-        if (stack_.get_decision_level() == 1) {
-          cout << "c We have solved halfed" << endl;
-          config_.use_lso = false;
-        }
-        stack_.top().changeBranch();
-        reactivateTOS();
-        setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
-        return RESOLVED;
-      }
-      // OTHERWISE:  backtrack further
-      comp_manager_.cacheModelCountOf(stack_.top().super_component(),
-                                      stack_.top().getTotalModelCount());
-
-      //Cache score should be decreased since the component is getting added to cache
-      if (config_.use_csvsads) {
-        statistics_.numcachedec_++;
-        if (statistics_.numcachedec_ % 128 == 0) {
-          comp_manager_.increasecachescores();
-        }
-        comp_manager_.decreasecachescore(comp_manager_.superComponentOf(stack_.top()));
-      }
-
-      if (stack_.get_decision_level() <= 0) {
-        break;
-      }
-      reactivateTOS();
-
-      assert(stack_.size() >= 2);
-      (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
-      stack_.pop_back();
-      // step to the next component not yet processed
-      stack_.top().nextUnprocessedComponent();
-
-      assert(
-          stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
-
-    } while (stack_.get_decision_level() >= 0);
-  }
+    assert(
+        stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
+  } while (stack_.get_decision_level() >= 0);
   return EXIT;
 }
 

@@ -30,12 +30,11 @@ class AltComponentAnalyzer {
 public:
 	AltComponentAnalyzer(DataAndStatistics &statistics,
         LiteralIndexedVector<TriValue> & lit_values,
-        set <unsigned> & independent_support,
-        bool &perform_projected_model_count) :
+        set <unsigned> & independent_support) :
         statistics_(statistics), literal_values_(lit_values),
-        independent_support_(independent_support),
-        perform_projected_model_count_(perform_projected_model_count) {
-  }
+        independent_support_(independent_support)
+{
+}
 
   unsigned scoreOf(VariableIndex v) {
     return var_frequency_scores_[v];
@@ -96,7 +95,7 @@ public:
     recordComponentOf(v);
 
     if (search_stack_.size() == 1) {
-      if (independent_support_.count(v) == 0 && perform_projected_model_count_) {
+      if (independent_support_.count(v) == 0) {
         archetype_.stack_level().includeSolution(1);
       } else {
         archetype_.stack_level().includeSolution(2);
@@ -144,19 +143,11 @@ private:
   // in one contiguous chunk of memory
   vector<unsigned> unified_variable_links_lists_pool_;
 
-
   vector<unsigned> variable_link_list_offsets_;
-
   LiteralIndexedVector<TriValue> & literal_values_;
-
   set <unsigned> & independent_support_;
-
-  bool & perform_projected_model_count_;
-
   vector<unsigned> var_frequency_scores_;
-
   ComponentArchetype  archetype_;
-
   vector<VariableIndex> search_stack_;
 
   bool isResolved(const LiteralID lit) {

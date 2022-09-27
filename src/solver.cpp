@@ -361,7 +361,7 @@ void Solver::decideLiteral() {
         literal(LiteralID(max_score_var, false)).activity_score_;
       if (literal(LiteralID(max_score_var, true)).activity_score_ >
             2 * literal(LiteralID(max_score_var, false)).activity_score_) {
-      polarity = true;
+        polarity = true;
       } else if (literal(LiteralID(max_score_var, false)).activity_score_ >
                   2 * literal(LiteralID(max_score_var, true)).activity_score_) {
         polarity = false;
@@ -513,7 +513,10 @@ retStateT Solver::resolveConflict() {
   // maybe the other branch had some solutions
   if (stack_.top().isSecondBranch()) {
     if (stack_.get_decision_level() == 1) {
-      cout << "c We have solved halfed" << endl;
+      cout
+          << "c Solved half the solution space (i.e. one branch at dec. lev 1)." << endl
+          << "c --> Conflicts: " << statistics_.num_conflicts_ << endl
+          << "c --> Decisions: " << statistics_.num_decisions_ << endl;
     }
     return BACKTRACK;
   }

@@ -85,17 +85,11 @@ public:
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all components have been processed;
   inline bool findNextRemainingComponentOf(StackLevel &top);
-
   inline void recordRemainingCompsFor(StackLevel &top);
-
   inline void sortComponentStackRange(unsigned start, unsigned end);
-
   inline float cacheScoreOf(VariableIndex v);
-
   inline void increasecachescores();
-
   inline void decreasecachescore(Component &comp);
-
   void gatherStatistics()
   {
     cache_.compute_byte_size_infrasture();

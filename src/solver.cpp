@@ -415,12 +415,8 @@ retStateT Solver::backtrack() {
   assert(
       stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
 
-  if (config_.use_lso && statistics_.num_decisions_ >= config_.lsoafterdecisions) {
-    config_.use_lso = false;
-    if (!config_.quiet) {
-      cout << "c Doing Restart" << endl;
-    }
-    do {
+  //NOTE MSOOS this is how you restart
+  /*do {
       if (stack_.top().branch_found_unsat() || stack_.top().anotherCompProcessible()) {
         comp_manager_.removeAllCachePollutionsOf(stack_.top());
       }
@@ -429,8 +425,9 @@ retStateT Solver::backtrack() {
     } while (stack_.get_decision_level() > 0);
     statistics_.num_decisions_ = 0;
     return RESTART;
-  }
+  */
   assert(isindependent);
+
   do {
     if (stack_.top().branch_found_unsat()) {
       comp_manager_.removeAllCachePollutionsOf(stack_.top());
@@ -482,7 +479,7 @@ retStateT Solver::backtrack() {
 
     assert(
         stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
-  } while (stack_.get_decision_level() >= 0);
+  } while (true);
   return EXIT;
 }
 
@@ -507,11 +504,9 @@ retStateT Solver::resolveConflict() {
 
   assert(uip_clauses_.size() == 1);
 
-  // DEBUG
   if (uip_clauses_.back().size() == 0) {
     cout << "c EMPTY CLAUSE FOUND" << endl;
   }
-  // END DEBUG
 
   stack_.top().mark_branch_unsat();
   //BEGIN Backtracking
@@ -519,7 +514,6 @@ retStateT Solver::resolveConflict() {
   if (stack_.top().isSecondBranch()) {
     if (stack_.get_decision_level() == 1) {
       cout << "c We have solved halfed" << endl;
-      config_.use_lso = false;
     }
     return BACKTRACK;
   }
@@ -537,16 +531,6 @@ retStateT Solver::resolveConflict() {
         uip_clauses_.back());
     ant = var(TOS_decLit()).ante;
   }
-  //	// RRR
-  //	else if(var(uip_clauses_.back().front()).decision_level
-  //			< stack_.get_decision_level()
-  //			&& assertion_level_ <  stack_.get_decision_level()){
-  //         stack_.top().set_both_branches_unsat();
-  //         return BACKTRACK;
-  //	}
-  //
-  //
-  //	// RRR
   assert(stack_.get_decision_level() > 0);
   assert(stack_.top().branch_found_unsat());
 
@@ -861,9 +845,6 @@ void Solver::recordLastUIPCauses() {
     curr_lit = NOT_A_LIT;
   }
   minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, seen);
-
-  //	if (var(curr_lit).decision_level > assertion_level_)
-  //		assertion_level_ = var(curr_lit).decision_level;
 }
 
 void Solver::recordAllUIPCauses() {
@@ -957,8 +938,6 @@ void Solver::recordAllUIPCauses() {
   if (!hasAntecedent(curr_lit)) {
     minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, seen);
   }
-  //	if (var(curr_lit).decision_level > assertion_level_)
-  //		assertion_level_ = var(curr_lit).decision_level;
 }
 
 void Solver::printOnlineStats() {

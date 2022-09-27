@@ -26,7 +26,6 @@ struct SolverConfiguration {
   bool perform_pcc = true;
   bool use_csvsads = true;
   bool use_edr = false;
-  bool use_lso = true;
   bool verbose = false;
   // quiet = true will override verbose;
   bool quiet = false;
@@ -37,7 +36,6 @@ struct SolverConfiguration {
   unsigned long randomseed = 1000;
   
   unsigned hashrange = 1;
-  unsigned lsoafterdecisions = 5000;
   unsigned maxdec = 5000000;
   unsigned minconflicts_ = 500;
 

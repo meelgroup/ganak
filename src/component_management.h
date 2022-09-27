@@ -112,7 +112,7 @@ public:
                                //and seed it with entropy.
     std::uniform_int_distribution<unsigned long long> distr;
     seedforCLHASH.reserve(config_.hashrange);
-    for (int i = 0; i < config_.hashrange; i++)
+    for (unsigned i = 0; i < config_.hashrange; i++)
     {
       seedforCLHASH[i] =
           get_random_key_for_clhash(distr(eng), distr(eng));

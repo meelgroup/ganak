@@ -39,13 +39,13 @@ protected:
   bool isolated(VariableIndex v) {
     LiteralID lit(v, false);
     return (literal(lit).binary_links_.size() <= 1)
-        & occurrence_lists_[lit].empty()
-        & (literal(lit.neg()).binary_links_.size() <= 1)
-        & occurrence_lists_[lit.neg()].empty();
+        && occurrence_lists_[lit].empty()
+        && (literal(lit.neg()).binary_links_.size() <= 1)
+        && occurrence_lists_[lit.neg()].empty();
   }
 
   bool free(VariableIndex v) {
-    return isolated(v) & isActive(v);
+    return isolated(v) && isActive(v);
   }
 
   bool deleteConflictClauses();

@@ -155,13 +155,11 @@ private:
     // otherwise the table_size_mask_ doesn't work
     assert((table_.size() & (table_.size() - 1)) == 0);
     table_size_mask_ = table_.size() - 1;
-    unsigned collisions = 0;
     for (unsigned id = 2; id < entry_base_.size(); id++)
       if (entry_base_[id] != nullptr ){
         entry_base_[id]->set_next_bucket_element(0);
        if(entry_base_[id]->modelCountFound()) {
         unsigned table_ofs=tableEntry(id);
-        collisions += (table_[table_ofs] > 0 ? 1 : 0);
         entry_base_[id]->set_next_bucket_element(table_[table_ofs]);
         table_[table_ofs] = id;
        }

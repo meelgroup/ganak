@@ -89,7 +89,7 @@ public:
       return false;
     }
     bool match = true;
-    for (int i=0; i<hack_;i++){
+    for (unsigned i=0; i<hack_;i++){
       match = clhash_key[i] == clhashkey_[i];
       if(!match){
         return false;
@@ -154,7 +154,6 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   if(bits_per_var_diff)
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
     bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
-
 
   if (*rComp.clsBegin()) {
     bs.stuff(bits_per_clause_diff, 5);
@@ -224,7 +223,6 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   if(bits_per_var_diff)
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
     bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
-
 
   if (*rComp.clsBegin()) {
     bs.stuff(bits_per_clause_diff, 5);

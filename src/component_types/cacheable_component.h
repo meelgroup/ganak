@@ -69,7 +69,7 @@ public:
   void set_father(CacheEntryID f) {
     father_ = f;
   }
-  const CacheEntryID father() const {
+  CacheEntryID father() const {
     return father_;
   }
 

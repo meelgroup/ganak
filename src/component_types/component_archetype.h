@@ -215,43 +215,4 @@ private:
 
 };
 
-
-
-
-
-void ComponentArchetype::createComponents(Component &ret_comp,
-      CacheableComponent ret_cache_comp,
-      unsigned stack_size){
-
-//      ret_comp.reserveSpace(stack_size, super_comp().numLongClauses());
-//      current_comp_for_caching_.clear();
-//
-//      VariableIndex prev_var = 0;
-//      for (auto v_it = super_comp().varsBegin(); *v_it != varsSENTINEL;  v_it++)
-//        if (var_seen(*v_it)) { //we have to put a var into our component
-//          ret_comp.addVar(*v_it);
-//          current_comp_for_caching_.addVar(*v_it - prev_var - 1);
-//          prev_var = *v_it;
-//          setVar_in_other_comp(*v_it);
-//      }
-//      ret_comp.closeVariableData();
-//      current_comp_for_caching_.closeVariableData();
-//
-//      ClauseIndex prev_cl = 0;
-//      for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
-//        if (clause_seen(*it_cl)) {
-//          ret_comp.addCl(*it_cl);
-//          if(!clause_all_lits_active(*it_cl)){
-//            current_comp_for_caching_.addCl(*it_cl - prev_cl - 1);
-//            prev_cl =  *it_cl;
-//          }
-//          setClause_in_other_comp(*it_cl);
-//        }
-//      ret_comp.closeClauseData();
-//      //current_comp_for_caching_.closeClauseData();
-//      return p_new_comp;
-
-}
-
-
 #endif /* COMPONENT_ARCHETYPE_H_ */

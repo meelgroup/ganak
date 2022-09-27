@@ -179,8 +179,9 @@ void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
           var_frequency_scores_[*vt]++;
           manageSearchOccurrenceAndScoreOf(litA);
           manageSearchOccurrenceAndScoreOf(litB);
-          archetype_.setClause_seen(*p,isActive(litA) &
-              isActive(litB));
+          archetype_.setClause_seen(
+              *p
+              ,isActive(litA) && isActive(litB));
         }
       }
     }

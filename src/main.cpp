@@ -75,11 +75,6 @@ int main(int argc, char *argv[])
       if (argc <= i + 1) {
         cout << "ERROR: wrong parameters" << endl;
         return -1;
-      } else {
-        theSolver.config().lsoafterdecisions = atol(argv[i + 1]);
-        if (!theSolver.config().lsoafterdecisions) {
-          theSolver.config().use_lso = false;
-        }
       }
     } else if (strcmp(argv[i], "-seed") == 0) {
       if (argc <= i + 1) {

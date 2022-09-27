@@ -228,11 +228,9 @@ bool Instance::deleteConflictClauses() {
   vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
   conflict_clauses_.clear();
   vector<double> tmp_ratios;
-  double score, lifetime;
+  double score;
   for(auto clause_ofs: tmp_conflict_clauses){
     score = getHeaderOf(clause_ofs).score();
-    lifetime = statistics_.num_conflicts_ - getHeaderOf(clause_ofs).creation_time();
-   // tmp_ratios.push_back(score/lifetime);
     tmp_ratios.push_back(score);
 
   }

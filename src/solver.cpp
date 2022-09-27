@@ -156,9 +156,7 @@ void Solver::solve(const string &file_name)
 {
   srand(config_.randomseed);
   stopwatch_.start();
-  statistics_.input_file_ = file_name;
-
-  bool notfoundUNSAT = createfromFile(file_name);
+  bool ok = createfromFile(file_name);
 
   //Found Empirically
   if (statistics_.num_original_binary_clauses_ > 0.75 * statistics_.num_original_clauses_)
@@ -205,43 +203,28 @@ void Solver::solve(const string &file_name)
     cout << "c Preprocessing .." << endl;
   }
 
-  if (notfoundUNSAT) {
-    notfoundUNSAT = simplePreProcess();
-  }
-
-  if (!config_.quiet) {
-    cout << "c DONE" << endl;
-  }
-
-  if (notfoundUNSAT) {
-
-    if (!config_.quiet) {
-      statistics_.printShortFormulaInfo();
-    }
-
+  if (ok) ok = simplePreProcess();
+  if (!config_.quiet) cout << "c Prepocessing done" << endl;
+  if (ok) {
+    if (!config_.quiet) statistics_.printShortFormulaInfo();
     last_ccl_deletion_time_ = last_ccl_cleanup_time_ =
-      statistics_.getTime();
-
+      statistics_.getNumDecisions();
     violated_clause.reserve(num_variables());
-
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
     statistics_.exit_state_ = countSAT();
     statistics_.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
     statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
+    cout << "c Found UNSAT during preprocessing" << endl;
     statistics_.exit_state_ = SUCCESS;
-    statistics_.set_final_solution_count(0.0);
-    cout << endl
-         << "c FOUND UNSAT DURING PREPROCESSING " << endl;
+    statistics_.set_final_solution_count(0);
   }
 
   stopwatch_.stop();
   statistics_.time_elapsed_ = stopwatch_.getElapsedSeconds();
 
   comp_manager_.gatherStatistics();
-  string writefile;
-  writefile = "out.pmc";
   statistics_.printShort();
 }
 

@@ -137,15 +137,10 @@ public:
     return branch_variable_;
   }
 
-  void setbranchvariable(unsigned max_score_var){
+  void setbranchvariable(const unsigned max_score_var){
     branch_variable_ = max_score_var;
   }
-//  void set_both_branches_unsat(){
-//	  branch_found_unsat_[0] =
-//			  branch_found_unsat_[1] = true;
-//	  branch_model_count_[0] = branch_model_count_[1] = 0;
-//	  active_branch_ = 1;
-//  }
+
   const mpz_class getTotalModelCount() const {
     return branch_model_count_[0] + branch_model_count_[1];
   }

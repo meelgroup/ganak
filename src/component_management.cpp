@@ -30,7 +30,6 @@ void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
   }
 }
 
-
 void ComponentManager::removeAllCachePollutionsOf(StackLevel &top) {
   // all processed components are found in
   // [top.currentRemainingComponent(), component_stack_.size())

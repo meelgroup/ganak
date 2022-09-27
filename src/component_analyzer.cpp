@@ -79,11 +79,6 @@ void STDComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
   }
 }
 
-
-
-
-
-
 void STDComponentAnalyzer::recordComponentOf(const VariableIndex var) {
 
   search_stack_.clear();

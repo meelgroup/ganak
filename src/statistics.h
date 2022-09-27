@@ -23,7 +23,6 @@ using namespace std;
 
 class DataAndStatistics {
 public:
-  string input_file_;
   double time_elapsed_ = 0.0;
   uint64_t maximum_cache_size_bytes_ = 0;
 
@@ -215,11 +214,8 @@ public:
       num_long_clauses_++;
   }
 
-  void print_final_solution_count();
-  void writeToFile(const string & file_name, bool pmc=true);
-
-  void printShort(bool pmc=true);
-
+  std::string getFinalSolutionCountStr();
+  void printShort();
   void printShortFormulaInfo() {
     cout << "c variables (all/used/free): \t";
     cout << num_variables_ << "/" << num_used_variables_ << "/";
@@ -229,7 +225,7 @@ public:
     cout << num_clauses() << "/" << num_long_clauses_;
     cout << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
   }
-  unsigned getTime() {
+  unsigned getNumDecisions() {
     return num_decisions_;
   }
 

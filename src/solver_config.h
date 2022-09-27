@@ -23,8 +23,8 @@ struct SolverConfiguration {
   bool perform_component_caching = true;
   bool perform_failed_lit_test = true;
   bool perform_pre_processing = true;
-  bool perform_pcc = true;
-  bool use_csvsads = true;
+  bool perform_pcc = true; //super component(?)
+  bool use_csvsads = true; //polarity heuristic
   bool verbose = false;
   // quiet = true will override verbose;
   bool quiet = false;

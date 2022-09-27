@@ -104,7 +104,7 @@ void NewComponentAnalyzer::recordComponentOf(const VariableIndex var) {
 
   for (auto vt = search_stack_.begin();
       vt != search_stack_.end(); vt++) {
-    //BEGIN traverse binary clauses
+    //Traverse binary clauses
     assert(isActive(*vt));
     unsigned *pvar = beginOfLinkList(*vt);
     for (; *pvar; pvar++) {
@@ -114,13 +114,12 @@ void NewComponentAnalyzer::recordComponentOf(const VariableIndex var) {
         var_frequency_scores_[*vt]++;
       }
     }
-    //END traverse binary clauses
 
     // start traversing links to long clauses
-    // not that that list starts right after the 0 termination of the prvious list
-    // hence  pcl_ofs = pvar + 1
+    // NOTE: that list starts right after the 0 termination of the prvious list
+    //       hence  pcl_ofs = pvar + 1
     for (auto pcl_ofs = pvar + 1; *pcl_ofs != SENTINEL_CL; pcl_ofs+=2) {
-      ClauseIndex clID = *pcl_ofs;
+      const ClauseIndex clID = *pcl_ofs;
       if(archetype_.clause_unseen_in_sup_comp(clID)){
         auto itVEnd = search_stack_.end();
         bool all_lits_active = true;

@@ -536,16 +536,10 @@ retStateT Solver::resolveConflict() {
 bool Solver::bcp() {
   // the asserted literal has been set, so we start
   // bcp on that literal
+  assert(literal_stack_.size() > 0 && "Well... we could just put this in an IF, but let's check it this way instead");
   unsigned start_ofs = literal_stack_.size() - 1;
-
-  //BEGIN process unit clauses
-  for (auto lit : unit_clauses_) {
-    setLiteralIfFree(lit);
-  }
-  //END process unit clauses
-
+  for (auto lit : unit_clauses_) setLiteralIfFree(lit);
   bool bSucceeded = BCP(start_ofs);
-
   if (config_.perform_failed_lit_test && bSucceeded) {
     bSucceeded = implicitBCP();
   }
@@ -555,7 +549,8 @@ bool Solver::bcp() {
 bool Solver::BCP(unsigned start_at_stack_ofs) {
   for (unsigned int i = start_at_stack_ofs; i < literal_stack_.size(); i++) {
     LiteralID unLit = literal_stack_[i].neg();
-    //BEGIN Propagate Bin Clauses
+
+    //Propagate bin Clauses
     for (auto bt = literal(unLit).binary_links_.begin();
          *bt != SENTINEL_LIT; bt++) {
       if (isResolved(*bt)) {
@@ -564,7 +559,8 @@ bool Solver::BCP(unsigned start_at_stack_ofs) {
       }
       setLiteralIfFree(*bt, Antecedent(unLit));
     }
-    //END Propagate Bin Clauses
+
+    //Propagate long clauses
     for (auto itcl = literal(unLit).watch_list_.rbegin();
          *itcl != SENTINEL_CL; itcl++) {
       bool isLitA = (*beginOf(*itcl) == unLit);
@@ -657,9 +653,7 @@ bool Solver::implicitBCP() {
         assert(!hasAntecedent(lit));
 
         bool bSucceeded = BCP(sz);
-        if (!bSucceeded) {
-          recordAllUIPCauses();
-        }
+        if (!bSucceeded) recordAllUIPCauses();
 
         decision_stack_.stopFailedLitTest();
 

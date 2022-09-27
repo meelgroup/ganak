@@ -98,7 +98,7 @@ private:
   StopWatch stopwatch_;
   SolverConfiguration config_;
 
-  DecisionStack decision_stack_; // decision stack
+  DecisionStack decision_stack_;
   vector<LiteralID> literal_stack_;
   ComponentManager comp_manager_ = ComponentManager(
           config_,statistics_, literal_values_, independent_support_);

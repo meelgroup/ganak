@@ -30,13 +30,6 @@ class StopWatch
 public:
   StopWatch();
 
-  bool timeBoundBroken()
-  {
-    timeval actual_time;
-    gettimeofday(&actual_time, NULL);
-    return actual_time.tv_sec - start_time_.tv_sec > time_bound_;
-  }
-
   bool start()
   {
     bool ret = gettimeofday(&last_interval_start_, NULL);
@@ -67,13 +60,6 @@ public:
     return false;
   }
 
-  void setTimeBound(long int seconds)
-  {
-    cout << "c Setting the timout to: " << seconds << endl;
-    time_bound_ = seconds;
-  }
-  long int getTimeBound();
-
 private:
   timeval start_time_;
   timeval stop_time_;
@@ -94,7 +80,6 @@ class Solver : public Instance
 public:
   Solver()
   {
-    stopwatch_.setTimeBound(config_.time_bound_seconds);
   }
 
   void solve(const string &file_name);
@@ -108,20 +93,13 @@ public:
   {
     return statistics_;
   }
-  void setTimeBound(long int i)
-  {
-    stopwatch_.setTimeBound(i);
-  }
 
 private:
+  StopWatch stopwatch_;
   SolverConfiguration config_;
-  bool isindependent = true;
 
   DecisionStack stack_; // decision stack
   vector<LiteralID> literal_stack_;
-
-  StopWatch stopwatch_;
-
   ComponentManager comp_manager_ = ComponentManager(
           config_,statistics_, literal_values_, independent_support_);
 

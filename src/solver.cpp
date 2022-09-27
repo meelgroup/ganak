@@ -154,7 +154,6 @@ void Solver::HardWireAndCompact()
 
 void Solver::solve(const string &file_name)
 {
-  stopwatch_.setTimeBound(config_.time_bound_seconds);
   srand(config_.randomseed);
   stopwatch_.start();
   statistics_.input_file_ = file_name;
@@ -261,9 +260,6 @@ SOLVER_StateT Solver::countSAT() {
         return CHANGEHASH;
       }
       decideLiteral();
-      if (stopwatch_.timeBoundBroken()) {
-        return TIMEOUT;
-      }
       while (!bcp()) {
         state = resolveConflict();
         if (state == BACKTRACK) {
@@ -307,7 +303,6 @@ void Solver::decideLiteral() {
   float max_score = scoreOf(*(it));
   float score;
 
-  isindependent = true;
   while (*it != varsSENTINEL &&
            independent_support_.find(*it) == independent_support_.end()) {
     it++;
@@ -430,7 +425,6 @@ retStateT Solver::backtrack() {
     statistics_.num_decisions_ = 0;
     return RESTART;
   */
-  assert(isindependent);
 
   do {
     if (stack_.top().branch_found_unsat()) {
@@ -438,24 +432,7 @@ retStateT Solver::backtrack() {
     } else if (stack_.top().anotherCompProcessible()) {
       return PROCESS_COMPONENT;
     }
-    if (stack_.top().getBranchSols() != 0 && isindependent == false) {
-      while (independent_support_.count(stack_.top().getbranchvar()) == 0) {
-        if (stack_.get_decision_level() <= 0) {
-          break;
-        }
-        reactivateTOS();
-        assert(stack_.size() >= 2);
-        (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
-        stack_.pop_back();
-        // step to the next component not yet processed
-        stack_.top().nextUnprocessedComponent();
-        assert(
-            stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
-        if (stack_.top().anotherCompProcessible()) {
-          return PROCESS_COMPONENT;
-        }
-      }
-    }
+
     if (!stack_.top().isSecondBranch()) {
       LiteralID aLit = TOS_decLit();
       assert(stack_.get_decision_level() > 0);

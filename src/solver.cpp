@@ -184,22 +184,20 @@ void Solver::solve(const string &file_name)
     if (!config_.quiet)
     {
       cout << "c Sampling set not present! So doing total model counting." << endl;
+      assert(independent_support_.empty());
+      for(uint32_t i = 1; i < num_variables(); i++)
+        independent_support_.insert(i);
     }
-    assert(false && "You must provide indep support");
   }
-  else if (!config_.quiet)
+
+  if (!config_.quiet)
   {
     cout << "c Sampling set is present, performing projected model counting " << endl;
     cout << "c Sampling set size: " << independent_support_.size() << endl;
     cout << "c Sampling set: ";
-    for (auto it = independent_support_.begin(); it != independent_support_.end(); ++it)
-    {
-      cout << ' ' << *it;
-    }
+    for (const auto& i: independent_support_) cout << ' ' << i;
     cout << endl;
-  }
-  if (!config_.quiet)
-  {
+
     cout << "c " << endl;
     cout << "c Preprocessing .." << endl;
   }

@@ -232,7 +232,7 @@ void Solver::solve(const string &file_name)
       cout << "ERROR: We need to change the hash range (-1)" << endl;
       exit(1);
     }
-    statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount());
+    statistics_.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
     statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
     statistics_.exit_state_ = SUCCESS;
@@ -254,7 +254,7 @@ SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
   while (true) {
-    while (comp_manager_.findNextRemainingComponentOf(stack_.top())) {
+    while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       unsigned t = statistics_.num_cache_look_ups_ + 1;
       if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) { // 1 - log_2(2.004)/64 = 0.9843
         return CHANGEHASH;
@@ -293,12 +293,12 @@ SOLVER_StateT Solver::countSAT() {
 
 void Solver::decideLiteral() {
   // establish another decision stack level
-  stack_.push_back(
-    StackLevel(stack_.top().currentRemainingComponent(),
+  decision_stack_.push_back(
+    StackLevel(decision_stack_.top().currentRemainingComponent(),
                literal_stack_.size(),
                comp_manager_.component_stack_size()));
 
-  auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
+  auto it = comp_manager_.superComponentOf(decision_stack_.top()).varsBegin();
   unsigned max_score_var = *it;
   float max_score = scoreOf(*(it));
   float score;
@@ -326,7 +326,7 @@ void Solver::decideLiteral() {
 
   if (config_.use_csvsads) {
     float cachescore = comp_manager_.cacheScoreOf(max_score_var);
-    for (auto it = comp_manager_.superComponentOf(stack_.top()).varsBegin();
+    for (auto it = comp_manager_.superComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
       if (independent_support_.find(*it) != independent_support_.end()) {
         score = scoreOf(*it);
@@ -383,7 +383,7 @@ void Solver::decideLiteral() {
       break;
   }
   LiteralID theLit(max_score_var, polarity);
-  stack_.top().setbranchvariable(max_score_var);
+  decision_stack_.top().setbranchvariable(max_score_var);
 
   setLiteralIfFree(theLit);
   statistics_.num_decisions_++;
@@ -401,9 +401,9 @@ void Solver::decideLiteral() {
     decayActivities();
   }
   assert(
-      stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
-  if (stack_.get_decision_level() > statistics_.max_decision_level_) {
-    statistics_.max_decision_level_ = stack_.get_decision_level();
+      decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+  if (decision_stack_.get_decision_level() > statistics_.max_decision_level_) {
+    statistics_.max_decision_level_ = decision_stack_.get_decision_level();
     if (statistics_.max_decision_level_ % 25 == 0) {
       cout << "c Max decision level :" << statistics_.max_decision_level_ << endl;
     }
@@ -412,7 +412,7 @@ void Solver::decideLiteral() {
 
 retStateT Solver::backtrack() {
   assert(
-      stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+      decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
 
   //NOTE MSOOS this is how you restart
   /*do {
@@ -427,39 +427,39 @@ retStateT Solver::backtrack() {
   */
 
   do {
-    if (stack_.top().branch_found_unsat()) {
-      comp_manager_.removeAllCachePollutionsOf(stack_.top());
-    } else if (stack_.top().anotherCompProcessible()) {
+    if (decision_stack_.top().branch_found_unsat()) {
+      comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
+    } else if (decision_stack_.top().anotherCompProcessible()) {
       return PROCESS_COMPONENT;
     }
 
-    if (!stack_.top().isSecondBranch()) {
+    if (!decision_stack_.top().isSecondBranch()) {
       LiteralID aLit = TOS_decLit();
-      assert(stack_.get_decision_level() > 0);
-      stack_.top().changeBranch();
+      assert(decision_stack_.get_decision_level() > 0);
+      decision_stack_.top().changeBranch();
       reactivateTOS();
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
       return RESOLVED;
     }
-    comp_manager_.cacheModelCountOf(stack_.top().super_component(),
-                                    stack_.top().getTotalModelCount());
+    comp_manager_.cacheModelCountOf(decision_stack_.top().super_component(),
+                                    decision_stack_.top().getTotalModelCount());
     if (config_.use_csvsads) {
       statistics_.numcachedec_++;
       if (statistics_.numcachedec_ % 128 == 0) {
         comp_manager_.increasecachescores();
       }
-      comp_manager_.decreasecachescore(comp_manager_.superComponentOf(stack_.top()));
+      comp_manager_.decreasecachescore(comp_manager_.superComponentOf(decision_stack_.top()));
     }
-    if (stack_.get_decision_level() <= 0) break;
+    if (decision_stack_.get_decision_level() <= 0) break;
     reactivateTOS();
-    assert(stack_.size() >= 2);
-    (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());
-    stack_.pop_back();
+    assert(decision_stack_.size() >= 2);
+    (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
+    decision_stack_.pop_back();
     // step to the next component not yet processed
-    stack_.top().nextUnprocessedComponent();
+    decision_stack_.top().nextUnprocessedComponent();
 
     assert(
-        stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
+        decision_stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
   } while (true);
   return EXIT;
 }
@@ -481,7 +481,7 @@ retStateT Solver::resolveConflict() {
   statistics_.num_conflicts_++;
 
   assert(
-      stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+      decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
 
   assert(uip_clauses_.size() == 1);
 
@@ -489,11 +489,11 @@ retStateT Solver::resolveConflict() {
     cout << "c EMPTY CLAUSE FOUND" << endl;
   }
 
-  stack_.top().mark_branch_unsat();
+  decision_stack_.top().mark_branch_unsat();
   //BEGIN Backtracking
   // maybe the other branch had some solutions
-  if (stack_.top().isSecondBranch()) {
-    if (stack_.get_decision_level() == 1) {
+  if (decision_stack_.top().isSecondBranch()) {
+    if (decision_stack_.get_decision_level() == 1) {
       cout
           << "c Solved half the solution space (i.e. one branch at dec. lev 1)." << endl
           << "c --> Conflicts: " << statistics_.num_conflicts_ << endl
@@ -515,17 +515,17 @@ retStateT Solver::resolveConflict() {
         uip_clauses_.back());
     ant = var(TOS_decLit()).ante;
   }
-  assert(stack_.get_decision_level() > 0);
-  assert(stack_.top().branch_found_unsat());
+  assert(decision_stack_.get_decision_level() > 0);
+  assert(decision_stack_.top().branch_found_unsat());
 
   // we do not have to remove pollutions here,
   // since conflicts only arise directly before
   // remaining components are stored
   // hence
   assert(
-      stack_.top().remaining_components_ofs() == comp_manager_.component_stack_size());
+      decision_stack_.top().remaining_components_ofs() == comp_manager_.component_stack_size());
 
-  stack_.top().changeBranch();
+  decision_stack_.top().changeBranch();
   LiteralID lit = TOS_decLit();
   reactivateTOS();
   setLiteralIfFree(lit.neg(), ant);
@@ -608,7 +608,7 @@ bool Solver::implicitBCP() {
   static LiteralIndexedVector<unsigned char> viewed_lits(num_variables() + 1,
                                                          0);
 
-  unsigned stack_ofs = stack_.top().literal_stack_ofs();
+  unsigned stack_ofs = decision_stack_.top().literal_stack_ofs();
   unsigned num_curr_lits = 0;
   while (stack_ofs < literal_stack_.size()) {
     test_lits.clear();
@@ -651,7 +651,7 @@ bool Solver::implicitBCP() {
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause
         // relative to the assignment of *jt
-        stack_.startFailedLitTest();
+        decision_stack_.startFailedLitTest();
         setLiteralIfFree(lit);
 
         assert(!hasAntecedent(lit));
@@ -661,7 +661,7 @@ bool Solver::implicitBCP() {
           recordAllUIPCauses();
         }
 
-        stack_.stopFailedLitTest();
+        decision_stack_.stopFailedLitTest();
 
         while (literal_stack_.size() > sz) {
           unSet(literal_stack_.back());
@@ -735,7 +735,7 @@ void Solver::minimizeAndStoreUIPClause(
 
   if (uipLit.var()) {
     assert(var(uipLit).decision_level >= 0
-            && (unsigned)var(uipLit).decision_level == stack_.get_decision_level());
+            && (unsigned)var(uipLit).decision_level == decision_stack_.get_decision_level());
   }
 
   //assert(uipLit.var() != 0);
@@ -760,7 +760,7 @@ void Solver::recordLastUIPCauses() {
   uip_clauses_.clear();
 
   unsigned lit_stack_ofs = literal_stack_.size();
-  int DL = stack_.get_decision_level();
+  int DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
   for (auto l : violated_clause) {
@@ -847,7 +847,7 @@ void Solver::recordAllUIPCauses() {
   uip_clauses_.clear();
 
   unsigned lit_stack_ofs = literal_stack_.size();
-  int DL = stack_.get_decision_level();
+  int DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
   for (auto l : violated_clause) {

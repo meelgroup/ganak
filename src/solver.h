@@ -98,7 +98,7 @@ private:
   StopWatch stopwatch_;
   SolverConfiguration config_;
 
-  DecisionStack stack_; // decision stack
+  DecisionStack decision_stack_; // decision stack
   vector<LiteralID> literal_stack_;
   ComponentManager comp_manager_ = ComponentManager(
           config_,statistics_, literal_values_, independent_support_);
@@ -165,7 +165,7 @@ private:
   {
     if (literal_values_[lit] != X_TRI)
       return false;
-    var(lit).decision_level = stack_.get_decision_level();
+    var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
     var(lit).polarity = lit.sign();
     var(lit).set = true;
@@ -198,33 +198,33 @@ private:
 
   vector<LiteralID>::const_iterator TOSLiteralsBegin()
   {
-    return literal_stack_.begin() + stack_.top().literal_stack_ofs();
+    return literal_stack_.begin() + decision_stack_.top().literal_stack_ofs();
   }
 
   void initStack(unsigned int resSize)
   {
-    stack_.clear();
-    stack_.reserve(resSize);
+    decision_stack_.clear();
+    decision_stack_.reserve(resSize);
     literal_stack_.clear();
     literal_stack_.reserve(resSize);
     // initialize the stack to contain at least level zero
-    stack_.push_back(StackLevel(1, 0, 2));
-    stack_.back().changeBranch();
+    decision_stack_.push_back(StackLevel(1, 0, 2));
+    decision_stack_.back().changeBranch();
   }
 
   const LiteralID &TOS_decLit()
   {
-    assert(stack_.top().literal_stack_ofs() < literal_stack_.size());
-    return literal_stack_[stack_.top().literal_stack_ofs()];
+    assert(decision_stack_.top().literal_stack_ofs() < literal_stack_.size());
+    return literal_stack_[decision_stack_.top().literal_stack_ofs()];
   }
 
   void reactivateTOS()
   {
     for (auto it = TOSLiteralsBegin(); it != literal_stack_.end(); it++)
       unSet(*it);
-    comp_manager_.cleanRemainingComponentsOf(stack_.top());
-    literal_stack_.resize(stack_.top().literal_stack_ofs());
-    stack_.top().resetRemainingComps();
+    comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
+    literal_stack_.resize(decision_stack_.top().literal_stack_ofs());
+    decision_stack_.top().resetRemainingComps();
   }
 
   bool fail_test(LiteralID lit)
@@ -233,7 +233,7 @@ private:
     // we increase the decLev artificially
     // s.t. after the tentative BCP call, we can learn a conflict clause
     // relative to the assignment of *jt
-    stack_.startFailedLitTest();
+    decision_stack_.startFailedLitTest();
     setLiteralIfFree(lit);
 
     assert(!hasAntecedent(lit));
@@ -242,7 +242,7 @@ private:
     if (!bSucceeded)
       recordAllUIPCauses();
 
-    stack_.stopFailedLitTest();
+    decision_stack_.stopFailedLitTest();
 
     while (literal_stack_.size() > sz)
     {

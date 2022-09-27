@@ -227,11 +227,6 @@ void Solver::solve(const string &file_name)
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
     statistics_.exit_state_ = countSAT();
-
-    if (statistics_.exit_state_ == CHANGEHASH) {
-      cout << "ERROR: We need to change the hash range (-1)" << endl;
-      exit(1);
-    }
     statistics_.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
     statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
@@ -256,8 +251,10 @@ SOLVER_StateT Solver::countSAT() {
   while (true) {
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       unsigned t = statistics_.num_cache_look_ups_ + 1;
-      if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) { // 1 - log_2(2.004)/64 = 0.9843
-        return CHANGEHASH;
+      // 1 - log_2(2.004)/64 = 0.9843
+      if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) {
+        cout << "ERROR: We need to change the hash range (-1)" << endl;
+        exit(-1);
       }
       decideLiteral();
       while (!bcp()) {
@@ -536,9 +533,10 @@ retStateT Solver::resolveConflict() {
 bool Solver::bcp() {
   // the asserted literal has been set, so we start
   // bcp on that literal
-  assert(literal_stack_.size() > 0 && "Well... we could just put this in an IF, but let's check it this way instead");
+  assert(literal_stack_.size() > 0 &&
+      "We could just put this in an IF, but I don't think it should be 0");
   unsigned start_ofs = literal_stack_.size() - 1;
-  for (auto lit : unit_clauses_) setLiteralIfFree(lit);
+  for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
   bool bSucceeded = BCP(start_ofs);
   if (config_.perform_failed_lit_test && bSucceeded) {
     bSucceeded = implicitBCP();

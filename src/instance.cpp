@@ -149,7 +149,6 @@ void Instance::compactVariables() {
   literal_values_.clear();
   literal_values_.resize(variables_.size(), X_TRI);
 
-  unsigned bin_links = 0;
   LiteralID newlit;
   for (auto l = LiteralID(0, false); l != _tmp_bin_links.end_lit(); l.inc()) {
     if (var_map[l.var()] != 0) {
@@ -159,7 +158,6 @@ void Instance::compactVariables() {
         literals_[newlit].addBinLinkTo(
             LiteralID(var_map[it->var()], it->sign()));
       }
-      bin_links += literals_[newlit].binary_links_.size() - 1;
     }
   }
 

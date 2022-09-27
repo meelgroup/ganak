@@ -18,10 +18,6 @@ void DataAndStatistics::print_final_solution_count() {
 
 void DataAndStatistics::writeToFile(const string & file_name, const bool pmc) {
   ofstream out(file_name, ios_base::app);
-  if (exit_state_ == TIMEOUT) {
-    out << endl << "c TIMEOUT !" << endl;
-    return;
-  }
   out << "c " << endl;
   out << "c " << endl;
   out << "c variables (total / active / free)\t" << num_variables_ << "/"
@@ -79,11 +75,6 @@ void DataAndStatistics::writeToFile(const string & file_name, const bool pmc) {
 }
 
 void DataAndStatistics::printShort(const bool pmc) {
-  if (exit_state_ == TIMEOUT) {
-    cout << endl << "c TIMEOUT !" << endl;
-    return;
-  }
-  cout << "c " << endl;
   cout << "c " << endl;
   cout << "c variables (total / active / free)\t" << num_variables_ << "/"
       << num_used_variables_ << "/" << num_variables_ - num_used_variables_

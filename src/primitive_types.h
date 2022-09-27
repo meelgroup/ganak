@@ -23,8 +23,7 @@ static const ClauseIndex NOT_A_CLAUSE(0);
 
 
 enum SOLVER_StateT {
-
-  NO_STATE, SUCCESS, TIMEOUT, ABORTED, CHANGEHASH
+  NO_STATE, SUCCESS
 };
 
 

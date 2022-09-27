@@ -114,7 +114,6 @@ void STDComponentAnalyzer::recordComponentOf(const VariableIndex var) {
       if(archetype_.clause_unseen_in_sup_comp(clID)){
         auto itVEnd = search_stack_.end();
         bool all_lits_active = true;
-        bool appeared = false;
         for (auto itL = beginOfClause(*pcl_ofs); *itL != SENTINEL_LIT; itL++) {
           assert(itL->var() <= max_variable_id_);
           if(archetype_.var_nil(itL->var())){
@@ -137,7 +136,6 @@ void STDComponentAnalyzer::recordComponentOf(const VariableIndex var) {
             break;
           } else {
             assert(isActive(*itL));
-            if(itL->var() == var) appeared = true;
             var_frequency_scores_[itL->var()]++;
             if(isUnseenAndActive(itL->var()))
               setSeenAndStoreInSearchStack(itL->var());

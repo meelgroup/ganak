@@ -11,10 +11,7 @@
 #include "base_packed_component.h"
 #include "component.h"
 #include "../clhash/clhash.h"
-
 #include <math.h>
-
-
 
 class DifferencePackedComponent:public BasePackedComponent {
 public:
@@ -28,10 +25,10 @@ public:
   unsigned num_variables() const{
     if (old_size)
       return old_num_vars;
-    
-    uint64_t *p = (uint64_t *) data_;
-    return (*p >> bits_of_data_size()) & (uint64_t) variable_mask();
-    
+
+    uint32_t *p = (uint32_t *) data_;
+    return (*p >> bits_of_data_size()) & variable_mask();
+
   }
 
   unsigned data_size() const {
@@ -96,15 +93,11 @@ public:
       match = clhash_key[i] == clhashkey_[i];
       if(!match){
         return false;
-      } 
+      }
     }
     return true;
   }
-
-private:
-
 };
-
 
 
 DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
@@ -217,7 +210,7 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
        + (rComp.numLongClauses() - 1) * bits_per_clause_diff;
 
   unsigned data_size = (data_size_vars + data_size_clauses)/bits_per_block();
-    data_size+=  ((data_size_vars + data_size_clauses) % bits_per_block())? 1 : 0;
+  data_size += ((data_size_vars + data_size_clauses) % bits_per_block())? 1 : 0;
 
   data_ = new unsigned[data_size];
   assert((data_size >> bits_of_data_size()) == 0);
@@ -249,9 +242,9 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   bs.assert_size(data_size);
 
   clhashkey_ = new uint64_t[random.capacity()];
-  for(int i=0; i<random.capacity();i++){
+  for(size_t i=0; i<random.capacity();i++){
     clhasher h(random[i]);
-    clhashkey_[i] = h((void*)data_, sizeof(unsigned)*data_size);
+    clhashkey_[i] = h(data_, data_size);
   }
   //TODO Remove
   // delete[] data_;

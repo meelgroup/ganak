@@ -6,7 +6,6 @@
  */
 #include "solver.h"
 #include <deque>
-
 #include <algorithm>
 
 StopWatch::StopWatch()
@@ -458,7 +457,6 @@ retStateT Solver::backtrack() {
         }
       }
     }
-//     isindependent = true;
     if (!stack_.top().isSecondBranch()) {
       LiteralID aLit = TOS_decLit();
       assert(stack_.get_decision_level() > 0);
@@ -476,9 +474,7 @@ retStateT Solver::backtrack() {
       }
       comp_manager_.decreasecachescore(comp_manager_.superComponentOf(stack_.top()));
     }
-    if (stack_.get_decision_level() <= 0) {
-      break;
-    }
+    if (stack_.get_decision_level() <= 0) break;
     reactivateTOS();
     assert(stack_.size() >= 2);
     (stack_.end() - 2)->includeSolution(stack_.top().getTotalModelCount());

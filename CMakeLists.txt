@@ -103,11 +103,9 @@ if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
-
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Windows") AND (STATICCOMPILE))
     set(Boost_USE_STATIC_LIBS ON)
 endif()
-
 
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
@@ -247,6 +245,9 @@ else()
     add_definitions(-D_FORTIFY_SOURCE=0)
 endif()
 
+# -----------------------------------------------------------------------------
+# Flags
+# -----------------------------------------------------------------------------
 if (NOT WIN32)
     if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT COVERAGE)
         #dd_cxx_flag_if_supported("-fvisibility=hidden")
@@ -286,6 +287,39 @@ if (NOT WIN32)
     add_c_flag_if_supported("-Wall")
     add_c_flag_if_supported("-msse4.1")
     add_c_flag_if_supported("-mpclmul")
+endif()
+
+# generate JSON file of compile commands -- useful for code extension
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+
+option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
+if (SANITIZE)
+    MESSAGE(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
+    SET( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS}  -lasan -lubsan " )
+    SET( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lasan -lubsan ")
+    add_compile_options("-fsanitize=address")
+    add_compile_options("-fsanitize=integer")
+    add_compile_options("-fsanitize=undefined")
+
+    add_compile_options("-fsanitize=null")
+    add_compile_options("-fsanitize=alignment")
+    #add_compile_options("-fno-sanitize-recover")
+
+    add_compile_options("-fsanitize=return")
+    add_compile_options("-fsanitize=bounds")
+    add_compile_options("-fsanitize=float-divide-by-zero")
+    add_compile_options("-fsanitize=integer-divide-by-zero")
+    add_compile_options("-fsanitize=unsigned-integer-overflow")
+    add_compile_options("-fsanitize=signed-integer-overflow")
+    add_compile_options("-fsanitize=bool")
+    add_compile_options("-fsanitize=enum")
+    add_compile_options("-fsanitize=float-cast-overflow")
+
+    #add_compile_options("-Weverything")
+    #add_compile_options("-Wshorten-64-to-32")
+    #add_compile_options("-Wweak-vtables")
+    #add_compile_options("-Wsign-conversion")
+    #add_compile_options("-Wconversion")
 endif()
 
 find_library(GMP_LIB gmp)

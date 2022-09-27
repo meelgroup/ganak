@@ -9,6 +9,9 @@
 #define STACK_H_
 
 #include <gmpxx.h>
+#include <cassert>
+#include <vector>
+using std::vector;
 
 class StackLevel {
   /// active Component, once initialized, it should not change
@@ -152,26 +155,23 @@ class DecisionStack: public vector<StackLevel> {
   unsigned int failed_literal_test_active = 0;
 public:
 
-  //begin for implicit BCP
   void startFailedLitTest() {
     failed_literal_test_active = true;
   }
   void stopFailedLitTest() {
     failed_literal_test_active = false;
   }
-  //end for implicit BCP
 
   StackLevel &top() {
     assert(size() > 0);
     return back();
   }
-  int get_decision_level() const {
+
+  /// 0 means pre-1st-decision
+  unsigned get_decision_level() const {
     assert(size() > 0);
     return size() - 1 + failed_literal_test_active;
-  } // 0 means pre-1st-decision
-
+  }
 };
-
-
 
 #endif /* STACK_H_ */

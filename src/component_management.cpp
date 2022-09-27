@@ -18,8 +18,9 @@ void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
   component_stack_.push_back(new Component());
   component_stack_.push_back(new Component());
   assert(component_stack_.size() == 2);
-  component_stack_.back()->createAsDummyComponent(ana_.max_variable_id(),
-      ana_.max_clause_id());
+  component_stack_.back()->createAsDummyComponent(
+      ana_.max_variable_id()
+      , ana_.max_clause_id());
 
 
   cache_.init(*component_stack_.back(), seedforCLHASH);

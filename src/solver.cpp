@@ -194,9 +194,13 @@ void Solver::solve(const string &file_name)
   {
     cout << "c Sampling set is present, performing projected model counting " << endl;
     cout << "c Sampling set size: " << independent_support_.size() << endl;
-    cout << "c Sampling set: ";
-    for (const auto& i: independent_support_) cout << ' ' << i;
-    cout << endl;
+    if (independent_support_.size() > 50) {
+      cout << "c Sampling set is too large, not displaying" << endl;
+    } else {
+      cout << "c Sampling set: ";
+      for (const auto& i: independent_support_) cout << ' ' << i;
+      cout << endl;
+    }
 
     cout << "c " << endl;
     cout << "c Preprocessing .." << endl;
@@ -753,7 +757,8 @@ void Solver::minimizeAndStoreUIPClause(
   }
 
   if (uipLit.var()) {
-    assert(var(uipLit).decision_level == stack_.get_decision_level());
+    assert(var(uipLit).decision_level >= 0
+            && (unsigned)var(uipLit).decision_level == stack_.get_decision_level());
   }
 
   //assert(uipLit.var() != 0);

@@ -49,17 +49,18 @@ uint64_t freeram() {
 #include "stack.h"
 
 
-ComponentCache::ComponentCache(DataAndStatistics &statistics, 
+ComponentCache::ComponentCache(DataAndStatistics &statistics,
 SolverConfiguration &config) :
 		statistics_(statistics), config_(config) {
 }
 
 void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforCLHASH){
 
-  CacheableComponent &packed_super_comp = *new CacheableComponent(super_comp);
-	
+  CacheableComponent *packed_super_comp = new CacheableComponent(super_comp);
+
 	if (config_.perform_pcc){
-		packed_super_comp = *new CacheableComponent(randomseedforCLHASH,super_comp);
+		delete packed_super_comp;
+		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp);
 	}
 	my_time_ = 1;
 
@@ -94,9 +95,10 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 	if (entry_base_.capacity() == entry_base_.size())
 		entry_base_.reserve(2 * entry_base_.size());
 
-	entry_base_.push_back(&packed_super_comp);
+	entry_base_.push_back(packed_super_comp);
 
-	statistics_.incorporate_cache_store(packed_super_comp, config_.perform_pcc && packed_super_comp.get_hacked());
+	statistics_.incorporate_cache_store(*packed_super_comp
+			, config_.perform_pcc && packed_super_comp->get_hacked());
 
 	super_comp.set_id(1);
 	compute_byte_size_infrasture();

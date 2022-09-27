@@ -60,9 +60,6 @@ int main(int argc, char *argv[])
       theSolver.config().perform_pcc = false;
     } else if (strcmp(argv[i], "-noCSVSADS") == 0) {
       theSolver.config().use_csvsads = false;
-    } else if (strcmp(argv[i], "-EDR") == 0) {
-      theSolver.config().use_csvsads = false;
-      theSolver.config().use_edr = true;
     } else if (strcmp(argv[i], "-t") == 0) {
       if (argc <= i + 1)
       {

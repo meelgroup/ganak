@@ -31,10 +31,17 @@ class ComponentManager
 public:
   ComponentManager(SolverConfiguration &config, DataAndStatistics &statistics,
                    LiteralIndexedVector<TriValue> &lit_values,
-                   set<unsigned> &independent_support_) : 
+                   set<unsigned> &independent_support_) :
       config_(config), statistics_(statistics), cache_(statistics, config_),
       ana_(statistics, lit_values, independent_support_)
   {
+  }
+
+  ~ComponentManager() {
+    for (const auto& c: seedforCLHASH) {
+      assert(c != NULL);
+      free(c);
+    }
   }
 
   void initialize(LiteralIndexedVector<Literal> &literals,
@@ -102,10 +109,12 @@ public:
   void getrandomseedforclhash()
   {
     std::random_device rd;     //Get a random seed from the OS entropy device, or whatever
-    std::mt19937_64 eng(rd()); //Use the 64-bit Mersenne Twister 19937 generator
+    const auto seed = rd();
+    std::mt19937_64 eng(seed); //Use the 64-bit Mersenne Twister 19937 generator
                                //and seed it with entropy.
     std::uniform_int_distribution<unsigned long long> distr;
-    seedforCLHASH.reserve(config_.hashrange);
+    assert(seedforCLHASH.empty());
+    seedforCLHASH.resize(config_.hashrange);
     for (unsigned i = 0; i < config_.hashrange; i++)
     {
       seedforCLHASH[i] =

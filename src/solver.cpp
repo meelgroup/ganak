@@ -659,7 +659,7 @@ bool Solver::implicitBCP() {
 
 void Solver::minimizeAndStoreUIPClause(
   LiteralID uipLit,
-  vector<LiteralID> &tmp_clause, bool seen[]) {
+  vector<LiteralID> &tmp_clause, const vector<unsigned char>& seen) {
 
   static deque<LiteralID> clause;
   clause.clear();
@@ -712,30 +712,30 @@ void Solver::recordLastUIPCauses() {
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
-  bool seen[num_variables() + 1];
-  memset(seen, false, sizeof(bool) * (num_variables() + 1));
-
-  static vector<LiteralID> tmp_clause;
+  tmp_seen.clear();
+  tmp_seen.resize(num_variables()+1, false);
   tmp_clause.clear();
+  assert(toClear.empty());
 
   assertion_level_ = 0;
   uip_clauses_.clear();
 
   unsigned lit_stack_ofs = literal_stack_.size();
-  int DL = decision_stack_.get_decision_level();
+  const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
-  for (auto l : violated_clause) {
+  for (const auto& l: violated_clause) {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) {
       continue;
     }
-    if (var(l).decision_level < DL) {
+    if (var(l).decision_level < (int)DL) {
       tmp_clause.push_back(l);
     } else {
       lits_at_current_dl++;
     }
     literal(l).increaseActivity();
-    seen[l.var()] = true;
+    tmp_seen[l.var()] = true;
+    toClear.push_back(l.var());
   }
 
   LiteralID curr_lit;
@@ -743,11 +743,11 @@ void Solver::recordLastUIPCauses() {
     assert(lit_stack_ofs != 0);
     curr_lit = literal_stack_[--lit_stack_ofs];
 
-    if (!seen[curr_lit.var()]) {
+    if (!tmp_seen[curr_lit.var()]) {
       continue;
     }
-
-    seen[curr_lit.var()] = false;
+    tmp_seen[curr_lit.var()] = false;
+    toClear.push_back(curr_lit.var());
 
     if (lits_at_current_dl-- == 1) {
       // perform UIP stuff
@@ -765,33 +765,37 @@ void Solver::recordLastUIPCauses() {
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
            *it != SENTINEL_CL; it++) {
-        if (seen[it->var()] || (var(*it).decision_level == 0) || existsUnitClauseOf(it->var())) {
+        if (tmp_seen[it->var()] || (var(*it).decision_level == 0) || existsUnitClauseOf(it->var())) {
           continue;
         }
-        if (var(*it).decision_level < DL) {
+        if (var(*it).decision_level < (int)DL) {
           tmp_clause.push_back(*it);
         } else {
           lits_at_current_dl++;
         }
-        seen[it->var()] = true;
+        tmp_seen[it->var()] = true;
+        toClear.push_back(it->var());
       }
     } else {
       LiteralID alit = getAntecedent(curr_lit).asLit();
       literal(alit).increaseActivity();
       literal(curr_lit).increaseActivity();
-      if (!seen[alit.var()] && !(var(alit).decision_level == 0) &&
+      if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
-        if (var(alit).decision_level < DL) {
+        if (var(alit).decision_level < (int)DL) {
           tmp_clause.push_back(alit);
         } else {
           lits_at_current_dl++;
         }
-        seen[alit.var()] = true;
+        tmp_seen[alit.var()] = true;
+        toClear.push_back(alit.var());
       }
     }
     curr_lit = NOT_A_LIT;
   }
-  minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, seen);
+  minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, tmp_seen);
+  for(const auto& v: toClear) tmp_seen[v] = false;
+  toClear.clear();
 }
 
 void Solver::recordAllUIPCauses() {
@@ -799,30 +803,30 @@ void Solver::recordAllUIPCauses() {
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
-  bool seen[num_variables() + 1];
-  memset(seen, false, sizeof(bool) * (num_variables() + 1));
-
-  static vector<LiteralID> tmp_clause;
+  tmp_seen.clear();
+  tmp_seen.resize(num_variables()+1, false);
   tmp_clause.clear();
+  assert(toClear.empty());
 
   assertion_level_ = 0;
   uip_clauses_.clear();
 
   unsigned lit_stack_ofs = literal_stack_.size();
-  int DL = decision_stack_.get_decision_level();
+  const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
   for (auto l : violated_clause) {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) {
       continue;
     }
-    if (var(l).decision_level < DL) {
+    if (var(l).decision_level < (int)DL) {
       tmp_clause.push_back(l);
     } else {
       lits_at_current_dl++;
     }
     literal(l).increaseActivity();
-    seen[l.var()] = true;
+    tmp_seen[l.var()] = true;
+    toClear.push_back(l.var());
   }
   unsigned n = 0;
   LiteralID curr_lit;
@@ -830,11 +834,11 @@ void Solver::recordAllUIPCauses() {
     assert(lit_stack_ofs != 0);
     curr_lit = literal_stack_[--lit_stack_ofs];
 
-    if (!seen[curr_lit.var()]) {
+    if (!tmp_seen[curr_lit.var()]) {
       continue;
     }
 
-    seen[curr_lit.var()] = false;
+    tmp_seen[curr_lit.var()] = false;
 
     if (lits_at_current_dl-- == 1) {
       n++;
@@ -845,7 +849,7 @@ void Solver::recordAllUIPCauses() {
         break;
       }
       // perform UIP stuff
-      minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, seen);
+      minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, tmp_seen);
     }
 
     assert(hasAntecedent(curr_lit));
@@ -856,35 +860,39 @@ void Solver::recordAllUIPCauses() {
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
            *it != SENTINEL_CL; it++) {
-        if (seen[it->var()] || (var(*it).decision_level == 0) ||
+        if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
               existsUnitClauseOf(it->var())) {
           continue;
         }
-        if (var(*it).decision_level < DL) {
+        if (var(*it).decision_level < (int)DL) {
           tmp_clause.push_back(*it);
         } else {
           lits_at_current_dl++;
         }
-        seen[it->var()] = true;
+        tmp_seen[it->var()] = true;
+        toClear.push_back(it->var());
       }
     } else {
       LiteralID alit = getAntecedent(curr_lit).asLit();
       literal(alit).increaseActivity();
       literal(curr_lit).increaseActivity();
-      if (!seen[alit.var()] && !(var(alit).decision_level == 0) &&
+      if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
-        if (var(alit).decision_level < DL) {
+        if (var(alit).decision_level < (int)DL) {
           tmp_clause.push_back(alit);
         } else {
           lits_at_current_dl++;
         }
-        seen[alit.var()] = true;
+        tmp_seen[alit.var()] = true;
+        toClear.push_back(alit.var());
       }
     }
   }
   if (!hasAntecedent(curr_lit)) {
-    minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, seen);
+    minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, tmp_seen);
   }
+  for(const auto& v: toClear) tmp_seen[v] = false;
+  toClear.clear();
 }
 
 void Solver::printOnlineStats() {

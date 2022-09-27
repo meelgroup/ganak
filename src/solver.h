@@ -95,6 +95,11 @@ public:
   }
 
 private:
+  // Temporaries, used during recordLastUIPClause
+  vector<unsigned char> tmp_seen;
+  vector<LiteralID> tmp_clause;
+  vector<unsigned> toClear;
+
   StopWatch stopwatch_;
   SolverConfiguration config_;
 
@@ -282,7 +287,8 @@ private:
   void recordAllUIPCauses();
 
   void minimizeAndStoreUIPClause(LiteralID uipLit,
-                                 vector<LiteralID> &tmp_clause, bool seen[]);
+                                 vector<LiteralID> &tmp_clause,
+                                 const vector<unsigned char>& seen);
   void storeUIPClause(LiteralID uipLit, vector<LiteralID> &tmp_clause);
   int getAssertionLevel() const
   {

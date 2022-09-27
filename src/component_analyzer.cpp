@@ -16,10 +16,7 @@ void STDComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
   variable_occurrence_lists_pool_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
-
   literal_pool_.reserve(lit_pool.size());
-
-
   map_clause_id_to_ofs_.clear();
   map_clause_id_to_ofs_.push_back(0);
 

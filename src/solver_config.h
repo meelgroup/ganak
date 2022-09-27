@@ -28,8 +28,6 @@ struct SolverConfiguration {
   bool verbose = false;
   // quiet = true will override verbose;
   bool quiet = false;
-  bool maxdecterminate = false;
-
 
   unsigned long time_bound_seconds = 100000;
   unsigned long randomseed = 1000;

@@ -132,20 +132,6 @@ int main(int argc, char *argv[])
       }
       theSolver.statistics().maximum_cache_size_bytes_ = atol(argv[i + 1]) * (uint64_t)1000000;
     }
-    else if (strcmp(argv[i], "-maxdec") == 0)
-    {
-      if (argc <= i + 2)
-      {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      }
-      else
-      {
-        theSolver.config().maxdec = atol(argv[i + 1]);
-        theSolver.config().minconflicts_ = atol(argv[i + 2]);
-        theSolver.config().maxdecterminate = true;
-      }
-    }
     else
       input_file = argv[i];
   }

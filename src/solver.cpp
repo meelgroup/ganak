@@ -158,12 +158,6 @@ void Solver::solve(const string &file_name)
   stopwatch_.start();
   bool ok = createfromFile(file_name);
 
-  //Found Empirically
-  if (statistics_.num_original_binary_clauses_ > 0.75 * statistics_.num_original_clauses_)
-  {
-    config_.maxdecterminate = false;
-  }
-
   if (config_.perform_pcc)
   {
     comp_manager_.getrandomseedforclhash();
@@ -367,13 +361,6 @@ void Solver::decideLiteral() {
 
   setLiteralIfFree(theLit);
   statistics_.num_decisions_++;
-  if (config_.maxdecterminate) {
-    if (statistics_.num_decisions_ > config_.maxdec &&
-        statistics_.num_conflicts_ < config_.minconflicts_) {
-      cout << "c Terminating solver because the number of decisions exceeds the given value of " << config_.maxdec << " and conflicts is less than " << config_.minconflicts_ << endl;
-      exit(1);
-    }
-  }
   if (statistics_.num_decisions_ % 128 == 0) {
     if (config_.use_csvsads) {
       comp_manager_.increasecachescores();

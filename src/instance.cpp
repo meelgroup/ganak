@@ -290,9 +290,9 @@ void Instance::parseWithCMS(const string& filename) {
   #endif
 
   if (parser.sampling_vars_found) {
-    for(const auto& lit: parser.sampling_vars) independent_support_.insert(lit);
+    for(const auto& lit: parser.sampling_vars) independent_support_.insert(lit+1);
   } else {
-    for(uint32_t i = 0; i < solver.nVars(); i++) independent_support_.insert(i);
+    for(uint32_t i = 1; i < solver.nVars()+1; i++) independent_support_.insert(i);
   }
 }
 

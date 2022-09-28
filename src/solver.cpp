@@ -52,87 +52,6 @@ void Solver::print(vector<unsigned> &vec)
   cout << endl;
 }
 
-bool Solver::simplePreProcess()
-{
-
-  if (!config_.perform_pre_processing)
-    return true;
-
-  assert(literal_stack_.size() == 0);
-  unsigned start_ofs = 0;
-
-  //begin process unit clauses
-  for (auto lit : unit_clauses_)
-  {
-    if (isUnitClause(lit.neg()))
-    {
-      return false;
-    }
-    setLiteralIfFree(lit);
-  }
-  //end process unit clauses
-
-  bool succeeded = BCP(start_ofs);
-
-  if (succeeded)
-    succeeded &= prepFailedLiteralTest();
-
-  if (succeeded)
-    HardWireAndCompact();
-
-  return succeeded;
-}
-
-bool Solver::prepFailedLiteralTest()
-{
-  unsigned last_size;
-  do
-  {
-    last_size = literal_stack_.size();
-    for (unsigned v = 1; v < variables_.size(); v++)
-      if (isActive(v))
-      {
-        unsigned sz = literal_stack_.size();
-        setLiteralIfFree(LiteralID(v, true));
-        bool res = BCP(sz);
-        while (literal_stack_.size() > sz)
-        {
-          unSet(literal_stack_.back());
-          literal_stack_.pop_back();
-        }
-
-        if (!res)
-        {
-          sz = literal_stack_.size();
-          setLiteralIfFree(LiteralID(v, false));
-          if (!BCP(sz))
-            return false;
-        }
-        else
-        {
-
-          sz = literal_stack_.size();
-          setLiteralIfFree(LiteralID(v, false));
-          bool resb = BCP(sz);
-          while (literal_stack_.size() > sz)
-          {
-            unSet(literal_stack_.back());
-            literal_stack_.pop_back();
-          }
-          if (!resb)
-          {
-            sz = literal_stack_.size();
-            setLiteralIfFree(LiteralID(v, true));
-            if (!BCP(sz))
-              return false;
-          }
-        }
-      }
-  } while (literal_stack_.size() > last_size);
-
-  return true;
-}
-
 void Solver::HardWireAndCompact()
 {
   compactClauses();
@@ -172,8 +91,6 @@ void Solver::solve(const string &file_name)
     cout << "c Preprocessing .." << endl;
   }
 
-  if (ok) ok = simplePreProcess();
-  if (!config_.quiet) cout << "c Prepocessing done" << endl;
   if (ok) {
     if (!config_.quiet) statistics_.printShortFormulaInfo();
     last_ccl_deletion_time_ = last_ccl_cleanup_time_ =

@@ -33,6 +33,10 @@ public:
 		return vector<_T>::begin() + 2;
 	}
 
+	bool empty() const {
+		return vector<_T>::empty();
+	}
+
 	void resize(unsigned _size) {
 		vector<_T>::resize(_size * 2);
 	}

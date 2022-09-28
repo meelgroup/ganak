@@ -21,6 +21,7 @@
 include_directories( ${PROJECT_SOURCE_DIR} )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
@@ -36,37 +37,27 @@ SET(SOURCES
 	new_component_analyzer.cpp
 	solver.cpp
 	statistics.cpp
-	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
-)
-
-SET(LIB	clhash
-		component_types)
+	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
-target_link_libraries (ganak ${LIB})
+target_link_libraries (ganak
+  LINK_PUBLIC clhash
+  LINK_PUBLIC component_types
+  LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES})
 
-if (NOT WIN32)
-    set_target_properties(ganak PROPERTIES
-        PUBLIC_HEADER "${ganak_public_headers}"
-        VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-        SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    )
-else()
-    set_target_properties(ganak PROPERTIES
-        OUTPUT_NAME ganak1win
-        PUBLIC_HEADER "${ganak_public_headers}"
-        VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-        SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    )
-endif()
+set_target_properties(ganak PROPERTIES
+    PUBLIC_HEADER "${ganak_public_headers}"
+    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+)
 
 add_executable (ganak-bin
     main.cpp
 )
 
 target_link_libraries (ganak-bin
-ganak
-${GMP_LIB} ${GMPXX_LIB}
+  ganak
+  ${GMP_LIB} ${GMPXX_LIB}
 )
 
 set_target_properties(ganak-bin PROPERTIES

@@ -2,11 +2,8 @@
 #include "GitSHA1.h"
 
 #include <iostream>
-
 #include <vector>
-
 #include <string>
-
 #include <sys/time.h>
 #include <sys/resource.h>
 

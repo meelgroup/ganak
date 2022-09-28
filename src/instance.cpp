@@ -6,12 +6,17 @@
  */
 
 #include "instance.h"
+#include "structures.h"
 
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <sys/stat.h>
+#include <cryptominisat5/cryptominisat.h>
+#include <cryptominisat5/dimacsparser.h>
+#include <cryptominisat5/streambuffer.h>
 
-using namespace std;
+using namespace CMSat;
 
 void Instance::cleanClause(ClauseOfs cl_ofs) {
   bool satisfied = false;
@@ -259,194 +264,82 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
   return true;
 }
 
+static LiteralID cmsLitToG(const CMSat::Lit& l) {
+  return LiteralID(l.var()+1, !l.sign());
+}
 
-void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
-  string idstring;
-  int lit;
-  char eolchar;
-  //Parse old projection
-  if (c == 'c' && input_file.get(eolchar) && eolchar == '\n') {
-    input_file.unget();
-    return;
+void Instance::parseWithCMS(CMSat::SATSolver& solver, const string& filename) {
+  unsigned verb = 0;
+  #ifndef USE_ZLIB
+  FILE * in = fopen(filename.c_str(), "rb");
+  DimacsParser<StreamBuffer<FILE*, FN>, SATSolver> parser(&solver, NULL, verb);
+  #else
+  gzFile in = gzopen(filename.c_str(), "rb");
+  DimacsParser<StreamBuffer<gzFile, GZ>, SATSolver> parser(&solver, NULL, verb);
+  #endif
+  if (in == NULL) {
+      std::cout << "ERROR! Could not open file '" << filename
+      << "' for reading: " << strerror(errno) << endl;
+      std::exit(-1);
   }
-  if (c == 'c') {
-    input_file.unget();
-  }
-  if (c == 'c' &&
-      input_file >> idstring &&
-      idstring == "ind") {
-    while ((input_file >> lit) && lit != 0) {
-      if (!pcnf) {
-        independent_support_.insert(lit);
-      }
-    }
-  }
+  if (!parser.parse_DIMACS(in, true)) exit(-1);
+  #ifndef USE_ZLIB
+  fclose(in);
+  #else
+  gzclose(in);
+  #endif
 
-  //Parse new projection
-  if (c == 'v') {
-    input_file.unget();
-    input_file >> idstring;
-    if (pcnf) {
-      assert(idstring == "vp");
-      while ((input_file >> lit) && lit != 0) {
-        independent_support_.insert(lit);
-      }
-    }
+  if (parser.sampling_vars_found) {
+    for(const auto& lit: parser.sampling_vars) independent_support_.insert(lit);
+  } else {
+    for(uint32_t i = 0; i < solver.nVars(); i++) independent_support_.insert(i);
   }
 }
 
-bool Instance::createfromFile(const string &file_name) {
-  // Number of variable, clauses and projected variables.
-  unsigned int nVars, nCls, nPVars;
-  int lit;
-  unsigned max_ignore = 1000000;
-  unsigned clauses_added = 0;
-  LiteralID llit;
-  vector<LiteralID> literals;
-  string idstring;
-  char c;
-  independent_support_.clear();
-  // clear everything
-  literal_pool_.clear();
+bool Instance::createfromFile(const string &filename) {
+  // The solver is empty
+  assert(variables_.empty());
+  assert(literal_values_.empty());
+  assert(occurrence_lists_.empty());
+  assert(literals_.empty());
+  assert(literal_pool_.empty());
+  assert(independent_support_.empty());
+  assert(unit_clauses_.empty());
+  assert(conflict_clauses_.empty());
+
+  CMSat::SATSolver solver;
+  parseWithCMS(solver, filename);
+
   literal_pool_.push_back(SENTINEL_LIT);
+  variables_.push_back(Variable());
+  variables_.resize(solver.nVars() + 1);
+  literal_values_.resize(solver.nVars() + 1, X_TRI);
+  occurrence_lists_.resize(solver.nVars() + 1);
+  literals_.resize(solver.nVars() + 1);
 
-  variables_.clear();
-  variables_.push_back(Variable()); //initializing the Sentinel
-  literal_values_.clear();
-  unit_clauses_.clear();
+  solver.start_getting_small_clauses(
+      std::numeric_limits<uint32_t>::max(),
+      std::numeric_limits<uint32_t>::max(),
+      false);
 
-  ifstream input_file(file_name);
-  if (!input_file) {
-    cerr << "Cannot open file: " << file_name << endl;
-    exit(0);
+  statistics_.num_original_clauses_ = 0;
+  vector<Lit> cl;
+  vector<LiteralID> literals;
+  while(solver.get_next_small_clause(cl)) {
+    literals.clear();
+    for(const auto&l: cl) literals.push_back(cmsLitToG(l));
+    statistics_.num_original_clauses_++;
+    statistics_.incorporateClauseData(literals);
+    ClauseOfs cl_ofs = addClause(literals);
+    if (literals.size() >= 3)
+      for (const auto& l : literals)
+        occurrence_lists_[l].push_back(cl_ofs);
   }
+  solver.end_getting_small_clauses();
 
-  struct stat filestatus;
-  stat(file_name.c_str(), &filestatus);
-
-  literals.reserve(10000);
-  while (input_file >> c){
-    if (c == 'p'){
-      break;
-    }
-
-    input_file >> idstring;
-    if (c == 'c' &&
-        idstring == "ind" )
-    {
-      while ((input_file >> lit) && lit != 0) {
-        independent_support_.insert(lit);
-      }
-    }
-
-    if (idstring == "p")
-      break;
-    input_file.ignore(max_ignore, '\n');
-  }
-
-  input_file >> idstring;
-  if (!(idstring == "cnf" || idstring == "pcnf"))
-  {
-    cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
-    exit(0);
-  }
-  bool pcnf = false;
-  if (idstring == "pcnf") {
-    pcnf = true;
-    independent_support_.clear();
-  }
-  if (pcnf) {
-    if (!(input_file >> nVars
-          && input_file >> nCls && input_file >> nPVars)) {
-      cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
-      exit(0);
-    }
-  } else {
-    if (!(input_file >> nVars
-        && input_file >> nCls)) {
-      cerr << "Invalid CNF file " <<idstring <<" "<<c<< endl;
-      exit(0);
-    }
-  }
-
-  variables_.resize(nVars + 1);
-  literal_values_.resize(nVars + 1, X_TRI);
-  literal_pool_.reserve(filestatus.st_size);
-  conflict_clauses_.reserve(2*nCls);
-  occurrence_lists_.clear();
-  occurrence_lists_.resize(nVars + 1);
-
-  literals_.clear();
-  literals_.resize(nVars + 1);
-
-  unsigned clauses_in_file = 0;
-  while ((input_file >> c)) {
-    parseProjection(pcnf, input_file, c);
-
-    //Parse clause
-    if ((c == '-') || isdigit(c)) {
-      clauses_in_file++;
-      input_file.unget(); //extracted a nonspace character to determine if we have a clause, so put it back
-      literals.clear();
-      bool skip_clause = false;
-      while ((input_file >> lit) && lit != 0) {
-        if (std::abs(lit) > (int)nVars) {
-          cout << "ERROR! CNF contains literal " << lit << " but that has a larger variable than what the header claimed: " << nVars << ". Please fix the header `p cnf ...`. Exiting." << endl;
-          exit(-1);
-        }
-        bool duplicate_literal = false;
-        for (auto i : literals) {
-          if (i.toInt() == lit) {
-            duplicate_literal = true;
-            break;
-          }
-          if (i.toInt() == -lit) {
-            skip_clause = true;
-            break;
-          }
-        }
-        if (!duplicate_literal) {
-          literals.push_back(lit);
-        }
-      }
-
-      if (clauses_in_file > nCls) {
-        cout << "ERROR! CNF header says there will be only " << nCls << " clauses, but there are more in the CNF. Please fix the CNF header `p cnf ...`" << endl;
-        exit(-1);
-      }
-
-      clauses_added++;
-      if (!skip_clause) {
-        assert(!literals.empty());
-        statistics_.incorporateClauseData(literals);
-        ClauseOfs cl_ofs = addClause(literals);
-        if (literals.size() >= 3)
-          for (auto l : literals)
-            occurrence_lists_[l].push_back(cl_ofs);
-      }
-    }
-    input_file.ignore(max_ignore, '\n');
-  }
-  input_file.unget();
-  if (nCls != clauses_in_file) {
-    cout << "ERROR! Header claimed there are " << nCls << " clauses in the file, but there were only " << clauses_added << ". Please fix the header `p cnf ...`. Exiting." << endl;
-    exit(-1);
-  }
-
-  while (input_file >> c){
-    parseProjection(pcnf, input_file, c);
-  }
-
-
-  input_file.close();
-  //  /// END FILE input
-
-  statistics_.num_variables_ = statistics_.num_original_variables_ = nVars;
+  statistics_.num_variables_ = statistics_.num_original_variables_ = solver.nVars();
   statistics_.num_used_variables_ = num_variables();
-  statistics_.num_free_variables_ = nVars - num_variables();
-
-  statistics_.num_original_clauses_ = nCls;
-
+  statistics_.num_free_variables_ = solver.nVars() - num_variables();
   statistics_.num_original_binary_clauses_ = statistics_.num_binary_clauses_;
   statistics_.num_original_unit_clauses_ = statistics_.num_unit_clauses_ =
       unit_clauses_.size();

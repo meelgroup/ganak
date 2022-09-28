@@ -13,6 +13,7 @@
 #include "containers.h"
 #include <set>
 #include <assert.h>
+#include <cryptominisat5/cryptominisat.h>
 
 class Instance {
 protected:
@@ -78,7 +79,6 @@ protected:
   }
 
   bool createfromFile(const string &file_name);
-  void parseProjection(bool pcnf, ifstream& input_file, char& c);
   DataAndStatistics statistics_;
 
   /** literal_pool_: the literals of all clauses are stored here
@@ -208,6 +208,9 @@ protected:
         return true;
     return false;
   }
+
+private:
+  void parseWithCMS(CMSat::SATSolver& solver, const string& filename);
 };
 
 ClauseIndex Instance::addClause(vector<LiteralID> &literals) {

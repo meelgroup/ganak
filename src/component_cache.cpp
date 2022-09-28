@@ -74,7 +74,7 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 	free_entry_base_slots_.clear();
 	free_entry_base_slots_.reserve(10000);
 
-	uint64_t free_ram = freeram();
+	const uint64_t free_ram = freeram();
 	uint64_t max_cache_bound = 80 * (free_ram / 100);
 
 	if (statistics_.maximum_cache_size_bytes_ == 0) {

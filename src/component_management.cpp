@@ -9,13 +9,15 @@
 
 void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
     vector<LiteralID> &lit_pool, unsigned num_variables){
+  assert(component_stack_.empty());
 
   ana_.initialize(literals, lit_pool);
   CacheableComponent::adjustPackSize(ana_.max_variable_id(), ana_.max_clause_id());
 
-  component_stack_.clear();
-  component_stack_.reserve(ana_.max_variable_id() + 2);
+  //Add dummy component
   component_stack_.push_back(new Component());
+
+  //Add full component
   component_stack_.push_back(new Component());
   assert(component_stack_.size() == 2);
   component_stack_.back()->createAsDummyComponent(
@@ -24,7 +26,6 @@ void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
 
 
   cache_.init(*component_stack_.back(), seedforCLHASH);
-  cachescore_.reserve(num_variables + 5);
   for (unsigned i = 0 ; i < (num_variables + 5); i++){
     cachescore_.push_back(0);
   }

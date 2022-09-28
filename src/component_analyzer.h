@@ -15,8 +15,6 @@
 #include "component_types/base_packed_component.h"
 #include "component_types/component_archetype.h"
 
-
-
 #include <vector>
 #include <cmath>
 #include <gmpxx.h>
@@ -35,9 +33,6 @@ struct CAClauseHeader {
     return (sizeof(CAClauseHeader) - 2 * sizeof(LiteralID)) / sizeof(LiteralID);
   }
 };
-
-
-
 
 class STDComponentAnalyzer {
 public:

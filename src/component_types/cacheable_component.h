@@ -87,8 +87,6 @@ public:
     return first_descendant_;
   }
 
-
-
   void set_next_bucket_element(CacheEntryID entry) {
     next_bucket_element_ = entry;
   }
@@ -110,13 +108,6 @@ private:
 
 };
 
-
-
 typedef GenericCacheableComponent<DifferencePackedComponent> CacheableComponent;
-//typedef GenericCacheableComponent<SimplePackedComponent> CacheableComponent;
-
-
-
-
 
 #endif /* CACHEABLE_COMPONENT_H_ */

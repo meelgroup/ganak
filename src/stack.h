@@ -16,7 +16,7 @@ using std::vector;
 class StackLevel {
   /// active Component, once initialized, it should not change
   const unsigned super_component_ = 0;
-  // branch
+  // branch (i.e. left/right)
   bool active_branch_ = false;
 
   // offset in the literal stack where to store set lits

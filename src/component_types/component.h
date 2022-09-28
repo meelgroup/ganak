@@ -74,12 +74,17 @@ public:
     return data_.empty();
   }
 
+  // Creates the full CNF, at startup
   void createAsDummyComponent(unsigned max_var_id, unsigned max_clause_id) {
     data_.clear();
     clauses_ofs_ = 1;
+
+    // Add all variables to top component
     for (unsigned idvar = 1; idvar <= max_var_id; idvar++)
       addVar(idvar);
     closeVariableData();
+
+    //Add all clauses to top component
     if (max_clause_id > 0)
       for (unsigned idcl = 1; idcl <= max_clause_id; idcl++)
         addCl(idcl);

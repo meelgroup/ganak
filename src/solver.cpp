@@ -226,6 +226,7 @@ SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
   while (true) {
+    //cout << "top of decision stack: " << decision_stack_.top().getbranchvar() << endl;
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       unsigned t = statistics_.num_cache_look_ups_ + 1;
       // 1 - log_2(2.004)/64 = 0.9843
@@ -298,6 +299,7 @@ void Solver::decideLiteral() {
     it++;
   }
 
+  // Decision scores
   if (config_.use_csvsads) {
     float cachescore = comp_manager_.cacheScoreOf(max_score_var);
     for (auto it = comp_manager_.superComponentOf(decision_stack_.top()).varsBegin();
@@ -312,7 +314,6 @@ void Solver::decideLiteral() {
         }
       }
     }
-    max_score = score;
   }
 
   // this assert should always hold,
@@ -401,15 +402,20 @@ retStateT Solver::backtrack() {
     }
 
     if (!decision_stack_.top().isSecondBranch()) {
-      LiteralID aLit = TOS_decLit();
+      //cout << "isSecondBranch (i.e. active branch is FALSE)" << endl;
+      const LiteralID aLit = TOS_decLit();
       assert(decision_stack_.get_decision_level() > 0);
       decision_stack_.top().changeBranch();
       reactivateTOS();
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
       return RESOLVED;
+    } else {
+      //cout << "not isSecondBranch (i.e. active branch is TRUE)" << endl;
     }
     comp_manager_.cacheModelCountOf(decision_stack_.top().super_component(),
                                     decision_stack_.top().getTotalModelCount());
+
+    // Update cache score heuristic
     if (config_.use_csvsads) {
       statistics_.numcachedec_++;
       if (statistics_.numcachedec_ % 128 == 0) {
@@ -417,7 +423,8 @@ retStateT Solver::backtrack() {
       }
       comp_manager_.decreasecachescore(comp_manager_.superComponentOf(decision_stack_.top()));
     }
-    if (decision_stack_.get_decision_level() <= 0) break;
+
+    if (decision_stack_.get_decision_level() == 0) break;
     reactivateTOS();
     assert(decision_stack_.size() >= 2);
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());

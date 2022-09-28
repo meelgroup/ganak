@@ -11,9 +11,7 @@
 #include "component_types/component.h"
 #include "component_cache.h"
 #include "alt_component_analyzer.h"
-//#include "component_analyzer.h"
 
-// #include <vector>
 #include <unordered_map>
 #include <random>
 #include <gmpxx.h>
@@ -170,12 +168,15 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
   // record Remaining Components if there are none!
   if (component_stack_.size() <= top.remaining_components_ofs())
     recordRemainingCompsFor(top);
+
   assert(!top.branch_found_unsat());
   if (top.hasUnprocessedComponents())
     return true;
+
   // if no component remains
   // make sure, at least that the current branch is considered SAT
   top.includeSolution(1);
+  //cout << "includeSolution(1) fired!" << endl;
   return false;
 }
 
@@ -190,7 +191,6 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   {
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt))
     {
-
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.perform_pcc)
@@ -201,6 +201,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       {
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
       }
+
       if (!cache_.manageNewComponent(top, *packed_comp))
       {
         component_stack_.push_back(p_new_comp);

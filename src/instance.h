@@ -99,12 +99,9 @@ protected:
   unsigned original_lit_pool_size_;
 
   LiteralIndexedVector<Literal> literals_;
-
   LiteralIndexedVector<vector<ClauseOfs> > occurrence_lists_;
-
   vector<ClauseOfs> conflict_clauses_;
   vector<LiteralID> unit_clauses_;
-
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> literal_values_;
 
@@ -116,7 +113,6 @@ protected:
         getHeaderOf(clause_ofs).decayScore();
 
   }
-//  void decayActivities();
 
   void updateActivities(ClauseOfs clause_ofs) {
     getHeaderOf(clause_ofs).increaseScore();

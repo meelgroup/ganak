@@ -29,10 +29,7 @@ public:
   SOLVER_StateT exit_state_ = NO_STATE;
   // different variable counts
   // number of variables  and clauses before preprocessing
-  unsigned long num_original_variables_ = 0;
   unsigned long num_original_clauses_ = 0;
-  unsigned long num_original_binary_clauses_ = 0;
-  unsigned long num_original_unit_clauses_ = 0;
 
   //This variable is used to periodically increase cache scores
   unsigned long numcachedec_ = 0;

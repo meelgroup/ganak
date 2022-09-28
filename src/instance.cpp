@@ -337,15 +337,12 @@ bool Instance::createfromFile(const string &filename) {
   }
   solver.end_getting_small_clauses();
 
-  statistics_.num_variables_ = statistics_.num_original_variables_ = solver.nVars();
+  statistics_.num_variables_ = solver.nVars();
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = solver.nVars() - num_variables();
-  statistics_.num_original_binary_clauses_ = statistics_.num_binary_clauses_;
-  statistics_.num_original_unit_clauses_ = statistics_.num_unit_clauses_ =
-      unit_clauses_.size();
+  statistics_.num_unit_clauses_ = unit_clauses_.size();
 
   original_lit_pool_size_ = literal_pool_.size();
   return true;
 }
-
 

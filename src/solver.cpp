@@ -144,12 +144,7 @@ void Solver::HardWireAndCompact()
     literal(l).activity_score_ = literal(l).binary_links_.size() - 1;
     literal(l).activity_score_ += occurrence_lists_[l].size();
   }
-
   statistics_.num_unit_clauses_ = unit_clauses_.size();
-
-  statistics_.num_original_binary_clauses_ = statistics_.num_binary_clauses_;
-  statistics_.num_original_unit_clauses_ = statistics_.num_unit_clauses_ =
-      unit_clauses_.size();
   initStack(num_variables());
   original_lit_pool_size_ = literal_pool_.size();
 }

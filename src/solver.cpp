@@ -72,7 +72,8 @@ void Solver::solve(const string &file_name)
 {
   srand(config_.randomseed);
   stopwatch_.start();
-  bool ok = createfromFile(file_name);
+  createfromFile(file_name);
+  if (solver.okay()) HardWireAndCompact();
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
   initStack(num_variables());
@@ -88,10 +89,9 @@ void Solver::solve(const string &file_name)
       for (const auto& i: independent_support_) cout << ' ' << i;
       cout << endl;
     }
-    cout << "c Preprocessing .." << endl;
   }
 
-  if (ok) {
+  if (solver.okay()) {
     if (!config_.quiet) statistics_.printShortFormulaInfo();
     last_ccl_deletion_time_ = last_ccl_cleanup_time_ =
       statistics_.getNumDecisions();

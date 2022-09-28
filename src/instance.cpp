@@ -341,6 +341,7 @@ bool Instance::createfromFile(const string &filename) {
   statistics_.num_free_variables_ = solver.nVars() - num_variables();
   statistics_.num_unit_clauses_ = unit_clauses_.size();
   original_lit_pool_size_ = literal_pool_.size();
+
   return solver.okay();
 }
 

@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
     cout << "\t -m [n] \t\t set the range of hash function (= 64 x n) (Default: 1) " << endl;
     cout << "\t -delta [n] \t\t set the confidence parameter to n (Default: 0.05) " << endl;
     cout << "\t -noCSVSADS\t\t turn off CSVSADS variable branching heuristic" << endl;
-    cout << "\t -pol [Polarity]\t Polarity: true, false, default, polaritycache (Default: polaritycache)" << endl;
     cout << "\t -EDR\t\t\t turn on EDR variable branching heuristic" << endl;
     cout << "\t -LSO [n]\t\t learn and start over after n decisions (Default: 5000)" << endl;
     cout << "\t -noPMC\t\t\t turn off projected model counting " << endl;
@@ -96,34 +95,7 @@ int main(int argc, char *argv[])
         theSolver.config().delta = stof(argv[i + 1]);
         cout << "c The value of delta is " << theSolver.config().delta << endl;
       }
-    } else if (strcmp(argv[i], "-pol") == 0) {
-      if (argc <= i + 1) {
-        cout << "ERROR: must give polarity type" << endl;
-        return -1;
-      }
-      bool found = false;
-      if (strcmp(argv[i + 1], "true") == 0) {
-        theSolver.config().polarity_config = polar_true;
-        found = true;
-      }
-      if (strcmp(argv[i + 1], "false") == 0) {
-        theSolver.config().polarity_config = polar_false;
-        found = true;
-      }
-      if (strcmp(argv[i + 1], "default") == 0) {
-        theSolver.config().polarity_config = polar_default;
-        found = true;
-      }
-      if (strcmp(argv[i + 1], "polaritycache") == 0) {
-        theSolver.config().polarity_config = polaritycache;
-        found = true;
-      }
-      if (!found) {
-        cout << "ERROR: The option to '-pol' you gave, '" << argv[i + 1] << "' cannot be parsed" << endl;
-        exit(-1);
-      }
-    }
-    else if (strcmp(argv[i], "-cs") == 0)
+    } else if (strcmp(argv[i], "-cs") == 0)
     {
       if (argc <= i + 1)
       {

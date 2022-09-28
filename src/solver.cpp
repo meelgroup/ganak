@@ -5,8 +5,10 @@
  *      Author: marc
  */
 #include "solver.h"
+
 #include <deque>
 #include <algorithm>
+#include "common.h"
 
 StopWatch::StopWatch()
 {
@@ -226,7 +228,7 @@ SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
   while (true) {
-    //cout << "top of decision stack: " << decision_stack_.top().getbranchvar() << endl;
+    print_debug("top of decision stack: " << decision_stack_.top().getbranchvar() << endl);
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       unsigned t = statistics_.num_cache_look_ups_ + 1;
       // 1 - log_2(2.004)/64 = 0.9843
@@ -382,17 +384,18 @@ retStateT Solver::backtrack() {
   assert(
       decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
 
-  //NOTE MSOOS this is how you restart
-  /*do {
-      if (stack_.top().branch_found_unsat() || stack_.top().anotherCompProcessible()) {
-        comp_manager_.removeAllCachePollutionsOf(stack_.top());
+  //Restart
+  if (statistics_.getNumDecisions() > 10000 && false) {
+     do {
+      if (decision_stack_.top().branch_found_unsat() || decision_stack_.top().anotherCompProcessible()) {
+        comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
       }
       reactivateTOS();
-      stack_.pop_back();
-    } while (stack_.get_decision_level() > 0);
+      decision_stack_.pop_back();
+    } while (decision_stack_.get_decision_level() > 0);
     statistics_.num_decisions_ = 0;
     return RESTART;
-  */
+  }
 
   do {
     if (decision_stack_.top().branch_found_unsat()) {
@@ -402,7 +405,7 @@ retStateT Solver::backtrack() {
     }
 
     if (!decision_stack_.top().isSecondBranch()) {
-      //cout << "isSecondBranch (i.e. active branch is FALSE)" << endl;
+      print_debug("isSecondBranch (i.e. active branch is FALSE)");
       const LiteralID aLit = TOS_decLit();
       assert(decision_stack_.get_decision_level() > 0);
       decision_stack_.top().changeBranch();
@@ -410,7 +413,7 @@ retStateT Solver::backtrack() {
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
       return RESOLVED;
     } else {
-      //cout << "not isSecondBranch (i.e. active branch is TRUE)" << endl;
+      print_debug("not isSecondBranch (i.e. active branch is TRUE)");
     }
     comp_manager_.cacheModelCountOf(decision_stack_.top().super_component(),
                                     decision_stack_.top().getTotalModelCount());

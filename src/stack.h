@@ -11,6 +11,7 @@
 #include <gmpxx.h>
 #include <cassert>
 #include <vector>
+#include "common.h"
 using std::vector;
 
 class StackLevel {
@@ -85,6 +86,7 @@ public:
   }
 
   void changeBranch() {
+    assert(active_branch_ == false);
     active_branch_ = true;
   }
 

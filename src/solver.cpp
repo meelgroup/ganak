@@ -109,7 +109,6 @@ void Solver::solve(const string &file_name)
 
   stopwatch_.stop();
   statistics_.time_elapsed_ = stopwatch_.getElapsedSeconds();
-
   comp_manager_.gatherStatistics();
   statistics_.printShort();
 }

@@ -93,7 +93,7 @@ void Solver::solve(const string &file_name)
 
   if (solver.okay()) {
     if (!config_.quiet) statistics_.printShortFormulaInfo();
-    last_ccl_deletion_time_ = last_ccl_cleanup_time_ =
+    last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ =
       statistics_.getNumDecisions();
     violated_clause.reserve(num_variables());
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
@@ -330,15 +330,15 @@ retStateT Solver::backtrack() {
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
 
-  if (statistics_.num_clauses_learned_ - last_ccl_deletion_time_ >
+  if (statistics_.num_clauses_learned_ - last_ccl_deletion_decs_ >
         statistics_.clause_deletion_interval()) {
     deleteConflictClauses();
-    last_ccl_deletion_time_ = statistics_.num_clauses_learned_;
+    last_ccl_deletion_decs_ = statistics_.num_clauses_learned_;
   }
 
-  if (statistics_.num_clauses_learned_ - last_ccl_cleanup_time_ > 100000) {
+  if (statistics_.num_clauses_learned_ - last_ccl_cleanup_decs_ > 100000) {
     compactConflictLiteralPool();
-    last_ccl_cleanup_time_ = statistics_.num_clauses_learned_;
+    last_ccl_cleanup_decs_ = statistics_.num_clauses_learned_;
   }
 
   statistics_.num_conflicts_++;

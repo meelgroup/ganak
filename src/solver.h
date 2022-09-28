@@ -109,9 +109,9 @@ private:
           config_,statistics_, literal_values_, independent_support_);
 
   // the last time conflict clauses have been deleted
-  unsigned long last_ccl_deletion_time_ = 0;
+  unsigned long last_ccl_deletion_decs_ = 0;
   // the last time the conflict clause storage has been compacted
-  unsigned long last_ccl_cleanup_time_ = 0;
+  unsigned long last_ccl_cleanup_decs_ = 0;
 
   // we assert that the formula is consistent
   // and has not been found UNSAT yet

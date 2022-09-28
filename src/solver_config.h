@@ -11,7 +11,7 @@
 #include <set>
 
 enum polarity_type {
-    polar_false, polar_true, polar_default, polaritycache
+    polar_default, polaritycache
 };
 
 

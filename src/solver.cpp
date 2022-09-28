@@ -321,14 +321,8 @@ void Solver::decideLiteral() {
   // this assert should always hold,
   // if not then there is a bug in the logic of countSAT();
   assert(max_score_var != 0);
-  bool polarity = true;
+  bool polarity;
   switch (config_.polarity_config) {
-    case polar_false:
-      polarity = false;
-      break;
-    case polar_true:
-      polarity = true;
-      break;
     case polar_default:
       polarity = literal(LiteralID(max_score_var, true)).activity_score_ > literal(LiteralID(max_score_var, false)).activity_score_;
       break;
@@ -358,6 +352,9 @@ void Solver::decideLiteral() {
         }
       }
       break;
+    default:
+      assert(false);
+      exit(-1);
   }
   LiteralID theLit(max_score_var, polarity);
   decision_stack_.top().setbranchvariable(max_score_var);

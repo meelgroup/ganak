@@ -154,33 +154,13 @@ void Solver::solve(const string &file_name)
   srand(config_.randomseed);
   stopwatch_.start();
   bool ok = createfromFile(file_name);
-
-  if (config_.perform_pcc)
-  {
-    comp_manager_.getrandomseedforclhash();
-  }
+  if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
   initStack(num_variables());
-
   if (!config_.quiet)
   {
-    cout << "c Solving " << file_name << endl;
+    cout << "c Solving file " << file_name << endl;
     statistics_.printShortFormulaInfo();
-  }
-  if (independent_support_.size() == 0)
-  {
-    if (!config_.quiet)
-    {
-      cout << "c Sampling set not present! So doing total model counting." << endl;
-      assert(independent_support_.empty());
-      for(uint32_t i = 1; i < num_variables(); i++)
-        independent_support_.insert(i);
-    }
-  }
-
-  if (!config_.quiet)
-  {
-    cout << "c Sampling set is present, performing projected model counting " << endl;
     cout << "c Sampling set size: " << independent_support_.size() << endl;
     if (independent_support_.size() > 50) {
       cout << "c Sampling set is too large, not displaying" << endl;
@@ -189,8 +169,6 @@ void Solver::solve(const string &file_name)
       for (const auto& i: independent_support_) cout << ' ' << i;
       cout << endl;
     }
-
-    cout << "c " << endl;
     cout << "c Preprocessing .." << endl;
   }
 

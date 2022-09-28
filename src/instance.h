@@ -204,9 +204,11 @@ protected:
         return true;
     return false;
   }
+protected:
+  CMSat::SATSolver solver;
 
 private:
-  void parseWithCMS(CMSat::SATSolver& solver, const string& filename);
+  void parseWithCMS(const string& filename);
 };
 
 ClauseIndex Instance::addClause(vector<LiteralID> &literals) {

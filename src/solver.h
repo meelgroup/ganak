@@ -123,7 +123,6 @@ private:
   void HardWireAndCompact();
 
   SOLVER_StateT countSAT();
-
   void decideLiteral();
   bool bcp();
 
@@ -183,7 +182,6 @@ private:
   }
 
   void printOnlineStats();
-
   void print(vector<LiteralID> &vec);
   void print(vector<unsigned> &vec);
 
@@ -257,7 +255,7 @@ private:
     return bSucceeded;
   }
   /////////////////////////////////////////////
-  //  BEGIN conflict analysis
+  //  Conflict analysis below
   /////////////////////////////////////////////
 
   // if the state name is CONFLICT,
@@ -294,10 +292,6 @@ private:
   {
     return assertion_level_;
   }
-
-  /////////////////////////////////////////////
-  //  END conflict analysis
-  /////////////////////////////////////////////
 };
 
 #endif /* SOLVER_H_ */

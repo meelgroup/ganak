@@ -268,7 +268,7 @@ static LiteralID cmsLitToG(const CMSat::Lit& l) {
   return LiteralID(l.var()+1, !l.sign());
 }
 
-void Instance::parseWithCMS(CMSat::SATSolver& solver, const string& filename) {
+void Instance::parseWithCMS(const string& filename) {
   unsigned verb = 0;
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
@@ -307,8 +307,7 @@ bool Instance::createfromFile(const string &filename) {
   assert(unit_clauses_.empty());
   assert(conflict_clauses_.empty());
 
-  CMSat::SATSolver solver;
-  parseWithCMS(solver, filename);
+  parseWithCMS(filename);
 
   literal_pool_.push_back(SENTINEL_LIT);
   variables_.push_back(Variable());
@@ -341,8 +340,7 @@ bool Instance::createfromFile(const string &filename) {
   statistics_.num_used_variables_ = num_variables();
   statistics_.num_free_variables_ = solver.nVars() - num_variables();
   statistics_.num_unit_clauses_ = unit_clauses_.size();
-
   original_lit_pool_size_ = literal_pool_.size();
-  return true;
+  return solver.okay();
 }
 

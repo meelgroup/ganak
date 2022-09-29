@@ -66,9 +66,6 @@ public:
     return LiteralID(var(), !sign());
   }
 
-  void print() const {
-    cout << (sign() ? " " : "-") << var() << " ";
-  }
   int val() const {
     return (sign() ? var() : -1*var());
   }
@@ -79,6 +76,16 @@ private:
 
   template <class _T> friend class LiteralIndexedVector;
 };
+
+inline std::ostream& operator<<(std::ostream& os, const LiteralID lit)
+{
+    if (lit == 0) {
+        os << "UNDEF";
+    } else {
+        os << lit.toInt();
+    }
+    return os;
+}
 
 static const LiteralID NOT_A_LIT(0, false);
 #define SENTINEL_LIT NOT_A_LIT
@@ -168,6 +175,10 @@ public:
   // A NON-Antecedent will only be A NOT_A_CLAUSE Clause Id
   bool isAnt() {
     return val_ != 1; //i.e. NOT a NOT_A_CLAUSE;
+  }
+
+  bool operator==(const Antecedent& other) const {
+    return val_ == other.val_;
   }
 };
 

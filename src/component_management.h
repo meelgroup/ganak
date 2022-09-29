@@ -175,6 +175,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 
   // if no component remains
   // make sure, at least that the current branch is considered SAT
+
   top.includeSolution(1);
   //cout << "includeSolution(1) fired!" << endl;
   return false;

@@ -67,6 +67,10 @@ public:
   // number of clauses overall learned
   unsigned num_clauses_learned_ = 0;
 
+  unsigned last_restart_decisions = 0;
+  unsigned num_restarts = 0;
+  unsigned next_restart = 1000;
+  unsigned next_restart_diff = 1000;
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;

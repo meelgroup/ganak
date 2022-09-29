@@ -8,6 +8,8 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
+#include "common.h"
+#include "primitive_types.h"
 #include "statistics.h"
 #include "instance.h"
 #include "component_management.h"
@@ -63,9 +65,6 @@ public:
 private:
   timeval start_time_;
   timeval stop_time_;
-
-  long int time_bound_;
-
   timeval interval_length_;
   timeval last_interval_start_;
 
@@ -122,7 +121,8 @@ private:
 
   SOLVER_StateT countSAT();
   void decideLiteral();
-  bool bcp();
+  bool failedLitProbe();
+  bool failedLitProbeInternal();
 
   void decayActivitiesOf(Component &comp)
   {
@@ -132,13 +132,11 @@ private:
       literal(LiteralID(*it, false)).activity_score_ *= 0.5;
     }
   }
-  ///  this method performs Failed literal tests online
-  bool implicitBCP();
 
   // this is the actual BCP algorithm
   // starts propagating all literal in literal_stack_
   // beginingg at offset start_at_stack_ofs
-  bool BCP(unsigned start_at_stack_ofs);
+  bool propagate(unsigned start_at_stack_ofs);
 
   retStateT backtrack();
 
@@ -162,11 +160,13 @@ private:
     return score;
   }
 
-  bool setLiteralIfFree(LiteralID lit,
-                        Antecedent ant = Antecedent(NOT_A_CLAUSE))
+  bool setLiteralIfFree(const LiteralID lit,
+                        const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
-    if (literal_values_[lit] != X_TRI)
-      return false;
+    if (literal_values_[lit] != X_TRI) return false;
+
+    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("Deciding literal: " << lit);
+//    else print_debug("Literal propagated: " << lit);
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
     var(lit).polarity = lit.sign();
@@ -180,8 +180,14 @@ private:
   }
 
   void printOnlineStats();
-  void print(vector<LiteralID> &vec);
-  void print(vector<unsigned> &vec);
+  void checkProbabilisticHashSanity() const {
+      const unsigned t = statistics_.num_cache_look_ups_ + 1;
+      if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) {
+        // 1 - log_2(2.004)/64 = 0.9843
+        cout << "ERROR: We need to change the hash range (-1)" << endl;
+        exit(-1);
+      }
+  }
 
   void setConflictState(LiteralID litA, LiteralID litB)
   {
@@ -235,13 +241,13 @@ private:
     // s.t. after the tentative BCP call, we can learn a conflict clause
     // relative to the assignment of *jt
     decision_stack_.startFailedLitTest();
+    print_debug("Fail testing lit: " << lit);
     setLiteralIfFree(lit);
 
     assert(!hasAntecedent(lit));
 
-    bool bSucceeded = BCP(sz);
-    if (!bSucceeded)
-      recordAllUIPCauses();
+    bool bSucceeded = propagate(sz);
+    if (!bSucceeded) recordAllUIPCauses();
 
     decision_stack_.stopFailedLitTest();
 
@@ -290,6 +296,7 @@ private:
   {
     return assertion_level_;
   }
+  bool takeSolution();
 };
 
 #endif /* SOLVER_H_ */

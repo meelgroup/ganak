@@ -44,10 +44,15 @@ class StackLevel {
 
   unsigned branch_variable_ = 0;
 public:
+  bool on_path_to_target_ = false;
 
   bool hasUnprocessedComponents() {
     assert(unprocessed_components_end_ >= remaining_components_ofs_);
     return unprocessed_components_end_ > remaining_components_ofs_;
+  }
+  uint32_t numUnprocessedComponents() {
+    assert(unprocessed_components_end_ >= remaining_components_ofs_);
+    return unprocessed_components_end_ - remaining_components_ofs_;
   }
   void nextUnprocessedComponent() {
     assert(unprocessed_components_end_ > remaining_components_ofs_);
@@ -135,12 +140,16 @@ public:
     return branch_model_count_[active_branch_];
   }
 
-  unsigned getbranchvar(){
+  unsigned getbranchvar() const {
     return branch_variable_;
   }
 
   void setbranchvariable(const unsigned max_score_var){
     branch_variable_ = max_score_var;
+  }
+
+  void setonpath(const bool on_path) {
+    on_path_to_target_ = on_path;
   }
 
   const mpz_class getTotalModelCount() const {

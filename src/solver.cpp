@@ -131,12 +131,6 @@ SOLVER_StateT Solver::countSAT() {
       }
       if (state == BACKTRACK) break;
     }
-    if (!counted_bottom_component) {
-      assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
-      print_debug("Bottom component reached, decisions since restart: "
-        << statistics_.num_decisions_ - statistics_.last_restart_decisions);
-      counted_bottom_component = true;
-    }
 
     state = backtrack();
     if (state == RESTART) continue;
@@ -273,7 +267,7 @@ retStateT Solver::backtrack() {
     statistics_.num_restarts++;
     statistics_.next_restart_diff*=1.4;
     statistics_.next_restart += statistics_.next_restart_diff;
-    if ((statistics_.num_restarts % 10) == 5) {
+    if ((statistics_.num_restarts % 5) == 4) {
       statistics_.next_restart_diff = 1000;
     }
     statistics_.last_restart_decisions = statistics_.num_decisions_;
@@ -366,6 +360,12 @@ retStateT Solver::backtrack() {
         if (at > 0) smallest_cube.push_back(
             (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar());;
         at++;
+      }
+      if (!counted_bottom_component) {
+        assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
+        print_debug("Bottom component reached, decisions since restart: "
+          << statistics_.num_decisions_ - statistics_.last_restart_decisions);
+        counted_bottom_component = true;
       }
     }
     // step to the next component not yet processed

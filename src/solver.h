@@ -151,9 +151,9 @@ private:
 
   float scoreOf(VariableIndex v)
   {
-    float score = comp_manager_.scoreOf(v);
-    score += 10.0 * literal(LiteralID(v, true)).activity_score_;
-    score += 10.0 * literal(LiteralID(v, false)).activity_score_;
+    float score = 1.0; //comp_manager_.scoreOf(v);
+    score += literal(LiteralID(v, true)).activity_score_;
+    score += literal(LiteralID(v, false)).activity_score_;
     //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, true)).activity_score_;
     //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, false)).activity_score_;
 

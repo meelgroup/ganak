@@ -136,7 +136,7 @@ private:
   // this is the actual BCP algorithm
   // starts propagating all literal in literal_stack_
   // beginingg at offset start_at_stack_ofs
-  bool propagate(unsigned start_at_stack_ofs);
+  bool propagate(const unsigned start_at_stack_ofs);
 
   retStateT backtrack();
 

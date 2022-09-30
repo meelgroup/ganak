@@ -454,20 +454,23 @@ retStateT Solver::resolveConflict() {
 bool Solver::failedLitProbe() {
   // the asserted literal has been set, so we start
   // bcp on that literal
-  assert(literal_stack_.size() > 0 &&
-      "We could just put this in an IF, but I don't think it should be 0");
-  unsigned start_ofs = literal_stack_.size() - 1;
+  assert(literal_stack_.size() > 0 && "This is FISHY, I fixed with a bad hack, using 'was_at_zero' but was it broken before? I think we may need propagating from 0 in these cases? Or not?");
+
+  const bool was_at_zero = literal_stack_.size() == 0;
+  const unsigned start_ofs = literal_stack_.size() - 1;
   print_debug("--> Setting units of this component...");
   for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
   print_debug("--> Units of this component set, propagating");
-  bool bSucceeded = propagate(start_ofs);
+
+  bool bSucceeded = true;
+  if (!was_at_zero) bSucceeded = propagate(start_ofs);
   if (config_.perform_failed_lit_test && bSucceeded) {
     bSucceeded = failedLitProbeInternal();
   }
   return bSucceeded;
 }
 
-bool Solver::propagate(unsigned start_at_stack_ofs) {
+bool Solver::propagate(const unsigned start_at_stack_ofs) {
   for (unsigned int i = start_at_stack_ofs; i < literal_stack_.size(); i++) {
     const LiteralID unLit = literal_stack_[i].neg();
 

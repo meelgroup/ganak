@@ -20,7 +20,7 @@
 
 class ComponentCache {
 public:
-  ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &cconst onfig);
+  ComponentCache(DataAndStatistics &statistics, const SolverConfiguration& config);
 
   ~ComponentCache() {
    // debug_dump_data();

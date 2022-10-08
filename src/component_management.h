@@ -28,8 +28,8 @@ class ComponentManager
 {
 public:
   ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
-                   LiteralIndexedVector<TriValue> &lit_values,
-                   set<unsigned> &independent_support_) :
+                   const LiteralIndexedVector<TriValue> &lit_values,
+                   const set<unsigned> &independent_support_) :
       config_(config), statistics_(statistics), cache_(statistics, config_),
       ana_(lit_values, independent_support_)
   {
@@ -56,7 +56,7 @@ public:
       cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
   }
 
-  Component &superComponentOf(StackLevel &lev)
+  Component &superComponentOf(const StackLevel &lev)
   {
     assert(component_stack_.size() > lev.super_component());
     return *component_stack_[lev.super_component()];

@@ -29,8 +29,8 @@ using namespace std;
 class AltComponentAnalyzer {
 public:
 	AltComponentAnalyzer(
-        LiteralIndexedVector<TriValue> & lit_values,
-        set <unsigned> & independent_support) :
+        const LiteralIndexedVector<TriValue> & lit_values,
+        const set <unsigned> & independent_support) :
         literal_values_(lit_values),
         independent_support_(independent_support)
   {}
@@ -137,8 +137,8 @@ private:
   vector<unsigned> unified_variable_links_lists_pool_;
 
   vector<unsigned> variable_link_list_offsets_;
-  LiteralIndexedVector<TriValue> & literal_values_;
-  set <unsigned> & independent_support_;
+  const LiteralIndexedVector<TriValue> & literal_values_;
+  const set <unsigned> & independent_support_;
   vector<unsigned> var_frequency_scores_;
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;

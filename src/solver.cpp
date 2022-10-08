@@ -299,17 +299,19 @@ void Solver::computeLargestCube()
   // add decisions
   cout << COLWHT << "dec vars: ";
   for(uint32_t i = 1; i < decision_stack_.size(); i++) {
-    StackLevel& d = decision_stack_[i];
-    const auto l = (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar();
-    cout << l << " ";
-    largest_cube.push_back(l);
+    const StackLevel& ds = decision_stack_[i];
+    const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
+    cout << dec_lit << " ";
+    largest_cube.push_back(dec_lit);
   }
   cout << endl;
 
+  // Go through decision stack's components
   for(uint32_t i = 0; i < decision_stack_.size(); i++) {
     const auto& ds = decision_stack_.at(i);
+    const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
     print_debug(COLWHT "decision_stack.at " << i
-      << " branch var: " << ds.getbranchvar()
+      << " decision lit: " << dec_lit
       << " num unproc comps: " << ds.numUnprocessedComponents()
       << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
       << " remain comps offs: " << ds.remaining_components_ofs());
@@ -326,16 +328,23 @@ void Solver::computeLargestCube()
       cout << endl;
     }
   }
-  const auto& super_comp = comp_manager_.superComponentOf(decision_stack_.top());
-  if (!super_comp.empty()) {
-    /*
-    cout << "Sup comp: ";
-    auto v = super_comp.varsBegin();
+
+  // All components
+  print_debug(COLWHT "-- component list START");
+  for(uint32_t i2 = 0; i2 < comp_manager_.component_stack_size(); i2++) {
+    cout << COLWHT "comp at: " << std::setw(3) << i2 << "  -- vars : ";
+    const auto& c = comp_manager_.at(i2);
+    if (c->empty()) {
+      cout << "EMPTY" << endl;
+      continue;
+    }
+    auto v = c->varsBegin();
     for(; *v != varsSENTINEL; v++) {
       cout << *v << " ";
     }
-    cout << endl;*/
+    cout << endl;
   }
+  print_debug(COLWHT "-- component list END");
 
 //#ifdef VERBOSE_DEBUG
    cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";

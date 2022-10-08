@@ -97,42 +97,42 @@ public:
     seen_[cl] = CA_CL_IN_OTHER_COMP | (seen_[cl] & CA_VAR_MASK);
   }
 
-  bool var_seen(const VariableIndex v) {
+  bool var_seen(const VariableIndex v) const {
     return seen_[v] & CA_VAR_SEEN;
   }
 
-  bool clause_seen(const ClauseIndex cl) {
+  bool clause_seen(const ClauseIndex cl) const {
     return seen_[cl] & CA_CL_SEEN;
   }
 
-  bool clause_all_lits_active(const ClauseIndex cl) {
+  bool clause_all_lits_active(const ClauseIndex cl) const {
     return seen_[cl] & CA_CL_ALL_LITS_ACTIVE;
   }
   void setClause_all_lits_active(const ClauseIndex cl) {
     seen_[cl] |= CA_CL_ALL_LITS_ACTIVE;
   }
 
-  bool var_nil(const VariableIndex v) {
+  bool var_nil(const VariableIndex v) const {
     return (seen_[v] & CA_VAR_MASK) == 0;
   }
 
-  bool clause_nil(const ClauseIndex cl) {
+  bool clause_nil(const ClauseIndex cl) const {
     return (seen_[cl] & CA_CL_MASK) == 0;
   }
 
-  bool var_unseen_in_sup_comp(VariableIndex v) {
+  bool var_unseen_in_sup_comp(VariableIndex v) const {
     return seen_[v] & CA_VAR_IN_SUP_COMP_UNSEEN;
   }
 
-  bool clause_unseen_in_sup_comp(ClauseIndex cl) {
+  bool clause_unseen_in_sup_comp(ClauseIndex cl) const {
     return seen_[cl] & CA_CL_IN_SUP_COMP_UNSEEN;
   }
 
-  bool var_seen_in_peer_comp(VariableIndex v) {
+  bool var_seen_in_peer_comp(VariableIndex v) const {
     return seen_[v] & CA_VAR_IN_OTHER_COMP;
   }
 
-  bool clause_seen_in_peer_comp(ClauseIndex cl) {
+  bool clause_seen_in_peer_comp(ClauseIndex cl) const {
     return seen_[cl] & CA_CL_IN_OTHER_COMP;
   }
 

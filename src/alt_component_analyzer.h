@@ -33,8 +33,7 @@ public:
         set <unsigned> & independent_support) :
         literal_values_(lit_values),
         independent_support_(independent_support)
-{
-}
+  {}
 
   unsigned scoreOf(VariableIndex v) {
     return var_frequency_scores_[v];
@@ -47,15 +46,13 @@ public:
   void initialize(LiteralIndexedVector<Literal> & literals,
       vector<LiteralID> &lit_pool);
 
-
-  bool isUnseenAndActive(VariableIndex v){
+  bool isUnseenAndActive(VariableIndex v) const {
     assert(v <= max_variable_id_);
     return archetype_.var_unseen_in_sup_comp(v);
   }
 
   // manages the literal whenever it occurs in component analysis
   // returns true iff the underlying variable was unseen before
-  //
   bool manageSearchOccurrenceOf(LiteralID lit){
       if(archetype_.var_unseen_in_sup_comp(lit.var())){
         search_stack_.push_back(lit.var());
@@ -74,7 +71,6 @@ public:
     search_stack_.push_back(v);
         archetype_.setVar_seen(v);
   }
-
 
   void setupAnalysisContext(StackLevel &top, const Component & super_comp){
      archetype_.reInitialize(top,super_comp);
@@ -105,7 +101,6 @@ public:
     }
     return true;
   }
-
 
   inline Component *makeComponentFromArcheType(){
     return archetype_.makeComponentFromState(search_stack_.size());

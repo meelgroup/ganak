@@ -187,44 +187,33 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
-  const Component &super_comp = superComponentOf(top);
+  const Component& super_comp = superComponentOf(top);
   const unsigned new_comps_start_ofs = component_stack_.size();
 
   ana_.setupAnalysisContext(top, super_comp);
 
-  for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++)
-  {
-    if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt))
-    {
+  for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+    if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
       // Create new component
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
-      if (config_.perform_pcc)
-      {
+      if (config_.perform_pcc) {
         packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
-      }
-      else
-      {
+      } else {
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
       }
 
       // Check if new component is already in cache
-      if (!cache_.manageNewComponent(top, *packed_comp))
-      {
+      if (!cache_.manageNewComponent(top, *packed_comp)) {
         component_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
-      }
-      else
-      {
+      } else {
         //cache score should be decreased since we have a cache hit
-        if (config_.use_csvsads)
-        {
+        if (config_.use_csvsads) {
           statistics_.numcachedec_++;
           if (statistics_.numcachedec_ % 128 == 0) increasecachescores();
           for (auto it = p_new_comp->varsBegin(); *it != varsSENTINEL; it++)
-          {
             cachescore_[*it] -= 1;
-          }
         }
         delete packed_comp;
         delete p_new_comp;

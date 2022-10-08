@@ -1,0 +1,5 @@
+.cache
+.kdev4
+*.kdev4
+*.json
+tags

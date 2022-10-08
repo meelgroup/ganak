@@ -62,8 +62,13 @@ public:
   void resetRemainingComps() {
     unprocessed_components_end_ = remaining_components_ofs_;
   }
+
+  // Getters
   unsigned super_component() const {
     return super_component_;
+  }
+  uint32_t getUnprocessedComponentsEnd() const {
+    return unprocessed_components_end_;
   }
   unsigned remaining_components_ofs() const {
     return remaining_components_ofs_;

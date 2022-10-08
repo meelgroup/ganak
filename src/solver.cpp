@@ -131,13 +131,20 @@ SOLVER_StateT Solver::countSAT() {
       decideLiteral();
 
 #ifdef VERBOSE_DEBUG
-      cout << "--- going through all levels now, printing components --" << endl;
+      cout << COLORG "--- going through all levels now, printing components --" << endl;
       uint32_t lev = 0;
       for(const auto& s: decision_stack_) {
         auto const& sup_at = s.super_component();
-        cout << "super component of lev " << lev << " is at " << sup_at << endl;
+        cout << COLORG "super component of lev " << lev
+          << " is at " << sup_at
+          << " branch var here: " << decision_stack_.at(lev).getbranchvar()
+          << " remaining comp ofs: " << decision_stack_.at(lev).remaining_components_ofs()
+          << " num unprocess comps: " << decision_stack_.at(lev).numUnprocessedComponents()
+          << endl;
+
         const auto& c = comp_manager_.at(sup_at);
-        cout << "-> Variables in comp_manager_.at(" << sup_at << "). num: " << c->num_variables() << " vars: ";
+        cout << COLORG "-> Variables in comp_manager_.at(" << sup_at << ")."
+          << " num: " << c->num_variables() << " vars: ";
         for(unsigned i = 0; i < c->num_variables(); i++) {
           const auto& v = c->varsBegin();
           cout << v[i] << " ";
@@ -145,7 +152,7 @@ SOLVER_StateT Solver::countSAT() {
         cout << endl;
         lev++;
       }
-      cout << "--- Went through all levels now --" << endl;
+      cout << COLORG "--- Went through all levels now --" << endl;
 #endif
 
       while (!failedLitProbe()) {
@@ -171,6 +178,7 @@ SOLVER_StateT Solver::countSAT() {
 
 void Solver::decideLiteral() {
   // establish another decision stack level
+  print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level());
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
                literal_stack_.size(),
@@ -262,7 +270,8 @@ void Solver::decideLiteral() {
   decision_stack_.top().setbranchvariable(max_score_var);
   decision_stack_.top().setonpath(!counted_bottom_component);
 
-  print_debug(COLYEL "decideLiteral() is deciding: " << theLit << " dec level: " << decision_stack_.get_decision_level());
+  print_debug(COLYEL "decideLiteral() is deciding: " << theLit << " dec level: "
+      << decision_stack_.get_decision_level());
 
   setLiteralIfFree(theLit);
   statistics_.num_decisions_++;
@@ -280,6 +289,59 @@ void Solver::decideLiteral() {
       cout << "c Max decision level :" << statistics_.max_decision_level_ << endl;
     }
   }
+}
+
+void Solver::computeSmallestCube()
+{
+  smallest_cube.clear();
+  print_debug(COLWHT "-- computeSmallestCube BEGIN");
+
+  // add decisions
+  cout << COLWHT << "dec vars: ";
+  for(uint32_t i = 1; i < decision_stack_.size(); i++) {
+    StackLevel& d = decision_stack_[i];
+    const auto l = (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar();
+    cout << l << " ";
+    smallest_cube.push_back(l);
+  }
+  cout << endl;
+
+  for(uint32_t i = 0; i < decision_stack_.size(); i++) {
+    const auto& ds = decision_stack_.at(i);
+    print_debug(COLWHT "decision_stack.at " << i
+      << " branch var: " << ds.getbranchvar()
+      << " num unproc comps: " << ds.numUnprocessedComponents()
+      << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
+      << " remain comps offs: " << ds.remaining_components_ofs());
+    auto off_start = ds.remaining_components_ofs();
+    auto off_end = ds.getUnprocessedComponentsEnd();
+    for(uint32_t i2 = off_start; i2 < off_end; i2++) {
+      cout << COLWHT "-> comp off: " << std::setw(3) << i2 << "  -- vars : ";
+      assert(i2 < comp_manager_.component_stack_size());
+      const auto& c = comp_manager_.at(i2);
+      auto v = c->varsBegin();
+      for(; *v != varsSENTINEL; v++) {
+        cout << *v << " ";
+      }
+      cout << endl;
+    }
+  }
+  const auto& super_comp = comp_manager_.superComponentOf(decision_stack_.top());
+  if (!super_comp.empty()) {
+    /*
+    cout << "Sup comp: ";
+    auto v = super_comp.varsBegin();
+    for(; *v != varsSENTINEL; v++) {
+      cout << *v << " ";
+    }
+    cout << endl;*/
+  }
+
+//#ifdef VERBOSE_DEBUG
+   cout << COLWHT "Smallest cube so far. Size: " << smallest_cube.size() << " cube: ";
+   for(const auto& l: smallest_cube) cout << l << " ";
+   cout << endl;
+//#endif
 }
 
 retStateT Solver::backtrack() {
@@ -372,32 +434,7 @@ retStateT Solver::backtrack() {
         << " num unprocessed components here: " << decision_stack_.top().numUnprocessedComponents()
         << " on_path: " << decision_stack_.top().on_path_to_target_);
     if (decision_stack_.top().on_path_to_target_) {
-      int at = 0;
-      smallest_cube.clear();
-      at = 0;
-      for(uint32_t i = 1; i < decision_stack_.size(); i++) {
-        StackLevel& d = decision_stack_[i];
-        smallest_cube.push_back(
-            (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar());;
-        at++;
-      }
-
-      const auto& super_comp = comp_manager_.superComponentOf(decision_stack_.top());
-      if (!super_comp.empty()) {
-        cout << "Sup comp: ";
-        auto v = super_comp.varsBegin();
-        for(; *v != varsSENTINEL; v++) {
-          cout << *v << " ";
-        }
-        cout << endl;
-      }
-
-//#ifdef VERBOSE_DEBUG
-      cout << COLWHT "Smallest cube so far. Size: " << smallest_cube.size() << " cube: ";
-      for(const auto& l: smallest_cube) cout << l << " ";
-      cout << endl;
-//#endif
-
+      computeSmallestCube();
       if (!counted_bottom_component) {
         assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
         print_debug(COLCYN "Bottom component reached, decisions since restart: "

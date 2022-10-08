@@ -123,6 +123,7 @@ private:
   void decideLiteral();
   bool failedLitProbe();
   bool failedLitProbeInternal();
+  void computeSmallestCube();
 
   void decayActivitiesOf(Component &comp)
   {

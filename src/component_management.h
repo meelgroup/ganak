@@ -73,10 +73,13 @@ public:
 
   void cleanRemainingComponentsOf(StackLevel &top)
   {
+    print_debug(COLYEL2 "cleaning remaining components of var: " << top.getbranchvar());
     while (component_stack_.size() > top.remaining_components_ofs())
     {
       if (cache_.hasEntry(component_stack_.back()->id()))
         cache_.entry(component_stack_.back()->id()).set_deletable();
+
+      print_debug(COLYEL2 "-> deleting component ID: " << component_stack_.back()->id());
       delete component_stack_.back();
       component_stack_.pop_back();
     }
@@ -92,7 +95,7 @@ public:
   // checks for the next yet to explore remaining component of top
   // returns true if a non-trivial non-cached component
   // has been found and is now stack_.TOS_NextComp()
-  // returns false if all components have been processed;
+  // returns false if all components have been processed
   inline bool findNextRemainingComponentOf(StackLevel &top);
   inline void recordRemainingCompsFor(StackLevel &top);
   inline void sortComponentStackRange(unsigned start, unsigned end);
@@ -157,6 +160,7 @@ void ComponentManager::decreasecachescore(Component &comp)
 
 void ComponentManager::sortComponentStackRange(unsigned start, unsigned end)
 {
+  print_debug(COLYEL2 "sorting component stack range");
   assert(start <= end);
   // sort the remaining components for processing
   for (unsigned i = start; i < end; i++)
@@ -207,6 +211,13 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       if (!cache_.manageNewComponent(top, *packed_comp)) {
         component_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
+        cout << COLYEL2 "New component. ID: " << p_new_comp->id()
+            << " num vars: " << p_new_comp->num_variables() << " vars: ";
+        auto v = p_new_comp->varsBegin();
+        for(; *v != varsSENTINEL; v++) {
+          cout << *v << " ";
+        }
+        cout << endl;
       } else {
         //cache score should be decreased since we have a cache hit
         if (config_.use_csvsads) {

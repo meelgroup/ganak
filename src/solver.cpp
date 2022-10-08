@@ -318,9 +318,9 @@ void Solver::computeLargestCube()
     auto off_start = ds.remaining_components_ofs();
     auto off_end = ds.getUnprocessedComponentsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
-      cout << COLWHT "-> comp off: " << std::setw(3) << i2 << "  -- vars : ";
       assert(i2 < comp_manager_.component_stack_size());
       const auto& c = comp_manager_.at(i2);
+      cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
       auto v = c->varsBegin();
       for(; *v != varsSENTINEL; v++) {
         cout << *v << " ";
@@ -332,8 +332,8 @@ void Solver::computeLargestCube()
   // All components
   print_debug(COLWHT "-- component list START");
   for(uint32_t i2 = 0; i2 < comp_manager_.component_stack_size(); i2++) {
-    cout << COLWHT "comp at: " << std::setw(3) << i2 << "  -- vars : ";
     const auto& c = comp_manager_.at(i2);
+    cout << COLWHT "comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
     if (c->empty()) {
       cout << "EMPTY" << endl;
       continue;
@@ -607,9 +607,9 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
 
 // this is IBCP 30.08
 bool Solver::failedLitProbeInternal() {
+  print_debug(COLRED "Failed literal probing START");
   static vector<LiteralID> test_lits(num_variables());
-  static LiteralIndexedVector<unsigned char> viewed_lits(
-      num_variables() + 1, 0);
+  static LiteralIndexedVector<unsigned char> viewed_lits( num_variables() + 1, 0);
   unsigned stack_ofs = decision_stack_.top().literal_stack_ofs();
   unsigned num_curr_lits = 0;
   while (stack_ofs < literal_stack_.size()) {
@@ -621,6 +621,7 @@ bool Solver::failedLitProbeInternal() {
           for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
             if (isActive(*lt) && !viewed_lits[lt->neg()]) {
               test_lits.push_back(lt->neg());
+              print_debug("-> potential lit to test: " << lt->neg());
               viewed_lits[lt->neg()] = true;
             }
           }
@@ -648,7 +649,6 @@ bool Solver::failedLitProbeInternal() {
     statistics_.num_failed_literal_tests_ += test_lits.size();
 
     // Do the probing
-    print_debug(COLRED "Failed literal probing START");
     for (auto lit : test_lits) {
       if (isActive(lit) && threshold <= literal(lit).activity_score_) {
         unsigned sz = literal_stack_.size();

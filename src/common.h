@@ -5,11 +5,11 @@
 #define VERBOSE_DEBUG
 
 #define COLRED "\033[31m"
+#define COLYEL2 "\033[35m"
 #define COLYEL "\033[33m"
 #define COLCYN "\033[36m"
 #define COLWHT "\033[97m"
 #define COLORG "\033[43m"
-#define COLGRN "\033[43m"
 #define COLORGBG "\033[100m"
 #define COLREDBG "\033[41m"
 

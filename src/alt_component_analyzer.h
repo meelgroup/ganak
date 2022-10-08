@@ -76,7 +76,7 @@ public:
   }
 
 
-  void setupAnalysisContext(StackLevel &top, Component & super_comp){
+  void setupAnalysisContext(StackLevel &top, const Component & super_comp){
      archetype_.reInitialize(top,super_comp);
 
      for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++)

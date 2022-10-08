@@ -187,7 +187,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
-  Component &super_comp = superComponentOf(top);
+  const Component &super_comp = superComponentOf(top);
   unsigned new_comps_start_ofs = component_stack_.size();
 
   ana_.setupAnalysisContext(top, super_comp);

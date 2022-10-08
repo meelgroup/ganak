@@ -8,23 +8,15 @@
 #ifndef COMPONENT_ARCHETYPE_H_
 #define COMPONENT_ARCHETYPE_H_
 
+#include <cstring>
+#include <algorithm>
+#include <iostream>
 
 #include "../primitive_types.h"
 #include "component.h"
-
-
 #include "cacheable_component.h"
 
 
-
-
-
-#include <cstring>
-#include <algorithm>
-
-
-
-#include <iostream>
 // State values for variables found during component
 // analysis (CA)
 typedef unsigned char CA_SearchState;
@@ -48,18 +40,18 @@ class ComponentArchetype {
 public:
   ComponentArchetype() {
   }
-  ComponentArchetype(StackLevel &stack_level, Component &super_comp) :
+  ComponentArchetype(StackLevel &stack_level, const Component &super_comp) :
       p_super_comp_(&super_comp), p_stack_level_(&stack_level) {
   }
 
-  void reInitialize(StackLevel &stack_level, Component &super_comp) {
+  void reInitialize(StackLevel &stack_level, const Component &super_comp) {
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
     clearArrays();
     current_comp_for_caching_.reserveSpace(super_comp.num_variables(),super_comp.numLongClauses());
   }
 
-  Component &super_comp() {
+  const Component &super_comp() {
     return *p_super_comp_;
   }
 
@@ -187,7 +179,7 @@ public:
   Component current_comp_for_caching_;
 
 private:
-  Component *p_super_comp_;
+  Component const* p_super_comp_;
   StackLevel *p_stack_level_;
 
   static CA_SearchState *seen_;

@@ -28,10 +28,10 @@ using namespace std;
 
 class AltComponentAnalyzer {
 public:
-	AltComponentAnalyzer(DataAndStatistics &statistics,
+	AltComponentAnalyzer(
         LiteralIndexedVector<TriValue> & lit_values,
         set <unsigned> & independent_support) :
-        statistics_(statistics), literal_values_(lit_values),
+        literal_values_(lit_values),
         independent_support_(independent_support)
 {
 }
@@ -123,8 +123,6 @@ public:
   }
 
 private:
-  DataAndStatistics &statistics_;
-
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool

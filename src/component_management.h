@@ -27,11 +27,11 @@ typedef AltComponentAnalyzer ComponentAnalyzer;
 class ComponentManager
 {
 public:
-  ComponentManager(SolverConfiguration &config, DataAndStatistics &statistics,
+  ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
                    LiteralIndexedVector<TriValue> &lit_values,
                    set<unsigned> &independent_support_) :
       config_(config), statistics_(statistics), cache_(statistics, config_),
-      ana_(statistics, lit_values, independent_support_)
+      ana_(lit_values, independent_support_)
   {
   }
 
@@ -125,7 +125,7 @@ public:
   }
 
 private:
-  SolverConfiguration &config_;
+  const SolverConfiguration &config_;
   DataAndStatistics &statistics_;
 
   vector<Component *> component_stack_;
@@ -188,7 +188,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
   const Component &super_comp = superComponentOf(top);
-  unsigned new_comps_start_ofs = component_stack_.size();
+  const unsigned new_comps_start_ofs = component_stack_.size();
 
   ana_.setupAnalysisContext(top, super_comp);
 

@@ -20,9 +20,7 @@
 
 class ComponentCache {
 public:
-
-  ComponentCache(DataAndStatistics &statistics, SolverConfiguration &config);
-
+  ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &config);
 
   ~ComponentCache() {
    // debug_dump_data();
@@ -189,7 +187,7 @@ private:
   unsigned table_size_mask_;
 
   DataAndStatistics &statistics_;
-  SolverConfiguration &config_;
+  const SolverConfiguration &config_;
 
   unsigned long my_time_ = 0;
 };

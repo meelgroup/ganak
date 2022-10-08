@@ -46,11 +46,11 @@ class StackLevel {
 public:
   bool on_path_to_target_ = false;
 
-  bool hasUnprocessedComponents() {
+  bool hasUnprocessedComponents() const {
     assert(unprocessed_components_end_ >= remaining_components_ofs_);
     return unprocessed_components_end_ > remaining_components_ofs_;
   }
-  uint32_t numUnprocessedComponents() {
+  uint32_t numUnprocessedComponents() const {
     assert(unprocessed_components_end_ >= remaining_components_ofs_);
     return unprocessed_components_end_ - remaining_components_ofs_;
   }
@@ -62,10 +62,10 @@ public:
   void resetRemainingComps() {
     unprocessed_components_end_ = remaining_components_ofs_;
   }
-  unsigned super_component() {
+  unsigned super_component() const {
     return super_component_;
   }
-  unsigned remaining_components_ofs() {
+  unsigned remaining_components_ofs() const {
     return remaining_components_ofs_;
   }
   void set_unprocessed_components_end(unsigned end) {
@@ -82,11 +82,11 @@ public:
     assert(super_comp < comp_stack_ofs);
   }
 
-  unsigned currentRemainingComponent() {
+  unsigned currentRemainingComponent() const {
     assert(remaining_components_ofs_ <= unprocessed_components_end_ - 1);
     return unprocessed_components_end_ - 1;
   }
-  bool isSecondBranch() {
+  bool isSecondBranch() const {
     return active_branch_;
   }
 
@@ -95,11 +95,11 @@ public:
     active_branch_ = true;
   }
 
-  bool anotherCompProcessible() {
+  bool anotherCompProcessible() const {
     return (!branch_found_unsat()) && hasUnprocessedComponents();
   }
 
-  unsigned literal_stack_ofs() {
+  unsigned literal_stack_ofs() const {
     return literal_stack_ofs_;
   }
   void includeSolution(const mpz_class &solutions) {
@@ -126,10 +126,9 @@ public:
       branch_model_count_[active_branch_] = solutions;
     else
       branch_model_count_[active_branch_] *= solutions;
-
   }
 
-  bool branch_found_unsat() {
+  bool branch_found_unsat() const {
     return branch_found_unsat_[active_branch_];
   }
   void mark_branch_unsat() {

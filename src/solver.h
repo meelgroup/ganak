@@ -165,7 +165,7 @@ private:
   {
     if (literal_values_[lit] != X_TRI) return false;
 
-    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("Deciding literal: " << lit);
+    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent. Lit: " << lit);
 //    else print_debug("Literal propagated: " << lit);
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;

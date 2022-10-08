@@ -92,10 +92,8 @@ public:
     uint64_t *clhash_key;
     unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
-    if (config_.perform_pcc){
-      if (!act_id) {
-        return false;
-      } 
+    if (config_.perform_pcc) {
+      if (!act_id) return false;
       clhash_key = packed_comp.compute_clhash();
       while(act_id){
         if (entry(act_id).equals(packed_comp, clhash_key)) {

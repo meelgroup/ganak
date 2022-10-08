@@ -9,9 +9,13 @@
 #include <deque>
 #include <algorithm>
 #include <ios>
+#include <iomanip>
 #include "common.h"
+#include "component_types/component.h"
 #include "cryptominisat5/solvertypesmini.h"
 #include "primitive_types.h"
+#include "stack.h"
+#include "structures.h"
 
 StopWatch::StopWatch()
 {
@@ -120,11 +124,30 @@ SOLVER_StateT Solver::countSAT() {
 
   if (!takeSolution()) return SUCCESS;
   while (true) {
-    //print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
+    print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
     //NOTE: findNextRemainingComponentOf finds disjoing components!
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       checkProbabilisticHashSanity();
       decideLiteral();
+
+#ifdef VERBOSE_DEBUG
+      cout << "--- going through all levels now, printing components --" << endl;
+      uint32_t lev = 0;
+      for(const auto& s: decision_stack_) {
+        auto const& sup_at = s.super_component();
+        cout << "super component of lev " << lev << " is at " << sup_at << endl;
+        const auto& c = comp_manager_.at(sup_at);
+        cout << "-> Variables in comp_manager_.at(" << sup_at << "). num: " << c->num_variables() << " vars: ";
+        for(unsigned i = 0; i < c->num_variables(); i++) {
+          const auto& v = c->varsBegin();
+          cout << v[i] << " ";
+        }
+        cout << endl;
+        lev++;
+      }
+      cout << "--- Went through all levels now --" << endl;
+#endif
+
       while (!failedLitProbe()) {
         state = resolveConflict();
         if (state == BACKTRACK) break;
@@ -239,7 +262,8 @@ void Solver::decideLiteral() {
   decision_stack_.top().setbranchvariable(max_score_var);
   decision_stack_.top().setonpath(!counted_bottom_component);
 
-  print_debug("Deciding lit: " << theLit << " dec level: " << decision_stack_.get_decision_level());
+  print_debug(COLYEL "decideLiteral() is deciding: " << theLit << " dec level: " << decision_stack_.get_decision_level());
+
   setLiteralIfFree(theLit);
   statistics_.num_decisions_++;
   if (statistics_.num_decisions_ % 128 == 0) {
@@ -303,18 +327,21 @@ retStateT Solver::backtrack() {
       return PROCESS_COMPONENT;
     }
 
+    // We have NOT explored the other side! Let's do it now!
     if (!decision_stack_.top().isSecondBranch()) {
-      print_debug("isSecondBranch (i.e. active branch is FALSE)"
+      print_debug("We have NOT explored the right branch (isSecondBranch==false). Let's do it now."
           << " -- dec lev: " << decision_stack_.get_decision_level());
+      //top of stack decision lit
       const LiteralID aLit = TOS_decLit();
       assert(decision_stack_.get_decision_level() > 0);
-      decision_stack_.top().changeBranch();
+      decision_stack_.top().changeBranch(); //flip branch
       reactivateTOS();
-      print_debug("I don't understand... setLiteralIfFree called with NOT_A_CLAUSE -- it's in the literal stack of the decision stack's top element...");
+      print_debug("Flipping lit to: " << aLit.neg());
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
+      print_debug(COLORGBG "Backtrack finished -- we flipped the branch");
       return RESOLVED;
     } else {
-      print_debug("not isSecondBranch (i.e. active branch is TRUE)"
+      print_debug(COLORGBG "We have explored BOTH branches, actually BACKTRACKING."
           << " -- dec lev: " << decision_stack_.get_decision_level());
     }
     comp_manager_.cacheModelCountOf(decision_stack_.top().super_component(),
@@ -346,24 +373,34 @@ retStateT Solver::backtrack() {
         << " on_path: " << decision_stack_.top().on_path_to_target_);
     if (decision_stack_.top().on_path_to_target_) {
       int at = 0;
-#ifdef VERBOSE_DEBUG
-      cout << "Smallest cube so far. Size: " << decision_stack_.size()-1 << " cube:";
-      for(const auto& d: decision_stack_) {
-        if (at > 0) cout << (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar() << " ";
-        at++;
-      }
-      cout << endl;
-#endif
       smallest_cube.clear();
       at = 0;
-      for(const auto& d: decision_stack_) {
-        if (at > 0) smallest_cube.push_back(
+      for(uint32_t i = 1; i < decision_stack_.size(); i++) {
+        StackLevel& d = decision_stack_[i];
+        smallest_cube.push_back(
             (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar());;
         at++;
       }
+
+      const auto& super_comp = comp_manager_.superComponentOf(decision_stack_.top());
+      if (!super_comp.empty()) {
+        cout << "Sup comp: ";
+        auto v = super_comp.varsBegin();
+        for(; *v != varsSENTINEL; v++) {
+          cout << *v << " ";
+        }
+        cout << endl;
+      }
+
+//#ifdef VERBOSE_DEBUG
+      cout << COLWHT "Smallest cube so far. Size: " << smallest_cube.size() << " cube: ";
+      for(const auto& l: smallest_cube) cout << l << " ";
+      cout << endl;
+//#endif
+
       if (!counted_bottom_component) {
         assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
-        print_debug("Bottom component reached, decisions since restart: "
+        print_debug(COLCYN "Bottom component reached, decisions since restart: "
           << statistics_.num_decisions_ - statistics_.last_restart_decisions);
         counted_bottom_component = true;
       }
@@ -565,7 +602,7 @@ bool Solver::failedLitProbeInternal() {
     statistics_.num_failed_literal_tests_ += test_lits.size();
 
     // Do the probing
-    print_debug("Failed literal probing START");
+    print_debug(COLRED "Failed literal probing START");
     for (auto lit : test_lits) {
       if (isActive(lit) && threshold <= literal(lit).activity_score_) {
         unsigned sz = literal_stack_.size();
@@ -581,6 +618,7 @@ bool Solver::failedLitProbeInternal() {
         if (!bSucceeded) recordAllUIPCauses();
         decision_stack_.stopFailedLitTest();
 
+        // backtracking
         while (literal_stack_.size() > sz) {
           unSet(literal_stack_.back());
           literal_stack_.pop_back();
@@ -588,6 +626,7 @@ bool Solver::failedLitProbeInternal() {
 
         if (!bSucceeded) {
           statistics_.num_failed_literals_detected_++;
+          print_debug("-> failed literal detected");
           sz = literal_stack_.size();
           for (auto it = uip_clauses_.rbegin();
                it != uip_clauses_.rend(); it++) {
@@ -603,7 +642,7 @@ bool Solver::failedLitProbeInternal() {
       }
     }
   }
-  print_debug("Failed literal probing END -- no UNSAT");
+  print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
   return true;
 }
 

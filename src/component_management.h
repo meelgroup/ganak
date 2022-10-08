@@ -67,6 +67,10 @@ public:
     return component_stack_.size();
   }
 
+  const Component* at(const size_t at) const {
+    return component_stack_.at(at);
+  }
+
   void cleanRemainingComponentsOf(StackLevel &top)
   {
     while (component_stack_.size() > top.remaining_components_ofs())
@@ -177,7 +181,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
   // make sure, at least that the current branch is considered SAT
 
   top.includeSolution(1);
-  //cout << "includeSolution(1) fired!" << endl;
+  print_debug(COLREDBG "no more remaining components. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
   return false;
 }
 
@@ -192,6 +196,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   {
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt))
     {
+      // Create new component
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.perform_pcc)
@@ -203,6 +208,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
       }
 
+      // Check if new component is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp))
       {
         component_stack_.push_back(p_new_comp);
@@ -214,11 +220,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         if (config_.use_csvsads)
         {
           statistics_.numcachedec_++;
-          if (statistics_.numcachedec_ % 128 == 0)
-          {
-            increasecachescores();
-          }
-          for (vector<VariableIndex>::const_iterator it = p_new_comp->varsBegin(); *it != varsSENTINEL; it++)
+          if (statistics_.numcachedec_ % 128 == 0) increasecachescores();
+          for (auto it = p_new_comp->varsBegin(); *it != varsSENTINEL; it++)
           {
             cachescore_[*it] -= 1;
           }

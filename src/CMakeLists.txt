@@ -30,7 +30,6 @@ add_subdirectory (clhash)
 
 SET(SOURCES
     alt_component_analyzer.cpp
-	component_analyzer.cpp
 	component_cache.cpp
 	component_management.cpp
 	instance.cpp

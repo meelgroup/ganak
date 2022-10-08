@@ -291,10 +291,10 @@ void Solver::decideLiteral() {
   }
 }
 
-void Solver::computeSmallestCube()
+void Solver::computeLargestCube()
 {
-  smallest_cube.clear();
-  print_debug(COLWHT "-- computeSmallestCube BEGIN");
+  largest_cube.clear();
+  print_debug(COLWHT "-- computeLargestCube BEGIN");
 
   // add decisions
   cout << COLWHT << "dec vars: ";
@@ -302,7 +302,7 @@ void Solver::computeSmallestCube()
     StackLevel& d = decision_stack_[i];
     const auto l = (target_polar[d.getbranchvar()] ? 1 : -1)*(int)d.getbranchvar();
     cout << l << " ";
-    smallest_cube.push_back(l);
+    largest_cube.push_back(l);
   }
   cout << endl;
 
@@ -338,8 +338,8 @@ void Solver::computeSmallestCube()
   }
 
 //#ifdef VERBOSE_DEBUG
-   cout << COLWHT "Smallest cube so far. Size: " << smallest_cube.size() << " cube: ";
-   for(const auto& l: smallest_cube) cout << l << " ";
+   cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
+   for(const auto& l: largest_cube) cout << l << " ";
    cout << endl;
 //#endif
 }
@@ -359,12 +359,12 @@ retStateT Solver::backtrack() {
     statistics_.last_restart_decisions = statistics_.num_decisions_;
     cout << "Restart here" << endl;
     if (counted_bottom_component) {
-      //smallest cube is valid.
+      //largest cube is valid.
       vector<CMSat::Lit> cl;
-      for(const auto&l: smallest_cube) cl.push_back(~CMSat::Lit(abs(l)-1, l<0));
+      for(const auto&l: largest_cube) cl.push_back(~CMSat::Lit(abs(l)-1, l<0));
       solver.add_clause(cl);
       cout << "cube: ";
-      for(const auto&l: smallest_cube) cout << l << " ";
+      for(const auto&l: largest_cube) cout << l << " ";
       cout << endl;
       counted_bottom_component = false;
     }
@@ -434,7 +434,7 @@ retStateT Solver::backtrack() {
         << " num unprocessed components here: " << decision_stack_.top().numUnprocessedComponents()
         << " on_path: " << decision_stack_.top().on_path_to_target_);
     if (decision_stack_.top().on_path_to_target_) {
-      computeSmallestCube();
+      computeLargestCube();
       if (!counted_bottom_component) {
         assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
         print_debug(COLCYN "Bottom component reached, decisions since restart: "

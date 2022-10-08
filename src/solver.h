@@ -123,7 +123,7 @@ private:
   void decideLiteral();
   bool failedLitProbe();
   bool failedLitProbeInternal();
-  void computeSmallestCube();
+  void computeLargestCube();
 
   void decayActivitiesOf(Component &comp)
   {
@@ -136,7 +136,7 @@ private:
 
   // this is the actual BCP algorithm
   // starts propagating all literal in literal_stack_
-  // beginingg at offset start_at_stack_ofs
+  // beginning at offset start_at_stack_ofs
   bool propagate(const unsigned start_at_stack_ofs);
 
   retStateT backtrack();

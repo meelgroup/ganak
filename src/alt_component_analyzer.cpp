@@ -110,73 +110,31 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
 }
 
 
-//void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
-//
-//  search_stack_.clear();
-//  setSeenAndStoreInSearchStack(var);
-//
-//  for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
-//    //BEGIN traverse binary clauses
-//    assert(isActive(*vt));
-//    unsigned *p = beginOfLinkList(*vt);
-//    for (; *p; p++) {
-//      if(isUnseenAndActive(*p)){
-//        setSeenAndStoreInSearchStack(*p);
-//        var_frequency_scores_[*p]++;
-//        var_frequency_scores_[*vt]++;
-//      }
-//    }
-//    //END traverse binary clauses
-//    auto s = p;
-//    for ( p++; *p ; p+=3) {
-////      if(archetype_.clause_unseen_in_sup_comp(*p)){
-////        LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(p + 1);
-////        searchThreeClause(*vt,*p, pstart_cls);
-////      }
-//    }
-//    //END traverse ternary clauses
-//
-//    for (p++; *p ; p +=2) {
-//      if(archetype_.clause_unseen_in_sup_comp(*p)){
-//        LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(p + 1 + *(p+1));
-//        searchClause(*vt,*p, pstart_cls);
-//      }
-//    }
-//
-//    for ( s++; *s ; s+=3) {
-//          if(archetype_.clause_unseen_in_sup_comp(*s)){
-//            LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(s + 1);
-//            searchThreeClause(*vt,*s, pstart_cls);
-//          }
-//        }
-//  }
-//}
-
 void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
-
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);
 
-  for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
-    //BEGIN traverse binary clauses
-    assert(isActive(*vt));
-    unsigned *p = beginOfLinkList(*vt);
+  for (const auto& vt: search_stack_) {
+    assert(isActive(vt));
+
+    //traverse binary clauses
+    unsigned *p = beginOfLinkList(vt);
     for (; *p; p++) {
       if(manageSearchOccurrenceOf(LiteralID(*p,true))){
         var_frequency_scores_[*p]++;
-        var_frequency_scores_[*vt]++;
+        var_frequency_scores_[vt]++;
       }
     }
-    //END traverse binary clauses
 
+    //traverse ternary clauses
     for ( p++; *p ; p+=3) {
       if(archetype_.clause_unseen_in_sup_comp(*p)){
-        LiteralID litA = *reinterpret_cast<const LiteralID *>(p + 1);
-        LiteralID litB = *(reinterpret_cast<const LiteralID *>(p + 1) + 1);
+        const LiteralID litA = *(LiteralID*)(p + 1);
+        const LiteralID litB = *(LiteralID*)(p + 2);
         if(isSatisfied(litA)|| isSatisfied(litB))
           archetype_.setClause_nil(*p);
         else {
-          var_frequency_scores_[*vt]++;
+          var_frequency_scores_[vt]++;
           manageSearchOccurrenceAndScoreOf(litA);
           manageSearchOccurrenceAndScoreOf(litB);
           archetype_.setClause_seen(
@@ -185,10 +143,10 @@ void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
         }
       }
     }
-    //END traverse ternary clauses
 
+    // traverse long clauses
     for (p++; *p ; p +=2)
       if(archetype_.clause_unseen_in_sup_comp(*p))
-        searchClause(*vt,*p, reinterpret_cast<LiteralID *>(p + 1 + *(p+1)));
+        searchClause(vt,*p, reinterpret_cast<LiteralID *>(p + 1 + *(p+1)));
   }
 }

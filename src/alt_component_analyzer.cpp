@@ -104,9 +104,6 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
         occ_long_clauses[v].begin(),
         occ_long_clauses[v].end());
   }
-
-
-
 }
 
 

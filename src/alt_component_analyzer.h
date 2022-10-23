@@ -143,18 +143,18 @@ private:
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;
 
-  bool isFalse(const LiteralID lit) {
+  bool isFalse(const LiteralID lit) const {
     return literal_values_[lit] == F_TRI;
   }
 
-  bool isTrue(const LiteralID lit) {
+  bool isTrue(const LiteralID lit) const {
     return literal_values_[lit] == T_TRI;
   }
-  bool isUnknown(const LiteralID lit) {
+  bool isUnknown(const LiteralID lit) const {
       return literal_values_[lit] == X_TRI;
   }
 
-  bool isUnknown(const VariableIndex v) {
+  bool isUnknown(const VariableIndex v) const {
     return literal_values_[LiteralID(v, true)] == X_TRI;
   }
 

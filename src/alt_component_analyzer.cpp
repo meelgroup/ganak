@@ -124,7 +124,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     }
 
     //traverse ternary clauses
-    for ( p++; *p ; p+=3) {
+    for (p++; *p ; p+=3) {
       if(archetype_.clause_unseen_in_sup_comp(*p)){
         const LiteralID litA = *(LiteralID*)(p + 1);
         const LiteralID litB = *(LiteralID*)(p + 2);

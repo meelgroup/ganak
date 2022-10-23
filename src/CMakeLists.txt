@@ -33,7 +33,6 @@ SET(SOURCES
 	component_cache.cpp
 	component_management.cpp
 	instance.cpp
-	new_component_analyzer.cpp
 	solver.cpp
 	statistics.cpp
 	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp)

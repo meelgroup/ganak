@@ -69,7 +69,7 @@ public:
   }
 
   void setSeenAndStoreInSearchStack(VariableIndex v){
-    assert(isActive(v));
+    assert(isUnknown(v));
     search_stack_.push_back(v);
     archetype_.setVar_seen(v);
   }
@@ -78,7 +78,7 @@ public:
     archetype_.reInitialize(top,super_comp);
 
     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-      if (isActive(*vt)) {
+      if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
         var_frequency_scores_[*vt] = 0;
       }
@@ -154,7 +154,7 @@ private:
       return literal_values_[lit] == X_TRI;
   }
 
-  bool isActive(const VariableIndex v) {
+  bool isUnknown(const VariableIndex v) {
     return literal_values_[LiteralID(v, true)] == X_TRI;
   }
 

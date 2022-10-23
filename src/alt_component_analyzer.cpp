@@ -111,7 +111,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   setSeenAndStoreInSearchStack(var);
 
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
-    assert(isActive(*vt));
+    assert(isUnknown(*vt));
 
     //traverse binary clauses
     unsigned *p = beginOfLinkList(*vt);

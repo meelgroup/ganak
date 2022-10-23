@@ -211,12 +211,12 @@ public:
       return creation_time_;
   }
   unsigned length(){ return length_;}
-  void set_length(unsigned length){ length_ = length;}
+  void set_length(unsigned length) {length_ = length;}
 
   void set_creation_time(unsigned time) {
     creation_time_ = time;
   }
-  static unsigned overheadInLits(){return sizeof(ClauseHeader)/sizeof(LiteralID);}
+  static unsigned overheadInLits() {return sizeof(ClauseHeader)/sizeof(LiteralID);}
 };
 
 #endif /* STRUCTURES_H_ */

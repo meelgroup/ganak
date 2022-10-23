@@ -14,7 +14,6 @@ void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
     vector<LiteralID> &lit_pool) {
 
   max_variable_id_ = literals.end_lit().var() - 1;
-
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
   variable_link_list_offsets_.clear();
@@ -26,30 +25,22 @@ void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
 
   vector<unsigned> tmp;
   max_clause_id_ = 0;
-  unsigned curr_clause_length = 0;
   auto it_curr_cl_st = lit_pool.begin();
 
   for (auto it_lit = lit_pool.begin(); it_lit < lit_pool.end(); it_lit++) {
-    if (*it_lit == SENTINEL_LIT) {
-
-      if (it_lit + 1 == lit_pool.end())
-        break;
-
+    if (*it_lit == SENTINEL_LIT) { //End of this clause
+      if (it_lit + 1 == lit_pool.end()) break;
       max_clause_id_++;
       it_lit += ClauseHeader::overheadInLits();
       it_curr_cl_st = it_lit + 1;
-      curr_clause_length = 0;
-
     } else {
       assert(it_lit->var() <= max_variable_id_);
-      curr_clause_length++;
 
-      getClause(tmp,it_curr_cl_st, *it_lit);
+      getClause(tmp, it_curr_cl_st, *it_lit);
 
       assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
-      //if(false){
         occ_ternary_clauses[it_lit->var()].push_back(max_clause_id_);
         occ_ternary_clauses[it_lit->var()].insert(occ_ternary_clauses[it_lit->var()].end(),
             tmp.begin(), tmp.end());
@@ -60,7 +51,6 @@ void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
             tmp.begin(), tmp.end());
         occ_long_clauses[it_lit->var()].push_back(SENTINEL_LIT.raw());
       }
-
     }
   }
 

@@ -562,7 +562,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
     //Propagate bin Clauses
     for (auto bt = literal(unLit).binary_links_.begin();
          *bt != SENTINEL_LIT; bt++) {
-      if (isResolved(*bt)) {
+      if (isFalse(*bt)) {
         setConflictState(unLit, *bt);
         return false;
       }
@@ -576,11 +576,11 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
       auto p_watchLit = beginOf(*itcl) + 1 - isLitA;
       auto p_otherLit = beginOf(*itcl) + isLitA;
 
-      if (isSatisfied(*p_otherLit)) {
+      if (isTrue(*p_otherLit)) {
         continue;
       }
       auto itL = beginOf(*itcl) + 2;
-      while (isResolved(*itL)) {
+      while (isFalse(*itL)) {
         itL++;
       }
       // either we found a free or satisfied lit
@@ -621,7 +621,7 @@ bool Solver::failedLitProbeInternal() {
       for (auto cl_ofs : occurrence_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
           for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
-            if (isActive(*lt) && !viewed_lits[lt->neg()]) {
+            if (isUnknown(*lt) && !viewed_lits[lt->neg()]) {
               test_lits.push_back(lt->neg());
               print_debug("-> potential lit to test: " << lt->neg());
               viewed_lits[lt->neg()] = true;
@@ -652,7 +652,7 @@ bool Solver::failedLitProbeInternal() {
 
     // Do the probing
     for (auto lit : test_lits) {
-      if (isActive(lit) && threshold <= literal(lit).activity_score_) {
+      if (isUnknown(lit) && threshold <= literal(lit).activity_score_) {
         unsigned sz = literal_stack_.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause

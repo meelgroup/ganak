@@ -48,7 +48,7 @@ protected:
   }
 
   bool free(VariableIndex v) {
-    return isolated(v) && isActive(v);
+    return isolated(v) && isUnknown(v);
   }
 
   bool deleteConflictClauses();
@@ -172,15 +172,15 @@ protected:
     return literals_[lit];
   }
 
-  inline bool isSatisfied(const LiteralID &lit) const {
+  inline bool isTrue(const LiteralID &lit) const {
     return literal_values_[lit] == T_TRI;
   }
 
-  bool isResolved(LiteralID lit) {
+  bool isFalse(LiteralID lit) {
     return literal_values_[lit] == F_TRI;
   }
 
-  bool isActive(LiteralID lit) const {
+  bool isUnknown(LiteralID lit) const {
     return literal_values_[lit] == X_TRI;
   }
 
@@ -202,7 +202,7 @@ protected:
 
   bool isSatisfied(ClauseOfs cl_ofs) {
     for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++)
-      if (isSatisfied(*lt))
+      if (isTrue(*lt))
         return true;
     return false;
   }

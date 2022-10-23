@@ -21,7 +21,7 @@ using namespace CMSat;
 void Instance::cleanClause(ClauseOfs cl_ofs) {
   bool satisfied = false;
   for (auto it = beginOf(cl_ofs); *it != SENTINEL_LIT; it++)
-    if (isSatisfied(*it)) {
+    if (isTrue(*it)) {
       satisfied = true;
       break;
     }
@@ -34,7 +34,7 @@ void Instance::cleanClause(ClauseOfs cl_ofs) {
   auto it = beginOf(cl_ofs);
   // from now, all inactive literals are resolved
   for (; *it != SENTINEL_LIT; it++, jt++) {
-    while (*jt != SENTINEL_LIT && !isActive(*jt))
+    while (*jt != SENTINEL_LIT && !isUnknown(*jt))
       jt++;
     *it = *jt;
     if (*jt == SENTINEL_LIT)
@@ -102,7 +102,7 @@ void Instance::compactClauses() {
   for (auto &l : literals_) {
     tmp_bin.clear();
     for (auto it = l.binary_links_.begin(); *it != SENTINEL_LIT; it++)
-      if (isActive(*it))
+      if (isUnknown(*it))
         tmp_bin.push_back(*it);
     bin_links += tmp_bin.size();
     tmp_bin.push_back(SENTINEL_LIT);
@@ -125,7 +125,7 @@ void Instance::compactVariables() {
 
   assert(_tmp_bin_links.size() == literals_.size());
   for (unsigned v = 1; v < variables_.size(); v++)
-    if (isActive(v)) {
+    if (isUnknown(v)) {
       if (isolated(v)) {
         if (independent_support_.find(v) != independent_support_.end())
           num_pisolated ++;

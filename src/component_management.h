@@ -198,6 +198,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+    print_debug("checking var: " << *vt << " which component it's in");
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
       // Create new component
       Component *p_new_comp = ana_.makeComponentFromArcheType();

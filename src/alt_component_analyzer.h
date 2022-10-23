@@ -127,9 +127,6 @@ private:
   unsigned max_clause_id_ = 0;
   unsigned max_variable_id_ = 0;
 
-  // this contains clause offsets of the clauses
-  // where each variable occurs in;
-  vector<ClauseOfs> variable_occurrence_lists_pool_;
 
   // this is a new idea,
   // for every variable we have a list

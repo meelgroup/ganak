@@ -147,7 +147,7 @@ public:
     memset(seen_, CA_NIL, seen_byte_size_);
   }
 
-  Component *makeComponentFromState(unsigned stack_size) {
+  Component *makeComponentFromState(const unsigned stack_size) {
     Component *p_new_comp = new Component();
     p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
     current_comp_for_caching_.clear();

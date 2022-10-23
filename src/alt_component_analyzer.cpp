@@ -17,7 +17,6 @@ void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
 
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
-  variable_occurrence_lists_pool_.clear();
   variable_link_list_offsets_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
 

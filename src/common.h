@@ -10,6 +10,7 @@
 #define COLCYN "\033[36m"
 #define COLWHT "\033[97m"
 #define COLORG "\033[43m"
+#define COLBLBACK  "\033[44m"
 #define COLORGBG "\033[100m"
 #define COLREDBG "\033[41m"
 

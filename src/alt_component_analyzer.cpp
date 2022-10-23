@@ -5,46 +5,51 @@
  *      Author: mthurley
  */
 
-
 #include "alt_component_analyzer.h"
 
-
-
-void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
-    vector<LiteralID> &lit_pool) {
-
+// Builds occurrence lists and sets things up
+void ComponentAnalyzer::initialize(
+    LiteralIndexedVector<Literal> & literals,
+    vector<LiteralID> &lit_pool)
+{
   max_variable_id_ = literals.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
   variable_link_list_offsets_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
 
-  vector<vector<ClauseOfs> > occs(max_variable_id_ + 1);
-  vector<vector<unsigned> > occ_long_clauses(max_variable_id_ + 1);
-  vector<vector<unsigned> > occ_ternary_clauses(max_variable_id_ + 1);
+  // Occurrence lists -- for long and 3-long
+  vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
+  vector<vector<unsigned>>  occ_long_clauses(max_variable_id_ + 1);
+  vector<vector<unsigned>>  occ_ternary_clauses(max_variable_id_ + 1);
 
   vector<unsigned> tmp;
   max_clause_id_ = 0;
   auto it_curr_cl_st = lit_pool.begin();
 
-  for (auto it_lit = lit_pool.begin(); it_lit < lit_pool.end(); it_lit++) {
+  for (auto it_lit = lit_pool.begin(); it_lit != lit_pool.end(); it_lit++) {
+    // Builds the occurrence list for 3-long and long clauses
+    // it_curr_cl_st is the starting point of the clause
+    // for each lit in the clause, it adds the clause to the occurrence list
+
     if (*it_lit == SENTINEL_LIT) { //End of this clause
       if (it_lit + 1 == lit_pool.end()) break;
       max_clause_id_++;
       it_lit += ClauseHeader::overheadInLits();
-      it_curr_cl_st = it_lit + 1;
+      it_curr_cl_st = it_lit + 1; // Point to next clause
     } else {
       assert(it_lit->var() <= max_variable_id_);
-
       getClause(tmp, it_curr_cl_st, *it_lit);
-
       assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
+        // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
         occ_ternary_clauses[it_lit->var()].push_back(max_clause_id_);
-        occ_ternary_clauses[it_lit->var()].insert(occ_ternary_clauses[it_lit->var()].end(),
+        occ_ternary_clauses[it_lit->var()].insert(
+            occ_ternary_clauses[it_lit->var()].end(),
             tmp.begin(), tmp.end());
       } else {
+        // Long clauses
         occs[it_lit->var()].push_back(max_clause_id_);
         occs[it_lit->var()].push_back(occ_long_clauses[it_lit->var()].size());
         occ_long_clauses[it_lit->var()].insert(occ_long_clauses[it_lit->var()].end(),
@@ -52,6 +57,8 @@ void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
         occ_long_clauses[it_lit->var()].push_back(SENTINEL_LIT.raw());
       }
     }
+
+    print_debug(COLBLBACK "Built occurrence list.");
   }
 
   ComponentArchetype::initArrays(max_variable_id_, max_clause_id_);

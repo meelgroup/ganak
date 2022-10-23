@@ -169,15 +169,17 @@ private:
   // after execution component_search_stack.size()==1
   void recordComponentOf(const VariableIndex var);
 
-
-  void getClause(vector<unsigned> &tmp,
-   		       vector<LiteralID>::iterator & it_start_of_cl,
-   		       LiteralID & omitLit){
-  	  tmp.clear();
-  	  for (auto it_lit = it_start_of_cl;*it_lit != SENTINEL_LIT; it_lit++) {
-   		  if(it_lit->var() != omitLit.var())
-   			 tmp.push_back(it_lit->raw());
-   	  }
+  // Gets a full clause until SENTINEL_LIT, except for the omitLit
+  void getClause(
+    vector<unsigned> &tmp,
+    vector<LiteralID>::iterator & it_start_of_cl,
+    LiteralID & omitLit)
+  {
+    tmp.clear();
+    for (auto it_lit = it_start_of_cl; *it_lit != SENTINEL_LIT; it_lit++) {
+      if (it_lit->var() != omitLit.var())
+        tmp.push_back(it_lit->raw());
+    }
   }
 
 

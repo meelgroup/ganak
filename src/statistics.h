@@ -11,15 +11,15 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-
 #include <gmpxx.h>
 
 #include "structures.h"
 #include "component_types/cacheable_component.h"
-
 #include "primitive_types.h"
 
-using namespace std;
+using std::vector;
+using std::cout;
+using std::endl;
 
 class DataAndStatistics {
 public:

@@ -268,7 +268,7 @@ static LiteralID cmsLitToG(const CMSat::Lit& l) {
   return LiteralID(l.var()+1, !l.sign());
 }
 
-void Instance::parseWithCMS(const string& filename) {
+void Instance::parseWithCMS(const std::string& filename) {
   unsigned verb = 0;
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
@@ -296,7 +296,7 @@ void Instance::parseWithCMS(const string& filename) {
   }
 }
 
-bool Instance::createfromFile(const string &filename) {
+bool Instance::createfromFile(const std::string &filename) {
   // The solver is empty
   assert(variables_.empty());
   assert(literal_values_.empty());

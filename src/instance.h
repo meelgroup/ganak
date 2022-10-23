@@ -12,8 +12,10 @@
 #include "structures.h"
 #include "containers.h"
 #include <set>
-#include <assert.h>
+#include <cassert>
 #include <cryptominisat5/cryptominisat.h>
+
+using std::set;
 
 class Instance {
 protected:
@@ -78,7 +80,7 @@ protected:
     return variables_.size() - 1;
   }
 
-  bool createfromFile(const string &file_name);
+  bool createfromFile(const std::string &file_name);
   DataAndStatistics statistics_;
 
   /** literal_pool_: the literals of all clauses are stored here
@@ -211,7 +213,7 @@ protected:
   vector<int> largest_cube;
 
 private:
-  void parseWithCMS(const string& filename);
+  void parseWithCMS(const std::string& filename);
 };
 
 ClauseIndex Instance::addClause(vector<LiteralID> &literals) {

@@ -11,9 +11,8 @@
 #include <vector>
 #include <iostream>
 #include "primitive_types.h"
-using namespace std;
 
-
+using std::vector;
 
 #define INVALID_DL -1
 

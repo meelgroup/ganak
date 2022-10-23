@@ -17,8 +17,6 @@
 //#include "simple_unpacked_component.h"
 
 
-using namespace std;
-
 #define NIL_ENTRY 0
 
 class Component;

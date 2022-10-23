@@ -81,7 +81,7 @@ public:
   {
   }
 
-  void solve(const string &file_name);
+  void solve(const std::string &file_name);
 
   SolverConfiguration &config()
   {

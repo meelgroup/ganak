@@ -24,7 +24,8 @@
 #include "stack.h"
 #include <set>
 
-using namespace std;
+using std::set;
+
 
 class ComponentAnalyzer {
 public:

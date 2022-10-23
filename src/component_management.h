@@ -20,8 +20,6 @@
 #include "clhash/clhash.h"
 #include "solver_config.h"
 
-using namespace std;
-
 class ComponentManager
 {
 public:
@@ -165,7 +163,7 @@ void ComponentManager::sortComponentStackRange(unsigned start, unsigned end)
     for (unsigned j = i + 1; j < end; j++)
     {
       if (component_stack_[i]->num_variables() < component_stack_[j]->num_variables())
-        swap(component_stack_[i], component_stack_[j]);
+        std::swap(component_stack_[i], component_stack_[j]);
     }
 }
 

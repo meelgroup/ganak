@@ -12,7 +12,7 @@
 #include <gmpxx.h>
 #include <iostream>
 
-using namespace std;
+using std::cout;
 
 template <class T>
  class BitStuffer {
@@ -109,7 +109,7 @@ public:
   }
   static void outbit(unsigned v){
    for(auto i=0; i<32;i++){
-      cout << ((v&2147483648)?"1":"0");
+     cout << ((v&2147483648)?"1":"0");
       v&=2147483648-1;
       v <<= 1;
     }

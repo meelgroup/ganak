@@ -10,10 +10,9 @@
 
 #include <assert.h>
 #include <vector>
-
 #include "../primitive_types.h"
 
-using namespace std;
+using std::vector;
 
 class Component {
 public:

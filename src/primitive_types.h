@@ -27,13 +27,4 @@ enum SOLVER_StateT {
 };
 
 
-#ifdef DEBUG
-#define toDEBUGOUT(X) cout << X;
-#else
-#define toDEBUGOUT(X)
-#endif
-
-
-
-
 #endif /* PRIMITIVE_TYPES_H_ */

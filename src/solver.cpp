@@ -17,6 +17,8 @@
 #include "stack.h"
 #include "structures.h"
 
+using std::deque;
+
 StopWatch::StopWatch()
 {
   interval_length_.tv_sec = 60;
@@ -59,7 +61,7 @@ void Solver::HardWireAndCompact()
   original_lit_pool_size_ = literal_pool_.size();
 }
 
-void Solver::solve(const string &file_name)
+void Solver::solve(const std::string &file_name)
 {
   srand(config_.randomseed);
   stopwatch_.start();
@@ -584,7 +586,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
       // either we found a free or satisfied lit
       if (*itL != SENTINEL_LIT) {
         literal(*itL).addWatchLinkTo(*itcl);
-        swap(*itL, *p_watchLit);
+        std::swap(*itL, *p_watchLit);
         *itcl = literal(unLit).watch_list_.back();
         literal(unLit).watch_list_.pop_back();
       } else {
@@ -593,7 +595,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
         // for p_otherLit remain poss: Active or Resolved
         if (setLiteralIfFree(*p_otherLit, Antecedent(*itcl))) { // implication
           if (isLitA) {
-            swap(*p_otherLit, *p_watchLit);
+            std::swap(*p_otherLit, *p_watchLit);
           }
         } else {
           setConflictState(*itcl);

@@ -21,9 +21,6 @@
 #include "containers.h"
 #include "stack.h"
 
-using namespace std;
-
-
 struct CAClauseHeader {
   unsigned clause_id = 0;
   LiteralID lit_A;

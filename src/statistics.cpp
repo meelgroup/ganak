@@ -10,8 +10,6 @@
 #include <iostream>
 #include <fstream>
 
-using namespace std;
-
 std::string DataAndStatistics::getFinalSolutionCountStr() {
     return final_solution_count_.get_str();
 }

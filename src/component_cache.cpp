@@ -6,7 +6,6 @@
  */
 
 #include "component_cache.h"
-
 #include <algorithm>
 
 #ifdef __linux__
@@ -17,7 +16,7 @@
 uint64_t freeram() {
 
   struct sysinfo info;
-      sysinfo(&info);
+  sysinfo(&info);
 
   return info.freeram *(uint64_t) info.mem_unit;
 }
@@ -27,9 +26,7 @@ uint64_t freeram() {
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-
 uint64_t freeram() {
-
   int mib[2];
   int64_t physical_memory;
   mib[0] = CTL_HW;
@@ -44,10 +41,7 @@ uint64_t freeram() {
 
 #endif
 
-
-
 #include "stack.h"
-
 
 ComponentCache::ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &config) :
 		statistics_(statistics), config_(config) {
@@ -127,10 +121,6 @@ void ComponentCache::test_descendantstree_consistency() {
 			assert(found);
 		}
 }
-
-
-
-
 
 bool ComponentCache::deleteEntries() {
   assert(statistics_.cache_full());
@@ -214,11 +204,9 @@ void ComponentCache::debug_dump_data() {
     cout << "free_entry_base_slots_ (size/capacity) " << free_entry_base_slots_.size()
              << "/" << free_entry_base_slots_.capacity() << endl;
 
-//    uint64_t size_model_counts = 0;
     uint64_t alloc_model_counts = 0;
     for (auto &pentry : entry_base_)
               if (pentry != nullptr){
-//                size_model_counts += pentry->size_of_model_count();
                 alloc_model_counts += pentry->alloc_of_model_count();
               }
     cout << "model counts size " << alloc_model_counts << endl;

@@ -26,9 +26,9 @@
 
 using namespace std;
 
-class AltComponentAnalyzer {
+class ComponentAnalyzer {
 public:
-	AltComponentAnalyzer(
+	ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const set <unsigned> & independent_support) :
         literal_values_(lit_values),
@@ -60,7 +60,8 @@ public:
         return true;
       }
       return false;
-    }
+  }
+
   bool manageSearchOccurrenceAndScoreOf(LiteralID lit){
     var_frequency_scores_[lit.var()]+= isActive(lit);
     return manageSearchOccurrenceOf(lit);
@@ -69,20 +70,21 @@ public:
   void setSeenAndStoreInSearchStack(VariableIndex v){
     assert(isActive(v));
     search_stack_.push_back(v);
-        archetype_.setVar_seen(v);
+    archetype_.setVar_seen(v);
   }
 
   void setupAnalysisContext(StackLevel &top, const Component & super_comp){
-     archetype_.reInitialize(top,super_comp);
+    archetype_.reInitialize(top,super_comp);
 
-     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++)
-       if (isActive(*vt)) {
-         archetype_.setVar_in_sup_comp_unseen(*vt);
-         var_frequency_scores_[*vt] = 0;
-       }
+    for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+      if (isActive(*vt)) {
+        archetype_.setVar_in_sup_comp_unseen(*vt);
+        var_frequency_scores_[*vt] = 0;
+      }
+    }
 
-     for (auto itCl = super_comp.clsBegin(); *itCl != clsSENTINEL; itCl++)
-         archetype_.setClause_in_sup_comp_unseen(*itCl);
+    for (auto itCl = super_comp.clsBegin(); *itCl != clsSENTINEL; itCl++)
+      archetype_.setClause_in_sup_comp_unseen(*itCl);
   }
 
   // returns true, iff the component found is non-trivial
@@ -178,11 +180,11 @@ private:
    		  if(it_lit->var() != omitLit.var())
    			 tmp.push_back(it_lit->raw());
    	  }
-     }
+  }
 
 
   void searchClause(VariableIndex vt, ClauseIndex clID, LiteralID * pstart_cls){
-    auto itVEnd = search_stack_.end();
+    const auto itVEnd = search_stack_.end();
     bool all_lits_active = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {
       assert(itL->var() <= max_variable_id_);
@@ -191,8 +193,7 @@ private:
       else {
         assert(!isActive(*itL));
         all_lits_active = false;
-        if (isResolved(*itL))
-          continue;
+        if (isResolved(*itL)) continue;
         //BEGIN accidentally entered a satisfied clause: undo the search process
         while (search_stack_.end() != itVEnd) {
           assert(search_stack_.back() <= max_variable_id_);

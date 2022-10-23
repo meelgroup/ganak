@@ -22,8 +22,6 @@
 
 using namespace std;
 
-typedef AltComponentAnalyzer ComponentAnalyzer;
-
 class ComponentManager
 {
 public:

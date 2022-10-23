@@ -10,7 +10,7 @@
 
 
 
-void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
+void ComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
     vector<LiteralID> &lit_pool) {
 
   max_variable_id_ = literals.end_lit().var() - 1;
@@ -107,7 +107,7 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
 }
 
 // Check which component a variable is in
-void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
+void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);
 

@@ -6,7 +6,7 @@
  */
 
 #ifndef COMPONENT_ANALYZER_H_
-#define COMPONENT_ANALYZEfor (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {R_H_
+#define COMPONENT_ANALYZER_H_
 
 
 

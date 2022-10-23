@@ -64,7 +64,7 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(LiteralID lit){
-    var_frequency_scores_[lit.var()]+= isActive(lit);
+    var_frequency_scores_[lit.var()]+= isUnknown(lit);
     return manageSearchOccurrenceOf(lit);
   }
 
@@ -143,14 +143,14 @@ private:
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;
 
-  bool isResolved(const LiteralID lit) {
+  bool isFalse(const LiteralID lit) {
     return literal_values_[lit] == F_TRI;
   }
 
-  bool isSatisfied(const LiteralID lit) {
+  bool isTrue(const LiteralID lit) {
     return literal_values_[lit] == T_TRI;
   }
-  bool isActive(const LiteralID lit) {
+  bool isUnknown(const LiteralID lit) {
       return literal_values_[lit] == X_TRI;
   }
 
@@ -189,9 +189,9 @@ private:
       if(!archetype_.var_nil(itL->var()))
         manageSearchOccurrenceAndScoreOf(*itL);
       else {
-        assert(!isActive(*itL));
+        assert(!isUnknown(*itL));
         all_lits_active = false;
-        if (isResolved(*itL)) continue;
+        if (isFalse(*itL)) continue;
         //BEGIN accidentally entered a satisfied clause: undo the search process
         while (search_stack_.end() != itVEnd) {
           assert(search_stack_.back() <= max_variable_id_);
@@ -200,7 +200,7 @@ private:
         }
         archetype_.setClause_nil(clID);
         while(*itL != SENTINEL_LIT)
-          if(isActive(*(--itL)))
+          if(isUnknown(*(--itL)))
             var_frequency_scores_[itL->var()]--;
         //END accidentally entered a satisfied clause: undo the search process
         break;

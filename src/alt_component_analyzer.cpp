@@ -127,7 +127,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
       if(archetype_.clause_unseen_in_sup_comp(*p)){
         const LiteralID litA = *(LiteralID*)(p + 1);
         const LiteralID litB = *(LiteralID*)(p + 2);
-        if(isSatisfied(litA)|| isSatisfied(litB))
+        if(isTrue(litA)|| isTrue(litB))
           archetype_.setClause_nil(*p);
         else {
           var_frequency_scores_[*vt]++;
@@ -135,7 +135,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
           manageSearchOccurrenceAndScoreOf(litB);
           archetype_.setClause_seen(
               *p
-              ,isActive(litA) && isActive(litB));
+              ,isUnknown(litA) && isUnknown(litB));
         }
       }
     }

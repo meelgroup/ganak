@@ -106,7 +106,7 @@ void AltComponentAnalyzer::initialize(LiteralIndexedVector<Literal> & literals,
   }
 }
 
-
+// Check which component a variable is in
 void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);

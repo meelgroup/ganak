@@ -189,6 +189,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
   return false;
 }
 
+// This creates components
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
   const Component& super_comp = superComponentOf(top);
@@ -214,11 +215,15 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         cout << COLYEL2 "New component. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->num_variables() << " vars: ";
         auto v = p_new_comp->varsBegin();
-        for(; *v != varsSENTINEL; v++) {
-          cout << *v << " ";
-        }
+        for(; *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
       } else {
+        cout << COLYEL2 "Component already in cache. ID: " << p_new_comp->id()
+            << " num vars: " << p_new_comp->num_variables() << " vars: ";
+        auto v = p_new_comp->varsBegin();
+        for(; *v != varsSENTINEL; v++) cout << *v << " ";
+        cout << endl;
+
         //cache score should be decreased since we have a cache hit
         if (config_.use_csvsads) {
           statistics_.numcachedec_++;

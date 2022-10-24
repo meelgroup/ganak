@@ -59,7 +59,7 @@ void ComponentAnalyzer::initialize(
     }
   }
 
-  ComponentArchetype::initSeen(max_variable_id_, max_clause_id_);
+  archetype_.initSeen(max_variable_id_, max_clause_id_);
 
   // the unified link list -- setup
   unified_variable_links_lists_pool_.clear();

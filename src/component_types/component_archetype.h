@@ -136,14 +136,14 @@ public:
     return seen_[cl] & CA_CL_IN_OTHER_COMP;
   }
 
-  static void initSeen(unsigned max_variable_id, unsigned max_clause_id) {
+  void initSeen(unsigned max_variable_id, unsigned max_clause_id) {
     unsigned seen_size = std::max(max_variable_id,max_clause_id)  + 1;
     seen_ = new CA_SearchState[seen_size];
     seen_byte_size_ = sizeof(CA_SearchState) * (seen_size);
     clearArrays();
   }
 
-  static void clearArrays() {
+  void clearArrays() {
     memset(seen_, CA_NIL, seen_byte_size_);
   }
 
@@ -181,10 +181,8 @@ public:
 private:
   Component const* p_super_comp_;
   StackLevel *p_stack_level_;
-
-  static CA_SearchState *seen_;
-  static unsigned seen_byte_size_;
-
+  CA_SearchState* seen_ = nullptr;
+  unsigned seen_byte_size_ = 0;
 };
 
 #endif /* COMPONENT_ARCHETYPE_H_ */

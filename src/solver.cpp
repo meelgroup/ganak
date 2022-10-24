@@ -88,6 +88,7 @@ void Solver::solve(const std::string &file_name)
     if (!config_.quiet) statistics_.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ =
       statistics_.getNumDecisions();
+    print_debug("init here");
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
     statistics_.exit_state_ = countSAT();
@@ -211,23 +212,6 @@ void Solver::decideLiteral() {
     }
     it++;
   }
-
-  // Decision scores
-  /*if (config_.use_csvsads) {
-    float cachescore = comp_manager_.cacheScoreOf(max_score_var);
-    for (auto it = comp_manager_.superComponentOf(decision_stack_.top()).varsBegin();
-         *it != varsSENTINEL; it++) {
-      if (independent_support_.find(*it) != independent_support_.end()) {
-        score = scoreOf(*it);
-        if (score > max_score * config_.csvsads_param) {
-          if (comp_manager_.cacheScoreOf(*it) > cachescore) {
-            max_score_var = *it;
-            cachescore = comp_manager_.cacheScoreOf(*it);
-          }
-        }
-      }
-    }
-  }*/
 
   // this assert should always hold,
   // if not then there is a bug in the logic of countSAT();

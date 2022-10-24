@@ -9,19 +9,19 @@
 
 // Builds occurrence lists and sets things up
 void ComponentAnalyzer::initialize(
-    LiteralIndexedVector<Literal> & literals,
-    vector<LiteralID> &lit_pool)
+    LiteralIndexedVector<Literal> & literals, // binary clauses
+    vector<LiteralID> &lit_pool) // longer-than-2-long clauses
 {
   max_variable_id_ = literals.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
-  variable_link_list_offsets_.clear();
-  variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
 
   // Occurrence lists -- for long and 3-long
   vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
   vector<vector<unsigned>>  occ_long_clauses(max_variable_id_ + 1);
   vector<vector<unsigned>>  occ_ternary_clauses(max_variable_id_ + 1);
+
+  print_debug(COLBLBACK "Building occurrence list in ComponentAnalyzer::initialize");
 
   vector<unsigned> tmp;
   max_clause_id_ = 0;
@@ -57,23 +57,26 @@ void ComponentAnalyzer::initialize(
         occ_long_clauses[it_lit->var()].push_back(SENTINEL_LIT.raw());
       }
     }
-
-    print_debug(COLBLBACK "Built occurrence list.");
   }
 
-  ComponentArchetype::initArrays(max_variable_id_, max_clause_id_);
-  // the unified link list
+  ComponentArchetype::initSeen(max_variable_id_, max_clause_id_);
+
+  // the unified link list -- setup
   unified_variable_links_lists_pool_.clear();
   unified_variable_links_lists_pool_.push_back(0);
   unified_variable_links_lists_pool_.push_back(0);
+  variable_link_list_offsets_.clear();
+  variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
+
+  // now fill it
   for (unsigned v = 1; v < occs.size(); v++) {
     // BEGIN data for binary clauses
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
-    for (auto l : literals[LiteralID(v, false)].binary_links_)
+    for (const auto& l: literals[LiteralID(v, false)].binary_links_)
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 
-    for (auto l : literals[LiteralID(v, true)].binary_links_)
+    for (const auto& l: literals[LiteralID(v, true)].binary_links_)
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 

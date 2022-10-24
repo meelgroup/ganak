@@ -136,7 +136,7 @@ public:
     return seen_[cl] & CA_CL_IN_OTHER_COMP;
   }
 
-  static void initArrays(unsigned max_variable_id, unsigned max_clause_id) {
+  static void initSeen(unsigned max_variable_id, unsigned max_clause_id) {
     unsigned seen_size = std::max(max_variable_id,max_clause_id)  + 1;
     seen_ = new CA_SearchState[seen_size];
     seen_byte_size_ = sizeof(CA_SearchState) * (seen_size);

@@ -744,7 +744,7 @@ void Solver::recordLastUIPCauses() {
   assertion_level_ = 0;
   uip_clauses_.clear();
 
-  unsigned lit_stack_ofs = trail.size();
+  unsigned trail_ofs = trail.size();
   const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
@@ -764,8 +764,8 @@ void Solver::recordLastUIPCauses() {
 
   Lit curr_lit;
   while (lits_at_current_dl) {
-    assert(lit_stack_ofs != 0);
-    curr_lit = trail[--lit_stack_ofs];
+    assert(trail_ofs != 0);
+    curr_lit = trail[--trail_ofs];
 
     if (!tmp_seen[curr_lit.var()]) {
       continue;
@@ -835,7 +835,7 @@ void Solver::recordAllUIPCauses() {
   assertion_level_ = 0;
   uip_clauses_.clear();
 
-  unsigned lit_stack_ofs = trail.size();
+  unsigned trail_ofs = trail.size();
   const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
@@ -855,8 +855,8 @@ void Solver::recordAllUIPCauses() {
   unsigned n = 0;
   Lit curr_lit;
   while (lits_at_current_dl) {
-    assert(lit_stack_ofs != 0);
-    curr_lit = trail[--lit_stack_ofs];
+    assert(trail_ofs != 0);
+    curr_lit = trail[--trail_ofs];
 
     if (!tmp_seen[curr_lit.var()]) {
       continue;

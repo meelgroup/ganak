@@ -78,10 +78,10 @@ public:
     assert(remaining_components_ofs_ <= unprocessed_components_end_);
   }
 
-  StackLevel(unsigned super_comp, unsigned lit_stack_ofs,
+  StackLevel(unsigned super_comp, unsigned trail_ofs,
       unsigned comp_stack_ofs) :
       super_component_(super_comp),
-      literal_stack_ofs_(lit_stack_ofs),
+      literal_stack_ofs_(trail_ofs),
       remaining_components_ofs_(comp_stack_ofs),
       unprocessed_components_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);

@@ -217,7 +217,7 @@ private:
     // initialize the stack to contain at least level zero
     decision_stack_.push_back(StackLevel(
           1, // super comp
-          0, // lit offset
+          0, // trail offset
           2)); //comp stack offset
     decision_stack_.back().changeBranch();
   }
@@ -237,7 +237,7 @@ private:
     decision_stack_.top().resetRemainingComps();
   }
 
-  bool fail_test(Lit lit)
+  bool fail_test(const Lit lit)
   {
     unsigned sz = trail.size();
     // we increase the decLev artificially

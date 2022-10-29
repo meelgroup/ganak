@@ -44,7 +44,7 @@ public:
     return archetype_;
   }
 
-  void initialize(LiteralIndexedVector<Literal> & literals,
+  void initialize(LiteralIndexedVector<LitWatchList> & literals,
       vector<LiteralID> &lit_pool);
 
   bool isUnseenAndActive(VariableIndex v) const {
@@ -55,12 +55,12 @@ public:
   // manages the literal whenever it occurs in component analysis
   // returns true iff the underlying variable was unseen before
   bool manageSearchOccurrenceOf(LiteralID lit){
-      if(archetype_.var_unseen_in_sup_comp(lit.var())){
-        search_stack_.push_back(lit.var());
-        archetype_.setVar_seen(lit.var());
-        return true;
-      }
-      return false;
+    if(archetype_.var_unseen_in_sup_comp(lit.var())){
+      search_stack_.push_back(lit.var());
+      archetype_.setVar_seen(lit.var());
+      return true;
+    }
+    return false;
   }
 
   bool manageSearchOccurrenceAndScoreOf(LiteralID lit){
@@ -158,7 +158,8 @@ private:
     return literal_values_[LiteralID(v, true)] == X_TRI;
   }
 
-  unsigned *beginOfLinkList(VariableIndex v) {
+  unsigned const* beginOfLinkList(const VariableIndex v) const {
+    assert(v > 0);
     return &unified_variable_links_lists_pool_[variable_link_list_offsets_[v]];
   }
 
@@ -182,8 +183,7 @@ private:
     }
   }
 
-
-  void searchClause(VariableIndex vt, ClauseIndex clID, LiteralID * pstart_cls){
+  void searchClause(VariableIndex vt, ClauseIndex clID, LiteralID const* pstart_cls){
     const auto itVEnd = search_stack_.end();
     bool all_lits_active = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {

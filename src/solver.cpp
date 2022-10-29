@@ -53,11 +53,11 @@ void Solver::HardWireAndCompact()
 
   for (auto l = LiteralID(1, false); l != literals_.end_lit(); l.inc())
   {
-    literal(l).activity_score_ = literal(l).binary_links_.size() - 1;
-    literal(l).activity_score_ += occurrence_lists_[l].size();
+    litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
+    litWatchList(l).activity_score_ += occurrence_lists_[l].size();
   }
   statistics_.num_unit_clauses_ = unit_clauses_.size();
-  initStack(num_variables());
+  initStack();
   original_lit_pool_size_ = literal_pool_.size();
 }
 
@@ -69,7 +69,7 @@ void Solver::solve(const std::string &file_name)
   if (solver.okay()) HardWireAndCompact();
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
-  initStack(num_variables());
+  initStack();
   if (!config_.quiet)
   {
     cout << "c Solving file " << file_name << endl;
@@ -88,7 +88,6 @@ void Solver::solve(const std::string &file_name)
     if (!config_.quiet) statistics_.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ =
       statistics_.getNumDecisions();
-    print_debug("init here");
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
     statistics_.exit_state_ = countSAT();
@@ -220,23 +219,23 @@ void Solver::decideLiteral() {
   if (!counted_bottom_component) polarity = target_polar[max_score_var];
   else switch (config_.polarity_config) {
     case polar_default:
-      polarity = literal(LiteralID(max_score_var, true)).activity_score_ > literal(LiteralID(max_score_var, false)).activity_score_;
+      polarity = litWatchList(LiteralID(max_score_var, true)).activity_score_ > litWatchList(LiteralID(max_score_var, false)).activity_score_;
       break;
     case polaritycache:
-      polarity = literal(LiteralID(max_score_var, true)).activity_score_ >
-        literal(LiteralID(max_score_var, false)).activity_score_;
-      if (literal(LiteralID(max_score_var, true)).activity_score_ >
-            2 * literal(LiteralID(max_score_var, false)).activity_score_) {
+      polarity = litWatchList(LiteralID(max_score_var, true)).activity_score_ >
+        litWatchList(LiteralID(max_score_var, false)).activity_score_;
+      if (litWatchList(LiteralID(max_score_var, true)).activity_score_ >
+            2 * litWatchList(LiteralID(max_score_var, false)).activity_score_) {
         polarity = true;
-      } else if (literal(LiteralID(max_score_var, false)).activity_score_ >
-                  2 * literal(LiteralID(max_score_var, true)).activity_score_) {
+      } else if (litWatchList(LiteralID(max_score_var, false)).activity_score_ >
+                  2 * litWatchList(LiteralID(max_score_var, true)).activity_score_) {
         polarity = false;
       } else if (var(max_score_var).set) {
         int random = rand() % 3;
         switch (random) {
           case 0:
-            polarity = literal(LiteralID(max_score_var, true)).activity_score_ >
-              literal(LiteralID(max_score_var, false)).activity_score_;
+            polarity = litWatchList(LiteralID(max_score_var, true)).activity_score_ >
+              litWatchList(LiteralID(max_score_var, false)).activity_score_;
             break;
           case 1:
             polarity = var(max_score_var).polarity;
@@ -544,7 +543,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
     const LiteralID unLit = literal_stack_[i].neg();
 
     //Propagate bin Clauses
-    for (auto bt = literal(unLit).binary_links_.begin();
+    for (auto bt = litWatchList(unLit).binary_links_.begin();
          *bt != SENTINEL_LIT; bt++) {
       if (isFalse(*bt)) {
         setConflictState(unLit, *bt);
@@ -554,7 +553,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
     }
 
     //Propagate long clauses
-    for (auto itcl = literal(unLit).watch_list_.rbegin();
+    for (auto itcl = litWatchList(unLit).watch_list_.rbegin();
          *itcl != SENTINEL_CL; itcl++) {
       bool isLitA = (*beginOf(*itcl) == unLit);
       auto p_watchLit = beginOf(*itcl) + 1 - isLitA;
@@ -569,10 +568,10 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
       }
       // either we found a free or satisfied lit
       if (*itL != SENTINEL_LIT) {
-        literal(*itL).addWatchLinkTo(*itcl);
+        litWatchList(*itL).addWatchLinkTo(*itcl);
         std::swap(*itL, *p_watchLit);
-        *itcl = literal(unLit).watch_list_.back();
-        literal(unLit).watch_list_.pop_back();
+        *itcl = litWatchList(unLit).watch_list_.back();
+        litWatchList(unLit).watch_list_.pop_back();
       } else {
         // or p_unLit stays resolved
         // and we have hence no free literal left
@@ -624,7 +623,7 @@ bool Solver::failedLitProbeInternal() {
     vector<float> scores;
     scores.clear();
     for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
-      scores.push_back(literal(*jt).activity_score_);
+      scores.push_back(litWatchList(*jt).activity_score_);
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 10 + num_curr_lits / 20;
@@ -636,7 +635,7 @@ bool Solver::failedLitProbeInternal() {
 
     // Do the probing
     for (auto lit : test_lits) {
-      if (isUnknown(lit) && threshold <= literal(lit).activity_score_) {
+      if (isUnknown(lit) && threshold <= litWatchList(lit).activity_score_) {
         unsigned sz = literal_stack_.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause
@@ -758,7 +757,7 @@ void Solver::recordLastUIPCauses() {
     } else {
       lits_at_current_dl++;
     }
-    literal(l).increaseActivity();
+    litWatchList(l).increaseActivity();
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -803,8 +802,8 @@ void Solver::recordLastUIPCauses() {
       }
     } else {
       LiteralID alit = getAntecedent(curr_lit).asLit();
-      literal(alit).increaseActivity();
-      literal(curr_lit).increaseActivity();
+      litWatchList(alit).increaseActivity();
+      litWatchList(curr_lit).increaseActivity();
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {
@@ -849,7 +848,7 @@ void Solver::recordAllUIPCauses() {
     } else {
       lits_at_current_dl++;
     }
-    literal(l).increaseActivity();
+    litWatchList(l).increaseActivity();
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -899,8 +898,8 @@ void Solver::recordAllUIPCauses() {
       }
     } else {
       LiteralID alit = getAntecedent(curr_lit).asLit();
-      literal(alit).increaseActivity();
-      literal(curr_lit).increaseActivity();
+      litWatchList(alit).increaseActivity();
+      litWatchList(curr_lit).increaseActivity();
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {

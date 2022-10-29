@@ -72,8 +72,6 @@ public:
 
 private:
   unsigned value_;
-
-  template <class _T> friend class LiteralIndexedVector;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LiteralID lit)
@@ -89,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const LiteralID lit)
 static const LiteralID NOT_A_LIT(0, false);
 #define SENTINEL_LIT NOT_A_LIT
 
-class Literal {
+class LitWatchList {
 public:
   vector<LiteralID> binary_links_ = vector<LiteralID>(1,SENTINEL_LIT);
   vector<ClauseOfs> watch_list_ = vector<ClauseOfs>(1,SENTINEL_CL);

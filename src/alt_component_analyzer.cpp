@@ -9,17 +9,22 @@
 
 // Builds occurrence lists and sets things up
 void ComponentAnalyzer::initialize(
-    LiteralIndexedVector<Literal> & literals, // binary clauses
+    LiteralIndexedVector<LitWatchList> & litWatchList, // binary clauses
     vector<LiteralID> &lit_pool) // longer-than-2-long clauses
 {
-  max_variable_id_ = literals.end_lit().var() - 1;
+  max_variable_id_ = litWatchList.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
 
-  // Occurrence lists -- for long and 3-long
-  vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
-  vector<vector<unsigned>>  occ_long_clauses(max_variable_id_ + 1);
+
+  // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
   vector<vector<unsigned>>  occ_ternary_clauses(max_variable_id_ + 1);
+
+  // maps var -> [var1..varn, SENTINEL_LIT, var1...varn, SENTINEL_LIT, ...]
+  vector<vector<unsigned>>  occ_long_clauses(max_variable_id_ + 1);
+
+  // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
+  vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
 
   print_debug(COLBLBACK "Building occurrence list in ComponentAnalyzer::initialize");
 
@@ -27,6 +32,7 @@ void ComponentAnalyzer::initialize(
   max_clause_id_ = 0;
   auto it_curr_cl_st = lit_pool.begin();
 
+  // lit_pool contains all non-binary clauses
   for (auto it_lit = lit_pool.begin(); it_lit != lit_pool.end(); it_lit++) {
     // Builds the occurrence list for 3-long and long clauses
     // it_curr_cl_st is the starting point of the clause
@@ -38,51 +44,59 @@ void ComponentAnalyzer::initialize(
       it_lit += ClauseHeader::overheadInLits();
       it_curr_cl_st = it_lit + 1; // Point to next clause
     } else {
-      assert(it_lit->var() <= max_variable_id_);
+      const unsigned var = it_lit->var();
+      assert(var <= max_variable_id_);
       getClause(tmp, it_curr_cl_st, *it_lit);
       assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
         // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
-        occ_ternary_clauses[it_lit->var()].push_back(max_clause_id_);
-        occ_ternary_clauses[it_lit->var()].insert(
-            occ_ternary_clauses[it_lit->var()].end(),
+        occ_ternary_clauses[var].push_back(max_clause_id_);
+        occ_ternary_clauses[var].insert(
+            occ_ternary_clauses[var].end(),
             tmp.begin(), tmp.end());
       } else {
         // Long clauses
-        occs[it_lit->var()].push_back(max_clause_id_);
-        occs[it_lit->var()].push_back(occ_long_clauses[it_lit->var()].size());
-        occ_long_clauses[it_lit->var()].insert(occ_long_clauses[it_lit->var()].end(),
+        occs[var].push_back(max_clause_id_);
+        occs[var].push_back(occ_long_clauses[var].size());
+        occ_long_clauses[var].insert(occ_long_clauses[var].end(),
             tmp.begin(), tmp.end());
-        occ_long_clauses[it_lit->var()].push_back(SENTINEL_LIT.raw());
+        occ_long_clauses[var].push_back(SENTINEL_LIT.raw());
       }
     }
   }
 
   archetype_.initSeen(max_variable_id_, max_clause_id_);
 
-  // the unified link list -- setup
+  // the unified link list
+  // This is an array that contains, flattened:
+  // [  [vars of binary clauses],
+  //    [cl_ids and lits] of tri clauses]
+  //    [cl_id, offset in occs+offset in unified_variable_links_lists_pool]
+  //    [the occ_long_clauses] ]
   unified_variable_links_lists_pool_.clear();
-  unified_variable_links_lists_pool_.push_back(0);
-  unified_variable_links_lists_pool_.push_back(0);
+
+  // a map into unified_variable_Links_lists_pool.
+  // maps var -> starting point in unified_variable_Links_lists_pool
   variable_link_list_offsets_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
 
-  // now fill it
-  for (unsigned v = 1; v < occs.size(); v++) {
-    // BEGIN data for binary clauses
+  // now fill unified link list, for each variable
+  for (unsigned v = 1; v < max_variable_id_ + 1; v++) {
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
-    for (const auto& l: literals[LiteralID(v, false)].binary_links_)
+
+    // data for binary clauses
+    for (const auto& l: litWatchList[LiteralID(v, false)].binary_links_)
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 
-    for (const auto& l: literals[LiteralID(v, true)].binary_links_)
+    for (const auto& l: litWatchList[LiteralID(v, true)].binary_links_)
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 
     unified_variable_links_lists_pool_.push_back(0);
 
-    // BEGIN data for ternary clauses
+    // data for ternary clauses
     unified_variable_links_lists_pool_.insert(
         unified_variable_links_lists_pool_.end(),
         occ_ternary_clauses[v].begin(),
@@ -90,10 +104,10 @@ void ComponentAnalyzer::initialize(
 
     unified_variable_links_lists_pool_.push_back(0);
 
-    // BEGIN data for long clauses
-    for(auto it = occs[v].begin(); it != occs[v].end(); it+=2){
-      unified_variable_links_lists_pool_.push_back(*it);
-      unified_variable_links_lists_pool_.push_back(*(it + 1) +(occs[v].end() - it));
+    // data for long clauses
+    for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
+      unified_variable_links_lists_pool_.push_back(*it); //cl_id
+      unified_variable_links_lists_pool_.push_back(*(it + 1) + (occs[v].end() - it));
     }
 
     unified_variable_links_lists_pool_.push_back(0);
@@ -114,7 +128,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     assert(isUnknown(*vt));
 
     //traverse binary clauses
-    unsigned *p = beginOfLinkList(*vt);
+    unsigned const* p = beginOfLinkList(*vt);
     for (; *p; p++) {
       if(manageSearchOccurrenceOf(LiteralID(*p,true))){
         var_frequency_scores_[*p]++;
@@ -143,6 +157,6 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     // traverse long clauses
     for (p++; *p ; p +=2)
       if(archetype_.clause_unseen_in_sup_comp(*p))
-        searchClause(*vt,*p, reinterpret_cast<LiteralID *>(p + 1 + *(p+1)));
+        searchClause(*vt,*p, (LiteralID const*)(p + 1 + *(p+1)));
   }
 }

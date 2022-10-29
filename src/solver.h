@@ -129,8 +129,8 @@ private:
   {
     for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++)
     {
-      literal(LiteralID(*it, true)).activity_score_ *= 0.5;
-      literal(LiteralID(*it, false)).activity_score_ *= 0.5;
+      litWatchList(LiteralID(*it, true)).activity_score_ *= 0.5;
+      litWatchList(LiteralID(*it, false)).activity_score_ *= 0.5;
     }
   }
 
@@ -153,8 +153,8 @@ private:
   float scoreOf(VariableIndex v)
   {
     float score = 1.0; //comp_manager_.scoreOf(v);
-    score += literal(LiteralID(v, true)).activity_score_;
-    score += literal(LiteralID(v, false)).activity_score_;
+    score += litWatchList(LiteralID(v, true)).activity_score_;
+    score += litWatchList(LiteralID(v, false)).activity_score_;
     //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, true)).activity_score_;
     //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, false)).activity_score_;
 
@@ -209,14 +209,15 @@ private:
     return literal_stack_.begin() + decision_stack_.top().literal_stack_ofs();
   }
 
-  void initStack(unsigned int resSize)
+  void initStack()
   {
     decision_stack_.clear();
-    decision_stack_.reserve(resSize);
     literal_stack_.clear();
-    literal_stack_.reserve(resSize);
     // initialize the stack to contain at least level zero
-    decision_stack_.push_back(StackLevel(1, 0, 2));
+    decision_stack_.push_back(StackLevel(
+          1, // super comp
+          0, // lit offset
+          2)); //comp stack offset
     decision_stack_.back().changeBranch();
   }
 

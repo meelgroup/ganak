@@ -23,7 +23,7 @@ class StackLevel {
   // offset in the literal stack where to store set lits
   const unsigned literal_stack_ofs_ = 0;
 
-  //  Solutioncount
+  //  Solution count
   mpz_class branch_model_count_[2] = {0,0};
   bool branch_found_unsat_[2] = {false,false};
 

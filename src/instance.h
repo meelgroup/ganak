@@ -41,9 +41,9 @@ protected:
 
   bool isolated(VariableIndex v) {
     LiteralID lit(v, false);
-    return (literal(lit).binary_links_.size() <= 1)
+    return (litWatchList(lit).binary_links_.size() <= 1)
         && occurrence_lists_[lit].empty()
-        && (literal(lit.neg()).binary_links_.size() <= 1)
+        && (litWatchList(lit.neg()).binary_links_.size() <= 1)
         && occurrence_lists_[lit.neg()].empty();
   }
 
@@ -100,7 +100,7 @@ protected:
   // conflict clauses
   unsigned original_lit_pool_size_;
 
-  LiteralIndexedVector<Literal> literals_;
+  LiteralIndexedVector<LitWatchList> literals_;
   LiteralIndexedVector<vector<ClauseOfs> > occurrence_lists_;
   vector<ClauseOfs> conflict_clauses_;
   vector<LiteralID> unit_clauses_;
@@ -119,7 +119,7 @@ protected:
   void updateActivities(ClauseOfs clause_ofs) {
     getHeaderOf(clause_ofs).increaseScore();
     for (auto it = beginOf(clause_ofs); *it != SENTINEL_LIT; it++) {
-      literal(*it).increaseActivity();
+      litWatchList(*it).increaseActivity();
     }
   }
 
@@ -168,7 +168,7 @@ protected:
     return variables_[lit.var()];
   }
 
-  Literal & literal(LiteralID lit) {
+  LitWatchList & litWatchList(LiteralID lit) {
     return literals_[lit];
   }
 
@@ -233,12 +233,12 @@ ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
 
   for (auto l : literals) {
     literal_pool_.push_back(l);
-    literal(l).increaseActivity(1);
+    litWatchList(l).increaseActivity(1);
   }
   // make an end: SENTINEL_LIT
   literal_pool_.push_back(SENTINEL_LIT);
-  literal(literals[0]).addWatchLinkTo(cl_ofs);
-  literal(literals[1]).addWatchLinkTo(cl_ofs);
+  litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
+  litWatchList(literals[1]).addWatchLinkTo(cl_ofs);
   getHeaderOf(cl_ofs).set_creation_time(statistics_.num_conflicts_);
   return cl_ofs;
 }
@@ -261,12 +261,12 @@ Antecedent Instance::addUIPConflictClause(vector<LiteralID> &literals) {
   }
 
 bool Instance::addBinaryClause(LiteralID litA, LiteralID litB) {
-   if (literal(litA).hasBinaryLinkTo(litB))
+   if (litWatchList(litA).hasBinaryLinkTo(litB))
      return false;
-   literal(litA).addBinLinkTo(litB);
-   literal(litB).addBinLinkTo(litA);
-   literal(litA).increaseActivity();
-   literal(litB).increaseActivity();
+   litWatchList(litA).addBinLinkTo(litB);
+   litWatchList(litB).addBinLinkTo(litA);
+   litWatchList(litA).increaseActivity();
+   litWatchList(litB).increaseActivity();
    return true;
  }
 

@@ -38,7 +38,7 @@ public:
     }
   }
 
-  void initialize(LiteralIndexedVector<Literal> &literals,
+  void initialize(LiteralIndexedVector<LitWatchList> &literals,
                   vector<LiteralID> &lit_pool, unsigned num_variables);
 
   unsigned scoreOf(VariableIndex v)
@@ -169,19 +169,22 @@ void ComponentManager::sortComponentStackRange(unsigned start, unsigned end)
 
 bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 {
-  // record Remaining Components if there are none!
+  print_debug(COLREDBG"-*-> Running findNextRemainingComponentOf");
+  print_debug("top.remaining_components_ofs():" << top.remaining_components_ofs() );
   if (component_stack_.size() <= top.remaining_components_ofs())
     recordRemainingCompsFor(top);
 
   assert(!top.branch_found_unsat());
-  if (top.hasUnprocessedComponents())
+  if (top.hasUnprocessedComponents()) {
+    print_debug(COLREDBG"-*-> Finished findNextRemainingComponentOf, hasUnprocessedComponents.");
     return true;
+  }
 
   // if no component remains
   // make sure, at least that the current branch is considered SAT
 
   top.includeSolution(1);
-  print_debug(COLREDBG "no more remaining components. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
+  print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining components. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
   return false;
 }
 

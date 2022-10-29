@@ -86,8 +86,8 @@ void Instance::compactClauses() {
       for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
         literal_pool_.push_back(0);
       new_ofs = literal_pool_.size();
-      literal(*it).addWatchLinkTo(new_ofs);
-      literal(*(it + 1)).addWatchLinkTo(new_ofs);
+      litWatchList(*it).addWatchLinkTo(new_ofs);
+      litWatchList(*(it + 1)).addWatchLinkTo(new_ofs);
       num_clauses++;
       for (; *it != SENTINEL_LIT; it++) {
         literal_pool_.push_back(*it);
@@ -179,9 +179,9 @@ void Instance::compactVariables() {
   }
 
   for (auto ofs : clause_ofs) {
-    literal(LiteralID(var_map[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
+    litWatchList(LiteralID(var_map[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
         ofs);
-    literal(LiteralID(var_map[(beginOf(ofs) + 1)->var()],
+    litWatchList(LiteralID(var_map[(beginOf(ofs) + 1)->var()],
             (beginOf(ofs) + 1)->sign())).addWatchLinkTo(ofs);
     for (auto it_lit = beginOf(ofs); *it_lit != SENTINEL_LIT; it_lit++) {
       *it_lit = LiteralID(var_map[it_lit->var()], it_lit->sign());
@@ -215,8 +215,8 @@ void Instance::compactConflictLiteralPool(){
       var(*beginOf(clause_ofs)).ante = Antecedent(new_ofs);
 
     // now redo the watches
-    literal(*beginOf(clause_ofs)).replaceWatchLinkTo(clause_ofs,new_ofs);
-    literal(*(beginOf(clause_ofs)+1)).replaceWatchLinkTo(clause_ofs,new_ofs);
+    litWatchList(*beginOf(clause_ofs)).replaceWatchLinkTo(clause_ofs,new_ofs);
+    litWatchList(*(beginOf(clause_ofs)+1)).replaceWatchLinkTo(clause_ofs,new_ofs);
     // next, copy clause data
     assert(read_pos == beginOf(clause_ofs));
     while(*read_pos != SENTINEL_LIT)
@@ -259,8 +259,8 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
   if(isAntecedentOf(cl_ofs, *beginOf(cl_ofs)))
     return false;
 
-  literal(*beginOf(cl_ofs)).removeWatchLinkTo(cl_ofs);
-  literal(*(beginOf(cl_ofs)+1)).removeWatchLinkTo(cl_ofs);
+  litWatchList(*beginOf(cl_ofs)).removeWatchLinkTo(cl_ofs);
+  litWatchList(*(beginOf(cl_ofs)+1)).removeWatchLinkTo(cl_ofs);
   return true;
 }
 

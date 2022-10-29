@@ -7,7 +7,7 @@
 
 #include "component_management.h"
 
-void ComponentManager::initialize(LiteralIndexedVector<Literal> & literals,
+void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
     vector<LiteralID> &lit_pool, unsigned num_variables){
   assert(component_stack_.empty());
 

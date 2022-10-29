@@ -49,7 +49,7 @@ void Solver::HardWireAndCompact()
 {
   compactClauses();
   compactVariables();
-  literal_stack_.clear();
+  trail.clear();
 
   for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc())
   {
@@ -183,7 +183,7 @@ void Solver::decideLiteral() {
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level());
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
-               literal_stack_.size(),
+               trail.size(),
                comp_manager_.component_stack_size()));
 
   auto it = comp_manager_.superComponentOf(decision_stack_.top()).varsBegin();
@@ -522,10 +522,10 @@ retStateT Solver::resolveConflict() {
 bool Solver::failedLitProbe() {
   // the asserted literal has been set, so we start
   // bcp on that literal
-  assert(literal_stack_.size() > 0 && "This is FISHY, I fixed with a bad hack, using 'was_at_zero' but was it broken before? I think we may need propagating from 0 in these cases? Or not?");
+  assert(trail.size() > 0 && "This is FISHY, I fixed with a bad hack, using 'was_at_zero' but was it broken before? I think we may need propagating from 0 in these cases? Or not?");
 
-  const bool was_at_zero = literal_stack_.size() == 0;
-  const unsigned start_ofs = literal_stack_.size() - 1;
+  const bool was_at_zero = trail.size() == 0;
+  const unsigned start_ofs = trail.size() - 1;
   print_debug("--> Setting units of this component...");
   for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
   print_debug("--> Units of this component set, propagating");
@@ -539,8 +539,8 @@ bool Solver::failedLitProbe() {
 }
 
 bool Solver::propagate(const unsigned start_at_stack_ofs) {
-  for (unsigned int i = start_at_stack_ofs; i < literal_stack_.size(); i++) {
-    const Lit unLit = literal_stack_[i].neg();
+  for (unsigned int i = start_at_stack_ofs; i < trail.size(); i++) {
+    const Lit unLit = trail[i].neg();
 
     //Propagate bin Clauses
     for (auto bt = litWatchList(unLit).binary_links_.begin();
@@ -597,10 +597,10 @@ bool Solver::failedLitProbeInternal() {
   static LiteralIndexedVector<unsigned char> viewed_lits( num_variables() + 1, 0);
   unsigned stack_ofs = decision_stack_.top().literal_stack_ofs();
   unsigned num_curr_lits = 0;
-  while (stack_ofs < literal_stack_.size()) {
+  while (stack_ofs < trail.size()) {
     test_lits.clear();
-    for (auto it = literal_stack_.begin() + stack_ofs;
-         it != literal_stack_.end(); it++) {
+    for (auto it = trail.begin() + stack_ofs;
+         it != trail.end(); it++) {
       for (auto cl_ofs : occurrence_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
           for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
@@ -613,8 +613,8 @@ bool Solver::failedLitProbeInternal() {
         }
       }
     }
-    num_curr_lits = literal_stack_.size() - stack_ofs;
-    stack_ofs = literal_stack_.size();
+    num_curr_lits = trail.size() - stack_ofs;
+    stack_ofs = trail.size();
     for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
       viewed_lits[*jt] = false;
     }
@@ -636,7 +636,7 @@ bool Solver::failedLitProbeInternal() {
     // Do the probing
     for (auto lit : test_lits) {
       if (isUnknown(lit) && threshold <= litWatchList(lit).activity_score_) {
-        unsigned sz = literal_stack_.size();
+        unsigned sz = trail.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause
         // relative to the assignment of *jt
@@ -650,15 +650,15 @@ bool Solver::failedLitProbeInternal() {
         decision_stack_.stopFailedLitTest();
 
         // backtracking
-        while (literal_stack_.size() > sz) {
-          unSet(literal_stack_.back());
-          literal_stack_.pop_back();
+        while (trail.size() > sz) {
+          unSet(trail.back());
+          trail.pop_back();
         }
 
         if (!bSucceeded) {
           statistics_.num_failed_literals_detected_++;
           print_debug("-> failed literal detected");
-          sz = literal_stack_.size();
+          sz = trail.size();
           for (auto it = uip_clauses_.rbegin();
                it != uip_clauses_.rend(); it++) {
             if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl;
@@ -744,7 +744,7 @@ void Solver::recordLastUIPCauses() {
   assertion_level_ = 0;
   uip_clauses_.clear();
 
-  unsigned lit_stack_ofs = literal_stack_.size();
+  unsigned lit_stack_ofs = trail.size();
   const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
@@ -765,7 +765,7 @@ void Solver::recordLastUIPCauses() {
   Lit curr_lit;
   while (lits_at_current_dl) {
     assert(lit_stack_ofs != 0);
-    curr_lit = literal_stack_[--lit_stack_ofs];
+    curr_lit = trail[--lit_stack_ofs];
 
     if (!tmp_seen[curr_lit.var()]) {
       continue;
@@ -835,7 +835,7 @@ void Solver::recordAllUIPCauses() {
   assertion_level_ = 0;
   uip_clauses_.clear();
 
-  unsigned lit_stack_ofs = literal_stack_.size();
+  unsigned lit_stack_ofs = trail.size();
   const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
@@ -856,7 +856,7 @@ void Solver::recordAllUIPCauses() {
   Lit curr_lit;
   while (lits_at_current_dl) {
     assert(lit_stack_ofs != 0);
-    curr_lit = literal_stack_[--lit_stack_ofs];
+    curr_lit = trail[--lit_stack_ofs];
 
     if (!tmp_seen[curr_lit.var()]) {
       continue;

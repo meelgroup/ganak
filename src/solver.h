@@ -103,7 +103,7 @@ private:
   SolverConfiguration config_;
 
   DecisionStack decision_stack_;
-  vector<Lit> literal_stack_;
+  vector<Lit> trail;
   ComponentManager comp_manager_ = ComponentManager(
           config_,statistics_, literal_values_, independent_support_);
 
@@ -168,11 +168,12 @@ private:
 
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent. Lit: " << lit);
 //    else print_debug("Literal propagated: " << lit);
+//
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
     var(lit).polarity = lit.sign();
     var(lit).set = true;
-    literal_stack_.push_back(lit);
+    trail.push_back(lit);
     if (ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
       getHeaderOf(ant.asCl()).increaseScore();
     literal_values_[lit] = T_TRI;
@@ -206,13 +207,13 @@ private:
 
   vector<Lit>::const_iterator TOSLiteralsBegin()
   {
-    return literal_stack_.begin() + decision_stack_.top().literal_stack_ofs();
+    return trail.begin() + decision_stack_.top().literal_stack_ofs();
   }
 
   void initStack()
   {
     decision_stack_.clear();
-    literal_stack_.clear();
+    trail.clear();
     // initialize the stack to contain at least level zero
     decision_stack_.push_back(StackLevel(
           1, // super comp
@@ -223,22 +224,22 @@ private:
 
   const Lit &TOS_decLit()
   {
-    assert(decision_stack_.top().literal_stack_ofs() < literal_stack_.size());
-    return literal_stack_[decision_stack_.top().literal_stack_ofs()];
+    assert(decision_stack_.top().literal_stack_ofs() < trail.size());
+    return trail[decision_stack_.top().literal_stack_ofs()];
   }
 
   void reactivateTOS()
   {
-    for (auto it = TOSLiteralsBegin(); it != literal_stack_.end(); it++)
+    for (auto it = TOSLiteralsBegin(); it != trail.end(); it++)
       unSet(*it);
     comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
-    literal_stack_.resize(decision_stack_.top().literal_stack_ofs());
+    trail.resize(decision_stack_.top().literal_stack_ofs());
     decision_stack_.top().resetRemainingComps();
   }
 
   bool fail_test(Lit lit)
   {
-    unsigned sz = literal_stack_.size();
+    unsigned sz = trail.size();
     // we increase the decLev artificially
     // s.t. after the tentative BCP call, we can learn a conflict clause
     // relative to the assignment of *jt
@@ -253,10 +254,10 @@ private:
 
     decision_stack_.stopFailedLitTest();
 
-    while (literal_stack_.size() > sz)
+    while (trail.size() > sz)
     {
-      unSet(literal_stack_.back());
-      literal_stack_.pop_back();
+      unSet(trail.back());
+      trail.pop_back();
     }
     return bSucceeded;
   }

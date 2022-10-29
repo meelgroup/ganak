@@ -186,21 +186,19 @@ void Solver::decideLiteral() {
                trail.size(),
                comp_manager_.component_stack_size()));
 
+  // Find variable to branch on
   auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
   unsigned max_score_var = *it;
   float max_score = scoreOf(*(it));
   float score;
-
   while (*it != varsSENTINEL &&
            independent_support_.find(*it) == independent_support_.end()) {
     it++;
   }
-
   if (*it != varsSENTINEL) {
     max_score_var = *it;
     max_score = scoreOf(*it);
   }
-
   while (*it != varsSENTINEL) {
     if (independent_support_.find(*it) != independent_support_.end()) {
       score = scoreOf(*it);
@@ -211,10 +209,8 @@ void Solver::decideLiteral() {
     }
     it++;
   }
-
-  // this assert should always hold,
-  // if not then there is a bug in the logic of countSAT();
-  assert(max_score_var != 0);
+  assert(max_score_var != 0 &&
+        "this assert should always hold, if not then there is a bug in the logic of countSAT()");
 
   // Figure out polarity
   bool polarity;

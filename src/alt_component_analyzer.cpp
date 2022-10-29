@@ -10,7 +10,7 @@
 // Builds occurrence lists and sets things up
 void ComponentAnalyzer::initialize(
     LiteralIndexedVector<LitWatchList> & litWatchList, // binary clauses
-    vector<LiteralID> &lit_pool) // longer-than-2-long clauses
+    vector<Lit> &lit_pool) // longer-than-2-long clauses
 {
   max_variable_id_ = litWatchList.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
@@ -86,11 +86,11 @@ void ComponentAnalyzer::initialize(
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
 
     // data for binary clauses
-    for (const auto& l: litWatchList[LiteralID(v, false)].binary_links_)
+    for (const auto& l: litWatchList[Lit(v, false)].binary_links_)
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 
-    for (const auto& l: litWatchList[LiteralID(v, true)].binary_links_)
+    for (const auto& l: litWatchList[Lit(v, true)].binary_links_)
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 
@@ -130,7 +130,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     //traverse binary clauses
     unsigned const* p = beginOfLinkList(*vt);
     for (; *p; p++) {
-      if(manageSearchOccurrenceOf(LiteralID(*p,true))){
+      if(manageSearchOccurrenceOf(Lit(*p,true))){
         var_frequency_scores_[*p]++;
         var_frequency_scores_[*vt]++;
       }
@@ -139,8 +139,8 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     //traverse ternary clauses
     for (p++; *p ; p+=3) {
       if(archetype_.clause_unseen_in_sup_comp(*p)){
-        const LiteralID litA = *(LiteralID*)(p + 1);
-        const LiteralID litB = *(LiteralID*)(p + 2);
+        const Lit litA = *(Lit*)(p + 1);
+        const Lit litB = *(Lit*)(p + 2);
         if(isTrue(litA)|| isTrue(litB))
           archetype_.setClause_nil(*p);
         else {
@@ -157,6 +157,6 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     // traverse long clauses
     for (p++; *p ; p +=2)
       if(archetype_.clause_unseen_in_sup_comp(*p))
-        searchClause(*vt,*p, (LiteralID const*)(p + 1 + *(p+1)));
+        searchClause(*vt,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 }

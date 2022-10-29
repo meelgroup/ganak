@@ -21,11 +21,11 @@ public:
 			const typename vector<_T>::value_type& __value) :
 			vector<_T>(size * 2, __value) {
 	}
-	inline _T &operator[](const LiteralID lit) {
+	inline _T &operator[](const Lit lit) {
 		return *(vector<_T>::begin() + lit.raw());
 	}
 
-	inline const _T &operator[](const LiteralID &lit) const {
+	inline const _T &operator[](const Lit &lit) const {
 		return *(vector<_T>::begin() + lit.raw());
 	}
 
@@ -48,8 +48,8 @@ public:
 		vector<_T>::reserve(_size * 2);
 	}
 
-	LiteralID end_lit() {
-		return LiteralID(size() / 2, false);
+	Lit end_lit() {
+		return Lit(size() / 2, false);
 	}
 
 	using vector<_T>::end;

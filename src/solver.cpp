@@ -51,7 +51,7 @@ void Solver::HardWireAndCompact()
   compactVariables();
   literal_stack_.clear();
 
-  for (auto l = LiteralID(1, false); l != literals_.end_lit(); l.inc())
+  for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc())
   {
     litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
     litWatchList(l).activity_score_ += occurrence_lists_[l].size();
@@ -219,23 +219,23 @@ void Solver::decideLiteral() {
   if (!counted_bottom_component) polarity = target_polar[max_score_var];
   else switch (config_.polarity_config) {
     case polar_default:
-      polarity = litWatchList(LiteralID(max_score_var, true)).activity_score_ > litWatchList(LiteralID(max_score_var, false)).activity_score_;
+      polarity = litWatchList(Lit(max_score_var, true)).activity_score_ > litWatchList(Lit(max_score_var, false)).activity_score_;
       break;
     case polaritycache:
-      polarity = litWatchList(LiteralID(max_score_var, true)).activity_score_ >
-        litWatchList(LiteralID(max_score_var, false)).activity_score_;
-      if (litWatchList(LiteralID(max_score_var, true)).activity_score_ >
-            2 * litWatchList(LiteralID(max_score_var, false)).activity_score_) {
+      polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
+        litWatchList(Lit(max_score_var, false)).activity_score_;
+      if (litWatchList(Lit(max_score_var, true)).activity_score_ >
+            2 * litWatchList(Lit(max_score_var, false)).activity_score_) {
         polarity = true;
-      } else if (litWatchList(LiteralID(max_score_var, false)).activity_score_ >
-                  2 * litWatchList(LiteralID(max_score_var, true)).activity_score_) {
+      } else if (litWatchList(Lit(max_score_var, false)).activity_score_ >
+                  2 * litWatchList(Lit(max_score_var, true)).activity_score_) {
         polarity = false;
       } else if (var(max_score_var).set) {
         int random = rand() % 3;
         switch (random) {
           case 0:
-            polarity = litWatchList(LiteralID(max_score_var, true)).activity_score_ >
-              litWatchList(LiteralID(max_score_var, false)).activity_score_;
+            polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
+              litWatchList(Lit(max_score_var, false)).activity_score_;
             break;
           case 1:
             polarity = var(max_score_var).polarity;
@@ -251,7 +251,7 @@ void Solver::decideLiteral() {
       assert(false);
       exit(-1);
   }
-  LiteralID theLit(max_score_var, polarity);
+  Lit theLit(max_score_var, polarity);
   decision_stack_.top().setbranchvariable(max_score_var);
   decision_stack_.top().setonpath(!counted_bottom_component);
 
@@ -388,7 +388,7 @@ retStateT Solver::backtrack() {
       print_debug("We have NOT explored the right branch (isSecondBranch==false). Let's do it now."
           << " -- dec lev: " << decision_stack_.get_decision_level());
       //top of stack decision lit
-      const LiteralID aLit = TOS_decLit();
+      const Lit aLit = TOS_decLit();
       assert(decision_stack_.get_decision_level() > 0);
       decision_stack_.top().changeBranch(); //flip branch
       reactivateTOS();
@@ -507,7 +507,7 @@ retStateT Solver::resolveConflict() {
       decision_stack_.top().remaining_components_ofs() == comp_manager_.component_stack_size());
 
   decision_stack_.top().changeBranch();
-  const LiteralID lit = TOS_decLit();
+  const Lit lit = TOS_decLit();
   reactivateTOS();
   if (ant == NOT_A_CLAUSE) {
     print_debug("Conflict pushes us to: " << lit << " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");
@@ -540,7 +540,7 @@ bool Solver::failedLitProbe() {
 
 bool Solver::propagate(const unsigned start_at_stack_ofs) {
   for (unsigned int i = start_at_stack_ofs; i < literal_stack_.size(); i++) {
-    const LiteralID unLit = literal_stack_[i].neg();
+    const Lit unLit = literal_stack_[i].neg();
 
     //Propagate bin Clauses
     for (auto bt = litWatchList(unLit).binary_links_.begin();
@@ -593,7 +593,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
 // this is IBCP 30.08
 bool Solver::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
-  static vector<LiteralID> test_lits(num_variables());
+  static vector<Lit> test_lits(num_variables());
   static LiteralIndexedVector<unsigned char> viewed_lits( num_variables() + 1, 0);
   unsigned stack_ofs = decision_stack_.top().literal_stack_ofs();
   unsigned num_curr_lits = 0;
@@ -682,10 +682,10 @@ bool Solver::failedLitProbeInternal() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 void Solver::minimizeAndStoreUIPClause(
-  LiteralID uipLit,
-  vector<LiteralID> &tmp_clause, const vector<unsigned char>& seen) {
+  Lit uipLit,
+  vector<Lit> &tmp_clause, const vector<unsigned char>& seen) {
 
-  static deque<LiteralID> clause;
+  static deque<Lit> clause;
   clause.clear();
   assertion_level_ = 0;
   for (auto lit : tmp_clause) {
@@ -728,7 +728,7 @@ void Solver::minimizeAndStoreUIPClause(
   if (uipLit.var() != 0) {
     clause.push_front(uipLit);
   }
-  uip_clauses_.push_back(vector<LiteralID>(clause.begin(), clause.end()));
+  uip_clauses_.push_back(vector<Lit>(clause.begin(), clause.end()));
 }
 
 void Solver::recordLastUIPCauses() {
@@ -762,7 +762,7 @@ void Solver::recordLastUIPCauses() {
     toClear.push_back(l.var());
   }
 
-  LiteralID curr_lit;
+  Lit curr_lit;
   while (lits_at_current_dl) {
     assert(lit_stack_ofs != 0);
     curr_lit = literal_stack_[--lit_stack_ofs];
@@ -801,7 +801,7 @@ void Solver::recordLastUIPCauses() {
         toClear.push_back(it->var());
       }
     } else {
-      LiteralID alit = getAntecedent(curr_lit).asLit();
+      Lit alit = getAntecedent(curr_lit).asLit();
       litWatchList(alit).increaseActivity();
       litWatchList(curr_lit).increaseActivity();
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
@@ -853,7 +853,7 @@ void Solver::recordAllUIPCauses() {
     toClear.push_back(l.var());
   }
   unsigned n = 0;
-  LiteralID curr_lit;
+  Lit curr_lit;
   while (lits_at_current_dl) {
     assert(lit_stack_ofs != 0);
     curr_lit = literal_stack_[--lit_stack_ofs];
@@ -897,7 +897,7 @@ void Solver::recordAllUIPCauses() {
         toClear.push_back(it->var());
       }
     } else {
-      LiteralID alit = getAntecedent(curr_lit).asLit();
+      Lit alit = getAntecedent(curr_lit).asLit();
       litWatchList(alit).increaseActivity();
       litWatchList(curr_lit).increaseActivity();
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&

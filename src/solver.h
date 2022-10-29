@@ -96,14 +96,14 @@ public:
 private:
   // Temporaries, used during recordLastUIPClause
   vector<unsigned char> tmp_seen;
-  vector<LiteralID> tmp_clause;
+  vector<Lit> tmp_clause;
   vector<unsigned> toClear;
 
   StopWatch stopwatch_;
   SolverConfiguration config_;
 
   DecisionStack decision_stack_;
-  vector<LiteralID> literal_stack_;
+  vector<Lit> literal_stack_;
   ComponentManager comp_manager_ = ComponentManager(
           config_,statistics_, literal_values_, independent_support_);
 
@@ -129,8 +129,8 @@ private:
   {
     for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++)
     {
-      litWatchList(LiteralID(*it, true)).activity_score_ *= 0.5;
-      litWatchList(LiteralID(*it, false)).activity_score_ *= 0.5;
+      litWatchList(Lit(*it, true)).activity_score_ *= 0.5;
+      litWatchList(Lit(*it, false)).activity_score_ *= 0.5;
     }
   }
 
@@ -153,15 +153,15 @@ private:
   float scoreOf(VariableIndex v)
   {
     float score = 1.0; //comp_manager_.scoreOf(v);
-    score += litWatchList(LiteralID(v, true)).activity_score_;
-    score += litWatchList(LiteralID(v, false)).activity_score_;
+    score += litWatchList(Lit(v, true)).activity_score_;
+    score += litWatchList(Lit(v, false)).activity_score_;
     //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, true)).activity_score_;
     //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, false)).activity_score_;
 
     return score;
   }
 
-  bool setLiteralIfFree(const LiteralID lit,
+  bool setLiteralIfFree(const Lit lit,
                         const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
     if (literal_values_[lit] != X_TRI) return false;
@@ -190,7 +190,7 @@ private:
       }
   }
 
-  void setConflictState(LiteralID litA, LiteralID litB)
+  void setConflictState(Lit litA, Lit litB)
   {
     violated_clause.clear();
     violated_clause.push_back(litA);
@@ -204,7 +204,7 @@ private:
       violated_clause.push_back(*it);
   }
 
-  vector<LiteralID>::const_iterator TOSLiteralsBegin()
+  vector<Lit>::const_iterator TOSLiteralsBegin()
   {
     return literal_stack_.begin() + decision_stack_.top().literal_stack_ofs();
   }
@@ -221,7 +221,7 @@ private:
     decision_stack_.back().changeBranch();
   }
 
-  const LiteralID &TOS_decLit()
+  const Lit &TOS_decLit()
   {
     assert(decision_stack_.top().literal_stack_ofs() < literal_stack_.size());
     return literal_stack_[decision_stack_.top().literal_stack_ofs()];
@@ -236,7 +236,7 @@ private:
     decision_stack_.top().resetRemainingComps();
   }
 
-  bool fail_test(LiteralID lit)
+  bool fail_test(Lit lit)
   {
     unsigned sz = literal_stack_.size();
     // we increase the decLev artificially
@@ -266,7 +266,7 @@ private:
 
   // if the state name is CONFLICT,
   // then violated_clause contains the clause determining the conflict;
-  vector<LiteralID> violated_clause;
+  vector<Lit> violated_clause;
   // this is an array of all the clauses found
   // during the most recent conflict analysis
   // it might contain more than 2 clauses
@@ -274,7 +274,7 @@ private:
   //      uip_clauses_.front() the 1UIP clause found
   //      uip_clauses_.back() the lastUIP clause found
   //  possible clauses in between will be other UIP clauses
-  vector<vector<LiteralID>> uip_clauses_;
+  vector<vector<Lit>> uip_clauses_;
 
   // the assertion level of uip_clauses_.back()
   // or (if the decision variable did not have an antecedent
@@ -290,10 +290,10 @@ private:
   void recordLastUIPCauses();
   void recordAllUIPCauses();
 
-  void minimizeAndStoreUIPClause(LiteralID uipLit,
-                                 vector<LiteralID> &tmp_clause,
+  void minimizeAndStoreUIPClause(Lit uipLit,
+                                 vector<Lit> &tmp_clause,
                                  const vector<unsigned char>& seen);
-  void storeUIPClause(LiteralID uipLit, vector<LiteralID> &tmp_clause);
+  void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   int getAssertionLevel() const
   {
     return assertion_level_;

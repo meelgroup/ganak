@@ -16,7 +16,9 @@
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
 
-using namespace CMSat;
+using CMSat::StreamBuffer;
+using CMSat::DimacsParser;
+using CMSat::SATSolver;
 
 void Instance::cleanClause(ClauseOfs cl_ofs) {
   bool satisfied = false;
@@ -75,7 +77,7 @@ void Instance::compactClauses() {
   occurrence_lists_.clear();
   occurrence_lists_.resize(variables_.size());
 
-  vector<LiteralID> tmp_pool = literal_pool_;
+  vector<Lit> tmp_pool = literal_pool_;
   literal_pool_.clear();
   literal_pool_.push_back(SENTINEL_LIT);
   ClauseOfs new_ofs;
@@ -97,7 +99,7 @@ void Instance::compactClauses() {
     }
   }
 
-  vector<LiteralID> tmp_bin;
+  vector<Lit> tmp_bin;
   unsigned bin_links = 0;
   for (auto &l : literals_) {
     tmp_bin.clear();
@@ -117,7 +119,7 @@ void Instance::compactVariables() {
   unsigned last_ofs = 0;
   unsigned num_isolated = 0;
   unsigned num_pisolated = 0;
-  LiteralIndexedVector<vector<LiteralID> > _tmp_bin_links(1);
+  LiteralIndexedVector<vector<Lit> > _tmp_bin_links(1);
   LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
 
   for (auto l : literals_)
@@ -154,14 +156,14 @@ void Instance::compactVariables() {
   literal_values_.clear();
   literal_values_.resize(variables_.size(), X_TRI);
 
-  LiteralID newlit;
-  for (auto l = LiteralID(0, false); l != _tmp_bin_links.end_lit(); l.inc()) {
+  Lit newlit;
+  for (auto l = Lit(0, false); l != _tmp_bin_links.end_lit(); l.inc()) {
     if (var_map[l.var()] != 0) {
-      newlit = LiteralID(var_map[l.var()], l.sign());
+      newlit = Lit(var_map[l.var()], l.sign());
       for (auto it = _tmp_bin_links[l].begin(); *it != SENTINEL_LIT; it++) {
         assert(var_map[it->var()] != 0);
         literals_[newlit].addBinLinkTo(
-            LiteralID(var_map[it->var()], it->sign()));
+            Lit(var_map[it->var()], it->sign()));
       }
     }
   }
@@ -179,12 +181,12 @@ void Instance::compactVariables() {
   }
 
   for (auto ofs : clause_ofs) {
-    litWatchList(LiteralID(var_map[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
+    litWatchList(Lit(var_map[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
         ofs);
-    litWatchList(LiteralID(var_map[(beginOf(ofs) + 1)->var()],
+    litWatchList(Lit(var_map[(beginOf(ofs) + 1)->var()],
             (beginOf(ofs) + 1)->sign())).addWatchLinkTo(ofs);
     for (auto it_lit = beginOf(ofs); *it_lit != SENTINEL_LIT; it_lit++) {
-      *it_lit = LiteralID(var_map[it_lit->var()], it_lit->sign());
+      *it_lit = Lit(var_map[it_lit->var()], it_lit->sign());
       occurrence_lists_[*it_lit].push_back(ofs);
     }
   }
@@ -264,18 +266,18 @@ bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
   return true;
 }
 
-static LiteralID cmsLitToG(const CMSat::Lit& l) {
-  return LiteralID(l.var()+1, !l.sign());
+static Lit cmsLitToG(const CMSat::Lit& l) {
+  return Lit(l.var()+1, !l.sign());
 }
 
 void Instance::parseWithCMS(const std::string& filename) {
   unsigned verb = 0;
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, FN>, SATSolver> parser(&solver, NULL, verb);
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&solver, NULL, verb);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, GZ>, SATSolver> parser(&solver, NULL, verb);
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&solver, NULL, verb);
   #endif
   if (in == NULL) {
       std::cout << "ERROR! Could not open file '" << filename
@@ -323,11 +325,11 @@ bool Instance::createfromFile(const std::string &filename) {
       false);
 
   statistics_.num_original_clauses_ = 0;
-  vector<Lit> cl;
-  vector<LiteralID> literals;
-  while(solver.get_next_small_clause(cl)) {
+  vector<CMSat::Lit> cms_cl;
+  vector<Lit> literals;
+  while(solver.get_next_small_clause(cms_cl)) {
     literals.clear();
-    for(const auto&l: cl) literals.push_back(cmsLitToG(l));
+    for(const auto&l: cms_cl) literals.push_back(cmsLitToG(l));
     statistics_.num_original_clauses_++;
     statistics_.incorporateClauseData(literals);
     ClauseOfs cl_ofs = addClause(literals);

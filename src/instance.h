@@ -20,27 +20,27 @@ using std::set;
 class Instance {
 protected:
 
-  void unSet(LiteralID lit) {
+  void unSet(Lit lit) {
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
     var(lit).decision_level = INVALID_DL;
     literal_values_[lit] = X_TRI;
     literal_values_[lit.neg()] = X_TRI;
   }
 
-  Antecedent & getAntecedent(LiteralID lit) {
+  Antecedent & getAntecedent(Lit lit) {
     return variables_[lit.var()].ante;
   }
 
-  bool hasAntecedent(LiteralID lit) {
+  bool hasAntecedent(Lit lit) {
     return variables_[lit.var()].ante.isAnt();
   }
 
-  bool isAntecedentOf(ClauseOfs ante_cl, LiteralID lit) {
+  bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) {
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
   bool isolated(VariableIndex v) {
-    LiteralID lit(v, false);
+    Lit lit(v, false);
     return (litWatchList(lit).binary_links_.size() <= 1)
         && occurrence_lists_[lit].empty()
         && (litWatchList(lit.neg()).binary_links_.size() <= 1)
@@ -89,7 +89,7 @@ protected:
    *   Clauses begin with a ClauseHeader structure followed by the literals
    *   terminated by SENTINEL_LIT
    */
-  vector<LiteralID> literal_pool_;
+  vector<Lit> literal_pool_;
 
   set <unsigned> independent_support_;
 
@@ -103,7 +103,7 @@ protected:
   LiteralIndexedVector<LitWatchList> literals_;
   LiteralIndexedVector<vector<ClauseOfs> > occurrence_lists_;
   vector<ClauseOfs> conflict_clauses_;
-  vector<LiteralID> unit_clauses_;
+  vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> literal_values_;
 
@@ -123,7 +123,7 @@ protected:
     }
   }
 
-  bool isUnitClause(const LiteralID lit) {
+  bool isUnitClause(const Lit lit) {
     for (auto l : unit_clauses_)
       if (l == lit)
         return true;
@@ -140,7 +140,7 @@ protected:
   // addUnitClause checks whether lit or lit.neg() is already a
   // unit clause
   // a negative return value implied that the Instance is UNSAT
-  bool addUnitClause(const LiteralID lit) {
+  bool addUnitClause(const Lit lit) {
     for (auto l : unit_clauses_) {
       if (l == lit)
         return true;
@@ -151,43 +151,43 @@ protected:
     return true;
   }
 
-  inline ClauseIndex addClause(vector<LiteralID> &literals);
+  inline ClauseIndex addClause(vector<Lit> &literals);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
   // literal stored in literals
-  inline Antecedent addUIPConflictClause(vector<LiteralID> &literals);
+  inline Antecedent addUIPConflictClause(vector<Lit> &literals);
 
-  inline bool addBinaryClause(LiteralID litA, LiteralID litB);
+  inline bool addBinaryClause(Lit litA, Lit litB);
 
   /////////////////////////////////////////////////////////
   // BEGIN access to variables, literals, clauses
   /////////////////////////////////////////////////////////
 
-  inline Variable &var(const LiteralID lit) {
+  inline Variable &var(const Lit lit) {
     return variables_[lit.var()];
   }
 
-  LitWatchList & litWatchList(LiteralID lit) {
+  LitWatchList & litWatchList(Lit lit) {
     return literals_[lit];
   }
 
-  inline bool isTrue(const LiteralID &lit) const {
+  inline bool isTrue(const Lit &lit) const {
     return literal_values_[lit] == T_TRI;
   }
 
-  bool isFalse(LiteralID lit) {
+  bool isFalse(Lit lit) {
     return literal_values_[lit] == F_TRI;
   }
 
-  bool isUnknown(LiteralID lit) const {
+  bool isUnknown(Lit lit) const {
     return literal_values_[lit] == X_TRI;
   }
 
-  vector<LiteralID>::const_iterator beginOf(ClauseOfs cl_ofs) const {
+  vector<Lit>::const_iterator beginOf(ClauseOfs cl_ofs) const {
     return literal_pool_.begin() + cl_ofs;
   }
-  vector<LiteralID>::iterator beginOf(ClauseOfs cl_ofs) {
+  vector<Lit>::iterator beginOf(ClauseOfs cl_ofs) {
     return literal_pool_.begin() + cl_ofs;
   }
 
@@ -216,7 +216,7 @@ private:
   void parseWithCMS(const std::string& filename);
 };
 
-ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
+ClauseIndex Instance::addClause(vector<Lit> &literals) {
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     // assert(!isUnitClause(literals[0].neg()));
@@ -244,7 +244,7 @@ ClauseIndex Instance::addClause(vector<LiteralID> &literals) {
 }
 
 
-Antecedent Instance::addUIPConflictClause(vector<LiteralID> &literals) {
+Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
     Antecedent ante(NOT_A_CLAUSE);
     statistics_.num_clauses_learned_++;
     ClauseOfs cl_ofs = addClause(literals);
@@ -260,7 +260,7 @@ Antecedent Instance::addUIPConflictClause(vector<LiteralID> &literals) {
     return ante;
   }
 
-bool Instance::addBinaryClause(LiteralID litA, LiteralID litB) {
+bool Instance::addBinaryClause(Lit litA, Lit litB) {
    if (litWatchList(litA).hasBinaryLinkTo(litB))
      return false;
    litWatchList(litA).addBinLinkTo(litB);

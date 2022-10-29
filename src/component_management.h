@@ -39,7 +39,7 @@ public:
   }
 
   void initialize(LiteralIndexedVector<LitWatchList> &literals,
-                  vector<LiteralID> &lit_pool, unsigned num_variables);
+                  vector<Lit> &lit_pool, unsigned num_variables);
 
   unsigned scoreOf(VariableIndex v)
   {

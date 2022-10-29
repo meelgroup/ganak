@@ -8,7 +8,7 @@
 #include "component_management.h"
 
 void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
-    vector<LiteralID> &lit_pool, unsigned num_variables){
+    vector<Lit> &lit_pool, unsigned num_variables){
   assert(component_stack_.empty());
 
   ana_.initialize(literals, lit_pool);

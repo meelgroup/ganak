@@ -45,7 +45,7 @@ public:
   }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
-      vector<LiteralID> &lit_pool);
+      vector<Lit> &lit_pool);
 
   bool isUnseenAndActive(VariableIndex v) const {
     assert(v <= max_variable_id_);
@@ -54,7 +54,7 @@ public:
 
   // manages the literal whenever it occurs in component analysis
   // returns true iff the underlying variable was unseen before
-  bool manageSearchOccurrenceOf(LiteralID lit){
+  bool manageSearchOccurrenceOf(Lit lit){
     if(archetype_.var_unseen_in_sup_comp(lit.var())){
       search_stack_.push_back(lit.var());
       archetype_.setVar_seen(lit.var());
@@ -63,7 +63,7 @@ public:
     return false;
   }
 
-  bool manageSearchOccurrenceAndScoreOf(LiteralID lit){
+  bool manageSearchOccurrenceAndScoreOf(Lit lit){
     var_frequency_scores_[lit.var()]+= isUnknown(lit);
     return manageSearchOccurrenceOf(lit);
   }
@@ -143,19 +143,19 @@ private:
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;
 
-  bool isFalse(const LiteralID lit) const {
+  bool isFalse(const Lit lit) const {
     return literal_values_[lit] == F_TRI;
   }
 
-  bool isTrue(const LiteralID lit) const {
+  bool isTrue(const Lit lit) const {
     return literal_values_[lit] == T_TRI;
   }
-  bool isUnknown(const LiteralID lit) const {
+  bool isUnknown(const Lit lit) const {
       return literal_values_[lit] == X_TRI;
   }
 
   bool isUnknown(const VariableIndex v) const {
-    return literal_values_[LiteralID(v, true)] == X_TRI;
+    return literal_values_[Lit(v, true)] == X_TRI;
   }
 
   unsigned const* beginOfLinkList(const VariableIndex v) const {
@@ -173,8 +173,8 @@ private:
   // Gets a full clause until SENTINEL_LIT, except for the omitLit
   void getClause(
     vector<unsigned> &tmp,
-    vector<LiteralID>::iterator & it_start_of_cl,
-    LiteralID & omitLit)
+    vector<Lit>::iterator & it_start_of_cl,
+    Lit & omitLit)
   {
     tmp.clear();
     for (auto it_lit = it_start_of_cl; *it_lit != SENTINEL_LIT; it_lit++) {
@@ -183,7 +183,7 @@ private:
     }
   }
 
-  void searchClause(VariableIndex vt, ClauseIndex clID, LiteralID const* pstart_cls){
+  void searchClause(VariableIndex vt, ClauseIndex clID, Lit const* pstart_cls){
     const auto itVEnd = search_stack_.end();
     bool all_lits_active = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {

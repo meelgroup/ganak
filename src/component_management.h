@@ -52,7 +52,7 @@ public:
       cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
   }
 
-  Component &superComponentOf(const StackLevel &lev)
+  Component &getSuperComponentOf(const StackLevel &lev)
   {
     assert(component_stack_.size() > lev.super_component());
     return *component_stack_[lev.super_component()];
@@ -191,7 +191,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 // This creates components
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
-  const Component& super_comp = superComponentOf(top);
+  const Component& super_comp = getSuperComponentOf(top);
   const unsigned new_comps_start_ofs = component_stack_.size();
 
   ana_.setupAnalysisContext(top, super_comp);

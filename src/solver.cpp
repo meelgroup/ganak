@@ -186,7 +186,7 @@ void Solver::decideLiteral() {
                trail.size(),
                comp_manager_.component_stack_size()));
 
-  auto it = comp_manager_.superComponentOf(decision_stack_.top()).varsBegin();
+  auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
   unsigned max_score_var = *it;
   float max_score = scoreOf(*(it));
   float score;
@@ -215,6 +215,8 @@ void Solver::decideLiteral() {
   // this assert should always hold,
   // if not then there is a bug in the logic of countSAT();
   assert(max_score_var != 0);
+
+  // Figure out polarity
   bool polarity;
   if (!counted_bottom_component) polarity = target_polar[max_score_var];
   else switch (config_.polarity_config) {
@@ -251,14 +253,14 @@ void Solver::decideLiteral() {
       assert(false);
       exit(-1);
   }
-  Lit theLit(max_score_var, polarity);
+
+  // The decision literal is now ready. Deal with it.
+  const Lit lit(max_score_var, polarity);
+  print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
+      << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(max_score_var);
   decision_stack_.top().setonpath(!counted_bottom_component);
-
-  print_debug(COLYEL "decideLiteral() is deciding: " << theLit << " dec level: "
-      << decision_stack_.get_decision_level());
-
-  setLiteralIfFree(theLit);
+  setLiteralIfFree(lit);
   statistics_.num_decisions_++;
   if (statistics_.num_decisions_ % 128 == 0) {
     if (config_.use_csvsads) {
@@ -266,8 +268,8 @@ void Solver::decideLiteral() {
     }
     decayActivities();
   }
-  assert(
-      decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+  assert( decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+
   if (decision_stack_.get_decision_level() > statistics_.max_decision_level_) {
     statistics_.max_decision_level_ = decision_stack_.get_decision_level();
     if (statistics_.max_decision_level_ % 25 == 0) {
@@ -409,7 +411,7 @@ retStateT Solver::backtrack() {
       if (statistics_.numcachedec_ % 128 == 0) {
         comp_manager_.increasecachescores();
       }
-      comp_manager_.decreasecachescore(comp_manager_.superComponentOf(decision_stack_.top()));
+      comp_manager_.decreasecachescore(comp_manager_.getSuperComponentOf(decision_stack_.top()));
     }
 
     // Backtrack from end, i.e. finished.

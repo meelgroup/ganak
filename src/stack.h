@@ -21,7 +21,7 @@ class StackLevel {
   bool active_branch_ = false;
 
   // offset in the literal stack where to store set lits
-  const unsigned literal_stack_ofs_ = 0;
+  const unsigned trail_ofs_ = 0;
 
   //  Solution count
   mpz_class branch_model_count_[2] = {0,0};
@@ -63,7 +63,6 @@ public:
     unprocessed_components_end_ = remaining_components_ofs_;
   }
 
-  // Getters
   unsigned super_component() const {
     return super_component_;
   }
@@ -81,7 +80,7 @@ public:
   StackLevel(unsigned super_comp, unsigned trail_ofs,
       unsigned comp_stack_ofs) :
       super_component_(super_comp),
-      literal_stack_ofs_(trail_ofs),
+      trail_ofs_(trail_ofs),
       remaining_components_ofs_(comp_stack_ofs),
       unprocessed_components_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);
@@ -105,7 +104,7 @@ public:
   }
 
   unsigned literal_stack_ofs() const {
-    return literal_stack_ofs_;
+    return trail_ofs_;
   }
   void includeSolution(const mpz_class &solutions) {
     if (branch_found_unsat_[active_branch_]) {

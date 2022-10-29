@@ -37,7 +37,7 @@ void ComponentManager::removeAllCachePollutionsOf(StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_components_ofs() <= component_stack_.size());
   assert(top.super_component() != 0);
-  assert(cache_.hasEntry(superComponentOf(top).id()));
+  assert(cache_.hasEntry(getSuperComponentOf(top).id()));
 
   if (top.remaining_components_ofs() == component_stack_.size())
     return;

@@ -79,14 +79,11 @@ public:
     clauses_ofs_ = 1;
 
     // Add all variables to top component
-    for (unsigned idvar = 1; idvar <= max_var_id; idvar++)
-      addVar(idvar);
+    for (unsigned v = 1; v <= max_var_id; v++) addVar(v);
     closeVariableData();
 
     //Add all clauses to top component
-    if (max_clause_id > 0)
-      for (unsigned idcl = 1; idcl <= max_clause_id; idcl++)
-        addCl(idcl);
+    for (unsigned clid = 1; clid <= max_clause_id; clid++) addCl(clid);
     closeClauseData();
   }
 

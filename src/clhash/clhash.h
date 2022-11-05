@@ -1,4 +1,9 @@
-/*
+/* clhash by Daniel Lemire,Owen Kaser
+ * For the original code, see: https://github.com/lemire/clhash
+ *
+ * LICENSE: Apache License, Version 2.0, January 2004
+ *          See: http://www.apache.org/licenses/
+
  * CLHash is a very fast hashing function that uses the
  * carry-less multiplication and SSE instructions.
  *

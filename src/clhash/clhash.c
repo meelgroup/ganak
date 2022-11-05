@@ -1,3 +1,10 @@
+/* clhash by Daniel Lemire,Owen Kaser
+ * For the original code, see: https://github.com/lemire/clhash
+ *
+ * LICENSE: Apache License, Version 2.0, January 2004
+ *          See: http://www.apache.org/licenses/
+ */
+
 #include "clhash.h"
 
 #include <assert.h>
@@ -273,7 +280,7 @@ static inline uint64_t createLastWord(const size_t lengthbyte, const uint64_t * 
 uint64_t clhash(const void* random, const char * stringbyte,
                 const size_t lengthbyte) {
     assert(sizeof(size_t)<=sizeof(uint64_t));// otherwise, we need to worry
-    // printf("In clhash %x\n", random); 
+    // printf("In clhash %x\n", random);
     assert(((uintptr_t) random & 15) == 0);// we expect cache line alignment for the keys
     const unsigned int  m = 128;// we process the data in chunks of 16 cache lines
     if(CLHASH_DEBUG) assert((m  & 3) == 0); //m should be divisible by 4

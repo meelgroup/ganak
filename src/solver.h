@@ -100,9 +100,11 @@ public:
 private:
   // Temporaries, used during recordLastUIPClause
   vector<unsigned char> tmp_seen;
-  vector<Lit> tmp_clause;
+  vector<Lit> tmp_clause; //used in recoredLastUIPClause
   vector<unsigned> toClear;
-  deque<Lit> clause_tmp;
+
+  // Used during minimizeAndStoreUIPClause
+  deque<Lit> tmp_clause_minim;
 
   StopWatch stopwatch_;
   SolverConfiguration config_;

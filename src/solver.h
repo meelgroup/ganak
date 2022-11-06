@@ -29,54 +29,6 @@ enum retStateT
   RESTART
 };
 
-class StopWatch
-{
-public:
-  StopWatch();
-
-  bool start()
-  {
-    bool ret = gettimeofday(&last_interval_start_, NULL);
-    start_time_ = stop_time_ = last_interval_start_;
-    return !ret;
-  }
-
-  bool stop()
-  {
-    return gettimeofday(&stop_time_, NULL) == 0;
-  }
-
-  double getElapsedSeconds()
-  {
-    timeval r = getElapsedTime();
-    return r.tv_sec + (double)r.tv_usec / 1000000;
-  }
-
-  bool interval_tick()
-  {
-    timeval actual_time;
-    gettimeofday(&actual_time, NULL);
-    if (actual_time.tv_sec - last_interval_start_.tv_sec > interval_length_.tv_sec)
-    {
-      gettimeofday(&last_interval_start_, NULL);
-      return true;
-    }
-    return false;
-  }
-
-private:
-  timeval start_time_;
-  timeval stop_time_;
-  timeval interval_length_;
-  timeval last_interval_start_;
-
-  // if we have started and then stopped the watch, this returns
-  // the elapsed time
-  // otherwise, time elapsed from start_time_ till now is returned
-  timeval getElapsedTime();
-};
-
-
 // There is only one solver
 class Solver : public Instance
 {
@@ -106,7 +58,11 @@ private:
   // Used during minimizeAndStoreUIPClause
   deque<Lit> tmp_clause_minim;
 
-  StopWatch stopwatch_;
+  // Temporaries for failedLitProbeInternal
+  vector<Lit> test_lits;
+  LiteralIndexedVector<unsigned char> viewed_lits;
+
+  double time_start;
   SolverConfiguration config_;
 
   DecisionStack decision_stack_;

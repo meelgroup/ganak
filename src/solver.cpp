@@ -15,39 +15,16 @@
 #include "primitive_types.h"
 #include "stack.h"
 #include "structures.h"
+#include "time_mem.h"
 
-
-StopWatch::StopWatch()
-{
-  interval_length_.tv_sec = 60;
-  gettimeofday(&last_interval_start_, NULL);
-  start_time_ = stop_time_ = last_interval_start_;
-}
-
-timeval StopWatch::getElapsedTime()
-{
-  timeval r;
-  timeval other_time = stop_time_;
-  if (stop_time_.tv_sec == start_time_.tv_sec && stop_time_.tv_usec == start_time_.tv_usec)
-    gettimeofday(&other_time, NULL);
-  long int ad = 0;
-  long int bd = 0;
-
-  if (other_time.tv_usec < start_time_.tv_usec)
-  {
-    ad = 1;
-    bd = 1000000;
-  }
-  r.tv_sec = other_time.tv_sec - ad - start_time_.tv_sec;
-  r.tv_usec = other_time.tv_usec + bd - start_time_.tv_usec;
-  return r;
-}
 
 void Solver::HardWireAndCompact()
 {
   compactClauses();
   compactVariables();
   trail.clear();
+  test_lits.resize(num_variables());
+  viewed_lits.resize(num_variables() + 1, 0);
 
   for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc())
   {
@@ -62,7 +39,7 @@ void Solver::HardWireAndCompact()
 void Solver::solve(const std::string &file_name)
 {
   srand(config_.randomseed);
-  stopwatch_.start();
+  time_start = cpuTime();
   createfromFile(file_name);
   if (solver.okay()) HardWireAndCompact();
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
@@ -97,8 +74,7 @@ void Solver::solve(const std::string &file_name)
     statistics_.set_final_solution_count(0);
   }
 
-  stopwatch_.stop();
-  statistics_.time_elapsed_ = stopwatch_.getElapsedSeconds();
+  statistics_.time_elapsed_ = time_start - cpuTime();
   comp_manager_.gatherStatistics();
   statistics_.printShort();
 }
@@ -589,8 +565,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
 // this is IBCP 30.08
 bool Solver::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
-  static vector<Lit> test_lits(num_variables());
-  static LiteralIndexedVector<unsigned char> viewed_lits( num_variables() + 1, 0);
+
   unsigned stack_ofs = decision_stack_.top().literal_stack_ofs();
   unsigned num_curr_lits = 0;
   while (stack_ofs < trail.size()) {
@@ -920,7 +895,7 @@ void Solver::printOnlineStats() {
   }
 
   cout << endl;
-  cout << "time elapsed: " << stopwatch_.getElapsedSeconds() << "s" << endl;
+  cout << "time elapsed: " << time_start - cpuTime() << "s" << endl;
   if (config_.verbose) {
     cout << "conflict clauses (all / bin / unit) \t";
     cout << num_conflict_clauses();

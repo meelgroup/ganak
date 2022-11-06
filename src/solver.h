@@ -13,10 +13,12 @@
 #include "statistics.h"
 #include "instance.h"
 #include "component_management.h"
-
 #include "solver_config.h"
 
 #include <sys/time.h>
+#include <deque>
+
+using std::deque;
 
 enum retStateT
 {
@@ -74,6 +76,8 @@ private:
   timeval getElapsedTime();
 };
 
+
+// There is only one solver
 class Solver : public Instance
 {
 public:
@@ -98,6 +102,7 @@ private:
   vector<unsigned char> tmp_seen;
   vector<Lit> tmp_clause;
   vector<unsigned> toClear;
+  deque<Lit> clause_tmp;
 
   StopWatch stopwatch_;
   SolverConfiguration config_;

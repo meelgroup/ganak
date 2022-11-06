@@ -6,7 +6,6 @@
  */
 #include "solver.h"
 
-#include <deque>
 #include <algorithm>
 #include <ios>
 #include <iomanip>
@@ -17,7 +16,6 @@
 #include "stack.h"
 #include "structures.h"
 
-using std::deque;
 
 StopWatch::StopWatch()
 {
@@ -683,8 +681,7 @@ void Solver::minimizeAndStoreUIPClause(
   Lit uipLit,
   vector<Lit> &tmp_clause, const vector<unsigned char>& seen) {
 
-  static deque<Lit> clause;
-  clause.clear();
+  clause_tmp.clear();
   assertion_level_ = 0;
   for (auto lit : tmp_clause) {
     if (existsUnitClauseOf(lit.var())) {
@@ -710,9 +707,9 @@ void Solver::minimizeAndStoreUIPClause(
       // uipLit should be the sole literal of this Decision Level
       if (var(lit).decision_level >= assertion_level_) {
         assertion_level_ = var(lit).decision_level;
-        clause.push_front(lit);
+        clause_tmp.push_front(lit);
       } else {
-        clause.push_back(lit);
+        clause_tmp.push_back(lit);
       }
     }
   }
@@ -724,9 +721,9 @@ void Solver::minimizeAndStoreUIPClause(
 
   //assert(uipLit.var() != 0);
   if (uipLit.var() != 0) {
-    clause.push_front(uipLit);
+    clause_tmp.push_front(uipLit);
   }
-  uip_clauses_.push_back(vector<Lit>(clause.begin(), clause.end()));
+  uip_clauses_.push_back(vector<Lit>(clause_tmp.begin(), clause_tmp.end()));
 }
 
 void Solver::recordLastUIPCauses() {

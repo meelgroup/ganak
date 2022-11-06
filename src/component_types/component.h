@@ -73,8 +73,8 @@ public:
     return vs_cls_data_.empty();
   }
 
-  // Creates the full CNF, at startup
-  void createAsDummyComponent(unsigned max_var_id, unsigned max_clause_id) {
+  // Creates the full CNF, at start-up. In other words, this is called ONCE
+  void createStartingComponent(unsigned max_var_id, unsigned max_clause_id) {
     vs_cls_data_.clear();
     clauses_ofs_ = 1;
 

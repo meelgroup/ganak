@@ -20,7 +20,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
   //Add full component
   component_stack_.push_back(new Component());
   assert(component_stack_.size() == 2);
-  component_stack_.back()->createAsDummyComponent(
+  component_stack_.back()->createStartingComponent(
       ana_.max_variable_id()
       , ana_.max_clause_id());
 

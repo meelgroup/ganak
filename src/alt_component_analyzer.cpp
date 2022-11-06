@@ -124,13 +124,15 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);
 
+  // manageSearchOccurrenceAndScoreOf will push into search_stack_ which will make this
+  // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
     assert(isUnknown(*vt));
 
     //traverse binary clauses
     unsigned const* p = beginOfLinkList(*vt);
     for (; *p; p++) {
-      if(manageSearchOccurrenceOf(Lit(*p,true))){
+      if(manageSearchOccurrenceOf(Lit(*p,true))) {
         var_frequency_scores_[*p]++;
         var_frequency_scores_[*vt]++;
       }
@@ -138,7 +140,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
 
     //traverse ternary clauses
     for (p++; *p ; p+=3) {
-      if(archetype_.clause_unseen_in_sup_comp(*p)){
+      if (archetype_.clause_unseen_in_sup_comp(*p)){
         const Lit litA = *(Lit*)(p + 1);
         const Lit litB = *(Lit*)(p + 2);
         if(isTrue(litA)|| isTrue(litB))

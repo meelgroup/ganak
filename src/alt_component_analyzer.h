@@ -91,8 +91,9 @@ public:
   // returns true, iff the component found is non-trivial
   bool exploreRemainingCompOf(const VariableIndex v) {
     assert(archetype_.var_unseen_in_sup_comp(v));
-    recordComponentOf(v);
+    recordComponentOf(v); // finds the component that "v" is in
 
+    // component only contains one variable
     if (search_stack_.size() == 1) {
       if (independent_support_.count(v) == 0) {
         archetype_.stack_level().includeSolution(1);

@@ -13,8 +13,11 @@
 #include <iostream>
 
 #include "../primitive_types.h"
+#include "common.h"
 #include "component.h"
 #include "cacheable_component.h"
+
+using std::endl;
 
 
 // State values for variables found during component
@@ -148,10 +151,12 @@ public:
   }
 
   Component *makeComponentFromState(const unsigned stack_size) {
+    print_debug(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Component *p_new_comp = new Component();
     p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
     current_comp_for_caching_.clear();
 
+    // Fill variables in new component
     for (auto v_it = super_comp().varsBegin(); *v_it != varsSENTINEL;  v_it++)
       if (var_seen(*v_it)) { //we have to put a var into our component
         p_new_comp->addVar(*v_it);
@@ -161,6 +166,7 @@ public:
     p_new_comp->closeVariableData();
     current_comp_for_caching_.closeVariableData();
 
+    // Fill clauses in new component
     for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->addCl(*it_cl);
@@ -170,6 +176,10 @@ public:
       }
     p_new_comp->closeClauseData();
     current_comp_for_caching_.closeClauseData();
+
+    print_debug(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
+        " New component vars: " << p_new_comp->num_variables() <<
+        " long cls:" << p_new_comp->numLongClauses());
     return p_new_comp;
   }
 

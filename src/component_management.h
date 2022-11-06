@@ -110,9 +110,7 @@ public:
 
   void getrandomseedforclhash()
   {
-    std::random_device rd;     //Get a random seed from the OS entropy device, or whatever
-    const auto seed = rd();
-    std::mt19937_64 eng(seed); //Use the 64-bit Mersenne Twister 19937 generator
+    std::mt19937_64 eng(config_.randomseed); //Use the 64-bit Mersenne Twister 19937 generator
                                //and seed it with entropy.
     std::uniform_int_distribution<unsigned long long> distr;
     assert(seedforCLHASH.empty());

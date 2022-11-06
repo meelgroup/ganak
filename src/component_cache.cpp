@@ -7,6 +7,7 @@
 
 #include "component_cache.h"
 #include <algorithm>
+#include <iomanip>
 
 #ifdef __linux__
 
@@ -58,14 +59,12 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 	my_time_ = 1;
 
 	entry_base_.clear();
-	entry_base_.reserve(2000000);
 	entry_base_.push_back(new CacheableComponent()); // dummy Element
 	table_.clear();
 	table_.resize(1024*1024, 0);
 	table_size_mask_ = table_.size() - 1;
 
 	free_entry_base_slots_.clear();
-	free_entry_base_slots_.reserve(10000);
 
 	const uint64_t free_ram = freeram();
 	uint64_t max_cache_bound = 80 * (free_ram / 100);
@@ -76,12 +75,11 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 
 	if (statistics_.maximum_cache_size_bytes_ > free_ram) {
 		cout <<"c WARNING: Maximum cache size larger than free RAM available" << endl;
-		cout << "c Free RAM " << free_ram / 1000000 << "MB" << endl;
+		cout << "c Free RAM " << std::setprecision(2)
+			<< (double)free_ram / (1024.0*1024.0) << "MB" << endl;
 	}
-
 	cout << "c Maximum cache size:\t"
-			<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
-    cout << "c " << endl;
+		<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
 
 	assert(!statistics_.cache_full());
 
@@ -94,7 +92,7 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 			, config_.perform_pcc && packed_super_comp->get_hacked());
 
 	super_comp.set_id(1);
-	compute_byte_size_infrasture();
+	compute_size_used();
 }
 
 void ComponentCache::test_descendantstree_consistency() {
@@ -179,12 +177,12 @@ bool ComponentCache::deleteEntries() {
 		}
 
 	statistics_.num_cached_components_ = entry_base_.size();
-	compute_byte_size_infrasture();
+	compute_size_used();
 	return true;
 }
 
 
-uint64_t ComponentCache::compute_byte_size_infrasture() {
+uint64_t ComponentCache::compute_size_used() {
   statistics_.cache_infrastructure_bytes_memory_usage_ =
       sizeof(ComponentCache)
       + sizeof(CacheEntryID)* table_.capacity()

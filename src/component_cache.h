@@ -33,7 +33,7 @@ public:
 
   // compute the size in bytes of the component cache from scratch
   // the value is stored in bytes_memory_usage_
-  uint64_t compute_byte_size_infrasture();
+  uint64_t compute_size_used();
 
   CacheableComponent &entry(CacheEntryID id) {
     assert(entry_base_.size() > id);

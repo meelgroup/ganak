@@ -8,23 +8,18 @@
 #ifndef SOLVER_CONFIG_H_
 #define SOLVER_CONFIG_H_
 
-#include <set>
-
 enum polarity_type {
     polar_default, polaritycache
 };
 
-
 struct SolverConfiguration {
-
-
   // TODO component caching cannot be deactivated for now!
   bool perform_non_chron_back_track = true;
   bool perform_component_caching = true;
   bool perform_failed_lit_test = true;
   bool perform_pre_processing = true;
-  bool perform_pcc = true; //super component(?)
-  bool use_csvsads = true; //polarity heuristic
+  bool perform_pcc = true; // probabilistic component caching
+  bool use_csvsads = true; // polarity heuristic
   bool verbose = false;
   // quiet = true will override verbose;
   bool quiet = false;
@@ -40,7 +35,6 @@ struct SolverConfiguration {
   float csvsads_param = 0.9;
 
   polarity_type polarity_config = polaritycache;
-
 };
 
 #endif /* SOLVER_CONFIG_H_ */

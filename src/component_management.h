@@ -98,9 +98,10 @@ public:
   inline float cacheScoreOf(VariableIndex v);
   inline void increasecachescores();
   inline void decreasecachescore(Component &comp);
+
   void gatherStatistics()
   {
-    cache_.compute_byte_size_infrasture();
+    cache_.compute_size_used();
   }
 
   void removeAllCachePollutionsOf(StackLevel &top);

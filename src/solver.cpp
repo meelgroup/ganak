@@ -890,9 +890,7 @@ void Solver::recordAllUIPCauses() {
 }
 
 void Solver::printOnlineStats() {
-  if (config_.quiet) {
-    return;
-  }
+  if (config_.quiet) return;
 
   cout << endl;
   cout << "time elapsed: " << time_start - cpuTime() << "s" << endl;

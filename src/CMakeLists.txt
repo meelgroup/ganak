@@ -39,8 +39,7 @@ SET(SOURCES
 	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 
-SET(LIB	clhash
-		component_types)
+SET(LIB	clhash component_types)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak ${LIB})

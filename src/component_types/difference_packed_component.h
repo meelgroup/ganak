@@ -10,7 +10,11 @@
 
 #include "base_packed_component.h"
 #include "component.h"
+#ifdef DOPCC
 #include "../clhash/clhash.h"
+#else
+#include "../clhash/minim.h"
+#endif
 
 #include <math.h>
 
@@ -28,10 +32,10 @@ public:
   unsigned num_variables() const{
     if (old_size)
       return old_num_vars;
-    
+
     uint64_t *p = (uint64_t *) data_;
     return (*p >> bits_of_data_size()) & (uint64_t) variable_mask();
-    
+
   }
 
   unsigned data_size() const {
@@ -71,13 +75,13 @@ public:
                   +(ms & mask) + ((ms & 15)?16:0);
   }
 
+#ifdef DOPCC
   uint64_t *compute_clhash(){
     return clhashkey_;
-  }
+#endif
 
   bool equals(const DifferencePackedComponent &comp) const {
-    if(hashkey_ != comp.hashkey())
-      return false;
+    if(hashkey_ != comp.hashkey()) return false;
     unsigned* p = data_;
     unsigned* r = comp.data_;
     while(p != data_ + data_size()) {
@@ -87,19 +91,17 @@ public:
     return true;
   }
 
+#ifdef DOPCC
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
-    if(hashkey_ != comp.hashkey()){
-      return false;
-    }
+    if(hashkey_ != comp.hashkey()) return false;
     bool match = true;
     for (int i=0; i<hack_;i++){
       match = clhash_key[i] == clhashkey_[i];
-      if(!match){
-        return false;
-      } 
+      if(!match) return false;
     }
     return true;
   }
+#endif
 
 private:
 
@@ -248,11 +250,13 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   // correctly
   bs.assert_size(data_size);
 
+#ifdef DOPCC
   clhashkey_ = new uint64_t[random.capacity()];
   for(int i=0; i<random.capacity();i++){
     clhasher h(random[i]);
     clhashkey_[i] = h((void*)data_, sizeof(unsigned)*data_size);
   }
+#endif
   //TODO Remove
   // delete[] data_;
   // data_ = nullptr;

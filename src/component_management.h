@@ -19,7 +19,11 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
+#ifdef DOPCC
 #include "clhash/clhash.h"
+#else
+#include "clhash/minim.h"
+#endif
 #include "solver_config.h"
 
 using namespace std;
@@ -101,9 +105,7 @@ public:
   }
 
   void removeAllCachePollutionsOf(StackLevel &top);
-
   vector<void *> seedforCLHASH;
-
   void getrandomseedforclhash()
   {
     std::random_device rd;     //Get a random seed from the OS entropy device, or whatever
@@ -191,7 +193,9 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       CacheableComponent *packed_comp = NULL;
       if (config_.perform_pcc)
       {
+#ifdef DOPCC
         packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
+#endif
       }
       else
       {

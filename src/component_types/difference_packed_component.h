@@ -78,6 +78,7 @@ public:
 #ifdef DOPCC
   uint64_t *compute_clhash(){
     return clhashkey_;
+  }
 #endif
 
   bool equals(const DifferencePackedComponent &comp) const {

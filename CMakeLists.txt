@@ -73,7 +73,7 @@ SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 option(DOPCC "Probabilistic component sharing" ON)
 if (DOPCC)
-    add_definitions(-DOPCC)
+    add_definitions(-DDOPCC)
 endif()
 
 option(BUILD_SHARED_LIBS "Build the shared library" ON)

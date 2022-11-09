@@ -115,10 +115,8 @@ public:
     std::uniform_int_distribution<unsigned long long> distr;
     assert(seedforCLHASH.empty());
     seedforCLHASH.resize(config_.hashrange);
-    for (unsigned i = 0; i < config_.hashrange; i++)
-    {
-      seedforCLHASH[i] =
-          get_random_key_for_clhash(distr(eng), distr(eng));
+    for (unsigned i = 0; i < config_.hashrange; i++) {
+      seedforCLHASH[i] = get_random_key_for_clhash(distr(eng), distr(eng));
     }
   }
 

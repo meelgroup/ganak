@@ -685,7 +685,7 @@ retStateT Solver::resolveConflict() {
   // this is because we might have checked a literal
   // during implict BCP which has been a failed literal
   // due only to assignments made at lower decision levels
-  if (uip_clauses_.back().front() == TOS_decLit().neg()) {
+  if (!uip_clauses_.back().empty() && uip_clauses_.back().front() == TOS_decLit().neg()) {
     assert(TOS_decLit().neg() == uip_clauses_.back()[0]);
     var(TOS_decLit().neg()).ante = addUIPConflictClause(
         uip_clauses_.back());

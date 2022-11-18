@@ -25,6 +25,9 @@ make
 cp ganak ../bin/
 ```
 
+### Compiling for Mac OS
+
+Simiar to Linux, but you must pass `cmake -DNOPCC=ON ...` to cmake 
 
 ## Usage
 You can use the run_ganak.sh script in scripts directory to run ganak. A simple invocation looks as follows:

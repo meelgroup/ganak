@@ -420,6 +420,10 @@ bool Instance::createfromFile(const string &file_name) {
       }
 
       clauses_added++;
+      if (literals.empty()) {
+          input_file.close();
+          return false; //immediate UNSAT
+      }
       if (!skip_clause) {
         assert(!literals.empty());
         statistics_.incorporateClauseData(literals);

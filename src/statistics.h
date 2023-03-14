@@ -180,19 +180,19 @@ public:
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
-  void set_final_solution_count_projected(const mpz_class &count) {
+  void set_final_solution_count_projected(const mpz_class &count, const long multiply_by_exp2) {
     mpz_mul_2exp(
       final_solution_count_.get_mpz_t (),
       count.get_mpz_t (),
-      num_free_projected_variables_);
+      num_free_projected_variables_+multiply_by_exp2);
   }
 
-  void set_final_solution_count(const mpz_class &count) {
+  void set_final_solution_count(const mpz_class &count, const long multiply_by_exp2) {
     // set final_solution_count_ = count * 2^(num_variables_ - num_used_variables_)
     mpz_mul_2exp(
       final_solution_count_.get_mpz_t (),
       count.get_mpz_t (),
-      num_variables_ - num_used_variables_);
+      num_variables_ - num_used_variables_+multiply_by_exp2);
   }
 
   const mpz_class &final_solution_count() const {

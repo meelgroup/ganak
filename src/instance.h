@@ -91,6 +91,7 @@ protected:
 
   set <unsigned> independent_support_;
   bool perform_projected_counting = false;
+  long int multiply_by_exp2 = 0;
 
   vector<unsigned> var_map;
 

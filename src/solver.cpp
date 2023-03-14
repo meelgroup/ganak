@@ -229,14 +229,14 @@ void Solver::solve(const string &file_name)
       exit(1);
     }
     if (perform_projected_counting) {
-      statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount());
+      statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount(), multiply_by_exp2);
     } else {
-      statistics_.set_final_solution_count(stack_.top().getTotalModelCount());
+      statistics_.set_final_solution_count(stack_.top().getTotalModelCount(), multiply_by_exp2);
     }
     statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
     statistics_.exit_state_ = SUCCESS;
-    statistics_.set_final_solution_count(0.0);
+    statistics_.set_final_solution_count(0.0, multiply_by_exp2);
     cout << endl
          << "c FOUND UNSAT DURING PREPROCESSING " << endl;
   }

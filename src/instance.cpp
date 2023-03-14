@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 using namespace std;
@@ -284,6 +285,25 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
       if (!pcnf) {
         independent_support_.insert(lit);
       }
+    }
+  }
+
+  if (c == 'c') {
+      input_file >> idstring;
+      input_file >> idstring;
+      if (idstring == "MUST") {
+          input_file >> idstring;
+          if (idstring != "MULTIPLY") {
+              cout << "ERROR: wrong MUST MULTIPLY expression" << endl;
+              exit(-1);
+          }
+          input_file >> idstring;
+          if (idstring != "BY") {
+              cout << "ERROR: wrong MUST MULTIPLY BY expression" << endl;
+              exit(-1);
+          }
+          input_file >> idstring;
+          multiply_by_exp2 = strtol(idstring.c_str()+3, NULL , 10);
     }
   }
 

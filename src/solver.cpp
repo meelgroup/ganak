@@ -180,25 +180,13 @@ void Solver::solve(const string &file_name)
     cout << "c Solving " << file_name << endl;
     statistics_.printShortFormulaInfo();
   }
-  if (independent_support_.size() == 0)
-  {
-    if (!config_.quiet)
-    {
-      cout << "c Sampling set not present! So doing total model counting." << endl;
-    }
-    config_.perform_projectedmodelcounting = false;
+  if (!perform_projected_counting) {
+      independent_support_.clear();
+      for(uint32_t i = 0; i < num_variables(); i++) independent_support_.insert(i);
   }
-  else if (!config_.quiet)
+  if (!config_.quiet)
   {
-    if (!config_.perform_projectedmodelcounting)
-    {
-      cout << "c Warning! Sampling set is present but projected model counting"
-           << " is turned off by the user so solver is not doing projected model counting." << endl;
-    }
-    else
-    {
-      cout << "c Sampling set is present, performing projected model counting " << endl;
-    }
+    cout << "c Sampling set is present, performing projected model counting " << endl;
     cout << "c Sampling set size: " << independent_support_.size() << endl;
     cout << "c Sampling set: ";
     for (auto it = independent_support_.begin(); it != independent_support_.end(); ++it)
@@ -240,7 +228,7 @@ void Solver::solve(const string &file_name)
       cout << "ERROR: We need to change the hash range (-1)" << endl;
       exit(1);
     }
-    if (config_.perform_projectedmodelcounting) {
+    if (perform_projected_counting) {
       statistics_.set_final_solution_count_projected(stack_.top().getTotalModelCount());
     } else {
       statistics_.set_final_solution_count(stack_.top().getTotalModelCount());
@@ -258,13 +246,13 @@ void Solver::solve(const string &file_name)
 
   comp_manager_.gatherStatistics();
   string writefile;
-  if (config_.perform_projectedmodelcounting) {
+  if (perform_projected_counting) {
     writefile = "out.pmc";
   } else {
     writefile = "out.mc";
   }
 //  statistics_.writeToFile(writefile, config_.perform_projectedmodelcounting);
-  statistics_.printShort(config_.perform_projectedmodelcounting);
+  statistics_.printShort(perform_projected_counting);
 }
 
 SOLVER_StateT Solver::countSAT() {
@@ -322,7 +310,7 @@ void Solver::decideLiteral() {
   unsigned max_score_var = *it;
   float max_score = scoreOf(*(it));
   float score;
-  if (config_.perform_projectedmodelcounting)
+  if (perform_projected_counting)
   {
     isindependent = true;
     bool isindependent_support_present = false;
@@ -527,7 +515,7 @@ retStateT Solver::backtrack() {
     statistics_.num_decisions_ = 0;
     return RESTART;
   }
-  if (!isindependent && config_.perform_projectedmodelcounting) {
+  if (!isindependent && perform_projected_counting) {
     do {
       if (stack_.top().branch_found_unsat()) {
         comp_manager_.removeAllCachePollutionsOf(stack_.top());

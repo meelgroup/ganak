@@ -28,7 +28,6 @@ struct SolverConfiguration {
   bool use_edr = false;
   bool use_lso = true;
   bool verbose = false;
-  bool perform_projectedmodelcounting = true;
   // quiet = true will override verbose;
   bool quiet = false;
   bool maxdecterminate = false;

@@ -68,8 +68,6 @@ int main(int argc, char *argv[])
 #endif
     } else if (strcmp(argv[i], "-noCSVSADS") == 0) {
       theSolver.config().use_csvsads = false;
-    } else if (strcmp(argv[i], "-noPMC") == 0) {
-      theSolver.config().perform_projectedmodelcounting = false;
     } else if (strcmp(argv[i], "-EDR") == 0) {
       theSolver.config().use_csvsads = false;
       theSolver.config().use_edr = true;

@@ -112,6 +112,7 @@ public:
   {
     stopwatch_.setTimeBound(i);
   }
+  void set_no_projection() { perform_projected_counting = false; }
 
 private:
   SolverConfiguration config_;
@@ -123,7 +124,9 @@ private:
   StopWatch stopwatch_;
 
   ComponentManager comp_manager_ = ComponentManager(config_,
-                                                    statistics_, literal_values_, independent_support_, config_.perform_projectedmodelcounting);
+                                                    statistics_, literal_values_,
+                                                    independent_support_,
+                                                    perform_projected_counting);
 
   // the last time conflict clauses have been deleted
   unsigned long last_ccl_deletion_time_ = 0;

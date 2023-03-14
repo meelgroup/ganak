@@ -279,6 +279,7 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
   if (c == 'c' &&
       input_file >> idstring &&
       idstring == "ind") {
+    perform_projected_counting = true;
     while ((input_file >> lit) && lit != 0) {
       if (!pcnf) {
         independent_support_.insert(lit);
@@ -292,6 +293,7 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
     input_file >> idstring;
     if (pcnf) {
       assert(idstring == "vp");
+      perform_projected_counting = true;
       while ((input_file >> lit) && lit != 0) {
         independent_support_.insert(lit);
       }

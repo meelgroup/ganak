@@ -90,6 +90,7 @@ protected:
   vector<LiteralID> literal_pool_;
 
   set <unsigned> independent_support_;
+  bool perform_projected_counting = false;
 
   vector<unsigned> var_map;
 

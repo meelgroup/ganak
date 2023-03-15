@@ -65,7 +65,6 @@ add_executable (ganak-bin
 
 target_link_libraries (ganak-bin
 ganak
-${LIB}
 ${GMP_LIB} ${GMPXX_LIB}
 )
 

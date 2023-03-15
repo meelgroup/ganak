@@ -42,7 +42,7 @@ SET(SOURCES
 SET(LIB	clhash component_types)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
-target_link_libraries (ganak ${LIB})
+target_link_libraries (ganak ${LIB} ${GMP_LIB} ${GMPXX_LIB})
 
 if (NOT WIN32)
     set_target_properties(ganak PROPERTIES
@@ -65,6 +65,7 @@ add_executable (ganak-bin
 
 target_link_libraries (ganak-bin
 ganak
+${LIB}
 ${GMP_LIB} ${GMPXX_LIB}
 )
 

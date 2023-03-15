@@ -269,42 +269,10 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
   string idstring;
   int lit;
   char eolchar;
-  //Parse old projection
+
   if (c == 'c' && input_file.get(eolchar) && eolchar == '\n') {
     input_file.unget();
     return;
-  }
-  if (c == 'c') {
-    input_file.unget();
-  }
-  if (c == 'c' &&
-      input_file >> idstring &&
-      idstring == "ind") {
-    perform_projected_counting = true;
-    while ((input_file >> lit) && lit != 0) {
-      if (!pcnf) {
-        independent_support_.insert(lit);
-      }
-    }
-  }
-
-  if (c == 'c') {
-      input_file >> idstring;
-      input_file >> idstring;
-      if (idstring == "MUST") {
-          input_file >> idstring;
-          if (idstring != "MULTIPLY") {
-              cout << "ERROR: wrong MUST MULTIPLY expression" << endl;
-              exit(-1);
-          }
-          input_file >> idstring;
-          if (idstring != "BY") {
-              cout << "ERROR: wrong MUST MULTIPLY BY expression" << endl;
-              exit(-1);
-          }
-          input_file >> idstring;
-          multiply_by_exp2 = strtol(idstring.c_str()+3, NULL , 10);
-    }
   }
 
   //Parse new projection
@@ -318,7 +286,42 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
         independent_support_.insert(lit);
       }
     }
+    return;
   }
+
+  if (c != 'c') {
+    input_file.unget();
+    return;
+  }
+
+  input_file >> idstring;
+  if (idstring == "ind") {
+    perform_projected_counting = true;
+    while ((input_file >> lit) && lit != 0) {
+      if (!pcnf) {
+        independent_support_.insert(lit);
+      }
+    }
+    return;
+  }
+
+  if (idstring == "MUST") {
+      input_file >> idstring;
+      if (idstring != "MULTIPLY") {
+          cout << "ERROR: wrong MUST MULTIPLY expression" << endl;
+          exit(-1);
+      }
+      input_file >> idstring;
+      if (idstring != "BY") {
+          cout << "ERROR: wrong MUST MULTIPLY BY expression" << endl;
+          exit(-1);
+      }
+      input_file >> idstring;
+      multiply_by_exp2 = strtol(idstring.c_str()+3, NULL , 10);
+      cout << "c MULTIPLY is :" << multiply_by_exp2 << endl;
+      return;
+  }
+
 }
 
 bool Instance::createfromFile(const string &file_name) {

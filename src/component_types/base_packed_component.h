@@ -103,9 +103,9 @@ public:
     if (data_){
       delete [] data_;
     }
-    if (clhashkey_){
-      delete [] clhashkey_;
-    }
+#ifdef DOPCC
+    if (clhashkey_) delete [] clhashkey_;
+#endif
   }
   static void outbit(unsigned v){
    for(auto i=0; i<32;i++){
@@ -187,13 +187,12 @@ public:
     // before deleting the contents of this component,
     // we should make sure that this component is not present in the component stack anymore!
     assert(isDeletable());
-    if (data_)
-      delete [] data_;
+    if (data_) delete [] data_;
     data_ = nullptr;
-    if (clhashkey_){
-      delete [] clhashkey_;
-    }
+#ifdef DOPCC
+    if (clhashkey_) delete [] clhashkey_;
     clhashkey_ = nullptr;
+#endif
   }
 
   static unsigned _debug_static_val;
@@ -206,9 +205,10 @@ protected:
   // clauses begin at clauses_ofs_
   unsigned* data_ = nullptr;
 
+#ifdef DOPCC
   uint64_t* clhashkey_ = nullptr;
+#endif
   // vector <uint64_t> clhash_key_;
-
   unsigned hashkey_ = 0;
 
   mpz_class model_count_;

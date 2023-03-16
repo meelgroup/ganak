@@ -17,7 +17,11 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
+#ifdef DOPCC
 #include "clhash/clhash.h"
+#else
+#include "clhash/minim.h"
+#endif
 #include "solver_config.h"
 
 class ComponentManager
@@ -105,9 +109,7 @@ public:
   }
 
   void removeAllCachePollutionsOf(StackLevel &top);
-
   vector<void *> seedforCLHASH;
-
   void getrandomseedforclhash()
   {
     std::mt19937_64 eng(config_.randomseed); //Use the 64-bit Mersenne Twister 19937 generator
@@ -200,7 +202,12 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.perform_pcc) {
+#ifdef DOPCC
         packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
+#else
+        assert(false);
+        exit(-1);
+#endif
       } else {
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
       }

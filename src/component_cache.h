@@ -91,6 +91,7 @@ public:
     unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
     if (config_.perform_pcc) {
+#ifdef DOPCC
       if (!act_id) return false;
       clhash_key = packed_comp.compute_clhash();
       while(act_id){
@@ -102,8 +103,11 @@ public:
         act_id = entry(act_id).next_bucket_element();
       }
       return false;
-    }
-    else{
+#else
+      assert(false);
+      exit(-1);
+#endif
+    } else{
       while(act_id){
         if (entry(act_id).equals(packed_comp)) {
           statistics_.incorporate_cache_hit(packed_comp);

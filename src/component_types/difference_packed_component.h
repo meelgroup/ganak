@@ -10,7 +10,11 @@
 
 #include "base_packed_component.h"
 #include "component.h"
+#ifdef DOPCC
 #include "../clhash/clhash.h"
+#else
+#include "../clhash/minim.h"
+#endif
 #include <math.h>
 
 class DifferencePackedComponent:public BasePackedComponent {
@@ -68,13 +72,14 @@ public:
                   +(ms & mask) + ((ms & 15)?16:0);
   }
 
+#ifdef DOPCC
   uint64_t *compute_clhash(){
     return clhashkey_;
   }
+#endif
 
   bool equals(const DifferencePackedComponent &comp) const {
-    if(hashkey_ != comp.hashkey())
-      return false;
+    if(hashkey_ != comp.hashkey()) return false;
     unsigned* p = data_;
     unsigned* r = comp.data_;
     while(p != data_ + data_size()) {
@@ -84,6 +89,7 @@ public:
     return true;
   }
 
+#ifdef DOPCC
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
     if(hashkey_ != comp.hashkey()){
       return false;
@@ -97,6 +103,7 @@ public:
     }
     return true;
   }
+#endif
 };
 
 
@@ -239,14 +246,15 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   // correctly
   bs.assert_size(data_size);
 
+#ifdef DOPCC
   clhashkey_ = new uint64_t[random.capacity()];
   for(size_t i=0; i<random.capacity();i++){
     clhasher h(random[i]);
     clhashkey_[i] = h(data_, data_size);
   }
-  //TODO Remove
-  // delete[] data_;
-  // data_ = nullptr;
+#endif
+
+  // WHAT IS THIS
   //TODO Remove Stop
   hack_ = random.capacity();
 

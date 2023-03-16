@@ -28,7 +28,9 @@ int main(int argc, char *argv[])
     cout << "\t -noCC  \t\t turn off component caching" << endl;
     cout << "\t -cs [n]\t\t set max cache size to n MB" << endl;
     cout << "\t -noIBCP\t\t turn off implicit BCP" << endl;
+#ifdef DOPCC
     cout << "\t -noPCC\t\t\t turn off probabilistic component caching" << endl;
+#endif
     cout << "\t -seed [n]\t\t set random seed to n (Default: 1000)" << endl;
     cout << "\t -m [n] \t\t set the range of hash function (= 64 x n) (Default: 1) " << endl;
     cout << "\t -delta [n] \t\t set the confidence parameter to n (Default: 0.05) " << endl;
@@ -41,6 +43,10 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+#ifndef DOPCC
+  theSolver.config().perform_pcc = false;
+#endif
+
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-noCC") == 0) {
       theSolver.config().perform_component_caching = false;
@@ -52,8 +58,10 @@ int main(int argc, char *argv[])
       theSolver.config().quiet = true;
     } else if (strcmp(argv[i], "-v") == 0) {
       theSolver.config().verbose = true;
+#ifdef DOPCC
     } else if (strcmp(argv[i], "-noPCC") == 0) {
       theSolver.config().perform_pcc = false;
+#endif
     } else if (strcmp(argv[i], "-noCSVSADS") == 0) {
       theSolver.config().use_csvsads = false;
     } else if (strcmp(argv[i], "-t") == 0) {

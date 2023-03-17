@@ -55,7 +55,7 @@ void Instance::cleanClause(ClauseOfs cl_ofs) {
 
 void Instance::compactClauses() {
   vector<ClauseOfs> clause_ofs;
-  clause_ofs.reserve(statistics_.num_long_clauses_);
+  clause_ofs.reserve(stats.num_long_clauses_);
 
   // clear watch links and occurrence lists
   for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
@@ -110,8 +110,8 @@ void Instance::compactClauses() {
     tmp_bin.push_back(SENTINEL_LIT);
     l.binary_links_ = tmp_bin;
   }
-  statistics_.num_long_clauses_ = num_clauses;
-  statistics_.num_binary_clauses_ = bin_links >> 1;
+  stats.num_long_clauses_ = num_clauses;
+  stats.num_binary_clauses_ = bin_links >> 1;
 }
 
 void Instance::compactVariables() {
@@ -169,7 +169,7 @@ void Instance::compactVariables() {
   }
 
   vector<ClauseOfs> clause_ofs;
-  clause_ofs.reserve(statistics_.num_long_clauses_);
+  clause_ofs.reserve(stats.num_long_clauses_);
   for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
@@ -195,11 +195,11 @@ void Instance::compactVariables() {
   literal_values_.resize(variables_.size(), X_TRI);
   unit_clauses_.clear();
 
-  statistics_.num_variables_ = variables_.size() - 1 + num_isolated;
+  stats.num_variables_ = variables_.size() - 1 + num_isolated;
 
-  statistics_.num_used_variables_ = num_variables();
-  statistics_.num_free_variables_ = num_isolated;
-  statistics_.num_free_projected_variables_ = num_pisolated;
+  stats.num_used_variables_ = num_variables();
+  stats.num_free_variables_ = num_isolated;
+  stats.num_free_projected_variables_ = num_pisolated;
 }
 
 void Instance::compactConflictLiteralPool(){
@@ -229,7 +229,7 @@ void Instance::compactConflictLiteralPool(){
 }
 
 bool Instance::deleteConflictClauses() {
-  statistics_.times_conflict_clauses_cleaned_++;
+  stats.times_conflict_clauses_cleaned_++;
   vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
   conflict_clauses_.clear();
   vector<double> tmp_ratios;
@@ -324,14 +324,14 @@ bool Instance::createfromFile(const std::string &filename) {
       std::numeric_limits<uint32_t>::max(),
       false);
 
-  statistics_.num_original_clauses_ = 0;
+  stats.num_original_clauses_ = 0;
   vector<CMSat::Lit> cms_cl;
   vector<Lit> literals;
   while(solver.get_next_small_clause(cms_cl)) {
     literals.clear();
     for(const auto&l: cms_cl) literals.push_back(cmsLitToG(l));
-    statistics_.num_original_clauses_++;
-    statistics_.incorporateClauseData(literals);
+    stats.num_original_clauses_++;
+    stats.incorporateClauseData(literals);
     ClauseOfs cl_ofs = addClause(literals);
     if (literals.size() >= 3)
       for (const auto& l : literals)
@@ -339,10 +339,10 @@ bool Instance::createfromFile(const std::string &filename) {
   }
   solver.end_getting_small_clauses();
 
-  statistics_.num_variables_ = solver.nVars();
-  statistics_.num_used_variables_ = num_variables();
-  statistics_.num_free_variables_ = solver.nVars() - num_variables();
-  statistics_.num_unit_clauses_ = unit_clauses_.size();
+  stats.num_variables_ = solver.nVars();
+  stats.num_used_variables_ = num_variables();
+  stats.num_free_variables_ = solver.nVars() - num_variables();
+  stats.num_unit_clauses_ = unit_clauses_.size();
   original_lit_pool_size_ = literal_pool_.size();
 
   return solver.okay();

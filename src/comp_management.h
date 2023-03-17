@@ -30,7 +30,7 @@ public:
   ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const set<unsigned> &independent_support_) :
-      config_(config), statistics_(statistics), cache_(statistics, config_),
+      config_(config), stats(statistics), cache_(statistics, config_),
       ana_(lit_values, independent_support_)
   {
   }
@@ -124,7 +124,7 @@ public:
 
 private:
   const SolverConfiguration &config_;
-  DataAndStatistics &statistics_;
+  DataAndStatistics &stats;
 
   vector<Component *> comp_stack_;
   ComponentCache cache_;
@@ -228,8 +228,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 
         //cache score should be decreased since we have a cache hit
         if (config_.use_csvsads) {
-          statistics_.numcachedec_++;
-          if (statistics_.numcachedec_ % 128 == 0) increasecachescores();
+          stats.numcachedec_++;
+          if (stats.numcachedec_ % 128 == 0) increasecachescores();
           for (auto it = p_new_comp->varsBegin(); *it != varsSENTINEL; it++)
             cachescore_[*it] -= 1;
         }

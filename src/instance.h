@@ -81,7 +81,7 @@ protected:
   }
 
   bool createfromFile(const std::string &file_name);
-  DataAndStatistics statistics_;
+  DataAndStatistics stats;
 
   /** literal_pool_: the literals of all clauses are stored here
    *   INVARIANT: first and last entries of literal_pool_ are a SENTINEL_LIT
@@ -232,14 +232,14 @@ ClauseIndex Instance::addClause(vector<Lit> &literals) {
   literal_pool_.push_back(SENTINEL_LIT);
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
   litWatchList(literals[1]).addWatchLinkTo(cl_ofs);
-  getHeaderOf(cl_ofs).set_creation_time(statistics_.num_conflicts_);
+  getHeaderOf(cl_ofs).set_creation_time(stats.num_conflicts_);
   return cl_ofs;
 }
 
 
 Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
     Antecedent ante(NOT_A_CLAUSE);
-    statistics_.num_clauses_learned_++;
+    stats.num_clauses_learned_++;
     ClauseOfs cl_ofs = addClause(literals);
     if (cl_ofs != 0) {
       conflict_clauses_.push_back(cl_ofs);
@@ -247,9 +247,9 @@ Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
       ante = Antecedent(cl_ofs);
     } else if (literals.size() == 2){
       ante = Antecedent(literals.back());
-      statistics_.num_binary_conflict_clauses_++;
+      stats.num_binary_conflict_clauses_++;
     } else if (literals.size() == 1)
-      statistics_.num_unit_clauses_++;
+      stats.num_unit_clauses_++;
     return ante;
   }
 

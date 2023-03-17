@@ -45,7 +45,7 @@ uint64_t freeram() {
 #include "stack.h"
 
 ComponentCache::ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &config) :
-		statistics_(statistics), config_(config) {
+		stats(statistics), config_(config) {
 }
 
 void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforCLHASH){
@@ -69,26 +69,26 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 	const uint64_t free_ram = freeram();
 	uint64_t max_cache_bound = 80 * (free_ram / 100);
 
-	if (statistics_.maximum_cache_size_bytes_ == 0) {
-	  statistics_.maximum_cache_size_bytes_ = max_cache_bound;
+	if (stats.maximum_cache_size_bytes_ == 0) {
+	  stats.maximum_cache_size_bytes_ = max_cache_bound;
 	}
 
-	if (statistics_.maximum_cache_size_bytes_ > free_ram) {
+	if (stats.maximum_cache_size_bytes_ > free_ram) {
 		cout <<"c WARNING: Maximum cache size larger than free RAM available" << endl;
 		cout << "c Free RAM " << std::setprecision(2)
 			<< (double)free_ram / (1024.0*1024.0) << "MB" << endl;
 	}
 	cout << "c Maximum cache size:\t"
-		<< statistics_.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
+		<< stats.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
 
-	assert(!statistics_.cache_full());
+	assert(!stats.cache_full());
 
 	if (entry_base_.capacity() == entry_base_.size())
 		entry_base_.reserve(2 * entry_base_.size());
 
 	entry_base_.push_back(packed_super_comp);
 
-	statistics_.incorporate_cache_store(*packed_super_comp
+	stats.incorporate_cache_store(*packed_super_comp
 			, config_.perform_pcc && packed_super_comp->get_hacked());
 
 	super_comp.set_id(1);
@@ -121,7 +121,7 @@ void ComponentCache::test_descendantstree_consistency() {
 }
 
 bool ComponentCache::deleteEntries() {
-  assert(statistics_.cache_full());
+  assert(stats.cache_full());
 	vector<double> scores;
 	for (auto it = entry_base_.begin() + 1; it != entry_base_.end(); it++)
 		if (*it != nullptr && (*it)->isDeletable()) {
@@ -152,43 +152,43 @@ bool ComponentCache::deleteEntries() {
 #endif
 
 	reHashTable(table_.size());
-	statistics_.sum_size_cached_comps_ = 0;
-	statistics_.sum_bytes_cached_comps_ = 0;
-	 statistics_.sys_overhead_sum_bytes_cached_comps_ =0;
+	stats.sum_size_cached_comps_ = 0;
+	stats.sum_bytes_cached_comps_ = 0;
+	 stats.sys_overhead_sum_bytes_cached_comps_ =0;
 
-	statistics_.sum_bytes_pure_cached_comp_data_ = 0;
+	stats.sum_bytes_pure_cached_comp_data_ = 0;
 
 	for (unsigned id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
-			statistics_.sum_size_cached_comps_ +=
+			stats.sum_size_cached_comps_ +=
 					entry_base_[id]->num_variables();
 			if(config_.perform_pcc && entry_base_[id]->get_hacked()){
-				statistics_.sum_bytes_cached_comps_ +=
+				stats.sum_bytes_cached_comps_ +=
 					entry_base_[id]->SizeInBytes_CLHASH();
 			}
 			else{
-				statistics_.sum_bytes_cached_comps_ +=
+				stats.sum_bytes_cached_comps_ +=
 			    entry_base_[id]->SizeInBytes();
 			}
-			statistics_.sum_bytes_pure_cached_comp_data_ +=
+			stats.sum_bytes_pure_cached_comp_data_ +=
 			    entry_base_[id]->data_only_byte_size();
-			 statistics_.sys_overhead_sum_bytes_cached_comps_ +=
+			 stats.sys_overhead_sum_bytes_cached_comps_ +=
 			     entry_base_[id]->sys_overhead_SizeInBytes();
 		}
 
-	statistics_.num_cached_comps_ = entry_base_.size();
+	stats.num_cached_comps_ = entry_base_.size();
 	compute_size_used();
 	return true;
 }
 
 
 uint64_t ComponentCache::compute_size_used() {
-  statistics_.cache_infrastructure_bytes_memory_usage_ =
+  stats.cache_infrastructure_bytes_memory_usage_ =
       sizeof(ComponentCache)
       + sizeof(CacheEntryID)* table_.capacity()
       + sizeof(CacheableComponent *)* entry_base_.capacity()
       + sizeof(CacheEntryID) * free_entry_base_slots_.capacity();
-  return statistics_.cache_infrastructure_bytes_memory_usage_;
+  return stats.cache_infrastructure_bytes_memory_usage_;
 }
 
 void ComponentCache::debug_dump_data() {

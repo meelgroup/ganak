@@ -70,13 +70,13 @@ public:
   // if so, incorporate it into the model count of top
   // if not, store the packed version of it in the entry_base of the cache
   // bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
-  //   statistics_.num_cache_look_ups_++;
+  //   stats.num_cache_look_ups_++;
   //   unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
 
   //   CacheEntryID act_id = table_[table_ofs];
   //   while(act_id){
   //     if (entry(act_id).equals(packed_comp)) {
-  //       statistics_.incorporate_cache_hit(packed_comp);
+  //       stats.incorporate_cache_hit(packed_comp);
   //       top.includeSolution(entry(act_id).model_count());
   //       return true;
   //     }
@@ -86,7 +86,7 @@ public:
   // }
 
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
-    statistics_.num_cache_look_ups_++;
+    stats.num_cache_look_ups_++;
     uint64_t *clhash_key;
     unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
@@ -96,7 +96,7 @@ public:
       clhash_key = packed_comp.compute_clhash();
       while(act_id){
         if (entry(act_id).equals(packed_comp, clhash_key)) {
-          statistics_.incorporate_cache_hit(packed_comp);
+          stats.incorporate_cache_hit(packed_comp);
           top.includeSolution(entry(act_id).model_count());
           return true;
         }
@@ -110,7 +110,7 @@ public:
     } else{
       while(act_id){
         if (entry(act_id).equals(packed_comp)) {
-          statistics_.incorporate_cache_hit(packed_comp);
+          stats.incorporate_cache_hit(packed_comp);
           top.includeSolution(entry(act_id).model_count());
           return true;
         }
@@ -122,7 +122,7 @@ public:
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    statistics_.incorporate_cache_erase(*entry_base_[id], config_.perform_pcc && entry_base_[id]->get_hacked());
+    stats.incorporate_cache_erase(*entry_base_[id], config_.perform_pcc && entry_base_[id]->get_hacked());
     delete entry_base_[id];
     entry_base_[id] = nullptr;
     free_entry_base_slots_.push_back(id);
@@ -190,7 +190,7 @@ private:
 
   unsigned table_size_mask_;
 
-  DataAndStatistics &statistics_;
+  DataAndStatistics &stats;
   const SolverConfiguration &config_;
 
   unsigned long my_time_ = 0;

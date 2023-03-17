@@ -37,7 +37,7 @@ public:
   Solver() { mtrand.seed((uint32_t)0U);}
   void solve(const std::string &file_name);
   SolverConfiguration &config() { return config_; }
-  DataAndStatistics &statistics() { return statistics_; }
+  DataAndStatistics &statistics() { return stats; }
 
 private:
   // Temporaries, used during recordLastUIPClause
@@ -59,7 +59,7 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   ComponentManager comp_manager_ = ComponentManager(
-          config_,statistics_, literal_values_, independent_support_);
+          config_,stats, literal_values_, independent_support_);
 
   // the last time conflict clauses have been deleted
   unsigned long last_ccl_deletion_decs_ = 0;
@@ -131,7 +131,7 @@ private:
 
   void printOnlineStats();
   void checkProbabilisticHashSanity() const {
-      const unsigned t = statistics_.num_cache_look_ups_ + 1;
+      const unsigned t = stats.num_cache_look_ups_ + 1;
       if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) {
         // 1 - log_2(2.004)/64 = 0.9843
         cout << "ERROR: We need to change the hash range (-1)" << endl;

@@ -31,7 +31,7 @@ void Solver::HardWireAndCompact()
     litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
     litWatchList(l).activity_score_ += occurrence_lists_[l].size();
   }
-  statistics_.num_unit_clauses_ = unit_clauses_.size();
+  stats.num_unit_clauses_ = unit_clauses_.size();
   initStack();
   original_lit_pool_size_ = literal_pool_.size();
 }
@@ -48,7 +48,7 @@ void Solver::solve(const std::string &file_name)
   if (!config_.quiet)
   {
     cout << "c Solving file " << file_name << endl;
-    statistics_.printShortFormulaInfo();
+    stats.printShortFormulaInfo();
     cout << "c Sampling set size: " << independent_support_.size() << endl;
     if (independent_support_.size() > 50) {
       cout << "c Sampling set is too large, not displaying" << endl;
@@ -60,23 +60,23 @@ void Solver::solve(const std::string &file_name)
   }
 
   if (solver.okay()) {
-    if (!config_.quiet) statistics_.printShortFormulaInfo();
+    if (!config_.quiet) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ =
-      statistics_.getNumDecisions();
+      stats.getNumDecisions();
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
-    statistics_.exit_state_ = countSAT();
-    statistics_.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
-    statistics_.num_long_conflict_clauses_ = num_conflict_clauses();
+    stats.exit_state_ = countSAT();
+    stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
+    stats.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
     cout << "c Found UNSAT during preprocessing" << endl;
-    statistics_.exit_state_ = SUCCESS;
-    statistics_.set_final_solution_count(0);
+    stats.exit_state_ = SUCCESS;
+    stats.set_final_solution_count(0);
   }
 
-  statistics_.time_elapsed_ = time_start - cpuTime();
+  stats.time_elapsed_ = time_start - cpuTime();
   comp_manager_.gatherStatistics();
-  statistics_.printShort();
+  stats.printShort();
 }
 
 bool Solver::takeSolution() {
@@ -224,8 +224,8 @@ void Solver::decideLiteral() {
   decision_stack_.top().setbranchvariable(max_score_var);
   decision_stack_.top().setonpath(!counted_bottom_comp);
   setLiteralIfFree(lit);
-  statistics_.num_decisions_++;
-  if (statistics_.num_decisions_ % 128 == 0) {
+  stats.num_decisions_++;
+  if (stats.num_decisions_ % 128 == 0) {
     if (config_.use_csvsads) comp_manager_.increasecachescores();
     decayActivities();
   }
@@ -290,14 +290,14 @@ retStateT Solver::backtrack() {
       decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 
   //Restart
-  if (statistics_.getNumDecisions() > statistics_.next_restart) {
-    statistics_.num_restarts++;
-    statistics_.next_restart_diff*=1.4;
-    statistics_.next_restart += statistics_.next_restart_diff;
-    if ((statistics_.num_restarts % 5) == 4) {
-      statistics_.next_restart_diff = 1000;
+  if (stats.getNumDecisions() > stats.next_restart) {
+    stats.num_restarts++;
+    stats.next_restart_diff*=1.4;
+    stats.next_restart += stats.next_restart_diff;
+    if ((stats.num_restarts % 5) == 4) {
+      stats.next_restart_diff = 1000;
     }
-    statistics_.last_restart_decisions = statistics_.num_decisions_;
+    stats.last_restart_decisions = stats.num_decisions_;
     cout << "Restart here" << endl;
     if (counted_bottom_comp) {
       //largest cube is valid.
@@ -353,8 +353,8 @@ retStateT Solver::backtrack() {
 
     // Update cache score heuristic
     if (config_.use_csvsads) {
-      statistics_.numcachedec_++;
-      if (statistics_.numcachedec_ % 128 == 0) comp_manager_.increasecachescores();
+      stats.numcachedec_++;
+      if (stats.numcachedec_ % 128 == 0) comp_manager_.increasecachescores();
       comp_manager_.decreasecachescore(comp_manager_.getSuperComponentOf(decision_stack_.top()));
     }
 
@@ -376,9 +376,9 @@ retStateT Solver::backtrack() {
     if (decision_stack_.top().on_path_to_target_) {
       computeLargestCube();
       if (!counted_bottom_comp) {
-        assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
+        assert(stats.num_decisions_ >= stats.last_restart_decisions);
         print_debug(COLCYN "Bottom comp reached, decisions since restart: "
-          << statistics_.num_decisions_ - statistics_.last_restart_decisions);
+          << stats.num_decisions_ - stats.last_restart_decisions);
         counted_bottom_comp = true;
       }
     }
@@ -394,18 +394,18 @@ retStateT Solver::backtrack() {
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
 
-  if (statistics_.num_clauses_learned_ - last_ccl_deletion_decs_ >
-        statistics_.clause_deletion_interval()) {
+  if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ >
+        stats.clause_deletion_interval()) {
     deleteConflictClauses();
-    last_ccl_deletion_decs_ = statistics_.num_clauses_learned_;
+    last_ccl_deletion_decs_ = stats.num_clauses_learned_;
   }
 
-  if (statistics_.num_clauses_learned_ - last_ccl_cleanup_decs_ > 100000) {
+  if (stats.num_clauses_learned_ - last_ccl_cleanup_decs_ > 100000) {
     compactConflictLiteralPool();
-    last_ccl_cleanup_decs_ = statistics_.num_clauses_learned_;
+    last_ccl_cleanup_decs_ = stats.num_clauses_learned_;
   }
 
-  statistics_.num_conflicts_++;
+  stats.num_conflicts_++;
 
   assert(
       decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
@@ -423,8 +423,8 @@ retStateT Solver::resolveConflict() {
     if (decision_stack_.get_decision_level() == 1) {
       cout
           << "c Solved half the solution space (i.e. one branch at dec. lev 1)." << endl
-          << "c --> Conflicts: " << statistics_.num_conflicts_ << endl
-          << "c --> Decisions: " << statistics_.num_decisions_ << endl;
+          << "c --> Conflicts: " << stats.num_conflicts_ << endl
+          << "c --> Decisions: " << stats.num_decisions_ << endl;
     }
     return BACKTRACK;
   }
@@ -568,7 +568,7 @@ bool Solver::failedLitProbeInternal() {
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
     }
-    statistics_.num_failed_literal_tests_ += test_lits.size();
+    stats.num_failed_literal_tests_ += test_lits.size();
 
     // Do the probing
     for (auto lit : test_lits) {
@@ -593,7 +593,7 @@ bool Solver::failedLitProbeInternal() {
         }
 
         if (!bSucceeded) {
-          statistics_.num_failed_literals_detected_++;
+          stats.num_failed_literals_detected_++;
           print_debug("-> failed literal detected");
           sz = trail.size();
           for (auto it = uip_clauses_.rbegin();
@@ -849,26 +849,26 @@ void Solver::printOnlineStats() {
   if (config_.verbose) {
     cout << "conflict clauses (all / bin / unit) \t";
     cout << num_conflict_clauses();
-    cout << "/" << statistics_.num_binary_conflict_clauses_ << "/"
+    cout << "/" << stats.num_binary_conflict_clauses_ << "/"
          << unit_clauses_.size() << endl;
     cout << "failed literals found by implicit BCP \t "
-         << statistics_.num_failed_literals_detected_ << endl;
+         << stats.num_failed_literals_detected_ << endl;
 
     cout << "implicit BCP miss rate \t "
-         << statistics_.implicitBCP_miss_rate() * 100 << "%";
+         << stats.implicitBCP_miss_rate() * 100 << "%";
     cout << endl;
 
     comp_manager_.gatherStatistics();
 
-    cout << "cache size " << statistics_.cache_MB_memory_usage() << "MB" << endl;
+    cout << "cache size " << stats.cache_MB_memory_usage() << "MB" << endl;
     cout << "comps (stored / hits) \t\t"
-         << statistics_.cached_comp_count() << "/"
-         << statistics_.cache_hits() << endl;
+         << stats.cached_comp_count() << "/"
+         << stats.cache_hits() << endl;
     cout << "avg. variable count (stored / hits) \t"
-         << statistics_.getAvgComponentSize() << "/"
-         << statistics_.getAvgCacheHitSize();
+         << stats.getAvgComponentSize() << "/"
+         << stats.getAvgCacheHitSize();
     cout << endl;
-    cout << "cache miss rate " << statistics_.cache_miss_rate() * 100 << "%"
+    cout << "cache miss rate " << stats.cache_miss_rate() * 100 << "%"
          << endl;
   }
 }

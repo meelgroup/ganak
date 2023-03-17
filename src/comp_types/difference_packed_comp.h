@@ -20,24 +20,18 @@
 class DifferencePackedComponent:public BasePackedComponent {
 public:
 
-  DifferencePackedComponent() {
-  }
-
+  DifferencePackedComponent() { }
   inline DifferencePackedComponent(Component &rComp);
   inline DifferencePackedComponent(vector<void *> & randomseedforCLHASH, Component &rComp);
 
   unsigned num_variables() const{
-    if (old_size)
-      return old_num_vars;
-
+    if (old_size) return old_num_vars;
     uint32_t *p = (uint32_t *) data_;
     return (*p >> bits_of_data_size()) & variable_mask();
-
   }
 
   unsigned data_size() const {
-    if(old_size)
-      return old_size;
+    if(old_size) return old_size;
     return *data_ & _data_size_mask;
   }
 
@@ -56,26 +50,18 @@ public:
     // for the supposed 16byte alignment of malloc
   unsigned sys_overhead_raw_data_byte_size() const {
     unsigned ds = 0;
-    if (old_size){
-      ds = hack_* sizeof(uint64_t);
-    }
-    else
-    {
-      ds = data_size()* sizeof(unsigned);
-    }
+    if (old_size) ds = hack_* sizeof(uint64_t);
+    else ds = data_size()* sizeof(unsigned);
     unsigned ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
 //      unsigned mask = 0xfffffff8;
 //      return (ds & mask) + ((ds & 7)?8:0)
 //            +(ms & mask) + ((ms & 7)?8:0);
     unsigned mask = 0xfffffff0;
-    return (ds & mask) + ((ds & 15)?16:0)
-                  +(ms & mask) + ((ms & 15)?16:0);
+    return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
   }
 
 #ifdef DOPCC
-  uint64_t *compute_clhash(){
-    return clhashkey_;
-  }
+  uint64_t *compute_clhash(){ return clhashkey_; }
 #endif
 
   bool equals(const DifferencePackedComponent &comp) const {
@@ -83,32 +69,25 @@ public:
     unsigned* p = data_;
     unsigned* r = comp.data_;
     while(p != data_ + data_size()) {
-        if(*(p++) != *(r++))
-            return false;
+        if(*(p++) != *(r++)) return false;
     }
     return true;
   }
 
 #ifdef DOPCC
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
-    if(hashkey_ != comp.hashkey()){
-      return false;
-    }
+    if(hashkey_ != comp.hashkey()) return false;
     bool match = true;
     for (unsigned i=0; i<hack_;i++){
       match = clhash_key[i] == clhashkey_[i];
-      if(!match){
-        return false;
-      }
+      if(!match) return false;
     }
     return true;
   }
 #endif
 };
 
-
 DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
-
   unsigned max_var_diff = 0;
   unsigned hashkey_vars = *rComp.varsBegin();
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
@@ -159,15 +138,15 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   bs.stuff(*rComp.varsBegin(), bits_per_variable());
 
   if(bits_per_var_diff)
-  for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
-    bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
+    for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
+      bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
 
   if (*rComp.clsBegin()) {
     bs.stuff(bits_per_clause_diff, 5);
     bs.stuff(*rComp.clsBegin(), bits_per_clause());
     if(bits_per_clause_diff)
-     for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++)
-      bs.stuff(*jt - *(jt - 1) - 1, bits_per_clause_diff);
+      for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++)
+        bs.stuff(*jt - *(jt - 1) - 1, bits_per_clause_diff);
   }
 
   // to check wheter the "END" block of bits_per_clause()
@@ -177,7 +156,6 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   // correctly
   bs.assert_size(data_size);
 }
-
 
 DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Component &rComp) {
   unsigned max_var_diff = 0;
@@ -228,8 +206,8 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   bs.stuff(*rComp.varsBegin(), bits_per_variable());
 
   if(bits_per_var_diff)
-  for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
-    bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
+    for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
+      bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
 
   if (*rComp.clsBegin()) {
     bs.stuff(bits_per_clause_diff, 5);

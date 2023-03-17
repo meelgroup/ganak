@@ -218,14 +218,12 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->num_variables() << " vars: ";
-        auto v = p_new_comp->varsBegin();
-        for(; *v != varsSENTINEL; v++) cout << *v << " ";
+        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
       } else {
         cout << COLYEL2 "Component already in cache. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->num_variables() << " vars: ";
-        auto v = p_new_comp->varsBegin();
-        for(; *v != varsSENTINEL; v++) cout << *v << " ";
+        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
 
         //cache score should be decreased since we have a cache hit

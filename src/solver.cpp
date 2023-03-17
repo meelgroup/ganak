@@ -488,7 +488,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
   for (unsigned int i = start_at_stack_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
 
-    //Propagate bin Clauses
+    //Propagate bin clauses
     for (auto bt = litWatchList(unLit).binary_links_.begin(); *bt != SENTINEL_LIT; bt++) {
       if (isFalse(*bt)) {
         setConflictState(unLit, *bt);

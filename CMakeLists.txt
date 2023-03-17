@@ -344,6 +344,10 @@ else()
     message(FATAL_ERROR "Cannot find CryptoMiniSat5. Please install it! Exiting.")
 endif()
 
+set (boost_components "")
+set(boost_components ${boost_components} program_options serialization)
+find_package( Boost 1.46 COMPONENTS ${boost_components})
+
 # -----------------------------------------------------------------------------
 # Add GIT version
 # -----------------------------------------------------------------------------

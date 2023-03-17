@@ -22,6 +22,7 @@ include_directories( ${PROJECT_SOURCE_DIR} )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
@@ -41,7 +42,8 @@ ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak
   LINK_PUBLIC clhash
   LINK_PUBLIC component_types
-  LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES})
+  LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
+  LINK_PUBLIC ${Boost_LIBRARIES})
 
 set_target_properties(ganak PROPERTIES
     PUBLIC_HEADER "${ganak_public_headers}"

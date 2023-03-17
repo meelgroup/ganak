@@ -123,13 +123,6 @@ protected:
     }
   }
 
-  bool isUnitClause(const Lit lit) {
-    for (auto l : unit_clauses_)
-      if (l == lit)
-        return true;
-    return false;
-  }
-
   bool existsUnitClauseOf(VariableIndex v) {
     for (auto l : unit_clauses_)
       if (l.var() == v)

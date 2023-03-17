@@ -1,5 +1,5 @@
 /*
- * component.h
+ * comp.h
  *
  *  Created on: Feb 5, 2013
  *      Author: mthurley
@@ -78,11 +78,11 @@ public:
     vs_cls_data_.clear();
     clauses_ofs_ = 1;
 
-    // Add all variables to top component
+    // Add all variables to top comp
     for (unsigned v = 1; v <= max_var_id; v++) addVar(v);
     closeVariableData();
 
-    //Add all clauses to top component
+    //Add all clauses to top comp
     for (unsigned clid = 1; clid <= max_clause_id; clid++) addCl(clid);
     closeClauseData();
   }
@@ -93,7 +93,7 @@ public:
   }
 
 private:
-  // data_ stores the component data:
+  // data_ stores the comp data:
   // for better cache performance the
   // clause and variable data are stored in
   // a contiguous piece of memory
@@ -102,10 +102,10 @@ private:
   // in the data!
   vector<unsigned> vs_cls_data_;
   unsigned clauses_ofs_ = 0;
-  // id_ will identify denote the entry in the cacheable component database,
-  // where a Packed version of this component is stored
-  // yet this does not imply that the model count of this component is already known
-  // once the model count is known, a link to the packed component will be stored
+  // id_ will identify denote the entry in the cacheable comp database,
+  // where a Packed version of this comp is stored
+  // yet this does not imply that the model count of this comp is already known
+  // once the model count is known, a link to the packed comp will be stored
   // in the hash table
   CacheEntryID id_ = 0;
 };

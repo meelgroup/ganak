@@ -1,10 +1,10 @@
 /*
- * base_packed_component.cpp
+ * base_packed_comp.cpp
  *
  *  Created on: Feb 4, 2013
  *      Author: mthurley
  */
-#include "base_packed_component.h"
+#include "base_packed_comp.h"
 #include <math.h>
 #include <iostream>
 

@@ -1,5 +1,5 @@
 /*
- * base_packed_component.h
+ * base_packed_comp.h
  *
  *  Created on: Feb 5, 2013
  *      Author: mthurley
@@ -175,7 +175,7 @@ public:
 
   // a cache entry is deletable
   // only if it is not connected to an active
-  // component in the component stack
+  // comp in the comp stack
   bool isDeletable() const {
     return length_solution_period_and_flags_ & 1;
   }
@@ -184,8 +184,8 @@ public:
   }
 
   void clear() {
-    // before deleting the contents of this component,
-    // we should make sure that this component is not present in the component stack anymore!
+    // before deleting the contents of this comp,
+    // we should make sure that this comp is not present in the comp stack anymore!
     assert(isDeletable());
     if (data_) delete [] data_;
     data_ = nullptr;
@@ -199,7 +199,7 @@ public:
 
 protected:
   // data_ contains in packed form the variable indices
-  // and clause indices of the component ordered
+  // and clause indices of the comp ordered
   // structure is
   // var var ... clause clause ...
   // clauses begin at clauses_ofs_
@@ -225,7 +225,7 @@ protected:
   unsigned length_solution_period_and_flags_ = 0;
 
   // deletion is permitted only after
-  // the copy of this component in the stack
+  // the copy of this comp in the stack
   // does not exist anymore
 
 

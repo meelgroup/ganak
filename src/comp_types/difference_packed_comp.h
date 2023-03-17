@@ -1,5 +1,5 @@
 /*
- * difference_packed_component.h
+ * difference_packed_comp.h
  *
  *  Created on: Feb 5, 2013
  *      Author: mthurley
@@ -8,8 +8,8 @@
 #ifndef DIFFERENCE_PACKED_COMPONENT_H_
 #define DIFFERENCE_PACKED_COMPONENT_H_
 
-#include "base_packed_component.h"
-#include "component.h"
+#include "base_packed_comp.h"
+#include "comp.h"
 #ifdef DOPCC
 #include "../clhash/clhash.h"
 #else

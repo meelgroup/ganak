@@ -1,11 +1,11 @@
 /*
- * component_cache.cpp
+ * comp_cache.cpp
  *
  *  Created on: Feb 5, 2013
  *      Author: mthurley
  */
 
-#include "component_cache.h"
+#include "comp_cache.h"
 #include <algorithm>
 #include <iomanip>
 
@@ -152,31 +152,31 @@ bool ComponentCache::deleteEntries() {
 #endif
 
 	reHashTable(table_.size());
-	statistics_.sum_size_cached_components_ = 0;
-	statistics_.sum_bytes_cached_components_ = 0;
-	 statistics_.sys_overhead_sum_bytes_cached_components_ =0;
+	statistics_.sum_size_cached_comps_ = 0;
+	statistics_.sum_bytes_cached_comps_ = 0;
+	 statistics_.sys_overhead_sum_bytes_cached_comps_ =0;
 
-	statistics_.sum_bytes_pure_cached_component_data_ = 0;
+	statistics_.sum_bytes_pure_cached_comp_data_ = 0;
 
 	for (unsigned id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
-			statistics_.sum_size_cached_components_ +=
+			statistics_.sum_size_cached_comps_ +=
 					entry_base_[id]->num_variables();
 			if(config_.perform_pcc && entry_base_[id]->get_hacked()){
-				statistics_.sum_bytes_cached_components_ +=
+				statistics_.sum_bytes_cached_comps_ +=
 					entry_base_[id]->SizeInBytes_CLHASH();
 			}
 			else{
-				statistics_.sum_bytes_cached_components_ +=
+				statistics_.sum_bytes_cached_comps_ +=
 			    entry_base_[id]->SizeInBytes();
 			}
-			statistics_.sum_bytes_pure_cached_component_data_ +=
+			statistics_.sum_bytes_pure_cached_comp_data_ +=
 			    entry_base_[id]->data_only_byte_size();
-			 statistics_.sys_overhead_sum_bytes_cached_components_ +=
+			 statistics_.sys_overhead_sum_bytes_cached_comps_ +=
 			     entry_base_[id]->sys_overhead_SizeInBytes();
 		}
 
-	statistics_.num_cached_components_ = entry_base_.size();
+	statistics_.num_cached_comps_ = entry_base_.size();
 	compute_size_used();
 	return true;
 }

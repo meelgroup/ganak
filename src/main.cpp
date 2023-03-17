@@ -25,11 +25,11 @@ int main(int argc, char *argv[])
     cout << "\t -noPP  \t\t turn off preprocessing" << endl;
     cout << "\t -q     \t\t quiet mode" << endl;
     cout << "\t -t [s] \t\t set time bound to s seconds" << endl;
-    cout << "\t -noCC  \t\t turn off component caching" << endl;
+    cout << "\t -noCC  \t\t turn off comp caching" << endl;
     cout << "\t -cs [n]\t\t set max cache size to n MB" << endl;
     cout << "\t -noIBCP\t\t turn off implicit BCP" << endl;
 #ifdef DOPCC
-    cout << "\t -noPCC\t\t\t turn off probabilistic component caching" << endl;
+    cout << "\t -noPCC\t\t\t turn off probabilistic comp caching" << endl;
 #endif
     cout << "\t -seed [n]\t\t set random seed to n (Default: 1000)" << endl;
     cout << "\t -m [n] \t\t set the range of hash function (= 64 x n) (Default: 1) " << endl;
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-noCC") == 0) {
-      theSolver.config().perform_component_caching = false;
+      theSolver.config().perform_comp_caching = false;
     } else if (strcmp(argv[i], "-noIBCP") == 0) {
       theSolver.config().perform_failed_lit_test = false;
     } else if (strcmp(argv[i], "-noPP") == 0) {

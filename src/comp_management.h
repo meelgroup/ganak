@@ -1,5 +1,5 @@
 /*
- * component_management.h
+ * comp_management.h
  *
  *  Created on: Aug 23, 2012
  *      Author: Marc Thurley
@@ -8,9 +8,9 @@
 #ifndef COMPONENT_MANAGEMENT_H_
 #define COMPONENT_MANAGEMENT_H_
 
-#include "component_types/component.h"
-#include "component_cache.h"
-#include "alt_component_analyzer.h"
+#include "comp_types/comp.h"
+#include "comp_cache.h"
+#include "alt_comp_analyzer.h"
 
 #include <unordered_map>
 #include <random>
@@ -52,50 +52,50 @@ public:
 
   void cacheModelCountOf(unsigned stack_comp_id, const mpz_class &value)
   {
-    if (config_.perform_component_caching)
-      cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
+    if (config_.perform_comp_caching)
+      cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
   Component &getSuperComponentOf(const StackLevel &lev)
   {
-    assert(component_stack_.size() > lev.super_component());
-    return *component_stack_[lev.super_component()];
+    assert(comp_stack_.size() > lev.super_comp());
+    return *comp_stack_[lev.super_comp()];
   }
 
-  unsigned component_stack_size()
+  unsigned comp_stack_size()
   {
-    return component_stack_.size();
+    return comp_stack_.size();
   }
 
   const Component* at(const size_t at) const {
-    return component_stack_.at(at);
+    return comp_stack_.at(at);
   }
 
   void cleanRemainingComponentsOf(StackLevel &top)
   {
-    print_debug(COLYEL2 "cleaning remaining components of var: " << top.getbranchvar());
-    while (component_stack_.size() > top.remaining_components_ofs())
+    print_debug(COLYEL2 "cleaning remaining comps of var: " << top.getbranchvar());
+    while (comp_stack_.size() > top.remaining_comps_ofs())
     {
-      if (cache_.hasEntry(component_stack_.back()->id()))
-        cache_.entry(component_stack_.back()->id()).set_deletable();
+      if (cache_.hasEntry(comp_stack_.back()->id()))
+        cache_.entry(comp_stack_.back()->id()).set_deletable();
 
-      print_debug(COLYEL2 "-> deleting component ID: " << component_stack_.back()->id());
-      delete component_stack_.back();
-      component_stack_.pop_back();
+      print_debug(COLYEL2 "-> deleting comp ID: " << comp_stack_.back()->id());
+      delete comp_stack_.back();
+      comp_stack_.pop_back();
     }
-    assert(top.remaining_components_ofs() <= component_stack_.size());
+    assert(top.remaining_comps_ofs() <= comp_stack_.size());
   }
 
   Component &currentRemainingComponentOf(StackLevel &top)
   {
-    assert(component_stack_.size() > top.currentRemainingComponent());
-    return *component_stack_[top.currentRemainingComponent()];
+    assert(comp_stack_.size() > top.currentRemainingComponent());
+    return *comp_stack_[top.currentRemainingComponent()];
   }
 
-  // checks for the next yet to explore remaining component of top
-  // returns true if a non-trivial non-cached component
+  // checks for the next yet to explore remaining comp of top
+  // returns true if a non-trivial non-cached comp
   // has been found and is now stack_.TOS_NextComp()
-  // returns false if all components have been processed
+  // returns false if all comps have been processed
   inline bool findNextRemainingComponentOf(StackLevel &top);
   inline void recordRemainingCompsFor(StackLevel &top);
   inline void sortComponentStackRange(unsigned start, unsigned end);
@@ -126,7 +126,7 @@ private:
   const SolverConfiguration &config_;
   DataAndStatistics &statistics_;
 
-  vector<Component *> component_stack_;
+  vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
   vector<float> cachescore_;
@@ -155,22 +155,22 @@ void ComponentManager::decreasecachescore(Component &comp)
 
 void ComponentManager::sortComponentStackRange(unsigned start, unsigned end)
 {
-  print_debug(COLYEL2 "sorting component stack range");
+  print_debug(COLYEL2 "sorting comp stack range");
   assert(start <= end);
-  // sort the remaining components for processing
+  // sort the remaining comps for processing
   for (unsigned i = start; i < end; i++)
     for (unsigned j = i + 1; j < end; j++)
     {
-      if (component_stack_[i]->num_variables() < component_stack_[j]->num_variables())
-        std::swap(component_stack_[i], component_stack_[j]);
+      if (comp_stack_[i]->num_variables() < comp_stack_[j]->num_variables())
+        std::swap(comp_stack_[i], comp_stack_[j]);
     }
 }
 
 bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 {
   print_debug(COLREDBG"-*-> Running findNextRemainingComponentOf");
-  print_debug("top.remaining_components_ofs():" << top.remaining_components_ofs() );
-  if (component_stack_.size() <= top.remaining_components_ofs())
+  print_debug("top.remaining_comps_ofs():" << top.remaining_comps_ofs() );
+  if (comp_stack_.size() <= top.remaining_comps_ofs())
     recordRemainingCompsFor(top);
 
   assert(!top.branch_found_unsat());
@@ -179,26 +179,26 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
     return true;
   }
 
-  // if no component remains
+  // if no comp remains
   // make sure, at least that the current branch is considered SAT
 
   top.includeSolution(1);
-  print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining components. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
+  print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
   return false;
 }
 
-// This creates components
+// This creates comps
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
   const Component& super_comp = getSuperComponentOf(top);
-  const unsigned new_comps_start_ofs = component_stack_.size();
+  const unsigned new_comps_start_ofs = comp_stack_.size();
 
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-    print_debug("checking var: " << *vt << " which component it's in");
+    print_debug("checking var: " << *vt << " which comp it's in");
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
-      // Create new component
+      // Create new comp
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.perform_pcc) {
@@ -212,11 +212,11 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
       }
 
-      // Check if new component is already in cache
+      // Check if new comp is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp)) {
-        component_stack_.push_back(p_new_comp);
+        comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
-        cout << COLYEL2 "New component. ID: " << p_new_comp->id()
+        cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->num_variables() << " vars: ";
         auto v = p_new_comp->varsBegin();
         for(; *v != varsSENTINEL; v++) cout << *v << " ";
@@ -240,8 +240,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       }
     }
   }
-  top.set_unprocessed_components_end(component_stack_.size());
-  sortComponentStackRange(new_comps_start_ofs, component_stack_.size());
+  top.set_unprocessed_comps_end(comp_stack_.size());
+  sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
 }
 
 #endif /* COMPONENT_MANAGEMENT_H_ */

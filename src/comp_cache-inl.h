@@ -1,5 +1,5 @@
 /*
- * component_cache-inl.h
+ * comp_cache-inl.h
  *
  *  Created on: Aug 23, 2012
  *      Author: Marc Thurley
@@ -138,12 +138,12 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   considerCacheResize();
   unsigned table_ofs = tableEntry(id);
   // when storing the new model count the size of the model count
-  // and hence that of the component will change
-  statistics_.sum_bytes_cached_components_ -= entry(id).SizeInBytes();
-  statistics_.overall_bytes_components_stored_ -= entry(id).SizeInBytes();
+  // and hence that of the comp will change
+  statistics_.sum_bytes_cached_comps_ -= entry(id).SizeInBytes();
+  statistics_.overall_bytes_comps_stored_ -= entry(id).SizeInBytes();
 
-  statistics_.sys_overhead_sum_bytes_cached_components_ -= entry(id).sys_overhead_SizeInBytes();
-  statistics_.sys_overhead_overall_bytes_components_stored_ -= entry(id).sys_overhead_SizeInBytes();
+  statistics_.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes();
+  statistics_.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes();
 #ifdef DOPCC
   if (config_.perform_pcc)
     entry(id).set_hacked(entry(id).SizeInBytes(), entry(id).num_variables());
@@ -156,15 +156,15 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   table_[table_ofs] = id;
 
   if (config_.perform_pcc){
-    statistics_.sum_bytes_cached_components_ += entry(id).SizeInBytes_CLHASH();
-    statistics_.overall_bytes_components_stored_ += entry(id).SizeInBytes_CLHASH();
+    statistics_.sum_bytes_cached_comps_ += entry(id).SizeInBytes_CLHASH();
+    statistics_.overall_bytes_comps_stored_ += entry(id).SizeInBytes_CLHASH();
   }
   else{
-    statistics_.sum_bytes_cached_components_ += entry(id).SizeInBytes();
-    statistics_.overall_bytes_components_stored_ += entry(id).SizeInBytes();
+    statistics_.sum_bytes_cached_comps_ += entry(id).SizeInBytes();
+    statistics_.overall_bytes_comps_stored_ += entry(id).SizeInBytes();
   }
-  statistics_.sys_overhead_sum_bytes_cached_components_ += entry(id).sys_overhead_SizeInBytes();
-  statistics_.sys_overhead_overall_bytes_components_stored_ += entry(id).sys_overhead_SizeInBytes();
+  statistics_.sys_overhead_sum_bytes_cached_comps_ += entry(id).sys_overhead_SizeInBytes();
+  statistics_.sys_overhead_overall_bytes_comps_stored_ += entry(id).sys_overhead_SizeInBytes();
 }
 
 

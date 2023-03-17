@@ -1,11 +1,11 @@
 /*
- * alt_component_analyzer.cpp
+ * alt_comp_analyzer.cpp
  *
  *  Created on: Mar 5, 2013
  *      Author: mthurley
  */
 
-#include "alt_component_analyzer.h"
+#include "alt_comp_analyzer.h"
 
 // Builds occurrence lists and sets things up
 void ComponentAnalyzer::initialize(
@@ -119,7 +119,7 @@ void ComponentAnalyzer::initialize(
   }
 }
 
-// Check which component a variable is in
+// Check which comp a variable is in
 void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);

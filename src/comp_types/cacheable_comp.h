@@ -1,5 +1,5 @@
 /*
- * cacheable_component.h
+ * cacheable_comp.h
  *
  *  Created on: Feb 21, 2013
  *      Author: mthurley
@@ -13,8 +13,8 @@
 
 #include "../primitive_types.h"
 
-#include "difference_packed_component.h"
-//#include "simple_unpacked_component.h"
+#include "difference_packed_comp.h"
+//#include "simple_unpacked_comp.h"
 
 
 #define NIL_ENTRY 0
@@ -52,7 +52,7 @@ public:
         + T_Component::raw_data_byte_size_CLHASH();
   }
 
-  // the 48 = 16*3 in overhead stems from the three parts of the component
+  // the 48 = 16*3 in overhead stems from the three parts of the comp
   // being dynamically allocated (i.e. the GenericCacheableComponent itself,
   // the data_ and the model_count data
   unsigned long sys_overhead_SizeInBytes() const {
@@ -99,7 +99,7 @@ private:
 
   // theFather and theDescendants:
   // each CCacheEntry is a Node in a tree which represents the relationship
-  // of the components stored
+  // of the comps stored
   CacheEntryID father_ = 0;
   CacheEntryID first_descendant_ = 0;
   CacheEntryID next_sibling_ = 0;

@@ -14,7 +14,7 @@
 #include <gmpxx.h>
 
 #include "structures.h"
-#include "component_types/cacheable_component.h"
+#include "comp_types/cacheable_comp.h"
 #include "primitive_types.h"
 
 using std::vector;
@@ -76,26 +76,26 @@ public:
   uint64_t num_cache_look_ups_ = 0;
   uint64_t sum_cache_hit_sizes_ = 0;
 
-  uint64_t num_cached_components_ = 0;
-  uint64_t total_num_cached_components_ = 0;
-  uint64_t sum_size_cached_components_ = 0;
+  uint64_t num_cached_comps_ = 0;
+  uint64_t total_num_cached_comps_ = 0;
+  uint64_t sum_size_cached_comps_ = 0;
 
   // the number of bytes occupied by all
-  // components
-  uint64_t sum_bytes_cached_components_ = 0;
-  // the same number, summing over all components ever stored
-  uint64_t overall_bytes_components_stored_ = 0;
+  // comps
+  uint64_t sum_bytes_cached_comps_ = 0;
+  // the same number, summing over all comps ever stored
+  uint64_t overall_bytes_comps_stored_ = 0;
 
   // the above numbers, but without any overhead,
-  // counting only the pure data size of the components - without model counts
-  uint64_t sum_bytes_pure_cached_component_data_ = 0;
-  // the same number, summing over all components ever stored
-  uint64_t overall_bytes_pure_stored_component_data_ = 0;
+  // counting only the pure data size of the comps - without model counts
+  uint64_t sum_bytes_pure_cached_comp_data_ = 0;
+  // the same number, summing over all comps ever stored
+  uint64_t overall_bytes_pure_stored_comp_data_ = 0;
 
 
-  uint64_t sys_overhead_sum_bytes_cached_components_ = 0;
-    // the same number, summing over all components ever stored
-  uint64_t sys_overhead_overall_bytes_components_stored_ = 0;
+  uint64_t sys_overhead_sum_bytes_cached_comps_ = 0;
+    // the same number, summing over all comps ever stored
+  uint64_t sys_overhead_overall_bytes_comps_stored_ = 0;
 
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
@@ -114,45 +114,45 @@ public:
 
   uint64_t cache_bytes_memory_usage(){
     return cache_infrastructure_bytes_memory_usage_
-           + sum_bytes_cached_components_;
+           + sum_bytes_cached_comps_;
   }
 
   uint64_t overall_cache_bytes_memory_stored(){
       return cache_infrastructure_bytes_memory_usage_
-             + overall_bytes_components_stored_;
+             + overall_bytes_comps_stored_;
     }
 
   void incorporate_cache_store(CacheableComponent &ccomp, bool pccflag){
     if (pccflag){
-      sum_bytes_cached_components_ += ccomp.SizeInBytes_CLHASH();
+      sum_bytes_cached_comps_ += ccomp.SizeInBytes_CLHASH();
     }
     else{
-      sum_bytes_cached_components_ += ccomp.SizeInBytes();
+      sum_bytes_cached_comps_ += ccomp.SizeInBytes();
     }
-    sum_size_cached_components_ += ccomp.num_variables();
-    num_cached_components_++;
-    total_num_cached_components_++;
-    overall_bytes_components_stored_ += ccomp.SizeInBytes();
+    sum_size_cached_comps_ += ccomp.num_variables();
+    num_cached_comps_++;
+    total_num_cached_comps_++;
+    overall_bytes_comps_stored_ += ccomp.SizeInBytes();
     overall_num_cache_stores_ += ccomp.num_variables();
-    sys_overhead_sum_bytes_cached_components_ += ccomp.sys_overhead_SizeInBytes();
-    sys_overhead_overall_bytes_components_stored_ += ccomp.sys_overhead_SizeInBytes();
+    sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes();
+    sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes();
 
 
-    sum_bytes_pure_cached_component_data_ += ccomp.data_only_byte_size();
-    overall_bytes_pure_stored_component_data_ += ccomp.data_only_byte_size();
+    sum_bytes_pure_cached_comp_data_ += ccomp.data_only_byte_size();
+    overall_bytes_pure_stored_comp_data_ += ccomp.data_only_byte_size();
   }
   void incorporate_cache_erase(CacheableComponent &ccomp, bool pccflag){
     if (pccflag){
-      sum_bytes_cached_components_ -= ccomp.SizeInBytes_CLHASH();
+      sum_bytes_cached_comps_ -= ccomp.SizeInBytes_CLHASH();
     }
     else{
-      sum_bytes_cached_components_ -= ccomp.SizeInBytes();
+      sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
     }
-    sum_size_cached_components_ -= ccomp.num_variables();
-    num_cached_components_--;
-    sum_bytes_pure_cached_component_data_ -= ccomp.data_only_byte_size();
+    sum_size_cached_comps_ -= ccomp.num_variables();
+    num_cached_comps_--;
+    sum_bytes_pure_cached_comp_data_ -= ccomp.data_only_byte_size();
 
-    sys_overhead_sum_bytes_cached_components_ -= ccomp.sys_overhead_SizeInBytes();
+    sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes();
   }
 
   void incorporate_cache_hit(CacheableComponent &ccomp){
@@ -232,8 +232,8 @@ public:
   double avgCachedSize() {
     if (num_cache_hits_ == 0)
       return 0.0;
-    return (double) sum_size_cached_components_
-        / (double) num_cached_components_;
+    return (double) sum_size_cached_comps_
+        / (double) num_cached_comps_;
   }
 
   double avgCacheHitSize() {
@@ -243,11 +243,11 @@ public:
   }
 
   long double getAvgComponentSize() {
-    return sum_size_cached_components_ / (long double) num_cached_components_;
+    return sum_size_cached_comps_ / (long double) num_cached_comps_;
   }
 
-  unsigned long cached_component_count() {
-    return num_cached_components_;
+  unsigned long cached_comp_count() {
+    return num_cached_comps_;
   }
 
   unsigned long cache_hits() {

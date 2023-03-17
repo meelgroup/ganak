@@ -1,5 +1,5 @@
 /*
- * component_cache.h
+ * comp_cache.h
  *
  *  Created on: Feb 5, 2013
  *      Author: mthurley
@@ -8,12 +8,12 @@
 #ifndef COMPONENT_CACHE_H_
 #define COMPONENT_CACHE_H_
 
-#include "component_types/cacheable_component.h"
+#include "comp_types/cacheable_comp.h"
 #include "statistics.h"
 #include "solver_config.h"
 #include <gmpxx.h>
 
-#include "component_types/component.h"
+#include "comp_types/comp.h"
 
 #include "stack.h"
 
@@ -31,7 +31,7 @@ public:
 
   void init(Component &super_comp, vector <void*>  &randomseedforCLHASH);
 
-  // compute the size in bytes of the component cache from scratch
+  // compute the size in bytes of the comp cache from scratch
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_used();
 
@@ -62,11 +62,11 @@ public:
   // which contains a packed copy of comp
   // returns the id of the entry created
   // stores in the entry the position of
-  // comp which is a part of the component stack
+  // comp which is a part of the comp stack
   inline CacheEntryID storeAsEntry(CacheableComponent &ccomp,
                             CacheEntryID super_comp_id);
 
-  // check quickly if the model count of the component is cached
+  // check quickly if the model count of the comp is cached
   // if so, incorporate it into the model count of top
   // if not, store the packed version of it in the entry_base of the cache
   // bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
@@ -197,7 +197,7 @@ private:
 };
 
 
-#include "component_cache-inl.h"
+#include "comp_cache-inl.h"
 
 
 #endif /* COMPONENT_CACHE_H_ */

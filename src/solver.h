@@ -12,7 +12,7 @@
 #include "primitive_types.h"
 #include "statistics.h"
 #include "instance.h"
-#include "component_management.h"
+#include "comp_management.h"
 #include "solver_config.h"
 #include "MersenneTwister.h"
 

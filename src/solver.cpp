@@ -10,7 +10,7 @@
 #include <ios>
 #include <iomanip>
 #include "common.h"
-#include "component_types/component.h"
+#include "comp_types/comp.h"
 #include "cryptominisat5/solvertypesmini.h"
 #include "primitive_types.h"
 #include "stack.h"
@@ -91,7 +91,7 @@ bool Solver::takeSolution() {
   for(uint32_t i = 0; i < num_variables(); i++) {
     target_polar[i+1] = solver.get_model()[i] == CMSat::l_True;
   }
-  counted_bottom_component = false;
+  counted_bottom_comp = false;
   return ret == CMSat::l_True;
 }
 
@@ -101,20 +101,20 @@ SOLVER_StateT Solver::countSAT() {
   if (!takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
-    //NOTE: findNextRemainingComponentOf finds disjoint components!
+    //NOTE: findNextRemainingComponentOf finds disjoint comps!
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       checkProbabilisticHashSanity();
       decideLiteral();
 
 #ifdef VERBOSE_DEBUG
-      cout << COLORG "--- going through all levels now, printing components --" << endl;
+      cout << COLORG "--- going through all levels now, printing comps --" << endl;
       uint32_t lev = 0;
       for(const auto& s: decision_stack_) {
-        auto const& sup_at = s.super_component();
-        cout << COLORG "super component of lev " << lev
+        auto const& sup_at = s.super_comp();
+        cout << COLORG "super comp of lev " << lev
           << " is at " << sup_at
           << " branch var here: " << decision_stack_.at(lev).getbranchvar()
-          << " remaining comp ofs: " << decision_stack_.at(lev).remaining_components_ofs()
+          << " remaining comp ofs: " << decision_stack_.at(lev).remaining_comps_ofs()
           << " num unprocess comps: " << decision_stack_.at(lev).numUnprocessedComponents()
           << endl;
 
@@ -158,7 +158,7 @@ void Solver::decideLiteral() {
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
                trail.size(),
-               comp_manager_.component_stack_size()));
+               comp_manager_.comp_stack_size()));
 
   // Find variable to branch on
   auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
@@ -188,7 +188,7 @@ void Solver::decideLiteral() {
 
   // Figure out polarity
   bool polarity;
-  if (!counted_bottom_component) polarity = target_polar[max_score_var];
+  if (!counted_bottom_comp) polarity = target_polar[max_score_var];
   else {
     // TODO MATE: this whole thing is a huge mess as far as I'm concerned
     polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
@@ -222,14 +222,14 @@ void Solver::decideLiteral() {
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(max_score_var);
-  decision_stack_.top().setonpath(!counted_bottom_component);
+  decision_stack_.top().setonpath(!counted_bottom_comp);
   setLiteralIfFree(lit);
   statistics_.num_decisions_++;
   if (statistics_.num_decisions_ % 128 == 0) {
     if (config_.use_csvsads) comp_manager_.increasecachescores();
     decayActivities();
   }
-  assert( decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+  assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 }
 
 void Solver::computeLargestCube()
@@ -247,7 +247,7 @@ void Solver::computeLargestCube()
   }
   cout << endl;
 
-  // Go through decision stack's components
+  // Go through decision stack's comps
   for(uint32_t i = 0; i < decision_stack_.size(); i++) {
     const auto& ds = decision_stack_.at(i);
     const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
@@ -255,11 +255,11 @@ void Solver::computeLargestCube()
       << " decision lit: " << dec_lit
       << " num unproc comps: " << ds.numUnprocessedComponents()
       << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
-      << " remain comps offs: " << ds.remaining_components_ofs());
-    auto off_start = ds.remaining_components_ofs();
+      << " remain comps offs: " << ds.remaining_comps_ofs());
+    auto off_start = ds.remaining_comps_ofs();
     auto off_end = ds.getUnprocessedComponentsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
-      assert(i2 < comp_manager_.component_stack_size());
+      assert(i2 < comp_manager_.comp_stack_size());
       const auto& c = comp_manager_.at(i2);
       cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
       for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
@@ -267,16 +267,16 @@ void Solver::computeLargestCube()
     }
   }
 
-  // All components
-  print_debug(COLWHT "-- component list START");
-  for(uint32_t i2 = 0; i2 < comp_manager_.component_stack_size(); i2++) {
+  // All comps
+  print_debug(COLWHT "-- comp list START");
+  for(uint32_t i2 = 0; i2 < comp_manager_.comp_stack_size(); i2++) {
     const auto& c = comp_manager_.at(i2);
     cout << COLWHT "comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
     if (c->empty()) { cout << "EMPTY" << endl; continue; }
     for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
     cout << endl;
   }
-  print_debug(COLWHT "-- component list END");
+  print_debug(COLWHT "-- comp list END");
 
 //#ifdef VERBOSE_DEBUG
    cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
@@ -287,7 +287,7 @@ void Solver::computeLargestCube()
 
 retStateT Solver::backtrack() {
   assert(
-      decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+      decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 
   //Restart
   if (statistics_.getNumDecisions() > statistics_.next_restart) {
@@ -299,7 +299,7 @@ retStateT Solver::backtrack() {
     }
     statistics_.last_restart_decisions = statistics_.num_decisions_;
     cout << "Restart here" << endl;
-    if (counted_bottom_component) {
+    if (counted_bottom_comp) {
       //largest cube is valid.
       vector<CMSat::Lit> cl;
       for(const auto&l: largest_cube) cl.push_back(~CMSat::Lit(abs(l)-1, l<0));
@@ -307,7 +307,7 @@ retStateT Solver::backtrack() {
       cout << "cube: ";
       for(const auto&l: largest_cube) cout << l << " ";
       cout << endl;
-      counted_bottom_component = false;
+      counted_bottom_comp = false;
     }
     do {
       if (decision_stack_.top().branch_found_unsat() || decision_stack_.top().anotherCompProcessible()) {
@@ -324,9 +324,9 @@ retStateT Solver::backtrack() {
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
     } else if (decision_stack_.top().anotherCompProcessible()) {
-      print_debug("Processing another component at dec lev "
+      print_debug("Processing another comp at dec lev "
           << decision_stack_.get_decision_level()
-          << " instead of bakctracking." << " Num unprocessed components: "
+          << " instead of bakctracking." << " Num unprocessed comps: "
           << decision_stack_.top().numUnprocessedComponents());
       return PROCESS_COMPONENT;
     }
@@ -348,7 +348,7 @@ retStateT Solver::backtrack() {
       print_debug(COLORGBG "We have explored BOTH branches, actually BACKTRACKING."
           << " -- dec lev: " << decision_stack_.get_decision_level());
     }
-    comp_manager_.cacheModelCountOf(decision_stack_.top().super_component(),
+    comp_manager_.cacheModelCountOf(decision_stack_.top().super_comp(),
                                     decision_stack_.top().getTotalModelCount());
 
     // Update cache score heuristic
@@ -371,22 +371,22 @@ retStateT Solver::backtrack() {
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
     print_debug("-> Backtracked to level " << decision_stack_.get_decision_level()
-        << " num unprocessed components here: " << decision_stack_.top().numUnprocessedComponents()
+        << " num unprocessed comps here: " << decision_stack_.top().numUnprocessedComponents()
         << " on_path: " << decision_stack_.top().on_path_to_target_);
     if (decision_stack_.top().on_path_to_target_) {
       computeLargestCube();
-      if (!counted_bottom_component) {
+      if (!counted_bottom_comp) {
         assert(statistics_.num_decisions_ >= statistics_.last_restart_decisions);
-        print_debug(COLCYN "Bottom component reached, decisions since restart: "
+        print_debug(COLCYN "Bottom comp reached, decisions since restart: "
           << statistics_.num_decisions_ - statistics_.last_restart_decisions);
-        counted_bottom_component = true;
+        counted_bottom_comp = true;
       }
     }
-    // step to the next component not yet processed
+    // step to the next comp not yet processed
     decision_stack_.top().nextUnprocessedComponent();
 
     assert(
-        decision_stack_.top().remaining_components_ofs() < comp_manager_.component_stack_size() + 1);
+        decision_stack_.top().remaining_comps_ofs() < comp_manager_.comp_stack_size() + 1);
   } while (true);
   return EXIT;
 }
@@ -408,7 +408,7 @@ retStateT Solver::resolveConflict() {
   statistics_.num_conflicts_++;
 
   assert(
-      decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
+      decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 
   assert(uip_clauses_.size() == 1);
 
@@ -447,10 +447,10 @@ retStateT Solver::resolveConflict() {
 
   // we do not have to remove pollutions here,
   // since conflicts only arise directly before
-  // remaining components are stored
+  // remaining comps are stored
   // hence
   assert(
-      decision_stack_.top().remaining_components_ofs() == comp_manager_.component_stack_size());
+      decision_stack_.top().remaining_comps_ofs() == comp_manager_.comp_stack_size());
 
   decision_stack_.top().changeBranch();
   const Lit lit = TOS_decLit();
@@ -472,9 +472,9 @@ bool Solver::failedLitProbe() {
 
   const bool was_at_zero = trail.size() == 0;
   const unsigned start_ofs = trail.size() - 1;
-  print_debug("--> Setting units of this component...");
+  print_debug("--> Setting units of this comp...");
   for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
-  print_debug("--> Units of this component set, propagating");
+  print_debug("--> Units of this comp set, propagating");
 
   bool bSucceeded = true;
   if (!was_at_zero) bSucceeded = propagate(start_ofs);
@@ -603,7 +603,7 @@ bool Solver::failedLitProbeInternal() {
                              addUIPConflictClause(*it));
           }
           if (!propagate(sz)) {
-            print_debug("Failed literal probing END -- this component/branch is UNSAT");
+            print_debug("Failed literal probing END -- this comp/branch is UNSAT");
             return false;
           }
         }
@@ -861,8 +861,8 @@ void Solver::printOnlineStats() {
     comp_manager_.gatherStatistics();
 
     cout << "cache size " << statistics_.cache_MB_memory_usage() << "MB" << endl;
-    cout << "components (stored / hits) \t\t"
-         << statistics_.cached_component_count() << "/"
+    cout << "comps (stored / hits) \t\t"
+         << statistics_.cached_comp_count() << "/"
          << statistics_.cache_hits() << endl;
     cout << "avg. variable count (stored / hits) \t"
          << statistics_.getAvgComponentSize() << "/"

@@ -1,5 +1,5 @@
 /*
- * alt_component_analyzer.h
+ * alt_comp_analyzer.h
  *
  *  Created on: Mar 5, 2013
  *      Author: mthurley
@@ -11,9 +11,9 @@
 
 
 #include "statistics.h"
-#include "component_types/component.h"
-#include "component_types/base_packed_component.h"
-#include "component_types/component_archetype.h"
+#include "comp_types/comp.h"
+#include "comp_types/base_packed_comp.h"
+#include "comp_types/comp_archetype.h"
 
 
 
@@ -52,7 +52,7 @@ public:
     return archetype_.var_unseen_in_sup_comp(v);
   }
 
-  // manages the literal whenever it occurs in component analysis
+  // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unseen before
   bool manageSearchOccurrenceOf(Lit lit){
     if(archetype_.var_unseen_in_sup_comp(lit.var())){
@@ -88,12 +88,12 @@ public:
       archetype_.setClause_in_sup_comp_unseen(*itCl);
   }
 
-  // returns true, iff the component found is non-trivial
+  // returns true, iff the comp found is non-trivial
   bool exploreRemainingCompOf(const VariableIndex v) {
     assert(archetype_.var_unseen_in_sup_comp(v));
-    recordComponentOf(v); // finds the component that "v" is in
+    recordComponentOf(v); // finds the comp that "v" is in
 
-    // component only contains one variable
+    // comp only contains one variable
     if (search_stack_.size() == 1) {
       if (independent_support_.count(v) == 0) {
         archetype_.stack_level().includeSolution(1);
@@ -164,11 +164,11 @@ private:
     return &unified_variable_links_lists_pool_[variable_link_list_offsets_[v]];
   }
 
-  // stores all information about the component of var
+  // stores all information about the comp of var
   // in variables_seen_, clauses_seen_ and
-  // component_search_stack
+  // comp_search_stack
   // we have an isolated variable iff
-  // after execution component_search_stack.size()==1
+  // after execution comp_search_stack.size()==1
   void recordComponentOf(const VariableIndex var);
 
   // Gets a full clause until SENTINEL_LIT, except for the omitLit

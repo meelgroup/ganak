@@ -16,7 +16,7 @@ using std::vector;
 
 class StackLevel {
   /// active Component, once initialized, it should not change
-  const unsigned super_component_ = 0;
+  const unsigned super_comp_ = 0;
   // branch (i.e. left/right)
   bool active_branch_ = false;
 
@@ -29,66 +29,66 @@ class StackLevel {
 
   /// remaining Components
 
-  // the start offset in the component stack for
-  // the remaining components in this decision level
-  // all remaining components can hence be found in
-  // [remaining_components_ofs_, "nextLevel".remaining_components_begin_)
-  const unsigned remaining_components_ofs_ = 0;
+  // the start offset in the comp stack for
+  // the remaining comps in this decision level
+  // all remaining comps can hence be found in
+  // [remaining_comps_ofs_, "nextLevel".remaining_comps_begin_)
+  const unsigned remaining_comps_ofs_ = 0;
 
-  // boundary of the stack marking which components still need to be processed
-  // all components to be processed can be found in
-  // [remaining_components_ofs_, unprocessed_components_end_)
+  // boundary of the stack marking which comps still need to be processed
+  // all comps to be processed can be found in
+  // [remaining_comps_ofs_, unprocessed_comps_end_)
   // also, all processed, can be found
-  // in [unprocessed_components_end_, component_stack.size())
-  unsigned unprocessed_components_end_ = 0;
+  // in [unprocessed_comps_end_, comp_stack.size())
+  unsigned unprocessed_comps_end_ = 0;
 
   unsigned branch_variable_ = 0;
 public:
   bool on_path_to_target_ = false;
 
   bool hasUnprocessedComponents() const {
-    assert(unprocessed_components_end_ >= remaining_components_ofs_);
-    return unprocessed_components_end_ > remaining_components_ofs_;
+    assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
+    return unprocessed_comps_end_ > remaining_comps_ofs_;
   }
   uint32_t numUnprocessedComponents() const {
-    assert(unprocessed_components_end_ >= remaining_components_ofs_);
-    return unprocessed_components_end_ - remaining_components_ofs_;
+    assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
+    return unprocessed_comps_end_ - remaining_comps_ofs_;
   }
   void nextUnprocessedComponent() {
-    assert(unprocessed_components_end_ > remaining_components_ofs_);
-    unprocessed_components_end_--;
+    assert(unprocessed_comps_end_ > remaining_comps_ofs_);
+    unprocessed_comps_end_--;
   }
 
   void resetRemainingComps() {
-    unprocessed_components_end_ = remaining_components_ofs_;
+    unprocessed_comps_end_ = remaining_comps_ofs_;
   }
 
-  unsigned super_component() const {
-    return super_component_;
+  unsigned super_comp() const {
+    return super_comp_;
   }
   uint32_t getUnprocessedComponentsEnd() const {
-    return unprocessed_components_end_;
+    return unprocessed_comps_end_;
   }
-  unsigned remaining_components_ofs() const {
-    return remaining_components_ofs_;
+  unsigned remaining_comps_ofs() const {
+    return remaining_comps_ofs_;
   }
-  void set_unprocessed_components_end(unsigned end) {
-    unprocessed_components_end_ = end;
-    assert(remaining_components_ofs_ <= unprocessed_components_end_);
+  void set_unprocessed_comps_end(unsigned end) {
+    unprocessed_comps_end_ = end;
+    assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
   StackLevel(unsigned super_comp, unsigned trail_ofs,
       unsigned comp_stack_ofs) :
-      super_component_(super_comp),
+      super_comp_(super_comp),
       trail_ofs_(trail_ofs),
-      remaining_components_ofs_(comp_stack_ofs),
-      unprocessed_components_end_(comp_stack_ofs) {
+      remaining_comps_ofs_(comp_stack_ofs),
+      unprocessed_comps_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);
   }
 
   unsigned currentRemainingComponent() const {
-    assert(remaining_components_ofs_ <= unprocessed_components_end_ - 1);
-    return unprocessed_components_end_ - 1;
+    assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
+    return unprocessed_comps_end_ - 1;
   }
   bool isSecondBranch() const {
     return active_branch_;

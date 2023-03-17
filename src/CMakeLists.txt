@@ -26,13 +26,13 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
-add_subdirectory (component_types)
+add_subdirectory (comp_types)
 add_subdirectory (clhash)
 
 SET(SOURCES
-    alt_component_analyzer.cpp
-	component_cache.cpp
-	component_management.cpp
+    alt_comp_analyzer.cpp
+	comp_cache.cpp
+	comp_management.cpp
 	instance.cpp
 	solver.cpp
 	statistics.cpp

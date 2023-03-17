@@ -1,5 +1,5 @@
 /*
- * component_archetype.h
+ * comp_archetype.h
  *
  *  Created on: Feb 9, 2013
  *      Author: mthurley
@@ -14,13 +14,13 @@
 
 #include "../primitive_types.h"
 #include "common.h"
-#include "component.h"
-#include "cacheable_component.h"
+#include "comp.h"
+#include "cacheable_comp.h"
 
 using std::endl;
 
 
-// State values for variables found during component
+// State values for variables found during comp
 // analysis (CA)
 typedef unsigned char CA_SearchState;
 #define   CA_NIL  0
@@ -156,9 +156,9 @@ public:
     p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
     current_comp_for_caching_.clear();
 
-    // Fill variables in new component
+    // Fill variables in new comp
     for (auto v_it = super_comp().varsBegin(); *v_it != varsSENTINEL;  v_it++)
-      if (var_seen(*v_it)) { //we have to put a var into our component
+      if (var_seen(*v_it)) { //we have to put a var into our comp
         p_new_comp->addVar(*v_it);
         current_comp_for_caching_.addVar(*v_it);
         setVar_in_other_comp(*v_it);
@@ -166,7 +166,7 @@ public:
     p_new_comp->closeVariableData();
     current_comp_for_caching_.closeVariableData();
 
-    // Fill clauses in new component
+    // Fill clauses in new comp
     for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->addCl(*it_cl);
@@ -178,7 +178,7 @@ public:
     current_comp_for_caching_.closeClauseData();
 
     print_debug(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
-        " New component vars: " << p_new_comp->num_variables() <<
+        " New comp vars: " << p_new_comp->num_variables() <<
         " long cls:" << p_new_comp->numLongClauses());
     return p_new_comp;
   }

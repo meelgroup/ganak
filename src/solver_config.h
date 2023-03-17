@@ -9,12 +9,12 @@
 #define SOLVER_CONFIG_H_
 
 struct SolverConfiguration {
-  // TODO component caching cannot be deactivated for now!
+  // TODO comp caching cannot be deactivated for now!
   bool perform_non_chron_back_track = true;
-  bool perform_component_caching = true;
+  bool perform_comp_caching = true;
   bool perform_failed_lit_test = true;
   bool perform_pre_processing = true;
-  bool perform_pcc = true; // probabilistic component caching
+  bool perform_pcc = true; // probabilistic comp caching
   bool use_csvsads = true; // polarity heuristic
   bool verbose = false;
   // quiet = true will override verbose;

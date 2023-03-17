@@ -14,6 +14,7 @@
 #include "instance.h"
 #include "component_management.h"
 #include "solver_config.h"
+#include "MersenneTwister.h"
 
 #include <sys/time.h>
 #include <deque>
@@ -33,21 +34,10 @@ enum retStateT
 class Solver : public Instance
 {
 public:
-  Solver()
-  {
-  }
-
+  Solver() { mtrand.seed((uint32_t)0U);}
   void solve(const std::string &file_name);
-
-  SolverConfiguration &config()
-  {
-    return config_;
-  }
-
-  DataAndStatistics &statistics()
-  {
-    return statistics_;
-  }
+  SolverConfiguration &config() { return config_; }
+  DataAndStatistics &statistics() { return statistics_; }
 
 private:
   // Temporaries, used during recordLastUIPClause
@@ -64,6 +54,7 @@ private:
 
   double time_start;
   SolverConfiguration config_;
+  MTRand mtrand;
 
   DecisionStack decision_stack_;
   vector<Lit> trail;
@@ -109,17 +100,11 @@ private:
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
 
-  /////////////////////////////////////////////
-  //  BEGIN small helper functions
-  /////////////////////////////////////////////
-
   float scoreOf(VariableIndex v)
   {
     float score = 1.0; //comp_manager_.scoreOf(v);
     score += litWatchList(Lit(v, true)).activity_score_;
     score += litWatchList(Lit(v, false)).activity_score_;
-    //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, true)).activity_score_;
-    //		score += (10*stack_.get_decision_level()) * literal(LiteralID(v, false)).activity_score_;
 
     return score;
   }
@@ -253,15 +238,11 @@ private:
   // literal
   void recordLastUIPCauses();
   void recordAllUIPCauses();
-
   void minimizeAndStoreUIPClause(Lit uipLit,
                                  vector<Lit> &tmp_clause,
                                  const vector<unsigned char>& seen);
   void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
-  int getAssertionLevel() const
-  {
-    return assertion_level_;
-  }
+  int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
 };
 

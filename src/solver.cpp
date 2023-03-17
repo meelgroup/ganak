@@ -101,7 +101,7 @@ SOLVER_StateT Solver::countSAT() {
   if (!takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
-    //NOTE: findNextRemainingComponentOf finds disjoing components!
+    //NOTE: findNextRemainingComponentOf finds disjoint components!
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       checkProbabilisticHashSanity();
       decideLiteral();
@@ -189,39 +189,32 @@ void Solver::decideLiteral() {
   // Figure out polarity
   bool polarity;
   if (!counted_bottom_component) polarity = target_polar[max_score_var];
-  else switch (config_.polarity_config) {
-    case polar_default:
-      polarity = litWatchList(Lit(max_score_var, true)).activity_score_ > litWatchList(Lit(max_score_var, false)).activity_score_;
-      break;
-    case polaritycache:
-      polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
-        litWatchList(Lit(max_score_var, false)).activity_score_;
-      if (litWatchList(Lit(max_score_var, true)).activity_score_ >
-            2 * litWatchList(Lit(max_score_var, false)).activity_score_) {
-        polarity = true;
-      } else if (litWatchList(Lit(max_score_var, false)).activity_score_ >
-                  2 * litWatchList(Lit(max_score_var, true)).activity_score_) {
-        polarity = false;
-      } else if (var(max_score_var).set) {
-        int random = rand() % 3;
-        switch (random) {
-          case 0:
-            polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
-              litWatchList(Lit(max_score_var, false)).activity_score_;
-            break;
-          case 1:
-            polarity = var(max_score_var).polarity;
-            break;
-          case 2:
-            polarity = var(max_score_var).polarity;
-            polarity = !polarity;
-            break;
-        }
+  else {
+    // TODO MATE: this whole thing is a huge mess as far as I'm concerned
+    polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
+      litWatchList(Lit(max_score_var, false)).activity_score_;
+    if (litWatchList(Lit(max_score_var, true)).activity_score_ >
+          2 * litWatchList(Lit(max_score_var, false)).activity_score_) {
+      polarity = true;
+    } else if (litWatchList(Lit(max_score_var, false)).activity_score_ >
+                2 * litWatchList(Lit(max_score_var, true)).activity_score_) {
+      polarity = false;
+    } else if (var(max_score_var).set) {
+      // TODO MATE this sounds insane, right? Random polarities??
+      uint32_t random = mtrand.randInt(2) ;
+      switch (random) {
+        case 0:
+          polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
+            litWatchList(Lit(max_score_var, false)).activity_score_;
+          break;
+        case 1:
+          polarity = var(max_score_var).polarity;
+          break;
+        case 2:
+          polarity = !(var(max_score_var).polarity);
+          break;
       }
-      break;
-    default:
-      assert(false);
-      exit(-1);
+    }
   }
 
   // The decision literal is now ready. Deal with it.
@@ -233,19 +226,10 @@ void Solver::decideLiteral() {
   setLiteralIfFree(lit);
   statistics_.num_decisions_++;
   if (statistics_.num_decisions_ % 128 == 0) {
-    if (config_.use_csvsads) {
-      comp_manager_.increasecachescores();
-    }
+    if (config_.use_csvsads) comp_manager_.increasecachescores();
     decayActivities();
   }
   assert( decision_stack_.top().remaining_components_ofs() <= comp_manager_.component_stack_size());
-
-  if (decision_stack_.get_decision_level() > statistics_.max_decision_level_) {
-    statistics_.max_decision_level_ = decision_stack_.get_decision_level();
-    if (statistics_.max_decision_level_ % 25 == 0) {
-      cout << "c Max decision level :" << statistics_.max_decision_level_ << endl;
-    }
-  }
 }
 
 void Solver::computeLargestCube()
@@ -278,10 +262,7 @@ void Solver::computeLargestCube()
       assert(i2 < comp_manager_.component_stack_size());
       const auto& c = comp_manager_.at(i2);
       cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
-      auto v = c->varsBegin();
-      for(; *v != varsSENTINEL; v++) {
-        cout << *v << " ";
-      }
+      for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
       cout << endl;
     }
   }
@@ -291,14 +272,8 @@ void Solver::computeLargestCube()
   for(uint32_t i2 = 0; i2 < comp_manager_.component_stack_size(); i2++) {
     const auto& c = comp_manager_.at(i2);
     cout << COLWHT "comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
-    if (c->empty()) {
-      cout << "EMPTY" << endl;
-      continue;
-    }
-    auto v = c->varsBegin();
-    for(; *v != varsSENTINEL; v++) {
-      cout << *v << " ";
-    }
+    if (c->empty()) { cout << "EMPTY" << endl; continue; }
+    for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
     cout << endl;
   }
   print_debug(COLWHT "-- component list END");
@@ -349,7 +324,8 @@ retStateT Solver::backtrack() {
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
     } else if (decision_stack_.top().anotherCompProcessible()) {
-      print_debug("Processing another component at dec lev " << decision_stack_.get_decision_level()
+      print_debug("Processing another component at dec lev "
+          << decision_stack_.get_decision_level()
           << " instead of bakctracking." << " Num unprocessed components: "
           << decision_stack_.top().numUnprocessedComponents());
       return PROCESS_COMPONENT;
@@ -378,9 +354,7 @@ retStateT Solver::backtrack() {
     // Update cache score heuristic
     if (config_.use_csvsads) {
       statistics_.numcachedec_++;
-      if (statistics_.numcachedec_ % 128 == 0) {
-        comp_manager_.increasecachescores();
-      }
+      if (statistics_.numcachedec_ % 128 == 0) comp_manager_.increasecachescores();
       comp_manager_.decreasecachescore(comp_manager_.getSuperComponentOf(decision_stack_.top()));
     }
 
@@ -515,8 +489,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
     const Lit unLit = trail[i].neg();
 
     //Propagate bin Clauses
-    for (auto bt = litWatchList(unLit).binary_links_.begin();
-         *bt != SENTINEL_LIT; bt++) {
+    for (auto bt = litWatchList(unLit).binary_links_.begin(); *bt != SENTINEL_LIT; bt++) {
       if (isFalse(*bt)) {
         setConflictState(unLit, *bt);
         return false;
@@ -525,19 +498,14 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
     }
 
     //Propagate long clauses
-    for (auto itcl = litWatchList(unLit).watch_list_.rbegin();
-         *itcl != SENTINEL_CL; itcl++) {
+    for (auto itcl = litWatchList(unLit).watch_list_.rbegin(); *itcl != SENTINEL_CL; itcl++) {
       bool isLitA = (*beginOf(*itcl) == unLit);
       auto p_watchLit = beginOf(*itcl) + 1 - isLitA;
       auto p_otherLit = beginOf(*itcl) + isLitA;
 
-      if (isTrue(*p_otherLit)) {
-        continue;
-      }
+      if (isTrue(*p_otherLit)) continue;
       auto itL = beginOf(*itcl) + 2;
-      while (isFalse(*itL)) {
-        itL++;
-      }
+      while (isFalse(*itL)) itL++;
       // either we found a free or satisfied lit
       if (*itL != SENTINEL_LIT) {
         litWatchList(*itL).addWatchLinkTo(*itcl);
@@ -549,9 +517,7 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
         // and we have hence no free literal left
         // for p_otherLit remain poss: Active or Resolved
         if (setLiteralIfFree(*p_otherLit, Antecedent(*itcl))) { // implication
-          if (isLitA) {
-            std::swap(*p_otherLit, *p_watchLit);
-          }
+          if (isLitA) std::swap(*p_otherLit, *p_watchLit);
         } else {
           setConflictState(*itcl);
           return false;
@@ -659,15 +625,12 @@ void Solver::minimizeAndStoreUIPClause(
   tmp_clause_minim.clear();
   assertion_level_ = 0;
   for (auto lit : tmp_clause) {
-    if (existsUnitClauseOf(lit.var())) {
-      continue;
-    }
+    if (existsUnitClauseOf(lit.var())) continue;
     bool resolve_out = false;
     if (hasAntecedent(lit)) {
       resolve_out = true;
       if (getAntecedent(lit).isAClause()) {
-        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1;
-             *it != SENTINEL_CL; it++) {
+        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != SENTINEL_CL; it++) {
           if (!seen[it->var()]) {
             resolve_out = false;
             break;
@@ -809,33 +772,22 @@ void Solver::recordAllUIPCauses() {
   const unsigned DL = decision_stack_.get_decision_level();
   unsigned lits_at_current_dl = 0;
 
-  for (auto l : violated_clause) {
-    if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) {
-      continue;
-    }
-    if (var(l).decision_level < (int)DL) {
-      tmp_clause.push_back(l);
-    } else {
-      lits_at_current_dl++;
-    }
+  for (const auto& l : violated_clause) {
+    if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
+    if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
+    else lits_at_current_dl++;
     litWatchList(l).increaseActivity();
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
-  unsigned n = 0;
   Lit curr_lit;
   while (lits_at_current_dl) {
     assert(trail_ofs != 0);
     curr_lit = trail[--trail_ofs];
-
-    if (!tmp_seen[curr_lit.var()]) {
-      continue;
-    }
-
+    if (!tmp_seen[curr_lit.var()]) continue;
     tmp_seen[curr_lit.var()] = false;
 
     if (lits_at_current_dl-- == 1) {
-      n++;
       if (!hasAntecedent(curr_lit)) {
         // this should be the decision literal when in first branch
         // or it is a literal decided to explore in failed literal testing

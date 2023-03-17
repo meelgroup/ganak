@@ -53,7 +53,6 @@ public:
   unsigned long times_conflict_clauses_cleaned_ = 0;
 
   unsigned long num_unit_clauses_ = 0;
-  unsigned long max_decision_level_ = 0;
   /// number of all decisions made
   unsigned long num_decisions_ = 0;
   /// number of all implications derived

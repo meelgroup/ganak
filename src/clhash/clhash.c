@@ -263,8 +263,6 @@ inline uint64_t fmix64 ( uint64_t k ) {
 }
 #endif
 
-
-
 // there always remain an incomplete word that has 1,2, 3, 4, 5, 6, 7 used bytes.
 // we append 0s to it
 static inline uint64_t createLastWord(const size_t lengthbyte, const uint64_t * lastw) {
@@ -273,9 +271,6 @@ static inline uint64_t createLastWord(const size_t lengthbyte, const uint64_t * 
     memcpy(&lastword,lastw,significantbytes); // could possibly be faster?
     return lastword;
 }
-
-
-
 
 uint64_t clhash(const void* random, const char * stringbyte,
                 const size_t lengthbyte) {

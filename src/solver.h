@@ -178,8 +178,7 @@ private:
 
   void reactivateTOS()
   {
-    for (auto it = TOSLiteralsBegin(); it != trail.end(); it++)
-      unSet(*it);
+    for (auto it = TOSLiteralsBegin(); it != trail.end(); it++) unSet(*it);
     comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(decision_stack_.top().literal_stack_ofs());
     decision_stack_.top().resetRemainingComps();

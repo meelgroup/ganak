@@ -61,8 +61,7 @@ void Solver::solve(const std::string &file_name)
 
   if (solver.okay()) {
     if (!config_.quiet) stats.printShortFormulaInfo();
-    last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ =
-      stats.getNumDecisions();
+    last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
     stats.exit_state_ = countSAT();
@@ -238,17 +237,18 @@ void Solver::computeLargestCube()
   print_debug(COLWHT "-- computeLargestCube BEGIN");
 
   // add decisions
-  cout << COLWHT << "dec vars: ";
+  print_debug_noendl(COLWHT << "dec vars: ");
   for(uint32_t i = 1; i < decision_stack_.size(); i++) {
     const StackLevel& ds = decision_stack_[i];
     const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
-    cout << dec_lit << " ";
+    print_debug_noendl(dec_lit << " ");
     largest_cube.push_back(dec_lit);
   }
-  cout << endl;
+  print_debug_noendl(endl);
 
-  // Go through decision stack's comps
-  for(uint32_t i = 0; i < decision_stack_.size(); i++) {
+  // Show decision stack's comps
+#ifdef VERBOSE_DEBUG
+  for(size_t i = 0; i < decision_stack_.size(); i++) {
     const auto& ds = decision_stack_.at(i);
     const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
     print_debug(COLWHT "decision_stack.at " << i
@@ -256,8 +256,8 @@ void Solver::computeLargestCube()
       << " num unproc comps: " << ds.numUnprocessedComponents()
       << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
       << " remain comps offs: " << ds.remaining_comps_ofs());
-    auto off_start = ds.remaining_comps_ofs();
-    auto off_end = ds.getUnprocessedComponentsEnd();
+    const auto off_start = ds.remaining_comps_ofs();
+    const auto off_end = ds.getUnprocessedComponentsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       assert(i2 < comp_manager_.comp_stack_size());
       const auto& c = comp_manager_.at(i2);
@@ -278,11 +278,10 @@ void Solver::computeLargestCube()
   }
   print_debug(COLWHT "-- comp list END");
 
-//#ifdef VERBOSE_DEBUG
    cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
    for(const auto& l: largest_cube) cout << l << " ";
    cout << endl;
-//#endif
+#endif
 }
 
 retStateT Solver::backtrack() {
@@ -310,7 +309,8 @@ retStateT Solver::backtrack() {
       counted_bottom_comp = false;
     }
     do {
-      if (decision_stack_.top().branch_found_unsat() || decision_stack_.top().anotherCompProcessible()) {
+      if (decision_stack_.top().branch_found_unsat() ||
+          decision_stack_.top().anotherCompProcessible()) {
         comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
       }
       reactivateTOS();
@@ -394,8 +394,7 @@ retStateT Solver::backtrack() {
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
 
-  if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ >
-        stats.clause_deletion_interval()) {
+  if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
     deleteConflictClauses();
     last_ccl_deletion_decs_ = stats.num_clauses_learned_;
   }
@@ -406,15 +405,9 @@ retStateT Solver::resolveConflict() {
   }
 
   stats.num_conflicts_++;
-
-  assert(
-      decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
-
+  assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
   assert(uip_clauses_.size() == 1);
-
-  if (uip_clauses_.back().size() == 0) {
-    cout << "c EMPTY CLAUSE FOUND" << endl;
-  }
+  if (uip_clauses_.back().size() == 0) { cout << "c EMPTY CLAUSE FOUND" << endl; }
 
   decision_stack_.top().mark_branch_unsat();
   //BEGIN Backtracking
@@ -449,14 +442,13 @@ retStateT Solver::resolveConflict() {
   // since conflicts only arise directly before
   // remaining comps are stored
   // hence
-  assert(
-      decision_stack_.top().remaining_comps_ofs() == comp_manager_.comp_stack_size());
+  assert( decision_stack_.top().remaining_comps_ofs() == comp_manager_.comp_stack_size());
 
   decision_stack_.top().changeBranch();
   const Lit lit = TOS_decLit();
   reactivateTOS();
   if (ant == NOT_A_CLAUSE) {
-    print_debug("Conflict pushes us to: " << lit << " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");
+    print_debug("Conflict pushes us to: " << lit<< " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");
   } else {
     print_debug("Conflict pushes us to: " << lit);
   }
@@ -685,11 +677,8 @@ void Solver::recordLastUIPCauses() {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) {
       continue;
     }
-    if (var(l).decision_level < (int)DL) {
-      tmp_clause.push_back(l);
-    } else {
-      lits_at_current_dl++;
-    }
+    if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
+    else lits_at_current_dl++;
     litWatchList(l).increaseActivity();
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
@@ -700,9 +689,7 @@ void Solver::recordLastUIPCauses() {
     assert(trail_ofs != 0);
     curr_lit = trail[--trail_ofs];
 
-    if (!tmp_seen[curr_lit.var()]) {
-      continue;
-    }
+    if (!tmp_seen[curr_lit.var()]) continue;
     tmp_seen[curr_lit.var()] = false;
     toClear.push_back(curr_lit.var());
 

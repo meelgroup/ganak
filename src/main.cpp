@@ -54,10 +54,8 @@ int main(int argc, char *argv[])
       theSolver.config().perform_failed_lit_test = false;
     } else if (strcmp(argv[i], "-noPP") == 0) {
       theSolver.config().perform_pre_processing = false;
-    } else if (strcmp(argv[i], "-q") == 0) {
-      theSolver.config().quiet = true;
     } else if (strcmp(argv[i], "-v") == 0) {
-      theSolver.config().verbose = true;
+      theSolver.config().verb = 2;
 #ifdef DOPCC
     } else if (strcmp(argv[i], "-noPCC") == 0) {
       theSolver.config().perform_pcc = false;

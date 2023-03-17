@@ -11,11 +11,8 @@
 #include <assert.h>
 #include <vector>
 
-#include "../primitive_types.h"
-
+#include "primitive_types.h"
 #include "difference_packed_comp.h"
-//#include "simple_unpacked_comp.h"
-
 
 #define NIL_ENTRY 0
 

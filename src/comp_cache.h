@@ -8,7 +8,6 @@
 #ifndef COMPONENT_CACHE_H_
 #define COMPONENT_CACHE_H_
 
-#include "comp_types/cacheable_comp.h"
 #include "statistics.h"
 #include "solver_config.h"
 #include <gmpxx.h>

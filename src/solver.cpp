@@ -45,8 +45,7 @@ void Solver::solve(const std::string &file_name)
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
   initStack();
-  if (!config_.quiet)
-  {
+  if (config_.verb) {
     cout << "c Solving file " << file_name << endl;
     stats.printShortFormulaInfo();
     cout << "c Sampling set size: " << independent_support_.size() << endl;
@@ -60,7 +59,7 @@ void Solver::solve(const std::string &file_name)
   }
 
   if (solver.okay()) {
-    if (!config_.quiet) stats.printShortFormulaInfo();
+    if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
 
@@ -373,6 +372,7 @@ retStateT Solver::backtrack() {
     print_debug("-> Backtracked to level " << decision_stack_.get_decision_level()
         << " num unprocessed comps here: " << decision_stack_.top().numUnprocessedComponents()
         << " on_path: " << decision_stack_.top().on_path_to_target_);
+
     if (decision_stack_.top().on_path_to_target_) {
       computeLargestCube();
       if (!counted_bottom_comp) {
@@ -829,11 +829,11 @@ void Solver::recordAllUIPCauses() {
 }
 
 void Solver::printOnlineStats() {
-  if (config_.quiet) return;
+  if (config_.verb == 0) return;
 
-  cout << endl;
-  cout << "time elapsed: " << time_start - cpuTime() << "s" << endl;
-  if (config_.verbose) {
+  cout << "c " << endl;
+  cout << "c time elapsed: " << time_start - cpuTime() << "s" << endl;
+  if (config_.verb >= 2) {
     cout << "conflict clauses (all / bin / unit) \t";
     cout << num_conflict_clauses();
     cout << "/" << stats.num_binary_conflict_clauses_ << "/"

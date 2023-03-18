@@ -17,6 +17,70 @@
 #include "structures.h"
 #include "time_mem.h"
 
+bool Solver::simplePreProcess()
+{
+  unsigned start_ofs = 0;
+
+  for (auto lit : unit_clauses_) {
+    if (isUnitClause(lit.neg())) return false;
+    setLiteralIfFree(lit);
+  }
+
+  bool succeeded = propagate(start_ofs);
+  /* if (succeeded) succeeded &= prepFailedLiteralTest(); */
+  if (succeeded) HardWireAndCompact();
+  return succeeded;
+}
+
+/* bool Solver::prepFailedLiteralTest() */
+/* { */
+/*   unsigned last_size; */
+/*   do */
+/*   { */
+/*     last_size = literal_pool_.size(); */
+/*     for (unsigned v = 1; v < variables_.size(); v++) */
+/*       if (isActive(v)) */
+/*       { */
+/*         unsigned sz = literal_pool_.size(); */
+/*         setLiteralIfFree(LiteralID(v, true)); */
+/*         bool res = BCP(sz); */
+/*         while (literal_stack_.size() > sz) */
+/*         { */
+/*           unSet(literal_stack_.back()); */
+/*           literal_stack_.pop_back(); */
+/*         } */
+
+/*         if (!res) */
+/*         { */
+/*           sz = literal_stack_.size(); */
+/*           setLiteralIfFree(LiteralID(v, false)); */
+/*           if (!BCP(sz)) */
+/*             return false; */
+/*         } */
+/*         else */
+/*         { */
+
+/*           sz = literal_stack_.size(); */
+/*           setLiteralIfFree(LiteralID(v, false)); */
+/*           bool resb = BCP(sz); */
+/*           while (literal_stack_.size() > sz) */
+/*           { */
+/*             unSet(literal_stack_.back()); */
+/*             literal_stack_.pop_back(); */
+/*           } */
+/*           if (!resb) */
+/*           { */
+/*             sz = literal_stack_.size(); */
+/*             setLiteralIfFree(LiteralID(v, true)); */
+/*             if (!BCP(sz)) */
+/*               return false; */
+/*           } */
+/*         } */
+/*       } */
+/*   } while (literal_stack_.size() > last_size); */
+
+/*   return true; */
+/* } */
 
 void Solver::HardWireAndCompact()
 {
@@ -41,7 +105,7 @@ void Solver::solve(const std::string &file_name)
   srand(config_.randomseed);
   time_start = cpuTime();
   createfromFile(file_name);
-  if (solver.okay()) HardWireAndCompact();
+  /* if (solver.okay()) HardWireAndCompact(); */
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
   initStack();
@@ -58,6 +122,11 @@ void Solver::solve(const std::string &file_name)
     }
   }
 
+  if (solver.okay() && !simplePreProcess()) {
+    stats.exit_state_ = SUCCESS;
+    stats.set_final_solution_count(0);
+  }
+  if (config_.verb) cout << "c Prepocessing done" << endl;
   if (solver.okay()) {
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();

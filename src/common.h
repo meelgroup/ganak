@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define VERBOSE_DEBUG
+/* #define VERBOSE_DEBUG */
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"

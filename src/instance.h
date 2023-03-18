@@ -123,6 +123,12 @@ protected:
     }
   }
 
+  bool isUnitClause(const Lit lit) {
+    for (const auto& l : unit_clauses_)
+      if (l == lit) return true;
+    return false;
+  }
+
   bool existsUnitClauseOf(VariableIndex v) {
     for (auto l : unit_clauses_)
       if (l.var() == v)
@@ -207,6 +213,7 @@ protected:
 
 private:
   void parseWithCMS(const std::string& filename);
+
 };
 
 ClauseIndex Instance::addClause(vector<Lit> &literals) {
@@ -251,7 +258,7 @@ Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
     } else if (literals.size() == 1)
       stats.num_unit_clauses_++;
     return ante;
-  }
+}
 
 bool Instance::addBinaryClause(Lit litA, Lit litB) {
    if (litWatchList(litA).hasBinaryLinkTo(litB))
@@ -261,7 +268,7 @@ bool Instance::addBinaryClause(Lit litA, Lit litB) {
    litWatchList(litA).increaseActivity();
    litWatchList(litB).increaseActivity();
    return true;
- }
+}
 
 
 #endif /* INSTANCE_H_ */

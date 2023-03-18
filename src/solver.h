@@ -66,6 +66,8 @@ private:
   // the last time the conflict clause storage has been compacted
   unsigned long last_ccl_cleanup_decs_ = 0;
 
+  bool simplePreProcess();
+  bool prepFailedLiteralTest();
   // we assert that the formula is consistent
   // and has not been found UNSAT yet
   // hard wires all assertions in the literal stack into the formula

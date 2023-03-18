@@ -17,6 +17,7 @@ struct SolverConfiguration {
   bool perform_pcc = true; // probabilistic comp caching
   bool use_csvsads = true; // polarity heuristic
   int verb = 1;
+  int restart = 1;
 
   unsigned long time_bound_seconds = 100000;
   unsigned long randomseed = 1000;

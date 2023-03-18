@@ -48,19 +48,23 @@ int main(int argc, char *argv[])
 #endif
 
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-noCC") == 0) {
+    if (strcmp(argv[i], "--noCC") == 0) {
       theSolver.config().perform_comp_caching = false;
-    } else if (strcmp(argv[i], "-noIBCP") == 0) {
+    } else if (strcmp(argv[i], "--noIBCP") == 0) {
       theSolver.config().perform_failed_lit_test = false;
-    } else if (strcmp(argv[i], "-noPP") == 0) {
+    } else if (strcmp(argv[i], "--noPP") == 0) {
       theSolver.config().perform_pre_processing = false;
-    } else if (strcmp(argv[i], "-v") == 0) {
+    } else if (strcmp(argv[i], "--norest") == 0) {
+      theSolver.config().restart = false;
+      cout << "c NO restarts" << endl;
+    } else if (strcmp(argv[i], "--v") == 0) {
       theSolver.config().verb = 2;
 #ifdef DOPCC
-    } else if (strcmp(argv[i], "-noPCC") == 0) {
+    } else if (strcmp(argv[i], "--noPCC") == 0) {
       theSolver.config().perform_pcc = false;
+      cout << "c NO prob caching" << endl;
 #endif
-    } else if (strcmp(argv[i], "-noCSVSADS") == 0) {
+    } else if (strcmp(argv[i], "--noCSVSADS") == 0) {
       theSolver.config().use_csvsads = false;
     } else if (strcmp(argv[i], "-t") == 0) {
       if (argc <= i + 1)

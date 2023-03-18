@@ -86,17 +86,19 @@ bool Solver::takeSolution() {
     cout << "CMS gave UNSAT" << endl;
     return false;
   }
+  assert(ret == CMSat::l_True);
   for(uint32_t i = 0; i < num_variables(); i++) {
     target_polar[i+1] = solver.get_model()[i] == CMSat::l_True;
   }
   counted_bottom_comp = false;
-  return ret == CMSat::l_True;
+  return true;
 }
 
 SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
-  if (!takeSolution()) return SUCCESS;
+  counted_bottom_comp = true;
+  if (config_.restart && !takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
     //NOTE: findNextRemainingComponentOf finds disjoint comps!
@@ -288,7 +290,7 @@ retStateT Solver::backtrack() {
       decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 
   //Restart
-  if (stats.getNumDecisions() > stats.next_restart) {
+  if (config_.restart && stats.getNumDecisions() > stats.next_restart) {
     stats.num_restarts++;
     stats.next_restart_diff*=1.4;
     stats.next_restart += stats.next_restart_diff;

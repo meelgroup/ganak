@@ -8,7 +8,7 @@
 #include "comp_management.h"
 
 void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
-    vector<Lit> &lit_pool, unsigned num_variables){
+    vector<Lit> &lit_pool, uint32_t num_variables){
   assert(comp_stack_.empty());
 
   ana_.initialize(literals, lit_pool);
@@ -26,7 +26,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
 
 
   cache_.init(*comp_stack_.back(), seedforCLHASH);
-  for (unsigned i = 0 ; i < (num_variables + 5); i++){
+  for (uint32_t i = 0 ; i < (num_variables + 5); i++){
     cachescore_.push_back(0);
   }
 }
@@ -42,7 +42,7 @@ void ComponentManager::removeAllCachePollutionsOf(StackLevel &top) {
   if (top.remaining_comps_ofs() == comp_stack_.size())
     return;
 
-  for (unsigned u = top.remaining_comps_ofs(); u < comp_stack_.size();
+  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack_.size();
       u++) {
     assert(cache_.hasEntry(comp_stack_[u]->id()));
     cache_.cleanPollutionsInvolving(comp_stack_[u]->id());

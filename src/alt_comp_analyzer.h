@@ -31,12 +31,12 @@ class ComponentAnalyzer {
 public:
 	ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
-        const set <unsigned> & indep_support) :
+        const set <uint32_t> & indep_support) :
         literal_values_(lit_values),
         indep_support_(indep_support)
   {}
 
-  unsigned scoreOf(VariableIndex v) {
+  uint32_t scoreOf(VariableIndex v) {
     return var_frequency_scores_[v];
   }
 
@@ -110,10 +110,10 @@ public:
     return archetype_.makeComponentFromState(search_stack_.size());
   }
 
-  unsigned max_clause_id(){
+  uint32_t max_clause_id(){
      return max_clause_id_;
   }
-  unsigned max_variable_id(){
+  uint32_t max_variable_id(){
     return max_variable_id_;
   }
 
@@ -125,8 +125,8 @@ private:
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool
-  unsigned max_clause_id_ = 0;
-  unsigned max_variable_id_ = 0;
+  uint32_t max_clause_id_ = 0;
+  uint32_t max_variable_id_ = 0;
 
 
   // this is a new idea,
@@ -135,12 +135,12 @@ private:
   // this should give better cache behaviour,
   // because all links of one variable (binary and nonbinray) are found
   // in one contiguous chunk of memory
-  vector<unsigned> unified_variable_links_lists_pool_;
+  vector<uint32_t> unified_variable_links_lists_pool_;
 
-  vector<unsigned> variable_link_list_offsets_;
+  vector<uint32_t> variable_link_list_offsets_;
   const LiteralIndexedVector<TriValue> & literal_values_;
-  const set <unsigned> & indep_support_;
-  vector<unsigned> var_frequency_scores_;
+  const set <uint32_t> & indep_support_;
+  vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;
 
@@ -159,7 +159,7 @@ private:
     return literal_values_[Lit(v, true)] == X_TRI;
   }
 
-  unsigned const* beginOfLinkList(const VariableIndex v) const {
+  uint32_t const* beginOfLinkList(const VariableIndex v) const {
     assert(v > 0);
     return &unified_variable_links_lists_pool_[variable_link_list_offsets_[v]];
   }
@@ -173,7 +173,7 @@ private:
 
   // Gets a full clause until SENTINEL_LIT, except for the omitLit
   void getClause(
-    vector<unsigned> &tmp,
+    vector<uint32_t> &tmp,
     vector<Lit>::iterator & it_start_of_cl,
     Lit & omitLit)
   {

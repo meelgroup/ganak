@@ -24,39 +24,39 @@ public:
   inline DifferencePackedComponent(Component &rComp);
   inline DifferencePackedComponent(vector<void *> & randomseedforCLHASH, Component &rComp);
 
-  unsigned num_variables() const{
+  uint32_t num_variables() const{
     if (old_size) return old_num_vars;
     uint32_t *p = (uint32_t *) data_;
     return (*p >> bits_of_data_size()) & variable_mask();
   }
 
-  unsigned data_size() const {
+  uint32_t data_size() const {
     if(old_size) return old_size;
     return *data_ & _data_size_mask;
   }
 
-  unsigned data_only_byte_size() const {
-    return data_size()* sizeof(unsigned);
+  uint32_t data_only_byte_size() const {
+    return data_size()* sizeof(uint32_t);
   }
 
-  unsigned raw_data_byte_size() const {
-    return data_size()* sizeof(unsigned) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+  uint32_t raw_data_byte_size() const {
+    return data_size()* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
   }
 
-  unsigned raw_data_byte_size_CLHASH() const {
+  uint32_t raw_data_byte_size_CLHASH() const {
     return hack_* sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
   }
     // raw data size with the overhead
     // for the supposed 16byte alignment of malloc
-  unsigned sys_overhead_raw_data_byte_size() const {
-    unsigned ds = 0;
+  uint32_t sys_overhead_raw_data_byte_size() const {
+    uint32_t ds = 0;
     if (old_size) ds = hack_* sizeof(uint64_t);
-    else ds = data_size()* sizeof(unsigned);
-    unsigned ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-//      unsigned mask = 0xfffffff8;
+    else ds = data_size()* sizeof(uint32_t);
+    uint32_t ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+//      uint32_t mask = 0xfffffff8;
 //      return (ds & mask) + ((ds & 7)?8:0)
 //            +(ms & mask) + ((ms & 7)?8:0);
-    unsigned mask = 0xfffffff0;
+    uint32_t mask = 0xfffffff0;
     return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
   }
 
@@ -66,8 +66,8 @@ public:
 
   bool equals(const DifferencePackedComponent &comp) const {
     if(hashkey_ != comp.hashkey()) return false;
-    unsigned* p = data_;
-    unsigned* r = comp.data_;
+    uint32_t* p = data_;
+    uint32_t* r = comp.data_;
     while(p != data_ + data_size()) {
         if(*(p++) != *(r++)) return false;
     }
@@ -78,7 +78,7 @@ public:
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
     if(hashkey_ != comp.hashkey()) return false;
     bool match = true;
-    for (unsigned i=0; i<hack_;i++){
+    for (uint32_t i=0; i<hack_;i++){
       match = clhash_key[i] == clhashkey_[i];
       if(!match) return false;
     }
@@ -88,16 +88,16 @@ public:
 };
 
 DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
-  unsigned max_var_diff = 0;
-  unsigned hashkey_vars = *rComp.varsBegin();
+  uint32_t max_var_diff = 0;
+  uint32_t hashkey_vars = *rComp.varsBegin();
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
     hashkey_vars = (hashkey_vars * 3) + *it;
     if ((*it - *(it - 1)) - 1 > max_var_diff)
       max_var_diff = (*it - *(it - 1)) - 1 ;
   }
 
-  unsigned hashkey_clauses = *rComp.clsBegin();
-  unsigned max_clause_diff = 0;
+  uint32_t hashkey_clauses = *rComp.clsBegin();
+  uint32_t max_clause_diff = 0;
   if (*rComp.clsBegin()) {
     for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++) {
       hashkey_clauses = hashkey_clauses*3 + *jt;
@@ -106,31 +106,31 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
     }
   }
 
-  hashkey_ = hashkey_vars + ((unsigned) hashkey_clauses << 11) + ((unsigned) hashkey_clauses >> 23);
+  hashkey_ = hashkey_vars + ((uint32_t) hashkey_clauses << 11) + ((uint32_t) hashkey_clauses >> 23);
 
   //VERIFIED the definition of bits_per_var_diff and bits_per_clause_diff
-  unsigned bits_per_var_diff = log2(max_var_diff) + 1;
-  unsigned bits_per_clause_diff = log2(max_clause_diff) + 1;
+  uint32_t bits_per_var_diff = log2(max_var_diff) + 1;
+  uint32_t bits_per_clause_diff = log2(max_clause_diff) + 1;
 
   assert(bits_per_var_diff <= 31);
   assert(bits_per_clause_diff <= 31);
 
-  unsigned data_size_vars = bits_of_data_size() + 2*bits_per_variable() + 5;
+  uint32_t data_size_vars = bits_of_data_size() + 2*bits_per_variable() + 5;
 
   data_size_vars += (rComp.num_variables() - 1) * bits_per_var_diff ;
 
-  unsigned data_size_clauses = 0;
+  uint32_t data_size_clauses = 0;
   if(*rComp.clsBegin())
     data_size_clauses += bits_per_clause() + 5
        + (rComp.numLongClauses() - 1) * bits_per_clause_diff;
 
-  unsigned data_size = (data_size_vars + data_size_clauses)/bits_per_block();
+  uint32_t data_size = (data_size_vars + data_size_clauses)/bits_per_block();
     data_size+=  ((data_size_vars + data_size_clauses) % bits_per_block())? 1 : 0;
 
-  data_ = new unsigned[data_size];
+  data_ = new uint32_t[data_size];
 
   assert((data_size >> bits_of_data_size()) == 0);
-  BitStuffer<unsigned> bs(data_);
+  BitStuffer<uint32_t> bs(data_);
 
   bs.stuff(data_size, bits_of_data_size());
   bs.stuff(rComp.num_variables(), bits_per_variable());
@@ -158,16 +158,16 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
 }
 
 DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Component &rComp) {
-  unsigned max_var_diff = 0;
-  unsigned hashkey_vars = *rComp.varsBegin();
+  uint32_t max_var_diff = 0;
+  uint32_t hashkey_vars = *rComp.varsBegin();
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
     hashkey_vars = (hashkey_vars * 3) + *it;
     if ((*it - *(it - 1)) - 1 > max_var_diff)
       max_var_diff = (*it - *(it - 1)) - 1 ;
   }
 
-  unsigned hashkey_clauses = *rComp.clsBegin();
-  unsigned max_clause_diff = 0;
+  uint32_t hashkey_clauses = *rComp.clsBegin();
+  uint32_t max_clause_diff = 0;
   if (*rComp.clsBegin()) {
     for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++) {
       hashkey_clauses = hashkey_clauses*3 + *jt;
@@ -176,29 +176,29 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
     }
   }
 
-  hashkey_ = hashkey_vars + ((unsigned) hashkey_clauses << 11) + ((unsigned) hashkey_clauses >> 23);
+  hashkey_ = hashkey_vars + ((uint32_t) hashkey_clauses << 11) + ((uint32_t) hashkey_clauses >> 23);
 
   //VERIFIED the definition of bits_per_var_diff and bits_per_clause_diff
-  unsigned bits_per_var_diff = log2(max_var_diff) + 1;
-  unsigned bits_per_clause_diff = log2(max_clause_diff) + 1;
+  uint32_t bits_per_var_diff = log2(max_var_diff) + 1;
+  uint32_t bits_per_clause_diff = log2(max_clause_diff) + 1;
 
   assert(bits_per_var_diff <= 31);
   assert(bits_per_clause_diff <= 31);
 
-  unsigned data_size_vars = bits_of_data_size() + 2*bits_per_variable() + 5;
+  uint32_t data_size_vars = bits_of_data_size() + 2*bits_per_variable() + 5;
 
   data_size_vars += (rComp.num_variables() - 1) * bits_per_var_diff ;
-  unsigned data_size_clauses = 0;
+  uint32_t data_size_clauses = 0;
   if(*rComp.clsBegin())
     data_size_clauses += bits_per_clause() + 5
        + (rComp.numLongClauses() - 1) * bits_per_clause_diff;
 
-  unsigned data_size = (data_size_vars + data_size_clauses)/bits_per_block();
+  uint32_t data_size = (data_size_vars + data_size_clauses)/bits_per_block();
   data_size += ((data_size_vars + data_size_clauses) % bits_per_block())? 1 : 0;
 
-  data_ = new unsigned[data_size];
+  data_ = new uint32_t[data_size];
   assert((data_size >> bits_of_data_size()) == 0);
-  BitStuffer<unsigned> bs(data_);
+  BitStuffer<uint32_t> bs(data_);
 
   bs.stuff(data_size, bits_of_data_size());
   bs.stuff(rComp.num_variables(), bits_per_variable());

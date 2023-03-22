@@ -21,9 +21,9 @@ struct SolverConfiguration {
 
   uint64_t time_bound_seconds = 100000;
   uint64_t randomseed = 1000;
-  unsigned hashrange = 1;
-  unsigned maxdec = 5000000;
-  unsigned minconflicts_ = 500;
+  uint32_t hashrange = 1;
+  uint32_t maxdec = 5000000;
+  uint32_t minconflicts_ = 500;
   float delta = 0.05;
 };
 

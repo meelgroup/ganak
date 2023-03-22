@@ -74,16 +74,16 @@ public:
   }
 
   // Creates the full CNF, at start-up. In other words, this is called ONCE
-  void createStartingComponent(unsigned max_var_id, unsigned max_clause_id) {
+  void createStartingComponent(uint32_t max_var_id, uint32_t max_clause_id) {
     vs_cls_data_.clear();
     clauses_ofs_ = 1;
 
     // Add all variables to top comp
-    for (unsigned v = 1; v <= max_var_id; v++) addVar(v);
+    for (uint32_t v = 1; v <= max_var_id; v++) addVar(v);
     closeVariableData();
 
     //Add all clauses to top comp
-    for (unsigned clid = 1; clid <= max_clause_id; clid++) addCl(clid);
+    for (uint32_t clid = 1; clid <= max_clause_id; clid++) addCl(clid);
     closeClauseData();
   }
 
@@ -100,8 +100,8 @@ private:
   // variables SENTINEL clauses SENTINEL
   // this order has to be taken care of on filling
   // in the data!
-  vector<unsigned> vs_cls_data_;
-  unsigned clauses_ofs_ = 0;
+  vector<uint32_t> vs_cls_data_;
+  uint32_t clauses_ofs_ = 0;
   // id_ will identify denote the entry in the cacheable comp database,
   // where a Packed version of this comp is stored
   // yet this does not imply that the model count of this comp is already known

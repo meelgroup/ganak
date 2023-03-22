@@ -18,17 +18,17 @@ void ComponentAnalyzer::initialize(
 
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
-  vector<vector<unsigned>>  occ_ternary_clauses(max_variable_id_ + 1);
+  vector<vector<uint32_t>>  occ_ternary_clauses(max_variable_id_ + 1);
 
   // maps var -> [var1..varn, SENTINEL_LIT, var1...varn, SENTINEL_LIT, ...]
-  vector<vector<unsigned>>  occ_long_clauses(max_variable_id_ + 1);
+  vector<vector<uint32_t>>  occ_long_clauses(max_variable_id_ + 1);
 
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
 
   print_debug(COLBLBACK "Building occurrence list in ComponentAnalyzer::initialize");
 
-  vector<unsigned> tmp;
+  vector<uint32_t> tmp;
   max_clause_id_ = 0;
   auto it_curr_cl_st = lit_pool.begin();
 
@@ -44,7 +44,7 @@ void ComponentAnalyzer::initialize(
       it_lit += ClauseHeader::overheadInLits();
       it_curr_cl_st = it_lit + 1; // Point to next clause
     } else {
-      const unsigned var = it_lit->var();
+      const uint32_t var = it_lit->var();
       assert(var <= max_variable_id_);
       getClause(tmp, it_curr_cl_st, *it_lit);
       assert(tmp.size() > 1);
@@ -82,7 +82,7 @@ void ComponentAnalyzer::initialize(
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
 
   // now fill unified link list, for each variable
-  for (unsigned v = 1; v < max_variable_id_ + 1; v++) {
+  for (uint32_t v = 1; v < max_variable_id_ + 1; v++) {
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
 
     // data for binary clauses
@@ -130,7 +130,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     assert(isUnknown(*vt));
 
     //traverse binary clauses
-    unsigned const* p = beginOfLinkList(*vt);
+    uint32_t const* p = beginOfLinkList(*vt);
     for (; *p; p++) {
       if(manageSearchOccurrenceOf(Lit(*p,true))) {
         var_frequency_scores_[*p]++;

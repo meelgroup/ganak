@@ -43,7 +43,7 @@ private:
   // Temporaries, used during recordLastUIPClause
   vector<uint8_t> tmp_seen;
   vector<Lit> tmp_clause; //used in recoredLastUIPClause
-  vector<unsigned> toClear;
+  vector<uint32_t> toClear;
 
   // Used during minimizeAndStoreUIPClause
   deque<Lit> tmp_clause_minim;
@@ -93,7 +93,7 @@ private:
   // this is the actual BCP algorithm
   // starts propagating all literal in literal_stack_
   // beginning at offset start_at_stack_ofs
-  bool propagate(const unsigned start_at_stack_ofs);
+  bool propagate(const uint32_t start_at_stack_ofs);
 
   retStateT backtrack();
 
@@ -133,7 +133,7 @@ private:
 
   void printOnlineStats();
   void checkProbabilisticHashSanity() const {
-      const unsigned t = stats.num_cache_look_ups_ + 1;
+      const uint32_t t = stats.num_cache_look_ups_ + 1;
       if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) {
         // 1 - log_2(2.004)/64 = 0.9843
         cout << "ERROR: We need to change the hash range (-1)" << endl;
@@ -188,7 +188,7 @@ private:
 
   bool fail_test(const Lit lit)
   {
-    unsigned sz = trail.size();
+    uint32_t sz = trail.size();
     // we increase the decLev artificially
     // s.t. after the tentative BCP call, we can learn a conflict clause
     // relative to the assignment of *jt

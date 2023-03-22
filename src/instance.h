@@ -100,12 +100,12 @@ protected:
   bool indep_support_given = false;
   uint32_t must_mult_exp2 = 0;
 
-  vector<unsigned> var_map;
+  vector<uint32_t> var_map;
 
 
   // this is to determine the starting offset of
   // conflict clauses
-  unsigned original_lit_pool_size_;
+  uint32_t original_lit_pool_size_;
 
   LiteralIndexedVector<LitWatchList> literals_;
   LiteralIndexedVector<vector<ClauseOfs> > occurrence_lists_;
@@ -234,7 +234,7 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
     addBinaryClause(literals[0], literals[1]);
     return 0;
   }
-  for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
+  for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
     literal_pool_.push_back(0);
   ClauseOfs cl_ofs = literal_pool_.size();
 

@@ -70,7 +70,7 @@ public:
   // if not, store the packed version of it in the entry_base of the cache
   // bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
   //   stats.num_cache_look_ups_++;
-  //   unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
+  //   uint32_t table_ofs =  packed_comp.hashkey() & table_size_mask_;
 
   //   CacheEntryID act_id = table_[table_ofs];
   //   while(act_id){
@@ -87,7 +87,7 @@ public:
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;
     uint64_t *clhash_key;
-    unsigned table_ofs =  packed_comp.hashkey() & table_size_mask_;
+    uint32_t table_ofs =  packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
     if (config_.perform_pcc) {
 #ifdef DOPCC
@@ -146,7 +146,7 @@ private:
       reHashTable(2*table_.size());
     }
   }
-  void reHashTable(unsigned size){
+  void reHashTable(uint32_t size){
 
     table_.clear();
     table_.resize(size,0);
@@ -154,18 +154,18 @@ private:
     // otherwise the table_size_mask_ doesn't work
     assert((table_.size() & (table_.size() - 1)) == 0);
     table_size_mask_ = table_.size() - 1;
-    for (unsigned id = 2; id < entry_base_.size(); id++)
+    for (uint32_t id = 2; id < entry_base_.size(); id++)
       if (entry_base_[id] != nullptr ){
         entry_base_[id]->set_next_bucket_element(0);
        if(entry_base_[id]->modelCountFound()) {
-        unsigned table_ofs=tableEntry(id);
+        uint32_t table_ofs=tableEntry(id);
         entry_base_[id]->set_next_bucket_element(table_[table_ofs]);
         table_[table_ofs] = id;
        }
     }
   }
 
-  unsigned tableEntry(CacheEntryID id){
+  uint32_t tableEntry(CacheEntryID id){
     return entry(id).hashkey() & table_size_mask_;
   }
   void add_descendant(CacheEntryID compid, CacheEntryID descendantid) {
@@ -187,7 +187,7 @@ private:
   // by means of which the cache is accessed
   vector<CacheEntryID> table_;
 
-  unsigned table_size_mask_;
+  uint32_t table_size_mask_;
 
   DataAndStatistics &stats;
   const SolverConfiguration &config_;

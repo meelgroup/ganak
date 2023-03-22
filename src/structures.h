@@ -28,11 +28,11 @@ public:
     value_ = 0;
   }
   Lit(int lit) {
-    value_ = (abs(lit) << 1) + (unsigned) (lit > 0);
+    value_ = (abs(lit) << 1) + (uint32_t) (lit > 0);
   }
 
   Lit(VariableIndex var, bool sign) {
-    value_ = (var << 1) + (unsigned) sign;
+    value_ = (var << 1) + (uint32_t) sign;
   }
 
   VariableIndex var() const {
@@ -68,10 +68,10 @@ public:
   int val() const {
     return (sign() ? var() : -1*var());
   }
-  unsigned raw() const { return value_;}
+  uint32_t raw() const { return value_;}
 
 private:
-  unsigned value_;
+  uint32_t value_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Lit lit)
@@ -93,7 +93,7 @@ public:
   vector<ClauseOfs> watch_list_ = vector<ClauseOfs>(1,SENTINEL_CL);
   float activity_score_ = 0.0f;
 
-  void increaseActivity(unsigned u = 1){
+  void increaseActivity(uint32_t u = 1){
     activity_score_+= u;
   }
 
@@ -190,9 +190,9 @@ struct Variable {
 // for now Clause Header is just a dummy
 // we keep it for possible later changes
 class ClauseHeader {
-  unsigned creation_time_; // number of conflicts seen at creation time
-  unsigned score_;
-  unsigned length_;
+  uint32_t creation_time_; // number of conflicts seen at creation time
+  uint32_t score_;
+  uint32_t length_;
 public:
 
   void increaseScore() {
@@ -201,20 +201,20 @@ public:
   void decayScore() {
       score_ >>= 1;
   }
-  unsigned score() {
+  uint32_t score() {
       return score_;
   }
 
-  unsigned creation_time() {
+  uint32_t creation_time() {
       return creation_time_;
   }
-  unsigned length(){ return length_;}
-  void set_length(unsigned length) {length_ = length;}
+  uint32_t length(){ return length_;}
+  void set_length(uint32_t length) {length_ = length;}
 
-  void set_creation_time(unsigned time) {
+  void set_creation_time(uint32_t time) {
     creation_time_ = time;
   }
-  static unsigned overheadInLits() {return sizeof(ClauseHeader)/sizeof(Lit);}
+  static uint32_t overheadInLits() {return sizeof(ClauseHeader)/sizeof(Lit);}
 };
 
 #endif /* STRUCTURES_H_ */

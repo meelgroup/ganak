@@ -67,12 +67,12 @@ public:
   uint64_t num_conflicts_ = 0;
 
   // number of clauses overall learned
-  unsigned num_clauses_learned_ = 0;
+  uint32_t num_clauses_learned_ = 0;
 
-  unsigned last_restart_decisions = 0;
-  unsigned num_restarts = 0;
-  unsigned next_restart = 1000;
-  unsigned next_restart_diff = 1000;
+  uint32_t last_restart_decisions = 0;
+  uint32_t num_restarts = 0;
+  uint32_t next_restart = 1000;
+  uint32_t next_restart_diff = 1000;
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
@@ -216,7 +216,7 @@ public:
     cout << num_clauses() << "/" << num_long_clauses_;
     cout << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
   }
-  unsigned getNumDecisions() {
+  uint32_t getNumDecisions() {
     return num_decisions_;
   }
 

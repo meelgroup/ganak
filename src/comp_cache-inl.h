@@ -46,7 +46,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     stats.incorporate_cache_store(ccomp, config_.perform_pcc && ccomp.get_hacked());
 
   #ifdef DEBUG
-      for (unsigned u = 2; u < entry_base_.size(); u++)
+      for (uint32_t u = 2; u < entry_base_.size(); u++)
             if (entry_base_[u] != nullptr) {
               assert(entry_base_[u]->father() != id);
               assert(entry_base_[u]->first_descendant() != id);
@@ -84,7 +84,7 @@ void ComponentCache::cleanPollutionsInvolving(CacheEntryID id) {
 
 void ComponentCache::removeFromHashTable(CacheEntryID id) {
   //assert(false);
-  unsigned act_id = table_[tableEntry(id)];
+  uint32_t act_id = table_[tableEntry(id)];
   if(act_id == id){
     table_[tableEntry(id)] = entry(act_id).next_bucket_element();
   }
@@ -136,7 +136,7 @@ void ComponentCache::removeFromDescendantsTree(CacheEntryID id) {
 
 void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count) {
   considerCacheResize();
-  unsigned table_ofs = tableEntry(id);
+  uint32_t table_ofs = tableEntry(id);
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes();

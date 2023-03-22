@@ -14,12 +14,12 @@ using std::vector;
 
 class StackLevel {
   /// active Component, once initialized, it should not change
-  const unsigned super_comp_ = 0;
+  const uint32_t super_comp_ = 0;
   // branch (i.e. left/right)
   bool active_branch_ = false;
 
   // offset in the literal stack where to store set lits
-  const unsigned trail_ofs_ = 0;
+  const uint32_t trail_ofs_ = 0;
 
   //  Solution count
   mpz_class branch_model_count_[2] = {0,0};
@@ -31,16 +31,16 @@ class StackLevel {
   // the remaining comps in this decision level
   // all remaining comps can hence be found in
   // [remaining_comps_ofs_, "nextLevel".remaining_comps_begin_)
-  const unsigned remaining_comps_ofs_ = 0;
+  const uint32_t remaining_comps_ofs_ = 0;
 
   // boundary of the stack marking which comps still need to be processed
   // all comps to be processed can be found in
   // [remaining_comps_ofs_, unprocessed_comps_end_)
   // also, all processed, can be found
   // in [unprocessed_comps_end_, comp_stack.size())
-  unsigned unprocessed_comps_end_ = 0;
+  uint32_t unprocessed_comps_end_ = 0;
 
-  unsigned branch_variable_ = 0;
+  uint32_t branch_variable_ = 0;
 public:
   bool on_path_to_target_ = false;
 
@@ -61,22 +61,22 @@ public:
     unprocessed_comps_end_ = remaining_comps_ofs_;
   }
 
-  unsigned super_comp() const {
+  uint32_t super_comp() const {
     return super_comp_;
   }
   uint32_t getUnprocessedComponentsEnd() const {
     return unprocessed_comps_end_;
   }
-  unsigned remaining_comps_ofs() const {
+  uint32_t remaining_comps_ofs() const {
     return remaining_comps_ofs_;
   }
-  void set_unprocessed_comps_end(unsigned end) {
+  void set_unprocessed_comps_end(uint32_t end) {
     unprocessed_comps_end_ = end;
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
-  StackLevel(unsigned super_comp, unsigned trail_ofs,
-      unsigned comp_stack_ofs) :
+  StackLevel(uint32_t super_comp, uint32_t trail_ofs,
+      uint32_t comp_stack_ofs) :
       super_comp_(super_comp),
       trail_ofs_(trail_ofs),
       remaining_comps_ofs_(comp_stack_ofs),
@@ -84,7 +84,7 @@ public:
     assert(super_comp < comp_stack_ofs);
   }
 
-  unsigned currentRemainingComponent() const {
+  uint32_t currentRemainingComponent() const {
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }
@@ -101,7 +101,7 @@ public:
     return (!branch_found_unsat()) && hasUnprocessedComponents();
   }
 
-  unsigned literal_stack_ofs() const {
+  uint32_t literal_stack_ofs() const {
     return trail_ofs_;
   }
   void includeSolution(const mpz_class &solutions) {
@@ -117,7 +117,7 @@ public:
       branch_model_count_[active_branch_] *= solutions;
 
   }
-  void includeSolution(unsigned solutions) {
+  void includeSolution(uint32_t solutions) {
     if (branch_found_unsat_[active_branch_]) {
       assert(branch_model_count_[active_branch_] == 0);
       return;
@@ -141,11 +141,11 @@ public:
     return branch_model_count_[active_branch_];
   }
 
-  unsigned getbranchvar() const {
+  uint32_t getbranchvar() const {
     return branch_variable_;
   }
 
-  void setbranchvariable(const unsigned max_score_var){
+  void setbranchvariable(const uint32_t max_score_var){
     branch_variable_ = max_score_var;
   }
 
@@ -175,7 +175,7 @@ public:
   }
 
   /// 0 means pre-1st-decision
-  unsigned get_decision_level() const {
+  uint32_t get_decision_level() const {
     assert(size() > 0);
     return size() - 1 + failed_literal_test_active;
   }

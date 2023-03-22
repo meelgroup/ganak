@@ -14,10 +14,10 @@ template<class _T>
 class LiteralIndexedVector: protected vector<_T> {
 
 public:
-	LiteralIndexedVector(unsigned size = 0) :
+	LiteralIndexedVector(uint32_t size = 0) :
 			vector<_T>(size * 2) {
 	}
-	LiteralIndexedVector(unsigned size,
+	LiteralIndexedVector(uint32_t size,
 			const typename vector<_T>::value_type& __value) :
 			vector<_T>(size * 2, __value) {
 	}
@@ -37,14 +37,14 @@ public:
 		return vector<_T>::empty();
 	}
 
-	void resize(unsigned _size) {
+	void resize(uint32_t _size) {
 		vector<_T>::resize(_size * 2);
 	}
-	void resize(unsigned _size, const typename vector<_T>::value_type& _value) {
+	void resize(uint32_t _size, const typename vector<_T>::value_type& _value) {
 		vector<_T>::resize(_size * 2, _value);
 	}
 
-	void reserve(unsigned _size) {
+	void reserve(uint32_t _size) {
 		vector<_T>::reserve(_size * 2);
 	}
 

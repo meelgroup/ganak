@@ -96,7 +96,7 @@ void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforC
 }
 
 void ComponentCache::test_descendantstree_consistency() {
-	for (unsigned id = 2; id < entry_base_.size(); id++)
+	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
 			CacheEntryID act_child = entry(id).first_descendant();
 			while (act_child) {
@@ -137,7 +137,7 @@ bool ComponentCache::deleteEntries() {
 	// note we start at index 2,
 	// since index 1 is the whole formula,
 	// should always stay here!
-	for (unsigned id = 2; id < entry_base_.size(); id++)
+	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr &&
 		    entry_base_[id]->isDeletable() &&
 		      (double) entry_base_[id]->creation_time() <= cutoff) {
@@ -158,7 +158,7 @@ bool ComponentCache::deleteEntries() {
 
 	stats.sum_bytes_pure_cached_comp_data_ = 0;
 
-	for (unsigned id = 2; id < entry_base_.size(); id++)
+	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
 			stats.sum_size_cached_comps_ +=
 					entry_base_[id]->num_variables();

@@ -42,7 +42,7 @@ void Instance::cleanClause(ClauseOfs cl_ofs) {
     if (*jt == SENTINEL_LIT)
       break;
   }
-  unsigned length = it - beginOf(cl_ofs);
+  uint32_t length = it - beginOf(cl_ofs);
   // if it has become a unit clause, it should have already been asserted
   if (length == 1) {
     *beginOf(cl_ofs) = SENTINEL_LIT;
@@ -81,11 +81,11 @@ void Instance::compactClauses() {
   literal_pool_.clear();
   literal_pool_.push_back(SENTINEL_LIT);
   ClauseOfs new_ofs;
-  unsigned num_clauses = 0;
+  uint32_t num_clauses = 0;
   for (auto ofs : clause_ofs) {
     auto it = (tmp_pool.begin() + ofs);
     if (*it != SENTINEL_LIT) {
-      for (unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
+      for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
         literal_pool_.push_back(0);
       new_ofs = literal_pool_.size();
       litWatchList(*it).addWatchLinkTo(new_ofs);
@@ -100,7 +100,7 @@ void Instance::compactClauses() {
   }
 
   vector<Lit> tmp_bin;
-  unsigned bin_links = 0;
+  uint32_t bin_links = 0;
   for (auto &l : literals_) {
     tmp_bin.clear();
     for (auto it = l.binary_links_.begin(); *it != SENTINEL_LIT; it++)
@@ -116,9 +116,9 @@ void Instance::compactClauses() {
 
 void Instance::compactVariables() {
   var_map.resize(variables_.size(), 0);
-  unsigned last_ofs = 0;
-  unsigned num_isolated = 0;
-  unsigned num_pisolated = 0;
+  uint32_t last_ofs = 0;
+  uint32_t num_isolated = 0;
+  uint32_t num_pisolated = 0;
   LiteralIndexedVector<vector<Lit> > _tmp_bin_links(1);
   LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
 
@@ -126,7 +126,7 @@ void Instance::compactVariables() {
     _tmp_bin_links.push_back(l.binary_links_);
 
   assert(_tmp_bin_links.size() == literals_.size());
-  for (unsigned v = 1; v < variables_.size(); v++)
+  for (uint32_t v = 1; v < variables_.size(); v++)
     if (isUnknown(v)) {
       if (isolated(v)) {
         if (indep_support_.find(v) != indep_support_.end())
@@ -137,7 +137,7 @@ void Instance::compactVariables() {
       last_ofs++;
       var_map[v] = last_ofs;
     }
-  vector <unsigned> temp;
+  vector <uint32_t> temp;
   for (auto it=indep_support_.begin(); it!=indep_support_.end(); ++it){
     if(var_map[*it] != 0){
       temp.push_back(var_map[*it]);
@@ -208,7 +208,7 @@ void Instance::compactConflictLiteralPool(){
   conflict_clauses_.clear();
   for(auto clause_ofs: tmp_conflict_clauses){
     auto read_pos = beginOf(clause_ofs) - ClauseHeader::overheadInLits();
-    for(unsigned i = 0; i < ClauseHeader::overheadInLits(); i++)
+    for(uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
       *(write_pos++) = *(read_pos++);
     ClauseOfs new_ofs =  write_pos - literal_pool_.begin();
     conflict_clauses_.push_back(new_ofs);
@@ -245,7 +245,7 @@ bool Instance::deleteConflictClauses() {
 
   double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
 
-  for(unsigned i = 0; i < tmp_conflict_clauses.size(); i++){
+  for(uint32_t i = 0; i < tmp_conflict_clauses.size(); i++){
     if(tmp_ratios[i] < cutoff){
       if(!markClauseDeleted(tmp_conflict_clauses[i]))
         conflict_clauses_.push_back(tmp_conflict_clauses[i]);
@@ -271,7 +271,7 @@ static Lit cmsLitToG(const CMSat::Lit& l) {
 }
 
 void Instance::parseWithCMS(const std::string& filename) {
-  unsigned verb = 0;
+  uint32_t verb = 0;
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
   DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&satSolver, NULL, verb);

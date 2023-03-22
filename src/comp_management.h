@@ -29,7 +29,7 @@ class ComponentManager
 public:
   ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const set<unsigned> &indep_support_) :
+                   const set<uint32_t> &indep_support_) :
       config_(config), stats(statistics), cache_(statistics, config_),
       ana_(lit_values, indep_support_)
   {
@@ -43,14 +43,14 @@ public:
   }
 
   void initialize(LiteralIndexedVector<LitWatchList> &literals,
-                  vector<Lit> &lit_pool, unsigned num_variables);
+                  vector<Lit> &lit_pool, uint32_t num_variables);
 
-  unsigned scoreOf(VariableIndex v)
+  uint32_t scoreOf(VariableIndex v)
   {
     return ana_.scoreOf(v);
   }
 
-  void cacheModelCountOf(unsigned stack_comp_id, const mpz_class &value)
+  void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value)
   {
     if (config_.perform_comp_caching)
       cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
@@ -62,7 +62,7 @@ public:
     return *comp_stack_[lev.super_comp()];
   }
 
-  unsigned comp_stack_size()
+  uint32_t comp_stack_size()
   {
     return comp_stack_.size();
   }
@@ -98,7 +98,7 @@ public:
   // returns false if all comps have been processed
   inline bool findNextRemainingComponentOf(StackLevel &top);
   inline void recordRemainingCompsFor(StackLevel &top);
-  inline void sortComponentStackRange(unsigned start, unsigned end);
+  inline void sortComponentStackRange(uint32_t start, uint32_t end);
   inline float cacheScoreOf(VariableIndex v);
   inline void increasecachescores();
   inline void decreasecachescore(Component &comp);
@@ -118,7 +118,7 @@ public:
     std::uniform_int_distribution<uint64_t> distr;
     assert(seedforCLHASH.empty());
     seedforCLHASH.resize(config_.hashrange);
-    for (unsigned i = 0; i < config_.hashrange; i++) {
+    for (uint32_t i = 0; i < config_.hashrange; i++) {
       seedforCLHASH[i] = get_random_key_for_clhash(distr(eng), distr(eng));
     }
   }
@@ -140,7 +140,7 @@ float ComponentManager::cacheScoreOf(VariableIndex v)
 
 void ComponentManager::increasecachescores()
 {
-  for (unsigned i = 0; i < cachescore_.size(); i++)
+  for (uint32_t i = 0; i < cachescore_.size(); i++)
   {
     cachescore_[i] *= 0.5;
   }
@@ -150,13 +150,13 @@ void ComponentManager::decreasecachescore(Component &comp)
   for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++) cachescore_[*it] -= 1;
 }
 
-void ComponentManager::sortComponentStackRange(unsigned start, unsigned end)
+void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
 {
   print_debug(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   // sort the remaining comps for processing
-  for (unsigned i = start; i < end; i++)
-    for (unsigned j = i + 1; j < end; j++)
+  for (uint32_t i = start; i < end; i++)
+    for (uint32_t j = i + 1; j < end; j++)
     {
       if (comp_stack_[i]->num_variables() < comp_stack_[j]->num_variables())
         std::swap(comp_stack_[i], comp_stack_[j]);
@@ -188,7 +188,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
   const Component& super_comp = getSuperComponentOf(top);
-  const unsigned new_comps_start_ofs = comp_stack_.size();
+  const uint32_t new_comps_start_ofs = comp_stack_.size();
 
   ana_.setupAnalysisContext(top, super_comp);
 

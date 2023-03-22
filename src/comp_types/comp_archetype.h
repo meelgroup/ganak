@@ -139,8 +139,8 @@ public:
     return seen_[cl] & CA_CL_IN_OTHER_COMP;
   }
 
-  void initSeen(unsigned max_variable_id, unsigned max_clause_id) {
-    unsigned seen_size = std::max(max_variable_id,max_clause_id)  + 1;
+  void initSeen(uint32_t max_variable_id, uint32_t max_clause_id) {
+    uint32_t seen_size = std::max(max_variable_id,max_clause_id)  + 1;
     seen_ = new CA_SearchState[seen_size];
     seen_byte_size_ = sizeof(CA_SearchState) * (seen_size);
     clearArrays();
@@ -150,7 +150,7 @@ public:
     memset(seen_, CA_NIL, seen_byte_size_);
   }
 
-  Component *makeComponentFromState(const unsigned stack_size) {
+  Component *makeComponentFromState(const uint32_t stack_size) {
     print_debug(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Component *p_new_comp = new Component();
     p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
@@ -184,7 +184,7 @@ public:
   }
 
   inline void createComponents(Component &ret_comp, CacheableComponent ret_cache_comp,
-      unsigned stack_size);
+      uint32_t stack_size);
 
   Component current_comp_for_caching_;
 
@@ -192,7 +192,7 @@ private:
   Component const* p_super_comp_;
   StackLevel *p_stack_level_;
   CA_SearchState* seen_ = nullptr;
-  unsigned seen_byte_size_ = 0;
+  uint32_t seen_byte_size_ = 0;
 };
 
 #endif /* COMPONENT_ARCHETYPE_H_ */

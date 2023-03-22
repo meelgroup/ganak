@@ -21,7 +21,7 @@ template <class T>
     *p = 0;
   }
 
-  void stuff(const unsigned val, const unsigned num_bits_val){
+  void stuff(const uint32_t val, const uint32_t num_bits_val){
       assert(num_bits_val > 0);
       assert((val >> num_bits_val) == 0);
       if(end_of_bits_ == 0)
@@ -41,7 +41,7 @@ template <class T>
       }
   }
 
-  void assert_size(unsigned size){
+  void assert_size(uint32_t size){
     if(end_of_bits_ == 0)
        p--;
     assert(p - data_start_ == size - 1);
@@ -52,9 +52,9 @@ template <class T>
   T *p = nullptr;
   // in the current block
   // the bit postion just after the last bit written
-  unsigned end_of_bits_ = 0;
+  uint32_t end_of_bits_ = 0;
 
-  static const unsigned _bits_per_block = (sizeof(T) << 3);
+  static const uint32_t _bits_per_block = (sizeof(T) << 3);
 
 };
 
@@ -76,28 +76,28 @@ public:
     return false;
   }
 
-  static unsigned bits_per_variable() {
+  static uint32_t bits_per_variable() {
     return _bits_per_variable;
   }
-  static unsigned variable_mask() {
+  static uint32_t variable_mask() {
       return _variable_mask;
   }
-  static unsigned bits_per_clause() {
+  static uint32_t bits_per_clause() {
     return _bits_per_clause;
   }
 
-  static unsigned bits_per_block(){
+  static uint32_t bits_per_block(){
 	  return _bits_per_block;
   }
 
-  static unsigned bits_of_data_size(){
+  static uint32_t bits_of_data_size(){
     return _bits_of_data_size;
   }
 
   static void adjustPackSize(uint32_t maxVarId, uint32_t maxClId);
 
   BasePackedComponent() {}
-  BasePackedComponent(unsigned creation_time): creation_time_(creation_time) {}
+  BasePackedComponent(uint32_t creation_time): creation_time_(creation_time) {}
 
   ~BasePackedComponent() {
     if (data_){
@@ -107,7 +107,7 @@ public:
     if (clhashkey_) delete [] clhashkey_;
 #endif
   }
-  static void outbit(unsigned v){
+  static void outbit(uint32_t v){
    for(auto i=0; i<32;i++){
      cout << ((v&2147483648)?"1":"0");
       v&=2147483648-1;
@@ -116,7 +116,7 @@ public:
   }
 
 
-  static unsigned log2(unsigned v){
+  static uint32_t log2(uint32_t v){
          // taken from
          // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
          static const signed char LogTable256[256] =
@@ -127,7 +127,7 @@ public:
              LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7)
          };
 
-         unsigned r;     // r will be lg(v)
+         uint32_t r;     // r will be lg(v)
          uint32_t t, tt; // temporaries
 
          if ((tt = (v >> 16)))
@@ -141,7 +141,7 @@ public:
          return r;
   }
 
-  unsigned creation_time() {
+  uint32_t creation_time() {
     return creation_time_;
   }
 
@@ -149,21 +149,21 @@ public:
     return model_count_;
   }
 
-  unsigned alloc_of_model_count() const{
+  uint32_t alloc_of_model_count() const{
         return sizeof(mpz_class)
                + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
   }
 
-  void set_creation_time(unsigned time) {
+  void set_creation_time(uint32_t time) {
     creation_time_ = time;
   }
 
-  void set_model_count(const mpz_class &rn, unsigned time) {
+  void set_model_count(const mpz_class &rn, uint32_t time) {
     model_count_ = rn;
     length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
   }
 
-  unsigned hashkey() const  {
+  uint32_t hashkey() const  {
     return hashkey_;
   }
 
@@ -195,7 +195,7 @@ public:
 #endif
   }
 
-  static unsigned _debug_static_val;
+  static uint32_t _debug_static_val;
 
 protected:
   // data_ contains in packed form the variable indices
@@ -203,26 +203,26 @@ protected:
   // structure is
   // var var ... clause clause ...
   // clauses begin at clauses_ofs_
-  unsigned* data_ = nullptr;
+  uint32_t* data_ = nullptr;
 
 #ifdef DOPCC
   uint64_t* clhashkey_ = nullptr;
 #endif
   // vector <uint64_t> clhash_key_;
-  unsigned hashkey_ = 0;
+  uint32_t hashkey_ = 0;
 
   mpz_class model_count_;
 
-  unsigned creation_time_ = 1;
-  unsigned hack_ = 0;
-  unsigned old_size = 0;
-  unsigned old_num_vars = 0;
+  uint32_t creation_time_ = 1;
+  uint32_t hack_ = 0;
+  uint32_t old_size = 0;
+  uint32_t old_num_vars = 0;
 
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1
   // length_solution_period == 0 means unsolved
   // and the first bit is "delete_permitted"
-  unsigned length_solution_period_and_flags_ = 0;
+  uint32_t length_solution_period_and_flags_ = 0;
 
   // deletion is permitted only after
   // the copy of this comp in the stack
@@ -230,11 +230,11 @@ protected:
 
 
 protected:
-  static unsigned _bits_per_clause, _bits_per_variable; // bitsperentry
-  static unsigned _bits_of_data_size; // number of bits needed to store the data size
-  static unsigned _data_size_mask;
-  static unsigned _variable_mask, _clause_mask;
-  static const unsigned _bits_per_block= (sizeof(unsigned) << 3);
+  static uint32_t _bits_per_clause, _bits_per_variable; // bitsperentry
+  static uint32_t _bits_of_data_size; // number of bits needed to store the data size
+  static uint32_t _data_size_mask;
+  static uint32_t _variable_mask, _clause_mask;
+  static const uint32_t _bits_per_block= (sizeof(uint32_t) << 3);
 
 };
 

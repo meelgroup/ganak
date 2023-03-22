@@ -19,7 +19,7 @@
 
 bool Solver::simplePreProcess()
 {
-  unsigned start_ofs = 0;
+  uint32_t start_ofs = 0;
 
   for (auto lit : unit_clauses_) {
     if (isUnitClause(lit.neg())) return false;
@@ -140,7 +140,7 @@ SOLVER_StateT Solver::countSAT() {
         const auto& c = comp_manager_.at(sup_at);
         cout << COLORG "-> Variables in comp_manager_.at(" << sup_at << ")."
           << " num: " << c->num_variables() << " vars: ";
-        for(unsigned i = 0; i < c->num_variables(); i++) {
+        for(uint32_t i = 0; i < c->num_variables(); i++) {
           const auto& v = c->varsBegin();
           cout << v[i] << " ";
         }
@@ -181,7 +181,7 @@ void Solver::decideLiteral() {
 
   // Find variable to branch on
   auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
-  unsigned max_score_var = *it;
+  uint32_t max_score_var = *it;
   float max_score = scoreOf(*(it));
   float score;
   while (*it != varsSENTINEL &&
@@ -484,7 +484,7 @@ bool Solver::failedLitProbe() {
   assert(trail.size() > 0 && "This is FISHY, I fixed with a bad hack, using 'was_at_zero' but was it broken before? I think we may need propagating from 0 in these cases? Or not?");
 
   const bool was_at_zero = trail.size() == 0;
-  const unsigned start_ofs = trail.size() - 1;
+  const uint32_t start_ofs = trail.size() - 1;
   print_debug("--> Setting units of this comp...");
   for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
   print_debug("--> Units of this comp set, propagating");
@@ -497,7 +497,7 @@ bool Solver::failedLitProbe() {
   return bSucceeded;
 }
 
-bool Solver::propagate(const unsigned start_at_stack_ofs) {
+bool Solver::propagate(const uint32_t start_at_stack_ofs) {
   for (uint32_t i = start_at_stack_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
 
@@ -545,8 +545,8 @@ bool Solver::propagate(const unsigned start_at_stack_ofs) {
 bool Solver::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
 
-  unsigned stack_ofs = decision_stack_.top().literal_stack_ofs();
-  unsigned num_curr_lits = 0;
+  uint32_t stack_ofs = decision_stack_.top().literal_stack_ofs();
+  uint32_t num_curr_lits = 0;
   while (stack_ofs < trail.size()) {
     test_lits.clear();
     for (auto it = trail.begin() + stack_ofs;
@@ -586,7 +586,7 @@ bool Solver::failedLitProbeInternal() {
     // Do the probing
     for (auto lit : test_lits) {
       if (isUnknown(lit) && threshold <= litWatchList(lit).activity_score_) {
-        unsigned sz = trail.size();
+        uint32_t sz = trail.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause
         // relative to the assignment of *jt
@@ -667,7 +667,7 @@ void Solver::minimizeAndStoreUIPClause(
 
   if (uipLit.var()) {
     assert(var(uipLit).decision_level >= 0
-            && (unsigned)var(uipLit).decision_level == decision_stack_.get_decision_level());
+            && (uint32_t)var(uipLit).decision_level == decision_stack_.get_decision_level());
   }
 
   //assert(uipLit.var() != 0);
@@ -690,9 +690,9 @@ void Solver::recordLastUIPCauses() {
   assertion_level_ = 0;
   uip_clauses_.clear();
 
-  unsigned trail_ofs = trail.size();
-  const unsigned DL = decision_stack_.get_decision_level();
-  unsigned lits_at_current_dl = 0;
+  uint32_t trail_ofs = trail.size();
+  const uint32_t DL = decision_stack_.get_decision_level();
+  uint32_t lits_at_current_dl = 0;
 
   for (const auto& l: violated_clause) {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) {
@@ -776,9 +776,9 @@ void Solver::recordAllUIPCauses() {
   assertion_level_ = 0;
   uip_clauses_.clear();
 
-  unsigned trail_ofs = trail.size();
-  const unsigned DL = decision_stack_.get_decision_level();
-  unsigned lits_at_current_dl = 0;
+  uint32_t trail_ofs = trail.size();
+  const uint32_t DL = decision_stack_.get_decision_level();
+  uint32_t lits_at_current_dl = 0;
 
   for (const auto& l : violated_clause) {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;

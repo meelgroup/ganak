@@ -8,13 +8,13 @@
 #include <math.h>
 #include <iostream>
 
-unsigned BasePackedComponent::_bits_per_clause = 0;
-unsigned BasePackedComponent::_bits_per_variable = 0; // bitsperentry
-unsigned BasePackedComponent::_variable_mask = 0;
-unsigned BasePackedComponent::_clause_mask = 0; // bitsperentry
-unsigned BasePackedComponent::_debug_static_val=0;
-unsigned BasePackedComponent::_bits_of_data_size=0;
-unsigned BasePackedComponent::_data_size_mask = 0;
+uint32_t BasePackedComponent::_bits_per_clause = 0;
+uint32_t BasePackedComponent::_bits_per_variable = 0; // bitsperentry
+uint32_t BasePackedComponent::_variable_mask = 0;
+uint32_t BasePackedComponent::_clause_mask = 0; // bitsperentry
+uint32_t BasePackedComponent::_debug_static_val=0;
+uint32_t BasePackedComponent::_bits_of_data_size=0;
+uint32_t BasePackedComponent::_data_size_mask = 0;
 
 
 void BasePackedComponent::adjustPackSize(uint32_t maxVarId,

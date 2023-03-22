@@ -498,7 +498,7 @@ bool Solver::failedLitProbe() {
 }
 
 bool Solver::propagate(const uint32_t start_at_stack_ofs) {
-  for (uint32_t i = start_at_stack_ofs; i < trail.size(); i++) {
+  for (auto i = start_at_stack_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
 
     //Propagate bin clauses
@@ -541,7 +541,6 @@ bool Solver::propagate(const uint32_t start_at_stack_ofs) {
   return true;
 }
 
-// this is IBCP 30.08
 bool Solver::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
 

@@ -54,7 +54,6 @@ void Solver::solve(const std::string &file_name)
   srand(config_.randomseed);
   time_start = cpuTime();
   createfromFile(file_name);
-  /* if (solver.okay()) HardWireAndCompact(); */
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
   initStack();

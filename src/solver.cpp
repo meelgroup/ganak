@@ -60,14 +60,16 @@ void Solver::solve(const std::string &file_name)
   if (config_.verb) {
     cout << "c Solving file " << file_name << endl;
     stats.printShortFormulaInfo();
-    cout << "c Sampling set size: " << indep_support_.size() << endl;
-    if (indep_support_.size() > 50) {
-      cout << "c Sampling set is too large, not displaying" << endl;
-    } else {
-      cout << "c Sampling set: ";
-      for (const auto& i: indep_support_) cout << ' ' << i;
-      cout << endl;
-    }
+    if (indep_support_given) {
+      cout << "c Sampling set size: " << indep_support_.size() << endl;
+      if (indep_support_.size() > 50) {
+        cout << "c Sampling set is too large, not displaying" << endl;
+      } else {
+        cout << "c Sampling set: ";
+        for (const auto& i: indep_support_) cout << ' ' << i;
+        cout << endl;
+      }
+    } else cout << "c No sampling set, doing unprojected counting" << endl;
   }
 
   if (solver.okay() && !simplePreProcess()) {

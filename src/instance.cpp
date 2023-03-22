@@ -318,6 +318,7 @@ bool Instance::createfromFile(const std::string &filename) {
   occurrence_lists_.resize(solver.nVars() + 1);
   literals_.resize(solver.nVars() + 1);
   target_polar.resize(solver.nVars() + 1);
+  if (!solver.okay()) return solver.okay();
 
   solver.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),

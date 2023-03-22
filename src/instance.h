@@ -213,7 +213,7 @@ protected:
     return false;
   }
 protected:
-  CMSat::SATSolver solver;
+  CMSat::SATSolver satSolver;
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<unsigned char> target_polar;
   vector<int> largest_cube;

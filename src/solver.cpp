@@ -72,12 +72,12 @@ void Solver::solve(const std::string &file_name)
     } else cout << "c No sampling set, doing unprojected counting" << endl;
   }
 
-  if (solver.okay() && !simplePreProcess()) {
+  if (satSolver.okay() && !simplePreProcess()) {
     stats.exit_state_ = SUCCESS;
     stats.set_final_solution_count(0);
   }
   if (config_.verb) cout << "c Prepocessing done" << endl;
-  if (solver.okay()) {
+  if (satSolver.okay()) {
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
     comp_manager_.initialize(literals_, literal_pool_, num_variables());
@@ -99,7 +99,7 @@ void Solver::solve(const std::string &file_name)
 bool Solver::takeSolution() {
   //solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
   //solver.set_up_for_sample_counter(100);
-  CMSat::lbool ret = solver.solve();
+  CMSat::lbool ret = satSolver.solve();
   assert(ret != CMSat::l_Undef);
   if (ret == CMSat::l_False) {
     cout << "c CMS gave UNSAT" << endl;
@@ -107,7 +107,7 @@ bool Solver::takeSolution() {
   }
   assert(ret == CMSat::l_True);
   for(uint32_t i = 0; i < num_variables(); i++) {
-    target_polar[i+1] = solver.get_model()[i] == CMSat::l_True;
+    target_polar[i+1] = satSolver.get_model()[i] == CMSat::l_True;
   }
   counted_bottom_comp = false;
   return true;
@@ -317,13 +317,13 @@ retStateT Solver::backtrack() {
       stats.next_restart_diff = 1000;
     }
     stats.last_restart_decisions = stats.num_decisions_;
-    cout << "Restart here" << endl;
+    cout << "c Restart here" << endl;
     if (counted_bottom_comp) {
       //largest cube is valid.
       vector<CMSat::Lit> cl;
       for(const auto&l: largest_cube) cl.push_back(~CMSat::Lit(abs(l)-1, l<0));
-      solver.add_clause(cl);
-      cout << "cube: ";
+      satSolver.add_clause(cl);
+      cout << "c cube: ";
       for(const auto&l: largest_cube) cout << l << " ";
       cout << endl;
       counted_bottom_comp = false;

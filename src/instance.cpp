@@ -274,7 +274,7 @@ void Instance::parseWithCMS(const std::string& filename) {
   unsigned verb = 0;
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&solver, NULL, verb);
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&satSolver, NULL, verb);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
   DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&solver, NULL, verb);
@@ -295,7 +295,7 @@ void Instance::parseWithCMS(const std::string& filename) {
   if (parser.sampling_vars_found) {
     for(const auto& lit: parser.sampling_vars) indep_support_.insert(lit+1);
   } else {
-    for(uint32_t i = 1; i < solver.nVars()+1; i++) indep_support_.insert(i);
+    for(uint32_t i = 1; i < satSolver.nVars()+1; i++) indep_support_.insert(i);
   }
   must_mult_exp2 = parser.must_mult_exp2;
 }
@@ -315,14 +315,14 @@ bool Instance::createfromFile(const std::string &filename) {
 
   literal_pool_.push_back(SENTINEL_LIT);
   variables_.push_back(Variable());
-  variables_.resize(solver.nVars() + 1);
-  literal_values_.resize(solver.nVars() + 1, X_TRI);
-  occurrence_lists_.resize(solver.nVars() + 1);
-  literals_.resize(solver.nVars() + 1);
-  target_polar.resize(solver.nVars() + 1);
-  if (!solver.okay()) return solver.okay();
+  variables_.resize(satSolver.nVars() + 1);
+  literal_values_.resize(satSolver.nVars() + 1, X_TRI);
+  occurrence_lists_.resize(satSolver.nVars() + 1);
+  literals_.resize(satSolver.nVars() + 1);
+  target_polar.resize(satSolver.nVars() + 1);
+  if (!satSolver.okay()) return satSolver.okay();
 
-  solver.start_getting_small_clauses(
+  satSolver.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
       false);
@@ -330,7 +330,7 @@ bool Instance::createfromFile(const std::string &filename) {
   stats.num_original_clauses_ = 0;
   vector<CMSat::Lit> cms_cl;
   vector<Lit> literals;
-  while(solver.get_next_small_clause(cms_cl)) {
+  while(satSolver.get_next_small_clause(cms_cl)) {
     literals.clear();
     for(const auto&l: cms_cl) literals.push_back(cmsLitToG(l));
     stats.num_original_clauses_++;
@@ -340,14 +340,14 @@ bool Instance::createfromFile(const std::string &filename) {
       for (const auto& l : literals)
         occurrence_lists_[l].push_back(cl_ofs);
   }
-  solver.end_getting_small_clauses();
+  satSolver.end_getting_small_clauses();
 
-  stats.num_variables_ = solver.nVars();
+  stats.num_variables_ = satSolver.nVars();
   stats.num_used_variables_ = num_variables();
-  stats.num_free_variables_ = solver.nVars() - num_variables();
+  stats.num_free_variables_ = satSolver.nVars() - num_variables();
   stats.num_unit_clauses_ = unit_clauses_.size();
   original_lit_pool_size_ = literal_pool_.size();
 
-  return solver.okay();
+  return satSolver.okay();
 }
 

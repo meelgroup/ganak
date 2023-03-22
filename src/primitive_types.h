@@ -5,26 +5,20 @@
  *      Author: mthurley
  */
 
-#ifndef PRIMITIVE_TYPES_H_
-#define PRIMITIVE_TYPES_H_
+#pragma once
 
-#define varsSENTINEL  0
-#define clsSENTINEL   NOT_A_CLAUSE
+#include <cstdint>
 
+constexpr uint32_t varsSENTINEL = 0;
+constexpr uint32_t clsSENTINEL = 0;
+constexpr uint32_t NOT_A_CLAUSE = 0;
+constexpr uint32_t SENTINEL_CL = 0;
 
-typedef unsigned VariableIndex;
-typedef unsigned ClauseIndex;
-typedef unsigned ClauseOfs;
-
-typedef unsigned CacheEntryID;
-
-static const ClauseIndex NOT_A_CLAUSE(0);
-#define SENTINEL_CL NOT_A_CLAUSE
-
+typedef uint32_t VariableIndex;
+typedef uint32_t ClauseIndex;
+typedef uint32_t ClauseOfs;
+typedef uint32_t CacheEntryID;
 
 enum SOLVER_StateT {
   NO_STATE, SUCCESS
 };
-
-
-#endif /* PRIMITIVE_TYPES_H_ */

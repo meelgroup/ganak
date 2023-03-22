@@ -109,7 +109,8 @@ public:
   }
 
   void removeAllCachePollutionsOf(StackLevel &top);
-  vector<void *> seedforCLHASH;
+  vector<void *> seedforCLHASH; //stores a bunch of __m128 aligned data pieces, each
+                                //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
   {
     std::mt19937_64 eng(config_.randomseed); //Use the 64-bit Mersenne Twister 19937 generator

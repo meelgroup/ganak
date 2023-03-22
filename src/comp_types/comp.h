@@ -61,11 +61,11 @@ public:
     return vs_cls_data_.begin() + clauses_ofs_;
   }
 
-  unsigned num_variables() const {
+  uint32_t num_variables() const {
     return clauses_ofs_ - 1;
   }
 
-  unsigned numLongClauses() const {
+  uint32_t numLongClauses() const {
     return vs_cls_data_.size() - clauses_ofs_ - 1;
   }
 

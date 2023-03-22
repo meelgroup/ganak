@@ -478,7 +478,7 @@ retStateT Solver::resolveConflict() {
   stats.num_conflicts_++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
   assert(uip_clauses_.size() == 1);
-  if (uip_clauses_.back().size() == 0) { cout << "c EMPTY CLAUSE FOUND" << endl; }
+  if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
 
   decision_stack_.top().mark_branch_unsat();
   //BEGIN Backtracking

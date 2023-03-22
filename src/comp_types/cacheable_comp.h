@@ -39,12 +39,12 @@ public:
       T_Component(randomseedforCLHASH,comp) {
   }
 
-  uint64_t SizeInBytes() const {
+  uint32_t SizeInBytes() const {
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size();
   }
 
-  uint64_t SizeInBytes_CLHASH() const {
+  uint32_t SizeInBytes_CLHASH() const {
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size_CLHASH();
   }

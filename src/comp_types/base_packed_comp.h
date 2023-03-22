@@ -62,8 +62,7 @@ template <class T>
 class BasePackedComponent {
 public:
 
-
-  void set_hacked(const uint64_t _old_size, const uint64_t _old_num_vars) {
+  void set_hacked(const uint32_t _old_size, const uint32_t _old_num_vars) {
     old_size = _old_size;
     old_num_vars = _old_num_vars;
     delete[] data_;

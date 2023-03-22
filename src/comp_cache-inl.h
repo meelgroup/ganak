@@ -5,8 +5,7 @@
  *      Author: Marc Thurley
  */
 
-#ifndef COMPONENT_CACHE_INL_H_
-#define COMPONENT_CACHE_INL_H_
+#pragma once
 
 #include "primitive_types.h"
 #include "comp_cache.h"
@@ -167,9 +166,3 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   stats.sys_overhead_sum_bytes_cached_comps_ += entry(id).sys_overhead_SizeInBytes();
   stats.sys_overhead_overall_bytes_comps_stored_ += entry(id).sys_overhead_SizeInBytes();
 }
-
-
-
-
-
-#endif /* COMPONENT_CACHE_INL_H_ */

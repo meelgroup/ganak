@@ -4,9 +4,7 @@
  *  Created on: Aug 23, 2012
  *      Author: Marc Thurley
  */
-
-#ifndef STACK_H_
-#define STACK_H_
+#pragma once
 
 #include <gmpxx.h>
 #include <cassert>
@@ -182,5 +180,3 @@ public:
     return size() - 1 + failed_literal_test_active;
   }
 };
-
-#endif /* STACK_H_ */

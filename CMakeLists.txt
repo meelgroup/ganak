@@ -264,6 +264,7 @@ if (NOT WIN32)
     else()
         add_cxx_flag_if_supported("-mtune=native")
         add_cxx_flag_if_supported("-Wall")
+        # add_cxx_flag_if_supported("-Wconversion") # enable for implicit conversion show
         add_cxx_flag_if_supported("-Wextra")
         add_cxx_flag_if_supported("-Wunused")
         add_cxx_flag_if_supported("-Wsign-compare")

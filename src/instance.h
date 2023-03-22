@@ -36,7 +36,7 @@ protected:
     return variables_[lit.var()].ante;
   }
 
-  bool hasAntecedent(Lit lit) {
+  bool hasAntecedent(Lit lit) const {
     return variables_[lit.var()].ante.isAnt();
   }
 

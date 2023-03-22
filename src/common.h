@@ -3,6 +3,7 @@
 #pragma once
 
 /* #define VERBOSE_DEBUG */
+/* #define SLOW_DEBUG */
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"
@@ -17,7 +18,15 @@
 //default
 #define COLDEF "\033[0m"
 
+// slow debug
+#ifdef SLOW_DEBUG
+#define SLOW_DEBUG_DO(x) \
+    do { x; } while (0)
+#else
+#define SLOW_DEBUG_DO(x) do { } while (0)
+#endif
 
+// verbose debug
 #ifdef VERBOSE_DEBUG
 #define print_debug(x) std::cout << COLDEF << x << endl
 #define print_debug_noendl(x) std::cout << x

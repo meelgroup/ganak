@@ -8,6 +8,7 @@
 #ifndef STRUCTURES_H_
 #define STRUCTURES_H_
 
+#include <constants.h>
 #include <vector>
 #include <iostream>
 #include "primitive_types.h"
@@ -142,7 +143,7 @@ public:
 };
 
 class Antecedent {
-  uint32_t val_;
+  uint32_t val_; // stuffed  value. LSB indicates long clause/binary cl
 
 public:
   Antecedent() {
@@ -161,17 +162,23 @@ public:
   }
 
   ClauseOfs asCl() const {
-      return val_ >> 1;
-    }
+    SLOW_DEBUG_DO(assert(isAClause()));
+    return val_ >> 1;
+  }
 
-  Lit asLit() {
+  Lit asLit() const {
+    SLOW_DEBUG_DO(assert(!isAClause()));
     Lit idLit;
     idLit.copyRaw(val_ >> 1);
     return idLit;
   }
-  // A NON-Antecedent will only be A NOT_A_CLAUSE Clause Id
-  bool isAnt() {
-    return val_ != 1; //i.e. NOT a NOT_A_CLAUSE;
+
+  // Has an antecedent?
+  bool isAnt() const {
+    //Note that literals and clause offsets both start
+    // at a higher-than 0 index, so if it's been set to be an antecdent, it'll be
+    // different than 1
+    return val_ != 1;
   }
 
   bool operator==(const Antecedent& other) const {

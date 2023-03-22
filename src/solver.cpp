@@ -102,7 +102,7 @@ bool Solver::takeSolution() {
   CMSat::lbool ret = solver.solve();
   assert(ret != CMSat::l_Undef);
   if (ret == CMSat::l_False) {
-    cout << "CMS gave UNSAT" << endl;
+    cout << "c CMS gave UNSAT" << endl;
     return false;
   }
   assert(ret == CMSat::l_True);

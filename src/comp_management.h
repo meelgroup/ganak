@@ -29,9 +29,9 @@ class ComponentManager
 public:
   ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const set<unsigned> &independent_support_) :
+                   const set<unsigned> &indep_support_) :
       config_(config), stats(statistics), cache_(statistics, config_),
-      ana_(lit_values, independent_support_)
+      ana_(lit_values, indep_support_)
   {
   }
 

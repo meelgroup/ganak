@@ -112,12 +112,12 @@ void Solver::solve(const std::string &file_name)
   if (config_.verb) {
     cout << "c Solving file " << file_name << endl;
     stats.printShortFormulaInfo();
-    cout << "c Sampling set size: " << independent_support_.size() << endl;
-    if (independent_support_.size() > 50) {
+    cout << "c Sampling set size: " << indep_support_.size() << endl;
+    if (indep_support_.size() > 50) {
       cout << "c Sampling set is too large, not displaying" << endl;
     } else {
       cout << "c Sampling set: ";
-      for (const auto& i: independent_support_) cout << ' ' << i;
+      for (const auto& i: indep_support_) cout << ' ' << i;
       cout << endl;
     }
   }
@@ -235,7 +235,7 @@ void Solver::decideLiteral() {
   float max_score = scoreOf(*(it));
   float score;
   while (*it != varsSENTINEL &&
-           independent_support_.find(*it) == independent_support_.end()) {
+           indep_support_.find(*it) == indep_support_.end()) {
     it++;
   }
   if (*it != varsSENTINEL) {
@@ -243,7 +243,7 @@ void Solver::decideLiteral() {
     max_score = scoreOf(*it);
   }
   while (*it != varsSENTINEL) {
-    if (independent_support_.find(*it) != independent_support_.end()) {
+    if (indep_support_.find(*it) != indep_support_.end()) {
       score = scoreOf(*it);
       if (score > max_score) {
         max_score = score;

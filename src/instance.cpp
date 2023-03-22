@@ -129,7 +129,7 @@ void Instance::compactVariables() {
   for (unsigned v = 1; v < variables_.size(); v++)
     if (isUnknown(v)) {
       if (isolated(v)) {
-        if (independent_support_.find(v) != independent_support_.end())
+        if (indep_support_.find(v) != indep_support_.end())
           num_pisolated ++;
         num_isolated++;
         continue;
@@ -138,14 +138,14 @@ void Instance::compactVariables() {
       var_map[v] = last_ofs;
     }
   vector <unsigned> temp;
-  for (auto it=independent_support_.begin(); it!=independent_support_.end(); ++it){
+  for (auto it=indep_support_.begin(); it!=indep_support_.end(); ++it){
     if(var_map[*it] != 0){
       temp.push_back(var_map[*it]);
     }
   }
-  independent_support_.clear();
+  indep_support_.clear();
   for (auto it=temp.begin(); it!=temp.end(); ++it){
-    independent_support_.insert(*it);
+    indep_support_.insert(*it);
   }
   variables_.clear();
   variables_.resize(last_ofs + 1);
@@ -293,9 +293,9 @@ void Instance::parseWithCMS(const std::string& filename) {
 
   indep_support_given = parser.sampling_vars_found;
   if (parser.sampling_vars_found) {
-    for(const auto& lit: parser.sampling_vars) independent_support_.insert(lit+1);
+    for(const auto& lit: parser.sampling_vars) indep_support_.insert(lit+1);
   } else {
-    for(uint32_t i = 1; i < solver.nVars()+1; i++) independent_support_.insert(i);
+    for(uint32_t i = 1; i < solver.nVars()+1; i++) indep_support_.insert(i);
   }
   must_mult_exp2 = parser.must_mult_exp2;
 }
@@ -307,7 +307,7 @@ bool Instance::createfromFile(const std::string &filename) {
   assert(occurrence_lists_.empty());
   assert(literals_.empty());
   assert(literal_pool_.empty());
-  assert(independent_support_.empty());
+  assert(indep_support_.empty());
   assert(unit_clauses_.empty());
   assert(conflict_clauses_.empty());
 

@@ -31,9 +31,9 @@ class ComponentAnalyzer {
 public:
 	ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
-        const set <unsigned> & independent_support) :
+        const set <unsigned> & indep_support) :
         literal_values_(lit_values),
-        independent_support_(independent_support)
+        indep_support_(indep_support)
   {}
 
   unsigned scoreOf(VariableIndex v) {
@@ -95,7 +95,7 @@ public:
 
     // comp only contains one variable
     if (search_stack_.size() == 1) {
-      if (independent_support_.count(v) == 0) {
+      if (indep_support_.count(v) == 0) {
         archetype_.stack_level().includeSolution(1);
       } else {
         archetype_.stack_level().includeSolution(2);
@@ -139,7 +139,7 @@ private:
 
   vector<unsigned> variable_link_list_offsets_;
   const LiteralIndexedVector<TriValue> & literal_values_;
-  const set <unsigned> & independent_support_;
+  const set <unsigned> & indep_support_;
   vector<unsigned> var_frequency_scores_;
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;

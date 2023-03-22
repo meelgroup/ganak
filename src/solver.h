@@ -59,7 +59,7 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   ComponentManager comp_manager_ = ComponentManager(
-          config_,stats, literal_values_, independent_support_);
+          config_,stats, literal_values_, indep_support_);
 
   // the last time conflict clauses have been deleted
   unsigned long last_ccl_deletion_decs_ = 0;

@@ -17,8 +17,8 @@ unsigned BasePackedComponent::_bits_of_data_size=0;
 unsigned BasePackedComponent::_data_size_mask = 0;
 
 
-void BasePackedComponent::adjustPackSize(unsigned int maxVarId,
-    unsigned int maxClId) {
+void BasePackedComponent::adjustPackSize(uint32_t maxVarId,
+    uint32_t maxClId) {
 
   if (maxVarId == 0){
     _bits_per_variable = 1;
@@ -42,11 +42,11 @@ void BasePackedComponent::adjustPackSize(unsigned int maxVarId,
   assert(_bits_of_data_size < 32 && "Otherwise, we have an issue with num_variables() that seems to convert things to uint64_t which is not allocated -- uint32_t is allocated");
 
   _variable_mask = _clause_mask = _data_size_mask = 0;
-  for (unsigned int i = 0; i < _bits_per_variable; i++)
+  for (uint32_t i = 0; i < _bits_per_variable; i++)
     _variable_mask = (_variable_mask << 1) + 1;
-  for (unsigned int i = 0; i < _bits_per_clause; i++)
+  for (uint32_t i = 0; i < _bits_per_clause; i++)
     _clause_mask = (_clause_mask << 1) + 1;
-  for (unsigned int i = 0; i < _bits_of_data_size; i++)
+  for (uint32_t i = 0; i < _bits_of_data_size; i++)
     _data_size_mask = (_data_size_mask << 1) + 1;
 }
 

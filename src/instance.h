@@ -77,11 +77,11 @@ protected:
   /////////////////////////////////////////////////////////
 
 
-  unsigned int num_conflict_clauses() const {
+  uint32_t num_conflict_clauses() const {
     return conflict_clauses_.size();
   }
 
-  unsigned int num_variables() {
+  uint32_t num_variables() {
     return variables_.size() - 1;
   }
 

@@ -498,7 +498,7 @@ bool Solver::failedLitProbe() {
 }
 
 bool Solver::propagate(const unsigned start_at_stack_ofs) {
-  for (unsigned int i = start_at_stack_ofs; i < trail.size(); i++) {
+  for (uint32_t i = start_at_stack_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
 
     //Propagate bin clauses

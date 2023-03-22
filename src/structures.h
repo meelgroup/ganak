@@ -45,7 +45,7 @@ public:
 
   void inc(){++value_;}
 
-  void copyRaw(unsigned int v) {
+  void copyRaw(uint32_t v) {
     value_ = v;
   }
 

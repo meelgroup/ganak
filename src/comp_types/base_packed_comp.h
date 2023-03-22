@@ -94,7 +94,7 @@ public:
     return _bits_of_data_size;
   }
 
-  static void adjustPackSize(unsigned int maxVarId, unsigned int maxClId);
+  static void adjustPackSize(uint32_t maxVarId, uint32_t maxClId);
 
   BasePackedComponent() {}
   BasePackedComponent(unsigned creation_time): creation_time_(creation_time) {}
@@ -128,7 +128,7 @@ public:
          };
 
          unsigned r;     // r will be lg(v)
-         unsigned int t, tt; // temporaries
+         uint32_t t, tt; // temporaries
 
          if ((tt = (v >> 16)))
          {

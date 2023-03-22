@@ -159,7 +159,7 @@ public:
 };
 
 class DecisionStack: public vector<StackLevel> {
-  unsigned int failed_literal_test_active = 0;
+  uint32_t failed_literal_test_active = 0;
 public:
 
   void startFailedLitTest() {

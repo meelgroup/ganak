@@ -17,7 +17,7 @@ using std::vector;
 class Component {
 public:
 
-  void reserveSpace(unsigned int num_variables, unsigned int num_clauses) {
+  void reserveSpace(uint32_t num_variables, uint32_t num_clauses) {
     vs_cls_data_.reserve(num_variables + num_clauses + 2);
   }
 

@@ -6,12 +6,29 @@
  */
 
 #include "statistics.h"
+#include "solver.h"
 
 #include <iostream>
 #include <fstream>
 
 std::string DataAndStatistics::getFinalSolutionCountStr() {
     return final_solution_count_.get_str();
+}
+
+
+void DataAndStatistics::set_final_solution_count_projected(const mpz_class &count) {
+  mpz_mul_2exp(
+    final_solution_count_.get_mpz_t (),
+    count.get_mpz_t (),
+    num_free_projected_variables_+inst->get_must_mult_exp2());
+}
+
+void DataAndStatistics::set_final_solution_count(const mpz_class &count) {
+  // set final_solution_count_ = count * 2^(num_variables_ - num_used_variables_)
+  mpz_mul_2exp(
+    final_solution_count_.get_mpz_t (),
+    count.get_mpz_t (),
+    num_variables_ - num_used_variables_ + inst->get_must_mult_exp2());
 }
 
 void DataAndStatistics::printShort() {
@@ -61,7 +78,12 @@ void DataAndStatistics::printShort() {
     cout << "s SATISFIABLE " << endl;
   }
   cout << "c # solutions " << endl;
-  cout << "s pmc " << getFinalSolutionCountStr() << endl;
+  if (inst->get_indep_support_given()) {
+    cout << "s pmc ";
+  } else {
+    cout << "s mc ";
+  }
+  cout << getFinalSolutionCountStr() << endl;
 
   cout << endl;
   cout << "c # END" << endl;

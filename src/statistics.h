@@ -21,8 +21,11 @@ using std::vector;
 using std::cout;
 using std::endl;
 
+class Instance;
+
 class DataAndStatistics {
 public:
+  DataAndStatistics (const Instance* _inst) { inst = _inst; }
   double time_elapsed_ = 0.0;
   uint64_t maximum_cache_size_bytes_ = 0;
 
@@ -101,7 +104,7 @@ public:
 
 
   uint64_t overall_num_cache_stores_ = 0;
-  /*end statistics */
+  const Instance* inst;
 
   void print_cache_state() {
     cout << "c printing cache state " << endl;
@@ -179,20 +182,8 @@ public:
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
-  void set_final_solution_count_projected(const mpz_class &count) {
-    mpz_mul_2exp(
-      final_solution_count_.get_mpz_t (),
-      count.get_mpz_t (),
-      num_free_projected_variables_);
-  }
-
-  void set_final_solution_count(const mpz_class &count) {
-    // set final_solution_count_ = count * 2^(num_variables_ - num_used_variables_)
-    mpz_mul_2exp(
-      final_solution_count_.get_mpz_t (),
-      count.get_mpz_t (),
-      num_variables_ - num_used_variables_);
-  }
+  void set_final_solution_count_projected(const mpz_class &count);
+  void set_final_solution_count(const mpz_class &count);
 
   const mpz_class &final_solution_count() const {
     return final_solution_count_;

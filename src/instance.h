@@ -18,6 +18,11 @@
 using std::set;
 
 class Instance {
+public:
+  Instance() : stats (this) { }
+  bool get_indep_support_given() const { return indep_support_given; }
+  const set<uint32_t>& get_indep_support() const { return independent_support_; }
+  uint32_t get_must_mult_exp2() const { return must_mult_exp2; }
 protected:
 
   void unSet(Lit lit) {
@@ -91,7 +96,9 @@ protected:
    */
   vector<Lit> literal_pool_;
 
-  set <unsigned> independent_support_;
+  set<uint32_t> independent_support_;
+  bool indep_support_given = false;
+  uint32_t must_mult_exp2 = 0;
 
   vector<unsigned> var_map;
 

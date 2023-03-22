@@ -291,11 +291,13 @@ void Instance::parseWithCMS(const std::string& filename) {
   gzclose(in);
   #endif
 
+  indep_support_given = parser.sampling_vars_found;
   if (parser.sampling_vars_found) {
     for(const auto& lit: parser.sampling_vars) independent_support_.insert(lit+1);
   } else {
     for(uint32_t i = 1; i < solver.nVars()+1; i++) independent_support_.insert(i);
   }
+  must_mult_exp2 = parser.must_mult_exp2;
 }
 
 bool Instance::createfromFile(const std::string &filename) {

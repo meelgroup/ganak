@@ -60,10 +60,6 @@ public:
     return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
   }
 
-#ifdef DOPCC
-  uint64_t *compute_clhash(){ return clhashkey_; }
-#endif
-
   bool equals(const DifferencePackedComponent &comp) const {
     if(hashkey_ != comp.hashkey()) return false;
     uint32_t* p = data_;
@@ -75,6 +71,7 @@ public:
   }
 
 #ifdef DOPCC
+  uint64_t *compute_clhash(){ return clhashkey_; }
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
     if(hashkey_ != comp.hashkey()) return false;
     bool match = true;

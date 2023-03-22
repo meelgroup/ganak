@@ -147,11 +147,7 @@ void ComponentManager::increasecachescores()
 }
 void ComponentManager::decreasecachescore(Component &comp)
 {
-  for (vector<VariableIndex>::const_iterator it = comp.varsBegin();
-       *it != varsSENTINEL; it++)
-  {
-    cachescore_[*it] -= 1;
-  }
+  for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++) cachescore_[*it] -= 1;
 }
 
 void ComponentManager::sortComponentStackRange(unsigned start, unsigned end)

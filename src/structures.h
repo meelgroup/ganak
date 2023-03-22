@@ -14,7 +14,7 @@
 
 using std::vector;
 
-#define INVALID_DL -1
+constexpr int32_t INVALID_DL = -1;
 
 typedef unsigned char TriValue;
 #define   F_TRI  0
@@ -142,7 +142,7 @@ public:
 };
 
 class Antecedent {
-  unsigned int val_;
+  uint32_t val_;
 
 public:
   Antecedent() {
@@ -182,7 +182,7 @@ public:
 
 struct Variable {
   Antecedent ante;
-  int decision_level = INVALID_DL;
+  int32_t decision_level = INVALID_DL;
   bool polarity = false;
   bool set = false;
 };

@@ -150,7 +150,7 @@ protected:
     return true;
   }
 
-  inline ClauseIndex addClause(vector<Lit> &literals);
+  inline ClauseIndex addClause(const vector<Lit> &literals);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
@@ -216,7 +216,7 @@ private:
 
 };
 
-ClauseIndex Instance::addClause(vector<Lit> &literals) {
+ClauseIndex Instance::addClause(const vector<Lit> &literals) {
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     // assert(!isUnitClause(literals[0].neg()));

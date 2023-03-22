@@ -32,39 +32,39 @@ public:
   SOLVER_StateT exit_state_ = NO_STATE;
   // different variable counts
   // number of variables  and clauses before preprocessing
-  unsigned long num_original_clauses_ = 0;
+  uint64_t num_original_clauses_ = 0;
 
   //This variable is used to periodically increase cache scores
-  unsigned long numcachedec_ = 0;
+  uint64_t numcachedec_ = 0;
 
   // number of variables remaining
-  unsigned long num_variables_ = 0;
+  uint64_t num_variables_ = 0;
   // number of variables that actually occurs in clauses
-  unsigned long num_used_variables_ = 0;
-  unsigned long num_free_variables_ = 0;
-  unsigned long num_free_projected_variables_ = 0;
+  uint64_t num_used_variables_ = 0;
+  uint64_t num_free_variables_ = 0;
+  uint64_t num_free_projected_variables_ = 0;
 
   /// different clause counts
 
   // number of clauses after preprocessing
-  unsigned long num_long_clauses_ = 0;
-  unsigned long num_binary_clauses_ = 0;
+  uint64_t num_long_clauses_ = 0;
+  uint64_t num_binary_clauses_ = 0;
 
-  unsigned long num_long_conflict_clauses_ = 0;
-  unsigned long num_binary_conflict_clauses_ = 0;
+  uint64_t num_long_conflict_clauses_ = 0;
+  uint64_t num_binary_conflict_clauses_ = 0;
 
-  unsigned long times_conflict_clauses_cleaned_ = 0;
+  uint64_t times_conflict_clauses_cleaned_ = 0;
 
-  unsigned long num_unit_clauses_ = 0;
+  uint64_t num_unit_clauses_ = 0;
   /// number of all decisions made
-  unsigned long num_decisions_ = 0;
+  uint64_t num_decisions_ = 0;
   /// number of all implications derived
-  unsigned long num_implications_ = 0;
+  uint64_t num_implications_ = 0;
   // number of all failed literal detections
-  unsigned long num_failed_literals_detected_ = 0;
-  unsigned long num_failed_literal_tests_ = 0;
+  uint64_t num_failed_literals_detected_ = 0;
+  uint64_t num_failed_literal_tests_ = 0;
   // number of all conflicts occurred
-  unsigned long num_conflicts_ = 0;
+  uint64_t num_conflicts_ = 0;
 
   // number of clauses overall learned
   unsigned num_clauses_learned_ = 0;
@@ -162,7 +162,7 @@ public:
       num_cache_hits_++;
       sum_cache_hit_sizes_ += ccomp.num_variables();
   }
-  unsigned long cache_MB_memory_usage() {
+  uint64_t cache_MB_memory_usage() {
       return cache_bytes_memory_usage() / 1000000;
   }
   mpz_class final_solution_count_ = 0;
@@ -171,14 +171,14 @@ public:
       if(num_failed_literal_tests_ == 0) return 0.0;
       return (num_failed_literal_tests_ - num_failed_literals_detected_) / (double) num_failed_literal_tests_;
   }
-  unsigned long num_clauses() {
+  uint64_t num_clauses() {
     return num_long_clauses_ + num_binary_clauses_ + num_unit_clauses_;
   }
-  unsigned long num_conflict_clauses() {
+  uint64_t num_conflict_clauses() {
     return num_long_conflict_clauses_ + num_binary_conflict_clauses_;
   }
 
-  unsigned long clause_deletion_interval() {
+  uint64_t clause_deletion_interval() {
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
@@ -237,11 +237,11 @@ public:
     return sum_size_cached_comps_ / (long double) num_cached_comps_;
   }
 
-  unsigned long cached_comp_count() {
+  uint64_t cached_comp_count() {
     return num_cached_comps_;
   }
 
-  unsigned long cache_hits() {
+  uint64_t cache_hits() {
     return num_cache_hits_;
   }
 

@@ -19,8 +19,8 @@ struct SolverConfiguration {
   int verb = 1;
   int restart = 1;
 
-  unsigned long time_bound_seconds = 100000;
-  unsigned long randomseed = 1000;
+  uint64_t time_bound_seconds = 100000;
+  uint64_t randomseed = 1000;
   unsigned hashrange = 1;
   unsigned maxdec = 5000000;
   unsigned minconflicts_ = 500;

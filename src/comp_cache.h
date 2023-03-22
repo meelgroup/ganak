@@ -192,7 +192,7 @@ private:
   DataAndStatistics &stats;
   const SolverConfiguration &config_;
 
-  unsigned long my_time_ = 0;
+  uint64_t my_time_ = 0;
 };
 
 

@@ -62,9 +62,9 @@ private:
           config_,stats, literal_values_, indep_support_);
 
   // the last time conflict clauses have been deleted
-  unsigned long last_ccl_deletion_decs_ = 0;
+  uint64_t last_ccl_deletion_decs_ = 0;
   // the last time the conflict clause storage has been compacted
-  unsigned long last_ccl_cleanup_decs_ = 0;
+  uint64_t last_ccl_cleanup_decs_ = 0;
 
   bool simplePreProcess();
   bool prepFailedLiteralTest();

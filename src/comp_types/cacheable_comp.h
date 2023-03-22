@@ -39,12 +39,12 @@ public:
       T_Component(randomseedforCLHASH,comp) {
   }
 
-  unsigned long SizeInBytes() const {
+  uint64_t SizeInBytes() const {
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size();
   }
 
-  unsigned long SizeInBytes_CLHASH() const {
+  uint64_t SizeInBytes_CLHASH() const {
     return sizeof(GenericCacheableComponent<T_Component>)
         + T_Component::raw_data_byte_size_CLHASH();
   }
@@ -52,7 +52,7 @@ public:
   // the 48 = 16*3 in overhead stems from the three parts of the comp
   // being dynamically allocated (i.e. the GenericCacheableComponent itself,
   // the data_ and the model_count data
-  unsigned long sys_overhead_SizeInBytes() const {
+  uint64_t sys_overhead_SizeInBytes() const {
       return sizeof(GenericCacheableComponent<T_Component>)
           + T_Component::sys_overhead_raw_data_byte_size()
          // + 24;

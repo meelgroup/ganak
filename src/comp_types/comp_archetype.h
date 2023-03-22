@@ -22,7 +22,7 @@ using std::endl;
 
 // State values for variables found during comp
 // analysis (CA)
-typedef unsigned char CA_SearchState;
+typedef uint8_t CA_SearchState;
 #define   CA_NIL  0
 #define   CA_VAR_IN_SUP_COMP_UNSEEN  1
 #define   CA_VAR_SEEN 2

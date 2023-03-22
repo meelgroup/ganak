@@ -16,7 +16,7 @@ using std::vector;
 
 constexpr int32_t INVALID_DL = -1;
 
-typedef unsigned char TriValue;
+typedef uint8_t TriValue;
 #define   F_TRI  0
 #define   T_TRI  1
 #define   X_TRI  2

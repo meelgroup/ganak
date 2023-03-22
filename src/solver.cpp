@@ -633,7 +633,7 @@ bool Solver::failedLitProbeInternal() {
 
 void Solver::minimizeAndStoreUIPClause(
   Lit uipLit,
-  vector<Lit> &tmp_clause, const vector<unsigned char>& seen) {
+  vector<Lit> &tmp_clause, const vector<uint8_t>& seen) {
 
   tmp_clause_minim.clear();
   assertion_level_ = 0;

@@ -41,7 +41,7 @@ public:
 
 private:
   // Temporaries, used during recordLastUIPClause
-  vector<unsigned char> tmp_seen;
+  vector<uint8_t> tmp_seen;
   vector<Lit> tmp_clause; //used in recoredLastUIPClause
   vector<unsigned> toClear;
 
@@ -50,7 +50,7 @@ private:
 
   // Temporaries for failedLitProbeInternal
   vector<Lit> test_lits;
-  LiteralIndexedVector<unsigned char> viewed_lits;
+  LiteralIndexedVector<uint8_t> viewed_lits;
 
   double time_start;
   SolverConfiguration config_;
@@ -241,7 +241,7 @@ private:
   void recordAllUIPCauses();
   void minimizeAndStoreUIPClause(Lit uipLit,
                                  vector<Lit> &tmp_clause,
-                                 const vector<unsigned char>& seen);
+                                 const vector<uint8_t>& seen);
   void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();

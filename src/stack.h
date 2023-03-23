@@ -75,8 +75,7 @@ public:
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
-  StackLevel(uint32_t super_comp, uint32_t trail_ofs,
-      uint32_t comp_stack_ofs) :
+  StackLevel(uint32_t super_comp, uint32_t trail_ofs, uint32_t comp_stack_ofs) :
       super_comp_(super_comp),
       trail_ofs_(trail_ofs),
       remaining_comps_ofs_(comp_stack_ofs),

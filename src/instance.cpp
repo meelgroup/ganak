@@ -68,11 +68,8 @@ void Instance::compactClauses() {
     }
   }
 
-  for (auto ofs : clause_ofs)
-    cleanClause(ofs);
-
-  for (auto &l : literals_)
-    l.resetWatchList();
+  for (const auto ofs : clause_ofs) cleanClause(ofs);
+  for (auto &l : literals_) l.resetWatchList();
 
   occurrence_lists_.clear();
   occurrence_lists_.resize(variables_.size());

@@ -125,8 +125,8 @@ public:
   }
 
   void resetWatchList(){
-        watch_list_.clear();
-        watch_list_.push_back(SENTINEL_CL);
+    watch_list_.clear();
+    watch_list_.push_back(SENTINEL_CL);
   }
 
   bool hasBinaryLinkTo(Lit lit) {

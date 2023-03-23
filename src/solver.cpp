@@ -431,7 +431,7 @@ retStateT Solver::resolveConflict() {
   if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
 
   decision_stack_.top().mark_branch_unsat();
-  //BEGIN Backtracking
+  //Backtracking
   // maybe the other branch had some solutions
   if (decision_stack_.top().isSecondBranch()) {
     if (decision_stack_.get_decision_level() == 1) {

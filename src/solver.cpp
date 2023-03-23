@@ -68,14 +68,9 @@ void Solver::solve(const std::string &file_name)
     } else cout << "c No sampling set, doing unprojected counting" << endl;
   }
 
-  if (!satSolver.okay()) {
-    stats.exit_state_ = SUCCESS;
-    stats.set_final_solution_count(0);
-  } else {
+  if (satSolver.okay()) {
     simplePreProcess();
     cout << "c Prepocessing done" << endl;
-  }
-  if (satSolver.okay()) {
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
     comp_manager_.initialize(literals_, lit_pool_, nVars());
@@ -84,12 +79,11 @@ void Solver::solve(const std::string &file_name)
     stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
     stats.num_long_conflict_clauses_ = num_conflict_clauses();
   } else {
-    cout << "c Found UNSAT during preprocessing" << endl;
     stats.exit_state_ = SUCCESS;
     stats.set_final_solution_count(0);
   }
 
-  stats.time_elapsed_ = time_start - cpuTime();
+  stats.time_elapsed_ = cpuTime() - time_start;
   comp_manager_.gatherStatistics();
   stats.printShort();
 }

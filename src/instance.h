@@ -69,7 +69,6 @@ protected:
   // removes all set variables and essentially reinitiallizes all
   // further data
   void compactClauses();
-  void compactVariables();
   void cleanClause(ClauseOfs cl_ofs);
 
   /////////////////////////////////////////////////////////
@@ -99,8 +98,6 @@ protected:
   set<uint32_t> indep_support_;
   bool indep_support_given = false;
   uint32_t must_mult_exp2 = 0;
-
-  vector<uint32_t> var_map;
 
 
   // this is to determine the starting offset of

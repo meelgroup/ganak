@@ -20,7 +20,7 @@ void DataAndStatistics::set_final_solution_count_projected(const mpz_class &coun
   mpz_mul_2exp(
     final_solution_count_.get_mpz_t (),
     count.get_mpz_t (),
-    num_free_projected_variables_+inst->get_must_mult_exp2());
+    inst->get_must_mult_exp2());
 }
 
 void DataAndStatistics::set_final_solution_count(const mpz_class &count) {
@@ -28,14 +28,12 @@ void DataAndStatistics::set_final_solution_count(const mpz_class &count) {
   mpz_mul_2exp(
     final_solution_count_.get_mpz_t (),
     count.get_mpz_t (),
-    nVars_ - num_used_variables_ + inst->get_must_mult_exp2());
+    nVars_ - inst->get_must_mult_exp2());
 }
 
 void DataAndStatistics::printShort() {
   cout << "c " << endl;
-  cout << "c variables (total / active / free)\t" << nVars_ << "/"
-      << num_used_variables_ << "/" << nVars_ - num_used_variables_
-      << endl;
+  cout << "c variables (total / active / free)\t" << nVars_ << "/" << endl;
   cout << "c clauses (removed) \t\t\t" << num_original_clauses_ << " ("
       << num_original_clauses_ - num_clauses() << ")" << endl;
   cout << "c decisions \t\t\t\t" << num_decisions_ << endl;

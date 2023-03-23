@@ -110,94 +110,6 @@ void Instance::compactClauses() {
   stats.num_binary_clauses_ = bin_links >> 1;
 }
 
-void Instance::compactVariables() {
-  var_map.resize(variables_.size(), 0);
-  uint32_t last_ofs = 0;
-  uint32_t num_isolated = 0;
-  uint32_t num_pisolated = 0;
-  LiteralIndexedVector<vector<Lit> > _tmp_bin_links(1);
-  LiteralIndexedVector<TriValue> _tmp_values = lit_values_;
-
-  for (auto l : literals_)
-    _tmp_bin_links.push_back(l.binary_links_);
-
-  assert(_tmp_bin_links.size() == literals_.size());
-  for (uint32_t v = 1; v < variables_.size(); v++)
-    if (isUnknown(v)) {
-      if (isolated(v)) {
-        if (indep_support_.find(v) != indep_support_.end())
-          num_pisolated ++;
-        num_isolated++;
-        continue;
-      }
-      last_ofs++;
-      var_map[v] = last_ofs;
-    }
-  vector <uint32_t> temp;
-  for (auto it=indep_support_.begin(); it!=indep_support_.end(); ++it){
-    if(var_map[*it] != 0){
-      temp.push_back(var_map[*it]);
-    }
-  }
-  indep_support_.clear();
-  for (auto it=temp.begin(); it!=temp.end(); ++it){
-    indep_support_.insert(*it);
-  }
-  variables_.clear();
-  variables_.resize(last_ofs + 1);
-  occ_lists_.clear();
-  occ_lists_.resize(variables_.size());
-  literals_.clear();
-  literals_.resize(variables_.size());
-  lit_values_.clear();
-  lit_values_.resize(variables_.size(), X_TRI);
-
-  Lit newlit;
-  for (auto l = Lit(0, false); l != _tmp_bin_links.end_lit(); l.inc()) {
-    if (var_map[l.var()] != 0) {
-      newlit = Lit(var_map[l.var()], l.sign());
-      for (auto it = _tmp_bin_links[l].begin(); *it != SENTINEL_LIT; it++) {
-        assert(var_map[it->var()] != 0);
-        literals_[newlit].addBinLinkTo(
-            Lit(var_map[it->var()], it->sign()));
-      }
-    }
-  }
-
-  vector<ClauseOfs> clause_ofs;
-  clause_ofs.reserve(stats.num_long_clauses_);
-  for (auto it_lit = lit_pool_.begin(); it_lit != lit_pool_.end();
-      it_lit++) {
-    if (*it_lit == SENTINEL_LIT) {
-      if (it_lit + 1 == lit_pool_.end())
-        break;
-      it_lit += ClauseHeader::overheadInLits();
-      clause_ofs.push_back(1 + it_lit - lit_pool_.begin());
-    }
-  }
-
-  for (auto ofs : clause_ofs) {
-    litWatchList(Lit(var_map[beginOf(ofs)->var()], beginOf(ofs)->sign())).addWatchLinkTo(
-        ofs);
-    litWatchList(Lit(var_map[(beginOf(ofs) + 1)->var()],
-            (beginOf(ofs) + 1)->sign())).addWatchLinkTo(ofs);
-    for (auto it_lit = beginOf(ofs); *it_lit != SENTINEL_LIT; it_lit++) {
-      *it_lit = Lit(var_map[it_lit->var()], it_lit->sign());
-      occ_lists_[*it_lit].push_back(ofs);
-    }
-  }
-
-  lit_values_.clear();
-  lit_values_.resize(variables_.size(), X_TRI);
-  unit_clauses_.clear();
-
-  stats.nVars_ = variables_.size() - 1 + num_isolated;
-
-  stats.num_used_variables_ = nVars();
-  stats.num_free_variables_ = num_isolated;
-  stats.num_free_projected_variables_ = num_pisolated;
-}
-
 void Instance::compactConflictLiteralPool(){
   auto write_pos = conflict_clauses_begin();
   vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
@@ -339,8 +251,6 @@ bool Instance::createfromFile(const std::string &filename) {
   satSolver.end_getting_small_clauses();
 
   stats.nVars_ = satSolver.nVars();
-  stats.num_used_variables_ = nVars();
-  stats.num_free_variables_ = satSolver.nVars() - nVars();
   stats.num_unit_clauses_ = unit_clauses_.size();
   original_lit_pool_size_ = lit_pool_.size();
 

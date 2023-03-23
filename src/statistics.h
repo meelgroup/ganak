@@ -40,9 +40,6 @@ public:
   // number of variables remaining
   uint64_t nVars_ = 0;
   // number of variables that actually occurs in clauses
-  uint64_t num_used_variables_ = 0;
-  uint64_t num_free_variables_ = 0;
-  uint64_t num_free_projected_variables_ = 0;
 
   /// different clause counts
 
@@ -208,9 +205,7 @@ public:
   std::string getFinalSolutionCountStr();
   void printShort();
   void printShortFormulaInfo() {
-    cout << "c variables (all/used/free): \t";
-    cout << nVars_ << "/" << num_used_variables_ << "/";
-    cout << nVars_ - num_used_variables_ << endl;
+    cout << "c variables (all/used/free): \t" << endl;
 
     cout << "c clauses (all/long/binary/unit): ";
     cout << num_clauses() << "/" << num_long_clauses_;

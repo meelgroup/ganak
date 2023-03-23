@@ -34,7 +34,6 @@ bool Solver::simplePreProcess()
 void Solver::HardWireAndCompact()
 {
   compactClauses();
-  compactVariables();
   trail.clear();
   test_lits.resize(nVars());
   viewed_lits.resize(nVars() + 1, 0);

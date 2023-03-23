@@ -146,7 +146,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   stats.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes();
 #ifdef DOPCC
   if (config_.perform_pcc)
-    entry(id).set_hacked(entry(id).SizeInBytes(), entry(id).num_variables());
+    entry(id).set_hacked(entry(id).SizeInBytes(), entry(id).nVars());
 #endif
 
   entry(id).set_model_count(model_count,my_time_);

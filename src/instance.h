@@ -81,7 +81,7 @@ protected:
     return conflict_clauses_.size();
   }
 
-  uint32_t num_variables() {
+  uint32_t nVars() {
     return variables_.size() - 1;
   }
 

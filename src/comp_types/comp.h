@@ -17,8 +17,8 @@ using std::vector;
 class Component {
 public:
 
-  void reserveSpace(uint32_t num_variables, uint32_t num_clauses) {
-    vs_cls_data_.reserve(num_variables + num_clauses + 2);
+  void reserveSpace(uint32_t nVars, uint32_t num_clauses) {
+    vs_cls_data_.reserve(nVars + num_clauses + 2);
   }
 
   void set_id(CacheEntryID id) {
@@ -61,7 +61,7 @@ public:
     return vs_cls_data_.begin() + clauses_ofs_;
   }
 
-  uint32_t num_variables() const {
+  uint32_t nVars() const {
     return clauses_ofs_ - 1;
   }
 

@@ -24,7 +24,7 @@ public:
   inline DifferencePackedComponent(Component &rComp);
   inline DifferencePackedComponent(vector<void *> & randomseedforCLHASH, Component &rComp);
 
-  uint32_t num_variables() const{
+  uint32_t nVars() const{
     if (old_size) return old_num_vars;
     uint32_t *p = (uint32_t *) data_;
     return (*p >> bits_of_data_size()) & variable_mask();
@@ -114,7 +114,7 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
 
   uint32_t data_size_vars = bits_of_data_size() + 2*bits_per_variable() + 5;
 
-  data_size_vars += (rComp.num_variables() - 1) * bits_per_var_diff ;
+  data_size_vars += (rComp.nVars() - 1) * bits_per_var_diff ;
 
   uint32_t data_size_clauses = 0;
   if(*rComp.clsBegin())
@@ -130,7 +130,7 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   BitStuffer<uint32_t> bs(data_);
 
   bs.stuff(data_size, bits_of_data_size());
-  bs.stuff(rComp.num_variables(), bits_per_variable());
+  bs.stuff(rComp.nVars(), bits_per_variable());
   bs.stuff(bits_per_var_diff, 5);
   bs.stuff(*rComp.varsBegin(), bits_per_variable());
 
@@ -184,7 +184,7 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
 
   uint32_t data_size_vars = bits_of_data_size() + 2*bits_per_variable() + 5;
 
-  data_size_vars += (rComp.num_variables() - 1) * bits_per_var_diff ;
+  data_size_vars += (rComp.nVars() - 1) * bits_per_var_diff ;
   uint32_t data_size_clauses = 0;
   if(*rComp.clsBegin())
     data_size_clauses += bits_per_clause() + 5
@@ -198,7 +198,7 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   BitStuffer<uint32_t> bs(data_);
 
   bs.stuff(data_size, bits_of_data_size());
-  bs.stuff(rComp.num_variables(), bits_per_variable());
+  bs.stuff(rComp.nVars(), bits_per_variable());
   bs.stuff(bits_per_var_diff, 5);
   bs.stuff(*rComp.varsBegin(), bits_per_variable());
 

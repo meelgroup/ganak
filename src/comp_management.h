@@ -43,7 +43,7 @@ public:
   }
 
   void initialize(LiteralIndexedVector<LitWatchList> &literals,
-                  vector<Lit> &lit_pool, uint32_t num_variables);
+                  vector<Lit> &lit_pool, uint32_t nVars);
 
   uint32_t scoreOf(VariableIndex v)
   {
@@ -158,7 +158,7 @@ void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
   for (uint32_t i = start; i < end; i++)
     for (uint32_t j = i + 1; j < end; j++)
     {
-      if (comp_stack_[i]->num_variables() < comp_stack_[j]->num_variables())
+      if (comp_stack_[i]->nVars() < comp_stack_[j]->nVars())
         std::swap(comp_stack_[i], comp_stack_[j]);
     }
 }
@@ -215,14 +215,14 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
-            << " num vars: " << p_new_comp->num_variables() << " vars: ";
+            << " num vars: " << p_new_comp->nVars() << " vars: ";
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
 #endif
       } else {
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Component already in cache. ID: " << p_new_comp->id()
-            << " num vars: " << p_new_comp->num_variables() << " vars: ";
+            << " num vars: " << p_new_comp->nVars() << " vars: ";
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
 #endif

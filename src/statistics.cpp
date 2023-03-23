@@ -24,17 +24,17 @@ void DataAndStatistics::set_final_solution_count_projected(const mpz_class &coun
 }
 
 void DataAndStatistics::set_final_solution_count(const mpz_class &count) {
-  // set final_solution_count_ = count * 2^(num_variables_ - num_used_variables_)
+  // set final_solution_count_ = count * 2^(nVars_ - num_used_variables_)
   mpz_mul_2exp(
     final_solution_count_.get_mpz_t (),
     count.get_mpz_t (),
-    num_variables_ - num_used_variables_ + inst->get_must_mult_exp2());
+    nVars_ - num_used_variables_ + inst->get_must_mult_exp2());
 }
 
 void DataAndStatistics::printShort() {
   cout << "c " << endl;
-  cout << "c variables (total / active / free)\t" << num_variables_ << "/"
-      << num_used_variables_ << "/" << num_variables_ - num_used_variables_
+  cout << "c variables (total / active / free)\t" << nVars_ << "/"
+      << num_used_variables_ << "/" << nVars_ - num_used_variables_
       << endl;
   cout << "c clauses (removed) \t\t\t" << num_original_clauses_ << " ("
       << num_original_clauses_ - num_clauses() << ")" << endl;

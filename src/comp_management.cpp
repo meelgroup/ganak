@@ -8,7 +8,7 @@
 #include "comp_management.h"
 
 void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
-    vector<Lit> &lit_pool, uint32_t num_variables){
+    vector<Lit> &lit_pool, uint32_t nVars){
   assert(comp_stack_.empty());
 
   ana_.initialize(literals, lit_pool);
@@ -26,7 +26,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
 
 
   cache_.init(*comp_stack_.back(), seedforCLHASH);
-  for (uint32_t i = 0 ; i < (num_variables + 5); i++){
+  for (uint32_t i = 0 ; i < (nVars + 5); i++){
     cachescore_.push_back(0);
   }
 }

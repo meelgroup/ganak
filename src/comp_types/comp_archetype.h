@@ -51,7 +51,7 @@ public:
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
     clearArrays();
-    current_comp_for_caching_.reserveSpace(super_comp.num_variables(),super_comp.numLongClauses());
+    current_comp_for_caching_.reserveSpace(super_comp.nVars(),super_comp.numLongClauses());
   }
 
   const Component &super_comp() {
@@ -178,7 +178,7 @@ public:
     current_comp_for_caching_.closeClauseData();
 
     print_debug(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
-        " New comp vars: " << p_new_comp->num_variables() <<
+        " New comp vars: " << p_new_comp->nVars() <<
         " long cls:" << p_new_comp->numLongClauses());
     return p_new_comp;
   }

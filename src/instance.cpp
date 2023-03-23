@@ -191,9 +191,9 @@ void Instance::compactVariables() {
   lit_values_.resize(variables_.size(), X_TRI);
   unit_clauses_.clear();
 
-  stats.num_variables_ = variables_.size() - 1 + num_isolated;
+  stats.nVars_ = variables_.size() - 1 + num_isolated;
 
-  stats.num_used_variables_ = num_variables();
+  stats.num_used_variables_ = nVars();
   stats.num_free_variables_ = num_isolated;
   stats.num_free_projected_variables_ = num_pisolated;
 }
@@ -338,9 +338,9 @@ bool Instance::createfromFile(const std::string &filename) {
   }
   satSolver.end_getting_small_clauses();
 
-  stats.num_variables_ = satSolver.nVars();
-  stats.num_used_variables_ = num_variables();
-  stats.num_free_variables_ = satSolver.nVars() - num_variables();
+  stats.nVars_ = satSolver.nVars();
+  stats.num_used_variables_ = nVars();
+  stats.num_free_variables_ = satSolver.nVars() - nVars();
   stats.num_unit_clauses_ = unit_clauses_.size();
   original_lit_pool_size_ = lit_pool_.size();
 

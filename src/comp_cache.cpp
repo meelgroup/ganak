@@ -161,7 +161,7 @@ bool ComponentCache::deleteEntries() {
 	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
 			stats.sum_size_cached_comps_ +=
-					entry_base_[id]->num_variables();
+					entry_base_[id]->nVars();
 			if(config_.perform_pcc && entry_base_[id]->get_hacked()){
 				stats.sum_bytes_cached_comps_ +=
 					entry_base_[id]->SizeInBytes_CLHASH();

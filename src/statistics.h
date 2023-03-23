@@ -38,7 +38,7 @@ public:
   uint64_t numcachedec_ = 0;
 
   // number of variables remaining
-  uint64_t num_variables_ = 0;
+  uint64_t nVars_ = 0;
   // number of variables that actually occurs in clauses
   uint64_t num_used_variables_ = 0;
   uint64_t num_free_variables_ = 0;
@@ -132,11 +132,11 @@ public:
     else{
       sum_bytes_cached_comps_ += ccomp.SizeInBytes();
     }
-    sum_size_cached_comps_ += ccomp.num_variables();
+    sum_size_cached_comps_ += ccomp.nVars();
     num_cached_comps_++;
     total_num_cached_comps_++;
     overall_bytes_comps_stored_ += ccomp.SizeInBytes();
-    overall_num_cache_stores_ += ccomp.num_variables();
+    overall_num_cache_stores_ += ccomp.nVars();
     sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes();
     sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes();
 
@@ -151,7 +151,7 @@ public:
     else{
       sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
     }
-    sum_size_cached_comps_ -= ccomp.num_variables();
+    sum_size_cached_comps_ -= ccomp.nVars();
     num_cached_comps_--;
     sum_bytes_pure_cached_comp_data_ -= ccomp.data_only_byte_size();
 
@@ -160,7 +160,7 @@ public:
 
   void incorporate_cache_hit(CacheableComponent &ccomp){
       num_cache_hits_++;
-      sum_cache_hit_sizes_ += ccomp.num_variables();
+      sum_cache_hit_sizes_ += ccomp.nVars();
   }
   uint64_t cache_MB_memory_usage() {
       return cache_bytes_memory_usage() / 1000000;
@@ -209,8 +209,8 @@ public:
   void printShort();
   void printShortFormulaInfo() {
     cout << "c variables (all/used/free): \t";
-    cout << num_variables_ << "/" << num_used_variables_ << "/";
-    cout << num_variables_ - num_used_variables_ << endl;
+    cout << nVars_ << "/" << num_used_variables_ << "/";
+    cout << nVars_ - num_used_variables_ << endl;
 
     cout << "c clauses (all/long/binary/unit): ";
     cout << num_clauses() << "/" << num_long_clauses_;

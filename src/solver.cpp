@@ -36,8 +36,8 @@ void Solver::HardWireAndCompact()
   compactClauses();
   compactVariables();
   trail.clear();
-  test_lits.resize(num_variables());
-  viewed_lits.resize(num_variables() + 1, 0);
+  test_lits.resize(nVars());
+  viewed_lits.resize(nVars() + 1, 0);
 
   for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc())
   {
@@ -80,7 +80,7 @@ void Solver::solve(const std::string &file_name)
   if (satSolver.okay()) {
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
-    comp_manager_.initialize(literals_, lit_pool_, num_variables());
+    comp_manager_.initialize(literals_, lit_pool_, nVars());
 
     stats.exit_state_ = countSAT();
     stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
@@ -106,7 +106,7 @@ bool Solver::takeSolution() {
     return false;
   }
   assert(ret == CMSat::l_True);
-  for(uint32_t i = 0; i < num_variables(); i++) {
+  for(uint32_t i = 0; i < nVars(); i++) {
     target_polar[i+1] = satSolver.get_model()[i] == CMSat::l_True;
   }
   counted_bottom_comp = false;
@@ -139,8 +139,8 @@ SOLVER_StateT Solver::countSAT() {
 
         const auto& c = comp_manager_.at(sup_at);
         cout << COLORG "-> Variables in comp_manager_.at(" << sup_at << ")."
-          << " num: " << c->num_variables() << " vars: ";
-        for(uint32_t i = 0; i < c->num_variables(); i++) {
+          << " num: " << c->nVars() << " vars: ";
+        for(uint32_t i = 0; i < c->nVars(); i++) {
           const auto& v = c->varsBegin();
           cout << v[i] << " ";
         }
@@ -682,7 +682,7 @@ void Solver::recordLastUIPCauses() {
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
   tmp_seen.clear();
-  tmp_seen.resize(num_variables()+1, false);
+  tmp_seen.resize(nVars()+1, false);
   tmp_clause.clear();
   assert(toClear.empty());
 
@@ -768,7 +768,7 @@ void Solver::recordAllUIPCauses() {
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
   tmp_seen.clear();
-  tmp_seen.resize(num_variables()+1, false);
+  tmp_seen.resize(nVars()+1, false);
   tmp_clause.clear();
   assert(toClear.empty());
 

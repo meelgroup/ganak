@@ -131,7 +131,7 @@ private:
 
   // this is a new idea,
   // for every variable we have a list
-  // 0 binarylinks 0 occurrences 0
+  // 0 binarylinks 0 occs 0
   // this should give better cache behaviour,
   // because all links of one variable (binary and nonbinray) are found
   // in one contiguous chunk of memory

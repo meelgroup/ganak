@@ -57,7 +57,7 @@ void Instance::compactClauses() {
   vector<ClauseOfs> clause_ofs;
   clause_ofs.reserve(stats.num_long_clauses_);
 
-  // clear watch links and occurrence lists
+  // clear watch links and occ lists
   for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
@@ -71,8 +71,8 @@ void Instance::compactClauses() {
   for (const auto ofs : clause_ofs) cleanClause(ofs);
   for (auto &l : literals_) l.resetWatchList();
 
-  occurrence_lists_.clear();
-  occurrence_lists_.resize(variables_.size());
+  occ_lists_.clear();
+  occ_lists_.resize(variables_.size());
 
   vector<Lit> tmp_pool = literal_pool_;
   literal_pool_.clear();
@@ -90,7 +90,7 @@ void Instance::compactClauses() {
       num_clauses++;
       for (; *it != SENTINEL_LIT; it++) {
         literal_pool_.push_back(*it);
-        occurrence_lists_[*it].push_back(new_ofs);
+        occ_lists_[*it].push_back(new_ofs);
       }
       literal_pool_.push_back(SENTINEL_LIT);
     }
@@ -146,8 +146,8 @@ void Instance::compactVariables() {
   }
   variables_.clear();
   variables_.resize(last_ofs + 1);
-  occurrence_lists_.clear();
-  occurrence_lists_.resize(variables_.size());
+  occ_lists_.clear();
+  occ_lists_.resize(variables_.size());
   literals_.clear();
   literals_.resize(variables_.size());
   literal_values_.clear();
@@ -184,7 +184,7 @@ void Instance::compactVariables() {
             (beginOf(ofs) + 1)->sign())).addWatchLinkTo(ofs);
     for (auto it_lit = beginOf(ofs); *it_lit != SENTINEL_LIT; it_lit++) {
       *it_lit = Lit(var_map[it_lit->var()], it_lit->sign());
-      occurrence_lists_[*it_lit].push_back(ofs);
+      occ_lists_[*it_lit].push_back(ofs);
     }
   }
 
@@ -301,7 +301,7 @@ bool Instance::createfromFile(const std::string &filename) {
   // The solver is empty
   assert(variables_.empty());
   assert(literal_values_.empty());
-  assert(occurrence_lists_.empty());
+  assert(occ_lists_.empty());
   assert(literals_.empty());
   assert(literal_pool_.empty());
   assert(indep_support_.empty());
@@ -314,7 +314,7 @@ bool Instance::createfromFile(const std::string &filename) {
   variables_.push_back(Variable());
   variables_.resize(satSolver.nVars() + 1);
   literal_values_.resize(satSolver.nVars() + 1, X_TRI);
-  occurrence_lists_.resize(satSolver.nVars() + 1);
+  occ_lists_.resize(satSolver.nVars() + 1);
   literals_.resize(satSolver.nVars() + 1);
   target_polar.resize(satSolver.nVars() + 1);
   if (!satSolver.okay()) return satSolver.okay();
@@ -335,7 +335,7 @@ bool Instance::createfromFile(const std::string &filename) {
     ClauseOfs cl_ofs = addClause(literals);
     if (literals.size() >= 3)
       for (const auto& l : literals)
-        occurrence_lists_[l].push_back(cl_ofs);
+        occ_lists_[l].push_back(cl_ofs);
   }
   satSolver.end_getting_small_clauses();
 

@@ -47,9 +47,9 @@ protected:
   bool isolated(VariableIndex v) {
     Lit lit(v, false);
     return (litWatchList(lit).binary_links_.size() <= 1)
-        && occurrence_lists_[lit].empty()
+        && occ_lists_[lit].empty()
         && (litWatchList(lit.neg()).binary_links_.size() <= 1)
-        && occurrence_lists_[lit.neg()].empty();
+        && occ_lists_[lit.neg()].empty();
   }
 
   bool free(VariableIndex v) {
@@ -108,7 +108,7 @@ protected:
   uint32_t original_lit_pool_size_;
 
   LiteralIndexedVector<LitWatchList> literals_;
-  LiteralIndexedVector<vector<ClauseOfs> > occurrence_lists_;
+  LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
   vector<ClauseOfs> conflict_clauses_;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;

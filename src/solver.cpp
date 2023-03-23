@@ -42,7 +42,7 @@ void Solver::HardWireAndCompact()
   for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc())
   {
     litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
-    litWatchList(l).activity_score_ += occurrence_lists_[l].size();
+    litWatchList(l).activity_score_ += occ_lists_[l].size();
   }
   stats.num_unit_clauses_ = unit_clauses_.size();
   initStack();
@@ -550,7 +550,7 @@ bool Solver::failedLitProbeInternal() {
     test_lits.clear();
     for (auto it = trail.begin() + stack_ofs;
          it != trail.end(); it++) {
-      for (auto cl_ofs : occurrence_lists_[it->neg()]) {
+      for (auto cl_ofs : occ_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
           for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
             if (isUnknown(*lt) && !viewed_lits[lt->neg()]) {

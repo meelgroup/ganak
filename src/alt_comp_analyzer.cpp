@@ -7,7 +7,7 @@
 
 #include "alt_comp_analyzer.h"
 
-// Builds occurrence lists and sets things up
+// Builds occ lists and sets things up
 void ComponentAnalyzer::initialize(
     LiteralIndexedVector<LitWatchList> & litWatchList, // binary clauses
     vector<Lit> &lit_pool) // longer-than-2-long clauses
@@ -26,7 +26,7 @@ void ComponentAnalyzer::initialize(
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
 
-  print_debug(COLBLBACK "Building occurrence list in ComponentAnalyzer::initialize");
+  print_debug(COLBLBACK "Building occ list in ComponentAnalyzer::initialize");
 
   vector<uint32_t> tmp;
   max_clause_id_ = 0;
@@ -34,9 +34,9 @@ void ComponentAnalyzer::initialize(
 
   // lit_pool contains all non-binary clauses
   for (auto it_lit = lit_pool.begin(); it_lit != lit_pool.end(); it_lit++) {
-    // Builds the occurrence list for 3-long and long clauses
+    // Builds the occ list for 3-long and long clauses
     // it_curr_cl_st is the starting point of the clause
-    // for each lit in the clause, it adds the clause to the occurrence list
+    // for each lit in the clause, it adds the clause to the occ list
 
     if (*it_lit == SENTINEL_LIT) { //End of this clause
       if (it_lit + 1 == lit_pool.end()) break;

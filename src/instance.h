@@ -63,19 +63,6 @@ protected:
   // information from deleted clauses
   void compactConflictLiteralPool();
 
-  // we assert that the formula is consistent
-  // and has not been found UNSAT yet
-  // hard wires all assertions in the literal stack into the formula
-  // removes all set variables and essentially reinitiallizes all
-  // further data
-  void compactClauses();
-  void cleanClause(ClauseOfs cl_ofs);
-
-  /////////////////////////////////////////////////////////
-  // END access to variables and literals
-  /////////////////////////////////////////////////////////
-
-
   uint32_t num_conflict_clauses() const {
     return conflict_clauses_.size();
   }

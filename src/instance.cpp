@@ -27,23 +27,24 @@ void Instance::cleanClause(ClauseOfs cl_ofs) {
       satisfied = true;
       break;
     }
+
   // mark the clause as empty if satisfied
   if (satisfied) {
     *beginOf(cl_ofs) = SENTINEL_LIT;
     return;
   }
+
   auto jt = beginOf(cl_ofs);
   auto it = beginOf(cl_ofs);
   // from now, all inactive literals are resolved
   for (; *it != SENTINEL_LIT; it++, jt++) {
-    while (*jt != SENTINEL_LIT && !isUnknown(*jt))
-      jt++;
+    while (*jt != SENTINEL_LIT && !isUnknown(*jt)) jt++;
     *it = *jt;
-    if (*jt == SENTINEL_LIT)
-      break;
+    if (*jt == SENTINEL_LIT) break;
   }
   uint32_t length = it - beginOf(cl_ofs);
   // if it has become a unit clause, it should have already been asserted
+  // so delete the clause
   if (length == 1) {
     *beginOf(cl_ofs) = SENTINEL_LIT;
     // if it has become binary, transform it to binary and delete it
@@ -58,11 +59,9 @@ void Instance::compactClauses() {
   clause_ofs.reserve(stats.num_long_clauses_);
 
   // clear watch links and occ lists
-  for (auto it_lit = lit_pool_.begin(); it_lit != lit_pool_.end();
-      it_lit++) {
+  for (auto it_lit = lit_pool_.begin(); it_lit != lit_pool_.end(); it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
-      if (it_lit + 1 == lit_pool_.end())
-        break;
+      if (it_lit + 1 == lit_pool_.end()) break;
       it_lit += ClauseHeader::overheadInLits();
       clause_ofs.push_back(1 + it_lit - lit_pool_.begin());
     }
@@ -74,16 +73,16 @@ void Instance::compactClauses() {
   occ_lists_.clear();
   occ_lists_.resize(variables_.size());
 
+  // compacts the old lit pool to the new lit pool and sets up occ_lists_
   vector<Lit> tmp_pool = lit_pool_;
   lit_pool_.clear();
   lit_pool_.push_back(SENTINEL_LIT);
   ClauseOfs new_ofs;
   uint32_t num_clauses = 0;
-  for (auto ofs : clause_ofs) {
-    auto it = (tmp_pool.begin() + ofs);
+  for (const auto ofs : clause_ofs) {
+    auto it = tmp_pool.begin() + ofs;
     if (*it != SENTINEL_LIT) {
-      for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
-        lit_pool_.push_back(0);
+      for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++) lit_pool_.push_back(0);
       new_ofs = lit_pool_.size();
       litWatchList(*it).addWatchLinkTo(new_ofs);
       litWatchList(*(it + 1)).addWatchLinkTo(new_ofs);
@@ -96,13 +95,13 @@ void Instance::compactClauses() {
     }
   }
 
+  // Compacts binaries
   vector<Lit> tmp_bin;
   uint32_t bin_links = 0;
   for (auto &l : literals_) {
     tmp_bin.clear();
     for (auto it = l.binary_links_.begin(); *it != SENTINEL_LIT; it++)
-      if (isUnknown(*it))
-        tmp_bin.push_back(*it);
+      if (isUnknown(*it)) tmp_bin.push_back(*it);
     bin_links += tmp_bin.size();
     tmp_bin.push_back(SENTINEL_LIT);
     l.binary_links_ = tmp_bin;

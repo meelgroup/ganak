@@ -171,6 +171,42 @@ SOLVER_StateT Solver::countSAT() {
   return SUCCESS;
 }
 
+bool Solver::get_polarity(const uint32_t v)
+{
+  bool polarity;
+  if (!counted_bottom_comp) polarity = target_polar[v];
+  else {
+    // TODO MATE: this whole thing is a huge mess as far as I'm concerned
+    polarity = litWatchList(Lit(v, true)).activity_score_ >
+      litWatchList(Lit(v, false)).activity_score_;
+    if (litWatchList(Lit(v, true)).activity_score_ >
+          2 * litWatchList(Lit(v, false)).activity_score_) {
+      polarity = true;
+    } else if (litWatchList(Lit(v, false)).activity_score_ >
+                2 * litWatchList(Lit(v, true)).activity_score_) {
+      polarity = false;
+    } else if (var(v).set) {
+      // TODO MATE this sounds insane, right? Random polarities??
+      uint32_t random = mtrand.randInt(2) ;
+      switch (random) {
+        case 0:
+          polarity = litWatchList(Lit(v, true)).activity_score_ >
+            litWatchList(Lit(v, false)).activity_score_;
+          break;
+        case 1:
+          // cached polar
+          polarity = var(v).polarity;
+          break;
+        case 2:
+          // inverted cached polar
+          polarity = !(var(v).polarity);
+          break;
+      }
+    }
+  }
+  return polarity;
+}
+
 void Solver::decideLiteral() {
   // establish another decision stack level
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level());
@@ -205,39 +241,8 @@ void Solver::decideLiteral() {
   assert(max_score_var != 0 &&
         "this assert should always hold, if not then there is a bug in the logic of countSAT()");
 
-  // Figure out polarity
-  bool polarity;
-  if (!counted_bottom_comp) polarity = target_polar[max_score_var];
-  else {
-    // TODO MATE: this whole thing is a huge mess as far as I'm concerned
-    polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
-      litWatchList(Lit(max_score_var, false)).activity_score_;
-    if (litWatchList(Lit(max_score_var, true)).activity_score_ >
-          2 * litWatchList(Lit(max_score_var, false)).activity_score_) {
-      polarity = true;
-    } else if (litWatchList(Lit(max_score_var, false)).activity_score_ >
-                2 * litWatchList(Lit(max_score_var, true)).activity_score_) {
-      polarity = false;
-    } else if (var(max_score_var).set) {
-      // TODO MATE this sounds insane, right? Random polarities??
-      uint32_t random = mtrand.randInt(2) ;
-      switch (random) {
-        case 0:
-          polarity = litWatchList(Lit(max_score_var, true)).activity_score_ >
-            litWatchList(Lit(max_score_var, false)).activity_score_;
-          break;
-        case 1:
-          polarity = var(max_score_var).polarity;
-          break;
-        case 2:
-          polarity = !(var(max_score_var).polarity);
-          break;
-      }
-    }
-  }
-
   // The decision literal is now ready. Deal with it.
-  const Lit lit(max_score_var, polarity);
+  const Lit lit(max_score_var, get_polarity(max_score_var));
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(max_score_var);

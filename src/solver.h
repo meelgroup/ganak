@@ -245,6 +245,7 @@ private:
   void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
+  bool get_polarity(const uint32_t var);
 };
 
 #endif /* SOLVER_H_ */

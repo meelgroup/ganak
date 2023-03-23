@@ -144,8 +144,8 @@ public:
     return branch_variable_;
   }
 
-  void setbranchvariable(const uint32_t max_score_var){
-    branch_variable_ = max_score_var;
+  void setbranchvariable(const uint32_t v){
+    branch_variable_ = v;
   }
 
   void setonpath(const bool on_path) {

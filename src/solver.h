@@ -115,10 +115,9 @@ private:
                         const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
     if (lit_values_[lit] != X_TRI) return false;
-
-    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent. Lit: " << lit);
+    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
 //    else print_debug("Literal propagated: " << lit);
-//
+
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
     var(lit).polarity = lit.sign();

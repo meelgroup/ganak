@@ -100,7 +100,7 @@ public:
     return (!branch_found_unsat()) && hasUnprocessedComponents();
   }
 
-  uint32_t literal_stack_ofs() const {
+  uint32_t lit_stack_ofs() const {
     return trail_ofs_;
   }
   void includeSolution(const mpz_class &solutions) {
@@ -158,14 +158,14 @@ public:
 };
 
 class DecisionStack: public vector<StackLevel> {
-  uint32_t failed_literal_test_active = 0;
+  uint32_t failed_lit_test_active = 0;
 public:
 
   void startFailedLitTest() {
-    failed_literal_test_active = true;
+    failed_lit_test_active = true;
   }
   void stopFailedLitTest() {
-    failed_literal_test_active = false;
+    failed_lit_test_active = false;
   }
 
   StackLevel &top() {
@@ -176,6 +176,6 @@ public:
   /// 0 means pre-1st-decision
   uint32_t get_decision_level() const {
     assert(size() > 0);
-    return size() - 1 + failed_literal_test_active;
+    return size() - 1 + failed_lit_test_active;
   }
 };

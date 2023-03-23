@@ -59,7 +59,7 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   ComponentManager comp_manager_ = ComponentManager(
-          config_,stats, literal_values_, indep_support_);
+          config_,stats, lit_values_, indep_support_);
 
   // the last time conflict clauses have been deleted
   uint64_t last_ccl_deletion_decs_ = 0;
@@ -91,7 +91,7 @@ private:
   }
 
   // this is the actual BCP algorithm
-  // starts propagating all literal in literal_stack_
+  // starts propagating all literal in lit_stack_
   // beginning at offset start_at_stack_ofs
   bool propagate(const uint32_t start_at_stack_ofs);
 
@@ -114,7 +114,7 @@ private:
   bool setLiteralIfFree(const Lit lit,
                         const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
-    if (literal_values_[lit] != X_TRI) return false;
+    if (lit_values_[lit] != X_TRI) return false;
 
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent. Lit: " << lit);
 //    else print_debug("Literal propagated: " << lit);
@@ -126,8 +126,8 @@ private:
     trail.push_back(lit);
     if (ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
       getHeaderOf(ant.asCl()).increaseScore();
-    literal_values_[lit] = T_TRI;
-    literal_values_[lit.neg()] = F_TRI;
+    lit_values_[lit] = T_TRI;
+    lit_values_[lit.neg()] = F_TRI;
     return true;
   }
 
@@ -157,7 +157,7 @@ private:
 
   vector<Lit>::const_iterator TOSLiteralsBegin()
   {
-    return trail.begin() + decision_stack_.top().literal_stack_ofs();
+    return trail.begin() + decision_stack_.top().lit_stack_ofs();
   }
 
   void initStack()
@@ -174,15 +174,15 @@ private:
 
   const Lit &TOS_decLit()
   {
-    assert(decision_stack_.top().literal_stack_ofs() < trail.size());
-    return trail[decision_stack_.top().literal_stack_ofs()];
+    assert(decision_stack_.top().lit_stack_ofs() < trail.size());
+    return trail[decision_stack_.top().lit_stack_ofs()];
   }
 
   void reactivateTOS()
   {
     for (auto it = TOSLiteralsBegin(); it != trail.end(); it++) unSet(*it);
     comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
-    trail.resize(decision_stack_.top().literal_stack_ofs());
+    trail.resize(decision_stack_.top().lit_stack_ofs());
     decision_stack_.top().resetRemainingComps();
   }
 

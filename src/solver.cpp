@@ -46,7 +46,7 @@ void Solver::HardWireAndCompact()
   }
   stats.num_unit_clauses_ = unit_clauses_.size();
   initStack();
-  original_lit_pool_size_ = literal_pool_.size();
+  original_lit_pool_size_ = lit_pool_.size();
 }
 
 void Solver::solve(const std::string &file_name)
@@ -80,7 +80,7 @@ void Solver::solve(const std::string &file_name)
   if (satSolver.okay()) {
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
-    comp_manager_.initialize(literals_, literal_pool_, num_variables());
+    comp_manager_.initialize(literals_, lit_pool_, num_variables());
 
     stats.exit_state_ = countSAT();
     stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
@@ -544,7 +544,7 @@ bool Solver::propagate(const uint32_t start_at_stack_ofs) {
 bool Solver::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
 
-  uint32_t stack_ofs = decision_stack_.top().literal_stack_ofs();
+  uint32_t stack_ofs = decision_stack_.top().lit_stack_ofs();
   uint32_t num_curr_lits = 0;
   while (stack_ofs < trail.size()) {
     test_lits.clear();
@@ -580,7 +580,7 @@ bool Solver::failedLitProbeInternal() {
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
     }
-    stats.num_failed_literal_tests_ += test_lits.size();
+    stats.num_failed_lit_tests_ += test_lits.size();
 
     // Do the probing
     for (auto lit : test_lits) {

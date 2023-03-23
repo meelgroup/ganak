@@ -32,7 +32,7 @@ public:
 	ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const set <uint32_t> & indep_support) :
-        literal_values_(lit_values),
+        lit_values_(lit_values),
         indep_support_(indep_support)
   {}
 
@@ -138,25 +138,25 @@ private:
   vector<uint32_t> unified_variable_links_lists_pool_;
 
   vector<uint32_t> variable_link_list_offsets_;
-  const LiteralIndexedVector<TriValue> & literal_values_;
+  const LiteralIndexedVector<TriValue> & lit_values_;
   const set <uint32_t> & indep_support_;
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_;
 
   bool isFalse(const Lit lit) const {
-    return literal_values_[lit] == F_TRI;
+    return lit_values_[lit] == F_TRI;
   }
 
   bool isTrue(const Lit lit) const {
-    return literal_values_[lit] == T_TRI;
+    return lit_values_[lit] == T_TRI;
   }
   bool isUnknown(const Lit lit) const {
-      return literal_values_[lit] == X_TRI;
+      return lit_values_[lit] == X_TRI;
   }
 
   bool isUnknown(const VariableIndex v) const {
-    return literal_values_[Lit(v, true)] == X_TRI;
+    return lit_values_[Lit(v, true)] == X_TRI;
   }
 
   uint32_t const* beginOfLinkList(const VariableIndex v) const {

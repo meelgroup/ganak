@@ -58,13 +58,13 @@ void Instance::compactClauses() {
   clause_ofs.reserve(stats.num_long_clauses_);
 
   // clear watch links and occ lists
-  for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
+  for (auto it_lit = lit_pool_.begin(); it_lit != lit_pool_.end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
-      if (it_lit + 1 == literal_pool_.end())
+      if (it_lit + 1 == lit_pool_.end())
         break;
       it_lit += ClauseHeader::overheadInLits();
-      clause_ofs.push_back(1 + it_lit - literal_pool_.begin());
+      clause_ofs.push_back(1 + it_lit - lit_pool_.begin());
     }
   }
 
@@ -74,25 +74,25 @@ void Instance::compactClauses() {
   occ_lists_.clear();
   occ_lists_.resize(variables_.size());
 
-  vector<Lit> tmp_pool = literal_pool_;
-  literal_pool_.clear();
-  literal_pool_.push_back(SENTINEL_LIT);
+  vector<Lit> tmp_pool = lit_pool_;
+  lit_pool_.clear();
+  lit_pool_.push_back(SENTINEL_LIT);
   ClauseOfs new_ofs;
   uint32_t num_clauses = 0;
   for (auto ofs : clause_ofs) {
     auto it = (tmp_pool.begin() + ofs);
     if (*it != SENTINEL_LIT) {
       for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
-        literal_pool_.push_back(0);
-      new_ofs = literal_pool_.size();
+        lit_pool_.push_back(0);
+      new_ofs = lit_pool_.size();
       litWatchList(*it).addWatchLinkTo(new_ofs);
       litWatchList(*(it + 1)).addWatchLinkTo(new_ofs);
       num_clauses++;
       for (; *it != SENTINEL_LIT; it++) {
-        literal_pool_.push_back(*it);
+        lit_pool_.push_back(*it);
         occ_lists_[*it].push_back(new_ofs);
       }
-      literal_pool_.push_back(SENTINEL_LIT);
+      lit_pool_.push_back(SENTINEL_LIT);
     }
   }
 
@@ -117,7 +117,7 @@ void Instance::compactVariables() {
   uint32_t num_isolated = 0;
   uint32_t num_pisolated = 0;
   LiteralIndexedVector<vector<Lit> > _tmp_bin_links(1);
-  LiteralIndexedVector<TriValue> _tmp_values = literal_values_;
+  LiteralIndexedVector<TriValue> _tmp_values = lit_values_;
 
   for (auto l : literals_)
     _tmp_bin_links.push_back(l.binary_links_);
@@ -150,8 +150,8 @@ void Instance::compactVariables() {
   occ_lists_.resize(variables_.size());
   literals_.clear();
   literals_.resize(variables_.size());
-  literal_values_.clear();
-  literal_values_.resize(variables_.size(), X_TRI);
+  lit_values_.clear();
+  lit_values_.resize(variables_.size(), X_TRI);
 
   Lit newlit;
   for (auto l = Lit(0, false); l != _tmp_bin_links.end_lit(); l.inc()) {
@@ -167,13 +167,13 @@ void Instance::compactVariables() {
 
   vector<ClauseOfs> clause_ofs;
   clause_ofs.reserve(stats.num_long_clauses_);
-  for (auto it_lit = literal_pool_.begin(); it_lit != literal_pool_.end();
+  for (auto it_lit = lit_pool_.begin(); it_lit != lit_pool_.end();
       it_lit++) {
     if (*it_lit == SENTINEL_LIT) {
-      if (it_lit + 1 == literal_pool_.end())
+      if (it_lit + 1 == lit_pool_.end())
         break;
       it_lit += ClauseHeader::overheadInLits();
-      clause_ofs.push_back(1 + it_lit - literal_pool_.begin());
+      clause_ofs.push_back(1 + it_lit - lit_pool_.begin());
     }
   }
 
@@ -188,8 +188,8 @@ void Instance::compactVariables() {
     }
   }
 
-  literal_values_.clear();
-  literal_values_.resize(variables_.size(), X_TRI);
+  lit_values_.clear();
+  lit_values_.resize(variables_.size(), X_TRI);
   unit_clauses_.clear();
 
   stats.num_variables_ = variables_.size() - 1 + num_isolated;
@@ -207,7 +207,7 @@ void Instance::compactConflictLiteralPool(){
     auto read_pos = beginOf(clause_ofs) - ClauseHeader::overheadInLits();
     for(uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
       *(write_pos++) = *(read_pos++);
-    ClauseOfs new_ofs =  write_pos - literal_pool_.begin();
+    ClauseOfs new_ofs =  write_pos - lit_pool_.begin();
     conflict_clauses_.push_back(new_ofs);
     // first substitute antecedent if clause_ofs implied something
     if(isAntecedentOf(clause_ofs, *beginOf(clause_ofs)))
@@ -222,7 +222,7 @@ void Instance::compactConflictLiteralPool(){
       *(write_pos++) = *(read_pos++);
     *(write_pos++) = SENTINEL_LIT;
   }
-  literal_pool_.erase(write_pos,literal_pool_.end());
+  lit_pool_.erase(write_pos,lit_pool_.end());
 }
 
 bool Instance::deleteConflictClauses() {
@@ -300,20 +300,20 @@ void Instance::parseWithCMS(const std::string& filename) {
 bool Instance::createfromFile(const std::string &filename) {
   // The solver is empty
   assert(variables_.empty());
-  assert(literal_values_.empty());
+  assert(lit_values_.empty());
   assert(occ_lists_.empty());
   assert(literals_.empty());
-  assert(literal_pool_.empty());
+  assert(lit_pool_.empty());
   assert(indep_support_.empty());
   assert(unit_clauses_.empty());
   assert(conflict_clauses_.empty());
 
   parseWithCMS(filename);
 
-  literal_pool_.push_back(SENTINEL_LIT);
+  lit_pool_.push_back(SENTINEL_LIT);
   variables_.push_back(Variable());
   variables_.resize(satSolver.nVars() + 1);
-  literal_values_.resize(satSolver.nVars() + 1, X_TRI);
+  lit_values_.resize(satSolver.nVars() + 1, X_TRI);
   occ_lists_.resize(satSolver.nVars() + 1);
   literals_.resize(satSolver.nVars() + 1);
   target_polar.resize(satSolver.nVars() + 1);
@@ -343,7 +343,7 @@ bool Instance::createfromFile(const std::string &filename) {
   stats.num_used_variables_ = num_variables();
   stats.num_free_variables_ = satSolver.nVars() - num_variables();
   stats.num_unit_clauses_ = unit_clauses_.size();
-  original_lit_pool_size_ = literal_pool_.size();
+  original_lit_pool_size_ = lit_pool_.size();
 
   return satSolver.okay();
 }

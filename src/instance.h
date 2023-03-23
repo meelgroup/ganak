@@ -28,8 +28,8 @@ protected:
   void unSet(Lit lit) {
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
     var(lit).decision_level = INVALID_DL;
-    literal_values_[lit] = X_TRI;
-    literal_values_[lit.neg()] = X_TRI;
+    lit_values_[lit] = X_TRI;
+    lit_values_[lit.neg()] = X_TRI;
   }
 
   Antecedent & getAntecedent(Lit lit) {
@@ -88,13 +88,13 @@ protected:
   bool createfromFile(const std::string &file_name);
   DataAndStatistics stats;
 
-  /** literal_pool_: the literals of all clauses are stored here
-   *   INVARIANT: first and last entries of literal_pool_ are a SENTINEL_LIT
+  /** lit_pool_: the literals of all clauses are stored here
+   *   INVARIANT: first and last entries of lit_pool_ are a SENTINEL_LIT
    *
    *   Clauses begin with a ClauseHeader structure followed by the literals
    *   terminated by SENTINEL_LIT
    */
-  vector<Lit> literal_pool_;
+  vector<Lit> lit_pool_;
 
   set<uint32_t> indep_support_;
   bool indep_support_given = false;
@@ -112,7 +112,7 @@ protected:
   vector<ClauseOfs> conflict_clauses_;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
-  LiteralIndexedVector<TriValue> literal_values_;
+  LiteralIndexedVector<TriValue> lit_values_;
 
   void decayActivities() {
     for (auto l_it = literals_.begin(); l_it != literals_.end(); l_it++)
@@ -179,30 +179,30 @@ protected:
   }
 
   inline bool isTrue(const Lit &lit) const {
-    return literal_values_[lit] == T_TRI;
+    return lit_values_[lit] == T_TRI;
   }
 
   bool isFalse(Lit lit) {
-    return literal_values_[lit] == F_TRI;
+    return lit_values_[lit] == F_TRI;
   }
 
   bool isUnknown(Lit lit) const {
-    return literal_values_[lit] == X_TRI;
+    return lit_values_[lit] == X_TRI;
   }
 
   vector<Lit>::const_iterator beginOf(ClauseOfs cl_ofs) const {
-    return literal_pool_.begin() + cl_ofs;
+    return lit_pool_.begin() + cl_ofs;
   }
   vector<Lit>::iterator beginOf(ClauseOfs cl_ofs) {
-    return literal_pool_.begin() + cl_ofs;
+    return lit_pool_.begin() + cl_ofs;
   }
 
-  decltype(literal_pool_.begin()) conflict_clauses_begin() {
-     return literal_pool_.begin() + original_lit_pool_size_;
+  decltype(lit_pool_.begin()) conflict_clauses_begin() {
+     return lit_pool_.begin() + original_lit_pool_size_;
    }
 
   ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) {
-    return *reinterpret_cast<ClauseHeader *>(&literal_pool_[cl_ofs
+    return *reinterpret_cast<ClauseHeader *>(&lit_pool_[cl_ofs
         - ClauseHeader::overheadInLits()]);
   }
 
@@ -235,15 +235,15 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
     return 0;
   }
   for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
-    literal_pool_.push_back(0);
-  ClauseOfs cl_ofs = literal_pool_.size();
+    lit_pool_.push_back(0);
+  ClauseOfs cl_ofs = lit_pool_.size();
 
   for (auto l : literals) {
-    literal_pool_.push_back(l);
+    lit_pool_.push_back(l);
     litWatchList(l).increaseActivity(1);
   }
   // make an end: SENTINEL_LIT
-  literal_pool_.push_back(SENTINEL_LIT);
+  lit_pool_.push_back(SENTINEL_LIT);
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
   litWatchList(literals[1]).addWatchLinkTo(cl_ofs);
   getHeaderOf(cl_ofs).set_creation_time(stats.num_conflicts_);

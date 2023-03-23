@@ -66,7 +66,7 @@ private:
   // the last time the conflict clause storage has been compacted
   uint64_t last_ccl_cleanup_decs_ = 0;
 
-  bool simplePreProcess();
+  void simplePreProcess();
   bool prepFailedLiteralTest();
   // we assert that the formula is consistent
   // and has not been found UNSAT yet

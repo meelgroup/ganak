@@ -17,28 +17,26 @@
 #include "structures.h"
 #include "time_mem.h"
 
-bool Solver::simplePreProcess()
+void Solver::simplePreProcess()
 {
   uint32_t start_ofs = 0;
 
   for (auto lit : unit_clauses_) {
-    if (isUnitClause(lit.neg())) return false;
+    assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");;
     setLiteralIfFree(lit);
   }
 
   bool succeeded = propagate(start_ofs);
-  if (succeeded) HardWireAndCompact();
-  return succeeded;
+  assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
+  HardWireAndCompact();
 }
 
 void Solver::HardWireAndCompact()
 {
   trail.clear();
-  test_lits.resize(nVars());
   viewed_lits.resize(nVars() + 1, 0);
 
-  for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc())
-  {
+  for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc()) {
     litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
     litWatchList(l).activity_score_ += occ_lists_[l].size();
   }
@@ -70,11 +68,13 @@ void Solver::solve(const std::string &file_name)
     } else cout << "c No sampling set, doing unprojected counting" << endl;
   }
 
-  if (satSolver.okay() && !simplePreProcess()) {
+  if (!satSolver.okay()) {
     stats.exit_state_ = SUCCESS;
     stats.set_final_solution_count(0);
+  } else {
+    simplePreProcess();
+    cout << "c Prepocessing done" << endl;
   }
-  if (config_.verb) cout << "c Prepocessing done" << endl;
   if (satSolver.okay()) {
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();

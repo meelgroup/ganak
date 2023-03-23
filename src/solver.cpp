@@ -219,18 +219,21 @@ void Solver::decideLiteral() {
   auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
   uint32_t max_score_var = *it;
   float max_score = scoreOf(*(it));
-  float score;
-  while (*it != varsSENTINEL &&
-           indep_support_.find(*it) == indep_support_.end()) {
+
+  // Find one variable that's OK to use
+  while (*it != varsSENTINEL && indep_support_.find(*it) == indep_support_.end()) {
     it++;
   }
   if (*it != varsSENTINEL) {
     max_score_var = *it;
     max_score = scoreOf(*it);
   }
+
+  // Find best variable to use
   while (*it != varsSENTINEL) {
+    //TODO MATE this is expensive I think
     if (indep_support_.find(*it) != indep_support_.end()) {
-      score = scoreOf(*it);
+      const float score = scoreOf(*it);
       if (score > max_score) {
         max_score = score;
         max_score_var = *it;

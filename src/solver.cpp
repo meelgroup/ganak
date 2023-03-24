@@ -152,7 +152,7 @@ SOLVER_StateT Solver::countSAT() {
     state = backtrack();
     if (state == RESTART) continue;
     if (state == EXIT) return SUCCESS;
-    while (state != PROCESS_COMPONENT && !failedLitProbe()) {
+    while (state != PROCESS_COMPONENT && !prop_and_probe()) {
       state = resolveConflict();
       if (state == BACKTRACK) {
         state = backtrack();

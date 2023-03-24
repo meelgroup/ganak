@@ -136,8 +136,9 @@ private:
   // because all links of one variable (binary and nonbinray) are found
   // in one contiguous chunk of memory
   vector<uint32_t> unified_variable_links_lists_pool_;
+  vector<uint32_t> variable_link_list_offsets_; // offset into unified_variable_links_lists_pool_
+                                                // indexed by variable.
 
-  vector<uint32_t> variable_link_list_offsets_;
   const LiteralIndexedVector<TriValue> & lit_values_;
   const set <uint32_t> & indep_support_;
   vector<uint32_t> var_frequency_scores_;

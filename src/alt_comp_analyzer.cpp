@@ -127,14 +127,15 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   // manageSearchOccurrenceAndScoreOf will push into search_stack_ which will make this
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
-    assert(isUnknown(*vt));
+    const auto v = *vt;
+    assert(isUnknown(v));
 
     //traverse binary clauses
-    uint32_t const* p = beginOfLinkList(*vt);
+    uint32_t const* p = beginOfLinkList(v);
     for (; *p; p++) {
       if(manageSearchOccurrenceOf(Lit(*p,true))) {
         var_frequency_scores_[*p]++;
-        var_frequency_scores_[*vt]++;
+        var_frequency_scores_[v]++;
       }
     }
 
@@ -146,7 +147,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
         if(isTrue(litA)|| isTrue(litB))
           archetype_.setClause_nil(*p);
         else {
-          var_frequency_scores_[*vt]++;
+          var_frequency_scores_[v]++;
           manageSearchOccurrenceAndScoreOf(litA);
           manageSearchOccurrenceAndScoreOf(litB);
           archetype_.setClause_seen(
@@ -159,6 +160,6 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     // traverse long clauses
     for (p++; *p ; p +=2)
       if(archetype_.clause_unseen_in_sup_comp(*p))
-        searchClause(*vt,*p, (Lit const*)(p + 1 + *(p+1)));
+        searchClause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 }

@@ -86,12 +86,6 @@ public:
     assert(top.remaining_comps_ofs() <= comp_stack_.size());
   }
 
-  const Component& currentRemainingComponentOf(const StackLevel &top) const
-  {
-    assert(comp_stack_.size() > top.currentRemainingComponent());
-    return *comp_stack_[top.currentRemainingComponent()];
-  }
-
   // checks for the next yet to explore remaining comp of top
   // returns true if a non-trivial non-cached comp
   // has been found and is now stack_.TOS_NextComp()

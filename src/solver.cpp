@@ -139,7 +139,7 @@ SOLVER_StateT Solver::countSAT() {
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       checkProbabilisticHashSanity();
       decideLiteral();
-      VERBOSE_PRINT(print_all_levels());
+      VERBOSE_DEBUG_DO(print_all_levels());
 
       while (!prop_and_probe()) {
         state = resolveConflict();

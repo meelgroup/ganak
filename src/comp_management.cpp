@@ -39,16 +39,12 @@ void ComponentManager::removeAllCachePollutionsOf(StackLevel &top) {
   assert(top.super_comp() != 0);
   assert(cache_.hasEntry(getSuperComponentOf(top).id()));
 
-  if (top.remaining_comps_ofs() == comp_stack_.size())
-    return;
+  if (top.remaining_comps_ofs() == comp_stack_.size()) return;
 
-  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack_.size();
-      u++) {
+  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack_.size(); u++) {
     assert(cache_.hasEntry(comp_stack_[u]->id()));
     cache_.cleanPollutionsInvolving(comp_stack_[u]->id());
   }
 
-#ifdef DEBUG
-  cache_.test_descendantstree_consistency();
-#endif
+  SLOW_DEBUG_DO(cache_.test_descendantstree_consistency());
 }

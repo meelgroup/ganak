@@ -104,6 +104,30 @@ bool Solver::takeSolution() {
   return true;
 }
 
+void Solver::print_all_levels() {
+  cout << COLORG "--- going through all levels now, printing comps --" << endl;
+  uint32_t lev = 0;
+  for(const auto& s: decision_stack_) {
+    auto const& sup_at = s.super_comp();
+    cout << COLORG "super comp of lev " << lev
+      << " is at " << sup_at
+      << " branch var here: " << decision_stack_.at(lev).getbranchvar()
+      << " remaining comp ofs: " << decision_stack_.at(lev).remaining_comps_ofs()
+      << " num unprocess comps: " << decision_stack_.at(lev).numUnprocessedComponents()
+      << endl;
+
+    const auto& c = comp_manager_.at(sup_at);
+    cout << COLORG "-> Variables in comp_manager_.at(" << sup_at << ")."
+      << " num: " << c->nVars() << " vars: ";
+    for(uint32_t i = 0; i < c->nVars(); i++) {
+      cout << c->varsBegin()[i] << " ";
+    }
+    cout << endl;
+    lev++;
+  }
+  cout << COLORG "--- Went through all levels now --" << endl;
+}
+
 SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
@@ -115,31 +139,7 @@ SOLVER_StateT Solver::countSAT() {
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       checkProbabilisticHashSanity();
       decideLiteral();
-
-#ifdef VERBOSE_DEBUG
-      cout << COLORG "--- going through all levels now, printing comps --" << endl;
-      uint32_t lev = 0;
-      for(const auto& s: decision_stack_) {
-        auto const& sup_at = s.super_comp();
-        cout << COLORG "super comp of lev " << lev
-          << " is at " << sup_at
-          << " branch var here: " << decision_stack_.at(lev).getbranchvar()
-          << " remaining comp ofs: " << decision_stack_.at(lev).remaining_comps_ofs()
-          << " num unprocess comps: " << decision_stack_.at(lev).numUnprocessedComponents()
-          << endl;
-
-        const auto& c = comp_manager_.at(sup_at);
-        cout << COLORG "-> Variables in comp_manager_.at(" << sup_at << ")."
-          << " num: " << c->nVars() << " vars: ";
-        for(uint32_t i = 0; i < c->nVars(); i++) {
-          const auto& v = c->varsBegin();
-          cout << v[i] << " ";
-        }
-        cout << endl;
-        lev++;
-      }
-      cout << COLORG "--- Went through all levels now --" << endl;
-#endif
+      VERBOSE_PRINT(print_all_levels());
 
       while (!prop_and_probe()) {
         state = resolveConflict();
@@ -147,7 +147,7 @@ SOLVER_StateT Solver::countSAT() {
       }
       if (state == BACKTRACK) break;
     }
-    // we are here because there is not next component, or we had to backtrack
+    // we are here because there is no next component, or we had to backtrack
 
     if (restart_if_needed()) {state = RESTART; continue;}
     state = backtrack();

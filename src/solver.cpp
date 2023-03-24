@@ -488,7 +488,7 @@ bool Solver::failedLitProbe() {
   print_debug("--> Units of this comp set, propagating");
 
   bool bSucceeded = propagate(start_ofs);
-  if (config_.perform_failed_lit_test && bSucceeded) {
+  if (config_.perform_failed_lit_probe && bSucceeded) {
     bSucceeded = failedLitProbeInternal();
   }
   return bSucceeded;

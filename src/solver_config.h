@@ -5,14 +5,15 @@
  *      Author: Marc Thurley
  */
 
-#ifndef SOLVER_CONFIG_H_
-#define SOLVER_CONFIG_H_
+#pragma once
+
+#include <cstdint>
 
 struct SolverConfiguration {
   // TODO comp caching cannot be deactivated for now!
   bool perform_non_chron_back_track = true;
   bool perform_comp_caching = true;
-  bool perform_failed_lit_test = true;
+  bool perform_failed_lit_probe = true;
   bool perform_pre_processing = true;
   bool perform_pcc = true; // probabilistic comp caching
   bool use_csvsads = true; // polarity heuristic
@@ -26,5 +27,3 @@ struct SolverConfiguration {
   uint32_t minconflicts_ = 500;
   float delta = 0.05;
 };
-
-#endif /* SOLVER_CONFIG_H_ */

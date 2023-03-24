@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     if (strcmp(argv[i], "--noCC") == 0) {
       theSolver.config().perform_comp_caching = false;
     } else if (strcmp(argv[i], "--noIBCP") == 0) {
-      theSolver.config().perform_failed_lit_test = false;
+      theSolver.config().perform_failed_lit_probe = false;
     } else if (strcmp(argv[i], "--noPP") == 0) {
       theSolver.config().perform_pre_processing = false;
     } else if (strcmp(argv[i], "--norest") == 0) {

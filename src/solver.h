@@ -77,7 +77,7 @@ private:
 
   SOLVER_StateT countSAT();
   void decideLiteral();
-  bool failedLitProbe();
+  bool prop_and_probe();
   bool failedLitProbeInternal();
   void computeLargestCube();
 

@@ -141,7 +141,7 @@ SOLVER_StateT Solver::countSAT() {
       cout << COLORG "--- Went through all levels now --" << endl;
 #endif
 
-      while (!failedLitProbe()) {
+      while (!prop_and_probe()) {
         state = resolveConflict();
         if (state == BACKTRACK) break;
       }
@@ -477,7 +477,7 @@ retStateT Solver::resolveConflict() {
   return RESOLVED;
 }
 
-bool Solver::failedLitProbe() {
+bool Solver::prop_and_probe() {
   // the asserted literal has been set, so we start
   // bcp on that literal
   assert(trail.size() > 0 && "Mate added this, but it seems OK");

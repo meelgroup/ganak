@@ -480,16 +480,14 @@ retStateT Solver::resolveConflict() {
 bool Solver::failedLitProbe() {
   // the asserted literal has been set, so we start
   // bcp on that literal
-  assert(trail.size() > 0 && "This is FISHY, I fixed with a bad hack, using 'was_at_zero' but was it broken before? I think we may need propagating from 0 in these cases? Or not?");
+  assert(trail.size() > 0 && "Mate added this, but it seems OK");
 
-  const bool was_at_zero = trail.size() == 0;
   const uint32_t start_ofs = trail.size() - 1;
   print_debug("--> Setting units of this comp...");
   for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
   print_debug("--> Units of this comp set, propagating");
 
-  bool bSucceeded = true;
-  if (!was_at_zero) bSucceeded = propagate(start_ofs);
+  bool bSucceeded = propagate(start_ofs);
   if (config_.perform_failed_lit_test && bSucceeded) {
     bSucceeded = failedLitProbeInternal();
   }

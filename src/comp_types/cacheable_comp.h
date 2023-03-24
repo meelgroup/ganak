@@ -35,8 +35,8 @@ public:
       T_Component(comp) {
   }
 
-  GenericCacheableComponent(vector <void*>  &randomseedforCLHASH,Component &comp) :
-      T_Component(randomseedforCLHASH,comp) {
+  GenericCacheableComponent(vector <void*> &randomseedforCLHASH, Component &comp) :
+      T_Component(randomseedforCLHASH, comp) {
   }
 
   uint32_t SizeInBytes() const {

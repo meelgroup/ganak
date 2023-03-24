@@ -70,8 +70,7 @@ public:
   }
 
   bool get_hacked(){
-    if(old_size)
-      return true;
+    if(old_size) return true;
     return false;
   }
 
@@ -162,15 +161,15 @@ public:
     length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
   }
 
+#ifdef DOPCC
   uint32_t hashkey() const  {
     return hashkey_;
   }
+#endif
 
   bool modelCountFound(){
     return (length_solution_period_and_flags_ >> 1);
   }
-
- // inline bool equals(const BasePackedComponent &comp) const;
 
   // a cache entry is deletable
   // only if it is not connected to an active
@@ -206,12 +205,10 @@ protected:
 
 #ifdef DOPCC
   uint64_t* clhashkey_ = nullptr;
-#endif
-  // vector <uint64_t> clhash_key_;
   uint32_t hashkey_ = 0;
+#endif
 
   mpz_class model_count_;
-
   uint32_t creation_time_ = 1;
   uint32_t hack_ = 0;
   uint32_t old_size = 0;

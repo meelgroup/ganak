@@ -170,8 +170,7 @@ public:
     for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->addCl(*it_cl);
-           if(!clause_all_lits_active(*it_cl))
-             current_comp_for_caching_.addCl(*it_cl);
+        if (!clause_all_lits_active(*it_cl)) current_comp_for_caching_.addCl(*it_cl);
         setClause_in_other_comp(*it_cl);
       }
     p_new_comp->closeClauseData();

@@ -17,7 +17,7 @@
 #endif
 #include <math.h>
 
-class DifferencePackedComponent:public BasePackedComponent {
+class DifferencePackedComponent: public BasePackedComponent {
 public:
 
   DifferencePackedComponent() { }

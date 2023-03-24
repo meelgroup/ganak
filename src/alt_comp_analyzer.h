@@ -110,14 +110,14 @@ public:
     return archetype_.makeComponentFromState(search_stack_.size());
   }
 
-  uint32_t max_clause_id(){
+  uint32_t max_clause_id() const {
      return max_clause_id_;
   }
-  uint32_t max_variable_id(){
+  uint32_t max_variable_id() const {
     return max_variable_id_;
   }
 
-  ComponentArchetype &getArchetype(){
+  ComponentArchetype &getArchetype() {
     return archetype_;
   }
 

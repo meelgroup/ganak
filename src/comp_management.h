@@ -56,7 +56,7 @@ public:
       cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
-  Component &getSuperComponentOf(const StackLevel &lev)
+  Component& getSuperComponentOf(const StackLevel &lev)
   {
     assert(comp_stack_.size() > lev.super_comp());
     return *comp_stack_[lev.super_comp()];
@@ -73,7 +73,7 @@ public:
 
   void cleanRemainingComponentsOf(StackLevel &top)
   {
-    print_debug(COLYEL2 "cleaning remaining comps of var: " << top.getbranchvar());
+    print_debug(COLYEL2 "cleaning (all processed?) comps of var: " << top.getbranchvar());
     while (comp_stack_.size() > top.remaining_comps_ofs())
     {
       if (cache_.hasEntry(comp_stack_.back()->id()))
@@ -86,7 +86,7 @@ public:
     assert(top.remaining_comps_ofs() <= comp_stack_.size());
   }
 
-  Component &currentRemainingComponentOf(StackLevel &top)
+  const Component& currentRemainingComponentOf(const StackLevel &top) const
   {
     assert(comp_stack_.size() > top.currentRemainingComponent());
     return *comp_stack_[top.currentRemainingComponent()];
@@ -140,10 +140,7 @@ float ComponentManager::cacheScoreOf(VariableIndex v)
 
 void ComponentManager::increasecachescores()
 {
-  for (uint32_t i = 0; i < cachescore_.size(); i++)
-  {
-    cachescore_[i] *= 0.5;
-  }
+  for (uint32_t i = 0; i < cachescore_.size(); i++) cachescore_[i] *= 0.5;
 }
 void ComponentManager::decreasecachescore(Component &comp)
 {

@@ -17,6 +17,7 @@
 #include "stack.h"
 
 
+// There is EXACTLY ONE of this
 class ComponentCache {
 public:
   ComponentCache(DataAndStatistics &statistics, const SolverConfiguration& config);

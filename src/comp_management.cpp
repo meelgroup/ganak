@@ -7,6 +7,8 @@
 
 #include "comp_management.h"
 
+// Initialized exactly once when Solver is created.
+//   it also inits the included analyzer called "ana_"
 void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
     vector<Lit> &lit_pool, uint32_t nVars){
   assert(comp_stack_.empty());

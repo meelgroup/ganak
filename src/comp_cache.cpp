@@ -48,7 +48,7 @@ ComponentCache::ComponentCache(DataAndStatistics &statistics, const SolverConfig
 		stats(statistics), config_(config) {
 }
 
-void ComponentCache::init(Component &super_comp, vector <void*>  &randomseedforCLHASH){
+void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCLHASH){
 
   CacheableComponent *packed_super_comp = new CacheableComponent(super_comp);
 

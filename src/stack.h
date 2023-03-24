@@ -13,6 +13,16 @@
 using std::vector;
 
 class StackLevel {
+public:
+  StackLevel(uint32_t super_comp, uint32_t trail_ofs, uint32_t comp_stack_ofs) :
+      super_comp_(super_comp),
+      trail_ofs_(trail_ofs),
+      remaining_comps_ofs_(comp_stack_ofs),
+      unprocessed_comps_end_(comp_stack_ofs) {
+    assert(super_comp < comp_stack_ofs);
+  }
+private:
+
   /// active Component, once initialized, it should not change
   const uint32_t super_comp_ = 0;
   // branch (i.e. left/right)
@@ -73,14 +83,6 @@ public:
   void set_unprocessed_comps_end(uint32_t end) {
     unprocessed_comps_end_ = end;
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
-  }
-
-  StackLevel(uint32_t super_comp, uint32_t trail_ofs, uint32_t comp_stack_ofs) :
-      super_comp_(super_comp),
-      trail_ofs_(trail_ofs),
-      remaining_comps_ofs_(comp_stack_ofs),
-      unprocessed_comps_end_(comp_stack_ofs) {
-    assert(super_comp < comp_stack_ofs);
   }
 
   uint32_t currentRemainingComponent() const {

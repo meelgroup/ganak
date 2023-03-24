@@ -147,6 +147,7 @@ SOLVER_StateT Solver::countSAT() {
       }
       if (state == BACKTRACK) break;
     }
+    // we are here because there is not next component, or we had to backtrack
 
     state = backtrack();
     if (state == RESTART) continue;
@@ -428,11 +429,11 @@ retStateT Solver::resolveConflict() {
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
   assert(uip_clauses_.size() == 1);
   if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
-
   decision_stack_.top().mark_branch_unsat();
-  //Backtracking
-  // maybe the other branch had some solutions
+
   if (decision_stack_.top().isSecondBranch()) {
+    //Backtracking since finished with this AND the other branch.
+    // maybe the other branch had some solutions
     if (decision_stack_.get_decision_level() == 1) {
       cout
           << "c Solved half the solution space (i.e. one branch at dec. lev 1)." << endl

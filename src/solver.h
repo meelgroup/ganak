@@ -154,6 +154,8 @@ private:
       violated_clause.push_back(*it);
   }
 
+  // TOS = Top Of Stack
+  // The literals that have been set in this decision level
   vector<Lit>::const_iterator TOSLiteralsBegin()
   {
     return trail.begin() + decision_stack_.top().lit_stack_ofs();

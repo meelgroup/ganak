@@ -95,6 +95,7 @@ private:
   // beginning at offset start_at_stack_ofs
   bool propagate(const uint32_t start_at_stack_ofs);
 
+  bool restart_if_needed();
   retStateT backtrack();
 
   // if on the current decision level

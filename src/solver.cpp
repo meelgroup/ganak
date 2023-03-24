@@ -149,8 +149,8 @@ SOLVER_StateT Solver::countSAT() {
     }
     // we are here because there is not next component, or we had to backtrack
 
+    if (restart_if_needed()) {state = RESTART; continue;}
     state = backtrack();
-    if (state == RESTART) continue;
     if (state == EXIT) return SUCCESS;
     while (state != PROCESS_COMPONENT && !prop_and_probe()) {
       state = resolveConflict();
@@ -304,11 +304,7 @@ void Solver::computeLargestCube()
 #endif
 }
 
-retStateT Solver::backtrack() {
-  assert(
-      decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
-
-  //Restart
+bool Solver::restart_if_needed() {
   if (config_.restart && stats.getNumDecisions() > stats.next_restart) {
     stats.num_restarts++;
     stats.next_restart_diff*=1.4;
@@ -337,8 +333,13 @@ retStateT Solver::backtrack() {
       decision_stack_.pop_back();
     } while (decision_stack_.get_decision_level() > 0);
     if (!takeSolution()) return EXIT;
-    return RESTART;
+    return true;
   }
+  return false;
+}
+
+retStateT Solver::backtrack() {
+  assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 
   do {
     if (decision_stack_.top().branch_found_unsat()) {

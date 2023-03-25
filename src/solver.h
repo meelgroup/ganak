@@ -118,7 +118,7 @@ private:
   {
     if (lit_values_[lit] != X_TRI) return false;
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
-//    else print_debug("Literal propagated: " << lit);
+    else print_debug("-> lit propagated: " << lit);
 
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
@@ -181,6 +181,7 @@ private:
     return trail[decision_stack_.top().lit_stack_ofs()];
   }
 
+  // Reactivate Top-Of-Stack
   void reactivateTOS()
   {
     for (auto it = TOSLiteralsBegin(); it != trail.end(); it++) unSet(*it);

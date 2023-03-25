@@ -41,6 +41,7 @@ private:
   // the remaining comps in this decision level
   // all remaining comps can hence be found in
   // [remaining_comps_ofs_, "nextLevel".remaining_comps_begin_)
+  // SET ONCE, NEVER TOUCHED
   const uint32_t remaining_comps_ofs_ = 0;
 
   // boundary of the stack marking which comps still need to be processed
@@ -48,6 +49,7 @@ private:
   // [remaining_comps_ofs_, unprocessed_comps_end_)
   // also, all processed, can be found
   // in [unprocessed_comps_end_, comp_stack.size())
+  // KEEPS BEING DECREMENTED, until it reaches remaining_comps_ofs_
   uint32_t unprocessed_comps_end_ = 0;
 
   uint32_t branch_variable_ = 0;

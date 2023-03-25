@@ -26,7 +26,7 @@
 
 using std::set;
 
-
+// There is exactly ONE of this, inside ComponentManager, which is inside Solver
 class ComponentAnalyzer {
 public:
 	ComponentAnalyzer(
@@ -77,6 +77,7 @@ public:
   void setupAnalysisContext(StackLevel &top, const Component & super_comp){
     archetype_.reInitialize(top,super_comp);
 
+    print_debug("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp");
     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
       if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);

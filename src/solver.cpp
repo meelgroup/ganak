@@ -41,8 +41,8 @@ void Solver::HardWireAndCompact()
     litWatchList(l).activity_score_ += occ_lists_[l].size();
   }
   stats.num_unit_clauses_ = unit_clauses_.size();
-  initStack();
   original_lit_pool_size_ = lit_pool_.size();
+  initStack();
 }
 
 void Solver::solve(const std::string &file_name)
@@ -110,22 +110,21 @@ void Solver::print_all_levels() {
   for(const auto& s: decision_stack_) {
     auto const& sup_at = s.super_comp();
     cout << COLORG "super comp of lev " << lev
-      << " is at " << sup_at
+      << " is " << sup_at
       << " branch var here: " << decision_stack_.at(lev).getbranchvar()
+      << " unproc'd comp end: " << decision_stack_.at(lev).getUnprocessedComponentsEnd()
       << " remaining comp ofs: " << decision_stack_.at(lev).remaining_comps_ofs()
-      << " num unprocess comps: " << decision_stack_.at(lev).numUnprocessedComponents()
+      << " num unproc'd comps: " << decision_stack_.at(lev).numUnprocessedComponents()
       << endl;
 
     const auto& c = comp_manager_.at(sup_at);
     cout << COLORG "-> Variables in comp_manager_.at(" << sup_at << ")."
-      << " num: " << c->nVars() << " vars: ";
-    for(uint32_t i = 0; i < c->nVars(); i++) {
-      cout << c->varsBegin()[i] << " ";
-    }
+      << " num vars: " << c->nVars() << " vars: ";
+    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
     cout << endl;
     lev++;
   }
-  cout << COLORG "--- Went through all levels now --" << endl;
+  cout << COLORG "--- Went through all levels now --" << COLDEF << endl;
 }
 
 SOLVER_StateT Solver::countSAT() {

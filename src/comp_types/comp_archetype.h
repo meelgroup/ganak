@@ -23,11 +23,11 @@ using std::endl;
 // State values for variables found during comp
 // analysis (CA)
 typedef uint8_t CA_SearchState;
-#define   CA_NIL  0
 #define   CA_VAR_IN_SUP_COMP_UNSEEN  1
 #define   CA_VAR_SEEN 2
 #define   CA_VAR_IN_OTHER_COMP  4
 
+// 1 + 2 + 4 == 7
 #define   CA_VAR_MASK  7
 
 #define   CA_CL_IN_SUP_COMP_UNSEEN  8
@@ -35,10 +35,12 @@ typedef uint8_t CA_SearchState;
 #define   CA_CL_IN_OTHER_COMP  32
 #define   CA_CL_ALL_LITS_ACTIVE  64
 
+// 64+32+16+8 == 120
 #define   CA_CL_MASK  120
 
 class StackLevel;
 
+// There is exactly ONE of this. Inside ComponentAnalyzer, which is inside ComponentManager, which is inside Solver
 class ComponentArchetype {
 public:
   ComponentArchetype() { }
@@ -47,6 +49,7 @@ public:
   }
 
   void reInitialize(StackLevel &stack_level, const Component &super_comp) {
+    print_debug("Reinitializing seen[] to all-zero in ComponentArchetype");
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
     clearArrays();
@@ -140,13 +143,14 @@ public:
 
   void initSeen(uint32_t max_variable_id, uint32_t max_clause_id) {
     uint32_t seen_size = std::max(max_variable_id,max_clause_id)  + 1;
+    print_debug("Creating new seen[] of size: " << seen_size << " and zeroing it.");
     seen_ = new CA_SearchState[seen_size];
     seen_byte_size_ = sizeof(CA_SearchState) * (seen_size);
     clearArrays();
   }
 
   void clearArrays() {
-    memset(seen_, CA_NIL, seen_byte_size_);
+    memset(seen_, 0, seen_byte_size_);
   }
 
   Component *makeComponentFromState(const uint32_t stack_size) {

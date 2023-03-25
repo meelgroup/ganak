@@ -24,6 +24,7 @@
 #endif
 #include "solver_config.h"
 
+// There is exactly ONE of this, inside Solver
 class ComponentManager
 {
 public:
@@ -73,7 +74,7 @@ public:
 
   void cleanRemainingComponentsOf(StackLevel &top)
   {
-    print_debug(COLYEL2 "cleaning (all processed?) comps of var: " << top.getbranchvar());
+    print_debug(COLYEL2 "cleaning (all remaining) comps of var: " << top.getbranchvar());
     while (comp_stack_.size() > top.remaining_comps_ofs())
     {
       if (cache_.hasEntry(comp_stack_.back()->id()))
@@ -230,6 +231,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       }
     }
   }
+
+  print_debug("We now set the unprocessed_component_end in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack_.size());
   sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
 }

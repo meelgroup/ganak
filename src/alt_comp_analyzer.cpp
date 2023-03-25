@@ -26,7 +26,7 @@ void ComponentAnalyzer::initialize(
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
 
-  print_debug(COLBLBACK "Building occ list in ComponentAnalyzer::initialize");
+  print_debug(COLBLBACK "Building occ list in ComponentAnalyzer::initialize...");
 
   vector<uint32_t> tmp;
   max_clause_id_ = 0;
@@ -65,9 +65,11 @@ void ComponentAnalyzer::initialize(
       }
     }
   }
+  print_debug(COLBLBACK "Built occ list in ComponentAnalyzer::initialize.");
 
   archetype_.initSeen(max_variable_id_, max_clause_id_);
 
+  print_debug(COLBLBACK "Building unified link list in ComponentAnalyzer::initialize...");
   // the unified link list
   // This is an array that contains, flattened:
   // [  [vars of binary clauses],
@@ -77,7 +79,7 @@ void ComponentAnalyzer::initialize(
   unified_variable_links_lists_pool_.clear();
 
   // a map into unified_variable_Links_lists_pool.
-  // maps var -> starting point in unified_variable_Links_lists_pool
+  // maps var -> starting point in unified_variable_links_lists_pool
   variable_link_list_offsets_.clear();
   variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
 
@@ -117,6 +119,7 @@ void ComponentAnalyzer::initialize(
         occ_long_clauses[v].begin(),
         occ_long_clauses[v].end());
   }
+  print_debug(COLBLBACK "Built unified link list in ComponentAnalyzer::initialize.");
 }
 
 // Check which comp a variable is in

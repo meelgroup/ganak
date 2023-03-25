@@ -28,7 +28,7 @@
 
 // verbose debug
 #ifdef VERBOSE_DEBUG
-#define print_debug(x) std::cout << COLDEF << x << endl
+#define print_debug(x) std::cout << COLDEF << x << COLDEF << endl
 #define print_debug_noendl(x) std::cout << x
 #else
 #define print_debug(x) do {} while(0)

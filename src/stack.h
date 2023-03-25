@@ -104,7 +104,7 @@ public:
     return (!branch_found_unsat()) && hasUnprocessedComponents();
   }
 
-  uint32_t lit_stack_ofs() const {
+  uint32_t trail_ofs() const {
     return trail_ofs_;
   }
   void includeSolution(const mpz_class &solutions) {

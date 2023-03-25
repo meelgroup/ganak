@@ -495,8 +495,8 @@ bool Solver::prop_and_probe() {
   return bSucceeded;
 }
 
-bool Solver::propagate(const uint32_t start_at_stack_ofs) {
-  for (auto i = start_at_stack_ofs; i < trail.size(); i++) {
+bool Solver::propagate(const uint32_t start_at_trail_ofs) {
+  for (auto i = start_at_trail_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
 
     //Propagate bin clauses
@@ -542,11 +542,11 @@ bool Solver::propagate(const uint32_t start_at_stack_ofs) {
 bool Solver::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
 
-  uint32_t stack_ofs = decision_stack_.top().lit_stack_ofs();
+  uint32_t trail_ofs = decision_stack_.top().trail_ofs();
   uint32_t num_curr_lits = 0;
-  while (stack_ofs < trail.size()) {
+  while (trail_ofs < trail.size()) {
     test_lits.clear();
-    for (auto it = trail.begin() + stack_ofs;
+    for (auto it = trail.begin() + trail_ofs;
          it != trail.end(); it++) {
       for (auto cl_ofs : occ_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
@@ -560,8 +560,8 @@ bool Solver::failedLitProbeInternal() {
         }
       }
     }
-    num_curr_lits = trail.size() - stack_ofs;
-    stack_ofs = trail.size();
+    num_curr_lits = trail.size() - trail_ofs;
+    trail_ofs = trail.size();
     for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
       viewed_lits[*jt] = false;
     }

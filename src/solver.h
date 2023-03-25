@@ -91,9 +91,9 @@ private:
   }
 
   // this is the actual BCP algorithm
-  // starts propagating all literal in lit_stack_
-  // beginning at offset start_at_stack_ofs
-  bool propagate(const uint32_t start_at_stack_ofs);
+  // starts propagating all literal in trail_
+  // beginning at offset start_at_trail_ofs
+  bool propagate(const uint32_t start_at_trail_ofs);
 
   void print_all_levels();
   bool restart_if_needed();
@@ -160,7 +160,7 @@ private:
   // The literals that have been set in this decision level
   vector<Lit>::const_iterator TOSLiteralsBegin()
   {
-    return trail.begin() + decision_stack_.top().lit_stack_ofs();
+    return trail.begin() + decision_stack_.top().trail_ofs();
   }
 
   void initStack()
@@ -177,8 +177,8 @@ private:
 
   const Lit &TOS_decLit()
   {
-    assert(decision_stack_.top().lit_stack_ofs() < trail.size());
-    return trail[decision_stack_.top().lit_stack_ofs()];
+    assert(decision_stack_.top().trail_ofs() < trail.size());
+    return trail[decision_stack_.top().trail_ofs()];
   }
 
   // Reactivate Top-Of-Stack
@@ -186,7 +186,7 @@ private:
   {
     for (auto it = TOSLiteralsBegin(); it != trail.end(); it++) unSet(*it);
     comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
-    trail.resize(decision_stack_.top().lit_stack_ofs());
+    trail.resize(decision_stack_.top().trail_ofs());
     decision_stack_.top().resetRemainingComps();
   }
 

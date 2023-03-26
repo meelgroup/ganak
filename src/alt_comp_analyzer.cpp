@@ -16,7 +16,6 @@ void ComponentAnalyzer::initialize(
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
 
-
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
   vector<vector<uint32_t>>  occ_ternary_clauses(max_variable_id_ + 1);
 

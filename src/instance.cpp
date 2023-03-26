@@ -166,4 +166,3 @@ bool Instance::createfromFile(const std::string &filename) {
 
   return satSolver.okay();
 }
-

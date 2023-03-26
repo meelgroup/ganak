@@ -200,7 +200,6 @@ bool Solver::get_polarity(const uint32_t v)
 }
 
 void Solver::decideLiteral() {
-  // establish another decision stack level
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level());
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
@@ -347,13 +346,13 @@ retStateT Solver::backtrack() {
     } else if (decision_stack_.top().anotherCompProcessible()) {
       print_debug("Processing another comp at dec lev "
           << decision_stack_.get_decision_level()
-          << " instead of bakctracking." << " Num unprocessed comps: "
+          << " instead of backtracking." << " Num unprocessed comps: "
           << decision_stack_.top().numUnprocessedComponents());
       return PROCESS_COMPONENT;
     }
 
     // We have NOT explored the other side! Let's do it now!
-    if (!decision_stack_.top().isSecondBranch()) {
+    if (!decision_stack_.top().is_right_branch()) {
       print_debug("We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
       const Lit aLit = top_dec_lit();
@@ -364,10 +363,9 @@ retStateT Solver::backtrack() {
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
       print_debug(COLORGBG "Backtrack finished -- we flipped the branch");
       return RESOLVED;
-    } else {
-      print_debug(COLORGBG "We have explored BOTH branches, actually BACKTRACKING."
-          << " -- dec lev: " << decision_stack_.get_decision_level());
     }
+    print_debug(COLORGBG "We have explored BOTH branches, actually BACKTRACKING."
+        << " -- dec lev: " << decision_stack_.get_decision_level());
     comp_manager_.cacheModelCountOf(decision_stack_.top().super_comp(),
                                     decision_stack_.top().getTotalModelCount());
 
@@ -431,9 +429,8 @@ retStateT Solver::resolveConflict() {
   if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
   decision_stack_.top().mark_branch_unsat();
 
-  if (decision_stack_.top().isSecondBranch()) {
-    //Backtracking since finished with this AND the other branch.
-    // maybe the other branch had some solutions
+  if (decision_stack_.top().is_right_branch()) {
+    // Backtracking since finished with this AND the other branch.
     if (decision_stack_.get_decision_level() == 1) {
       cout
           << "c Solved half the solution space (i.e. one branch at dec. lev 1)." << endl

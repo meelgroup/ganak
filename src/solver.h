@@ -175,6 +175,9 @@ private:
           1, // super comp
           0, // trail offset
           2)); //comp stack offset
+
+    // I guess this is needed so the system later knows it's fully counted
+    // since this is only a dummy.
     decision_stack_.back().change_to_right_branch();
   }
 

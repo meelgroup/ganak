@@ -91,7 +91,7 @@ public:
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }
-  bool isSecondBranch() const {
+  bool is_right_branch() const {
     return active_branch_;
   }
 

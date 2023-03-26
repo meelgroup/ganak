@@ -159,9 +159,12 @@ void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
 bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 {
   print_debug(COLREDBG"-*-> Running findNextRemainingComponentOf");
-  print_debug("top.remaining_comps_ofs():" << top.remaining_comps_ofs() );
-  if (comp_stack_.size() <= top.remaining_comps_ofs())
+  print_debug("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack_.size(): " << comp_stack_.size());
+  if (comp_stack_.size() <= top.remaining_comps_ofs()) {
     recordRemainingCompsFor(top);
+  } else {
+    print_debug("Not running recordRemainingCompsFor, comp_stack_.size() > top.remaining_comps_ofs(). comp_stack_.size(): " << comp_stack_.size() << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
+  }
 
   assert(!top.branch_found_unsat());
   if (top.hasUnprocessedComponents()) {
@@ -185,6 +188,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+    print_debug("Going to NEXT var that's unseen & active in this component... if it exists. Var: " << *vt);
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
@@ -230,7 +234,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
     }
   }
 
-  print_debug("We now set the unprocessed_component_end in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
+  print_debug("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack_.size());
   sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
 }

@@ -34,9 +34,6 @@ public:
   // number of variables  and clauses before preprocessing
   uint64_t num_original_clauses_ = 0;
 
-  //This variable is used to periodically increase cache scores
-  uint64_t numcachedec_ = 0;
-
   // number of variables remaining
   uint64_t nVars_ = 0;
   // number of variables that actually occurs in clauses

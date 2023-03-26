@@ -16,7 +16,6 @@ struct SolverConfiguration {
   bool perform_failed_lit_probe = true;
   bool perform_pre_processing = true;
   bool perform_pcc = true; // probabilistic comp caching
-  bool use_csvsads = true; // polarity heuristic
   int verb = 1;
   int restart = 1;
 

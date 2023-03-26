@@ -64,8 +64,6 @@ int main(int argc, char *argv[])
       theSolver.config().perform_pcc = false;
       cout << "c NO prob caching" << endl;
 #endif
-    } else if (strcmp(argv[i], "--noCSVSADS") == 0) {
-      theSolver.config().use_csvsads = false;
     } else if (strcmp(argv[i], "-t") == 0) {
       if (argc <= i + 1)
       {

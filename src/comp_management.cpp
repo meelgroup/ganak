@@ -28,9 +28,6 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
 
 
   cache_.init(*comp_stack_.back(), seedforCLHASH);
-  for (uint32_t i = 0 ; i < (nVars + 5); i++){
-    cachescore_.push_back(0);
-  }
 }
 
 void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {

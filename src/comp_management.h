@@ -94,9 +94,6 @@ public:
   inline bool findNextRemainingComponentOf(StackLevel &top);
   inline void recordRemainingCompsFor(StackLevel &top);
   inline void sortComponentStackRange(uint32_t start, uint32_t end);
-  inline float cacheScoreOf(VariableIndex v);
-  inline void increasecachescores();
-  inline void decreasecachescore(Component &comp);
 
   void gatherStatistics()
   {
@@ -126,22 +123,7 @@ private:
   vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
-  vector<float> cachescore_;
 };
-
-float ComponentManager::cacheScoreOf(VariableIndex v)
-{
-  return cachescore_[v];
-}
-
-void ComponentManager::increasecachescores()
-{
-  for (uint32_t i = 0; i < cachescore_.size(); i++) cachescore_[i] *= 0.5;
-}
-void ComponentManager::decreasecachescore(Component &comp)
-{
-  for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++) cachescore_[*it] -= 1;
-}
 
 void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
 {
@@ -221,13 +203,6 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         cout << endl;
 #endif
 
-        //cache score should be decreased since we have a cache hit
-        if (config_.use_csvsads) {
-          stats.numcachedec_++;
-          if (stats.numcachedec_ % 128 == 0) increasecachescores();
-          for (auto it = p_new_comp->varsBegin(); *it != varsSENTINEL; it++)
-            cachescore_[*it] -= 1;
-        }
         delete packed_comp;
         delete p_new_comp;
       }

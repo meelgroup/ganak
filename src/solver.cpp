@@ -238,7 +238,6 @@ void Solver::decideLiteral() {
   setLiteralIfFree(lit);
   stats.num_decisions_++;
   if (stats.num_decisions_ % 128 == 0) {
-    if (config_.use_csvsads) comp_manager_.increasecachescores();
     decayActivities();
   }
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
@@ -364,13 +363,6 @@ retStateT Solver::backtrack() {
         << " -- dec lev: " << decision_stack_.get_decision_level());
     comp_manager_.cacheModelCountOf(decision_stack_.top().super_comp(),
                                     decision_stack_.top().getTotalModelCount());
-
-    // Update cache score heuristic
-    if (config_.use_csvsads) {
-      stats.numcachedec_++;
-      if (stats.numcachedec_ % 128 == 0) comp_manager_.increasecachescores();
-      comp_manager_.decreasecachescore(comp_manager_.getSuperComponentOf(decision_stack_.top()));
-    }
 
     // Backtrack from end, i.e. finished.
     if (decision_stack_.get_decision_level() == 0) {

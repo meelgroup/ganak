@@ -163,7 +163,7 @@ private:
     return trail.begin() + decision_stack_.top().trail_ofs();
   }
 
-  void initStack()
+  void init_decision_stack()
   {
     decision_stack_.clear();
     trail.clear();

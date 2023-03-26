@@ -42,7 +42,7 @@ void Solver::HardWireAndCompact()
   }
   stats.num_unit_clauses_ = unit_clauses_.size();
   original_lit_pool_size_ = lit_pool_.size();
-  initStack();
+  init_decision_stack();
 }
 
 void Solver::solve(const std::string &file_name)
@@ -51,7 +51,7 @@ void Solver::solve(const std::string &file_name)
   createfromFile(file_name);
   if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
 
-  initStack();
+  init_decision_stack();
   if (config_.verb) {
     cout << "c Solving file " << file_name << endl;
     stats.printShortFormulaInfo();

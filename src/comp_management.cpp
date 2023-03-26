@@ -33,7 +33,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
   }
 }
 
-void ComponentManager::removeAllCachePollutionsOf(StackLevel &top) {
+void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // all processed comps are found in
   // [top.currentRemainingComponent(), comp_stack_.size())
   // first, remove the list of descendants from the father

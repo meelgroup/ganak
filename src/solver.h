@@ -68,12 +68,6 @@ private:
 
   void simplePreProcess();
   bool prepFailedLiteralTest();
-  // we assert that the formula is consistent
-  // and has not been found UNSAT yet
-  // hard wires all assertions in the literal stack into the formula
-  // removes all set variables and essentially reinitiallizes all
-  // further data
-  void HardWireAndCompact();
 
   SOLVER_StateT countSAT();
   void decideLiteral();

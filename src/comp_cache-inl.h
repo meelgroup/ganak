@@ -56,8 +56,8 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     return id;
 }
 
-void ComponentCache::cleanPollutionsInvolving(CacheEntryID id) {
-  CacheEntryID father = entry(id).father();
+void ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
+  const CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) {
     entry(father).set_first_descendant(entry(id).next_sibling());
   } else {

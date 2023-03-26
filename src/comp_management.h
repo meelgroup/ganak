@@ -103,7 +103,7 @@ public:
     cache_.compute_size_used();
   }
 
-  void removeAllCachePollutionsOf(StackLevel &top);
+  void removeAllCachePollutionsOf(const StackLevel &top);
   vector<void *> seedforCLHASH; //stores a bunch of __m128 aligned data pieces, each
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
@@ -215,7 +215,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
 #ifdef VERBOSE_DEBUG
-        cout << COLYEL2 "Component already in cache. ID: " << p_new_comp->id()
+        cout << COLYEL2 "Component already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;

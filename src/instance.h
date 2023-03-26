@@ -200,7 +200,7 @@ protected:
   CMSat::SATSolver satSolver;
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> target_polar;
-  vector<int> largest_cube;
+  vector<Lit> largest_cube;
 
 private:
   void parseWithCMS(const std::string& filename);

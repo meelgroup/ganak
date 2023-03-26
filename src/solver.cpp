@@ -28,14 +28,7 @@ void Solver::simplePreProcess()
 
   bool succeeded = propagate(start_ofs);
   assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  HardWireAndCompact();
-}
-
-void Solver::HardWireAndCompact()
-{
-  trail.clear();
   viewed_lits.resize(nVars() + 1, 0);
-
   for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc()) {
     litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
     litWatchList(l).activity_score_ += occ_lists_[l].size();
@@ -137,6 +130,7 @@ SOLVER_StateT Solver::countSAT() {
     // NOTE: findNextRemainingComponentOf finds disjoint comps
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
+      // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       checkProbabilisticHashSanity();
       decideLiteral();
       VERBOSE_DEBUG_DO(print_all_levels());
@@ -258,12 +252,13 @@ void Solver::computeLargestCube()
   // add decisions
   print_debug_noendl(COLWHT << "dec vars: ");
   for(uint32_t i = 1; i < decision_stack_.size(); i++) {
-    const StackLevel& ds = decision_stack_[i];
-    const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
+    const StackLevel& dec = decision_stack_[i];
+    const Lit dec_lit = trail[dec.trail_ofs()];
     print_debug_noendl(dec_lit << " ");
     largest_cube.push_back(dec_lit);
   }
-  print_debug_noendl(endl);
+  print_debug_noendl(COLDEF << endl);
+  print_debug(COLWHT "cube's count: " << decision_stack_.top().getTotalModelCount());
 
   // Show decision stack's comps
 #ifdef VERBOSE_DEBUG
@@ -282,7 +277,7 @@ void Solver::computeLargestCube()
       const auto& c = comp_manager_.at(i2);
       cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
       for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
-      cout << endl;
+      cout << COLDEF << endl;
     }
   }
 
@@ -316,7 +311,7 @@ bool Solver::restart_if_needed() {
     if (counted_bottom_comp) {
       //largest cube is valid.
       vector<CMSat::Lit> cl;
-      for(const auto&l: largest_cube) cl.push_back(~CMSat::Lit(abs(l)-1, l<0));
+      for(const auto&l: largest_cube) cl.push_back(~CMSat::Lit(l.var(), l.sign()));
       satSolver.add_clause(cl);
       cout << "c cube: ";
       for(const auto&l: largest_cube) cout << l << " ";
@@ -347,7 +342,8 @@ retStateT Solver::backtrack() {
       print_debug("Processing another comp at dec lev "
           << decision_stack_.get_decision_level()
           << " instead of backtracking." << " Num unprocessed comps: "
-          << decision_stack_.top().numUnprocessedComponents());
+          << decision_stack_.top().numUnprocessedComponents()
+          << " so far the count: " << decision_stack_.top().getTotalModelCount());
       return PROCESS_COMPONENT;
     }
 

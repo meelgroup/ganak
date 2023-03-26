@@ -112,21 +112,19 @@ public:
       assert(branch_model_count_[active_branch_] == 0);
       return;
     }
-    if (solutions == 0)
-      branch_found_unsat_[active_branch_] = true;
+    if (solutions == 0) branch_found_unsat_[active_branch_] = true;
     if (branch_model_count_[active_branch_] == 0)
       branch_model_count_[active_branch_] = solutions;
     else
       branch_model_count_[active_branch_] *= solutions;
 
   }
-  void includeSolution(uint32_t solutions) {
+  void includeSolution(const uint32_t solutions) {
     if (branch_found_unsat_[active_branch_]) {
       assert(branch_model_count_[active_branch_] == 0);
       return;
     }
-    if (solutions == 0)
-      branch_found_unsat_[active_branch_] = true;
+    if (solutions == 0) branch_found_unsat_[active_branch_] = true;
     if (branch_model_count_[active_branch_] == 0)
       branch_model_count_[active_branch_] = solutions;
     else

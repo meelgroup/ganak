@@ -65,7 +65,7 @@ void Solver::solve(const std::string &file_name)
     cout << "c Prepocessing done" << endl;
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
-    comp_manager_.initialize(literals_, lit_pool_, nVars());
+    comp_manager_.initialize(literals_, lit_pool_);
 
     stats.exit_state_ = countSAT();
     stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());

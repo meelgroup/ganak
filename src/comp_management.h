@@ -43,8 +43,7 @@ public:
     }
   }
 
-  void initialize(LiteralIndexedVector<LitWatchList> &literals,
-                  vector<Lit> &lit_pool, uint32_t nVars);
+  void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool);
 
   uint32_t scoreOf(VariableIndex v)
   {

@@ -156,9 +156,12 @@ private:
       violated_clause.push_back(*it);
   }
 
-  // TOS = Top Of Stack
   // The literals that have been set in this decision level
-  vector<Lit>::const_iterator TOSLiteralsBegin()
+  vector<Lit>::const_iterator top_declevel_trail_begin() const
+  {
+    return trail.begin() + decision_stack_.top().trail_ofs();
+  }
+  vector<Lit>::iterator top_declevel_trail_begin()
   {
     return trail.begin() + decision_stack_.top().trail_ofs();
   }
@@ -172,18 +175,18 @@ private:
           1, // super comp
           0, // trail offset
           2)); //comp stack offset
-    decision_stack_.back().changeBranch();
+    decision_stack_.back().change_to_right_branch();
   }
 
-  const Lit &TOS_decLit()
+  const Lit &top_dec_lit()
   {
     assert(decision_stack_.top().trail_ofs() < trail.size());
-    return trail[decision_stack_.top().trail_ofs()];
+    return *top_declevel_trail_begin();
   }
 
   void reactivate_comps_and_backtrack_trail()
   {
-    for (auto it = TOSLiteralsBegin(); it != trail.end(); it++) unSet(*it);
+    for (auto it = top_declevel_trail_begin(); it != trail.end(); it++) unSet(*it);
     comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(decision_stack_.top().trail_ofs());
     decision_stack_.top().resetRemainingComps();

@@ -95,7 +95,7 @@ public:
     return active_branch_;
   }
 
-  void changeBranch() {
+  void change_to_right_branch() {
     assert(active_branch_ == false);
     active_branch_ = true;
   }
@@ -172,7 +172,12 @@ public:
     failed_lit_test_active = false;
   }
 
-  StackLevel &top() {
+  const StackLevel &top() const{
+    assert(size() > 0);
+    return back();
+  }
+
+  StackLevel &top(){
     assert(size() > 0);
     return back();
   }

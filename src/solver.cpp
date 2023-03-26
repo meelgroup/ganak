@@ -354,12 +354,11 @@ retStateT Solver::backtrack() {
 
     // We have NOT explored the other side! Let's do it now!
     if (!decision_stack_.top().isSecondBranch()) {
-      print_debug("We have NOT explored the right branch (isSecondBranch==false). Let's do it now."
+      print_debug("We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
-      //top of stack decision lit
-      const Lit aLit = TOS_decLit();
+      const Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
-      decision_stack_.top().changeBranch(); //flip branch
+      decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
       print_debug("Flipping lit to: " << aLit.neg());
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
@@ -451,10 +450,10 @@ retStateT Solver::resolveConflict() {
   // this is because we might have checked a literal
   // during implict BCP which has been a failed literal
   // due only to assignments made at lower decision levels
-  if (!uip_clauses_.back().empty() && uip_clauses_.back().front() == TOS_decLit().neg()) {
-    assert(TOS_decLit().neg() == uip_clauses_.back()[0]);
-    var(TOS_decLit().neg()).ante = addUIPConflictClause( uip_clauses_.back());
-    ant = var(TOS_decLit()).ante;
+  if (!uip_clauses_.back().empty() && uip_clauses_.back().front() == top_dec_lit().neg()) {
+    assert(top_dec_lit().neg() == uip_clauses_.back()[0]);
+    var(top_dec_lit().neg()).ante = addUIPConflictClause( uip_clauses_.back());
+    ant = var(top_dec_lit()).ante;
   }
   assert(decision_stack_.get_decision_level() > 0);
   assert(decision_stack_.top().branch_found_unsat());
@@ -464,8 +463,8 @@ retStateT Solver::resolveConflict() {
   // remaining comps are stored hence
   assert( decision_stack_.top().remaining_comps_ofs() == comp_manager_.comp_stack_size());
 
-  decision_stack_.top().changeBranch();
-  const Lit lit = TOS_decLit();
+  decision_stack_.top().change_to_right_branch();
+  const Lit lit = top_dec_lit();
   reactivate_comps_and_backtrack_trail();
   if (ant == NOT_A_CLAUSE) {
     print_debug("Conflict pushes us to: " << lit<< " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");

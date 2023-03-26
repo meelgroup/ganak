@@ -181,8 +181,7 @@ private:
     return trail[decision_stack_.top().trail_ofs()];
   }
 
-  // Reactivate Top-Of-Stack
-  void reactivateTOS()
+  void reactivate_comps_and_backtrack_trail()
   {
     for (auto it = TOSLiteralsBegin(); it != trail.end(); it++) unSet(*it);
     comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());

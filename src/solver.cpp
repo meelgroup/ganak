@@ -328,7 +328,7 @@ bool Solver::restart_if_needed() {
           decision_stack_.top().anotherCompProcessible()) {
         comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
       }
-      reactivateTOS();
+      reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
     } while (decision_stack_.get_decision_level() > 0);
     if (!takeSolution()) return EXIT;
@@ -359,7 +359,7 @@ retStateT Solver::backtrack() {
       const Lit aLit = TOS_decLit();
       assert(decision_stack_.get_decision_level() > 0);
       decision_stack_.top().changeBranch(); //flip branch
-      reactivateTOS();
+      reactivate_comps_and_backtrack_trail();
       print_debug("Flipping lit to: " << aLit.neg());
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
       print_debug(COLORGBG "Backtrack finished -- we flipped the branch");
@@ -384,7 +384,7 @@ retStateT Solver::backtrack() {
       break;
     }
 
-    reactivateTOS();
+    reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
     print_debug("Backtracking from level " << decision_stack_.get_decision_level()
@@ -467,7 +467,7 @@ retStateT Solver::resolveConflict() {
 
   decision_stack_.top().changeBranch();
   const Lit lit = TOS_decLit();
-  reactivateTOS();
+  reactivate_comps_and_backtrack_trail();
   if (ant == NOT_A_CLAUSE) {
     print_debug("Conflict pushes us to: " << lit<< " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");
   } else {

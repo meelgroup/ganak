@@ -122,6 +122,7 @@ private:
   const SolverConfiguration &config_;
   DataAndStatistics &stats;
 
+  // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
@@ -184,9 +185,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-    print_debug("checking var: " << *vt << " which comp it's in");
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
-      // Create new comp
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.perform_pcc) {

@@ -105,16 +105,16 @@ bool Solver::takeSolution() {
 }
 
 void Solver::print_all_levels() {
-  cout << COLORG "--- going through all levels now, printing comps --" << endl;
-  uint32_t lev = 0;
+  cout << COLORG "--- going through all decision levels now, printing comps --" << endl;
+  uint32_t dec_lev = 0;
   for(const auto& s: decision_stack_) {
     auto const& sup_at = s.super_comp();
-    cout << COLORG "super comp of lev " << lev
-      << " is " << sup_at
-      << " branch var here: " << decision_stack_.at(lev).getbranchvar()
-      << " unproc'd comp end: " << decision_stack_.at(lev).getUnprocessedComponentsEnd()
-      << " remaining comp ofs: " << decision_stack_.at(lev).remaining_comps_ofs()
-      << " num unproc'd comps: " << decision_stack_.at(lev).numUnprocessedComponents()
+    cout << COLORG "super comp of dec_lev " << dec_lev
+      << " is at comp_stack_ position: " << sup_at
+      << " branch var here: " << decision_stack_.at(dec_lev).getbranchvar()
+      << " unproc'd comp end: " << decision_stack_.at(dec_lev).getUnprocessedComponentsEnd()
+      << " remaining comp ofs: " << decision_stack_.at(dec_lev).remaining_comps_ofs()
+      << " num unproc'd comps: " << decision_stack_.at(dec_lev).numUnprocessedComponents()
       << endl;
 
     const auto& c = comp_manager_.at(sup_at);
@@ -122,7 +122,7 @@ void Solver::print_all_levels() {
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
     cout << endl;
-    lev++;
+    dec_lev++;
   }
   cout << COLORG "--- Went through all levels now --" << COLDEF << endl;
 }

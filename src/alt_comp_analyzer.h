@@ -104,6 +104,8 @@ public:
     return true;
   }
 
+  // exploreRemainingCompOf has been called already
+  // which set up search_stack, seen[] etc.
   inline Component *makeComponentFromArcheType(){
     return archetype_.makeComponentFromState(search_stack_.size());
   }
@@ -139,6 +141,7 @@ private:
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
                                        // used in  recordComponentOf
+                                       // its size is the number of variables in the component
 
   bool isFalse(const Lit lit) const {
     return lit_values_[lit] == F_TRI;

@@ -153,10 +153,12 @@ public:
     memset(seen_, 0, seen_byte_size_);
   }
 
-  Component *makeComponentFromState(const uint32_t stack_size) {
+  // At this point exploreRemainingCompOf has been called already which
+  // set up search_stack_, seen[] etc. so this is now quite easy.
+  Component *makeComponentFromState(const uint32_t search_stack_size) {
     print_debug(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Component *p_new_comp = new Component();
-    p_new_comp->reserveSpace(stack_size, super_comp().numLongClauses());
+    p_new_comp->reserveSpace(search_stack_size, super_comp().numLongClauses());
     current_comp_for_caching_.clear();
 
     // Fill variables in new comp
@@ -193,7 +195,7 @@ public:
 private:
   Component const* p_super_comp_;
   StackLevel *p_stack_level_;
-  CA_SearchState* seen_ = nullptr;
+  CA_SearchState* seen_ = nullptr; // all variables and all clause IDXs can be indexed here
   uint32_t seen_byte_size_ = 0;
 };
 

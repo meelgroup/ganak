@@ -73,7 +73,7 @@ public:
     return vs_cls_data_.empty();
   }
 
-  // Creates the full CNF, at start-up. In other words, this is called ONCE
+  // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
   void createStartingComponent(uint32_t max_var_id, uint32_t max_clause_id) {
     vs_cls_data_.clear();
     clauses_ofs_ = 1;

@@ -72,7 +72,7 @@ public:
     return comp_stack_.at(at);
   }
 
-  void cleanRemainingComponentsOf(StackLevel &top)
+  void cleanRemainingComponentsOf(const StackLevel &top)
   {
     print_debug(COLYEL2 "cleaning (all remaining) comps of var: " << top.getbranchvar());
     while (comp_stack_.size() > top.remaining_comps_ofs())
@@ -168,9 +168,7 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
     return true;
   }
 
-  // if no comp remains
-  // make sure, at least that the current branch is considered SAT
-
+  // if no comp remains then there is exactly 1 solution left
   top.includeSolution(1);
   print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
   return false;
@@ -182,6 +180,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   const Component& super_comp = getSuperComponentOf(top);
   const uint32_t new_comps_start_ofs = comp_stack_.size();
 
+  // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {

@@ -134,7 +134,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     assert(isUnknown(v));
 
     //traverse binary clauses
-    uint32_t const* p = beginOfLinkList(v);
+    uint32_t const* p = begin_cls_of_var(v);
     for (; *p; p++) {
       if(manageSearchOccurrenceOf(Lit(*p,true))) {
         var_frequency_scores_[*p]++;

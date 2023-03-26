@@ -5,10 +5,7 @@
  *      Author: mthurley
  */
 
-#ifndef ALT_COMPONENT_ANALYZER_H_
-#define ALT_COMPONENT_ANALYZER_H_
-
-
+#pragma once
 
 #include "statistics.h"
 #include "comp_types/comp.h"
@@ -47,15 +44,15 @@ public:
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
       vector<Lit> &lit_pool);
 
-  bool isUnseenAndActive(VariableIndex v) const {
+  bool isUnseenAndActive(const VariableIndex v) const {
     assert(v <= max_variable_id_);
     return archetype_.var_unseen_in_sup_comp(v);
   }
 
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unseen before
-  bool manageSearchOccurrenceOf(Lit lit){
-    if(archetype_.var_unseen_in_sup_comp(lit.var())){
+  bool manageSearchOccurrenceOf(const Lit lit){
+    if (archetype_.var_unseen_in_sup_comp(lit.var())) {
       search_stack_.push_back(lit.var());
       archetype_.setVar_seen(lit.var());
       return true;
@@ -68,7 +65,7 @@ public:
     return manageSearchOccurrenceOf(lit);
   }
 
-  void setSeenAndStoreInSearchStack(VariableIndex v){
+  void setSeenAndStoreInSearchStack(const VariableIndex v){
     assert(isUnknown(v));
     search_stack_.push_back(v);
     archetype_.setVar_seen(v);
@@ -77,7 +74,7 @@ public:
   void setupAnalysisContext(StackLevel &top, const Component & super_comp){
     archetype_.reInitialize(top,super_comp);
 
-    print_debug("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp");
+    print_debug("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
       if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
@@ -130,12 +127,8 @@ private:
   uint32_t max_variable_id_ = 0;
 
 
-  // this is a new idea,
-  // for every variable we have a list
-  // 0 binarylinks 0 occs 0
-  // this should give better cache behaviour,
-  // because all links of one variable (binary and nonbinray) are found
-  // in one contiguous chunk of memory
+  // for every variable e have an array of
+  // binarycls 0 ternary cls (consisting of: CLIDX LIT1 LIT2) 0 cls_idxs 0
   vector<uint32_t> unified_variable_links_lists_pool_;
   vector<uint32_t> variable_link_list_offsets_; // offset into unified_variable_links_lists_pool_
                                                 // indexed by variable.
@@ -144,7 +137,8 @@ private:
   const set <uint32_t> & indep_support_;
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
-  vector<VariableIndex> search_stack_;
+  vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
+                                       // used in  recordComponentOf
 
   bool isFalse(const Lit lit) const {
     return lit_values_[lit] == F_TRI;
@@ -161,7 +155,7 @@ private:
     return lit_values_[Lit(v, true)] == X_TRI;
   }
 
-  uint32_t const* beginOfLinkList(const VariableIndex v) const {
+  uint32_t const* begin_cls_of_var(const VariableIndex v) const {
     assert(v > 0);
     return &unified_variable_links_lists_pool_[variable_link_list_offsets_[v]];
   }
@@ -186,28 +180,29 @@ private:
     }
   }
 
+  // This is called from recordComponentOf, i.e. during figuring out what
+  // belongs to a component. It's called on every long clause.
   void searchClause(VariableIndex vt, ClauseIndex clID, Lit const* pstart_cls){
     const auto itVEnd = search_stack_.end();
     bool all_lits_active = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {
       assert(itL->var() <= max_variable_id_);
       if(!archetype_.var_nil(itL->var()))
-        manageSearchOccurrenceAndScoreOf(*itL);
+        manageSearchOccurrenceAndScoreOf(*itL); // sets var to be seen
       else {
         assert(!isUnknown(*itL));
         all_lits_active = false;
         if (isFalse(*itL)) continue;
-        //BEGIN accidentally entered a satisfied clause: undo the search process
+
+        //accidentally entered a satisfied clause: undo the search process
         while (search_stack_.end() != itVEnd) {
           assert(search_stack_.back() <= max_variable_id_);
-          archetype_.setVar_in_sup_comp_unseen(search_stack_.back());
+          archetype_.setVar_in_sup_comp_unseen(search_stack_.back()); //unsets it from being seen
           search_stack_.pop_back();
         }
         archetype_.setClause_nil(clID);
         while(*itL != SENTINEL_LIT)
-          if(isUnknown(*(--itL)))
-            var_frequency_scores_[itL->var()]--;
-        //END accidentally entered a satisfied clause: undo the search process
+          if(isUnknown(*(--itL))) var_frequency_scores_[itL->var()]--;
         break;
       }
     }
@@ -219,6 +214,3 @@ private:
   }
 
 };
-
-
-#endif /* ALT_COMPONENT_ANALYZER_H_ */

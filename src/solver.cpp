@@ -134,7 +134,8 @@ SOLVER_StateT Solver::countSAT() {
   if (config_.restart && !takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
-    //NOTE: findNextRemainingComponentOf finds disjoint comps!
+    // NOTE: findNextRemainingComponentOf finds disjoint comps
+    // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_.findNextRemainingComponentOf(decision_stack_.top())) {
       checkProbabilisticHashSanity();
       decideLiteral();
@@ -452,8 +453,7 @@ retStateT Solver::resolveConflict() {
   // due only to assignments made at lower decision levels
   if (!uip_clauses_.back().empty() && uip_clauses_.back().front() == TOS_decLit().neg()) {
     assert(TOS_decLit().neg() == uip_clauses_.back()[0]);
-    var(TOS_decLit().neg()).ante = addUIPConflictClause(
-        uip_clauses_.back());
+    var(TOS_decLit().neg()).ante = addUIPConflictClause( uip_clauses_.back());
     ant = var(TOS_decLit()).ante;
   }
   assert(decision_stack_.get_decision_level() > 0);
@@ -461,8 +461,7 @@ retStateT Solver::resolveConflict() {
 
   // we do not have to remove pollutions here,
   // since conflicts only arise directly before
-  // remaining comps are stored
-  // hence
+  // remaining comps are stored hence
   assert( decision_stack_.top().remaining_comps_ofs() == comp_manager_.comp_stack_size());
 
   decision_stack_.top().changeBranch();
@@ -474,7 +473,6 @@ retStateT Solver::resolveConflict() {
     print_debug("Conflict pushes us to: " << lit);
   }
   setLiteralIfFree(lit.neg(), ant);
-  //END Backtracking
   return RESOLVED;
 }
 

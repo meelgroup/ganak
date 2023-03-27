@@ -237,9 +237,7 @@ void Solver::decideLiteral() {
   decision_stack_.top().setonpath(!counted_bottom_comp);
   setLiteralIfFree(lit);
   stats.num_decisions_++;
-  if (stats.num_decisions_ % 128 == 0) {
-    decayActivities();
-  }
+  if (stats.num_decisions_ % 128 == 0) decayActivities();
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 }
 

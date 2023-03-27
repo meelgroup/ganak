@@ -37,17 +37,18 @@ static double in_MB(uint64_t bytes) {
 
 void DataAndStatistics::printShort() const {
   cout << "c " << endl;
-  cout << "c  -- FINISHED ---" << endl;
-  cout << "c vars (total / active / free)   " << nVars_ << "/" << endl;
-  cout << "c cls (removed)                  "
-    << num_original_clauses_ << " (" << num_original_clauses_ - num_clauses() << ")" << endl;
+  cout << "c      --- FINISHED ---" << endl;
+  cout << "c vars                           " << nVars_ << endl;
+  cout << "c cls orig/final                 "
+    << num_original_clauses_ << "/" << num_clauses() << endl;
   cout << "c decisions                      " << num_decisions_ << endl;
   cout << "c conflicts                      " << num_conflicts_ << endl;
   cout << "c conflict cls (all/bin/unit)    " << num_conflict_clauses();
   cout << "/" << num_binary_conflict_clauses_ << "/" << num_unit_clauses_ << endl;
   cout << "c failed lits found by iBCP      " << num_failed_literals_detected_ << endl;
 
-  cout << "c implicit BCP miss rate         " << implicitBCP_miss_rate() * 100 << "%";
+  cout << "c implicit BCP miss rate         "
+    << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%";
   cout << endl;
   cout << "c MB cache size                  "
     << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "\t" << endl;
@@ -75,7 +76,7 @@ void DataAndStatistics::printShort() const {
   cout << "c avg. variable count (stores / hits) \t"
     << getAvgComponentSize()
     << "/" << getAvgCacheHitSize() << endl;
-  cout << "c time: " << time_elapsed_ << "s" << endl;
+  cout << "c time: " << std::setprecision(6) << time_elapsed_ << "s" << endl;
   cout << "c " << endl;
 }
 

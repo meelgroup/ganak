@@ -184,19 +184,15 @@ public:
   }
 
   void incorporateConflictClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 1)
-      num_unit_clauses_++;
-    else if (clause.size() == 2)
-      num_binary_conflict_clauses_++;
+    if (clause.size() == 1) num_unit_clauses_++;
+    else if (clause.size() == 2) num_binary_conflict_clauses_++;
     num_long_conflict_clauses_++;
   }
+
   void incorporateClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 1)
-      num_unit_clauses_++;
-    else if (clause.size() == 2)
-      num_binary_clauses_++;
-    else
-      num_long_clauses_++;
+    if (clause.size() == 1) num_unit_clauses_++;
+    else if (clause.size() == 2) num_binary_clauses_++;
+    else num_long_clauses_++;
   }
 
   std::string getFinalSolutionCountStr() const;

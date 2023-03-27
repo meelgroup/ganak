@@ -50,6 +50,11 @@ public:
     return ana_.scoreOf(v);
   }
 
+  uint64_t get_num_cache_entries_used() const
+  {
+    return cache_.get_num_entries_used();
+  }
+
   void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value)
   {
     if (config_.do_comp_caching)

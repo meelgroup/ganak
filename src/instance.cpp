@@ -123,7 +123,7 @@ bool Instance::createfromFile(const std::string &filename) {
   assert(variables_.empty());
   assert(lit_values_.empty());
   assert(occ_lists_.empty());
-  assert(literals_.empty());
+  assert(watches_.empty());
   assert(lit_pool_.empty());
   assert(indep_support_.empty());
   assert(unit_clauses_.empty());
@@ -136,7 +136,7 @@ bool Instance::createfromFile(const std::string &filename) {
   variables_.resize(satSolver.nVars() + 1);
   lit_values_.resize(satSolver.nVars() + 1, X_TRI);
   occ_lists_.resize(satSolver.nVars() + 1);
-  literals_.resize(satSolver.nVars() + 1);
+  watches_.resize(satSolver.nVars() + 1);
   target_polar.resize(satSolver.nVars() + 1);
   if (!satSolver.okay()) return satSolver.okay();
 

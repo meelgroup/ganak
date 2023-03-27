@@ -30,6 +30,14 @@ public:
   }
 
   void init(Component &super_comp, vector <void*>  &randomseedforCLHASH);
+  uint64_t get_num_entries_used() const
+  {
+    uint64_t ret = 0;
+    for (uint32_t id = 2; id < entry_base_.size(); id++)
+      if (entry_base_[id] != nullptr) ret++;
+
+    return ret;
+  }
 
   // compute the size in bytes of the comp cache from scratch
   // the value is stored in bytes_memory_usage_

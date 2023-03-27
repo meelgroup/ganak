@@ -29,7 +29,7 @@ void Solver::simplePreProcess()
   bool succeeded = propagate(start_ofs);
   assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(nVars() + 1, 0);
-  for (auto l = Lit(1, false); l != literals_.end_lit(); l.inc()) {
+  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) {
     litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
     litWatchList(l).activity_score_ += occ_lists_[l].size();
   }
@@ -64,7 +64,7 @@ void Solver::solve(const std::string &file_name)
     simplePreProcess();
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
-    comp_manager_.initialize(literals_, lit_pool_);
+    comp_manager_.initialize(watches_, lit_pool_);
 
     stats.exit_state_ = countSAT();
     stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
@@ -306,7 +306,12 @@ void Solver::computeLargestCube()
 }
 
 bool Solver::restart_if_needed() {
-  if (config_.do_restart && stats.getNumDecisions() > stats.next_restart) {
+  if (config_.do_restart && stats.getNumDecisions() > stats.next_restart &&
+      // don't restart if we are about to exit (i.e. empty largest cube)
+      !largest_cube.empty()) {
+    cout << "Cache entries before restart: "
+      << comp_manager_.get_num_cache_entries_used() << endl;
+
     stats.num_restarts++;
     stats.next_restart_diff*=1.4;
     stats.next_restart += stats.next_restart_diff;
@@ -323,8 +328,16 @@ bool Solver::restart_if_needed() {
       }
       satSolver.add_clause(sat_cl);
 
+      // WILL NEED TO MOVE CONFLICT CLAUSES!!
+      //    ... or maybe just delete them as an easy solution
+      //    basically, they mess up clause IDs when initializing
+
       // Add clause to solver
+      // WAAAAIIIIT... what should we do if it's binary? Then there is no clause ID...
+      //               Also, unit clause could be a pain
       stats.incorporateClauseData(cl);
+      ClauseOfs cl_ofs = addClause(cl);
+      if (cl.size() >= 3) for (const auto& l : cl) occ_lists_[l].push_back(cl_ofs);
 
       cout << "cube: ";
       for(const auto&l: largest_cube) cout << l << " ";
@@ -332,6 +345,8 @@ bool Solver::restart_if_needed() {
       largest_cube_val = 0;
     }
     cout << endl;
+
+    // do we really need to remove cache pollutions? Are they pollutions?
     do {
       if (decision_stack_.top().branch_found_unsat() ||
           decision_stack_.top().anotherCompProcessible()) {
@@ -340,6 +355,12 @@ bool Solver::restart_if_needed() {
       reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
     } while (decision_stack_.get_decision_level() > 0);
+
+    // TODO we need to do smarter, with clause IDs here
+    comp_manager_.initialize(watches_, lit_pool_);
+
+    cout << "Cache entries after restart: "
+      << comp_manager_.get_num_cache_entries_used() << endl;
     if (!takeSolution()) return EXIT;
     return true;
   }

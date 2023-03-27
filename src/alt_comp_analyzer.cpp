@@ -95,24 +95,21 @@ void ComponentAnalyzer::initialize(
       if (l != SENTINEL_LIT)
         unified_variable_links_lists_pool_.push_back(l.var());
 
-    unified_variable_links_lists_pool_.push_back(0);
-
     // data for ternary clauses
+    unified_variable_links_lists_pool_.push_back(0);
     unified_variable_links_lists_pool_.insert(
         unified_variable_links_lists_pool_.end(),
         occ_ternary_clauses[v].begin(),
         occ_ternary_clauses[v].end());
 
-    unified_variable_links_lists_pool_.push_back(0);
-
     // data for long clauses
+    unified_variable_links_lists_pool_.push_back(0);
     for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
       unified_variable_links_lists_pool_.push_back(*it); //cl_id
       unified_variable_links_lists_pool_.push_back(*(it + 1) + (occs[v].end() - it));
     }
 
     unified_variable_links_lists_pool_.push_back(0);
-
     unified_variable_links_lists_pool_.insert(
         unified_variable_links_lists_pool_.end(),
         occ_long_clauses[v].begin(),

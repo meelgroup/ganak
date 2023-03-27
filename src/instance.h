@@ -74,7 +74,9 @@ protected:
   bool createfromFile(const std::string &file_name);
   DataAndStatistics stats;
 
-  /** lit_pool_: the literals of all clauses are stored here
+  /*  lit_pool_: the literals of all clauses are stored here
+   *   This includes both IRRED + RED clauses
+   *   irred clauses are until original_lit_pool_size_
    *   INVARIANT: first and last entries of lit_pool_ are a SENTINEL_LIT
    *
    *   Clauses begin with a ClauseHeader structure followed by the literals
@@ -91,7 +93,7 @@ protected:
   // conflict clauses
   uint32_t original_lit_pool_size_;
 
-  LiteralIndexedVector<LitWatchList> literals_;
+  LiteralIndexedVector<LitWatchList> watches_; // watches
   LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
   vector<ClauseOfs> conflict_clauses_;
   vector<Lit> unit_clauses_;
@@ -99,7 +101,7 @@ protected:
   LiteralIndexedVector<TriValue> lit_values_;
 
   void decayActivities() {
-    for (auto l_it = literals_.begin(); l_it != literals_.end(); l_it++)
+    for (auto l_it = watches_.begin(); l_it != watches_.end(); l_it++)
       l_it->activity_score_ *= 0.5F;
 
     for(auto clause_ofs: conflict_clauses_)
@@ -159,11 +161,11 @@ protected:
   }
 
   LitWatchList & litWatchList(Lit lit) {
-    return literals_[lit];
+    return watches_[lit];
   }
 
   const LitWatchList & litWatchList(Lit lit) const {
-    return literals_[lit];
+    return watches_[lit];
   }
 
   inline bool isTrue(const Lit &lit) const {
@@ -190,8 +192,8 @@ protected:
    }
 
   ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) {
-    return *reinterpret_cast<ClauseHeader *>(&lit_pool_[cl_ofs
-        - ClauseHeader::overheadInLits()]);
+    return *reinterpret_cast<ClauseHeader *>(
+        &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
   }
 
   bool isSatisfied(ClauseOfs cl_ofs) {
@@ -221,19 +223,19 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
     unit_clauses_.push_back(literals[0]);
     return 0;
   }
+
   if (literals.size() == 2) {
     addBinaryClause(literals[0], literals[1]);
     return 0;
   }
-  for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
-    lit_pool_.push_back(lit_Undef);
+
+  for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++) lit_pool_.push_back(lit_Undef);
   ClauseOfs cl_ofs = lit_pool_.size();
 
   for (auto l : literals) {
     lit_pool_.push_back(l);
     litWatchList(l).increaseActivity(1);
   }
-  // make an end: SENTINEL_LIT
   lit_pool_.push_back(SENTINEL_LIT);
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
   litWatchList(literals[1]).addWatchLinkTo(cl_ofs);

@@ -76,7 +76,7 @@ protected:
 
   /*  lit_pool_: the literals of all clauses are stored here
    *   This includes both IRRED + RED clauses
-   *   irred clauses are until original_lit_pool_size_
+   *   irred clauses are until irred_lit_pool_size_
    *   INVARIANT: first and last entries of lit_pool_ are a SENTINEL_LIT
    *
    *   Clauses begin with a ClauseHeader structure followed by the literals
@@ -91,7 +91,7 @@ protected:
 
   // this is to determine the starting offset of
   // conflict clauses
-  uint32_t original_lit_pool_size_;
+  uint32_t irred_lit_pool_size_;
 
   LiteralIndexedVector<LitWatchList> watches_; // watches
   LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
@@ -188,7 +188,7 @@ protected:
   }
 
   decltype(lit_pool_.begin()) conflict_clauses_begin() {
-     return lit_pool_.begin() + original_lit_pool_size_;
+     return lit_pool_.begin() + irred_lit_pool_size_;
    }
 
   ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) {

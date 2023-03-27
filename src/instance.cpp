@@ -162,7 +162,7 @@ bool Instance::createfromFile(const std::string &filename) {
 
   stats.nVars_ = satSolver.nVars();
   stats.num_unit_clauses_ = unit_clauses_.size();
-  original_lit_pool_size_ = lit_pool_.size();
+  irred_lit_pool_size_ = lit_pool_.size();
 
   return satSolver.okay();
 }

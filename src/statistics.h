@@ -22,6 +22,7 @@ using std::cout;
 using std::endl;
 
 class Instance;
+class ComponentCache;
 
 class DataAndStatistics {
 public:
@@ -100,11 +101,6 @@ public:
 
   uint64_t overall_num_cache_stores_ = 0;
   const Instance* inst;
-
-  void print_cache_state() {
-    cout << "c printing cache state " << endl;
-    cout << "c " <<  cache_bytes_memory_usage() <<" "<< maximum_cache_size_bytes_ << endl;
-  }
 
   bool cache_full(){
     return cache_bytes_memory_usage() >= maximum_cache_size_bytes_;
@@ -195,7 +191,7 @@ public:
   }
 
   std::string getFinalSolutionCountStr() const;
-  void printShort() const;
+  void printShort(const ComponentCache* cache_) const;
   void print_solution() const;
   void printShortFormulaInfo() const {
     cout << "c variables:                     " << nVars_ << endl;

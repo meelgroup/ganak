@@ -44,6 +44,7 @@ public:
   }
 
   void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool);
+  const ComponentCache& get_cache() const { return cache_; }
 
   uint32_t scoreOf(VariableIndex v)
   {

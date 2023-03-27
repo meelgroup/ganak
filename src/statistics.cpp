@@ -6,6 +6,7 @@
  */
 
 #include "statistics.h"
+#include "comp_cache.h"
 #include "solver.h"
 
 #include <iostream>
@@ -35,7 +36,7 @@ static double in_MB(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
 
-void DataAndStatistics::printShort() const {
+void DataAndStatistics::printShort(const ComponentCache* cache_) const {
   cout << "c " << endl;
   cout << "c      --- FINISHED ---" << endl;
   cout << "c vars                           " << nVars_ << endl;
@@ -50,6 +51,7 @@ void DataAndStatistics::printShort() const {
   cout << "c implicit BCP miss rate         "
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%";
   cout << endl;
+  cout << "c MB cache entries               " << cache_->get_num_entries_used() << endl;
   cout << "c MB cache size                  "
     << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "\t" << endl;
   cout << "c MB cache (overall)             "

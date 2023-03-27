@@ -34,7 +34,7 @@ void Solver::simplePreProcess()
     litWatchList(l).activity_score_ += occ_lists_[l].size();
   }
   stats.num_unit_clauses_ = unit_clauses_.size();
-  original_lit_pool_size_ = lit_pool_.size();
+  irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
 }
 
@@ -76,7 +76,7 @@ void Solver::solve(const std::string &file_name)
 
   stats.time_elapsed_ = cpuTime() - time_start;
   comp_manager_.gatherStatistics();
-  if (config_.verb) stats.printShort();
+  if (config_.verb) stats.printShort(&comp_manager_.get_cache());
   stats.print_solution();
 }
 
@@ -331,6 +331,7 @@ bool Solver::restart_if_needed() {
       // WILL NEED TO MOVE CONFLICT CLAUSES!!
       //    ... or maybe just delete them as an easy solution
       //    basically, they mess up clause IDs when initializing
+      //    if we move it, irred_lit_pool_size needs to change, and offsets need to be moved.
 
       // Add clause to solver
       // WAAAAIIIIT... what should we do if it's binary? Then there is no clause ID...

@@ -75,7 +75,6 @@ string ganak_version_info()
 
 void add_appmc_options()
 {
-
     std::ostringstream my_delta;
     my_delta << std::setprecision(8) << delta;
 
@@ -233,7 +232,7 @@ int main(int argc, char *argv[])
   solver.config().hashrange = hashrange;
   solver.config().delta = delta;
   solver.config().first_restart = first_restart;
-  solver.statistics().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
+  solver.config().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
 
   if (verb) {
     cout << ganak_version_info() << endl;

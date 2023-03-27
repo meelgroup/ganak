@@ -42,9 +42,10 @@ void Solver::solve(const std::string &file_name)
 {
   time_start = cpuTime();
   stats.next_restart = config_.first_restart;
-  createfromFile(file_name);
+  stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
   if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
 
+  createfromFile(file_name);
   init_decision_stack();
   if (config_.verb) {
     if (indep_support_given) {

@@ -19,6 +19,7 @@ struct SolverConfiguration {
   int verb = 1;
   int do_restart = 1;
   uint64_t first_restart = 100000000U;
+  uint64_t maximum_cache_size_bytes_ = 0;
 
   uint64_t randomseed = 1000;
   uint32_t hashrange = 1;

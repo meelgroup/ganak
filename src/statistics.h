@@ -133,11 +133,10 @@ public:
     overall_num_cache_stores_ += ccomp.nVars();
     sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes();
     sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes();
-
-
     sum_bytes_pure_cached_comp_data_ += ccomp.data_only_byte_size();
     overall_bytes_pure_stored_comp_data_ += ccomp.data_only_byte_size();
   }
+
   void incorporate_cache_erase(CacheableComponent &ccomp, bool pccflag){
     if (pccflag){
       sum_bytes_cached_comps_ -= ccomp.SizeInBytes_CLHASH();
@@ -148,7 +147,6 @@ public:
     sum_size_cached_comps_ -= ccomp.nVars();
     num_cached_comps_--;
     sum_bytes_pure_cached_comp_data_ -= ccomp.data_only_byte_size();
-
     sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes();
   }
 
@@ -216,13 +214,13 @@ public:
     return (double) sum_cache_hit_sizes_ / (double) num_cache_hits_;
   }
 
-  long double getAvgComponentSize() const {
+  double getAvgComponentSize() const {
     if (num_cached_comps_ == 0) return 1.0L;
-    return sum_size_cached_comps_ / (long double) num_cached_comps_;
+    return sum_size_cached_comps_ / (double) num_cached_comps_;
   }
 
   uint64_t cached_comp_count() const { return num_cached_comps_; }
-  uint64_t cache_hits() { return num_cache_hits_; }
+  uint64_t cache_hits() const { return num_cache_hits_; }
 
   double cache_miss_rate() const {
     if(num_cache_look_ups_ == 0) return 0.0;

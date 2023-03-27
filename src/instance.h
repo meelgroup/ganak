@@ -44,7 +44,7 @@ protected:
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
-  bool isolated(VariableIndex v) {
+  bool isolated(VariableIndex v) const {
     Lit lit(v, false);
     return (litWatchList(lit).binary_links_.size() <= 1)
         && occ_lists_[lit].empty()
@@ -52,8 +52,8 @@ protected:
         && occ_lists_[lit.neg()].empty();
   }
 
-  bool free(VariableIndex v) {
-    return isolated(v) && isUnknown(v);
+  bool free(VariableIndex v) const {
+    return isolated(v) && isUnknown(Lit(v));
   }
 
   bool deleteConflictClauses();
@@ -162,6 +162,10 @@ protected:
     return literals_[lit];
   }
 
+  const LitWatchList & litWatchList(Lit lit) const {
+    return literals_[lit];
+  }
+
   inline bool isTrue(const Lit &lit) const {
     return lit_values_[lit] == T_TRI;
   }
@@ -200,6 +204,8 @@ protected:
   CMSat::SATSolver satSolver;
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> target_polar;
+
+  // Cubes
   vector<Lit> largest_cube;
   mpz_class largest_cube_val = 0;
 
@@ -220,7 +226,7 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
     return 0;
   }
   for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
-    lit_pool_.push_back(0);
+    lit_pool_.push_back(lit_Undef);
   ClauseOfs cl_ofs = lit_pool_.size();
 
   for (auto l : literals) {

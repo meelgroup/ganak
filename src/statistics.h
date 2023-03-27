@@ -68,6 +68,7 @@ public:
   uint32_t num_restarts = 0;
   uint64_t next_restart = 100000000U;
   uint64_t next_restart_diff = 1000;
+  mpz_class restart_cubes_val = 0;
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;

@@ -22,19 +22,17 @@ typedef uint8_t TriValue;
 #define   T_TRI  1
 #define   X_TRI  2
 
+
 class Lit {
 public:
 
-  Lit() {
-    value_ = 0;
-  }
-  Lit(int lit) {
-    value_ = (abs(lit) << 1) + (uint32_t) (lit > 0);
-  }
+  constexpr Lit() : value_(0) { }
 
-  Lit(VariableIndex var, bool sign) {
-    value_ = (var << 1) + (uint32_t) sign;
-  }
+  explicit constexpr Lit(int lit) : value_((abs(lit) << 1) + (uint32_t) (lit > 0))
+  {}
+
+  constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign)
+  {}
 
   VariableIndex var() const {
     return (value_ >> 1);
@@ -62,7 +60,7 @@ public:
     return value_ == rL2.value_;
   }
 
-  const Lit neg() const {
+  Lit neg() const {
     return Lit(var(), !sign());
   }
 
@@ -75,9 +73,11 @@ private:
   uint32_t value_;
 };
 
+static const Lit lit_Undef(0);
+
 inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 {
-    if (lit == 0) {
+    if (lit.raw() == 0) {
         os << "UNDEF";
     } else {
         os << lit.toInt();

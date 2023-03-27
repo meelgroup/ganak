@@ -123,7 +123,6 @@ void Solver::print_all_levels() {
 SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
-  counted_bottom_comp = false;
   if (config_.do_restart && !takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
@@ -160,7 +159,7 @@ SOLVER_StateT Solver::countSAT() {
 bool Solver::get_polarity(const uint32_t v)
 {
   bool polarity;
-  if (!counted_bottom_comp) polarity = target_polar[v];
+  if (config_.do_restart && !counted_bottom_comp) polarity = target_polar[v];
   else {
     // TODO MATE: this whole thing is a huge mess as far as I'm concerned
     polarity = litWatchList(Lit(v, true)).activity_score_ >
@@ -171,7 +170,7 @@ bool Solver::get_polarity(const uint32_t v)
     } else if (litWatchList(Lit(v, false)).activity_score_ >
                 2 * litWatchList(Lit(v, true)).activity_score_) {
       polarity = false;
-    } else if (var(v).set) {
+    } else if (var(Lit(v, false)).set) {
       // TODO MATE this sounds insane, right? Random polarities??
       uint32_t random = mtrand.randInt(2) ;
       switch (random) {
@@ -181,11 +180,11 @@ bool Solver::get_polarity(const uint32_t v)
           break;
         case 1:
           // cached polar
-          polarity = var(v).polarity;
+          polarity = var(Lit(v, false)).polarity;
           break;
         case 2:
           // inverted cached polar
-          polarity = !(var(v).polarity);
+          polarity = !(var(Lit(v, false)).polarity);
           break;
       }
     }
@@ -260,7 +259,7 @@ void Solver::computeLargestCube()
     for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
       const auto& c = comp_manager_.at(i2);
       for(auto v = c->varsBegin(); *v != varsSENTINEL; v++)
-        largest_cube.push_back((target_polar[*v] ? 1 : -1) * *v);
+        largest_cube.push_back(Lit(*v, !target_polar[*v]));
     }
   }
   largest_cube_val = decision_stack_.top().getTotalModelCount();
@@ -311,21 +310,28 @@ bool Solver::restart_if_needed() {
     stats.num_restarts++;
     stats.next_restart_diff*=1.4;
     stats.next_restart += stats.next_restart_diff;
-    if ((stats.num_restarts % 5) == 4) {
-      stats.next_restart_diff = 1000;
-    }
+    if ((stats.num_restarts % 5) == 4) stats.next_restart_diff = 1000;
     stats.last_restart_decisions = stats.num_decisions_;
-    cout << "c Restart here" << endl;
+    cout << "c Restart here. " ;
     if (counted_bottom_comp) {
-      //largest cube is valid.
-      vector<CMSat::Lit> cl;
-      for(const auto&l: largest_cube) cl.push_back(~CMSat::Lit(l.var(), l.sign()));
-      satSolver.add_clause(cl);
-      cout << "c cube: ";
+      // Add clause to satSolver
+      vector<CMSat::Lit> sat_cl;
+      vector<Lit> cl;
+      for(const auto&l: largest_cube) {
+        sat_cl.push_back(~CMSat::Lit(l.var(), l.sign()));
+        cl.push_back(l.neg());
+      }
+      satSolver.add_clause(sat_cl);
+
+      // Add clause to solver
+      stats.incorporateClauseData(cl);
+
+      cout << "cube: ";
       for(const auto&l: largest_cube) cout << l << " ";
-      cout << endl;
-      counted_bottom_comp = false;
+      stats.restart_cubes_val +=  largest_cube_val;
+      largest_cube_val = 0;
     }
+    cout << endl;
     do {
       if (decision_stack_.top().branch_found_unsat() ||
           decision_stack_.top().anotherCompProcessible()) {
@@ -625,7 +631,7 @@ void Solver::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector
     if (hasAntecedent(lit)) {
       resolve_out = true;
       if (getAntecedent(lit).isAClause()) {
-        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != SENTINEL_CL; it++) {
+        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != lit_Undef; it++) {
           if (!seen[it->var()]) {
             resolve_out = false;
             break;
@@ -711,7 +717,7 @@ void Solver::recordLastUIPCauses() {
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
-           *it != SENTINEL_CL; it++) {
+           *it != lit_Undef; it++) {
         if (tmp_seen[it->var()] || (var(*it).decision_level == 0) || existsUnitClauseOf(it->var())) {
           continue;
         }
@@ -795,7 +801,7 @@ void Solver::recordAllUIPCauses() {
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
-           *it != SENTINEL_CL; it++) {
+           *it != lit_Undef; it++) {
         if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
               existsUnitClauseOf(it->var())) {
           continue;

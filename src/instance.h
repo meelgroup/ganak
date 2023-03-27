@@ -201,6 +201,7 @@ protected:
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> target_polar;
   vector<Lit> largest_cube;
+  mpz_class largest_cube_val = 0;
 
 private:
   void parseWithCMS(const std::string& filename);

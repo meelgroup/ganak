@@ -65,7 +65,7 @@ public:
 
   uint32_t last_restart_decisions = 0;
   uint32_t num_restarts = 0;
-  uint32_t next_restart = 1000;
+  uint32_t next_restart = 100000000U;
   uint32_t next_restart_diff = 1000;
 
   /* cache statistics */

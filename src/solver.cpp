@@ -123,7 +123,7 @@ void Solver::print_all_levels() {
 SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
-  counted_bottom_comp = true;
+  counted_bottom_comp = false;
   if (config_.restart && !takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
@@ -247,22 +247,31 @@ void Solver::computeLargestCube()
   print_debug(COLWHT "-- computeLargestCube BEGIN");
 
   // add decisions
-  print_debug_noendl(COLWHT << "dec vars: ");
-  for(uint32_t i = 1; i < decision_stack_.size(); i++) {
+  for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = trail[dec.trail_ofs()];
-    print_debug_noendl(dec_lit << " ");
-    largest_cube.push_back(dec_lit);
-  }
-  print_debug_noendl(COLDEF << endl);
-  print_debug(COLWHT "cube's count: " << decision_stack_.top().getTotalModelCount());
+    // Add decision
+    if (i > 0) largest_cube.push_back(dec_lit);
 
-  // Show decision stack's comps
+    const auto off_start = dec.remaining_comps_ofs();
+    const auto off_end = dec.getUnprocessedComponentsEnd();
+    // add all but the last component (it's the one we just counted)
+    for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
+      const auto& c = comp_manager_.at(i2);
+      for(auto v = c->varsBegin(); *v != varsSENTINEL; v++)
+        largest_cube.push_back((target_polar[*v] ? 1 : -1) * *v);
+    }
+  }
+  largest_cube_val = decision_stack_.top().getTotalModelCount();
+
 #ifdef VERBOSE_DEBUG
+  // Show decision stack's comps
   for(size_t i = 0; i < decision_stack_.size(); i++) {
     const auto& ds = decision_stack_.at(i);
     const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
-    print_debug(COLWHT "decision_stack.at " << i
+    /* const auto dec_lit2 = trail[ds.trail_ofs()]; */
+    /* cout << "dec_lit2: " << dec_lit2 << endl; */
+    print_debug(COLWHT "decision_stack.at(" << i << "):"
       << " decision lit: " << dec_lit
       << " num unproc comps: " << ds.numUnprocessedComponents()
       << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
@@ -279,19 +288,20 @@ void Solver::computeLargestCube()
   }
 
   // All comps
-  print_debug(COLWHT "-- comp list START");
+  print_debug(COLWHT "== comp list START");
   for(uint32_t i2 = 0; i2 < comp_manager_.comp_stack_size(); i2++) {
     const auto& c = comp_manager_.at(i2);
-    cout << COLWHT "comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
+    cout << COLWHT "== comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
     if (c->empty()) { cout << "EMPTY" << endl; continue; }
     for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
     cout << endl;
   }
-  print_debug(COLWHT "-- comp list END");
+  print_debug(COLWHT "== comp list END");
 
-   cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
-   for(const auto& l: largest_cube) cout << l << " ";
-   cout << endl;
+  cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
+  for(const auto& l: largest_cube) cout << l << " ";
+  cout << endl;
+  print_debug(COLWHT "cube's count: " << decision_stack_.top().getTotalModelCount());
 #endif
 }
 
@@ -368,6 +378,16 @@ retStateT Solver::backtrack() {
       break;
     }
 
+    if (decision_stack_.top().on_path_to_target_) {
+      if (!counted_bottom_comp) {
+        assert(stats.num_decisions_ >= stats.last_restart_decisions);
+        print_debug(COLCYN "Bottom comp reached, decisions since restart: "
+          << stats.num_decisions_ - stats.last_restart_decisions);
+        counted_bottom_comp = true;
+      }
+      if (counted_bottom_comp) computeLargestCube();
+    }
+
     reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
@@ -378,15 +398,6 @@ retStateT Solver::backtrack() {
         << " num unprocessed comps here: " << decision_stack_.top().numUnprocessedComponents()
         << " on_path: " << decision_stack_.top().on_path_to_target_);
 
-    if (decision_stack_.top().on_path_to_target_) {
-      computeLargestCube();
-      if (!counted_bottom_comp) {
-        assert(stats.num_decisions_ >= stats.last_restart_decisions);
-        print_debug(COLCYN "Bottom comp reached, decisions since restart: "
-          << stats.num_decisions_ - stats.last_restart_decisions);
-        counted_bottom_comp = true;
-      }
-    }
     // step to the next comp not yet processed
     decision_stack_.top().nextUnprocessedComponent();
 

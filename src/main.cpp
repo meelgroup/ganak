@@ -55,6 +55,7 @@ int do_restart = 1;
 int do_pcc = 1;
 int hashrange = 1;
 double delta = 0.05;
+uint32_t first_restart = 100000000;
 
 string ganak_version_info()
 {
@@ -84,6 +85,7 @@ void add_appmc_options()
     ("verb,v", po::value(&verb)->default_value(1), "verb")
     ("seed,s", po::value(&seed)->default_value(seed), "Seed")
     ("delta", po::value(&delta)->default_value(delta, my_delta.str()), "Delta")
+    ("rstfirst", po::value(&first_restart)->default_value(first_restart), "Run restarts")
     ("restart", po::value(&do_restart)->default_value(do_restart), "Run restarts")
     ("cc", po::value(&do_comp_caching)->default_value(do_comp_caching), "Component caching")
     ("maxcache", po::value(&max_cache)->default_value(max_cache), "Max cache size in MB. 0 == use 80% of free mem")
@@ -230,6 +232,7 @@ int main(int argc, char *argv[])
   solver.config().randomseed = seed;
   solver.config().hashrange = hashrange;
   solver.config().delta = delta;
+  solver.config().first_restart = first_restart;
   solver.statistics().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
 
   if (verb) {

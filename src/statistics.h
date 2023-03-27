@@ -63,10 +63,11 @@ public:
   // number of clauses overall learned
   uint32_t num_clauses_learned_ = 0;
 
-  uint32_t last_restart_decisions = 0;
+  // restarts
+  uint64_t last_restart_decisions = 0;
   uint32_t num_restarts = 0;
-  uint32_t next_restart = 100000000U;
-  uint32_t next_restart_diff = 1000;
+  uint64_t next_restart = 100000000U;
+  uint64_t next_restart_diff = 1000;
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
@@ -77,8 +78,7 @@ public:
   uint64_t total_num_cached_comps_ = 0;
   uint64_t sum_size_cached_comps_ = 0;
 
-  // the number of bytes occupied by all
-  // comps
+  // the number of bytes occupied by all comps
   uint64_t sum_bytes_cached_comps_ = 0;
   // the same number, summing over all comps ever stored
   uint64_t overall_bytes_comps_stored_ = 0;
@@ -217,6 +217,7 @@ public:
   }
 
   long double getAvgComponentSize() const {
+    if (num_cached_comps_ == 0) return 1.0L;
     return sum_size_cached_comps_ / (long double) num_cached_comps_;
   }
 

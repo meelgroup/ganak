@@ -41,6 +41,7 @@ void Solver::simplePreProcess()
 void Solver::solve(const std::string &file_name)
 {
   time_start = cpuTime();
+  stats.next_restart = config_.first_restart;
   createfromFile(file_name);
   if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
 

@@ -52,7 +52,7 @@ void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCL
 
   CacheableComponent *packed_super_comp = new CacheableComponent(super_comp);
 
-	if (config_.perform_pcc){
+	if (config_.do_pcc){
 		delete packed_super_comp;
 		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp);
 	}
@@ -78,8 +78,8 @@ void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCL
 		cout << "c Free RAM " << std::setprecision(2)
 			<< (double)free_ram / (1024.0*1024.0) << "MB" << endl;
 	}
-	cout << "c Maximum cache size:\t"
-		<< stats.maximum_cache_size_bytes_ / 1000000 << " MB" << endl;
+	if (config_.verb) cout << "c Max cache size (80% free mem): "
+		<< stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB" << endl;
 
 	assert(!stats.cache_full());
 
@@ -89,7 +89,7 @@ void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCL
 	entry_base_.push_back(packed_super_comp);
 
 	stats.incorporate_cache_store(*packed_super_comp
-			, config_.perform_pcc && packed_super_comp->get_hacked());
+			, config_.do_pcc && packed_super_comp->get_hacked());
 
 	super_comp.set_id(1);
 	compute_size_used();
@@ -162,7 +162,7 @@ bool ComponentCache::deleteEntries() {
 		if (entry_base_[id] != nullptr) {
 			stats.sum_size_cached_comps_ +=
 					entry_base_[id]->nVars();
-			if(config_.perform_pcc && entry_base_[id]->get_hacked()){
+			if(config_.do_pcc && entry_base_[id]->get_hacked()){
 				stats.sum_bytes_cached_comps_ +=
 					entry_base_[id]->SizeInBytes_CLHASH();
 			}

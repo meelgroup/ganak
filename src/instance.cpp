@@ -95,7 +95,7 @@ void Instance::parseWithCMS(const std::string& filename) {
   DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&satSolver, NULL, verb);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&solver, NULL, verb);
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&satSolver, NULL, verb);
   #endif
   if (in == NULL) {
       std::cout << "ERROR! Could not open file '" << filename

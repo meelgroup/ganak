@@ -80,6 +80,7 @@ option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(STATICCOMPILE "Compile to static executable" OFF)
 if (STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
+    set(Boost_USE_STATIC_LIBS ON)
 endif()
 
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
@@ -108,10 +109,6 @@ if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Windows") AND (STATICCOMPILE))
-    set(Boost_USE_STATIC_LIBS ON)
-endif()
-
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 macro(add_cxx_flag_if_supported flagname)
@@ -134,19 +131,15 @@ if (NOT MSVC)
     add_compile_options( -g)
     add_compile_options( -pthread )
 
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O2>")
-    #add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-mtune=native>")
+    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O3>")
+    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-mtune=native>")
 
-    add_compile_options("$<$<CONFIG:RELEASE>:-O2>")
+    add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
     add_compile_options("$<$<CONFIG:RELEASE>:-g0>")
-    #add_compile_options("$<$<CONFIG:RELEASE>:-mtune=native>")
+    add_compile_options("$<$<CONFIG:RELEASE>:-DNDEBUG>")
+    add_compile_options("$<$<CONFIG:RELEASE>:-mtune=native>")
 
     add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
-
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -O2")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O2")
-    endif()
 
 else()
     # see https://msdn.microsoft.com/en-us/library/fwkeyyhe.aspx for details
@@ -332,6 +325,23 @@ endif()
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
+set (boost_components "")
+set(boost_components ${boost_components} program_options serialization)
+find_package( Boost 1.46 COMPONENTS ${boost_components})
+
+option(NOZLIB "Don't use zlib" OFF)
+if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
+    find_package(ZLIB)
+    IF (ZLIB_FOUND)
+        MESSAGE(STATUS "OK, Found ZLIB!")
+        include_directories(${ZLIB_INCLUDE_DIR})
+        link_directories(${ZLIB_LIB_DIR})
+        add_definitions( -DUSE_ZLIB )
+    ELSE (ZLIB_FOUND)
+        MESSAGE(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
+    ENDIF (ZLIB_FOUND)
+endif()
+
 find_library(GMP_LIB gmp)
 find_library(GMPXX_LIB gmpxx)
 find_package(cryptominisat5 CONFIG)
@@ -344,10 +354,6 @@ if (cryptominisat5_FOUND)
 else()
     message(FATAL_ERROR "Cannot find CryptoMiniSat5. Please install it! Exiting.")
 endif()
-
-set (boost_components "")
-set(boost_components ${boost_components} program_options serialization)
-find_package( Boost 1.46 COMPONENTS ${boost_components})
 
 # -----------------------------------------------------------------------------
 # Add GIT version

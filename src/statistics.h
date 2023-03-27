@@ -109,12 +109,12 @@ public:
     return cache_bytes_memory_usage() >= maximum_cache_size_bytes_;
   }
 
-  uint64_t cache_bytes_memory_usage(){
+  uint64_t cache_bytes_memory_usage() const {
     return cache_infrastructure_bytes_memory_usage_
            + sum_bytes_cached_comps_;
   }
 
-  uint64_t overall_cache_bytes_memory_stored(){
+  uint64_t overall_cache_bytes_memory_stored() const {
       return cache_infrastructure_bytes_memory_usage_
              + overall_bytes_comps_stored_;
     }
@@ -156,23 +156,23 @@ public:
       num_cache_hits_++;
       sum_cache_hit_sizes_ += ccomp.nVars();
   }
-  uint64_t cache_MB_memory_usage() {
+  uint64_t cache_MB_memory_usage() const {
       return cache_bytes_memory_usage() / 1000000;
   }
   mpz_class final_solution_count_ = 0;
 
-  double implicitBCP_miss_rate() {
+  double implicitBCP_miss_rate() const {
       if(num_failed_lit_tests_ == 0) return 0.0;
       return (num_failed_lit_tests_ - num_failed_literals_detected_) / (double) num_failed_lit_tests_;
   }
-  uint64_t num_clauses() {
+  uint64_t num_clauses() const {
     return num_long_clauses_ + num_binary_clauses_ + num_unit_clauses_;
   }
-  uint64_t num_conflict_clauses() {
+  uint64_t num_conflict_clauses() const {
     return num_long_conflict_clauses_ + num_binary_conflict_clauses_;
   }
 
-  uint64_t clause_deletion_interval() {
+  uint64_t clause_deletion_interval() const {
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
@@ -199,52 +199,42 @@ public:
       num_long_clauses_++;
   }
 
-  std::string getFinalSolutionCountStr();
-  void printShort();
-  void printShortFormulaInfo() {
-    cout << "c variables (all/used/free): \t" << endl;
-
-    cout << "c clauses (all/long/binary/unit): ";
-    cout << num_clauses() << "/" << num_long_clauses_;
-    cout << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
+  std::string getFinalSolutionCountStr() const;
+  void printShort() const;
+  void print_solution() const;
+  void printShortFormulaInfo() const {
+    cout << "c variables:                     " << nVars_ << endl;
+    cout << "c cls (all/long/binary/unit):    "
+      << num_clauses() << "/" << num_long_clauses_
+      << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
   }
-  uint32_t getNumDecisions() {
-    return num_decisions_;
-  }
-
-  double avgCachedSize() {
-    if (num_cache_hits_ == 0)
-      return 0.0;
+  uint32_t getNumDecisions() const { return num_decisions_; }
+  double avgCachedSize() const {
+    if (num_cache_hits_ == 0) return 0.0;
     return (double) sum_size_cached_comps_
         / (double) num_cached_comps_;
   }
 
-  double avgCacheHitSize() {
-    if (num_cache_hits_ == 0)
-      return 0.0;
+  double avgCacheHitSize() const {
+    if (num_cache_hits_ == 0) return 0.0;
     return (double) sum_cache_hit_sizes_ / (double) num_cache_hits_;
   }
 
-  long double getAvgComponentSize() {
+  long double getAvgComponentSize() const {
     return sum_size_cached_comps_ / (long double) num_cached_comps_;
   }
 
-  uint64_t cached_comp_count() {
-    return num_cached_comps_;
-  }
+  uint64_t cached_comp_count() const { return num_cached_comps_; }
+  uint64_t cache_hits() { return num_cache_hits_; }
 
-  uint64_t cache_hits() {
-    return num_cache_hits_;
-  }
-
-  double cache_miss_rate() {
+  double cache_miss_rate() const {
     if(num_cache_look_ups_ == 0) return 0.0;
     return (num_cache_look_ups_ - num_cache_hits_)
         / (double) num_cache_look_ups_;
   }
 
-  long double getAvgCacheHitSize() {
-    if(num_cache_hits_ == 0) return 0.0;
+  long double getAvgCacheHitSize() const {
+    if(num_cache_hits_ == 0) return 0.0L;
     return sum_cache_hit_sizes_ / (long double) num_cache_hits_;
   }
 };

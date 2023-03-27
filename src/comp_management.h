@@ -52,7 +52,7 @@ public:
 
   void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value)
   {
-    if (config_.perform_comp_caching)
+    if (config_.do_comp_caching)
       cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
@@ -173,7 +173,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
-      if (config_.perform_pcc) {
+      if (config_.do_pcc) {
 #ifdef DOPCC
         packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
 #else

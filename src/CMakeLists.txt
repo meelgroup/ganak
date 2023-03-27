@@ -24,6 +24,21 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
+if (NOT WIN32)
+    add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
+    #add_cxx_flag_if_supported("-Wduplicated-cond")
+    #add_cxx_flag_if_supported("-Wduplicated-branches")
+    add_cxx_flag_if_supported("-Wlogical-op")
+    add_cxx_flag_if_supported("-Wrestrict")
+    add_cxx_flag_if_supported("-Wnull-dereference")
+    add_cxx_flag_if_supported("-Wdouble-promotion")
+    add_cxx_flag_if_supported("-Wshadow")
+    add_cxx_flag_if_supported("-Wformat=2")
+    add_cxx_flag_if_supported("-Wextra-semi")
+    add_cxx_flag_if_supported("-pedantic")
+    #add_cxx_flag_if_supported("-Wdeprecated")
+endif()
+
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
 add_subdirectory (comp_types)
@@ -43,7 +58,8 @@ target_link_libraries (ganak
   LINK_PUBLIC clhash
   LINK_PUBLIC component_types
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
-  LINK_PUBLIC ${Boost_LIBRARIES})
+  LINK_PUBLIC ${Boost_LIBRARIES} # due to serialization
+)
 
 set_target_properties(ganak PROPERTIES
     PUBLIC_HEADER "${ganak_public_headers}"
@@ -55,13 +71,23 @@ add_executable (ganak-bin
     main.cpp
 )
 
-target_link_libraries (ganak-bin
+set(ganak_exec_link_libs
   ganak
-  ${GMP_LIB} ${GMPXX_LIB}
+  ${GMP_LIB}
+  ${GMPXX_LIB}
+  ${Boost_LIBRARIES} # due to program_options
 )
+
+IF (ZLIB_FOUND)
+    SET(ganak_exec_link_libs ${ganak_exec_link_libs} ${ZLIB_LIBRARY})
+ENDIF()
+
+target_link_libraries (ganak-bin
+  ${ganak_exec_link_libs}
+)
+
 
 set_target_properties(ganak-bin PROPERTIES
     OUTPUT_NAME ganak
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
     INSTALL_RPATH_USE_LINK_PATH TRUE)
-

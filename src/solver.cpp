@@ -42,12 +42,10 @@ void Solver::solve(const std::string &file_name)
 {
   time_start = cpuTime();
   createfromFile(file_name);
-  if (config_.perform_pcc) comp_manager_.getrandomseedforclhash();
+  if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
 
   init_decision_stack();
   if (config_.verb) {
-    cout << "c Solving file " << file_name << endl;
-    stats.printShortFormulaInfo();
     if (indep_support_given) {
       cout << "c Sampling set size: " << indep_support_.size() << endl;
       if (indep_support_.size() > 50) {
@@ -62,7 +60,6 @@ void Solver::solve(const std::string &file_name)
 
   if (satSolver.okay()) {
     simplePreProcess();
-    cout << "c Prepocessing done" << endl;
     if (config_.verb) stats.printShortFormulaInfo();
     last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
     comp_manager_.initialize(literals_, lit_pool_);
@@ -77,7 +74,8 @@ void Solver::solve(const std::string &file_name)
 
   stats.time_elapsed_ = cpuTime() - time_start;
   comp_manager_.gatherStatistics();
-  stats.printShort();
+  if (config_.verb) stats.printShort();
+  stats.print_solution();
 }
 
 bool Solver::takeSolution() {
@@ -124,7 +122,7 @@ SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
   counted_bottom_comp = false;
-  if (config_.restart && !takeSolution()) return SUCCESS;
+  if (config_.do_restart && !takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
     // NOTE: findNextRemainingComponentOf finds disjoint comps
@@ -243,6 +241,7 @@ void Solver::decideLiteral() {
 
 void Solver::computeLargestCube()
 {
+  assert(config_.do_restart);
   largest_cube.clear();
   print_debug(COLWHT "-- computeLargestCube BEGIN");
 
@@ -306,7 +305,7 @@ void Solver::computeLargestCube()
 }
 
 bool Solver::restart_if_needed() {
-  if (config_.restart && stats.getNumDecisions() > stats.next_restart) {
+  if (config_.do_restart && stats.getNumDecisions() > stats.next_restart) {
     stats.num_restarts++;
     stats.next_restart_diff*=1.4;
     stats.next_restart += stats.next_restart_diff;
@@ -378,7 +377,7 @@ retStateT Solver::backtrack() {
       break;
     }
 
-    if (decision_stack_.top().on_path_to_target_) {
+    if (config_.do_restart && decision_stack_.top().on_path_to_target_) {
       if (!counted_bottom_comp) {
         assert(stats.num_decisions_ >= stats.last_restart_decisions);
         print_debug(COLCYN "Bottom comp reached, decisions since restart: "
@@ -480,7 +479,7 @@ bool Solver::prop_and_probe() {
   print_debug("--> Units of this comp set, propagating");
 
   bool bSucceeded = propagate(start_ofs);
-  if (config_.perform_failed_lit_probe && bSucceeded) {
+  if (config_.do_failed_lit_probe && bSucceeded) {
     bSucceeded = failedLitProbeInternal();
   }
   return bSucceeded;
@@ -615,17 +614,10 @@ bool Solver::failedLitProbeInternal() {
   return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-// BEGIN module conflictAnalyzer
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-void Solver::minimizeAndStoreUIPClause(
-  Lit uipLit,
-  vector<Lit> &tmp_clause, const vector<uint8_t>& seen) {
-
+void Solver::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector<uint8_t>& seen) {
   tmp_clause_minim.clear();
   assertion_level_ = 0;
-  for (auto lit : tmp_clause) {
+  for (const auto& lit : cl) {
     if (existsUnitClauseOf(lit.var())) continue;
     bool resolve_out = false;
     if (hasAntecedent(lit)) {

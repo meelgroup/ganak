@@ -79,8 +79,8 @@ private:
   {
     for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++)
     {
-      litWatchList(Lit(*it, true)).activity_score_ *= 0.5;
-      litWatchList(Lit(*it, false)).activity_score_ *= 0.5;
+      litWatchList(Lit(*it, true)).activity_score_ *= 0.5F;
+      litWatchList(Lit(*it, false)).activity_score_ *= 0.5F;
     }
   }
 

@@ -43,7 +43,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     assert(hasEntry(id));
     assert(hasEntry(super_comp_id));
 
-    stats.incorporate_cache_store(ccomp, config_.perform_pcc && ccomp.get_hacked());
+    stats.incorporate_cache_store(ccomp, config_.do_pcc && ccomp.get_hacked());
 
   #ifdef DEBUG
       for (uint32_t u = 2; u < entry_base_.size(); u++)
@@ -145,7 +145,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   stats.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes();
   stats.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes();
 #ifdef DOPCC
-  if (config_.perform_pcc)
+  if (config_.do_pcc)
     entry(id).set_hacked(entry(id).SizeInBytes(), entry(id).nVars());
 #endif
 
@@ -155,7 +155,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   entry(id).set_next_bucket_element(table_[table_ofs]);
   table_[table_ofs] = id;
 
-  if (config_.perform_pcc){
+  if (config_.do_pcc){
     stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes_CLHASH();
     stats.overall_bytes_comps_stored_ += entry(id).SizeInBytes_CLHASH();
   }

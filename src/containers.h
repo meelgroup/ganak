@@ -14,12 +14,12 @@ template<class _T>
 class LiteralIndexedVector: protected vector<_T> {
 
 public:
-	LiteralIndexedVector(uint32_t size = 0) :
-			vector<_T>(size * 2) {
+	LiteralIndexedVector(const uint32_t sz = 0) :
+			vector<_T>(sz * 2) {
 	}
-	LiteralIndexedVector(uint32_t size,
+	LiteralIndexedVector(const uint32_t sz,
 			const typename vector<_T>::value_type& __value) :
-			vector<_T>(size * 2, __value) {
+			vector<_T>(sz * 2, __value) {
 	}
 	inline _T &operator[](const Lit lit) {
 		return *(vector<_T>::begin() + lit.raw());

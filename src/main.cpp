@@ -1,120 +1,253 @@
+/******************************************
+Copyright (c) 2023, Marc Thurley, Mate Soos
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
+
+#include "cryptominisat5/cryptominisat.h"
 #include "solver.h"
 #include "GitSHA1.h"
 
 #include <iostream>
 #include <vector>
 #include <string>
+#include <iomanip>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <boost/program_options.hpp>
+#include "src/GitSHA1.h"
+
+#if defined(__GNUC__) && defined(__linux__)
+#include <fenv.h>
+#endif
+
+namespace po = boost::program_options;
+using std::string;
+using std::vector;
+po::options_description main_options = po::options_description("Main options");
+po::options_description help_options;
+po::variables_map vm;
+po::positional_options_description p;
 
 using namespace std;
+int verb = 1;
+int seed = 0;
+int do_comp_caching = 1;
+uint64_t max_cache = 0;
+int do_implicit_bcp = 1;
+int do_restart = 1;
+int do_pcc = 1;
+int hashrange = 1;
+double delta = 0.05;
+
+string ganak_version_info()
+{
+    std::stringstream ss;
+    ss << "c GANAK SHA revision " << GANAK::get_version_sha1() << endl;
+    ss << "c GANAK compilation env " << GANAK::get_compilation_env() << endl;
+    #ifdef __GNUC__
+    ss << "c GANAK compiled with gcc version " << __VERSION__ << endl;
+    #else
+    ss << "c GANAK compiled with non-gcc compiler" << endl;
+    #endif
+    CMSat::SATSolver sat_solver;
+    ss << "c CMS version: " << sat_solver.get_version_sha1();
+
+    return ss.str();
+}
+
+void add_appmc_options()
+{
+
+    std::ostringstream my_delta;
+    my_delta << std::setprecision(8) << delta;
+
+    main_options.add_options()
+    ("help,h", "Prints help")
+    ("input", po::value< vector<string> >(), "file(s) to read")
+    ("verb,v", po::value(&verb)->default_value(1), "verb")
+    ("seed,s", po::value(&seed)->default_value(seed), "Seed")
+    ("delta", po::value(&delta)->default_value(delta, my_delta.str()), "Delta")
+    ("restart", po::value(&do_restart)->default_value(do_restart), "Run restarts")
+    ("cc", po::value(&do_comp_caching)->default_value(do_comp_caching), "Component caching")
+    ("maxcache", po::value(&max_cache)->default_value(max_cache), "Max cache size in MB. 0 == use 80% of free mem")
+    ("ibpc", po::value(&do_implicit_bcp)->default_value(do_implicit_bcp), "Implicit Boolean Constraint Prop")
+    ("version", "Print version info")
+    ("pcc", po::value(&do_pcc)->default_value(do_pcc), "Probabilistic Component Caching")
+    ("hashrange", po::value(&hashrange)->default_value(hashrange), "Seed")
+    ;
+
+    help_options.add(main_options);
+}
+
+void add_supported_options(int argc, char** argv)
+{
+    add_appmc_options();
+    p.add("input", 1);
+
+    try {
+        po::store(po::command_line_parser(argc, argv).options(help_options).positional(p).run(), vm);
+        if (vm.count("help"))
+        {
+            cout
+            << "Exact counter" << endl;
+
+            cout
+            << "Usage: ./ganak [options] inputfile" << endl;
+
+            cout << help_options << endl;
+            std::exit(0);
+        }
+
+        if (vm.count("version")) {
+            cout << ganak_version_info();
+            std::exit(0);
+        }
+
+        po::notify(vm);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::unknown_option> >& c
+    ) {
+        cerr
+        << "ERROR: Some option you gave was wrong. Please give '--help' to get help" << endl
+        << "       Unknown option: " << c.what() << endl;
+        std::exit(-1);
+    } catch (boost::bad_any_cast &e) {
+        std::cerr
+        << "ERROR! You probably gave a wrong argument type" << endl
+        << "       Bad cast: " << e.what()
+        << endl;
+
+        std::exit(-1);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::invalid_option_value> >& what
+    ) {
+        cerr
+        << "ERROR: Invalid value '" << what.what() << "'" << endl
+        << "       given to option '" << what.get_option_name() << "'"
+        << endl;
+
+        std::exit(-1);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::multiple_occurrences> >& what
+    ) {
+        cerr
+        << "ERROR: " << what.what() << " of option '"
+        << what.get_option_name() << "'"
+        << endl;
+
+        std::exit(-1);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::required_option> >& what
+    ) {
+        cerr
+        << "ERROR: You forgot to give a required option '"
+        << what.get_option_name() << "'"
+        << endl;
+
+        std::exit(-1);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::too_many_positional_options_error> >& what
+    ) {
+        cerr
+        << "ERROR: You gave too many positional arguments. Only the input CNF can be given as a positional option." << endl;
+        std::exit(-1);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::ambiguous_option> >& what
+    ) {
+        cerr
+        << "ERROR: The option you gave was not fully written and matches" << endl
+        << "       more than one option. Please give the full option name." << endl
+        << "       The option you gave: '" << what.get_option_name() << "'" <<endl
+        << "       The alternatives are: ";
+        for(size_t i = 0; i < what.alternatives().size(); i++) {
+            cout << what.alternatives()[i];
+            if (i+1 < what.alternatives().size()) {
+                cout << ", ";
+            }
+        }
+        cout << endl;
+
+        std::exit(-1);
+    } catch (boost::exception_detail::clone_impl<
+        boost::exception_detail::error_info_injector<po::invalid_command_line_syntax> >& what
+    ) {
+        cerr
+        << "ERROR: The option you gave is missing the argument or the" << endl
+        << "       argument is given with space between the equal sign." << endl
+        << "       detailed error message: " << what.what() << endl
+        ;
+        std::exit(-1);
+    }
+
+}
 
 int main(int argc, char *argv[])
 {
+  #if defined(__GNUC__) && defined(__linux__)
+  feenableexcept(FE_INVALID   |
+                 FE_DIVBYZERO |
+                 FE_OVERFLOW
+                );
+  #endif
 
-  string input_file;
-  Solver theSolver;
-
-  cout << "c Outputting solution to console" << endl;
-  cout << "c GANAK version 1.0.0" << endl;
-
-  if (argc <= 1)
-  {
-    cout << "Usage: ganak [options] [CNF_File]" << endl;
-    cout << "Options: " << endl;
-    cout << "\t -noPP  \t\t turn off preprocessing" << endl;
-    cout << "\t -q     \t\t quiet mode" << endl;
-    cout << "\t -t [s] \t\t set time bound to s seconds" << endl;
-    cout << "\t -noCC  \t\t turn off comp caching" << endl;
-    cout << "\t -cs [n]\t\t set max cache size to n MB" << endl;
-    cout << "\t -noIBCP\t\t turn off implicit BCP" << endl;
-#ifdef DOPCC
-    cout << "\t -noPCC\t\t\t turn off probabilistic comp caching" << endl;
-#endif
-    cout << "\t -seed [n]\t\t set random seed to n (Default: 1000)" << endl;
-    cout << "\t -m [n] \t\t set the range of hash function (= 64 x n) (Default: 1) " << endl;
-    cout << "\t -delta [n] \t\t set the confidence parameter to n (Default: 0.05) " << endl;
-    cout << "\t -noCSVSADS\t\t turn off CSVSADS variable branching heuristic" << endl;
-    cout << "\t -EDR\t\t\t turn on EDR variable branching heuristic" << endl;
-    cout << "\t -LSO [n]\t\t learn and start over after n decisions (Default: 5000)" << endl;
-    cout << "\t -noPMC\t\t\t turn off projected model counting " << endl;
-    cout << "\t -maxdec [n] [m] \t terminate after n decision if conflict is less than m " << endl;
-    cout << "\t" << endl;
-    return -1;
+  //Reconstruct the command line so we can emit it later if needed
+  string command_line;
+  for(int i = 0; i < argc; i++) {
+      command_line += string(argv[i]);
+      if (i+1 < argc) {
+          command_line += " ";
+      }
   }
+  Solver solver;
+  add_supported_options(argc, argv);
 
 #ifndef DOPCC
-  theSolver.config().perform_pcc = false;
+  solver.config().perform_pcc = false;
 #endif
 
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--noCC") == 0) {
-      theSolver.config().perform_comp_caching = false;
-    } else if (strcmp(argv[i], "--noIBCP") == 0) {
-      theSolver.config().perform_failed_lit_probe = false;
-    } else if (strcmp(argv[i], "--noPP") == 0) {
-      theSolver.config().perform_pre_processing = false;
-    } else if (strcmp(argv[i], "--norest") == 0) {
-      theSolver.config().restart = false;
-      cout << "c NO restarts" << endl;
-    } else if (strcmp(argv[i], "--v") == 0) {
-      theSolver.config().verb = 2;
-#ifdef DOPCC
-    } else if (strcmp(argv[i], "--noPCC") == 0) {
-      theSolver.config().perform_pcc = false;
-      cout << "c NO prob caching" << endl;
-#endif
-    } else if (strcmp(argv[i], "-t") == 0) {
-      if (argc <= i + 1)
-      {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      }
-      theSolver.config().time_bound_seconds = atol(argv[i + 1]);
-      cout << "c time bound set to " << theSolver.config().time_bound_seconds << "s" << endl;
-    } else if (strcmp(argv[i], "-LSO") == 0) {
-      if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      }
-    } else if (strcmp(argv[i], "-seed") == 0) {
-      if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      } else {
-        theSolver.config().randomseed = atol(argv[i + 1]);
-      }
-    } else if (strcmp(argv[i], "-m") == 0) {
-      if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      } else {
-        theSolver.config().hashrange = atol(argv[i + 1]);
-        cout << "c The value of hashrange is 64x" << theSolver.config().hashrange << endl;
-      }
-    } else if (strcmp(argv[i], "-delta") == 0) {
-      if (argc <= i + 1) {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      } else {
-        theSolver.config().delta = stof(argv[i + 1]);
-        cout << "c The value of delta is " << theSolver.config().delta << endl;
-      }
-    } else if (strcmp(argv[i], "-cs") == 0)
-    {
-      if (argc <= i + 1)
-      {
-        cout << "ERROR: wrong parameters" << endl;
-        return -1;
-      }
-      theSolver.statistics().maximum_cache_size_bytes_ = atol(argv[i + 1]) * (uint64_t)1000000;
-    }
-    else
-      input_file = argv[i];
+  solver.config().do_comp_caching = do_comp_caching;
+  solver.config().do_failed_lit_probe = do_implicit_bcp;
+  solver.config().do_restart = do_restart;
+  solver.config().verb = verb;
+  solver.config().do_pcc = do_pcc;
+  solver.config().randomseed = seed;
+  solver.config().hashrange = hashrange;
+  solver.config().delta = delta;
+  solver.statistics().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
+
+  if (verb) {
+    cout << ganak_version_info() << endl;
+    cout << "c called with: " << command_line << endl;
   }
 
-  cout << "c ganak GIT revision: " << Ganak::get_version_sha1() << endl;
-  cout << "c ganak build env: " << Ganak::get_compilation_env() << endl;
-  theSolver.solve(input_file);
+  if (vm.count("input") != 0) {
+    vector<string> inp = vm["input"].as<vector<string> >();
+    if (inp.size() > 1) {
+        cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
+        exit(-1);
+    }
+    solver.solve(inp[0]);
+  } else {
+    // TODO read stdin, once we are a library.
+    cout << "ERROR: must give input file to read" << endl;
+    exit(-1);
+  }
   return 0;
 }

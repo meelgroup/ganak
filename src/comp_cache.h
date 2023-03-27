@@ -90,7 +90,7 @@ public:
     uint64_t *clhash_key;
     uint32_t table_ofs =  packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
-    if (config_.perform_pcc) {
+    if (config_.do_pcc) {
 #ifdef DOPCC
       if (!act_id) return false;
       clhash_key = packed_comp.compute_clhash();
@@ -122,7 +122,7 @@ public:
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    stats.incorporate_cache_erase(*entry_base_[id], config_.perform_pcc && entry_base_[id]->get_hacked());
+    stats.incorporate_cache_erase(*entry_base_[id], config_.do_pcc && entry_base_[id]->get_hacked());
     delete entry_base_[id];
     entry_base_[id] = nullptr;
     free_entry_base_slots_.push_back(id);

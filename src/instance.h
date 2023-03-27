@@ -100,7 +100,7 @@ protected:
 
   void decayActivities() {
     for (auto l_it = literals_.begin(); l_it != literals_.end(); l_it++)
-      l_it->activity_score_ *= 0.5;
+      l_it->activity_score_ *= 0.5F;
 
     for(auto clause_ofs: conflict_clauses_)
         getHeaderOf(clause_ofs).decayScore();

@@ -170,7 +170,7 @@ bool Solver::get_polarity(const uint32_t v)
     } else if (litWatchList(Lit(v, false)).activity_score_ >
                 2 * litWatchList(Lit(v, true)).activity_score_) {
       polarity = false;
-    } else if (var(Lit(v, false)).set) {
+    } else if (var(Lit(v, false)).set_once) {
       // TODO MATE this sounds insane, right? Random polarities??
       uint32_t random = mtrand.randInt(2) ;
       switch (random) {
@@ -180,11 +180,11 @@ bool Solver::get_polarity(const uint32_t v)
           break;
         case 1:
           // cached polar
-          polarity = var(Lit(v, false)).polarity;
+          polarity = var(Lit(v, false)).last_polarity;
           break;
         case 2:
           // inverted cached polar
-          polarity = !(var(Lit(v, false)).polarity);
+          polarity = !(var(Lit(v, false)).last_polarity);
           break;
       }
     }

@@ -116,8 +116,8 @@ private:
 
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
-    var(lit).polarity = lit.sign();
-    var(lit).set = true;
+    var(lit).last_polarity = lit.sign();
+    var(lit).set_once = true;
     trail.push_back(lit);
     if (ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
       getHeaderOf(ant.asCl()).increaseScore();

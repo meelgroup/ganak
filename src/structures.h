@@ -190,8 +190,8 @@ public:
 struct Variable {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
-  bool polarity = false;
-  bool set = false;
+  bool last_polarity = false;
+  bool set_once = false; //it has once been set to some value
 };
 
 // for now Clause Header is just a dummy

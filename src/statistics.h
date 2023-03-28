@@ -27,21 +27,9 @@ class ComponentCache;
 class DataAndStatistics {
 public:
   DataAndStatistics (const Instance* _inst) { inst = _inst; }
-  double time_elapsed_ = 0.0;
   uint64_t maximum_cache_size_bytes_ = 0;
 
-  SOLVER_StateT exit_state_ = NO_STATE;
-  // different variable counts
-  // number of variables  and clauses before preprocessing
   uint64_t num_original_clauses_ = 0;
-
-  // number of variables remaining
-  uint64_t nVars_ = 0;
-  // number of variables that actually occurs in clauses
-
-  /// different clause counts
-
-  // number of clauses after preprocessing
   uint64_t num_long_clauses_ = 0;
   uint64_t num_binary_clauses_ = 0;
 
@@ -65,10 +53,7 @@ public:
   uint32_t num_clauses_learned_ = 0;
 
   // restarts
-  uint64_t last_restart_decisions = 0;
-  uint32_t num_restarts = 0;
   uint64_t next_restart = 100000000U;
-  uint64_t next_restart_diff = 1000;
   mpz_class restart_cubes_val = 0;
 
   /* cache statistics */
@@ -154,7 +139,6 @@ public:
   uint64_t cache_MB_memory_usage() const {
       return cache_bytes_memory_usage() / 1000000;
   }
-  mpz_class final_solution_count_ = 0;
 
   double implicitBCP_miss_rate() const {
       if(num_failed_lit_tests_ == 0) return 0.0;
@@ -171,13 +155,6 @@ public:
     return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
-  void set_final_solution_count_projected(const mpz_class &count);
-  void set_final_solution_count(const mpz_class &count);
-
-  const mpz_class &final_solution_count() const {
-    return final_solution_count_;
-  }
-
   void incorporateConflictClauseData(const vector<Lit> &clause) {
     if (clause.size() == 1) num_unit_clauses_++;
     else if (clause.size() == 2) num_binary_conflict_clauses_++;
@@ -190,11 +167,8 @@ public:
     else num_long_clauses_++;
   }
 
-  std::string getFinalSolutionCountStr() const;
   void printShort(const ComponentCache* cache_) const;
-  void print_solution() const;
   void printShortFormulaInfo() const {
-    cout << "c variables:                     " << nVars_ << endl;
     cout << "c cls (all/long/binary/unit):    "
       << num_clauses() << "/" << num_long_clauses_
       << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;

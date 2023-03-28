@@ -20,5 +20,5 @@ typedef uint32_t ClauseOfs;
 typedef uint32_t CacheEntryID;
 
 enum SOLVER_StateT {
-  NO_STATE, SUCCESS
+  NO_STATE, SUCCESS, RESTART
 };

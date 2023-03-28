@@ -27,7 +27,6 @@ enum retStateT
   RESOLVED,
   PROCESS_COMPONENT,
   BACKTRACK,
-  RESTART
 };
 
 // There is only one solver
@@ -35,9 +34,11 @@ class Solver : public Instance
 {
 public:
   Solver() { mtrand.seed((uint32_t)0U);}
-  void solve(const std::string &file_name);
+  mpz_class solve(vector<Lit>& largest_cube_ret);
   SolverConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }
+  void set_target_polar(const vector<CMSat::lbool>& model);
+  void set_indep_support(const set<uint32_t>& indeps);
 
 private:
   // Temporaries, used during recordLastUIPClause

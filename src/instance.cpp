@@ -16,9 +16,6 @@
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
 
-using CMSat::StreamBuffer;
-using CMSat::DimacsParser;
-using CMSat::SATSolver;
 
 void Instance::compactConflictLiteralPool(){
   auto write_pos = conflict_clauses_begin();
@@ -88,59 +85,25 @@ static Lit cmsLitToG(const CMSat::Lit& l) {
   return Lit(l.var()+1, !l.sign());
 }
 
-void Instance::parseWithCMS(const std::string& filename) {
-  uint32_t verb = 0;
-  #ifndef USE_ZLIB
-  FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&satSolver, NULL, verb);
-  #else
-  gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&satSolver, NULL, verb);
-  #endif
-  if (in == NULL) {
-      std::cout << "ERROR! Could not open file '" << filename
-      << "' for reading: " << strerror(errno) << endl;
-      std::exit(-1);
-  }
-  if (!parser.parse_DIMACS(in, true)) exit(-1);
-  #ifndef USE_ZLIB
-  fclose(in);
-  #else
-  gzclose(in);
-  #endif
-
-  indep_support_given = parser.sampling_vars_found;
-  if (parser.sampling_vars_found) {
-    for(const auto& lit: parser.sampling_vars) indep_support_.insert(lit+1);
-  } else {
-    for(uint32_t i = 1; i < satSolver.nVars()+1; i++) indep_support_.insert(i);
-  }
-  must_mult_exp2 = parser.must_mult_exp2;
-}
-
-bool Instance::createfromFile(const std::string &filename) {
-  // The solver is empty
+void Instance::create_from_sat_solver(CMSat::SATSolver& sat_solver) {
+  assert(sat_solver.okay());
   assert(variables_.empty());
   assert(lit_values_.empty());
   assert(occ_lists_.empty());
   assert(watches_.empty());
   assert(lit_pool_.empty());
-  assert(indep_support_.empty());
   assert(unit_clauses_.empty());
   assert(conflict_clauses_.empty());
 
-  parseWithCMS(filename);
-
   lit_pool_.push_back(SENTINEL_LIT);
   variables_.push_back(Variable());
-  variables_.resize(satSolver.nVars() + 1);
-  lit_values_.resize(satSolver.nVars() + 1, X_TRI);
-  occ_lists_.resize(satSolver.nVars() + 1);
-  watches_.resize(satSolver.nVars() + 1);
-  target_polar.resize(satSolver.nVars() + 1);
-  if (!satSolver.okay()) return satSolver.okay();
+  variables_.resize(sat_solver.nVars() + 1);
+  lit_values_.resize(sat_solver.nVars() + 1, X_TRI);
+  occ_lists_.resize(sat_solver.nVars() + 1);
+  watches_.resize(sat_solver.nVars() + 1);
+  target_polar.resize(sat_solver.nVars() + 1);
 
-  satSolver.start_getting_small_clauses(
+  sat_solver.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
       false);
@@ -148,7 +111,7 @@ bool Instance::createfromFile(const std::string &filename) {
   stats.num_original_clauses_ = 0;
   vector<CMSat::Lit> cms_cl;
   vector<Lit> literals;
-  while(satSolver.get_next_small_clause(cms_cl)) {
+  while(sat_solver.get_next_small_clause(cms_cl)) {
     literals.clear();
     for(const auto&l: cms_cl) literals.push_back(cmsLitToG(l));
     stats.num_original_clauses_++;
@@ -158,11 +121,8 @@ bool Instance::createfromFile(const std::string &filename) {
       for (const auto& l : literals)
         occ_lists_[l].push_back(cl_ofs);
   }
-  satSolver.end_getting_small_clauses();
+  sat_solver.end_getting_small_clauses();
 
-  stats.nVars_ = satSolver.nVars();
   stats.num_unit_clauses_ = unit_clauses_.size();
   irred_lit_pool_size_ = lit_pool_.size();
-
-  return satSolver.okay();
 }

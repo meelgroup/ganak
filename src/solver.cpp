@@ -38,17 +38,20 @@ void Solver::simplePreProcess()
   init_decision_stack();
 }
 
-void Solver::solve(const std::string &file_name)
+void Solver::set_indep_support(const set<uint32_t> &indeps)
+{
+  indep_support_ = indeps;
+}
+
+mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
 {
   time_start = cpuTime();
   stats.next_restart = config_.first_restart;
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
   if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
 
-  createfromFile(file_name);
   init_decision_stack();
   if (config_.verb) {
-    if (indep_support_given) {
       cout << "c Sampling set size: " << indep_support_.size() << endl;
       if (indep_support_.size() > 50) {
         cout << "c Sampling set is too large, not displaying" << endl;
@@ -57,44 +60,32 @@ void Solver::solve(const std::string &file_name)
         for (const auto& i: indep_support_) cout << ' ' << i;
         cout << endl;
       }
-    } else cout << "c No sampling set, doing unprojected counting" << endl;
   }
 
-  if (satSolver.okay()) {
-    simplePreProcess();
-    if (config_.verb) stats.printShortFormulaInfo();
-    last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
-    comp_manager_.initialize(watches_, lit_pool_);
+  simplePreProcess();
+  if (config_.verb) stats.printShortFormulaInfo();
+  last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
+  comp_manager_.initialize(watches_, lit_pool_);
 
-    stats.exit_state_ = countSAT();
-    stats.set_final_solution_count_projected(decision_stack_.top().getTotalModelCount());
-    stats.num_long_conflict_clauses_ = num_conflict_clauses();
-  } else {
-    stats.exit_state_ = SUCCESS;
-    stats.set_final_solution_count(0);
-  }
-
-  stats.time_elapsed_ = cpuTime() - time_start;
+  const auto exit_state = countSAT();
+  stats.num_long_conflict_clauses_ = num_conflict_clauses();
   comp_manager_.gatherStatistics();
   if (config_.verb) stats.printShort(&comp_manager_.get_cache());
-  stats.print_solution();
+  if (exit_state == RESTART) {
+    largest_cube_ret = largest_cube;
+    return largest_cube_val;
+  } else {
+    assert(exit_state == SUCCESS);
+    largest_cube_ret.clear();
+    return decision_stack_.top().getTotalModelCount();
+  }
 }
 
-bool Solver::takeSolution() {
-  //solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
-  //solver.set_up_for_sample_counter(100);
-  CMSat::lbool ret = satSolver.solve();
-  assert(ret != CMSat::l_Undef);
-  if (ret == CMSat::l_False) {
-    cout << "c CMS gave UNSAT" << endl;
-    return false;
-  }
-  assert(ret == CMSat::l_True);
+void Solver::set_target_polar(const vector<CMSat::lbool>& model) {
   for(uint32_t i = 0; i < nVars(); i++) {
-    target_polar[i+1] = satSolver.get_model()[i] == CMSat::l_True;
+    target_polar[i+1] = model[i] == CMSat::l_True;
   }
   counted_bottom_comp = false;
-  return true;
 }
 
 void Solver::print_all_levels() {
@@ -123,7 +114,6 @@ void Solver::print_all_levels() {
 SOLVER_StateT Solver::countSAT() {
   retStateT state = RESOLVED;
 
-  if (config_.do_restart && !takeSolution()) return SUCCESS;
   while (true) {
     print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
     // NOTE: findNextRemainingComponentOf finds disjoint comps
@@ -142,7 +132,7 @@ SOLVER_StateT Solver::countSAT() {
     }
     // we are here because there is no next component, or we had to backtrack
 
-    if (restart_if_needed()) {state = RESTART; continue;}
+    if (restart_if_needed()) {return RESTART;}
     state = backtrack();
     if (state == EXIT) return SUCCESS;
     while (state != PROCESS_COMPONENT && !prop_and_probe()) {
@@ -172,7 +162,7 @@ bool Solver::get_polarity(const uint32_t v)
       polarity = false;
     } else if (var(Lit(v, false)).set_once) {
       // TODO MATE this sounds insane, right? Random polarities??
-      uint32_t random = mtrand.randInt(2) ;
+      uint32_t random = mtrand.randInt(1) ;
       switch (random) {
         case 0:
           polarity = litWatchList(Lit(v, true)).activity_score_ >
@@ -181,10 +171,6 @@ bool Solver::get_polarity(const uint32_t v)
         case 1:
           // cached polar
           polarity = var(Lit(v, false)).last_polarity;
-          break;
-        case 2:
-          // inverted cached polar
-          polarity = !(var(Lit(v, false)).last_polarity);
           break;
       }
     }
@@ -309,60 +295,7 @@ bool Solver::restart_if_needed() {
   if (config_.do_restart && stats.getNumDecisions() > stats.next_restart &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
-    cout << "Cache entries before restart: "
-      << comp_manager_.get_num_cache_entries_used() << endl;
-
-    stats.num_restarts++;
-    stats.next_restart_diff*=1.4;
-    stats.next_restart += stats.next_restart_diff;
-    if ((stats.num_restarts % 5) == 4) stats.next_restart_diff = 1000;
-    stats.last_restart_decisions = stats.num_decisions_;
     cout << "c Restart here. " ;
-    if (counted_bottom_comp) {
-      // Add clause to satSolver
-      vector<CMSat::Lit> sat_cl;
-      vector<Lit> cl;
-      for(const auto&l: largest_cube) {
-        sat_cl.push_back(~CMSat::Lit(l.var(), l.sign()));
-        cl.push_back(l.neg());
-      }
-      satSolver.add_clause(sat_cl);
-
-      // WILL NEED TO MOVE CONFLICT CLAUSES!!
-      //    ... or maybe just delete them as an easy solution
-      //    basically, they mess up clause IDs when initializing
-      //    if we move it, irred_lit_pool_size needs to change, and offsets need to be moved.
-
-      // Add clause to solver
-      // WAAAAIIIIT... what should we do if it's binary? Then there is no clause ID...
-      //               Also, unit clause could be a pain
-      stats.incorporateClauseData(cl);
-      ClauseOfs cl_ofs = addClause(cl);
-      if (cl.size() >= 3) for (const auto& l : cl) occ_lists_[l].push_back(cl_ofs);
-
-      cout << "cube: ";
-      for(const auto&l: largest_cube) cout << l << " ";
-      stats.restart_cubes_val +=  largest_cube_val;
-      largest_cube_val = 0;
-    }
-    cout << endl;
-
-    // do we really need to remove cache pollutions? Are they pollutions?
-    do {
-      if (decision_stack_.top().branch_found_unsat() ||
-          decision_stack_.top().anotherCompProcessible()) {
-        comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
-      }
-      reactivate_comps_and_backtrack_trail();
-      decision_stack_.pop_back();
-    } while (decision_stack_.get_decision_level() > 0);
-
-    // TODO we need to do smarter, with clause IDs here
-    comp_manager_.initialize(watches_, lit_pool_);
-
-    cout << "Cache entries after restart: "
-      << comp_manager_.get_num_cache_entries_used() << endl;
-    if (!takeSolution()) return EXIT;
     return true;
   }
   return false;
@@ -409,9 +342,6 @@ retStateT Solver::backtrack() {
 
     if (config_.do_restart && decision_stack_.top().on_path_to_target_) {
       if (!counted_bottom_comp) {
-        assert(stats.num_decisions_ >= stats.last_restart_decisions);
-        print_debug(COLCYN "Bottom comp reached, decisions since restart: "
-          << stats.num_decisions_ - stats.last_restart_decisions);
         counted_bottom_comp = true;
       }
       if (counted_bottom_comp) computeLargestCube();

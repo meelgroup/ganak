@@ -13,25 +13,6 @@
 #include <iomanip>
 #include <fstream>
 
-std::string DataAndStatistics::getFinalSolutionCountStr() const {
-    return final_solution_count_.get_str();
-}
-
-void DataAndStatistics::set_final_solution_count_projected(const mpz_class &count) {
-  mpz_mul_2exp(
-    final_solution_count_.get_mpz_t (),
-    count.get_mpz_t (),
-    inst->get_must_mult_exp2());
-}
-
-void DataAndStatistics::set_final_solution_count(const mpz_class &count) {
-  // set final_solution_count_ = count * 2^(nVars_ - num_used_variables_)
-  mpz_mul_2exp(
-    final_solution_count_.get_mpz_t (),
-    count.get_mpz_t (),
-    nVars_ - inst->get_must_mult_exp2());
-}
-
 static double in_MB(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
@@ -39,7 +20,6 @@ static double in_MB(uint64_t bytes) {
 void DataAndStatistics::printShort(const ComponentCache* cache_) const {
   cout << "c " << endl;
   cout << "c      --- FINISHED ---" << endl;
-  cout << "c vars                           " << nVars_ << endl;
   cout << "c cls orig/final                 "
     << num_original_clauses_ << "/" << num_clauses() << endl;
   cout << "c decisions                      " << num_decisions_ << endl;
@@ -78,20 +58,6 @@ void DataAndStatistics::printShort(const ComponentCache* cache_) const {
   cout << "c avg. variable count (stores / hits) \t"
     << getAvgComponentSize()
     << "/" << getAvgCacheHitSize() << endl;
-  cout << "c time: " << std::setprecision(6) << time_elapsed_ << "s" << endl;
   cout << "c " << endl;
 }
 
-void DataAndStatistics::print_solution() const {
-  if (final_solution_count_ == 0) {
-    cout << "s UNSATISFIABLE " << endl;
-  } else {
-    cout << "s SATISFIABLE " << endl;
-  }
-  if (inst->get_indep_support_given()) {
-    cout << "s pmc ";
-  } else {
-    cout << "s mc ";
-  }
-  cout << getFinalSolutionCountStr() << endl;
-}

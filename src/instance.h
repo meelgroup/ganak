@@ -20,9 +20,7 @@ using std::set;
 class Instance {
 public:
   Instance() : stats (this) { }
-  bool get_indep_support_given() const { return indep_support_given; }
-  const set<uint32_t>& get_indep_support() const { return indep_support_; }
-  uint32_t get_must_mult_exp2() const { return must_mult_exp2; }
+  void create_from_sat_solver(CMSat::SATSolver& sat_solver);
 protected:
 
   void unSet(Lit lit) {
@@ -71,7 +69,6 @@ protected:
     return variables_.size() - 1;
   }
 
-  bool createfromFile(const std::string &file_name);
   DataAndStatistics stats;
 
   /*  lit_pool_: the literals of all clauses are stored here
@@ -85,9 +82,6 @@ protected:
   vector<Lit> lit_pool_;
 
   set<uint32_t> indep_support_;
-  bool indep_support_given = false;
-  uint32_t must_mult_exp2 = 0;
-
 
   // this is to determine the starting offset of
   // conflict clauses
@@ -203,7 +197,6 @@ protected:
     return false;
   }
 protected:
-  CMSat::SATSolver satSolver;
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> target_polar;
 

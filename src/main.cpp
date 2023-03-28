@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "GitSHA1.h"
 
 #include <iostream>
+#include <set>
 #include <vector>
 #include <string>
 #include <iomanip>
@@ -32,6 +33,13 @@ THE SOFTWARE.
 #include <sys/resource.h>
 #include <boost/program_options.hpp>
 #include "src/GitSHA1.h"
+#include <cryptominisat5/cryptominisat.h>
+#include <cryptominisat5/dimacsparser.h>
+#include <cryptominisat5/streambuffer.h>
+
+using CMSat::StreamBuffer;
+using CMSat::DimacsParser;
+using CMSat::SATSolver;
 
 #if defined(__GNUC__) && defined(__linux__)
 #include <fenv.h>
@@ -56,6 +64,10 @@ int do_pcc = 1;
 int hashrange = 1;
 double delta = 0.05;
 uint32_t first_restart = 100000000;
+CMSat::SATSolver sat_solver;
+uint32_t must_mult_exp2 = 0;
+bool indep_support_given = false;
+set<uint32_t> indep_support;
 
 string ganak_version_info()
 {
@@ -67,13 +79,12 @@ string ganak_version_info()
     #else
     ss << "c GANAK compiled with non-gcc compiler" << endl;
     #endif
-    CMSat::SATSolver sat_solver;
     ss << "c CMS version: " << sat_solver.get_version_sha1();
 
     return ss.str();
 }
 
-void add_appmc_options()
+void add_ganak_options()
 {
     std::ostringstream my_delta;
     my_delta << std::setprecision(8) << delta;
@@ -97,9 +108,9 @@ void add_appmc_options()
     help_options.add(main_options);
 }
 
-void add_supported_options(int argc, char** argv)
+void parse_supported_options(int argc, char** argv)
 {
-    add_appmc_options();
+    add_ganak_options();
     p.add("input", 1);
 
     try {
@@ -199,6 +210,72 @@ void add_supported_options(int argc, char** argv)
 
 }
 
+void parse_with_cms(const std::string& filename) {
+  #ifndef USE_ZLIB
+  FILE * in = fopen(filename.c_str(), "rb");
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&sat_solver, NULL, verb);
+  #else
+  gzFile in = gzopen(filename.c_str(), "rb");
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&sat_solver, NULL, verb);
+  #endif
+  if (in == NULL) {
+      std::cout << "ERROR! Could not open file '" << filename
+      << "' for reading: " << strerror(errno) << endl;
+      std::exit(-1);
+  }
+  if (!parser.parse_DIMACS(in, true)) exit(-1);
+  #ifndef USE_ZLIB
+  fclose(in);
+  #else
+  gzclose(in);
+  #endif
+
+  indep_support_given = parser.sampling_vars_found;
+  if (parser.sampling_vars_found) {
+    for(const auto& lit: parser.sampling_vars) indep_support.insert(lit+1);
+  } else {
+    for(uint32_t i = 1; i < sat_solver.nVars()+1; i++) indep_support.insert(i);
+  }
+  must_mult_exp2 = parser.must_mult_exp2;
+}
+
+
+void set_up_solver(Solver& solver) {
+#ifndef DOPCC
+  solver.config().perform_pcc = false;
+#endif
+
+  solver.config().do_comp_caching = do_comp_caching;
+  solver.config().do_failed_lit_probe = do_implicit_bcp;
+  solver.config().do_restart = do_restart;
+  solver.config().verb = verb;
+  solver.config().do_pcc = do_pcc;
+  solver.config().randomseed = seed;
+  solver.config().hashrange = hashrange;
+  solver.config().delta = delta;
+  solver.config().first_restart = first_restart;
+  solver.config().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
+}
+
+vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
+  vector<CMSat::Lit> cms_cl;
+  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, l.sign()));
+  return cms_cl;
+}
+
+bool take_solution(vector<CMSat::lbool>& model) {
+  //solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
+  //solver.set_up_for_sample_counter(100);
+  CMSat::lbool ret = sat_solver.solve();
+  assert(ret != CMSat::l_Undef);
+  if (ret == CMSat::l_False) {
+    cout << "c CMS gave UNSAT" << endl;
+    return false;
+  }
+  model = sat_solver.get_model();
+  return true;
+}
+
 int main(int argc, char *argv[])
 {
   #if defined(__GNUC__) && defined(__linux__)
@@ -216,40 +293,48 @@ int main(int argc, char *argv[])
           command_line += " ";
       }
   }
-  Solver solver;
-  add_supported_options(argc, argv);
-
-#ifndef DOPCC
-  solver.config().perform_pcc = false;
-#endif
-
-  solver.config().do_comp_caching = do_comp_caching;
-  solver.config().do_failed_lit_probe = do_implicit_bcp;
-  solver.config().do_restart = do_restart;
-  solver.config().verb = verb;
-  solver.config().do_pcc = do_pcc;
-  solver.config().randomseed = seed;
-  solver.config().hashrange = hashrange;
-  solver.config().delta = delta;
-  solver.config().first_restart = first_restart;
-  solver.config().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
-
   if (verb) {
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
   }
-
+  parse_supported_options(argc, argv);
+  string fname;
   if (vm.count("input") != 0) {
     vector<string> inp = vm["input"].as<vector<string> >();
     if (inp.size() > 1) {
         cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
         exit(-1);
     }
-    solver.solve(inp[0]);
+    fname = inp[0];
   } else {
     // TODO read stdin, once we are a library.
     cout << "ERROR: must give input file to read" << endl;
     exit(-1);
   }
+  parse_with_cms(fname);
+  mpz_class count = 0;
+
+  while (sat_solver.okay()) {
+    Solver solver;
+    set_up_solver(solver);
+    solver.create_from_sat_solver(sat_solver);
+    solver.set_indep_support(indep_support);
+
+    vector<CMSat::lbool> model;
+    if (!take_solution(model)) break;
+    solver.set_target_polar(model);
+    vector<Lit> largest_cube;
+    count += solver.solve(largest_cube);
+    const auto cms_cl = ganak_to_cms_cl(largest_cube);
+    sat_solver.add_clause(cms_cl);
+    cout << "c count for this cube: " << count << " cube: ";
+    for(const auto& l: cms_cl) cout << l << " ";
+    cout << "0" << endl;
+  }
+  mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
+  if (indep_support_given) cout << "s pmc ";
+  else cout << "s mc ";
+  cout << count << endl;
+
   return 0;
 }

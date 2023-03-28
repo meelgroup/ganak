@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "cryptominisat5/cryptominisat.h"
+#include "cryptominisat5/solvertypesmini.h"
 #include "solver.h"
 #include "GitSHA1.h"
 
@@ -54,7 +55,7 @@ po::variables_map vm;
 po::positional_options_description p;
 
 using namespace std;
-int verb = 1;
+int verb = 0;
 int seed = 0;
 int do_comp_caching = 1;
 uint64_t max_cache = 0;
@@ -63,7 +64,7 @@ int do_restart = 1;
 int do_pcc = 1;
 int hashrange = 1;
 double delta = 0.05;
-uint32_t first_restart = 100000000;
+uint32_t first_restart = 100;
 CMSat::SATSolver sat_solver;
 uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
@@ -92,7 +93,7 @@ void add_ganak_options()
     main_options.add_options()
     ("help,h", "Prints help")
     ("input", po::value< vector<string> >(), "file(s) to read")
-    ("verb,v", po::value(&verb)->default_value(1), "verb")
+    ("verb,v", po::value(&verb)->default_value(verb), "verb")
     ("seed,s", po::value(&seed)->default_value(seed), "Seed")
     ("delta", po::value(&delta)->default_value(delta, my_delta.str()), "Delta")
     ("rstfirst", po::value(&first_restart)->default_value(first_restart), "Run restarts")
@@ -257,6 +258,7 @@ void set_up_solver(Solver& solver) {
   solver.config().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
 }
 
+
 vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
   for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, l.sign()));
@@ -269,11 +271,45 @@ bool take_solution(vector<CMSat::lbool>& model) {
   CMSat::lbool ret = sat_solver.solve();
   assert(ret != CMSat::l_Undef);
   if (ret == CMSat::l_False) {
-    cout << "c CMS gave UNSAT" << endl;
     return false;
   }
   model = sat_solver.get_model();
   return true;
+}
+
+mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
+  SATSolver sat_solver2;
+  sat_solver2.new_vars(sat_solver.nVars());
+  sat_solver.start_getting_small_clauses(
+      std::numeric_limits<uint32_t>::max(),
+      std::numeric_limits<uint32_t>::max(),
+      false);
+
+  vector<CMSat::Lit> cl;
+  while(sat_solver.get_next_small_clause(cl)) sat_solver2.add_clause(cl);
+  sat_solver.end_getting_small_clauses();
+  for(const auto& l: cube) {
+    cl.clear();
+    cl.push_back(~l);
+    sat_solver2.add_clause(cl);
+  }
+  const auto res = sat_solver2.solve();
+  if (res == CMSat::l_False) {
+    cout << "Check count got UNSAT" << endl;
+    return 0;
+  }
+
+  Solver solver;
+  set_up_solver(solver);
+  solver.config().do_restart = false;
+
+  solver.create_from_sat_solver(sat_solver2);
+  solver.set_indep_support(indep_support);
+
+  vector<Lit> largest_cube;
+  const auto count = solver.solve(largest_cube);
+  assert(largest_cube.empty());
+  return count;
 }
 
 int main(int argc, char *argv[])
@@ -324,12 +360,22 @@ int main(int argc, char *argv[])
     if (!take_solution(model)) break;
     solver.set_target_polar(model);
     vector<Lit> largest_cube;
-    count += solver.solve(largest_cube);
+    mpz_class this_count = solver.solve(largest_cube);
+    count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
-    sat_solver.add_clause(cms_cl);
-    cout << "c count for this cube: " << count << " cube: ";
+    cout << "c count for this cube: " << std::setw(10) << std::left << this_count
+      << " cube sz: " << std::setw(10) << cms_cl.size()
+      << " count so far: " << count << endl;
+    cout << "cube: ";
     for(const auto& l: cms_cl) cout << l << " ";
     cout << "0" << endl;
+
+    auto check_count = check_count_independently_no_restart(cms_cl);
+    if (check_count != this_count) {
+      cout << "Check count says: " << check_count << " ooops." << endl << endl;
+    }
+    assert(check_count == this_count);
+    sat_solver.add_clause(cms_cl);
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   if (indep_support_given) cout << "s pmc ";

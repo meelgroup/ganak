@@ -232,12 +232,14 @@ void Solver::computeLargestCube()
   largest_cube.clear();
   print_debug(COLWHT "-- computeLargestCube BEGIN");
 
-  // add decisions
+  // add decisions, components, and counts
+  largest_cube_val = decision_stack_.top().getTotalModelCount();
   for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = trail[dec.trail_ofs()];
     // Add decision
     if (i > 0) largest_cube.push_back(dec_lit);
+    if (dec.getTotalModelCount() > 0) largest_cube_val *= dec.getTotalModelCount();
 
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedComponentsEnd();
@@ -245,12 +247,20 @@ void Solver::computeLargestCube()
     for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
       const auto& c = comp_manager_.at(i2);
       for(auto v = c->varsBegin(); *v != varsSENTINEL; v++)
-        largest_cube.push_back(Lit(*v, !target_polar[*v]));
+        largest_cube.push_back(Lit(*v, target_polar[*v]));
     }
   }
-  largest_cube_val = decision_stack_.top().getTotalModelCount();
 
 #ifdef VERBOSE_DEBUG
+  cout << COLWHT "Decisions in the cube: ";
+  for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
+    const StackLevel& dec = decision_stack_[i];
+    const Lit dec_lit = trail[dec.trail_ofs()];
+    // Add decision
+    if (i > 0) cout << dec_lit << " ";
+  }
+  cout << endl;
+
   // Show decision stack's comps
   for(size_t i = 0; i < decision_stack_.size(); i++) {
     const auto& ds = decision_stack_.at(i);
@@ -261,7 +271,8 @@ void Solver::computeLargestCube()
       << " decision lit: " << dec_lit
       << " num unproc comps: " << ds.numUnprocessedComponents()
       << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
-      << " remain comps offs: " << ds.remaining_comps_ofs());
+      << " remain comps offs: " << ds.remaining_comps_ofs()
+      << " count here: " << ds.getTotalModelCount());
     const auto off_start = ds.remaining_comps_ofs();
     const auto off_end = ds.getUnprocessedComponentsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
@@ -288,6 +299,7 @@ void Solver::computeLargestCube()
   for(const auto& l: largest_cube) cout << l << " ";
   cout << endl;
   print_debug(COLWHT "cube's count: " << decision_stack_.top().getTotalModelCount());
+  print_debug(COLWHT "cube's parent's count: " << (decision_stack_.end()-2)->getTotalModelCount());
 #endif
 }
 
@@ -295,7 +307,6 @@ bool Solver::restart_if_needed() {
   if (config_.do_restart && stats.getNumDecisions() > stats.next_restart &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
-    cout << "c Restart here. " ;
     return true;
   }
   return false;
@@ -341,20 +352,25 @@ retStateT Solver::backtrack() {
     }
 
     if (config_.do_restart && decision_stack_.top().on_path_to_target_) {
-      if (!counted_bottom_comp) {
-        counted_bottom_comp = true;
-      }
+      if (!counted_bottom_comp) counted_bottom_comp = true;
       if (counted_bottom_comp) computeLargestCube();
     }
 
     reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
+#ifdef VERBOSE_DEBUG
+    const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
+#endif
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
     print_debug("Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
     print_debug("-> Backtracked to level " << decision_stack_.get_decision_level()
-        << " num unprocessed comps here: " << decision_stack_.top().numUnprocessedComponents()
+        // NOTE: -1 here because we have JUST processed the child
+        //     ->> (see below nextUnprocessedComponent() call)
+        << " num unprocessed comps here: " << decision_stack_.top().numUnprocessedComponents()-1
+        << " current count here: " << decision_stack_.top().getTotalModelCount()
+        << " before including child it was: " <<  parent_count_before
         << " on_path: " << decision_stack_.top().on_path_to_target_);
 
     // step to the next comp not yet processed
@@ -387,12 +403,6 @@ retStateT Solver::resolveConflict() {
 
   if (decision_stack_.top().is_right_branch()) {
     // Backtracking since finished with this AND the other branch.
-    if (decision_stack_.get_decision_level() == 1) {
-      cout
-          << "c Solved half the solution space (i.e. one branch at dec. lev 1)." << endl
-          << "c --> Conflicts: " << stats.num_conflicts_ << endl
-          << "c --> Decisions: " << stats.num_decisions_ << endl;
-    }
     return BACKTRACK;
   }
 

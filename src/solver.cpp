@@ -29,10 +29,10 @@ void Solver::simplePreProcess()
   bool succeeded = propagate(start_ofs);
   assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(nVars() + 1, 0);
-  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) {
-    litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
-    litWatchList(l).activity_score_ += occ_lists_[l].size();
-  }
+  /* for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) { */
+  /*   litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1; */
+  /*   litWatchList(l).activity_score_ += occ_lists_[l].size(); */
+  /* } */
   stats.num_unit_clauses_ = unit_clauses_.size();
   irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
@@ -508,6 +508,47 @@ bool Solver::propagate(const uint32_t start_at_trail_ofs) {
     }
   }
   return true;
+}
+
+void Solver::get_activities(vector<float>& acts, vector<uint8_t>& polars) const
+{
+  acts.clear();
+  for(const auto& w: watches_) {
+    acts.push_back(w.activity_score_);
+  }
+  polars.clear();
+  for(const auto& v: variables_) {
+    polars.push_back(v.last_polarity);
+  }
+}
+
+void Solver::shuffle_activities()
+{
+  for(auto& w: watches_) {
+    w.activity_score_ += mtrand.randDblExc(1000);
+  }
+}
+
+void Solver::set_activities(const vector<float>& act, const vector<uint8_t>& polars)
+{
+  assert(act.size() == 2*nVars());
+  size_t i = 0;
+  for(auto& w: watches_) {
+    w.activity_score_ = act[i];
+    i++;
+  }
+
+  i = 0;
+  for(auto& v: variables_) {
+    v.set_once = true;
+    v.last_polarity = polars[i];
+    i++;
+  }
+}
+
+const DataAndStatistics& Solver::get_stats() const
+{
+  return stats;
 }
 
 bool Solver::failedLitProbeInternal() {

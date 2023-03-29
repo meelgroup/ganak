@@ -36,6 +36,10 @@ public:
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
+  void get_activities(vector<float>& acts, vector<uint8_t>& polars) const;
+  void set_activities(const vector<float>& act, const vector<uint8_t>& polars);
+  const DataAndStatistics& get_stats() const;
+  void shuffle_activities();
 
 private:
   // Temporaries, used during recordLastUIPClause
@@ -98,11 +102,8 @@ private:
 
   float scoreOf(VariableIndex v)
   {
-    float score = 1.0; //comp_manager_.scoreOf(v);
-    score += litWatchList(Lit(v, true)).activity_score_;
-    score += litWatchList(Lit(v, false)).activity_score_;
-
-    return score;
+    return litWatchList(Lit(v, true)).activity_score_ +
+      litWatchList(Lit(v, false)).activity_score_;
   }
 
   bool setLiteralIfFree(const Lit lit,

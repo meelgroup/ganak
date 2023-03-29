@@ -30,8 +30,7 @@ THE SOFTWARE.
 #include <vector>
 #include <string>
 #include <iomanip>
-#include <sys/time.h>
-#include <sys/resource.h>
+#include <time_mem.h>
 #include <boost/program_options.hpp>
 #include "src/GitSHA1.h"
 #include <cryptominisat5/cryptominisat.h>
@@ -69,6 +68,7 @@ CMSat::SATSolver sat_solver;
 uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
+int do_check = 0;
 
 string ganak_version_info()
 {
@@ -103,6 +103,7 @@ void add_ganak_options()
     ("ibpc", po::value(&do_implicit_bcp)->default_value(do_implicit_bcp), "Implicit Boolean Constraint Prop")
     ("version", "Print version info")
     ("pcc", po::value(&do_pcc)->default_value(do_pcc), "Probabilistic Component Caching")
+    ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("hashrange", po::value(&hashrange)->default_value(hashrange), "Seed")
     ;
 
@@ -266,7 +267,7 @@ vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
 }
 
 bool take_solution(vector<CMSat::lbool>& model) {
-  //solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
+  /* sat_solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd); */
   //solver.set_up_for_sample_counter(100);
   CMSat::lbool ret = sat_solver.solve();
   assert(ret != CMSat::l_Undef);
@@ -274,10 +275,12 @@ bool take_solution(vector<CMSat::lbool>& model) {
     return false;
   }
   model = sat_solver.get_model();
+#if 0
   cout <<"c Model: ";
   for(int i = 0; i < model.size(); i ++)
     cout << (i+1) * (model[i] == CMSat::l_True ? 1 : -1) << " ";
   cout << "0" << endl;;
+#endif
   return true;
 }
 
@@ -318,6 +321,7 @@ mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
 
 int main(int argc, char *argv[])
 {
+  double myTime = cpuTime();
   #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |
                  FE_DIVBYZERO |
@@ -354,7 +358,11 @@ int main(int argc, char *argv[])
   parse_with_cms(fname);
   mpz_class count = 0;
 
+  vector<float> act;
+  vector<uint8_t> polars;
+  uint64_t num_conficts_last = 0;
   while (sat_solver.okay()) {
+    double call_time = cpuTime();
     Solver solver;
     set_up_solver(solver);
     solver.create_from_sat_solver(sat_solver);
@@ -364,24 +372,36 @@ int main(int argc, char *argv[])
     if (!take_solution(model)) break;
     solver.set_target_polar(model);
     vector<Lit> largest_cube;
+    if (!act.empty()) solver.set_activities(act, polars);
+    if (num_conficts_last == 0) {
+      solver.shuffle_activities();
+      cout << "SHUFFLE!!" << endl;
+    }
     mpz_class this_count = solver.solve(largest_cube);
+    solver.get_activities(act, polars);
+    num_conficts_last = solver.get_stats().num_conflicts_;
     count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
-    cout << "c count for this cube: " << std::setw(10) << std::left << this_count
-      << " cube sz: " << std::setw(10) << cms_cl.size()
-      << " count so far: " << count << endl;
+    cout << "c cnt for this cube: " << std::setw(15) << std::left << this_count
+      << " cube sz: " << std::setw(6) << cms_cl.size()
+      << " cnt so far: " << std::setw(15) << count
+      << " T: " << std::setprecision(2) << std::fixed << (cpuTime() - call_time)
+      << endl;
     cout << "c ---> cube: ";
     for(const auto& l: cms_cl) cout << l << " ";
     cout << "0" << endl;
 
-    auto check_count = check_count_independently_no_restart(cms_cl);
-    if (check_count != this_count) {
-      cout << "Check count says: " << check_count << " ooops." << endl << endl;
+    if (do_check) {
+      auto check_count = check_count_independently_no_restart(cms_cl);
+      if (check_count != this_count) {
+        cout << "Check count says: " << check_count << " ooops." << endl << endl;
+      }
+      assert(check_count == this_count);
     }
-    assert(check_count == this_count);
     sat_solver.add_clause(cms_cl);
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
+  cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - myTime) << endl;
   if (indep_support_given) cout << "s pmc ";
   else cout << "s mc ";
   cout << count << endl;

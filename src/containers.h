@@ -32,6 +32,10 @@ public:
 		return vector<_T>::begin() + 2;
 	}
 
+	inline typename vector<_T>::const_iterator begin() const {
+		return vector<_T>::begin() + 2;
+	}
+
 	bool empty() const {
 		return vector<_T>::empty();
 	}

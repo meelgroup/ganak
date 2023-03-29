@@ -150,10 +150,6 @@ public:
     branch_variable_ = v;
   }
 
-  void setonpath(const bool on_path) {
-    on_path_to_target_ = on_path;
-  }
-
   const mpz_class getTotalModelCount() const {
     return branch_model_count_[0] + branch_model_count_[1];
   }

@@ -180,11 +180,15 @@ bool Solver::get_polarity(const uint32_t v)
 }
 
 void Solver::decideLiteral() {
-  print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level());
+  print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " on path: " << decision_stack_.top().on_path_to_target_ << " branch: " << decision_stack_.top().is_right_branch());
+  bool on_path = true;
+  if (decision_stack_.size() != 1)
+    on_path = decision_stack_.top().on_path_to_target_ && !decision_stack_.top().is_right_branch();
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
                trail.size(),
                comp_manager_.comp_stack_size()));
+  decision_stack_.top().on_path_to_target_ = on_path;
 
   // Find variable to branch on
   auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
@@ -220,7 +224,6 @@ void Solver::decideLiteral() {
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(max_score_var);
-  decision_stack_.top().setonpath(!counted_bottom_comp);
   setLiteralIfFree(lit);
   stats.num_decisions_++;
   if (stats.num_decisions_ % 128 == 0) decayActivities();
@@ -353,9 +356,9 @@ retStateT Solver::backtrack() {
       break;
     }
 
-    if (config_.do_restart && decision_stack_.top().on_path_to_target_) {
+    if (decision_stack_.top().on_path_to_target_) {
       if (!counted_bottom_comp) counted_bottom_comp = true;
-      if (counted_bottom_comp) computeLargestCube();
+      if (config_.do_restart && counted_bottom_comp) computeLargestCube();
     }
 
     reactivate_comps_and_backtrack_trail();

@@ -366,7 +366,7 @@ int main(int argc, char *argv[])
     cout << "c count for this cube: " << std::setw(10) << std::left << this_count
       << " cube sz: " << std::setw(10) << cms_cl.size()
       << " count so far: " << count << endl;
-    cout << "cube: ";
+    cout << "c ---> cube: ";
     for(const auto& l: cms_cl) cout << l << " ";
     cout << "0" << endl;
 

@@ -167,6 +167,7 @@ private:
           1, // super comp
           0, // trail offset
           2)); //comp stack offset
+    decision_stack_.top().on_path_to_target_ = true;
 
     // I guess this is needed so the system later knows it's fully counted
     // since this is only a dummy.

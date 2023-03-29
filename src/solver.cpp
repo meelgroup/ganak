@@ -99,6 +99,7 @@ void Solver::print_all_levels() {
       << " unproc'd comp end: " << decision_stack_.at(dec_lev).getUnprocessedComponentsEnd()
       << " remaining comp ofs: " << decision_stack_.at(dec_lev).remaining_comps_ofs()
       << " num unproc'd comps: " << decision_stack_.at(dec_lev).numUnprocessedComponents()
+      << " count: " << decision_stack_.at(dec_lev).getTotalModelCount()
       << endl;
 
     const auto& c = comp_manager_.at(sup_at);
@@ -263,18 +264,19 @@ void Solver::computeLargestCube()
 
   // Show decision stack's comps
   for(size_t i = 0; i < decision_stack_.size(); i++) {
-    const auto& ds = decision_stack_.at(i);
-    const auto dec_lit = (target_polar[ds.getbranchvar()] ? 1 : -1)*(int)ds.getbranchvar();
+    const auto& dst = decision_stack_.at(i);
+    const auto dec_lit = (target_polar[dst.getbranchvar()] ? 1 : -1)*(int)dst.getbranchvar();
     /* const auto dec_lit2 = trail[ds.trail_ofs()]; */
     /* cout << "dec_lit2: " << dec_lit2 << endl; */
     print_debug(COLWHT "decision_stack.at(" << i << "):"
       << " decision lit: " << dec_lit
-      << " num unproc comps: " << ds.numUnprocessedComponents()
-      << " unproc comps end: " << ds.getUnprocessedComponentsEnd()
-      << " remain comps offs: " << ds.remaining_comps_ofs()
-      << " count here: " << ds.getTotalModelCount());
-    const auto off_start = ds.remaining_comps_ofs();
-    const auto off_end = ds.getUnprocessedComponentsEnd();
+      << " num unproc comps: " << dst.numUnprocessedComponents()
+      << " unproc comps end: " << dst.getUnprocessedComponentsEnd()
+      << " remain comps offs: " << dst.remaining_comps_ofs()
+      << " count here: " << dst.getTotalModelCount()
+      << " branch: " << dst.is_right_branch());
+    const auto off_start = dst.remaining_comps_ofs();
+    const auto off_end = dst.getUnprocessedComponentsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       assert(i2 < comp_manager_.comp_stack_size());
       const auto& c = comp_manager_.at(i2);
@@ -298,8 +300,8 @@ void Solver::computeLargestCube()
   cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
   for(const auto& l: largest_cube) cout << l << " ";
   cout << endl;
-  print_debug(COLWHT "cube's count: " << decision_stack_.top().getTotalModelCount());
-  print_debug(COLWHT "cube's parent's count: " << (decision_stack_.end()-2)->getTotalModelCount());
+  print_debug(COLWHT "cube's SOLE count: " << decision_stack_.top().getTotalModelCount());
+  print_debug(COLWHT "cube's RECORDED count: " << largest_cube_val);
 #endif
 }
 
@@ -365,19 +367,20 @@ retStateT Solver::backtrack() {
     print_debug("Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
+    auto& dst = decision_stack_.top();
     print_debug("-> Backtracked to level " << decision_stack_.get_decision_level()
         // NOTE: -1 here because we have JUST processed the child
         //     ->> (see below nextUnprocessedComponent() call)
-        << " num unprocessed comps here: " << decision_stack_.top().numUnprocessedComponents()-1
-        << " current count here: " << decision_stack_.top().getTotalModelCount()
+        << " num unprocessed comps here: " << dst.numUnprocessedComponents()-1
+        << " current count here: " << dst.getTotalModelCount()
+        << " branch: " << dst.is_right_branch()
         << " before including child it was: " <<  parent_count_before
-        << " on_path: " << decision_stack_.top().on_path_to_target_);
+        << " on_path: " << dst.on_path_to_target_);
 
     // step to the next comp not yet processed
-    decision_stack_.top().nextUnprocessedComponent();
+    dst.nextUnprocessedComponent();
 
-    assert(
-        decision_stack_.top().remaining_comps_ofs() < comp_manager_.comp_stack_size() + 1);
+    assert(dst.remaining_comps_ofs() < comp_manager_.comp_stack_size() + 1);
   } while (true);
   return EXIT;
 }

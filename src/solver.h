@@ -5,8 +5,7 @@
  *      Author: marc
  */
 
-#ifndef SOLVER_H_
-#define SOLVER_H_
+#pragma once
 
 #include "common.h"
 #include "primitive_types.h"
@@ -15,8 +14,6 @@
 #include "comp_management.h"
 #include "solver_config.h"
 #include "MersenneTwister.h"
-
-#include <sys/time.h>
 #include <deque>
 
 using std::deque;
@@ -251,5 +248,3 @@ private:
   bool takeSolution();
   bool get_polarity(const uint32_t var);
 };
-
-#endif /* SOLVER_H_ */

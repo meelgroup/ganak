@@ -5,8 +5,7 @@
  *      Author: Marc Thurley
  */
 
-#ifndef CONTAINERS_H_
-#define CONTAINERS_H_
+#pragma once
 
 #include "structures.h"
 
@@ -57,5 +56,3 @@ public:
 	using vector<_T>::clear;
 	using vector<_T>::push_back;
 };
-
-#endif /* CONTAINERS_H_ */

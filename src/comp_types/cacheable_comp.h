@@ -14,11 +14,8 @@
 #include "primitive_types.h"
 #include "difference_packed_comp.h"
 
-#define NIL_ENTRY 0
-
 class Component;
 class ComponentArchetype;
-
 
 // GenericCacheableComponent Adds Structure to PackedComponent that is
 // necessary to store it in the cache

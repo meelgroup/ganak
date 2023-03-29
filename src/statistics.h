@@ -5,8 +5,7 @@
  *      Author: mthurley
  */
 
-#ifndef STATISTICS_H_
-#define STATISTICS_H_
+#pragma once
 
 #include <string>
 #include <cstdint>
@@ -204,5 +203,3 @@ public:
     return sum_cache_hit_sizes_ / (long double) num_cache_hits_;
   }
 };
-
-#endif /* STATISTICS_H_ */

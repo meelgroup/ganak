@@ -5,8 +5,7 @@
  *      Author: Marc Thurley
  */
 
-#ifndef INSTANCE_H_
-#define INSTANCE_H_
+#pragma once
 
 #include "statistics.h"
 #include "structures.h"
@@ -262,6 +261,3 @@ bool Instance::addBinaryClause(Lit litA, Lit litB) {
    litWatchList(litB).increaseActivity();
    return true;
 }
-
-
-#endif /* INSTANCE_H_ */

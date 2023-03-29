@@ -82,6 +82,7 @@ mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
 }
 
 void Solver::set_target_polar(const vector<CMSat::lbool>& model) {
+  assert(target_polar.size() > nVars());
   for(uint32_t i = 0; i < nVars(); i++) {
     target_polar[i+1] = model[i] == CMSat::l_True;
   }
@@ -150,7 +151,7 @@ SOLVER_StateT Solver::countSAT() {
 bool Solver::get_polarity(const uint32_t v)
 {
   bool polarity;
-  if (config_.do_restart && !counted_bottom_comp) polarity = target_polar[v];
+  if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
   else {
     // TODO MATE: this whole thing is a huge mess as far as I'm concerned
     polarity = litWatchList(Lit(v, true)).activity_score_ >
@@ -235,14 +236,24 @@ void Solver::computeLargestCube()
   assert(config_.do_restart);
   largest_cube.clear();
   print_debug(COLWHT "-- computeLargestCube BEGIN");
+  print_debug_noendl(COLWHT "Decisions in the cube: ");
 
   // add decisions, components, and counts
   largest_cube_val = decision_stack_.top().getTotalModelCount();
+  bool error = false;
   for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = trail[dec.trail_ofs()];
     // Add decision
-    if (i > 0) largest_cube.push_back(dec_lit);
+    if (i > 0) {
+      const auto dec_lit2 = (target_polar[dec.getbranchvar()] ? 1 : -1)*(int)dec.getbranchvar();
+      if (dec_lit2 != dec_lit.toInt()) {
+        cout << "(ERROR with dec_lit: " << dec_lit << " dec_lit2: " << dec_lit2 << ") ";
+        error = true;
+      }
+      largest_cube.push_back(dec_lit.neg());
+      print_debug_noendl(dec_lit.neg() << " ");
+    }
     if (dec.getTotalModelCount() > 0) largest_cube_val *= dec.getTotalModelCount();
 
     const auto off_start = dec.remaining_comps_ofs();
@@ -251,20 +262,12 @@ void Solver::computeLargestCube()
     for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
       const auto& c = comp_manager_.at(i2);
       for(auto v = c->varsBegin(); *v != varsSENTINEL; v++)
-        largest_cube.push_back(Lit(*v, target_polar[*v]));
+        largest_cube.push_back(Lit(*v, !target_polar[*v]));
     }
   }
+  print_debug_noendl(endl);
 
 #ifdef VERBOSE_DEBUG
-  cout << COLWHT "Decisions in the cube: ";
-  for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
-    const StackLevel& dec = decision_stack_[i];
-    const Lit dec_lit = trail[dec.trail_ofs()];
-    // Add decision
-    if (i > 0) cout << dec_lit << " ";
-  }
-  cout << endl;
-
   // Show decision stack's comps
   for(size_t i = 0; i < decision_stack_.size(); i++) {
     const auto& dst = decision_stack_.at(i);
@@ -277,6 +280,7 @@ void Solver::computeLargestCube()
       << " unproc comps end: " << dst.getUnprocessedComponentsEnd()
       << " remain comps offs: " << dst.remaining_comps_ofs()
       << " count here: " << dst.getTotalModelCount()
+      << " on path: " << dst.on_path_to_target_
       << " branch: " << dst.is_right_branch());
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = dst.getUnprocessedComponentsEnd();
@@ -305,6 +309,7 @@ void Solver::computeLargestCube()
   cout << endl;
   print_debug(COLWHT "cube's SOLE count: " << decision_stack_.top().getTotalModelCount());
   print_debug(COLWHT "cube's RECORDED count: " << largest_cube_val);
+  assert(!error);
 #endif
 }
 

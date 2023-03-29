@@ -261,7 +261,7 @@ void set_up_solver(Solver& solver) {
 
 vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
-  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, l.sign()));
+  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
   return cms_cl;
 }
 
@@ -274,6 +274,10 @@ bool take_solution(vector<CMSat::lbool>& model) {
     return false;
   }
   model = sat_solver.get_model();
+  cout <<"c Model: ";
+  for(int i = 0; i < model.size(); i ++)
+    cout << (i+1) * (model[i] == CMSat::l_True ? 1 : -1) << " ";
+  cout << "0" << endl;;
   return true;
 }
 

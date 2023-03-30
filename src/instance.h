@@ -89,27 +89,20 @@ protected:
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> lit_values_;
-  double act_inc = 1.0;
 
   void decayActivities() {
+    for (auto l_it = watches_.begin(); l_it != watches_.end(); l_it++)
+      l_it->activity_score_ *= 0.5F;
+
     for(auto clause_ofs: conflict_clauses_)
         getHeaderOf(clause_ofs).decayScore();
+
   }
 
   void updateActivities(ClauseOfs clause_ofs) {
     getHeaderOf(clause_ofs).increaseScore();
     for (auto it = beginOf(clause_ofs); *it != SENTINEL_LIT; it++) {
-      increaseActivity(*it);
-    }
-  }
-
-  void increaseActivity(const Lit lit)
-  {
-    variables_[lit.var()].activity += act_inc;
-    if (variables_[lit.var()].activity > 1e100) {
-      //rescale
-      act_inc *= 1e-90;
-      for(auto& v: variables_) v.activity*=1e-90;
+      litWatchList(*it).increaseActivity();
     }
   }
 
@@ -212,7 +205,7 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
 
   for (auto l : literals) {
     lit_pool_.push_back(l);
-    increaseActivity(l);
+    litWatchList(l).increaseActivity(1);
   }
   lit_pool_.push_back(SENTINEL_LIT);
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
@@ -243,7 +236,7 @@ bool Instance::add_bin_cl(Lit litA, Lit litB, bool irred) {
    if (litWatchList(litA).hasBinaryLinkTo(litB)) return false;
    litWatchList(litA).addBinLinkTo(litB, irred);
    litWatchList(litB).addBinLinkTo(litA, irred);
-   increaseActivity(litA);
-   increaseActivity(litB);
+   litWatchList(litA).increaseActivity();
+   litWatchList(litB).increaseActivity();
    return true;
 }

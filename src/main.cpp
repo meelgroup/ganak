@@ -419,10 +419,9 @@ int main(int argc, char *argv[])
   parse_with_cms(fname);
   mpz_class count = 0;
 
-  vector<double> act;
+  vector<float> act;
   vector<uint8_t> polars;
   uint64_t num_conficts_last = 0;
-  double act_inc;
   uint32_t num_cubes = 0;
   vector<Lit> units;
   vector<Lit> bins;
@@ -439,13 +438,13 @@ int main(int argc, char *argv[])
     solver.set_target_polar(model);
     /* transfer_bins(solver, bins); */
     vector<Lit> largest_cube;
-    if (!act.empty()) solver.set_activities(act, polars, act_inc);
+    if (!act.empty()) solver.set_activities(act, polars);
     if (num_conficts_last == 0) {
       solver.shuffle_activities();
       cout << "c SHUFFLE!!" << endl;
     }
     mpz_class this_count = solver.solve(largest_cube);
-    solver.get_activities(act, polars, act_inc);
+    solver.get_activities(act, polars);
     units.clear();
     /* solver.get_unit_cls(units); */
     for(const auto& l: units) sat_solver.add_clause(ganak_to_cms_cl(l));
@@ -457,8 +456,8 @@ int main(int argc, char *argv[])
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
     cout << "c cnt for this cube: " << std::setw(15) << std::left << this_count
       << " cube sz: " << std::setw(6) << cms_cl.size()
-      << " cube num: " << std::setw(3) << num_cubes
       << " cnt so far: " << std::setw(15) << count
+      << " cube no: " << std::setw(4) << num_cubes
       << " T: " << std::setprecision(2) << std::fixed << (cpuTime() - call_time)
       << endl;
     cout << "c ---> cube: ";

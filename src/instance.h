@@ -96,10 +96,10 @@ protected:
         getHeaderOf(clause_ofs).decayScore();
   }
 
-  void updateActivities(ClauseOfs clause_ofs) {
+  void updateActivities(ClauseOfs clause_ofs, vector<uint8_t>& tmp_seen) {
     getHeaderOf(clause_ofs).increaseScore();
     for (auto it = beginOf(clause_ofs); *it != SENTINEL_LIT; it++) {
-      increaseActivity(*it);
+      if (!tmp_seen[it->var()]) increaseActivity(*it);
     }
   }
 
@@ -195,6 +195,9 @@ private:
 };
 
 ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
+  for (auto l : literals) {
+    increaseActivity(l);
+  }
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     // assert(!isUnitClause(literals[0].neg()));
@@ -212,7 +215,6 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
 
   for (auto l : literals) {
     lit_pool_.push_back(l);
-    increaseActivity(l);
   }
   lit_pool_.push_back(SENTINEL_LIT);
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
@@ -243,7 +245,5 @@ bool Instance::add_bin_cl(Lit litA, Lit litB, bool irred) {
    if (litWatchList(litA).hasBinaryLinkTo(litB)) return false;
    litWatchList(litA).addBinLinkTo(litB, irred);
    litWatchList(litB).addBinLinkTo(litA, irred);
-   increaseActivity(litA);
-   increaseActivity(litB);
    return true;
 }

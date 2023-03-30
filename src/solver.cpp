@@ -420,6 +420,7 @@ retStateT Solver::backtrack() {
 
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
+  act_inc *= 1.0/0.95;
 
   if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
     deleteConflictClauses();
@@ -436,7 +437,6 @@ retStateT Solver::resolveConflict() {
   assert(uip_clauses_.size() == 1);
   if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
   decision_stack_.top().mark_branch_unsat();
-  act_inc *= 1.0/0.95;
 
   if (decision_stack_.top().is_right_branch()) {
     // Backtracking since finished with this AND the other branch.
@@ -748,7 +748,7 @@ void Solver::recordLastUIPCauses() {
 
     assert(hasAntecedent(curr_lit));
     if (getAntecedent(curr_lit).isAClause()) {
-      updateActivities(getAntecedent(curr_lit).asCl());
+      updateActivities(getAntecedent(curr_lit).asCl(), tmp_seen);
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
@@ -766,8 +766,8 @@ void Solver::recordLastUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
-      increaseActivity(alit);
-      increaseActivity(curr_lit);
+      if (!tmp_seen[alit.var()]) increaseActivity(alit);
+      if (!tmp_seen[curr_lit.var()]) increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {
@@ -807,7 +807,6 @@ void Solver::recordAllUIPCauses() {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
     if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
-    increaseActivity(l);
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -830,9 +829,8 @@ void Solver::recordAllUIPCauses() {
     }
 
     assert(hasAntecedent(curr_lit));
-
     if (getAntecedent(curr_lit).isAClause()) {
-      updateActivities(getAntecedent(curr_lit).asCl());
+      /* updateActivities(getAntecedent(curr_lit).asCl()); */
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
@@ -851,8 +849,6 @@ void Solver::recordAllUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
-      increaseActivity(alit);
-      increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {

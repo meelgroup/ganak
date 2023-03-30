@@ -286,7 +286,7 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 }
 
 bool take_solution(vector<CMSat::lbool>& model) {
-  /* sat_solver->set_polarity_mode(CMSat::PolarityMode::polarmode_rnd); */
+  sat_solver->set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
   //solver.set_up_for_sample_counter(100);
   CMSat::lbool ret = sat_solver->solve();
   assert(ret != CMSat::l_Undef);

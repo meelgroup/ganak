@@ -181,6 +181,7 @@ bool Solver::get_polarity(const uint32_t v)
   bool polarity;
   if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
   else {
+    return false;
     // TODO MATE: this whole thing is a huge mess as far as I'm concerned
     polarity = litWatchList(Lit(v, true)).activity_score_ >
       litWatchList(Lit(v, false)).activity_score_;

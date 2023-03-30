@@ -36,10 +36,12 @@ THE SOFTWARE.
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
+#include <arjun/arjun.h>
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 using CMSat::SATSolver;
+ArjunNS::Arjun* arjun = NULL;
 
 #if defined(__GNUC__) && defined(__linux__)
 #include <fenv.h>
@@ -61,10 +63,11 @@ uint64_t max_cache = 0;
 int do_implicit_bcp = 1;
 int do_restart = 1;
 int do_pcc = 1;
+int do_arjun = 1;
 int hashrange = 1;
 double delta = 0.05;
 uint32_t first_restart = 100;
-CMSat::SATSolver sat_solver;
+CMSat::SATSolver* sat_solver;
 uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
@@ -80,7 +83,7 @@ string ganak_version_info()
     #else
     ss << "c GANAK compiled with non-gcc compiler" << endl;
     #endif
-    ss << "c CMS version: " << sat_solver.get_version_sha1();
+    ss << "c CMS version: " << sat_solver->get_version_sha1();
 
     return ss.str();
 }
@@ -105,6 +108,8 @@ void add_ganak_options()
     ("pcc", po::value(&do_pcc)->default_value(do_pcc), "Probabilistic Component Caching")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("hashrange", po::value(&hashrange)->default_value(hashrange), "Seed")
+    ("arjun", po::value(&do_arjun)->default_value(do_arjun)
+        , "Use arjun to minimize sampling set")
     ;
 
     help_options.add(main_options);
@@ -212,13 +217,14 @@ void parse_supported_options(int argc, char** argv)
 
 }
 
-void parse_with_cms(const std::string& filename) {
+template<class T>
+void parse_file(const std::string& filename, T* reader) {
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, SATSolver> parser(&sat_solver, NULL, verb);
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, NULL, verb);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, SATSolver> parser(&sat_solver, NULL, verb);
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, NULL, verb);
   #endif
   if (in == NULL) {
       std::cout << "ERROR! Could not open file '" << filename
@@ -236,7 +242,7 @@ void parse_with_cms(const std::string& filename) {
   if (parser.sampling_vars_found) {
     for(const auto& lit: parser.sampling_vars) indep_support.insert(lit+1);
   } else {
-    for(uint32_t i = 1; i < sat_solver.nVars()+1; i++) indep_support.insert(i);
+    for(uint32_t i = 1; i < sat_solver->nVars()+1; i++) indep_support.insert(i);
   }
   must_mult_exp2 = parser.must_mult_exp2;
 }
@@ -278,14 +284,14 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 }
 
 bool take_solution(vector<CMSat::lbool>& model) {
-  /* sat_solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd); */
+  /* sat_solver->set_polarity_mode(CMSat::PolarityMode::polarmode_rnd); */
   //solver.set_up_for_sample_counter(100);
-  CMSat::lbool ret = sat_solver.solve();
+  CMSat::lbool ret = sat_solver->solve();
   assert(ret != CMSat::l_Undef);
   if (ret == CMSat::l_False) {
     return false;
   }
-  model = sat_solver.get_model();
+  model = sat_solver->get_model();
 #if 0
   cout <<"c Model: ";
   for(int i = 0; i < model.size(); i ++)
@@ -296,7 +302,7 @@ bool take_solution(vector<CMSat::lbool>& model) {
 }
 
 void create_from_sat_solver(Solver& solver, SATSolver& ss) {
-  solver.new_vars(sat_solver.nVars());
+  solver.new_vars(sat_solver->nVars());
   ss.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
@@ -327,15 +333,15 @@ void create_from_sat_solver(Solver& solver, SATSolver& ss) {
 
 mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
   SATSolver sat_solver2;
-  sat_solver2.new_vars(sat_solver.nVars());
-  sat_solver.start_getting_small_clauses(
+  sat_solver2.new_vars(sat_solver->nVars());
+  sat_solver->start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
       false);
 
   vector<CMSat::Lit> cl;
-  while(sat_solver.get_next_small_clause(cl)) sat_solver2.add_clause(cl);
-  sat_solver.end_getting_small_clauses();
+  while(sat_solver->get_next_small_clause(cl)) sat_solver2.add_clause(cl);
+  sat_solver->end_getting_small_clauses();
   for(const auto& l: cube) {
     cl.clear();
     cl.push_back(~l);
@@ -402,6 +408,7 @@ int main(int argc, char *argv[])
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
   }
+  sat_solver = new SATSolver;
   parse_supported_options(argc, argv);
   string fname;
   if (vm.count("input") != 0) {
@@ -416,7 +423,7 @@ int main(int argc, char *argv[])
     cout << "ERROR: must give input file to read" << endl;
     exit(-1);
   }
-  parse_with_cms(fname);
+  parse_file(fname, sat_solver);
   mpz_class count = 0;
 
   vector<float> act;
@@ -425,18 +432,18 @@ int main(int argc, char *argv[])
   uint32_t num_cubes = 0;
   vector<Lit> units;
   vector<Lit> bins;
-  // add hyper-binary BIN clauses to GANAK
-  while (sat_solver.okay()) {
+  // TODO: add hyper-binary BIN clauses to GANAK
+  while (sat_solver->okay()) {
     double call_time = cpuTime();
     Solver solver;
     set_up_solver(solver);
-    create_from_sat_solver(solver, sat_solver);
+    create_from_sat_solver(solver, *sat_solver);
     solver.set_indep_support(indep_support);
 
     vector<CMSat::lbool> model;
     if (!take_solution(model)) break;
     solver.set_target_polar(model);
-    /* transfer_bins(solver, bins); */
+    transfer_bins(solver, bins);
     vector<Lit> largest_cube;
     if (!act.empty()) solver.set_activities(act, polars);
     if (num_conficts_last == 0) {
@@ -446,9 +453,9 @@ int main(int argc, char *argv[])
     mpz_class this_count = solver.solve(largest_cube);
     solver.get_activities(act, polars);
     units.clear();
-    /* solver.get_unit_cls(units); */
-    for(const auto& l: units) sat_solver.add_clause(ganak_to_cms_cl(l));
-    cout << "Transferred " << units.size() << " units -- out of vars: " << sat_solver.nVars() << endl;
+    solver.get_unit_cls(units);
+    for(const auto& l: units) sat_solver->add_clause(ganak_to_cms_cl(l));
+    cout << "Transferred " << units.size() << " units -- out of vars: " << sat_solver->nVars() << endl;
     bins.clear();
     solver.get_bin_red_cls(bins);
     num_conficts_last = solver.get_stats().num_conflicts_;
@@ -471,7 +478,7 @@ int main(int argc, char *argv[])
       }
       assert(check_count == this_count);
     }
-    sat_solver.add_clause(cms_cl);
+    sat_solver->add_clause(cms_cl);
     num_cubes++;
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
@@ -480,5 +487,6 @@ int main(int argc, char *argv[])
   else cout << "s mc ";
   cout << count << endl;
 
+  delete sat_solver;
   return 0;
 }

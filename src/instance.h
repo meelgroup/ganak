@@ -260,8 +260,7 @@ Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
 }
 
 bool Instance::addBinaryClause(Lit litA, Lit litB) {
-   if (litWatchList(litA).hasBinaryLinkTo(litB))
-     return false;
+   if (litWatchList(litA).hasBinaryLinkTo(litB)) return false;
    litWatchList(litA).addBinLinkTo(litB);
    litWatchList(litB).addBinLinkTo(litA);
    increaseActivity(litA);

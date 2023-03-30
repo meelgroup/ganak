@@ -39,12 +39,13 @@ public:
   void get_activities(vector<float>& acts, vector<uint8_t>& polars) const;
   void set_activities(const vector<float>& act, const vector<uint8_t>& polars);
   const DataAndStatistics& get_stats() const;
-  void shuffle_activities();
+  void shuffle_activities(MTRand& mtrand2);
   void end_irred_cls();
   size_t get_num_irred_long_cls() const { return conflict_clauses_.size(); }
   void add_red_cl(const vector<Lit>& lits);
   void get_unit_cls(vector<Lit>& units) const;
   void get_bin_red_cls(vector<Lit>& bins) const;
+  void init_activity_scores();
 
 private:
   // Temporaries, used during recordLastUIPClause
@@ -81,15 +82,6 @@ private:
   bool prop_and_probe();
   bool failedLitProbeInternal();
   void computeLargestCube();
-
-  void decayActivitiesOf(Component &comp)
-  {
-    for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++)
-    {
-      litWatchList(Lit(*it, true)).activity_score_ *= 0.5F;
-      litWatchList(Lit(*it, false)).activity_score_ *= 0.5F;
-    }
-  }
 
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_

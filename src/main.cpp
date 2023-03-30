@@ -66,12 +66,14 @@ int do_pcc = 1;
 int do_arjun = 1;
 int hashrange = 1;
 double delta = 0.05;
-uint32_t first_restart = 100;
+uint32_t first_restart_start = 40;
+uint32_t first_restart;
 CMSat::SATSolver* sat_solver;
 uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
 int do_check = 0;
+MTRand mtrand;
 
 string ganak_version_info()
 {
@@ -99,7 +101,7 @@ void add_ganak_options()
     ("verb,v", po::value(&verb)->default_value(verb), "verb")
     ("seed,s", po::value(&seed)->default_value(seed), "Seed")
     ("delta", po::value(&delta)->default_value(delta, my_delta.str()), "Delta")
-    ("rstfirst", po::value(&first_restart)->default_value(first_restart), "Run restarts")
+    ("rstfirst", po::value(&first_restart_start)->default_value(first_restart_start), "Run restarts")
     ("restart", po::value(&do_restart)->default_value(do_restart), "Run restarts")
     ("cc", po::value(&do_comp_caching)->default_value(do_comp_caching), "Component caching")
     ("maxcache", po::value(&max_cache)->default_value(max_cache), "Max cache size in MB. 0 == use 80% of free mem")
@@ -432,12 +434,14 @@ int main(int argc, char *argv[])
   uint32_t num_cubes = 0;
   vector<Lit> units;
   vector<Lit> bins;
+  first_restart = first_restart_start;
   // TODO: add hyper-binary BIN clauses to GANAK
   while (sat_solver->okay()) {
     double call_time = cpuTime();
     Solver solver;
     set_up_solver(solver);
     create_from_sat_solver(solver, *sat_solver);
+    if (num_cubes == 0) solver.init_activity_scores();
     solver.set_indep_support(indep_support);
 
     vector<CMSat::lbool> model;
@@ -446,10 +450,6 @@ int main(int argc, char *argv[])
     transfer_bins(solver, bins);
     vector<Lit> largest_cube;
     if (!act.empty()) solver.set_activities(act, polars);
-    if (num_conficts_last == 0) {
-      solver.shuffle_activities();
-      cout << "c SHUFFLE!!" << endl;
-    }
     mpz_class this_count = solver.solve(largest_cube);
     solver.get_activities(act, polars);
     units.clear();
@@ -480,6 +480,8 @@ int main(int argc, char *argv[])
     }
     sat_solver->add_clause(cms_cl);
     num_cubes++;
+    first_restart*=2;
+    if (first_restart > 20*first_restart_start) first_restart = first_restart_start;
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - myTime) << endl;

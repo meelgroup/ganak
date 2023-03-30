@@ -97,8 +97,8 @@ public:
   uint32_t last_irred_bin = 0;
   float activity_score_ = 0.0f;
 
-  void increaseActivity(uint32_t u = 1){
-    activity_score_+= u;
+  void increaseActivity() {
+    activity_score_+= 1;
   }
 
   void removeWatchLinkTo(ClauseOfs clause_ofs) {

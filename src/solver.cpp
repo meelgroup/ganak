@@ -24,6 +24,7 @@ void Solver::simplePreProcess()
     setLiteralIfFree(lit);
   }
 
+
   bool succeeded = propagate(0);
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(nVars() + 1, 0);
@@ -35,6 +36,15 @@ void Solver::simplePreProcess()
 void Solver::set_indep_support(const set<uint32_t> &indeps)
 {
   indep_support_ = indeps;
+}
+
+void Solver::init_activity_scores()
+{
+  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
+  {
+    litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1;
+    litWatchList(l).activity_score_ += occ_lists_[l].size();
+  }
 }
 
 void Solver::end_irred_cls()
@@ -181,7 +191,7 @@ bool Solver::get_polarity(const uint32_t v)
   bool polarity;
   if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
   else {
-    return false;
+    /* return false; */
     // TODO MATE: this whole thing is a huge mess as far as I'm concerned
     polarity = litWatchList(Lit(v, true)).activity_score_ >
       litWatchList(Lit(v, false)).activity_score_;
@@ -343,7 +353,7 @@ void Solver::computeLargestCube()
 }
 
 bool Solver::restart_if_needed() {
-  if (config_.do_restart && stats.getNumDecisions() > stats.next_restart &&
+  if (config_.do_restart && stats.num_conflicts_ > stats.next_restart &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
     return true;
@@ -551,10 +561,10 @@ void Solver::get_activities(vector<float>& acts, vector<uint8_t>& polars) const
   }
 }
 
-void Solver::shuffle_activities()
+void Solver::shuffle_activities(MTRand& mtrand2)
 {
   for(auto& w: watches_) {
-    w.activity_score_ += mtrand.randDblExc(1000);
+    w.activity_score_ = mtrand2.randInt(100);
   }
 }
 

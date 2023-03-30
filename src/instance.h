@@ -205,7 +205,7 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
 
   for (auto l : literals) {
     lit_pool_.push_back(l);
-    litWatchList(l).increaseActivity(1);
+    litWatchList(l).increaseActivity();
   }
   lit_pool_.push_back(SENTINEL_LIT);
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs);

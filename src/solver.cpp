@@ -19,20 +19,14 @@
 
 void Solver::simplePreProcess()
 {
-  uint32_t start_ofs = 0;
-
   for (auto lit : unit_clauses_) {
     assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");;
     setLiteralIfFree(lit);
   }
 
-  bool succeeded = propagate(start_ofs);
-  assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
+  bool succeeded = propagate(0);
+  release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(nVars() + 1, 0);
-  /* for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) { */
-  /*   litWatchList(l).activity_score_ = litWatchList(l).binary_links_.size() - 1; */
-  /*   litWatchList(l).activity_score_ += occ_lists_[l].size(); */
-  /* } */
   stats.num_unit_clauses_ = unit_clauses_.size();
   irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
@@ -43,14 +37,21 @@ void Solver::set_indep_support(const set<uint32_t> &indeps)
   indep_support_ = indeps;
 }
 
-mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
+void Solver::end_irred_cls()
 {
-  time_start = cpuTime();
+  stats.num_unit_clauses_ = unit_clauses_.size();
+  irred_lit_pool_size_ = lit_pool_.size();
   stats.next_restart = config_.first_restart;
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
   if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
-
   init_decision_stack();
+  simplePreProcess();
+}
+
+mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
+{
+  time_start = cpuTime();
+
   if (config_.verb) {
       cout << "c Sampling set size: " << indep_support_.size() << endl;
       if (indep_support_.size() > 50) {
@@ -61,8 +62,6 @@ mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
         cout << endl;
       }
   }
-
-  simplePreProcess();
   if (config_.verb) stats.printShortFormulaInfo();
   last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
   comp_manager_.initialize(watches_, lit_pool_);
@@ -224,7 +223,7 @@ void Solver::computeLargestCube()
 
   // add decisions, components, and counts
   largest_cube_val = decision_stack_.top().getTotalModelCount();
-  bool error = false;
+  VERBOSE_DEBUG_DO(bool error = false;);
   for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = trail[dec.trail_ofs()];
@@ -233,7 +232,7 @@ void Solver::computeLargestCube()
       const auto dec_lit2 = (target_polar[dec.getbranchvar()] ? 1 : -1)*(int)dec.getbranchvar();
       if (dec_lit2 != dec_lit.toInt()) {
         cout << "(ERROR with dec_lit: " << dec_lit << " dec_lit2: " << dec_lit2 << ") ";
-        error = true;
+        VERBOSE_DEBUG_DO(error = true;);
       }
       largest_cube.push_back(dec_lit.neg());
       print_debug_noendl(dec_lit.neg() << " ");
@@ -590,7 +589,6 @@ bool Solver::failedLitProbeInternal() {
         // relative to the assignment of *jt
         decision_stack_.startFailedLitTest();
         setLiteralIfFree(lit);
-
         assert(!hasAntecedent(lit));
 
         bool bSucceeded = propagate(sz);
@@ -610,8 +608,7 @@ bool Solver::failedLitProbeInternal() {
           for (auto it = uip_clauses_.rbegin();
                it != uip_clauses_.rend(); it++) {
             if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl;
-            setLiteralIfFree(it->front(),
-                             addUIPConflictClause(*it));
+            setLiteralIfFree(it->front(), addUIPConflictClause(*it));
           }
           if (!propagate(sz)) {
             print_debug("Failed literal probing END -- this comp/branch is UNSAT");

@@ -40,6 +40,7 @@ public:
   void set_activities(const vector<double>& act, const vector<uint8_t>& polars, double act_inc);
   const DataAndStatistics& get_stats() const;
   void shuffle_activities();
+  void end_irred_cls();
 
 private:
   // Temporaries, used during recordLastUIPClause
@@ -96,8 +97,7 @@ private:
     return variables_[v].activity;
   }
 
-  bool setLiteralIfFree(const Lit lit,
-                        const Antecedent ant = Antecedent(NOT_A_CLAUSE))
+  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
     if (lit_values_[lit] != X_TRI) return false;
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);

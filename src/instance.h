@@ -19,7 +19,8 @@ using std::set;
 class Instance {
 public:
   Instance() : stats (this) { }
-  void create_from_sat_solver(CMSat::SATSolver& sat_solver);
+  void new_vars(const uint32_t n);
+  void add_clause(const vector<Lit>& lits);
 protected:
 
   void unSet(Lit lit) {
@@ -129,20 +130,6 @@ protected:
     return false;
   }
 
-  // addUnitClause checks whether lit or lit.neg() is already a
-  // unit clause
-  // a negative return value implied that the Instance is UNSAT
-  bool addUnitClause(const Lit lit) {
-    for (auto l : unit_clauses_) {
-      if (l == lit)
-        return true;
-      if (l == lit.neg())
-        return false;
-    }
-    unit_clauses_.push_back(lit);
-    return true;
-  }
-
   inline ClauseIndex addClause(const vector<Lit> &literals);
 
   // adds a UIP Conflict Clause
@@ -242,7 +229,6 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
   return cl_ofs;
 }
 
-
 Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
     Antecedent ante(NOT_A_CLAUSE);
     stats.num_clauses_learned_++;
@@ -252,9 +238,11 @@ Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
       getHeaderOf(cl_ofs).set_length(literals.size());
       ante = Antecedent(cl_ofs);
     } else if (literals.size() == 2){
+      /* cout << "Binary learnt: " << literals[0] << " " << literals[1] << endl; */
       ante = Antecedent(literals.back());
       stats.num_binary_conflict_clauses_++;
     } else if (literals.size() == 1)
+      /* cout << "Unit learnt: " << literals[0] << endl; */
       stats.num_unit_clauses_++;
     return ante;
 }

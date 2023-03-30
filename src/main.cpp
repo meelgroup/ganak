@@ -259,6 +259,11 @@ void set_up_solver(Solver& solver) {
   solver.config().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
 }
 
+vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
+  vector<Lit> ganak_cl;
+  for(const auto& l: cl) ganak_cl.push_back(Lit(l.var()+1, !l.sign()));
+  return ganak_cl;
+}
 
 vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
@@ -282,6 +287,22 @@ bool take_solution(vector<CMSat::lbool>& model) {
   cout << "0" << endl;;
 #endif
   return true;
+}
+
+void create_from_sat_solver(Solver& solver, SATSolver& ss) {
+  solver.new_vars(sat_solver.nVars());
+  ss.start_getting_small_clauses(
+      std::numeric_limits<uint32_t>::max(),
+      std::numeric_limits<uint32_t>::max(),
+      false);
+
+  vector<CMSat::Lit> cms_cl;
+  while(ss.get_next_small_clause(cms_cl)) {
+    const auto cl = cms_to_ganak_cl(cms_cl);
+    solver.add_clause(cl);
+  }
+  ss.end_getting_small_clauses();
+  solver.end_irred_cls();
 }
 
 mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
@@ -310,7 +331,7 @@ mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
   set_up_solver(solver);
   solver.config().do_restart = false;
 
-  solver.create_from_sat_solver(sat_solver2);
+  create_from_sat_solver(solver, sat_solver2);
   solver.set_indep_support(indep_support);
 
   vector<Lit> largest_cube;
@@ -363,11 +384,12 @@ int main(int argc, char *argv[])
   uint64_t num_conficts_last = 0;
   double act_inc;
   uint32_t num_cubes = 0;
+  //TODO TRANSFER LEARNT CLAUSES!!!
   while (sat_solver.okay()) {
     double call_time = cpuTime();
     Solver solver;
     set_up_solver(solver);
-    solver.create_from_sat_solver(sat_solver);
+    create_from_sat_solver(solver, sat_solver);
     solver.set_indep_support(indep_support);
 
     vector<CMSat::lbool> model;
@@ -377,7 +399,7 @@ int main(int argc, char *argv[])
     if (!act.empty()) solver.set_activities(act, polars, act_inc);
     if (num_conficts_last == 0) {
       solver.shuffle_activities();
-      cout << "SHUFFLE!!" << endl;
+      cout << "c SHUFFLE!!" << endl;
     }
     mpz_class this_count = solver.solve(largest_cube);
     solver.get_activities(act, polars, act_inc);

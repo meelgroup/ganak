@@ -41,6 +41,10 @@ public:
   const DataAndStatistics& get_stats() const;
   void shuffle_activities();
   void end_irred_cls();
+  size_t get_num_irred_long_cls() const { return conflict_clauses_.size(); }
+  void add_red_cl(const vector<Lit>& lits);
+  void get_unit_cls(vector<Lit>& units) const;
+  void get_bin_red_cls(vector<Lit>& bins) const;
 
 private:
   // Temporaries, used during recordLastUIPClause
@@ -239,4 +243,7 @@ private:
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
   bool get_polarity(const uint32_t var);
+
+  // indicates if we have called end_irred_cls()
+  bool ended_irred_cls = false;
 };

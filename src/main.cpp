@@ -271,6 +271,12 @@ vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
   return cms_cl;
 }
 
+vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
+  vector<CMSat::Lit> cms_cl;
+  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
 bool take_solution(vector<CMSat::lbool>& model) {
   /* sat_solver.set_polarity_mode(CMSat::PolarityMode::polarmode_rnd); */
   //solver.set_up_for_sample_counter(100);
@@ -295,14 +301,28 @@ void create_from_sat_solver(Solver& solver, SATSolver& ss) {
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
       false);
-
   vector<CMSat::Lit> cms_cl;
   while(ss.get_next_small_clause(cms_cl)) {
     const auto cl = cms_to_ganak_cl(cms_cl);
-    solver.add_clause(cl);
+    solver.add_irred_cl(cl);
   }
   ss.end_getting_small_clauses();
   solver.end_irred_cls();
+
+  uint32_t num_bins = 0;
+  ss.start_getting_small_clauses(
+      2,
+      std::numeric_limits<uint32_t>::max(),
+      true);
+  while(ss.get_next_small_clause(cms_cl)) {
+    const auto cl = cms_to_ganak_cl(cms_cl);
+    if (cl.size() == 2) {
+      solver.add_red_cl(cl);
+      num_bins++;
+    }
+  }
+  ss.end_getting_small_clauses();
+  cout << "Num bins from CMS: " << num_bins << endl;
 }
 
 mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
@@ -338,6 +358,26 @@ mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
   const auto count = solver.solve(largest_cube);
   assert(largest_cube.empty());
   return count;
+}
+
+
+void transfer_bins(Solver& solver, const vector<Lit>& bins)
+{
+  vector<Lit> cl;
+  size_t at = 0;
+  while(true) {
+    if (at >= bins.size()) break;
+    const auto& l = bins[at];
+    if (l == SENTINEL_LIT) {
+      assert(cl.size() == 2);
+      solver.add_red_cl(cl);
+      cl.clear();
+    } else {
+      cl.push_back(l);
+    }
+    at++;
+  }
+  cout << "c Transferred " << bins.size()/3 << " bins" << endl;
 }
 
 int main(int argc, char *argv[])
@@ -384,7 +424,9 @@ int main(int argc, char *argv[])
   uint64_t num_conficts_last = 0;
   double act_inc;
   uint32_t num_cubes = 0;
-  //TODO TRANSFER LEARNT CLAUSES!!!
+  vector<Lit> units;
+  vector<Lit> bins;
+  // add hyper-binary BIN clauses to GANAK
   while (sat_solver.okay()) {
     double call_time = cpuTime();
     Solver solver;
@@ -395,6 +437,7 @@ int main(int argc, char *argv[])
     vector<CMSat::lbool> model;
     if (!take_solution(model)) break;
     solver.set_target_polar(model);
+    /* transfer_bins(solver, bins); */
     vector<Lit> largest_cube;
     if (!act.empty()) solver.set_activities(act, polars, act_inc);
     if (num_conficts_last == 0) {
@@ -403,6 +446,12 @@ int main(int argc, char *argv[])
     }
     mpz_class this_count = solver.solve(largest_cube);
     solver.get_activities(act, polars, act_inc);
+    units.clear();
+    /* solver.get_unit_cls(units); */
+    for(const auto& l: units) sat_solver.add_clause(ganak_to_cms_cl(l));
+    cout << "Transferred " << units.size() << " units -- out of vars: " << sat_solver.nVars() << endl;
+    bins.clear();
+    solver.get_bin_red_cls(bins);
     num_conficts_last = solver.get_stats().num_conflicts_;
     count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);

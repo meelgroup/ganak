@@ -41,6 +41,7 @@ void Instance::compactConflictLiteralPool(){
     *(write_pos++) = SENTINEL_LIT;
   }
   lit_pool_.erase(write_pos,lit_pool_.end());
+  num_conflict_clauses_compacted_++;
 }
 
 bool Instance::deleteConflictClauses() {
@@ -99,10 +100,9 @@ void Instance::new_vars(const uint32_t n) {
   target_polar.resize(n + 1);
 }
 
-void Instance::add_clause(const vector<Lit>& lits) {
-  stats.num_original_clauses_++;
-  stats.incorporateClauseData(lits);
-  ClauseOfs cl_ofs = addClause(lits);
+void Instance::add_irred_cl(const vector<Lit>& lits) {
+  stats.incorporateIrredClauseData(lits);
+  ClauseOfs cl_ofs = addClause(lits, true);
   if (lits.size() >= 3)
     for (const auto& l : lits)
       occ_lists_[l].push_back(cl_ofs);

@@ -14,8 +14,6 @@
 #include "primitive_types.h"
 
 using std::vector;
-using std::cout;
-using std::endl;
 
 constexpr int32_t INVALID_DL = -1;
 
@@ -29,15 +27,19 @@ class Lit {
 public:
 
   constexpr Lit() : value_(0) { }
-
-  explicit constexpr Lit(int lit) : value_((abs(lit) << 1) + (uint32_t) (lit > 0))
-  {}
-
   constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign)
   {}
 
   VariableIndex var() const {
     return (value_ >> 1);
+  }
+
+  constexpr bool operator<(const Lit other) const {
+    return value_ < other.value_;
+  }
+
+  constexpr bool operator>(const Lit other) const {
+    return value_ > other.value_;
   }
 
   int toInt() const {
@@ -75,8 +77,6 @@ private:
   uint32_t value_;
 };
 
-static const Lit lit_Undef(0);
-
 inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 {
     if (lit.raw() == 0) {
@@ -94,6 +94,7 @@ class LitWatchList {
 public:
   vector<Lit> binary_links_ = vector<Lit>(1,SENTINEL_LIT);
   vector<ClauseOfs> watch_list_ = vector<ClauseOfs>(1,SENTINEL_CL);
+  uint32_t last_irred_bin = 0;
 
   void removeWatchLinkTo(ClauseOfs clause_ofs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
@@ -116,9 +117,10 @@ public:
     watch_list_.push_back(clause_ofs);
   }
 
-  void addBinLinkTo(Lit lit) {
+  void addBinLinkTo(Lit lit, bool irred) {
     binary_links_.back() = lit;
     binary_links_.push_back(SENTINEL_LIT);
+    if (irred) last_irred_bin = binary_links_.size();
   }
 
   void resetWatchList(){

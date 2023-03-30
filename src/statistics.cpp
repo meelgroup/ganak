@@ -12,20 +12,22 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <solver.h>
 
 static double in_MB(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
 
-void DataAndStatistics::printShort(const ComponentCache* cache_) const {
+void DataAndStatistics::printShort(const Solver* solver, const ComponentCache* cache_) const {
   cout << "c " << endl;
   cout << "c      --- FINISHED ---" << endl;
-  cout << "c cls orig/final                 "
-    << num_original_clauses_ << "/" << num_clauses() << endl;
+  cout << "c cls irred                      " << num_irred_clauses() << endl;
   cout << "c decisions                      " << num_decisions_ << endl;
   cout << "c conflicts                      " << num_conflicts_ << endl;
-  cout << "c conflict cls (all/bin/unit)    " << num_conflict_clauses();
-  cout << "/" << num_binary_conflict_clauses_ << "/" << num_unit_clauses_ << endl;
+  cout << "c conflict cls (long/bin/u)      "
+    << solver->get_num_irred_long_cls() << "/"
+    << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
+  cout << "c conflict cls compacted         " << solver->num_conflict_clauses_compacted() << endl;
   cout << "c failed lits found by iBCP      " << num_failed_literals_detected_ << endl;
 
   cout << "c implicit BCP miss rate         "

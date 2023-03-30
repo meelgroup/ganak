@@ -20,7 +20,10 @@ class Instance {
 public:
   Instance() : stats (this) { }
   void new_vars(const uint32_t n);
-  void add_clause(const vector<Lit>& lits);
+  void add_irred_cl(const vector<Lit>& lits);
+  size_t num_conflict_clauses() const { return conflict_clauses_.size(); }
+  uint32_t num_conflict_clauses_compacted() const { return num_conflict_clauses_compacted_; }
+
 protected:
 
   void unSet(Lit lit) {
@@ -50,20 +53,12 @@ protected:
         && occ_lists_[lit.neg()].empty();
   }
 
-  bool free(VariableIndex v) const {
-    return isolated(v) && isUnknown(Lit(v));
-  }
-
   bool deleteConflictClauses();
   bool markClauseDeleted(ClauseOfs cl_ofs);
 
   // Compact the literal pool erasing all the clause
   // information from deleted clauses
   void compactConflictLiteralPool();
-
-  uint32_t num_conflict_clauses() const {
-    return conflict_clauses_.size();
-  }
 
   uint32_t nVars() {
     return variables_.size() - 1;
@@ -90,6 +85,7 @@ protected:
   LiteralIndexedVector<LitWatchList> watches_; // watches
   LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
   vector<ClauseOfs> conflict_clauses_;
+  uint32_t num_conflict_clauses_compacted_ = 0;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> lit_values_;
@@ -130,18 +126,14 @@ protected:
     return false;
   }
 
-  inline ClauseIndex addClause(const vector<Lit> &literals);
+  inline ClauseIndex addClause(const vector<Lit> &literals, bool irred);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
   // literal stored in literals
-  inline Antecedent addUIPConflictClause(vector<Lit> &literals);
+  inline Antecedent addUIPConflictClause(const vector<Lit> &literals);
 
-  inline bool addBinaryClause(Lit litA, Lit litB);
-
-  /////////////////////////////////////////////////////////
-  // BEGIN access to variables, literals, clauses
-  /////////////////////////////////////////////////////////
+  inline bool add_bin_cl(Lit litA, Lit litB, bool irred);
 
   inline Variable &var(const Lit lit) {
     return variables_[lit.var()];
@@ -202,7 +194,7 @@ private:
 
 };
 
-ClauseIndex Instance::addClause(const vector<Lit> &literals) {
+ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     // assert(!isUnitClause(literals[0].neg()));
@@ -211,11 +203,11 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
   }
 
   if (literals.size() == 2) {
-    addBinaryClause(literals[0], literals[1]);
+    add_bin_cl(literals[0], literals[1], irred);
     return 0;
   }
 
-  for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++) lit_pool_.push_back(lit_Undef);
+  for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++) lit_pool_.push_back(Lit());
   ClauseOfs cl_ofs = lit_pool_.size();
 
   for (auto l : literals) {
@@ -229,10 +221,10 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals) {
   return cl_ofs;
 }
 
-Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
+Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
     Antecedent ante(NOT_A_CLAUSE);
     stats.num_clauses_learned_++;
-    ClauseOfs cl_ofs = addClause(literals);
+    ClauseOfs cl_ofs = addClause(literals, false);
     if (cl_ofs != 0) {
       conflict_clauses_.push_back(cl_ofs);
       getHeaderOf(cl_ofs).set_length(literals.size());
@@ -240,17 +232,17 @@ Antecedent Instance::addUIPConflictClause(vector<Lit> &literals) {
     } else if (literals.size() == 2){
       /* cout << "Binary learnt: " << literals[0] << " " << literals[1] << endl; */
       ante = Antecedent(literals.back());
-      stats.num_binary_conflict_clauses_++;
+      stats.num_binary_red_clauses_++;
     } else if (literals.size() == 1)
       /* cout << "Unit learnt: " << literals[0] << endl; */
-      stats.num_unit_clauses_++;
+      stats.num_unit_red_clauses_++;
     return ante;
 }
 
-bool Instance::addBinaryClause(Lit litA, Lit litB) {
+bool Instance::add_bin_cl(Lit litA, Lit litB, bool irred) {
    if (litWatchList(litA).hasBinaryLinkTo(litB)) return false;
-   litWatchList(litA).addBinLinkTo(litB);
-   litWatchList(litB).addBinLinkTo(litA);
+   litWatchList(litA).addBinLinkTo(litB, irred);
+   litWatchList(litB).addBinLinkTo(litA, irred);
    increaseActivity(litA);
    increaseActivity(litB);
    return true;

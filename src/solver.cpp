@@ -27,7 +27,7 @@ void Solver::simplePreProcess()
   bool succeeded = propagate(0);
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(nVars() + 1, 0);
-  stats.num_unit_clauses_ = unit_clauses_.size();
+  stats.num_unit_irred_clauses_ = unit_clauses_.size();
   irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
 }
@@ -39,17 +39,46 @@ void Solver::set_indep_support(const set<uint32_t> &indeps)
 
 void Solver::end_irred_cls()
 {
-  stats.num_unit_clauses_ = unit_clauses_.size();
-  irred_lit_pool_size_ = lit_pool_.size();
+  release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
   stats.next_restart = config_.first_restart;
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
   if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
   init_decision_stack();
   simplePreProcess();
+  ended_irred_cls = true;
+}
+
+void Solver::add_red_cl(const vector<Lit>& lits) {
+  release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before add_red_cl()");
+  assert(lits.size() <= 2); // TODO longer clauses -- but then have to add activity
+  addUIPConflictClause(lits);
+}
+
+void Solver::get_unit_cls(vector<Lit>& units) const
+{
+  assert(units.empty());
+  units = unit_clauses_;
+}
+
+void Solver::get_bin_red_cls(vector<Lit>& bins) const
+{
+  for(size_t i = 2; i < watches_.size(); i++) {
+    Lit l(i/2, i%2);
+    const auto ws = watches_[l];
+    for(auto i2 = ws.last_irred_bin; i2 < ws.binary_links_.size(); i2++) {
+      const auto l2 = ws.binary_links_[i2];
+      if (l2 == SENTINEL_LIT) continue;
+      if (l2 > l) continue; //don't add it twice
+      bins.push_back(l);
+      bins.push_back(ws.binary_links_[i2]);
+      bins.push_back(SENTINEL_LIT);
+    }
+  }
 }
 
 mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
 {
+  release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   time_start = cpuTime();
 
   if (config_.verb) {
@@ -67,9 +96,9 @@ mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
   comp_manager_.initialize(watches_, lit_pool_);
 
   const auto exit_state = countSAT();
-  stats.num_long_conflict_clauses_ = num_conflict_clauses();
+  stats.num_long_red_clauses_ = num_conflict_clauses();
   comp_manager_.gatherStatistics();
-  if (config_.verb) stats.printShort(&comp_manager_.get_cache());
+  if (config_.verb) stats.printShort(this, &comp_manager_.get_cache());
   if (exit_state == RESTART) {
     largest_cube_ret = largest_cube;
     return largest_cube_val;
@@ -631,7 +660,7 @@ void Solver::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector
     if (hasAntecedent(lit)) {
       resolve_out = true;
       if (getAntecedent(lit).isAClause()) {
-        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != lit_Undef; it++) {
+        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
           if (!seen[it->var()]) {
             resolve_out = false;
             break;
@@ -717,7 +746,7 @@ void Solver::recordLastUIPCauses() {
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
-           *it != lit_Undef; it++) {
+           *it != SENTINEL_LIT; it++) {
         if (tmp_seen[it->var()] || (var(*it).decision_level == 0) || existsUnitClauseOf(it->var())) {
           continue;
         }
@@ -801,7 +830,7 @@ void Solver::recordAllUIPCauses() {
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
-           *it != lit_Undef; it++) {
+           *it != SENTINEL_LIT; it++) {
         if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
               existsUnitClauseOf(it->var())) {
           continue;
@@ -845,7 +874,7 @@ void Solver::printOnlineStats() {
   if (config_.verb >= 2) {
     cout << "conflict clauses (all / bin / unit) \t";
     cout << num_conflict_clauses();
-    cout << "/" << stats.num_binary_conflict_clauses_ << "/"
+    cout << "/" << stats.num_binary_red_clauses_ << "/"
          << unit_clauses_.size() << endl;
     cout << "failed literals found by implicit BCP \t "
          << stats.num_failed_literals_detected_ << endl;

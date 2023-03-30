@@ -21,6 +21,7 @@ using std::cout;
 using std::endl;
 
 class Instance;
+class Solver;
 class ComponentCache;
 
 class DataAndStatistics {
@@ -28,16 +29,16 @@ public:
   DataAndStatistics (const Instance* _inst) { inst = _inst; }
   uint64_t maximum_cache_size_bytes_ = 0;
 
-  uint64_t num_original_clauses_ = 0;
-  uint64_t num_long_clauses_ = 0;
-  uint64_t num_binary_clauses_ = 0;
+  uint64_t num_unit_irred_clauses_ = 0;
+  uint64_t num_long_irred_clauses_ = 0;
+  uint64_t num_binary_irred_clauses_ = 0;
 
-  uint64_t num_long_conflict_clauses_ = 0;
-  uint64_t num_binary_conflict_clauses_ = 0;
+  uint64_t num_unit_red_clauses_ = 0;
+  uint64_t num_long_red_clauses_ = 0;
+  uint64_t num_binary_red_clauses_ = 0;
 
   uint64_t times_conflict_clauses_cleaned_ = 0;
 
-  uint64_t num_unit_clauses_ = 0;
   /// number of all decisions made
   uint64_t num_decisions_ = 0;
   /// number of all implications derived
@@ -143,11 +144,8 @@ public:
       if(num_failed_lit_tests_ == 0) return 0.0;
       return (num_failed_lit_tests_ - num_failed_literals_detected_) / (double) num_failed_lit_tests_;
   }
-  uint64_t num_clauses() const {
-    return num_long_clauses_ + num_binary_clauses_ + num_unit_clauses_;
-  }
-  uint64_t num_conflict_clauses() const {
-    return num_long_conflict_clauses_ + num_binary_conflict_clauses_;
+  uint64_t num_irred_clauses() const {
+    return num_long_irred_clauses_ + num_binary_irred_clauses_ + num_unit_irred_clauses_;
   }
 
   uint64_t clause_deletion_interval() const {
@@ -155,23 +153,23 @@ public:
   }
 
   void incorporateConflictClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 1) num_unit_clauses_++;
-    else if (clause.size() == 2) num_binary_conflict_clauses_++;
-    num_long_conflict_clauses_++;
+    if (clause.size() == 1) num_unit_red_clauses_++;
+    else if (clause.size() == 2) num_binary_red_clauses_++;
   }
 
-  void incorporateClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 1) num_unit_clauses_++;
-    else if (clause.size() == 2) num_binary_clauses_++;
-    else num_long_clauses_++;
+  void incorporateIrredClauseData(const vector<Lit> &clause) {
+    if (clause.size() == 1) num_unit_irred_clauses_++;
+    else if (clause.size() == 2) num_binary_irred_clauses_++;
+    else num_long_irred_clauses_++;
   }
 
-  void printShort(const ComponentCache* cache_) const;
+  void printShort(const Solver* solver, const ComponentCache* cache_) const;
   void printShortFormulaInfo() const {
-    cout << "c cls (all/long/binary/unit):    "
-      << num_clauses() << "/" << num_long_clauses_
-      << "/" << num_binary_clauses_ << "/" << num_unit_clauses_ << endl;
+    cout << "c irred cls (all/long/bin/unit): "
+      << num_irred_clauses() << "/" << num_long_irred_clauses_
+      << "/" << num_binary_irred_clauses_ << "/" << num_unit_irred_clauses_ << endl;
   }
+
   uint32_t getNumDecisions() const { return num_decisions_; }
   double avgCachedSize() const {
     if (num_cache_hits_ == 0) return 0.0;

@@ -36,8 +36,8 @@ public:
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
-  void get_activities(vector<float>& acts, vector<uint8_t>& polars) const;
-  void set_activities(const vector<float>& act, const vector<uint8_t>& polars);
+  void get_activities(vector<double>& acts, vector<uint8_t>& polars, double& ret_act_inc) const;
+  void set_activities(const vector<double>& act, const vector<uint8_t>& polars, double act_inc);
   const DataAndStatistics& get_stats() const;
   void shuffle_activities(MTRand& mtrand2);
   void end_irred_cls();
@@ -97,10 +97,9 @@ private:
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
 
-  float scoreOf(VariableIndex v)
+  double scoreOf(VariableIndex v)
   {
-    return litWatchList(Lit(v, true)).activity_score_ +
-      litWatchList(Lit(v, false)).activity_score_;
+    return variables_[v].activity;
   }
 
   bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE))

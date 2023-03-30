@@ -66,8 +66,8 @@ int do_pcc = 1;
 int do_arjun = 1;
 int hashrange = 1;
 double delta = 0.05;
-uint32_t first_restart_start = 40;
-uint32_t first_restart;
+uint64_t first_restart_start = 40;
+uint64_t first_restart;
 CMSat::SATSolver* sat_solver;
 uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
@@ -428,9 +428,9 @@ int main(int argc, char *argv[])
   parse_file(fname, sat_solver);
   mpz_class count = 0;
 
-  vector<float> act;
+  vector<double> act;
   vector<uint8_t> polars;
-  uint64_t num_conficts_last = 0;
+  double act_inc;
   uint32_t num_cubes = 0;
   vector<Lit> units;
   vector<Lit> bins;
@@ -449,22 +449,21 @@ int main(int argc, char *argv[])
     solver.set_target_polar(model);
     transfer_bins(solver, bins);
     vector<Lit> largest_cube;
-    if (!act.empty()) solver.set_activities(act, polars);
+    if (!act.empty()) solver.set_activities(act, polars, act_inc);
     mpz_class this_count = solver.solve(largest_cube);
-    solver.get_activities(act, polars);
+    solver.get_activities(act, polars, act_inc);
     units.clear();
     solver.get_unit_cls(units);
     for(const auto& l: units) sat_solver->add_clause(ganak_to_cms_cl(l));
     cout << "Transferred " << units.size() << " units -- out of vars: " << sat_solver->nVars() << endl;
     bins.clear();
     solver.get_bin_red_cls(bins);
-    num_conficts_last = solver.get_stats().num_conflicts_;
     count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
     cout << "c cnt for this cube: " << std::setw(15) << std::left << this_count
       << " cube sz: " << std::setw(6) << cms_cl.size()
+      << " cube num: " << std::setw(3) << num_cubes
       << " cnt so far: " << std::setw(15) << count
-      << " cube no: " << std::setw(4) << num_cubes
       << " T: " << std::setprecision(2) << std::fixed << (cpuTime() - call_time)
       << endl;
     cout << "c ---> cube: ";
@@ -481,7 +480,7 @@ int main(int argc, char *argv[])
     sat_solver->add_clause(cms_cl);
     num_cubes++;
     first_restart*=2;
-    if (first_restart > 20*first_restart_start) first_restart = first_restart_start;
+    if (first_restart > 50*first_restart_start) first_restart = first_restart_start;
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - myTime) << endl;

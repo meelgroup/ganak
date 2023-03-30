@@ -46,10 +46,6 @@ public:
   void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool);
   const ComponentCache& get_cache() const { return cache_; }
 
-  uint32_t scoreOf(VariableIndex v)
-  {
-    return ana_.scoreOf(v);
-  }
 
   uint64_t get_num_cache_entries_used() const
   {

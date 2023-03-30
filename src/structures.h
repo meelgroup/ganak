@@ -183,6 +183,9 @@ public:
   bool operator==(const Antecedent& other) const {
     return val_ == other.val_;
   }
+  bool operator!=(const Antecedent& other) const {
+    return val_ != other.val_;
+  }
 };
 
 

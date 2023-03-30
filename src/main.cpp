@@ -358,9 +358,11 @@ int main(int argc, char *argv[])
   parse_with_cms(fname);
   mpz_class count = 0;
 
-  vector<float> act;
+  vector<double> act;
   vector<uint8_t> polars;
   uint64_t num_conficts_last = 0;
+  double act_inc;
+  uint32_t num_cubes = 0;
   while (sat_solver.okay()) {
     double call_time = cpuTime();
     Solver solver;
@@ -372,18 +374,19 @@ int main(int argc, char *argv[])
     if (!take_solution(model)) break;
     solver.set_target_polar(model);
     vector<Lit> largest_cube;
-    if (!act.empty()) solver.set_activities(act, polars);
+    if (!act.empty()) solver.set_activities(act, polars, act_inc);
     if (num_conficts_last == 0) {
       solver.shuffle_activities();
       cout << "SHUFFLE!!" << endl;
     }
     mpz_class this_count = solver.solve(largest_cube);
-    solver.get_activities(act, polars);
+    solver.get_activities(act, polars, act_inc);
     num_conficts_last = solver.get_stats().num_conflicts_;
     count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
     cout << "c cnt for this cube: " << std::setw(15) << std::left << this_count
       << " cube sz: " << std::setw(6) << cms_cl.size()
+      << " cube num: " << std::setw(3) << num_cubes
       << " cnt so far: " << std::setw(15) << count
       << " T: " << std::setprecision(2) << std::fixed << (cpuTime() - call_time)
       << endl;
@@ -399,6 +402,7 @@ int main(int argc, char *argv[])
       assert(check_count == this_count);
     }
     sat_solver.add_clause(cms_cl);
+    num_cubes++;
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - myTime) << endl;

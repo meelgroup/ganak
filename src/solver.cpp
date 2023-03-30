@@ -153,28 +153,12 @@ bool Solver::get_polarity(const uint32_t v)
   bool polarity;
   if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
   else {
-    // TODO MATE: this whole thing is a huge mess as far as I'm concerned
-    polarity = litWatchList(Lit(v, true)).activity_score_ >
-      litWatchList(Lit(v, false)).activity_score_;
-    if (litWatchList(Lit(v, true)).activity_score_ >
-          2 * litWatchList(Lit(v, false)).activity_score_) {
-      polarity = true;
-    } else if (litWatchList(Lit(v, false)).activity_score_ >
-                2 * litWatchList(Lit(v, true)).activity_score_) {
+    if (var(Lit(v, false)).set_once) {
+      polarity = var(Lit(v, false)).last_polarity;
+    } else {
       polarity = false;
-    } else if (var(Lit(v, false)).set_once) {
-      // TODO MATE this sounds insane, right? Random polarities??
-      uint32_t random = mtrand.randInt(1) ;
-      switch (random) {
-        case 0:
-          polarity = litWatchList(Lit(v, true)).activity_score_ >
-            litWatchList(Lit(v, false)).activity_score_;
-          break;
-        case 1:
-          // cached polar
-          polarity = var(Lit(v, false)).last_polarity;
-          break;
-      }
+      /* polarity = litWatchList(Lit(v, true)).activity_score_ > */
+      /*   litWatchList(Lit(v, false)).activity_score_; */
     }
   }
   return polarity;
@@ -194,7 +178,7 @@ void Solver::decideLiteral() {
   // Find variable to branch on
   auto it = comp_manager_.getSuperComponentOf(decision_stack_.top()).varsBegin();
   uint32_t max_score_var = *it;
-  float max_score = scoreOf(*(it));
+  double max_score = scoreOf(*(it));
 
   // Find one variable that's OK to use
   while (*it != varsSENTINEL && indep_support_.find(*it) == indep_support_.end()) {
@@ -209,7 +193,7 @@ void Solver::decideLiteral() {
   while (*it != varsSENTINEL) {
     //TODO MATE this is expensive I think
     if (indep_support_.find(*it) != indep_support_.end()) {
-      const float score = scoreOf(*it);
+      const double score = scoreOf(*it);
       if (score > max_score) {
         max_score = score;
         max_score_var = *it;
@@ -411,6 +395,7 @@ retStateT Solver::resolveConflict() {
   assert(uip_clauses_.size() == 1);
   if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
   decision_stack_.top().mark_branch_unsat();
+  act_inc *= 1.0/0.95;
 
   if (decision_stack_.top().is_right_branch()) {
     // Backtracking since finished with this AND the other branch.
@@ -510,31 +495,33 @@ bool Solver::propagate(const uint32_t start_at_trail_ofs) {
   return true;
 }
 
-void Solver::get_activities(vector<float>& acts, vector<uint8_t>& polars) const
+void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars,
+    double& ret_act_inc) const
 {
   acts.clear();
-  for(const auto& w: watches_) {
-    acts.push_back(w.activity_score_);
+  for(const auto& v: variables_) {
+    acts.push_back(v.activity);
   }
   polars.clear();
   for(const auto& v: variables_) {
     polars.push_back(v.last_polarity);
   }
+  ret_act_inc = act_inc;
 }
 
 void Solver::shuffle_activities()
 {
-  for(auto& w: watches_) {
-    w.activity_score_ += mtrand.randDblExc(1000);
+  for(auto& v: variables_) {
+    v.activity += mtrand.randDblExc(1000);
   }
 }
 
-void Solver::set_activities(const vector<float>& act, const vector<uint8_t>& polars)
+void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& polars,
+    double ret_act_inc)
 {
-  assert(act.size() == 2*nVars());
   size_t i = 0;
-  for(auto& w: watches_) {
-    w.activity_score_ = act[i];
+  for(auto& v: variables_) {
+    v.activity = act[i];
     i++;
   }
 
@@ -544,6 +531,8 @@ void Solver::set_activities(const vector<float>& act, const vector<uint8_t>& pol
     v.last_polarity = polars[i];
     i++;
   }
+
+  act_inc = ret_act_inc;
 }
 
 const DataAndStatistics& Solver::get_stats() const
@@ -579,14 +568,14 @@ bool Solver::failedLitProbeInternal() {
     }
 
     // Figure out which literals to probe
-    vector<float> scores;
+    vector<double> scores;
     scores.clear();
     for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
-      scores.push_back(litWatchList(*jt).activity_score_);
+      scores.push_back(variables_[jt->var()].activity);
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 10 + num_curr_lits / 20;
-    float threshold = 0.0;
+    double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
     }
@@ -594,7 +583,7 @@ bool Solver::failedLitProbeInternal() {
 
     // Do the probing
     for (auto lit : test_lits) {
-      if (isUnknown(lit) && threshold <= litWatchList(lit).activity_score_) {
+      if (isUnknown(lit) && threshold <= variables_[lit.var()].activity) {
         uint32_t sz = trail.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause
@@ -702,7 +691,7 @@ void Solver::recordLastUIPCauses() {
     }
     if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
-    litWatchList(l).increaseActivity();
+    increaseActivity(l);
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -745,8 +734,8 @@ void Solver::recordLastUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
-      litWatchList(alit).increaseActivity();
-      litWatchList(curr_lit).increaseActivity();
+      increaseActivity(alit);
+      increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {
@@ -786,7 +775,7 @@ void Solver::recordAllUIPCauses() {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
     if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
-    litWatchList(l).increaseActivity();
+    increaseActivity(l);
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -830,8 +819,8 @@ void Solver::recordAllUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
-      litWatchList(alit).increaseActivity();
-      litWatchList(curr_lit).increaseActivity();
+      increaseActivity(alit);
+      increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {

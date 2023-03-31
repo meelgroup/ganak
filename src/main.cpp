@@ -330,7 +330,7 @@ void create_from_sat_solver(Solver& solver, SATSolver& ss) {
     }
   }
   ss.end_getting_small_clauses();
-  cout << "Num bins from CMS: " << num_bins << endl;
+  cout << "c Num bins from CMS: " << num_bins << endl;
 }
 
 mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
@@ -390,7 +390,7 @@ void transfer_bins(Solver& solver, const vector<Lit>& bins)
 
 int main(int argc, char *argv[])
 {
-  double myTime = cpuTime();
+  const double start_time = cpuTime();
   #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |
                  FE_DIVBYZERO |
@@ -436,6 +436,7 @@ int main(int argc, char *argv[])
   vector<Lit> bins;
   first_restart = first_restart_start;
   // TODO: add hyper-binary BIN clauses to GANAK
+  // TODO: minimize cube
   while (sat_solver->okay()) {
     double call_time = cpuTime();
     Solver solver;
@@ -469,6 +470,7 @@ int main(int argc, char *argv[])
     cout << "c ---> cube: ";
     for(const auto& l: cms_cl) cout << l << " ";
     cout << "0" << endl;
+    cout << "c Total time until now: " << std::fixed << (cpuTime() - start_time) << endl;
 
     if (do_check) {
       auto check_count = check_count_independently_no_restart(cms_cl);
@@ -480,10 +482,10 @@ int main(int argc, char *argv[])
     sat_solver->add_clause(cms_cl);
     num_cubes++;
     first_restart*=2;
-    if (first_restart > 50*first_restart_start) first_restart = first_restart_start;
+    if (first_restart > 20*first_restart_start) first_restart = first_restart_start;
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
-  cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - myTime) << endl;
+  cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
   if (indep_support_given) cout << "s pmc ";
   else cout << "s mc ";
   cout << count << endl;

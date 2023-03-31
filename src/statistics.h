@@ -96,7 +96,6 @@ public:
 
   void incorporate_cache_store(CacheableComponent &ccomp){
     sum_bytes_cached_comps_ += ccomp.SizeInBytes();
-
     sum_size_cached_comps_ += ccomp.nVars();
     num_cached_comps_++;
     total_num_cached_comps_++;

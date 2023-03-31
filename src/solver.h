@@ -30,7 +30,12 @@ enum retStateT
 class Solver : public Instance
 {
 public:
-  Solver() { mtrand.seed((uint32_t)0U);}
+  Solver(bool do_pcc, uint32_t seed) {
+    mtrand.seed(seed);
+    config_.do_pcc = do_pcc;
+    config_.randomseed = seed;
+    if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
+  }
   mpz_class solve(vector<Lit>& largest_cube_ret);
   SolverConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }

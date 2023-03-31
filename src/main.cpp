@@ -41,7 +41,6 @@ THE SOFTWARE.
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 using CMSat::SATSolver;
-ArjunNS::Arjun* arjun = NULL;
 
 #if defined(__GNUC__) && defined(__linux__)
 #include <fenv.h>
@@ -259,8 +258,6 @@ void set_up_solver(Solver& solver) {
   solver.config().do_failed_lit_probe = do_implicit_bcp;
   solver.config().do_restart = do_restart;
   solver.config().verb = verb;
-  solver.config().do_pcc = do_pcc;
-  solver.config().randomseed = seed;
   solver.config().hashrange = hashrange;
   solver.config().delta = delta;
   solver.config().first_restart = first_restart;
@@ -355,7 +352,7 @@ mpz_class check_count_independently_no_restart(const vector<CMSat::Lit>& cube) {
     return 0;
   }
 
-  Solver solver;
+  Solver solver(do_pcc, mtrand.randInt());
   set_up_solver(solver);
   solver.config().do_restart = false;
 
@@ -388,6 +385,25 @@ void transfer_bins(Solver& solver, const vector<Lit>& bins)
   cout << "c Transferred " << bins.size()/3 << " bins" << endl;
 }
 
+vector<uint32_t> get_indeps_from_arjun(CMSat::SATSolver* ss)
+{
+  ArjunNS::Arjun arjun;
+  arjun.new_vars(ss->nVars());
+  ss->start_getting_small_clauses(
+      std::numeric_limits<uint32_t>::max(),
+      std::numeric_limits<uint32_t>::max(),
+      false);
+  vector<CMSat::Lit> cl;
+  while(ss->get_next_small_clause(cl)) {
+    arjun.add_clause(cl);
+  }
+  ss->end_getting_small_clauses();
+  vector<uint32_t> vars;
+  for(uint32_t i = 0; i < ss->nVars(); i++) vars.push_back(i);
+  arjun.set_starting_sampling_set(vars);
+  return arjun.get_indep_set();
+}
+
 int main(int argc, char *argv[])
 {
   const double start_time = cpuTime();
@@ -411,6 +427,7 @@ int main(int argc, char *argv[])
     cout << "c called with: " << command_line << endl;
   }
   sat_solver = new SATSolver;
+  sat_solver->set_renumber(false);
   parse_supported_options(argc, argv);
   string fname;
   if (vm.count("input") != 0) {
@@ -439,7 +456,7 @@ int main(int argc, char *argv[])
   // TODO: minimize cube
   while (sat_solver->okay()) {
     double call_time = cpuTime();
-    Solver solver;
+    Solver solver(do_pcc, mtrand.randInt());
     set_up_solver(solver);
     create_from_sat_solver(solver, *sat_solver);
     if (num_cubes == 0) solver.init_activity_scores();
@@ -480,6 +497,7 @@ int main(int argc, char *argv[])
       assert(check_count == this_count);
     }
     sat_solver->add_clause(cms_cl);
+    sat_solver->set_verbosity(0);
     num_cubes++;
     first_restart*=2;
     if (first_restart > 20*first_restart_start) first_restart = first_restart_start;

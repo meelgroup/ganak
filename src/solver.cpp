@@ -55,7 +55,6 @@ void Solver::end_irred_cls()
   release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
   stats.next_restart = config_.first_restart;
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
-  if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
   init_decision_stack();
   simplePreProcess();
   ended_irred_cls = true;
@@ -265,7 +264,9 @@ void Solver::computeLargestCube()
 
   // add decisions, components, and counts
   largest_cube_val = decision_stack_.top().getTotalModelCount();
-  VERBOSE_DEBUG_DO(bool error = false;);
+#ifdef VERBOSE_DEBUG
+  bool error = false;
+#endif
   for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = trail[dec.trail_ofs()];
@@ -339,12 +340,15 @@ void Solver::computeLargestCube()
 }
 
 bool Solver::restart_if_needed() {
-  if (config_.do_restart && stats.num_conflicts_ > stats.next_restart &&
+  //  stats.cache_miss_rate()>0.30 &&
+  if (config_.do_restart && stats.total_num_cached_comps_ > stats.next_restart &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
-      set<uint32_t> vars;
-      for(const auto& v: largest_cube) vars.insert(v.var());
-      comp_manager_.delete_comps_with_vars(vars);
+
+      // experimental for deleting polluted cubes and re-using GANAK
+      /* set<uint32_t> vars; */
+      /* for(const auto& v: largest_cube) vars.insert(v.var()); */
+      /* comp_manager_.delete_comps_with_vars(vars); */
     return true;
   }
   return false;

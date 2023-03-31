@@ -14,6 +14,36 @@
 
 using std::cout;
 
+struct BitStufferReader {
+  BitStufferReader(uint32_t* _data) {data = _data;}
+  uint32_t read_bits(uint32_t bits) {
+    assert(bits <= 32);
+    uint32_t ret = 0;
+
+    uint32_t byte = data[at_byte];
+    byte >>= at_bit % 32;
+    ret += byte;
+    uint32_t bits_read = 32-(at_bit)%32;
+    // ret has 32-(at_bit%32) bits
+    if (bits_read > bits) {
+      // cut to BITS
+      ret <<= (32-bits);
+      ret >>= (32-bits);
+      at_bit += bits;
+      return ret;
+    }
+    at_bit += bits_read;
+    assert(at_bit % 32 == 0);
+    at_byte++;
+    ret += read_bits(bits-bits_read) << bits_read;
+    return ret;
+  }
+
+  uint32_t* data;
+  uint32_t at_bit = 0;
+  uint32_t at_byte = 0;
+};
+
 template <class T>
  class BitStuffer {
  public:
@@ -68,7 +98,7 @@ public:
     old_num_vars = _old_num_vars;
     delete[] data_;
     data_ = nullptr;
-    hacked = true;
+    is_pcc = true;
   }
 #endif
 
@@ -211,7 +241,7 @@ protected:
   uint32_t num_hash_elems = 0;
   uint32_t old_size = 0;
   uint32_t old_num_vars = 0;
-  bool hacked = false;
+  bool is_pcc = false;
 
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1

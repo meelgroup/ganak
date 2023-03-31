@@ -342,6 +342,9 @@ bool Solver::restart_if_needed() {
   if (config_.do_restart && stats.num_conflicts_ > stats.next_restart &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
+      set<uint32_t> vars;
+      for(const auto& v: largest_cube) vars.insert(v.var());
+      comp_manager_.delete_comps_with_vars(vars);
     return true;
   }
   return false;

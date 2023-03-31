@@ -30,6 +30,7 @@ public:
   }
 
   void init(Component &super_comp, vector <void*>  &randomseedforCLHASH);
+  void delete_comps_with_vars(const set<uint32_t>& vars);
   uint64_t get_num_entries_used() const
   {
     uint64_t ret = 0;

@@ -8,6 +8,9 @@
 #ifndef DIFFERENCE_PACKED_COMPONENT_H_
 #define DIFFERENCE_PACKED_COMPONENT_H_
 
+#include <set>
+#include <iostream>
+
 #include "base_packed_comp.h"
 #include "comp.h"
 #ifdef DOPCC
@@ -16,6 +19,11 @@
 #include "../clhash/minim.h"
 #endif
 #include <math.h>
+#include <structures.h>
+
+using std::set;
+using std::cout;
+using std::endl;
 
 class DifferencePackedComponent: public BasePackedComponent {
 public:
@@ -23,20 +31,25 @@ public:
   DifferencePackedComponent() { }
   inline DifferencePackedComponent(Component &rComp);
   inline DifferencePackedComponent(vector<void *> & randomseedforCLHASH, Component &rComp);
+  inline bool contains_any_var(const std::set<uint32_t>& vars);
+
+  bool pcc() const {
+    return is_pcc;
+  }
 
   uint32_t nVars() const{
-    if (hacked) return old_num_vars;
+    if (is_pcc) return old_num_vars;
     uint32_t *p = (uint32_t *) data_;
     return (*p >> bits_of_data_size()) & variable_mask();
   }
 
   uint32_t data_size() const {
-    if (hacked) return old_size;
+    if (is_pcc) return old_size;
     return *data_ & _data_size_mask;
   }
 
   uint32_t raw_data_byte_size() const {
-    if (hacked) return num_hash_elems* sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    if (is_pcc) return num_hash_elems* sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     else return data_size()* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
   }
 
@@ -44,7 +57,7 @@ public:
     // for the supposed 16byte alignment of malloc
   uint32_t sys_overhead_raw_data_byte_size() const {
     uint32_t ds;
-    if (hacked) ds = num_hash_elems* sizeof(uint64_t);
+    if (is_pcc) ds = num_hash_elems* sizeof(uint64_t);
 
     ds = data_size()* sizeof(uint32_t);
     uint32_t ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
@@ -53,7 +66,7 @@ public:
   }
 
   bool equals(const DifferencePackedComponent &comp) const {
-    assert(!hacked);
+    assert(!is_pcc);
     if(hashkey_ != comp.hashkey()) return false;
     uint32_t* p = data_;
     uint32_t* r = comp.data_;
@@ -76,6 +89,30 @@ public:
   }
 #endif
 };
+
+bool DifferencePackedComponent::contains_any_var(const std::set<uint32_t>& vars) {
+  BitStufferReader bs(data_);
+
+  /*uint32_t data_size =*/bs.read_bits(bits_of_data_size());
+  /* cout << "data_size: " << data_size << endl; */
+  uint32_t nvars = bs.read_bits(bits_per_variable());
+  /* cout << "nvars: " << nvars << endl; */
+  uint32_t bits_per_var_diff = bs.read_bits(5);
+  /* cout << "bits_per_var_diff: " << bits_per_var_diff << endl; */
+  uint32_t var = bs.read_bits(bits_per_variable());
+  /* cout << "var: " << var << endl; */
+  if (vars.count(var)) return true;
+
+  // no variables in component??? whatever.
+  if (!bits_per_var_diff) return false;
+
+  for (uint32_t i = 1; i < nvars; i++) {
+    var += bs.read_bits(bits_per_var_diff) + 1;
+    /* cout << "var: " << var << endl; */
+    if (vars.count(var)) return true;
+  }
+  return false;
+}
 
 DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   uint32_t max_var_diff = 0;
@@ -125,11 +162,19 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   bs.stuff(data_size, bits_of_data_size());
   bs.stuff(rComp.nVars(), bits_per_variable());
   bs.stuff(bits_per_var_diff, 5);
-  bs.stuff(*rComp.varsBegin(), bits_per_variable());
+  bs.stuff(*rComp.varsBegin(), bits_per_variable()); // 1st var in component
+  /* cout << "ORIG data_size: " << data_size << endl; */
+  /* cout << "ORIG nvars: " << rComp.nVars() << endl; */
+  /* cout << "ORIG bits_per_var_diff: " << bits_per_var_diff << endl; */
+  /* cout << "ORIG var: " << *rComp.varsBegin() << endl; */
 
+
+  // all remaining vars in component
   if(bits_per_var_diff)
-    for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
+    for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
       bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
+      /* cout << "ORIG var: " << *it << endl; */
+    }
 
   if (*rComp.clsBegin()) {
     bs.stuff(bits_per_clause_diff, 5);

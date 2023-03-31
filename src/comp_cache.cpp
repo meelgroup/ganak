@@ -120,12 +120,32 @@ void ComponentCache::test_descendantstree_consistency() {
 		}
 }
 
+void ComponentCache::delete_comps_with_vars(const set<uint32_t>& vars) {
+	size_t num_deleted = 0;
+	size_t orig_num = entry_base_.size();
+	// note we start at index 2,
+	// since index 1 is the whole formula,
+	// should always stay here!
+	for (uint32_t id = 2; id < entry_base_.size(); id++)
+		if (entry_base_[id] != nullptr && entry_base_[id]->isDeletable()) {
+		  DifferencePackedComponent* d = entry_base_[id];
+			assert(!d->pcc());
+		  if (d->contains_any_var(vars)) {
+		    removeFromDescendantsTree(id);
+		    eraseEntry(id);
+				num_deleted++;
+			}
+		}
+	cout << "c Num deleted: " << num_deleted << " of: " << orig_num
+		<< " percent: " << (double)num_deleted/(double)orig_num * 100.0 << "%" << endl;
+}
+
 bool ComponentCache::deleteEntries() {
   assert(stats.cache_full());
 	vector<double> scores;
-	cout << "Entries: " << entry_base_.size() << endl;
-	cout << "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL) << endl;
-	cout << "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL) << endl;
+	cout << "c Deleting entires. Num entries: " << entry_base_.size() << endl;
+	cout << "c cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL) << endl;
+	cout << "c maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL) << endl;
 	for (auto it = entry_base_.begin() + 1; it != entry_base_.end(); it++)
 		if (*it != nullptr && (*it)->isDeletable()) {
 			scores.push_back((double) (*it)->creation_time());
@@ -147,7 +167,7 @@ bool ComponentCache::deleteEntries() {
 		      (double) entry_base_[id]->creation_time() <= cutoff) {
 				removeFromDescendantsTree(id);
 				eraseEntry(id);
-        }
+		}
 	// then go through the Hash Table and erase all Links to empty entries
 
 

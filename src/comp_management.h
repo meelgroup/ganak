@@ -44,6 +44,9 @@ public:
   }
 
   void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool);
+  void delete_comps_with_vars(const set<uint32_t>& vars) {
+    cache_.delete_comps_with_vars(vars);
+  }
   const ComponentCache& get_cache() const { return cache_; }
 
 
@@ -184,6 +187,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
+        packed_comp->contains_any_var(std::set<uint32_t>());
       }
 
       // Check if new comp is already in cache

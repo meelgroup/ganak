@@ -70,13 +70,6 @@ public:
   // the same number, summing over all comps ever stored
   uint64_t overall_bytes_comps_stored_ = 0;
 
-  // the above numbers, but without any overhead,
-  // counting only the pure data size of the comps - without model counts
-  uint64_t sum_bytes_pure_cached_comp_data_ = 0;
-  // the same number, summing over all comps ever stored
-  uint64_t overall_bytes_pure_stored_comp_data_ = 0;
-
-
   uint64_t sys_overhead_sum_bytes_cached_comps_ = 0;
     // the same number, summing over all comps ever stored
   uint64_t sys_overhead_overall_bytes_comps_stored_ = 0;
@@ -101,13 +94,9 @@ public:
              + overall_bytes_comps_stored_;
     }
 
-  void incorporate_cache_store(CacheableComponent &ccomp, bool pccflag){
-    if (pccflag){
-      sum_bytes_cached_comps_ += ccomp.SizeInBytes_CLHASH();
-    }
-    else{
-      sum_bytes_cached_comps_ += ccomp.SizeInBytes();
-    }
+  void incorporate_cache_store(CacheableComponent &ccomp){
+    sum_bytes_cached_comps_ += ccomp.SizeInBytes();
+
     sum_size_cached_comps_ += ccomp.nVars();
     num_cached_comps_++;
     total_num_cached_comps_++;
@@ -115,20 +104,12 @@ public:
     overall_num_cache_stores_ += ccomp.nVars();
     sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes();
     sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes();
-    sum_bytes_pure_cached_comp_data_ += ccomp.data_only_byte_size();
-    overall_bytes_pure_stored_comp_data_ += ccomp.data_only_byte_size();
   }
 
-  void incorporate_cache_erase(CacheableComponent &ccomp, bool pccflag){
-    if (pccflag){
-      sum_bytes_cached_comps_ -= ccomp.SizeInBytes_CLHASH();
-    }
-    else{
-      sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
-    }
+  void incorporate_cache_erase(CacheableComponent &ccomp){
+    sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
     sum_size_cached_comps_ -= ccomp.nVars();
     num_cached_comps_--;
-    sum_bytes_pure_cached_comp_data_ -= ccomp.data_only_byte_size();
     sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes();
   }
 

@@ -62,17 +62,15 @@ template <class T>
 class BasePackedComponent {
 public:
 
-  void set_hacked(const uint32_t _old_size, const uint32_t _old_num_vars) {
+#ifdef DOPCC
+  void finish_hashing(const uint32_t _old_size, const uint32_t _old_num_vars) {
     old_size = _old_size;
     old_num_vars = _old_num_vars;
     delete[] data_;
     data_ = nullptr;
+    hacked = true;
   }
-
-  bool get_hacked(){
-    if(old_size) return true;
-    return false;
-  }
+#endif
 
   static uint32_t bits_per_variable() {
     return _bits_per_variable;
@@ -210,9 +208,10 @@ protected:
 
   mpz_class model_count_;
   uint32_t creation_time_ = 1;
-  uint32_t hack_ = 0;
+  uint32_t num_hash_elems = 0;
   uint32_t old_size = 0;
   uint32_t old_num_vars = 0;
+  bool hacked = false;
 
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1

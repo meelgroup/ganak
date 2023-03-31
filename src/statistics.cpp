@@ -33,7 +33,7 @@ void DataAndStatistics::printShort(const Solver* solver, const ComponentCache* c
   cout << "c implicit BCP miss rate         "
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%";
   cout << endl;
-  cout << "c MB cache entries               " << cache_->get_num_entries_used() << endl;
+  cout << "c cache entries                  " << cache_->get_num_entries_used() << endl;
   cout << "c MB cache size                  "
     << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "\t" << endl;
   cout << "c MB cache (overall)             "
@@ -43,10 +43,6 @@ void DataAndStatistics::printShort(const Solver* solver, const ComponentCache* c
   cout << "c MB cache (infra / comps)       "
     << std::setprecision(3) << in_MB(cache_infrastructure_bytes_memory_usage_) << "/"
     << std::setprecision(3) << in_MB(sum_bytes_cached_comps_) << endl;
-  cout << "c MB pure comp dat (curr)        "
-    << std::setprecision(3) << in_MB(sum_bytes_pure_cached_comp_data_) << endl;
-  cout << "c MB pure comp dat (ovrall)      "
-    << std::setprecision(3) << in_MB(overall_bytes_pure_stored_comp_data_) << endl;
   cout << "c MB cache w/ sysoverh (curr)    "
     << std::setprecision(3) << in_MB(sys_overhead_sum_bytes_cached_comps_) << endl;
   cout << "c MB cache w/ sysoverh (ovrall)  "

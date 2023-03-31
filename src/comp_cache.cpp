@@ -55,6 +55,7 @@ void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCL
 	if (config_.do_pcc){
 		delete packed_super_comp;
 		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp);
+		packed_super_comp->finish_hashing(packed_super_comp->SizeInBytes(), packed_super_comp->nVars());
 	}
 	my_time_ = 1;
 
@@ -88,8 +89,7 @@ void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCL
 
 	entry_base_.push_back(packed_super_comp);
 
-	stats.incorporate_cache_store(*packed_super_comp
-			, config_.do_pcc && packed_super_comp->get_hacked());
+	stats.incorporate_cache_store(*packed_super_comp);
 
 	super_comp.set_id(1);
 	compute_size_used();
@@ -123,12 +123,16 @@ void ComponentCache::test_descendantstree_consistency() {
 bool ComponentCache::deleteEntries() {
   assert(stats.cache_full());
 	vector<double> scores;
+	cout << "Entries: " << entry_base_.size() << endl;
+	cout << "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL) << endl;
+	cout << "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL) << endl;
 	for (auto it = entry_base_.begin() + 1; it != entry_base_.end(); it++)
 		if (*it != nullptr && (*it)->isDeletable()) {
 			scores.push_back((double) (*it)->creation_time());
 		}
 	if (scores.empty()){
 		cout<< "c Memory out!"<<endl;
+		exit(-1);
 		assert(!scores.empty());
 	}
 	sort(scores.begin(), scores.end());
@@ -156,24 +160,12 @@ bool ComponentCache::deleteEntries() {
 	stats.sum_bytes_cached_comps_ = 0;
 	 stats.sys_overhead_sum_bytes_cached_comps_ =0;
 
-	stats.sum_bytes_pure_cached_comp_data_ = 0;
 
 	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
-			stats.sum_size_cached_comps_ +=
-					entry_base_[id]->nVars();
-			if(config_.do_pcc && entry_base_[id]->get_hacked()){
-				stats.sum_bytes_cached_comps_ +=
-					entry_base_[id]->SizeInBytes_CLHASH();
-			}
-			else{
-				stats.sum_bytes_cached_comps_ +=
-			    entry_base_[id]->SizeInBytes();
-			}
-			stats.sum_bytes_pure_cached_comp_data_ +=
-			    entry_base_[id]->data_only_byte_size();
-			 stats.sys_overhead_sum_bytes_cached_comps_ +=
-			     entry_base_[id]->sys_overhead_SizeInBytes();
+			stats.sum_size_cached_comps_ += entry_base_[id]->nVars();
+			stats.sum_bytes_cached_comps_ += entry_base_[id]->SizeInBytes();
+			stats.sys_overhead_sum_bytes_cached_comps_ += entry_base_[id]->sys_overhead_SizeInBytes();
 		}
 
 	stats.num_cached_comps_ = entry_base_.size();

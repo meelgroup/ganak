@@ -178,8 +178,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       if (config_.do_pcc) {
 #ifdef DOPCC
         packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
+        packed_comp->finish_hashing(packed_comp->SizeInBytes(), packed_comp->nVars());
 #else
-        assert(false);
         exit(-1);
 #endif
       } else {

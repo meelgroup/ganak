@@ -130,7 +130,7 @@ public:
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    stats.incorporate_cache_erase(*entry_base_[id], config_.do_pcc && entry_base_[id]->get_hacked());
+    stats.incorporate_cache_erase(*entry_base_[id]);
     delete entry_base_[id];
     entry_base_[id] = nullptr;
     free_entry_base_slots_.push_back(id);

@@ -25,42 +25,35 @@ public:
   inline DifferencePackedComponent(vector<void *> & randomseedforCLHASH, Component &rComp);
 
   uint32_t nVars() const{
-    if (old_size) return old_num_vars;
+    if (hacked) return old_num_vars;
     uint32_t *p = (uint32_t *) data_;
     return (*p >> bits_of_data_size()) & variable_mask();
   }
 
   uint32_t data_size() const {
-    if(old_size) return old_size;
+    if (hacked) return old_size;
     return *data_ & _data_size_mask;
   }
 
-  uint32_t data_only_byte_size() const {
-    return data_size()* sizeof(uint32_t);
-  }
-
   uint32_t raw_data_byte_size() const {
-    return data_size()* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    if (hacked) return num_hash_elems* sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    else return data_size()* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
   }
 
-  uint32_t raw_data_byte_size_CLHASH() const {
-    return hack_* sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-  }
     // raw data size with the overhead
     // for the supposed 16byte alignment of malloc
   uint32_t sys_overhead_raw_data_byte_size() const {
-    uint32_t ds = 0;
-    if (old_size) ds = hack_* sizeof(uint64_t);
-    else ds = data_size()* sizeof(uint32_t);
+    uint32_t ds;
+    if (hacked) ds = num_hash_elems* sizeof(uint64_t);
+
+    ds = data_size()* sizeof(uint32_t);
     uint32_t ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-//      uint32_t mask = 0xfffffff8;
-//      return (ds & mask) + ((ds & 7)?8:0)
-//            +(ms & mask) + ((ms & 7)?8:0);
     uint32_t mask = 0xfffffff0;
     return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
   }
 
   bool equals(const DifferencePackedComponent &comp) const {
+    assert(!hacked);
     if(hashkey_ != comp.hashkey()) return false;
     uint32_t* p = data_;
     uint32_t* r = comp.data_;
@@ -75,7 +68,7 @@ public:
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
     if(hashkey_ != comp.hashkey()) return false;
     bool match = true;
-    for (uint32_t i=0; i<hack_;i++){
+    for (uint32_t i=0; i<num_hash_elems;i++){
       match = clhash_key[i] == clhashkey_[i];
       if(!match) return false;
     }
@@ -146,7 +139,7 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
         bs.stuff(*jt - *(jt - 1) - 1, bits_per_clause_diff);
   }
 
-  // to check wheter the "END" block of bits_per_clause()
+  // to check whether the "END" block of bits_per_clause()
   // many zeros fits into the current
   //bs.end_check(bits_per_clause());
   // this will tell us if we computed the data_size
@@ -154,7 +147,8 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp) {
   bs.assert_size(data_size);
 }
 
-DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Component &rComp) {
+DifferencePackedComponent::DifferencePackedComponent(vector<void *>& random, Component &rComp) {
+  // first, generate hashkey, and compute max diff for cls and vars
   uint32_t max_var_diff = 0;
   uint32_t hashkey_vars = *rComp.varsBegin();
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
@@ -175,7 +169,6 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
 
   hashkey_ = hashkey_vars + ((uint32_t) hashkey_clauses << 11) + ((uint32_t) hashkey_clauses >> 23);
 
-  //VERIFIED the definition of bits_per_var_diff and bits_per_clause_diff
   uint32_t bits_per_var_diff = log2(max_var_diff) + 1;
   uint32_t bits_per_clause_diff = log2(max_clause_diff) + 1;
 
@@ -222,17 +215,14 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   bs.assert_size(data_size);
 
 #ifdef DOPCC
-  clhashkey_ = new uint64_t[random.capacity()];
-  for(size_t i=0; i<random.capacity();i++){
+  clhashkey_ = new uint64_t[random.size()];
+  for(size_t i=0; i<random.size();i++){
     clhasher h(random[i]);
     clhashkey_[i] = h(data_, data_size);
   }
 #endif
 
-  // WHAT IS THIS
-  //TODO Remove Stop
-  hack_ = random.capacity();
-
+  num_hash_elems = random.size();
 }
 
 #endif /* DIFFERENCE_PACKED_COMPONENT_H_ */

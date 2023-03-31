@@ -41,11 +41,6 @@ public:
         + T_Component::raw_data_byte_size();
   }
 
-  uint32_t SizeInBytes_CLHASH() const {
-    return sizeof(GenericCacheableComponent<T_Component>)
-        + T_Component::raw_data_byte_size_CLHASH();
-  }
-
   // the 48 = 16*3 in overhead stems from the three parts of the comp
   // being dynamically allocated (i.e. the GenericCacheableComponent itself,
   // the data_ and the model_count data

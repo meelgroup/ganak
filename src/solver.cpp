@@ -58,6 +58,9 @@ void Solver::end_irred_cls()
   init_decision_stack();
   simplePreProcess();
   ended_irred_cls = true;
+
+  if (config_.verb) stats.printShortFormulaInfo();
+  comp_manager_.initialize(watches_, lit_pool_);
 }
 
 void Solver::add_red_cl(const vector<Lit>& lits) {
@@ -88,9 +91,11 @@ void Solver::get_bin_red_cls(vector<Lit>& bins) const
   }
 }
 
-mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
+mpz_class Solver::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
+  largest_cube.clear();
+  largest_cube_val = 0;
   time_start = cpuTime();
 
   if (config_.verb) {
@@ -103,9 +108,6 @@ mpz_class Solver::solve(vector<Lit>& largest_cube_ret)
         cout << endl;
       }
   }
-  if (config_.verb) stats.printShortFormulaInfo();
-  last_ccl_deletion_decs_ = last_ccl_cleanup_decs_ = stats.getNumDecisions();
-  comp_manager_.initialize(watches_, lit_pool_);
 
   const auto exit_state = countSAT();
   stats.num_long_red_clauses_ = num_conflict_clauses();
@@ -255,6 +257,11 @@ void Solver::decideLiteral() {
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_.comp_stack_size());
 }
 
+
+void Solver::shuffle_activities(MTRand &mtrand2) {
+  for(auto& v: variables_) v.activity=act_inc*mtrand2.randExc();
+}
+
 void Solver::computeLargestCube()
 {
   assert(config_.do_restart);
@@ -345,10 +352,22 @@ bool Solver::restart_if_needed() {
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
 
-      // experimental for deleting polluted cubes and re-using GANAK
-      /* set<uint32_t> vars; */
-      /* for(const auto& v: largest_cube) vars.insert(v.var()); */
-      /* comp_manager_.delete_comps_with_vars(vars); */
+    cout << "Elems before: " << stats.cached_comp_count() << endl;
+    while (decision_stack_.size() > 1) {
+      if (decision_stack_.top().branch_found_unsat()
+          || !decision_stack_.top().on_path_to_target_) {
+        comp_manager_.removeAllCachePollutionsOf(decision_stack_.top());
+      }
+      reactivate_comps_and_backtrack_trail();
+      decision_stack_.pop_back();
+      stats.total_num_cached_comps_ = 0;
+    }
+    cout << "Elems: " << stats.cached_comp_count() << endl;
+
+    // experimental for deleting polluted cubes and re-using GANAK
+    /* set<uint32_t> vars; */
+    /* for(const auto& v: largest_cube) vars.insert(v.var()); */
+    /* comp_manager_.delete_comps_with_vars(vars); */
     return true;
   }
   return false;
@@ -712,7 +731,6 @@ void Solver::recordLastUIPCauses() {
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
-  tmp_seen.clear();
   tmp_seen.resize(nVars()+1, false);
   tmp_clause.clear();
   assert(toClear.empty());
@@ -725,9 +743,7 @@ void Solver::recordLastUIPCauses() {
   uint32_t lits_at_current_dl = 0;
 
   for (const auto& l: violated_clause) {
-    if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) {
-      continue;
-    }
+    if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
     if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
     increaseActivity(l);
@@ -742,7 +758,6 @@ void Solver::recordLastUIPCauses() {
 
     if (!tmp_seen[curr_lit.var()]) continue;
     tmp_seen[curr_lit.var()] = false;
-    toClear.push_back(curr_lit.var());
 
     if (lits_at_current_dl-- == 1) {
       // perform UIP stuff
@@ -758,9 +773,9 @@ void Solver::recordLastUIPCauses() {
       updateActivities(getAntecedent(curr_lit).asCl(), tmp_seen);
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
-      for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
-           *it != SENTINEL_LIT; it++) {
-        if (tmp_seen[it->var()] || (var(*it).decision_level == 0) || existsUnitClauseOf(it->var())) {
+      for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
+        if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
+            existsUnitClauseOf(it->var())) {
           continue;
         }
         if (var(*it).decision_level < (int)DL) {
@@ -798,7 +813,6 @@ void Solver::recordAllUIPCauses() {
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
-  tmp_seen.clear();
   tmp_seen.resize(nVars()+1, false);
   tmp_clause.clear();
   assert(toClear.empty());

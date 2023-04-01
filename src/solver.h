@@ -36,7 +36,7 @@ public:
     config_.randomseed = seed;
     if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
   }
-  mpz_class solve(vector<Lit>& largest_cube_ret);
+  mpz_class count(vector<Lit>& largest_cube_ret);
   SolverConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);

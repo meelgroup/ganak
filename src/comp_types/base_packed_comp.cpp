@@ -42,7 +42,3 @@ BPCSizes BasePackedComponent::calcPackSize(uint32_t maxVarId, uint32_t maxClId) 
     sz.data_size_mask = (sz.data_size_mask << 1) + 1;
   return sz;
 }
-
-
-
-

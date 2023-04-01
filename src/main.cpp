@@ -313,21 +313,6 @@ void create_from_sat_solver(Solver& solver, SATSolver& ss) {
   }
   ss.end_getting_small_clauses();
   solver.end_irred_cls();
-
-  uint32_t num_bins = 0;
-  ss.start_getting_small_clauses(
-      2,
-      std::numeric_limits<uint32_t>::max(),
-      true);
-  while(ss.get_next_small_clause(cms_cl)) {
-    const auto cl = cms_to_ganak_cl(cms_cl);
-    if (cl.size() == 2) {
-      solver.add_red_cl(cl);
-      num_bins++;
-    }
-  }
-  ss.end_getting_small_clauses();
-  cout << "c Num bins from CMS: " << num_bins << endl;
 }
 
 mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>& cubes) {

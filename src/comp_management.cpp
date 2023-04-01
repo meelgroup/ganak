@@ -15,7 +15,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
   assert(comp_stack_.empty());
 
   ana_.initialize(literals, lit_pool);
-  CacheableComponent::adjustPackSize(ana_.max_variable_id(), ana_.max_clause_id());
+  adjustPackSize(ana_.max_variable_id(), ana_.max_clause_id());
 
   //Add dummy comp
   comp_stack_.push_back(new Component());

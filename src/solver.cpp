@@ -52,6 +52,9 @@ void Solver::init_activity_scores()
 
 void Solver::end_irred_cls()
 {
+  comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
+  if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
+
   release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
   stats.next_restart = config_.first_restart;
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
@@ -923,11 +926,9 @@ void Solver::printOnlineStats() {
 
 Solver::Solver(bool do_pcc, uint32_t seed)
 {
-  comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
   mtrand.seed(seed);
   config_.do_pcc = do_pcc;
   config_.randomseed = seed;
-  if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
 }
 
 Solver::~Solver()

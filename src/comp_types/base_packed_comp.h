@@ -84,7 +84,7 @@ template <class T>
   // the bit postion just after the last bit written
   uint32_t end_of_bits_ = 0;
 
-  static const uint32_t _bits_per_block = (sizeof(T) << 3);
+  const uint32_t _bits_per_block = (sizeof(T) << 3);
 
 };
 
@@ -102,25 +102,25 @@ public:
   }
 #endif
 
-  static uint32_t bits_per_variable() {
+  uint32_t bits_per_variable() const {
     return _bits_per_variable;
   }
-  static uint32_t variable_mask() {
+  uint32_t variable_mask() const {
       return _variable_mask;
   }
-  static uint32_t bits_per_clause() {
+  uint32_t bits_per_clause() const{
     return _bits_per_clause;
   }
 
-  static uint32_t bits_per_block(){
+  uint32_t bits_per_block() const{
 	  return _bits_per_block;
   }
 
-  static uint32_t bits_of_data_size(){
+  uint32_t bits_of_data_size() const{
     return _bits_of_data_size;
   }
 
-  static void adjustPackSize(uint32_t maxVarId, uint32_t maxClId);
+  void adjustPackSize(uint32_t maxVarId, uint32_t maxClId);
 
   BasePackedComponent() {}
   BasePackedComponent(uint32_t creation_time): creation_time_(creation_time) {}
@@ -133,7 +133,7 @@ public:
     if (clhashkey_) delete [] clhashkey_;
 #endif
   }
-  static void outbit(uint32_t v){
+  void outbit(uint32_t v){
    for(auto i=0; i<32;i++){
      cout << ((v&2147483648)?"1":"0");
       v&=2147483648-1;
@@ -142,10 +142,10 @@ public:
   }
 
 
-  static uint32_t log2(uint32_t v){
+  uint32_t log2(uint32_t v){
          // taken from
          // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
-         static const signed char LogTable256[256] =
+         const signed char LogTable256[256] =
          {
          #define LT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
              -1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -221,7 +221,7 @@ public:
 #endif
   }
 
-  static uint32_t _debug_static_val;
+  uint32_t _debug_static_val;
 
 protected:
   // data_ contains in packed form the variable indices
@@ -255,11 +255,11 @@ protected:
 
 
 protected:
-  static uint32_t _bits_per_clause, _bits_per_variable; // bitsperentry
-  static uint32_t _bits_of_data_size; // number of bits needed to store the data size
-  static uint32_t _data_size_mask;
-  static uint32_t _variable_mask, _clause_mask;
-  static const uint32_t _bits_per_block= (sizeof(uint32_t) << 3);
+  uint32_t _bits_per_clause, _bits_per_variable; // bitsperentry
+  uint32_t _bits_of_data_size; // number of bits needed to store the data size
+  uint32_t _data_size_mask;
+  uint32_t _variable_mask, _clause_mask;
+  const uint32_t _bits_per_block= (sizeof(uint32_t) << 3);
 
 };
 

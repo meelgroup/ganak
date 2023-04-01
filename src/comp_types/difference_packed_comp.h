@@ -8,6 +8,7 @@
 #ifndef DIFFERENCE_PACKED_COMPONENT_H_
 #define DIFFERENCE_PACKED_COMPONENT_H_
 
+#include <functional>
 #include <set>
 #include <iostream>
 
@@ -235,7 +236,13 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *>& random, Com
   assert((data_size >> bits_of_data_size()) == 0);
   BitStuffer<uint32_t> bs(data_);
 
+  /* if (data_size >> bits_of_data_size() != 0) { */
+    /* cout << "data_size " <<  data_size << " bits_of_data_size: " << bits_of_data_size() << endl; */
+  /* } */
   bs.stuff(data_size, bits_of_data_size());
+  /* if ((rComp.nVars() >> bits_per_variable()) != 0) { */
+    /* cout << "rComp.nVars() " <<  rComp.nVars() << " bits_per_variable: " << bits_per_variable() << endl; */
+  /* } */
   bs.stuff(rComp.nVars(), bits_per_variable());
   bs.stuff(bits_per_var_diff, 5);
   bs.stuff(*rComp.varsBegin(), bits_per_variable());

@@ -6,6 +6,7 @@
  */
 
 #include "comp_management.h"
+#include "solver.h"
 
 // Initialized exactly once when Solver is created.
 //   it also inits the included analyzer called "ana_"
@@ -46,4 +47,61 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   }
 
   SLOW_DEBUG_DO(cache_.test_descendantstree_consistency());
+}
+
+// This creates comps
+void ComponentManager::recordRemainingCompsFor(StackLevel &top)
+{
+  const Component& super_comp = getSuperComponentOf(top);
+  const uint32_t new_comps_start_ofs = comp_stack_.size();
+
+  // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
+  ana_.setupAnalysisContext(top, super_comp);
+
+  for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+    print_debug("Going to NEXT var that's unseen & active in this component... if it exists. Var: " << *vt);
+    if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
+      Component *p_new_comp = ana_.makeComponentFromArcheType();
+      CacheableComponent *packed_comp = NULL;
+      if (config_.do_pcc) {
+#ifdef DOPCC
+        packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
+        packed_comp->finish_hashing(packed_comp->SizeInBytes(), packed_comp->nVars());
+#else
+        exit(-1);
+#endif
+      } else {
+        packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
+        packed_comp->contains_any_var(std::set<uint32_t>());
+      }
+
+      // Check if new comp is already in cache
+      if (!cache_.manageNewComponent(top, *packed_comp)) {
+        comp_stack_.push_back(p_new_comp);
+        p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
+#ifdef VERBOSE_DEBUG
+        cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
+            << " num vars: " << p_new_comp->nVars() << " vars: ";
+        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
+        cout << endl;
+#endif
+      } else {
+#ifdef VERBOSE_DEBUG
+        cout << COLYEL2 "Component already in cache."
+            << " num vars: " << p_new_comp->nVars() << " vars: ";
+        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
+        cout << endl;
+#endif
+        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
+          solver_->scoreOf(*v) *= 0.9;
+        }
+        delete packed_comp;
+        delete p_new_comp;
+      }
+    }
+  }
+
+  print_debug("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
+  top.set_unprocessed_comps_end(comp_stack_.size());
+  sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
 }

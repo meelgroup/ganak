@@ -24,15 +24,17 @@
 #endif
 #include "solver_config.h"
 
+class Solver;
+
 // There is exactly ONE of this, inside Solver
 class ComponentManager
 {
 public:
   ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const set<uint32_t> &indep_support_) :
+                   const set<uint32_t> &indep_support_, Solver* solver) :
       config_(config), stats(statistics), cache_(statistics, config_),
-      ana_(lit_values, indep_support_)
+      ana_(lit_values, indep_support_), solver_(solver)
   {
   }
 
@@ -96,7 +98,7 @@ public:
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all comps have been processed
   inline bool findNextRemainingComponentOf(StackLevel &top);
-  inline void recordRemainingCompsFor(StackLevel &top);
+  void recordRemainingCompsFor(StackLevel &top);
   inline void sortComponentStackRange(uint32_t start, uint32_t end);
 
   void gatherStatistics()
@@ -127,6 +129,7 @@ private:
   vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
+  Solver* solver_;
 };
 
 void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
@@ -162,61 +165,6 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
   top.includeSolution(1);
   print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
   return false;
-}
-
-// This creates comps
-void ComponentManager::recordRemainingCompsFor(StackLevel &top)
-{
-  const Component& super_comp = getSuperComponentOf(top);
-  const uint32_t new_comps_start_ofs = comp_stack_.size();
-
-  // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
-  ana_.setupAnalysisContext(top, super_comp);
-
-  for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-    print_debug("Going to NEXT var that's unseen & active in this component... if it exists. Var: " << *vt);
-    if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
-      Component *p_new_comp = ana_.makeComponentFromArcheType();
-      CacheableComponent *packed_comp = NULL;
-      if (config_.do_pcc) {
-#ifdef DOPCC
-        packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
-        packed_comp->finish_hashing(packed_comp->SizeInBytes(), packed_comp->nVars());
-#else
-        exit(-1);
-#endif
-      } else {
-        packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
-        packed_comp->contains_any_var(std::set<uint32_t>());
-      }
-
-      // Check if new comp is already in cache
-      if (!cache_.manageNewComponent(top, *packed_comp)) {
-        comp_stack_.push_back(p_new_comp);
-        p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
-#ifdef VERBOSE_DEBUG
-        cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
-            << " num vars: " << p_new_comp->nVars() << " vars: ";
-        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
-        cout << endl;
-#endif
-      } else {
-#ifdef VERBOSE_DEBUG
-        cout << COLYEL2 "Component already in cache."
-            << " num vars: " << p_new_comp->nVars() << " vars: ";
-        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
-        cout << endl;
-#endif
-
-        delete packed_comp;
-        delete p_new_comp;
-      }
-    }
-  }
-
-  print_debug("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
-  top.set_unprocessed_comps_end(comp_stack_.size());
-  sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
 }
 
 #endif /* COMPONENT_MANAGEMENT_H_ */

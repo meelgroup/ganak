@@ -14,6 +14,7 @@
 #include "comp_management.h"
 #include "solver_config.h"
 #include "MersenneTwister.h"
+#include "comp_management.h"
 #include <deque>
 
 using std::deque;
@@ -30,12 +31,10 @@ enum retStateT
 class Solver : public Instance
 {
 public:
-  Solver(bool do_pcc, uint32_t seed) {
-    mtrand.seed(seed);
-    config_.do_pcc = do_pcc;
-    config_.randomseed = seed;
-    if (config_.do_pcc) comp_manager_.getrandomseedforclhash();
-  }
+  Solver(bool do_pcc, uint32_t seed);
+  ~Solver();
+
+  double& scoreOf(VariableIndex v) { return variables_[v].activity; }
   mpz_class count(vector<Lit>& largest_cube_ret);
   SolverConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }
@@ -71,8 +70,7 @@ private:
 
   DecisionStack decision_stack_;
   vector<Lit> trail;
-  ComponentManager comp_manager_ = ComponentManager(
-          config_,stats, lit_values_, indep_support_);
+  ComponentManager* comp_manager_ = NULL;
 
   // the last time conflict clauses have been deleted
   uint64_t last_ccl_deletion_decs_ = 0;
@@ -101,11 +99,6 @@ private:
   // a second branch can be visited, RESOLVED is returned
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
-
-  double scoreOf(VariableIndex v)
-  {
-    return variables_[v].activity;
-  }
 
   bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
@@ -186,7 +179,7 @@ private:
   void reactivate_comps_and_backtrack_trail()
   {
     for (auto it = top_declevel_trail_begin(); it != trail.end(); it++) unSet(*it);
-    comp_manager_.cleanRemainingComponentsOf(decision_stack_.top());
+    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(decision_stack_.top().trail_ofs());
     decision_stack_.top().resetRemainingComps();
   }

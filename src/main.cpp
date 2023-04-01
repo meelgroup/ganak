@@ -326,6 +326,12 @@ mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>&
   vector<CMSat::Lit> cl;
   while(sat_solver->get_next_small_clause(cl)) sat_solver2.add_clause(cl);
   sat_solver->end_getting_small_clauses();
+
+  if (cubes.size() > 1) {
+    for(uint32_t i = 0; i < cubes.size()-1; i++) {
+      sat_solver2.add_clause(cubes[i]);
+    }
+  }
   for(const auto& l: cubes.back()) {
     cl.clear();
     cl.push_back(~l);

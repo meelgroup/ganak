@@ -53,8 +53,7 @@ public:
   uint32_t num_clauses_learned_ = 0;
 
   // restarts
-  uint64_t next_restart = 100000000U;
-  mpz_class restart_cubes_val = 0;
+  uint64_t last_restart_num_decisions = 0;
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
@@ -94,27 +93,27 @@ public:
              + overall_bytes_comps_stored_;
     }
 
-  void incorporate_cache_store(CacheableComponent &ccomp){
-    sum_bytes_cached_comps_ += ccomp.SizeInBytes();
-    sum_size_cached_comps_ += ccomp.nVars();
+  void incorporate_cache_store(CacheableComponent &ccomp, const BPCSizes& sz){
+    sum_bytes_cached_comps_ += ccomp.SizeInBytes(sz);
+    sum_size_cached_comps_ += ccomp.nVars(sz);
     num_cached_comps_++;
     total_num_cached_comps_++;
-    overall_bytes_comps_stored_ += ccomp.SizeInBytes();
-    overall_num_cache_stores_ += ccomp.nVars();
-    sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes();
-    sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes();
+    overall_bytes_comps_stored_ += ccomp.SizeInBytes(sz);
+    overall_num_cache_stores_ += ccomp.nVars(sz);
+    sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes(sz);
+    sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes(sz);
   }
 
-  void incorporate_cache_erase(CacheableComponent &ccomp){
-    sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
-    sum_size_cached_comps_ -= ccomp.nVars();
+  void incorporate_cache_erase(CacheableComponent &ccomp, const BPCSizes& sz){
+    sum_bytes_cached_comps_ -= ccomp.SizeInBytes(sz);
+    sum_size_cached_comps_ -= ccomp.nVars(sz);
     num_cached_comps_--;
-    sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes();
+    sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes(sz);
   }
 
-  void incorporate_cache_hit(CacheableComponent &ccomp){
+  void incorporate_cache_hit(CacheableComponent &ccomp, const BPCSizes& sz){
       num_cache_hits_++;
-      sum_cache_hit_sizes_ += ccomp.nVars();
+      sum_cache_hit_sizes_ += ccomp.nVars(sz);
   }
   uint64_t cache_MB_memory_usage() const {
       return cache_bytes_memory_usage() / 1000000;

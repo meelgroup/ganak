@@ -15,7 +15,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
   assert(comp_stack_.empty());
 
   ana_.initialize(literals, lit_pool);
-  adjustPackSize(ana_.max_variable_id(), ana_.max_clause_id());
+  sz = BasePackedComponent::calcPackSize(ana_.max_variable_id(), ana_.max_clause_id());
 
   //Add dummy comp
   comp_stack_.push_back(new Component());
@@ -65,14 +65,14 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       CacheableComponent *packed_comp = NULL;
       if (config_.do_pcc) {
 #ifdef DOPCC
-        packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_);
-        packed_comp->finish_hashing(packed_comp->SizeInBytes(), packed_comp->nVars());
+        packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz);
+        packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), packed_comp->nVars(sz));
 #else
         exit(-1);
 #endif
       } else {
-        packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_);
-        packed_comp->contains_any_var(std::set<uint32_t>());
+        packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
+        packed_comp->contains_any_var(std::set<uint32_t>(), sz);
       }
 
       // Check if new comp is already in cache

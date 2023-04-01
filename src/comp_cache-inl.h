@@ -42,7 +42,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     assert(hasEntry(id));
     assert(hasEntry(super_comp_id));
 
-    stats.incorporate_cache_store(ccomp);
+    stats.incorporate_cache_store(ccomp, sz);
 
   #ifdef DEBUG
       for (uint32_t u = 2; u < entry_base_.size(); u++)
@@ -138,14 +138,14 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   uint32_t table_ofs = tableEntry(id);
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
-  stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes();
-  stats.overall_bytes_comps_stored_ -= entry(id).SizeInBytes();
+  stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes(sz);
+  stats.overall_bytes_comps_stored_ -= entry(id).SizeInBytes(sz);
 
-  stats.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes();
-  stats.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes();
+  stats.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes(sz);
+  stats.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes(sz);
 #ifdef DOPCC
   if (config_.do_pcc)
-    entry(id).finish_hashing(entry(id).SizeInBytes(), entry(id).nVars());
+    entry(id).finish_hashing(entry(id).SizeInBytes(sz), entry(id).nVars(sz));
 #endif
 
   entry(id).set_model_count(model_count,my_time_);
@@ -154,8 +154,8 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   entry(id).set_next_bucket_element(table_[table_ofs]);
   table_[table_ofs] = id;
 
-  stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes();
-  stats.overall_bytes_comps_stored_ += entry(id).SizeInBytes();
-  stats.sys_overhead_sum_bytes_cached_comps_ += entry(id).sys_overhead_SizeInBytes();
-  stats.sys_overhead_overall_bytes_comps_stored_ += entry(id).sys_overhead_SizeInBytes();
+  stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes(sz);
+  stats.overall_bytes_comps_stored_ += entry(id).SizeInBytes(sz);
+  stats.sys_overhead_sum_bytes_cached_comps_ += entry(id).sys_overhead_SizeInBytes(sz);
+  stats.sys_overhead_overall_bytes_comps_stored_ += entry(id).sys_overhead_SizeInBytes(sz);
 }

@@ -28,25 +28,25 @@ public:
   GenericCacheableComponent() {
   }
 
-  GenericCacheableComponent(Component &comp) :
-      T_Component(comp) {
+  GenericCacheableComponent(Component &comp, const BPCSizes& sz) :
+      T_Component(comp, sz) {
   }
 
-  GenericCacheableComponent(vector <void*> &randomseedforCLHASH, Component &comp) :
-      T_Component(randomseedforCLHASH, comp) {
+  GenericCacheableComponent(vector <void*> &randomseedforCLHASH, Component &comp, const BPCSizes& sz) :
+      T_Component(randomseedforCLHASH, comp, sz) {
   }
 
-  uint32_t SizeInBytes() const {
+  uint32_t SizeInBytes(const BPCSizes& sz) const {
     return sizeof(GenericCacheableComponent<T_Component>)
-        + T_Component::raw_data_byte_size();
+        + T_Component::raw_data_byte_size(sz);
   }
 
   // the 48 = 16*3 in overhead stems from the three parts of the comp
   // being dynamically allocated (i.e. the GenericCacheableComponent itself,
   // the data_ and the model_count data
-  uint64_t sys_overhead_SizeInBytes() const {
+  uint64_t sys_overhead_SizeInBytes(const BPCSizes& sz) const {
       return sizeof(GenericCacheableComponent<T_Component>)
-          + T_Component::sys_overhead_raw_data_byte_size()
+          + T_Component::sys_overhead_raw_data_byte_size(sz)
          // + 24;
           +48;
     }

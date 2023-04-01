@@ -15,6 +15,7 @@
 #include "solver_config.h"
 #include "MersenneTwister.h"
 #include "comp_management.h"
+#include "boundedqueue.h"
 #include <deque>
 
 using std::deque;
@@ -52,6 +53,9 @@ public:
   void init_activity_scores();
 
 private:
+  bqueue<uint32_t> depth_queue;
+  bqueue<double, double> cache_miss_rate_queue;
+
   // Temporaries, used during recordLastUIPClause
   vector<uint8_t> tmp_seen;
   vector<Lit> tmp_clause; //used in recoredLastUIPClause

@@ -56,7 +56,6 @@ void Solver::end_irred_cls()
   if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
 
   release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
-  stats.next_restart = config_.first_restart;
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
   init_decision_stack();
   simplePreProcess();
@@ -350,12 +349,31 @@ void Solver::computeLargestCube()
 }
 
 bool Solver::restart_if_needed() {
-  //  stats.cache_miss_rate()>0.30 &&
-  if (config_.do_restart && stats.total_num_cached_comps_ > stats.next_restart &&
+  cache_miss_rate_queue.push(stats.cache_miss_rate());
+  depth_queue.push(decision_stack_.size());
+  /* if (cache_miss_rate_queue.isvalid()) { */
+  /*     cout << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg() */
+  /*     << " Sterm miss avg: " << cache_miss_rate_queue.avg() */
+  /*     << endl; */
+  /* } */
+
+  if (config_.do_restart
+      && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95 &&
+      /* && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.2 && */
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
+    cout << "c Restarting. "
+      << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg()
+      << " Sterm miss avg: " << cache_miss_rate_queue.avg()
+      /* << " Lterm dec avg: " << depth_queue.getLongtTerm().avg() */
+      /* << " Sterm dec avg: " << depth_queue.avg() */
+      << " Num decisions since last restart: " << stats.num_decisions_-stats.last_restart_num_decisions
+      << endl;
 
-    cout << "Elems before: " << stats.cached_comp_count() << endl;
+    stats.last_restart_num_decisions = stats.num_decisions_;
+    depth_queue.clear();
+    cache_miss_rate_queue.clear();
+
     while (decision_stack_.size() > 1) {
       if (decision_stack_.top().branch_found_unsat()
           || !decision_stack_.top().on_path_to_target_) {
@@ -365,7 +383,6 @@ bool Solver::restart_if_needed() {
       decision_stack_.pop_back();
       stats.total_num_cached_comps_ = 0;
     }
-    cout << "Elems: " << stats.cached_comp_count() << endl;
 
     // experimental for deleting polluted cubes and re-using GANAK
     /* set<uint32_t> vars; */
@@ -929,6 +946,8 @@ Solver::Solver(bool do_pcc, uint32_t seed)
   mtrand.seed(seed);
   config_.do_pcc = do_pcc;
   config_.randomseed = seed;
+  depth_queue.clearAndResize(300);
+  cache_miss_rate_queue.clearAndResize(300);
 }
 
 Solver::~Solver()

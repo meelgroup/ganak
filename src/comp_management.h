@@ -8,6 +8,7 @@
 #ifndef COMPONENT_MANAGEMENT_H_
 #define COMPONENT_MANAGEMENT_H_
 
+#include "comp_types/base_packed_comp.h"
 #include "comp_types/comp.h"
 #include "comp_cache.h"
 #include "alt_comp_analyzer.h"
@@ -33,7 +34,7 @@ public:
   ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const set<uint32_t> &indep_support_, Solver* solver) :
-      config_(config), stats(statistics), cache_(statistics, config_),
+      config_(config), stats(statistics), cache_(statistics, config_, sz),
       ana_(lit_values, indep_support_), solver_(solver)
   {
   }
@@ -130,6 +131,7 @@ private:
   ComponentCache cache_;
   ComponentAnalyzer ana_;
   Solver* solver_;
+  BPCSizes sz;
 };
 
 void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)

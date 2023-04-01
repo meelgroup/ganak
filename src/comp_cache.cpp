@@ -44,18 +44,18 @@ uint64_t freeram() {
 
 #include "stack.h"
 
-ComponentCache::ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &config) :
-		stats(statistics), config_(config) {
+ComponentCache::ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &config, const BPCSizes& _sz) :
+		stats(statistics), config_(config), sz(_sz) {
 }
 
 void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCLHASH){
 
-  CacheableComponent *packed_super_comp = new CacheableComponent(super_comp);
-
-	if (config_.do_pcc){
-		delete packed_super_comp;
-		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp);
-		packed_super_comp->finish_hashing(packed_super_comp->SizeInBytes(), packed_super_comp->nVars());
+  CacheableComponent *packed_super_comp;
+	if (!config_.do_pcc) {
+		packed_super_comp = new CacheableComponent(super_comp, sz);
+	} else {
+		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz);
+		packed_super_comp->finish_hashing(packed_super_comp->SizeInBytes(sz), packed_super_comp->nVars(sz));
 	}
 	my_time_ = 1;
 
@@ -89,7 +89,7 @@ void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCL
 
 	entry_base_.push_back(packed_super_comp);
 
-	stats.incorporate_cache_store(*packed_super_comp);
+	stats.incorporate_cache_store(*packed_super_comp, sz);
 
 	super_comp.set_id(1);
 	compute_size_used();
@@ -130,7 +130,7 @@ void ComponentCache::delete_comps_with_vars(const set<uint32_t>& vars) {
 		if (entry_base_[id] != nullptr && entry_base_[id]->isDeletable()) {
 		  DifferencePackedComponent* d = entry_base_[id];
 			assert(!d->pcc());
-		  if (d->contains_any_var(vars)) {
+		  if (d->contains_any_var(vars, sz)) {
 		    removeFromDescendantsTree(id);
 		    eraseEntry(id);
 				num_deleted++;
@@ -183,9 +183,9 @@ bool ComponentCache::deleteEntries() {
 
 	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr) {
-			stats.sum_size_cached_comps_ += entry_base_[id]->nVars();
-			stats.sum_bytes_cached_comps_ += entry_base_[id]->SizeInBytes();
-			stats.sys_overhead_sum_bytes_cached_comps_ += entry_base_[id]->sys_overhead_SizeInBytes();
+			stats.sum_size_cached_comps_ += entry_base_[id]->nVars(sz);
+			stats.sum_bytes_cached_comps_ += entry_base_[id]->SizeInBytes(sz);
+			stats.sys_overhead_sum_bytes_cached_comps_ += entry_base_[id]->sys_overhead_SizeInBytes(sz);
 		}
 
 	stats.num_cached_comps_ = entry_base_.size();

@@ -20,7 +20,7 @@
 // There is EXACTLY ONE of this
 class ComponentCache {
 public:
-  ComponentCache(DataAndStatistics &statistics, const SolverConfiguration& config);
+  ComponentCache(DataAndStatistics &statistics, const SolverConfiguration& config, const BPCSizes& sz);
 
   ~ComponentCache() {
    // debug_dump_data();
@@ -105,7 +105,7 @@ public:
       clhash_key = packed_comp.compute_clhash();
       while(act_id){
         if (entry(act_id).equals(packed_comp, clhash_key)) {
-          stats.incorporate_cache_hit(packed_comp);
+          stats.incorporate_cache_hit(packed_comp, sz);
           top.includeSolution(entry(act_id).model_count());
           return true;
         }
@@ -118,8 +118,8 @@ public:
 #endif
     } else{
       while(act_id){
-        if (entry(act_id).equals(packed_comp)) {
-          stats.incorporate_cache_hit(packed_comp);
+        if (entry(act_id).equals(packed_comp, sz)) {
+          stats.incorporate_cache_hit(packed_comp, sz);
           top.includeSolution(entry(act_id).model_count());
           return true;
         }
@@ -131,7 +131,7 @@ public:
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    stats.incorporate_cache_erase(*entry_base_[id]);
+    stats.incorporate_cache_erase(*entry_base_[id], sz);
     delete entry_base_[id];
     entry_base_[id] = nullptr;
     free_entry_base_slots_.push_back(id);
@@ -201,7 +201,7 @@ private:
 
   DataAndStatistics &stats;
   const SolverConfiguration &config_;
-
+  const BPCSizes& sz;
   uint64_t my_time_ = 0;
 };
 

@@ -14,6 +14,16 @@
 
 using std::cout;
 
+struct BPCSizes {
+  uint32_t bits_per_clause;
+  uint32_t bits_per_variable;
+  uint32_t bits_of_data_size; // number of bits needed to store the data size
+  uint32_t data_size_mask;
+  uint32_t variable_mask;
+  uint32_t clause_mask;
+  uint32_t bits_per_block = (sizeof(uint32_t) << 3);
+};
+
 struct BitStufferReader {
   BitStufferReader(uint32_t* _data) {data = _data;}
   uint32_t read_bits(uint32_t bits) {
@@ -101,26 +111,7 @@ public:
     is_pcc = true;
   }
 #endif
-
-  uint32_t bits_per_variable() const {
-    return _bits_per_variable;
-  }
-  uint32_t variable_mask() const {
-      return _variable_mask;
-  }
-  uint32_t bits_per_clause() const{
-    return _bits_per_clause;
-  }
-
-  uint32_t bits_per_block() const{
-	  return _bits_per_block;
-  }
-
-  uint32_t bits_of_data_size() const{
-    return _bits_of_data_size;
-  }
-
-  void adjustPackSize(uint32_t maxVarId, uint32_t maxClId);
+  static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
 
   BasePackedComponent() {}
   BasePackedComponent(uint32_t creation_time): creation_time_(creation_time) {}
@@ -142,7 +133,7 @@ public:
   }
 
 
-  uint32_t log2(uint32_t v){
+  static uint32_t log2(uint32_t v) {
          // taken from
          // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
          const signed char LogTable256[256] =
@@ -255,12 +246,8 @@ protected:
 
 
 protected:
-  uint32_t _bits_per_clause, _bits_per_variable; // bitsperentry
-  uint32_t _bits_of_data_size; // number of bits needed to store the data size
-  uint32_t _data_size_mask;
-  uint32_t _variable_mask, _clause_mask;
-  const uint32_t _bits_per_block= (sizeof(uint32_t) << 3);
 
 };
+
 
 #endif /* BASE_PACKED_COMPONENT_H_ */

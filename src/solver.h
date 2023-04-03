@@ -54,6 +54,7 @@ public:
   bqueue<uint32_t> comp_size_queue;
 
 private:
+  vector<double> scores;
   bqueue<uint32_t> depth_queue;
   bqueue<double, double> cache_miss_rate_queue;
 

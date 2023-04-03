@@ -673,7 +673,6 @@ bool Solver::failedLitProbeInternal() {
     }
 
     // Figure out which literals to probe
-    vector<double> scores;
     scores.clear();
     for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
       scores.push_back(variables_[jt->var()].activity);
@@ -711,8 +710,7 @@ bool Solver::failedLitProbeInternal() {
           stats.num_failed_literals_detected_++;
           print_debug("-> failed literal detected");
           sz = trail.size();
-          for (auto it = uip_clauses_.rbegin();
-               it != uip_clauses_.rend(); it++) {
+          for (auto it = uip_clauses_.rbegin(); it != uip_clauses_.rend(); it++) {
             if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl;
             setLiteralIfFree(it->front(), addUIPConflictClause(*it));
           }

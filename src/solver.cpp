@@ -356,15 +356,23 @@ bool Solver::restart_if_needed() {
   /*     << " Sterm miss avg: " << cache_miss_rate_queue.avg() */
   /*     << endl; */
   /* } */
+  /* if (comp_size_queue.isvalid()) { */
+  /*     cout << " Lterm comp size avg: " << comp_size_queue.getLongtTerm().avg() */
+  /*     << " Sterm comp size avg: " << comp_size_queue.avg() */
+  /*     << endl; */
+  /* } */
 
   if (config_.do_restart
-      && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95 &&
+      && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg()*0.8 &&
+      /* && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95 && */
       /* && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.2 && */
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
     cout << "c Restarting. "
-      << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg()
-      << " Sterm miss avg: " << cache_miss_rate_queue.avg()
+      << " Lterm comp size avg: " << comp_size_queue.getLongtTerm().avg()
+      << " Sterm comp size avg: " << comp_size_queue.avg()
+      /* << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg() */
+      /* << " Sterm miss avg: " << cache_miss_rate_queue.avg() */
       /* << " Lterm dec avg: " << depth_queue.getLongtTerm().avg() */
       /* << " Sterm dec avg: " << depth_queue.avg() */
       << " Num decisions since last restart: " << stats.num_decisions_-stats.last_restart_num_decisions
@@ -373,6 +381,7 @@ bool Solver::restart_if_needed() {
     stats.last_restart_num_decisions = stats.num_decisions_;
     depth_queue.clear();
     cache_miss_rate_queue.clear();
+    comp_size_queue.clear();
 
     while (decision_stack_.size() > 1) {
       if (decision_stack_.top().branch_found_unsat()
@@ -948,7 +957,7 @@ Solver::Solver(bool do_pcc, uint32_t seed)
   config_.randomseed = seed;
   depth_queue.clearAndResize(300);
   cache_miss_rate_queue.clearAndResize(300);
-  comp_size_queue.clearAndResize(1000);
+  comp_size_queue.clearAndResize(300);
 }
 
 Solver::~Solver()

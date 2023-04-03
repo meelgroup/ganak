@@ -93,7 +93,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
 #endif
-        if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()*2) {
+        if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()*3) {
           for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
             solver_->scoreOf(*v) *= 0.9;
           }

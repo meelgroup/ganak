@@ -482,7 +482,7 @@ retStateT Solver::backtrack() {
 
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
-  act_inc *= 1.0/0.95;
+  act_inc *= 1.0/0.99;
 
   if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
     deleteConflictClauses();
@@ -887,11 +887,10 @@ void Solver::recordAllUIPCauses() {
 
     assert(hasAntecedent(curr_lit));
     if (getAntecedent(curr_lit).isAClause()) {
-      /* updateActivities(getAntecedent(curr_lit).asCl()); */
+      updateActivities(getAntecedent(curr_lit).asCl(), tmp_seen);
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
-      for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1;
-           *it != SENTINEL_LIT; it++) {
+      for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
         if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
               existsUnitClauseOf(it->var())) {
           continue;

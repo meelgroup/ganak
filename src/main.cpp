@@ -449,6 +449,8 @@ int main(int argc, char *argv[])
   create_from_sat_solver(solver, *sat_solver);
   solver.init_activity_scores();
   vector<vector<CMSat::Lit>> cubes;
+  mpz_class total_check_count = 0;
+  double total_check_time = 0;
   while (sat_solver->okay()) {
     double call_time = cpuTime();
     vector<CMSat::lbool> model;
@@ -466,18 +468,26 @@ int main(int argc, char *argv[])
       << " cnt so far: " << std::setw(15) << count
       << " T: " << std::setprecision(2) << std::fixed << (cpuTime() - call_time)
       << endl;
-    cout << "c ---> cube: ";
-    for(const auto& l: cms_cl) cout << l << " ";
-    cout << "0" << endl;
-    cout << "c Total time until now: " << std::fixed << (cpuTime() - start_time) << endl;
+    if (verb >= 2) {
+      cout << "c ---> cube: ";
+      for(const auto& l: cms_cl) cout << l << " ";
+      cout << "0" << endl;
+    }
+    cout << "c Total time until now: "
+      << std::fixed << (cpuTime() - start_time) - total_check_time<< endl;
 
     if (do_check) {
+      double this_check_time = cpuTime();
       auto check_count = check_count_independently_no_restart(cubes);
-      if (check_count != this_count) {
+      total_check_count += check_count;
+      if (check_count != this_count && verb >= 2) {
         cout << "Check count says: " << check_count << endl;
       }
-      cout << "Difference rel: " << this_count.get_d()/check_count.get_d()  << endl;
+      if (verb >=2 )
+        cout << "Difference rel this cube: " << this_count.get_d()/check_count.get_d()  << endl;
+      cout << "Difference rel: " << count.get_d()/total_check_count.get_d() << endl;
       /* assert(check_count == this_count); */
+      total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
     sat_solver->set_verbosity(0);

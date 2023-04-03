@@ -948,6 +948,7 @@ Solver::Solver(bool do_pcc, uint32_t seed)
   config_.randomseed = seed;
   depth_queue.clearAndResize(300);
   cache_miss_rate_queue.clearAndResize(300);
+  comp_size_queue.clearAndResize(1000);
 }
 
 Solver::~Solver()

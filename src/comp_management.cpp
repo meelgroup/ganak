@@ -74,6 +74,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
         packed_comp->contains_any_var(std::set<uint32_t>(), sz);
       }
+      solver_->comp_size_queue.push(packed_comp->nVars(sz));
 
       // Check if new comp is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp)) {
@@ -92,8 +93,10 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
         cout << endl;
 #endif
-        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
-          solver_->scoreOf(*v) *= 0.9;
+        if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()*2) {
+          for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
+            solver_->scoreOf(*v) *= 0.9;
+          }
         }
         delete packed_comp;
         delete p_new_comp;

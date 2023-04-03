@@ -51,6 +51,7 @@ public:
   void get_unit_cls(vector<Lit>& units) const;
   void get_bin_red_cls(vector<Lit>& bins) const;
   void init_activity_scores();
+  bqueue<uint32_t> comp_size_queue;
 
 private:
   bqueue<uint32_t> depth_queue;

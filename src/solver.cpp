@@ -381,6 +381,8 @@ bool Solver::restart_if_needed() {
       cout << " Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg()
       << " Sterm dec avg: " << std::setw(5) << depth_queue.avg();
     }
+    cout << " Num units: " << unit_clauses_.size();
+    cout << " CC: " << conflict_clauses_.size();
     cout << " Num decisions since last restart: "
       << stats.num_decisions_-stats.last_restart_num_decisions
       << endl;

@@ -72,7 +72,6 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
-        packed_comp->contains_any_var(std::set<uint32_t>(), sz);
       }
       solver_->comp_size_queue.push(packed_comp->nVars(sz));
 

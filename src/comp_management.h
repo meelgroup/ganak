@@ -46,6 +46,10 @@ public:
     }
   }
 
+  unsigned scoreOf(VariableIndex v)
+  {
+    return ana_.scoreOf(v);
+  }
   void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool);
   void delete_comps_with_vars(const set<uint32_t>& vars) {
     cache_.delete_comps_with_vars(vars);

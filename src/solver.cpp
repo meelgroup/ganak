@@ -40,13 +40,10 @@ void Solver::set_indep_support(const set<uint32_t> &indeps)
 
 void Solver::init_activity_scores()
 {
-  for (uint32_t i = 1; i <= nVars(); i++)
+
+  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
   {
-    variables_[i].activity =
-      litWatchList(Lit(i, false)).binary_links_.size() - 1 +
-      litWatchList(Lit(i, true)).binary_links_.size() - 1 +
-      occ_lists_[Lit(i, false)].size() +
-      occ_lists_[Lit(i, true)].size();
+    watches_[l].activity = watches_[l].binary_links_.size() - 1 + occ_lists_[l].size();
   }
 }
 
@@ -208,6 +205,7 @@ bool Solver::get_polarity(const uint32_t v)
       /*   litWatchList(Lit(v, false)).activity_score_; */
     }
   }
+  return false;
   return polarity;
 }
 
@@ -263,9 +261,9 @@ void Solver::decideLiteral() {
 }
 
 
-void Solver::shuffle_activities(MTRand &mtrand2) {
-  for(auto& v: variables_) v.activity=act_inc*mtrand2.randExc();
-}
+/* void Solver::shuffle_activities(MTRand &mtrand2) { */
+/*   for(auto& v: variables_) v.activity=act_inc*mtrand2.randExc(); */
+/* } */
 
 void Solver::computeLargestCube()
 {
@@ -487,7 +485,7 @@ retStateT Solver::backtrack() {
 
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
-  act_inc *= 1.0/0.99;
+  /* act_inc *= 1.0/0.99; */
 
   if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
     deleteConflictClauses();
@@ -607,38 +605,38 @@ bool Solver::propagate(const uint32_t start_at_trail_ofs) {
   return true;
 }
 
-void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars,
-    double& ret_act_inc) const
-{
-  acts.clear();
-  for(const auto& v: variables_) {
-    acts.push_back(v.activity);
-  }
-  polars.clear();
-  for(const auto& v: variables_) {
-    polars.push_back(v.last_polarity);
-  }
-  ret_act_inc = act_inc;
-}
+/* void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars, */
+/*     double& ret_act_inc) const */
+/* { */
+/*   acts.clear(); */
+/*   for(const auto& v: variables_) { */
+/*     acts.push_back(v.activity); */
+/*   } */
+/*   polars.clear(); */
+/*   for(const auto& v: variables_) { */
+/*     polars.push_back(v.last_polarity); */
+/*   } */
+/*   ret_act_inc = act_inc; */
+/* } */
 
-void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& polars,
-    double ret_act_inc)
-{
-  size_t i = 0;
-  for(auto& v: variables_) {
-    v.activity = act[i];
-    i++;
-  }
+/* void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& polars, */
+/*     double ret_act_inc) */
+/* { */
+/*   size_t i = 0; */
+/*   for(auto& v: variables_) { */
+/*     v.activity = act[i]; */
+/*     i++; */
+/*   } */
 
-  i = 0;
-  for(auto& v: variables_) {
-    v.set_once = true;
-    v.last_polarity = polars[i];
-    i++;
-  }
+/*   i = 0; */
+/*   for(auto& v: variables_) { */
+/*     v.set_once = true; */
+/*     v.last_polarity = polars[i]; */
+/*     i++; */
+/*   } */
 
-  act_inc = ret_act_inc;
-}
+/*   act_inc = ret_act_inc; */
+/* } */
 
 const DataAndStatistics& Solver::get_stats() const
 {
@@ -675,7 +673,7 @@ bool Solver::failedLitProbeInternal() {
     // Figure out which literals to probe
     scores.clear();
     for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
-      scores.push_back(variables_[jt->var()].activity);
+      scores.push_back(watches_[*jt].activity);
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 10 + num_curr_lits / 20;
@@ -687,7 +685,7 @@ bool Solver::failedLitProbeInternal() {
 
     // Do the probing
     for (auto lit : test_lits) {
-      if (isUnknown(lit) && threshold <= variables_[lit.var()].activity) {
+      if (isUnknown(lit) && threshold <= watches_[lit].activity) {
         uint32_t sz = trail.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause
@@ -831,8 +829,8 @@ void Solver::recordLastUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
-      if (!tmp_seen[alit.var()]) increaseActivity(alit);
-      if (!tmp_seen[curr_lit.var()]) increaseActivity(curr_lit);
+       increaseActivity(alit);
+       increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {
@@ -871,6 +869,7 @@ void Solver::recordAllUIPCauses() {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
     if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
+    increaseActivity(l);
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -912,6 +911,8 @@ void Solver::recordAllUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
+      increaseActivity(alit);
+      increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {

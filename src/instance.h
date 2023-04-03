@@ -23,6 +23,7 @@ public:
   void add_irred_cl(const vector<Lit>& lits);
   size_t num_conflict_clauses() const { return conflict_clauses_.size(); }
   uint32_t num_conflict_clauses_compacted() const { return num_conflict_clauses_compacted_; }
+  LiteralIndexedVector<LitWatchList> watches_; // watches
 
 protected:
 
@@ -82,7 +83,6 @@ protected:
   // conflict clauses
   uint32_t irred_lit_pool_size_;
 
-  LiteralIndexedVector<LitWatchList> watches_; // watches
   LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
   vector<ClauseOfs> conflict_clauses_;
   uint32_t num_conflict_clauses_compacted_ = 0;
@@ -92,6 +92,8 @@ protected:
   double act_inc = 1.0;
 
   void decayActivities() {
+    for (auto l_it = watches_.begin(); l_it != watches_.end(); l_it++)
+      l_it->activity *= 0.5;
     for(auto clause_ofs: conflict_clauses_)
         getHeaderOf(clause_ofs).decayScore();
   }
@@ -99,18 +101,18 @@ protected:
   void updateActivities(ClauseOfs clause_ofs, vector<uint8_t>& tmp_seen) {
     getHeaderOf(clause_ofs).increaseScore();
     for (auto it = beginOf(clause_ofs); *it != SENTINEL_LIT; it++) {
-      if (!tmp_seen[it->var()]) increaseActivity(*it);
+      increaseActivity(*it);
     }
   }
 
   void increaseActivity(const Lit lit)
   {
-    variables_[lit.var()].activity += act_inc;
-    if (variables_[lit.var()].activity > 1e100) {
-      //rescale
-      act_inc *= 1e-90;
-      for(auto& v: variables_) v.activity*=1e-90;
-    }
+    watches_[lit].activity += act_inc;
+    /* if (variables_[lit.var()].activity > 1e100) { */
+    /*   //rescale */
+    /*   act_inc *= 1e-90; */
+    /*   for(auto& v: variables_) v.activity*=1e-90; */
+    /* } */
   }
 
   bool isUnitClause(const Lit lit) {

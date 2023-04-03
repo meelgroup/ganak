@@ -95,6 +95,7 @@ public:
   vector<Lit> binary_links_ = vector<Lit>(1,SENTINEL_LIT);
   vector<ClauseOfs> watch_list_ = vector<ClauseOfs>(1,SENTINEL_CL);
   uint32_t last_irred_bin = 0;
+  double activity = 0.0;
 
   void removeWatchLinkTo(ClauseOfs clause_ofs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
@@ -194,7 +195,6 @@ struct Variable {
   int32_t decision_level = INVALID_DL;
   bool last_polarity = false;
   bool set_once = false; //it has once been set to some value
-  double activity = 0.0;
 };
 
 // for now Clause Header is just a dummy

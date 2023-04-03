@@ -35,7 +35,11 @@ public:
   Solver(bool do_pcc, uint32_t seed);
   ~Solver();
 
-  double& scoreOf(VariableIndex v) { return variables_[v].activity; }
+  double scoreOf(VariableIndex v)  const {
+    return 
+      comp_manager_->scoreOf(v) +
+      watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
+  }
   mpz_class count(vector<Lit>& largest_cube_ret);
   SolverConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }

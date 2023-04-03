@@ -78,7 +78,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()) {
         double ratio = (double)p_new_comp->nVars()/solver_->comp_size_queue.avg();
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
-          solver_->scoreOf(*v) *= 0.2/ratio;
+          solver_->watches_[Lit(*v, false)].activity *= 0.2/ratio;
+          solver_->watches_[Lit(*v, true)].activity *= 0.2/ratio;
         }
       }
 

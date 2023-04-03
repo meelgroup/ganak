@@ -493,7 +493,7 @@ int main(int argc, char *argv[])
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
-    solver.get_activities(act, polars, act_inc);
+    /* solver.get_activities(act, polars, act_inc); */
     sat_solver->set_verbosity(0);
     num_cubes++;
     first_restart*=2;

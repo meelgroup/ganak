@@ -363,19 +363,26 @@ bool Solver::restart_if_needed() {
   /* } */
 
   if (config_.do_restart
-      && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg()*0.8 &&
+      /* && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg()*0.8 && */
       /* && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95 && */
-      /* && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.2 && */
+      && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.2 &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
-    cout << "c Restarting. "
-      << " Lterm comp size avg: " << comp_size_queue.getLongtTerm().avg()
-      << " Sterm comp size avg: " << comp_size_queue.avg()
-      /* << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg() */
-      /* << " Sterm miss avg: " << cache_miss_rate_queue.avg() */
-      /* << " Lterm dec avg: " << depth_queue.getLongtTerm().avg() */
-      /* << " Sterm dec avg: " << depth_queue.avg() */
-      << " Num decisions since last restart: " << stats.num_decisions_-stats.last_restart_num_decisions
+    cout << "c Restarting. ";
+    if (comp_size_queue.isvalid()) {
+      cout << " Lterm comp size avg: " << std::setw(5) << comp_size_queue.getLongtTerm().avg()
+      << std::setw(5)<< " Sterm comp size avg: " << comp_size_queue.avg();
+    }
+    if (cache_miss_rate_queue.isvalid()) {
+      cout << " Lterm miss avg: " << std::setw(5) << cache_miss_rate_queue.getLongtTerm().avg()
+      << " Sterm miss avg: " << std::setw(5) << cache_miss_rate_queue.avg();
+    }
+    if (depth_queue.isvalid()) {
+      cout << " Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg()
+      << " Sterm dec avg: " << std::setw(5) << depth_queue.avg();
+    }
+    cout << " Num decisions since last restart: "
+      << stats.num_decisions_-stats.last_restart_num_decisions
       << endl;
 
     stats.last_restart_num_decisions = stats.num_decisions_;

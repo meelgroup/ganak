@@ -282,8 +282,9 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return cms_cl;
 }
 
-bool take_solution(vector<CMSat::lbool>& model) {
+bool take_solution(vector<CMSat::lbool>& model, vector<double>& act) {
   sat_solver->set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
+  sat_solver->set_activities(act);
   //solver.set_up_for_sample_counter(100);
   CMSat::lbool ret = sat_solver->solve();
   assert(ret != CMSat::l_Undef);
@@ -439,6 +440,7 @@ int main(int argc, char *argv[])
 
   vector<double> act;
   vector<uint8_t> polars;
+  double act_inc;
   uint32_t num_cubes = 0;
   first_restart = first_restart_start;
   // TODO: add hyper-binary BIN clauses to GANAK
@@ -451,10 +453,11 @@ int main(int argc, char *argv[])
   vector<vector<CMSat::Lit>> cubes;
   mpz_class total_check_count = 0;
   double total_check_time = 0;
+  act.resize(sat_solver->nVars()+1, 0);
   while (sat_solver->okay()) {
     double call_time = cpuTime();
     vector<CMSat::lbool> model;
-    if (!take_solution(model)) break;
+    if (!take_solution(model, act)) break;
     solver.set_target_polar(model);
     /* if (num_cubes % 10 == 0) solver.shuffle_activities(mtrand); */
     vector<Lit> largest_cube;
@@ -490,6 +493,7 @@ int main(int argc, char *argv[])
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
+    solver.get_activities(act, polars, act_inc);
     sat_solver->set_verbosity(0);
     num_cubes++;
     first_restart*=2;

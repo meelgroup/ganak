@@ -54,6 +54,9 @@ void Solver::end_irred_cls()
 {
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
   if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
+  depth_queue.clearAndResize(config_.first_restart);
+  cache_miss_rate_queue.clearAndResize(config_.first_restart);
+  comp_size_queue.clearAndResize(config_.first_restart);
 
   release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
@@ -967,9 +970,6 @@ Solver::Solver(bool do_pcc, uint32_t seed)
   mtrand.seed(seed);
   config_.do_pcc = do_pcc;
   config_.randomseed = seed;
-  depth_queue.clearAndResize(300);
-  cache_miss_rate_queue.clearAndResize(300);
-  comp_size_queue.clearAndResize(300);
 }
 
 Solver::~Solver()

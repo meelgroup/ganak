@@ -76,9 +76,10 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       }
       solver_->comp_size_queue.push(packed_comp->nVars(sz));
 
-      if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()*3) {
+      if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()*4) {
+        double ratio = (double)p_new_comp->nVars()/solver_->comp_size_queue.avg();
         for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
-          solver_->scoreOf(*v) *= 0.9;
+          solver_->scoreOf(*v) *= 0.9/(ratio*4.0);
         }
       }
 

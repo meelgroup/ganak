@@ -205,7 +205,6 @@ bool Solver::get_polarity(const uint32_t v)
       /*   litWatchList(Lit(v, false)).activity_score_; */
     }
   }
-  return false;
   return polarity;
 }
 

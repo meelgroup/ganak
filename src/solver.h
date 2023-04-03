@@ -36,9 +36,9 @@ public:
   ~Solver();
 
   double scoreOf(VariableIndex v)  const {
-    return 
+    return
       comp_manager_->scoreOf(v) +
-      watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
+      10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
   }
   mpz_class count(vector<Lit>& largest_cube_ret);
   SolverConfiguration &config() { return config_; }

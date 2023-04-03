@@ -59,7 +59,7 @@ int verb = 0;
 int seed = 0;
 int do_comp_caching = 1;
 uint64_t max_cache = 0;
-int do_implicit_bcp = 1;
+int failed_lit_probe_type = 2;
 int do_restart = 1;
 int do_pcc = 1;
 int do_arjun = 1;
@@ -104,7 +104,7 @@ void add_ganak_options()
     ("restart", po::value(&do_restart)->default_value(do_restart), "Run restarts")
     ("cc", po::value(&do_comp_caching)->default_value(do_comp_caching), "Component caching")
     ("maxcache", po::value(&max_cache)->default_value(max_cache), "Max cache size in MB. 0 == use 80% of free mem")
-    ("ibpc", po::value(&do_implicit_bcp)->default_value(do_implicit_bcp), "Implicit Boolean Constraint Prop")
+    ("failed", po::value(&failed_lit_probe_type)->default_value(failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only top 1/4")
     ("version", "Print version info")
     ("pcc", po::value(&do_pcc)->default_value(do_pcc), "Probabilistic Component Caching")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
@@ -255,7 +255,7 @@ void set_up_solver(Solver& solver) {
 #endif
 
   solver.config().do_comp_caching = do_comp_caching;
-  solver.config().do_failed_lit_probe = do_implicit_bcp;
+  solver.config().failed_lit_probe_type = failed_lit_probe_type;
   solver.config().do_restart = do_restart;
   solver.config().verb = verb;
   solver.config().hashrange = hashrange;

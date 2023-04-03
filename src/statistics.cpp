@@ -18,6 +18,11 @@ static double in_MB(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
 
+double safe_div(double a, double b) {
+  if (b == 0) return 0;
+  else return a/b;
+}
+
 void DataAndStatistics::printShort(const Solver* solver, const ComponentCache* cache_) const {
   cout << "c " << endl;
   cout << "c      --- FINISHED ---" << endl;
@@ -28,7 +33,7 @@ void DataAndStatistics::printShort(const Solver* solver, const ComponentCache* c
     << solver->get_num_irred_long_cls() << "/"
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
   cout << "c conflict cls compacted         " << solver->num_conflict_clauses_compacted() << endl;
-  cout << "c failed lits found by iBCP      " << num_failed_literals_detected_ << endl;
+  cout << "c failed lits by iBCP/tests      " << num_failed_literals_detected_ << "/" << num_failed_lit_tests_ << " -- " << safe_div((double)num_failed_literals_detected_, (double)num_failed_lit_tests_)  << endl;
 
   cout << "c implicit BCP miss rate         "
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%";

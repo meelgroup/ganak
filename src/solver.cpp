@@ -550,7 +550,11 @@ bool Solver::prop_and_probe() {
   print_debug("--> Units of this comp set, propagating");
 
   bool bSucceeded = propagate(start_ofs);
-  if (config_.do_failed_lit_probe && bSucceeded) {
+  if (config_.failed_lit_probe_type == 2 && bSucceeded &&
+      (double)decision_stack_.size() < depth_queue.getLongtTerm().avg()/4.0) {
+    bSucceeded = failedLitProbeInternal();
+  }
+  else if (config_.failed_lit_probe_type == 1 && bSucceeded) {
     bSucceeded = failedLitProbeInternal();
   }
   return bSucceeded;

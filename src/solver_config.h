@@ -13,7 +13,7 @@ struct SolverConfiguration {
   // TODO comp caching cannot be deactivated for now!
   bool do_non_chron_back_track = true;
   bool do_comp_caching = true;
-  bool do_failed_lit_probe = true;
+  int failed_lit_probe_type = 2;
   bool do_pre_processing = true;
   bool do_pcc = true; // probabilistic comp caching
   int verb = 1;

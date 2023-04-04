@@ -200,9 +200,8 @@ bool Solver::get_polarity(const uint32_t v)
     if (var(Lit(v, false)).set_once) {
       polarity = var(Lit(v, false)).last_polarity;
     } else {
-      polarity = false;
-      /* polarity = litWatchList(Lit(v, true)).activity_score_ > */
-      /*   litWatchList(Lit(v, false)).activity_score_; */
+      polarity = litWatchList(Lit(v, true)).activity >
+        litWatchList(Lit(v, false)).activity;
     }
   }
   return polarity;

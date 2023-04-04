@@ -453,9 +453,9 @@ bool Counter::restart_if_needed() {
       }
       reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
-      stats.total_num_cached_comps_ = 0;
-      stats.num_decisions_ = 0;
     }
+    stats.total_num_cached_comps_ = 0;
+    stats.num_decisions_ = 0;
 
     // experimental for deleting polluted cubes and re-using GANAK
     /* set<uint32_t> vars; */
@@ -660,22 +660,28 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
 }
 
 void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
-    double& ret_act_inc) const
+    double& ret_act_inc, vector<uint32_t>& comp_acts) const
 {
-  acts.clear();
-  for(const auto& w: watches_) acts.push_back(w.activity);
+
+  acts.resize((nVars()+1)*2);
+  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
+    acts[l.raw()] = watches_[l].activity;
   polars.clear();
   for(const auto& v: variables_) polars.push_back(v.last_polarity);
+  comp_acts.clear();
+  for(uint32_t i = 0; i < nVars()+1; i++) comp_acts.push_back(comp_manager_->scoreOf(i));
   ret_act_inc = act_inc;
 }
 
-void Counter::set_activities(const vector<double>& act, const vector<uint8_t>& polars,
-    double ret_act_inc)
+void Counter::set_activities(const vector<double>& acts, const vector<uint8_t>& polars,
+    double ret_act_inc, vector<uint32_t>& comp_acts)
 {
-  size_t i = 0;
-  for(auto& v: watches_) v.activity = act[i];
+  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
+    watches_[l].activity = acts[l.raw()];
 
-  i = 0;
+  for(uint32_t i = 0; i < nVars()+1; i++) comp_manager_->scoreOf(i) = comp_acts[i];
+
+  uint32_t i = 0;
   for(auto& v: variables_) {
     v.set_once = true;
     v.last_polarity = polars[i];

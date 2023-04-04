@@ -33,7 +33,11 @@ public:
         indep_support_(indep_support)
   {}
 
-  uint32_t scoreOf(VariableIndex v) {
+  uint32_t& scoreOf(VariableIndex v) {
+    return var_frequency_scores_[v];
+  }
+
+  uint32_t scoreOf(VariableIndex v) const {
     return var_frequency_scores_[v];
   }
 

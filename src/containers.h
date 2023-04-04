@@ -51,7 +51,7 @@ public:
 		vector<_T>::reserve(_size * 2);
 	}
 
-	Lit end_lit() {
+	Lit end_lit() const {
 		return Lit(size() / 2, false);
 	}
 

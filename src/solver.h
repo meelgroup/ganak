@@ -50,8 +50,8 @@ public:
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
-  void get_activities(vector<double>& acts, vector<uint8_t>& polars, double& ret_act_inc) const;
-  void set_activities(const vector<double>& act, const vector<uint8_t>& polars, double act_inc);
+  void get_activities(vector<double>& acts, vector<uint8_t>& polars, double& ret_act_inc, vector<uint32_t>& comp_acts) const;
+  void set_activities(const vector<double>& act, const vector<uint8_t>& polars, double act_inc, vector<uint32_t>& comp_acts);
   const DataAndStatistics& get_stats() const;
   void shuffle_activities(MTRand& mtrand2);
   void end_irred_cls();

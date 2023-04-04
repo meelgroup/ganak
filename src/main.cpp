@@ -399,12 +399,14 @@ int main(int argc, char *argv[])
   mpz_class count = 0;
 
   vector<double> act;
+  vector<uint32_t> comp_acts;
   vector<uint8_t> polars;
   double act_inc;
   uint32_t num_cubes = 0;
   // TODO: add hyper-binary BIN clauses to GANAK
   // TODO: minimize cube
   // TODO: lookahead
+  conf.next_restart = conf.first_restart;
   Counter* counter = new Counter(conf);
   counter->set_indep_support(indep_support);
   create_from_sat_solver(*counter, *sat_solver);
@@ -453,7 +455,7 @@ int main(int argc, char *argv[])
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
-    counter->get_activities(act, polars, act_inc);
+    counter->get_activities(act, polars, act_inc, comp_acts);
     sat_solver->set_verbosity(0);
     num_cubes++;
     conf.next_restart*=2;
@@ -465,7 +467,7 @@ int main(int argc, char *argv[])
       counter = new Counter(conf);
       counter->set_indep_support(indep_support);
       create_from_sat_solver(*counter, *sat_solver);
-      counter->set_activities(act, polars, act_inc);
+      counter->set_activities(act, polars, act_inc, comp_acts);
     }
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);

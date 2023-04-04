@@ -104,7 +104,9 @@ public:
   // returns false if all comps have been processed
   inline bool findNextRemainingComponentOf(StackLevel &top);
   void recordRemainingCompsFor(StackLevel &top);
+  double get_comp_score(StackLevel &top);
   inline void sortComponentStackRange(uint32_t start, uint32_t end);
+  inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
   void gatherStatistics()
   {
@@ -150,6 +152,16 @@ void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
         std::swap(comp_stack_[i], comp_stack_[j]);
     }
 }
+
+double ComponentManager::get_alternate_score_comps(uint32_t start, uint32_t end) const
+{
+  double score = 1;
+  assert(start <= end);
+  // sort the remaining comps for processing
+  for (uint32_t i = start; i < end; i++) score *= comp_stack_[i]->nVars();
+  return score;
+}
+
 
 bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 {

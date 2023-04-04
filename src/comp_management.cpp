@@ -49,6 +49,32 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   SLOW_DEBUG_DO(cache_.test_descendantstree_consistency());
 }
 
+double ComponentManager::get_comp_score(StackLevel &top)
+{
+  const Component& super_comp = getSuperComponentOf(top);
+
+  // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
+  ana_.setupAnalysisContext(top, super_comp);
+
+  double score = 1;
+  uint32_t num_comps = 1;
+  uint32_t max_comp_size = 1;
+  for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+    if (ana_.isUnseenAndActive(*vt)) {
+      bool multi_var_comp = ana_.exploreRemainingCompOf(*vt);
+      if (multi_var_comp) {
+        Component *p_new_comp = ana_.makeComponentFromArcheType();
+        max_comp_size = std::max(p_new_comp->nVars(), max_comp_size);
+        delete p_new_comp;
+      }
+      num_comps++;
+    }
+  }
+  score=(double)num_comps/((double)max_comp_size*(double)super_comp.nVars());
+  /* cout << "v: " << top.getbranchvar() << " trailof: " << top.trail_ofs() << " Num comps: " << num_comps << " max_comp_size: " << max_comp_size << " score: " << score << endl; */
+  return score;
+}
+
 // This creates comps
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {

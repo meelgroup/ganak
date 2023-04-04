@@ -13,6 +13,7 @@
 #include "instance.h"
 #include "comp_management.h"
 #include "solver_config.h"
+
 #include "MersenneTwister.h"
 #include "comp_management.h"
 #include "boundedqueue.h"
@@ -35,10 +36,14 @@ public:
   Counter(const CounterConfiguration& conf);
   ~Counter();
 
-  double scoreOf(VariableIndex v)  const {
-    return
+  double scoreOf(VariableIndex v, uint32_t dec_level) {
+    double val =
       comp_manager_->scoreOf(v)*act_inc +
       10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
+    if (dec_level <= config_.lookahead_depth)
+      return val*(alternate_score(v, false) + alternate_score(v, true));
+    else
+      return val;
   }
   mpz_class count(vector<Lit>& largest_cube_ret);
   CounterConfiguration &config() { return config_; }
@@ -96,6 +101,7 @@ private:
   SOLVER_StateT countSAT();
   void decideLiteral();
   uint32_t find_best_branch();
+  double alternate_score(uint32_t v, bool value);
   bool prop_and_probe();
   bool failedLitProbeInternal();
   void computeLargestCube();

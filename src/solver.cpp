@@ -233,40 +233,66 @@ void Counter::decideLiteral() {
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 }
 
+double Counter::alternate_score(uint32_t v, bool val)
+{
+  double score = 0;
+
+  auto before = decision_stack_.top();
+  decision_stack_.top().setbranchvariable(v);
+  setLiteralIfFree(Lit(v, val));
+  const uint32_t start_ofs = trail.size() - 1;
+  bool bSucceeded = propagate(start_ofs);
+  if (!bSucceeded) score = 30000;
+  else {
+    bSucceeded = failedLitProbeInternal();
+    if (!bSucceeded) score = 30000;
+    else {
+      auto& top = decision_stack_.top();
+      score = comp_manager_->get_comp_score(top);
+    }
+  }
+  /* uint32_t diff = trail.size() - (start_ofs +1); */
+  reactivate_comps_and_backtrack_trail();
+  decision_stack_.pop_back();
+  decision_stack_.push_back(before);
+
+  return score;
+}
+
 uint32_t Counter::find_best_branch()
 {
-  // Find variable to branch on
   auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-  uint32_t max_score_var = *it;
-  double max_score = scoreOf(*(it));
+  uint32_t v = *it;
+  double max_score = scoreOf(*it, decision_stack_.size());
 
   // Find one variable that's OK to use
   while (*it != varsSENTINEL && indep_support_.find(*it) == indep_support_.end()) {
     it++;
   }
   if (*it != varsSENTINEL) {
-    max_score_var = *it;
-    max_score = scoreOf(*it);
+    v = *it;
+    max_score = scoreOf(*it, decision_stack_.size());
   } else {
     release_assert(false && "No variable to branch on in indep support. TODO");
   }
 
   // Find best variable to use
   while (*it != varsSENTINEL) {
-    //TODO MATE this is expensive I think
     if (indep_support_.find(*it) != indep_support_.end()) {
-      const double score = scoreOf(*it);
+      double score;
+      score = scoreOf(*it, decision_stack_.size());
       if (score > max_score) {
         max_score = score;
-        max_score_var = *it;
+        v = *it;
       }
     }
     it++;
   }
-  assert(max_score_var != 0 &&
-        "this assert should always hold, if not then there is a bug in the logic of countSAT()");
 
-  return max_score_var;
+  /* cout << "Decided on var: " << v << " score: " << max_score << endl; */
+  assert(v != 0 &&
+        "this assert should always hold, if not then there is a bug in the logic of countSAT()");
+  return v;
 }
 
 void Counter::shuffle_activities(MTRand &mtrand2) {

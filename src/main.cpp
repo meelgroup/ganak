@@ -473,7 +473,7 @@ int main(int argc, char *argv[])
     }
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
-  cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
+  cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) - total_check_time << endl;
   if (indep_support_given) cout << "s pmc ";
   else cout << "s mc ";
   cout << count << endl;

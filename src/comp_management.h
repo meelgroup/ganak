@@ -116,7 +116,7 @@ public:
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
   {
-    std::mt19937_64 eng(config_.randomseed); //Use the 64-bit Mersenne Twister 19937 generator
+    std::mt19937_64 eng(config_.seed); //Use the 64-bit Mersenne Twister 19937 generator
                                //and seed it with entropy.
     std::uniform_int_distribution<uint64_t> distr;
     assert(seedforCLHASH.empty());

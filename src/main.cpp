@@ -36,7 +36,6 @@ THE SOFTWARE.
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
-#include <arjun/arjun.h>
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -55,24 +54,13 @@ po::variables_map vm;
 po::positional_options_description p;
 
 using namespace std;
-int verb = 0;
-int seed = 0;
-int do_comp_caching = 1;
-uint64_t max_cache = 0;
-int failed_lit_probe_type = 2;
-int do_restart = 1;
-int do_pcc = 1;
-int do_arjun = 1;
-int hashrange = 1;
-double delta = 0.05;
-uint64_t first_restart_start = 40;
-uint64_t first_restart;
 CMSat::SATSolver* sat_solver;
 uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
 int do_check = 0;
 MTRand mtrand;
+SolverConfiguration conf;
 
 string ganak_version_info()
 {
@@ -92,25 +80,24 @@ string ganak_version_info()
 void add_ganak_options()
 {
     std::ostringstream my_delta;
-    my_delta << std::setprecision(8) << delta;
+    my_delta << std::setprecision(8) << conf.delta;
 
     main_options.add_options()
     ("help,h", "Prints help")
     ("input", po::value< vector<string> >(), "file(s) to read")
-    ("verb,v", po::value(&verb)->default_value(verb), "verb")
-    ("seed,s", po::value(&seed)->default_value(seed), "Seed")
-    ("delta", po::value(&delta)->default_value(delta, my_delta.str()), "Delta")
-    ("rstfirst", po::value(&first_restart_start)->default_value(first_restart_start), "Run restarts")
-    ("restart", po::value(&do_restart)->default_value(do_restart), "Run restarts")
-    ("cc", po::value(&do_comp_caching)->default_value(do_comp_caching), "Component caching")
-    ("maxcache", po::value(&max_cache)->default_value(max_cache), "Max cache size in MB. 0 == use 80% of free mem")
-    ("failed", po::value(&failed_lit_probe_type)->default_value(failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only top 1/4")
+    ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
+    ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
+    ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
+    ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
+    ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
+    ("cc", po::value(&conf.do_comp_caching)->default_value(conf.do_comp_caching), "Component caching")
+    ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
+    ("failed", po::value(&conf.failed_lit_probe_type)->default_value(conf.failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only top 1/4")
+    ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
     ("version", "Print version info")
-    ("pcc", po::value(&do_pcc)->default_value(do_pcc), "Probabilistic Component Caching")
+    ("pcc", po::value(&conf.do_pcc)->default_value(conf.do_pcc), "Probabilistic Component Caching")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
-    ("hashrange", po::value(&hashrange)->default_value(hashrange), "Seed")
-    ("arjun", po::value(&do_arjun)->default_value(do_arjun)
-        , "Use arjun to minimize sampling set")
+    ("hashrange", po::value(&conf.hashrange)->default_value(conf.hashrange), "Seed")
     ;
 
     help_options.add(main_options);
@@ -222,10 +209,10 @@ template<class T>
 void parse_file(const std::string& filename, T* reader) {
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, NULL, verb);
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, NULL, conf.verb);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, NULL, verb);
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, NULL, conf.verb);
   #endif
   if (in == NULL) {
       std::cout << "ERROR! Could not open file '" << filename
@@ -248,21 +235,6 @@ void parse_file(const std::string& filename, T* reader) {
   must_mult_exp2 = parser.must_mult_exp2;
 }
 
-
-void set_up_solver(Solver& solver) {
-#ifndef DOPCC
-  solver.config().perform_pcc = false;
-#endif
-
-  solver.config().do_comp_caching = do_comp_caching;
-  solver.config().failed_lit_probe_type = failed_lit_probe_type;
-  solver.config().do_restart = do_restart;
-  solver.config().verb = verb;
-  solver.config().hashrange = hashrange;
-  solver.config().delta = delta;
-  solver.config().first_restart = first_restart;
-  solver.config().maximum_cache_size_bytes_ = max_cache * 1024ULL*1024ULL;
-}
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   vector<Lit> ganak_cl;
@@ -344,10 +316,10 @@ mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>&
     return 0;
   }
 
-  Solver solver(do_pcc, mtrand.randInt());
-  set_up_solver(solver);
-  solver.config().verb = 0;
-  solver.config().do_restart = false;
+  SolverConfiguration conf2;
+  conf2.verb = 0;
+  conf2.do_restart = false;
+  Solver solver(conf2);
 
   create_from_sat_solver(solver, sat_solver2);
   solver.set_indep_support(indep_support);
@@ -378,34 +350,18 @@ void transfer_bins(Solver& solver, const vector<Lit>& bins)
   cout << "c Transferred " << bins.size()/3 << " bins" << endl;
 }
 
-vector<uint32_t> get_indeps_from_arjun(CMSat::SATSolver* ss)
-{
-  ArjunNS::Arjun arjun;
-  arjun.new_vars(ss->nVars());
-  ss->start_getting_small_clauses(
-      std::numeric_limits<uint32_t>::max(),
-      std::numeric_limits<uint32_t>::max(),
-      false);
-  vector<CMSat::Lit> cl;
-  while(ss->get_next_small_clause(cl)) {
-    arjun.add_clause(cl);
-  }
-  ss->end_getting_small_clauses();
-  vector<uint32_t> vars;
-  for(uint32_t i = 0; i < ss->nVars(); i++) vars.push_back(i);
-  arjun.set_starting_sampling_set(vars);
-  return arjun.get_indep_set();
-}
-
 int main(int argc, char *argv[])
 {
   const double start_time = cpuTime();
-  #if defined(__GNUC__) && defined(__linux__)
+#if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |
                  FE_DIVBYZERO |
                  FE_OVERFLOW
                 );
-  #endif
+#endif
+#ifndef DOPCC
+  config.perform_pcc = false;
+#endif
 
   //Reconstruct the command line so we can emit it later if needed
   string command_line;
@@ -415,7 +371,7 @@ int main(int argc, char *argv[])
           command_line += " ";
       }
   }
-  if (verb) {
+  if (conf.verb) {
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
   }
@@ -442,14 +398,12 @@ int main(int argc, char *argv[])
   vector<uint8_t> polars;
   double act_inc;
   uint32_t num_cubes = 0;
-  first_restart = first_restart_start;
   // TODO: add hyper-binary BIN clauses to GANAK
   // TODO: minimize cube
-  Solver solver(do_pcc, mtrand.randInt());
-  set_up_solver(solver);
-  solver.set_indep_support(indep_support);
-  create_from_sat_solver(solver, *sat_solver);
-  solver.init_activity_scores();
+  Solver counter(conf);
+  counter.set_indep_support(indep_support);
+  create_from_sat_solver(counter, *sat_solver);
+  counter.init_activity_scores();
   vector<vector<CMSat::Lit>> cubes;
   mpz_class total_check_count = 0;
   double total_check_time = 0;
@@ -458,9 +412,9 @@ int main(int argc, char *argv[])
     double call_time = cpuTime();
     vector<CMSat::lbool> model;
     if (!take_solution(model, act)) break;
-    solver.set_target_polar(model);
+    counter.set_target_polar(model);
     vector<Lit> largest_cube;
-    mpz_class this_count = solver.count(largest_cube);
+    mpz_class this_count = counter.count(largest_cube);
     count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
     cubes.push_back(cms_cl);
@@ -470,7 +424,7 @@ int main(int argc, char *argv[])
       << " cnt so far: " << std::setw(15) << count
       << " T: " << std::setprecision(2) << std::fixed << (cpuTime() - call_time)
       << endl;
-    if (verb >= 2) {
+    if (conf.verb >= 2) {
       cout << "c ---> cube: ";
       for(const auto& l: cms_cl) cout << l << " ";
       cout << "0" << endl;
@@ -482,21 +436,21 @@ int main(int argc, char *argv[])
       double this_check_time = cpuTime();
       auto check_count = check_count_independently_no_restart(cubes);
       total_check_count += check_count;
-      if (check_count != this_count && verb >= 2) {
+      if (check_count != this_count && conf.verb >= 2) {
         cout << "Check count says: " << check_count << endl;
       }
-      if (verb >=2 )
+      if (conf.verb >=2 )
         cout << "Difference rel this cube: " << this_count.get_d()/check_count.get_d()  << endl;
       cout << "Difference rel: " << count.get_d()/total_check_count.get_d() << endl;
       /* assert(check_count == this_count); */
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
-    solver.get_activities(act, polars, act_inc);
+    counter.get_activities(act, polars, act_inc);
     sat_solver->set_verbosity(0);
     num_cubes++;
-    first_restart*=2;
-    if (first_restart > 20*first_restart_start) first_restart = first_restart_start;
+    conf.next_restart*=2;
+    if (conf.next_restart > 20*conf.first_restart) conf.next_restart = conf.next_restart;
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;

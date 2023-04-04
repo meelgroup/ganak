@@ -98,15 +98,16 @@ protected:
         getHeaderOf(clause_ofs).decayScore();
   }
 
-  void updateActivities(ClauseOfs clause_ofs, vector<uint8_t>& tmp_seen) {
+  void updateActivities(ClauseOfs clause_ofs ) {
     getHeaderOf(clause_ofs).increaseScore();
     for (auto it = beginOf(clause_ofs); *it != SENTINEL_LIT; it++) {
       increaseActivity(*it);
     }
   }
 
-  void increaseActivity(const Lit lit)
+  void inline increaseActivity(const Lit lit)
   {
+    if (tmp_seen[lit.var()]) return;
     watches_[lit].activity += act_inc;
     if (watches_[lit].activity > 1e100) {
       //rescale
@@ -186,6 +187,7 @@ protected:
 protected:
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> target_polar;
+  vector<uint8_t> tmp_seen;
 
   // Cubes
   vector<Lit> largest_cube;

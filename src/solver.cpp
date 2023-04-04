@@ -487,7 +487,7 @@ retStateT Solver::backtrack() {
 
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
-  act_inc *= 1.0/0.5;
+  act_inc *= 1.0/config_.exp;
 
   if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
     deleteConflictClauses();
@@ -806,7 +806,7 @@ void Solver::recordLastUIPCauses() {
 
     assert(hasAntecedent(curr_lit));
     if (getAntecedent(curr_lit).isAClause()) {
-      updateActivities(getAntecedent(curr_lit).asCl(), tmp_seen);
+      updateActivities(getAntecedent(curr_lit).asCl());
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
@@ -888,7 +888,7 @@ void Solver::recordAllUIPCauses() {
 
     assert(hasAntecedent(curr_lit));
     if (getAntecedent(curr_lit).isAClause()) {
-      updateActivities(getAntecedent(curr_lit).asCl(), tmp_seen);
+      updateActivities(getAntecedent(curr_lit).asCl());
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
@@ -959,11 +959,10 @@ void Solver::printOnlineStats() {
   }
 }
 
-Solver::Solver(bool do_pcc, uint32_t seed)
+Solver::Solver(const SolverConfiguration& conf)
 {
-  mtrand.seed(seed);
-  config_.do_pcc = do_pcc;
-  config_.randomseed = seed;
+  config_ = conf;
+  mtrand.seed(conf.seed);
 }
 
 Solver::~Solver()

@@ -32,7 +32,7 @@ enum retStateT
 class Solver : public Instance
 {
 public:
-  Solver(bool do_pcc, uint32_t seed);
+  Solver(const SolverConfiguration& conf);
   ~Solver();
 
   double scoreOf(VariableIndex v)  const {
@@ -67,7 +67,6 @@ private:
   bqueue<double, double> cache_miss_rate_queue;
 
   // Temporaries, used during recordLastUIPClause
-  vector<uint8_t> tmp_seen;
   vector<Lit> tmp_clause; //used in recoredLastUIPClause
   vector<uint32_t> toClear;
 

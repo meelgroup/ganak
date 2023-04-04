@@ -59,6 +59,7 @@ uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
 int do_check = 0;
+int exact = 0;
 MTRand mtrand;
 CounterConfiguration conf;
 
@@ -87,6 +88,7 @@ void add_ganak_options()
     ("input", po::value< vector<string> >(), "file(s) to read")
     ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
+    ("exact", po::value(&exact)->default_value(exact), "Exact counting")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
     ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
     ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
@@ -97,6 +99,7 @@ void add_ganak_options()
     ("version", "Print version info")
     ("pcc", po::value(&conf.do_pcc)->default_value(conf.do_pcc), "Probabilistic Component Caching")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
+    ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
     ("hashrange", po::value(&conf.hashrange)->default_value(conf.hashrange), "Seed")
     ;
 
@@ -113,7 +116,7 @@ void parse_supported_options(int argc, char** argv)
         if (vm.count("help"))
         {
             cout
-            << "Exact counter" << endl;
+            << "Approx/Exact counter" << endl;
 
             cout
             << "Usage: ./ganak [options] inputfile" << endl;
@@ -400,6 +403,7 @@ int main(int argc, char *argv[])
   uint32_t num_cubes = 0;
   // TODO: add hyper-binary BIN clauses to GANAK
   // TODO: minimize cube
+  // TODO: lookahead
   Counter* counter = new Counter(conf);
   counter->set_indep_support(indep_support);
   create_from_sat_solver(*counter, *sat_solver);
@@ -439,10 +443,12 @@ int main(int argc, char *argv[])
       if (check_count != this_count && conf.verb >= 2) {
         cout << "Check count says: " << check_count << endl;
       }
-      if (conf.verb >=2 )
-        cout << "Difference rel this cube: " << this_count.get_d()/check_count.get_d()  << endl;
-      cout << "Difference rel: " << count.get_d()/total_check_count.get_d() << endl;
-      /* assert(check_count == this_count); */
+      if (exact) release_assert(check_count == this_count);
+      else {
+        if (conf.verb >=2)
+          cout << "Difference rel this cube: " << this_count.get_d()/check_count.get_d()  << endl;
+        cout << "Difference rel: " << count.get_d()/total_check_count.get_d() << endl;
+      }
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
@@ -451,6 +457,15 @@ int main(int argc, char *argv[])
     num_cubes++;
     conf.next_restart*=2;
     if (conf.next_restart > 20*conf.first_restart) conf.next_restart = conf.next_restart;
+
+    //Exact
+    if (exact && sat_solver->okay()) {
+      delete counter;
+      counter = new Counter(conf);
+      counter->set_indep_support(indep_support);
+      create_from_sat_solver(*counter, *sat_solver);
+      counter->set_activities(act, polars, act_inc);
+    }
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
@@ -458,6 +473,7 @@ int main(int argc, char *argv[])
   else cout << "s mc ";
   cout << count << endl;
 
+  delete counter;
   delete sat_solver;
   return 0;
 }

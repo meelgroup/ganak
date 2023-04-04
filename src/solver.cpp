@@ -35,6 +35,10 @@ void Counter::simplePreProcess()
 
 void Counter::set_indep_support(const set<uint32_t> &indeps)
 {
+  if (indeps.empty()) {
+    cout << "ERROR: this is weird, empty independent support given??" << endl;
+    exit(-1);
+  }
   indep_support_ = indeps;
 }
 
@@ -365,12 +369,26 @@ bool Counter::restart_if_needed() {
   /*     << endl; */
   /* } */
 
-  if (config_.do_restart
-      /* && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg() && */
-      /* && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95 && */
-      && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.1 &&
-      // don't restart if we are about to exit (i.e. empty largest cube)
-      !largest_cube.empty()) {
+  if (!config_.do_restart || largest_cube.empty()) return false;
+  bool restart = false;
+  if (config_.restart_type == 0
+      && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg())
+    restart = true;
+  if (config_.restart_type == 1
+      && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95)
+    restart = true;
+
+  if (config_.restart_type == 2
+      && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.1)
+    restart = true;
+
+  if (config_.restart_type == 3 && stats.num_decisions_ > config_.next_restart)
+    restart = true;
+
+  if (config_.restart_type == 4 && stats.total_num_cached_comps_ > config_.next_restart)
+    restart = true;
+
+  if (restart) {
     cout << "c Restarting. ";
     if (comp_size_queue.isvalid()) {
       cout << " Lterm comp size avg: " << std::setw(5) << comp_size_queue.getLongtTerm().avg()
@@ -403,6 +421,7 @@ bool Counter::restart_if_needed() {
       reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
       stats.total_num_cached_comps_ = 0;
+      stats.num_decisions_ = 0;
     }
 
     // experimental for deleting polluted cubes and re-using GANAK

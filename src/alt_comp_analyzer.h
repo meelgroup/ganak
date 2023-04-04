@@ -37,7 +37,7 @@ public:
     return var_frequency_scores_[v];
   }
 
-  uint32_t scoreOf(VariableIndex v) const {
+  const uint32_t& scoreOf(VariableIndex v) const {
     return var_frequency_scores_[v];
   }
 

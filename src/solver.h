@@ -60,6 +60,7 @@ public:
   void get_unit_cls(vector<Lit>& units) const;
   void get_bin_red_cls(vector<Lit>& bins) const;
   void init_activity_scores();
+  void set_next_restart(uint64_t next) { config_.next_restart = next; }
   bqueue<uint32_t> comp_size_queue;
   void decr_act(uint32_t v, double ratio) {
     watches_[Lit(v, false)].activity *= 0.2/ratio;

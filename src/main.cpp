@@ -258,9 +258,10 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return cms_cl;
 }
 
-bool take_solution(vector<CMSat::lbool>& model, vector<double>& act) {
+bool take_solution(vector<CMSat::lbool>& model) {
+  vector<double> act;
   sat_solver->set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
-  sat_solver->set_activities(act);
+  /* sat_solver->set_activities(act); */
   //solver.set_up_for_sample_counter(100);
   CMSat::lbool ret = sat_solver->solve();
   assert(ret != CMSat::l_Undef);
@@ -418,7 +419,7 @@ int main(int argc, char *argv[])
   while (sat_solver->okay()) {
     double call_time = cpuTime();
     vector<CMSat::lbool> model;
-    if (!take_solution(model, act)) break;
+    if (!take_solution(model)) break;
     counter->set_target_polar(model);
     vector<Lit> largest_cube;
     mpz_class this_count = counter->count(largest_cube);
@@ -455,11 +456,12 @@ int main(int argc, char *argv[])
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
-    counter->get_activities(act, polars, act_inc, comp_acts);
+    if (exact) counter->get_activities(act, polars, act_inc, comp_acts);
     sat_solver->set_verbosity(0);
     num_cubes++;
     conf.next_restart*=2;
-    if (conf.next_restart > 20*conf.first_restart) conf.next_restart = conf.next_restart;
+    if (conf.next_restart > 20*conf.first_restart) conf.next_restart = conf.first_restart;
+    counter->set_next_restart(conf.next_restart);
 
     //Exact
     if (exact && sat_solver->okay()) {

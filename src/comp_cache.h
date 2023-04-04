@@ -97,7 +97,7 @@ public:
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;
     uint64_t *clhash_key;
-    uint32_t table_ofs =  packed_comp.hashkey() & table_size_mask_;
+    uint32_t table_ofs = packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
     if (config_.do_pcc) {
 #ifdef DOPCC
@@ -156,8 +156,7 @@ private:
       reHashTable(2*table_.size());
     }
   }
-  void reHashTable(uint32_t size){
-
+  void reHashTable(const uint32_t size) {
     table_.clear();
     table_.resize(size,0);
     // we assert that table size is a power of 2

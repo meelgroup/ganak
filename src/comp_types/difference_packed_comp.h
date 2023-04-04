@@ -79,10 +79,8 @@ public:
   uint64_t *compute_clhash(){ return clhashkey_; }
   bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
     if(hashkey_ != comp.hashkey()) return false;
-    bool match = true;
     for (uint32_t i=0; i<num_hash_elems;i++){
-      match = clhash_key[i] == clhashkey_[i];
-      if(!match) return false;
+      if (clhash_key[i] != clhashkey_[i]) return false;
     }
     return true;
   }

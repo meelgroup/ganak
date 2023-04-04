@@ -24,6 +24,7 @@ struct CounterConfiguration {
   uint64_t maximum_cache_size_bytes_ = 0;
   int restart_type = 0;
   uint32_t lookahead_depth = 7;
+  int ignore_indep = 0;
 
   uint64_t seed = 0;
   uint32_t hashrange = 1;

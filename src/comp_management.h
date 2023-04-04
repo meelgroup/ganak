@@ -25,15 +25,15 @@
 #endif
 #include "solver_config.h"
 
-class Solver;
+class Counter;
 
-// There is exactly ONE of this, inside Solver
+// There is exactly ONE of this, inside Counter
 class ComponentManager
 {
 public:
-  ComponentManager(const SolverConfiguration &config, DataAndStatistics &statistics,
+  ComponentManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const set<uint32_t> &indep_support_, Solver* solver) :
+                   const set<uint32_t> &indep_support_, Counter* solver) :
       config_(config), stats(statistics), cache_(statistics, config_, sz),
       ana_(lit_values, indep_support_), solver_(solver)
   {
@@ -127,14 +127,14 @@ public:
   }
 
 private:
-  const SolverConfiguration &config_;
+  const CounterConfiguration &config_;
   DataAndStatistics &stats;
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
-  Solver* solver_;
+  Counter* solver_;
   BPCSizes sz;
 };
 

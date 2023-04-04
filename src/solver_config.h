@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-struct SolverConfiguration {
+struct CounterConfiguration {
   // TODO comp caching cannot be deactivated for now!
   bool do_non_chron_back_track = true;
   bool do_comp_caching = true;

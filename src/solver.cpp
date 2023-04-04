@@ -17,7 +17,7 @@
 #include "structures.h"
 #include "time_mem.h"
 
-void Solver::simplePreProcess()
+void Counter::simplePreProcess()
 {
   for (auto lit : unit_clauses_) {
     assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");;
@@ -33,12 +33,12 @@ void Solver::simplePreProcess()
   init_decision_stack();
 }
 
-void Solver::set_indep_support(const set<uint32_t> &indeps)
+void Counter::set_indep_support(const set<uint32_t> &indeps)
 {
   indep_support_ = indeps;
 }
 
-void Solver::init_activity_scores()
+void Counter::init_activity_scores()
 {
 
   for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
@@ -47,7 +47,7 @@ void Solver::init_activity_scores()
   }
 }
 
-void Solver::end_irred_cls()
+void Counter::end_irred_cls()
 {
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
   if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
@@ -65,19 +65,19 @@ void Solver::end_irred_cls()
   comp_manager_->initialize(watches_, lit_pool_);
 }
 
-void Solver::add_red_cl(const vector<Lit>& lits) {
+void Counter::add_red_cl(const vector<Lit>& lits) {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before add_red_cl()");
   assert(lits.size() <= 2); // TODO longer clauses -- but then have to add activity
   addUIPConflictClause(lits);
 }
 
-void Solver::get_unit_cls(vector<Lit>& units) const
+void Counter::get_unit_cls(vector<Lit>& units) const
 {
   assert(units.empty());
   units = unit_clauses_;
 }
 
-void Solver::get_bin_red_cls(vector<Lit>& bins) const
+void Counter::get_bin_red_cls(vector<Lit>& bins) const
 {
   for(size_t i = 2; i < watches_.size(); i++) {
     Lit l(i/2, i%2);
@@ -93,7 +93,7 @@ void Solver::get_bin_red_cls(vector<Lit>& bins) const
   }
 }
 
-mpz_class Solver::count(vector<Lit>& largest_cube_ret)
+mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   largest_cube.clear();
@@ -125,7 +125,7 @@ mpz_class Solver::count(vector<Lit>& largest_cube_ret)
   }
 }
 
-void Solver::set_target_polar(const vector<CMSat::lbool>& model) {
+void Counter::set_target_polar(const vector<CMSat::lbool>& model) {
   assert(target_polar.size() > nVars());
   for(uint32_t i = 0; i < nVars(); i++) {
     target_polar[i+1] = model[i] == CMSat::l_True;
@@ -133,7 +133,7 @@ void Solver::set_target_polar(const vector<CMSat::lbool>& model) {
   counted_bottom_comp = false;
 }
 
-void Solver::print_all_levels() {
+void Counter::print_all_levels() {
   cout << COLORG "--- going through all decision levels now, printing comps --" << endl;
   uint32_t dec_lev = 0;
   for(const auto& s: decision_stack_) {
@@ -157,7 +157,7 @@ void Solver::print_all_levels() {
   cout << COLORG "--- Went through all levels now --" << COLDEF << endl;
 }
 
-SOLVER_StateT Solver::countSAT() {
+SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
   while (true) {
@@ -192,7 +192,7 @@ SOLVER_StateT Solver::countSAT() {
   return SUCCESS;
 }
 
-bool Solver::get_polarity(const uint32_t v)
+bool Counter::get_polarity(const uint32_t v)
 {
   bool polarity;
   if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
@@ -207,7 +207,7 @@ bool Solver::get_polarity(const uint32_t v)
   return polarity;
 }
 
-void Solver::decideLiteral() {
+void Counter::decideLiteral() {
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " on path: " << decision_stack_.top().on_path_to_target_ << " branch: " << decision_stack_.top().is_right_branch());
   bool on_path = true;
   if (decision_stack_.size() != 1)
@@ -258,11 +258,11 @@ void Solver::decideLiteral() {
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 }
 
-void Solver::shuffle_activities(MTRand &mtrand2) {
+void Counter::shuffle_activities(MTRand &mtrand2) {
   for(auto& v: watches_) v.activity=act_inc*mtrand2.randExc();
 }
 
-void Solver::computeLargestCube()
+void Counter::computeLargestCube()
 {
   assert(config_.do_restart);
   largest_cube.clear();
@@ -346,7 +346,7 @@ void Solver::computeLargestCube()
 #endif
 }
 
-bool Solver::restart_if_needed() {
+bool Counter::restart_if_needed() {
   cache_miss_rate_queue.push(stats.cache_miss_rate());
   depth_queue.push(decision_stack_.size());
   /* if (cache_miss_rate_queue.isvalid()) { */
@@ -414,7 +414,7 @@ bool Solver::restart_if_needed() {
   return false;
 }
 
-retStateT Solver::backtrack() {
+retStateT Counter::backtrack() {
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 
   do {
@@ -485,7 +485,7 @@ retStateT Solver::backtrack() {
   return EXIT;
 }
 
-retStateT Solver::resolveConflict() {
+retStateT Counter::resolveConflict() {
   recordLastUIPCauses();
   act_inc *= 1.0/config_.exp;
 
@@ -542,7 +542,7 @@ retStateT Solver::resolveConflict() {
   return RESOLVED;
 }
 
-bool Solver::prop_and_probe() {
+bool Counter::prop_and_probe() {
   // the asserted literal has been set, so we start
   // bcp on that literal
   assert(trail.size() > 0 && "Mate added this, but it seems OK");
@@ -563,7 +563,7 @@ bool Solver::prop_and_probe() {
   return bSucceeded;
 }
 
-bool Solver::propagate(const uint32_t start_at_trail_ofs) {
+bool Counter::propagate(const uint32_t start_at_trail_ofs) {
   for (auto i = start_at_trail_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
 
@@ -607,7 +607,7 @@ bool Solver::propagate(const uint32_t start_at_trail_ofs) {
   return true;
 }
 
-void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars,
+void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
     double& ret_act_inc) const
 {
   acts.clear();
@@ -617,7 +617,7 @@ void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars,
   ret_act_inc = act_inc;
 }
 
-void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& polars,
+void Counter::set_activities(const vector<double>& act, const vector<uint8_t>& polars,
     double ret_act_inc)
 {
   size_t i = 0;
@@ -633,12 +633,12 @@ void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& po
   act_inc = ret_act_inc;
 }
 
-const DataAndStatistics& Solver::get_stats() const
+const DataAndStatistics& Counter::get_stats() const
 {
   return stats;
 }
 
-bool Solver::failedLitProbeInternal() {
+bool Counter::failedLitProbeInternal() {
   print_debug(COLRED "Failed literal probing START");
 
   uint32_t trail_ofs = decision_stack_.top().trail_ofs();
@@ -719,7 +719,7 @@ bool Solver::failedLitProbeInternal() {
   return true;
 }
 
-void Solver::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector<uint8_t>& seen) {
+void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector<uint8_t>& seen) {
   tmp_clause_minim.clear();
   assertion_level_ = 0;
   for (const auto& lit : cl) {
@@ -762,7 +762,7 @@ void Solver::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector
   uip_clauses_.push_back(vector<Lit>(tmp_clause_minim.begin(), tmp_clause_minim.end()));
 }
 
-void Solver::recordLastUIPCauses() {
+void Counter::recordLastUIPCauses() {
   // note:
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
@@ -844,7 +844,7 @@ void Solver::recordLastUIPCauses() {
   toClear.clear();
 }
 
-void Solver::recordAllUIPCauses() {
+void Counter::recordAllUIPCauses() {
   // note:
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
@@ -927,7 +927,7 @@ void Solver::recordAllUIPCauses() {
   toClear.clear();
 }
 
-void Solver::printOnlineStats() {
+void Counter::printOnlineStats() {
   if (config_.verb == 0) return;
 
   cout << "c " << endl;
@@ -959,13 +959,13 @@ void Solver::printOnlineStats() {
   }
 }
 
-Solver::Solver(const SolverConfiguration& conf)
+Counter::Counter(const CounterConfiguration& conf)
 {
   config_ = conf;
   mtrand.seed(conf.seed);
 }
 
-Solver::~Solver()
+Counter::~Counter()
 {
   delete comp_manager_;
 }

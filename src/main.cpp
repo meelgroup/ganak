@@ -60,7 +60,7 @@ bool indep_support_given = false;
 set<uint32_t> indep_support;
 int do_check = 0;
 MTRand mtrand;
-SolverConfiguration conf;
+CounterConfiguration conf;
 
 string ganak_version_info()
 {
@@ -273,8 +273,8 @@ bool take_solution(vector<CMSat::lbool>& model, vector<double>& act) {
   return true;
 }
 
-void create_from_sat_solver(Solver& solver, SATSolver& ss) {
-  solver.new_vars(sat_solver->nVars());
+void create_from_sat_solver(Counter& counter, SATSolver& ss) {
+  counter.new_vars(sat_solver->nVars());
   ss.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
@@ -282,10 +282,10 @@ void create_from_sat_solver(Solver& solver, SATSolver& ss) {
   vector<CMSat::Lit> cms_cl;
   while(ss.get_next_small_clause(cms_cl)) {
     const auto cl = cms_to_ganak_cl(cms_cl);
-    solver.add_irred_cl(cl);
+    counter.add_irred_cl(cl);
   }
   ss.end_getting_small_clauses();
-  solver.end_irred_cls();
+  counter.end_irred_cls();
 }
 
 mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>& cubes) {
@@ -316,22 +316,22 @@ mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>&
     return 0;
   }
 
-  SolverConfiguration conf2;
+  CounterConfiguration conf2;
   conf2.verb = 0;
   conf2.do_restart = false;
-  Solver solver(conf2);
+  Counter counter(conf2);
 
-  create_from_sat_solver(solver, sat_solver2);
-  solver.set_indep_support(indep_support);
+  create_from_sat_solver(counter, sat_solver2);
+  counter.set_indep_support(indep_support);
 
   vector<Lit> largest_cube;
-  const auto count = solver.count(largest_cube);
+  const auto count = counter.count(largest_cube);
   assert(largest_cube.empty());
   return count;
 }
 
 
-void transfer_bins(Solver& solver, const vector<Lit>& bins)
+void transfer_bins(Counter& solver, const vector<Lit>& bins)
 {
   vector<Lit> cl;
   size_t at = 0;
@@ -400,10 +400,10 @@ int main(int argc, char *argv[])
   uint32_t num_cubes = 0;
   // TODO: add hyper-binary BIN clauses to GANAK
   // TODO: minimize cube
-  Solver counter(conf);
-  counter.set_indep_support(indep_support);
-  create_from_sat_solver(counter, *sat_solver);
-  counter.init_activity_scores();
+  Counter* counter = new Counter(conf);
+  counter->set_indep_support(indep_support);
+  create_from_sat_solver(*counter, *sat_solver);
+  counter->init_activity_scores();
   vector<vector<CMSat::Lit>> cubes;
   mpz_class total_check_count = 0;
   double total_check_time = 0;
@@ -412,9 +412,9 @@ int main(int argc, char *argv[])
     double call_time = cpuTime();
     vector<CMSat::lbool> model;
     if (!take_solution(model, act)) break;
-    counter.set_target_polar(model);
+    counter->set_target_polar(model);
     vector<Lit> largest_cube;
-    mpz_class this_count = counter.count(largest_cube);
+    mpz_class this_count = counter->count(largest_cube);
     count += this_count;
     const auto cms_cl = ganak_to_cms_cl(largest_cube);
     cubes.push_back(cms_cl);
@@ -446,7 +446,7 @@ int main(int argc, char *argv[])
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
-    counter.get_activities(act, polars, act_inc);
+    counter->get_activities(act, polars, act_inc);
     sat_solver->set_verbosity(0);
     num_cubes++;
     conf.next_restart*=2;

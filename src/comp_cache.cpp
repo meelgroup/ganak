@@ -44,7 +44,7 @@ uint64_t freeram() {
 
 #include "stack.h"
 
-ComponentCache::ComponentCache(DataAndStatistics &statistics, const SolverConfiguration &config, const BPCSizes& _sz) :
+ComponentCache::ComponentCache(DataAndStatistics &statistics, const CounterConfiguration &config, const BPCSizes& _sz) :
 		stats(statistics), config_(config), sz(_sz) {
 }
 

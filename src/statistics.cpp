@@ -23,7 +23,7 @@ double safe_div(double a, double b) {
   else return a/b;
 }
 
-void DataAndStatistics::printShort(const Solver* solver, const ComponentCache* cache_) const {
+void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* cache_) const {
   cout << "c " << endl;
   cout << "c      --- FINISHED ---" << endl;
   cout << "c cls irred                      " << num_irred_clauses() << endl;

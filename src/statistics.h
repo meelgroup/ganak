@@ -21,7 +21,7 @@ using std::cout;
 using std::endl;
 
 class Instance;
-class Solver;
+class Counter;
 class ComponentCache;
 
 class DataAndStatistics {
@@ -142,7 +142,7 @@ public:
     else num_long_irred_clauses_++;
   }
 
-  void printShort(const Solver* solver, const ComponentCache* cache_) const;
+  void printShort(const Counter* solver, const ComponentCache* cache_) const;
   void printShortFormulaInfo() const {
     cout << "c irred cls (all/long/bin/unit): "
       << num_irred_clauses() << "/" << num_long_irred_clauses_

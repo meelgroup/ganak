@@ -20,7 +20,7 @@
 // There is EXACTLY ONE of this
 class ComponentCache {
 public:
-  ComponentCache(DataAndStatistics &statistics, const SolverConfiguration& config, const BPCSizes& sz);
+  ComponentCache(DataAndStatistics &statistics, const CounterConfiguration& config, const BPCSizes& sz);
 
   ~ComponentCache() {
    // debug_dump_data();
@@ -200,7 +200,7 @@ private:
   uint32_t table_size_mask_;
 
   DataAndStatistics &stats;
-  const SolverConfiguration &config_;
+  const CounterConfiguration &config_;
   const BPCSizes& sz;
   uint64_t my_time_ = 0;
 };

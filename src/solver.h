@@ -28,12 +28,12 @@ enum retStateT
   BACKTRACK,
 };
 
-// There is only one solver
-class Solver : public Instance
+// There is only one counter
+class Counter : public Instance
 {
 public:
-  Solver(const SolverConfiguration& conf);
-  ~Solver();
+  Counter(const CounterConfiguration& conf);
+  ~Counter();
 
   double scoreOf(VariableIndex v)  const {
     return
@@ -41,7 +41,7 @@ public:
       10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
   }
   mpz_class count(vector<Lit>& largest_cube_ret);
-  SolverConfiguration &config() { return config_; }
+  CounterConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
@@ -78,7 +78,7 @@ private:
   LiteralIndexedVector<uint8_t> viewed_lits;
 
   double time_start;
-  SolverConfiguration config_;
+  CounterConfiguration config_;
   MTRand mtrand;
 
   DecisionStack decision_stack_;

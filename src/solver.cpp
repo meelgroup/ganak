@@ -360,6 +360,11 @@ bool Solver::restart_if_needed() {
   /*     << " Sterm comp size avg: " << comp_size_queue.avg() */
   /*     << endl; */
   /* } */
+  /* if (depth_queue.isvalid()) { */
+  /*     cout << " Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg() */
+  /*     << " Sterm dec avg: " << std::setw(5) << depth_queue.avg() */
+  /*     << endl; */
+  /* } */
 
   if (config_.do_restart
       /* && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg()*0.8 && */

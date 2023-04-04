@@ -23,7 +23,6 @@ public:
   void add_irred_cl(const vector<Lit>& lits);
   size_t num_conflict_clauses() const { return conflict_clauses_.size(); }
   uint32_t num_conflict_clauses_compacted() const { return num_conflict_clauses_compacted_; }
-  LiteralIndexedVector<LitWatchList> watches_; // watches
 
 protected:
 
@@ -61,7 +60,7 @@ protected:
   // information from deleted clauses
   void compactConflictLiteralPool();
 
-  uint32_t nVars() {
+  uint32_t nVars() const {
     return variables_.size() - 1;
   }
 
@@ -84,6 +83,7 @@ protected:
   uint32_t irred_lit_pool_size_;
 
   LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
+  LiteralIndexedVector<LitWatchList> watches_; // watches
   vector<ClauseOfs> conflict_clauses_;
   uint32_t num_conflict_clauses_compacted_ = 0;
   vector<Lit> unit_clauses_;
@@ -108,11 +108,11 @@ protected:
   void increaseActivity(const Lit lit)
   {
     watches_[lit].activity += act_inc;
-    /* if (variables_[lit.var()].activity > 1e100) { */
-    /*   //rescale */
-    /*   act_inc *= 1e-90; */
-    /*   for(auto& v: variables_) v.activity*=1e-90; */
-    /* } */
+    if (watches_[lit].activity > 1e100) {
+      //rescale
+      act_inc *= 1e-90;
+      for(auto& v: watches_) v.activity*=1e-90;
+    }
   }
 
   bool isUnitClause(const Lit lit) {

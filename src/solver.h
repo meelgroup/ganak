@@ -37,7 +37,7 @@ public:
 
   double scoreOf(VariableIndex v)  const {
     return
-      comp_manager_->scoreOf(v) +
+      comp_manager_->scoreOf(v)*act_inc +
       10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
   }
   mpz_class count(vector<Lit>& largest_cube_ret);
@@ -56,6 +56,10 @@ public:
   void get_bin_red_cls(vector<Lit>& bins) const;
   void init_activity_scores();
   bqueue<uint32_t> comp_size_queue;
+  void decr_act(uint32_t v, double ratio) {
+    watches_[Lit(v, false)].activity *= 0.2/ratio;
+    watches_[Lit(v, true)].activity *= 0.2/ratio;
+  }
 
 private:
   vector<double> scores;

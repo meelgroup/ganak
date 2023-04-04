@@ -258,10 +258,9 @@ void Solver::decideLiteral() {
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 }
 
-
-/* void Solver::shuffle_activities(MTRand &mtrand2) { */
-/*   for(auto& v: variables_) v.activity=act_inc*mtrand2.randExc(); */
-/* } */
+void Solver::shuffle_activities(MTRand &mtrand2) {
+  for(auto& v: watches_) v.activity=act_inc*mtrand2.randExc();
+}
 
 void Solver::computeLargestCube()
 {
@@ -488,7 +487,7 @@ retStateT Solver::backtrack() {
 
 retStateT Solver::resolveConflict() {
   recordLastUIPCauses();
-  /* act_inc *= 1.0/0.99; */
+  act_inc *= 1.0/0.5;
 
   if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
     deleteConflictClauses();
@@ -608,38 +607,31 @@ bool Solver::propagate(const uint32_t start_at_trail_ofs) {
   return true;
 }
 
-/* void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars, */
-/*     double& ret_act_inc) const */
-/* { */
-/*   acts.clear(); */
-/*   for(const auto& v: variables_) { */
-/*     acts.push_back(v.activity); */
-/*   } */
-/*   polars.clear(); */
-/*   for(const auto& v: variables_) { */
-/*     polars.push_back(v.last_polarity); */
-/*   } */
-/*   ret_act_inc = act_inc; */
-/* } */
+void Solver::get_activities(vector<double>& acts, vector<uint8_t>& polars,
+    double& ret_act_inc) const
+{
+  acts.clear();
+  for(const auto& w: watches_) acts.push_back(w.activity);
+  polars.clear();
+  for(const auto& v: variables_) polars.push_back(v.last_polarity);
+  ret_act_inc = act_inc;
+}
 
-/* void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& polars, */
-/*     double ret_act_inc) */
-/* { */
-/*   size_t i = 0; */
-/*   for(auto& v: variables_) { */
-/*     v.activity = act[i]; */
-/*     i++; */
-/*   } */
+void Solver::set_activities(const vector<double>& act, const vector<uint8_t>& polars,
+    double ret_act_inc)
+{
+  size_t i = 0;
+  for(auto& v: watches_) v.activity = act[i];
 
-/*   i = 0; */
-/*   for(auto& v: variables_) { */
-/*     v.set_once = true; */
-/*     v.last_polarity = polars[i]; */
-/*     i++; */
-/*   } */
+  i = 0;
+  for(auto& v: variables_) {
+    v.set_once = true;
+    v.last_polarity = polars[i];
+    i++;
+  }
 
-/*   act_inc = ret_act_inc; */
-/* } */
+  act_inc = ret_act_inc;
+}
 
 const DataAndStatistics& Solver::get_stats() const
 {

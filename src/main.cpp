@@ -453,13 +453,12 @@ int main(int argc, char *argv[])
   vector<vector<CMSat::Lit>> cubes;
   mpz_class total_check_count = 0;
   double total_check_time = 0;
-  act.resize(sat_solver->nVars()+1, 0);
+  act.resize(2*(sat_solver->nVars()+1), 0);
   while (sat_solver->okay()) {
     double call_time = cpuTime();
     vector<CMSat::lbool> model;
     if (!take_solution(model, act)) break;
     solver.set_target_polar(model);
-    /* if (num_cubes % 10 == 0) solver.shuffle_activities(mtrand); */
     vector<Lit> largest_cube;
     mpz_class this_count = solver.count(largest_cube);
     count += this_count;
@@ -493,7 +492,7 @@ int main(int argc, char *argv[])
       total_check_time += cpuTime() - this_check_time;
     }
     sat_solver->add_clause(cms_cl);
-    /* solver.get_activities(act, polars, act_inc); */
+    solver.get_activities(act, polars, act_inc);
     sat_solver->set_verbosity(0);
     num_cubes++;
     first_restart*=2;

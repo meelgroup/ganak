@@ -204,8 +204,7 @@ bool Counter::get_polarity(const uint32_t v)
     if (var(Lit(v, false)).set_once) {
       polarity = var(Lit(v, false)).last_polarity;
     } else {
-      polarity = litWatchList(Lit(v, true)).activity >
-        litWatchList(Lit(v, false)).activity;
+      return false;
     }
   }
   return polarity;
@@ -222,6 +221,20 @@ void Counter::decideLiteral() {
                comp_manager_->comp_stack_size()));
   decision_stack_.top().on_path_to_target_ = on_path;
 
+  const uint32_t v = find_best_branch();
+  // The decision literal is now ready. Deal with it.
+  const Lit lit(v, get_polarity(v));
+  print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
+      << decision_stack_.get_decision_level());
+  decision_stack_.top().setbranchvariable(v);
+  setLiteralIfFree(lit);
+  stats.num_decisions_++;
+  if (stats.num_decisions_ % 128 == 0) decayActivities();
+  assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+}
+
+uint32_t Counter::find_best_branch()
+{
   // Find variable to branch on
   auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
   uint32_t max_score_var = *it;
@@ -234,6 +247,8 @@ void Counter::decideLiteral() {
   if (*it != varsSENTINEL) {
     max_score_var = *it;
     max_score = scoreOf(*it);
+  } else {
+    release_assert(false && "No variable to branch on in indep support. TODO");
   }
 
   // Find best variable to use
@@ -251,15 +266,7 @@ void Counter::decideLiteral() {
   assert(max_score_var != 0 &&
         "this assert should always hold, if not then there is a bug in the logic of countSAT()");
 
-  // The decision literal is now ready. Deal with it.
-  const Lit lit(max_score_var, get_polarity(max_score_var));
-  print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
-      << decision_stack_.get_decision_level());
-  decision_stack_.top().setbranchvariable(max_score_var);
-  setLiteralIfFree(lit);
-  stats.num_decisions_++;
-  if (stats.num_decisions_ % 128 == 0) decayActivities();
-  assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+  return max_score_var;
 }
 
 void Counter::shuffle_activities(MTRand &mtrand2) {

@@ -95,6 +95,7 @@ private:
 
   SOLVER_StateT countSAT();
   void decideLiteral();
+  uint32_t find_best_branch();
   bool prop_and_probe();
   bool failedLitProbeInternal();
   void computeLargestCube();

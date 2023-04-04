@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "constants.h"
 #include <limits>
 #include <cassert>
 #include <vector>
@@ -47,8 +46,8 @@ public:
         sum(0)
         , num(0)
         #ifdef AVGCALC_NEED_MIN_MAX
-        , min(numeric_limits<T>::max())
-        , max(numeric_limits<T>::min())
+        , min(std::numeric_limits<T>::max())
+        , max(std::numeric_limits<T>::min())
         #endif
     {}
 
@@ -98,7 +97,7 @@ public:
     #ifdef AVGCALC_NEED_MIN_MAX
     T getMin() const
     {
-        if (min == numeric_limits<T>::max())
+        if (min == std::numeric_limits<T>::max())
             return 0;
 
         return min;
@@ -106,7 +105,7 @@ public:
 
     T getMax() const
     {
-        if (max == numeric_limits<T>::min())
+        if (max == std::numeric_limits<T>::min())
             return 0;
 
         return max;

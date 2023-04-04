@@ -19,7 +19,7 @@ struct SolverConfiguration {
   bool do_pcc = true; // probabilistic comp caching
   int verb = 1;
   int do_restart = 1;
-  uint64_t first_restart = 100000000U;
+  uint64_t first_restart = 1000U;
   uint64_t next_restart = 100000000U;
   uint64_t maximum_cache_size_bytes_ = 0;
 

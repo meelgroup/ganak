@@ -366,9 +366,9 @@ bool Solver::restart_if_needed() {
   /* } */
 
   if (config_.do_restart
-      /* && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg()*0.8 && */
+      /* && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg() && */
       /* && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95 && */
-      && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.2 &&
+      && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.1 &&
       // don't restart if we are about to exit (i.e. empty largest cube)
       !largest_cube.empty()) {
     cout << "c Restarting. ";

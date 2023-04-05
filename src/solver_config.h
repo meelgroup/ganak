@@ -26,6 +26,7 @@ struct CounterConfiguration {
   uint32_t lookahead_depth = 0;
   int ignore_indep = 0;
   double ratio_flitprobe = 0.2;
+  int alluip_inc_act = 1;
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

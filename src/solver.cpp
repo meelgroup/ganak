@@ -960,7 +960,7 @@ void Counter::recordAllUIPCauses() {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
     if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
-    increaseActivity(l);
+    if (config_.alluip_inc_act) increaseActivity(l);
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
   }
@@ -984,7 +984,7 @@ void Counter::recordAllUIPCauses() {
 
     assert(hasAntecedent(curr_lit));
     if (getAntecedent(curr_lit).isAClause()) {
-      updateActivities(getAntecedent(curr_lit).asCl());
+      if (config_.alluip_inc_act) updateActivities(getAntecedent(curr_lit).asCl());
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
@@ -1002,8 +1002,10 @@ void Counter::recordAllUIPCauses() {
       }
     } else {
       Lit alit = getAntecedent(curr_lit).asLit();
-      increaseActivity(alit);
-      increaseActivity(curr_lit);
+      if (config_.alluip_inc_act) {
+        increaseActivity(alit);
+        increaseActivity(curr_lit);
+      }
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {

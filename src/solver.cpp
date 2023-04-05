@@ -248,12 +248,8 @@ double Counter::alternate_score(uint32_t v, bool val)
   bool bSucceeded = propagate(start_ofs);
   if (!bSucceeded) score = 30000;
   else {
-    bSucceeded = failedLitProbeInternal();
-    if (!bSucceeded) score = 30000;
-    else {
-      auto& top = decision_stack_.top();
-      score = comp_manager_->get_comp_score(top);
-    }
+    auto& top = decision_stack_.top();
+    score = comp_manager_->get_comp_score(top);
   }
   /* uint32_t diff = trail.size() - (start_ofs +1); */
   reactivate_comps_and_backtrack_trail();

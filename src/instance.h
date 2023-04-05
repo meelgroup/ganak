@@ -162,6 +162,10 @@ protected:
     return lit_values_[lit] == X_TRI;
   }
 
+  bool isUnknown(uint32_t var) const {
+    return lit_values_[Lit(var, false)] == X_TRI;
+  }
+
   vector<Lit>::const_iterator beginOf(ClauseOfs cl_ofs) const {
     return lit_pool_.begin() + cl_ofs;
   }

@@ -75,13 +75,14 @@ private:
   // Temporaries, used during recordLastUIPClause
   vector<Lit> tmp_clause; //used in recoredLastUIPClause
   vector<uint32_t> toClear;
+  vector<Lit> toSet;
 
   // Used during minimizeAndStoreUIPClause
   deque<Lit> tmp_clause_minim;
 
   // Temporaries for failedLitProbeInternal
-  vector<Lit> test_lits;
-  LiteralIndexedVector<uint8_t> viewed_lits;
+  vector<uint32_t> test_vars;
+  vector<uint8_t> viewed_vars;
 
   double time_start;
   CounterConfiguration config_;
@@ -100,11 +101,12 @@ private:
   bool prepFailedLiteralTest();
 
   SOLVER_StateT countSAT();
-  void decideLiteral();
+  void decideLiteral(Lit lit = NOT_A_LIT);
   uint32_t find_best_branch();
   double alternate_score(uint32_t v, bool value);
   bool prop_and_probe();
   bool failedLitProbeInternal();
+  bool one_lit_probe(Lit lit, bool set);
   void computeLargestCube();
 
   // this is the actual BCP algorithm
@@ -205,30 +207,6 @@ private:
     decision_stack_.top().resetRemainingComps();
   }
 
-  bool fail_test(const Lit lit)
-  {
-    uint32_t sz = trail.size();
-    // we increase the decLev artificially
-    // s.t. after the tentative BCP call, we can learn a conflict clause
-    // relative to the assignment of *jt
-    decision_stack_.startFailedLitTest();
-    print_debug("Fail testing lit: " << lit);
-    setLiteralIfFree(lit);
-
-    assert(!hasAntecedent(lit));
-
-    bool bSucceeded = propagate(sz);
-    if (!bSucceeded) recordAllUIPCauses();
-
-    decision_stack_.stopFailedLitTest();
-
-    while (trail.size() > sz)
-    {
-      unSet(trail.back());
-      trail.pop_back();
-    }
-    return bSucceeded;
-  }
   /////////////////////////////////////////////
   //  Conflict analysis below
   /////////////////////////////////////////////

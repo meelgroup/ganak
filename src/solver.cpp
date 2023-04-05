@@ -27,7 +27,7 @@ void Counter::simplePreProcess()
 
   bool succeeded = propagate(0);
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  viewed_lits.resize(nVars() + 1, 0);
+  viewed_vars.resize(nVars() + 1, 0);
   stats.num_unit_irred_clauses_ = unit_clauses_.size();
   irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
@@ -54,6 +54,7 @@ void Counter::init_activity_scores()
 
 void Counter::end_irred_cls()
 {
+  tmp_seen.resize(nVars()+1, 0);
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
   if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
   depth_queue.clearAndResize(config_.first_restart);
@@ -211,7 +212,7 @@ bool Counter::get_polarity(const uint32_t v)
   return polarity;
 }
 
-void Counter::decideLiteral() {
+void Counter::decideLiteral(Lit lit) {
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " on path: " << decision_stack_.top().on_path_to_target_ << " branch: " << decision_stack_.top().is_right_branch());
   bool on_path = true;
   if (decision_stack_.size() != 1)
@@ -222,12 +223,14 @@ void Counter::decideLiteral() {
                comp_manager_->comp_stack_size()));
   decision_stack_.top().on_path_to_target_ = on_path;
 
-  const uint32_t v = find_best_branch();
   // The decision literal is now ready. Deal with it.
-  const Lit lit(v, get_polarity(v));
+  if (lit == NOT_A_LIT) {
+    const uint32_t v = find_best_branch();
+    lit = Lit(v, get_polarity(v));
+  }
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
-  decision_stack_.top().setbranchvariable(v);
+  decision_stack_.top().setbranchvariable(lit.var());
   setLiteralIfFree(lit);
   stats.num_decisions_++;
   if (stats.num_decisions_ % 128 == 0) decayActivities();
@@ -609,7 +612,7 @@ bool Counter::prop_and_probe() {
 
   bool bSucceeded = propagate(start_ofs);
   if (config_.failed_lit_probe_type == 2 && bSucceeded &&
-      (double)decision_stack_.size() < depth_queue.getLongtTerm().avg()/4.0) {
+      (double)decision_stack_.size() < depth_queue.getLongtTerm().avg()*config_.ratio_flitprobe) {
     bSucceeded = failedLitProbeInternal();
   }
   else if (config_.failed_lit_probe_type == 1 && bSucceeded) {
@@ -705,16 +708,15 @@ bool Counter::failedLitProbeInternal() {
   uint32_t trail_ofs = decision_stack_.top().trail_ofs();
   uint32_t num_curr_lits = 0;
   while (trail_ofs < trail.size()) {
-    test_lits.clear();
-    for (auto it = trail.begin() + trail_ofs;
-         it != trail.end(); it++) {
+    test_vars.clear();
+    for (auto it = trail.begin() + trail_ofs; it != trail.end(); it++) {
       for (auto cl_ofs : occ_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
           for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
-            if (isUnknown(*lt) && !viewed_lits[lt->neg()]) {
-              test_lits.push_back(lt->neg());
+            if (isUnknown(*lt) && !viewed_vars[lt->var()]) {
+              test_vars.push_back(lt->var());
               print_debug("-> potential lit to test: " << lt->neg());
-              viewed_lits[lt->neg()] = true;
+              viewed_vars[lt->var()] = true;
             }
           }
         }
@@ -722,61 +724,99 @@ bool Counter::failedLitProbeInternal() {
     }
     num_curr_lits = trail.size() - trail_ofs;
     trail_ofs = trail.size();
-    for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
-      viewed_lits[*jt] = false;
-    }
+    for (const auto& v: test_vars) viewed_vars[v] = false;
 
     // Figure out which literals to probe
     scores.clear();
-    for (auto jt = test_lits.begin(); jt != test_lits.end(); jt++) {
-      scores.push_back(watches_[*jt].activity);
+    for (const auto& v: test_vars) {
+      scores.push_back(watches_[Lit(v, false)].activity+watches_[Lit(v, true)].activity);
     }
     sort(scores.begin(), scores.end());
-    num_curr_lits = 10 + num_curr_lits / 20;
+    num_curr_lits = 5 + num_curr_lits / 40;
     double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
     }
-    stats.num_failed_lit_tests_ += test_lits.size();
+    stats.num_failed_lit_tests_ += test_vars.size();
 
     // Do the probing
-    for (auto lit : test_lits) {
-      if (isUnknown(lit) && threshold <= watches_[lit].activity) {
-        uint32_t sz = trail.size();
-        // we increase the decLev artificially
-        // s.t. after the tentative BCP call, we can learn a conflict clause
-        // relative to the assignment of *jt
-        decision_stack_.startFailedLitTest();
-        setLiteralIfFree(lit);
-        assert(!hasAntecedent(lit));
+    toSet.clear();
+    for (const auto& v : test_vars) {
+      Lit l = Lit(v, false);
+      if (isUnknown(l) && threshold <=
+          (watches_[l].activity + watches_[l.neg()].activity)) {
+        if (!one_lit_probe(l, true)) return false;
+        if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
+      }
+    }
+    // These _should_ fail... kinda.
+    for(const auto& l: toSet) {
+      if (isUnknown(l)) {
+        if (!one_lit_probe(l.neg(), false)) return false;
+      }
+    }
+    toSet.clear();
+  }
+  print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
+  return true;
+}
 
-        bool bSucceeded = propagate(sz);
-        if (!bSucceeded) recordAllUIPCauses();
-        decision_stack_.stopFailedLitTest();
+bool Counter::one_lit_probe(Lit lit, bool set)
+{
+  stats.num_failed_lit_tests_++;
+  uint32_t sz = trail.size();
+  // we increase the decLev artificially
+  // s.t. after the tentative BCP call, we can learn a conflict clause
+  // relative to the assignment of *jt
+  decision_stack_.startFailedLitTest();
+  setLiteralIfFree(lit);
+  assert(!hasAntecedent(lit));
+  if (set == true) assert(toClear.empty());
 
-        // backtracking
-        while (trail.size() > sz) {
-          unSet(trail.back());
-          trail.pop_back();
-        }
+  bool bSucceeded = propagate(sz);
+  if (!bSucceeded) {
+    for(const auto& v: toClear) tmp_seen[v] = 0;
+    toClear.clear();
+    recordAllUIPCauses();
+  }
+  decision_stack_.stopFailedLitTest();
 
-        if (!bSucceeded) {
-          stats.num_failed_literals_detected_++;
-          print_debug("-> failed literal detected");
-          sz = trail.size();
-          for (auto it = uip_clauses_.rbegin(); it != uip_clauses_.rend(); it++) {
-            if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl;
-            setLiteralIfFree(it->front(), addUIPConflictClause(*it));
-          }
-          if (!propagate(sz)) {
-            print_debug("Failed literal probing END -- this comp/branch is UNSAT");
-            return false;
-          }
+  // backtracking
+  while (trail.size() > sz) {
+    Lit l = trail.back();
+    unSet(l);
+    if (bSucceeded) {
+      if (set) {
+        tmp_seen[l.var()] = 1U | ((uint8_t)l.sign() << 1);
+        toClear.push_back(l.var());
+      } else {
+        if (tmp_seen[l.var()] && (tmp_seen[l.var()] >> 1) == (uint8_t)l.sign()) {
+          toSet.push_back(l);
+          stats.num_failed_bprop_literals_detected_++;
         }
       }
     }
+    trail.pop_back();
   }
-  print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
+  if (!set) {
+    for(const auto& v: toClear) tmp_seen[v] = 0;
+    toClear.clear();
+  }
+
+  if (!bSucceeded) {
+    stats.num_failed_literals_detected_++;
+    print_debug("-> failed literal detected");
+    sz = trail.size();
+    for (auto it = uip_clauses_.rbegin(); it != uip_clauses_.rend(); it++) {
+      if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl;
+      setLiteralIfFree(it->front(), addUIPConflictClause(*it));
+    }
+    if (!propagate(sz)) {
+      print_debug("Failed literal probing END -- this comp/branch is UNSAT");
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -828,7 +868,6 @@ void Counter::recordLastUIPCauses() {
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
   // antecedent and set to unseen
-  tmp_seen.resize(nVars()+1, false);
   tmp_clause.clear();
   assert(toClear.empty());
 

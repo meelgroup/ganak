@@ -65,7 +65,9 @@ public:
   }
 
   Lit neg() const {
-    return Lit(var(), !sign());
+    Lit l;
+    l.value_ = value_ ^ 1;
+    return l;
   }
 
   int val() const {

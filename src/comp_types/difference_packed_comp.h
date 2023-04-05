@@ -29,7 +29,7 @@ public:
 
   DifferencePackedComponent() { }
   inline DifferencePackedComponent(Component &rComp, const BPCSizes& sz);
-  inline DifferencePackedComponent(vector<void *> & randomseedforCLHASH, Component &rComp, const BPCSizes& sz);
+  inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz);
   inline bool contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz);
 
   bool pcc() const {
@@ -48,7 +48,7 @@ public:
   }
 
   uint32_t raw_data_byte_size(const BPCSizes& sz) const {
-    if (is_pcc) return num_hash_elems* sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    if (is_pcc) return sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     else return data_size(sz)* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
   }
 
@@ -56,7 +56,7 @@ public:
     // for the supposed 16byte alignment of malloc
   uint32_t sys_overhead_raw_data_byte_size(const BPCSizes& sz) const {
     uint32_t ds;
-    if (is_pcc) ds = num_hash_elems* sizeof(uint64_t);
+    if (is_pcc) ds = sizeof(uint64_t);
 
     ds = data_size(sz)* sizeof(uint32_t);
     uint32_t ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
@@ -76,12 +76,10 @@ public:
   }
 
 #ifdef DOPCC
-  uint64_t *compute_clhash(){ return clhashkey_; }
-  bool equals(const DifferencePackedComponent &comp, uint64_t* clhash_key) const {
+  uint64_t compute_clhash(){ return clhashkey_; }
+  bool equals(const DifferencePackedComponent &comp, uint64_t clhash_key) const {
     if(hashkey_ != comp.hashkey()) return false;
-    for (uint32_t i=0; i<num_hash_elems;i++){
-      if (clhash_key[i] != clhashkey_[i]) return false;
-    }
+    if (clhash_key != clhashkey_) return false;
     return true;
   }
 #endif
@@ -185,7 +183,7 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp, const BPC
   bs.assert_size(data_size);
 }
 
-DifferencePackedComponent::DifferencePackedComponent(vector<void *>& random, Component &rComp, const BPCSizes& sz) {
+DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz) {
   // first, generate hashkey, and compute max diff for cls and vars
   uint32_t max_var_diff = 0;
   uint32_t hashkey_vars = *rComp.varsBegin();
@@ -253,14 +251,9 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *>& random, Com
   bs.assert_size(data_size);
 
 #ifdef DOPCC
-  clhashkey_ = new uint64_t[random.size()];
-  for(size_t i=0; i<random.size();i++){
-    clhasher h(random[i]);
-    clhashkey_[i] = h(data_, data_size);
-  }
+  clhasher h(randomseedforCLHASH);
+  clhashkey_ = h(data_, data_size);
 #endif
-
-  num_hash_elems = random.size();
 }
 
 #endif /* DIFFERENCE_PACKED_COMPONENT_H_ */

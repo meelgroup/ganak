@@ -145,8 +145,8 @@ private:
 
   void printOnlineStats();
   void checkProbabilisticHashSanity() const {
-      const uint32_t t = stats.num_cache_look_ups_ + 1;
-      if (2 * log2(t) > log2(config_.delta) + 64 * config_.hashrange * 0.9843) {
+      const uint64_t t = stats.num_cache_look_ups_ + 1;
+      if (2 * log2(t) > log2(config_.delta) + 64 * 0.9843) {
         // 1 - log_2(2.004)/64 = 0.9843
         cout << "ERROR: We need to change the hash range (-1)" << endl;
         exit(-1);

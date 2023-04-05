@@ -28,7 +28,6 @@ struct CounterConfiguration {
   double ratio_flitprobe = 0.2;
 
   uint64_t seed = 0;
-  uint32_t hashrange = 1;
   uint32_t maxdec = 5000000;
   uint32_t minconflicts_ = 500;
   double delta = 0.05;

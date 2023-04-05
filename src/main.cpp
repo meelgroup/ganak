@@ -103,7 +103,6 @@ void add_ganak_options()
     ("ignoreind", po::value(&conf.ignore_indep)->default_value(conf.ignore_indep), "Ignore independent support")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
-    ("hashrange", po::value(&conf.hashrange)->default_value(conf.hashrange), "Seed")
     ;
 
     help_options.add(main_options);

@@ -40,10 +40,7 @@ public:
   }
 
   ~ComponentManager() {
-    for (const auto& c: seedforCLHASH) {
-      assert(c != NULL);
-      free(c);
-    }
+    free(randomseedforCLHASH);
   }
 
   unsigned& scoreOf(VariableIndex v)
@@ -120,18 +117,14 @@ public:
   }
 
   void removeAllCachePollutionsOf(const StackLevel &top);
-  vector<void *> seedforCLHASH; //stores a bunch of __m128 aligned data pieces, each
+  void* randomseedforCLHASH; //stores a bunch of __m128 aligned data pieces, each
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
   {
     std::mt19937_64 eng(config_.seed); //Use the 64-bit Mersenne Twister 19937 generator
                                //and seed it with entropy.
     std::uniform_int_distribution<uint64_t> distr;
-    assert(seedforCLHASH.empty());
-    seedforCLHASH.resize(config_.hashrange);
-    for (uint32_t i = 0; i < config_.hashrange; i++) {
-      seedforCLHASH[i] = get_random_key_for_clhash(distr(eng), distr(eng));
-    }
+    randomseedforCLHASH = get_random_key_for_clhash(distr(eng), distr(eng));
   }
 
 private:

@@ -120,9 +120,6 @@ public:
     if (data_){
       delete [] data_;
     }
-#ifdef DOPCC
-    if (clhashkey_) delete [] clhashkey_;
-#endif
   }
   void outbit(uint32_t v){
    for(auto i=0; i<32;i++){
@@ -206,10 +203,6 @@ public:
     assert(isDeletable());
     if (data_) delete [] data_;
     data_ = nullptr;
-#ifdef DOPCC
-    if (clhashkey_) delete [] clhashkey_;
-    clhashkey_ = nullptr;
-#endif
   }
 
   uint32_t _debug_static_val;
@@ -223,13 +216,12 @@ protected:
   uint32_t* data_ = nullptr;
 
 #ifdef DOPCC
-  uint64_t* clhashkey_ = nullptr;
+  uint64_t clhashkey_;
   uint32_t hashkey_ = 0;
 #endif
 
   mpz_class model_count_;
   uint32_t creation_time_ = 1;
-  uint32_t num_hash_elems = 0;
   uint32_t old_size = 0;
   uint32_t old_num_vars = 0;
   bool is_pcc = false;

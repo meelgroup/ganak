@@ -29,7 +29,7 @@ public:
             delete pentry;
   }
 
-  void init(Component &super_comp, vector <void*>  &randomseedforCLHASH);
+  void init(Component &super_comp, void* randomseedforCLHASH);
   void delete_comps_with_vars(const set<uint32_t>& vars);
   uint64_t get_num_entries_used() const
   {
@@ -96,7 +96,7 @@ public:
 
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;
-    uint64_t *clhash_key;
+    uint64_t clhash_key;
     uint32_t table_ofs = packed_comp.hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
     if (config_.do_pcc) {

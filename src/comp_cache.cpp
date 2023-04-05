@@ -48,7 +48,7 @@ ComponentCache::ComponentCache(DataAndStatistics &statistics, const CounterConfi
 		stats(statistics), config_(config), sz(_sz) {
 }
 
-void ComponentCache::init(Component &super_comp, vector <void*> &randomseedforCLHASH){
+void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
 
   CacheableComponent *packed_super_comp;
 	if (!config_.do_pcc) {

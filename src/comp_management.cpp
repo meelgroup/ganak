@@ -28,7 +28,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
       , ana_.max_clause_id());
 
 
-  cache_.init(*comp_stack_.back(), seedforCLHASH);
+  cache_.init(*comp_stack_.back(), randomseedforCLHASH);
 }
 
 void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
@@ -91,7 +91,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       CacheableComponent *packed_comp = NULL;
       if (config_.do_pcc) {
 #ifdef DOPCC
-        packed_comp = new CacheableComponent(seedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz);
+        packed_comp = new CacheableComponent(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz);
         packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), packed_comp->nVars(sz));
 #else
         exit(-1);

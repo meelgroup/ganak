@@ -184,8 +184,7 @@ protected:
 
   bool isSatisfied(ClauseOfs cl_ofs) {
     for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++)
-      if (isTrue(*lt))
-        return true;
+      if (isTrue(*lt)) return true;
     return false;
   }
 protected:

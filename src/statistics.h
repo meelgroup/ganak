@@ -66,6 +66,11 @@ public:
   uint64_t total_num_cached_comps_ = 0;
   uint64_t sum_size_cached_comps_ = 0;
 
+
+  // Lookahead
+  uint64_t lookaheads = 0;
+  uint64_t lookahead_computes = 0;
+
   // the number of bytes occupied by all comps
   uint64_t sum_bytes_cached_comps_ = 0;
   // the same number, summing over all comps ever stored

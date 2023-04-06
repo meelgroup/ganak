@@ -161,7 +161,7 @@ void Counter::print_all_levels() {
 void Counter::print_stat_line() {
   if (next_print_stat > stats.num_cache_hits_) return;
   stats.printShort(this, &comp_manager_->get_cache());
-  next_print_stat = stats.num_cache_hits_ + 1000000;
+  next_print_stat = stats.num_cache_hits_ + 100000;
 }
 
 SOLVER_StateT Counter::countSAT() {
@@ -261,40 +261,52 @@ double Counter::alternate_score(uint32_t v, bool val)
   return score;
 }
 
+
+struct VS {
+  VS() {}
+  VS(uint32_t _v, double _score1, double _score2) : v(_v), score1(_score1), score2(_score2) {}
+  bool operator<(const VS& other) const {
+    if (score1 != other.score1) return score1 > other.score1;
+    else return score2 > other.score2;
+  }
+  uint32_t v;
+  double score1 = 0;
+  double score2 = 0;
+};
+
 uint32_t Counter::find_best_branch()
 {
+  vector<VS> vars_scores;
   auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-  uint32_t v = *it;
-  double max_score = scoreOf(*it, decision_stack_.size());
-
-// Find one variable that's OK to use
-  while (*it != varsSENTINEL && indep_support_.find(*it) == indep_support_.end()) {
-    it++;
-  }
-  if (*it != varsSENTINEL) {
-    v = *it;
-    max_score = scoreOf(*it, decision_stack_.size());
-  } else {
-    release_assert(false && "No variable to branch on in indep support. TODO");
-  }
-
-  // Find best variable to use
   while (*it != varsSENTINEL) {
     if (indep_support_.find(*it) != indep_support_.end()) {
-      double score;
-      score = scoreOf(*it, decision_stack_.size());
-      if (score > max_score) {
-        max_score = score;
-        v = *it;
-      }
+      Lit l(*it, false);
+      vars_scores.push_back(VS(*it, scoreOf(*it), *it));
     }
     it++;
   }
+  assert(!vars_scores.empty());
+
+  std::sort(vars_scores.begin(), vars_scores.end());
+  double best_var = vars_scores[0].v;
+  if (vars_scores.size() > 20 && decision_stack_.size() > depth_queue.getLongtTerm().avg()*config_.lookahead_depth) {
+    stats.lookaheads++;
+    stats.lookahead_computes++;
+    double best_score = alternate_score(vars_scores[0].v, true) *
+      alternate_score(vars_scores[0].v, false);
+    for(uint32_t i = 1; i < config_.lookahead_num && i < vars_scores.size(); i ++) {
+      stats.lookahead_computes++;
+      double score = alternate_score(vars_scores[i].v, true) *
+        alternate_score(vars_scores[i].v, false);
+      if (score > best_score) {
+        best_score = score;
+        best_var = vars_scores[i].v;
+      }
+    }
+  }
 
   /* cout << "Decided on var: " << v << " score: " << max_score << endl; */
-  assert(v != 0 &&
-        "this assert should always hold, if not then there is a bug in the logic of countSAT()");
-  return v;
+  return best_var;
 }
 
 void Counter::shuffle_activities(MTRand &mtrand2) {

@@ -91,6 +91,7 @@ void add_ganak_options()
     ("exact", po::value(&exact)->default_value(exact), "Exact counting")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
     ("lookahead", po::value(&conf.lookahead_depth)->default_value(conf.lookahead_depth), "Lookahead depth")
+    ("looknum", po::value(&conf.lookahead_num)->default_value(conf.lookahead_num), "How many to check for lookahead")
     ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
     ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
     ("cc", po::value(&conf.do_comp_caching)->default_value(conf.do_comp_caching), "Component caching")
@@ -413,7 +414,6 @@ int main(int argc, char *argv[])
   uint32_t num_cubes = 0;
   // TODO: add hyper-binary BIN clauses to GANAK
   // TODO: minimize cube
-  // TODO: lookahead
   conf.next_restart = conf.first_restart;
   Counter* counter = new Counter(conf);
   counter->set_indep_support(indep_support);

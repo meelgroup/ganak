@@ -33,6 +33,8 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << solver->get_num_irred_long_cls() << "/"
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
   cout << "c conflict cls compacted         " << solver->num_conflict_clauses_compacted() << endl;
+  cout << "c looks/look-computes            "
+    << lookaheads << "/" << lookahead_computes << endl;
   cout << "c flits/bplits/tests             "
     << num_failed_literals_detected_
     << "/" << num_failed_bprop_literals_failed

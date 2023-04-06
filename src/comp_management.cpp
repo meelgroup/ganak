@@ -7,6 +7,7 @@
 
 #include "comp_management.h"
 #include "solver.h"
+#include <iomanip>
 
 // Initialized exactly once when Solver is created.
 //   it also inits the included analyzer called "ana_"
@@ -58,6 +59,7 @@ double ComponentManager::get_comp_score(StackLevel &top)
 
   double score = 1;
   uint32_t num_comps = 1;
+  double sizes_mult = 1;
   uint32_t max_comp_size = 1;
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
     if (ana_.isUnseenAndActive(*vt)) {
@@ -66,12 +68,16 @@ double ComponentManager::get_comp_score(StackLevel &top)
         Component *p_new_comp = ana_.makeComponentFromArcheType();
         max_comp_size = std::max(p_new_comp->nVars(), max_comp_size);
         delete p_new_comp;
+        sizes_mult *= p_new_comp->nVars();
       }
       num_comps++;
     }
   }
-  score=(double)num_comps/((double)max_comp_size*(double)super_comp.nVars());
-  /* cout << "v: " << top.getbranchvar() << " trailof: " << top.trail_ofs() << " Num comps: " << num_comps << " max_comp_size: " << max_comp_size << " score: " << score << endl; */
+  score=num_comps*sizes_mult/(double)max_comp_size;
+  /* cout << "v: " << std::setw(4) << top.getbranchvar() */
+  /*   << " dec_lev: " << solver_->dec_level() << " Num comps: " */
+  /*   << num_comps << " max_comp_size: " << max_comp_size */
+  /*   << " score: " << score << endl; */
   return score;
 }
 

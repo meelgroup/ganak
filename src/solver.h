@@ -36,13 +36,14 @@ public:
   Counter(const CounterConfiguration& conf);
   ~Counter();
 
-  double scoreOf(VariableIndex v, uint32_t dec_level) {
+  double scoreOf(VariableIndex v) {
     double val =
       comp_manager_->scoreOf(v)*act_inc +
       10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
-    if (dec_level <= config_.lookahead_depth)
-      return val*(alternate_score(v, false) + alternate_score(v, true));
-    else
+
+    /* if (dec_level() > config_.lookahead_depth) */
+    /*   return alternate_score(v, false)*alternate_score(v, true); */
+    /* else */
       return val;
   }
   mpz_class count(vector<Lit>& largest_cube_ret);
@@ -66,6 +67,7 @@ public:
     watches_[Lit(v, false)].activity *= 0.2/ratio;
     watches_[Lit(v, true)].activity *= 0.2/ratio;
   }
+  uint64_t dec_level() const { return decision_stack_.size(); }
 
 private:
   vector<double> scores;

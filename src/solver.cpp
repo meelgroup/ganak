@@ -158,6 +158,12 @@ void Counter::print_all_levels() {
   cout << COLORG "--- Went through all levels now --" << COLDEF << endl;
 }
 
+void Counter::print_stat_line() {
+  if (next_print_stat > stats.num_cache_hits_) return;
+  stats.printShort(this, &comp_manager_->get_cache());
+  next_print_stat = stats.num_cache_hits_ + 1000000;
+}
+
 SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
@@ -170,6 +176,7 @@ SOLVER_StateT Counter::countSAT() {
       checkProbabilisticHashSanity();
       decideLiteral();
       VERBOSE_DEBUG_DO(print_all_levels());
+      print_stat_line();
 
       while (!prop_and_probe()) {
         state = resolveConflict();

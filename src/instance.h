@@ -28,17 +28,22 @@ protected:
 
   void unSet(Lit lit) {
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
+    var(lit).bprop = false;
     var(lit).decision_level = INVALID_DL;
     lit_values_[lit] = X_TRI;
     lit_values_[lit.neg()] = X_TRI;
   }
 
-  Antecedent & getAntecedent(Lit lit) {
+  const Antecedent & getAntecedent(Lit lit) const {
     return variables_[lit.var()].ante;
   }
 
+  bool antedecentBProp(Lit lit) const {
+    return variables_[lit.var()].bprop;
+  }
+
   bool hasAntecedent(Lit lit) const {
-    return variables_[lit.var()].ante.isAnt();
+    return variables_[lit.var()].bprop || variables_[lit.var()].ante.isAnt();
   }
 
   bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) {

@@ -697,13 +697,14 @@ bool Counter::failedLitProbeInternal() {
   uint32_t trail_ofs = decision_stack_.top().trail_ofs();
   uint32_t num_curr_lits = 0;
   while (trail_ofs < trail.size()) {
-    test_vars.clear();
+    test_lits.clear();
     for (auto it = trail.begin() + trail_ofs; it != trail.end(); it++) {
+      // Only going through the long, the binary clauses have set the variables already
       for (auto cl_ofs : occ_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
           for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
             if (isUnknown(*lt) && !viewed_vars[lt->var()]) {
-              test_vars.push_back(lt->var());
+              test_lits.push_back(*lt);
               print_debug("-> potential lit to test: " << lt->neg());
               viewed_vars[lt->var()] = true;
             }
@@ -713,12 +714,12 @@ bool Counter::failedLitProbeInternal() {
     }
     num_curr_lits = trail.size() - trail_ofs;
     trail_ofs = trail.size();
-    for (const auto& v: test_vars) viewed_vars[v] = false;
+    for (const auto& l: test_lits) viewed_vars[l.var()] = false;
 
     // Figure out which literals to probe
     scores.clear();
-    for (const auto& v: test_vars) {
-      scores.push_back(watches_[Lit(v, false)].activity+watches_[Lit(v, true)].activity);
+    for (const auto& l: test_lits) {
+      scores.push_back(std::max(watches_[l].activity, watches_[l.neg()].activity));
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 5 + num_curr_lits / 40;
@@ -726,25 +727,25 @@ bool Counter::failedLitProbeInternal() {
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
     }
-    stats.num_failed_lit_tests_ += test_vars.size();
 
     // Do the probing
     toSet.clear();
-    for (const auto& v : test_vars) {
-      Lit l = Lit(v, false);
+    for (const auto& l : test_lits) {
       if (isUnknown(l) && threshold <=
-          (watches_[l].activity + watches_[l.neg()].activity)) {
+          std::max(watches_[l].activity, watches_[l.neg()].activity)) {
         if (!one_lit_probe(l, true)) return false;
         if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
       }
     }
-    // These _should_ fail... kinda.
     for(const auto& l: toSet) {
       if (isUnknown(l)) {
-        if (!one_lit_probe(l.neg(), false)) return false;
+        auto sz = trail.size();
+        setLiteralIfFree(l, Antecedent(NOT_A_CLAUSE), true);
+        bool bSucceeded = propagate(sz);
+        if (!bSucceeded) return false;
+        stats.num_failed_bprop_literals_failed++;
       }
     }
-    toSet.clear();
   }
   print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
   return true;
@@ -780,8 +781,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
         toClear.push_back(l.var());
       } else {
         if (tmp_seen[l.var()] && (tmp_seen[l.var()] >> 1) == (uint8_t)l.sign()) {
-          toSet.push_back(l);
-          stats.num_failed_bprop_literals_detected_++;
+          toSet.insert(l);
         }
       }
     }
@@ -809,7 +809,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   return true;
 }
 
-void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vector<uint8_t>& seen) {
+void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   tmp_clause_minim.clear();
   assertion_level_ = 0;
   for (const auto& lit : cl) {
@@ -817,14 +817,25 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl, const vecto
     bool resolve_out = false;
     if (hasAntecedent(lit)) {
       resolve_out = true;
-      if (getAntecedent(lit).isAClause()) {
-        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
-          if (!seen[it->var()]) {
+      if (antedecentBProp(lit)) {
+        // BProp is the reason
+        for (int32_t i = 1; i < variables_[lit.var()].decision_level+1; i++) {
+          const Lit l = trail[decision_stack_[i].trail_ofs()];
+          if (!tmp_seen[l.var()]) {
             resolve_out = false;
             break;
           }
         }
-      } else if (!seen[getAntecedent(lit).asLit().var()]) {
+      } else if (getAntecedent(lit).isAClause()) {
+        // Long clause reason
+        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
+          if (!tmp_seen[it->var()]) {
+            resolve_out = false;
+            break;
+          }
+        }
+      } else if (!tmp_seen[getAntecedent(lit).asLit().var()]) {
+        // Binary clause reason
         resolve_out = false;
       }
     }
@@ -894,7 +905,24 @@ void Counter::recordLastUIPCauses() {
     }
 
     assert(hasAntecedent(curr_lit));
-    if (getAntecedent(curr_lit).isAClause()) {
+    if (antedecentBProp(curr_lit)) {
+      // BProp is the reason
+      for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
+        const Lit l = trail[decision_stack_[i].trail_ofs()];
+        if (tmp_seen[l.var()] || (var(l).decision_level == 0) ||
+            existsUnitClauseOf(l.var())) {
+          continue;
+        }
+        if (var(l).decision_level < (int)DL) {
+          tmp_clause.push_back(l);
+        } else {
+          lits_at_current_dl++;
+        }
+        tmp_seen[l.var()] = true;
+        toClear.push_back(l.var());
+      }
+    } else if (getAntecedent(curr_lit).isAClause()) {
+      // Long clause is the reason
       updateActivities(getAntecedent(curr_lit).asCl());
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
@@ -912,6 +940,7 @@ void Counter::recordLastUIPCauses() {
         toClear.push_back(it->var());
       }
     } else {
+      // Binary clause is reason
       Lit alit = getAntecedent(curr_lit).asLit();
        increaseActivity(alit);
        increaseActivity(curr_lit);
@@ -928,7 +957,7 @@ void Counter::recordLastUIPCauses() {
     }
     curr_lit = NOT_A_LIT;
   }
-  minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, tmp_seen);
+  minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
   for(const auto& v: toClear) tmp_seen[v] = false;
   toClear.clear();
 }
@@ -972,11 +1001,28 @@ void Counter::recordAllUIPCauses() {
         break;
       }
       // perform UIP stuff
-      minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, tmp_seen);
+      minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
     }
 
     assert(hasAntecedent(curr_lit));
-    if (getAntecedent(curr_lit).isAClause()) {
+    if (antedecentBProp(curr_lit)) {
+      // BProp is the reason
+      for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
+        const Lit l = trail[decision_stack_[i].trail_ofs()];
+        if (tmp_seen[l.var()] || (var(l).decision_level == 0) ||
+            existsUnitClauseOf(l.var())) {
+          continue;
+        }
+        if (var(l).decision_level < (int)DL) {
+          tmp_clause.push_back(l);
+        } else {
+          lits_at_current_dl++;
+        }
+        tmp_seen[l.var()] = true;
+        toClear.push_back(l.var());
+      }
+    } else if (getAntecedent(curr_lit).isAClause()) {
+      // Long clause is the reason
       if (config_.alluip_inc_act) updateActivities(getAntecedent(curr_lit).asCl());
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
@@ -994,6 +1040,7 @@ void Counter::recordAllUIPCauses() {
         toClear.push_back(it->var());
       }
     } else {
+      // Binary clause is the reason
       Lit alit = getAntecedent(curr_lit).asLit();
       if (config_.alluip_inc_act) {
         increaseActivity(alit);
@@ -1012,7 +1059,7 @@ void Counter::recordAllUIPCauses() {
     }
   }
   if (!hasAntecedent(curr_lit)) {
-    minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause, tmp_seen);
+    minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
   }
   for(const auto& v: toClear) tmp_seen[v] = false;
   toClear.clear();

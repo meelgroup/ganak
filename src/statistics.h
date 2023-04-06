@@ -45,8 +45,9 @@ public:
   uint64_t num_implications_ = 0;
   // number of all failed literal detections
   uint64_t num_failed_literals_detected_ = 0;
-  uint64_t num_failed_bprop_literals_detected_ = 0;
+  uint64_t num_failed_bprop_literals_failed = 0;
   uint64_t num_failed_lit_tests_ = 0;
+
   // number of all conflicts occurred
   uint64_t num_conflicts_ = 0;
 

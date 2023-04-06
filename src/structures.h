@@ -196,6 +196,7 @@ struct Variable {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
   bool last_polarity = false;
+  bool bprop = false;
   bool set_once = false; //it has once been set to some value
 };
 

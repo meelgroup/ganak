@@ -75,13 +75,13 @@ private:
   // Temporaries, used during recordLastUIPClause
   vector<Lit> tmp_clause; //used in recoredLastUIPClause
   vector<uint32_t> toClear;
-  vector<Lit> toSet;
+  set<Lit> toSet;
 
   // Used during minimizeAndStoreUIPClause
   deque<Lit> tmp_clause_minim;
 
   // Temporaries for failedLitProbeInternal
-  vector<uint32_t> test_vars;
+  vector<Lit> test_lits;
   vector<uint8_t> viewed_vars;
 
   double time_start;
@@ -123,7 +123,8 @@ private:
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
 
-  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE))
+  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE),
+      const bool bothprop = false)
   {
     if (lit_values_[lit] != X_TRI) return false;
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
@@ -131,6 +132,7 @@ private:
 
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
+    if (bothprop) var(lit).bprop = true;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
@@ -236,9 +238,7 @@ private:
   // literal
   void recordLastUIPCauses();
   void recordAllUIPCauses();
-  void minimizeAndStoreUIPClause(Lit uipLit,
-                                 vector<Lit> &tmp_clause,
-                                 const vector<uint8_t>& seen);
+  void minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();

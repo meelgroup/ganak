@@ -399,6 +399,12 @@ int main(int argc, char *argv[])
     exit(-1);
   }
   parse_file(fname, sat_solver);
+  if (!sat_solver->okay()) {
+    if (indep_support_given) cout << "s pmc ";
+    else cout << "s mc ";
+    cout << "0" << endl;
+    exit(0);
+  }
   mpz_class count = 0;
 
   vector<double> act;

@@ -101,6 +101,11 @@ void Instance::new_vars(const uint32_t n) {
 }
 
 void Instance::add_irred_cl(const vector<Lit>& lits) {
+  if (lits.empty()) {
+    cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
+    exit(-1);
+  }
+  for(const auto& l: lits) assert(l.var() <= nVars());
   stats.incorporateIrredClauseData(lits);
   ClauseOfs cl_ofs = addClause(lits, true);
   if (lits.size() >= 3)

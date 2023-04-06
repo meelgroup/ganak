@@ -59,7 +59,7 @@ uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
 int do_check = 0;
-int exact = 0;
+int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
 
@@ -100,7 +100,6 @@ void add_ganak_options()
     ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
     ("version", "Print version info")
     ("pcc", po::value(&conf.do_pcc)->default_value(conf.do_pcc), "Probabilistic Component Caching")
-    ("ignoreind", po::value(&conf.ignore_indep)->default_value(conf.ignore_indep), "Ignore independent support")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")

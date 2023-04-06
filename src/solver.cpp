@@ -35,12 +35,7 @@ void Counter::simplePreProcess()
 
 void Counter::set_indep_support(const set<uint32_t> &indeps)
 {
-  if (indeps.empty()) {
-    cout << "ERROR: this is weird, empty independent support given??" << endl;
-    exit(-1);
-  }
   indep_support_ = indeps;
-  if (indeps.size() == nVars()) config_.ignore_indep = true;
 }
 
 void Counter::init_activity_scores()
@@ -265,11 +260,9 @@ uint32_t Counter::find_best_branch()
   uint32_t v = *it;
   double max_score = scoreOf(*it, decision_stack_.size());
 
-  // Find one variable that's OK to use
-  if (!config_.ignore_indep) {
-    while (*it != varsSENTINEL && indep_support_.find(*it) == indep_support_.end()) {
-      it++;
-    }
+// Find one variable that's OK to use
+  while (*it != varsSENTINEL && indep_support_.find(*it) == indep_support_.end()) {
+    it++;
   }
   if (*it != varsSENTINEL) {
     v = *it;
@@ -280,7 +273,7 @@ uint32_t Counter::find_best_branch()
 
   // Find best variable to use
   while (*it != varsSENTINEL) {
-    if (config_.ignore_indep || indep_support_.find(*it) != indep_support_.end()) {
+    if (indep_support_.find(*it) != indep_support_.end()) {
       double score;
       score = scoreOf(*it, decision_stack_.size());
       if (score > max_score) {

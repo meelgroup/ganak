@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
     exit(-1);
   }
   parse_file(fname, sat_solver);
-  if (!sat_solver->okay()) {
+  if (!sat_solver->okay() || sat_solver->solve() == CMSat::l_False) {
     if (indep_support_given) cout << "s pmc ";
     else cout << "s mc ";
     cout << "0" << endl;
@@ -431,9 +431,9 @@ int main(int argc, char *argv[])
   mpz_class total_check_count = 0;
   double total_check_time = 0;
   act.resize(2*(sat_solver->nVars()+1), 0);
+  vector<CMSat::lbool> model;
   while (sat_solver->okay()) {
     double call_time = cpuTime();
-    vector<CMSat::lbool> model;
     if (!take_solution(model)) break;
     counter->set_target_polar(model);
     vector<Lit> largest_cube;

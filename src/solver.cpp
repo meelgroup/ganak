@@ -261,35 +261,29 @@ double Counter::alternate_score(uint32_t v, bool val)
   return score;
 }
 
-
-struct VS {
-  VS() {}
-  VS(uint32_t _v, double _score1, double _score2) : v(_v), score1(_score1), score2(_score2) {}
-  bool operator<(const VS& other) const {
-    if (score1 != other.score1) return score1 > other.score1;
-    else return score2 > other.score2;
-  }
-  uint32_t v;
-  double score1 = 0;
-  double score2 = 0;
-};
-
 uint32_t Counter::find_best_branch()
 {
-  vector<VS> vars_scores;
+  vars_scores.clear();
+  bool lookahead_try = decision_stack_.size() > depth_queue.getLongtTerm().avg()*config_.lookahead_depth;
+  uint32_t best_var = 0;
+  double best_var_score = -1;
   auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
   while (*it != varsSENTINEL) {
     if (indep_support_.find(*it) != indep_support_.end()) {
-      Lit l(*it, false);
-      vars_scores.push_back(VS(*it, scoreOf(*it), *it));
+      const double score = scoreOf(*it) ;
+      if (lookahead_try) vars_scores.push_back(VS(*it, score, *it));
+      if (best_var_score == -1 || score > best_var_score) {
+        best_var = *it;
+        best_var_score = score;
+      }
     }
     it++;
   }
-  assert(!vars_scores.empty());
+  assert(best_var != 0 && best_var_score != -1);
 
-  std::sort(vars_scores.begin(), vars_scores.end());
-  double best_var = vars_scores[0].v;
-  if (vars_scores.size() > 20 && decision_stack_.size() > depth_queue.getLongtTerm().avg()*config_.lookahead_depth) {
+  if (vars_scores.size() > 20 && lookahead_try) {
+    std::sort(vars_scores.begin(), vars_scores.end());
+    best_var = vars_scores[0].v;
     stats.lookaheads++;
     stats.lookahead_computes++;
     double best_score = alternate_score(vars_scores[0].v, true) *

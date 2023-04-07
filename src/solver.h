@@ -29,6 +29,18 @@ enum retStateT
   BACKTRACK,
 };
 
+struct VS {
+  VS() {}
+  VS(uint32_t _v, double _score1, uint32_t _score2) : v(_v), score1(_score1), score2(_score2) {}
+  bool operator<(const VS& other) const {
+    if (score1 != other.score1) return score1 > other.score1;
+    else return score2 > other.score2;
+  }
+  uint32_t v;
+  double score1 = 0;
+  uint32_t score2 = 0;
+};
+
 // There is only one counter
 class Counter : public Instance
 {
@@ -73,6 +85,7 @@ private:
   vector<double> scores;
   bqueue<uint32_t> depth_queue;
   bqueue<double, double> cache_miss_rate_queue;
+  vector<VS> vars_scores; // for branch picking
 
   // Temporaries, used during recordLastUIPClause
   vector<Lit> tmp_clause; //used in recoredLastUIPClause

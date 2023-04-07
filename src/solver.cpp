@@ -741,27 +741,31 @@ bool Counter::failedLitProbeInternal() {
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 5 + num_curr_lits / 40;
+    if (!config_.bprop) num_curr_lits*=2;
     double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
     }
 
     // Do the probing
+    // TODO: bprop is buggy!! We undercount sometimes.
     toSet.clear();
     for (const auto& l : test_lits) {
       if (isUnknown(l) && threshold <=
           std::max(watches_[l].activity, watches_[l.neg()].activity)) {
         if (!one_lit_probe(l, true)) return false;
-        if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
+        if (config_.bprop && isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
       }
     }
-    for(const auto& l: toSet) {
-      if (isUnknown(l)) {
-        auto sz = trail.size();
-        setLiteralIfFree(l, Antecedent(NOT_A_CLAUSE), true);
-        bool bSucceeded = propagate(sz);
-        if (!bSucceeded) return false;
-        stats.num_failed_bprop_literals_failed++;
+    if (config_.bprop) {
+      for(const auto& l: toSet) {
+        if (isUnknown(l)) {
+          auto sz = trail.size();
+          setLiteralIfFree(l, Antecedent(NOT_A_CLAUSE), true);
+          bool bSucceeded = propagate(sz);
+          if (!bSucceeded) return false;
+          stats.num_failed_bprop_literals_failed++;
+        }
       }
     }
   }
@@ -793,7 +797,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   while (trail.size() > sz) {
     Lit l = trail.back();
     unSet(l);
-    if (bSucceeded) {
+    if (config_.bprop && bSucceeded) {
       if (set) {
         tmp_seen[l.var()] = 1U | ((uint8_t)l.sign() << 1);
         toClear.push_back(l.var());

@@ -620,7 +620,8 @@ bool Counter::prop_and_probe() {
 
   bool bSucceeded = propagate(start_ofs);
   if (config_.failed_lit_probe_type == 2 && bSucceeded &&
-      (double)decision_stack_.size() < depth_queue.getLongtTerm().avg()*config_.ratio_flitprobe) {
+      (double)decision_stack_.size() >
+        depth_queue.getLongtTerm().avg()*config_.ratio_flitprobe) {
     bSucceeded = failedLitProbeInternal();
   }
   else if (config_.failed_lit_probe_type == 1 && bSucceeded) {

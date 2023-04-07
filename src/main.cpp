@@ -62,6 +62,7 @@ int do_check = 0;
 int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
+int do_hyperbin = 1;
 
 string ganak_version_info()
 {
@@ -94,6 +95,7 @@ void add_ganak_options()
     ("looknum", po::value(&conf.lookahead_num)->default_value(conf.lookahead_num), "How many to check for lookahead")
     ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
     ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
+    ("hyper", po::value(&do_hyperbin)->default_value(do_hyperbin), "Do hyperbinary resolution via intree")
     ("cc", po::value(&conf.do_comp_caching)->default_value(conf.do_comp_caching), "Component caching")
     ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
     ("failed", po::value(&conf.failed_lit_probe_type)->default_value(conf.failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only top 1/4")
@@ -282,6 +284,8 @@ bool take_solution(vector<CMSat::lbool>& model) {
 
 void create_from_sat_solver(Counter& counter, SATSolver& ss) {
   counter.new_vars(sat_solver->nVars());
+
+  // Irred cls
   ss.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),
       std::numeric_limits<uint32_t>::max(),
@@ -292,6 +296,21 @@ void create_from_sat_solver(Counter& counter, SATSolver& ss) {
     counter.add_irred_cl(cl);
   }
   ss.end_getting_small_clauses();
+
+  //Red binaries
+  uint32_t bin_red_cl = 0;
+  ss.start_getting_small_clauses(
+      2,
+      std::numeric_limits<uint32_t>::max(),
+      true);
+  while(ss.get_next_small_clause(cms_cl)) {
+    const auto cl = cms_to_ganak_cl(cms_cl);
+    counter.add_irred_cl(cl);
+    bin_red_cl++;
+  }
+  ss.end_getting_small_clauses();
+  cout << "c Bin red cl added: " << bin_red_cl << endl;
+
   counter.end_irred_cls();
 }
 
@@ -337,24 +356,12 @@ mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>&
   return count;
 }
 
-
-void transfer_bins(Counter& solver, const vector<Lit>& bins)
+void add_hyperbins()
 {
-  vector<Lit> cl;
-  size_t at = 0;
-  while(true) {
-    if (at >= bins.size()) break;
-    const auto& l = bins[at];
-    if (l == SENTINEL_LIT) {
-      assert(cl.size() == 2);
-      solver.add_red_cl(cl);
-      cl.clear();
-    } else {
-      cl.push_back(l);
-    }
-    at++;
-  }
-  cout << "c Transferred " << bins.size()/3 << " bins" << endl;
+  string s = "intree-probe";
+  vector<CMSat::Lit> dont_elim;
+  for(const auto& v: indep_support) dont_elim.push_back(CMSat::Lit(v-1, false));
+  sat_solver->simplify(&dont_elim, &s);
 }
 
 int main(int argc, char *argv[])
@@ -405,6 +412,7 @@ int main(int argc, char *argv[])
     cout << "0" << endl;
     exit(0);
   }
+  if (do_hyperbin) add_hyperbins();
   mpz_class count = 0;
 
   vector<double> act;

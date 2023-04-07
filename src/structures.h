@@ -8,10 +8,10 @@
 #ifndef STRUCTURES_H_
 #define STRUCTURES_H_
 
-#include <constants.h>
 #include <vector>
 #include <iostream>
 #include "primitive_types.h"
+#include "common.h"
 
 using std::vector;
 
@@ -92,32 +92,38 @@ inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 static const Lit NOT_A_LIT(0, false);
 #define SENTINEL_LIT NOT_A_LIT
 
+struct ClOffsBlckL {
+  ClOffsBlckL(ClauseOfs _ofs, Lit l) : ofs(_ofs), blckLit(l) {}
+  ClauseOfs ofs;
+  Lit blckLit;
+};
+
 class LitWatchList {
 public:
   vector<Lit> binary_links_ = vector<Lit>(1,SENTINEL_LIT);
-  vector<ClauseOfs> watch_list_ = vector<ClauseOfs>(1,SENTINEL_CL);
+  vector<ClOffsBlckL> watch_list_ = vector<ClOffsBlckL>(1, ClOffsBlckL(SENTINEL_CL, SENTINEL_LIT));
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
   void removeWatchLinkTo(ClauseOfs clause_ofs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
-          if (*it == clause_ofs) {
-            *it = watch_list_.back();
-            watch_list_.pop_back();
-            return;
-          }
+      if (it->ofs == clause_ofs) {
+        *it = watch_list_.back();
+        watch_list_.pop_back();
+        return;
+      }
   }
 
   void replaceWatchLinkTo(ClauseOfs clause_ofs, ClauseOfs replace_ofs) {
-        for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
-          if (*it == clause_ofs) {
-            *it = replace_ofs;
-            return;
-          }
+    for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
+      if (it->ofs == clause_ofs) {
+        it->ofs = replace_ofs;
+        return;
+      }
   }
 
-  void addWatchLinkTo(ClauseIndex clause_ofs) {
-    watch_list_.push_back(clause_ofs);
+  void addWatchLinkTo(ClauseIndex clause_ofs, Lit blockedLit) {
+    watch_list_.push_back(ClOffsBlckL(clause_ofs, blockedLit));
   }
 
   void addBinLinkTo(Lit lit, bool irred) {
@@ -128,7 +134,7 @@ public:
 
   void resetWatchList(){
     watch_list_.clear();
-    watch_list_.push_back(SENTINEL_CL);
+    watch_list_.push_back(ClOffsBlckL(SENTINEL_CL, SENTINEL_LIT));
   }
 
   bool hasBinaryLinkTo(Lit lit) {

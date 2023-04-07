@@ -226,8 +226,9 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
     lit_pool_.push_back(l);
   }
   lit_pool_.push_back(SENTINEL_LIT);
-  litWatchList(literals[0]).addWatchLinkTo(cl_ofs);
-  litWatchList(literals[1]).addWatchLinkTo(cl_ofs);
+  Lit blckLit = literals[literals.size()/2];
+  litWatchList(literals[0]).addWatchLinkTo(cl_ofs, blckLit);
+  litWatchList(literals[1]).addWatchLinkTo(cl_ofs, blckLit);
   getHeaderOf(cl_ofs).set_creation_time(stats.num_conflicts_);
   return cl_ofs;
 }

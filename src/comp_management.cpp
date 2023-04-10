@@ -88,6 +88,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   const uint32_t new_comps_start_ofs = comp_stack_.size();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
+  // Also zeroes out frequency_scores(!)
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {

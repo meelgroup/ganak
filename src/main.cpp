@@ -483,8 +483,8 @@ int main(int argc, char *argv[])
     if (exact && sat_solver->okay()) {
       delete counter;
       counter = new Counter(conf);
-      counter->set_indep_support(indep_support);
       create_from_sat_solver(*counter, *sat_solver);
+      counter->set_indep_support(indep_support);
       counter->set_activities(act, polars, act_inc, comp_acts);
     }
   }

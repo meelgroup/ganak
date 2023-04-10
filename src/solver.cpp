@@ -161,7 +161,7 @@ void Counter::print_all_levels() {
 void Counter::print_stat_line() {
   if (next_print_stat > stats.num_cache_hits_) return;
   stats.printShort(this, &comp_manager_->get_cache());
-  next_print_stat = stats.num_cache_hits_ + 100000;
+  next_print_stat = stats.num_cache_hits_ + 9000000;
 }
 
 SOLVER_StateT Counter::countSAT() {

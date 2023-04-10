@@ -153,6 +153,8 @@ private:
       var(lit).set_once = true;
     }
     trail.push_back(lit);
+    __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
+    __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
     if (ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
       getHeaderOf(ant.asCl()).increaseScore();
     lit_values_[lit] = T_TRI;

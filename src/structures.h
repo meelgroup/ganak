@@ -93,6 +93,7 @@ static const Lit NOT_A_LIT(0, false);
 #define SENTINEL_LIT NOT_A_LIT
 
 struct ClOffsBlckL {
+  ClOffsBlckL() {}
   ClOffsBlckL(ClauseOfs _ofs, Lit l) : ofs(_ofs), blckLit(l) {}
   ClauseOfs ofs;
   Lit blckLit;
@@ -101,7 +102,7 @@ struct ClOffsBlckL {
 class LitWatchList {
 public:
   vector<Lit> binary_links_ = vector<Lit>(1,SENTINEL_LIT);
-  vector<ClOffsBlckL> watch_list_ = vector<ClOffsBlckL>(1, ClOffsBlckL(SENTINEL_CL, SENTINEL_LIT));
+  vector<ClOffsBlckL> watch_list_;
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
@@ -134,7 +135,6 @@ public:
 
   void resetWatchList(){
     watch_list_.clear();
-    watch_list_.push_back(ClOffsBlckL(SENTINEL_CL, SENTINEL_LIT));
   }
 
   bool hasBinaryLinkTo(Lit lit) {

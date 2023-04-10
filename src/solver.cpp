@@ -644,15 +644,16 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     }
 
     //Propagate long clauses
-    for (auto itcl = litWatchList(unLit).watch_list_.rbegin();
-        itcl->ofs != SENTINEL_CL; itcl++) {
-      if (isTrue(itcl->blckLit)) continue;
+    auto& ws = litWatchList(unLit).watch_list_;
+    auto it2 = ws.begin();
+    for (auto it = ws.begin(); it != ws.end(); it++) {
+      if (isTrue(it->blckLit)) { *it2++ = *it; continue; }
 
-      const auto ofs = itcl->ofs;
+      const auto ofs = it->ofs;
       bool isLitA = (*beginOf(ofs) == unLit);
       auto p_watchLit = beginOf(ofs) + 1 - isLitA;
       auto p_otherLit = beginOf(ofs) + isLitA;
-      if (isTrue(*p_otherLit)) continue;
+      if (isTrue(*p_otherLit)) { *it2++ = *it; continue; }
 
       auto itL = beginOf(ofs) + 2;
       while (isFalse(*itL)) itL++;
@@ -660,20 +661,22 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       if (*itL != SENTINEL_LIT) {
         litWatchList(*itL).addWatchLinkTo(ofs, *p_watchLit);
         std::swap(*itL, *p_watchLit);
-        *itcl = litWatchList(unLit).watch_list_.back();
-        litWatchList(unLit).watch_list_.pop_back();
       } else {
         // or p_unLit stays resolved
         // and we have hence no free literal left
         // for p_otherLit remain poss: Active or Resolved
         if (setLiteralIfFree(*p_otherLit, Antecedent(ofs))) { // implication
           if (isLitA) std::swap(*p_otherLit, *p_watchLit);
+          *it2++ = *it;
         } else {
           setConflictState(ofs);
+          while(it != ws.end()) *it2++ = *it++;
+          ws.resize(it2-ws.begin());
           return false;
         }
       }
     }
+    ws.resize(it2-ws.begin());
   }
   return true;
 }

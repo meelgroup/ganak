@@ -750,9 +750,10 @@ bool Counter::failedLitProbeInternal() {
     // Do the probing
     // TODO: bprop is buggy!! We undercount sometimes.
     toSet.clear();
-    for (const auto& l : test_lits) {
+    for (auto& l : test_lits) {
       if (isUnknown(l) && threshold <=
           std::max(watches_[l].activity, watches_[l.neg()].activity)) {
+        if (watches_[l].activity < watches_[l.neg()].activity) l = l.neg();
         if (!one_lit_probe(l, true)) return false;
         if (config_.bprop && isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
       }

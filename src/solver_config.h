@@ -23,7 +23,7 @@ struct CounterConfiguration {
   uint64_t next_restart = 100000000U;
   uint64_t maximum_cache_size_bytes_ = 0;
   int restart_type = 0;
-  double lookahead_depth = 0.7;
+  double lookahead_depth = 1.2;
   uint32_t lookahead_num = 2;
   double ratio_flitprobe = 0.25;
   int alluip_inc_act = 1;

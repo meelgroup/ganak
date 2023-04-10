@@ -425,8 +425,8 @@ int main(int argc, char *argv[])
   // TODO: minimize cube
   conf.next_restart = conf.first_restart;
   Counter* counter = new Counter(conf);
-  counter->set_indep_support(indep_support);
   create_from_sat_solver(*counter, *sat_solver);
+  counter->set_indep_support(indep_support);
   counter->init_activity_scores();
   vector<vector<CMSat::Lit>> cubes;
   mpz_class total_check_count = 0;

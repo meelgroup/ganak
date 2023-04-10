@@ -258,7 +258,7 @@ double Counter::alternate_score(uint32_t v, bool val)
     auto& top = decision_stack_.top();
     score = comp_manager_->get_comp_score(top);
   }
-  /* uint32_t diff = trail.size() - (start_ofs +1); */
+  /* uint32_t diff = trail.size() - (start_ofs); */
   reactivate_comps_and_backtrack_trail();
   decision_stack_.pop_back();
   decision_stack_.push_back(before);

@@ -36,6 +36,11 @@ void Counter::simplePreProcess()
 void Counter::set_indep_support(const set<uint32_t> &indeps)
 {
   indep_support_ = indeps;
+  indep_support_lookup.clear();
+  indep_support_lookup.resize(nVars()+1, 0);
+  for(const auto& v: indep_support_) {
+    indep_support_lookup[v] = 1;
+  }
 }
 
 void Counter::init_activity_scores()
@@ -270,7 +275,7 @@ uint32_t Counter::find_best_branch()
   double best_var_score = -1;
   auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
   while (*it != varsSENTINEL) {
-    if (indep_support_.find(*it) != indep_support_.end()) {
+    if (indep_support_lookup[*it]) {
       const double score = scoreOf(*it) ;
       if (lookahead_try) vars_scores.push_back(VS(*it, score, *it));
       if (best_var_score == -1 || score > best_var_score) {

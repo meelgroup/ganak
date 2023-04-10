@@ -81,6 +81,7 @@ protected:
    */
   vector<Lit> lit_pool_;
 
+  vector<uint8_t> indep_support_lookup;
   set<uint32_t> indep_support_;
 
   // this is to determine the starting offset of

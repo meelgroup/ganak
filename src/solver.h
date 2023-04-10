@@ -260,7 +260,7 @@ private:
   bool get_polarity(const uint32_t var);
 
   void print_stat_line();
-  uint64_t next_print_stat = 9000;
+  uint64_t next_print_stat = 20000;
 
   // indicates if we have called end_irred_cls()
   bool ended_irred_cls = false;

@@ -240,7 +240,7 @@ void Counter::decideLiteral(Lit lit) {
   decision_stack_.top().setbranchvariable(lit.var());
   setLiteralIfFree(lit);
   stats.num_decisions_++;
-  if (stats.num_decisions_ % 128 == 0) decayActivities();
+  if (stats.num_decisions_ % 128 == 0) decayActivities(config_.exp == 1.0);
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 }
 

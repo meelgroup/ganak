@@ -71,7 +71,6 @@ public:
   size_t get_num_irred_long_cls() const { return conflict_clauses_.size(); }
   void add_red_cl(const vector<Lit>& lits);
   void get_unit_cls(vector<Lit>& units) const;
-  void get_bin_red_cls(vector<Lit>& bins) const;
   void init_activity_scores();
   void set_next_restart(uint64_t next) { config_.next_restart = next; }
   bqueue<uint32_t> comp_size_queue;

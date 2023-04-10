@@ -88,12 +88,10 @@ void ComponentAnalyzer::initialize(
 
     // data for binary clauses
     for (const auto& l: litWatchList[Lit(v, false)].binary_links_)
-      if (l != SENTINEL_LIT)
-        unified_variable_links_lists_pool_.push_back(l.var());
+      unified_variable_links_lists_pool_.push_back(l.var());
 
     for (const auto& l: litWatchList[Lit(v, true)].binary_links_)
-      if (l != SENTINEL_LIT)
-        unified_variable_links_lists_pool_.push_back(l.var());
+      unified_variable_links_lists_pool_.push_back(l.var());
 
     // data for ternary clauses
     unified_variable_links_lists_pool_.push_back(0);

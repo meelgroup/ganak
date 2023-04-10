@@ -101,7 +101,7 @@ struct ClOffsBlckL {
 
 class LitWatchList {
 public:
-  vector<Lit> binary_links_ = vector<Lit>(1,SENTINEL_LIT);
+  vector<Lit> binary_links_;
   vector<ClOffsBlckL> watch_list_;
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
@@ -128,8 +128,7 @@ public:
   }
 
   void addBinLinkTo(Lit lit, bool irred) {
-    binary_links_.back() = lit;
-    binary_links_.push_back(SENTINEL_LIT);
+    binary_links_.push_back(lit);
     if (irred) last_irred_bin = binary_links_.size();
   }
 
@@ -138,15 +137,10 @@ public:
   }
 
   bool hasBinaryLinkTo(Lit lit) {
-    for (auto l : binary_links_) {
-      if (l == lit)
-        return true;
+    for (const auto& l : binary_links_) {
+      if (l == lit) return true;
     }
     return false;
-  }
-
-  bool hasBinaryLinks() {
-    return !binary_links_.empty();
   }
 };
 

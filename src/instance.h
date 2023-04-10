@@ -50,14 +50,6 @@ protected:
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
-  bool isolated(VariableIndex v) const {
-    Lit lit(v, false);
-    return (litWatchList(lit).binary_links_.size() <= 1)
-        && occ_lists_[lit].empty()
-        && (litWatchList(lit.neg()).binary_links_.size() <= 1)
-        && occ_lists_[lit.neg()].empty();
-  }
-
   bool deleteConflictClauses();
   bool markClauseDeleted(ClauseOfs cl_ofs);
 

@@ -48,7 +48,7 @@ void Counter::init_activity_scores()
 
   for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
   {
-    watches_[l].activity = watches_[l].binary_links_.size() - 1 + occ_lists_[l].size();
+    watches_[l].activity = watches_[l].binary_links_.size() + occ_lists_[l].size();
   }
 }
 
@@ -81,22 +81,6 @@ void Counter::get_unit_cls(vector<Lit>& units) const
 {
   assert(units.empty());
   units = unit_clauses_;
-}
-
-void Counter::get_bin_red_cls(vector<Lit>& bins) const
-{
-  for(size_t i = 2; i < watches_.size(); i++) {
-    Lit l(i/2, i%2);
-    const auto ws = watches_[l];
-    for(auto i2 = ws.last_irred_bin; i2 < ws.binary_links_.size(); i2++) {
-      const auto l2 = ws.binary_links_[i2];
-      if (l2 == SENTINEL_LIT) continue;
-      if (l2 > l) continue; //don't add it twice
-      bins.push_back(l);
-      bins.push_back(ws.binary_links_[i2]);
-      bins.push_back(SENTINEL_LIT);
-    }
-  }
 }
 
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)
@@ -635,12 +619,12 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     const Lit unLit = trail[i].neg();
 
     //Propagate bin clauses
-    for (auto bt = litWatchList(unLit).binary_links_.begin(); *bt != SENTINEL_LIT; bt++) {
-      if (isFalse(*bt)) {
-        setConflictState(unLit, *bt);
+    for (const auto& l : litWatchList(unLit).binary_links_) {
+      if (isFalse(l)) {
+        setConflictState(unLit, l);
         return false;
       }
-      setLiteralIfFree(*bt, Antecedent(unLit));
+      setLiteralIfFree(l, Antecedent(unLit));
     }
 
     //Propagate long clauses

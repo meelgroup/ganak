@@ -174,6 +174,7 @@ SOLVER_StateT Counter::countSAT() {
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       checkProbabilisticHashSanity();
+      if (restart_if_needed()) {return RESTART;}
       decideLiteral();
       VERBOSE_DEBUG_DO(print_all_levels());
       print_stat_line();
@@ -186,7 +187,6 @@ SOLVER_StateT Counter::countSAT() {
     }
     // we are here because there is no next component, or we had to backtrack
 
-    if (restart_if_needed()) {return RESTART;}
     state = backtrack();
     if (state == EXIT) return SUCCESS;
     while (state != PROCESS_COMPONENT && !prop_and_probe()) {
@@ -258,7 +258,8 @@ double Counter::alternate_score(uint32_t v, bool val)
   decision_stack_.pop_back();
   decision_stack_.push_back(before);
 
-  return score;
+  double c = watches_[Lit(v, val)].activity;
+  return score*c;
 }
 
 uint32_t Counter::find_best_branch()
@@ -281,7 +282,7 @@ uint32_t Counter::find_best_branch()
   }
   assert(best_var != 0 && best_var_score != -1);
 
-  if (vars_scores.size() > 20 && lookahead_try) {
+  if (vars_scores.size() > 30 && lookahead_try) {
     std::sort(vars_scores.begin(), vars_scores.end());
     best_var = vars_scores[0].v;
     stats.lookaheads++;

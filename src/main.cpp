@@ -62,7 +62,7 @@ int do_check = 0;
 int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
-int do_hyperbin = 1;
+int do_hyperbin = 0;
 
 string ganak_version_info()
 {

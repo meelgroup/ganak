@@ -217,11 +217,15 @@ private:
     return *top_declevel_trail_begin();
   }
 
-  void reactivate_comps_and_backtrack_trail()
+  void reactivate_comps_and_backtrack_trail(bool print = false)
   {
     for (auto it = top_declevel_trail_begin(); it != trail.end(); it++) unSet(*it);
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(decision_stack_.top().trail_ofs());
+    if (print) cout << "Forgetting decision: "
+      << std::setw(1) << (decision_stack_.top().is_right_branch() ? "-" : "")
+      << std::setw(6) << decision_stack_.top().getbranchvar()
+        << " count: " << decision_stack_.top().getTotalModelCount() << endl;
     decision_stack_.top().resetRemainingComps();
   }
 

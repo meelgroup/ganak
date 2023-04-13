@@ -15,6 +15,7 @@
 #include "structures.h"
 #include "comp_types/cacheable_comp.h"
 #include "primitive_types.h"
+#include "boundedqueue.h"
 
 using std::vector;
 using std::cout;
@@ -26,7 +27,10 @@ class ComponentCache;
 
 class DataAndStatistics {
 public:
-  DataAndStatistics (const Instance* _inst) { inst = _inst; }
+  DataAndStatistics (const Instance* _inst) {
+    inst = _inst;
+    cache_hits_misses.clearAndResize(10000);
+  }
   uint64_t maximum_cache_size_bytes_ = 0;
 
   uint64_t num_unit_irred_clauses_ = 0;
@@ -60,11 +64,15 @@ public:
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
   uint64_t num_cache_look_ups_ = 0;
+  uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes_ = 0;
+  bqueue<uint32_t> cache_hits_misses;
 
   uint64_t num_cached_comps_ = 0;
   uint64_t total_num_cached_comps_ = 0;
   uint64_t sum_size_cached_comps_ = 0;
+  uint64_t cache_pollutions_removed = 0;
+  uint64_t cache_pollutions_called = 0;
 
 
   // Lookahead
@@ -154,18 +162,6 @@ public:
     cout << "c irred cls (all/long/bin/unit): "
       << num_irred_clauses() << "/" << num_long_irred_clauses_
       << "/" << num_binary_irred_clauses_ << "/" << num_unit_irred_clauses_ << endl;
-  }
-
-  uint32_t getNumDecisions() const { return num_decisions_; }
-  double avgCachedSize() const {
-    if (num_cache_hits_ == 0) return 0.0;
-    return (double) sum_size_cached_comps_
-        / (double) num_cached_comps_;
-  }
-
-  double avgCacheHitSize() const {
-    if (num_cache_hits_ == 0) return 0.0;
-    return (double) sum_cache_hit_sizes_ / (double) num_cache_hits_;
   }
 
   double getAvgComponentSize() const {

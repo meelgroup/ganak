@@ -24,8 +24,6 @@ double safe_div(double a, double b) {
 }
 
 void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* cache_) const {
-  cout << "c " << endl;
-  cout << "c      --- FINISHED ---" << endl;
   cout << "c cls irred                      " << num_irred_clauses() << endl;
   cout << "c decisions                      " << num_decisions_ << endl;
   cout << "c conflicts                      " << num_conflicts_ << endl;
@@ -50,19 +48,14 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
   /*   << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "\t" << endl; */
   cout << "c MB cache (overall)             "
     << std::setprecision(3) << in_MB(overall_cache_bytes_memory_stored()) << "" << endl;
-  /* cout << "c MB cache comps (ovrall)        " */
-  /*   << std::setprecision(3) << in_MB(overall_bytes_comps_stored_) << endl; */
-  /* cout << "c MB cache (infra / comps)       " */
-  /*   << std::setprecision(3) << in_MB(cache_infrastructure_bytes_memory_usage_) << "/" */
-  /*   << std::setprecision(3) << in_MB(sum_bytes_cached_comps_) << endl; */
-  /* cout << "c MB cache w/ sysoverh (curr)    " */
-  /*   << std::setprecision(3) << in_MB(sys_overhead_sum_bytes_cached_comps_) << endl; */
-  /* cout << "c MB cache w/ sysoverh (ovrall)  " */
-  /*   << std::setprecision(3) << in_MB(sys_overhead_overall_bytes_comps_stored_) << endl; */
   cout << "c cache (lookup / stores / hits) "
     << num_cache_look_ups_ << "/"
     << total_num_cached_comps_ << "/"
     << num_cache_hits_ << endl;
+
+  cout << "c cache pollutions call/removed  "
+    << cache_pollutions_called << "/"
+    << cache_pollutions_removed << endl;
   cout << "c cache miss rate                "
     << std::setprecision(3) << cache_miss_rate() * 100 << "%" << endl;
   cout << "c avg. var count (stores / hits) "

@@ -193,6 +193,7 @@ protected:
   // Cubes
   vector<Lit> largest_cube;
   mpz_class largest_cube_val = 0;
+  uint32_t largest_cube_level = 0;
 
 private:
   void parseWithCMS(const std::string& filename);

@@ -28,6 +28,7 @@ struct CounterConfiguration {
   double ratio_flitprobe = 0.25;
   int alluip_inc_act = 1;
   int bprop = 0;
+  int do_on_path_print = 0;
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

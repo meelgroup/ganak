@@ -65,7 +65,7 @@ public:
 
   // we delete the Component with ID id
   // and all its descendants from the cache
-  inline void cleanPollutionsInvolving(CacheEntryID id);
+  inline uint64_t cleanPollutionsInvolving(CacheEntryID id);
 
   // creates a CCacheEntry in the entry base
   // which contains a packed copy of comp
@@ -74,25 +74,6 @@ public:
   // comp which is a part of the comp stack
   inline CacheEntryID storeAsEntry(CacheableComponent &ccomp,
                             CacheEntryID super_comp_id);
-
-  // check quickly if the model count of the comp is cached
-  // if so, incorporate it into the model count of top
-  // if not, store the packed version of it in the entry_base of the cache
-  // bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
-  //   stats.num_cache_look_ups_++;
-  //   uint32_t table_ofs =  packed_comp.hashkey() & table_size_mask_;
-
-  //   CacheEntryID act_id = table_[table_ofs];
-  //   while(act_id){
-  //     if (entry(act_id).equals(packed_comp)) {
-  //       stats.incorporate_cache_hit(packed_comp);
-  //       top.includeSolution(entry(act_id).model_count());
-  //       return true;
-  //     }
-  //     act_id = entry(act_id).next_bucket_element();
-  //   }
-  //   return false;
-  // }
 
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;

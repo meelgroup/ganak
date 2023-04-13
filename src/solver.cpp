@@ -413,47 +413,71 @@ bool Counter::restart_if_needed() {
       && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.1)
     restart = true;
 
-  if (config_.restart_type == 3 && stats.num_decisions_ > config_.next_restart)
+  if (config_.restart_type == 3 && (stats.num_decisions_-stats.last_restart_num_decisions) > config_.next_restart)
     restart = true;
 
-  if (config_.restart_type == 4 && stats.total_num_cached_comps_ > config_.next_restart)
-    restart = true;
+  if (config_.restart_type == 4 && stats.cache_hits_misses.isvalid() && stats.cache_hits_misses.avg() < stats.cache_hits_misses.getLongtTerm().avg()*0.9)
+      restart = true;
 
   if (restart) {
-    cout << "c Restarting. ";
+    cout << "c  ************* Restarting.  **************" << endl;
     if (comp_size_queue.isvalid()) {
-      cout << " Lterm comp size avg: " << std::setw(5) << comp_size_queue.getLongtTerm().avg()
-      << std::setw(5)<< " Sterm comp size avg: " << comp_size_queue.avg();
+      cout
+         << std::setw(30) << std::left
+         << "c Lterm comp size avg: " << std::setw(5) << comp_size_queue.getLongtTerm().avg()
+         << std::setw(30) << std::left
+         << " Sterm comp size avg: " << comp_size_queue.avg() << endl;
     }
     if (cache_miss_rate_queue.isvalid()) {
-      cout << " Lterm miss avg: " << std::setw(5) << cache_miss_rate_queue.getLongtTerm().avg()
-      << " Sterm miss avg: " << std::setw(5) << cache_miss_rate_queue.avg();
+      cout
+        << std::setw(30) << std::left
+        << "c Lterm miss avg: " << std::setw(5) << cache_miss_rate_queue.getLongtTerm().avg()
+        << std::setw(30) << std::left
+        << " Sterm miss avg: " << std::setw(5) << cache_miss_rate_queue.avg() << endl;
     }
     if (depth_queue.isvalid()) {
-      cout << " Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg()
-      << " Sterm dec avg: " << std::setw(5) << depth_queue.avg();
+      cout
+        << std::setw(30) << std::left
+        << "c Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg()
+        << std::setw(30) << std::left
+        << " Sterm dec avg: " << std::setw(5) << depth_queue.avg() << endl;
     }
-    cout << " Num units: " << unit_clauses_.size();
-    cout << " CC: " << conflict_clauses_.size();
-    cout << " Num decisions since last restart: "
+    if (stats.cache_hits_misses.isvalid()) {
+      cout
+        << std::setw(30) << std::left
+        << "c Lterm hit avg: " << std::setw(5) << stats.cache_hits_misses.getLongtTerm().avg()
+        << std::setw(30) << std::left
+        << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses.avg() << endl;
+    }
+    cout << std::right;
+    /* cout << "c Num units: " << unit_clauses_.size(); */
+    /* cout << " CC: " << conflict_clauses_.size(); */
+    cout << "c Num decisions since last restart: "
       << stats.num_decisions_-stats.last_restart_num_decisions
+      << endl;
+    cout << "c Num cache lookups since last restart: "
+      << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups
       << endl;
 
     stats.last_restart_num_decisions = stats.num_decisions_;
     depth_queue.clear();
     cache_miss_rate_queue.clear();
     comp_size_queue.clear();
+    stats.cache_hits_misses.clear();
 
     while (decision_stack_.size() > 1) {
+      bool on_path = true;
       if (decision_stack_.top().branch_found_unsat()
           || !decision_stack_.top().on_path_to_target_) {
         comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+        on_path = false;
       }
-      reactivate_comps_and_backtrack_trail();
+      if (config_.do_on_path_print) cout << "ON PATH: " << on_path << " -- ";
+      reactivate_comps_and_backtrack_trail(config_.do_on_path_print);
       decision_stack_.pop_back();
     }
-    stats.total_num_cached_comps_ = 0;
-    stats.num_decisions_ = 0;
+    stats.last_restart_num_decisions = stats.num_decisions_;
+    stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
 
     // experimental for deleting polluted cubes and re-using GANAK
     /* set<uint32_t> vars; */

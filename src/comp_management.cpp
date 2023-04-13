@@ -44,8 +44,9 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
 
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack_.size(); u++) {
     assert(cache_.hasEntry(comp_stack_[u]->id()));
-    cache_.cleanPollutionsInvolving(comp_stack_[u]->id());
+    stats.cache_pollutions_removed += cache_.cleanPollutionsInvolving(comp_stack_[u]->id());
   }
+  stats.cache_pollutions_called++;
 
   SLOW_DEBUG_DO(cache_.test_descendantstree_consistency());
 }
@@ -117,6 +118,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 
       // Check if new comp is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp)) {
+        stats.cache_hits_misses.push(p_new_comp->nVars());
         comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
 #ifdef VERBOSE_DEBUG
@@ -126,6 +128,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         cout << endl;
 #endif
       } else {
+        stats.cache_hits_misses.push(0);
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Component already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";

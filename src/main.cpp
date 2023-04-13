@@ -107,6 +107,7 @@ void add_ganak_options()
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
+    ("onpathprint", po::value(&conf.do_on_path_print)->default_value(conf.do_on_path_print), "Print ON-PATH during restart")
     ;
 
     help_options.add(main_options);

@@ -55,7 +55,8 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     return id;
 }
 
-void ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
+uint64_t ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
+  uint64_t removed = 0;
   const CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) {
     entry(father).set_first_descendant(entry(id).next_sibling());
@@ -75,10 +76,11 @@ void ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
   while (next_child) {
     CacheEntryID act_child = next_child;
     next_child = entry(act_child).next_sibling();
-    cleanPollutionsInvolving(act_child);
+    removed+=cleanPollutionsInvolving(act_child);
   }
   removeFromHashTable(id);
   eraseEntry(id);
+  return 1+removed;
 }
 
 void ComponentCache::removeFromHashTable(CacheEntryID id) {

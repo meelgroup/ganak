@@ -80,7 +80,8 @@ protected:
   // conflict clauses
   uint32_t irred_lit_pool_size_;
 
-  LiteralIndexedVector<vector<ClauseOfs> > occ_lists_;
+  LiteralIndexedVector<vector<ClauseOfs> > occ_lists_; // used ONLY to figure out which
+                                                       // literals should we probe
   LiteralIndexedVector<LitWatchList> watches_; // watches
   vector<ClauseOfs> conflict_clauses_;
   uint32_t num_conflict_clauses_compacted_ = 0;

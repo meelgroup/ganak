@@ -91,8 +91,7 @@ protected:
   double act_inc = 1.0;
 
   void decayActivities(bool also_watches) {
-    if (also_watches) for (auto l_it = watches_.begin(); l_it != watches_.end(); l_it++)
-      l_it->activity *= 0.5;
+    if (also_watches) for (auto& w: watches_) w.activity *= 0.5;
     for(auto clause_ofs: conflict_clauses_)
         getHeaderOf(clause_ofs).decayScore();
   }

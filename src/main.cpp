@@ -62,7 +62,7 @@ int do_check = 0;
 int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
-int do_hyperbin = 0;
+int do_hyperbin = 1;
 
 string ganak_version_info()
 {
@@ -307,7 +307,7 @@ void create_from_sat_solver(Counter& counter, SATSolver& ss) {
       true);
   while(ss.get_next_small_clause(cms_cl)) {
     const auto cl = cms_to_ganak_cl(cms_cl);
-    counter.add_irred_cl(cl);
+    counter.add_red_cl(cl);
     bin_red_cl++;
   }
   ss.end_getting_small_clauses();

@@ -72,9 +72,16 @@ void Counter::end_irred_cls()
 }
 
 void Counter::add_red_cl(const vector<Lit>& lits) {
-  release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before add_red_cl()");
-  assert(lits.size() <= 2); // TODO longer clauses -- but then have to add activity
-  addUIPConflictClause(lits);
+  assert(lits.size() == 2 && "if we fix up reduceDB, this can ALSO work for longer clauses");
+  assert(ended_irred_cls);
+  // NOTE: since we eded_irred_cls, this binary will NOT end up
+  //       through ComponentAnalyzer::initialize in analyzer's
+  //       unified_variable_links_lists_pool_ which means it will NOT
+  //       connect components -- which is what we want
+
+  for(const auto& l: lits) assert(l.var() <= nVars());
+  ClauseOfs cl_ofs = addClause(lits, true);
+  assert(cl_ofs == 0);
 }
 
 void Counter::get_unit_cls(vector<Lit>& units) const

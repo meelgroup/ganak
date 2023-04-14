@@ -14,7 +14,7 @@ struct CounterConfiguration {
   bool do_non_chron_back_track = true;
   bool do_comp_caching = true;
   int failed_lit_probe_type = 2;
-  double exp = 0.9;
+  double exp = 1.0;
   bool do_pre_processing = true;
   bool do_pcc = true; // probabilistic comp caching
   int verb = 1;

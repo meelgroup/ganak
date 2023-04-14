@@ -110,6 +110,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       solver_->comp_size_queue.push(packed_comp->nVars(sz));
 
       // Check if new comp is already in cache
+      if (solver_->dec_level() > 0 && p_new_comp->nVars() > 0)
+        stats.comp_size_per_depth.push((double)p_new_comp->nVars()/(double)solver_->dec_level());
       if (!cache_.manageNewComponent(top, *packed_comp)) {
         stats.cache_hits_misses.push(p_new_comp->nVars());
         comp_stack_.push_back(p_new_comp);

@@ -30,6 +30,7 @@ public:
   DataAndStatistics (const Instance* _inst) {
     inst = _inst;
     cache_hits_misses.clearAndResize(10000);
+    comp_size_per_depth.clearAndResize(10000);
   }
   uint64_t maximum_cache_size_bytes_ = 0;
   uint64_t numcachedec_ = 0;
@@ -74,6 +75,8 @@ public:
   uint64_t sum_size_cached_comps_ = 0;
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
+
+  bqueue<double, double> comp_size_per_depth;
 
 
   // Lookahead

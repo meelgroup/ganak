@@ -427,6 +427,15 @@ bool Counter::restart_if_needed() {
   /*     << " Sterm dec avg: " << std::setw(5) << depth_queue.avg() */
   /*     << endl; */
   /* } */
+  /* if (stats.comp_size_per_depth.isvalid()) { */
+  /*     cout */
+  /*       << " Lterm compsz/depth avg: " */
+  /*       << std::setw(9) << stats.comp_size_per_depth.getLongtTerm().avg() */
+  /*     << " Sterm compsz/depth avg: " */
+  /*     << std::setw(9) << stats.comp_size_per_depth.avg() */
+  /*     << " depth: " << decision_stack_.size()-1 */
+  /*     << endl; */
+  /* } */
 
   if (!config_.do_restart || largest_cube.empty()) return false;
   bool restart = false;
@@ -447,35 +456,47 @@ bool Counter::restart_if_needed() {
   if (config_.restart_type == 4 && stats.cache_hits_misses.isvalid() && stats.cache_hits_misses.avg() < stats.cache_hits_misses.getLongtTerm().avg()*0.9)
       restart = true;
 
+  if (config_.restart_type == 5 && stats.comp_size_per_depth.isvalid() && stats.comp_size_per_depth.avg() < stats.comp_size_per_depth.getLongtTerm().avg()*0.85)
+      restart = true;
+
   if (restart) {
     cout << "c  ************* Restarting.  **************" << endl;
     if (comp_size_queue.isvalid()) {
       cout
          << std::setw(30) << std::left
-         << "c Lterm comp size avg: " << std::setw(5) << comp_size_queue.getLongtTerm().avg()
+         << "c Lterm comp size avg: " << std::setw(9) << comp_size_queue.getLongtTerm().avg()
          << std::right  << std::setw(30) << std::left
          << std::left   << " Sterm comp size avg: " << comp_size_queue.avg() << endl;
     }
     if (cache_miss_rate_queue.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm miss avg: " << std::setw(5) << cache_miss_rate_queue.getLongtTerm().avg()
+        << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_queue.getLongtTerm().avg()
         << std::right  << std::setw(30) << std::left
-        << std::left   << " Sterm miss avg: " << std::setw(5) << cache_miss_rate_queue.avg() << endl;
+        << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_queue.avg() << endl;
     }
     if (depth_queue.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg()
+        << "c Lterm dec avg: " << std::setw(9) << depth_queue.getLongtTerm().avg()
         << std::right << std::setw(30) << std::left
-        << std::left  << " Sterm dec avg: " << std::setw(5) << depth_queue.avg() << endl;
+        << std::left  << " Sterm dec avg: " << std::setw(9) << depth_queue.avg() << endl;
     }
     if (stats.cache_hits_misses.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm hit avg: " << std::setw(5) << stats.cache_hits_misses.getLongtTerm().avg()
+        << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses.getLongtTerm().avg()
         << std::right  << std::setw(30) << std::left
         << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses.avg() << endl;
+    }
+    if (stats.comp_size_per_depth.isvalid()) {
+      cout
+        << std::setw(30) << std::left
+        << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth.getLongtTerm().avg()
+        << std::right  << std::setw(30) << std::left
+        << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth.avg()
+        << " depth: " << decision_stack_.size()-1
+        << endl;
     }
     cout << std::right;
     /* cout << "c Num units: " << unit_clauses_.size(); */
@@ -492,6 +513,7 @@ bool Counter::restart_if_needed() {
     cache_miss_rate_queue.clear();
     comp_size_queue.clear();
     stats.cache_hits_misses.clear();
+    stats.comp_size_per_depth.clear();
 
     while (decision_stack_.size() > 1) {
       bool on_path = true;

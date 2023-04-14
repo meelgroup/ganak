@@ -32,6 +32,7 @@ public:
     cache_hits_misses.clearAndResize(10000);
   }
   uint64_t maximum_cache_size_bytes_ = 0;
+  uint64_t numcachedec_ = 0;
 
   uint64_t num_unit_irred_clauses_ = 0;
   uint64_t num_long_irred_clauses_ = 0;

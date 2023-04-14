@@ -53,7 +53,7 @@ public:
     return ana_.scoreOf(v);
   }
 
-  void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool);
+  void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool, uint32_t nVars);
   void delete_comps_with_vars(const set<uint32_t>& vars) {
     cache_.delete_comps_with_vars(vars);
   }
@@ -84,6 +84,11 @@ public:
 
   const Component* at(const size_t at) const {
     return comp_stack_.at(at);
+  }
+
+  double cacheScoreOf(const VariableIndex v) const
+  {
+    return cachescore_[v];
   }
 
   void cleanRemainingComponentsOf(const StackLevel &top)
@@ -127,6 +132,14 @@ public:
     randomseedforCLHASH = get_random_key_for_clhash(distr(eng), distr(eng));
   }
 
+  void rescale_cache_scores() { for (auto& c: cachescore_) c *= 0.5; }
+  void decreasecachescore(Component &comp) {
+    for (vector<VariableIndex>::const_iterator it = comp.varsBegin();
+         *it != varsSENTINEL; it++) {
+      cachescore_[*it] -= 1;
+    }
+  }
+
 private:
   const CounterConfiguration &config_;
   DataAndStatistics &stats;
@@ -135,6 +148,7 @@ private:
   vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
+  vector<double> cachescore_;
   Counter* solver_;
   BPCSizes sz;
 };

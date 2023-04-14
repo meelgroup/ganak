@@ -12,7 +12,7 @@
 // Initialized exactly once when Solver is created.
 //   it also inits the included analyzer called "ana_"
 void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
-    vector<Lit> &lit_pool){
+    vector<Lit> &lit_pool, uint32_t nVars){
   assert(comp_stack_.empty());
 
   ana_.initialize(literals, lit_pool);
@@ -28,8 +28,8 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
       ana_.max_variable_id()
       , ana_.max_clause_id());
 
-
   cache_.init(*comp_stack_.back(), randomseedforCLHASH);
+  for (uint32_t i = 0 ; i < nVars + 1; i++) cachescore_.push_back(0);
 }
 
 void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
@@ -109,13 +109,6 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       }
       solver_->comp_size_queue.push(packed_comp->nVars(sz));
 
-      if (solver_->comp_size_queue.isvalid() && (double)p_new_comp->nVars() > solver_->comp_size_queue.avg()) {
-        double ratio = (double)p_new_comp->nVars()/solver_->comp_size_queue.avg();
-        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) {
-          solver_->decr_act(*v, ratio);
-        }
-      }
-
       // Check if new comp is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp)) {
         stats.cache_hits_misses.push(p_new_comp->nVars());
@@ -129,6 +122,15 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         stats.cache_hits_misses.push(0);
+        if (config_.do_cache_score) {
+          stats.numcachedec_++;
+          if (stats.numcachedec_ % 128 == 0) rescale_cache_scores();
+          for (vector<VariableIndex>::const_iterator it = p_new_comp->varsBegin();
+              *it != varsSENTINEL; it++) {
+            cachescore_[*it] -= 1;
+          }
+        }
+
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Component already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";

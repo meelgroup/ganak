@@ -68,7 +68,7 @@ void Counter::end_irred_cls()
   ended_irred_cls = true;
 
   if (config_.verb) stats.printShortFormulaInfo();
-  comp_manager_->initialize(watches_, lit_pool_);
+  comp_manager_->initialize(watches_, lit_pool_, nVars());
 }
 
 void Counter::add_red_cl(const vector<Lit>& lits) {
@@ -231,7 +231,10 @@ void Counter::decideLiteral(Lit lit) {
   decision_stack_.top().setbranchvariable(lit.var());
   setLiteralIfFree(lit);
   stats.num_decisions_++;
-  if (stats.num_decisions_ % 128 == 0) decayActivities(config_.exp == 1.0);
+  if (stats.num_decisions_ % 128 == 0) {
+    decayActivities(config_.exp == 1.0);
+    comp_manager_->rescale_cache_scores();
+  }
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 }
 
@@ -260,12 +263,15 @@ double Counter::alternate_score(uint32_t v, bool val)
 
 uint32_t Counter::find_best_branch()
 {
+  assert(!(config_.do_cache_score && config_.do_lookahead) && "can't have both active");
+
   vars_scores.clear();
-  bool lookahead_try = decision_stack_.size() > depth_queue.getLongtTerm().avg()*config_.lookahead_depth;
+  bool lookahead_try = !config_.do_cache_score && config_.do_lookahead &&
+    decision_stack_.size() > depth_queue.getLongtTerm().avg()*config_.lookahead_depth;
   uint32_t best_var = 0;
   double best_var_score = -1;
-  auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-  while (*it != varsSENTINEL) {
+  for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
+      *it != varsSENTINEL; it++) {
     if (indep_support_lookup[*it]) {
       const double score = scoreOf(*it) ;
       if (lookahead_try) vars_scores.push_back(VS(*it, score, *it));
@@ -274,9 +280,24 @@ uint32_t Counter::find_best_branch()
         best_var_score = score;
       }
     }
-    it++;
   }
   assert(best_var != 0 && best_var_score != -1);
+
+  if (!config_.do_lookahead && config_.do_cache_score) {
+    double cachescore = comp_manager_->cacheScoreOf(best_var);
+    for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
+         *it != varsSENTINEL; it++) {
+      if (indep_support_lookup[*it]) {
+        const double score = scoreOf(*it);
+        if (score > best_var_score * 0.9) {
+          if (comp_manager_->cacheScoreOf(*it) > cachescore) {
+            best_var = *it;
+            cachescore = comp_manager_->cacheScoreOf(*it);
+          }
+        }
+      }
+    }
+  }
 
   if (vars_scores.size() > 30 && lookahead_try) {
     std::sort(vars_scores.begin(), vars_scores.end());
@@ -528,6 +549,15 @@ retStateT Counter::backtrack() {
     comp_manager_->cacheModelCountOf(decision_stack_.top().super_comp(),
                                     decision_stack_.top().getTotalModelCount());
 
+
+    //Cache score should be decreased since the component is getting added to cache
+    if (config_.do_cache_score) {
+      stats.numcachedec_++;
+      if (stats.numcachedec_ % 128 == 0) comp_manager_->rescale_cache_scores();
+      comp_manager_->decreasecachescore(
+          comp_manager_->getSuperComponentOf(decision_stack_.top()));
+    }
+
     // Backtrack from end, i.e. finished.
     if (decision_stack_.get_decision_level() == 0) {
       print_debug("Backtracking from lev 0, i.e. ending");
@@ -699,7 +729,6 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
 void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
     double& ret_act_inc, vector<uint32_t>& comp_acts) const
 {
-
   acts.resize((nVars()+1)*2);
   for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
     acts[l.raw()] = watches_[l].activity;

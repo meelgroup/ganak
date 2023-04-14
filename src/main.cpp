@@ -300,6 +300,7 @@ void create_from_sat_solver(Counter& counter, SATSolver& ss) {
     counter.add_irred_cl(cl);
   }
   ss.end_getting_small_clauses();
+  counter.end_irred_cls();
 
   //Red binaries
   uint32_t bin_red_cl = 0;
@@ -309,13 +310,13 @@ void create_from_sat_solver(Counter& counter, SATSolver& ss) {
       true);
   while(ss.get_next_small_clause(cms_cl)) {
     const auto cl = cms_to_ganak_cl(cms_cl);
-    counter.add_red_cl(cl);
-    bin_red_cl++;
+    if (cl.size() == 2) {
+      counter.add_red_cl(cl);
+      bin_red_cl++;
+    }
   }
   ss.end_getting_small_clauses();
   cout << "c Bin red cl added: " << bin_red_cl << endl;
-
-  counter.end_irred_cls();
 }
 
 mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>& cubes) {

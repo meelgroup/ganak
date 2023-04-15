@@ -7,25 +7,27 @@
 
 #pragma once
 
-#include "statistics.h"
-#include "structures.h"
-#include "containers.h"
 #include <set>
 #include <cassert>
 #include <cryptominisat5/cryptominisat.h>
+
+#include "statistics.h"
+#include "structures.h"
+#include "containers.h"
+#include "solver_config.h"
 
 using std::set;
 
 class Instance {
 public:
-  Instance() : stats (this) { }
+  Instance(const CounterConfiguration& _config) : config_(_config), stats (this) { }
   void new_vars(const uint32_t n);
   void add_irred_cl(const vector<Lit>& lits);
   size_t num_conflict_clauses() const { return conflict_clauses_.size(); }
   uint32_t num_conflict_clauses_compacted() const { return num_conflict_clauses_compacted_; }
 
 protected:
-
+  CounterConfiguration config_;
   void unSet(Lit lit) {
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
     var(lit).bprop = false;
@@ -105,7 +107,7 @@ protected:
 
   void inline increaseActivity(const Lit lit)
   {
-    if (tmp_seen[lit.var()]) return;
+    if (config_.do_single_bump && tmp_seen[lit.var()]) return;
     watches_[lit].activity += act_inc;
     if (watches_[lit].activity > 1e100) {
       //rescale

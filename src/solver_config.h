@@ -31,6 +31,7 @@ struct CounterConfiguration {
   int do_on_path_print = 0;
   int do_lookahead = 0;
   int do_cache_score = 1;
+  int do_single_bump = 1; // non-single bump is OLD ganak
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

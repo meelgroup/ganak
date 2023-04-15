@@ -12,7 +12,6 @@
 #include "statistics.h"
 #include "instance.h"
 #include "comp_management.h"
-#include "solver_config.h"
 
 #include "MersenneTwister.h"
 #include "comp_management.h"
@@ -90,7 +89,6 @@ private:
   vector<uint8_t> viewed_lits;
 
   double time_start;
-  CounterConfiguration config_;
   MTRand mtrand;
 
   DecisionStack decision_stack_;

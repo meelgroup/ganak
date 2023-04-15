@@ -1247,9 +1247,8 @@ void Counter::printOnlineStats() {
   }
 }
 
-Counter::Counter(const CounterConfiguration& conf)
+Counter::Counter(const CounterConfiguration& conf) : Instance(conf)
 {
-  config_ = conf;
   mtrand.seed(conf.seed);
 }
 

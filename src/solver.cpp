@@ -863,7 +863,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     // Figure out which literals to probe
     scores.clear();
     for (const auto& l: test_lits) {
-      scores.push_back(std::max(watches_[l].activity, watches_[l.neg()].activity));
+      scores.push_back(watches_[l].activity + watches_[l.neg()].activity);
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 5 + num_curr_lits / 40;
@@ -876,7 +876,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     toSet.clear();
     for (auto& l : test_lits) {
       if (isUnknown(l) && threshold <=
-          std::max(watches_[l].activity, watches_[l.neg()].activity)) {
+          watches_[l].activity + watches_[l.neg()].activity) {
         if (watches_[l].activity < watches_[l.neg()].activity) l = l.neg();
         if (!one_lit_probe(l, true)) return false;
         if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;

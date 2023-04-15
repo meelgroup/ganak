@@ -967,7 +967,8 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
       if (antedecentBProp(lit)) {
         // BProp is the reason
         for (int32_t i = 1; i < variables_[lit.var()].decision_level+1; i++) {
-          const Lit l = trail[decision_stack_[i].trail_ofs()];
+          const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
+          assert(decision_stack_[i].getbranchvar() == l.var());
           if (!tmp_seen[l.var()]) {
             resolve_out = false;
             break;
@@ -1055,7 +1056,8 @@ void Counter::recordLastUIPCauses() {
     if (antedecentBProp(curr_lit)) {
       // BProp is the reason
       for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
-        const Lit l = trail[decision_stack_[i].trail_ofs()];
+        const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
+        assert(decision_stack_[i].getbranchvar() == l.var());
         if (tmp_seen[l.var()] || (var(l).decision_level == 0) ||
             existsUnitClauseOf(l.var())) {
           continue;
@@ -1155,7 +1157,8 @@ void Counter::recordAllUIPCauses() {
     if (antedecentBProp(curr_lit)) {
       // BProp is the reason
       for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
-        const Lit l = trail[decision_stack_[i].trail_ofs()];
+        const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
+        assert(decision_stack_[i].getbranchvar() == l.var());
         if (tmp_seen[l.var()] || (var(l).decision_level == 0) ||
             existsUnitClauseOf(l.var())) {
           continue;

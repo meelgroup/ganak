@@ -87,7 +87,7 @@ private:
 
   // Temporaries for failedLitProbeInternal
   vector<Lit> test_lits;
-  vector<uint8_t> viewed_vars;
+  vector<uint8_t> viewed_lits;
 
   double time_start;
   CounterConfiguration config_;
@@ -110,7 +110,9 @@ private:
   uint32_t find_best_branch();
   double alternate_score(uint32_t v, bool value);
   bool prop_and_probe();
-  bool failedLitProbeInternal();
+  bool failed_lit_probe();
+  bool failed_lit_probe_no_bprop();
+  bool failed_lit_probe_with_bprop();
   bool one_lit_probe(Lit lit, bool set);
   void computeLargestCube();
 

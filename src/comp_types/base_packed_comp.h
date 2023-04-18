@@ -178,9 +178,7 @@ public:
   }
 
 #ifdef DOPCC
-  uint32_t hashkey() const  {
-    return hashkey_;
-  }
+  uint32_t get_hashkey() const  { return hashkey_; }
 #endif
 
   bool modelCountFound(){

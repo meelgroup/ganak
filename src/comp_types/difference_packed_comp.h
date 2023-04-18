@@ -62,9 +62,9 @@ public:
     return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
   }
 
-  bool equals(const DifferencePackedComponent &comp, const BPCSizes& sz) const {
+  bool equals_comp(const DifferencePackedComponent &comp, const BPCSizes& sz) const {
     assert(!is_pcc);
-    if(hashkey_ != comp.hashkey()) return false;
+    if(hashkey_ != comp.get_hashkey()) return false;
     uint32_t* p = data_;
     uint32_t* r = comp.data_;
     while(p != data_ + data_size(sz)) {
@@ -75,8 +75,8 @@ public:
 
 #ifdef DOPCC
   uint64_t get_clhash() const { return clhashkey_; }
-  bool equals(const DifferencePackedComponent &comp, uint64_t clhash_key) const {
-    if(hashkey_ != comp.hashkey()) return false;
+  bool equals_clhash(const DifferencePackedComponent &comp, uint64_t clhash_key) const {
+    if (hashkey_ != comp.get_hashkey()) return false;
     if (clhash_key != clhashkey_) return false;
     return true;
   }

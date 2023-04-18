@@ -24,7 +24,8 @@ struct CounterConfiguration {
   int restart_type = 5;
   double lookahead_depth = 1.2;
   uint32_t lookahead_num = 2;
-  double ratio_flitprobe = 0.25;
+  double probe_only_after_ratio = 0.25;
+  double num_probe_multi = 1.0;
   int alluip_inc_act = 1;
   int bprop = 1;
   int do_on_path_print = 0;

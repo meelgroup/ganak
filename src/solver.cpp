@@ -688,13 +688,14 @@ bool Counter::prop_and_probe() {
   print_debug("--> Units of this comp set, propagating");
 
   bool bSucceeded = propagate(start_ofs);
-  if (config_.failed_lit_probe_type == 2 && bSucceeded &&
+  if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
+    if (config_.failed_lit_probe_type == 2  &&
       (double)decision_stack_.size() >
-        depth_q.getLongtTerm().avg()*config_.ratio_flitprobe) {
-    bSucceeded = failed_lit_probe();
-  }
-  else if (config_.failed_lit_probe_type == 1 && bSucceeded) {
-    bSucceeded = failed_lit_probe();
+        depth_q.getLongtTerm().avg()*config_.probe_only_after_ratio) {
+      bSucceeded = failed_lit_probe();
+    } else if (config_.failed_lit_probe_type == 1) {
+      bSucceeded = failed_lit_probe();
+    }
   }
   return bSucceeded;
 }
@@ -822,6 +823,7 @@ bool Counter::failed_lit_probe_no_bprop()
     for (const auto& l: test_lits) scores.push_back(watches_[l].activity);
     sort(scores.begin(), scores.end());
     num_curr_lits = 10 + num_curr_lits / 20;
+    num_curr_lits *= config_.num_probe_multi;
     double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
@@ -869,6 +871,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 5 + num_curr_lits / 40;
+    num_curr_lits *= config_.num_probe_multi;
     double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];

@@ -71,34 +71,29 @@ public:
     uint64_t clhash_key;
     uint32_t table_ofs = packed_comp.get_hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
-    if (config_.do_pcc) {
 #ifdef DOPCC
-      if (!act_id) return false;
-      clhash_key = packed_comp.get_clhash();
-      while(act_id){
-        if (entry(act_id).equals_clhash(packed_comp, clhash_key)) {
-          stats.incorporate_cache_hit(packed_comp, sz);
-          top.includeSolution(entry(act_id).model_count());
-          return true;
-        }
-        act_id = entry(act_id).next_bucket_element();
+    if (!act_id) return false;
+    clhash_key = packed_comp.get_clhash();
+    while(act_id){
+      if (entry(act_id).equals_clhash(packed_comp, clhash_key)) {
+        stats.incorporate_cache_hit(packed_comp, sz);
+        top.includeSolution(entry(act_id).model_count());
+        return true;
       }
-      return false;
-#else
-      assert(false);
-      exit(-1);
-#endif
-    } else{
-      while(act_id){
-        if (entry(act_id).equals_comp(packed_comp, sz)) {
-          stats.incorporate_cache_hit(packed_comp, sz);
-          top.includeSolution(entry(act_id).model_count());
-          return true;
-        }
-        act_id = entry(act_id).next_bucket_element();
-      }
-      return false;
+      act_id = entry(act_id).next_bucket_element();
     }
+    return false;
+#else
+    while(act_id){
+      if (entry(act_id).equals_comp(packed_comp, sz)) {
+        stats.incorporate_cache_hit(packed_comp, sz);
+        top.includeSolution(entry(act_id).model_count());
+        return true;
+      }
+      act_id = entry(act_id).next_bucket_element();
+    }
+    return false;
+#endif
   }
 
   // unchecked erase of an entry from entry_base_
@@ -311,8 +306,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   stats.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes(sz);
   stats.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes(sz);
 #ifdef DOPCC
-  if (config_.do_pcc)
-    entry(id).finish_hashing(entry(id).SizeInBytes(sz), entry(id).nVars(sz));
+  entry(id).finish_hashing(entry(id).SizeInBytes(sz), entry(id).nVars(sz));
 #endif
 
   entry(id).set_model_count(model_count,my_time_);

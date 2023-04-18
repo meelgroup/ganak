@@ -32,46 +32,43 @@ public:
   inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
   inline bool contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz);
 
-  bool pcc() const { return is_pcc; }
-
   uint32_t nVars(const BPCSizes& sz) const{
-    if (is_pcc) return old_num_vars;
+#ifdef DOPCC
+    return old_num_vars;
+#else
     uint32_t *p = (uint32_t *) data_;
     return (*p >> sz.bits_of_data_size) & sz.variable_mask;
+#endif
   }
 
   uint32_t data_size(const BPCSizes& sz) const {
-    if (is_pcc) return old_size;
-    return *data_ & sz.data_size_mask;
+#ifdef DOPCC
+    return old_size;
+#else
+    return (*data_) & sz.data_size_mask;
+#endif
   }
 
   uint32_t raw_data_byte_size(const BPCSizes& sz) const {
-    if (is_pcc) return sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-    else return data_size(sz)* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+#ifdef DOPCC
+    return sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+#else
+    return data_size(sz)* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+#endif
   }
 
     // raw data size with the overhead
     // for the supposed 16byte alignment of malloc
   uint32_t sys_overhead_raw_data_byte_size(const BPCSizes& sz) const {
     uint32_t ds;
-    if (is_pcc) ds = sizeof(uint64_t);
-
+#ifdef DOPCC
+    ds = sizeof(uint64_t);
+#else
     ds = data_size(sz)* sizeof(uint32_t);
+#endif
     uint32_t ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     uint32_t mask = 0xfffffff0;
     return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
-  }
-
-  bool equals_comp(const DifferencePackedComponent &comp, const BPCSizes& sz) const {
-    assert(!is_pcc);
-    if(hashkey_ != comp.get_hashkey()) return false;
-    uint32_t* p = data_;
-    uint32_t* r = comp.data_;
-    const auto end = data_ + data_size(sz);
-    while(p != end) {
-        if(*(p++) != *(r++)) return false;
-    }
-    return true;
   }
 
 #ifdef DOPCC
@@ -79,6 +76,17 @@ public:
   bool equals_clhash(const DifferencePackedComponent &comp, uint64_t clhash_key) const {
     if (hashkey_ != comp.get_hashkey()) return false;
     if (clhash_key != clhashkey_) return false;
+    return true;
+  }
+#else
+  bool equals_comp(const DifferencePackedComponent &comp, const BPCSizes& sz) const {
+    if(hashkey_ != comp.get_hashkey()) return false;
+    uint32_t* p = data_;
+    uint32_t* r = comp.data_;
+    const auto end = data_ + data_size(sz);
+    while(p != end) {
+        if(*(p++) != *(r++)) return false;
+    }
     return true;
   }
 #endif

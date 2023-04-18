@@ -50,13 +50,13 @@ ComponentCache::ComponentCache(DataAndStatistics &statistics, const CounterConfi
 
 void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
   CacheableComponent *packed_super_comp;
-	if (!config_.do_pcc) {
-		packed_super_comp = new CacheableComponent(super_comp, sz);
-	} else {
-		vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.numLongClauses());
-		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz, tmp.data());
-		packed_super_comp->finish_hashing(packed_super_comp->SizeInBytes(sz), packed_super_comp->nVars(sz));
-	}
+#ifdef DOPCC
+	vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.numLongClauses());
+	packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz, tmp.data());
+	packed_super_comp->finish_hashing(packed_super_comp->SizeInBytes(sz), packed_super_comp->nVars(sz));
+#else
+	packed_super_comp = new CacheableComponent(super_comp, sz);
+#endif
 	my_time_ = 1;
 
 	entry_base_.clear();
@@ -120,6 +120,7 @@ void ComponentCache::test_descendantstree_consistency() {
 		}
 }
 
+#ifndef DOPCC
 void ComponentCache::delete_comps_with_vars(const set<uint32_t>& vars) {
 	size_t num_deleted = 0;
 	size_t orig_num = entry_base_.size();
@@ -129,7 +130,6 @@ void ComponentCache::delete_comps_with_vars(const set<uint32_t>& vars) {
 	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (entry_base_[id] != nullptr && entry_base_[id]->isDeletable()) {
 		  DifferencePackedComponent* d = entry_base_[id];
-			assert(!d->pcc());
 		  if (d->contains_any_var(vars, sz)) {
 		    removeFromDescendantsTree(id);
 		    eraseEntry(id);
@@ -139,6 +139,7 @@ void ComponentCache::delete_comps_with_vars(const set<uint32_t>& vars) {
 	cout << "c Num deleted: " << num_deleted << " of: " << orig_num
 		<< " percent: " << (double)num_deleted/(double)orig_num * 100.0 << "%" << endl;
 }
+#endif
 
 bool ComponentCache::deleteEntries() {
   assert(stats.cache_full());

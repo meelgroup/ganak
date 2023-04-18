@@ -107,7 +107,6 @@ void add_ganak_options()
     ("flitratio", po::value(&conf.ratio_flitprobe)->default_value(conf.ratio_flitprobe), "What ratio of failed lit probe in terms of decision. Only active if '--failed 2'")
     ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
     ("version", "Print version info")
-    ("pcc", po::value(&conf.do_pcc)->default_value(conf.do_pcc), "Probabilistic Component Caching")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
@@ -379,9 +378,6 @@ int main(int argc, char *argv[])
                  FE_DIVBYZERO |
                  FE_OVERFLOW
                 );
-#endif
-#ifndef DOPCC
-  config.perform_pcc = false;
 #endif
 
   //Reconstruct the command line so we can emit it later if needed

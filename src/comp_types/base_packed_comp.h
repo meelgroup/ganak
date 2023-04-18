@@ -107,17 +107,19 @@ public:
     old_size = _old_size;
     old_num_vars = _old_num_vars;
     data_ = nullptr;
-    is_pcc = true;
   }
 #endif
   static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
 
-  BasePackedComponent() {}
-  BasePackedComponent(uint32_t creation_time): creation_time_(creation_time) {}
-
+  BasePackedComponent() : data_(nullptr) {}
+  BasePackedComponent(uint32_t creation_time):
+    data_(nullptr),
+    creation_time_(creation_time) {
+  }
   ~BasePackedComponent() {
     if (data_){ delete [] data_; }
   }
+
   void outbit(uint32_t v){
    for(auto i=0; i<32;i++){
      cout << ((v&2147483648)?"1":"0");
@@ -193,10 +195,12 @@ public:
   }
 
   void clear() {
+#if DOPCC
     // before deleting the contents of this comp,
     // we should make sure that this comp is not present in the comp stack anymore!
     assert(isDeletable());
     if (data_) delete [] data_;
+#endif
     data_ = nullptr;
   }
 
@@ -208,18 +212,14 @@ protected:
   // structure is
   // var var ... clause clause ...
   // clauses begin at clauses_ofs_
-  uint32_t* data_ = nullptr;
 
-#ifdef DOPCC
-  uint64_t clhashkey_;
+  union {uint32_t* data_; uint64_t clhashkey_;};
   uint32_t hashkey_ = 0;
-#endif
 
   mpz_class model_count_;
   uint32_t creation_time_ = 1;
   uint32_t old_size = 0;
   uint32_t old_num_vars = 0;
-  bool is_pcc = false;
 
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1

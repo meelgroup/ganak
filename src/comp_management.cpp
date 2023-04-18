@@ -106,16 +106,12 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       //        in case  at least one lit in it is unknown
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
-      if (config_.do_pcc) {
 #ifdef DOPCC
-        packed_comp = new CacheableComponent(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz, tmp_data_for_pcc.data());
-        packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), packed_comp->nVars(sz));
+      packed_comp = new CacheableComponent(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz, tmp_data_for_pcc.data());
+      packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), packed_comp->nVars(sz));
 #else
-        exit(-1);
+      packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
 #endif
-      } else {
-        packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
-      }
 
       // Update stats
       solver_->comp_size_q.push(packed_comp->nVars(sz));

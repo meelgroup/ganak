@@ -16,7 +16,6 @@ struct CounterConfiguration {
   int failed_lit_probe_type = 2;
   double exp = 1.0;
   bool do_pre_processing = true;
-  bool do_pcc = true; // probabilistic comp caching
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 1000U;

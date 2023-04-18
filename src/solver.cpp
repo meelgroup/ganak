@@ -56,7 +56,9 @@ void Counter::end_irred_cls()
 {
   tmp_seen.resize(nVars()+1, 0);
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
-  if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
+#ifdef DOPCC
+  comp_manager_->getrandomseedforclhash();
+#endif
   depth_q.clearAndResize(config_.first_restart);
   cache_miss_rate_q.clearAndResize(config_.first_restart);
   comp_size_q.clearAndResize(config_.first_restart);

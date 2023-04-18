@@ -41,6 +41,8 @@ public:
 
   ~ComponentManager() {
     free(randomseedforCLHASH);
+    for(auto& comp: comp_stack_) delete comp;
+    comp_stack_.clear();
   }
 
   unsigned& scoreOf(VariableIndex v)
@@ -151,6 +153,7 @@ private:
   vector<double> cachescore_;
   Counter* solver_;
   BPCSizes sz;
+  vector<uint32_t> tmp_data_for_pcc;
 };
 
 void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)

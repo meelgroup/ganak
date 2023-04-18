@@ -30,8 +30,8 @@ public:
       T_Component(comp, sz) {
   }
 
-  GenericCacheableComponent(void* randomseedforCLHASH, Component &comp, const BPCSizes& sz) :
-      T_Component(randomseedforCLHASH, comp, sz) {
+  GenericCacheableComponent(void* randomseedforCLHASH, Component &comp, const BPCSizes& sz, uint32_t* tmp_data) :
+      T_Component(randomseedforCLHASH, comp, sz, tmp_data) {
   }
 
   uint32_t SizeInBytes(const BPCSizes& sz) const {

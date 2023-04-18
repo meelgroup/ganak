@@ -29,7 +29,7 @@ public:
 
   DifferencePackedComponent() { }
   inline DifferencePackedComponent(Component &rComp, const BPCSizes& sz);
-  inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz);
+  inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
   inline bool contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz);
 
   bool pcc() const { return is_pcc; }
@@ -182,7 +182,7 @@ DifferencePackedComponent::DifferencePackedComponent(Component &rComp, const BPC
   bs.assert_size(data_size);
 }
 
-DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz) {
+DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data) {
   // first, generate hashkey, and compute max diff for cls and vars
   uint32_t max_var_diff = 0;
   uint32_t hashkey_vars = *rComp.varsBegin();
@@ -221,7 +221,11 @@ DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, 
   uint32_t data_size = (data_size_vars + data_size_clauses)/sz.bits_per_block;
   data_size += ((data_size_vars + data_size_clauses) % sz.bits_per_block)? 1 : 0;
 
+#ifdef DOPCC
+  data_ = tmp_data;
+#else
   data_ = new uint32_t[data_size];
+#endif
   assert((data_size >> sz.bits_of_data_size) == 0);
   BitStuffer<uint32_t> bs(data_);
 

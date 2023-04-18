@@ -106,7 +106,6 @@ public:
   void finish_hashing(const uint32_t _old_size, const uint32_t _old_num_vars) {
     old_size = _old_size;
     old_num_vars = _old_num_vars;
-    delete[] data_;
     data_ = nullptr;
     is_pcc = true;
   }
@@ -117,9 +116,7 @@ public:
   BasePackedComponent(uint32_t creation_time): creation_time_(creation_time) {}
 
   ~BasePackedComponent() {
-    if (data_){
-      delete [] data_;
-    }
+    if (data_){ delete [] data_; }
   }
   void outbit(uint32_t v){
    for(auto i=0; i<32;i++){

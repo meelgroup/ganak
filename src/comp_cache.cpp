@@ -53,7 +53,8 @@ void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
 	if (!config_.do_pcc) {
 		packed_super_comp = new CacheableComponent(super_comp, sz);
 	} else {
-		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz);
+		vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.numLongClauses());
+		packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz, tmp.data());
 		packed_super_comp->finish_hashing(packed_super_comp->SizeInBytes(sz), packed_super_comp->nVars(sz));
 	}
 	my_time_ = 1;

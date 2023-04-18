@@ -30,6 +30,10 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
 
   cache_.init(*comp_stack_.back(), randomseedforCLHASH);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cachescore_.push_back(0);
+
+  // 100 for the constant overhead (bitsizes, num clauses, num variables)
+  // Note that these are WAY too much
+  tmp_data_for_pcc.resize(100+nVars+solver_->get_num_irred_long_cls());
 }
 
 void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
@@ -104,7 +108,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       CacheableComponent *packed_comp = NULL;
       if (config_.do_pcc) {
 #ifdef DOPCC
-        packed_comp = new CacheableComponent(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz);
+        packed_comp = new CacheableComponent(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz, tmp_data_for_pcc.data());
         packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), packed_comp->nVars(sz));
 #else
         exit(-1);

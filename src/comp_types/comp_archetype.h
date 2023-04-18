@@ -41,6 +41,7 @@ class StackLevel;
 class ComponentArchetype {
 public:
   ComponentArchetype() { }
+  ~ComponentArchetype() { delete[] seen_; }
   ComponentArchetype(StackLevel &stack_level, const Component &super_comp) :
       p_super_comp_(&super_comp), p_stack_level_(&stack_level) {
   }

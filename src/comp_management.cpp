@@ -64,7 +64,7 @@ double ComponentManager::get_comp_score(StackLevel &top)
   double sizes_mult = 1;
   uint32_t max_comp_size = 1;
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-    if (ana_.isUnseenAndActive(*vt)) {
+    if (ana_.isUnseenAndSet(*vt)) {
       bool multi_var_comp = ana_.exploreRemainingCompOf(*vt);
       if (multi_var_comp) {
         Component *p_new_comp = ana_.makeComponentFromArcheType();
@@ -94,11 +94,13 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-    print_debug("Going to NEXT var that's unseen & active in this component... if it exists. Var: " << *vt);
-    if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
+    print_debug("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
+    if (ana_.isUnseenAndSet(*vt) && ana_.exploreRemainingCompOf(*vt)) {
 
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
-      //        Archetype
+      //        Archetype -- BUT, this component_for_caching_ only contains a clause
+      //        in case not all lits in it are active (i.e. at least one lit in it is
+      //        inactive)
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.do_pcc) {

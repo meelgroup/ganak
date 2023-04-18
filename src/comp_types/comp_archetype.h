@@ -33,7 +33,7 @@ typedef uint8_t CA_SearchState;
 #define   CA_CL_IN_SUP_COMP_UNSEEN  8
 #define   CA_CL_SEEN 16
 #define   CA_CL_IN_OTHER_COMP  32
-#define   CA_CL_ALL_LITS_ACTIVE  64
+#define   CA_CL_ALL_LITS_SET  64
 
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
@@ -91,7 +91,7 @@ public:
 
   void setClause_seen(const ClauseIndex cl, const bool all_lits_act) {
       setClause_nil(cl);
-      seen_[cl] = CA_CL_SEEN | (all_lits_act?CA_CL_ALL_LITS_ACTIVE:0) | (seen_[cl] & CA_VAR_MASK);
+      seen_[cl] = CA_CL_SEEN | (all_lits_act?CA_CL_ALL_LITS_SET:0) | (seen_[cl] & CA_VAR_MASK);
     }
 
   void setVar_in_other_comp(const VariableIndex v) {
@@ -110,11 +110,8 @@ public:
     return seen_[cl] & CA_CL_SEEN;
   }
 
-  bool clause_all_lits_active(const ClauseIndex cl) const {
-    return seen_[cl] & CA_CL_ALL_LITS_ACTIVE;
-  }
-  void setClause_all_lits_active(const ClauseIndex cl) {
-    seen_[cl] |= CA_CL_ALL_LITS_ACTIVE;
+  bool clause_all_lits_set(const ClauseIndex cl) const {
+    return seen_[cl] & CA_CL_ALL_LITS_SET;
   }
 
   bool var_nil(const VariableIndex v) const {
@@ -175,7 +172,7 @@ public:
     for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->addCl(*it_cl);
-        if (!clause_all_lits_active(*it_cl)) current_comp_for_caching_.addCl(*it_cl);
+        if (!clause_all_lits_set(*it_cl)) current_comp_for_caching_.addCl(*it_cl);
         setClause_in_other_comp(*it_cl);
       }
     p_new_comp->closeClauseData();

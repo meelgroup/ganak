@@ -180,7 +180,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     CacheEntryID id;
 
     while (stats.cache_full()){
-      if (config_.verb) cout << "c Cache full!!" << endl;
+      if (config_.verb) cout << "c Cache full. Deleting some entries." << endl;
       deleteEntries();
     }
 
@@ -204,13 +204,12 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
 
     entry(id).set_father(super_comp_id);
     add_descendant(super_comp_id, id);
-
-    assert(hasEntry(id));
-    assert(hasEntry(super_comp_id));
+    SLOW_DEBUG_DO(assert(hasEntry(id)));
+    SLOW_DEBUG_DO(assert(hasEntry(super_comp_id)));
 
     stats.incorporate_cache_store(ccomp, sz);
 
-  #ifdef DEBUG
+  #ifdef SLOW_DEBUG
       for (uint32_t u = 2; u < entry_base_.size(); u++)
             if (entry_base_[u] != nullptr) {
               assert(entry_base_[u]->father() != id);

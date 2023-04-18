@@ -41,15 +41,13 @@ public:
     return var_frequency_scores_[v];
   }
 
-  ComponentArchetype &current_archetype(){
-    return archetype_;
-  }
+  const ComponentArchetype &current_archetype() const { return archetype_; }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
       vector<Lit> &lit_pool);
 
-  bool isUnseenAndActive(const VariableIndex v) const {
-    assert(v <= max_variable_id_);
+  bool isUnseenAndSet(const VariableIndex v) const {
+    SLOW_DEBUG_DO(assert(v <= max_variable_id_));
     return archetype_.var_unseen_in_sup_comp(v);
   }
 
@@ -191,14 +189,14 @@ private:
   // belongs to a component. It's called on every long clause.
   void searchClause(VariableIndex vt, ClauseIndex clID, Lit const* pstart_cls){
     const auto itVEnd = search_stack_.end();
-    bool all_lits_active = true;
+    bool all_lits_set = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {
       assert(itL->var() <= max_variable_id_);
       if(!archetype_.var_nil(itL->var()))
         manageSearchOccurrenceAndScoreOf(*itL); // sets var to be seen
       else {
         assert(!isUnknown(*itL));
-        all_lits_active = false;
+        all_lits_set = false;
         if (isFalse(*itL)) continue;
 
         //accidentally entered a satisfied clause: undo the search process
@@ -216,7 +214,7 @@ private:
 
     if (!archetype_.clause_nil(clID)){
       var_frequency_scores_[vt]++;
-      archetype_.setClause_seen(clID,all_lits_active);
+      archetype_.setClause_seen(clID,all_lits_set);
     }
   }
 

@@ -32,7 +32,7 @@ public:
   inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
   inline bool contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz);
 
-  uint32_t nVars(const BPCSizes& sz) const{
+  uint32_t nVars([[maybe_unused]] const BPCSizes& sz) const {
 #ifdef DOPCC
     return old_num_vars;
 #else
@@ -41,7 +41,7 @@ public:
 #endif
   }
 
-  uint32_t data_size(const BPCSizes& sz) const {
+  uint32_t data_size([[maybe_unused]] const BPCSizes& sz) const {
 #ifdef DOPCC
     return old_size;
 #else
@@ -49,7 +49,7 @@ public:
 #endif
   }
 
-  uint32_t raw_data_byte_size(const BPCSizes& sz) const {
+  uint32_t raw_data_byte_size([[maybe_unused]] const BPCSizes& sz) const {
 #ifdef DOPCC
     return sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
 #else
@@ -59,7 +59,7 @@ public:
 
     // raw data size with the overhead
     // for the supposed 16byte alignment of malloc
-  uint32_t sys_overhead_raw_data_byte_size(const BPCSizes& sz) const {
+  uint32_t sys_overhead_raw_data_byte_size([[maybe_unused]] const BPCSizes& sz) const {
     uint32_t ds;
 #ifdef DOPCC
     ds = sizeof(uint64_t);

@@ -51,6 +51,7 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   SLOW_DEBUG_DO(cache_.test_descendantstree_consistency());
 }
 
+// For lookahead
 double ComponentManager::get_comp_score(StackLevel &top)
 {
   const Component& super_comp = getSuperComponentOf(top);
@@ -95,6 +96,9 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
     print_debug("Going to NEXT var that's unseen & active in this component... if it exists. Var: " << *vt);
     if (ana_.isUnseenAndActive(*vt) && ana_.exploreRemainingCompOf(*vt)) {
+
+      // Actually makes both a component returned, AND an current_comp_for_caching_ in
+      //        Archetype
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.do_pcc) {

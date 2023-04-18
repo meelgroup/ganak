@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <vector>
+#include "common.h"
 #include "../primitive_types.h"
 
 using std::vector;
@@ -26,7 +27,7 @@ public:
   void addVar(const VariableIndex var) {
     // the only time a varsSENTINEL is added should be in a
     // call to closeVariableData(..)
-    assert(var != varsSENTINEL);
+    SLOW_DEBUG_DO(assert(var != varsSENTINEL));
     vs_cls_data_.push_back(var);
   }
 
@@ -38,7 +39,7 @@ public:
   void addCl(const ClauseIndex cl) {
     // the only time a clsSENTINEL is added should be in a
     // call to closeClauseData(..)
-    assert(cl != clsSENTINEL);
+    SLOW_DEBUG_DO(assert(cl != clsSENTINEL));
     vs_cls_data_.push_back(cl);
   }
 

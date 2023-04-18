@@ -32,9 +32,7 @@ public:
   inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz);
   inline bool contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz);
 
-  bool pcc() const {
-    return is_pcc;
-  }
+  bool pcc() const { return is_pcc; }
 
   uint32_t nVars(const BPCSizes& sz) const{
     if (is_pcc) return old_num_vars;
@@ -76,7 +74,7 @@ public:
   }
 
 #ifdef DOPCC
-  uint64_t compute_clhash(){ return clhashkey_; }
+  uint64_t get_clhash() const { return clhashkey_; }
   bool equals(const DifferencePackedComponent &comp, uint64_t clhash_key) const {
     if(hashkey_ != comp.hashkey()) return false;
     if (clhash_key != clhashkey_) return false;

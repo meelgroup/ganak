@@ -83,7 +83,7 @@ public:
     if (config_.do_pcc) {
 #ifdef DOPCC
       if (!act_id) return false;
-      clhash_key = packed_comp.compute_clhash();
+      clhash_key = packed_comp.get_clhash();
       while(act_id){
         if (entry(act_id).equals(packed_comp, clhash_key)) {
           stats.incorporate_cache_hit(packed_comp, sz);

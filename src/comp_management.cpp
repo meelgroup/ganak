@@ -69,8 +69,8 @@ double ComponentManager::get_comp_score(StackLevel &top)
       if (multi_var_comp) {
         Component *p_new_comp = ana_.makeComponentFromArcheType();
         max_comp_size = std::max(p_new_comp->nVars(), max_comp_size);
-        delete p_new_comp;
         sizes_mult *= p_new_comp->nVars();
+        delete p_new_comp;
       }
       num_comps++;
     }

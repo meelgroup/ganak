@@ -44,25 +44,11 @@ public:
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_used();
 
-  CacheableComponent &entry(CacheEntryID id) {
-    assert(entry_base_.size() > id);
-    assert(entry_base_[id] != nullptr);
-    return *entry_base_[id];
-  }
-
-  const CacheableComponent &entry(CacheEntryID id) const {
-    assert(entry_base_.size() > id);
-    assert(entry_base_[id] != nullptr);
-    return *entry_base_[id];
-  }
-
+  CacheableComponent &entry(CacheEntryID id) { return *entry_base_[id]; }
+  const CacheableComponent &entry(CacheEntryID id) const { return *entry_base_[id]; }
   CacheableComponent &entry(const Component& comp) { return entry(comp.id()); }
   const CacheableComponent &entry(const Component& comp) const { return entry(comp.id()); }
-
-  bool hasEntry(CacheEntryID id) const {
-    assert(entry_base_.size() > id);
-    return entry_base_[id];
-  }
+  bool hasEntry(CacheEntryID id) const { return entry_base_[id]; }
 
   // removes the entry id from the hash table
   // but not from the entry base

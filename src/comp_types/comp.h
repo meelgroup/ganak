@@ -5,8 +5,7 @@
  *      Author: mthurley
  */
 
-#ifndef COMPONENT_H_
-#define COMPONENT_H_
+#pragma once
 
 #include <assert.h>
 #include <vector>
@@ -109,7 +108,3 @@ private:
   // in the hash table
   CacheEntryID id_ = 0;
 };
-
-
-
-#endif /* COMPONENT_H_ */

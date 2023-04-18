@@ -25,9 +25,7 @@ class ComponentArchetype;
 template< class T_Component>
 class GenericCacheableComponent: public T_Component {
 public:
-  GenericCacheableComponent() {
-  }
-
+  GenericCacheableComponent() { }
   GenericCacheableComponent(Component &comp, const BPCSizes& sz) :
       T_Component(comp, sz) {
   }
@@ -51,48 +49,26 @@ public:
           +48;
     }
 
-  // BEGIN Cache Pollution Management
-
-  void set_father(CacheEntryID f) {
-    father_ = f;
-  }
-  CacheEntryID father() const {
-    return father_;
-  }
-
-  void set_next_sibling(CacheEntryID sibling) {
-    next_sibling_ = sibling;
-  }
-  CacheEntryID next_sibling() {
-    return next_sibling_;
-  }
-
-  void set_first_descendant(CacheEntryID descendant) {
-    first_descendant_ = descendant;
-  }
-  CacheEntryID first_descendant() {
-    return first_descendant_;
-  }
-
-  void set_next_bucket_element(CacheEntryID entry) {
-    next_bucket_element_ = entry;
-  }
-
-  CacheEntryID next_bucket_element() {
-      return next_bucket_element_;
-  }
+  // Cache Pollution Management
+  void set_father(CacheEntryID f) { father_ = f; }
+  CacheEntryID father() const { return father_; }
+  void set_next_sibling(CacheEntryID sibling) { next_sibling_ = sibling; }
+  CacheEntryID next_sibling() const { return next_sibling_; }
+  void set_first_descendant(CacheEntryID descendant) { first_descendant_ = descendant; }
+  CacheEntryID first_descendant() const { return first_descendant_; }
+  void set_next_bucket_element(CacheEntryID entry) { next_bucket_element_ = entry; }
+  CacheEntryID next_bucket_element() const { return next_bucket_element_; }
 
 private:
 
   CacheEntryID next_bucket_element_ = 0;
 
-  // theFather and theDescendants:
+  // father and descendants:
   // each CCacheEntry is a Node in a tree which represents the relationship
   // of the comps stored
   CacheEntryID father_ = 0;
   CacheEntryID first_descendant_ = 0;
   CacheEntryID next_sibling_ = 0;
-
 };
 
 typedef GenericCacheableComponent<DifferencePackedComponent> CacheableComponent;

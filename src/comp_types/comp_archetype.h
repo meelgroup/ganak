@@ -187,9 +187,6 @@ public:
     return p_new_comp;
   }
 
-  inline void createComponents(Component &ret_comp, CacheableComponent ret_cache_comp,
-      uint32_t stack_size);
-
   Component current_comp_for_caching_;
 
 private:

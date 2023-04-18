@@ -20,13 +20,8 @@ public:
     vs_cls_data_.reserve(nVars + num_clauses + 2);
   }
 
-  void set_id(CacheEntryID id) {
-    id_ = id;
-  }
-
-  CacheEntryID id() const{
-    return id_;
-  }
+  void set_id(CacheEntryID id) { id_ = id; }
+  CacheEntryID id() const { return id_; }
 
   void addVar(const VariableIndex var) {
     // the only time a varsSENTINEL is added should be in a
@@ -60,17 +55,9 @@ public:
     return vs_cls_data_.begin() + clauses_ofs_;
   }
 
-  uint32_t nVars() const {
-    return clauses_ofs_ - 1;
-  }
-
-  uint32_t numLongClauses() const {
-    return vs_cls_data_.size() - clauses_ofs_ - 1;
-  }
-
-  bool empty() const {
-    return vs_cls_data_.empty();
-  }
+  uint32_t nVars() const { return clauses_ofs_ - 1; }
+  uint32_t numLongClauses() const { return vs_cls_data_.size() - clauses_ofs_ - 1; }
+  bool empty() const { return vs_cls_data_.empty(); }
 
   // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
   void createStartingComponent(uint32_t max_var_id, uint32_t max_clause_id) {

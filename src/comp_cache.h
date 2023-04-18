@@ -50,11 +50,16 @@ public:
     return *entry_base_[id];
   }
 
-  CacheableComponent &entry(const Component& comp) {
-      return entry(comp.id());
+  const CacheableComponent &entry(CacheEntryID id) const {
+    assert(entry_base_.size() > id);
+    assert(entry_base_[id] != nullptr);
+    return *entry_base_[id];
   }
 
-  bool hasEntry(CacheEntryID id) {
+  CacheableComponent &entry(const Component& comp) { return entry(comp.id()); }
+  const CacheableComponent &entry(const Component& comp) const { return entry(comp.id()); }
+
+  bool hasEntry(CacheEntryID id) const {
     assert(entry_base_.size() > id);
     return entry_base_[id];
   }
@@ -155,7 +160,7 @@ private:
     }
   }
 
-  uint32_t tableEntry(CacheEntryID id){
+  uint32_t tableEntry(CacheEntryID id) const {
     return entry(id).get_hashkey() & table_size_mask_;
   }
   void add_descendant(CacheEntryID compid, CacheEntryID descendantid) {

@@ -67,13 +67,13 @@ public:
   void get_unit_cls(vector<Lit>& units) const;
   void init_activity_scores();
   void set_next_restart(uint64_t next) { config_.next_restart = next; }
-  bqueue<uint32_t> comp_size_queue;
+  bqueue<uint32_t> comp_size_q;
   uint64_t dec_level() const { return decision_stack_.size(); }
 
 private:
   vector<double> scores;
-  bqueue<uint32_t> depth_queue;
-  bqueue<double, double> cache_miss_rate_queue;
+  bqueue<uint32_t> depth_q;
+  bqueue<double, double> cache_miss_rate_q;
   vector<VS> vars_scores; // for branch picking
 
   // Temporaries, used during recordLastUIPClause

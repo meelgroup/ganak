@@ -98,9 +98,8 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
     if (ana_.isUnseenAndSet(*vt) && ana_.exploreRemainingCompOf(*vt)) {
 
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
-      //        Archetype -- BUT, this component_for_caching_ only contains a clause
-      //        in case not all lits in it are active (i.e. at least one lit in it is
-      //        inactive)
+      //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
+      //        in case  at least one lit in it is unknown
       Component *p_new_comp = ana_.makeComponentFromArcheType();
       CacheableComponent *packed_comp = NULL;
       if (config_.do_pcc) {
@@ -113,13 +112,15 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       } else {
         packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
       }
-      solver_->comp_size_queue.push(packed_comp->nVars(sz));
+
+      // Update stats
+      solver_->comp_size_q.push(packed_comp->nVars(sz));
+      if (solver_->dec_level() > 0)
+        stats.comp_size_per_depth_q.push((double)p_new_comp->nVars()/(double)solver_->dec_level());
 
       // Check if new comp is already in cache
-      if (solver_->dec_level() > 0 && p_new_comp->nVars() > 0)
-        stats.comp_size_per_depth.push((double)p_new_comp->nVars()/(double)solver_->dec_level());
       if (!cache_.manageNewComponent(top, *packed_comp)) {
-        stats.cache_hits_misses.push(p_new_comp->nVars());
+        stats.cache_hits_misses_q.push(0);
         comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(*packed_comp, super_comp.id()));
 #ifdef VERBOSE_DEBUG
@@ -129,7 +130,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         cout << endl;
 #endif
       } else {
-        stats.cache_hits_misses.push(0);
+        stats.cache_hits_misses_q.push(p_new_comp->nVars());
         if (config_.do_cache_score) {
           stats.numcachedec_++;
           if (stats.numcachedec_ % 128 == 0) rescale_cache_scores();

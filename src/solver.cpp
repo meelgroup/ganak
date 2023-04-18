@@ -57,9 +57,9 @@ void Counter::end_irred_cls()
   tmp_seen.resize(nVars()+1, 0);
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
   if (config_.do_pcc) comp_manager_->getrandomseedforclhash();
-  depth_queue.clearAndResize(config_.first_restart);
-  cache_miss_rate_queue.clearAndResize(config_.first_restart);
-  comp_size_queue.clearAndResize(config_.first_restart);
+  depth_q.clearAndResize(config_.first_restart);
+  cache_miss_rate_q.clearAndResize(config_.first_restart);
+  comp_size_q.clearAndResize(config_.first_restart);
 
   release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
@@ -267,7 +267,7 @@ uint32_t Counter::find_best_branch()
 
   vars_scores.clear();
   bool lookahead_try = !config_.do_cache_score && config_.do_lookahead &&
-    decision_stack_.size() > depth_queue.getLongtTerm().avg()*config_.lookahead_depth;
+    decision_stack_.size() > depth_q.getLongtTerm().avg()*config_.lookahead_depth;
   uint32_t best_var = 0;
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
@@ -410,8 +410,8 @@ void Counter::computeLargestCube()
 }
 
 bool Counter::restart_if_needed() {
-  cache_miss_rate_queue.push(stats.cache_miss_rate());
-  depth_queue.push(decision_stack_.size());
+  cache_miss_rate_q.push(stats.cache_miss_rate());
+  depth_q.push(decision_stack_.size());
   /* if (cache_miss_rate_queue.isvalid()) { */
   /*     cout << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg() */
   /*     << " Sterm miss avg: " << cache_miss_rate_queue.avg() */
@@ -440,61 +440,61 @@ bool Counter::restart_if_needed() {
   if (!config_.do_restart || largest_cube.empty()) return false;
   bool restart = false;
   if (config_.restart_type == 0
-      && comp_size_queue.isvalid() && comp_size_queue.avg() < comp_size_queue.getLongtTerm().avg())
+      && comp_size_q.isvalid() && comp_size_q.avg() < comp_size_q.getLongtTerm().avg())
     restart = true;
   if (config_.restart_type == 1
-      && cache_miss_rate_queue.isvalid() && cache_miss_rate_queue.avg() > cache_miss_rate_queue.getLongtTerm().avg()*0.95)
+      && cache_miss_rate_q.isvalid() && cache_miss_rate_q.avg() > cache_miss_rate_q.getLongtTerm().avg()*0.95)
     restart = true;
 
   if (config_.restart_type == 2
-      && depth_queue.isvalid() && depth_queue.avg() > depth_queue.getLongtTerm().avg()*1.1)
+      && depth_q.isvalid() && depth_q.avg() > depth_q.getLongtTerm().avg()*1.1)
     restart = true;
 
   if (config_.restart_type == 3 && (stats.num_decisions_-stats.last_restart_num_decisions) > config_.next_restart)
     restart = true;
 
-  if (config_.restart_type == 4 && stats.cache_hits_misses.isvalid() && stats.cache_hits_misses.avg() < stats.cache_hits_misses.getLongtTerm().avg()*0.9)
+  if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*0.9)
       restart = true;
 
-  if (config_.restart_type == 5 && stats.comp_size_per_depth.isvalid() && stats.comp_size_per_depth.avg() < stats.comp_size_per_depth.getLongtTerm().avg()*0.85)
+  if (config_.restart_type == 5 && stats.comp_size_per_depth_q.isvalid() && stats.comp_size_per_depth_q.avg() < stats.comp_size_per_depth_q.getLongtTerm().avg()*0.85)
       restart = true;
 
   if (restart) {
     cout << "c  ************* Restarting.  **************" << endl;
-    if (comp_size_queue.isvalid()) {
+    if (comp_size_q.isvalid()) {
       cout
          << std::setw(30) << std::left
-         << "c Lterm comp size avg: " << std::setw(9) << comp_size_queue.getLongtTerm().avg()
+         << "c Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
          << std::right  << std::setw(30) << std::left
-         << std::left   << " Sterm comp size avg: " << comp_size_queue.avg() << endl;
+         << std::left   << " Sterm comp size avg: " << comp_size_q.avg() << endl;
     }
-    if (cache_miss_rate_queue.isvalid()) {
+    if (cache_miss_rate_q.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_queue.getLongtTerm().avg()
+        << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_q.getLongtTerm().avg()
         << std::right  << std::setw(30) << std::left
-        << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_queue.avg() << endl;
+        << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_q.avg() << endl;
     }
-    if (depth_queue.isvalid()) {
+    if (depth_q.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm dec avg: " << std::setw(9) << depth_queue.getLongtTerm().avg()
+        << "c Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
         << std::right << std::setw(30) << std::left
-        << std::left  << " Sterm dec avg: " << std::setw(9) << depth_queue.avg() << endl;
+        << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg() << endl;
     }
-    if (stats.cache_hits_misses.isvalid()) {
+    if (stats.cache_hits_misses_q.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses.getLongtTerm().avg()
+        << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses_q.getLongtTerm().avg()
         << std::right  << std::setw(30) << std::left
-        << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses.avg() << endl;
+        << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg() << endl;
     }
-    if (stats.comp_size_per_depth.isvalid()) {
+    if (stats.comp_size_per_depth_q.isvalid()) {
       cout
         << std::setw(30) << std::left
-        << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth.getLongtTerm().avg()
+        << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.getLongtTerm().avg()
         << std::right  << std::setw(30) << std::left
-        << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth.avg()
+        << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.avg()
         << " depth: " << decision_stack_.size()-1
         << endl;
     }
@@ -509,11 +509,11 @@ bool Counter::restart_if_needed() {
       << endl;
 
     stats.last_restart_num_decisions = stats.num_decisions_;
-    depth_queue.clear();
-    cache_miss_rate_queue.clear();
-    comp_size_queue.clear();
-    stats.cache_hits_misses.clear();
-    stats.comp_size_per_depth.clear();
+    depth_q.clear();
+    cache_miss_rate_q.clear();
+    comp_size_q.clear();
+    stats.cache_hits_misses_q.clear();
+    stats.comp_size_per_depth_q.clear();
 
     while (decision_stack_.size() > 1) {
       bool on_path = true;
@@ -688,7 +688,7 @@ bool Counter::prop_and_probe() {
   bool bSucceeded = propagate(start_ofs);
   if (config_.failed_lit_probe_type == 2 && bSucceeded &&
       (double)decision_stack_.size() >
-        depth_queue.getLongtTerm().avg()*config_.ratio_flitprobe) {
+        depth_q.getLongtTerm().avg()*config_.ratio_flitprobe) {
     bSucceeded = failed_lit_probe();
   }
   else if (config_.failed_lit_probe_type == 1 && bSucceeded) {

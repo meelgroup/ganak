@@ -29,8 +29,8 @@ class DataAndStatistics {
 public:
   DataAndStatistics (const Instance* _inst) {
     inst = _inst;
-    cache_hits_misses.clearAndResize(10000);
-    comp_size_per_depth.clearAndResize(10000);
+    cache_hits_misses_q.clearAndResize(10000);
+    comp_size_per_depth_q.clearAndResize(10000);
   }
   uint64_t maximum_cache_size_bytes_ = 0;
   uint64_t numcachedec_ = 0;
@@ -68,7 +68,7 @@ public:
   uint64_t num_cache_look_ups_ = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes_ = 0;
-  bqueue<uint32_t> cache_hits_misses;
+  bqueue<uint32_t> cache_hits_misses_q;
 
   uint64_t num_cached_comps_ = 0;
   uint64_t total_num_cached_comps_ = 0;
@@ -76,7 +76,7 @@ public:
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
 
-  bqueue<double, double> comp_size_per_depth;
+  bqueue<double, double> comp_size_per_depth_q;
 
 
   // Lookahead

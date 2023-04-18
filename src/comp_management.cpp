@@ -74,7 +74,7 @@ double ComponentManager::get_comp_score(StackLevel &top)
       num_comps++;
     }
   }
-  score=num_comps*sizes_mult/(double)max_comp_size;
+  score=(double)(num_comps*sizes_mult)/(double)max_comp_size;
   /* cout << "v: " << std::setw(4) << top.getbranchvar() */
   /*   << " dec_lev: " << solver_->dec_level() << " Num comps: " */
   /*   << num_comps << " max_comp_size: " << max_comp_size */

@@ -157,7 +157,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
 
     // traverse long clauses
     for (p++; *p ; p +=2)
-      if(archetype_.clause_unseen_in_sup_comp(*p))
+      if (archetype_.clause_unseen_in_sup_comp(*p))
         searchClause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 

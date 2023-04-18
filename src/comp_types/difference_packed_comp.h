@@ -67,7 +67,8 @@ public:
     if(hashkey_ != comp.get_hashkey()) return false;
     uint32_t* p = data_;
     uint32_t* r = comp.data_;
-    while(p != data_ + data_size(sz)) {
+    const auto end = data_ + data_size(sz);
+    while(p != end) {
         if(*(p++) != *(r++)) return false;
     }
     return true;

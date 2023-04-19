@@ -69,6 +69,7 @@ public:
   void set_next_restart(uint64_t next) { config_.next_restart = next; }
   bqueue<uint32_t> comp_size_q;
   uint64_t dec_level() const { return decision_stack_.size(); }
+  void print_restart_data() const;
 
 private:
   vector<double> scores;

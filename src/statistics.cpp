@@ -24,6 +24,7 @@ double safe_div(double a, double b) {
 }
 
 void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* cache_) const {
+  solver->print_restart_data();
   cout << "c cls irred                      " << num_irred_clauses() << endl;
   cout << "c decisions                      " << num_decisions_ << endl;
   cout << "c conflicts                      " << num_conflicts_ << endl;

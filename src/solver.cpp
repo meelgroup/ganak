@@ -412,6 +412,48 @@ void Counter::computeLargestCube()
 #endif
 }
 
+void Counter::print_restart_data() const
+{
+  if (comp_size_q.isvalid()) {
+    cout
+       << std::setw(30) << std::left
+       << "c Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
+       << std::right  << std::setw(30) << std::left
+       << std::left   << " Sterm comp size avg: " << comp_size_q.avg() << endl;
+  }
+  if (cache_miss_rate_q.isvalid()) {
+    cout
+      << std::setw(30) << std::left
+      << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_q.getLongtTerm().avg()
+      << std::right  << std::setw(30) << std::left
+      << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_q.avg() << endl;
+  }
+  if (depth_q.isvalid()) {
+    cout
+      << std::setw(30) << std::left
+      << "c Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
+      << std::right << std::setw(30) << std::left
+      << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg() << endl;
+  }
+  if (stats.cache_hits_misses_q.isvalid()) {
+    cout
+      << std::setw(30) << std::left
+      << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses_q.getLongtTerm().avg()
+      << std::right  << std::setw(30) << std::left
+      << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg() << endl;
+  }
+  if (stats.comp_size_per_depth_q.isvalid()) {
+    cout
+      << std::setw(30) << std::left
+      << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.getLongtTerm().avg()
+      << std::right  << std::setw(30) << std::left
+      << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.avg()
+      << " depth: " << decision_stack_.size()-1
+      << endl;
+  }
+  cout << std::right;
+}
+
 bool Counter::restart_if_needed() {
   cache_miss_rate_q.push(stats.cache_miss_rate());
   depth_q.push(decision_stack_.size());
@@ -470,44 +512,7 @@ bool Counter::restart_if_needed() {
 
   if (restart) {
     cout << "c  ************* Restarting.  **************" << endl;
-    if (comp_size_q.isvalid()) {
-      cout
-         << std::setw(30) << std::left
-         << "c Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
-         << std::right  << std::setw(30) << std::left
-         << std::left   << " Sterm comp size avg: " << comp_size_q.avg() << endl;
-    }
-    if (cache_miss_rate_q.isvalid()) {
-      cout
-        << std::setw(30) << std::left
-        << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_q.getLongtTerm().avg()
-        << std::right  << std::setw(30) << std::left
-        << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_q.avg() << endl;
-    }
-    if (depth_q.isvalid()) {
-      cout
-        << std::setw(30) << std::left
-        << "c Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
-        << std::right << std::setw(30) << std::left
-        << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg() << endl;
-    }
-    if (stats.cache_hits_misses_q.isvalid()) {
-      cout
-        << std::setw(30) << std::left
-        << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses_q.getLongtTerm().avg()
-        << std::right  << std::setw(30) << std::left
-        << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg() << endl;
-    }
-    if (stats.comp_size_per_depth_q.isvalid()) {
-      cout
-        << std::setw(30) << std::left
-        << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.getLongtTerm().avg()
-        << std::right  << std::setw(30) << std::left
-        << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.avg()
-        << " depth: " << decision_stack_.size()-1
-        << endl;
-    }
-    cout << std::right;
+    print_restart_data();
     /* cout << "c Num units: " << unit_clauses_.size(); */
     /* cout << " CC: " << conflict_clauses_.size(); */
     cout << "c Num decisions since last restart: "

@@ -735,13 +735,16 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       bool isLitA = (*beginOf(ofs) == unLit);
       auto p_watchLit = beginOf(ofs) + 1 - isLitA;
       auto p_otherLit = beginOf(ofs) + isLitA;
-      if (isTrue(*p_otherLit)) { *it2++ = *it; continue; }
+      if (isTrue(*p_otherLit)) {
+        *it2++ = ClOffsBlckL(ofs, *p_otherLit);
+        continue;
+      }
 
       auto itL = beginOf(ofs) + 2;
       while (isFalse(*itL)) itL++;
       // either we found a free or satisfied lit
       if (*itL != SENTINEL_LIT) {
-        litWatchList(*itL).addWatchLinkTo(ofs, *p_watchLit);
+        litWatchList(*itL).addWatchLinkTo(ofs, *p_otherLit);
         std::swap(*itL, *p_watchLit);
       } else {
         // or p_unLit stays resolved

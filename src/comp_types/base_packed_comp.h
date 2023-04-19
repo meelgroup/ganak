@@ -178,10 +178,7 @@ public:
     length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
   }
 
-#ifdef DOPCC
   uint32_t get_hashkey() const  { return hashkey_; }
-#endif
-
   bool modelCountFound(){
     return (length_solution_period_and_flags_ >> 1);
   }

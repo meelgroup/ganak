@@ -66,7 +66,7 @@ public:
   inline CacheEntryID storeAsEntry(CacheableComponent &ccomp,
                             CacheEntryID super_comp_id);
 
-  bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
+  bool manageNewComponent(StackLevel &top, const CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;
     uint64_t clhashkey;
     uint32_t table_ofs = packed_comp.get_hashkey() & table_size_mask_;
@@ -75,7 +75,7 @@ public:
     if (!act_id) return false;
     clhashkey = packed_comp.get_clhashkey();
     while(act_id){
-      if (entry(act_id).equals_clhashkey(packed_comp, clhashkey)) {
+      if (entry(act_id).equals_clhashkey(packed_comp)) {
         stats.incorporate_cache_hit(packed_comp, sz);
         top.includeSolution(entry(act_id).model_count());
         return true;
@@ -163,7 +163,7 @@ private:
   // by means of which the cache is accessed
   vector<CacheEntryID> table_;
 
-  uint32_t table_size_mask_;
+  uint32_t table_size_mask_; // table is always power-of-two size
 
   DataAndStatistics &stats;
   const CounterConfiguration &config_;

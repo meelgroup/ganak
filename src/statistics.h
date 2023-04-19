@@ -130,7 +130,7 @@ public:
     sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes(sz);
   }
 
-  void incorporate_cache_hit(CacheableComponent &ccomp, const BPCSizes& sz){
+  void incorporate_cache_hit(const CacheableComponent &ccomp, const BPCSizes& sz){
       num_cache_hits_++;
       sum_cache_hit_sizes_ += ccomp.nVars(sz);
   }

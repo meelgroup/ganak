@@ -205,6 +205,7 @@ bool Counter::get_polarity(const uint32_t v)
   else {
     if (var(Lit(v, false)).set_once) {
       polarity = var(Lit(v, false)).last_polarity;
+      if (config_.do_restart) polarity = !polarity;
     } else {
       return false;
     }

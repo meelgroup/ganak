@@ -32,8 +32,8 @@ public:
   inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
   inline bool contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz);
 
-  uint32_t nVars([[maybe_unused]] const BPCSizes& sz) const {
 #ifdef DOPCC
+  uint32_t nVars([[maybe_unused]] const BPCSizes& sz) const {
     return old_num_vars;
 #else
     uint32_t *p = (uint32_t *) data_;

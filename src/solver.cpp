@@ -458,8 +458,14 @@ bool Counter::restart_if_needed() {
   if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
       restart = true;
 
-  if (config_.restart_type == 5 && stats.comp_size_per_depth_q.isvalid() && stats.comp_size_per_depth_q.avg() < stats.comp_size_per_depth_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
+  if (config_.restart_type == 5 && stats.comp_size_per_depth_q.isvalid() &&
+        stats.comp_size_per_depth_q.avg() >
+          stats.comp_size_per_depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
       restart = true;
+
+  // don't restart if we didn't change the scores
+  if (stats.last_restart_num_conflicts == stats.num_conflicts_)
+    restart = false;
 
   if (restart) {
     cout << "c  ************* Restarting.  **************" << endl;
@@ -510,7 +516,6 @@ bool Counter::restart_if_needed() {
       << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups
       << endl;
 
-    stats.last_restart_num_decisions = stats.num_decisions_;
     depth_q.clear();
     cache_miss_rate_q.clear();
     comp_size_q.clear();
@@ -528,6 +533,7 @@ bool Counter::restart_if_needed() {
       reactivate_comps_and_backtrack_trail(config_.do_on_path_print);
       decision_stack_.pop_back();
     }
+    stats.last_restart_num_conflicts = stats.num_conflicts_;
     stats.last_restart_num_decisions = stats.num_decisions_;
     stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
 

@@ -60,7 +60,7 @@ public:
   // number of clauses overall learned
   uint32_t num_clauses_learned_ = 0;
 
-  // restarts
+  uint64_t last_restart_num_conflicts = 0;
   uint64_t last_restart_num_decisions = 0;
 
   /* cache statistics */
@@ -112,7 +112,7 @@ public:
              + overall_bytes_comps_stored_;
     }
 
-  void incorporate_cache_store(CacheableComponent &ccomp, const BPCSizes& sz){
+  void incorporate_cache_store(const CacheableComponent &ccomp, const BPCSizes& sz){
     sum_bytes_cached_comps_ += ccomp.SizeInBytes(sz);
     sum_size_cached_comps_ += ccomp.nVars(sz);
     num_cached_comps_++;
@@ -123,7 +123,7 @@ public:
     sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes(sz);
   }
 
-  void incorporate_cache_erase(CacheableComponent &ccomp, const BPCSizes& sz){
+  void incorporate_cache_erase(const CacheableComponent &ccomp, const BPCSizes& sz){
     sum_bytes_cached_comps_ -= ccomp.SizeInBytes(sz);
     sum_size_cached_comps_ -= ccomp.nVars(sz);
     num_cached_comps_--;

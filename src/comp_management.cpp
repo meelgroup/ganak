@@ -108,15 +108,14 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       CacheableComponent *packed_comp = NULL;
 #ifdef DOPCC
       packed_comp = new CacheableComponent(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz, tmp_data_for_pcc.data());
-      packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), packed_comp->nVars(sz));
+      packed_comp->finish_hashing(packed_comp->SizeInBytes(sz), p_new_comp->nVars());
 #else
       packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
 #endif
 
       // Update stats
-      solver_->comp_size_q.push(packed_comp->nVars(sz));
-      if (solver_->dec_level() > 0)
-        stats.comp_size_per_depth_q.push((double)p_new_comp->nVars()/(double)solver_->dec_level());
+      solver_->comp_size_q.push(p_new_comp->nVars());
+      stats.comp_size_per_depth_q.push(p_new_comp->nVars()*solver_->dec_level());
 
       // Check if new comp is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp)) {

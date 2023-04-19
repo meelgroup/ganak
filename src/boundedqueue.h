@@ -106,6 +106,11 @@ public:
         return longTermAvg;
     }
 
+    void clearLongtTerm()
+    {
+        return longTermAvg.clear();
+    }
+
     T prev(int32_t p) const
     {
         if (p > (int32_t)queuesize)

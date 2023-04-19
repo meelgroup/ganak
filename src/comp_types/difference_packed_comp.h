@@ -41,17 +41,15 @@ public:
 #endif
   }
 
+#ifndef DOPCC
   uint32_t data_size([[maybe_unused]] const BPCSizes& sz) const {
-#ifdef DOPCC
-    return old_size;
-#else
     return (*data_) & sz.data_size_mask;
-#endif
   }
+#endif
 
   uint32_t raw_data_byte_size([[maybe_unused]] const BPCSizes& sz) const {
 #ifdef DOPCC
-    return sizeof(uint64_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    return model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
 #else
     return data_size(sz)* sizeof(uint32_t) + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
 #endif
@@ -62,20 +60,20 @@ public:
   uint32_t sys_overhead_raw_data_byte_size([[maybe_unused]] const BPCSizes& sz) const {
     uint32_t ds;
 #ifdef DOPCC
-    ds = sizeof(uint64_t);
+    ds = 0;
 #else
     ds = data_size(sz)* sizeof(uint32_t);
 #endif
     uint32_t ms = model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     uint32_t mask = 0xfffffff0;
-    return (ds & mask) + ((ds & 15)?16:0) +(ms & mask) + ((ms & 15)?16:0);
+    return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
   }
 
 #ifdef DOPCC
-  uint64_t get_clhash() const { return clhashkey_; }
-  bool equals_clhash(const DifferencePackedComponent &comp, uint64_t clhash_key) const {
+  uint64_t get_clhashkey() const { return clhashkey_; }
+  bool equals_clhashkey(const DifferencePackedComponent &comp, uint64_t clhashkey) const {
     if (hashkey_ != comp.get_hashkey()) return false;
-    if (clhash_key != clhashkey_) return false;
+    if (clhashkey != comp.get_clhashkey()) return false;
     return true;
   }
 #else
@@ -92,6 +90,7 @@ public:
 #endif
 };
 
+#ifndef DOPCC
 bool DifferencePackedComponent::contains_any_var(const std::set<uint32_t>& vars, const BPCSizes& sz) {
   BitStufferReader bs(data_);
 
@@ -111,6 +110,7 @@ bool DifferencePackedComponent::contains_any_var(const std::set<uint32_t>& vars,
   }
   return false;
 }
+#endif
 
 DifferencePackedComponent::DifferencePackedComponent(Component &rComp, const BPCSizes& sz) {
   uint32_t max_var_diff = 0;

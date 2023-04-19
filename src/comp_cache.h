@@ -68,14 +68,14 @@ public:
 
   bool manageNewComponent(StackLevel &top, CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;
-    uint64_t clhash_key;
+    uint64_t clhashkey;
     uint32_t table_ofs = packed_comp.get_hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
 #ifdef DOPCC
     if (!act_id) return false;
-    clhash_key = packed_comp.get_clhash();
+    clhashkey = packed_comp.get_clhashkey();
     while(act_id){
-      if (entry(act_id).equals_clhash(packed_comp, clhash_key)) {
+      if (entry(act_id).equals_clhashkey(packed_comp, clhashkey)) {
         stats.incorporate_cache_hit(packed_comp, sz);
         top.includeSolution(entry(act_id).model_count());
         return true;

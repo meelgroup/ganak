@@ -106,7 +106,6 @@ public:
   void finish_hashing(const uint32_t _old_size, const uint32_t _old_num_vars) {
     old_size = _old_size;
     old_num_vars = _old_num_vars;
-    data_ = nullptr;
   }
 #endif
   static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
@@ -117,7 +116,9 @@ public:
     creation_time_(creation_time) {
   }
   ~BasePackedComponent() {
+#ifndef DOPCC
     if (data_){ delete [] data_; }
+#endif
   }
 
   void outbit(uint32_t v){

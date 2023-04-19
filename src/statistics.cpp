@@ -33,31 +33,33 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
   cout << "c conflict cls compacted         " << solver->num_conflict_clauses_compacted() << endl;
   cout << "c looks/look-computes            "
     << lookaheads << "/" << lookahead_computes << endl;
-  cout << "c flits/bplits/tests             "
-    << num_failed_literals_detected_
-    << "/" << num_failed_bprop_literals_failed
-    << "/" << num_failed_lit_tests_
-    << " -- " << safe_div( num_failed_literals_detected_, num_failed_lit_tests_)
-    << " -- " << safe_div( num_failed_literals_detected_+num_failed_bprop_literals_failed, num_failed_lit_tests_)  << endl;
+  cout << "c flits/bplits/tests K           "
+    << std::left
+    << std::setw(6) << (num_failed_literals_detected_/1000ULL)
+    << std::setw(6) << (num_failed_bprop_literals_failed/1000ULL)
+    << std::setw(6) << (num_failed_lit_tests_/1000ULL)
+    << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_, num_failed_lit_tests_)
+    << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_+num_failed_bprop_literals_failed, num_failed_lit_tests_)  << endl;
 
   cout << "c implicit BCP miss rate         "
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%";
   cout << endl;
-  cout << "c cache entries                  " << cache_->get_num_entries_used() << endl;
+  cout << "c cache entries K                " << (cache_->get_num_entries_used()/1000ULL) << endl;
   /* cout << "c MB cache size                  " */
   /*   << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "\t" << endl; */
   cout << "c MB cache (overall)             "
     << std::setprecision(3) << in_MB(overall_cache_bytes_memory_stored()) << "" << endl;
-  cout << "c cache (lookup / stores / hits) "
-    << num_cache_look_ups_ << "/"
-    << total_num_cached_comps_ << "/"
-    << num_cache_hits_ << endl;
+  cout << "c cache K (lookup/ stores/ hits) "
+    << std::left
+    << std::setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
+    << std::setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
+    << std::setw(6) << (num_cache_hits_ /(1000ULL)) << " " << endl;
 
   cout << "c cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed << endl;
   cout << "c cache miss rate                "
-    << std::setprecision(3) << cache_miss_rate() * 100 << "%" << endl;
+    << std::setprecision(3) << cache_miss_rate() << endl;
   cout << "c avg. var count (stores / hits) "
     << getAvgComponentSize()
     << "/" << getAvgCacheHitSize() << endl;

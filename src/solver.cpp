@@ -817,10 +817,10 @@ bool Solver::implicitBCP() {
       threshold = scores[scores.size() - num_curr_lits];
     }
 
-    statistics_.num_failed_literal_tests_ += test_lits.size();
 
     for (auto lit : test_lits) {
       if (isActive(lit) && threshold <= literal(lit).activity_score_) {
+        statistics_.num_probed_ ++;
         unsigned sz = literal_stack_.size();
         // we increase the decLev artificially
         // s.t. after the tentative BCP call, we can learn a conflict clause

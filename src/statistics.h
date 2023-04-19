@@ -63,8 +63,8 @@ public:
   /// number of all implications derived
   unsigned long num_implications_ = 0;
   // number of all failed literal detections
+  unsigned long num_probed_ = 0;
   unsigned long num_failed_literals_detected_ = 0;
-  unsigned long num_failed_literal_tests_ = 0;
   // number of all conflicts occurred
   unsigned long num_conflicts_ = 0;
 
@@ -166,8 +166,8 @@ public:
   mpz_class final_solution_count_ = 0;
 
   double implicitBCP_miss_rate() {
-      if(num_failed_literal_tests_ == 0) return 0.0;
-      return (num_failed_literal_tests_ - num_failed_literals_detected_) / (double) num_failed_literal_tests_;
+      if(num_probed_ == 0) return 100.0;
+      return (num_probed_ - num_failed_literals_detected_) / (double) num_probed_;
   }
   unsigned long num_clauses() {
     return num_long_clauses_ + num_binary_clauses_ + num_unit_clauses_;

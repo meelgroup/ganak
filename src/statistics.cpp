@@ -37,6 +37,8 @@ void DataAndStatistics::writeToFile(const string & file_name, const bool pmc) {
   out << "/" << num_binary_conflict_clauses_ << "/" << num_unit_clauses_
       << endl;
   out << "c " << endl;
+  out << "c probed with BCP \t "
+      << num_probed_ << endl;
   out << "c failed literals found by implicit BCP \t "
       << num_failed_literals_detected_ << endl;
 
@@ -75,7 +77,7 @@ void DataAndStatistics::writeToFile(const string & file_name, const bool pmc) {
   out << "c # END" << endl;
   out << "c " << endl;
   out << "c time: " << time_elapsed_ << "s" << endl;
-  
+
 }
 
 void DataAndStatistics::printShort(const bool pmc) {
@@ -98,6 +100,8 @@ void DataAndStatistics::printShort(const bool pmc) {
   cout << "/" << num_binary_conflict_clauses_ << "/" << num_unit_clauses_
       << endl;
   cout << "c " << endl;
+  cout << "c probed with BCP \t "
+      << num_probed_ << endl;
   cout << "c failed literals found by implicit BCP \t "
       << num_failed_literals_detected_ << endl;
 

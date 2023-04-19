@@ -110,6 +110,8 @@ void add_ganak_options()
 
     ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
+    ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
+
     ("onpathprint", po::value(&conf.do_on_path_print)->default_value(conf.do_on_path_print), "Print ON-PATH during restart")
     ("exact", po::value(&exact)->default_value(exact), "Exact counting")
     ;

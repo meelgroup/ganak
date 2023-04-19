@@ -449,16 +449,16 @@ bool Counter::restart_if_needed() {
     restart = true;
 
   if (config_.restart_type == 2
-      && depth_q.isvalid() && depth_q.avg() > depth_q.getLongtTerm().avg()*1.1)
+      && depth_q.isvalid() && depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
     restart = true;
 
   if (config_.restart_type == 3 && (stats.num_decisions_-stats.last_restart_num_decisions) > config_.next_restart)
     restart = true;
 
-  if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*0.9)
+  if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
       restart = true;
 
-  if (config_.restart_type == 5 && stats.comp_size_per_depth_q.isvalid() && stats.comp_size_per_depth_q.avg() < stats.comp_size_per_depth_q.getLongtTerm().avg()*0.85)
+  if (config_.restart_type == 5 && stats.comp_size_per_depth_q.isvalid() && stats.comp_size_per_depth_q.avg() < stats.comp_size_per_depth_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
       restart = true;
 
   if (restart) {

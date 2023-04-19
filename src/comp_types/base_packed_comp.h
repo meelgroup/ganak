@@ -111,11 +111,7 @@ public:
 #endif
   static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
 
-  BasePackedComponent() : data_(nullptr) {}
-  BasePackedComponent(uint32_t creation_time):
-    data_(nullptr),
-    creation_time_(creation_time) {
-  }
+  BasePackedComponent() :data_(nullptr) {}
   ~BasePackedComponent() {
 #ifndef DOPCC
     if (data_){ delete [] data_; }
@@ -156,7 +152,7 @@ public:
          return r;
   }
 
-  uint32_t creation_time() {
+  uint32_t creation_time() const {
     return creation_time_;
   }
 

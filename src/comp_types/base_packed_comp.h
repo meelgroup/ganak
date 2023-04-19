@@ -8,9 +8,10 @@
 #ifndef BASE_PACKED_COMPONENT_H_
 #define BASE_PACKED_COMPONENT_H_
 
-#include <assert.h>
+#include <cassert>
 #include <gmpxx.h>
 #include <iostream>
+#include "common.h"
 
 using std::cout;
 
@@ -196,16 +197,14 @@ public:
   }
 
   void clear() {
-#if DOPCC
     // before deleting the contents of this comp,
     // we should make sure that this comp is not present in the comp stack anymore!
-    assert(isDeletable());
+    SLOW_DEBUG_DO(assert(isDeletable()));
+#ifndef DOPCC
     if (data_) delete [] data_;
-#endif
     data_ = nullptr;
+#endif
   }
-
-  uint32_t _debug_static_val;
 
 protected:
   // data_ contains in packed form the variable indices

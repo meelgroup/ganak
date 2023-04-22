@@ -1,5 +1,4 @@
-#ifndef UNION_FIND_H
-#define UNION_FIND_H
+#pragma once
 
 #include "array_id_func.h"
 #include <cassert>
@@ -85,5 +84,3 @@ private:
 	int node_count_;
 	int component_count_;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef RANGE_H
-#define RANGE_H
+#pragma once
 
 template<class Iter>
 struct Range{
@@ -12,6 +11,3 @@ template<class Iter>
 Range<Iter> make_range(Iter begin, Iter end){
 	return {begin, end};
 }
-
-#endif
-

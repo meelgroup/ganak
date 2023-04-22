@@ -7,6 +7,7 @@
 #include "tiny_id_func.h"
 #include "min_max.h"
 #include "back_arc.h"
+#include "union_find.h"
 
 namespace flow_cutter{
 
@@ -40,7 +41,7 @@ namespace flow_cutter{
 			}
 
 //			{
-//				std::vector<int>deg(node_count, 0);	
+//				std::vector<int>deg(node_count, 0);
 //				for(int i=0; i<arc_count; ++i)
 //					++deg[head(i)];
 //				for(int i=0; i<node_count; ++i){
@@ -56,11 +57,11 @@ namespace flow_cutter{
 			switch(config.separator_selection){
 				case Config::SeparatorSelection::node_min_expansion:
 				{
-			
+
 					auto expanded_graph = expanded_graph::make_graph(
-						make_const_ref_id_id_func(tail), 
-						make_const_ref_id_id_func(head), 
-						make_const_ref_id_id_func(back_arc), 
+						make_const_ref_id_id_func(tail),
+						make_const_ref_id_id_func(head),
+						make_const_ref_id_id_func(back_arc),
 						make_const_ref_id_func(out_arc)
 					);
 
@@ -79,7 +80,7 @@ namespace flow_cutter{
 
 						if(cutter.get_current_smaller_cut_side_size() < config.min_small_side_size * expanded_graph::expanded_node_count(node_count))
 							score += 1000000;
-				
+
 
 						if(score < best_score){
 							best_score = score;
@@ -91,19 +92,19 @@ namespace flow_cutter{
 						double potential_best_next_score = (double)(cut_size+1)/(double)(expanded_graph::expanded_node_count(node_count)/2);
 						if(potential_best_next_score >= best_score)
 							break;
-				
+
 						if(!cutter.advance())
 							break;
-				
+
 					}
 				}
 				break;
 				case Config::SeparatorSelection::edge_min_expansion:
 				{
 					auto graph = flow_cutter::make_graph(
-						make_const_ref_id_id_func(tail), 
-						make_const_ref_id_id_func(head), 
-						make_const_ref_id_id_func(back_arc), 
+						make_const_ref_id_id_func(tail),
+						make_const_ref_id_id_func(head),
+						make_const_ref_id_id_func(back_arc),
 						ConstIntIDFunc<1>(arc_count),
 						make_const_ref_id_func(out_arc)
 					);
@@ -124,7 +125,7 @@ namespace flow_cutter{
 
 						if(cutter.get_current_smaller_cut_side_size() < config.min_small_side_size * node_count)
 							score += 1000000;
-				
+
 
 						if(score < best_score){
 							best_score = score;
@@ -136,10 +137,10 @@ namespace flow_cutter{
 						double potential_best_next_score = (double)(cut_size+1)/(double)(expanded_graph::expanded_node_count(node_count)/2);
 						if(potential_best_next_score >= best_score)
 							break;
-				
+
 						if(!cutter.advance())
 							break;
-				
+
 					}
 
 					for(auto x:best_cut)
@@ -152,9 +153,9 @@ namespace flow_cutter{
 				case Config::SeparatorSelection::edge_first:
 				{
 					auto graph = flow_cutter::make_graph(
-						make_const_ref_id_id_func(tail), 
-						make_const_ref_id_id_func(head), 
-						make_const_ref_id_id_func(back_arc), 
+						make_const_ref_id_id_func(tail),
+						make_const_ref_id_id_func(head),
+						make_const_ref_id_id_func(back_arc),
 						ConstIntIDFunc<1>(arc_count),
 						make_const_ref_id_func(out_arc)
 					);
@@ -175,9 +176,9 @@ namespace flow_cutter{
 				case Config::SeparatorSelection::node_first:
 				{
 					auto expanded_graph = expanded_graph::make_graph(
-						make_const_ref_id_id_func(tail), 
-						make_const_ref_id_id_func(head), 
-						make_const_ref_id_id_func(back_arc), 
+						make_const_ref_id_id_func(tail),
+						make_const_ref_id_id_func(head),
+						make_const_ref_id_id_func(back_arc),
 						make_const_ref_id_func(out_arc)
 					);
 
@@ -236,9 +237,9 @@ namespace flow_cutter{
 
 			{
 				auto expanded_graph = expanded_graph::make_graph(
-					make_const_ref_id_id_func(tail), 
-					make_const_ref_id_id_func(head), 
-					make_const_ref_id_id_func(back_arc), 
+					make_const_ref_id_id_func(tail),
+					make_const_ref_id_id_func(head),
+					make_const_ref_id_id_func(back_arc),
 					make_const_ref_id_func(out_arc)
 				);
 
@@ -255,7 +256,7 @@ namespace flow_cutter{
 
 					if(5*(prev_small_side_size - prev_prev_small_side_size) < small_side_size - prev_small_side_size)
 						separator_list.push_back(expanded_graph::extract_original_separator(tail, head, cutter).sep);
-					
+
 					prev_prev_small_side_size = prev_small_side_size;
 					prev_small_side_size = small_side_size;
 

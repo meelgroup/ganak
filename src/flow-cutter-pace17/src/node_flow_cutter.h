@@ -2,6 +2,7 @@
 #define NODE_FLOW_CUTTER_H
 
 #include "flow_cutter.h"
+#include "range.h"
 
 namespace flow_cutter{
 

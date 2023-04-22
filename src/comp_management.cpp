@@ -115,7 +115,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());
-      stats.comp_size_per_depth_q.push(p_new_comp->nVars()*solver_->dec_level());
+      stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
       // Check if new comp is already in cache
       if (!cache_.manageNewComponent(top, *packed_comp)) {

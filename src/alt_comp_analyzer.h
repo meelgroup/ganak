@@ -19,18 +19,15 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
-#include <set>
-
-using std::set;
 
 // There is exactly ONE of this, inside ComponentManager, which is inside Solver
 class ComponentAnalyzer {
 public:
 	ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
-        const set <uint32_t> & indep_support) :
+        const uint32_t _indep_support_end) :
         lit_values_(lit_values),
-        indep_support_(indep_support)
+        indep_support_end(_indep_support_end)
   {}
 
   uint32_t& scoreOf(VariableIndex v) {
@@ -95,7 +92,7 @@ public:
 
     // comp only contains one variable
     if (search_stack_.size() == 1) {
-      if (indep_support_.count(v) == 0) {
+      if (v >= indep_support_end) {
         archetype_.stack_level().includeSolution(1);
       } else {
         archetype_.stack_level().includeSolution(2);
@@ -138,7 +135,7 @@ private:
                                                 // indexed by variable.
 
   const LiteralIndexedVector<TriValue> & lit_values_;
-  const set <uint32_t> & indep_support_;
+  const uint32_t indep_support_end;
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component

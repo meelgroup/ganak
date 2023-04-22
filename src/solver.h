@@ -70,6 +70,7 @@ public:
   bqueue<uint32_t> comp_size_q;
   uint64_t dec_level() const { return decision_stack_.size(); }
   void print_restart_data() const;
+  double get_start_time() const { return start_time;}
 
 private:
   vector<double> scores;
@@ -89,7 +90,7 @@ private:
   vector<Lit> test_lits;
   vector<uint8_t> viewed_lits;
 
-  double time_start;
+  double start_time;
   MTRand mtrand;
 
   DecisionStack decision_stack_;
@@ -106,6 +107,7 @@ private:
 
   SOLVER_StateT countSAT();
   void decideLiteral(Lit lit = NOT_A_LIT);
+  uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch();
   double alternate_score(uint32_t v, bool value);
   bool prop_and_probe();
@@ -114,6 +116,7 @@ private:
   bool failed_lit_probe_with_bprop();
   bool one_lit_probe(Lit lit, bool set);
   void computeLargestCube();
+  void td_decompose();
 
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
@@ -153,7 +156,6 @@ private:
     return true;
   }
 
-  void printOnlineStats();
   void checkProbabilisticHashSanity() const {
       const uint64_t t = stats.num_cache_look_ups_ + 1;
       if (2 * log2(t) > log2(config_.delta) + 64 * 0.9843) {

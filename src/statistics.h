@@ -30,7 +30,7 @@ public:
   DataAndStatistics (const Instance* _inst) {
     inst = _inst;
     cache_hits_misses_q.clearAndResize(10000);
-    comp_size_per_depth_q.clearAndResize(10000);
+    comp_size_times_depth_q.clearAndResize(10000);
   }
   uint64_t maximum_cache_size_bytes_ = 0;
   uint64_t numcachedec_ = 0;
@@ -76,7 +76,7 @@ public:
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
 
-  bqueue<double, double> comp_size_per_depth_q;
+  bqueue<uint64_t, double> comp_size_times_depth_q;
 
 
   // Lookahead
@@ -85,12 +85,8 @@ public:
 
   // the number of bytes occupied by all comps
   uint64_t sum_bytes_cached_comps_ = 0;
-  // the same number, summing over all comps ever stored
-  uint64_t overall_bytes_comps_stored_ = 0;
 
   uint64_t sys_overhead_sum_bytes_cached_comps_ = 0;
-    // the same number, summing over all comps ever stored
-  uint64_t sys_overhead_overall_bytes_comps_stored_ = 0;
 
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
@@ -107,20 +103,13 @@ public:
            + sum_bytes_cached_comps_;
   }
 
-  uint64_t overall_cache_bytes_memory_stored() const {
-      return cache_infrastructure_bytes_memory_usage_
-             + overall_bytes_comps_stored_;
-    }
-
   void incorporate_cache_store(const CacheableComponent &ccomp, const BPCSizes& sz){
     sum_bytes_cached_comps_ += ccomp.SizeInBytes(sz);
     sum_size_cached_comps_ += ccomp.nVars(sz);
     num_cached_comps_++;
     total_num_cached_comps_++;
-    overall_bytes_comps_stored_ += ccomp.SizeInBytes(sz);
     overall_num_cache_stores_ += ccomp.nVars(sz);
     sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes(sz);
-    sys_overhead_overall_bytes_comps_stored_ += ccomp.sys_overhead_SizeInBytes(sz);
   }
 
   void incorporate_cache_erase(const CacheableComponent &ccomp, const BPCSizes& sz){

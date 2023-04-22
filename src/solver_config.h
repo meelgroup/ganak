@@ -12,7 +12,6 @@
 struct CounterConfiguration {
   // TODO comp caching cannot be deactivated for now!
   bool do_non_chron_back_track = true;
-  bool do_comp_caching = true;
   double exp = 1.0;
   bool do_pre_processing = true;
   int verb = 1;
@@ -33,6 +32,13 @@ struct CounterConfiguration {
   int do_lookahead = 0;
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
+
+  uint32_t td_varlim = 150000;
+	double td_denselim = 0.10;
+	double td_ratiolim = 30.0;
+  double tw_varelim = 0.25;
+  double tw_coef_tdscore = 100.0;
+  int branch_type = 1; // 0 == default , 1 == gpmc
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

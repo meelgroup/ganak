@@ -16,6 +16,8 @@
 #include "stack.h"
 #include "structures.h"
 #include "time_mem.h"
+#include "TreeDecomposition.h"
+#include "IFlowCutter.h"
 
 void Counter::simplePreProcess()
 {
@@ -23,7 +25,6 @@ void Counter::simplePreProcess()
     assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");;
     setLiteralIfFree(lit);
   }
-
 
   bool succeeded = propagate(0);
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
@@ -35,12 +36,22 @@ void Counter::simplePreProcess()
 
 void Counter::set_indep_support(const set<uint32_t> &indeps)
 {
-  indep_support_ = indeps;
-  indep_support_lookup.clear();
-  indep_support_lookup.resize(nVars()+1, 0);
-  for(const auto& v: indep_support_) {
-    indep_support_lookup[v] = 1;
+  if (indeps.count(0)) {
+    cout << "ERROR: variable 0 does NOT exist!!" << endl;
+    exit(-1);
   }
+  vector<uint32_t> tmp(indeps.begin(), indeps.end());
+  std::sort(tmp.begin(), tmp.end());
+  for(uint32_t i = 0; i < tmp.size(); i++) {
+    if (tmp[i] > nVars()) {
+      cout << "ERROR: sampling set contains a variable larger than nVars()" << endl;
+      exit(-1);
+    }
+    if (tmp[i] != i+1) {
+      cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i << endl;
+    }
+  }
+  indep_support_end = tmp.back()+1;
 }
 
 void Counter::init_activity_scores()
@@ -55,7 +66,7 @@ void Counter::init_activity_scores()
 void Counter::end_irred_cls()
 {
   tmp_seen.resize(nVars()+1, 0);
-  comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_, this);
+  comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
 #ifdef DOPCC
   comp_manager_->getrandomseedforclhash();
 #endif
@@ -74,16 +85,20 @@ void Counter::end_irred_cls()
 }
 
 void Counter::add_red_cl(const vector<Lit>& lits) {
-  assert(lits.size() == 2 && "if we fix up reduceDB, this can ALSO work for longer clauses");
   assert(ended_irred_cls);
-  // NOTE: since we eded_irred_cls, this binary will NOT end up
+  for(const auto& l: lits) release_assert(l.var() <= nVars());
+  for(const auto& l: lits) release_assert(isUnknown(l));
+  assert(lits.size() >= 2 && "No unit or empty clauses please");
+
+  // NOTE: since we called end_irred_cls, this binary will NOT end up
   //       through ComponentAnalyzer::initialize in analyzer's
   //       unified_variable_links_lists_pool_ which means it will NOT
   //       connect components -- which is what we want
-
-  for(const auto& l: lits) assert(l.var() <= nVars());
   ClauseOfs cl_ofs = addClause(lits, true);
-  assert(cl_ofs == 0);
+  if (cl_ofs != 0) {
+    conflict_clauses_.push_back(cl_ofs);
+    getHeaderOf(cl_ofs).set_length(lits.size());
+  }
 }
 
 void Counter::get_unit_cls(vector<Lit>& units) const
@@ -92,23 +107,89 @@ void Counter::get_unit_cls(vector<Lit>& units) const
   units = unit_clauses_;
 }
 
+void Counter::td_decompose()
+{
+	bool conditionOnCNF = nVars() > 20 && nVars() <= config_.td_varlim;
+  if (!conditionOnCNF) {
+    cout << "c o skipping TD, too many vars" << endl;
+    return;
+  }
+
+	Graph primal(nVars());
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit l(i/2, i%2);
+    for(const auto& l2: watches_[l].binary_links_) {
+      if (l < l2) primal.addEdge(l.var()-1, l2.var()-1);
+    }
+  }
+  for(uint32_t i = 0; i < irred_lit_pool_size_; i++) {
+    for(; lit_pool_[i] != SENTINEL_LIT; i++) {
+      for(uint32_t i2 = i+1; lit_pool_[i2] != SENTINEL_LIT; i2++) {
+        primal.addEdge(lit_pool_[i].var()-1, lit_pool_[i2].var()-1);
+      }
+    }
+  }
+	cout << "c o Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges() << endl;
+
+  double density = (double)primal.numEdges()/(double)(nVars() * nVars());
+  double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
+  cout << "c o Primal graph density: "
+    << std::fixed << std::setw(9) << std::setprecision(3) << density
+    << " edge/var: "
+    << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio << endl;
+	bool conditionOnPrimalGraph =
+			density <= config_.td_denselim &&
+			edge_var_ratio <= config_.td_ratiolim;
+
+	if (!conditionOnPrimalGraph) {
+		printf("c o skipping td, primal graph is too large or dense\n");
+		return;
+	}
+
+	// run FlowCutter
+	printf("c o FlowCutter is running...\n");fflush(stdout);
+	IFlowCutter FC(nVars(), primal.numEdges(), 0); //TODO: fix time limit
+	FC.importGraph(primal);
+	TreeDecomposition td = FC.constructTD();
+
+	bool uselessTD = true;
+	if(td.numNodes() > 0) {	// if TD construction is successful
+		// find a centroid of the constructed TD
+		td.centroid(indep_support_end-1);
+		bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_varelim;
+		if(conditionOnTreeWidth) {
+			std::vector<int> dists = td.distanceFromCentroid(indep_support_end-1);
+			if(!dists.empty()) {
+				int max_dst = 0;
+				for(uint32_t i=0; i < nVars(); i++) max_dst = std::max(max_dst, dists[i]);
+				if(max_dst > 0) {
+					for(uint32_t i=0; i < indep_support_end-1; i++)
+						exscore[i+1] = config_.tw_coef_tdscore * ((double)(max_dst - dists[i])) / (double)max_dst;
+					uselessTD = false;
+				}
+			}
+		}
+	}
+
+	if(uselessTD)
+		printf("c o ignore td\n");
+}
+
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
+  if (indep_support_end == std::numeric_limits<uint32_t>::max())
+    indep_support_end = nVars()+1;
+  exscore.resize(indep_support_end, 0);
   largest_cube.clear();
   largest_cube_val = 0;
-  time_start = cpuTime();
+  start_time = cpuTime();
 
   if (config_.verb) {
-      cout << "c Sampling set size: " << indep_support_.size() << endl;
-      if (indep_support_.size() > 50) {
-        cout << "c Sampling set is too large, not displaying" << endl;
-      } else {
-        cout << "c Sampling set: ";
-        for (const auto& i: indep_support_) cout << ' ' << i;
-        cout << endl;
-      }
+      cout << "c Sampling set size: " << indep_support_end-1 << endl;
   }
+
+  if (config_.branch_type == 1) td_decompose();
 
   const auto exit_state = countSAT();
   stats.num_long_red_clauses_ = num_conflict_clauses();
@@ -205,6 +286,7 @@ bool Counter::get_polarity(const uint32_t v)
   else {
     if (var(Lit(v, false)).set_once) {
       polarity = var(Lit(v, false)).last_polarity;
+      // TODO ** ONLY ** do it in case it's non-exact, right??
       if (config_.do_restart) polarity = !polarity;
     } else {
       return false;
@@ -226,7 +308,10 @@ void Counter::decideLiteral(Lit lit) {
 
   // The decision literal is now ready. Deal with it.
   if (lit == NOT_A_LIT) {
-    const uint32_t v = find_best_branch();
+    uint32_t v;
+    if (config_.branch_type == 1) v = find_best_branch_gpmc();
+    else if (config_.branch_type == 0) v = find_best_branch();
+    else {assert(false && "No such branch type!!");}
     lit = Lit(v, get_polarity(v));
   }
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
@@ -264,6 +349,40 @@ double Counter::alternate_score(uint32_t v, bool val)
   return score*c;
 }
 
+uint32_t Counter::find_best_branch_gpmc()
+{
+	uint32_t maxv = std::numeric_limits<uint32_t>::max();
+	double max_score_a = -1;
+	double max_score_f = -1;
+  double max_score_td = -1;
+
+  for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
+      *it != varsSENTINEL; it++) if (*it < indep_support_end) {
+    uint32_t v = *it;
+    double score_td = exscore[v];
+    double score_f = comp_manager_->scoreOf(v);
+    double score_a = watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
+
+    if(score_td > max_score_td) {
+      max_score_td = score_td;
+      max_score_f = score_f;
+      max_score_a = score_a;
+      maxv = v;
+    }
+    else if( score_td == max_score_td) {
+      if(score_f > max_score_f) {
+        max_score_f = score_f;
+        max_score_a = score_a;
+        maxv = v;
+      } else if (score_f == max_score_f && score_a > max_score_a) {
+        max_score_a = score_a;
+        maxv = v;
+      }
+    }
+  }
+  return maxv;
+}
+
 uint32_t Counter::find_best_branch()
 {
   assert(!(config_.do_cache_score && config_.do_lookahead) && "can't have both active");
@@ -275,7 +394,7 @@ uint32_t Counter::find_best_branch()
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
-    if (indep_support_lookup[*it]) {
+    if (*it < indep_support_end) {
       const double score = scoreOf(*it) ;
       if (lookahead_try) vars_scores.push_back(VS(*it, score, *it));
       if (best_var_score == -1 || score > best_var_score) {
@@ -290,7 +409,7 @@ uint32_t Counter::find_best_branch()
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
-      if (indep_support_lookup[*it]) {
+      if (*it < indep_support_end) {
         const double score = scoreOf(*it);
         if (score > best_var_score * 0.9) {
           if (comp_manager_->cacheScoreOf(*it) > cachescore) {
@@ -442,12 +561,12 @@ void Counter::print_restart_data() const
       << std::right  << std::setw(30) << std::left
       << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg() << endl;
   }
-  if (stats.comp_size_per_depth_q.isvalid()) {
+  if (stats.comp_size_times_depth_q.isvalid()) {
     cout
       << std::setw(30) << std::left
-      << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.getLongtTerm().avg()
+      << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_times_depth_q.getLongtTerm().avg()
       << std::right  << std::setw(30) << std::left
-      << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_per_depth_q.avg()
+      << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_times_depth_q.avg()
       << " depth: " << decision_stack_.size()-1
       << endl;
   }
@@ -501,9 +620,9 @@ bool Counter::restart_if_needed() {
   if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
       restart = true;
 
-  if (config_.restart_type == 5 && stats.comp_size_per_depth_q.isvalid() &&
-        stats.comp_size_per_depth_q.avg() >
-          stats.comp_size_per_depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
+  if (config_.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&
+        stats.comp_size_times_depth_q.avg() >
+          stats.comp_size_times_depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
       restart = true;
 
   // don't restart if we didn't change the scores
@@ -526,7 +645,7 @@ bool Counter::restart_if_needed() {
     cache_miss_rate_q.clear();
     comp_size_q.clear();
     stats.cache_hits_misses_q.clear();
-    stats.comp_size_per_depth_q.clear();
+    stats.comp_size_times_depth_q.clear();
 
     while (decision_stack_.size() > 1) {
       bool on_path = true;
@@ -1233,38 +1352,6 @@ void Counter::recordAllUIPCauses() {
   }
   for(const auto& v: toClear) tmp_seen[v] = false;
   toClear.clear();
-}
-
-void Counter::printOnlineStats() {
-  if (config_.verb == 0) return;
-
-  cout << "c " << endl;
-  cout << "c time elapsed: " << time_start - cpuTime() << "s" << endl;
-  if (config_.verb >= 2) {
-    cout << "conflict clauses (all / bin / unit) \t";
-    cout << num_conflict_clauses();
-    cout << "/" << stats.num_binary_red_clauses_ << "/"
-         << unit_clauses_.size() << endl;
-    cout << "failed literals found by implicit BCP \t "
-         << stats.num_failed_literals_detected_ << endl;
-
-    cout << "implicit BCP miss rate \t "
-         << stats.implicitBCP_miss_rate() * 100 << "%";
-    cout << endl;
-
-    comp_manager_->gatherStatistics();
-
-    cout << "cache size " << stats.cache_MB_memory_usage() << "MB" << endl;
-    cout << "comps (stored / hits) \t\t"
-         << stats.cached_comp_count() << "/"
-         << stats.cache_hits() << endl;
-    cout << "avg. variable count (stored / hits) \t"
-         << stats.getAvgComponentSize() << "/"
-         << stats.getAvgCacheHitSize();
-    cout << endl;
-    cout << "cache miss rate " << stats.cache_miss_rate() * 100 << "%"
-         << endl;
-  }
 }
 
 Counter::Counter(const CounterConfiguration& conf) : Instance(conf)

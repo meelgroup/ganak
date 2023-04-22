@@ -75,8 +75,9 @@ protected:
    */
   vector<Lit> lit_pool_;
 
-  vector<uint8_t> indep_support_lookup;
-  set<uint32_t> indep_support_;
+  // the first variable that is NOT in the independent support
+  uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
+
 
   // this is to determine the starting offset of
   // conflict clauses
@@ -90,6 +91,7 @@ protected:
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> lit_values_;
+  vector<double> exscore;
   double act_inc = 1.0;
 
   void decayActivities(bool also_watches) {

@@ -33,9 +33,9 @@ class ComponentManager
 public:
   ComponentManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const set<uint32_t> &indep_support_, Counter* solver) :
+                   const uint32_t indep_support_end, Counter* solver) :
       config_(config), stats(statistics), cache_(statistics, config_, sz),
-      ana_(lit_values, indep_support_), solver_(solver)
+      ana_(lit_values, indep_support_end), solver_(solver)
   {
   }
 
@@ -69,8 +69,7 @@ public:
 
   void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value)
   {
-    if (config_.do_comp_caching)
-      cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
+    cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
   Component& getSuperComponentOf(const StackLevel &lev)

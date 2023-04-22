@@ -299,10 +299,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes(sz);
-  stats.overall_bytes_comps_stored_ -= entry(id).SizeInBytes(sz);
-
   stats.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes(sz);
-  stats.sys_overhead_overall_bytes_comps_stored_ -= entry(id).sys_overhead_SizeInBytes(sz);
 #ifdef DOPCC
   entry(id).finish_hashing(entry(id).SizeInBytes(sz), entry(id).nVars(sz));
 #endif
@@ -314,9 +311,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   table_[table_ofs] = id;
 
   stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes(sz);
-  stats.overall_bytes_comps_stored_ += entry(id).SizeInBytes(sz);
   stats.sys_overhead_sum_bytes_cached_comps_ += entry(id).sys_overhead_SizeInBytes(sz);
-  stats.sys_overhead_overall_bytes_comps_stored_ += entry(id).sys_overhead_SizeInBytes(sz);
 }
 
 #endif /* COMPONENT_CACHE_H_ */

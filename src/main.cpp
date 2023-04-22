@@ -94,10 +94,10 @@ void add_ganak_options()
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
+    ("branch", po::value(&conf.branch_type)->default_value(conf.branch_type), "Branching type. 0 == default, 1 == gpmc (with TD stuff)")
 
     ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
     ("hyper", po::value(&do_hyperbin)->default_value(do_hyperbin), "Do hyperbinary resolution via intree")
-    ("cc", po::value(&conf.do_comp_caching)->default_value(conf.do_comp_caching), "Component caching")
     ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
     ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
     ("version", "Print version info")
@@ -461,7 +461,7 @@ int main(int argc, char *argv[])
     vector<Lit> largest_cube;
     mpz_class this_count = counter->count(largest_cube);
     count += this_count;
-    const auto cms_cl = ganak_to_cms_cl(largest_cube);
+    auto cms_cl = ganak_to_cms_cl(largest_cube);
     cubes.push_back(cms_cl);
     cout << "c cnt for this cube: " << std::setw(15) << std::left << this_count
       << " cube sz: " << std::setw(6) << cms_cl.size()
@@ -492,7 +492,11 @@ int main(int argc, char *argv[])
       }
       total_check_time += cpuTime() - this_check_time;
     }
-    sat_solver->add_clause(cms_cl);
+    /* cout << "Before miniim: " << cms_cl << endl; */
+    /* if (!sat_solver->minimize_clause(cms_cl)) { */
+    /*   cout << "After minim: " << cms_cl << endl; */
+      sat_solver->add_clause(cms_cl);
+    /* } */
     if (exact) counter->get_activities(act, polars, act_inc, comp_acts);
     sat_solver->set_verbosity(0);
     num_cubes++;

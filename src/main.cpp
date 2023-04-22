@@ -451,7 +451,6 @@ int main(int argc, char *argv[])
   double act_inc;
   uint32_t num_cubes = 0;
   // TODO: add hyper-binary BIN clauses to GANAK
-  // TODO: minimize cube
   conf.next_restart = conf.first_restart;
   Counter* counter = new Counter(conf);
   create_from_sat_solver(*counter, *sat_solver);

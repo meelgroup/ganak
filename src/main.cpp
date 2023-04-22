@@ -309,6 +309,14 @@ bool take_solution(vector<CMSat::lbool>& model) {
 void create_from_sat_solver(Counter& counter, SATSolver& ss) {
   counter.new_vars(sat_solver->nVars());
 
+  // Clean the clauses before we add them
+  vector<CMSat::Lit> assumps;
+  for(const auto& v: indep_support) {
+    assumps.push_back(CMSat::Lit(v-1, false));
+  }
+  string s ("clean-cls");
+  sat_solver->simplify(&assumps, &s);
+
   // Irred cls
   ss.start_getting_small_clauses(
       std::numeric_limits<uint32_t>::max(),

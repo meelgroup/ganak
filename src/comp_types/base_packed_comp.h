@@ -65,8 +65,7 @@ template <class T>
   void stuff(const uint32_t val, const uint32_t num_bits_val){
       assert(num_bits_val > 0);
       assert((val >> num_bits_val) == 0);
-      if(end_of_bits_ == 0)
-        *p = 0;
+      if(end_of_bits_ == 0) *p = 0;
       assert((*p >> end_of_bits_) == 0);
       *p |= val << end_of_bits_;
       end_of_bits_ += num_bits_val;

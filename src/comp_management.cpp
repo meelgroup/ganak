@@ -32,8 +32,9 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
   for (uint32_t i = 0 ; i < nVars + 1; i++) cachescore_.push_back(0);
 
   // 100 for the constant overhead (bitsizes, num clauses, num variables)
-  // Note that these are WAY too much
-  tmp_data_for_pcc.resize(100+nVars+solver_->get_num_irred_long_cls());
+  // The 32* multiplier is because each DIFF can be at most 32b, since
+  //     we don't support more than 2**32 clauses or variables
+  tmp_data_for_pcc.resize(100+32*nVars+32*solver_->get_num_irred_long_cls());
 }
 
 void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {

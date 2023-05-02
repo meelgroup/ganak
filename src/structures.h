@@ -214,14 +214,14 @@ public:
   void decayScore() {
       score_ >>= 1;
   }
-  uint32_t score() {
+  uint32_t score() const {
       return score_;
   }
 
   uint32_t creation_time() {
       return creation_time_;
   }
-  uint32_t length(){ return length_;}
+  uint32_t length() const { return length_;}
   void set_length(uint32_t length) {length_ = length;}
 
   void set_creation_time(uint32_t time) {

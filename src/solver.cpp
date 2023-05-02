@@ -51,7 +51,8 @@ void Counter::set_indep_support(const set<uint32_t> &indeps)
       cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i << endl;
     }
   }
-  indep_support_end = tmp.back()+1;
+  if (tmp.size() == 0) indep_support_end = 0;
+  else indep_support_end = tmp.back()+1;
 }
 
 void Counter::init_activity_scores()

@@ -286,9 +286,10 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return cms_cl;
 }
 
-bool take_solution(vector<CMSat::lbool>& model) {
+bool get_target(vector<CMSat::lbool>& model) {
   vector<double> act;
   sat_solver->set_polarity_mode(CMSat::PolarityMode::polarmode_rnd);
+  /* sat_solver->set_up_for_sample_counter(100); */
   /* sat_solver->set_activities(act); */
   //solver.set_up_for_sample_counter(100);
   CMSat::lbool ret = sat_solver->solve();
@@ -307,15 +308,13 @@ bool take_solution(vector<CMSat::lbool>& model) {
 }
 
 void create_from_sat_solver(Counter& counter, SATSolver& ss) {
-  counter.new_vars(sat_solver->nVars());
+  counter.new_vars(ss.nVars());
 
   // Clean the clauses before we add them
   vector<CMSat::Lit> assumps;
-  for(const auto& v: indep_support) {
-    assumps.push_back(CMSat::Lit(v-1, false));
-  }
+  for(const auto& v: indep_support) assumps.push_back(CMSat::Lit(v-1, false));
   string s ("clean-cls");
-  sat_solver->simplify(&assumps, &s);
+  ss.simplify(&assumps, &s);
 
   // Irred cls
   ss.start_getting_small_clauses(
@@ -463,7 +462,7 @@ int main(int argc, char *argv[])
   vector<CMSat::lbool> model;
   while (sat_solver->okay()) {
     double call_time = cpuTime();
-    if (!take_solution(model)) break;
+    if (!get_target(model)) break;
     counter->set_target_polar(model);
     vector<Lit> largest_cube;
     mpz_class this_count = counter->count(largest_cube);

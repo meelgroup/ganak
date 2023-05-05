@@ -990,7 +990,7 @@ namespace flow_cutter{
 		Config config;
 
 
-		int operator()(int x, int side, bool causes_augmenting_path, int source_dist, int target_dist, int cutter_id)const{
+		int operator()(int x, int side, bool causes_augmenting_path, int source_dist, int target_dist, int /*cutter_id*/)const{
 
 			auto random_number = [&]{
 				if(side == BasicCutter::source_side)

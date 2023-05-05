@@ -106,25 +106,25 @@ public:
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
-  void removeWatchLinkTo(ClauseOfs clause_ofs) {
+  void removeWatchLinkTo(ClauseOfs offs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
-      if (it->ofs == clause_ofs) {
+      if (it->ofs == offs) {
         *it = watch_list_.back();
         watch_list_.pop_back();
         return;
       }
   }
 
-  void replaceWatchLinkTo(ClauseOfs clause_ofs, ClauseOfs replace_ofs) {
+  void replaceWatchLinkTo(ClauseOfs off, ClauseOfs replace_ofs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
-      if (it->ofs == clause_ofs) {
+      if (it->ofs == off) {
         it->ofs = replace_ofs;
         return;
       }
   }
 
-  void addWatchLinkTo(ClauseIndex clause_ofs, Lit blockedLit) {
-    watch_list_.push_back(ClOffsBlckL(clause_ofs, blockedLit));
+  void addWatchLinkTo(ClauseIndex offs, Lit blockedLit) {
+    watch_list_.push_back(ClOffsBlckL(offs, blockedLit));
   }
 
   void addBinLinkTo(Lit lit, bool irred) {
@@ -191,7 +191,6 @@ public:
   }
 };
 
-
 struct Variable {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
@@ -200,34 +199,23 @@ struct Variable {
   bool set_once = false; //it has once been set to some value
 };
 
-// for now Clause Header is just a dummy
-// we keep it for possible later changes
 class ClauseHeader {
-  uint32_t creation_time_; // number of conflicts seen at creation time
-  uint32_t score_;
-  uint32_t length_;
+  uint32_t orig_length;
 public:
+  ClauseHeader(uint32_t _orig_length, uint8_t _lbd): orig_length(_orig_length), lbd(_lbd)  {}
 
   void increaseScore() {
-    score_++;
+    // TODO shouldn't we re-calculate the LBD always here??
+    used = 1;
+    total_used++;
   }
-  void decayScore() {
-      score_ >>= 1;
-  }
-  uint32_t score() const {
-      return score_;
-  }
+  uint32_t total_used = 0;
+  uint8_t used = 1;
+  uint8_t lbd;
 
-  uint32_t creation_time() {
-      return creation_time_;
+  constexpr static uint32_t overheadInLits() {
+    return sizeof(ClauseHeader)/sizeof(Lit) + (bool)(sizeof(ClauseHeader)%sizeof(Lit));
   }
-  uint32_t length() const { return length_;}
-  void set_length(uint32_t length) {length_ = length;}
-
-  void set_creation_time(uint32_t time) {
-    creation_time_ = time;
-  }
-  static uint32_t overheadInLits() {return sizeof(ClauseHeader)/sizeof(Lit);}
 };
 
 #endif /* STRUCTURES_H_ */

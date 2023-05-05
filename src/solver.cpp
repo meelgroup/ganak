@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <ios>
 #include <iomanip>
+#include <numeric>
 #include "common.h"
 #include "comp_types/comp.h"
 #include "cryptominisat5/solvertypesmini.h"
@@ -49,6 +50,7 @@ void Counter::set_indep_support(const set<uint32_t> &indeps)
     }
     if (tmp[i] != i+1) {
       cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i << endl;
+      exit(-1);
     }
   }
   if (tmp.size() == 0) indep_support_end = 0;
@@ -97,8 +99,9 @@ void Counter::add_red_cl(const vector<Lit>& lits) {
   //       connect components -- which is what we want
   ClauseOfs cl_ofs = addClause(lits, true);
   if (cl_ofs != 0) {
-    conflict_clauses_.push_back(cl_ofs);
-    getHeaderOf(cl_ofs).set_length(lits.size());
+    red_cls.push_back(cl_ofs);
+    auto& header = getHeaderOf(cl_ofs);
+    header = ClauseHeader(lits.size(), lits.size());
   }
 }
 
@@ -165,7 +168,7 @@ void Counter::td_decompose()
 				for(uint32_t i=0; i < nVars(); i++) max_dst = std::max(max_dst, dists[i]);
 				if(max_dst > 0) {
 					for(uint32_t i=0; i < indep_support_end-1; i++)
-						exscore[i+1] = config_.tw_coef_tdscore * ((double)(max_dst - dists[i])) / (double)max_dst;
+						tdscore[i+1] = config_.tw_coef_tdscore * ((double)(max_dst - dists[i])) / (double)max_dst;
 					uselessTD = false;
 				}
 			}
@@ -181,7 +184,7 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max())
     indep_support_end = nVars()+1;
-  exscore.resize(indep_support_end, 0);
+  tdscore.resize(indep_support_end, 0);
   largest_cube.clear();
   largest_cube_val = 0;
   start_time = cpuTime();
@@ -193,7 +196,7 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
   if (config_.branch_type == 1) td_decompose();
 
   const auto exit_state = countSAT();
-  stats.num_long_red_clauses_ = num_conflict_clauses();
+  stats.num_long_red_clauses_ = red_cls.size();
   comp_manager_->gatherStatistics();
   if (config_.verb) stats.printShort(this, &comp_manager_->get_cache());
   if (exit_state == RESTART) {
@@ -239,9 +242,13 @@ void Counter::print_all_levels() {
 }
 
 void Counter::print_stat_line() {
-  if (next_print_stat > stats.num_cache_hits_) return;
-  stats.printShort(this, &comp_manager_->get_cache());
-  next_print_stat = stats.num_cache_hits_ + 9000000;
+  if (next_print_stat_cache > stats.num_cache_look_ups_ &&
+      next_print_stat_confl > stats.conflicts) return;
+  if (config_.verb) {
+    stats.printShort(this, &comp_manager_->get_cache());
+  }
+  next_print_stat_cache = stats.num_cache_look_ups_ + (500LL*1000LL);
+  next_print_stat_confl = stats.conflicts + (5LL*1000LL);
 }
 
 SOLVER_StateT Counter::countSAT() {
@@ -319,8 +326,8 @@ void Counter::decideLiteral(Lit lit) {
       << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(lit.var());
   setLiteralIfFree(lit);
-  stats.num_decisions_++;
-  if (stats.num_decisions_ % 128 == 0) {
+  stats.decisions++;
+  if (stats.decisions % 128 == 0) {
     decayActivities(config_.exp == 1.0);
     comp_manager_->rescale_cache_scores();
   }
@@ -360,7 +367,7 @@ uint32_t Counter::find_best_branch_gpmc()
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
-    double score_td = exscore[v];
+    double score_td = tdscore[v];
     double score_f = comp_manager_->scoreOf(v);
     double score_a = watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
 
@@ -615,7 +622,7 @@ bool Counter::restart_if_needed() {
       && depth_q.isvalid() && depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
     restart = true;
 
-  if (config_.restart_type == 3 && (stats.num_decisions_-stats.last_restart_num_decisions) > config_.next_restart)
+  if (config_.restart_type == 3 && (stats.decisions-stats.last_restart_num_decisions) > config_.next_restart)
     restart = true;
 
   if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
@@ -627,7 +634,7 @@ bool Counter::restart_if_needed() {
       restart = true;
 
   // don't restart if we didn't change the scores
-  if (stats.last_restart_num_conflicts == stats.num_conflicts_)
+  if (stats.last_restart_num_conflicts == stats.conflicts)
     restart = false;
 
   if (restart) {
@@ -636,7 +643,7 @@ bool Counter::restart_if_needed() {
     /* cout << "c Num units: " << unit_clauses_.size(); */
     /* cout << " CC: " << conflict_clauses_.size(); */
     cout << "c Num decisions since last restart: "
-      << stats.num_decisions_-stats.last_restart_num_decisions
+      << stats.decisions-stats.last_restart_num_decisions
       << endl;
     cout << "c Num cache lookups since last restart: "
       << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups
@@ -659,8 +666,8 @@ bool Counter::restart_if_needed() {
       reactivate_comps_and_backtrack_trail(config_.do_on_path_print);
       decision_stack_.pop_back();
     }
-    stats.last_restart_num_conflicts = stats.num_conflicts_;
-    stats.last_restart_num_decisions = stats.num_decisions_;
+    stats.last_restart_num_conflicts = stats.conflicts;
+    stats.last_restart_num_decisions = stats.decisions;
     stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
 
     // experimental for deleting polluted cubes and re-using GANAK
@@ -756,17 +763,13 @@ retStateT Counter::resolveConflict() {
   recordLastUIPCauses();
   act_inc *= 1.0/config_.exp;
 
-  if (stats.num_clauses_learned_ - last_ccl_deletion_decs_ > stats.clause_deletion_interval()) {
-    deleteConflictClauses();
-    last_ccl_deletion_decs_ = stats.num_clauses_learned_;
+  if (stats.conflicts > last_reduceDB_conflicts+10000) {
+    reduceDB();
+    if (stats.cls_deleted_since_compaction > 50000) compactConflictLiteralPool();
+    last_reduceDB_conflicts = stats.conflicts;
   }
 
-  if (stats.num_clauses_learned_ - last_ccl_cleanup_decs_ > 100000) {
-    compactConflictLiteralPool();
-    last_ccl_cleanup_decs_ = stats.num_clauses_learned_;
-  }
-
-  stats.num_conflicts_++;
+  stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   assert(uip_clauses_.size() == 1);
   if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
@@ -897,6 +900,13 @@ void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
   comp_acts.clear();
   for(uint32_t i = 0; i < nVars()+1; i++) comp_acts.push_back(comp_manager_->scoreOf(i));
   ret_act_inc = act_inc;
+
+  // TODO get learnt clauses too
+    /* for(auto cl_ofs: conflict_clauses_) { */
+    /*     const ClauseHeader* ch = (const ClauseHeader *) */
+    /*       ( &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]); */
+    /*     auto sz = ch->length(); */
+    /* } */
 }
 
 void Counter::set_activities(const vector<double>& acts, const vector<uint8_t>& polars,
@@ -1054,7 +1064,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   if (!bSucceeded) {
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
-    recordAllUIPCauses();
+    /* recordAllUIPCauses(); */
   }
   decision_stack_.stopFailedLitTest();
 
@@ -1083,10 +1093,11 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     stats.num_failed_literals_detected_++;
     print_debug("-> failed literal detected");
     sz = trail.size();
-    for (auto it = uip_clauses_.rbegin(); it != uip_clauses_.rend(); it++) {
-      if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl;
-      setLiteralIfFree(it->front(), addUIPConflictClause(*it));
-    }
+    /* for (auto it = uip_clauses_.rbegin(); it != uip_clauses_.rend(); it++) { */
+    /*   if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl; */
+    /*   setLiteralIfFree(it->front(), addUIPConflictClause(*it)); */
+    /* } */
+    setLiteralIfFree(lit.neg(), Antecedent(NOT_A_CLAUSE), true);
     if (!propagate(sz)) {
       print_debug("Failed literal probing END -- this comp/branch is UNSAT");
       return false;

@@ -63,7 +63,6 @@ public:
   const DataAndStatistics& get_stats() const;
   void shuffle_activities(MTRand& mtrand2);
   void end_irred_cls();
-  size_t get_num_irred_long_cls() const { return conflict_clauses_.size(); }
   void get_unit_cls(vector<Lit>& units) const;
   void init_activity_scores();
   void set_next_restart(uint64_t next) { config_.next_restart = next; }
@@ -98,7 +97,7 @@ private:
   ComponentManager* comp_manager_ = NULL;
 
   // the last time conflict clauses have been deleted
-  uint64_t last_ccl_deletion_decs_ = 0;
+  uint64_t last_reduceDB_conflicts = 0;
   // the last time the conflict clause storage has been compacted
   uint64_t last_ccl_cleanup_decs_ = 0;
 
@@ -171,11 +170,13 @@ private:
     violated_clause.push_back(litA);
     violated_clause.push_back(litB);
   }
-  void setConflictState(ClauseOfs cl_ofs)
+
+  void setConflictState(ClauseOfs off)
   {
-    getHeaderOf(cl_ofs).increaseScore();
+    getHeaderOf(off).increaseScore();
+    getHeaderOf(off).lbd = calc_lbd(off);
     violated_clause.clear();
-    for (auto it = beginOf(cl_ofs); *it != SENTINEL_LIT; it++)
+    for (auto it = beginOf(off); *it != SENTINEL_LIT; it++)
       violated_clause.push_back(*it);
   }
 
@@ -259,7 +260,8 @@ private:
   bool get_polarity(const uint32_t var);
 
   void print_stat_line();
-  uint64_t next_print_stat = 20000;
+  uint64_t next_print_stat_cache = 20000;
+  uint64_t next_print_stat_confl = 5000;
 
   // indicates if we have called end_irred_cls()
   bool ended_irred_cls = false;

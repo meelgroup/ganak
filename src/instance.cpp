@@ -12,74 +12,101 @@
 #include <fstream>
 #include <limits>
 #include <sys/stat.h>
-#include <cryptominisat5/cryptominisat.h>
-#include <cryptominisat5/dimacsparser.h>
-#include <cryptominisat5/streambuffer.h>
-
 
 void Instance::compactConflictLiteralPool(){
+  stats.cls_deleted_since_compaction = 0;
+
   auto write_pos = conflict_clauses_begin();
-  vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
-  conflict_clauses_.clear();
-  for(auto clause_ofs: tmp_conflict_clauses){
-    auto read_pos = beginOf(clause_ofs) - ClauseHeader::overheadInLits();
+  vector<ClauseOfs> tmp_conflict_clauses = red_cls;
+  red_cls.clear();
+  for(auto offs: tmp_conflict_clauses){
+    auto read_pos = beginOf(offs) - ClauseHeader::overheadInLits();
     for(uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
       *(write_pos++) = *(read_pos++);
     ClauseOfs new_ofs =  write_pos - lit_pool_.begin();
-    conflict_clauses_.push_back(new_ofs);
-    // first substitute antecedent if clause_ofs implied something
-    if(isAntecedentOf(clause_ofs, *beginOf(clause_ofs)))
-      var(*beginOf(clause_ofs)).ante = Antecedent(new_ofs);
+    red_cls.push_back(new_ofs);
+    // first substitute antecedent if offs implied something
+    if(isAntecedentOf(offs, *beginOf(offs)))
+      var(*beginOf(offs)).ante = Antecedent(new_ofs);
 
     // now redo the watches
-    litWatchList(*beginOf(clause_ofs)).replaceWatchLinkTo(clause_ofs,new_ofs);
-    litWatchList(*(beginOf(clause_ofs)+1)).replaceWatchLinkTo(clause_ofs,new_ofs);
+    litWatchList(*beginOf(offs)).replaceWatchLinkTo(offs,new_ofs);
+    litWatchList(*(beginOf(offs)+1)).replaceWatchLinkTo(offs,new_ofs);
     // next, copy clause data
-    assert(read_pos == beginOf(clause_ofs));
-    while(*read_pos != SENTINEL_LIT)
-      *(write_pos++) = *(read_pos++);
+    assert(read_pos == beginOf(offs));
+    while(*read_pos != SENTINEL_LIT) *(write_pos++) = *(read_pos++);
     *(write_pos++) = SENTINEL_LIT;
   }
   lit_pool_.erase(write_pos,lit_pool_.end());
-  num_conflict_clauses_compacted_++;
+  stats.compactions++;
 }
 
-bool Instance::deleteConflictClauses() {
-  stats.times_conflict_clauses_cleaned_++;
-  vector<ClauseOfs> tmp_conflict_clauses = conflict_clauses_;
-  conflict_clauses_.clear();
-  vector<double> tmp_ratios;
-  double score;
-  for(auto clause_ofs: tmp_conflict_clauses){
-    score = getHeaderOf(clause_ofs).score();
-    tmp_ratios.push_back(score);
+struct ClSorter {
+  ClSorter(const vector<Lit>& lit_pool) : lit_pool_(lit_pool) {}
 
+  const ClauseHeader& getHeaderOf(ClauseOfs cl_ofs) const {
+    return *reinterpret_cast<const ClauseHeader *>(
+        &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
   }
-  vector<double> tmp_ratiosB = tmp_ratios;
-
-  sort(tmp_ratiosB.begin(), tmp_ratiosB.end());
-
-  double cutoff = tmp_ratiosB[tmp_ratiosB.size()/2];
-
-  for(uint32_t i = 0; i < tmp_conflict_clauses.size(); i++){
-    if(tmp_ratios[i] < cutoff){
-      if(!markClauseDeleted(tmp_conflict_clauses[i]))
-        conflict_clauses_.push_back(tmp_conflict_clauses[i]);
-    } else
-      conflict_clauses_.push_back(tmp_conflict_clauses[i]);
+  bool operator()(ClauseOfs& a, ClauseOfs& b) const {
+    const auto& ah = getHeaderOf(a);
+    const auto& bh = getHeaderOf(b);
+    if (ah.lbd <= 2 || bh.lbd <= 2) return ah.lbd < bh.lbd;
+    if (ah.used != bh.used) return ah.used > bh.used;
+    return ah.total_used > bh.total_used;
   }
+  const vector<Lit>& lit_pool_;
+};
+
+void Instance::reduceDB() {
+  stats.reduceDBs++;
+  const auto cls_before = red_cls.size();
+
+  vector<ClauseOfs> tmp_red_cls = red_cls;
+  red_cls.clear();
+  sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(lit_pool_));
+  uint32_t num_lbd2_cls = 0;
+  uint32_t num_used_cls = 0;
+  uint32_t cutoff = 10000;
+
+  for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
+    const ClauseOfs& off = tmp_red_cls[i];
+    auto& h = getHeaderOf(off);
+    if (h.lbd == 2) num_lbd2_cls++;
+    else if (h.used) num_used_cls++;
+
+    if (red_cl_can_be_deleted(off) && h.lbd > 2 &&
+        i > cutoff + num_lbd2_cls) {
+      markClauseDeleted(off);
+      stats.cls_deleted_since_compaction++;
+      stats.cls_removed++;
+    } else {
+      red_cls.push_back(off);
+      h.used = 0;
+    }
+  }
+  verb_print(1, "[rdb] cls before: " << cls_before << " after: " << red_cls.size()
+      << " lbd2: " << num_lbd2_cls << " used: " << num_used_cls << " rdb: " << stats.reduceDBs);
+}
+
+uint32_t Instance::get_num_lbd2s() const{
+  uint32_t num_lbd2s = 0;
+  for(uint32_t i = 0; i < red_cls.size(); i++){
+    const ClauseOfs& off = red_cls[i];
+    if (getHeaderOf(off).lbd == 2)  num_lbd2s++;
+  }
+  return num_lbd2s;
+}
+
+bool Instance::red_cl_can_be_deleted(ClauseOfs cl_ofs){
+  // only first literal may possibly have cl_ofs as antecedent
+  if (isAntecedentOf(cl_ofs, *beginOf(cl_ofs))) return false;
   return true;
 }
 
-
-bool Instance::markClauseDeleted(ClauseOfs cl_ofs){
-  // only first literal may possibly have cl_ofs as antecedent
-  if(isAntecedentOf(cl_ofs, *beginOf(cl_ofs)))
-    return false;
-
+void Instance::markClauseDeleted(ClauseOfs cl_ofs){
   litWatchList(*beginOf(cl_ofs)).removeWatchLinkTo(cl_ofs);
   litWatchList(*(beginOf(cl_ofs)+1)).removeWatchLinkTo(cl_ofs);
-  return true;
 }
 
 void Instance::new_vars(const uint32_t n) {
@@ -89,7 +116,7 @@ void Instance::new_vars(const uint32_t n) {
   assert(watches_.empty());
   assert(lit_pool_.empty());
   assert(unit_clauses_.empty());
-  assert(conflict_clauses_.empty());
+  assert(red_cls.empty());
 
   lit_pool_.push_back(SENTINEL_LIT);
   variables_.push_back(Variable());
@@ -98,6 +125,7 @@ void Instance::new_vars(const uint32_t n) {
   occ_lists_.resize(n + 1);
   watches_.resize(n + 1);
   target_polar.resize(n + 1);
+  lbdHelper.resize(n+1, 0);
 }
 
 void Instance::add_irred_cl(const vector<Lit>& lits) {

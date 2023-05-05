@@ -53,8 +53,8 @@ void Graph::addEdge(int v1, int v2)
 }
 bool Graph::isClique(const vector<int>& adj)
 {
-	for(int i=0; i<adj.size(); i++)
-		for(int j=i+1; j<adj.size(); j++)
+	for(size_t i=0; i<adj.size(); i++)
+		for(size_t j=i+1; j<adj.size(); j++)
 			if(!hasEdge(adj[i], adj[j])) return false;
 
 	return true;
@@ -136,12 +136,11 @@ void TreeDecomposition::computeDistance(int v, int parent, int depth, vector<int
 
 }
 
-void TreeDecomposition::toDimacs(ostream& out, int cent, int npvars)
+void TreeDecomposition::toDimacs(ostream& out, int cent2, int npvars)
 {
 	out << "s td " << bags.size() << " " << (tw+1) << " " << gnodes << endl;
 	out << "c pvars " << npvars << endl;
-	if(cent >= 0)
-		out << "c centroid " << cent << endl;
+	if(cent2 >= 0) out << "c centroid " << cent2 << endl;
 
 	int count = 1;
 	for(const auto& bag : bags) {

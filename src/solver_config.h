@@ -9,6 +9,8 @@
 
 #include <cstdint>
 
+#define verb_print(a, b) if (config_.verb >= 1) cout << "c " << b << endl;
+
 struct CounterConfiguration {
   // TODO comp caching cannot be deactivated for now!
   bool do_non_chron_back_track = true;

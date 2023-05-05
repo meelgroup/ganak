@@ -7,25 +7,23 @@
 
 #pragma once
 
-#include <set>
 #include <cassert>
 #include <cryptominisat5/cryptominisat.h>
 
+#include "primitive_types.h"
 #include "statistics.h"
 #include "structures.h"
 #include "containers.h"
 #include "solver_config.h"
-
-using std::set;
 
 class Instance {
 public:
   Instance(const CounterConfiguration& _config) : config_(_config), stats (this) { }
   void new_vars(const uint32_t n);
   void add_irred_cl(const vector<Lit>& lits);
-  size_t num_conflict_clauses() const { return conflict_clauses_.size(); }
-  uint32_t num_conflict_clauses_compacted() const { return num_conflict_clauses_compacted_; }
-
+  uint32_t get_num_lbd2s() const;
+  uint32_t get_num_long_reds() const { return red_cls.size(); }
+  uint32_t get_num_irred_long_cls() const { return stats.num_long_irred_clauses_; }
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
@@ -52,8 +50,10 @@ protected:
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
-  bool deleteConflictClauses();
-  bool markClauseDeleted(ClauseOfs cl_ofs);
+  void reduceDB();
+  void markClauseDeleted(ClauseOfs cl_ofs);
+  bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
+
 
   // Compact the literal pool erasing all the clause
   // information from deleted clauses
@@ -86,29 +86,44 @@ protected:
   LiteralIndexedVector<vector<ClauseOfs> > occ_lists_; // used ONLY to figure out which
                                                        // literals should we probe
   LiteralIndexedVector<LitWatchList> watches_; // watches
-  vector<ClauseOfs> conflict_clauses_;
-  uint32_t num_conflict_clauses_compacted_ = 0;
+  vector<ClauseOfs> red_cls;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> lit_values_;
-  vector<double> exscore;
+  vector<double> tdscore; // treewidth-decomposition score
   double act_inc = 1.0;
+
+  // Computing LBD (lbd == 2 means "glue clause")
+  vector<uint64_t> lbdHelper;
+  uint64_t lbdHelperFlag = 0;
 
   void decayActivities(bool also_watches) {
     if (also_watches) for (auto& w: watches_) w.activity *= 0.5;
-    for(auto clause_ofs: conflict_clauses_)
-        getHeaderOf(clause_ofs).decayScore();
   }
 
-  void updateActivities(ClauseOfs clause_ofs ) {
-    getHeaderOf(clause_ofs).increaseScore();
-    for (auto it = beginOf(clause_ofs); *it != SENTINEL_LIT; it++) {
-      increaseActivity(*it);
+
+  uint32_t calc_lbd(ClauseOfs offs) {
+    lbdHelperFlag++;
+    uint32_t nblevels = 0;
+    for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++) {
+      int lev = var(*it).decision_level;
+      if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
+        lbdHelper[lev] = lbdHelperFlag;
+        nblevels++;
+        if (nblevels >= 1000) { return nblevels; }
+      }
     }
+    return nblevels;
   }
 
-  void inline increaseActivity(const Lit lit)
-  {
+  void updateActivities(ClauseOfs offs) {
+    getHeaderOf(offs).increaseScore();
+    getHeaderOf(offs).lbd = calc_lbd(offs);
+    for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++)
+      increaseActivity(*it);
+  }
+
+  void inline increaseActivity(const Lit lit) {
     if (config_.do_single_bump && tmp_seen[lit.var()]) return;
     watches_[lit].activity += act_inc;
     if (watches_[lit].activity > 1e100) {
@@ -119,15 +134,12 @@ protected:
   }
 
   bool isUnitClause(const Lit lit) {
-    for (const auto& l : unit_clauses_)
-      if (l == lit) return true;
+    for (const auto& l : unit_clauses_) if (l == lit) return true;
     return false;
   }
 
   bool existsUnitClauseOf(VariableIndex v) {
-    for (auto l : unit_clauses_)
-      if (l.var() == v)
-        return true;
+    for (auto l : unit_clauses_) if (l.var() == v) return true;
     return false;
   }
 
@@ -179,6 +191,11 @@ protected:
      return lit_pool_.begin() + irred_lit_pool_size_;
    }
 
+  const ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) const {
+    return *reinterpret_cast<const ClauseHeader *>(
+        &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
+  }
+
   ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) {
     return *reinterpret_cast<ClauseHeader *>(
         &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
@@ -220,14 +237,11 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
   for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++) lit_pool_.push_back(Lit());
   ClauseOfs cl_ofs = lit_pool_.size();
 
-  for (auto l : literals) {
-    lit_pool_.push_back(l);
-  }
+  for (auto l : literals) { lit_pool_.push_back(l); }
   lit_pool_.push_back(SENTINEL_LIT);
   Lit blckLit = literals[literals.size()/2];
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs, blckLit);
   litWatchList(literals[1]).addWatchLinkTo(cl_ofs, blckLit);
-  getHeaderOf(cl_ofs).set_creation_time(stats.num_conflicts_);
   return cl_ofs;
 }
 
@@ -236,15 +250,14 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
     stats.num_clauses_learned_++;
     ClauseOfs cl_ofs = addClause(literals, false);
     if (cl_ofs != 0) {
-      conflict_clauses_.push_back(cl_ofs);
-      getHeaderOf(cl_ofs).set_length(literals.size());
+      red_cls.push_back(cl_ofs);
+      auto& header = getHeaderOf(cl_ofs);
+      header = ClauseHeader(literals.size(), calc_lbd(cl_ofs));
       ante = Antecedent(cl_ofs);
     } else if (literals.size() == 2){
-      /* cout << "Binary learnt: " << literals[0] << " " << literals[1] << endl; */
       ante = Antecedent(literals.back());
       stats.num_binary_red_clauses_++;
     } else if (literals.size() == 1)
-      /* cout << "Unit learnt: " << literals[0] << endl; */
       stats.num_unit_red_clauses_++;
     return ante;
 }

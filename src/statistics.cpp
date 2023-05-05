@@ -19,7 +19,7 @@ static double in_MB(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
 
-double safe_div(double a, double b) {
+static double safe_div(double a, double b) {
   if (b == 0) return 0;
   else return a/b;
 }
@@ -28,21 +28,24 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
   solver->print_restart_data();
   cout << "c cls irred                      " << num_irred_clauses() << endl;
   cout << "c decisions K                    "
-    << std::left << std::setw(9) << num_decisions_/1000
+    << std::left << std::setw(9) << decisions/1000
     << std::setw(16) << " -- Kdec/s: "
     << std::setprecision(2) << std::setw(9) << std::left << std::fixed
-    << (double)num_decisions_/(1000.0*(cpuTime()-solver->get_start_time()))
+    << safe_div(decisions,(1000.0*(cpuTime()-solver->get_start_time())))
     << endl;
   cout << "c conflicts                      "
-    << std::left << std::setw(9) << num_conflicts_
+    << std::left << std::setw(9) << conflicts
     << std::setw(16) << " -- confl/s: "
     << std::setprecision(2) << std::setw(9) << std::left
-    << (double)num_conflicts_/((cpuTime()-solver->get_start_time()))
+    << safe_div(conflicts,((cpuTime()-solver->get_start_time())))
     << endl;
   cout << "c conflict cls (long/bin/u)      " << std::fixed
-    << solver->get_num_irred_long_cls() << "/"
+    << solver->get_num_long_reds()
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
-  cout << "c conflict cls compacted         " << solver->num_conflict_clauses_compacted() << endl;
+  cout << "c rdbs/lbd2/rem             "
+    << std::setw(5) << reduceDBs
+    << std::setw(6) << solver->get_num_lbd2s()
+    << std::setw(6) << cls_removed << endl;
   cout << "c looks/look-computes            "
     << lookaheads << "/" << lookahead_computes << endl;
   cout << "c probes/flits/bplits K          "
@@ -54,7 +57,7 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_+num_failed_bprop_literals_failed, num_failed_lit_tests_)
     << std::setw(16) <<" -- Kprobe/s: "
     << std::setprecision(2) << std::setw(9) << std::left
-    << (double)num_failed_lit_tests_/(1000.0*(cpuTime()-solver->get_start_time()))
+    << safe_div(num_failed_lit_tests_,(1000.0*(cpuTime()-solver->get_start_time())))
     << endl;
 
   cout << "c implicit BCP miss rate         "
@@ -72,7 +75,7 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << std::setw(6) << (num_cache_hits_ /(1000ULL))
     << std::setw(16) << " -- Klookup/s: "
     << std::setprecision(2) << std::setw(9) << std::left
-    << (double)num_cache_look_ups_/(1000.0*(cpuTime()-solver->get_start_time()))
+    << safe_div(num_cache_look_ups_,(1000.0*(cpuTime()-solver->get_start_time())))
     << endl;
 
   cout << "c cache pollutions call/removed  "

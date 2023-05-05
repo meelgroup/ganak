@@ -66,6 +66,7 @@ int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
 int do_hyperbin = 1;
+int red_cls_also = 0;
 
 string ganak_version_info()
 {
@@ -102,6 +103,7 @@ void add_ganak_options()
     ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
     ("version", "Print version info")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
+    ("red", po::value(&red_cls_also)->default_value(red_cls_also), "Also add redundant clauses from CNF")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ;
 
@@ -329,21 +331,20 @@ void create_from_sat_solver(Counter& counter, SATSolver& ss) {
   ss.end_getting_small_clauses();
   counter.end_irred_cls();
 
-  //Red binaries
-  uint32_t bin_red_cl = 0;
-  ss.start_getting_small_clauses(
-      2,
-      std::numeric_limits<uint32_t>::max(),
-      true);
-  while(ss.get_next_small_clause(cms_cl)) {
-    const auto cl = cms_to_ganak_cl(cms_cl);
-    if (cl.size() == 2) {
+  if (red_cls_also) {
+    uint32_t red_cl = 0;
+    ss.start_getting_small_clauses(
+        std::numeric_limits<uint32_t>::max(),
+        std::numeric_limits<uint32_t>::max(),
+        true);
+    while(ss.get_next_small_clause(cms_cl)) {
+      const auto cl = cms_to_ganak_cl(cms_cl);
       counter.add_red_cl(cl);
-      bin_red_cl++;
+      red_cl++;
     }
+    ss.end_getting_small_clauses();
+    cout << "c red cl added: " << red_cl << endl;
   }
-  ss.end_getting_small_clauses();
-  cout << "c Bin red cl added: " << bin_red_cl << endl;
 }
 
 mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>& cubes) {

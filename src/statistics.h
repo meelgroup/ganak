@@ -43,10 +43,14 @@ public:
   uint64_t num_long_red_clauses_ = 0;
   uint64_t num_binary_red_clauses_ = 0;
 
-  uint64_t times_conflict_clauses_cleaned_ = 0;
+  // Clause db management
+  uint64_t reduceDBs = 0;
+  uint32_t cls_deleted_since_compaction = 0;
+  uint32_t compactions = 0;
+  uint32_t cls_removed = 0;
 
   /// number of all decisions made
-  uint64_t num_decisions_ = 0;
+  uint64_t decisions = 0;
   /// number of all implications derived
   uint64_t num_implications_ = 0;
   // number of all failed literal detections
@@ -55,7 +59,7 @@ public:
   uint64_t num_failed_lit_tests_ = 0;
 
   // number of all conflicts occurred
-  uint64_t num_conflicts_ = 0;
+  uint64_t conflicts = 0;
 
   // number of clauses overall learned
   uint32_t num_clauses_learned_ = 0;
@@ -77,7 +81,6 @@ public:
   uint64_t cache_pollutions_called = 0;
 
   bqueue<uint64_t, double> comp_size_times_depth_q;
-
 
   // Lookahead
   uint64_t lookaheads = 0;
@@ -133,10 +136,6 @@ public:
   }
   uint64_t num_irred_clauses() const {
     return num_long_irred_clauses_ + num_binary_irred_clauses_ + num_unit_irred_clauses_;
-  }
-
-  uint64_t clause_deletion_interval() const {
-    return 10000 + 10 * times_conflict_clauses_cleaned_;
   }
 
   void incorporateConflictClauseData(const vector<Lit> &clause) {

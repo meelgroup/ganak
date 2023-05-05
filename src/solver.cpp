@@ -87,7 +87,7 @@ void Counter::end_irred_cls()
   comp_manager_->initialize(watches_, lit_pool_, nVars());
 }
 
-void Counter::add_red_cl(const vector<Lit>& lits) {
+void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
   assert(ended_irred_cls);
   for(const auto& l: lits) release_assert(l.var() <= nVars());
   for(const auto& l: lits) release_assert(isUnknown(l));
@@ -101,7 +101,8 @@ void Counter::add_red_cl(const vector<Lit>& lits) {
   if (cl_ofs != 0) {
     red_cls.push_back(cl_ofs);
     auto& header = getHeaderOf(cl_ofs);
-    header = ClauseHeader(lits.size(), lits.size());
+    if (lbd == -1) lbd = lits.size();
+    header = ClauseHeader(lbd);
   }
 }
 

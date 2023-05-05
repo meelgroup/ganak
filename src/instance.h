@@ -252,7 +252,7 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
     if (cl_ofs != 0) {
       red_cls.push_back(cl_ofs);
       auto& header = getHeaderOf(cl_ofs);
-      header = ClauseHeader(literals.size(), calc_lbd(cl_ofs));
+      header = ClauseHeader(calc_lbd(cl_ofs));
       ante = Antecedent(cl_ofs);
     } else if (literals.size() == 2){
       ante = Antecedent(literals.back());

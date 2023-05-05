@@ -200,9 +200,8 @@ struct Variable {
 };
 
 class ClauseHeader {
-  uint32_t orig_length;
 public:
-  ClauseHeader(uint32_t _orig_length, uint8_t _lbd): orig_length(_orig_length), lbd(_lbd)  {}
+  ClauseHeader(uint8_t _lbd): lbd(_lbd)  {}
 
   void increaseScore() {
     // TODO shouldn't we re-calculate the LBD always here??

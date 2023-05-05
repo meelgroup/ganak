@@ -40,7 +40,7 @@ struct CounterConfiguration {
 	double td_ratiolim = 30.0;
   double tw_varelim = 0.25;
   double tw_coef_tdscore = 100.0;
-  int branch_type = 0; // 0 == default , 1 == gpmc
+  int branch_type = 1; // 0 == old GANAK , 1 == gpmc
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

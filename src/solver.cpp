@@ -1062,11 +1062,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   if (set == true) assert(toClear.empty());
 
   bool bSucceeded = propagate(sz);
-  if (!bSucceeded) {
-    for(const auto& v: toClear) tmp_seen[v] = 0;
-    toClear.clear();
-    /* recordAllUIPCauses(); */
-  }
+  SLOW_DEBUG_DO(for(const auto& v: tmp_seen) assert(v == 0));
   decision_stack_.stopFailedLitTest();
 
   // backtracking
@@ -1094,10 +1090,6 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     stats.num_failed_literals_detected_++;
     print_debug("-> failed literal detected");
     sz = trail.size();
-    /* for (auto it = uip_clauses_.rbegin(); it != uip_clauses_.rend(); it++) { */
-    /*   if (it->size() == 0) cout << "c EMPTY CLAUSE FOUND" << endl; */
-    /*   setLiteralIfFree(it->front(), addUIPConflictClause(*it)); */
-    /* } */
     setLiteralIfFree(lit.neg(), Antecedent(NOT_A_CLAUSE), true);
     if (!propagate(sz)) {
       print_debug("Failed literal probing END -- this comp/branch is UNSAT");

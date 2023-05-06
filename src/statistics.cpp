@@ -40,8 +40,14 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << safe_div(conflicts,((cpuTime()-solver->get_start_time())))
     << endl;
   cout << "c conflict cls (long/bin/u)      " << std::fixed
-    << solver->get_num_long_reds()
+    << solver->get_num_long_reds() << "/"
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
+  cout << "c avg clsz/rem lits avg/finalavg "
+    << std::setw(9) << safe_div(uip_lits_learned,uip_cls)
+    << std::setw(9) << safe_div(rem_lits_with_bins, rem_lits_tried)
+    << std::setw(9) << safe_div(final_cl_sz, uip_cls)
+    << endl;
+
   cout << "c rdbs/low lbd/rem               "
     << std::setw(5) << reduceDBs
     << std::setw(6) << solver->get_num_low_lbds()

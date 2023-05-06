@@ -63,6 +63,11 @@ public:
 
   // number of clauses overall learned
   uint32_t num_clauses_learned_ = 0;
+  uint64_t uip_cls = 0;
+  uint64_t final_cl_sz = 0;
+  uint64_t uip_lits_learned = 0;
+  uint64_t rem_lits_with_bins = 0;
+  uint32_t rem_lits_tried = 0;
 
   uint64_t last_restart_num_conflicts = 0;
   uint64_t last_restart_num_decisions = 0;

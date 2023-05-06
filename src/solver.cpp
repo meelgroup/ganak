@@ -68,7 +68,7 @@ void Counter::init_activity_scores()
 
 void Counter::end_irred_cls()
 {
-  tmp_seen.resize(nVars()+1, 0);
+  tmp_seen.resize(2*(nVars()+2), 0);
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
 #ifdef DOPCC
   comp_manager_->getrandomseedforclhash();
@@ -1152,8 +1152,52 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   }
 
   //assert(uipLit.var() != 0);
-  if (uipLit.var() != 0) tmp_clause_minim.push_front(uipLit);
+  stats.uip_lits_learned+=tmp_clause_minim.size();
+  for(const auto& v: toClear) tmp_seen[v] = false;
+  toClear.clear();
+  if (uipLit.var() != 0) {
+    stats.uip_lits_learned++;
+    tmp_clause_minim.push_front(uipLit);
+    // Minimization is buggy... but why?
+    /* if (stats.rem_lits_tried <= (200ULL*1000ULL) || */
+    /*     (stats.rem_lits_tried > (200ULL*1000ULL) && */
+    /*     ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3))) */
+    /*   minimize_uip_cl_with_bins(tmp_clause_minim); */
+  }
+  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+  stats.uip_cls++;
+  stats.final_cl_sz+=tmp_clause_minim.size();
   uip_clauses_.push_back(vector<Lit>(tmp_clause_minim.begin(), tmp_clause_minim.end()));
+}
+
+//BUGGYYY!!!!
+template<class T>
+void Counter::minimize_uip_cl_with_bins(T& cl) {
+  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+  uint32_t rem = 0;
+  assert(cl.size() > 0);
+  tmp_minim_with_bins.clear();
+  for(const auto& l: cl) {
+    tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
+  for(const auto& l: cl) {
+    if (!tmp_seen[l.toPosInt()]) continue;
+    const auto& w = watches_[l].binary_links_;
+    for(const auto& l2: w) {
+      assert(l != l2);
+      if (tmp_seen[(l2.neg()).toPosInt()]) { tmp_seen[(l2.neg()).toPosInt()] = 0; rem++; }
+    }
+  }
+  cl = {tmp_minim_with_bins[0]};
+  tmp_seen[tmp_minim_with_bins[0].toPosInt()] = 0;
+  for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
+    Lit l = tmp_minim_with_bins[i];
+    if (tmp_seen[l.toPosInt()]) {
+      cl.push_back(l);
+      tmp_seen[l.toPosInt()] = 0;
+    }
+  }
+  stats.rem_lits_with_bins+=rem;
+  stats.rem_lits_tried++;
 }
 
 void Counter::recordLastUIPCauses() {
@@ -1252,111 +1296,6 @@ void Counter::recordLastUIPCauses() {
     curr_lit = NOT_A_LIT;
   }
   minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
-  for(const auto& v: toClear) tmp_seen[v] = false;
-  toClear.clear();
-}
-
-void Counter::recordAllUIPCauses() {
-  // note:
-  // variables of lower dl: if seen we dont work with them anymore
-  // variables of this dl: if seen we incorporate their
-  // antecedent and set to unseen
-  tmp_seen.resize(nVars()+1, false);
-  tmp_clause.clear();
-  assert(toClear.empty());
-
-  assertion_level_ = 0;
-  uip_clauses_.clear();
-
-  uint32_t trail_ofs = trail.size();
-  const uint32_t DL = decision_stack_.get_decision_level();
-  uint32_t lits_at_current_dl = 0;
-
-  for (const auto& l : violated_clause) {
-    if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
-    if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
-    else lits_at_current_dl++;
-    if (config_.alluip_inc_act) increaseActivity(l);
-    tmp_seen[l.var()] = true;
-    toClear.push_back(l.var());
-  }
-  Lit curr_lit;
-  while (lits_at_current_dl) {
-    assert(trail_ofs != 0);
-    curr_lit = trail[--trail_ofs];
-    if (!tmp_seen[curr_lit.var()]) continue;
-    tmp_seen[curr_lit.var()] = false;
-
-    if (lits_at_current_dl-- == 1) {
-      if (!hasAntecedent(curr_lit)) {
-        // this should be the decision literal when in first branch
-        // or it is a literal decided to explore in failed literal testing
-        //assert(stack_.TOS_decLit() == curr_lit);
-        break;
-      }
-      // perform UIP stuff
-      minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
-    }
-
-    assert(hasAntecedent(curr_lit));
-    if (antedecentBProp(curr_lit)) {
-      // BProp is the reason
-      for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
-        const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
-        assert(decision_stack_[i].getbranchvar() == l.var());
-        if (tmp_seen[l.var()] || (var(l).decision_level == 0) ||
-            existsUnitClauseOf(l.var())) {
-          continue;
-        }
-        if (var(l).decision_level < (int)DL) {
-          tmp_clause.push_back(l);
-        } else {
-          lits_at_current_dl++;
-        }
-        tmp_seen[l.var()] = true;
-        toClear.push_back(l.var());
-      }
-    } else if (getAntecedent(curr_lit).isAClause()) {
-      // Long clause is the reason
-      if (config_.alluip_inc_act) updateActivities(getAntecedent(curr_lit).asCl());
-      assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
-
-      for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
-        if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
-              existsUnitClauseOf(it->var())) {
-          continue;
-        }
-        if (var(*it).decision_level < (int)DL) {
-          tmp_clause.push_back(*it);
-        } else {
-          lits_at_current_dl++;
-        }
-        tmp_seen[it->var()] = true;
-        toClear.push_back(it->var());
-      }
-    } else {
-      // Binary clause is the reason
-      Lit alit = getAntecedent(curr_lit).asLit();
-      if (config_.alluip_inc_act) {
-        increaseActivity(alit);
-        increaseActivity(curr_lit);
-      }
-      if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
-            !existsUnitClauseOf(alit.var())) {
-        if (var(alit).decision_level < (int)DL) {
-          tmp_clause.push_back(alit);
-        } else {
-          lits_at_current_dl++;
-        }
-        tmp_seen[alit.var()] = true;
-        toClear.push_back(alit.var());
-      }
-    }
-  }
-  if (!hasAntecedent(curr_lit)) {
-    minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
-  }
-  for(const auto& v: toClear) tmp_seen[v] = false;
   toClear.clear();
 }
 

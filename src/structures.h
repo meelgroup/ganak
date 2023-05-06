@@ -48,6 +48,10 @@ public:
     return ((int) value_ >> 1) * ((sign()) ? 1 : -1);
   }
 
+  int toPosInt() const {
+    return ((int) value_ >> 1) * ((sign()) ? 1 : 2);
+  }
+
   void inc(){++value_;}
 
   void copyRaw(uint32_t v) {

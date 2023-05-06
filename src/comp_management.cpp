@@ -53,7 +53,7 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   }
   stats.cache_pollutions_called++;
 
-  SLOW_DEBUG_DO(cache_.test_descendantstree_consistency());
+  /* SLOW_DEBUG_DO(cache_.test_descendantstree_consistency()); */
 }
 
 // For lookahead

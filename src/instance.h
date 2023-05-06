@@ -21,7 +21,7 @@ public:
   Instance(const CounterConfiguration& _config) : config_(_config), stats (this) { }
   void new_vars(const uint32_t n);
   void add_irred_cl(const vector<Lit>& lits);
-  uint32_t get_num_lbd2s() const;
+  uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return red_cls.size(); }
   uint32_t get_num_irred_long_cls() const { return stats.num_long_irred_clauses_; }
 protected:
@@ -94,6 +94,9 @@ protected:
   LiteralIndexedVector<TriValue> lit_values_;
   vector<double> tdscore; // treewidth-decomposition score
   double act_inc = 1.0;
+  uint32_t lbd_cutoff = 2;
+  uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
+  uint32_t num_used_cls = 0; // last time counted used clauses
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbdHelper;
@@ -120,7 +123,7 @@ protected:
 
   void updateActivities(ClauseOfs offs) {
     getHeaderOf(offs).increaseScore();
-    getHeaderOf(offs).lbd = calc_lbd(offs);
+    getHeaderOf(offs).update_lbd(calc_lbd(offs));
     for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++)
       increaseActivity(*it);
   }

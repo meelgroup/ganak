@@ -99,23 +99,28 @@ struct ClSorter {
 
 void Instance::reduceDB() {
   stats.reduceDBs++;
+  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == 2
+      && num_low_lbd_cls < 100) {
+    verb_print(1, " [rdb] bumping rdb cutoff to 3");
+    lbd_cutoff = 3;
+  }
   const auto cls_before = red_cls.size();
 
   vector<ClauseOfs> tmp_red_cls = red_cls;
   red_cls.clear();
+  num_low_lbd_cls = 0;
+  num_used_cls = 0;
   sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(lit_pool_));
-  uint32_t num_lbd2_cls = 0;
-  uint32_t num_used_cls = 0;
   uint32_t cutoff = 10000;
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
     auto& h = getHeaderOf(off);
-    if (h.lbd == 2) num_lbd2_cls++;
+    if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
     else if (h.used) num_used_cls++;
 
-    if (red_cl_can_be_deleted(off) && h.lbd > 2 &&
-        i > cutoff + num_lbd2_cls) {
+    if (red_cl_can_be_deleted(off) && h.lbd > lbd_cutoff &&
+        i > cutoff + num_low_lbd_cls + num_used_cls) {
       markClauseDeleted(off);
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;
@@ -125,16 +130,9 @@ void Instance::reduceDB() {
     }
   }
   verb_print(1, "[rdb] cls before: " << cls_before << " after: " << red_cls.size()
-      << " lbd2: " << num_lbd2_cls << " used: " << num_used_cls << " rdb: " << stats.reduceDBs);
-}
-
-uint32_t Instance::get_num_lbd2s() const{
-  uint32_t num_lbd2s = 0;
-  for(uint32_t i = 0; i < red_cls.size(); i++){
-    const ClauseOfs& off = red_cls[i];
-    if (getHeaderOf(off).lbd == 2)  num_lbd2s++;
-  }
-  return num_lbd2s;
+      << " low lbd: " << num_low_lbd_cls
+      << " lbd cutoff: " << lbd_cutoff
+      << " used: " << num_used_cls << " rdb: " << stats.reduceDBs);
 }
 
 bool Instance::red_cl_can_be_deleted(ClauseOfs cl_ofs){

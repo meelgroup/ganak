@@ -1152,9 +1152,7 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   }
 
   //assert(uipLit.var() != 0);
-  if (uipLit.var() != 0) {
-    tmp_clause_minim.push_front(uipLit);
-  }
+  if (uipLit.var() != 0) tmp_clause_minim.push_front(uipLit);
   uip_clauses_.push_back(vector<Lit>(tmp_clause_minim.begin(), tmp_clause_minim.end()));
 }
 

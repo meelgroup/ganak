@@ -204,7 +204,6 @@ public:
   ClHeader(uint8_t _lbd): lbd(_lbd)  {}
 
   void increaseScore() {
-    // TODO shouldn't we re-calculate the LBD always here??
     used = 1;
     total_used++;
   }
@@ -212,6 +211,10 @@ public:
   uint8_t used = 1;
   uint8_t lbd;
   uint8_t marked_deleted:1 = 0;
+
+  void update_lbd(uint32_t _lbd) {
+    if (_lbd < lbd) lbd = _lbd;
+  }
 
   constexpr static uint32_t overheadInLits() {
     return sizeof(ClHeader)/sizeof(Lit) + (bool)(sizeof(ClHeader)%sizeof(Lit));

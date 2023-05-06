@@ -148,8 +148,10 @@ private:
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
-    if (!fake_ante && ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
+    if (!fake_ante && ant.isAClause() && ant.asCl() != NOT_A_CLAUSE) {
       getHeaderOf(ant.asCl()).increaseScore();
+      getHeaderOf(ant.asCl()).update_lbd(calc_lbd(ant.asCl()));
+    }
     lit_values_[lit] = T_TRI;
     lit_values_[lit.neg()] = F_TRI;
     return true;
@@ -174,7 +176,7 @@ private:
   void setConflictState(ClauseOfs off)
   {
     getHeaderOf(off).increaseScore();
-    getHeaderOf(off).lbd = calc_lbd(off);
+    getHeaderOf(off).update_lbd(calc_lbd(off));
     violated_clause.clear();
     for (auto it = beginOf(off); *it != SENTINEL_LIT; it++)
       violated_clause.push_back(*it);

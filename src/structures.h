@@ -9,6 +9,7 @@
 #define STRUCTURES_H_
 
 #include <vector>
+#include <cassert>
 #include <iostream>
 #include "primitive_types.h"
 #include "common.h"
@@ -25,9 +26,10 @@ typedef uint8_t TriValue;
 
 class Lit {
 public:
-
-  constexpr Lit() : value_(0) { }
-  constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign)
+  Lit(uint32_t val) = delete;
+  Lit(int val) = delete;
+  explicit constexpr Lit() : value_(0) { }
+  explicit constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign)
   {}
 
   VariableIndex var() const {
@@ -116,11 +118,9 @@ public:
   }
 
   void replaceWatchLinkTo(ClauseOfs off, ClauseOfs replace_ofs) {
-    for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
-      if (it->ofs == off) {
-        it->ofs = replace_ofs;
-        return;
-      }
+    for (auto& w: watch_list_)
+      if (w.ofs == off) { w.ofs = replace_ofs; return; }
+    assert(false && "Should have found it!!!");
   }
 
   void addWatchLinkTo(ClauseIndex offs, Lit blockedLit) {
@@ -136,7 +136,7 @@ public:
     watch_list_.clear();
   }
 
-  bool hasBinaryLinkTo(Lit lit) {
+  bool hasBinaryLinkTo(Lit lit) const {
     for (const auto& l : binary_links_) {
       if (l == lit) return true;
     }
@@ -195,13 +195,13 @@ struct Variable {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
   bool last_polarity = false;
-  bool bprop = false;
+  bool fake_ante = false;
   bool set_once = false; //it has once been set to some value
 };
 
-class ClauseHeader {
+class ClHeader {
 public:
-  ClauseHeader(uint8_t _lbd): lbd(_lbd)  {}
+  ClHeader(uint8_t _lbd): lbd(_lbd)  {}
 
   void increaseScore() {
     // TODO shouldn't we re-calculate the LBD always here??
@@ -211,9 +211,10 @@ public:
   uint32_t total_used = 0;
   uint8_t used = 1;
   uint8_t lbd;
+  uint8_t marked_deleted = 0;
 
   constexpr static uint32_t overheadInLits() {
-    return sizeof(ClauseHeader)/sizeof(Lit) + (bool)(sizeof(ClauseHeader)%sizeof(Lit));
+    return sizeof(ClHeader)/sizeof(Lit) + (bool)(sizeof(ClHeader)%sizeof(Lit));
   }
 };
 

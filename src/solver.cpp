@@ -102,7 +102,7 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
     red_cls.push_back(cl_ofs);
     auto& header = getHeaderOf(cl_ofs);
     if (lbd == -1) lbd = lits.size();
-    header = ClauseHeader(lbd);
+    header = ClHeader(lbd);
   }
 }
 
@@ -904,8 +904,8 @@ void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
 
   // TODO get learnt clauses too
     /* for(auto cl_ofs: conflict_clauses_) { */
-    /*     const ClauseHeader* ch = (const ClauseHeader *) */
-    /*       ( &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]); */
+    /*     const ClHeader* ch = (const ClHeader *) */
+    /*       ( &lit_pool_[cl_ofs - ClHeader::overheadInLits()]); */
     /*     auto sz = ch->length(); */
     /* } */
 }

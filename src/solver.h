@@ -140,7 +140,7 @@ private:
 
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
-    if (bothprop) var(lit).bprop = true;
+    if (bothprop) var(lit).fake_ante = true;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;

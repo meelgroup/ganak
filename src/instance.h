@@ -28,7 +28,7 @@ protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
-    var(lit).bprop = false;
+    var(lit).fake_ante = false;
     var(lit).decision_level = INVALID_DL;
     lit_values_[lit] = X_TRI;
     lit_values_[lit.neg()] = X_TRI;
@@ -39,15 +39,15 @@ protected:
   }
 
   bool antedecentBProp(Lit lit) const {
-    return variables_[lit.var()].bprop;
+    return variables_[lit.var()].fake_ante;
   }
 
   bool hasAntecedent(Lit lit) const {
-    return variables_[lit.var()].bprop || variables_[lit.var()].ante.isAnt();
+    return variables_[lit.var()].fake_ante || variables_[lit.var()].ante.isAnt();
   }
 
   bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) {
-    return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
+    return !var(lit).fake_ante && var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
   void reduceDB();
@@ -70,7 +70,7 @@ protected:
    *   irred clauses are until irred_lit_pool_size_
    *   INVARIANT: first and last entries of lit_pool_ are a SENTINEL_LIT
    *
-   *   Clauses begin with a ClauseHeader structure followed by the literals
+   *   Clauses begin with a ClHeader structure followed by the literals
    *   terminated by SENTINEL_LIT
    */
   vector<Lit> lit_pool_;
@@ -191,14 +191,14 @@ protected:
      return lit_pool_.begin() + irred_lit_pool_size_;
    }
 
-  const ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) const {
-    return *reinterpret_cast<const ClauseHeader *>(
-        &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
+  const ClHeader &getHeaderOf(ClauseOfs cl_ofs) const {
+    return *reinterpret_cast<const ClHeader *>(
+        &lit_pool_[cl_ofs - ClHeader::overheadInLits()]);
   }
 
-  ClauseHeader &getHeaderOf(ClauseOfs cl_ofs) {
-    return *reinterpret_cast<ClauseHeader *>(
-        &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
+  ClHeader &getHeaderOf(ClauseOfs cl_ofs) {
+    return *reinterpret_cast<ClHeader *>(
+        &lit_pool_[cl_ofs - ClHeader::overheadInLits()]);
   }
 
   bool isSatisfied(ClauseOfs cl_ofs) {
@@ -234,7 +234,7 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
     return 0;
   }
 
-  for (uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++) lit_pool_.push_back(Lit());
+  for (uint32_t i = 0; i < ClHeader::overheadInLits(); i++) lit_pool_.push_back(Lit());
   ClauseOfs cl_ofs = lit_pool_.size();
 
   for (auto l : literals) { lit_pool_.push_back(l); }
@@ -252,7 +252,7 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
     if (cl_ofs != 0) {
       red_cls.push_back(cl_ofs);
       auto& header = getHeaderOf(cl_ofs);
-      header = ClauseHeader(calc_lbd(cl_ofs));
+      header = ClHeader(calc_lbd(cl_ofs));
       ante = Antecedent(cl_ofs);
     } else if (literals.size() == 2){
       ante = Antecedent(literals.back());

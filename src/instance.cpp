@@ -20,8 +20,8 @@ void Instance::compactConflictLiteralPool(){
   vector<ClauseOfs> tmp_conflict_clauses = red_cls;
   red_cls.clear();
   for(auto offs: tmp_conflict_clauses){
-    auto read_pos = beginOf(offs) - ClauseHeader::overheadInLits();
-    for(uint32_t i = 0; i < ClauseHeader::overheadInLits(); i++)
+    auto read_pos = beginOf(offs) - ClHeader::overheadInLits();
+    for(uint32_t i = 0; i < ClHeader::overheadInLits(); i++)
       *(write_pos++) = *(read_pos++);
     ClauseOfs new_ofs =  write_pos - lit_pool_.begin();
     red_cls.push_back(new_ofs);
@@ -44,9 +44,9 @@ void Instance::compactConflictLiteralPool(){
 struct ClSorter {
   ClSorter(const vector<Lit>& lit_pool) : lit_pool_(lit_pool) {}
 
-  const ClauseHeader& getHeaderOf(ClauseOfs cl_ofs) const {
-    return *reinterpret_cast<const ClauseHeader *>(
-        &lit_pool_[cl_ofs - ClauseHeader::overheadInLits()]);
+  const ClHeader& getHeaderOf(ClauseOfs cl_ofs) const {
+    return *reinterpret_cast<const ClHeader *>(
+        &lit_pool_[cl_ofs - ClHeader::overheadInLits()]);
   }
   bool operator()(ClauseOfs& a, ClauseOfs& b) const {
     const auto& ah = getHeaderOf(a);

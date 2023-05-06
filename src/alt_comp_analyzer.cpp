@@ -40,7 +40,7 @@ void ComponentAnalyzer::initialize(
     if (*it_lit == SENTINEL_LIT) { //End of this clause
       if (it_lit + 1 == lit_pool.end()) break;
       max_clause_id_++;
-      it_lit += ClauseHeader::overheadInLits();
+      it_lit += ClHeader::overheadInLits();
       it_curr_cl_st = it_lit + 1; // Point to next clause
     } else {
       const uint32_t var = it_lit->var();

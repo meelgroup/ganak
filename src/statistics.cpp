@@ -42,7 +42,7 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
   cout << "c conflict cls (long/bin/u)      " << std::fixed
     << solver->get_num_long_reds()
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
-  cout << "c rdbs/lbd2/rem             "
+  cout << "c rdbs/lbd2/rem                  "
     << std::setw(5) << reduceDBs
     << std::setw(6) << solver->get_num_lbd2s()
     << std::setw(6) << cls_removed << endl;

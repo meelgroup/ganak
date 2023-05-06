@@ -46,7 +46,7 @@ protected:
     return variables_[lit.var()].fake_ante || variables_[lit.var()].ante.isAnt();
   }
 
-  bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) {
+  bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) const {
     return !var(lit).fake_ante && var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
@@ -58,6 +58,8 @@ protected:
   // Compact the literal pool erasing all the clause
   // information from deleted clauses
   void compactConflictLiteralPool();
+  bool findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
+  void checkWatchLists() const;
 
   uint32_t nVars() const {
     return variables_.size() - 1;
@@ -153,6 +155,10 @@ protected:
   inline bool add_bin_cl(Lit litA, Lit litB, bool irred);
 
   inline Variable &var(const Lit lit) {
+    return variables_[lit.var()];
+  }
+
+  inline const Variable &var(const Lit lit) const {
     return variables_[lit.var()];
   }
 

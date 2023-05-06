@@ -211,7 +211,7 @@ public:
   uint32_t total_used = 0;
   uint8_t used = 1;
   uint8_t lbd;
-  uint8_t marked_deleted = 0;
+  uint8_t marked_deleted:1 = 0;
 
   constexpr static uint32_t overheadInLits() {
     return sizeof(ClHeader)/sizeof(Lit) + (bool)(sizeof(ClHeader)%sizeof(Lit));

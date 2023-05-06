@@ -16,22 +16,27 @@
 void Instance::compactConflictLiteralPool(){
   stats.cls_deleted_since_compaction = 0;
 
+  // We must sort, or we can later overwrite offs1 with offs2 and then offs2 can
+  // happen to be a new offset and then we overwrite that, etc... A mess.
+  std::sort(red_cls.begin(), red_cls.end());
+
   auto write_pos = conflict_clauses_begin();
   vector<ClauseOfs> tmp_conflict_clauses = red_cls;
   red_cls.clear();
-  for(auto offs: tmp_conflict_clauses){
+  for(const auto& offs: tmp_conflict_clauses){
+    Lit l1 = *beginOf(offs);
+    Lit l2 = *beginOf(offs+1);
     auto read_pos = beginOf(offs) - ClHeader::overheadInLits();
-    for(uint32_t i = 0; i < ClHeader::overheadInLits(); i++)
-      *(write_pos++) = *(read_pos++);
+    for(uint32_t i = 0; i < ClHeader::overheadInLits(); i++) *(write_pos++) = *(read_pos++);
     ClauseOfs new_ofs =  write_pos - lit_pool_.begin();
     red_cls.push_back(new_ofs);
-    // first substitute antecedent if offs implied something
-    if(isAntecedentOf(offs, *beginOf(offs)))
-      var(*beginOf(offs)).ante = Antecedent(new_ofs);
+    // first substitute antecedent if l1 implied something
+    if(isAntecedentOf(offs, l1)) var(l1).ante = Antecedent(new_ofs);
 
     // now redo the watches
-    litWatchList(*beginOf(offs)).replaceWatchLinkTo(offs,new_ofs);
-    litWatchList(*(beginOf(offs)+1)).replaceWatchLinkTo(offs,new_ofs);
+    litWatchList(l1).replaceWatchLinkTo(offs,new_ofs);
+    litWatchList(l2).replaceWatchLinkTo(offs,new_ofs);
+
     // next, copy clause data
     assert(read_pos == beginOf(offs));
     while(*read_pos != SENTINEL_LIT) *(write_pos++) = *(read_pos++);
@@ -39,6 +44,40 @@ void Instance::compactConflictLiteralPool(){
   }
   lit_pool_.erase(write_pos,lit_pool_.end());
   stats.compactions++;
+  SLOW_DEBUG_DO(checkWatchLists());
+}
+
+void Instance::checkWatchLists() const {
+  auto red_cls2 = red_cls;
+  // check for duplicates
+  std::sort(red_cls2.begin(), red_cls2.end());
+  for(uint32_t i = 1; i < red_cls2.size(); i++) {
+    assert(red_cls2[i-1] != red_cls2[i]);
+  }
+
+  for(const auto& offs: red_cls) {
+    const auto& header = getHeaderOf(offs);
+    assert(!header.marked_deleted);
+
+    Lit l1 = *beginOf(offs);
+    Lit l2 = *beginOf(offs+1);
+    if (!findOfsInWatch(litWatchList(l1).watch_list_, offs)) {
+      cout << "Did not find watch l1!!" << endl;
+      assert(false);
+      exit(-1);
+    }
+    if (!findOfsInWatch(litWatchList(l2).watch_list_, offs)) {
+      cout << "Did not find watch l2!!" << endl;
+      assert(false);
+      exit(-1);
+    }
+  }
+}
+
+bool Instance::findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
+{
+  for (auto& w: ws) if (w.ofs == off) { return true; }
+  return false;
 }
 
 struct ClSorter {

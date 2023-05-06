@@ -978,7 +978,8 @@ bool Counter::failed_lit_probe_no_bprop()
     // Do the probing
     toSet.clear();
     for (auto& l : test_lits) if (isUnknown(l) && threshold <= watches_[l].activity) {
-        if (!one_lit_probe(l, true)) return false;
+        if (!one_lit_probe(l, false)) return false;
+        SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
       }
   }
   print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
@@ -1031,6 +1032,7 @@ bool Counter::failed_lit_probe_with_bprop() {
         if (watches_[l].activity < watches_[l.neg()].activity) l = l.neg();
         if (!one_lit_probe(l, true)) return false;
         if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
+        SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
       }
     }
 

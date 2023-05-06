@@ -1062,7 +1062,6 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   if (set == true) assert(toClear.empty());
 
   bool bSucceeded = propagate(sz);
-  SLOW_DEBUG_DO(for(const auto& v: tmp_seen) assert(v == 0));
   decision_stack_.stopFailedLitTest();
 
   // backtracking
@@ -1091,6 +1090,8 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     print_debug("-> failed literal detected");
     sz = trail.size();
     setLiteralIfFree(lit.neg(), Antecedent(NOT_A_CLAUSE), true);
+    for(const auto& v: toClear) tmp_seen[v] = 0;
+    toClear.clear();
     if (!propagate(sz)) {
       print_debug("Failed literal probing END -- this comp/branch is UNSAT");
       return false;

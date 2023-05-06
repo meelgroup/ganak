@@ -132,7 +132,7 @@ private:
   retStateT resolveConflict();
 
   bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE),
-      const bool bothprop = false)
+      const bool fake_ante = false)
   {
     if (lit_values_[lit] != X_TRI) return false;
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
@@ -140,7 +140,7 @@ private:
 
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
-    if (bothprop) var(lit).fake_ante = true;
+    if (fake_ante) var(lit).fake_ante = true;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
@@ -148,7 +148,7 @@ private:
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
-    if (ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
+    if (!fake_ante && ant.isAClause() && ant.asCl() != NOT_A_CLAUSE)
       getHeaderOf(ant.asCl()).increaseScore();
     lit_values_[lit] = T_TRI;
     lit_values_[lit.neg()] = F_TRI;

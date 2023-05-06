@@ -237,12 +237,11 @@ private:
   // during the most recent conflict analysis
   // it might contain more than 2 clauses
   // but always will have:
-  //      uip_clauses_.front() the 1UIP clause found
-  //      uip_clauses_.back() the lastUIP clause found
+  //      uip_clause the 1UIP clause found
   //  possible clauses in between will be other UIP clauses
-  vector<vector<Lit>> uip_clauses_;
+  vector<Lit> uip_clause;
 
-  // the assertion level of uip_clauses_.back()
+  // the assertion level of uip_clauses
   // or (if the decision variable did not have an antecedent
   // before) then assertionLevel_ == DL;
   int assertion_level_ = 0;

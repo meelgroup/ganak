@@ -772,8 +772,7 @@ retStateT Counter::resolveConflict() {
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
-  assert(uip_clauses_.size() == 1);
-  if (uip_clauses_.back().empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
+  if (uip_clause.empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
   decision_stack_.top().mark_branch_unsat();
 
   if (decision_stack_.top().is_right_branch()) {
@@ -784,13 +783,13 @@ retStateT Counter::resolveConflict() {
   Antecedent ant(NOT_A_CLAUSE);
   // this has to be checked since using implicit BCP
   // and checking literals there not exhaustively
-  // we cannot guarantee that uip_clauses_.back().front() == TOS_decLit().neg()
+  // we cannot guarantee that uip_clause.front() == TOS_decLit().neg()
   // this is because we might have checked a literal
   // during implict BCP which has been a failed literal
   // due only to assignments made at lower decision levels
-  if (!uip_clauses_.back().empty() && uip_clauses_.back().front() == top_dec_lit().neg()) {
-    assert(top_dec_lit().neg() == uip_clauses_.back()[0]);
-    var(top_dec_lit().neg()).ante = addUIPConflictClause( uip_clauses_.back());
+  if (!uip_clause.empty() && uip_clause.front() == top_dec_lit().neg()) {
+    assert(top_dec_lit().neg() == uip_clause[0]);
+    var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
     ant = var(top_dec_lit()).ante;
   }
   assert(decision_stack_.get_decision_level() > 0);
@@ -1151,10 +1150,12 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
             && (uint32_t)var(uipLit).decision_level == decision_stack_.get_decision_level());
   }
 
-  //assert(uipLit.var() != 0);
-  stats.uip_lits_learned+=tmp_clause_minim.size();
+  // Clearing
   for(const auto& v: toClear) tmp_seen[v] = false;
   toClear.clear();
+
+  //assert(uipLit.var() != 0);
+  stats.uip_lits_learned+=tmp_clause_minim.size();
   if (uipLit.var() != 0) {
     stats.uip_lits_learned++;
     tmp_clause_minim.push_front(uipLit);
@@ -1164,10 +1165,10 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
     /*     ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3))) */
     /*   minimize_uip_cl_with_bins(tmp_clause_minim); */
   }
-  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
   stats.uip_cls++;
   stats.final_cl_sz+=tmp_clause_minim.size();
-  uip_clauses_.push_back(vector<Lit>(tmp_clause_minim.begin(), tmp_clause_minim.end()));
+  uip_clause.clear();
+  for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
 }
 
 //BUGGYYY!!!!
@@ -1177,17 +1178,16 @@ void Counter::minimize_uip_cl_with_bins(T& cl) {
   uint32_t rem = 0;
   assert(cl.size() > 0);
   tmp_minim_with_bins.clear();
-  for(const auto& l: cl) {
-    tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
+  for(const auto& l: cl) { tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
   for(const auto& l: cl) {
     if (!tmp_seen[l.toPosInt()]) continue;
     const auto& w = watches_[l].binary_links_;
     for(const auto& l2: w) {
-      assert(l != l2);
+      assert(l.var() != l2.var());
       if (tmp_seen[(l2.neg()).toPosInt()]) { tmp_seen[(l2.neg()).toPosInt()] = 0; rem++; }
     }
   }
-  cl = {tmp_minim_with_bins[0]};
+  cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
   tmp_seen[tmp_minim_with_bins[0].toPosInt()] = 0;
   for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
     Lit l = tmp_minim_with_bins[i];
@@ -1209,7 +1209,7 @@ void Counter::recordLastUIPCauses() {
   assert(toClear.empty());
 
   assertion_level_ = 0;
-  uip_clauses_.clear();
+  uip_clause.clear();
 
   uint32_t trail_ofs = trail.size();
   const uint32_t DL = decision_stack_.get_decision_level();
@@ -1296,7 +1296,7 @@ void Counter::recordLastUIPCauses() {
     curr_lit = NOT_A_LIT;
   }
   minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
-  toClear.clear();
+  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
 }
 
 Counter::Counter(const CounterConfiguration& conf) : Instance(conf)

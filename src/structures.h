@@ -49,7 +49,7 @@ public:
   }
 
   int toPosInt() const {
-    return ((int) value_ >> 1) * ((sign()) ? 1 : 2);
+    return value_;
   }
 
   void inc(){++value_;}

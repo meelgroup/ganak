@@ -1159,11 +1159,8 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   if (uipLit.var() != 0) {
     stats.uip_lits_learned++;
     tmp_clause_minim.push_front(uipLit);
-    // Minimization is buggy... but why?
-    /* if (stats.rem_lits_tried <= (200ULL*1000ULL) || */
-    /*     (stats.rem_lits_tried > (200ULL*1000ULL) && */
-    /*     ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3))) */
-    /*   minimize_uip_cl_with_bins(tmp_clause_minim); */
+    uint32_t lbd = calc_lbd(tmp_clause_minim);
+    if (lbd < 6) minimize_uip_cl_with_bins(tmp_clause_minim);
   }
   stats.uip_cls++;
   stats.final_cl_sz+=tmp_clause_minim.size();
@@ -1171,7 +1168,6 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
 }
 
-//BUGGYYY!!!!
 template<class T>
 void Counter::minimize_uip_cl_with_bins(T& cl) {
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
@@ -1180,6 +1176,8 @@ void Counter::minimize_uip_cl_with_bins(T& cl) {
   tmp_minim_with_bins.clear();
   for(const auto& l: cl) { tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
   for(const auto& l: cl) {
+  /* { */
+    /* Lit l = tmp_minim_with_bins[0]; */
     if (!tmp_seen[l.toPosInt()]) continue;
     const auto& w = watches_[l].binary_links_;
     for(const auto& l2: w) {

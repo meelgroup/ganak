@@ -121,6 +121,20 @@ protected:
     return nblevels;
   }
 
+  template<class T> uint32_t calc_lbd(T& lits) {
+    lbdHelperFlag++;
+    uint32_t nblevels = 0;
+    for(const auto& l: lits) {
+      int lev = var(l).decision_level;
+      if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
+        lbdHelper[lev] = lbdHelperFlag;
+        nblevels++;
+        if (nblevels >= 1000) { return nblevels; }
+      }
+    }
+    return nblevels;
+  }
+
   void updateActivities(ClauseOfs offs) {
     getHeaderOf(offs).increaseScore();
     getHeaderOf(offs).update_lbd(calc_lbd(offs));

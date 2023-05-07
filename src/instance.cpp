@@ -24,6 +24,7 @@ void Instance::compactConflictLiteralPool(){
   vector<ClauseOfs> tmp_conflict_clauses = red_cls;
   red_cls.clear();
   for(const auto& offs: tmp_conflict_clauses){
+    /* size_t origsize = minimize_cl_with_bins(offs); */
     Lit l1 = *beginOf(offs);
     Lit l2 = *beginOf(offs+1);
     auto read_pos = beginOf(offs) - ClHeader::overheadInLits();
@@ -38,8 +39,10 @@ void Instance::compactConflictLiteralPool(){
     litWatchList(l2).replaceWatchLinkTo(offs,new_ofs);
 
     // next, copy clause data
+    /* size_t i = 0; */
     assert(read_pos == beginOf(offs));
-    while(*read_pos != SENTINEL_LIT) *(write_pos++) = *(read_pos++);
+    while(*read_pos != SENTINEL_LIT) {*(write_pos++) = *(read_pos++); i++;}
+    /* for(; i < origsize; i++) read_pos++; */
     *(write_pos++) = SENTINEL_LIT;
   }
   lit_pool_.erase(write_pos,lit_pool_.end());
@@ -96,6 +99,35 @@ struct ClSorter {
   }
   const vector<Lit>& lit_pool_;
 };
+
+// TODO with propagation and long clauses, etc.
+size_t Instance::minimize_cl_with_bins(ClauseOfs off) {
+  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+  uint32_t rem = 0;
+  tmp_minim_with_bins.clear();
+  for (auto l = beginOf(off); *l != SENTINEL_LIT; l++) { tmp_seen[l->toPosInt()] = 1; tmp_minim_with_bins.push_back(*l);}
+  for(const auto& l: tmp_minim_with_bins) {
+    if (!tmp_seen[l.toPosInt()]) continue;
+    const auto& w = watches_[l].binary_links_;
+    for(const auto& l2: w) {
+      assert(l.var() != l2.var());
+      if (tmp_seen[(l2.neg()).toPosInt()]) { tmp_seen[(l2.neg()).toPosInt()] = 0; rem++; }
+    }
+  }
+  uint32_t at = 0;
+  for(uint32_t i = 0; i < tmp_minim_with_bins.size(); i++) {
+    Lit l = tmp_minim_with_bins[i];
+    if (tmp_seen[l.toPosInt()] || i <= 1) {
+      *beginOf(off+at) = l;
+      at++;
+      tmp_seen[l.toPosInt()] = 0;
+    }
+  }
+  while (at < tmp_minim_with_bins.size()) {*beginOf(off+at) = SENTINEL_LIT; at++;}
+  stats.rem_lits_with_bins+=rem;
+  stats.rem_lits_tried++;
+  return tmp_minim_with_bins.size(); // original size
+}
 
 void Instance::reduceDB() {
   stats.reduceDBs++;

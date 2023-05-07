@@ -51,6 +51,9 @@ protected:
   }
 
   void reduceDB();
+  size_t minimize_cl_with_bins(ClauseOfs off);
+  template<class T> void minimize_uip_cl_with_bins(T& cl);
+  vector<Lit> tmp_minim_with_bins;
   void markClauseDeleted(ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
 
@@ -290,4 +293,34 @@ bool Instance::add_bin_cl(Lit litA, Lit litB, bool irred) {
    litWatchList(litA).addBinLinkTo(litB, irred);
    litWatchList(litB).addBinLinkTo(litA, irred);
    return true;
+}
+
+template<class T>
+void Instance::minimize_uip_cl_with_bins(T& cl) {
+  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+  uint32_t rem = 0;
+  assert(cl.size() > 0);
+  tmp_minim_with_bins.clear();
+  for(const auto& l: cl) { tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
+  for(const auto& l: cl) {
+  /* { */
+    /* Lit l = tmp_minim_with_bins[0]; */
+    if (!tmp_seen[l.toPosInt()]) continue;
+    const auto& w = watches_[l].binary_links_;
+    for(const auto& l2: w) {
+      assert(l.var() != l2.var());
+      if (tmp_seen[(l2.neg()).toPosInt()]) { tmp_seen[(l2.neg()).toPosInt()] = 0; rem++; }
+    }
+  }
+  cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
+  tmp_seen[tmp_minim_with_bins[0].toPosInt()] = 0;
+  for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
+    Lit l = tmp_minim_with_bins[i];
+    if (tmp_seen[l.toPosInt()]) {
+      cl.push_back(l);
+      tmp_seen[l.toPosInt()] = 0;
+    }
+  }
+  stats.rem_lits_with_bins+=rem;
+  stats.rem_lits_tried++;
 }

@@ -255,8 +255,6 @@ private:
   void recordLastUIPCauses();
   void recordAllUIPCauses();
   void minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
-  template<class T> void minimize_uip_cl_with_bins(T& cl);
-  vector<Lit> tmp_minim_with_bins;
   void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();

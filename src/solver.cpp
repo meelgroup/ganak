@@ -1160,42 +1160,13 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
     stats.uip_lits_learned++;
     tmp_clause_minim.push_front(uipLit);
     uint32_t lbd = calc_lbd(tmp_clause_minim);
-    if (lbd < 6) minimize_uip_cl_with_bins(tmp_clause_minim);
+    /* if (lbd < 6) */
+      minimize_uip_cl_with_bins(tmp_clause_minim);
   }
   stats.uip_cls++;
   stats.final_cl_sz+=tmp_clause_minim.size();
   uip_clause.clear();
   for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
-}
-
-template<class T>
-void Counter::minimize_uip_cl_with_bins(T& cl) {
-  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
-  uint32_t rem = 0;
-  assert(cl.size() > 0);
-  tmp_minim_with_bins.clear();
-  for(const auto& l: cl) { tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
-  for(const auto& l: cl) {
-  /* { */
-    /* Lit l = tmp_minim_with_bins[0]; */
-    if (!tmp_seen[l.toPosInt()]) continue;
-    const auto& w = watches_[l].binary_links_;
-    for(const auto& l2: w) {
-      assert(l.var() != l2.var());
-      if (tmp_seen[(l2.neg()).toPosInt()]) { tmp_seen[(l2.neg()).toPosInt()] = 0; rem++; }
-    }
-  }
-  cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
-  tmp_seen[tmp_minim_with_bins[0].toPosInt()] = 0;
-  for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
-    Lit l = tmp_minim_with_bins[i];
-    if (tmp_seen[l.toPosInt()]) {
-      cl.push_back(l);
-      tmp_seen[l.toPosInt()] = 0;
-    }
-  }
-  stats.rem_lits_with_bins+=rem;
-  stats.rem_lits_tried++;
 }
 
 void Counter::recordLastUIPCauses() {

@@ -42,23 +42,28 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
   cout << "c conflict cls (long/bin/u)      " << std::fixed
     << solver->get_num_long_reds() << "/"
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_ << endl;
+  cout << "c rem lits triedK/rem lits remK  "
+    << std::setw(9) << rem_lits_tried/1000 << " "
+    << std::setw(9) << rem_lits_with_bins/1000 << " "
+    << endl;
+
   cout << "c avg clsz/rem lits avg/finalavg "
-    << std::setw(9) << safe_div(uip_lits_learned,uip_cls)
-    << std::setw(9) << safe_div(rem_lits_with_bins, rem_lits_tried)
+    << std::setw(9) << safe_div(uip_lits_learned,uip_cls) << " "
+    << std::setw(9) << safe_div(rem_lits_with_bins, rem_lits_tried) << " "
     << std::setw(9) << safe_div(final_cl_sz, uip_cls)
     << endl;
 
   cout << "c rdbs/low lbd/rem               "
-    << std::setw(5) << reduceDBs
-    << std::setw(6) << solver->get_num_low_lbds()
+    << std::setw(5) << reduceDBs << " "
+    << std::setw(6) << solver->get_num_low_lbds() << " "
     << std::setw(6) << cls_removed << endl;
   cout << "c looks/look-computes            "
     << lookaheads << "/" << lookahead_computes << endl;
   cout << "c probes/flits/bplits K          "
     << std::left
-    << std::setw(6) << (num_failed_lit_tests_/1000ULL)
-    << std::setw(6) << (num_failed_literals_detected_/1000ULL)
-    << std::setw(6) << (num_failed_bprop_literals_failed/1000ULL)
+    << std::setw(6) << (num_failed_lit_tests_/1000ULL) << " "
+    << std::setw(6) << (num_failed_literals_detected_/1000ULL) << " "
+    << std::setw(6) << (num_failed_bprop_literals_failed/1000ULL) << " "
     << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_, num_failed_lit_tests_)
     << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_+num_failed_bprop_literals_failed, num_failed_lit_tests_)
     << std::setw(16) <<" -- Kprobe/s: "
@@ -76,9 +81,9 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "" << endl;
   cout << "c cache K (lookup/ stores/ hits) "
     << std::left
-    << std::setw(6) << (num_cache_look_ups_/(1000ULL))
-    << std::setw(6) << (total_num_cached_comps_ /(1000ULL))
-    << std::setw(6) << (num_cache_hits_ /(1000ULL))
+    << std::setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
+    << std::setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
+    << std::setw(6) << (num_cache_hits_ /(1000ULL)) << " "
     << std::setw(16) << " -- Klookup/s: "
     << std::setprecision(2) << std::setw(9) << std::left
     << safe_div(num_cache_look_ups_,(1000.0*(cpuTime()-solver->get_start_time())))

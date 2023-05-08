@@ -1159,8 +1159,12 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   if (uipLit.var() != 0) {
     stats.uip_lits_learned++;
     tmp_clause_minim.push_front(uipLit);
+
     /* uint32_t lbd = calc_lbd(tmp_clause_minim); */
     /* if (lbd < 6) */
+    if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
+        (stats.rem_lits_tried > (200ULL*1000ULL) &&
+        ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
       minimize_uip_cl_with_bins(tmp_clause_minim);
   }
   stats.uip_cls++;

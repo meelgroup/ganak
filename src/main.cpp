@@ -157,7 +157,7 @@ void parse_supported_options(int argc, char** argv)
         }
 
         if (vm.count("version")) {
-            cout << ganak_version_info();
+            cout << ganak_version_info() << endl;
             std::exit(0);
         }
 
@@ -415,13 +415,13 @@ int main(int argc, char *argv[])
           command_line += " ";
       }
   }
+  sat_solver = new SATSolver;
+  sat_solver->set_renumber(false);
+  parse_supported_options(argc, argv);
   if (conf.verb) {
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
   }
-  sat_solver = new SATSolver;
-  sat_solver->set_renumber(false);
-  parse_supported_options(argc, argv);
   string fname;
   if (vm.count("input") != 0) {
     vector<string> inp = vm["input"].as<vector<string> >();

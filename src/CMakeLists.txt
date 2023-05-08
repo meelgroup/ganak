@@ -83,8 +83,8 @@ add_executable (ganak-bin
 
 set(ganak_exec_link_libs
   ganak
-  ${GMP_LIB}
   ${GMPXX_LIB}
+  ${GMP_LIB}
   ${Boost_LIBRARIES} # due to program_options
 )
 

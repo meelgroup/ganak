@@ -41,7 +41,7 @@ void Instance::compactConflictLiteralPool(){
     // next, copy clause data
     /* size_t i = 0; */
     assert(read_pos == beginOf(offs));
-    while(*read_pos != SENTINEL_LIT) {*(write_pos++) = *(read_pos++); i++;}
+    while(*read_pos != SENTINEL_LIT) {*(write_pos++) = *(read_pos++);}
     /* for(; i < origsize; i++) read_pos++; */
     *(write_pos++) = SENTINEL_LIT;
   }

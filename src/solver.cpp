@@ -410,9 +410,8 @@ uint32_t Counter::find_best_branch()
       }
     }
   }
-  assert(best_var != 0 && best_var_score != -1);
 
-  if (!config_.do_lookahead && config_.do_cache_score) {
+  if (!config_.do_lookahead && config_.do_cache_score && best_var != 0) {
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
@@ -446,7 +445,6 @@ uint32_t Counter::find_best_branch()
     }
   }
 
-  /* cout << "Decided on var: " << v << " score: " << max_score << endl; */
   return best_var;
 }
 

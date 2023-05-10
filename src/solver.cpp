@@ -114,9 +114,9 @@ void Counter::get_unit_cls(vector<Lit>& units) const
 
 void Counter::td_decompose()
 {
-	bool conditionOnCNF = nVars() > 20 && nVars() <= config_.td_varlim;
+	bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= config_.td_varlim;
   if (!conditionOnCNF) {
-    cout << "c o skipping TD, too many vars" << endl;
+    cout << "c o skipping TD, too many/few vars" << endl;
     return;
   }
 
@@ -147,12 +147,12 @@ void Counter::td_decompose()
 			edge_var_ratio <= config_.td_ratiolim;
 
 	if (!conditionOnPrimalGraph) {
-		printf("c o skipping td, primal graph is too large or dense\n");
+		cout << "c o skipping td, primal graph is too large or dense" << endl;
 		return;
 	}
 
 	// run FlowCutter
-	printf("c o FlowCutter is running...\n");fflush(stdout);
+	cout << "c o FlowCutter is running..." << endl;
 	IFlowCutter FC(nVars(), primal.numEdges(), 0); //TODO: fix time limit
 	FC.importGraph(primal);
 	TreeDecomposition td = FC.constructTD();
@@ -176,15 +176,13 @@ void Counter::td_decompose()
 		}
 	}
 
-	if(uselessTD)
-		printf("c o ignore td\n");
+	if(uselessTD) cout << "c o ignore td" << endl;
 }
 
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
-  if (indep_support_end == std::numeric_limits<uint32_t>::max())
-    indep_support_end = nVars()+1;
+  if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+1;
   tdscore.resize(indep_support_end, 0);
   largest_cube.clear();
   largest_cube_val = 0;

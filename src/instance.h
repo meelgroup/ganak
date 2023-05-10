@@ -64,6 +64,7 @@ protected:
   bool findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
   void checkWatchLists() const;
 
+  // Gives ACTUAL number of variables
   uint32_t nVars() const {
     return variables_.size() - 1;
   }

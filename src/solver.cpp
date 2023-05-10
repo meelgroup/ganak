@@ -358,7 +358,7 @@ double Counter::alternate_score(uint32_t v, bool val)
 
 uint32_t Counter::find_best_branch_gpmc()
 {
-	uint32_t maxv = std::numeric_limits<uint32_t>::max();
+	uint32_t maxv = 0;
 	double max_score_a = -1;
 	double max_score_f = -1;
   double max_score_td = -1;

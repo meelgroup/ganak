@@ -32,8 +32,8 @@ public:
   explicit constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign)
   {}
 
-  VariableIndex var() const {
-    return (value_ >> 1);
+  uint32_t var() const {
+    return (value_ >> 1U);
   }
 
   constexpr bool operator<(const Lit other) const {
@@ -48,7 +48,7 @@ public:
     return ((int) value_ >> 1) * ((sign()) ? 1 : -1);
   }
 
-  int toPosInt() const {
+  uint32_t toPosInt() const {
     return value_;
   }
 

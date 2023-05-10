@@ -188,7 +188,6 @@ void Instance::new_vars(const uint32_t n) {
   assert(red_cls.empty());
 
   lit_pool_.push_back(SENTINEL_LIT);
-  variables_.push_back(Variable());
   variables_.resize(n + 1);
   lit_values_.resize(n + 1, X_TRI);
   occ_lists_.resize(n + 1);

@@ -262,7 +262,7 @@ void parse_file(const std::string& filename, T* reader) {
   gzclose(in);
   #endif
 
-  indep_support_given = parser.sampling_vars_found;
+  indep_support_given = parser.sampling_vars_found && !ignore_indep;
   if (parser.sampling_vars_found && !ignore_indep) {
     for(const auto& var: parser.sampling_vars) indep_support.insert(var+1);
   } else {
@@ -439,6 +439,7 @@ int main(int argc, char *argv[])
   }
   parse_file(fname, sat_solver);
   if (!sat_solver->okay() || sat_solver->solve() == CMSat::l_False) {
+    cout << "s UNSATISFIABLE" << endl;
     if (indep_support_given) cout << "s pmc ";
     else cout << "s mc ";
     cout << "0" << endl;
@@ -524,6 +525,7 @@ int main(int argc, char *argv[])
   }
   mpz_mul_2exp(count.get_mpz_t(), count.get_mpz_t(), must_mult_exp2);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) - total_check_time << endl;
+  cout << "s SATISFIABLE" << endl;
   if (indep_support_given) cout << "s pmc ";
   else cout << "s mc ";
   cout << count << endl;

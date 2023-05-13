@@ -103,8 +103,7 @@ class BasePackedComponent {
 public:
 
 #ifdef DOPCC
-  void finish_hashing(const uint32_t _old_size, const uint32_t _old_num_vars) {
-    old_size = _old_size;
+  void finish_hashing(const uint32_t _old_num_vars) {
     old_num_vars = _old_num_vars;
   }
 #endif
@@ -210,7 +209,6 @@ protected:
 
   mpz_class model_count_;
   uint32_t creation_time_ = 1;
-  uint32_t old_size = 0;
   uint32_t old_num_vars = 0;
 
 
@@ -222,10 +220,6 @@ protected:
   // deletion is permitted only after
   // the copy of this comp in the stack
   // does not exist anymore
-
-
-protected:
-
 };
 
 

@@ -8,6 +8,7 @@
 #ifndef COMPONENT_CACHE_H_
 #define COMPONENT_CACHE_H_
 
+#include "comp_types/base_packed_comp.h"
 #include "statistics.h"
 #include "solver_config.h"
 #include <gmpxx.h>
@@ -20,14 +21,9 @@
 // There is EXACTLY ONE of this
 class ComponentCache {
 public:
-  ComponentCache(DataAndStatistics &statistics, const CounterConfiguration& config, const BPCSizes& sz);
-
-  ~ComponentCache() {
-   // debug_dump_data();
-    for (auto &pentry : entry_base_)
-          if (pentry != nullptr)
-            delete pentry;
-  }
+  ComponentCache(DataAndStatistics &statistics, const CounterConfiguration& config,
+      const BPCSizes& sz);
+  ~ComponentCache() {}
 
   void init(Component &super_comp, void* randomseedforCLHASH);
   void delete_comps_with_vars(const set<uint32_t>& vars);
@@ -35,20 +31,23 @@ public:
   {
     uint64_t ret = 0;
     for (uint32_t id = 2; id < entry_base_.size(); id++)
-      if (entry_base_[id] != nullptr) ret++;
+      if (!entry_base_[id].is_free()) ret++;
 
     return ret;
   }
 
   // compute the size in bytes of the comp cache from scratch
   // the value is stored in bytes_memory_usage_
-  uint64_t compute_size_used();
+  uint64_t compute_size_allocated();
+  bool cache_full() const {
+    return stats.cache_full(free_entry_base_slots_.size() * sizeof(CacheableComponent));
+  }
 
-  CacheableComponent &entry(CacheEntryID id) { return *entry_base_[id]; }
-  const CacheableComponent &entry(CacheEntryID id) const { return *entry_base_[id]; }
+  CacheableComponent &entry(CacheEntryID id) { return entry_base_[id]; }
+  const CacheableComponent &entry(CacheEntryID id) const { return entry_base_[id]; }
   CacheableComponent &entry(const Component& comp) { return entry(comp.id()); }
   const CacheableComponent &entry(const Component& comp) const { return entry(comp.id()); }
-  bool hasEntry(CacheEntryID id) const { return entry_base_[id]; }
+  bool hasEntry(CacheEntryID id) const { return !entry_base_[id].is_free(); }
 
   // removes the entry id from the hash table
   // but not from the entry base
@@ -96,9 +95,8 @@ public:
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    stats.incorporate_cache_erase(*entry_base_[id], sz);
-    delete entry_base_[id];
-    entry_base_[id] = nullptr;
+    stats.incorporate_cache_erase(entry_base_[id], sz);
+    entry_base_[id].set_free();
     free_entry_base_slots_.push_back(id);
   }
 
@@ -129,13 +127,13 @@ private:
     assert((table_.size() & (table_.size() - 1)) == 0);
     table_size_mask_ = table_.size() - 1;
     for (uint32_t id = 2; id < entry_base_.size(); id++)
-      if (entry_base_[id] != nullptr ){
-        entry_base_[id]->set_next_bucket_element(0);
-       if(entry_base_[id]->modelCountFound()) {
-        uint32_t table_ofs=tableEntry(id);
-        entry_base_[id]->set_next_bucket_element(table_[table_ofs]);
-        table_[table_ofs] = id;
-       }
+      if (!entry_base_[id].is_free()) {
+        entry_base_[id].set_next_bucket_element(0);
+        if(entry_base_[id].modelCountFound()) {
+          uint32_t table_ofs=tableEntry(id);
+          entry_base_[id].set_next_bucket_element(table_[table_ofs]);
+          table_[table_ofs] = id;
+        }
     }
   }
 
@@ -154,7 +152,7 @@ private:
         entry(compid).set_first_descendant(entry(desc).next_sibling());
     }
 
-  vector<CacheableComponent *> entry_base_;
+  vector<CacheableComponent> entry_base_;
   vector<CacheEntryID> free_entry_base_slots_;
 
   // the actual hash table
@@ -170,47 +168,45 @@ private:
 };
 
 CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryID super_comp_id){
-    CacheEntryID id;
+  CacheEntryID id;
 
-    while (stats.cache_full()){
-      if (config_.verb) cout << "c Cache full. Deleting some entries." << endl;
-      deleteEntries();
+  while (cache_full()) {
+    if (config_.verb) cout << "c Cache full. Deleting some entries." << endl;
+    deleteEntries();
+  }
+
+  assert(!cache_full());
+  ccomp.set_creation_time(my_time_++);
+
+  if (free_entry_base_slots_.empty()) {
+    bool at_capacity = (entry_base_.capacity() == entry_base_.size());
+    entry_base_.push_back(ccomp);
+    id = entry_base_.size() - 1;
+    if (at_capacity) compute_size_allocated();
+  } else {
+    id = free_entry_base_slots_.back();
+    assert(id < entry_base_.size());
+    assert(entry_base_[id].is_free());
+    free_entry_base_slots_.pop_back();
+    entry_base_[id] = ccomp;
+  }
+
+  entry(id).set_father(super_comp_id);
+  add_descendant(super_comp_id, id);
+  SLOW_DEBUG_DO(assert(hasEntry(id)));
+  SLOW_DEBUG_DO(assert(hasEntry(super_comp_id)));
+
+  stats.incorporate_cache_store(entry(id), sz);
+
+#ifdef SLOW_DEBUG
+  for (uint32_t u = 2; u < entry_base_.size(); u++)
+    if (!entry_base_[u].is_free()) {
+      assert(entry_base_[u]->father() != id);
+      assert(entry_base_[u]->first_descendant() != id);
+      assert(entry_base_[u]->next_sibling() != id);
     }
-
-    assert(!stats.cache_full());
-    ccomp.set_creation_time(my_time_++);
-
-    if (free_entry_base_slots_.empty()) {
-        if (entry_base_.capacity() == entry_base_.size()) {
-            entry_base_.reserve(2 * entry_base_.size());
-            compute_size_used();
-        }
-        entry_base_.push_back(&ccomp);
-        id = entry_base_.size() - 1;
-    } else {
-        id = free_entry_base_slots_.back();
-        assert(id < entry_base_.size());
-        assert(entry_base_[id] == nullptr);
-        free_entry_base_slots_.pop_back();
-        entry_base_[id] = &ccomp;
-    }
-
-    entry(id).set_father(super_comp_id);
-    add_descendant(super_comp_id, id);
-    SLOW_DEBUG_DO(assert(hasEntry(id)));
-    SLOW_DEBUG_DO(assert(hasEntry(super_comp_id)));
-
-    stats.incorporate_cache_store(ccomp, sz);
-
-  #ifdef SLOW_DEBUG
-      for (uint32_t u = 2; u < entry_base_.size(); u++)
-            if (entry_base_[u] != nullptr) {
-              assert(entry_base_[u]->father() != id);
-              assert(entry_base_[u]->first_descendant() != id);
-              assert(entry_base_[u]->next_sibling() != id);
-            }
-  #endif
-    return id;
+#endif
+  return id;
 }
 
 uint64_t ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
@@ -298,20 +294,14 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   uint32_t table_ofs = tableEntry(id);
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
+  SLOW_DEBUG_DO(assert(!entry(id).is_free()));
+  SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).SizeInBytes(sz)));
   stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes(sz);
-  stats.sys_overhead_sum_bytes_cached_comps_ -= entry(id).sys_overhead_SizeInBytes(sz);
-#ifdef DOPCC
-  entry(id).finish_hashing(entry(id).SizeInBytes(sz), entry(id).nVars(sz));
-#endif
-
   entry(id).set_model_count(model_count,my_time_);
   entry(id).set_creation_time(my_time_);
-
   entry(id).set_next_bucket_element(table_[table_ofs]);
   table_[table_ofs] = id;
-
   stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes(sz);
-  stats.sys_overhead_sum_bytes_cached_comps_ += entry(id).sys_overhead_SizeInBytes(sz);
 }
 
 #endif /* COMPONENT_CACHE_H_ */

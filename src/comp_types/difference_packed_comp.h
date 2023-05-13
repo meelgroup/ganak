@@ -55,8 +55,8 @@ public:
 #endif
   }
 
-    // raw data size with the overhead
-    // for the supposed 16byte alignment of malloc
+  // raw data size with the overhead
+  // for the supposed 16byte alignment of malloc
   uint32_t sys_overhead_raw_data_byte_size([[maybe_unused]] const BPCSizes& sz) const {
     uint32_t ds;
 #ifdef DOPCC
@@ -210,8 +210,8 @@ DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, 
     }
   }
 
-  hashkey_ = hashkey_vars + ((uint32_t) hashkey_clauses << 11) + ((uint32_t) hashkey_clauses >> 23);
-
+  hashkey_ = hashkey_vars + ((uint32_t) hashkey_clauses << 11) +
+    ((uint32_t) hashkey_clauses >> 23);
   uint32_t bits_per_var_diff = log2(max_var_diff) + 1;
   uint32_t bits_per_clause_diff = log2(max_clause_diff) + 1;
 

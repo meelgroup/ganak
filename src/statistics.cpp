@@ -75,10 +75,10 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%";
   cout << endl;
   cout << "c cache entries K                " << (cache_->get_num_entries_used()/1000ULL) << endl;
-  /* cout << "c MB cache size                  " */
-  /*   << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "\t" << endl; */
   cout << "c MB cache                       "
-    << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << "" << endl;
+    << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << " "
+    << std::setprecision(3) << in_MB(cache_->get_num_entries_used()*72) << " "
+    << endl;
   cout << "c cache K (lookup/ stores/ hits) "
     << std::left
     << std::setw(6) << (num_cache_look_ups_/(1000ULL)) << " "

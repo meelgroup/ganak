@@ -196,7 +196,6 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 
   const auto exit_state = countSAT();
   stats.num_long_red_clauses_ = red_cls.size();
-  comp_manager_->gatherStatistics();
   if (config_.verb) stats.printShort(this, &comp_manager_->get_cache());
   if (exit_state == RESTART) {
     largest_cube_ret = largest_cube;

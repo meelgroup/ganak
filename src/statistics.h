@@ -94,16 +94,14 @@ public:
   // the number of bytes occupied by all comps
   uint64_t sum_bytes_cached_comps_ = 0;
 
-  uint64_t sys_overhead_sum_bytes_cached_comps_ = 0;
-
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
 
   uint64_t overall_num_cache_stores_ = 0;
   const Instance* inst;
 
-  bool cache_full(){
-    return cache_bytes_memory_usage() >= maximum_cache_size_bytes_;
+  bool cache_full(uint64_t empty_size) {
+    return (cache_bytes_memory_usage() - empty_size) >= maximum_cache_size_bytes_;
   }
 
   uint64_t cache_bytes_memory_usage() const {
@@ -117,22 +115,17 @@ public:
     num_cached_comps_++;
     total_num_cached_comps_++;
     overall_num_cache_stores_ += ccomp.nVars(sz);
-    sys_overhead_sum_bytes_cached_comps_ += ccomp.sys_overhead_SizeInBytes(sz);
   }
 
   void incorporate_cache_erase(const CacheableComponent &ccomp, const BPCSizes& sz){
     sum_bytes_cached_comps_ -= ccomp.SizeInBytes(sz);
     sum_size_cached_comps_ -= ccomp.nVars(sz);
     num_cached_comps_--;
-    sys_overhead_sum_bytes_cached_comps_ -= ccomp.sys_overhead_SizeInBytes(sz);
   }
 
   void incorporate_cache_hit(const CacheableComponent &ccomp, const BPCSizes& sz){
       num_cache_hits_++;
       sum_cache_hit_sizes_ += ccomp.nVars(sz);
-  }
-  uint64_t cache_MB_memory_usage() const {
-      return cache_bytes_memory_usage() / 1000000;
   }
 
   double implicitBCP_miss_rate() const {

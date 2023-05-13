@@ -35,19 +35,8 @@ public:
   }
 
   uint32_t SizeInBytes(const BPCSizes& sz) const {
-    return sizeof(GenericCacheableComponent<T_Component>)
-        + T_Component::raw_data_byte_size(sz);
+    return T_Component::raw_data_byte_size(sz);
   }
-
-  // the 48 = 16*3 in overhead stems from the three parts of the comp
-  // being dynamically allocated (i.e. the GenericCacheableComponent itself,
-  // the data_ and the model_count data
-  uint64_t sys_overhead_SizeInBytes(const BPCSizes& sz) const {
-      return sizeof(GenericCacheableComponent<T_Component>)
-          + T_Component::sys_overhead_raw_data_byte_size(sz)
-         // + 24;
-          +48;
-    }
 
   // Cache Pollution Management
   void set_father(CacheEntryID f) { father_ = f; }
@@ -58,6 +47,12 @@ public:
   CacheEntryID first_descendant() const { return first_descendant_; }
   void set_next_bucket_element(CacheEntryID entry) { next_bucket_element_ = entry; }
   CacheEntryID next_bucket_element() const { return next_bucket_element_; }
+  bool is_free() const {
+    return father_ == std::numeric_limits<uint32_t>::max();
+  }
+  void set_free() {
+    father_ = std::numeric_limits<uint32_t>::max();
+  }
 
 private:
 

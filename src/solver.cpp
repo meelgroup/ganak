@@ -187,10 +187,7 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
   largest_cube.clear();
   largest_cube_val = 0;
   start_time = cpuTime();
-
-  if (config_.verb) {
-      cout << "c Sampling set size: " << indep_support_end-1 << endl;
-  }
+  if (config_.verb) { cout << "c Sampling set size: " << indep_support_end-1 << endl; }
 
   if (config_.branch_type == 1) td_decompose();
 

@@ -67,6 +67,7 @@ MTRand mtrand;
 CounterConfiguration conf;
 int do_hyperbin = 1;
 int red_cls_also = 0;
+int ignore_indep = 0;
 
 string ganak_version_info()
 {
@@ -94,6 +95,7 @@ void add_ganak_options()
     ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
+    ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
     ("branch", po::value(&conf.branch_type)->default_value(conf.branch_type), "Branching type. 0 == default, 1 == gpmc (with TD stuff)")
 
@@ -261,8 +263,8 @@ void parse_file(const std::string& filename, T* reader) {
   #endif
 
   indep_support_given = parser.sampling_vars_found;
-  if (parser.sampling_vars_found) {
-    for(const auto& lit: parser.sampling_vars) indep_support.insert(lit+1);
+  if (parser.sampling_vars_found && !ignore_indep) {
+    for(const auto& var: parser.sampling_vars) indep_support.insert(var+1);
   } else {
     for(uint32_t i = 1; i < sat_solver->nVars()+1; i++) indep_support.insert(i);
   }

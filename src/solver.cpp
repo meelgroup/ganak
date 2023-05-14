@@ -687,10 +687,19 @@ retStateT Counter::backtrack_nonindep() {
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     } else if (decision_stack_.top().anotherCompProcessible()) {
+      print_debug("[nonindep] Processing another comp at dec lev "
+          << decision_stack_.get_decision_level()
+          << " instead of backtracking." << " Num unprocessed comps: "
+          << decision_stack_.top().numUnprocessedComponents()
+          << " so far the count: " << decision_stack_.top().getTotalModelCount());
       return PROCESS_COMPONENT;
     }
+
+    // Processed all components, and there is at least 1 solution.
+    // Now go back until indep var, and recursively check for at least 1 solution
     if (decision_stack_.top().getBranchSols() != 0 && !isindependent) {
       while (decision_stack_.top().getbranchvar() >= indep_support_end) {
+        print_debug("[nonindep] Going BACK because it's not independent and there is at least 1 solution");
         if (decision_stack_.get_decision_level() <= 0) { break; }
         reactivate_comps_and_backtrack_trail();
         assert(decision_stack_.size() >= 2);
@@ -700,16 +709,26 @@ retStateT Counter::backtrack_nonindep() {
         decision_stack_.top().nextUnprocessedComponent();
         assert( decision_stack_.top().remaining_comps_ofs() <
             comp_manager_->comp_stack_size() + 1);
-        if (decision_stack_.top().anotherCompProcessible()) return PROCESS_COMPONENT;
+        if (decision_stack_.top().anotherCompProcessible()) {
+          print_debug("[nonindep] Processing another comp at dec lev "
+              << decision_stack_.get_decision_level()
+              << " instead of backtracking." << " Num unprocessed comps: "
+              << decision_stack_.top().numUnprocessedComponents()
+              << " so far the count: " << decision_stack_.top().getTotalModelCount());
+          return PROCESS_COMPONENT;
+        }
       }
     }
 
     // Maybe it's zero on this side, let's try the other side.
     if (!decision_stack_.top().is_right_branch()) {
+      print_debug("[nonindep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
+          << " -- dec lev: " << decision_stack_.get_decision_level());
       Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
+      print_debug("[nonindep] Flipping lit to: " << aLit.neg());
       setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
       return RESOLVED;
     }
@@ -724,6 +743,8 @@ retStateT Counter::backtrack_nonindep() {
     reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
+    print_debug("[nonindep] Backtracking from level " << decision_stack_.get_decision_level()
+        << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
     // step to the next component not yet processed
     decision_stack_.top().nextUnprocessedComponent();

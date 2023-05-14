@@ -55,6 +55,8 @@ void Counter::set_indep_support(const set<uint32_t> &indeps)
   }
   if (tmp.size() == 0) indep_support_end = 0;
   else indep_support_end = tmp.back()+1;
+  if (indep_support_end == nVars()) perform_projected_counting = false;
+  else perform_projected_counting = true;
 }
 
 void Counter::init_activity_scores()
@@ -312,9 +314,15 @@ void Counter::decideLiteral(Lit lit) {
   // The decision literal is now ready. Deal with it.
   if (lit == NOT_A_LIT) {
     uint32_t v;
-    if (config_.branch_type == 1) v = find_best_branch_gpmc();
-    else if (config_.branch_type == 0) v = find_best_branch();
+    isindependent = true;
+    if (config_.branch_type == 1) v = find_best_branch_gpmc(true);
+    else if (config_.branch_type == 0) v = find_best_branch(true);
     else {assert(false && "No such branch type!!");}
+    if (v == 0 && perform_projected_counting) {
+      isindependent = false;
+      if (config_.branch_type == 1) v = find_best_branch_gpmc(false);
+      else if (config_.branch_type == 0) v = find_best_branch(false);
+    }
     lit = Lit(v, get_polarity(v));
   }
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
@@ -352,7 +360,7 @@ double Counter::alternate_score(uint32_t v, bool val)
   return score*c;
 }
 
-uint32_t Counter::find_best_branch_gpmc()
+uint32_t Counter::find_best_branch_gpmc(bool do_indep)
 {
 	uint32_t maxv = 0;
 	double max_score_a = -1;
@@ -360,7 +368,7 @@ uint32_t Counter::find_best_branch_gpmc()
   double max_score_td = -1;
 
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-      *it != varsSENTINEL; it++) if (*it < indep_support_end) {
+      *it != varsSENTINEL; it++) if (!do_indep || *it < indep_support_end) {
     uint32_t v = *it;
     double score_td = tdscore[v];
     double score_f = comp_manager_->scoreOf(v);
@@ -386,7 +394,7 @@ uint32_t Counter::find_best_branch_gpmc()
   return maxv;
 }
 
-uint32_t Counter::find_best_branch()
+uint32_t Counter::find_best_branch(bool do_indep)
 {
   assert(!(config_.do_cache_score && config_.do_lookahead) && "can't have both active");
 
@@ -397,7 +405,7 @@ uint32_t Counter::find_best_branch()
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
-    if (*it < indep_support_end) {
+    if (!do_indep || *it < indep_support_end) {
       const double score = scoreOf(*it) ;
       if (lookahead_try) vars_scores.push_back(VS(*it, score, *it));
       if (best_var_score == -1 || score > best_var_score) {
@@ -411,7 +419,7 @@ uint32_t Counter::find_best_branch()
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
-      if (*it < indep_support_end) {
+      if (!do_indep || *it < indep_support_end) {
         const double score = scoreOf(*it);
         if (score > best_var_score * 0.9) {
           if (comp_manager_->cacheScoreOf(*it) > cachescore) {
@@ -672,9 +680,65 @@ bool Counter::restart_if_needed() {
   return false;
 }
 
+retStateT Counter::backtrack_indep() {
+  assert(!isindependent);
+
+  do {
+    if (decision_stack_.top().branch_found_unsat()) {
+      comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+    } else if (decision_stack_.top().anotherCompProcessible()) {
+      return PROCESS_COMPONENT;
+    }
+    if (decision_stack_.top().getBranchSols() != 0 && !isindependent) {
+      while (decision_stack_.top().getbranchvar() < indep_support_end) {
+        if (decision_stack_.get_decision_level() <= 0) {
+          break;
+        }
+        reactivate_comps_and_backtrack_trail();
+        assert(decision_stack_.size() >= 2);
+        (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
+        decision_stack_.pop_back();
+        // step to the next component not yet processed
+        decision_stack_.top().nextUnprocessedComponent();
+        assert( decision_stack_.top().remaining_comps_ofs() <
+            comp_manager_->comp_stack_size() + 1);
+        if (decision_stack_.top().anotherCompProcessible()) return PROCESS_COMPONENT;
+      }
+    }
+
+    if (!decision_stack_.top().is_right_branch()) {
+      Lit aLit = top_dec_lit();
+      assert(decision_stack_.get_decision_level() > 0);
+      decision_stack_.top().change_to_right_branch();
+      reactivate_comps_and_backtrack_trail();
+      setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
+      return RESOLVED;
+    }
+    comp_manager_->cacheModelCountOf(decision_stack_.top().super_comp(),
+                                    decision_stack_.top().getTotalModelCount());
+    //update cache scores
+    stats.numcachedec_++;
+    if (stats.numcachedec_ % 128 == 0) comp_manager_->rescale_cache_scores();
+    comp_manager_->decreasecachescore(comp_manager_->getSuperComponentOf(decision_stack_.top()));
+
+    if (decision_stack_.get_decision_level() <= 0) break;
+    reactivate_comps_and_backtrack_trail();
+    assert(decision_stack_.size() >= 2);
+    (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
+    decision_stack_.pop_back();
+    // step to the next component not yet processed
+    decision_stack_.top().nextUnprocessedComponent();
+
+    assert( decision_stack_.top().remaining_comps_ofs() <
+        comp_manager_->comp_stack_size() + 1);
+  } while (decision_stack_.get_decision_level() >= 0);
+  return EXIT;
+}
+
 retStateT Counter::backtrack() {
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 
+  if (!isindependent && perform_projected_counting) return backtrack_indep();
   do {
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());

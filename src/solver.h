@@ -72,6 +72,7 @@ public:
   double get_start_time() const { return start_time;}
 
 private:
+  bool isindependent = true;
   vector<double> scores;
   bqueue<uint32_t> depth_q;
   bqueue<double, double> cache_miss_rate_q;
@@ -106,8 +107,8 @@ private:
 
   SOLVER_StateT countSAT();
   void decideLiteral(Lit lit = NOT_A_LIT);
-  uint32_t find_best_branch_gpmc();
-  uint32_t find_best_branch();
+  uint32_t find_best_branch_gpmc(bool do_indep);
+  uint32_t find_best_branch(bool do_indep);
   double alternate_score(uint32_t v, bool value);
   bool prop_and_probe();
   bool failed_lit_probe();
@@ -124,6 +125,7 @@ private:
 
   void print_all_levels();
   bool restart_if_needed();
+  retStateT backtrack_indep();
   retStateT backtrack();
 
   // if on the current decision level

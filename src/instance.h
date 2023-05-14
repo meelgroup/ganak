@@ -83,6 +83,7 @@ protected:
 
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
+  bool perform_projected_counting = false;
 
 
   // this is to determine the starting offset of

@@ -177,8 +177,8 @@ public:
   }
 
   /// 0 means pre-1st-decision
-  uint32_t get_decision_level() const {
+  int32_t get_decision_level() const {
     assert(size() > 0);
-    return size() - 1 + failed_lit_test_active;
+    return (int)size() - 1 + failed_lit_test_active;
   }
 };

@@ -680,7 +680,7 @@ bool Counter::restart_if_needed() {
   return false;
 }
 
-retStateT Counter::backtrack_indep() {
+retStateT Counter::backtrack_nonindep() {
   assert(!isindependent && perform_projected_counting);
 
   do {
@@ -704,6 +704,7 @@ retStateT Counter::backtrack_indep() {
       }
     }
 
+    // Maybe it's zero on this side, let's try the other side.
     if (!decision_stack_.top().is_right_branch()) {
       Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
@@ -736,7 +737,7 @@ retStateT Counter::backtrack_indep() {
 retStateT Counter::backtrack() {
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 
-  if (!isindependent && perform_projected_counting) return backtrack_indep();
+  if (!isindependent && perform_projected_counting) return backtrack_nonindep();
   do {
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());

@@ -125,7 +125,7 @@ private:
 
   void print_all_levels();
   bool restart_if_needed();
-  retStateT backtrack_indep();
+  retStateT backtrack_nonindep();
   retStateT backtrack();
 
   // if on the current decision level

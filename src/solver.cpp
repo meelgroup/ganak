@@ -242,10 +242,11 @@ void Counter::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups_ &&
       next_print_stat_confl > stats.conflicts) return;
   if (config_.verb) {
+    cout << "c total time: " << (cpuTime() - start_time) << endl;
     stats.printShort(this, &comp_manager_->get_cache());
   }
-  next_print_stat_cache = stats.num_cache_look_ups_ + (500LL*1000LL);
-  next_print_stat_confl = stats.conflicts + (5LL*1000LL);
+  next_print_stat_cache = stats.num_cache_look_ups_ + (2ULL*1000LL*1000LL);
+  next_print_stat_confl = stats.conflicts + (15LL*1000LL);
 }
 
 SOLVER_StateT Counter::countSAT() {

@@ -185,7 +185,7 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
-  tdscore.resize(indep_support_end, 0);
+  tdscore.resize(nVars()+1, 0);
   largest_cube.clear();
   largest_cube_val = 0;
   start_time = cpuTime();
@@ -320,8 +320,7 @@ void Counter::decideLiteral() {
   else {assert(false && "No such branch type!!");}
   if (v == 0 && perform_projected_counting) {
     isindependent = false;
-    if (config_.branch_type == 1) v = find_best_branch_gpmc(false);
-    else if (config_.branch_type == 0) v = find_best_branch(false);
+    v = find_best_branch(false);
   }
   assert(v != 0);
   Lit lit = Lit(v, get_polarity(v));
@@ -339,6 +338,7 @@ void Counter::decideLiteral() {
 
 double Counter::alternate_score(uint32_t v, bool val)
 {
+  assert(!perform_projected_counting && "Cannot work with projected model counting");
   double score = 0;
 
   auto before = decision_stack_.top();

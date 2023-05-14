@@ -690,10 +690,8 @@ retStateT Counter::backtrack_indep() {
       return PROCESS_COMPONENT;
     }
     if (decision_stack_.top().getBranchSols() != 0 && !isindependent) {
-      while (decision_stack_.top().getbranchvar() < indep_support_end) {
-        if (decision_stack_.get_decision_level() <= 0) {
-          break;
-        }
+      while (decision_stack_.top().getbranchvar() >= indep_support_end) {
+        if (decision_stack_.get_decision_level() <= 0) { break; }
         reactivate_comps_and_backtrack_trail();
         assert(decision_stack_.size() >= 2);
         (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());

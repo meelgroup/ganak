@@ -190,6 +190,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     free_entry_base_slots_.pop_back();
     entry_base_[id] = ccomp;
   }
+  compute_size_allocated();
 
   entry(id).set_father(super_comp_id);
   add_descendant(super_comp_id, id);

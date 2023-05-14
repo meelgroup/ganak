@@ -55,7 +55,7 @@ void Counter::set_indep_support(const set<uint32_t> &indeps)
   }
   if (tmp.size() == 0) indep_support_end = 0;
   else indep_support_end = tmp.back()+1;
-  if (indep_support_end == nVars()) perform_projected_counting = false;
+  if (indep_support_end == nVars()+1) perform_projected_counting = false;
   else perform_projected_counting = true;
 }
 
@@ -184,7 +184,7 @@ void Counter::td_decompose()
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
-  if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+1;
+  if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
   tdscore.resize(indep_support_end, 0);
   largest_cube.clear();
   largest_cube_val = 0;
@@ -301,7 +301,7 @@ bool Counter::get_polarity(const uint32_t v)
   return polarity;
 }
 
-void Counter::decideLiteral(Lit lit) {
+void Counter::decideLiteral() {
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " on path: " << decision_stack_.top().on_path_to_target_ << " branch: " << decision_stack_.top().is_right_branch());
   bool on_path = true;
   if (decision_stack_.size() != 1)
@@ -313,19 +313,18 @@ void Counter::decideLiteral(Lit lit) {
   decision_stack_.top().on_path_to_target_ = on_path;
 
   // The decision literal is now ready. Deal with it.
-  if (lit == NOT_A_LIT) {
-    uint32_t v;
-    isindependent = true;
-    if (config_.branch_type == 1) v = find_best_branch_gpmc(true);
-    else if (config_.branch_type == 0) v = find_best_branch(true);
-    else {assert(false && "No such branch type!!");}
-    if (v == 0 && perform_projected_counting) {
-      isindependent = false;
-      if (config_.branch_type == 1) v = find_best_branch_gpmc(false);
-      else if (config_.branch_type == 0) v = find_best_branch(false);
-    }
-    lit = Lit(v, get_polarity(v));
+  uint32_t v;
+  isindependent = true;
+  if (config_.branch_type == 1) v = find_best_branch_gpmc(true);
+  else if (config_.branch_type == 0) v = find_best_branch(true);
+  else {assert(false && "No such branch type!!");}
+  if (v == 0 && perform_projected_counting) {
+    isindependent = false;
+    if (config_.branch_type == 1) v = find_best_branch_gpmc(false);
+    else if (config_.branch_type == 0) v = find_best_branch(false);
   }
+  assert(v != 0);
+  Lit lit = Lit(v, get_polarity(v));
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(lit.var());
@@ -682,7 +681,7 @@ bool Counter::restart_if_needed() {
 }
 
 retStateT Counter::backtrack_indep() {
-  assert(!isindependent);
+  assert(!isindependent && perform_projected_counting);
 
   do {
     if (decision_stack_.top().branch_found_unsat()) {

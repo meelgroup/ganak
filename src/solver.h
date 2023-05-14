@@ -106,7 +106,7 @@ private:
   bool prepFailedLiteralTest();
 
   SOLVER_StateT countSAT();
-  void decideLiteral(Lit lit = NOT_A_LIT);
+  void decideLiteral();
   uint32_t find_best_branch_gpmc(bool do_indep);
   uint32_t find_best_branch(bool do_indep);
   double alternate_score(uint32_t v, bool value);

@@ -33,7 +33,7 @@ class ComponentManager
 public:
   ComponentManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const uint32_t indep_support_end, Counter* solver) :
+                   const uint32_t& indep_support_end, Counter* solver) :
       config_(config), stats(statistics), cache_(statistics, config_, sz),
       ana_(lit_values, indep_support_end), solver_(solver)
   {

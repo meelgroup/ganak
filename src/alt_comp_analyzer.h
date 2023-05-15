@@ -25,7 +25,7 @@ class ComponentAnalyzer {
 public:
 	ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
-        const uint32_t _indep_support_end) :
+        const uint32_t& _indep_support_end) :
         lit_values_(lit_values),
         indep_support_end(_indep_support_end)
   {}
@@ -135,7 +135,7 @@ private:
                                                 // indexed by variable.
 
   const LiteralIndexedVector<TriValue> & lit_values_;
-  const uint32_t indep_support_end;
+  const uint32_t& indep_support_end;
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
@@ -214,5 +214,4 @@ private:
       archetype_.setClause_seen(clID,all_lits_set);
     }
   }
-
 };

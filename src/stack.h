@@ -9,8 +9,11 @@
 #include <gmpxx.h>
 #include <cassert>
 #include <vector>
+#include <iostream>
 #include "common.h"
 using std::vector;
+using std::cout;
+using std::endl;
 
 class StackLevel {
 public:
@@ -107,7 +110,8 @@ public:
   uint32_t trail_ofs() const {
     return trail_ofs_;
   }
-  void includeSolution(const mpz_class &solutions) {
+  template<class T>
+  void includeSolution(const T& solutions) {
     if (branch_found_unsat_[active_branch_]) {
       assert(branch_model_count_[active_branch_] == 0);
       return;
@@ -115,20 +119,9 @@ public:
     if (solutions == 0) branch_found_unsat_[active_branch_] = true;
     if (branch_model_count_[active_branch_] == 0)
       branch_model_count_[active_branch_] = solutions;
-    else
+    else {
       branch_model_count_[active_branch_] *= solutions;
-
-  }
-  void includeSolution(const uint32_t solutions) {
-    if (branch_found_unsat_[active_branch_]) {
-      assert(branch_model_count_[active_branch_] == 0);
-      return;
     }
-    if (solutions == 0) branch_found_unsat_[active_branch_] = true;
-    if (branch_model_count_[active_branch_] == 0)
-      branch_model_count_[active_branch_] = solutions;
-    else
-      branch_model_count_[active_branch_] *= solutions;
   }
 
   bool branch_found_unsat() const {

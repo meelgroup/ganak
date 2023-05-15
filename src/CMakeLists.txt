@@ -81,6 +81,10 @@ add_executable (ganak-bin
     main.cpp
 )
 
+add_executable (ganak-bin-simp
+    simp_main.cpp
+)
+
 set(ganak_exec_link_libs
   ganak
   ${GMPXX_LIB}
@@ -96,6 +100,14 @@ target_link_libraries (ganak-bin
   ${ganak_exec_link_libs}
 )
 
+target_link_libraries (ganak-bin-simp
+  ${ganak_exec_link_libs}
+)
+
+set_target_properties(ganak-bin-simp PROPERTIES
+    OUTPUT_NAME ganak-simp
+    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+    INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set_target_properties(ganak-bin PROPERTIES
     OUTPUT_NAME ganak

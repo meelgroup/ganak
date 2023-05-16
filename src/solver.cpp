@@ -257,7 +257,7 @@ SOLVER_StateT Counter::countSAT() {
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
-      checkProbabilisticHashSanity();
+      /* checkProbabilisticHashSanity(); -- no need, there is no way we get to 2**45 lookups*/
       if (restart_if_needed()) {return RESTART;}
       decideLiteral();
       VERBOSE_DEBUG_DO(print_all_levels());

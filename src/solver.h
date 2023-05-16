@@ -161,7 +161,9 @@ private:
 
   void checkProbabilisticHashSanity() const {
       const uint64_t t = stats.num_cache_look_ups_ + 1;
-      if (2 * log2(t) > log2(config_.delta) + 64 * 0.9843) {
+      // The +32 is because there is actually another hash, which is 32b and is used
+      // by the caching subsystem. Both must match.
+      if (2 * log2(t) > log2(config_.delta) + (64+32) * 0.9843) {
         // 1 - log_2(2.004)/64 = 0.9843
         cout << "ERROR: We need to change the hash range (-1)" << endl;
         exit(-1);

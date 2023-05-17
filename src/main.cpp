@@ -65,7 +65,6 @@ int do_check = 0;
 int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
-int do_hyperbin = 1;
 int red_cls_also = 0;
 int ignore_indep = 0;
 
@@ -100,7 +99,6 @@ void add_ganak_options()
     ("branch", po::value(&conf.branch_type)->default_value(conf.branch_type), "Branching type. 0 == default, 1 == gpmc (with TD stuff)")
 
     ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
-    ("hyper", po::value(&do_hyperbin)->default_value(do_hyperbin), "Do hyperbinary resolution via intree")
     ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
     ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
     ("version", "Print version info")
@@ -445,7 +443,6 @@ int main(int argc, char *argv[])
     cout << "0" << endl;
     exit(0);
   }
-  if (do_hyperbin) add_hyperbins();
   mpz_class count = 0;
 
   vector<double> act;

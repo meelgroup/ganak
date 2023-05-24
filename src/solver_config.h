@@ -14,7 +14,7 @@
 struct CounterConfiguration {
   // TODO comp caching cannot be deactivated for now!
   bool do_non_chron_back_track = true;
-  double exp = 1.0;
+  double act_exp = 1.0;
   bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;

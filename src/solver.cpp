@@ -329,7 +329,7 @@ void Counter::decideLiteral() {
   setLiteralIfFree(lit);
   stats.decisions++;
   if (stats.decisions % 128 == 0) {
-    decayActivities(config_.exp == 1.0);
+    decayActivities(config_.act_exp == 1.0);
     comp_manager_->rescale_cache_scores();
   }
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
@@ -853,7 +853,7 @@ retStateT Counter::backtrack() {
 
 retStateT Counter::resolveConflict() {
   recordLastUIPCauses();
-  act_inc *= 1.0/config_.exp;
+  act_inc *= 1.0/config_.act_exp;
 
   if (stats.conflicts > last_reduceDB_conflicts+10000) {
     reduceDB();

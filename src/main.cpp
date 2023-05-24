@@ -100,7 +100,7 @@ void add_ganak_options()
 
     ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
     ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
-    ("exp", po::value(&conf.exp)->default_value(conf.exp), "Probabilistic Component Caching")
+    ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Component Caching")
     ("version", "Print version info")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("red", po::value(&red_cls_also)->default_value(red_cls_also), "Also add redundant clauses from CNF")

@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-#define verb_print(a, b) if (config_.verb >= 1) cout << "c " << b << endl;
+enum class branch_t {old_ganak, sharptd, gpmc};
 
 struct CounterConfiguration {
   // TODO comp caching cannot be deactivated for now!
@@ -34,13 +34,14 @@ struct CounterConfiguration {
   int do_lookahead = 0;
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
+  uint32_t rdb_cls_target = 10000;
 
   uint32_t td_varlim = 150000;
 	double td_denselim = 0.10;
 	double td_ratiolim = 30.0;
   double tw_varelim = 0.25;
   double tw_coef_tdscore = 100.0;
-  int branch_type = 1; // 0 == old GANAK , 1 == gpmc
+  branch_t branch_type = branch_t::sharptd;
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

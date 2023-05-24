@@ -20,8 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "cryptominisat5/cryptominisat.h"
-#include "cryptominisat5/solvertypesmini.h"
 #include "solver.h"
 #include "GitSHA1.h"
 
@@ -33,13 +31,11 @@ THE SOFTWARE.
 #include <time_mem.h>
 #include <boost/program_options.hpp>
 #include "src/GitSHA1.h"
-#include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
-using CMSat::SATSolver;
 
 #if defined(__GNUC__) && defined(__linux__)
 #include <fenv.h>
@@ -51,7 +47,6 @@ using std::vector;
 po::options_description main_options = po::options_description("Main options");
 po::options_description probe_options = po::options_description("Probe options");
 po::options_description lookahead_options = po::options_description("Lookeahead options");
-po::options_description restart_options = po::options_description("Restart options");
 po::options_description help_options;
 po::variables_map vm;
 po::positional_options_description p;
@@ -109,48 +104,11 @@ void add_ganak_options()
     ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
-    ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
-    ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
-    ("branch", po::value(&conf.branch_type)->default_value(conf.branch_type), "Branching type. 0 == default, 1 == gpmc (with TD stuff)")
-
-    ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
-    ("hyper", po::value(&do_hyperbin)->default_value(do_hyperbin), "Do hyperbinary resolution via intree")
-    ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
-    ("varexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Component Caching")
-    ("version", "Print version info")
-    ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
-    ("red", po::value(&red_cls_also)->default_value(red_cls_also), "Also add redundant clauses from CNF")
-    ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
-    ;
-
-    restart_options.add_options()
-    ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
-
-    ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
-    ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
-    ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
-
-    ("onpathprint", po::value(&conf.do_on_path_print)->default_value(conf.do_on_path_print), "Print ON-PATH during restart")
-    ("exact", po::value(&exact)->default_value(exact), "Exact counting")
-    ;
-
-    lookahead_options.add_options()
-    ("lookahead", po::value(&conf.do_lookahead)->default_value(conf.do_lookahead), "Do lookahead?")
-    ("lookaheaddepth", po::value(&conf.lookahead_depth)->default_value(conf.lookahead_depth), "Lookahead depth")
-    ("looknum", po::value(&conf.lookahead_num)->default_value(conf.lookahead_num), "How many to check for lookahead")
-    ;
-
-    probe_options.add_options()
-    ("probe", po::value(&conf.failed_lit_probe_type)->default_value(conf.failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only bottom RATIO, where ratio is given by --probeonlyafter")
-    ("probeonlyafter", po::value(&conf.probe_only_after_ratio)->default_value(conf.probe_only_after_ratio), "What ratio of failed lit probe in terms of decision. Only active if '--failed 2'")
-    ("probemulti", po::value(&conf.num_probe_multi)->default_value(conf.num_probe_multi), "Multiply by this amount how many variables to probe.")
-    ("bprop", po::value(&conf.bprop)->default_value(conf.bprop), "Do bothprop")
+    ("ignore", po::value(&ignore_indep)->default_value(ignore_indep),
+     "Ignore indep support given")
     ;
 
     help_options.add(main_options);
-    help_options.add(probe_options);
-    help_options.add(lookahead_options);
-    help_options.add(restart_options);
 }
 
 void parse_supported_options(int argc, char** argv)

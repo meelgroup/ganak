@@ -143,7 +143,7 @@ void Instance::reduceDB() {
   num_low_lbd_cls = 0;
   num_used_cls = 0;
   sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(lit_pool_));
-  uint32_t cutoff = 10000;
+  uint32_t cutoff = config_.rdb_cls_target;
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];

@@ -67,6 +67,7 @@ MTRand mtrand;
 CounterConfiguration conf;
 int red_cls_also = 0;
 int ignore_indep = 0;
+string branch_type = "sharptd";
 
 string ganak_version_info()
 {
@@ -96,8 +97,9 @@ void add_ganak_options()
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
-    ("branch", po::value(&conf.branch_type)->default_value(conf.branch_type), "Branching type. 0 == default, 1 == gpmc (with TD stuff)")
+    ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
 
+    ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.do_cache_score), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
     ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
     ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Component Caching")
@@ -421,6 +423,13 @@ int main(int argc, char *argv[])
   if (conf.verb) {
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
+  }
+  if (branch_type == "gpmc") conf.branch_type = branch_t::gpmc;
+  else if (branch_type == "sharptd") conf.branch_type = branch_t::sharptd;
+  else if (branch_type == "ganak") conf.branch_type = branch_t::old_ganak;
+  else {
+    cout << "ERROR: Wrong branch type: " << branch_type << endl;
+    exit(-1);
   }
   string fname;
   if (vm.count("input") != 0) {

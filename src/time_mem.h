@@ -23,7 +23,6 @@ THE SOFTWARE.
 
 #ifndef TIME_MEM_H
 #define TIME_MEM_H
-#include "constants.h"
 #include <cassert>
 #include <time.h>
 

@@ -48,9 +48,18 @@ public:
   ~Counter();
 
   double scoreOf(VariableIndex v) {
-    return
-      comp_manager_->scoreOf(v)*act_inc +
-      10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
+    if (config_.branch_type == branch_t::sharptd) {
+      double score = 0;
+      score += comp_manager_->scoreOf(v);
+      score += 10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
+      score += tdscore[v];
+      return score;
+    } else {
+      assert(config_.branch_type == branch_t::old_ganak);
+      return
+        comp_manager_->scoreOf(v)*act_inc +
+        10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
+    }
   }
   mpz_class count(vector<Lit>& largest_cube_ret);
   CounterConfiguration &config() { return config_; }

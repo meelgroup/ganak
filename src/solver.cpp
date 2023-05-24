@@ -117,7 +117,8 @@ void Counter::td_decompose()
 {
 	bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= config_.td_varlim;
   if (!conditionOnCNF) {
-    cout << "c o skipping TD, too many/few vars" << endl;
+    verb_print(1, "skipping TD, too many/few vars. Setting branch to old_ganak");
+    config_.branch_type= branch_t::old_ganak;
     return;
   }
 
@@ -135,25 +136,27 @@ void Counter::td_decompose()
       }
     }
   }
-	cout << "c o Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges() << endl;
+	verb_print(1, "Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges());
 
   double density = (double)primal.numEdges()/(double)(nVars() * nVars());
   double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
-  cout << "c o Primal graph density: "
+  verb_print(1, "Primal graph density: "
     << std::fixed << std::setw(9) << std::setprecision(3) << density
     << " edge/var: "
-    << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio << endl;
+    << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio);
 	bool conditionOnPrimalGraph =
 			density <= config_.td_denselim &&
 			edge_var_ratio <= config_.td_ratiolim;
 
 	if (!conditionOnPrimalGraph) {
-		cout << "c o skipping td, primal graph is too large or dense" << endl;
+    verb_print(1, "skipping td, primal graph is too large or dense."
+        " Setting branch to old_ganak");
+    config_.branch_type = branch_t::old_ganak;
 		return;
 	}
 
 	// run FlowCutter
-	cout << "c o FlowCutter is running..." << endl;
+	verb_print(1, "FlowCutter is running...");
 	IFlowCutter FC(nVars(), primal.numEdges(), 0); //TODO: fix time limit
 	FC.importGraph(primal);
 	TreeDecomposition td = FC.constructTD();
@@ -177,7 +180,10 @@ void Counter::td_decompose()
 		}
 	}
 
-	if(uselessTD) cout << "c o ignore td" << endl;
+	if(uselessTD) {
+    verb_print(1, "ignoring td, setting branch to old_ganak");
+    config_.branch_type = branch_t::old_ganak;
+  }
 }
 
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)
@@ -190,7 +196,8 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
   start_time = cpuTime();
   if (config_.verb) { cout << "c Sampling set size: " << indep_support_end-1 << endl; }
 
-  if (config_.branch_type == 1) td_decompose();
+  if (config_.branch_type == branch_t::sharptd ||
+      config_.branch_type == branch_t::gpmc) td_decompose();
 
   const auto exit_state = countSAT();
   stats.num_long_red_clauses_ = red_cls.size();
@@ -314,9 +321,8 @@ void Counter::decideLiteral() {
   // The decision literal is now ready. Deal with it.
   uint32_t v;
   isindependent = true;
-  if (config_.branch_type == 1) v = find_best_branch_gpmc(true);
-  else if (config_.branch_type == 0) v = find_best_branch(true);
-  else {assert(false && "No such branch type!!");}
+  if (config_.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(true);
+  else v = find_best_branch(true);
   if (v == 0 && perform_projected_counting) {
     isindependent = false;
     v = find_best_branch(false);
@@ -961,7 +967,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
         litWatchList(*itL).addWatchLinkTo(ofs, *p_otherLit);
         std::swap(*itL, *p_watchLit);
       } else {
-        // or p_unLit stays resolved
+        // or unLit stays resolved
         // and we have hence no free literal left
         // for p_otherLit remain poss: Active or Resolved
         if (setLiteralIfFree(*p_otherLit, Antecedent(ofs))) { // implication

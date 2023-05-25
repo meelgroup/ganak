@@ -79,7 +79,7 @@ void Counter::end_irred_cls()
   comp_size_q.clearAndResize(config_.first_restart);
 
   release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
-  stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_bytes_;
+  stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_MB*1024*1024;
   init_decision_stack();
   simplePreProcess();
   ended_irred_cls = true;
@@ -117,8 +117,8 @@ void Counter::td_decompose()
 {
 	bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= config_.td_varlim;
   if (!conditionOnCNF) {
-    verb_print(1, "skipping TD, too many/few vars. Setting branch to old_ganak");
-    config_.branch_type= branch_t::old_ganak;
+    verb_print(1, "skipping TD, too many/few vars. Setting branch to fallback");
+    config_.branch_type = config_.branch_fallback_type;
     return;
   }
 
@@ -150,8 +150,8 @@ void Counter::td_decompose()
 
 	if (!conditionOnPrimalGraph) {
     verb_print(1, "skipping td, primal graph is too large or dense."
-        " Setting branch to old_ganak");
-    config_.branch_type = branch_t::old_ganak;
+        " Setting branch to fallback");
+    config_.branch_type = config_.branch_fallback_type;
 		return;
 	}
 
@@ -181,8 +181,8 @@ void Counter::td_decompose()
 	}
 
 	if(uselessTD) {
-    verb_print(1, "ignoring td, setting branch to old_ganak");
-    config_.branch_type = branch_t::old_ganak;
+    verb_print(1, "ignoring td, setting branch to fallback");
+    config_.branch_type = config_.branch_fallback_type;
   }
 }
 
@@ -618,20 +618,26 @@ bool Counter::restart_if_needed() {
   if (!config_.do_restart || largest_cube.empty()) return false;
   bool restart = false;
   if (config_.restart_type == 0
-      && comp_size_q.isvalid() && comp_size_q.avg() < comp_size_q.getLongtTerm().avg())
+      && comp_size_q.isvalid() &&
+      comp_size_q.avg() < comp_size_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
     restart = true;
   if (config_.restart_type == 1
-      && cache_miss_rate_q.isvalid() && cache_miss_rate_q.avg() > cache_miss_rate_q.getLongtTerm().avg()*0.95)
+      && cache_miss_rate_q.isvalid() &&
+      cache_miss_rate_q.avg() > cache_miss_rate_q.getLongtTerm().avg()*0.95)
     restart = true;
 
   if (config_.restart_type == 2
-      && depth_q.isvalid() && depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
+      && depth_q.isvalid() &&
+      depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
     restart = true;
 
-  if (config_.restart_type == 3 && (stats.decisions-stats.last_restart_num_decisions) > config_.next_restart)
+  if (config_.restart_type == 3 &&
+      (stats.decisions-stats.last_restart_num_decisions) > config_.next_restart)
     restart = true;
 
-  if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid() && stats.cache_hits_misses_q.avg() < stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
+  if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
+      && stats.cache_hits_misses_q.avg() <
+      stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
       restart = true;
 
   if (config_.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&

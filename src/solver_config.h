@@ -21,7 +21,7 @@ struct CounterConfiguration {
   uint64_t first_restart = 1000U;
   uint64_t next_restart = 100000000U;
   double restart_cutoff_mult = 0.8;
-  uint64_t maximum_cache_size_bytes_ = 0;
+  uint64_t maximum_cache_size_MB = 0;
   int restart_type = 5;
   double lookahead_depth = 1.2;
   uint32_t lookahead_num = 2;
@@ -42,6 +42,7 @@ struct CounterConfiguration {
   double tw_varelim = 0.25;
   double tw_coef_tdscore = 100.0;
   branch_t branch_type = branch_t::sharptd;
+  branch_t branch_fallback_type = branch_t::sharptd;
 
   uint64_t seed = 0;
   uint32_t maxdec = 5000000;

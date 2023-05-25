@@ -68,6 +68,7 @@ CounterConfiguration conf;
 int red_cls_also = 0;
 int ignore_indep = 0;
 string branch_type = "sharptd";
+string branch_fallback_type = "gpmc";
 
 string ganak_version_info()
 {
@@ -97,11 +98,12 @@ void add_ganak_options()
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
+    ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
     ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.do_cache_score), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
-    ("maxcache", po::value(&conf.maximum_cache_size_bytes_)->default_value(conf.maximum_cache_size_bytes_), "Max cache size in BYTES. 0 == use 80% of free mem")
+    ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
     ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Component Caching")
     ("version", "Print version info")
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
@@ -399,6 +401,16 @@ void add_hyperbins()
   sat_solver->simplify(&dont_elim, &s);
 }
 
+branch_t parse_branch_type(const std::string& name) {
+  if (name == "gpmc") return branch_t::gpmc;
+  else if (name == "sharptd") return branch_t::sharptd;
+  else if (name == "ganak") return branch_t::old_ganak;
+  else {
+    cout << "ERROR: Wrong branch type: '" << name << "'" << endl;
+    exit(-1);
+  }
+}
+
 int main(int argc, char *argv[])
 {
   const double start_time = cpuTime();
@@ -424,13 +436,9 @@ int main(int argc, char *argv[])
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
   }
-  if (branch_type == "gpmc") conf.branch_type = branch_t::gpmc;
-  else if (branch_type == "sharptd") conf.branch_type = branch_t::sharptd;
-  else if (branch_type == "ganak") conf.branch_type = branch_t::old_ganak;
-  else {
-    cout << "ERROR: Wrong branch type: " << branch_type << endl;
-    exit(-1);
-  }
+  conf.branch_type = parse_branch_type(branch_type);
+  conf.branch_fallback_type = parse_branch_type(branch_fallback_type);
+
   string fname;
   if (vm.count("input") != 0) {
     vector<string> inp = vm["input"].as<vector<string> >();

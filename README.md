@@ -42,8 +42,8 @@ For some applications, one is not interested in solutions over all the variables
 
 ```
 $ cat myfile.cnf
-c ind 1 3 4 6 7 8 10 0
 p cnf 500 1
+c ind 1 3 4 6 7 8 10 0
 3 4 0
 ```
 Above, using the `c ind` line, we declare that only variables 1, 3, 4, 6, 7, 8 and 10 form part of the sampling set out of the CNF's 500 variables `1,2...500`. This line must end with a 0. The solution that GANAK will be giving is essentially answering the question: how many different combination of settings to this variables are there that satisfy this problem? Naturally, if your sampling set only contains e.g. 7 variables, then the maximum number of solutions can only be at most `2**7 = 128`. This is true even if your CNF has thousands of variables. Here, we only have `2**5*3` solutions however, since we ban `-3,-4` solution from the tuple `(3,4)`.

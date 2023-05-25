@@ -22,20 +22,19 @@ class ComponentArchetype;
 // namely, the descendant tree structure that
 // allows for the removal of cache pollutions
 
-template< class T_Component>
-class GenericCacheableComponent: public T_Component {
+class CacheableComponent: public DifferencePackedComponent {
 public:
-  GenericCacheableComponent() { }
-  GenericCacheableComponent(Component &comp, const BPCSizes& sz) :
-      T_Component(comp, sz) {
+  CacheableComponent() { }
+  CacheableComponent(Component &comp, const BPCSizes& sz) :
+      DifferencePackedComponent(comp, sz) {
   }
 
-  GenericCacheableComponent(void* randomseedforCLHASH, Component &comp, const BPCSizes& sz, uint32_t* tmp_data) :
-      T_Component(randomseedforCLHASH, comp, sz, tmp_data) {
+  CacheableComponent(void* randomseedforCLHASH, Component &comp, const BPCSizes& sz, uint32_t* tmp_data) :
+      DifferencePackedComponent(randomseedforCLHASH, comp, sz, tmp_data) {
   }
 
   uint32_t SizeInBytes(const BPCSizes& sz) const {
-    return T_Component::raw_data_byte_size(sz);
+    return DifferencePackedComponent::raw_data_byte_size(sz);
   }
 
   // Cache Pollution Management
@@ -65,7 +64,5 @@ private:
   CacheEntryID first_descendant_ = 0;
   CacheEntryID next_sibling_ = 0;
 };
-
-typedef GenericCacheableComponent<DifferencePackedComponent> CacheableComponent;
 
 #endif /* CACHEABLE_COMPONENT_H_ */

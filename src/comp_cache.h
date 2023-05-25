@@ -183,7 +183,6 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     if (at_capacity) entry_base_.reserve(entry_base_.capacity()*1.3);
     entry_base_.push_back(ccomp);
     id = entry_base_.size() - 1;
-    if (at_capacity) compute_size_allocated();
   } else {
     id = free_entry_base_slots_.back();
     assert(id < entry_base_.size());

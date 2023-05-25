@@ -8,6 +8,10 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <cassert>
+#include "common.h"
+using std::string;
 
 enum class branch_t {old_ganak, sharptd, gpmc};
 
@@ -48,4 +52,11 @@ struct CounterConfiguration {
   uint32_t maxdec = 5000000;
   uint32_t minconflicts_ = 500;
   double delta = 0.05;
+
+  string get_branch_type_str() const {
+    if (branch_type == branch_t::gpmc) return "gpmc";
+    else if (branch_type == branch_t::sharptd) return "sharptd";
+    else if (branch_type == branch_t::old_ganak) return "ganak";
+    else release_assert(false);
+  }
 };

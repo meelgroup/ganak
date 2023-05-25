@@ -199,6 +199,8 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret)
   if (config_.branch_type == branch_t::sharptd ||
       config_.branch_type == branch_t::gpmc) td_decompose();
 
+  verb_print(1, "branch type: " << config_.get_branch_type_str());
+
   const auto exit_state = countSAT();
   stats.num_long_red_clauses_ = red_cls.size();
   if (config_.verb) stats.printShort(this, &comp_manager_->get_cache());

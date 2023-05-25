@@ -160,7 +160,7 @@ private:
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
     if (!fake_ante && ant.isAClause() && ant.asCl() != NOT_A_CLAUSE) {
-      getHeaderOf(ant.asCl()).increaseScore();
+      /* getHeaderOf(ant.asCl()).increaseScore(); */
       getHeaderOf(ant.asCl()).update_lbd(calc_lbd(ant.asCl()));
     }
     lit_values_[lit] = T_TRI;

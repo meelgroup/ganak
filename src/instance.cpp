@@ -84,7 +84,8 @@ bool Instance::findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  con
 }
 
 struct ClSorter {
-  ClSorter(const vector<Lit>& lit_pool) : lit_pool_(lit_pool) {}
+  ClSorter(const vector<Lit>& lit_pool, uint32_t lbd_cutoff) :
+    lit_pool_(lit_pool), lbd_cutoff_(lbd_cutoff) {}
 
   const ClHeader& getHeaderOf(ClauseOfs cl_ofs) const {
     return *reinterpret_cast<const ClHeader *>(
@@ -93,11 +94,12 @@ struct ClSorter {
   bool operator()(ClauseOfs& a, ClauseOfs& b) const {
     const auto& ah = getHeaderOf(a);
     const auto& bh = getHeaderOf(b);
-    if (ah.lbd <= 2 || bh.lbd <= 2) return ah.lbd < bh.lbd;
+    if (ah.lbd <= lbd_cutoff_ || bh.lbd <= lbd_cutoff_) return ah.lbd < bh.lbd;
     if (ah.used != bh.used) return ah.used > bh.used;
     return ah.total_used > bh.total_used;
   }
   const vector<Lit>& lit_pool_;
+  const uint32_t lbd_cutoff_;
 };
 
 // TODO with propagation and long clauses, etc.
@@ -105,7 +107,8 @@ size_t Instance::minimize_cl_with_bins(ClauseOfs off) {
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
   uint32_t rem = 0;
   tmp_minim_with_bins.clear();
-  for (auto l = beginOf(off); *l != SENTINEL_LIT; l++) { tmp_seen[l->toPosInt()] = 1; tmp_minim_with_bins.push_back(*l);}
+  for (auto l = beginOf(off); *l != SENTINEL_LIT; l++) {
+    tmp_seen[l->toPosInt()] = 1; tmp_minim_with_bins.push_back(*l);}
   for(const auto& l: tmp_minim_with_bins) {
     if (!tmp_seen[l.toPosInt()]) continue;
     const auto& w = watches_[l].binary_links_;
@@ -142,7 +145,7 @@ void Instance::reduceDB() {
   red_cls.clear();
   num_low_lbd_cls = 0;
   num_used_cls = 0;
-  sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(lit_pool_));
+  sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(lit_pool_, lbd_cutoff));
   uint32_t cutoff = config_.rdb_cls_target;
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
@@ -151,7 +154,7 @@ void Instance::reduceDB() {
     if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
     else if (h.used) num_used_cls++;
 
-    if (red_cl_can_be_deleted(off) && h.lbd > lbd_cutoff &&
+    if (red_cl_can_be_deleted(off) && h.lbd > lbd_cutoff && !h.used &&
         i > cutoff + num_low_lbd_cls + num_used_cls) {
       markClauseDeleted(off);
       stats.cls_deleted_since_compaction++;

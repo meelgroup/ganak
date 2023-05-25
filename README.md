@@ -28,16 +28,15 @@ make
 
 Simiar to Linux, but you must pass `cmake -DDOPCC=OFF ...` to cmake
 
-## Usage
-You can use the run_ganak.sh script in scripts directory to run ganak. A simple invocation looks as follows:
-```bash
-./run_ganak.sh <cnffile>
+### Model Counting
+
+To count, run:
+
+```
+cd build
+./ganak myfile.cnf
 ```
 
-To use different settings of parameters modify the helper run_ganak.sh script. The usage instructions and default values to parameters can be found by running:  
-```bash
-../bin/ganak
-```
 ### Projected Model Counting
 For some applications, one is not interested in solutions over all the variables and instead interested in counting the number of unique solutions to a subset of variables, called sampling set. GANAK allows you to specify the sampling set using the following modified version of DIMACS format:
 

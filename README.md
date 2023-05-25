@@ -22,7 +22,6 @@ sudo apt-get install libmpc-dev
 mkdir build && cd build
 cmake ..
 make
-cp ganak ../bin/
 ```
 
 ### Compiling for Mac OS

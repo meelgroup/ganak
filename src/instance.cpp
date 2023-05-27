@@ -206,7 +206,7 @@ void Instance::add_irred_cl(const vector<Lit>& lits) {
   }
   for(const auto& l: lits) assert(l.var() <= nVars());
   stats.incorporateIrredClauseData(lits);
-  ClauseOfs cl_ofs = addClause(lits, true);
+  ClauseOfs cl_ofs = addClause(lits, false);
   if (lits.size() >= 3)
     for (const auto& l : lits)
       occ_lists_[l].push_back(cl_ofs);

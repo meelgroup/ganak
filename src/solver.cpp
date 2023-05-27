@@ -103,7 +103,7 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
     red_cls.push_back(cl_ofs);
     auto& header = getHeaderOf(cl_ofs);
     if (lbd == -1) lbd = lits.size();
-    header = ClHeader(lbd);
+    header = ClHeader(lbd, true);
   }
 }
 
@@ -135,6 +135,7 @@ void Counter::td_decompose()
         primal.addEdge(lit_pool_[i].var()-1, lit_pool_[i2].var()-1);
       }
     }
+    i+=ClHeader::overheadInLits()-1;
   }
 	verb_print(1, "Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges());
 
@@ -327,7 +328,8 @@ void Counter::decideLiteral() {
   else v = find_best_branch(true);
   if (v == 0 && perform_projected_counting) {
     isindependent = false;
-    v = find_best_branch(false);
+    if (config_.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(false);
+    else v = find_best_branch(false);
   }
   assert(v != 0);
   Lit lit = Lit(v, get_polarity(v));
@@ -865,7 +867,55 @@ retStateT Counter::backtrack() {
   return EXIT;
 }
 
+void Counter::print_conflict_info() const
+{
+  cout << "dec lits: " << endl;
+  for(uint32_t i = 1; i < decision_stack_.size(); i ++) {
+    cout << "dec lev: " << std::setw(3) << i <<
+      " lit: " << std::setw(6)
+      << *(trail.begin()+ decision_stack_[i].trail_ofs())
+      << " is right: "
+      << (int)decision_stack_[i].is_right_branch()
+      << endl;
+  }
+  cout << "confl lits: " << endl;
+  for(uint32_t i = 0; i < uip_clause.size(); i ++) {
+    const auto l = uip_clause[i];
+    cout << "lit " << std::setw(6) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
+    << " val: " << lit_val_str(l) << endl;
+  }
+  cout << " ---- " << endl;
+  cout << "top_dec_lit().neg(): " << top_dec_lit().neg() << endl;
+  cout << "uip_clause[0]: " << uip_clause[0] << endl;
+  cout << "uip_clause.front(): " << uip_clause.front() << endl;
+}
+
+void Counter::print_comp_stack_info() const {
+    cout << "decision_stack_.top().remaining_comps_ofs(): "
+      << decision_stack_.top().remaining_comps_ofs() << endl;
+    cout << "comp_manager_->comp_stack_size(): " <<
+      comp_manager_->comp_stack_size() << endl;
+}
+
+struct UIPFixer {
+  UIPFixer(vector<Variable>& _vars) : vars(_vars){
+  }
+  bool operator()(const Lit& a, const Lit& b) const {
+    auto a_dec = vars[a.var()].decision_level;
+    auto b_dec = vars[b.var()].decision_level;
+    if (a_dec != b_dec) return a_dec > b_dec;
+    auto a_ante = vars[a.var()].ante;
+    /* auto b_ante = vars[b.var()].ante; */
+    if (!a_ante.isAnt()) return true;
+    return false;
+  }
+  vector<Variable>& vars;
+};
+
 retStateT Counter::resolveConflict() {
+  /* cout << "****** RECORD START" << endl; */
   recordLastUIPCauses();
   act_inc *= 1.0/config_.act_exp;
 
@@ -874,36 +924,65 @@ retStateT Counter::resolveConflict() {
     if (stats.cls_deleted_since_compaction > 50000) compactConflictLiteralPool();
     last_reduceDB_conflicts = stats.conflicts;
   }
+  /* print_conflict_info(); */
+  /* cout << "NOW SORTING...." << endl; */
+  std::stable_sort(uip_clause.begin(), uip_clause.end(), UIPFixer(variables_));
+  /* print_conflict_info(); */
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+  // TODO deal with empty!
   if (uip_clause.empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
   decision_stack_.top().mark_branch_unsat();
+  assert(uip_clause.front() != NOT_A_LIT);
+
+  /* cout << "backwards cleaning" << endl; */
+  /* print_comp_stack_info(); */
+  uint32_t backj = var(uip_clause.front()).decision_level;
+  /* cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl; */
+  while(dec_level()-1 > backj) {
+    /* cout << "at dec lit: " << top_dec_lit() << endl; */
+    /* print_comp_stack_info(); */
+    decision_stack_.top().mark_branch_unsat();
+    reactivate_comps_and_backtrack_trail();
+    decision_stack_.pop_back();
+    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+  }
+  /* cout << "last dec lit: " << top_dec_lit() << endl; */
+  decision_stack_.top().mark_branch_unsat();
+  decision_stack_.top().resetRemainingComps();
+  /* print_comp_stack_info(); */
+  /* cout << "DONE backw cleaning" << endl; */
+  /* print_conflict_info(); */
+
+  Antecedent ant(NOT_A_CLAUSE);
+  if (!uip_clause.empty() && top_dec_lit().neg() == uip_clause[0]) {
+    /* cout << "Setting reason the conflict cl" << endl; */
+    assert(var(uip_clause[0]).decision_level != -1);
+    var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
+    ant = var(top_dec_lit()).ante;
+    // oh wow, we set this decision variable to a propagated one
+    // but we don't change its level! even though it's set due to previous level
+  } else {
+    addUIPConflictClause(uip_clause);
+  }
+  /* cout << "AFTER conflict, setup: "; */
+  /* print_conflict_info(); */
+  /* cout << "is right here? " << decision_stack_.top().is_right_branch() << endl; */
 
   if (decision_stack_.top().is_right_branch()) {
     // Backtracking since finished with this AND the other branch.
     return BACKTRACK;
   }
 
-  Antecedent ant(NOT_A_CLAUSE);
-  // this has to be checked since using implicit BCP
-  // and checking literals there not exhaustively
-  // we cannot guarantee that uip_clause.front() == TOS_decLit().neg()
-  // this is because we might have checked a literal
-  // during implict BCP which has been a failed literal
-  // due only to assignments made at lower decision levels
-  if (!uip_clause.empty() && uip_clause.front() == top_dec_lit().neg()) {
-    assert(top_dec_lit().neg() == uip_clause[0]);
-    var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
-    ant = var(top_dec_lit()).ante;
-  }
   assert(decision_stack_.get_decision_level() > 0);
   assert(decision_stack_.top().branch_found_unsat());
 
   // we do not have to remove pollutions here,
   // since conflicts only arise directly before
   // remaining comps are stored hence
-  assert( decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
+  assert(decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
 
   decision_stack_.top().change_to_right_branch();
   const Lit lit = top_dec_lit();
@@ -914,6 +993,11 @@ retStateT Counter::resolveConflict() {
     print_debug("Conflict pushes us to: " << lit);
   }
   setLiteralIfFree(lit.neg(), ant);
+  if (ant.isAnt()) {
+    var(lit).decision_level--;
+  }
+  /* cout << "Returning from resolveConflict() with:"; */
+  /* print_conflict_info(); */
   return RESOLVED;
 }
 
@@ -1144,7 +1228,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     for(const auto& l: toSet) {
       if (isUnknown(l)) {
         auto sz = trail.size();
-        setLiteralIfFree(l, Antecedent(NOT_A_CLAUSE), true);
+        setLiteralIfFree(l, Antecedent(Lit(), true));
         bool bSucceeded = propagate(sz);
         if (!bSucceeded) return false;
         stats.num_failed_bprop_literals_failed++;
@@ -1195,7 +1279,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     stats.num_failed_literals_detected_++;
     print_debug("-> failed literal detected");
     sz = trail.size();
-    setLiteralIfFree(lit.neg(), Antecedent(NOT_A_CLAUSE), true);
+    setLiteralIfFree(lit.neg(), Antecedent(Lit(), true));
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
     if (!propagate(sz)) {
@@ -1215,8 +1299,8 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
     bool resolve_out = false;
     if (hasAntecedent(lit)) {
       resolve_out = true;
-      if (antedecentBProp(lit)) {
-        // BProp is the reason
+      if (getAntecedent(lit).isFake()) {
+        // Probe/BProp is the reason
         for (int32_t i = 1; i < variables_[lit.var()].decision_level+1; i++) {
           const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
           assert(decision_stack_[i].getbranchvar() == l.var());
@@ -1251,8 +1335,8 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   }
 
   if (uipLit.var()) {
-    assert(var(uipLit).decision_level >= 0
-            && (uint32_t)var(uipLit).decision_level == decision_stack_.get_decision_level());
+    assert(var(uipLit).decision_level >= 0);
+    assert(var(uipLit).decision_level == decision_stack_.get_decision_level());
   }
 
   // Clearing
@@ -1320,8 +1404,8 @@ void Counter::recordLastUIPCauses() {
     }
 
     assert(hasAntecedent(curr_lit));
-    if (antedecentBProp(curr_lit)) {
-      // BProp is the reason
+    if (getAntecedent(curr_lit).isFake()) {
+      // Probe/BProp is the reason
       for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
         const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
         assert(decision_stack_[i].getbranchvar() == l.var());
@@ -1339,7 +1423,13 @@ void Counter::recordLastUIPCauses() {
       }
     } else if (getAntecedent(curr_lit).isAClause()) {
       // Long clause is the reason
-      updateActivities(getAntecedent(curr_lit).asCl());
+      ClauseOfs off = getAntecedent(curr_lit).asCl();
+      auto& header = getHeaderOf(off);
+      if (header.red) {
+        header.increaseScore();
+        header.update_lbd(calc_lbd(off));
+      }
+      increaseActivity(off);
       assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
 
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
@@ -1358,8 +1448,8 @@ void Counter::recordLastUIPCauses() {
     } else {
       // Binary clause is reason
       Lit alit = getAntecedent(curr_lit).asLit();
-       increaseActivity(alit);
-       increaseActivity(curr_lit);
+      increaseActivity(alit);
+      increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
         if (var(alit).decision_level < (int)DL) {

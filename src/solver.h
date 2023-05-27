@@ -136,14 +136,15 @@ private:
   bool restart_if_needed();
   retStateT backtrack_nonindep();
   retStateT backtrack();
+  void print_conflict_info() const;
+  void print_comp_stack_info() const;
 
   // if on the current decision level
   // a second branch can be visited, RESOLVED is returned
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
 
-  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE),
-      const bool fake_ante = false)
+  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
     if (lit_values_[lit] != X_TRI) return false;
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
@@ -151,7 +152,6 @@ private:
 
     var(lit).decision_level = decision_stack_.get_decision_level();
     var(lit).ante = ant;
-    if (fake_ante) var(lit).fake_ante = true;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
@@ -159,9 +159,12 @@ private:
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
-    if (!fake_ante && ant.isAClause() && ant.asCl() != NOT_A_CLAUSE) {
-      /* getHeaderOf(ant.asCl()).increaseScore(); */
-      getHeaderOf(ant.asCl()).update_lbd(calc_lbd(ant.asCl()));
+    if (ant.isAnt() && ant.isAClause()) {
+      auto& header = getHeaderOf(ant.asCl());
+      if (header.red && header.lbd > lbd_cutoff) {
+        header.increaseScore();
+        header.update_lbd(calc_lbd(ant.asCl()));
+      }
     }
     lit_values_[lit] = T_TRI;
     lit_values_[lit.neg()] = F_TRI;
@@ -188,8 +191,11 @@ private:
 
   void setConflictState(ClauseOfs off)
   {
-    getHeaderOf(off).increaseScore();
-    getHeaderOf(off).update_lbd(calc_lbd(off));
+    auto& header = getHeaderOf(off);
+    if (header.red && header.lbd > lbd_cutoff) {
+      header.increaseScore();
+      header.update_lbd(calc_lbd(off));
+    }
     violated_clause.clear();
     for (auto it = beginOf(off); *it != SENTINEL_LIT; it++)
       violated_clause.push_back(*it);
@@ -221,7 +227,7 @@ private:
     decision_stack_.back().change_to_right_branch();
   }
 
-  const Lit &top_dec_lit()
+  const Lit &top_dec_lit() const
   {
     assert(decision_stack_.top().trail_ofs() < trail.size());
     return *top_declevel_trail_begin();

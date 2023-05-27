@@ -28,7 +28,6 @@ protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
-    var(lit).fake_ante = false;
     var(lit).decision_level = INVALID_DL;
     lit_values_[lit] = X_TRI;
     lit_values_[lit.neg()] = X_TRI;
@@ -38,16 +37,12 @@ protected:
     return variables_[lit.var()].ante;
   }
 
-  bool antedecentBProp(Lit lit) const {
-    return variables_[lit.var()].fake_ante;
-  }
-
   bool hasAntecedent(Lit lit) const {
-    return variables_[lit.var()].fake_ante || variables_[lit.var()].ante.isAnt();
+    return variables_[lit.var()].ante.isAnt();
   }
 
   bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) const {
-    return !var(lit).fake_ante && var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
+    return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
   void reduceDB();
@@ -111,12 +106,12 @@ protected:
     if (also_watches) for (auto& w: watches_) w.activity *= 0.5;
   }
 
-
   uint32_t calc_lbd(ClauseOfs offs) {
     lbdHelperFlag++;
     uint32_t nblevels = 0;
     for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++) {
       int lev = var(*it).decision_level;
+      if (lev == -1) {nblevels++; continue;} // can happen in weird conflict...
       if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
         lbdHelper[lev] = lbdHelperFlag;
         nblevels++;
@@ -140,9 +135,7 @@ protected:
     return nblevels;
   }
 
-  void updateActivities(ClauseOfs offs) {
-    getHeaderOf(offs).increaseScore();
-    getHeaderOf(offs).update_lbd(calc_lbd(offs));
+  void increaseActivity(ClauseOfs offs) {
     for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++)
       increaseActivity(*it);
   }
@@ -167,14 +160,14 @@ protected:
     return false;
   }
 
-  inline ClauseIndex addClause(const vector<Lit> &literals, bool irred);
+  inline ClauseIndex addClause(const vector<Lit> &literals, bool red);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
   // literal stored in literals
   inline Antecedent addUIPConflictClause(const vector<Lit> &literals);
 
-  inline bool add_bin_cl(Lit litA, Lit litB, bool irred);
+  inline bool add_bin_cl(Lit litA, Lit litB, bool red);
 
   inline Variable &var(const Lit lit) {
     return variables_[lit.var()];
@@ -198,6 +191,14 @@ protected:
 
   bool isFalse(Lit lit) {
     return lit_values_[lit] == F_TRI;
+  }
+
+  string lit_val_str(Lit lit) const {
+    if (lit_values_[lit] == F_TRI)
+      return "FALSE";
+    else if (lit_values_[lit] == T_TRI)
+      return "TRUE";
+    else return "UNKN";
   }
 
   bool isUnknown(Lit lit) const {
@@ -249,7 +250,7 @@ private:
 
 };
 
-ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
+ClauseIndex Instance::addClause(const vector<Lit> &literals, bool red) {
   if (literals.size() == 1) {
     //TODO Deal properly with the situation that opposing unit clauses are learned
     // assert(!isUnitClause(literals[0].neg()));
@@ -258,7 +259,7 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
   }
 
   if (literals.size() == 2) {
-    add_bin_cl(literals[0], literals[1], irred);
+    add_bin_cl(literals[0], literals[1], red);
     return 0;
   }
 
@@ -270,30 +271,32 @@ ClauseIndex Instance::addClause(const vector<Lit> &literals, bool irred) {
   Lit blckLit = literals[literals.size()/2];
   litWatchList(literals[0]).addWatchLinkTo(cl_ofs, blckLit);
   litWatchList(literals[1]).addWatchLinkTo(cl_ofs, blckLit);
+  auto& header = getHeaderOf(cl_ofs);
+  header = ClHeader(0, red);
   return cl_ofs;
 }
 
 Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
-    Antecedent ante(NOT_A_CLAUSE);
-    stats.num_clauses_learned_++;
-    ClauseOfs cl_ofs = addClause(literals, false);
-    if (cl_ofs != 0) {
-      red_cls.push_back(cl_ofs);
-      auto& header = getHeaderOf(cl_ofs);
-      header = ClHeader(calc_lbd(cl_ofs));
-      ante = Antecedent(cl_ofs);
-    } else if (literals.size() == 2){
-      ante = Antecedent(literals.back());
-      stats.num_binary_red_clauses_++;
-    } else if (literals.size() == 1)
-      stats.num_unit_red_clauses_++;
-    return ante;
+  Antecedent ante(NOT_A_CLAUSE);
+  stats.num_clauses_learned_++;
+  ClauseOfs cl_ofs = addClause(literals, true);
+  if (cl_ofs != NOT_A_CLAUSE) {
+    red_cls.push_back(cl_ofs);
+    auto& header = getHeaderOf(cl_ofs);
+    header = ClHeader(calc_lbd(cl_ofs), true);
+    ante = Antecedent(cl_ofs);
+  } else if (literals.size() == 2){
+    ante = Antecedent(literals.back());
+    stats.num_binary_red_clauses_++;
+  } else if (literals.size() == 1)
+    stats.num_unit_red_clauses_++;
+  return ante;
 }
 
-bool Instance::add_bin_cl(Lit litA, Lit litB, bool irred) {
+bool Instance::add_bin_cl(Lit litA, Lit litB, bool red) {
    if (litWatchList(litA).hasBinaryLinkTo(litB)) return false;
-   litWatchList(litA).addBinLinkTo(litB, irred);
-   litWatchList(litB).addBinLinkTo(litA, irred);
+   litWatchList(litA).addBinLinkTo(litB, red);
+   litWatchList(litB).addBinLinkTo(litA, red);
    return true;
 }
 

@@ -11,6 +11,7 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
+#include <iomanip>
 #include "primitive_types.h"
 #include "common.h"
 
@@ -131,9 +132,9 @@ public:
     watch_list_.push_back(ClOffsBlckL(offs, blockedLit));
   }
 
-  void addBinLinkTo(Lit lit, bool irred) {
+  void addBinLinkTo(Lit lit, bool red) {
     binary_links_.push_back(lit);
-    if (irred) last_irred_bin = binary_links_.size();
+    if (!red) last_irred_bin = binary_links_.size();
   }
 
   void resetWatchList(){
@@ -150,30 +151,33 @@ public:
 
 class Antecedent {
   uint32_t val_; // stuffed  value. LSB indicates long clause/binary cl
+  bool fake = false; // for PROBE and BPROP
 
 public:
   Antecedent() {
     val_ = 1;
+    fake = false;
   }
 
   Antecedent(const ClauseOfs cl_ofs) {
      val_ = (cl_ofs << 1) | 1;
+     fake = false;
    }
-  Antecedent(const Lit idLit) {
+  Antecedent(const Lit idLit, bool _fake = false) :
+    fake (_fake) {
+    if (_fake) return;
     val_ = (idLit.raw() << 1);
   }
 
-  bool isAClause() const {
-    return val_ & 0x01;
-  }
-
+  bool isFake() const {return fake;}
+  bool isAClause() const { return !fake && (val_ & 0x01); }
   ClauseOfs asCl() const {
     SLOW_DEBUG_DO(assert(isAClause()));
     return val_ >> 1;
   }
 
   Lit asLit() const {
-    SLOW_DEBUG_DO(assert(!isAClause()));
+    SLOW_DEBUG_DO(assert(!fake && !isAClause()));
     Lit idLit;
     idLit.copyRaw(val_ >> 1);
     return idLit;
@@ -181,6 +185,7 @@ public:
 
   // Has an antecedent?
   bool isAnt() const {
+    if (fake) return true;
     //Note that literals and clause offsets both start
     // at a higher-than 0 index, so if it's been set to be an antecdent, it'll be
     // different than 1
@@ -195,26 +200,42 @@ public:
   }
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
+{
+  if (val.isAClause() && val.asCl() == NOT_A_CLAUSE) {
+    os << std::setw(5) << "DEC";
+  } else if (!val.isAnt()) {
+    os << std::setw(5) << "???";
+  } else if (val.isFake()) {
+    os << std::setw(5) <<"fake";
+  } else if (val.isAClause()) {
+    os << "CL: " << std::setw(5) << val.asCl();
+  } else {
+    os << "Lit: " << std::setw(5) << val.asLit();
+  }
+  return os;
+}
+
 struct Variable {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
   bool last_polarity = false;
-  bool fake_ante = false;
   bool set_once = false; //it has once been set to some value
 };
 
 class ClHeader {
 public:
-  ClHeader(uint8_t _lbd): lbd(_lbd)  {}
+  ClHeader(uint8_t _lbd, bool _red): lbd(_lbd), red(_red)  {}
 
   void increaseScore() {
     used = 1;
     total_used++;
   }
   uint32_t total_used = 0;
-  uint8_t used = 1;
   uint8_t lbd;
+  uint8_t used:1 = 1;
   uint8_t marked_deleted:1 = 0;
+  uint8_t red:1 = 0;
 
   void update_lbd(uint32_t _lbd) {
     if (_lbd < lbd) lbd = _lbd;

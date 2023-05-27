@@ -14,15 +14,10 @@
 
 #include "base_packed_comp.h"
 #include "comp.h"
-#ifdef DOPCC
 #include "../clhash/clhash.h"
-#else
-#include "../clhash/minim.h"
-#endif
+/* #include "../clhash/minim.h" */
 #include <math.h>
 #include <structures.h>
-
-using std::set;
 
 class DifferencePackedComponent: public BasePackedComponent {
 public:

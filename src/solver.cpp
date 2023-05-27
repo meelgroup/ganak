@@ -72,9 +72,7 @@ void Counter::end_irred_cls()
 {
   tmp_seen.resize(2*(nVars()+2), 0);
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
-#ifdef DOPCC
   comp_manager_->getrandomseedforclhash();
-#endif
   depth_q.clearAndResize(config_.first_restart);
   cache_miss_rate_q.clearAndResize(config_.first_restart);
   comp_size_q.clearAndResize(config_.first_restart);

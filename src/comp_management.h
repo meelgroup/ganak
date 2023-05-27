@@ -18,11 +18,8 @@
 #include <gmpxx.h>
 #include "containers.h"
 #include "stack.h"
-#ifdef DOPCC
 #include "clhash/clhash.h"
-#else
-#include "clhash/minim.h"
-#endif
+/* #include "clhash/minim.h" */
 #include "solver_config.h"
 
 class Counter;

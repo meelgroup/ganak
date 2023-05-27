@@ -1,10 +1,5 @@
-if (DOPCC)
-SET(clhash_SOURCES 
-	clhash.c
-)
-else()
-SET(clhash_SOURCES minim.c)
-endif()
+SET(clhash_SOURCES clhash.c)
+#SET(clhash_SOURCES minim.c)
 
 ADD_LIBRARY(clhash
 ${clhash_SOURCES}

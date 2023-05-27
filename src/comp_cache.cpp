@@ -110,27 +110,6 @@ void ComponentCache::test_descendantstree_consistency() {
 		}
 }
 
-#ifndef DOPCC
-void ComponentCache::delete_comps_with_vars(const set<uint32_t>& vars) {
-	size_t num_deleted = 0;
-	size_t orig_num = entry_base_.size();
-	// note we start at index 2,
-	// since index 1 is the whole formula,
-	// should always stay here!
-	for (uint32_t id = 2; id < entry_base_.size(); id++)
-		if (entry_base_[id] != nullptr && entry_base_[id]->isDeletable()) {
-		  DifferencePackedComponent* d = entry_base_[id];
-		  if (d->contains_any_var(vars, sz)) {
-		    removeFromDescendantsTree(id);
-		    eraseEntry(id);
-				num_deleted++;
-			}
-		}
-	cout << "c Num deleted: " << num_deleted << " of: " << orig_num
-		<< " percent: " << (double)num_deleted/(double)orig_num * 100.0 << "%" << endl;
-}
-#endif
-
 bool ComponentCache::deleteEntries() {
   assert(cache_full());
 	vector<double> scores;

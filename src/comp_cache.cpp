@@ -73,12 +73,12 @@ void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
 	}
 
 	if (stats.maximum_cache_size_bytes_ > free_ram) {
-		cout <<"c WARNING: Maximum cache size larger than free RAM available" << endl;
-		cout << "c Free RAM " << std::setprecision(2)
-			<< (double)free_ram / (1024.0*1024.0) << "MB" << endl;
+		verb_print(1, "WARNING: Maximum cache size larger than free RAM available");
+		verb_print(1, "Free RAM " << std::setprecision(2)
+			<< (double)free_ram / (1024.0*1024.0) << "MB");
 	}
-	if (config_.verb) cout << "c Max cache size (80% free mem): "
-		<< stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB" << endl;
+	verb_print(1, "c Max cache size (80% free mem-200MB): "
+		<< stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
 
 	assert(!cache_full());
 	entry_base_.push_back(*packed_super_comp);

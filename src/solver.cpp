@@ -764,7 +764,7 @@ retStateT Counter::backtrack_nonindep() {
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
       print_debug("[nonindep] Flipping lit to: " << aLit.neg());
-      setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
+      setLiteralIfFree(aLit.neg());
       return RESOLVED;
     }
     isindependent = (decision_stack_.top().getbranchvar() < indep_support_end);
@@ -822,7 +822,7 @@ retStateT Counter::backtrack() {
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
       print_debug("[indep] Flipping lit to: " << aLit.neg());
-      setLiteralIfFree(aLit.neg(), NOT_A_CLAUSE);
+      setLiteralIfFree(aLit.neg());
       print_debug(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
       return RESOLVED;
     }
@@ -999,7 +999,7 @@ retStateT Counter::resolveConflict() {
   decision_stack_.top().change_to_right_branch();
   const Lit lit = top_dec_lit();
   reactivate_comps_and_backtrack_trail();
-  if (ant == NOT_A_CLAUSE) {
+  if (ant == Antecedent(NOT_A_CLAUSE)) {
     print_debug("Conflict pushes us to: " << lit<< " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");
   } else {
     print_debug("Conflict pushes us to: " << lit);

@@ -159,11 +159,11 @@ public:
     fake = false;
   }
 
-  Antecedent(const ClauseOfs cl_ofs) {
+  explicit Antecedent(const ClauseOfs cl_ofs) {
      val_ = (cl_ofs << 1) | 1;
      fake = false;
    }
-  Antecedent(const Lit idLit, bool _fake = false) :
+  explicit Antecedent(const Lit idLit, bool _fake = false) :
     fake (_fake) {
     if (_fake) return;
     val_ = (idLit.raw() << 1);

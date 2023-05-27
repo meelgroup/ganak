@@ -114,14 +114,14 @@ void Counter::get_unit_cls(vector<Lit>& units) const
 
 void Counter::td_decompose()
 {
-	bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= config_.td_varlim;
+  bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= config_.td_varlim;
   if (!conditionOnCNF) {
     verb_print(1, "skipping TD, too many/few vars. Setting branch to fallback");
     config_.branch_type = config_.branch_fallback_type;
     return;
   }
 
-	Graph primal(nVars());
+  Graph primal(nVars());
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
@@ -139,7 +139,7 @@ void Counter::td_decompose()
     }
     i++;
   }
-	verb_print(1, "Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges());
+  verb_print(1, "Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges());
 
   double density = (double)primal.numEdges()/(double)(nVars() * nVars());
   double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
@@ -147,43 +147,43 @@ void Counter::td_decompose()
     << std::fixed << std::setw(9) << std::setprecision(3) << density
     << " edge/var: "
     << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio);
-	bool conditionOnPrimalGraph =
-			density <= config_.td_denselim &&
-			edge_var_ratio <= config_.td_ratiolim;
+  bool conditionOnPrimalGraph =
+      density <= config_.td_denselim &&
+      edge_var_ratio <= config_.td_ratiolim;
 
-	if (!conditionOnPrimalGraph) {
+  if (!conditionOnPrimalGraph) {
     verb_print(1, "skipping td, primal graph is too large or dense."
         " Setting branch to fallback");
     config_.branch_type = config_.branch_fallback_type;
-		return;
-	}
+    return;
+  }
 
-	// run FlowCutter
-	verb_print(1, "FlowCutter is running...");
-	IFlowCutter FC(nVars(), primal.numEdges(), 0); //TODO: fix time limit
-	FC.importGraph(primal);
-	TreeDecomposition td = FC.constructTD();
+  // run FlowCutter
+  verb_print(1, "FlowCutter is running...");
+  IFlowCutter FC(nVars(), primal.numEdges(), 0); //TODO: fix time limit
+  FC.importGraph(primal);
+  TreeDecomposition td = FC.constructTD();
 
-	bool uselessTD = true;
-	if(td.numNodes() > 0) {	// if TD construction is successful
-		// find a centroid of the constructed TD
-		td.centroid(indep_support_end-1);
-		bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_varelim;
-		if(conditionOnTreeWidth && false) {
-			std::vector<int> dists = td.distanceFromCentroid(indep_support_end-1);
-			if(!dists.empty()) {
-				int max_dst = 0;
-				for(uint32_t i=0; i < nVars(); i++) max_dst = std::max(max_dst, dists[i]);
-				if(max_dst > 0) {
-					for(uint32_t i=0; i < indep_support_end-1; i++)
-						tdscore[i+1] = config_.tw_coef_tdscore * ((double)(max_dst - dists[i])) / (double)max_dst;
-					uselessTD = false;
-				}
-			}
-		}
-	}
+  bool uselessTD = true;
+  if(td.numNodes() > 0) {  // if TD construction is successful
+    // find a centroid of the constructed TD
+    td.centroid(indep_support_end-1);
+    bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_varelim;
+    if(conditionOnTreeWidth && false) {
+      std::vector<int> dists = td.distanceFromCentroid(indep_support_end-1);
+      if(!dists.empty()) {
+        int max_dst = 0;
+        for(uint32_t i=0; i < nVars(); i++) max_dst = std::max(max_dst, dists[i]);
+        if(max_dst > 0) {
+          for(uint32_t i=0; i < indep_support_end-1; i++)
+            tdscore[i+1] = config_.tw_coef_tdscore * ((double)(max_dst - dists[i])) / (double)max_dst;
+          uselessTD = false;
+        }
+      }
+    }
+  }
 
-	if(uselessTD) {
+  if(uselessTD) {
     verb_print(1, "ignoring td, setting branch to fallback");
     config_.branch_type = config_.branch_fallback_type;
   }
@@ -298,7 +298,7 @@ SOLVER_StateT Counter::countSAT() {
 
 bool Counter::standard_polarity(const uint32_t v) const {
     return watches_[Lit(v, true)].activity >
-			watches_[Lit(v, false)].activity;
+      watches_[Lit(v, false)].activity;
 }
 
 bool Counter::get_polarity(const uint32_t v) const
@@ -381,9 +381,9 @@ double Counter::alternate_score(uint32_t v, bool val)
 
 uint32_t Counter::find_best_branch_gpmc(bool do_indep)
 {
-	uint32_t maxv = 0;
-	double max_score_a = -1;
-	double max_score_f = -1;
+  uint32_t maxv = 0;
+  double max_score_a = -1;
+  double max_score_f = -1;
   double max_score_td = -1;
 
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();

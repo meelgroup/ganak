@@ -43,9 +43,9 @@ struct CounterConfiguration {
   int polar_type = 1; // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
 
   uint32_t td_varlim = 150000;
-	double td_denselim = 0.10;
-	double td_ratiolim = 30.0;
-  double tw_varelim = 0.25;
+  double td_denselim = 0.10;
+  double td_ratiolim = 30.0;
+  double tw_varelim = 0.15;
   double tw_coef_tdscore = 100.0;
   branch_t branch_type = branch_t::sharptd;
   branch_t branch_fallback_type = branch_t::old_ganak;

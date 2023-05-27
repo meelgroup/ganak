@@ -5,8 +5,7 @@
  *      Author: mthurley
  */
 
-#ifndef COMPONENT_CACHE_H_
-#define COMPONENT_CACHE_H_
+#pragma once
 
 #include "comp_types/base_packed_comp.h"
 #include "statistics.h"
@@ -296,5 +295,3 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   table_[table_ofs] = id;
   stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes();
 }
-
-#endif /* COMPONENT_CACHE_H_ */

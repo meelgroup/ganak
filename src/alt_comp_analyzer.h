@@ -23,7 +23,7 @@
 // There is exactly ONE of this, inside ComponentManager, which is inside Solver
 class ComponentAnalyzer {
 public:
-	ComponentAnalyzer(
+  ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end) :
         lit_values_(lit_values),

@@ -15,26 +15,26 @@
 
 class IFlowCutter {
 public:
-	IFlowCutter(int n, int m, double timeout=120);
+  IFlowCutter(int n, int m, double timeout=120);
 
-	void importGraph(const Graph& g);
-	TreeDecomposition constructTD();
+  void importGraph(const Graph& g);
+  TreeDecomposition constructTD();
 
-	void setTimeout(double _timeout) { this->timeout = _timeout; }
+  void setTimeout(double _timeout) { this->timeout = _timeout; }
 
 private:
-	int compute_max_bag_size_of_order(const ArrayIDIDFunc&order);
-	void test_new_order(const ArrayIDIDFunc&order, TreeDecomposition&td);
+  int compute_max_bag_size_of_order(const ArrayIDIDFunc&order);
+  void test_new_order(const ArrayIDIDFunc&order, TreeDecomposition&td);
 
-	TreeDecomposition output_tree_decompostion_of_order(ArrayIDIDFunc tail, ArrayIDIDFunc head, const ArrayIDIDFunc&order);
-	TreeDecomposition output_tree_decompostion_of_multilevel_partition(const ArrayIDIDFunc&tail, const ArrayIDIDFunc&head, const ArrayIDIDFunc&to_input_node_id, const std::vector<Cell>&cell_list);
+  TreeDecomposition output_tree_decompostion_of_order(ArrayIDIDFunc tail, ArrayIDIDFunc head, const ArrayIDIDFunc&order);
+  TreeDecomposition output_tree_decompostion_of_multilevel_partition(const ArrayIDIDFunc&tail, const ArrayIDIDFunc&head, const ArrayIDIDFunc&to_input_node_id, const std::vector<Cell>&cell_list);
 
-	int nodes;
-	int best_bag_size;
+  int nodes;
+  int best_bag_size;
 
-	ArrayIDIDFunc head, tail;
+  ArrayIDIDFunc head, tail;
 
-	double timeout;
+  double timeout;
 };
 
 

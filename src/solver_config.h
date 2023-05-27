@@ -45,7 +45,7 @@ struct CounterConfiguration {
   uint32_t td_varlim = 150000;
   double td_denselim = 0.10;
   double td_ratiolim = 30.0;
-  double tw_varelim = 0.15;
+  double tw_vare_lim = 0.35;
   double tw_coef_tdscore = 100.0;
   branch_t branch_type = branch_t::sharptd;
   branch_t branch_fallback_type = branch_t::old_ganak;

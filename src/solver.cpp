@@ -147,16 +147,16 @@ void Counter::td_decompose()
     << std::fixed << std::setw(9) << std::setprecision(3) << density
     << " edge/var: "
     << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio);
-  bool conditionOnPrimalGraph =
-      density <= config_.td_denselim &&
-      edge_var_ratio <= config_.td_ratiolim;
+  /* bool conditionOnPrimalGraph = */
+  /*     density <= config_.td_denselim && */
+  /*     edge_var_ratio <= config_.td_ratiolim; */
 
-  if (!conditionOnPrimalGraph) {
-    verb_print(1, "skipping td, primal graph is too large or dense."
-        " Setting branch to fallback");
-    config_.branch_type = config_.branch_fallback_type;
-    return;
-  }
+  /* if (!conditionOnPrimalGraph) { */
+  /*   verb_print(1, "skipping td, primal graph is too large or dense." */
+  /*       " Setting branch to fallback"); */
+  /*   config_.branch_type = config_.branch_fallback_type; */
+  /*   return; */
+  /* } */
 
   // run FlowCutter
   verb_print(1, "FlowCutter is running...");
@@ -168,8 +168,8 @@ void Counter::td_decompose()
   if(td.numNodes() > 0) {  // if TD construction is successful
     // find a centroid of the constructed TD
     td.centroid(indep_support_end-1);
-    bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_varelim;
-    if(conditionOnTreeWidth && false) {
+    bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_vare_lim;
+    if(conditionOnTreeWidth) {
       std::vector<int> dists = td.distanceFromCentroid(indep_support_end-1);
       if(!dists.empty()) {
         int max_dst = 0;

@@ -15,9 +15,8 @@
 #include <gmpxx.h>
 
 #include "comp_types/comp.h"
-
 #include "stack.h"
-
+using std::set;
 
 // There is EXACTLY ONE of this
 class ComponentCache {

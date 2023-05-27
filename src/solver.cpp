@@ -171,7 +171,7 @@ void Counter::td_decompose()
 		// find a centroid of the constructed TD
 		td.centroid(indep_support_end-1);
 		bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_varelim;
-		if(conditionOnTreeWidth) {
+		if(conditionOnTreeWidth && false) {
 			std::vector<int> dists = td.distanceFromCentroid(indep_support_end-1);
 			if(!dists.empty()) {
 				int max_dst = 0;

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string>
 #include <cassert>
+#include <iostream>
 #include "common.h"
 using std::string;
 
@@ -39,6 +40,7 @@ struct CounterConfiguration {
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
   uint32_t rdb_cls_target = 10000;
+  int polar_type = 1; // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
 
   uint32_t td_varlim = 150000;
 	double td_denselim = 0.10;
@@ -60,3 +62,22 @@ struct CounterConfiguration {
     else release_assert(false);
   }
 };
+
+inline std::string branch_type_to_str(const branch_t& t) {
+  if (t == branch_t::gpmc) return "gpmc";
+  else if (t == branch_t::sharptd) return "sharptd";
+  else if (t == branch_t::old_ganak) return "ganak";
+  else {
+    std::cout << "ERROR: Can't translate branch type" << std::endl;
+    exit(-1);
+  }
+}
+inline branch_t parse_branch_type(const std::string& name) {
+  if (name == "gpmc") return branch_t::gpmc;
+  else if (name == "sharptd") return branch_t::sharptd;
+  else if (name == "ganak") return branch_t::old_ganak;
+  else {
+    std::cout << "ERROR: Wrong branch type: '" << name << "'" << std::endl;
+    exit(-1);
+  }
+}

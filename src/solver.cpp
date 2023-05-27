@@ -7,6 +7,7 @@
 #include "solver.h"
 
 #include <algorithm>
+#include <complex>
 #include <ios>
 #include <iomanip>
 #include <numeric>
@@ -129,13 +130,16 @@ void Counter::td_decompose()
       if (l < l2) primal.addEdge(l.var()-1, l2.var()-1);
     }
   }
-  for(uint32_t i = 0; i < irred_lit_pool_size_; i++) {
+  for(uint32_t i = ClHeader::overheadInLits()+1; i < irred_lit_pool_size_;
+      i+=ClHeader::overheadInLits()) {
     for(; lit_pool_[i] != SENTINEL_LIT; i++) {
       for(uint32_t i2 = i+1; lit_pool_[i2] != SENTINEL_LIT; i2++) {
+        print_debug("v1: " << lit_pool_[i].var()-1);
+        print_debug("v2: " << lit_pool_[i2].var()-1);
         primal.addEdge(lit_pool_[i].var()-1, lit_pool_[i2].var()-1);
       }
     }
-    i+=ClHeader::overheadInLits()-1;
+    i++;
   }
 	verb_print(1, "Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges());
 
@@ -294,18 +298,26 @@ SOLVER_StateT Counter::countSAT() {
   return SUCCESS;
 }
 
-bool Counter::get_polarity(const uint32_t v)
+bool Counter::standard_polarity(const uint32_t v) const {
+    return watches_[Lit(v, true)].activity >
+			watches_[Lit(v, false)].activity;
+}
+
+bool Counter::get_polarity(const uint32_t v) const
 {
   bool polarity;
   if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
   else {
-    if (var(Lit(v, false)).set_once) {
-      polarity = var(Lit(v, false)).last_polarity;
-      // TODO ** ONLY ** do it in case it's non-exact, right??
-      if (config_.do_restart) polarity = !polarity;
-    } else {
-      return false;
-    }
+    if (config_.polar_type == 0) {
+      if (var(Lit(v, false)).set_once) {
+        polarity = var(Lit(v, false)).last_polarity;
+        // TODO ** ONLY ** do it in case it's non-exact, right??
+        /* if (config_.do_restart) polarity = !polarity; */
+      } else polarity = standard_polarity(v);
+    } else if (config_.polar_type == 1) polarity = standard_polarity(v);
+    else if (config_.polar_type == 2) polarity = false;
+    else if (config_.polar_type == 3) polarity = true;
+    else assert(false);
   }
   return polarity;
 }

@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <time_mem.h>
 #include <boost/program_options.hpp>
+#include "solver_config.h"
 #include "src/GitSHA1.h"
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/dimacsparser.h>
@@ -67,8 +68,8 @@ MTRand mtrand;
 CounterConfiguration conf;
 int red_cls_also = 0;
 int ignore_indep = 0;
-string branch_type = "sharptd";
-string branch_fallback_type = "gpmc";
+string branch_type = branch_type_to_str(conf.branch_type);
+string branch_fallback_type = branch_type_to_str(conf.branch_fallback_type);
 
 string ganak_version_info()
 {
@@ -101,7 +102,7 @@ void add_ganak_options()
     ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
     ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
 
-    ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.do_cache_score), "RDB clauses target size (added to this are LBD 3 or lower)")
+    ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
     ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
     ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Component Caching")
@@ -109,6 +110,8 @@ void add_ganak_options()
     ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("red", po::value(&red_cls_also)->default_value(red_cls_also), "Also add redundant clauses from CNF")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
+    ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
+     "Use polarity cache. Otherwise, false default polar.")
     ;
 
     restart_options.add_options()
@@ -401,15 +404,6 @@ void add_hyperbins()
   sat_solver->simplify(&dont_elim, &s);
 }
 
-branch_t parse_branch_type(const std::string& name) {
-  if (name == "gpmc") return branch_t::gpmc;
-  else if (name == "sharptd") return branch_t::sharptd;
-  else if (name == "ganak") return branch_t::old_ganak;
-  else {
-    cout << "ERROR: Wrong branch type: '" << name << "'" << endl;
-    exit(-1);
-  }
-}
 
 int main(int argc, char *argv[])
 {

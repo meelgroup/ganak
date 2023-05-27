@@ -106,19 +106,14 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
       Component *p_new_comp = ana_.makeComponentFromArcheType();
-#ifdef DOPCC
       CacheableComponent packed_comp(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz, tmp_data_for_pcc.data());
-      packed_comp.finish_hashing(p_new_comp->nVars());
-#else
-      packed_comp = new CacheableComponent(ana_.getArchetype().current_comp_for_caching_, sz);
-#endif
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());
       stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
       // Check if new comp is already in cache
-      if (!cache_.manageNewComponent(top, packed_comp)) {
+      if (!cache_.manageNewComponent(top, p_new_comp->nVars(), packed_comp)) {
         stats.cache_hits_misses_q.push(0);
         comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(packed_comp, super_comp.id()));

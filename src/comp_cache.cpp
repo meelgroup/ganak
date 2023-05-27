@@ -51,18 +51,14 @@ ComponentCache::ComponentCache(
 
 void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
   CacheableComponent *packed_super_comp;
-#ifdef DOPCC
 	vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.numLongClauses());
 	packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz, tmp.data());
-	packed_super_comp->finish_hashing(packed_super_comp->nVars(sz));
-#else
-	packed_super_comp = new CacheableComponent(super_comp, sz);
-#endif
 	my_time_ = 1;
 
 	entry_base_.clear();
-	entry_base_.push_back(CacheableComponent()); // dummy Element
-	stats.incorporate_cache_store(CacheableComponent(), sz);
+	auto x = CacheableComponent();
+	entry_base_.push_back(x); // dummy Element
+	stats.incorporate_cache_store(x, 0);
 	table_.clear();
 	table_.resize(1024*1024, 0);
 	table_size_mask_ = table_.size() - 1;
@@ -86,7 +82,7 @@ void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
 
 	assert(!cache_full());
 	entry_base_.push_back(*packed_super_comp);
-	stats.incorporate_cache_store(*packed_super_comp, sz);
+	stats.incorporate_cache_store(*packed_super_comp, 0);
 	delete packed_super_comp;
 	super_comp.set_id(1);
 	compute_size_allocated();
@@ -170,13 +166,11 @@ bool ComponentCache::deleteEntries() {
 	// then go through the Hash Table and erase all Links to empty entries
 	SLOW_DEBUG_DO(test_descendantstree_consistency());
 	reHashTable(table_.size());
-	stats.sum_size_cached_comps_ = 0;
 	stats.sum_bytes_cached_comps_ = 0;
 
 	for (uint32_t id = 2; id < entry_base_.size(); id++)
 		if (!entry_base_[id].is_free()) {
-			stats.sum_size_cached_comps_ += entry_base_[id].nVars(sz);
-			stats.sum_bytes_cached_comps_ += entry_base_[id].SizeInBytes(sz);
+			stats.sum_bytes_cached_comps_ += entry_base_[id].SizeInBytes();
 		}
 
 	stats.num_cached_comps_ = entry_base_.size();
@@ -203,6 +197,17 @@ void ComponentCache::debug_dump_data() {
              << "/" << entry_base_.capacity() << endl;
     cout << "free_entry_base_slots_ (size/capacity) " << free_entry_base_slots_.size()
              << "/" << free_entry_base_slots_.capacity() << endl;
+
+		cout << "-" << endl;
+    cout << std::setw(40) << "table mem use MB: " <<
+			(double)(table_.capacity()*sizeof(CacheableComponent))/(double)(1024*1024)
+			<< endl;
+    cout << std::setw(40) << "entry_base_ mem use MB: " <<
+			(double)(entry_base_.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)
+			<< endl;
+    cout << std::setw(40) << "free_entry_base_slots_ mem use MB " <<
+			(double)(free_entry_base_slots_.capacity()*sizeof(uint32_t))/(double)(1024*1024)
+			<< endl;
 
     uint64_t alloc_model_counts = 0;
     for (auto &pentry : entry_base_)

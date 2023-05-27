@@ -238,6 +238,7 @@ public:
   uint8_t red:1 = 0;
 
   void update_lbd(uint32_t _lbd) {
+    if (_lbd > 250) return;
     if (_lbd < lbd) lbd = _lbd;
   }
 

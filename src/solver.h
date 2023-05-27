@@ -277,7 +277,8 @@ private:
   void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
-  bool get_polarity(const uint32_t var);
+  bool get_polarity(const uint32_t var) const;
+  bool standard_polarity(const uint32_t var) const;
 
   void print_stat_line();
   uint64_t next_print_stat_cache = 20000;

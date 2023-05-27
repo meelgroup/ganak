@@ -94,8 +94,10 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << cache_pollutions_removed << endl;
   cout << "c cache miss rate                "
     << std::setprecision(3) << cache_miss_rate() << endl;
-  cout << "c avg. var count (stores / hits) "
-    << getAvgComponentSize()
+  cout << "c avg. hit/store "
+    << getAvgCacheHitSize()
+    << " / " 
+    << getAvgCacheStoreSize()
     << "/" << getAvgCacheHitSize() << endl;
   cout << "c " << endl;
 }

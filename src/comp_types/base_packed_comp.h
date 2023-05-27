@@ -101,20 +101,9 @@ template <class T>
 
 class BasePackedComponent {
 public:
-
-#ifdef DOPCC
-  void finish_hashing(const uint32_t _old_num_vars) {
-    old_num_vars = _old_num_vars;
-  }
-#endif
   static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
-
-  BasePackedComponent() :data_(nullptr) {}
-  ~BasePackedComponent() {
-#ifndef DOPCC
-    if (data_){ delete [] data_; }
-#endif
-  }
+  BasePackedComponent() {}
+  ~BasePackedComponent() {}
 
   void outbit(uint32_t v){
    for(auto i=0; i<32;i++){
@@ -123,7 +112,6 @@ public:
       v <<= 1;
     }
   }
-
 
   static uint32_t log2(uint32_t v) {
          // taken from
@@ -155,12 +143,22 @@ public:
   }
 
   const mpz_class &model_count() const {
-    return model_count_;
+    return *model_count_;
   }
 
   uint32_t alloc_of_model_count() const{
-        return sizeof(mpz_class)
-               + model_count_.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    if (!model_count_) return 0;
+    return sizeof(mpz_class)+sys_overhead_raw_data_byte_size();
+  }
+
+  // raw data size with the overhead
+  // for the supposed 16byte alignment of malloc
+  uint32_t sys_overhead_raw_data_byte_size() const {
+    uint32_t ds;
+    ds = 0;
+    uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    uint32_t mask = 0xfffffff0;
+    return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
   }
 
   void set_creation_time(uint32_t time) {
@@ -168,7 +166,8 @@ public:
   }
 
   void set_model_count(const mpz_class &rn, uint32_t time) {
-    model_count_ = rn;
+    assert(model_count_ == NULL);
+    model_count_ = new mpz_class(rn);
     length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
   }
 
@@ -191,10 +190,6 @@ public:
     // before deleting the contents of this comp,
     // we should make sure that this comp is not present in the comp stack anymore!
     SLOW_DEBUG_DO(assert(isDeletable()));
-#ifndef DOPCC
-    if (data_) delete [] data_;
-    data_ = nullptr;
-#endif
   }
 
 protected:
@@ -204,12 +199,11 @@ protected:
   // var var ... clause clause ...
   // clauses begin at clauses_ofs_
 
-  union {uint32_t* data_; uint64_t clhashkey_;};
+  uint64_t clhashkey_;
   uint32_t hashkey_ = 0;
 
-  mpz_class model_count_;
+  mpz_class* model_count_ = NULL;
   uint32_t creation_time_ = 1;
-  uint32_t old_num_vars = 0;
 
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1

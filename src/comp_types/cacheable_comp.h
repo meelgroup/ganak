@@ -25,16 +25,13 @@ class ComponentArchetype;
 class CacheableComponent: public DifferencePackedComponent {
 public:
   CacheableComponent() { }
-  CacheableComponent(Component &comp, const BPCSizes& sz) :
-      DifferencePackedComponent(comp, sz) {
-  }
-
-  CacheableComponent(void* randomseedforCLHASH, Component &comp, const BPCSizes& sz, uint32_t* tmp_data) :
+  CacheableComponent(void* randomseedforCLHASH, Component &comp,
+      const BPCSizes& sz, uint32_t* tmp_data) :
       DifferencePackedComponent(randomseedforCLHASH, comp, sz, tmp_data) {
   }
 
-  uint32_t SizeInBytes(const BPCSizes& sz) const {
-    return DifferencePackedComponent::raw_data_byte_size(sz);
+  uint32_t SizeInBytes() const {
+    return DifferencePackedComponent::raw_data_byte_size();
   }
 
   // Cache Pollution Management
@@ -51,6 +48,8 @@ public:
   }
   void set_free() {
     father_ = std::numeric_limits<uint32_t>::max();
+    delete model_count_;
+    model_count_ = NULL;
   }
 
 private:

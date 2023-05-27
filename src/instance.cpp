@@ -167,6 +167,7 @@ void Instance::reduceDB() {
   verb_print(1, "[rdb] cls before: " << cls_before << " after: " << red_cls.size()
       << " low lbd: " << num_low_lbd_cls
       << " lbd cutoff: " << lbd_cutoff
+      << " cutoff computed: " << cutoff
       << " used: " << num_used_cls << " rdb: " << stats.reduceDBs);
 }
 

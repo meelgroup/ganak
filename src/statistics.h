@@ -77,11 +77,11 @@ public:
   uint64_t num_cache_look_ups_ = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes_ = 0;
+  uint64_t sum_cache_store_sizes_ = 0;
   bqueue<uint32_t> cache_hits_misses_q;
 
   uint64_t num_cached_comps_ = 0;
   uint64_t total_num_cached_comps_ = 0;
-  uint64_t sum_size_cached_comps_ = 0;
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
 
@@ -96,8 +96,6 @@ public:
 
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
-
-  uint64_t overall_num_cache_stores_ = 0;
   const Instance* inst;
 
   bool cache_full(uint64_t empty_size) {
@@ -109,23 +107,21 @@ public:
            + sum_bytes_cached_comps_;
   }
 
-  void incorporate_cache_store(const CacheableComponent &ccomp, const BPCSizes& sz){
-    sum_bytes_cached_comps_ += ccomp.SizeInBytes(sz);
-    sum_size_cached_comps_ += ccomp.nVars(sz);
+  void incorporate_cache_store(const CacheableComponent &ccomp, const uint32_t comp_nvars) {
+    sum_bytes_cached_comps_ += ccomp.SizeInBytes();
+    sum_cache_store_sizes_ += comp_nvars;
     num_cached_comps_++;
     total_num_cached_comps_++;
-    overall_num_cache_stores_ += ccomp.nVars(sz);
   }
 
-  void incorporate_cache_erase(const CacheableComponent &ccomp, const BPCSizes& sz){
-    sum_bytes_cached_comps_ -= ccomp.SizeInBytes(sz);
-    sum_size_cached_comps_ -= ccomp.nVars(sz);
+  void incorporate_cache_erase(const CacheableComponent &ccomp){
+    sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
     num_cached_comps_--;
   }
 
-  void incorporate_cache_hit(const CacheableComponent &ccomp, const BPCSizes& sz){
-      num_cache_hits_++;
-      sum_cache_hit_sizes_ += ccomp.nVars(sz);
+  void incorporate_cache_hit(const uint32_t comp_nvars){
+    num_cache_hits_++;
+    sum_cache_hit_sizes_ += comp_nvars;
   }
 
   double implicitBCP_miss_rate() const {
@@ -154,9 +150,9 @@ public:
       << "/" << num_binary_irred_clauses_ << "/" << num_unit_irred_clauses_ << endl;
   }
 
-  double getAvgComponentSize() const {
-    if (num_cached_comps_ == 0) return 1.0L;
-    return sum_size_cached_comps_ / (double) num_cached_comps_;
+  double getAvgComponentHitSize() const {
+    if (num_cache_hits_ == 0) return 0.0L;
+    return (double)sum_cache_hit_sizes_ / (double) num_cache_hits_;
   }
 
   uint64_t cached_comp_count() const { return num_cached_comps_; }
@@ -171,5 +167,10 @@ public:
   long double getAvgCacheHitSize() const {
     if(num_cache_hits_ == 0) return 0.0L;
     return sum_cache_hit_sizes_ / (long double) num_cache_hits_;
+  }
+
+  long double getAvgCacheStoreSize() const {
+    if(total_num_cached_comps_ == 0) return 0.0L;
+    return sum_cache_store_sizes_ / (long double) total_num_cached_comps_;
   }
 };

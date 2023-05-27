@@ -11,6 +11,7 @@
 #include "comp_types/base_packed_comp.h"
 #include "statistics.h"
 #include "solver_config.h"
+#include "Vec.h"
 #include <gmpxx.h>
 
 #include "comp_types/comp.h"
@@ -23,7 +24,9 @@ class ComponentCache {
 public:
   ComponentCache(DataAndStatistics &statistics, const CounterConfiguration& config,
       const BPCSizes& sz);
-  ~ComponentCache() {}
+  ~ComponentCache() {
+    for(auto& c: entry_base_) c.set_free();
+  }
 
   void init(Component &super_comp, void* randomseedforCLHASH);
   void delete_comps_with_vars(const set<uint32_t>& vars);
@@ -65,37 +68,26 @@ public:
   inline CacheEntryID storeAsEntry(CacheableComponent &ccomp,
                             CacheEntryID super_comp_id);
 
-  bool manageNewComponent(StackLevel &top, const CacheableComponent &packed_comp) {
+  bool manageNewComponent(StackLevel &top,
+      const uint32_t nvars, const CacheableComponent &packed_comp) {
     stats.num_cache_look_ups_++;
     uint32_t table_ofs = packed_comp.get_hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
-#ifdef DOPCC
     if (!act_id) return false;
     while(act_id){
       if (entry(act_id).equals_clhashkey(packed_comp)) {
-        stats.incorporate_cache_hit(packed_comp, sz);
+        stats.incorporate_cache_hit(nvars);
         top.includeSolution(entry(act_id).model_count());
         return true;
       }
       act_id = entry(act_id).next_bucket_element();
     }
     return false;
-#else
-    while(act_id){
-      if (entry(act_id).equals_comp(packed_comp, sz)) {
-        stats.incorporate_cache_hit(packed_comp, sz);
-        top.includeSolution(entry(act_id).model_count());
-        return true;
-      }
-      act_id = entry(act_id).next_bucket_element();
-    }
-    return false;
-#endif
   }
 
   // unchecked erase of an entry from entry_base_
   void eraseEntry(CacheEntryID id) {
-    stats.incorporate_cache_erase(entry_base_[id], sz);
+    stats.incorporate_cache_erase(entry_base_[id]);
     entry_base_[id].set_free();
     free_entry_base_slots_.push_back(id);
   }
@@ -152,7 +144,7 @@ private:
         entry(compid).set_first_descendant(entry(desc).next_sibling());
     }
 
-  vector<CacheableComponent> entry_base_;
+  vec<CacheableComponent> entry_base_;
   vector<CacheEntryID> free_entry_base_slots_;
 
   // the actual hash table
@@ -179,8 +171,8 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
   ccomp.set_creation_time(my_time_++);
 
   if (free_entry_base_slots_.empty()) {
-    bool at_capacity = (entry_base_.capacity() == entry_base_.size());
-    if (at_capacity) entry_base_.reserve(entry_base_.capacity()*1.3);
+    /* bool at_capacity = (entry_base_.capacity() == entry_base_.size()); */
+    /* if (at_capacity) entry_base_.reserve(entry_base_.capacity()*1.3); */
     entry_base_.push_back(ccomp);
     id = entry_base_.size() - 1;
   } else {
@@ -191,13 +183,14 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
     entry_base_[id] = ccomp;
   }
   compute_size_allocated();
+  VERBOSE_DEBUG_DO(if (stats.total_num_cached_comps_ % 100000 == 99999) debug_dump_data());
 
   entry(id).set_father(super_comp_id);
   add_descendant(super_comp_id, id);
   SLOW_DEBUG_DO(assert(hasEntry(id)));
   SLOW_DEBUG_DO(assert(hasEntry(super_comp_id)));
 
-  stats.incorporate_cache_store(entry(id), sz);
+  stats.incorporate_cache_store(entry(id), 0);
 
 #ifdef SLOW_DEBUG
   for (uint32_t u = 2; u < entry_base_.size(); u++)
@@ -297,12 +290,12 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   // and hence that of the comp will change
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));
   SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).SizeInBytes(sz)));
-  stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes(sz);
+  stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes();
   entry(id).set_model_count(model_count,my_time_);
   entry(id).set_creation_time(my_time_);
   entry(id).set_next_bucket_element(table_[table_ofs]);
   table_[table_ofs] = id;
-  stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes(sz);
+  stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes();
 }
 
 #endif /* COMPONENT_CACHE_H_ */

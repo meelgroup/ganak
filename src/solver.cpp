@@ -958,6 +958,7 @@ retStateT Counter::resolveConflict() {
     decision_stack_.top().mark_branch_unsat();
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
+    decision_stack_.top().zero_out_branch_sol();
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   }

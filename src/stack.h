@@ -135,6 +135,10 @@ public:
     return branch_model_count_[active_branch_];
   }
 
+  void zero_out_branch_sol() {
+    branch_model_count_[active_branch_] = 0;
+  }
+
   uint32_t getbranchvar() const {
     return branch_variable_;
   }

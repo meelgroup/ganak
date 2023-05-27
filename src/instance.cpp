@@ -65,12 +65,12 @@ void Instance::checkWatchLists() const {
     Lit l1 = *beginOf(offs);
     Lit l2 = *beginOf(offs+1);
     if (!findOfsInWatch(litWatchList(l1).watch_list_, offs)) {
-      cout << "Did not find watch l1!!" << endl;
+      cout << "ERROR: Did not find watch l1!!" << endl;
       assert(false);
       exit(-1);
     }
     if (!findOfsInWatch(litWatchList(l2).watch_list_, offs)) {
-      cout << "Did not find watch l2!!" << endl;
+      cout << "ERROR: Did not find watch l2!!" << endl;
       assert(false);
       exit(-1);
     }

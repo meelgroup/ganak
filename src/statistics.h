@@ -16,6 +16,7 @@
 #include "comp_types/cacheable_comp.h"
 #include "primitive_types.h"
 #include "boundedqueue.h"
+#include "solver_config.h"
 
 using std::vector;
 using std::cout;
@@ -27,11 +28,13 @@ class ComponentCache;
 
 class DataAndStatistics {
 public:
-  DataAndStatistics (const Instance* _inst) {
+  DataAndStatistics (const Instance* _inst, CounterConfiguration& config): config_(config)
+  {
     inst = _inst;
     cache_hits_misses_q.clearAndResize(10000);
     comp_size_times_depth_q.clearAndResize(10000);
   }
+  CounterConfiguration& config_;
   uint64_t maximum_cache_size_bytes_ = 0;
   uint64_t numcachedec_ = 0;
 

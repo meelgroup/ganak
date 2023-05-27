@@ -562,41 +562,36 @@ void Counter::computeLargestCube()
 void Counter::print_restart_data() const
 {
   if (comp_size_q.isvalid()) {
-    cout
-       << std::setw(30) << std::left
+    verb_print(1, std::setw(30) << std::left
        << "c Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
        << std::right  << std::setw(30) << std::left
-       << std::left   << " Sterm comp size avg: " << comp_size_q.avg() << endl;
+       << std::left   << " Sterm comp size avg: " << comp_size_q.avg());
   }
   if (cache_miss_rate_q.isvalid()) {
-    cout
-      << std::setw(30) << std::left
+    verb_print(1, std::setw(30) << std::left
       << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_q.getLongtTerm().avg()
       << std::right  << std::setw(30) << std::left
-      << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_q.avg() << endl;
+      << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_q.avg());
   }
   if (depth_q.isvalid()) {
-    cout
-      << std::setw(30) << std::left
+    verb_print(1, std::setw(30) << std::left
       << "c Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
       << std::right << std::setw(30) << std::left
-      << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg() << endl;
+      << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg());
   }
   if (stats.cache_hits_misses_q.isvalid()) {
-    cout
-      << std::setw(30) << std::left
+    verb_print(1, std::setw(30) << std::left
       << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses_q.getLongtTerm().avg()
       << std::right  << std::setw(30) << std::left
-      << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg() << endl;
+      << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg());
   }
   if (stats.comp_size_times_depth_q.isvalid()) {
-    cout
-      << std::setw(30) << std::left
-      << "c Lterm compsz/depth avg: " << std::setw(9) << stats.comp_size_times_depth_q.getLongtTerm().avg()
+    verb_print(1, std::setw(30) << std::left
+      << "c Lterm compsz/depth avg: " << std::setw(9)
+      << stats.comp_size_times_depth_q.getLongtTerm().avg()
       << std::right  << std::setw(30) << std::left
       << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_times_depth_q.avg()
-      << " depth: " << decision_stack_.size()-1
-      << endl;
+      << " depth: " << decision_stack_.size()-1);
   }
   cout << std::right;
 }

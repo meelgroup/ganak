@@ -27,7 +27,7 @@
 #endif
 /////
 
-#define verb_print(a, b) if (config_.verb >= 1) cout << "c " << b << endl;
+#define verb_print(a, b) if (config_.verb >= 1) cout << "c o " << b << endl;
 
 // verbose debug
 #ifdef VERBOSE_DEBUG

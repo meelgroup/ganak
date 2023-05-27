@@ -263,8 +263,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 					Cell new_cell;
 
 					auto&new_cell_interior_node_list = nodes_of_representative[x];
-					for(auto&x:new_cell_interior_node_list)
-						x = sub_node_to_node(x);
+					for(auto&x2:new_cell_interior_node_list) x2 = sub_node_to_node(x2);
 
 					new_cell.parent_cell = closed_cell_id;
 
@@ -274,8 +273,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 					new_cell.boundary_node_list.insert(new_cell.boundary_node_list.end(), separator.begin(), separator.end());
 
 					{
-						for(auto x:new_cell.separator_node_list)
-							in_child_cell.set(x, true);
+						for(auto x2:new_cell.separator_node_list) in_child_cell.set(x2, true);
 						new_cell.boundary_node_list.erase(
 							std::remove_if(
 								new_cell.boundary_node_list.begin(),
@@ -289,8 +287,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 							),
 							new_cell.boundary_node_list.end()
 						);
-						for(auto x:new_cell.separator_node_list)
-							in_child_cell.set(x, false);
+						for(auto x2:new_cell.separator_node_list) in_child_cell.set(x2, false);
 					}
 
 					new_cell.separator_node_list.shrink_to_fit();
@@ -306,8 +303,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 			current_cell.separator_node_list = std::move(separator);
 			current_cell.separator_node_list.shrink_to_fit();
 
-			for(int x:interior_node_list)
-				node_to_sub_node[x] = -1;
+			for(int x2:interior_node_list) node_to_sub_node[x2] = -1;
 		}
 
 		if(current_cell.bag_size() > max_closed_bag_size)
@@ -315,9 +311,8 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
 		if(must_recompute_max_open_bag_size){
 			max_open_bag_size = 0;
-			for(auto&x:access_internal_vector(open_cells))
-				if(x.bag_size() > max_open_bag_size)
-					max_open_bag_size = x.bag_size();
+			for(auto&x2:access_internal_vector(open_cells))
+				if(x2.bag_size() > max_open_bag_size) max_open_bag_size = x2.bag_size();
 		}
 
 		closed_cells.push_back(std::move(current_cell));
@@ -341,7 +336,7 @@ int IFlowCutter::compute_max_bag_size_of_order(const ArrayIDIDFunc&order){
 	int max_up_deg = 0;
 	compute_chordal_supergraph(
 		chain(tail, inv_order), chain(head, inv_order),
-		[&](int x, int y){
+		[&](int x, int /*y*/){
 			if(current_tail != x){
 				current_tail = x;
 				max_to(max_up_deg, current_tail_up_deg);
@@ -363,14 +358,15 @@ void IFlowCutter::test_new_order(const ArrayIDIDFunc&order, TreeDecomposition& t
 	}
 }
 
-TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc tail, ArrayIDIDFunc head, const ArrayIDIDFunc&order){
+TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(
+		ArrayIDIDFunc tail_loc, ArrayIDIDFunc head_loc, const ArrayIDIDFunc&order){
 	TreeDecomposition better_td;
 
-	const int node_count = tail.image_count();
+	const int node_count = tail_loc.image_count();
 
 	auto inv_order = inverse_permutation(order);
-	tail = chain(tail, inv_order);
-	head = chain(head, inv_order);
+	tail_loc = chain(tail_loc, inv_order);
+	head_loc = chain(head_loc, inv_order);
 
 	vector<vector<int>>nodes_in_bag;
 	ArrayIDFunc<vector<int>>bags_of_node(node_count);
@@ -417,7 +413,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 		int bag_id = nodes_in_bag.size();
 		for(auto x:clique)
 			bags_of_node[x].push_back(bag_id);
-		nodes_in_bag.push_back(move(clique));
+		nodes_in_bag.push_back(std::move(clique));
 	};
 
 
@@ -426,14 +422,12 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 		is_root.fill(true);
 		std::vector<int>upper_neighborhood_of_z;
 		int z = -1;
-		compute_chordal_supergraph(
-			tail, head,
-			[&](int x, int y){
+		compute_chordal_supergraph(tail_loc, head_loc, [&](int x, int y){
 				is_root.set(x, false);
 				if(z != -1 && z != x){
 					upper_neighborhood_of_z.push_back(z);
 					sort(upper_neighborhood_of_z.begin(), upper_neighborhood_of_z.end());
-					on_new_potential_maximal_clique(z, move(upper_neighborhood_of_z));
+					on_new_potential_maximal_clique(z, std::move(upper_neighborhood_of_z));
 					upper_neighborhood_of_z.clear();
 				}
 				z = x;
@@ -443,7 +437,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 		if(z != -1){
 			upper_neighborhood_of_z.push_back(z);
 			sort(upper_neighborhood_of_z.begin(), upper_neighborhood_of_z.end());
-			on_new_potential_maximal_clique(z, move(upper_neighborhood_of_z));
+			on_new_potential_maximal_clique(z, std::move(upper_neighborhood_of_z));
 		}
 
 		for(int x=0; x<node_count; ++x){
@@ -474,7 +468,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 	}
 
 	{
-		std::vector<int>tail, head, weight;
+		std::vector<int>tail2, head2, weight;
 
 		for(int b=0; b<bag_count; ++b){
 			vector<int>neighbor_bags;
@@ -489,19 +483,19 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 			}
 			for(auto p:neighbor_bags){
 				if(p != b){
-					tail.push_back(b);
-					head.push_back(p);
+					tail2.push_back(b);
+					head2.push_back(p);
 					weight.push_back(compute_intersection_size(nodes_in_bag[b], nodes_in_bag[p]));
 				}
 			}
 		}
 
-		int arc_count = tail.size();
+		int arc_count = tail2.size();
 
 		auto out_arc = invert_id_id_func(
 			id_id_func(
 				arc_count, bag_count,
-				[&](unsigned a){return tail[a];}
+				[&](unsigned a){return tail2[a];}
 			)
 		);
 
@@ -519,8 +513,8 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 				while(!q.empty()){
 					int xy = q.pop();
 
-					int x = tail[xy];
-					int y = head[xy];
+					int x = tail2[xy];
+					int y = head2[xy];
 
 					assert(in_tree(x));
 
@@ -533,7 +527,6 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 						}
 					}
 				}
-
 			}
 		}
 	}
@@ -541,7 +534,8 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(ArrayIDIDFunc t
 	return better_td;
 }
 
-TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(const ArrayIDIDFunc&tail, const ArrayIDIDFunc&head, const ArrayIDIDFunc&to_input_node_id, const std::vector<Cell>&cell_list){
+TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
+		const ArrayIDIDFunc&/*tail*/, const ArrayIDIDFunc&/*head*/, const ArrayIDIDFunc&to_input_node_id, const std::vector<Cell>&cell_list){
 	TreeDecomposition better_td;
 
 	int bag_count = cell_list.size();
@@ -572,10 +566,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
 
 TreeDecomposition IFlowCutter::constructTD()
 {
-	double start_time = cpuTime();
-
 	TreeDecomposition td;
-
 	ArrayIDIDFunc preorder, inv_preorder;
 
 	int random_seed = 0;
@@ -597,18 +588,13 @@ TreeDecomposition IFlowCutter::constructTD()
 
 		const int node_count = tail.image_count();
 
-		long long last_print = 0;
-
-		auto on_new_multilevel_partition = [&](const std::vector<Cell>&multilevel_partition, bool must_print){
+		auto on_new_multilevel_partition = [&](const std::vector<Cell>&multilevel_partition, bool /*must_print*/){
 			int tw = get_treewidth_of_multilevel_partition(multilevel_partition);
 			{
 				/* update best tree decomposition*/
-
 				td = output_tree_decompostion_of_multilevel_partition(tail, head, preorder, multilevel_partition);
 				best_bag_size = tw;
 			}
-			// print_comment("status "+to_string(best_bag_size)+" "+to_string(get_milli_time()));
-			// print_comment("status "+to_string(best_bag_size)+" "+to_string(get_milli_time()));
 		};
 
 
@@ -639,7 +625,6 @@ TreeDecomposition IFlowCutter::constructTD()
 					test_new_order(chain(compute_greedy_min_shortcut_order(tail, head), inv_preorder), td);
 				}
 
-				start_time = cpuTime();
 				{
 					print_comment("run with 0.0/0.1/0.2 min balance and node_min_expansion in endless loop with varying seed");
 					flow_cutter::Config config;

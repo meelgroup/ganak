@@ -18,7 +18,7 @@
 
 class Instance {
 public:
-  Instance(const CounterConfiguration& _config) : config_(_config), stats (this) { }
+  Instance(const CounterConfiguration& _config) : config_(_config), stats (this, config_) { }
   void new_vars(const uint32_t n);
   void add_irred_cl(const vector<Lit>& lits);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }

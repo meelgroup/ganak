@@ -51,8 +51,6 @@ struct CounterConfiguration {
   branch_t branch_fallback_type = branch_t::old_ganak;
 
   uint64_t seed = 0;
-  uint32_t maxdec = 5000000;
-  uint32_t minconflicts_ = 500;
   double delta = 0.05;
 
   string get_branch_type_str() const {

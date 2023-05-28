@@ -158,7 +158,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   for (int i = 1; i <= n; i++) {
     tdscore[i] = max_ord - ord[i];
     tdscore[i] /= (double)max_ord;
-    assert(tdscore[i+1] > -0.01 && tdscore[i+1] < 1.01);
+    assert(tdscore[i] > -0.01 && tdscore[i] < 1.01);
   }
   // Now scores are between 0..1
   double coef = 1;
@@ -176,7 +176,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   coef = std::min(coef, 1e7);
   /* cout << "c o COEF: " << coef << " Width: " << width << endl; */
   for (int i = 1; i <= n; i++) {
-    tdscore[i+1] *= coef;
+    tdscore[i] *= coef;
   }
 
   /* for(int i = 1; i <= n; i++) { */

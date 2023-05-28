@@ -54,6 +54,7 @@ SET(SOURCES
 	solver.cpp
 	statistics.cpp
     IFlowCutter.cc
+    graph.cpp
     flow-cutter-pace17/src/tree_decomposition.cpp
     flow-cutter-pace17/src/cell.cpp
     flow-cutter-pace17/src/greedy_order.cpp

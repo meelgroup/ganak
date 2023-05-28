@@ -51,6 +51,11 @@ void Graph::addEdge(int v1, int v2)
 	adj_mat[v2].SetTrue(v1);
 	edges++;
 }
+
+const vector<vector<int>>& Graph::get_adj_list() const {
+	return adj_list;
+}
+
 bool Graph::isClique(const vector<int>& adj)
 {
 	for(size_t i=0; i<adj.size(); i++)
@@ -87,6 +92,7 @@ int TreeDecomposition::centroid(int npvars) {
 	printf("c o centroid bag size %d  #npvars %d\n", size, npvars_in_bags);
 	return centroid;
 }
+
 int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const
 {
 	int intros = 0;

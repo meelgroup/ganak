@@ -601,7 +601,7 @@ TreeDecomposition IFlowCutter::constructTD()
 		{
 			try{
 				std::minstd_rand rand_gen;
-				rand_gen.seed(random_seed);
+				rand_gen.seed(1);
 
 				if(node_count > 500000)
 				{
@@ -633,7 +633,7 @@ TreeDecomposition IFlowCutter::constructTD()
 					config.max_cut_size = 10000;
 					config.separator_selection = flow_cutter::Config::SeparatorSelection::node_min_expansion;
 
-					for(int i=2;;++i){
+					for(int i=2; i < 10;++i){
 						config.random_seed = rand_gen();
 						if(i % 16 == 0)
 							++config.cutter_count;
@@ -647,7 +647,9 @@ TreeDecomposition IFlowCutter::constructTD()
 						compute_multilevel_partition(tail, head, flow_cutter::ComputeSeparator(config), best_bag_size, on_new_multilevel_partition);
 
 						// TODO timeout here
-						if(true) break;
+						/* if(true) break; */
+						cout << "TD at " << i << " best bag: " << td.width()  << endl;
+						break;
 					}
 				}
 			}catch(...){

@@ -18,8 +18,8 @@
 #include "stack.h"
 #include "structures.h"
 #include "time_mem.h"
-#include "TreeDecomposition.h"
 #include "IFlowCutter.h"
+#include "graph.hpp"
 
 void Counter::simplePreProcess()
 {
@@ -106,6 +106,85 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
   }
 }
 
+void Counter::compute_score(TreeDecomposition& tdec) {
+  int weight = -1;
+  const int n = nVars();
+  assert(tdscore.empty());
+  tdscore.resize(nVars()+1);
+  if (n <= 2) return;
+  auto bags = tdec.Bags();
+  /* for(uint32_t i = 0; i < bags.size(); i++) { */
+  /*   const auto& b = bags[i]; */
+  /*   cout << "bag id:" << i << endl; */
+  /*   for(const auto& bb: b) { */
+  /*     cout << bb << " "; */
+  /*   } */
+  /*   cout << endl; */
+  /* } */
+  const auto& adj = tdec.get_adj_list();
+  /* for(uint32_t i = 0; i < adj.size(); i++) { */
+  /*   const auto& a = adj[i]; */
+  /*   for(const auto& nn: a) cout << i << " " << nn << endl; */
+  /* } */
+  sspp::TreeDecomposition dec(bags.size(),nVars()+1);
+  for(uint32_t i = 0; i < bags.size();i++) {
+    dec.SetBag(i+1, bags[i]);
+  }
+  for(uint32_t i = 0; i < adj.size(); i++) {
+    const auto& a = adj[i];
+    for(const auto& nn: a) {
+      dec.AddEdge(i+1, nn+1);
+    }
+  }
+
+  auto width = dec.Width();
+  auto ord = dec.GetOrd();
+  // We use 1-indexing, ignore index 0
+  /* cout << "ord.size: " << ord.size() << endl; */
+  /* cout << "tdscore.size: " << tdscore.size() << endl; */
+
+  /* cout << "width: " << width << endl; */
+  /* for(const auto& o: ord) { */
+  /*     cout << "o: " << o << endl; */
+  /* } */
+  assert(ord.size() == tdscore.size());
+  int max_ord = 0;
+  for (int i = 1; i <= n; i++) {
+    /* assert(ord[i] >= 1); */
+    max_ord = std::max(max_ord, ord[i]);
+  }
+  assert(max_ord >= 1);
+  // Normalize
+  for (int i = 1; i <= n; i++) {
+    tdscore[i] = max_ord - ord[i];
+    tdscore[i] /= (double)max_ord;
+    assert(tdscore[i+1] > -0.01 && tdscore[i+1] < 1.01);
+  }
+  // Now scores are between 0..1
+  double coef = 1;
+  if (weight > 0) {
+    double rt = (double)n/(double)width;
+    /* cout << "RT" << rt << endl; */
+    if (rt > 40) {
+      coef = 1e7;
+    } else {
+      coef = weight*exp(rt)/(double)n;
+    }
+  } else {
+    coef = 1e7;
+  }
+  coef = std::min(coef, 1e7);
+  /* cout << "c o COEF: " << coef << " Width: " << width << endl; */
+  for (int i = 1; i <= n; i++) {
+    tdscore[i+1] *= coef;
+  }
+
+  /* for(int i = 1; i <= n; i++) { */
+  /*   cout << "var: " << i << " tdscore: " << tdscore[i] << endl; */
+  /* } */
+  /* exit(0); */
+}
+
 void Counter::get_unit_cls(vector<Lit>& units) const
 {
   assert(units.empty());
@@ -121,25 +200,30 @@ void Counter::td_decompose()
     return;
   }
 
-  Graph primal(nVars());
+  Graph primal(nVars()+1);
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
-      if (l < l2) primal.addEdge(l.var()-1, l2.var()-1);
+      if (l < l2) {
+        print_debug("v1: " << l.var());
+        print_debug("v2: " << l2.var());
+        primal.addEdge(l.var(), l2.var());
+      }
     }
   }
+
   for(uint32_t i = ClHeader::overheadInLits()+1; i < irred_lit_pool_size_;
       i+=ClHeader::overheadInLits()) {
     for(; lit_pool_[i] != SENTINEL_LIT; i++) {
       for(uint32_t i2 = i+1; lit_pool_[i2] != SENTINEL_LIT; i2++) {
-        print_debug("v1: " << lit_pool_[i].var()-1);
-        print_debug("v2: " << lit_pool_[i2].var()-1);
-        primal.addEdge(lit_pool_[i].var()-1, lit_pool_[i2].var()-1);
+        print_debug("v1: " << lit_pool_[i].var());
+        print_debug("v2: " << lit_pool_[i2].var());
+        primal.addEdge(lit_pool_[i].var(), lit_pool_[i2].var());
       }
     }
     i++;
   }
-  verb_print(1, "Primal graph: nodes: " << nVars() << ", edges " <<  primal.numEdges());
+  verb_print(1, "Primal graph: nodes: " << nVars()+1 << ", edges " <<  primal.numEdges());
 
   double density = (double)primal.numEdges()/(double)(nVars() * nVars());
   double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
@@ -160,40 +244,31 @@ void Counter::td_decompose()
 
   // run FlowCutter
   verb_print(1, "FlowCutter is running...");
-  IFlowCutter FC(nVars(), primal.numEdges(), 0); //TODO: fix time limit
+  IFlowCutter FC(nVars()+1, primal.numEdges(), 0); //TODO: fix time limit
   FC.importGraph(primal);
   TreeDecomposition td = FC.constructTD();
 
   bool uselessTD = true;
-  if(td.numNodes() > 0) {  // if TD construction is successful
-    // find a centroid of the constructed TD
-    td.centroid(indep_support_end-1);
-    bool conditionOnTreeWidth = (double)td.width()/(indep_support_end-1) < config_.tw_vare_lim;
-    if(conditionOnTreeWidth) {
-      std::vector<int> dists = td.distanceFromCentroid(indep_support_end-1);
-      if(!dists.empty()) {
-        int max_dst = 0;
-        for(uint32_t i=0; i < nVars(); i++) max_dst = std::max(max_dst, dists[i]);
-        if(max_dst > 0) {
-          for(uint32_t i=0; i < indep_support_end-1; i++)
-            tdscore[i+1] = config_.tw_coef_tdscore * ((double)(max_dst - dists[i])) / (double)max_dst;
-          uselessTD = false;
-        }
-      }
-    }
-  }
+  /* if(td.numNodes() > 0) {  // if TD construction is successful */
+  /*   // find a centroid of the constructed TD */
+  td.centroid(nVars()+1);
+  /* } */
+  compute_score(td);
+  /* for(uint32_t i=1; i < nVars()+1; i++) { */
+  /*   cout << "var: " << i << " tdscore: " << tdscore[i] << endl; */
+  /* } */
+  /* exit(0); */
 
-  if(uselessTD) {
-    verb_print(1, "ignoring td, setting branch to fallback");
-    config_.branch_type = config_.branch_fallback_type;
-  }
+  /* if(uselessTD) { */
+  /*   verb_print(1, "ignoring td, setting branch to fallback"); */
+  /*   config_.branch_type = config_.branch_fallback_type; */
+  /* } */
 }
 
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)
 {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
-  tdscore.resize(nVars()+1, 0);
   largest_cube.clear();
   largest_cube_val = 0;
   start_time = cpuTime();

@@ -16,6 +16,7 @@
 #include "MersenneTwister.h"
 #include "comp_management.h"
 #include "boundedqueue.h"
+#include "TreeDecomposition.h"
 #include <deque>
 
 using std::deque;
@@ -125,6 +126,7 @@ private:
   bool failed_lit_probe_with_bprop();
   bool one_lit_probe(Lit lit, bool set);
   void computeLargestCube();
+  void compute_score(TreeDecomposition& tdec);
   void td_decompose();
 
   // this is the actual BCP algorithm

@@ -46,6 +46,7 @@
 #define print_debug(x) do {} while(0)
 #define print_debug_noendl(x) do {} while (0)
 #endif
+#define print_tmpdebug(x) std::cout << COLDEF << x << COLDEF << endl
 
 #define release_assert(a) \
     do { \

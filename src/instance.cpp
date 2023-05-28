@@ -145,6 +145,7 @@ void Instance::reduceDB() {
   red_cls.clear();
   num_low_lbd_cls = 0;
   num_used_cls = 0;
+  uint32_t cannot_be_del = 0;
   sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(lit_pool_, lbd_cutoff));
   uint32_t cutoff = config_.rdb_cls_target;
 
@@ -154,8 +155,10 @@ void Instance::reduceDB() {
     if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
     else if (h.used) num_used_cls++;
 
-    if (red_cl_can_be_deleted(off) && h.lbd > lbd_cutoff && !h.used &&
-        i > cutoff + num_low_lbd_cls + num_used_cls) {
+    bool can_be_del = red_cl_can_be_deleted(off);
+    cannot_be_del += !can_be_del;
+    if (can_be_del && h.lbd > lbd_cutoff && (!config_.rdb_keep_used || !h.used) &&
+        i > cutoff + num_low_lbd_cls + (config_.rdb_keep_used ? num_used_cls : 0)) {
       markClauseDeleted(off);
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;
@@ -168,6 +171,7 @@ void Instance::reduceDB() {
       << " low lbd: " << num_low_lbd_cls
       << " lbd cutoff: " << lbd_cutoff
       << " cutoff computed: " << cutoff
+      << " cannot be del : " << cannot_be_del
       << " used: " << num_used_cls << " rdb: " << stats.reduceDBs);
 }
 

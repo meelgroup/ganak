@@ -10,7 +10,7 @@
 struct RangeIDIDMultiFunc{
 	int preimage_count()const{ return range_begin.preimage_count()-1; }
 	int image_count()const{ return range_begin(preimage_count()); }
-	
+
 	CountRange operator()(int id)const{
 		assert(0 <= id && id < preimage_count() && "id out of bounds");
 		return count_range(range_begin(id), range_begin(id+1));
@@ -22,12 +22,12 @@ struct RangeIDIDMultiFunc{
 
 template<class T>
 struct ArrayIDMultiFunc{
-	int preimage_count()const{ return preimage_to_intermediate.preimage_count(); }	
+	int preimage_count()const{ return preimage_to_intermediate.preimage_count(); }
 
 	Range<T*>operator()(int id){
 		assert(0 <= id && id < preimage_count() && "id out of bounds");
 		return {
-			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)), 
+			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)),
 			intermediate_to_image.begin() + *std::end(preimage_to_intermediate(id))
 		};
 	}
@@ -35,7 +35,7 @@ struct ArrayIDMultiFunc{
 	Range<const T*>operator()(int id)const{
 		assert(0 <= id && id < preimage_count() && "id out of bounds");
 		return {
-			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)), 
+			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)),
 			intermediate_to_image.begin() + *std::end(preimage_to_intermediate(id))
 		};
 	}
@@ -47,12 +47,12 @@ struct ArrayIDMultiFunc{
 
 struct ArrayIDIDMultiFunc{
 	int image_count()const{ return intermediate_to_image.image_count(); }
-	int preimage_count()const{ return preimage_to_intermediate.preimage_count(); }	
+	int preimage_count()const{ return preimage_to_intermediate.preimage_count(); }
 
 	Range<int*>operator()(int id){
 		assert(0 <= id && id < preimage_count() && "id out of bounds");
 		return {
-			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)), 
+			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)),
 			intermediate_to_image.begin() + *std::end(preimage_to_intermediate(id))
 		};
 	}
@@ -60,7 +60,7 @@ struct ArrayIDIDMultiFunc{
 	Range<const int*>operator()(int id)const{
 		assert(0 <= id && id < preimage_count() && "id out of bounds");
 		return {
-			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)), 
+			intermediate_to_image.begin() + *std::begin(preimage_to_intermediate(id)),
 			intermediate_to_image.begin() + *std::end(preimage_to_intermediate(id))
 		};
 	}
@@ -100,7 +100,7 @@ ArrayIDIDMultiFunc invert_id_id_func(const IDIDFunc&f){
 
 	auto&p = g.intermediate_to_image;
 	p.fill(-1);
-	
+
 	for(int i=0; i<f.preimage_count(); ++i){
 		p[begin[f(i)]++] = i;
 	}

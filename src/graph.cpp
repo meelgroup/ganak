@@ -1,5 +1,26 @@
-#include "graph.hpp"
+/******************************************
+Copyright (C) 2021 Tuukka Korhonen and Matti Jarvisalo
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
+
+#include "graph.hpp"
 #include "utils.hpp"
 
 #include <queue>
@@ -30,21 +51,6 @@ Graph::Graph(std::vector<Edge> edges) : vertex_map_(edges) {
   for (auto edge : edges) {
     AddEdge(vertex_map_.Rank(edge.first), vertex_map_.Rank(edge.second));
   }
-}
-
-Graph::Graph(int vars, const vector<vector<Lit>>& clauses) : Graph((int)vars+1) {
-	for (const auto& clause : clauses) {
-		for (int i = 0; i < (int)clause.size(); i++) {
-			for (int j = i+1; j < (int)clause.size(); j++) {
-				Var v1 = VarOf(clause[i]);
-				Var v2 = VarOf(clause[j]);
-				assert(v1 >= 1 && v1 <= vars && v2 >= 1 && v2 <= vars);
-				if (v1 != v2) {
-					AddEdge(v1, v2);
-				}
-			}
-		}
-	}
 }
 
 int Graph::n() const {
@@ -92,20 +98,6 @@ Bitset Graph::Neighbors(const Bitset& vs) const {
   }
   nbs.TurnOff(vs);
   return nbs;
-}
-
-bool Graph::IsConnected() const {
-  auto cs = Components({});
-  return (cs.size() == 1) && ((int)cs[0].size() == n_);
-}
-
-bool Graph::IsConnectedOrIsolated() const {
-  auto cs = Components({});
-  int f = 0;
-  for (const auto& c : cs) {
-    if ((int)c.size() > 1) f++;
-  }
-  return f <= 1;
 }
 
 void Graph::AddEdge(int v, int u) {
@@ -240,71 +232,6 @@ std::vector<std::vector<int> > Graph::NComponents(const std::vector<int>& separa
     }
   }
   return components;
-}
-
-bool Graph::IsClique(const std::vector<int>& clique) const {
-  for (int i = 0; i < (int)clique.size(); i++) {
-    for (int ii = i + 1; ii < (int)clique.size(); ii++) {
-      if (!HasEdge(clique[i], clique[ii])) return false;
-    }
-  }
-  return true;
-}
-
-bool Graph::IsFull(int v, Bitset sep, Bitset vis) const {
-  static std::vector<int> q;
-  q.resize(n_);
-  q[0] = v;
-  vis.SetFalse(v);
-  int i = 0;
-  int s = 1;
-  int chunks = vis.Chunks();
-  while (i < s) {
-    int x = q[i++];
-    for (int j = 0; j < chunks; j++) {
-      uint64_t go = vis.data_[j] & adj_mat2_[x].data_[j];
-      while (go) {
-        vis.data_[j] &= (~(go&-go));
-        q[s++] = __builtin_ctzll(go) + j*BITS;
-        go &= ~-go;
-      }
-    }
-    bool has = false;
-    for (int j = 0; j < chunks; j++) {
-      sep.data_[j] &= (~adj_mat2_[x].data_[j]);
-      if (sep.data_[j]) has = true;
-    }
-    if (!has) return true;
-  }
-  return false;
-}
-
-bool Graph::IsFull2(int v, Bitset sep, Bitset& vis) const {
-  static std::vector<int> q;
-  q.resize(n_);
-  q[0] = v;
-  vis.SetFalse(v);
-  int i = 0;
-  int s = 1;
-  int chunks = vis.Chunks();
-  while (i < s) {
-    int x = q[i++];
-    for (int j = 0; j < chunks; j++) {
-      uint64_t go = vis.data_[j] & adj_mat2_[x].data_[j];
-      while (go) {
-        vis.data_[j] &= (~(go&-go));
-        q[s++] = __builtin_ctzll(go) + j*BITS;
-        go &= ~-go;
-      }
-    }
-    bool has = false;
-    for (int j = 0; j < chunks; j++) {
-      sep.data_[j] &= (~adj_mat2_[x].data_[j]);
-      if (sep.data_[j]) has = true;
-    }
-    if (!has) return true;
-  }
-  return false;
 }
 
 void Graph::Dfs22(int v, Bitset& sep, Bitset& vis, std::vector<int>& f, const Bitset& good) const {
@@ -590,63 +517,11 @@ void Graph::FillBS(Bitset bs) {
   }
 }
 
-bool Graph::IsClique(Bitset bs) const {
-  int chunks = bs.chunks_;
-  for (int i=0;i<chunks;i++){
-    while (bs.data_[i]) {
-      int v = i*BITS + __builtin_ctzll(bs.data_[i]);
-      bs.data_[i] &= ~-bs.data_[i];
-      for (int j=i;j<chunks;j++){
-        if (bs.data_[j] & (~adj_mat2_[v].data_[j])) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-}
-
 void Graph::RemoveEdgesBetween(int v, const std::vector<int>& vs) {
   for (int u : vs) {
     assert(u != v);
     RemoveEdge(u, v);
   }
-}
-
-bool Graph::IsAlmostClique(const std::vector<int>& clq) const {
-  std::vector<int> rm;
-  for (int i=0;i<(int)clq.size();i++){
-    for (int ii=i+1;ii<(int)clq.size();ii++){
-      if (!HasEdge(clq[i], clq[ii])) {
-        if (rm.size() == 0) {
-          rm = {clq[i], clq[ii]};
-        } else if (rm.size() == 1) {
-          if (clq[i] != rm[0] && clq[ii] != rm[0]) {
-            return false;
-          }
-        } else if (rm.size() == 2) {
-          if (clq[i] == rm[0]) {
-            assert(clq[ii] != rm[1]);
-            rm = {rm[0]};
-          } else if(clq[i] == rm[1]) {
-            assert(clq[ii] != rm[0]);
-            rm = {rm[1]};
-          } else if(clq[ii] == rm[0]) {
-            assert(clq[i] != rm[1]);
-            rm = {rm[0]};
-          } else if(clq[ii] == rm[1]) {
-            assert(clq[i] != rm[0]);
-            rm = {rm[1]};
-          } else {
-            return false;
-          }
-        } else {
-          assert(0);
-        }
-      }
-    }
-  }
-  return true;
 }
 
 std::vector<int> Graph::Distances(const std::vector<int>& start) const {
@@ -753,10 +628,6 @@ void Graph::Dfs2Bit(Bitset& vis, Bitset& ne) const {
   }
 }
 
-bool Graph::IsSimp(int v) const {
-	return IsClique(adj_mat2_[v]);
-}
-
 int Graph::MaximalIS(const Bitset& vs) const {
   Bitset is(n_);
   int ans = 0;
@@ -781,7 +652,7 @@ void TreeDecomposition::SetBag(int v, vector<int> bag) {
 	assert(bags[v].empty());
 	bags[v] = bag;
 	SortAndDedup(bags[v]);
-	width = max(width, (int)bags[v].size()-1);
+	width = std::max(width, (int)bags[v].size()-1);
 	for (int u : bags[v]) {
 		assert(0 <= u && u < n);
 	}
@@ -832,7 +703,7 @@ bool TreeDecomposition::Verify(const Graph& graph) const {
 		if (aps[i][i] == 0) return false;
 	}
 	for (auto e : graph.Edges()) {
-		if (aps[e.F][e.S] == 0) return false;
+		if (aps[e.first][e.second] == 0) return false;
 	}
 	vector<int> u(bs+1);
 	for (int i = 1; i <= bs; i++) {

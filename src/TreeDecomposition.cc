@@ -1,9 +1,24 @@
-/*
- * TreeDecomposition.cc
- *
- *  Created on: 2022/03/29
- *      Author: k-hasimt
- */
+/******************************************
+Copyright (C) 2023 Kenji Hashimoto
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
 
 #include "TreeDecomposition.h"
 
@@ -54,28 +69,6 @@ void Graph::addEdge(int v1, int v2)
 
 const vector<vector<int>>& Graph::get_adj_list() const {
 	return adj_list;
-}
-
-bool Graph::isClique(const vector<int>& adj)
-{
-	for(size_t i=0; i<adj.size(); i++)
-		for(size_t j=i+1; j<adj.size(); j++)
-			if(!hasEdge(adj[i], adj[j])) return false;
-
-	return true;
-}
-
-void Graph::toDimacs(ostream& out, bool withHeader)
-{
-	if(withHeader)
-		out << "p tw "<< nodes << " " << edges << endl;
-
-	for(int i=0; i<nodes; i++) {
-		for(auto j : adj_list[i]) {
-			if(i>=j) continue;
-			out << (i+1) << " " << (j+1) << endl;
-		}
-	}
 }
 
 // TreeDecomposition
@@ -140,23 +133,4 @@ void TreeDecomposition::computeDistance(int v, int parent, int depth, vector<int
 		computeDistance(ch, v, d, distance);
 	}
 
-}
-
-void TreeDecomposition::toDimacs(ostream& out, int cent2, int npvars)
-{
-	out << "s td " << bags.size() << " " << (tw+1) << " " << gnodes << endl;
-	out << "c pvars " << npvars << endl;
-	if(cent2 >= 0) out << "c centroid " << cent2 << endl;
-
-	int count = 1;
-	for(const auto& bag : bags) {
-		out << "b " << count ;
-		for(auto v : bag) {
-			out << " " << (v+1);
-		}
-		out << endl;
-		count++;
-	}
-
-	Graph::toDimacs(out, false);
 }

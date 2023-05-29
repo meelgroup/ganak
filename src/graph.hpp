@@ -1,3 +1,25 @@
+/******************************************
+Copyright (C) 2021 Tuukka Korhonen and Matti Jarvisalo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
+
 #pragma once
 
 #include "utils.hpp"
@@ -27,14 +49,13 @@ class Graph {
 public:
   explicit Graph(int n);
   explicit Graph(std::vector<Edge> edges);
-  explicit Graph(int vars, const vector<vector<Lit>>& clauses);
   void AddEdge(int v, int u);
   void AddEdge(Edge e);
   void AddEdges(const std::vector<Edge>& edges);
 
   void RemoveEdge(int v, int u);
   void RemoveEdgesBetween(int v, const std::vector<int>& vs);
-  
+
   int n() const;
   int m() const;
   bool HasEdge(int v, int u) const;
@@ -42,32 +63,21 @@ public:
   std::vector<Edge> Edges() const;
   std::vector<int> Vertices() const;
 
-  bool IsSimp(int v) const;
-
   int Degeneracy() const;
-  
-  bool IsConnected() const;
-  bool IsConnectedOrIsolated() const;
-  
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
   std::vector<std::vector<int> > Components(const std::vector<int>& separator) const;
   std::vector<std::vector<int> > NComponents(const std::vector<int>& separator) const;
   std::vector<Bitset> NComponents(const Bitset& bs) const;
   std::vector<int> FindComponentAndMark(int v, std::vector<char>& block) const;
-  
-  bool IsClique(const std::vector<int>& clique) const;
-  bool IsAlmostClique(const std::vector<int>& clq) const;
-  bool IsClique(Bitset bs) const;
 
   std::vector<Edge> EdgesIn(const std::vector<int>& vs) const;
-
   std::vector<Edge> FillEdges(const std::vector<int>& clq) const;
   std::vector<Edge> FillEdges(const Graph& other) const;
   std::vector<Edge> FillEdges(Bitset bs) const;
   void FillBS(Bitset bs);
   int FillSize(Bitset bs) const;
-  
+
   int MapBack(int v) const;
   std::vector<int> MapBack(std::vector<int> vs) const;
   Edge MapBack(Edge e) const;
@@ -75,7 +85,7 @@ public:
   std::pair<int, int> MapBack(int v, int u) const;
   int MapInto(int v) const;
   std::vector<int> MapInto(std::vector<int> vs) const;
-  
+
   void InheritMap(const Graph& parent);
 
   std::vector<std::vector<int>> CompNeighs(const std::vector<int>& block) const;
@@ -86,10 +96,8 @@ public:
   bool IsMinsep(const std::vector<int>& separator) const;
   bool IsMinsep(const Bitset& separator) const;
   bool HasNFullComponents(const Bitset& separator, int n) const;
-  
+
   void Dfs2(int v, Bitset& sep, Bitset& vis, std::vector<int>& f) const;
-  bool IsFull(int v, Bitset sep, Bitset vis) const;
-  bool IsFull2(int v, Bitset sep, Bitset& vis) const;
   std::vector<Bitset> BitComps(Bitset vis) const;
   void Dfs22(int v, Bitset& sep, Bitset& vis, std::vector<int>& f, const Bitset& good) const;
   void Dfs2Bit(Bitset& vis, Bitset& ne) const;
@@ -103,7 +111,7 @@ public:
 
   Graph(const Graph& rhs) = default;
   Graph& operator=(const Graph& rhs) = default;
-  
+
 private:
   int n_, m_;
   StaticSet<int> vertex_map_;

@@ -1,5 +1,5 @@
 /******************************************
-Copyright (c) 2023, Marc Thurley, Mate Soos
+Copyright (C) 2023 Authors of GANAK, see AUTHORS file
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -81,12 +81,14 @@ string ganak_version_info()
     #else
     ss << "c o GANAK compiled with non-gcc compiler" << endl;
     #endif
-    ss << "c o CMS version: " << sat_solver->get_version_sha1();
+    ss << "c o CMS version: " << sat_solver->get_version_sha1() << endl;
     ss << "c o Top-down search by Davis, Putnam, Logemann, and Loveland" << endl;
     ss << "c o Decomposition d-dNNF idea by Adnan Darwiche" << endl;
     ss << "c o TD idea&code by Korhonen and Jarvisalo" << endl;
     ss << "c o TD search code by Ben Strasser" << endl;
+    ss << "c o Modifications to flow_cutter & 'GPMC' heuristic by Kenji Hashimoto" << endl;
     ss << "c o LBD idea by Simon and Audemard" << endl;
+    ss << "c o clhash by Daniel Lemire,Owen Kaser" << endl;
     ss << "c o VSIDS idea by Moskewicz, Zhao, Zhang, and Malik" << endl;
     ss << "c o Based on SharpSAT by Marc Thurley" << endl;
     return ss.str();
@@ -172,7 +174,7 @@ void parse_supported_options(int argc, char** argv)
         }
 
         if (vm.count("version")) {
-            cout << ganak_version_info() << endl;
+            cout << ganak_version_info();
             std::exit(0);
         }
 
@@ -435,8 +437,8 @@ int main(int argc, char *argv[])
   sat_solver->set_renumber(false);
   parse_supported_options(argc, argv);
   if (conf.verb) {
-    cout << ganak_version_info() << endl;
-    cout << "c called with: " << command_line << endl;
+    cout << ganak_version_info();
+    cout << "c o called with: " << command_line << endl;
   }
   conf.branch_type = parse_branch_type(branch_type);
   conf.branch_fallback_type = parse_branch_type(branch_fallback_type);

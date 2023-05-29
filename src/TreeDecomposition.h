@@ -1,12 +1,26 @@
-/*
- * TreeDecomposition.h
- *
- *  Created on: 2022/03/29
- *      Author: k-hasimt
- */
+/******************************************
+Copyright (C) 2023 Kenji Hashimoto
 
-#ifndef PREPROCESSOR_TREEDECOMPOSITION_H_
-#define PREPROCESSOR_TREEDECOMPOSITION_H_
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
+
+#pragma once
 
 #include <vector>
 #include <algorithm>
@@ -29,12 +43,6 @@ public:
   void addEdge(int v1, int v2);
   bool hasEdge(int v1, int v2) { return adj_mat[v1].Get(v2); }
   const std::vector<int> Neighbors(int v) const { return adj_list[v]; }
-
-  bool isSimplical(int v) { return isClique(adj_list[v]); }
-  bool isClique(const std::vector<int>& adj);
-
-  // Debug
-  void toDimacs(std::ostream& out, bool withHeader=true);
 
 protected:
   int nodes;
@@ -60,9 +68,6 @@ public:
   int centroid(int npvars);
   std::vector<int> distanceFromCentroid(int npvars);
 
-  // Debug
-  void toDimacs(std::ostream& out, int cent, int npvars);
-
 private:
   int findCentroid(int v, int parent, int& centroid) const;
   void computeDistance(int v, int parent, int depth, std::vector<int>& distance);
@@ -72,5 +77,3 @@ private:
   int gnodes;
   int cent;
 };
-
-#endif /* PREPROCESSOR_TREEDECOMPOSITION_H_ */

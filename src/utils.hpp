@@ -1,3 +1,25 @@
+/******************************************
+Copyright (C) 2021 Tuukka Korhonen and Matti Jarvisalo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
+
 #pragma once
 
 #include <vector>
@@ -12,86 +34,12 @@
 #include "bitset.hpp"
 
 namespace sspp {
-#define F first
-#define S second
-typedef int Lit;
-typedef int Var;
 
 using std::vector;
 using std::string;
 using std::cout;
-using std::cerr;
 using std::endl;
-using std::max;
-using std::min;
 using std::pair;
-using std::to_string;
-using std::swap;
-
-inline bool Subsumes(const vector<Lit>& a, const vector<Lit>& b) {
-	if (a.size() == b.size()) return a == b;
-	int j = 0;
-	for (int i = 0; i < (int)a.size(); i++) {
-		while (j < (int)b.size() && b[j] < a[i]) {
-			j++;
-		}
-		if (j == (int)b.size()) return false;
-		assert(b[j] >= a[i]);
-		if (b[j] > a[i]) return false;
-	}
-	return true;
-}
-
-inline Lit Neg(Lit x) {
-	return x^1;
-}
-
-inline Var VarOf(Lit x) {
-	return x/2;
-}
-
-inline Lit PosLit(Var x) {
-	return x*2;
-}
-
-inline Lit NegLit(Var x) {
-	return x*2+1;
-}
-
-inline Lit MkLit(Var var, bool phase) {
-	if (phase) {
-		return PosLit(var);
-	} else {
-		return NegLit(var);
-	}
-}
-
-inline bool IsPos(Lit x) {
-	return !(x&1);
-}
-
-inline bool IsNeg(Lit x) {
-	return x&1;
-}
-
-inline Lit FromDimacs(int64_t x) {
-	assert(x != 0);
-	assert(std::llabs(x) < (1ll << 30ll));
-	if (x > 0) {
-		return PosLit(x);
-	} else {
-		return NegLit(-x);
-	}
-}
-
-inline int64_t ToDimacs(Lit x) {
-	assert(x >= 2);
-	if (x&1) {
-		return -(int64_t)VarOf(x);
-	} else {
-		return VarOf(x);
-	}
-}
 
 inline bool IsInt(const string& s, int64_t lb=std::numeric_limits<int64_t>::min(), int64_t ub=std::numeric_limits<int64_t>::max()) {
   try {
@@ -110,21 +58,6 @@ inline bool IsDouble(const string& s, double lb=std::numeric_limits<double>::min
 		return false;
 	}
 }
-
-inline vector<Lit> Negate(vector<Lit> vec) {
-	for (Lit& lit : vec) {
-		lit = Neg(lit);
-	}
-	return vec;
-}
-
-inline vector<Var> VarsOf(vector<Lit> vec) {
-	for (Lit& lit : vec) {
-		lit = VarOf(lit);
-	}
-	return vec;
-}
-
 
 template<typename T>
 void Shuffle(vector<T>& vec, std::mt19937& gen) {
@@ -150,13 +83,6 @@ T Power2(int p) {
 	} else {
 		return Power2<T>(p-1)*2;
 	}
-}
-
-inline bool IsClause(const vector<Lit>& clause) {
-	for (size_t i = 1; i < clause.size(); i++) {
-		if (VarOf(clause[i]) <= VarOf(clause[i-1])) return false;
-	}
-	return true;
 }
 
 template<typename T>
@@ -270,7 +196,4 @@ inline double Timer::get() const {
   }
 }
 
-inline void Timer::clear() {
-  elapsedTime = std::chrono::duration<double>(std::chrono::duration_values<double>::zero());
-}
 } // namespace sspp

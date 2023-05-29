@@ -72,7 +72,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 		std::vector<int>upper_neighborhood_of_z;
 		int z = -1;
 		compute_chordal_supergraph(
-			tail, head, 
+			tail, head,
 			[&](int x, int y){
 				is_root.set(x, false);
 				if(z != -1 && z != x){
@@ -90,7 +90,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 			sort(upper_neighborhood_of_z.begin(), upper_neighborhood_of_z.end());
 			on_new_potential_maximal_clique(z, move(upper_neighborhood_of_z));
 		}
-								
+
 		for(int x=0; x<node_count; ++x){
 			if(is_root(x)){
 				on_new_potential_maximal_clique(x, {x});
@@ -113,7 +113,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 		for(auto x:nodes_in_bag[i])
 			out << ' ' << (order(x)+1);
 		out << '\n';
-		
+
 	}
 
 	{
@@ -147,7 +147,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 
 		auto out_arc = invert_id_id_func(
 			id_id_func(
-				arc_count, bag_count, 
+				arc_count, bag_count,
 				[&](unsigned a){return tail[a];}
 			)
 		);
@@ -165,7 +165,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 					q.push(a, weight[a]);
 				while(!q.empty()){
 					int xy = q.pop();
-					
+
 					int x = tail[xy];
 					int y = head[xy];
 
@@ -180,7 +180,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 						}
 					}
 				}
-				
+
 			}
 		}
 	}
@@ -199,7 +199,7 @@ void print_tree_decompostion_of_multilevel_partition(std::ostream&out,
 			out << ' ' << (to_input_node_id(x)+1);
 		for(auto&x:cell_list[i].boundary_node_list)
 			out << ' ' << (to_input_node_id(x)+1);
-		out << '\n'; 
+		out << '\n';
 	}
 
 	for(int i=0; i<bag_count; ++i){

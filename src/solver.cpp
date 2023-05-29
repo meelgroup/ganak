@@ -1114,8 +1114,11 @@ retStateT Counter::resolveConflict() {
     //Rewriting levels now.
     for(uint32_t i = decision_stack_[decision_stack_.size()-2].trail_ofs();
         i < trail.size(); i++) {
+      cout << "dec level rewritten of lit: " << trail[i] << endl;
       var(trail[i]).decision_level = dec_to_set;
     }
+
+    /* cout << "decision_stack_[decision_stack_.size()-2].trail_ofs(): " << decision_stack_[decision_stack_.size()-2].trail_ofs() << endl; */
     /* var(lit).decision_level = var(before_top_dec_lit()).decision_level; */
     assert(var(lit).decision_level == dec_to_set);
   }

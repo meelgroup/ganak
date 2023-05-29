@@ -168,7 +168,6 @@ private:
   bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE), bool check_free = true)
   {
     if (check_free && lit_values_[lit] != X_TRI) return false;
-    auto prev_val = lit_values_[lit];
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
     else print_debug("-> lit propagated: " << lit);
 
@@ -178,7 +177,7 @@ private:
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
     }
-    if (prev_val == X_TRI) trail.push_back(lit);
+    trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
     if (ant.isAnt() && ant.isAClause()) {

@@ -81,6 +81,7 @@ public:
 
   // number of clauses overall learned
   uint32_t num_clauses_learned_ = 0;
+  uint64_t uip_not_added = 0;
   uint64_t uip_cls = 0;
   uint64_t final_cl_sz = 0;
   uint64_t uip_lits_learned = 0;

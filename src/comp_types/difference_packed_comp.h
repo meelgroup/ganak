@@ -35,7 +35,8 @@ THE SOFTWARE.
 class DifferencePackedComponent: public BasePackedComponent {
 public:
   DifferencePackedComponent() { }
-  inline DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
+  inline DifferencePackedComponent(
+      void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
   uint32_t raw_data_byte_size() const {
     return BasePackedComponent::alloc_of_model_count();
   }

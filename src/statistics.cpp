@@ -48,8 +48,9 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << std::setprecision(2) << std::setw(9) << std::left << std::fixed
     << safe_div(decisions,(1000.0*(cpuTime()-solver->get_start_time())))
   );
-  verb_print(1, "conflicts                      "
+  verb_print(1, "conflicts/not added            "
     << std::left << std::setw(9) << conflicts
+    << "   " << std::left << std::setw(9) << uip_not_added
     << std::setw(16) << " -- confl/s: "
     << std::setprecision(2) << std::setw(9) << std::left
     << safe_div(conflicts,((cpuTime()-solver->get_start_time())))

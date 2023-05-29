@@ -1048,16 +1048,19 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   Antecedent ant(NOT_A_CLAUSE);
-  /* assert(uip_clause_is_implied()); */
-  if (!uip_clause.empty() && top_dec_lit().neg() == uip_clause[0]) {
-    VERBOSE_DEBUG_DO(cout << "Setting reason the conflict cl" << endl);
-    assert(var(uip_clause[0]).decision_level != -1);
-    var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
-    ant = var(top_dec_lit()).ante;
-    // oh wow, we set this decision variable to a propagated one
-    // but we don't change its level! even though it's set due to previous level
-  } else {
-    /* addUIPConflictClause(uip_clause); */
+  if (!uip_clause.empty()) {
+    if (top_dec_lit().neg() == uip_clause[0]) {
+      assert(uip_clause_is_implied());
+      VERBOSE_DEBUG_DO(cout << "Setting reason the conflict cl" << endl);
+      assert(var(uip_clause[0]).decision_level != -1);
+      var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
+      ant = var(top_dec_lit()).ante;
+      // oh wow, we set this decision variable to a propagated one
+      // but we don't change its level! even though it's set due to previous level
+    } else {
+      /* addUIPConflictClause(uip_clause); */
+      stats.uip_not_added++;
+    }
   }
   VERBOSE_DEBUG_DO(cout << "AFTER conflict, setup: ");
   VERBOSE_DEBUG_DO(print_conflict_info());

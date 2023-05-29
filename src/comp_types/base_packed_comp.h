@@ -116,17 +116,6 @@ template <class T>
 class BasePackedComponent {
 public:
   static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
-  BasePackedComponent() {}
-  ~BasePackedComponent() {}
-
-  void outbit(uint32_t v){
-   for(auto i=0; i<32;i++){
-     cout << ((v&2147483648)?"1":"0");
-      v&=2147483648-1;
-      v <<= 1;
-    }
-  }
-
   static uint32_t log2(uint32_t v) {
          // taken from
          // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup

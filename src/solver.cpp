@@ -965,6 +965,7 @@ void Counter::print_dec_info() const
 
 void Counter::print_conflict_info() const
 {
+  print_dec_info();
   cout << "confl lits: " << endl;
   for(uint32_t i = 0; i < uip_clause.size(); i ++) {
     const auto l = uip_clause[i];
@@ -1007,7 +1008,9 @@ bool Counter::uip_clause_is_implied() {
     for(const auto& l: uip_clause) {
       lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
     }
+    cout << "to check lits: " << lits << endl;
     auto ret = sat_solver->solve(&lits);
+    cout << "Ret: " << ret << endl;
     return ret == CMSat::l_False;
 }
 
@@ -1406,7 +1409,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
 
 void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
   tmp_clause_minim.clear();
-  assertion_level_ = 0;
+  /*assertion_level_ = 0;
   for (const auto& lit : cl) {
     if (existsUnitClauseOf(lit.var())) continue;
     bool resolve_out = false;
@@ -1445,22 +1448,25 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
         tmp_clause_minim.push_back(lit);
       }
     }
-  }
+  }*/
 
-  if (uipLit.var()) {
-    assert(var(uipLit).decision_level >= 0);
-    /* assert(var(uipLit).decision_level == decision_stack_.get_decision_level()); */
-  }
+  /* if (uipLit.var()) { */
+  /*   assert(var(uipLit).decision_level >= 0); */
+  /*   /1* assert(var(uipLit).decision_level == decision_stack_.get_decision_level()); *1/ */
+  /* } */
 
+
+  tmp_clause_minim.clear();
+  for(const auto& l:uip_clause) tmp_clause_minim.push_back(l);
   // Clearing
   for(const auto& v: toClear) tmp_seen[v] = false;
   toClear.clear();
 
   //assert(uipLit.var() != 0);
   stats.uip_lits_learned+=tmp_clause_minim.size();
-  if (uipLit.var() != 0) {
+  /* if (uipLit.var() != 0) { */
     stats.uip_lits_learned++;
-    tmp_clause_minim.push_front(uipLit);
+    /* tmp_clause_minim.push_front(uipLit); */
 
     /* uint32_t lbd = calc_lbd(tmp_clause_minim); */
     /* if (lbd < 6) */
@@ -1468,7 +1474,7 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
         (stats.rem_lits_tried > (200ULL*1000ULL) &&
         ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
       minimize_uip_cl_with_bins(tmp_clause_minim);
-  }
+  /* } */
   stats.uip_cls++;
   stats.final_cl_sz+=tmp_clause_minim.size();
   uip_clause.clear();
@@ -1485,121 +1491,85 @@ void Counter::recordLastUIPCauses() {
 
   assertion_level_ = 0;
   uip_clause.clear();
+  uip_clause.push_back(Lit(0, false));;
+  Lit p = NOT_A_LIT;
 
-  uint32_t trail_ofs = trail.size();
   const int32_t DL = var(top_dec_lit()).decision_level;
-  const int32_t orig_DL = decision_stack_.get_decision_level();
   cout << "orig DL: " << decision_stack_.get_decision_level() << endl;
   cout << "new DL : " << DL << endl;
-  uint32_t lits_at_current_dl = 0;
   print_dec_info();
 
-  cout << "violated cl: " << endl;;
-  for (const auto& l: violated_clause) {
-    if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
-    if (var(l).decision_level < DL) tmp_clause.push_back(l);
-    else lits_at_current_dl++;
-    increaseActivity(l);
-    tmp_seen[l.var()] = true;
-    toClear.push_back(l.var());
-    cout << std::setw(5) << l << " lev: " << std::setw(3) << var(l).decision_level << " ante: " << var(l).ante << endl;;
-  }
-  cout << endl;
-  cout << "lits_at_current_dl: " << lits_at_current_dl << endl;
-
-
   cout << "Doing loop:" << endl;
-  Lit curr_lit;
-  while (lits_at_current_dl) {
-    assert(trail_ofs != 0);
-    curr_lit = trail[--trail_ofs];
-    cout << std::setw(5) << curr_lit<< " lev: " << std::setw(3) << var(curr_lit).decision_level << " ante: " << var(curr_lit).ante << endl;
-
-    if (!tmp_seen[curr_lit.var()]) continue;
-    tmp_seen[curr_lit.var()] = false;
-    cout << "tmp seen check success. lits_at_current_dl:" << lits_at_current_dl << endl;
-
-    if (lits_at_current_dl-- == 1) {
-      // perform UIP stuff
-      if (!hasAntecedent(curr_lit)) {
-        // this should be the decision literal when in first branch
-        // or it is a literal decided to explore in failed literal testing
-        break;
+  uint32_t index = trail.size()-1;
+  uint32_t pathC = 0;
+  vector<Lit> c;
+  do {
+    if (confl.isAClause()) {
+      assert(confl.asCl() != NOT_A_CLAUSE);
+      c.clear();
+      for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
+        c.push_back(*l);
       }
-      cout << "Has antecedent, not breaking." << endl;
-    }
-    cout << "lits_at_current_dl: " << lits_at_current_dl << endl;
-
-    assert(hasAntecedent(curr_lit));
-    if (getAntecedent(curr_lit).isFake()) {
-      assert(false && "this has not been fixed");
-      assert(config_.failed_lit_probe_type > 0);
-      // Probe/BProp is the reason
-      for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
-        const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
-        assert(decision_stack_[i].getbranchvar() == l.var());
-        if (tmp_seen[l.var()] || (var(l).decision_level == 0) ||
-            existsUnitClauseOf(l.var())) {
-          continue;
-        }
-        if (var(l).decision_level < DL) {
-          tmp_clause.push_back(l);
-        } else {
-          lits_at_current_dl++;
-        }
-        tmp_seen[l.var()] = true;
-        toClear.push_back(l.var());
-      }
-    } else if (getAntecedent(curr_lit).isAClause()) {
-      // Long clause is the reason
-      ClauseOfs off = getAntecedent(curr_lit).asCl();
-      auto& header = getHeaderOf(off);
-      if (header.red) {
-        header.increaseScore();
-        header.update_lbd(calc_lbd(off));
-      }
-      increaseActivity(off);
-      assert(curr_lit == *beginOf(getAntecedent(curr_lit).asCl()));
-
-      for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
-        if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
-            existsUnitClauseOf(it->var())) {
-          cout << "skipping          : " << std::setw(5) << *it<< " lev: " << std::setw(3) << var(*it).decision_level << " ante: " << var(*it).ante << endl;
-          continue;
-        }
-        if (var(*it).decision_level < DL) {
-          tmp_clause.push_back(*it);
-        } else {
-          lits_at_current_dl++;
-        }
-        tmp_seen[it->var()] = true;
-        cout << "adding to tmp_seen: " << std::setw(5) << *it<< " lev: " << std::setw(3) << var(*it).decision_level << " ante: " << var(*it).ante << endl;
-        toClear.push_back(it->var());
-      }
+    } else if (confl.isFake()) {
+      assert(false);
     } else {
-      // Binary clause is reason
-      Lit alit = getAntecedent(curr_lit).asLit();
-      increaseActivity(alit);
-      increaseActivity(curr_lit);
-      if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
-            !existsUnitClauseOf(alit.var())) {
-        if (var(alit).decision_level < DL) {
-          tmp_clause.push_back(alit);
+      assert(!confl.isAClause());
+      c.clear();
+      c.push_back(conflLit); //ONLY valid for 1st
+      c.push_back(confl.asLit());
+    }
+    cout << "next cl: " << endl;
+    for(const auto& l: c) {
+        cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+          << " ante: " << std::setw(8) << var(l).ante
+          << " val : " << std::setw(7) << lit_val_str(l)
+          << endl;
+    }
+
+    cout << "For loop." << endl;
+    for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < c.size() ;j++) {
+      Lit q = c[j];
+      if (!tmp_seen[q.var()] && var(q).decision_level > 0){
+        tmp_seen[q.var()] = 1;
+        toClear.push_back(q.var());
+
+        cout << std::setw(5) << q << " lev: " << std::setw(3) << var(q).decision_level
+          << " ante: " << std::setw(8) << var(q).ante
+          << " val : " << std::setw(7) << lit_val_str(q)
+          << endl;
+        if (var(q).decision_level >= DL) {
+          pathC++;
+          cout << "pathc inc." << endl;
         } else {
-          lits_at_current_dl++;
+          uip_clause.push_back(q);
+          cout << "added to cl." << endl;
         }
-        tmp_seen[alit.var()] = true;
-        cout << "adding to tmp_seen: " << std::setw(5) << alit << " lev: " << std::setw(3) << var(alit).decision_level << " ante: " << var(alit).ante << endl;
-        toClear.push_back(alit.var());
-      } else {
-        cout << "skipping:           " << std::setw(5) << alit << " lev: " << std::setw(3) << var(alit).decision_level << " ante: " << var(alit).ante << endl;
       }
     }
-    cout << "end of loop, lits_at_current_dl: " << lits_at_current_dl << endl;
-    curr_lit = NOT_A_LIT;
+    cout << "PathC: " << pathC << endl;
+
+    while (!tmp_seen[trail[index--].var()]) {}
+    p     = trail[index+1];
+    cout << "Next p: " << p << endl;
+    confl = var(p).ante;
+    tmp_seen[p.var()] = 0;
+    pathC--;
+  } while (pathC > 0);
+  uip_clause[0] = p.neg();
+  cout << "UIP cl: " << endl;
+  for(const auto& l: uip_clause) {
+      cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+        << " ante: " << std::setw(14) << var(l).ante
+        << " val : " << std::setw(7) << lit_val_str(l)
+        << endl;
   }
-  minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
-  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+
+  //minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
+  for(const auto& v: toClear) tmp_seen[v] = 0;
+  toClear.clear();
+
+  //BELOW IS SLOW_DEBUG!!
+  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
 }
 
 Counter::Counter(const CounterConfiguration& conf) : Instance(conf)

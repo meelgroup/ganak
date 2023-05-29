@@ -205,9 +205,8 @@ private:
 
   void setConflictState(Lit litA, Lit litB)
   {
-    violated_clause.clear();
-    violated_clause.push_back(litA);
-    violated_clause.push_back(litB);
+    conflLit = litA;
+    confl = Antecedent(litB);
   }
 
   void setConflictState(ClauseOfs off)
@@ -217,9 +216,8 @@ private:
       header.increaseScore();
       header.update_lbd(calc_lbd(off));
     }
-    violated_clause.clear();
-    for (auto it = beginOf(off); *it != SENTINEL_LIT; it++)
-      violated_clause.push_back(*it);
+    confl = Antecedent(off);
+    conflLit = NOT_A_LIT;
   }
 
   // The literals that have been set in this decision level
@@ -277,7 +275,8 @@ private:
 
   // if the state name is CONFLICT,
   // then violated_clause contains the clause determining the conflict;
-  vector<Lit> violated_clause;
+  Lit conflLit = NOT_A_LIT;
+  Antecedent confl;
   // this is an array of all the clauses found
   // during the most recent conflict analysis
   // it might contain more than 2 clauses

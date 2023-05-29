@@ -23,7 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 /* #define VERBOSE_DEBUG */
-/* #define SLOW_DEBUG */
+#define SLOW_DEBUG
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"

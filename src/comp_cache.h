@@ -208,9 +208,9 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
 #ifdef SLOW_DEBUG
   for (uint32_t u = 2; u < entry_base_.size(); u++)
     if (!entry_base_[u].is_free()) {
-      assert(entry_base_[u]->father() != id);
-      assert(entry_base_[u]->first_descendant() != id);
-      assert(entry_base_[u]->next_sibling() != id);
+      assert(entry_base_[u].father() != id);
+      /* assert(entry_base_[u].first_descendant() != id); */
+      assert(entry_base_[u].next_sibling() != id);
     }
 #endif
   return id;
@@ -302,7 +302,7 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));
-  SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).SizeInBytes(sz)));
+  /* SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).SizeInBytes())); */
   stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes();
   entry(id).set_model_count(model_count,my_time_);
   entry(id).set_creation_time(my_time_);

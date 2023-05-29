@@ -216,17 +216,19 @@ public:
 
 inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 {
+  std::stringstream s;
   if (val.isAClause() && val.asCl() == NOT_A_CLAUSE) {
-    os << std::setw(5) << "DEC";
+    s << std::setw(5) << "DEC";
   } else if (!val.isAnt()) {
-    os << std::setw(5) << "???";
+    s << std::setw(5) << "???";
   } else if (val.isFake()) {
-    os << std::setw(5) <<"fake";
+    s << std::setw(5) <<"fake";
   } else if (val.isAClause()) {
-    os << "CL: " << std::setw(5) << val.asCl();
+    s << "CL: " << std::setw(5) << val.asCl();
   } else {
-    os << "Lit: " << std::setw(5) << val.asLit();
+    s << "Lit: " << std::setw(5) << val.asLit();
   }
+  os << s.str();
   return os;
 }
 

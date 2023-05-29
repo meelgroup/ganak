@@ -947,17 +947,24 @@ retStateT Counter::backtrack() {
   return EXIT;
 }
 
-void Counter::print_conflict_info() const
+void Counter::print_dec_info() const
 {
   cout << "dec lits: " << endl;
   for(uint32_t i = 1; i < decision_stack_.size(); i ++) {
+    Lit l = *(trail.begin()+ decision_stack_[i].trail_ofs());
     cout << "dec lev: " << std::setw(3) << i <<
       " lit: " << std::setw(6)
-      << *(trail.begin()+ decision_stack_[i].trail_ofs())
+      << l
       << " is right: "
       << (int)decision_stack_[i].is_right_branch()
+      << " ante: " << std::setw(10) << var(l).ante
+      << " lev: " << var(l).decision_level
       << endl;
   }
+}
+
+void Counter::print_conflict_info() const
+{
   cout << "confl lits: " << endl;
   for(uint32_t i = 0; i < uip_clause.size(); i ++) {
     const auto l = uip_clause[i];
@@ -1005,8 +1012,9 @@ bool Counter::uip_clause_is_implied() {
 }
 
 retStateT Counter::resolveConflict() {
-  VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
+  cout << "****** RECORD START" << endl;
   recordLastUIPCauses();
+  cout << "*RECORD FINISHED*" << endl;
   act_inc *= 1.0/config_.act_exp;
 
   if (stats.conflicts > last_reduceDB_conflicts+10000) {
@@ -1014,7 +1022,7 @@ retStateT Counter::resolveConflict() {
     if (stats.cls_deleted_since_compaction > 50000) compactConflictLiteralPool();
     last_reduceDB_conflicts = stats.conflicts;
   }
-  VERBOSE_DEBUG_DO(print_conflict_info());
+  print_conflict_info();
   VERBOSE_DEBUG_DO(cout << "NOW SORTING...." << endl);
   std::stable_sort(uip_clause.begin(), uip_clause.end(), UIPFixer(variables_));
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -1026,10 +1034,11 @@ retStateT Counter::resolveConflict() {
   decision_stack_.top().mark_branch_unsat();
   assert(uip_clause.front() != NOT_A_LIT);
 
-  VERBOSE_DEBUG_DO(cout << "backwards cleaning" << endl);
-  VERBOSE_DEBUG_DO(print_comp_stack_info());
+  cout << "backwards cleaning" << endl;
+  print_comp_stack_info();
+  uint32_t old_level = dec_level();
   uint32_t backj = var(uip_clause.front()).decision_level;
-  VERBOSE_DEBUG_DO(cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl);
+  cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl;
   while(dec_level()-1 > backj) {
     VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
     VERBOSE_DEBUG_DO(print_comp_stack_info());
@@ -1040,17 +1049,24 @@ retStateT Counter::resolveConflict() {
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   }
-  VERBOSE_DEBUG_DO(cout << "last dec lit: " << top_dec_lit() << endl);
+  cout << "last dec lit: " << top_dec_lit() << endl;
   decision_stack_.top().mark_branch_unsat();
   decision_stack_.top().resetRemainingComps();
-  VERBOSE_DEBUG_DO(print_comp_stack_info());
+  print_comp_stack_info();
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   Antecedent ant(NOT_A_CLAUSE);
   if (!uip_clause.empty()) {
     if (top_dec_lit().neg() == uip_clause[0]) {
-      assert(uip_clause_is_implied());
+      bool implied = uip_clause_is_implied();
+      if (!implied) {
+        cout << "old level: " << old_level << " went back to lev: " << backj << " dec level now: " << dec_level()-1 << endl;
+        cout << "last dec lit: " << top_dec_lit() << endl;
+        print_comp_stack_info();
+        print_conflict_info();
+        assert(false);
+      }
       VERBOSE_DEBUG_DO(cout << "Setting reason the conflict cl" << endl);
       assert(var(uip_clause[0]).decision_level != -1);
       var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
@@ -1089,10 +1105,12 @@ retStateT Counter::resolveConflict() {
   }
   setLiteralIfFree(lit.neg(), ant);
   if (ant.isAnt()) {
-    var(lit).decision_level--;
+    cout << "lev: " << var(before_top_dec_lit()).decision_level << endl;
+    cout << "other : " << var(lit).decision_level-1 << endl;
+    var(lit).decision_level = var(before_top_dec_lit()).decision_level;
   }
-  /* cout << "Returning from resolveConflict() with:"; */
-  /* print_conflict_info(); */
+  cout << "Returning from resolveConflict() with:";
+  print_conflict_info();
   return RESOLVED;
 }
 
@@ -1431,7 +1449,7 @@ void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
 
   if (uipLit.var()) {
     assert(var(uipLit).decision_level >= 0);
-    assert(var(uipLit).decision_level == decision_stack_.get_decision_level());
+    /* assert(var(uipLit).decision_level == decision_stack_.get_decision_level()); */
   }
 
   // Clearing
@@ -1469,25 +1487,37 @@ void Counter::recordLastUIPCauses() {
   uip_clause.clear();
 
   uint32_t trail_ofs = trail.size();
-  const uint32_t DL = decision_stack_.get_decision_level();
+  const int32_t DL = var(top_dec_lit()).decision_level;
+  const int32_t orig_DL = decision_stack_.get_decision_level();
+  cout << "orig DL: " << decision_stack_.get_decision_level() << endl;
+  cout << "new DL : " << DL << endl;
   uint32_t lits_at_current_dl = 0;
+  print_dec_info();
 
+  cout << "violated cl: " << endl;;
   for (const auto& l: violated_clause) {
     if (var(l).decision_level == 0 || existsUnitClauseOf(l.var())) continue;
-    if (var(l).decision_level < (int)DL) tmp_clause.push_back(l);
+    if (var(l).decision_level < DL) tmp_clause.push_back(l);
     else lits_at_current_dl++;
     increaseActivity(l);
     tmp_seen[l.var()] = true;
     toClear.push_back(l.var());
+    cout << std::setw(5) << l << " lev: " << std::setw(3) << var(l).decision_level << " ante: " << var(l).ante << endl;;
   }
+  cout << endl;
+  cout << "lits_at_current_dl: " << lits_at_current_dl << endl;
 
+
+  cout << "Doing loop:" << endl;
   Lit curr_lit;
   while (lits_at_current_dl) {
     assert(trail_ofs != 0);
     curr_lit = trail[--trail_ofs];
+    cout << std::setw(5) << curr_lit<< " lev: " << std::setw(3) << var(curr_lit).decision_level << " ante: " << var(curr_lit).ante << endl;
 
     if (!tmp_seen[curr_lit.var()]) continue;
     tmp_seen[curr_lit.var()] = false;
+    cout << "tmp seen check success. lits_at_current_dl:" << lits_at_current_dl << endl;
 
     if (lits_at_current_dl-- == 1) {
       // perform UIP stuff
@@ -1496,10 +1526,14 @@ void Counter::recordLastUIPCauses() {
         // or it is a literal decided to explore in failed literal testing
         break;
       }
+      cout << "Has antecedent, not breaking." << endl;
     }
+    cout << "lits_at_current_dl: " << lits_at_current_dl << endl;
 
     assert(hasAntecedent(curr_lit));
     if (getAntecedent(curr_lit).isFake()) {
+      assert(false && "this has not been fixed");
+      assert(config_.failed_lit_probe_type > 0);
       // Probe/BProp is the reason
       for (int32_t i = 1; i < variables_[curr_lit.var()].decision_level+1; i++) {
         const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
@@ -1508,7 +1542,7 @@ void Counter::recordLastUIPCauses() {
             existsUnitClauseOf(l.var())) {
           continue;
         }
-        if (var(l).decision_level < (int)DL) {
+        if (var(l).decision_level < DL) {
           tmp_clause.push_back(l);
         } else {
           lits_at_current_dl++;
@@ -1530,14 +1564,16 @@ void Counter::recordLastUIPCauses() {
       for (auto it = beginOf(getAntecedent(curr_lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
         if (tmp_seen[it->var()] || (var(*it).decision_level == 0) ||
             existsUnitClauseOf(it->var())) {
+          cout << "skipping          : " << std::setw(5) << *it<< " lev: " << std::setw(3) << var(*it).decision_level << " ante: " << var(*it).ante << endl;
           continue;
         }
-        if (var(*it).decision_level < (int)DL) {
+        if (var(*it).decision_level < DL) {
           tmp_clause.push_back(*it);
         } else {
           lits_at_current_dl++;
         }
         tmp_seen[it->var()] = true;
+        cout << "adding to tmp_seen: " << std::setw(5) << *it<< " lev: " << std::setw(3) << var(*it).decision_level << " ante: " << var(*it).ante << endl;
         toClear.push_back(it->var());
       }
     } else {
@@ -1547,15 +1583,19 @@ void Counter::recordLastUIPCauses() {
       increaseActivity(curr_lit);
       if (!tmp_seen[alit.var()] && !(var(alit).decision_level == 0) &&
             !existsUnitClauseOf(alit.var())) {
-        if (var(alit).decision_level < (int)DL) {
+        if (var(alit).decision_level < DL) {
           tmp_clause.push_back(alit);
         } else {
           lits_at_current_dl++;
         }
         tmp_seen[alit.var()] = true;
+        cout << "adding to tmp_seen: " << std::setw(5) << alit << " lev: " << std::setw(3) << var(alit).decision_level << " ante: " << var(alit).ante << endl;
         toClear.push_back(alit.var());
+      } else {
+        cout << "skipping:           " << std::setw(5) << alit << " lev: " << std::setw(3) << var(alit).decision_level << " ante: " << var(alit).ante << endl;
       }
     }
+    cout << "end of loop, lits_at_current_dl: " << lits_at_current_dl << endl;
     curr_lit = NOT_A_LIT;
   }
   minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);

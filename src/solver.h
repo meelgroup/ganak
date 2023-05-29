@@ -156,6 +156,7 @@ private:
   bool restart_if_needed();
   retStateT backtrack_nonindep();
   retStateT backtrack();
+  void print_dec_info() const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
 
@@ -251,6 +252,11 @@ private:
   {
     assert(decision_stack_.top().trail_ofs() < trail.size());
     return *top_declevel_trail_begin();
+  }
+
+  const Lit &before_top_dec_lit() const
+  {
+    return *(trail.begin() + decision_stack_[decision_stack_.size()-2].trail_ofs());
   }
 
   void reactivate_comps_and_backtrack_trail(bool print = false)

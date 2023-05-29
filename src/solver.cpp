@@ -190,7 +190,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   for (int i = 1; i <= n; i++) {
     tdscore[i] *= coef;
   }
-#ifdef VERBOSE_PRINT
+#ifdef VERBOSE_DEBUG
   for(int i = 1; i <= n; i++) {
     cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
   }

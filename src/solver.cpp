@@ -128,20 +128,22 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   assert(tdscore.empty());
   tdscore.resize(nVars()+1);
   if (n <= 2) return;
-  auto bags = tdec.Bags();
-  /* for(uint32_t i = 0; i < bags.size(); i++) { */
-  /*   const auto& b = bags[i]; */
-  /*   cout << "bag id:" << i << endl; */
-  /*   for(const auto& bb: b) { */
-  /*     cout << bb << " "; */
-  /*   } */
-  /*   cout << endl; */
-  /* } */
+  const auto& bags = tdec.Bags();
   const auto& adj = tdec.get_adj_list();
-  /* for(uint32_t i = 0; i < adj.size(); i++) { */
-  /*   const auto& a = adj[i]; */
-  /*   for(const auto& nn: a) cout << i << " " << nn << endl; */
-  /* } */
+#if 0
+  for(uint32_t i = 0; i < bags.size(); i++) {
+    const auto& b = bags[i];
+    cout << "bag id:" << i << endl;
+    for(const auto& bb: b) {
+      cout << bb << " ";
+    }
+    cout << endl;
+  }
+  for(uint32_t i = 0; i < adj.size(); i++) {
+    const auto& a = adj[i];
+    for(const auto& nn: a) cout << i << " " << nn << endl;
+  }
+#endif
   sspp::TreeDecomposition dec(bags.size(),nVars()+1);
   for(uint32_t i = 0; i < bags.size();i++) {
     dec.SetBag(i+1, bags[i]);
@@ -156,13 +158,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   auto width = dec.Width();
   auto ord = dec.GetOrd();
   // We use 1-indexing, ignore index 0
-  /* cout << "ord.size: " << ord.size() << endl; */
-  /* cout << "tdscore.size: " << tdscore.size() << endl; */
 
-  /* cout << "width: " << width << endl; */
-  /* for(const auto& o: ord) { */
-  /*     cout << "o: " << o << endl; */
-  /* } */
   assert(ord.size() == tdscore.size());
   int max_ord = 0;
   for (int i = 1; i <= n; i++) {
@@ -194,11 +190,11 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   for (int i = 1; i <= n; i++) {
     tdscore[i] *= coef;
   }
-
-  /* for(int i = 1; i <= n; i++) { */
-  /*   cout << "var: " << i << " tdscore: " << tdscore[i] << endl; */
-  /* } */
-  /* exit(0); */
+#ifdef VERBOSE_PRINT
+  for(int i = 1; i <= n; i++) {
+    cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
+  }
+#endif
 }
 
 void Counter::get_unit_cls(vector<Lit>& units) const

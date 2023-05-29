@@ -59,57 +59,6 @@ inline bool IsDouble(const string& s, double lb=std::numeric_limits<double>::min
 	}
 }
 
-template<typename T>
-void Shuffle(vector<T>& vec, std::mt19937& gen) {
-	std::shuffle(vec.begin(), vec.end(), gen);
-}
-
-inline bool RandBool(std::mt19937& gen) {
-	return std::uniform_int_distribution<int>(0,1)(gen);
-}
-
-template<typename T>
-inline T RandInt(T a, T b, std::mt19937& gen) {
-	return std::uniform_int_distribution<T>(a,b)(gen);
-}
-
-template<typename T>
-T Power2(int p) {
-	assert(p >= 0);
-	if (p == 0) return 1;
-	if (p%2 == 0) {
-		T x = Power2<T>(p/2);
-		return x*x;
-	} else {
-		return Power2<T>(p-1)*2;
-	}
-}
-
-template<typename T>
-bool IsSorted(const vector<T>& vec) {
-	for (size_t i = 1; i < vec.size(); i++) {
-		if (vec[i] < vec[i-1]) return false;
-	}
-	return true;
-}
-
-template<typename T>
-void Append(std::vector<T>& a, const std::vector<T>& b) {
-  a.reserve(a.size() + b.size());
-  for (const T& x : b) {
-    a.push_back(x);
-  }
-}
-
-template<typename T>
-std::vector<T> PermInverse(const std::vector<T>& perm) {
-  std::vector<T> ret(perm.size());
-  for (int i = 0; i < (int)perm.size(); i++) {
-    ret[perm[i]] = i;
-  }
-  return ret;
-}
-
 inline Bitset ToBitset(const std::vector<int>& a, int n) {
   assert(n>=0);
   Bitset bs(n);
@@ -124,22 +73,6 @@ template<typename T>
 void SortAndDedup(vector<T>& vec) {
   std::sort(vec.begin(), vec.end());
   vec.erase(std::unique(vec.begin(), vec.end()), vec.end());
-}
-
-template<typename T>
-void SwapDel(vector<T>& vec, size_t i) {
-	assert(i < vec.size());
-	std::swap(vec[i], vec.back());
-	vec.pop_back();
-}
-
-template<typename T>
-void ShiftDel(vector<T>& vec, size_t i) {
-	assert(i < vec.size());
-	for (; i+1 < vec.size(); i++) {
-		vec[i] = std::move(vec[i+1]);
-	}
-	vec.pop_back();
 }
 
 template<typename T>

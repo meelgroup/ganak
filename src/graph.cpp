@@ -686,47 +686,6 @@ bool TreeDecomposition::dfs(int x, int v, int p, vector<int>& u) const {
 	return true;
 }
 
-bool TreeDecomposition::Verify(const Graph& graph) const {
-	assert(n == graph.n());
-	vector<vector<char>> aps(n);
-	for (int i = 0; i < n; i++) {
-		aps[i].resize(n);
-	}
-	for (auto bag : bags) {
-		for (int v : bag) {
-			for (int u : bag) {
-				aps[v][u] = 1;
-			}
-		}
-	}
-	for (int i = 0; i < n; i++) {
-		if (aps[i][i] == 0) return false;
-	}
-	for (auto e : graph.Edges()) {
-		if (aps[e.first][e.second] == 0) return false;
-	}
-	vector<int> u(bs+1);
-	for (int i = 1; i <= bs; i++) {
-		u[i] = -1;
-	}
-	for (int i = 0; i < n; i++) {
-		bool f = false;
-		for (int j = 1; j <= bs; j++) {
-			if (InBag(j, i)) {
-				if (!f) {
-					bool ok = dfs(j, i, 0, u);
-					if (!ok) return false;
-					f = true;
-				}
-				if (u[j] != i) {
-					return false;
-				}
-			}
-		}
-	}
-	return true;
-}
-
 const vector<vector<int>>& TreeDecomposition::Bags() const {
 	return bags;
 }

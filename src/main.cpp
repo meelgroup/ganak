@@ -74,15 +74,21 @@ string branch_fallback_type = branch_type_to_str(conf.branch_fallback_type);
 string ganak_version_info()
 {
     std::stringstream ss;
-    ss << "c GANAK SHA revision " << GANAK::get_version_sha1() << endl;
-    ss << "c GANAK compilation env " << GANAK::get_compilation_env() << endl;
+    ss << "c o GANAK SHA revision " << GANAK::get_version_sha1() << endl;
+    ss << "c o GANAK compilation env " << GANAK::get_compilation_env() << endl;
     #ifdef __GNUC__
-    ss << "c GANAK compiled with gcc version " << __VERSION__ << endl;
+    ss << "c o GANAK compiled with gcc version " << __VERSION__ << endl;
     #else
-    ss << "c GANAK compiled with non-gcc compiler" << endl;
+    ss << "c o GANAK compiled with non-gcc compiler" << endl;
     #endif
-    ss << "c CMS version: " << sat_solver->get_version_sha1();
-
+    ss << "c o CMS version: " << sat_solver->get_version_sha1();
+    ss << "c o Top-down search by Davis, Putnam, Logemann, and Loveland" << endl;
+    ss << "c o Decomposition d-dNNF idea by Adnan Darwiche" << endl;
+    ss << "c o TD idea&code by Korhonen and Jarvisalo" << endl;
+    ss << "c o TD search code by Ben Strasser" << endl;
+    ss << "c o LBD idea by Simon and Audemard" << endl;
+    ss << "c o VSIDS idea by Moskewicz, Zhao, Zhang, and Malik" << endl;
+    ss << "c o Based on SharpSAT by Marc Thurley" << endl;
     return ss.str();
 }
 

@@ -102,10 +102,6 @@ protected:
   vector<uint64_t> lbdHelper;
   uint64_t lbdHelperFlag = 0;
 
-  void decayActivities(bool also_watches) {
-    if (also_watches) for (auto& w: watches_) w.activity *= 0.5;
-  }
-
   uint32_t calc_lbd(ClauseOfs offs) {
     lbdHelperFlag++;
     uint32_t nblevels = 0;

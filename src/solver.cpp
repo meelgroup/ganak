@@ -424,7 +424,6 @@ void Counter::decideLiteral() {
   setLiteralIfFree(lit);
   stats.decisions++;
   if (stats.decisions % 128 == 0) {
-    decayActivities(config_.act_exp == 1.0);
     comp_manager_->rescale_cache_scores();
   }
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());

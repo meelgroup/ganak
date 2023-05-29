@@ -18,7 +18,6 @@ enum class branch_t {old_ganak, sharptd, gpmc};
 
 struct CounterConfiguration {
   // TODO comp caching cannot be deactivated for now!
-  bool do_non_chron_back_track = true;
   double act_exp = 0.99;
   bool do_pre_processing = true;
   int verb = 1;
@@ -46,7 +45,7 @@ struct CounterConfiguration {
   uint32_t td_varlim = 150000;
   double td_denselim = 0.10;
   double td_ratiolim = 30.0;
-  double tw_vare_lim = 1.1;
+  double tw_vare_lim = 1.0;
   double tw_coef_tdscore = 100.0;
   branch_t branch_type = branch_t::sharptd;
   branch_t branch_fallback_type = branch_t::old_ganak;

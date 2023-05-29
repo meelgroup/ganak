@@ -260,21 +260,8 @@ void Counter::td_decompose()
   FC.importGraph(primal);
   TreeDecomposition td = FC.constructTD();
 
-  bool uselessTD = true;
-  /* if(td.numNodes() > 0) {  // if TD construction is successful */
-  /*   // find a centroid of the constructed TD */
   td.centroid(nVars()+1);
-  /* } */
   compute_score(td);
-  /* for(uint32_t i=1; i < nVars()+1; i++) { */
-  /*   cout << "var: " << i << " tdscore: " << tdscore[i] << endl; */
-  /* } */
-  /* exit(0); */
-
-  /* if(uselessTD) { */
-  /*   verb_print(1, "ignoring td, setting branch to fallback"); */
-  /*   config_.branch_type = config_.branch_fallback_type; */
-  /* } */
 }
 
 mpz_class Counter::count(vector<Lit>& largest_cube_ret)

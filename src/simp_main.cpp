@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
   counter->set_indep_support(indep_support);
   counter->init_activity_scores();
   vector<Lit> largest_cube;
-  mpz_class this_count = counter->count(largest_cube);
+  mpz_class this_count = counter->count(largest_cube, NULL);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
   cout << "s SATISFIABLE" << endl;
   if (indep_support_given) cout << "s pmc ";

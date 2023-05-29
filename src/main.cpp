@@ -401,7 +401,7 @@ mpz_class check_count_independently_no_restart(const vector<vector<CMSat::Lit>>&
   counter.set_indep_support(indep_support);
 
   vector<Lit> largest_cube;
-  const auto count = counter.count(largest_cube);
+  const auto count = counter.count(largest_cube, &sat_solver2);
   assert(largest_cube.empty());
   return count;
 }
@@ -487,7 +487,7 @@ int main(int argc, char *argv[])
     if (!get_target(model)) break;
     counter->set_target_polar(model);
     vector<Lit> largest_cube;
-    mpz_class this_count = counter->count(largest_cube);
+    mpz_class this_count = counter->count(largest_cube, sat_solver);
     count += this_count;
     auto cms_cl = ganak_to_cms_cl(largest_cube);
     cubes.push_back(cms_cl);

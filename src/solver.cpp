@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <numeric>
 #include "common.h"
 #include "comp_types/comp.h"
+#include "cryptominisat5/cryptominisat.h"
 #include "cryptominisat5/solvertypesmini.h"
 #include "primitive_types.h"
 #include "stack.h"
@@ -264,8 +265,9 @@ void Counter::td_decompose()
   compute_score(td);
 }
 
-mpz_class Counter::count(vector<Lit>& largest_cube_ret)
+mpz_class Counter::count(vector<Lit>& largest_cube_ret, CMSat::SATSolver* _sat_solver)
 {
+  sat_solver = _sat_solver;
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
   largest_cube.clear();
@@ -992,8 +994,18 @@ struct UIPFixer {
   vector<Variable>& vars;
 };
 
+bool Counter::uip_clause_is_implied() {
+    assert(sat_solver);
+    vector<CMSat::Lit> lits;
+    for(const auto& l: uip_clause) {
+      lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
+    }
+    auto ret = sat_solver->solve(&lits);
+    return ret == CMSat::l_False;
+}
+
 retStateT Counter::resolveConflict() {
-  /* cout << "****** RECORD START" << endl; */
+  VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   recordLastUIPCauses();
   act_inc *= 1.0/config_.act_exp;
 
@@ -1002,10 +1014,10 @@ retStateT Counter::resolveConflict() {
     if (stats.cls_deleted_since_compaction > 50000) compactConflictLiteralPool();
     last_reduceDB_conflicts = stats.conflicts;
   }
-  /* print_conflict_info(); */
-  /* cout << "NOW SORTING...." << endl; */
+  VERBOSE_DEBUG_DO(print_conflict_info());
+  VERBOSE_DEBUG_DO(cout << "NOW SORTING...." << endl);
   std::stable_sort(uip_clause.begin(), uip_clause.end(), UIPFixer(variables_));
-  /* print_conflict_info(); */
+  VERBOSE_DEBUG_DO(print_conflict_info());
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
@@ -1014,13 +1026,13 @@ retStateT Counter::resolveConflict() {
   decision_stack_.top().mark_branch_unsat();
   assert(uip_clause.front() != NOT_A_LIT);
 
-  /* cout << "backwards cleaning" << endl; */
-  /* print_comp_stack_info(); */
+  VERBOSE_DEBUG_DO(cout << "backwards cleaning" << endl);
+  VERBOSE_DEBUG_DO(print_comp_stack_info());
   uint32_t backj = var(uip_clause.front()).decision_level;
-  /* cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl; */
+  VERBOSE_DEBUG_DO(cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl);
   while(dec_level()-1 > backj) {
-    /* cout << "at dec lit: " << top_dec_lit() << endl; */
-    /* print_comp_stack_info(); */
+    VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
+    VERBOSE_DEBUG_DO(print_comp_stack_info());
     decision_stack_.top().mark_branch_unsat();
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
@@ -1028,27 +1040,28 @@ retStateT Counter::resolveConflict() {
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   }
-  /* cout << "last dec lit: " << top_dec_lit() << endl; */
+  VERBOSE_DEBUG_DO(cout << "last dec lit: " << top_dec_lit() << endl);
   decision_stack_.top().mark_branch_unsat();
   decision_stack_.top().resetRemainingComps();
-  /* print_comp_stack_info(); */
-  /* cout << "DONE backw cleaning" << endl; */
-  /* print_conflict_info(); */
+  VERBOSE_DEBUG_DO(print_comp_stack_info());
+  VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
+  VERBOSE_DEBUG_DO(print_conflict_info());
 
   Antecedent ant(NOT_A_CLAUSE);
+  /* assert(uip_clause_is_implied()); */
   if (!uip_clause.empty() && top_dec_lit().neg() == uip_clause[0]) {
-    /* cout << "Setting reason the conflict cl" << endl; */
+    VERBOSE_DEBUG_DO(cout << "Setting reason the conflict cl" << endl);
     assert(var(uip_clause[0]).decision_level != -1);
     var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
     ant = var(top_dec_lit()).ante;
     // oh wow, we set this decision variable to a propagated one
     // but we don't change its level! even though it's set due to previous level
   } else {
-    addUIPConflictClause(uip_clause);
+    /* addUIPConflictClause(uip_clause); */
   }
-  /* cout << "AFTER conflict, setup: "; */
-  /* print_conflict_info(); */
-  /* cout << "is right here? " << decision_stack_.top().is_right_branch() << endl; */
+  VERBOSE_DEBUG_DO(cout << "AFTER conflict, setup: ");
+  VERBOSE_DEBUG_DO(print_conflict_info());
+  VERBOSE_DEBUG_DO(cout << "is right here? " << decision_stack_.top().is_right_branch() << endl);
 
   if (decision_stack_.top().is_right_branch()) {
     // Backtracking since finished with this AND the other branch.

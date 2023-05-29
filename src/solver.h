@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "common.h"
+#include "cryptominisat5/cryptominisat.h"
 #include "primitive_types.h"
 #include "statistics.h"
 #include "instance.h"
@@ -77,7 +78,7 @@ public:
         10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
     }
   }
-  mpz_class count(vector<Lit>& largest_cube_ret);
+  mpz_class count(vector<Lit>& largest_cube_ret, CMSat::SATSolver* solver = NULL);
   CounterConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
@@ -97,6 +98,7 @@ public:
   double get_start_time() const { return start_time;}
 
 private:
+  CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
   vector<double> scores;
   bqueue<uint32_t> depth_q;
@@ -129,6 +131,7 @@ private:
 
   void simplePreProcess();
   bool prepFailedLiteralTest();
+  bool uip_clause_is_implied();
 
   SOLVER_StateT countSAT();
   void decideLiteral();

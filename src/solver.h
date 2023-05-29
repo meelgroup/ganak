@@ -93,7 +93,7 @@ public:
   void init_activity_scores();
   void set_next_restart(uint64_t next) { config_.next_restart = next; }
   bqueue<uint32_t> comp_size_q;
-  uint64_t dec_level() const { return decision_stack_.size(); }
+  int32_t dec_level() const { return decision_stack_.size(); }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
 
@@ -165,9 +165,10 @@ private:
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
 
-  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE))
+  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE), bool check_free = true)
   {
-    if (lit_values_[lit] != X_TRI) return false;
+    if (check_free && lit_values_[lit] != X_TRI) return false;
+    auto prev_val = lit_values_[lit];
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
     else print_debug("-> lit propagated: " << lit);
 
@@ -177,7 +178,7 @@ private:
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
     }
-    trail.push_back(lit);
+    if (prev_val == X_TRI) trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
     if (ant.isAnt() && ant.isAClause()) {
@@ -259,7 +260,14 @@ private:
 
   void reactivate_comps_and_backtrack_trail(bool print = false)
   {
-    for (auto it = top_declevel_trail_begin(); it != trail.end(); it++) unSet(*it);
+    auto jt = top_declevel_trail_begin();
+    for (auto it = top_declevel_trail_begin(); it != trail.end(); it++) {
+      if (var(*it).decision_level < dec_level()) {
+          *jt++ = *it;
+      } else {
+        unSet(*it);
+      }
+    }
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(decision_stack_.top().trail_ofs());
     if (print) cout << "Forgetting decision: "

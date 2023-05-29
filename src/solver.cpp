@@ -966,7 +966,7 @@ void Counter::print_dec_info() const
 void Counter::print_conflict_info() const
 {
   print_dec_info();
-  cout << "confl lits: " << endl;
+  cout << "UIP cl lits: " << endl;
   for(uint32_t i = 0; i < uip_clause.size(); i ++) {
     const auto l = uip_clause[i];
     cout << "lit " << std::setw(6) << l
@@ -1040,7 +1040,7 @@ retStateT Counter::resolveConflict() {
   cout << "backwards cleaning" << endl;
   print_comp_stack_info();
   uint32_t old_level = dec_level();
-  uint32_t backj = var(uip_clause.front()).decision_level;
+  int32_t backj = var(uip_clause.front()).decision_level;
   cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl;
   while(dec_level()-1 > backj) {
     VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
@@ -1077,7 +1077,7 @@ retStateT Counter::resolveConflict() {
       // oh wow, we set this decision variable to a propagated one
       // but we don't change its level! even though it's set due to previous level
     } else {
-      /* addUIPConflictClause(uip_clause); */
+      addUIPConflictClause(uip_clause);
       stats.uip_not_added++;
     }
   }
@@ -1106,11 +1106,18 @@ retStateT Counter::resolveConflict() {
   } else {
     print_debug("Conflict pushes us to: " << lit);
   }
-  setLiteralIfFree(lit.neg(), ant);
+  setLiteralIfFree(lit.neg(), ant, false);
   if (ant.isAnt()) {
     cout << "lev: " << var(before_top_dec_lit()).decision_level << endl;
     cout << "other : " << var(lit).decision_level-1 << endl;
-    var(lit).decision_level = var(before_top_dec_lit()).decision_level;
+    int32_t dec_to_set = var(before_top_dec_lit()).decision_level;
+    //Rewriting levels now.
+    for(uint32_t i = decision_stack_[decision_stack_.size()-2].trail_ofs();
+        i < trail.size(); i++) {
+      var(trail[i]).decision_level = dec_to_set;
+    }
+    /* var(lit).decision_level = var(before_top_dec_lit()).decision_level; */
+    assert(var(lit).decision_level == dec_to_set);
   }
   cout << "Returning from resolveConflict() with:";
   print_conflict_info();
@@ -1568,7 +1575,6 @@ void Counter::recordLastUIPCauses() {
   for(const auto& v: toClear) tmp_seen[v] = 0;
   toClear.clear();
 
-  //BELOW IS SLOW_DEBUG!!
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
 }
 

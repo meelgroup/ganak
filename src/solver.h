@@ -163,6 +163,7 @@ private:
   // a second branch can be visited, RESOLVED is returned
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
+  void go_back_to(int32_t backj);
   size_t find_backtrack_level_of_learnt();
 
   void setLiteral(const Lit lit, int32_t dec_lev,

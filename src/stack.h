@@ -133,14 +133,15 @@ public:
 
   template<class T>
   void includeSolution(const T& solutions) {
+    VERBOSE_DEBUG_DO(cout << "incl sol: " << solutions << endl);
     if (branch_found_unsat_[active_branch_]) {
       assert(branch_model_count_[active_branch_] == 0);
       return;
     }
     if (solutions == 0) branch_found_unsat_[active_branch_] = true;
-    if (branch_model_count_[active_branch_] == 0)
+    if (branch_model_count_[active_branch_] == 0) {
       branch_model_count_[active_branch_] = solutions;
-    else {
+    } else {
       branch_model_count_[active_branch_] *= solutions;
     }
   }
@@ -158,6 +159,11 @@ public:
 
   void zero_out_branch_sol() {
     branch_model_count_[active_branch_] = 0;
+  }
+
+  void zero_out_all_sol() {
+    branch_model_count_[0] = 0;
+    branch_model_count_[1] = 0;
   }
 
   uint32_t getbranchvar() const {

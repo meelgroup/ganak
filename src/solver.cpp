@@ -984,6 +984,23 @@ size_t Counter::find_backtrack_level_of_learnt()
   }
 }
 
+void Counter::go_back_to(int32_t backj) {
+
+  VERBOSE_DEBUG_DO(cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl);
+  while(dec_level()-1 > backj) {
+    VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
+    VERBOSE_DEBUG_DO(print_comp_stack_info());
+    decision_stack_.top().mark_branch_unsat();
+    reactivate_comps_and_backtrack_trail();
+    decision_stack_.pop_back();
+    decision_stack_.top().zero_out_all_sol();
+    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+  }
+  VERBOSE_DEBUG_DO(print_comp_stack_info());
+  VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
+}
+
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
 #ifdef VERBOSE_DEBUG
@@ -1016,28 +1033,19 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "backwards cleaning" << endl);
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   int32_t backj = find_backtrack_level_of_learnt();
-  VERBOSE_DEBUG_DO(cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl);
 
   bool unsat = false;
   if (uip_clause.empty() ||
       (uip_clause.size() == 1 && existsUnitClauseOf(uip_clause[0].neg()))) {
     backj = 0;
     unsat = true;
+  } else if (uip_clause.size() > 1 && backj > 0) {
+    if (trail[decision_stack_.at(backj+1).trail_ofs()] == uip_clause[0].neg())
+      backj++;
   }
-  while(dec_level()-1 > backj) {
-    VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
-    VERBOSE_DEBUG_DO(print_comp_stack_info());
-    decision_stack_.top().mark_branch_unsat();
-    reactivate_comps_and_backtrack_trail();
-    decision_stack_.pop_back();
-    decision_stack_.top().zero_out_branch_sol();
-    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
-    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-  }
-  VERBOSE_DEBUG_DO(print_comp_stack_info());
-  VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
-  VERBOSE_DEBUG_DO(print_conflict_info());
 
+  go_back_to(backj);
+  VERBOSE_DEBUG_DO(print_conflict_info());
 
   if (unsat) {
     decision_stack_.top().mark_branch_unsat();
@@ -1084,6 +1092,7 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   VERBOSE_DEBUG_DO(cout << "is right here? " << decision_stack_.top().is_right_branch() << endl);
   if (flipped) {
+    decision_stack_.top().zero_out_branch_sol();
     decision_stack_.top().mark_branch_unsat();
     decision_stack_.top().resetRemainingComps();
   }
@@ -1112,7 +1121,7 @@ retStateT Counter::resolveConflict() {
     decision_stack_.top().change_to_right_branch();
     reactivate_comps_and_backtrack_trail();
   }
-  int32_t lev = (uip_clause.size() == 1) ? 0 : backj+(int)(flipped);
+  int32_t lev = (uip_clause.size() == 1) ? 0 : backj;
   setLiteral(uip_clause[0], lev, ant);
 #ifdef VERBOSE_DEBUG
   cout << "Returning from resolveConflict() with:";
@@ -1554,15 +1563,43 @@ void Counter::recordLastUIPCauses() {
   uip_clause.push_back(Lit(0, false));;
   Lit p = NOT_A_LIT;
 
-  const int32_t DL = var(top_dec_lit()).decision_level;
+  int32_t DL = var(top_dec_lit()).decision_level;
   VERBOSE_DEBUG_DO(cout << "orig DL: " << decision_stack_.get_decision_level() << endl);
   VERBOSE_DEBUG_DO(cout << "new DL : " << DL << endl);
   VERBOSE_DEBUG_DO(print_dec_info());
+  vector<Lit> c;
+  if (true) {
+    if (confl.isAClause()) {
+      assert(confl.asCl() != NOT_A_CLAUSE);
+      c.clear();
+      for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
+        c.push_back(*l);
+      }
+      if (p == NOT_A_LIT) std::swap(c[0], c[1]);
+    } else if (confl.isFake()) {
+      assert(false);
+    } else {
+      assert(!confl.isAClause());
+      c.clear();
+      if (p == NOT_A_LIT) {
+        c.push_back(conflLit); //ONLY valid for 1st
+      } else {
+        c.push_back(p);
+      }
+      c.push_back(confl.asLit());
+    }
+    int32_t maxlev = 0;
+    for(const auto& l: c) {
+      if (var(l).decision_level > maxlev) maxlev = var(l).decision_level;
+    }
+    go_back_to(maxlev);
+    print_dec_info();
+    DL = var(top_dec_lit()).decision_level;
+  }
 
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
   int32_t index = trail.size()-1;
   uint32_t pathC = 0;
-  vector<Lit> c;
   do {
     if (confl.isAClause()) {
       assert(confl.asCl() != NOT_A_CLAUSE);

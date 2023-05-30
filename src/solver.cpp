@@ -1505,7 +1505,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   return true;
 }
 
-void Counter::minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &cl) {
+void Counter::minimizeUIPClause() {
   tmp_clause_minim.clear();
   /*assertion_level_ = 0;
   for (const auto& lit : cl) {
@@ -1732,11 +1732,10 @@ void Counter::recordLastUIPCauses() {
         << endl;
   }
 #endif
-
-  //minimizeAndStoreUIPClause(curr_lit.neg(), tmp_clause);
   for(const auto& v: toClear) tmp_seen[v] = 0;
   toClear.clear();
 
+  //minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
 }
 

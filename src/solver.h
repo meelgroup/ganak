@@ -315,9 +315,7 @@ private:
   // so as to create clause that asserts the current decision
   // literal
   void recordLastUIPCauses();
-  void recordAllUIPCauses();
-  void minimizeAndStoreUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
-  void storeUIPClause(Lit uipLit, vector<Lit> &tmp_clause);
+  void minimizeUIPClause();
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
   bool get_polarity(const uint32_t var) const;

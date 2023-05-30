@@ -1018,8 +1018,6 @@ retStateT Counter::resolveConflict() {
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   }
   cout << "last dec lit: " << top_dec_lit() << endl;
-  decision_stack_.top().mark_branch_unsat();
-  decision_stack_.top().resetRemainingComps();
   print_comp_stack_info();
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -1049,13 +1047,16 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "AFTER conflict, setup: ");
   VERBOSE_DEBUG_DO(print_conflict_info());
   VERBOSE_DEBUG_DO(cout << "is right here? " << decision_stack_.top().is_right_branch() << endl);
+  if (flipped) {
+    decision_stack_.top().mark_branch_unsat();
+    decision_stack_.top().resetRemainingComps();
+  }
 
   if (flipped && decision_stack_.top().is_right_branch()) {
     return BACKTRACK;
   }
 
   assert(decision_stack_.get_decision_level() > 0);
-  assert(decision_stack_.top().branch_found_unsat());
 
   // we do not have to remove pollutions here,
   // since conflicts only arise directly before

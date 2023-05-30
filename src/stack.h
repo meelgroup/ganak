@@ -116,8 +116,8 @@ public:
 
   void change_to_right_branch() {
     assert(active_branch_ == false);
-    SLOW_DEBUG_DO(assert(branch_model_count_[active_branch_] == 0));
     active_branch_ = true;
+    SLOW_DEBUG_DO(assert(branch_model_count_[active_branch_] == 0));
   }
 
   bool anotherCompProcessible() const {

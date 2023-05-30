@@ -1212,7 +1212,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       const auto ofs = it->ofs;
       Lit* c = beginOf(ofs);
 #ifdef VERBOSE_DEBUG
-      cout << "Norm cl: " << endl;
+      cout << "Norm cl: " << ofs << endl;
       for(Lit* c2 = c; *c2!=NOT_A_LIT; c2++) {
         cout << "lit " << std::setw(6) << *c2
           << " lev: " << std::setw(4) << var(*c2).decision_level
@@ -1586,7 +1586,6 @@ void Counter::recordLastUIPCauses() {
       for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
         c.push_back(*l);
       }
-      if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isFake()) {
       assert(false);
     } else {
@@ -1599,9 +1598,18 @@ void Counter::recordLastUIPCauses() {
       }
       c.push_back(confl.asLit());
     }
-    int32_t maxlev = 0;
-    for(const auto& l: c) {
-      if (var(l).decision_level > maxlev) maxlev = var(l).decision_level;
+    int32_t maxlev = -1;
+    uint32_t maxind = 0;
+    for(uint32_t i = 0; i < c.size(); i ++) {
+      const Lit l = c[i];
+      if (var(l).decision_level > maxlev) {
+        maxlev = var(l).decision_level;
+        maxind = i;
+      }
+    }
+    VERBOSE_DEBUG_DO(cout << "maxind: " << maxind << " maxlev: " << maxlev << endl);
+    if (confl.isAClause()) {
+      std::swap(beginOf(confl.asCl())[1], beginOf(confl.asCl())[maxind]);
     }
     go_back_to(maxlev);
     VERBOSE_DEBUG_DO(print_dec_info());

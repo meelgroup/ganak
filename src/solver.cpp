@@ -991,12 +991,14 @@ void Counter::go_back_to(int32_t backj) {
     VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decision_stack_.top().mark_branch_unsat();
+    decision_stack_.top().zero_out_all_sol(); //not sure it's needed
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
     // WOW, if this is ALL solutions, we get wrong count on NICE.cnf
     decision_stack_.top().zero_out_branch_sol();
-    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
   }
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
@@ -1028,6 +1030,8 @@ retStateT Counter::resolveConflict() {
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   if (uip_clause.empty()) { verb_print(1, "EMPTY CLAUSE FOUND"); }
+  comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+  decision_stack_.top().zero_out_branch_sol();
   decision_stack_.top().mark_branch_unsat();
   assert(uip_clause.front() != NOT_A_LIT);
 
@@ -1049,6 +1053,8 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   if (unsat) {
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+    decision_stack_.top().zero_out_branch_sol();
     decision_stack_.top().mark_branch_unsat();
 #ifdef VERBOSE_DEBUG
     cout << "UNSAT Returning from resolveConflict() with:";
@@ -1093,6 +1099,7 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   VERBOSE_DEBUG_DO(cout << "is right here? " << decision_stack_.top().is_right_branch() << endl);
   if (flipped) {
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     decision_stack_.top().zero_out_branch_sol();
     decision_stack_.top().mark_branch_unsat();
     decision_stack_.top().resetRemainingComps();

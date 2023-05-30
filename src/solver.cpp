@@ -1161,6 +1161,17 @@ bool Counter::prop_and_probe() {
   return bSucceeded;
 }
 
+inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind)
+{
+  for(auto i3 = 2; *(beginOf(ofs)+i3) != SENTINEL_LIT; i3++) {
+    Lit l = *(beginOf(ofs)+i3);
+    int32_t nlev = var(l).decision_level;
+    VERBOSE_DEBUG_DO(cout << "var(l).decision_level: " << var(l).decision_level << " maxlev: " << maxlev << endl);
+    if (nlev > maxlev) {maxlev = nlev; maxind = i3;}
+  }
+}
+
+
 bool Counter::propagate(const uint32_t start_at_trail_ofs) {
   confl = Antecedent(NOT_A_CLAUSE);
   for (auto i = start_at_trail_ofs; i < trail.size(); i++) {
@@ -1228,6 +1239,10 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
           VERBOSE_DEBUG_DO(cout << "Conflicting state from norm cl: " << ofs << endl);
+          int32_t maxlev = lev;
+          uint32_t maxind = 1;
+          get_maxlev_maxind(ofs, maxlev, maxind);
+          if (maxind != 1) std::swap(c[1], c[maxind]);
           setConflictState(ofs);
           it++;
           break;
@@ -1240,12 +1255,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
           } else {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
-            for(auto i3 = 2; *(beginOf(ofs)+i3) != SENTINEL_LIT; i3++) {
-              Lit l = *(beginOf(ofs)+i3);
-              int32_t nlev = var(l).decision_level;
-              VERBOSE_DEBUG_DO(cout << "var(l).decision_level: " << var(l).decision_level << " maxlev: " << maxlev << endl);
-              if (nlev > maxlev) {maxlev = nlev; maxind = i3;}
-            }
+            get_maxlev_maxind(ofs, maxlev, maxind);
             if (maxind != 1) {
                 std::swap(c[1], c[maxind]);
                 it2--; // undo last watch
@@ -1594,7 +1604,7 @@ void Counter::recordLastUIPCauses() {
       if (var(l).decision_level > maxlev) maxlev = var(l).decision_level;
     }
     go_back_to(maxlev);
-    print_dec_info();
+    VERBOSE_DEBUG_DO(print_dec_info());
     DL = var(top_dec_lit()).decision_level;
   }
 

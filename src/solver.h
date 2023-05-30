@@ -150,6 +150,7 @@ private:
   // starts propagating all literal in trail_
   // beginning at offset start_at_trail_ofs
   bool propagate(const uint32_t start_at_trail_ofs);
+  void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
 
   void print_all_levels();
   bool restart_if_needed();

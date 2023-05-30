@@ -42,7 +42,7 @@ public:
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
-    cout << "Unsetting lit: " << lit << endl;
+    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << lit << endl);
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
     var(lit).decision_level = INVALID_DL;
     lit_values_[lit] = X_TRI;

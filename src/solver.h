@@ -171,8 +171,7 @@ private:
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
     else print_debug("-> lit propagated: " << lit);
 
-    cout << "setting lit: " << lit << " to lev: " << dec_lev
-      << " cur val: " << lit_val_str(lit) << " ante: " << ant << endl;
+    VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << endl);
     var(lit).decision_level = dec_lev;
     var(lit).ante = ant;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
@@ -260,14 +259,14 @@ private:
 
   void reactivate_comps_and_backtrack_trail(bool print = false)
   {
-    cout << "->reactivate and backtrack..." << endl;
+    VERBOSE_DEBUG_DO(cout << "->reactivate and backtrack..." << endl);
     auto jt = top_declevel_trail_begin();
     auto it = jt;
     for (; it != trail.end(); it++) {
       if (var(*it).decision_level < decision_stack_.get_decision_level()) {
           *jt++ = *it;
       } else {
-        cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << endl;
+        VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << endl);
         unSet(*it);
       }
     }

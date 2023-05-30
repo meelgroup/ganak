@@ -1161,16 +1161,17 @@ bool Counter::prop_and_probe() {
   return bSucceeded;
 }
 
+template<uint32_t start>
 inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind)
 {
-  for(auto i3 = 2; *(beginOf(ofs)+i3) != SENTINEL_LIT; i3++) {
+  for(auto i3 = start; *(beginOf(ofs)+i3) != SENTINEL_LIT; i3++) {
     Lit l = *(beginOf(ofs)+i3);
     int32_t nlev = var(l).decision_level;
-    VERBOSE_DEBUG_DO(cout << "var(l).decision_level: " << var(l).decision_level << " maxlev: " << maxlev << endl);
+    VERBOSE_DEBUG_DO(cout << "i3: " << i3 << " l : " << l << " var(l).decision_level: "
+        << var(l).decision_level << " maxlev: " << maxlev << endl);
     if (nlev > maxlev) {maxlev = nlev; maxind = i3;}
   }
 }
-
 
 bool Counter::propagate(const uint32_t start_at_trail_ofs) {
   confl = Antecedent(NOT_A_CLAUSE);
@@ -1211,6 +1212,8 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
 
       const auto ofs = it->ofs;
       Lit* c = beginOf(ofs);
+      if (c[0] == unLit) { std::swap(c[0], c[1]); }
+
 #ifdef VERBOSE_DEBUG
       cout << "Norm cl: " << ofs << endl;
       for(Lit* c2 = c; *c2!=NOT_A_LIT; c2++) {
@@ -1221,7 +1224,6 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       }
 #endif
 
-      if (c[0] == unLit) { std::swap(c[0], c[1]); }
       assert(c[1] == unLit);
       if (isTrue(c[0])) {
         *it2++ = ClOffsBlckL(ofs, c[0]);
@@ -1239,13 +1241,18 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
           VERBOSE_DEBUG_DO(cout << "Conflicting state from norm cl: " << ofs << endl);
-          int32_t maxlev = lev;
-          uint32_t maxind = 1;
-          get_maxlev_maxind(ofs, maxlev, maxind);
-          if (maxind != 1) {
+          if (lev != decision_stack_.get_decision_level()) {
+            int32_t maxlev = lev;
+            uint32_t maxind = 1;
+            get_maxlev_maxind<0>(ofs, maxlev, maxind);
+            if (maxind == 0) {
+              std::swap(c[0], c[1]);
+            } else if (maxind != 1) {
+              cout << "swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind] << endl;
               std::swap(c[1], c[maxind]);
               it2--; // undo last watch
               litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
+            }
           }
           setConflictState(ofs);
           it++;
@@ -1605,6 +1612,14 @@ void Counter::recordLastUIPCauses() {
     int32_t maxlev = -1;
     uint32_t maxind = 0;
     for(uint32_t i = 0; i < c.size(); i ++) {
+#ifdef VERBOSE_DEBUG
+      cout << "confl cl[" << std::setw(5) << i << "]" <<
+        " lev: " << std::setw(3) << var(c[i]).decision_level
+          << " ante: " << std::setw(8) << var(c[i]).ante
+          << " val : " << std::setw(7) << lit_val_str(c[i])
+          << endl;
+#endif
+
       const Lit l = c[i];
       if (var(l).decision_level > maxlev) {
         maxlev = var(l).decision_level;

@@ -1242,7 +1242,11 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
           int32_t maxlev = lev;
           uint32_t maxind = 1;
           get_maxlev_maxind(ofs, maxlev, maxind);
-          if (maxind != 1) std::swap(c[1], c[maxind]);
+          if (maxind != 1) {
+              std::swap(c[1], c[maxind]);
+              it2--; // undo last watch
+              litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
+          }
           setConflictState(ofs);
           it++;
           break;
@@ -1609,7 +1613,8 @@ void Counter::recordLastUIPCauses() {
     }
     VERBOSE_DEBUG_DO(cout << "maxind: " << maxind << " maxlev: " << maxlev << endl);
     if (confl.isAClause()) {
-      std::swap(beginOf(confl.asCl())[1], beginOf(confl.asCl())[maxind]);
+      VERBOSE_DEBUG_DO(cout << "conflicting cl offs: " << confl.asCl() << endl);
+      assert(maxlev == var(c[1]).decision_level);
     }
     go_back_to(maxlev);
     VERBOSE_DEBUG_DO(print_dec_info());

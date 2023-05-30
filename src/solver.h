@@ -137,7 +137,6 @@ private:
   void decideLiteral();
   uint32_t find_best_branch_gpmc(bool do_indep);
   uint32_t find_best_branch(bool do_indep);
-  double alternate_score(uint32_t v, bool value);
   bool prop_and_probe();
   bool failed_lit_probe();
   bool failed_lit_probe_no_bprop();
@@ -164,14 +163,17 @@ private:
   // a second branch can be visited, RESOLVED is returned
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
+  size_t find_backtrack_level_of_learnt();
 
-  bool setLiteralIfFree(const Lit lit, const Antecedent ant = Antecedent(NOT_A_CLAUSE), bool check_free = true)
+  void setLiteral(const Lit lit, int32_t dec_lev,
+      Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
-    if (check_free && lit_values_[lit] != X_TRI) return false;
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
     else print_debug("-> lit propagated: " << lit);
 
-    var(lit).decision_level = decision_stack_.get_decision_level();
+    cout << "setting lit: " << lit << " to lev: " << dec_lev
+      << " cur val: " << lit_val_str(lit) << " ante: " << ant << endl;
+    var(lit).decision_level = dec_lev;
     var(lit).ante = ant;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
       var(lit).last_polarity = lit.sign();
@@ -189,7 +191,6 @@ private:
     }
     lit_values_[lit] = T_TRI;
     lit_values_[lit.neg()] = F_TRI;
-    return true;
   }
 
   void checkProbabilisticHashSanity() const {
@@ -259,16 +260,24 @@ private:
 
   void reactivate_comps_and_backtrack_trail(bool print = false)
   {
+    cout << "->reactivate and backtrack..." << endl;
     auto jt = top_declevel_trail_begin();
-    for (auto it = top_declevel_trail_begin(); it != trail.end(); it++) {
-      if (var(*it).decision_level < dec_level()) {
+    auto it = jt;
+    for (; it != trail.end(); it++) {
+      if (var(*it).decision_level < decision_stack_.get_decision_level()) {
           *jt++ = *it;
       } else {
+        cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << endl;
         unSet(*it);
       }
     }
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
-    trail.resize(decision_stack_.top().trail_ofs());
+    trail.resize(trail.size()-(it-jt));
+    //TODO check if we need this...
+    /* cout << "OLD trail ofs: " << decision_stack_.top().trail_ofs() << endl; */
+    /* cout  << "NEW trail ofs: " << trail.size() << endl; */
+    decision_stack_.top().trail_ofs() = trail.size();
+
     if (print) cout << "Forgetting decision: "
       << std::setw(1) << (decision_stack_.top().is_right_branch() ? "-" : "")
       << std::setw(6) << decision_stack_.top().getbranchvar()

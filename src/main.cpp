@@ -51,7 +51,6 @@ using std::string;
 using std::vector;
 po::options_description main_options = po::options_description("Main options");
 po::options_description probe_options = po::options_description("Probe options");
-po::options_description lookahead_options = po::options_description("Lookeahead options");
 po::options_description restart_options = po::options_description("Restart options");
 po::options_description help_options;
 po::variables_map vm;
@@ -135,12 +134,6 @@ void add_ganak_options()
     ("exact", po::value(&exact)->default_value(exact), "Exact counting")
     ;
 
-    lookahead_options.add_options()
-    ("lookahead", po::value(&conf.do_lookahead)->default_value(conf.do_lookahead), "Do lookahead?")
-    ("lookaheaddepth", po::value(&conf.lookahead_depth)->default_value(conf.lookahead_depth), "Lookahead depth")
-    ("looknum", po::value(&conf.lookahead_num)->default_value(conf.lookahead_num), "How many to check for lookahead")
-    ;
-
     probe_options.add_options()
     ("probe", po::value(&conf.failed_lit_probe_type)->default_value(conf.failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only bottom RATIO, where ratio is given by --probeonlyafter")
     ("probeonlyafter", po::value(&conf.probe_only_after_ratio)->default_value(conf.probe_only_after_ratio), "What ratio of failed lit probe in terms of decision. Only active if '--failed 2'")
@@ -150,7 +143,6 @@ void add_ganak_options()
 
     help_options.add(main_options);
     help_options.add(probe_options);
-    help_options.add(lookahead_options);
     help_options.add(restart_options);
 }
 

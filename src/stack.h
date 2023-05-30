@@ -48,7 +48,7 @@ private:
   bool active_branch_ = false;
 
   // offset in the literal stack where to store set lits
-  const uint32_t trail_ofs_ = 0;
+  uint32_t trail_ofs_ = 0;
 
   //  Solution count
   mpz_class branch_model_count_[2] = {0,0};
@@ -126,6 +126,11 @@ public:
   uint32_t trail_ofs() const {
     return trail_ofs_;
   }
+
+  uint32_t& trail_ofs() {
+    return trail_ofs_;
+  }
+
   template<class T>
   void includeSolution(const T& solutions) {
     if (branch_found_unsat_[active_branch_]) {

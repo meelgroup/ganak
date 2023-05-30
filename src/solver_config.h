@@ -42,15 +42,12 @@ struct CounterConfiguration {
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
   int restart_type = 5;
-  double lookahead_depth = 1.2;
-  uint32_t lookahead_num = 2;
   int failed_lit_probe_type = 0;
   double probe_only_after_ratio = 0.25;
   double num_probe_multi = 1.0; //TODO should try 2.0
   int alluip_inc_act = 1;
   int bprop = 1;
   int do_on_path_print = 0;
-  int do_lookahead = 0;
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
   uint32_t rdb_cls_target = 10000;

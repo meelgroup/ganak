@@ -42,7 +42,7 @@ void Counter::simplePreProcess()
 {
   for (auto lit : unit_clauses_) {
     assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");;
-    setLiteralIfFree(lit);
+    setLiteral(lit, 0);
   }
 
   bool succeeded = propagate(0);
@@ -422,36 +422,12 @@ void Counter::decideLiteral() {
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
   decision_stack_.top().setbranchvariable(lit.var());
-  setLiteralIfFree(lit);
+  setLiteral(lit, decision_stack_.get_decision_level());
   stats.decisions++;
   if (stats.decisions % 128 == 0) {
     comp_manager_->rescale_cache_scores();
   }
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
-}
-
-double Counter::alternate_score(uint32_t v, bool val)
-{
-  assert(!perform_projected_counting && "Cannot work with projected model counting");
-  double score = 0;
-
-  auto before = decision_stack_.top();
-  decision_stack_.top().setbranchvariable(v);
-  setLiteralIfFree(Lit(v, val));
-  const uint32_t start_ofs = trail.size() - 1;
-  bool bSucceeded = propagate(start_ofs);
-  if (!bSucceeded) score = 30000;
-  else {
-    auto& top = decision_stack_.top();
-    score = comp_manager_->get_comp_score(top);
-  }
-  /* uint32_t diff = trail.size() - (start_ofs); */
-  reactivate_comps_and_backtrack_trail();
-  decision_stack_.pop_back();
-  decision_stack_.push_back(before);
-
-  double c = watches_[Lit(v, val)].activity;
-  return score*c;
 }
 
 uint32_t Counter::find_best_branch_gpmc(bool do_indep)
@@ -490,18 +466,13 @@ uint32_t Counter::find_best_branch_gpmc(bool do_indep)
 
 uint32_t Counter::find_best_branch(bool do_indep)
 {
-  assert(!(config_.do_cache_score && config_.do_lookahead) && "can't have both active");
-
   vars_scores.clear();
-  bool lookahead_try = !config_.do_cache_score && config_.do_lookahead &&
-    decision_stack_.size() > depth_q.getLongtTerm().avg()*config_.lookahead_depth;
   uint32_t best_var = 0;
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
     if (!do_indep || *it < indep_support_end) {
       const double score = scoreOf(*it) ;
-      if (lookahead_try) vars_scores.push_back(VS(*it, score, *it));
       if (best_var_score == -1 || score > best_var_score) {
         best_var = *it;
         best_var_score = score;
@@ -509,7 +480,7 @@ uint32_t Counter::find_best_branch(bool do_indep)
     }
   }
 
-  if (!config_.do_lookahead && config_.do_cache_score && best_var != 0) {
+  if (config_.do_cache_score && best_var != 0) {
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
@@ -521,24 +492,6 @@ uint32_t Counter::find_best_branch(bool do_indep)
             cachescore = comp_manager_->cacheScoreOf(*it);
           }
         }
-      }
-    }
-  }
-
-  if (vars_scores.size() > 30 && lookahead_try) {
-    std::sort(vars_scores.begin(), vars_scores.end());
-    best_var = vars_scores[0].v;
-    stats.lookaheads++;
-    stats.lookahead_computes++;
-    double best_score = alternate_score(vars_scores[0].v, true) *
-      alternate_score(vars_scores[0].v, false);
-    for(uint32_t i = 1; i < config_.lookahead_num && i < vars_scores.size(); i ++) {
-      stats.lookahead_computes++;
-      double score = alternate_score(vars_scores[i].v, true) *
-        alternate_score(vars_scores[i].v, false);
-      if (score > best_score) {
-        best_score = score;
-        best_var = vars_scores[i].v;
       }
     }
   }
@@ -832,7 +785,7 @@ retStateT Counter::backtrack_nonindep() {
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
       print_debug("[nonindep] Flipping lit to: " << aLit.neg());
-      setLiteralIfFree(aLit.neg());
+      setLiteral(aLit.neg(), decision_stack_.get_decision_level());
       return RESOLVED;
     }
     isindependent = (decision_stack_.top().getbranchvar() < indep_support_end);
@@ -864,6 +817,7 @@ retStateT Counter::backtrack_nonindep() {
 }
 
 retStateT Counter::backtrack() {
+  cout << "in " << __FUNCTION__ << " now " << endl;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 
   if (!isindependent && perform_projected_counting) return backtrack_nonindep();
@@ -890,7 +844,7 @@ retStateT Counter::backtrack() {
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
       print_debug("[indep] Flipping lit to: " << aLit.neg());
-      setLiteralIfFree(aLit.neg());
+      setLiteral(aLit.neg(), decision_stack_.get_decision_level());
       print_debug(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
       return RESOLVED;
     }
@@ -1014,6 +968,21 @@ bool Counter::uip_clause_is_implied() {
     return ret == CMSat::l_False;
 }
 
+size_t Counter::find_backtrack_level_of_learnt()
+{
+  if (uip_clause.size() <= 1)
+      return 0;
+  else {
+      uint32_t max_i = 1;
+      for (uint32_t i = 2; i < uip_clause.size(); i++) {
+          if (var(uip_clause[i]).decision_level > var(uip_clause[max_i]).decision_level)
+              max_i = i;
+      }
+      std::swap(uip_clause[max_i], uip_clause[1]);
+      return var(uip_clause[1]).decision_level;
+  }
+}
+
 retStateT Counter::resolveConflict() {
   cout << "****** RECORD START" << endl;
   recordLastUIPCauses();
@@ -1026,9 +995,6 @@ retStateT Counter::resolveConflict() {
     last_reduceDB_conflicts = stats.conflicts;
   }
   print_conflict_info();
-  VERBOSE_DEBUG_DO(cout << "NOW SORTING...." << endl);
-  std::stable_sort(uip_clause.begin(), uip_clause.end(), UIPFixer(variables_));
-  VERBOSE_DEBUG_DO(print_conflict_info());
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
@@ -1039,8 +1005,7 @@ retStateT Counter::resolveConflict() {
 
   cout << "backwards cleaning" << endl;
   print_comp_stack_info();
-  uint32_t old_level = dec_level();
-  int32_t backj = var(uip_clause.front()).decision_level;
+  int32_t backj = find_backtrack_level_of_learnt();
   cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl;
   while(dec_level()-1 > backj) {
     VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
@@ -1060,33 +1025,32 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   Antecedent ant(NOT_A_CLAUSE);
+  bool flipped = false;
   if (!uip_clause.empty()) {
+    bool implied = uip_clause_is_implied();
+    if (!implied) {
+      cout << "ERROR, not implied" << endl;
+      cout << "last dec lit: " << top_dec_lit() << endl;
+      print_comp_stack_info();
+      print_conflict_info();
+      assert(false);
+    }
     if (top_dec_lit().neg() == uip_clause[0]) {
-      bool implied = uip_clause_is_implied();
-      if (!implied) {
-        cout << "old level: " << old_level << " went back to lev: " << backj << " dec level now: " << dec_level()-1 << endl;
-        cout << "last dec lit: " << top_dec_lit() << endl;
-        print_comp_stack_info();
-        print_conflict_info();
-        assert(false);
-      }
       VERBOSE_DEBUG_DO(cout << "Setting reason the conflict cl" << endl);
       assert(var(uip_clause[0]).decision_level != -1);
-      var(top_dec_lit().neg()).ante = addUIPConflictClause(uip_clause);
-      ant = var(top_dec_lit()).ante;
-      // oh wow, we set this decision variable to a propagated one
-      // but we don't change its level! even though it's set due to previous level
+      ant = addUIPConflictClause(uip_clause);
+      var(top_dec_lit().neg()).ante = ant;
+      flipped = true;
     } else {
-      addUIPConflictClause(uip_clause);
-      stats.uip_not_added++;
+      ant = addUIPConflictClause(uip_clause);
     }
   }
+  if (uip_clause.empty()) {assert(false && "todo");}
   VERBOSE_DEBUG_DO(cout << "AFTER conflict, setup: ");
   VERBOSE_DEBUG_DO(print_conflict_info());
   VERBOSE_DEBUG_DO(cout << "is right here? " << decision_stack_.top().is_right_branch() << endl);
 
-  if (decision_stack_.top().is_right_branch()) {
-    // Backtracking since finished with this AND the other branch.
+  if (flipped && decision_stack_.top().is_right_branch()) {
     return BACKTRACK;
   }
 
@@ -1098,45 +1062,52 @@ retStateT Counter::resolveConflict() {
   // remaining comps are stored hence
   assert(decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
 
-  decision_stack_.top().change_to_right_branch();
-  const Lit lit = top_dec_lit();
-  reactivate_comps_and_backtrack_trail();
-  if (ant == Antecedent(NOT_A_CLAUSE)) {
-    print_debug("Conflict pushes us to: " << lit<< " and due to failed literal probling, we can't guarantee it's due to the 1UIP, so setting it as a decision instead");
-  } else {
-    print_debug("Conflict pushes us to: " << lit);
+  if (flipped) {
+    decision_stack_.top().change_to_right_branch();
+    /* decision_stack_.pop_back(); */
+    reactivate_comps_and_backtrack_trail();
   }
-  setLiteralIfFree(lit.neg(), ant, false);
-  if (ant.isAnt()) {
-    cout << "lev: " << var(before_top_dec_lit()).decision_level << endl;
-    cout << "other : " << var(lit).decision_level-1 << endl;
-    int32_t dec_to_set = var(before_top_dec_lit()).decision_level;
-    //Rewriting levels now.
-    for(uint32_t i = decision_stack_[decision_stack_.size()-2].trail_ofs();
-        i < trail.size(); i++) {
-      cout << "dec level rewritten of lit: " << trail[i] << endl;
-      var(trail[i]).decision_level = dec_to_set;
-    }
+  setLiteral(uip_clause[0], backj+(int)(flipped), ant);
+  /* decision_stack_.push_back( */
+  /*   StackLevel(decision_stack_.top().currentRemainingComponent(), */
+  /*              trail.size(), */
+  /*              comp_manager_->comp_stack_size())); */
+  /* decision_stack_.top().change_to_right_branch(); */
+  /* setLiteral(lit.neg(), var(lit).decision_level, ant); */
+  /* cout << "lev: " << var(before_top_dec_lit()).decision_level << endl; */
+  /* cout << "other : " << var(lit).decision_level-1 << endl; */
+  /* int32_t dec_to_set = var(before_top_dec_lit()).decision_level; */
+  /* //Rewriting levels now. */
+  /* for(uint32_t i = decision_stack_[decision_stack_.size()-1].trail_ofs(); */
+  /*     i < trail.size(); i++) { */
+  /*   cout << "dec level rewritten of lit: " << trail[i] << " to: " << dec_to_set << endl; */
+  /*   var(trail[i]).decision_level = dec_to_set; */
 
-    /* cout << "decision_stack_[decision_stack_.size()-2].trail_ofs(): " << decision_stack_[decision_stack_.size()-2].trail_ofs() << endl; */
-    /* var(lit).decision_level = var(before_top_dec_lit()).decision_level; */
-    assert(var(lit).decision_level == dec_to_set);
-  }
+  /*   /1* cout << "decision_stack_[decision_stack_.size()-2].trail_ofs(): " << decision_stack_[decision_stack_.size()-2].trail_ofs() << endl; *1/ */
+  /*   /1* var(lit).decision_level = var(before_top_dec_lit()).decision_level; *1/ */
+  /*   assert(var(lit).decision_level == dec_to_set); */
+  /* } */
   cout << "Returning from resolveConflict() with:";
   print_conflict_info();
+  cout << " Current trail :" << endl;
+  for(uint32_t i = 0; i < trail.size(); i++) {
+    const auto l = trail[i];
+    cout << "lit " << std::setw(6) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
+    << " val: " << lit_val_str(l) << endl;
+  }
+
   return RESOLVED;
 }
 
 bool Counter::prop_and_probe() {
+  cout << "in " << __FUNCTION__ << " now. " << endl;
   // the asserted literal has been set, so we start
   // bcp on that literal
   assert(trail.size() > 0 && "Mate added this, but it seems OK");
 
   const uint32_t start_ofs = trail.size() - 1;
-  print_debug("--> Setting units of this comp...");
-  for (const auto& lit : unit_clauses_) setLiteralIfFree(lit);
-  print_debug("--> Units of this comp set, propagating");
-
   bool bSucceeded = propagate(start_ofs);
   if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
     if (config_.failed_lit_probe_type == 2  &&
@@ -1147,34 +1118,62 @@ bool Counter::prop_and_probe() {
       bSucceeded = failed_lit_probe();
     }
   }
+  cout << "Returning " << bSucceeded << " from " << __FUNCTION__ << endl;
   return bSucceeded;
 }
 
 bool Counter::propagate(const uint32_t start_at_trail_ofs) {
+  confl = Antecedent(NOT_A_CLAUSE);
   for (auto i = start_at_trail_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
+    const int32_t lev = var(unLit).decision_level;
+    cout << "Propagating: " << trail[i] << endl;
 
     //Propagate bin clauses
     for (const auto& l : litWatchList(unLit).binary_links_) {
-      if (isFalse(l)) {
+      if (val(l) == F_TRI) {
         setConflictState(unLit, l);
+        cout << "Bin confl. otherlit: " << l << endl;
         return false;
+      } else if (val(l) == X_TRI) {
+        setLiteral(l, lev, Antecedent(unLit));
+        cout << "Bin prop: " << l << " lev: " << lev << endl;
       }
-      setLiteralIfFree(l, Antecedent(unLit));
     }
+
 
     //Propagate long clauses
     auto& ws = litWatchList(unLit).watch_list_;
+    /* cout << " will go through norm:" << endl; */
+    /* for(const auto& w: ws) { */
+    /*   cout << "new cl: " << w.ofs << endl; */
+    /*   const auto ofs = w.ofs; */
+    /*   Lit* c = beginOf(ofs); */
+    /*   for(; *c != NOT_A_LIT; c++) { */
+    /*     cout << "lit :" << *c << endl; */
+    /*   } */
+    /* } */
+    /* cout << " will do it now... " << endl; */
     auto it2 = ws.begin();
-    for (auto it = ws.begin(); it != ws.end(); it++) {
+    auto it = ws.begin();
+    for (; it != ws.end(); it++) {
       if (isTrue(it->blckLit)) { *it2++ = *it; continue; }
 
       const auto ofs = it->ofs;
-      bool isLitA = (*beginOf(ofs) == unLit);
-      auto p_watchLit = beginOf(ofs) + 1 - isLitA;
-      auto p_otherLit = beginOf(ofs) + isLitA;
-      if (isTrue(*p_otherLit)) {
-        *it2++ = ClOffsBlckL(ofs, *p_otherLit);
+      Lit* c = beginOf(ofs);
+
+      cout << "Norm cl: " << endl;
+      for(Lit* c2 = c; *c2!=NOT_A_LIT; c2++) {
+        cout << "lit " << std::setw(6) << *c2
+          << " lev: " << std::setw(4) << var(*c2).decision_level
+          << " ante: " << std::setw(5) << std::left << var(*c2).ante
+        << " val: " << lit_val_str(*c2) << endl;
+      }
+
+      if (c[0] == unLit) { std::swap(c[0], c[1]); }
+      assert(c[1] == unLit);
+      if (isTrue(c[0])) {
+        *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
       }
 
@@ -1182,26 +1181,47 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       while (isFalse(*itL)) itL++;
       // either we found a free or satisfied lit
       if (*itL != SENTINEL_LIT) {
-        litWatchList(*itL).addWatchLinkTo(ofs, *p_otherLit);
-        std::swap(*itL, *p_watchLit);
+        c[1] = *itL;
+        *itL = unLit;
+        litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
       } else {
-        // or unLit stays resolved
-        // and we have hence no free literal left
-        // for p_otherLit remain poss: Active or Resolved
-        if (setLiteralIfFree(*p_otherLit, Antecedent(ofs))) { // implication
-          if (isLitA) std::swap(*p_otherLit, *p_watchLit);
-          *it2++ = *it;
-        } else {
+        *it2++ = *it;
+        if (val(c[0]) == F_TRI) {
+          cout << "Conflicting state from norm cl: " << ofs << endl;
           setConflictState(ofs);
-          while(it != ws.end()) *it2++ = *it++;
-          ws.resize(it2-ws.begin());
-          return false;
+          it++;
+          break;
+        } else {
+          assert(val(c[0]) == X_TRI);
+          cout << "prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level() << endl;
+          if (lev == decision_stack_.get_decision_level()) {
+            setLiteral(c[0], lev, Antecedent(ofs));
+            cout << "Norm long prop: " << c[0] << " lev: " << lev << endl;
+          } else {
+            int32_t maxlev = lev;
+            uint32_t maxind = 1;
+            for(auto i3 = 2; *(beginOf(ofs)+i3) != SENTINEL_LIT; i3++) {
+              Lit l = *(beginOf(ofs)+i3);
+              int32_t nlev = var(l).decision_level;
+              cout << "var(l).decision_level: " << var(l).decision_level << " maxlev: " << maxlev << endl;
+              if (nlev > maxlev) {maxlev = lev; maxind = i3;}
+            }
+            if (maxind != 1) {
+                std::swap(c[1], c[maxind]);
+                it2--; // undo last watch
+                litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
+            }
+            setLiteral(c[0], maxlev, Antecedent(ofs));
+            cout << "Weird long prop: " << c[0] << " lev: " << maxlev << endl;
+          }
         }
       }
     }
+    while(it != ws.end()) *it2++ = *it++;
     ws.resize(it2-ws.begin());
+    if (confl != Antecedent(NOT_A_CLAUSE)) break;
   }
-  return true;
+  return confl == Antecedent(NOT_A_CLAUSE);
 }
 
 void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
@@ -1354,7 +1374,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     for(const auto& l: toSet) {
       if (isUnknown(l)) {
         auto sz = trail.size();
-        setLiteralIfFree(l, Antecedent(Lit(), true));
+        setLiteral(l, decision_stack_.get_decision_level(), Antecedent(Lit(), true));
         bool bSucceeded = propagate(sz);
         if (!bSucceeded) return false;
         stats.num_failed_bprop_literals_failed++;
@@ -1373,7 +1393,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   // s.t. after the tentative BCP call, we can learn a conflict clause
   // relative to the assignment of *jt
   decision_stack_.startFailedLitTest();
-  setLiteralIfFree(lit);
+  setLiteral(lit, decision_stack_.get_decision_level());
   assert(!hasAntecedent(lit));
   if (set == true) assert(toClear.empty());
 
@@ -1405,7 +1425,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     stats.num_failed_literals_detected_++;
     print_debug("-> failed literal detected");
     sz = trail.size();
-    setLiteralIfFree(lit.neg(), Antecedent(Lit(), true));
+    setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(Lit(), true));
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
     if (!propagate(sz)) {
@@ -1510,7 +1530,7 @@ void Counter::recordLastUIPCauses() {
   print_dec_info();
 
   cout << "Doing loop:" << endl;
-  uint32_t index = trail.size()-1;
+  int32_t index = trail.size()-1;
   uint32_t pathC = 0;
   vector<Lit> c;
   do {
@@ -1520,12 +1540,17 @@ void Counter::recordLastUIPCauses() {
       for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
         c.push_back(*l);
       }
+      if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isFake()) {
       assert(false);
     } else {
       assert(!confl.isAClause());
       c.clear();
-      c.push_back(conflLit); //ONLY valid for 1st
+      if (p == NOT_A_LIT) {
+        c.push_back(conflLit); //ONLY valid for 1st
+      } else {
+        c.push_back(p);
+      }
       c.push_back(confl.asLit());
     }
     cout << "next cl: " << endl;
@@ -1535,6 +1560,9 @@ void Counter::recordLastUIPCauses() {
           << " val : " << std::setw(7) << lit_val_str(l)
           << endl;
     }
+    int32_t nDecisionLevel = var(c[0]).decision_level;
+    cout << "nDecisionLevel: " <<  nDecisionLevel << endl;
+    if (p == NOT_A_LIT) assert(nDecisionLevel == DL);
 
     cout << "For loop." << endl;
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < c.size() ;j++) {
@@ -1547,7 +1575,7 @@ void Counter::recordLastUIPCauses() {
           << " ante: " << std::setw(8) << var(q).ante
           << " val : " << std::setw(7) << lit_val_str(q)
           << endl;
-        if (var(q).decision_level >= DL) {
+        if (var(q).decision_level >= nDecisionLevel) {
           pathC++;
           cout << "pathc inc." << endl;
         } else {
@@ -1558,13 +1586,21 @@ void Counter::recordLastUIPCauses() {
     }
     cout << "PathC: " << pathC << endl;
 
-    while (!tmp_seen[trail[index--].var()]) {}
-    p     = trail[index+1];
+    do {
+      while (!tmp_seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));};
+      p = trail[index+1];
+      assert(p != NOT_A_LIT);
+      cout << "going back on trail: " << std::setw(5) << p<< " lev: " << std::setw(3) << var(p).decision_level
+        << " ante: " << std::setw(8) << var(p).ante
+        << " val : " << std::setw(7) << lit_val_str(p)
+        << endl;
+    } while(var(trail[index+1]).decision_level < nDecisionLevel);
     cout << "Next p: " << p << endl;
     confl = var(p).ante;
     tmp_seen[p.var()] = 0;
     pathC--;
   } while (pathC > 0);
+  assert(pathC == 0);
   uip_clause[0] = p.neg();
   cout << "UIP cl: " << endl;
   for(const auto& l: uip_clause) {

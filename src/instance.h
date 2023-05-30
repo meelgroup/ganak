@@ -42,6 +42,7 @@ public:
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
+    cout << "Unsetting lit: " << lit << endl;
     var(lit).ante = Antecedent(NOT_A_CLAUSE);
     var(lit).decision_level = INVALID_DL;
     lit_values_[lit] = X_TRI;
@@ -200,6 +201,7 @@ protected:
     return lit_values_[lit] == T_TRI;
   }
 
+  int val(Lit lit) const { return lit_values_[lit]; }
   bool isFalse(Lit lit) {
     return lit_values_[lit] == F_TRI;
   }
@@ -220,11 +222,11 @@ protected:
     return lit_values_[Lit(var, false)] == X_TRI;
   }
 
-  vector<Lit>::const_iterator beginOf(ClauseOfs cl_ofs) const {
-    return lit_pool_.begin() + cl_ofs;
+  Lit const* beginOf(ClauseOfs cl_ofs) const {
+    return lit_pool_.data() + cl_ofs;
   }
-  vector<Lit>::iterator beginOf(ClauseOfs cl_ofs) {
-    return lit_pool_.begin() + cl_ofs;
+  Lit* beginOf(ClauseOfs cl_ofs) {
+    return lit_pool_.data() + cl_ofs;
   }
 
   decltype(lit_pool_.begin()) conflict_clauses_begin() {

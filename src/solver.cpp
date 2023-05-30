@@ -1056,6 +1056,7 @@ retStateT Counter::resolveConflict() {
 #endif
     return BACKTRACK;
   }
+  VERBOSE_DEBUG_DO(cout << "decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level() << endl);
 
   Antecedent ant(NOT_A_CLAUSE);
   bool flipped = false;
@@ -1068,7 +1069,8 @@ retStateT Counter::resolveConflict() {
       print_conflict_info();
       assert(false);
     }
-    if (top_dec_lit().neg() == uip_clause[0]) {
+    if (decision_stack_.get_decision_level() > 0 &&
+        top_dec_lit().neg() == uip_clause[0]) {
       VERBOSE_DEBUG_DO(cout << "Setting reason the conflict cl" << endl);
       assert(var(uip_clause[0]).decision_level != -1);
       ant = addUIPConflictClause(uip_clause);
@@ -1103,12 +1105,10 @@ retStateT Counter::resolveConflict() {
     return BACKTRACK;
   }
 
-  assert(decision_stack_.get_decision_level() > 0);
-
-  // we do not have to remove pollutions here,
-  // since conflicts only arise directly before
-  // remaining comps are stored hence
-  assert(decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
+  if (decision_stack_.get_decision_level() > 0) {
+    /* assert(decision_stack_.get_decision_level() > 0); */
+    assert(decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
+  }
 
   if (flipped) {
     decision_stack_.top().change_to_right_branch();

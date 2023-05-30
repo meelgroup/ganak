@@ -1009,8 +1009,7 @@ retStateT Counter::resolveConflict() {
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
-  // TODO deal with empty!
-  if (uip_clause.empty()) { cout << "c EMPTY CLAUSE FOUND" << endl; }
+  if (uip_clause.empty()) { verb_print(1, "EMPTY CLAUSE FOUND"); }
   decision_stack_.top().mark_branch_unsat();
   assert(uip_clause.front() != NOT_A_LIT);
 
@@ -1106,36 +1105,15 @@ retStateT Counter::resolveConflict() {
   }
 
   if (decision_stack_.get_decision_level() > 0) {
-    /* assert(decision_stack_.get_decision_level() > 0); */
     assert(decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
   }
 
   if (flipped) {
     decision_stack_.top().change_to_right_branch();
-    /* decision_stack_.pop_back(); */
     reactivate_comps_and_backtrack_trail();
   }
   int32_t lev = (uip_clause.size() == 1) ? 0 : backj+(int)(flipped);
   setLiteral(uip_clause[0], lev, ant);
-  /* decision_stack_.push_back( */
-  /*   StackLevel(decision_stack_.top().currentRemainingComponent(), */
-  /*              trail.size(), */
-  /*              comp_manager_->comp_stack_size())); */
-  /* decision_stack_.top().change_to_right_branch(); */
-  /* setLiteral(lit.neg(), var(lit).decision_level, ant); */
-  /* cout << "lev: " << var(before_top_dec_lit()).decision_level << endl; */
-  /* cout << "other : " << var(lit).decision_level-1 << endl; */
-  /* int32_t dec_to_set = var(before_top_dec_lit()).decision_level; */
-  /* //Rewriting levels now. */
-  /* for(uint32_t i = decision_stack_[decision_stack_.size()-1].trail_ofs(); */
-  /*     i < trail.size(); i++) { */
-  /*   cout << "dec level rewritten of lit: " << trail[i] << " to: " << dec_to_set << endl; */
-  /*   var(trail[i]).decision_level = dec_to_set; */
-
-  /*   /1* cout << "decision_stack_[decision_stack_.size()-2].trail_ofs(): " << decision_stack_[decision_stack_.size()-2].trail_ofs() << endl; *1/ */
-  /*   /1* var(lit).decision_level = var(before_top_dec_lit()).decision_level; *1/ */
-  /*   assert(var(lit).decision_level == dec_to_set); */
-  /* } */
 #ifdef VERBOSE_DEBUG
   cout << "Returning from resolveConflict() with:";
   print_conflict_info();

@@ -1630,6 +1630,7 @@ void Counter::recordLastUIPCauses() {
     } else if (confl.isFake()) {
       assert(false);
     } else {
+      // Binary
       assert(!confl.isAClause());
       c.clear();
       if (p == NOT_A_LIT) {
@@ -1638,6 +1639,8 @@ void Counter::recordLastUIPCauses() {
         c.push_back(p);
       }
       c.push_back(confl.asLit());
+      if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
+        std::swap(c[0], c[1]);
     }
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
 #ifdef VERBOSE_DEBUG

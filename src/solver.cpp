@@ -929,7 +929,6 @@ void Counter::print_conflict_info() const
     << " val: " << lit_val_str(l) << endl;
   }
   cout << " ---- " << endl;
-  cout << "top_dec_lit().neg(): " << top_dec_lit().neg() << endl;
   cout << "uip_clause[0]: " << uip_clause[0] << endl;
   cout << "uip_clause.front(): " << uip_clause.front() << endl;
 }
@@ -970,9 +969,11 @@ bool Counter::uip_clause_is_implied() {
 
 size_t Counter::find_backtrack_level_of_learnt()
 {
-  if (uip_clause.size() <= 1)
+  if (uip_clause.size() == 0)
       return 0;
-  else {
+  else if (uip_clause.size() == 1) {
+    return var(uip_clause[0]).decision_level-1;
+  } else {
       uint32_t max_i = 1;
       for (uint32_t i = 2; i < uip_clause.size(); i++) {
           if (var(uip_clause[i]).decision_level > var(uip_clause[max_i]).decision_level)
@@ -985,6 +986,16 @@ size_t Counter::find_backtrack_level_of_learnt()
 
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
+#ifdef VERBOSE_DEBUG
+  cout << " Current trail :" << endl;
+  for(uint32_t i = 0; i < trail.size(); i++) {
+    const auto l = trail[i];
+    cout << "lit " << std::setw(6) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
+    << " val: " << lit_val_str(l) << endl;
+  }
+#endif
   recordLastUIPCauses();
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/config_.act_exp;
@@ -1007,6 +1018,13 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   int32_t backj = find_backtrack_level_of_learnt();
   VERBOSE_DEBUG_DO(cout << "going back to lev: " << backj << " dec level now: " << dec_level()-1 << endl);
+
+  bool unsat = false;
+  if (uip_clause.empty() ||
+      (uip_clause.size() == 1 && existsUnitClauseOf(uip_clause[0].neg()))) {
+    backj = 0;
+    unsat = true;
+  }
   while(dec_level()-1 > backj) {
     VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
     VERBOSE_DEBUG_DO(print_comp_stack_info());
@@ -1017,10 +1035,27 @@ retStateT Counter::resolveConflict() {
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   }
-  VERBOSE_DEBUG_DO(cout << "last dec lit: " << top_dec_lit() << endl);
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
+
+
+  if (unsat) {
+    decision_stack_.top().mark_branch_unsat();
+#ifdef VERBOSE_DEBUG
+    cout << "UNSAT Returning from resolveConflict() with:";
+    print_conflict_info();
+    cout << " Current trail :" << endl;
+    for(uint32_t i = 0; i < trail.size(); i++) {
+      const auto l = trail[i];
+      cout << "lit " << std::setw(6) << l
+        << " lev: " << std::setw(4) << var(l).decision_level
+        << " ante: " << std::setw(5) << std::left << var(l).ante
+      << " val: " << lit_val_str(l) << endl;
+    }
+#endif
+    return BACKTRACK;
+  }
 
   Antecedent ant(NOT_A_CLAUSE);
   bool flipped = false;
@@ -1053,6 +1088,18 @@ retStateT Counter::resolveConflict() {
   }
 
   if (flipped && decision_stack_.top().is_right_branch()) {
+#ifdef VERBOSE_DEBUG
+    cout << "FLIPPED Returning from resolveConflict() with:";
+    print_conflict_info();
+    cout << " Current trail :" << endl;
+    for(uint32_t i = 0; i < trail.size(); i++) {
+      const auto l = trail[i];
+      cout << "lit " << std::setw(6) << l
+        << " lev: " << std::setw(4) << var(l).decision_level
+        << " ante: " << std::setw(5) << std::left << var(l).ante
+      << " val: " << lit_val_str(l) << endl;
+    }
+#endif
     return BACKTRACK;
   }
 
@@ -1068,7 +1115,8 @@ retStateT Counter::resolveConflict() {
     /* decision_stack_.pop_back(); */
     reactivate_comps_and_backtrack_trail();
   }
-  setLiteral(uip_clause[0], backj+(int)(flipped), ant);
+  int32_t lev = (uip_clause.size() == 1) ? 0 : backj+(int)(flipped);
+  setLiteral(uip_clause[0], lev, ant);
   /* decision_stack_.push_back( */
   /*   StackLevel(decision_stack_.top().currentRemainingComponent(), */
   /*              trail.size(), */
@@ -1208,7 +1256,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
               Lit l = *(beginOf(ofs)+i3);
               int32_t nlev = var(l).decision_level;
               VERBOSE_DEBUG_DO(cout << "var(l).decision_level: " << var(l).decision_level << " maxlev: " << maxlev << endl);
-              if (nlev > maxlev) {maxlev = lev; maxind = i3;}
+              if (nlev > maxlev) {maxlev = nlev; maxind = i3;}
             }
             if (maxind != 1) {
                 std::swap(c[1], c[maxind]);

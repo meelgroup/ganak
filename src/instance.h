@@ -172,6 +172,11 @@ protected:
     return false;
   }
 
+  bool existsUnitClauseOf(Lit l) {
+    for (auto l2 : unit_clauses_) if (l == l2) return true;
+    return false;
+  }
+
   inline ClauseIndex addClause(const vector<Lit> &literals, bool red);
 
   // adds a UIP Conflict Clause

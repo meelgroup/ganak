@@ -993,7 +993,8 @@ void Counter::go_back_to(int32_t backj) {
     decision_stack_.top().mark_branch_unsat();
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
-    decision_stack_.top().zero_out_all_sol();
+    // WOW, if this is ALL solutions, we get wrong count on NICE.cnf
+    decision_stack_.top().zero_out_branch_sol();
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   }

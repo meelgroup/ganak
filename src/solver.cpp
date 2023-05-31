@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <ios>
 #include <iomanip>
 #include <numeric>
+#include <solver.h>
 #include "common.h"
 #include "comp_types/comp.h"
 #include "cryptominisat5/cryptominisat.h"
@@ -874,6 +875,32 @@ retStateT Counter::backtrack() {
     }
 
     reactivate_comps_and_backtrack_trail();
+#ifdef SLOW_DEBUG
+    CMSat::SATSolver s2;
+    CMSat::copy_solver_to_solver(sat_solver, &s2);
+    vector<CMSat::Lit> cl;
+    for(const auto& t: trail) {
+      cl.clear();
+      cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
+      s2.add_clause(cl);
+    }
+    uint64_t num = 0;
+    while(true) {
+      auto ret = s2.solve();
+      if (ret == CMSat::l_True) {
+        num++;
+        cl.clear();
+        for(uint32_t i = 0; i < s2.nVars(); i++) {
+          cl.push_back(CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True));
+        }
+        s2.add_clause(cl);
+      } else if (ret == CMSat::l_False) break;
+      else assert(false);
+    }
+    cout << "num                                       : " << num << endl;
+    cout << "decision_stack_.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl;
+    if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
+#endif
     assert(decision_stack_.size() >= 2);
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();

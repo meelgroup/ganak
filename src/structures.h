@@ -73,6 +73,7 @@ public:
     value_ = v;
   }
 
+  // True if it's NON-NEGATED and False if it's NEGATED
   bool sign() const {
     return (bool) (value_ & 0x01);
   }

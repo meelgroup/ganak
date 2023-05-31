@@ -297,6 +297,10 @@ void ComponentCache::removeFromDescendantsTree(CacheEntryID id) {
 }
 
 void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count) {
+#ifdef CHECK_COUNT
+  //we disable cache on check_count, to remove an error source
+  return;
+#endif
   considerCacheResize();
   uint32_t table_ofs = tableEntry(id);
   // when storing the new model count the size of the model count

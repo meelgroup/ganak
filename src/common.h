@@ -22,8 +22,10 @@ THE SOFTWARE.
 
 #pragma once
 
-#define VERBOSE_DEBUG
+/* #define VERBOSE_DEBUG */
 #define SLOW_DEBUG
+
+// WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */
 
 #define COLRED "\033[31m"

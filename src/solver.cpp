@@ -1149,7 +1149,7 @@ retStateT Counter::resolveConflict() {
     backj--;
   }
   lev_to_set = std::min(lev_to_set, backj);
-  cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl;
+  VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   bool unsat = false;

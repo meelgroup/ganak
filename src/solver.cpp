@@ -874,12 +874,33 @@ retStateT Counter::backtrack() {
       if (config_.do_restart && counted_bottom_comp) computeLargestCube();
     }
 
-    reactivate_comps_and_backtrack_trail();
 #ifdef SLOW_DEBUG
+    //let's get vars active
+    set<uint32_t> active;
+
+    const auto& s = decision_stack_.top();
+    auto const& sup_at = s.super_comp();
+    const auto& c = comp_manager_->at(sup_at);
+    cout << "-> Variables in comp_manager_->at(" << -1 << ")."
+      << " num vars: " << c->nVars() << " vars: ";
+    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
+    for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
+
+#ifdef VERBOSE_DEBUG
+    cout << "active: ";
+    for(const auto&a: active) cout << a << " ";
+    cout << endl;
+#endif
+
+    // Checking
+    VERBOSE_DEBUG_DO(print_trail());
+    VERBOSE_DEBUG_DO(cout << "dec lev: " << decision_stack_.get_decision_level() << endl);
+    VERBOSE_DEBUG_DO(cout << "top dec lit: " << top_dec_lit() << endl);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
     vector<CMSat::Lit> cl;
     for(const auto& t: trail) {
+      if (var(t).decision_level >= decision_stack_.get_decision_level()) continue;
       cl.clear();
       cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
       s2.add_clause(cl);
@@ -891,16 +912,19 @@ retStateT Counter::backtrack() {
         num++;
         cl.clear();
         for(uint32_t i = 0; i < s2.nVars(); i++) {
-          cl.push_back(CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True));
+          if (active.count(i+1))
+            cl.push_back(CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True));
         }
         s2.add_clause(cl);
       } else if (ret == CMSat::l_False) break;
       else assert(false);
     }
-    cout << "num                                       : " << num << endl;
-    cout << "decision_stack_.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl;
+    cout << "num                          : " << num << endl;
+    cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl;
     if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
 #endif
+
+    reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
@@ -1008,6 +1032,18 @@ size_t Counter::find_backtrack_level_of_learnt()
       }
       std::swap(uip_clause[max_i], uip_clause[1]);
       return var(uip_clause[1]).decision_level;
+  }
+}
+
+void Counter::print_trail() const
+{
+  cout << " Current trail :" << endl;
+  for(uint32_t i = 0; i < trail.size(); i++) {
+    const auto l = trail[i];
+    cout << "lit " << std::setw(6) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
+    << " val: " << lit_val_str(l) << endl;
   }
 }
 
@@ -1136,14 +1172,7 @@ retStateT Counter::resolveConflict() {
 #ifdef VERBOSE_DEBUG
     cout << "FLIPPED Returning from resolveConflict() with:";
     print_conflict_info();
-    cout << " Current trail :" << endl;
-    for(uint32_t i = 0; i < trail.size(); i++) {
-      const auto l = trail[i];
-      cout << "lit " << std::setw(6) << l
-        << " lev: " << std::setw(4) << var(l).decision_level
-        << " ante: " << std::setw(5) << std::left << var(l).ante
-      << " val: " << lit_val_str(l) << endl;
-    }
+    print_trail();
 #endif
     return BACKTRACK;
   }

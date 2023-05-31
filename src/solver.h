@@ -167,6 +167,7 @@ private:
   retStateT resolveConflict();
   void go_back_to(int32_t backj);
   size_t find_backtrack_level_of_learnt();
+  void print_trail() const;
 
   void setLiteral(const Lit lit, int32_t dec_lev,
       Antecedent ant = Antecedent(NOT_A_CLAUSE))

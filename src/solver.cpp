@@ -817,6 +817,64 @@ retStateT Counter::backtrack_nonindep() {
   return EXIT;
 }
 
+void Counter::check_count(bool include_dec) {
+    //let's get vars active
+    set<uint32_t> active;
+
+    const auto& s = decision_stack_.top();
+    auto const& sup_at = s.super_comp();
+    const auto& c = comp_manager_->at(sup_at);
+#ifdef VERBOSE_DEBUG
+    cout << "-> Variables in comp_manager_->at(" << -1 << ")."
+      << " num vars: " << c->nVars() << " vars: ";
+    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
+    cout << endl;
+#endif
+
+    for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
+
+#ifdef VERBOSE_DEBUG
+    cout << "active: ";
+    for(const auto&a: active) cout << a << " ";
+    cout << endl;
+#endif
+
+    // Checking
+    VERBOSE_DEBUG_DO(print_trail());
+    VERBOSE_DEBUG_DO(cout << "dec lev: " << decision_stack_.get_decision_level() << endl);
+    VERBOSE_DEBUG_DO(cout << "top dec lit: " << top_dec_lit() << endl);
+    CMSat::SATSolver s2;
+    CMSat::copy_solver_to_solver(sat_solver, &s2);
+    vector<CMSat::Lit> cl;
+    for(const auto& t: trail) {
+      if (!include_dec) {
+        if (var(t).decision_level >= decision_stack_.get_decision_level()) continue;
+      }
+      // don't include propagations or lev0 stuff
+      if (!var(t).ante.isDecision() || var(t).decision_level == 0) continue;
+      cl.clear();
+      cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
+      s2.add_clause(cl);
+    }
+    uint64_t num = 0;
+    while(true) {
+      auto ret = s2.solve();
+      if (ret == CMSat::l_True) {
+        num++;
+        cl.clear();
+        for(uint32_t i = 0; i < s2.nVars(); i++) {
+          if (active.count(i+1))
+            cl.push_back(CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True));
+        }
+        s2.add_clause(cl);
+      } else if (ret == CMSat::l_False) break;
+      else assert(false);
+    }
+    cout << "num                          : " << num << endl;
+    cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl;
+    if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
+}
+
 retStateT Counter::backtrack() {
   VERBOSE_DEBUG_DO(cout << "in " << __FUNCTION__ << " now " << endl);
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
@@ -842,6 +900,8 @@ retStateT Counter::backtrack() {
           << " -- dec lev: " << decision_stack_.get_decision_level());
       const Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
+      SLOW_DEBUG_DO(check_count(true));
+      SLOW_DEBUG_DO(assert(decision_stack_.top().get_rigth_model_count() == 0));
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
       print_debug("[indep] Flipping lit to: " << aLit.neg());
@@ -874,64 +934,13 @@ retStateT Counter::backtrack() {
       if (config_.do_restart && counted_bottom_comp) computeLargestCube();
     }
 
-#ifdef SLOW_DEBUG
-    //let's get vars active
-    set<uint32_t> active;
-
-    const auto& s = decision_stack_.top();
-    auto const& sup_at = s.super_comp();
-    const auto& c = comp_manager_->at(sup_at);
-#ifdef VERBOSE_DEBUG
-    cout << "-> Variables in comp_manager_->at(" << -1 << ")."
-      << " num vars: " << c->nVars() << " vars: ";
-    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
-    cout << endl;
-#endif
-
-    for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
-
-#ifdef VERBOSE_DEBUG
-    cout << "active: ";
-    for(const auto&a: active) cout << a << " ";
-    cout << endl;
-#endif
-
-    // Checking
-    VERBOSE_DEBUG_DO(print_trail());
-    VERBOSE_DEBUG_DO(cout << "dec lev: " << decision_stack_.get_decision_level() << endl);
-    VERBOSE_DEBUG_DO(cout << "top dec lit: " << top_dec_lit() << endl);
-    CMSat::SATSolver s2;
-    CMSat::copy_solver_to_solver(sat_solver, &s2);
-    vector<CMSat::Lit> cl;
-    for(const auto& t: trail) {
-      if (var(t).decision_level >= decision_stack_.get_decision_level()) continue;
-      cl.clear();
-      cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
-      s2.add_clause(cl);
-    }
-    uint64_t num = 0;
-    while(true) {
-      auto ret = s2.solve();
-      if (ret == CMSat::l_True) {
-        num++;
-        cl.clear();
-        for(uint32_t i = 0; i < s2.nVars(); i++) {
-          if (active.count(i+1))
-            cl.push_back(CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True));
-        }
-        s2.add_clause(cl);
-      } else if (ret == CMSat::l_False) break;
-      else assert(false);
-    }
-    cout << "num                          : " << num << endl;
-    cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl;
-    if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
-#endif
-
+    SLOW_DEBUG_DO(check_count());
     reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
+    const auto parent_count_before_left = (decision_stack_.end() - 2)->get_left_model_count();
+    const auto parent_count_before_right = (decision_stack_.end() - 2)->get_rigth_model_count();
 #endif
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
     print_debug("[indep] Backtracking from level " << decision_stack_.get_decision_level()
@@ -946,6 +955,8 @@ retStateT Counter::backtrack() {
         << " current count here: " << dst.getTotalModelCount()
         << " branch: " << dst.is_right_branch()
         << " before including child it was: " <<  parent_count_before
+        << " (left: " << parent_count_before_left
+        << " right: " << parent_count_before_right << ")"
         << " on_path: " << dst.on_path_to_target_);
 
     // step to the next comp not yet processed

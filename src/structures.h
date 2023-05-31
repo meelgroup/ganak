@@ -184,6 +184,7 @@ public:
     val_ = (idLit.raw() << 1);
   }
 
+  bool isDecision() const {return isAClause() && asCl() == NOT_A_CLAUSE;}
   bool isFake() const {return fake;}
   bool isAClause() const { return !fake && (val_ & 0x01); }
   ClauseOfs asCl() const {

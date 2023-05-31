@@ -99,13 +99,13 @@ public:
   }
 
   // returns true, iff the comp found is non-trivial
-  bool exploreRemainingCompOf(const VariableIndex v) {
+  bool exploreRemainingCompOf(const VariableIndex v, bool freevar = true) {
     assert(archetype_.var_unseen_in_sup_comp(v));
     recordComponentOf(v); // finds the comp that "v" is in
 
     // comp only contains one variable
     if (search_stack_.size() == 1) {
-      if (v >= indep_support_end) {
+      if (v >= indep_support_end || !freevar) {
         archetype_.stack_level().includeSolution(1);
       } else {
         archetype_.stack_level().includeSolution(2);

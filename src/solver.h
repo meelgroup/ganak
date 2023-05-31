@@ -156,6 +156,7 @@ private:
   void print_all_levels();
   bool restart_if_needed();
   retStateT backtrack_nonindep();
+  void check_count(bool include_dec = false);
   retStateT backtrack();
   void print_dec_info() const;
   void print_conflict_info() const;

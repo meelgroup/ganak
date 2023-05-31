@@ -135,6 +135,9 @@ public:
   template<class T>
   void includeSolution(const T& solutions) {
     VERBOSE_DEBUG_DO(cout << "incl sol: " << solutions << endl);
+#ifdef VERBOSE_DEBUG
+    auto before = branch_model_count_[active_branch_];
+#endif
     if (branch_found_unsat_[active_branch_]) {
       assert(branch_model_count_[active_branch_] == 0);
       return;
@@ -145,7 +148,11 @@ public:
     } else {
       branch_model_count_[active_branch_] *= solutions;
     }
-    VERBOSE_DEBUG_DO(cout << "now count is: " << branch_model_count_[active_branch_] << endl);
+    VERBOSE_DEBUG_DO(cout << "now "
+        << ((active_branch_) ? "left" : "right")
+        << " count is: " << branch_model_count_[active_branch_]
+        << " before it was: " << before
+        << endl);
   }
 
   bool branch_found_unsat() const {
@@ -178,6 +185,13 @@ public:
 
   const mpz_class getTotalModelCount() const {
     return branch_model_count_[0] + branch_model_count_[1];
+  }
+
+  const mpz_class get_left_model_count() const {
+    return branch_model_count_[0];
+  }
+  const mpz_class get_rigth_model_count() const {
+    return branch_model_count_[1];
   }
 };
 

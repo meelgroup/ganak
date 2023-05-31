@@ -22,8 +22,9 @@ THE SOFTWARE.
 
 #pragma once
 
-/* #define VERBOSE_DEBUG */
+#define VERBOSE_DEBUG
 #define SLOW_DEBUG
+/* #define CHECK_COUNT */
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"
@@ -44,6 +45,15 @@ THE SOFTWARE.
     do { x; } while (0)
 #else
 #define SLOW_DEBUG_DO(x) do { } while (0)
+#endif
+/////
+
+// slow debug
+#ifdef CHECK_COUNT
+#define CHECK_COUNT_DO(x) \
+    do { x; } while (0)
+#else
+#define CHECK_COUNT_DO(x) do { } while (0)
 #endif
 /////
 

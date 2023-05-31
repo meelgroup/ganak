@@ -93,7 +93,7 @@ public:
   void init_activity_scores();
   void set_next_restart(uint64_t next) { config_.next_restart = next; }
   bqueue<uint32_t> comp_size_q;
-  int32_t dec_level() const { return decision_stack_.size(); }
+  int32_t dec_level() const { return decision_stack_.get_decision_level(); }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
 
@@ -167,8 +167,10 @@ private:
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
   void go_back_to(int32_t backj);
+  uint32_t find_lev_to_set(int32_t other_lev);
   size_t find_backtrack_level_of_learnt();
   void print_trail() const;
+  void check_trail() const;
 
   void setLiteral(const Lit lit, int32_t dec_lev,
       Antecedent ant = Antecedent(NOT_A_CLAUSE))

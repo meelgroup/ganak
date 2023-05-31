@@ -82,7 +82,8 @@ string ganak_version_info()
     #endif
     ss << "c o CMS version: " << sat_solver->get_version_sha1() << endl;
     ss << "c o Top-down search by Davis, Putnam, Logemann, and Loveland" << endl;
-    ss << "c o Decomposition d-dNNF idea by Adnan Darwiche" << endl;
+    ss << "c o MiniSat conflict analysis by Een and Sorensson" << endl;
+    ss << "c o Chronological backtracking by Nadel and Ryvchin" << endl;
     ss << "c o TD idea&code by Korhonen and Jarvisalo" << endl;
     ss << "c o TD search code by Ben Strasser" << endl;
     ss << "c o Modifications to flow_cutter & 'GPMC' heuristic by Kenji Hashimoto" << endl;

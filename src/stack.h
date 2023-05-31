@@ -145,6 +145,7 @@ public:
     } else {
       branch_model_count_[active_branch_] *= solutions;
     }
+    VERBOSE_DEBUG_DO(cout << "now count is: " << branch_model_count_[active_branch_] << endl);
   }
 
   bool branch_found_unsat() const {

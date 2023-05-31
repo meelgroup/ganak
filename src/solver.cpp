@@ -881,9 +881,13 @@ retStateT Counter::backtrack() {
     const auto& s = decision_stack_.top();
     auto const& sup_at = s.super_comp();
     const auto& c = comp_manager_->at(sup_at);
+#ifdef VERBOSE_DEBUG
     cout << "-> Variables in comp_manager_->at(" << -1 << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
+    cout << endl;
+#endif
+
     for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
 
 #ifdef VERBOSE_DEBUG

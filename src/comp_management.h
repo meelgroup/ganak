@@ -124,7 +124,6 @@ public:
   // returns false if all comps have been processed
   inline bool findNextRemainingComponentOf(StackLevel &top);
   void recordRemainingCompsFor(StackLevel &top);
-  double get_comp_score(StackLevel &top);
   inline void sortComponentStackRange(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 

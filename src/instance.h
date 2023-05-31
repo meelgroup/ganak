@@ -39,6 +39,8 @@ public:
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return red_cls.size(); }
   uint32_t get_num_irred_long_cls() const { return stats.num_long_irred_clauses_; }
+  int val(Lit lit) const { return lit_values_[lit]; }
+  int val(uint32_t var) const { return lit_values_[Lit(var,1)]; }
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
@@ -206,7 +208,6 @@ protected:
     return lit_values_[lit] == T_TRI;
   }
 
-  int val(Lit lit) const { return lit_values_[lit]; }
   bool isFalse(Lit lit) {
     return lit_values_[lit] == F_TRI;
   }

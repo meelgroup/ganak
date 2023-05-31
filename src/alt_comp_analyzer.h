@@ -100,6 +100,7 @@ public:
 
   // returns true, iff the comp found is non-trivial
   bool exploreRemainingCompOf(const VariableIndex v, bool freevar = true) {
+    assert(freevar && "Maybe this freevar thing is not needed... let's see");
     assert(archetype_.var_unseen_in_sup_comp(v));
     recordComponentOf(v); // finds the comp that "v" is in
 

@@ -870,8 +870,8 @@ void Counter::check_count(bool include_dec) {
       } else if (ret == CMSat::l_False) break;
       else assert(false);
     }
-    cout << "num                          : " << num << endl;
-    cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl;
+    VERBOSE_DEBUG_DO(cout << "num                          : " << num << endl);
+    VERBOSE_DEBUG_DO(cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl);
     if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
 }
 

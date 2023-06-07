@@ -1439,6 +1439,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     ws.resize(it2-ws.begin());
     if (confl != Antecedent(NOT_A_CLAUSE)) break;
   }
+  SLOW_DEBUG_DO(if (confl != Antecedent(NOT_A_CLAUSE)) check_all_propagated());
   return confl == Antecedent(NOT_A_CLAUSE);
 }
 

@@ -230,4 +230,26 @@ void Instance::add_irred_cl(const vector<Lit>& lits) {
   if (lits.size() >= 3)
     for (const auto& l : lits)
       occ_lists_[l].push_back(cl_ofs);
+
+#ifdef SLOW_DEBUG
+  debug_irred_cls.push_back(lits);
+#endif
+}
+
+void Instance::check_all_propagated() const {
+  for(const auto& cl: debug_irred_cls) {
+    Lit unk = NOT_A_LIT;
+    uint32_t num_unknown = 0;
+    bool satisfied = false;
+    for(const auto& l: cl) {
+      if (isTrue(l)) {satisfied = true; break;}
+      if (isUnknown(l)) {num_unknown++; unk = l;}
+      if (num_unknown > 1) break;
+    }
+
+    if (!satisfied && num_unknown == 1) {
+      cout << "ERROR! Clause: " << cl << " should have propagated: " << unk << endl;
+      assert(false);
+    }
+  }
 }

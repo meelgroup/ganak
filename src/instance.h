@@ -41,6 +41,11 @@ public:
   uint32_t get_num_irred_long_cls() const { return stats.num_long_irred_clauses_; }
   int val(Lit lit) const { return lit_values_[lit]; }
   int val(uint32_t var) const { return lit_values_[Lit(var,1)]; }
+
+#ifdef SLOW_DEBUG
+  vector<vector<Lit>> debug_irred_cls;
+  void check_all_propagated() const;
+#endif
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {

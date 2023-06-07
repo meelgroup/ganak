@@ -103,12 +103,18 @@ private:
 
 inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 {
-    if (lit.raw() == 0) {
-        os << "UNDEF";
-    } else {
-        os << lit.toInt();
-    }
-    return os;
+  if (lit.raw() == 0) os << "UNDEF";
+  else os << lit.toInt();
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& co, const std::vector<Lit>& lits)
+{
+  for (uint32_t i = 0; i < lits.size(); i++) {
+    co << lits[i];
+    if (i != lits.size()-1) co << " ";
+  }
+  return co;
 }
 
 static const Lit NOT_A_LIT(0, false);

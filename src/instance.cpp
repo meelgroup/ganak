@@ -236,7 +236,7 @@ void Instance::add_irred_cl(const vector<Lit>& lits) {
 #endif
 }
 
-void Instance::check_all_propagated() const {
+void Instance::check_watchlists() const {
 #if 0
   // All watchlists
   cout << "All watchlists: " << endl;
@@ -270,15 +270,19 @@ void Instance::check_all_propagated() const {
         if (isTrue(*c)) sat = true;
       }
       if (!sat && num_unk >=2 && !isUnknown(lit)) {
-        cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in clause: ";
+        cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: ";
         for(Lit const* c = beginOf(ofs); *c != NOT_A_LIT; c++) {
-          cout << *c << " (val: " << lit_val_str(*c) << ") ";
+          cout << *c << " (val: " << lit_val_str(*c) << " lev: " << var(*c).decision_level << ") ";
         }
         cout << endl;
         assert(false);
       }
     }
   }
+}
+
+void Instance::check_all_propagated() const {
+  check_watchlists();
 
   // Everything that should have propagated, propagated
   for(const auto& cl: debug_irred_cls) {

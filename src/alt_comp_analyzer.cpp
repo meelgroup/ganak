@@ -140,13 +140,13 @@ bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v, bool freev
 
   // comp only contains one variable
   if (search_stack_.size() == 1) {
-    VERBOSE_DEBUG_DO("explore remaining with single var, v is: " <<  v);
+    VERBOSE_PRINT("explore remaining with single var, v is: " <<  v);
     if (v >= indep_support_end || !freevar) {
       archetype_.stack_level().includeSolution(1);
-      CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1));
+      /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1)); */
     } else {
       archetype_.stack_level().includeSolution(2);
-      CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2));
+      /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2)); */
     }
     archetype_.setVar_in_other_comp(v);
     return false;

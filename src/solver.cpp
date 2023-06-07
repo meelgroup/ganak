@@ -52,6 +52,7 @@ void Counter::simplePreProcess()
   stats.num_unit_irred_clauses_ = unit_clauses_.size();
   irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
+  qhead = 0;
 }
 
 void Counter::set_indep_support(const set<uint32_t> &indeps)
@@ -713,7 +714,7 @@ bool Counter::restart_if_needed() {
         on_path = false;
       }
       if (config_.do_on_path_print) cout << "ON PATH: " << on_path << " -- ";
-      reactivate_comps_and_backtrack_trail(config_.do_on_path_print);
+      reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
     }
     stats.last_restart_num_conflicts = stats.conflicts;
@@ -928,7 +929,10 @@ retStateT Counter::backtrack() {
       CHECK_COUNT_DO(check_count(true));
       SLOW_DEBUG_DO(assert(decision_stack_.top().get_rigth_model_count() == 0));
       decision_stack_.top().change_to_right_branch();
-      reactivate_comps_and_backtrack_trail();
+      // could be the flipped that's FALSEified so that would
+      // mean the watchlist is not "sane". We need to propagate the flipped var and
+      // then it'll be fine
+      reactivate_comps_and_backtrack_trail(false);
       print_debug("[indep] Flipping lit to: " << aLit.neg());
       setLiteral(aLit.neg(), decision_stack_.get_decision_level());
       VERBOSE_DEBUG_DO(print_trail());
@@ -1078,17 +1082,20 @@ uint32_t Counter::find_lev_to_set(int32_t other_lev) {
   if (uip_clause.size() == 1) return 0;
   int32_t max_lev = 0;
   bool updated = false;
+  uint32_t switch_to = 0;
   for (uint32_t i = 0; i < uip_clause.size(); i++) {
     int32_t lev = var(uip_clause[i]).decision_level;
       if (lev > max_lev && lev < other_lev) {
         max_lev = lev;
         updated = true;
+        switch_to = i;
       }
   }
 #ifdef VERBOSE_DEBUG
   cout << "max_lev: " << max_lev << " other_lev: " << other_lev << " updated: " << (int)updated << endl;
 #endif
   assert(updated);
+  std::swap(uip_clause[1], uip_clause[switch_to]);
   return max_lev;
 }
 
@@ -1100,7 +1107,8 @@ void Counter::print_trail(bool check_entail) const
     cout << "lit " << std::setw(6) << l
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante
-    << " val: " << lit_val_str(l) << endl;
+    << " val: " << std::setw(8) << lit_val_str(l)
+    << " trail pos: " << i << endl;
   }
   check_trail(check_entail);
 }
@@ -1113,7 +1121,7 @@ void Counter::go_back_to(int32_t backj) {
     decision_stack_.top().mark_branch_unsat();
     decision_stack_.top().zero_out_all_sol(); //not sure it's needed
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-    reactivate_comps_and_backtrack_trail();
+    reactivate_comps_and_backtrack_trail(false);
     decision_stack_.pop_back();
     // WOW, if this is ALL solutions, we get wrong count on NICE.cnf
     decision_stack_.top().zero_out_branch_sol();
@@ -1303,8 +1311,7 @@ bool Counter::prop_and_probe() {
   // bcp on that literal
   assert(trail.size() > 0 && "Mate added this, but it seems OK");
 
-  const uint32_t start_ofs = trail.size() - 1;
-  bool bSucceeded = propagate(start_ofs);
+  bool bSucceeded = propagate(qhead);
   if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
     if (config_.failed_lit_probe_type == 2  &&
       (double)decision_stack_.size() >
@@ -1332,10 +1339,11 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
 
 bool Counter::propagate(const uint32_t start_at_trail_ofs) {
   confl = Antecedent(NOT_A_CLAUSE);
-  for (auto i = start_at_trail_ofs; i < trail.size(); i++) {
-    const Lit unLit = trail[i].neg();
+  VERBOSE_PRINT("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
+  for (; qhead < trail.size(); qhead++) {
+    const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
-    VERBOSE_DEBUG_DO(cout << "Propagating: " << unLit.neg() << endl);
+    VERBOSE_DEBUG_DO(cout << "Propagating: " << unLit.neg() << " qhead: " << qhead << endl);
 
     //Propagate bin clauses
     for (const auto& l : litWatchList(unLit).binary_links_) {
@@ -1349,16 +1357,16 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       }
     }
 
-
     //Propagate long clauses
     auto& ws = litWatchList(unLit).watch_list_;
 
 #if 0
     cout << "prop-> will go through norm cl:" << endl;
     for(const auto& w: ws) {
-      cout << "new cl: " << w.ofs << endl;
+      cout << "norm cl offs: " << w.ofs << " cl: ";
       const auto ofs = w.ofs;
-      for(Lit* c = beginOf(ofs); *c != NOT_A_LIT; c++) { cout << "lit :" << *c << endl; }
+      for(Lit* c = beginOf(ofs); *c != NOT_A_LIT; c++) { cout << *c << " "; }
+      cout << endl;
     }
     cout << " will do it now... " << endl;
 #endif
@@ -1402,7 +1410,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
-            get_maxlev_maxind<0>(ofs, maxlev, maxind);
+            get_maxlev_maxind<2>(ofs, maxlev, maxind);
             if (maxind == 0) {
               std::swap(c[0], c[1]);
             } else if (maxind != 1) {
@@ -1441,6 +1449,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     if (confl != Antecedent(NOT_A_CLAUSE)) break;
   }
   SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE)) check_all_propagated());
+  VERBOSE_PRINT("After propagate, qhead is: " << qhead);
   return confl == Antecedent(NOT_A_CLAUSE);
 }
 
@@ -1636,6 +1645,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     }
     trail.pop_back();
   }
+  assert(false && "qhead is not working for probing");
   if (!set) {
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();

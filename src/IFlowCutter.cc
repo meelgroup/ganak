@@ -670,7 +670,7 @@ TreeDecomposition IFlowCutter::constructTD()
 
 						// TODO timeout here
 						/* if(true) break; */
-						VERBOSE_DEBUG_DO("TD at " << i << " best bag: " << td.width());
+						VERBOSE_PRINT("TD at " << i << " best bag: " << td.width());
 						break;
 					}
 				}

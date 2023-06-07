@@ -125,6 +125,7 @@ private:
 
   DecisionStack decision_stack_;
   vector<Lit> trail;
+  uint32_t qhead = 0;
   ComponentManager* comp_manager_ = NULL;
 
   // the last time conflict clauses have been deleted
@@ -178,7 +179,7 @@ private:
       Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
-    else print_debug("-> lit propagated: " << lit);
+    else print_debug("-> lit propagated: " << lit << " trail sz will be: " << trail.size()+1);
 
     VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << endl);
     var(lit).decision_level = dec_lev;
@@ -266,19 +267,22 @@ private:
     return *(trail.begin() + decision_stack_[decision_stack_.size()-2].trail_ofs());
   }
 
-  void reactivate_comps_and_backtrack_trail(bool print = false)
+  void reactivate_comps_and_backtrack_trail(bool check_ws = true)
   {
-    VERBOSE_DEBUG_DO("->reactivate and backtrack...");
+    VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
     for (; it != trail.end(); it++) {
-      if (var(*it).decision_level < decision_stack_.get_decision_level()) {
-          *jt++ = *it;
+      int32_t dl = var(*it).decision_level;
+      qhead = std::min(decision_stack_.at(dl).trail_ofs(), qhead);
+      if (dl < decision_stack_.get_decision_level()) {
+        *jt++ = *it;
       } else {
         VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << endl);
         unSet(*it);
       }
     }
+    SLOW_DEBUG_DO(if (check_ws) check_watchlists());
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(trail.size()-(it-jt));
     //TODO check if we need this...
@@ -286,10 +290,10 @@ private:
     /* cout  << "NEW trail ofs: " << trail.size() << endl; */
     decision_stack_.top().trail_ofs() = trail.size();
 
-    if (print) cout << "Forgetting decision: "
-      << std::setw(1) << (decision_stack_.top().is_right_branch() ? "-" : "")
-      << std::setw(6) << decision_stack_.top().getbranchvar()
-        << " count: " << decision_stack_.top().getTotalModelCount() << endl;
+    /* cout << "Forgetting decision: " */
+    /*   << std::setw(1) << (decision_stack_.top().is_right_branch() ? "-" : "") */
+    /*   << std::setw(6) << decision_stack_.top().getbranchvar() */
+    /*     << " count: " << decision_stack_.top().getTotalModelCount() << endl; */
     decision_stack_.top().resetRemainingComps();
   }
 

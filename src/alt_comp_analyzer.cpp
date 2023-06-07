@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "alt_comp_analyzer.h"
+#include "solver.h"
 
 // Builds occ lists and sets things up
 void ComponentAnalyzer::initialize(
@@ -131,6 +132,28 @@ void ComponentAnalyzer::initialize(
   print_debug(COLBLBACK "Built unified link list in ComponentAnalyzer::initialize.");
 }
 
+// returns true, iff the comp found is non-trivial
+bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v, bool freevar) {
+  assert(freevar && "Maybe this freevar thing is not needed... let's see");
+  assert(archetype_.var_unseen_in_sup_comp(v));
+  recordComponentOf(v); // finds the comp that "v" is in
+
+  // comp only contains one variable
+  if (search_stack_.size() == 1) {
+    cout << "explore remaining with single var, v is: " <<  v << endl;
+    if (v >= indep_support_end || !freevar) {
+      archetype_.stack_level().includeSolution(1);
+      CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1));
+    } else {
+      archetype_.stack_level().includeSolution(2);
+      CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2));
+    }
+    archetype_.setVar_in_other_comp(v);
+    return false;
+  }
+  return true;
+}
+
 // Check which comp a variable is in
 void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   search_stack_.clear();
@@ -157,9 +180,12 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
       if (archetype_.clause_unseen_in_sup_comp(*p)){
         const Lit litA = *(Lit*)(p + 1);
         const Lit litB = *(Lit*)(p + 2);
-        if(isTrue(litA)|| isTrue(litB))
+        /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
+        if(isTrue(litA)|| isTrue(litB)) {
+          /* cout << "satisfied" << endl; */
           archetype_.setClause_nil(*p);
-        else {
+        } else {
+          /* cout << "not satisfied" << endl; */
           var_frequency_scores_[v]++;
           manageSearchOccurrenceAndScoreOf(litA);
           manageSearchOccurrenceAndScoreOf(litB);

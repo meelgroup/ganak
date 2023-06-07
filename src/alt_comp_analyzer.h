@@ -33,14 +33,18 @@ THE SOFTWARE.
 #include "containers.h"
 #include "stack.h"
 
+class Counter;
+
 // There is exactly ONE of this, inside ComponentManager, which is inside Solver
 class ComponentAnalyzer {
 public:
   ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
-        const uint32_t& _indep_support_end) :
+        const uint32_t& _indep_support_end,
+        Counter* _solver) :
         lit_values_(lit_values),
-        indep_support_end(_indep_support_end)
+        indep_support_end(_indep_support_end),
+        solver(_solver)
   {}
 
   uint32_t& scoreOf(VariableIndex v) {
@@ -65,10 +69,12 @@ public:
   // returns true iff the underlying variable was unseen before
   bool manageSearchOccurrenceOf(const Lit lit){
     if (archetype_.var_unseen_in_sup_comp(lit.var())) {
+      /* VERBOSE_PRINT("-> lit " << lit << " unseen in sup comp"); */
       search_stack_.push_back(lit.var());
       archetype_.setVar_seen(lit.var());
       return true;
     }
+    /* VERBOSE_PRINT("-> lit " << lit << " seen in sup comp"); */
     return false;
   }
 
@@ -98,24 +104,7 @@ public:
       archetype_.setClause_in_sup_comp_unseen(*itCl);
   }
 
-  // returns true, iff the comp found is non-trivial
-  bool exploreRemainingCompOf(const VariableIndex v, bool freevar = true) {
-    assert(freevar && "Maybe this freevar thing is not needed... let's see");
-    assert(archetype_.var_unseen_in_sup_comp(v));
-    recordComponentOf(v); // finds the comp that "v" is in
-
-    // comp only contains one variable
-    if (search_stack_.size() == 1) {
-      if (v >= indep_support_end || !freevar) {
-        archetype_.stack_level().includeSolution(1);
-      } else {
-        archetype_.stack_level().includeSolution(2);
-      }
-      archetype_.setVar_in_other_comp(v);
-      return false;
-    }
-    return true;
-  }
+  bool exploreRemainingCompOf(const VariableIndex v, bool freevar = true);
 
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.
@@ -152,6 +141,7 @@ private:
   const uint32_t& indep_support_end;
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
+  Counter* solver = NULL;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
                                        // used in  recordComponentOf
                                        // its size is the number of variables in the component

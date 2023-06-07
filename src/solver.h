@@ -97,6 +97,9 @@ public:
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
 
+  // test public
+  uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
+
 private:
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
@@ -156,7 +159,6 @@ private:
   void print_all_levels();
   bool restart_if_needed();
   retStateT backtrack_nonindep();
-  void check_count(bool include_dec = false);
   retStateT backtrack();
   void print_dec_info() const;
   void print_conflict_info() const;
@@ -169,8 +171,8 @@ private:
   void go_back_to(int32_t backj);
   uint32_t find_lev_to_set(int32_t other_lev);
   size_t find_backtrack_level_of_learnt();
-  void print_trail() const;
-  void check_trail() const;
+  void print_trail(bool check_entail = true) const;
+  void check_trail(bool check_entail = true) const;
 
   void setLiteral(const Lit lit, int32_t dec_lev,
       Antecedent ant = Antecedent(NOT_A_CLAUSE))

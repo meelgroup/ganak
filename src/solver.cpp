@@ -817,7 +817,7 @@ retStateT Counter::backtrack_nonindep() {
   return EXIT;
 }
 
-void Counter::check_count(bool include_dec) {
+uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     //let's get vars active
     set<uint32_t> active;
 
@@ -825,19 +825,37 @@ void Counter::check_count(bool include_dec) {
     auto const& sup_at = s.super_comp();
     const auto& c = comp_manager_->at(sup_at);
 #ifdef VERBOSE_DEBUG
-    cout << "-> Variables in comp_manager_->at(" << -1 << ")."
+    cout << "-> Checking count. Incl all dec: " << include_all_dec << " dec lev: " << decision_stack_.get_decision_level() << " var: " << single_var << endl;
+    cout << "-> Variables in comp_manager_->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
     cout << endl;
 #endif
 
-    for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
+    if (single_var == -1) {
+      for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
+    } else {
+      active.insert(single_var);
+    }
 
 #ifdef VERBOSE_DEBUG
     cout << "active: ";
     for(const auto&a: active) cout << a << " ";
     cout << endl;
 #endif
+    // Check dec level 0's
+    vector<CMSat::Lit> cl;
+    for(const auto& t: trail) {
+      if (var(t).decision_level == 0) {
+        cl.clear();
+        cl.push_back(CMSat::Lit(t.var()-1, t.sign()));
+        auto ret = sat_solver->solve(&cl);
+        if (ret != CMSat::l_False) {
+          cout << "ERROR: unit " << t << " is not correct!!" << endl;;
+          assert(false);
+        }
+      }
+    }
 
     // Checking
     VERBOSE_DEBUG_DO(print_trail());
@@ -845,9 +863,8 @@ void Counter::check_count(bool include_dec) {
     VERBOSE_DEBUG_DO(cout << "top dec lit: " << top_dec_lit() << endl);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
-    vector<CMSat::Lit> cl;
     for(const auto& t: trail) {
-      if (!include_dec) {
+      if (!include_all_dec) {
         if (var(t).decision_level >= decision_stack_.get_decision_level()) continue;
       }
       // don't include propagations or lev0 stuff
@@ -862,17 +879,25 @@ void Counter::check_count(bool include_dec) {
       if (ret == CMSat::l_True) {
         num++;
         cl.clear();
+        /* cout << "Blocking : "; */
         for(uint32_t i = 0; i < s2.nVars(); i++) {
-          if (active.count(i+1))
-            cl.push_back(CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True));
+          if (active.count(i+1)) {
+            CMSat::Lit l = CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True);
+            cl.push_back(l);
+            /* cout << l << " "; */
+          }
         }
+        /* cout << endl; */
         s2.add_clause(cl);
       } else if (ret == CMSat::l_False) break;
       else assert(false);
     }
     VERBOSE_DEBUG_DO(cout << "num                          : " << num << endl);
-    VERBOSE_DEBUG_DO(cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl);
-    if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
+    if (single_var == -1) {
+      VERBOSE_DEBUG_DO(cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl);
+      if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
+    }
+    return num;
 }
 
 retStateT Counter::backtrack() {
@@ -1066,7 +1091,7 @@ uint32_t Counter::find_lev_to_set(int32_t other_lev) {
   return max_lev;
 }
 
-void Counter::print_trail() const
+void Counter::print_trail(bool check_entail) const
 {
   cout << "Current trail :" << endl;
   for(uint32_t i = 0; i < trail.size(); i++) {
@@ -1076,7 +1101,7 @@ void Counter::print_trail() const
       << " ante: " << std::setw(5) << std::left << var(l).ante
     << " val: " << lit_val_str(l) << endl;
   }
-  check_trail();
+  check_trail(check_entail);
 }
 
 void Counter::go_back_to(int32_t backj) {
@@ -1098,7 +1123,7 @@ void Counter::go_back_to(int32_t backj) {
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
 }
 
-void Counter::check_trail() const {
+void Counter::check_trail(bool check_entail) const {
   vector<uint32_t> num_decs_at_level(decision_stack_.get_decision_level()+1, 0);
   for(const auto& t: trail) {
     int32_t lev = var(t).decision_level;
@@ -1116,6 +1141,36 @@ void Counter::check_trail() const {
     if (val(t) != T_TRI) {
       assert(false && "Trail is wrong");
     }
+    bool entailment_fail = false;
+#ifdef CHECK_TRAIL_ENTAILMENT
+    if (check_entail) {
+      // Check entailment
+      // No need to check if we are flipping and immediately backtracking
+      if (!var(t).ante.isDecision()) {
+        CMSat::SATSolver s2;
+        CMSat::copy_solver_to_solver(sat_solver, &s2);
+        vector<CMSat::Lit> cl;
+        cl.push_back(CMSat::Lit(t.var()-1, t.sign())); //add opposite of implied
+        s2.add_clause(cl);
+        int32_t this_lev = var(t).decision_level;
+        for(const auto& t2: trail) {
+          if (var(t2).ante.isDecision() &&
+              var(t2).decision_level <= this_lev &&
+              var(t2).decision_level != 0) {
+            cl.clear();
+            cl.push_back(CMSat::Lit(t2.var()-1, !t2.sign())); // add all decisions (non-negated)
+            s2.add_clause(cl);
+          }
+        }
+        auto ret = s2.solve();
+        if (ret != CMSat::l_False) {
+          cout << "Not implied by decisions: " << t << endl;
+          entailment_fail = true;
+        }
+      }
+    }
+#endif
+    assert(!entailment_fail);
   }
 }
 
@@ -1211,6 +1266,7 @@ retStateT Counter::resolveConflict() {
   if (flipped && decision_stack_.top().is_right_branch()) {
 #ifdef VERBOSE_DEBUG
     cout << "FLIPPED Returning from resolveConflict() with:";
+    var(top_dec_lit().neg()).ante = Antecedent(NOT_A_CLAUSE); // it's OK, we'll backtrack anyway.
     print_conflict_info();
     print_trail();
     cout << "We have already counted this LEFT branch, so we backtrack now." << endl;
@@ -1225,6 +1281,10 @@ retStateT Counter::resolveConflict() {
   if (flipped) {
     decision_stack_.top().change_to_right_branch();
     reactivate_comps_and_backtrack_trail();
+  } else {
+    /* decision_stack_.top().zero_out_branch_sol(); */
+    /* decision_stack_.top().resetRemainingComps(); */
+    /* comp_manager_->cleanRemainingComponentsOf(decision_stack_.top()); */
   }
   setLiteral(uip_clause[0], lev_to_set, ant);
 #ifdef VERBOSE_DEBUG
@@ -1274,7 +1334,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
   for (auto i = start_at_trail_ofs; i < trail.size(); i++) {
     const Lit unLit = trail[i].neg();
     const int32_t lev = var(unLit).decision_level;
-    VERBOSE_DEBUG_DO(cout << "Propagating: " << trail[i] << endl);
+    VERBOSE_DEBUG_DO(cout << "Propagating: " << unLit.neg() << endl);
 
     //Propagate bin clauses
     for (const auto& l : litWatchList(unLit).binary_links_) {
@@ -1291,16 +1351,17 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
 
     //Propagate long clauses
     auto& ws = litWatchList(unLit).watch_list_;
-    /* cout << " will go through norm:" << endl; */
-    /* for(const auto& w: ws) { */
-    /*   cout << "new cl: " << w.ofs << endl; */
-    /*   const auto ofs = w.ofs; */
-    /*   Lit* c = beginOf(ofs); */
-    /*   for(; *c != NOT_A_LIT; c++) { */
-    /*     cout << "lit :" << *c << endl; */
-    /*   } */
-    /* } */
-    /* cout << " will do it now... " << endl; */
+
+#if 1
+    cout << "prop-> will go through norm cl:" << endl;
+    for(const auto& w: ws) {
+      cout << "new cl: " << w.ofs << endl;
+      const auto ofs = w.ofs;
+      for(Lit* c = beginOf(ofs); *c != NOT_A_LIT; c++) { cout << "lit :" << *c << endl; }
+    }
+    cout << " will do it now... " << endl;
+#endif
+
     auto it2 = ws.begin();
     auto it = ws.begin();
     for (; it != ws.end(); it++) {
@@ -1311,7 +1372,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       if (c[0] == unLit) { std::swap(c[0], c[1]); }
 
 #ifdef VERBOSE_DEBUG
-      cout << "Norm cl: " << ofs << endl;
+      cout << "Prop Norm cl: " << ofs << endl;
       for(Lit* c2 = c; *c2!=NOT_A_LIT; c2++) {
         cout << "lit " << std::setw(6) << *c2
           << " lev: " << std::setw(4) << var(*c2).decision_level
@@ -1326,12 +1387,12 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
         continue;
       }
 
-      auto itL = beginOf(ofs) + 2;
-      while (isFalse(*itL)) itL++;
+      Lit* k = beginOf(ofs) + 2;
+      while (isFalse(*k)) k++;
       // either we found a free or satisfied lit
-      if (*itL != SENTINEL_LIT) {
-        c[1] = *itL;
-        *itL = unLit;
+      if (*k != SENTINEL_LIT) {
+        c[1] = *k;
+        *k = unLit;
         litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
       } else {
         *it2++ = *it;

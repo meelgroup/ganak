@@ -237,6 +237,50 @@ void Instance::add_irred_cl(const vector<Lit>& lits) {
 }
 
 void Instance::check_all_propagated() const {
+#if 0
+  // All watchlists
+  cout << "All watchlists: " << endl;
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit lit = Lit(i/2, i%2);
+    cout << "->Watchlist for lit " << lit << " (val: " << lit_val_str(lit) << ") " << endl;
+    auto& ws = watches_[lit].watch_list_;
+    for(const auto& w: ws) {
+      const auto ofs = w.ofs;
+      cout << "--> Cl ofs " << ofs << " lits: ";
+      for(Lit const* c = beginOf(ofs); *c != NOT_A_LIT; c++) {
+        cout << *c << " (val: " << lit_val_str(*c) << ") ";
+      }
+      cout << endl;
+    }
+  }
+#endif
+
+  // Also check that after propagation, if the clause is not satisfied,
+  // it's NOT the case that prop queue contains
+  // FALSE & UNK. Must be UNK & UNK
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit lit = Lit(i/2, i%2);
+    auto& ws = watches_[lit].watch_list_;
+    for(const auto& w: ws) {
+      const auto ofs = w.ofs;
+      uint32_t num_unk = 0;
+      bool sat = false;
+      for(Lit const* c = beginOf(ofs); *c != NOT_A_LIT; c++) {
+        if (isUnknown(*c)) num_unk++;
+        if (isTrue(*c)) sat = true;
+      }
+      if (!sat && num_unk >=2 && !isUnknown(lit)) {
+        cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in clause: ";
+        for(Lit const* c = beginOf(ofs); *c != NOT_A_LIT; c++) {
+          cout << *c << " (val: " << lit_val_str(*c) << ") ";
+        }
+        cout << endl;
+        assert(false);
+      }
+    }
+  }
+
+  // Everything that should have propagated, propagated
   for(const auto& cl: debug_irred_cls) {
     Lit unk = NOT_A_LIT;
     uint32_t num_unknown = 0;

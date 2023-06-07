@@ -268,7 +268,7 @@ private:
 
   void reactivate_comps_and_backtrack_trail(bool print = false)
   {
-    VERBOSE_DEBUG_DO(cout << "->reactivate and backtrack..." << endl);
+    VERBOSE_DEBUG_DO("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
     for (; it != trail.end(); it++) {

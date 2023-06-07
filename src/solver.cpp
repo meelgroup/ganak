@@ -931,6 +931,7 @@ retStateT Counter::backtrack() {
       reactivate_comps_and_backtrack_trail();
       print_debug("[indep] Flipping lit to: " << aLit.neg());
       setLiteral(aLit.neg(), decision_stack_.get_decision_level());
+      VERBOSE_DEBUG_DO(print_trail());
       print_debug(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
       return RESOLVED;
     }
@@ -1352,7 +1353,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     //Propagate long clauses
     auto& ws = litWatchList(unLit).watch_list_;
 
-#if 1
+#if 0
     cout << "prop-> will go through norm cl:" << endl;
     for(const auto& w: ws) {
       cout << "new cl: " << w.ofs << endl;
@@ -1397,7 +1398,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       } else {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
-          VERBOSE_DEBUG_DO(cout << "Conflicting state from norm cl: " << ofs << endl);
+          VERBOSE_DEBUG_DO(cout << "Conflicting state from norm cl offs: " << ofs << endl);
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
@@ -1439,7 +1440,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     ws.resize(it2-ws.begin());
     if (confl != Antecedent(NOT_A_CLAUSE)) break;
   }
-  SLOW_DEBUG_DO(if (confl != Antecedent(NOT_A_CLAUSE)) check_all_propagated());
+  SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE)) check_all_propagated());
   return confl == Antecedent(NOT_A_CLAUSE);
 }
 

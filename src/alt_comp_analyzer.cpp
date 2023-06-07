@@ -140,7 +140,7 @@ bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v, bool freev
 
   // comp only contains one variable
   if (search_stack_.size() == 1) {
-    cout << "explore remaining with single var, v is: " <<  v << endl;
+    VERBOSE_DEBUG_DO("explore remaining with single var, v is: " <<  v);
     if (v >= indep_support_end || !freevar) {
       archetype_.stack_level().includeSolution(1);
       CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1));

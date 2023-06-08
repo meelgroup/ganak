@@ -280,13 +280,13 @@ private:
     int32_t lowest_dl = decision_stack_.get_decision_level();
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
-      lowest_dl = std::min(dl, lowest_dl);
+      if (dl > 0) lowest_dl = std::min(dl, lowest_dl);
       if (dl < decision_stack_.get_decision_level()) {
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
         VERBOSE_DEBUG_DO(cout << "Backing up, setting sublevel: " << *it << " lev: " << var(*it).sublevel << endl);
       } else {
-        VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << endl);
+        VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
         unSet(*it);
       }
     }

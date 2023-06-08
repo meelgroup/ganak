@@ -1158,7 +1158,7 @@ void Counter::check_trail(bool check_entail) const {
       }
     }
     if (val(t) != T_TRI) {
-      assert(false && "Trail is wrong");
+      assert(false && "Trail is wrong, trail[val] is not TRUE");
     }
     bool entailment_fail = false;
 #ifdef CHECK_TRAIL_ENTAILMENT
@@ -1219,9 +1219,11 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   int32_t backj = find_backtrack_level_of_learnt();
   int32_t lev_to_set = find_lev_to_set(backj);
-  if (uip_clause[0].neg().var() != decision_stack_.at(backj).var) {
-    backj--;
-  }
+
+  // This is DEFINITELY a decision, right?
+  assert(variables_[decision_stack_.at(backj).var].ante == Antecedent(NOT_A_CLAUSE));
+  bool flipped = uip_clause[0].neg().var() == decision_stack_.at(backj).var;
+  if (!flipped) backj--;
   lev_to_set = std::min(lev_to_set, backj);
   VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -1247,10 +1249,9 @@ retStateT Counter::resolveConflict() {
 #endif
     return BACKTRACK;
   }
-  VERBOSE_DEBUG_DO(cout << "decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level() << endl);
+  VERBOSE_PRINT("decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level());
 
   Antecedent ant(NOT_A_CLAUSE);
-  bool flipped = false;
   if (!uip_clause.empty()) {
     bool implied = uip_clause_is_implied();
     if (!implied) {
@@ -1262,19 +1263,21 @@ retStateT Counter::resolveConflict() {
     }
     if (decision_stack_.get_decision_level() > 0 &&
         top_dec_lit().neg() == uip_clause[0]) {
-      VERBOSE_DEBUG_DO(cout << "FLIPPING. Setting reason the conflict cl" << endl);
+      VERBOSE_PRINT("FLIPPING. Setting reason the conflict cl");
       assert(var(uip_clause[0]).decision_level != -1);
       ant = addUIPConflictClause(uip_clause);
-      var(top_dec_lit().neg()).ante = ant;
-      flipped = true;
+      var(top_dec_lit()).ante = ant;
+      assert(flipped);
     } else {
       ant = addUIPConflictClause(uip_clause);
+      assert(!flipped);
     }
+    VERBOSE_PRINT("Ant is :" << ant);
   }
   if (uip_clause.empty()) {assert(false && "todo");}
-  VERBOSE_DEBUG_DO(cout << "AFTER conflict, setup: ");
+  VERBOSE_PRINT("AFTER conflict, setup: ");
   VERBOSE_DEBUG_DO(print_conflict_info());
-  VERBOSE_DEBUG_DO(cout << "is right here? " << decision_stack_.top().is_right_branch() << endl);
+  VERBOSE_PRINT("is right here? " << decision_stack_.top().is_right_branch());
   if (flipped) {
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     decision_stack_.top().zero_out_branch_sol();
@@ -1282,11 +1285,17 @@ retStateT Counter::resolveConflict() {
     decision_stack_.top().resetRemainingComps();
 
     if (decision_stack_.top().is_right_branch()) {
+      var(uip_clause[0]).decision_level = lev_to_set; //TODO what to do with sublevel?
+      var(uip_clause[0]).ante = ant;
+      lit_values_[uip_clause[0]] = T_TRI;
+      lit_values_[uip_clause[0].neg()] = F_TRI;
+      trail[var(uip_clause[0]).sublevel] = uip_clause[0];
+
 #ifdef VERBOSE_DEBUG
       cout << "FLIPPED Returning from resolveConflict() with:";
-      var(top_dec_lit().neg()).ante = Antecedent(NOT_A_CLAUSE); // it's OK, we'll backtrack anyway.
       print_conflict_info();
-      print_trail();
+      print_trail(false); // we re-written the level above, so entailment
+                          // may fail. when backtracking it'll be fine, though
       cout << "We have already counted this LEFT branch, so we backtrack now." << endl;
 #endif
       return BACKTRACK;
@@ -1303,11 +1312,14 @@ retStateT Counter::resolveConflict() {
   }
   assert(val(uip_clause[0]) == X_TRI);
   setLiteral(uip_clause[0], lev_to_set, ant);
-  if (!flipped) {
+
+  if (!uip_clause.empty() &&
+      decision_stack_.get_decision_level() > var(uip_clause[0]).decision_level) {
     update_prop_levs.clear();
     update_prop_levs.push_back(uip_clause[0]);
     update_prop_levels();
   }
+
 #ifdef VERBOSE_DEBUG
   cout << "Returning from resolveConflict() with:";
   print_conflict_info();

@@ -27,28 +27,26 @@ THE SOFTWARE.
 #include <vector>
 #include <iostream>
 #include "common.h"
+#include "structures.h"
 using std::vector;
 using std::cout;
 using std::endl;
 
 class StackLevel {
 public:
-  StackLevel(uint32_t super_comp, uint32_t trail_ofs, uint32_t comp_stack_ofs) :
+  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs) :
       super_comp_(super_comp),
-      trail_ofs_(trail_ofs),
       remaining_comps_ofs_(comp_stack_ofs),
       unprocessed_comps_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);
   }
+  uint32_t var = 0;
 private:
 
   /// active Component, once initialized, it should not change
   const uint32_t super_comp_ = 0;
   // branch (i.e. left/right)
   bool active_branch_ = false;
-
-  // offset in the literal stack where to store set lits
-  uint32_t trail_ofs_ = 0;
 
   //  Solution count
   mpz_class branch_model_count_[2] = {0,0};
@@ -122,14 +120,6 @@ public:
 
   bool anotherCompProcessible() const {
     return (!branch_found_unsat()) && hasUnprocessedComponents();
-  }
-
-  uint32_t trail_ofs() const {
-    return trail_ofs_;
-  }
-
-  uint32_t& trail_ofs() {
-    return trail_ofs_;
   }
 
   template<class T>

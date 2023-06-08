@@ -403,11 +403,10 @@ void Counter::decideLiteral() {
   bool on_path = true;
   if (decision_stack_.size() != 1)
     on_path = decision_stack_.top().on_path_to_target_ && !decision_stack_.top().is_right_branch();
+
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
-               trail.size(),
                comp_manager_->comp_stack_size()));
-  decision_stack_.top().on_path_to_target_ = on_path;
 
   // The decision literal is now ready. Deal with it.
   uint32_t v;
@@ -420,6 +419,10 @@ void Counter::decideLiteral() {
     else v = find_best_branch(false);
   }
   assert(v != 0);
+
+  decision_stack_.top().var = v;
+  decision_stack_.top().on_path_to_target_ = on_path;
+
   Lit lit = Lit(v, get_polarity(v));
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
@@ -519,7 +522,7 @@ void Counter::computeLargestCube()
 #endif
   for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
-    const Lit dec_lit = trail[dec.trail_ofs()];
+    const Lit dec_lit = Lit(dec.var, val(dec.var) == T_TRI);
     // Add decision
     if (i > 0) {
       const auto dec_lit2 = (target_polar[dec.getbranchvar()] ? 1 : -1)*(int)dec.getbranchvar();
@@ -1006,7 +1009,8 @@ void Counter::print_dec_info() const
 {
   cout << "dec lits: " << endl;
   for(uint32_t i = 1; i < decision_stack_.size(); i ++) {
-    Lit l = *(trail.begin()+ decision_stack_[i].trail_ofs());
+    uint32_t dvar = decision_stack_[i].var;
+    Lit l = Lit(dvar, val(dvar) == T_TRI);
     cout << "dec lev: " << std::setw(3) << i <<
       " lit: " << std::setw(6)
       << l
@@ -1104,7 +1108,7 @@ uint32_t Counter::find_lev_to_set(int32_t other_lev) {
   return max_lev;
 }
 
-void Counter::print_trail(bool check_entail) const
+void Counter::print_trail(bool check_entail, bool check_anything) const
 {
   cout << "Current trail :" << endl;
   for(uint32_t i = 0; i < trail.size(); i++) {
@@ -1113,9 +1117,10 @@ void Counter::print_trail(bool check_entail) const
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante
     << " val: " << std::setw(8) << lit_val_str(l)
-    << " trail pos: " << i << endl;
+    << " trail pos: " << std::setw(4) << i
+    << " sublevel: "  << std::setw(3) << var(l).sublevel << endl;
   }
-  check_trail(check_entail);
+  if (check_anything) check_trail(check_entail);
 }
 
 void Counter::go_back_to(int32_t backj) {
@@ -1214,7 +1219,7 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   int32_t backj = find_backtrack_level_of_learnt();
   int32_t lev_to_set = find_lev_to_set(backj);
-  if (uip_clause[0].neg() != *(trail.begin()+decision_stack_.at(backj).trail_ofs())) {
+  if (uip_clause[0].neg().var() != decision_stack_.at(backj).var) {
     backj--;
   }
   lev_to_set = std::min(lev_to_set, backj);
@@ -1296,6 +1301,7 @@ retStateT Counter::resolveConflict() {
     decision_stack_.top().change_to_right_branch();
     reactivate_comps_and_backtrack_trail(false);
   }
+  assert(val(uip_clause[0]) == X_TRI);
   setLiteral(uip_clause[0], lev_to_set, ant);
   if (!flipped) {
     update_prop_levs.clear();
@@ -1314,6 +1320,7 @@ retStateT Counter::resolveConflict() {
 void Counter::update_prop_levels() {
   cout << "Update called." << endl;
   assert(update_prop_levs.size() == 1);
+  Lit qhead_lit = trail[qhead];
   for(uint32_t i = 0; i < update_prop_levs.size(); i ++) {
     const Lit lit = update_prop_levs[i];
 
@@ -1345,15 +1352,16 @@ void Counter::update_prop_levels() {
         /* lit 7      lev: 1    ante: CL:        1677 val: FALSE */
         // Where "lit 21" was re-written to level 4 from 8 (and being -21).
         // Needs repair.
+        auto orig_lev = var(lit_prop).decision_level;
+        auto orig_ante = var(lit_prop).ante;
         var(lit_prop).decision_level = max_other_lev;
         var(lit_prop).ante = Antecedent(off);
         update_prop_levs.push_back(lit_prop); // we'll need to repair this, too
         cout << "NORM Updated " << lit_prop << " to lev: " << max_other_lev
-          << " ante: " << Antecedent(off) << endl;
+          << " from lev: " << orig_lev
+          << " new ante: " << Antecedent(off)
+          << " old ante: " << orig_ante << endl;
         var(lit_prop).sublevel = max_other_sublev + 1;
-        for(uint32_t i2 = max_other_sublev; i2 < trail.size(); i2++) {
-          var(trail[i2]).sublevel++;
-        }
         // TODO maybe we need to re-attach with highest levels???
       }
     }
@@ -1370,12 +1378,26 @@ void Counter::update_prop_levels() {
           << " ante: " << Antecedent(lit.neg()) << endl;
 
         var(lit2).sublevel = sub_lev + 1;
-        for(uint32_t i2 = dec_lev; i2 < trail.size(); i2++) {
-          var(trail[i2]).sublevel++;
-        }
       }
     }
   }
+  /* cout << "Before sorting trail: " << endl; */
+  /* print_trail(false); */
+  cout << "Sorting trail... " << endl;
+  std::stable_sort(trail.begin(), trail.end(),
+      [=](const Lit a, const Lit b) -> bool
+      { return var(a).sublevel < var(b).sublevel; }
+      );
+
+  for(uint32_t i = 0; i < trail.size(); i ++) {
+    var(trail[i]).sublevel = i;
+  }
+
+  // Now we set the qhead to be what it was before
+  qhead = var(qhead_lit).sublevel;
+
+  /* cout << "after sorting trail: " << endl; */
+  /* print_trail(false); */
 }
 
 bool Counter::prop_and_probe() {
@@ -1578,7 +1600,7 @@ bool Counter::failed_lit_probe_no_bprop()
 {
   print_debug(COLRED "Failed literal probing START");
 
-  uint32_t trail_ofs = decision_stack_.top().trail_ofs();
+  uint32_t trail_ofs = trail_at_top();
   uint32_t num_curr_lits = 0;
   while (trail_ofs < trail.size()) {
     test_lits.clear();
@@ -1625,7 +1647,7 @@ bool Counter::failed_lit_probe_no_bprop()
 bool Counter::failed_lit_probe_with_bprop() {
   print_debug(COLRED "Failed literal probing START");
 
-  uint32_t trail_ofs = decision_stack_.top().trail_ofs();
+  uint32_t trail_ofs = trail_at_top();
   uint32_t num_curr_lits = 0;
   while (trail_ofs < trail.size()) {
     test_lits.clear();

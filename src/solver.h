@@ -174,16 +174,17 @@ private:
   void go_back_to(int32_t backj);
   uint32_t find_lev_to_set(int32_t other_lev);
   size_t find_backtrack_level_of_learnt();
-  void print_trail(bool check_entail = true) const;
+  void print_trail(bool check_entail = true, bool check_anything = true) const;
   void check_trail(bool check_entail = true) const;
 
   void setLiteral(const Lit lit, int32_t dec_lev,
       Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
+    assert(val(lit) == X_TRI);
     if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
     else print_debug("-> lit propagated: " << lit << " trail sz will be: " << trail.size()+1);
 
-    VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << endl);
+    VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
     var(lit).decision_level = dec_lev;
     var(lit).ante = ant;
     if (ant != Antecedent(NOT_A_CLAUSE)) {
@@ -236,11 +237,11 @@ private:
   // The literals that have been set in this decision level
   vector<Lit>::const_iterator top_declevel_trail_begin() const
   {
-    return trail.begin() + decision_stack_.top().trail_ofs();
+    return trail.begin() + variables_[decision_stack_.top().var].sublevel;
   }
   vector<Lit>::iterator top_declevel_trail_begin()
   {
-    return trail.begin() + decision_stack_.top().trail_ofs();
+    return trail.begin() + variables_[decision_stack_.top().var].sublevel;
   }
 
   void init_decision_stack()
@@ -250,7 +251,6 @@ private:
     // initialize the stack to contain at least level zero
     decision_stack_.push_back(StackLevel(
           1, // super comp
-          0, // trail offset
           2)); //comp stack offset
     decision_stack_.top().on_path_to_target_ = true;
 
@@ -261,13 +261,15 @@ private:
 
   const Lit &top_dec_lit() const
   {
-    assert(decision_stack_.top().trail_ofs() < trail.size());
     return *top_declevel_trail_begin();
   }
 
-  const Lit &before_top_dec_lit() const
-  {
-    return *(trail.begin() + decision_stack_[decision_stack_.size()-2].trail_ofs());
+  uint32_t trail_at_dl(uint32_t dl) const {
+    return variables_[decision_stack_.at(dl).var].sublevel;
+  }
+
+  uint32_t trail_at_top() const {
+    return variables_[decision_stack_.top().var].sublevel;
   }
 
   void reactivate_comps_and_backtrack_trail(bool check_ws = true)
@@ -275,11 +277,14 @@ private:
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
+    int32_t lowest_dl = decision_stack_.get_decision_level();
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
-      qhead = std::min(decision_stack_.at(dl).trail_ofs(), qhead);
+      lowest_dl = std::min(dl, lowest_dl);
       if (dl < decision_stack_.get_decision_level()) {
+        var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
+        VERBOSE_DEBUG_DO(cout << "Backing up, setting sublevel: " << *it << " lev: " << var(*it).sublevel << endl);
       } else {
         VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << endl);
         unSet(*it);
@@ -288,15 +293,14 @@ private:
     SLOW_DEBUG_DO(if (check_ws) check_watchlists());
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(trail.size()-(it-jt));
-    //TODO check if we need this...
-    /* cout << "OLD trail ofs: " << decision_stack_.top().trail_ofs() << endl; */
-    /* cout  << "NEW trail ofs: " << trail.size() << endl; */
-    decision_stack_.top().trail_ofs() = trail.size();
 
-    /* cout << "Forgetting decision: " */
-    /*   << std::setw(1) << (decision_stack_.top().is_right_branch() ? "-" : "") */
-    /*   << std::setw(6) << decision_stack_.top().getbranchvar() */
-    /*     << " count: " << decision_stack_.top().getTotalModelCount() << endl; */
+    // TODO not sure we actually need to do this. Maybe we can
+    // get away with just the decision level... not sure
+    qhead = trail_at_dl(lowest_dl);
+    /* cout << "qhead set to: " << qhead << endl; */
+    /* cout << "trail after backtrack: "; */
+    /* print_trail(false); */
+
     decision_stack_.top().resetRemainingComps();
   }
 

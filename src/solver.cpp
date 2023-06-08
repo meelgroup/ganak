@@ -1320,6 +1320,7 @@ retStateT Counter::resolveConflict() {
 void Counter::update_prop_levels() {
   cout << "Update called." << endl;
   assert(update_prop_levs.size() == 1);
+  bool updated_anything = false;
   Lit qhead_lit = trail[qhead];
   for(uint32_t i = 0; i < update_prop_levs.size(); i ++) {
     const Lit lit = update_prop_levs[i];
@@ -1362,6 +1363,7 @@ void Counter::update_prop_levels() {
           << " new ante: " << Antecedent(off)
           << " old ante: " << orig_ante << endl;
         var(lit_prop).sublevel = max_other_sublev + 1;
+        updated_anything = true;
         // TODO maybe we need to re-attach with highest levels???
       }
     }
@@ -1378,26 +1380,29 @@ void Counter::update_prop_levels() {
           << " ante: " << Antecedent(lit.neg()) << endl;
 
         var(lit2).sublevel = sub_lev + 1;
+        updated_anything = true;
       }
     }
   }
-  /* cout << "Before sorting trail: " << endl; */
-  /* print_trail(false); */
-  cout << "Sorting trail... " << endl;
-  std::stable_sort(trail.begin(), trail.end(),
-      [=](const Lit a, const Lit b) -> bool
-      { return var(a).sublevel < var(b).sublevel; }
-      );
+  if (updated_anything) {
+    /* cout << "Before sorting trail: " << endl; */
+    /* print_trail(false); */
+    cout << "Sorting trail... " << endl;
+    std::stable_sort(trail.begin(), trail.end(),
+        [=](const Lit a, const Lit b) -> bool
+        { return var(a).sublevel < var(b).sublevel; }
+        );
 
-  for(uint32_t i = 0; i < trail.size(); i ++) {
-    var(trail[i]).sublevel = i;
+    for(uint32_t i = 0; i < trail.size(); i ++) {
+      var(trail[i]).sublevel = i;
+    }
+
+    // Now we set the qhead to be what it was before
+    qhead = var(qhead_lit).sublevel;
+
+    /* cout << "after sorting trail: " << endl; */
+    /* print_trail(false); */
   }
-
-  // Now we set the qhead to be what it was before
-  qhead = var(qhead_lit).sublevel;
-
-  /* cout << "after sorting trail: " << endl; */
-  /* print_trail(false); */
 }
 
 bool Counter::prop_and_probe() {

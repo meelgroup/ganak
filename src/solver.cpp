@@ -1275,17 +1275,17 @@ retStateT Counter::resolveConflict() {
     decision_stack_.top().zero_out_branch_sol();
     decision_stack_.top().mark_branch_unsat();
     decision_stack_.top().resetRemainingComps();
-  }
 
-  if (flipped && decision_stack_.top().is_right_branch()) {
+    if (decision_stack_.top().is_right_branch()) {
 #ifdef VERBOSE_DEBUG
-    cout << "FLIPPED Returning from resolveConflict() with:";
-    var(top_dec_lit().neg()).ante = Antecedent(NOT_A_CLAUSE); // it's OK, we'll backtrack anyway.
-    print_conflict_info();
-    print_trail();
-    cout << "We have already counted this LEFT branch, so we backtrack now." << endl;
+      cout << "FLIPPED Returning from resolveConflict() with:";
+      var(top_dec_lit().neg()).ante = Antecedent(NOT_A_CLAUSE); // it's OK, we'll backtrack anyway.
+      print_conflict_info();
+      print_trail();
+      cout << "We have already counted this LEFT branch, so we backtrack now." << endl;
 #endif
-    return BACKTRACK;
+      return BACKTRACK;
+    }
   }
 
   if (decision_stack_.get_decision_level() > 0) {

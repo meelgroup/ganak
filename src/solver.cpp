@@ -920,8 +920,13 @@ retStateT Counter::backtrack() {
       return PROCESS_COMPONENT;
     }
 
-    // We have NOT explored the other side! Let's do it now!
-    if (!decision_stack_.top().is_right_branch()) {
+    // We have NOT explored the other side and it hasn't been re-written to be
+    // propagation.
+    //    TODO: not sure we need the antecedent check here...
+    //          probably doesn't hurt, but not sure.
+    // Let's do it now!
+    if (!decision_stack_.top().is_right_branch() &&
+        var(top_dec_lit()).ante == Antecedent(NOT_A_CLAUSE)) {
       print_debug("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
       const Lit aLit = top_dec_lit();
@@ -965,7 +970,7 @@ retStateT Counter::backtrack() {
     }
 
     CHECK_COUNT_DO(check_count());
-    reactivate_comps_and_backtrack_trail();
+    reactivate_comps_and_backtrack_trail(false); // TODO MAY BE WRONG to allow wrong watch!!!
     assert(decision_stack_.size() >= 2);
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
@@ -1289,7 +1294,7 @@ retStateT Counter::resolveConflict() {
 
   if (flipped) {
     decision_stack_.top().change_to_right_branch();
-    reactivate_comps_and_backtrack_trail();
+    reactivate_comps_and_backtrack_trail(false);
   } else {
     /* decision_stack_.top().zero_out_branch_sol(); */
     /* decision_stack_.top().resetRemainingComps(); */
@@ -1410,7 +1415,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
-            get_maxlev_maxind<2>(ofs, maxlev, maxind);
+            get_maxlev_maxind<0>(ofs, maxlev, maxind);
             if (maxind == 0) {
               std::swap(c[0], c[1]);
             } else if (maxind != 1) {
@@ -1782,8 +1787,9 @@ void Counter::recordLastUIPCauses() {
     uint32_t maxind = 0;
     for(uint32_t i = 0; i < c.size(); i ++) {
 #ifdef VERBOSE_DEBUG
-      cout << "confl cl[" << std::setw(5) << i << "]" <<
-        " lev: " << std::setw(3) << var(c[i]).decision_level
+      cout << "confl cl[" << std::setw(5) << i << "]"
+          << " lit: " << c[i]
+          << " lev: " << std::setw(3) << var(c[i]).decision_level
           << " ante: " << std::setw(8) << var(c[i]).ante
           << " val : " << std::setw(7) << lit_val_str(c[i])
           << endl;

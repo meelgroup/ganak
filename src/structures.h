@@ -131,6 +131,7 @@ class LitWatchList {
 public:
   vector<Lit> binary_links_;
   vector<ClOffsBlckL> watch_list_;
+  vector<ClauseOfs> occ;
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
@@ -144,9 +145,16 @@ public:
   }
 
   void replaceWatchLinkTo(ClauseOfs off, ClauseOfs replace_ofs) {
-    for (auto& w: watch_list_)
-      if (w.ofs == off) { w.ofs = replace_ofs; return; }
-    assert(false && "Should have found it!!!");
+    bool found = false;
+    for (auto& w: watch_list_) {
+      if (w.ofs == off) { w.ofs = replace_ofs; found = true; break; }
+    }
+    assert(found && "Should have found watch!!!");
+    found = false;
+    for (auto& o: occ) {
+      if (o == off) { o = replace_ofs; found = true; break; }
+    }
+    assert(found && "Should have found occ!!!");
   }
 
   void addWatchLinkTo(ClauseIndex offs, Lit blockedLit) {
@@ -245,6 +253,7 @@ struct Variable {
   int32_t decision_level = INVALID_DL;
   bool last_polarity = false;
   bool set_once = false; //it has once been set to some value
+  uint32_t sublevel;
 };
 
 class ClHeader {

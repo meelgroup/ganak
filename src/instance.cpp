@@ -196,9 +196,13 @@ bool Instance::red_cl_can_be_deleted(ClauseOfs cl_ofs){
   return true;
 }
 
-void Instance::markClauseDeleted(ClauseOfs cl_ofs){
-  litWatchList(*beginOf(cl_ofs)).removeWatchLinkTo(cl_ofs);
-  litWatchList(*(beginOf(cl_ofs)+1)).removeWatchLinkTo(cl_ofs);
+void Instance::markClauseDeleted(const ClauseOfs off){
+  Lit* l = beginOf(off);
+  litWatchList(*l).removeWatchLinkTo(off);
+  litWatchList(*(l+1)).removeWatchLinkTo(off);
+  for(; *l != SENTINEL_LIT; l++) {
+    std::erase(watches_[*l].occ, off);
+  }
 }
 
 void Instance::new_vars(const uint32_t n) {

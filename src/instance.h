@@ -73,7 +73,7 @@ protected:
   size_t minimize_cl_with_bins(ClauseOfs off);
   template<class T> void minimize_uip_cl_with_bins(T& cl);
   vector<Lit> tmp_minim_with_bins;
-  void markClauseDeleted(ClauseOfs cl_ofs);
+  void markClauseDeleted(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
 
 
@@ -275,32 +275,35 @@ private:
 
 };
 
-ClauseIndex Instance::addClause(const vector<Lit> &literals, bool red) {
-  if (literals.size() == 1) {
+ClauseIndex Instance::addClause(const vector<Lit> &lits, bool red) {
+  if (lits.size() == 1) {
     // TODO Deal properly with the situation that opposing unit clauses are learned
     // NOTE that currently this cannot happen, we always check
     //      for at least one solution
-    /* assert(!isUnitClause(literals[0].neg())); */
-    unit_clauses_.push_back(literals[0]);
+    /* assert(!isUnitClause(lits[0].neg())); */
+    unit_clauses_.push_back(lits[0]);
     return 0;
   }
 
-  if (literals.size() == 2) {
-    add_bin_cl(literals[0], literals[1], red);
+  if (lits.size() == 2) {
+    add_bin_cl(lits[0], lits[1], red);
     return 0;
   }
 
   for (uint32_t i = 0; i < ClHeader::overheadInLits(); i++) lit_pool_.push_back(Lit());
-  ClauseOfs cl_ofs = lit_pool_.size();
+  ClauseOfs off = lit_pool_.size();
 
-  for (auto l : literals) { lit_pool_.push_back(l); }
+  for (auto l : lits) {
+    lit_pool_.push_back(l);
+    watches_[l].occ.push_back(off);
+  }
   lit_pool_.push_back(SENTINEL_LIT);
-  Lit blckLit = literals[literals.size()/2];
-  litWatchList(literals[0]).addWatchLinkTo(cl_ofs, blckLit);
-  litWatchList(literals[1]).addWatchLinkTo(cl_ofs, blckLit);
-  auto& header = getHeaderOf(cl_ofs);
+  Lit blckLit = lits[lits.size()/2];
+  litWatchList(lits[0]).addWatchLinkTo(off, blckLit);
+  litWatchList(lits[1]).addWatchLinkTo(off, blckLit);
+  auto& header = getHeaderOf(off);
   header = ClHeader(0, red);
-  return cl_ofs;
+  return off;
 }
 
 Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {

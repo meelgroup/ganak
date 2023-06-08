@@ -1295,10 +1295,13 @@ retStateT Counter::resolveConflict() {
   if (flipped) {
     decision_stack_.top().change_to_right_branch();
     reactivate_comps_and_backtrack_trail(false);
-  } else {
-    // TODO update levels, I think. Recursively, likely....
   }
   setLiteral(uip_clause[0], lev_to_set, ant);
+  if (!flipped) {
+    update_prop_levs.clear();
+    update_prop_levs.push_back(uip_clause[0]);
+    update_prop_levels();
+  }
 #ifdef VERBOSE_DEBUG
   cout << "Returning from resolveConflict() with:";
   print_conflict_info();
@@ -1306,6 +1309,73 @@ retStateT Counter::resolveConflict() {
 #endif
 
   return RESOLVED;
+}
+
+void Counter::update_prop_levels() {
+  cout << "Update called." << endl;
+  assert(update_prop_levs.size() == 1);
+  for(uint32_t i = 0; i < update_prop_levs.size(); i ++) {
+    const Lit lit = update_prop_levs[i];
+
+    // We need to rewrite where ~lit would have propagated
+    for (auto& off: watches_[lit.neg()].occ) {
+      uint32_t num_true = 0;
+      int32_t lev_prop = -1;
+      Lit lit_prop = NOT_A_LIT;
+      int32_t max_other_lev = -1;
+      uint32_t max_other_sublev = 0;
+      bool unknown = false;
+      for(Lit* l = beginOf(off); *l != SENTINEL_LIT; l++) {
+        if (val(*l) == X_TRI) {unknown = true; break;}
+        if (val(*l) == T_TRI) {
+          num_true++;
+          lev_prop = var(*l).decision_level;
+          lit_prop = *l;
+          if (num_true > 1) break;
+        } else {
+          max_other_lev = std::max(max_other_lev, var(*l).decision_level);
+          max_other_sublev = std::max(max_other_sublev, var(*l).sublevel);
+        }
+      }
+      if (!unknown && num_true == 1 && lev_prop > max_other_lev) {
+        // we propagate, BUT the propagation is at a wrong level.
+        // It looks like:
+        /* lit -3     lev: 6    ante: DEC             val: TRUE */
+        /* lit 21     lev: 4    ante: CL:        1724 val: FALSE */
+        /* lit 7      lev: 1    ante: CL:        1677 val: FALSE */
+        // Where "lit 21" was re-written to level 4 from 8 (and being -21).
+        // Needs repair.
+        var(lit_prop).decision_level = max_other_lev;
+        var(lit_prop).ante = Antecedent(off);
+        update_prop_levs.push_back(lit_prop); // we'll need to repair this, too
+        cout << "NORM Updated " << lit_prop << " to lev: " << max_other_lev
+          << " ante: " << Antecedent(off) << endl;
+        var(lit_prop).sublevel = max_other_sublev + 1;
+        for(uint32_t i2 = max_other_sublev; i2 < trail.size(); i2++) {
+          var(trail[i2]).sublevel++;
+        }
+        // TODO maybe we need to re-attach with highest levels???
+      }
+    }
+
+    const int32_t dec_lev = var(lit).decision_level;
+    const uint32_t sub_lev = var(lit).sublevel;
+    for (auto& lit2: watches_[lit.neg()].binary_links_) {
+      if (val(lit2) == T_TRI &&
+          var(lit2).decision_level > dec_lev) {
+        var(lit2).decision_level = dec_lev;
+        var(lit2).ante = Antecedent(lit.neg());
+        update_prop_levs.push_back(lit2);
+        cout << "BIN Updated " << lit2 << " to lev: " << dec_lev
+          << " ante: " << Antecedent(lit.neg()) << endl;
+
+        var(lit2).sublevel = sub_lev + 1;
+        for(uint32_t i2 = dec_lev; i2 < trail.size(); i2++) {
+          var(trail[i2]).sublevel++;
+        }
+      }
+    }
+  }
 }
 
 bool Counter::prop_and_probe() {

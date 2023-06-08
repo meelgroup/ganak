@@ -156,6 +156,8 @@ private:
   bool propagate(const uint32_t start_at_trail_ofs);
   template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
+  vector<Lit> update_prop_levs;
+  void update_prop_levels();
 
   void print_all_levels();
   bool restart_if_needed();
@@ -188,6 +190,7 @@ private:
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
     }
+    var(lit).sublevel = trail.size();
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());

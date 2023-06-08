@@ -1972,6 +1972,7 @@ void Counter::recordLastUIPCauses() {
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < c.size() ;j++) {
       Lit q = c[j];
       if (!tmp_seen[q.var()] && var(q).decision_level > 0){
+        increaseActivity(q);
         tmp_seen[q.var()] = 1;
         toClear.push_back(q.var());
 #ifdef VERBOSE_DEBUG

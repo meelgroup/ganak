@@ -1401,7 +1401,14 @@ void Counter::update_prop_levels() {
     }
 
     // Now we set the qhead to be what it was before
+    // TODO there is something VERY fishy here. The qhead may be wrongly set,
+    // actually... because I need this hack about the update_prop_levs[0]
+    // which MUST be propagated... and likely ONLY that needs to be propagated
+    // so qhead may be too conservative (and eventually wrong, when things get
+    // re-arranged)
     qhead = var(qhead_lit).sublevel;
+    if (var(update_prop_levs[0]).sublevel < qhead)
+      qhead = var(update_prop_levs[0]).sublevel;
 
     /* cout << "after sorting trail: " << endl; */
     /* print_trail(false); */

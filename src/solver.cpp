@@ -1296,9 +1296,7 @@ retStateT Counter::resolveConflict() {
     decision_stack_.top().change_to_right_branch();
     reactivate_comps_and_backtrack_trail(false);
   } else {
-    /* decision_stack_.top().zero_out_branch_sol(); */
-    /* decision_stack_.top().resetRemainingComps(); */
-    /* comp_manager_->cleanRemainingComponentsOf(decision_stack_.top()); */
+    // TODO update levels, I think. Recursively, likely....
   }
   setLiteral(uip_clause[0], lev_to_set, ant);
 #ifdef VERBOSE_DEBUG

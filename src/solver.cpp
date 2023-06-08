@@ -1318,10 +1318,11 @@ retStateT Counter::resolveConflict() {
 }
 
 void Counter::update_prop_levels() {
-  cout << "Update called." << endl;
   assert(update_prop_levs.size() == 1);
   bool updated_anything = false;
   Lit qhead_lit = trail[qhead];
+  VERBOSE_PRINT("Update called with lit: " << update_prop_levs[0]
+    << " qhead lit: " << qhead_lit);
   for(uint32_t i = 0; i < update_prop_levs.size(); i ++) {
     const Lit lit = update_prop_levs[i];
 
@@ -1353,15 +1354,17 @@ void Counter::update_prop_levels() {
         /* lit 7      lev: 1    ante: CL:        1677 val: FALSE */
         // Where "lit 21" was re-written to level 4 from 8 (and being -21).
         // Needs repair.
+#ifdef VERBOSE_DEBUG
         auto orig_lev = var(lit_prop).decision_level;
         auto orig_ante = var(lit_prop).ante;
+#endif
         var(lit_prop).decision_level = max_other_lev;
         var(lit_prop).ante = Antecedent(off);
         update_prop_levs.push_back(lit_prop); // we'll need to repair this, too
-        cout << "NORM Updated " << lit_prop << " to lev: " << max_other_lev
+        VERBOSE_PRINT("NORM Updated " << lit_prop << " to lev: " << max_other_lev
           << " from lev: " << orig_lev
           << " new ante: " << Antecedent(off)
-          << " old ante: " << orig_ante << endl;
+          << " old ante: " << orig_ante);
         var(lit_prop).sublevel = max_other_sublev + 1;
         updated_anything = true;
         // TODO maybe we need to re-attach with highest levels???
@@ -1376,8 +1379,8 @@ void Counter::update_prop_levels() {
         var(lit2).decision_level = dec_lev;
         var(lit2).ante = Antecedent(lit.neg());
         update_prop_levs.push_back(lit2);
-        cout << "BIN Updated " << lit2 << " to lev: " << dec_lev
-          << " ante: " << Antecedent(lit.neg()) << endl;
+        VERBOSE_PRINT("BIN Updated " << lit2 << " to lev: " << dec_lev
+          << " ante: " << Antecedent(lit.neg()));
 
         var(lit2).sublevel = sub_lev + 1;
         updated_anything = true;
@@ -1387,7 +1390,7 @@ void Counter::update_prop_levels() {
   if (updated_anything) {
     /* cout << "Before sorting trail: " << endl; */
     /* print_trail(false); */
-    cout << "Sorting trail... " << endl;
+    VERBOSE_PRINT("Sorting trail... ");
     std::stable_sort(trail.begin(), trail.end(),
         [=](const Lit a, const Lit b) -> bool
         { return var(a).sublevel < var(b).sublevel; }
@@ -1519,7 +1522,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
       } else {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
-          VERBOSE_DEBUG_DO(cout << "Conflicting state from norm cl offs: " << ofs << endl);
+          VERBOSE_PRINT("Conflicting state from norm cl offs: " << ofs);
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
@@ -1527,7 +1530,7 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
             if (maxind == 0) {
               std::swap(c[0], c[1]);
             } else if (maxind != 1) {
-              cout << "swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind] << endl;
+              VERBOSE_PRINT("swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind]);
               std::swap(c[1], c[maxind]);
               it2--; // undo last watch
               litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
@@ -1538,10 +1541,10 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
           break;
         } else {
           assert(val(c[0]) == X_TRI);
-          VERBOSE_DEBUG_DO(cout << "prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level() << endl);
+          VERBOSE_PRINT("prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level());
           if (lev == decision_stack_.get_decision_level()) {
             setLiteral(c[0], lev, Antecedent(ofs));
-            VERBOSE_DEBUG_DO(cout << "Norm long prop: " << c[0] << " lev: " << lev << endl);
+            VERBOSE_PRINT("Norm long prop: " << c[0] << " lev: " << lev);
           } else {
             int32_t maxlev = lev;
             uint32_t maxind = 1;

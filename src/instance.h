@@ -44,9 +44,9 @@ public:
 
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
-  void check_watchlists() const;
   void check_all_propagated() const;
 #endif
+  void check_watchlists() const;
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {

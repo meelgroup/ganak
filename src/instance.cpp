@@ -285,6 +285,7 @@ void Instance::check_watchlists() const {
   }
 }
 
+#ifdef SLOW_DEBUG
 void Instance::check_all_propagated() const {
   check_watchlists();
 
@@ -305,3 +306,4 @@ void Instance::check_all_propagated() const {
     }
   }
 }
+#endif

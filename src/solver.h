@@ -126,7 +126,7 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   uint32_t qhead = 0;
-  uint32_t last_qhead = 0;
+  int32_t last_qhead_dl = -1;
   ComponentManager* comp_manager_ = NULL;
 
   // the last time conflict clauses have been deleted
@@ -183,8 +183,8 @@ private:
       Antecedent ant = Antecedent(NOT_A_CLAUSE))
   {
     assert(val(lit) == X_TRI);
-    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteralIfFree called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
-    else print_debug("-> lit propagated: " << lit << " trail sz will be: " << trail.size()+1);
+    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteral called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
+    else print_debug("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
 
     VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
     var(lit).decision_level = dec_lev;
@@ -279,14 +279,14 @@ private:
   {
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
-    qhead = jt - trail.begin(); // TODO something is wrong here.
+    qhead = std::min<int32_t>(qhead, jt - trail.begin()); // TODO something is wrong here.
     auto it = jt;
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
       if (dl < decision_stack_.get_decision_level()) {
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
-        VERBOSE_DEBUG_DO(cout << "Backing up, setting sublevel: " << *it << " lev: " << var(*it).sublevel << endl);
+        VERBOSE_DEBUG_DO(cout << "Backing up, setting sublevel lit " << std::setw(5) << *it << " sublev: " << var(*it).sublevel << endl);
       } else {
         VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
         unSet(*it);

@@ -1196,11 +1196,22 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
+  qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
   bool ret = recordLastUIPCauses();
   if (!ret) {
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     decision_stack_.top().zero_out_branch_sol();
     decision_stack_.top().mark_branch_unsat();
-    return BACKTRACK;
+    decision_stack_.top().resetRemainingComps();
+    if (decision_stack_.top().is_right_branch()) {
+      return BACKTRACK;
+    } else {
+      decision_stack_.top().change_to_right_branch();
+      auto lit = top_dec_lit();
+      reactivate_comps_and_backtrack_trail(false);
+      setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(NOT_A_CLAUSE));
+      return RESOLVED;
+    }
   }
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/config_.act_exp;
@@ -1276,7 +1287,7 @@ retStateT Counter::resolveConflict() {
       lit_values_[uip_clause[0]] = T_TRI;
       lit_values_[uip_clause[0].neg()] = F_TRI;
       trail[var(uip_clause[0]).sublevel] = uip_clause[0];
-      qhead = std::min(qhead, trail_at_dl(var(uip_clause[0]).decision_level));
+      /* qhead = std::min(qhead, var(uip_clause[0]).sublevel); */
 
 #ifdef VERBOSE_DEBUG
       cout << "FLIPPED Returning from resolveConflict() with:";
@@ -1450,7 +1461,7 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
 bool Counter::propagate() {
   confl = Antecedent(NOT_A_CLAUSE);
   VERBOSE_PRINT("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
-  last_qhead = qhead;
+  if (trail.size() > qhead) last_qhead_dl = var(trail[qhead]).decision_level;
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
@@ -1531,6 +1542,7 @@ bool Counter::propagate() {
       if (*k != SENTINEL_LIT) {
         c[1] = *k;
         *k = unLit;
+        VERBOSE_PRINT("New watch for cl: " << c[1]);
         litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
       } else {
         *it2++ = *it;
@@ -1936,8 +1948,13 @@ bool Counter::recordLastUIPCauses() {
     DL = var(top_dec_lit()).decision_level;
   }
   if (var(c[0]).decision_level != var(c[1]).decision_level) {
+    VERBOSE_PRINT("Failing to create UIP, backtracking instead");
+    // TODO maybe we should start from earlier...
+    qhead = 0; //std::min(last_qhead, qhead);
     return false;
   }
+  if (decision_stack_.get_decision_level() > last_qhead_dl)
+    qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
 
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
   int32_t index = trail.size()-1;
@@ -2087,7 +2104,7 @@ bool Counter::check_watchlists() const {
           cout << *c << " (val: " << lit_val_str(*c)
             << " lev: " << var(*c).decision_level << ") " << endl;
         }
-        cout << "last qhead was: " << last_qhead  << endl;
+        cout << "last qhead dl was: " << last_qhead_dl << endl;
         ret = false;
       }
     }

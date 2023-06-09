@@ -1437,11 +1437,8 @@ bool Counter::propagate() {
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
-            get_maxlev_maxind<2>(ofs, maxlev, maxind);
-            if (maxind == 0) {
-              assert(false && "we should start with <2> above");
-              std::swap(c[0], c[1]);
-            } else if (maxind != 1) {
+            get_maxlev_maxind(ofs, maxlev, maxind);
+            if (maxind != 1) {
               VERBOSE_PRINT("swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind]);
               std::swap(c[1], c[maxind]);
               it2--; // undo last watch

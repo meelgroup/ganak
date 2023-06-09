@@ -1477,6 +1477,7 @@ bool Counter::propagate() {
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       } else if (val(l) == T_TRI && var(l).decision_level > lev) {
         var(l).ante = Antecedent(unLit);
+        VERBOSE_PRINT("Updated ante of " << l << " to: " << unLit);
         /* var(l).decision_level = lev; */
       }
     }

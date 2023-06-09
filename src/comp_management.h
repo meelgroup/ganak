@@ -105,7 +105,7 @@ public:
 
   void cleanRemainingComponentsOf(const StackLevel &top)
   {
-    print_debug(COLYEL2 "cleaning (all remaining) comps of var: " << top.getbranchvar());
+    print_debug(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack_.size() > top.remaining_comps_ofs())
     {
       if (cache_.hasEntry(comp_stack_.back()->id()))
@@ -201,6 +201,6 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 
   // if no comp remains then there is exactly 1 solution left
   top.includeSolution(1);
-  print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.getbranchvar()  <<" includeSolution(1) fired, returning.");
+  print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.var  <<" includeSolution(1) fired, returning.");
   return false;
 }

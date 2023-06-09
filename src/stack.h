@@ -69,7 +69,6 @@ private:
   // KEEPS BEING DECREMENTED, until it reaches remaining_comps_ofs_
   uint32_t unprocessed_comps_end_ = 0;
 
-  uint32_t branch_variable_ = 0;
 public:
   bool on_path_to_target_ = false;
 
@@ -163,14 +162,6 @@ public:
   void zero_out_all_sol() {
     branch_model_count_[0] = 0;
     branch_model_count_[1] = 0;
-  }
-
-  uint32_t getbranchvar() const {
-    return branch_variable_;
-  }
-
-  void setbranchvariable(const uint32_t v){
-    branch_variable_ = v;
   }
 
   const mpz_class getTotalModelCount() const {

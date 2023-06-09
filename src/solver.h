@@ -126,7 +126,6 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   uint32_t qhead = 0;
-  int32_t last_qhead_dl = -1;
   ComponentManager* comp_manager_ = NULL;
 
   // the last time conflict clauses have been deleted
@@ -139,7 +138,7 @@ private:
   bool uip_clause_is_implied();
 
   SOLVER_StateT countSAT();
-  void decideLiteral();
+  bool decideLiteral();
   uint32_t find_best_branch_gpmc(bool do_indep);
   uint32_t find_best_branch(bool do_indep);
   bool prop_and_probe();
@@ -157,8 +156,6 @@ private:
   bool propagate();
   template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
-  vector<Lit> update_prop_levs;
-  void update_prop_levels();
   bool check_watchlists() const;
 
   void print_all_levels();
@@ -194,7 +191,7 @@ private:
       var(lit).set_once = true;
     }
     var(lit).sublevel = trail.size();
-    qhead = std::min<uint32_t>(trail.size(), qhead);
+    qhead = std::min<uint32_t>(qhead, trail.size());
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
@@ -325,13 +322,7 @@ private:
   // before) then assertionLevel_ == DL;
   int assertion_level_ = 0;
 
-  // build conflict clauses from most recent conflict
-  // as stored in state_.violated_clause
-  // solver state must be CONFLICT to work;
-  // this first method record only the last UIP clause
-  // so as to create clause that asserts the current decision
-  // literal
-  bool recordLastUIPCauses();
+  void recordLastUIPCauses();
   void minimizeUIPClause();
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();

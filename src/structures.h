@@ -150,11 +150,13 @@ public:
       if (w.ofs == off) { w.ofs = replace_ofs; found = true; break; }
     }
     assert(found && "Should have found watch!!!");
+#ifdef SLOW_DEBUG
     found = false;
     for (auto& o: occ) {
       if (o == off) { o = replace_ofs; found = true; break; }
     }
     assert(found && "Should have found occ!!!");
+#endif
   }
 
   void addWatchLinkTo(ClauseIndex offs, Lit blockedLit) {

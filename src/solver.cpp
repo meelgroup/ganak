@@ -310,7 +310,7 @@ void Counter::print_all_levels() {
     auto const& sup_at = s.super_comp();
     cout << COLORG "super comp of dec_lev " << dec_lev
       << " is at comp_stack_ position: " << sup_at
-      << " branch var here: " << decision_stack_.at(dec_lev).getbranchvar()
+      << " branch var here: " << decision_stack_.at(dec_lev).var
       << " unproc'd comp end: " << decision_stack_.at(dec_lev).getUnprocessedComponentsEnd()
       << " remaining comp ofs: " << decision_stack_.at(dec_lev).remaining_comps_ofs()
       << " num unproc'd comps: " << decision_stack_.at(dec_lev).numUnprocessedComponents()
@@ -342,14 +342,16 @@ SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
   while (true) {
-    print_debug("var top of decision stack: " << decision_stack_.top().getbranchvar());
+    print_debug("var top of decision stack: " << decision_stack_.top().var);
     // NOTE: findNextRemainingComponentOf finds disjoint comps
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       /* checkProbabilisticHashSanity(); -- no need, there is no way we get to 2**45 lookups*/
       if (restart_if_needed()) {return RESTART;}
-      decideLiteral();
+      if (!decideLiteral()) {
+        continue;
+      }
       VERBOSE_DEBUG_DO(print_all_levels());
       print_stat_line();
 
@@ -398,7 +400,7 @@ bool Counter::get_polarity(const uint32_t v) const
   return polarity;
 }
 
-void Counter::decideLiteral() {
+bool Counter::decideLiteral() {
   print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " on path: " << decision_stack_.top().on_path_to_target_ << " branch: " << decision_stack_.top().is_right_branch());
   bool on_path = true;
   if (decision_stack_.size() != 1)
@@ -409,7 +411,7 @@ void Counter::decideLiteral() {
                comp_manager_->comp_stack_size()));
 
   // The decision literal is now ready. Deal with it.
-  uint32_t v;
+  uint32_t v = 0;
   isindependent = true;
   if (config_.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(true);
   else v = find_best_branch(true);
@@ -418,7 +420,13 @@ void Counter::decideLiteral() {
     if (config_.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(false);
     else v = find_best_branch(false);
   }
-  assert(v != 0);
+  if (v == 0) {
+    // we have set all remaining var(s) from a lower decision level.
+    // so there is nothing to decide. Component has a single solution.
+    decision_stack_.pop_back();
+    return false;
+  }
+  assert(val(v) == X_TRI);
 
   decision_stack_.top().var = v;
   decision_stack_.top().on_path_to_target_ = on_path;
@@ -426,13 +434,13 @@ void Counter::decideLiteral() {
   Lit lit = Lit(v, get_polarity(v));
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
-  decision_stack_.top().setbranchvariable(lit.var());
   setLiteral(lit, decision_stack_.get_decision_level());
   stats.decisions++;
   if (stats.decisions % 128 == 0) {
     comp_manager_->rescale_cache_scores();
   }
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+  return true;
 }
 
 uint32_t Counter::find_best_branch_gpmc(bool do_indep)
@@ -444,6 +452,7 @@ uint32_t Counter::find_best_branch_gpmc(bool do_indep)
 
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) if (!do_indep || *it < indep_support_end) {
+    if (val(*it) != X_TRI) continue;
     uint32_t v = *it;
     double score_td = tdscore[v];
     double score_f = comp_manager_->scoreOf(v);
@@ -476,6 +485,7 @@ uint32_t Counter::find_best_branch(bool do_indep)
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
+    if (val(*it) != X_TRI) continue;
     if (!do_indep || *it < indep_support_end) {
       const double score = scoreOf(*it) ;
       if (best_var_score == -1 || score > best_var_score) {
@@ -489,6 +499,7 @@ uint32_t Counter::find_best_branch(bool do_indep)
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
+      if (val(*it) != X_TRI) continue;
       if (!do_indep || *it < indep_support_end) {
         const double score = scoreOf(*it);
         if (score > best_var_score * 0.9) {
@@ -525,7 +536,7 @@ void Counter::computeLargestCube()
     const Lit dec_lit = Lit(dec.var, val(dec.var) == T_TRI);
     // Add decision
     if (i > 0) {
-      const auto dec_lit2 = (target_polar[dec.getbranchvar()] ? 1 : -1)*(int)dec.getbranchvar();
+      const auto dec_lit2 = (target_polar[dec.var] ? 1 : -1)*(int)dec.var;
       if (dec_lit2 != dec_lit.toInt()) {
         cout << "(ERROR with dec_lit: " << dec_lit << " dec_lit2: " << dec_lit2 << ") ";
         VERBOSE_DEBUG_DO(error = true;);
@@ -550,7 +561,7 @@ void Counter::computeLargestCube()
   // Show decision stack's comps
   for(size_t i = 0; i < decision_stack_.size(); i++) {
     const auto& dst = decision_stack_.at(i);
-    const auto dec_lit = (target_polar[dst.getbranchvar()] ? 1 : -1)*(int)dst.getbranchvar();
+    const auto dec_lit = (target_polar[dst.var] ? 1 : -1)*(int)dst.var;
     /* const auto dec_lit2 = trail[ds.trail_ofs()]; */
     /* cout << "dec_lit2: " << dec_lit2 << endl; */
     print_debug(COLWHT "decision_stack.at(" << i << "):"
@@ -754,7 +765,7 @@ retStateT Counter::backtrack_nonindep() {
     // NOTE: none of the things above can be UNSAT (otherwise we would have exited already)
     //       but they may have unprocessed components (and hence may become UNSAT)
     if (decision_stack_.top().getBranchSols() != 0 && !isindependent) {
-      while (decision_stack_.top().getbranchvar() >= indep_support_end) {
+      while (decision_stack_.top().var >= indep_support_end) {
         print_debug("[nonindep] Going BACK because it's not independent and there is at least 1 solution");
         assert(!isindependent);
         if (decision_stack_.get_decision_level() <= 0) { break; }
@@ -764,7 +775,7 @@ retStateT Counter::backtrack_nonindep() {
         (decision_stack_.end() - 2)->includeSolution(
             decision_stack_.top().getTotalModelCount() > 0);
         decision_stack_.pop_back();
-        isindependent = (decision_stack_.top().getbranchvar() < indep_support_end);
+        isindependent = (decision_stack_.top().var < indep_support_end);
         // step to the next component not yet processed
         decision_stack_.top().nextUnprocessedComponent();
         assert( decision_stack_.top().remaining_comps_ofs() <
@@ -793,7 +804,7 @@ retStateT Counter::backtrack_nonindep() {
       setLiteral(aLit.neg(), decision_stack_.get_decision_level());
       return RESOLVED;
     }
-    isindependent = (decision_stack_.top().getbranchvar() < indep_support_end);
+    isindependent = (decision_stack_.top().var < indep_support_end);
     comp_manager_->cacheModelCountOf(decision_stack_.top().super_comp(),
                                     decision_stack_.top().getTotalModelCount());
     //update cache scores
@@ -804,14 +815,14 @@ retStateT Counter::backtrack_nonindep() {
     if (decision_stack_.get_decision_level() <= 0) break;
     reactivate_comps_and_backtrack_trail();
     assert(decision_stack_.size() >= 2);
-    if ((decision_stack_.top().getbranchvar() < indep_support_end))
+    if ((decision_stack_.top().var < indep_support_end))
       (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
     else
       (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount() > 0);
     print_debug("[nonindep] Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
-    isindependent = (decision_stack_.top().getbranchvar() < indep_support_end);
+    isindependent = (decision_stack_.top().var < indep_support_end);
     // step to the next component not yet processed
     decision_stack_.top().nextUnprocessedComponent();
 
@@ -984,7 +995,7 @@ retStateT Counter::backtrack() {
     print_debug("[indep] Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
-    isindependent = (decision_stack_.top().getbranchvar() < indep_support_end);
+    isindependent = (decision_stack_.top().var < indep_support_end);
     auto& dst = decision_stack_.top();
     print_debug("[indep] -> Backtracked to level " << decision_stack_.get_decision_level()
         // NOTE: -1 here because we have JUST processed the child
@@ -1196,24 +1207,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
-  qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
-  bool ret = recordLastUIPCauses();
-  if (!ret) {
-    stats.uip_not_added++;
-    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-    decision_stack_.top().zero_out_branch_sol();
-    decision_stack_.top().mark_branch_unsat();
-    decision_stack_.top().resetRemainingComps();
-    if (decision_stack_.top().is_right_branch()) {
-      return BACKTRACK;
-    } else {
-      decision_stack_.top().change_to_right_branch();
-      auto lit = top_dec_lit();
-      reactivate_comps_and_backtrack_trail(false);
-      setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(NOT_A_CLAUSE));
-      return RESOLVED;
-    }
-  }
+  recordLastUIPCauses();
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/config_.act_exp;
 
@@ -1239,9 +1233,26 @@ retStateT Counter::resolveConflict() {
   // This is DEFINITELY a decision, right?
   VERBOSE_PRINT("backj initially: " << backj);
   /* assert(variables_[decision_stack_.at(backj).var].ante == Antecedent(NOT_A_CLAUSE)); */
-  bool flipped = uip_clause[0].neg().var() == decision_stack_.at(backj).var;
-  if (!flipped) backj--;
   lev_to_set = std::min(lev_to_set, backj);
+  bool flipped = (
+      uip_clause[0].neg().var() == decision_stack_.at(backj).var
+       && lev_to_set+1 == backj);
+  if (!flipped) {
+    stats.uip_not_added++;
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+    decision_stack_.top().zero_out_branch_sol();
+    decision_stack_.top().mark_branch_unsat();
+    decision_stack_.top().resetRemainingComps();
+    if (decision_stack_.top().is_right_branch()) {
+      return BACKTRACK;
+    } else {
+      decision_stack_.top().change_to_right_branch();
+      auto lit = top_dec_lit();
+      reactivate_comps_and_backtrack_trail(false);
+      setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(NOT_A_CLAUSE));
+      return RESOLVED;
+    }
+  }
   VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
 
@@ -1250,74 +1261,60 @@ retStateT Counter::resolveConflict() {
   VERBOSE_PRINT("decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level());
 
   Antecedent ant(NOT_A_CLAUSE);
-  if (!uip_clause.empty()) {
-    bool implied = uip_clause_is_implied();
-    if (!implied) {
-      cout << "ERROR, not implied" << endl;
-      cout << "last dec lit: " << top_dec_lit() << endl;
-      print_comp_stack_info();
-      print_conflict_info();
-      assert(false);
-    }
-    if (decision_stack_.get_decision_level() > 0 &&
-        top_dec_lit().neg() == uip_clause[0]) {
-      VERBOSE_PRINT("FLIPPING. Setting reason the conflict cl");
-      assert(var(uip_clause[0]).decision_level != -1);
-      ant = addUIPConflictClause(uip_clause);
-      var(top_dec_lit()).ante = ant;
-      assert(flipped);
-    } else {
-      ant = addUIPConflictClause(uip_clause);
-      assert(!flipped);
-    }
-    VERBOSE_PRINT("Ant is :" << ant);
+  assert(!uip_clause.empty());
+#ifdef SLOW_DEBUG
+  bool implied = uip_clause_is_implied();
+  if (!implied) {
+    cout << "ERROR, not implied" << endl;
+    cout << "last dec lit: " << top_dec_lit() << endl;
+    print_comp_stack_info();
+    print_conflict_info();
+    assert(false);
   }
-  if (uip_clause.empty()) {assert(false && "todo");}
+#endif
+  if (decision_stack_.get_decision_level() > 0 &&
+      top_dec_lit().neg() == uip_clause[0]) {
+    VERBOSE_PRINT("FLIPPING. Setting reason the conflict cl");
+    assert(var(uip_clause[0]).decision_level != -1);
+    ant = addUIPConflictClause(uip_clause);
+    var(top_dec_lit()).ante = ant;
+    assert(flipped);
+  }
+  VERBOSE_PRINT("Ant is :" << ant);
   VERBOSE_PRINT("AFTER conflict, setup: ");
   VERBOSE_DEBUG_DO(print_conflict_info());
   VERBOSE_PRINT("is right here? " << decision_stack_.top().is_right_branch());
-  if (flipped) {
-    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-    decision_stack_.top().zero_out_branch_sol();
-    decision_stack_.top().mark_branch_unsat();
-    decision_stack_.top().resetRemainingComps();
 
-    if (decision_stack_.top().is_right_branch()) {
-      var(uip_clause[0]).decision_level = lev_to_set; //TODO what to do with sublevel?
-      var(uip_clause[0]).ante = ant;
-      lit_values_[uip_clause[0]] = T_TRI;
-      lit_values_[uip_clause[0].neg()] = F_TRI;
-      trail[var(uip_clause[0]).sublevel] = uip_clause[0];
-      /* qhead = std::min(qhead, var(uip_clause[0]).sublevel); */
+  comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+  decision_stack_.top().zero_out_branch_sol();
+  decision_stack_.top().mark_branch_unsat();
+  decision_stack_.top().resetRemainingComps();
+
+  if (decision_stack_.top().is_right_branch()) {
+    var(uip_clause[0]).decision_level = lev_to_set; //TODO what to do with sublevel?
+    var(uip_clause[0]).ante = ant;
+    lit_values_[uip_clause[0]] = T_TRI;
+    lit_values_[uip_clause[0].neg()] = F_TRI;
+    trail[var(uip_clause[0]).sublevel] = uip_clause[0];
 
 #ifdef VERBOSE_DEBUG
-      cout << "FLIPPED Returning from resolveConflict() with:";
-      print_conflict_info();
-      print_trail(false); // we re-written the level above, so entailment
-                          // may fail. when backtracking it'll be fine, though
-      cout << "We have already counted this LEFT branch, so we backtrack now." << endl;
+    cout << "FLIPPED Returning from resolveConflict() with:";
+    print_conflict_info();
+    print_trail(false); // we re-written the level above, so entailment
+                        // may fail. when backtracking it'll be fine, though
+    cout << "We have already counted this LEFT branch, so we backtrack now." << endl;
 #endif
-      return BACKTRACK;
-    }
+    return BACKTRACK;
   }
 
   if (decision_stack_.get_decision_level() > 0) {
     assert(decision_stack_.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
   }
 
-  if (flipped) {
-    decision_stack_.top().change_to_right_branch();
-    reactivate_comps_and_backtrack_trail(false);
-  }
+  decision_stack_.top().change_to_right_branch();
+  reactivate_comps_and_backtrack_trail(false);
   assert(val(uip_clause[0]) == X_TRI);
   setLiteral(uip_clause[0], lev_to_set, ant);
-
-  if (!uip_clause.empty() &&
-      decision_stack_.get_decision_level() > var(uip_clause[0]).decision_level) {
-    update_prop_levs.clear();
-    update_prop_levs.push_back(uip_clause[0]);
-    update_prop_levels();
-  }
 
 #ifdef VERBOSE_DEBUG
   cout << "Returning from resolveConflict() with:";
@@ -1326,105 +1323,6 @@ retStateT Counter::resolveConflict() {
 #endif
 
   return RESOLVED; // will ALWAYS propagate afterwards.
-}
-
-void Counter::update_prop_levels() {
-  assert(update_prop_levs.size() == 1);
-  bool updated_anything = false;
-  Lit qhead_lit = trail[qhead];
-  VERBOSE_PRINT("Update called with lit: " << update_prop_levs[0]
-    << " qhead lit: " << qhead_lit);
-  for(uint32_t i = 0; i < update_prop_levs.size(); i ++) {
-    const Lit lit = update_prop_levs[i];
-
-    // We need to rewrite where ~lit would have propagated
-    for (auto& off: watches_[lit.neg()].occ) {
-      uint32_t num_true = 0;
-      int32_t lev_prop = -1;
-      Lit lit_prop = NOT_A_LIT;
-      int32_t max_other_lev = -1;
-      uint32_t max_other_sublev = 0;
-      bool unknown = false;
-      for(Lit* l = beginOf(off); *l != SENTINEL_LIT; l++) {
-        if (val(*l) == X_TRI) {unknown = true; break;}
-        if (val(*l) == T_TRI) {
-          num_true++;
-          lev_prop = var(*l).decision_level;
-          lit_prop = *l;
-          if (num_true > 1) break;
-        } else {
-          max_other_lev = std::max(max_other_lev, var(*l).decision_level);
-          max_other_sublev = std::max(max_other_sublev, var(*l).sublevel);
-        }
-      }
-      if (!unknown && num_true == 1 && lev_prop > max_other_lev) {
-        // we propagate, BUT the propagation is at a wrong level.
-        // It looks like:
-        /* lit -3     lev: 6    ante: DEC             val: TRUE */
-        /* lit 21     lev: 4    ante: CL:        1724 val: FALSE */
-        /* lit 7      lev: 1    ante: CL:        1677 val: FALSE */
-        // Where "lit 21" was re-written to level 4 from 8 (and being -21).
-        // Needs repair.
-#ifdef VERBOSE_DEBUG
-        auto orig_lev = var(lit_prop).decision_level;
-        auto orig_ante = var(lit_prop).ante;
-#endif
-        var(lit_prop).decision_level = max_other_lev;
-        var(lit_prop).ante = Antecedent(off);
-        update_prop_levs.push_back(lit_prop); // we'll need to repair this, too
-        VERBOSE_PRINT("NORM Updated " << lit_prop << " to lev: " << max_other_lev
-          << " from lev: " << orig_lev
-          << " new ante: " << Antecedent(off)
-          << " old ante: " << orig_ante);
-        var(lit_prop).sublevel = max_other_sublev + 1;
-        updated_anything = true;
-        // TODO maybe we need to re-attach with highest levels???
-      }
-    }
-
-    const int32_t dec_lev = var(lit).decision_level;
-    const uint32_t sub_lev = var(lit).sublevel;
-    for (auto& lit2: watches_[lit.neg()].binary_links_) {
-      if (val(lit2) == T_TRI &&
-          var(lit2).decision_level > dec_lev) {
-        var(lit2).decision_level = dec_lev;
-        var(lit2).ante = Antecedent(lit.neg());
-        update_prop_levs.push_back(lit2);
-        VERBOSE_PRINT("BIN Updated " << lit2 << " to lev: " << dec_lev
-          << " ante: " << Antecedent(lit.neg()));
-
-        var(lit2).sublevel = sub_lev + 1;
-        updated_anything = true;
-      }
-    }
-  }
-  if (updated_anything) {
-    /* cout << "Before sorting trail: " << endl; */
-    /* print_trail(false); */
-    VERBOSE_PRINT("Sorting trail... ");
-    std::stable_sort(trail.begin(), trail.end(),
-        [=](const Lit a, const Lit b) -> bool
-        { return var(a).sublevel < var(b).sublevel; }
-        );
-
-    for(uint32_t i = 0; i < trail.size(); i ++) {
-      var(trail[i]).sublevel = i;
-    }
-
-    // Now we set the qhead to be what it was before
-    // TODO there is something VERY fishy here. The qhead may be wrongly set,
-    // actually... because I need this hack about the update_prop_levs[0]
-    // which MUST be propagated... and likely ONLY that needs to be propagated
-    // so qhead may be too conservative (and eventually wrong, when things get
-    // re-arranged)
-    qhead = var(qhead_lit).sublevel;
-    for(const auto& l: update_prop_levs) {
-      if (var(l).sublevel < qhead) qhead = var(l).sublevel;
-    }
-
-    /* cout << "after sorting trail: " << endl; */
-    /* print_trail(false); */
-  }
 }
 
 bool Counter::prop_and_probe() {
@@ -1462,7 +1360,6 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
 bool Counter::propagate() {
   confl = Antecedent(NOT_A_CLAUSE);
   VERBOSE_PRINT("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
-  if (trail.size() > qhead) last_qhead_dl = var(trail[qhead]).decision_level;
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
@@ -1476,10 +1373,10 @@ bool Counter::propagate() {
       } else if (val(l) == X_TRI) {
         setLiteral(l, lev, Antecedent(unLit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
-      } else if (val(l) == T_TRI && var(l).decision_level > lev) {
-        var(l).ante = Antecedent(unLit);
-        VERBOSE_PRINT("Updated ante of " << l << " to: " << unLit);
-        /* var(l).decision_level = lev; */
+      /* } else if (val(l) == T_TRI && var(l).decision_level > lev) { */
+      /*   var(l).ante = Antecedent(unLit); */
+      /*   VERBOSE_PRINT("Updated ante of " << l << " to: " << unLit); */
+      /*   /1* var(l).decision_level = lev; *1/ */
       }
     }
 
@@ -1522,18 +1419,18 @@ bool Counter::propagate() {
         // it can happen that given this literal, a clause would now
         // propagate something that was a decision at a bigger decision level
         // here, we try to remedy this by making it into a propagation
-        if (var(c[0]).ante == Antecedent(NOT_A_CLAUSE) && var(c[0]).decision_level > lev) {
-          Lit* c2 = c+2;
-          bool update = true;
-          for(;*c2 != SENTINEL_LIT; c2++) {
-            if (val(*c2) == T_TRI || val(*c2) == X_TRI ||
-                var(*c2).decision_level >= var(c[0]).decision_level) {update=false;break;}
-          }
-          if (update) {
-            var(c[0]).ante = Antecedent(ofs);
-            VERBOSE_PRINT("Updated ante of " << c[0] << " to: " << var(c[0]).ante);
-          }
-        }
+        /* if (var(c[0]).ante == Antecedent(NOT_A_CLAUSE) && var(c[0]).decision_level > lev) { */
+        /*   Lit* c2 = c+2; */
+        /*   bool update = true; */
+        /*   for(;*c2 != SENTINEL_LIT; c2++) { */
+        /*     if (val(*c2) == T_TRI || val(*c2) == X_TRI || */
+        /*         var(*c2).decision_level >= var(c[0]).decision_level) {update=false;break;} */
+        /*   } */
+        /*   if (update) { */
+        /*     var(c[0]).ante = Antecedent(ofs); */
+        /*     VERBOSE_PRINT("Updated ante of " << c[0] << " to: " << var(c[0]).ante); */
+        /*   } */
+        /* } */
         *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
       }
@@ -1885,7 +1782,7 @@ void Counter::minimizeUIPClause() {
 }
 
 // Returns TRUE if it can generate a UIP. Otherwise, false
-bool Counter::recordLastUIPCauses() {
+void Counter::recordLastUIPCauses() {
   // note:
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
@@ -1949,26 +1846,13 @@ bool Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(print_dec_info());
     DL = var(top_dec_lit()).decision_level;
   }
-  if (var(c[0]).decision_level != var(c[1]).decision_level) {
-    VERBOSE_PRINT("Failing to create UIP, backtracking instead");
-    if (decision_stack_.get_decision_level() > last_qhead_dl)
-      qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
-    return false;
-  }
-  if (decision_stack_.get_decision_level() > last_qhead_dl)
-    qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
+  assert(var(c[0]).decision_level == var(c[1]).decision_level);
 
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
   int32_t index = trail.size()-1;
   uint32_t pathC = 0;
   do {
     if (confl.isAClause()) {
-      if (confl.asCl() == NOT_A_CLAUSE) {
-        VERBOSE_PRINT("Failing to create UIP, backtracking instead");
-        for(const auto& v: toClear) tmp_seen[v] = 0;
-        toClear.clear();
-        return false;
-      }
       assert(confl.asCl() != NOT_A_CLAUSE);
       c.clear();
       for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
@@ -2059,7 +1943,6 @@ bool Counter::recordLastUIPCauses() {
 
   //minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
-  return true;
 }
 
 Counter::Counter(const CounterConfiguration& conf) : Instance(conf)
@@ -2112,7 +1995,6 @@ bool Counter::check_watchlists() const {
           cout << *c << " (val: " << lit_val_str(*c)
             << " lev: " << var(*c).decision_level << ") " << endl;
         }
-        cout << "last qhead dl was: " << last_qhead_dl << endl;
         ret = false;
       }
     }

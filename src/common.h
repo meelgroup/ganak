@@ -23,8 +23,8 @@ THE SOFTWARE.
 #pragma once
 
 /* #define VERBOSE_DEBUG */
-#define SLOW_DEBUG
-#define CHECK_TRAIL_ENTAILMENT
+/* #define SLOW_DEBUG */
+/* #define CHECK_TRAIL_ENTAILMENT */
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */

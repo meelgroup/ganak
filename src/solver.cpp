@@ -46,7 +46,7 @@ void Counter::simplePreProcess()
     setLiteral(lit, 0);
   }
 
-  bool succeeded = propagate(0);
+  bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(2*(nVars() + 1), 0);
   stats.num_unit_irred_clauses_ = unit_clauses_.size();
@@ -1142,7 +1142,7 @@ void Counter::go_back_to(int32_t backj) {
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
 }
 
-void Counter::check_trail(bool check_entail) const {
+void Counter::check_trail([[maybe_unused]] bool check_entail) const {
   vector<uint32_t> num_decs_at_level(decision_stack_.get_decision_level()+1, 0);
   for(const auto& t: trail) {
     int32_t lev = var(t).decision_level;
@@ -1436,7 +1436,7 @@ bool Counter::prop_and_probe() {
   // bcp on that literal
   assert(trail.size() > 0 && "Mate added this, but it seems OK");
 
-  bool bSucceeded = propagate(qhead);
+  bool bSucceeded = propagate();
   if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
     if (config_.failed_lit_probe_type == 2  &&
       (double)decision_stack_.size() >
@@ -1462,7 +1462,7 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
   }
 }
 
-bool Counter::propagate(const uint32_t start_at_trail_ofs) {
+bool Counter::propagate() {
   confl = Antecedent(NOT_A_CLAUSE);
   VERBOSE_PRINT("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
   for (; qhead < trail.size(); qhead++) {
@@ -1742,9 +1742,8 @@ bool Counter::failed_lit_probe_with_bprop() {
     // Finally set what we came to set
     for(const auto& l: toSet) {
       if (isUnknown(l)) {
-        auto sz = trail.size();
         setLiteral(l, decision_stack_.get_decision_level(), Antecedent(Lit(), true));
-        bool bSucceeded = propagate(sz);
+        bool bSucceeded = propagate();
         if (!bSucceeded) return false;
         stats.num_failed_bprop_literals_failed++;
       }
@@ -1766,7 +1765,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   assert(!hasAntecedent(lit));
   if (set == true) assert(toClear.empty());
 
-  bool bSucceeded = propagate(sz);
+  bool bSucceeded = propagate();
   decision_stack_.stopFailedLitTest();
 
   // backtracking
@@ -1798,7 +1797,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(Lit(), true));
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
-    if (!propagate(sz)) {
+    if (!propagate()) {
       print_debug("Failed literal probing END -- this comp/branch is UNSAT");
       return false;
     }

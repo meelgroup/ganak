@@ -290,7 +290,7 @@ private:
         unSet(*it);
       }
     }
-    SLOW_DEBUG_DO(if (check_ws) check_watchlists());
+    SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(trail.size()-(it-jt));
 

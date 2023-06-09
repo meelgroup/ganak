@@ -240,7 +240,8 @@ void Instance::add_irred_cl(const vector<Lit>& lits) {
 #endif
 }
 
-void Instance::check_watchlists() const {
+bool Instance::check_watchlists() const {
+  bool ret = true;
 #if 0
   // All watchlists
   cout << "All watchlists: " << endl;
@@ -279,16 +280,15 @@ void Instance::check_watchlists() const {
           cout << *c << " (val: " << lit_val_str(*c) << " lev: " << var(*c).decision_level << ") ";
         }
         cout << endl;
-        assert(false);
+        ret = false;
       }
     }
   }
+  return ret;
 }
 
 #ifdef SLOW_DEBUG
 void Instance::check_all_propagated() const {
-  check_watchlists();
-
   // Everything that should have propagated, propagated
   for(const auto& cl: debug_irred_cls) {
     Lit unk = NOT_A_LIT;

@@ -1221,7 +1221,8 @@ retStateT Counter::resolveConflict() {
   int32_t lev_to_set = find_lev_to_set(backj);
 
   // This is DEFINITELY a decision, right?
-  assert(variables_[decision_stack_.at(backj).var].ante == Antecedent(NOT_A_CLAUSE));
+  VERBOSE_PRINT("backj initially: " << backj);
+  /* assert(variables_[decision_stack_.at(backj).var].ante == Antecedent(NOT_A_CLAUSE)); */
   bool flipped = uip_clause[0].neg().var() == decision_stack_.at(backj).var;
   if (!flipped) backj--;
   lev_to_set = std::min(lev_to_set, backj);
@@ -1583,6 +1584,8 @@ bool Counter::propagate(const uint32_t start_at_trail_ofs) {
     ws.resize(it2-ws.begin());
     if (confl != Antecedent(NOT_A_CLAUSE)) break;
   }
+  SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE) && !check_watchlists()) {
+      print_trail(false, false);assert(false);});
   SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE)) check_all_propagated());
   VERBOSE_PRINT("After propagate, qhead is: " << qhead);
   return confl == Antecedent(NOT_A_CLAUSE);

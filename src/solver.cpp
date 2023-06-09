@@ -1291,6 +1291,7 @@ retStateT Counter::resolveConflict() {
       lit_values_[uip_clause[0]] = T_TRI;
       lit_values_[uip_clause[0].neg()] = F_TRI;
       trail[var(uip_clause[0]).sublevel] = uip_clause[0];
+      qhead = std::min(qhead, trail_at_dl(var(uip_clause[0]).decision_level));
 
 #ifdef VERBOSE_DEBUG
       cout << "FLIPPED Returning from resolveConflict() with:";
@@ -1420,8 +1421,9 @@ void Counter::update_prop_levels() {
     // so qhead may be too conservative (and eventually wrong, when things get
     // re-arranged)
     qhead = var(qhead_lit).sublevel;
-    if (var(update_prop_levs[0]).sublevel < qhead)
-      qhead = var(update_prop_levs[0]).sublevel;
+    for(const auto& l: update_prop_levs) {
+      if (var(l).sublevel < qhead) qhead = var(l).sublevel;
+    }
 
     /* cout << "after sorting trail: " << endl; */
     /* print_trail(false); */

@@ -192,6 +192,7 @@ private:
       var(lit).set_once = true;
     }
     var(lit).sublevel = trail.size();
+    qhead = std::min<uint32_t>(trail.size(), qhead);
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
@@ -276,11 +277,10 @@ private:
   {
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
+    qhead = jt - trail.begin(); // TODO something is wrong here.
     auto it = jt;
-    int32_t lowest_dl = decision_stack_.get_decision_level();
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
-      if (dl > 0) lowest_dl = std::min(dl, lowest_dl);
       if (dl < decision_stack_.get_decision_level()) {
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
@@ -294,9 +294,7 @@ private:
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(trail.size()-(it-jt));
 
-    // TODO not sure we actually need to do this. Maybe we can
-    // get away with just the decision level... not sure
-    qhead = trail_at_dl(lowest_dl);
+
     /* cout << "qhead set to: " << qhead << endl; */
     /* cout << "trail after backtrack: "; */
     /* print_trail(false); */

@@ -1475,10 +1475,12 @@ bool Counter::propagate() {
       if (val(l) == F_TRI) {
         setConflictState(unLit, l);
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
-        return false;
       } else if (val(l) == X_TRI) {
         setLiteral(l, lev, Antecedent(unLit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
+      } else if (val(l) == T_TRI && var(l).decision_level > lev) {
+        var(l).ante = Antecedent(unLit);
+        /* var(l).decision_level = lev; */
       }
     }
 

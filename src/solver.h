@@ -126,6 +126,7 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   uint32_t qhead = 0;
+  uint32_t last_qhead = 0;
   ComponentManager* comp_manager_ = NULL;
 
   // the last time conflict clauses have been deleted
@@ -158,6 +159,7 @@ private:
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   vector<Lit> update_prop_levs;
   void update_prop_levels();
+  bool check_watchlists() const;
 
   void print_all_levels();
   bool restart_if_needed();

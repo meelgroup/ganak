@@ -46,7 +46,6 @@ public:
   vector<vector<Lit>> debug_irred_cls;
   void check_all_propagated() const;
 #endif
-  bool check_watchlists() const;
 protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {

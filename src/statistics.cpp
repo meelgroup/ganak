@@ -58,14 +58,20 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
   verb_print(1, "conflict cls (long/bin/u)      " << std::fixed
     << solver->get_num_long_reds() << "/"
     << num_binary_red_clauses_ << "/" << num_unit_red_clauses_);
+
+  /* verb_print(1, "lits /rem lits ccmin           " */
+  /*   << std::setw(9) << orig_uip_lits/uip_cls << " " */
+  /*   << std::setw(9) << ccmin_uip_lits/uip_cls << " " */
+  /* ); */
+
   verb_print(1, "rem lits triedK/rem lits remK  "
     << std::setw(9) << rem_lits_tried/1000 << " "
     << std::setw(9) << rem_lits_with_bins/1000 << " "
   );
 
   verb_print(1, "avg clsz/rem lits avg/finalavg "
-    << std::setw(9) << safe_div(uip_lits_learned,uip_cls) << " "
-    << std::setw(9) << safe_div(rem_lits_with_bins, rem_lits_tried) << " "
+    << std::setw(9) << safe_div(orig_uip_lits,uip_cls) << " "
+    << std::setw(9) << safe_div(uip_lits_ccmin,uip_cls) << " "
     << std::setw(9) << safe_div(final_cl_sz, uip_cls)
   );
 

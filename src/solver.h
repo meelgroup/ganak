@@ -135,7 +135,8 @@ private:
 
   void simplePreProcess();
   bool prepFailedLiteralTest();
-  bool uip_clause_is_implied();
+  bool is_implied(const vector<Lit>& cp);
+  void check_implied(const vector<Lit>& cl);
 
   SOLVER_StateT countSAT();
   bool decideLiteral();
@@ -324,6 +325,10 @@ private:
 
   void recordLastUIPCauses();
   void minimizeUIPClause();
+  uint32_t abstractLevel(const uint32_t x) const;
+  bool litRedundant(const Lit p, uint32_t abstract_levels);
+  vector<Lit> analyze_stack;
+  void recursiveConfClauseMin();
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
   bool get_polarity(const uint32_t var) const;

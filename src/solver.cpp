@@ -1071,18 +1071,6 @@ struct UIPFixer {
   vector<Variable>& vars;
 };
 
-bool Counter::uip_clause_is_implied() {
-    assert(sat_solver);
-    vector<CMSat::Lit> lits;
-    for(const auto& l: uip_clause) {
-      lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
-    }
-    VERBOSE_DEBUG_DO(cout << "to check lits: " << lits << endl);
-    auto ret = sat_solver->solve(&lits);
-    VERBOSE_DEBUG_DO(cout << "Ret: " << ret << endl);
-    return ret == CMSat::l_False;
-}
-
 size_t Counter::find_backtrack_level_of_learnt()
 {
   if (uip_clause.size() == 0) return 0;
@@ -1204,6 +1192,30 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
   }
 }
 
+bool Counter::is_implied(const vector<Lit>& cl) {
+    assert(sat_solver);
+    vector<CMSat::Lit> lits;
+    for(const auto& l: cl) {
+      lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
+    }
+    VERBOSE_DEBUG_DO(cout << "to check lits: " << lits << endl);
+    auto ret = sat_solver->solve(&lits);
+    VERBOSE_DEBUG_DO(cout << "Ret: " << ret << endl);
+    return ret == CMSat::l_False;
+}
+
+
+void Counter::check_implied(const vector<Lit>& cl) {
+  bool implied = is_implied(cl);
+  if (!implied) {
+    cout << "ERROR, not implied" << endl;
+    cout << "last dec lit: " << top_dec_lit() << endl;
+    print_comp_stack_info();
+    print_conflict_info();
+    assert(false);
+  }
+}
+
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
@@ -1211,10 +1223,10 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/config_.act_exp;
 
-  if (stats.conflicts > last_reduceDB_conflicts+10000) {
+  if (stats.conflicts-stats.uip_not_added > last_reduceDB_conflicts+10000) {
     reduceDB();
     if (stats.cls_deleted_since_compaction > 50000) compactConflictLiteralPool();
-    last_reduceDB_conflicts = stats.conflicts;
+    last_reduceDB_conflicts = stats.conflicts-stats.uip_not_added;
   }
   VERBOSE_DEBUG_DO(print_conflict_info());
 
@@ -1262,16 +1274,7 @@ retStateT Counter::resolveConflict() {
 
   Antecedent ant(NOT_A_CLAUSE);
   assert(!uip_clause.empty());
-#ifdef SLOW_DEBUG
-  bool implied = uip_clause_is_implied();
-  if (!implied) {
-    cout << "ERROR, not implied" << endl;
-    cout << "last dec lit: " << top_dec_lit() << endl;
-    print_comp_stack_info();
-    print_conflict_info();
-    assert(false);
-  }
-#endif
+  SLOW_DEBUG_DO(check_implied(uip_clause));
   if (decision_stack_.get_decision_level() > 0 &&
       top_dec_lit().neg() == uip_clause[0]) {
     VERBOSE_PRINT("FLIPPING. Setting reason the conflict cl");
@@ -1709,78 +1712,123 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   return true;
 }
 
+bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
+    VERBOSE_PRINT(__func__ << " called");
+
+    analyze_stack.clear();
+    analyze_stack.push_back(p);
+
+    Lit tmpLit[2];
+    size_t top = toClear.size();
+    while (!analyze_stack.empty()) {
+      VERBOSE_PRINT("At point in litRedundant: " << analyze_stack.back());
+      const auto reason = var(analyze_stack.back()).ante;
+      assert(reason.isAnt());  //Must have a reason
+      analyze_stack.pop_back();
+
+      Lit* lits = NULL;
+      if (reason.isAClause()) {
+        lits = beginOf(reason.asCl());
+#ifdef VERBOSE_DEBUG
+        cout << "CL offs: " << reason.asCl() << " in analyze_stack:" << endl;
+        for(Lit* l = lits; *l != SENTINEL_LIT; l++) {
+          cout << std::setw(5) << *l<< " lev: " << std::setw(3) << var(*l).decision_level
+            << " ante: " << std::setw(8) << var(*l).ante
+            << " val : " << std::setw(7) << lit_val_str(*l)
+            << endl;
+        }
+#endif
+        lits++;
+      } else if (reason.isFake()) {
+        assert(false && "not handled right now");
+      } else if (!reason.isAClause()) {
+        tmpLit[0] = reason.asLit();
+        tmpLit[1] = SENTINEL_LIT;
+#ifdef VERBOSE_DEBUG
+        cout << "Bin cl in analyze_stack: " << endl;
+        Lit* l = tmpLit;
+        cout << std::setw(5) << *l<< " lev: " << std::setw(3) << var(*l).decision_level
+          << " ante: " << std::setw(8) << var(*l).ante
+          << " val : " << std::setw(7) << lit_val_str(*l)
+          << endl;
+#endif
+        lits = tmpLit;
+      } else {assert(false && "no such reason");}
+
+      for (; *lits != SENTINEL_LIT; lits++) {
+        Lit p2 = *lits;
+        VERBOSE_PRINT("Examining lit " << p2 << " tmp_seen: " << tmp_seen[p2.var()]);
+        if (!tmp_seen[p2.var()] && var(p2).decision_level > 0) {
+          if (var(p2).ante.isAnt()
+              && (abstractLevel(p2.var()) & abstract_levels) != 0
+          ) {
+              VERBOSE_PRINT("lit " << p2 << " OK");
+              tmp_seen[p2.var()] = 1;
+              analyze_stack.push_back(p2);
+              toClear.push_back(p2.var());
+          } else {
+              VERBOSE_PRINT("lit " << p2 << " NOT OK");
+              //Return to where we started before function executed
+              for (size_t j = top; j < toClear.size(); j++) tmp_seen[toClear[j]] = 0;
+              toClear.resize(top);
+              return false;
+          }
+        }
+      }
+    }
+    VERBOSE_PRINT("Returning OK from " << __func__);
+    return true;
+}
+
+uint32_t Counter::abstractLevel(const uint32_t x) const
+{
+    return ((uint32_t)1) << (variables_[x].decision_level & 31);
+}
+
+void Counter::recursiveConfClauseMin()
+{
+    VERBOSE_DEBUG_DO(print_conflict_info());
+  VERBOSE_PRINT("recursive ccmin now.");
+  uint32_t abstract_level = 0;
+  for (size_t i = 1; i < uip_clause.size(); i++) {
+    //(maintain an abstraction of levels involved in conflict)
+    abstract_level |= abstractLevel(uip_clause[i].var());
+  }
+
+  size_t i, j;
+  for (i = j = 1; i < uip_clause.size(); i++) {
+    if (var(uip_clause[i]).ante == Antecedent(NOT_A_CLAUSE)
+      || !litRedundant(uip_clause[i], abstract_level)
+    ) {
+      VERBOSE_PRINT("ccmin -- keeping lit: " << uip_clause[i]);
+      uip_clause[j++] = uip_clause[i];
+    } else {
+      VERBOSE_PRINT("ccmin -- NOT keeping lit: " << uip_clause[i]);
+    }
+  }
+  uip_clause.resize(j);
+}
+
 void Counter::minimizeUIPClause() {
-  tmp_clause_minim.clear();
-  /*assertion_level_ = 0;
-  for (const auto& lit : cl) {
-    if (existsUnitClauseOf(lit.var())) continue;
-    bool resolve_out = false;
-    if (hasAntecedent(lit)) {
-      resolve_out = true;
-      if (getAntecedent(lit).isFake()) {
-        // Probe/BProp is the reason
-        for (int32_t i = 1; i < variables_[lit.var()].decision_level+1; i++) {
-          const Lit l = trail[decision_stack_[i].trail_ofs()].neg();
-          assert(decision_stack_[i].getbranchvar() == l.var());
-          if (!tmp_seen[l.var()]) {
-            resolve_out = false;
-            break;
-          }
-        }
-      } else if (getAntecedent(lit).isAClause()) {
-        // Long clause reason
-        for (auto it = beginOf(getAntecedent(lit).asCl()) + 1; *it != SENTINEL_LIT; it++) {
-          if (!tmp_seen[it->var()]) {
-            resolve_out = false;
-            break;
-          }
-        }
-      } else if (!tmp_seen[getAntecedent(lit).asLit().var()]) {
-        // Binary clause reason
-        resolve_out = false;
-      }
-    }
-
-    if (!resolve_out) {
-      // uipLit should be the sole literal of this Decision Level
-      if (var(lit).decision_level >= assertion_level_) {
-        assertion_level_ = var(lit).decision_level;
-        tmp_clause_minim.push_front(lit);
-      } else {
-        tmp_clause_minim.push_back(lit);
-      }
-    }
-  }*/
-
-  /* if (uipLit.var()) { */
-  /*   assert(var(uipLit).decision_level >= 0); */
-  /*   /1* assert(var(uipLit).decision_level == decision_stack_.get_decision_level()); *1/ */
-  /* } */
-
-
-  tmp_clause_minim.clear();
-  for(const auto& l:uip_clause) tmp_clause_minim.push_back(l);
-  // Clearing
-  for(const auto& v: toClear) tmp_seen[v] = false;
+  stats.uip_cls++;
+  stats.orig_uip_lits += uip_clause.size();
+  recursiveConfClauseMin();
+  for(const auto& c: toClear) tmp_seen[c] = 0;
   toClear.clear();
 
-  //assert(uipLit.var() != 0);
-  stats.uip_lits_learned+=tmp_clause_minim.size();
-  /* if (uipLit.var() != 0) { */
-    stats.uip_lits_learned++;
-    /* tmp_clause_minim.push_front(uipLit); */
+  SLOW_DEBUG_DO(check_implied(uip_clause));
+  tmp_clause_minim.clear();
+  for(const auto& l:uip_clause) tmp_clause_minim.push_back(l);
 
-    /* uint32_t lbd = calc_lbd(tmp_clause_minim); */
-    /* if (lbd < 6) */
-    if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
-        (stats.rem_lits_tried > (200ULL*1000ULL) &&
-        ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
-      minimize_uip_cl_with_bins(tmp_clause_minim);
-  /* } */
-  stats.uip_cls++;
+  stats.uip_lits_ccmin+=tmp_clause_minim.size();
+  if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
+      (stats.rem_lits_tried > (200ULL*1000ULL) &&
+      ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
+    minimize_uip_cl_with_bins(tmp_clause_minim);
   stats.final_cl_sz+=tmp_clause_minim.size();
   uip_clause.clear();
   for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
+  SLOW_DEBUG_DO(check_implied(uip_clause));
 }
 
 // Returns TRUE if it can generate a UIP. Otherwise, false
@@ -1797,6 +1845,7 @@ void Counter::recordLastUIPCauses() {
   uip_clause.push_back(Lit(0, false));;
   Lit p = NOT_A_LIT;
 
+  SLOW_DEBUG_DO(for(const auto& t:tmp_seen) assert(t == 0););
   int32_t DL = var(top_dec_lit()).decision_level;
   VERBOSE_DEBUG_DO(cout << "orig DL: " << decision_stack_.get_decision_level() << endl);
   VERBOSE_DEBUG_DO(cout << "new DL : " << DL << endl);
@@ -1940,10 +1989,8 @@ void Counter::recordLastUIPCauses() {
         << endl;
   }
 #endif
-  for(const auto& v: toClear) tmp_seen[v] = 0;
-  toClear.clear();
-
-  //minimizeUIPClause();
+  SLOW_DEBUG_DO(check_implied(uip_clause));
+  minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
 }
 

@@ -1209,7 +1209,6 @@ retStateT Counter::resolveConflict() {
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
-  if (uip_clause.empty()) { verb_print(1, "EMPTY CLAUSE FOUND"); }
   comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   decision_stack_.top().zero_out_branch_sol();
   decision_stack_.top().mark_branch_unsat();
@@ -1229,27 +1228,8 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
 
-  bool unsat = false;
-  if (uip_clause.empty() ||
-      (uip_clause.size() == 1 && existsUnitClauseOf(uip_clause[0].neg()))) {
-    backj = 0;
-    unsat = true;
-  }
   go_back_to(backj);
   VERBOSE_DEBUG_DO(print_conflict_info());
-
-  if (unsat) {
-    assert(false);
-    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-    decision_stack_.top().zero_out_branch_sol();
-    decision_stack_.top().mark_branch_unsat();
-#ifdef VERBOSE_DEBUG
-    cout << "UNSAT Returning from resolveConflict() with:";
-    print_conflict_info();
-    print_trail();
-#endif
-    return BACKTRACK;
-  }
   VERBOSE_PRINT("decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level());
 
   Antecedent ant(NOT_A_CLAUSE);

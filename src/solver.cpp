@@ -1831,30 +1831,25 @@ void Counter::recordLastUIPCauses() {
   VERBOSE_DEBUG_DO(cout << "orig DL: " << decision_stack_.get_decision_level() << endl);
   VERBOSE_DEBUG_DO(cout << "new DL : " << DL << endl);
   VERBOSE_DEBUG_DO(print_dec_info());
-  vector<Lit> c;
+  Lit tmpLit[3];
+  tmpLit[2] = SENTINEL_LIT;
+  Lit* c;
   if (true) {
     if (confl.isAClause()) {
       assert(confl.asCl() != NOT_A_CLAUSE);
       VERBOSE_PRINT("Conflicting CL offset: " << confl.asCl());
-      c.clear();
-      for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
-        c.push_back(*l);
-      }
+      c = beginOf(confl.asCl());
     } else if (confl.isFake()) {
       assert(false);
     } else {
-      assert(!confl.isAClause());
-      c.clear();
-      if (p == NOT_A_LIT) {
-        c.push_back(conflLit); //ONLY valid for 1st
-      } else {
-        c.push_back(p);
-      }
-      c.push_back(confl.asLit());
+      //Binary
+      c = tmpLit;
+      if (p == NOT_A_LIT) c[0] = conflLit;
+      else c[0] = p;
+      c[1] = confl.asLit();
     }
     int32_t maxlev = -1;
-    uint32_t maxind = 0;
-    for(uint32_t i = 0; i < c.size(); i ++) {
+    for(uint32_t i = 0; c[i] != SENTINEL_LIT; i ++) {
 #ifdef VERBOSE_DEBUG
       cout << "confl cl[" << std::setw(5) << i << "]"
           << " lit: " << c[i]
@@ -1863,17 +1858,13 @@ void Counter::recordLastUIPCauses() {
           << " val : " << std::setw(7) << lit_val_str(c[i])
           << endl;
 #endif
-
       const Lit l = c[i];
       if (var(l).decision_level > maxlev) {
         maxlev = var(l).decision_level;
-        maxind = i;
       }
     }
-    VERBOSE_DEBUG_DO(cout << "maxind: " << maxind << " maxlev: " << maxlev << endl);
-    if (confl.isAClause()) {
-      VERBOSE_DEBUG_DO(cout << "conflicting cl offs: " << confl.asCl() << endl);
-    }
+    VERBOSE_DEBUG_DO(cout << "maxlev: " << maxlev << endl);
+    VERBOSE_DEBUG_DO(if (confl.isAClause()) {cout << "conflicting cl offs: " << confl.asCl() << endl; });
     go_back_to(maxlev);
     VERBOSE_DEBUG_DO(print_dec_info());
     DL = var(top_dec_lit()).decision_level;
@@ -1885,24 +1876,24 @@ void Counter::recordLastUIPCauses() {
   uint32_t pathC = 0;
   do {
     if (confl.isAClause()) {
+      // Long clause
       assert(confl.asCl() != NOT_A_CLAUSE);
-      c.clear();
-      for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
-        c.push_back(*l);
+      auto& header = getHeaderOf(confl.asCl());
+      if (header.red && header.lbd > lbd_cutoff) {
+        header.increaseScore();
+        header.update_lbd(calc_lbd(confl.asCl()));
       }
+      c = beginOf(confl.asCl());
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isFake()) {
       assert(false);
     } else {
       // Binary
       assert(!confl.isAClause());
-      c.clear();
-      if (p == NOT_A_LIT) {
-        c.push_back(conflLit); //ONLY valid for 1st
-      } else {
-        c.push_back(p);
-      }
-      c.push_back(confl.asLit());
+      c = tmpLit;
+      if (p == NOT_A_LIT) c[0] = conflLit;
+      else c[0] = p;
+      c[1] = confl.asLit();
       if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
         std::swap(c[0], c[1]);
     }
@@ -1920,7 +1911,7 @@ void Counter::recordLastUIPCauses() {
     if (p == NOT_A_LIT) assert(nDecisionLevel == DL);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
-    for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < c.size() ;j++) {
+    for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); c[j] != SENTINEL_LIT ;j++) {
       Lit q = c[j];
       if (!tmp_seen[q.var()] && var(q).decision_level > 0){
         increaseActivity(q);

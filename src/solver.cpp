@@ -1418,22 +1418,6 @@ bool Counter::propagate() {
 
       assert(c[1] == unLit);
       if (isTrue(c[0])) {
-        // When we propagate something at a lower level due to UIP clause
-        // it can happen that given this literal, a clause would now
-        // propagate something that was a decision at a bigger decision level
-        // here, we try to remedy this by making it into a propagation
-        /* if (var(c[0]).ante == Antecedent(NOT_A_CLAUSE) && var(c[0]).decision_level > lev) { */
-        /*   Lit* c2 = c+2; */
-        /*   bool update = true; */
-        /*   for(;*c2 != SENTINEL_LIT; c2++) { */
-        /*     if (val(*c2) == T_TRI || val(*c2) == X_TRI || */
-        /*         var(*c2).decision_level >= var(c[0]).decision_level) {update=false;break;} */
-        /*   } */
-        /*   if (update) { */
-        /*     var(c[0]).ante = Antecedent(ofs); */
-        /*     VERBOSE_PRINT("Updated ante of " << c[0] << " to: " << var(c[0]).ante); */
-        /*   } */
-        /* } */
         *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
       }

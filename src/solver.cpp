@@ -1308,7 +1308,7 @@ retStateT Counter::resolveConflict() {
   print_trail();
 #endif
 
-  return RESOLVED;
+  return RESOLVED; // will ALWAYS propagate afterwards.
 }
 
 void Counter::update_prop_levels() {
@@ -1449,7 +1449,7 @@ bool Counter::propagate() {
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
-    VERBOSE_DEBUG_DO(cout << "Propagating: " << unLit.neg() << " qhead: " << qhead << endl);
+    VERBOSE_PRINT("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
     for (const auto& l : litWatchList(unLit).binary_links_) {
@@ -1509,9 +1509,12 @@ bool Counter::propagate() {
           bool update = true;
           for(;*c2 != SENTINEL_LIT; c2++) {
             if (val(*c2) == T_TRI || val(*c2) == X_TRI ||
-                var(*c2).decision_level > lev) {update=false;break;}
+                var(*c2).decision_level >= var(c[0]).decision_level) {update=false;break;}
           }
-          if (update) var(c[0]).ante = Antecedent(ofs);
+          if (update) {
+            var(c[0]).ante = Antecedent(ofs);
+            VERBOSE_PRINT("Updated ante of " << c[0] << " to: " << var(c[0]).ante);
+          }
         }
         *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
@@ -1531,8 +1534,9 @@ bool Counter::propagate() {
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
-            get_maxlev_maxind<0>(ofs, maxlev, maxind);
+            get_maxlev_maxind<2>(ofs, maxlev, maxind);
             if (maxind == 0) {
+              assert(false && "we should start with <2> above");
               std::swap(c[0], c[1]);
             } else if (maxind != 1) {
               VERBOSE_PRINT("swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind]);
@@ -1884,6 +1888,7 @@ void Counter::recordLastUIPCauses() {
   if (true) {
     if (confl.isAClause()) {
       assert(confl.asCl() != NOT_A_CLAUSE);
+      VERBOSE_PRINT("Conflicting CL offset: " << confl.asCl());
       c.clear();
       for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {
         c.push_back(*l);

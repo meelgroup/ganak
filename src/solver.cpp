@@ -1397,7 +1397,7 @@ bool Counter::propagate() {
     auto it2 = ws.begin();
     auto it = ws.begin();
     for (; it != ws.end(); it++) {
-      /* if (isTrue(it->blckLit)) { *it2++ = *it; continue; } */
+      if (isTrue(it->blckLit)) { *it2++ = *it; continue; }
 
       const auto ofs = it->ofs;
       Lit* c = beginOf(ofs);
@@ -1461,7 +1461,9 @@ bool Counter::propagate() {
               litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
             }
           }
-          if (confl == Antecedent(NOT_A_CLAUSE)) setConflictState(ofs);
+          setConflictState(ofs);
+          it++;
+          break;
         } else {
           assert(val(c[0]) == X_TRI);
           VERBOSE_PRINT("prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level());
@@ -1485,7 +1487,7 @@ bool Counter::propagate() {
     }
     while(it != ws.end()) *it2++ = *it++;
     ws.resize(it2-ws.begin());
-    /* if (confl != Antecedent(NOT_A_CLAUSE)) break; */
+    if (confl != Antecedent(NOT_A_CLAUSE)) break;
   }
   SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE) && !check_watchlists()) {
       print_trail(false, false);assert(false);});

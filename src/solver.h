@@ -331,7 +331,7 @@ private:
   // this first method record only the last UIP clause
   // so as to create clause that asserts the current decision
   // literal
-  void recordLastUIPCauses();
+  bool recordLastUIPCauses();
   void minimizeUIPClause();
   int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();

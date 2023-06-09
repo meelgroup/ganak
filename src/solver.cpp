@@ -1196,7 +1196,12 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
-  recordLastUIPCauses();
+  bool ret = recordLastUIPCauses();
+  if (!ret) {
+    decision_stack_.top().zero_out_branch_sol();
+    decision_stack_.top().mark_branch_unsat();
+    return BACKTRACK;
+  }
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/config_.act_exp;
 
@@ -1867,7 +1872,8 @@ void Counter::minimizeUIPClause() {
   for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
 }
 
-void Counter::recordLastUIPCauses() {
+// Returns TRUE if it can generate a UIP. Otherwise, false
+bool Counter::recordLastUIPCauses() {
   // note:
   // variables of lower dl: if seen we dont work with them anymore
   // variables of this dl: if seen we incorporate their
@@ -1926,11 +1932,13 @@ void Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(cout << "maxind: " << maxind << " maxlev: " << maxlev << endl);
     if (confl.isAClause()) {
       VERBOSE_DEBUG_DO(cout << "conflicting cl offs: " << confl.asCl() << endl);
-      assert(maxlev == var(c[1]).decision_level);
     }
     go_back_to(maxlev);
     VERBOSE_DEBUG_DO(print_dec_info());
     DL = var(top_dec_lit()).decision_level;
+  }
+  if (var(c[0]).decision_level != var(c[1]).decision_level) {
+    return false;
   }
 
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
@@ -2028,6 +2036,7 @@ void Counter::recordLastUIPCauses() {
 
   //minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
+  return true;
 }
 
 Counter::Counter(const CounterConfiguration& conf) : Instance(conf)

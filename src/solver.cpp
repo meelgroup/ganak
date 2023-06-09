@@ -1950,8 +1950,7 @@ bool Counter::recordLastUIPCauses() {
   }
   if (var(c[0]).decision_level != var(c[1]).decision_level) {
     VERBOSE_PRINT("Failing to create UIP, backtracking instead");
-    // TODO maybe we should start from earlier...
-    qhead = 0; //std::min(last_qhead, qhead);
+    qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
     return false;
   }
   if (decision_stack_.get_decision_level() > last_qhead_dl)
@@ -1962,6 +1961,12 @@ bool Counter::recordLastUIPCauses() {
   uint32_t pathC = 0;
   do {
     if (confl.isAClause()) {
+      if (confl.asCl() == NOT_A_CLAUSE) {
+        VERBOSE_PRINT("Failing to create UIP, backtracking instead");
+        for(const auto& v: toClear) tmp_seen[v] = 0;
+        toClear.clear();
+        return false;
+      }
       assert(confl.asCl() != NOT_A_CLAUSE);
       c.clear();
       for(auto l = beginOf(confl.asCl()); *l != NOT_A_LIT; l++) {

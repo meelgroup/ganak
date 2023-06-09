@@ -281,7 +281,6 @@ private:
   {
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
-    qhead = std::min<int32_t>(qhead, jt - trail.begin()); // TODO something is wrong here.
     auto it = jt;
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
@@ -297,13 +296,6 @@ private:
     SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(trail.size()-(it-jt));
-    qhead = std::min<int32_t>(qhead, trail.size());
-
-
-    /* cout << "qhead set to: " << qhead << endl; */
-    /* cout << "trail after backtrack: "; */
-    /* print_trail(false); */
-
     decision_stack_.top().resetRemainingComps();
   }
 

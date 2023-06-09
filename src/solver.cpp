@@ -1314,6 +1314,7 @@ retStateT Counter::resolveConflict() {
     lit_values_[uip_clause[0]] = T_TRI;
     lit_values_[uip_clause[0].neg()] = F_TRI;
     trail[var(uip_clause[0]).sublevel] = uip_clause[0];
+    qhead = var(uip_clause[0]).sublevel;
 
 #ifdef VERBOSE_DEBUG
     cout << "FLIPPED Returning from resolveConflict() with:";

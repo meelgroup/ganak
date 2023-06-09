@@ -122,6 +122,7 @@ void add_ganak_options()
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
      "Use polarity cache. Otherwise, false default polar.")
+    ("saveuip", po::value(&conf.do_save_uip)->default_value(conf.do_save_uip), "Save UIP that's not used and add later")
     ;
 
     restart_options.add_options()

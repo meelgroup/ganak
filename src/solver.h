@@ -142,6 +142,9 @@ private:
   bool decideLiteral();
   uint32_t find_best_branch_gpmc(bool do_indep);
   uint32_t find_best_branch(bool do_indep);
+  bool clause_falsified(const vector<Lit>& cl) const;
+  bool clause_asserting(const vector<Lit>& cl) const;
+  bool clause_satisfied(const vector<Lit>& cl) const;
   bool prop_and_probe();
   bool failed_lit_probe();
   bool failed_lit_probe_no_bprop();
@@ -164,6 +167,7 @@ private:
   retStateT backtrack_nonindep();
   retStateT backtrack();
   void print_dec_info() const;
+  void print_cl(const vector<Lit>& cl) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
 
@@ -273,7 +277,7 @@ private:
     return variables_[decision_stack_.top().var].sublevel;
   }
 
-  void reactivate_comps_and_backtrack_trail(bool check_ws = true)
+  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true)
   {
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
@@ -293,6 +297,7 @@ private:
     SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(trail.size()-(it-jt));
+    qhead = std::min<int32_t>(qhead, trail.size());
 
 
     /* cout << "qhead set to: " << qhead << endl; */
@@ -317,6 +322,7 @@ private:
   //      uip_clause the 1UIP clause found
   //  possible clauses in between will be other UIP clauses
   vector<Lit> uip_clause;
+  vector<vector<Lit>> saved_uip_cls;
 
   // the assertion level of uip_clauses
   // or (if the decision variable did not have an antecedent

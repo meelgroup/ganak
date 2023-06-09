@@ -75,6 +75,12 @@ void DataAndStatistics::printShort(const Counter* solver, const ComponentCache* 
     << std::setw(9) << safe_div(final_cl_sz, uip_cls)
   );
 
+  verb_print(1, "saveduipK/usedK/thrownK        "
+    << std::setw(9) << saved_uip/1000 << " "
+    << std::setw(9) << saved_uip_used/1000 << " "
+    << std::setw(9) << saved_uip_thrown/1000
+  );
+
   verb_print(1, "rdbs/low lbd/rem               "
     << std::setw(5) << reduceDBs << " "
     << std::setw(6) << solver->get_num_low_lbds() << " "

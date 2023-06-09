@@ -1199,6 +1199,7 @@ retStateT Counter::resolveConflict() {
   qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
   bool ret = recordLastUIPCauses();
   if (!ret) {
+    stats.uip_not_added++;
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     decision_stack_.top().zero_out_branch_sol();
     decision_stack_.top().mark_branch_unsat();
@@ -1950,7 +1951,8 @@ bool Counter::recordLastUIPCauses() {
   }
   if (var(c[0]).decision_level != var(c[1]).decision_level) {
     VERBOSE_PRINT("Failing to create UIP, backtracking instead");
-    qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
+    if (decision_stack_.get_decision_level() > last_qhead_dl)
+      qhead = std::min(qhead, trail_at_dl(last_qhead_dl));
     return false;
   }
   if (decision_stack_.get_decision_level() > last_qhead_dl)

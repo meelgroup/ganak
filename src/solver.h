@@ -286,6 +286,7 @@ private:
     /* qhead = std::min<int32_t>(qhead, jt - trail.begin()); // TODO something is wrong here. */
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
+      assert(dl != -1);
       if (dl < decision_stack_.get_decision_level()) {
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
@@ -297,7 +298,7 @@ private:
     }
     SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
-    trail.resize(trail.size()-(it-jt));
+    trail.resize(jt - trail.begin());
     decision_stack_.top().resetRemainingComps();
   }
 

@@ -1227,6 +1227,7 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
   recordLastUIPCauses();
+  assert(uip_clause.front() != NOT_A_LIT);
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/config_.act_exp;
 
@@ -1241,7 +1242,6 @@ retStateT Counter::resolveConflict() {
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   decision_stack_.top().zero_out_branch_sol();
   decision_stack_.top().mark_branch_unsat();
-  assert(uip_clause.front() != NOT_A_LIT);
 
   VERBOSE_DEBUG_DO(cout << "backwards cleaning" << endl);
   VERBOSE_DEBUG_DO(print_comp_stack_info());
@@ -1336,7 +1336,6 @@ retStateT Counter::resolveConflict() {
 
   decision_stack_.top().change_to_right_branch();
   reactivate_comps_and_backtrack_trail(false);
-  assert(val(uip_clause[0]) == X_TRI);
   setLiteral(uip_clause[0], lev_to_set, ant);
 
 #ifdef VERBOSE_DEBUG

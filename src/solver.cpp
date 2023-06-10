@@ -424,6 +424,7 @@ bool Counter::decideLiteral() {
   if (v == 0) {
     // we have set all remaining var(s) from a lower decision level.
     // so there is nothing to decide. Component has a single solution.
+    VERBOSE_PRINT("We have set ALL REMAINING VARS FROM LOWER LEVELS!!");
     decision_stack_.pop_back();
     return false;
   }

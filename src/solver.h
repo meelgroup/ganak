@@ -43,6 +43,7 @@ enum retStateT
   RESOLVED,
   PROCESS_COMPONENT,
   BACKTRACK,
+  GO_AGAIN
 };
 
 struct VS {
@@ -282,6 +283,7 @@ private:
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
+    /* qhead = std::min<int32_t>(qhead, jt - trail.begin()); // TODO something is wrong here. */
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
       if (dl < decision_stack_.get_decision_level()) {

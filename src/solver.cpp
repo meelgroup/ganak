@@ -350,6 +350,7 @@ SOLVER_StateT Counter::countSAT() {
       /* checkProbabilisticHashSanity(); -- no need, there is no way we get to 2**45 lookups*/
       if (restart_if_needed()) {return RESTART;}
       if (!decideLiteral()) {
+        decision_stack_.top().nextUnprocessedComponent();
         continue;
       }
       VERBOSE_DEBUG_DO(print_all_levels());
@@ -357,6 +358,7 @@ SOLVER_StateT Counter::countSAT() {
 
       while (!prop_and_probe()) {
         state = resolveConflict();
+        while(state == GO_AGAIN) state = resolveConflict();
         if (state == BACKTRACK) break;
       }
       if (state == BACKTRACK) break;
@@ -367,6 +369,7 @@ SOLVER_StateT Counter::countSAT() {
     if (state == EXIT) return SUCCESS;
     while (state != PROCESS_COMPONENT && !prop_and_probe()) {
       state = resolveConflict();
+      while(state == GO_AGAIN) state = resolveConflict();
       if (state == BACKTRACK) {
         state = backtrack();
         if (state == EXIT) return SUCCESS;
@@ -982,7 +985,7 @@ retStateT Counter::backtrack() {
     }
 
     CHECK_COUNT_DO(check_count());
-    reactivate_comps_and_backtrack_trail(false); // TODO MAY BE WRONG to allow wrong watch!!!
+    reactivate_comps_and_backtrack_trail(false);
     assert(decision_stack_.size() >= 2);
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
@@ -1235,7 +1238,6 @@ retStateT Counter::resolveConflict() {
 
   stats.conflicts++;
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
-  comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   decision_stack_.top().zero_out_branch_sol();
   decision_stack_.top().mark_branch_unsat();
   assert(uip_clause.front() != NOT_A_LIT);
@@ -1266,9 +1268,6 @@ retStateT Counter::resolveConflict() {
     }
 
     stats.uip_not_added++;
-    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-    decision_stack_.top().zero_out_branch_sol();
-    decision_stack_.top().mark_branch_unsat();
     decision_stack_.top().resetRemainingComps();
     if (decision_stack_.top().is_right_branch()) {
       return BACKTRACK;
@@ -1280,6 +1279,7 @@ retStateT Counter::resolveConflict() {
       return RESOLVED;
     }
   }
+  assert(flipped);
   VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
 
@@ -1296,7 +1296,6 @@ retStateT Counter::resolveConflict() {
     assert(var(uip_clause[0]).decision_level != -1);
     ant = addUIPConflictClause(uip_clause);
     var(top_dec_lit()).ante = ant;
-    assert(flipped);
   }
   VERBOSE_PRINT("Ant is :" << ant);
   VERBOSE_PRINT("AFTER conflict, setup: ");
@@ -1314,7 +1313,11 @@ retStateT Counter::resolveConflict() {
     lit_values_[uip_clause[0]] = T_TRI;
     lit_values_[uip_clause[0].neg()] = F_TRI;
     trail[var(uip_clause[0]).sublevel] = uip_clause[0];
-    qhead = var(uip_clause[0]).sublevel;
+    qhead = std::min(qhead, var(uip_clause[0]).sublevel);
+
+    reactivate_comps_and_backtrack_trail(false);
+    bool ret = propagate();
+    if (!ret) return GO_AGAIN;
 
 #ifdef VERBOSE_DEBUG
     cout << "FLIPPED Returning from resolveConflict() with:";
@@ -2012,10 +2015,10 @@ void Counter::recordLastUIPCauses() {
     }
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
 #ifdef VERBOSE_DEBUG
-    for(const auto& l: c) {
-        cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-          << " ante: " << std::setw(8) << var(l).ante
-          << " val : " << std::setw(7) << lit_val_str(l)
+    for(Lit* l = c; *l != SENTINEL_LIT; l++) {
+        cout << std::setw(5) << *l<< " lev: " << std::setw(3) << var(*l).decision_level
+          << " ante: " << std::setw(8) << var(*l).ante
+          << " val : " << std::setw(7) << lit_val_str(*l)
           << endl;
     }
 #endif

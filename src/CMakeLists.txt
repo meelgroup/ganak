@@ -80,7 +80,7 @@ set_target_properties(ganak PROPERTIES
 )
 
 add_executable (ganak-bin
-    simp_main.cpp
+    main.cpp
 )
 
 set(ganak_exec_link_libs

@@ -103,6 +103,11 @@ public:
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
 
+
+  // deal with saved uip
+  enum class SavedUIPRet {prop_again, ret_false, cont};
+  SavedUIPRet deal_with_saved_uips();
+
   // test public
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 

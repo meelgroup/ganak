@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include "cryptominisat5/cryptominisat.h"
 #include "cryptominisat5/solvertypesmini.h"
 #include "primitive_types.h"
+#include "solver_config.h"
 #include "stack.h"
 #include "structures.h"
 #include "time_mem.h"
@@ -1391,6 +1392,95 @@ bool Counter::clause_satisfied(const vector<Lit>& cl) const {
 
 /* #define VERB_DEBUG_SAVED */
 
+Counter::SavedUIPRet Counter::deal_with_saved_uips() {
+  auto DL = decision_stack_.get_decision_level();
+  if ( (int)saved_uip_cls.size() <= DL ||
+    saved_uip_cls[DL].empty())
+    return Counter::SavedUIPRet::cont;
+
+  auto& cl = saved_uip_cls[DL];
+  std::sort(cl.begin(), cl.end(),
+    [=](const Lit& a, const Lit& b) {
+      if (val(a) == X_TRI || val(b) == X_TRI) {
+        if (val(a) == val(b)) return false;
+        if (val(a) == X_TRI) return true;
+        if (val(b) == X_TRI) return false;
+      }
+      if (var(a).decision_level == var(b).decision_level) {
+        return val(a) == T_TRI;
+      }
+      return var(a).decision_level > var(b).decision_level;
+    });
+
+  uint32_t num_unk = 0;
+  uint32_t num_true = 0;
+  uint32_t num_false = 0;
+  for(const auto& l: cl) {
+    switch(val(l)) {
+      case X_TRI: num_unk++; break;
+      case T_TRI: num_true++; break;
+      case F_TRI: num_false++; break;
+    }
+  }
+
+#ifdef VERB_DEBUG_SAVED
+  cout << "-----" << endl; cout << "here now. dec lev: " << DL << endl;
+  print_dec_info();
+  print_trail();
+#endif
+  // The below often MUST have two from the same decision level at the top. Otherwise,
+  // we can have something like this:
+  /* lit -15    lev: 28   ante: DEC             val: TRUE */
+  /* lit -6     lev: 27   ante: CL:        4921 val: FALSE */
+  /* lit -54    lev: 27   ante: CL:        2338 val: FALSE */
+  /* lit -13    lev: 24   ante: DEC             val: FALSE */
+  /* lit 118    lev: 15   ante: Lit:        -85 val: FALSE */
+  // which would have propagated at 27. Not OK.
+
+  if (num_false == cl.size() &&
+      var(cl[0]).decision_level == DL &&
+      var(cl[1]).decision_level == DL) {
+    auto ante = addUIPConflictClause(cl);
+    if (ante.isAClause()) setConflictState(alloc->ptr(ante.asCl()));
+    else setConflictState(cl[0], cl[1]);
+#ifdef VERB_DEBUG_SAVED
+    cout << "Falsified. Ante: " << ante << endl; print_cl(cl);
+#endif
+    stats.saved_uip_used++;
+    stats.saved_uip_used_falsified++;
+    saved_uip_cls[DL].clear();
+    return Counter::SavedUIPRet::ret_false;
+  } else if (var(cl[1]).decision_level == DL
+      && num_unk == 1 && num_false == cl.size()-1) {
+    auto ante = addUIPConflictClause(cl);
+    setLiteral(cl[0], DL, ante);
+#ifdef VERB_DEBUG_SAVED
+    cout << "Asserting. Now cl: " << endl; print_cl(cl);
+#endif
+    stats.saved_uip_used++;
+    stats.saved_uip_used_asserting++;
+    saved_uip_cls[DL].clear();
+    return Counter::SavedUIPRet::prop_again;
+  } else if ((num_true >= 1 || num_unk >= 2) &&
+      (var(cl[0]).decision_level == var(cl[1]).decision_level || num_unk > 0)) {
+    addUIPConflictClause(cl);
+#ifdef VERB_DEBUG_SAVED
+    cout << "At least 2 unknown or Satisfied." << endl; print_cl(cl);
+#endif
+    stats.saved_uip_used++;
+    stats.saved_uip_used_sat_or_unk++;
+    saved_uip_cls[DL].clear();
+  } else {
+#ifdef VERB_DEBUG_SAVED
+    cout << "Throwing this saved away." << endl; print_cl(cl);
+#endif
+    saved_uip_cls[DL].clear();
+    stats.saved_uip_thrown++;
+  }
+
+  return Counter::SavedUIPRet::cont;
+}
+
 bool Counter::prop_and_probe() {
   VERBOSE_DEBUG_DO(cout << "in " << __FUNCTION__ << " now. " << endl);
   // the asserted literal has been set, so we start
@@ -1400,73 +1490,14 @@ bool Counter::prop_and_probe() {
   bool bSucceeded;
 prop_again:;
   bSucceeded = propagate();
-  if (config_.do_save_uip && bSucceeded &&
-      (int)saved_uip_cls.size() > decision_stack_.get_decision_level() &&
-      !saved_uip_cls[decision_stack_.get_decision_level()].empty()) {
-    auto& cl = saved_uip_cls[decision_stack_.get_decision_level()];
-    std::sort(cl.begin(), cl.end(),
-        [=](const Lit& a, const Lit& b) {
-          if (val(a) == X_TRI || val(b) == X_TRI) {
-            if (val(a) == val(b)) return false;
-            if (val(a) == X_TRI) return true;
-            if (val(b) == X_TRI) return false;
-          }
-          if (var(a).decision_level == var(b).decision_level) {
-            return val(a) == T_TRI;
-          }
-          return var(a).decision_level > var(b).decision_level;
-        });
-#ifdef VERB_DEBUG_SAVED
-    cout << "-----" << endl;
-    cout << "here now. dec lev: " << decision_stack_.get_decision_level() << endl;
-    print_dec_info();
-    print_trail();
-    cout << "CL: " << endl;
-    print_cl(cl);
-#endif
-    // The below often MUST have two from the same decision level at the top. Otherwise,
-    // we can have something like this:
-    /* lit -15    lev: 28   ante: DEC             val: TRUE */
-    /* lit -6     lev: 27   ante: CL:        4921 val: FALSE */
-    /* lit -54    lev: 27   ante: CL:        2338 val: FALSE */
-    /* lit -13    lev: 24   ante: DEC             val: FALSE */
-    /* lit 118    lev: 15   ante: Lit:        -85 val: FALSE */
-    // which would have propagated at 27. Not OK.
-
-    if (clause_falsified(cl)) {
-      auto ante = addUIPConflictClause(cl);
-      if (ante.isAClause()) setConflictState(alloc->ptr(ante.asCl()));
-      else setConflictState(cl[0], cl[1]);
-#ifdef VERB_DEBUG_SAVED
-      cout << "Falsified. Ante: " << ante << endl;
-#endif
-      stats.saved_uip_used++;
-      saved_uip_cls[decision_stack_.get_decision_level()].clear();
-      return false;
-    } else if (var(cl[0]).decision_level == var(cl[1]).decision_level && clause_asserting(cl)) {
-      auto ante = addUIPConflictClause(cl);
-      setLiteral(cl[0], decision_stack_.get_decision_level(), ante);
-#ifdef VERB_DEBUG_SAVED
-      cout << "Asserting. Now cl: " << endl;
-      print_cl(cl);
-#endif
-      stats.saved_uip_used++;
-      saved_uip_cls[decision_stack_.get_decision_level()].clear();
-      goto prop_again;
-    } else if (var(cl[0]).decision_level == var(cl[1]).decision_level && clause_satisfied(cl)) {
-      addUIPConflictClause(cl);
-#ifdef VERB_DEBUG_SAVED
-      cout << "Satisfied." << endl;
-#endif
-      stats.saved_uip_used++;
-      saved_uip_cls[decision_stack_.get_decision_level()].clear();
-    } else {
-#ifdef VERB_DEBUG_SAVED
-      cout << "Throwing this saved away." << endl;
-#endif
-      stats.saved_uip_thrown++;
+  if (config_.do_save_uip && bSucceeded) {
+    switch(deal_with_saved_uips()) {
+      case Counter::SavedUIPRet::prop_again: goto prop_again;
+      case Counter::SavedUIPRet::ret_false: return false;
+      case Counter::SavedUIPRet::cont: ;
     }
   }
+
 
   if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
     if (config_.failed_lit_probe_type == 2  &&

@@ -2018,13 +2018,13 @@ void Counter::recordLastUIPCauses() {
       // Long clause
       assert(confl.asCl() != NOT_A_CLAUSE);
       Clause& cl = *alloc->ptr(confl.asCl());
+      c = cl.getData();
+      size = cl.sz;
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.increaseScore();
         cl.update_lbd(calc_lbd(cl));
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
-      c = cl.getData();
-      size = cl.sz;
     } else if (confl.isFake()) {
       assert(false);
     } else {

@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <time_mem.h>
 #include <boost/program_options.hpp>
+#include "cryptominisat5/solvertypesmini.h"
 #include "src/GitSHA1.h"
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
@@ -329,24 +330,30 @@ int main(int argc, char *argv[])
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
   counter->new_vars(cnfholder.nVars());
   sat_solver->new_vars(cnfholder.nVars());
-  for(const auto& cl: cnfholder.clauses) {
-    sat_solver->add_clause(cl);
-    auto cl2 = cms_to_ganak_cl(cl);
-    counter->add_irred_cl(cl2);
+
+  mpz_class cnt = 0;
+  for(const auto& cl: cnfholder.clauses) sat_solver->add_clause(cl);
+  auto ret = sat_solver->solve();
+  if (ret == CMSat::l_True) {
+    for(const auto& cl: cnfholder.clauses) {
+      auto cl2 = cms_to_ganak_cl(cl);
+      counter->add_irred_cl(cl2);
+    }
+    counter->end_irred_cls();
+    for(const auto& cl: cnfholder.red_clauses) {
+      auto cl2 = cms_to_ganak_cl(cl);
+      counter->add_red_cl(cl2);
+    }
+    counter->set_indep_support(indep_support);
+    counter->init_activity_scores();
+    cnt = counter->outer_count(sat_solver);
   }
-  counter->end_irred_cls();
-  for(const auto& cl: cnfholder.red_clauses) {
-    auto cl2 = cms_to_ganak_cl(cl);
-    counter->add_red_cl(cl2);
-  }
-  counter->set_indep_support(indep_support);
-  counter->init_activity_scores();
-  mpz_class this_count = counter->outer_count(sat_solver);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
-  cout << "s SATISFIABLE" << endl;
+  if (cnt > 0) cout << "s SATISFIABLE" << endl;
+  else cout << "s UNSATISFIABLE" << endl;
   if (indep_support_given) cout << "s pmc ";
   else cout << "s mc ";
-  cout << this_count << endl;
+  cout << cnt << endl;
 
   delete counter;
   return 0;

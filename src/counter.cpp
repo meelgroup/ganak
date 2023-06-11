@@ -43,7 +43,8 @@ void Counter::simplePreProcess()
 {
   for (auto lit : unit_clauses_) {
     assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
-    setLiteral(lit, 0);
+    if (val(lit) == X_TRI) setLiteral(lit, 0);
+    assert(val(lit) == T_TRI);
   }
 
   bool succeeded = propagate();
@@ -97,7 +98,6 @@ void Counter::end_irred_cls()
   cache_miss_rate_q.clearAndResize(config_.first_restart);
   comp_size_q.clearAndResize(config_.first_restart);
 
-  release_assert(!ended_irred_cls && "ERROR *must not* call end_irred_cls() twice");
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_MB*1024*1024;
   init_decision_stack();
   simplePreProcess();
@@ -282,11 +282,46 @@ void Counter::td_decompose()
   compute_score(td);
 }
 
+vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
+  vector<CMSat::Lit> cms_cl;
+  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
+vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
+  vector<CMSat::Lit> cms_cl;
+  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
+  mpz_class val = 0;
   sat_solver = _sat_solver;
-  vector<Lit> largest_cube;
-  auto ret = count(largest_cube);
-  return ret;
+
+  auto ret = sat_solver->solve();
+  if (config_.do_restart) {
+    vector<Lit> largest_cube;
+    while(ret == CMSat::l_True) {
+      auto& model = sat_solver->get_model();
+      set_target_polar(model);
+      auto val2 = count(largest_cube);
+      cout << "Cube: " << largest_cube;
+      cout << " -- count: " <<  val << endl;
+      val+=val2;
+      auto cms_cl = ganak_to_cms_cl(largest_cube);
+      sat_solver->add_clause(cms_cl);
+      ret = sat_solver->solve();
+      if (ret == CMSat::l_False) break;
+      add_irred_cl(largest_cube);
+      end_irred_cls();
+      cout << "AFTER END_IRRED:" <<  endl;
+      stats.printShort(this, &comp_manager_->get_cache());
+      cout << "****************" << endl;
+    }
+  } else if (ret == CMSat::l_True) {
+      val += count(largest_cube);
+  }
+  return val;
 }
 
 mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
@@ -297,8 +332,11 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   start_time = cpuTime();
   if (config_.verb) { cout << "c Sampling set size: " << indep_support_end-1 << endl; }
 
-  if (config_.branch_type == branch_t::sharptd ||
-      config_.branch_type == branch_t::gpmc) td_decompose();
+  // Only compute TD decomposition once
+  if (tdscore.empty()) {
+    if (config_.branch_type == branch_t::sharptd ||
+        config_.branch_type == branch_t::gpmc) td_decompose();
+  }
 
   verb_print(1, "branch type: " << config_.get_branch_type_str());
 
@@ -1637,7 +1675,7 @@ bool Counter::propagate() {
     ws.resize(it2-ws.begin());
     if (!confl.isNull()) break;
   }
-  SLOW_DEBUG_DO(if (confl.isNull() && !check_watchlists()) {
+  VERY_SLOW_DEBUG_DO(if (confl.isNull() && !check_watchlists()) {
       print_trail(false, false);assert(false);});
   SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated());
   VERBOSE_PRINT("After propagate, qhead is: " << qhead);
@@ -1880,10 +1918,10 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
         size = cl->sz;
 #ifdef VERBOSE_DEBUG
         cout << "CL offs: " << reason.asCl() << " in analyze_stack:" << endl;
-        for(Lit* l = lits; *l != SENTINEL_LIT; l++) {
-          cout << std::setw(5) << *l<< " lev: " << std::setw(3) << var(*l).decision_level
-            << " ante: " << std::setw(8) << var(*l).ante
-            << " val : " << std::setw(7) << lit_val_str(*l)
+        for(const auto& l: *cl) {
+          cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+            << " ante: " << std::setw(8) << var(l).ante
+            << " val : " << std::setw(7) << lit_val_str(l)
             << endl;
         }
 #endif

@@ -199,11 +199,11 @@ public:
     type = AnteType::lit;
   }
 
-  bool isNull() const {return type == AnteType::decision;}
-  bool isAnt() const {return !isNull();}
-  bool isFake() const {return type == AnteType::fake;}
   bool isAClause() const { return type == AnteType::clause; }
   bool isALit() const { return type == AnteType::lit; }
+  bool isFake() const {return type == AnteType::fake;}
+  bool isNull() const {return type == AnteType::decision;}
+  bool isAnt() const {return !isNull();}
 
   ClauseOfs asCl() const {
     SLOW_DEBUG_DO(assert(isAClause()));

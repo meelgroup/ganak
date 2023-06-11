@@ -68,7 +68,6 @@ public:
   ~Counter();
   friend class ClauseAllocator;
 
-
   double scoreOf(VariableIndex v) {
     if (config_.branch_type == branch_t::sharptd) {
       double score = 0;
@@ -197,7 +196,7 @@ private:
   {
     assert(val(lit) == X_TRI);
     if (ant.isNull())
-      print_debug("setLiteral called with a decision. Lit: " << lit);
+      print_debug("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
     else print_debug("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
 
     VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
@@ -306,7 +305,7 @@ private:
         unSet(*it);
       }
     }
-    SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
+    VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(jt - trail.begin());
     decision_stack_.top().resetRemainingComps();

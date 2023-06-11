@@ -161,7 +161,7 @@ void Instance::new_vars(const uint32_t n) {
 Clause* Instance::addClause(const vector<Lit> &lits, bool red) {
   if (lits.size() == 1) {
     assert(!isUnitClause(lits[0].neg()) && "UNSAT is not dealt with");
-    unit_clauses_.push_back(lits[0]);
+    if (!isUnitClause(lits[0])) unit_clauses_.push_back(lits[0]);
     return 0;
   }
 

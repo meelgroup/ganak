@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
+#include "cryptominisat5/cryptominisat.h"
 #include "solver.h"
 #include "GitSHA1.h"
 
@@ -41,12 +42,13 @@ using CMSat::DimacsParser;
 #include <fenv.h>
 #endif
 
+
 namespace po = boost::program_options;
 using std::string;
 using std::vector;
 po::options_description main_options = po::options_description("Main options");
 po::options_description probe_options = po::options_description("Probe options");
-po::options_description lookahead_options = po::options_description("Lookeahead options");
+po::options_description restart_options = po::options_description("Restart options");
 po::options_description help_options;
 po::variables_map vm;
 po::positional_options_description p;
@@ -56,12 +58,11 @@ uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
 set<uint32_t> indep_support;
 int do_check = 0;
-int exact = 1;
 MTRand mtrand;
 CounterConfiguration conf;
-int do_hyperbin = 1;
-int red_cls_also = 0;
 int ignore_indep = 0;
+string branch_type = branch_type_to_str(conf.branch_type);
+string branch_fallback_type = branch_type_to_str(conf.branch_fallback_type);
 
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
@@ -104,11 +105,45 @@ void add_ganak_options()
     ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
-    ("ignore", po::value(&ignore_indep)->default_value(ignore_indep),
-     "Ignore indep support given")
+    ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
+    ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
+    ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
+    ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
+    ("tdwidthcut", po::value(&conf.tw_vare_lim)->default_value(conf.tw_vare_lim), "Treewidth must be smaller than this ratio for TD to be used. Value >=1 means TD is not turned off by this (but may be turned off due to low number of variables, etc.")
+
+    ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
+    ("rdbkeepused", po::value(&conf.rdb_keep_used)->default_value(conf.rdb_keep_used), "RDB keeps clauses that are used")
+    ("cscore", po::value(&conf.do_cache_score)->default_value(conf.do_cache_score), "Do cache scores")
+    ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
+    ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Component Caching")
+    ("version", "Print version info")
+    ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
+    ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
+    ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
+     "Use polarity cache. Otherwise, false default polar.")
+    ("saveuip", po::value(&conf.do_save_uip)->default_value(conf.do_save_uip), "Save UIP that's not used and add later")
+    ;
+
+    restart_options.add_options()
+    ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
+
+    ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
+    ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
+    ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
+
+    ("onpathprint", po::value(&conf.do_on_path_print)->default_value(conf.do_on_path_print), "Print ON-PATH during restart")
+    ;
+
+    probe_options.add_options()
+    ("probe", po::value(&conf.failed_lit_probe_type)->default_value(conf.failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only bottom RATIO, where ratio is given by --probeonlyafter")
+    ("probeonlyafter", po::value(&conf.probe_only_after_ratio)->default_value(conf.probe_only_after_ratio), "What ratio of failed lit probe in terms of decision. Only active if '--failed 2'")
+    ("probemulti", po::value(&conf.num_probe_multi)->default_value(conf.num_probe_multi), "Multiply by this amount how many variables to probe.")
+    ("bprop", po::value(&conf.bprop)->default_value(conf.bprop), "Do bothprop")
     ;
 
     help_options.add(main_options);
+    help_options.add(probe_options);
+    help_options.add(restart_options);
 }
 
 void parse_supported_options(int argc, char** argv)
@@ -272,6 +307,9 @@ int main(int argc, char *argv[])
     cout << ganak_version_info() << endl;
     cout << "c called with: " << command_line << endl;
   }
+  conf.branch_type = parse_branch_type(branch_type);
+  conf.branch_fallback_type = parse_branch_type(branch_fallback_type);
+
   string fname;
   if (vm.count("input") != 0) {
     vector<string> inp = vm["input"].as<vector<string> >();
@@ -288,16 +326,22 @@ int main(int argc, char *argv[])
   CNFHolder cnfholder;
   parse_file(fname, &cnfholder);
   Counter* counter = new Counter(conf);
+  CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
   counter->new_vars(cnfholder.nVars());
+  sat_solver->new_vars(cnfholder.nVars());
   for(const auto& cl: cnfholder.clauses) {
+    sat_solver->add_clause(cl);
     auto cl2 = cms_to_ganak_cl(cl);
     counter->add_irred_cl(cl2);
   }
   counter->end_irred_cls();
+  for(const auto& cl: cnfholder.red_clauses) {
+    auto cl2 = cms_to_ganak_cl(cl);
+    counter->add_red_cl(cl2);
+  }
   counter->set_indep_support(indep_support);
   counter->init_activity_scores();
-  vector<Lit> largest_cube;
-  mpz_class this_count = counter->count(largest_cube, NULL);
+  mpz_class this_count = counter->outer_count(sat_solver);
   cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
   cout << "s SATISFIABLE" << endl;
   if (indep_support_given) cout << "s pmc ";

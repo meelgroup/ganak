@@ -285,9 +285,14 @@ void Counter::td_decompose()
   compute_score(td);
 }
 
-mpz_class Counter::count(vector<Lit>& largest_cube_ret, CMSat::SATSolver* _sat_solver)
-{
+mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   sat_solver = _sat_solver;
+  vector<Lit> largest_cube;
+  auto ret = count(largest_cube);
+  return ret;
+}
+
+mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
   largest_cube.clear();

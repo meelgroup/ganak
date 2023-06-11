@@ -83,7 +83,7 @@ public:
         10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
     }
   }
-  mpz_class count(vector<Lit>& largest_cube_ret, CMSat::SATSolver* solver = NULL);
+  mpz_class outer_count(CMSat::SATSolver* solver = NULL);
   CounterConfiguration &config() { return config_; }
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
@@ -112,6 +112,7 @@ public:
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
+  mpz_class count(vector<Lit>& largest_cube_ret);
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
   vector<double> scores;

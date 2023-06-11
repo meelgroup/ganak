@@ -286,10 +286,10 @@ public:
     return getData();
   }
   const Lit* end() const {
-    return begin()+sz*sizeof(Lit);
+    return begin()+sz;
   }
   Lit* end() {
-    return begin()+sz*sizeof(Lit);
+    return begin()+sz;
   }
   Lit& operator[](uint32_t at) {
     return *(getData()+at);

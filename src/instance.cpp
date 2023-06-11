@@ -29,6 +29,16 @@ THE SOFTWARE.
 #include <limits>
 #include <sys/stat.h>
 
+
+Instance::Instance(const CounterConfiguration& _config) : config_(_config), stats (this, config_)
+{
+  alloc = new ClauseAllocator;
+}
+
+Instance::~Instance() {
+  delete alloc;
+}
+
 void Instance::checkWatchLists() const {
   auto red_cls2 = longRedCls;
   // check for duplicates
@@ -160,6 +170,7 @@ Clause* Instance::addClause(const vector<Lit> &lits, bool red) {
   }
 
   Clause* cl = alloc->new_cl(red, lits.size());
+  for(uint32_t i = 0; i < lits.size(); i ++) (*cl)[i] = lits[i];
   ClauseOfs off = alloc->get_offset(cl);
 
   Lit blckLit = lits[lits.size()/2];

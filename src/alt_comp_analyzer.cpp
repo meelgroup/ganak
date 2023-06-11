@@ -52,6 +52,7 @@ void ComponentAnalyzer::initialize(
     // it_curr_cl_st is the starting point of the clause
     // for each lit in the clause, it adds the clause to the occ list
     const Clause& cl = *alloc->ptr(off);
+    assert(cl.sz > 2);
 
     for(const auto& l: cl) {
       const uint32_t var = l.var();
@@ -71,6 +72,7 @@ void ComponentAnalyzer::initialize(
         occ_long_clauses[var].push_back(SENTINEL_LIT.raw());
       }
     }
+    max_clause_id_++;
   }
   print_debug(COLBLBACK "Built occ list in ComponentAnalyzer::initialize.");
 

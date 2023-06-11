@@ -249,7 +249,7 @@ void Counter::td_decompose()
   for(const auto& off: longIrredCls) {
     Clause& cl = *alloc->ptr(off);
     for(uint32_t i = 0; i < cl.sz; i++) {
-      for(uint32_t i2 = i; i2 < cl.sz; i2++) {
+      for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
         print_debug("v1: " << cl[i].var());
         print_debug("v2: " << cl[i2].var());
         primal.addEdge(cl[i].var(), cl[i2].var());
@@ -1542,11 +1542,11 @@ bool Counter::propagate() {
 
 #ifdef VERBOSE_DEBUG
       cout << "Prop Norm cl: " << ofs << endl;
-      for(Lit* c2 = c; *c2!=NOT_A_LIT; c2++) {
-        cout << "lit " << std::setw(6) << *c2
-          << " lev: " << std::setw(4) << var(*c2).decision_level
-          << " ante: " << std::setw(5) << std::left << var(*c2).ante
-        << " val: " << lit_val_str(*c2) << endl;
+      for(const auto&l: c) {
+        cout << "lit " << std::setw(6) << l
+          << " lev: " << std::setw(4) << var(l).decision_level
+          << " ante: " << std::setw(5) << std::left << var(l).ante
+          << " val: " << lit_val_str(l) << endl;
       }
 #endif
 
@@ -2115,13 +2115,11 @@ void Counter::recordLastUIPCauses() {
   SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
 }
 
-Counter::Counter(const CounterConfiguration& conf) : Instance(conf)
-{
+Counter::Counter(const CounterConfiguration& conf) : Instance(conf) {
   mtrand.seed(conf.seed);
 }
 
-Counter::~Counter()
-{
+Counter::~Counter() {
   delete comp_manager_;
 }
 

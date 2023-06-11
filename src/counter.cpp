@@ -88,7 +88,9 @@ void Counter::init_activity_scores()
 
 void Counter::end_irred_cls()
 {
+  tmp_seen.clear();
   tmp_seen.resize(2*(nVars()+2), 0);
+  delete comp_manager_;
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
   comp_manager_->getrandomseedforclhash();
   depth_q.clearAndResize(config_.first_restart);
@@ -120,11 +122,7 @@ void Counter::add_irred_cl(const vector<Lit>& lits) {
       for (const auto& l : lits) occ_lists_[l].push_back(off);
     }
   }
-
-
-#ifdef SLOW_DEBUG
-  debug_irred_cls.push_back(lits);
-#endif
+  SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
 }
 
 void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
@@ -917,15 +915,12 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
       if (ret == CMSat::l_True) {
         num++;
         cl.clear();
-        /* cout << "Blocking : "; */
         for(uint32_t i = 0; i < s2.nVars(); i++) {
           if (active.count(i+1)) {
             CMSat::Lit l = CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True);
             cl.push_back(l);
-            /* cout << l << " "; */
           }
         }
-        /* cout << endl; */
         s2.add_clause(cl);
       } else if (ret == CMSat::l_False) break;
       else assert(false);

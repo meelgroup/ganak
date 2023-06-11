@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include "statistics.h"
 #include "structures.h"
 #include "containers.h"
-#include "solver_config.h"
+#include "counter_config.h"
 
 class ClauseAllocator;
 

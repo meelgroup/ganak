@@ -21,10 +21,10 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "comp_management.h"
-#include "solver.h"
+#include "counter.h"
 #include <iomanip>
 
-// Initialized exactly once when Solver is created.
+// Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana_"
 void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& longIrredCls, uint32_t nVars){

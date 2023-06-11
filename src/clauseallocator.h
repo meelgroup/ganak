@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include <map>
 #include <vector>
 
-#include "solver_config.h"
+#include "counter_config.h"
 #include "structures.h"
 
 class Counter;

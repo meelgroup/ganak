@@ -34,7 +34,7 @@ THE SOFTWARE.
 #include "stack.h"
 #include "clhash/clhash.h"
 /* #include "clhash/minim.h" */
-#include "solver_config.h"
+#include "counter_config.h"
 
 class Counter;
 

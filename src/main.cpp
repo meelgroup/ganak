@@ -21,7 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "cryptominisat5/cryptominisat.h"
-#include "solver.h"
+#include "counter.h"
 #include "GitSHA1.h"
 
 #include <iostream>

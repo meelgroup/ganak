@@ -51,7 +51,7 @@ SET(SOURCES
 	comp_cache.cpp
 	comp_management.cpp
 	instance.cpp
-	solver.cpp
+	counter.cpp
 	statistics.cpp
     clauseallocator.cpp
     IFlowCutter.cc

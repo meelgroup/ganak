@@ -28,8 +28,8 @@ THE SOFTWARE.
 #include <limits>
 #include <cassert>
 #include <cmath>
-#include "solver.h"
-#include "solver_config.h"
+#include "counter.h"
+#include "counter_config.h"
 #include "time_mem.h"
 #include "common.h"
 

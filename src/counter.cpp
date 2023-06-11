@@ -20,20 +20,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "solver.h"
+#include "counter.h"
 
 #include <algorithm>
 #include <complex>
 #include <ios>
 #include <iomanip>
 #include <numeric>
-#include <solver.h>
 #include "common.h"
 #include "comp_types/comp.h"
 #include "cryptominisat5/cryptominisat.h"
 #include "cryptominisat5/solvertypesmini.h"
 #include "primitive_types.h"
-#include "solver_config.h"
+#include "counter_config.h"
 #include "stack.h"
 #include "structures.h"
 #include "time_mem.h"

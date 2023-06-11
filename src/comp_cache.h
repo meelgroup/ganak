@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 #include "comp_types/base_packed_comp.h"
 #include "statistics.h"
-#include "solver_config.h"
+#include "counter_config.h"
 #include "Vec.h"
 #include <gmpxx.h>
 

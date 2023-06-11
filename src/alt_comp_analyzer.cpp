@@ -21,7 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "alt_comp_analyzer.h"
-#include "solver.h"
+#include "counter.h"
 #include "clauseallocator.h"
 
 // Builds occ lists and sets things up

@@ -315,7 +315,7 @@ bool get_target(vector<CMSat::lbool>& model) {
   cout <<"c Model: ";
   for(int i = 0; i < model.size(); i ++)
     cout << (i+1) * (model[i] == CMSat::l_True ? 1 : -1) << " ";
-  cout << "0" << endl;;
+  cout << "0" << endl;
 #endif
   return true;
 }

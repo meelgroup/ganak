@@ -42,7 +42,7 @@ THE SOFTWARE.
 void Counter::simplePreProcess()
 {
   for (auto lit : unit_clauses_) {
-    assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");;
+    assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     setLiteral(lit, 0);
   }
 
@@ -115,10 +115,9 @@ void Counter::add_irred_cl(const vector<Lit>& lits) {
   Clause* cl = addClause(lits, false);
   auto off = alloc->get_offset(cl);
   if (cl) {
-    if (off) longIrredCls.push_back(off);
+    longIrredCls.push_back(off);
     if (lits.size() >= 3) {
-      for (const auto& l : lits)
-        occ_lists_[l].push_back(off);
+      for (const auto& l : lits) occ_lists_[l].push_back(off);
     }
   }
 
@@ -140,7 +139,7 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
     longRedCls.push_back(off);
     if (lbd == -1) lbd = lits.size();
     cl->lbd = lbd;
-    cl->red = true;
+    assert(cl->red);
   }
 }
 
@@ -556,7 +555,7 @@ void Counter::computeLargestCube()
     // Add decision
     if (i > 0) {
       const auto dec_lit2 = (target_polar[dec.var] ? 1 : -1)*(int)dec.var;
-      if (dec_lit2 != dec_lit.toInt()) {
+      if (dec_lit2 != dec_lit.toInteger()) {
         cout << "(ERROR with dec_lit: " << dec_lit << " dec_lit2: " << dec_lit2 << ") ";
         VERBOSE_DEBUG_DO(error = true;);
       }
@@ -885,7 +884,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
         cl.push_back(CMSat::Lit(t.var()-1, t.sign()));
         auto ret = sat_solver->solve(&cl);
         if (ret != CMSat::l_False) {
-          cout << "ERROR: unit " << t << " is not correct!!" << endl;;
+          cout << "ERROR: unit " << t << " is not correct!!" << endl;
           assert(false);
         }
       }
@@ -1990,18 +1989,12 @@ int32_t Counter::get_confl_maxlev(const Lit p) const {
   return maxlev;
 }
 
-// Returns TRUE if it can generate a UIP. Otherwise, false
 void Counter::recordLastUIPCauses() {
-  // note:
-  // variables of lower dl: if seen we dont work with them anymore
-  // variables of this dl: if seen we incorporate their
-  // antecedent and set to unseen
   tmp_clause.clear();
   assert(toClear.empty());
 
-  assertion_level_ = 0;
   uip_clause.clear();
-  uip_clause.push_back(Lit(0, false));;
+  uip_clause.push_back(Lit(0, false));
   Lit p = NOT_A_LIT;
 
   SLOW_DEBUG_DO(for(const auto& t:tmp_seen) assert(t == 0););
@@ -2027,7 +2020,7 @@ void Counter::recordLastUIPCauses() {
       Clause& cl = *alloc->ptr(confl.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.increaseScore();
-        cl.update_lbd(calc_lbd(&cl));
+        cl.update_lbd(calc_lbd(cl));
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
       c = cl.getData();
@@ -2045,6 +2038,7 @@ void Counter::recordLastUIPCauses() {
         std::swap(c[0], c[1]);
       size = 2;
     }
+
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
 #ifdef VERBOSE_DEBUG
     for(uint32_t i = 0; i < size; i++) {

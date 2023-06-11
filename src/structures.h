@@ -59,7 +59,8 @@ public:
     return value_ > other.value_;
   }
 
-  int toInt() const {
+  // Does NOT do what you'd expect
+  int toInteger() const {
     return ((int) value_ >> 1) * ((sign()) ? 1 : -1);
   }
 
@@ -108,7 +109,7 @@ private:
 inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 {
   if (lit.raw() == 0) os << "UNDEF";
-  else os << lit.toInt();
+  else os << lit.toInteger();
   return os;
 }
 
@@ -267,7 +268,6 @@ public:
   uint32_t total_used = 0;
   uint8_t lbd = 0;
   uint8_t used:1 = 1;
-  uint8_t marked_deleted:1 = 0;
   uint8_t red:1 = 0;
   uint8_t freed:1 = 0;
   uint8_t reloced:1 = 0;

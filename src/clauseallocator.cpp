@@ -123,7 +123,7 @@ of the clause. Therefore, the "currentlyUsedSizes" is an overestimation!!
 void ClauseAllocator::clauseFree(Clause* cl)
 {
     assert(!cl->freed);
-    cl->freed = 1;;
+    cl->freed = 1;
     uint64_t est_num_cl = cl->sz;
     est_num_cl = std::max(est_num_cl, (uint64_t)3); //we sometimes allow gauss to allocate 3-long clauses
     uint64_t bytes_freed = sizeof(Clause) + est_num_cl*sizeof(Lit);
@@ -179,7 +179,7 @@ small compared to the problem size. If it is small, it does nothing. If it is
 large, then it allocates new stacks, copies the non-freed clauses to these new
 stacks, updates all pointers and offsets, and frees the original stacks.
 */
-void ClauseAllocator::consolidate( Counter* solver , const bool force , bool lower_verb) {
+void ClauseAllocator::consolidate(Counter* solver , const bool force , bool lower_verb) {
   //If re-allocation is not really neccessary, don't do it
   //Neccesities:
   //1) There is too much memory allocated. Re-allocation will save space
@@ -207,12 +207,11 @@ void ClauseAllocator::consolidate( Counter* solver , const bool force , bool low
   for(auto& occ: solver->occ_lists_) update_offsets(occ, newDataStart, new_ptr);
 
   //Fix up variables_
-  for (size_t i = 1; i <= solver->nVars(); i++) {
-    auto& vdata = solver->variables_[i];
+  for (auto& vdata: solver->variables_) {
     if (vdata.ante.isAnt() && vdata.ante.isAClause()) {
       Clause* old = ptr(vdata.ante.asCl());
       assert(!old->freed);
-      ClauseOfs new_offset = (*old)[0].toInt();
+      ClauseOfs new_offset = (*old)[0].raw();
       vdata.ante = Antecedent(new_offset);
     }
   }
@@ -245,7 +244,7 @@ void ClauseAllocator::update_offsets(
   for(ClauseOfs& offs: offsets) {
     Clause* old = ptr(offs);
     if (!old->reloced) offs = move_cl(newDataStart, new_ptr, old);
-    else offs = (*old)[0].toInt();
+    else offs = (*old)[0].raw();
   }
 }
 

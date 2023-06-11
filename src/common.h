@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include <sstream>
 #include <cstdint>
 
-/* #define VERBOSE_DEBUG */
+#define VERBOSE_DEBUG
 #define SLOW_DEBUG
 #define CHECK_TRAIL_ENTAILMENT
 

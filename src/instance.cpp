@@ -49,8 +49,6 @@ void Instance::checkWatchLists() const {
 
   for(const auto& offs: longRedCls) {
     const auto& cl = *alloc->ptr(offs);
-    assert(!cl.marked_deleted);
-
     if (!findOfsInWatch(litWatchList(cl[0]).watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[0]!!" << endl;
       assert(false);
@@ -76,7 +74,9 @@ struct ClSorter {
 
   bool operator()(ClauseOfs& a, ClauseOfs& b) const {
     const auto& ah = *alloc->ptr(a);
-    const auto& bh = *alloc->ptr(b);;
+    const auto& bh = *alloc->ptr(b);
+    assert(ah.red);
+    assert(bh.red);
     if (ah.lbd <= lbd_cutoff || bh.lbd <= lbd_cutoff) return ah.lbd < bh.lbd;
     if (ah.used != bh.used) return ah.used > bh.used;
     return ah.total_used > bh.total_used;

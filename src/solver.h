@@ -210,7 +210,7 @@ private:
       Clause& cl = *alloc->ptr(ant.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.increaseScore();
-        cl.update_lbd(calc_lbd(&cl));
+        cl.update_lbd(calc_lbd(cl));
       }
     }
     lit_values_[lit] = T_TRI;
@@ -238,7 +238,7 @@ private:
   {
     if (cl->red && cl->lbd > lbd_cutoff) {
       cl->increaseScore();
-      cl->update_lbd(calc_lbd(cl));
+      cl->update_lbd(calc_lbd(*cl));
     }
     confl = Antecedent(alloc->get_offset(cl));
     conflLit = NOT_A_LIT;
@@ -323,11 +323,6 @@ private:
   vector<Lit> uip_clause;
   vector<vector<Lit>> saved_uip_cls;
 
-  // the assertion level of uip_clauses
-  // or (if the decision variable did not have an antecedent
-  // before) then assertionLevel_ == DL;
-  int assertion_level_ = 0;
-
   int32_t get_confl_maxlev(const Lit p) const;
   void recordLastUIPCauses();
   void minimizeUIPClause();
@@ -335,7 +330,6 @@ private:
   bool litRedundant(const Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
   void recursiveConfClauseMin();
-  int getAssertionLevel() const { return assertion_level_; }
   bool takeSolution();
   bool get_polarity(const uint32_t var) const;
   bool standard_polarity(const uint32_t var) const;

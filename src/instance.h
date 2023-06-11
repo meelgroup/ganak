@@ -113,22 +113,8 @@ protected:
   vector<uint64_t> lbdHelper;
   uint64_t lbdHelperFlag = 0;
 
-  uint32_t calc_lbd(const Clause* cl) {
-    lbdHelperFlag++;
-    uint32_t nblevels = 0;
-    for (auto l: *cl) {
-      int lev = var(l).decision_level;
-      if (lev == -1) {nblevels++; continue;} // can happen in weird conflict...
-      if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
-        lbdHelper[lev] = lbdHelperFlag;
-        nblevels++;
-        if (nblevels >= 250) { return nblevels; }
-      }
-    }
-    return nblevels;
-  }
-
-  uint32_t calc_lbd(const vector<Lit>& lits) {
+  template<class T>
+  uint32_t calc_lbd(const T& lits) {
     lbdHelperFlag++;
     uint32_t nblevels = 0;
     for(const auto& l: lits) {
@@ -248,7 +234,7 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
   if (cl) {
     auto off = alloc->get_offset(cl);
     longRedCls.push_back(off);
-    cl->lbd = calc_lbd(cl);
+    cl->lbd = calc_lbd(*cl);
     ante = Antecedent(off);
   } else if (literals.size() == 2){
     ante = Antecedent(literals.back());

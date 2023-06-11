@@ -187,17 +187,17 @@ private:
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void check_trail(bool check_entail = true) const;
 
-  void setLiteral(const Lit lit, int32_t dec_lev,
-      Antecedent ant = Antecedent(NOT_A_CLAUSE))
+  void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent())
   {
     assert(val(lit) == X_TRI);
-    if (ant == Antecedent(NOT_A_CLAUSE)) print_debug("setLiteral called with NOT_A_CLAUSE as antecedent (i.e. it's a decision). Lit: " << lit);
+    if (ant.isNull())
+      print_debug("setLiteral called with a decision. Lit: " << lit);
     else print_debug("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
 
     VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
     var(lit).decision_level = dec_lev;
     var(lit).ante = ant;
-    if (ant != Antecedent(NOT_A_CLAUSE)) {
+    if (!ant.isNull()) {
       var(lit).last_polarity = lit.sign();
       var(lit).set_once = true;
     }

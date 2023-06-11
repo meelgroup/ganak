@@ -901,7 +901,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
         if (var(t).decision_level >= decision_stack_.get_decision_level()) continue;
       }
       // don't include propagations or lev0 stuff
-      if (!var(t).ante.isDecision() || var(t).decision_level == 0) continue;
+      if (!var(t).ante.isNull() || var(t).decision_level == 0) continue;
       cl.clear();
       cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
       s2.add_clause(cl);
@@ -957,8 +957,7 @@ retStateT Counter::backtrack() {
     //    TODO: not sure we need the antecedent check here...
     //          probably doesn't hurt, but not sure.
     // Let's do it now!
-    if (!decision_stack_.top().is_right_branch() &&
-        var(top_dec_lit()).ante == Antecedent(NOT_A_CLAUSE)) {
+    if (!decision_stack_.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
       print_debug("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
       const Lit aLit = top_dec_lit();
@@ -1172,7 +1171,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
       cout << "Too high decision level enqueued." << endl;
       assert(false);
     }
-    if (var(t).ante.isDecision() && lev > 0) {
+    if (var(t).ante.isNull() && lev > 0) {
       num_decs_at_level.at(lev)++;
       if (num_decs_at_level.at(lev) >= 2) {
         cout << "Two or more of decs at level: " << lev << endl;
@@ -1187,7 +1186,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
     if (check_entail) {
       // Check entailment
       // No need to check if we are flipping and immediately backtracking
-      if (!var(t).ante.isDecision()) {
+      if (!var(t).ante.isNull()) {
         CMSat::SATSolver s2;
         CMSat::copy_solver_to_solver(sat_solver, &s2);
         vector<CMSat::Lit> cl;
@@ -1195,7 +1194,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
         s2.add_clause(cl);
         int32_t this_lev = var(t).decision_level;
         for(const auto& t2: trail) {
-          if (var(t2).ante.isDecision() &&
+          if (var(t2).ante.isNull() &&
               var(t2).decision_level <= this_lev &&
               var(t2).decision_level != 0) {
             cl.clear();
@@ -1292,7 +1291,7 @@ retStateT Counter::resolveConflict() {
       decision_stack_.top().change_to_right_branch();
       auto lit = top_dec_lit();
       reactivate_comps_and_backtrack_trail(false);
-      setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(NOT_A_CLAUSE));
+      setLiteral(lit.neg(), decision_stack_.get_decision_level());
       return RESOLVED;
     }
   }
@@ -1304,7 +1303,7 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   VERBOSE_PRINT("decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level());
 
-  Antecedent ant(NOT_A_CLAUSE);
+  Antecedent ant;
   assert(!uip_clause.empty());
   SLOW_DEBUG_DO(check_implied(uip_clause));
   if (decision_stack_.get_decision_level() > 0 &&
@@ -1494,7 +1493,7 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
 }
 
 bool Counter::propagate() {
-  confl = Antecedent(NOT_A_CLAUSE);
+  confl = Antecedent();
   VERBOSE_PRINT("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
@@ -1604,13 +1603,13 @@ bool Counter::propagate() {
     }
     while(it != ws.end()) *it2++ = *it++;
     ws.resize(it2-ws.begin());
-    if (confl != Antecedent(NOT_A_CLAUSE)) break;
+    if (!confl.isNull()) break;
   }
-  SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE) && !check_watchlists()) {
+  SLOW_DEBUG_DO(if (confl.isNull() && !check_watchlists()) {
       print_trail(false, false);assert(false);});
-  SLOW_DEBUG_DO(if (confl == Antecedent(NOT_A_CLAUSE)) check_all_propagated());
+  SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated());
   VERBOSE_PRINT("After propagate, qhead is: " << qhead);
-  return confl == Antecedent(NOT_A_CLAUSE);
+  return confl.isNull();
 }
 
 void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
@@ -1762,7 +1761,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     // Finally set what we came to set
     for(const auto& l: toSet) {
       if (isUnknown(l)) {
-        setLiteral(l, decision_stack_.get_decision_level(), Antecedent(Lit(), true));
+        setLiteral(l, decision_stack_.get_decision_level(), Antecedent::fakeAnte());
         bool bSucceeded = propagate();
         if (!bSucceeded) return false;
         stats.num_failed_bprop_literals_failed++;
@@ -1814,7 +1813,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     stats.num_failed_literals_detected_++;
     print_debug("-> failed literal detected");
     sz = trail.size();
-    setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent(Lit(), true));
+    setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent::fakeAnte());
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
     if (!propagate()) {
@@ -1915,7 +1914,7 @@ void Counter::recursiveConfClauseMin()
 
   size_t i, j;
   for (i = j = 1; i < uip_clause.size(); i++) {
-    if (var(uip_clause[i]).ante == Antecedent(NOT_A_CLAUSE)
+    if (var(uip_clause[i]).ante.isNull()
       || !litRedundant(uip_clause[i], abstract_level)
     ) {
       VERBOSE_PRINT("ccmin -- keeping lit: " << uip_clause[i]);
@@ -1956,21 +1955,20 @@ int32_t Counter::get_confl_maxlev(const Lit p) const {
   uint32_t size = 0;
 
   if (confl.isAClause()) {
-    assert(confl.asCl() != NOT_A_CLAUSE);
     VERBOSE_PRINT("Conflicting CL offset: " << confl.asCl());
     Clause* cl = alloc->ptr(confl.asCl());
     c = cl->getData();
     size = cl->sz;
   } else if (confl.isFake()) {
     assert(false);
-  } else {
+  } else if (confl.isALit()) {
     //Binary
     c = tmpLit;
     if (p == NOT_A_LIT) c[0] = conflLit;
     else c[0] = p;
     c[1] = confl.asLit();
     size = 2;
-  }
+  } else {assert(false);}
   int32_t maxlev = -1;
   for(uint32_t i = 0; i < size; i ++) {
 #ifdef VERBOSE_DEBUG
@@ -2016,7 +2014,6 @@ void Counter::recordLastUIPCauses() {
   do {
     if (confl.isAClause()) {
       // Long clause
-      assert(confl.asCl() != NOT_A_CLAUSE);
       Clause& cl = *alloc->ptr(confl.asCl());
       c = cl.getData();
       size = cl.sz;
@@ -2027,7 +2024,7 @@ void Counter::recordLastUIPCauses() {
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isFake()) {
       assert(false);
-    } else {
+    } else if (confl.isALit()) {
       // Binary
       assert(!confl.isAClause());
       c = tmpLit;
@@ -2037,7 +2034,7 @@ void Counter::recordLastUIPCauses() {
       if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
         std::swap(c[0], c[1]);
       size = 2;
-    }
+    } else {assert(false);}
 
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
 #ifdef VERBOSE_DEBUG

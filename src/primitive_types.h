@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 constexpr uint32_t varsSENTINEL = 0;
 constexpr uint32_t clsSENTINEL = 0;
-constexpr uint32_t NOT_A_CLAUSE = 0;
 
 typedef uint32_t VariableIndex;
 typedef uint32_t ClauseIndex;

@@ -177,48 +177,44 @@ public:
   }
 };
 
+enum class AnteType {
+  clause, lit, fake, decision
+};
+
 class Antecedent {
-  uint32_t val_; // stuffed  value. LSB indicates long clause/binary cl
-  bool fake = false; // for PROBE and BPROP
+  uint32_t val_;
+  AnteType type = AnteType::decision;
 
 public:
   Antecedent() {
-    val_ = 1;
-    fake = false;
+    type = AnteType::decision;
   }
 
   explicit Antecedent(const ClauseOfs cl_ofs) {
-     val_ = (cl_ofs << 1) | 1;
-     fake = false;
+     val_ = cl_ofs;
+     type = AnteType::clause;
    }
-  explicit Antecedent(const Lit idLit, bool _fake = false) :
-    fake (_fake) {
-    if (_fake) return;
-    val_ = (idLit.raw() << 1);
+  explicit Antecedent(const Lit idLit) {
+    val_ = idLit.raw();
+    type = AnteType::lit;
   }
 
-  bool isDecision() const {return isAClause() && asCl() == NOT_A_CLAUSE;}
-  bool isFake() const {return fake;}
-  bool isAClause() const { return !fake && (val_ & 0x01); }
+  bool isNull() const {return type == AnteType::decision;}
+  bool isAnt() const {return !isNull();}
+  bool isFake() const {return type == AnteType::fake;}
+  bool isAClause() const { return type == AnteType::clause; }
+  bool isALit() const { return type == AnteType::lit; }
+
   ClauseOfs asCl() const {
     SLOW_DEBUG_DO(assert(isAClause()));
-    return val_ >> 1;
+    return val_;
   }
 
   Lit asLit() const {
-    SLOW_DEBUG_DO(assert(!fake && !isAClause()));
+    SLOW_DEBUG_DO(assert(isALit()));
     Lit idLit;
-    idLit.copyRaw(val_ >> 1);
+    idLit.copyRaw(val_);
     return idLit;
-  }
-
-  // Has an antecedent?
-  bool isAnt() const {
-    if (fake) return true;
-    //Note that literals and clause offsets both start
-    // at a higher-than 0 index, so if it's been set to be an antecdent, it'll be
-    // different than 1
-    return val_ != 1;
   }
 
   bool operator==(const Antecedent& other) const {
@@ -227,22 +223,26 @@ public:
   bool operator!=(const Antecedent& other) const {
     return val_ != other.val_;
   }
+
+  static Antecedent fakeAnte() {
+    Antecedent ante;
+    ante.type = AnteType::fake;
+    return ante;
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 {
   std::stringstream s;
-  if (val.isAClause() && val.asCl() == NOT_A_CLAUSE) {
+  if (val.isNull()) {
     s << std::setw(5) << "DEC  " << std::setw(10) << "";
-  } else if (!val.isAnt()) {
-    s << std::setw(5) << "???  " << std::setw(10) << "";
   } else if (val.isFake()) {
     s << std::setw(5) <<"fake " << std::setw(10) << "";
   } else if (val.isAClause()) {
     s << "CL:  " << std::setw(10) << val.asCl();
-  } else {
+  } else if (val.isALit()) {
     s << "Lit: " << std::setw(10) << val.asLit();
-  }
+  } else {assert(false);}
   os << s.str();
   return os;
 }

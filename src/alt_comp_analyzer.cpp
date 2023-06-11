@@ -45,7 +45,7 @@ void ComponentAnalyzer::initialize(
   print_debug(COLBLBACK "Building occ list in ComponentAnalyzer::initialize...");
 
   vector<uint32_t> tmp;
-  max_clause_id_ = 0;
+  max_clause_id_ = 1;
   // lit_pool contains all non-binary clauses
   for (const auto& off: longIrredCls) {
     // Builds the occ list for 3-long and long clauses

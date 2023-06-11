@@ -58,7 +58,7 @@ protected:
   CounterConfiguration config_;
   void unSet(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << lit << endl);
-    var(lit).ante = Antecedent(NOT_A_CLAUSE);
+    var(lit).ante = Antecedent();
     var(lit).decision_level = INVALID_DL;
     lit_values_[lit] = X_TRI;
     lit_values_[lit.neg()] = X_TRI;
@@ -226,9 +226,8 @@ private:
 
 };
 
-
 Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
-  Antecedent ante(NOT_A_CLAUSE);
+  Antecedent ante;
   stats.num_clauses_learned_++;
   Clause* cl = addClause(literals, true);
   if (cl) {

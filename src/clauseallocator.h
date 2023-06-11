@@ -38,11 +38,9 @@ public:
   ClauseAllocator();
   ~ClauseAllocator();
 
-  template<class T>
-  Clause* Clause_new(uint8_t _lbd, bool _red, uint32_t sz)
-  {
+  Clause* new_cl(bool _red, uint32_t sz) {
     void* mem = allocEnough(sz);
-    Clause* real = new (mem) Clause(_lbd, _red, sz);
+    Clause* real = new (mem) Clause(_red, sz);
     return real;
   }
 

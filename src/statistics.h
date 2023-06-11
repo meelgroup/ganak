@@ -58,7 +58,6 @@ public:
   uint64_t num_binary_irred_clauses_ = 0;
 
   uint64_t num_unit_red_clauses_ = 0;
-  uint64_t num_long_red_clauses_ = 0;
   uint64_t num_binary_red_clauses_ = 0;
 
   // Clause db management

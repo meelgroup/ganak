@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "clauseallocator.h"
 #include "statistics.h"
 #include "comp_types/comp.h"
 #include "comp_types/base_packed_comp.h"
@@ -33,6 +34,7 @@ THE SOFTWARE.
 #include "containers.h"
 #include "stack.h"
 
+class ClauseAllocator;
 class Counter;
 
 // There is exactly ONE of this, inside ComponentManager, which is inside Solver
@@ -58,7 +60,7 @@ public:
   const ComponentArchetype &current_archetype() const { return archetype_; }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
-      vector<Lit> &lit_pool);
+      const ClauseAllocator* alloc, const vector<ClauseOfs>& longIrredCls);
 
   bool isUnseenAndSet(const VariableIndex v) const {
     SLOW_DEBUG_DO(assert(v <= max_variable_id_));
@@ -173,16 +175,10 @@ private:
   // after execution comp_search_stack.size()==1
   void recordComponentOf(const VariableIndex var);
 
-  // Gets a full clause until SENTINEL_LIT, except for the omitLit
-  void getClause(
-    vector<uint32_t> &tmp,
-    vector<Lit>::iterator & it_start_of_cl,
-    Lit & omitLit)
-  {
+  void getClause(vector<uint32_t> &tmp, const Clause& cl, const Lit & omitLit) {
     tmp.clear();
-    for (auto it_lit = it_start_of_cl; *it_lit != SENTINEL_LIT; it_lit++) {
-      if (it_lit->var() != omitLit.var())
-        tmp.push_back(it_lit->raw());
+    for (const auto&l: cl) {
+      if (l.var() != omitLit.var()) tmp.push_back(l.raw());
     }
   }
 

@@ -47,8 +47,7 @@ public:
                    const uint32_t& indep_support_end, Counter* _solver) :
       config_(config), stats(statistics), cache_(statistics, config_, sz),
       ana_(lit_values, indep_support_end, _solver), solver_(_solver)
-  {
-  }
+  { }
 
   ~ComponentManager() {
     free(randomseedforCLHASH);
@@ -56,53 +55,30 @@ public:
     comp_stack_.clear();
   }
 
-  unsigned& scoreOf(VariableIndex v)
-  {
-    return ana_.scoreOf(v);
-  }
+  unsigned& scoreOf(VariableIndex v) { return ana_.scoreOf(v); }
+  unsigned scoreOf(VariableIndex v) const { return ana_.scoreOf(v); }
 
-  unsigned scoreOf(VariableIndex v) const
-  {
-    return ana_.scoreOf(v);
-  }
-
-  void initialize(LiteralIndexedVector<LitWatchList> &literals, vector<Lit> &lit_pool, uint32_t nVars);
+  void initialize(LiteralIndexedVector<LitWatchList> &watches_,
+    const ClauseAllocator* _alloc, const vector<ClauseOfs>& longIrredCls, uint32_t nVars);
   void delete_comps_with_vars(const set<uint32_t>& vars) {
     cache_.delete_comps_with_vars(vars);
   }
   const ComponentCache& get_cache() const { return cache_; }
 
 
-  uint64_t get_num_cache_entries_used() const
-  {
-    return cache_.get_num_entries_used();
-  }
-
-  void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value)
-  {
+  uint64_t get_num_cache_entries_used() const { return cache_.get_num_entries_used(); }
+  void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value) {
     cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
-  Component& getSuperComponentOf(const StackLevel &lev)
-  {
+  Component& getSuperComponentOf(const StackLevel &lev) {
     assert(comp_stack_.size() > lev.super_comp());
     return *comp_stack_[lev.super_comp()];
   }
 
-  uint32_t comp_stack_size()
-  {
-    return comp_stack_.size();
-  }
-
-  const Component* at(const size_t at) const {
-    return comp_stack_.at(at);
-  }
-
-  double cacheScoreOf(const VariableIndex v) const
-  {
-    return cachescore_[v];
-  }
-
+  uint32_t comp_stack_size() { return comp_stack_.size(); }
+  const Component* at(const size_t at) const { return comp_stack_.at(at); }
+  double cacheScoreOf(const VariableIndex v) const { return cachescore_[v]; }
   void cleanRemainingComponentsOf(const StackLevel &top)
   {
     print_debug(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);

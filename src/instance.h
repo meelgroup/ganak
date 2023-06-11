@@ -25,23 +25,30 @@ THE SOFTWARE.
 #include <cassert>
 #include <cryptominisat5/cryptominisat.h>
 
+#include "clauseallocator.h"
 #include "primitive_types.h"
 #include "statistics.h"
 #include "structures.h"
 #include "containers.h"
 #include "solver_config.h"
 
+class ClauseAllocator;
+
 class Instance {
 public:
   Instance(const CounterConfiguration& _config) : config_(_config), stats (this, config_) { }
   void new_vars(const uint32_t n);
-  void add_irred_cl(const vector<Lit>& lits);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
-  uint32_t get_num_long_reds() const { return red_cls.size(); }
+  uint32_t get_num_long_reds() const { return longRedCls.size(); }
   uint32_t get_num_irred_long_cls() const { return stats.num_long_irred_clauses_; }
   int val(Lit lit) const { return lit_values_[lit]; }
   int val(uint32_t var) const { return lit_values_[Lit(var,1)]; }
 
+
+  friend class ClauseAllocator;
+  ClauseAllocator* alloc;
+  vector<ClauseOfs> longIrredCls;
+  vector<ClauseOfs> longRedCls;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
   void check_all_propagated() const;
@@ -69,16 +76,12 @@ protected:
   }
 
   void reduceDB();
-  size_t minimize_cl_with_bins(ClauseOfs off);
   template<class T> void minimize_uip_cl_with_bins(T& cl);
   vector<Lit> tmp_minim_with_bins;
   void markClauseDeleted(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
 
 
-  // Compact the literal pool erasing all the clause
-  // information from deleted clauses
-  void compactConflictLiteralPool();
   bool findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
   void checkWatchLists() const;
 
@@ -89,29 +92,13 @@ protected:
 
   DataAndStatistics stats;
 
-  /*  lit_pool_: the literals of all clauses are stored here
-   *   This includes both IRRED + RED clauses
-   *   irred clauses are until irred_lit_pool_size_
-   *   INVARIANT: first and last entries of lit_pool_ are a SENTINEL_LIT
-   *
-   *   Clauses begin with a ClHeader structure followed by the literals
-   *   terminated by SENTINEL_LIT
-   */
-  vector<Lit> lit_pool_;
-
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
   bool perform_projected_counting = false;
 
 
-  // this is to determine the starting offset of
-  // conflict clauses
-  uint32_t irred_lit_pool_size_;
-
-  LiteralIndexedVector<vector<ClauseOfs> > occ_lists_; // used ONLY to figure out which
-                                                       // literals should we probe
+  LiteralIndexedVector<vector<ClauseOfs>> occ_lists_;
   LiteralIndexedVector<LitWatchList> watches_; // watches
-  vector<ClauseOfs> red_cls;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> lit_values_;
@@ -125,22 +112,22 @@ protected:
   vector<uint64_t> lbdHelper;
   uint64_t lbdHelperFlag = 0;
 
-  uint32_t calc_lbd(ClauseOfs offs) {
+  uint32_t calc_lbd(const Clause* cl) {
     lbdHelperFlag++;
     uint32_t nblevels = 0;
-    for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++) {
-      int lev = var(*it).decision_level;
+    for (auto l: *cl) {
+      int lev = var(l).decision_level;
       if (lev == -1) {nblevels++; continue;} // can happen in weird conflict...
       if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
         lbdHelper[lev] = lbdHelperFlag;
         nblevels++;
-        if (nblevels >= 1000) { return nblevels; }
+        if (nblevels >= 250) { return nblevels; }
       }
     }
     return nblevels;
   }
 
-  template<class T> uint32_t calc_lbd(T& lits) {
+  uint32_t calc_lbd(const vector<Lit>& lits) {
     lbdHelperFlag++;
     uint32_t nblevels = 0;
     for(const auto& l: lits) {
@@ -148,15 +135,14 @@ protected:
       if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
         lbdHelper[lev] = lbdHelperFlag;
         nblevels++;
-        if (nblevels >= 1000) { return nblevels; }
+        if (nblevels >= 250) { return nblevels; }
       }
     }
     return nblevels;
   }
 
-  void increaseActivity(ClauseOfs offs) {
-    for (auto it = beginOf(offs); *it != SENTINEL_LIT; it++)
-      increaseActivity(*it);
+  void increaseActivity(const Clause* cl) {
+    for (auto l: *cl) increaseActivity(l);
   }
 
   void inline increaseActivity(const Lit lit) {
@@ -179,12 +165,13 @@ protected:
     return false;
   }
 
+  // TODO remove -- should be a check for level 0 in variables_
   bool existsUnitClauseOf(Lit l) {
     for (auto l2 : unit_clauses_) if (l == l2) return true;
     return false;
   }
 
-  inline ClauseIndex addClause(const vector<Lit> &literals, bool red);
+  Clause* addClause(const vector<Lit> &literals, bool red);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
@@ -233,30 +220,8 @@ protected:
     return lit_values_[Lit(var, false)] == X_TRI;
   }
 
-  Lit const* beginOf(ClauseOfs cl_ofs) const {
-    return lit_pool_.data() + cl_ofs;
-  }
-  Lit* beginOf(ClauseOfs cl_ofs) {
-    return lit_pool_.data() + cl_ofs;
-  }
-
-  decltype(lit_pool_.begin()) conflict_clauses_begin() {
-     return lit_pool_.begin() + irred_lit_pool_size_;
-   }
-
-  const ClHeader &getHeaderOf(ClauseOfs cl_ofs) const {
-    return *reinterpret_cast<const ClHeader *>(
-        &lit_pool_[cl_ofs - ClHeader::overheadInLits()]);
-  }
-
-  ClHeader &getHeaderOf(ClauseOfs cl_ofs) {
-    return *reinterpret_cast<ClHeader *>(
-        &lit_pool_[cl_ofs - ClHeader::overheadInLits()]);
-  }
-
-  bool isSatisfied(ClauseOfs cl_ofs) {
-    for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++)
-      if (isTrue(*lt)) return true;
+  bool isSatisfied(ClauseOfs off) {
+    for (auto lt: *alloc->ptr(off)) if (isTrue(lt)) return true;
     return false;
   }
 protected:
@@ -274,46 +239,16 @@ private:
 
 };
 
-ClauseIndex Instance::addClause(const vector<Lit> &lits, bool red) {
-  if (lits.size() == 1) {
-    // TODO Deal properly with the situation that opposing unit clauses are learned
-    // NOTE that currently this cannot happen, we always check
-    //      for at least one solution
-    /* assert(!isUnitClause(lits[0].neg())); */
-    unit_clauses_.push_back(lits[0]);
-    return 0;
-  }
-
-  if (lits.size() == 2) {
-    add_bin_cl(lits[0], lits[1], red);
-    return 0;
-  }
-
-  for (uint32_t i = 0; i < ClHeader::overheadInLits(); i++) lit_pool_.push_back(Lit());
-  ClauseOfs off = lit_pool_.size();
-
-  for (auto l : lits) {
-    lit_pool_.push_back(l);
-    watches_[l].occ.push_back(off);
-  }
-  lit_pool_.push_back(SENTINEL_LIT);
-  Lit blckLit = lits[lits.size()/2];
-  litWatchList(lits[0]).addWatchLinkTo(off, blckLit);
-  litWatchList(lits[1]).addWatchLinkTo(off, blckLit);
-  auto& header = getHeaderOf(off);
-  header = ClHeader(0, red);
-  return off;
-}
 
 Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
   Antecedent ante(NOT_A_CLAUSE);
   stats.num_clauses_learned_++;
-  ClauseOfs cl_ofs = addClause(literals, true);
-  if (cl_ofs != NOT_A_CLAUSE) {
-    red_cls.push_back(cl_ofs);
-    auto& header = getHeaderOf(cl_ofs);
-    header = ClHeader(calc_lbd(cl_ofs), true);
-    ante = Antecedent(cl_ofs);
+  Clause* cl = addClause(literals, true);
+  if (cl) {
+    auto off = alloc->get_offset(cl);
+    longRedCls.push_back(off);
+    cl->lbd = calc_lbd(cl);
+    ante = Antecedent(off);
   } else if (literals.size() == 2){
     ante = Antecedent(literals.back());
     stats.num_binary_red_clauses_++;

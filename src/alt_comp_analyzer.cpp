@@ -22,13 +22,14 @@ THE SOFTWARE.
 
 #include "alt_comp_analyzer.h"
 #include "solver.h"
+#include "clauseallocator.h"
 
 // Builds occ lists and sets things up
 void ComponentAnalyzer::initialize(
-    LiteralIndexedVector<LitWatchList> & litWatchList, // binary clauses
-    vector<Lit> &lit_pool) // longer-than-2-long clauses
+    LiteralIndexedVector<LitWatchList> & watches_, // binary clauses
+    const ClauseAllocator* alloc, const vector<ClauseOfs>& longIrredCls) // longer-than-2-long clauses
 {
-  max_variable_id_ = litWatchList.end_lit().var() - 1;
+  max_variable_id_ = watches_.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
 
@@ -45,37 +46,28 @@ void ComponentAnalyzer::initialize(
 
   vector<uint32_t> tmp;
   max_clause_id_ = 0;
-  auto it_curr_cl_st = lit_pool.begin();
-
   // lit_pool contains all non-binary clauses
-  for (auto it_lit = lit_pool.begin(); it_lit != lit_pool.end(); it_lit++) {
+  for (const auto& off: longIrredCls) {
     // Builds the occ list for 3-long and long clauses
     // it_curr_cl_st is the starting point of the clause
     // for each lit in the clause, it adds the clause to the occ list
+    const Clause& cl = *alloc->ptr(off);
 
-    if (*it_lit == SENTINEL_LIT) { //End of this clause
-      if (it_lit + 1 == lit_pool.end()) break;
-      max_clause_id_++;
-      it_lit += ClHeader::overheadInLits();
-      it_curr_cl_st = it_lit + 1; // Point to next clause
-    } else {
-      const uint32_t var = it_lit->var();
+    for(const auto& l: cl) {
+      const uint32_t var = l.var();
       assert(var <= max_variable_id_);
-      getClause(tmp, it_curr_cl_st, *it_lit);
+      getClause(tmp, cl, l);
       assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
         // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
         occ_ternary_clauses[var].push_back(max_clause_id_);
-        occ_ternary_clauses[var].insert(
-            occ_ternary_clauses[var].end(),
-            tmp.begin(), tmp.end());
+        occ_ternary_clauses[var].insert(occ_ternary_clauses[var].end(), tmp.begin(), tmp.end());
       } else {
         // Long clauses
         occs[var].push_back(max_clause_id_);
         occs[var].push_back(occ_long_clauses[var].size());
-        occ_long_clauses[var].insert(occ_long_clauses[var].end(),
-            tmp.begin(), tmp.end());
+        occ_long_clauses[var].insert(occ_long_clauses[var].end(), tmp.begin(), tmp.end());
         occ_long_clauses[var].push_back(SENTINEL_LIT.raw());
       }
     }
@@ -103,10 +95,10 @@ void ComponentAnalyzer::initialize(
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
 
     // data for binary clauses
-    for (const auto& l: litWatchList[Lit(v, false)].binary_links_)
+    for (const auto& l: watches_[Lit(v, false)].binary_links_)
       unified_variable_links_lists_pool_.push_back(l.var());
 
-    for (const auto& l: litWatchList[Lit(v, true)].binary_links_)
+    for (const auto& l: watches_[Lit(v, true)].binary_links_)
       unified_variable_links_lists_pool_.push_back(l.var());
 
     // data for ternary clauses

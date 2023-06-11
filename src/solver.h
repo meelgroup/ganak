@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "clauseallocator.h"
 #include "common.h"
 #include "cryptominisat5/cryptominisat.h"
 #include "primitive_types.h"
@@ -58,12 +59,15 @@ struct VS {
   uint32_t score2 = 0;
 };
 
+class ClauseAllocator;
+
 // There is only one counter
-class Counter : public Instance
-{
+class Counter : public Instance {
 public:
   Counter(const CounterConfiguration& conf);
   ~Counter();
+  friend class ClauseAllocator;
+
 
   double scoreOf(VariableIndex v) {
     if (config_.branch_type == branch_t::sharptd) {
@@ -84,6 +88,7 @@ public:
   DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
+  void add_irred_cl(const vector<Lit>& lits);
   void add_red_cl(const vector<Lit>& lits, int lbd = -1);
   void get_activities(vector<double>& acts, vector<uint8_t>& polars, double& ret_act_inc, vector<uint32_t>& comp_acts) const;
   void set_activities(const vector<double>& act, const vector<uint8_t>& polars, double act_inc, vector<uint32_t>& comp_acts);
@@ -202,10 +207,10 @@ private:
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
     if (ant.isAnt() && ant.isAClause()) {
-      auto& header = getHeaderOf(ant.asCl());
-      if (header.red && header.lbd > lbd_cutoff) {
-        header.increaseScore();
-        header.update_lbd(calc_lbd(ant.asCl()));
+      Clause& cl = *alloc->ptr(ant.asCl());
+      if (cl.red && cl.lbd > lbd_cutoff) {
+        cl.increaseScore();
+        cl.update_lbd(calc_lbd(&cl));
       }
     }
     lit_values_[lit] = T_TRI;
@@ -229,14 +234,13 @@ private:
     confl = Antecedent(litB);
   }
 
-  void setConflictState(ClauseOfs off)
+  void setConflictState(Clause* cl)
   {
-    auto& header = getHeaderOf(off);
-    if (header.red && header.lbd > lbd_cutoff) {
-      header.increaseScore();
-      header.update_lbd(calc_lbd(off));
+    if (cl->red && cl->lbd > lbd_cutoff) {
+      cl->increaseScore();
+      cl->update_lbd(calc_lbd(cl));
     }
-    confl = Antecedent(off);
+    confl = Antecedent(alloc->get_offset(cl));
     conflLit = NOT_A_LIT;
   }
 
@@ -324,6 +328,7 @@ private:
   // before) then assertionLevel_ == DL;
   int assertion_level_ = 0;
 
+  int32_t get_confl_maxlev(const Lit p) const;
   void recordLastUIPCauses();
   void minimizeUIPClause();
   uint32_t abstractLevel(const uint32_t x) const;

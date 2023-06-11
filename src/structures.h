@@ -69,9 +69,13 @@ public:
 
   void inc(){++value_;}
 
-  void copyRaw(uint32_t v) {
-    value_ = v;
+  static Lit toLit(uint32_t data) {
+    Lit l;
+    l.copyRaw(data);
+    return l;
   }
+
+  void copyRaw(uint32_t v) { value_ = v; }
 
   // True if it's NON-NEGATED and False if it's NEGATED
   bool sign() const {
@@ -131,7 +135,6 @@ class LitWatchList {
 public:
   vector<Lit> binary_links_;
   vector<ClOffsBlckL> watch_list_;
-  vector<ClauseOfs> occ;
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
@@ -150,13 +153,6 @@ public:
       if (w.ofs == off) { w.ofs = replace_ofs; found = true; break; }
     }
     assert(found && "Should have found watch!!!");
-#ifdef SLOW_DEBUG
-    found = false;
-    for (auto& o: occ) {
-      if (o == off) { o = replace_ofs; found = true; break; }
-    }
-    assert(found && "Should have found occ!!!");
-#endif
   }
 
   void addWatchLinkTo(ClauseIndex offs, Lit blockedLit) {
@@ -258,26 +254,47 @@ struct Variable {
   uint32_t sublevel;
 };
 
-class ClHeader {
+class Clause {
 public:
-  ClHeader(uint8_t _lbd, bool _red): lbd(_lbd), red(_red)  {}
+  Clause(bool _red, uint32_t _sz):
+    sz(_sz), red(_red)  {}
 
   void increaseScore() {
     used = 1;
     total_used++;
   }
+  uint32_t sz;
   uint32_t total_used = 0;
-  uint8_t lbd;
+  uint8_t lbd = 0;
   uint8_t used:1 = 1;
   uint8_t marked_deleted:1 = 0;
   uint8_t red:1 = 0;
+  uint8_t freed:1 = 0;
+  uint8_t reloced:1 = 0;
 
   void update_lbd(uint32_t _lbd) {
     if (_lbd > 250) return;
     if (_lbd < lbd) lbd = _lbd;
   }
-
-  constexpr static uint32_t overheadInLits() {
-    return sizeof(ClHeader)/sizeof(Lit) + (bool)(sizeof(ClHeader)%sizeof(Lit));
+  Lit* getData() const {
+    return (Lit*)((char*)this + sizeof(Clause));
+  }
+  Lit* begin() {
+    return getData();
+  }
+  const Lit* begin() const {
+    return getData();
+  }
+  const Lit* end() const {
+    return begin()+sz*sizeof(Lit);
+  }
+  Lit* end() {
+    return begin()+sz*sizeof(Lit);
+  }
+  Lit& operator[](uint32_t at) {
+    return *(getData()+at);
+  }
+  const Lit& operator[](uint32_t at) const {
+    return *(getData()+at);
   }
 };

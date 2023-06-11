@@ -26,11 +26,11 @@ THE SOFTWARE.
 
 // Initialized exactly once when Solver is created.
 //   it also inits the included analyzer called "ana_"
-void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & literals,
-    vector<Lit> &lit_pool, uint32_t nVars){
+void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
+    const ClauseAllocator* _alloc, const vector<ClauseOfs>& longIrredCls, uint32_t nVars){
   assert(comp_stack_.empty());
 
-  ana_.initialize(literals, lit_pool);
+  ana_.initialize(watches_, _alloc, longIrredCls);
   sz = BasePackedComponent::calcPackSize(ana_.max_variable_id(), ana_.max_clause_id());
 
   //Add dummy comp

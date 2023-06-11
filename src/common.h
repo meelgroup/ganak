@@ -22,9 +22,14 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <string>
+#include <iomanip>
+#include <sstream>
+#include <cstdint>
+
 /* #define VERBOSE_DEBUG */
-/* #define SLOW_DEBUG */
-/* #define CHECK_TRAIL_ENTAILMENT */
+#define SLOW_DEBUG
+#define CHECK_TRAIL_ENTAILMENT
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */
@@ -89,3 +94,33 @@ THE SOFTWARE.
             abort(); \
         } \
     } while (0)
+
+inline double float_div(const double a, const double b)
+{
+    if (b != 0)
+        return a/b;
+
+    return 0;
+}
+
+inline std::string print_value_kilo_mega(const int64_t value, bool setw = true)
+{
+  std::stringstream ss;
+  if (value > 20*1000LL*1000LL) {
+    if (setw) {
+        ss << std::setw(4);
+    }
+    ss << value/(1000LL*1000LL) << "M";
+  } else if (value > 20LL*1000LL) {
+    if (setw) {
+        ss << std::setw(4);
+    }
+    ss << value/1000LL << "K";
+  } else {
+    if (setw) {
+        ss << std::setw(5);
+    }
+    ss << value;
+  }
+  return ss.str();
+}

@@ -50,7 +50,6 @@ void Counter::simplePreProcess()
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   viewed_lits.resize(2*(nVars() + 1), 0);
   stats.num_unit_irred_clauses_ = unit_clauses_.size();
-  irred_lit_pool_size_ = lit_pool_.size();
   init_decision_stack();
   qhead = 0;
 }
@@ -103,7 +102,30 @@ void Counter::end_irred_cls()
   ended_irred_cls = true;
 
   if (config_.verb) stats.printShortFormulaInfo();
-  comp_manager_->initialize(watches_, lit_pool_, nVars());
+  comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
+}
+
+void Counter::add_irred_cl(const vector<Lit>& lits) {
+  if (lits.empty()) {
+    cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
+    exit(-1);
+  }
+  for(const auto& l: lits) assert(l.var() <= nVars());
+  stats.incorporateIrredClauseData(lits);
+  Clause* cl = addClause(lits, false);
+  auto off = alloc->get_offset(cl);
+  if (cl) {
+    if (off) longIrredCls.push_back(off);
+    if (lits.size() >= 3) {
+      for (const auto& l : lits)
+        occ_lists_[l].push_back(off);
+    }
+  }
+
+
+#ifdef SLOW_DEBUG
+  debug_irred_cls.push_back(lits);
+#endif
 }
 
 void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
@@ -112,16 +134,13 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
   for(const auto& l: lits) release_assert(isUnknown(l));
   assert(lits.size() >= 2 && "No unit or empty clauses please");
 
-  // NOTE: since we called end_irred_cls, this binary will NOT end up
-  //       through ComponentAnalyzer::initialize in analyzer's
-  //       unified_variable_links_lists_pool_ which means it will NOT
-  //       connect components -- which is what we want
-  ClauseOfs cl_ofs = addClause(lits, true);
-  if (cl_ofs != 0) {
-    red_cls.push_back(cl_ofs);
-    auto& header = getHeaderOf(cl_ofs);
+  Clause* cl = addClause(lits, true);
+  if (cl) {
+    auto off = alloc->get_offset(cl);
+    longRedCls.push_back(off);
     if (lbd == -1) lbd = lits.size();
-    header = ClHeader(lbd, true);
+    cl->lbd = lbd;
+    cl->red = true;
   }
 }
 
@@ -227,16 +246,15 @@ void Counter::td_decompose()
     }
   }
 
-  for(uint32_t i = ClHeader::overheadInLits()+1; i < irred_lit_pool_size_;
-      i+=ClHeader::overheadInLits()) {
-    for(; lit_pool_[i] != SENTINEL_LIT; i++) {
-      for(uint32_t i2 = i+1; lit_pool_[i2] != SENTINEL_LIT; i2++) {
-        print_debug("v1: " << lit_pool_[i].var());
-        print_debug("v2: " << lit_pool_[i2].var());
-        primal.addEdge(lit_pool_[i].var(), lit_pool_[i2].var());
+  for(const auto& off: longIrredCls) {
+    Clause& cl = *alloc->ptr(off);
+    for(uint32_t i = 0; i < cl.sz; i++) {
+      for(uint32_t i2 = i; i2 < cl.sz; i2++) {
+        print_debug("v1: " << cl[i].var());
+        print_debug("v2: " << cl[i2].var());
+        primal.addEdge(cl[i].var(), cl[i2].var());
       }
     }
-    i++;
   }
   verb_print(1, "Primal graph: nodes: " << nVars()+1 << ", edges " <<  primal.numEdges());
 
@@ -283,7 +301,6 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret, CMSat::SATSolver* _sat_s
   verb_print(1, "branch type: " << config_.get_branch_type_str());
 
   const auto exit_state = countSAT();
-  stats.num_long_red_clauses_ = red_cls.size();
   if (config_.verb) stats.printShort(this, &comp_manager_->get_cache());
   if (exit_state == RESTART) {
     largest_cube_ret = largest_cube;
@@ -1233,7 +1250,7 @@ retStateT Counter::resolveConflict() {
 
   if (stats.conflicts-stats.uip_not_added+stats.saved_uip_used > last_reduceDB_conflicts+10000) {
     reduceDB();
-    if (stats.cls_deleted_since_compaction > 50000) compactConflictLiteralPool();
+    if (stats.cls_deleted_since_compaction > 50000) alloc->consolidate(this);
     last_reduceDB_conflicts = stats.conflicts-stats.uip_not_added+stats.saved_uip_used;
   }
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -1418,7 +1435,7 @@ prop_again:;
 
     if (clause_falsified(cl)) {
       auto ante = addUIPConflictClause(cl);
-      if (ante.isAClause()) setConflictState(ante.asCl());
+      if (ante.isAClause()) setConflictState(alloc->ptr(ante.asCl()));
       else setConflictState(cl[0], cl[1]);
 #ifdef VERB_DEBUG_SAVED
       cout << "Falsified. Ante: " << ante << endl;
@@ -1467,8 +1484,9 @@ prop_again:;
 template<uint32_t start>
 inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind)
 {
-  for(auto i3 = start; *(beginOf(ofs)+i3) != SENTINEL_LIT; i3++) {
-    Lit l = *(beginOf(ofs)+i3);
+  Clause& cl = *alloc->ptr(ofs);
+  for(auto i3 = start; i3 < cl.sz; i3++) {
+    Lit l = cl[i3];
     int32_t nlev = var(l).decision_level;
     VERBOSE_DEBUG_DO(cout << "i3: " << i3 << " l : " << l << " var(l).decision_level: "
         << var(l).decision_level << " maxlev: " << maxlev << endl);
@@ -1519,7 +1537,7 @@ bool Counter::propagate() {
       if (isTrue(it->blckLit)) { *it2++ = *it; continue; }
 
       const auto ofs = it->ofs;
-      Lit* c = beginOf(ofs);
+      Clause& c = *alloc->ptr(ofs);
       if (c[0] == unLit) { std::swap(c[0], c[1]); }
 
 #ifdef VERBOSE_DEBUG
@@ -1538,12 +1556,12 @@ bool Counter::propagate() {
         continue;
       }
 
-      Lit* k = beginOf(ofs) + 2;
-      while (isFalse(*k)) k++;
+      uint32_t i = 2;
+      for(; i < c.sz; i++) if (!isFalse(c[i])) break;
       // either we found a free or satisfied lit
-      if (*k != SENTINEL_LIT) {
-        c[1] = *k;
-        *k = unLit;
+      if (i != c.sz) {
+        c[1] = c[i];
+        c[i] = unLit;
         VERBOSE_PRINT("New watch for cl: " << c[1]);
         litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
       } else {
@@ -1561,7 +1579,7 @@ bool Counter::propagate() {
               litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
             }
           }
-          setConflictState(ofs);
+          setConflictState(&c);
           it++;
           break;
         } else {
@@ -1656,11 +1674,11 @@ bool Counter::failed_lit_probe_no_bprop()
       // Only going through the long, the binary clauses have set the variables already
       for (auto cl_ofs : occ_lists_[it->neg()]) {
         if (!isSatisfied(cl_ofs)) {
-          for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
-            if (isUnknown(*lt) && !viewed_lits[lt->raw()]) {
-              test_lits.push_back(*lt);
-              print_debug("-> potential lit to test: " << lt->neg());
-              viewed_lits[lt->raw()] = true;
+          for(const auto& l: *alloc->ptr(cl_ofs)) {
+            if (isUnknown(l) && !viewed_lits[l.raw()]) {
+              test_lits.push_back(l);
+              print_debug("-> potential lit to test: " << l.neg());
+              viewed_lits[l.raw()] = true;
             }
           }
         }
@@ -1701,13 +1719,13 @@ bool Counter::failed_lit_probe_with_bprop() {
     test_lits.clear();
     for (auto it = trail.begin() + trail_ofs; it != trail.end(); it++) {
       // Only going through the long, the binary clauses have set the variables already
-      for (auto cl_ofs : occ_lists_[it->neg()]) {
-        if (!isSatisfied(cl_ofs)) {
-          for (auto lt = beginOf(cl_ofs); *lt != SENTINEL_LIT; lt++) {
-            if (isUnknown(*lt) && !viewed_lits[lt->var()]) {
-              test_lits.push_back(*lt);
-              print_debug("-> potential lit to test: " << lt->neg());
-              viewed_lits[lt->var()] = true;
+      for (const auto& off : occ_lists_[it->neg()]) {
+        if (!isSatisfied(off)) {
+          for (auto& l: *alloc->ptr(off)) {
+            if (isUnknown(l) && !viewed_lits[l.var()]) {
+              test_lits.push_back(l);
+              print_debug("-> potential lit to test: " << l.neg());
+              viewed_lits[l.var()] = true;
             }
           }
         }
@@ -1816,6 +1834,7 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
     analyze_stack.push_back(p);
 
     Lit tmpLit[2];
+    uint32_t size;
     size_t top = toClear.size();
     while (!analyze_stack.empty()) {
       VERBOSE_PRINT("At point in litRedundant: " << analyze_stack.back());
@@ -1824,8 +1843,11 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
       analyze_stack.pop_back();
 
       Lit* lits = NULL;
+      size = 0;
       if (reason.isAClause()) {
-        lits = beginOf(reason.asCl());
+        Clause* cl = alloc->ptr(reason.asCl());
+        lits = cl->getData();
+        size = cl->sz;
 #ifdef VERBOSE_DEBUG
         cout << "CL offs: " << reason.asCl() << " in analyze_stack:" << endl;
         for(Lit* l = lits; *l != SENTINEL_LIT; l++) {
@@ -1835,12 +1857,12 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
             << endl;
         }
 #endif
-        lits++;
       } else if (reason.isFake()) {
         assert(false && "not handled right now");
       } else if (!reason.isAClause()) {
-        tmpLit[0] = reason.asLit();
-        tmpLit[1] = SENTINEL_LIT;
+        tmpLit[0] = NOT_A_LIT;
+        tmpLit[1] = reason.asLit();
+        size = 2;
 #ifdef VERBOSE_DEBUG
         cout << "Bin cl in analyze_stack: " << endl;
         Lit* l = tmpLit;
@@ -1852,8 +1874,8 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
         lits = tmpLit;
       } else {assert(false && "no such reason");}
 
-      for (; *lits != SENTINEL_LIT; lits++) {
-        Lit p2 = *lits;
+      for (uint32_t i = 1; i < size; i++) {
+        Lit p2 = lits[i];
         VERBOSE_PRINT("Examining lit " << p2 << " tmp_seen: " << tmp_seen[p2.var()]);
         if (!tmp_seen[p2.var()] && var(p2).decision_level > 0) {
           if (var(p2).ante.isAnt()
@@ -1928,6 +1950,46 @@ void Counter::minimizeUIPClause() {
   SLOW_DEBUG_DO(check_implied(uip_clause));
 }
 
+int32_t Counter::get_confl_maxlev(const Lit p) const {
+  Lit tmpLit[3];
+  tmpLit[2] = SENTINEL_LIT;
+  Lit* c;
+  uint32_t size = 0;
+
+  if (confl.isAClause()) {
+    assert(confl.asCl() != NOT_A_CLAUSE);
+    VERBOSE_PRINT("Conflicting CL offset: " << confl.asCl());
+    Clause* cl = alloc->ptr(confl.asCl());
+    c = cl->getData();
+    size = cl->sz;
+  } else if (confl.isFake()) {
+    assert(false);
+  } else {
+    //Binary
+    c = tmpLit;
+    if (p == NOT_A_LIT) c[0] = conflLit;
+    else c[0] = p;
+    c[1] = confl.asLit();
+    size = 2;
+  }
+  int32_t maxlev = -1;
+  for(uint32_t i = 0; i < size; i ++) {
+#ifdef VERBOSE_DEBUG
+    cout << "confl cl[" << std::setw(5) << i << "]"
+        << " lit: " << c[i]
+        << " lev: " << std::setw(3) << var(c[i]).decision_level
+        << " ante: " << std::setw(8) << var(c[i]).ante
+        << " val : " << std::setw(7) << lit_val_str(c[i])
+        << endl;
+#endif
+    if (var(c[i]).decision_level > maxlev) maxlev = var(c[i]).decision_level;
+  }
+  VERBOSE_DEBUG_DO(cout << "maxlev: " << maxlev << endl);
+  VERBOSE_DEBUG_DO(print_dec_info());
+  assert(var(c[0]).decision_level == var(c[1]).decision_level);
+  return maxlev;
+}
+
 // Returns TRUE if it can generate a UIP. Otherwise, false
 void Counter::recordLastUIPCauses() {
   // note:
@@ -1947,46 +2009,14 @@ void Counter::recordLastUIPCauses() {
   VERBOSE_DEBUG_DO(cout << "orig DL: " << decision_stack_.get_decision_level() << endl);
   VERBOSE_DEBUG_DO(cout << "new DL : " << DL << endl);
   VERBOSE_DEBUG_DO(print_dec_info());
+  int32_t maxlev = get_confl_maxlev(p);
+  go_back_to(maxlev);
+  DL = var(top_dec_lit()).decision_level;
+
   Lit tmpLit[3];
   tmpLit[2] = SENTINEL_LIT;
   Lit* c;
-  if (true) {
-    if (confl.isAClause()) {
-      assert(confl.asCl() != NOT_A_CLAUSE);
-      VERBOSE_PRINT("Conflicting CL offset: " << confl.asCl());
-      c = beginOf(confl.asCl());
-    } else if (confl.isFake()) {
-      assert(false);
-    } else {
-      //Binary
-      c = tmpLit;
-      if (p == NOT_A_LIT) c[0] = conflLit;
-      else c[0] = p;
-      c[1] = confl.asLit();
-    }
-    int32_t maxlev = -1;
-    for(uint32_t i = 0; c[i] != SENTINEL_LIT; i ++) {
-#ifdef VERBOSE_DEBUG
-      cout << "confl cl[" << std::setw(5) << i << "]"
-          << " lit: " << c[i]
-          << " lev: " << std::setw(3) << var(c[i]).decision_level
-          << " ante: " << std::setw(8) << var(c[i]).ante
-          << " val : " << std::setw(7) << lit_val_str(c[i])
-          << endl;
-#endif
-      const Lit l = c[i];
-      if (var(l).decision_level > maxlev) {
-        maxlev = var(l).decision_level;
-      }
-    }
-    VERBOSE_DEBUG_DO(cout << "maxlev: " << maxlev << endl);
-    VERBOSE_DEBUG_DO(if (confl.isAClause()) {cout << "conflicting cl offs: " << confl.asCl() << endl; });
-    go_back_to(maxlev);
-    VERBOSE_DEBUG_DO(print_dec_info());
-    DL = var(top_dec_lit()).decision_level;
-  }
-  assert(var(c[0]).decision_level == var(c[1]).decision_level);
-
+  uint32_t size;
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
   int32_t index = trail.size()-1;
   uint32_t pathC = 0;
@@ -1994,13 +2024,14 @@ void Counter::recordLastUIPCauses() {
     if (confl.isAClause()) {
       // Long clause
       assert(confl.asCl() != NOT_A_CLAUSE);
-      auto& header = getHeaderOf(confl.asCl());
-      if (header.red && header.lbd > lbd_cutoff) {
-        header.increaseScore();
-        header.update_lbd(calc_lbd(confl.asCl()));
+      Clause& cl = *alloc->ptr(confl.asCl());
+      if (cl.red && cl.lbd > lbd_cutoff) {
+        cl.increaseScore();
+        cl.update_lbd(calc_lbd(&cl));
       }
-      c = beginOf(confl.asCl());
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
+      c = cl.getData();
+      size = cl.sz;
     } else if (confl.isFake()) {
       assert(false);
     } else {
@@ -2012,14 +2043,16 @@ void Counter::recordLastUIPCauses() {
       c[1] = confl.asLit();
       if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
         std::swap(c[0], c[1]);
+      size = 2;
     }
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
 #ifdef VERBOSE_DEBUG
-    for(Lit* l = c; *l != SENTINEL_LIT; l++) {
-        cout << std::setw(5) << *l<< " lev: " << std::setw(3) << var(*l).decision_level
-          << " ante: " << std::setw(8) << var(*l).ante
-          << " val : " << std::setw(7) << lit_val_str(*l)
-          << endl;
+    for(uint32_t i = 0; i < size; i++) {
+      Lit l = c[i];
+      cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+        << " ante: " << std::setw(8) << var(l).ante
+        << " val : " << std::setw(7) << lit_val_str(l)
+        << endl;
     }
 #endif
     int32_t nDecisionLevel = var(c[0]).decision_level;
@@ -2027,7 +2060,7 @@ void Counter::recordLastUIPCauses() {
     if (p == NOT_A_LIT) assert(nDecisionLevel == DL);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
-    for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); c[j] != SENTINEL_LIT ;j++) {
+    for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {
       Lit q = c[j];
       if (!tmp_seen[q.var()] && var(q).decision_level > 0){
         increaseActivity(q);
@@ -2122,15 +2155,15 @@ bool Counter::check_watchlists() const {
       const auto ofs = w.ofs;
       uint32_t num_unk = 0;
       bool sat = false;
-      for(Lit const* c = beginOf(ofs); *c != NOT_A_LIT; c++) {
-        if (isUnknown(*c)) num_unk++;
-        if (isTrue(*c)) sat = true;
+      for(const auto& l: *alloc->ptr(ofs)) {
+        if (isUnknown(l)) num_unk++;
+        if (isTrue(l)) sat = true;
       }
       if (!sat && num_unk >=2 && !isUnknown(lit)) {
         cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: " << endl;
-        for(Lit const* c = beginOf(ofs); *c != NOT_A_LIT; c++) {
-          cout << *c << " (val: " << lit_val_str(*c)
-            << " lev: " << var(*c).decision_level << ") " << endl;
+      for(const auto& l: *alloc->ptr(ofs)) {
+          cout << l << " (val: " << lit_val_str(l)
+            << " lev: " << var(l).decision_level << ") " << endl;
         }
         ret = false;
       }

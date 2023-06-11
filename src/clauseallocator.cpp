@@ -179,11 +179,7 @@ small compared to the problem size. If it is small, it does nothing. If it is
 large, then it allocates new stacks, copies the non-freed clauses to these new
 stacks, updates all pointers and offsets, and frees the original stacks.
 */
-void ClauseAllocator::consolidate(
-  Counter* solver
-  , const bool force
-  , bool lower_verb
-) {
+void ClauseAllocator::consolidate( Counter* solver , const bool force , bool lower_verb) {
   //If re-allocation is not really neccessary, don't do it
   //Neccesities:
   //1) There is too much memory allocated. Re-allocation will save space
@@ -205,10 +201,10 @@ void ClauseAllocator::consolidate(
 
   assert(sizeof(uint32_t) % sizeof(Lit) == 0);
 
-  vector<bool> visited(solver->watches.size(), 0);
-  for(auto& ws: solver->watches) move_one_watchlist(ws, newDataStart, new_ptr);
+  for(auto& ws: solver->watches_) move_one_watchlist(ws.watch_list_, newDataStart, new_ptr);
   update_offsets(solver->longIrredCls, newDataStart, new_ptr);
-  for(auto& lredcls: solver->longRedCls) {update_offsets(lredcls, newDataStart, new_ptr); }
+  update_offsets(solver->longRedCls, newDataStart, new_ptr);
+  for(auto& occ: solver->occ_lists_) update_offsets(occ, newDataStart, new_ptr);
 
   //Fix up variables_
   for (size_t i = 1; i <= solver->nVars(); i++) {
@@ -230,20 +226,14 @@ void ClauseAllocator::consolidate(
   dataStart = newDataStart;
 
   const double time_used = cpuTime() - myTime;
-  if (solver->config_.verb >= 2
-      || (lower_verb && solver->config_.verb)
-  ) {
-      size_t log_2_size = 0;
-      if (size > 0) {
-          //yes, it can be 0 (only binary clauses, for example)
-          log_2_size = std::log2(size);
-      }
-      cout << "c [mem] consolidate ";
-      cout << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
-      << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
-      << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size;
-      cout << solver->conf.print_times(time_used)
-      << endl;
+  if (solver->config_.verb >= 2 || (lower_verb && solver->config_.verb)) {
+    size_t log_2_size = 0;
+    if (size > 0) log_2_size = std::log2(size);
+    cout << "c [mem] consolidate "
+    << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
+    << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
+    << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size
+    << " T: " << time_used << endl;
   }
 }
 
@@ -252,16 +242,11 @@ void ClauseAllocator::update_offsets(
     ClauseOfs* newDataStart,
     ClauseOfs*& new_ptr
 ) {
-    for(ClauseOfs& offs: offsets) {
-        Clause* old = ptr(offs);
-        if (!old->reloced) {
-            assert(old->used_in_xor() && old->used_in_xor_full());
-            assert(old->_xor_is_detached);
-            offs = move_cl(newDataStart, new_ptr, old);
-        } else {
-            offs = (*old)[0].toInt();
-        }
-    }
+  for(ClauseOfs& offs: offsets) {
+    Clause* old = ptr(offs);
+    if (!old->reloced) offs = move_cl(newDataStart, new_ptr, old);
+    else offs = (*old)[0].toInt();
+  }
 }
 
 size_t ClauseAllocator::mem_used() const

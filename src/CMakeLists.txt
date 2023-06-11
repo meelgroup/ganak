@@ -53,6 +53,7 @@ SET(SOURCES
 	instance.cpp
 	solver.cpp
 	statistics.cpp
+    clauseallocator.cpp
     IFlowCutter.cc
     graph.cpp
     flow-cutter-pace17/src/tree_decomposition.cpp

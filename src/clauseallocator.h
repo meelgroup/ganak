@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <map>
 #include <vector>
 
+#include "solver_config.h"
 #include "structures.h"
 
 class Counter;
@@ -35,7 +36,7 @@ using std::vector;
 
 class ClauseAllocator {
 public:
-  ClauseAllocator();
+  ClauseAllocator(const CounterConfiguration& _config);
   ~ClauseAllocator();
 
   Clause* new_cl(bool _red, uint32_t sz) {
@@ -45,20 +46,10 @@ public:
   }
 
   ClauseOfs get_offset(const Clause* ptr) const;
-
-  inline Clause* ptr(const ClauseOfs offset) const {
-    return (Clause*)(&dataStart[offset]);
-  }
-
+  inline Clause* ptr(const ClauseOfs offset) const { return (Clause*)(&dataStart[offset]); }
   void clauseFree(Clause* c);
   void clauseFree(ClauseOfs offset);
-
-  void consolidate(
-    Counter* solver
-    , const bool force = false
-    , bool lower_verb = false
-  );
-
+  bool consolidate(Counter* solver, const bool force = false);
   size_t mem_used() const;
 
 private:
@@ -80,5 +71,6 @@ private:
   uint64_t size; ///<The number of BASE_DATA_TYPE datapieces currently used in each stack
   uint64_t capacity; ///<The number of BASE_DATA_TYPE datapieces allocated
   uint64_t currentlyUsedSize; ///< The estimated used size of the stack
+  const CounterConfiguration& config_;
   void* allocEnough(const uint32_t num_lits);
 };

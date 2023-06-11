@@ -1248,7 +1248,9 @@ retStateT Counter::resolveConflict() {
 
   if (stats.conflicts-stats.uip_not_added+stats.saved_uip_used > last_reduceDB_conflicts+10000) {
     reduceDB();
-    if (stats.cls_deleted_since_compaction > 50000) alloc->consolidate(this);
+    if (stats.cls_deleted_since_compaction > 30000 && alloc->consolidate(this)) {
+        stats.cls_deleted_since_compaction = 0;
+    }
     last_reduceDB_conflicts = stats.conflicts-stats.uip_not_added+stats.saved_uip_used;
   }
   VERBOSE_DEBUG_DO(print_conflict_info());

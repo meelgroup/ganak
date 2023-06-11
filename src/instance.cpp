@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 Instance::Instance(const CounterConfiguration& _config) : config_(_config), stats (this, config_)
 {
-  alloc = new ClauseAllocator;
+  alloc = new ClauseAllocator(_config);
 }
 
 Instance::~Instance() {
@@ -139,6 +139,7 @@ void Instance::markClauseDeleted(const ClauseOfs off){
   Clause& cl = *alloc->ptr(off);
   litWatchList(cl[0]).removeWatchLinkTo(off);
   litWatchList(cl[1]).removeWatchLinkTo(off);
+  alloc->clauseFree(off);
 }
 
 void Instance::new_vars(const uint32_t n) {

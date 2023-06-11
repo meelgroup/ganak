@@ -29,23 +29,23 @@ THE SOFTWARE.
 #include <cassert>
 #include <cmath>
 #include "solver.h"
+#include "solver_config.h"
 #include "time_mem.h"
 #include "common.h"
 
-using std::pair;
 using std::cout;
 using std::endl;
 
-#define EFFECTIVELY_USEABLE_BITS 32
 #define MIN_LIST_SIZE (50000 * (sizeof(Clause) + 4*sizeof(Lit))/sizeof(uint32_t))
 #define ALLOC_GROW_MULT 1.5
-#define MAXSIZE ((1ULL << (EFFECTIVELY_USEABLE_BITS))-1)
+#define MAXSIZE ((1ULL << 32)-1)
 
-ClauseAllocator::ClauseAllocator() :
+ClauseAllocator::ClauseAllocator(const CounterConfiguration& _config) :
     dataStart(NULL)
     , size(0)
     , capacity(0)
     , currentlyUsedSize(0)
+    , config_(_config)
 {
     assert(MIN_LIST_SIZE < MAXSIZE);
 }
@@ -179,19 +179,18 @@ small compared to the problem size. If it is small, it does nothing. If it is
 large, then it allocates new stacks, copies the non-freed clauses to these new
 stacks, updates all pointers and offsets, and frees the original stacks.
 */
-void ClauseAllocator::consolidate(Counter* solver , const bool force , bool lower_verb) {
+bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   //If re-allocation is not really neccessary, don't do it
   //Neccesities:
   //1) There is too much memory allocated. Re-allocation will save space
-  //   Avoiding segfault (max is 16 outerOffsets, more than 10 is near)
   //2) There is too much empty, unused space (>30%)
   if (!force
       && (float_div(currentlyUsedSize, size) > 0.8 || currentlyUsedSize < (100ULL*1000ULL))
   ) {
-      if (solver->config_.verb >= 3 || (lower_verb && solver->config_.verb)) {
-        cout << "c Not consolidating memory." << endl;
-      }
-      return;
+    verb_print(1, "[mem] Not consolidating memory. Used sz/sz: " <<
+        float_div(currentlyUsedSize, size)
+        << " Currently used size: " << currentlyUsedSize/1000 << " K");
+    return false;
   }
   const double myTime = cpuTime();
 
@@ -225,15 +224,16 @@ void ClauseAllocator::consolidate(Counter* solver , const bool force , bool lowe
   dataStart = newDataStart;
 
   const double time_used = cpuTime() - myTime;
-  if (solver->config_.verb >= 2 || (lower_verb && solver->config_.verb)) {
+  if (config_.verb) {
     size_t log_2_size = 0;
     if (size > 0) log_2_size = std::log2(size);
-    cout << "c [mem] consolidate "
-    << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
-    << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
-    << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size
-    << " T: " << time_used << endl;
+    verb_print(1, "[mem] consolidate "
+      << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
+      << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
+      << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size
+      << " T: " << time_used);;
   }
+  return true;
 }
 
 void ClauseAllocator::update_offsets(

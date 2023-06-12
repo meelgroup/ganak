@@ -299,12 +299,16 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   sat_solver = _sat_solver;
 
   auto ret = sat_solver->solve();
+  uint32_t num_cubes = 0;
+  start_time = cpuTime();
   if (config_.do_restart) {
     vector<Lit> largest_cube;
     while(ret == CMSat::l_True) {
       auto& model = sat_solver->get_model();
       set_target_polar(model);
       auto val2 = count(largest_cube);
+      num_cubes++;
+      cout << "Num cubes: " << num_cubes << endl;
       cout << "Cube: " << largest_cube;
       cout << " -- count: " <<  val << endl;
       val+=val2;
@@ -314,9 +318,9 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       if (ret == CMSat::l_False) break;
       add_irred_cl(largest_cube);
       end_irred_cls();
-      cout << "AFTER END_IRRED:" <<  endl;
-      stats.printShort(this, &comp_manager_->get_cache());
-      cout << "****************" << endl;
+      VERBOSE_PRINT("AFTER END_IRRED:");
+      VERBOSE_DEBUG_DO(stats.printShort(this, &comp_manager_->get_cache()));
+      VERBOSE_PRINT(****************);
     }
   } else if (ret == CMSat::l_True) {
       val += count(largest_cube);
@@ -329,7 +333,6 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
   largest_cube.clear();
   largest_cube_val = 0;
-  start_time = cpuTime();
   if (config_.verb) { cout << "c Sampling set size: " << indep_support_end-1 << endl; }
 
   // Only compute TD decomposition once
@@ -1315,10 +1318,9 @@ retStateT Counter::resolveConflict() {
     /* print_trail(false); */
     /* print_conflict_info(); */
     /* cout << "--------------" << endl << endl; */
-    if (config_.do_save_uip && uip_clause.size() > 1 &&
-        uip_clause[0].neg().var() == decision_stack_.at(backj).var) {
-      if (saved_uip_cls.size() <= (uint32_t)lev_to_set)
-        saved_uip_cls.resize(lev_to_set+1);
+    if (config_.do_save_uip && uip_clause.size() > 1) {
+      /*  &&  uip_clause[0].neg().var() == decision_stack_.at(backj).var) { */
+      if (saved_uip_cls.size() <= (uint32_t)lev_to_set) saved_uip_cls.resize(lev_to_set+1);
       saved_uip_cls[lev_to_set] = uip_clause;
       stats.saved_uip++;
     }
@@ -1431,11 +1433,15 @@ bool Counter::clause_satisfied(const vector<Lit>& cl) const {
 
 Counter::SavedUIPRet Counter::deal_with_saved_uips() {
   auto DL = decision_stack_.get_decision_level();
-  if ( (int)saved_uip_cls.size() <= DL ||
-    saved_uip_cls[DL].empty())
+  if ( (int)saved_uip_cls.size() <= DL || saved_uip_cls[DL].empty())
     return Counter::SavedUIPRet::cont;
 
-  auto& cl = saved_uip_cls[DL];
+  int32_t i = DL;
+  /* for(; i < (int32_t)saved_uip_cls.size(); i++) { */
+  /*   if (!saved_uip_cls[i].empty()) break; */
+  /* } */
+  /* if (i == (int32_t)saved_uip_cls.size()) return Counter::SavedUIPRet::cont; */
+  auto& cl = saved_uip_cls[i];
   std::sort(cl.begin(), cl.end(),
     [=](const Lit& a, const Lit& b) {
       if (val(a) == X_TRI || val(b) == X_TRI) {

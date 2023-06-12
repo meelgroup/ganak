@@ -1455,7 +1455,8 @@ Counter::SavedUIPRet Counter::deal_with_saved_uips() {
         if (val(b) == X_TRI) return false;
       }
       if (var(a).decision_level == var(b).decision_level) {
-        return val(a) == T_TRI;
+        if(val(a) != val(b)) return val(a) == T_TRI;
+        return false;
       }
       return var(a).decision_level > var(b).decision_level;
     });

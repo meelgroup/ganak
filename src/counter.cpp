@@ -1107,9 +1107,7 @@ void Counter::print_conflict_info() const
   print_dec_info();
   cout << "UIP cl lits: " << endl;
   print_cl(uip_clause);
-  cout << " ---- " << endl;
   cout << "uip_clause[0]: " << uip_clause[0] << endl;
-  cout << "uip_clause.front(): " << uip_clause.front() << endl;
 }
 
 void Counter::print_comp_stack_info() const {
@@ -1314,15 +1312,22 @@ retStateT Counter::resolveConflict() {
       uip_clause[0].neg().var() == decision_stack_.at(backj).var
        && lev_to_set+1 == backj);
   if (!flipped) {
-    /* cout << "Not adding. backj: " << backj << " lev_to_set: " << lev_to_set << endl; */
+    /* cout << "--------------" << endl << endl; */
     /* print_trail(false); */
     /* print_conflict_info(); */
-    /* cout << "--------------" << endl << endl; */
+    /* cout << "Not adding. backj: " << backj << " lev_to_set: " << lev_to_set */
+    /*   << " current lev: " << decision_stack_.get_decision_level() << endl; */
+    if (uip_clause.size() == 1) {
+      if (!existsUnitClauseOf(uip_clause[0])) unit_clauses_.push_back(uip_clause[0]);
+    }
     if (config_.do_save_uip && uip_clause.size() > 1) {
-      /*  &&  uip_clause[0].neg().var() == decision_stack_.at(backj).var) { */
       if (saved_uip_cls.size() <= (uint32_t)lev_to_set) saved_uip_cls.resize(lev_to_set+1);
-      saved_uip_cls[lev_to_set] = uip_clause;
-      stats.saved_uip++;
+      // Latest seems better than just "best"
+      /* if (saved_uip_cls[lev_to_set].empty() || */
+      /*     saved_uip_cls[lev_to_set].size() > uip_clause.size()) { */
+        saved_uip_cls[lev_to_set] = uip_clause;
+        stats.saved_uip++;
+      /* } */
     }
 
     stats.uip_not_added++;

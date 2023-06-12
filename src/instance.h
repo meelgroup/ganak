@@ -118,8 +118,9 @@ protected:
     lbdHelperFlag++;
     uint32_t nblevels = 0;
     for(const auto& l: lits) {
+      if (val(l) == X_TRI) {nblevels++;continue;}
       int lev = var(l).decision_level;
-      if (lev != 1 && lbdHelper[lev] != lbdHelperFlag) {
+      if (lev != 0 && lbdHelper[lev] != lbdHelperFlag) {
         lbdHelper[lev] = lbdHelperFlag;
         nblevels++;
         if (nblevels >= 250) { return nblevels; }

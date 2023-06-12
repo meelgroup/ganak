@@ -356,5 +356,6 @@ int main(int argc, char *argv[])
   cout << cnt << endl;
 
   delete counter;
+  delete sat_solver;
   return 0;
 }

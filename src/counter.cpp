@@ -320,7 +320,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       end_irred_cls();
       VERBOSE_PRINT("AFTER END_IRRED:");
       VERBOSE_DEBUG_DO(stats.printShort(this, &comp_manager_->get_cache()));
-      VERBOSE_PRINT(****************);
+      VERBOSE_PRINT("****************");
     }
   } else if (ret == CMSat::l_True) {
       val += count(largest_cube);
@@ -394,8 +394,8 @@ void Counter::print_stat_line() {
     cout << "c total time: " << (cpuTime() - start_time) << endl;
     stats.printShort(this, &comp_manager_->get_cache());
   }
-  next_print_stat_cache = stats.num_cache_look_ups_ + (2ULL*1000LL*1000LL);
-  next_print_stat_confl = stats.conflicts + (15LL*1000LL);
+  next_print_stat_cache = stats.num_cache_look_ups_ + (4ULL*1000LL*1000LL);
+  next_print_stat_confl = stats.conflicts + (30LL*1000LL);
 }
 
 SOLVER_StateT Counter::countSAT() {
@@ -1322,12 +1322,10 @@ retStateT Counter::resolveConflict() {
     }
     if (config_.do_save_uip && uip_clause.size() > 1) {
       if (saved_uip_cls.size() <= (uint32_t)lev_to_set) saved_uip_cls.resize(lev_to_set+1);
-      // Latest seems better than just "best"
-      /* if (saved_uip_cls[lev_to_set].empty() || */
-      /*     saved_uip_cls[lev_to_set].size() > uip_clause.size()) { */
+        // Latest seems better than smallest, so just upgrade to latest
+        if (!saved_uip_cls[lev_to_set].empty()) stats.saved_uip_thrown++;
         saved_uip_cls[lev_to_set] = uip_clause;
         stats.saved_uip++;
-      /* } */
     }
 
     stats.uip_not_added++;

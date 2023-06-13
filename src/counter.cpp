@@ -1548,7 +1548,6 @@ prop_again:;
     }
   }
 
-
   if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
     if (config_.failed_lit_probe_type == 2  &&
       (double)decision_stack_.size() >
@@ -1843,8 +1842,9 @@ bool Counter::failed_lit_probe_with_bprop() {
 
     // Finally set what we came to set
     for(const auto& l: toSet) {
+      print_debug("-> BProp literal detected");
       if (isUnknown(l)) {
-        setLiteral(l, decision_stack_.get_decision_level(), Antecedent::fakeAnte());
+        setLiteral(l, var(top_dec_lit()).decision_level, Antecedent::fakeAnte());
         bool bSucceeded = propagate();
         if (!bSucceeded) return false;
         stats.num_failed_bprop_literals_failed++;
@@ -1886,7 +1886,6 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     }
     trail.pop_back();
   }
-  assert(false && "qhead is not working for probing");
   if (!set) {
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
@@ -1896,7 +1895,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     stats.num_failed_literals_detected_++;
     print_debug("-> failed literal detected");
     sz = trail.size();
-    setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent::fakeAnte());
+    setLiteral(lit.neg(), var(top_dec_lit()).decision_level, Antecedent::fakeAnte());
     for(const auto& v: toClear) tmp_seen[v] = 0;
     toClear.clear();
     if (!propagate()) {
@@ -1908,7 +1907,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   return true;
 }
 
-bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
+bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
     VERBOSE_PRINT(__func__ << " called");
 
     analyze_stack.clear();
@@ -1920,6 +1919,7 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
       VERBOSE_PRINT("At point in litRedundant: " << analyze_stack.back());
       const auto reason = var(analyze_stack.back()).ante;
       assert(reason.isAnt());  //Must have a reason
+      p = analyze_stack.back();
       analyze_stack.pop_back();
 
       Lit* c = NULL;
@@ -1938,22 +1938,7 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
         }
 #endif
       } else if (reason.isFake()) {
-        tmpLit.clear();
-        for(uint32_t i = 1; i < decision_stack_.size(); i++) {
-          auto const& d = decision_stack_[i];
-          tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
-        }
-        size = tmpLit.size();
-        c = tmpLit.data();
-#ifdef VERBOSE_DEBUG
-        cout << "Fake cl in analyze_stack: " << endl;
-        for(const auto& l: tmpLit) {
-          cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-            << " ante: " << std::setw(8) << var(l).ante
-            << " val : " << std::setw(7) << lit_val_str(l)
-            << endl;
-        }
-#endif
+        create_fake(p, size, c);
       } else if (reason.isALit()) {
         tmpLit.resize(2);
         tmpLit[0] = NOT_A_LIT;
@@ -2047,6 +2032,28 @@ void Counter::minimizeUIPClause() {
   SLOW_DEBUG_DO(check_implied(uip_clause));
 }
 
+void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const
+{
+    tmpLit.clear();
+    tmpLit.push_back(p);
+    for(int32_t i = var(p).decision_level; i > 0; i--) {
+      auto const& d = decision_stack_[i];
+      tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
+    }
+    size = tmpLit.size();
+    c = tmpLit.data();
+
+#ifdef VERBOSE_DEBUG
+        cout << "Fake cl: " << endl;
+        for(const auto& l: tmpLit) {
+          cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+            << " ante: " << std::setw(8) << var(l).ante
+            << " val : " << std::setw(7) << lit_val_str(l)
+            << endl;
+        }
+#endif
+}
+
 int32_t Counter::get_confl_maxlev(const Lit p) const {
   Lit* c;
   uint32_t size = 0;
@@ -2057,13 +2064,7 @@ int32_t Counter::get_confl_maxlev(const Lit p) const {
     c = cl->getData();
     size = cl->sz;
   } else if (confl.isFake()) {
-    tmpLit.clear();
-    for(uint32_t i = 1; i < decision_stack_.size(); i++) {
-      auto const& d = decision_stack_[i];
-      tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
-    }
-    size = tmpLit.size();
-    c = tmpLit.data();
+    create_fake(p, size, c);
   } else if (confl.isALit()) {
     //Binary
     tmpLit.resize(2);
@@ -2077,7 +2078,7 @@ int32_t Counter::get_confl_maxlev(const Lit p) const {
   for(uint32_t i = 0; i < size; i ++) {
 #ifdef VERBOSE_DEBUG
     cout << "confl cl[" << std::setw(5) << i << "]"
-        << " lit: " << c[i]
+        << " lit: " << std::setw(5) << c[i]
         << " lev: " << std::setw(3) << var(c[i]).decision_level
         << " ante: " << std::setw(8) << var(c[i]).ante
         << " val : " << std::setw(7) << lit_val_str(c[i])
@@ -2123,13 +2124,7 @@ void Counter::recordLastUIPCauses() {
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isFake()) {
-      tmpLit.clear();
-      for(uint32_t i = 1; i < decision_stack_.size(); i++) {
-        auto const& d = decision_stack_[i];
-        tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
-      }
-      size = tmpLit.size();
-      c = tmpLit.data();
+      create_fake(p, size, c);
     } else if (confl.isALit()) {
       assert(!confl.isAClause());
       tmpLit.resize(2);

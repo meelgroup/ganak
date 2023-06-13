@@ -329,10 +329,11 @@ private:
   vector<vector<Lit>> saved_uip_cls;
 
   int32_t get_confl_maxlev(const Lit p) const;
+  void create_fake(Lit p, uint32_t& size, Lit*& c) const;
   void recordLastUIPCauses();
   void minimizeUIPClause();
   uint32_t abstractLevel(const uint32_t x) const;
-  bool litRedundant(const Lit p, uint32_t abstract_levels);
+  bool litRedundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
   void recursiveConfClauseMin();
   bool takeSolution();

@@ -1339,7 +1339,7 @@ retStateT Counter::resolveConflict() {
       decision_stack_.top().change_to_right_branch();
       auto lit = top_dec_lit();
       reactivate_comps_and_backtrack_trail(false);
-      setLiteral(lit.neg(), decision_stack_.get_decision_level());
+      setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent::fakeAnte());
       return RESOLVED;
     }
   }

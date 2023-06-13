@@ -306,6 +306,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   start_time = cpuTime();
   if (config_.do_restart) {
     vector<Lit> largest_cube;
+    vector<vector<Lit>> cubes;
     while(ret == CMSat::l_True) {
       auto& model = sat_solver->get_model();
       set_target_polar(model);
@@ -317,10 +318,17 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       val+=val2;
       auto cms_cl = ganak_to_cms_cl(largest_cube);
       sat_solver->add_clause(cms_cl);
+      config_.branch_type = branch_t::old_ganak;
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
-      add_irred_cl(largest_cube);
-      end_irred_cls();
+      if (num_cubes < 10) {
+        cubes.push_back(largest_cube);
+      } else {
+        for(const auto& c: cubes) { add_irred_cl(c); }
+        cubes.clear();
+        add_irred_cl(largest_cube);
+        end_irred_cls();
+      }
       VERBOSE_PRINT("AFTER END_IRRED:");
       VERBOSE_DEBUG_DO(stats.printShort(this, &comp_manager_->get_cache()));
       VERBOSE_PRINT("****************");

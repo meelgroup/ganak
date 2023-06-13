@@ -94,9 +94,12 @@ void Counter::end_irred_cls()
   delete comp_manager_;
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
   comp_manager_->getrandomseedforclhash();
+
+  // reset stats
   depth_q.clearAndResize(config_.first_restart);
   cache_miss_rate_q.clearAndResize(config_.first_restart);
   comp_size_q.clearAndResize(config_.first_restart);
+  next_print_stat_cache = 2ULL*1000LL*1000LL;
 
   stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_MB*1024*1024;
   init_decision_stack();

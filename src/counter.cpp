@@ -1914,7 +1914,6 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
     analyze_stack.clear();
     analyze_stack.push_back(p);
 
-    Lit tmpLit[2];
     uint32_t size;
     size_t top = toClear.size();
     while (!analyze_stack.empty()) {
@@ -1923,11 +1922,11 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
       assert(reason.isAnt());  //Must have a reason
       analyze_stack.pop_back();
 
-      Lit* lits = NULL;
+      Lit* c = NULL;
       size = 0;
       if (reason.isAClause()) {
         Clause* cl = alloc->ptr(reason.asCl());
-        lits = cl->getData();
+        c = cl->getData();
         size = cl->sz;
 #ifdef VERBOSE_DEBUG
         cout << "CL offs: " << reason.asCl() << " in analyze_stack:" << endl;
@@ -1939,24 +1938,41 @@ bool Counter::litRedundant(const Lit p, uint32_t abstract_levels) {
         }
 #endif
       } else if (reason.isFake()) {
-        assert(false && "not handled right now");
-      } else if (!reason.isAClause()) {
+        tmpLit.clear();
+        for(uint32_t i = 1; i < decision_stack_.size(); i++) {
+          auto const& d = decision_stack_[i];
+          tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
+        }
+        size = tmpLit.size();
+        c = tmpLit.data();
+#ifdef VERBOSE_DEBUG
+        cout << "Fake cl in analyze_stack: " << endl;
+        for(const auto& l: tmpLit) {
+          cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+            << " ante: " << std::setw(8) << var(l).ante
+            << " val : " << std::setw(7) << lit_val_str(l)
+            << endl;
+        }
+#endif
+      } else if (reason.isALit()) {
+        tmpLit.resize(2);
         tmpLit[0] = NOT_A_LIT;
         tmpLit[1] = reason.asLit();
         size = 2;
 #ifdef VERBOSE_DEBUG
         cout << "Bin cl in analyze_stack: " << endl;
-        Lit* l = tmpLit;
-        cout << std::setw(5) << *l<< " lev: " << std::setw(3) << var(*l).decision_level
-          << " ante: " << std::setw(8) << var(*l).ante
-          << " val : " << std::setw(7) << lit_val_str(*l)
+        Lit& l = tmpLit[1];
+        cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+          << " ante: " << std::setw(8) << var(l).ante
+          << " val : " << std::setw(7) << lit_val_str(l)
           << endl;
 #endif
-        lits = tmpLit;
+        c = tmpLit.data();
       } else {assert(false && "no such reason");}
 
       for (uint32_t i = 1; i < size; i++) {
-        Lit p2 = lits[i];
+        VERBOSE_PRINT("at i: " << i);
+        Lit p2 = c[i];
         VERBOSE_PRINT("Examining lit " << p2 << " tmp_seen: " << tmp_seen[p2.var()]);
         if (!tmp_seen[p2.var()] && var(p2).decision_level > 0) {
           if (var(p2).ante.isAnt()
@@ -2032,8 +2048,6 @@ void Counter::minimizeUIPClause() {
 }
 
 int32_t Counter::get_confl_maxlev(const Lit p) const {
-  Lit tmpLit[3];
-  tmpLit[2] = SENTINEL_LIT;
   Lit* c;
   uint32_t size = 0;
 
@@ -2043,10 +2057,17 @@ int32_t Counter::get_confl_maxlev(const Lit p) const {
     c = cl->getData();
     size = cl->sz;
   } else if (confl.isFake()) {
-    assert(false);
+    tmpLit.clear();
+    for(uint32_t i = 1; i < decision_stack_.size(); i++) {
+      auto const& d = decision_stack_[i];
+      tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
+    }
+    size = tmpLit.size();
+    c = tmpLit.data();
   } else if (confl.isALit()) {
     //Binary
-    c = tmpLit;
+    tmpLit.resize(2);
+    c = tmpLit.data();
     if (p == NOT_A_LIT) c[0] = conflLit;
     else c[0] = p;
     c[1] = confl.asLit();
@@ -2071,7 +2092,6 @@ int32_t Counter::get_confl_maxlev(const Lit p) const {
 }
 
 void Counter::recordLastUIPCauses() {
-  tmp_clause.clear();
   assert(toClear.empty());
 
   uip_clause.clear();
@@ -2087,8 +2107,6 @@ void Counter::recordLastUIPCauses() {
   go_back_to(maxlev);
   DL = var(top_dec_lit()).decision_level;
 
-  Lit tmpLit[3];
-  tmpLit[2] = SENTINEL_LIT;
   Lit* c;
   uint32_t size;
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
@@ -2096,7 +2114,6 @@ void Counter::recordLastUIPCauses() {
   uint32_t pathC = 0;
   do {
     if (confl.isAClause()) {
-      // Long clause
       Clause& cl = *alloc->ptr(confl.asCl());
       c = cl.getData();
       size = cl.sz;
@@ -2106,11 +2123,17 @@ void Counter::recordLastUIPCauses() {
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isFake()) {
-      assert(false);
+      tmpLit.clear();
+      for(uint32_t i = 1; i < decision_stack_.size(); i++) {
+        auto const& d = decision_stack_[i];
+        tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
+      }
+      size = tmpLit.size();
+      c = tmpLit.data();
     } else if (confl.isALit()) {
-      // Binary
       assert(!confl.isAClause());
-      c = tmpLit;
+      tmpLit.resize(2);
+      c = tmpLit.data();
       if (p == NOT_A_LIT) c[0] = conflLit;
       else c[0] = p;
       c[1] = confl.asLit();

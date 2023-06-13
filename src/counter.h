@@ -120,7 +120,7 @@ private:
   vector<VS> vars_scores; // for branch picking
 
   // Temporaries, used during recordLastUIPClause
-  vector<Lit> tmp_clause; //used in recoredLastUIPClause
+  mutable vector<Lit> tmpLit; //used in recoredLastUIPClause
   vector<uint32_t> toClear;
   set<Lit> toSet;
 

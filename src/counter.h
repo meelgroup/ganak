@@ -34,7 +34,12 @@ THE SOFTWARE.
 #include "comp_management.h"
 #include "boundedqueue.h"
 #include "TreeDecomposition.h"
+#include "structures.h"
 #include <deque>
+#include <map>
+
+using std::pair;
+using std::map;
 
 using std::deque;
 
@@ -155,7 +160,7 @@ private:
   uint32_t find_best_branch(bool do_indep);
   bool clause_falsified(const vector<Lit>& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
-  bool clause_satisfied(const vector<Lit>& cl) const;
+  template<class T> bool clause_satisfied(const T& cl) const;
   bool prop_and_probe();
   bool failed_lit_probe();
   bool failed_lit_probe_no_bprop();
@@ -339,6 +344,30 @@ private:
   bool takeSolution();
   bool get_polarity(const uint32_t var) const;
   bool standard_polarity(const uint32_t var) const;
+
+  // Vivification
+  vector<Lit> tmp_vivif;
+  vector<Lit> v_cl;
+  uint64_t last_confl_vivif = 0;
+  map<ClauseOfs, pair<Lit, Lit>> ws_pos;
+  void v_cl_repair(ClauseOfs off);
+  void vivify_cls(vector<ClauseOfs>& cls);
+  void vivify_clauses();
+  bool vivify_cl(const ClauseOfs off);
+  bool v_propagate();
+  void v_backtrack();
+  void v_unset(const Lit l);
+  void v_enqueue(const Lit l);
+  TriValue v_val(const Lit l) const;
+  void v_new_lev();
+  template<class T> bool v_clause_satisfied(const T& cl) const;
+  void vivif_backtrack();
+  vector<Lit> v_trail;
+  uint32_t v_qhead;
+  uint32_t v_lev;
+  vector<int32_t> v_levs;
+  uint32_t v_backtrack_to;
+  LiteralIndexedVector<TriValue> v_values;
 
   void print_stat_line();
   uint64_t next_print_stat_cache = 20000;

@@ -130,6 +130,14 @@ struct ClOffsBlckL {
   ClOffsBlckL(ClauseOfs _ofs, Lit l) : ofs(_ofs), blckLit(l) {}
   ClauseOfs ofs;
   Lit blckLit;
+
+  bool operator==(const ClOffsBlckL& other) const {
+    return ofs == other.ofs && blckLit == other.blckLit;
+  }
+
+  bool operator!=(const ClOffsBlckL& other) const {
+    return !(this->operator==(other));
+  }
 };
 
 class LitWatchList {

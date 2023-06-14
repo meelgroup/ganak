@@ -26,7 +26,9 @@ THE SOFTWARE.
 #include <complex>
 #include <ios>
 #include <iomanip>
+#include <map>
 #include <numeric>
+#include <utility>
 #include "common.h"
 #include "comp_types/comp.h"
 #include "cryptominisat5/cryptominisat.h"
@@ -38,6 +40,9 @@ THE SOFTWARE.
 #include "time_mem.h"
 #include "IFlowCutter.h"
 #include "graph.hpp"
+
+using std::pair;
+using std::map;
 
 void Counter::simplePreProcess()
 {
@@ -405,6 +410,7 @@ void Counter::print_stat_line() {
     cout << "c total time: " << (cpuTime() - start_time) << endl;
     stats.printShort(this, &comp_manager_->get_cache());
   }
+
   next_print_stat_cache = stats.num_cache_look_ups_ + (4ULL*1000LL*1000LL);
   next_print_stat_confl = stats.conflicts + (30LL*1000LL);
 }
@@ -446,6 +452,7 @@ SOLVER_StateT Counter::countSAT() {
         if (state == EXIT) return SUCCESS;
       }
     }
+    if (state == PROCESS_COMPONENT) vivify_clauses();
   }
   return SUCCESS;
 }
@@ -1436,10 +1443,8 @@ bool Counter::clause_asserting(const vector<Lit>& cl) const {
 }
 
 
-bool Counter::clause_satisfied(const vector<Lit>& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI) return true;
-  }
+template<class T> bool Counter::clause_satisfied(const T& cl) const {
+  for(const auto&l: cl) if (val(l) == T_TRI) return true;
   return false;
 }
 
@@ -2038,6 +2043,254 @@ void Counter::minimizeUIPClause() {
   uip_clause.clear();
   for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
   SLOW_DEBUG_DO(check_implied(uip_clause));
+}
+
+void Counter::vivify_cls(vector<ClauseOfs>& cls) {
+  uint32_t j = 0;
+  for(uint32_t i = 0; i < cls.size(); i++) {
+    auto& off = cls[i];
+    bool rem = vivify_cl(off);
+    if (!rem) {
+      cls[j++] = off;
+    } else {
+      alloc->clauseFree(off);
+    }
+  }
+  cls.resize(j);
+}
+
+void Counter::vivify_clauses() {
+  if (last_confl_vivif + 10000 > stats.conflicts) return;
+
+  // Sanity check here.
+  last_confl_vivif = stats.conflicts;
+  bool ret = propagate();
+  assert(ret);
+
+  // Backup
+  vector<ClOffsBlckL> ws_backup;
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit l(i/2, i%2);
+    const auto& ws = watches_[l].watch_list_;
+    ws_backup.insert(ws_backup.end(), ws.begin(), ws.end());
+    ws_backup.push_back(ClOffsBlckL(0, NOT_A_LIT));
+  }
+  ws_pos.clear();
+  for(const auto& off: longIrredCls) {
+    const Clause& cl = *alloc->ptr(off);
+    ws_pos[off] = std::make_pair(cl[0], cl[1]);
+  }
+  for(const auto& off: longRedCls) {
+    const Clause& cl = *alloc->ptr(off);
+    ws_pos[off] = std::make_pair(cl[0], cl[1]);
+  }
+
+  // Set ourselves up.
+  v_lev = 0;
+  v_levs.clear();
+  v_levs.resize(nVars()+1, -1);
+  v_values.clear();
+  v_values.resize(nVars()+1, X_TRI);
+  v_qhead = 0;
+
+  // Set units up
+  v_trail.clear();
+  for(const auto& l: trail) {
+    if (var(l).decision_level == 0) v_enqueue(l);
+  }
+  for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
+  ret = v_propagate();
+  assert(ret == true);
+
+  // Vivify clauses
+  vivify_cls(longIrredCls);
+  vivify_cls(longRedCls);
+
+  // Restore
+  uint32_t x = 0;
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit l(i/2, i%2);
+    auto& ws = watches_[l].watch_list_;
+    ws.clear();
+    while(ws_backup[x] != ClOffsBlckL(0, NOT_A_LIT)) {
+      ws.push_back(ws_backup[x]);
+      x++;
+    }
+    x++;
+  }
+  for(const auto& off: longIrredCls) v_cl_repair(off);
+  for(const auto& off: longRedCls) v_cl_repair(off);
+  ws_pos.clear();
+}
+
+void Counter::v_cl_repair(ClauseOfs off) {
+  Clause& cl = *alloc->ptr(off);
+  auto& offs = ws_pos[off];
+  auto at = std::find(cl.begin(), cl.end(), offs.first);
+  std::swap(cl[0], *at);
+  at = std::find(cl.begin(), cl.end(), offs.second);
+  std::swap(cl[1], *at);
+}
+
+void Counter::v_new_lev() {
+  assert(v_lev == 0);
+  v_lev++;
+  v_backtrack_to = v_trail.size();
+}
+
+void Counter::v_unset(const Lit l) {
+  assert(v_levs[l.var()] == 1);
+  v_levs[l.var()] = -1;
+  v_values[l] = T_TRI;
+  v_values[l.neg()] = F_TRI;
+}
+
+void Counter::v_backtrack() {
+  assert(v_lev == 1);
+  for(uint32_t i = v_backtrack_to; i < v_trail.size(); i++) {
+    const auto& l = v_trail[i];
+    v_unset(l);
+  }
+  v_lev = 0;
+  v_qhead = v_trail.size();
+}
+
+template<class T> bool Counter::v_clause_satisfied(const T& cl) const {
+  for(const auto&l : cl) {
+    if (v_val(l) == T_TRI) return true;
+  }
+  return false;
+}
+
+// Returns TRUE if we can remove the clause
+bool Counter::vivify_cl(const ClauseOfs off) {
+  Clause& cl = *alloc->ptr(off);
+  if (v_clause_satisfied(cl)) {
+    /* return false; */
+    // TODO
+    return false;
+  }
+
+  v_new_lev();
+  tmp_vivif.clear();
+  for(uint32_t i = 0; i < cl.sz; i++) {
+    const auto& l = cl[i];
+    if (v_val(l) == T_TRI) {tmp_vivif.push_back(l);break;}
+    if (v_val(l) == F_TRI) continue;
+    tmp_vivif.push_back(l);
+    v_enqueue(l.neg());
+    bool ret = v_propagate();
+    if (!ret) break;
+  }
+  for(const auto&l : cl.sz) tmp_seen[i];
+
+
+  if (tmp_vivif.size() < cl.sz) {
+    cout << "Vivif success. "
+      << " Old sz: " << cl.sz << " Rem lits: " << (v_cl.size() - tmp_vivif.size()) << endl;
+  }
+
+  v_backtrack();
+
+  // TODO return something else
+  return false;
+}
+
+TriValue Counter::v_val(const Lit l) const {
+  return v_values[l];
+}
+
+void Counter::v_enqueue(const Lit l) {
+  assert(v_val(l) == X_TRI);
+  v_levs[l.var()] = v_lev;
+  v_trail.push_back(l);
+  v_values[l] = T_TRI;
+  v_values[l.neg()] = F_TRI;
+}
+
+bool Counter::v_propagate() {
+  bool ret = true;
+  for (; v_qhead < v_trail.size(); v_qhead++) {
+    const Lit unLit = v_trail[v_qhead].neg();
+
+    //Propagate bin clauses
+    for (const auto& l : litWatchList(unLit).binary_links_) {
+      if (v_val(l) == F_TRI) {
+        VERBOSE_PRINT("Fail bin.");
+        return false;
+      } else if (v_val(l) == X_TRI) {
+        v_enqueue(l);
+        VERBOSE_PRINT("Bin prop: " << l);
+      }
+    }
+
+    //Propagate long clauses
+    auto& ws = litWatchList(unLit).watch_list_;
+
+#if 0
+    cout << "prop-> will go through norm cl:" << endl;
+    for(const auto& w: ws) {
+      cout << "norm cl offs: " << w.ofs << " cl: ";
+      const auto ofs = w.ofs;
+      for(Lit* c = beginOf(ofs); *c != NOT_A_LIT; c++) { cout << *c << " "; }
+      cout << endl;
+    }
+    cout << " will do it now... " << endl;
+#endif
+
+    auto it2 = ws.begin();
+    auto it = ws.begin();
+    for (; it != ws.end(); it++) {
+      if (v_val(it->blckLit) == T_TRI) { *it2++ = *it; continue; }
+
+      const auto ofs = it->ofs;
+      Clause& c = *alloc->ptr(ofs);
+      if (c[0] == unLit) { std::swap(c[0], c[1]); }
+
+#ifdef VERBOSE_DEBUG
+      cout << "Prop Norm cl: " << ofs << endl;
+      for(const auto&l: c) {
+        cout << "lit " << std::setw(6) << l
+          << " lev: " << std::setw(4) << var(l).decision_level
+          << " ante: " << std::setw(5) << std::left << var(l).ante
+          << " val: " << lit_val_str(l) << endl;
+      }
+#endif
+
+      assert(c[1] == unLit);
+      if (v_val(c[0]) == T_TRI) {
+        *it2++ = ClOffsBlckL(ofs, c[0]);
+        continue;
+      }
+
+      uint32_t i = 2;
+      for(; i < c.sz; i++) if (v_val(c[i]) != F_TRI) break;
+      // either we found a free or satisfied lit
+      if (i != c.sz) {
+        c[1] = c[i];
+        c[i] = unLit;
+        VERBOSE_PRINT("New watch for cl: " << c[1]);
+        litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
+      } else {
+        *it2++ = *it;
+        if (v_val(c[0]) == F_TRI) {
+          VERBOSE_PRINT("Conflicting state from norm cl offs: " << ofs);
+          ret = false;
+          it++;
+          break;
+        } else {
+          assert(v_val(c[0]) == X_TRI);
+          VERBOSE_PRINT("prop long");
+          v_enqueue(c[0]);
+        }
+      }
+    }
+    while(it != ws.end()) *it2++ = *it++;
+    ws.resize(it2-ws.begin());
+    if (!ret) break;
+  }
+  VERBOSE_PRINT("After propagate, v_qhead is: " << v_qhead);
+  return ret;
 }
 
 void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const

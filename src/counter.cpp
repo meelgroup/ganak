@@ -452,7 +452,7 @@ SOLVER_StateT Counter::countSAT() {
         if (state == EXIT) return SUCCESS;
       }
     }
-    if (state == PROCESS_COMPONENT) vivify_clauses();
+    if (state == PROCESS_COMPONENT && config_.do_vivify) vivify_clauses();
   }
   return SUCCESS;
 }

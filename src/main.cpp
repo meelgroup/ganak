@@ -123,6 +123,7 @@ void add_ganak_options()
     ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
      "Use polarity cache. Otherwise, false default polar.")
     ("saveuip", po::value(&conf.do_save_uip)->default_value(conf.do_save_uip), "Save UIP that's not used and add later")
+    ("vivif", po::value(&conf.do_vivify)->default_value(conf.do_vivify), "Vivify clauses")
     ;
 
     restart_options.add_options()

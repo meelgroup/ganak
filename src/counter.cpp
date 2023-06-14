@@ -307,7 +307,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   sat_solver = _sat_solver;
 
   auto ret = sat_solver->solve();
-  uint32_t num_cubes = 0;
+  int32_t num_cubes = 0;
   start_time = cpuTime();
   if (config_.do_restart) {
     vector<Lit> largest_cube;
@@ -326,7 +326,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       config_.branch_type = branch_t::old_ganak;
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
-      if (num_cubes < 10) {
+      if (num_cubes < 0) {
         cubes.push_back(largest_cube);
       } else {
         for(const auto& c: cubes) { add_irred_cl(c); }

@@ -183,7 +183,7 @@ private:
   retStateT backtrack_nonindep();
   retStateT backtrack();
   void print_dec_info() const;
-  void print_cl(const vector<Lit>& cl) const;
+  template<class T> void print_cl(const T& cl) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
 
@@ -346,7 +346,7 @@ private:
   bool standard_polarity(const uint32_t var) const;
 
   // Vivification
-  vector<Lit> tmp_vivif;
+  vector<Lit> v_tmp;
   vector<Lit> v_cl;
   uint64_t last_confl_vivif = 0;
   map<ClauseOfs, pair<Lit, Lit>> ws_pos;
@@ -376,3 +376,13 @@ private:
   // indicates if we have called end_irred_cls()
   bool ended_irred_cls = false;
 };
+
+template<class T> void Counter::print_cl(const T& cl) const {
+  for(uint32_t i = 0; i < cl.size(); i ++) {
+    const auto l = cl[i];
+    cout << "lit " << std::setw(6) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
+    << " val: " << lit_val_str(l) << endl;
+  }
+}

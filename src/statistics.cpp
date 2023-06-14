@@ -92,6 +92,14 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(6) << cls_removed);
   verb_print(1, "looks/look-computes            "
     << lookaheads << "/" << lookahead_computes);
+
+  verb_print(1, "vivif: try/cls/clviv/litsravg  "
+    << std::setw(9) << vivif_tried << " "
+    << std::setw(9) << vivif_tried_cl << " "
+    << std::setw(9) << vivif_cl_minim << " "
+    << std::setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
+  );
+
   verb_print(1, "probes/flits/bplits K          "
     << std::left
     << std::setw(6) << (num_failed_lit_tests_/1000ULL) << " "

@@ -99,6 +99,12 @@ public:
   uint64_t  saved_uip_used_asserting = 0;
   uint64_t  saved_uip_used_sat_or_unk = 0;
 
+  // Vivification
+  uint64_t vivif_tried = 0;
+  uint64_t vivif_tried_cl = 0;
+  uint64_t vivif_cl_minim = 0;
+  uint64_t vivif_lit_rem = 0;
+
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
   uint64_t num_cache_look_ups_ = 0;

@@ -279,7 +279,8 @@ public:
   uint8_t red:1 = 0;
   uint8_t freed:1 = 0;
   uint8_t reloced:1 = 0;
-
+  auto size() const { return sz; }
+  void resize(const uint32_t sz2) {sz = sz2;}
   void update_lbd(uint32_t _lbd) {
     if (_lbd > 250) return;
     if (_lbd < lbd) lbd = _lbd;

@@ -1109,17 +1109,6 @@ void Counter::print_dec_info() const
   }
 }
 
-void Counter::print_cl(const vector<Lit>& cl) const {
-
-  for(uint32_t i = 0; i < cl.size(); i ++) {
-    const auto l = cl[i];
-    cout << "lit " << std::setw(6) << l
-      << " lev: " << std::setw(4) << var(l).decision_level
-      << " ante: " << std::setw(5) << std::left << var(l).ante
-    << " val: " << lit_val_str(l) << endl;
-  }
-}
-
 void Counter::print_conflict_info() const
 {
   print_dec_info();
@@ -2046,21 +2035,22 @@ void Counter::minimizeUIPClause() {
 }
 
 void Counter::vivify_cls(vector<ClauseOfs>& cls) {
+  stats.vivif_tried++;
   uint32_t j = 0;
   for(uint32_t i = 0; i < cls.size(); i++) {
     auto& off = cls[i];
     bool rem = vivify_cl(off);
-    if (!rem) {
-      cls[j++] = off;
-    } else {
-      alloc->clauseFree(off);
-    }
+    if (!rem) cls[j++] = off;
   }
   cls.resize(j);
 }
 
 void Counter::vivify_clauses() {
   if (last_confl_vivif + 10000 > stats.conflicts) return;
+  double myTime = cpuTime();
+  verb_print(3, "vivif start");
+  uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
+  uint64_t last_vivif_cl_minim = stats.vivif_cl_minim;
 
   // Sanity check here.
   last_confl_vivif = stats.conflicts;
@@ -2121,6 +2111,10 @@ void Counter::vivify_clauses() {
   for(const auto& off: longIrredCls) v_cl_repair(off);
   for(const auto& off: longRedCls) v_cl_repair(off);
   ws_pos.clear();
+  verb_print(1, "vivif finished."
+      << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
+      << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
+      << "T: " << (cpuTime()-myTime));
 }
 
 void Counter::v_cl_repair(ClauseOfs off) {
@@ -2164,36 +2158,76 @@ template<class T> bool Counter::v_clause_satisfied(const T& cl) const {
 
 // Returns TRUE if we can remove the clause
 bool Counter::vivify_cl(const ClauseOfs off) {
+  SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
+  bool fun_ret = false;
   Clause& cl = *alloc->ptr(off);
-  if (v_clause_satisfied(cl)) {
-    /* return false; */
-    // TODO
-    return false;
-  }
+  stats.vivif_tried_cl++;
+
+  /* uint32_t num_unk = 0; */
+  /* uint32_t num_t = 0; */
+  /* uint32_t num_f = 0; */
+  /* for(const auto& l: cl) switch(val(l)) { */
+  /*     case X_TRI: num_unk++; break; */
+  /*     case F_TRI: num_f++; break; */
+  /*     case T_TRI: num_t++; break; */
+  /* } */
 
   v_new_lev();
-  tmp_vivif.clear();
+  v_tmp.clear();
   for(uint32_t i = 0; i < cl.sz; i++) {
     const auto& l = cl[i];
-    if (v_val(l) == T_TRI) {tmp_vivif.push_back(l);break;}
+    if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
     if (v_val(l) == F_TRI) continue;
-    tmp_vivif.push_back(l);
+    v_tmp.push_back(l);
     v_enqueue(l.neg());
     bool ret = v_propagate();
     if (!ret) break;
   }
-  for(const auto&l : cl.sz) seen[i];
+  v_backtrack();
+  for(const auto&l: v_tmp) seen[l.raw()] = 1;
 
+  uint32_t removable = 0;
+  auto it = ws_pos.find(off);
+  assert(it != ws_pos.end());
+  for(uint32_t i = 0; i < cl.sz; i ++) {
+    const Lit l = cl[i];
+    // watch 0 & 1 are never removable
+    if (l != it->second.first && l != it->second.second) {
+      seen[l.raw()] ^= 1;
+      if (seen[l.raw()]) {
+        removable++;
+        toClear.push_back(l.raw());
+      }
+    }
+  }
+  if (removable != 0) {
+    assert(false);
+    // TODO
+    /* v_detach(off); */
+    cout << "orig CL: " << endl; print_cl(cl);
+    stats.vivif_cl_minim++;
+    stats.vivif_lit_rem += removable;
+    auto it = std::remove_if(cl.begin(), cl.end(),
+        [=](Lit l) -> bool { return seen[l.raw()] == 1; });
 
-  if (tmp_vivif.size() < cl.sz) {
-    cout << "Vivif success. "
-      << " Old sz: " << cl.sz << " Rem lits: " << (v_cl.size() - tmp_vivif.size()) << endl;
+    cl.resize(it-cl.begin());
+    assert(cl.sz >= 2);
+    cout << "vivified CL: " << endl; print_cl(cl);
+
+    if (cl.sz == 2) {
+      add_bin_cl(cl[0], cl[1], cl.red);
+      markClauseDeleted(off);
+      fun_ret = true;
+    } else {
+      assert(false);
+      // TODO
+      /* v_attach(off); */
+    }
   }
 
-  v_backtrack();
-
-  // TODO return something else
-  return false;
+  for(const auto& l: toClear) seen[l] = 0;
+  toClear.clear();
+  return fun_ret;
 }
 
 TriValue Counter::v_val(const Lit l) const {

@@ -94,8 +94,8 @@ void Counter::init_activity_scores()
 
 void Counter::end_irred_cls()
 {
-  tmp_seen.clear();
-  tmp_seen.resize(2*(nVars()+2), 0);
+  seen.clear();
+  seen.resize(2*(nVars()+2), 0);
   delete comp_manager_;
   comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
   comp_manager_->getrandomseedforclhash();
@@ -1796,7 +1796,7 @@ bool Counter::failed_lit_probe_no_bprop()
     toSet.clear();
     for (auto& l : test_lits) if (isUnknown(l) && threshold <= watches_[l].activity) {
         if (!one_lit_probe(l, false)) return false;
-        SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+        SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
       }
   }
   print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
@@ -1849,7 +1849,7 @@ bool Counter::failed_lit_probe_with_bprop() {
         if (watches_[l].activity < watches_[l.neg()].activity) l = l.neg();
         if (!one_lit_probe(l, true)) return false;
         if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
-        SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+        SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
       }
     }
 
@@ -1889,10 +1889,10 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     unSet(l);
     if (config_.bprop && bSucceeded) {
       if (set) {
-        tmp_seen[l.var()] = 1U | ((uint8_t)l.sign() << 1);
+        seen[l.var()] = 1U | ((uint8_t)l.sign() << 1);
         toClear.push_back(l.var());
       } else {
-        if (tmp_seen[l.var()] && (tmp_seen[l.var()] >> 1) == (uint8_t)l.sign()) {
+        if (seen[l.var()] && (seen[l.var()] >> 1) == (uint8_t)l.sign()) {
           toSet.insert(l);
         }
       }
@@ -1900,7 +1900,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     trail.pop_back();
   }
   if (!set) {
-    for(const auto& v: toClear) tmp_seen[v] = 0;
+    for(const auto& v: toClear) seen[v] = 0;
     toClear.clear();
   }
 
@@ -1909,7 +1909,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
     print_debug("-> failed literal detected");
     sz = trail.size();
     setLiteral(lit.neg(), var(top_dec_lit()).decision_level, Antecedent::fakeAnte());
-    for(const auto& v: toClear) tmp_seen[v] = 0;
+    for(const auto& v: toClear) seen[v] = 0;
     toClear.clear();
     if (!propagate()) {
       print_debug("Failed literal probing END -- this comp/branch is UNSAT");
@@ -1971,19 +1971,19 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
       for (uint32_t i = 1; i < size; i++) {
         VERBOSE_PRINT("at i: " << i);
         Lit p2 = c[i];
-        VERBOSE_PRINT("Examining lit " << p2 << " tmp_seen: " << tmp_seen[p2.var()]);
-        if (!tmp_seen[p2.var()] && var(p2).decision_level > 0) {
+        VERBOSE_PRINT("Examining lit " << p2 << " seen: " << seen[p2.var()]);
+        if (!seen[p2.var()] && var(p2).decision_level > 0) {
           if (var(p2).ante.isAnt()
               && (abstractLevel(p2.var()) & abstract_levels) != 0
           ) {
               VERBOSE_PRINT("lit " << p2 << " OK");
-              tmp_seen[p2.var()] = 1;
+              seen[p2.var()] = 1;
               analyze_stack.push_back(p2);
               toClear.push_back(p2.var());
           } else {
               VERBOSE_PRINT("lit " << p2 << " NOT OK");
               //Return to where we started before function executed
-              for (size_t j = top; j < toClear.size(); j++) tmp_seen[toClear[j]] = 0;
+              for (size_t j = top; j < toClear.size(); j++) seen[toClear[j]] = 0;
               toClear.resize(top);
               return false;
           }
@@ -2027,7 +2027,7 @@ void Counter::minimizeUIPClause() {
   stats.uip_cls++;
   stats.orig_uip_lits += uip_clause.size();
   recursiveConfClauseMin();
-  for(const auto& c: toClear) tmp_seen[c] = 0;
+  for(const auto& c: toClear) seen[c] = 0;
   toClear.clear();
 
   SLOW_DEBUG_DO(check_implied(uip_clause));
@@ -2182,7 +2182,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     bool ret = v_propagate();
     if (!ret) break;
   }
-  for(const auto&l : cl.sz) tmp_seen[i];
+  for(const auto&l : cl.sz) seen[i];
 
 
   if (tmp_vivif.size() < cl.sz) {
@@ -2360,7 +2360,7 @@ void Counter::recordLastUIPCauses() {
   uip_clause.push_back(Lit(0, false));
   Lit p = NOT_A_LIT;
 
-  SLOW_DEBUG_DO(for(const auto& t:tmp_seen) assert(t == 0););
+  SLOW_DEBUG_DO(for(const auto& t:seen) assert(t == 0););
   int32_t DL = var(top_dec_lit()).decision_level;
   VERBOSE_DEBUG_DO(cout << "orig DL: " << decision_stack_.get_decision_level() << endl);
   VERBOSE_DEBUG_DO(cout << "new DL : " << DL << endl);
@@ -2415,9 +2415,9 @@ void Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {
       Lit q = c[j];
-      if (!tmp_seen[q.var()] && var(q).decision_level > 0){
+      if (!seen[q.var()] && var(q).decision_level > 0){
         increaseActivity(q);
-        tmp_seen[q.var()] = 1;
+        seen[q.var()] = 1;
         toClear.push_back(q.var());
 #ifdef VERBOSE_DEBUG
         cout << std::setw(5) << q << " lev: " << std::setw(3) << var(q).decision_level
@@ -2437,7 +2437,7 @@ void Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(cout << "PathC: " << pathC << endl);
 
     do {
-      while (!tmp_seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));};
+      while (!seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));};
       p = trail[index+1];
       assert(p != NOT_A_LIT);
 #ifdef VERBOSE_DEBUG
@@ -2449,7 +2449,7 @@ void Counter::recordLastUIPCauses() {
     } while(var(trail[index+1]).decision_level < nDecisionLevel);
     VERBOSE_DEBUG_DO(cout << "Next p: " << p << endl);
     confl = var(p).ante;
-    tmp_seen[p.var()] = 0;
+    seen[p.var()] = 0;
     pathC--;
   } while (pathC > 0);
   assert(pathC == 0);
@@ -2465,7 +2465,7 @@ void Counter::recordLastUIPCauses() {
 #endif
   SLOW_DEBUG_DO(check_implied(uip_clause));
   minimizeUIPClause();
-  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0));
+  SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
 }
 
 Counter::Counter(const CounterConfiguration& conf) : Instance(conf) {

@@ -134,7 +134,7 @@ protected:
   }
 
   void inline increaseActivity(const Lit lit) {
-    if (config_.do_single_bump && tmp_seen[lit.var()]) return;
+    if (config_.do_single_bump && seen[lit.var()]) return;
     watches_[lit].activity += act_inc;
     if (watches_[lit].activity > 1e100) {
       //rescale
@@ -215,7 +215,7 @@ protected:
 protected:
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> target_polar;
-  vector<uint8_t> tmp_seen;
+  vector<uint8_t> seen;
 
   // Cubes
   vector<Lit> largest_cube;
@@ -253,28 +253,28 @@ bool Instance::add_bin_cl(Lit litA, Lit litB, bool red) {
 
 template<class T>
 void Instance::minimize_uip_cl_with_bins(T& cl) {
-  SLOW_DEBUG_DO(for(const auto& s: tmp_seen) assert(s == 0););
+  SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
   uint32_t rem = 0;
   assert(cl.size() > 0);
   tmp_minim_with_bins.clear();
-  for(const auto& l: cl) { tmp_seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
+  for(const auto& l: cl) { seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
   for(const auto& l: cl) {
   /* { */
     /* Lit l = tmp_minim_with_bins[0]; */
-    if (!tmp_seen[l.toPosInt()]) continue;
+    if (!seen[l.toPosInt()]) continue;
     const auto& w = watches_[l].binary_links_;
     for(const auto& l2: w) {
       assert(l.var() != l2.var());
-      if (tmp_seen[(l2.neg()).toPosInt()]) { tmp_seen[(l2.neg()).toPosInt()] = 0; rem++; }
+      if (seen[(l2.neg()).toPosInt()]) { seen[(l2.neg()).toPosInt()] = 0; rem++; }
     }
   }
   cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
-  tmp_seen[tmp_minim_with_bins[0].toPosInt()] = 0;
+  seen[tmp_minim_with_bins[0].toPosInt()] = 0;
   for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
     Lit l = tmp_minim_with_bins[i];
-    if (tmp_seen[l.toPosInt()]) {
+    if (seen[l.toPosInt()]) {
       cl.push_back(l);
-      tmp_seen[l.toPosInt()] = 0;
+      seen[l.toPosInt()] = 0;
     }
   }
   stats.rem_lits_with_bins+=rem;

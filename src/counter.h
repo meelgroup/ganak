@@ -372,7 +372,8 @@ private:
   void v_enqueue(const Lit l);
   TriValue v_val(const Lit l) const;
   void v_fix_watch(Clause& cl, uint32_t i);
-  template<class T> bool v_asserting(T& cl) const;
+  template<class T> bool propagating_cl(T& cl) const;
+  template<class T> bool conflicting_cl(T& cl) const;
   void v_new_lev();
   template<class T> bool v_clause_satisfied(const T& cl) const;
   void vivif_backtrack();
@@ -410,11 +411,18 @@ template<class T> void Counter::v_print_cl(const T& cl) const {
   }
 }
 
-template<class T> bool Counter::v_asserting(T& cl) const {
-  uint32_t v_unk = 0;
+template<class T> bool Counter::conflicting_cl(T& cl) const {
   for(const auto&l: cl) {
-    if (v_val(l) == T_TRI) return false;
-    if (v_val(l) == X_TRI) {v_unk++; if (v_unk>1) break;}
+    if (val(l) == T_TRI || val(l) == X_TRI) return false;
   }
-  return v_unk == 1;
+  return true;
+}
+
+template<class T> bool Counter::propagating_cl(T& cl) const {
+  uint32_t unk = 0;
+  for(const auto&l: cl) {
+    if (val(l) == T_TRI) return false;
+    if (val(l) == X_TRI) {unk++; if (unk>1) break;}
+  }
+  return unk == 1;
 }

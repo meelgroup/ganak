@@ -2126,12 +2126,21 @@ void Counter::v_cl_repair(ClauseOfs off) {
   assert(at != cl.end());
   std::swap(cl[1], *at);
 
+  uint32_t val_f = 0;
+  uint32_t val_u = 0;
   uint32_t val_t = 0;
   uint32_t val_t_at = 0;
   for(uint32_t i = 0; i < cl.size(); i++) {
     const Lit l = cl[i];
     if (val(l) == T_TRI) {val_t++;val_t_at = i;}
+    if (val(l) == F_TRI) {val_f++;}
+    if (val(l) == X_TRI) {val_u++;}
   }
+
+  // Not conflicting
+  assert(!(val_u == 0 && val_t == 0));
+  // Not propagating
+  assert(!(val_u == 1 && val_t == 0));
 
   if (val_t >= 1) {
     litWatchList(cl[0]).addWatchLinkTo(off, cl[val_t_at]);
@@ -2256,7 +2265,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   if (removable != 0 &&
       // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
       //      so we must skip this
-      !v_asserting(v_tmp)) {
+      !propagating_cl(v_tmp) && !conflicting_cl(v_tmp)) {
     litWatchList(cl[0]).removeWatchLinkTo(off);
     litWatchList(cl[1]).removeWatchLinkTo(off);
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));
@@ -2277,6 +2286,12 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         return false;
       });
     if (cl.sz == 2) {
+      // Not propagating
+      assert(!(val(cl[0]) == X_TRI && val(cl[1])==F_TRI));
+      assert(!(val(cl[1]) == X_TRI && val(cl[0])==F_TRI));
+      // Not conflicting
+      assert(!(val(cl[0]) == F_TRI && val(cl[1])==F_TRI));
+
       add_bin_cl(cl[0], cl[1], cl.red);
       if (v_val(cl[0]) == X_TRI && v_val(cl[1]) == F_TRI) {
         v_enqueue(cl[0]);

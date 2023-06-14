@@ -374,6 +374,7 @@ private:
   void v_fix_watch(Clause& cl, uint32_t i);
   template<class T> bool propagating_cl(T& cl) const;
   template<class T> bool conflicting_cl(T& cl) const;
+  template<class T> bool should_have_propagated_earlier(const T& cl) const;
   void v_new_lev();
   template<class T> bool v_clause_satisfied(const T& cl) const;
   void vivif_backtrack();

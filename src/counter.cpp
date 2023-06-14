@@ -2129,10 +2129,12 @@ void Counter::v_cl_repair(ClauseOfs off) {
   uint32_t val_f = 0;
   uint32_t val_u = 0;
   uint32_t val_t = 0;
-  uint32_t val_t_at = 0;
+  int32_t val_t_at = -1;
+  int32_t mindec_12 = std::min(var(cl[0]).decision_level, var(cl[1]).decision_level);
   for(uint32_t i = 0; i < cl.size(); i++) {
     const Lit l = cl[i];
-    if (val(l) == T_TRI) {val_t++;val_t_at = i;}
+    if (val(l) == T_TRI && var(l).decision_level <= mindec_12) {val_t_at = i;}
+    if (val(l) == T_TRI) {val_t++;}
     if (val(l) == F_TRI) {val_f++;}
     if (val(l) == X_TRI) {val_u++;}
   }
@@ -2142,9 +2144,11 @@ void Counter::v_cl_repair(ClauseOfs off) {
   // Not propagating
   assert(!(val_u == 1 && val_t == 0));
 
-  if (val_t >= 1) {
+  if (val_t_at != -1) {
     litWatchList(cl[0]).addWatchLinkTo(off, cl[val_t_at]);
     litWatchList(cl[1]).addWatchLinkTo(off, cl[val_t_at]);
+    VERBOSE_PRINT("Vivified cl off: " << off);
+    VERBOSE_DEBUG_DO(print_cl(cl));
     return;
   }
 
@@ -2159,6 +2163,9 @@ void Counter::v_cl_repair(ClauseOfs off) {
       }
       return var(a).decision_level > var(b).decision_level;
     });
+
+  VERBOSE_PRINT("Vivified cl off: " << off);
+  VERBOSE_DEBUG_DO(print_cl(cl));
   litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);
   litWatchList(cl[1]).addWatchLinkTo(off, cl[cl.sz/2]);
 }
@@ -2208,6 +2215,28 @@ template<class T> bool Counter::v_clause_satisfied(const T& cl) const {
   return false;
 }
 
+template<class T> bool Counter::should_have_propagated_earlier(const T& cl) const {
+  uint32_t num_t = 0;
+  int32_t t_lev = -1;
+  int32_t maxlev_f = -1;
+  for(const auto&l: cl) {
+    if (val(l) == T_TRI) {
+      num_t++;
+      if (num_t >= 2) return false;
+      t_lev = var(l).decision_level;
+    }
+    if (val(l) == X_TRI) return false;
+    if (val(l) == F_TRI) {
+      maxlev_f = std::max(maxlev_f, var(l).decision_level);
+    }
+  }
+
+  // Should have propagated at level maxlev_f -- but it only got set TRUE at t_lev!
+  if (maxlev_f < t_lev) return true;
+  return false;
+
+}
+
 // Returns TRUE if we can remove the clause
 bool Counter::vivify_cl(const ClauseOfs off) {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
@@ -2228,6 +2257,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.second);
   std::swap(*sw, v_tmp2[1]);
 
+  VERBOSE_PRINT("vivifying cl offs: " << off);
+  VERBOSE_DEBUG_DO(print_cl(cl));
   for(uint32_t i = 0; i < v_tmp2.size(); i++) {
     const auto& l = v_tmp2[i];
     VERBOSE_PRINT("Vivif lit l: " << l << " val: " << val_str(v_val(l)));
@@ -2242,7 +2273,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     }
   }
   v_backtrack();
-  VERBOSE_DEBUG_DO(cout << "new CL: " << endl; v_print_cl(v_tmp));
+  VERBOSE_DEBUG_DO(cout << "new vivified CL offs: " << off << endl; print_cl(v_tmp));
   uip_clause.clear();
   check_implied(v_tmp);
   for(const auto&l: v_tmp) seen[l.raw()] = 1;
@@ -2265,7 +2296,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   if (removable != 0 &&
       // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
       //      so we must skip this
-      !propagating_cl(v_tmp) && !conflicting_cl(v_tmp)) {
+      !propagating_cl(v_tmp) && !conflicting_cl(v_tmp) &&
+      !should_have_propagated_earlier(v_tmp)) {
     litWatchList(cl[0]).removeWatchLinkTo(off);
     litWatchList(cl[1]).removeWatchLinkTo(off);
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));

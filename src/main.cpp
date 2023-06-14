@@ -124,6 +124,7 @@ void add_ganak_options()
      "Use polarity cache. Otherwise, false default polar.")
     ("saveuip", po::value(&conf.do_save_uip)->default_value(conf.do_save_uip), "Save UIP that's not used and add later")
     ("vivif", po::value(&conf.do_vivify)->default_value(conf.do_vivify), "Vivify clauses")
+    ("vivifevery", po::value(&conf.vivif_every)->default_value(conf.vivif_every), "Vivify every N conflicts")
     ;
 
     restart_options.add_options()

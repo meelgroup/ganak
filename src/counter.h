@@ -194,6 +194,7 @@ private:
   retStateT backtrack();
   void print_dec_info() const;
   template<class T> void print_cl(const T& cl) const;
+  template<class T> void v_print_cl(const T& cl) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
 
@@ -357,6 +358,7 @@ private:
 
   // Vivification
   vector<Lit> v_tmp;
+  vector<Lit> v_tmp2;
   vector<Lit> v_cl;
   uint64_t last_confl_vivif = 0;
   map<ClauseOfs, pair<Lit, Lit>> ws_pos;
@@ -369,6 +371,8 @@ private:
   void v_unset(const Lit l);
   void v_enqueue(const Lit l);
   TriValue v_val(const Lit l) const;
+  void v_fix_watch(Clause& cl, uint32_t i);
+  template<class T> bool v_asserting(T& cl) const;
   void v_new_lev();
   template<class T> bool v_clause_satisfied(const T& cl) const;
   void vivif_backtrack();
@@ -395,4 +399,22 @@ template<class T> void Counter::print_cl(const T& cl) const {
       << " ante: " << std::setw(5) << std::left << var(l).ante
     << " val: " << lit_val_str(l) << endl;
   }
+}
+
+template<class T> void Counter::v_print_cl(const T& cl) const {
+  for(uint32_t i = 0; i < cl.size(); i ++) {
+    const auto l = cl[i];
+    cout << "lit " << std::setw(6) << l
+      << " lev: " << std::setw(4) << v_levs[l.var()]
+    << " val: " << val_str(v_val(l)) << endl;
+  }
+}
+
+template<class T> bool Counter::v_asserting(T& cl) const {
+  uint32_t v_unk = 0;
+  for(const auto&l: cl) {
+    if (v_val(l) == T_TRI) return false;
+    if (v_val(l) == X_TRI) {v_unk++; if (v_unk>1) break;}
+  }
+  return v_unk == 1;
 }

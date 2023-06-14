@@ -200,6 +200,14 @@ protected:
     else return "UNKN";
   }
 
+  string val_str(const TriValue& tri) const {
+    if (tri == F_TRI)
+      return "FALSE";
+    else if (tri == T_TRI)
+      return "TRUE";
+    else return "UNKN";
+  }
+
   bool isUnknown(Lit lit) const {
     return lit_values_[lit] == X_TRI;
   }

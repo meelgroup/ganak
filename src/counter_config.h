@@ -55,6 +55,7 @@ struct CounterConfiguration {
   int polar_type = 1; // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
   int do_save_uip = 1;
   int do_vivify = 0;
+  uint32_t vivif_every = 50000;
 
   uint32_t td_varlim = 150000;
   double td_denselim = 0.10;

@@ -452,7 +452,13 @@ SOLVER_StateT Counter::countSAT() {
         if (state == EXIT) return SUCCESS;
       }
     }
-    if (state == PROCESS_COMPONENT && config_.do_vivify) vivify_clauses();
+
+    // Here we can vivify I think
+    if (config_.do_vivify) {
+      vivify_clauses();
+      bool ret = propagate();
+      assert(ret);
+    }
   }
   return SUCCESS;
 }
@@ -2054,7 +2060,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
 }
 
 void Counter::vivify_clauses() {
-  if (last_confl_vivif + 10000 > stats.conflicts) return;
+  if (last_confl_vivif + config_.vivif_every > stats.conflicts) return;
   double myTime = cpuTime();
   verb_print(3, "vivif start");
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
@@ -2066,13 +2072,6 @@ void Counter::vivify_clauses() {
   assert(ret);
 
   // Backup
-  vector<ClOffsBlckL> ws_backup;
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
-    Lit l(i/2, i%2);
-    const auto& ws = watches_[l].watch_list_;
-    ws_backup.insert(ws_backup.end(), ws.begin(), ws.end());
-    ws_backup.push_back(ClOffsBlckL(0, NOT_A_LIT));
-  }
   ws_pos.clear();
   for(const auto& off: longIrredCls) {
     const Clause& cl = *alloc->ptr(off);
@@ -2105,33 +2104,67 @@ void Counter::vivify_clauses() {
   vivify_cls(longRedCls);
 
   // Restore
-  uint32_t x = 0;
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
-    Lit l(i/2, i%2);
-    auto& ws = watches_[l].watch_list_;
-    ws.clear();
-    while(ws_backup[x] != ClOffsBlckL(0, NOT_A_LIT)) {
-      ws.push_back(ws_backup[x]);
-      x++;
-    }
-    x++;
-  }
+  for(auto& ws: watches_) ws.watch_list_.clear();
   for(const auto& off: longIrredCls) v_cl_repair(off);
   for(const auto& off: longRedCls) v_cl_repair(off);
   ws_pos.clear();
   verb_print(1, "vivif finished."
       << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
       << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
-      << "T: " << (cpuTime()-myTime));
+      << " T: " << (cpuTime()-myTime));
 }
 
 void Counter::v_cl_repair(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   auto& offs = ws_pos[off];
+
   auto at = std::find(cl.begin(), cl.end(), offs.first);
+  assert(at != cl.end());
   std::swap(cl[0], *at);
+
   at = std::find(cl.begin(), cl.end(), offs.second);
+  assert(at != cl.end());
   std::swap(cl[1], *at);
+
+  uint32_t val_t = 0;
+  uint32_t val_t_at = 0;
+  for(uint32_t i = 0; i < cl.size(); i++) {
+    const Lit l = cl[i];
+    if (val(l) == T_TRI) {val_t++;val_t_at = i;}
+  }
+
+  if (val_t >= 1) {
+    litWatchList(cl[0]).addWatchLinkTo(off, cl[val_t_at]);
+    litWatchList(cl[1]).addWatchLinkTo(off, cl[val_t_at]);
+    return;
+  }
+
+  // We removed the TRUE
+  std::sort(cl.begin(), cl.end(),
+    [=](const Lit& a, const Lit& b) {
+      if (val(a) == X_TRI && val(b) != X_TRI) return true;
+      if (val(b) == X_TRI && val(a) != X_TRI) return false;
+      if (var(a).decision_level == var(b).decision_level) {
+        if(val(a) != val(b)) return val(a) == T_TRI;
+        return false;
+      }
+      return var(a).decision_level > var(b).decision_level;
+    });
+  litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);
+  litWatchList(cl[1]).addWatchLinkTo(off, cl[cl.sz/2]);
+}
+
+// We could have removed a TRUE. This may be an issue.
+void Counter::v_fix_watch(Clause& cl, uint32_t i) {
+  if (val(cl[i]) == X_TRI || val(cl[i]) == T_TRI) return;
+  auto off = alloc->get_offset(&cl);
+  litWatchList(cl[i]).removeWatchLinkTo(off);
+  uint32_t i2 = 2;
+  for(; i2 < cl.size(); i2++) if (val(cl[i2]) == X_TRI || val(cl[i2]) == T_TRI) break;
+  /* print_cl(cl); */
+  assert(i2 != cl.size());
+  std::swap(cl[i], cl[i2]);
+  litWatchList(cl[i]).addWatchLinkTo(off, cl[cl.sz/2]);
 }
 
 void Counter::v_new_lev() {
@@ -2141,10 +2174,11 @@ void Counter::v_new_lev() {
 }
 
 void Counter::v_unset(const Lit l) {
+  VERBOSE_PRINT("v-unset: " << l);
   assert(v_levs[l.var()] == 1);
   v_levs[l.var()] = -1;
-  v_values[l] = T_TRI;
-  v_values[l.neg()] = F_TRI;
+  v_values[l] = X_TRI;
+  v_values[l.neg()] = X_TRI;
 }
 
 void Counter::v_backtrack() {
@@ -2153,6 +2187,7 @@ void Counter::v_backtrack() {
     const auto& l = v_trail[i];
     v_unset(l);
   }
+  v_trail.resize(v_backtrack_to);
   v_lev = 0;
   v_qhead = v_trail.size();
 }
@@ -2171,31 +2206,39 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   stats.vivif_tried_cl++;
 
-  /* uint32_t num_unk = 0; */
-  /* uint32_t num_t = 0; */
-  /* uint32_t num_f = 0; */
-  /* for(const auto& l: cl) switch(val(l)) { */
-  /*     case X_TRI: num_unk++; break; */
-  /*     case F_TRI: num_f++; break; */
-  /*     case T_TRI: num_t++; break; */
-  /* } */
-
+  /* cout << "orig CL: " << endl; v_print_cl(cl); */
+  auto it = ws_pos.find(off);
   v_new_lev();
   v_tmp.clear();
-  for(uint32_t i = 0; i < cl.sz; i++) {
-    const auto& l = cl[i];
+  v_tmp2.clear();
+  for(const auto&l: cl) v_tmp2.push_back(l);
+
+  // Swap to 1st & 2nd the two original 1st & 2nd
+  auto sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.first);
+  std::swap(*sw, v_tmp2[0]);
+  sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.second);
+  std::swap(*sw, v_tmp2[1]);
+
+  for(uint32_t i = 0; i < v_tmp2.size(); i++) {
+    const auto& l = v_tmp2[i];
+    VERBOSE_PRINT("Vivif lit l: " << l << " val: " << val_str(v_val(l)));
     if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
     if (v_val(l) == F_TRI) continue;
     v_tmp.push_back(l);
     v_enqueue(l.neg());
     bool ret = v_propagate();
-    if (!ret) break;
+    if (!ret) {
+      VERBOSE_PRINT("vivif ret FALSE, exiting");
+      break;
+    }
   }
   v_backtrack();
+  VERBOSE_DEBUG_DO(cout << "new CL: " << endl; v_print_cl(v_tmp));
+  uip_clause.clear();
+  check_implied(v_tmp);
   for(const auto&l: v_tmp) seen[l.raw()] = 1;
 
   uint32_t removable = 0;
-  auto it = ws_pos.find(off);
   assert(it != ws_pos.end());
   for(uint32_t i = 0; i < cl.sz; i ++) {
     const Lit l = cl[i];
@@ -2206,31 +2249,61 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         removable++;
         toClear.push_back(l.raw());
       }
+    } else {
+      seen[l.raw()] = 0;
     }
   }
-  if (removable != 0) {
-    assert(false);
-    // TODO
-    /* v_detach(off); */
-    cout << "orig CL: " << endl; print_cl(cl);
+  if (removable != 0 &&
+      // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
+      //      so we must skip this
+      !v_asserting(v_tmp)) {
+    litWatchList(cl[0]).removeWatchLinkTo(off);
+    litWatchList(cl[1]).removeWatchLinkTo(off);
+    VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));
     stats.vivif_cl_minim++;
     stats.vivif_lit_rem += removable;
-    auto it = std::remove_if(cl.begin(), cl.end(),
+    auto it2 = std::remove_if(cl.begin(), cl.end(),
         [=](Lit l) -> bool { return seen[l.raw()] == 1; });
 
-    cl.resize(it-cl.begin());
+    cl.resize(it2-cl.begin());
     assert(cl.sz >= 2);
-    cout << "vivified CL: " << endl; print_cl(cl);
+    VERBOSE_DEBUG_DO(cout << "vivified CL: " << endl; v_print_cl(cl));
 
+    std::sort(cl.begin(), cl.end(), [=](const Lit l1, const Lit l2) {
+        if (v_val(l1) != v_val(l2)) {
+          if (v_val(l1) == X_TRI) return true;
+          return false;
+        }
+        return false;
+      });
     if (cl.sz == 2) {
       add_bin_cl(cl[0], cl[1], cl.red);
+      if (v_val(cl[0]) == X_TRI && v_val(cl[1]) == F_TRI) {
+        v_enqueue(cl[0]);
+      }
+      for(uint32_t v = 1; v < variables_.size(); v++) {
+        auto& vdat= variables_[v];
+        if (vdat.ante.isAClause() && vdat.ante.asCl() == off) {
+          assert(v == cl[0].var() || v == cl[1].var());
+          Lit otherLit = (v == cl[0].var()) ? cl[1] : cl[0];
+          vdat.ante = Antecedent(otherLit);
+        }
+      }
       markClauseDeleted(off);
       fun_ret = true;
     } else {
-      assert(false);
-      // TODO
-      /* v_attach(off); */
+      litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);
+      litWatchList(cl[1]).addWatchLinkTo(off, cl[cl.sz/2]);
+      if (!v_clause_satisfied(cl) && v_val(cl[0]) == X_TRI && v_val(cl[1]) != X_TRI) {
+        assert(v_val(cl[1]) == F_TRI);
+        v_enqueue(cl[0]);
+      }
+      cl.update_lbd(cl.sz); // we may be smaller than LBD
     }
+    bool ret = v_propagate();
+    assert(ret);
+  } else {
+    VERBOSE_DEBUG_DO(cout << "Can't vivify." << endl);
   }
 
   for(const auto& l: toClear) seen[l] = 0;
@@ -2243,6 +2316,7 @@ TriValue Counter::v_val(const Lit l) const {
 }
 
 void Counter::v_enqueue(const Lit l) {
+  VERBOSE_PRINT("v-enq: " << l << " lev: " << v_lev);
   assert(v_val(l) == X_TRI);
   v_levs[l.var()] = v_lev;
   v_trail.push_back(l);
@@ -2258,7 +2332,7 @@ bool Counter::v_propagate() {
     //Propagate bin clauses
     for (const auto& l : litWatchList(unLit).binary_links_) {
       if (v_val(l) == F_TRI) {
-        VERBOSE_PRINT("Fail bin.");
+        VERBOSE_PRINT("Conflict from bin.");
         return false;
       } else if (v_val(l) == X_TRI) {
         v_enqueue(l);
@@ -2331,7 +2405,7 @@ bool Counter::v_propagate() {
     ws.resize(it2-ws.begin());
     if (!ret) break;
   }
-  VERBOSE_PRINT("After propagate, v_qhead is: " << v_qhead);
+  VERBOSE_PRINT("After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
   return ret;
 }
 

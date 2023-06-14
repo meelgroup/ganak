@@ -72,6 +72,16 @@ public:
   Counter(const CounterConfiguration& conf);
   ~Counter();
   friend class ClauseAllocator;
+  struct ConflictData {
+    ConflictData() :
+      nHighestLevel(-1),
+      bOnlyOneLitFromHighest(false)
+    {}
+
+    int32_t nHighestLevel;
+    bool bOnlyOneLitFromHighest;
+  };
+  ConflictData find_conflict_level();
 
   double scoreOf(VariableIndex v) {
     if (config_.branch_type == branch_t::sharptd) {
@@ -106,7 +116,7 @@ public:
   int32_t dec_level() const { return decision_stack_.get_decision_level(); }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
-
+  void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
   // deal with saved uip
   enum class SavedUIPRet {prop_again, ret_false, cont};

@@ -1284,9 +1284,48 @@ void Counter::check_implied(const vector<Lit>& cl) {
   }
 }
 
+Counter::ConflictData Counter::find_conflict_level() {
+	ConflictData data;
+  Lit* c;
+  uint32_t size;
+  fill_cl(confl, c, size, NOT_A_LIT);
+	data.nHighestLevel = var(c[0]).decision_level;
+  int32_t curr_dl = var(top_dec_lit()).decision_level;
+	if (data.nHighestLevel == curr_dl && var(c[1]).decision_level == curr_dl) return data;
+
+	int highestId = 0;
+    data.bOnlyOneLitFromHighest = true;
+	// find the largest decision level in the clause
+	for (uint32_t nLitId = 1; nLitId < size; ++nLitId) {
+		int32_t nLevel = var(c[nLitId]).decision_level;
+		if (nLevel > data.nHighestLevel) {
+			highestId = nLitId;
+			data.nHighestLevel = nLevel;
+			data.bOnlyOneLitFromHighest = true;
+		} else if (nLevel == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
+			data.bOnlyOneLitFromHighest = false;
+		}
+	}
+
+  // fixing clause & watchlist
+  assert(false && "TODO below");
+	/* if (highestId != 0) { */
+	/* 	std::swap(c[0], c[highestId]); */
+	/* 	if (highestId > 1 && size > 2) { */
+      /* assert(confl.isAClause()); */
+      /* ClauseOfs off = confl.asCl(); */
+	/* 		remove(watches_[c[highestId].neg()].watch_list_, ClOffsBlckL(off, c[1])); */
+	/* 		ws[~conflCls[0]].push(Watcher(cind, conflCls[1])); */
+	/* 	} */
+	/* } */
+	return data;
+}
+
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
+
+
   recordLastUIPCauses();
   assert(uip_clause.front() != NOT_A_LIT);
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
@@ -1915,6 +1954,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
     analyze_stack.clear();
     analyze_stack.push_back(p);
 
+    Lit* c = NULL;
     uint32_t size;
     size_t top = toClear.size();
     while (!analyze_stack.empty()) {
@@ -1923,39 +1963,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
       assert(reason.isAnt());  //Must have a reason
       p = analyze_stack.back();
       analyze_stack.pop_back();
-
-      Lit* c = NULL;
-      size = 0;
-      if (reason.isAClause()) {
-        Clause* cl = alloc->ptr(reason.asCl());
-        c = cl->getData();
-        size = cl->sz;
-#ifdef VERBOSE_DEBUG
-        cout << "CL offs: " << reason.asCl() << " in analyze_stack:" << endl;
-        for(const auto& l: *cl) {
-          cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-            << " ante: " << std::setw(8) << var(l).ante
-            << " val : " << std::setw(7) << lit_val_str(l)
-            << endl;
-        }
-#endif
-      } else if (reason.isFake()) {
-        create_fake(p, size, c);
-      } else if (reason.isALit()) {
-        tmpLit.resize(2);
-        tmpLit[0] = NOT_A_LIT;
-        tmpLit[1] = reason.asLit();
-        size = 2;
-#ifdef VERBOSE_DEBUG
-        cout << "Bin cl in analyze_stack: " << endl;
-        Lit& l = tmpLit[1];
-        cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-          << " ante: " << std::setw(8) << var(l).ante
-          << " val : " << std::setw(7) << lit_val_str(l)
-          << endl;
-#endif
-        c = tmpLit.data();
-      } else {assert(false && "no such reason");}
+      fill_cl(reason, c, size, p);
 
       for (uint32_t i = 1; i < size; i++) {
         VERBOSE_PRINT("at i: " << i);
@@ -2339,36 +2347,39 @@ void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const
     c = tmpLit.data();
 
 #ifdef VERBOSE_DEBUG
-        cout << "Fake cl: " << endl;
-        for(const auto& l: tmpLit) {
-          cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-            << " ante: " << std::setw(8) << var(l).ante
-            << " val : " << std::setw(7) << lit_val_str(l)
-            << endl;
-        }
+    cout << "Fake cl: " << endl;
+    for(const auto& l: tmpLit) {
+      cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
+        << " ante: " << std::setw(8) << var(l).ante
+        << " val : " << std::setw(7) << lit_val_str(l)
+        << endl;
+    }
 #endif
 }
 
-int32_t Counter::get_confl_maxlev(const Lit p) const {
-  Lit* c;
-  uint32_t size = 0;
-
-  if (confl.isAClause()) {
-    VERBOSE_PRINT("Conflicting CL offset: " << confl.asCl());
-    Clause* cl = alloc->ptr(confl.asCl());
+void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const {
+  if (ante.isAClause()) {
+    Clause* cl = alloc->ptr(ante.asCl());
     c = cl->getData();
     size = cl->sz;
-  } else if (confl.isFake()) {
+  } else if (ante.isFake()) {
     create_fake(p, size, c);
-  } else if (confl.isALit()) {
+  } else if (ante.isALit()) {
     //Binary
     tmpLit.resize(2);
     c = tmpLit.data();
     if (p == NOT_A_LIT) c[0] = conflLit;
     else c[0] = p;
-    c[1] = confl.asLit();
+    c[1] = ante.asLit();
     size = 2;
   } else {assert(false);}
+}
+
+int32_t Counter::get_confl_maxlev(const Lit p) const {
+  Lit* c;
+  uint32_t size = 0;
+  fill_cl(confl, c, size, p);
+
   int32_t maxlev = -1;
   for(uint32_t i = 0; i < size; i ++) {
 #ifdef VERBOSE_DEBUG
@@ -2409,28 +2420,18 @@ void Counter::recordLastUIPCauses() {
   int32_t index = trail.size()-1;
   uint32_t pathC = 0;
   do {
+    fill_cl(confl, c, size, p);
     if (confl.isAClause()) {
       Clause& cl = *alloc->ptr(confl.asCl());
-      c = cl.getData();
-      size = cl.sz;
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.increaseScore();
         cl.update_lbd(calc_lbd(cl));
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
-    } else if (confl.isFake()) {
-      create_fake(p, size, c);
     } else if (confl.isALit()) {
-      assert(!confl.isAClause());
-      tmpLit.resize(2);
-      c = tmpLit.data();
-      if (p == NOT_A_LIT) c[0] = conflLit;
-      else c[0] = p;
-      c[1] = confl.asLit();
       if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
         std::swap(c[0], c[1]);
-      size = 2;
-    } else {assert(false);}
+    }
 
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
 #ifdef VERBOSE_DEBUG

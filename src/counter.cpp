@@ -2113,12 +2113,12 @@ void Counter::vivify_clauses() {
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
 
   // Vivify clauses
-  v_tout = 5LL*1000LL*1000LL;
+  v_tout = config_.vivif_mult*10LL*1000LL*1000LL;
   vivify_cls(longIrredCls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout << " T: " << (cpuTime()-myTime));
 
-  v_tout = 30LL*1000LL*1000LL;
+  v_tout = config_.vivif_mult*30LL*1000LL*1000LL;
   vivify_cls(longRedCls);
   verb_print(2, "[vivif] red vivif remain: " << v_tout << " T: " << (cpuTime()-myTime));
   bool tout_red = (v_tout <= 0);

@@ -56,6 +56,7 @@ struct CounterConfiguration {
   int do_save_uip = 1;
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
+  double vivif_mult = 1.0;
 
   uint32_t td_varlim = 150000;
   double td_denselim = 0.10;

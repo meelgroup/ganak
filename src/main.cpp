@@ -125,6 +125,7 @@ void add_ganak_options()
     ("saveuip", po::value(&conf.do_save_uip)->default_value(conf.do_save_uip), "Save UIP that's not used and add later")
     ("vivif", po::value(&conf.do_vivify)->default_value(conf.do_vivify), "Vivify clauses")
     ("vivifevery", po::value(&conf.vivif_every)->default_value(conf.vivif_every), "Vivify every N conflicts")
+    ("vivifmult", po::value(&conf.vivif_mult)->default_value(conf.vivif_mult), "How much to multiply timeout for vivif")
     ;
 
     restart_options.add_options()

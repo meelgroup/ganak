@@ -357,6 +357,7 @@ private:
   bool standard_polarity(const uint32_t var) const;
 
   // Vivification
+  int64_t v_tout;
   vector<Lit> v_tmp;
   vector<Lit> v_tmp2;
   vector<Lit> v_cl;

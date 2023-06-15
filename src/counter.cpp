@@ -2052,9 +2052,23 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
   stats.vivif_tried++;
   uint32_t j = 0;
   for(uint32_t i = 0; i < cls.size(); i++) {
+    bool rem = false;
     auto& off = cls[i];
-    bool rem = vivify_cl(off);
+    if (v_tout > 0) {
+      Clause& cl = *alloc->ptr(off);
+      if (cl.vivifed == 0 && (
+          !cl.red ||
+          (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 10)))))
+        rem = vivify_cl(off);
+    }
     if (!rem) cls[j++] = off;
+  }
+
+  // We didn't timeout, reset vivified flag.
+  if (v_tout > 0) {
+    for(const auto& off: cls) {
+      alloc->ptr(off)->vivifed = 0;
+    }
   }
   cls.resize(j);
 }
@@ -2062,14 +2076,12 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
 void Counter::vivify_clauses() {
   if (last_confl_vivif + config_.vivif_every > stats.conflicts) return;
   double myTime = cpuTime();
-  verb_print(3, "vivif start");
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
   uint64_t last_vivif_cl_minim = stats.vivif_cl_minim;
+  auto last_vivif_cl_tried = stats.vivif_tried_cl;
 
   // Sanity check here.
   last_confl_vivif = stats.conflicts;
-  bool ret = propagate();
-  assert(ret);
 
   // Backup
   ws_pos.clear();
@@ -2096,12 +2108,20 @@ void Counter::vivify_clauses() {
     if (var(l).decision_level == 0) v_enqueue(l);
   }
   for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
-  ret = v_propagate();
+  bool ret = v_propagate();
   assert(ret == true);
+  verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
 
   // Vivify clauses
+  v_tout = 5LL*1000LL*1000LL;
   vivify_cls(longIrredCls);
+  bool tout_irred = (v_tout <= 0);
+  verb_print(2, "[vivif] irred vivif remain: " << v_tout << " T: " << (cpuTime()-myTime));
+
+  v_tout = 30LL*1000LL*1000LL;
   vivify_cls(longRedCls);
+  verb_print(2, "[vivif] red vivif remain: " << v_tout << " T: " << (cpuTime()-myTime));
+  bool tout_red = (v_tout <= 0);
 
   // Restore
   for(auto& ws: watches_) ws.watch_list_.clear();
@@ -2109,8 +2129,11 @@ void Counter::vivify_clauses() {
   for(const auto& off: longRedCls) v_cl_repair(off);
   ws_pos.clear();
   verb_print(1, "vivif finished."
+      << " cl tried: " << (stats.vivif_tried_cl - last_vivif_cl_tried)
       << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
       << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
+      << " tout-irred: " << (int)tout_irred
+      << " tout-red: " << (int)tout_red
       << " T: " << (cpuTime()-myTime));
 }
 
@@ -2242,6 +2265,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   bool fun_ret = false;
   Clause& cl = *alloc->ptr(off);
+  cl.vivifed = 1;
   stats.vivif_tried_cl++;
 
   /* cout << "orig CL: " << endl; v_print_cl(cl); */
@@ -2377,7 +2401,8 @@ bool Counter::v_propagate() {
     const Lit unLit = v_trail[v_qhead].neg();
 
     //Propagate bin clauses
-    for (const auto& l : litWatchList(unLit).binary_links_) {
+    const auto& wsbin = litWatchList(unLit).binary_links_;
+    for (const auto& l : wsbin) {
       if (v_val(l) == F_TRI) {
         VERBOSE_PRINT("Conflict from bin.");
         return false;
@@ -2389,6 +2414,7 @@ bool Counter::v_propagate() {
 
     //Propagate long clauses
     auto& ws = litWatchList(unLit).watch_list_;
+    v_tout-=ws.size();
 
 #if 0
     cout << "prop-> will go through norm cl:" << endl;

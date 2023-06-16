@@ -315,6 +315,12 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   return ganak_cl;
 }
 
+double biginteger_log_modified(const mpz_class& x) {
+  signed long int ex;
+  const double di = mpz_get_d_2exp(&ex, x.get_mpz_t());
+  return log10(di) + log10(2) * (double) ex;
+}
+
 int main(int argc, char *argv[])
 {
   const double start_time = cpuTime();
@@ -415,13 +421,21 @@ int main(int argc, char *argv[])
     counter->init_activity_scores();
     cnt = counter->outer_count(sat_solver);
   }
-  cout << "c Time: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
+  cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
+
   if (cnt > 0) cout << "s SATISFIABLE" << endl;
   else cout << "s UNSATISFIABLE" << endl;
-  if (indep_support_given) cout << "s pmc ";
-  else cout << "s mc ";
+  if (indep_support_given) cout << "c s type pmc " << endl;
+  else cout << "c s type mc" << endl;
   for(uint32_t i = 0; i < cnfholder.must_mult_exp2; i++) cnt *= 2;
-  cout << cnt << endl;
+  cout << "c s log10-estimate ";
+  if (cnt == 0) {
+    cout << "-inf" << endl;
+  } else {
+    cout << std::setprecision(6) << std::fixed << biginteger_log_modified(cnt) << endl;
+  }
+  cout << "c s exact arb int " << std::fixed << cnt << endl;
+
 
   delete counter;
   delete sat_solver;

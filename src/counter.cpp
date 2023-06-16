@@ -456,7 +456,7 @@ void Counter::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups_ &&
       next_print_stat_confl > stats.conflicts) return;
   if (config_.verb) {
-    verb_print(1, "total time: " << (cpuTime() - start_time));
+    verb_print(1, "GANAK time so far: " << (cpuTime() - start_time));
     stats.printShort(this, &comp_manager_->get_cache());
   }
 

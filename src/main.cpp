@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <boost/program_options.hpp>
 #include "cryptominisat5/solvertypesmini.h"
 #include "src/GitSHA1.h"
+#include <arjun/arjun.h>
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
 
@@ -55,19 +56,20 @@ po::variables_map vm;
 po::positional_options_description p;
 
 using namespace std;
-uint32_t must_mult_exp2 = 0;
 bool indep_support_given = false;
-set<uint32_t> indep_support;
 int do_check = 0;
 MTRand mtrand;
 CounterConfiguration conf;
 int ignore_indep = 0;
+int arjun_verb = 0;
 string branch_type = branch_type_to_str(conf.branch_type);
 string branch_fallback_type = branch_type_to_str(conf.branch_fallback_type);
+int do_arjun = 1;
 
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
   vector<vector<CMSat::Lit>> red_clauses;
+  vector<uint32_t> sampling_vars;
   uint32_t nvars = 0;
 
   uint32_t nVars() const { return nvars; }
@@ -78,18 +80,19 @@ struct CNFHolder {
     if (!red) clauses.push_back(cl);
     else red_clauses.push_back(cl);
   }
+  uint32_t must_mult_exp2 = 0;
 };
-
+CNFHolder cnfholder;
 
 string ganak_version_info()
 {
     std::stringstream ss;
-    ss << "c GANAK SHA revision " << GANAK::get_version_sha1() << endl;
-    ss << "c GANAK compilation env " << GANAK::get_compilation_env() << endl;
+    ss << "c o GANAK SHA revision " << GANAK::get_version_sha1() << endl;
+    ss << "c o GANAK compilation env " << GANAK::get_compilation_env() << endl;
     #ifdef __GNUC__
-    ss << "c GANAK compiled with gcc version " << __VERSION__ << endl;
+    ss << "c o GANAK compiled with gcc version " << __VERSION__;
     #else
-    ss << "c GANAK compiled with non-gcc compiler" << endl;
+    ss << "c o GANAK compiled with non-gcc compiler";
     #endif
 
     return ss.str();
@@ -106,6 +109,8 @@ void add_ganak_options()
     ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
+    ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
+    ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
     ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
@@ -252,14 +257,36 @@ void parse_supported_options(int argc, char** argv)
 
 }
 
+void write_simpcnf(const ArjunNS::SimplifiedCNF& simpcnf,
+        const std::string& elimtofile, const uint32_t orig_cnf_must_mult_exp2,
+        bool red = true)
+{
+    uint32_t num_cls = simpcnf.cnf.size();
+    std::ofstream outf;
+    outf.open(elimtofile.c_str(), std::ios::out);
+    outf << "p cnf " << simpcnf.nvars << " " << num_cls << endl;
+
+    //Add projection
+    outf << "c p show ";
+    for(const auto& v: simpcnf.sampling_vars) {
+        assert(v < simpcnf.nvars);
+        outf << v+1  << " ";
+    }
+    outf << "0\n";
+
+    for(const auto& cl: simpcnf.cnf) outf << cl << " 0\n";
+    if (red) for(const auto& cl: simpcnf.red_cnf) outf << "c red " << cl << " 0\n";
+    outf << "c MUST MULTIPLY BY 2**" << simpcnf.empty_occs+orig_cnf_must_mult_exp2 << endl;
+}
+
 template<class T>
 void parse_file(const std::string& filename, T* reader) {
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, NULL, conf.verb);
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, NULL, 0);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, NULL, conf.verb);
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, NULL, 0);
   #endif
   if (in == NULL) {
       std::cout << "ERROR! Could not open file '" << filename
@@ -275,11 +302,11 @@ void parse_file(const std::string& filename, T* reader) {
 
   indep_support_given = parser.sampling_vars_found && !ignore_indep;
   if (parser.sampling_vars_found && !ignore_indep) {
-    for(const auto& var: parser.sampling_vars) indep_support.insert(var+1);
+    cnfholder.sampling_vars = parser.sampling_vars;
   } else {
-    for(uint32_t i = 1; i < reader->nVars()+1; i++) indep_support.insert(i);
+    for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampling_vars.push_back(i);
   }
-  must_mult_exp2 = parser.must_mult_exp2;
+  cnfholder.must_mult_exp2 = parser.must_mult_exp2;
 }
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
@@ -309,7 +336,7 @@ int main(int argc, char *argv[])
   parse_supported_options(argc, argv);
   if (conf.verb) {
     cout << ganak_version_info() << endl;
-    cout << "c called with: " << command_line << endl;
+    cout << "c o called with: " << command_line << endl;
   }
   conf.branch_type = parse_branch_type(branch_type);
   conf.branch_fallback_type = parse_branch_type(branch_fallback_type);
@@ -327,8 +354,43 @@ int main(int argc, char *argv[])
     cout << "ERROR: must give input file to read" << endl;
     exit(-1);
   }
-  CNFHolder cnfholder;
-  parse_file(fname, &cnfholder);
+  if (!do_arjun) {
+    parse_file(fname, &cnfholder);
+  } else {
+    double myTime = cpuTime();
+    ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
+    arjun->set_seed(conf.seed);
+    arjun->set_verbosity(arjun_verb);
+    parse_file(fname, arjun);
+    if (indep_support_given) arjun->set_starting_sampling_set(cnfholder.sampling_vars);
+    else arjun->start_with_clean_sampling_set();
+    cnfholder.sampling_vars = arjun->get_indep_set();
+    auto ret = arjun->get_fully_simplified_renumbered_cnf(
+            cnfholder.sampling_vars, true, false, true, 2, 2, true, false);
+    delete arjun;
+    if (!indep_support_given) {
+      ret.sampling_vars.clear();
+      for(uint32_t i = 0; i < ret.nvars; i++) ret.sampling_vars.push_back(i);
+    } else {
+      ArjunNS::Arjun arj2;
+      arj2.new_vars(ret.nvars);
+      arj2.set_verbosity(arjun_verb);
+      for(const auto& cl: ret.cnf) arj2.add_clause(cl);
+      arj2.set_starting_sampling_set(ret.sampling_vars);
+      ret.sampling_vars = arj2.extend_indep_set();
+      ret.renumber_sampling_for_ganak();
+    }
+    if (conf.verb) { cout << "c o Arjun T: " << (cpuTime()-myTime) << endl; }
+#ifdef SLOW_DEBUG
+    write_simpcnf(ret, fname+"-simplified.cnf", cnfholder.must_mult_exp2, true);
+#endif
+
+    cnfholder.clauses = ret.cnf;
+    cnfholder.red_clauses = ret.red_cnf;
+    cnfholder.nvars = ret.nvars;
+    cnfholder.sampling_vars = ret.sampling_vars;
+    cnfholder.must_mult_exp2 += ret.empty_occs;
+  }
   Counter* counter = new Counter(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
   counter->new_vars(cnfholder.nVars());
@@ -347,7 +409,9 @@ int main(int argc, char *argv[])
       auto cl2 = cms_to_ganak_cl(cl);
       counter->add_red_cl(cl2);
     }
-    counter->set_indep_support(indep_support);
+    set<uint32_t> tmp;
+    for(auto const& s: cnfholder.sampling_vars) tmp.insert(s+1);
+    counter->set_indep_support(tmp);
     counter->init_activity_scores();
     cnt = counter->outer_count(sat_solver);
   }
@@ -356,6 +420,7 @@ int main(int argc, char *argv[])
   else cout << "s UNSATISFIABLE" << endl;
   if (indep_support_given) cout << "s pmc ";
   else cout << "s mc ";
+  for(uint32_t i = 0; i < cnfholder.must_mult_exp2; i++) cnt *= 2;
   cout << cnt << endl;
 
   delete counter;

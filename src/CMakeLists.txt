@@ -22,7 +22,7 @@ include_directories( ${PROJECT_SOURCE_DIR} )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
-# include_directories(${ARJUN_INCLUDE_DIRS})
+include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${LOUVAIN_COMMUNITIES_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
@@ -68,7 +68,7 @@ target_link_libraries (ganak
   LINK_PUBLIC clhash
   LINK_PUBLIC component_types
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
-  # LINK_PUBLIC ${ARJUN_LIBRARIES}
+  LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${LOUVAIN_COMMUNITIES_LIBRARIES}
   LINK_PUBLIC ${Boost_LIBRARIES} # due to serialization
 )

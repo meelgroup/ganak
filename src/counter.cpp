@@ -399,8 +399,7 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   mini_cubes.clear();
   largest_cube.clear();
   largest_cube_val = 0;
-  if (config_.verb) { cout << "c Sampling set size: " << indep_support_end-1 << endl; }
-
+  verb_print(1, "Sampling set size: " << indep_support_end-1);
   // Only compute TD decomposition once
   if (tdscore.empty()) {
     if (config_.branch_type == branch_t::sharptd ||
@@ -457,7 +456,7 @@ void Counter::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups_ &&
       next_print_stat_confl > stats.conflicts) return;
   if (config_.verb) {
-    cout << "c total time: " << (cpuTime() - start_time) << endl;
+    verb_print(1, "total time: " << (cpuTime() - start_time));
     stats.printShort(this, &comp_manager_->get_cache());
   }
 

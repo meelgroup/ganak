@@ -178,9 +178,9 @@ public:
 
   void printShort(const Counter* counter, const ComponentCache* cache_) const;
   void printShortFormulaInfo() const {
-    cout << "c irred cls (all/long/bin/unit): "
+    verb_print(1, "irred cls (all/long/bin/unit): "
       << num_irred_clauses() << "/" << num_long_irred_clauses_
-      << "/" << num_binary_irred_clauses_ << "/" << num_unit_irred_clauses_ << endl;
+      << "/" << num_binary_irred_clauses_ << "/" << num_unit_irred_clauses_);
   }
 
   double getAvgComponentHitSize() const {

@@ -126,6 +126,7 @@ public:
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
+  mpz_class check_norestart(const vector<Lit>& cube);
   mpz_class count(vector<Lit>& largest_cube_ret);
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
@@ -176,7 +177,7 @@ private:
   bool failed_lit_probe_no_bprop();
   bool failed_lit_probe_with_bprop();
   bool one_lit_probe(Lit lit, bool set);
-  void computeLargestCube();
+  bool compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_largest = false);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
 

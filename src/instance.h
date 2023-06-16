@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
+#include <utility>
 #include <cryptominisat5/cryptominisat.h>
 
 #include "clauseallocator.h"
@@ -31,6 +32,8 @@ THE SOFTWARE.
 #include "structures.h"
 #include "containers.h"
 #include "counter_config.h"
+
+using std::pair;
 
 class ClauseAllocator;
 
@@ -226,6 +229,7 @@ protected:
   vector<uint8_t> seen;
 
   // Cubes
+  vector<pair<vector<Lit>, mpz_class>> mini_cubes;
   vector<Lit> largest_cube;
   mpz_class largest_cube_val = 0;
   uint32_t largest_cube_level = 0;

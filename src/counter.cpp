@@ -302,6 +302,51 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return cms_cl;
 }
 
+mpz_class Counter::check_norestart(const vector<Lit>& cube) {
+  // Test
+  CounterConfiguration conf = config_;
+  conf.do_restart = 0;
+  conf.verb = 0;
+  vector<Lit> tmp;
+  Counter* test_cnt = new Counter(conf);
+  test_cnt->new_vars(nVars());
+  // Long cls
+  for(const auto& off: longIrredCls) {
+    const Clause& cl = *alloc->ptr(off);
+    tmp.clear();
+    for(const auto& l: cl) tmp.push_back(l);
+    test_cnt->add_irred_cl(tmp);
+  }
+  // Bin cls
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit l(i/2, i%2);
+    for(const auto& lit2: watches_[l].binary_links_) {
+      if (l < lit2) {
+        tmp.clear();
+        tmp.push_back(l);
+        tmp.push_back(lit2);
+        test_cnt->add_irred_cl(tmp);
+      }
+    }
+  }
+  // Unit cls
+  for(const auto& l: unit_clauses_) {
+    tmp.clear();
+    tmp.push_back(l);
+    test_cnt->add_irred_cl(tmp);
+  }
+  // The cube
+  for(const auto&l: cube) {
+    tmp.clear();
+    tmp.push_back(l.neg());
+    test_cnt->add_irred_cl(tmp);
+  }
+  test_cnt->end_irred_cls();
+  auto check_cnt = test_cnt->count(tmp);
+  delete test_cnt;
+  return check_cnt;
+}
+
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   mpz_class val = 0;
   sat_solver = _sat_solver;
@@ -311,32 +356,36 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   start_time = cpuTime();
   if (config_.do_restart) {
     vector<Lit> largest_cube;
-    vector<vector<Lit>> cubes;
     while(ret == CMSat::l_True) {
       auto& model = sat_solver->get_model();
       set_target_polar(model);
       auto val2 = count(largest_cube);
+      val+=val2;
       num_cubes++;
       cout << "Num cubes: " << num_cubes << endl;
-      cout << "Cube: " << largest_cube;
-      cout << " -- count: " <<  val << endl;
-      val+=val2;
+      cout << "Cube     : " << largest_cube;
+      cout << " -- count: " <<  val2 << endl;
+#ifdef SLOW_DEBUG
+      auto check_cnt = check_norestart(largest_cube);
+      cout << "check cnt: " << check_cnt << " val2: " << val2 << endl;
+      assert(check_cnt == val2);
+#endif
+
       auto cms_cl = ganak_to_cms_cl(largest_cube);
       sat_solver->add_clause(cms_cl);
       config_.branch_type = branch_t::old_ganak;
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
-      if (num_cubes < 0) {
-        cubes.push_back(largest_cube);
-      } else {
-        for(const auto& c: cubes) { add_irred_cl(c); }
-        cubes.clear();
-        add_irred_cl(largest_cube);
-        end_irred_cls();
+
+      // Deal with cubes
+      add_irred_cl(largest_cube);
+      for(const auto& c: mini_cubes) {
+        cout << "Mini cube: " << c.first << " count: " << c.second << endl;
+        add_irred_cl(c.first);
+        val+=c.second;
+        num_cubes++;
       }
-      VERBOSE_PRINT("AFTER END_IRRED:");
-      VERBOSE_DEBUG_DO(stats.printShort(this, &comp_manager_->get_cache()));
-      VERBOSE_PRINT("****************");
+      end_irred_cls();
     }
   } else if (ret == CMSat::l_True) {
       val += count(largest_cube);
@@ -347,6 +396,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
 mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
+  mini_cubes.clear();
   largest_cube.clear();
   largest_cube_val = 0;
   if (config_.verb) { cout << "c Sampling set size: " << indep_support_end-1 << endl; }
@@ -605,42 +655,54 @@ void Counter::shuffle_activities(MTRand &mtrand2) {
   for(auto& v: watches_) v.activity=act_inc*mtrand2.randExc();
 }
 
-void Counter::computeLargestCube()
-{
+bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_largest) {
   assert(config_.do_restart);
-  largest_cube.clear();
-  print_debug(COLWHT "-- computeLargestCube BEGIN");
+  cube.clear();
+  print_debug(COLWHT "-- " __func__ " BEGIN");
   print_debug_noendl(COLWHT "Decisions in the cube: ");
 
   // add decisions, components, and counts
-  largest_cube_val = decision_stack_.top().getTotalModelCount();
-#ifdef VERBOSE_DEBUG
+  cube_val = decision_stack_.top().getTotalModelCount();
   bool error = false;
-#endif
-  for(uint32_t i = 0; i < decision_stack_.size()-1; i++) {
+  for(uint32_t i = 1; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = Lit(dec.var, val(dec.var) == T_TRI);
     // Add decision
-    if (i > 0) {
+    if (it_is_largest) {
+      // Below only hold when doing largest cube
       const auto dec_lit2 = (target_polar[dec.var] ? 1 : -1)*(int)dec.var;
       if (dec_lit2 != dec_lit.toInteger()) {
-        cout << "(ERROR with dec_lit: " << dec_lit << " dec_lit2: " << dec_lit2 << ") ";
-        VERBOSE_DEBUG_DO(error = true;);
+        cout << "(ERROR with dec_lit: " << dec_lit
+          << " dec_lit2: " << dec_lit2 << ") " << endl;
+        error = true;
       }
-      largest_cube.push_back(dec_lit.neg());
-      print_debug_noendl(dec_lit.neg() << " ");
     }
-    if (dec.getTotalModelCount() > 0) largest_cube_val *= dec.getTotalModelCount();
+    cube.push_back(dec_lit.neg());
+    print_debug_noendl(dec_lit.neg() << " ");
+    if (dec.getTotalModelCount() > 0) cube_val *= dec.getTotalModelCount();
+  }
+  // Get a solution (if not largest)
+  if (!it_is_largest) {
+    vector<CMSat::Lit> ass;
+    for(const auto&l: cube) ass.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+    auto solution = sat_solver->solve(&ass);
+    if (solution == CMSat::l_False) return false;
+  }
 
+  for(uint32_t i = 1; i < decision_stack_.size()-1; i++) {
+    const StackLevel& dec = decision_stack_[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedComponentsEnd();
     // add all but the last component (it's the one we just counted)
     for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
       const auto& c = comp_manager_->at(i2);
-      for(auto v = c->varsBegin(); *v != varsSENTINEL; v++)
-        largest_cube.push_back(Lit(*v, !target_polar[*v]));
+      for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) {
+        if (it_is_largest) cube.push_back(Lit(*v, !target_polar[*v]));
+        else cube.push_back(Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_True));
+      }
     }
   }
+  assert(!error);
   print_debug_noendl(endl);
 
 #ifdef VERBOSE_DEBUG
@@ -680,13 +742,15 @@ void Counter::computeLargestCube()
   }
   print_debug(COLWHT "== comp list END");
 
-  cout << COLWHT "Largest cube so far. Size: " << largest_cube.size() << " cube: ";
-  for(const auto& l: largest_cube) cout << l << " ";
+  cout << COLWHT "cube so far. Size: " << cube.size() << " cube: ";
+  for(const auto& l: cube) cout << l << " ";
   cout << endl;
   print_debug(COLWHT "cube's SOLE count: " << decision_stack_.top().getTotalModelCount());
-  print_debug(COLWHT "cube's RECORDED count: " << largest_cube_val);
+  print_debug(COLWHT "cube's RECORDED count: " << cube_val);
   assert(!error);
 #endif
+
+  return true;
 }
 
 void Counter::print_restart_data() const
@@ -754,7 +818,7 @@ bool Counter::restart_if_needed() {
   /*     << endl; */
   /* } */
 
-  if (!config_.do_restart || largest_cube.empty()) return false;
+  if (!config_.do_restart) return false;
   bool restart = false;
   if (config_.restart_type == 0
       && comp_size_q.isvalid() &&
@@ -806,14 +870,32 @@ bool Counter::restart_if_needed() {
     stats.cache_hits_misses_q.clear();
     stats.comp_size_times_depth_q.clear();
 
+    assert(mini_cubes.empty());
+    assert(largest_cube.empty());
     while (decision_stack_.size() > 1) {
-      bool on_path = true;
-      if (decision_stack_.top().branch_found_unsat()
-          || !decision_stack_.top().on_path_to_target_) {
+      cout
+        << endl << "------" << endl
+        << "On path: " << (int)decision_stack_.top().on_path_to_target_
+        << " lev: " << decision_stack_.get_decision_level()
+        << " cnt: " << decision_stack_.top().getTotalModelCount()
+        << endl;
+
+      if (decision_stack_.top().on_path_to_target_ && largest_cube.empty()) {
+        bool ret = compute_cube(largest_cube, largest_cube_val, true);
+        assert(ret == true);
+        /* assert(!largest_cube.empty()); */
+        cout << "->> cube here: " << largest_cube << " val: " << largest_cube_val
+          << " ret: " << (int)ret << " --- Largest cube filled!!!!" << endl;
+      } else {
+        vector<Lit> cube;
+        mpz_class cube_val;
+        bool ret = compute_cube(cube, cube_val);
+        cout << "->> cube here: " << cube << " val: " << cube_val << " ret: " << (int)ret << endl;
+        if (!decision_stack_.top().on_path_to_target_ && ret && cube_val != 0) {
+          /* mini_cubes.push_back(make_pair(cube, cube_val)); */
+        }
         comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-        on_path = false;
       }
-      if (config_.do_on_path_print) cout << "ON PATH: " << on_path << " -- ";
       reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
     }
@@ -1058,11 +1140,6 @@ retStateT Counter::backtrack() {
     if (decision_stack_.get_decision_level() == 0) {
       print_debug("[indep] Backtracking from lev 0, i.e. ending");
       break;
-    }
-
-    if (decision_stack_.top().on_path_to_target_) {
-      if (!counted_bottom_comp) counted_bottom_comp = true;
-      if (config_.do_restart && counted_bottom_comp) computeLargestCube();
     }
 
     CHECK_COUNT_DO(check_count());

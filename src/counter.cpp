@@ -113,6 +113,13 @@ void Counter::end_irred_cls()
 
   if (config_.verb) stats.printShortFormulaInfo();
   comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
+
+  // Only compute TD decomposition once
+  if (tdscore.empty() && !config_.td_with_red_bins) {
+    if (config_.branch_type == branch_t::sharptd ||
+        config_.branch_type == branch_t::gpmc) td_decompose();
+    verb_print(1, "branch type: " << config_.get_branch_type_str());
+  }
 }
 
 void Counter::add_irred_cl(const vector<Lit>& lits) {
@@ -400,13 +407,13 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   largest_cube.clear();
   largest_cube_val = 0;
   verb_print(1, "Sampling set size: " << indep_support_end-1);
+
   // Only compute TD decomposition once
-  if (tdscore.empty()) {
+  if (tdscore.empty() && config_.td_with_red_bins) {
     if (config_.branch_type == branch_t::sharptd ||
         config_.branch_type == branch_t::gpmc) td_decompose();
+    verb_print(1, "branch type: " << config_.get_branch_type_str());
   }
-
-  verb_print(1, "branch type: " << config_.get_branch_type_str());
 
   const auto exit_state = countSAT();
   if (config_.verb) stats.printShort(this, &comp_manager_->get_cache());

@@ -2140,7 +2140,8 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
       if (cl.vivifed == 0 && (
-          !cl.red || (cl.red && (cl.lbd <= lbd_cutoff))))
+          !cl.red || (cl.red &&
+            (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 50)))))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;
@@ -2157,6 +2158,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
 
 void Counter::vivify_clauses() {
   if (last_confl_vivif + config_.vivif_every > stats.conflicts) return;
+  vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
   uint64_t last_vivif_cl_minim = stats.vivif_cl_minim;
@@ -2195,14 +2197,14 @@ void Counter::vivify_clauses() {
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
 
   // Vivify clauses
-  v_tout = config_.vivif_mult*10LL*1000LL*1000LL;
-  vivify_cls(longIrredCls);
+  v_tout = config_.vivif_mult*2LL*1000LL*1000LL;
+  if (stats.vivif_tried % 3 == 0) vivify_cls(longIrredCls);
   bool tout_irred = (v_tout <= 0);
-  verb_print(2, "[vivif] irred vivif remain: " << v_tout << " T: " << (cpuTime()-myTime));
+  verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
 
-  v_tout = config_.vivif_mult*30LL*1000LL*1000LL;
+  v_tout = config_.vivif_mult*5LL*1000LL*1000LL;
   vivify_cls(longRedCls);
-  verb_print(2, "[vivif] red vivif remain: " << v_tout << " T: " << (cpuTime()-myTime));
+  verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
   bool tout_red = (v_tout <= 0);
 
   // Restore
@@ -2364,6 +2366,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   v_tmp.clear();
   v_tmp2.clear();
   for(const auto&l: cl) v_tmp2.push_back(l);
+  std::shuffle(v_tmp2.begin(), v_tmp2.end(), vivif_g);
 
   // Swap to 1st & 2nd the two original 1st & 2nd
   auto sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.first);

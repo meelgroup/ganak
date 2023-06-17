@@ -363,6 +363,7 @@ private:
   vector<Lit> v_tmp2;
   vector<Lit> v_cl;
   uint64_t last_confl_vivif = 0;
+  std::mt19937 vivif_g;
   map<ClauseOfs, pair<Lit, Lit>> ws_pos;
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);

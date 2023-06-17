@@ -2140,8 +2140,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
       if (cl.vivifed == 0 && (
-          !cl.red ||
-          (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 10)))))
+          !cl.red || (cl.red && (cl.lbd <= lbd_cutoff))))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;
@@ -2236,10 +2235,17 @@ void Counter::v_cl_repair(ClauseOfs off) {
   uint32_t val_u = 0;
   uint32_t val_t = 0;
   int32_t val_t_at = -1;
+  int32_t t_dec_lev = -1;
+  int32_t any_val_t_pos = -1;
   int32_t mindec_12 = std::min(var(cl[0]).decision_level, var(cl[1]).decision_level);
   for(uint32_t i = 0; i < cl.size(); i++) {
     const Lit l = cl[i];
-    if (val(l) == T_TRI && var(l).decision_level <= mindec_12) {val_t_at = i;}
+    if (val(l) == T_TRI && var(l).decision_level <= mindec_12) {
+      if (val_t_at == -1) {val_t_at = i;t_dec_lev = var(l).decision_level;}
+      else if (t_dec_lev > var(l).decision_level) {
+        val_t_at = i;t_dec_lev = var(l).decision_level;}
+    }
+    if (val(l) == T_TRI) {any_val_t_pos = i;}
     if (val(l) == T_TRI) {val_t++;}
     if (val(l) == F_TRI) {val_f++;}
     if (val(l) == X_TRI) {val_u++;}
@@ -2272,8 +2278,9 @@ void Counter::v_cl_repair(ClauseOfs off) {
 
   VERBOSE_PRINT("Vivified cl off: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
-  litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);
-  litWatchList(cl[1]).addWatchLinkTo(off, cl[cl.sz/2]);
+  int32_t pos = (any_val_t_pos == -1) ? cl.sz/2 : any_val_t_pos;
+  litWatchList(cl[0]).addWatchLinkTo(off, cl[pos]);
+  litWatchList(cl[1]).addWatchLinkTo(off, cl[pos]);
 }
 
 // We could have removed a TRUE. This may be an issue.

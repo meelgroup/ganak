@@ -86,7 +86,7 @@ public:
   double scoreOf(VariableIndex v) {
     if (config_.branch_type == branch_t::sharptd) {
       double score = 0;
-      score += comp_manager_->scoreOf(v);
+      score += comp_manager_->scoreOf(v)*act_inc;
       score += 10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
       score += tdscore[v];
       return score;

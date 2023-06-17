@@ -112,6 +112,7 @@ void Counter::end_irred_cls()
   ended_irred_cls = true;
 
   if (config_.verb) stats.printShortFormulaInfo();
+  // This below will initialize the disjoint component analyzer (ana_)
   comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
 
   // Only compute TD decomposition once
@@ -520,8 +521,7 @@ SOLVER_StateT Counter::countSAT() {
 }
 
 bool Counter::standard_polarity(const uint32_t v) const {
-    return watches_[Lit(v, true)].activity >
-      watches_[Lit(v, false)].activity;
+    return watches_[Lit(v, true)].activity > watches_[Lit(v, false)].activity;
 }
 
 bool Counter::get_polarity(const uint32_t v) const
@@ -534,6 +534,7 @@ bool Counter::get_polarity(const uint32_t v) const
         polarity = var(Lit(v, false)).last_polarity;
       } else polarity = standard_polarity(v);
     } else if (config_.polar_type == 1) polarity = standard_polarity(v);
+    else if (config_.polar_type == 4) polarity = !standard_polarity(v);
     else if (config_.polar_type == 2) polarity = false;
     else if (config_.polar_type == 3) polarity = true;
     else assert(false);

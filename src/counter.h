@@ -228,7 +228,7 @@ private:
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
-    if (ant.isAnt() && ant.isAClause()) {
+    if (config_.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
       Clause& cl = *alloc->ptr(ant.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.increaseScore();
@@ -250,14 +250,12 @@ private:
       }
   }
 
-  void setConflictState(Lit litA, Lit litB)
-  {
+  void setConflictState(Lit litA, Lit litB) {
     conflLit = litA;
     confl = Antecedent(litB);
   }
 
-  void setConflictState(Clause* cl)
-  {
+  void setConflictState(Clause* cl) {
     if (cl->red && cl->lbd > lbd_cutoff) {
       cl->increaseScore();
       cl->update_lbd(calc_lbd(*cl));

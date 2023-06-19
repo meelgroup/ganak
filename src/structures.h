@@ -140,9 +140,22 @@ struct ClOffsBlckL {
   }
 };
 
+struct BinCl {
+  BinCl(uint32_t val) = delete;
+  BinCl(int val) = delete;
+  explicit BinCl(Lit _lit, bool _red) {
+    v = _lit.raw() << 1 | (uint32_t)_red;
+  }
+  Lit lit() const { return Lit::toLit(v >> 1); }
+  bool red() const { return v&(1U); }
+  bool irred() const { return !red(); }
+  uint32_t v;
+
+};
+
 class LitWatchList {
 public:
-  vector<Lit> binary_links_;
+  vector<BinCl> binary_links_;
   vector<ClOffsBlckL> watch_list_;
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
@@ -169,20 +182,11 @@ public:
   }
 
   void addBinLinkTo(Lit lit, bool red) {
-    binary_links_.push_back(lit);
+    binary_links_.push_back(BinCl(lit, red));
     if (!red) last_irred_bin = binary_links_.size();
   }
 
-  void resetWatchList(){
-    watch_list_.clear();
-  }
-
-  bool hasBinaryLinkTo(Lit lit) const {
-    for (const auto& l : binary_links_) {
-      if (l == lit) return true;
-    }
-    return false;
-  }
+  void resetWatchList() {watch_list_.clear();}
 };
 
 enum class AnteType {

@@ -257,7 +257,6 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
 }
 
 bool Instance::add_bin_cl(Lit litA, Lit litB, bool red) {
-   if (litWatchList(litA).hasBinaryLinkTo(litB)) return false;
    litWatchList(litA).addBinLinkTo(litB, red);
    litWatchList(litB).addBinLinkTo(litA, red);
    return true;
@@ -275,7 +274,8 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
     /* Lit l = tmp_minim_with_bins[0]; */
     if (!seen[l.toPosInt()]) continue;
     const auto& w = watches_[l].binary_links_;
-    for(const auto& l2: w) {
+    for(const auto& bincl: w) {
+      const auto& l2 = bincl.lit();
       assert(l.var() != l2.var());
       if (seen[(l2.neg()).toPosInt()]) { seen[(l2.neg()).toPosInt()] = 0; rem++; }
     }

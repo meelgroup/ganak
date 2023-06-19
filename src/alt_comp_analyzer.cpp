@@ -97,11 +97,15 @@ void ComponentAnalyzer::initialize(
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
 
     // data for binary clauses
-    for (const auto& l: watches_[Lit(v, false)].binary_links_)
-      unified_variable_links_lists_pool_.push_back(l.var());
+    for (const auto& bincl: watches_[Lit(v, false)].binary_links_) {
+      if (bincl.irred())
+        unified_variable_links_lists_pool_.push_back(bincl.lit().var());
+    }
 
-    for (const auto& l: watches_[Lit(v, true)].binary_links_)
-      unified_variable_links_lists_pool_.push_back(l.var());
+    for (const auto& bincl: watches_[Lit(v, true)].binary_links_) {
+      if (bincl.irred())
+        unified_variable_links_lists_pool_.push_back(bincl.lit().var());
+    }
 
     // data for ternary clauses
     unified_variable_links_lists_pool_.push_back(0);

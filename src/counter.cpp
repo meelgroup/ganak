@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include <complex>
 #include <ios>
 #include <iomanip>
-#include <map>
 #include <numeric>
 #include <utility>
 #include "common.h"
@@ -40,9 +39,6 @@ THE SOFTWARE.
 #include "time_mem.h"
 #include "IFlowCutter.h"
 #include "graph.hpp"
-
-using std::pair;
-using std::map;
 
 void Counter::simplePreProcess()
 {
@@ -114,13 +110,6 @@ void Counter::end_irred_cls()
   if (config_.verb) stats.printShortFormulaInfo();
   // This below will initialize the disjoint component analyzer (ana_)
   comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
-
-  // Only compute TD decomposition once
-  if (tdscore.empty() && !config_.td_with_red_bins) {
-    if (config_.branch_type == branch_t::sharptd ||
-        config_.branch_type == branch_t::gpmc) td_decompose();
-    verb_print(1, "branch type: " << config_.get_branch_type_str());
-  }
 }
 
 void Counter::add_irred_cl(const vector<Lit>& lits) {
@@ -251,10 +240,11 @@ void Counter::td_decompose()
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
-      if (l < l2) {
+      if ((!l2.red() || (l2.red() && config_.td_with_red_bins))
+          && l < l2.lit()) {
         print_debug("v1: " << l.var());
         print_debug("v2: " << l2.var());
-        primal.addEdge(l.var(), l2.var());
+        primal.addEdge(l.var(), l2.lit().var());
       }
     }
   }
@@ -328,11 +318,11 @@ mpz_class Counter::check_norestart(const vector<Lit>& cube) {
   // Bin cls
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
     Lit l(i/2, i%2);
-    for(const auto& lit2: watches_[l].binary_links_) {
-      if (l < lit2) {
+    for(const auto& l2: watches_[l].binary_links_) {
+      if (l2.irred() && l < l2.lit()) {
         tmp.clear();
         tmp.push_back(l);
-        tmp.push_back(lit2);
+        tmp.push_back(l2.lit());
         test_cnt->add_irred_cl(tmp);
       }
     }
@@ -1714,7 +1704,8 @@ bool Counter::propagate() {
     VERBOSE_PRINT("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
-    for (const auto& l : litWatchList(unLit).binary_links_) {
+    for (const auto& bincl : litWatchList(unLit).binary_links_) {
+      const auto& l = bincl.lit();
       if (val(l) == F_TRI) {
         setConflictState(unLit, l);
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
@@ -2496,7 +2487,8 @@ bool Counter::v_propagate() {
 
     //Propagate bin clauses
     const auto& wsbin = litWatchList(unLit).binary_links_;
-    for (const auto& l : wsbin) {
+    for (const auto& bincl : wsbin) {
+      const auto& l = bincl.lit();
       if (v_val(l) == F_TRI) {
         VERBOSE_PRINT("Conflict from bin.");
         return false;

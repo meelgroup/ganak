@@ -115,7 +115,6 @@ void add_ganak_options()
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
     ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
     ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
-    ("tdwidthcut", po::value(&conf.tw_vare_lim)->default_value(conf.tw_vare_lim), "Treewidth must be smaller than this ratio for TD to be used. Value >=1 means TD is not turned off by this (but may be turned off due to low number of variables, etc.")
     ("tdwithredbins", po::value(&conf.td_with_red_bins)->default_value(conf.td_with_red_bins), "TD computation with redundant binaries")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")

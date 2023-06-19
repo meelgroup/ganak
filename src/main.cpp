@@ -44,13 +44,16 @@ using CMSat::DimacsParser;
 #include <fenv.h>
 #endif
 
+#define SIMPLE
 
 namespace po = boost::program_options;
 using std::string;
 using std::vector;
 po::options_description main_options = po::options_description("Main options");
+#ifndef SIMPLE
 po::options_description probe_options = po::options_description("Probe options");
 po::options_description restart_options = po::options_description("Restart options");
+#endif
 po::options_description help_options;
 po::variables_map vm;
 po::positional_options_description p;
@@ -113,6 +116,7 @@ void add_ganak_options()
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
+#ifndef SIMPLE
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
     ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
@@ -132,8 +136,10 @@ void add_ganak_options()
     ("vivif", po::value(&conf.do_vivify)->default_value(conf.do_vivify), "Vivify clauses")
     ("vivifevery", po::value(&conf.vivif_every)->default_value(conf.vivif_every), "Vivify every N conflicts")
     ("vivifmult", po::value(&conf.vivif_mult)->default_value(conf.vivif_mult), "How much to multiply timeout for vivif")
+#endif
     ;
 
+#ifndef SIMPLE
     restart_options.add_options()
     ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
 
@@ -150,10 +156,13 @@ void add_ganak_options()
     ("probemulti", po::value(&conf.num_probe_multi)->default_value(conf.num_probe_multi), "Multiply by this amount how many variables to probe.")
     ("bprop", po::value(&conf.bprop)->default_value(conf.bprop), "Do bothprop")
     ;
+#endif
 
     help_options.add(main_options);
+#ifndef SIMPLE
     help_options.add(probe_options);
     help_options.add(restart_options);
+#endif
 }
 
 void parse_supported_options(int argc, char** argv)

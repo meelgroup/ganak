@@ -354,6 +354,9 @@ int main(int argc, char *argv[])
     cout << ganak_version_info() << endl;
     cout << "c o called with: " << command_line << endl;
   }
+#ifdef SIMPLE
+  conf.verb = 0;
+#endif
   conf.branch_type = parse_branch_type(branch_type);
   conf.branch_fallback_type = parse_branch_type(branch_fallback_type);
 

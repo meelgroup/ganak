@@ -203,7 +203,6 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   for(auto& ws: solver->watches_) move_one_watchlist(ws.watch_list_, newDataStart, new_ptr);
   update_offsets(solver->longIrredCls, newDataStart, new_ptr);
   update_offsets(solver->longRedCls, newDataStart, new_ptr);
-  for(auto& occ: solver->occ_lists_) update_offsets(occ, newDataStart, new_ptr);
 
   //Fix up variables_
   for (auto& vdata: solver->variables_) {

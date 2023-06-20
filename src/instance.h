@@ -100,9 +100,7 @@ protected:
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
   bool perform_projected_counting = false;
 
-
-  LiteralIndexedVector<vector<ClauseOfs>> occ_lists_;
-  LiteralIndexedVector<LitWatchList> watches_; // watches
+  LiteralIndexedVector<LitWatchList> watches_;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   LiteralIndexedVector<TriValue> lit_values_;

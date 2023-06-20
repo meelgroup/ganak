@@ -50,7 +50,6 @@ void Counter::simplePreProcess()
 
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  viewed_lits.resize(2*(nVars() + 1), 0);
   stats.num_unit_irred_clauses_ = unit_clauses_.size();
   init_decision_stack();
   qhead = 0;
@@ -80,11 +79,13 @@ void Counter::set_indep_support(const set<uint32_t> &indeps)
   else perform_projected_counting = true;
 }
 
-void Counter::init_activity_scores()
-{
-  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
-  {
-    watches_[l].activity = watches_[l].binary_links_.size() + occ_lists_[l].size();
+void Counter::init_activity_scores() {
+  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) {
+    watches_[l].activity = watches_[l].binary_links_.size();
+  }
+  for(const auto& off: longIrredCls) {
+    const auto& cl = *alloc->ptr(off);
+    for(const auto& l: cl) watches_[l].activity++;
   }
 }
 
@@ -121,12 +122,7 @@ void Counter::add_irred_cl(const vector<Lit>& lits) {
   stats.incorporateIrredClauseData(lits);
   Clause* cl = addClause(lits, false);
   auto off = alloc->get_offset(cl);
-  if (cl) {
-    longIrredCls.push_back(off);
-    if (lits.size() >= 3) {
-      for (const auto& l : lits) occ_lists_[l].push_back(off);
-    }
-  }
+  if (cl) longIrredCls.push_back(off);
   SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
 }
 
@@ -1668,17 +1664,6 @@ prop_again:;
       case Counter::SavedUIPRet::cont: ;
     }
   }
-
-  if (bSucceeded && conf.num_probe_multi > 0 && conf.failed_lit_probe_type != 0) {
-    if (conf.failed_lit_probe_type == 2  &&
-      (double)decision_stack_.size() >
-        depth_q.getLongtTerm().avg()*conf.probe_only_after_ratio) {
-      bSucceeded = failed_lit_probe();
-    } else if (conf.failed_lit_probe_type == 1) {
-      bSucceeded = failed_lit_probe();
-    }
-  }
-  VERBOSE_DEBUG_DO(cout << "Returning " << bSucceeded << " from " << __FUNCTION__ << endl);
   return bSucceeded;
 }
 
@@ -1857,176 +1842,6 @@ void Counter::set_activities(const vector<double>& acts, const vector<uint8_t>& 
 const DataAndStatistics& Counter::get_stats() const
 {
   return stats;
-}
-
-bool Counter::failed_lit_probe() {
-  if (conf.bprop) return failed_lit_probe_with_bprop();
-  else return failed_lit_probe_no_bprop();
-}
-
-bool Counter::failed_lit_probe_no_bprop()
-{
-  print_debug(COLRED "Failed literal probing START");
-
-  uint32_t trail_ofs = trail_at_top();
-  uint32_t num_curr_lits = 0;
-  while (trail_ofs < trail.size()) {
-    test_lits.clear();
-    for (auto it = trail.begin() + trail_ofs; it != trail.end(); it++) {
-      // Only going through the long, the binary clauses have set the variables already
-      for (auto cl_ofs : occ_lists_[it->neg()]) {
-        if (!isSatisfied(cl_ofs)) {
-          for(const auto& l: *alloc->ptr(cl_ofs)) {
-            if (isUnknown(l) && !viewed_lits[l.raw()]) {
-              test_lits.push_back(l);
-              print_debug("-> potential lit to test: " << l.neg());
-              viewed_lits[l.raw()] = true;
-            }
-          }
-        }
-      }
-    }
-    num_curr_lits = trail.size() - trail_ofs;
-    trail_ofs = trail.size();
-    for (const auto& l: test_lits) viewed_lits[l.raw()] = false;
-
-    // Figure out which literals to probe
-    scores.clear();
-    for (const auto& l: test_lits) scores.push_back(watches_[l].activity);
-    sort(scores.begin(), scores.end());
-    num_curr_lits = 10 + num_curr_lits / 20;
-    num_curr_lits *= conf.num_probe_multi;
-    double threshold = 0.0;
-    if (scores.size() > num_curr_lits) {
-      threshold = scores[scores.size() - num_curr_lits];
-    }
-
-    // Do the probing
-    toSet.clear();
-    for (auto& l : test_lits) if (isUnknown(l) && threshold <= watches_[l].activity) {
-        if (!one_lit_probe(l, false)) return false;
-        SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
-      }
-  }
-  print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
-  return true;
-}
-
-bool Counter::failed_lit_probe_with_bprop() {
-  print_debug(COLRED "Failed literal probing START");
-
-  uint32_t trail_ofs = trail_at_top();
-  uint32_t num_curr_lits = 0;
-  while (trail_ofs < trail.size()) {
-    test_lits.clear();
-    for (auto it = trail.begin() + trail_ofs; it != trail.end(); it++) {
-      // Only going through the long, the binary clauses have set the variables already
-      for (const auto& off : occ_lists_[it->neg()]) {
-        if (!isSatisfied(off)) {
-          for (auto& l: *alloc->ptr(off)) {
-            if (isUnknown(l) && !viewed_lits[l.var()]) {
-              test_lits.push_back(l);
-              print_debug("-> potential lit to test: " << l.neg());
-              viewed_lits[l.var()] = true;
-            }
-          }
-        }
-      }
-    }
-    num_curr_lits = trail.size() - trail_ofs;
-    trail_ofs = trail.size();
-    for (const auto& l: test_lits) viewed_lits[l.var()] = false;
-
-    // Figure out which literals to probe
-    scores.clear();
-    for (const auto& l: test_lits) {
-      scores.push_back(watches_[l].activity + watches_[l.neg()].activity);
-    }
-    sort(scores.begin(), scores.end());
-    num_curr_lits = 5 + num_curr_lits / 40;
-    num_curr_lits *= conf.num_probe_multi;
-    double threshold = 0.0;
-    if (scores.size() > num_curr_lits) {
-      threshold = scores[scores.size() - num_curr_lits];
-    }
-
-    // Do the probing
-    toSet.clear();
-    for (auto& l : test_lits) {
-      if (isUnknown(l) && threshold <=
-          watches_[l].activity + watches_[l.neg()].activity) {
-        if (watches_[l].activity < watches_[l.neg()].activity) l = l.neg();
-        if (!one_lit_probe(l, true)) return false;
-        if (isUnknown(l) && !one_lit_probe(l.neg(), false)) return false;
-        SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
-      }
-    }
-
-    // Finally set what we came to set
-    for(const auto& l: toSet) {
-      print_debug("-> BProp literal detected");
-      if (isUnknown(l)) {
-        setLiteral(l, var(top_dec_lit()).decision_level, Antecedent::fakeAnte());
-        bool bSucceeded = propagate();
-        if (!bSucceeded) return false;
-        stats.num_failed_bprop_literals_failed++;
-      }
-    }
-  }
-  print_debug(COLRED "Failed literal probing END -- no UNSAT, gotta check this branch");
-  return true;
-}
-
-bool Counter::one_lit_probe(Lit lit, bool set)
-{
-  stats.num_failed_lit_tests_++;
-  uint32_t sz = trail.size();
-  // we increase the decLev artificially
-  // s.t. after the tentative BCP call, we can learn a conflict clause
-  // relative to the assignment of *jt
-  decision_stack_.startFailedLitTest();
-  setLiteral(lit, decision_stack_.get_decision_level());
-  assert(!hasAntecedent(lit));
-  if (set == true) assert(toClear.empty());
-
-  bool bSucceeded = propagate();
-  decision_stack_.stopFailedLitTest();
-
-  // backtracking
-  while (trail.size() > sz) {
-    Lit l = trail.back();
-    unSet(l);
-    if (conf.bprop && bSucceeded) {
-      if (set) {
-        seen[l.var()] = 1U | ((uint8_t)l.sign() << 1);
-        toClear.push_back(l.var());
-      } else {
-        if (seen[l.var()] && (seen[l.var()] >> 1) == (uint8_t)l.sign()) {
-          toSet.insert(l);
-        }
-      }
-    }
-    trail.pop_back();
-  }
-  if (!set) {
-    for(const auto& v: toClear) seen[v] = 0;
-    toClear.clear();
-  }
-
-  if (!bSucceeded) {
-    stats.num_failed_literals_detected_++;
-    print_debug("-> failed literal detected");
-    sz = trail.size();
-    setLiteral(lit.neg(), var(top_dec_lit()).decision_level, Antecedent::fakeAnte());
-    for(const auto& v: toClear) seen[v] = 0;
-    toClear.clear();
-    if (!propagate()) {
-      print_debug("Failed literal probing END -- this comp/branch is UNSAT");
-      return false;
-    }
-  }
-
-  return true;
 }
 
 bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {

@@ -144,14 +144,12 @@ void Instance::markClauseDeleted(const ClauseOfs off){
 void Instance::new_vars(const uint32_t n) {
   assert(variables_.empty());
   assert(lit_values_.empty());
-  assert(occ_lists_.empty());
   assert(watches_.empty());
   assert(unit_clauses_.empty());
   assert(longRedCls.empty());
 
   variables_.resize(n + 1);
   lit_values_.resize(n + 1, X_TRI);
-  occ_lists_.resize(n + 1);
   watches_.resize(n + 1);
   target_polar.resize(n + 1);
   lbdHelper.resize(n+1, 0);

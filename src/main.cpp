@@ -51,7 +51,6 @@ using std::string;
 using std::vector;
 po::options_description main_options = po::options_description("Main options");
 #ifndef SIMPLE
-po::options_description probe_options = po::options_description("Probe options");
 po::options_description restart_options = po::options_description("Restart options");
 #endif
 po::options_description help_options;
@@ -149,18 +148,10 @@ void add_ganak_options()
 
     ("onpathprint", po::value(&conf.do_on_path_print)->default_value(conf.do_on_path_print), "Print ON-PATH during restart")
     ;
-
-    probe_options.add_options()
-    ("probe", po::value(&conf.failed_lit_probe_type)->default_value(conf.failed_lit_probe_type), "Failed Lit Probe Type. 0 == none, 1 == full, 2 == only bottom RATIO, where ratio is given by --probeonlyafter")
-    ("probeonlyafter", po::value(&conf.probe_only_after_ratio)->default_value(conf.probe_only_after_ratio), "What ratio of failed lit probe in terms of decision. Only active if '--failed 2'")
-    ("probemulti", po::value(&conf.num_probe_multi)->default_value(conf.num_probe_multi), "Multiply by this amount how many variables to probe.")
-    ("bprop", po::value(&conf.bprop)->default_value(conf.bprop), "Do bothprop")
-    ;
 #endif
 
     help_options.add(main_options);
 #ifndef SIMPLE
-    help_options.add(probe_options);
     help_options.add(restart_options);
 #endif
 }

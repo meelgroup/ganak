@@ -141,10 +141,6 @@ private:
   // Used during minimizeAndStoreUIPClause
   deque<Lit> tmp_clause_minim;
 
-  // Temporaries for failedLitProbeInternal
-  vector<Lit> test_lits;
-  vector<uint8_t> viewed_lits;
-
   double start_time;
   MTRand mtrand;
 
@@ -171,10 +167,6 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool prop_and_probe();
-  bool failed_lit_probe();
-  bool failed_lit_probe_no_bprop();
-  bool failed_lit_probe_with_bprop();
-  bool one_lit_probe(Lit lit, bool set);
   bool compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_largest = false);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();

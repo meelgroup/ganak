@@ -109,7 +109,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         stats.cache_hits_misses_q.push(p_new_comp->nVars());
-        if (config_.do_cache_score) {
+        if (conf.do_cache_score) {
           stats.numcachedec_++;
           if (stats.numcachedec_ % 128 == 0) rescale_cache_scores();
           for (vector<VariableIndex>::const_iterator it = p_new_comp->varsBegin();

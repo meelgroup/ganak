@@ -36,7 +36,7 @@ using std::vector;
 
 class ClauseAllocator {
 public:
-  ClauseAllocator(const CounterConfiguration& _config);
+  ClauseAllocator(const CounterConfiguration& _conf);
   ~ClauseAllocator();
 
   Clause* new_cl(bool _red, uint32_t sz) {
@@ -71,6 +71,6 @@ private:
   uint64_t size; ///<The number of BASE_DATA_TYPE datapieces currently used in each stack
   uint64_t capacity; ///<The number of BASE_DATA_TYPE datapieces allocated
   uint64_t currentlyUsedSize; ///< The estimated used size of the stack
-  const CounterConfiguration& config_;
+  const CounterConfiguration& conf;
   void* allocEnough(const uint32_t num_lits);
 };

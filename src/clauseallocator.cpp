@@ -40,12 +40,12 @@ using std::endl;
 #define ALLOC_GROW_MULT 1.5
 #define MAXSIZE ((1ULL << 32)-1)
 
-ClauseAllocator::ClauseAllocator(const CounterConfiguration& _config) :
+ClauseAllocator::ClauseAllocator(const CounterConfiguration& _conf) :
     dataStart(NULL)
     , size(0)
     , capacity(0)
     , currentlyUsedSize(0)
-    , config_(_config)
+    , conf(_conf)
 {
     assert(MIN_LIST_SIZE < MAXSIZE);
 }
@@ -224,7 +224,7 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   dataStart = newDataStart;
 
   const double time_used = cpuTime() - myTime;
-  if (config_.verb) {
+  if (conf.verb) {
     size_t log_2_size = 0;
     if (size > 0) log_2_size = std::log2(size);
     verb_print(1, "[mem] consolidate "

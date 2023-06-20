@@ -84,22 +84,20 @@ public:
   ConflictData find_conflict_level();
 
   double scoreOf(VariableIndex v) {
-    if (config_.branch_type == branch_t::sharptd) {
+    if (conf.branch_type == branch_t::sharptd) {
       double score = 0;
       score += comp_manager_->scoreOf(v)*act_inc;
       score += 10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
       score += tdscore[v];
       return score;
     } else {
-      assert(config_.branch_type == branch_t::old_ganak);
+      assert(conf.branch_type == branch_t::old_ganak);
       return
         comp_manager_->scoreOf(v)*act_inc +
         10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
     }
   }
   mpz_class outer_count(CMSat::SATSolver* solver = NULL);
-  CounterConfiguration &config() { return config_; }
-  DataAndStatistics &statistics() { return stats; }
   void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);
@@ -111,7 +109,7 @@ public:
   void end_irred_cls();
   void get_unit_cls(vector<Lit>& units) const;
   void init_activity_scores();
-  void set_next_restart(uint64_t next) { config_.next_restart = next; }
+  void set_next_restart(uint64_t next) { conf.next_restart = next; }
   bqueue<uint32_t> comp_size_q;
   int32_t dec_level() const { return decision_stack_.get_decision_level(); }
   void print_restart_data() const;
@@ -228,7 +226,7 @@ private:
     trail.push_back(lit);
     __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
     __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
-    if (config_.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
+    if (conf.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
       Clause& cl = *alloc->ptr(ant.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.increaseScore();
@@ -243,7 +241,7 @@ private:
       const uint64_t t = stats.num_cache_look_ups_ + 1;
       // The +32 is because there is actually another hash, which is 32b and is used
       // by the caching subsystem. Both must match.
-      if (2 * log2(t) > log2(config_.delta) + (64+32) * 0.9843) {
+      if (2 * log2(t) > log2(conf.delta) + (64+32) * 0.9843) {
         // 1 - log_2(2.004)/64 = 0.9843
         cout << "ERROR: We need to change the hash range (-1)" << endl;
         exit(-1);

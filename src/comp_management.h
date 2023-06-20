@@ -45,7 +45,7 @@ public:
   ComponentManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const uint32_t& indep_support_end, Counter* _solver) :
-      config_(config), stats(statistics), cache_(statistics, config_, sz),
+      conf(config), stats(statistics), cache_(statistics, conf, sz),
       ana_(lit_values, indep_support_end, _solver), solver_(_solver)
   { }
 
@@ -108,7 +108,7 @@ public:
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
   {
-    std::mt19937_64 eng(config_.seed); //Use the 64-bit Mersenne Twister 19937 generator
+    std::mt19937_64 eng(conf.seed); //Use the 64-bit Mersenne Twister 19937 generator
                                //and seed it with entropy.
     std::uniform_int_distribution<uint64_t> distr;
     randomseedforCLHASH = get_random_key_for_clhash(distr(eng), distr(eng));
@@ -123,7 +123,7 @@ public:
   }
 
 private:
-  const CounterConfiguration &config_;
+  const CounterConfiguration &conf;
   DataAndStatistics &stats;
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)

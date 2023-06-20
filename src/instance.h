@@ -39,7 +39,7 @@ class ClauseAllocator;
 
 class Instance {
 public:
-  Instance(const CounterConfiguration& _config);
+  Instance(const CounterConfiguration& _conf);
   ~Instance();
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
@@ -58,7 +58,7 @@ public:
   void check_all_propagated() const;
 #endif
 protected:
-  CounterConfiguration config_;
+  CounterConfiguration conf;
   void unSet(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << lit << endl);
     var(lit).ante = Antecedent();
@@ -137,7 +137,7 @@ protected:
   }
 
   void inline increaseActivity(const Lit lit) {
-    if (config_.do_single_bump && seen[lit.var()]) return;
+    if (conf.do_single_bump && seen[lit.var()]) return;
     watches_[lit].activity += act_inc;
     if (watches_[lit].activity > 1e100) {
       //rescale

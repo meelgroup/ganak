@@ -43,13 +43,13 @@ class ComponentCache;
 
 class DataAndStatistics {
 public:
-  DataAndStatistics (const Instance* _inst, CounterConfiguration& config): config_(config)
+  DataAndStatistics (const Instance* _inst, CounterConfiguration& config): conf(config)
   {
     inst = _inst;
     cache_hits_misses_q.clearAndResize(10000);
     comp_size_times_depth_q.clearAndResize(10000);
   }
-  CounterConfiguration& config_;
+  CounterConfiguration& conf;
   uint64_t maximum_cache_size_bytes_ = 0;
   uint64_t numcachedec_ = 0;
 

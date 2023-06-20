@@ -61,7 +61,7 @@ uint64_t freeram() {
 
 ComponentCache::ComponentCache(
     DataAndStatistics &statistics, const CounterConfiguration &config, const BPCSizes& _sz) :
-    stats(statistics), config_(config), sz(_sz) {
+    stats(statistics), conf(config), sz(_sz) {
 }
 
 void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){

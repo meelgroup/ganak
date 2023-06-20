@@ -30,9 +30,8 @@ THE SOFTWARE.
 #include <sys/stat.h>
 
 
-Instance::Instance(const CounterConfiguration& _config) : config_(_config), stats (this, config_)
-{
-  alloc = new ClauseAllocator(_config);
+Instance::Instance(const CounterConfiguration& _conf) : conf(_conf), stats (this, conf) {
+  alloc = new ClauseAllocator(_conf);
 }
 
 Instance::~Instance() {
@@ -100,7 +99,7 @@ void Instance::reduceDB() {
   num_used_cls = 0;
   uint32_t cannot_be_del = 0;
   sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(alloc, lbd_cutoff));
-  uint32_t cutoff = config_.rdb_cls_target;
+  uint32_t cutoff = conf.rdb_cls_target;
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
@@ -110,8 +109,8 @@ void Instance::reduceDB() {
 
     bool can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
-    if (can_be_del && h.lbd > lbd_cutoff && (!config_.rdb_keep_used || !h.used) &&
-        i > cutoff + num_low_lbd_cls + (config_.rdb_keep_used ? num_used_cls : 0)) {
+    if (can_be_del && h.lbd > lbd_cutoff && (!conf.rdb_keep_used || !h.used) &&
+        i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
       markClauseDeleted(off);
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;

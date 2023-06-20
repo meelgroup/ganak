@@ -167,7 +167,7 @@ private:
   uint32_t table_size_mask_; // table is always power-of-two size
 
   DataAndStatistics &stats;
-  const CounterConfiguration &config_;
+  const CounterConfiguration &conf;
   const BPCSizes& sz;
   uint64_t my_time_ = 0;
 };
@@ -176,7 +176,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
   CacheEntryID id;
 
   while (cache_full()) {
-    if (config_.verb) cout << "c Cache full. Deleting some entries." << endl;
+    if (conf.verb) cout << "c Cache full. Deleting some entries." << endl;
     deleteEntries();
   }
 

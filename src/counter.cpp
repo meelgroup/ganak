@@ -93,21 +93,21 @@ void Counter::end_irred_cls()
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   delete comp_manager_;
-  comp_manager_ = new ComponentManager(config_,stats, lit_values_, indep_support_end, this);
+  comp_manager_ = new ComponentManager(conf,stats, lit_values_, indep_support_end, this);
   comp_manager_->getrandomseedforclhash();
 
   // reset stats
-  depth_q.clearAndResize(config_.first_restart);
-  cache_miss_rate_q.clearAndResize(config_.first_restart);
-  comp_size_q.clearAndResize(config_.first_restart);
+  depth_q.clearAndResize(conf.first_restart);
+  cache_miss_rate_q.clearAndResize(conf.first_restart);
+  comp_size_q.clearAndResize(conf.first_restart);
   next_print_stat_cache = 2ULL*1000LL*1000LL;
 
-  stats.maximum_cache_size_bytes_ = config_.maximum_cache_size_MB*1024*1024;
+  stats.maximum_cache_size_bytes_ = conf.maximum_cache_size_MB*1024*1024;
   init_decision_stack();
   simplePreProcess();
   ended_irred_cls = true;
 
-  if (config_.verb) stats.printShortFormulaInfo();
+  if (conf.verb) stats.printShortFormulaInfo();
   // This below will initialize the disjoint component analyzer (ana_)
   comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
 }
@@ -229,10 +229,10 @@ void Counter::get_unit_cls(vector<Lit>& units) const
 
 void Counter::td_decompose()
 {
-  bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= config_.td_varlim;
+  bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
     verb_print(1, "skipping TD, too many/few vars. Setting branch to fallback");
-    config_.branch_type = config_.branch_fallback_type;
+    conf.branch_type = conf.branch_fallback_type;
     return;
   }
 
@@ -240,7 +240,7 @@ void Counter::td_decompose()
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
-      if ((!l2.red() || (l2.red() && config_.td_with_red_bins))
+      if ((!l2.red() || (l2.red() && conf.td_with_red_bins))
           && l < l2.lit()) {
         print_debug("v1: " << l.var());
         print_debug("v2: " << l2.var());
@@ -268,13 +268,13 @@ void Counter::td_decompose()
     << " edge/var: "
     << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio);
   /* bool conditionOnPrimalGraph = */
-  /*     density <= config_.td_denselim && */
-  /*     edge_var_ratio <= config_.td_ratiolim; */
+  /*     density <= conf.td_denselim && */
+  /*     edge_var_ratio <= conf.td_ratiolim; */
 
   /* if (!conditionOnPrimalGraph) { */
   /*   verb_print(1, "skipping td, primal graph is too large or dense." */
   /*       " Setting branch to fallback"); */
-  /*   config_.branch_type = config_.branch_fallback_type; */
+  /*   conf.branch_type = conf.branch_fallback_type; */
   /*   return; */
   /* } */
 
@@ -302,11 +302,11 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 
 mpz_class Counter::check_norestart(const vector<Lit>& cube) {
   // Test
-  CounterConfiguration conf = config_;
-  conf.do_restart = 0;
-  conf.verb = 0;
+  CounterConfiguration conf2 = conf;
+  conf2.do_restart = 0;
+  conf2.verb = 0;
   vector<Lit> tmp;
-  Counter* test_cnt = new Counter(conf);
+  Counter* test_cnt = new Counter(conf2);
   test_cnt->new_vars(nVars());
   // Long cls
   for(const auto& off: longIrredCls) {
@@ -352,7 +352,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   auto ret = sat_solver->solve();
   int32_t num_cubes = 0;
   start_time = cpuTime();
-  if (config_.do_restart) {
+  if (conf.do_restart) {
     vector<Lit> largest_cube;
     while(ret == CMSat::l_True) {
       auto& model = sat_solver->get_model();
@@ -371,7 +371,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
 
       auto cms_cl = ganak_to_cms_cl(largest_cube);
       sat_solver->add_clause(cms_cl);
-      config_.branch_type = branch_t::old_ganak;
+      conf.branch_type = branch_t::old_ganak;
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
 
@@ -400,14 +400,14 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   verb_print(1, "Sampling set size: " << indep_support_end-1);
 
   // Only compute TD decomposition once
-  if (tdscore.empty() && config_.td_with_red_bins) {
-    if (config_.branch_type == branch_t::sharptd ||
-        config_.branch_type == branch_t::gpmc) td_decompose();
-    verb_print(1, "branch type: " << config_.get_branch_type_str());
+  if (tdscore.empty() && conf.td_with_red_bins) {
+    if (conf.branch_type == branch_t::sharptd ||
+        conf.branch_type == branch_t::gpmc) td_decompose();
+    verb_print(1, "branch type: " << conf.get_branch_type_str());
   }
 
   const auto exit_state = countSAT();
-  if (config_.verb) stats.printShort(this, &comp_manager_->get_cache());
+  if (conf.verb) stats.printShort(this, &comp_manager_->get_cache());
   if (exit_state == RESTART) {
     largest_cube_ret = largest_cube;
     return largest_cube_val;
@@ -453,7 +453,7 @@ void Counter::print_all_levels() {
 void Counter::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups_ &&
       next_print_stat_confl > stats.conflicts) return;
-  if (config_.verb) {
+  if (conf.verb) {
     verb_print(1, "GANAK time so far: " << (cpuTime() - start_time));
     stats.printShort(this, &comp_manager_->get_cache());
   }
@@ -501,7 +501,7 @@ SOLVER_StateT Counter::countSAT() {
     }
 
     // Here we can vivify I think
-    if (config_.do_vivify) {
+    if (conf.do_vivify) {
       vivify_clauses();
       bool ret = propagate();
       assert(ret);
@@ -517,16 +517,16 @@ bool Counter::standard_polarity(const uint32_t v) const {
 bool Counter::get_polarity(const uint32_t v) const
 {
   bool polarity;
-  if (config_.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
+  if (conf.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
   else {
-    if (config_.polar_type == 0) {
+    if (conf.polar_type == 0) {
       if (var(Lit(v, false)).set_once) {
         polarity = var(Lit(v, false)).last_polarity;
       } else polarity = standard_polarity(v);
-    } else if (config_.polar_type == 1) polarity = standard_polarity(v);
-    else if (config_.polar_type == 4) polarity = !standard_polarity(v);
-    else if (config_.polar_type == 2) polarity = false;
-    else if (config_.polar_type == 3) polarity = true;
+    } else if (conf.polar_type == 1) polarity = standard_polarity(v);
+    else if (conf.polar_type == 4) polarity = !standard_polarity(v);
+    else if (conf.polar_type == 2) polarity = false;
+    else if (conf.polar_type == 3) polarity = true;
     else assert(false);
   }
   return polarity;
@@ -545,11 +545,11 @@ bool Counter::decideLiteral() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   isindependent = true;
-  if (config_.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(true);
+  if (conf.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(true);
   else v = find_best_branch(true);
   if (v == 0 && perform_projected_counting) {
     isindependent = false;
-    if (config_.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(false);
+    if (conf.branch_type == branch_t::gpmc) v = find_best_branch_gpmc(false);
     else v = find_best_branch(false);
   }
   if (v == 0) {
@@ -628,7 +628,7 @@ uint32_t Counter::find_best_branch(bool do_indep)
     }
   }
 
-  if (config_.do_cache_score && best_var != 0) {
+  if (conf.do_cache_score && best_var != 0) {
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
@@ -653,7 +653,7 @@ void Counter::shuffle_activities(MTRand &mtrand2) {
 }
 
 bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_largest) {
-  assert(config_.do_restart);
+  assert(conf.do_restart);
   cube.clear();
   print_debug(COLWHT "-- " __func__ " BEGIN");
   print_debug_noendl(COLWHT "Decisions in the cube: ");
@@ -815,34 +815,34 @@ bool Counter::restart_if_needed() {
   /*     << endl; */
   /* } */
 
-  if (!config_.do_restart) return false;
+  if (!conf.do_restart) return false;
   bool restart = false;
-  if (config_.restart_type == 0
+  if (conf.restart_type == 0
       && comp_size_q.isvalid() &&
-      comp_size_q.avg() < comp_size_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
+      comp_size_q.avg() < comp_size_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
     restart = true;
-  if (config_.restart_type == 1
+  if (conf.restart_type == 1
       && cache_miss_rate_q.isvalid() &&
       cache_miss_rate_q.avg() > cache_miss_rate_q.getLongtTerm().avg()*0.95)
     restart = true;
 
-  if (config_.restart_type == 2
+  if (conf.restart_type == 2
       && depth_q.isvalid() &&
-      depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
+      depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
     restart = true;
 
-  if (config_.restart_type == 3 &&
-      (stats.decisions-stats.last_restart_num_decisions) > config_.next_restart)
+  if (conf.restart_type == 3 &&
+      (stats.decisions-stats.last_restart_num_decisions) > conf.next_restart)
     restart = true;
 
-  if (config_.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
+  if (conf.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
       && stats.cache_hits_misses_q.avg() <
-      stats.cache_hits_misses_q.getLongtTerm().avg()*config_.restart_cutoff_mult)
+      stats.cache_hits_misses_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
       restart = true;
 
-  if (config_.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&
+  if (conf.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&
         stats.comp_size_times_depth_q.avg() >
-          stats.comp_size_times_depth_q.getLongtTerm().avg()*(1.0/config_.restart_cutoff_mult))
+          stats.comp_size_times_depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
       restart = true;
 
   // don't restart if we didn't change the scores
@@ -1126,7 +1126,7 @@ retStateT Counter::backtrack() {
 
 
     //Cache score should be decreased since the component is getting added to cache
-    if (config_.do_cache_score) {
+    if (conf.do_cache_score) {
       stats.numcachedec_++;
       if (stats.numcachedec_ % 128 == 0) comp_manager_->rescale_cache_scores();
       comp_manager_->decreasecachescore(
@@ -1409,7 +1409,7 @@ retStateT Counter::resolveConflict() {
   recordLastUIPCauses();
   assert(uip_clause.front() != NOT_A_LIT);
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
-  act_inc *= 1.0/config_.act_exp;
+  act_inc *= 1.0/conf.act_exp;
 
   if (stats.conflicts-stats.uip_not_added+stats.saved_uip_used > last_reduceDB_conflicts+10000) {
     reduceDB();
@@ -1446,7 +1446,7 @@ retStateT Counter::resolveConflict() {
     if (uip_clause.size() == 1) {
       if (!existsUnitClauseOf(uip_clause[0])) unit_clauses_.push_back(uip_clause[0]);
     }
-    if (config_.do_save_uip && uip_clause.size() > 1) {
+    if (conf.do_save_uip && uip_clause.size() > 1) {
       if (saved_uip_cls.size() <= (uint32_t)lev_to_set) saved_uip_cls.resize(lev_to_set+1);
         // Latest seems better than smallest, so just upgrade to latest
         if (!saved_uip_cls[lev_to_set].empty()) stats.saved_uip_thrown++;
@@ -1661,7 +1661,7 @@ bool Counter::prop_and_probe() {
   bool bSucceeded;
 prop_again:;
   bSucceeded = propagate();
-  if (config_.do_save_uip && bSucceeded) {
+  if (conf.do_save_uip && bSucceeded) {
     switch(deal_with_saved_uips()) {
       case Counter::SavedUIPRet::prop_again: goto prop_again;
       case Counter::SavedUIPRet::ret_false: return false;
@@ -1669,12 +1669,12 @@ prop_again:;
     }
   }
 
-  if (bSucceeded && config_.num_probe_multi > 0 && config_.failed_lit_probe_type != 0) {
-    if (config_.failed_lit_probe_type == 2  &&
+  if (bSucceeded && conf.num_probe_multi > 0 && conf.failed_lit_probe_type != 0) {
+    if (conf.failed_lit_probe_type == 2  &&
       (double)decision_stack_.size() >
-        depth_q.getLongtTerm().avg()*config_.probe_only_after_ratio) {
+        depth_q.getLongtTerm().avg()*conf.probe_only_after_ratio) {
       bSucceeded = failed_lit_probe();
-    } else if (config_.failed_lit_probe_type == 1) {
+    } else if (conf.failed_lit_probe_type == 1) {
       bSucceeded = failed_lit_probe();
     }
   }
@@ -1860,7 +1860,7 @@ const DataAndStatistics& Counter::get_stats() const
 }
 
 bool Counter::failed_lit_probe() {
-  if (config_.bprop) return failed_lit_probe_with_bprop();
+  if (conf.bprop) return failed_lit_probe_with_bprop();
   else return failed_lit_probe_no_bprop();
 }
 
@@ -1895,7 +1895,7 @@ bool Counter::failed_lit_probe_no_bprop()
     for (const auto& l: test_lits) scores.push_back(watches_[l].activity);
     sort(scores.begin(), scores.end());
     num_curr_lits = 10 + num_curr_lits / 20;
-    num_curr_lits *= config_.num_probe_multi;
+    num_curr_lits *= conf.num_probe_multi;
     double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
@@ -1944,7 +1944,7 @@ bool Counter::failed_lit_probe_with_bprop() {
     }
     sort(scores.begin(), scores.end());
     num_curr_lits = 5 + num_curr_lits / 40;
-    num_curr_lits *= config_.num_probe_multi;
+    num_curr_lits *= conf.num_probe_multi;
     double threshold = 0.0;
     if (scores.size() > num_curr_lits) {
       threshold = scores[scores.size() - num_curr_lits];
@@ -1996,7 +1996,7 @@ bool Counter::one_lit_probe(Lit lit, bool set)
   while (trail.size() > sz) {
     Lit l = trail.back();
     unSet(l);
-    if (config_.bprop && bSucceeded) {
+    if (conf.bprop && bSucceeded) {
       if (set) {
         seen[l.var()] = 1U | ((uint8_t)l.sign() << 1);
         toClear.push_back(l.var());
@@ -2149,7 +2149,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
 }
 
 void Counter::vivify_clauses() {
-  if (last_confl_vivif + config_.vivif_every > stats.conflicts) return;
+  if (last_confl_vivif + conf.vivif_every > stats.conflicts) return;
   vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
@@ -2189,12 +2189,12 @@ void Counter::vivify_clauses() {
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
 
   // Vivify clauses
-  v_tout = config_.vivif_mult*2LL*1000LL*1000LL;
+  v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
   if (stats.vivif_tried % 3 == 0) vivify_cls(longIrredCls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
 
-  v_tout = config_.vivif_mult*5LL*1000LL*1000LL;
+  v_tout = conf.vivif_mult*5LL*1000LL*1000LL;
   vivify_cls(longRedCls);
   verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
   bool tout_red = (v_tout <= 0);

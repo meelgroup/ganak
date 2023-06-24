@@ -44,7 +44,7 @@ using CMSat::DimacsParser;
 #include <fenv.h>
 #endif
 
-#define SIMPLE
+/* #define SIMPLE */
 
 namespace po = boost::program_options;
 using std::string;

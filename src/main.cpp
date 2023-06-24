@@ -78,10 +78,8 @@ struct CNFHolder {
   uint32_t new_vars(uint32_t vars) { nvars+=vars; return nvars; }
   uint32_t new_var() { nvars++; return nvars;}
   void add_xor_clause(vector<uint32_t>&, bool) { exit(-1); }
-  void add_clause(vector<CMSat::Lit>& cl, bool red = false) {
-    if (!red) clauses.push_back(cl);
-    else red_clauses.push_back(cl);
-  }
+  void add_clause(vector<CMSat::Lit>& cl) { clauses.push_back(cl); }
+  void add_red_clause(vector<CMSat::Lit>& cl) { red_clauses.push_back(cl); }
   uint32_t must_mult_exp2 = 0;
 };
 CNFHolder cnfholder;

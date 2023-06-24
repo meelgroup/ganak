@@ -2500,7 +2500,7 @@ void Counter::recordLastUIPCauses() {
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
 }
 
-Counter::Counter(const CounterConfiguration& conf) : Instance(conf) {
+Counter::Counter(const CounterConfiguration& _conf) : Instance(_conf) {
   mtrand.seed(conf.seed);
 }
 

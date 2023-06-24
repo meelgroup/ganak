@@ -35,11 +35,8 @@ using std::set;
 // There is EXACTLY ONE of this
 class ComponentCache {
 public:
-  ComponentCache(DataAndStatistics &statistics, const CounterConfiguration& config,
-      const BPCSizes& sz);
-  ~ComponentCache() {
-    for(auto& c: entry_base_) c.set_free();
-  }
+  ComponentCache(DataAndStatistics &_stats, const CounterConfiguration& _conf, const BPCSizes& sz);
+  ~ComponentCache() { for(auto& c: entry_base_) c.set_free(); }
 
   void init(Component &super_comp, void* randomseedforCLHASH);
   void delete_comps_with_vars(const set<uint32_t>& vars);

@@ -69,7 +69,7 @@ class ClauseAllocator;
 // There is only one counter
 class Counter : public Instance {
 public:
-  Counter(const CounterConfiguration& conf);
+  Counter(const CounterConfiguration& _conf);
   ~Counter();
   friend class ClauseAllocator;
   struct ConflictData {

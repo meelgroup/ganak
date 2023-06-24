@@ -43,8 +43,7 @@ class ComponentCache;
 
 class DataAndStatistics {
 public:
-  DataAndStatistics (const Instance* _inst, CounterConfiguration& config): conf(config)
-  {
+  DataAndStatistics (const Instance* _inst, CounterConfiguration& _conf): conf(_conf) {
     inst = _inst;
     cache_hits_misses_q.clearAndResize(10000);
     comp_size_times_depth_q.clearAndResize(10000);

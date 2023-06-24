@@ -44,7 +44,6 @@ struct CounterConfiguration {
   int restart_type = 5;
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
-  int do_on_path_print = 0;
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
   uint32_t rdb_cls_target = 10000;

@@ -70,8 +70,6 @@ private:
   uint32_t unprocessed_comps_end_ = 0;
 
 public:
-  bool on_path_to_target_ = false;
-
   bool hasUnprocessedComponents() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ > remaining_comps_ofs_;

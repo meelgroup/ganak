@@ -336,9 +336,11 @@ mpz_class Counter::check_norestart(const vector<Lit>& cube) {
     test_cnt->add_irred_cl(tmp);
   }
   test_cnt->end_irred_cls();
-  auto check_cnt = test_cnt->count(tmp);
+  vector<Cube> ret;
+  test_cnt->count(ret);
+  assert(ret.size() == 1);
   delete test_cnt;
-  return check_cnt;
+  return ret[0].val;
 }
 
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
@@ -346,53 +348,49 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   sat_solver = _sat_solver;
 
   auto ret = sat_solver->solve();
-  int32_t num_cubes = 0;
+  int32_t num_runs = 0;
   start_time = cpuTime();
+  vector<Cube> cubes;
   if (conf.do_restart) {
-    vector<Lit> largest_cube;
     while(ret == CMSat::l_True) {
-      auto& model = sat_solver->get_model();
-      set_target_polar(model);
-      auto val2 = count(largest_cube);
-      val+=val2;
-      num_cubes++;
-      cout << "Num cubes: " << num_cubes << endl;
-      cout << "Cube     : " << largest_cube;
-      cout << " -- count: " <<  val2 << endl;
+      vector<Cube> tmp_cubes;
+      count(tmp_cubes);
+      for(const auto&c: tmp_cubes) {val+=c.val; cubes.push_back(c);}
+      num_runs++;
+      cout << "Num runs: " << num_runs << endl;
+      cout << "Cubes     : " << endl;
+      for(const auto&c: tmp_cubes) cout << "-> c: " << c.cube << " val: " << c.val << endl;
 #ifdef SLOW_DEBUG
-      auto check_cnt = check_norestart(largest_cube);
-      cout << "check cnt: " << check_cnt << " val2: " << val2 << endl;
-      assert(check_cnt == val2);
+      for(const auto& c: tmp_cubes) {
+        auto check_cnt = check_norestart(c.cube);
+        cout << "check cube: " << c.cube << " cnt here: " << check_cnt << " c.val: " << c.val << endl;
+        assert(check_cnt == c.val);
+      }
 #endif
 
-      auto cms_cl = ganak_to_cms_cl(largest_cube);
-      sat_solver->add_clause(cms_cl);
-      conf.branch_type = branch_t::old_ganak;
+      // Add cubes to CMS
+      for(const auto& c: tmp_cubes) sat_solver->add_clause(ganak_to_cms_cl(c.cube));
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
 
-      // Deal with cubes
-      add_irred_cl(largest_cube);
-      for(const auto& c: mini_cubes) {
-        cout << "Mini cube: " << c.first << " count: " << c.second << endl;
-        add_irred_cl(c.first);
-        val+=c.second;
-        num_cubes++;
-      }
+      // Add cubes to counter
+      for(const auto& c: tmp_cubes) add_irred_cl(c.cube);
       end_irred_cls();
     }
   } else if (ret == CMSat::l_True) {
-      val += count(largest_cube);
+      count(cubes);
+      assert(cubes.size() == 1);
+      assert(cubes[0].cube.empty());
+      val = cubes[0].val;
   }
   return val;
 }
 
-mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
+void Counter::count(vector<Cube>& ret_cubes) {
+  release_assert(ret_cubes.empty());
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
   mini_cubes.clear();
-  largest_cube.clear();
-  largest_cube_val = 0;
   verb_print(1, "Sampling set size: " << indep_support_end-1);
 
   // Only compute TD decomposition once
@@ -405,21 +403,12 @@ mpz_class Counter::count(vector<Lit>& largest_cube_ret) {
   const auto exit_state = countSAT();
   if (conf.verb) stats.printShort(this, &comp_manager_->get_cache());
   if (exit_state == RESTART) {
-    largest_cube_ret = largest_cube;
-    return largest_cube_val;
+    ret_cubes = mini_cubes;
   } else {
     assert(exit_state == SUCCESS);
-    largest_cube_ret.clear();
-    return decision_stack_.top().getTotalModelCount();
+    Cube c(vector<Lit>(), decision_stack_.top().getTotalModelCount());
+    ret_cubes.push_back(c);
   }
-}
-
-void Counter::set_target_polar(const vector<CMSat::lbool>& model) {
-  assert(target_polar.size() > nVars());
-  for(uint32_t i = 0; i < nVars(); i++) {
-    target_polar[i+1] = model[i] == CMSat::l_True;
-  }
-  counted_bottom_comp = false;
 }
 
 void Counter::print_all_levels() {
@@ -513,27 +502,20 @@ bool Counter::standard_polarity(const uint32_t v) const {
 bool Counter::get_polarity(const uint32_t v) const
 {
   bool polarity;
-  if (conf.do_restart && decision_stack_.top().on_path_to_target_) polarity = target_polar[v];
-  else {
-    if (conf.polar_type == 0) {
-      if (var(Lit(v, false)).set_once) {
-        polarity = var(Lit(v, false)).last_polarity;
-      } else polarity = standard_polarity(v);
-    } else if (conf.polar_type == 1) polarity = standard_polarity(v);
-    else if (conf.polar_type == 4) polarity = !standard_polarity(v);
-    else if (conf.polar_type == 2) polarity = false;
-    else if (conf.polar_type == 3) polarity = true;
-    else assert(false);
-  }
+  if (conf.polar_type == 0) {
+    if (var(Lit(v, false)).set_once) {
+      polarity = var(Lit(v, false)).last_polarity;
+    } else polarity = standard_polarity(v);
+  } else if (conf.polar_type == 1) polarity = standard_polarity(v);
+  else if (conf.polar_type == 4) polarity = !standard_polarity(v);
+  else if (conf.polar_type == 2) polarity = false;
+  else if (conf.polar_type == 3) polarity = true;
+  else assert(false);
   return polarity;
 }
 
 bool Counter::decideLiteral() {
-  print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " on path: " << decision_stack_.top().on_path_to_target_ << " branch: " << decision_stack_.top().is_right_branch());
-  bool on_path = true;
-  if (decision_stack_.size() != 1)
-    on_path = decision_stack_.top().on_path_to_target_ && !decision_stack_.top().is_right_branch();
-
+  print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " branch: " << decision_stack_.top().is_right_branch());
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
                comp_manager_->comp_stack_size()));
@@ -558,7 +540,6 @@ bool Counter::decideLiteral() {
   assert(val(v) == X_TRI);
 
   decision_stack_.top().var = v;
-  decision_stack_.top().on_path_to_target_ = on_path;
 
   Lit lit = Lit(v, get_polarity(v));
   print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
@@ -648,7 +629,7 @@ void Counter::shuffle_activities(MTRand &mtrand2) {
   for(auto& v: watches_) v.activity=act_inc*mtrand2.randExc();
 }
 
-bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_largest) {
+bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val) {
   assert(conf.do_restart);
   cube.clear();
   print_debug(COLWHT "-- " __func__ " BEGIN");
@@ -660,28 +641,12 @@ bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_la
   for(uint32_t i = 1; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const Lit dec_lit = Lit(dec.var, val(dec.var) == T_TRI);
-    // Add decision
-    if (it_is_largest) {
-      // Below only hold when doing largest cube
-      const auto dec_lit2 = (target_polar[dec.var] ? 1 : -1)*(int)dec.var;
-      if (dec_lit2 != dec_lit.toInteger()) {
-        cout << "(ERROR with dec_lit: " << dec_lit
-          << " dec_lit2: " << dec_lit2 << ") " << endl;
-        error = true;
-      }
-    }
+    // Add decisions
     cube.push_back(dec_lit.neg());
     print_debug_noendl(dec_lit.neg() << " ");
     if (dec.getTotalModelCount() > 0) cube_val *= dec.getTotalModelCount();
   }
-  // Get a solution (if not largest)
-  if (!it_is_largest) {
-    vector<CMSat::Lit> ass;
-    for(const auto&l: cube) ass.push_back(CMSat::Lit(l.var()-1, !l.sign()));
-    auto solution = sat_solver->solve(&ass);
-    if (solution == CMSat::l_False) return false;
-  }
-
+  // Get a solution
   for(uint32_t i = 1; i < decision_stack_.size()-1; i++) {
     const StackLevel& dec = decision_stack_[i];
     const auto off_start = dec.remaining_comps_ofs();
@@ -690,8 +655,7 @@ bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_la
     for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
       const auto& c = comp_manager_->at(i2);
       for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) {
-        if (it_is_largest) cube.push_back(Lit(*v, !target_polar[*v]));
-        else cube.push_back(Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_True));
+        cube.push_back(Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_True));
       }
     }
   }
@@ -702,16 +666,14 @@ bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_la
   // Show decision stack's comps
   for(size_t i = 0; i < decision_stack_.size(); i++) {
     const auto& dst = decision_stack_.at(i);
-    const auto dec_lit = (target_polar[dst.var] ? 1 : -1)*(int)dst.var;
     /* const auto dec_lit2 = trail[ds.trail_ofs()]; */
     /* cout << "dec_lit2: " << dec_lit2 << endl; */
     print_debug(COLWHT "decision_stack.at(" << i << "):"
-      << " decision lit: " << dec_lit
+      << " decision var: " << dst.var
       << " num unproc comps: " << dst.numUnprocessedComponents()
       << " unproc comps end: " << dst.getUnprocessedComponentsEnd()
       << " remain comps offs: " << dst.remaining_comps_ofs()
       << " count here: " << dst.getTotalModelCount()
-      << " on path: " << dst.on_path_to_target_
       << " branch: " << dst.is_right_branch());
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = dst.getUnprocessedComponentsEnd();
@@ -864,31 +826,19 @@ bool Counter::restart_if_needed() {
     stats.comp_size_times_depth_q.clear();
 
     assert(mini_cubes.empty());
-    assert(largest_cube.empty());
     while (decision_stack_.size() > 1) {
       cout
         << endl << "------" << endl
-        << "On path: " << (int)decision_stack_.top().on_path_to_target_
         << " lev: " << decision_stack_.get_decision_level()
         << " cnt: " << decision_stack_.top().getTotalModelCount()
         << endl;
 
-      if (decision_stack_.top().on_path_to_target_ && largest_cube.empty()) {
-        bool ret = compute_cube(largest_cube, largest_cube_val, true);
-        assert(ret == true);
-        /* assert(!largest_cube.empty()); */
-        cout << "->> cube here: " << largest_cube << " val: " << largest_cube_val
-          << " ret: " << (int)ret << " --- Largest cube filled!!!!" << endl;
-      } else {
-        vector<Lit> cube;
-        mpz_class cube_val;
-        bool ret = compute_cube(cube, cube_val);
-        cout << "->> cube here: " << cube << " val: " << cube_val << " ret: " << (int)ret << endl;
-        if (!decision_stack_.top().on_path_to_target_ && ret && cube_val != 0) {
-          /* mini_cubes.push_back(make_pair(cube, cube_val)); */
-        }
-        comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-      }
+      vector<Lit> cube;
+      mpz_class cube_val;
+      bool ret = compute_cube(cube, cube_val);
+      cout << "->> cube here: " << cube << " val: " << cube_val << " ret: " << (int)ret << endl;
+      if (ret && cube_val != 0) mini_cubes.push_back(Cube(cube, cube_val));
+      comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
       reactivate_comps_and_backtrack_trail();
       decision_stack_.pop_back();
     }
@@ -1157,8 +1107,7 @@ retStateT Counter::backtrack() {
         << " branch: " << dst.is_right_branch()
         << " before including child it was: " <<  parent_count_before
         << " (left: " << parent_count_before_left
-        << " right: " << parent_count_before_right << ")"
-        << " on_path: " << dst.on_path_to_target_);
+        << " right: " << parent_count_before_right << ")");
 
     // step to the next comp not yet processed
     dst.nextUnprocessedComponent();

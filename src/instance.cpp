@@ -151,7 +151,6 @@ void Instance::new_vars(const uint32_t n) {
   variables_.resize(n + 1);
   lit_values_.resize(n + 1, X_TRI);
   watches_.resize(n + 1);
-  target_polar.resize(n + 1);
   lbdHelper.resize(n+1, 0);
 }
 

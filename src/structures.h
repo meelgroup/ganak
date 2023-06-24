@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include "primitive_types.h"
 #include "common.h"
+#include <gmpxx.h>
 
 using std::vector;
 
@@ -258,6 +259,13 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
   os << s.str();
   return os;
 }
+
+struct Cube {
+  Cube(const vector<Lit>& _cube, const mpz_class& _val) : cube(_cube), val(_val) {}
+  vector<Lit> cube;
+  mpz_class val;
+};
+
 
 struct Variable {
   Antecedent ante;

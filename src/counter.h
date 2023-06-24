@@ -98,7 +98,6 @@ public:
     }
   }
   mpz_class outer_count(CMSat::SATSolver* solver = NULL);
-  void set_target_polar(const vector<CMSat::lbool>& model);
   void set_indep_support(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);
   void add_red_cl(const vector<Lit>& lits, int lbd = -1);
@@ -125,7 +124,7 @@ public:
 
 private:
   mpz_class check_norestart(const vector<Lit>& cube);
-  mpz_class count(vector<Lit>& largest_cube_ret);
+  void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
   vector<double> scores;
@@ -167,7 +166,7 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool prop_and_probe();
-  bool compute_cube(vector<Lit>& cube, mpz_class& cube_val, bool it_is_largest = false);
+  bool compute_cube(vector<Lit>& cube, mpz_class& cube_val);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
 
@@ -272,7 +271,6 @@ private:
     decision_stack_.push_back(StackLevel(
           1, // super comp
           2)); //comp stack offset
-    decision_stack_.top().on_path_to_target_ = true;
 
     // I guess this is needed so the system later knows it's fully counted
     // since this is only a dummy.

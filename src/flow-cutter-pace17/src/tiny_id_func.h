@@ -25,8 +25,8 @@ public:
 	}
 
 	template<class IDFunc>
-	TinyIntIDFunc(const IDFunc&other,
-			typename std::enable_if<is_id_func<IDFunc>::value, void>::type* /*dummy=0*/)
+	TinyIntIDFunc(const IDFunc&other, [[maybe_unused]]
+			typename std::enable_if<is_id_func<IDFunc>::value, void>::type* dummy=0)
 		:preimage_(other.preimage_count()), data_((other.preimage_count() + entry_count_per_uint64 - 1) / entry_count_per_uint64){
 		for(int i=0; i<preimage_count(); ++i)
 			set(i, other(i));
@@ -42,7 +42,7 @@ public:
 
 	void set(int id, std::uint64_t value){
 		assert(0 <= id && id < preimage_ && "id out of bounds");
-		assert(0 <= value && value <= entry_mask && "value out of bounds");
+		assert(value <= entry_mask && "value out of bounds");
 
 		int index = id / entry_count_per_uint64;
 		int offset = (id % entry_count_per_uint64)*bit_count;
@@ -51,7 +51,7 @@ public:
 	}
 
 	void fill(std::uint64_t value){
-		assert(0 <= value && value <= entry_mask && "value out of bounds");
+		assert(value <= entry_mask && "value out of bounds");
 
 		if(bit_count == 1){
 			if(value == false)

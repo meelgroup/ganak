@@ -121,7 +121,7 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 			out << (b+1) << ' ' << (p+1) << '\n';
 		};
 
-		std::vector<int>tail, head, weight;
+		std::vector<int>tail2, head2, weight;
 
 		for(int b=0; b<bag_count; ++b){
 			vector<int>neighbor_bags;
@@ -136,19 +136,19 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 			}
 			for(auto p:neighbor_bags){
 				if(p != b){
-					tail.push_back(b);
-					head.push_back(p);
+					tail2.push_back(b);
+					head2.push_back(p);
 					weight.push_back(compute_intersection_size(nodes_in_bag[b], nodes_in_bag[p]));
 				}
 			}
 		}
 
-		int arc_count = tail.size();
+		int arc_count = tail2.size();
 
 		auto out_arc = invert_id_id_func(
 			id_id_func(
 				arc_count, bag_count,
-				[&](unsigned a){return tail[a];}
+				[&](unsigned a){return tail2[a];}
 			)
 		);
 
@@ -166,8 +166,8 @@ void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, Arra
 				while(!q.empty()){
 					int xy = q.pop();
 
-					int x = tail[xy];
-					int y = head[xy];
+					int x = tail2[xy];
+					int y = head2[xy];
 
 					assert(in_tree(x));
 

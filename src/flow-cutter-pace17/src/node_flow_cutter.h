@@ -25,7 +25,7 @@ namespace flow_cutter{
 		inline bool is_expanded_inter_arc(int x, int original_arc_count){ return x < 2*original_arc_count; }
 		inline bool get_expanded_arc_tail_out_flag(int x){return x&1;}
 		inline int expanded_inter_arc_to_original_arc(int x, int original_arc_count){ (void)original_arc_count; return x/2; }
-		inline int original_arc_to_expanded_inter_arc(int x, bool tail_out_flag, int original_arc_count){ return 2*x+tail_out_flag; }
+		inline int original_arc_to_expanded_inter_arc(int x, bool tail_out_flag, int/* original_arc_count*/){ return 2*x+tail_out_flag; }
 		inline int expanded_intra_arc_to_original_node(int x, int original_arc_count){ (void)original_arc_count; return x/2-original_arc_count; }
 		inline int original_node_to_expanded_intra_arc(int x, bool tail_out_flag, int original_arc_count){ return 2*(original_arc_count+x)+tail_out_flag; }
 

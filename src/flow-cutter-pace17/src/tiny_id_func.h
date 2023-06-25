@@ -25,7 +25,8 @@ public:
 	}
 
 	template<class IDFunc>
-	TinyIntIDFunc(const IDFunc&other, typename std::enable_if<is_id_func<IDFunc>::value, void>::type*dummy=0)
+	TinyIntIDFunc(const IDFunc&other,
+			typename std::enable_if<is_id_func<IDFunc>::value, void>::type* /*dummy=0*/)
 		:preimage_(other.preimage_count()), data_((other.preimage_count() + entry_count_per_uint64 - 1) / entry_count_per_uint64){
 		for(int i=0; i<preimage_count(); ++i)
 			set(i, other(i));

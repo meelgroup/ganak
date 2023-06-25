@@ -300,8 +300,8 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 							std::remove_if(
 								new_cell.boundary_node_list.begin(),
 								new_cell.boundary_node_list.end(),
-								[&](int x)->bool{
-									for(auto xy:inv_tail(x))
+								[&](int x2)->bool{
+									for(auto xy:inv_tail(x2))
 										if(in_child_cell(head(xy)))
 											return false;
 									return true;
@@ -591,7 +591,7 @@ TreeDecomposition IFlowCutter::constructTD()
 	TreeDecomposition td;
 	ArrayIDIDFunc preorder, inv_preorder;
 
-	int random_seed = 0;
+	/* int random_seed = 0; */
 	try{
 		{
 			preorder = compute_preorder(compute_successor_function(tail, head));

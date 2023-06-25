@@ -222,7 +222,7 @@ namespace flow_cutter{
 		}
 
 		template<class Graph>
-		void set_extra_node(const Graph&graph, int x){
+		void set_extra_node(const Graph& /*graph*/, int x){
 			assert(!inside_flag(x));
 			assert(extra_node == -1);
 			inside_flag.set(x, true);
@@ -621,7 +621,7 @@ namespace flow_cutter{
 						return true;
 				};
 				auto should_follow_arc = [&](int xy){ return !is_forward_saturated(xy); };
-				auto on_new_arc = [](int xy){};
+				auto on_new_arc = [](int /*xy*/){};
 				reachable[my_source_side].grow(graph, tmp, search_algo, on_new_node, should_follow_arc, on_new_arc);
 
 				if(target_hit != -1){
@@ -637,9 +637,9 @@ namespace flow_cutter{
 
 			if(was_flow_augmented){
 				reachable[my_target_side].reset(assimilated[my_target_side]);
-				auto on_new_node = [&](int x){return true;};
+				auto on_new_node = [&](int /*x*/){return true;};
 				auto should_follow_arc = [&](int xy){ return !is_backward_saturated(xy); };
-				auto on_new_arc = [](int xy){};
+				auto on_new_arc = [](int/* xy*/){};
 				reachable[my_target_side].grow(graph, tmp, search_algo, on_new_node, should_follow_arc, on_new_arc);
 			}
 
@@ -656,16 +656,16 @@ namespace flow_cutter{
 			};
 
 			if(reachable[source_side].node_count_inside() <= reachable[target_side].node_count_inside()){
-				auto on_new_node = [&](int x){return true;};
+				auto on_new_node = [&](int/* x*/){return true;};
 				auto should_follow_arc = [&](int xy){ return !is_forward_saturated(xy); };
-				auto on_new_arc = [](int xy){};
+				auto on_new_arc = [](int/* xy*/){};
 				auto has_flow = [&](int xy){ return flow(xy) != 0; };
 				assimilated[source_side].grow(graph, tmp, search_algo, on_new_node, should_follow_arc, on_new_arc, has_flow);
 				assimilated[source_side].shrink_cut_front(graph);
 			}else{
-				auto on_new_node = [&](int x){return true;};
+				auto on_new_node = [&](int/* x*/){return true;};
 				auto should_follow_arc = [&](int xy){ return !is_backward_saturated(xy); };
-				auto on_new_arc = [](int xy){};
+				auto on_new_arc = [](int/* xy*/){};
 				auto has_flow = [&](int xy){ return flow(xy) != 0; };
 				assimilated[target_side].grow(graph, tmp, search_algo, on_new_node, should_follow_arc, on_new_arc, has_flow);
 				assimilated[target_side].shrink_cut_front(graph);
@@ -737,8 +737,8 @@ namespace flow_cutter{
 			dist.fill(std::numeric_limits<int>::max());
 			dist[source] = 0;
 
-			auto was_node_seen = [&](int x){return false;};
-			auto see_node = [](int x){ return true; };
+			auto was_node_seen = [&](int/* x*/){return false;};
+			auto see_node = [](int/* x*/){ return true; };
 			auto should_follow_arc = [&](int xy){
 				if(dist(graph.tail(xy)) < dist(graph.head(xy)) - 1){
 					dist[graph.head(xy)] = dist(graph.tail(xy))+1;
@@ -747,7 +747,7 @@ namespace flow_cutter{
 					return false;
 				}
 			};
-			auto on_new_arc = [&](int xy){};
+			auto on_new_arc = [&](int/* xy*/){};
 			BreadthFirstSearch()(graph, tmp, source, was_node_seen, see_node, should_follow_arc, on_new_arc);
 		}
 	public:
@@ -848,8 +848,8 @@ namespace flow_cutter{
 
 			for(int i=0; i<(int)p.size(); ++i){
 				auto&x = cutter_list[i];
-				auto my_score_pierce_node = [&](int x, int side, bool causes_augmenting_path, int source_dist, int target_dist){
-					return score_pierce_node(x, side, causes_augmenting_path, source_dist, target_dist, i);
+				auto my_score_pierce_node = [&](int x2, int side, bool causes_augmenting_path, int source_dist, int target_dist){
+					return score_pierce_node(x2, side, causes_augmenting_path, source_dist, target_dist, i);
 				};
 
 				x.init(graph, tmp, search_algo, dist_type, p[i], random_seed+1+i);
@@ -896,8 +896,8 @@ namespace flow_cutter{
 			for(;;){
 				for(int i=0; i<(int)cutter_list.size(); ++i){
 					auto x = std::move(cutter_list[i]);
-					auto my_score_pierce_node = [&](int x, int side, bool causes_augmenting_path, int source_dist, int target_dist){
-						return score_pierce_node(x, side, causes_augmenting_path, source_dist, target_dist, i);
+					auto my_score_pierce_node = [&](int x2, int side, bool causes_augmenting_path, int source_dist, int target_dist){
+						return score_pierce_node(x2, side, causes_augmenting_path, source_dist, target_dist, i);
 					};
 					if(x.is_cut_available()){
 						if((int)x.get_current_cut().size() == current_cut_size){
@@ -979,7 +979,7 @@ namespace flow_cutter{
 		static constexpr unsigned hash_modulo = ((1u<<31u)-1u);
 		unsigned hash_factor, hash_offset;
 
-		PierceNodeScore(Config config): config(config){
+		PierceNodeScore(const Config& _config): config(_config){
 			std::mt19937 gen;
 			gen.seed(config.random_seed);
 			gen();
@@ -1129,7 +1129,7 @@ namespace flow_cutter{
 		return SimpleCutter<Graph>(graph, config);
 	}
 
-	std::vector<SourceTargetPair>select_random_source_target_pairs(int node_count, int cutter_count, int seed){
+	inline std::vector<SourceTargetPair>select_random_source_target_pairs(int node_count, int cutter_count, int seed){
 		std::vector<SourceTargetPair>p(cutter_count);
 		std::mt19937 rng(seed);
 		for(auto&x:p){

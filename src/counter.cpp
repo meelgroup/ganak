@@ -239,7 +239,7 @@ void Counter::td_decompose()
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins))
           && l < l2.lit()) {
         print_debug("v1: " << l.var());
-        print_debug("v2: " << l2.var());
+        print_debug("v2: " << l2.lit().var());
         primal.addEdge(l.var(), l2.lit().var());
       }
     }
@@ -263,24 +263,14 @@ void Counter::td_decompose()
     << std::fixed << std::setw(9) << std::setprecision(3) << density
     << " edge/var: "
     << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio);
-  /* bool conditionOnPrimalGraph = */
-  /*     density <= conf.td_denselim && */
-  /*     edge_var_ratio <= conf.td_ratiolim; */
-
-  /* if (!conditionOnPrimalGraph) { */
-  /*   verb_print(1, "skipping td, primal graph is too large or dense." */
-  /*       " Setting branch to fallback"); */
-  /*   conf.branch_type = conf.branch_fallback_type; */
-  /*   return; */
-  /* } */
 
   // run FlowCutter
   verb_print(1, "FlowCutter is running...");
-  IFlowCutter FC(nVars()+1, primal.numEdges(), 0); //TODO: fix time limit
+  IFlowCutter FC(nVars()+1, primal.numEdges(), conf.verb);
   FC.importGraph(primal);
   TreeDecomposition td = FC.constructTD();
 
-  td.centroid(nVars()+1);
+  td.centroid(nVars()+1, conf.verb);
   compute_score(td);
 }
 
@@ -296,20 +286,21 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return cms_cl;
 }
 
-mpz_class Counter::check_norestart(const vector<Lit>& cube) {
-  // Test
+// Self-check count without restart with CMS only
+mpz_class Counter::check_norestart_cms(const Cube& c) {
+  cout << "Checking count with ourselves (no verb, no restart)" << endl;
   CounterConfiguration conf2 = conf;
   conf2.do_restart = 0;
   conf2.verb = 0;
   vector<Lit> tmp;
-  Counter* test_cnt = new Counter(conf2);
-  test_cnt->new_vars(nVars());
+  CMSat::SATSolver test_solver;
+  test_solver.new_vars(nVars());
   // Long cls
   for(const auto& off: longIrredCls) {
     const Clause& cl = *alloc->ptr(off);
     tmp.clear();
     for(const auto& l: cl) tmp.push_back(l);
-    test_cnt->add_irred_cl(tmp);
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   // Bin cls
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
@@ -319,7 +310,7 @@ mpz_class Counter::check_norestart(const vector<Lit>& cube) {
         tmp.clear();
         tmp.push_back(l);
         tmp.push_back(l2.lit());
-        test_cnt->add_irred_cl(tmp);
+        test_solver.add_clause(ganak_to_cms_cl(tmp));
       }
     }
   }
@@ -327,20 +318,76 @@ mpz_class Counter::check_norestart(const vector<Lit>& cube) {
   for(const auto& l: unit_clauses_) {
     tmp.clear();
     tmp.push_back(l);
-    test_cnt->add_irred_cl(tmp);
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   // The cube
-  for(const auto&l: cube) {
+  for(const auto&l: c.cnf) {
     tmp.clear();
     tmp.push_back(l.neg());
-    test_cnt->add_irred_cl(tmp);
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
-  test_cnt->end_irred_cls();
+  uint64_t num = 0;
+  for(;; num++) {
+    auto ret = test_solver.solve();
+    if (ret == CMSat::l_False) break;
+    vector<CMSat::Lit> ban;
+    for(uint32_t i = 0; i < test_solver.nVars(); i++) {
+      ban.push_back(CMSat::Lit(i, test_solver.get_model()[i] == CMSat::l_True));
+    }
+    test_solver.add_clause(ban);
+  }
+  return num;
+}
+
+// Self-check count without restart
+mpz_class Counter::check_norestart(const Cube& c) {
+  cout << "Checking count with ourselves (no verb, no restart)" << endl;
+  CounterConfiguration conf2 = conf;
+  conf2.do_restart = 0;
+  conf2.verb = 0;
+  vector<Lit> tmp;
+  Counter test_cnt(conf2);
+  test_cnt.new_vars(nVars());
+  CMSat::SATSolver test_solver;
+  test_solver.new_vars(nVars());
+  // Long cls
+  for(const auto& off: longIrredCls) {
+    const Clause& cl = *alloc->ptr(off);
+    tmp.clear();
+    for(const auto& l: cl) tmp.push_back(l);
+    test_cnt.add_irred_cl(tmp);
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  }
+  // Bin cls
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit l(i/2, i%2);
+    for(const auto& l2: watches_[l].binary_links_) {
+      if (l2.irred() && l < l2.lit()) {
+        tmp.clear();
+        tmp.push_back(l);
+        tmp.push_back(l2.lit());
+        test_cnt.add_irred_cl(tmp);
+        test_solver.add_clause(ganak_to_cms_cl(tmp));
+      }
+    }
+  }
+  // Unit cls
+  for(const auto& l: unit_clauses_) {
+    tmp.clear();
+    tmp.push_back(l);
+    test_cnt.add_irred_cl(tmp);
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  }
+  // The cube
+  for(const auto&l: c.cnf) {
+    tmp.clear();
+    tmp.push_back(l.neg());
+    test_cnt.add_irred_cl(tmp);
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  }
+  test_cnt.end_irred_cls();
   vector<Cube> ret;
-  test_cnt->count(ret);
-  assert(ret.size() == 1);
-  delete test_cnt;
-  return ret[0].val;
+  return test_cnt.outer_count(&test_solver);
 }
 
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
@@ -358,29 +405,31 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       for(const auto&c: tmp_cubes) {val+=c.val; cubes.push_back(c);}
       num_runs++;
       cout << "Num runs: " << num_runs << endl;
-      cout << "Cubes     : " << endl;
-      for(const auto&c: tmp_cubes) cout << "-> c: " << c.cube << " val: " << c.val << endl;
+      cout << "tmp cubes     : " << endl;
+      for(const auto&c: tmp_cubes) cout << "-> " << c << endl;
 #ifdef SLOW_DEBUG
       for(const auto& c: tmp_cubes) {
-        auto check_cnt = check_norestart(c.cube);
-        cout << "check cube: " << c.cube << " cnt here: " << check_cnt << " c.val: " << c.val << endl;
+        /* auto check_cnt = check_norestart(c); */
+        auto check_cnt = check_norestart_cms(c);
+        cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
         assert(check_cnt == c.val);
       }
 #endif
 
       // Add cubes to CMS
-      for(const auto& c: tmp_cubes) sat_solver->add_clause(ganak_to_cms_cl(c.cube));
+      for(const auto& c: tmp_cubes) sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
 
       // Add cubes to counter
-      for(const auto& c: tmp_cubes) add_irred_cl(c.cube);
+      for(const auto& c: tmp_cubes) add_irred_cl(c.cnf);
+      // TODO vivify!!
       end_irred_cls();
     }
   } else if (ret == CMSat::l_True) {
       count(cubes);
       assert(cubes.size() == 1);
-      assert(cubes[0].cube.empty());
+      assert(cubes[0].cnf.empty());
       val = cubes[0].val;
   }
   return val;
@@ -457,7 +506,6 @@ SOLVER_StateT Counter::countSAT() {
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       /* checkProbabilisticHashSanity(); -- no need, there is no way we get to 2**45 lookups*/
-      if (restart_if_needed()) {return RESTART;}
       if (!decideLiteral()) {
         decision_stack_.top().nextUnprocessedComponent();
         continue;
@@ -475,12 +523,14 @@ SOLVER_StateT Counter::countSAT() {
     // we are here because there is no next component, or we had to backtrack
 
     state = backtrack();
+    if (state == PROCESS_COMPONENT && restart_if_needed()) {return RESTART;}
     if (state == EXIT) return SUCCESS;
     while (state != PROCESS_COMPONENT && !prop_and_probe()) {
       state = resolveConflict();
       while(state == GO_AGAIN) state = resolveConflict();
       if (state == BACKTRACK) {
         state = backtrack();
+        if (state == PROCESS_COMPONENT && restart_if_needed()) {return RESTART;}
         if (state == EXIT) return SUCCESS;
       }
     }
@@ -629,82 +679,103 @@ void Counter::shuffle_activities(MTRand &mtrand2) {
   for(auto& v: watches_) v.activity=act_inc*mtrand2.randExc();
 }
 
-bool Counter::compute_cube(vector<Lit>& cube, mpz_class& cube_val) {
+// add decisions, components, and counts
+bool Counter::compute_cube(Cube& c) {
+  assert(c.val == 0);
+  assert(c.cnf.empty());
   assert(conf.do_restart);
-  cube.clear();
-  print_debug(COLWHT "-- " __func__ " BEGIN");
-  print_debug_noendl(COLWHT "Decisions in the cube: ");
+  print_debug(COLWHT "-- " << __func__ << " BEGIN");
 
-  // add decisions, components, and counts
-  cube_val = decision_stack_.top().getTotalModelCount();
-  bool error = false;
-  for(uint32_t i = 1; i < decision_stack_.size()-1; i++) {
+  c.val = decision_stack_.top().getBranchSols();
+  cout << "Own cnt: " << c.val << endl;
+  for(int32_t i = 1; i < decision_stack_.get_decision_level(); i++) {
     const StackLevel& dec = decision_stack_[i];
-    const Lit dec_lit = Lit(dec.var, val(dec.var) == T_TRI);
-    // Add decisions
-    cube.push_back(dec_lit.neg());
-    print_debug_noendl(dec_lit.neg() << " ");
-    if (dec.getTotalModelCount() > 0) cube_val *= dec.getTotalModelCount();
+    const auto& mul = dec.getBranchSols();
+    if (mul == 0) continue;
+    else c.val*=mul;
   }
+  cout << "Mult cnt: " << c.val << endl;
+
+  // Add decisions
+  cout << COLWHT "Decisions in the cube: ";
+  for(const auto& l: trail) {
+    if (!var(l).ante.isNull()) continue;
+    c.cnf.push_back(l.neg());
+    cout << l.neg() << " ";
+  }
+  cout << endl;
+
   // Get a solution
-  for(uint32_t i = 1; i < decision_stack_.size()-1; i++) {
+  vector<CMSat::Lit> ass;
+  for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
+  auto solution = sat_solver->solve(&ass);
+  cout << "cube solution: " << solution << endl;
+  if (solution == CMSat::l_False) return false;
+
+  // Add values for all components not yet counted
+  for(int32_t i = 0; i <= decision_stack_.get_decision_level(); i++) {
+    /* uint32_t i = decision_stack_.get_decision_level(); */
     const StackLevel& dec = decision_stack_[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedComponentsEnd();
-    // add all but the last component (it's the one we just counted)
-    for(uint32_t i2 = off_start; i2 < off_end-1; i2++) {
-      const auto& c = comp_manager_->at(i2);
-      for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) {
-        cube.push_back(Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_True));
+    cout << "lev: " << i << " off_start: " << off_start << " off_end: " << off_end << endl;
+    // add all but the last component (it's the one being counted lower down)
+    int off_by_one = 1;
+    if (i == decision_stack_.get_decision_level()) off_by_one = 0;
+    for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
+      const auto& comp = comp_manager_->at(i2);
+      all_vars_in_comp(comp, v) {
+        Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
+        cout << "Lit from comp: " << l << endl;
+        c.cnf.push_back(l);
       }
     }
   }
-  assert(!error);
-  print_debug_noendl(endl);
+  cout << endl;
 
-#ifdef VERBOSE_DEBUG
+/* #ifdef VERBOSE_DEBUG */
   // Show decision stack's comps
-  for(size_t i = 0; i < decision_stack_.size(); i++) {
+  for(int32_t i = 0; i <= decision_stack_.get_decision_level(); i++) {
     const auto& dst = decision_stack_.at(i);
     /* const auto dec_lit2 = trail[ds.trail_ofs()]; */
     /* cout << "dec_lit2: " << dec_lit2 << endl; */
-    print_debug(COLWHT "decision_stack.at(" << i << "):"
+    cout << COLWHT "decision_stack.at(" << i << "):"
       << " decision var: " << dst.var
       << " num unproc comps: " << dst.numUnprocessedComponents()
       << " unproc comps end: " << dst.getUnprocessedComponentsEnd()
       << " remain comps offs: " << dst.remaining_comps_ofs()
-      << " count here: " << dst.getTotalModelCount()
-      << " branch: " << dst.is_right_branch());
+      << " total count here: " << dst.getTotalModelCount()
+      << " left count here: " << dst.get_left_model_count()
+      << " right count here: " << dst.get_right_model_count()
+      << " branch: " << dst.is_right_branch() << endl;
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = dst.getUnprocessedComponentsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       assert(i2 < comp_manager_->comp_stack_size());
-      const auto& c = comp_manager_->at(i2);
-      cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
-      for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
+      const auto& comp = comp_manager_->at(i2);
+      cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
+      all_vars_in_comp(comp, v) cout << *v << " ";
       cout << COLDEF << endl;
     }
   }
 
   // All comps
-  print_debug(COLWHT "== comp list START");
-  for(uint32_t i2 = 0; i2 < comp_manager_->comp_stack_size(); i2++) {
-    const auto& c = comp_manager_->at(i2);
-    cout << COLWHT "== comp at: " << std::setw(3) << i2 << " ID: " << c->id() << " -- vars : ";
-    if (c->empty()) { cout << "EMPTY" << endl; continue; }
-    for(auto v = c->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
-    cout << endl;
-  }
-  print_debug(COLWHT "== comp list END");
+  /* cout << COLWHT "== comp list START" << endl; */
+  /* for(uint32_t i2 = 0; i2 < comp_manager_->comp_stack_size(); i2++) { */
+  /*   const auto& comp = comp_manager_->at(i2); */
+  /*   cout << COLWHT "== comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : "; */
+  /*   if (comp->empty()) { cout << "EMPTY" << endl; continue; } */
+  /*   all_vars_in_comp(comp, v) cout << *v << " "; */
+  /*   cout << endl; */
+  /* } */
+  /* cout << COLWHT "== comp list END" << endl; */
 
-  cout << COLWHT "cube so far. Size: " << cube.size() << " cube: ";
-  for(const auto& l: cube) cout << l << " ";
+  cout << COLORG "cube so far. Size: " << c.cnf.size() << " cube: ";
+  for(const auto& l: c.cnf) cout << l << " ";
   cout << endl;
-  print_debug(COLWHT "cube's SOLE count: " << decision_stack_.top().getTotalModelCount());
-  print_debug(COLWHT "cube's RECORDED count: " << cube_val);
-  assert(!error);
-#endif
-
+  cout << COLORG "cube's SOLE count: " << decision_stack_.top().getTotalModelCount() << endl;
+  cout << COLORG "cube's RECORDED count: " << c.val << COLDEF << endl;
+/* #endif */
   return true;
 }
 
@@ -804,55 +875,56 @@ bool Counter::restart_if_needed() {
       restart = true;
 
   // don't restart if we didn't change the scores
-  if (stats.last_restart_num_conflicts == stats.conflicts)
-    restart = false;
+  /* if (stats.last_restart_num_conflicts == stats.conflicts) restart = false; */
 
-  if (restart) {
-    cout << "c  ************* Restarting.  **************" << endl;
-    print_restart_data();
-    /* cout << "c Num units: " << unit_clauses_.size(); */
-    /* cout << " CC: " << conflict_clauses_.size(); */
-    cout << "c Num decisions since last restart: "
-      << stats.decisions-stats.last_restart_num_decisions
-      << endl;
-    cout << "c Num cache lookups since last restart: "
-      << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups
-      << endl;
+  if (!restart) return false;
+  verb_print(1, "c  ************* Restarting.  **************");
+  print_restart_data();
+  verb_print(1, "Num decisions since last restart: "
+    << stats.decisions-stats.last_restart_num_decisions
+    << endl
+    << "c Num conflicts since last restart: "
+    << stats.conflicts-stats.last_restart_num_conflicts
+    << endl
+    << "c Num cache lookups since last restart: "
+    << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups);
 
-    depth_q.clear();
-    cache_miss_rate_q.clear();
-    comp_size_q.clear();
-    stats.cache_hits_misses_q.clear();
-    stats.comp_size_times_depth_q.clear();
+  // Reset stats
+  depth_q.clear();
+  cache_miss_rate_q.clear();
+  comp_size_q.clear();
+  stats.cache_hits_misses_q.clear();
+  stats.comp_size_times_depth_q.clear();
+  stats.last_restart_num_conflicts = stats.conflicts;
+  stats.last_restart_num_decisions = stats.decisions;
+  stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
 
-    assert(mini_cubes.empty());
-    while (decision_stack_.size() > 1) {
-      cout
-        << endl << "------" << endl
-        << " lev: " << decision_stack_.get_decision_level()
-        << " cnt: " << decision_stack_.top().getTotalModelCount()
-        << endl;
+  assert(mini_cubes.empty());
+  bool bottom = true;
+  while (decision_stack_.size() > 1) {
+    // Temporarily only do the bottom one
+    if (bottom) {
+      // If we didn't count anything, just skip
+      if (decision_stack_.top().getTotalModelCount() != 0) {
+        verb_print(1, COLBLBACK <<  COLCYN "--> Mini cube gen. "
+          << " lev: " << decision_stack_.get_decision_level()
+          << " cnt: " << decision_stack_.top().getTotalModelCount() << COLDEF);
 
-      vector<Lit> cube;
-      mpz_class cube_val;
-      bool ret = compute_cube(cube, cube_val);
-      cout << "->> cube here: " << cube << " val: " << cube_val << " ret: " << (int)ret << endl;
-      if (ret && cube_val != 0) mini_cubes.push_back(Cube(cube, cube_val));
-      comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-      reactivate_comps_and_backtrack_trail();
-      decision_stack_.pop_back();
+        Cube cube;
+        if (compute_cube(cube)) {
+          cout << "->> cube here: " << cube << endl;
+          mini_cubes.push_back(cube);
+        } else {
+          cout << "->> FALSE cube. " << endl;
+        }
+      } else cout << "->> 0-count cube" << endl;
     }
-    stats.last_restart_num_conflicts = stats.conflicts;
-    stats.last_restart_num_decisions = stats.decisions;
-    stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
-
-    // experimental for deleting polluted cubes and re-using GANAK
-    /* set<uint32_t> vars; */
-    /* for(const auto& v: largest_cube) vars.insert(v.var()); */
-    /* comp_manager_->delete_comps_with_vars(vars); */
-    return true;
+    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
+    reactivate_comps_and_backtrack_trail();
+    decision_stack_.pop_back();
+    bottom = false;
   }
-  return false;
+  return true;
 }
 
 retStateT Counter::backtrack_nonindep() {
@@ -943,6 +1015,7 @@ retStateT Counter::backtrack_nonindep() {
   return EXIT;
 }
 
+// Checks one-by-one using a SAT solver
 uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     //let's get vars active
     set<uint32_t> active;
@@ -1053,7 +1126,7 @@ retStateT Counter::backtrack() {
       const Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
       CHECK_COUNT_DO(check_count(true));
-      SLOW_DEBUG_DO(assert(decision_stack_.top().get_rigth_model_count() == 0));
+      SLOW_DEBUG_DO(assert(decision_stack_.top().get_right_model_count() == 0));
       decision_stack_.top().change_to_right_branch();
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
@@ -1091,7 +1164,7 @@ retStateT Counter::backtrack() {
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
     const auto parent_count_before_left = (decision_stack_.end() - 2)->get_left_model_count();
-    const auto parent_count_before_right = (decision_stack_.end() - 2)->get_rigth_model_count();
+    const auto parent_count_before_right = (decision_stack_.end() - 2)->get_right_model_count();
 #endif
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
     print_debug("[indep] Backtracking from level " << decision_stack_.get_decision_level()
@@ -1318,13 +1391,13 @@ Counter::ConflictData Counter::find_conflict_level() {
   int32_t curr_dl = var(top_dec_lit()).decision_level;
 	if (data.nHighestLevel == curr_dl && var(c[1]).decision_level == curr_dl) return data;
 
-	int highestId = 0;
+	/* int highestId = 0; */
     data.bOnlyOneLitFromHighest = true;
 	// find the largest decision level in the clause
 	for (uint32_t nLitId = 1; nLitId < size; ++nLitId) {
 		int32_t nLevel = var(c[nLitId]).decision_level;
 		if (nLevel > data.nHighestLevel) {
-			highestId = nLitId;
+			/* highestId = nLitId; */
 			data.nHighestLevel = nLevel;
 			data.bOnlyOneLitFromHighest = true;
 		} else if (nLevel == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
@@ -1989,7 +2062,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
   assert(at != cl.end());
   std::swap(cl[1], *at);
 
-  uint32_t val_f = 0;
+  /* uint32_t val_f = 0; */
   uint32_t val_u = 0;
   uint32_t val_t = 0;
   int32_t val_t_at = -1;
@@ -2005,7 +2078,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
     }
     if (val(l) == T_TRI) {any_val_t_pos = i;}
     if (val(l) == T_TRI) {val_t++;}
-    if (val(l) == F_TRI) {val_f++;}
+    /* if (val(l) == F_TRI) {val_f++;} */
     if (val(l) == X_TRI) {val_u++;}
   }
 

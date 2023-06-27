@@ -149,7 +149,7 @@ public:
     branch_found_unsat_[active_branch_] = true;
   }
 
-  const mpz_class getBranchSols() const {
+  const mpz_class& getBranchSols() const {
     return branch_model_count_[active_branch_];
   }
 
@@ -169,7 +169,7 @@ public:
   const mpz_class get_left_model_count() const {
     return branch_model_count_[0];
   }
-  const mpz_class get_rigth_model_count() const {
+  const mpz_class get_right_model_count() const {
     return branch_model_count_[1];
   }
 };

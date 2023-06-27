@@ -261,11 +261,16 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 }
 
 struct Cube {
-  Cube(const vector<Lit>& _cube, const mpz_class& _val) : cube(_cube), val(_val) {}
-  vector<Lit> cube;
+  Cube () {}
+  Cube(const vector<Lit>& _cnf, const mpz_class& _val) : cnf(_cnf), val(_val) {}
+  vector<Lit> cnf;
   mpz_class val;
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
+  os << "CNF: " << c.cnf << " val: " << c.val;
+  return os;
+}
 
 struct Variable {
   Antecedent ante;

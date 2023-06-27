@@ -91,6 +91,8 @@ THE SOFTWARE.
 #endif
 #define print_tmpdebug(x) std::cout << COLDEF << x << COLDEF << endl
 
+#define all_vars_in_comp(comp, v) for(auto v = (comp)->varsBegin(); *v != varsSENTINEL; v++)
+
 #define release_assert(a) \
     do { \
         if (!(a)) {\

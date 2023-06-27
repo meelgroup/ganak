@@ -123,7 +123,8 @@ public:
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
-  mpz_class check_norestart(const vector<Lit>& cube);
+  mpz_class check_norestart(const Cube& c);
+  mpz_class check_norestart_cms(const Cube& c);
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
@@ -166,7 +167,7 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool prop_and_probe();
-  bool compute_cube(vector<Lit>& cube, mpz_class& cube_val);
+  bool compute_cube(Cube& cube);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
 
@@ -290,8 +291,7 @@ private:
     return variables_[decision_stack_.top().var].sublevel;
   }
 
-  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true)
-  {
+  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
     VERBOSE_PRINT("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;

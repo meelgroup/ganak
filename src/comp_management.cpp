@@ -104,7 +104,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
+        all_vars_in_comp(p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
       } else {
@@ -121,7 +121,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Component already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        for(auto v = p_new_comp->varsBegin(); *v != varsSENTINEL; v++) cout << *v << " ";
+        all_vars_in_comp(p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
         delete p_new_comp;

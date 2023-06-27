@@ -167,7 +167,7 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool prop_and_probe();
-  bool compute_cube(Cube& cube);
+  bool compute_cube(Cube& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
 

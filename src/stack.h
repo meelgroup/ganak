@@ -153,6 +153,10 @@ public:
     return branch_model_count_[active_branch_];
   }
 
+  const mpz_class& get_model_side(int side) const {
+    return branch_model_count_[side];
+  }
+
   void zero_out_branch_sol() {
     branch_model_count_[active_branch_] = 0;
   }

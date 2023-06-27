@@ -409,8 +409,8 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       for(const auto&c: tmp_cubes) cout << "-> " << c << endl;
 #ifdef SLOW_DEBUG
       for(const auto& c: tmp_cubes) {
-        /* auto check_cnt = check_norestart(c); */
-        auto check_cnt = check_norestart_cms(c);
+        auto check_cnt = check_norestart(c);
+        /* auto check_cnt = check_norestart_cms(c); */
         cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
         assert(check_cnt == c.val);
       }
@@ -680,13 +680,13 @@ void Counter::shuffle_activities(MTRand &mtrand2) {
 }
 
 // add decisions, components, and counts
-bool Counter::compute_cube(Cube& c) {
+bool Counter::compute_cube(Cube& c, int branch) {
   assert(c.val == 0);
   assert(c.cnf.empty());
   assert(conf.do_restart);
   print_debug(COLWHT "-- " << __func__ << " BEGIN");
 
-  c.val = decision_stack_.top().getBranchSols();
+  c.val = decision_stack_.top().get_model_side(branch);
   cout << "Own cnt: " << c.val << endl;
   for(int32_t i = 1; i < decision_stack_.get_decision_level(); i++) {
     const StackLevel& dec = decision_stack_[i];
@@ -695,13 +695,22 @@ bool Counter::compute_cube(Cube& c) {
     else c.val*=mul;
   }
   cout << "Mult cnt: " << c.val << endl;
+  if (c.val == 0) return false;
+
+  const bool opposite_branch = branch != decision_stack_.top().is_right_branch();
 
   // Add decisions
-  cout << COLWHT "Decisions in the cube: ";
+  cout << COLWHT "Decisions in the c.cnf: ";
   for(const auto& l: trail) {
     if (!var(l).ante.isNull()) continue;
-    c.cnf.push_back(l.neg());
-    cout << l.neg() << " ";
+    if (var(l).decision_level == decision_stack_.get_decision_level() &&
+        opposite_branch) {
+      assert(l == top_dec_lit());
+      c.cnf.push_back(l);
+    } else {
+      c.cnf.push_back(l.neg());
+    }
+    cout << l << " ";
   }
   cout << endl;
 
@@ -714,7 +723,10 @@ bool Counter::compute_cube(Cube& c) {
 
   // Add values for all components not yet counted
   for(int32_t i = 0; i <= decision_stack_.get_decision_level(); i++) {
-    /* uint32_t i = decision_stack_.get_decision_level(); */
+    if (i == decision_stack_.get_decision_level() && opposite_branch) {
+      // This has been fully counted, ALL components.
+      continue;
+    }
     const StackLevel& dec = decision_stack_[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedComponentsEnd();
@@ -758,17 +770,6 @@ bool Counter::compute_cube(Cube& c) {
       cout << COLDEF << endl;
     }
   }
-
-  // All comps
-  /* cout << COLWHT "== comp list START" << endl; */
-  /* for(uint32_t i2 = 0; i2 < comp_manager_->comp_stack_size(); i2++) { */
-  /*   const auto& comp = comp_manager_->at(i2); */
-  /*   cout << COLWHT "== comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : "; */
-  /*   if (comp->empty()) { cout << "EMPTY" << endl; continue; } */
-  /*   all_vars_in_comp(comp, v) cout << *v << " "; */
-  /*   cout << endl; */
-  /* } */
-  /* cout << COLWHT "== comp list END" << endl; */
 
   cout << COLORG "cube so far. Size: " << c.cnf.size() << " cube: ";
   for(const auto& l: c.cnf) cout << l << " ";
@@ -864,6 +865,10 @@ bool Counter::restart_if_needed() {
       (stats.decisions-stats.last_restart_num_decisions) > conf.next_restart)
     restart = true;
 
+  if (conf.restart_type == 6 &&
+      (stats.conflicts-stats.last_restart_num_conflicts) > conf.next_restart)
+    restart = true;
+
   if (conf.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
       && stats.cache_hits_misses_q.avg() <
       stats.cache_hits_misses_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
@@ -900,29 +905,23 @@ bool Counter::restart_if_needed() {
   stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
 
   assert(mini_cubes.empty());
-  bool bottom = true;
   while (decision_stack_.size() > 1) {
-    // Temporarily only do the bottom one
-    if (bottom) {
-      // If we didn't count anything, just skip
-      if (decision_stack_.top().getTotalModelCount() != 0) {
-        verb_print(1, COLBLBACK <<  COLCYN "--> Mini cube gen. "
-          << " lev: " << decision_stack_.get_decision_level()
-          << " cnt: " << decision_stack_.top().getTotalModelCount() << COLDEF);
-
-        Cube cube;
-        if (compute_cube(cube)) {
-          cout << "->> cube here: " << cube << endl;
-          mini_cubes.push_back(cube);
-        } else {
-          cout << "->> FALSE cube. " << endl;
-        }
-      } else cout << "->> 0-count cube" << endl;
+    verb_print(1, COLBLBACK <<  COLCYN "--> Mini cube gen. "
+      << " lev: " << decision_stack_.get_decision_level()
+      << " left cnt: " << decision_stack_.top().get_left_model_count()
+      << " right cnt: " << decision_stack_.top().get_right_model_count()
+      << COLDEF);
+    for(uint32_t i = 0; i < 2; i++) {
+      if (decision_stack_.top().get_model_side(i) == 0) continue;
+      cout << "->> branch: " << i << " doing compute_cube..." << endl;
+      Cube cube;
+      if (compute_cube(cube, i)) {
+        mini_cubes.push_back(cube);
+      } else { cout << "->> FALSE cube. " << endl; }
     }
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
-    bottom = false;
   }
   return true;
 }

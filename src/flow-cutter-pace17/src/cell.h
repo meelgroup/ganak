@@ -12,6 +12,12 @@ struct Cell{
 	int bag_size()const{
 		return separator_node_list.size() + boundary_node_list.size();
 	}
+
+	void swap(Cell& other) {
+		std::swap(separator_node_list, other.separator_node_list);
+		std::swap(boundary_node_list, other.boundary_node_list);
+		std::swap(parent_cell, other.parent_cell);
+	}
 };
 
 inline

@@ -38,14 +38,13 @@
 
 class IFlowCutter {
 public:
-  IFlowCutter(int n, int m, double timeout=120);
+  IFlowCutter(int n, int m, int verb = 0);
 
   void importGraph(const Graph& g);
   TreeDecomposition constructTD();
 
-  void setTimeout(double _timeout) { this->timeout = _timeout; }
-
 private:
+  void print_comment(std::string msg);
   int compute_max_bag_size_of_order(const ArrayIDIDFunc&order);
   void test_new_order(const ArrayIDIDFunc&order, TreeDecomposition&td);
 
@@ -56,6 +55,5 @@ private:
   int best_bag_size;
 
   ArrayIDIDFunc head, tail;
-
-  double timeout;
+  int verb = 0;
 };

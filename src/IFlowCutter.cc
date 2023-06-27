@@ -66,9 +66,9 @@
 using namespace std;
 
 
-IFlowCutter::IFlowCutter(int n, int m, double _timeout) :
+IFlowCutter::IFlowCutter(int n, int m, int _verb) :
 		nodes(n), best_bag_size(numeric_limits<int>::max()), head(2*m, n), tail(2*m, n),
-		timeout(_timeout) {}
+		verb(_verb) {}
 
 void IFlowCutter::importGraph(const Graph& g)
 {
@@ -99,7 +99,8 @@ S& access_internal_vector(std::priority_queue<T, S, C>& q) {
 	return Hacked::access(q);
 }
 
-void print_comment(std::string msg){
+void IFlowCutter::print_comment(std::string msg){
+	if (verb == 0) return;
 	msg = "c o "+std::move(msg) + "\n";
 	ignore_return_value(write(STDOUT_FILENO, msg.data(), msg.length()));
 }
@@ -144,6 +145,24 @@ void check_multilevel_partition_invariants(const Tail&tail, const Head&head, con
 	#endif
 }
 
+template <
+    class T,
+    class Container = std::vector<T>,
+    class Compare = std::less<typename Container::value_type>>
+class my_priority_queue : public std::priority_queue<T, Container, Compare> {
+public:
+  T top_and_pop() {
+    std::pop_heap(c.begin(), c.end(), comp);
+    T value = std::move(c.back());
+    c.pop_back();
+    return value;
+  }
+
+protected:
+  using std::priority_queue<T, Container, Compare>::c;
+  using std::priority_queue<T, Container, Compare>::comp;
+};
+
 template<class Tail, class Head, class ComputeSeparator, class OnNewMP>
 void compute_multilevel_partition(const Tail&tail, const Head&head, const ComputeSeparator&compute_separator, int smallest_known_treewidth, const OnNewMP&on_new_multilevel_partition){
 
@@ -151,7 +170,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 	const int arc_count = tail.preimage_count();
 
 	std::vector<Cell>closed_cells;
-	std::priority_queue<Cell>open_cells;
+	my_priority_queue<Cell>open_cells;
 
 	{
 		Cell top_level_cell;
@@ -208,9 +227,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
 		#endif
 
-		auto current_cell = std::move(open_cells.top());
-		open_cells.pop();
-
+		Cell current_cell = open_cells.top_and_pop();
 		bool must_recompute_max_open_bag_size = (current_cell.bag_size() == max_open_bag_size);
 
 		int closed_cell_id = closed_cells.size();
@@ -479,8 +496,10 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(
 	better_td.init(bag_count);
 	better_td.setWidth(maximum_bag_size-1);
 	better_td.setNumGraphNodes(node_count);
+	if (verb > 0) {
 	cout << "c o td: #bags " << bag_count << ", tw " << maximum_bag_size
 			<< ", elapsed " << cpuTime()  << " s"<< endl; // << endl;// << ", #vars " << node_count << endl;
+	}
 	better_td.initBags();
 
 	for(int i=0; i<bag_count; ++i) {

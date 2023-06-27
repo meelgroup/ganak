@@ -72,7 +72,7 @@ const vector<vector<int>>& Graph::get_adj_list() const {
 }
 
 // TreeDecomposition
-int TreeDecomposition::centroid(int npvars) {
+int TreeDecomposition::centroid(int npvars, int verb) {
 	int centroid = -1;
 	findCentroid(0, -1, centroid);
 
@@ -82,7 +82,7 @@ int TreeDecomposition::centroid(int npvars) {
 		if(bags[centroid][i] < npvars) npvars_in_bags++;
 
 	cent = centroid;
-	printf("c o centroid bag size %d  #npvars %d\n", size, npvars_in_bags);
+	if (verb > 0) printf("c o centroid bag size %d  #npvars %d\n", size, npvars_in_bags);
 	return centroid;
 }
 

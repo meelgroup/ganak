@@ -65,7 +65,7 @@ public:
 
   void setNumGraphNodes(int n) { gnodes = n; }
 
-  int centroid(int npvars);
+  int centroid(int npvars, int verb = 0);
   std::vector<int> distanceFromCentroid(int npvars);
 
 private:

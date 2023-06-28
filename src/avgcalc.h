@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <limits>
 #include <cassert>
+#include <cstdint>
 #include <vector>
 #include <cstring>
 #include <sstream>

@@ -160,6 +160,7 @@ protected:
     return false;
   }
 
+  template<class T> void attach_cl(ClauseOfs off, const T& lits);
   Clause* addClause(const vector<Lit> &literals, bool red);
 
   // adds a UIP Conflict Clause
@@ -283,4 +284,10 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
   }
   stats.rem_lits_with_bins+=rem;
   stats.rem_lits_tried++;
+}
+
+template<class T> void Instance::attach_cl(ClauseOfs off, const T& lits) {
+  Lit blckLit = lits[lits.size()/2];
+  litWatchList(lits[0]).addWatchLinkTo(off, blckLit);
+  litWatchList(lits[1]).addWatchLinkTo(off, blckLit);
 }

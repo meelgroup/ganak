@@ -441,8 +441,8 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
             cout << "c1: " << c1 << endl;
             cout << "c2: " << c2   << endl;
             uint32_t to_disable = tmp_cubes[i].val > tmp_cubes[i2].val ? i2 : i;
-            cout << "Disabling cube " << tmp_cubes[to_disable] << endl;
             tmp_cubes[to_disable].enabled = false;
+            cout << "Disabled cube " << tmp_cubes[to_disable] << endl;
           }
         }
       }
@@ -459,7 +459,8 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
 
       // Add cubes to counter
       for(const auto& c: tmp_cubes) if (c.enabled) add_irred_cl(c.cnf);
-      // TODO vivify!!
+      decision_stack_.clear();
+      vivify_clauses(true, true);
       end_irred_cls();
     }
   } else if (ret == CMSat::l_True) {
@@ -2016,8 +2017,8 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
   cls.resize(j);
 }
 
-void Counter::vivify_clauses() {
-  if (last_confl_vivif + conf.vivif_every > stats.conflicts) return;
+void Counter::vivify_clauses(bool force, bool only_irred) {
+  if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
   vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
@@ -2057,20 +2058,34 @@ void Counter::vivify_clauses() {
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
 
   // Vivify clauses
-  v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
-  if (stats.vivif_tried % 3 == 0) vivify_cls(longIrredCls);
+  v_tout = conf.vivif_mult*1LL*1000LL*1000LL;
+  vivify_cls(longIrredCls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
 
-  v_tout = conf.vivif_mult*5LL*1000LL*1000LL;
-  vivify_cls(longRedCls);
-  verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
-  bool tout_red = (v_tout <= 0);
+  bool tout_red = false;
+  if (!only_irred) {
+    v_tout = conf.vivif_mult*5LL*1000LL*1000LL;
+    vivify_cls(longRedCls);
+    verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
+    tout_red = (v_tout <= 0);
+  }
 
   // Restore
   for(auto& ws: watches_) ws.watch_list_.clear();
-  for(const auto& off: longIrredCls) v_cl_repair(off);
-  for(const auto& off: longRedCls) v_cl_repair(off);
+  if (decision_stack_.size() != 0) {
+    for(const auto& off: longIrredCls) v_cl_repair(off);
+    for(const auto& off: longRedCls) v_cl_repair(off);
+  } else {
+    for(const auto& l: v_trail) {
+      if (val(l) == X_TRI) setLiteral(l, 0);
+      assert(val(l) != F_TRI); // it would be UNSAT
+    }
+    bool ret2 = propagate();
+    assert(ret2);
+    v_cl_toplevel_repair(longIrredCls);
+    v_cl_toplevel_repair(longRedCls);
+  }
   ws_pos.clear();
   verb_print(1, "vivif finished."
       << " cl tried: " << (stats.vivif_tried_cl - last_vivif_cl_tried)
@@ -2079,6 +2094,44 @@ void Counter::vivify_clauses() {
       << " tout-irred: " << (int)tout_irred
       << " tout-red: " << (int)tout_red
       << " T: " << (cpuTime()-myTime));
+}
+
+template<class T> bool Counter::v_satisfied(const T& lits) {
+  for(auto& l: lits) if (v_val(l) == T_TRI) return true;
+  return false;
+}
+
+template<class T> bool Counter::v_unsat(const T& lits) {
+  for(auto& l: lits) if (v_val(l) == T_TRI || v_val(l) == X_TRI) return false;
+  return true;
+}
+
+void Counter::v_shrink(Clause& cl) {
+  uint32_t j = 0;
+  for(uint32_t i = 0; i < cl.size(); i++) {
+    if (v_val(cl[i]) == F_TRI) continue;
+    cl[j++] = cl[i];
+  }
+  cl.resize(j);
+}
+
+void Counter::v_cl_toplevel_repair(vector<ClauseOfs>& offs) {
+  uint32_t j = 0;
+  for(uint32_t i = 0; i < offs.size(); i++) {
+    Clause* cl = alloc->ptr(offs[i]);
+    assert(!v_unsat(*cl));
+    if (v_satisfied(*cl)) {alloc->clauseFree(cl);continue;}
+    v_shrink(*cl);
+    assert(cl->size() >= 2);
+    if (cl->size() == 2) {
+      add_bin_cl((*cl)[0], (*cl)[1], cl->red);
+      alloc->clauseFree(cl);
+      continue;
+    }
+    attach_cl(offs[i], (*cl));
+    offs[j++] = offs[i];
+  }
+  offs.resize(j);
 }
 
 void Counter::v_cl_repair(ClauseOfs off) {

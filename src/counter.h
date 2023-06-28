@@ -351,10 +351,14 @@ private:
   uint64_t last_confl_vivif = 0;
   std::mt19937 vivif_g;
   map<ClauseOfs, pair<Lit, Lit>> ws_pos;
+  void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);
-  void vivify_clauses();
+  void vivify_clauses(bool force = false, bool only_irred = false);
   bool vivify_cl(const ClauseOfs off);
+  void v_shrink(Clause& c);
+  template<class T> bool v_unsat(const T& lits);
+  template<class T> bool v_satisfied(const T& lits);
   bool v_propagate();
   void v_backtrack();
   void v_unset(const Lit l);

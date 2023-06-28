@@ -168,10 +168,6 @@ Clause* Instance::addClause(const vector<Lit> &lits, bool red) {
 
   Clause* cl = alloc->new_cl(red, lits.size());
   for(uint32_t i = 0; i < lits.size(); i ++) (*cl)[i] = lits[i];
-  ClauseOfs off = alloc->get_offset(cl);
-
-  Lit blckLit = lits[lits.size()/2];
-  litWatchList(lits[0]).addWatchLinkTo(off, blckLit);
-  litWatchList(lits[1]).addWatchLinkTo(off, blckLit);
+  attach_cl(alloc->get_offset(cl), lits);
   return cl;
 }

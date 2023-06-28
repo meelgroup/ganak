@@ -99,7 +99,7 @@ public:
   }
 
   int val() const {
-    return (sign() ? var() : -1*var());
+    return (sign() ? (int)var() : -1*(int)var());
   }
   uint32_t raw() const { return value_;}
 
@@ -195,7 +195,7 @@ enum class AnteType {
 };
 
 class Antecedent {
-  uint32_t val_;
+  uint32_t val_ = 0;
   AnteType type = AnteType::decision;
 
 public:

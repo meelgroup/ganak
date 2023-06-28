@@ -781,8 +781,6 @@ bool Counter::compute_cube(Cube& c, int branch) {
   // Show decision stack's comps
   for(int32_t i = 0; i <= decision_stack_.get_decision_level(); i++) {
     const auto& dst = decision_stack_.at(i);
-    /* const auto dec_lit2 = trail[ds.trail_ofs()]; */
-    /* cout << "dec_lit2: " << dec_lit2 << endl; */
     cout << COLWHT "decision_stack.at(" << i << "):"
       << " decision var: " << dst.var
       << " num unproc comps: " << dst.numUnprocessedComponents()
@@ -806,7 +804,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
   cout << COLORG "cube so far. Size: " << c.cnf.size() << " cube: ";
   for(const auto& l: c.cnf) cout << l << " ";
   cout << endl;
-  cout << COLORG "cube's SOLE count: " << decision_stack_.top().getTotalModelCount() << endl;
+  cout << COLORG "cube's SOLE count: " << decision_stack_.top().get_model_side(branch) << endl;
   cout << COLORG "cube's RECORDED count: " << c.val << COLDEF << endl;
 #endif
   return true;

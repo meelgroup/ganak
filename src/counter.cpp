@@ -289,9 +289,6 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 // Self-check count without restart with CMS only
 mpz_class Counter::check_norestart_cms(const Cube& c) {
   cout << "Checking count with ourselves (no verb, no restart)" << endl;
-  CounterConfiguration conf2 = conf;
-  conf2.do_restart = 0;
-  conf2.verb = 0;
   vector<Lit> tmp;
   CMSat::SATSolver test_solver;
   test_solver.new_vars(nVars());

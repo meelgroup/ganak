@@ -415,6 +415,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
         assert(check_cnt == c.val);
       }
 #endif
+      cout << "Total num cubes: " << cubes.size() << endl;
 
       // Add cubes to CMS
       for(const auto& c: tmp_cubes) sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
@@ -549,8 +550,7 @@ bool Counter::standard_polarity(const uint32_t v) const {
     return watches_[Lit(v, true)].activity > watches_[Lit(v, false)].activity;
 }
 
-bool Counter::get_polarity(const uint32_t v) const
-{
+bool Counter::get_polarity(const uint32_t v) const {
   bool polarity;
   if (conf.polar_type == 0) {
     if (var(Lit(v, false)).set_once) {
@@ -558,6 +558,7 @@ bool Counter::get_polarity(const uint32_t v) const
     } else polarity = standard_polarity(v);
   } else if (conf.polar_type == 1) polarity = standard_polarity(v);
   else if (conf.polar_type == 4) polarity = !standard_polarity(v);
+  else if (conf.polar_type == 5) polarity = standard_polarity(v);
   else if (conf.polar_type == 2) polarity = false;
   else if (conf.polar_type == 3) polarity = true;
   else assert(false);
@@ -687,20 +688,20 @@ bool Counter::compute_cube(Cube& c, int branch) {
   print_debug(COLWHT "-- " << __func__ << " BEGIN");
 
   c.val = decision_stack_.top().get_model_side(branch);
-  cout << "Own cnt: " << c.val << endl;
+  VERBOSE_PRINT("Own cnt: " << c.val);
   for(int32_t i = 1; i < decision_stack_.get_decision_level(); i++) {
     const StackLevel& dec = decision_stack_[i];
     const auto& mul = dec.getBranchSols();
     if (mul == 0) continue;
     else c.val*=mul;
   }
-  cout << "Mult cnt: " << c.val << endl;
+  VERBOSE_PRINT("Mult cnt: " << c.val);
   if (c.val == 0) return false;
 
   const bool opposite_branch = branch != decision_stack_.top().is_right_branch();
 
   // Add decisions
-  cout << COLWHT "Decisions in the c.cnf: ";
+  VERBOSE_PRINT(COLWHT "Decisions in the c.cnf: ");
   for(const auto& l: trail) {
     if (!var(l).ante.isNull()) continue;
     if (var(l).decision_level == decision_stack_.get_decision_level() &&
@@ -710,15 +711,14 @@ bool Counter::compute_cube(Cube& c, int branch) {
     } else {
       c.cnf.push_back(l.neg());
     }
-    cout << l << " ";
+    VERBOSE_PRINT(l << " ");
   }
-  cout << endl;
 
   // Get a solution
   vector<CMSat::Lit> ass;
   for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
   auto solution = sat_solver->solve(&ass);
-  cout << "cube solution: " << solution << endl;
+  VERBOSE_PRINT("cube solution: " << solution);
   if (solution == CMSat::l_False) return false;
 
   // Add values for all components not yet counted
@@ -730,7 +730,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
     const StackLevel& dec = decision_stack_[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedComponentsEnd();
-    cout << "lev: " << i << " off_start: " << off_start << " off_end: " << off_end << endl;
+    VERBOSE_PRINT("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
     // add all but the last component (it's the one being counted lower down)
     int off_by_one = 1;
     if (i == decision_stack_.get_decision_level()) off_by_one = 0;
@@ -738,14 +738,13 @@ bool Counter::compute_cube(Cube& c, int branch) {
       const auto& comp = comp_manager_->at(i2);
       all_vars_in_comp(comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
-        cout << "Lit from comp: " << l << endl;
+        VERBOSE_PRINT("Lit from comp: " << l);
         c.cnf.push_back(l);
       }
     }
   }
-  cout << endl;
 
-/* #ifdef VERBOSE_DEBUG */
+#ifdef VERBOSE_DEBUG
   // Show decision stack's comps
   for(int32_t i = 0; i <= decision_stack_.get_decision_level(); i++) {
     const auto& dst = decision_stack_.at(i);
@@ -776,7 +775,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
   cout << endl;
   cout << COLORG "cube's SOLE count: " << decision_stack_.top().getTotalModelCount() << endl;
   cout << COLORG "cube's RECORDED count: " << c.val << COLDEF << endl;
-/* #endif */
+#endif
   return true;
 }
 
@@ -906,18 +905,18 @@ bool Counter::restart_if_needed() {
 
   assert(mini_cubes.empty());
   while (decision_stack_.size() > 1) {
-    verb_print(1, COLBLBACK <<  COLCYN "--> Mini cube gen. "
+    verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
       << " lev: " << decision_stack_.get_decision_level()
       << " left cnt: " << decision_stack_.top().get_left_model_count()
       << " right cnt: " << decision_stack_.top().get_right_model_count()
       << COLDEF);
     for(uint32_t i = 0; i < 2; i++) {
       if (decision_stack_.top().get_model_side(i) == 0) continue;
-      cout << "->> branch: " << i << " doing compute_cube..." << endl;
+      verb_print(2, "->> branch: " << i << " doing compute_cube...");
       Cube cube;
       if (compute_cube(cube, i)) {
         mini_cubes.push_back(cube);
-      } else { cout << "->> FALSE cube. " << endl; }
+      } else { verb_print(2, "->> FALSE cube. "); }
     }
     comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     reactivate_comps_and_backtrack_trail();

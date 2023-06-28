@@ -70,7 +70,7 @@ THE SOFTWARE.
 #endif
 /////
 
-#define verb_print(a, b) if (conf.verb >= 1) cout << "c o " << b << endl;
+#define verb_print(a, b) if (conf.verb >= a) cout << "c o " << b << endl;
 
 // verbose debug
 #ifdef VERBOSE_DEBUG

@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <vector>
 #include <algorithm>
 
-#include "bitset.hpp"
+#include "bitset.h"
 #include "structures.h"
 
 class Graph {

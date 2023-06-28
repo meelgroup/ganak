@@ -60,7 +60,7 @@ SET(SOURCES
     flow-cutter-pace17/src/cell.cpp
     flow-cutter-pace17/src/greedy_order.cpp
     # flow-cutter-pace17/src/list_graph.cpp
-    TreeDecomposition.cc
+    TreeDecomposition.cpp
 	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})

@@ -38,7 +38,7 @@ THE SOFTWARE.
 #include "structures.h"
 #include "time_mem.h"
 #include "IFlowCutter.h"
-#include "graph.hpp"
+#include "graph.h"
 
 void Counter::simplePreProcess()
 {

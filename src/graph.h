@@ -22,8 +22,8 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "utils.hpp"
-#include "bitset.hpp"
+#include "utils.h"
+#include "bitset.h"
 
 namespace sspp {
 

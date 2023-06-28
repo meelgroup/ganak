@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include <chrono>
 #include <random>
 
-#include "bitset.hpp"
+#include "bitset.h"
 
 namespace sspp {
 

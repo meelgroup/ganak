@@ -407,20 +407,56 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
 #ifdef SLOW_DEBUG
       for(const auto& c: tmp_cubes) {
         auto check_cnt = check_norestart(c);
-        /* auto check_cnt = check_norestart_cms(c); */
         cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
         assert(check_cnt == c.val);
       }
 #endif
       cout << "Total num cubes: " << cubes.size() << endl;
 
+      // Check no overlap
+      for(uint32_t i = 0; i < tmp_cubes.size(); i++) {
+        if (!tmp_cubes[i].enabled) continue;
+        for(uint32_t i2 = i+1; i2 < tmp_cubes.size(); i2++) {
+          if (!tmp_cubes[i2].enabled) continue;
+          auto c1 = ganak_to_cms_cl(tmp_cubes[i].cnf);
+          auto c2 = ganak_to_cms_cl(tmp_cubes[i2].cnf);
+          std::set<CMSat::Lit> assumps;
+          bool unsat = false;
+          for(const auto& l: c1) {
+            if (assumps.count(~l)) continue;
+            if (assumps.count(l)) {unsat = true; break;}
+            assumps.insert(~l);
+          }
+          if (unsat) continue;
+          for(const auto& l: c2) {
+            if (assumps.count(~l)) continue;
+            if (assumps.count(l)) {unsat = true; break;}
+            assumps.insert(~l);
+          }
+          if (unsat) continue;
+          vector<CMSat::Lit> ass;
+          ass.insert(ass.begin(), assumps.begin(), assumps.end());
+          auto no_overlap_ret = sat_solver->solve(&ass);
+          if (no_overlap_ret != CMSat::l_False) {
+            cout << "Two cubes overlap." << endl;
+            cout << "c1: " << c1 << endl;
+            cout << "c2: " << c2   << endl;
+            uint32_t to_disable = tmp_cubes[i].val > tmp_cubes[i2].val ? i2 : i;
+            cout << "Disabling cube " << tmp_cubes[to_disable] << endl;
+            tmp_cubes[to_disable].enabled = false;
+          }
+        }
+      }
+
       // Add cubes to CMS
-      for(const auto& c: tmp_cubes) sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
+      for(const auto& c: tmp_cubes)
+        if (c.enabled) sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
 
       // Add cubes to counter
-      for(const auto& c: tmp_cubes) add_irred_cl(c.cnf);
+      for(const auto& c: tmp_cubes)
+        if (c.enabled) add_irred_cl(c.cnf);
       // TODO vivify!!
       end_irred_cls();
     }

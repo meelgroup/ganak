@@ -265,10 +265,11 @@ struct Cube {
   Cube(const vector<Lit>& _cnf, const mpz_class& _val) : cnf(_cnf), val(_val) {}
   vector<Lit> cnf;
   mpz_class val;
+  bool enabled = true;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
-  os << "CNF: " << c.cnf << " val: " << c.val;
+  os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled;
   return os;
 }
 

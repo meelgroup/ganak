@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "structures.h"
 using namespace std;
 
-// Graph
 Graph::Graph(int vars)
 {
 	clear();
@@ -71,7 +70,6 @@ const vector<vector<int>>& Graph::get_adj_list() const {
 	return adj_list;
 }
 
-// TreeDecomposition
 int TreeDecomposition::centroid(int npvars, int verb) {
 	int centroid = -1;
 	findCentroid(0, -1, centroid);
@@ -107,6 +105,7 @@ int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const
 
 	return intros;
 }
+
 vector<int> TreeDecomposition::distanceFromCentroid(int npvars)
 {
 	int cen = cent == -1 ? centroid(npvars) : cent;
@@ -115,6 +114,7 @@ vector<int> TreeDecomposition::distanceFromCentroid(int npvars)
 	computeDistance(cen, -1, 0, distance);
 	return distance;
 }
+
 void TreeDecomposition::computeDistance(int v, int parent, int depth, vector<int>& distance)
 {
 	bool BagHasNewVar = false;

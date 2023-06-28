@@ -203,8 +203,8 @@ private:
   {
     assert(val(lit) == X_TRI);
     if (ant.isNull())
-      print_debug("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
-    else print_debug("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
+      debug_print("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
+    else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
 
     VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
     var(lit).decision_level = dec_lev;
@@ -292,7 +292,7 @@ private:
   }
 
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
-    VERBOSE_PRINT("->reactivate and backtrack...");
+    debug_print("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
     /* qhead = std::min<int32_t>(qhead, jt - trail.begin()); // TODO something is wrong here. */

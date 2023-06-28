@@ -81,13 +81,13 @@ public:
   double cacheScoreOf(const VariableIndex v) const { return cachescore_[v]; }
   void cleanRemainingComponentsOf(const StackLevel &top)
   {
-    print_debug(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
+    debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack_.size() > top.remaining_comps_ofs())
     {
       if (cache_.hasEntry(comp_stack_.back()->id()))
         cache_.entry(comp_stack_.back()->id()).set_deletable();
 
-      print_debug(COLYEL2 "-> deleting comp ID: " << comp_stack_.back()->id());
+      debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack_.back()->id());
       delete comp_stack_.back();
       comp_stack_.pop_back();
     }
@@ -138,7 +138,7 @@ private:
 
 void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
 {
-  print_debug(COLYEL2 "sorting comp stack range");
+  debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   // sort the remaining comps for processing
   for (uint32_t i = start; i < end; i++)
@@ -160,22 +160,22 @@ double ComponentManager::get_alternate_score_comps(uint32_t start, uint32_t end)
 
 bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
 {
-  print_debug(COLREDBG"-*-> Running findNextRemainingComponentOf");
-  print_debug("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack_.size(): " << comp_stack_.size());
+  debug_print(COLREDBG"-*-> Running findNextRemainingComponentOf");
+  debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack_.size(): " << comp_stack_.size());
   if (comp_stack_.size() <= top.remaining_comps_ofs()) {
     recordRemainingCompsFor(top);
   } else {
-    print_debug("Not running recordRemainingCompsFor, comp_stack_.size() > top.remaining_comps_ofs(). comp_stack_.size(): " << comp_stack_.size() << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
+    debug_print("Not running recordRemainingCompsFor, comp_stack_.size() > top.remaining_comps_ofs(). comp_stack_.size(): " << comp_stack_.size() << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
   assert(!top.branch_found_unsat());
   if (top.hasUnprocessedComponents()) {
-    print_debug(COLREDBG"-*-> Finished findNextRemainingComponentOf, hasUnprocessedComponents.");
+    debug_print(COLREDBG"-*-> Finished findNextRemainingComponentOf, hasUnprocessedComponents.");
     return true;
   }
 
   // if no comp remains then there is exactly 1 solution left
   top.includeSolution(1);
-  print_debug(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.var  <<" includeSolution(1) fired, returning.");
+  debug_print(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.var  <<" includeSolution(1) fired, returning.");
   return false;
 }

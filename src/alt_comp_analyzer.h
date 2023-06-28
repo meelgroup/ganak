@@ -71,12 +71,12 @@ public:
   // returns true iff the underlying variable was unseen before
   bool manageSearchOccurrenceOf(const Lit lit){
     if (archetype_.var_unseen_in_sup_comp(lit.var())) {
-      /* VERBOSE_PRINT("-> lit " << lit << " unseen in sup comp"); */
+      /* debug_print("-> lit " << lit << " unseen in sup comp"); */
       search_stack_.push_back(lit.var());
       archetype_.setVar_seen(lit.var());
       return true;
     }
-    /* VERBOSE_PRINT("-> lit " << lit << " seen in sup comp"); */
+    /* debug_print("-> lit " << lit << " seen in sup comp"); */
     return false;
   }
 
@@ -94,7 +94,7 @@ public:
   void setupAnalysisContext(StackLevel &top, const Component & super_comp){
     archetype_.reInitialize(top,super_comp);
 
-    print_debug("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
+    debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
       if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);

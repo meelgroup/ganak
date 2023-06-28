@@ -74,22 +74,19 @@ THE SOFTWARE.
 
 // verbose debug
 #ifdef VERBOSE_DEBUG
-#define VERBOSE_PRINT(x) \
-    do { std::cout << x << std::endl; } while (0)
 #define VERBOSE_DEBUG_DO(x) do { x; } while (0)
 #else
-#define VERBOSE_PRINT(x) do { } while (0)
 #define VERBOSE_DEBUG_DO(x) do { } while (0)
 #endif
 
 #ifdef VERBOSE_DEBUG
-#define print_debug(x) std::cout << COLDEF << x << COLDEF << endl
-#define print_debug_noendl(x) std::cout << x
+#define debug_print(x) std::cout << COLDEF << x << COLDEF << endl
+#define debug_print_noendl(x) std::cout << x
 #else
-#define print_debug(x) do {} while(0)
-#define print_debug_noendl(x) do {} while (0)
+#define debug_print(x) do {} while(0)
+#define debug_print_noendl(x) do {} while (0)
 #endif
-#define print_tmpdebug(x) std::cout << COLDEF << x << COLDEF << endl
+#define debug_print_tmp(x) std::cout << COLDEF << x << COLDEF << endl
 
 #define all_vars_in_comp(comp, v) for(auto v = (comp)->varsBegin(); *v != varsSENTINEL; v++)
 

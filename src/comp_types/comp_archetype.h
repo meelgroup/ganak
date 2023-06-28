@@ -47,7 +47,7 @@ public:
   }
 
   void reInitialize(StackLevel &stack_level, const Component &super_comp) {
-    print_debug("Reinitializing seen[] to all-zero in ComponentArchetype");
+    debug_print("Reinitializing seen[] to all-zero in ComponentArchetype");
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
     clearArrays();
@@ -138,7 +138,7 @@ public:
 
   void initSeen(uint32_t max_variable_id, uint32_t max_clause_id) {
     uint32_t seen_size = std::max(max_variable_id,max_clause_id)  + 1;
-    print_debug("Creating new seen[] of size: " << seen_size << " and zeroing it.");
+    debug_print("Creating new seen[] of size: " << seen_size << " and zeroing it.");
     seen_ = new CA_SearchState[seen_size];
     seen_byte_size_ = sizeof(CA_SearchState) * (seen_size);
     clearArrays();
@@ -151,7 +151,7 @@ public:
   // At this point exploreRemainingCompOf has been called already which
   // set up search_stack_, seen[] etc. so this is now quite easy.
   Component *makeComponentFromState(const uint32_t search_stack_size) {
-    print_debug(COLREDBG << __PRETTY_FUNCTION__ << " start.");
+    debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Component *p_new_comp = new Component();
     p_new_comp->reserveSpace(search_stack_size, super_comp().numLongClauses());
     current_comp_for_caching_.clear();
@@ -176,7 +176,7 @@ public:
     p_new_comp->closeClauseData();
     current_comp_for_caching_.closeClauseData();
 
-    print_debug(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
+    debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
         " New comp vars: " << p_new_comp->nVars() <<
         " long cls:" << p_new_comp->numLongClauses());
     return p_new_comp;

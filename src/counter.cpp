@@ -238,8 +238,8 @@ void Counter::td_decompose()
     for(const auto& l2: watches_[l].binary_links_) {
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins))
           && l < l2.lit()) {
-        print_debug("v1: " << l.var());
-        print_debug("v2: " << l2.lit().var());
+        debug_print("v1: " << l.var());
+        debug_print("v2: " << l2.lit().var());
         primal.addEdge(l.var(), l2.lit().var());
       }
     }
@@ -249,8 +249,8 @@ void Counter::td_decompose()
     Clause& cl = *alloc->ptr(off);
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
-        print_debug("v1: " << cl[i].var());
-        print_debug("v2: " << cl[i2].var());
+        debug_print("v1: " << cl[i].var());
+        debug_print("v2: " << cl[i2].var());
         primal.addEdge(cl[i].var(), cl[i2].var());
       }
     }
@@ -501,7 +501,7 @@ SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
   while (true) {
-    print_debug("var top of decision stack: " << decision_stack_.top().var);
+    debug_print("var top of decision stack: " << decision_stack_.top().var);
     // NOTE: findNextRemainingComponentOf finds disjoint comps
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
@@ -566,7 +566,7 @@ bool Counter::get_polarity(const uint32_t v) const {
 }
 
 bool Counter::decideLiteral() {
-  print_debug("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " branch: " << decision_stack_.top().is_right_branch());
+  debug_print("new decision level is about to be created, lev now: " << decision_stack_.get_decision_level() << " branch: " << decision_stack_.top().is_right_branch());
   decision_stack_.push_back(
     StackLevel(decision_stack_.top().currentRemainingComponent(),
                comp_manager_->comp_stack_size()));
@@ -584,7 +584,7 @@ bool Counter::decideLiteral() {
   if (v == 0) {
     // we have set all remaining var(s) from a lower decision level.
     // so there is nothing to decide. Component has a single solution.
-    VERBOSE_PRINT("We have set ALL REMAINING VARS FROM LOWER LEVELS!!");
+    debug_print("We have set ALL REMAINING VARS FROM LOWER LEVELS!!");
     decision_stack_.pop_back();
     return false;
   }
@@ -593,7 +593,7 @@ bool Counter::decideLiteral() {
   decision_stack_.top().var = v;
 
   Lit lit = Lit(v, get_polarity(v));
-  print_debug(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
+  debug_print(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
   setLiteral(lit, decision_stack_.get_decision_level());
   stats.decisions++;
@@ -685,23 +685,23 @@ bool Counter::compute_cube(Cube& c, int branch) {
   assert(c.val == 0);
   assert(c.cnf.empty());
   assert(conf.do_restart);
-  print_debug(COLWHT "-- " << __func__ << " BEGIN");
+  debug_print(COLWHT "-- " << __func__ << " BEGIN");
 
   c.val = decision_stack_.top().get_model_side(branch);
-  VERBOSE_PRINT("Own cnt: " << c.val);
+  debug_print("Own cnt: " << c.val);
   for(int32_t i = 1; i < decision_stack_.get_decision_level(); i++) {
     const StackLevel& dec = decision_stack_[i];
     const auto& mul = dec.getBranchSols();
     if (mul == 0) continue;
     else c.val*=mul;
   }
-  VERBOSE_PRINT("Mult cnt: " << c.val);
+  debug_print("Mult cnt: " << c.val);
   if (c.val == 0) return false;
 
   const bool opposite_branch = branch != decision_stack_.top().is_right_branch();
 
   // Add decisions
-  VERBOSE_PRINT(COLWHT "Decisions in the c.cnf: ");
+  debug_print(COLWHT "Decisions in the c.cnf: ");
   for(const auto& l: trail) {
     if (!var(l).ante.isNull()) continue;
     if (var(l).decision_level == decision_stack_.get_decision_level() &&
@@ -711,14 +711,14 @@ bool Counter::compute_cube(Cube& c, int branch) {
     } else {
       c.cnf.push_back(l.neg());
     }
-    VERBOSE_PRINT(l << " ");
+    debug_print(l << " ");
   }
 
   // Get a solution
   vector<CMSat::Lit> ass;
   for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
   auto solution = sat_solver->solve(&ass);
-  VERBOSE_PRINT("cube solution: " << solution);
+  debug_print("cube solution: " << solution);
   if (solution == CMSat::l_False) return false;
 
   // Add values for all components not yet counted
@@ -730,7 +730,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
     const StackLevel& dec = decision_stack_[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedComponentsEnd();
-    VERBOSE_PRINT("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
+    debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
     // add all but the last component (it's the one being counted lower down)
     int off_by_one = 1;
     if (i == decision_stack_.get_decision_level()) off_by_one = 0;
@@ -738,7 +738,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
       const auto& comp = comp_manager_->at(i2);
       all_vars_in_comp(comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
-        VERBOSE_PRINT("Lit from comp: " << l);
+        debug_print("Lit from comp: " << l);
         c.cnf.push_back(l);
       }
     }
@@ -927,13 +927,13 @@ bool Counter::restart_if_needed() {
 
 retStateT Counter::backtrack_nonindep() {
   assert(!isindependent && perform_projected_counting);
-  print_debug("[nonindep] Backtrack nonindep");
+  debug_print("[nonindep] Backtrack nonindep");
 
   do {
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     } else if (decision_stack_.top().anotherCompProcessible()) {
-      print_debug("[nonindep] Processing another comp at dec lev "
+      debug_print("[nonindep] Processing another comp at dec lev "
           << decision_stack_.get_decision_level()
           << " instead of backtracking." << " Num unprocessed comps: "
           << decision_stack_.top().numUnprocessedComponents()
@@ -947,7 +947,7 @@ retStateT Counter::backtrack_nonindep() {
     //       but they may have unprocessed components (and hence may become UNSAT)
     if (decision_stack_.top().getBranchSols() != 0 && !isindependent) {
       while (decision_stack_.top().var >= indep_support_end) {
-        print_debug("[nonindep] Going BACK because it's not independent and there is at least 1 solution");
+        debug_print("[nonindep] Going BACK because it's not independent and there is at least 1 solution");
         assert(!isindependent);
         if (decision_stack_.get_decision_level() <= 0) { break; }
         reactivate_comps_and_backtrack_trail();
@@ -962,7 +962,7 @@ retStateT Counter::backtrack_nonindep() {
         assert( decision_stack_.top().remaining_comps_ofs() <
             comp_manager_->comp_stack_size() + 1);
         if (decision_stack_.top().anotherCompProcessible()) {
-          print_debug("[nonindep] Processing another comp at dec lev "
+          debug_print("[nonindep] Processing another comp at dec lev "
               << decision_stack_.get_decision_level()
               << " instead of backtracking." << " Num unprocessed comps: "
               << decision_stack_.top().numUnprocessedComponents()
@@ -975,13 +975,13 @@ retStateT Counter::backtrack_nonindep() {
     // Maybe it's zero on this side, let's try the other side.
     if (!decision_stack_.top().is_right_branch() &&
         (isindependent || decision_stack_.top().getTotalModelCount() == 0)) {
-      print_debug("[nonindep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
+      debug_print("[nonindep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
       Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
       decision_stack_.top().change_to_right_branch();
       reactivate_comps_and_backtrack_trail();
-      print_debug("[nonindep] Flipping lit to: " << aLit.neg());
+      debug_print("[nonindep] Flipping lit to: " << aLit.neg());
       setLiteral(aLit.neg(), decision_stack_.get_decision_level());
       return RESOLVED;
     }
@@ -1000,7 +1000,7 @@ retStateT Counter::backtrack_nonindep() {
       (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
     else
       (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount() > 0);
-    print_debug("[nonindep] Backtracking from level " << decision_stack_.get_decision_level()
+    debug_print("[nonindep] Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
     isindependent = (decision_stack_.top().var < indep_support_end);
@@ -1099,13 +1099,13 @@ retStateT Counter::backtrack() {
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
 
   if (!isindependent && perform_projected_counting) return backtrack_nonindep();
-  print_debug("[indep] Backtrack");
+  debug_print("[indep] Backtrack");
   do {
-    print_debug("[indep] top count here: " << decision_stack_.top().getTotalModelCount());
+    debug_print("[indep] top count here: " << decision_stack_.top().getTotalModelCount());
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     } else if (decision_stack_.top().anotherCompProcessible()) {
-      print_debug("[indep] Processing another comp at dec lev "
+      debug_print("[indep] Processing another comp at dec lev "
           << decision_stack_.get_decision_level()
           << " instead of backtracking." << " Num unprocessed comps: "
           << decision_stack_.top().numUnprocessedComponents()
@@ -1119,7 +1119,7 @@ retStateT Counter::backtrack() {
     //          probably doesn't hurt, but not sure.
     // Let's do it now!
     if (!decision_stack_.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
-      print_debug("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
+      debug_print("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
       const Lit aLit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
@@ -1130,13 +1130,13 @@ retStateT Counter::backtrack() {
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
       reactivate_comps_and_backtrack_trail(false);
-      print_debug("[indep] Flipping lit to: " << aLit.neg());
+      debug_print("[indep] Flipping lit to: " << aLit.neg());
       setLiteral(aLit.neg(), decision_stack_.get_decision_level());
       VERBOSE_DEBUG_DO(print_trail());
-      print_debug(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
+      debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
       return RESOLVED;
     }
-    print_debug(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
+    debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << decision_stack_.get_decision_level());
     comp_manager_->cacheModelCountOf(decision_stack_.top().super_comp(),
                                     decision_stack_.top().getTotalModelCount());
@@ -1152,7 +1152,7 @@ retStateT Counter::backtrack() {
 
     // Backtrack from end, i.e. finished.
     if (decision_stack_.get_decision_level() == 0) {
-      print_debug("[indep] Backtracking from lev 0, i.e. ending");
+      debug_print("[indep] Backtracking from lev 0, i.e. ending");
       break;
     }
 
@@ -1165,12 +1165,12 @@ retStateT Counter::backtrack() {
     const auto parent_count_before_right = (decision_stack_.end() - 2)->get_right_model_count();
 #endif
     (decision_stack_.end() - 2)->includeSolution(decision_stack_.top().getTotalModelCount());
-    print_debug("[indep] Backtracking from level " << decision_stack_.get_decision_level()
+    debug_print("[indep] Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
     isindependent = (decision_stack_.top().var < indep_support_end);
     auto& dst = decision_stack_.top();
-    print_debug("[indep] -> Backtracked to level " << decision_stack_.get_decision_level()
+    debug_print("[indep] -> Backtracked to level " << decision_stack_.get_decision_level()
         // NOTE: -1 here because we have JUST processed the child
         //     ->> (see below nextUnprocessedComponent() call)
         << " num unprocessed comps here: " << dst.numUnprocessedComponents()-1
@@ -1447,7 +1447,7 @@ retStateT Counter::resolveConflict() {
   int32_t lev_to_set = find_lev_to_set(backj);
 
   // This is DEFINITELY a decision, right?
-  VERBOSE_PRINT("backj initially: " << backj);
+  debug_print("backj initially: " << backj);
   /* assert(variables_[decision_stack_.at(backj).var].ante == Antecedent(NOT_A_CLAUSE)); */
   lev_to_set = std::min(lev_to_set, backj);
   bool flipped = (
@@ -1488,22 +1488,22 @@ retStateT Counter::resolveConflict() {
 
   go_back_to(backj);
   VERBOSE_DEBUG_DO(print_conflict_info());
-  VERBOSE_PRINT("decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level());
+  debug_print("decision_stack_.get_decision_level(): " << decision_stack_.get_decision_level());
 
   Antecedent ant;
   assert(!uip_clause.empty());
   SLOW_DEBUG_DO(check_implied(uip_clause));
   if (decision_stack_.get_decision_level() > 0 &&
       top_dec_lit().neg() == uip_clause[0]) {
-    VERBOSE_PRINT("FLIPPING. Setting reason the conflict cl");
+    debug_print("FLIPPING. Setting reason the conflict cl");
     assert(var(uip_clause[0]).decision_level != -1);
     ant = addUIPConflictClause(uip_clause);
     var(top_dec_lit()).ante = ant;
   }
-  VERBOSE_PRINT("Ant is :" << ant);
-  VERBOSE_PRINT("AFTER conflict, setup: ");
+  debug_print("Ant is :" << ant);
+  debug_print("AFTER conflict, setup: ");
   VERBOSE_DEBUG_DO(print_conflict_info());
-  VERBOSE_PRINT("is right here? " << decision_stack_.top().is_right_branch());
+  debug_print("is right here? " << decision_stack_.top().is_right_branch());
 
   comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
   decision_stack_.top().zero_out_branch_sol();
@@ -1702,11 +1702,11 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
 
 bool Counter::propagate() {
   confl = Antecedent();
-  VERBOSE_PRINT("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
+  debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
-    VERBOSE_PRINT("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
+    debug_print("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
     for (const auto& bincl : litWatchList(unLit).binary_links_) {
@@ -1719,7 +1719,7 @@ bool Counter::propagate() {
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       /* } else if (val(l) == T_TRI && var(l).decision_level > lev) { */
       /*   var(l).ante = Antecedent(unLit); */
-      /*   VERBOSE_PRINT("Updated ante of " << l << " to: " << unLit); */
+      /*   debug_print("Updated ante of " << l << " to: " << unLit); */
       /*   /1* var(l).decision_level = lev; *1/ */
       }
     }
@@ -1769,18 +1769,18 @@ bool Counter::propagate() {
       if (i != c.sz) {
         c[1] = c[i];
         c[i] = unLit;
-        VERBOSE_PRINT("New watch for cl: " << c[1]);
+        debug_print("New watch for cl: " << c[1]);
         litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
       } else {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
-          VERBOSE_PRINT("Conflicting state from norm cl offs: " << ofs);
+          debug_print("Conflicting state from norm cl offs: " << ofs);
           if (lev != decision_stack_.get_decision_level()) {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
             get_maxlev_maxind(ofs, maxlev, maxind);
             if (maxind != 1) {
-              VERBOSE_PRINT("swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind]);
+              debug_print("swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind]);
               std::swap(c[1], c[maxind]);
               it2--; // undo last watch
               litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
@@ -1791,10 +1791,10 @@ bool Counter::propagate() {
           break;
         } else {
           assert(val(c[0]) == X_TRI);
-          VERBOSE_PRINT("prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level());
+          debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level());
           if (lev == decision_stack_.get_decision_level()) {
             setLiteral(c[0], lev, Antecedent(ofs));
-            VERBOSE_PRINT("Norm long prop: " << c[0] << " lev: " << lev);
+            debug_print("Norm long prop: " << c[0] << " lev: " << lev);
           } else {
             int32_t maxlev = lev;
             uint32_t maxind = 1;
@@ -1817,7 +1817,7 @@ bool Counter::propagate() {
   VERY_SLOW_DEBUG_DO(if (confl.isNull() && !check_watchlists()) {
       print_trail(false, false);assert(false);});
   SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated());
-  VERBOSE_PRINT("After propagate, qhead is: " << qhead);
+  debug_print("After propagate, qhead is: " << qhead);
   return confl.isNull();
 }
 
@@ -1865,7 +1865,7 @@ const DataAndStatistics& Counter::get_stats() const
 }
 
 bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
-    VERBOSE_PRINT(__func__ << " called");
+    debug_print(__func__ << " called");
 
     analyze_stack.clear();
     analyze_stack.push_back(p);
@@ -1874,7 +1874,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
     uint32_t size;
     size_t top = toClear.size();
     while (!analyze_stack.empty()) {
-      VERBOSE_PRINT("At point in litRedundant: " << analyze_stack.back());
+      debug_print("At point in litRedundant: " << analyze_stack.back());
       const auto reason = var(analyze_stack.back()).ante;
       assert(reason.isAnt());  //Must have a reason
       p = analyze_stack.back();
@@ -1882,19 +1882,19 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
       fill_cl(reason, c, size, p);
 
       for (uint32_t i = 1; i < size; i++) {
-        VERBOSE_PRINT("at i: " << i);
+        debug_print("at i: " << i);
         Lit p2 = c[i];
-        VERBOSE_PRINT("Examining lit " << p2 << " seen: " << seen[p2.var()]);
+        debug_print("Examining lit " << p2 << " seen: " << seen[p2.var()]);
         if (!seen[p2.var()] && var(p2).decision_level > 0) {
           if (var(p2).ante.isAnt()
               && (abstractLevel(p2.var()) & abstract_levels) != 0
           ) {
-              VERBOSE_PRINT("lit " << p2 << " OK");
+              debug_print("lit " << p2 << " OK");
               seen[p2.var()] = 1;
               analyze_stack.push_back(p2);
               toClear.push_back(p2.var());
           } else {
-              VERBOSE_PRINT("lit " << p2 << " NOT OK");
+              debug_print("lit " << p2 << " NOT OK");
               //Return to where we started before function executed
               for (size_t j = top; j < toClear.size(); j++) seen[toClear[j]] = 0;
               toClear.resize(top);
@@ -1903,7 +1903,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
         }
       }
     }
-    VERBOSE_PRINT("Returning OK from " << __func__);
+    debug_print("Returning OK from " << __func__);
     return true;
 }
 
@@ -1915,7 +1915,7 @@ uint32_t Counter::abstractLevel(const uint32_t x) const
 void Counter::recursiveConfClauseMin()
 {
     VERBOSE_DEBUG_DO(print_conflict_info());
-  VERBOSE_PRINT("recursive ccmin now.");
+  debug_print("recursive ccmin now.");
   uint32_t abstract_level = 0;
   for (size_t i = 1; i < uip_clause.size(); i++) {
     //(maintain an abstraction of levels involved in conflict)
@@ -1927,10 +1927,10 @@ void Counter::recursiveConfClauseMin()
     if (var(uip_clause[i]).ante.isNull()
       || !litRedundant(uip_clause[i], abstract_level)
     ) {
-      VERBOSE_PRINT("ccmin -- keeping lit: " << uip_clause[i]);
+      debug_print("ccmin -- keeping lit: " << uip_clause[i]);
       uip_clause[j++] = uip_clause[i];
     } else {
-      VERBOSE_PRINT("ccmin -- NOT keeping lit: " << uip_clause[i]);
+      debug_print("ccmin -- NOT keeping lit: " << uip_clause[i]);
     }
   }
   uip_clause.resize(j);
@@ -2088,7 +2088,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
   if (val_t_at != -1) {
     litWatchList(cl[0]).addWatchLinkTo(off, cl[val_t_at]);
     litWatchList(cl[1]).addWatchLinkTo(off, cl[val_t_at]);
-    VERBOSE_PRINT("Vivified cl off: " << off);
+    debug_print("Vivified cl off: " << off);
     VERBOSE_DEBUG_DO(print_cl(cl));
     return;
   }
@@ -2105,7 +2105,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
       return var(a).decision_level > var(b).decision_level;
     });
 
-  VERBOSE_PRINT("Vivified cl off: " << off);
+  debug_print("Vivified cl off: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
   int32_t pos = (any_val_t_pos == -1) ? cl.sz/2 : any_val_t_pos;
   litWatchList(cl[0]).addWatchLinkTo(off, cl[pos]);
@@ -2132,7 +2132,7 @@ void Counter::v_new_lev() {
 }
 
 void Counter::v_unset(const Lit l) {
-  VERBOSE_PRINT("v-unset: " << l);
+  debug_print("v-unset: " << l);
   assert(v_levs[l.var()] == 1);
   v_levs[l.var()] = -1;
   v_values[l] = X_TRI;
@@ -2201,18 +2201,18 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.second);
   std::swap(*sw, v_tmp2[1]);
 
-  VERBOSE_PRINT("vivifying cl offs: " << off);
+  debug_print("vivifying cl offs: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
   for(uint32_t i = 0; i < v_tmp2.size(); i++) {
     const auto& l = v_tmp2[i];
-    VERBOSE_PRINT("Vivif lit l: " << l << " val: " << val_str(v_val(l)));
+    debug_print("Vivif lit l: " << l << " val: " << val_str(v_val(l)));
     if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
     if (v_val(l) == F_TRI) continue;
     v_tmp.push_back(l);
     v_enqueue(l.neg());
     bool ret = v_propagate();
     if (!ret) {
-      VERBOSE_PRINT("vivif ret FALSE, exiting");
+      debug_print("vivif ret FALSE, exiting");
       break;
     }
   }
@@ -2307,7 +2307,7 @@ TriValue Counter::v_val(const Lit l) const {
 }
 
 void Counter::v_enqueue(const Lit l) {
-  VERBOSE_PRINT("v-enq: " << l << " lev: " << v_lev);
+  debug_print("v-enq: " << l << " lev: " << v_lev);
   assert(v_val(l) == X_TRI);
   v_levs[l.var()] = v_lev;
   v_trail.push_back(l);
@@ -2325,11 +2325,11 @@ bool Counter::v_propagate() {
     for (const auto& bincl : wsbin) {
       const auto& l = bincl.lit();
       if (v_val(l) == F_TRI) {
-        VERBOSE_PRINT("Conflict from bin.");
+        debug_print("Conflict from bin.");
         return false;
       } else if (v_val(l) == X_TRI) {
         v_enqueue(l);
-        VERBOSE_PRINT("Bin prop: " << l);
+        debug_print("Bin prop: " << l);
       }
     }
 
@@ -2379,18 +2379,18 @@ bool Counter::v_propagate() {
       if (i != c.sz) {
         c[1] = c[i];
         c[i] = unLit;
-        VERBOSE_PRINT("New watch for cl: " << c[1]);
+        debug_print("New watch for cl: " << c[1]);
         litWatchList(c[1]).addWatchLinkTo(ofs, c[0]);
       } else {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {
-          VERBOSE_PRINT("Conflicting state from norm cl offs: " << ofs);
+          debug_print("Conflicting state from norm cl offs: " << ofs);
           ret = false;
           it++;
           break;
         } else {
           assert(v_val(c[0]) == X_TRI);
-          VERBOSE_PRINT("prop long");
+          debug_print("prop long");
           v_enqueue(c[0]);
         }
       }
@@ -2399,7 +2399,7 @@ bool Counter::v_propagate() {
     ws.resize(it2-ws.begin());
     if (!ret) break;
   }
-  VERBOSE_PRINT("After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
+  debug_print("After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
   return ret;
 }
 

@@ -82,7 +82,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   ana_.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
-    print_debug("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
+    debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
     if (ana_.isUnseenAndSet(*vt) &&
         ana_.exploreRemainingCompOf(*vt, solver_->val(*vt) == X_TRI)) {
 
@@ -129,7 +129,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
     }
   }
 
-  print_debug("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
+  debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack_.size());
   sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
 }

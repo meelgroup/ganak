@@ -42,7 +42,7 @@ void ComponentAnalyzer::initialize(
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
 
-  print_debug(COLBLBACK "Building occ list in ComponentAnalyzer::initialize...");
+  debug_print(COLBLBACK "Building occ list in ComponentAnalyzer::initialize...");
 
   vector<uint32_t> tmp;
   max_clause_id_ = 1;
@@ -74,11 +74,11 @@ void ComponentAnalyzer::initialize(
     }
     max_clause_id_++;
   }
-  print_debug(COLBLBACK "Built occ list in ComponentAnalyzer::initialize.");
+  debug_print(COLBLBACK "Built occ list in ComponentAnalyzer::initialize.");
 
   archetype_.initSeen(max_variable_id_, max_clause_id_);
 
-  print_debug(COLBLBACK "Building unified link list in ComponentAnalyzer::initialize...");
+  debug_print(COLBLBACK "Building unified link list in ComponentAnalyzer::initialize...");
   // the unified link list
   // This is an array that contains, flattened:
   // [  [vars of binary clauses],
@@ -127,7 +127,7 @@ void ComponentAnalyzer::initialize(
         occ_long_clauses[v].begin(),
         occ_long_clauses[v].end());
   }
-  print_debug(COLBLBACK "Built unified link list in ComponentAnalyzer::initialize.");
+  debug_print(COLBLBACK "Built unified link list in ComponentAnalyzer::initialize.");
 }
 
 // returns true, iff the comp found is non-trivial
@@ -138,7 +138,7 @@ bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v, bool freev
 
   // comp only contains one variable
   if (search_stack_.size() == 1) {
-    VERBOSE_PRINT("explore remaining with single var, v is: " <<  v);
+    debug_print("explore remaining with single var, v is: " <<  v);
     if (v >= indep_support_end || !freevar) {
       archetype_.stack_level().includeSolution(1);
       /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1)); */
@@ -157,7 +157,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);
 
-  print_debug(COLWHT "We are NOW going through all binary/tri/long clauses recursively and put into search_stack_ all the variables that are connected to var: " << var);
+  debug_print(COLWHT "We are NOW going through all binary/tri/long clauses recursively and put into search_stack_ all the variables that are connected to var: " << var);
   // manageSearchOccurrenceAndScoreOf will push into search_stack_ which will make this
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
@@ -200,5 +200,5 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
         searchClause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 
-  print_debug(COLWHT "-> Went through all bin/tri/long and now search_stack_ is " << search_stack_.size() << " long");
+  debug_print(COLWHT "-> Went through all bin/tri/long and now search_stack_ is " << search_stack_.size() << " long");
 }

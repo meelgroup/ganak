@@ -399,7 +399,6 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     while(ret == CMSat::l_True) {
       vector<Cube> tmp_cubes;
       count(tmp_cubes);
-      for(const auto&c: tmp_cubes) {val+=c.val; cubes.push_back(c);}
       num_runs++;
       cout << "Num runs: " << num_runs << endl;
       cout << "tmp cubes     : " << endl;
@@ -448,15 +447,18 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
         }
       }
 
-      // Add cubes to CMS
-      for(const auto& c: tmp_cubes)
-        if (c.enabled) sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
+      // Add cubes to count, cubes & CMS
+      for(const auto&c: tmp_cubes) {
+        if (!c.enabled) continue;
+        val+=c.val;
+        cubes.push_back(c);
+        sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
+      }
       ret = sat_solver->solve();
       if (ret == CMSat::l_False) break;
 
       // Add cubes to counter
-      for(const auto& c: tmp_cubes)
-        if (c.enabled) add_irred_cl(c.cnf);
+      for(const auto& c: tmp_cubes) if (c.enabled) add_irred_cl(c.cnf);
       // TODO vivify!!
       end_irred_cls();
     }

@@ -20,11 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "TreeDecomposition.h"
+#include "TreeDecomposition.hpp"
 
 #include <iostream>
 #include <assert.h>
-#include "structures.h"
+#include "structures.hpp"
 using namespace std;
 
 Graph::Graph(int vars)

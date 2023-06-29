@@ -20,9 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "instance.h"
-#include "structures.h"
-#include "clauseallocator.h"
+#include "instance.hpp"
+#include "structures.hpp"
+#include "clauseallocator.hpp"
 
 #include <algorithm>
 #include <fstream>

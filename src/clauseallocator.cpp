@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "clauseallocator.h"
+#include "clauseallocator.hpp"
 
 #include <stdlib.h>
 #include <algorithm>
@@ -28,10 +28,10 @@ THE SOFTWARE.
 #include <limits>
 #include <cassert>
 #include <cmath>
-#include "counter.h"
-#include "counter_config.h"
-#include "time_mem.h"
-#include "common.h"
+#include "counter.hpp"
+#include "counter_config.hpp"
+#include "time_mem.hpp"
+#include "common.hpp"
 
 using std::cout;
 using std::endl;

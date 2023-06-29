@@ -1,13 +1,13 @@
-#include "tree_decomposition.h"
-#include "io_helper.h"
+#include "tree_decomposition.hpp"
+#include "io_helper.hpp"
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <cassert>
-#include "heap.h"
-#include "tiny_id_func.h"
-#include "contraction_graph.h"
-#include "id_multi_func.h"
+#include "heap.hpp"
+#include "tiny_id_func.hpp"
+#include "contraction_graph.hpp"
+#include "id_multi_func.hpp"
 using namespace std;
 
 void print_tree_decompostion_of_order(std::ostream&out, ArrayIDIDFunc tail, ArrayIDIDFunc head, const ArrayIDIDFunc&order){

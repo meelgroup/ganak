@@ -1,8 +1,8 @@
-#include "greedy_order.h"
-#include "array_id_func.h"
-#include "tiny_id_func.h"
-#include "permutation.h"
-#include "heap.h"
+#include "greedy_order.hpp"
+#include "array_id_func.hpp"
+#include "tiny_id_func.hpp"
+#include "permutation.hpp"
+#include "heap.hpp"
 #include <vector>
 
 ArrayIDFunc<std::vector<int>> build_dyn_array(const ArrayIDIDFunc&tail, const ArrayIDIDFunc&head){

@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "counter.h"
+#include "counter.hpp"
 
 #include <algorithm>
 #include <complex>
@@ -28,17 +28,16 @@ THE SOFTWARE.
 #include <iomanip>
 #include <numeric>
 #include <utility>
-#include "common.h"
-#include "comp_types/comp.h"
-#include "cryptominisat5/cryptominisat.h"
+#include "common.hpp"
+#include "comp_types/comp.hpp"
 #include "cryptominisat5/solvertypesmini.h"
-#include "primitive_types.h"
-#include "counter_config.h"
-#include "stack.h"
-#include "structures.h"
-#include "time_mem.h"
-#include "IFlowCutter.h"
-#include "graph.h"
+#include "primitive_types.hpp"
+#include "counter_config.hpp"
+#include "stack.hpp"
+#include "structures.hpp"
+#include "time_mem.hpp"
+#include "IFlowCutter.hpp"
+#include "graph.hpp"
 
 void Counter::simplePreProcess()
 {

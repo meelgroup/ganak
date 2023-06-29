@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "comp_management.h"
-#include "counter.h"
+#include "comp_management.hpp"
+#include "counter.hpp"
 #include <iomanip>
 
 // Initialized exactly once when Counter is created.

@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "comp_cache.h"
+#include "comp_cache.hpp"
 #include <algorithm>
 #include <iomanip>
 
@@ -57,7 +57,7 @@ uint64_t freeram() {
 
 #endif
 
-#include "stack.h"
+#include "stack.hpp"
 
 ComponentCache::ComponentCache(
     DataAndStatistics &_stats, const CounterConfiguration &_conf, const BPCSizes& _sz) :

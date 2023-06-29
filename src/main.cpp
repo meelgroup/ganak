@@ -20,9 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "cryptominisat5/cryptominisat.h"
-#include "counter.h"
-#include "GitSHA1.h"
+#include <cryptominisat5/cryptominisat.h>
+#include <cryptominisat5/dimacsparser.h>
+#include <cryptominisat5/streambuffer.h>
+#include <cryptominisat5/solvertypesmini.h>
+
+#include "counter.hpp"
+#include "GitSHA1.hpp"
 
 #include <iostream>
 #include <set>
@@ -31,11 +35,8 @@ THE SOFTWARE.
 #include <iomanip>
 #include <time_mem.h>
 #include <boost/program_options.hpp>
-#include "cryptominisat5/solvertypesmini.h"
-#include "src/GitSHA1.h"
+#include "src/GitSHA1.hpp"
 #include <arjun/arjun.h>
-#include <cryptominisat5/dimacsparser.h>
-#include <cryptominisat5/streambuffer.h>
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;

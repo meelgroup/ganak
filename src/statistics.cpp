@@ -20,10 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "statistics.h"
-#include "comp_cache.h"
-#include "counter.h"
-#include "time_mem.h"
+#include "statistics.hpp"
+#include "comp_cache.hpp"
+#include "counter.hpp"
+#include "time_mem.hpp"
 
 #include <iostream>
 #include <iomanip>

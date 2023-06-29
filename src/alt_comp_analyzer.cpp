@@ -20,9 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "alt_comp_analyzer.h"
-#include "counter.h"
-#include "clauseallocator.h"
+#include "alt_comp_analyzer.hpp"
+#include "counter.hpp"
+#include "clauseallocator.hpp"
 
 // Builds occ lists and sets things up
 void ComponentAnalyzer::initialize(

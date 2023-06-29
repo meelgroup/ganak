@@ -40,7 +40,7 @@ static double safe_div(double a, double b) {
 
 void DataAndStatistics::printShort(const Counter* counter, const ComponentCache* cache_) const {
   counter->print_restart_data();
-  verb_print(1, "cls irred                      " << num_irred_clauses());
+  verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
     << std::left << std::setw(9) << decisions/1000
     << std::setw(16) << " -- Kdec/s: "
@@ -54,9 +54,8 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setprecision(2) << std::setw(9) << std::left
     << safe_div(conflicts,((cpuTime()-counter->get_start_time())))
   );
-  verb_print(1, "conflict cls (long/bin/u)      " << std::fixed
-    << counter->get_num_long_reds() << "/"
-    << num_binary_red_clauses_ << "/" << num_unit_red_clauses_);
+  verb_print(1, "conflict cls (long/bin)      " << std::fixed
+    << counter->get_num_long_reds() << "/" << num_binary_red_clauses_);
 
   /* verb_print(1, "lits /rem lits ccmin           " */
   /*   << std::setw(9) << orig_uip_lits/uip_cls << " " */
@@ -140,3 +139,8 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
   verb_print(1, "");
 }
 
+
+void DataAndStatistics::printShortFormulaInfo(const Counter* counter) const {
+  verb_print(1, "irred cls (all/long/bin/unit): "
+    << counter->get_num_irred_long_cls() << "/" << num_binary_irred_clauses_);
+}

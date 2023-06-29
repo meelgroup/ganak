@@ -52,11 +52,8 @@ public:
   uint64_t maximum_cache_size_bytes_ = 0;
   uint64_t numcachedec_ = 0;
 
-  uint64_t num_unit_irred_clauses_ = 0;
-  uint64_t num_long_irred_clauses_ = 0;
   uint64_t num_binary_irred_clauses_ = 0;
 
-  uint64_t num_unit_red_clauses_ = 0;
   uint64_t num_binary_red_clauses_ = 0;
 
   // Clause db management
@@ -160,27 +157,18 @@ public:
       if(num_failed_lit_tests_ == 0) return 0.0;
       return (num_failed_lit_tests_ - num_failed_literals_detected_) / (double) num_failed_lit_tests_;
   }
-  uint64_t num_irred_clauses() const {
-    return num_long_irred_clauses_ + num_binary_irred_clauses_ + num_unit_irred_clauses_;
-  }
 
   void incorporateConflictClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 1) num_unit_red_clauses_++;
-    else if (clause.size() == 2) num_binary_red_clauses_++;
+    if (clause.size() == 2) num_binary_red_clauses_++;
   }
 
   void incorporateIrredClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 1) num_unit_irred_clauses_++;
-    else if (clause.size() == 2) num_binary_irred_clauses_++;
-    else num_long_irred_clauses_++;
+    if (clause.size() == 1) return;
+    if (clause.size() == 2) num_binary_irred_clauses_++;
   }
 
   void printShort(const Counter* counter, const ComponentCache* cache_) const;
-  void printShortFormulaInfo() const {
-    verb_print(1, "irred cls (all/long/bin/unit): "
-      << num_irred_clauses() << "/" << num_long_irred_clauses_
-      << "/" << num_binary_irred_clauses_ << "/" << num_unit_irred_clauses_);
-  }
+  void printShortFormulaInfo(const Counter* counter) const;
 
   double getAvgComponentHitSize() const {
     if (num_cache_hits_ == 0) return 0.0L;

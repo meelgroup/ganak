@@ -50,7 +50,6 @@ void Counter::simplePreProcess()
 
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  stats.num_unit_irred_clauses_ = unit_clauses_.size();
   init_decision_stack();
   qhead = 0;
 }
@@ -108,7 +107,7 @@ void Counter::end_irred_cls()
   simplePreProcess();
   ended_irred_cls = true;
 
-  if (conf.verb) stats.printShortFormulaInfo();
+  if (conf.verb) stats.printShortFormulaInfo(this);
   // This below will initialize the disjoint component analyzer (ana_)
   comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
 }
@@ -594,7 +593,6 @@ bool Counter::get_polarity(const uint32_t v) const {
     } else polarity = standard_polarity(v);
   } else if (conf.polar_type == 1) polarity = standard_polarity(v);
   else if (conf.polar_type == 4) polarity = !standard_polarity(v);
-  else if (conf.polar_type == 5) polarity = standard_polarity(v);
   else if (conf.polar_type == 2) polarity = false;
   else if (conf.polar_type == 3) polarity = true;
   else assert(false);

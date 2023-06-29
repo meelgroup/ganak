@@ -33,8 +33,6 @@ THE SOFTWARE.
 #include "containers.h"
 #include "counter_config.h"
 
-using std::pair;
-
 class ClauseAllocator;
 
 class Instance {
@@ -44,7 +42,7 @@ public:
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return longRedCls.size(); }
-  uint32_t get_num_irred_long_cls() const { return stats.num_long_irred_clauses_; }
+  uint32_t get_num_irred_long_cls() const { return longIrredCls.size(); }
   int val(Lit lit) const { return lit_values_[lit]; }
   int val(uint32_t var) const { return lit_values_[Lit(var,1)]; }
 
@@ -244,8 +242,7 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
   } else if (literals.size() == 2){
     ante = Antecedent(literals.back());
     stats.num_binary_red_clauses_++;
-  } else if (literals.size() == 1)
-    stats.num_unit_red_clauses_++;
+  }
   return ante;
 }
 

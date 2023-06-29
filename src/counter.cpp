@@ -385,6 +385,48 @@ mpz_class Counter::check_norestart(const Cube& c) {
   return test_cnt.outer_count(&test_solver);
 }
 
+void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes) {
+  if (cubes[i].cnf.size() < cubes[i2].cnf.size()) std::swap(i, i2);
+  auto c1 = ganak_to_cms_cl(cubes[i].cnf);
+  auto c2 = ganak_to_cms_cl(cubes[i2].cnf);
+  std::set<CMSat::Lit> assumps;
+  bool unsat = false;
+  for(const auto& l: c1) {
+    if (assumps.count(~l)) continue;
+    if (assumps.count(l)) {unsat = true; break;}
+    assumps.insert(~l);
+  }
+  auto sz = assumps.size();
+  if (unsat) return;
+  for(const auto& l: c2) {
+    if (assumps.count(~l)) continue;
+    if (assumps.count(l)) {unsat = true; break;}
+    assumps.insert(~l);
+  }
+  if (unsat) return;
+
+  bool overlap = false;
+  if (assumps.size() == sz) {
+    // We didn't add anything to it, so it's definitely SAT
+    overlap = true;
+  }
+  if (!overlap) {
+    vector<CMSat::Lit> ass;
+    ass.insert(ass.begin(), assumps.begin(), assumps.end());
+    auto ret = sat_solver->solve(&ass);
+    if (ret != CMSat::l_False) overlap = true;
+  }
+
+  if (overlap) {
+    cout << "Two cubes overlap." << endl;
+    cout << "c1: " << c1 << endl;
+    cout << "c2: " << c2   << endl;
+    uint32_t to_disable = cubes[i].val > cubes[i2].val ? i2 : i;
+    cubes[to_disable].enabled = false;
+    cout << "Disabled cube " << cubes[to_disable] << endl;
+  }
+}
+
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   mpz_class val = 0;
   sat_solver = _sat_solver;
@@ -415,33 +457,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
         if (!tmp_cubes[i].enabled) continue;
         for(uint32_t i2 = i+1; i2 < tmp_cubes.size(); i2++) {
           if (!tmp_cubes[i2].enabled) continue;
-          auto c1 = ganak_to_cms_cl(tmp_cubes[i].cnf);
-          auto c2 = ganak_to_cms_cl(tmp_cubes[i2].cnf);
-          std::set<CMSat::Lit> assumps;
-          bool unsat = false;
-          for(const auto& l: c1) {
-            if (assumps.count(~l)) continue;
-            if (assumps.count(l)) {unsat = true; break;}
-            assumps.insert(~l);
-          }
-          if (unsat) continue;
-          for(const auto& l: c2) {
-            if (assumps.count(~l)) continue;
-            if (assumps.count(l)) {unsat = true; break;}
-            assumps.insert(~l);
-          }
-          if (unsat) continue;
-          vector<CMSat::Lit> ass;
-          ass.insert(ass.begin(), assumps.begin(), assumps.end());
-          auto no_overlap_ret = sat_solver->solve(&ass);
-          if (no_overlap_ret != CMSat::l_False) {
-            cout << "Two cubes overlap." << endl;
-            cout << "c1: " << c1 << endl;
-            cout << "c2: " << c2   << endl;
-            uint32_t to_disable = tmp_cubes[i].val > tmp_cubes[i2].val ? i2 : i;
-            tmp_cubes[to_disable].enabled = false;
-            cout << "Disabled cube " << tmp_cubes[to_disable] << endl;
-          }
+          disable_smaller_cube_if_overlap(i, i2, tmp_cubes);
         }
       }
 

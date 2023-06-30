@@ -731,7 +731,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
 
   c.val = decision_stack_.top().get_model_side(branch);
   debug_print("Own cnt: " << c.val);
-  for(int32_t i = 1; i < decision_stack_.get_decision_level(); i++) {
+  for(int32_t i = 0; i < decision_stack_.get_decision_level(); i++) {
     const StackLevel& dec = decision_stack_[i];
     const auto& mul = dec.getBranchSols();
     if (mul == 0) continue;

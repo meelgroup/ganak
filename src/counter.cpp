@@ -42,7 +42,7 @@ THE SOFTWARE.
 void Counter::simplePreProcess()
 {
   for (auto lit : unit_clauses_) {
-    assert(!isUnitClause(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
+    assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) setLiteral(lit, 0);
     assert(val(lit) == T_TRI);
   }
@@ -215,14 +215,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 #endif
 }
 
-void Counter::get_unit_cls(vector<Lit>& units) const
-{
-  assert(units.empty());
-  units = unit_clauses_;
-}
-
-void Counter::td_decompose()
-{
+void Counter::td_decompose() {
   bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
     verb_print(1, "skipping TD, too many/few vars. Setting branch to fallback");
@@ -2062,9 +2055,7 @@ void Counter::vivify_clauses(bool force, bool only_irred) {
 
   // Set units up
   v_trail.clear();
-  for(const auto& l: trail) {
-    if (var(l).decision_level == 0) v_enqueue(l);
-  }
+  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
   for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
   bool ret = v_propagate();
   assert(ret == true);
@@ -2090,8 +2081,12 @@ void Counter::vivify_clauses(bool force, bool only_irred) {
     for(const auto& off: longIrredCls) v_cl_repair(off);
     for(const auto& off: longRedCls) v_cl_repair(off);
   } else {
+    // Move all 0-level stuff to unit_clauses_
     for(const auto& l: v_trail) {
-      if (val(l) == X_TRI) setLiteral(l, 0);
+      if (val(l) == X_TRI) {
+        setLiteral(l, 0);
+        if (!existsUnitClauseOf(l)) unit_clauses_.push_back(l);
+      }
       assert(val(l) != F_TRI); // it would be UNSAT
     }
     bool ret2 = propagate();

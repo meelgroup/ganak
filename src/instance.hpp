@@ -142,19 +142,8 @@ protected:
     }
   }
 
-  bool isUnitClause(const Lit lit) {
-    for (const auto& l : unit_clauses_) if (l == lit) return true;
-    return false;
-  }
-
-  bool existsUnitClauseOf(VariableIndex v) {
-    for (auto l : unit_clauses_) if (l.var() == v) return true;
-    return false;
-  }
-
-  // TODO remove -- should be a check for level 0 in variables_
-  bool existsUnitClauseOf(Lit l) {
-    for (auto l2 : unit_clauses_) if (l == l2) return true;
+  bool existsUnitClauseOf(const Lit l) const {
+    for (const auto& l2 : unit_clauses_) if (l == l2) return true;
     return false;
   }
 

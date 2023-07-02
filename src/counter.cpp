@@ -557,24 +557,31 @@ SOLVER_StateT Counter::countSAT() {
       VERBOSE_DEBUG_DO(print_all_levels());
       print_stat_line();
 
-      while (!prop_and_probe()) {
+      while (!prop_and_add_saveduips()) {
+        auto data = find_conflict_level(conflLit);
+        if (data.bOnlyOneLitFromHighest) {go_back_to(data.nHighestLevel); continue;}
         state = resolveConflict();
         while(state == GO_AGAIN) state = resolveConflict();
         if (state == BACKTRACK) break;
       }
       if (state == BACKTRACK) break;
+
+      // we are in RESOLVED or PROCESS_COMPONENT state, continue.
+      assert(state == PROCESS_COMPONENT || state == RESOLVED);
     }
     // we are here because there is no next component, or we had to backtrack
 
     state = backtrack();
     if (state == PROCESS_COMPONENT && restart_if_needed()) {return RESTART;}
     if (state == EXIT) return SUCCESS;
-    while (state != PROCESS_COMPONENT && !prop_and_probe()) {
+
+    while (!prop_and_add_saveduips()) {
+      auto data = find_conflict_level(conflLit);
+      if (data.bOnlyOneLitFromHighest) { go_back_to(data.nHighestLevel); continue; }
       state = resolveConflict();
       while(state == GO_AGAIN) state = resolveConflict();
       if (state == BACKTRACK) {
         state = backtrack();
-        if (state == PROCESS_COMPONENT && restart_if_needed()) {return RESTART;}
         if (state == EXIT) return SUCCESS;
       }
     }
@@ -1271,29 +1278,26 @@ struct UIPFixer {
   vector<Variable>& vars;
 };
 
-size_t Counter::find_backtrack_level_of_learnt()
-{
-  if (uip_clause.size() == 0) return 0;
-  else {
-      uint32_t max_i = 0;
-      for (uint32_t i = 0; i < uip_clause.size(); i++) {
-          if (var(uip_clause[i]).decision_level > var(uip_clause[max_i]).decision_level)
-              max_i = i;
-      }
-      std::swap(uip_clause[max_i], uip_clause[0]);
-      return var(uip_clause[0]).decision_level;
+size_t Counter::find_backtrack_level_of_learnt() {
+  assert(!uip_clause.empty());
+  uint32_t max_i = 0;
+  for (uint32_t i = 0; i < uip_clause.size(); i++) {
+    if (var(uip_clause[i]).decision_level > var(uip_clause[max_i]).decision_level)
+      max_i = i;
   }
+  std::swap(uip_clause[max_i], uip_clause[0]);
+  return var(uip_clause[0]).decision_level;
 }
 
-uint32_t Counter::find_lev_to_set(int32_t other_lev) {
-  if (uip_clause.empty()) return 0;
+uint32_t Counter::find_lev_to_set(const int32_t implied_lit_lev) {
+  assert(!uip_clause.empty());
   if (uip_clause.size() == 1) return 0;
   int32_t max_lev = 0;
   bool updated = false;
   uint32_t switch_to = 0;
   for (uint32_t i = 0; i < uip_clause.size(); i++) {
     int32_t lev = var(uip_clause[i]).decision_level;
-      if (lev > max_lev && lev < other_lev) {
+      if (lev > max_lev && lev < implied_lit_lev) {
         max_lev = lev;
         updated = true;
         switch_to = i;
@@ -1416,49 +1420,14 @@ void Counter::check_implied(const vector<Lit>& cl) {
   }
 }
 
-Counter::ConflictData Counter::find_conflict_level() {
-	ConflictData data;
-  Lit* c;
-  uint32_t size;
-  fill_cl(confl, c, size, NOT_A_LIT);
-	data.nHighestLevel = var(c[0]).decision_level;
-  int32_t curr_dl = var(top_dec_lit()).decision_level;
-	if (data.nHighestLevel == curr_dl && var(c[1]).decision_level == curr_dl) return data;
-
-	/* int highestId = 0; */
-    data.bOnlyOneLitFromHighest = true;
-	// find the largest decision level in the clause
-	for (uint32_t nLitId = 1; nLitId < size; ++nLitId) {
-		int32_t nLevel = var(c[nLitId]).decision_level;
-		if (nLevel > data.nHighestLevel) {
-			/* highestId = nLitId; */
-			data.nHighestLevel = nLevel;
-			data.bOnlyOneLitFromHighest = true;
-		} else if (nLevel == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
-			data.bOnlyOneLitFromHighest = false;
-		}
-	}
-
-  // fixing clause & watchlist
-  assert(false && "TODO below");
-	/* if (highestId != 0) { */
-	/* 	std::swap(c[0], c[highestId]); */
-	/* 	if (highestId > 1 && size > 2) { */
-      /* assert(confl.isAClause()); */
-      /* ClauseOfs off = confl.asCl(); */
-	/* 		remove(watches_[c[highestId].neg()].watch_list_, ClOffsBlckL(off, c[1])); */
-	/* 		ws[~conflCls[0]].push(Watcher(cind, conflCls[1])); */
-	/* 	} */
-	/* } */
-	return data;
-}
-
 retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 
-
   recordLastUIPCauses();
+  if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
+    unit_clauses_.push_back(uip_clause[0]);
+
   assert(uip_clause.front() != NOT_A_LIT);
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/conf.act_exp;
@@ -1482,42 +1451,23 @@ retStateT Counter::resolveConflict() {
   int32_t backj = find_backtrack_level_of_learnt();
   int32_t lev_to_set = find_lev_to_set(backj);
 
-  // This is DEFINITELY a decision, right?
-  debug_print("backj initially: " << backj);
-  /* assert(variables_[decision_stack_.at(backj).var].ante == Antecedent(NOT_A_CLAUSE)); */
-  lev_to_set = std::min(lev_to_set, backj);
+  debug_print("backj: " << backj);
   bool flipped = (
       uip_clause[0].neg().var() == decision_stack_.at(backj).var
        && lev_to_set+1 == backj);
-  if (!flipped) {
-    /* cout << "--------------" << endl << endl; */
-    /* print_trail(false); */
-    /* print_conflict_info(); */
-    /* cout << "Not adding. backj: " << backj << " lev_to_set: " << lev_to_set */
-    /*   << " current lev: " << decision_stack_.get_decision_level() << endl; */
-    if (uip_clause.size() == 1) {
-      if (!existsUnitClauseOf(uip_clause[0])) unit_clauses_.push_back(uip_clause[0]);
-    }
-    if (conf.do_save_uip && uip_clause.size() > 1) {
-      if (saved_uip_cls.size() <= (uint32_t)lev_to_set) saved_uip_cls.resize(lev_to_set+1);
-        // Latest seems better than smallest, so just upgrade to latest
-        if (!saved_uip_cls[lev_to_set].empty()) stats.saved_uip_thrown++;
-        saved_uip_cls[lev_to_set] = uip_clause;
-        stats.saved_uip++;
-    }
 
-    stats.uip_not_added++;
-    decision_stack_.top().resetRemainingComps();
-    if (decision_stack_.top().is_right_branch()) {
-      return BACKTRACK;
-    } else {
-      decision_stack_.top().change_to_right_branch();
-      auto lit = top_dec_lit();
-      reactivate_comps_and_backtrack_trail(false);
-      setLiteral(lit.neg(), decision_stack_.get_decision_level(), Antecedent::fakeAnte());
-      return RESOLVED;
-    }
+  if (!flipped) {
+    cout << "--------------" << endl << endl;
+    print_trail(false);
+    print_conflict_info();
+    cout << "Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
+      << " current lev: " << decision_level() << endl;
+    go_back_to(backj);
+    auto ant = addUIPConflictClause(uip_clause);
+    setLiteral(uip_clause[0], decision_level(), ant);
+    return RESOLVED;
   }
+
   assert(flipped);
   VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -1704,7 +1654,7 @@ Counter::SavedUIPRet Counter::deal_with_saved_uips() {
   return Counter::SavedUIPRet::cont;
 }
 
-bool Counter::prop_and_probe() {
+bool Counter::prop_and_add_saveduips() {
   VERBOSE_DEBUG_DO(cout << "in " << __FUNCTION__ << " now. " << endl);
   // the asserted literal has been set, so we start
   // bcp on that literal
@@ -1753,10 +1703,6 @@ bool Counter::propagate() {
       } else if (val(l) == X_TRI) {
         setLiteral(l, lev, Antecedent(unLit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
-      /* } else if (val(l) == T_TRI && var(l).decision_level > lev) { */
-      /*   var(l).ante = Antecedent(unLit); */
-      /*   debug_print("Updated ante of " << l << " to: " << unLit); */
-      /*   /1* var(l).decision_level = lev; *1/ */
       }
     }
 
@@ -1811,17 +1757,6 @@ bool Counter::propagate() {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
           debug_print("Conflicting state from norm cl offs: " << ofs);
-          if (lev != decision_stack_.get_decision_level()) {
-            int32_t maxlev = lev;
-            uint32_t maxind = 1;
-            get_maxlev_maxind(ofs, maxlev, maxind);
-            if (maxind != 1) {
-              debug_print("swapping. maxlev: " << maxlev << " maxind: " << maxind << " c[1]: " << c[1] << " c[maxind]: " << c[maxind]);
-              std::swap(c[1], c[maxind]);
-              it2--; // undo last watch
-              litWatchList(c[1]).addWatchLinkTo(ofs, it->blckLit);
-            }
-          }
           setConflictState(&c);
           it++;
           break;
@@ -2495,27 +2430,41 @@ void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) co
   } else {assert(false);}
 }
 
-int32_t Counter::get_confl_maxlev(const Lit p) const {
+Counter::ConflictData Counter::find_conflict_level(Lit p) {
+  ConflictData data;
   Lit* c;
-  uint32_t size = 0;
+  uint32_t size;
   fill_cl(confl, c, size, p);
+  data.nHighestLevel = var(c[0]).decision_level;
+  if (data.nHighestLevel == 0) {assert(false && "No UNSAT possible");}
+  if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
+    return data;
 
-  int32_t maxlev = -1;
-  for(uint32_t i = 0; i < size; i ++) {
-#ifdef VERBOSE_DEBUG
-    cout << "confl cl[" << std::setw(5) << i << "]"
-        << " lit: " << std::setw(5) << c[i]
-        << " lev: " << std::setw(3) << var(c[i]).decision_level
-        << " ante: " << std::setw(8) << var(c[i]).ante
-        << " val : " << std::setw(7) << lit_val_str(c[i])
-        << endl;
-#endif
-    if (var(c[i]).decision_level > maxlev) maxlev = var(c[i]).decision_level;
+  int highestId = 0;
+  data.bOnlyOneLitFromHighest = true;
+  // find the largest decision level in the clause
+  for (uint32_t nLitId = 1; nLitId < size; ++nLitId) {
+    int32_t nLevel = var(c[nLitId]).decision_level;
+    if (nLevel > data.nHighestLevel) {
+      highestId = nLitId;
+      data.nHighestLevel = nLevel;
+      data.bOnlyOneLitFromHighest = true;
+    } else if (nLevel == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
+      data.bOnlyOneLitFromHighest = false;
+    }
   }
-  VERBOSE_DEBUG_DO(cout << "maxlev: " << maxlev << endl);
-  VERBOSE_DEBUG_DO(print_dec_info());
-  assert(var(c[0]).decision_level == var(c[1]).decision_level);
-  return maxlev;
+
+  // fixing clause & watchlist
+  if (highestId != 0 && confl.isAClause()) {
+    Clause& cl = *alloc->ptr(confl.asCl());
+    std::swap(cl[0], cl[highestId]);
+    if (highestId > 1 && size > 2) {
+      ClauseOfs off = confl.asCl();
+      litWatchList(cl[highestId]).removeWatchLinkTo(off);
+      litWatchList(c[1]).addWatchLinkTo(off, c[0]);
+    }
+  }
+	return data;
 }
 
 void Counter::recordLastUIPCauses() {
@@ -2526,13 +2475,7 @@ void Counter::recordLastUIPCauses() {
   Lit p = NOT_A_LIT;
 
   SLOW_DEBUG_DO(for(const auto& t:seen) assert(t == 0););
-  int32_t DL = var(top_dec_lit()).decision_level;
-  VERBOSE_DEBUG_DO(cout << "orig DL: " << decision_stack_.get_decision_level() << endl);
-  VERBOSE_DEBUG_DO(cout << "new DL : " << DL << endl);
   VERBOSE_DEBUG_DO(print_dec_info());
-  int32_t maxlev = get_confl_maxlev(p);
-  go_back_to(maxlev);
-  DL = var(top_dec_lit()).decision_level;
 
   Lit* c;
   uint32_t size;
@@ -2565,7 +2508,7 @@ void Counter::recordLastUIPCauses() {
 #endif
     int32_t nDecisionLevel = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
-    if (p == NOT_A_LIT) assert(nDecisionLevel == DL);
+    if (p == NOT_A_LIT) assert(nDecisionLevel == decision_level());
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {

@@ -52,6 +52,19 @@ enum retStateT
   GO_AGAIN
 };
 
+inline std::ostream& operator<<(std::ostream& os, const retStateT& val) {
+  std::stringstream s;
+  switch (val) {
+    case EXIT : os << "EXIT"; break;
+    case RESOLVED: os << "RESOLVED"; break;
+    case PROCESS_COMPONENT: os << "PROCESS_COMPONENT"; break;
+    case BACKTRACK : os << "BACKTRACK"; break;
+    case GO_AGAIN : os << "GO_AGAIN"; break;
+  }
+  return os;
+}
+
+
 struct VS {
   VS() {}
   VS(uint32_t _v, double _score1, uint32_t _score2) : v(_v), score1(_score1), score2(_score2) {}
@@ -81,7 +94,7 @@ public:
     int32_t nHighestLevel;
     bool bOnlyOneLitFromHighest;
   };
-  ConflictData find_conflict_level();
+  ConflictData find_conflict_level(Lit p);
 
   double scoreOf(VariableIndex v) {
     if (conf.branch_type == branch_t::sharptd) {
@@ -112,6 +125,7 @@ public:
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
+  int32_t decision_level() const { return decision_stack_.get_decision_level();}
 
   // deal with saved uip
   enum class SavedUIPRet {prop_again, ret_false, cont};
@@ -164,7 +178,7 @@ private:
   bool clause_falsified(const vector<Lit>& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
-  bool prop_and_probe();
+  bool prop_and_add_saveduips();
   bool compute_cube(Cube& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
@@ -192,7 +206,7 @@ private:
   // otherwise returns BACKTRACK
   retStateT resolveConflict();
   void go_back_to(int32_t backj);
-  uint32_t find_lev_to_set(int32_t other_lev);
+  uint32_t find_lev_to_set(int32_t implied_lit_lev);
   size_t find_backtrack_level_of_learnt();
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void check_trail(bool check_entail = true) const;
@@ -293,22 +307,24 @@ private:
     debug_print("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
-    /* qhead = std::min<int32_t>(qhead, jt - trail.begin()); // TODO something is wrong here. */
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
       assert(dl != -1);
       if (dl < decision_stack_.get_decision_level()) {
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
-        VERBOSE_DEBUG_DO(cout << "Backing up, setting sublevel lit " << std::setw(5) << *it << " sublev: " << var(*it).sublevel << endl);
+        VERBOSE_DEBUG_DO(cout << "Backing up, setting:" << std::setw(5) << *it
+            << " sublev: " << var(*it).sublevel << endl);
       } else {
-        VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
+        VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it
+            << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
         unSet(*it);
       }
     }
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(jt - trail.begin());
+    qhead = variables_[decision_stack_.top().var].sublevel;
     decision_stack_.top().resetRemainingComps();
   }
 
@@ -329,7 +345,6 @@ private:
   vector<Lit> uip_clause;
   vector<vector<Lit>> saved_uip_cls;
 
-  int32_t get_confl_maxlev(const Lit p) const;
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
   void recordLastUIPCauses();
   void minimizeUIPClause();

@@ -559,7 +559,7 @@ SOLVER_StateT Counter::countSAT() {
 
       while (!prop_and_add_saveduips()) {
         auto data = find_conflict_level(conflLit);
-        if (data.bOnlyOneLitFromHighest) {go_back_to(data.nHighestLevel); continue;}
+        if (data.bOnlyOneLitFromHighest) {go_back_to(data.nHighestLevel-1); continue;}
         state = resolveConflict();
         while(state == GO_AGAIN) state = resolveConflict();
         if (state == BACKTRACK) break;
@@ -577,7 +577,7 @@ SOLVER_StateT Counter::countSAT() {
 
     while (!prop_and_add_saveduips()) {
       auto data = find_conflict_level(conflLit);
-      if (data.bOnlyOneLitFromHighest) { go_back_to(data.nHighestLevel); continue; }
+      if (data.bOnlyOneLitFromHighest) {go_back_to(data.nHighestLevel-1); continue;}
       state = resolveConflict();
       while(state == GO_AGAIN) state = resolveConflict();
       if (state == BACKTRACK) {
@@ -1289,26 +1289,24 @@ size_t Counter::find_backtrack_level_of_learnt() {
   return var(uip_clause[0]).decision_level;
 }
 
-uint32_t Counter::find_lev_to_set(const int32_t implied_lit_lev) {
+uint32_t Counter::find_lev_to_set(const int32_t backj) {
   assert(!uip_clause.empty());
   if (uip_clause.size() == 1) return 0;
-  int32_t max_lev = 0;
+  int32_t lev_to_set = 0;
   bool updated = false;
   uint32_t switch_to = 0;
   for (uint32_t i = 0; i < uip_clause.size(); i++) {
     int32_t lev = var(uip_clause[i]).decision_level;
-      if (lev > max_lev && lev < implied_lit_lev) {
-        max_lev = lev;
+      if (lev > lev_to_set && lev < backj) {
+        lev_to_set = lev;
         updated = true;
         switch_to = i;
       }
   }
-#ifdef VERBOSE_DEBUG
-  cout << "max_lev: " << max_lev << " other_lev: " << other_lev << " updated: " << (int)updated << endl;
-#endif
+  debug_print("lev_to_set: " << lev_to_set << " backj: " << backj << " updated: " << (int)updated);
   assert(updated);
   std::swap(uip_clause[1], uip_clause[switch_to]);
-  return max_lev;
+  return lev_to_set;
 }
 
 void Counter::print_trail(bool check_entail, bool check_anything) const
@@ -1451,24 +1449,24 @@ retStateT Counter::resolveConflict() {
   int32_t backj = find_backtrack_level_of_learnt();
   int32_t lev_to_set = find_lev_to_set(backj);
 
-  debug_print("backj: " << backj);
-  bool flipped = (
+  debug_print("backj: " << backj << " lev_to_set: " << lev_to_set);
+  bool flipped_declit = (
       uip_clause[0].neg().var() == decision_stack_.at(backj).var
        && lev_to_set+1 == backj);
 
-  if (!flipped) {
-    cout << "--------------" << endl << endl;
+  if (!flipped_declit) {
+    cout << "---- NOT FLIPPED DECLIT ----------" << endl;
     print_trail(false);
     print_conflict_info();
     cout << "Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
       << " current lev: " << decision_level() << endl;
-    go_back_to(backj);
+    go_back_to(backj-1);
     auto ant = addUIPConflictClause(uip_clause);
     setLiteral(uip_clause[0], decision_level(), ant);
     return RESOLVED;
   }
 
-  assert(flipped);
+  assert(flipped_declit);
   VERBOSE_DEBUG_DO(cout << "after finding backj lev: " << backj << " lev_to_set: " << lev_to_set <<  endl);
   VERBOSE_DEBUG_DO(print_conflict_info());
 

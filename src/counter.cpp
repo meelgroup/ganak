@@ -718,10 +718,6 @@ uint32_t Counter::find_best_branch(bool do_indep)
   return best_var;
 }
 
-void Counter::shuffle_activities(MTRand &mtrand2) {
-  for(auto& v: watches_) v.activity=act_inc*mtrand2.randExc();
-}
-
 // add decisions, components, and counts
 bool Counter::compute_cube(Cube& c, int branch) {
   assert(c.val == 0);
@@ -1859,44 +1855,6 @@ bool Counter::propagate() {
   SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated());
   debug_print("After propagate, qhead is: " << qhead);
   return confl.isNull();
-}
-
-void Counter::get_activities(vector<double>& acts, vector<uint8_t>& polars,
-    double& ret_act_inc, vector<uint32_t>& comp_acts) const
-{
-  acts.resize((nVars()+1)*2);
-  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
-    acts[l.raw()] = watches_[l].activity;
-  polars.clear();
-  for(const auto& v: variables_) polars.push_back(v.last_polarity);
-  comp_acts.clear();
-  for(uint32_t i = 0; i < nVars()+1; i++) comp_acts.push_back(comp_manager_->scoreOf(i));
-  ret_act_inc = act_inc;
-
-  // TODO get learnt clauses too
-    /* for(auto cl_ofs: conflict_clauses_) { */
-    /*     const ClHeader* ch = (const ClHeader *) */
-    /*       ( &lit_pool_[cl_ofs - ClHeader::overheadInLits()]); */
-    /*     auto sz = ch->length(); */
-    /* } */
-}
-
-void Counter::set_activities(const vector<double>& acts, const vector<uint8_t>& polars,
-    double ret_act_inc, vector<uint32_t>& comp_acts)
-{
-  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc())
-    watches_[l].activity = acts[l.raw()];
-
-  for(uint32_t i = 0; i < nVars()+1; i++) comp_manager_->scoreOf(i) = comp_acts[i];
-
-  uint32_t i = 0;
-  for(auto& v: variables_) {
-    v.set_once = true;
-    v.last_polarity = polars[i];
-    i++;
-  }
-
-  act_inc = ret_act_inc;
 }
 
 const DataAndStatistics& Counter::get_stats() const

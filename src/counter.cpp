@@ -1666,9 +1666,6 @@ Counter::SavedUIPRet Counter::deal_with_saved_uips() {
 
 bool Counter::prop_and_add_saveduips() {
   VERBOSE_DEBUG_DO(cout << "in " << __FUNCTION__ << " now. " << endl);
-  // the asserted literal has been set, so we start
-  // bcp on that literal
-  assert(trail.size() > 0 && "Mate added this, but it seems OK");
 
   bool bSucceeded;
 prop_again:;

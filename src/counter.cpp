@@ -2521,6 +2521,13 @@ void Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
     int32_t nDecisionLevel = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
+
+
+    // This is a bit tricky. We sometimes cheat: when we flip a decision because of
+    // a UIP conflict, we set its decision level to the reason decision. This is usually
+    // (always?) one less than the actual decision level. Hence, here, on the RHS, we should
+    // have decision_level() but that's not accurate. So I set it to the decision level
+    // of the last decision literal.
     if (p == NOT_A_LIT) assert(nDecisionLevel == var(top_dec_lit()).decision_level);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);

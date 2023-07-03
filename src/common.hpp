@@ -49,22 +49,19 @@ THE SOFTWARE.
 #define COLDEF "\033[0m"
 
 #ifdef SLOW_DEBUG
-#define SLOW_DEBUG_DO(x) \
-    do { x; } while (0)
+#define SLOW_DEBUG_DO(x) do { x; } while (0)
 #else
 #define SLOW_DEBUG_DO(x) do { } while (0)
 #endif
 
 #ifdef VERY_SLOW_DEBUG
-#define VERY_SLOW_DEBUG_DO(x) \
-    do { x; } while (0)
+#define VERY_SLOW_DEBUG_DO(x) do { x; } while (0)
 #else
 #define VERY_SLOW_DEBUG_DO(x) do { } while (0)
 #endif
 
 #ifdef CHECK_COUNT
-#define CHECK_COUNT_DO(x) \
-    do { x; } while (0)
+#define CHECK_COUNT_DO(x) do { x; } while (0)
 #else
 #define CHECK_COUNT_DO(x) do { } while (0)
 #endif

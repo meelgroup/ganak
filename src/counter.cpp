@@ -1474,7 +1474,7 @@ retStateT Counter::resolveConflict() {
       << " current lev: " << decision_level() << endl;
     go_back_to(backj-1);
     auto ant = addUIPConflictClause(uip_clause);
-    setLiteral(uip_clause[0], decision_level(), ant);
+    setLiteral(uip_clause[0], lev_to_set, ant);
     return RESOLVED;
   }
 

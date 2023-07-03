@@ -210,6 +210,7 @@ private:
   size_t find_backtrack_level_of_learnt();
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void check_trail(bool check_entail = true) const;
+  bool chrono_work();
 
   void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent())
   {
@@ -290,8 +291,7 @@ private:
     decision_stack_.back().change_to_right_branch();
   }
 
-  const Lit &top_dec_lit() const
-  {
+  const Lit &top_dec_lit() const {
     return *top_declevel_trail_begin();
   }
 
@@ -324,7 +324,8 @@ private:
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(jt - trail.begin());
-    qhead = variables_[decision_stack_.top().var].sublevel;
+    if (decision_level() == 0) qhead = 0;
+    else qhead = variables_[decision_stack_[decision_level()-1].var].sublevel;
     decision_stack_.top().resetRemainingComps();
   }
 
@@ -346,6 +347,7 @@ private:
   vector<vector<Lit>> saved_uip_cls;
 
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
+  void print_cl(Lit* c, uint32_t size);
   void recordLastUIPCauses();
   void minimizeUIPClause();
   uint32_t abstractLevel(const uint32_t x) const;

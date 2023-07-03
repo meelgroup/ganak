@@ -540,6 +540,20 @@ void Counter::print_stat_line() {
   next_print_stat_confl = stats.conflicts + (30LL*1000LL);
 }
 
+bool Counter::chrono_work() {
+  cout << "--- CHRONO CHECK ----" << endl;
+  print_trail();
+  auto data = find_conflict_level(conflLit);
+  if (data.bOnlyOneLitFromHighest) {
+    cout << "ChronoBTG. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level() << endl;
+    go_back_to(data.nHighestLevel-1);
+    print_trail();
+    cout << "Dec lev: " << decision_level() << endl;
+    return true;
+  }
+  return false;
+}
+
 SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
@@ -558,8 +572,7 @@ SOLVER_StateT Counter::countSAT() {
       print_stat_line();
 
       while (!prop_and_add_saveduips()) {
-        auto data = find_conflict_level(conflLit);
-        if (data.bOnlyOneLitFromHighest) {go_back_to(data.nHighestLevel-1); continue;}
+        if (chrono_work()) continue;
         state = resolveConflict();
         while(state == GO_AGAIN) state = resolveConflict();
         if (state == BACKTRACK) break;
@@ -576,8 +589,7 @@ SOLVER_StateT Counter::countSAT() {
     if (state == EXIT) return SUCCESS;
 
     while (!prop_and_add_saveduips()) {
-      auto data = find_conflict_level(conflLit);
-      if (data.bOnlyOneLitFromHighest) {go_back_to(data.nHighestLevel-1); continue;}
+      if (chrono_work()) continue;
       state = resolveConflict();
       while(state == GO_AGAIN) state = resolveConflict();
       if (state == BACKTRACK) {
@@ -1309,8 +1321,7 @@ uint32_t Counter::find_lev_to_set(const int32_t backj) {
   return lev_to_set;
 }
 
-void Counter::print_trail(bool check_entail, bool check_anything) const
-{
+void Counter::print_trail(bool check_entail, bool check_anything) const {
   cout << "Current trail :" << endl;
   for(uint32_t i = 0; i < trail.size(); i++) {
     const auto l = trail[i];
@@ -1321,6 +1332,7 @@ void Counter::print_trail(bool check_entail, bool check_anything) const
     << " trail pos: " << std::setw(4) << i
     << " sublevel: "  << std::setw(3) << var(l).sublevel << endl;
   }
+  cout << "qhead: " << qhead << endl;
   if (check_anything) check_trail(check_entail);
 }
 
@@ -2433,6 +2445,7 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   Lit* c;
   uint32_t size;
   fill_cl(confl, c, size, p);
+  cout << "CL in find_conflict_level: " << endl;print_cl(c, size);
   data.nHighestLevel = var(c[0]).decision_level;
   if (data.nHighestLevel == 0) {assert(false && "No UNSAT possible");}
   if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
@@ -2441,13 +2454,13 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   int highestId = 0;
   data.bOnlyOneLitFromHighest = true;
   // find the largest decision level in the clause
-  for (uint32_t nLitId = 1; nLitId < size; ++nLitId) {
-    int32_t nLevel = var(c[nLitId]).decision_level;
-    if (nLevel > data.nHighestLevel) {
-      highestId = nLitId;
-      data.nHighestLevel = nLevel;
+  for (uint32_t i = 1; i < size; ++i) {
+    int32_t lev = var(c[i]).decision_level;
+    if (lev > data.nHighestLevel) {
+      highestId = i;
+      data.nHighestLevel = lev;
       data.bOnlyOneLitFromHighest = true;
-    } else if (nLevel == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
+    } else if (lev == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
       data.bOnlyOneLitFromHighest = false;
     }
   }
@@ -2463,6 +2476,17 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
     }
   }
 	return data;
+}
+
+void Counter::print_cl(Lit* c, uint32_t size) {
+  for(uint32_t i = 0; i < size; i++) {
+    Lit l = c[i];
+    cout << std::setw(5) << l
+      << " lev: " << std::setw(3) << var(l).decision_level
+      << " ante: " << std::setw(8) << var(l).ante
+      << " val : " << std::setw(7) << lit_val_str(l)
+      << endl;
+  }
 }
 
 void Counter::recordLastUIPCauses() {
@@ -2494,16 +2518,7 @@ void Counter::recordLastUIPCauses() {
         std::swap(c[0], c[1]);
     }
 
-    VERBOSE_DEBUG_DO(cout << "next cl: " << endl);
-#ifdef VERBOSE_DEBUG
-    for(uint32_t i = 0; i < size; i++) {
-      Lit l = c[i];
-      cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-        << " ante: " << std::setw(8) << var(l).ante
-        << " val : " << std::setw(7) << lit_val_str(l)
-        << endl;
-    }
-#endif
+    VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
     int32_t nDecisionLevel = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
     if (p == NOT_A_LIT) assert(nDecisionLevel == decision_level());

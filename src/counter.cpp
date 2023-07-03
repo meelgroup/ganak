@@ -2569,7 +2569,7 @@ void Counter::recordLastUIPCauses() {
   } while (pathC > 0);
   assert(pathC == 0);
   uip_clause[0] = p.neg();
-  VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause, uip_clause.size()));
+  VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause.data(), uip_clause.size()));
   SLOW_DEBUG_DO(check_implied(uip_clause));
   minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));

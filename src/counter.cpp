@@ -2521,7 +2521,7 @@ void Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
     int32_t nDecisionLevel = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
-    if (p == NOT_A_LIT) assert(nDecisionLevel == decision_level());
+    if (p == NOT_A_LIT) assert(nDecisionLevel == var(top_dec_lit()).decision_level);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {

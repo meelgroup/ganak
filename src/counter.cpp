@@ -2521,8 +2521,6 @@ void Counter::recordLastUIPCauses() {
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
     int32_t nDecisionLevel = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
-
-
     // This is a bit tricky. We sometimes cheat: when we flip a decision because of
     // a UIP conflict, we set its decision level to the reason decision. This is usually
     // (always?) one less than the actual decision level. Hence, here, on the RHS, we should
@@ -2538,7 +2536,8 @@ void Counter::recordLastUIPCauses() {
         seen[q.var()] = 1;
         toClear.push_back(q.var());
 #ifdef VERBOSE_DEBUG
-        cout << std::setw(5) << q << " lev: " << std::setw(3) << var(q).decision_level
+        cout << std::setw(5) << q
+          << " lev: " << std::setw(3) << var(q).decision_level
           << " ante: " << std::setw(8) << var(q).ante
           << " val : " << std::setw(7) << lit_val_str(q)
           << endl;
@@ -2559,7 +2558,8 @@ void Counter::recordLastUIPCauses() {
       p = trail[index+1];
       assert(p != NOT_A_LIT);
 #ifdef VERBOSE_DEBUG
-      cout << "going back on trail: " << std::setw(5) << p<< " lev: " << std::setw(3) << var(p).decision_level
+      cout << "going back on trail: " << std::setw(5) << p
+        << " lev: " << std::setw(3) << var(p).decision_level
         << " ante: " << std::setw(8) << var(p).ante
         << " val : " << std::setw(7) << lit_val_str(p)
         << endl;
@@ -2572,15 +2572,7 @@ void Counter::recordLastUIPCauses() {
   } while (pathC > 0);
   assert(pathC == 0);
   uip_clause[0] = p.neg();
-#ifdef VERBOSE_DEBUG
-  cout << "UIP cl: " << endl;
-  for(const auto& l: uip_clause) {
-      cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-        << " ante: " << std::setw(14) << var(l).ante
-        << " val : " << std::setw(7) << lit_val_str(l)
-        << endl;
-  }
-#endif
+  VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause, uip_clause.size()));
   SLOW_DEBUG_DO(check_implied(uip_clause));
   minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));

@@ -1794,7 +1794,7 @@ bool Counter::propagate() {
   }
   VERY_SLOW_DEBUG_DO(if (confl.isNull() && !check_watchlists()) {
       print_trail(false, false);assert(false);});
-  SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated());
+  SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated_conflicted());
   debug_print("After propagate, qhead is: " << qhead);
   return confl.isNull();
 }
@@ -2475,17 +2475,6 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
 	return data;
 }
 
-void Counter::print_cl(Lit* c, uint32_t size) {
-  for(uint32_t i = 0; i < size; i++) {
-    Lit l = c[i];
-    cout << std::setw(5) << l
-      << " lev: " << std::setw(3) << var(l).decision_level
-      << " ante: " << std::setw(8) << var(l).ante
-      << " val : " << std::setw(7) << lit_val_str(l)
-      << endl;
-  }
-}
-
 void Counter::recordLastUIPCauses() {
   assert(toClear.empty());
 
@@ -2631,22 +2620,38 @@ bool Counter::check_watchlists() const {
 }
 
 #ifdef SLOW_DEBUG
-void Instance::check_all_propagated() const {
-  // Everything that should have propagated, propagated
-  for(const auto& cl: debug_irred_cls) {
-    Lit unk = NOT_A_LIT;
-    uint32_t num_unknown = 0;
-    bool satisfied = false;
-    for(const auto& l: cl) {
-      if (isTrue(l)) {satisfied = true; break;}
-      if (isUnknown(l)) {num_unknown++; unk = l;}
-      if (num_unknown > 1) break;
-    }
+template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
+  Lit unk = NOT_A_LIT;
+  uint32_t num_unknown = 0;
+  bool satisfied = false;
+  for(const auto& l: cl) {
+    if (isTrue(l)) {satisfied = true; break;}
+    if (isUnknown(l)) {num_unknown++; unk = l;}
+    if (num_unknown > 1) break;
+  }
 
-    if (!satisfied && num_unknown == 1) {
-      cout << "ERROR! Clause: " << cl << " should have propagated: " << unk << endl;
-      assert(false);
-    }
+  if (!satisfied && num_unknown == 1) {
+    cout << "ERROR! Clause should have propagated: " << unk << endl;
+    print_cl(cl);
+    assert(false);
+  }
+  if (!satisfied && num_unknown == 0) {
+    cout << "ERROR! Clause should have conflicted" << endl;
+    print_cl(cl);
+    assert(false);
+  }
+}
+
+void Counter::check_all_propagated_conflicted() const {
+  // Everything that should have propagated, propagated
+  for(const auto& cl: debug_irred_cls) check_cl_propagated_conflicted(cl);
+  for(const auto& off: longIrredCls) {
+    const Clause& cl = *alloc->ptr(off);
+    check_cl_propagated_conflicted(cl);
+  }
+  for(const auto& off: longRedCls) {
+    const Clause& cl = *alloc->ptr(off);
+    check_cl_propagated_conflicted(cl);
   }
 }
 #endif

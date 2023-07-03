@@ -190,6 +190,8 @@ private:
   template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   bool check_watchlists() const;
+  template<class T> void check_cl_propagated_conflicted(T& cl) const;
+  void check_all_propagated_conflicted() const;
 
   void print_all_levels();
   bool restart_if_needed();
@@ -198,6 +200,7 @@ private:
   void print_dec_info() const;
   template<class T> void print_cl(const T& cl) const;
   template<class T> void v_print_cl(const T& cl) const;
+  void print_cl(const Lit* c, uint32_t size);
   void print_conflict_info() const;
   void print_comp_stack_info() const;
 
@@ -347,7 +350,6 @@ private:
   vector<vector<Lit>> saved_uip_cls;
 
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
-  void print_cl(Lit* c, uint32_t size);
   void recordLastUIPCauses();
   void minimizeUIPClause();
   uint32_t abstractLevel(const uint32_t x) const;
@@ -401,22 +403,33 @@ private:
   bool ended_irred_cls = false;
 };
 
+inline void Counter::print_cl(const Lit* c, uint32_t size) {
+  for(uint32_t i = 0; i < size; i++) {
+    Lit l = c[i];
+    cout << std::setw(5) << l
+      << " lev: " << std::setw(3) << var(l).decision_level
+      << " ante: " << std::setw(8) << var(l).ante
+      << " val: " << std::setw(7) << lit_val_str(l)
+      << endl;
+  }
+}
+
 template<class T> void Counter::print_cl(const T& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << "lit " << std::setw(6) << l
+    cout << std::setw(5) << l
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante
-    << " val: " << lit_val_str(l) << endl;
+      << " val: " << lit_val_str(l) << endl;
   }
 }
 
 template<class T> void Counter::v_print_cl(const T& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << "lit " << std::setw(6) << l
+    cout << std::setw(5) << l
       << " lev: " << std::setw(4) << v_levs[l.var()]
-    << " val: " << val_str(v_val(l)) << endl;
+      << " val: " << val_str(v_val(l)) << endl;
   }
 }
 

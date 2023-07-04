@@ -162,12 +162,14 @@ public:
   double activity = 0.0;
 
   void removeWatchLinkTo(ClauseOfs offs) {
-    for (auto it = watch_list_.begin(); it != watch_list_.end(); it++)
+    for (auto it = watch_list_.begin(); it != watch_list_.end(); it++) {
       if (it->ofs == offs) {
         *it = watch_list_.back();
         watch_list_.pop_back();
         return;
       }
+    }
+    assert(false && "should have found it!");
   }
 
   void replaceWatchLinkTo(ClauseOfs off, ClauseOfs replace_ofs) {

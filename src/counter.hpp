@@ -311,10 +311,12 @@ private:
     debug_print("->reactivate and backtrack...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
+    int32_t off_by = 0;
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
       assert(dl != -1);
       if (dl < decision_stack_.get_decision_level()) {
+        off_by++;
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
         VERBOSE_DEBUG_DO(cout << "Backing up, setting:" << std::setw(5) << *it
@@ -329,7 +331,7 @@ private:
     comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
-    else qhead = variables_[decision_stack_[decision_level()-1].var].sublevel;
+    else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
     decision_stack_.top().resetRemainingComps();
   }
 

@@ -304,14 +304,14 @@ public:
     if (_lbd > 250) return;
     if (_lbd < lbd) lbd = _lbd;
   }
-  Lit* getData() const {
+  Lit* data() const {
     return (Lit*)((char*)this + sizeof(Clause));
   }
   Lit* begin() {
-    return getData();
+    return data();
   }
   const Lit* begin() const {
-    return getData();
+    return data();
   }
   const Lit* end() const {
     return begin()+sz;
@@ -320,9 +320,9 @@ public:
     return begin()+sz;
   }
   Lit& operator[](uint32_t at) {
-    return *(getData()+at);
+    return *(data()+at);
   }
   const Lit& operator[](uint32_t at) const {
-    return *(getData()+at);
+    return *(data()+at);
   }
 };

@@ -1475,6 +1475,7 @@ retStateT Counter::resolveConflict() {
     go_back_to(backj-1);
     auto ant = addUIPConflictClause(uip_clause);
     setLiteral(uip_clause[0], lev_to_set, ant);
+    VERBOSE_DEBUG_DO(print_trail());
     return RESOLVED;
   }
 
@@ -1489,8 +1490,7 @@ retStateT Counter::resolveConflict() {
   Antecedent ant;
   assert(!uip_clause.empty());
   SLOW_DEBUG_DO(check_implied(uip_clause));
-  if (decision_stack_.get_decision_level() > 0 &&
-      top_dec_lit().neg() == uip_clause[0]) {
+  if (decision_stack_.get_decision_level() > 0 && top_dec_lit().neg() == uip_clause[0]) {
     debug_print("FLIPPING. Setting reason the conflict cl");
     assert(var(uip_clause[0]).decision_level != -1);
     ant = addUIPConflictClause(uip_clause);
@@ -2422,7 +2422,7 @@ void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const
 void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const {
   if (ante.isAClause()) {
     Clause* cl = alloc->ptr(ante.asCl());
-    c = cl->getData();
+    c = cl->data();
     size = cl->sz;
   } else if (ante.isFake()) {
     create_fake(p, size, c);
@@ -2503,6 +2503,7 @@ void Counter::recordLastUIPCauses() {
       if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
         std::swap(c[0], c[1]);
     }
+    SLOW_DEBUG_DO(if (p == NOT_A_LIT) check_cl_unsat(c, size));
 
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
     int32_t nDecisionLevel = var(c[0]).decision_level;

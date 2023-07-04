@@ -200,7 +200,8 @@ private:
   void print_dec_info() const;
   template<class T> void print_cl(const T& cl) const;
   template<class T> void v_print_cl(const T& cl) const;
-  void print_cl(const Lit* c, uint32_t size);
+  void print_cl(const Lit* c, uint32_t size) const;
+  void check_cl_unsat(Lit* c, uint32_t size) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
 
@@ -403,7 +404,7 @@ private:
   bool ended_irred_cls = false;
 };
 
-inline void Counter::print_cl(const Lit* c, uint32_t size) {
+inline void Counter::print_cl(const Lit* c, uint32_t size) const {
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
     cout << std::setw(5) << l
@@ -447,4 +448,16 @@ template<class T> bool Counter::propagating_cl(T& cl) const {
     if (val(l) == X_TRI) {unk++; if (unk>1) break;}
   }
   return unk == 1;
+}
+
+inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
+  bool all_false = true;
+  for(uint32_t i = 0; i < size; i++) {
+    if (val(c[i]) != F_TRI) {all_false = false; break;}
+  }
+  if (all_false) return;
+
+  cout << "ERROR: clause is not falsified." << endl;
+  print_cl(c, size);
+  assert(false);
 }

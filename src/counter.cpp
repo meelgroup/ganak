@@ -2465,7 +2465,7 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   // fixing clause & watchlist
   if (highestId != 0 && confl.isAClause()) {
     Clause& cl = *alloc->ptr(confl.asCl());
-    std::swap(cl[0], cl[highestId]);
+    std::swap(cl[1], cl[highestId]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
     if (highestId > 1 && size > 2) {
       ClauseOfs off = confl.asCl();
       litWatchList(cl[highestId]).removeWatchLinkTo(off);
@@ -2484,6 +2484,7 @@ void Counter::recordLastUIPCauses() {
 
   SLOW_DEBUG_DO(for(const auto& t:seen) assert(t == 0););
   VERBOSE_DEBUG_DO(print_dec_info());
+  int32_t nDecisionLevel;
 
   Lit* c;
   uint32_t size;
@@ -2506,14 +2507,8 @@ void Counter::recordLastUIPCauses() {
     SLOW_DEBUG_DO(if (p == NOT_A_LIT) check_cl_unsat(c, size));
 
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
-    int32_t nDecisionLevel = var(c[0]).decision_level;
+    if (p == NOT_A_LIT) nDecisionLevel = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
-    // This is a bit tricky. We sometimes cheat: when we flip a decision because of
-    // a UIP conflict, we set its decision level to the reason decision. This is usually
-    // (always?) one less than the actual decision level. Hence, here, on the RHS, we should
-    // have decision_level() but that's not accurate. So I set it to the decision level
-    // of the last decision literal.
-    if (p == NOT_A_LIT) assert(nDecisionLevel == var(top_dec_lit()).decision_level);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {

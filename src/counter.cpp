@@ -541,14 +541,14 @@ void Counter::print_stat_line() {
 }
 
 bool Counter::chrono_work() {
-  cout << "--- CHRONO CHECK ----" << endl;
-  print_trail();
+  debug_print("--- CHRONO CHECK ----");
+  VERBOSE_DEBUG_DO(print_trail());
   auto data = find_conflict_level(conflLit);
   if (data.bOnlyOneLitFromHighest) {
-    cout << "ChronoBTG. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level() << endl;
+    debug_print("ChronoBTG. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
     go_back_to(data.nHighestLevel-1);
-    print_trail();
-    cout << "Dec lev: " << decision_level() << endl;
+    VERBOSE_DEBUG_DO(print_trail());
+    debug_print("Dec lev: " << decision_level());
     return true;
   }
   return false;
@@ -1467,11 +1467,11 @@ retStateT Counter::resolveConflict() {
        && lev_to_set+1 == backj);
 
   if (!flipped_declit) {
-    cout << "---- NOT FLIPPED DECLIT ----------" << endl;
-    print_trail(false);
-    print_conflict_info();
-    cout << "Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
-      << " current lev: " << decision_level() << endl;
+    debug_print("---- NOT FLIPPED DECLIT ----------");
+    VERBOSE_DEBUG_DO(print_trail());
+    VERBOSE_DEBUG_DO(print_conflict_info());
+    debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
+      << " current lev: " << decision_level());
     go_back_to(backj-1);
     auto ant = addUIPConflictClause(uip_clause);
     setLiteral(uip_clause[0], lev_to_set, ant);
@@ -2442,7 +2442,7 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   Lit* c;
   uint32_t size;
   fill_cl(confl, c, size, p);
-  cout << "CL in find_conflict_level: " << endl;print_cl(c, size);
+  debug_print("CL in find_conflict_level: " << endl;print_cl(c, size));
   data.nHighestLevel = var(c[0]).decision_level;
   if (data.nHighestLevel == 0) {assert(false && "No UNSAT possible");}
   if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
@@ -2463,9 +2463,11 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   }
 
   // fixing clause & watchlist
-  if (highestId != 0 && confl.isAClause()) {
+  if (highestId != 1 && confl.isAClause()) {
     Clause& cl = *alloc->ptr(confl.asCl());
     std::swap(cl[1], cl[highestId]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
+    debug_print("SWAPPED");
+    VERBOSE_DEBUG_DO(print_cl(cl.data(), cl.size()));
     if (highestId > 1 && size > 2) {
       ClauseOfs off = confl.asCl();
       litWatchList(cl[highestId]).removeWatchLinkTo(off);

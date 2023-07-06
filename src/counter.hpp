@@ -315,7 +315,7 @@ private:
     for (; it != trail.end(); it++) {
       int32_t dl = var(*it).decision_level;
       assert(dl != -1);
-      if (dl < decision_stack_.get_decision_level()) {
+      if (dl < decision_level()) {
         off_by++;
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;

@@ -871,6 +871,21 @@ void Counter::print_restart_data() const
   cout << std::right;
 }
 
+static double luby(double y, int x){
+    // Find the finite subsequence that contains index 'x', and the
+    // size of that subsequence:
+    int size, seq;
+    for (size = 1, seq = 0; size < x+1; seq++, size = 2*size+1);
+
+    while (size-1 != x){
+        size = (size-1)>>1;
+        seq--;
+        x = x % size;
+    }
+
+    return pow(y, seq);
+}
+
 bool Counter::restart_if_needed() {
   cache_miss_rate_q.push(stats.cache_miss_rate());
   depth_q.push(decision_stack_.size());
@@ -921,6 +936,11 @@ bool Counter::restart_if_needed() {
 
   if (conf.restart_type == 6 &&
       (stats.conflicts-stats.last_restart_num_conflicts) > conf.next_restart)
+    restart = true;
+
+  if (conf.restart_type == 7 &&
+      (stats.conflicts-stats.last_restart_num_conflicts) >
+        (luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
   if (conf.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
@@ -977,6 +997,7 @@ bool Counter::restart_if_needed() {
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
   }
+  stats.num_restarts++;
   return true;
 }
 

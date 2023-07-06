@@ -86,6 +86,7 @@ public:
   uint64_t  orig_uip_lits = 0;
   uint64_t last_restart_num_conflicts = 0;
   uint64_t last_restart_num_decisions = 0;
+  uint32_t num_restarts = 0;
 
   uint64_t saved_uip = 0;
   uint64_t saved_uip_used = 0;

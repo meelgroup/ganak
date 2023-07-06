@@ -2274,7 +2274,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
           vdat.ante = Antecedent(otherLit);
         }
       }
-      markClauseDeleted(off);
+      alloc->clauseFree(off);
       fun_ret = true;
     } else {
       litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);

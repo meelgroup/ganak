@@ -96,16 +96,14 @@ THE SOFTWARE.
         } \
     } while (0)
 
-inline double float_div(const double a, const double b)
-{
+inline double float_div(const double a, const double b) {
     if (b != 0)
         return a/b;
 
     return 0;
 }
 
-inline std::string print_value_kilo_mega(const int64_t value, bool setw = true)
-{
+inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {
   std::stringstream ss;
   if (value > 20*1000LL*1000LL) {
     if (setw) {

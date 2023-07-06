@@ -2614,6 +2614,38 @@ bool Counter::check_watchlists() const {
       }
     }
   }
+
+  // Check that all clauses are attached 2x in the watchlist
+  map<ClauseOfs, uint32_t> off_att_num;
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit lit = Lit(i/2, i%2);
+    for(const auto& ws: watches_[lit].watch_list_) {
+      if (off_att_num.find(ws.ofs) == off_att_num.end()) off_att_num[ws.ofs] = 1;
+      else off_att_num[ws.ofs]++;
+    }
+  }
+  auto check_attach = [&](ClauseOfs off) {
+    if (off_att_num.find(off) == off_att_num.end()) {
+      cout << "ERROR: Not found clause in watchlist." << endl;
+      print_cl(*alloc->ptr(off));
+      ret = false;
+    }
+    if (off_att_num[off] !=2 ) {
+      cout << "ERROR: Clause not attached 2 times. It's attached: " << off_att_num[off] << " times" << endl;
+      print_cl(*alloc->ptr(off));
+      ret = false;
+    }
+    off_att_num.erase(off);
+  };
+  for(const auto& off: longIrredCls) check_attach(off);
+  for(const auto& off: longRedCls) check_attach(off);
+  if (!off_att_num.empty()) {
+    cout << "ERROR: The following clauses are attached but are NOT in longRed/longIrred clauses" << endl;
+    for(const auto& p: off_att_num) {
+      cout << "Offset: " << p.first << endl;
+      print_cl(*alloc->ptr(p.first));
+    }
+  }
   return ret;
 }
 

@@ -398,6 +398,9 @@ private:
   uint32_t v_backtrack_to;
   LiteralIndexedVector<TriValue> v_values;
 
+  // Toplevel vivification
+  void vivify_cl_toplevel(vector<Lit>& cl);
+
   void print_stat_line();
   uint64_t next_print_stat_cache = 20000;
   uint64_t next_print_stat_confl = 5000;

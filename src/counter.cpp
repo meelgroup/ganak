@@ -465,7 +465,10 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       if (ret == CMSat::l_False) break;
 
       // Add cubes to counter
-      for(const auto& c: tmp_cubes) if (c.enabled) add_irred_cl(c.cnf);
+      for(auto it = tmp_cubes.rbegin(); it != tmp_cubes.rend(); it++) if (it->enabled) {
+        vivify_cl_toplevel(it->cnf);
+        add_irred_cl(it->cnf);
+      }
       decision_stack_.clear();
       vivify_clauses(true, true);
       end_irred_cls();
@@ -2416,6 +2419,34 @@ bool Counter::v_propagate() {
   }
   debug_print("After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
   return ret;
+}
+
+void Counter::vivify_cl_toplevel(vector<Lit>& cl) {
+  /* cout << "orig CL: " << endl; print_cl(cl); */
+  assert(decision_level() == 0);
+  decision_stack_.push_back(
+  StackLevel(decision_stack_.top().currentRemainingComponent(),
+             comp_manager_->comp_stack_size()));
+  v_tmp2 = cl;
+  cl.clear();
+  std::shuffle(v_tmp2.begin(), v_tmp2.end(), vivif_g);
+
+  for(uint32_t i = 0; i < v_tmp2.size(); i++) {
+    const auto& l = v_tmp2[i];
+    debug_print("Vivif lit l: " << l << " val: " << val_str(val(l)));
+    if (val(l) == T_TRI) {cl.push_back(l);break;}
+    if (val(l) == F_TRI) continue;
+    cl.push_back(l);
+    setLiteral(l.neg(), 1);
+    bool ret = propagate();
+    if (!ret) {
+      debug_print("vivif ret FALSE, exiting");
+      break;
+    }
+  }
+  reactivate_comps_and_backtrack_trail();
+  decision_stack_.pop_back();
+  /* cout << "toplevel vivified CL: " << endl; print_cl(cl); */
 }
 
 void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const

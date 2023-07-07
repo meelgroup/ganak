@@ -84,6 +84,32 @@ struct OffAbs {
   uint32_t abs;
 };
 
+struct BinClSub {
+  BinClSub (Lit _lit1, Lit _lit2, bool _red) :
+    red(_red) {
+      lit[0] = _lit1;
+      lit[1] = _lit2;
+    }
+
+  uint32_t size() const { return 2; }
+  const Lit* begin() const {return &lit[0];}
+  Lit* begin() {return &lit[0];}
+  const Lit* end() const {return begin()+2;}
+  Lit* end() {return begin()+2;}
+  Lit& operator[](const uint32_t at) {return lit[at];}
+  const Lit& operator[](const uint32_t at) const {return lit[at];}
+
+  Lit lit[2];
+  bool red;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const BinClSub& cl) {
+  for(const auto& l: cl) os << l << " ";
+  os << "0" << " (red: " << (int)cl.red << ")";
+  return os;
+}
+
+
 class ClauseAllocator;
 
 // There is only one counter
@@ -424,6 +450,7 @@ private:
   vec<vec<OffAbs>> occ;
   vector<ClauseOfs> clauses;
   void backw_susume_cl(ClauseOfs off);
+  void backw_susume_cl_with_bin(BinClSub& b);
 
   void print_stat_line();
   uint64_t next_print_stat_cache = 20000;

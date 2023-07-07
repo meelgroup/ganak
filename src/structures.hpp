@@ -335,7 +335,6 @@ inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {
     << " (red: " << (int)cl.red << " lbd: " << (int)cl.lbd
     << " used: " << (int)cl.used << " total_used: " << (int)cl.total_used
     << " vivifed: " << (int)cl.vivifed
-    << " freed: " << (int)cl.freed
-    << std::endl;
+    << " freed: " << (int)cl.freed;
   return os;
 }

@@ -2686,7 +2686,6 @@ void Counter::attach_occ(vector<ClauseOfs>& cls) {
   cls.clear();
 }
 
-
 void Counter::backw_susume_cl(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   uint32_t abs = calcAbstraction(cl);
@@ -2719,6 +2718,32 @@ void Counter::backw_susume_cl(ClauseOfs off) {
   }
 }
 
+void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
+  uint32_t abs = calcAbstraction(cl);
+  uint32_t smallest = numeric_limits<uint32_t>::max();
+  uint32_t smallest_at = 0;
+  for(uint32_t i = 0; i < cl.size(); i++) {
+    Lit l = cl[i];
+    if (occ[l.raw()].size() < smallest) {
+      smallest = occ[l.raw()].size();
+      smallest_at = i;
+    }
+  }
+
+  for(const auto& check: occ[cl[smallest_at].raw()]) {
+    if (!subsetAbst(abs, check.abs)) continue;
+    Clause& check_cl = *alloc->ptr(check.off);
+    if (check_cl.freed) continue;
+    if (subset(cl, check_cl)) {
+      if (cl.red && !check_cl.red) cl.red = false;
+      debug_print( "Subsumed cl: " << check_cl << endl
+                << "->by cl    : " << cl);
+      alloc->clauseFree(&check_cl);
+      stats.subsumed_cls++;
+    }
+  }
+}
+
 void Counter::subsume_all() {
   assert(decision_stack_.size() == 0);
   assert(occ.empty());
@@ -2733,15 +2758,29 @@ void Counter::subsume_all() {
   attach_occ(longRedCls);
   for(auto& ws: watches_) ws.watch_list_.clear();
 
+  // Binary clauses
+  vector<BinClSub> bin_cls;
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit lit = Lit(i/2, i%2);
+    for(const auto& l2: watches_[lit].binary_links_) {
+      if (l2.lit() < lit) continue;
+      assert(lit < l2.lit());
+      bin_cls.push_back(BinClSub(lit, l2.lit(), l2.red()));
+    }
+    watches_[lit].binary_links_.clear();
+  }
+  for(auto& b: bin_cls) backw_susume_cl_with_bin(b);
+
+  // Long clauses
+  std::shuffle(clauses.begin(), clauses.end(), std::default_random_engine(mtrand.randInt()));
   for(const auto& off: clauses) {
     Clause* cl = alloc->ptr(off);
     if (cl->freed) continue;
     backw_susume_cl(off);
   }
 
-  // TODO subsume with binary clauses!
-
-  // cleanup
+  // Cleanup
+  for(const auto& b: bin_cls) add_bin_cl(b[0], b[1], b.red);
   for(const auto& off: clauses) {
     Clause& cl = *alloc->ptr(off);
     if (cl.freed) continue;

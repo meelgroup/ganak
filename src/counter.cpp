@@ -892,32 +892,8 @@ static double luby(double y, int x){
 bool Counter::restart_if_needed() {
   cache_miss_rate_q.push(stats.cache_miss_rate());
   depth_q.push(decision_stack_.size());
-  /* if (cache_miss_rate_queue.isvalid()) { */
-  /*     cout << " Lterm miss avg: " << cache_miss_rate_queue.getLongtTerm().avg() */
-  /*     << " Sterm miss avg: " << cache_miss_rate_queue.avg() */
-  /*     << endl; */
-  /* } */
-  /* if (comp_size_queue.isvalid()) { */
-  /*     cout << " Lterm comp size avg: " << comp_size_queue.getLongtTerm().avg() */
-  /*     << " Sterm comp size avg: " << comp_size_queue.avg() */
-  /*     << endl; */
-  /* } */
-  /* if (depth_queue.isvalid()) { */
-  /*     cout << " Lterm dec avg: " << std::setw(5) << depth_queue.getLongtTerm().avg() */
-  /*     << " Sterm dec avg: " << std::setw(5) << depth_queue.avg() */
-  /*     << endl; */
-  /* } */
-  /* if (stats.comp_size_per_depth.isvalid()) { */
-  /*     cout */
-  /*       << " Lterm compsz/depth avg: " */
-  /*       << std::setw(9) << stats.comp_size_per_depth.getLongtTerm().avg() */
-  /*     << " Sterm compsz/depth avg: " */
-  /*     << std::setw(9) << stats.comp_size_per_depth.avg() */
-  /*     << " depth: " << decision_stack_.size()-1 */
-  /*     << endl; */
-  /* } */
-
   if (!conf.do_restart) return false;
+
   bool restart = false;
   if (conf.restart_type == 0
       && comp_size_q.isvalid() &&
@@ -955,9 +931,6 @@ bool Counter::restart_if_needed() {
         stats.comp_size_times_depth_q.avg() >
           stats.comp_size_times_depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
       restart = true;
-
-  // don't restart if we didn't change the scores
-  /* if (stats.last_restart_num_conflicts == stats.conflicts) restart = false; */
 
   if (!restart) return false;
   verb_print(1, "c  ************* Restarting.  **************");

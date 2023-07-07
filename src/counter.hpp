@@ -77,6 +77,13 @@ struct VS {
   uint32_t score2 = 0;
 };
 
+
+struct OffAbs {
+  OffAbs(ClauseOfs _off, uint32_t _abs) : off(_off), abs(_abs) {}
+  ClauseOfs off;
+  uint32_t abs;
+};
+
 class ClauseAllocator;
 
 // There is only one counter
@@ -398,8 +405,25 @@ private:
   uint32_t v_backtrack_to;
   LiteralIndexedVector<TriValue> v_values;
 
-  // Toplevel vivification
+  // Toplevel stuff
   void vivify_cl_toplevel(vector<Lit>& cl);
+  void subsume_all();
+  void attach_occ(vector<ClauseOfs>& offs);
+  inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
+  template <class T> uint32_t calcAbstraction(const T& ps) {
+    uint32_t abs = 0;
+    if (ps.size() > 50) return ~((uint32_t)(0ULL));
+    for (auto l: ps) abs |= abst_var(l.var());
+    return abs;
+  }
+  inline bool subsetAbst(const uint32_t A, const uint32_t B) {
+      return ((A & ~B) == 0);
+  }
+
+  template<class T1, class T2> bool subset(const T1& A, const T2& B);
+  vec<vec<OffAbs>> occ;
+  vector<ClauseOfs> clauses;
+  void backw_susume_cl(ClauseOfs off);
 
   void print_stat_line();
   uint64_t next_print_stat_cache = 20000;
@@ -465,4 +489,38 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
   cout << "ERROR: clause is not falsified." << endl;
   print_cl(c, size);
   assert(false);
+}
+
+template<class T1, class T2> bool Counter::subset(const T1& A, const T2& B) {
+#ifdef VERBOSE_DEBUG
+  cout << "A:" << A << endl;
+  for(size_t i = 1; i < A.size(); i++) assert(A[i-1] < A[i]);
+  cout << "B:" << B << endl;
+  for(size_t i = 1; i < B.size(); i++) assert(B[i-1] < B[i]);
+#endif
+  bool ret;
+  uint32_t i = 0;
+  uint32_t i2;
+  Lit lastB = NOT_A_LIT;
+  for (i2 = 0; i2 < B.size(); i2++) {
+    if (lastB != NOT_A_LIT) assert(lastB < B[i2]);
+    lastB = B[i2];
+    //Literals are ordered
+    if (A[i] < B[i2]) {
+        ret = false;
+        goto end;
+    }
+    else if (A[i] == B[i2]) {
+      i++;
+      //went through the whole of A now, so A subsumes B
+      if (i == A.size()) {
+          ret = true;
+          goto end;
+      }
+    }
+  }
+  ret = false;
+
+  end:
+  return ret;
 }

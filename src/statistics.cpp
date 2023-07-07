@@ -98,6 +98,11 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(9) << vivif_cl_minim << " "
     << std::setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
   );
+  
+  verb_print(1, "subs runs/cls  "
+    << std::setw(9) << subsume_runs << " "
+    << std::setw(9) << subsumed_cls << " "
+  );
 
   verb_print(1, "probes/flits/bplits K          "
     << std::left

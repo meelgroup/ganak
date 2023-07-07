@@ -471,6 +471,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       }
       decision_stack_.clear();
       vivify_clauses(true, true);
+      subsume_all();
       end_irred_cls();
     }
   } else if (ret == CMSat::l_True) {
@@ -2672,6 +2673,86 @@ bool Counter::check_watchlists() const {
     }
   }
   return ret;
+}
+
+void Counter::attach_occ(vector<ClauseOfs>& cls) {
+  for(const auto& off: cls) {
+    clauses.push_back(off);
+    Clause& cl = *alloc->ptr(off);
+    std::sort(cl.begin(), cl.end());
+    auto abs = calcAbstraction(cl);
+    for(const auto& l: cl) occ[l.raw()].push_back(OffAbs(off, abs));
+  }
+  cls.clear();
+}
+
+
+void Counter::backw_susume_cl(ClauseOfs off) {
+  Clause& cl = *alloc->ptr(off);
+  uint32_t abs = calcAbstraction(cl);
+  uint32_t smallest = numeric_limits<uint32_t>::max();
+  uint32_t smallest_at = 0;
+  for(uint32_t i = 0; i < cl.size(); i++) {
+    Lit l = cl[i];
+    if (occ[l.raw()].size() < smallest) {
+      smallest = occ[l.raw()].size();
+      smallest_at = i;
+    }
+  }
+
+  for(const auto& check: occ[cl[smallest_at].raw()]) {
+    if (off == check.off) continue;
+    if (!subsetAbst(abs, check.abs)) continue;
+    Clause& check_cl = *alloc->ptr(check.off);
+    if (check_cl.freed) continue;
+    if (subset(cl, check_cl)) {
+      if (cl.red && !check_cl.red) cl.red = false;
+      if (cl.red && check_cl.red) {
+        cl.used |= check_cl.used;
+        cl.total_used += check_cl.total_used;
+      }
+      debug_print( "Subsumed cl: " << check_cl << endl
+                << "->by cl    : " << cl);
+      alloc->clauseFree(&check_cl);
+      stats.subsumed_cls++;
+    }
+  }
+}
+
+void Counter::subsume_all() {
+  assert(decision_stack_.size() == 0);
+  assert(occ.empty());
+  assert(clauses.empty());
+
+  // setup
+  double myTime = cpuTime();
+  auto old_subsumed_cls = stats.subsumed_cls;
+  stats.subsume_runs++;
+  occ.resize((nVars()+1)*2);
+  attach_occ(longIrredCls);
+  attach_occ(longRedCls);
+  for(auto& ws: watches_) ws.watch_list_.clear();
+
+  for(const auto& off: clauses) {
+    Clause* cl = alloc->ptr(off);
+    if (cl->freed) continue;
+    backw_susume_cl(off);
+  }
+
+  // TODO subsume with binary clauses!
+
+  // cleanup
+  for(const auto& off: clauses) {
+    Clause& cl = *alloc->ptr(off);
+    if (cl.freed) continue;
+    if (cl.red) longRedCls.push_back(off);
+    else longIrredCls.push_back(off);
+    attach_cl(off, cl);
+  }
+  occ.clear();
+  clauses.clear();
+  verb_print(1, "subs cls: " << stats.subsumed_cls - old_subsumed_cls
+      << " T: " << (cpuTime() - myTime))
 }
 
 #ifdef SLOW_DEBUG

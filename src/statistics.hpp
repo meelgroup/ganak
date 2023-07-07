@@ -102,6 +102,10 @@ public:
   uint64_t vivif_cl_minim = 0;
   uint64_t vivif_lit_rem = 0;
 
+  // Subsumption
+  uint64_t subsume_runs = 0;
+  uint64_t subsumed_cls = 0;
+
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
   uint64_t num_cache_look_ups_ = 0;

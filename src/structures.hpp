@@ -328,3 +328,14 @@ public:
     return *(data()+at);
   }
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {
+  for(const auto& l: cl) os << l << " ";
+  os << "0"
+    << " (red: " << (int)cl.red << " lbd: " << (int)cl.lbd
+    << " used: " << (int)cl.used << " total_used: " << (int)cl.total_used
+    << " vivifed: " << (int)cl.vivifed
+    << " freed: " << (int)cl.freed
+    << std::endl;
+  return os;
+}

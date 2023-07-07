@@ -49,7 +49,6 @@ struct CounterConfiguration {
   uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 1;
   int polar_type = 1; // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
-  int do_save_uip = 1;
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;

@@ -211,7 +211,6 @@ private:
   bool clause_falsified(const vector<Lit>& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
-  bool prop_and_add_saveduips();
   bool compute_cube(Cube& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
@@ -383,7 +382,6 @@ private:
   //      uip_clause the 1UIP clause found
   //  possible clauses in between will be other UIP clauses
   vector<Lit> uip_clause;
-  vector<vector<Lit>> saved_uip_cls;
 
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
   void recordLastUIPCauses();

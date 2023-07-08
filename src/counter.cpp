@@ -2646,6 +2646,7 @@ void Counter::subsume_all() {
   // setup
   double myTime = cpuTime();
   auto old_subsumed_cls = stats.subsumed_cls;
+  auto old_subsumed_bin_cls = stats.subsumed_bin_cls;
   stats.subsume_runs++;
   occ.resize((nVars()+1)*2);
   attach_occ(longIrredCls);
@@ -2663,6 +2664,21 @@ void Counter::subsume_all() {
     }
     watches_[lit].binary_links_.clear();
   }
+  std::sort(bin_cls.begin(), bin_cls.end());
+  uint32_t j = 0;
+  for(uint32_t i = 1; i < bin_cls.size(); i++) {
+    if (bin_cls[i] == bin_cls[j]) {stats.subsumed_bin_cls++; continue;}
+    if (bin_cls[i].lit[0] == bin_cls[j].lit[0]
+       && bin_cls[i].lit[1] == bin_cls[j].lit[1]) {
+      // ordering ensures IRRED is first
+      stats.subsumed_bin_cls++;
+      continue;
+    }
+    j++;
+    bin_cls[j] = bin_cls[i];
+  }
+  j++;
+  if (!bin_cls.empty()) bin_cls.resize(j);
   for(auto& b: bin_cls) backw_susume_cl_with_bin(b);
 
   // Long clauses
@@ -2684,7 +2700,9 @@ void Counter::subsume_all() {
   }
   occ.clear();
   clauses.clear();
-  verb_print(1, "subs cls: " << stats.subsumed_cls - old_subsumed_cls
+  verb_print(1, "subs "
+      << " bin-cls: " << stats.subsumed_bin_cls - old_subsumed_bin_cls
+      << " long-cls: " << stats.subsumed_cls - old_subsumed_cls
       << " T: " << (cpuTime() - myTime))
 }
 

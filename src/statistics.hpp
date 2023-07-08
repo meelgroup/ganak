@@ -104,6 +104,7 @@ public:
 
   // Subsumption
   uint64_t subsume_runs = 0;
+  uint64_t subsumed_bin_cls = 0;
   uint64_t subsumed_cls = 0;
 
   /* cache statistics */

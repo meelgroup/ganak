@@ -99,8 +99,9 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
   );
   
-  verb_print(1, "subs runs/cls  "
+  verb_print(1, "toplev subs runs/bins/long-cls "
     << std::setw(9) << subsume_runs << " "
+    << std::setw(9) << subsumed_bin_cls << " "
     << std::setw(9) << subsumed_cls << " "
   );
 

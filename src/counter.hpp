@@ -85,6 +85,7 @@ struct OffAbs {
 };
 
 struct BinClSub {
+  BinClSub() {}
   BinClSub (Lit _lit1, Lit _lit2, bool _red) :
     red(_red) {
       lit[0] = _lit1;
@@ -98,6 +99,16 @@ struct BinClSub {
   Lit* end() {return begin()+2;}
   Lit& operator[](const uint32_t at) {return lit[at];}
   const Lit& operator[](const uint32_t at) const {return lit[at];}
+  bool operator<(const BinClSub& other) const {
+    if (lit[0] != other.lit[0]) return lit[0]<other.lit[0];
+    if (lit[1] != other.lit[1]) return lit[1]<other.lit[1];
+    if (red != other.red) return !red;
+    return false;
+  }
+  bool operator==(const BinClSub& other) const {
+    return lit[0] == other.lit[0] && lit[1] == other.lit[1] &&
+      red == other.red;
+  }
 
   Lit lit[2];
   bool red;

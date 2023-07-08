@@ -1590,6 +1590,7 @@ bool Counter::propagate() {
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
+    bool lev_at_declev = decision_stack_.size() <= 1 ? true : (var(top_dec_lit()).decision_level == lev);
     debug_print("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
@@ -1661,7 +1662,7 @@ bool Counter::propagate() {
         } else {
           assert(val(c[0]) == X_TRI);
           debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << decision_stack_.get_decision_level());
-          if (lev == decision_stack_.get_decision_level()) {
+          if (lev_at_declev) {
             setLiteral(c[0], lev, Antecedent(ofs));
             debug_print("Norm long prop: " << c[0] << " lev: " << lev);
           } else {

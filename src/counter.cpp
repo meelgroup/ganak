@@ -2641,31 +2641,84 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
 }
 
 void Counter::full_probe() {
+  SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
+  assert(toClear.empty());
+
   double myTime = cpuTime();
-  auto old = stats.num_toplevel_probe_fail;
-  stats.num_toplevel_probe_runs++;
+  auto old_probe = stats.toplevel_probe_fail;
+  auto old_bprop = stats.toplevel_bothprop_fail;
+  stats.toplevel_probe_runs++;
   assert(decision_stack_.size() == 0);
   // 0 dec level.
   decision_stack_.push_back(StackLevel(1,2));
 
   for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    if (i % 2 == 1) continue;
     Lit l = Lit(i/2, i%2);
     if (val(l) != X_TRI) continue;
+
+    assert(decision_level() == 0);
     decision_stack_.push_back(StackLevel(1,2));
     decision_stack_.back().var = l.var();
     setLiteral(l, 1);
+    uint32_t trail_before = trail.size();
     bool ret = propagate();
+    if (ret) {
+      for(uint32_t i2 = trail_before; i2 < trail.size(); i2++) {
+        Lit l2 = trail[i2];
+        seen[l2.raw()] = 1;
+        toClear.push_back(l2.raw());
+      }
+    }
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
     if (!ret) {
       setLiteral(l.neg(), 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
-      stats.num_toplevel_probe_fail++;
+      stats.toplevel_probe_fail++;
+      continue;
     }
+
+    // Negation
+    assert(decision_level() == 0);
+    decision_stack_.push_back(StackLevel(1,2));
+    decision_stack_.back().var = l.var();
+    setLiteral(l.neg(), 1);
+
+    trail_before = trail.size();
+    ret = propagate();
+    if (ret) {
+      for(uint32_t i2 = trail_before; i2 < trail.size(); i2++) {
+        Lit l2 = trail[i2];
+        if (seen[l2.raw()] == 1) {
+          bothprop_toset.push_back(l2);
+          stats.toplevel_bothprop_fail++;
+        }
+      }
+    }
+    reactivate_comps_and_backtrack_trail();
+    decision_stack_.pop_back();
+    if (!ret) {
+      for(const auto& x: toClear) seen[x] = 0;
+      toClear.clear();
+      setLiteral(l, 0);
+      ret = propagate();
+      assert(ret && "we are never UNSAT");
+      stats.toplevel_probe_fail++;
+      continue;
+    }
+    for(const auto& x: toClear) seen[x] = 0;
+    toClear.clear();
+    for(const auto& x: bothprop_toset) setLiteral(x, 0);
+    bothprop_toset.clear();
+    ret = propagate();
+    assert(ret && "we are never UNSAT");
   }
   decision_stack_.clear();
-  verb_print(1, "toplevel probe failed: " << (old - stats.num_toplevel_probe_fail)
+  verb_print(1, "toplevel "
+      << " probe f: " << (old_probe - stats.toplevel_probe_fail)
+      << " bprop f: " << (old_bprop - stats.toplevel_bothprop_fail)
       << " T: " << (cpuTime()-myTime));
 }
 

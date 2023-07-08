@@ -460,7 +460,7 @@ private:
   vector<ClauseOfs> clauses;
   void backw_susume_cl(ClauseOfs off);
   void backw_susume_cl_with_bin(BinClSub& b);
-  void full_probe();
+  void toplevel_full_probe();
   vector<Lit> bothprop_toset;
 
   void print_stat_line();

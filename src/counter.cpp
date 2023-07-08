@@ -475,7 +475,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       if (stats.num_restarts %2 == 0) {
         vivify_clauses(true, true);
         subsume_all();
-        full_probe();
+        toplevel_full_probe();
       }
       end_irred_cls();
     }
@@ -2640,7 +2640,7 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
   }
 }
 
-void Counter::full_probe() {
+void Counter::toplevel_full_probe() {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   assert(toClear.empty());
 

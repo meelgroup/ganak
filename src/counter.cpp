@@ -470,8 +470,11 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
         add_irred_cl(it->cnf);
       }
       decision_stack_.clear();
-      vivify_clauses(true, true);
-      subsume_all();
+      if (stats.num_restarts %2 == 0) {
+        vivify_clauses(true, true);
+        subsume_all();
+        full_probe();
+      }
       end_irred_cls();
     }
   } else if (ret == CMSat::l_True) {

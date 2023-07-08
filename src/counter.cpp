@@ -667,9 +667,7 @@ bool Counter::decideLiteral() {
       << decision_stack_.get_decision_level());
   setLiteral(lit, decision_stack_.get_decision_level());
   stats.decisions++;
-  if (stats.decisions % 128 == 0) {
-    comp_manager_->rescale_cache_scores();
-  }
+  if (stats.decisions % 128 == 0) comp_manager_->rescale_cache_scores();
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   return true;
 }

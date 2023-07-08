@@ -460,6 +460,7 @@ private:
   vector<ClauseOfs> clauses;
   void backw_susume_cl(ClauseOfs off);
   void backw_susume_cl_with_bin(BinClSub& b);
+  void full_probe();
 
   void print_stat_line();
   uint64_t next_print_stat_cache = 20000;

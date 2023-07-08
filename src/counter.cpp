@@ -2638,6 +2638,35 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
   }
 }
 
+void Counter::full_probe() {
+  double myTime = cpuTime();
+  auto old = stats.num_toplevel_probe_fail;
+  stats.num_toplevel_probe_runs++;
+  assert(decision_stack_.size() == 0);
+  // 0 dec level.
+  decision_stack_.push_back(StackLevel(1,2));
+
+  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+    Lit l = Lit(i/2, i%2);
+    if (val(l) != X_TRI) continue;
+    decision_stack_.push_back(StackLevel(1,2));
+    decision_stack_.back().var = l.var();
+    setLiteral(l, 1);
+    bool ret = propagate();
+    reactivate_comps_and_backtrack_trail();
+    decision_stack_.pop_back();
+    if (!ret) {
+      setLiteral(l.neg(), 0);
+      ret = propagate();
+      assert(ret && "we are never UNSAT");
+      stats.num_toplevel_probe_fail++;
+    }
+  }
+  decision_stack_.clear();
+  verb_print(1, "toplevel probe failed: " << (old - stats.num_toplevel_probe_fail)
+      << " T: " << (cpuTime()-myTime));
+}
+
 void Counter::subsume_all() {
   assert(decision_stack_.size() == 0);
   assert(occ.empty());

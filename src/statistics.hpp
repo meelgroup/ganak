@@ -102,6 +102,10 @@ public:
   uint64_t vivif_cl_minim = 0;
   uint64_t vivif_lit_rem = 0;
 
+  // Toplevel probing
+  uint64_t num_toplevel_probe_runs = 0;
+  uint64_t num_toplevel_probe_fail = 0;
+
   // Subsumption
   uint64_t subsume_runs = 0;
   uint64_t subsumed_bin_cls = 0;

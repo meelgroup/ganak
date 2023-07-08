@@ -104,6 +104,10 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(9) << subsumed_bin_cls << " "
     << std::setw(9) << subsumed_cls << " "
   );
+  verb_print(1, "toplevel probe runs/fail       "
+    << std::setw(9) << num_toplevel_probe_runs << " "
+    << std::setw(9) << num_toplevel_probe_fail << " "
+  );
 
   verb_print(1, "probes/flits/bplits K          "
     << std::left

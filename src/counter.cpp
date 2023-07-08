@@ -2650,9 +2650,8 @@ void Counter::toplevel_full_probe() {
   // 0 dec level.
   decision_stack_.push_back(StackLevel(1,2));
 
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
-    if (i % 2 == 1) continue;
-    Lit l = Lit(i/2, i%2);
+  for(uint32_t i = 1; i <= nVars(); i++) {
+    Lit l = Lit(i, 0);
     if (val(l) != X_TRI) continue;
 
     assert(decision_level() == 0);

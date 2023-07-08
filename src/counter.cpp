@@ -434,8 +434,10 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       count(tmp_cubes);
       num_runs++;
       cout << "Num runs: " << num_runs << endl;
-      cout << "tmp cubes     : " << endl;
-      for(const auto&c: tmp_cubes) cout << "-> " << c << endl;
+      if (conf.verb > 1) {
+        cout << "tmp cubes     : " << endl;
+        for(const auto&c: tmp_cubes) cout << "-> " << c << endl;
+      }
 #ifdef SLOW_DEBUG
       for(const auto& c: tmp_cubes) {
         auto check_cnt = check_norestart(c);
@@ -501,10 +503,10 @@ void Counter::count(vector<Cube>& ret_cubes) {
   }
 
   const auto exit_state = countSAT();
-  if (conf.verb) stats.printShort(this, &comp_manager_->get_cache());
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
   } else {
+    if (conf.verb) stats.printShort(this, &comp_manager_->get_cache());
     assert(exit_state == SUCCESS);
     Cube c(vector<Lit>(), decision_stack_.top().getTotalModelCount());
     ret_cubes.push_back(c);
@@ -939,13 +941,13 @@ bool Counter::restart_if_needed() {
   if (!restart) return false;
   verb_print(1, "c  ************* Restarting.  **************");
   print_restart_data();
-  verb_print(1, "Num decisions since last restart: "
+  verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions
     << endl
-    << "c Num conflicts since last restart: "
+    << "c o Num conflicts since last restart: "
     << stats.conflicts-stats.last_restart_num_conflicts
     << endl
-    << "c Num cache lookups since last restart: "
+    << "c o Num cache lookups since last restart: "
     << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups);
 
   // Reset stats

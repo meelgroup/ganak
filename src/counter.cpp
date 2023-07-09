@@ -525,6 +525,8 @@ void Counter::print_all_levels() {
       << " remaining comp ofs: " << decision_stack_.at(dec_lev).remaining_comps_ofs()
       << " num unproc'd comps: " << decision_stack_.at(dec_lev).numUnprocessedComponents()
       << " count: " << decision_stack_.at(dec_lev).getTotalModelCount()
+      << " (left: " << decision_stack_.at(dec_lev).get_left_model_count()
+      << " right: " << decision_stack_.at(dec_lev).get_right_model_count() << ")"
       << endl;
 
     const auto& c = comp_manager_->at(sup_at);
@@ -592,7 +594,13 @@ SOLVER_StateT Counter::countSAT() {
       }
       print_stat_line();
       if (!isindependent) {
+        debug_print("before SAT mode. cnt dec: " << decision_stack_.top().getTotalModelCount()
+            << " left: " << decision_stack_.top().get_left_model_count()
+            << " right: " << decision_stack_.top().get_right_model_count());
         bool ret = deal_with_independent();
+        debug_print("after SAT mode. cnt dec: " << decision_stack_.top().getTotalModelCount()
+            << " left: " << decision_stack_.top().get_left_model_count()
+            << " right: " << decision_stack_.top().get_right_model_count());
         decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
               comp_manager_->comp_stack_size()));
         if (ret) {
@@ -1040,9 +1048,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     }
 
 #ifdef VERBOSE_DEBUG
-    cout << "active: ";
-    for(const auto&a: active) cout << a << " ";
-    cout << endl;
+    cout << "active: "; for(const auto&a: active) cout << a << " "; cout << endl;
 #endif
     // Check dec level 0's
     vector<CMSat::Lit> cl;
@@ -1103,7 +1109,7 @@ retStateT Counter::backtrack() {
   VERBOSE_DEBUG_DO(cout << "in " << __FUNCTION__ << " now " << endl);
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   do {
-    debug_print("[indep] top count here: " << decision_stack_.top().getTotalModelCount());
+    debug_print("[indep] top count here: " << decision_stack_.top().getTotalModelCount() << " dec lev: " << decision_level());
     if (decision_stack_.top().branch_found_unsat()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     } else if (decision_stack_.top().anotherCompProcessible()) {
@@ -1160,7 +1166,7 @@ retStateT Counter::backtrack() {
 
     CHECK_COUNT_DO(check_count());
     reactivate_comps_and_backtrack_trail(false);
-    assert(decision_stack_.size() >= 2);
+    assert(decision_level() >= 1);
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decision_stack_.end() - 2)->getTotalModelCount();
     const auto parent_count_before_left = (decision_stack_.end() - 2)->get_left_model_count();
@@ -1286,22 +1292,23 @@ void Counter::print_trail(bool check_entail, bool check_anything) const {
 }
 
 void Counter::go_back_to(int32_t backj) {
-  VERBOSE_DEBUG_DO(cout << "going back to lev: " << backj << " dec level now: " << decision_stack_.get_decision_level() << endl);
+  debug_print("going back to lev: " << backj << " dec level now: " << decision_stack_.get_decision_level());
   while(decision_stack_.get_decision_level() > backj) {
-    VERBOSE_DEBUG_DO(cout << "at dec lit: " << top_dec_lit() << endl);
+    debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decision_stack_.top().getTotalModelCount());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
-    decision_stack_.top().mark_branch_unsat();
-    decision_stack_.top().zero_out_all_sol(); //not sure it's needed
     if (!sat_mode()) {
+      decision_stack_.top().mark_branch_unsat();
+      decision_stack_.top().zero_out_all_sol(); //not sure it's needed
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     }
     reactivate_comps_and_backtrack_trail(false);
     decision_stack_.pop_back();
-    decision_stack_.top().zero_out_branch_sol();
     if (!sat_mode()) {
+      decision_stack_.top().zero_out_branch_sol();
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
       comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     }
+    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decision_stack_.top().getTotalModelCount() << endl);
   }
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);

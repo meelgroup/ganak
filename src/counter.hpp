@@ -393,7 +393,7 @@ private:
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
     else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
-    decision_stack_.top().resetRemainingComps();
+    if (!sat_mode()) decision_stack_.top().resetRemainingComps();
   }
 
   /////////////////////////////////////////////

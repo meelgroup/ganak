@@ -246,7 +246,7 @@ private:
   Heap<VarOrderLt> order_heap;
   inline bool sat_mode() const {return sat_start_dec_level != -1;}
   int chrono_work_sat();
-
+  void check_sat_solution() const;
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
   // beginning at offset start_at_trail_ofs
@@ -281,8 +281,7 @@ private:
   bool chrono_work();
   void reduceDB_if_needed();
   void increaseActivity(const Lit lit);
-  void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent())
-  {
+  void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent()) {
     assert(val(lit) == X_TRI);
     if (ant.isNull())
       debug_print("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
@@ -389,6 +388,7 @@ private:
       } else {
         VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it
             << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
+        if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
         unSet(*it);
       }
     }
@@ -554,7 +554,7 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 void inline Counter::increaseActivity(const Lit lit) {
   if (conf.do_single_bump && seen[lit.var()]) return;
   watches_[lit].activity += act_inc;
-  if (sat_mode()) order_heap.increase(lit.var());
+  if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
   if (watches_[lit].activity > 1e100) {
     //rescale
     act_inc *= 1e-90;

@@ -595,6 +595,7 @@ SOLVER_StateT Counter::countSAT() {
       print_stat_line();
       if (!isindependent) {
         if (deal_with_independent()) {
+          decision_stack_.top().nextUnprocessedComponent();
           continue;
         } else {
           decision_stack_.top().branch_found_unsat();
@@ -671,6 +672,7 @@ bool Counter::decideLiteral() {
   if (conf.branch_type == branch_t::gpmc) v = find_best_branch_gpmc();
   else v = find_best_branch();
   if (v == 0 && perform_projected_counting) {
+    decision_stack_.pop_back();
     isindependent = false;
     return true;
   }
@@ -688,7 +690,7 @@ bool Counter::decideLiteral() {
   Lit lit = Lit(v, get_polarity(v));
   debug_print(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decision_stack_.get_decision_level());
-  setLiteral(lit, decision_stack_.get_decision_level());
+  setLiteral(lit, decision_level());
   stats.decisions++;
   if (stats.decisions % 128 == 0) comp_manager_->rescale_cache_scores();
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
@@ -1276,10 +1278,8 @@ void Counter::go_back_to(int32_t backj) {
     decision_stack_.top().zero_out_all_sol(); //not sure it's needed
     if (!sat_mode()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
-      reactivate_comps_and_backtrack_trail(false);
-    } else {
-      order_heap.insert(top_dec_lit().var());
     }
+    reactivate_comps_and_backtrack_trail(false);
     decision_stack_.pop_back();
     decision_stack_.top().zero_out_branch_sol();
     if (!sat_mode()) {
@@ -1392,7 +1392,7 @@ bool Counter::resolveConflict_sat() {
   int32_t lev_to_set = find_lev_to_set(backj);
   // NOTE TODO: we don't actually attach this UIP clause
   // that would take us back further up
-  if (backj-1 < sat_start_dec_level) return true;
+  if (backj-1 < sat_start_dec_level) return false;
 
   stats.conflicts++;
   debug_print("SAT mode backj: " << backj << " lev_to_set: " << lev_to_set);
@@ -1404,7 +1404,7 @@ bool Counter::resolveConflict_sat() {
   auto ant = addUIPConflictClause(uip_clause);
   setLiteral(uip_clause[0], lev_to_set, ant);
   VERBOSE_DEBUG_DO(print_trail());
-  return false;
+  return true;
 }
 
 retStateT Counter::resolveConflict() {
@@ -1686,7 +1686,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
       for (uint32_t i = 1; i < size; i++) {
         debug_print("at i: " << i);
         Lit p2 = c[i];
-        debug_print("Examining lit " << p2 << " seen: " << seen[p2.var()]);
+        debug_print("Examining lit " << p2 << " seen: " << (int)seen[p2.var()]);
         if (!seen[p2.var()] && var(p2).decision_level > 0) {
           if (var(p2).ante.isAnt()
               && (abstractLevel(p2.var()) & abstract_levels) != 0
@@ -2786,6 +2786,7 @@ bool Counter::deal_with_independent() {
     } while (val(d) != X_TRI);
     if (d == 0) {
       debug_print("SAT mode found a solution");
+      SLOW_DEBUG_DO(check_sat_solution());
       sat = true;
       break;
     }
@@ -2814,13 +2815,38 @@ prop:
     }
   }
 
-  order_heap.clear();
   go_back_to(sat_start_dec_level);
   assert(decision_level() == sat_start_dec_level);
+  order_heap.clear();
   sat_start_dec_level = -1;
   isindependent = true;
-  debug_print("Exiting SAT mode. Declev: " << decision_level());
+  debug_print("Exiting SAT mode. Declev: " << decision_level() << " sat: " << (int)sat);
   return sat;
+}
+
+void Counter::check_sat_solution() const {
+  assert(sat_mode());
+  bool ok = true;
+
+  for(const auto& off: longIrredCls) {
+    Clause& cl = *alloc->ptr(off);
+    if (!clause_satisfied(cl)) {
+      ok = false;
+      cout << "ERROR: SAT mode found a solution that does not satisfy clause." << endl;
+      print_cl(cl);
+    }
+  }
+
+  for(const auto& off: longRedCls) {
+    Clause& cl = *alloc->ptr(off);
+    if (!clause_satisfied(cl)) {
+      ok = false;
+      cout << "ERROR: SAT mode found a solution that does not satisfy clause." << endl;
+      print_cl(cl);
+    }
+  }
+
+  assert(ok);
 }
 
 #ifdef SLOW_DEBUG

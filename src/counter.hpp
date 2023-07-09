@@ -184,7 +184,7 @@ public:
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
   int32_t decision_level() const { return decision_stack_.get_decision_level();}
 
-  // test public
+  // test
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
@@ -228,7 +228,7 @@ private:
   bool decideLiteral();
   uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch();
-  bool clause_falsified(const vector<Lit>& cl) const;
+  template<class T> bool clause_falsified(const T& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool compute_cube(Cube& cube, int branch);
@@ -590,4 +590,11 @@ template<class T1, class T2> bool Counter::subset(const T1& A, const T2& B) {
 
   end:
   return ret;
+}
+
+template<class T> bool Counter::clause_falsified(const T& cl) const {
+  for(const auto&l: cl) {
+    if (val(l) != F_TRI) return false;
+  }
+  return true;
 }

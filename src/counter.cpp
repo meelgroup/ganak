@@ -600,6 +600,7 @@ SOLVER_StateT Counter::countSAT() {
           decision_stack_.top().includeSolution(1);
           decision_stack_.top().var = 0;
         } else {
+          decision_stack_.top().branch_found_unsat();
           decision_stack_.top().change_to_right_branch();
           decision_stack_.top().branch_found_unsat();
         }
@@ -607,6 +608,7 @@ SOLVER_StateT Counter::countSAT() {
           << " unproc comps end: " << decision_stack_.top().getUnprocessedComponentsEnd()
           << " remaining comps: " << decision_stack_.top().remaining_comps_ofs()
           << " has unproc: " << decision_stack_.top().hasUnprocessedComponents());
+        assert(isindependent);
         state = BACKTRACK;
         break;
       }
@@ -1028,8 +1030,12 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 #endif
 
     if (single_var == -1) {
-      for(uint32_t i = 0; i < c->nVars(); i++) active.insert(c->varsBegin()[i]);
+      for(uint32_t i = 0; i < c->nVars(); i++) {
+        uint32_t var = c->varsBegin()[i];
+        if (var < indep_support_end) active.insert(var);
+      }
     } else {
+      assert(single_var < (int)indep_support_end && "NO IDEA if this check is needed! TODO");
       active.insert(single_var);
     }
 
@@ -1072,6 +1078,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     while(true) {
       auto ret = s2.solve();
       if (ret == CMSat::l_True) {
+        // Ban solution
         num++;
         cl.clear();
         for(uint32_t i = 0; i < s2.nVars(); i++) {
@@ -1524,14 +1531,6 @@ retStateT Counter::resolveConflict() {
 
   return RESOLVED; // will ALWAYS propagate afterwards.
 }
-
-bool Counter::clause_falsified(const vector<Lit>& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) != F_TRI) return false;
-  }
-  return true;
-}
-
 
 bool Counter::clause_asserting(const vector<Lit>& cl) const {
   uint32_t num_unkn = 0;
@@ -2774,10 +2773,16 @@ bool Counter::deal_with_independent() {
   assert(order_heap.empty());
   assert(decision_stack_.size() > 0);
   assert(!sat_mode());
+  stats.sat_called++;
+  auto conflicts_before = stats.conflicts;
+
   debug_print("Entering SAT mode. Declev: " << decision_level());
   sat_start_dec_level = decision_level();
   bool sat = false;
 
+  // Create dummy decision level in order for getSuperComponentOf work correctly.
+  decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
+        comp_manager_->comp_stack_size()));
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
     if (val(*it) != X_TRI) continue;
@@ -2787,6 +2792,9 @@ bool Counter::deal_with_independent() {
       order_heap.insert(*it);
     }
   }
+  decision_stack_.pop_back();
+
+  // the SAT loop
   while(true) {
     uint32_t d;
     do {
@@ -2807,6 +2815,7 @@ bool Counter::deal_with_independent() {
 prop:
     bool ret = propagate();
     if (!ret) {
+      print_stat_line();
       int x = chrono_work_sat();
       if (x == -1) {
         debug_print("SAT mode found UNSAT -- chrono BT");
@@ -2832,6 +2841,9 @@ prop:
   sat_start_dec_level = -1;
   isindependent = true;
   debug_print("Exiting SAT mode. Declev: " << decision_level() << " sat: " << (int)sat);
+  if (sat) stats.sat_found_sat++;
+  else stats.sat_found_unsat++;
+  stats.sat_conflicts += stats.conflicts-conflicts_before;
   return sat;
 }
 
@@ -2841,18 +2853,18 @@ void Counter::check_sat_solution() const {
 
   for(const auto& off: longIrredCls) {
     Clause& cl = *alloc->ptr(off);
-    if (!clause_satisfied(cl)) {
+    if (clause_falsified(cl)) {
       ok = false;
-      cout << "ERROR: SAT mode found a solution that does not satisfy clause." << endl;
+      cout << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
       print_cl(cl);
     }
   }
 
   for(const auto& off: longRedCls) {
     Clause& cl = *alloc->ptr(off);
-    if (!clause_satisfied(cl)) {
+    if (clause_falsified(cl)) {
       ok = false;
-      cout << "ERROR: SAT mode found a solution that does not satisfy clause." << endl;
+      cout << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
       print_cl(cl);
     }
   }

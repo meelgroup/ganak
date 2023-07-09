@@ -80,6 +80,13 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
   verb_print(1, "looks/look-computes            "
     << lookaheads << "/" << lookahead_computes);
 
+  verb_print(1, "sat called/sat/unsat/conflK    "
+    << std::setw(5) << sat_called << " "
+    << std::setw(5) << sat_found_sat << " "
+    << std::setw(5) << sat_found_unsat << " "
+    << std::setw(5) << sat_conflicts/1000 << " ");
+
+
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
     << std::setw(9) << vivif_tried << " "
     << std::setw(9) << vivif_tried_cl << " "

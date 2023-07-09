@@ -103,6 +103,12 @@ public:
   uint64_t subsumed_bin_cls = 0;
   uint64_t subsumed_cls = 0;
 
+  // SAT solver stats
+  uint64_t sat_called = 0;
+  uint64_t sat_found_sat = 0;
+  uint64_t sat_found_unsat = 0;
+  uint64_t sat_conflicts = 0;
+
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
   uint64_t num_cache_look_ups_ = 0;

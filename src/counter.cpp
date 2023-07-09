@@ -554,15 +554,29 @@ bool Counter::chrono_work() {
   VERBOSE_DEBUG_DO(print_trail());
   auto data = find_conflict_level(conflLit);
   if (data.bOnlyOneLitFromHighest) {
-    debug_print("ChronoBTG. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
+    debug_print("ChronoBT. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
     go_back_to(data.nHighestLevel-1);
     VERBOSE_DEBUG_DO(print_trail());
-    debug_print("Dec lev: " << decision_level());
+    debug_print("now Dec lev: " << decision_level());
     return true;
   }
   return false;
 }
 
+int Counter::chrono_work_sat() {
+  debug_print("SAT mode chrono check");
+  VERBOSE_DEBUG_DO(print_trail());
+  auto data = find_conflict_level(conflLit);
+  if (data.bOnlyOneLitFromHighest) {
+    debug_print("SAT mode ChronoBT. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
+    if (data.nHighestLevel-1 < sat_start_dec_level) return -1;
+    go_back_to(data.nHighestLevel-1);
+    VERBOSE_DEBUG_DO(print_trail());
+    debug_print("now Dec lev: " << decision_level());
+    return 1;
+  }
+  return 0;
+}
 SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
@@ -1260,7 +1274,7 @@ void Counter::go_back_to(int32_t backj) {
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decision_stack_.top().mark_branch_unsat();
     decision_stack_.top().zero_out_all_sol(); //not sure it's needed
-    if (!sat_run()) {
+    if (!sat_mode()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
       reactivate_comps_and_backtrack_trail(false);
     } else {
@@ -1268,7 +1282,7 @@ void Counter::go_back_to(int32_t backj) {
     }
     decision_stack_.pop_back();
     decision_stack_.top().zero_out_branch_sol();
-    if (!sat_run()) {
+    if (!sat_mode()) {
       comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
       comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     }
@@ -1364,6 +1378,8 @@ void Counter::reduceDB_if_needed() {
 
 // Returns TRUE if we would go further back
 bool Counter::resolveConflict_sat() {
+  assert(sat_mode());
+  debug_print("SAT mode conflict resolution");
   recordLastUIPCause();
   if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
     unit_clauses_.push_back(uip_clause[0]);
@@ -1379,10 +1395,10 @@ bool Counter::resolveConflict_sat() {
   if (backj-1 < sat_start_dec_level) return true;
 
   stats.conflicts++;
-  debug_print("backj: " << backj << " lev_to_set: " << lev_to_set);
+  debug_print("SAT mode backj: " << backj << " lev_to_set: " << lev_to_set);
   VERBOSE_DEBUG_DO(print_trail());
   VERBOSE_DEBUG_DO(print_conflict_info());
-  debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
+  debug_print("SAT mode backj: " << backj << " lev_to_set: " << lev_to_set
     << " current lev: " << decision_level());
   go_back_to(backj-1);
   auto ant = addUIPConflictClause(uip_clause);
@@ -2748,7 +2764,8 @@ bool Counter::deal_with_independent() {
   assert(!isindependent);
   assert(order_heap.empty());
   assert(decision_stack_.size() > 0);
-  assert(!sat_run());
+  assert(!sat_mode());
+  debug_print("Entering SAT mode. Declev: " << decision_level());
   sat_start_dec_level = decision_level();
   bool sat = false;
 
@@ -2768,6 +2785,7 @@ bool Counter::deal_with_independent() {
       d = order_heap.removeMin();
     } while (val(d) != X_TRI);
     if (d == 0) {
+      debug_print("SAT mode found a solution");
       sat = true;
       break;
     }
@@ -2776,9 +2794,21 @@ bool Counter::deal_with_independent() {
     decision_stack_.push_back(StackLevel(1,2));
     decision_stack_.back().var = l.var();
     setLiteral(l, decision_level());
+prop:
     bool ret = propagate();
     if (!ret) {
-      if (!resolveConflict_sat()) {sat = false; break;}
+      int x = chrono_work_sat();
+      if (x == -1) {
+        debug_print("SAT mode found UNSAT -- chrono BT");
+        sat = false;
+        break;
+      }
+      if (x == 1) goto prop;
+      if (!resolveConflict_sat()) {
+        debug_print("SAT mode found UNSAT");
+        sat = false;
+        break;
+      }
     } else {
       // TODO restart sometimes
     }
@@ -2789,6 +2819,7 @@ bool Counter::deal_with_independent() {
   assert(decision_level() == sat_start_dec_level);
   sat_start_dec_level = -1;
   isindependent = true;
+  debug_print("Exiting SAT mode. Declev: " << decision_level());
   return sat;
 }
 

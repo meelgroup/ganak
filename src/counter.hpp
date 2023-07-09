@@ -244,7 +244,8 @@ private:
   bool resolveConflict_sat();
   int32_t sat_start_dec_level = -1;
   Heap<VarOrderLt> order_heap;
-  inline bool sat_run() const {return sat_start_dec_level != -1;}
+  inline bool sat_mode() const {return sat_start_dec_level != -1;}
+  int chrono_work_sat();
 
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
@@ -553,7 +554,7 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 void inline Counter::increaseActivity(const Lit lit) {
   if (conf.do_single_bump && seen[lit.var()]) return;
   watches_[lit].activity += act_inc;
-  if (sat_run()) order_heap.increase(lit.var());
+  if (sat_mode()) order_heap.increase(lit.var());
   if (watches_[lit].activity > 1e100) {
     //rescale
     act_inc *= 1e-90;

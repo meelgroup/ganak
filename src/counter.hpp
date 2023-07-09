@@ -184,10 +184,6 @@ public:
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
   int32_t decision_level() const { return decision_stack_.get_decision_level();}
 
-  // deal with saved uip
-  enum class SavedUIPRet {prop_again, ret_false, cont};
-  SavedUIPRet deal_with_saved_uips();
-
   // test public
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
@@ -393,7 +389,7 @@ private:
       }
     }
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
-    comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
+    if (!sat_mode()) comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
     else qhead = std::min<int32_t>(trail.size()-off_by, qhead);

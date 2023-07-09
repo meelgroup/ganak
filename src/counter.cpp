@@ -585,8 +585,6 @@ SOLVER_StateT Counter::countSAT() {
     // NOTE: findNextRemainingComponentOf finds disjoint comps
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
-      /* checkProbabilisticHashSanity(); -- no need, there is no way we get to 2**45 lookups*/
-
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       if (!decideLiteral()) {
         decision_stack_.top().nextUnprocessedComponent();
@@ -594,14 +592,23 @@ SOLVER_StateT Counter::countSAT() {
       }
       print_stat_line();
       if (!isindependent) {
-        if (deal_with_independent()) {
-          decision_stack_.top().nextUnprocessedComponent();
-          continue;
+        bool ret = deal_with_independent();
+        decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
+              comp_manager_->comp_stack_size()));
+        if (ret) {
+          decision_stack_.top().change_to_right_branch();
+          decision_stack_.top().includeSolution(1);
+          decision_stack_.top().var = 0;
         } else {
+          decision_stack_.top().change_to_right_branch();
           decision_stack_.top().branch_found_unsat();
-          state = BACKTRACK;
-          break;
         }
+        debug_print("after SAT mode. cnt of this comp: " << decision_stack_.top().getTotalModelCount()
+          << " unproc comps end: " << decision_stack_.top().getUnprocessedComponentsEnd()
+          << " remaining comps: " << decision_stack_.top().remaining_comps_ofs()
+          << " has unproc: " << decision_stack_.top().hasUnprocessedComponents());
+        state = BACKTRACK;
+        break;
       }
 
       while (!propagate()) {
@@ -1156,7 +1163,9 @@ retStateT Counter::backtrack() {
     debug_print("[indep] Backtracking from level " << decision_stack_.get_decision_level()
         << " count here is: " << decision_stack_.top().getTotalModelCount());
     decision_stack_.pop_back();
-    assert(decision_stack_.top().var < indep_support_end);
+
+    // var == 0 means it's coming from a fake decision due to normal SAT solving
+    assert(decision_stack_.top().var == 0 || decision_stack_.top().var < indep_support_end);
     auto& dst = decision_stack_.top();
     debug_print("[indep] -> Backtracked to level " << decision_stack_.get_decision_level()
         // NOTE: -1 here because we have JUST processed the child
@@ -2805,7 +2814,9 @@ prop:
         break;
       }
       if (x == 1) goto prop;
-      if (!resolveConflict_sat()) {
+      if (resolveConflict_sat()) {
+        goto prop;
+      } else {
         debug_print("SAT mode found UNSAT");
         sat = false;
         break;

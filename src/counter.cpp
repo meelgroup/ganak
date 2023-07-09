@@ -581,10 +581,8 @@ SOLVER_StateT Counter::countSAT() {
       print_stat_line();
       if (!isindependent) {
         if (deal_with_independent()) {
-          // SAT
           continue;
         } else {
-          // UNSAT
           decision_stack_.top().branch_found_unsat();
           state = BACKTRACK;
           break;
@@ -2747,14 +2745,13 @@ void Counter::subsume_all() {
 
 // SAT or UNSAT
 bool Counter::deal_with_independent() {
-  assert(isindependent);
+  assert(!isindependent);
   assert(order_heap.empty());
   assert(decision_stack_.size() > 0);
   assert(!sat_run());
   sat_start_dec_level = decision_level();
   bool sat = false;
 
-  isindependent = false;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
     if (val(*it) != X_TRI) continue;
@@ -2775,7 +2772,7 @@ bool Counter::deal_with_independent() {
       break;
     }
     assert(val(d) == X_TRI);
-    Lit l(d, false);
+    Lit l(d, var(d).last_polarity);
     decision_stack_.push_back(StackLevel(1,2));
     decision_stack_.back().var = l.var();
     setLiteral(l, decision_level());

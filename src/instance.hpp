@@ -146,6 +146,10 @@ protected:
     return variables_[lit.var()];
   }
 
+  inline Variable &var(const uint32_t v) {
+    return variables_[v];
+  }
+
   inline const Variable &var(const Lit lit) const {
     return variables_[lit.var()];
   }

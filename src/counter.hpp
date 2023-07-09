@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <cryptominisat5/cryptominisat.h>
 #include "clauseallocator.hpp"
 #include "common.hpp"
 #include "primitive_types.hpp"
@@ -35,8 +34,11 @@ THE SOFTWARE.
 #include "boundedqueue.hpp"
 #include "TreeDecomposition.hpp"
 #include "structures.hpp"
+#include "heap.hpp"
+
 #include <deque>
 #include <map>
+#include <cryptominisat5/cryptominisat.h>
 
 using std::pair;
 using std::map;
@@ -120,6 +122,17 @@ inline std::ostream& operator<<(std::ostream& os, const BinClSub& cl) {
   return os;
 }
 
+struct VarOrderLt {
+  const LiteralIndexedVector<LitWatchList>& watches;
+  bool operator () (uint32_t x, uint32_t y) const {
+    Lit l1 = Lit(x, 0);
+    auto act1 = watches[l1].activity + watches[l1.neg()].activity;
+    Lit l2 = Lit(y, 0);
+    auto act2 = watches[l2].activity + watches[l2.neg()].activity;
+    return act1 > act2;
+  }
+  VarOrderLt(const LiteralIndexedVector<LitWatchList>& _watches) : watches(_watches) { }
+};
 
 class ClauseAllocator;
 
@@ -217,14 +230,21 @@ private:
 
   SOLVER_StateT countSAT();
   bool decideLiteral();
-  uint32_t find_best_branch_gpmc(bool do_indep);
-  uint32_t find_best_branch(bool do_indep);
+  uint32_t find_best_branch_gpmc();
+  uint32_t find_best_branch();
   bool clause_falsified(const vector<Lit>& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool compute_cube(Cube& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
+
+  // Actual SAT solver.
+  bool deal_with_independent();
+  bool resolveConflict_sat();
+  int32_t sat_start_dec_level = -1;
+  Heap<VarOrderLt> order_heap;
+  inline bool sat_run() const {return sat_start_dec_level != -1;}
 
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
@@ -258,7 +278,8 @@ private:
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void check_trail(bool check_entail = true) const;
   bool chrono_work();
-
+  void reduceDB_if_needed();
+  void increaseActivity(const Lit lit);
   void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent())
   {
     assert(val(lit) == X_TRI);
@@ -395,7 +416,7 @@ private:
   vector<Lit> uip_clause;
 
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
-  void recordLastUIPCauses();
+  void recordLastUIPCause();
   void minimizeUIPClause();
   uint32_t abstractLevel(const uint32_t x) const;
   bool litRedundant(Lit p, uint32_t abstract_levels);
@@ -527,6 +548,17 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
   cout << "ERROR: clause is not falsified." << endl;
   print_cl(c, size);
   assert(false);
+}
+
+void inline Counter::increaseActivity(const Lit lit) {
+  if (conf.do_single_bump && seen[lit.var()]) return;
+  watches_[lit].activity += act_inc;
+  if (sat_run()) order_heap.increase(lit.var());
+  if (watches_[lit].activity > 1e100) {
+    //rescale
+    act_inc *= 1e-90;
+    for(auto& v: watches_) v.activity*=1e-90;
+  }
 }
 
 template<class T1, class T2> bool Counter::subset(const T1& A, const T2& B) {

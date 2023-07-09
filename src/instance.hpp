@@ -127,20 +127,6 @@ protected:
     return nblevels;
   }
 
-  void increaseActivity(const Clause* cl) {
-    for (auto l: *cl) increaseActivity(l);
-  }
-
-  void inline increaseActivity(const Lit lit) {
-    if (conf.do_single_bump && seen[lit.var()]) return;
-    watches_[lit].activity += act_inc;
-    if (watches_[lit].activity > 1e100) {
-      //rescale
-      act_inc *= 1e-90;
-      for(auto& v: watches_) v.activity*=1e-90;
-    }
-  }
-
   bool existsUnitClauseOf(const Lit l) const {
     for (const auto& l2 : unit_clauses_) if (l == l2) return true;
     return false;

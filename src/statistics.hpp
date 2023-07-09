@@ -76,7 +76,6 @@ public:
 
   // number of clauses overall learned
   uint32_t num_clauses_learned_ = 0;
-  uint64_t uip_not_added = 0;
   uint64_t uip_cls = 0;
   uint64_t final_cl_sz = 0;
   uint64_t uip_lits_ccmin = 0;
@@ -87,14 +86,6 @@ public:
   uint64_t last_restart_num_conflicts = 0;
   uint64_t last_restart_num_decisions = 0;
   uint32_t num_restarts = 0;
-
-  uint64_t saved_uip = 0;
-  uint64_t saved_uip_used = 0;
-  uint64_t saved_uip_thrown = 0;
-
-  uint64_t  saved_uip_used_falsified = 0;
-  uint64_t  saved_uip_used_asserting = 0;
-  uint64_t  saved_uip_used_sat_or_unk = 0;
 
   // Vivification
   uint64_t vivif_tried = 0;

@@ -47,9 +47,9 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setprecision(2) << std::setw(9) << std::left << std::fixed
     << safe_div(decisions,(1000.0*(cpuTime()-counter->get_start_time())))
   );
-  verb_print(1, "conflicts/not added            "
+  verb_print(1, "conflicts                      "
     << std::left << std::setw(9) << conflicts
-    << "   " << std::left << std::setw(9) << uip_not_added
+    << "   " << std::left << std::setw(9)
     << std::setw(16) << " -- confl/s: "
     << std::setprecision(2) << std::setw(9) << std::left
     << safe_div(conflicts,((cpuTime()-counter->get_start_time())))
@@ -73,18 +73,6 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(9) << safe_div(final_cl_sz, uip_cls)
   );
 
-  verb_print(1, "saveduipK/usedK/thrownK        "
-    << std::setw(9) << saved_uip/1000 << " "
-    << std::setw(9) << saved_uip_used/1000 << " "
-    << std::setw(9) << saved_uip_thrown/1000
-  );
-
-  verb_print(1, "saveduip fals/ass/satunk       "
-    << std::setw(9) << safe_div(saved_uip_used_falsified, saved_uip_used)
-    << std::setw(9) << safe_div(saved_uip_used_asserting, saved_uip_used)
-    << std::setw(9) << safe_div(saved_uip_used_sat_or_unk, saved_uip_used)
-  );
-
   verb_print(1, "rdbs/low lbd/rem               "
     << std::setw(5) << reduceDBs << " "
     << std::setw(6) << counter->get_num_low_lbds() << " "
@@ -98,7 +86,7 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(9) << vivif_cl_minim << " "
     << std::setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
   );
-  
+
   verb_print(1, "toplev subs runs/bins/long-cls "
     << std::setw(9) << subsume_runs << " "
     << std::setw(9) << subsumed_bin_cls << " "

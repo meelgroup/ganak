@@ -291,7 +291,24 @@ void Instance::parseProjection(bool pcnf, ifstream& input_file, char& c) {
     }
 
     input_file >> idstring;
+    // c ind
     if (idstring == "ind") {
+      perform_projected_counting = true;
+      while ((input_file >> lit) && lit != 0) {
+        if (!pcnf) {
+          independent_support_.insert(lit);
+        }
+      }
+      return;
+    }
+
+    // c p show
+    if (idstring == "p") {
+      input_file >> idstring;
+      if (idstring != "show") {
+          cout << "ERROR: wrong MUST MULTIPLY expression" << endl;
+          exit(-1);
+      }
       perform_projected_counting = true;
       while ((input_file >> lit) && lit != 0) {
         if (!pcnf) {

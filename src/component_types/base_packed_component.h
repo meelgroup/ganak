@@ -9,6 +9,7 @@
 #define BASE_PACKED_COMPONENT_H_
 
 #include <assert.h>
+#include <cstdint>
 #include <gmpxx.h>
 #include <iostream>
 

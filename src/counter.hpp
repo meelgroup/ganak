@@ -246,7 +246,7 @@ private:
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
   // beginning at offset start_at_trail_ofs
-  bool propagate();
+  bool propagate(bool out_of_order = false);
   template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   bool check_watchlists() const;
@@ -515,7 +515,7 @@ template<class T> void Counter::v_print_cl(const T& cl) const {
     const auto l = cl[i];
     cout << std::setw(5) << l
       << " lev: " << std::setw(4) << v_levs[l.var()]
-      << " val: " << val_str(v_val(l)) << endl;
+      << " val: " << val_to_str(v_val(l)) << endl;
   }
 }
 

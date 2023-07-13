@@ -1141,12 +1141,20 @@ retStateT Counter::backtrack() {
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
+      SLOW_DEBUG_DO(check_all_propagated_conflicted());
       reactivate_comps_and_backtrack_trail(false);
-      debug_print("[indep] Flipping lit to: " << aLit.neg());
-      setLiteral(aLit.neg(), decision_stack_.get_decision_level());
-      VERBOSE_DEBUG_DO(print_trail());
-      debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
-      return RESOLVED;
+      bool ret = propagate(true);
+      assert(ret);
+      debug_print("[indep] Flipping lit to: " << aLit.neg() << " val is: " << val_to_str(val(aLit)));
+      if (val(aLit.neg()) == X_TRI) {
+        setLiteral(aLit.neg(), decision_stack_.get_decision_level());
+        VERBOSE_DEBUG_DO(print_trail());
+        debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
+        return RESOLVED;
+      } else {
+        assert(val(aLit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
+        decision_stack_.top().branch_found_unsat();
+      }
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << decision_stack_.get_decision_level());
@@ -1338,7 +1346,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
     }
     bool entailment_fail = false;
 #ifdef CHECK_TRAIL_ENTAILMENT
-    if (check_entail) {
+    if (check_entail && sat_solver) {
       // Check entailment
       // No need to check if we are flipping and immediately backtracking
       if (!var(t).ante.isNull()) {
@@ -1359,12 +1367,17 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
         }
         auto ret = s2.solve();
         if (ret != CMSat::l_False) {
-          cout << "Not implied by decisions: " << t << endl;
+          cout << "Not implied by decisions above or at its level (" << this_lev << "): " << t << endl;
           entailment_fail = true;
         }
       }
     }
 #endif
+    if (entailment_fail) {
+      cout << "Entailment fail." << endl;
+      print_trail(false, false);
+      print_dec_info();
+    }
     assert(!entailment_fail);
   }
 }
@@ -1573,13 +1586,17 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
   }
 }
 
-bool Counter::propagate() {
+bool Counter::propagate(bool out_of_order) {
   confl = Antecedent();
   debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
   for (; qhead < trail.size(); qhead++) {
     const Lit unLit = trail[qhead].neg();
     const int32_t lev = var(unLit).decision_level;
-    bool lev_at_declev = decision_stack_.size() <= 1 ? true : (var(top_dec_lit()).decision_level == lev);
+    bool lev_at_declev = false;
+    if (!out_of_order) {
+      if (decision_stack_.size() <= 1) lev_at_declev = true;
+      else if (var(top_dec_lit()).decision_level == lev) lev_at_declev = true;
+    }
     debug_print("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
@@ -1673,8 +1690,12 @@ bool Counter::propagate() {
     ws.resize(it2-ws.begin());
     if (!confl.isNull()) break;
   }
-  VERY_SLOW_DEBUG_DO(if (confl.isNull() && !check_watchlists()) {
-      print_trail(false, false);assert(false);});
+  VERY_SLOW_DEBUG_DO(
+      if (confl.isNull()) check_trail();
+      if (confl.isNull() && !check_watchlists()) {
+      print_trail(false, false);
+      assert(false);
+    });
   SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated_conflicted());
   debug_print("After propagate, qhead is: " << qhead);
   return confl.isNull();
@@ -2080,7 +2101,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   VERBOSE_DEBUG_DO(print_cl(cl));
   for(uint32_t i = 0; i < v_tmp2.size(); i++) {
     const auto& l = v_tmp2[i];
-    debug_print("Vivif lit l: " << l << " val: " << val_str(v_val(l)));
+    debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
     if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
     if (v_val(l) == F_TRI) continue;
     v_tmp.push_back(l);
@@ -2290,7 +2311,7 @@ void Counter::vivify_cl_toplevel(vector<Lit>& cl) {
 
   for(uint32_t i = 0; i < v_tmp2.size(); i++) {
     const auto& l = v_tmp2[i];
-    debug_print("Vivif lit l: " << l << " val: " << val_str(val(l)));
+    debug_print("Vivif lit l: " << l << " val: " << val_to_str(val(l)));
     if (val(l) == T_TRI) {cl.push_back(l);break;}
     if (val(l) == F_TRI) continue;
     cl.push_back(l);
@@ -2855,6 +2876,7 @@ prop:
   if (sat) stats.sat_found_sat++;
   else stats.sat_found_unsat++;
   stats.sat_conflicts += stats.conflicts-conflicts_before;
+
   return sat;
 }
 

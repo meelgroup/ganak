@@ -178,7 +178,7 @@ protected:
     else return "UNKN";
   }
 
-  string val_str(const TriValue& tri) const {
+  string val_to_str(const TriValue& tri) const {
     if (tri == F_TRI)
       return "FALSE";
     else if (tri == T_TRI)

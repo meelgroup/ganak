@@ -966,6 +966,10 @@ bool Counter::restart_if_needed() {
         (luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
+  if (conf.restart_type == 8 &&
+      (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
+    restart = true;
+
   if (conf.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
       && stats.cache_hits_misses_q.avg() <
       stats.cache_hits_misses_q.getLongtTerm().avg()*conf.restart_cutoff_mult)

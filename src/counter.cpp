@@ -1154,6 +1154,7 @@ retStateT Counter::backtrack() {
       } else {
         assert(val(aLit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
         decision_stack_.top().branch_found_unsat();
+        continue;
       }
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."

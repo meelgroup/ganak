@@ -611,6 +611,8 @@ SOLVER_StateT Counter::countSAT() {
           decision_stack_.top().branch_found_unsat();
           decision_stack_.top().change_to_right_branch();
           decision_stack_.top().branch_found_unsat();
+          bool ret2 = propagate(true);
+          if (!ret2) goto resolve;
         }
         debug_print("after SAT mode. cnt of this comp: " << decision_stack_.top().getTotalModelCount()
           << " unproc comps end: " << decision_stack_.top().getUnprocessedComponentsEnd()
@@ -622,6 +624,7 @@ SOLVER_StateT Counter::countSAT() {
       }
 
       while (!propagate()) {
+resolve:
         if (chrono_work()) continue;
         state = resolveConflict();
         while(state == GO_AGAIN) state = resolveConflict();
@@ -1141,7 +1144,7 @@ retStateT Counter::backtrack() {
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
-      SLOW_DEBUG_DO(check_all_propagated_conflicted());
+      /* SLOW_DEBUG_DO(check_all_propagated_conflicted()); */
       reactivate_comps_and_backtrack_trail(false);
       bool ret = propagate(true);
       assert(ret);
@@ -1433,7 +1436,10 @@ bool Counter::resolveConflict_sat() {
   int32_t lev_to_set = find_lev_to_set(backj);
   // NOTE TODO: we don't actually attach this UIP clause
   // that would take us back further up
-  if (backj-1 < sat_start_dec_level) return false;
+  if (backj-1 < sat_start_dec_level) {
+    debug_print("SAT mode backtrack would go back too far, not attaching UIP cl");
+    return false;
+  }
 
   stats.conflicts++;
   debug_print("SAT mode backj: " << backj << " lev_to_set: " << lev_to_set);
@@ -2375,7 +2381,6 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   fill_cl(confl, c, size, p);
   VERBOSE_DEBUG_DO(cout << "CL in find_conflict_level: " << endl;print_cl(c, size));
   data.nHighestLevel = var(c[0]).decision_level;
-  if (data.nHighestLevel == 0) {assert(false && "No UNSAT possible");}
   if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
     return data;
 

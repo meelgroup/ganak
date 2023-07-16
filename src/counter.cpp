@@ -959,7 +959,7 @@ bool Counter::restart_if_needed() {
 
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
-        (luby(2, stats.num_restarts) * conf.first_restart))
+        10*(luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
   if (conf.restart_type == 8 &&

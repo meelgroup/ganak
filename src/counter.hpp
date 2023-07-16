@@ -168,6 +168,8 @@ public:
     }
   }
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
+  void print_and_check_cubes(vector<Cube>& cubes);
+  void disable_cubes_if_overlap(vector<Cube>& cubes);
   mpz_class outer_count(CMSat::SATSolver* solver = NULL);
   void set_indep_support(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);

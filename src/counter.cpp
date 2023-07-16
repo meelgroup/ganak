@@ -420,70 +420,63 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
   }
 }
 
+void Counter::print_and_check_cubes(vector<Cube>& cubes) {
+  verb_print(1, "Num restarts: " << stats.num_restarts);
+  verb_print(2, "cubes     : ");
+  for(const auto&c: cubes) verb_print(2, "-> " << c);
+#ifdef SLOW_DEBUG
+  for(const auto& c: cubes) {
+    auto check_cnt = check_norestart(c);
+    cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
+    assert(check_cnt == c.val);
+  }
+#endif
+  cout << "Total num cubes: " << cubes.size() << endl;
+}
+
+void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
+  for(uint32_t i = 0; i < cubes.size(); i++) {
+    if (!cubes[i].enabled) continue;
+    for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
+      if (!cubes[i2].enabled) continue;
+      disable_smaller_cube_if_overlap(i, i2, cubes);
+    }
+  }
+}
+
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   mpz_class val = 0;
   sat_solver = _sat_solver;
 
   auto ret = sat_solver->solve();
-  int32_t num_runs = 0;
   start_time = cpuTime();
-  vector<Cube> cubes;
-  if (conf.do_restart) {
-    while(ret == CMSat::l_True) {
-      vector<Cube> tmp_cubes;
-      count(tmp_cubes);
-      num_runs++;
-      cout << "Num runs: " << num_runs << endl;
-      if (conf.verb > 1) {
-        cout << "tmp cubes     : " << endl;
-        for(const auto&c: tmp_cubes) cout << "-> " << c << endl;
-      }
-#ifdef SLOW_DEBUG
-      for(const auto& c: tmp_cubes) {
-        auto check_cnt = check_norestart(c);
-        cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
-        assert(check_cnt == c.val);
-      }
-#endif
-      cout << "Total num cubes: " << cubes.size() << endl;
+  while(ret == CMSat::l_True) {
+    vector<Cube> cubes;
+    count(cubes);
+    print_and_check_cubes(cubes);
+    disable_cubes_if_overlap(cubes);
 
-      // Check no overlap
-      for(uint32_t i = 0; i < tmp_cubes.size(); i++) {
-        if (!tmp_cubes[i].enabled) continue;
-        for(uint32_t i2 = i+1; i2 < tmp_cubes.size(); i2++) {
-          if (!tmp_cubes[i2].enabled) continue;
-          disable_smaller_cube_if_overlap(i, i2, tmp_cubes);
-        }
-      }
-
-      // Add cubes to count, cubes & CMS
-      for(const auto&c: tmp_cubes) {
-        if (!c.enabled) continue;
-        val+=c.val;
-        cubes.push_back(c);
-        sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
-      }
-      ret = sat_solver->solve();
-      if (ret == CMSat::l_False) break;
-
-      // Add cubes to counter
-      for(auto it = tmp_cubes.rbegin(); it != tmp_cubes.rend(); it++) if (it->enabled) {
-        vivify_cl_toplevel(it->cnf);
-        add_irred_cl(it->cnf);
-      }
-      decision_stack_.clear();
-      if (stats.num_restarts %2 == 0) {
-        vivify_clauses(true, true);
-        subsume_all();
-        toplevel_full_probe();
-      }
-      end_irred_cls();
+    // Add cubes to count, cubes & CMS
+    for(const auto&c: cubes) {
+      if (!c.enabled) continue;
+      val+=c.val;
+      sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
     }
-  } else if (ret == CMSat::l_True) {
-      count(cubes);
-      assert(cubes.size() == 1);
-      assert(cubes[0].cnf.empty());
-      val = cubes[0].val;
+    ret = sat_solver->solve();
+    if (ret == CMSat::l_False) break;
+
+    // Add cubes to counter
+    for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
+      vivify_cl_toplevel(it->cnf);
+      add_irred_cl(it->cnf);
+    }
+    decision_stack_.clear();
+    if (stats.num_restarts %2 == 0) {
+      vivify_clauses(true, true);
+      subsume_all();
+      toplevel_full_probe();
+    }
+    end_irred_cls();
   }
   return val;
 }
@@ -787,7 +780,7 @@ uint32_t Counter::find_best_branch() {
   return best_var;
 }
 
-// add decisions, components, and counts
+// returns cube in `c`. Uses branch 0/1, i.e. LEFT/RIGHT branch
 bool Counter::compute_cube(Cube& c, int branch) {
   assert(c.val == 0);
   assert(c.cnf.empty());

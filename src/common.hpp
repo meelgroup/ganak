@@ -103,6 +103,8 @@ inline double float_div(const double a, const double b) {
     return 0;
 }
 
+#define all_lits(x) for(uint32_t x = 2; x < (nVars()+1)*2; x++)
+
 inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {
   std::stringstream ss;
   if (value > 20*1000LL*1000LL) {

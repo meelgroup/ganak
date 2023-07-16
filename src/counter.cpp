@@ -224,7 +224,7 @@ void Counter::td_decompose() {
   }
 
   Graph primal(nVars()+1);
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins))
@@ -291,7 +291,7 @@ mpz_class Counter::check_norestart_cms(const Cube& c) {
     test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   // Bin cls
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
       if (l2.irred() && l < l2.lit()) {
@@ -347,7 +347,7 @@ mpz_class Counter::check_norestart(const Cube& c) {
     test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   // Bin cls
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches_[l].binary_links_) {
       if (l2.irred() && l < l2.lit()) {
@@ -2506,7 +2506,7 @@ bool Counter::check_watchlists() const {
 #if 0
   // All watchlists
   cout << "All watchlists: " << endl;
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     cout << "->Watchlist for lit " << lit << " (val: " << lit_val_str(lit) << ") " << endl;
     auto& ws = watches_[lit].watch_list_;
@@ -2524,7 +2524,7 @@ bool Counter::check_watchlists() const {
   // Also check that after propagation, if the clause is not satisfied,
   // it's NOT the case that prop queue contains
   // FALSE & UNK. Must be UNK & UNK
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     auto& ws = watches_[lit].watch_list_;
     for(const auto& w: ws) {
@@ -2548,7 +2548,7 @@ bool Counter::check_watchlists() const {
 
   // Check that all clauses are attached 2x in the watchlist
   map<ClauseOfs, uint32_t> off_att_num;
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     for(const auto& ws: watches_[lit].watch_list_) {
       if (off_att_num.find(ws.ofs) == off_att_num.end()) off_att_num[ws.ofs] = 1;
@@ -2747,7 +2747,7 @@ void Counter::subsume_all() {
 
   // Binary clauses
   vector<BinClSub> bin_cls;
-  for(uint32_t i = 2; i < (nVars()+1)*2; i++) {
+  all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     for(const auto& l2: watches_[lit].binary_links_) {
       if (l2.lit() < lit) continue;

@@ -41,7 +41,7 @@ struct CounterConfiguration {
   uint64_t next_restart = 100000000U;
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
-  int restart_type = 5;
+  int restart_type = 7;
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
   int do_cache_score = 1;

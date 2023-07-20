@@ -51,6 +51,7 @@ public:
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
     clearArrays();
+    num_bin_cls = 0;
     current_comp_for_caching_.reserveSpace(super_comp.nVars(),super_comp.numLongClauses());
   }
 
@@ -175,6 +176,7 @@ public:
       }
     p_new_comp->closeClauseData();
     current_comp_for_caching_.closeClauseData();
+    p_new_comp->setNumBinCls(num_bin_cls);
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
         " New comp vars: " << p_new_comp->nVars() <<
@@ -183,6 +185,7 @@ public:
   }
 
   Component current_comp_for_caching_;
+  uint32_t num_bin_cls = 0;
 
 private:
   Component const* p_super_comp_;

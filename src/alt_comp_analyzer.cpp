@@ -174,6 +174,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
       if(manageSearchOccurrenceOf(Lit(*p,true))) {
         var_frequency_scores_[*p]++;
         var_frequency_scores_[v]++;
+        archetype_.num_bin_cls++;
       }
     }
 

@@ -109,6 +109,9 @@ public:
   uint64_t sat_found_unsat = 0;
   uint64_t sat_conflicts = 0;
 
+  // buddy stats
+  uint64_t buddy_called = 0;
+
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
   uint64_t num_cache_look_ups_ = 0;

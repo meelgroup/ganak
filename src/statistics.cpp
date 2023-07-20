@@ -85,6 +85,8 @@ void DataAndStatistics::printShort(const Counter* counter, const ComponentCache*
     << std::setw(5) << sat_found_sat << " "
     << std::setw(5) << sat_found_unsat << " "
     << std::setw(5) << sat_conflicts/1000 << " ");
+  verb_print(1, "buddy called                   "
+    << std::setw(5) << buddy_called << " ");
 
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "

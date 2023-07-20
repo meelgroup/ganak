@@ -170,6 +170,7 @@ public:
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
+  void extend_cubes(vector<Cube>& cubes);
   mpz_class outer_count(CMSat::SATSolver* solver = NULL);
   void set_indep_support(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);
@@ -190,8 +191,8 @@ public:
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
-  mpz_class check_norestart(const Cube& c);
-  mpz_class check_norestart_cms(const Cube& c);
+  mpz_class check_count_norestart(const Cube& c);
+  mpz_class check_count_norestart_cms(const Cube& c);
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
@@ -266,6 +267,12 @@ private:
   void check_cl_unsat(Lit* c, uint32_t size) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
+
+  // BDD
+  bool do_buddy_count();
+  uint64_t buddy_count();
+  vector<uint32_t> vmap;
+  vector<uint32_t> vmap_rev;
 
   // if on the current decision level
   // a second branch can be visited, RESOLVED is returned

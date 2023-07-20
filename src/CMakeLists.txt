@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-include_directories( ${PROJECT_SOURCE_DIR} )
+include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/)
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${LOUVAIN_COMMUNITIES_INCLUDE_DIRS})
@@ -64,6 +65,7 @@ SET(SOURCES
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak
+  LINK_PUBLIC buddy
   LINK_PUBLIC clhash
   LINK_PUBLIC component_types
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}

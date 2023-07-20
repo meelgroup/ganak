@@ -52,7 +52,9 @@ void ComponentAnalyzer::initialize(
     // it_curr_cl_st is the starting point of the clause
     // for each lit in the clause, it adds the clause to the occ list
     const Clause& cl = *alloc->ptr(off);
-    assert(cl.sz > 2);
+    vector<Lit> cl_lit;
+    cl_lit.insert(cl_lit.end(), cl.begin(), cl.end());
+    assert(cl.size() > 2);
 
     for(const auto& l: cl) {
       const uint32_t var = l.var();
@@ -63,10 +65,12 @@ void ComponentAnalyzer::initialize(
       if(tmp.size() == 2) {
         // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
         occ_ternary_clauses[var].push_back(max_clause_id_);
+        idx_to_cl[max_clause_id_] = cl_lit;
         occ_ternary_clauses[var].insert(occ_ternary_clauses[var].end(), tmp.begin(), tmp.end());
       } else {
         // Long clauses
         occs[var].push_back(max_clause_id_);
+        idx_to_cl[max_clause_id_] = cl_lit;
         occs[var].push_back(occ_long_clauses[var].size());
         occ_long_clauses[var].insert(occ_long_clauses[var].end(), tmp.begin(), tmp.end());
         occ_long_clauses[var].push_back(SENTINEL_LIT.raw());

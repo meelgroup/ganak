@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include "IFlowCutter.hpp"
 #include "graph.hpp"
+#include "bdd.h"
 
 void Counter::simplePreProcess()
 {
@@ -278,8 +279,8 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 }
 
 // Self-check count without restart with CMS only
-mpz_class Counter::check_norestart_cms(const Cube& c) {
-  cout << "Checking count with ourselves (no verb, no restart)" << endl;
+mpz_class Counter::check_count_norestart_cms(const Cube& c) {
+  verb_print(1, "Checking cube count with CMS (no verb, no restart)");
   vector<Lit> tmp;
   CMSat::SATSolver test_solver;
   test_solver.new_vars(nVars());
@@ -328,8 +329,8 @@ mpz_class Counter::check_norestart_cms(const Cube& c) {
 }
 
 // Self-check count without restart
-mpz_class Counter::check_norestart(const Cube& c) {
-  cout << "Checking count with ourselves (no verb, no restart)" << endl;
+mpz_class Counter::check_count_norestart(const Cube& c) {
+  verb_print(2, "Checking count with ourselves (no verb, no restart), CNF: " << c.cnf);
   CounterConfiguration conf2 = conf;
   conf2.do_restart = 0;
   conf2.verb = 0;
@@ -411,12 +412,12 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
   }
 
   if (overlap) {
-    cout << "Two cubes overlap." << endl;
-    cout << "c1: " << c1 << endl;
-    cout << "c2: " << c2   << endl;
+    verb_print(2, "Two cubes overlap.");
+    verb_print(2, "c1: " << c1);
+    verb_print(2, "c2: " << c2);
     uint32_t to_disable = cubes[i].val > cubes[i2].val ? i2 : i;
     cubes[to_disable].enabled = false;
-    cout << "Disabled cube " << cubes[to_disable] << endl;
+    verb_print(2, "Disabled cube " << cubes[to_disable]);
   }
 }
 
@@ -426,12 +427,13 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   for(const auto&c: cubes) verb_print(2, "-> " << c);
 #ifdef SLOW_DEBUG
   for(const auto& c: cubes) {
-    auto check_cnt = check_norestart(c);
+    auto check_cnt = check_count_norestart(c);
+    /* auto check_cnt = check_count_norestart_cms(c); */
     cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
     assert(check_cnt == c.val);
   }
 #endif
-  cout << "Total num cubes: " << cubes.size() << endl;
+  verb_print(1, "Total num cubes: " << cubes.size());
 }
 
 void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
@@ -444,6 +446,43 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
   }
 }
 
+void Counter::extend_cubes(vector<Cube>& cubes) {
+  for(const auto& c: cubes) {
+    cout << "txt cube: ";
+    for(const auto& l: c.cnf) cout << l.neg() << " ";
+    cout << " cnt: " << c.val << endl;
+    continue;
+
+    for(const auto& v: c.active_vars)  seen[v] = 1;
+    cout << "txt solution: ";
+    for(const auto& l: c.cnf) if (seen[l.var()]) cout << l << " ";
+    cout << "0" << endl;
+
+    for(const auto& off: longIrredCls) {
+      const Clause& cl = *alloc->ptr(off);
+      bool ok = true;
+      for(const auto& l: cl) if (seen[l.var()] == 0) {ok = false;break;}
+      if (ok) {
+        cout << "txt ";
+        for(const auto& l: cl) cout << l << " ";
+        cout << "0" << endl;
+      }
+    }
+    all_lits(i) {
+      Lit l(i/2, i%2);
+      if (seen[l.var()] == 0) continue;
+      for(const auto& l2: watches_[l].binary_links_) {
+        if (l < l2.lit() || seen[l2.lit().var()] == 0 || !l2.irred()) continue;
+        cout << "txt << " << l << " " << l2.lit() << " 0" << endl;
+      }
+    }
+
+    for(const auto& v: c.active_vars)  seen[v] = 0;
+    cout << "txt -----" << endl;
+  }
+  /* exit(0); */
+}
+
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   mpz_class val = 0;
   sat_solver = _sat_solver;
@@ -454,6 +493,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     vector<Cube> cubes;
     count(cubes);
     print_and_check_cubes(cubes);
+    extend_cubes(cubes);
     disable_cubes_if_overlap(cubes);
 
     // Add cubes to count, cubes & CMS
@@ -469,6 +509,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
       vivify_cl_toplevel(it->cnf);
       add_irred_cl(it->cnf);
+      cout << "added: " << it->cnf << " val: " << it->val << endl;
     }
     decision_stack_.clear();
     if (stats.num_restarts %2 == 0) {
@@ -572,6 +613,27 @@ int Counter::chrono_work_sat() {
   }
   return 0;
 }
+
+bool Counter::do_buddy_count() {
+  const auto& sup_at = decision_stack_.top().super_comp();
+  const auto& c = comp_manager_->at(sup_at);
+  if (c->nVars() > 50 || c->numLongClauses() > 24) return false;
+  decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
+        comp_manager_->comp_stack_size()));
+  uint64_t cnt = buddy_count();
+
+  if (cnt > 0) {
+    decision_stack_.top().change_to_right_branch();
+    decision_stack_.top().includeSolution(cnt);
+    decision_stack_.top().var = 0;
+  } else {
+    decision_stack_.top().branch_found_unsat();
+    decision_stack_.top().change_to_right_branch();
+    decision_stack_.top().branch_found_unsat();
+  }
+  return true;
+}
+
 SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
@@ -581,6 +643,13 @@ SOLVER_StateT Counter::countSAT() {
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
+
+      // BDD count
+      if (conf.do_buddy && do_buddy_count()) {
+        state = BACKTRACK;
+        break;
+      }
+
       if (!decideLiteral()) {
         decision_stack_.top().nextUnprocessedComponent();
         continue;
@@ -840,6 +909,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
         debug_print("Lit from comp: " << l);
         c.cnf.push_back(l);
+        c.active_vars.push_back(l.var());
       }
     }
   }
@@ -2492,13 +2562,18 @@ void Counter::recordLastUIPCause() {
 }
 
 Counter::Counter(const CounterConfiguration& _conf) :
-    Instance(_conf), order_heap(VarOrderLt(watches_))
+    Instance(_conf)
+    , mtrand(_conf.seed)
+    , order_heap(VarOrderLt(watches_))
 {
-  mtrand.seed(conf.seed);
+  bdd_init(1000000, 100000);
+  bdd_setvarnum(50);
+  bdd_autoreorder(BDD_REORDER_WIN2ITE);
 }
 
 Counter::~Counter() {
   delete comp_manager_;
+  bdd_done();
 }
 
 bool Counter::check_watchlists() const {
@@ -2902,6 +2977,94 @@ void Counter::check_sat_solution() const {
   }
 
   assert(ok);
+}
+
+#define mybdd_add(a,l) \
+  if (!l.sign()) tmp |= bdd_ithvar(vmap_rev[l.var()]); \
+  else tmp |= bdd_nithvar(vmap_rev[l.var()]);
+
+
+uint64_t Counter::buddy_count() {
+  vmap.clear();
+  vmap_rev.resize(nVars()+1);
+
+  const auto& s = decision_stack_.top();
+  auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
+                                       //that it could have already fallen into pieces
+                                       //at current level
+  const auto& c = comp_manager_->at(sup_at);
+
+  // variable mapping
+  for(uint32_t i = 0; i < c->nVars(); i++) {
+    uint32_t var = c->varsBegin()[i];
+    seen[var] = 1;
+    /* vmap_rev[var] = vmap.size(); */
+    vmap.push_back(var);
+  }
+  std::sort(vmap.begin(),vmap.end(),
+      [=](uint32_t a, uint32_t b) -> bool {
+      return comp_manager_->scoreOf(a) > comp_manager_->scoreOf(b);
+      /* return tdscore[a] < tdscore[b]; */
+      });
+  for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;
+  VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
+
+  // The final built bdd
+  auto bdd = bdd_true();
+
+  // Long clauses
+  const auto& ana = comp_manager_->get_ana();
+  for (auto itCl = c->clsBegin(); *itCl != clsSENTINEL; itCl++) {
+    auto idx = *itCl;
+    debug_print("IDX: " << idx);
+    const auto& it = ana.get_idx_to_cl().find(idx);
+    assert(it != ana.get_idx_to_cl().end());
+    const auto& cl = it->second;
+    VERBOSE_DEBUG_DO( cout << "Long cl." << endl; print_cl(cl.data(), cl.size()));
+
+    auto tmp = bdd_false();
+    for(const auto& l: cl) {
+      assert(val(l) != T_TRI);
+      if (val(l) != X_TRI) continue;
+      mybdd_add(tmp, l);
+    }
+    bdd &= tmp;
+  }
+
+  // Binary clauses
+  for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
+    Lit l(v, i);
+    if (val(l) != X_TRI) continue;
+    for(const auto& ws: watches_[l].binary_links_) {
+      if (!ws.irred() || ws.lit() < l) continue;
+      if (val(ws.lit()) == T_TRI) continue;
+      assert(val(ws.lit()) == X_TRI); // otherwise would have propagated/conflicted
+
+      auto tmp = bdd_false();
+      mybdd_add(tmp, l);
+      auto l2 = ws.lit();
+      mybdd_add(tmp, l2);
+      bdd &= tmp;
+
+      debug_print("bin cl: " << l << " " << l2 << " 0");
+    }
+  }
+
+
+  uint64_t cnt = bdd_satcount_i64(bdd);
+#ifdef VERBOSE_DEBUG
+  cout << "cnt: " << cnt << endl;
+  cout << "num bin cls: " << num_bin_cls << endl;
+  cout << "num long cls: " << num_long_cls << endl;
+  cout << "----------------------------------------------" << endl;
+#endif
+
+  for(uint32_t i = 0; i < c->nVars(); i++) {
+    uint32_t var = c->varsBegin()[i];
+    seen[var] = 0;
+  }
+
+  return cnt >> (50-vmap.size());
 }
 
 #ifdef SLOW_DEBUG

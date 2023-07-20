@@ -30,9 +30,12 @@ THE SOFTWARE.
 
 #include <vector>
 #include <cmath>
+#include <map>
 #include <gmpxx.h>
 #include "containers.hpp"
 #include "stack.hpp"
+
+using std::map;
 
 class ClauseAllocator;
 class Counter;
@@ -48,6 +51,10 @@ public:
         indep_support_end(_indep_support_end),
         solver(_solver)
   {}
+
+  const map<uint32_t, vector<Lit>>& get_idx_to_cl() const {
+    return idx_to_cl;
+  }
 
   uint32_t& scoreOf(VariableIndex v) {
     return var_frequency_scores_[v];
@@ -144,6 +151,7 @@ private:
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
   Counter* solver = NULL;
+  map<uint32_t, vector<Lit>> idx_to_cl;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
                                        // used in  recordComponentOf
                                        // its size is the number of variables in the component

@@ -64,6 +64,7 @@ public:
     cache_.delete_comps_with_vars(vars);
   }
   const ComponentCache& get_cache() const { return cache_; }
+  const ComponentAnalyzer& get_ana() const { return ana_; }
 
 
   uint64_t get_num_cache_entries_used() const { return cache_.get_num_entries_used(); }

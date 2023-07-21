@@ -40,6 +40,15 @@ THE SOFTWARE.
 #include "graph.hpp"
 #include "bdd.h"
 
+static void my_gbchandler(int pre, bddGbcStat *) {
+   if (!pre) {
+      /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
+      /* printf(" / %.1fs / %.1fs total\n", */
+	     /* (double)s->time/(double)(CLOCKS_PER_SEC), */
+	     /* (double)s->sumtime/(double)CLOCKS_PER_SEC); */
+   }
+}
+
 void Counter::simplePreProcess()
 {
   for (auto lit : unit_clauses_) {
@@ -153,9 +162,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   for(uint32_t i = 0; i < bags.size(); i++) {
     const auto& b = bags[i];
     cout << "bag id:" << i << endl;
-    for(const auto& bb: b) {
-      cout << bb << " ";
-    }
+    for(const auto& bb: b) { cout << bb << " "; }
     cout << endl;
   }
   for(uint32_t i = 0; i < adj.size(); i++) {
@@ -429,7 +436,7 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   for(const auto& c: cubes) {
     auto check_cnt = check_count_norestart(c);
     /* auto check_cnt = check_count_norestart_cms(c); */
-    cout << "check cube: " << c << " check_cnt: " << check_cnt << endl;
+    cout << "checking cube: " << c << " check_cnt: " << check_cnt << endl;
     assert(check_cnt == c.val);
   }
 #endif
@@ -493,7 +500,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     vector<Cube> cubes;
     count(cubes);
     print_and_check_cubes(cubes);
-    extend_cubes(cubes);
+    /* extend_cubes(cubes); */
     disable_cubes_if_overlap(cubes);
 
     // Add cubes to count, cubes & CMS
@@ -509,7 +516,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
       vivify_cl_toplevel(it->cnf);
       add_irred_cl(it->cnf);
-      cout << "added: " << it->cnf << " val: " << it->val << endl;
+      verb_print(2,  "added cube CL to GANAK: " << it->cnf << " val: " << it->val);
     }
     decision_stack_.clear();
     if (stats.num_restarts %2 == 0) {
@@ -617,7 +624,6 @@ int Counter::chrono_work_sat() {
 bool Counter::do_buddy_count() {
   const auto& sup_at = decision_stack_.top().super_comp();
   const auto& c = comp_manager_->at(sup_at);
-  /* cout << " bins: " << c->numBinCls() << " long: " << c->numLongClauses() << endl; */
   if (c->nVars() > 40 || c->nVars() < 10 || c->numBinCls()+c->numLongClauses() > 10) return false;
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
@@ -1138,8 +1144,8 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 
     // Checking
     VERBOSE_DEBUG_DO(print_trail());
-    VERBOSE_DEBUG_DO(cout << "dec lev: " << decision_stack_.get_decision_level() << endl);
-    VERBOSE_DEBUG_DO(cout << "top dec lit: " << top_dec_lit() << endl);
+    debug_print("dec lev: " << decision_stack_.get_decision_level());
+    debug_print("top dec lit: " << top_dec_lit());
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
     for(const auto& t: trail) {
@@ -1169,7 +1175,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
       } else if (ret == CMSat::l_False) break;
       else assert(false);
     }
-    VERBOSE_DEBUG_DO(cout << "num                          : " << num << endl);
+    debug_print("num                          : " << num);
     if (single_var == -1) {
       VERBOSE_DEBUG_DO(cout << "ds.top().getTotalModelCount(): " << decision_stack_.top().getTotalModelCount() << endl);
       if (num != 0) assert(decision_stack_.top().getTotalModelCount() == num);
@@ -1178,7 +1184,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 }
 
 retStateT Counter::backtrack() {
-  VERBOSE_DEBUG_DO(cout << "in " << __FUNCTION__ << " now " << endl);
+  debug_print("in " << __FUNCTION__ << " now ");
   assert(decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   do {
     debug_print("[indep] top count here: " << decision_stack_.top().getTotalModelCount() << " dec lev: " << decision_level());
@@ -1457,9 +1463,9 @@ bool Counter::is_implied(const vector<Lit>& cl) {
     for(const auto& l: cl) {
       lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
     }
-    VERBOSE_DEBUG_DO(cout << "to check lits: " << lits << endl);
+    debug_print("to check lits: " << lits);
     auto ret = sat_solver->solve(&lits);
-    VERBOSE_DEBUG_DO(cout << "Ret: " << ret << endl);
+    debug_print("Ret: " << ret);
     return ret == CMSat::l_False;
 }
 
@@ -2569,6 +2575,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
     , order_heap(VarOrderLt(watches_))
 {
   bdd_init(1000000, 100000);
+  bdd_gbc_hook(my_gbchandler);
   bdd_setvarnum(50);
   bdd_autoreorder(BDD_REORDER_WIN2ITE);
 }

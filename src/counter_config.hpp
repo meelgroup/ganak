@@ -32,23 +32,30 @@ using std::string;
 enum class branch_t {old_ganak, sharptd, gpmc};
 
 struct CounterConfiguration {
-  // TODO comp caching cannot be deactivated for now!
-  double act_exp = 0.99;
+  double act_exp = 0.99; // 1.0 is VERY slow. Seems good, also tried 0.985
   bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 1000U;
-  uint64_t next_restart = 100000000U;
+  uint64_t next_restart = 10000U;
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
+
+  // 7 == conflict/luby-based, taking into account first_restart
+  // 6 == conflict/static, taking into account next_restart
   int restart_type = 7;
+
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
   uint32_t rdb_cls_target = 10000;
-  int rdb_keep_used = 1;
-  int polar_type = 1; // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
+  int rdb_keep_used = 1; // quite a bit faster on lower time cut-off
+                         // but loses the edge after ~2000s
+
+  // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
+  int polar_type = 1;
+
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
@@ -58,7 +65,7 @@ struct CounterConfiguration {
   uint32_t td_varlim = 150000;
   double td_denselim = 0.10;
   double td_ratiolim = 30.0;
-  int td_with_red_bins = 1;
+  int td_with_red_bins = 1; // a MUST or we are VERY slow
   branch_t branch_type = branch_t::sharptd;
   branch_t branch_fallback_type = branch_t::old_ganak;
 

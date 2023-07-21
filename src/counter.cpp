@@ -624,7 +624,7 @@ int Counter::chrono_work_sat() {
 bool Counter::do_buddy_count() {
   const auto& sup_at = decision_stack_.top().super_comp();
   const auto& c = comp_manager_->at(sup_at);
-  if (c->nVars() > 40 || c->nVars() < 10 || c->numBinCls()+c->numLongClauses() > 10) return false;
+  if (c->nVars() > 64 || c->nVars() < 5 || c->numBinCls()+c->numLongClauses() > 13) return false;
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;
@@ -2576,7 +2576,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
 {
   bdd_init(1000000, 100000);
   bdd_gbc_hook(my_gbchandler);
-  bdd_setvarnum(50);
+  bdd_setvarnum(64);
   bdd_autoreorder(BDD_REORDER_WIN2ITE);
 }
 
@@ -3012,8 +3012,8 @@ uint64_t Counter::buddy_count() {
   }
   std::sort(vmap.begin(),vmap.end(),
       [=](uint32_t a, uint32_t b) -> bool {
-      return comp_manager_->scoreOf(a) > comp_manager_->scoreOf(b);
-      /* return tdscore[a] < tdscore[b]; */
+      /* return comp_manager_->scoreOf(a) > comp_manager_->scoreOf(b); */
+      return tdscore[a] > tdscore[b];
       });
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;
   VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
@@ -3073,7 +3073,7 @@ uint64_t Counter::buddy_count() {
     seen[var] = 0;
   }
 
-  return cnt >> (50-vmap.size());
+  return cnt >> (64-vmap.size());
 }
 
 #ifdef SLOW_DEBUG

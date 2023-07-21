@@ -624,7 +624,7 @@ int Counter::chrono_work_sat() {
 bool Counter::do_buddy_count() {
   const auto& sup_at = decision_stack_.top().super_comp();
   const auto& c = comp_manager_->at(sup_at);
-  if (c->nVars() > 64 || c->nVars() < 5 || c->numBinCls()+c->numLongClauses() > 13) return false;
+  if (c->nVars() > 64 || c->nVars() < 8 || c->numBinCls()+c->numLongClauses() > 10) return false;
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;

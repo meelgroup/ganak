@@ -443,7 +443,7 @@ private:
   void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);
-  void vivify_clauses(bool force = false, bool only_irred = false);
+  void vivify_all(bool force = false, bool only_irred = false);
   bool vivify_cl(const ClauseOfs off);
   void v_shrink(Clause& c);
   template<class T> bool v_unsat(const T& lits);

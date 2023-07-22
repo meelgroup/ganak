@@ -524,7 +524,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     }
     decision_stack_.clear();
     if (stats.num_restarts %2 == 0) {
-      vivify_clauses(true, true);
+      vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
     }
@@ -726,7 +726,7 @@ resolve:
 
     // Here we can vivify I think
     if (conf.do_vivify) {
-      vivify_clauses();
+      vivify_all();
       bool ret = propagate();
       assert(ret);
     }
@@ -1906,7 +1906,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
   cls.resize(j);
 }
 
-void Counter::vivify_clauses(bool force, bool only_irred) {
+void Counter::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
   vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();

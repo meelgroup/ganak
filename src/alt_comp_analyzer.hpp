@@ -76,20 +76,18 @@ public:
 
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unseen before
-  bool manageSearchOccurrenceOf(const Lit lit){
-    if (archetype_.var_unseen_in_sup_comp(lit.var())) {
-      /* debug_print("-> lit " << lit << " unseen in sup comp"); */
-      search_stack_.push_back(lit.var());
-      archetype_.setVar_seen(lit.var());
+  bool manageSearchOccurrenceOf(const uint32_t v){
+    if (archetype_.var_unseen_in_sup_comp(v)) {
+      search_stack_.push_back(v);
+      archetype_.setVar_seen(v);
       return true;
     }
-    /* debug_print("-> lit " << lit << " seen in sup comp"); */
     return false;
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
     var_frequency_scores_[lit.var()]+= isUnknown(lit);
-    return manageSearchOccurrenceOf(lit);
+    return manageSearchOccurrenceOf(lit.var());
   }
 
   void setSeenAndStoreInSearchStack(const VariableIndex v){

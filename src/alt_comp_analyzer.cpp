@@ -101,14 +101,10 @@ void ComponentAnalyzer::initialize(
     variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
 
     // data for binary clauses
-    for (const auto& bincl: watches_[Lit(v, false)].binary_links_) {
-      if (bincl.irred())
-        unified_variable_links_lists_pool_.push_back(bincl.lit().var());
-    }
-
-    for (const auto& bincl: watches_[Lit(v, true)].binary_links_) {
-      if (bincl.irred())
-        unified_variable_links_lists_pool_.push_back(bincl.lit().var());
+    for(uint32_t i = 0; i < 2; i++) {
+      for (const auto& bincl: watches_[Lit(v, i)].binary_links_) {
+        if (bincl.irred()) unified_variable_links_lists_pool_.push_back(bincl.lit().var());
+      }
     }
 
     // data for ternary clauses
@@ -171,7 +167,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     //traverse binary clauses
     uint32_t const* p = begin_cls_of_var(v);
     for (; *p; p++) {
-      if(manageSearchOccurrenceOf(Lit(*p,true))) {
+      if(manageSearchOccurrenceOf(*p)) {
         var_frequency_scores_[*p]++;
         var_frequency_scores_[v]++;
         archetype_.num_bin_cls++;

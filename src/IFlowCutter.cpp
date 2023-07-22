@@ -101,7 +101,7 @@ S& access_internal_vector(std::priority_queue<T, S, C>& q) {
 
 void IFlowCutter::print_comment(std::string msg){
 	if (verb == 0) return;
-	msg = "c o "+std::move(msg) + "\n";
+	msg = "c o [td] "+std::move(msg) + "\n";
 	ignore_return_value(write(STDOUT_FILENO, msg.data(), msg.length()));
 }
 
@@ -497,7 +497,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(
 	better_td.setWidth(maximum_bag_size-1);
 	better_td.setNumGraphNodes(node_count);
 	if (verb > 0) {
-	cout << "c o td: #bags " << bag_count << ", tw " << maximum_bag_size
+	cout << "c o [td] #bags " << bag_count << ", tw " << maximum_bag_size
 			<< ", elapsed " << cpuTime()  << " s"<< endl; // << endl;// << ", #vars " << node_count << endl;
 	}
 	better_td.initBags();
@@ -584,7 +584,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
 	better_td.init(bag_count);
 	better_td.setWidth(get_treewidth_of_multilevel_partition(cell_list)-1);
 	better_td.setNumGraphNodes(get_node_count_of_multilevel_partition(cell_list));
-	cout << "c o td: #bags " << bag_count
+	cout << "c o [td] #bags " << bag_count
 		<< ", tw " << get_treewidth_of_multilevel_partition(cell_list)-1
 		<< endl; // << ", #vars " << get_node_count_of_multilevel_partition(cell_list) << endl;
 	better_td.initBags();

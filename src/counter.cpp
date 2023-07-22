@@ -224,9 +224,10 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 }
 
 void Counter::td_decompose() {
+  double myTime = cpuTime();
   bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
-    verb_print(1, "skipping TD, too many/few vars. Setting branch to fallback");
+    verb_print(1, "[td] skipping TD, too many/few vars. Setting branch to fallback");
     conf.branch_type = conf.branch_fallback_type;
     return;
   }
@@ -254,23 +255,26 @@ void Counter::td_decompose() {
       }
     }
   }
-  verb_print(1, "Primal graph: nodes: " << nVars()+1 << ", edges " <<  primal.numEdges());
 
   double density = (double)primal.numEdges()/(double)(nVars() * nVars());
   double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
-  verb_print(1, "Primal graph density: "
-    << std::fixed << std::setw(9) << std::setprecision(3) << density
+  verb_print(1, "[td] Primal graph  "
+    << " nodes: " << nVars()+1
+    << " edges: " <<  primal.numEdges()
+    << " density: "
+    << std::fixed << std::setprecision(3) << density
     << " edge/var: "
-    << std::fixed << std::setw(9) << std::setprecision(3) << edge_var_ratio);
+    << std::fixed << std::setprecision(3) << edge_var_ratio);
 
   // run FlowCutter
-  verb_print(1, "FlowCutter is running...");
+  verb_print(2, "[td] FlowCutter is running...");
   IFlowCutter FC(nVars()+1, primal.numEdges(), conf.verb);
   FC.importGraph(primal);
   TreeDecomposition td = FC.constructTD();
 
   td.centroid(nVars()+1, conf.verb);
   compute_score(td);
+  verb_print(1, "[td] decompose time: " << cpuTime() - myTime);
 }
 
 vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {

@@ -80,7 +80,7 @@ int TreeDecomposition::centroid(int npvars, int verb) {
 		if(bags[centroid][i] < npvars) npvars_in_bags++;
 
 	cent = centroid;
-	if (verb > 0) printf("c o centroid bag size %d  #npvars %d\n", size, npvars_in_bags);
+	if (verb > 0) printf("c o [td] centroid bag size %d  #npvars %d\n", size, npvars_in_bags);
 	return centroid;
 }
 

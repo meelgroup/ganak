@@ -92,7 +92,7 @@ void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
     verb_print(1, "Free RAM " << std::setprecision(2)
       << (double)free_ram / (1024.0*1024.0) << "MB");
   }
-  verb_print(1, "c Max cache size (80% free mem-200MB): "
+  verb_print(1, "Max cache size (80% free mem-200MB): "
     << stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
 
   assert(!cache_full());

@@ -269,8 +269,8 @@ private:
   void print_comp_stack_info() const;
 
   // BDD
-  bool do_buddy_count();
-  uint64_t buddy_count();
+  bool do_buddy_count(const Component* c);
+  uint64_t buddy_count(const Component* c);
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
 

@@ -625,14 +625,12 @@ int Counter::chrono_work_sat() {
   return 0;
 }
 
-bool Counter::do_buddy_count() {
-  const auto& sup_at = decision_stack_.top().super_comp();
-  const auto& c = comp_manager_->at(sup_at);
+bool Counter::do_buddy_count(const Component* c) {
   if (c->nVars() > 64 || c->nVars() < 8 || c->numBinCls()+c->numLongClauses() > 10) return false;
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;
-  uint64_t cnt = buddy_count();
+  uint64_t cnt = buddy_count(c);
 
   if (cnt > 0) {
     decision_stack_.top().change_to_right_branch();
@@ -657,7 +655,7 @@ SOLVER_StateT Counter::countSAT() {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
 
       // BDD count
-      if (conf.do_buddy && do_buddy_count()) {
+      if (conf.do_buddy && do_buddy_count(c)) {
         state = BACKTRACK;
         break;
       }
@@ -2997,15 +2995,9 @@ void Counter::check_sat_solution() const {
   else tmp |= bdd_nithvar(vmap_rev[l.var()]);
 
 
-uint64_t Counter::buddy_count() {
+uint64_t Counter::buddy_count(const Component* c) {
   vmap.clear();
   vmap_rev.resize(nVars()+1);
-
-  const auto& s = decision_stack_.top();
-  auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
-                                       //that it could have already fallen into pieces
-                                       //at current level
-  const auto& c = comp_manager_->at(sup_at);
 
   // variable mapping
   for(uint32_t i = 0; i < c->nVars(); i++) {

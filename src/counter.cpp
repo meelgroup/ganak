@@ -630,7 +630,7 @@ bool Counter::do_buddy_count(const Component* c) {
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;
-  uint64_t cnt = buddy_count(c);
+  uint64_t cnt = buddy_count();
 
   if (cnt > 0) {
     decision_stack_.top().change_to_right_branch();
@@ -653,6 +653,7 @@ SOLVER_StateT Counter::countSAT() {
     // we then solve them all with the decideLiteral & calling findNext.. again
     while (comp_manager_->findNextRemainingComponentOf(decision_stack_.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
+      const Component* c = comp_manager_->at(decision_stack_.top().super_comp());
 
       // BDD count
       if (conf.do_buddy && do_buddy_count(c)) {
@@ -2995,7 +2996,12 @@ void Counter::check_sat_solution() const {
   else tmp |= bdd_nithvar(vmap_rev[l.var()]);
 
 
-uint64_t Counter::buddy_count(const Component* c) {
+uint64_t Counter::buddy_count() {
+  const auto& s = decision_stack_.top();
+  auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
+                                       //that it could have already fallen into pieces
+                                       //at current level
+  const auto& c = comp_manager_->at(sup_at);
   vmap.clear();
   vmap_rev.resize(nVars()+1);
 

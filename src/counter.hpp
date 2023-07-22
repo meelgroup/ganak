@@ -270,7 +270,7 @@ private:
 
   // BDD
   bool do_buddy_count(const Component* c);
-  uint64_t buddy_count(const Component* c);
+  uint64_t buddy_count();
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
 

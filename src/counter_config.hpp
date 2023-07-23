@@ -59,7 +59,7 @@ struct CounterConfiguration {
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
-  int do_extra_cl_bump = 0;
+  int do_extra_cl_bump = 1;
   int do_buddy = 0;
   uint32_t buddy_max_cls = 10;
 

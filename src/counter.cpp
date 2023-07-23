@@ -1974,14 +1974,14 @@ void Counter::vivify_all(bool force, bool only_irred) {
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
 
   // Vivify clauses
-  v_tout = conf.vivif_mult*1LL*1000LL*1000LL;
+  v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
   vivify_cls(longIrredCls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
 
   bool tout_red = false;
   if (!only_irred) {
-    v_tout = conf.vivif_mult*5LL*1000LL*1000LL;
+    v_tout = conf.vivif_mult*20LL*1000LL*1000LL;
     vivify_cls(longRedCls);
     verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
     tout_red = (v_tout <= 0);
@@ -2007,7 +2007,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
     v_cl_toplevel_repair(longRedCls);
   }
   ws_pos.clear();
-  verb_print(1, "vivif finished."
+  verb_print(1, "[vivif] finished."
       << " cl tried: " << (stats.vivif_tried_cl - last_vivif_cl_tried)
       << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
       << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
@@ -2225,7 +2225,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   v_backtrack();
   VERBOSE_DEBUG_DO(cout << "new vivified CL offs: " << off << endl; print_cl(v_tmp));
   uip_clause.clear();
-  check_implied(v_tmp);
+  SLOW_DEBUG_DO(check_implied(v_tmp));
   for(const auto&l: v_tmp) seen[l.raw()] = 1;
 
   uint32_t removable = 0;
@@ -2328,6 +2328,7 @@ bool Counter::v_propagate() {
 
     //Propagate bin clauses
     const auto& wsbin = litWatchList(unLit).binary_links_;
+    v_tout-=wsbin.size()/2;
     for (const auto& bincl : wsbin) {
       const auto& l = bincl.lit();
       if (v_val(l) == F_TRI) {
@@ -2341,7 +2342,7 @@ bool Counter::v_propagate() {
 
     //Propagate long clauses
     auto& ws = litWatchList(unLit).watch_list_;
-    v_tout-=ws.size();
+    v_tout-=ws.size()/2;
 
 #if 0
     cout << "prop-> will go through norm cl:" << endl;
@@ -2362,6 +2363,7 @@ bool Counter::v_propagate() {
       const auto ofs = it->ofs;
       Clause& c = *alloc->ptr(ofs);
       if (c[0] == unLit) { std::swap(c[0], c[1]); }
+      v_tout--;
 
 #ifdef VERBOSE_DEBUG
       cout << "Prop Norm cl: " << ofs << endl;

@@ -144,7 +144,7 @@ void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
   // sort the remaining comps for processing
   for (uint32_t i = start; i < end; i++)
     for (uint32_t j = i + 1; j < end; j++) {
-      if (comp_stack_[i]->nVars() > comp_stack_[j]->nVars())
+      if (comp_stack_[i]->nVars() < comp_stack_[j]->nVars())
         std::swap(comp_stack_[i], comp_stack_[j]);
     }
 }

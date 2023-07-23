@@ -649,7 +649,7 @@ int Counter::chrono_work_sat() {
 }
 
 bool Counter::do_buddy_count(const Component* c) {
-  if (c->nVars() > 64 || c->nVars() < 8 || c->numBinCls()+c->numLongClauses() > 10) return false;
+  if (c->nVars() > 64 || c->nVars() < 8 || c->numBinCls()+c->numLongClauses() > conf.buddy_max_cls) return false;
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;

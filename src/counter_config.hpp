@@ -61,6 +61,7 @@ struct CounterConfiguration {
   double vivif_mult = 1.0;
   int do_extra_cl_bump = 0;
   int do_buddy = 0;
+  uint32_t buddy_max_cls = 10;
 
   uint32_t td_varlim = 150000;
   double td_denselim = 0.10;

@@ -173,6 +173,8 @@ public:
   void extend_cubes(vector<Cube>& cubes);
   mpz_class outer_count(CMSat::SATSolver* solver = NULL);
   void set_indep_support(const set<uint32_t>& indeps);
+  void set_optional_indep_support(const set<uint32_t> &indeps);
+  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);
   void add_red_cl(const vector<Lit>& lits, int lbd = -1);
   const DataAndStatistics& get_stats() const;
@@ -196,6 +198,8 @@ private:
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
+  vector<uint8_t> optional_proj;
+  bool perform_optional_projected_counting = 0;
   vector<double> scores;
   bqueue<uint32_t> depth_q;
   bqueue<double, double> cache_miss_rate_q;

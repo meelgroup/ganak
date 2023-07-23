@@ -27,13 +27,14 @@ THE SOFTWARE.
 
 #include "counter.hpp"
 #include "GitSHA1.hpp"
+#include "common.hpp"
+#include "time_mem.hpp"
 
 #include <iostream>
 #include <set>
 #include <vector>
 #include <string>
 #include <iomanip>
-#include <time_mem.h>
 #include <boost/program_options.hpp>
 #include "src/GitSHA1.hpp"
 #include <arjun/arjun.h>
@@ -64,6 +65,7 @@ int do_check = 0;
 MTRand mtrand;
 CounterConfiguration conf;
 int ignore_indep = 0;
+int optional_indep = 0;
 int arjun_verb = 0;
 string branch_type = branch_type_to_str(conf.branch_type);
 string branch_fallback_type = branch_type_to_str(conf.branch_fallback_type);
@@ -73,6 +75,7 @@ struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
   vector<vector<CMSat::Lit>> red_clauses;
   vector<uint32_t> sampling_vars;
+  vector<uint32_t> optional_sampling_vars;
   uint32_t nvars = 0;
 
   uint32_t nVars() const { return nvars; }
@@ -113,6 +116,7 @@ void add_ganak_options()
     ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
+    ("optind", po::value(&optional_indep)->default_value(optional_indep), "Ignore indep support given")
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
 #ifndef SIMPLE
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
@@ -299,11 +303,19 @@ void parse_file(const std::string& filename, T* reader) {
   gzclose(in);
   #endif
 
+  if (optional_indep && !ignore_indep) {
+    cout << "ERROR: you HAVE to have ignore_indep for optional_indep" << endl;
+    exit(-1);
+  }
   indep_support_given = parser.sampling_vars_found && !ignore_indep;
   if (parser.sampling_vars_found && !ignore_indep) {
     cnfholder.sampling_vars = parser.sampling_vars;
   } else {
     for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampling_vars.push_back(i);
+    if (optional_indep && parser.sampling_vars_found)
+      cnfholder.optional_sampling_vars = parser.sampling_vars;
+    else
+      cnfholder.optional_sampling_vars = cnfholder.sampling_vars;
   }
   cnfholder.must_mult_exp2 = parser.must_mult_exp2;
 }
@@ -370,8 +382,7 @@ int main(int argc, char *argv[])
     arjun->set_seed(conf.seed);
     arjun->set_verbosity(arjun_verb);
     parse_file(fname, arjun);
-    if (indep_support_given) arjun->set_starting_sampling_set(cnfholder.sampling_vars);
-    else arjun->start_with_clean_sampling_set();
+    arjun->set_starting_sampling_set(cnfholder.sampling_vars);
     cnfholder.sampling_vars = arjun->get_indep_set();
     auto ret = arjun->get_fully_simplified_renumbered_cnf(
             cnfholder.sampling_vars, true, false, true, 2, 2, true, false);
@@ -388,14 +399,22 @@ int main(int argc, char *argv[])
       ret.sampling_vars = arj2.extend_indep_set();
       ret.renumber_sampling_for_ganak();
     }
-    if (conf.verb) { cout << "c o Arjun T: " << (cpuTime()-myTime) << endl; }
-#ifdef SLOW_DEBUG
-    write_simpcnf(ret, fname+"-simplified.cnf", cnfholder.must_mult_exp2, true);
-#endif
+    verb_print(1, "Arjun T: " << (cpuTime()-myTime));
+    SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", cnfholder.must_mult_exp2, true));
 
     cnfholder.clauses = ret.cnf;
     cnfholder.red_clauses = ret.red_cnf;
     cnfholder.nvars = ret.nvars;
+    if (optional_indep && !ignore_indep) {
+      cout << "ERROR: if ignore_indep is OFF, optional_indep must be OFF" << endl;
+      exit(-1);
+    }
+    if (optional_indep) cnfholder.optional_sampling_vars = ret.sampling_vars;
+    if (ignore_indep) {
+      cnfholder.sampling_vars.clear();
+      for(uint32_t i = 0; i < cnfholder.nVars(); i++) cnfholder.sampling_vars.push_back(i);
+    }
+    if (!optional_indep) cnfholder.optional_sampling_vars = cnfholder.sampling_vars;
     cnfholder.sampling_vars = ret.sampling_vars;
     cnfholder.must_mult_exp2 += ret.empty_occs;
   }
@@ -420,6 +439,16 @@ int main(int argc, char *argv[])
     set<uint32_t> tmp;
     for(auto const& s: cnfholder.sampling_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
+    if (optional_indep && !ignore_indep) {
+      cout << "ERROR: optional indep can only be used when ignore is on" << endl;
+      exit(-1);
+    }
+    if (optional_indep) {
+      tmp.clear();
+      for(auto const& s: cnfholder.optional_sampling_vars) tmp.insert(s+1);
+      counter->set_optional_indep_support(tmp);
+    }
+
     counter->init_activity_scores();
     cnt = counter->outer_count(sat_solver);
   }

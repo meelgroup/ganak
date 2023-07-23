@@ -63,8 +63,11 @@ void Counter::simplePreProcess()
   qhead = 0;
 }
 
-void Counter::set_indep_support(const set<uint32_t> &indeps)
-{
+vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
+  if (nVars() == 0) {
+    cout << "ERROR: you MUST set the number of variables before calling indep stuff" << endl;
+    exit(-1);
+  }
   if (indeps.count(0)) {
     cout << "ERROR: variable 0 does NOT exist!!" << endl;
     exit(-1);
@@ -81,6 +84,26 @@ void Counter::set_indep_support(const set<uint32_t> &indeps)
       exit(-1);
     }
   }
+
+  return tmp;
+}
+
+void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
+  auto tmp = common_indep_code(indeps);
+  if (tmp.size() == nVars()) {
+    verb_print(1, "opt ind NOT used, its size:" << indeps.size() << " vs nVars: " << nVars());
+    return;
+  }
+
+  optional_proj.resize(nVars()+1, 0);
+  for(const auto& v: tmp) optional_proj[v] = 1;
+  perform_optional_projected_counting = 1;
+  verb_print(1, "opt ind size:" << indeps.size() << " nvars: " << nVars());
+}
+
+void Counter::set_indep_support(const set<uint32_t> &indeps)
+{
+  auto tmp = common_indep_code(indeps);
   if (tmp.size() == 0) indep_support_end = 0;
   else indep_support_end = tmp.back()+1;
   if (indep_support_end == nVars()+1) perform_projected_counting = false;
@@ -763,8 +786,8 @@ bool Counter::decideLiteral() {
   uint32_t v = 0;
   isindependent = true;
   if (conf.branch_type == branch_t::gpmc) v = find_best_branch_gpmc();
-  else v = find_best_branch();
-  if (v == 0 && perform_projected_counting) {
+  else {assert(conf.branch_type == branch_t::sharptd); v = find_best_branch();}
+  if (v == 0 && (perform_projected_counting  || perform_optional_projected_counting)) {
     decision_stack_.pop_back();
     isindependent = false;
     return true;
@@ -826,15 +849,19 @@ uint32_t Counter::find_best_branch_gpmc() {
 
 uint32_t Counter::find_best_branch() {
   vars_scores.clear();
+  bool found_opt_indep = false;
   uint32_t best_var = 0;
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
-    if (val(*it) != X_TRI) continue;
-    if (*it < indep_support_end) {
-      const double score = scoreOf(*it) ;
+    const uint32_t v = *it;
+    if (val(v) != X_TRI) continue;
+    if (perform_optional_projected_counting && optional_proj[v]) found_opt_indep = true;
+
+    if (v < indep_support_end) {
+      const double score = scoreOf(v) ;
       if (best_var_score == -1 || score > best_var_score) {
-        best_var = *it;
+        best_var = v;
         best_var_score = score;
       }
     }
@@ -844,19 +871,21 @@ uint32_t Counter::find_best_branch() {
     double cachescore = comp_manager_->cacheScoreOf(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
-      if (val(*it) != X_TRI) continue;
-      if (*it < indep_support_end) {
-        const double score = scoreOf(*it);
+      const uint32_t v = *it;
+      if (val(v) != X_TRI) continue;
+      if (v < indep_support_end) {
+        const double score = scoreOf(v);
         if (score > best_var_score * 0.9) {
-          if (comp_manager_->cacheScoreOf(*it) > cachescore) {
-            best_var = *it;
-            cachescore = comp_manager_->cacheScoreOf(*it);
+          if (comp_manager_->cacheScoreOf(v) > cachescore) {
+            best_var = v;
+            cachescore = comp_manager_->cacheScoreOf(v);
           }
         }
       }
     }
   }
 
+  if (perform_optional_projected_counting && !found_opt_indep) return 0;
   return best_var;
 }
 
@@ -2904,9 +2933,10 @@ bool Counter::deal_with_independent() {
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
     if (val(*it) != X_TRI) continue;
-    if (*it < indep_support_end) {
+    if (perform_projected_counting && *it < indep_support_end) {
       assert(false && "Only non-indep remains");
     } else {
+      // it could be optional indep
       order_heap.insert(*it);
     }
   }

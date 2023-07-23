@@ -64,8 +64,8 @@ void Counter::simplePreProcess()
 }
 
 vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
-  if (nVars() == 0) {
-    cout << "ERROR: you MUST set the number of variables before calling indep stuff" << endl;
+  if (!num_vars_set) {
+    cout << "ERROR: new_vars() MUST be called before setting indep support" << endl;
     exit(-1);
   }
   if (indeps.count(0)) {

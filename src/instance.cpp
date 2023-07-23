@@ -142,6 +142,11 @@ void Instance::markClauseDeleted(const ClauseOfs off){
 }
 
 void Instance::new_vars(const uint32_t n) {
+  if (num_vars_set) {
+    cout << "ERROR: you can only call new_vars() once!" << endl;
+    exit(-1);
+  }
+
   assert(variables_.empty());
   assert(lit_values_.empty());
   assert(watches_.empty());
@@ -152,6 +157,7 @@ void Instance::new_vars(const uint32_t n) {
   lit_values_.resize(n + 1, X_TRI);
   watches_.resize(n + 1);
   lbdHelper.resize(n+1, 0);
+  num_vars_set = true;
 }
 
 Clause* Instance::addClause(const vector<Lit> &lits, bool red) {

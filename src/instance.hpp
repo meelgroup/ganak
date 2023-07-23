@@ -100,6 +100,7 @@ protected:
   LiteralIndexedVector<LitWatchList> watches_;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
+  bool num_vars_set = false;
   LiteralIndexedVector<TriValue> lit_values_;
   vector<double> tdscore; // treewidth-decomposition score
   double act_inc = 1.0;

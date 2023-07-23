@@ -67,18 +67,9 @@ struct CounterConfiguration {
   double td_denselim = 0.10;
   double td_ratiolim = 30.0;
   int td_with_red_bins = 1; // a MUST or we are VERY slow
-  branch_t branch_type = branch_t::sharptd;
-  branch_t branch_fallback_type = branch_t::old_ganak;
 
   uint64_t seed = 0;
   double delta = 0.05;
-
-  string get_branch_type_str() const {
-    if (branch_type == branch_t::gpmc) return "gpmc";
-    else if (branch_type == branch_t::sharptd) return "sharptd";
-    else if (branch_type == branch_t::old_ganak) return "ganak";
-    else release_assert(false);
-  }
 };
 
 inline std::string branch_type_to_str(const branch_t& t) {

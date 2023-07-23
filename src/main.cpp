@@ -67,8 +67,6 @@ CounterConfiguration conf;
 int ignore_indep = 0;
 int optional_indep = 0;
 int arjun_verb = 0;
-string branch_type = branch_type_to_str(conf.branch_type);
-string branch_fallback_type = branch_type_to_str(conf.branch_fallback_type);
 int do_arjun = 1;
 
 struct CNFHolder {
@@ -120,8 +118,6 @@ void add_ganak_options()
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
 #ifndef SIMPLE
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
-    ("branchfallback", po::value(&branch_fallback_type)->default_value(branch_fallback_type), "Branching type when TD doesn't work: ganak, gpmc")
-    ("branch", po::value(&branch_type)->default_value(branch_type), "Branching type: ganak, sharptd, gpmc")
     ("tdwithredbins", po::value(&conf.td_with_red_bins)->default_value(conf.td_with_red_bins), "TD computation with redundant binaries")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
@@ -359,8 +355,6 @@ int main(int argc, char *argv[])
 #ifdef SIMPLE
   conf.verb = 0;
 #endif
-  conf.branch_type = parse_branch_type(branch_type);
-  conf.branch_fallback_type = parse_branch_type(branch_fallback_type);
 
   string fname;
   if (vm.count("input") != 0) {

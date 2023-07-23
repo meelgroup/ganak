@@ -250,8 +250,7 @@ void Counter::td_decompose() {
   double myTime = cpuTime();
   bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
-    verb_print(1, "[td] skipping TD, too many/few vars. Setting branch to fallback");
-    conf.branch_type = conf.branch_fallback_type;
+    verb_print(1, "[td] skipping TD, too many/few vars.");
     return;
   }
 
@@ -563,13 +562,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
   mini_cubes.clear();
   verb_print(1, "Sampling set size: " << indep_support_end-1);
 
-  // Only compute TD decomposition once
-  if (tdscore.empty() && conf.td_with_red_bins) {
-    if (conf.branch_type == branch_t::sharptd ||
-        conf.branch_type == branch_t::gpmc) td_decompose();
-    verb_print(1, "branch type: " << conf.get_branch_type_str());
-  }
-
+  if (tdscore.empty()) td_decompose();
   const auto exit_state = countSAT();
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
@@ -785,8 +778,7 @@ bool Counter::decideLiteral() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   isindependent = true;
-  if (conf.branch_type == branch_t::gpmc) v = find_best_branch_gpmc();
-  else {assert(conf.branch_type == branch_t::sharptd); v = find_best_branch();}
+  v = find_best_branch();
   if (v == 0 && (perform_projected_counting  || perform_optional_projected_counting)) {
     decision_stack_.pop_back();
     isindependent = false;

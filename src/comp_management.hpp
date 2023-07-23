@@ -137,14 +137,15 @@ private:
   vector<uint32_t> tmp_data_for_pcc;
 };
 
-void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end)
-{
+void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   // sort the remaining comps for processing
   for (uint32_t i = start; i < end; i++)
     for (uint32_t j = i + 1; j < end; j++) {
-      if (comp_stack_[i]->nVars() < comp_stack_[j]->nVars())
+      if (conf.do_comp_reverse_sort && comp_stack_[i]->nVars() > comp_stack_[j]->nVars())
+        std::swap(comp_stack_[i], comp_stack_[j]);
+      if (!conf.do_comp_reverse_sort && comp_stack_[i]->nVars() < comp_stack_[j]->nVars())
         std::swap(comp_stack_[i], comp_stack_[j]);
     }
 }

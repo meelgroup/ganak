@@ -157,7 +157,7 @@ public:
     double score = 0;
     score += comp_manager_->scoreOf(v);
     score += 10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
-    score += tdscore[v];
+    if (!tdscore.empty()) score += tdscore[v];
     return score;
   }
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);

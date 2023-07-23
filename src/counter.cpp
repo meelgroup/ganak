@@ -3038,7 +3038,7 @@ uint64_t Counter::buddy_count() {
   }
   std::sort(vmap.begin(),vmap.end(),
       [=](uint32_t a, uint32_t b) -> bool {
-      /* return comp_manager_->scoreOf(a) > comp_manager_->scoreOf(b); */
+      if (tdscore.empty())return comp_manager_->scoreOf(a) > comp_manager_->scoreOf(b);
       return tdscore[a] > tdscore[b];
       });
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;

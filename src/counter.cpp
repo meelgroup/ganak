@@ -642,7 +642,7 @@ int Counter::chrono_work_sat() {
 }
 
 bool Counter::do_buddy_count(const Component* c) {
-  if (c->nVars() > 64 || c->nVars() < 8 || c->numBinCls()+c->numLongClauses() > conf.buddy_max_cls) return false;
+  if (c->nVars() > 64 || c->nVars() < 8 || (c->numBinCls()+c->numLongClauses()) > conf.buddy_max_cls) return false;
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;
@@ -3021,6 +3021,7 @@ void Counter::check_sat_solution() const {
 
 
 uint64_t Counter::buddy_count() {
+  assert(conf.do_vivify == 0 && "Vivify will change the irred cls, which will mess this up.");
   const auto& s = decision_stack_.top();
   auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
                                        //that it could have already fallen into pieces
@@ -3048,6 +3049,7 @@ uint64_t Counter::buddy_count() {
   auto bdd = bdd_true();
 
   // Long clauses
+  uint32_t actual_long = 0;
   const auto& ana = comp_manager_->get_ana();
   for (auto itCl = c->clsBegin(); *itCl != clsSENTINEL; itCl++) {
     auto idx = *itCl;
@@ -3064,9 +3066,11 @@ uint64_t Counter::buddy_count() {
       mybdd_add(tmp, l);
     }
     bdd &= tmp;
+    actual_long++;
   }
 
   // Binary clauses
+  uint32_t actual_bin = 0;
   for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
     Lit l(v, i);
     if (val(l) != X_TRI) continue;
@@ -3080,11 +3084,25 @@ uint64_t Counter::buddy_count() {
       auto l2 = ws.lit();
       mybdd_add(tmp, l2);
       bdd &= tmp;
+      actual_bin++;
 
       debug_print("bin cl: " << l << " " << l2 << " 0");
     }
   }
+#ifdef VERBOSE_DEBUG_DO
+  if (actual_bin != c->numBinCls()) {
+    cout << "WARN: numbin: " << c->numBinCls() << " actual bin: " << actual_bin << endl;
+  }
+  if (actual_long != c->numLongClauses()) {
+    cout << "WARN: numlong: " << c->numLongClauses() << " actual long: " << actual_long << endl;
+  }
+#endif
 
+  assert(c->numLongClauses() == actual_long);
+  if (actual_bin > c->numBinCls()) {
+    cout << "ERROR: BUDDY usage error. actual bin cls: " << actual_bin << " but c->numBins is: " << c->numBinCls() << " -- we should NEVER be over (but can be below)." << endl;
+    assert(false);
+  }
 
   uint64_t cnt = bdd_satcount_i64(bdd);
 #ifdef VERBOSE_DEBUG

@@ -176,7 +176,7 @@ public:
       }
     p_new_comp->closeClauseData();
     current_comp_for_caching_.closeClauseData();
-    p_new_comp->setNumBinCls(num_bin_cls);
+    p_new_comp->setNumBinCls(num_bin_cls/2);
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
         " New comp vars: " << p_new_comp->nVars() <<

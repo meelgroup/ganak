@@ -167,10 +167,10 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     //traverse binary clauses
     uint32_t const* p = begin_cls_of_var(v);
     for (; *p; p++) {
+      if (solver->val(*p) == X_TRI) archetype_.num_bin_cls++;
       if(manageSearchOccurrenceOf(*p)) {
         var_frequency_scores_[*p]++;
         var_frequency_scores_[v]++;
-        archetype_.num_bin_cls++;
       }
     }
 

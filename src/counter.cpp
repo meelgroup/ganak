@@ -545,6 +545,11 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       verb_print(2,  "added cube CL to GANAK: " << it->cnf << " val: " << it->val);
     }
     decision_stack_.clear();
+
+    // Remove for reasons for 0-level clauses, these may interfere with
+    // deletion of clauses
+    for(auto& v: variables_) {v.ante = Antecedent();}
+
     if (stats.num_restarts %2 == 0) {
       vivify_all(true, true);
       subsume_all();
@@ -2854,9 +2859,6 @@ void Counter::subsume_all() {
   attach_occ(longIrredCls);
   attach_occ(longRedCls);
   for(auto& ws: watches_) ws.watch_list_.clear();
-
-  // No need for reasons for 0-level clauses
-  for(auto& v: variables_) {v.ante = Antecedent();}
 
   // Binary clauses
   vector<BinClSub> bin_cls;

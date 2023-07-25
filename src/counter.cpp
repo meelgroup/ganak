@@ -250,7 +250,7 @@ void Counter::td_decompose() {
   double myTime = cpuTime();
   bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
-    verb_print(1, "[td] skipping TD, too many/few vars.");
+    verb_print(1, "[td] too many/few vars, not running TD");
     return;
   }
 

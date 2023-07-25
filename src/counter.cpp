@@ -2855,6 +2855,9 @@ void Counter::subsume_all() {
   attach_occ(longRedCls);
   for(auto& ws: watches_) ws.watch_list_.clear();
 
+  // No need for reasons for 0-level clauses
+  for(auto& v: variables_) {v.ante = Antecedent();}
+
   // Binary clauses
   vector<BinClSub> bin_cls;
   all_lits(i) {

@@ -95,6 +95,9 @@ void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
   verb_print(1, "Max cache size (80% free mem-200MB): "
     << stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
 
+
+  stats.sum_bytes_cached_comps_ = 0;
+  stats.cache_infrastructure_bytes_memory_usage_ = 0;
   assert(!cache_full());
   entry_base_.push_back(*packed_super_comp);
   stats.incorporate_cache_store(*packed_super_comp, 0);

@@ -118,6 +118,7 @@ void add_ganak_options()
     ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
 #ifndef SIMPLE
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
+    ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
     ("tdwithredbins", po::value(&conf.td_with_red_bins)->default_value(conf.td_with_red_bins), "TD computation with redundant binaries")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")

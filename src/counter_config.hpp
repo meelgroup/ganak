@@ -64,9 +64,9 @@ struct CounterConfiguration {
   int do_buddy = 0;
   uint32_t buddy_max_cls = 12;
 
+  bool do_td = 1;
   uint32_t td_varlim = 150000;
-  double td_denselim = 0.10;
-  double td_ratiolim = 30.0;
+  double td_ratiolim = 100.0;
   int td_with_red_bins = 1; // a MUST or we are VERY slow
 
   uint64_t seed = 0;

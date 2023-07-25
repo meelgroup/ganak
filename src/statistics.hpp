@@ -133,7 +133,6 @@ public:
 
   // the number of bytes occupied by all comps
   uint64_t sum_bytes_cached_comps_ = 0;
-
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
   const Instance* inst;

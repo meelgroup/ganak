@@ -173,7 +173,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
   CacheEntryID id;
 
   while (cache_full()) {
-    if (conf.verb) cout << "c Cache full. Deleting some entries." << endl;
+    verb_print(1, "Cache full. Deleting some entries.");
     deleteEntries();
   }
 

@@ -1113,9 +1113,11 @@ bool Counter::restart_if_needed() {
       Cube cube;
       if (compute_cube(cube, i)) {
         mini_cubes.push_back(cube);
-      } else { verb_print(2, "->> FALSE cube. "); }
+      } else {
+        verb_print(2, "->> FALSE cube. ");
+        comp_manager_->removeAllCachePollutionsOfIfExists(decision_stack_.top());
+      }
     }
-    comp_manager_->removeAllCachePollutionsOf(decision_stack_.top());
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
   }

@@ -52,6 +52,12 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
   tmp_data_for_pcc.resize(100+32*nVars+32*solver_->get_num_irred_long_cls());
 }
 
+void ComponentManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
+  assert(top.remaining_comps_ofs() <= comp_stack_.size());
+  assert(top.super_comp() != 0);
+  if (cache_.hasEntry(getSuperComponentOf(top).id())) removeAllCachePollutionsOf(top);
+}
+
 void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // all processed comps are found in
   // [top.currentRemainingComponent(), comp_stack_.size())

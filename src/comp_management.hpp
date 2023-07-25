@@ -104,6 +104,7 @@ public:
   inline void sortComponentStackRange(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
+  void removeAllCachePollutionsOfIfExists(const StackLevel &top);
   void removeAllCachePollutionsOf(const StackLevel &top);
   void* randomseedforCLHASH; //stores a bunch of __m128 aligned data pieces, each
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH

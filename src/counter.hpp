@@ -234,6 +234,7 @@ private:
   bool compute_cube(Cube& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
+  bool disable_td = false;
 
   // Actual SAT solver.
   bool deal_with_independent();

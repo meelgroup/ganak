@@ -250,6 +250,7 @@ void Counter::td_decompose() {
   double myTime = cpuTime();
   bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
+    disable_td = true;
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
   }
@@ -289,11 +290,13 @@ void Counter::td_decompose() {
     << std::fixed << std::setprecision(3) << edge_var_ratio);
   if (edge_var_ratio > conf.td_ratiolim && nVars() > 100) {
     verb_print(1, "[td] edge/var ratio is too high, not running TD");
+    disable_td = true;
     return;
   }
 
   if (primal.numEdges() > 60000) {
     verb_print(1, "[td] too many edges, not running TD");
+    disable_td = true;
     return;
   }
 
@@ -576,7 +579,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
   mini_cubes.clear();
   verb_print(1, "Sampling set size: " << indep_support_end-1);
 
-  if (tdscore.empty() && conf.do_td) td_decompose();
+  if (tdscore.empty() && conf.do_td && !disable_td) td_decompose();
   const auto exit_state = countSAT();
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;

@@ -822,40 +822,6 @@ bool Counter::decideLiteral() {
   return true;
 }
 
-uint32_t Counter::find_best_branch_gpmc() {
-  uint32_t maxv = 0;
-  double max_score_a = -1;
-  double max_score_f = -1;
-  double max_score_td = -1;
-
-  for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-      *it != varsSENTINEL; it++) if (*it < indep_support_end) {
-    if (val(*it) != X_TRI) continue;
-    uint32_t v = *it;
-    double score_td = tdscore[v];
-    double score_f = comp_manager_->scoreOf(v);
-    double score_a = watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
-
-    if(score_td > max_score_td) {
-      max_score_td = score_td;
-      max_score_f = score_f;
-      max_score_a = score_a;
-      maxv = v;
-    }
-    else if( score_td == max_score_td) {
-      if(score_f > max_score_f) {
-        max_score_f = score_f;
-        max_score_a = score_a;
-        maxv = v;
-      } else if (score_f == max_score_f && score_a > max_score_a) {
-        max_score_a = score_a;
-        maxv = v;
-      }
-    }
-  }
-  return maxv;
-}
-
 uint32_t Counter::find_best_branch() {
   vars_scores.clear();
   bool found_opt_indep = false;

@@ -155,9 +155,12 @@ public:
 
   double scoreOf(VariableIndex v) {
     double score = 0;
-    score += comp_manager_->scoreOf(v);
-    score += 10*watches_[Lit(v, false)].activity + 10*watches_[Lit(v, true)].activity;
+    score += comp_manager_->scoreOf(v)*act_inc/10;
+    /* cout << "v: " << v << " score1: " << score << endl; */
+    score += 10*(watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity);
+    /* cout << "v: " << v << " score2: " << score << endl; */
     if (!tdscore.empty()) score += tdscore[v];
+    /* cout << "v: " << v << " score3: " << score << endl; */
     return score;
   }
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
@@ -226,7 +229,6 @@ private:
 
   SOLVER_StateT countSAT();
   bool decideLiteral();
-  uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch();
   template<class T> bool clause_falsified(const T& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;

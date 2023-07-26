@@ -2894,7 +2894,7 @@ void Counter::subsume_all() {
   }
   occ.clear();
   clauses.clear();
-  verb_print(1, "subs "
+  verb_print(1, "[sub] "
       << " bin-cls: " << stats.subsumed_bin_cls - old_subsumed_bin_cls
       << " long-cls: " << stats.subsumed_cls - old_subsumed_cls
       << " T: " << (cpuTime() - myTime))

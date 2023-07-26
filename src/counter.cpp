@@ -2069,15 +2069,14 @@ void Counter::v_cl_repair(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   auto& offs = ws_pos[off];
 
+  // Move 1st & 2nd literal to position
   auto at = std::find(cl.begin(), cl.end(), offs.first);
   assert(at != cl.end());
   std::swap(cl[0], *at);
-
   at = std::find(cl.begin(), cl.end(), offs.second);
   assert(at != cl.end());
   std::swap(cl[1], *at);
 
-  /* uint32_t val_f = 0; */
   uint32_t val_u = 0;
   uint32_t val_t = 0;
   int32_t val_t_at = -1;
@@ -2087,13 +2086,12 @@ void Counter::v_cl_repair(ClauseOfs off) {
   for(uint32_t i = 0; i < cl.size(); i++) {
     const Lit l = cl[i];
     if (val(l) == T_TRI && var(l).decision_level <= mindec_12) {
+      // finds lowest decision level TRUE literal
       if (val_t_at == -1) {val_t_at = i;t_dec_lev = var(l).decision_level;}
       else if (t_dec_lev > var(l).decision_level) {
         val_t_at = i;t_dec_lev = var(l).decision_level;}
     }
-    if (val(l) == T_TRI) {any_val_t_pos = i;}
-    if (val(l) == T_TRI) {val_t++;}
-    /* if (val(l) == F_TRI) {val_f++;} */
+    if (val(l) == T_TRI) {any_val_t_pos = i;val_t++;}
     if (val(l) == X_TRI) {val_u++;}
   }
 
@@ -2102,6 +2100,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
   // Not propagating
   assert(!(val_u == 1 && val_t == 0));
 
+  // Satisfied by blocked literal that at declevel lower or equal to min(declev(cl[0]), declev(cl[1]))
   if (val_t_at != -1) {
     litWatchList(cl[0]).addWatchLinkTo(off, cl[val_t_at]);
     litWatchList(cl[1]).addWatchLinkTo(off, cl[val_t_at]);
@@ -2110,15 +2109,20 @@ void Counter::v_cl_repair(ClauseOfs off) {
     return;
   }
 
-  // We removed the TRUE
+  // We may have removed the TRUE maybe. Nothing is TRUE
   std::sort(cl.begin(), cl.end(),
     [=](const Lit& a, const Lit& b) {
+      // undef must be at the beginning.
       if (val(a) == X_TRI && val(b) != X_TRI) return true;
       if (val(b) == X_TRI && val(a) != X_TRI) return false;
+
+      // Undef first as long as it's the same declevel
       if (var(a).decision_level == var(b).decision_level) {
-        if(val(a) != val(b)) return val(a) == T_TRI;
+        if(val(a) != val(b)) return val(a) == X_TRI;
         return false;
       }
+
+      // Largest declevel first
       return var(a).decision_level > var(b).decision_level;
     });
 

@@ -68,6 +68,10 @@ THE SOFTWARE.
 /////
 
 #define verb_print(a, b) if (conf.verb >= a) cout << "c o " << b << endl;
+#define clear_toclean_seen() \
+    for(const auto& x: toClear) seen[x] = 0;\
+    toClear.clear();
+
 
 // verbose debug
 #ifdef VERBOSE_DEBUG

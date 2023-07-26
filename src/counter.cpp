@@ -2785,6 +2785,7 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
 void Counter::toplevel_full_probe() {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   assert(toClear.empty());
+  assert(bothprop_toset.empty());
 
   double myTime = cpuTime();
   auto old_probe = stats.toplevel_probe_fail;
@@ -2794,6 +2795,7 @@ void Counter::toplevel_full_probe() {
   // 0 dec level.
   decision_stack_.push_back(StackLevel(1,2));
 
+  SLOW_DEBUG_DO(for(const auto&c: seen) assert(c == 0));
   for(uint32_t i = 1; i <= nVars(); i++) {
     Lit l = Lit(i, 0);
     if (val(l) != X_TRI) continue;
@@ -2814,6 +2816,7 @@ void Counter::toplevel_full_probe() {
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
     if (!ret) {
+      clear_toclean_seen();
       setLiteral(l.neg(), 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
@@ -2841,25 +2844,25 @@ void Counter::toplevel_full_probe() {
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
     if (!ret) {
-      for(const auto& x: toClear) seen[x] = 0;
-      toClear.clear();
+      clear_toclean_seen();
       setLiteral(l, 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
       stats.toplevel_probe_fail++;
       continue;
     }
-    for(const auto& x: toClear) seen[x] = 0;
-    toClear.clear();
+
+    clear_toclean_seen();
     for(const auto& x: bothprop_toset) setLiteral(x, 0);
     bothprop_toset.clear();
     ret = propagate();
     assert(ret && "we are never UNSAT");
   }
+  SLOW_DEBUG_DO(for(const auto&c: seen) assert(c == 0));
   decision_stack_.clear();
-  verb_print(1, "toplevel "
-      << " probe f: " << (old_probe - stats.toplevel_probe_fail)
-      << " bprop f: " << (old_bprop - stats.toplevel_bothprop_fail)
+  verb_print(1, "[top-probe] "
+      << " failed: " << (stats.toplevel_probe_fail - old_probe)
+      << " bprop: " << (stats.toplevel_bothprop_fail - old_bprop)
       << " T: " << (cpuTime()-myTime));
 }
 

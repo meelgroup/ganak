@@ -749,7 +749,7 @@ resolve:
     // we are here because there is no next component, or we had to backtrack
 
     state = backtrack();
-    if (state == EXIT) return SUCCESS;
+    if (state == EXIT) goto end;
 
     while (!propagate()) {
       if (chrono_work()) continue;
@@ -757,20 +757,22 @@ resolve:
       while(state == GO_AGAIN) state = resolveConflict();
       if (state == BACKTRACK) {
         state = backtrack();
-        if (state == EXIT) return SUCCESS;
+        if (state == EXIT) goto end;
       }
     }
-    if (state == PROCESS_COMPONENT && restart_if_needed()) {
-      return RESTART;
-    }
+    if (state == PROCESS_COMPONENT && restart_if_needed()) return RESTART;
 
-    // Here we can vivify I think
     if (conf.do_vivify) {
       vivify_all();
       bool ret = propagate();
       assert(ret);
     }
   }
+
+end:
+  // We have to propagate at the end due to non-chrono BT
+  bool ret = propagate();
+  assert(ret && "never UNSAT");
   return SUCCESS;
 }
 
@@ -2097,14 +2099,8 @@ void Counter::v_cl_repair(ClauseOfs off) {
       if (val(a) == X_TRI && val(b) != X_TRI) return true;
       if (val(b) == X_TRI && val(a) != X_TRI) return false;
 
-      // Undef first as long as it's the same declevel
-      if (var(a).decision_level == var(b).decision_level) {
-        if(val(a) != val(b)) return val(a) == X_TRI;
-        return false;
-      }
-
-      // Largest declevel first
-      return var(a).decision_level > var(b).decision_level;
+      // Largest sublevel first
+      return var(a).sublevel > var(b).sublevel;
     });
 
   debug_print("Vivified cl off: " << off);
@@ -2159,26 +2155,33 @@ template<class T> bool Counter::v_clause_satisfied(const T& cl) const {
   return false;
 }
 
-template<class T> bool Counter::should_have_propagated_earlier(const T& cl) const {
+template<class T> bool Counter::propagation_correctness_of_vivified(const T& cl) const {
   uint32_t num_t = 0;
   int32_t t_lev = -1;
   int32_t maxlev_f = -1;
+  // Check if it should_have_propagated_earlier
   for(const auto&l: cl) {
     if (val(l) == T_TRI) {
       num_t++;
-      if (num_t >= 2) return false;
+      if (num_t >= 2) return true;
       t_lev = var(l).decision_level;
     }
-    if (val(l) == X_TRI) return false;
+    if (val(l) == X_TRI) return true;
     if (val(l) == F_TRI) {
       maxlev_f = std::max(maxlev_f, var(l).decision_level);
     }
   }
 
   // Should have propagated at level maxlev_f -- but it only got set TRUE at t_lev!
-  if (maxlev_f < t_lev) return true;
-  return false;
+  if (maxlev_f < t_lev) return false;
 
+  // Have to find a FALSE at the level the TRUE is at
+  for(const auto&l: cl) {
+    if (val(l) == F_TRI) {
+      if (var(l).decision_level == t_lev) return true;
+    }
+  }
+  return false;
 }
 
 // Returns TRUE if we can remove the clause
@@ -2186,13 +2189,9 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   bool fun_ret = false;
   Clause& cl = *alloc->ptr(off);
-  if (v_val(cl[0]) != X_TRI || v_val(cl[1]) != X_TRI) return false;
-  cl.vivifed = 1;
-  stats.vivif_tried_cl++;
 
   /* cout << "orig CL: " << endl; v_print_cl(cl); */
   auto it = off_to_lit12.find(off);
-  v_new_lev();
   v_tmp.clear();
   v_tmp2.clear();
   for(const auto&l: cl) v_tmp2.push_back(l);
@@ -2203,6 +2202,11 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   std::swap(*sw, v_tmp2[0]);
   sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.second);
   std::swap(*sw, v_tmp2[1]);
+  if (v_val(v_tmp2[0]) != X_TRI || v_val(v_tmp2[1]) != X_TRI) return false;
+
+  v_new_lev();
+  cl.vivifed = 1;
+  stats.vivif_tried_cl++;
 
   debug_print("vivifying cl offs: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
@@ -2246,7 +2250,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
       // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
       //      so we must skip this
       !propagating_cl(v_tmp) && !conflicting_cl(v_tmp) &&
-      !should_have_propagated_earlier(v_tmp)) {
+      propagation_correctness_of_vivified(v_tmp)) {
     litWatchList(cl[0]).removeWatchLinkTo(off);
     litWatchList(cl[1]).removeWatchLinkTo(off);
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));

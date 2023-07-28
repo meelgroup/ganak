@@ -456,7 +456,7 @@ private:
   void v_fix_watch(Clause& cl, uint32_t i);
   template<class T> bool propagating_cl(T& cl) const;
   template<class T> bool conflicting_cl(T& cl) const;
-  template<class T> bool should_have_propagated_earlier(const T& cl) const;
+  template<class T> bool propagation_correctness_of_vivified(const T& cl) const;
   void v_new_lev();
   template<class T> bool v_clause_satisfied(const T& cl) const;
   void vivif_backtrack();
@@ -504,6 +504,7 @@ inline void Counter::print_cl(const Lit* c, uint32_t size) const {
       << " lev: " << std::setw(3) << var(l).decision_level
       << " ante: " << std::setw(8) << var(l).ante
       << " val: " << std::setw(7) << lit_val_str(l)
+      << " sublev: " << std::setw(3) << var(l).sublevel
       << endl;
   }
 }

@@ -63,6 +63,12 @@ struct CounterConfiguration {
   int do_extra_cl_bump = 1;
   int do_buddy = 0;
   uint32_t buddy_max_cls = 12;
+#ifdef CHECK_COUNT
+  int do_check_count = 0;
+#else
+  int do_check_count = 1;
+#endif
+
 
   bool do_td = 1;
   uint32_t td_varlim = 150000;

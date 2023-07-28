@@ -49,8 +49,7 @@ static void my_gbchandler(int pre, bddGbcStat *) {
    }
 }
 
-void Counter::simplePreProcess()
-{
+void Counter::simplePreProcess() {
   for (auto lit : unit_clauses_) {
     assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) setLiteral(lit, 0);
@@ -61,6 +60,10 @@ void Counter::simplePreProcess()
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   init_decision_stack();
   qhead = 0;
+
+  // Remove for reasons for 0-level clauses, these may interfere with
+  // deletion of clauses during subsumption
+  for(auto& v: variables_) {v.ante = Antecedent();}
 }
 
 vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
@@ -120,8 +123,7 @@ void Counter::init_activity_scores() {
   }
 }
 
-void Counter::end_irred_cls()
-{
+void Counter::end_irred_cls() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   delete comp_manager_;
@@ -144,7 +146,12 @@ void Counter::end_irred_cls()
   comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
 }
 
-void Counter::add_irred_cl(const vector<Lit>& lits) {
+void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
+  vector<Lit> lits;
+  for(const auto& l: lits_orig) {
+    if (val(l) == T_TRI) return;
+    if (val(l) == X_TRI) lits.push_back(l);
+  }
   if (lits.empty()) {
     cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
     exit(-1);
@@ -375,10 +382,12 @@ mpz_class Counter::check_count_norestart_cms(const Cube& c) {
 
 // Self-check count without restart
 mpz_class Counter::check_count_norestart(const Cube& c) {
-  verb_print(2, "Checking count with ourselves (no verb, no restart), CNF: " << c.cnf);
+  verb_print(1, "Checking count with ourselves (no verb, no restart), CNF: " << c.cnf);
   CounterConfiguration conf2 = conf;
   conf2.do_restart = 0;
   conf2.verb = 0;
+  conf2.do_buddy = 0;
+  conf2.do_check_count = 0;
   vector<Lit> tmp;
   Counter test_cnt(conf2);
   test_cnt.new_vars(nVars());
@@ -470,14 +479,14 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(1, "Num restarts: " << stats.num_restarts);
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
-#ifdef SLOW_DEBUG
-  for(const auto& c: cubes) {
-    auto check_cnt = check_count_norestart(c);
-    /* auto check_cnt = check_count_norestart_cms(c); */
-    cout << "checking cube: " << c << " check_cnt: " << check_cnt << endl;
-    assert(check_cnt == c.val);
+  if (conf.do_check_count) {
+    for(const auto& c: cubes) {
+      auto check_cnt = check_count_norestart(c);
+      /* auto check_cnt = check_count_norestart_cms(c); */
+      cout << "checking cube: " << c << " check_cnt: " << check_cnt << endl;
+      assert(check_cnt == c.val);
+    }
   }
-#endif
   verb_print(1, "Total num cubes: " << cubes.size());
 }
 
@@ -537,6 +546,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   while(ret == CMSat::l_True) {
     vector<Cube> cubes;
     count(cubes);
+    SLOW_DEBUG_DO(check_all_propagated_conflicted());
     print_and_check_cubes(cubes);
     /* extend_cubes(cubes); */
     disable_cubes_if_overlap(cubes);
@@ -552,22 +562,17 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
 
     // Add cubes to counter
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
-      vivify_cl_toplevel(it->cnf);
       add_irred_cl(it->cnf);
       verb_print(2,  "added cube CL to GANAK: " << it->cnf << " val: " << it->val);
     }
     decision_stack_.clear();
 
-    // Remove for reasons for 0-level clauses, these may interfere with
-    // deletion of clauses
-    for(auto& v: variables_) {v.ante = Antecedent();}
-
+    end_irred_cls();
     if (stats.num_restarts %2 == 0) {
       vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
     }
-    end_irred_cls();
   }
   return val;
 }
@@ -744,7 +749,6 @@ resolve:
     // we are here because there is no next component, or we had to backtrack
 
     state = backtrack();
-    if (state == PROCESS_COMPONENT && restart_if_needed()) {return RESTART;}
     if (state == EXIT) return SUCCESS;
 
     while (!propagate()) {
@@ -755,6 +759,9 @@ resolve:
         state = backtrack();
         if (state == EXIT) return SUCCESS;
       }
+    }
+    if (state == PROCESS_COMPONENT && restart_if_needed()) {
+      return RESTART;
     }
 
     // Here we can vivify I think
@@ -1104,6 +1111,12 @@ bool Counter::restart_if_needed() {
     reactivate_comps_and_backtrack_trail();
     decision_stack_.pop_back();
   }
+
+  // Because of non-chrono backtrack, we need to propagate here:
+  // zero decision level stuff now gets propagated at 0-level
+  bool ret = propagate();
+  assert(ret && "never UNSAT");
+  SLOW_DEBUG_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
   return true;
 }
@@ -1587,7 +1600,7 @@ retStateT Counter::resolveConflict() {
 
   Antecedent ant;
   assert(!uip_clause.empty());
-  SLOW_DEBUG_DO(check_implied(uip_clause));
+  CHECK_IMPLIED_DO(check_implied(uip_clause));
   if (decision_stack_.get_decision_level() > 0 && top_dec_lit().neg() == uip_clause[0]) {
     debug_print("FLIPPING. Setting reason the conflict cl");
     assert(var(uip_clause[0]).decision_level != -1);
@@ -1872,7 +1885,7 @@ void Counter::minimizeUIPClause() {
   for(const auto& c: toClear) seen[c] = 0;
   toClear.clear();
 
-  SLOW_DEBUG_DO(check_implied(uip_clause));
+  CHECK_IMPLIED_DO(check_implied(uip_clause));
   tmp_clause_minim.clear();
   for(const auto& l:uip_clause) tmp_clause_minim.push_back(l);
 
@@ -1884,7 +1897,7 @@ void Counter::minimizeUIPClause() {
   stats.final_cl_sz+=tmp_clause_minim.size();
   uip_clause.clear();
   for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
-  SLOW_DEBUG_DO(check_implied(uip_clause));
+  CHECK_IMPLIED_DO(check_implied(uip_clause));
 }
 
 void Counter::vivify_cls(vector<ClauseOfs>& cls) {
@@ -1895,9 +1908,8 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     auto& off = cls[i];
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
-      if (cl.vivifed == 0 && (
-          !cl.red || (cl.red &&
-            (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 50)))))
+      if (cl.vivifed == 0 &&
+          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 50)))))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;
@@ -1914,6 +1926,8 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
 
 void Counter::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
+
+  SLOW_DEBUG_DO(check_all_propagated_conflicted());
   vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
@@ -1924,14 +1938,14 @@ void Counter::vivify_all(bool force, bool only_irred) {
   last_confl_vivif = stats.conflicts;
 
   // Backup
-  ws_pos.clear();
+  off_to_lit12.clear();
   for(const auto& off: longIrredCls) {
     const Clause& cl = *alloc->ptr(off);
-    ws_pos[off] = std::make_pair(cl[0], cl[1]);
+    off_to_lit12[off] = std::make_pair(cl[0], cl[1]);
   }
   for(const auto& off: longRedCls) {
     const Clause& cl = *alloc->ptr(off);
-    ws_pos[off] = std::make_pair(cl[0], cl[1]);
+    off_to_lit12[off] = std::make_pair(cl[0], cl[1]);
   }
 
   // Set ourselves up.
@@ -1983,7 +1997,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
     v_cl_toplevel_repair(longIrredCls);
     v_cl_toplevel_repair(longRedCls);
   }
-  ws_pos.clear();
+  off_to_lit12.clear();
   verb_print(1, "[vivif] finished."
       << " cl tried: " << (stats.vivif_tried_cl - last_vivif_cl_tried)
       << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
@@ -1991,6 +2005,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
       << " tout-irred: " << (int)tout_irred
       << " tout-red: " << (int)tout_red
       << " T: " << (cpuTime()-myTime));
+  SLOW_DEBUG_DO(check_all_propagated_conflicted());
 }
 
 template<class T> bool Counter::v_satisfied(const T& lits) {
@@ -2033,7 +2048,7 @@ void Counter::v_cl_toplevel_repair(vector<ClauseOfs>& offs) {
 
 void Counter::v_cl_repair(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
-  auto& offs = ws_pos[off];
+  auto& offs = off_to_lit12[off];
 
   // Move 1st & 2nd literal to position
   auto at = std::find(cl.begin(), cl.end(), offs.first);
@@ -2075,7 +2090,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
     return;
   }
 
-  // We may have removed the TRUE maybe. Nothing is TRUE
+  // We may have removed the TRUE. Nothing is TRUE
   std::sort(cl.begin(), cl.end(),
     [=](const Lit& a, const Lit& b) {
       // undef must be at the beginning.
@@ -2171,11 +2186,12 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   bool fun_ret = false;
   Clause& cl = *alloc->ptr(off);
+  if (v_val(cl[0]) != X_TRI || v_val(cl[1]) != X_TRI) return false;
   cl.vivifed = 1;
   stats.vivif_tried_cl++;
 
   /* cout << "orig CL: " << endl; v_print_cl(cl); */
-  auto it = ws_pos.find(off);
+  auto it = off_to_lit12.find(off);
   v_new_lev();
   v_tmp.clear();
   v_tmp2.clear();
@@ -2190,40 +2206,42 @@ bool Counter::vivify_cl(const ClauseOfs off) {
 
   debug_print("vivifying cl offs: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
-  for(uint32_t i = 0; i < v_tmp2.size(); i++) {
-    const auto& l = v_tmp2[i];
-    debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
-    if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
-    if (v_val(l) == F_TRI) continue;
-    v_tmp.push_back(l);
-    v_enqueue(l.neg());
-    bool ret = v_propagate();
-    if (!ret) {
-      debug_print("vivif ret FALSE, exiting");
-      break;
+
+  v_tmp.push_back(v_tmp2[0]);
+  v_tmp.push_back(v_tmp2[1]);
+  v_enqueue(v_tmp2[0].neg());
+  v_enqueue(v_tmp2[1].neg());
+  bool ret = v_propagate();
+  if (ret) {
+    for(uint32_t i = 2; i < v_tmp2.size(); i++) {
+      const auto& l = v_tmp2[i];
+      debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
+      if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
+      if (v_val(l) == F_TRI) continue;
+      v_tmp.push_back(l);
+      v_enqueue(l.neg());
+      ret = v_propagate();
+      if (!ret) {
+        debug_print("vivif ret FALSE, exiting");
+        break;
+      }
     }
   }
   v_backtrack();
   VERBOSE_DEBUG_DO(cout << "new vivified CL offs: " << off << endl; print_cl(v_tmp));
   uip_clause.clear();
-  SLOW_DEBUG_DO(check_implied(v_tmp));
+  CHECK_IMPLIED_DO(check_implied(v_tmp));
   for(const auto&l: v_tmp) seen[l.raw()] = 1;
 
   uint32_t removable = 0;
-  assert(it != ws_pos.end());
-  for(uint32_t i = 0; i < cl.sz; i ++) {
-    const Lit l = cl[i];
-    // watch 0 & 1 are never removable
-    if (l != it->second.first && l != it->second.second) {
-      seen[l.raw()] ^= 1;
-      if (seen[l.raw()]) {
-        removable++;
-        toClear.push_back(l.raw());
-      }
+  for(const auto& l: v_tmp2) {
+    if (seen[l.raw()] == 0) {
+      removable++;
     } else {
-      seen[l.raw()] = 0;
+      toClear.push_back(l.raw());
     }
   }
+
   if (removable != 0 &&
       // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
       //      so we must skip this
@@ -2234,10 +2252,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));
     stats.vivif_cl_minim++;
     stats.vivif_lit_rem += removable;
-    auto it2 = std::remove_if(cl.begin(), cl.end(),
-        [=](Lit l) -> bool { return seen[l.raw()] == 1; });
-
-    cl.resize(it2-cl.begin());
+    for(uint32_t i = 0; i < v_tmp.size(); i++) cl[i] = v_tmp[i];
+    cl.resize(v_tmp.size());
     assert(cl.sz >= 2);
     VERBOSE_DEBUG_DO(cout << "vivified CL: " << endl; v_print_cl(cl));
 
@@ -2257,10 +2273,11 @@ bool Counter::vivify_cl(const ClauseOfs off) {
 
       add_bin_cl(cl[0], cl[1], cl.red);
       if (v_val(cl[0]) == X_TRI && v_val(cl[1]) == F_TRI) {
-        v_enqueue(cl[0]);
+        // cannot propagate!
+        assert(false);
       }
       for(uint32_t v = 1; v < variables_.size(); v++) {
-        auto& vdat= variables_[v];
+        auto& vdat = variables_[v];
         if (vdat.ante.isAClause() && vdat.ante.asCl() == off) {
           assert(v == cl[0].var() || v == cl[1].var());
           Lit otherLit = (v == cl[0].var()) ? cl[1] : cl[0];
@@ -2273,12 +2290,13 @@ bool Counter::vivify_cl(const ClauseOfs off) {
       litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);
       litWatchList(cl[1]).addWatchLinkTo(off, cl[cl.sz/2]);
       if (!v_clause_satisfied(cl) && v_val(cl[0]) == X_TRI && v_val(cl[1]) != X_TRI) {
+        //cannot propagate!
         assert(v_val(cl[1]) == F_TRI);
-        v_enqueue(cl[0]);
+        assert(false);
       }
       cl.update_lbd(cl.sz); // we may be smaller than LBD
     }
-    bool ret = v_propagate();
+    ret = v_propagate();
     assert(ret);
   } else {
     VERBOSE_DEBUG_DO(cout << "Can't vivify." << endl);
@@ -2390,34 +2408,6 @@ bool Counter::v_propagate() {
   }
   debug_print("After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
   return ret;
-}
-
-void Counter::vivify_cl_toplevel(vector<Lit>& cl) {
-  /* cout << "orig CL: " << endl; print_cl(cl); */
-  assert(decision_level() == 0);
-  decision_stack_.push_back(
-  StackLevel(decision_stack_.top().currentRemainingComponent(),
-             comp_manager_->comp_stack_size()));
-  v_tmp2 = cl;
-  cl.clear();
-  std::shuffle(v_tmp2.begin(), v_tmp2.end(), vivif_g);
-
-  for(uint32_t i = 0; i < v_tmp2.size(); i++) {
-    const auto& l = v_tmp2[i];
-    debug_print("Vivif lit l: " << l << " val: " << val_to_str(val(l)));
-    if (val(l) == T_TRI) {cl.push_back(l);break;}
-    if (val(l) == F_TRI) continue;
-    cl.push_back(l);
-    setLiteral(l.neg(), 1);
-    bool ret = propagate();
-    if (!ret) {
-      debug_print("vivif ret FALSE, exiting");
-      break;
-    }
-  }
-  reactivate_comps_and_backtrack_trail();
-  decision_stack_.pop_back();
-  /* cout << "toplevel vivified CL: " << endl; print_cl(cl); */
 }
 
 void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const
@@ -2579,7 +2569,7 @@ void Counter::recordLastUIPCause() {
   assert(pathC == 0);
   uip_clause[0] = p.neg();
   VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause.data(), uip_clause.size()));
-  SLOW_DEBUG_DO(check_implied(uip_clause));
+  CHECK_IMPLIED_DO(check_implied(uip_clause));
   minimizeUIPClause();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
 }
@@ -2589,15 +2579,19 @@ Counter::Counter(const CounterConfiguration& _conf) :
     , mtrand(_conf.seed)
     , order_heap(VarOrderLt(watches_))
 {
-  bdd_init(1000000, 100000);
-  bdd_gbc_hook(my_gbchandler);
-  bdd_setvarnum(64);
-  bdd_autoreorder(BDD_REORDER_WIN2ITE);
+  if (conf.do_buddy) {
+    bdd_init(1000000, 100000);
+    bdd_gbc_hook(my_gbchandler);
+    bdd_setvarnum(64);
+    bdd_autoreorder(BDD_REORDER_WIN2ITE);
+  }
 }
 
 Counter::~Counter() {
   delete comp_manager_;
-  bdd_done();
+  if (conf.do_buddy) {
+    bdd_done();
+  }
 }
 
 bool Counter::check_watchlists() const {
@@ -2757,16 +2751,13 @@ void Counter::toplevel_full_probe() {
   auto old_probe = stats.toplevel_probe_fail;
   auto old_bprop = stats.toplevel_bothprop_fail;
   stats.toplevel_probe_runs++;
-  assert(decision_stack_.size() == 0);
-  // 0 dec level.
-  decision_stack_.push_back(StackLevel(1,2));
+  assert(decision_level() == 0);
 
   SLOW_DEBUG_DO(for(const auto&c: seen) assert(c == 0));
   for(uint32_t i = 1; i <= nVars(); i++) {
     Lit l = Lit(i, 0);
     if (val(l) != X_TRI) continue;
 
-    assert(decision_level() == 0);
     decision_stack_.push_back(StackLevel(1,2));
     decision_stack_.back().var = l.var();
     setLiteral(l, 1);
@@ -2819,13 +2810,16 @@ void Counter::toplevel_full_probe() {
     }
 
     clear_toclean_seen();
-    for(const auto& x: bothprop_toset) setLiteral(x, 0);
+    for(const auto& x: bothprop_toset) {
+      setLiteral(x, 0);
+      cout << "set: " << x << endl;
+    }
     bothprop_toset.clear();
     ret = propagate();
     assert(ret && "we are never UNSAT");
   }
+
   SLOW_DEBUG_DO(for(const auto&c: seen) assert(c == 0));
-  decision_stack_.clear();
   verb_print(1, "[top-probe] "
       << " failed: " << (stats.toplevel_probe_fail - old_probe)
       << " bprop: " << (stats.toplevel_bothprop_fail - old_bprop)
@@ -2833,7 +2827,7 @@ void Counter::toplevel_full_probe() {
 }
 
 void Counter::subsume_all() {
-  assert(decision_stack_.size() == 0);
+  assert(decision_level() == 0);
   assert(occ.empty());
   assert(clauses.empty());
 
@@ -2845,6 +2839,8 @@ void Counter::subsume_all() {
   occ.resize((nVars()+1)*2);
   attach_occ(longIrredCls);
   attach_occ(longRedCls);
+
+  // Detach everything
   for(auto& ws: watches_) ws.watch_list_.clear();
 
   // Binary clauses
@@ -2890,6 +2886,22 @@ void Counter::subsume_all() {
     if (cl.freed) continue;
     if (cl.red) longRedCls.push_back(off);
     else longIrredCls.push_back(off);
+
+    std::sort(cl.begin(), cl.end(),
+      [=](const Lit& a, const Lit& b) {
+        // undef must be at the beginning.
+        if (val(a) == X_TRI && val(b) != X_TRI) return true;
+        if (val(b) == X_TRI && val(a) != X_TRI) return false;
+
+        // Undef first as long as it's the same declevel
+        if (var(a).decision_level == var(b).decision_level) {
+          if(val(a) != val(b)) return val(a) == X_TRI;
+          return false;
+        }
+
+        // Largest declevel first
+        return var(a).decision_level > var(b).decision_level;
+      });
     attach_cl(off, cl);
   }
   occ.clear();
@@ -3112,7 +3124,6 @@ uint64_t Counter::buddy_count() {
   return cnt >> (64-vmap.size());
 }
 
-#ifdef SLOW_DEBUG
 template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
   Lit unk = NOT_A_LIT;
   uint32_t num_unknown = 0;
@@ -3137,7 +3148,6 @@ template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
 
 void Counter::check_all_propagated_conflicted() const {
   // Everything that should have propagated, propagated
-  for(const auto& cl: debug_irred_cls) check_cl_propagated_conflicted(cl);
   for(const auto& off: longIrredCls) {
     const Clause& cl = *alloc->ptr(off);
     check_cl_propagated_conflicted(cl);
@@ -3146,5 +3156,36 @@ void Counter::check_all_propagated_conflicted() const {
     const Clause& cl = *alloc->ptr(off);
     check_cl_propagated_conflicted(cl);
   }
-}
+
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    if (val(lit) == T_TRI) continue;
+    for(const auto& ws: watches_[lit].binary_links_) {
+      if (val(ws.lit()) == T_TRI) continue;
+      if (val(lit) == F_TRI) {
+        if (val(ws.lit()) == X_TRI) {
+          cout << "Should have propagated lit: " << ws.lit() << " due to binary clause " << lit << " " << ws.lit() << endl;
+          assert(false);
+        }
+        if (val(ws.lit()) == F_TRI) {
+          cout << "Falsified binary clause: " << lit << " " << ws.lit() << endl;
+          assert(false);
+        }
+      }
+      if (val(ws.lit()) == F_TRI) {
+        if (val(lit) == X_TRI) {
+          cout << "Should have propagated lit: " << lit << " due to binary clause " << lit << " " << ws.lit() << endl;
+          assert(false);
+        }
+        if (val(lit) == F_TRI) {
+          cout << "Falsified binary clause: " << lit << " " << ws.lit() << endl;
+          assert(false);
+        }
+      }
+    }
+  }
+
+#ifdef SLOW_DEBUG
+  for(const auto& cl: debug_irred_cls) check_cl_propagated_conflicted(cl);
 #endif
+}

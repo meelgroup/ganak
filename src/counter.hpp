@@ -439,7 +439,7 @@ private:
   vector<Lit> v_cl;
   uint64_t last_confl_vivif = 0;
   std::mt19937 vivif_g;
-  map<ClauseOfs, pair<Lit, Lit>> ws_pos;
+  map<ClauseOfs, pair<Lit, Lit>> off_to_lit12;
   void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);
@@ -468,7 +468,6 @@ private:
   LiteralIndexedVector<TriValue> v_values;
 
   // Toplevel stuff
-  void vivify_cl_toplevel(vector<Lit>& cl);
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs);
   inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}

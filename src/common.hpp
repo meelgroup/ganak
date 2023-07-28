@@ -29,6 +29,7 @@ THE SOFTWARE.
 
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */
+/* #define CHECK_IMPLIED */
 /* #define VERY_SLOW_DEBUG */
 /* #define CHECK_TRAIL_ENTAILMENT */
 
@@ -52,6 +53,12 @@ THE SOFTWARE.
 #define SLOW_DEBUG_DO(x) do { x; } while (0)
 #else
 #define SLOW_DEBUG_DO(x) do { } while (0)
+#endif
+
+#ifdef CHECK_IMPLIED
+#define CHECK_IMPLIED_DO(x) do { x; } while (0)
+#else
+#define CHECK_IMPLIED_DO(x) do { } while (0)
 #endif
 
 #ifdef VERY_SLOW_DEBUG

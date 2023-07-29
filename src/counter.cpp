@@ -1043,19 +1043,23 @@ bool Counter::restart_if_needed() {
       depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
     restart = true;
 
+  // Decisions, static
   if (conf.restart_type == 3 &&
       (stats.decisions-stats.last_restart_num_decisions) > conf.next_restart)
     restart = true;
 
+  // conflicts, static
   if (conf.restart_type == 6 &&
       (stats.conflicts-stats.last_restart_num_conflicts) > conf.next_restart)
     restart = true;
 
+  // Conflicts, luby
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
         10*(luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
+  // Components, luby
   if (conf.restart_type == 8 &&
       (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;

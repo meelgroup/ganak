@@ -439,7 +439,17 @@ private:
   vector<Lit> v_cl;
   uint64_t last_confl_vivif = 0;
   std::mt19937 vivif_g;
-  map<ClauseOfs, pair<Lit, Lit>> off_to_lit12;
+  struct SavedCl {
+    SavedCl (Lit _first, Lit _second, Lit _blk) :
+      first(_first), second(_second), blk(_blk)
+    {}
+    SavedCl () {}
+
+    Lit first;
+    Lit second;
+    Lit blk;
+  };
+  map<ClauseOfs, SavedCl> off_to_lit12;
   void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);
@@ -515,7 +525,9 @@ template<class T> void Counter::print_cl(const T& cl) const {
     cout << std::setw(5) << l
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante
-      << " val: " << lit_val_str(l) << endl;
+      << " val: " << lit_val_str(l)
+      << " sublev: " << std::setw(3) << var(l).sublevel
+      << endl;
   }
 }
 

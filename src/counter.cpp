@@ -1939,15 +1939,23 @@ void Counter::vivify_all(bool force, bool only_irred) {
   // Sanity check here.
   last_confl_vivif = stats.conflicts;
 
-  // Backup
+  // Backup 1st&2nd watch + block lit
   off_to_lit12.clear();
   for(const auto& off: longIrredCls) {
     const Clause& cl = *alloc->ptr(off);
-    off_to_lit12[off] = std::make_pair(cl[0], cl[1]);
+    off_to_lit12[off] = SavedCl(cl[0], cl[1], NOT_A_LIT);
   }
   for(const auto& off: longRedCls) {
     const Clause& cl = *alloc->ptr(off);
-    off_to_lit12[off] = std::make_pair(cl[0], cl[1]);
+    off_to_lit12[off] = SavedCl(cl[0], cl[1], NOT_A_LIT);
+  }
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    for(const auto& ws: watches_[lit].watch_list_) {
+      auto it = off_to_lit12.find(ws.ofs);
+      assert(it != off_to_lit12.end());
+      it->second.blk = ws.blckLit;
+    }
   }
 
   // Set ourselves up.

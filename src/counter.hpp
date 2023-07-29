@@ -440,14 +440,19 @@ private:
   uint64_t last_confl_vivif = 0;
   std::mt19937 vivif_g;
   struct SavedCl {
-    SavedCl (Lit _first, Lit _second, Lit _blk) :
-      first(_first), second(_second), blk(_blk)
-    {}
+    SavedCl (Lit _first, Lit _second, bool _currently_propagating) :
+      first(_first), second(_second), currently_propagating(_currently_propagating)
+    {
+      blk1 = NOT_A_LIT;
+      blk2 = NOT_A_LIT;
+    }
     SavedCl () {}
 
     Lit first;
     Lit second;
-    Lit blk;
+    Lit blk1;
+    Lit blk2;
+    bool currently_propagating = false;
   };
   map<ClauseOfs, SavedCl> off_to_lit12;
   void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
@@ -467,6 +472,7 @@ private:
   template<class T> bool propagating_cl(T& cl) const;
   template<class T> bool conflicting_cl(T& cl) const;
   template<class T> bool propagation_correctness_of_vivified(const T& cl) const;
+  template<class T> bool currently_propagating_cl(T& cl) const;
   void v_new_lev();
   template<class T> bool v_clause_satisfied(const T& cl) const;
   void vivif_backtrack();
@@ -554,6 +560,15 @@ template<class T> bool Counter::propagating_cl(T& cl) const {
     if (val(l) == X_TRI) {unk++; if (unk>1) break;}
   }
   return unk == 1;
+}
+
+template<class T> bool Counter::currently_propagating_cl(T& cl) const {
+  uint32_t tru = 0;
+  for(const auto&l: cl) {
+    if (val(l) == T_TRI) {tru++; if (tru>1) return false;}
+    if (val(l) == X_TRI) return false;
+  }
+  return tru == 1;
 }
 
 inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {

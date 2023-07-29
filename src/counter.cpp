@@ -546,7 +546,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   while(ret == CMSat::l_True) {
     vector<Cube> cubes;
     count(cubes);
-    SLOW_DEBUG_DO(check_all_propagated_conflicted());
+    CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
     print_and_check_cubes(cubes);
     /* extend_cubes(cubes); */
     disable_cubes_if_overlap(cubes);
@@ -1118,7 +1118,7 @@ bool Counter::restart_if_needed() {
   // zero decision level stuff now gets propagated at 0-level
   bool ret = propagate();
   assert(ret && "never UNSAT");
-  SLOW_DEBUG_DO(check_all_propagated_conflicted());
+  CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
   return true;
 }
@@ -1239,7 +1239,7 @@ retStateT Counter::backtrack() {
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
-      /* SLOW_DEBUG_DO(check_all_propagated_conflicted()); */
+      /* CHECK_PROPAGATED_DO(check_all_propagated_conflicted()); */
       reactivate_comps_and_backtrack_trail(false);
       bool ret = propagate(true);
       assert(ret);
@@ -1798,7 +1798,7 @@ bool Counter::propagate(bool out_of_order) {
       print_trail(false, false);
       assert(false);
     });
-  SLOW_DEBUG_DO(if (confl.isNull()) check_all_propagated_conflicted());
+  CHECK_PROPAGATED_DO(if (confl.isNull()) check_all_propagated_conflicted());
   debug_print("After propagate, qhead is: " << qhead);
   return confl.isNull();
 }
@@ -1929,7 +1929,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
 void Counter::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
 
-  SLOW_DEBUG_DO(check_all_propagated_conflicted());
+  CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
@@ -1943,18 +1943,22 @@ void Counter::vivify_all(bool force, bool only_irred) {
   off_to_lit12.clear();
   for(const auto& off: longIrredCls) {
     const Clause& cl = *alloc->ptr(off);
-    off_to_lit12[off] = SavedCl(cl[0], cl[1], NOT_A_LIT);
+    bool curr_prop = currently_propagating_cl(cl);
+    off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
   }
   for(const auto& off: longRedCls) {
     const Clause& cl = *alloc->ptr(off);
-    off_to_lit12[off] = SavedCl(cl[0], cl[1], NOT_A_LIT);
+    bool curr_prop = currently_propagating_cl(cl);
+    off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
   }
   all_lits(i) {
     Lit lit(i/2, i%2);
     for(const auto& ws: watches_[lit].watch_list_) {
       auto it = off_to_lit12.find(ws.ofs);
       assert(it != off_to_lit12.end());
-      it->second.blk = ws.blckLit;
+      if (lit == it->second.first) it->second.blk1 = ws.blckLit;
+      else if (lit == it->second.second) it->second.blk2 = ws.blckLit;
+      else assert(false);
     }
   }
 
@@ -2015,7 +2019,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
       << " tout-irred: " << (int)tout_irred
       << " tout-red: " << (int)tout_red
       << " T: " << (cpuTime()-myTime));
-  SLOW_DEBUG_DO(check_all_propagated_conflicted());
+  CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
 }
 
 template<class T> bool Counter::v_satisfied(const T& lits) {
@@ -2060,62 +2064,42 @@ void Counter::v_cl_repair(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   auto& offs = off_to_lit12[off];
 
-  // Move 1st & 2nd literal to position
-  auto at = std::find(cl.begin(), cl.end(), offs.first);
-  assert(at != cl.end());
-  std::swap(cl[0], *at);
-  at = std::find(cl.begin(), cl.end(), offs.second);
-  assert(at != cl.end());
-  std::swap(cl[1], *at);
+  if (offs.currently_propagating) {
+    // Move 1st & 2nd literal to position
+    auto at = std::find(cl.begin(), cl.end(), offs.first);
+    assert(at != cl.end());
+    std::swap(cl[0], *at);
+    at = std::find(cl.begin(), cl.end(), offs.second);
+    assert(at != cl.end());
+    std::swap(cl[1], *at);
 
-  uint32_t val_u = 0;
-  uint32_t val_t = 0;
-  int32_t val_t_at = -1;
-  int32_t t_dec_lev = -1;
-  int32_t any_val_t_pos = -1;
-  int32_t mindec_12 = std::min(var(cl[0]).decision_level, var(cl[1]).decision_level);
-  for(uint32_t i = 0; i < cl.size(); i++) {
-    const Lit l = cl[i];
-    if (val(l) == T_TRI && var(l).decision_level <= mindec_12) {
-      // finds lowest decision level TRUE literal
-      if (val_t_at == -1) {val_t_at = i;t_dec_lev = var(l).decision_level;}
-      else if (t_dec_lev > var(l).decision_level) {
-        val_t_at = i;t_dec_lev = var(l).decision_level;}
-    }
-    if (val(l) == T_TRI) {any_val_t_pos = i;val_t++;}
-    if (val(l) == X_TRI) {val_u++;}
-  }
-
-  // Not conflicting
-  assert(!(val_u == 0 && val_t == 0));
-  // Not propagating
-  assert(!(val_u == 1 && val_t == 0));
-
-  // Satisfied by blocked literal that at declevel lower or equal to min(declev(cl[0]), declev(cl[1]))
-  if (val_t_at != -1) {
-    litWatchList(cl[0]).addWatchLinkTo(off, cl[val_t_at]);
-    litWatchList(cl[1]).addWatchLinkTo(off, cl[val_t_at]);
-    debug_print("Vivified cl off: " << off);
-    VERBOSE_DEBUG_DO(print_cl(cl));
+    litWatchList(cl[0]).addWatchLinkTo(off, offs.blk1);
+    litWatchList(cl[1]).addWatchLinkTo(off, offs.blk2);
     return;
   }
 
-  // We may have removed the TRUE. Nothing is TRUE
   std::sort(cl.begin(), cl.end(),
     [=](const Lit& a, const Lit& b) {
       // undef must be at the beginning.
       if (val(a) == X_TRI && val(b) != X_TRI) return true;
       if (val(b) == X_TRI && val(a) != X_TRI) return false;
+      if (var(a).decision_level == 0) return false;
+      if (var(b).decision_level == 0) return true;
 
       // Largest sublevel first
       return var(a).sublevel > var(b).sublevel;
     });
 
+  int32_t t_at = -1;
+  for(uint32_t i = 2; i < cl.size(); i++) {
+    if (val(cl[i]) == T_TRI) {t_at = i; break;}
+  }
+
   debug_print("Vivified cl off: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
-  int32_t pos = (any_val_t_pos == -1) ? cl.sz/2 : any_val_t_pos;
-  litWatchList(cl[0]).addWatchLinkTo(off, cl[pos]);
-  litWatchList(cl[1]).addWatchLinkTo(off, cl[pos]);
+  Lit blk = (t_at == -1) ? cl[cl.sz/2] : cl[t_at];
+  litWatchList(cl[0]).addWatchLinkTo(off, blk);
+  litWatchList(cl[1]).addWatchLinkTo(off, blk);
 }
 
 // We could have removed a TRUE. This may be an issue.
@@ -2200,6 +2184,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
 
   /* cout << "orig CL: " << endl; v_print_cl(cl); */
   auto it = off_to_lit12.find(off);
+  if (it->second.currently_propagating) return false;
   v_tmp.clear();
   v_tmp2.clear();
   for(const auto&l: cl) v_tmp2.push_back(l);

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <sstream>
 #include <cstdint>
+#include <random>
 
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */
@@ -142,4 +143,9 @@ inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) 
     ss << value;
   }
   return ss.str();
+}
+#define unif_uint_dist(x,y) std::uniform_int_distribution<> x(0, y)
+inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
+    unif_uint_dist(u, maximum);
+    return u(mtrand);
 }

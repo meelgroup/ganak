@@ -21,7 +21,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #pragma once
 
 #include "Vec.hpp"
-#include "MersenneTwister.h"
 
 // A heap implementation with support for decrease/increase key.
 template<class Comp>
@@ -112,12 +111,6 @@ public:
         assert(index < (int)heap.size());
         return heap[index];
     }
-    int random_element(MTRand& rnd)
-    {
-        assert(!heap.empty());
-        return heap[rnd.randInt(heap.size()-1)];
-    }
-
 
     void decrease  (int n)
     {

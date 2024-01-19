@@ -62,7 +62,6 @@ po::positional_options_description p;
 using namespace std;
 bool indep_support_given = false;
 int do_check = 0;
-MTRand mtrand;
 CounterConfiguration conf;
 int ignore_indep = 0;
 int optional_indep = 0;
@@ -80,6 +79,7 @@ struct CNFHolder {
   uint32_t new_vars(uint32_t vars) { nvars+=vars; return nvars; }
   uint32_t new_var() { nvars++; return nvars;}
   void add_xor_clause(vector<uint32_t>&, bool) { exit(-1); }
+  void add_xor_clause(vector<CMSat::Lit>&, bool) { exit(-1); }
   void add_clause(vector<CMSat::Lit>& cl) { clauses.push_back(cl); }
   void add_red_clause(vector<CMSat::Lit>& cl) { red_clauses.push_back(cl); }
   uint32_t must_mult_exp2 = 0;
@@ -381,8 +381,9 @@ int main(int argc, char *argv[])
     parse_file(fname, arjun);
     arjun->set_starting_sampling_set(cnfholder.sampling_vars);
     cnfholder.sampling_vars = arjun->get_indep_set();
+    ArjunNS::SimpConf simpConf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(
-            cnfholder.sampling_vars, true, false, true, 2, 2, true, false);
+            cnfholder.sampling_vars, simpConf, true, false);
     delete arjun;
     if (!indep_support_given) {
       ret.sampling_vars.clear();
@@ -394,7 +395,7 @@ int main(int argc, char *argv[])
       for(const auto& cl: ret.cnf) arj2.add_clause(cl);
       arj2.set_starting_sampling_set(ret.sampling_vars);
       ret.sampling_vars = arj2.extend_indep_set();
-      ret.renumber_sampling_for_ganak();
+      ret.renumber_sampling_vars_for_ganak();
     }
     verb_print(1, "Arjun T: " << (cpuTime()-myTime));
     SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", cnfholder.must_mult_exp2, true));

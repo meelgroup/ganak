@@ -1934,7 +1934,6 @@ void Counter::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
-  vivif_g.seed(mtrand.randInt());
   double myTime = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
   uint64_t last_vivif_cl_minim = stats.vivif_cl_minim;
@@ -2192,7 +2191,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   v_tmp.clear();
   v_tmp2.clear();
   for(const auto&l: cl) v_tmp2.push_back(l);
-  std::shuffle(v_tmp2.begin(), v_tmp2.end(), vivif_g);
+  std::shuffle(v_tmp2.begin(), v_tmp2.end(), mtrand);
 
   // Swap to 1st & 2nd the two original 1st & 2nd
   auto sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.first);
@@ -2873,7 +2872,7 @@ void Counter::subsume_all() {
   for(auto& b: bin_cls) backw_susume_cl_with_bin(b);
 
   // Long clauses
-  std::shuffle(clauses.begin(), clauses.end(), std::default_random_engine(mtrand.randInt()));
+  std::shuffle(clauses.begin(), clauses.end(), mtrand);
   for(const auto& off: clauses) {
     Clause* cl = alloc->ptr(off);
     if (cl->freed) continue;

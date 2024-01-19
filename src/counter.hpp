@@ -29,7 +29,6 @@ THE SOFTWARE.
 #include "instance.hpp"
 #include "comp_management.hpp"
 
-#include "MersenneTwister.hpp"
 #include "comp_management.hpp"
 #include "boundedqueue.hpp"
 #include "TreeDecomposition.hpp"
@@ -210,7 +209,7 @@ private:
   deque<Lit> tmp_clause_minim;
 
   double start_time;
-  MTRand mtrand;
+  std::mt19937_64 mtrand;
 
   DecisionStack decision_stack_;
   vector<Lit> trail;
@@ -438,7 +437,6 @@ private:
   vector<Lit> v_tmp2;
   vector<Lit> v_cl;
   uint64_t last_confl_vivif = 0;
-  std::mt19937 vivif_g;
   struct SavedCl {
     SavedCl (Lit _first, Lit _second, bool _currently_propagating) :
       first(_first), second(_second), currently_propagating(_currently_propagating)

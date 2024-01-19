@@ -120,14 +120,6 @@ public:
     void     clear    (bool dealloc = false);
 
     // Stack interface:
-    void     push_back()
-    {
-        if (sz == cap) {
-            capacity(sz + 1);
-        }
-        new (&data[sz]) T();
-        sz++;
-    }
     void     push_back(const T& elem)
     {
         if (sz == cap) {
@@ -262,13 +254,9 @@ void vec<T>::capacity(int32_t min_cap)
 template<class T>
 void vec<T>::growTo(uint32_t size, const T& pad)
 {
-    if (sz >= size) {
-        return;
-    }
+    if (sz >= size) return;
     capacity(size);
-    for (uint32_t i = sz; i < size; i++) {
-        data[i] = pad;
-    }
+    for (uint32_t i = sz; i < size; i++) data[i] = pad;
     sz = size;
 }
 
@@ -276,13 +264,8 @@ void vec<T>::growTo(uint32_t size, const T& pad)
 template<class T>
 void vec<T>::growTo(uint32_t size)
 {
-    if (sz >= size) {
-        return;
-    }
+    if (sz >= size) return;
     capacity(size);
-    for (uint32_t i = sz; i < size; i++) {
-        new (&data[i]) T();
-    }
     sz = size;
 }
 
@@ -291,12 +274,7 @@ template<class T>
 void vec<T>::clear(bool dealloc)
 {
     if (data != NULL) {
-        for (uint32_t i = 0; i < sz; i++) {
-            data[i].~T();
-        }
         sz = 0;
-        if (dealloc) {
-            free(data), data = NULL, cap = 0;
-        }
+        if (dealloc) {free(data); data = NULL; cap = 0;}
     }
 }

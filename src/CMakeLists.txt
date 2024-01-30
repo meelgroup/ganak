@@ -55,12 +55,12 @@ add_executable (ganak-bin main.cpp)
 target_link_libraries (ganak-bin ganak ${GMP_LIBRARIES})
 
 if (NOT WIN32)
-    set_target_properties(ganak PROPERTIES
+    set_target_properties(ganak-bin PROPERTIES
       OUTPUT_NAME ganak
       RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
     )
 else()
-    set_target_properties(ganak PROPERTIES
+    set_target_properties(ganak-bin PROPERTIES
       OUTPUT_NAME ganak-win
       RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
     )

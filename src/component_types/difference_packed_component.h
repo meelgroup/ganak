@@ -255,7 +255,7 @@ DifferencePackedComponent::DifferencePackedComponent(vector<void *> &random,Comp
   clhashkey_ = new uint64_t[random.capacity()];
   for(int i=0; i<random.capacity();i++){
     clhasher h(random[i]);
-    clhashkey_[i] = h((void*)data_, sizeof(unsigned)*data_size);
+    clhashkey_[i] = h((unsigned int*)data_, sizeof(unsigned)*data_size);
   }
 #endif
   //TODO Remove

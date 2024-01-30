@@ -3,36 +3,27 @@ GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns 
 
 To read more about technical algorithms in Ganak, please refer to [our paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf) 
 
-#### New:
-1. We released a new tool SymGanak, which exploits the inherent symmetry exhibited in combinatorial problems for component-caching in ganak to achieve significant performance gains. Please checkout to symganak branch for more details.
-2. We added a support for Weighted Model Counting: Please checkout to wmc branch for more details.
-3. We replaced MIS with arjun to calculate minimal independent set for IS heuristic as arjun is more performant than MIS.
-
 ## Installation
 
 ### Compiling in Linux
 
 To build ganak, issue:
 
-```
-bash
-sudo apt-get install libgmp-dev
-sudo apt-get install libmpfr-dev
-sudo apt-get install libmpc-dev
+```bash
+sudo apt-get install libgmp-dev libmpfr-dev libmpc-dev
+git clone https://github.com/meelgroup/ganak
 mkdir build && cd build
 cmake ..
 make
 ```
 
-### Compiling for Mac OS
-
-Simiar to Linux, but you must pass `cmake -DDOPCC=OFF ...` to cmake
+For Mac, pass option `cmake -DDOPCC=OFF ...` to cmake
 
 ### Model Counting
 
 To count, run:
 
-```
+```bash
 cd build
 ./ganak myfile.cnf
 ```

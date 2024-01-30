@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2022, macos-13]
+        os: [ubuntu-20.04, macos-13]
         build_type: ['Release']
         staticcompile: ['ON', 'OFF']
 
@@ -28,6 +28,10 @@ jobs:
     - name: Install boost & help2man for Linux
       if: matrix.os == 'ubuntu-20.04'
       run: sudo apt-get update && sudo apt-get install -yq help2man
+
+    - name: Install gmpxx for mac
+      if: matrix.os == 'macos-13'
+      run: brew install gmp
 
     - name: Installing Numpy
       run: |

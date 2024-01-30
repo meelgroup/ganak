@@ -44,22 +44,12 @@ SET(SOURCES
 SET(LIB	clhash component_types)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
-target_link_libraries (ganak ${LIB} ${GMP_LIBRARIES})
-
-if (NOT WIN32)
-    set_target_properties(ganak PROPERTIES
-        PUBLIC_HEADER "${ganak_public_headers}"
-        VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-        SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    )
-else()
-    set_target_properties(ganak PROPERTIES
-        OUTPUT_NAME ganak-win
-        PUBLIC_HEADER "${ganak_public_headers}"
-        VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-        SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    )
-endif()
+target_link_libraries(ganak ${LIB} ${GMP_LIBRARIES})
+set_target_properties(ganak PROPERTIES
+    PUBLIC_HEADER "${ganak_public_headers}"
+    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_executable (ganak-bin
     main.cpp
@@ -67,8 +57,13 @@ add_executable (ganak-bin
 
 target_link_libraries (ganak-bin ganak ${GMP_LIBRARIES})
 
-set_target_properties(ganak-bin PROPERTIES
-    OUTPUT_NAME ganak
-    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-    INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+if (NOT WIN32)
+    set_target_properties(ganak PROPERTIES
+        OUTPUT_NAME ganak
+    )
+else()
+    set_target_properties(ganak PROPERTIES
+        OUTPUT_NAME ganak-win
+    )
+endif()

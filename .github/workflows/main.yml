@@ -85,11 +85,11 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ganak-mac-amd64
-        path: ganak
+        path: gana k
 
     - name: Upload Artifact - Windows
       if: matrix.os == 'windows-2022' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v3
       with:
         name: ganak-win64.exe
-        path: Release\ganak.exe
+        path: Release\ganak-win.exe

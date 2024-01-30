@@ -293,8 +293,7 @@ if (NOT WIN32)
     add_c_flag_if_supported("-mpclmul")
 endif()
 
-find_library(GMP_LIB gmp)
-find_library(GMPXX_LIB gmpxx)
+find_package(GMP)
 
 # -----------------------------------------------------------------------------
 # Add GIT version

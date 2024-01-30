@@ -21,6 +21,8 @@
 include_directories( ${PROJECT_SOURCE_DIR} )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories( ${GMP_INCLUDE_DIR} )
+
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
@@ -42,7 +44,7 @@ SET(SOURCES
 SET(LIB	clhash component_types)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
-target_link_libraries (ganak ${LIB} ${GMP_LIB} ${GMPXX_LIB})
+target_link_libraries (ganak ${LIB} ${GMP_LIBRARIES})
 
 if (NOT WIN32)
     set_target_properties(ganak PROPERTIES
@@ -52,7 +54,7 @@ if (NOT WIN32)
     )
 else()
     set_target_properties(ganak PROPERTIES
-        OUTPUT_NAME ganak1win
+        OUTPUT_NAME ganak-win
         PUBLIC_HEADER "${ganak_public_headers}"
         VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
         SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -63,10 +65,7 @@ add_executable (ganak-bin
     main.cpp
 )
 
-target_link_libraries (ganak-bin
-ganak
-${GMP_LIB} ${GMPXX_LIB}
-)
+target_link_libraries (ganak-bin ganak ${GMP_LIBRARIES})
 
 set_target_properties(ganak-bin PROPERTIES
     OUTPUT_NAME ganak

@@ -325,6 +325,7 @@ endif()
 set (boost_components "")
 set(boost_components ${boost_components} program_options serialization)
 find_package( Boost 1.46 COMPONENTS ${boost_components})
+find_package(GMP)
 
 option(NOZLIB "Don't use zlib" OFF)
 if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))

@@ -26,6 +26,7 @@ include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${LOUVAIN_COMMUNITIES_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
+include_directories( ${GMP_INCLUDE_DIR} )
 
 if (NOT WIN32)
     add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
@@ -42,7 +43,8 @@ if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wdeprecated")
 endif()
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
 add_subdirectory (comp_types)
 add_subdirectory (clhash)
@@ -72,6 +74,7 @@ target_link_libraries (ganak
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${LOUVAIN_COMMUNITIES_LIBRARIES}
   LINK_PUBLIC ${Boost_LIBRARIES} # due to serialization
+  LINK_PUBLIC ${GMP_LIBRARIES})
 )
 
 set_target_properties(ganak PROPERTIES
@@ -80,26 +83,32 @@ set_target_properties(ganak PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 )
 
-add_executable (ganak-bin
-    main.cpp
-)
+add_executable (ganak-bin main.cpp)
 
 set(ganak_exec_link_libs
   ganak
-  ${GMPXX_LIB}
-  ${GMP_LIB}
   ${Boost_LIBRARIES} # due to program_options
+  ${GMP_LIBRARIES}
 )
 
 IF (ZLIB_FOUND)
     SET(ganak_exec_link_libs ${ganak_exec_link_libs} ${ZLIB_LIBRARY})
 ENDIF()
 
-target_link_libraries (ganak-bin
-  ${ganak_exec_link_libs}
-)
+target_link_libraries(ganak-bin ${ganak_exec_link_libs})
 
-set_target_properties(ganak-bin PROPERTIES
+if (NOT WIN32)
+    set_target_properties(ganak-bin PROPERTIES
     OUTPUT_NAME ganak
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-    INSTALL_RPATH_USE_LINK_PATH TRUE)
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    )
+else()
+    set_target_properties(ganak-bin PROPERTIES
+    OUTPUT_NAME ganak-win
+    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    )
+endif()

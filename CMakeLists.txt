@@ -323,9 +323,10 @@ endif()
 # Dependencies
 # -----------------------------------------------------------------------------
 set (boost_components "")
-set(boost_components ${boost_components} program_options serialization)
-find_package( Boost 1.46 COMPONENTS ${boost_components})
-find_package(GMP)
+set(boost_components ${boost_components} program_options)
+find_package( Boost 1.46 COMPONENTS ${boost_components} REQUIRED)
+set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
+find_package(GMP REQUIRED)
 
 option(NOZLIB "Don't use zlib" OFF)
 if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
@@ -340,8 +341,6 @@ if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     ENDIF (ZLIB_FOUND)
 endif()
 
-find_library(GMP_LIB gmp REQUIRED)
-find_library(GMPXX_LIB gmpxx REQUIRED)
 find_package(cryptominisat5 CONFIG REQUIRED)
 find_package(arjun CONFIG REQUIRED)
 find_package(louvain_communities CONFIG REQUIRED)

@@ -2693,7 +2693,11 @@ void Counter::attach_occ(vector<ClauseOfs>& cls) {
     Clause& cl = *alloc->ptr(off);
     std::sort(cl.begin(), cl.end());
     auto abs = calcAbstraction(cl);
-    for(const auto& l: cl) occ[l.raw()].push_back(OffAbs(off, abs));
+    for(const auto& l: cl) {
+      SLOW_DEBUG_DO(assert(l.var() <= nVars()));
+      SLOW_DEBUG_DO(assert(occ.size() > l.raw()));
+      occ[l.raw()].push_back(OffAbs(off, abs));
+    }
   }
   cls.clear();
 }

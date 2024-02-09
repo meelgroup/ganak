@@ -491,7 +491,7 @@ private:
   }
 
   template<class T1, class T2> bool subset(const T1& A, const T2& B);
-  vec<vec<OffAbs>> occ;
+  vector<vector<OffAbs>> occ;
   vector<ClauseOfs> clauses;
   void backw_susume_cl(ClauseOfs off);
   void backw_susume_cl_with_bin(BinClSub& b);

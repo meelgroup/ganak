@@ -79,7 +79,6 @@ public:
 
   uint32_t comp_stack_size() { return comp_stack_.size(); }
   const Component* at(const size_t at) const { return comp_stack_.at(at); }
-  double cacheScoreOf(const VariableIndex v) const { return cachescore_[v]; }
   void cleanRemainingComponentsOf(const StackLevel &top)
   {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
@@ -116,11 +115,12 @@ public:
     randomseedforCLHASH = get_random_key_for_clhash(distr(eng), distr(eng));
   }
 
-  void rescale_cache_scores() { for (auto& c: cachescore_) c *= 0.5; }
+  double cache_score_of(const VariableIndex v) const { return var_cache_score[v]; }
+  void rescale_cache_scores() { for (auto& c: var_cache_score) c *= 0.5; }
   void decreasecachescore(Component &comp) {
     for (vector<VariableIndex>::const_iterator it = comp.varsBegin();
          *it != varsSENTINEL; it++) {
-      cachescore_[*it] -= 1;
+      var_cache_score[*it] -= 1;
     }
   }
 
@@ -132,7 +132,12 @@ private:
   vector<Component *> comp_stack_;
   ComponentCache cache_;
   ComponentAnalyzer ana_;
-  vector<double> cachescore_;
+
+  // indexed by variable, decremented when a variable is in a component,
+  // and halved once in a while. The LARGER it is, the more likely the
+  // variable gets picked for branching. So basically, the fewer times a
+  // variable is in a component, the more likely the branch
+  vector<double> var_cache_score;
   Counter* solver_;
   BPCSizes sz;
   vector<uint32_t> tmp_data_for_pcc;

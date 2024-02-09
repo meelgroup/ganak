@@ -863,7 +863,7 @@ uint32_t Counter::find_best_branch() {
   }
 
   if (conf.do_cache_score && best_var != 0) {
-    double cachescore = comp_manager_->cacheScoreOf(best_var);
+    double cachescore = comp_manager_->cache_score_of(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
       const uint32_t v = *it;
@@ -871,9 +871,9 @@ uint32_t Counter::find_best_branch() {
       if (v < indep_support_end) {
         const double score = scoreOf(v);
         if (score > best_var_score * 0.9) {
-          if (comp_manager_->cacheScoreOf(v) > cachescore) {
+          if (comp_manager_->cache_score_of(v) > cachescore) {
             best_var = v;
-            cachescore = comp_manager_->cacheScoreOf(v);
+            cachescore = comp_manager_->cache_score_of(v);
           }
         }
       }

@@ -44,7 +44,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
       , ana_.max_clause_id());
 
   cache_.init(*comp_stack_.back(), randomseedforCLHASH);
-  for (uint32_t i = 0 ; i < nVars + 1; i++) cachescore_.push_back(0);
+  for (uint32_t i = 0 ; i < nVars + 1; i++) var_cache_score.push_back(0);
 
   // 100 for the constant overhead (bitsizes, num clauses, num variables)
   // The 32* multiplier is because each DIFF can be at most 32b, since
@@ -77,7 +77,9 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
   /* SLOW_DEBUG_DO(cache_.test_descendantstree_consistency()); */
 }
 
-// This creates comps
+// This creates potential component, checks if it's already in the
+// cache, and if so, uses that, otherwise, it creates it
+// and adds it to the component stack
 void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 {
   const Component& super_comp = getSuperComponentOf(top);
@@ -118,10 +120,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         if (conf.do_cache_score) {
           stats.numcachedec_++;
           if (stats.numcachedec_ % 128 == 0) rescale_cache_scores();
-          for (vector<VariableIndex>::const_iterator it = p_new_comp->varsBegin();
-              *it != varsSENTINEL; it++) {
-            cachescore_[*it] -= 1;
-          }
+          decreasecachescore(*p_new_comp);
         }
 
 #ifdef VERBOSE_DEBUG

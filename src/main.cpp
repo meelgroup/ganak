@@ -370,16 +370,16 @@ int main(int argc, char *argv[])
   if (!do_arjun) {
     parse_file(fname, &cnfholder);
   } else {
-    double myTime = cpuTime();
+    double my_time = cpuTime();
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
     arjun->set_seed(conf.seed);
     arjun->set_verbosity(arjun_verb);
     parse_file(fname, arjun);
     arjun->set_starting_sampling_set(cnfholder.sampling_vars);
     cnfholder.sampling_vars = arjun->get_indep_set();
-    ArjunNS::SimpConf simpConf;
+    ArjunNS::SimpConf simp_conf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(
-            cnfholder.sampling_vars, simpConf, true, false);
+            cnfholder.sampling_vars, simp_conf, true, false);
     cnfholder = CNFHolder();
     delete arjun;
     // Extend
@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
     if (!indep_support_given) {
       for(uint32_t i = 0; i < ret.nvars; i++) ret.optional_sampling_vars.push_back(i);
     }
-    verb_print(1, "Arjun T: " << (cpuTime()-myTime));
+    verb_print(1, "Arjun T: " << (cpuTime()-my_time));
     SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", ret.must_mult_exp2, true));
 
     // set up cnfholder

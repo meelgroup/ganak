@@ -56,11 +56,11 @@ public:
     return idx_to_cl;
   }
 
-  uint32_t& scoreOf(VariableIndex v) {
+  uint32_t& score_of(VariableIndex v) {
     return var_frequency_scores_[v];
   }
 
-  const uint32_t& scoreOf(VariableIndex v) const {
+  const uint32_t& score_of(VariableIndex v) const {
     return var_frequency_scores_[v];
   }
 
@@ -148,7 +148,7 @@ private:
   const uint32_t& indep_support_end;
   vector<uint32_t> var_frequency_scores_;
   ComponentArchetype  archetype_;
-  Counter* solver = NULL;
+  Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
                                        // used in  recordComponentOf

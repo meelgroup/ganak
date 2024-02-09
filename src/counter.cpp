@@ -854,7 +854,7 @@ uint32_t Counter::find_best_branch() {
 
     if (v < indep_support_end) {
       if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
-      const double score = scoreOf(v) ;
+      const double score = score_of(v) ;
       if (best_var_score == -1 || score > best_var_score) {
         best_var = v;
         best_var_score = score;
@@ -869,7 +869,7 @@ uint32_t Counter::find_best_branch() {
       const uint32_t v = *it;
       if (val(v) != X_TRI) continue;
       if (v < indep_support_end) {
-        const double score = scoreOf(v);
+        const double score = score_of(v);
         if (score > best_var_score * 0.9) {
           if (comp_manager_->cache_score_of(v) > cachescore) {
             best_var = v;
@@ -1832,7 +1832,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
     analyze_stack.clear();
     analyze_stack.push_back(p);
 
-    Lit* c = NULL;
+    Lit* c = nullptr;
     uint32_t size;
     size_t top = toClear.size();
     while (!analyze_stack.empty()) {
@@ -3053,7 +3053,7 @@ uint64_t Counter::buddy_count() {
   }
   std::sort(vmap.begin(),vmap.end(),
       [=](uint32_t a, uint32_t b) -> bool {
-      if (tdscore.empty())return comp_manager_->scoreOf(a) > comp_manager_->scoreOf(b);
+      if (tdscore.empty())return comp_manager_->score_of(a) > comp_manager_->score_of(b);
       return tdscore[a] > tdscore[b];
       });
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;

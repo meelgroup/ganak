@@ -41,7 +41,7 @@ using std::endl;
 #define MAXSIZE ((1ULL << 32)-1)
 
 ClauseAllocator::ClauseAllocator(const CounterConfiguration& _conf) :
-    dataStart(NULL)
+    dataStart(nullptr)
     , size(0)
     , capacity(0)
     , currentlyUsedSize(0)
@@ -86,7 +86,7 @@ void* ClauseAllocator::allocEnough( uint32_t num_lits) {
     );
 
     //Realloc failed?
-    if (new_dataStart == NULL) {
+    if (new_dataStart == nullptr) {
       std::cerr << "ERROR: while reallocating clause space" << endl;
       exit(-1);
     }

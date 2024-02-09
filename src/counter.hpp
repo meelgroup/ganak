@@ -142,19 +142,15 @@ public:
   ~Counter();
   friend class ClauseAllocator;
   struct ConflictData {
-    ConflictData() :
-      nHighestLevel(-1),
-      bOnlyOneLitFromHighest(false)
-    {}
-
-    int32_t nHighestLevel;
-    bool bOnlyOneLitFromHighest;
+    int32_t nHighestLevel = -1;
+    bool bOnlyOneLitFromHighest = false;
   };
   ConflictData find_conflict_level(Lit p);
 
-  double scoreOf(VariableIndex v) {
+  // The higher, the better
+  double score_of(VariableIndex v) {
     double score = 0;
-    score += comp_manager_->scoreOf(v)*act_inc/10;
+    score += comp_manager_->score_of(v)*act_inc/10;
     /* cout << "v: " << v << " score1: " << score << endl; */
     score += 10*(watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity);
     /* cout << "v: " << v << " score2: " << score << endl; */
@@ -166,7 +162,7 @@ public:
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
   void extend_cubes(vector<Cube>& cubes);
-  mpz_class outer_count(CMSat::SATSolver* solver = NULL);
+  mpz_class outer_count(CMSat::SATSolver* solver = nullptr);
   void set_indep_support(const set<uint32_t>& indeps);
   void set_optional_indep_support(const set<uint32_t> &indeps);
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
@@ -191,7 +187,7 @@ private:
   mpz_class check_count_norestart(const Cube& c);
   mpz_class check_count_norestart_cms(const Cube& c);
   void count(vector<Cube>& cubes);
-  CMSat::SATSolver* sat_solver = NULL;
+  CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
   vector<uint8_t> optional_proj;
   vector<double> scores;
@@ -213,7 +209,7 @@ private:
   DecisionStack decision_stack_;
   vector<Lit> trail;
   uint32_t qhead = 0;
-  ComponentManager* comp_manager_ = NULL;
+  ComponentManager* comp_manager_ = nullptr;
 
   // the last time conflict clauses have been deleted
   uint64_t last_reduceDB_conflicts = 0;

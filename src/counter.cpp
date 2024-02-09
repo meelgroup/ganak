@@ -2826,7 +2826,6 @@ void Counter::toplevel_full_probe() {
     clear_toclean_seen();
     for(const auto& x: bothprop_toset) {
       setLiteral(x, 0);
-      cout << "set: " << x << endl;
     }
     bothprop_toset.clear();
     ret = propagate();

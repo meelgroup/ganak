@@ -93,24 +93,35 @@ vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
 
 void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
   auto tmp = common_indep_code(indeps);
-  if (tmp.size() == nVars()) {
-    verb_print(1, "opt ind NOT used, its size:" << indeps.size() << " vs nVars: " << nVars());
-    return;
+  if (tmp.size() +1 < indep_support_end) {
+    cout << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
+    assert(false);
+    exit(-1);
   }
+  for(const auto& v: tmp) if (v >= indep_support_end) optional_proj[v] = 1;
 
-  optional_proj.resize(nVars()+1, 0);
-  for(const auto& v: tmp) optional_proj[v] = 1;
-  perform_optional_projected_counting = 1;
-  verb_print(1, "opt ind size:" << indeps.size() << " nvars: " << nVars());
+  const auto orig_indep_support_end = indep_support_end;
+  indep_support_end = tmp.back()+1;
+  verb_print(1, "opt ind size: " << indep_support_end-1 << " ind size: " << orig_indep_support_end-1
+    << " nvars: " << nVars());
+
+  if (conf.verb) {
+    cout << "c indep/optional/none distribution: ";
+    for(uint32_t i = 0; i <= nVars(); i++) {
+      if (i < indep_support_end) {
+        if (optional_proj[i]) cout << "O";
+        else cout << "I";
+      } else cout << "N";
+    }
+    cout << endl;
+  }
 }
 
-void Counter::set_indep_support(const set<uint32_t> &indeps)
-{
+void Counter::set_indep_support(const set<uint32_t> &indeps) {
+  optional_proj.resize(nVars()+1, 0);
   auto tmp = common_indep_code(indeps);
-  if (tmp.size() == 0) indep_support_end = 0;
-  else indep_support_end = tmp.back()+1;
-  if (indep_support_end == nVars()+1) perform_projected_counting = false;
-  else perform_projected_counting = true;
+  indep_support_end = tmp.back()+1;
+  verb_print(1, "ind size: " << indep_support_end-1 << " nvars: " << nVars());
 }
 
 void Counter::init_activity_scores() {
@@ -805,7 +816,7 @@ bool Counter::decideLiteral() {
   uint32_t v = 0;
   isindependent = true;
   v = find_best_branch();
-  if (v == 0 && (perform_projected_counting  || perform_optional_projected_counting)) {
+  if (v == 0) {
     decision_stack_.pop_back();
     isindependent = false;
     return true;
@@ -833,16 +844,16 @@ bool Counter::decideLiteral() {
 
 uint32_t Counter::find_best_branch() {
   vars_scores.clear();
-  bool found_opt_indep = false;
+  bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
-    if (perform_optional_projected_counting && optional_proj[v]) found_opt_indep = true;
 
     if (v < indep_support_end) {
+      if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
       const double score = scoreOf(v) ;
       if (best_var_score == -1 || score > best_var_score) {
         best_var = v;
@@ -869,7 +880,10 @@ uint32_t Counter::find_best_branch() {
     }
   }
 
-  if (perform_optional_projected_counting && !found_opt_indep) return 0;
+  if (best_var != 0 && only_optional_indep) {
+    cout << "here" << endl;
+    return 0;
+  }
   return best_var;
 }
 
@@ -2931,12 +2945,8 @@ bool Counter::deal_with_independent() {
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
       *it != varsSENTINEL; it++) {
     if (val(*it) != X_TRI) continue;
-    if (perform_projected_counting && *it < indep_support_end) {
-      assert(false && "Only non-indep remains");
-    } else {
-      // it could be optional indep
-      order_heap.insert(*it);
-    }
+    if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");
+    order_heap.insert(*it);
   }
   decision_stack_.pop_back();
 

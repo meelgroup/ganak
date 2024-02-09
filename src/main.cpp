@@ -63,10 +63,10 @@ using namespace std;
 bool indep_support_given = false;
 int do_check = 0;
 CounterConfiguration conf;
-int ignore_indep = 0;
 int optional_indep = 0;
 int arjun_verb = 0;
 int do_arjun = 1;
+int ignore_indep = 0;
 
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
@@ -302,10 +302,6 @@ void parse_file(const std::string& filename, T* reader) {
   gzclose(in);
   #endif
 
-  if (optional_indep && !ignore_indep) {
-    cout << "ERROR: you HAVE to have ignore_indep for optional_indep" << endl;
-    exit(-1);
-  }
   indep_support_given = parser.sampling_vars_found && !ignore_indep;
   if (parser.sampling_vars_found && !ignore_indep) {
     cnfholder.sampling_vars = parser.sampling_vars;
@@ -384,35 +380,30 @@ int main(int argc, char *argv[])
     ArjunNS::SimpConf simpConf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(
             cnfholder.sampling_vars, simpConf, true, false);
+    cnfholder = CNFHolder();
     delete arjun;
-    if (!indep_support_given) {
-      ret.sampling_vars.clear();
-      for(uint32_t i = 0; i < ret.nvars; i++) ret.sampling_vars.push_back(i);
-    } else {
+    // Extend
+    {
       ArjunNS::Arjun arj2;
       arj2.new_vars(ret.nvars);
       arj2.set_verbosity(arjun_verb);
       for(const auto& cl: ret.cnf) arj2.add_clause(cl);
       arj2.set_starting_sampling_set(ret.sampling_vars);
-      ret.sampling_vars = arj2.extend_indep_set();
-      ret.renumber_sampling_vars_for_ganak();
+      ret.optional_sampling_vars = arj2.extend_indep_set();
+    }
+    ret.renumber_sampling_vars_for_ganak();
+    if (!indep_support_given) {
+      for(uint32_t i = 0; i < ret.nvars; i++) ret.optional_sampling_vars.push_back(i);
     }
     verb_print(1, "Arjun T: " << (cpuTime()-myTime));
-    SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", cnfholder.must_mult_exp2, true));
+    SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", ret.must_mult_exp2, true));
 
+    // set up cnfholder
+    cnfholder = CNFHolder();
     cnfholder.clauses = ret.cnf;
     cnfholder.red_clauses = ret.red_cnf;
     cnfholder.nvars = ret.nvars;
-    if (optional_indep && !ignore_indep) {
-      cout << "ERROR: if ignore_indep is OFF, optional_indep must be OFF" << endl;
-      exit(-1);
-    }
-    if (optional_indep) cnfholder.optional_sampling_vars = ret.sampling_vars;
-    if (ignore_indep) {
-      cnfholder.sampling_vars.clear();
-      for(uint32_t i = 0; i < cnfholder.nVars(); i++) cnfholder.sampling_vars.push_back(i);
-    }
-    if (!optional_indep) cnfholder.optional_sampling_vars = cnfholder.sampling_vars;
+    cnfholder.optional_sampling_vars = ret.optional_sampling_vars;
     cnfholder.sampling_vars = ret.sampling_vars;
     cnfholder.must_mult_exp2 += ret.empty_occs;
   }
@@ -437,10 +428,6 @@ int main(int argc, char *argv[])
     set<uint32_t> tmp;
     for(auto const& s: cnfholder.sampling_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
-    if (optional_indep && !ignore_indep) {
-      cout << "ERROR: optional indep can only be used when ignore is on" << endl;
-      exit(-1);
-    }
     if (optional_indep) {
       tmp.clear();
       for(auto const& s: cnfholder.optional_sampling_vars) tmp.insert(s+1);

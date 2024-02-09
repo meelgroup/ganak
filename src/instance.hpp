@@ -95,7 +95,6 @@ protected:
 
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
-  bool perform_projected_counting = false;
 
   LiteralIndexedVector<LitWatchList> watches_;
   vector<Lit> unit_clauses_;

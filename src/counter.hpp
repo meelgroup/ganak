@@ -194,7 +194,6 @@ private:
   CMSat::SATSolver* sat_solver = NULL;
   bool isindependent = true;
   vector<uint8_t> optional_proj;
-  bool perform_optional_projected_counting = 0;
   vector<double> scores;
   bqueue<uint32_t> depth_q;
   bqueue<double, double> cache_miss_rate_q;

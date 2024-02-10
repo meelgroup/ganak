@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "alt_comp_analyzer.hpp"
+#include "common.hpp"
 #include "counter.hpp"
 #include "clauseallocator.hpp"
 
@@ -163,7 +164,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
     const auto v = *vt;
-    assert(isUnknown(v));
+    SLOW_DEBUG_DO(assert(isUnknown(v)));
 
     //traverse binary clauses
     uint32_t const* p = begin_cls_of_var(v);

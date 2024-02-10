@@ -34,7 +34,7 @@ using std::vector;
 
 constexpr int32_t INVALID_DL = -1;
 
-typedef uint8_t TriValue;
+using TriValue = uint8_t;
 #define   F_TRI  0
 #define   T_TRI  1
 #define   X_TRI  2
@@ -45,63 +45,33 @@ public:
   Lit(uint32_t val) = delete;
   Lit(int val) = delete;
   explicit constexpr Lit() : value_(0) { }
-  explicit constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign)
-  {}
+  explicit constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign) {}
 
-  uint32_t var() const {
-    return (value_ >> 1U);
-  }
-
-  constexpr bool operator<(const Lit other) const {
-    return value_ < other.value_;
-  }
-
-  constexpr bool operator>(const Lit other) const {
-    return value_ > other.value_;
-  }
-
-  // Does NOT do what you'd expect
-  int toInteger() const {
-    return ((int) value_ >> 1) * ((sign()) ? 1 : -1);
-  }
-
-  uint32_t toPosInt() const {
-    return value_;
-  }
-
-  void inc(){++value_;}
-
-  static Lit toLit(uint32_t data) {
+  uint32_t var() const { return (value_ >> 1U); }
+  constexpr bool operator<(const Lit other) const { return value_ < other.value_; }
+  constexpr bool operator>(const Lit other) const { return value_ > other.value_; }
+  constexpr int to_visual_int() const { return ((int) value_ >> 1) * ((sign()) ? 1 : -1); }
+  constexpr uint32_t toPosInt() const { return value_; }
+  constexpr void inc() {++value_;}
+  constexpr static Lit toLit(uint32_t data) {
     Lit l;
     l.copyRaw(data);
     return l;
   }
-
-  void copyRaw(uint32_t v) { value_ = v; }
+  constexpr void copyRaw(uint32_t v) { value_ = v; }
 
   // True if it's NON-NEGATED and False if it's NEGATED
-  bool sign() const {
-    return (bool) (value_ & 0x01);
-  }
+  constexpr bool sign() const { return (bool) (value_ & 0x01); }
+  constexpr bool operator!=(const Lit &rL2) const { return value_ != rL2.value_; }
+  constexpr bool operator==(const Lit &rL2) const { return value_ == rL2.value_; }
 
-  bool operator!=(const Lit &rL2) const {
-    return value_ != rL2.value_;
-  }
-
-  bool operator==(const Lit &rL2) const {
-    return value_ == rL2.value_;
-  }
-
-  Lit neg() const {
+  constexpr Lit neg() const {
     Lit l;
     l.value_ = value_ ^ 1;
     return l;
   }
-
-  int val() const {
-    return (sign() ? (int)var() : -1*(int)var());
-  }
-  uint32_t raw() const { return value_;}
+  int val() const { return (sign() ? (int)var() : -1*(int)var()); }
+  constexpr uint32_t raw() const { return value_;}
 
 private:
   uint32_t value_;
@@ -110,7 +80,7 @@ private:
 inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 {
   if (lit.raw() == 0) os << "UNDEF";
-  else os << lit.toInteger();
+  else os << lit.to_visual_int();
   return os;
 }
 

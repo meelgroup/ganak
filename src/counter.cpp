@@ -228,7 +228,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
     }
   }
 
-  auto width = dec.Width();
+  /* auto width = dec.Width(); */
   auto ord = dec.GetOrd();
   // We use 1-indexing, ignore index 0
 

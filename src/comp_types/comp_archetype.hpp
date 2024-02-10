@@ -19,7 +19,7 @@
 
 // State values for variables found during comp
 // analysis (CA)
-typedef uint8_t CA_SearchState;
+using CA_SearchState = uint8_t;
 #define   CA_VAR_IN_SUP_COMP_UNSEEN  1
 #define   CA_VAR_SEEN 2
 #define   CA_VAR_IN_OTHER_COMP  4
@@ -40,7 +40,7 @@ class StackLevel;
 // There is exactly ONE of this. Inside ComponentAnalyzer, which is inside ComponentManager, which is inside Solver
 class ComponentArchetype {
 public:
-  ComponentArchetype() { }
+  ComponentArchetype() = default;
   ~ComponentArchetype() { delete[] seen_; }
   ComponentArchetype(StackLevel &stack_level, const Component &super_comp) :
       p_super_comp_(&super_comp), p_stack_level_(&stack_level) {

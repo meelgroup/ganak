@@ -147,10 +147,10 @@ public:
   };
   ConflictData find_conflict_level(Lit p);
 
-  // The higher, the better
+  // The higher, the better. It is never below 0.
   double score_of(VariableIndex v) {
     double score = 0;
-    score += comp_manager_->score_of(v)*act_inc/10;
+    score += comp_manager_->score_of(v);
     /* cout << "v: " << v << " score1: " << score << endl; */
     score += 10*(watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity);
     /* cout << "v: " << v << " score2: " << score << endl; */

@@ -52,25 +52,19 @@ public:
 DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data) {
   // first, generate hashkey, and compute max diff for cls and vars
   uint32_t max_var_diff = 0;
-  uint32_t hashkey_vars = *rComp.varsBegin();
   for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
-    hashkey_vars = (hashkey_vars * 3) + *it;
     if ((*it - *(it - 1)) - 1 > max_var_diff)
       max_var_diff = (*it - *(it - 1)) - 1 ;
   }
 
-  uint32_t hashkey_clauses = *rComp.clsBegin();
   uint32_t max_clause_diff = 0;
   if (*rComp.clsBegin()) {
     for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++) {
-      hashkey_clauses = hashkey_clauses*3 + *jt;
       if (*jt - *(jt - 1) - 1 > max_clause_diff)
         max_clause_diff = *jt - *(jt - 1) - 1;
     }
   }
 
-  hashkey_ = hashkey_vars + ((uint32_t) hashkey_clauses << 11) +
-    ((uint32_t) hashkey_clauses >> 23);
   uint32_t bits_per_var_diff = log2(max_var_diff) + 1;
   uint32_t bits_per_clause_diff = log2(max_clause_diff) + 1;
 
@@ -118,4 +112,5 @@ DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, 
 
   clhasher h(randomseedforCLHASH);
   clhashkey_ = h(data_, data_size);
+  hashkey_ = (uint32_t)clhashkey_;
 }

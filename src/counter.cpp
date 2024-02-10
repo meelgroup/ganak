@@ -866,7 +866,7 @@ uint32_t Counter::find_best_branch() {
       if (v < indep_support_end) {
         const double score = score_of(v);
         if (score > best_var_score * 0.9) {
-          if (comp_manager_->cache_score_of(v) < cachescore) {
+          if (comp_manager_->cache_score_of(v) > cachescore) {
             best_var = v;
             cachescore = comp_manager_->cache_score_of(v);
           }

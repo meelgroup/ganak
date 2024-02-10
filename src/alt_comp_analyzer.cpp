@@ -168,6 +168,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     //traverse binary clauses
     uint32_t const* p = begin_cls_of_var(v);
     for (; *p; p++) {
+      // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       BUDDY_DO(if (solver->val(*p) == X_TRI) archetype_.num_bin_cls++);
       if(manageSearchOccurrenceOf(*p)) {
         bump_score(*p);

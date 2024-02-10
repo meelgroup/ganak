@@ -668,25 +668,6 @@ int Counter::chrono_work_sat() {
   return 0;
 }
 
-bool Counter::do_buddy_count(const Component* c) {
-  if (c->nVars() > 64 || c->nVars() < 8 || (c->numBinCls()+c->numLongClauses()) > conf.buddy_max_cls) return false;
-  decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
-        comp_manager_->comp_stack_size()));
-  stats.buddy_called++;
-  uint64_t cnt = buddy_count();
-
-  if (cnt > 0) {
-    decision_stack_.top().change_to_right_branch();
-    decision_stack_.top().includeSolution(cnt);
-    decision_stack_.top().var = 0;
-  } else {
-    decision_stack_.top().branch_found_unsat();
-    decision_stack_.top().change_to_right_branch();
-    decision_stack_.top().branch_found_unsat();
-  }
-  return true;
-}
-
 SOLVER_StateT Counter::countSAT() {
   retStateT state = RESOLVED;
 
@@ -3059,10 +3040,30 @@ void Counter::check_sat_solution() const {
   assert(ok);
 }
 
+#ifdef BUDDY_ENABLED
 #define mybdd_add(a,l) \
   if (!l.sign()) tmp |= bdd_ithvar(vmap_rev[l.var()]); \
   else tmp |= bdd_nithvar(vmap_rev[l.var()]);
 
+
+bool Counter::do_buddy_count(const Component* c) {
+  if (c->nVars() > 84 || c->nVars() < 6 || (c->numBinCls()+c->numLongClauses()) > conf.buddy_max_cls) return false;
+  decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
+        comp_manager_->comp_stack_size()));
+  stats.buddy_called++;
+  uint64_t cnt = buddy_count();
+
+  if (cnt > 0) {
+    decision_stack_.top().change_to_right_branch();
+    decision_stack_.top().includeSolution(cnt);
+    decision_stack_.top().var = 0;
+  } else {
+    decision_stack_.top().branch_found_unsat();
+    decision_stack_.top().change_to_right_branch();
+    decision_stack_.top().branch_found_unsat();
+  }
+  return true;
+}
 
 uint64_t Counter::buddy_count() {
   assert(conf.do_vivify == 0 && "Vivify will change the irred cls, which will mess this up.");
@@ -3133,14 +3134,13 @@ uint64_t Counter::buddy_count() {
       debug_print("bin cl: " << l << " " << l2 << " 0");
     }
   }
-#ifdef VERBOSE_DEBUG_DO
+VERBOSE_DEBUG_DO(
   if (actual_bin != c->numBinCls()) {
     cout << "WARN: numbin: " << c->numBinCls() << " actual bin: " << actual_bin << endl;
   }
   if (actual_long != c->numLongClauses()) {
     cout << "WARN: numlong: " << c->numLongClauses() << " actual long: " << actual_long << endl;
-  }
-#endif
+  });
 
   assert(c->numLongClauses() == actual_long);
   if (actual_bin > c->numBinCls()) {
@@ -3163,6 +3163,12 @@ uint64_t Counter::buddy_count() {
 
   return cnt >> (64-vmap.size());
 }
+#else
+bool Counter::do_buddy_count(const Component*) {
+  cout << "ERROR: you must recompiled with buddy enabled for BDD counting to work" << endl;
+  exit(-1);
+}
+#endif
 
 template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
   Lit unk = NOT_A_LIT;

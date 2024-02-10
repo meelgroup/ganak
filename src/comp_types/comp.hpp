@@ -73,8 +73,10 @@ public:
 
   uint32_t nVars() const { return clauses_ofs_ - 1; }
   uint32_t numLongClauses() const { return vs_cls_data_.size() - clauses_ofs_ - 1; }
+#ifdef BUDDY_ENABLED
   uint32_t numBinCls() const { return num_bin_cls; }
   void setNumBinCls(uint32_t n) { num_bin_cls = n; }
+#endif
   bool empty() const { return vs_cls_data_.empty(); }
 
   // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
@@ -112,5 +114,8 @@ private:
   // once the model count is known, a link to the packed comp will be stored
   // in the hash table
   CacheEntryID id_ = 0;
+
+#ifdef BUDDY_ENABLED
   uint32_t num_bin_cls = 0;
+#endif
 };

@@ -34,6 +34,7 @@ THE SOFTWARE.
 /* #define CHECK_IMPLIED */
 /* #define VERY_SLOW_DEBUG */
 /* #define CHECK_TRAIL_ENTAILMENT */
+/* #define BUDDY_ENABLED */
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */
@@ -88,7 +89,12 @@ THE SOFTWARE.
     toClear.clear();
 
 
-// verbose debug
+#ifdef BUDDY_ENABLED
+#define BUDDY_DO(x) do { x; } while (0)
+#else
+#define BUDDY_DO(x) do { } while (0)
+#endif
+
 #ifdef VERBOSE_DEBUG
 #define VERBOSE_DEBUG_DO(x) do { x; } while (0)
 #else

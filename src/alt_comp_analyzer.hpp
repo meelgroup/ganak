@@ -60,8 +60,9 @@ public:
     return var_frequency_scores_[v];
   }
 
-  const uint32_t& score_of(VariableIndex v) const {
-    return var_frequency_scores_[v];
+  double score_of(VariableIndex v) const {
+    /* cout << "var fq: " <<  (double)(var_frequency_scores_[v]) << " tot: " << (double)tot_freq_updates << endl; */
+    return (var_frequency_scores_[v])/(double)tot_freq_updates;
   }
 
   const ComponentArchetype &current_archetype() const { return archetype_; }
@@ -87,6 +88,7 @@ public:
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
     var_frequency_scores_[lit.var()]+= isUnknown(lit);
+    tot_freq_updates += isUnknown(lit);
     return manageSearchOccurrenceOf(lit.var());
   }
 
@@ -103,6 +105,7 @@ public:
     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
       if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
+        tot_freq_updates -= var_frequency_scores_[*vt];
         var_frequency_scores_[*vt] = 0;
       }
     }
@@ -147,6 +150,7 @@ private:
   const LiteralIndexedVector<TriValue> & lit_values_;
   const uint32_t& indep_support_end;
   vector<uint32_t> var_frequency_scores_;
+  uint32_t tot_freq_updates = 0;
   ComponentArchetype  archetype_;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
@@ -210,13 +214,17 @@ private:
         }
         archetype_.setClause_nil(clID);
         while(*itL != SENTINEL_LIT)
-          if(isUnknown(*(--itL))) var_frequency_scores_[itL->var()]--;
+          if(isUnknown(*(--itL))) {
+            var_frequency_scores_[itL->var()]--;
+            tot_freq_updates--;
+          }
         break;
       }
     }
 
     if (!archetype_.clause_nil(clID)){
       var_frequency_scores_[vt]++;
+      tot_freq_updates++;
       archetype_.setClause_seen(clID,all_lits_set);
     }
   }

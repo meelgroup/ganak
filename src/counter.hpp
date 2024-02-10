@@ -150,9 +150,11 @@ public:
   // The higher, the better. It is never below 0.
   double score_of(VariableIndex v) {
     double score = 0;
-    score += comp_manager_->score_of(v);
+    score += comp_manager_->score_of(v)/10.0;
+    /* cout << "---" << endl; */
     /* cout << "v: " << v << " score1: " << score << endl; */
-    score += 10*(watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity);
+    if (stats.conflicts > 1000)
+      score += (watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity)/act_inc;
     /* cout << "v: " << v << " score2: " << score << endl; */
     if (!tdscore.empty()) score += tdscore[v];
     /* cout << "v: " << v << " score3: " << score << endl; */

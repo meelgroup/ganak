@@ -125,13 +125,20 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
 }
 
 void Counter::init_activity_scores() {
+  uint32_t total = 0;
+  act_inc = 1.0;
   for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) {
     watches_[l].activity = watches_[l].binary_links_.size();
+    total += watches_[l].binary_links_.size();
   }
   for(const auto& off: longIrredCls) {
     const auto& cl = *alloc->ptr(off);
+    total += cl.size();
     for(const auto& l: cl) watches_[l].activity++;
   }
+  double maximum = 0;
+  for(auto& w: watches_) maximum = std::max(w.activity, maximum);
+  for(auto& w: watches_) w.activity /= maximum;
 }
 
 void Counter::end_irred_cls() {
@@ -192,7 +199,6 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
 }
 
 void Counter::compute_score(TreeDecomposition& tdec) {
-  int weight = -1;
   const int n = nVars();
   assert(tdscore.empty());
   tdscore.resize(nVars()+1);
@@ -228,10 +234,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 
   assert(ord.size() == tdscore.size());
   int max_ord = 0;
-  for (int i = 1; i <= n; i++) {
-    /* assert(ord[i] >= 1); */
-    max_ord = std::max(max_ord, ord[i]);
-  }
+  for (int i = 1; i <= n; i++) max_ord = std::max(max_ord, ord[i]);
   assert(max_ord >= 1);
   // Normalize
   for (int i = 1; i <= n; i++) {
@@ -240,23 +243,14 @@ void Counter::compute_score(TreeDecomposition& tdec) {
     assert(tdscore[i] > -0.01 && tdscore[i] < 1.01);
   }
   // Now scores are between 0..1
-  double coef = 1;
-  if (weight > 0) {
-    double rt = (double)n/(double)width;
-    /* cout << "RT" << rt << endl; */
-    if (rt > 40) {
-      coef = 1e7;
-    } else {
-      coef = weight*exp(rt)/(double)n;
-    }
-  } else {
-    coef = 1e7;
-  }
-  coef = std::min(coef, 1e7);
-  /* cout << "c o COEF: " << coef << " Width: " << width << endl; */
-  for (int i = 1; i <= n; i++) {
-    tdscore[i] *= coef;
-  }
+
+  // We scale here
+  /* double coef = 1; */
+  /* coef = 1e7; */
+  /* coef = std::min(coef, 1e7); */
+  /* /1* cout << "c o COEF: " << coef << " Width: " << width << endl; *1/ */
+  /* for (int i = 1; i <= n; i++) tdscore[i] *= coef; */
+
 #ifdef VERBOSE_DEBUG
   for(int i = 1; i <= n; i++) {
     cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
@@ -863,7 +857,7 @@ uint32_t Counter::find_best_branch() {
     }
   }
 
-  if (conf.do_cache_score && best_var != 0) {
+  if (conf.do_cache_score && stats.conflicts > 1000 && best_var != 0) {
     double cachescore = comp_manager_->cache_score_of(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {

@@ -55,8 +55,7 @@ public:
     comp_stack_.clear();
   }
 
-  unsigned& score_of(VariableIndex v) { return ana_.score_of(v); }
-  unsigned score_of(VariableIndex v) const { return ana_.score_of(v); }
+  double score_of(VariableIndex v) const { return ana_.score_of(v); }
 
   void initialize(LiteralIndexedVector<LitWatchList> &watches_,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& longIrredCls, uint32_t nVars);

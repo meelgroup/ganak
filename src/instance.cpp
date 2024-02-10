@@ -164,12 +164,12 @@ Clause* Instance::addClause(const vector<Lit> &lits, bool red) {
   if (lits.size() == 1) {
     assert(!existsUnitClauseOf(lits[0].neg()) && "UNSAT is not dealt with");
     if (!existsUnitClauseOf(lits[0])) unit_clauses_.push_back(lits[0]);
-    return 0;
+    return nullptr;
   }
 
   if (lits.size() == 2) {
     add_bin_cl(lits[0], lits[1], red);
-    return 0;
+    return nullptr;
   }
 
   Clause* cl = alloc->new_cl(red, lits.size());

@@ -32,6 +32,7 @@ void ComponentAnalyzer::initialize(
   max_variable_id_ = watches_.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
+  tot_freq_updates = 0;
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
   vector<vector<uint32_t>>  occ_ternary_clauses(max_variable_id_ + 1);
@@ -171,6 +172,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
       if(manageSearchOccurrenceOf(*p)) {
         var_frequency_scores_[*p]++;
         var_frequency_scores_[v]++;
+        tot_freq_updates += 2;
       }
     }
 
@@ -186,6 +188,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
         } else {
           /* cout << "not satisfied" << endl; */
           var_frequency_scores_[v]++;
+          tot_freq_updates ++;
           manageSearchOccurrenceAndScoreOf(litA);
           manageSearchOccurrenceAndScoreOf(litB);
           archetype_.setClause_seen(

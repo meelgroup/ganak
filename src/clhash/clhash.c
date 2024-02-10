@@ -9,8 +9,13 @@
 
 #include <assert.h>
 #include <string.h>
-// #include <stdio.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <x86intrin.h>
+#elif defined(__aarch64__)
+#include "sse2neon.h"
+#else
+#error "This header is only meant to be used on x86/x64 or ARM64 architectures"
+#endif
 
 #ifdef __WIN32
 #define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ?0 :errno)

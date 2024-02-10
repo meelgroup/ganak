@@ -855,7 +855,8 @@ uint32_t Counter::find_best_branch() {
     if (v < indep_support_end) {
       if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
       const double score = score_of(v) ;
-      if (best_var_score == -1 || score > best_var_score) {
+      assert(score >= 0);
+      if (score > best_var_score) {
         best_var = v;
         best_var_score = score;
       }

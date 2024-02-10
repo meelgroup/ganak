@@ -32,21 +32,21 @@ THE SOFTWARE.
 #include "primitive_types.hpp"
 #include "structures.hpp"
 
-class DifferencePackedComponent: public BasePackedComponent {
+class HashedComp: public BaseComp {
 public:
-  DifferencePackedComponent() = default;
-  inline DifferencePackedComponent(void* hash_seed, Component &r_comp, uint32_t* tmp_data);
+  HashedComp() = default;
+  inline HashedComp(void* hash_seed, Component &r_comp, uint32_t* tmp_data);
   uint32_t raw_data_byte_size() const {
-    return BasePackedComponent::alloc_of_model_count();
+    return BaseComp::alloc_of_model_count();
   }
 
   uint64_t get_clhashkey() const { return clhashkey_; }
-  bool equals_clhashkey(const DifferencePackedComponent &comp) const {
+  bool equals_clhashkey(const HashedComp &comp) const {
     return clhashkey_ == comp.get_clhashkey();
   }
 };
 
-DifferencePackedComponent::DifferencePackedComponent(
+HashedComp::HashedComp(
     void* hash_seed, Component &rComp, uint32_t* tmp_data) {
   auto data = tmp_data;
   uint32_t at = 0;

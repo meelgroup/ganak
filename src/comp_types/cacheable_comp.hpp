@@ -36,15 +36,15 @@ class ComponentArchetype;
 // namely, the descendant tree structure that
 // allows for the removal of cache pollutions
 
-class CacheableComponent: public DifferencePackedComponent {
+class CacheableComponent: public HashedComp {
 public:
   CacheableComponent() = default;
   CacheableComponent(void* hash_seed, Component &comp, uint32_t* tmp_data) :
-      DifferencePackedComponent(hash_seed, comp, tmp_data) {
+      HashedComp(hash_seed, comp, tmp_data) {
   }
 
   uint32_t SizeInBytes() const {
-    return DifferencePackedComponent::raw_data_byte_size();
+    return HashedComp::raw_data_byte_size();
   }
 
   // Cache Pollution Management

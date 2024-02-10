@@ -25,85 +25,11 @@ THE SOFTWARE.
 #include <cassert>
 #include <gmpxx.h>
 #include <iostream>
-#include "common.hpp"
+#include "../common.hpp"
 
 using std::cout;
 
-struct BitStufferReader {
-  BitStufferReader(uint32_t* _data) {data = _data;}
-  uint32_t read_bits(uint32_t bits) {
-    assert(bits <= 32);
-    uint32_t ret = 0;
-
-    uint32_t byte = data[at_byte];
-    byte >>= at_bit % 32;
-    ret += byte;
-    uint32_t bits_read = 32-(at_bit)%32;
-    // ret has 32-(at_bit%32) bits
-    if (bits_read > bits) {
-      // cut to BITS
-      ret <<= (32-bits);
-      ret >>= (32-bits);
-      at_bit += bits;
-      return ret;
-    }
-    at_bit += bits_read;
-    assert(at_bit % 32 == 0);
-    at_byte++;
-    ret += read_bits(bits-bits_read) << bits_read;
-    return ret;
-  }
-
-  uint32_t* data;
-  uint32_t at_bit = 0;
-  uint32_t at_byte = 0;
-};
-
-template <class T>
- class BitStuffer {
- public:
-  BitStuffer(T *data):data_start_(data),p(data){
-    *p = 0;
-  }
-
-  void stuff(const uint32_t val, const uint32_t num_bits_val){
-      assert(num_bits_val > 0);
-      assert((val >> num_bits_val) == 0);
-      if(end_of_bits_ == 0) *p = 0;
-      assert((*p >> end_of_bits_) == 0);
-      *p |= val << end_of_bits_;
-      end_of_bits_ += num_bits_val;
-      if (end_of_bits_ > _bits_per_block){
-        //assert(*p);
-        end_of_bits_ -= _bits_per_block;
-        *(++p) = val >> (num_bits_val - end_of_bits_);
-        assert(!(end_of_bits_ == 0) | (*p == 0));
-      }
-      else if (end_of_bits_ == _bits_per_block){
-        end_of_bits_ -= _bits_per_block;
-        p++;
-      }
-  }
-
-  void assert_size(uint32_t size){
-    if(end_of_bits_ == 0)
-       p--;
-    assert(p - data_start_ == size - 1);
-  }
-
- private:
-  T *data_start_ = nullptr;
-  T *p = nullptr;
-  // in the current block
-  // the bit postion just after the last bit written
-  uint32_t end_of_bits_ = 0;
-
-  const uint32_t _bits_per_block = (sizeof(T) << 3);
-
-};
-
-
-class BasePackedComponent {
+class BaseComp {
 public:
   uint32_t creation_time() const { return creation_time_; }
   const mpz_class &model_count() const { return *model_count_; }

@@ -129,12 +129,12 @@ if (NOT MSVC)
     add_compile_options( -pthread )
 
     add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O3>")
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-mtune=native>")
+    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-march=native>")
 
     add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
     add_compile_options("$<$<CONFIG:RELEASE>:-g0>")
     add_compile_options("$<$<CONFIG:RELEASE>:-DNDEBUG>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-mtune=native>")
+    add_compile_options("$<$<CONFIG:RELEASE>:-march=native>")
 
     add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
 

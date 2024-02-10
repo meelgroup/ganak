@@ -115,7 +115,7 @@ public:
       archetype_.setClause_in_sup_comp_unseen(*itCl);
   }
 
-  bool exploreRemainingCompOf(const VariableIndex v, bool freevar = true);
+  bool exploreRemainingCompOf(const VariableIndex v);
 
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.

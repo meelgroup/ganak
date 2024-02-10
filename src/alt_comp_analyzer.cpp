@@ -133,15 +133,14 @@ void ComponentAnalyzer::initialize(
 }
 
 // returns true, iff the comp found is non-trivial
-bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v, bool freevar) {
-  assert(freevar && "Maybe this freevar thing is not needed... let's see");
-  assert(archetype_.var_unseen_in_sup_comp(v));
+bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
+  SLOW_DEBUG_DO(assert(archetype_.var_unseen_in_sup_comp(v)));
   recordComponentOf(v); // finds the comp that "v" is in
 
   // comp only contains one variable
   if (search_stack_.size() == 1) {
     debug_print("explore remaining with single var, v is: " <<  v);
-    if (v >= indep_support_end || !freevar) {
+    if (v >= indep_support_end) {
       archetype_.stack_level().includeSolution(1);
       /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1)); */
     } else {

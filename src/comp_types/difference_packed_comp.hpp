@@ -29,11 +29,12 @@ THE SOFTWARE.
 #include "base_packed_comp.hpp"
 #include "comp.hpp"
 #include "../clhash/clhash.h"
+#include "primitive_types.hpp"
 #include "structures.hpp"
 
 class DifferencePackedComponent: public BasePackedComponent {
 public:
-  DifferencePackedComponent() { }
+  DifferencePackedComponent() = default;
   inline DifferencePackedComponent(
       void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
   uint32_t raw_data_byte_size() const {
@@ -49,68 +50,24 @@ public:
   }
 };
 
-DifferencePackedComponent::DifferencePackedComponent(void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data) {
-  // first, generate hashkey, and compute max diff for cls and vars
-  uint32_t max_var_diff = 0;
-  for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++) {
-    if ((*it - *(it - 1)) - 1 > max_var_diff)
-      max_var_diff = (*it - *(it - 1)) - 1 ;
+DifferencePackedComponent::DifferencePackedComponent(void* hash_seed,
+    Component &rComp, const BPCSizes&, uint32_t* tmp_data) {
+  auto data = tmp_data;
+  uint32_t at = 0;
+
+  if (*rComp.varsBegin()) {
+    for (auto it = rComp.varsBegin(); *it != varsSENTINEL; it++) data[at++] = *it;
   }
-
-  uint32_t max_clause_diff = 0;
-  if (*rComp.clsBegin()) {
-    for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++) {
-      if (*jt - *(jt - 1) - 1 > max_clause_diff)
-        max_clause_diff = *jt - *(jt - 1) - 1;
-    }
-  }
-
-  uint32_t bits_per_var_diff = log2(max_var_diff) + 1;
-  uint32_t bits_per_clause_diff = log2(max_clause_diff) + 1;
-
-  assert(bits_per_var_diff <= 31);
-  assert(bits_per_clause_diff <= 31);
-
-  uint32_t data_size_vars = sz.bits_of_data_size + 2*sz.bits_per_variable + 5;
-
-  data_size_vars += (rComp.nVars() - 1) * bits_per_var_diff ;
-  uint32_t data_size_clauses = 0;
-  if(*rComp.clsBegin())
-    data_size_clauses += sz.bits_per_clause + 5
-       + (rComp.numLongClauses() - 1) * bits_per_clause_diff;
-
-  uint32_t data_size = (data_size_vars + data_size_clauses)/sz.bits_per_block;
-  data_size += ((data_size_vars + data_size_clauses) % sz.bits_per_block)? 1 : 0;
-
-  auto data_ = tmp_data;
-  assert((data_size >> sz.bits_of_data_size) == 0);
-  BitStuffer<uint32_t> bs(data_);
-
-  bs.stuff(data_size, sz.bits_of_data_size);
-  bs.stuff(rComp.nVars(), sz.bits_per_variable);
-  bs.stuff(bits_per_var_diff, 5);
-  bs.stuff(*rComp.varsBegin(), sz.bits_per_variable);
-
-  if(bits_per_var_diff)
-    for (auto it = rComp.varsBegin() + 1; *it != varsSENTINEL; it++)
-      bs.stuff(*it - *(it - 1) - 1, bits_per_var_diff);
+  data[at++] = varsSENTINEL;
 
   if (*rComp.clsBegin()) {
-    bs.stuff(bits_per_clause_diff, 5);
-    bs.stuff(*rComp.clsBegin(), sz.bits_per_clause);
-    if(bits_per_clause_diff)
-     for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++)
-      bs.stuff(*jt - *(jt - 1) - 1, bits_per_clause_diff);
+    for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++)
+      data[at++]+=*jt;
   }
+  data[at] = at;
+  at++;
 
-  // to check wheter the "END" block of bits_per_clause()
-  // many zeros fits into the current
-  //bs.end_check(bits_per_clause());
-  // this will tell us if we computed the data_size
-  // correctly
-  bs.assert_size(data_size);
-
-  clhasher h(randomseedforCLHASH);
-  clhashkey_ = h(data_, data_size);
+  clhasher h(hash_seed);
+  clhashkey_ = h(data, at);
   hashkey_ = (uint32_t)clhashkey_;
 }

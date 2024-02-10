@@ -113,12 +113,12 @@ public:
     hash_seed = get_random_key_for_clhash(distr(eng), distr(eng));
   }
 
-  double cache_score_of(const VariableIndex v) const { return var_cache_score[v]; }
-  void bump_cache_score(Component &comp) {
+  double get_cache_hit_score(const VariableIndex v) const { return cache_hit_score[v]; }
+  void bump_cache_hit_score(Component &comp) {
     for (vector<VariableIndex>::const_iterator it = comp.varsBegin(); *it != varsSENTINEL; it++) {
-      var_cache_score[*it] += act_inc;
-      if (var_cache_score[*it] > 1e100) {
-        for (auto& s: var_cache_score) s *= 1e-90;
+      cache_hit_score[*it] += act_inc;
+      if (cache_hit_score[*it] > 1e100) {
+        for (auto& s: cache_hit_score) s *= 1e-90;
         act_inc *= 1e-90;
       }
     }
@@ -137,7 +137,7 @@ private:
   // and halved once in a while. The LARGER it is, the more likely the
   // variable gets picked for branching. So basically, the fewer times a
   // variable is in a component, the more likely the branch
-  vector<double> var_cache_score;
+  vector<double> cache_hit_score;
   double act_inc = 1.0;
   Counter* solver_;
   vector<uint32_t> tmp_data_for_pcc;

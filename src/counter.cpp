@@ -858,7 +858,7 @@ uint32_t Counter::find_best_branch() {
   }
 
   if (conf.do_cache_score && stats.conflicts > 1000 && best_var != 0) {
-    double cachescore = comp_manager_->cache_score_of(best_var);
+    double c_score = comp_manager_->get_cache_hit_score(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
          *it != varsSENTINEL; it++) {
       const uint32_t v = *it;
@@ -866,9 +866,9 @@ uint32_t Counter::find_best_branch() {
       if (v < indep_support_end) {
         const double score = score_of(v);
         if (score > best_var_score * 0.9) {
-          if (comp_manager_->cache_score_of(v) > cachescore) {
+          if (comp_manager_->get_cache_hit_score(v) > c_score) {
             best_var = v;
-            cachescore = comp_manager_->cache_score_of(v);
+            c_score = comp_manager_->get_cache_hit_score(v);
           }
         }
       }
@@ -1311,7 +1311,7 @@ retStateT Counter::backtrack() {
     //Cache score should be decreased since the component is getting added to cache
     if (conf.do_cache_score) {
       stats.numcachedec_++;
-      comp_manager_->bump_cache_score(comp_manager_->getSuperComponentOf(decision_stack_.top()));
+      comp_manager_->bump_cache_hit_score(comp_manager_->getSuperComponentOf(decision_stack_.top()));
     }
 
     // Backtrack from end, i.e. finished.

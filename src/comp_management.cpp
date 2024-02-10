@@ -43,7 +43,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
       , ana_.max_clause_id());
 
   cache_.init(*comp_stack_.back(), hash_seed);
-  for (uint32_t i = 0 ; i < nVars + 1; i++) var_cache_score.push_back(0);
+  for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 
   // 100 for the constant overhead (bitsizes, num clauses, num variables)
   // The 32* multiplier is because each DIFF can be at most 32b, since
@@ -118,7 +118,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         stats.cache_hits_misses_q.push(p_new_comp->nVars());
         if (conf.do_cache_score) {
           stats.numcachedec_++;
-          bump_cache_score(*p_new_comp);
+          bump_cache_hit_score(*p_new_comp);
         }
 
 #ifdef VERBOSE_DEBUG

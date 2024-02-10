@@ -391,7 +391,7 @@ int main(int argc, char *argv[])
       arj2.set_starting_sampling_set(ret.sampling_vars);
       ret.optional_sampling_vars = arj2.extend_indep_set();
     }
-    ret.renumber_sampling_vars_for_ganak();
+    if (ret.sampling_vars.size() != ret.nvars) ret.renumber_sampling_vars_for_ganak();
     if (!indep_support_given) {
       for(uint32_t i = 0; i < ret.nvars; i++) ret.optional_sampling_vars.push_back(i);
     }

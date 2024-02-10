@@ -149,15 +149,22 @@ public:
 
   // The higher, the better. It is never below 0.
   double score_of(VariableIndex v) {
+    bool print = false;
+    if (stats.conflicts % 1000 == 1) print = 1;
+    print = false;
+
     double score = 0;
-    score += comp_manager_->score_of(v)/10.0;
-    /* cout << "---" << endl; */
-    /* cout << "v: " << v << " score1: " << score << endl; */
     if (stats.conflicts > 1000)
-      score += (watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity)/act_inc;
-    /* cout << "v: " << v << " score2: " << score << endl; */
+      score += comp_manager_->score_of(v)/20.0;
+    if (print) cout << "---" << endl;
+    if (print) cout << "v: " << v << " score1: " << score << endl;
+
+    if (stats.conflicts > 1000)
+      score += (watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity)/(30*act_inc);
+    if (print) cout << "v: " << v << " score2: " << score << endl;
+
     if (!tdscore.empty()) score += tdscore[v];
-    /* cout << "v: " << v << " score3: " << score << endl; */
+    if (print) cout << "v: " << v << " score3: " << score << endl;
     return score;
   }
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);

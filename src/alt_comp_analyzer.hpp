@@ -56,15 +56,17 @@ public:
     return idx_to_cl;
   }
 
-  uint32_t& score_of(VariableIndex v) {
-    return var_frequency_scores_[v];
+  double score_of(VariableIndex v) const { return var_frequency_scores_[v]/act_inc; }
+  void un_bump_score(VariableIndex v) {
+    var_frequency_scores_[v] -= act_inc;
   }
-
-  double score_of(VariableIndex v) const {
-    /* cout << "var fq: " <<  (double)(var_frequency_scores_[v]) << " tot: " << (double)tot_freq_updates << endl; */
-    return (var_frequency_scores_[v])/(double)tot_freq_updates;
+  void bump_score(VariableIndex v) {
+    var_frequency_scores_[v] += act_inc;
+    if (var_frequency_scores_[v] > 1e100) {
+      for(auto& f: var_frequency_scores_) f *= 1e-90;
+      act_inc *= 1e-90;
+    }
   }
-
   const ComponentArchetype &current_archetype() const { return archetype_; }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
@@ -87,8 +89,7 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
-    var_frequency_scores_[lit.var()]+= isUnknown(lit);
-    tot_freq_updates += isUnknown(lit);
+    if (isUnknown(lit)) bump_score(lit.var());
     return manageSearchOccurrenceOf(lit.var());
   }
 
@@ -105,8 +106,8 @@ public:
     for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
       if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
-        tot_freq_updates -= var_frequency_scores_[*vt];
-        var_frequency_scores_[*vt] = 0;
+        // TODO what is happening here....
+        /* var_frequency_scores_[*vt] = 0; */
       }
     }
 
@@ -149,8 +150,8 @@ private:
 
   const LiteralIndexedVector<TriValue> & lit_values_;
   const uint32_t& indep_support_end;
-  vector<uint32_t> var_frequency_scores_;
-  uint32_t tot_freq_updates = 0;
+  vector<double> var_frequency_scores_;
+  double act_inc = 1.0;
   ComponentArchetype  archetype_;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
@@ -214,18 +215,15 @@ private:
         }
         archetype_.setClause_nil(clID);
         while(*itL != SENTINEL_LIT)
-          if(isUnknown(*(--itL))) {
-            var_frequency_scores_[itL->var()]--;
-            tot_freq_updates--;
-          }
+          if(isUnknown(*(--itL))) un_bump_score(itL->var());
         break;
       }
     }
 
     if (!archetype_.clause_nil(clID)){
-      var_frequency_scores_[vt]++;
-      tot_freq_updates++;
+      bump_score(vt);
       archetype_.setClause_seen(clID,all_lits_set);
     }
+    act_inc *= 1.0/0.98;
   }
 };

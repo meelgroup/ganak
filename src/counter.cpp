@@ -809,7 +809,8 @@ bool Counter::decideLiteral() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   isindependent = true;
-  v = find_best_branch();
+  if (conf.decide == 0) v = find_best_branch();
+  else v = find_best_branch_gpmc();
   if (v == 0) {
     decision_stack_.pop_back();
     isindependent = false;
@@ -875,10 +876,44 @@ uint32_t Counter::find_best_branch() {
     }
   }
 
-  if (best_var != 0 && only_optional_indep) {
-    cout << "here" << endl;
-    return 0;
+  if (best_var != 0 && only_optional_indep) return 0;
+  return best_var;
+}
+
+uint32_t Counter::find_best_branch_gpmc() {
+  uint32_t best_var = 0;
+  double max_score_a = -1;
+  double max_score_f = -1;
+  double max_score_td = -1;
+  bool only_optional_indep = true;
+
+  for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
+      *it != varsSENTINEL; it++) if (*it < indep_support_end) {
+    uint32_t v = *it;
+    if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
+
+    double score_td = tdscore[v];
+    double score_f = comp_manager_->score_of(v);
+    double score_a = watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
+
+    if(score_td > max_score_td) {
+      max_score_td = score_td;
+      max_score_f = score_f;
+      max_score_a = score_a;
+      best_var = v;
+    }
+    else if( score_td == max_score_td) {
+      if(score_f > max_score_f) {
+        max_score_f = score_f;
+        max_score_a = score_a;
+        best_var = v;
+      } else if (score_f == max_score_f && score_a > max_score_a) {
+        max_score_a = score_a;
+        best_var = v;
+      }
+    }
   }
+  if (best_var != 0 && only_optional_indep) return 0;
   return best_var;
 }
 

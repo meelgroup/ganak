@@ -156,6 +156,7 @@ public:
     double score = 0;
     if (stats.conflicts > 1000)
       score += comp_manager_->score_of(v)/20.0;
+
     if (print) cout << "---" << endl;
     if (print) cout << "v: " << v << " score1: " << score << endl;
 
@@ -199,7 +200,6 @@ private:
   CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
   vector<uint8_t> optional_proj;
-  vector<double> scores;
   bqueue<uint32_t> depth_q;
   bqueue<double, double> cache_miss_rate_q;
   vector<VS> vars_scores; // for branch picking
@@ -232,6 +232,7 @@ private:
 
   SOLVER_StateT countSAT();
   bool decideLiteral();
+  uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch();
   template<class T> bool clause_falsified(const T& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;

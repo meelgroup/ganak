@@ -135,6 +135,7 @@ void add_ganak_options()
     ("vivifevery", po::value(&conf.vivif_every)->default_value(conf.vivif_every), "Vivify every N conflicts")
     ("vivifmult", po::value(&conf.vivif_mult)->default_value(conf.vivif_mult), "How much to multiply timeout for vivif")
     ("buddy", po::value(&conf.do_buddy)->default_value(conf.do_buddy), "Run BuDDy")
+    ("decide", po::value(&conf.decide)->default_value(conf.decide), "Decision type. 0 = sstd-inspired, 1 = gpmc-inspired")
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("comprevsort", po::value(&conf.do_comp_reverse_sort)->default_value(conf.do_comp_reverse_sort), "Sort components in reverse order")
 #endif

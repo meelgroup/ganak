@@ -832,7 +832,6 @@ bool Counter::decideLiteral() {
       << decision_stack_.get_decision_level());
   setLiteral(lit, decision_level());
   stats.decisions++;
-  if (stats.decisions % 128 == 0) comp_manager_->rescale_cache_scores();
   assert( decision_stack_.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
   return true;
 }
@@ -867,7 +866,7 @@ uint32_t Counter::find_best_branch() {
       if (v < indep_support_end) {
         const double score = score_of(v);
         if (score > best_var_score * 0.9) {
-          if (comp_manager_->cache_score_of(v) > cachescore) {
+          if (comp_manager_->cache_score_of(v) < cachescore) {
             best_var = v;
             cachescore = comp_manager_->cache_score_of(v);
           }
@@ -1312,9 +1311,7 @@ retStateT Counter::backtrack() {
     //Cache score should be decreased since the component is getting added to cache
     if (conf.do_cache_score) {
       stats.numcachedec_++;
-      if (stats.numcachedec_ % 128 == 0) comp_manager_->rescale_cache_scores();
-      comp_manager_->decreasecachescore(
-          comp_manager_->getSuperComponentOf(decision_stack_.top()));
+      comp_manager_->bump_cache_score(comp_manager_->getSuperComponentOf(decision_stack_.top()));
     }
 
     // Backtrack from end, i.e. finished.

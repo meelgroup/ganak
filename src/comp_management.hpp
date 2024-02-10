@@ -115,11 +115,13 @@ public:
   }
 
   double cache_score_of(const VariableIndex v) const { return var_cache_score[v]; }
-  void rescale_cache_scores() { for (auto& c: var_cache_score) c *= 0.5; }
-  void decreasecachescore(Component &comp) {
-    for (vector<VariableIndex>::const_iterator it = comp.varsBegin();
-         *it != varsSENTINEL; it++) {
-      var_cache_score[*it] -= 1;
+  void bump_cache_score(Component &comp) {
+    for (vector<VariableIndex>::const_iterator it = comp.varsBegin(); *it != varsSENTINEL; it++) {
+      var_cache_score[*it] += act_inc;
+      if (var_cache_score[*it] > 1e100) {
+        for (auto& s: var_cache_score) s *= 1e-90;
+        act_inc *= 1e-90;
+      }
     }
   }
 
@@ -137,6 +139,7 @@ private:
   // variable gets picked for branching. So basically, the fewer times a
   // variable is in a component, the more likely the branch
   vector<double> var_cache_score;
+  double act_inc = 1.0;
   Counter* solver_;
   BPCSizes sz;
   vector<uint32_t> tmp_data_for_pcc;

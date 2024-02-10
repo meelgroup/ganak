@@ -119,8 +119,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         stats.cache_hits_misses_q.push(p_new_comp->nVars());
         if (conf.do_cache_score) {
           stats.numcachedec_++;
-          if (stats.numcachedec_ % 128 == 0) rescale_cache_scores();
-          decreasecachescore(*p_new_comp);
+          bump_cache_score(*p_new_comp);
         }
 
 #ifdef VERBOSE_DEBUG

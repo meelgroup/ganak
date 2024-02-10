@@ -63,7 +63,7 @@ using namespace std;
 bool indep_support_given = false;
 int do_check = 0;
 CounterConfiguration conf;
-int optional_indep = 0;
+int optional_indep = 1;
 int arjun_verb = 0;
 int do_arjun = 1;
 int ignore_indep = 0;

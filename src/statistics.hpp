@@ -177,7 +177,7 @@ public:
     if (clause.size() == 2) num_binary_irred_clauses_++;
   }
 
-  void printShort(const Counter* counter, const ComponentCache* cache_) const;
+  void printShort(const Counter* counter, const ComponentCache* cache) const;
   void printShortFormulaInfo(const Counter* counter) const;
 
   double getAvgComponentHitSize() const {

@@ -36,7 +36,7 @@ class DifferencePackedComponent: public BasePackedComponent {
 public:
   DifferencePackedComponent() = default;
   inline DifferencePackedComponent(
-      void* randomseedforCLHASH, Component &rComp, const BPCSizes& sz, uint32_t* tmp_data);
+      void* randomseedforCLHASH, Component &rComp, uint32_t* tmp_data);
   uint32_t raw_data_byte_size() const {
     return BasePackedComponent::alloc_of_model_count();
   }
@@ -50,8 +50,8 @@ public:
   }
 };
 
-DifferencePackedComponent::DifferencePackedComponent(void* hash_seed,
-    Component &rComp, const BPCSizes&, uint32_t* tmp_data) {
+DifferencePackedComponent::DifferencePackedComponent(
+    void* hash_seed, Component &rComp, uint32_t* tmp_data) {
   auto data = tmp_data;
   uint32_t at = 0;
 

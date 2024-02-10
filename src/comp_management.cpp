@@ -31,7 +31,6 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
   assert(comp_stack_.empty());
 
   ana_.initialize(watches_, _alloc, longIrredCls);
-  sz = BasePackedComponent::calcPackSize(ana_.max_variable_id(), ana_.max_clause_id());
 
   //Add dummy comp
   comp_stack_.push_back(new Component());
@@ -43,7 +42,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
       ana_.max_variable_id()
       , ana_.max_clause_id());
 
-  cache_.init(*comp_stack_.back(), randomseedforCLHASH);
+  cache_.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) var_cache_score.push_back(0);
 
   // 100 for the constant overhead (bitsizes, num clauses, num variables)
@@ -98,7 +97,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
       Component *p_new_comp = ana_.makeComponentFromArcheType();
-      CacheableComponent packed_comp(randomseedforCLHASH, ana_.getArchetype().current_comp_for_caching_, sz, tmp_data_for_pcc.data());
+      CacheableComponent packed_comp(hash_seed, ana_.getArchetype().current_comp_for_caching_, tmp_data_for_pcc.data());
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());

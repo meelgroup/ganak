@@ -29,16 +29,6 @@ THE SOFTWARE.
 
 using std::cout;
 
-struct BPCSizes {
-  uint32_t bits_per_clause;
-  uint32_t bits_per_variable;
-  uint32_t bits_of_data_size; // number of bits needed to store the data size
-  uint32_t data_size_mask;
-  uint32_t variable_mask;
-  uint32_t clause_mask;
-  uint32_t bits_per_block = (sizeof(uint32_t) << 3);
-};
-
 struct BitStufferReader {
   BitStufferReader(uint32_t* _data) {data = _data;}
   uint32_t read_bits(uint32_t bits) {
@@ -115,7 +105,6 @@ template <class T>
 
 class BasePackedComponent {
 public:
-  static BPCSizes calcPackSize(uint32_t maxVarId, uint32_t maxClId);
   static uint32_t log2(uint32_t v) {
          // taken from
          // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup

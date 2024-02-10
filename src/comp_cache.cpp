@@ -60,14 +60,12 @@ uint64_t freeram() {
 #include "stack.hpp"
 
 ComponentCache::ComponentCache(
-    DataAndStatistics &_stats, const CounterConfiguration &_conf, const BPCSizes& _sz) :
-    stats(_stats), conf(_conf), sz(_sz) {
-}
+    DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) {}
 
-void ComponentCache::init(Component &super_comp, void* randomseedforCLHASH){
+void ComponentCache::init(Component &super_comp, void* hash_seed){
   CacheableComponent *packed_super_comp;
   vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.numLongClauses());
-  packed_super_comp = new CacheableComponent(randomseedforCLHASH,super_comp, sz, tmp.data());
+  packed_super_comp = new CacheableComponent(hash_seed,super_comp, tmp.data());
   my_time_ = 1;
 
   entry_base_.clear();

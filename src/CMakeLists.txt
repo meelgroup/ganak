@@ -46,7 +46,6 @@ endif()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
-add_subdirectory (comp_types)
 add_subdirectory (clhash)
 
 SET(SOURCES
@@ -69,7 +68,6 @@ ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak
   LINK_PUBLIC buddy
   LINK_PUBLIC clhash
-  LINK_PUBLIC component_types
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${LOUVAIN_COMMUNITIES_LIBRARIES}

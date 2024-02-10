@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include "counter_config.hpp"
 #include "Vec.hpp"
+#include <set>
 #include <gmpxx.h>
 
 #include "comp_types/comp.hpp"
@@ -35,10 +36,10 @@ using std::set;
 // There is EXACTLY ONE of this
 class ComponentCache {
 public:
-  ComponentCache(DataAndStatistics &_stats, const CounterConfiguration& _conf, const BPCSizes& sz);
+  ComponentCache(DataAndStatistics &_stats, const CounterConfiguration& _conf);
   ~ComponentCache() { for(auto& c: entry_base_) c.set_free(); }
 
-  void init(Component &super_comp, void* randomseedforCLHASH);
+  void init(Component &super_comp, void* hash_seed);
   void delete_comps_with_vars(const set<uint32_t>& vars);
   uint64_t get_num_entries_used() const
   {
@@ -165,7 +166,6 @@ private:
 
   DataAndStatistics &stats;
   const CounterConfiguration &conf;
-  const BPCSizes& sz;
   uint64_t my_time_ = 0;
 };
 

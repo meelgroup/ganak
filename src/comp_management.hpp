@@ -45,12 +45,12 @@ public:
   ComponentManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const uint32_t& indep_support_end, Counter* _solver) :
-      conf(config), stats(statistics), cache_(statistics, conf, sz),
+      conf(config), stats(statistics), cache_(statistics, conf),
       ana_(lit_values, indep_support_end, _solver), solver_(_solver)
   { }
 
   ~ComponentManager() {
-    free(randomseedforCLHASH);
+    free(hash_seed);
     for(auto& comp: comp_stack_) delete comp;
     comp_stack_.clear();
   }
@@ -64,7 +64,6 @@ public:
   }
   const ComponentCache& get_cache() const { return cache_; }
   const ComponentAnalyzer& get_ana() const { return ana_; }
-
 
   uint64_t get_num_cache_entries_used() const { return cache_.get_num_entries_used(); }
   void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value) {
@@ -104,14 +103,14 @@ public:
 
   void removeAllCachePollutionsOfIfExists(const StackLevel &top);
   void removeAllCachePollutionsOf(const StackLevel &top);
-  void* randomseedforCLHASH; //stores a bunch of __m128 aligned data pieces, each
+  void* hash_seed; //stores a bunch of __m128 aligned data pieces, each
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
   {
     std::mt19937_64 eng(conf.seed); //Use the 64-bit Mersenne Twister 19937 generator
                                //and seed it with entropy.
     std::uniform_int_distribution<uint64_t> distr;
-    randomseedforCLHASH = get_random_key_for_clhash(distr(eng), distr(eng));
+    hash_seed = get_random_key_for_clhash(distr(eng), distr(eng));
   }
 
   double cache_score_of(const VariableIndex v) const { return var_cache_score[v]; }
@@ -141,7 +140,6 @@ private:
   vector<double> var_cache_score;
   double act_inc = 1.0;
   Counter* solver_;
-  BPCSizes sz;
   vector<uint32_t> tmp_data_for_pcc;
 };
 

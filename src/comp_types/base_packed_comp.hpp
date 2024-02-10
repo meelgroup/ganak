@@ -158,12 +158,12 @@ public:
   }
 
   void set_model_count(const mpz_class &rn, uint32_t time) {
-    assert(model_count_ == NULL);
+    assert(model_count_ == nullptr);
     model_count_ = new mpz_class(rn);
     length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
   }
 
-  uint32_t get_hashkey() const  { return hashkey_; }
+  uint32_t get_hashkey() const  { return (uint32_t)clhashkey_; }
   bool modelCountFound(){
     return (length_solution_period_and_flags_ >> 1);
   }
@@ -192,11 +192,10 @@ protected:
   // clauses begin at clauses_ofs_
 
   uint64_t clhashkey_;
-  uint32_t hashkey_ = 0;
+  /* uint32_t hashkey_ = 0; */
 
-  mpz_class* model_count_ = NULL;
+  mpz_class* model_count_ = nullptr;
   uint32_t creation_time_ = 1;
-
 
   // this is:  length_solution_period = length_solution_period_and_flags_ >> 1
   // length_solution_period == 0 means unsolved

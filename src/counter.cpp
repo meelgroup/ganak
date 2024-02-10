@@ -873,7 +873,7 @@ uint32_t Counter::find_best_branch_gpmc() {
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
 
     double score_td = tdscore[v];
-    double score_f = comp_manager_->score_of(v);
+    double score_f = comp_manager_->freq_score_of(v);
     double score_a = watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {

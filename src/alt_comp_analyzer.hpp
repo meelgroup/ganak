@@ -60,7 +60,7 @@ public:
   void un_bump_score(VariableIndex v) {
     var_frequency_scores_[v] -= act_inc;
   }
-  void bump_score(VariableIndex v) {
+  inline void bump_score(VariableIndex v) {
     var_frequency_scores_[v] += act_inc;
     if (var_frequency_scores_[v] > 1e100) {
       for(auto& f: var_frequency_scores_) f *= 1e-90;
@@ -224,6 +224,5 @@ private:
       bump_score(vt);
       archetype_.setClause_seen(clID,all_lits_set);
     }
-    act_inc *= 1.0/0.98;
   }
 };

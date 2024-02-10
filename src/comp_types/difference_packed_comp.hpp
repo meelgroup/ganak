@@ -44,7 +44,6 @@ public:
 
   uint64_t get_clhashkey() const { return clhashkey_; }
   bool equals_clhashkey(const DifferencePackedComponent &comp) const {
-    if (hashkey_ != comp.get_hashkey()) return false;
     if (clhashkey_ != comp.get_clhashkey()) return false;
     return true;
   }
@@ -69,5 +68,4 @@ DifferencePackedComponent::DifferencePackedComponent(
 
   clhasher h(hash_seed);
   clhashkey_ = h(data, at);
-  hashkey_ = (uint32_t)clhashkey_;
 }

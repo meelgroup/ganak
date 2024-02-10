@@ -39,8 +39,8 @@ class ComponentArchetype;
 class CacheableComponent: public DifferencePackedComponent {
 public:
   CacheableComponent() = default;
-  CacheableComponent(void* seed_hash, Component &comp, uint32_t* tmp_data) :
-      DifferencePackedComponent(seed_hash, comp, tmp_data) {
+  CacheableComponent(void* hash_seed, Component &comp, uint32_t* tmp_data) :
+      DifferencePackedComponent(hash_seed, comp, tmp_data) {
   }
 
   uint32_t SizeInBytes() const {

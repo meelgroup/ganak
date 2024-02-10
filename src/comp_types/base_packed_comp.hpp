@@ -105,39 +105,8 @@ template <class T>
 
 class BasePackedComponent {
 public:
-  static uint32_t log2(uint32_t v) {
-         // taken from
-         // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
-         const signed char LogTable256[256] =
-         {
-         #define LT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
-             -1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
-             LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
-             LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7)
-         };
-
-         uint32_t r;     // r will be lg(v)
-         uint32_t t, tt; // temporaries
-
-         if ((tt = (v >> 16)))
-         {
-           r = (t = (tt >> 8)) ? 24 + LogTable256[t] : 16 + LogTable256[tt];
-         }
-         else
-         {
-           r = (t = (v >> 8)) ? 8 + LogTable256[t] : LogTable256[v];
-         }
-         return r;
-  }
-
-  uint32_t creation_time() const {
-    return creation_time_;
-  }
-
-  const mpz_class &model_count() const {
-    return *model_count_;
-  }
-
+  uint32_t creation_time() const { return creation_time_; }
+  const mpz_class &model_count() const { return *model_count_; }
   uint32_t alloc_of_model_count() const{
     if (!model_count_) return 0;
     return sizeof(mpz_class)+sys_overhead_raw_data_byte_size();
@@ -171,12 +140,8 @@ public:
   // a cache entry is deletable
   // only if it is not connected to an active
   // comp in the comp stack
-  bool isDeletable() const {
-    return length_solution_period_and_flags_ & 1;
-  }
-  void set_deletable() {
-    length_solution_period_and_flags_ |= 1;
-  }
+  bool isDeletable() const { return length_solution_period_and_flags_ & 1; }
+  void set_deletable() { length_solution_period_and_flags_ |= 1; }
 
   void clear() {
     // before deleting the contents of this comp,
@@ -185,15 +150,7 @@ public:
   }
 
 protected:
-  // data_ contains in packed form the variable indices
-  // and clause indices of the comp ordered
-  // structure is
-  // var var ... clause clause ...
-  // clauses begin at clauses_ofs_
-
   uint64_t clhashkey_;
-  /* uint32_t hashkey_ = 0; */
-
   mpz_class* model_count_ = nullptr;
   uint32_t creation_time_ = 1;
 
@@ -201,7 +158,6 @@ protected:
   // length_solution_period == 0 means unsolved
   // and the first bit is "delete_permitted"
   uint32_t length_solution_period_and_flags_ = 0;
-
   // deletion is permitted only after
   // the copy of this comp in the stack
   // does not exist anymore

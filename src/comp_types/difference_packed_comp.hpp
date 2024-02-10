@@ -35,17 +35,14 @@ THE SOFTWARE.
 class DifferencePackedComponent: public BasePackedComponent {
 public:
   DifferencePackedComponent() = default;
-  inline DifferencePackedComponent(
-      void* randomseedforCLHASH, Component &rComp, uint32_t* tmp_data);
+  inline DifferencePackedComponent(void* hash_seed, Component &r_comp, uint32_t* tmp_data);
   uint32_t raw_data_byte_size() const {
     return BasePackedComponent::alloc_of_model_count();
   }
 
-
   uint64_t get_clhashkey() const { return clhashkey_; }
   bool equals_clhashkey(const DifferencePackedComponent &comp) const {
-    if (clhashkey_ != comp.get_clhashkey()) return false;
-    return true;
+    return clhashkey_ == comp.get_clhashkey();
   }
 };
 

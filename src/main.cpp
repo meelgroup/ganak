@@ -429,7 +429,7 @@ int main(int argc, char *argv[])
     set<uint32_t> tmp;
     for(auto const& s: cnfholder.sampling_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
-    if (optional_indep) {
+    if (optional_indep || !indep_support_given) {
       tmp.clear();
       for(auto const& s: cnfholder.optional_sampling_vars) tmp.insert(s+1);
       counter->set_optional_indep_support(tmp);

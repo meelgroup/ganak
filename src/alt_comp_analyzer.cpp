@@ -178,20 +178,18 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
     //traverse ternary clauses
     for (p++; *p ; p+=3) {
       if (archetype_.clause_unseen_in_sup_comp(*p)){
-        const Lit litA = *(Lit*)(p + 1);
-        const Lit litB = *(Lit*)(p + 2);
+        const Lit a = *(Lit*)(p + 1);
+        const Lit b = *(Lit*)(p + 2);
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
-        if(isTrue(litA)|| isTrue(litB)) {
+        if(isTrue(a)|| isTrue(b)) {
           /* cout << "satisfied" << endl; */
           archetype_.setClause_nil(*p);
         } else {
           /* cout << "not satisfied" << endl; */
           bump_score(v);
-          manageSearchOccurrenceAndScoreOf(litA);
-          manageSearchOccurrenceAndScoreOf(litB);
-          archetype_.setClause_seen(
-              *p
-              ,isUnknown(litA) && isUnknown(litB));
+          manageSearchOccurrenceAndScoreOf(a);
+          manageSearchOccurrenceAndScoreOf(b);
+          archetype_.setClause_seen(*p ,isUnknown(a) && isUnknown(b));
         }
       }
     }

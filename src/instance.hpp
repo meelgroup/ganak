@@ -140,7 +140,7 @@ protected:
   // literal stored in literals
   inline Antecedent addUIPConflictClause(const vector<Lit> &literals);
 
-  inline bool add_bin_cl(Lit litA, Lit litB, bool red);
+  inline bool add_bin_cl(Lit a, Lit b, bool red);
 
   inline Variable &var(const Lit lit) {
     return variables_[lit.var()];
@@ -191,7 +191,7 @@ protected:
   }
 
   bool isUnknown(uint32_t var) const {
-    return lit_values_[Lit(var, false)] == X_TRI;
+    return isUnknown(Lit(var, false));
   }
 
   bool isSatisfied(ClauseOfs off) {
@@ -224,9 +224,9 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
   return ante;
 }
 
-bool Instance::add_bin_cl(Lit litA, Lit litB, bool red) {
-   litWatchList(litA).addBinLinkTo(litB, red);
-   litWatchList(litB).addBinLinkTo(litA, red);
+bool Instance::add_bin_cl(Lit a, Lit b, bool red) {
+   litWatchList(a).addBinLinkTo(b, red);
+   litWatchList(b).addBinLinkTo(a, red);
    return true;
 }
 
@@ -262,7 +262,7 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
 }
 
 template<class T> void Instance::attach_cl(ClauseOfs off, const T& lits) {
-  Lit blckLit = lits[lits.size()/2];
-  litWatchList(lits[0]).addWatchLinkTo(off, blckLit);
-  litWatchList(lits[1]).addWatchLinkTo(off, blckLit);
+  Lit blck_lit = lits[lits.size()/2];
+  litWatchList(lits[0]).addWatchLinkTo(off, blck_lit);
+  litWatchList(lits[1]).addWatchLinkTo(off, blck_lit);
 }

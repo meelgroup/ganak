@@ -194,7 +194,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
         const Lit a = *(Lit*)(p + 1);
         const Lit b = *(Lit*)(p + 2);
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
-        if(isTrue(a)|| isTrue(b)) {
+        if(is_true(a)|| is_true(b)) {
           /* cout << "satisfied" << endl; */
           archetype_.setClause_nil(*p);
         } else {

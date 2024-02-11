@@ -158,11 +158,11 @@ private:
                                        // used in  recordComponentOf
                                        // its size is the number of variables in the component
 
-  bool isFalse(const Lit lit) const {
+  bool is_false(const Lit lit) const {
     return lit_values_[lit] == F_TRI;
   }
 
-  bool isTrue(const Lit lit) const {
+  bool is_true(const Lit lit) const {
     return lit_values_[lit] == T_TRI;
   }
   bool is_unknown(const Lit lit) const {
@@ -204,7 +204,7 @@ private:
       else {
         assert(!is_unknown(*itL));
         all_lits_set = false;
-        if (isFalse(*itL)) continue;
+        if (is_false(*itL)) continue;
 
         //accidentally entered a satisfied clause: undo the search process
         while (search_stack_.end() != itVEnd) {

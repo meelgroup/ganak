@@ -162,11 +162,11 @@ protected:
     return watches[lit];
   }
 
-  inline bool isTrue(const Lit &lit) const {
+  inline bool is_true(const Lit &lit) const {
     return lit_values_[lit] == T_TRI;
   }
 
-  bool isFalse(Lit lit) {
+  bool is_false(Lit lit) {
     return lit_values_[lit] == F_TRI;
   }
 
@@ -195,7 +195,7 @@ protected:
   }
 
   bool is_satisfied(ClauseOfs off) {
-    for (auto lt: *alloc->ptr(off)) if (isTrue(lt)) return true;
+    for (auto lt: *alloc->ptr(off)) if (is_true(lt)) return true;
     return false;
   }
 protected:

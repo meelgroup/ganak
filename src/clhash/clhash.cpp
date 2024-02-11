@@ -1,4 +1,5 @@
 /* clhash by Daniel Lemire,Owen Kaser
+ * Fixes by Alfons Laarman
  * For the original code, see: https://github.com/lemire/clhash
  *
  * LICENSE: Apache License, Version 2.0, January 2004
@@ -371,7 +372,7 @@ struct xorshift128plus_key_s {
     uint64_t part2;
 };
 
-typedef struct xorshift128plus_key_s xorshift128plus_key_t;
+using xorshift128plus_key_t = struct xorshift128plus_key_s;
 
 
 

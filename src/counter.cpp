@@ -1756,7 +1756,7 @@ bool Counter::propagate(bool out_of_order) {
     auto it2 = ws.begin();
     auto it = ws.begin();
     for (; it != ws.end(); it++) {
-      if (isTrue(it->blckLit)) { *it2++ = *it; continue; }
+      if (is_true(it->blckLit)) { *it2++ = *it; continue; }
 
       const auto ofs = it->ofs;
       Clause& c = *alloc->ptr(ofs);
@@ -1773,13 +1773,13 @@ bool Counter::propagate(bool out_of_order) {
 #endif
 
       assert(c[1] == unLit);
-      if (isTrue(c[0])) {
+      if (is_true(c[0])) {
         *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
       }
 
       uint32_t i = 2;
-      for(; i < c.sz; i++) if (!isFalse(c[i])) break;
+      for(; i < c.sz; i++) if (!is_false(c[i])) break;
       // either we found a free or satisfied lit
       if (i != c.sz) {
         c[1] = c[i];
@@ -2648,7 +2648,7 @@ bool Counter::check_watchlists() const {
       bool sat = false;
       for(const auto& l: *alloc->ptr(ofs)) {
         if (is_unknown(l)) num_unk++;
-        if (isTrue(l)) sat = true;
+        if (is_true(l)) sat = true;
       }
       if (!sat && num_unk >=2 && !is_unknown(lit)) {
         cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: " << endl;
@@ -3175,7 +3175,7 @@ template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
   uint32_t num_unknown = 0;
   bool satisfied = false;
   for(const auto& l: cl) {
-    if (isTrue(l)) {satisfied = true; break;}
+    if (is_true(l)) {satisfied = true; break;}
     if (is_unknown(l)) {num_unknown++; unk = l;}
     if (num_unknown > 1) break;
   }

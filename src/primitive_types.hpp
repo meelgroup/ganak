@@ -24,8 +24,7 @@ THE SOFTWARE.
 
 #include <cstdint>
 
-constexpr static uint32_t varsSENTINEL = 0;
-constexpr static uint32_t clsSENTINEL = 0;
+constexpr static uint32_t sentinel = 0;
 
 using VariableIndex = uint32_t;
 using ClauseIndex = uint32_t;

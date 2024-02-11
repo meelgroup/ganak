@@ -823,7 +823,7 @@ uint32_t Counter::find_best_branch() {
   uint32_t best_var = 0;
   double best_var_score = -1;
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-      *it != varsSENTINEL; it++) {
+      *it != sentinel; it++) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
 
@@ -841,7 +841,7 @@ uint32_t Counter::find_best_branch() {
   if (conf.do_cache_score && stats.conflicts > 1000 && best_var != 0) {
     double c_score = comp_manager_->get_cache_hit_score(best_var);
     for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-         *it != varsSENTINEL; it++) {
+         *it != sentinel; it++) {
       const uint32_t v = *it;
       if (val(v) != X_TRI) continue;
       if (v < indep_support_end) {
@@ -868,7 +868,7 @@ uint32_t Counter::find_best_branch_gpmc() {
   bool only_optional_indep = true;
 
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-      *it != varsSENTINEL; it++) if (*it < indep_support_end) {
+      *it != sentinel; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
 
@@ -2954,7 +2954,7 @@ bool Counter::deal_with_independent() {
   decision_stack_.push_back(StackLevel( decision_stack_.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
   for (auto it = comp_manager_->getSuperComponentOf(decision_stack_.top()).varsBegin();
-      *it != varsSENTINEL; it++) {
+      *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;
     if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");
     order_heap.insert(*it);
@@ -3096,7 +3096,7 @@ uint64_t Counter::buddy_count() {
   // Long clauses
   uint32_t actual_long = 0;
   const auto& ana = comp_manager_->get_ana();
-  for (auto itCl = c->clsBegin(); *itCl != clsSENTINEL; itCl++) {
+  for (auto itCl = c->clsBegin(); *itCl != sentinel; itCl++) {
     auto idx = *itCl;
     debug_print("IDX: " << idx);
     const auto& it = ana.get_idx_to_cl().find(idx);

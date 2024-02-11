@@ -158,7 +158,7 @@ public:
     current_comp_for_caching_.clear();
 
     // Fill variables in new comp
-    for (auto v_it = super_comp().varsBegin(); *v_it != varsSENTINEL;  v_it++)
+    for (auto v_it = super_comp().varsBegin(); *v_it != sentinel;  v_it++)
       if (var_seen(*v_it)) { //we have to put a var into our comp
         p_new_comp->addVar(*v_it);
         current_comp_for_caching_.addVar(*v_it);
@@ -168,7 +168,7 @@ public:
     current_comp_for_caching_.closeVariableData();
 
     // Fill clauses in new comp
-    for (auto it_cl = super_comp().clsBegin(); *it_cl != clsSENTINEL; it_cl++)
+    for (auto it_cl = super_comp().clsBegin(); *it_cl != sentinel; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->addCl(*it_cl);
         if (!clause_all_lits_set(*it_cl)) current_comp_for_caching_.addCl(*it_cl);

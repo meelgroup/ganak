@@ -40,26 +40,26 @@ public:
   CacheEntryID id() const { return id_; }
 
   void addVar(const VariableIndex var) {
-    // the only time a varsSENTINEL is added should be in a
+    // the only time a sentinel is added should be in a
     // call to closeVariableData(..)
-    SLOW_DEBUG_DO(assert(var != varsSENTINEL));
+    SLOW_DEBUG_DO(assert(var != sentinel));
     vs_cls_data_.push_back(var);
   }
 
   void closeVariableData() {
-    vs_cls_data_.push_back(varsSENTINEL);
+    vs_cls_data_.push_back(sentinel);
     clauses_ofs_ = vs_cls_data_.size();
   }
 
   void addCl(const ClauseIndex cl) {
-    // the only time a clsSENTINEL is added should be in a
+    // the only time a sentinel is added should be in a
     // call to closeClauseData(..)
-    SLOW_DEBUG_DO(assert(cl != clsSENTINEL));
+    SLOW_DEBUG_DO(assert(cl != sentinel));
     vs_cls_data_.push_back(cl);
   }
 
   void closeClauseData() {
-    vs_cls_data_.push_back(clsSENTINEL);
+    vs_cls_data_.push_back(sentinel);
     assert(*(clsBegin()-1) == 0);
   }
 

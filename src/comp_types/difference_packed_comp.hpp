@@ -53,12 +53,12 @@ HashedComp::HashedComp(
 
   data[at++] = rComp.nVars();
   if (*rComp.varsBegin()) {
-    for (auto it = rComp.varsBegin(); *it != varsSENTINEL; it++) data[at++] = *it;
+    for (auto it = rComp.varsBegin(); *it != sentinel; it++) data[at++] = *it;
   }
-  data[at++] = varsSENTINEL;
+  data[at++] = sentinel;
 
   if (*rComp.clsBegin()) {
-    for (auto jt = rComp.clsBegin(); *jt != clsSENTINEL; jt++) data[at++] =*jt;
+    for (auto jt = rComp.clsBegin(); *jt != sentinel; jt++) data[at++] =*jt;
   }
   data[at] = at;
   at++;

@@ -101,7 +101,7 @@ public:
     archetype_.reInitialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
-    for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+    for (auto vt = super_comp.varsBegin(); *vt != sentinel; vt++) {
       if (isUnknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
         // TODO what is happening here....
@@ -109,7 +109,7 @@ public:
       }
     }
 
-    for (auto itCl = super_comp.clsBegin(); *itCl != clsSENTINEL; itCl++)
+    for (auto itCl = super_comp.clsBegin(); *itCl != sentinel; itCl++)
       archetype_.setClause_in_sup_comp_unseen(*itCl);
   }
 

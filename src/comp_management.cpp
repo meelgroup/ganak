@@ -88,7 +88,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   // Also zeroes out frequency_scores(!)
   ana_.setupAnalysisContext(top, super_comp);
 
-  for (auto vt = super_comp.varsBegin(); *vt != varsSENTINEL; vt++) {
+  for (auto vt = super_comp.varsBegin(); *vt != sentinel; vt++) {
     debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
     if (ana_.isUnseenAndSet(*vt) &&
         ana_.exploreRemainingCompOf(*vt)) {

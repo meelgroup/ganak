@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
       for(uint32_t i = 0; i < ret.nvars; i++) ret.optional_sampling_vars.push_back(i);
     }
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
-    SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", ret.must_mult_exp2, true));
+    SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", ret.empty_occs, true));
 
     // set up cnfholder
     cnfholder = CNFHolder();

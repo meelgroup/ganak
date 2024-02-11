@@ -1260,7 +1260,7 @@ retStateT Counter::backtrack() {
     if (!decision_stack_.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
       debug_print("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decision_stack_.get_decision_level());
-      const Lit aLit = top_dec_lit();
+      const Lit lit = top_dec_lit();
       assert(decision_stack_.get_decision_level() > 0);
       CHECK_COUNT_DO(check_count(true));
       SLOW_DEBUG_DO(assert(decision_stack_.top().get_right_model_count() == 0));
@@ -1272,14 +1272,14 @@ retStateT Counter::backtrack() {
       reactivate_comps_and_backtrack_trail(false);
       bool ret = propagate(true);
       assert(ret);
-      debug_print("[indep] Flipping lit to: " << aLit.neg() << " val is: " << val_to_str(val(aLit)));
-      if (val(aLit.neg()) == X_TRI) {
-        setLiteral(aLit.neg(), decision_stack_.get_decision_level());
+      debug_print("[indep] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
+      if (val(lit.neg()) == X_TRI) {
+        setLiteral(lit.neg(), decision_stack_.get_decision_level());
         VERBOSE_DEBUG_DO(print_trail());
         debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
         return RESOLVED;
       } else {
-        assert(val(aLit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
+        assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
         decision_stack_.top().branch_found_unsat();
         continue;
       }
@@ -3085,7 +3085,7 @@ uint64_t Counter::buddy_count() {
   }
   std::sort(vmap.begin(),vmap.end(),
       [=](uint32_t a, uint32_t b) -> bool {
-      if (tdscore.empty())return comp_manager_->score_of(a) > comp_manager_->score_of(b);
+      if (tdscore.empty()) return comp_manager_->freq_score_of(a) > comp_manager_->freq_score_of(b);
       return tdscore[a] > tdscore[b];
       });
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;
@@ -3135,7 +3135,7 @@ uint64_t Counter::buddy_count() {
       debug_print("bin cl: " << l << " " << l2 << " 0");
     }
   }
-VERBOSE_DEBUG_DO(
+  VERBOSE_DEBUG_DO(
   if (actual_bin != c->numBinCls()) {
     cout << "WARN: numbin: " << c->numBinCls() << " actual bin: " << actual_bin << endl;
   }
@@ -3150,12 +3150,11 @@ VERBOSE_DEBUG_DO(
   }
 
   uint64_t cnt = bdd_satcount_i64(bdd);
-#ifdef VERBOSE_DEBUG
+  VERBOSE_DEBUG_DO(
   cout << "cnt: " << cnt << endl;
-  cout << "num bin cls: " << num_bin_cls << endl;
-  cout << "num long cls: " << num_long_cls << endl;
-  cout << "----------------------------------------------" << endl;
-#endif
+  cout << "num bin cls: " << actual_bin << endl;
+  cout << "num long cls: " << actual_long << endl;
+  cout << "----------------------------------------------" << endl);
 
   for(uint32_t i = 0; i < c->nVars(); i++) {
     uint32_t var = c->varsBegin()[i];

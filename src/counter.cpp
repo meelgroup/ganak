@@ -1912,17 +1912,17 @@ void Counter::minimizeUIPClause() {
   toClear.clear();
 
   CHECK_IMPLIED_DO(check_implied(uip_clause));
-  tmp_clause_minim.clear();
-  for(const auto& l:uip_clause) tmp_clause_minim.push_back(l);
+  tmp_cl_minim.clear();
+  for(const auto& l:uip_clause) tmp_cl_minim.push_back(l);
 
-  stats.uip_lits_ccmin+=tmp_clause_minim.size();
+  stats.uip_lits_ccmin+=tmp_cl_minim.size();
   if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
       (stats.rem_lits_tried > (200ULL*1000ULL) &&
       ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
-    minimize_uip_cl_with_bins(tmp_clause_minim);
-  stats.final_cl_sz+=tmp_clause_minim.size();
+    minimize_uip_cl_with_bins(tmp_cl_minim);
+  stats.final_cl_sz+=tmp_cl_minim.size();
   uip_clause.clear();
-  for(const auto& l: tmp_clause_minim) uip_clause.push_back(l);
+  for(const auto& l: tmp_cl_minim) uip_clause.push_back(l);
   CHECK_IMPLIED_DO(check_implied(uip_clause));
 }
 
@@ -2163,7 +2163,7 @@ void Counter::v_backtrack() {
   v_qhead = v_trail.size();
 }
 
-template<class T> bool Counter::v_clause_satisfied(const T& cl) const {
+template<class T> bool Counter::v_cl_satisfied(const T& cl) const {
   for(const auto&l : cl) {
     if (v_val(l) == T_TRI) return true;
   }
@@ -2309,7 +2309,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     } else {
       litWatchList(cl[0]).addWatchLinkTo(off, cl[cl.sz/2]);
       litWatchList(cl[1]).addWatchLinkTo(off, cl[cl.sz/2]);
-      if (!v_clause_satisfied(cl) && v_val(cl[0]) == X_TRI && v_val(cl[1]) != X_TRI) {
+      if (!v_cl_satisfied(cl) && v_val(cl[0]) == X_TRI && v_val(cl[1]) != X_TRI) {
         //cannot propagate!
         assert(v_val(cl[1]) == F_TRI);
         assert(false);

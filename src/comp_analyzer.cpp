@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "clauseallocator.hpp"
 
+// There is exactly ONE of these
 CompAnalyzer::CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
@@ -33,32 +34,33 @@ CompAnalyzer::CompAnalyzer(
         values(lit_values),
         indep_support_end(_indep_support_end),
         solver(_solver)
-  {}
+{}
 
 
-// Builds occ lists and sets things up
+// Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
+// this sets up unified_var_links_lists_pool_ and variable_link_list_offsets_
 void CompAnalyzer::initialize(
     LiteralIndexedVector<LitWatchList> & watches, // binary clauses
     const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
 {
-  max_variable_id_ = watches.end_lit().var() - 1;
-  search_stack_.reserve(max_variable_id_ + 1);
-  var_freq_scores.resize(max_variable_id_ + 1, 0);
+  max_var = watches.end_lit().var() - 1;
+  search_stack_.reserve(max_var + 1);
+  var_freq_scores.resize(max_var + 1, 0);
   act_inc = 1.0;
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
-  vector<vector<uint32_t>>  occ_ternary_clauses(max_variable_id_ + 1);
+  vector<vector<uint32_t>>  occ_ternary_clauses(max_var + 1);
 
   // maps var -> [var1..varn, SENTINEL_LIT, var1...varn, SENTINEL_LIT, ...]
-  vector<vector<uint32_t>>  occ_long_clauses(max_variable_id_ + 1);
+  vector<vector<uint32_t>>  occ_long_clauses(max_var + 1);
 
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
-  vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
+  vector<vector<ClauseOfs>> occs(max_var + 1);
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
 
   vector<uint32_t> tmp;
-  max_clause_id_ = 1;
+  max_clid = 1;
   // lit_pool contains all non-binary clauses
   for (const auto& off: long_irred_cls) {
     // Builds the occ list for 3-long and long clauses
@@ -71,72 +73,72 @@ void CompAnalyzer::initialize(
 
     for(const auto& l: cl) {
       const uint32_t var = l.var();
-      assert(var <= max_variable_id_);
+      assert(var <= max_var);
       getClause(tmp, cl, l);
       assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
         // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
-        occ_ternary_clauses[var].push_back(max_clause_id_);
-        idx_to_cl[max_clause_id_] = cl_lit;
+        occ_ternary_clauses[var].push_back(max_clid);
+        idx_to_cl[max_clid] = cl_lit;
         occ_ternary_clauses[var].insert(occ_ternary_clauses[var].end(), tmp.begin(), tmp.end());
       } else {
         // Long clauses
-        occs[var].push_back(max_clause_id_);
-        idx_to_cl[max_clause_id_] = cl_lit;
+        occs[var].push_back(max_clid);
+        idx_to_cl[max_clid] = cl_lit;
         occs[var].push_back(occ_long_clauses[var].size());
         occ_long_clauses[var].insert(occ_long_clauses[var].end(), tmp.begin(), tmp.end());
         occ_long_clauses[var].push_back(SENTINEL_LIT.raw());
       }
     }
-    max_clause_id_++;
+    max_clid++;
   }
   debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");
 
-  archetype_.initSeen(max_variable_id_, max_clause_id_);
+  archetype_.init_seen(max_var, max_clid);
 
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
   // the unified link list
   // This is an array that contains, flattened:
   // [  [vars of binary clauses],
   //    [cl_ids and lits] of tri clauses]
-  //    [cl_id, offset in occs+offset in unified_variable_links_lists_pool]
+  //    [cl_id, offset in occs+offset in unified_var_links_lists_pool]
   //    [the occ_long_clauses] ]
-  unified_variable_links_lists_pool_.clear();
+  unified_var_links_lists_pool_.clear();
 
-  // a map into unified_variable_Links_lists_pool.
-  // maps var -> starting point in unified_variable_links_lists_pool
+  // a map into unified_var_Links_lists_pool.
+  // maps var -> starting point in unified_var_links_lists_pool
   variable_link_list_offsets_.clear();
-  variable_link_list_offsets_.resize(max_variable_id_ + 1, 0);
+  variable_link_list_offsets_.resize(max_var + 1, 0);
 
   // now fill unified link list, for each variable
-  for (uint32_t v = 1; v < max_variable_id_ + 1; v++) {
-    variable_link_list_offsets_[v] = unified_variable_links_lists_pool_.size();
+  for (uint32_t v = 1; v < max_var + 1; v++) {
+    variable_link_list_offsets_[v] = unified_var_links_lists_pool_.size();
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binary_links_) {
-        if (bincl.irred()) unified_variable_links_lists_pool_.push_back(bincl.lit().var());
+        if (bincl.irred()) unified_var_links_lists_pool_.push_back(bincl.lit().var());
       }
     }
 
     // data for ternary clauses
-    unified_variable_links_lists_pool_.push_back(0);
-    unified_variable_links_lists_pool_.insert(
-        unified_variable_links_lists_pool_.end(),
+    unified_var_links_lists_pool_.push_back(0);
+    unified_var_links_lists_pool_.insert(
+        unified_var_links_lists_pool_.end(),
         occ_ternary_clauses[v].begin(),
         occ_ternary_clauses[v].end());
 
     // data for long clauses
-    unified_variable_links_lists_pool_.push_back(0);
+    unified_var_links_lists_pool_.push_back(0);
     for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
-      unified_variable_links_lists_pool_.push_back(*it); //cl_id
-      unified_variable_links_lists_pool_.push_back(*(it + 1) + (occs[v].end() - it));
+      unified_var_links_lists_pool_.push_back(*it); //cl_id
+      unified_var_links_lists_pool_.push_back(*(it + 1) + (occs[v].end() - it));
     }
 
-    unified_variable_links_lists_pool_.push_back(0);
-    unified_variable_links_lists_pool_.insert(
-        unified_variable_links_lists_pool_.end(),
+    unified_var_links_lists_pool_.push_back(0);
+    unified_var_links_lists_pool_.insert(
+        unified_var_links_lists_pool_.end(),
         occ_long_clauses[v].begin(),
         occ_long_clauses[v].end());
   }
@@ -164,7 +166,7 @@ bool CompAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
   return true;
 }
 
-// Check which comp a variable is in
+// Create a component based on variable provided
 void CompAnalyzer::recordCompOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);

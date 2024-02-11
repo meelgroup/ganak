@@ -212,7 +212,7 @@ private:
   set<Lit> toSet;
 
   // Used during minimizeAndStoreUIPClause
-  deque<Lit> tmp_clause_minim;
+  deque<Lit> tmp_cl_minim;
 
   double start_time;
   std::mt19937_64 mtrand;
@@ -479,7 +479,7 @@ private:
   template<class T> bool propagation_correctness_of_vivified(const T& cl) const;
   template<class T> bool currently_propagating_cl(T& cl) const;
   void v_new_lev();
-  template<class T> bool v_clause_satisfied(const T& cl) const;
+  template<class T> bool v_cl_satisfied(const T& cl) const;
   void vivif_backtrack();
   vector<Lit> v_trail;
   uint32_t v_qhead;

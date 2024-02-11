@@ -32,7 +32,8 @@ using std::vector;
 class Comp {
 public:
 
-  void reserveSpace(uint32_t nVars, uint32_t num_clauses) {
+  void reserve_space(uint32_t nVars, uint32_t num_clauses) {
+    // vars, clauses, and the two sentinels
     vs_cls_data.reserve(nVars + num_clauses + 2);
   }
 
@@ -81,7 +82,7 @@ public:
   bool empty() const { return vs_cls_data.empty(); }
 
   // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
-  void create_init_comp(uint32_t max_var_id, uint32_t max_clause_id) {
+  void create_init_comp(uint32_t max_var_id, uint32_t max_cl_id) {
     vs_cls_data.clear();
     clauses_offs = 1;
 
@@ -90,7 +91,7 @@ public:
     close_vars_data();
 
     //Add all clauses to top comp
-    for (uint32_t clid = 1; clid <= max_clause_id; clid++) add_cl(clid);
+    for (uint32_t clid = 1; clid <= max_cl_id; clid++) add_cl(clid);
     close_cls_data();
   }
 

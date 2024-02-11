@@ -49,13 +49,14 @@ public:
       p_super_comp_(&super_comp), p_stack_level_(&stack_level) {
   }
 
-  void reInitialize(StackLevel &stack_level, const Comp &super_comp) {
+  // called every time we want to deal with a new component
+  void re_initialize(StackLevel &stack_level, const Comp &super_comp) {
     debug_print("Reinitializing seen[] to all-zero in CompArchetype");
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
-    clearArrays();
+    clear_arrays();
+    current_comp_for_caching_.reserve_space(super_comp.nVars(),super_comp.num_long_cls());
     BUDDY_DO(num_bin_cls = 0);
-    current_comp_for_caching_.reserveSpace(super_comp.nVars(),super_comp.num_long_cls());
   }
 
   const Comp &super_comp() {
@@ -140,24 +141,23 @@ public:
     return seen_[cl] & CA_CL_IN_OTHER_COMP;
   }
 
-  void initSeen(uint32_t max_variable_id, uint32_t max_clause_id) {
-    uint32_t seen_size = std::max(max_variable_id,max_clause_id)  + 1;
+  // called exactly once during lifetime of counter
+  void init_seen(uint32_t max_var_id, uint32_t max_cl_id) {
+    uint32_t seen_size = std::max(max_var_id,max_cl_id)  + 1;
     debug_print("Creating new seen[] of size: " << seen_size << " and zeroing it.");
     seen_ = new CA_SearchState[seen_size];
     seen_byte_size_ = sizeof(CA_SearchState) * (seen_size);
-    clearArrays();
+    clear_arrays();
   }
 
-  void clearArrays() {
-    memset(seen_, 0, seen_byte_size_);
-  }
+  void clear_arrays() { memset(seen_, 0, seen_byte_size_); }
 
   // At this point exploreRemainingCompOf has been called already which
   // set up search_stack_, seen[] etc. so this is now quite easy.
   Comp *makeCompFromState(const uint32_t search_stack_size) {
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Comp *p_new_comp = new Comp();
-    p_new_comp->reserveSpace(search_stack_size, super_comp().num_long_cls());
+    p_new_comp->reserve_space(search_stack_size, super_comp().num_long_cls());
     current_comp_for_caching_.clear();
 
     // Fill variables in new comp

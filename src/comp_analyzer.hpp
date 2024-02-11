@@ -71,7 +71,7 @@ public:
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool isUnseenAndSet(const VariableIndex v) const {
-    SLOW_DEBUG_DO(assert(v <= max_variable_id_));
+    SLOW_DEBUG_DO(assert(v <= max_var_id_));
     return archetype_.var_unseen_in_sup_comp(v);
   }
 
@@ -98,7 +98,7 @@ public:
   }
 
   void setupAnalysisContext(StackLevel &top, const Comp & super_comp){
-    archetype_.reInitialize(top,super_comp);
+    archetype_.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
     for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
@@ -121,29 +121,22 @@ public:
     return archetype_.makeCompFromState(search_stack_.size());
   }
 
-  uint32_t max_clause_id() const {
-     return max_clause_id_;
-  }
-  uint32_t max_variable_id() const {
-    return max_variable_id_;
-  }
-
-  CompArchetype &getArchetype() {
-    return archetype_;
-  }
+  uint32_t get_max_clid() const { return max_clid; }
+  uint32_t get_max_var() const { return max_var; }
+  CompArchetype& get_archetype() { return archetype_; }
 
 private:
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool
-  uint32_t max_clause_id_ = 0;
-  uint32_t max_variable_id_ = 0;
+  uint32_t max_clid = 0;
+  uint32_t max_var = 0;
 
 
   // for every variable e have an array of
   // binarycls 0 ternary cls (consisting of: CLIDX LIT1 LIT2) 0 cls_idxs 0
-  vector<uint32_t> unified_variable_links_lists_pool_;
-  vector<uint32_t> variable_link_list_offsets_; // offset into unified_variable_links_lists_pool_
+  vector<uint32_t> unified_var_links_lists_pool_;
+  vector<uint32_t> variable_link_list_offsets_; // offset into unified_var_links_lists_pool_
                                                 // indexed by variable.
 
   const CounterConfiguration& conf;
@@ -175,7 +168,7 @@ private:
 
   uint32_t const* begin_cls_of_var(const VariableIndex v) const {
     assert(v > 0);
-    return &unified_variable_links_lists_pool_[variable_link_list_offsets_[v]];
+    return &unified_var_links_lists_pool_[variable_link_list_offsets_[v]];
   }
 
   // stores all information about the comp of var
@@ -198,7 +191,7 @@ private:
     const auto itVEnd = search_stack_.end();
     bool all_lits_set = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {
-      assert(itL->var() <= max_variable_id_);
+      assert(itL->var() <= max_var);
       if(!archetype_.var_nil(itL->var()))
         manageSearchOccurrenceAndScoreOf(*itL); // sets var to be seen
       else {
@@ -208,7 +201,7 @@ private:
 
         //accidentally entered a satisfied clause: undo the search process
         while (search_stack_.end() != itVEnd) {
-          assert(search_stack_.back() <= max_variable_id_);
+          assert(search_stack_.back() <= max_var);
           archetype_.setVar_in_sup_comp_unseen(search_stack_.back()); //unsets it from being seen
           search_stack_.pop_back();
         }

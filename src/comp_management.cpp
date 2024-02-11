@@ -38,7 +38,7 @@ void CompManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
   //Add full comp
   comp_stack_.push_back(new Comp());
   assert(comp_stack_.size() == 2);
-  comp_stack_.back()->create_init_comp(ana_.max_variable_id() , ana_.max_clause_id());
+  comp_stack_.back()->create_init_comp(ana_.get_max_var() , ana_.get_max_clid());
   cache_.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 }
@@ -89,7 +89,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
       Comp *p_new_comp = ana_.makeCompFromArcheType();
-      CacheableComp packed_comp(hash_seed, ana_.getArchetype().current_comp_for_caching_);
+      CacheableComp packed_comp(hash_seed, ana_.get_archetype().current_comp_for_caching_);
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());

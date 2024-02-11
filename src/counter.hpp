@@ -22,6 +22,8 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <map>
+
 #include "clauseallocator.hpp"
 #include "common.hpp"
 #include "counter_config.hpp"
@@ -29,21 +31,15 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include "instance.hpp"
 #include "comp_management.hpp"
-
-#include "comp_management.hpp"
 #include "boundedqueue.hpp"
 #include "TreeDecomposition.hpp"
 #include "structures.hpp"
 #include "heap.hpp"
 
-#include <deque>
-#include <map>
 #include <cryptominisat5/cryptominisat.h>
 
 using std::pair;
 using std::map;
-
-using std::deque;
 
 enum retStateT
 {
@@ -212,7 +208,7 @@ private:
   set<Lit> toSet;
 
   // Used during minimizeAndStoreUIPClause
-  deque<Lit> tmp_cl_minim;
+  vector<Lit> tmp_cl_minim;
 
   double start_time;
   std::mt19937_64 mtrand;

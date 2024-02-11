@@ -279,14 +279,14 @@ private:
   // if on the current decision level
   // a second branch can be visited, RESOLVED is returned
   // otherwise returns BACKTRACK
-  retStateT resolveConflict();
+  retStateT resolve_conflict();
   void go_back_to(int32_t backj);
   uint32_t find_lev_to_set(int32_t implied_lit_lev);
   size_t find_backtrack_level_of_learnt();
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void check_trail(bool check_entail = true) const;
   bool chrono_work();
-  void reduceDB_if_needed();
+  void reduce_db_if_needed();
   void increaseActivity(const Lit lit);
   void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent()) {
     assert(val(lit) == X_TRI);
@@ -328,9 +328,9 @@ private:
       }
   }
 
-  void setConflictState(Lit litA, Lit litB) {
-    conflLit = litA;
-    confl = Antecedent(litB);
+  void setConflictState(Lit a, Lit b) {
+    conflLit = a;
+    confl = Antecedent(b);
   }
 
   void setConflictState(Clause* cl) {
@@ -366,17 +366,9 @@ private:
     decisions.back().change_to_right_branch();
   }
 
-  const Lit &top_dec_lit() const {
-    return *top_declevel_trail_begin();
-  }
-
-  uint32_t trail_at_dl(uint32_t dl) const {
-    return variables_[decisions.at(dl).var].sublevel;
-  }
-
-  uint32_t trail_at_top() const {
-    return variables_[decisions.top().var].sublevel;
-  }
+  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
+  uint32_t trail_at_dl(uint32_t dl) const { return variables_[decisions.at(dl).var].sublevel; }
+  uint32_t trail_at_top() const { return variables_[decisions.top().var].sublevel; }
 
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
     debug_print("->reactivate and backtrack...");
@@ -595,7 +587,7 @@ void inline Counter::increaseActivity(const Lit lit) {
   }
 }
 
-template<class T1, class T2> bool Counter::subset(const T1& A, const T2& B) {
+template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
 #ifdef VERBOSE_DEBUG
   cout << "A:" << A << endl;
   for(size_t i = 1; i < A.size(); i++) assert(A[i-1] < A[i]);
@@ -605,19 +597,19 @@ template<class T1, class T2> bool Counter::subset(const T1& A, const T2& B) {
   bool ret;
   uint32_t i = 0;
   uint32_t i2;
-  Lit lastB = NOT_A_LIT;
-  for (i2 = 0; i2 < B.size(); i2++) {
-    if (lastB != NOT_A_LIT) assert(lastB < B[i2]);
-    lastB = B[i2];
+  Lit last_b = NOT_A_LIT;
+  for (i2 = 0; i2 < b.size(); i2++) {
+    if (last_b != NOT_A_LIT) assert(last_b < b[i2]);
+    last_b = b[i2];
     //Literals are ordered
-    if (A[i] < B[i2]) {
+    if (a[i] < b[i2]) {
         ret = false;
         goto end;
     }
-    else if (A[i] == B[i2]) {
+    else if (a[i] == b[i2]) {
       i++;
       //went through the whole of A now, so A subsumes B
-      if (i == A.size()) {
+      if (i == a.size()) {
           ret = true;
           goto end;
       }

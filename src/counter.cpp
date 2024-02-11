@@ -721,8 +721,8 @@ SOLVER_StateT Counter::countSAT() {
       while (!propagate()) {
 resolve:
         if (chrono_work()) continue;
-        state = resolveConflict();
-        while(state == GO_AGAIN) state = resolveConflict();
+        state = resolve_conflict();
+        while(state == GO_AGAIN) state = resolve_conflict();
         if (state == BACKTRACK) break;
       }
       if (state == BACKTRACK) break;
@@ -737,8 +737,8 @@ resolve:
 
     while (!propagate()) {
       if (chrono_work()) continue;
-      state = resolveConflict();
-      while(state == GO_AGAIN) state = resolveConflict();
+      state = resolve_conflict();
+      while(state == GO_AGAIN) state = resolve_conflict();
       if (state == BACKTRACK) {
         state = backtrack();
         if (state == EXIT) goto end;
@@ -1529,7 +1529,7 @@ void Counter::check_implied(const vector<Lit>& cl) {
   }
 }
 
-void Counter::reduceDB_if_needed() {
+void Counter::reduce_db_if_needed() {
   if (stats.conflicts > last_reduceDB_conflicts+10000) {
     reduceDB();
     if (stats.cls_deleted_since_compaction > 30000 && alloc->consolidate(this)) {
@@ -1573,7 +1573,7 @@ bool Counter::resolveConflict_sat() {
   return true;
 }
 
-retStateT Counter::resolveConflict() {
+retStateT Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 
@@ -1585,7 +1585,7 @@ retStateT Counter::resolveConflict() {
   VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/conf.act_exp;
 
-  reduceDB_if_needed();
+  reduce_db_if_needed();
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   stats.conflicts++;

@@ -148,7 +148,7 @@ void CompAnalyzer::initialize(
 // returns true, iff the comp found is non-trivial
 bool CompAnalyzer::exploreRemainingCompOf(const uint32_t v) {
   SLOW_DEBUG_DO(assert(archetype_.var_unseen_in_sup_comp(v)));
-  recordCompOf(v); // sets up the component that "v" is in
+  record_comp_of(v); // sets up the component that "v" is in
 
   // comp only contains one variable
   if (comp_vars.size() == 1) {
@@ -167,7 +167,7 @@ bool CompAnalyzer::exploreRemainingCompOf(const uint32_t v) {
 }
 
 // Create a component based on variable provided
-void CompAnalyzer::recordCompOf(const uint32_t var) {
+void CompAnalyzer::record_comp_of(const uint32_t var) {
   comp_vars.clear();
   setSeenAndStoreInSearchStack(var);
 

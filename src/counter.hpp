@@ -422,7 +422,6 @@ private:
   bool litRedundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
   void recursiveConfClauseMin();
-  bool takeSolution();
   bool get_polarity(const uint32_t var) const;
   bool standard_polarity(const uint32_t var) const;
 

@@ -82,8 +82,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 
   for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
     debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
-    if (ana_.isUnseenAndSet(*vt) &&
-        ana_.exploreRemainingCompOf(*vt)) {
+    if (ana_.isUnseenAndSet(*vt) && ana_.exploreRemainingCompOf(*vt)) {
 
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
@@ -96,7 +95,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
       // Check if new comp is already in cache
-      if (!cache_.manageNewComp(top, p_new_comp->nVars(), packed_comp)) {
+      if (!cache_.manage_new_comp(top, p_new_comp->nVars(), packed_comp)) {
         stats.cache_hits_misses_q.push(0);
         comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(packed_comp, super_comp.id()));

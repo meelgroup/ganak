@@ -76,11 +76,9 @@ public:
   // returns the id of the entry created
   // stores in the entry the position of
   // comp which is a part of the comp stack
-  inline CacheEntryID storeAsEntry(CacheableComp &ccomp,
-                            CacheEntryID super_comp_id);
+  inline CacheEntryID storeAsEntry(CacheableComp &ccomp, CacheEntryID super_comp_id);
 
-  bool manageNewComp(StackLevel &top,
-      const uint32_t nvars, const CacheableComp &packed_comp) {
+  bool manage_new_comp(StackLevel &top, const uint32_t nvars, const CacheableComp &packed_comp) {
     stats.num_cache_look_ups_++;
     uint32_t table_ofs = packed_comp.get_hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];

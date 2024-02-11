@@ -147,9 +147,12 @@ private:
   CompArchetype  archetype;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
-  vector<uint32_t> comp_vars; // Used to figure out which vars are in a component
-                                  // used in  record_comp_of
-                                  // its size is the number of variables in the component
+
+  // Used to figure out which vars are in a component
+  // used in  record_comp_of
+  // its size is the number of variables in the component
+  vector<uint32_t> comp_vars;
+
 
   bool is_false(const Lit lit) const {
     return values[lit] == F_TRI;
@@ -176,7 +179,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void record_comp_of(const uint32_t var);
+  void record_comp(const uint32_t var);
 
   void getClause(vector<uint32_t> &tmp, const Clause& cl, const Lit & omitLit) {
     tmp.clear();

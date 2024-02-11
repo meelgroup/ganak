@@ -97,7 +97,7 @@ static const Lit NOT_A_LIT(0, false);
 #define SENTINEL_LIT NOT_A_LIT
 
 struct ClOffsBlckL {
-  ClOffsBlckL() {}
+  ClOffsBlckL() = default;
   ClOffsBlckL(ClauseOfs _ofs, Lit l) : ofs(_ofs), blckLit(l) {}
   ClauseOfs ofs;
   Lit blckLit;
@@ -233,7 +233,7 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 }
 
 struct Cube {
-  Cube () {}
+  Cube () = default;
   Cube(const vector<Lit>& _cnf, const mpz_class& _val) : cnf(_cnf), val(_val) {}
   vector<Lit> cnf;
   vector<uint32_t> active_vars;

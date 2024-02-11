@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const retStateT& val) {
 
 
 struct VS {
-  VS() {}
+  VS() = default;
   VS(uint32_t _v, double _score1, uint32_t _score2) : v(_v), score1(_score1), score2(_score2) {}
   bool operator<(const VS& other) const {
     if (score1 != other.score1) return score1 > other.score1;
@@ -87,7 +87,7 @@ struct OffAbs {
 };
 
 struct BinClSub {
-  BinClSub() {}
+  BinClSub() = default;
   BinClSub (Lit _lit1, Lit _lit2, bool _red) :
     red(_red) {
       lit[0] = _lit1;
@@ -451,7 +451,7 @@ private:
       blk1 = NOT_A_LIT;
       blk2 = NOT_A_LIT;
     }
-    SavedCl () {}
+    SavedCl () = default;
 
     Lit first;
     Lit second;

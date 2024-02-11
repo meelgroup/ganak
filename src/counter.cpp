@@ -125,15 +125,12 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
 }
 
 void Counter::init_activity_scores() {
-  uint32_t total = 0;
   act_inc = 1.0;
   for (auto l = Lit(1, false); l != watches.end_lit(); l.inc()) {
     watches[l].activity = watches[l].binary_links_.size();
-    total += watches[l].binary_links_.size();
   }
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
-    total += cl.size();
     for(const auto& l: cl) watches[l].activity++;
   }
   double maximum = 0;

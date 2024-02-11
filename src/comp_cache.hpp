@@ -132,7 +132,7 @@ private:
     for (uint32_t id = 2; id < entry_base_.size(); id++)
       if (!entry_base_[id].is_free()) {
         entry_base_[id].set_next_bucket_element(0);
-        if(entry_base_[id].modelCountFound()) {
+        if(entry_base_[id].model_count_found()) {
           uint32_t table_ofs=tableEntry(id);
           entry_base_[id].set_next_bucket_element(table_[table_ofs]);
           table_[table_ofs] = id;

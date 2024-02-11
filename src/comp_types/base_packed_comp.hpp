@@ -59,9 +59,7 @@ public:
   }
 
   uint32_t get_hashkey() const  { return (uint32_t)clhashkey_; }
-  bool modelCountFound(){
-    return (length_solution_period_and_flags_ >> 1);
-  }
+  bool model_count_found(){ return length_solution_period_and_flags_ >> 1; }
 
   // a cache entry is deletable
   // only if it is not connected to an active

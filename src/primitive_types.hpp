@@ -24,13 +24,13 @@ THE SOFTWARE.
 
 #include <cstdint>
 
-constexpr uint32_t varsSENTINEL = 0;
-constexpr uint32_t clsSENTINEL = 0;
+constexpr static uint32_t varsSENTINEL = 0;
+constexpr static uint32_t clsSENTINEL = 0;
 
-typedef uint32_t VariableIndex;
-typedef uint32_t ClauseIndex;
-typedef uint32_t ClauseOfs;
-typedef uint32_t CacheEntryID;
+using VariableIndex = uint32_t;
+using ClauseIndex = uint32_t;
+using ClauseOfs = uint32_t;
+using CacheEntryID = uint32_t;
 
 enum SOLVER_StateT {
   NO_STATE, SUCCESS, RESTART

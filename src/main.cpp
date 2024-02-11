@@ -43,7 +43,7 @@ using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 
 #if defined(__GNUC__) && defined(__linux__)
-#include <fenv.h>
+#include <cfenv>
 #endif
 
 /* #define SIMPLE */

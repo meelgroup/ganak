@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <vector>
 
 #include "primitive_types.hpp"

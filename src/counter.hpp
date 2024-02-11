@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include "clauseallocator.hpp"
 #include "common.hpp"
+#include "counter_config.hpp"
 #include "primitive_types.hpp"
 #include "statistics.hpp"
 #include "instance.hpp"
@@ -140,6 +141,7 @@ class Counter : public Instance {
 public:
   Counter(const CounterConfiguration& _conf);
   ~Counter();
+  const CounterConfiguration& get_conf() const {return conf;}
   friend class ClauseAllocator;
   struct ConflictData {
     int32_t nHighestLevel = -1;

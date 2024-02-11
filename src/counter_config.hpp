@@ -50,7 +50,10 @@ struct CounterConfiguration {
   int alluip_inc_act = 1;
   int do_cache_score = 1;
   int do_single_bump = 1; // non-single bump is OLD ganak
-  int decide = 0; // 0 = sstd, 1 = gpmc
+
+  // Below has 4 setups, two bits to manipulate.
+  int decide = 0; // 1st bit 0 = sstd, 1st bit 1 = gpmc, bit 2 = act setup
+                  //
   uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 1; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "clauseallocator.hpp"
+#include "counter_config.hpp"
 #include "statistics.hpp"
 #include "comp_types/comp.hpp"
 #include "comp_types/base_packed_comp.hpp"
@@ -46,11 +47,7 @@ public:
   ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
-        Counter* _solver) :
-        lit_values_(lit_values),
-        indep_support_end(_indep_support_end),
-        solver(_solver)
-  {}
+        Counter* _solver);
 
   const map<uint32_t, vector<Lit>>& get_idx_to_cl() const {
     return idx_to_cl;
@@ -66,7 +63,7 @@ public:
       for(auto& f: var_frequency_scores_) f *= 1e-90;
       act_inc *= 1e-90;
     }
-    act_inc *= 1.0/0.98;
+    if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
   }
   const ComponentArchetype &current_archetype() const { return archetype_; }
 
@@ -90,7 +87,7 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
-    if (isUnknown(lit)) bump_score(lit.var());
+  if (isUnknown(lit)) bump_score(lit.var());
     return manageSearchOccurrenceOf(lit.var());
   }
 
@@ -149,6 +146,7 @@ private:
   vector<uint32_t> variable_link_list_offsets_; // offset into unified_variable_links_lists_pool_
                                                 // indexed by variable.
 
+  const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & lit_values_;
   const uint32_t& indep_support_end;
   vector<double> var_frequency_scores_;
@@ -225,5 +223,6 @@ private:
       bump_score(vt);
       archetype_.setClause_seen(clID,all_lits_set);
     }
+    if ((conf.decide & 2)) act_inc *= 1.0/0.98;
   }
 };

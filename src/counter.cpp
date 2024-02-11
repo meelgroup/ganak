@@ -790,7 +790,7 @@ bool Counter::decideLiteral() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   isindependent = true;
-  if (conf.decide == 0) v = find_best_branch();
+  if ((conf.decide & 1) == 0) v = find_best_branch();
   else v = find_best_branch_gpmc();
   if (v == 0) {
     decision_stack_.pop_back();

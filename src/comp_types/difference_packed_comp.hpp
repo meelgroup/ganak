@@ -52,13 +52,13 @@ HashedComp::HashedComp(
   uint32_t at = 0;
 
   data[at++] = rComp.nVars();
-  if (*rComp.varsBegin()) {
-    for (auto it = rComp.varsBegin(); *it != sentinel; it++) data[at++] = *it;
+  if (*rComp.vars_begin()) {
+    for (auto it = rComp.vars_begin(); *it != sentinel; it++) data[at++] = *it;
   }
   data[at++] = sentinel;
 
-  if (*rComp.clsBegin()) {
-    for (auto jt = rComp.clsBegin(); *jt != sentinel; jt++) data[at++] =*jt;
+  if (*rComp.cls_begin()) {
+    for (auto jt = rComp.cls_begin(); *jt != sentinel; jt++) data[at++] =*jt;
   }
   data[at] = at;
   at++;

@@ -38,10 +38,7 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
   //Add full comp
   comp_stack_.push_back(new Component());
   assert(comp_stack_.size() == 2);
-  comp_stack_.back()->createStartingComponent(
-      ana_.max_variable_id()
-      , ana_.max_clause_id());
-
+  comp_stack_.back()->create_init_comp(ana_.max_variable_id() , ana_.max_clause_id());
   cache_.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 
@@ -88,7 +85,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
   // Also zeroes out frequency_scores(!)
   ana_.setupAnalysisContext(top, super_comp);
 
-  for (auto vt = super_comp.varsBegin(); *vt != sentinel; vt++) {
+  for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
     debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
     if (ana_.isUnseenAndSet(*vt) &&
         ana_.exploreRemainingCompOf(*vt)) {

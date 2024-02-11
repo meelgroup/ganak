@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <cassert>
 #include <vector>
 
-#include "primitive_types.hpp"
+#include "../primitive_types.hpp"
 #include "difference_packed_comp.hpp"
 
 class Component;

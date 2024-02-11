@@ -55,7 +55,7 @@ public:
     p_stack_level_ = &stack_level;
     clearArrays();
     BUDDY_DO(num_bin_cls = 0);
-    current_comp_for_caching_.reserveSpace(super_comp.nVars(),super_comp.numLongClauses());
+    current_comp_for_caching_.reserveSpace(super_comp.nVars(),super_comp.num_long_cls());
   }
 
   const Component &super_comp() {
@@ -157,11 +157,11 @@ public:
   Component *makeComponentFromState(const uint32_t search_stack_size) {
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Component *p_new_comp = new Component();
-    p_new_comp->reserveSpace(search_stack_size, super_comp().numLongClauses());
+    p_new_comp->reserveSpace(search_stack_size, super_comp().num_long_cls());
     current_comp_for_caching_.clear();
 
     // Fill variables in new comp
-    for (auto v_it = super_comp().varsBegin(); *v_it != sentinel;  v_it++)
+    for (auto v_it = super_comp().vars_begin(); *v_it != sentinel;  v_it++)
       if (var_seen(*v_it)) { //we have to put a var into our comp
         p_new_comp->addVar(*v_it);
         current_comp_for_caching_.addVar(*v_it);
@@ -171,7 +171,7 @@ public:
     current_comp_for_caching_.closeVariableData();
 
     // Fill clauses in new comp
-    for (auto it_cl = super_comp().clsBegin(); *it_cl != sentinel; it_cl++)
+    for (auto it_cl = super_comp().cls_begin(); *it_cl != sentinel; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->addCl(*it_cl);
         if (!clause_all_lits_set(*it_cl)) current_comp_for_caching_.addCl(*it_cl);

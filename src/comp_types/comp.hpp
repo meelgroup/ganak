@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 #include <cassert>
 #include <vector>
-#include "common.hpp"
+#include "../common.hpp"
 #include "../primitive_types.hpp"
 
 using std::vector;
@@ -33,7 +33,7 @@ class Component {
 public:
 
   void reserveSpace(uint32_t nVars, uint32_t num_clauses) {
-    vs_cls_data_.reserve(nVars + num_clauses + 2);
+    vs_cls_data.reserve(nVars + num_clauses + 2);
   }
 
   void set_id(CacheEntryID id) { id_ = id; }
@@ -43,46 +43,46 @@ public:
     // the only time a sentinel is added should be in a
     // call to closeVariableData(..)
     SLOW_DEBUG_DO(assert(var != sentinel));
-    vs_cls_data_.push_back(var);
+    vs_cls_data.push_back(var);
   }
 
   void closeVariableData() {
-    vs_cls_data_.push_back(sentinel);
-    clauses_ofs_ = vs_cls_data_.size();
+    vs_cls_data.push_back(sentinel);
+    clauses_offs = vs_cls_data.size();
   }
 
   void addCl(const ClauseIndex cl) {
     // the only time a sentinel is added should be in a
     // call to closeClauseData(..)
     SLOW_DEBUG_DO(assert(cl != sentinel));
-    vs_cls_data_.push_back(cl);
+    vs_cls_data.push_back(cl);
   }
 
   void closeClauseData() {
-    vs_cls_data_.push_back(sentinel);
-    assert(*(clsBegin()-1) == 0);
+    vs_cls_data.push_back(sentinel);
+    assert(*(cls_begin()-1) == 0);
   }
 
-  vector<VariableIndex>::const_iterator varsBegin() const {
-    return vs_cls_data_.begin();
+  vector<VariableIndex>::const_iterator vars_begin() const {
+    return vs_cls_data.begin();
   }
 
-  vector<ClauseIndex>::const_iterator clsBegin() const {
-    return vs_cls_data_.begin() + clauses_ofs_;
+  vector<ClauseIndex>::const_iterator cls_begin() const {
+    return vs_cls_data.begin() + clauses_offs;
   }
 
-  uint32_t nVars() const { return clauses_ofs_ - 1; }
-  uint32_t numLongClauses() const { return vs_cls_data_.size() - clauses_ofs_ - 1; }
+  uint32_t nVars() const { return clauses_offs - 1; }
+  uint32_t num_long_cls() const { return vs_cls_data.size() - clauses_offs - 1; }
 #ifdef BUDDY_ENABLED
   uint32_t numBinCls() const { return num_bin_cls; }
   void setNumBinCls(uint32_t n) { num_bin_cls = n; }
 #endif
-  bool empty() const { return vs_cls_data_.empty(); }
+  bool empty() const { return vs_cls_data.empty(); }
 
   // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
-  void createStartingComponent(uint32_t max_var_id, uint32_t max_clause_id) {
-    vs_cls_data_.clear();
-    clauses_ofs_ = 1;
+  void create_init_comp(uint32_t max_var_id, uint32_t max_clause_id) {
+    vs_cls_data.clear();
+    clauses_offs = 1;
 
     // Add all variables to top comp
     for (uint32_t v = 1; v <= max_var_id; v++) addVar(v);
@@ -94,8 +94,8 @@ public:
   }
 
   void clear() {
-    clauses_ofs_ = 0;
-    vs_cls_data_.clear();
+    clauses_offs = 0;
+    vs_cls_data.clear();
   }
 
 private:
@@ -106,8 +106,8 @@ private:
   // variables SENTINEL clauses SENTINEL
   // this order has to be taken care of on filling
   // in the data!
-  vector<uint32_t> vs_cls_data_;
-  uint32_t clauses_ofs_ = 0;
+  vector<uint32_t> vs_cls_data;
+  uint32_t clauses_offs = 0;
   // id_ will identify denote the entry in the cacheable comp database,
   // where a Packed version of this comp is stored
   // yet this does not imply that the model count of this comp is already known

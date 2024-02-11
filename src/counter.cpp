@@ -618,7 +618,7 @@ void Counter::print_all_levels() {
     const auto& c = comp_manager_->at(sup_at);
     cout << COLORG "-> Variables in comp_manager_->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
-    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
+    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
     dec_lev++;
   }
@@ -820,7 +820,7 @@ uint32_t Counter::find_best_branch() {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
-  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).varsBegin();
+  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
@@ -838,7 +838,7 @@ uint32_t Counter::find_best_branch() {
 
   if (conf.do_cache_score && stats.conflicts > 1000 && best_var != 0) {
     double c_score = comp_manager_->get_cache_hit_score(best_var);
-    for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).varsBegin();
+    for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
          *it != sentinel; it++) {
       const uint32_t v = *it;
       if (val(v) != X_TRI) continue;
@@ -865,7 +865,7 @@ uint32_t Counter::find_best_branch_gpmc() {
   double max_score_td = -1;
   bool only_optional_indep = true;
 
-  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).varsBegin();
+  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
       *it != sentinel; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
@@ -1167,7 +1167,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 
     if (single_var == -1) {
       for(uint32_t i = 0; i < c->nVars(); i++) {
-        uint32_t var = c->varsBegin()[i];
+        uint32_t var = c->vars_begin()[i];
         if (var < indep_support_end) active.insert(var);
       }
     } else {
@@ -2951,7 +2951,7 @@ bool Counter::deal_with_independent() {
   // Create dummy decision level in order for getSuperComponentOf work correctly.
   decisions.push_back(StackLevel( decisions.top().currentRemainingComponent(),
         comp_manager_->comp_stack_size()));
-  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).varsBegin();
+  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;
     if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");

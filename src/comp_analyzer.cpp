@@ -44,7 +44,7 @@ void CompAnalyzer::initialize(
     const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
-  search_stack_.reserve(max_var + 1);
+  comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
   act_inc = 1.0;
 
@@ -151,7 +151,7 @@ bool CompAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
   recordCompOf(v); // finds the comp that "v" is in
 
   // comp only contains one variable
-  if (search_stack_.size() == 1) {
+  if (comp_vars.size() == 1) {
     debug_print("explore remaining with single var, v is: " <<  v);
     if (v >= indep_support_end) {
       archetype_.stack_level().includeSolution(1);
@@ -160,7 +160,7 @@ bool CompAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
       archetype_.stack_level().includeSolution(2);
       /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2)); */
     }
-    archetype_.setVar_in_other_comp(v);
+    archetype_.set_var_in_other_comp(v);
     return false;
   }
   return true;
@@ -168,14 +168,16 @@ bool CompAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
 
 // Create a component based on variable provided
 void CompAnalyzer::recordCompOf(const VariableIndex var) {
-  search_stack_.clear();
+  comp_vars.clear();
   setSeenAndStoreInSearchStack(var);
 
-  debug_print(COLWHT "We are NOW going through all binary/tri/long clauses recursively and put into search_stack_ all the variables that are connected to var: " << var);
+  debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
+      "recursively and put into search_stack_ all the variables that are connected to var: " << var);
+
   // manageSearchOccurrenceAndScoreOf, manageSearchOccurrenceAndScoreOf, and searchClause
   // will push into search_stack_ which will make this
   // a recursive search for all clauses & variables that this variable is connected to
-  for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
+  for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
@@ -215,5 +217,6 @@ void CompAnalyzer::recordCompOf(const VariableIndex var) {
         searchClause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 
-  debug_print(COLWHT "-> Went through all bin/tri/long and now search_stack_ is " << search_stack_.size() << " long");
+  debug_print(COLWHT "-> Went through all bin/tri/long and now search_stack_ is "
+      << search_stack_.size() << " long");
 }

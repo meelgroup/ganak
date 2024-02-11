@@ -836,7 +836,7 @@ uint32_t Counter::find_best_branch() {
     }
   }
 
-  if (conf.do_cache_score && stats.conflicts > 1000 && best_var != 0) {
+  if (conf.do_cache_hit_scores && stats.conflicts > 1000 && best_var != 0) {
     double c_score = comp_manager_->get_cache_hit_score(best_var);
     for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
          *it != sentinel; it++) {
@@ -1288,7 +1288,7 @@ retStateT Counter::backtrack() {
 
 
     //Cache score should be decreased since the component is getting added to cache
-    if (conf.do_cache_score) {
+    if (conf.do_cache_hit_scores) {
       stats.numcachedec_++;
       comp_manager_->bump_cache_hit_score(comp_manager_->getSuperCompOf(decisions.top()));
     }

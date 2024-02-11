@@ -108,7 +108,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         stats.cache_hits_misses_q.push(p_new_comp->nVars());
-        if (conf.do_cache_score) {
+        if (conf.do_cache_hit_scores) {
           stats.numcachedec_++;
           bump_cache_hit_score(*p_new_comp);
         }

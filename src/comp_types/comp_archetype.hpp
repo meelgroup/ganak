@@ -67,7 +67,7 @@ public:
     return *p_stack_level_;
   }
 
-  void setVar_in_sup_comp_unseen(const VariableIndex v) {
+  void set_var_in_sup_comp_unseen(const VariableIndex v) {
     seen_[v] = CA_VAR_IN_SUP_COMP_UNSEEN | (seen_[v] & CA_CL_MASK);
   }
 
@@ -75,7 +75,7 @@ public:
     seen_[cl] = CA_CL_IN_SUP_COMP_UNSEEN | (seen_[cl] & CA_VAR_MASK);
   }
 
-  void setVar_nil(const VariableIndex v) {
+  void set_var_nil(const VariableIndex v) {
     seen_[v] &= CA_CL_MASK;
   }
 
@@ -83,7 +83,7 @@ public:
     seen_[cl] &= CA_VAR_MASK;
   }
 
-  void setVar_seen(const VariableIndex v) {
+  void set_var_seen(const VariableIndex v) {
     seen_[v] = CA_VAR_SEEN | (seen_[v] & CA_CL_MASK);
   }
 
@@ -97,7 +97,7 @@ public:
       seen_[cl] = CA_CL_SEEN | (all_lits_act?CA_CL_ALL_LITS_SET:0) | (seen_[cl] & CA_VAR_MASK);
     }
 
-  void setVar_in_other_comp(const VariableIndex v) {
+  void set_var_in_other_comp(const VariableIndex v) {
     seen_[v] = CA_VAR_IN_OTHER_COMP | (seen_[v] & CA_CL_MASK);
   }
 
@@ -165,7 +165,7 @@ public:
       if (var_seen(*v_it)) { //we have to put a var into our comp
         p_new_comp->add_var(*v_it);
         current_comp_for_caching_.add_var(*v_it);
-        setVar_in_other_comp(*v_it);
+        set_var_in_other_comp(*v_it);
       }
     p_new_comp->close_vars_data();
     current_comp_for_caching_.close_vars_data();

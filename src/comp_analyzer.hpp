@@ -79,8 +79,8 @@ public:
   // returns true iff the underlying variable was unseen before
   bool manageSearchOccurrenceOf(const uint32_t v){
     if (archetype_.var_unseen_in_sup_comp(v)) {
-      search_stack_.push_back(v);
-      archetype_.setVar_seen(v);
+      comp_vars.push_back(v);
+      archetype_.set_var_seen(v);
       return true;
     }
     return false;
@@ -93,8 +93,8 @@ public:
 
   void setSeenAndStoreInSearchStack(const VariableIndex v){
     assert(is_unknown(v));
-    search_stack_.push_back(v);
-    archetype_.setVar_seen(v);
+    comp_vars.push_back(v);
+    archetype_.set_var_seen(v);
   }
 
   void setupAnalysisContext(StackLevel &top, const Comp & super_comp){
@@ -103,14 +103,14 @@ public:
     debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
     for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
       if (is_unknown(*vt)) {
-        archetype_.setVar_in_sup_comp_unseen(*vt);
+        archetype_.set_var_in_sup_comp_unseen(*vt);
         // TODO what is happening here....
         /* var_freq_scores[*vt] = 0; */
       }
     }
 
-    for (auto itCl = super_comp.cls_begin(); *itCl != sentinel; itCl++)
-      archetype_.setClause_in_sup_comp_unseen(*itCl);
+    for (auto it = super_comp.cls_begin(); *it != sentinel; it++)
+      archetype_.setClause_in_sup_comp_unseen(*it);
   }
 
   bool exploreRemainingCompOf(const VariableIndex v);
@@ -118,7 +118,7 @@ public:
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.
   inline Comp *makeCompFromArcheType(){
-    return archetype_.makeCompFromState(search_stack_.size());
+    return archetype_.makeCompFromState(comp_vars.size());
   }
 
   uint32_t get_max_clid() const { return max_clid; }
@@ -147,9 +147,9 @@ private:
   CompArchetype  archetype_;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
-  vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
-                                       // used in  recordCompOf
-                                       // its size is the number of variables in the component
+  vector<VariableIndex> comp_vars; // Used to figure out which vars are in a component
+                                  // used in  recordCompOf
+                                  // its size is the number of variables in the component
 
   bool is_false(const Lit lit) const {
     return values[lit] == F_TRI;
@@ -188,7 +188,7 @@ private:
   // This is called from recordCompOf, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
   void searchClause(VariableIndex vt, ClauseIndex clID, Lit const* pstart_cls){
-    const auto itVEnd = search_stack_.end();
+    const auto itVEnd = comp_vars.end();
     bool all_lits_set = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {
       assert(itL->var() <= max_var);
@@ -200,10 +200,10 @@ private:
         if (is_false(*itL)) continue;
 
         //accidentally entered a satisfied clause: undo the search process
-        while (search_stack_.end() != itVEnd) {
-          assert(search_stack_.back() <= max_var);
-          archetype_.setVar_in_sup_comp_unseen(search_stack_.back()); //unsets it from being seen
-          search_stack_.pop_back();
+        while (comp_vars.end() != itVEnd) {
+          assert(comp_vars.back() <= max_var);
+          archetype_.set_var_in_sup_comp_unseen(comp_vars.back()); //unsets it from being seen
+          comp_vars.pop_back();
         }
         archetype_.setClause_nil(clID);
         while(*itL != SENTINEL_LIT)

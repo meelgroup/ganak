@@ -139,7 +139,7 @@ void DataAndStatistics::printShort(const Counter* counter, const CompCache* cach
     << cache_pollutions_removed);
   verb_print(1, "cache miss rate                "
     << std::setprecision(3) << cache_miss_rate());
-  verb_print(1, "avg. hit/store "
+  verb_print(1, "avg. hit/store sz"
     << getAvgCacheHitSize()
     << " / "
     << getAvgCacheStoreSize()

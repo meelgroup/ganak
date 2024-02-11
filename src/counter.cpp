@@ -259,7 +259,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 }
 
 void Counter::td_decompose() {
-  double myTime = cpuTime();
+  double my_time = cpuTime();
   bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
   if (!conditionOnCNF) {
     disable_td = true;
@@ -320,7 +320,7 @@ void Counter::td_decompose() {
 
   td.centroid(nVars()+1, conf.verb);
   compute_score(td);
-  verb_print(1, "[td] decompose time: " << cpuTime() - myTime);
+  verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
 }
 
 vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
@@ -1956,7 +1956,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
-  double myTime = cpuTime();
+  double my_time = cpuTime();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
   uint64_t last_vivif_cl_minim = stats.vivif_cl_minim;
   auto last_vivif_cl_tried = stats.vivif_tried_cl;
@@ -2001,19 +2001,19 @@ void Counter::vivify_all(bool force, bool only_irred) {
   for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
   bool ret = v_propagate();
   assert(ret == true);
-  verb_print(2, "[vivif] setup. T: " << (cpuTime()-myTime));
+  verb_print(2, "[vivif] setup. T: " << (cpuTime()-my_time));
 
   // Vivify clauses
   v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
   vivify_cls(long_irred_cls);
   bool tout_irred = (v_tout <= 0);
-  verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
+  verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-my_time));
 
   bool tout_red = false;
   if (!only_irred) {
     v_tout = conf.vivif_mult*20LL*1000LL*1000LL;
     vivify_cls(longRedCls);
-    verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
+    verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-my_time));
     tout_red = (v_tout <= 0);
   }
 
@@ -2043,7 +2043,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
       << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
       << " tout-irred: " << (int)tout_irred
       << " tout-red: " << (int)tout_red
-      << " T: " << (cpuTime()-myTime));
+      << " T: " << (cpuTime()-my_time));
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
 }
 
@@ -2773,7 +2773,7 @@ void Counter::toplevel_full_probe() {
   assert(toClear.empty());
   assert(bothprop_toset.empty());
 
-  double myTime = cpuTime();
+  double my_time = cpuTime();
   auto old_probe = stats.toplevel_probe_fail;
   auto old_bprop = stats.toplevel_bothprop_fail;
   stats.toplevel_probe_runs++;
@@ -2848,7 +2848,7 @@ void Counter::toplevel_full_probe() {
   verb_print(1, "[top-probe] "
       << " failed: " << (stats.toplevel_probe_fail - old_probe)
       << " bprop: " << (stats.toplevel_bothprop_fail - old_bprop)
-      << " T: " << (cpuTime()-myTime));
+      << " T: " << (cpuTime()-my_time));
 }
 
 void Counter::subsume_all() {
@@ -2857,7 +2857,7 @@ void Counter::subsume_all() {
   assert(clauses.empty());
 
   // setup
-  double myTime = cpuTime();
+  double my_time = cpuTime();
   auto old_subsumed_cls = stats.subsumed_cls;
   auto old_subsumed_bin_cls = stats.subsumed_bin_cls;
   stats.subsume_runs++;
@@ -2934,7 +2934,7 @@ void Counter::subsume_all() {
   verb_print(1, "[sub] "
       << " bin-cls: " << stats.subsumed_bin_cls - old_subsumed_bin_cls
       << " long-cls: " << stats.subsumed_cls - old_subsumed_cls
-      << " T: " << (cpuTime() - myTime))
+      << " T: " << (cpuTime() - my_time))
 }
 
 // SAT or UNSAT

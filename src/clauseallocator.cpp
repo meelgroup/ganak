@@ -192,7 +192,7 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
         << " Currently used size: " << currentlyUsedSize/1000 << " K");
     return false;
   }
-  const double myTime = cpuTime();
+  const double my_time = cpuTime();
 
   //Pointers that will be moved along
   uint32_t * const newDataStart = (uint32_t*)malloc(currentlyUsedSize*sizeof(uint32_t));
@@ -222,7 +222,7 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   free(dataStart);
   dataStart = newDataStart;
 
-  const double time_used = cpuTime() - myTime;
+  const double time_used = cpuTime() - my_time;
   if (conf.verb) {
     size_t log_2_size = 0;
     if (size > 0) log_2_size = std::log2(size);

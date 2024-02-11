@@ -83,9 +83,6 @@ struct clhasher {
     uint64_t operator()(const std::string &str) const {
         return operator()(str.data(), str.size());
     }
-    ~clhasher() {
-        // std::free((void *)random_data_);
-    }
 };
 #endif // #ifdef __cplusplus
 

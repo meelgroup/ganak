@@ -142,7 +142,7 @@ void Counter::end_irred_cls() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   delete comp_manager_;
-  comp_manager_ = new ComponentManager(conf,stats, values, indep_support_end, this);
+  comp_manager_ = new CompManager(conf,stats, values, indep_support_end, this);
   comp_manager_->getrandomseedforclhash();
 
   // reset stats
@@ -607,9 +607,9 @@ void Counter::print_all_levels() {
     cout << COLORG "super comp of dec_lev " << dec_lev
       << " is at comp_stack_ position: " << sup_at
       << " branch var here: " << decisions.at(dec_lev).var
-      << " unproc'd comp end: " << decisions.at(dec_lev).getUnprocessedComponentsEnd()
+      << " unproc'd comp end: " << decisions.at(dec_lev).getUnprocessedCompsEnd()
       << " remaining comp ofs: " << decisions.at(dec_lev).remaining_comps_ofs()
-      << " num unproc'd comps: " << decisions.at(dec_lev).numUnprocessedComponents()
+      << " num unproc'd comps: " << decisions.at(dec_lev).numUnprocessedComps()
       << " count: " << decisions.at(dec_lev).getTotalModelCount()
       << " (left: " << decisions.at(dec_lev).get_left_model_count()
       << " right: " << decisions.at(dec_lev).get_right_model_count() << ")"
@@ -671,11 +671,11 @@ SOLVER_StateT Counter::countSAT() {
 
   while (true) {
     debug_print("var top of decision stack: " << decisions.top().var);
-    // NOTE: findNextRemainingComponentOf finds disjoint comps
+    // NOTE: findNextRemainingCompOf finds disjoint comps
     // we then solve them all with the decideLiteral & calling findNext.. again
-    while (comp_manager_->findNextRemainingComponentOf(decisions.top())) {
+    while (comp_manager_->findNextRemainingCompOf(decisions.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
-      const Component* c = comp_manager_->at(decisions.top().super_comp());
+      const Comp* c = comp_manager_->at(decisions.top().super_comp());
 
       // BDD count
       if (conf.do_buddy && do_buddy_count(c)) {
@@ -684,7 +684,7 @@ SOLVER_StateT Counter::countSAT() {
       }
 
       if (!decideLiteral()) {
-        decisions.top().nextUnprocessedComponent();
+        decisions.top().nextUnprocessedComp();
         continue;
       }
       print_stat_line();
@@ -696,7 +696,7 @@ SOLVER_StateT Counter::countSAT() {
         debug_print("after SAT mode. cnt dec: " << decisions.top().getTotalModelCount()
             << " left: " << decisions.top().get_left_model_count()
             << " right: " << decisions.top().get_right_model_count());
-        decisions.push_back(StackLevel( decisions.top().currentRemainingComponent(),
+        decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
               comp_manager_->comp_stack_size()));
         if (ret) {
           decisions.top().change_to_right_branch();
@@ -710,9 +710,9 @@ SOLVER_StateT Counter::countSAT() {
           if (!ret2) goto resolve;
         }
         debug_print("after SAT mode. cnt of this comp: " << decisions.top().getTotalModelCount()
-          << " unproc comps end: " << decisions.top().getUnprocessedComponentsEnd()
+          << " unproc comps end: " << decisions.top().getUnprocessedCompsEnd()
           << " remaining comps: " << decisions.top().remaining_comps_ofs()
-          << " has unproc: " << decisions.top().hasUnprocessedComponents());
+          << " has unproc: " << decisions.top().hasUnprocessedComps());
         assert(isindependent);
         state = BACKTRACK;
         break;
@@ -782,7 +782,7 @@ bool Counter::decideLiteral() {
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
-    StackLevel(decisions.top().currentRemainingComponent(),
+    StackLevel(decisions.top().currentRemainingComp(),
                comp_manager_->comp_stack_size()));
 
   // The decision literal is now ready. Deal with it.
@@ -797,7 +797,7 @@ bool Counter::decideLiteral() {
   }
   if (v == 0) {
     // we have set all remaining var(s) from a lower decision level.
-    // so there is nothing to decide. Component has a single solution.
+    // so there is nothing to decide. Comp has a single solution.
     debug_print("We have set ALL REMAINING VARS FROM LOWER LEVELS!!");
     decisions.pop_back();
     return false;
@@ -820,7 +820,7 @@ uint32_t Counter::find_best_branch() {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
-  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
@@ -838,7 +838,7 @@ uint32_t Counter::find_best_branch() {
 
   if (conf.do_cache_score && stats.conflicts > 1000 && best_var != 0) {
     double c_score = comp_manager_->get_cache_hit_score(best_var);
-    for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
+    for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
          *it != sentinel; it++) {
       const uint32_t v = *it;
       if (val(v) != X_TRI) continue;
@@ -865,7 +865,7 @@ uint32_t Counter::find_best_branch_gpmc() {
   double max_score_td = -1;
   bool only_optional_indep = true;
 
-  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
       *it != sentinel; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
@@ -944,7 +944,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
     }
     const StackLevel& dec = decisions[i];
     const auto off_start = dec.remaining_comps_ofs();
-    const auto off_end = dec.getUnprocessedComponentsEnd();
+    const auto off_end = dec.getUnprocessedCompsEnd();
     debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
     // add all but the last component (it's the one being counted lower down)
     int off_by_one = 1;
@@ -966,15 +966,15 @@ bool Counter::compute_cube(Cube& c, int branch) {
     const auto& dst = decisions.at(i);
     cout << COLWHT "decision_stack.at(" << i << "):"
       << " decision var: " << dst.var
-      << " num unproc comps: " << dst.numUnprocessedComponents()
-      << " unproc comps end: " << dst.getUnprocessedComponentsEnd()
+      << " num unproc comps: " << dst.numUnprocessedComps()
+      << " unproc comps end: " << dst.getUnprocessedCompsEnd()
       << " remain comps offs: " << dst.remaining_comps_ofs()
       << " total count here: " << dst.getTotalModelCount()
       << " left count here: " << dst.get_left_model_count()
       << " right count here: " << dst.get_right_model_count()
       << " branch: " << dst.is_right_branch() << endl;
     const auto off_start = dst.remaining_comps_ofs();
-    const auto off_end = dst.getUnprocessedComponentsEnd();
+    const auto off_end = dst.getUnprocessedCompsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       assert(i2 < comp_manager_->comp_stack_size());
       const auto& comp = comp_manager_->at(i2);
@@ -1081,7 +1081,7 @@ bool Counter::restart_if_needed() {
         10*(luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
-  // Components, luby
+  // Comps, luby
   if (conf.restart_type == 8 &&
       (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
@@ -1244,7 +1244,7 @@ retStateT Counter::backtrack() {
       debug_print("[indep] Processing another comp at dec lev "
           << decisions.get_decision_level()
           << " instead of backtracking." << " Num unprocessed comps: "
-          << decisions.top().numUnprocessedComponents()
+          << decisions.top().numUnprocessedComps()
           << " so far the count: " << decisions.top().getTotalModelCount());
       return PROCESS_COMPONENT;
     }
@@ -1290,7 +1290,7 @@ retStateT Counter::backtrack() {
     //Cache score should be decreased since the component is getting added to cache
     if (conf.do_cache_score) {
       stats.numcachedec_++;
-      comp_manager_->bump_cache_hit_score(comp_manager_->getSuperComponentOf(decisions.top()));
+      comp_manager_->bump_cache_hit_score(comp_manager_->getSuperCompOf(decisions.top()));
     }
 
     // Backtrack from end, i.e. finished.
@@ -1317,8 +1317,8 @@ retStateT Counter::backtrack() {
     auto& dst = decisions.top();
     debug_print("[indep] -> Backtracked to level " << decisions.get_decision_level()
         // NOTE: -1 here because we have JUST processed the child
-        //     ->> (see below nextUnprocessedComponent() call)
-        << " num unprocessed comps here: " << dst.numUnprocessedComponents()-1
+        //     ->> (see below nextUnprocessedComp() call)
+        << " num unprocessed comps here: " << dst.numUnprocessedComps()-1
         << " current count here: " << dst.getTotalModelCount()
         << " branch: " << dst.is_right_branch()
         << " before including child it was: " <<  parent_count_before
@@ -1326,7 +1326,7 @@ retStateT Counter::backtrack() {
         << " right: " << parent_count_before_right << ")");
 
     // step to the next comp not yet processed
-    dst.nextUnprocessedComponent();
+    dst.nextUnprocessedComp();
 
     assert(dst.remaining_comps_ofs() < comp_manager_->comp_stack_size() + 1);
   } while (true);
@@ -1441,7 +1441,7 @@ void Counter::go_back_to(int32_t backj) {
     if (!sat_mode()) {
       decisions.top().zero_out_branch_sol();
       comp_manager_->removeAllCachePollutionsOf(decisions.top());
-      comp_manager_->cleanRemainingComponentsOf(decisions.top());
+      comp_manager_->cleanRemainingCompsOf(decisions.top());
     }
     VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().getTotalModelCount() << endl);
   }
@@ -2948,10 +2948,10 @@ bool Counter::deal_with_independent() {
   sat_start_dec_level = decision_level();
   bool sat = false;
 
-  // Create dummy decision level in order for getSuperComponentOf work correctly.
-  decisions.push_back(StackLevel( decisions.top().currentRemainingComponent(),
+  // Create dummy decision level in order for getSuperCompOf work correctly.
+  decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
         comp_manager_->comp_stack_size()));
-  for (auto it = comp_manager_->getSuperComponentOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;
     if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");
@@ -3044,9 +3044,9 @@ void Counter::check_sat_solution() const {
   else tmp |= bdd_nithvar(vmap_rev[l.var()]);
 
 
-bool Counter::do_buddy_count(const Component* c) {
+bool Counter::do_buddy_count(const Comp* c) {
   if (c->nVars() > 84 || c->nVars() < 6 || (c->numBinCls()+c->numLongClauses()) > conf.buddy_max_cls) return false;
-  decisions.push_back(StackLevel( decisions.top().currentRemainingComponent(),
+  decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
         comp_manager_->comp_stack_size()));
   stats.buddy_called++;
   uint64_t cnt = buddy_count();
@@ -3161,7 +3161,7 @@ uint64_t Counter::buddy_count() {
   return cnt >> (64-vmap.size());
 }
 #else
-bool Counter::do_buddy_count(const Component*) {
+bool Counter::do_buddy_count(const Comp*) {
   cout << "ERROR: you must recompiled with buddy enabled for BDD counting to work" << endl;
   exit(-1);
 }

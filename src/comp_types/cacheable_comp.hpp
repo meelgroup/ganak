@@ -28,18 +28,18 @@ THE SOFTWARE.
 #include "../primitive_types.hpp"
 #include "hashed_comp.hpp"
 
-class Component;
-class ComponentArchetype;
+class Comp;
+class CompArchetype;
 
-// GenericCacheableComponent Adds Structure to PackedComponent that is
+// GenericCacheableComp Adds Structure to PackedComp that is
 // necessary to store it in the cache
 // namely, the descendant tree structure that
 // allows for the removal of cache pollutions
 
-class CacheableComponent: public HashedComp {
+class CacheableComp: public HashedComp {
 public:
-  CacheableComponent() = default;
-  CacheableComponent(void* hash_seed, Component &comp) : HashedComp(hash_seed, comp) { }
+  CacheableComp() = default;
+  CacheableComp(void* hash_seed, Comp &comp) : HashedComp(hash_seed, comp) { }
 
   uint32_t size_in_bytes() const {
     return HashedComp::raw_data_byte_size();

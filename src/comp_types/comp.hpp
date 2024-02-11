@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 using std::vector;
 
-class Component {
+class Comp {
 public:
 
   void reserveSpace(uint32_t nVars, uint32_t num_clauses) {

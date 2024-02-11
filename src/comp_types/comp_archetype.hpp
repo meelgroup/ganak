@@ -40,17 +40,17 @@ using CA_SearchState = uint8_t;
 
 class StackLevel;
 
-// There is exactly ONE of this. Inside ComponentAnalyzer, which is inside ComponentManager, which is inside Solver
-class ComponentArchetype {
+// There is exactly ONE of this. Inside CompAnalyzer, which is inside CompManager, which is inside Solver
+class CompArchetype {
 public:
-  ComponentArchetype() = default;
-  ~ComponentArchetype() { delete[] seen_; }
-  ComponentArchetype(StackLevel &stack_level, const Component &super_comp) :
+  CompArchetype() = default;
+  ~CompArchetype() { delete[] seen_; }
+  CompArchetype(StackLevel &stack_level, const Comp &super_comp) :
       p_super_comp_(&super_comp), p_stack_level_(&stack_level) {
   }
 
-  void reInitialize(StackLevel &stack_level, const Component &super_comp) {
-    debug_print("Reinitializing seen[] to all-zero in ComponentArchetype");
+  void reInitialize(StackLevel &stack_level, const Comp &super_comp) {
+    debug_print("Reinitializing seen[] to all-zero in CompArchetype");
     p_super_comp_ = &super_comp;
     p_stack_level_ = &stack_level;
     clearArrays();
@@ -58,7 +58,7 @@ public:
     current_comp_for_caching_.reserveSpace(super_comp.nVars(),super_comp.num_long_cls());
   }
 
-  const Component &super_comp() {
+  const Comp &super_comp() {
     return *p_super_comp_;
   }
 
@@ -154,9 +154,9 @@ public:
 
   // At this point exploreRemainingCompOf has been called already which
   // set up search_stack_, seen[] etc. so this is now quite easy.
-  Component *makeComponentFromState(const uint32_t search_stack_size) {
+  Comp *makeCompFromState(const uint32_t search_stack_size) {
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
-    Component *p_new_comp = new Component();
+    Comp *p_new_comp = new Comp();
     p_new_comp->reserveSpace(search_stack_size, super_comp().num_long_cls());
     current_comp_for_caching_.clear();
 
@@ -187,13 +187,13 @@ public:
     return p_new_comp;
   }
 
-  Component current_comp_for_caching_;
+  Comp current_comp_for_caching_;
 #ifdef BUDDY_ENABLED
   uint32_t num_bin_cls = 0;
 #endif
 
 private:
-  Component const* p_super_comp_;
+  Comp const* p_super_comp_;
   StackLevel *p_stack_level_;
   CA_SearchState* seen_ = nullptr; // all variables and all clause IDXs can be indexed here
   uint32_t seen_byte_size_ = 0;

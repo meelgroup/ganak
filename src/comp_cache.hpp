@@ -34,12 +34,12 @@ THE SOFTWARE.
 using std::set;
 
 // There is EXACTLY ONE of this
-class ComponentCache {
+class CompCache {
 public:
-  ComponentCache(DataAndStatistics &_stats, const CounterConfiguration& _conf);
-  ~ComponentCache() { for(auto& c: entry_base_) c.set_free(); }
+  CompCache(DataAndStatistics &_stats, const CounterConfiguration& _conf);
+  ~CompCache() { for(auto& c: entry_base_) c.set_free(); }
 
-  void init(Component &super_comp, void* hash_seed);
+  void init(Comp &super_comp, void* hash_seed);
   void delete_comps_with_vars(const set<uint32_t>& vars);
   uint64_t get_num_entries_used() const
   {
@@ -54,20 +54,20 @@ public:
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_allocated();
   bool cache_full() const {
-    return stats.cache_full(free_entry_base_slots_.size() * sizeof(CacheableComponent));
+    return stats.cache_full(free_entry_base_slots_.size() * sizeof(CacheableComp));
   }
 
-  CacheableComponent &entry(CacheEntryID id) { return entry_base_[id]; }
-  const CacheableComponent &entry(CacheEntryID id) const { return entry_base_[id]; }
-  CacheableComponent &entry(const Component& comp) { return entry(comp.id()); }
-  const CacheableComponent &entry(const Component& comp) const { return entry(comp.id()); }
+  CacheableComp &entry(CacheEntryID id) { return entry_base_[id]; }
+  const CacheableComp &entry(CacheEntryID id) const { return entry_base_[id]; }
+  CacheableComp &entry(const Comp& comp) { return entry(comp.id()); }
+  const CacheableComp &entry(const Comp& comp) const { return entry(comp.id()); }
   bool hasEntry(CacheEntryID id) const { return !entry_base_[id].is_free(); }
 
   // removes the entry id from the hash table
   // but not from the entry base
   inline void removeFromHashTable(CacheEntryID id);
 
-  // we delete the Component with ID id
+  // we delete the Comp with ID id
   // and all its descendants from the cache
   inline uint64_t cleanPollutionsInvolving(CacheEntryID id);
 
@@ -76,11 +76,11 @@ public:
   // returns the id of the entry created
   // stores in the entry the position of
   // comp which is a part of the comp stack
-  inline CacheEntryID storeAsEntry(CacheableComponent &ccomp,
+  inline CacheEntryID storeAsEntry(CacheableComp &ccomp,
                             CacheEntryID super_comp_id);
 
-  bool manageNewComponent(StackLevel &top,
-      const uint32_t nvars, const CacheableComponent &packed_comp) {
+  bool manageNewComp(StackLevel &top,
+      const uint32_t nvars, const CacheableComp &packed_comp) {
     stats.num_cache_look_ups_++;
     uint32_t table_ofs = packed_comp.get_hashkey() & table_size_mask_;
     CacheEntryID act_id = table_[table_ofs];
@@ -155,7 +155,7 @@ private:
         entry(compid).set_first_descendant(entry(desc).next_sibling());
     }
 
-  vec<CacheableComponent> entry_base_;
+  vec<CacheableComp> entry_base_;
   vector<CacheEntryID> free_entry_base_slots_;
 
   // the actual hash table
@@ -169,7 +169,7 @@ private:
   uint64_t my_time_ = 0;
 };
 
-CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryID super_comp_id){
+CacheEntryID CompCache::storeAsEntry(CacheableComp &ccomp, CacheEntryID super_comp_id){
   CacheEntryID id;
 
   while (cache_full()) {
@@ -213,7 +213,7 @@ CacheEntryID ComponentCache::storeAsEntry(CacheableComponent &ccomp, CacheEntryI
   return id;
 }
 
-uint64_t ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
+uint64_t CompCache::cleanPollutionsInvolving(const CacheEntryID id) {
   uint64_t removed = 0;
   const CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) {
@@ -241,7 +241,7 @@ uint64_t ComponentCache::cleanPollutionsInvolving(const CacheEntryID id) {
   return 1+removed;
 }
 
-void ComponentCache::removeFromHashTable(CacheEntryID id) {
+void CompCache::removeFromHashTable(CacheEntryID id) {
   //assert(false);
   uint32_t act_id = table_[tableEntry(id)];
   if(act_id == id){
@@ -259,7 +259,7 @@ void ComponentCache::removeFromHashTable(CacheEntryID id) {
   }
 }
 
-void ComponentCache::removeFromDescendantsTree(CacheEntryID id) {
+void CompCache::removeFromDescendantsTree(CacheEntryID id) {
   assert(hasEntry(id));
   // we need a father for this all to work
   assert(entry(id).father());
@@ -293,7 +293,7 @@ void ComponentCache::removeFromDescendantsTree(CacheEntryID id) {
   }
 }
 
-void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count) {
+void CompCache::storeValueOf(CacheEntryID id, const mpz_class &model_count) {
 #ifdef CHECK_COUNT
   //we disable cache on check_count, to remove an error source
   return;

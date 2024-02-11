@@ -39,17 +39,17 @@ THE SOFTWARE.
 class Counter;
 
 // There is exactly ONE of this, inside Counter
-class ComponentManager
+class CompManager
 {
 public:
-  ComponentManager(const CounterConfiguration &config, DataAndStatistics &statistics,
+  CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const uint32_t& indep_support_end, Counter* _solver) :
       conf(config), stats(statistics), cache_(statistics, conf),
       ana_(lit_values, indep_support_end, _solver), solver_(_solver)
   { }
 
-  ~ComponentManager() {
+  ~CompManager() {
     free(hash_seed);
     for(auto& comp: comp_stack_) delete comp;
     comp_stack_.clear();
@@ -62,22 +62,22 @@ public:
   void delete_comps_with_vars(const set<uint32_t>& vars) {
     cache_.delete_comps_with_vars(vars);
   }
-  const ComponentCache& get_cache() const { return cache_; }
-  const ComponentAnalyzer& get_ana() const { return ana_; }
+  const CompCache& get_cache() const { return cache_; }
+  const CompAnalyzer& get_ana() const { return ana_; }
 
   uint64_t get_num_cache_entries_used() const { return cache_.get_num_entries_used(); }
   void cacheModelCountOf(uint32_t stack_comp_id, const mpz_class &value) {
     cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
-  Component& getSuperComponentOf(const StackLevel &lev) {
+  Comp& getSuperCompOf(const StackLevel &lev) {
     assert(comp_stack_.size() > lev.super_comp());
     return *comp_stack_[lev.super_comp()];
   }
 
   uint32_t comp_stack_size() { return comp_stack_.size(); }
-  const Component* at(const size_t at) const { return comp_stack_.at(at); }
-  void cleanRemainingComponentsOf(const StackLevel &top)
+  const Comp* at(const size_t at) const { return comp_stack_.at(at); }
+  void cleanRemainingCompsOf(const StackLevel &top)
   {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack_.size() > top.remaining_comps_ofs())
@@ -96,9 +96,9 @@ public:
   // returns true if a non-trivial non-cached comp
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all comps have been processed
-  inline bool findNextRemainingComponentOf(StackLevel &top);
+  inline bool findNextRemainingCompOf(StackLevel &top);
   void recordRemainingCompsFor(StackLevel &top);
-  inline void sortComponentStackRange(uint32_t start, uint32_t end);
+  inline void sortCompStackRange(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
   void removeAllCachePollutionsOfIfExists(const StackLevel &top);
@@ -114,7 +114,7 @@ public:
   }
 
   double get_cache_hit_score(const VariableIndex v) const { return cache_hit_score[v]; }
-  void bump_cache_hit_score(Component &comp) {
+  void bump_cache_hit_score(Comp &comp) {
     for (vector<VariableIndex>::const_iterator it = comp.vars_begin(); *it != sentinel; it++) {
       cache_hit_score[*it] += act_inc;
       if (cache_hit_score[*it] > 1e100) {
@@ -129,9 +129,9 @@ private:
   DataAndStatistics &stats;
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
-  vector<Component *> comp_stack_;
-  ComponentCache cache_;
-  ComponentAnalyzer ana_;
+  vector<Comp *> comp_stack_;
+  CompCache cache_;
+  CompAnalyzer ana_;
 
   // indexed by variable, decremented when a variable is in a component,
   // and halved once in a while. The LARGER it is, the more likely the
@@ -142,7 +142,7 @@ private:
   Counter* solver_;
 };
 
-void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end) {
+void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   // sort the remaining comps for processing
@@ -155,7 +155,7 @@ void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end) {
     }
 }
 
-double ComponentManager::get_alternate_score_comps(uint32_t start, uint32_t end) const
+double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) const
 {
   double score = 1;
   assert(start <= end);
@@ -165,9 +165,9 @@ double ComponentManager::get_alternate_score_comps(uint32_t start, uint32_t end)
 }
 
 
-bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
+bool CompManager::findNextRemainingCompOf(StackLevel &top)
 {
-  debug_print(COLREDBG"-*-> Running findNextRemainingComponentOf");
+  debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack_.size(): " << comp_stack_.size());
   if (comp_stack_.size() <= top.remaining_comps_ofs()) {
     recordRemainingCompsFor(top);
@@ -176,13 +176,13 @@ bool ComponentManager::findNextRemainingComponentOf(StackLevel &top)
   }
 
   assert(!top.branch_found_unsat());
-  if (top.hasUnprocessedComponents()) {
-    debug_print(COLREDBG"-*-> Finished findNextRemainingComponentOf, hasUnprocessedComponents.");
+  if (top.hasUnprocessedComps()) {
+    debug_print(COLREDBG"-*-> Finished findNextRemainingCompOf, hasUnprocessedComps.");
     return true;
   }
 
   // if no comp remains then there is exactly 1 solution left
   top.includeSolution(1);
-  debug_print(COLREDBG "-*-> Finished findNextRemainingComponentOf, no more remaining comps. top.branchvar() was: " << top.var  <<" includeSolution(1) fired, returning.");
+  debug_print(COLREDBG "-*-> Finished findNextRemainingCompOf, no more remaining comps. top.branchvar() was: " << top.var  <<" includeSolution(1) fired, returning.");
   return false;
 }

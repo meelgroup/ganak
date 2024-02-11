@@ -59,17 +59,17 @@ uint64_t freeram() {
 
 #include "stack.hpp"
 
-ComponentCache::ComponentCache(
+CompCache::CompCache(
     DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) {}
 
-void ComponentCache::init(Component &super_comp, void* hash_seed){
-  CacheableComponent *packed_super_comp;
+void CompCache::init(Comp &super_comp, void* hash_seed){
+  CacheableComp *packed_super_comp;
   vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.num_long_cls());
-  packed_super_comp = new CacheableComponent(hash_seed,super_comp);
+  packed_super_comp = new CacheableComp(hash_seed,super_comp);
   my_time_ = 1;
 
   entry_base_.clear();
-  auto x = CacheableComponent();
+  auto x = CacheableComp();
   entry_base_.push_back(x); // dummy Element
   stats.incorporate_cache_store(x, 0);
   table_.clear();
@@ -104,7 +104,7 @@ void ComponentCache::init(Component &super_comp, void* hash_seed){
   compute_size_allocated();
 }
 
-void ComponentCache::test_descendantstree_consistency() {
+void CompCache::test_descendantstree_consistency() {
   for (uint32_t id = 2; id < entry_base_.size(); id++)
     if (!entry_base_[id].is_free()) {
       CacheEntryID act_child = entry(id).first_descendant();
@@ -126,7 +126,7 @@ void ComponentCache::test_descendantstree_consistency() {
     }
 }
 
-bool ComponentCache::deleteEntries() {
+bool CompCache::deleteEntries() {
   assert(cache_full());
   vector<double> scores;
   verb_print(1, "Deleting entires. Num entries: " << entry_base_.size());
@@ -173,18 +173,18 @@ bool ComponentCache::deleteEntries() {
   return true;
 }
 
-uint64_t ComponentCache::compute_size_allocated() {
+uint64_t CompCache::compute_size_allocated() {
   stats.cache_infrastructure_bytes_memory_usage_ =
-      sizeof(ComponentCache)
+      sizeof(CompCache)
       + sizeof(CacheEntryID)* table_.capacity()
-      + sizeof(CacheableComponent)* entry_base_.capacity()
+      + sizeof(CacheableComp)* entry_base_.capacity()
       + sizeof(CacheEntryID) * free_entry_base_slots_.capacity();
   return stats.cache_infrastructure_bytes_memory_usage_;
 }
 
-void ComponentCache::debug_dump_data() {
-    cout << "sizeof (CacheableComponent, CacheEntryID) "
-         << sizeof(CacheableComponent) << ", "
+void CompCache::debug_dump_data() {
+    cout << "sizeof (CacheableComp, CacheEntryID) "
+         << sizeof(CacheableComp) << ", "
          << sizeof(CacheEntryID) << endl;
     cout << "table (size/capacity) " << table_.size()
          << "/" << table_.capacity() << endl;
@@ -195,7 +195,7 @@ void ComponentCache::debug_dump_data() {
 
     cout << "-" << endl;
     cout << std::setw(40) << "table mem use MB: " <<
-      (double)(table_.capacity()*sizeof(CacheableComponent))/(double)(1024*1024)
+      (double)(table_.capacity()*sizeof(CacheableComp))/(double)(1024*1024)
       << endl;
     cout << std::setw(40) << "entry_base_ mem use MB: " <<
       (double)(entry_base_.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)

@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "clauseallocator.hpp"
 
-ComponentAnalyzer::ComponentAnalyzer(
+CompAnalyzer::CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
         Counter* _solver) :
@@ -37,7 +37,7 @@ ComponentAnalyzer::ComponentAnalyzer(
 
 
 // Builds occ lists and sets things up
-void ComponentAnalyzer::initialize(
+void CompAnalyzer::initialize(
     LiteralIndexedVector<LitWatchList> & watches, // binary clauses
     const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
 {
@@ -55,7 +55,7 @@ void ComponentAnalyzer::initialize(
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_variable_id_ + 1);
 
-  debug_print(COLBLBACK "Building occ list in ComponentAnalyzer::initialize...");
+  debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
 
   vector<uint32_t> tmp;
   max_clause_id_ = 1;
@@ -91,11 +91,11 @@ void ComponentAnalyzer::initialize(
     }
     max_clause_id_++;
   }
-  debug_print(COLBLBACK "Built occ list in ComponentAnalyzer::initialize.");
+  debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");
 
   archetype_.initSeen(max_variable_id_, max_clause_id_);
 
-  debug_print(COLBLBACK "Building unified link list in ComponentAnalyzer::initialize...");
+  debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
   // the unified link list
   // This is an array that contains, flattened:
   // [  [vars of binary clauses],
@@ -140,13 +140,13 @@ void ComponentAnalyzer::initialize(
         occ_long_clauses[v].begin(),
         occ_long_clauses[v].end());
   }
-  debug_print(COLBLBACK "Built unified link list in ComponentAnalyzer::initialize.");
+  debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }
 
 // returns true, iff the comp found is non-trivial
-bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
+bool CompAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
   SLOW_DEBUG_DO(assert(archetype_.var_unseen_in_sup_comp(v)));
-  recordComponentOf(v); // finds the comp that "v" is in
+  recordCompOf(v); // finds the comp that "v" is in
 
   // comp only contains one variable
   if (search_stack_.size() == 1) {
@@ -165,7 +165,7 @@ bool ComponentAnalyzer::exploreRemainingCompOf(const VariableIndex v) {
 }
 
 // Check which comp a variable is in
-void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
+void CompAnalyzer::recordCompOf(const VariableIndex var) {
   search_stack_.clear();
   setSeenAndStoreInSearchStack(var);
 

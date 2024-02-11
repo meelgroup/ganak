@@ -198,13 +198,13 @@ void Graph::Dfs(int v, std::vector<char>& block, std::vector<int>& component) co
   }
 }
 
-std::vector<int> Graph::FindComponentAndMark(int v, std::vector<char>& block) const {
+std::vector<int> Graph::FindCompAndMark(int v, std::vector<char>& block) const {
   std::vector<int> component;
   Dfs(v, block, component);
   return component;
 }
 
-std::vector<std::vector<int> > Graph::Components(const std::vector<int>& separator) const {
+std::vector<std::vector<int> > Graph::Comps(const std::vector<int>& separator) const {
   std::vector<char> blocked(n_);
   for (int v : separator) {
     blocked[v] = true;
@@ -212,13 +212,13 @@ std::vector<std::vector<int> > Graph::Components(const std::vector<int>& separat
   std::vector<std::vector<int> > components;
   for (int i = 0; i < n_; i++) {
     if (!blocked[i]) {
-      components.push_back(FindComponentAndMark(i, blocked));
+      components.push_back(FindCompAndMark(i, blocked));
     }
   }
   return components;
 }
 
-std::vector<std::vector<int> > Graph::NComponents(const std::vector<int>& separator) const {
+std::vector<std::vector<int> > Graph::NComps(const std::vector<int>& separator) const {
   std::vector<char> blocked(n_);
   for (int v : separator) {
     blocked[v] = true;
@@ -227,7 +227,7 @@ std::vector<std::vector<int> > Graph::NComponents(const std::vector<int>& separa
   for (int v : separator) {
     for (int nv : adj_list_[v]) {
       if (!blocked[nv]) {
-        components.push_back(FindComponentAndMark(nv, blocked));
+        components.push_back(FindCompAndMark(nv, blocked));
       }
     }
   }
@@ -290,7 +290,7 @@ void Graph::Dfs2(int v, Bitset& sep, Bitset& vis, std::vector<int>& f) const {
   }
 }
 
-std::vector<Bitset> Graph::NComponents(const Bitset& separator) const {
+std::vector<Bitset> Graph::NComps(const Bitset& separator) const {
   Bitset vis(n_);
   vis.FillUpTo(n_);
   vis.TurnOff(separator);
@@ -366,7 +366,7 @@ std::vector<std::vector<int>> Graph::CompNeighs(const std::vector<int>& block) c
   return ret;
 }
 
-bool Graph::HasNFullComponents(const Bitset& separator, int n) const {
+bool Graph::HasNFullComps(const Bitset& separator, int n) const {
   Bitset vis(n_);
   vis.FillTrue();
   vis.TurnOff(separator);
@@ -389,11 +389,11 @@ bool Graph::HasNFullComponents(const Bitset& separator, int n) const {
 }
 
 bool Graph::IsMinsep(const Bitset& separator) const {
-  return HasNFullComponents(separator, 2);
+  return HasNFullComps(separator, 2);
 }
 
 bool Graph::IsMinsep(const std::vector<int>& separator) const {
-  return HasNFullComponents(ToBitset(separator, n_), 2);
+  return HasNFullComps(ToBitset(separator, n_), 2);
 }
 
 std::vector<Edge> Graph::EdgesIn(const std::vector<int>& vs) const {

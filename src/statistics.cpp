@@ -38,7 +38,7 @@ static double safe_div(double a, double b) {
   else return a/b;
 }
 
-void DataAndStatistics::printShort(const Counter* counter, const ComponentCache* cache_) const {
+void DataAndStatistics::printShort(const Counter* counter, const CompCache* cache_) const {
   counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "

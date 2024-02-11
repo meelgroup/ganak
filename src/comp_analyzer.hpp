@@ -41,10 +41,10 @@ using std::map;
 class ClauseAllocator;
 class Counter;
 
-// There is exactly ONE of this, inside ComponentManager, which is inside Solver
-class ComponentAnalyzer {
+// There is exactly ONE of this, inside CompManager, which is inside Solver
+class CompAnalyzer {
 public:
-  ComponentAnalyzer(
+  CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
         Counter* _solver);
@@ -65,7 +65,7 @@ public:
     }
     if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
   }
-  const ComponentArchetype &current_archetype() const { return archetype_; }
+  const CompArchetype &current_archetype() const { return archetype_; }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
@@ -97,7 +97,7 @@ public:
     archetype_.setVar_seen(v);
   }
 
-  void setupAnalysisContext(StackLevel &top, const Component & super_comp){
+  void setupAnalysisContext(StackLevel &top, const Comp & super_comp){
     archetype_.reInitialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
@@ -117,8 +117,8 @@ public:
 
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.
-  inline Component *makeComponentFromArcheType(){
-    return archetype_.makeComponentFromState(search_stack_.size());
+  inline Comp *makeCompFromArcheType(){
+    return archetype_.makeCompFromState(search_stack_.size());
   }
 
   uint32_t max_clause_id() const {
@@ -128,7 +128,7 @@ public:
     return max_variable_id_;
   }
 
-  ComponentArchetype &getArchetype() {
+  CompArchetype &getArchetype() {
     return archetype_;
   }
 
@@ -151,11 +151,11 @@ private:
   const uint32_t& indep_support_end;
   vector<double> var_freq_scores;
   double act_inc = 1.0;
-  ComponentArchetype  archetype_;
+  CompArchetype  archetype_;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
   vector<VariableIndex> search_stack_; // Used to figure out which vars are in a component
-                                       // used in  recordComponentOf
+                                       // used in  recordCompOf
                                        // its size is the number of variables in the component
 
   bool is_false(const Lit lit) const {
@@ -183,7 +183,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void recordComponentOf(const VariableIndex var);
+  void recordCompOf(const VariableIndex var);
 
   void getClause(vector<uint32_t> &tmp, const Clause& cl, const Lit & omitLit) {
     tmp.clear();
@@ -192,7 +192,7 @@ private:
     }
   }
 
-  // This is called from recordComponentOf, i.e. during figuring out what
+  // This is called from recordCompOf, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
   void searchClause(VariableIndex vt, ClauseIndex clID, Lit const* pstart_cls){
     const auto itVEnd = search_stack_.end();

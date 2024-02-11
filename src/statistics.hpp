@@ -39,7 +39,7 @@ using std::endl;
 
 class Instance;
 class Counter;
-class ComponentCache;
+class CompCache;
 
 class DataAndStatistics {
 public:
@@ -146,14 +146,14 @@ public:
            + sum_bytes_cached_comps_;
   }
 
-  void incorporate_cache_store(const CacheableComponent &ccomp, const uint32_t comp_nvars) {
+  void incorporate_cache_store(const CacheableComp &ccomp, const uint32_t comp_nvars) {
     sum_bytes_cached_comps_ += ccomp.size_in_bytes();
     sum_cache_store_sizes_ += comp_nvars;
     num_cached_comps_++;
     total_num_cached_comps_++;
   }
 
-  void incorporate_cache_erase(const CacheableComponent &ccomp){
+  void incorporate_cache_erase(const CacheableComp &ccomp){
     sum_bytes_cached_comps_ -= ccomp.size_in_bytes();
     num_cached_comps_--;
   }
@@ -177,10 +177,10 @@ public:
     if (clause.size() == 2) num_binary_irred_clauses_++;
   }
 
-  void printShort(const Counter* counter, const ComponentCache* cache) const;
+  void printShort(const Counter* counter, const CompCache* cache) const;
   void printShortFormulaInfo(const Counter* counter) const;
 
-  double getAvgComponentHitSize() const {
+  double getAvgCompHitSize() const {
     if (num_cache_hits_ == 0) return 0.0L;
     return (double)sum_cache_hit_sizes_ / (double) num_cache_hits_;
   }

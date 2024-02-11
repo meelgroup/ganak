@@ -220,7 +220,7 @@ private:
   DecisionStack decisions;
   vector<Lit> trail;
   uint32_t qhead = 0;
-  ComponentManager* comp_manager_ = nullptr;
+  CompManager* comp_manager_ = nullptr;
 
   // the last time conflict clauses have been deleted
   uint64_t last_reduceDB_conflicts = 0;
@@ -275,7 +275,7 @@ private:
   void print_comp_stack_info() const;
 
   // BDD
-  bool do_buddy_count(const Component* c);
+  bool do_buddy_count(const Comp* c);
   uint64_t buddy_count();
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
@@ -404,7 +404,7 @@ private:
       }
     }
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
-    if (!sat_mode()) comp_manager_->cleanRemainingComponentsOf(decisions.top());
+    if (!sat_mode()) comp_manager_->cleanRemainingCompsOf(decisions.top());
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
     else qhead = std::min<int32_t>(trail.size()-off_by, qhead);

@@ -43,7 +43,7 @@ public:
   uint32_t var = 0;
 private:
 
-  /// active Component, once initialized, it should not change
+  /// active Comp, once initialized, it should not change
   const uint32_t super_comp_ = 0;
   // branch (i.e. left/right)
   bool active_branch_ = false;
@@ -52,7 +52,7 @@ private:
   mpz_class branch_model_count_[2] = {0,0};
   bool branch_found_unsat_[2] = {false,false};
 
-  /// remaining Components
+  /// remaining Comps
 
   // the start offset in the comp stack for
   // the remaining comps in this decision level
@@ -70,15 +70,15 @@ private:
   uint32_t unprocessed_comps_end_ = 0;
 
 public:
-  bool hasUnprocessedComponents() const {
+  bool hasUnprocessedComps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ > remaining_comps_ofs_;
   }
-  uint32_t numUnprocessedComponents() const {
+  uint32_t numUnprocessedComps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ - remaining_comps_ofs_;
   }
-  void nextUnprocessedComponent() {
+  void nextUnprocessedComp() {
     assert(unprocessed_comps_end_ > remaining_comps_ofs_);
     unprocessed_comps_end_--;
   }
@@ -90,7 +90,7 @@ public:
   uint32_t super_comp() const {
     return super_comp_;
   }
-  uint32_t getUnprocessedComponentsEnd() const {
+  uint32_t getUnprocessedCompsEnd() const {
     return unprocessed_comps_end_;
   }
   uint32_t remaining_comps_ofs() const {
@@ -101,7 +101,7 @@ public:
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
-  uint32_t currentRemainingComponent() const {
+  uint32_t currentRemainingComp() const {
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }
@@ -116,7 +116,7 @@ public:
   }
 
   bool anotherCompProcessible() const {
-    return (!branch_found_unsat()) && hasUnprocessedComponents();
+    return (!branch_found_unsat()) && hasUnprocessedComps();
   }
 
   template<class T>

@@ -66,10 +66,10 @@ public:
   int Degeneracy() const;
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
-  std::vector<std::vector<int> > Components(const std::vector<int>& separator) const;
-  std::vector<std::vector<int> > NComponents(const std::vector<int>& separator) const;
-  std::vector<Bitset> NComponents(const Bitset& bs) const;
-  std::vector<int> FindComponentAndMark(int v, std::vector<char>& block) const;
+  std::vector<std::vector<int> > Comps(const std::vector<int>& separator) const;
+  std::vector<std::vector<int> > NComps(const std::vector<int>& separator) const;
+  std::vector<Bitset> NComps(const Bitset& bs) const;
+  std::vector<int> FindCompAndMark(int v, std::vector<char>& block) const;
 
   std::vector<Edge> EdgesIn(const std::vector<int>& vs) const;
   std::vector<Edge> FillEdges(const std::vector<int>& clq) const;
@@ -95,7 +95,7 @@ public:
 
   bool IsMinsep(const std::vector<int>& separator) const;
   bool IsMinsep(const Bitset& separator) const;
-  bool HasNFullComponents(const Bitset& separator, int n) const;
+  bool HasNFullComps(const Bitset& separator, int n) const;
 
   void Dfs2(int v, Bitset& sep, Bitset& vis, std::vector<int>& f) const;
   std::vector<Bitset> BitComps(Bitset vis) const;

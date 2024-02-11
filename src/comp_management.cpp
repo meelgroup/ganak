@@ -26,36 +26,36 @@ THE SOFTWARE.
 
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana_"
-void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
+void CompManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
   assert(comp_stack_.empty());
 
   ana_.initialize(watches, _alloc, long_irred_cls);
 
   //Add dummy comp
-  comp_stack_.push_back(new Component());
+  comp_stack_.push_back(new Comp());
 
   //Add full comp
-  comp_stack_.push_back(new Component());
+  comp_stack_.push_back(new Comp());
   assert(comp_stack_.size() == 2);
   comp_stack_.back()->create_init_comp(ana_.max_variable_id() , ana_.max_clause_id());
   cache_.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 }
 
-void ComponentManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
+void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack_.size());
   assert(top.super_comp() != 0);
-  if (cache_.hasEntry(getSuperComponentOf(top).id())) removeAllCachePollutionsOf(top);
+  if (cache_.hasEntry(getSuperCompOf(top).id())) removeAllCachePollutionsOf(top);
 }
 
-void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
+void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // all processed comps are found in
-  // [top.currentRemainingComponent(), comp_stack_.size())
+  // [top.currentRemainingComp(), comp_stack_.size())
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack_.size());
   assert(top.super_comp() != 0);
-  assert(cache_.hasEntry(getSuperComponentOf(top).id()));
+  assert(cache_.hasEntry(getSuperCompOf(top).id()));
 
   if (top.remaining_comps_ofs() == comp_stack_.size()) return;
 
@@ -71,9 +71,9 @@ void ComponentManager::removeAllCachePollutionsOf(const StackLevel &top) {
 // This creates potential component, checks if it's already in the
 // cache, and if so, uses that, otherwise, it creates it
 // and adds it to the component stack
-void ComponentManager::recordRemainingCompsFor(StackLevel &top)
+void CompManager::recordRemainingCompsFor(StackLevel &top)
 {
-  const Component& super_comp = getSuperComponentOf(top);
+  const Comp& super_comp = getSuperCompOf(top);
   const uint32_t new_comps_start_ofs = comp_stack_.size();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
@@ -88,15 +88,15 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
-      Component *p_new_comp = ana_.makeComponentFromArcheType();
-      CacheableComponent packed_comp(hash_seed, ana_.getArchetype().current_comp_for_caching_);
+      Comp *p_new_comp = ana_.makeCompFromArcheType();
+      CacheableComp packed_comp(hash_seed, ana_.getArchetype().current_comp_for_caching_);
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());
       stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
       // Check if new comp is already in cache
-      if (!cache_.manageNewComponent(top, p_new_comp->nVars(), packed_comp)) {
+      if (!cache_.manageNewComp(top, p_new_comp->nVars(), packed_comp)) {
         stats.cache_hits_misses_q.push(0);
         comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(packed_comp, super_comp.id()));
@@ -114,7 +114,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
         }
 
 #ifdef VERBOSE_DEBUG
-        cout << COLYEL2 "Component already in cache."
+        cout << COLYEL2 "Comp already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";
         all_vars_in_comp(p_new_comp, v) cout << *v << " ";
         cout << endl;
@@ -126,5 +126,5 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
 
   debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack_.size());
-  sortComponentStackRange(new_comps_start_ofs, comp_stack_.size());
+  sortCompStackRange(new_comps_start_ofs, comp_stack_.size());
 }

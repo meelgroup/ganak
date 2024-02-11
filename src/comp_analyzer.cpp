@@ -95,7 +95,7 @@ void CompAnalyzer::initialize(
   }
   debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");
 
-  archetype_.init_seen(max_var, max_clid);
+  archetype.init_seen(max_var, max_clid);
 
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
   // the unified link list
@@ -154,13 +154,13 @@ bool CompAnalyzer::exploreRemainingCompOf(const uint32_t v) {
   if (comp_vars.size() == 1) {
     debug_print("explore remaining with single var, v is: " <<  v);
     if (v >= indep_support_end) {
-      archetype_.stack_level().includeSolution(1);
+      archetype.stack_level().includeSolution(1);
       /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1)); */
     } else {
-      archetype_.stack_level().includeSolution(2);
+      archetype.stack_level().includeSolution(2);
       /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2)); */
     }
-    archetype_.set_var_in_other_comp(v);
+    archetype.set_var_in_other_comp(v);
     return false;
   }
   return true;
@@ -194,27 +194,27 @@ void CompAnalyzer::recordCompOf(const uint32_t var) {
 
     //traverse ternary clauses
     for (p++; *p ; p+=3) {
-      if (archetype_.clause_unseen_in_sup_comp(*p)){
+      if (archetype.clause_unseen_in_sup_comp(*p)){
         const Lit a = *(Lit*)(p + 1);
         const Lit b = *(Lit*)(p + 2);
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
         if(is_true(a)|| is_true(b)) {
           /* cout << "satisfied" << endl; */
-          archetype_.setClause_nil(*p);
+          archetype.setClause_nil(*p);
         } else {
           /* cout << "not satisfied" << endl; */
           bump_score(v);
           manageSearchOccurrenceAndScoreOf(a);
           manageSearchOccurrenceAndScoreOf(b);
-          archetype_.setClause_seen(*p ,is_unknown(a) && is_unknown(b));
+          archetype.setClause_seen(*p ,is_unknown(a) && is_unknown(b));
         }
       }
     }
 
     // traverse long clauses
     for (p++; *p ; p +=2)
-      if (archetype_.clause_unseen_in_sup_comp(*p))
-        searchClause(v,*p, (Lit const*)(p + 1 + *(p+1)));
+      if (archetype.clause_unseen_in_sup_comp(*p))
+        search_clause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 
   debug_print(COLWHT "-> Went through all bin/tri/long and now search_stack_ is "

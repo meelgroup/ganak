@@ -65,22 +65,22 @@ public:
     }
     if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
   }
-  const CompArchetype &current_archetype() const { return archetype_; }
+  const CompArchetype &current_archetype() const { return archetype; }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool isUnseenAndSet(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var_id_));
-    return archetype_.var_unseen_in_sup_comp(v);
+    return archetype.var_unseen_in_sup_comp(v);
   }
 
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unseen before
   bool manageSearchOccurrenceOf(const uint32_t v){
-    if (archetype_.var_unseen_in_sup_comp(v)) {
+    if (archetype.var_unseen_in_sup_comp(v)) {
       comp_vars.push_back(v);
-      archetype_.set_var_seen(v);
+      archetype.set_var_seen(v);
       return true;
     }
     return false;
@@ -94,23 +94,23 @@ public:
   void setSeenAndStoreInSearchStack(const uint32_t v){
     assert(is_unknown(v));
     comp_vars.push_back(v);
-    archetype_.set_var_seen(v);
+    archetype.set_var_seen(v);
   }
 
   void setupAnalysisContext(StackLevel &top, const Comp & super_comp){
-    archetype_.re_initialize(top,super_comp);
+    archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
     for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
       if (is_unknown(*vt)) {
-        archetype_.set_var_in_sup_comp_unseen(*vt);
+        archetype.set_var_in_sup_comp_unseen(*vt);
         // TODO what is happening here....
         /* var_freq_scores[*vt] = 0; */
       }
     }
 
     for (auto it = super_comp.cls_begin(); *it != sentinel; it++)
-      archetype_.setClause_in_sup_comp_unseen(*it);
+      archetype.setClause_in_sup_comp_unseen(*it);
   }
 
   bool exploreRemainingCompOf(const uint32_t v);
@@ -118,12 +118,12 @@ public:
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.
   inline Comp *makeCompFromArcheType(){
-    return archetype_.makeCompFromState(comp_vars.size());
+    return archetype.makeCompFromState(comp_vars.size());
   }
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_max_var() const { return max_var; }
-  CompArchetype& get_archetype() { return archetype_; }
+  CompArchetype& get_archetype() { return archetype; }
 
 private:
   // the id of the last clause
@@ -144,11 +144,11 @@ private:
   const uint32_t& indep_support_end;
   vector<double> var_freq_scores;
   double act_inc = 1.0;
-  CompArchetype  archetype_;
+  CompArchetype  archetype;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
   vector<uint32_t> comp_vars; // Used to figure out which vars are in a component
-                                  // used in  recordCompOf
+                                  // used in  record_comp_of
                                   // its size is the number of variables in the component
 
   bool is_false(const Lit lit) const {
@@ -176,7 +176,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void recordCompOf(const uint32_t var);
+  void record_comp_of(const uint32_t var);
 
   void getClause(vector<uint32_t> &tmp, const Clause& cl, const Lit & omitLit) {
     tmp.clear();
@@ -187,34 +187,34 @@ private:
 
   // This is called from recordCompOf, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void searchClause(uint32_t vt, ClauseIndex clID, Lit const* pstart_cls){
-    const auto itVEnd = comp_vars.end();
+  void search_clause(uint32_t vt, ClauseIndex cl_id, Lit const* pstart_cls){
+    const auto it_v_end = comp_vars.end();
     bool all_lits_set = true;
-    for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {
-      assert(itL->var() <= max_var);
-      if(!archetype_.var_nil(itL->var()))
-        manageSearchOccurrenceAndScoreOf(*itL); // sets var to be seen
+    for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
+      assert(it_l->var() <= max_var);
+      if(!archetype.var_nil(it_l->var()))
+        manageSearchOccurrenceAndScoreOf(*it_l); // sets var to be seen
       else {
-        assert(!is_unknown(*itL));
+        assert(!is_unknown(*it_l));
         all_lits_set = false;
-        if (is_false(*itL)) continue;
+        if (is_false(*it_l)) continue;
 
         //accidentally entered a satisfied clause: undo the search process
-        while (comp_vars.end() != itVEnd) {
+        while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
-          archetype_.set_var_in_sup_comp_unseen(comp_vars.back()); //unsets it from being seen
+          archetype.set_var_in_sup_comp_unseen(comp_vars.back()); //unsets it from being seen
           comp_vars.pop_back();
         }
-        archetype_.setClause_nil(clID);
-        while(*itL != SENTINEL_LIT)
-          if(is_unknown(*(--itL))) un_bump_score(itL->var());
+        archetype.setClause_nil(cl_id);
+        while(*it_l != SENTINEL_LIT)
+          if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
         break;
       }
     }
 
-    if (!archetype_.clause_nil(clID)){
+    if (!archetype.clause_nil(cl_id)){
       bump_score(vt);
-      archetype_.setClause_seen(clID,all_lits_set);
+      archetype.setClause_seen(cl_id,all_lits_set);
     }
     if ((conf.decide & 2)) act_inc *= 1.0/0.98;
   }

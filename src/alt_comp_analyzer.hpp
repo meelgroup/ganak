@@ -53,14 +53,14 @@ public:
     return idx_to_cl;
   }
 
-  double score_of(VariableIndex v) const { return var_frequency_scores_[v]/act_inc; }
+  double freq_score_of(VariableIndex v) const { return var_freq_scores[v]/act_inc; }
   void un_bump_score(VariableIndex v) {
-    var_frequency_scores_[v] -= act_inc;
+    var_freq_scores[v] -= act_inc;
   }
   inline void bump_score(VariableIndex v) {
-    var_frequency_scores_[v] += act_inc;
-    if (var_frequency_scores_[v] > 1e100) {
-      for(auto& f: var_frequency_scores_) f *= 1e-90;
+    var_freq_scores[v] += act_inc;
+    if (var_freq_scores[v] > 1e100) {
+      for(auto& f: var_freq_scores) f *= 1e-90;
       act_inc *= 1e-90;
     }
     if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
@@ -105,7 +105,7 @@ public:
       if (is_unknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
         // TODO what is happening here....
-        /* var_frequency_scores_[*vt] = 0; */
+        /* var_freq_scores[*vt] = 0; */
       }
     }
 
@@ -149,7 +149,7 @@ private:
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
-  vector<double> var_frequency_scores_;
+  vector<double> var_freq_scores;
   double act_inc = 1.0;
   ComponentArchetype  archetype_;
   Counter* solver = nullptr;

@@ -55,7 +55,7 @@ public:
     comp_stack_.clear();
   }
 
-  double freq_score_of(VariableIndex v) const { return ana_.score_of(v); }
+  double freq_score_of(VariableIndex v) const { return ana_.freq_score_of(v); }
 
   void initialize(LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);

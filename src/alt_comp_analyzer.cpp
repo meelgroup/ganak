@@ -43,7 +43,7 @@ void ComponentAnalyzer::initialize(
 {
   max_variable_id_ = watches.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
-  var_frequency_scores_.resize(max_variable_id_ + 1, 0);
+  var_freq_scores.resize(max_variable_id_ + 1, 0);
   act_inc = 1.0;
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]

@@ -200,7 +200,6 @@ CacheEntryID CompCache::storeAsEntry(CacheableComp &ccomp, CacheEntryID super_co
   SLOW_DEBUG_DO(assert(hasEntry(id)));
   SLOW_DEBUG_DO(assert(hasEntry(super_comp_id)));
 
-  stats.incorporate_cache_store(entry(id), 0);
 
 #ifdef SLOW_DEBUG
   for (uint32_t u = 2; u < entry_base_.size(); u++)

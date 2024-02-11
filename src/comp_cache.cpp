@@ -71,7 +71,7 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
   entry_base_.clear();
   auto x = CacheableComp();
   entry_base_.push_back(x); // dummy Element
-  stats.incorporate_cache_store(x, 0);
+  stats.incorporate_cache_store(x, super_comp.nVars());
   table_.clear();
   table_.resize(1024*1024, 0);
   table_size_mask_ = table_.size() - 1;
@@ -98,7 +98,7 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
   stats.cache_infrastructure_bytes_memory_usage_ = 0;
   assert(!cache_full());
   entry_base_.push_back(*packed_super_comp);
-  stats.incorporate_cache_store(*packed_super_comp, 0);
+  stats.incorporate_cache_store(*packed_super_comp, super_comp.nVars());
   delete packed_super_comp;
   super_comp.set_id(1);
   compute_size_allocated();

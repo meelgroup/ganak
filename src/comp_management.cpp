@@ -100,6 +100,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
         stats.cache_hits_misses_q.push(0);
         comp_stack_.push_back(p_new_comp);
         p_new_comp->set_id(cache_.storeAsEntry(packed_comp, super_comp.id()));
+        stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";

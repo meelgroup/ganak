@@ -66,6 +66,7 @@ public:
       for(auto& f: var_frequency_scores_) f *= 1e-90;
       act_inc *= 1e-90;
     }
+    act_inc *= 1.0/0.98;
   }
   const ComponentArchetype &current_archetype() const { return archetype_; }
 

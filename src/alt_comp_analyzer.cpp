@@ -201,7 +201,6 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
       if (archetype_.clause_unseen_in_sup_comp(*p))
         searchClause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
-  act_inc *= 1.0/0.98;
 
   debug_print(COLWHT "-> Went through all bin/tri/long and now search_stack_ is " << search_stack_.size() << " long");
 }

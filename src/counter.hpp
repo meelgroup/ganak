@@ -155,7 +155,7 @@ public:
 
     double score = 0;
     if (stats.conflicts > 1000)
-      score += comp_manager_->freq_score_of(v)/30.0;
+      score += comp_manager_->freq_score_of(v)/20.0;
 
     if (print) cout << "---" << endl;
     if (print) cout << "v: " << v << " score1: " << score << endl;

@@ -140,7 +140,6 @@ private:
   vector<double> cache_hit_score;
   double act_inc = 1.0;
   Counter* solver_;
-  vector<uint32_t> tmp_data_for_pcc;
 };
 
 void ComponentManager::sortComponentStackRange(uint32_t start, uint32_t end) {

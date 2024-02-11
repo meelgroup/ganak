@@ -39,26 +39,26 @@ public:
   void set_id(CacheEntryID id) { id_ = id; }
   CacheEntryID id() const { return id_; }
 
-  void addVar(const VariableIndex var) {
+  void add_var(const VariableIndex var) {
     // the only time a sentinel is added should be in a
     // call to closeVariableData(..)
     SLOW_DEBUG_DO(assert(var != sentinel));
     vs_cls_data.push_back(var);
   }
 
-  void closeVariableData() {
+  void close_vars_data() {
     vs_cls_data.push_back(sentinel);
     clauses_offs = vs_cls_data.size();
   }
 
-  void addCl(const ClauseIndex cl) {
+  void add_cl(const ClauseIndex cl) {
     // the only time a sentinel is added should be in a
     // call to closeClauseData(..)
     SLOW_DEBUG_DO(assert(cl != sentinel));
     vs_cls_data.push_back(cl);
   }
 
-  void closeClauseData() {
+  void close_cls_data() {
     vs_cls_data.push_back(sentinel);
     assert(*(cls_begin()-1) == 0);
   }
@@ -77,6 +77,7 @@ public:
   uint32_t numBinCls() const { return num_bin_cls; }
   void setNumBinCls(uint32_t n) { num_bin_cls = n; }
 #endif
+  const vector<uint32_t>& get_raw_data() const { return vs_cls_data;}
   bool empty() const { return vs_cls_data.empty(); }
 
   // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
@@ -85,12 +86,12 @@ public:
     clauses_offs = 1;
 
     // Add all variables to top comp
-    for (uint32_t v = 1; v <= max_var_id; v++) addVar(v);
-    closeVariableData();
+    for (uint32_t v = 1; v <= max_var_id; v++) add_var(v);
+    close_vars_data();
 
     //Add all clauses to top comp
-    for (uint32_t clid = 1; clid <= max_clause_id; clid++) addCl(clid);
-    closeClauseData();
+    for (uint32_t clid = 1; clid <= max_clause_id; clid++) add_cl(clid);
+    close_cls_data();
   }
 
   void clear() {

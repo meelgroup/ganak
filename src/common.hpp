@@ -110,7 +110,7 @@ THE SOFTWARE.
 #endif
 #define debug_print_tmp(x) std::cout << COLDEF << x << COLDEF << endl
 
-#define all_vars_in_comp(comp, v) for(auto v = (comp)->varsBegin(); *v != sentinel; v++)
+#define all_vars_in_comp(comp, v) for(auto v = (comp)->vars_begin(); *v != sentinel; v++)
 
 #define release_assert(a) \
     do { \

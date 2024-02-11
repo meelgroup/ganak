@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include <vector>
 
 #include "../primitive_types.hpp"
-#include "difference_packed_comp.hpp"
+#include "hashed_comp.hpp"
 
 class Component;
 class ComponentArchetype;
@@ -39,9 +39,7 @@ class ComponentArchetype;
 class CacheableComponent: public HashedComp {
 public:
   CacheableComponent() = default;
-  CacheableComponent(void* hash_seed, Component &comp, uint32_t* tmp_data) :
-      HashedComp(hash_seed, comp, tmp_data) {
-  }
+  CacheableComponent(void* hash_seed, Component &comp) : HashedComp(hash_seed, comp) { }
 
   uint32_t size_in_bytes() const {
     return HashedComp::raw_data_byte_size();

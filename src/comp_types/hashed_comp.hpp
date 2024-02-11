@@ -35,7 +35,7 @@ THE SOFTWARE.
 class HashedComp: public BaseComp {
 public:
   HashedComp() = default;
-  inline HashedComp(void* hash_seed, Component &r_comp, uint32_t* tmp_data);
+  inline HashedComp(void* hash_seed, Component &r_comp);
   uint32_t raw_data_byte_size() const {
     return BaseComp::alloc_of_model_count();
   }
@@ -46,23 +46,7 @@ public:
   }
 };
 
-HashedComp::HashedComp(
-    void* hash_seed, Component &rComp, uint32_t* tmp_data) {
-  auto data = tmp_data;
-  uint32_t at = 0;
-
-  data[at++] = rComp.nVars();
-  if (*rComp.vars_begin()) {
-    for (auto it = rComp.vars_begin(); *it != sentinel; it++) data[at++] = *it;
-  }
-  data[at++] = sentinel;
-
-  if (*rComp.cls_begin()) {
-    for (auto jt = rComp.cls_begin(); *jt != sentinel; jt++) data[at++] =*jt;
-  }
-  data[at] = at;
-  at++;
-
+HashedComp::HashedComp(void* hash_seed, Component &comp) {
   clhasher h(hash_seed);
-  clhashkey_ = h(data, at);
+  clhashkey_ = h(comp.get_raw_data().data(), comp.get_raw_data().size());
 }

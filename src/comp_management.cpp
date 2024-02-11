@@ -41,11 +41,6 @@ void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
   comp_stack_.back()->create_init_comp(ana_.max_variable_id() , ana_.max_clause_id());
   cache_.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
-
-  // 100 for the constant overhead (bitsizes, num clauses, num variables)
-  // The 32* multiplier is because each DIFF can be at most 32b, since
-  //     we don't support more than 2**32 clauses or variables
-  tmp_data_for_pcc.resize(100+32*nVars+32*solver_->get_num_irred_long_cls());
 }
 
 void ComponentManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
@@ -94,7 +89,7 @@ void ComponentManager::recordRemainingCompsFor(StackLevel &top)
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
       Component *p_new_comp = ana_.makeComponentFromArcheType();
-      CacheableComponent packed_comp(hash_seed, ana_.getArchetype().current_comp_for_caching_, tmp_data_for_pcc.data());
+      CacheableComponent packed_comp(hash_seed, ana_.getArchetype().current_comp_for_caching_);
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());

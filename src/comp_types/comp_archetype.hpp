@@ -163,22 +163,22 @@ public:
     // Fill variables in new comp
     for (auto v_it = super_comp().vars_begin(); *v_it != sentinel;  v_it++)
       if (var_seen(*v_it)) { //we have to put a var into our comp
-        p_new_comp->addVar(*v_it);
-        current_comp_for_caching_.addVar(*v_it);
+        p_new_comp->add_var(*v_it);
+        current_comp_for_caching_.add_var(*v_it);
         setVar_in_other_comp(*v_it);
       }
-    p_new_comp->closeVariableData();
-    current_comp_for_caching_.closeVariableData();
+    p_new_comp->close_vars_data();
+    current_comp_for_caching_.close_vars_data();
 
     // Fill clauses in new comp
     for (auto it_cl = super_comp().cls_begin(); *it_cl != sentinel; it_cl++)
       if (clause_seen(*it_cl)) {
-        p_new_comp->addCl(*it_cl);
-        if (!clause_all_lits_set(*it_cl)) current_comp_for_caching_.addCl(*it_cl);
+        p_new_comp->add_cl(*it_cl);
+        if (!clause_all_lits_set(*it_cl)) current_comp_for_caching_.add_cl(*it_cl);
         setClause_in_other_comp(*it_cl);
       }
-    p_new_comp->closeClauseData();
-    current_comp_for_caching_.closeClauseData();
+    p_new_comp->close_cls_data();
+    current_comp_for_caching_.close_cls_data();
     BUDDY_DO(p_new_comp->setNumBinCls(num_bin_cls/2));
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<

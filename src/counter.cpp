@@ -3075,7 +3075,7 @@ uint64_t Counter::buddy_count() {
 
   // variable mapping
   for(uint32_t i = 0; i < c->nVars(); i++) {
-    uint32_t var = c->varsBegin()[i];
+    uint32_t var = c->vars_begin()[i];
     seen[var] = 1;
     /* vmap_rev[var] = vmap.size(); */
     vmap.push_back(var);
@@ -3094,7 +3094,7 @@ uint64_t Counter::buddy_count() {
   // Long clauses
   uint32_t actual_long = 0;
   const auto& ana = comp_manager_->get_ana();
-  for (auto itCl = c->clsBegin(); *itCl != sentinel; itCl++) {
+  for (auto itCl = c->cls_begin(); *itCl != sentinel; itCl++) {
     auto idx = *itCl;
     debug_print("IDX: " << idx);
     const auto& it = ana.get_idx_to_cl().find(idx);

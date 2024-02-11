@@ -65,7 +65,7 @@ ComponentCache::ComponentCache(
 void ComponentCache::init(Component &super_comp, void* hash_seed){
   CacheableComponent *packed_super_comp;
   vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.num_long_cls());
-  packed_super_comp = new CacheableComponent(hash_seed,super_comp, tmp.data());
+  packed_super_comp = new CacheableComponent(hash_seed,super_comp);
   my_time_ = 1;
 
   entry_base_.clear();

@@ -89,7 +89,6 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
-    if (isUnknown(lit)) bump_score(lit.var());
     return manageSearchOccurrenceOf(lit.var());
   }
 
@@ -221,7 +220,6 @@ private:
     }
 
     if (!archetype_.clause_nil(clID)){
-      bump_score(vt);
       archetype_.setClause_seen(clID,all_lits_set);
     }
   }

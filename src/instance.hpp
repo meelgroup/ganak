@@ -186,15 +186,15 @@ protected:
     else return "UNKN";
   }
 
-  bool isUnknown(Lit lit) const {
+  bool is_unknown(Lit lit) const {
     return lit_values_[lit] == X_TRI;
   }
 
-  bool isUnknown(uint32_t var) const {
-    return isUnknown(Lit(var, false));
+  bool is_unknown(uint32_t var) const {
+    return is_unknown(Lit(var, false));
   }
 
-  bool isSatisfied(ClauseOfs off) {
+  bool is_satisfied(ClauseOfs off) {
     for (auto lt: *alloc->ptr(off)) if (isTrue(lt)) return true;
     return false;
   }
@@ -204,7 +204,7 @@ protected:
   vector<Cube> mini_cubes;
 
 private:
-  void parseWithCMS(const std::string& filename);
+  void parse_with_cms(const std::string& filename);
 
 };
 

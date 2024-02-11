@@ -175,7 +175,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
     const auto v = *vt;
-    SLOW_DEBUG_DO(assert(isUnknown(v)));
+    SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     //traverse binary clauses
     uint32_t const* p = begin_cls_of_var(v);
@@ -202,7 +202,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
           bump_score(v);
           manageSearchOccurrenceAndScoreOf(a);
           manageSearchOccurrenceAndScoreOf(b);
-          archetype_.setClause_seen(*p ,isUnknown(a) && isUnknown(b));
+          archetype_.setClause_seen(*p ,is_unknown(a) && is_unknown(b));
         }
       }
     }

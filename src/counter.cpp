@@ -185,7 +185,7 @@ void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
 void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
   assert(ended_irred_cls);
   for(const auto& l: lits) release_assert(l.var() <= nVars());
-  for(const auto& l: lits) release_assert(isUnknown(l));
+  for(const auto& l: lits) release_assert(is_unknown(l));
   assert(lits.size() >= 2 && "No unit or empty clauses please");
 
   Clause* cl = addClause(lits, true);
@@ -2647,10 +2647,10 @@ bool Counter::check_watchlists() const {
       uint32_t num_unk = 0;
       bool sat = false;
       for(const auto& l: *alloc->ptr(ofs)) {
-        if (isUnknown(l)) num_unk++;
+        if (is_unknown(l)) num_unk++;
         if (isTrue(l)) sat = true;
       }
-      if (!sat && num_unk >=2 && !isUnknown(lit)) {
+      if (!sat && num_unk >=2 && !is_unknown(lit)) {
         cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: " << endl;
       for(const auto& l: *alloc->ptr(ofs)) {
           cout << l << " (val: " << lit_val_str(l)
@@ -3176,7 +3176,7 @@ template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
   bool satisfied = false;
   for(const auto& l: cl) {
     if (isTrue(l)) {satisfied = true; break;}
-    if (isUnknown(l)) {num_unknown++; unk = l;}
+    if (is_unknown(l)) {num_unknown++; unk = l;}
     if (num_unknown > 1) break;
   }
 

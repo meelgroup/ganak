@@ -87,12 +87,12 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
-  if (isUnknown(lit)) bump_score(lit.var());
+  if (is_unknown(lit)) bump_score(lit.var());
     return manageSearchOccurrenceOf(lit.var());
   }
 
   void setSeenAndStoreInSearchStack(const VariableIndex v){
-    assert(isUnknown(v));
+    assert(is_unknown(v));
     search_stack_.push_back(v);
     archetype_.setVar_seen(v);
   }
@@ -102,7 +102,7 @@ public:
 
     debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
     for (auto vt = super_comp.varsBegin(); *vt != sentinel; vt++) {
-      if (isUnknown(*vt)) {
+      if (is_unknown(*vt)) {
         archetype_.setVar_in_sup_comp_unseen(*vt);
         // TODO what is happening here....
         /* var_frequency_scores_[*vt] = 0; */
@@ -165,11 +165,11 @@ private:
   bool isTrue(const Lit lit) const {
     return lit_values_[lit] == T_TRI;
   }
-  bool isUnknown(const Lit lit) const {
+  bool is_unknown(const Lit lit) const {
       return lit_values_[lit] == X_TRI;
   }
 
-  bool isUnknown(const VariableIndex v) const {
+  bool is_unknown(const VariableIndex v) const {
     return lit_values_[Lit(v, true)] == X_TRI;
   }
 
@@ -202,7 +202,7 @@ private:
       if(!archetype_.var_nil(itL->var()))
         manageSearchOccurrenceAndScoreOf(*itL); // sets var to be seen
       else {
-        assert(!isUnknown(*itL));
+        assert(!is_unknown(*itL));
         all_lits_set = false;
         if (isFalse(*itL)) continue;
 
@@ -214,7 +214,7 @@ private:
         }
         archetype_.setClause_nil(clID);
         while(*itL != SENTINEL_LIT)
-          if(isUnknown(*(--itL))) un_bump_score(itL->var());
+          if(is_unknown(*(--itL))) un_bump_score(itL->var());
         break;
       }
     }

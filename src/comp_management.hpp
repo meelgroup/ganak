@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include "comp_types/base_packed_comp.hpp"
 #include "comp_types/comp.hpp"
 #include "comp_cache.hpp"
-#include "alt_comp_analyzer.hpp"
+#include "comp_analyzer.hpp"
 
 #include <unordered_map>
 #include <random>

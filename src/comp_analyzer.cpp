@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "alt_comp_analyzer.hpp"
+#include "comp_analyzer.hpp"
 #include "common.hpp"
 #include "counter.hpp"
 #include "clauseallocator.hpp"

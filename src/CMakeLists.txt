@@ -49,7 +49,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
 add_subdirectory (clhash)
 
 SET(SOURCES
-    alt_comp_analyzer.cpp
+    comp_analyzer.cpp
 	comp_cache.cpp
 	comp_management.cpp
 	instance.cpp

@@ -412,6 +412,8 @@ uint64_t xorshift128plus(xorshift128plus_key_t * key) {
     return key->part2 + s0;
 }
 
+enum {RANDOM_64BITWORDS_NEEDED_FOR_CLHASH=133,RANDOM_BYTES_NEEDED_FOR_CLHASH=133*8};
+
 void * get_random_key_for_clhash(uint64_t seed1, uint64_t seed2) {
     xorshift128plus_key_t k;
     xorshift128plus_init(seed1, seed2, &k);

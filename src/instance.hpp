@@ -42,14 +42,14 @@ public:
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return longRedCls.size(); }
-  uint32_t get_num_irred_long_cls() const { return longIrredCls.size(); }
+  uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
   int val(Lit lit) const { return lit_values_[lit]; }
   int val(uint32_t var) const { return lit_values_[Lit(var,1)]; }
 
 
   friend class ClauseAllocator;
   ClauseAllocator* alloc;
-  vector<ClauseOfs> longIrredCls;
+  vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> longRedCls;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
@@ -96,7 +96,7 @@ protected:
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
 
-  LiteralIndexedVector<LitWatchList> watches_;
+  LiteralIndexedVector<LitWatchList> watches;
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   bool num_vars_set = false;
@@ -155,11 +155,11 @@ protected:
   }
 
   LitWatchList & litWatchList(Lit lit) {
-    return watches_[lit];
+    return watches[lit];
   }
 
   const LitWatchList & litWatchList(Lit lit) const {
-    return watches_[lit];
+    return watches[lit];
   }
 
   inline bool isTrue(const Lit &lit) const {
@@ -241,7 +241,7 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
   /* { */
     /* Lit l = tmp_minim_with_bins[0]; */
     if (!seen[l.toPosInt()]) continue;
-    const auto& w = watches_[l].binary_links_;
+    const auto& w = watches[l].binary_links_;
     for(const auto& bincl: w) {
       const auto& l2 = bincl.lit();
       assert(l.var() != l2.var());

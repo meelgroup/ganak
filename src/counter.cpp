@@ -127,18 +127,18 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
 void Counter::init_activity_scores() {
   uint32_t total = 0;
   act_inc = 1.0;
-  for (auto l = Lit(1, false); l != watches_.end_lit(); l.inc()) {
-    watches_[l].activity = watches_[l].binary_links_.size();
-    total += watches_[l].binary_links_.size();
+  for (auto l = Lit(1, false); l != watches.end_lit(); l.inc()) {
+    watches[l].activity = watches[l].binary_links_.size();
+    total += watches[l].binary_links_.size();
   }
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
     total += cl.size();
-    for(const auto& l: cl) watches_[l].activity++;
+    for(const auto& l: cl) watches[l].activity++;
   }
   double maximum = 0;
-  for(auto& w: watches_) maximum = std::max(w.activity, maximum);
-  for(auto& w: watches_) w.activity /= maximum;
+  for(auto& w: watches) maximum = std::max(w.activity, maximum);
+  for(auto& w: watches) w.activity /= maximum;
 }
 
 void Counter::end_irred_cls() {
@@ -161,7 +161,7 @@ void Counter::end_irred_cls() {
 
   if (conf.verb) stats.printShortFormulaInfo(this);
   // This below will initialize the disjoint component analyzer (ana_)
-  comp_manager_->initialize(watches_, alloc, longIrredCls, nVars());
+  comp_manager_->initialize(watches, alloc, long_irred_cls, nVars());
 }
 
 void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
@@ -178,7 +178,7 @@ void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
   stats.incorporateIrredClauseData(lits);
   Clause* cl = addClause(lits, false);
   auto off = alloc->get_offset(cl);
-  if (cl) longIrredCls.push_back(off);
+  if (cl) long_irred_cls.push_back(off);
   SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
 }
 
@@ -270,7 +270,7 @@ void Counter::td_decompose() {
   Graph primal(nVars()+1);
   all_lits(i) {
     Lit l(i/2, i%2);
-    for(const auto& l2: watches_[l].binary_links_) {
+    for(const auto& l2: watches[l].binary_links_) {
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins))
           && l < l2.lit()) {
         debug_print("v1: " << l.var());
@@ -280,7 +280,7 @@ void Counter::td_decompose() {
     }
   }
 
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
@@ -342,7 +342,7 @@ mpz_class Counter::check_count_norestart_cms(const Cube& c) {
   CMSat::SATSolver test_solver;
   test_solver.new_vars(nVars());
   // Long cls
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     tmp.clear();
     for(const auto& l: cl) tmp.push_back(l);
@@ -351,7 +351,7 @@ mpz_class Counter::check_count_norestart_cms(const Cube& c) {
   // Bin cls
   all_lits(i) {
     Lit l(i/2, i%2);
-    for(const auto& l2: watches_[l].binary_links_) {
+    for(const auto& l2: watches[l].binary_links_) {
       if (l2.irred() && l < l2.lit()) {
         tmp.clear();
         tmp.push_back(l);
@@ -399,7 +399,7 @@ mpz_class Counter::check_count_norestart(const Cube& c) {
   CMSat::SATSolver test_solver;
   test_solver.new_vars(nVars());
   // Long cls
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     tmp.clear();
     for(const auto& l: cl) tmp.push_back(l);
@@ -409,7 +409,7 @@ mpz_class Counter::check_count_norestart(const Cube& c) {
   // Bin cls
   all_lits(i) {
     Lit l(i/2, i%2);
-    for(const auto& l2: watches_[l].binary_links_) {
+    for(const auto& l2: watches[l].binary_links_) {
       if (l2.irred() && l < l2.lit()) {
         tmp.clear();
         tmp.push_back(l);
@@ -517,7 +517,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
     for(const auto& l: c.cnf) if (seen[l.var()]) cout << l << " ";
     cout << "0" << endl;
 
-    for(const auto& off: longIrredCls) {
+    for(const auto& off: long_irred_cls) {
       const Clause& cl = *alloc->ptr(off);
       bool ok = true;
       for(const auto& l: cl) if (seen[l.var()] == 0) {ok = false;break;}
@@ -530,7 +530,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
     all_lits(i) {
       Lit l(i/2, i%2);
       if (seen[l.var()] == 0) continue;
-      for(const auto& l2: watches_[l].binary_links_) {
+      for(const auto& l2: watches[l].binary_links_) {
         if (l < l2.lit() || seen[l2.lit().var()] == 0 || !l2.irred()) continue;
         cout << "txt << " << l << " " << l2.lit() << " 0" << endl;
       }
@@ -763,7 +763,7 @@ end:
 }
 
 bool Counter::standard_polarity(const uint32_t v) const {
-    return watches_[Lit(v, true)].activity > watches_[Lit(v, false)].activity;
+    return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;
 }
 
 bool Counter::get_polarity(const uint32_t v) const {
@@ -874,7 +874,7 @@ uint32_t Counter::find_best_branch_gpmc() {
 
     double score_td = tdscore[v];
     double score_f = comp_manager_->freq_score_of(v);
-    double score_a = watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity;
+    double score_a = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {
       max_score_td = score_td;
@@ -1966,7 +1966,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
 
   // Backup 1st&2nd watch + block lit
   off_to_lit12.clear();
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     bool curr_prop = currently_propagating_cl(cl);
     off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
@@ -1978,7 +1978,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
   }
   all_lits(i) {
     Lit lit(i/2, i%2);
-    for(const auto& ws: watches_[lit].watch_list_) {
+    for(const auto& ws: watches[lit].watch_list_) {
       auto it = off_to_lit12.find(ws.ofs);
       assert(it != off_to_lit12.end());
       if (lit == it->second.first) it->second.blk1 = ws.blckLit;
@@ -2005,7 +2005,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
 
   // Vivify clauses
   v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
-  vivify_cls(longIrredCls);
+  vivify_cls(long_irred_cls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-myTime));
 
@@ -2018,9 +2018,9 @@ void Counter::vivify_all(bool force, bool only_irred) {
   }
 
   // Restore
-  for(auto& ws: watches_) ws.watch_list_.clear();
+  for(auto& ws: watches) ws.watch_list_.clear();
   if (decision_stack_.size() != 0) {
-    for(const auto& off: longIrredCls) v_cl_repair(off);
+    for(const auto& off: long_irred_cls) v_cl_repair(off);
     for(const auto& off: longRedCls) v_cl_repair(off);
   } else {
     // Move all 0-level stuff to unit_clauses_
@@ -2033,7 +2033,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
     }
     bool ret2 = propagate();
     assert(ret2);
-    v_cl_toplevel_repair(longIrredCls);
+    v_cl_toplevel_repair(long_irred_cls);
     v_cl_toplevel_repair(longRedCls);
   }
   off_to_lit12.clear();
@@ -2599,7 +2599,7 @@ void Counter::recordLastUIPCause() {
 Counter::Counter(const CounterConfiguration& _conf) :
     Instance(_conf)
     , mtrand(_conf.seed)
-    , order_heap(VarOrderLt(watches_))
+    , order_heap(VarOrderLt(watches))
 {
   if (conf.do_buddy) {
     bdd_init(1000000, 100000);
@@ -2624,7 +2624,7 @@ bool Counter::check_watchlists() const {
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     cout << "->Watchlist for lit " << lit << " (val: " << lit_val_str(lit) << ") " << endl;
-    auto& ws = watches_[lit].watch_list_;
+    auto& ws = watches[lit].watch_list_;
     for(const auto& w: ws) {
       const auto ofs = w.ofs;
       cout << "--> Cl ofs " << ofs << " lits: ";
@@ -2641,7 +2641,7 @@ bool Counter::check_watchlists() const {
   // FALSE & UNK. Must be UNK & UNK
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
-    auto& ws = watches_[lit].watch_list_;
+    auto& ws = watches[lit].watch_list_;
     for(const auto& w: ws) {
       const auto ofs = w.ofs;
       uint32_t num_unk = 0;
@@ -2665,7 +2665,7 @@ bool Counter::check_watchlists() const {
   map<ClauseOfs, uint32_t> off_att_num;
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
-    for(const auto& ws: watches_[lit].watch_list_) {
+    for(const auto& ws: watches[lit].watch_list_) {
       if (off_att_num.find(ws.ofs) == off_att_num.end()) off_att_num[ws.ofs] = 1;
       else off_att_num[ws.ofs]++;
     }
@@ -2683,7 +2683,7 @@ bool Counter::check_watchlists() const {
     }
     off_att_num.erase(off);
   };
-  for(const auto& off: longIrredCls) check_attach(off);
+  for(const auto& off: long_irred_cls) check_attach(off);
   for(const auto& off: longRedCls) check_attach(off);
   if (!off_att_num.empty()) {
     cout << "ERROR: The following clauses are attached but are NOT in longRed/longIrred clauses" << endl;
@@ -2862,22 +2862,22 @@ void Counter::subsume_all() {
   auto old_subsumed_bin_cls = stats.subsumed_bin_cls;
   stats.subsume_runs++;
   occ.resize((nVars()+1)*2);
-  attach_occ(longIrredCls);
+  attach_occ(long_irred_cls);
   attach_occ(longRedCls);
 
   // Detach everything
-  for(auto& ws: watches_) ws.watch_list_.clear();
+  for(auto& ws: watches) ws.watch_list_.clear();
 
   // Binary clauses
   vector<BinClSub> bin_cls;
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
-    for(const auto& l2: watches_[lit].binary_links_) {
+    for(const auto& l2: watches[lit].binary_links_) {
       if (l2.lit() < lit) continue;
       assert(lit < l2.lit());
       bin_cls.push_back(BinClSub(lit, l2.lit(), l2.red()));
     }
-    watches_[lit].binary_links_.clear();
+    watches[lit].binary_links_.clear();
   }
   std::sort(bin_cls.begin(), bin_cls.end());
   uint32_t j = 0;
@@ -2910,7 +2910,7 @@ void Counter::subsume_all() {
     Clause& cl = *alloc->ptr(off);
     if (cl.freed) continue;
     if (cl.red) longRedCls.push_back(off);
-    else longIrredCls.push_back(off);
+    else long_irred_cls.push_back(off);
 
     std::sort(cl.begin(), cl.end(),
       [=](const Lit& a, const Lit& b) {
@@ -3019,7 +3019,7 @@ void Counter::check_sat_solution() const {
   assert(sat_mode());
   bool ok = true;
 
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
     if (clause_falsified(cl)) {
       ok = false;
@@ -3119,7 +3119,7 @@ uint64_t Counter::buddy_count() {
   for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
     Lit l(v, i);
     if (val(l) != X_TRI) continue;
-    for(const auto& ws: watches_[l].binary_links_) {
+    for(const auto& ws: watches[l].binary_links_) {
       if (!ws.irred() || ws.lit() < l) continue;
       if (val(ws.lit()) == T_TRI) continue;
       assert(val(ws.lit()) == X_TRI); // otherwise would have propagated/conflicted
@@ -3194,7 +3194,7 @@ template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
 
 void Counter::check_all_propagated_conflicted() const {
   // Everything that should have propagated, propagated
-  for(const auto& off: longIrredCls) {
+  for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     check_cl_propagated_conflicted(cl);
   }
@@ -3206,7 +3206,7 @@ void Counter::check_all_propagated_conflicted() const {
   all_lits(i) {
     Lit lit(i/2, i%2);
     if (val(lit) == T_TRI) continue;
-    for(const auto& ws: watches_[lit].binary_links_) {
+    for(const auto& ws: watches[lit].binary_links_) {
       if (val(ws.lit()) == T_TRI) continue;
       if (val(lit) == F_TRI) {
         if (val(ws.lit()) == X_TRI) {

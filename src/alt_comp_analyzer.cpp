@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "clauseallocator.hpp"
 
-
 ComponentAnalyzer::ComponentAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
@@ -39,10 +38,10 @@ ComponentAnalyzer::ComponentAnalyzer(
 
 // Builds occ lists and sets things up
 void ComponentAnalyzer::initialize(
-    LiteralIndexedVector<LitWatchList> & watches_, // binary clauses
-    const ClauseAllocator* alloc, const vector<ClauseOfs>& longIrredCls) // longer-than-2-long clauses
+    LiteralIndexedVector<LitWatchList> & watches, // binary clauses
+    const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
 {
-  max_variable_id_ = watches_.end_lit().var() - 1;
+  max_variable_id_ = watches.end_lit().var() - 1;
   search_stack_.reserve(max_variable_id_ + 1);
   var_frequency_scores_.resize(max_variable_id_ + 1, 0);
   act_inc = 1.0;
@@ -61,7 +60,7 @@ void ComponentAnalyzer::initialize(
   vector<uint32_t> tmp;
   max_clause_id_ = 1;
   // lit_pool contains all non-binary clauses
-  for (const auto& off: longIrredCls) {
+  for (const auto& off: long_irred_cls) {
     // Builds the occ list for 3-long and long clauses
     // it_curr_cl_st is the starting point of the clause
     // for each lit in the clause, it adds the clause to the occ list
@@ -116,7 +115,7 @@ void ComponentAnalyzer::initialize(
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
-      for (const auto& bincl: watches_[Lit(v, i)].binary_links_) {
+      for (const auto& bincl: watches[Lit(v, i)].binary_links_) {
         if (bincl.irred()) unified_variable_links_lists_pool_.push_back(bincl.lit().var());
       }
     }

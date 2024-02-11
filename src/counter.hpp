@@ -163,7 +163,7 @@ public:
     if (print) cout << "v: " << v << " score1: " << score << endl;
 
     if (stats.conflicts > 1000)
-      score += (watches_[Lit(v, false)].activity + watches_[Lit(v, true)].activity)/(30*act_inc);
+      score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(30*act_inc);
     if (print) cout << "v: " << v << " score2: " << score << endl;
 
     if (!tdscore.empty()) score += tdscore[v];
@@ -308,8 +308,8 @@ private:
     var(lit).sublevel = trail.size();
     qhead = std::min<uint32_t>(qhead, trail.size());
     trail.push_back(lit);
-    __builtin_prefetch(watches_[lit.neg()].binary_links_.data());
-    __builtin_prefetch(watches_[lit.neg()].watch_list_.data());
+    __builtin_prefetch(watches[lit.neg()].binary_links_.data());
+    __builtin_prefetch(watches[lit.neg()].watch_list_.data());
     if (conf.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
       Clause& cl = *alloc->ptr(ant.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
@@ -590,12 +590,12 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 
 void inline Counter::increaseActivity(const Lit lit) {
   if (conf.do_single_bump && seen[lit.var()]) return;
-  watches_[lit].activity += act_inc;
+  watches[lit].activity += act_inc;
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
-  if (watches_[lit].activity > 1e100) {
+  if (watches[lit].activity > 1e100) {
     //rescale
     act_inc *= 1e-90;
-    for(auto& v: watches_) v.activity*=1e-90;
+    for(auto& v: watches) v.activity*=1e-90;
   }
 }
 

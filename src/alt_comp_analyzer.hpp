@@ -68,7 +68,7 @@ public:
   const ComponentArchetype &current_archetype() const { return archetype_; }
 
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
-      const ClauseAllocator* alloc, const vector<ClauseOfs>& longIrredCls);
+      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool isUnseenAndSet(const VariableIndex v) const {
     SLOW_DEBUG_DO(assert(v <= max_variable_id_));

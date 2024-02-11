@@ -26,11 +26,11 @@ THE SOFTWARE.
 
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana_"
-void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches_,
-    const ClauseAllocator* _alloc, const vector<ClauseOfs>& longIrredCls, uint32_t nVars){
+void ComponentManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
+    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
   assert(comp_stack_.empty());
 
-  ana_.initialize(watches_, _alloc, longIrredCls);
+  ana_.initialize(watches, _alloc, long_irred_cls);
 
   //Add dummy comp
   comp_stack_.push_back(new Component());

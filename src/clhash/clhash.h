@@ -20,15 +20,14 @@
 #define INCLUDE_CLHASH_H_
 
 
-#include <stdlib.h>
-#include <stdint.h> // life is short, please use a C99-compliant compiler
-#include <stddef.h>
+#include <cstdlib>
+#include <cstdint> // life is short, please use a C99-compliant compiler
+#include <cstddef>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum {RANDOM_64BITWORDS_NEEDED_FOR_CLHASH=133,RANDOM_BYTES_NEEDED_FOR_CLHASH=133*8};
 
 
 

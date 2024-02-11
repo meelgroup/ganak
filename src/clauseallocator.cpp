@@ -200,8 +200,8 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
 
   assert(sizeof(uint32_t) % sizeof(Lit) == 0);
 
-  for(auto& ws: solver->watches_) move_one_watchlist(ws.watch_list_, newDataStart, new_ptr);
-  update_offsets(solver->longIrredCls, newDataStart, new_ptr);
+  for(auto& ws: solver->watches) move_one_watchlist(ws.watch_list_, newDataStart, new_ptr);
+  update_offsets(solver->long_irred_cls, newDataStart, new_ptr);
   update_offsets(solver->longRedCls, newDataStart, new_ptr);
 
   //Fix up variables_

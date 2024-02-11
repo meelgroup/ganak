@@ -186,11 +186,11 @@ public:
   void init_activity_scores();
   void set_next_restart(uint64_t next) { conf.next_restart = next; }
   bqueue<uint32_t> comp_size_q;
-  int32_t dec_level() const { return decision_stack_.get_decision_level(); }
+  int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
-  int32_t decision_level() const { return decision_stack_.get_decision_level();}
+  int32_t decision_level() const { return decisions.get_decision_level();}
 
   // test
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
@@ -217,7 +217,7 @@ private:
   double start_time;
   std::mt19937_64 mtrand;
 
-  DecisionStack decision_stack_;
+  DecisionStack decisions;
   vector<Lit> trail;
   uint32_t qhead = 0;
   ComponentManager* comp_manager_ = nullptr;
@@ -349,25 +349,25 @@ private:
   // The literals that have been set in this decision level
   vector<Lit>::const_iterator top_declevel_trail_begin() const
   {
-    return trail.begin() + variables_[decision_stack_.top().var].sublevel;
+    return trail.begin() + variables_[decisions.top().var].sublevel;
   }
   vector<Lit>::iterator top_declevel_trail_begin()
   {
-    return trail.begin() + variables_[decision_stack_.top().var].sublevel;
+    return trail.begin() + variables_[decisions.top().var].sublevel;
   }
 
   void init_decision_stack()
   {
-    decision_stack_.clear();
+    decisions.clear();
     trail.clear();
     // initialize the stack to contain at least level zero
-    decision_stack_.push_back(StackLevel(
+    decisions.push_back(StackLevel(
           1, // super comp
           2)); //comp stack offset
 
     // I guess this is needed so the system later knows it's fully counted
     // since this is only a dummy.
-    decision_stack_.back().change_to_right_branch();
+    decisions.back().change_to_right_branch();
   }
 
   const Lit &top_dec_lit() const {
@@ -375,11 +375,11 @@ private:
   }
 
   uint32_t trail_at_dl(uint32_t dl) const {
-    return variables_[decision_stack_.at(dl).var].sublevel;
+    return variables_[decisions.at(dl).var].sublevel;
   }
 
   uint32_t trail_at_top() const {
-    return variables_[decision_stack_.top().var].sublevel;
+    return variables_[decisions.top().var].sublevel;
   }
 
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
@@ -404,11 +404,11 @@ private:
       }
     }
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
-    if (!sat_mode()) comp_manager_->cleanRemainingComponentsOf(decision_stack_.top());
+    if (!sat_mode()) comp_manager_->cleanRemainingComponentsOf(decisions.top());
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
     else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
-    if (!sat_mode()) decision_stack_.top().resetRemainingComps();
+    if (!sat_mode()) decisions.top().resetRemainingComps();
   }
 
   /////////////////////////////////////////////

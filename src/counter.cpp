@@ -510,6 +510,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
     cout << "txt cube: ";
     for(const auto& l: c.cnf) cout << l.neg() << " ";
     cout << " cnt: " << c.val << endl;
+    assert(false && "TODO -- what?? below code is not executed???");
     continue;
 
     for(const auto& v: c.active_vars)  seen[v] = 1;

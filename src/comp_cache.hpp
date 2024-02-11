@@ -303,11 +303,11 @@ void ComponentCache::storeValueOf(CacheEntryID id, const mpz_class &model_count)
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));
-  /* SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).SizeInBytes())); */
-  stats.sum_bytes_cached_comps_ -= entry(id).SizeInBytes();
+  /* SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).size_in_bytes())); */
+  stats.sum_bytes_cached_comps_ -= entry(id).size_in_bytes();
   entry(id).set_model_count(model_count,my_time_);
   entry(id).set_creation_time(my_time_);
   entry(id).set_next_bucket_element(table_[table_ofs]);
   table_[table_ofs] = id;
-  stats.sum_bytes_cached_comps_ += entry(id).SizeInBytes();
+  stats.sum_bytes_cached_comps_ += entry(id).size_in_bytes();
 }

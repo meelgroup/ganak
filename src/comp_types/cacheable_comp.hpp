@@ -43,7 +43,7 @@ public:
       HashedComp(hash_seed, comp, tmp_data) {
   }
 
-  uint32_t SizeInBytes() const {
+  uint32_t size_in_bytes() const {
     return HashedComp::raw_data_byte_size();
   }
 
@@ -62,7 +62,7 @@ public:
   void set_free() {
     father_ = std::numeric_limits<uint32_t>::max();
     delete model_count_;
-    model_count_ = NULL;
+    model_count_ = nullptr;
   }
 
 private:

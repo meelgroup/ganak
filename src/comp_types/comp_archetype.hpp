@@ -17,6 +17,9 @@
 #include "comp.hpp"
 #include "cacheable_comp.hpp"
 
+using std::cout;
+using std::endl;
+
 // State values for variables found during comp
 // analysis (CA)
 using CA_SearchState = uint8_t;

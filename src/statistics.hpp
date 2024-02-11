@@ -147,14 +147,14 @@ public:
   }
 
   void incorporate_cache_store(const CacheableComponent &ccomp, const uint32_t comp_nvars) {
-    sum_bytes_cached_comps_ += ccomp.SizeInBytes();
+    sum_bytes_cached_comps_ += ccomp.size_in_bytes();
     sum_cache_store_sizes_ += comp_nvars;
     num_cached_comps_++;
     total_num_cached_comps_++;
   }
 
   void incorporate_cache_erase(const CacheableComponent &ccomp){
-    sum_bytes_cached_comps_ -= ccomp.SizeInBytes();
+    sum_bytes_cached_comps_ -= ccomp.size_in_bytes();
     num_cached_comps_--;
   }
 

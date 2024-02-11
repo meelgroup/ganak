@@ -94,6 +94,7 @@ CheckOptions:
   value: >-
    (^cname_ttl_$|
    |^_.*$|
+   |^nVars$|
    |^.*limitK$|
    |^.*limitM$)
 - key: readability-identifier-naming.PrivateMemberCase
@@ -116,8 +117,7 @@ CheckOptions:
    |^.*limitK$|
    |^.*limitM$)
 
-HeaderFilterRegex: '^./source/.*|^./contrib/.*|^./test/.*|^./envoy/.*'
-
+HeaderFilterRegex: '^./source/.*|^./contrib/.*|^./test/.*|^./envoy/.*|buddy-2.4.*'
 UseColor: true
 
 WarningsAsErrors: ''

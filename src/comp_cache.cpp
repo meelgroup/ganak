@@ -165,7 +165,7 @@ bool ComponentCache::deleteEntries() {
 
   for (uint32_t id = 2; id < entry_base_.size(); id++)
     if (!entry_base_[id].is_free()) {
-      stats.sum_bytes_cached_comps_ += entry_base_[id].SizeInBytes();
+      stats.sum_bytes_cached_comps_ += entry_base_[id].size_in_bytes();
     }
 
   stats.num_cached_comps_ = entry_base_.size();

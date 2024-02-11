@@ -165,14 +165,16 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
   for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(isUnknown(v)));
-    bump_score(v);
 
     //traverse binary clauses
     uint32_t const* p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       BUDDY_DO(if (solver->val(*p) == X_TRI) archetype_.num_bin_cls++);
-      manageSearchOccurrenceOf(*p);
+      if(manageSearchOccurrenceOf(*p)) {
+        bump_score(*p);
+        bump_score(v);
+      }
     }
 
     //traverse ternary clauses
@@ -186,6 +188,7 @@ void ComponentAnalyzer::recordComponentOf(const VariableIndex var) {
           archetype_.setClause_nil(*p);
         } else {
           /* cout << "not satisfied" << endl; */
+          bump_score(v);
           manageSearchOccurrenceAndScoreOf(a);
           manageSearchOccurrenceAndScoreOf(b);
           archetype_.setClause_seen(*p ,isUnknown(a) && isUnknown(b));

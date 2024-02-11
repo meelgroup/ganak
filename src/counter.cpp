@@ -616,7 +616,7 @@ void Counter::print_all_levels() {
       << endl;
 
     const auto& c = comp_manager_->at(sup_at);
-    cout << COLORG "-> Variables in comp_manager_->at(" << sup_at << ")."
+    cout << COLORG "-> Vars in comp_manager_->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
@@ -1159,7 +1159,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     const auto& c = comp_manager_->at(sup_at);
 #ifdef VERBOSE_DEBUG
     cout << "-> Checking count. Incl all dec: " << include_all_dec << " dec lev: " << decisions.get_decision_level() << " var: " << single_var << endl;
-    cout << "-> Variables in comp_manager_->at(" << sup_at << ")."
+    cout << "-> Vars in comp_manager_->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
     cout << endl;
@@ -1366,8 +1366,7 @@ void Counter::print_comp_stack_info() const {
 }
 
 struct UIPFixer {
-  UIPFixer(vector<Variable>& _vars) : vars(_vars){
-  }
+  UIPFixer(vector<VarData>& _vars) : vars(_vars) { }
   bool operator()(const Lit& a, const Lit& b) const {
     auto a_dec = vars[a.var()].decision_level;
     auto b_dec = vars[b.var()].decision_level;
@@ -1377,7 +1376,7 @@ struct UIPFixer {
     if (!a_ante.isAnt()) return true;
     return false;
   }
-  vector<Variable>& vars;
+  vector<VarData>& vars;
 };
 
 size_t Counter::find_backtrack_level_of_learnt() {

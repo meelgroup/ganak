@@ -40,9 +40,9 @@ public:
   void set_id(CacheEntryID id) { id_ = id; }
   CacheEntryID id() const { return id_; }
 
-  void add_var(const VariableIndex var) {
+  void add_var(const uint32_t var) {
     // the only time a sentinel is added should be in a
-    // call to closeVariableData(..)
+    // call to closeVarData(..)
     SLOW_DEBUG_DO(assert(var != sentinel));
     vs_cls_data.push_back(var);
   }
@@ -64,7 +64,7 @@ public:
     assert(*(cls_begin()-1) == 0);
   }
 
-  vector<VariableIndex>::const_iterator vars_begin() const {
+  vector<uint32_t>::const_iterator vars_begin() const {
     return vs_cls_data.begin();
   }
 

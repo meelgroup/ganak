@@ -53,11 +53,11 @@ public:
     return idx_to_cl;
   }
 
-  double freq_score_of(VariableIndex v) const { return var_freq_scores[v]/act_inc; }
-  void un_bump_score(VariableIndex v) {
+  double freq_score_of(uint32_t v) const { return var_freq_scores[v]/act_inc; }
+  void un_bump_score(uint32_t v) {
     var_freq_scores[v] -= act_inc;
   }
-  inline void bump_score(VariableIndex v) {
+  inline void bump_score(uint32_t v) {
     var_freq_scores[v] += act_inc;
     if (var_freq_scores[v] > 1e100) {
       for(auto& f: var_freq_scores) f *= 1e-90;
@@ -70,7 +70,7 @@ public:
   void initialize(LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
-  bool isUnseenAndSet(const VariableIndex v) const {
+  bool isUnseenAndSet(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var_id_));
     return archetype_.var_unseen_in_sup_comp(v);
   }
@@ -91,7 +91,7 @@ public:
     return manageSearchOccurrenceOf(lit.var());
   }
 
-  void setSeenAndStoreInSearchStack(const VariableIndex v){
+  void setSeenAndStoreInSearchStack(const uint32_t v){
     assert(is_unknown(v));
     comp_vars.push_back(v);
     archetype_.set_var_seen(v);
@@ -113,7 +113,7 @@ public:
       archetype_.setClause_in_sup_comp_unseen(*it);
   }
 
-  bool exploreRemainingCompOf(const VariableIndex v);
+  bool exploreRemainingCompOf(const uint32_t v);
 
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.
@@ -147,7 +147,7 @@ private:
   CompArchetype  archetype_;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
-  vector<VariableIndex> comp_vars; // Used to figure out which vars are in a component
+  vector<uint32_t> comp_vars; // Used to figure out which vars are in a component
                                   // used in  recordCompOf
                                   // its size is the number of variables in the component
 
@@ -162,11 +162,11 @@ private:
       return values[lit] == X_TRI;
   }
 
-  bool is_unknown(const VariableIndex v) const {
+  bool is_unknown(const uint32_t v) const {
     return values[Lit(v, true)] == X_TRI;
   }
 
-  uint32_t const* begin_cls_of_var(const VariableIndex v) const {
+  uint32_t const* begin_cls_of_var(const uint32_t v) const {
     assert(v > 0);
     return &unified_var_links_lists_pool_[variable_link_list_offsets_[v]];
   }
@@ -176,7 +176,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void recordCompOf(const VariableIndex var);
+  void recordCompOf(const uint32_t var);
 
   void getClause(vector<uint32_t> &tmp, const Clause& cl, const Lit & omitLit) {
     tmp.clear();
@@ -187,7 +187,7 @@ private:
 
   // This is called from recordCompOf, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void searchClause(VariableIndex vt, ClauseIndex clID, Lit const* pstart_cls){
+  void searchClause(uint32_t vt, ClauseIndex clID, Lit const* pstart_cls){
     const auto itVEnd = comp_vars.end();
     bool all_lits_set = true;
     for (auto itL = pstart_cls; *itL != SENTINEL_LIT; itL++) {

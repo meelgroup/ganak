@@ -55,7 +55,7 @@ public:
     comp_stack_.clear();
   }
 
-  double freq_score_of(VariableIndex v) const { return ana_.freq_score_of(v); }
+  double freq_score_of(uint32_t v) const { return ana_.freq_score_of(v); }
 
   void initialize(LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
@@ -113,9 +113,9 @@ public:
     hash_seed = get_random_key_for_clhash(distr(eng), distr(eng));
   }
 
-  double get_cache_hit_score(const VariableIndex v) const { return cache_hit_score[v]; }
+  double get_cache_hit_score(const uint32_t v) const { return cache_hit_score[v]; }
   void bump_cache_hit_score(Comp &comp) {
-    for (vector<VariableIndex>::const_iterator it = comp.vars_begin(); *it != sentinel; it++) {
+    for (vector<uint32_t>::const_iterator it = comp.vars_begin(); *it != sentinel; it++) {
       cache_hit_score[*it] += act_inc;
       if (cache_hit_score[*it] > 1e100) {
         for (auto& s: cache_hit_score) s *= 1e-90;

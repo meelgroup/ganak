@@ -146,7 +146,7 @@ public:
   ConflictData find_conflict_level(Lit p);
 
   // The higher, the better. It is never below 0.
-  double score_of(VariableIndex v) {
+  double score_of(uint32_t v) {
     bool print = false;
     if (stats.conflicts % 1000 == 1) print = 1;
     print = false;

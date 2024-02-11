@@ -98,7 +98,7 @@ protected:
 
   LiteralIndexedVector<LitWatchList> watches;
   vector<Lit> unit_clauses_;
-  vector<Variable> variables_;
+  vector<VarData> variables_;
   bool num_vars_set = false;
   LiteralIndexedVector<TriValue> values;
   vector<double> tdscore; // treewidth-decomposition score
@@ -142,15 +142,15 @@ protected:
 
   inline bool add_bin_cl(Lit a, Lit b, bool red);
 
-  inline Variable &var(const Lit lit) {
+  inline VarData &var(const Lit lit) {
     return variables_[lit.var()];
   }
 
-  inline Variable &var(const uint32_t v) {
+  inline VarData &var(const uint32_t v) {
     return variables_[v];
   }
 
-  inline const Variable &var(const Lit lit) const {
+  inline const VarData &var(const Lit lit) const {
     return variables_[lit.var()];
   }
 

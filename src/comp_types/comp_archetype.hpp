@@ -67,7 +67,7 @@ public:
     return *p_stack_level_;
   }
 
-  void set_var_in_sup_comp_unseen(const VariableIndex v) {
+  void set_var_in_sup_comp_unseen(const uint32_t v) {
     seen_[v] = CA_VAR_IN_SUP_COMP_UNSEEN | (seen_[v] & CA_CL_MASK);
   }
 
@@ -75,7 +75,7 @@ public:
     seen_[cl] = CA_CL_IN_SUP_COMP_UNSEEN | (seen_[cl] & CA_VAR_MASK);
   }
 
-  void set_var_nil(const VariableIndex v) {
+  void set_var_nil(const uint32_t v) {
     seen_[v] &= CA_CL_MASK;
   }
 
@@ -83,7 +83,7 @@ public:
     seen_[cl] &= CA_VAR_MASK;
   }
 
-  void set_var_seen(const VariableIndex v) {
+  void set_var_seen(const uint32_t v) {
     seen_[v] = CA_VAR_SEEN | (seen_[v] & CA_CL_MASK);
   }
 
@@ -97,7 +97,7 @@ public:
       seen_[cl] = CA_CL_SEEN | (all_lits_act?CA_CL_ALL_LITS_SET:0) | (seen_[cl] & CA_VAR_MASK);
     }
 
-  void set_var_in_other_comp(const VariableIndex v) {
+  void set_var_in_other_comp(const uint32_t v) {
     seen_[v] = CA_VAR_IN_OTHER_COMP | (seen_[v] & CA_CL_MASK);
   }
 
@@ -105,7 +105,7 @@ public:
     seen_[cl] = CA_CL_IN_OTHER_COMP | (seen_[cl] & CA_VAR_MASK);
   }
 
-  bool var_seen(const VariableIndex v) const {
+  bool var_seen(const uint32_t v) const {
     return seen_[v] & CA_VAR_SEEN;
   }
 
@@ -117,7 +117,7 @@ public:
     return seen_[cl] & CA_CL_ALL_LITS_SET;
   }
 
-  bool var_nil(const VariableIndex v) const {
+  bool var_nil(const uint32_t v) const {
     return (seen_[v] & CA_VAR_MASK) == 0;
   }
 
@@ -125,7 +125,7 @@ public:
     return (seen_[cl] & CA_CL_MASK) == 0;
   }
 
-  bool var_unseen_in_sup_comp(VariableIndex v) const {
+  bool var_unseen_in_sup_comp(uint32_t v) const {
     return seen_[v] & CA_VAR_IN_SUP_COMP_UNSEEN;
   }
 
@@ -133,7 +133,7 @@ public:
     return seen_[cl] & CA_CL_IN_SUP_COMP_UNSEEN;
   }
 
-  bool var_seen_in_peer_comp(VariableIndex v) const {
+  bool var_seen_in_peer_comp(uint32_t v) const {
     return seen_[v] & CA_VAR_IN_OTHER_COMP;
   }
 

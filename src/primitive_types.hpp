@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 constexpr static uint32_t sentinel = 0;
 
-using VariableIndex = uint32_t;
 using ClauseIndex = uint32_t;
 using ClauseOfs = uint32_t;
 using CacheEntryID = uint32_t;

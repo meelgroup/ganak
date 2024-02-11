@@ -45,7 +45,7 @@ public:
   Lit(uint32_t val) = delete;
   Lit(int val) = delete;
   explicit constexpr Lit() : value_(0) { }
-  explicit constexpr Lit(VariableIndex var, bool sign) : value_((var << 1) + (uint32_t) sign) {}
+  explicit constexpr Lit(uint32_t var, bool sign) : value_((var << 1) + (uint32_t) sign) {}
 
   uint32_t var() const { return (value_ >> 1U); }
   constexpr bool operator<(const Lit other) const { return value_ < other.value_; }
@@ -246,7 +246,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
   return os;
 }
 
-struct Variable {
+struct VarData {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
   bool last_polarity = false;

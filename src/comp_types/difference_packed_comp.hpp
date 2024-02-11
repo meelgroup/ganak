@@ -51,14 +51,14 @@ HashedComp::HashedComp(
   auto data = tmp_data;
   uint32_t at = 0;
 
+  data[at++] = rComp.nVars();
   if (*rComp.varsBegin()) {
     for (auto it = rComp.varsBegin(); *it != varsSENTINEL; it++) data[at++] = *it;
   }
   data[at++] = varsSENTINEL;
 
   if (*rComp.clsBegin()) {
-    for (auto jt = rComp.clsBegin() + 1; *jt != clsSENTINEL; jt++)
-      data[at++]+=*jt;
+    for (auto jt = rComp.clsBegin(); *jt != clsSENTINEL; jt++) data[at++] =*jt;
   }
   data[at] = at;
   at++;

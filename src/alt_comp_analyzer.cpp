@@ -30,7 +30,7 @@ ComponentAnalyzer::ComponentAnalyzer(
         const uint32_t& _indep_support_end,
         Counter* _solver) :
         conf(_solver->get_conf()),
-        lit_values_(lit_values),
+        values(lit_values),
         indep_support_end(_indep_support_end),
         solver(_solver)
   {}

@@ -317,8 +317,8 @@ private:
         cl.update_lbd(calc_lbd(cl));
       }
     }
-    lit_values_[lit] = T_TRI;
-    lit_values_[lit.neg()] = F_TRI;
+    values[lit] = T_TRI;
+    values[lit.neg()] = F_TRI;
   }
 
   void checkProbabilisticHashSanity() const {

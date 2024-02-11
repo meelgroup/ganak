@@ -148,13 +148,13 @@ void Instance::new_vars(const uint32_t n) {
   }
 
   assert(variables_.empty());
-  assert(lit_values_.empty());
+  assert(values.empty());
   assert(watches.empty());
   assert(unit_clauses_.empty());
   assert(longRedCls.empty());
 
   variables_.resize(n + 1);
-  lit_values_.resize(n + 1, X_TRI);
+  values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
   num_vars_set = true;

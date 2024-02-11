@@ -147,7 +147,7 @@ private:
                                                 // indexed by variable.
 
   const CounterConfiguration& conf;
-  const LiteralIndexedVector<TriValue> & lit_values_;
+  const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
   vector<double> var_frequency_scores_;
   double act_inc = 1.0;
@@ -159,18 +159,18 @@ private:
                                        // its size is the number of variables in the component
 
   bool is_false(const Lit lit) const {
-    return lit_values_[lit] == F_TRI;
+    return values[lit] == F_TRI;
   }
 
   bool is_true(const Lit lit) const {
-    return lit_values_[lit] == T_TRI;
+    return values[lit] == T_TRI;
   }
   bool is_unknown(const Lit lit) const {
-      return lit_values_[lit] == X_TRI;
+      return values[lit] == X_TRI;
   }
 
   bool is_unknown(const VariableIndex v) const {
-    return lit_values_[Lit(v, true)] == X_TRI;
+    return values[Lit(v, true)] == X_TRI;
   }
 
   uint32_t const* begin_cls_of_var(const VariableIndex v) const {

@@ -145,7 +145,7 @@ void Counter::end_irred_cls() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   delete comp_manager_;
-  comp_manager_ = new ComponentManager(conf,stats, lit_values_, indep_support_end, this);
+  comp_manager_ = new ComponentManager(conf,stats, values, indep_support_end, this);
   comp_manager_->getrandomseedforclhash();
 
   // reset stats
@@ -1649,8 +1649,8 @@ retStateT Counter::resolveConflict() {
   if (decision_stack_.top().is_right_branch()) {
     var(uip_clause[0]).decision_level = lev_to_set; //TODO what to do with sublevel?
     var(uip_clause[0]).ante = ant;
-    lit_values_[uip_clause[0]] = T_TRI;
-    lit_values_[uip_clause[0].neg()] = F_TRI;
+    values[uip_clause[0]] = T_TRI;
+    values[uip_clause[0].neg()] = F_TRI;
     trail[var(uip_clause[0]).sublevel] = uip_clause[0];
     qhead = std::min(qhead, var(uip_clause[0]).sublevel);
 

@@ -43,8 +43,8 @@ public:
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return longRedCls.size(); }
   uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
-  int val(Lit lit) const { return lit_values_[lit]; }
-  int val(uint32_t var) const { return lit_values_[Lit(var,1)]; }
+  int val(Lit lit) const { return values[lit]; }
+  int val(uint32_t var) const { return values[Lit(var,1)]; }
 
 
   friend class ClauseAllocator;
@@ -60,8 +60,8 @@ protected:
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << lit << endl);
     var(lit).ante = Antecedent();
     var(lit).decision_level = INVALID_DL;
-    lit_values_[lit] = X_TRI;
-    lit_values_[lit.neg()] = X_TRI;
+    values[lit] = X_TRI;
+    values[lit.neg()] = X_TRI;
   }
 
   const Antecedent & getAntecedent(Lit lit) const {
@@ -100,7 +100,7 @@ protected:
   vector<Lit> unit_clauses_;
   vector<Variable> variables_;
   bool num_vars_set = false;
-  LiteralIndexedVector<TriValue> lit_values_;
+  LiteralIndexedVector<TriValue> values;
   vector<double> tdscore; // treewidth-decomposition score
   double act_inc = 1.0;
   uint32_t lbd_cutoff = 2;
@@ -163,17 +163,17 @@ protected:
   }
 
   inline bool is_true(const Lit &lit) const {
-    return lit_values_[lit] == T_TRI;
+    return values[lit] == T_TRI;
   }
 
   bool is_false(Lit lit) {
-    return lit_values_[lit] == F_TRI;
+    return values[lit] == F_TRI;
   }
 
   string lit_val_str(Lit lit) const {
-    if (lit_values_[lit] == F_TRI)
+    if (values[lit] == F_TRI)
       return "FALSE";
-    else if (lit_values_[lit] == T_TRI)
+    else if (values[lit] == T_TRI)
       return "TRUE";
     else return "UNKN";
   }
@@ -187,7 +187,7 @@ protected:
   }
 
   bool is_unknown(Lit lit) const {
-    return lit_values_[lit] == X_TRI;
+    return values[lit] == X_TRI;
   }
 
   bool is_unknown(uint32_t var) const {

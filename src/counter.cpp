@@ -322,6 +322,7 @@ void Counter::td_decompose() {
 
 vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
+  cms_cl.reserve(cl.size());
   for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
   return cms_cl;
 }
@@ -930,7 +931,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
   }
 
   // Get a solution
-  vector<CMSat::Lit> ass;
+  vector<CMSat::Lit> ass; ass.reserve(c.cnf.size());
   for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
   auto solution = sat_solver->solve(&ass);
   debug_print("cube solution: " << solution);
@@ -1506,10 +1507,8 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
 
 bool Counter::is_implied(const vector<Lit>& cl) {
     assert(sat_solver);
-    vector<CMSat::Lit> lits;
-    for(const auto& l: cl) {
-      lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
-    }
+    vector<CMSat::Lit> lits; lits.reserve(cl.size());
+    for(const auto& l: cl) lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
     debug_print("to check lits: " << lits);
     auto ret = sat_solver->solve(&lits);
     debug_print("Ret: " << ret);
@@ -2523,7 +2522,7 @@ void Counter::recordLastUIPCause() {
   uint32_t size;
   VERBOSE_DEBUG_DO(cout << "Doing loop:" << endl);
   int32_t index = trail.size()-1;
-  uint32_t pathC = 0;
+  uint32_t path_c = 0;
   do {
     fill_cl(confl, c, size, p);
     if (confl.isAClause()) {
@@ -2558,7 +2557,7 @@ void Counter::recordLastUIPCause() {
           << endl;
 #endif
         if (var(q).decision_level >= nDecisionLevel) {
-          pathC++;
+          path_c++;
           VERBOSE_DEBUG_DO(cout << "pathc inc." << endl);
         } else {
           uip_clause.push_back(q);
@@ -2583,9 +2582,9 @@ void Counter::recordLastUIPCause() {
     VERBOSE_DEBUG_DO(cout << "Next p: " << p << endl);
     confl = var(p).ante;
     seen[p.var()] = 0;
-    pathC--;
-  } while (pathC > 0);
-  assert(pathC == 0);
+    path_c--;
+  } while (path_c > 0);
+  assert(path_c == 0);
   uip_clause[0] = p.neg();
   VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause.data(), uip_clause.size()));
   CHECK_IMPLIED_DO(check_implied(uip_clause));

@@ -678,7 +678,8 @@ TreeDecomposition IFlowCutter::constructTD()
 						config.random_seed = rand_gen();
 						if(i % 16 == 0) ++config.cutter_count;
 
-						switch(i % 3){
+						switch(i % 4){
+						case 3: config.min_small_side_size = 0.5; break;
 						case 2: config.min_small_side_size = 0.2; break;
 						case 1: config.min_small_side_size = 0.1; break;
 						case 0: config.min_small_side_size = 0.0; break;

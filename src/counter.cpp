@@ -216,20 +216,12 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   }
 #endif
   sspp::TreeDecomposition dec(bags.size(),nVars()+1);
-  for(uint32_t i = 0; i < bags.size();i++) {
-    dec.SetBag(i+1, bags[i]);
-  }
-  for(uint32_t i = 0; i < adj.size(); i++) {
-    const auto& a = adj[i];
-    for(const auto& nn: a) {
-      dec.AddEdge(i+1, nn+1);
-    }
-  }
+  for(uint32_t i = 0; i < bags.size();i++) dec.SetBag(i+1, bags[i]);
+  for(uint32_t i = 0; i < adj.size(); i++)
+    for(const auto& nn: adj[i]) dec.AddEdge(i+1, nn+1);
 
-  /* auto width = dec.Width(); */
-  auto ord = dec.GetOrd();
   // We use 1-indexing, ignore index 0
-
+  auto ord = dec.GetOrd();
   assert(ord.size() == tdscore.size());
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
@@ -250,6 +242,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   /* double coef = 1; */
   /* coef = 1e7; */
   /* coef = std::min(coef, 1e7); */
+  /* auto width = dec.Width(); */
   /* /1* cout << "c o COEF: " << coef << " Width: " << width << endl; *1/ */
   /* for (int i = 1; i <= n; i++) tdscore[i] *= coef; */
 
@@ -262,8 +255,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 
 void Counter::td_decompose() {
   double my_time = cpuTime();
-  bool conditionOnCNF = indep_support_end > 3 && nVars() > 20 && nVars() <= conf.td_varlim;
-  if (!conditionOnCNF) {
+  if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     disable_td = true;
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
@@ -313,9 +305,9 @@ void Counter::td_decompose() {
 
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
-  IFlowCutter FC(nVars()+1, primal.numEdges(), conf.verb);
-  FC.importGraph(primal);
-  TreeDecomposition td = FC.constructTD();
+  IFlowCutter fc(nVars()+1, primal.numEdges(), conf.verb);
+  fc.importGraph(primal);
+  TreeDecomposition td = fc.constructTD();
 
   td.centroid(nVars()+1, conf.verb);
   compute_score(td);

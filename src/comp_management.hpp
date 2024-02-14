@@ -57,7 +57,7 @@ public:
 
   double freq_score_of(uint32_t v) const { return ana_.freq_score_of(v); }
 
-  void initialize(LiteralIndexedVector<LitWatchList> &watches,
+  void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
   void delete_comps_with_vars(const set<uint32_t>& vars) {
     cache_.delete_comps_with_vars(vars);

@@ -183,7 +183,7 @@ public:
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
         " New comp vars: " << p_new_comp->nVars() <<
-        " long cls:" << p_new_comp->numLongClauses());
+        " long cls:" << p_new_comp->num_long_cls());
     return p_new_comp;
   }
 

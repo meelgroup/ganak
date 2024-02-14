@@ -588,10 +588,10 @@ void inline Counter::increaseActivity(const Lit lit) {
 
 template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
 #ifdef VERBOSE_DEBUG
-  cout << "A:" << A << endl;
-  for(size_t i = 1; i < A.size(); i++) assert(A[i-1] < A[i]);
-  cout << "B:" << B << endl;
-  for(size_t i = 1; i < B.size(); i++) assert(B[i-1] < B[i]);
+  cout << "A:" << a << endl;
+  for(size_t i = 1; i < a.size(); i++) assert(a[i-1] < a[i]);
+  cout << "B:" << b << endl;
+  for(size_t i = 1; i < b.size(); i++) assert(b[i-1] < b[i]);
 #endif
   bool ret;
   uint32_t i = 0;

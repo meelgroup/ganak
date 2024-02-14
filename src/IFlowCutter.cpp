@@ -642,7 +642,7 @@ TreeDecomposition IFlowCutter::constructTD()
 		{
 			try{
 				std::minstd_rand rand_gen;
-				rand_gen.seed(1);
+				rand_gen.seed(0);
 
 				if(node_count > 500000)
 				{
@@ -674,7 +674,7 @@ TreeDecomposition IFlowCutter::constructTD()
 					config.max_cut_size = 10000;
 					config.separator_selection = flow_cutter::Config::SeparatorSelection::node_min_expansion;
 
-					for(int i=2; i < 3;++i){
+					for(int i=2; i < 100;++i){
 						config.random_seed = rand_gen();
 						if(i % 16 == 0) ++config.cutter_count;
 

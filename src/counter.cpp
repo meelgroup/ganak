@@ -266,12 +266,10 @@ void Counter::td_decompose() {
 
   Graph primal(nVars()+1);
   all_lits(i) {
-    Lit l(i/2, i%2);
+    Lit l(i/2, i%2 == 0);
     for(const auto& l2: watches[l].binary_links_) {
-      if ((!l2.red() || (l2.red() && conf.td_with_red_bins))
-          && l < l2.lit()) {
-        debug_print("v1: " << l.var());
-        debug_print("v2: " << l2.lit().var());
+      if ((!l2.red() || (l2.red() && conf.td_with_red_bins)) && l < l2.lit()) {
+        debug_print(l.var() << " " << l2.lit().var());
         primal.addEdge(l.var(), l2.lit().var());
       }
     }
@@ -281,8 +279,7 @@ void Counter::td_decompose() {
     Clause& cl = *alloc->ptr(off);
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
-        debug_print("v1: " << cl[i].var());
-        debug_print("v2: " << cl[i2].var());
+        debug_print(cl[i].var() << " " << cl[i2].var());
         primal.addEdge(cl[i].var(), cl[i2].var());
       }
     }
@@ -1162,7 +1159,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     cout << "-> Checking count. Incl all dec: " << include_all_dec << " dec lev: " << decisions.get_decision_level() << " var: " << single_var << endl;
     cout << "-> Vars in comp_manager_->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
-    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->varsBegin()[i] << " ";
+    for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
 #endif
 
@@ -2565,7 +2562,7 @@ void Counter::recordLastUIPCause() {
         }
       }
     }
-    VERBOSE_DEBUG_DO(cout << "PathC: " << pathC << endl);
+    VERBOSE_DEBUG_DO(cout << "PathC: " << path_c << endl);
 
     do {
       while (!seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));};

@@ -56,9 +56,7 @@ void Graph::clear()
 }
 void Graph::addEdge(int v1, int v2)
 {
-	if(adj_mat[v1].Get(v2))
-		return;
-
+	if(adj_mat[v1].Get(v2)) return;
 	adj_list[v1].push_back(v2);
 	adj_list[v2].push_back(v1);
 	adj_mat[v1].SetTrue(v2);

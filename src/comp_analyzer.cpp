@@ -40,7 +40,7 @@ CompAnalyzer::CompAnalyzer(
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unified_var_links_lists_pool_ and variable_link_list_offsets_
 void CompAnalyzer::initialize(
-    LiteralIndexedVector<LitWatchList> & watches, // binary clauses
+    const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
     const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
@@ -217,6 +217,6 @@ void CompAnalyzer::record_comp(const uint32_t var) {
         search_clause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 
-  debug_print(COLWHT "-> Went through all bin/tri/long and now search_stack_ is "
-      << search_stack_.size() << " long");
+  debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
+      << comp_vars.size() << " long");
 }

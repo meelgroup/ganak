@@ -67,7 +67,7 @@ public:
   }
   const CompArchetype &current_archetype() const { return archetype; }
 
-  void initialize(LiteralIndexedVector<LitWatchList> & literals,
+  void initialize(const LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool isUnseenAndSet(const uint32_t v) const {

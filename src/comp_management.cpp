@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana_"
-void CompManager::initialize(LiteralIndexedVector<LitWatchList> & watches,
+void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
   assert(comp_stack_.empty());
 

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <complex>
 #include <ios>
 #include <iomanip>
+#include <limits>
 #include <numeric>
 #include <utility>
 #include "common.hpp"
@@ -231,15 +232,19 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 
   assert(ord.size() == tdscore.size());
   int max_ord = 0;
-  for (int i = 1; i <= n; i++) max_ord = std::max(max_ord, ord[i]);
+  int min_ord = std::numeric_limits<int>::max();
+  for (int i = 1; i <= n; i++) {
+    max_ord = std::max(max_ord, ord[i]);
+    min_ord = std::min(min_ord, ord[i]);
+  }
+  max_ord -= min_ord;
   assert(max_ord >= 1);
   // Normalize
   for (int i = 1; i <= n; i++) {
-    tdscore[i] = max_ord - ord[i];
+    tdscore[i] = max_ord - (ord[i]-min_ord);
     tdscore[i] /= (double)max_ord;
     assert(tdscore[i] > -0.01 && tdscore[i] < 1.01);
   }
-  // Now scores are between 0..1
 
   // We scale here
   /* double coef = 1; */

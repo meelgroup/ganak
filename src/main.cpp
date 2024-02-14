@@ -306,6 +306,7 @@ void parse_file(const std::string& filename, T* reader) {
   indep_support_given = parser.sampling_vars_found && !ignore_indep;
   if (parser.sampling_vars_found && !ignore_indep) {
     cnfholder.sampling_vars = parser.sampling_vars;
+    cnfholder.optional_sampling_vars = parser.sampling_vars;
   } else {
     for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampling_vars.push_back(i);
     if (optional_indep && parser.sampling_vars_found)

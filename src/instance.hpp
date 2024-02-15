@@ -97,11 +97,13 @@ protected:
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
 
   LiteralIndexedVector<LitWatchList> watches;
+  double max_activity = 0;
   vector<Lit> unit_clauses_;
   vector<VarData> variables_;
   bool num_vars_set = false;
   LiteralIndexedVector<TriValue> values;
-  vector<double> tdscore; // treewidth-decomposition score
+  vector<double> tdscore;
+  vector<double> tdscore2;
   double act_inc = 1.0;
   uint32_t lbd_cutoff = 2;
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses

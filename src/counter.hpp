@@ -152,14 +152,13 @@ public:
     print = false;
 
     double score = 0;
-    if (stats.conflicts > 1000)
-      score += comp_manager_->freq_score_of(v)/20.0;
+    score += comp_manager_->freq_score_of(v)/4.0;
 
     if (print) cout << "---" << endl;
     if (print) cout << "v: " << v << " score1: " << score << endl;
 
     if (stats.conflicts > 1000)
-      score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(30*act_inc);
+      score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity*2);
     if (print) cout << "v: " << v << " score2: " << score << endl;
 
     if (!tdscore.empty()) score += tdscore[v];
@@ -236,9 +235,8 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool compute_cube(Cube& cube, int branch);
-  void compute_score(TreeDecomposition& tdec);
-  void td_decompose();
-  bool disable_td = false;
+  void compute_score(TreeDecomposition& tdec, bool alternate);
+  void td_decompose(bool alternate);
 
   // Actual SAT solver.
   bool deal_with_independent();
@@ -578,10 +576,12 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 void inline Counter::increaseActivity(const Lit lit) {
   if (conf.do_single_bump && seen[lit.var()]) return;
   watches[lit].activity += act_inc;
+  max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
   if (watches[lit].activity > 1e100) {
     //rescale
     act_inc *= 1e-90;
+    max_activity *= 1e-90;
     for(auto& v: watches) v.activity*=1e-90;
   }
 }

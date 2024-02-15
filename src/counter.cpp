@@ -127,6 +127,7 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
 
 void Counter::init_activity_scores() {
   act_inc = 1.0;
+  max_activity = 0;
   for (auto l = Lit(1, false); l != watches.end_lit(); l.inc()) {
     watches[l].activity = watches[l].binary_links_.size();
   }
@@ -134,9 +135,7 @@ void Counter::init_activity_scores() {
     const auto& cl = *alloc->ptr(off);
     for(const auto& l: cl) watches[l].activity++;
   }
-  double maximum = 0;
-  for(auto& w: watches) maximum = std::max(w.activity, maximum);
-  for(auto& w: watches) w.activity /= maximum;
+  for(auto& w: watches) max_activity = std::max(w.activity, max_activity);
 }
 
 void Counter::end_irred_cls() {
@@ -196,11 +195,8 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
   }
 }
 
-void Counter::compute_score(TreeDecomposition& tdec) {
-  const int n = nVars();
-  assert(tdscore.empty());
-  tdscore.resize(nVars()+1);
-  if (n <= 2) return;
+void Counter::compute_score(TreeDecomposition& tdec, bool alternate) {
+  int n = alternate ? (nVars()+1)*2 : nVars()+1;
   const auto& bags = tdec.Bags();
   const auto& adj = tdec.get_adj_list();
 #if 0
@@ -215,59 +211,61 @@ void Counter::compute_score(TreeDecomposition& tdec) {
     for(const auto& nn: a) cout << i << " " << nn << endl;
   }
 #endif
-  sspp::TreeDecomposition dec(bags.size(),nVars()+1);
+  sspp::TreeDecomposition dec(bags.size(), n);
   for(uint32_t i = 0; i < bags.size();i++) dec.SetBag(i+1, bags[i]);
   for(uint32_t i = 0; i < adj.size(); i++)
     for(const auto& nn: adj[i]) dec.AddEdge(i+1, nn+1);
 
   // We use 1-indexing, ignore index 0
   auto ord = dec.GetOrd();
-  assert(ord.size() == tdscore.size());
+  if (!alternate) assert(ord.size() == tdscore.size());
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
-  for (int i = 1; i <= n; i++) {
+  for (int i = alternate ? 2 : 1; i < n; i++) {
     max_ord = std::max(max_ord, ord[i]);
     min_ord = std::min(min_ord, ord[i]);
   }
   max_ord -= min_ord;
   assert(max_ord >= 1);
-  // Normalize
-  for (int i = 1; i <= n; i++) {
-    tdscore[i] = max_ord - (ord[i]-min_ord);
-    tdscore[i] /= (double)max_ord;
-    assert(tdscore[i] > -0.01 && tdscore[i] < 1.01);
+  for (int i = alternate ? 2 : 1; i < n; i++) {
+    // Normalize
+    double val = max_ord - (ord[i]-min_ord);
+    val /= (double)max_ord;
+    assert(val > -0.01 && val < 1.01);
+
+    if (!alternate) tdscore[i] += val;
+    else {
+      Lit l;
+      l.copyRaw(i);
+      cout << "i: " << i << " lit: " << l << " val: " << val << endl;
+      tdscore2[i] = val;
+      /* tdscore[i/2] += val/2; */
+    }
   }
 
-  // We scale here
-  /* double coef = 1; */
-  /* coef = 1e7; */
-  /* coef = std::min(coef, 1e7); */
-  /* auto width = dec.Width(); */
-  /* /1* cout << "c o COEF: " << coef << " Width: " << width << endl; *1/ */
-  /* for (int i = 1; i <= n; i++) tdscore[i] *= coef; */
-
 #ifdef VERBOSE_DEBUG
-  for(int i = 1; i <= n; i++) {
+  for(int i = 1; i <= nVars()+1; i++) {
     cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
   }
 #endif
 }
 
-void Counter::td_decompose() {
+void Counter::td_decompose(bool alternate) {
   double my_time = cpuTime();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
-    disable_td = true;
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
   }
 
-  Graph primal(nVars()+1);
+  Graph primal(alternate ? (nVars()+1)*2 : nVars()+1);
   all_lits(i) {
     Lit l(i/2, i%2 == 0);
+    if (alternate && l.sign()) primal.addEdge(l.raw(), (l.neg()).raw());
     for(const auto& l2: watches[l].binary_links_) {
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins)) && l < l2.lit()) {
         debug_print(l.var() << " " << l2.lit().var());
-        primal.addEdge(l.var(), l2.lit().var());
+        if (alternate) primal.addEdge(l.raw(), l2.lit().raw());
+        else primal.addEdge(l.var(), l2.lit().var());
       }
     }
   }
@@ -277,40 +275,41 @@ void Counter::td_decompose() {
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
         debug_print(cl[i].var() << " " << cl[i2].var());
-        primal.addEdge(cl[i].var(), cl[i2].var());
+        if (alternate) primal.addEdge(cl[i].raw(), cl[i2].raw());
+        else primal.addEdge(cl[i].var(), cl[i2].var());
       }
     }
   }
 
-  double density = (double)primal.numEdges()/(double)(nVars() * nVars());
+  uint64_t n = nVars()*nVars();
+  if (alternate) n*=4;
+  double density = (double)primal.numEdges()/(double)n;
   double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
   verb_print(1, "[td] Primal graph  "
-    << " nodes: " << nVars()+1
+    << " nodes: " << primal.numNodes()
     << " edges: " <<  primal.numEdges()
-    << " density: "
-    << std::fixed << std::setprecision(3) << density
-    << " edge/var: "
-    << std::fixed << std::setprecision(3) << edge_var_ratio);
+    << " density: " << std::fixed << std::setprecision(3) << density
+    << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
   if (edge_var_ratio > conf.td_ratiolim && nVars() > 100) {
     verb_print(1, "[td] edge/var ratio is too high, not running TD");
-    disable_td = true;
     return;
   }
 
   if (primal.numEdges() > 60000) {
     verb_print(1, "[td] too many edges, not running TD");
-    disable_td = true;
     return;
   }
 
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
-  IFlowCutter fc(nVars()+1, primal.numEdges(), conf.verb);
+  IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
   fc.importGraph(primal);
+
+  // Notice that this graph returned is VERY different
   TreeDecomposition td = fc.constructTD();
 
-  td.centroid(nVars()+1, conf.verb);
-  compute_score(td);
+  td.centroid(primal.numNodes(), conf.verb);
+  compute_score(td, alternate);
   verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
 }
 
@@ -582,7 +581,14 @@ void Counter::count(vector<Cube>& ret_cubes) {
   mini_cubes.clear();
   verb_print(1, "Sampling set size: " << indep_support_end-1);
 
-  if (tdscore.empty() && conf.do_td && !disable_td) td_decompose();
+  if (tdscore.empty() && nVars() > 5 && conf.do_td) {
+    tdscore.resize(nVars()+1, 0);
+    td_decompose(false);
+    if (false) {
+      tdscore2.resize(2*(nVars()+1), 0);
+      td_decompose(true);
+    }
+  }
   const auto exit_state = countSAT();
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
@@ -769,6 +775,7 @@ bool Counter::get_polarity(const uint32_t v) const {
   else if (conf.polar_type == 4) polarity = !standard_polarity(v);
   else if (conf.polar_type == 2) polarity = false;
   else if (conf.polar_type == 3) polarity = true;
+  else if (conf.polar_type == 4 && !tdscore2.empty()) polarity = tdscore2[Lit(v, false).raw()] > tdscore2[Lit(v, true).raw()];
   else assert(false);
   return polarity;
 }

@@ -42,6 +42,7 @@ public:
 
   void importGraph(const Graph& g);
   TreeDecomposition constructTD();
+  auto num_nodes() const { return nodes; }
 
 private:
   void print_comment(std::string msg);

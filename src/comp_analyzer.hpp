@@ -53,14 +53,16 @@ public:
     return idx_to_cl;
   }
 
-  double freq_score_of(uint32_t v) const { return var_freq_scores[v]/act_inc; }
+  double freq_score_of(uint32_t v) const { return var_freq_scores[v]/max_freq_score; }
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] -= act_inc;
   }
   inline void bump_score(uint32_t v) {
     var_freq_scores[v] += act_inc;
+    max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
     if (var_freq_scores[v] > 1e100) {
       for(auto& f: var_freq_scores) f *= 1e-90;
+      max_freq_score *= 1e-90;
       act_inc *= 1e-90;
     }
     if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
@@ -143,6 +145,7 @@ private:
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
   vector<double> var_freq_scores;
+  double max_freq_score = 0;
   double act_inc = 1.0;
   CompArchetype  archetype;
   Counter* solver = nullptr;

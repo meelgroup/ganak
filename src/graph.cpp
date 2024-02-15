@@ -780,9 +780,7 @@ vector<int> TreeDecomposition::GetOrd() const {
   assert(centroid >= 1 && centroid <= bs);
   vector<int> ret(n);
   OdDes(centroid, 0, 1, ret);
-  for (int i = 0; i < n; i++) {
-    assert(ret[i] > 0);
-  }
+  for (int i = 0; i < n; i++) assert(ret[i] > 0);
   return ret;
 }
 } // namespace sspp

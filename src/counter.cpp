@@ -128,8 +128,11 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
 void Counter::init_activity_scores() {
   act_inc = 1.0;
   max_activity = 0;
-  for (auto l = Lit(1, false); l != watches.end_lit(); l.inc()) {
-    watches[l].activity = watches[l].binary_links_.size();
+  all_lits(x) {
+    Lit l(x/2, x%2);
+    for (const auto& ws: watches[l].binary_links_) {
+      if (!ws.red()) watches[l].activity++;
+    }
   }
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
@@ -245,7 +248,7 @@ void Counter::compute_score(TreeDecomposition& tdec, bool alternate) {
 
 #ifdef VERBOSE_DEBUG
   for(int i = 1; i <= nVars()+1; i++) {
-    cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
+      cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
   }
 #endif
 }

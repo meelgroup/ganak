@@ -586,6 +586,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
 	better_td.setNumGraphNodes(get_node_count_of_multilevel_partition(cell_list));
 	cout << "c o [td] #bags " << bag_count
 		<< ", tw " << get_treewidth_of_multilevel_partition(cell_list)-1
+		<< ", elapsed " << cpuTime()  << " s"
 		<< endl; // << ", #vars " << get_node_count_of_multilevel_partition(cell_list) << endl;
 	better_td.initBags();
 
@@ -674,12 +675,11 @@ TreeDecomposition IFlowCutter::constructTD()
 					config.max_cut_size = 10000;
 					config.separator_selection = flow_cutter::Config::SeparatorSelection::node_min_expansion;
 
-					for(int i=2; i < 100;++i){
+					for(int i=2; i < 150;++i){
 						config.random_seed = rand_gen();
 						if(i % 16 == 0) ++config.cutter_count;
 
 						switch(i % 4){
-						case 3: config.min_small_side_size = 0.5; break;
 						case 2: config.min_small_side_size = 0.2; break;
 						case 1: config.min_small_side_size = 0.1; break;
 						case 0: config.min_small_side_size = 0.0; break;

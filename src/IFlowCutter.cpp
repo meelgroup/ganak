@@ -107,7 +107,7 @@ void IFlowCutter::print_comment(std::string msg){
 
 template<class Tail, class Head>
 void check_multilevel_partition_invariants(const Tail&tail, const Head&head, const std::vector<Cell>&multilevel_partition){
-	#ifndef NDEBUG
+	#ifdef SLOW_DEBUG
 	const int node_count = tail.image_count();
 	const int arc_count = tail.preimage_count();
 
@@ -213,7 +213,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
 	while(!open_cells.empty()){
 
-		#ifndef NDEBUG
+		#ifdef SLOW_DEBUG
 
 		int real_max_closed_bag_size = 0;
 		for(auto&x:closed_cells)

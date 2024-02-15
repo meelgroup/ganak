@@ -60,7 +60,7 @@ void print_comment(std::string msg){
 
 template<class Tail, class Head>
 void check_multilevel_partition_invariants(const Tail&tail, const Head&head, const std::vector<Cell>&multilevel_partition){
-	#ifndef NDEBUG
+	#ifdef SLOW_DEBUG
 	const int node_count = tail.image_count();
 	const int arc_count = tail.preimage_count();
 
@@ -148,8 +148,8 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
 	while(!open_cells.empty()){
 
-		#ifndef NDEBUG
-		
+		#ifdef SLOW_DEBUG
+
 		int real_max_closed_bag_size = 0;
 		for(auto&x:closed_cells)
 			max_to(real_max_closed_bag_size, x.bag_size());
@@ -172,7 +172,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 		if(current_cell.bag_size() > max_closed_bag_size){
 
 			auto interior_node_list = std::move(current_cell.separator_node_list);
-			int interior_node_count = interior_node_list.size();			
+			int interior_node_count = interior_node_list.size();
 
 			ArrayIDFunc<int>sub_node_to_node(interior_node_count);
 
@@ -208,7 +208,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 			for(auto&x:sub_head)
 				x = node_to_sub_node(x);
 			sub_head.set_image_count(interior_node_count);
-			
+
 			auto sub_separator = compute_separator(sub_tail, sub_head);
 
 			BitIDFunc is_in_sub_separator(interior_node_count);
@@ -243,7 +243,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 						x = sub_node_to_node(x);
 
 					new_cell.parent_cell = closed_cell_id;
-					
+
 					new_cell.separator_node_list = std::move(new_cell_interior_node_list);
 
 					new_cell.boundary_node_list = current_cell.boundary_node_list;
@@ -271,13 +271,13 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
 					new_cell.separator_node_list.shrink_to_fit();
 					new_cell.boundary_node_list.shrink_to_fit();
-	
+
 					if(new_cell.bag_size() > max_open_bag_size)
 						max_open_bag_size = new_cell.bag_size();
 
 					open_cells.push(std::move(new_cell));
 				}
-			}	
+			}
 
 			current_cell.separator_node_list = std::move(separator);
 			current_cell.separator_node_list.shrink_to_fit();
@@ -288,7 +288,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
 		if(current_cell.bag_size() > max_closed_bag_size)
 			max_closed_bag_size = current_cell.bag_size();
-		
+
 		if(must_recompute_max_open_bag_size){
 			max_open_bag_size = 0;
 			for(auto&x:access_internal_vector(open_cells))
@@ -340,7 +340,7 @@ int compute_max_bag_size_of_order(const ArrayIDIDFunc&order){
 	int current_tail_up_deg = 0;
 	int max_up_deg = 0;
 	compute_chordal_supergraph(
-		chain(tail, inv_order), chain(head, inv_order), 
+		chain(tail, inv_order), chain(head, inv_order),
 		[&](int x, int y){
 			if(current_tail != x){
 				current_tail = x;
@@ -550,21 +550,21 @@ int main(int argc, char*argv[]){
 							case 2: config.min_small_side_size = 0.2; break;
 							case 1: config.min_small_side_size = 0.1; break;
 							case 0: config.min_small_side_size = 0.0; break;
-						}	
+						}
 
 //						switch(i % 2){
 //							case 1: config.separator_selection = flow_cutter::Config::SeparatorSelection::node_min_expansion; break;
 //							case 0: config.separator_selection = flow_cutter::Config::SeparatorSelection::node_first; break;
-//						}						
+//						}
 
 //						print_comment("new run with F"+std::to_string(config.cutter_count));
-						
+
 						compute_multilevel_partition(tail, head, flow_cutter::ComputeSeparator(config), best_bag_size, on_new_multilevel_partition);
 					}
 				}
 			}catch(...){
 			}
-			
+
 		}
 	}catch(...){
 	}

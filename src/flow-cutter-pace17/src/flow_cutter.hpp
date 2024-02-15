@@ -674,7 +674,7 @@ namespace flow_cutter{
 
 		template<class Graph>
 		void check_flow_conservation(const Graph&graph){
-			#ifndef NDEBUG
+			#ifdef SLOW_DEBUG
 			for(int x=0; x<graph.node_count(); ++x)
 				if(!assimilated[source_side].is_inside(x) && !assimilated[target_side].is_inside(x)){
 					int flow_surplus = 0;
@@ -687,7 +687,7 @@ namespace flow_cutter{
 
 		template<class Graph>
 		void check_invariants(const Graph&graph){
-			#ifndef NDEBUG
+			#ifdef SLOW_DEBUG
 			for(int side = 0; side < 2; ++side)
 				assert(assimilated[side].node_count_inside() > 0 && "Each side must contain at least one node");
 

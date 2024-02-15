@@ -33,7 +33,7 @@ typename std::enable_if<
 			max_id = i;
 		}
 	}
-	#ifndef NDEBUG
+	#ifdef SLOW_DEBUG
 	for(int i=0; i<h.preimage_count(); ++i)
 		assert(h(i) <= h(max_id));
 	#endif
@@ -56,7 +56,7 @@ typename std::enable_if<
 			min_id = i;
 		}
 	}
-	#ifndef NDEBUG
+	#ifdef SLOW_DEBUG
 	for(int i=0; i<h.preimage_count(); ++i)
 		assert(h(i) >= h(min_id));
 	#endif

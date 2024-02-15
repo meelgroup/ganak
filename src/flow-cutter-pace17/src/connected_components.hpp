@@ -16,14 +16,14 @@ ArrayIDIDFunc compute_connected_components(const Tail&tail, const Head&head){
 	UnionFind uf(node_count);
 	for(int i=0; i<arc_count; ++i)
 		uf.unite(tail(i), head(i));
-	
+
 	auto is_representative = id_func(
-		node_count, 
+		node_count,
 		[&](int i){
 			return uf.is_representative(i);
 		}
 	);
-	
+
 	return chain(uf, compute_keep_function(is_representative, count_true(is_representative)));
 }
 
@@ -38,13 +38,13 @@ bool is_connected(const Tail&tail, const Head&head){
 		UnionFind uf(node_count);
 		for(int i=0; i<arc_count; ++i)
 			uf.unite(tail(i), head(i));
-	
+
 		return  uf.component_size(uf(0)) == node_count;
 	}
 }
 
 template<
-	class OutArc, class Head, 
+	class OutArc, class Head,
 	class OnRootFirstVisit,
 	class OnRootLastVisit,
 	class OnTreeUpArcVisit,
@@ -52,9 +52,9 @@ template<
 	class OnNonTreeArcVisit
 >
 void symmetric_depth_first_search(
-	const OutArc&out_arc, 
+	const OutArc&out_arc,
 	const Head&head,
-	const OnRootFirstVisit&on_root_first_visit, 
+	const OnRootFirstVisit&on_root_first_visit,
 	const OnRootLastVisit&on_root_last_visit,
 	const OnTreeUpArcVisit&on_tree_down_arc_visit,
 	const OnTreeDownArcVisit&on_tree_up_arc_visit,
@@ -66,7 +66,7 @@ void symmetric_depth_first_search(
 	(void)arc_count;
 	(void)node_count;
 
-	ArrayIDFunc<int> dfs_stack(node_count);  
+	ArrayIDFunc<int> dfs_stack(node_count);
 	int dfs_stack_end = 0;
 
 	ArrayIDFunc<int> parent_arc(node_count);
@@ -74,7 +74,7 @@ void symmetric_depth_first_search(
 
 	ArrayIDFunc<int> parent_node(node_count);
 	parent_node.fill(-1);
-		
+
 	typedef typename std::decay<decltype(out_arc(0).begin())>::type Iter;
 	ArrayIDFunc<Iter>next_out(node_count);
 	for(int i=0; i<node_count; ++i)
@@ -114,7 +114,7 @@ void symmetric_depth_first_search(
 						}
 					}
 				}
-				
+
 			}
 
 			on_root_last_visit(r);
@@ -201,7 +201,7 @@ ArrayIDIDFunc compute_biconnected_components(
 		on_non_tree_arc_visit
 	);
 
-	#ifndef NDEBUG
+	#ifdef SLOW_DEBUG
 	for(int i=0; i<arc_count; ++i)
 		assert(arc_component[i] != -1);
 	#endif

@@ -20,8 +20,7 @@
 using std::cout;
 using std::endl;
 
-// State values for variables found during comp
-// analysis (CA)
+// State values for variables found during comp analysis (CA)
 using CA_SearchState = uint8_t;
 #define   CA_VAR_IN_SUP_COMP_UNSEEN  1
 #define   CA_VAR_SEEN 2
@@ -180,6 +179,7 @@ public:
     p_new_comp->close_cls_data();
     current_comp_for_caching_.close_cls_data();
     BUDDY_DO(p_new_comp->setNumBinCls(num_bin_cls/2));
+    COMP_VAR_OCC_DO(p_new_comp->set_var_occs(var_occs, max_var_occs));
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
         " New comp vars: " << p_new_comp->nVars() <<
@@ -190,6 +190,10 @@ public:
   Comp current_comp_for_caching_;
 #ifdef BUDDY_ENABLED
   uint32_t num_bin_cls = 0;
+#endif
+#ifdef COMP_VAR_OCC_ENABLED
+  vector<uint32_t> var_occs; // occurrence for the currently examined component
+  uint32_t max_var_occs;
 #endif
 
 private:

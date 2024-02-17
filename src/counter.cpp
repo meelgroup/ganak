@@ -236,11 +236,14 @@ void Counter::compute_score(TreeDecomposition& tdec, bool alternate) {
     val /= (double)max_ord;
     assert(val > -0.01 && val < 1.01);
 
-    if (!alternate) tdscore[i] += val;
-    else {
+    assert(i < tdscore.size());
+    if (!alternate) {
+      tdscore[i] += val;
+      /* cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl; */
+    } else {
       Lit l;
       l.copyRaw(i);
-      cout << "i: " << i << " lit: " << l << " val: " << val << endl;
+      /* cout << "i: " << i << " lit: " << l << " val: " << val << endl; */
       tdscore2[i] = val;
       /* tdscore[i/2] += val/2; */
     }
@@ -812,6 +815,7 @@ bool Counter::decideLiteral() {
   decisions.top().var = v;
 
   Lit lit = Lit(v, get_polarity(v));
+  /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
       << decisions.get_decision_level());
   setLiteral(lit, decision_level());
@@ -832,8 +836,14 @@ uint32_t Counter::find_best_branch() {
 
     if (v < indep_support_end) {
       if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
-      const double score = score_of(v) ;
-      assert(score >= 0);
+      double score = score_of(v) ;
+#ifdef COMP_VAR_OCC_ENABLED
+      auto this_comp_var_score = comp_manager_->getSuperCompOf(decisions.top()).get_var_occs_score(v);
+      /* cout << " v: " << v << " extra: " << this_comp_var_score << " orig: " << score << endl; */
+      /// simp-mc2022_track1_113.cnf works well with 1/5, badly without
+      score += this_comp_var_score/5;
+#endif
+      /* assert(score >= 0); */
       if (score > best_var_score) {
         best_var = v;
         best_var_score = score;

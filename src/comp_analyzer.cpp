@@ -166,9 +166,23 @@ bool CompAnalyzer::exploreRemainingCompOf(const uint32_t v) {
   return true;
 }
 
+
+#ifdef COMP_VAR_OCC_ENABLED
+void CompAnalyzer::bump_var_occs(const uint32_t v) {
+  auto& v_occs = archetype.var_occs;
+  if (v >= v_occs.size()) v_occs.insert(v_occs.end(), v-v_occs.size()+1, 0);
+  v_occs[v]++;
+  archetype.max_var_occs = std::max(archetype.max_var_occs, v_occs[v]);
+}
+#endif
+
 // Create a component based on variable provided
 void CompAnalyzer::record_comp(const uint32_t var) {
   comp_vars.clear();
+  COMP_VAR_OCC_DO(
+  archetype.var_occs.clear();
+  archetype.var_occs.insert(archetype.var_occs.begin(), var+1, 0);
+  archetype.max_var_occs = 0);
   setSeenAndStoreInSearchStack(var);
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
@@ -186,29 +200,35 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       BUDDY_DO(if (solver->val(*p) == X_TRI) archetype_.num_bin_cls++);
-      if(manageSearchOccurrenceOf(*p)) {
-        bump_score(*p);
-        bump_score(v);
-      }
+      if (manageSearchOccurrenceOf(*p)) { bump_freq_score(*p); bump_freq_score(v); }
+      COMP_VAR_OCC_DO(if (archetype.var_seen(*p) && v < *p) {
+        bump_var_occs(v); bump_var_occs(*p);
+      });
     }
 
     //traverse ternary clauses
     for (p++; *p ; p+=3) {
+      const Lit a = *(Lit*)(p + 1);
+      const Lit b = *(Lit*)(p + 2);
       if (archetype.clause_unseen_in_sup_comp(*p)){
-        const Lit a = *(Lit*)(p + 1);
-        const Lit b = *(Lit*)(p + 2);
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
         if(is_true(a)|| is_true(b)) {
           /* cout << "satisfied" << endl; */
           archetype.setClause_nil(*p);
         } else {
           /* cout << "not satisfied" << endl; */
-          bump_score(v);
+          bump_freq_score(v);
           manageSearchOccurrenceAndScoreOf(a);
           manageSearchOccurrenceAndScoreOf(b);
           archetype.setClause_seen(*p ,is_unknown(a) && is_unknown(b));
         }
       }
+      COMP_VAR_OCC_DO(if (archetype.var_seen(a.var()) && archetype.var_seen(b.var()) &&
+          a.var() < v && b.var() < v) {
+        bump_var_occs(v);
+        bump_var_occs(a.var());
+        bump_var_occs(b.var());
+      });
     }
 
     // traverse long clauses

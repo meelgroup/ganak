@@ -27,6 +27,10 @@ THE SOFTWARE.
 #include <sstream>
 #include <cstdint>
 #include <random>
+#include <iostream>
+
+using std::cout;
+using std::endl;
 
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */
@@ -35,6 +39,7 @@ THE SOFTWARE.
 /* #define VERY_SLOW_DEBUG */
 /* #define CHECK_TRAIL_ENTAILMENT */
 /* #define BUDDY_ENABLED */
+/* #define COMP_VAR_OCC_ENABLED */
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */
@@ -93,6 +98,13 @@ THE SOFTWARE.
 #define BUDDY_DO(x) do { x; } while (0)
 #else
 #define BUDDY_DO(x) do { } while (0)
+#endif
+
+
+#ifdef COMP_VAR_OCC_ENABLED
+#define COMP_VAR_OCC_DO(x) do { x; } while (0)
+#else
+#define COMP_VAR_OCC_DO(x) do { ; } while (0)
 #endif
 
 #ifdef VERBOSE_DEBUG

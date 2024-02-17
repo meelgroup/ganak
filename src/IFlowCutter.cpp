@@ -688,7 +688,8 @@ TreeDecomposition IFlowCutter::constructTD()
 						compute_multilevel_partition(tail, head, flow_cutter::ComputeSeparator(config), best_bag_size, on_new_multilevel_partition);
 
 						// TODO timeout here
-						debug_print("TD at " << i << " best bag: " << td.width());
+						if (i % 40 == 39)
+							cout << "c [td] iter " << i << " best bag: " << td.width() << " elapsed: " << cpuTime() << endl;
 					}
 				}
 			}catch(...){

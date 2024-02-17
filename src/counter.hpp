@@ -149,16 +149,16 @@ public:
   double score_of(uint32_t v) {
     bool print = false;
     if (stats.conflicts % 1000 == 1) print = 1;
+    print = true;
     print = false;
 
     double score = 0;
-    score += comp_manager_->freq_score_of(v)/4.0;
+    score += comp_manager_->freq_score_of(v)/15.0;
 
     if (print) cout << "-----------" << endl;
     if (print) cout << "v: " << v << " score1: " << score << endl;
 
-    if (stats.conflicts > 1000)
-      score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity);
+    score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity*3);
     if (print) cout << "v: " << v << " score2: " << score << endl;
 
     if (!tdscore.empty()) score += tdscore[v];

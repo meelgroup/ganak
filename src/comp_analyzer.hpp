@@ -57,7 +57,7 @@ public:
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] -= act_inc;
   }
-  inline void bump_score(uint32_t v) {
+  inline void bump_freq_score(uint32_t v) {
     var_freq_scores[v] += act_inc;
     max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
     if (var_freq_scores[v] > 1e100) {
@@ -89,7 +89,7 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
-  if (is_unknown(lit)) bump_score(lit.var());
+    if (is_unknown(lit)) bump_freq_score(lit.var());
     return manageSearchOccurrenceOf(lit.var());
   }
 
@@ -157,25 +157,15 @@ private:
   vector<uint32_t> comp_vars;
 
 
-  bool is_false(const Lit lit) const {
-    return values[lit] == F_TRI;
-  }
-
-  bool is_true(const Lit lit) const {
-    return values[lit] == T_TRI;
-  }
-  bool is_unknown(const Lit lit) const {
-      return values[lit] == X_TRI;
-  }
-
-  bool is_unknown(const uint32_t v) const {
-    return values[Lit(v, true)] == X_TRI;
-  }
-
+  bool is_false(const Lit lit) const { return values[lit] == F_TRI; }
+  bool is_true(const Lit lit) const { return values[lit] == T_TRI; }
+  bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
+  bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
   uint32_t const* begin_cls_of_var(const uint32_t v) const {
     assert(v > 0);
     return &unified_var_links_lists_pool_[variable_link_list_offsets_[v]];
   }
+  void bump_var_occs(const uint32_t v);
 
   // stores all information about the comp of var
   // in variables_seen_, clauses_seen_ and
@@ -198,8 +188,7 @@ private:
     bool all_lits_set = true;
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
-      if(!archetype.var_nil(it_l->var()))
-        manageSearchOccurrenceAndScoreOf(*it_l); // sets var to be seen
+      if (!archetype.var_nil(it_l->var())) manageSearchOccurrenceAndScoreOf(*it_l);
       else {
         assert(!is_unknown(*it_l));
         all_lits_set = false;
@@ -219,8 +208,10 @@ private:
     }
 
     if (!archetype.clause_nil(cl_id)){
-      bump_score(vt);
+      bump_freq_score(vt);
       archetype.setClause_seen(cl_id,all_lits_set);
+      COMP_VAR_OCC_DO( for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++)
+        if (is_unknown(*it_l)) bump_var_occs(it_l->var()));
     }
     if ((conf.decide & 2)) act_inc *= 1.0/0.98;
   }

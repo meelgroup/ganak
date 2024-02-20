@@ -690,7 +690,7 @@ TreeDecomposition IFlowCutter::constructTD()
 
 						// TODO timeout here
 						if (i % 40 == 39)
-							cout << "c [td] iter " << i << " best bag: " << td.width() << " elapsed: " << cpuTime() << endl;
+								cout << "c o [td] iter " << i << " best bag: " << td.width() << " elapsed: " << cpuTime() << endl;
 					}
 				}
 			}catch(...){

@@ -102,7 +102,8 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
   for(const auto& v: tmp) if (v >= indep_support_end) optional_proj[v] = 1;
 
   const auto orig_indep_support_end = indep_support_end;
-  indep_support_end = tmp.back()+1;
+  if (!tmp.empty()) indep_support_end = tmp.back()+1;
+  else indep_support_end = 0;
   verb_print(1, "opt ind size: " << indep_support_end-1 << " ind size: " << orig_indep_support_end-1
     << " nvars: " << nVars());
 
@@ -121,7 +122,8 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
 void Counter::set_indep_support(const set<uint32_t> &indeps) {
   optional_proj.resize(nVars()+1, 0);
   auto tmp = common_indep_code(indeps);
-  indep_support_end = tmp.back()+1;
+  if (!tmp.empty()) indep_support_end = tmp.back()+1;
+  else indep_support_end = 0;
   verb_print(1, "ind size: " << indep_support_end-1 << " nvars: " << nVars());
 }
 

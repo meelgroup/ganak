@@ -657,12 +657,14 @@ TreeDecomposition IFlowCutter::constructTD()
 					compute_multilevel_partition(tail, head, flow_cutter::ComputeSeparator(config), best_bag_size, on_new_multilevel_partition);
 				}
 
+				int64_t steps = 5e5;
+				int64_t next_step_print = steps-1e5;
 				if(node_count < 50000){
 					print_comment("min degree heuristic");
 					test_new_order(chain(compute_greedy_min_degree_order(tail, head), inv_preorder), td);
 				}
 
-				if(node_count < 10000){
+				if(node_count < 1000){
 					print_comment("min shortcut heuristic");
 					test_new_order(chain(compute_greedy_min_shortcut_order(tail, head), inv_preorder), td);
 				}
@@ -675,7 +677,11 @@ TreeDecomposition IFlowCutter::constructTD()
 					config.max_cut_size = 10000;
 					config.separator_selection = flow_cutter::Config::SeparatorSelection::node_min_expansion;
 
-					for(int i=2; i < 300;++i){
+					for(int i=2; i < 300 && steps > 0;++i){
+						/* cout << "nodes: " << nodes << " preimage count: " << head.preimage_count_ */
+						/* 	<< " mul: " << ((int64_t)nodes * std::sqrt((int64_t)head.preimage_count_))/50 */
+						/* 	<< endl; */
+						steps -= ((int64_t)nodes * std::sqrt((int64_t)head.preimage_count_))/50;
 						config.random_seed = rand_gen();
 						if(i % 10 == 0) ++config.cutter_count;
 						if(i % 100 == 0) config.cutter_count = 1;
@@ -689,8 +695,11 @@ TreeDecomposition IFlowCutter::constructTD()
 						compute_multilevel_partition(tail, head, flow_cutter::ComputeSeparator(config), best_bag_size, on_new_multilevel_partition);
 
 						// TODO timeout here
-						if (i % 40 == 39)
-								cout << "c o [td] iter " << i << " best bag: " << td.width() << " elapsed: " << cpuTime() << endl;
+						if (i % 50 == 49 || steps < next_step_print) {
+								cout << "c o [td] iter " << i << " best bag: " << td.width()
+									<< " stepsK remain: " << steps/1000 << " elapsed: " << cpuTime() << endl;
+								next_step_print -= 1e5;
+						}
 					}
 				}
 			}catch(...){

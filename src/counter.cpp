@@ -286,12 +286,12 @@ void Counter::td_decompose() {
     << " edges: " <<  primal.numEdges()
     << " density: " << std::fixed << std::setprecision(3) << density
     << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
-  if (edge_var_ratio > conf.td_ratiolim && nVars() > 100) {
-    verb_print(1, "[td] edge/var ratio is too high, not running TD");
+  if (edge_var_ratio > 6*conf.td_ratiolim && nVars() > 100) {
+    verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
     return;
   }
 
-  if (primal.numEdges() > 60000) {
+  if (primal.numEdges() > 1900000) {
     verb_print(1, "[td] too many edges, not running TD");
     return;
   }

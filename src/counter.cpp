@@ -198,8 +198,8 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
   }
 }
 
-void Counter::compute_score(TreeDecomposition& tdec, bool alternate) {
-  int n = alternate ? (nVars()+1)*2 : nVars()+1;
+void Counter::compute_score(TreeDecomposition& tdec) {
+  const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
   const auto& adj = tdec.get_adj_list();
 #if 0
@@ -221,32 +221,24 @@ void Counter::compute_score(TreeDecomposition& tdec, bool alternate) {
 
   // We use 1-indexing, ignore index 0
   auto ord = dec.GetOrd();
-  if (!alternate) assert(ord.size() == tdscore.size());
+  assert(ord.size() == tdscore.size());
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
-  for (int i = alternate ? 2 : 1; i < n; i++) {
+  for (uint32_t i = 1; i < n; i++) {
     max_ord = std::max(max_ord, ord[i]);
     min_ord = std::min(min_ord, ord[i]);
   }
   max_ord -= min_ord;
   assert(max_ord >= 1);
-  for (int i = alternate ? 2 : 1; i < n; i++) {
+  for (uint32_t i = 1; i < n; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
     val /= (double)max_ord;
     assert(val > -0.01 && val < 1.01);
 
     assert(i < tdscore.size());
-    if (!alternate) {
-      tdscore[i] += val;
-      /* cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl; */
-    } else {
-      Lit l;
-      l.copyRaw(i);
-      /* cout << "i: " << i << " lit: " << l << " val: " << val << endl; */
-      tdscore2[i] = val;
-      /* tdscore[i/2] += val/2; */
-    }
+    assert(tdscore[i] == 0);
+    tdscore[i] = val;
   }
 
 #ifdef VERBOSE_DEBUG
@@ -256,22 +248,20 @@ void Counter::compute_score(TreeDecomposition& tdec, bool alternate) {
 #endif
 }
 
-void Counter::td_decompose(bool alternate) {
+void Counter::td_decompose() {
   double my_time = cpuTime();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
   }
 
-  Graph primal(alternate ? (nVars()+1)*2 : nVars()+1);
+  Graph primal(nVars()+1);
   all_lits(i) {
     Lit l(i/2, i%2 == 0);
-    if (alternate && l.sign()) primal.addEdge(l.raw(), (l.neg()).raw());
     for(const auto& l2: watches[l].binary_links_) {
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins)) && l < l2.lit()) {
         debug_print(l.var() << " " << l2.lit().var());
-        if (alternate) primal.addEdge(l.raw(), l2.lit().raw());
-        else primal.addEdge(l.var(), l2.lit().var());
+        primal.addEdge(l.var(), l2.lit().var());
       }
     }
   }
@@ -281,14 +271,12 @@ void Counter::td_decompose(bool alternate) {
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
         debug_print(cl[i].var() << " " << cl[i2].var());
-        if (alternate) primal.addEdge(cl[i].raw(), cl[i2].raw());
-        else primal.addEdge(cl[i].var(), cl[i2].var());
+        primal.addEdge(cl[i].var(), cl[i2].var());
       }
     }
   }
 
   uint64_t n = nVars()*nVars();
-  if (alternate) n*=4;
   double density = (double)primal.numEdges()/(double)n;
   double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
   verb_print(1, "[td] Primal graph  "
@@ -315,7 +303,7 @@ void Counter::td_decompose(bool alternate) {
   TreeDecomposition td = fc.constructTD();
 
   td.centroid(primal.numNodes(), conf.verb);
-  compute_score(td, alternate);
+  compute_score(td);
   verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
 }
 
@@ -589,11 +577,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
 
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);
-    td_decompose(false);
-    if (false) {
-      tdscore2.resize(2*(nVars()+1), 0);
-      td_decompose(true);
-    }
+    td_decompose();
   }
   const auto exit_state = countSAT();
   if (exit_state == RESTART) {
@@ -781,7 +765,6 @@ bool Counter::get_polarity(const uint32_t v) const {
   else if (conf.polar_type == 4) polarity = !standard_polarity(v);
   else if (conf.polar_type == 2) polarity = false;
   else if (conf.polar_type == 3) polarity = true;
-  else if (conf.polar_type == 4 && !tdscore2.empty()) polarity = tdscore2[Lit(v, false).raw()] > tdscore2[Lit(v, true).raw()];
   else assert(false);
   return polarity;
 }

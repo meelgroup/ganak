@@ -235,8 +235,8 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;
   bool compute_cube(Cube& cube, int branch);
-  void compute_score(TreeDecomposition& tdec, bool alternate);
-  void td_decompose(bool alternate);
+  void compute_score(TreeDecomposition& tdec);
+  void td_decompose();
 
   // Actual SAT solver.
   bool deal_with_independent();

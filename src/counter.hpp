@@ -161,6 +161,7 @@ public:
     score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity*3);
     if (print) cout << "v: " << v << " score2: " << score << endl;
 
+    /* if (stats.conflicts < 10000) */
     if (!tdscore.empty()) score += tdscore[v];
     if (print) cout << "v: " << v << " score3: " << score << endl;
     return score;

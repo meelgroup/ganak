@@ -809,6 +809,34 @@ bool Counter::decideLiteral() {
   return true;
 }
 
+// The higher, the better. It is never below 0.
+double Counter::score_of(const uint32_t v) const {
+  bool print = false;
+  if (stats.conflicts % 1000 == 1) print = 1;
+  print = true;
+  print = false;
+  if (print) cout << "-----------" << endl;
+  double freq_score = 0;
+  double act_score = 0;
+  double td_score = 0;
+  if (stats.conflicts < 10000) {
+    freq_score = comp_manager_->freq_score_of(v)/15.0;
+    act_score = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity*3);
+    if (!tdscore.empty()) td_score = tdscore[v];
+  } else {
+    freq_score = comp_manager_->freq_score_of(v)*act_inc/10;
+    act_score = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
+    if (!tdscore.empty()) td_score += tdscore[v];
+  }
+  if (print) cout << "v: " << v
+    << " freq_score: " << freq_score
+    << " act_score: " << act_score
+    << " td_score: " << td_score
+    << endl;
+
+  return freq_score+act_score+td_score;
+}
+
 uint32_t Counter::find_best_branch() {
   vars_scores.clear();
   bool only_optional_indep = true;

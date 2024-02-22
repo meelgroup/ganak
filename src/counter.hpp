@@ -145,27 +145,7 @@ public:
   };
   ConflictData find_conflict_level(Lit p);
 
-  // The higher, the better. It is never below 0.
-  double score_of(uint32_t v) {
-    bool print = false;
-    if (stats.conflicts % 1000 == 1) print = 1;
-    print = true;
-    print = false;
-
-    double score = 0;
-    score += comp_manager_->freq_score_of(v)/15.0;
-
-    if (print) cout << "-----------" << endl;
-    if (print) cout << "v: " << v << " score1: " << score << endl;
-
-    score += (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity*3);
-    if (print) cout << "v: " << v << " score2: " << score << endl;
-
-    /* if (stats.conflicts < 10000) */
-    if (!tdscore.empty()) score += tdscore[v];
-    if (print) cout << "v: " << v << " score3: " << score << endl;
-    return score;
-  }
+  double score_of(const uint32_t v) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);

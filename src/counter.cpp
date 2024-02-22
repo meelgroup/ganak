@@ -828,7 +828,7 @@ double Counter::score_of(const uint32_t v) const {
     if (!tdscore.empty()) td_score = tdscore[v];
   } else {
     freq_score = comp_manager_->freq_score_of(v);
-    act_score = 10*var_act(v);
+    act_score = 100*var_act(v);
     if (!tdscore.empty()) td_score += tdscore[v];
   }
   if (print) cout << "v: " << v

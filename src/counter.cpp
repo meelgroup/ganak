@@ -809,26 +809,31 @@ bool Counter::decideLiteral() {
   return true;
 }
 
+double Counter::var_act(const uint32_t v) const {
+  return (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/max_activity;
+}
+
 // The higher, the better. It is never below 0.
 double Counter::score_of(const uint32_t v) const {
   bool print = false;
-  if (stats.conflicts % 1000 == 1) print = 1;
-  print = true;
+  if (stats.decisions % 40000 == 0) print = 1;
+  /* print = true; */
   print = false;
-  if (print) cout << "-----------" << endl;
   double freq_score = 0;
   double act_score = 0;
   double td_score = 0;
   if (stats.conflicts < 10000) {
     freq_score = comp_manager_->freq_score_of(v)/15.0;
-    act_score = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/(max_activity*3);
+    act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = tdscore[v];
   } else {
-    freq_score = comp_manager_->freq_score_of(v)*act_inc/10;
-    act_score = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
+    freq_score = comp_manager_->freq_score_of(v);
+    act_score = 10*var_act(v);
     if (!tdscore.empty()) td_score += tdscore[v];
   }
   if (print) cout << "v: " << v
+    << " confl: " << stats.conflicts
+    << " dec: " << stats.decisions
     << " freq_score: " << freq_score
     << " act_score: " << act_score
     << " td_score: " << td_score

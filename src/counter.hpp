@@ -146,6 +146,7 @@ public:
   ConflictData find_conflict_level(Lit p);
 
   double score_of(const uint32_t v) const;
+  double var_act(const uint32_t v) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);

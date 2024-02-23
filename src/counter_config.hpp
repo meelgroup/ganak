@@ -72,6 +72,7 @@ struct CounterConfiguration {
 #else
   int do_check_count = 0;
 #endif
+  int force_branch = 0; // 0 = no force, 1 = TD, 2 = conflict
 
 
   bool do_td = 1;

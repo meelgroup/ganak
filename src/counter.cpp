@@ -822,11 +822,11 @@ double Counter::score_of(const uint32_t v) const {
   double freq_score = 0;
   double act_score = 0;
   double td_score = 0;
-  if (stats.conflicts < 10000) {
+  if ((conf.force_branch == 0 && stats.conflicts < 10000) || conf.force_branch == 1) {
     freq_score = comp_manager_->freq_score_of(v)/15.0;
     act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = tdscore[v];
-  } else {
+  } else if (conf.force_branch == 0 || conf.force_branch == 2){
     freq_score = comp_manager_->freq_score_of(v);
     act_score = 100*var_act(v);
     if (!tdscore.empty()) td_score += tdscore[v];

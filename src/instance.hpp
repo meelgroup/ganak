@@ -155,14 +155,6 @@ protected:
     return variables_[lit.var()];
   }
 
-  LitWatchList & litWatchList(Lit lit) {
-    return watches[lit];
-  }
-
-  const LitWatchList & litWatchList(Lit lit) const {
-    return watches[lit];
-  }
-
   inline bool is_true(const Lit &lit) const {
     return values[lit] == T_TRI;
   }
@@ -226,8 +218,8 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
 }
 
 bool Instance::add_bin_cl(Lit a, Lit b, bool red) {
-   litWatchList(a).addBinLinkTo(b, red);
-   litWatchList(b).addBinLinkTo(a, red);
+   watches[a].addBinLinkTo(b, red);
+   watches[b].addBinLinkTo(a, red);
    return true;
 }
 
@@ -264,6 +256,6 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
 
 template<class T> void Instance::attach_cl(ClauseOfs off, const T& lits) {
   Lit blck_lit = lits[lits.size()/2];
-  litWatchList(lits[0]).addWatchLinkTo(off, blck_lit);
-  litWatchList(lits[1]).addWatchLinkTo(off, blck_lit);
+  watches[lits[0]].addWatchLinkTo(off, blck_lit);
+  watches[lits[1]].addWatchLinkTo(off, blck_lit);
 }

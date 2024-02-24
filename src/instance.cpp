@@ -48,12 +48,12 @@ void Instance::checkWatchLists() const {
 
   for(const auto& offs: longRedCls) {
     const auto& cl = *alloc->ptr(offs);
-    if (!findOfsInWatch(litWatchList(cl[0]).watch_list_, offs)) {
+    if (!findOfsInWatch(watches[cl[0]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[0]!!" << endl;
       assert(false);
       exit(-1);
     }
-    if (!findOfsInWatch(litWatchList(cl[1]).watch_list_, offs)) {
+    if (!findOfsInWatch(watches[cl[1]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[1]!!" << endl;
       assert(false);
       exit(-1);
@@ -136,8 +136,8 @@ bool Instance::red_cl_can_be_deleted(ClauseOfs off){
 
 void Instance::markClauseDeleted(const ClauseOfs off){
   Clause& cl = *alloc->ptr(off);
-  litWatchList(cl[0]).removeWatchLinkTo(off);
-  litWatchList(cl[1]).removeWatchLinkTo(off);
+  watches[cl[0]].removeWatchLinkTo(off);
+  watches[cl[1]].removeWatchLinkTo(off);
   alloc->clauseFree(off);
 }
 

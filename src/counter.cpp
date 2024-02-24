@@ -1299,6 +1299,10 @@ retStateT Counter::backtrack() {
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
       /* CHECK_PROPAGATED_DO(check_all_propagated_conflicted()); */
+
+      // NOTE: replacing a decision literal x with y when y->x binary clause exists does
+      // not work, because we'll count (x, y) = 01 (left hand branch), and
+      // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
       reactivate_comps_and_backtrack_trail(false);
       bool ret = propagate(true);
       assert(ret);

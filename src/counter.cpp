@@ -1286,7 +1286,6 @@ retStateT Counter::backtrack() {
     // propagation.
     //    TODO: not sure we need the antecedent check here...
     //          probably doesn't hurt, but not sure.
-    // Let's do it now!
     if (!decisions.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
       debug_print("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decisions.get_decision_level());

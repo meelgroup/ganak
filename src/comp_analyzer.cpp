@@ -117,7 +117,7 @@ void CompAnalyzer::initialize(
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
-      for (const auto& bincl: watches[Lit(v, i)].binary_links_) {
+      for (const auto& bincl: watches[Lit(v, i)].binaries) {
         if (bincl.irred()) unified_var_links_lists_pool_.push_back(bincl.lit().var());
       }
     }

@@ -234,7 +234,7 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
   /* { */
     /* Lit l = tmp_minim_with_bins[0]; */
     if (!seen[l.toPosInt()]) continue;
-    const auto& w = watches[l].binary_links_;
+    const auto& w = watches[l].binaries;
     for(const auto& bincl: w) {
       const auto& l2 = bincl.lit();
       assert(l.var() != l2.var());

@@ -132,7 +132,7 @@ void Counter::init_activity_scores() {
   max_activity = 0;
   all_lits(x) {
     Lit l(x/2, x%2);
-    for (const auto& ws: watches[l].binary_links_) {
+    for (const auto& ws: watches[l].binaries) {
       if (!ws.red()) watches[l].activity++;
     }
   }
@@ -260,7 +260,7 @@ void Counter::td_decompose() {
   Graph primal(nVars()+1);
   all_lits(i) {
     Lit l(i/2, i%2 == 0);
-    for(const auto& l2: watches[l].binary_links_) {
+    for(const auto& l2: watches[l].binaries) {
       if ((!l2.red() || (l2.red() && conf.td_with_red_bins)) && l < l2.lit()) {
         debug_print(l.var() << " " << l2.lit().var());
         primal.addEdge(l.var(), l2.lit().var());
@@ -338,7 +338,7 @@ mpz_class Counter::check_count_norestart_cms(const Cube& c) {
   // Bin cls
   all_lits(i) {
     Lit l(i/2, i%2);
-    for(const auto& l2: watches[l].binary_links_) {
+    for(const auto& l2: watches[l].binaries) {
       if (l2.irred() && l < l2.lit()) {
         tmp.clear();
         tmp.push_back(l);
@@ -396,7 +396,7 @@ mpz_class Counter::check_count_norestart(const Cube& c) {
   // Bin cls
   all_lits(i) {
     Lit l(i/2, i%2);
-    for(const auto& l2: watches[l].binary_links_) {
+    for(const auto& l2: watches[l].binaries) {
       if (l2.irred() && l < l2.lit()) {
         tmp.clear();
         tmp.push_back(l);
@@ -518,7 +518,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
     all_lits(i) {
       Lit l(i/2, i%2);
       if (seen[l.var()] == 0) continue;
-      for(const auto& l2: watches[l].binary_links_) {
+      for(const auto& l2: watches[l].binaries) {
         if (l < l2.lit() || seen[l2.lit().var()] == 0 || !l2.irred()) continue;
         cout << "txt << " << l << " " << l2.lit() << " 0" << endl;
       }
@@ -1756,7 +1756,7 @@ bool Counter::propagate(bool out_of_order) {
     debug_print("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
-    for (const auto& bincl : watches[unLit].binary_links_) {
+    for (const auto& bincl : watches[unLit].binaries) {
       const auto& l = bincl.lit();
       if (val(l) == F_TRI) {
         setConflictState(unLit, l);
@@ -2376,7 +2376,7 @@ bool Counter::v_propagate() {
     const Lit unLit = v_trail[v_qhead].neg();
 
     //Propagate bin clauses
-    const auto& wsbin = watches[unLit].binary_links_;
+    const auto& wsbin = watches[unLit].binaries;
     v_tout-=wsbin.size()/2;
     for (const auto& bincl : wsbin) {
       const auto& l = bincl.lit();
@@ -2900,12 +2900,12 @@ void Counter::subsume_all() {
   vector<BinClSub> bin_cls;
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
-    for(const auto& l2: watches[lit].binary_links_) {
+    for(const auto& l2: watches[lit].binaries) {
       if (l2.lit() < lit) continue;
       assert(lit < l2.lit());
       bin_cls.push_back(BinClSub(lit, l2.lit(), l2.red()));
     }
-    watches[lit].binary_links_.clear();
+    watches[lit].binaries.clear();
   }
   std::sort(bin_cls.begin(), bin_cls.end());
   uint32_t j = 0;
@@ -3147,7 +3147,7 @@ uint64_t Counter::buddy_count() {
   for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
     Lit l(v, i);
     if (val(l) != X_TRI) continue;
-    for(const auto& ws: watches[l].binary_links_) {
+    for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;
       if (val(ws.lit()) == T_TRI) continue;
       assert(val(ws.lit()) == X_TRI); // otherwise would have propagated/conflicted
@@ -3233,7 +3233,7 @@ void Counter::check_all_propagated_conflicted() const {
   all_lits(i) {
     Lit lit(i/2, i%2);
     if (val(lit) == T_TRI) continue;
-    for(const auto& ws: watches[lit].binary_links_) {
+    for(const auto& ws: watches[lit].binaries) {
       if (val(ws.lit()) == T_TRI) continue;
       if (val(lit) == F_TRI) {
         if (val(ws.lit()) == X_TRI) {

@@ -284,7 +284,7 @@ private:
     var(lit).sublevel = trail.size();
     qhead = std::min<uint32_t>(qhead, trail.size());
     trail.push_back(lit);
-    __builtin_prefetch(watches[lit.neg()].binary_links_.data());
+    __builtin_prefetch(watches[lit.neg()].binaries.data());
     __builtin_prefetch(watches[lit.neg()].watch_list_.data());
     if (conf.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
       Clause& cl = *alloc->ptr(ant.asCl());

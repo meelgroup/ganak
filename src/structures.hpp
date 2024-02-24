@@ -126,7 +126,7 @@ struct BinCl {
 
 class LitWatchList {
 public:
-  vector<BinCl> binary_links_;
+  vector<BinCl> binaries;
   vector<ClOffsBlckL> watch_list_;
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
@@ -155,8 +155,8 @@ public:
   }
 
   void addBinLinkTo(Lit lit, bool red) {
-    binary_links_.push_back(BinCl(lit, red));
-    if (!red) last_irred_bin = binary_links_.size();
+    binaries.push_back(BinCl(lit, red));
+    if (!red) last_irred_bin = binaries.size();
   }
 
   void resetWatchList() {watch_list_.clear();}

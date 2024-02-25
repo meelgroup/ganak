@@ -106,7 +106,9 @@ void IFlowCutter::print_comment(std::string msg){
 }
 
 template<class Tail, class Head>
-void check_multilevel_partition_invariants(const Tail&tail, const Head&head, const std::vector<Cell>&multilevel_partition){
+void check_multilevel_partition_invariants(
+		[[maybe_unused]] const Tail&tail, [[maybe_unused]] const Head&head,
+		[[maybe_unused]] const std::vector<Cell>&multilevel_partition){
 	#ifdef SLOW_DEBUG
 	const int node_count = tail.image_count();
 	const int arc_count = tail.preimage_count();

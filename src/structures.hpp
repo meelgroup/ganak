@@ -150,16 +150,14 @@ public:
     assert(found && "Should have found watch!!!");
   }
 
-  void add_cl(ClauseIndex offs, Lit blockedLit) {
-    watch_list_.push_back(ClOffsBlckL(offs, blockedLit));
+  void add_cl(ClauseIndex offs, Lit blocked_lit) {
+    watch_list_.push_back(ClOffsBlckL(offs, blocked_lit));
   }
 
   void add_bin(Lit lit, bool red) {
     binaries.push_back(BinCl(lit, red));
     if (!red) last_irred_bin = binaries.size();
   }
-
-  void resetWatchList() {watch_list_.clear();}
 };
 
 enum class AnteType {

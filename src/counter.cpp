@@ -581,7 +581,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
   }
-  const auto exit_state = countSAT();
+  const auto exit_state = count_sat();
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
   } else {
@@ -659,13 +659,13 @@ int Counter::chrono_work_sat() {
   return 0;
 }
 
-SOLVER_StateT Counter::countSAT() {
+SOLVER_StateT Counter::count_sat() {
   RetState state = RESOLVED;
 
   while (true) {
     debug_print("var top of decision stack: " << decisions.top().var);
     // NOTE: findNextRemainingCompOf finds disjoint comps
-    // we then solve them all with the decideLiteral & calling findNext.. again
+    // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->findNextRemainingCompOf(decisions.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       const Comp* c = comp_manager->at(decisions.top().super_comp());
@@ -676,7 +676,7 @@ SOLVER_StateT Counter::countSAT() {
         break;
       }
 
-      if (!decideLiteral()) {
+      if (!decide_lit()) {
         decisions.top().nextUnprocessedComp();
         continue;
       }
@@ -771,7 +771,7 @@ bool Counter::get_polarity(const uint32_t v) const {
   return polarity;
 }
 
-bool Counter::decideLiteral() {
+bool Counter::decide_lit() {
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -801,7 +801,7 @@ bool Counter::decideLiteral() {
 
   Lit lit = Lit(v, get_polarity(v));
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
-  debug_print(COLYEL "decideLiteral() is deciding: " << lit << " dec level: "
+  debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << decisions.get_decision_level());
   setLiteral(lit, decision_level());
   stats.decisions++;
@@ -1867,7 +1867,7 @@ const DataAndStatistics& Counter::get_stats() const
   return stats;
 }
 
-bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
+bool Counter::lit_redundant(Lit p, uint32_t abstract_levels) {
     debug_print(__func__ << " called");
 
     analyze_stack.clear();
@@ -1875,9 +1875,9 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
 
     Lit* c = nullptr;
     uint32_t size;
-    size_t top = toClear.size();
+    size_t top = to_clear.size();
     while (!analyze_stack.empty()) {
-      debug_print("At point in litRedundant: " << analyze_stack.back());
+      debug_print("At point in lit_redundant: " << analyze_stack.back());
       const auto reason = var(analyze_stack.back()).ante;
       assert(reason.isAnt());  //Must have a reason
       p = analyze_stack.back();
@@ -1890,17 +1890,17 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
         debug_print("Examining lit " << p2 << " seen: " << (int)seen[p2.var()]);
         if (!seen[p2.var()] && var(p2).decision_level > 0) {
           if (var(p2).ante.isAnt()
-              && (abstractLevel(p2.var()) & abstract_levels) != 0
+              && (abst_level(p2.var()) & abstract_levels) != 0
           ) {
               debug_print("lit " << p2 << " OK");
               seen[p2.var()] = 1;
               analyze_stack.push_back(p2);
-              toClear.push_back(p2.var());
+              to_clear.push_back(p2.var());
           } else {
               debug_print("lit " << p2 << " NOT OK");
               //Return to where we started before function executed
-              for (size_t j = top; j < toClear.size(); j++) seen[toClear[j]] = 0;
-              toClear.resize(top);
+              for (size_t j = top; j < to_clear.size(); j++) seen[to_clear[j]] = 0;
+              to_clear.resize(top);
               return false;
           }
         }
@@ -1910,7 +1910,7 @@ bool Counter::litRedundant(Lit p, uint32_t abstract_levels) {
     return true;
 }
 
-uint32_t Counter::abstractLevel(const uint32_t x) const
+uint32_t Counter::abst_level(const uint32_t x) const
 {
     return ((uint32_t)1) << (variables_[x].decision_level & 31);
 }
@@ -1922,13 +1922,13 @@ void Counter::recursive_cc_min()
   uint32_t abstract_level = 0;
   for (size_t i = 1; i < uip_clause.size(); i++) {
     //(maintain an abstraction of levels involved in conflict)
-    abstract_level |= abstractLevel(uip_clause[i].var());
+    abstract_level |= abst_level(uip_clause[i].var());
   }
 
   size_t i, j;
   for (i = j = 1; i < uip_clause.size(); i++) {
     if (var(uip_clause[i]).ante.isNull()
-      || !litRedundant(uip_clause[i], abstract_level)
+      || !lit_redundant(uip_clause[i], abstract_level)
     ) {
       debug_print("ccmin -- keeping lit: " << uip_clause[i]);
       uip_clause[j++] = uip_clause[i];
@@ -1943,8 +1943,8 @@ void Counter::minimize_uip_cl() {
   stats.uip_cls++;
   stats.orig_uip_lits += uip_clause.size();
   recursive_cc_min();
-  for(const auto& c: toClear) seen[c] = 0;
-  toClear.clear();
+  for(const auto& c: to_clear) seen[c] = 0;
+  to_clear.clear();
 
   CHECK_IMPLIED_DO(check_implied(uip_clause));
   tmp_cl_minim.clear();
@@ -2293,7 +2293,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     if (seen[l.raw()] == 0) {
       removable++;
     } else {
-      toClear.push_back(l.raw());
+      to_clear.push_back(l.raw());
     }
   }
 
@@ -2357,8 +2357,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     VERBOSE_DEBUG_DO(cout << "Can't vivify." << endl);
   }
 
-  for(const auto& l: toClear) seen[l] = 0;
-  toClear.clear();
+  for(const auto& l: to_clear) seen[l] = 0;
+  to_clear.clear();
   return fun_ret;
 }
 
@@ -2467,18 +2467,18 @@ bool Counter::v_propagate() {
 
 void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const
 {
-    tmpLit.clear();
-    tmpLit.push_back(p);
+    tmp_lit.clear();
+    tmp_lit.push_back(p);
     for(int32_t i = var(p).decision_level; i > 0; i--) {
       auto const& d = decisions[i];
-      tmpLit.push_back(Lit(d.var, val(d.var) == F_TRI));
+      tmp_lit.push_back(Lit(d.var, val(d.var) == F_TRI));
     }
-    size = tmpLit.size();
-    c = tmpLit.data();
+    size = tmp_lit.size();
+    c = tmp_lit.data();
 
 #ifdef VERBOSE_DEBUG
     cout << "Fake cl: " << endl;
-    for(const auto& l: tmpLit) {
+    for(const auto& l: tmp_lit) {
       cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
         << " ante: " << std::setw(8) << var(l).ante
         << " val : " << std::setw(7) << lit_val_str(l)
@@ -2496,8 +2496,8 @@ void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) co
     create_fake(p, size, c);
   } else if (ante.isALit()) {
     //Binary
-    tmpLit.resize(2);
-    c = tmpLit.data();
+    tmp_lit.resize(2);
+    c = tmp_lit.data();
     if (p == NOT_A_LIT) c[0] = confl_lit;
     else c[0] = p;
     c[1] = ante.asLit();
@@ -2545,7 +2545,7 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
 }
 
 void Counter::create_uip_cl() {
-  assert(toClear.empty());
+  assert(to_clear.empty());
 
   uip_clause.clear();
   uip_clause.push_back(Lit(0, false));
@@ -2585,7 +2585,7 @@ void Counter::create_uip_cl() {
       if (!seen[q.var()] && var(q).decision_level > 0){
         increaseActivity(q);
         seen[q.var()] = 1;
-        toClear.push_back(q.var());
+        to_clear.push_back(q.var());
 #ifdef VERBOSE_DEBUG
         cout << std::setw(5) << q
           << " lev: " << std::setw(3) << var(q).decision_level
@@ -2803,7 +2803,7 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
 
 void Counter::toplevel_full_probe() {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
-  assert(toClear.empty());
+  assert(to_clear.empty());
   assert(bothprop_toset.empty());
 
   double my_time = cpuTime();
@@ -2826,7 +2826,7 @@ void Counter::toplevel_full_probe() {
       for(uint32_t i2 = trail_before; i2 < trail.size(); i2++) {
         Lit l2 = trail[i2];
         seen[l2.raw()] = 1;
-        toClear.push_back(l2.raw());
+        to_clear.push_back(l2.raw());
       }
     }
     reactivate_comps_and_backtrack_trail();

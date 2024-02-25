@@ -184,12 +184,10 @@ private:
   vector<VS> vars_scores; // for branch picking
 
   // Temporaries, used during recordLastUIPClause
-  mutable vector<Lit> tmpLit; //used in recoredLastUIPClause
-  vector<uint32_t> toClear;
-  set<Lit> toSet;
+  mutable vector<Lit> tmp_lit; //used in recoredLastUIPClause
+  vector<uint32_t> to_clear;
 
-  // Used during minimizeAndStoreUIPClause
-  vector<Lit> tmp_cl_minim;
+  vector<Lit> tmp_cl_minim; // Used during minimize_uip_cl
 
   double start_time;
   std::mt19937_64 mtrand;
@@ -201,16 +199,13 @@ private:
 
   // the last time conflict clauses have been deleted
   uint64_t last_reduceDB_conflicts = 0;
-  // the last time the conflict clause storage has been compacted
-  uint64_t last_ccl_cleanup_decs_ = 0;
 
   void simplePreProcess();
-  bool prepFailedLiteralTest();
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
 
-  SOLVER_StateT countSAT();
-  bool decideLiteral();
+  SOLVER_StateT count_sat();
+  bool decide_lit();
   uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch();
   template<class T> bool clause_falsified(const T& cl) const;
@@ -398,8 +393,8 @@ private:
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
   void create_uip_cl();
   void minimize_uip_cl();
-  uint32_t abstractLevel(const uint32_t x) const;
-  bool litRedundant(Lit p, uint32_t abstract_levels);
+  uint32_t abst_level(const uint32_t x) const;
+  bool lit_redundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
   void recursive_cc_min();
   bool get_polarity(const uint32_t var) const;

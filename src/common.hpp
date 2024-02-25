@@ -90,8 +90,8 @@ using std::endl;
 
 #define verb_print(a, b) if (conf.verb >= a) cout << "c o " << b << endl;
 #define clear_toclean_seen() \
-    for(const auto& x: toClear) seen[x] = 0;\
-    toClear.clear();
+    for(const auto& x: to_clear) seen[x] = 0;\
+    to_clear.clear();
 
 
 #ifdef BUDDY_ENABLED

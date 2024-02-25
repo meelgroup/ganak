@@ -5,8 +5,7 @@
  *      Author: mthurley
  */
 
-#ifndef COMPONENT_ARCHETYPE_H_
-#define COMPONENT_ARCHETYPE_H_
+#pragma once
 
 #include <cstring>
 #include <algorithm>
@@ -44,25 +43,25 @@ public:
   CompArchetype() = default;
   ~CompArchetype() { delete[] seen; }
   CompArchetype(StackLevel &stack_level, const Comp &super_comp) :
-      p_super_comp_(&super_comp), p_stack_level_(&stack_level) {
+      super_comp_ptr(&super_comp), stack_lvl_ptr(&stack_level) {
   }
 
   // called every time we want to deal with a new component
   void re_initialize(StackLevel &stack_level, const Comp &super_comp) {
     debug_print("Reinitializing seen[] to all-zero in CompArchetype");
-    p_super_comp_ = &super_comp;
-    p_stack_level_ = &stack_level;
+    super_comp_ptr = &super_comp;
+    stack_lvl_ptr = &stack_level;
     clear_arrays();
     curr_comp.reserve_space(super_comp.nVars(),super_comp.num_long_cls());
     BUDDY_DO(num_bin_cls = 0);
   }
 
   const Comp &super_comp() {
-    return *p_super_comp_;
+    return *super_comp_ptr;
   }
 
   StackLevel & stack_level() {
-    return *p_stack_level_;
+    return *stack_lvl_ptr;
   }
 
   void set_var_in_sup_comp_unseen(const uint32_t v) {
@@ -144,11 +143,11 @@ public:
     uint32_t seen_size = std::max(max_var_id,max_cl_id)  + 1;
     debug_print("Creating new seen[] of size: " << seen_size << " and zeroing it.");
     seen = new uint8_t[seen_size];
-    seen_byte_size_ = sizeof(uint8_t) * (seen_size);
+    seen_bytes_sz = sizeof(uint8_t) * (seen_size);
     clear_arrays();
   }
 
-  void clear_arrays() { memset(seen, 0, seen_byte_size_); }
+  void clear_arrays() { memset(seen, 0, seen_bytes_sz); }
 
   // At this point exploreRemainingCompOf has been called already which
   // set up search_stack_, seen[] etc. so this is now quite easy.
@@ -196,10 +195,8 @@ public:
 #endif
 
 private:
-  Comp const* p_super_comp_;
-  StackLevel *p_stack_level_;
+  Comp const* super_comp_ptr;
+  StackLevel *stack_lvl_ptr;
   uint8_t* seen = nullptr; // all variables and all clause IDXs can be indexed here
-  uint32_t seen_byte_size_ = 0;
+  uint32_t seen_bytes_sz = 0;
 };
-
-#endif /* COMPONENT_ARCHETYPE_H_ */

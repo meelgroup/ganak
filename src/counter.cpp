@@ -626,8 +626,8 @@ void Counter::print_stat_line() {
     stats.print_short(this, &comp_manager->get_cache());
   }
 
-  next_print_stat_cache = stats.num_cache_look_ups_ + (4ULL*1000LL*1000LL);
-  next_print_stat_confl = stats.conflicts + (30LL*1000LL);
+  next_print_stat_cache = stats.num_cache_look_ups_ + (6ULL*1000LL*1000LL);
+  next_print_stat_confl = stats.conflicts + (40LL*1000LL);
 }
 
 bool Counter::chrono_work() {

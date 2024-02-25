@@ -1575,10 +1575,10 @@ void Counter::reduce_db_if_needed() {
 }
 
 // Returns TRUE if we would go further back
-bool Counter::resolveConflict_sat() {
+bool Counter::resolve_conflict_sat() {
   assert(sat_mode());
   debug_print("SAT mode conflict resolution");
-  recordLastUIPCause();
+  create_uip_cl();
   if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
     unit_clauses_.push_back(uip_clause[0]);
 
@@ -1612,7 +1612,7 @@ retStateT Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 
-  recordLastUIPCause();
+  create_uip_cl();
   if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
     unit_clauses_.push_back(uip_clause[0]);
 
@@ -1915,7 +1915,7 @@ uint32_t Counter::abstractLevel(const uint32_t x) const
     return ((uint32_t)1) << (variables_[x].decision_level & 31);
 }
 
-void Counter::recursiveConfClauseMin()
+void Counter::recursive_cc_min()
 {
     VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("recursive ccmin now.");
@@ -1939,10 +1939,10 @@ void Counter::recursiveConfClauseMin()
   uip_clause.resize(j);
 }
 
-void Counter::minimizeUIPClause() {
+void Counter::minimize_uip_cl() {
   stats.uip_cls++;
   stats.orig_uip_lits += uip_clause.size();
-  recursiveConfClauseMin();
+  recursive_cc_min();
   for(const auto& c: toClear) seen[c] = 0;
   toClear.clear();
 
@@ -2544,7 +2544,7 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   return data;
 }
 
-void Counter::recordLastUIPCause() {
+void Counter::create_uip_cl() {
   assert(toClear.empty());
 
   uip_clause.clear();
@@ -2625,7 +2625,7 @@ void Counter::recordLastUIPCause() {
   uip_clause[0] = p.neg();
   VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause.data(), uip_clause.size()));
   CHECK_IMPLIED_DO(check_implied(uip_clause));
-  minimizeUIPClause();
+  minimize_uip_cl();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
 }
 
@@ -3023,7 +3023,7 @@ prop:
         break;
       }
       if (x == 1) goto prop;
-      if (resolveConflict_sat()) {
+      if (resolve_conflict_sat()) {
         goto prop;
       } else {
         debug_print("SAT mode found UNSAT");

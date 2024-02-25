@@ -222,7 +222,7 @@ private:
 
   // Actual SAT solver.
   bool deal_with_independent();
-  bool resolveConflict_sat();
+  bool resolve_conflict_sat();
   int32_t sat_start_dec_level = -1;
   Heap<VarOrderLt> order_heap;
   inline bool sat_mode() const {return sat_start_dec_level != -1;}
@@ -396,12 +396,12 @@ private:
   vector<Lit> uip_clause;
 
   void create_fake(Lit p, uint32_t& size, Lit*& c) const;
-  void recordLastUIPCause();
-  void minimizeUIPClause();
+  void create_uip_cl();
+  void minimize_uip_cl();
   uint32_t abstractLevel(const uint32_t x) const;
   bool litRedundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
-  void recursiveConfClauseMin();
+  void recursive_cc_min();
   bool get_polarity(const uint32_t var) const;
   bool standard_polarity(const uint32_t var) const;
 

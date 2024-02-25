@@ -165,7 +165,7 @@ enum class AnteType {
 };
 
 class Antecedent {
-  uint32_t val_ = 0;
+  uint32_t val = 0;
   AnteType type = AnteType::decision;
 
 public:
@@ -174,11 +174,11 @@ public:
   }
 
   explicit Antecedent(const ClauseOfs cl_ofs) {
-     val_ = cl_ofs;
+     val = cl_ofs;
      type = AnteType::clause;
    }
   explicit Antecedent(const Lit idLit) {
-    val_ = idLit.raw();
+    val = idLit.raw();
     type = AnteType::lit;
   }
 
@@ -190,21 +190,21 @@ public:
 
   ClauseOfs asCl() const {
     SLOW_DEBUG_DO(assert(isAClause()));
-    return val_;
+    return val;
   }
 
   Lit asLit() const {
     SLOW_DEBUG_DO(assert(isALit()));
     Lit idLit;
-    idLit.copyRaw(val_);
+    idLit.copyRaw(val);
     return idLit;
   }
 
   bool operator==(const Antecedent& other) const {
-    return val_ == other.val_;
+    return val == other.val;
   }
   bool operator!=(const Antecedent& other) const {
-    return val_ != other.val_;
+    return val != other.val;
   }
 
   static Antecedent fakeAnte() {

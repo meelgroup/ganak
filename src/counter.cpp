@@ -146,9 +146,9 @@ void Counter::init_activity_scores() {
 void Counter::end_irred_cls() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
-  delete comp_manager_;
-  comp_manager_ = new CompManager(conf,stats, values, indep_support_end, this);
-  comp_manager_->getrandomseedforclhash();
+  delete comp_manager;
+  comp_manager = new CompManager(conf,stats, values, indep_support_end, this);
+  comp_manager->getrandomseedforclhash();
 
   // reset stats
   depth_q.clearAndResize(conf.first_restart);
@@ -163,7 +163,7 @@ void Counter::end_irred_cls() {
 
   if (conf.verb) stats.printShortFormulaInfo(this);
   // This below will initialize the disjoint component analyzer (ana_)
-  comp_manager_->initialize(watches, alloc, long_irred_cls, nVars());
+  comp_manager->initialize(watches, alloc, long_irred_cls, nVars());
 }
 
 void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
@@ -585,7 +585,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
   } else {
-    if (conf.verb) stats.printShort(this, &comp_manager_->get_cache());
+    if (conf.verb) stats.printShort(this, &comp_manager->get_cache());
     assert(exit_state == SUCCESS);
     Cube c(vector<Lit>(), decisions.top().getTotalModelCount());
     ret_cubes.push_back(c);
@@ -608,8 +608,8 @@ void Counter::print_all_levels() {
       << " right: " << decisions.at(dec_lev).get_right_model_count() << ")"
       << endl;
 
-    const auto& c = comp_manager_->at(sup_at);
-    cout << COLORG "-> Vars in comp_manager_->at(" << sup_at << ")."
+    const auto& c = comp_manager->at(sup_at);
+    cout << COLORG "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
@@ -623,7 +623,7 @@ void Counter::print_stat_line() {
       next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) {
     verb_print(1, "GANAK time so far: " << (cpuTime() - start_time));
-    stats.printShort(this, &comp_manager_->get_cache());
+    stats.printShort(this, &comp_manager->get_cache());
   }
 
   next_print_stat_cache = stats.num_cache_look_ups_ + (4ULL*1000LL*1000LL);
@@ -666,9 +666,9 @@ SOLVER_StateT Counter::countSAT() {
     debug_print("var top of decision stack: " << decisions.top().var);
     // NOTE: findNextRemainingCompOf finds disjoint comps
     // we then solve them all with the decideLiteral & calling findNext.. again
-    while (comp_manager_->findNextRemainingCompOf(decisions.top())) {
+    while (comp_manager->findNextRemainingCompOf(decisions.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
-      const Comp* c = comp_manager_->at(decisions.top().super_comp());
+      const Comp* c = comp_manager->at(decisions.top().super_comp());
 
       // BDD count
       if (conf.do_buddy && do_buddy_count(c)) {
@@ -690,7 +690,7 @@ SOLVER_StateT Counter::countSAT() {
             << " left: " << decisions.top().get_left_model_count()
             << " right: " << decisions.top().get_right_model_count());
         decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
-              comp_manager_->comp_stack_size()));
+              comp_manager->comp_stack_size()));
         if (ret) {
           decisions.top().change_to_right_branch();
           decisions.top().includeSolution(1);
@@ -776,7 +776,7 @@ bool Counter::decideLiteral() {
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
     StackLevel(decisions.top().currentRemainingComp(),
-               comp_manager_->comp_stack_size()));
+               comp_manager->comp_stack_size()));
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
@@ -805,7 +805,7 @@ bool Counter::decideLiteral() {
       << decisions.get_decision_level());
   setLiteral(lit, decision_level());
   stats.decisions++;
-  assert( decisions.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+  assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   return true;
 }
 
@@ -823,11 +823,11 @@ double Counter::score_of(const uint32_t v) const {
   double act_score = 0;
   double td_score = 0;
   if ((conf.force_branch == 0 && stats.conflicts < 10000) || conf.force_branch == 1) {
-    freq_score = comp_manager_->freq_score_of(v)/15.0;
+    freq_score = comp_manager->freq_score_of(v)/15.0;
     act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = tdscore[v];
   } else if (conf.force_branch == 0 || conf.force_branch == 2){
-    freq_score = comp_manager_->freq_score_of(v);
+    freq_score = comp_manager->freq_score_of(v);
     act_score = 100*var_act(v);
     if (!tdscore.empty()) td_score += tdscore[v];
   }
@@ -847,7 +847,7 @@ uint32_t Counter::find_best_branch() {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
-  for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
@@ -856,7 +856,7 @@ uint32_t Counter::find_best_branch() {
       if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
       double score = score_of(v) ;
 #ifdef COMP_VAR_OCC_ENABLED
-      auto this_comp_var_score = comp_manager_->getSuperCompOf(decisions.top()).get_var_occs_score(v);
+      auto this_comp_var_score = comp_manager->getSuperCompOf(decisions.top()).get_var_occs_score(v);
       /* cout << " v: " << v << " extra: " << this_comp_var_score << " orig: " << score << endl; */
       /// simp-mc2022_track1_113.cnf works well with 1/5, badly without
       score += this_comp_var_score/5;
@@ -870,17 +870,17 @@ uint32_t Counter::find_best_branch() {
   }
 
   if (conf.do_cache_hit_scores && stats.conflicts > 1000 && best_var != 0) {
-    double c_score = comp_manager_->get_cache_hit_score(best_var);
-    for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
+    double c_score = comp_manager->get_cache_hit_score(best_var);
+    for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
          *it != sentinel; it++) {
       const uint32_t v = *it;
       if (val(v) != X_TRI) continue;
       if (v < indep_support_end) {
         const double score = score_of(v);
         if (score > best_var_score * 0.9) {
-          if (comp_manager_->get_cache_hit_score(v) > c_score) {
+          if (comp_manager->get_cache_hit_score(v) > c_score) {
             best_var = v;
-            c_score = comp_manager_->get_cache_hit_score(v);
+            c_score = comp_manager->get_cache_hit_score(v);
           }
         }
       }
@@ -898,13 +898,13 @@ uint32_t Counter::find_best_branch_gpmc() {
   double max_score_td = -1;
   bool only_optional_indep = true;
 
-  for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
       *it != sentinel; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
 
     double score_td = tdscore[v];
-    double score_f = comp_manager_->freq_score_of(v);
+    double score_f = comp_manager->freq_score_of(v);
     double score_a = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {
@@ -983,7 +983,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
     int off_by_one = 1;
     if (i == decisions.get_decision_level()) off_by_one = 0;
     for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
-      const auto& comp = comp_manager_->at(i2);
+      const auto& comp = comp_manager->at(i2);
       all_vars_in_comp(comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
         debug_print("Lit from comp: " << l);
@@ -1009,8 +1009,8 @@ bool Counter::compute_cube(Cube& c, int branch) {
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = dst.getUnprocessedCompsEnd();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
-      assert(i2 < comp_manager_->comp_stack_size());
-      const auto& comp = comp_manager_->at(i2);
+      assert(i2 < comp_manager->comp_stack_size());
+      const auto& comp = comp_manager->at(i2);
       cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
       all_vars_in_comp(comp, v) cout << *v << " ";
       cout << COLDEF << endl;
@@ -1166,7 +1166,7 @@ bool Counter::restart_if_needed() {
         mini_cubes.push_back(cube);
       } else {
         verb_print(2, "->> FALSE cube. ");
-        comp_manager_->removeAllCachePollutionsOfIfExists(decisions.top());
+        comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
       }
     }
     reactivate_comps_and_backtrack_trail();
@@ -1189,10 +1189,10 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 
     const auto& s = decisions.top();
     auto const& sup_at = s.super_comp();
-    const auto& c = comp_manager_->at(sup_at);
+    const auto& c = comp_manager->at(sup_at);
 #ifdef VERBOSE_DEBUG
     cout << "-> Checking count. Incl all dec: " << include_all_dec << " dec lev: " << decisions.get_decision_level() << " var: " << single_var << endl;
-    cout << "-> Vars in comp_manager_->at(" << sup_at << ")."
+    cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
@@ -1268,11 +1268,11 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 
 retStateT Counter::backtrack() {
   debug_print("in " << __FUNCTION__ << " now ");
-  assert(decisions.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+  assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   do {
     debug_print("[indep] top count here: " << decisions.top().getTotalModelCount() << " dec lev: " << decision_level());
     if (decisions.top().branch_found_unsat()) {
-      comp_manager_->removeAllCachePollutionsOf(decisions.top());
+      comp_manager->removeAllCachePollutionsOf(decisions.top());
     } else if (decisions.top().anotherCompProcessible()) {
       debug_print("[indep] Processing another comp at dec lev "
           << decisions.get_decision_level()
@@ -1319,14 +1319,16 @@ retStateT Counter::backtrack() {
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << decisions.get_decision_level());
+#ifndef CHECK_COUNT
     if (conf.do_use_cache)
-      comp_manager_->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
+      comp_manager->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
+#endif
 
 
     //Cache score should be decreased since the component is getting added to cache
     if (conf.do_cache_hit_scores) {
       stats.numcachedec_++;
-      comp_manager_->bump_cache_hit_score(comp_manager_->getSuperCompOf(decisions.top()));
+      comp_manager->bump_cache_hit_score(comp_manager_->getSuperCompOf(decisions.top()));
     }
 
     // Backtrack from end, i.e. finished.
@@ -1364,7 +1366,7 @@ retStateT Counter::backtrack() {
     // step to the next comp not yet processed
     dst.nextUnprocessedComp();
 
-    assert(dst.remaining_comps_ofs() < comp_manager_->comp_stack_size() + 1);
+    assert(dst.remaining_comps_ofs() < comp_manager->comp_stack_size() + 1);
   } while (true);
   return EXIT;
 }
@@ -1397,8 +1399,8 @@ void Counter::print_conflict_info() const
 void Counter::print_comp_stack_info() const {
     cout << "decisions.top().remaining_comps_ofs(): "
       << decisions.top().remaining_comps_ofs() << endl;
-    cout << "comp_manager_->comp_stack_size(): " <<
-      comp_manager_->comp_stack_size() << endl;
+    cout << "comp_manager->comp_stack_size(): " <<
+      comp_manager->comp_stack_size() << endl;
 }
 
 struct UIPFixer {
@@ -1469,14 +1471,14 @@ void Counter::go_back_to(int32_t backj) {
     if (!sat_mode()) {
       decisions.top().mark_branch_unsat();
       decisions.top().zero_out_all_sol(); //not sure it's needed
-      comp_manager_->removeAllCachePollutionsOf(decisions.top());
+      comp_manager->removeAllCachePollutionsOf(decisions.top());
     }
     reactivate_comps_and_backtrack_trail(false);
     decisions.pop_back();
     if (!sat_mode()) {
       decisions.top().zero_out_branch_sol();
-      comp_manager_->removeAllCachePollutionsOf(decisions.top());
-      comp_manager_->cleanRemainingCompsOf(decisions.top());
+      comp_manager->removeAllCachePollutionsOf(decisions.top());
+      comp_manager->cleanRemainingCompsOf(decisions.top());
     }
     VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().getTotalModelCount() << endl);
   }
@@ -1622,7 +1624,7 @@ retStateT Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   stats.conflicts++;
-  assert(decisions.top().remaining_comps_ofs() <= comp_manager_->comp_stack_size());
+  assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   decisions.top().zero_out_branch_sol();
   decisions.top().mark_branch_unsat();
 
@@ -1671,7 +1673,7 @@ retStateT Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("is right here? " << decisions.top().is_right_branch());
 
-  comp_manager_->removeAllCachePollutionsOf(decisions.top());
+  comp_manager->removeAllCachePollutionsOf(decisions.top());
   decisions.top().zero_out_branch_sol();
   decisions.top().mark_branch_unsat();
   decisions.top().resetRemainingComps();
@@ -1699,7 +1701,7 @@ retStateT Counter::resolve_conflict() {
   }
 
   if (decisions.get_decision_level() > 0) {
-    assert(decisions.top().remaining_comps_ofs() == comp_manager_->comp_stack_size());
+    assert(decisions.top().remaining_comps_ofs() == comp_manager->comp_stack_size());
   }
 
   decisions.top().change_to_right_branch();
@@ -2641,7 +2643,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
 }
 
 Counter::~Counter() {
-  delete comp_manager_;
+  delete comp_manager;
   if (conf.do_buddy) {
     bdd_done();
   }
@@ -2983,8 +2985,8 @@ bool Counter::deal_with_independent() {
 
   // Create dummy decision level in order for getSuperCompOf work correctly.
   decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
-        comp_manager_->comp_stack_size()));
-  for (auto it = comp_manager_->getSuperCompOf(decisions.top()).vars_begin();
+        comp_manager->comp_stack_size()));
+  for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;
     if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");
@@ -3080,7 +3082,7 @@ void Counter::check_sat_solution() const {
 bool Counter::do_buddy_count(const Comp* c) {
   if (c->nVars() > 84 || c->nVars() < 6 || (c->numBinCls()+c->numLongClauses()) > conf.buddy_max_cls) return false;
   decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
-        comp_manager_->comp_stack_size()));
+        comp_manager->comp_stack_size()));
   stats.buddy_called++;
   uint64_t cnt = buddy_count();
 
@@ -3102,7 +3104,7 @@ uint64_t Counter::buddy_count() {
   auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
                                        //that it could have already fallen into pieces
                                        //at current level
-  const auto& c = comp_manager_->at(sup_at);
+  const auto& c = comp_manager->at(sup_at);
   vmap.clear();
   vmap_rev.resize(nVars()+1);
 
@@ -3115,7 +3117,7 @@ uint64_t Counter::buddy_count() {
   }
   std::sort(vmap.begin(),vmap.end(),
       [=](uint32_t a, uint32_t b) -> bool {
-      if (tdscore.empty()) return comp_manager_->freq_score_of(a) > comp_manager_->freq_score_of(b);
+      if (tdscore.empty()) return comp_manager->freq_score_of(a) > comp_manager_->freq_score_of(b);
       return tdscore[a] > tdscore[b];
       });
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;
@@ -3126,7 +3128,7 @@ uint64_t Counter::buddy_count() {
 
   // Long clauses
   uint32_t actual_long = 0;
-  const auto& ana = comp_manager_->get_ana();
+  const auto& ana = comp_manager->get_ana();
   for (auto itCl = c->cls_begin(); *itCl != sentinel; itCl++) {
     auto idx = *itCl;
     debug_print("IDX: " << idx);

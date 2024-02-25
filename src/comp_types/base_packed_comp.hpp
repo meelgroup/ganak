@@ -48,9 +48,7 @@ public:
     return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
   }
 
-  void set_creation_time(uint32_t time) {
-    creation_time_ = time;
-  }
+  void set_creation_time(uint32_t time) { creation_time_ = time; }
 
   void set_model_count(const mpz_class &rn, uint32_t time) {
     assert(model_count_ == nullptr);

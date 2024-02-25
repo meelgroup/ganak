@@ -83,7 +83,6 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
   for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
     debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
     if (ana.isUnseenAndSet(*vt) && ana.explore_comp(*vt)) {
-
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
@@ -94,8 +93,8 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       solver_->comp_size_q.push(p_new_comp->nVars());
       stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
-      // Check if new comp is already in cache
-      if (!cache.manage_new_comp(top, p_new_comp->nVars(), packed_comp)) {
+      if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
+        // Cache miss
         stats.cache_hits_misses_q.push(0);
         comp_stack.push_back(p_new_comp);
         p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
@@ -107,6 +106,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
         cout << endl;
 #endif
       } else {
+        // Cache hit
         stats.cache_hits_misses_q.push(p_new_comp->nVars());
         if (conf.do_cache_hit_scores) {
           stats.numcachedec_++;

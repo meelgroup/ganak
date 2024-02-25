@@ -78,7 +78,7 @@ public:
   // comp which is a part of the comp stack
   inline CacheEntryID new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id);
 
-  bool manage_new_comp(StackLevel &top, const uint32_t nvars, const CacheableComp &packed_comp) {
+  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const CacheableComp &packed_comp) {
     stats.num_cache_look_ups_++;
     uint32_t table_ofs = packed_comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];

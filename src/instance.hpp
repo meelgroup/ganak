@@ -56,7 +56,7 @@ public:
 #endif
 protected:
   CounterConfiguration conf;
-  void unSet(Lit lit) {
+  void unset(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << lit << endl);
     var(lit).ante = Antecedent();
     var(lit).decision_level = INVALID_DL;

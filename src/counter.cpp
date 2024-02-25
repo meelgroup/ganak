@@ -660,7 +660,7 @@ int Counter::chrono_work_sat() {
 }
 
 SOLVER_StateT Counter::countSAT() {
-  retStateT state = RESOLVED;
+  RetState state = RESOLVED;
 
   while (true) {
     debug_print("var top of decision stack: " << decisions.top().var);
@@ -1266,7 +1266,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     return num;
 }
 
-retStateT Counter::backtrack() {
+RetState Counter::backtrack() {
   debug_print("in " << __FUNCTION__ << " now ");
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   do {
@@ -1608,7 +1608,7 @@ bool Counter::resolve_conflict_sat() {
   return true;
 }
 
-retStateT Counter::resolve_conflict() {
+RetState Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 

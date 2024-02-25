@@ -41,23 +41,23 @@ THE SOFTWARE.
 using std::pair;
 using std::map;
 
-enum retStateT
-{
+enum class RetState {
   EXIT,
   RESOLVED,
   PROCESS_COMPONENT,
   BACKTRACK,
   GO_AGAIN
 };
+using enum RetState;
 
-inline std::ostream& operator<<(std::ostream& os, const retStateT& val) {
+inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
   std::stringstream s;
   switch (val) {
-    case EXIT : os << "EXIT"; break;
-    case RESOLVED: os << "RESOLVED"; break;
-    case PROCESS_COMPONENT: os << "PROCESS_COMPONENT"; break;
-    case BACKTRACK : os << "BACKTRACK"; break;
-    case GO_AGAIN : os << "GO_AGAIN"; break;
+    case RetState::EXIT : os << "EXIT"; break;
+    case RetState::RESOLVED: os << "RESOLVED"; break;
+    case RetState::PROCESS_COMPONENT: os << "PROCESS_COMPONENT"; break;
+    case RetState::BACKTRACK : os << "BACKTRACK"; break;
+    case RetState::GO_AGAIN : os << "GO_AGAIN"; break;
   }
   return os;
 }
@@ -240,8 +240,8 @@ private:
 
   void print_all_levels();
   bool restart_if_needed();
-  retStateT backtrack_nonindep();
-  retStateT backtrack();
+  RetState backtrack_nonindep();
+  RetState backtrack();
   void print_dec_info() const;
   template<class T> void print_cl(const T& cl) const;
   template<class T> void v_print_cl(const T& cl) const;
@@ -259,7 +259,7 @@ private:
   // if on the current decision level
   // a second branch can be visited, RESOLVED is returned
   // otherwise returns BACKTRACK
-  retStateT resolve_conflict();
+  RetState resolve_conflict();
   void go_back_to(int32_t backj);
   uint32_t find_lev_to_set(int32_t implied_lit_lev);
   size_t find_backtrack_level_of_learnt();
@@ -368,7 +368,7 @@ private:
         VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it
             << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
         if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
-        unSet(*it);
+        unset(*it);
       }
     }
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});

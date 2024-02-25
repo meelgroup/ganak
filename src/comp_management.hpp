@@ -45,7 +45,7 @@ public:
   CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const uint32_t& indep_support_end, Counter* _solver) :
-      conf(config), stats(statistics), cache_(statistics, conf),
+      conf(config), stats(statistics), cache(statistics, conf),
       ana(lit_values, indep_support_end, _solver), solver_(_solver)
   { }
 
@@ -60,14 +60,14 @@ public:
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
   void delete_comps_with_vars(const set<uint32_t>& vars) {
-    cache_.delete_comps_with_vars(vars);
+    cache.delete_comps_with_vars(vars);
   }
-  const CompCache& get_cache() const { return cache_; }
+  const CompCache& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
 
-  uint64_t get_num_cache_entries_used() const { return cache_.get_num_entries_used(); }
+  uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
   void save_count(uint32_t stack_comp_id, const mpz_class &value) {
-    cache_.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
+    cache.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
   }
 
   Comp& getSuperCompOf(const StackLevel &lev) {
@@ -82,8 +82,8 @@ public:
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack_.size() > top.remaining_comps_ofs())
     {
-      if (cache_.hasEntry(comp_stack_.back()->id()))
-        cache_.entry(comp_stack_.back()->id()).set_deletable();
+      if (cache.hasEntry(comp_stack_.back()->id()))
+        cache.entry(comp_stack_.back()->id()).set_deletable();
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack_.back()->id());
       delete comp_stack_.back();
@@ -130,7 +130,7 @@ private:
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp *> comp_stack_;
-  CompCache cache_;
+  CompCache cache;
   CompAnalyzer ana;
 
   // indexed by variable, decremented when a variable is in a component,

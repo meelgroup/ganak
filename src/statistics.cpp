@@ -38,7 +38,7 @@ static double safe_div(double a, double b) {
   else return a/b;
 }
 
-void DataAndStatistics::printShort(const Counter* counter, const CompCache* cache_) const {
+void DataAndStatistics::printShort(const Counter* counter, const CompCache* cache) const {
   counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
@@ -120,10 +120,10 @@ void DataAndStatistics::printShort(const Counter* counter, const CompCache* cach
   );
   verb_print(1, "implicit BCP miss rate         "
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%");
-  verb_print(1, "cache entries K                " << (cache_->get_num_entries_used()/1000ULL));
+  verb_print(1, "cache entries K                " << (cache->get_num_entries_used()/1000ULL));
   verb_print(1, "MB cache                       "
     << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << " "
-    << std::setprecision(3) << in_MB(cache_->get_num_entries_used()*72) << " "
+    << std::setprecision(3) << in_MB(cache->get_num_entries_used()*72) << " "
   );
   verb_print(1, "cache K (lookup/ stores/ hits) "
     << std::left

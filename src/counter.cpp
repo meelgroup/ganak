@@ -1328,7 +1328,7 @@ retStateT Counter::backtrack() {
     //Cache score should be decreased since the component is getting added to cache
     if (conf.do_cache_hit_scores) {
       stats.numcachedec_++;
-      comp_manager->bump_cache_hit_score(comp_manager_->getSuperCompOf(decisions.top()));
+      comp_manager->bump_cache_hit_score(comp_manager->getSuperCompOf(decisions.top()));
     }
 
     // Backtrack from end, i.e. finished.
@@ -3117,7 +3117,7 @@ uint64_t Counter::buddy_count() {
   }
   std::sort(vmap.begin(),vmap.end(),
       [=](uint32_t a, uint32_t b) -> bool {
-      if (tdscore.empty()) return comp_manager->freq_score_of(a) > comp_manager_->freq_score_of(b);
+      if (tdscore.empty()) return comp_manager->freq_score_of(a) > comp_manager->freq_score_of(b);
       return tdscore[a] > tdscore[b];
       });
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;

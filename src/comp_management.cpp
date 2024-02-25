@@ -39,14 +39,14 @@ void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
   comp_stack_.push_back(new Comp());
   assert(comp_stack_.size() == 2);
   comp_stack_.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
-  cache_.init(*comp_stack_.back(), hash_seed);
+  cache.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 }
 
 void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack_.size());
   assert(top.super_comp() != 0);
-  if (cache_.hasEntry(getSuperCompOf(top).id())) removeAllCachePollutionsOf(top);
+  if (cache.hasEntry(getSuperCompOf(top).id())) removeAllCachePollutionsOf(top);
 }
 
 void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
@@ -55,17 +55,17 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack_.size());
   assert(top.super_comp() != 0);
-  assert(cache_.hasEntry(getSuperCompOf(top).id()));
+  assert(cache.hasEntry(getSuperCompOf(top).id()));
 
   if (top.remaining_comps_ofs() == comp_stack_.size()) return;
 
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack_.size(); u++) {
-    assert(cache_.hasEntry(comp_stack_[u]->id()));
-    stats.cache_pollutions_removed += cache_.cleanPollutionsInvolving(comp_stack_[u]->id());
+    assert(cache.hasEntry(comp_stack_[u]->id()));
+    stats.cache_pollutions_removed += cache.cleanPollutionsInvolving(comp_stack_[u]->id());
   }
   stats.cache_pollutions_called++;
 
-  /* SLOW_DEBUG_DO(cache_.test_descendantstree_consistency()); */
+  /* SLOW_DEBUG_DO(cache.test_descendantstree_consistency()); */
 }
 
 // This creates potential component, checks if it's already in the
@@ -95,10 +95,10 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
       // Check if new comp is already in cache
-      if (!cache_.manage_new_comp(top, p_new_comp->nVars(), packed_comp)) {
+      if (!cache.manage_new_comp(top, p_new_comp->nVars(), packed_comp)) {
         stats.cache_hits_misses_q.push(0);
         comp_stack_.push_back(p_new_comp);
-        p_new_comp->set_id(cache_.storeAsEntry(packed_comp, super_comp.id()));
+        p_new_comp->set_id(cache.storeAsEntry(packed_comp, super_comp.id()));
         stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()

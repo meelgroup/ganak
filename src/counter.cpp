@@ -161,7 +161,7 @@ void Counter::end_irred_cls() {
   simplePreProcess();
   ended_irred_cls = true;
 
-  if (conf.verb) stats.printShortFormulaInfo(this);
+  if (conf.verb) stats.print_short_formula_info(this);
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc, long_irred_cls, nVars());
 }
@@ -585,7 +585,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
   } else {
-    if (conf.verb) stats.printShort(this, &comp_manager->get_cache());
+    if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
     assert(exit_state == SUCCESS);
     Cube c(vector<Lit>(), decisions.top().getTotalModelCount());
     ret_cubes.push_back(c);
@@ -623,7 +623,7 @@ void Counter::print_stat_line() {
       next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) {
     verb_print(1, "GANAK time so far: " << (cpuTime() - start_time));
-    stats.printShort(this, &comp_manager->get_cache());
+    stats.print_short(this, &comp_manager->get_cache());
   }
 
   next_print_stat_cache = stats.num_cache_look_ups_ + (4ULL*1000LL*1000LL);
@@ -2104,12 +2104,12 @@ void Counter::v_cl_toplevel_repair(vector<ClauseOfs>& offs) {
   for(uint32_t i = 0; i < offs.size(); i++) {
     Clause* cl = alloc->ptr(offs[i]);
     assert(!v_unsat(*cl));
-    if (v_satisfied(*cl)) {alloc->clauseFree(cl);continue;}
+    if (v_satisfied(*cl)) {alloc->clause_free(cl);continue;}
     v_shrink(*cl);
     assert(cl->size() >= 2);
     if (cl->size() == 2) {
       add_bin_cl((*cl)[0], (*cl)[1], cl->red);
-      alloc->clauseFree(cl);
+      alloc->clause_free(cl);
       continue;
     }
     attach_cl(offs[i], (*cl));
@@ -2339,7 +2339,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
           vdat.ante = Antecedent(other_lit);
         }
       }
-      alloc->clauseFree(off);
+      alloc->clause_free(off);
       fun_ret = true;
     } else {
       watches[cl[0]].addWatchLinkTo(off, cl[cl.sz/2]);
@@ -2515,13 +2515,13 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
     return data;
 
-  int highestId = 0;
+  int highest_id = 0;
   data.bOnlyOneLitFromHighest = true;
   // find the largest decision level in the clause
   for (uint32_t i = 1; i < size; ++i) {
     int32_t lev = var(c[i]).decision_level;
     if (lev > data.nHighestLevel) {
-      highestId = i;
+      highest_id = i;
       data.nHighestLevel = lev;
       data.bOnlyOneLitFromHighest = true;
     } else if (lev == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
@@ -2530,14 +2530,14 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
   }
 
   // fixing clause & watchlist
-  if (highestId != 1 && confl.isAClause()) {
+  if (highest_id != 1 && confl.isAClause()) {
     Clause& cl = *alloc->ptr(confl.asCl());
-    std::swap(cl[1], cl[highestId]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
+    std::swap(cl[1], cl[highest_id]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
     debug_print("SWAPPED");
     VERBOSE_DEBUG_DO(print_cl(cl.data(), cl.size()));
-    if (highestId > 1 && size > 2) {
+    if (highest_id > 1 && size > 2) {
       ClauseOfs off = confl.asCl();
-      watches[cl[highestId]].removeWatchLinkTo(off);
+      watches[cl[highest_id]].removeWatchLinkTo(off);
       watches[c[1]].addWatchLinkTo(off, c[0]);
     }
   }
@@ -2553,7 +2553,7 @@ void Counter::create_uip_cl() {
 
   SLOW_DEBUG_DO(for(const auto& t:seen) assert(t == 0););
   VERBOSE_DEBUG_DO(print_dec_info());
-  int32_t nDecisionLevel;
+  int32_t n_dec_level;
 
   Lit* c;
   uint32_t size;
@@ -2576,8 +2576,8 @@ void Counter::create_uip_cl() {
     SLOW_DEBUG_DO(if (p == NOT_A_LIT) check_cl_unsat(c, size));
 
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
-    if (p == NOT_A_LIT) nDecisionLevel = var(c[0]).decision_level;
-    VERBOSE_DEBUG_DO(cout << "nDecisionLevel: " <<  nDecisionLevel << endl);
+    if (p == NOT_A_LIT) n_dec_level = var(c[0]).decision_level;
+    VERBOSE_DEBUG_DO(cout << "n_dec_level: " <<  n_dec_level << endl);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {
@@ -2593,7 +2593,7 @@ void Counter::create_uip_cl() {
           << " val : " << std::setw(7) << lit_val_str(q)
           << endl;
 #endif
-        if (var(q).decision_level >= nDecisionLevel) {
+        if (var(q).decision_level >= n_dec_level) {
           path_c++;
           VERBOSE_DEBUG_DO(cout << "pathc inc." << endl);
         } else {
@@ -2615,7 +2615,7 @@ void Counter::create_uip_cl() {
         << " val : " << std::setw(7) << lit_val_str(p)
         << endl;
 #endif
-    } while(var(trail[index+1]).decision_level < nDecisionLevel);
+    } while(var(trail[index+1]).decision_level < n_dec_level);
     VERBOSE_DEBUG_DO(cout << "Next p: " << p << endl);
     confl = var(p).ante;
     seen[p.var()] = 0;
@@ -2769,7 +2769,7 @@ void Counter::backw_susume_cl(ClauseOfs off) {
       }
       debug_print( "Subsumed cl: " << check_cl << endl
                 << "->by cl    : " << cl);
-      alloc->clauseFree(&check_cl);
+      alloc->clause_free(&check_cl);
       stats.subsumed_cls++;
     }
   }
@@ -2795,7 +2795,7 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
       if (cl.red && !check_cl.red) cl.red = false;
       debug_print( "Subsumed cl: " << check_cl << endl
                 << "->by cl    : " << cl);
-      alloc->clauseFree(&check_cl);
+      alloc->clause_free(&check_cl);
       stats.subsumed_cls++;
     }
   }

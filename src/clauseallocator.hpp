@@ -40,37 +40,37 @@ public:
   ~ClauseAllocator();
 
   Clause* new_cl(bool _red, uint32_t sz) {
-    void* mem = allocEnough(sz);
+    void* mem = alloc_enough(sz);
     Clause* real = new (mem) Clause(_red, sz);
     return real;
   }
 
   ClauseOfs get_offset(const Clause* ptr) const;
-  inline Clause* ptr(const ClauseOfs offset) const { return (Clause*)(&dataStart[offset]); }
-  void clauseFree(Clause* c);
-  void clauseFree(ClauseOfs offset);
+  inline Clause* ptr(const ClauseOfs offset) const { return (Clause*)(&data_start[offset]); }
+  void clause_free(Clause* c);
+  void clause_free(ClauseOfs offset);
   bool consolidate(Counter* solver, const bool force = false);
   size_t mem_used() const;
 
 private:
   void update_offsets(
     vector<ClauseOfs>& offsets,
-    ClauseOfs* newDataStart,
+    ClauseOfs* new_data_start,
     ClauseOfs*& new_ptr
   );
 
-  void move_one_watchlist(vector<ClOffsBlckL>& ws, ClauseOfs* newDataStart, ClauseOfs*& new_ptr);
+  void move_one_watchlist(vector<ClOffsBlckL>& ws, ClauseOfs* new_data_start, ClauseOfs*& new_ptr);
 
   ClauseOfs move_cl(
-    ClauseOfs* newDataStart
+    ClauseOfs* new_data_start
     , ClauseOfs*& new_ptr
     , Clause* old
   ) const;
 
-  uint32_t* dataStart; ///<Stack starts at these positions
+  uint32_t* data_start; ///<Stack starts at these positions
   uint64_t size; ///<The number of BASE_DATA_TYPE datapieces currently used in each stack
   uint64_t capacity; ///<The number of BASE_DATA_TYPE datapieces allocated
-  uint64_t currentlyUsedSize; ///< The estimated used size of the stack
+  uint64_t currently_used_sz; ///< The estimated used size of the stack
   const CounterConfiguration& conf;
-  void* allocEnough(const uint32_t num_lits);
+  void* alloc_enough(const uint32_t num_lits);
 };

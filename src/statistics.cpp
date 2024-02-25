@@ -38,7 +38,7 @@ static double safe_div(double a, double b) {
   else return a/b;
 }
 
-void DataAndStatistics::printShort(const Counter* counter, const CompCache* cache) const {
+void DataAndStatistics::print_short(const Counter* counter, const CompCache* cache) const {
   counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
@@ -140,14 +140,14 @@ void DataAndStatistics::printShort(const Counter* counter, const CompCache* cach
   verb_print(1, "cache miss rate                "
     << std::setprecision(3) << cache_miss_rate());
   verb_print(1, "avg hit/store num vars "
-    << getAvgCacheHitSize()
+    << get_avg_cache_store_sz()
     << " / "
-    << getAvgCacheStoreSize());
+    << get_avg_cache_store_size());
   verb_print(1, "");
 }
 
 
-void DataAndStatistics::printShortFormulaInfo(const Counter* counter) const {
+void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
   verb_print(1, "irred cls (all/long/bin/unit): "
     << counter->get_num_irred_long_cls() << "/" << num_binary_irred_clauses_);
 }

@@ -177,10 +177,10 @@ public:
     if (clause.size() == 2) num_binary_irred_clauses_++;
   }
 
-  void printShort(const Counter* counter, const CompCache* cache) const;
-  void printShortFormulaInfo(const Counter* counter) const;
+  void print_short(const Counter* counter, const CompCache* cache) const;
+  void print_short_formula_info(const Counter* counter) const;
 
-  double getAvgCompHitSize() const {
+  double get_avg_comp_hit_size() const {
     if (num_cache_hits_ == 0) return 0.0L;
     return (double)sum_cache_hit_sizes_ / (double) num_cache_hits_;
   }
@@ -194,12 +194,12 @@ public:
         / (double) num_cache_look_ups_;
   }
 
-  long double getAvgCacheHitSize() const {
+  long double get_avg_cache_store_sz() const {
     if(num_cache_hits_ == 0) return 0.0L;
     return sum_cache_hit_sizes_ / (long double) num_cache_hits_;
   }
 
-  long double getAvgCacheStoreSize() const {
+  long double get_avg_cache_store_size() const {
     if(total_num_cached_comps_ == 0) return 0.0L;
     return sum_cache_store_sizes_ / (long double) total_num_cached_comps_;
   }

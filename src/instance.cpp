@@ -138,7 +138,7 @@ void Instance::markClauseDeleted(const ClauseOfs off){
   Clause& cl = *alloc->ptr(off);
   watches[cl[0]].removeWatchLinkTo(off);
   watches[cl[1]].removeWatchLinkTo(off);
-  alloc->clauseFree(off);
+  alloc->clause_free(off);
 }
 
 void Instance::new_vars(const uint32_t n) {

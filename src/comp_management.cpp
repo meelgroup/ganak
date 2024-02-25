@@ -28,40 +28,40 @@ THE SOFTWARE.
 //   it also inits the included analyzer called "ana"
 void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
-  assert(comp_stack_.empty());
+  assert(comp_stack.empty());
 
   ana.initialize(watches, _alloc, long_irred_cls);
 
   //Add dummy comp
-  comp_stack_.push_back(new Comp());
+  comp_stack.push_back(new Comp());
 
   //Add full comp
-  comp_stack_.push_back(new Comp());
-  assert(comp_stack_.size() == 2);
-  comp_stack_.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
-  cache.init(*comp_stack_.back(), hash_seed);
+  comp_stack.push_back(new Comp());
+  assert(comp_stack.size() == 2);
+  comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
+  cache.init(*comp_stack.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 }
 
 void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
-  assert(top.remaining_comps_ofs() <= comp_stack_.size());
+  assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
   if (cache.hasEntry(getSuperCompOf(top).id())) removeAllCachePollutionsOf(top);
 }
 
 void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // all processed comps are found in
-  // [top.currentRemainingComp(), comp_stack_.size())
+  // [top.currentRemainingComp(), comp_stack.size())
   // first, remove the list of descendants from the father
-  assert(top.remaining_comps_ofs() <= comp_stack_.size());
+  assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
   assert(cache.hasEntry(getSuperCompOf(top).id()));
 
-  if (top.remaining_comps_ofs() == comp_stack_.size()) return;
+  if (top.remaining_comps_ofs() == comp_stack.size()) return;
 
-  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack_.size(); u++) {
-    assert(cache.hasEntry(comp_stack_[u]->id()));
-    stats.cache_pollutions_removed += cache.cleanPollutionsInvolving(comp_stack_[u]->id());
+  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
+    assert(cache.hasEntry(comp_stack[u]->id()));
+    stats.cache_pollutions_removed += cache.cleanPollutionsInvolving(comp_stack[u]->id());
   }
   stats.cache_pollutions_called++;
 
@@ -74,7 +74,7 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
 void CompManager::recordRemainingCompsFor(StackLevel &top)
 {
   const Comp& super_comp = getSuperCompOf(top);
-  const uint32_t new_comps_start_ofs = comp_stack_.size();
+  const uint32_t new_comps_start_ofs = comp_stack.size();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
   // Also zeroes out frequency_scores(!)
@@ -97,7 +97,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       // Check if new comp is already in cache
       if (!cache.manage_new_comp(top, p_new_comp->nVars(), packed_comp)) {
         stats.cache_hits_misses_q.push(0);
-        comp_stack_.push_back(p_new_comp);
+        comp_stack.push_back(p_new_comp);
         p_new_comp->set_id(cache.storeAsEntry(packed_comp, super_comp.id()));
         stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
@@ -124,7 +124,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
     }
   }
 
-  debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack_.size(): " << comp_stack_.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
-  top.set_unprocessed_comps_end(comp_stack_.size());
-  sortCompStackRange(new_comps_start_ofs, comp_stack_.size());
+  debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): " << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
+  top.set_unprocessed_comps_end(comp_stack.size());
+  sortCompStackRange(new_comps_start_ofs, comp_stack.size());
 }

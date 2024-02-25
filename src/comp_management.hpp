@@ -51,8 +51,8 @@ public:
 
   ~CompManager() {
     free(hash_seed);
-    for(auto& comp: comp_stack_) delete comp;
-    comp_stack_.clear();
+    for(auto& comp: comp_stack) delete comp;
+    comp_stack.clear();
   }
 
   double freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
@@ -67,29 +67,29 @@ public:
 
   uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
   void save_count(uint32_t stack_comp_id, const mpz_class &value) {
-    cache.storeValueOf(comp_stack_[stack_comp_id]->id(), value);
+    cache.storeValueOf(comp_stack[stack_comp_id]->id(), value);
   }
 
   Comp& getSuperCompOf(const StackLevel &lev) {
-    assert(comp_stack_.size() > lev.super_comp());
-    return *comp_stack_[lev.super_comp()];
+    assert(comp_stack.size() > lev.super_comp());
+    return *comp_stack[lev.super_comp()];
   }
 
-  uint32_t comp_stack_size() { return comp_stack_.size(); }
-  const Comp* at(const size_t at) const { return comp_stack_.at(at); }
+  uint32_t comp_stack_size() { return comp_stack.size(); }
+  const Comp* at(const size_t at) const { return comp_stack.at(at); }
   void cleanRemainingCompsOf(const StackLevel &top)
   {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
-    while (comp_stack_.size() > top.remaining_comps_ofs())
+    while (comp_stack.size() > top.remaining_comps_ofs())
     {
-      if (cache.hasEntry(comp_stack_.back()->id()))
-        cache.entry(comp_stack_.back()->id()).set_deletable();
+      if (cache.hasEntry(comp_stack.back()->id()))
+        cache.entry(comp_stack.back()->id()).set_deletable();
 
-      debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack_.back()->id());
-      delete comp_stack_.back();
-      comp_stack_.pop_back();
+      debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());
+      delete comp_stack.back();
+      comp_stack.pop_back();
     }
-    assert(top.remaining_comps_ofs() <= comp_stack_.size());
+    assert(top.remaining_comps_ofs() <= comp_stack.size());
   }
 
   // checks for the next yet to explore remaining comp of top
@@ -129,7 +129,7 @@ private:
   DataAndStatistics &stats;
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
-  vector<Comp *> comp_stack_;
+  vector<Comp*> comp_stack;
   CompCache cache;
   CompAnalyzer ana;
 
@@ -148,10 +148,10 @@ void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
   // sort the remaining comps for processing
   for (uint32_t i = start; i < end; i++)
     for (uint32_t j = i + 1; j < end; j++) {
-      if (conf.do_comp_reverse_sort && comp_stack_[i]->nVars() > comp_stack_[j]->nVars())
-        std::swap(comp_stack_[i], comp_stack_[j]);
-      if (!conf.do_comp_reverse_sort && comp_stack_[i]->nVars() < comp_stack_[j]->nVars())
-        std::swap(comp_stack_[i], comp_stack_[j]);
+      if (conf.do_comp_reverse_sort && comp_stack[i]->nVars() > comp_stack[j]->nVars())
+        std::swap(comp_stack[i], comp_stack[j]);
+      if (!conf.do_comp_reverse_sort && comp_stack[i]->nVars() < comp_stack[j]->nVars())
+        std::swap(comp_stack[i], comp_stack[j]);
     }
 }
 
@@ -160,7 +160,7 @@ double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) cons
   double score = 1;
   assert(start <= end);
   // sort the remaining comps for processing
-  for (uint32_t i = start; i < end; i++) score *= comp_stack_[i]->nVars();
+  for (uint32_t i = start; i < end; i++) score *= comp_stack[i]->nVars();
   return score;
 }
 
@@ -168,11 +168,11 @@ double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) cons
 bool CompManager::findNextRemainingCompOf(StackLevel &top)
 {
   debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
-  debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack_.size(): " << comp_stack_.size());
-  if (comp_stack_.size() <= top.remaining_comps_ofs()) {
+  debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack.size(): " << comp_stack.size());
+  if (comp_stack.size() <= top.remaining_comps_ofs()) {
     recordRemainingCompsFor(top);
   } else {
-    debug_print("Not running recordRemainingCompsFor, comp_stack_.size() > top.remaining_comps_ofs(). comp_stack_.size(): " << comp_stack_.size() << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
+    debug_print("Not running recordRemainingCompsFor, comp_stack.size() > top.remaining_comps_ofs(). comp_stack.size(): " << comp_stack.size() << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
   assert(!top.branch_found_unsat());

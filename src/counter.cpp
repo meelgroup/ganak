@@ -598,7 +598,7 @@ void Counter::print_all_levels() {
   for(const auto& s: decisions) {
     auto const& sup_at = s.super_comp();
     cout << COLORG "super comp of dec_lev " << dec_lev
-      << " is at comp_stack_ position: " << sup_at
+      << " is at comp_stack position: " << sup_at
       << " branch var here: " << decisions.at(dec_lev).var
       << " unproc'd comp end: " << decisions.at(dec_lev).getUnprocessedCompsEnd()
       << " remaining comp ofs: " << decisions.at(dec_lev).remaining_comps_ofs()

@@ -309,7 +309,7 @@ private:
   }
 
   void setConflictState(Lit a, Lit b) {
-    conflLit = a;
+    confl_lit = a;
     confl = Antecedent(b);
   }
 
@@ -319,7 +319,7 @@ private:
       cl->update_lbd(calc_lbd(*cl));
     }
     confl = Antecedent(alloc->get_offset(cl));
-    conflLit = NOT_A_LIT;
+    confl_lit = NOT_A_LIT;
   }
 
   // The literals that have been set in this decision level
@@ -385,7 +385,7 @@ private:
 
   // if the state name is CONFLICT,
   // then violated_clause contains the clause determining the conflict;
-  Lit conflLit = NOT_A_LIT;
+  Lit confl_lit = NOT_A_LIT;
   Antecedent confl;
   // this is an array of all the clauses found
   // during the most recent conflict analysis
@@ -459,17 +459,15 @@ private:
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs);
   inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
-  template <class T> uint32_t calcAbstraction(const T& ps) {
+  template <class T> uint32_t calc_abstr(const T& ps) {
     uint32_t abs = 0;
     if (ps.size() > 50) return ~((uint32_t)(0ULL));
     for (auto l: ps) abs |= abst_var(l.var());
     return abs;
   }
-  inline bool subsetAbst(const uint32_t A, const uint32_t B) {
-      return ((A & ~B) == 0);
-  }
+  inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
 
-  template<class T1, class T2> bool subset(const T1& A, const T2& B);
+  template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
   vector<ClauseOfs> clauses;
   void backw_susume_cl(ClauseOfs off);

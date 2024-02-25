@@ -633,7 +633,7 @@ void Counter::print_stat_line() {
 bool Counter::chrono_work() {
   debug_print("--- CHRONO CHECK ----");
   VERBOSE_DEBUG_DO(print_trail());
-  auto data = find_conflict_level(conflLit);
+  auto data = find_conflict_level(confl_lit);
   if (data.bOnlyOneLitFromHighest) {
     debug_print("ChronoBT. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
     go_back_to(data.nHighestLevel-1);
@@ -647,7 +647,7 @@ bool Counter::chrono_work() {
 int Counter::chrono_work_sat() {
   debug_print("SAT mode chrono check");
   VERBOSE_DEBUG_DO(print_trail());
-  auto data = find_conflict_level(conflLit);
+  auto data = find_conflict_level(confl_lit);
   if (data.bOnlyOneLitFromHighest) {
     debug_print("SAT mode ChronoBT. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
     if (data.nHighestLevel-1 < sat_start_dec_level) return -1;
@@ -2498,7 +2498,7 @@ void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) co
     //Binary
     tmpLit.resize(2);
     c = tmpLit.data();
-    if (p == NOT_A_LIT) c[0] = conflLit;
+    if (p == NOT_A_LIT) c[0] = confl_lit;
     else c[0] = p;
     c[1] = ante.asLit();
     size = 2;
@@ -2733,7 +2733,7 @@ void Counter::attach_occ(vector<ClauseOfs>& cls) {
     clauses.push_back(off);
     Clause& cl = *alloc->ptr(off);
     std::sort(cl.begin(), cl.end());
-    auto abs = calcAbstraction(cl);
+    auto abs = calc_abstr(cl);
     for(const auto& l: cl) {
       SLOW_DEBUG_DO(assert(l.var() <= nVars()));
       SLOW_DEBUG_DO(assert(occ.size() > l.raw()));
@@ -2745,7 +2745,7 @@ void Counter::attach_occ(vector<ClauseOfs>& cls) {
 
 void Counter::backw_susume_cl(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
-  uint32_t abs = calcAbstraction(cl);
+  uint32_t abs = calc_abstr(cl);
   uint32_t smallest = numeric_limits<uint32_t>::max();
   uint32_t smallest_at = 0;
   for(uint32_t i = 0; i < cl.size(); i++) {
@@ -2758,7 +2758,7 @@ void Counter::backw_susume_cl(ClauseOfs off) {
 
   for(const auto& check: occ[cl[smallest_at].raw()]) {
     if (off == check.off) continue;
-    if (!subsetAbst(abs, check.abs)) continue;
+    if (!subset_abstr(abs, check.abs)) continue;
     Clause& check_cl = *alloc->ptr(check.off);
     if (check_cl.freed) continue;
     if (subset(cl, check_cl)) {
@@ -2776,7 +2776,7 @@ void Counter::backw_susume_cl(ClauseOfs off) {
 }
 
 void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
-  uint32_t abs = calcAbstraction(cl);
+  uint32_t abs = calc_abstr(cl);
   uint32_t smallest = numeric_limits<uint32_t>::max();
   uint32_t smallest_at = 0;
   for(uint32_t i = 0; i < cl.size(); i++) {
@@ -2788,7 +2788,7 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
   }
 
   for(const auto& check: occ[cl[smallest_at].raw()]) {
-    if (!subsetAbst(abs, check.abs)) continue;
+    if (!subset_abstr(abs, check.abs)) continue;
     Clause& check_cl = *alloc->ptr(check.off);
     if (check_cl.freed) continue;
     if (subset(cl, check_cl)) {

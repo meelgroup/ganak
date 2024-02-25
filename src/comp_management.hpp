@@ -46,7 +46,7 @@ public:
                    const LiteralIndexedVector<TriValue> &lit_values,
                    const uint32_t& indep_support_end, Counter* _solver) :
       conf(config), stats(statistics), cache_(statistics, conf),
-      ana_(lit_values, indep_support_end, _solver), solver_(_solver)
+      ana(lit_values, indep_support_end, _solver), solver_(_solver)
   { }
 
   ~CompManager() {
@@ -55,7 +55,7 @@ public:
     comp_stack_.clear();
   }
 
-  double freq_score_of(uint32_t v) const { return ana_.freq_score_of(v); }
+  double freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
 
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
@@ -63,7 +63,7 @@ public:
     cache_.delete_comps_with_vars(vars);
   }
   const CompCache& get_cache() const { return cache_; }
-  const CompAnalyzer& get_ana() const { return ana_; }
+  const CompAnalyzer& get_ana() const { return ana; }
 
   uint64_t get_num_cache_entries_used() const { return cache_.get_num_entries_used(); }
   void save_count(uint32_t stack_comp_id, const mpz_class &value) {
@@ -131,7 +131,7 @@ private:
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp *> comp_stack_;
   CompCache cache_;
-  CompAnalyzer ana_;
+  CompAnalyzer ana;
 
   // indexed by variable, decremented when a variable is in a component,
   // and halved once in a while. The LARGER it is, the more likely the

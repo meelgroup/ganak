@@ -162,7 +162,7 @@ void Counter::end_irred_cls() {
   ended_irred_cls = true;
 
   if (conf.verb) stats.printShortFormulaInfo(this);
-  // This below will initialize the disjoint component analyzer (ana_)
+  // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc, long_irred_cls, nVars());
 }
 

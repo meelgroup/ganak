@@ -25,12 +25,12 @@ THE SOFTWARE.
 #include <iomanip>
 
 // Initialized exactly once when Counter is created.
-//   it also inits the included analyzer called "ana_"
+//   it also inits the included analyzer called "ana"
 void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
   assert(comp_stack_.empty());
 
-  ana_.initialize(watches, _alloc, long_irred_cls);
+  ana.initialize(watches, _alloc, long_irred_cls);
 
   //Add dummy comp
   comp_stack_.push_back(new Comp());
@@ -38,7 +38,7 @@ void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
   //Add full comp
   comp_stack_.push_back(new Comp());
   assert(comp_stack_.size() == 2);
-  comp_stack_.back()->create_init_comp(ana_.get_max_var() , ana_.get_max_clid());
+  comp_stack_.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
   cache_.init(*comp_stack_.back(), hash_seed);
   for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 }
@@ -78,17 +78,17 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
   // Also zeroes out frequency_scores(!)
-  ana_.setupAnalysisContext(top, super_comp);
+  ana.setupAnalysisContext(top, super_comp);
 
   for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
     debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
-    if (ana_.isUnseenAndSet(*vt) && ana_.explore_comp(*vt)) {
+    if (ana.isUnseenAndSet(*vt) && ana.explore_comp(*vt)) {
 
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
-      Comp *p_new_comp = ana_.make_comp_from_archetype();
-      CacheableComp packed_comp(hash_seed, ana_.get_archetype().curr_comp);
+      Comp *p_new_comp = ana.make_comp_from_archetype();
+      CacheableComp packed_comp(hash_seed, ana.get_archetype().curr_comp);
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());

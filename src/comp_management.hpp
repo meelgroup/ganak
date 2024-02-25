@@ -66,8 +66,8 @@ public:
   const CompAnalyzer& get_ana() const { return ana; }
 
   uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
-  void save_count(uint32_t stack_comp_id, const mpz_class &value) {
-    cache.storeValueOf(comp_stack[stack_comp_id]->id(), value);
+  void save_count(const uint32_t stack_comp_id, const mpz_class &value) {
+    cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
   Comp& get_super_comp(const StackLevel &lev) {
@@ -82,7 +82,7 @@ public:
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack.size() > top.remaining_comps_ofs())
     {
-      if (cache.hasEntry(comp_stack.back()->id()))
+      if (cache.exists(comp_stack.back()->id()))
         cache.entry(comp_stack.back()->id()).set_deletable();
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());

@@ -46,7 +46,7 @@ void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
 void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  if (cache.hasEntry(get_super_comp(top).id())) removeAllCachePollutionsOf(top);
+  if (cache.exists(get_super_comp(top).id())) removeAllCachePollutionsOf(top);
 }
 
 void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
@@ -55,13 +55,13 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  assert(cache.hasEntry(get_super_comp(top).id()));
+  assert(cache.exists(get_super_comp(top).id()));
 
   if (top.remaining_comps_ofs() == comp_stack.size()) return;
 
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    assert(cache.hasEntry(comp_stack[u]->id()));
-    stats.cache_pollutions_removed += cache.cleanPollutionsInvolving(comp_stack[u]->id());
+    assert(cache.exists(comp_stack[u]->id()));
+    stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
   }
   stats.cache_pollutions_called++;
 
@@ -98,7 +98,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       if (!cache.manage_new_comp(top, p_new_comp->nVars(), packed_comp)) {
         stats.cache_hits_misses_q.push(0);
         comp_stack.push_back(p_new_comp);
-        p_new_comp->set_id(cache.storeAsEntry(packed_comp, super_comp.id()));
+        p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
         stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()

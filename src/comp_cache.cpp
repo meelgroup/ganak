@@ -66,17 +66,17 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
   CacheableComp *packed_super_comp;
   vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.num_long_cls());
   packed_super_comp = new CacheableComp(hash_seed,super_comp);
-  my_time_ = 1;
+  my_time = 1;
 
-  entry_base_.clear();
+  entry_base.clear();
   auto x = CacheableComp();
-  entry_base_.push_back(x); // dummy Element
+  entry_base.push_back(x); // dummy Element
   stats.incorporate_cache_store(x, super_comp.nVars());
-  table_.clear();
-  table_.resize(1024*1024, 0);
-  table_size_mask_ = table_.size() - 1;
+  table.clear();
+  table.resize(1024*1024, 0);
+  tbl_size_mask = table.size() - 1;
 
-  free_entry_base_slots_.clear();
+  free_entry_base_slots.clear();
 
   const uint64_t free_ram = freeram();
   uint64_t max_cache_bound = 80 * (free_ram / 100);
@@ -97,7 +97,7 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
   stats.sum_bytes_cached_comps_ = 0;
   stats.cache_infrastructure_bytes_memory_usage_ = 0;
   assert(!cache_full());
-  entry_base_.push_back(*packed_super_comp);
+  entry_base.push_back(*packed_super_comp);
   stats.incorporate_cache_store(*packed_super_comp, super_comp.nVars());
   delete packed_super_comp;
   super_comp.set_id(1);
@@ -105,8 +105,8 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
 }
 
 void CompCache::test_descendantstree_consistency() {
-  for (uint32_t id = 2; id < entry_base_.size(); id++)
-    if (!entry_base_[id].is_free()) {
+  for (uint32_t id = 2; id < entry_base.size(); id++)
+    if (!entry_base[id].is_free()) {
       CacheEntryID act_child = entry(id).first_descendant();
       while (act_child) {
         CacheEntryID next_child = entry(act_child).next_sibling();
@@ -126,14 +126,14 @@ void CompCache::test_descendantstree_consistency() {
     }
 }
 
-bool CompCache::deleteEntries() {
+bool CompCache::delete_some_entries() {
   assert(cache_full());
   vector<double> scores;
-  verb_print(1, "Deleting entires. Num entries: " << entry_base_.size());
+  verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
   verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
-  verb_print(1, "free entries before: " << free_entry_base_slots_.size());
-  for (auto it = entry_base_.begin() + 1; it != entry_base_.end(); it++)
+  verb_print(1, "free entries before: " << free_entry_base_slots.size());
+  for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
     if (!it->is_free() && (it)->isDeletable()) {
       scores.push_back((double) (it)->creation_time());
     }
@@ -149,26 +149,26 @@ bool CompCache::deleteEntries() {
   // note we start at index 2,
   // since index 1 is the whole formula,
   // should always stay here!
-  for (uint32_t id = 2; id < entry_base_.size(); id++)
-    if (!entry_base_[id].is_free() &&
-        entry_base_[id].isDeletable() &&
-        (double) entry_base_[id].creation_time() <= cutoff) {
-      removeFromDescendantsTree(id);
-      eraseEntry(id);
+  for (uint32_t id = 2; id < entry_base.size(); id++)
+    if (!entry_base[id].is_free() &&
+        entry_base[id].isDeletable() &&
+        (double) entry_base[id].creation_time() <= cutoff) {
+      unlink_from_tree(id);
+      erase(id);
     }
-  verb_print(1, "free entries after:  " << free_entry_base_slots_.size());
+  verb_print(1, "free entries after:  " << free_entry_base_slots.size());
 
   // then go through the Hash Table and erase all Links to empty entries
   SLOW_DEBUG_DO(test_descendantstree_consistency());
-  reHashTable(table_.size());
+  rehash_table(table.size());
   stats.sum_bytes_cached_comps_ = 0;
 
-  for (uint32_t id = 2; id < entry_base_.size(); id++)
-    if (!entry_base_[id].is_free()) {
-      stats.sum_bytes_cached_comps_ += entry_base_[id].size_in_bytes();
+  for (uint32_t id = 2; id < entry_base.size(); id++)
+    if (!entry_base[id].is_free()) {
+      stats.sum_bytes_cached_comps_ += entry_base[id].size_in_bytes();
     }
 
-  stats.num_cached_comps_ = entry_base_.size();
+  stats.num_cached_comps_ = entry_base.size();
   compute_size_allocated();
   return true;
 }
@@ -176,9 +176,9 @@ bool CompCache::deleteEntries() {
 uint64_t CompCache::compute_size_allocated() {
   stats.cache_infrastructure_bytes_memory_usage_ =
       sizeof(CompCache)
-      + sizeof(CacheEntryID)* table_.capacity()
-      + sizeof(CacheableComp)* entry_base_.capacity()
-      + sizeof(CacheEntryID) * free_entry_base_slots_.capacity();
+      + sizeof(CacheEntryID)* table.capacity()
+      + sizeof(CacheableComp)* entry_base.capacity()
+      + sizeof(CacheEntryID) * free_entry_base_slots.capacity();
   return stats.cache_infrastructure_bytes_memory_usage_;
 }
 
@@ -186,26 +186,26 @@ void CompCache::debug_dump_data() {
     cout << "sizeof (CacheableComp, CacheEntryID) "
          << sizeof(CacheableComp) << ", "
          << sizeof(CacheEntryID) << endl;
-    cout << "table (size/capacity) " << table_.size()
-         << "/" << table_.capacity() << endl;
-    cout << "entry_base_ (size/capacity) " << entry_base_.size()
-             << "/" << entry_base_.capacity() << endl;
-    cout << "free_entry_base_slots_ (size/capacity) " << free_entry_base_slots_.size()
-             << "/" << free_entry_base_slots_.capacity() << endl;
+    cout << "table (size/capacity) " << table.size()
+         << "/" << table.capacity() << endl;
+    cout << "entry_base (size/capacity) " << entry_base.size()
+             << "/" << entry_base.capacity() << endl;
+    cout << "free_entry_base_slots (size/capacity) " << free_entry_base_slots.size()
+             << "/" << free_entry_base_slots.capacity() << endl;
 
     cout << "-" << endl;
     cout << std::setw(40) << "table mem use MB: " <<
-      (double)(table_.capacity()*sizeof(CacheableComp))/(double)(1024*1024)
+      (double)(table.capacity()*sizeof(CacheableComp))/(double)(1024*1024)
       << endl;
-    cout << std::setw(40) << "entry_base_ mem use MB: " <<
-      (double)(entry_base_.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)
+    cout << std::setw(40) << "entry_base mem use MB: " <<
+      (double)(entry_base.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)
       << endl;
-    cout << std::setw(40) << "free_entry_base_slots_ mem use MB " <<
-      (double)(free_entry_base_slots_.capacity()*sizeof(uint32_t))/(double)(1024*1024)
+    cout << std::setw(40) << "free_entry_base_slots mem use MB " <<
+      (double)(free_entry_base_slots.capacity()*sizeof(uint32_t))/(double)(1024*1024)
       << endl;
 
     uint64_t alloc_model_counts = 0;
-    for (auto &pentry : entry_base_)
+    for (auto &pentry : entry_base)
       if (!pentry.is_free()) alloc_model_counts += pentry.alloc_of_model_count();
     cout << "model counts size " << alloc_model_counts << endl;
 }

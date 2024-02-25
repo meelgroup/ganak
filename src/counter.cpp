@@ -1338,10 +1338,8 @@ RetState Counter::backtrack() {
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << decisions.get_decision_level());
-#ifndef CHECK_COUNT
     if (conf.do_use_cache)
       comp_manager->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
-#endif
 
 
     //Cache score should be decreased since the component is getting added to cache

@@ -86,6 +86,9 @@ CheckOptions:
     |^use_count$)
 - key: readability-identifier-naming.VariableCase
   value: 'lower_case'
+- key: readability-identifier-naming.VariableIgnoredRegexp
+  value: >-
+   (^_.*$)
 - key: readability-identifier-naming.ClassCase
   value: 'CamelCase'
 - key: readability-identifier-naming.ParameterCase

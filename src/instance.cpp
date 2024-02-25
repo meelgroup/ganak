@@ -136,8 +136,8 @@ bool Instance::red_cl_can_be_deleted(ClauseOfs off){
 
 void Instance::markClauseDeleted(const ClauseOfs off){
   Clause& cl = *alloc->ptr(off);
-  watches[cl[0]].removeWatchLinkTo(off);
-  watches[cl[1]].removeWatchLinkTo(off);
+  watches[cl[0]].del_c(off);
+  watches[cl[1]].del_c(off);
   alloc->clause_free(off);
 }
 

@@ -131,7 +131,7 @@ public:
   uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
-  void removeWatchLinkTo(ClauseOfs offs) {
+  void del_c(ClauseOfs offs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++) {
       if (it->ofs == offs) {
         *it = watch_list_.back();
@@ -142,7 +142,7 @@ public:
     assert(false && "should have found it!");
   }
 
-  void replaceWatchLinkTo(ClauseOfs off, ClauseOfs replace_ofs) {
+  void replace_cl(ClauseOfs off, ClauseOfs replace_ofs) {
     bool found = false;
     for (auto& w: watch_list_) {
       if (w.ofs == off) { w.ofs = replace_ofs; found = true; break; }
@@ -150,11 +150,11 @@ public:
     assert(found && "Should have found watch!!!");
   }
 
-  void addWatchLinkTo(ClauseIndex offs, Lit blockedLit) {
+  void add_cl(ClauseIndex offs, Lit blockedLit) {
     watch_list_.push_back(ClOffsBlckL(offs, blockedLit));
   }
 
-  void addBinLinkTo(Lit lit, bool red) {
+  void add_bin(Lit lit, bool red) {
     binaries.push_back(BinCl(lit, red));
     if (!red) last_irred_bin = binaries.size();
   }

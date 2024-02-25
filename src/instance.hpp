@@ -218,8 +218,8 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
 }
 
 bool Instance::add_bin_cl(Lit a, Lit b, bool red) {
-   watches[a].addBinLinkTo(b, red);
-   watches[b].addBinLinkTo(a, red);
+   watches[a].add_bin(b, red);
+   watches[b].add_bin(a, red);
    return true;
 }
 
@@ -256,6 +256,6 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
 
 template<class T> void Instance::attach_cl(ClauseOfs off, const T& lits) {
   Lit blck_lit = lits[lits.size()/2];
-  watches[lits[0]].addWatchLinkTo(off, blck_lit);
-  watches[lits[1]].addWatchLinkTo(off, blck_lit);
+  watches[lits[0]].add_cl(off, blck_lit);
+  watches[lits[1]].add_cl(off, blck_lit);
 }

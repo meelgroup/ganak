@@ -1818,7 +1818,7 @@ bool Counter::propagate(bool out_of_order) {
         c[1] = c[i];
         c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
-        watches[c[1]].addWatchLinkTo(ofs, c[0]);
+        watches[c[1]].add_cl(ofs, c[0]);
       } else {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
@@ -1839,7 +1839,7 @@ bool Counter::propagate(bool out_of_order) {
             if (maxind != 1) {
                 std::swap(c[1], c[maxind]);
                 it2--; // undo last watch
-                watches[c[1]].addWatchLinkTo(ofs, it->blckLit);
+                watches[c[1]].add_cl(ofs, it->blckLit);
             }
             setLiteral(c[0], maxlev, Antecedent(ofs));
             VERBOSE_DEBUG_DO(cout << "Weird long prop: " << c[0] << " lev: " << maxlev << endl);
@@ -2131,8 +2131,8 @@ void Counter::v_cl_repair(ClauseOfs off) {
     assert(at != cl.end());
     std::swap(cl[1], *at);
 
-    watches[cl[0]].addWatchLinkTo(off, offs.blk1);
-    watches[cl[1]].addWatchLinkTo(off, offs.blk2);
+    watches[cl[0]].add_cl(off, offs.blk1);
+    watches[cl[1]].add_cl(off, offs.blk2);
     return;
   }
 
@@ -2156,21 +2156,21 @@ void Counter::v_cl_repair(ClauseOfs off) {
   debug_print("Vivified cl off: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
   Lit blk = (t_at == -1) ? cl[cl.sz/2] : cl[t_at];
-  watches[cl[0]].addWatchLinkTo(off, blk);
-  watches[cl[1]].addWatchLinkTo(off, blk);
+  watches[cl[0]].add_cl(off, blk);
+  watches[cl[1]].add_cl(off, blk);
 }
 
 // We could have removed a TRUE. This may be an issue.
 void Counter::v_fix_watch(Clause& cl, uint32_t i) {
   if (val(cl[i]) == X_TRI || val(cl[i]) == T_TRI) return;
   auto off = alloc->get_offset(&cl);
-  watches[cl[i]].removeWatchLinkTo(off);
+  watches[cl[i]].del_c(off);
   uint32_t i2 = 2;
   for(; i2 < cl.size(); i2++) if (val(cl[i2]) == X_TRI || val(cl[i2]) == T_TRI) break;
   /* print_cl(cl); */
   assert(i2 != cl.size());
   std::swap(cl[i], cl[i2]);
-  watches[cl[i]].addWatchLinkTo(off, cl[cl.sz/2]);
+  watches[cl[i]].add_cl(off, cl[cl.sz/2]);
 }
 
 void Counter::v_new_lev() {
@@ -2302,8 +2302,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
       //      so we must skip this
       !propagating_cl(v_tmp) && !conflicting_cl(v_tmp) &&
       propagation_correctness_of_vivified(v_tmp)) {
-    watches[cl[0]].removeWatchLinkTo(off);
-    watches[cl[1]].removeWatchLinkTo(off);
+    watches[cl[0]].del_c(off);
+    watches[cl[1]].del_c(off);
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));
     stats.vivif_cl_minim++;
     stats.vivif_lit_rem += removable;
@@ -2342,8 +2342,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
       alloc->clause_free(off);
       fun_ret = true;
     } else {
-      watches[cl[0]].addWatchLinkTo(off, cl[cl.sz/2]);
-      watches[cl[1]].addWatchLinkTo(off, cl[cl.sz/2]);
+      watches[cl[0]].add_cl(off, cl[cl.sz/2]);
+      watches[cl[1]].add_cl(off, cl[cl.sz/2]);
       if (!v_cl_satisfied(cl) && v_val(cl[0]) == X_TRI && v_val(cl[1]) != X_TRI) {
         //cannot propagate!
         assert(v_val(cl[1]) == F_TRI);
@@ -2442,7 +2442,7 @@ bool Counter::v_propagate() {
         c[1] = c[i];
         c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
-        watches[c[1]].addWatchLinkTo(ofs, c[0]);
+        watches[c[1]].add_cl(ofs, c[0]);
       } else {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {
@@ -2537,8 +2537,8 @@ Counter::ConflictData Counter::find_conflict_level(Lit p) {
     VERBOSE_DEBUG_DO(print_cl(cl.data(), cl.size()));
     if (highest_id > 1 && size > 2) {
       ClauseOfs off = confl.asCl();
-      watches[cl[highest_id]].removeWatchLinkTo(off);
-      watches[c[1]].addWatchLinkTo(off, c[0]);
+      watches[cl[highest_id]].del_c(off);
+      watches[c[1]].add_cl(off, c[0]);
     }
   }
   return data;

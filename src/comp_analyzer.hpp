@@ -119,9 +119,7 @@ public:
 
   // exploreRemainingCompOf has been called already
   // which set up search_stack, seen[] etc.
-  inline Comp *makeCompFromArcheType(){
-    return archetype.makeCompFromState(comp_vars.size());
-  }
+  inline Comp *make_comp_from_archetype(){ return archetype.make_comp(comp_vars.size()); }
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_max_var() const { return max_var; }

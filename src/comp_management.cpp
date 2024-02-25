@@ -87,8 +87,8 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
-      Comp *p_new_comp = ana_.makeCompFromArcheType();
-      CacheableComp packed_comp(hash_seed, ana_.get_archetype().current_comp_for_caching_);
+      Comp *p_new_comp = ana_.make_comp_from_archetype();
+      CacheableComp packed_comp(hash_seed, ana_.get_archetype().curr_comp);
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());

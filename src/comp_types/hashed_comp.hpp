@@ -29,8 +29,8 @@ THE SOFTWARE.
 #include "base_packed_comp.hpp"
 #include "comp.hpp"
 #include "../clhash/clhash.h"
-#include "primitive_types.hpp"
-#include "structures.hpp"
+#include "../primitive_types.hpp"
+#include "../structures.hpp"
 
 class HashedComp: public BaseComp {
 public:

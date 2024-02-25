@@ -70,7 +70,7 @@ public:
     cache.storeValueOf(comp_stack[stack_comp_id]->id(), value);
   }
 
-  Comp& getSuperCompOf(const StackLevel &lev) {
+  Comp& get_super_comp(const StackLevel &lev) {
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }

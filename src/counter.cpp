@@ -847,7 +847,7 @@ uint32_t Counter::find_best_branch() {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
-  for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
@@ -856,7 +856,7 @@ uint32_t Counter::find_best_branch() {
       if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
       double score = score_of(v) ;
 #ifdef COMP_VAR_OCC_ENABLED
-      auto this_comp_var_score = comp_manager->getSuperCompOf(decisions.top()).get_var_occs_score(v);
+      auto this_comp_var_score = comp_manager->get_super_comp(decisions.top()).get_var_occs_score(v);
       /* cout << " v: " << v << " extra: " << this_comp_var_score << " orig: " << score << endl; */
       /// simp-mc2022_track1_113.cnf works well with 1/5, badly without
       score += this_comp_var_score/5;
@@ -871,7 +871,7 @@ uint32_t Counter::find_best_branch() {
 
   if (conf.do_cache_hit_scores && stats.conflicts > 1000 && best_var != 0) {
     double c_score = comp_manager->get_cache_hit_score(best_var);
-    for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
+    for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
          *it != sentinel; it++) {
       const uint32_t v = *it;
       if (val(v) != X_TRI) continue;
@@ -898,7 +898,7 @@ uint32_t Counter::find_best_branch_gpmc() {
   double max_score_td = -1;
   bool only_optional_indep = true;
 
-  for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
@@ -1328,7 +1328,7 @@ RetState Counter::backtrack() {
     //Cache score should be decreased since the component is getting added to cache
     if (conf.do_cache_hit_scores) {
       stats.numcachedec_++;
-      comp_manager->bump_cache_hit_score(comp_manager->getSuperCompOf(decisions.top()));
+      comp_manager->bump_cache_hit_score(comp_manager->get_super_comp(decisions.top()));
     }
 
     // Backtrack from end, i.e. finished.
@@ -2983,10 +2983,10 @@ bool Counter::deal_with_independent() {
   sat_start_dec_level = decision_level();
   bool sat = false;
 
-  // Create dummy decision level in order for getSuperCompOf work correctly.
+  // Create dummy decision level in order for get_super_comp work correctly.
   decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
-  for (auto it = comp_manager->getSuperCompOf(decisions.top()).vars_begin();
+  for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;
     if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");

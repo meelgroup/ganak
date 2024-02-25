@@ -46,7 +46,7 @@ void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
 void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  if (cache.hasEntry(getSuperCompOf(top).id())) removeAllCachePollutionsOf(top);
+  if (cache.hasEntry(get_super_comp(top).id())) removeAllCachePollutionsOf(top);
 }
 
 void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
@@ -55,7 +55,7 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  assert(cache.hasEntry(getSuperCompOf(top).id()));
+  assert(cache.hasEntry(get_super_comp(top).id()));
 
   if (top.remaining_comps_ofs() == comp_stack.size()) return;
 
@@ -73,7 +73,7 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
 // and adds it to the component stack
 void CompManager::recordRemainingCompsFor(StackLevel &top)
 {
-  const Comp& super_comp = getSuperCompOf(top);
+  const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.

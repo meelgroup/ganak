@@ -179,9 +179,9 @@ static inline uint64_t memUsedTotal(double& vm_usage, std::string* max_mem_usage
            if (tp.size() > 7 && tp.find("VmHWM:") != std::string::npos) {
                tp.erase(0, 7);
                tp.erase(tp.begin(),
-                        std::find_if(tp.begin(), tp.end(), std::bind1st(std::not_equal_to<char>(), '\t')));
+                        std::find_if(tp.begin(), tp.end(), std::bind(std::not_equal_to<char>(), '\t')));
                tp.erase(tp.begin(),
-                        std::find_if(tp.begin(), tp.end(), std::bind1st(std::not_equal_to<char>(), ' ')));
+                        std::find_if(tp.begin(), tp.end(), std::bind(std::not_equal_to<char>(), ' ')));
                *max_mem_usage = tp;
            }
       }

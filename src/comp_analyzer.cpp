@@ -38,7 +38,7 @@ CompAnalyzer::CompAnalyzer(
 
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
-// this sets up unified_var_links_lists_pool_ and variable_link_list_offsets_
+// this sets up unified_var_links_lists_pool and variable_link_list_offsets_
 void CompAnalyzer::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
     const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
@@ -74,7 +74,7 @@ void CompAnalyzer::initialize(
     for(const auto& l: cl) {
       const uint32_t var = l.var();
       assert(var <= max_var);
-      getClause(tmp, cl, l);
+      get_cl(tmp, cl, l);
       assert(tmp.size() > 1);
 
       if(tmp.size() == 2) {
@@ -104,41 +104,41 @@ void CompAnalyzer::initialize(
   //    [cl_ids and lits] of tri clauses]
   //    [cl_id, offset in occs+offset in unified_var_links_lists_pool]
   //    [the occ_long_clauses] ]
-  unified_var_links_lists_pool_.clear();
+  unified_var_links_lists_pool.clear();
 
   // a map into unified_var_Links_lists_pool.
   // maps var -> starting point in unified_var_links_lists_pool
-  variable_link_list_offsets_.clear();
-  variable_link_list_offsets_.resize(max_var + 1, 0);
+  variable_link_list_offsets.clear();
+  variable_link_list_offsets.resize(max_var + 1, 0);
 
   // now fill unified link list, for each variable
   for (uint32_t v = 1; v < max_var + 1; v++) {
-    variable_link_list_offsets_[v] = unified_var_links_lists_pool_.size();
+    variable_link_list_offsets[v] = unified_var_links_lists_pool.size();
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred()) unified_var_links_lists_pool_.push_back(bincl.lit().var());
+        if (bincl.irred()) unified_var_links_lists_pool.push_back(bincl.lit().var());
       }
     }
 
     // data for ternary clauses
-    unified_var_links_lists_pool_.push_back(0);
-    unified_var_links_lists_pool_.insert(
-        unified_var_links_lists_pool_.end(),
+    unified_var_links_lists_pool.push_back(0);
+    unified_var_links_lists_pool.insert(
+        unified_var_links_lists_pool.end(),
         occ_ternary_clauses[v].begin(),
         occ_ternary_clauses[v].end());
 
     // data for long clauses
-    unified_var_links_lists_pool_.push_back(0);
+    unified_var_links_lists_pool.push_back(0);
     for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
-      unified_var_links_lists_pool_.push_back(*it); //cl_id
-      unified_var_links_lists_pool_.push_back(*(it + 1) + (occs[v].end() - it));
+      unified_var_links_lists_pool.push_back(*it); //cl_id
+      unified_var_links_lists_pool.push_back(*(it + 1) + (occs[v].end() - it));
     }
 
-    unified_var_links_lists_pool_.push_back(0);
-    unified_var_links_lists_pool_.insert(
-        unified_var_links_lists_pool_.end(),
+    unified_var_links_lists_pool.push_back(0);
+    unified_var_links_lists_pool.insert(
+        unified_var_links_lists_pool.end(),
         occ_long_clauses[v].begin(),
         occ_long_clauses[v].end());
   }
@@ -214,13 +214,13 @@ void CompAnalyzer::record_comp(const uint32_t var) {
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
         if(is_true(a)|| is_true(b)) {
           /* cout << "satisfied" << endl; */
-          archetype.setClause_nil(*p);
+          archetype.set_clause_nil(*p);
         } else {
           /* cout << "not satisfied" << endl; */
           bump_freq_score(v);
           manageSearchOccurrenceAndScoreOf(a);
           manageSearchOccurrenceAndScoreOf(b);
-          archetype.setClause_seen(*p ,is_unknown(a) && is_unknown(b));
+          archetype.set_clause_seen(*p ,is_unknown(a) && is_unknown(b));
         }
       }
       COMP_VAR_OCC_DO(if (archetype.var_seen(a.var()) && archetype.var_seen(b.var()) &&

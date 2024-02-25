@@ -112,7 +112,7 @@ public:
     }
 
     for (auto it = super_comp.cls_begin(); *it != sentinel; it++)
-      archetype.setClause_in_sup_comp_unseen(*it);
+      archetype.set_clause_in_sup_comp_unseen(*it);
   }
 
   bool explore_comp(const uint32_t v);
@@ -135,8 +135,8 @@ private:
 
   // for every variable e have an array of
   // binarycls 0 ternary cls (consisting of: CLIDX LIT1 LIT2) 0 cls_idxs 0
-  vector<uint32_t> unified_var_links_lists_pool_;
-  vector<uint32_t> variable_link_list_offsets_; // offset into unified_var_links_lists_pool_
+  vector<uint32_t> unified_var_links_lists_pool;
+  vector<uint32_t> variable_link_list_offsets; // offset into unified_var_links_lists_pool
                                                 // indexed by variable.
 
   const CounterConfiguration& conf;
@@ -161,7 +161,7 @@ private:
   bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
   uint32_t const* begin_cls_of_var(const uint32_t v) const {
     assert(v > 0);
-    return &unified_var_links_lists_pool_[variable_link_list_offsets_[v]];
+    return &unified_var_links_lists_pool[variable_link_list_offsets[v]];
   }
   void bump_var_occs(const uint32_t v);
 
@@ -172,10 +172,10 @@ private:
   // after execution comp_search_stack.size()==1
   void record_comp(const uint32_t var);
 
-  void getClause(vector<uint32_t> &tmp, const Clause& cl, const Lit & omitLit) {
+  void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
     tmp.clear();
     for (const auto&l: cl) {
-      if (l.var() != omitLit.var()) tmp.push_back(l.raw());
+      if (l.var() != omit_lit.var()) tmp.push_back(l.raw());
     }
   }
 
@@ -198,7 +198,7 @@ private:
           archetype.set_var_in_sup_comp_unseen(comp_vars.back()); //unsets it from being seen
           comp_vars.pop_back();
         }
-        archetype.setClause_nil(cl_id);
+        archetype.set_clause_nil(cl_id);
         while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
         break;
@@ -207,7 +207,7 @@ private:
 
     if (!archetype.clause_nil(cl_id)){
       bump_freq_score(vt);
-      archetype.setClause_seen(cl_id,all_lits_set);
+      archetype.set_clause_seen(cl_id,all_lits_set);
       COMP_VAR_OCC_DO( for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++)
         if (is_unknown(*it_l)) bump_var_occs(it_l->var()));
     }

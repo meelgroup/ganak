@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <fstream>
 
-static double in_MB(uint64_t bytes) {
+static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
 
@@ -122,8 +122,8 @@ void DataAndStatistics::printShort(const Counter* counter, const CompCache* cach
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%");
   verb_print(1, "cache entries K                " << (cache->get_num_entries_used()/1000ULL));
   verb_print(1, "MB cache                       "
-    << std::setprecision(3) << in_MB(cache_bytes_memory_usage()) << " "
-    << std::setprecision(3) << in_MB(cache->get_num_entries_used()*72) << " "
+    << std::setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "
+    << std::setprecision(3) << in_mb(cache->get_num_entries_used()*72) << " "
   );
   verb_print(1, "cache K (lookup/ stores/ hits) "
     << std::left

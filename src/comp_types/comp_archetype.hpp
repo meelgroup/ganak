@@ -68,7 +68,7 @@ public:
     seen[v] = CA_VAR_IN_SUP_COMP_UNSEEN | (seen[v] & CA_CL_MASK);
   }
 
-  void setClause_in_sup_comp_unseen(const ClauseIndex cl) {
+  void set_clause_in_sup_comp_unseen(const ClauseIndex cl) {
     seen[cl] = CA_CL_IN_SUP_COMP_UNSEEN | (seen[cl] & CA_VAR_MASK);
   }
 
@@ -76,7 +76,7 @@ public:
     seen[v] &= CA_CL_MASK;
   }
 
-  void setClause_nil(const ClauseIndex cl) {
+  void set_clause_nil(const ClauseIndex cl) {
     seen[cl] &= CA_VAR_MASK;
   }
 
@@ -84,13 +84,13 @@ public:
     seen[v] = CA_VAR_SEEN | (seen[v] & CA_CL_MASK);
   }
 
-  void setClause_seen(const ClauseIndex cl) {
-    setClause_nil(cl);
+  void set_clause_seen(const ClauseIndex cl) {
+    set_clause_nil(cl);
     seen[cl] = CA_CL_SEEN | (seen[cl] & CA_VAR_MASK);
   }
 
-  void setClause_seen(const ClauseIndex cl, const bool all_lits_act) {
-      setClause_nil(cl);
+  void set_clause_seen(const ClauseIndex cl, const bool all_lits_act) {
+      set_clause_nil(cl);
       seen[cl] = CA_CL_SEEN | (all_lits_act?CA_CL_ALL_LITS_SET:0) | (seen[cl] & CA_VAR_MASK);
     }
 
@@ -98,7 +98,7 @@ public:
     seen[v] = CA_VAR_IN_OTHER_COMP | (seen[v] & CA_CL_MASK);
   }
 
-  void setClause_in_other_comp(const ClauseIndex cl) {
+  void set_clause_in_other_comp(const ClauseIndex cl) {
     seen[cl] = CA_CL_IN_OTHER_COMP | (seen[cl] & CA_VAR_MASK);
   }
 
@@ -172,7 +172,7 @@ public:
       if (clause_seen(*it_cl)) {
         p_new_comp->add_cl(*it_cl);
         if (!clause_all_lits_set(*it_cl)) curr_comp.add_cl(*it_cl);
-        setClause_in_other_comp(*it_cl);
+        set_clause_in_other_comp(*it_cl);
       }
     p_new_comp->close_cls_data();
     curr_comp.close_cls_data();

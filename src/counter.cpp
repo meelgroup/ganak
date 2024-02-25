@@ -1751,8 +1751,8 @@ bool Counter::propagate(bool out_of_order) {
   confl = Antecedent();
   debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
   for (; qhead < trail.size(); qhead++) {
-    const Lit unLit = trail[qhead].neg();
-    const int32_t lev = var(unLit).decision_level;
+    const Lit plit = trail[qhead].neg();
+    const int32_t lev = var(plit).decision_level;
     bool lev_at_declev = false;
     if (!out_of_order) {
       if (decisions.size() <= 1) lev_at_declev = true;
@@ -1761,19 +1761,19 @@ bool Counter::propagate(bool out_of_order) {
     debug_print("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
-    for (const auto& bincl : watches[unLit].binaries) {
+    for (const auto& bincl : watches[plit].binaries) {
       const auto& l = bincl.lit();
       if (val(l) == F_TRI) {
-        setConflictState(unLit, l);
+        setConflictState(plit, l);
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
       } else if (val(l) == X_TRI) {
-        setLiteral(l, lev, Antecedent(unLit));
+        setLiteral(l, lev, Antecedent(plit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       }
     }
 
     //Propagate long clauses
-    auto& ws = watches[unLit].watch_list_;
+    auto& ws = watches[plit].watch_list_;
 
 #if 0
     cout << "prop-> will go through norm cl:" << endl;
@@ -1793,7 +1793,7 @@ bool Counter::propagate(bool out_of_order) {
 
       const auto ofs = it->ofs;
       Clause& c = *alloc->ptr(ofs);
-      if (c[0] == unLit) { std::swap(c[0], c[1]); }
+      if (c[0] == plit) { std::swap(c[0], c[1]); }
 
 #ifdef VERBOSE_DEBUG
       cout << "Prop Norm cl: " << ofs << endl;
@@ -1805,7 +1805,7 @@ bool Counter::propagate(bool out_of_order) {
       }
 #endif
 
-      assert(c[1] == unLit);
+      assert(c[1] == plit);
       if (is_true(c[0])) {
         *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
@@ -1816,7 +1816,7 @@ bool Counter::propagate(bool out_of_order) {
       // either we found a free or satisfied lit
       if (i != c.sz) {
         c[1] = c[i];
-        c[i] = unLit;
+        c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
         watches[c[1]].addWatchLinkTo(ofs, c[0]);
       } else {
@@ -2335,8 +2335,8 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         auto& vdat = variables_[v];
         if (vdat.ante.isAClause() && vdat.ante.asCl() == off) {
           assert(v == cl[0].var() || v == cl[1].var());
-          Lit otherLit = (v == cl[0].var()) ? cl[1] : cl[0];
-          vdat.ante = Antecedent(otherLit);
+          Lit other_lit = (v == cl[0].var()) ? cl[1] : cl[0];
+          vdat.ante = Antecedent(other_lit);
         }
       }
       alloc->clauseFree(off);
@@ -2378,10 +2378,10 @@ void Counter::v_enqueue(const Lit l) {
 bool Counter::v_propagate() {
   bool ret = true;
   for (; v_qhead < v_trail.size(); v_qhead++) {
-    const Lit unLit = v_trail[v_qhead].neg();
+    const Lit plit = v_trail[v_qhead].neg();
 
     //Propagate bin clauses
-    const auto& wsbin = watches[unLit].binaries;
+    const auto& wsbin = watches[plit].binaries;
     v_tout-=wsbin.size()/2;
     for (const auto& bincl : wsbin) {
       const auto& l = bincl.lit();
@@ -2395,7 +2395,7 @@ bool Counter::v_propagate() {
     }
 
     //Propagate long clauses
-    auto& ws = watches[unLit].watch_list_;
+    auto& ws = watches[plit].watch_list_;
     v_tout-=ws.size()/2;
 
 #if 0
@@ -2416,7 +2416,7 @@ bool Counter::v_propagate() {
 
       const auto ofs = it->ofs;
       Clause& c = *alloc->ptr(ofs);
-      if (c[0] == unLit) { std::swap(c[0], c[1]); }
+      if (c[0] == plit) { std::swap(c[0], c[1]); }
       v_tout--;
 
 #ifdef VERBOSE_DEBUG
@@ -2429,7 +2429,7 @@ bool Counter::v_propagate() {
       }
 #endif
 
-      assert(c[1] == unLit);
+      assert(c[1] == plit);
       if (v_val(c[0]) == T_TRI) {
         *it2++ = ClOffsBlckL(ofs, c[0]);
         continue;
@@ -2440,7 +2440,7 @@ bool Counter::v_propagate() {
       // either we found a free or satisfied lit
       if (i != c.sz) {
         c[1] = c[i];
-        c[i] = unLit;
+        c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
         watches[c[1]].addWatchLinkTo(ofs, c[0]);
       } else {

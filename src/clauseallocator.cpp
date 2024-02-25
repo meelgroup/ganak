@@ -22,9 +22,9 @@ THE SOFTWARE.
 
 #include "clauseallocator.hpp"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <algorithm>
-#include <string.h>
+#include <cstring>
 #include <limits>
 #include <cassert>
 #include <cmath>
@@ -79,18 +79,18 @@ void* ClauseAllocator::allocEnough( uint32_t num_lits) {
     }
 
     //Reallocate data
-    uint32_t* new_dataStart;
-    new_dataStart = (uint32_t*)realloc(
+    uint32_t* new_data_start;
+    new_data_start = (uint32_t*)realloc(
       dataStart
       , newcapacity*sizeof(uint32_t)
     );
 
     //Realloc failed?
-    if (new_dataStart == nullptr) {
+    if (new_data_start == nullptr) {
       std::cerr << "ERROR: while reallocating clause space" << endl;
       exit(-1);
     }
-    dataStart = new_dataStart;
+    dataStart = new_data_start;
 
     //Update capacity to reflect the update
     capacity = newcapacity;

@@ -21,16 +21,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************************/
 
-#ifndef TIME_MEM_H
-#define TIME_MEM_H
+#pragma once
+
 #include <cassert>
-#include <time.h>
+#include <functional>
+#include <ctime>
 
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <string>
-#include <signal.h>
+#include <csignal>
 
 // note: MinGW64 defines both __MINGW32__ and __MINGW64__
 #if defined (_MSC_VER) || defined (__MINGW32__) || defined(_WIN32) || defined(EMSCRIPTEN)
@@ -179,9 +180,9 @@ static inline uint64_t memUsedTotal(double& vm_usage, std::string* max_mem_usage
            if (tp.size() > 7 && tp.find("VmHWM:") != std::string::npos) {
                tp.erase(0, 7);
                tp.erase(tp.begin(),
-                        std::find_if(tp.begin(), tp.end(), std::bind(std::not_equal_to<char>(), '\t')));
+                        std::find_if(tp.begin(), tp.end(), std::bind1st(std::not_equal_to<char>(), '\t')));
                tp.erase(tp.begin(),
-                        std::find_if(tp.begin(), tp.end(), std::bind(std::not_equal_to<char>(), ' ')));
+                        std::find_if(tp.begin(), tp.end(), std::bind1st(std::not_equal_to<char>(), ' ')));
                *max_mem_usage = tp;
            }
       }
@@ -206,5 +207,3 @@ static inline size_t memUsedTotal(double& vm_usage, std::string* max_mem_usage =
     return 0;
 }
 #endif
-
-#endif //TIME_MEM_H

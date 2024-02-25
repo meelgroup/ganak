@@ -29,8 +29,6 @@ THE SOFTWARE.
 #include "common.hpp"
 using std::string;
 
-enum class branch_t {old_ganak, sharptd, gpmc};
-
 struct CounterConfiguration {
   double act_exp = 0.99; // 1.0 is VERY slow. Seems good, also tried 0.985
   bool do_pre_processing = true;
@@ -84,22 +82,3 @@ struct CounterConfiguration {
   uint64_t seed = 0;
   double delta = 0.05;
 };
-
-inline std::string branch_type_to_str(const branch_t& t) {
-  if (t == branch_t::gpmc) return "gpmc";
-  else if (t == branch_t::sharptd) return "sharptd";
-  else if (t == branch_t::old_ganak) return "ganak";
-  else {
-    std::cout << "ERROR: Can't translate branch type" << std::endl;
-    exit(-1);
-  }
-}
-inline branch_t parse_branch_type(const std::string& name) {
-  if (name == "gpmc") return branch_t::gpmc;
-  else if (name == "sharptd") return branch_t::sharptd;
-  else if (name == "ganak") return branch_t::old_ganak;
-  else {
-    std::cout << "ERROR: Wrong branch type: '" << name << "'" << std::endl;
-    exit(-1);
-  }
-}

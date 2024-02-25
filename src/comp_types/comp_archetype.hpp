@@ -149,7 +149,7 @@ public:
 
   void clear_arrays() { memset(seen, 0, seen_bytes_sz); }
 
-  // At this point exploreRemainingCompOf has been called already which
+  // At this point explore_comp has been called already which
   // set up search_stack_, seen[] etc. so this is now quite easy.
   Comp* make_comp(const uint32_t comp_vars_size) {
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");

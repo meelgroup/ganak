@@ -146,7 +146,7 @@ void CompAnalyzer::initialize(
 }
 
 // returns true, iff the comp found is non-trivial
-bool CompAnalyzer::exploreRemainingCompOf(const uint32_t v) {
+bool CompAnalyzer::explore_comp(const uint32_t v) {
   SLOW_DEBUG_DO(assert(archetype_.var_unseen_in_sup_comp(v)));
   record_comp(v); // sets up the component that "v" is in
 

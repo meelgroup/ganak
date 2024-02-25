@@ -115,9 +115,9 @@ public:
       archetype.setClause_in_sup_comp_unseen(*it);
   }
 
-  bool exploreRemainingCompOf(const uint32_t v);
+  bool explore_comp(const uint32_t v);
 
-  // exploreRemainingCompOf has been called already
+  // explore_comp has been called already
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){ return archetype.make_comp(comp_vars.size()); }
 

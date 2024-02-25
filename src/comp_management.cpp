@@ -82,7 +82,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 
   for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
     debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
-    if (ana_.isUnseenAndSet(*vt) && ana_.exploreRemainingCompOf(*vt)) {
+    if (ana_.isUnseenAndSet(*vt) && ana_.explore_comp(*vt)) {
 
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause

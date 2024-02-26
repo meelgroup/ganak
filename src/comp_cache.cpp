@@ -135,7 +135,7 @@ bool CompCache::delete_some_entries() {
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
     if (!it->is_free() && (it)->is_deletable()) {
-      scores.push_back((double) (it)->creation_time());
+      scores.push_back((double) (it)->last_used_time());
     }
   if (scores.empty()){
     cout<< "c ERROR Memory out!"<<endl;
@@ -152,7 +152,7 @@ bool CompCache::delete_some_entries() {
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() &&
         entry_base[id].is_deletable() &&
-        (double) entry_base[id].creation_time() <= cutoff) {
+        (double) entry_base[id].last_used_time() <= cutoff) {
       unlink_from_tree(id);
       erase(id);
     }

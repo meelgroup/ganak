@@ -31,7 +31,7 @@ using std::cout;
 
 class BaseComp {
 public:
-  uint32_t creation_time() const { return creation_time_; }
+  uint32_t last_used_time() const { return last_used_time_; }
   const mpz_class &model_count() const { return *model_count_; }
   uint32_t alloc_of_model_count() const{
     if (!model_count_) return 0;
@@ -48,22 +48,21 @@ public:
     return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
   }
 
-  void set_creation_time(uint32_t time) { creation_time_ = time; }
-
-  void set_model_count(const mpz_class &rn, uint32_t time) {
+  void set_last_used_time(uint32_t time) { last_used_time_ = time; }
+  void set_model_count(const mpz_class &rn) {
     assert(model_count_ == nullptr);
     model_count_ = new mpz_class(rn);
-    length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
+    delete_permitted = 1;
   }
 
   uint32_t get_hashkey() const  { return (uint32_t)clhashkey_; }
-  bool model_count_found(){ return length_solution_period_and_flags_ >> 1; }
+  bool model_count_found(){ return model_count_ != nullptr; }
 
   // a cache entry is deletable
   // only if it is not connected to an active
   // comp in the comp stack
-  bool is_deletable() const { return length_solution_period_and_flags_ & 1; }
-  void set_deletable() { length_solution_period_and_flags_ |= 1; }
+  bool is_deletable() const { return delete_permitted; }
+  void set_deletable() { delete_permitted = true; }
 
   void clear() {
     // before deleting the contents of this comp,
@@ -74,13 +73,10 @@ public:
 protected:
   uint64_t clhashkey_;
   mpz_class* model_count_ = nullptr;
-  uint32_t creation_time_ = 1;
+  uint32_t last_used_time_ = 1;
 
-  // this is:  length_solution_period = length_solution_period_and_flags_ >> 1
-  // length_solution_period == 0 means unsolved
-  // and the first bit is "delete_permitted"
-  uint32_t length_solution_period_and_flags_ = 0;
   // deletion is permitted only after
   // the copy of this comp in the stack
   // does not exist anymore
+  bool delete_permitted = false;
 };

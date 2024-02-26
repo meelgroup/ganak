@@ -170,7 +170,7 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
   }
 
   assert(!cache_full());
-  ccomp.set_creation_time(my_time++);
+  ccomp.set_last_used_time(my_time++);
 
   if (free_entry_base_slots.empty()) {
     /* bool at_capacity = (entry_base.capacity() == entry_base.size()); */
@@ -303,8 +303,8 @@ void CompCache::store_value(const CacheEntryID id, const mpz_class &model_count)
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));
   /* SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).size_in_bytes())); */
   stats.sum_bytes_cached_comps_ -= entry(id).size_in_bytes();
-  entry(id).set_model_count(model_count,my_time);
-  entry(id).set_creation_time(my_time);
+  entry(id).set_model_count(model_count);
+  entry(id).set_last_used_time(my_time);
   entry(id).set_next_bucket_element(table[table_ofs]);
   table[table_ofs] = id;
   stats.sum_bytes_cached_comps_ += entry(id).size_in_bytes();

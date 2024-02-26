@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "comp_cache.hpp"
+#include "time_mem.hpp"
 #include <algorithm>
 #include <iomanip>
 
@@ -128,6 +129,8 @@ void CompCache::test_descendantstree_consistency() {
 
 bool CompCache::delete_some_entries() {
   assert(cache_full());
+  const auto start_del_time = cpuTime();
+
   vector<double> scores;
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
@@ -170,6 +173,7 @@ bool CompCache::delete_some_entries() {
 
   stats.num_cached_comps_ = entry_base.size();
   compute_size_allocated();
+  verb_print(1, "deletion done. T: " << cpuTime()-start_del_time);
   return true;
 }
 

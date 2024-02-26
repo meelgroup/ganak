@@ -137,7 +137,7 @@ bool CompCache::delete_some_entries() {
   verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
-    if (!it->is_free() && (it)->is_deletable()) {
+    if (!it->is_free() && it->is_deletable()) {
       scores.push_back((double) (it)->last_used_time());
     }
   if (scores.empty()){

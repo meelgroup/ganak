@@ -134,7 +134,7 @@ bool CompCache::delete_some_entries() {
   verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
-    if (!it->is_free() && (it)->isDeletable()) {
+    if (!it->is_free() && (it)->is_deletable()) {
       scores.push_back((double) (it)->creation_time());
     }
   if (scores.empty()){
@@ -151,7 +151,7 @@ bool CompCache::delete_some_entries() {
   // should always stay here!
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() &&
-        entry_base[id].isDeletable() &&
+        entry_base[id].is_deletable() &&
         (double) entry_base[id].creation_time() <= cutoff) {
       unlink_from_tree(id);
       erase(id);

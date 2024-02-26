@@ -62,7 +62,7 @@ public:
   // a cache entry is deletable
   // only if it is not connected to an active
   // comp in the comp stack
-  bool isDeletable() const { return length_solution_period_and_flags_ & 1; }
+  bool is_deletable() const { return length_solution_period_and_flags_ & 1; }
   void set_deletable() { length_solution_period_and_flags_ |= 1; }
 
   void clear() {

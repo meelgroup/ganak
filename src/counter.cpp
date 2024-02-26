@@ -847,7 +847,7 @@ double Counter::score_of(const uint32_t v) const {
     // activity is prioritized
     freq_score = comp_manager->freq_score_of(v);
     act_score = 100*var_act(v);
-    if (!tdscore.empty()) td_score += 10 * td_weight * tdscore[v];
+    if (!tdscore.empty()) td_score += 10 * tdscore[v];
     /* if (!tdscore.empty()) td_score += 10 * td_weight * tdscore[v]; */
   }
   if (print) cout << "v: " << v

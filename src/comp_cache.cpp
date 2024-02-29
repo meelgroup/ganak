@@ -136,6 +136,9 @@ bool CompCache::delete_some_entries() {
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
   verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
+
+  // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
+  //       just create it and that's it. Not bumped with usage(!)
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
     if (!it->is_free() && it->is_deletable()) {
       scores.push_back((double) (it)->last_used_time());
@@ -148,10 +151,7 @@ bool CompCache::delete_some_entries() {
   verb_print(1, "deletable:           " << scores.size())
   sort(scores.begin(), scores.end());
   double cutoff = scores[scores.size() / 2];
-  // first : go through the EntryBase and mark the entries to be deleted as deleted (i.e. EMPTY
-  // note we start at index 2,
-  // since index 1 is the whole formula,
-  // should always stay here!
+  // note we start at index 2, since index 1 is the whole formula, should always stay here!
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() &&
         entry_base[id].is_deletable() &&
@@ -161,7 +161,6 @@ bool CompCache::delete_some_entries() {
     }
   verb_print(1, "free entries after:  " << free_entry_base_slots.size());
 
-  // then go through the Hash Table and erase all Links to empty entries
   SLOW_DEBUG_DO(test_descendantstree_consistency());
   rehash_table(table.size());
   stats.sum_bytes_cached_comps_ = 0;

@@ -86,6 +86,8 @@ public:
     while(act_id){
       if (entry(act_id).equals_clhashkey(packed_comp)) {
         stats.incorporate_cache_hit(nvars);
+        // TODO: we could bump something about the cache entry here...
+        //       last_used_time ought to be bumped I think?
         top.includeSolution(entry(act_id).model_count());
         return true;
       }

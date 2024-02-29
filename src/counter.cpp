@@ -905,7 +905,7 @@ uint32_t Counter::find_best_branch() {
       if (val(v) != X_TRI) continue;
       if (v < indep_support_end) {
         const double score = score_of(v);
-        if (score > best_var_score * 0.9) {
+        if (score > best_var_score * 0.95) {
           if (comp_manager->get_cache_hit_score(v) > c_score) {
             best_var = v;
             c_score = comp_manager->get_cache_hit_score(v);

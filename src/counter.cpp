@@ -296,8 +296,17 @@ void Counter::td_decompose() {
   }
 
   uint64_t n = nVars()*nVars();
-  double density = (double)primal.numEdges()/(double)n;
-  double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
+  const double density = (double)primal.numEdges()/(double)n;
+  if (density > 0.1) {
+    verb_print(1, "[td] Density is too high, " << density << " skipping TD");
+    return;
+  }
+
+  const double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
+  if (edge_var_ratio > 30) {
+    verb_print(1, "[td] Edge/var ratio is too high, " << edge_var_ratio << " skipping TD");
+    return;
+  }
   verb_print(1, "[td] Primal graph  "
     << " nodes: " << primal.numNodes()
     << " edges: " <<  primal.numEdges()
@@ -839,7 +848,7 @@ double Counter::score_of(const uint32_t v) const {
   double freq_score = 0;
   double act_score = 0;
   double td_score = 0;
-  if ((conf.force_branch == 0 && stats.conflicts < 10000) || conf.force_branch == 1) {
+  if ((conf.force_branch == 0 && stats.conflicts < 10000 && !tdscore.empty()) || conf.force_branch == 1) {
     freq_score = comp_manager->freq_score_of(v)/15.0;
     act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = tdscore[v];

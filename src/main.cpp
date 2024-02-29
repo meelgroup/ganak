@@ -68,6 +68,9 @@ int arjun_verb = 0;
 int do_arjun = 1;
 int ignore_indep = 0;
 int sbva_steps = 200;
+int sbva_cls_cutoff = 4;
+int sbva_lits_cutoff = 4;
+int sbva_tiebreak = 1;
 
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
@@ -140,6 +143,9 @@ void add_ganak_options()
     ("buddy", po::value(&conf.do_buddy)->default_value(conf.do_buddy), "Run BuDDy")
     ("decide", po::value(&conf.decide)->default_value(conf.decide), "Decision type. 0 = sstd-inspired, 1 = gpmc-inspired")
     ("sbva", po::value(&sbva_steps)->default_value(sbva_steps), "SBVA steps. 0 = no SBVA")
+    ("sbvaclcut", po::value(&sbva_cls_cutoff)->default_value(sbva_cls_cutoff), "SBVA cls cutoff")
+    ("sbvalitcut", po::value(&sbva_lits_cutoff)->default_value(sbva_lits_cutoff), "SBVA lits cutoff")
+    ("sbvabreak", po::value(&sbva_tiebreak)->default_value(sbva_tiebreak), "SBVA tie breaking. 0 = old, 1 = sbva")
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("comprevsort", po::value(&conf.do_comp_reverse_sort)->default_value(conf.do_comp_reverse_sort), "Sort components in reverse order")
 #endif
@@ -388,7 +394,7 @@ int main(int argc, char *argv[])
             cnfholder.sampling_vars, simp_conf, true, false);
 
     arjun->set_verbosity(1);
-    arjun->run_sbva(ret, sbva_steps, 3, 3);
+    arjun->run_sbva(ret, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
     cnfholder = CNFHolder();
     delete arjun;
     // Extend

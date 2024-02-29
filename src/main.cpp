@@ -67,6 +67,7 @@ int optional_indep = 1;
 int arjun_verb = 0;
 int do_arjun = 1;
 int ignore_indep = 0;
+int sbva_steps = 200;
 
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
@@ -138,6 +139,7 @@ void add_ganak_options()
     ("vivifmult", po::value(&conf.vivif_mult)->default_value(conf.vivif_mult), "How much to multiply timeout for vivif")
     ("buddy", po::value(&conf.do_buddy)->default_value(conf.do_buddy), "Run BuDDy")
     ("decide", po::value(&conf.decide)->default_value(conf.decide), "Decision type. 0 = sstd-inspired, 1 = gpmc-inspired")
+    ("sbva", po::value(&sbva_steps)->default_value(sbva_steps), "SBVA steps. 0 = no SBVA")
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("comprevsort", po::value(&conf.do_comp_reverse_sort)->default_value(conf.do_comp_reverse_sort), "Sort components in reverse order")
 #endif
@@ -384,6 +386,9 @@ int main(int argc, char *argv[])
     ArjunNS::SimpConf simp_conf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(
             cnfholder.sampling_vars, simp_conf, true, false);
+
+    arjun->set_verbosity(1);
+    arjun->run_sbva(ret, sbva_steps, 3, 3);
     cnfholder = CNFHolder();
     delete arjun;
     // Extend

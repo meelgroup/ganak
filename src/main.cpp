@@ -100,6 +100,9 @@ string ganak_version_info()
     #else
     ss << "c o GANAK compiled with non-gcc compiler";
     #endif
+    cout << "c o CMS revision: " << CMSat::SATSolver::get_version_sha1() << endl;
+    cout << "c o Arjun SHA revision: " << ArjunNS::Arjun ::get_version_info() << endl;
+    cout << "c o Arjun SBVA SHA revision: " << ArjunNS::Arjun::get_sbva_version_info() << endl;
 
     return ss.str();
 }

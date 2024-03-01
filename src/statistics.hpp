@@ -50,7 +50,6 @@ public:
   }
   CounterConfiguration& conf;
   uint64_t maximum_cache_size_bytes_ = 0;
-  uint64_t numcachedec_ = 0;
 
   uint64_t num_binary_irred_clauses_ = 0;
 

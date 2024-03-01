@@ -108,10 +108,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       } else {
         // Cache hit
         stats.cache_hits_misses_q.push(p_new_comp->nVars());
-        if (conf.do_cache_hit_scores) {
-          stats.numcachedec_++;
-          bump_cache_hit_score(*p_new_comp);
-        }
+        if (conf.do_cache_hit_scores) bump_cache_hit_score(*p_new_comp);
 
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."

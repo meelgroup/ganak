@@ -1349,13 +1349,8 @@ RetState Counter::backtrack() {
         << " -- dec lev: " << decisions.get_decision_level());
     if (conf.do_use_cache)
       comp_manager->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
-
-
-    //Cache score should be decreased since the component is getting added to cache
-    if (conf.do_cache_hit_scores) {
-      stats.numcachedec_++;
+    if (conf.do_cache_hit_scores)
       comp_manager->bump_cache_hit_score(comp_manager->get_super_comp(decisions.top()));
-    }
 
     // Backtrack from end, i.e. finished.
     if (decisions.get_decision_level() == 0) {

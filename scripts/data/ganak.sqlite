@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (
+  dirname STRING NOT NULL,
+  fname STRING NOT NULL,
+
+  ganak_time FLOAT,
+  ganak_tout_time FLOAT,
+  ganak_mem_MB FLOAT,
+  ganak_call TEXT NOT NULL,
+  ganak_ver TEXT NOT NULL,
+  confls INT,
+  comps INT
+);
+. mode csv
+. import -skip 1 mydata.csv data
+UPDATE data SET ganak_time = NULL WHERE ganak_time = '';

@@ -38,35 +38,20 @@ template<class T>
 class vec {
 public:
     T*  data;
-    T* begin()
-    {
-        return data;
-    }
-    T* end()
-    {
-        return data + sz;
-    }
-
-    const T* begin() const
-    {
-        return data;
-    }
-    const T* end() const
-    {
-        return data + sz;
-    }
+    T* begin() { return data; }
+    T* end() { return data + sz; }
+    const T* begin() const { return data; }
+    const T* end() const { return data + sz; }
 private:
     uint32_t sz;
     uint32_t cap;
 
     // Don't allow copying (error prone):
-    vec<T>&  operator = (vec<T>& /*other*/)
-    {
+    vec<T>&  operator = (vec<T>& /*other*/) {
         assert(0);
         return *this;
     }
-    vec      (vec<T>& /*other*/)
-    {
+    vec      (vec<T>& /*other*/) {
         assert(0);
     }
 

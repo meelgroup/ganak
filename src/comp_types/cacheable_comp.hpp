@@ -31,11 +31,10 @@ THE SOFTWARE.
 class Comp;
 class CompArchetype;
 
-// GenericCacheableComp Adds Structure to PackedComp that is
+// Adds Structure to PackedComp that is
 // necessary to store it in the cache
 // namely, the descendant tree structure that
 // allows for the removal of cache pollutions
-
 class CacheableComp: public HashedComp {
 public:
   CacheableComp() = default;

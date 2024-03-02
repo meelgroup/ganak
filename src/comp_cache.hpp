@@ -163,9 +163,7 @@ private:
   uint64_t my_time = 0;
 };
 
-CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id){
-  CacheEntryID id;
-
+CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id) {
   while (cache_full()) {
     verb_print(1, "Cache full. Deleting some entries.");
     delete_some_entries();
@@ -174,6 +172,7 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
   assert(!cache_full());
   ccomp.set_last_used_time(my_time++);
 
+  CacheEntryID id;
   if (free_entry_base_slots.empty()) {
     /* bool at_capacity = (entry_base.capacity() == entry_base.size()); */
     /* if (at_capacity) entry_base_reserve(entry_base.capacity()*1.3); */

@@ -73,7 +73,7 @@ public:
 protected:
   uint64_t clhashkey_;
   mpz_class* model_count_ = nullptr;
-  uint32_t last_used_time_ = 1;
+  uint32_t last_used_time_ = 1; //effectively the score
 
   // deletion is permitted only after
   // the copy of this comp in the stack

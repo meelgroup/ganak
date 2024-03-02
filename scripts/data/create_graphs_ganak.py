@@ -80,16 +80,16 @@ for ver in todo :
     for dir,call in dirs_call:
         print("dir:", dir)
         print("call:", call)
-        if "actexp 1.0" in call:
-            continue
+        # if "actexp 1.0" in call:
+        #     continue
         # if "tdwithredbins 0" in call:
         #     continue
         # if "restart 1" in call:
         #     continue
         # if "vivif" not in call:
         #     continue
-        if "probe 1" in call:
-            continue
+        # if "probe 1" in call:
+        #     continue
         # if "polar" not in call:
         #     continue
         fname = "run-"+dir+".csv"

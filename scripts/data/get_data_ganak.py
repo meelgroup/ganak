@@ -128,7 +128,9 @@ def find_sharpsat_time_cnt(fname):
             if "c o Solved." in line:
                 t = float(line.split()[3])
             if "c o Preprocessed." in line:
-                prepro_t = float(line.split()[3])
+                d = line.split()[3]
+                d = d.strip('s')
+                prepro_t = float(d)
             if "c s exact arb int" in line:
                 if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
                 else: cnt = decimal.Decimal(line.split()[5]).log10()

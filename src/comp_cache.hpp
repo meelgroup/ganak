@@ -124,10 +124,9 @@ private:
   void rehash_table(const uint32_t size) {
     table.clear();
     table.resize(size,0);
-    // we assert that table size is a power of 2
-    // otherwise the tbl_size_mask doesn't work
-    assert((table.size() & (table.size() - 1)) == 0);
+    assert((table.size() & (table.size() - 1)) == 0 && "Table size must be a power of 2");
     tbl_size_mask = table.size() - 1;
+
     for (uint32_t id = 2; id < entry_base.size(); id++)
       if (!entry_base[id].is_free()) {
         entry_base[id].set_next_bucket_element(0);

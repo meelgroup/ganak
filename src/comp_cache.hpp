@@ -124,6 +124,7 @@ private:
   void rehash_table(const uint32_t size) {
     table.clear();
     table.resize(size,0);
+    table.shrink_to_fit();
     assert((table.size() & (table.size() - 1)) == 0 && "Table size must be a power of 2");
     tbl_size_mask = table.size() - 1;
 
@@ -149,7 +150,7 @@ private:
     }
 
   vec<CacheableComp> entry_base;
-  vector<CacheEntryID> free_entry_base_slots;
+  vec<CacheEntryID> free_entry_base_slots;
 
   // the actual hash table
   // by means of which the cache is accessed

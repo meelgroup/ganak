@@ -102,6 +102,9 @@ CheckOptions:
    |^.*limitM$)
 - key: readability-identifier-naming.PrivateMemberCase
   value: 'lower_case'
+- key: readability-identifier-naming.PrivateMemberIgnoredRegexp
+  value: >-
+   (^.*_$)
 # - key: readability-identifier-naming.PrivateMemberSuffix
 #   value: '_'
 - key: readability-identifier-naming.StructCase

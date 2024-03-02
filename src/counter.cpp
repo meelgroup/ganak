@@ -278,7 +278,7 @@ void Counter::td_decompose() {
   all_lits(i) {
     Lit l(i/2, i%2 == 0);
     for(const auto& l2: watches[l].binaries) {
-      if ((!l2.red() || (l2.red() && conf.td_with_red_bins)) && l < l2.lit()) {
+      if (!l2.red() && l < l2.lit()) {
         debug_print(l.var() << " " << l2.lit().var());
         primal.addEdge(l.var(), l2.lit().var());
       }

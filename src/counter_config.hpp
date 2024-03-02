@@ -77,7 +77,6 @@ struct CounterConfiguration {
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  int td_with_red_bins = 1; // a MUST or we are VERY slow
 
   uint64_t seed = 0;
   double delta = 0.05;

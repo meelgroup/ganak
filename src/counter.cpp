@@ -84,7 +84,7 @@ vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
       exit(-1);
     }
     if (tmp[i] != i+1) {
-      cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i << endl;
+      cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i+1 << endl;
       exit(-1);
     }
   }

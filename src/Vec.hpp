@@ -95,10 +95,7 @@ public:
         assert(nelems <= sz);
         sz -= nelems;
     }
-    uint32_t      capacity () const
-    {
-        return cap;
-    }
+    uint32_t      capacity () const { return cap; }
     void     capacity (int32_t min_cap);
     void     growTo   (uint32_t size);
     void     growTo   (uint32_t size, const T& pad);

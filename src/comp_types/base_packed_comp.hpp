@@ -35,12 +35,12 @@ public:
   const mpz_class &model_count() const { return *model_count_; }
   uint32_t alloc_of_model_count() const{
     if (!model_count_) return 0;
-    return sizeof(mpz_class)+sys_overhead_raw_data_byte_size();
+    return sizeof(mpz_class)+mpz_data_size();
   }
 
   // raw data size with the overhead
   // for the supposed 16byte alignment of malloc
-  uint32_t sys_overhead_raw_data_byte_size() const {
+  uint32_t mpz_data_size() const {
     uint32_t ds;
     ds = 0;
     uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);

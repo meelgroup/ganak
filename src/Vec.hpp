@@ -185,8 +185,7 @@ public:
         return sz == 0;
     }
 
-    void shrink_to_fit()
-    {
+    void shrink_to_fit() {
         if (sz == 0) {
             free(data);
             cap = 0;

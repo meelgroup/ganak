@@ -114,7 +114,7 @@ public:
 
   // test function to ensure consistency of the descendant tree
   inline void test_descendantstree_consistency();
-  void debug_dump_data();
+  void debug_dump_data() const;
 private:
 
   void consider_cache_resize(){
@@ -123,8 +123,9 @@ private:
 
   void rehash_table(const uint32_t size) {
     table.clear();
-    table.resize(size,0);
+    table.resize(size);
     table.shrink_to_fit();
+    std::fill(table.begin(), table.end(), 0);
     assert((table.size() & (table.size() - 1)) == 0 && "Table size must be a power of 2");
     tbl_size_mask = table.size() - 1;
 
@@ -132,14 +133,14 @@ private:
       if (!entry_base[id].is_free()) {
         entry_base[id].set_next_bucket_element(0);
         if(entry_base[id].model_count_found()) {
-          uint32_t table_ofs=table_entry(id);
+          uint32_t table_ofs=table_pos(id);
           entry_base[id].set_next_bucket_element(table[table_ofs]);
           table[table_ofs] = id;
         }
     }
   }
 
-  uint32_t table_entry(CacheEntryID id) const {
+  uint32_t table_pos(CacheEntryID id) const {
     return entry(id).get_hashkey() & tbl_size_mask;
   }
 
@@ -154,7 +155,7 @@ private:
 
   // the actual hash table
   // by means of which the cache is accessed
-  vector<CacheEntryID> table;
+  vec<CacheEntryID> table;
 
   uint32_t tbl_size_mask; // table is always power-of-two size
 
@@ -241,9 +242,9 @@ uint64_t CompCache::clean_pollutions_involving(const CacheEntryID id) {
 }
 
 void CompCache::unlink(CacheEntryID id) {
-  uint32_t act_id = table[table_entry(id)];
+  uint32_t act_id = table[table_pos(id)];
   if (act_id == id){
-    table[table_entry(id)] = entry(act_id).next_bucket_element();
+    table[table_pos(id)] = entry(act_id).next_bucket_element();
   } else {
     while (act_id) {
       CacheEntryID next_id = entry(act_id).next_bucket_element();
@@ -298,7 +299,7 @@ void CompCache::store_value(const CacheEntryID id, const mpz_class &model_count)
 #endif
 
   consider_cache_resize();
-  uint32_t table_ofs = table_entry(id);
+  uint32_t table_ofs = table_pos(id);
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));

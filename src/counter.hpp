@@ -166,6 +166,7 @@ public:
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
+  const auto& get_cache() const { return comp_manager->get_cache();}
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
   int32_t decision_level() const { return decisions.get_decision_level();}
 

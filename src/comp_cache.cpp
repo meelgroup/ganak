@@ -74,7 +74,8 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
   entry_base.push_back(x); // dummy Element
   stats.incorporate_cache_store(x, super_comp.nVars());
   table.clear();
-  table.resize(1024*1024, 0);
+  table.resize(1024*1024);
+  std::fill(table.begin(), table.end(), 0);
   tbl_size_mask = table.size() - 1;
 
   free_entry_base_slots.clear();
@@ -185,7 +186,7 @@ uint64_t CompCache::compute_size_allocated() {
   return stats.cache_infrastructure_bytes_memory_usage_;
 }
 
-void CompCache::debug_dump_data() {
+void CompCache::debug_dump_data() const {
     cout << "sizeof (CacheableComp, CacheEntryID) "
          << sizeof(CacheableComp) << ", "
          << sizeof(CacheEntryID) << endl;
@@ -208,7 +209,7 @@ void CompCache::debug_dump_data() {
       << endl;
 
     uint64_t alloc_model_counts = 0;
-    for (auto &pentry : entry_base)
-      if (!pentry.is_free()) alloc_model_counts += pentry.alloc_of_model_count();
+    for (auto &entry : entry_base)
+      if (!entry.is_free()) alloc_model_counts += entry.alloc_of_model_count();
     cout << "model counts size " << alloc_model_counts << endl;
 }

@@ -136,8 +136,9 @@ public:
 
   const Instance* inst;
 
-  bool cache_full(uint64_t empty_size) {
-    return (cache_bytes_memory_usage() - empty_size) >= maximum_cache_size_bytes_;
+  bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
+    return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)
+      >= maximum_cache_size_bytes_;
   }
 
   uint64_t cache_bytes_memory_usage() const {

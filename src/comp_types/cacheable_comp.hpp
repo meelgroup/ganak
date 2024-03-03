@@ -54,6 +54,7 @@ public:
   void set_next_bucket_element(CacheEntryID entry) { next_bucket_element_ = entry; }
   CacheEntryID next_bucket_element() const { return next_bucket_element_; }
   bool is_free() const {
+    if (father_ == std::numeric_limits<uint32_t>::max()) assert (model_count_ == nullptr);
     return father_ == std::numeric_limits<uint32_t>::max();
   }
   void set_free() {

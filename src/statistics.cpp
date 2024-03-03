@@ -143,6 +143,7 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << get_avg_cache_store_sz()
     << " / "
     << get_avg_cache_store_size());
+  if (conf.verb >= 2) counter->get_cache().debug_mem_data();
   verb_print(1, "");
 }
 

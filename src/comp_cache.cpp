@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "comp_cache.hpp"
+#include "primitive_types.hpp"
 #include "time_mem.hpp"
 #include <algorithm>
 #include <iomanip>
@@ -128,16 +129,8 @@ void CompCache::test_descendantstree_consistency() {
     }
 }
 
-bool CompCache::delete_some_entries() {
-  assert(cache_full());
-  const auto start_del_time = cpuTime();
-
+double CompCache::calc_cutoff() const {
   vector<double> scores;
-  verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
-  verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
-  verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
-  verb_print(1, "free entries before: " << free_entry_base_slots.size());
-
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
@@ -151,7 +144,18 @@ bool CompCache::delete_some_entries() {
   }
   verb_print(1, "deletable:           " << scores.size())
   sort(scores.begin(), scores.end());
-  double cutoff = scores[scores.size() / 2];
+  return scores[scores.size() / 2];
+}
+
+bool CompCache::delete_some_entries() {
+  const auto start_del_time = cpuTime();
+  double cutoff = calc_cutoff();
+  verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
+  verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
+  verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
+  verb_print(1, "free entries before: " << free_entry_base_slots.size());
+
+
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() &&
@@ -180,36 +184,39 @@ bool CompCache::delete_some_entries() {
 uint64_t CompCache::compute_size_allocated() {
   stats.cache_infrastructure_bytes_memory_usage_ =
       sizeof(CompCache)
-      + sizeof(CacheEntryID)* table.capacity()
-      + sizeof(CacheableComp)* entry_base.capacity()
-      + sizeof(CacheEntryID) * free_entry_base_slots.capacity();
+      + sizeof(CacheEntryID) * table.capacity()
+      + sizeof(CacheEntryID) * free_entry_base_slots.capacity()
+      + sizeof(CacheableComp)* entry_base.capacity();
   return stats.cache_infrastructure_bytes_memory_usage_;
 }
 
-void CompCache::debug_dump_data() const {
-    cout << "sizeof (CacheableComp, CacheEntryID) "
+void CompCache::debug_mem_data() const {
+    cout << std::setw(40) << "c o sizeof (CacheableComp, CacheEntryID) "
          << sizeof(CacheableComp) << ", "
          << sizeof(CacheEntryID) << endl;
-    cout << "table (size/capacity) " << table.size()
-         << "/" << table.capacity() << endl;
-    cout << "entry_base (size/capacity) " << entry_base.size()
-             << "/" << entry_base.capacity() << endl;
-    cout << "free_entry_base_slots (size/capacity) " << free_entry_base_slots.size()
-             << "/" << free_entry_base_slots.capacity() << endl;
-
-    cout << "-" << endl;
-    cout << std::setw(40) << "table mem use MB: " <<
-      (double)(table.capacity()*sizeof(CacheableComp))/(double)(1024*1024)
-      << endl;
-    cout << std::setw(40) << "entry_base mem use MB: " <<
-      (double)(entry_base.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)
-      << endl;
-    cout << std::setw(40) << "free_entry_base_slots mem use MB " <<
-      (double)(free_entry_base_slots.capacity()*sizeof(uint32_t))/(double)(1024*1024)
-      << endl;
-
+    cout << std::setw(40) << "c o table (size/capacity)M " << table.size()/(double)1e6
+         << "/" << table.capacity()/(double)1e6 << endl;
+    cout << std::setw(40) << "entry_base (size/capacity)M " << entry_base.size()/(double)1e6
+         << "/" << entry_base.capacity()/(double)1e6 << endl;
+    cout << std::setw(40) << "c o free_entry_base_slots (size/capacity)M "
+         << free_entry_base_slots.size()/(double)1e6
+         << "/" << free_entry_base_slots.capacity()/(double)1e6 << endl;
+    cout << std::setw(40) << "c o table mem use MB: "
+         << (double)(table.capacity()*sizeof(CacheEntryID))/(double)(1024*1024) << endl;
+    cout << std::setw(40) << "c o entry_base mem use MB: "
+         << (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024) << endl;
+    cout << std::setw(40) << "c o free_entry_base_slots mem use MB "
+         << (double)(free_entry_base_slots.capacity()*sizeof(uint32_t))/(double)(1024*1024)
+         << endl;
     uint64_t alloc_model_counts = 0;
     for (auto &entry : entry_base)
       if (!entry.is_free()) alloc_model_counts += entry.alloc_of_model_count();
-    cout << "model counts size " << alloc_model_counts << endl;
+    cout << std::setw(40) << "c o model counts use MB "
+      << alloc_model_counts/(double)(1024*1024) << endl;
+
+
+    double vm_dat;
+    auto dat = memUsedTotal(vm_dat);
+    verb_print(1, "Total process MB : " << dat/(double)(1024*1024)
+      << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 }

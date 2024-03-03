@@ -22,12 +22,16 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "common.hpp"
 #include "comp_types/base_packed_comp.hpp"
+#include "comp_types/cacheable_comp.hpp"
+#include "primitive_types.hpp"
 #include "statistics.hpp"
 #include "counter_config.hpp"
 #include "Vec.hpp"
 #include <set>
 #include <gmpxx.h>
+#include "time_mem.hpp"
 
 #include "comp_types/comp.hpp"
 #include "stack.hpp"
@@ -53,8 +57,9 @@ public:
   // compute the size in bytes of the comp cache from scratch
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_allocated();
-  bool cache_full() const {
-    return stats.cache_full(free_entry_base_slots.size() * sizeof(CacheableComp));
+  bool cache_full(uint64_t extra_will_be_added = 0) const {
+    return stats.cache_full(free_entry_base_slots.size() * sizeof(CacheableComp),
+        extra_will_be_added);
   }
 
   CacheableComp &entry(CacheEntryID id) { return entry_base[id]; }
@@ -77,6 +82,7 @@ public:
   // stores in the entry the position of
   // comp which is a part of the comp stack
   inline CacheEntryID new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id);
+  inline uint64_t calc_extra_mem_after_push() const;
 
   bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const CacheableComp &packed_comp) {
     stats.num_cache_look_ups_++;
@@ -107,6 +113,7 @@ public:
   // store the number in model_count as the model count of CacheEntryID id
   inline void store_value(const CacheEntryID id, const mpz_class &model_count);
 
+  double calc_cutoff() const;
   bool delete_some_entries();
 
   // delete entries, keeping the descendants tree consistent
@@ -114,11 +121,22 @@ public:
 
   // test function to ensure consistency of the descendant tree
   inline void test_descendantstree_consistency();
-  void debug_dump_data() const;
+  void debug_mem_data() const;
 private:
 
-  void consider_cache_resize(){
-    if (entry_base.size() > table.size()) rehash_table(2*table.size());
+  void consider_table_resize() {
+    if (entry_base.size() > table.size()) {
+      double vm_before;
+      auto used_before = memUsedTotal(vm_before);
+      rehash_table(2*table.size());
+      double vm_after;
+      auto used_after = memUsedTotal(vm_after);
+      verb_print(2,
+        "table resize -- used before: " << used_before/(double)(1024*1024)
+        << " vm used before: " << vm_before/(double)(1024*1024)
+        << " used after: " << used_after/(double)(1024*1024)
+        << " vm used after: " << vm_after/(double)(1024*1024));
+    }
   }
 
   void rehash_table(const uint32_t size) {
@@ -164,20 +182,51 @@ private:
   uint64_t my_time = 0;
 };
 
+uint64_t CompCache::calc_extra_mem_after_push() const
+{
+  bool at_capacity = entry_base.capacity() == entry_base.size();
+  uint64_t extra_will_be_added = 0;
+  // assume it will be doubled
+  if (at_capacity) extra_will_be_added =
+    entry_base.capacity()*sizeof(CacheableComp) + table.capacity()*sizeof(CacheEntryID);
+  return extra_will_be_added;
+}
+
 CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id) {
-  while (cache_full()) {
+  uint64_t extra_mem_with_push = calc_extra_mem_after_push();
+  while (cache_full(extra_mem_with_push)) {
     verb_print(1, "Cache full. Deleting some entries.");
+    if (conf.verb >= 2) debug_mem_data();
     delete_some_entries();
+    if (conf.verb >= 2) debug_mem_data();
+    extra_mem_with_push = calc_extra_mem_after_push();
   }
 
-  assert(!cache_full());
   ccomp.set_last_used_time(my_time++);
 
   CacheEntryID id;
   if (free_entry_base_slots.empty()) {
-    /* bool at_capacity = (entry_base.capacity() == entry_base.size()); */
-    /* if (at_capacity) entry_base_reserve(entry_base.capacity()*1.3); */
+    bool at_capacity = entry_base.capacity() == entry_base.size();
+    if (at_capacity && conf.verb >= 2) {
+      double vm_dat;
+      auto dat = memUsedTotal(vm_dat);
+      verb_print(2,std::setw(40) << "After enlarge entry_base mem use MB: " <<
+        (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024));
+      verb_print(3,
+        "Before entry enlarge Total process MB : " << dat/(double)(1024*1024)
+        << " Total process vm MB: " << vm_dat/(double)(1024*1024));
+
+    }
     entry_base.push_back(ccomp);
+    if (at_capacity && conf.verb >= 2) {
+      double vm_dat;
+      double dat = memUsedTotal(vm_dat);
+      verb_print(1,std::setw(40) << "After enlarge entry_base mem use MB: " <<
+        (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024));
+      verb_print(1,
+        "After entry enlarge Total process MB  : " << dat/(double)(1024*1024)
+        << " Total process vm MB: " << vm_dat/(double)(1024*1024));
+    }
     id = entry_base.size() - 1;
   } else {
     id = free_entry_base_slots.back();
@@ -298,7 +347,7 @@ void CompCache::store_value(const CacheEntryID id, const mpz_class &model_count)
   return;
 #endif
 
-  consider_cache_resize();
+  consider_table_resize();
   uint32_t table_ofs = table_pos(id);
   // when storing the new model count the size of the model count
   // and hence that of the comp will change

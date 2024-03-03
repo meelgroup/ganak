@@ -130,12 +130,12 @@ void CompCache::test_descendantstree_consistency() {
 }
 
 double CompCache::calc_cutoff() const {
-  vector<double> scores;
+  vector<uint32_t> scores;
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
     if (!it->is_free() && it->is_deletable()) {
-      scores.push_back((double) (it)->last_used_time());
+      scores.push_back(it->last_used_time());
     }
   if (scores.empty()){
     cout<< "c ERROR Memory out!"<<endl;
@@ -194,11 +194,11 @@ void CompCache::debug_mem_data() const {
     cout << std::setw(40) << "c o sizeof (CacheableComp, CacheEntryID) "
          << sizeof(CacheableComp) << ", "
          << sizeof(CacheEntryID) << endl;
-    cout << std::setw(40) << "c o table (size/capacity)M " << table.size()/(double)1e6
+    cout << std::setw(40) << "c o table (size/capa) M " << table.size()/(double)1e6
          << "/" << table.capacity()/(double)1e6 << endl;
-    cout << std::setw(40) << "entry_base (size/capacity)M " << entry_base.size()/(double)1e6
+    cout << std::setw(40) << "c o entry_base (size/capa) M " << entry_base.size()/(double)1e6
          << "/" << entry_base.capacity()/(double)1e6 << endl;
-    cout << std::setw(40) << "c o free_entry_base_slots (size/capacity)M "
+    cout << std::setw(40) << "c o free_entry_base_slots (size/capa) M "
          << free_entry_base_slots.size()/(double)1e6
          << "/" << free_entry_base_slots.capacity()/(double)1e6 << endl;
     cout << std::setw(40) << "c o table mem use MB: "

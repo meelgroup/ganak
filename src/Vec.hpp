@@ -205,9 +205,7 @@ public:
 template<class T>
 void vec<T>::capacity(int32_t min_cap)
 {
-    if ((int32_t)cap >= min_cap) {
-        return;
-    }
+    if ((int32_t)cap >= min_cap) return;
 
     // NOTE: grow by approximately 3/2
     uint32_t add = imax((min_cap - (int32_t)cap + 1) & ~1, (((int32_t)cap >> 1) + 2) & ~1);

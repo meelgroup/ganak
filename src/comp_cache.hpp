@@ -182,8 +182,7 @@ private:
   uint64_t my_time = 0;
 };
 
-uint64_t CompCache::calc_extra_mem_after_push() const
-{
+uint64_t CompCache::calc_extra_mem_after_push() const {
   bool at_capacity = entry_base.capacity() == entry_base.size();
   uint64_t extra_will_be_added = 0;
   // assume it will be doubled

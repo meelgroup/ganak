@@ -215,13 +215,9 @@ void vec<T>::capacity(int32_t min_cap)
     cap += (uint32_t)add;
 
     // This avoids memory fragmentation by many reallocations
-    uint32_t new_size = 2;
-    while (new_size < cap) {
-        new_size *= 2;
-    }
-    if (new_size * 2 / 3 > cap) {
-        new_size = new_size * 2 / 3;
-    }
+    int32_t new_size = 2;
+    while (new_size < min_cap) new_size *= 2;
+    if ((new_size * 2 / 3) > min_cap) new_size = new_size * 2 / 3;
     cap = new_size;
 
     if (((data = (T*)::realloc(data, cap * sizeof(T))) == nullptr) && errno == ENOMEM) {

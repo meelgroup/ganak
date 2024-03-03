@@ -184,10 +184,12 @@ private:
 
 uint64_t CompCache::calc_extra_mem_after_push() const {
   bool at_capacity = entry_base.capacity() == entry_base.size();
+  bool at_capacity_table = entry_base.capacity() == entry_base.size();
   uint64_t extra_will_be_added = 0;
   // assume it will be doubled
   if (at_capacity) extra_will_be_added =
-    entry_base.capacity()*sizeof(CacheableComp) + table.capacity()*sizeof(CacheEntryID);
+    (entry_base.capacity()*sizeof(CacheableComp) + stats.sum_bytes_cached_comps_)/2;
+  if (at_capacity_table) extra_will_be_added += (table.capacity()*sizeof(CacheEntryID))/2;
   return extra_will_be_added;
 }
 

@@ -62,23 +62,22 @@ def get_dirs(ver : str):
     return ret
 
 versions = get_versions()
-# fname2_s = []
-# not_calls = ["ExactMC"]
-# not_versions = ["sharpsat", "gpmc", "6368237b"]
+fname2_s = []
+not_calls = ["ExactMC"]
+not_versions = ["sharpsat", "gpmc", "6368237b"]
 # only_calls = ["--decide 0", "--sbva 0"]
+# only_calls = ["--ignore 1 --arjun 1 --maxcache 3500 --vivif 1 --decide 2 --sbva 1000"]
 # not_calls = []
 # not_versions = ["ganak"]
-only_calls = []
+# only_calls = []
 not_calls = []
+only_dirs = ["6328982"] #, "6328707"]
 not_versions = []
 only_calls = []
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)
     for dir,call in dirs_call:
-        print("dir:", dir)
-        print("call:", call)
-        print("ver:", ver)
         bad = False
         for not_call in not_calls:
           if not_call in call:
@@ -90,10 +89,18 @@ for ver in todo :
           for only_call in only_calls:
             if only_call not in call:
               bad = True
-
+        if len(only_dirs) != 0:
+          inside = False
+          for only_dir in only_dirs:
+            if only_dir in dir:
+              inside = True
+          if not inside: bad = True
 
         if bad:
           continue
+        print("dir:", dir)
+        print("call:", call)
+        print("ver:", ver)
 
         # if "actexp 1.0" in call:
         #     continue
@@ -132,7 +139,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [0:3600][:]\\\n")
+    f.write("plot [1000:3600][:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

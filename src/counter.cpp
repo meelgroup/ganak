@@ -947,6 +947,7 @@ uint32_t Counter::find_best_branch_gpmc() {
   for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) if (*it < indep_support_end) {
     uint32_t v = *it;
+    if (val(v) != X_TRI) continue;
     if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
 
     double score_td = tdscore[v];

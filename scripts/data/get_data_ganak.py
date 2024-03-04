@@ -151,7 +151,7 @@ def approxmc_version(fname):
                 cver = line.split()[4]
 
     if aver is not None:
-        aver = aver[:8]
+        aver = "appmc"+aver[:8]
     if cver is not None:
         cver = cver[:8]
     return [aver, cver]

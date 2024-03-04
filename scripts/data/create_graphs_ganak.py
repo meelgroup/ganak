@@ -37,7 +37,10 @@ def get_versions():
     vers = []
     con = sqlite3.connect("mydb.sql")
     cur = con.cursor()
-    res = cur.execute("SELECT ganak_ver FROM data where ganak_ver is not NULL and ganak_ver != '' group by ganak_ver")
+    res = cur.execute("""
+                      SELECT ganak_ver
+                      FROM data
+                      where ganak_ver is not NULL and ganak_ver != '' group by ganak_ver""")
     for a in res:
         vers.append(a[0])
 
@@ -59,27 +62,39 @@ def get_dirs(ver : str):
     return ret
 
 versions = get_versions()
-fname2_s = []
-todo = [ # "17e237e32f302198a52529900a4c58ee84a95ee0", # thursday night 22:07
-        # "e10e390959c41990407439e16cec3b4ea8bfcf3a", # thu 17:1
-        # "f6789ccc62c9748f03198467d2d24d2136901b1b", # thu 12:15
-        # "5f3f40e7",
-        # "7b5b5c09",
-        # "89a6317b",
-        # "db40b291",
-        # "772a782c",
-        "cbefa43a",
-        # "cd4fa81d",
-        # "a7031a8b",
-        # "4b62829e", # this is really 73ab7a4992fce5e695355d6ac3d350cefac8d486
-        # "3d72f8f8"
-        ]
+# fname2_s = []
+# not_calls = ["ExactMC"]
+# not_versions = ["sharpsat", "gpmc", "6368237b"]
+# only_calls = ["--decide 0", "--sbva 0"]
+# not_calls = []
+# not_versions = ["ganak"]
+only_calls = []
+not_calls = []
+not_versions = []
+only_calls = []
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)
     for dir,call in dirs_call:
         print("dir:", dir)
         print("call:", call)
+        print("ver:", ver)
+        bad = False
+        for not_call in not_calls:
+          if not_call in call:
+            bad = True
+        for not_version in not_versions:
+          if not_version in ver:
+            bad = True
+        if len(only_calls) != 0:
+          for only_call in only_calls:
+            if only_call not in call:
+              bad = True
+
+
+        if bad:
+          continue
+
         # if "actexp 1.0" in call:
         #     continue
         # if "tdwithredbins 0" in call:
@@ -103,7 +118,7 @@ for ver in todo :
 
         fname2 = fname + ".gnuplotdata"
         num_solved = convert_to_cactus(fname, fname2)
-        fname2_s.append([fname2, call, ver[:6], num_solved, dir])
+        fname2_s.append([fname2, call, ver[:10], num_solved, dir])
 
 gnuplotfn = "run-all.gnuplot"
 with open(gnuplotfn, "w") as f:

@@ -166,6 +166,24 @@ void Counter::end_irred_cls() {
   comp_manager->initialize(watches, alloc, long_irred_cls, nVars());
 }
 
+void Counter::remove_duplicates(vector<Lit>& lits) {
+  if (lits.size() <= 1) return;
+  std::sort(lits.begin(), lits.end());
+  uint32_t j = 1;
+  Lit last_lit = lits[0];
+  for(uint32_t i = 1; i < lits.size(); i++) {
+    if (lits[i] == last_lit) continue;
+    if (lits[i] == last_lit.neg()) {
+      last_lit = NOT_A_LIT;
+      j--; //remove both
+      continue;
+    }
+    last_lit = lits[i];
+    lits[j++] = lits[i];
+  }
+  lits.resize(j);
+}
+
 void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
   vector<Lit> lits;
   for(const auto& l: lits_orig) {
@@ -177,6 +195,8 @@ void Counter::add_irred_cl(const vector<Lit>& lits_orig) {
     exit(-1);
   }
   for(const auto& l: lits) assert(l.var() <= nVars());
+  remove_duplicates(lits);
+
   stats.incorporateIrredClauseData(lits);
   Clause* cl = addClause(lits, false);
   auto off = alloc->get_offset(cl);

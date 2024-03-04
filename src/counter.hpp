@@ -174,6 +174,7 @@ public:
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
+  void remove_duplicates(vector<Lit>& lits);
   mpz_class check_count_norestart(const Cube& c);
   mpz_class check_count_norestart_cms(const Cube& c);
   void count(vector<Cube>& cubes);

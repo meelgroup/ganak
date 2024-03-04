@@ -92,8 +92,13 @@ public:
     while(act_id){
       if (entry(act_id).equals_clhashkey(packed_comp)) {
         stats.incorporate_cache_hit(nvars);
-        // TODO: we could bump something about the cache entry here...
-        //       last_used_time ought to be bumped I think?
+        switch(conf.cache_time_update) {
+          case 0: break;
+          case 1: entry(act_id).set_last_used_time(my_time); break;
+          case 2: entry(act_id).avg_last_used_time(my_time, 2); break;
+          case 3: entry(act_id).avg_last_used_time(my_time, 3); break;
+          default: release_assert(false);
+        }
         top.includeSolution(entry(act_id).model_count());
         return true;
       }

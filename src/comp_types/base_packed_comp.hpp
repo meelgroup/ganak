@@ -49,6 +49,10 @@ public:
   }
 
   void set_last_used_time(uint32_t time) { last_used_time_ = time; }
+  void avg_last_used_time(uint32_t time, uint32_t div) {
+    assert(time >= last_used_time_);
+    last_used_time_ += (time-last_used_time_)/div;
+  }
   void set_model_count(const mpz_class &rn) {
     assert(model_count_ == nullptr);
     model_count_ = new mpz_class(rn);

@@ -144,7 +144,6 @@ double CompCache::calc_cutoff() const {
   }
   verb_print(1, "deletable:           " << scores.size())
   sort(scores.begin(), scores.end());
-  if (conf.do_cache_reverse_sort) std::reverse(scores.begin(), scores.end());
   return scores[scores.size() / 2];
 }
 
@@ -161,7 +160,8 @@ bool CompCache::delete_some_entries() {
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() &&
         entry_base[id].is_deletable() &&
-        (double) entry_base[id].last_used_time() <= cutoff) {
+        (!conf.do_cache_reverse_sort && (double) entry_base[id].last_used_time() <= cutoff
+         || conf.do_cache_reverse_sort && (double) entry_base[id].last_used_time() >= cutoff)
       unlink_from_tree(id);
       erase(id);
     }

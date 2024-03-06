@@ -71,9 +71,11 @@ not_versions = ["sharpsat", "gpmc", "6368237b"]
 # not_versions = ["ganak"]
 # only_calls = []
 not_calls = []
-only_dirs = ["6328982"] #, "6328707"]
+only_dirs = ["6346880"] #, "6335522", "6328982", "6328707"]
 not_versions = []
 only_calls = []
+only_calls = ["--cachetime"]
+# only_dirs = []
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)

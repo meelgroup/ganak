@@ -144,6 +144,7 @@ double CompCache::calc_cutoff() const {
   }
   verb_print(1, "deletable:           " << scores.size())
   sort(scores.begin(), scores.end());
+  if (conf.do_cache_reverse_sort) std::reverse(scores.begin(), scores.end());
   return scores[scores.size() / 2];
 }
 

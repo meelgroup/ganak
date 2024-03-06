@@ -74,6 +74,7 @@ struct CounterConfiguration {
 #endif
   int force_branch = 0; // 0 = no force, 1 = TD, 2 = conflict
   int do_use_cache = 1;
+  uint64_t branch_cutoff = 10000;
 
 
   bool do_td = 1;

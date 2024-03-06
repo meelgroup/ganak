@@ -866,7 +866,7 @@ double Counter::score_of(const uint32_t v) const {
   double freq_score = 0;
   double act_score = 0;
   double td_score = 0;
-  if ((conf.force_branch == 0 && stats.conflicts < 10000 && !tdscore.empty()) || conf.force_branch == 1) {
+  if ((conf.force_branch == 0 && stats.conflicts < conf.branch_cutoff && !tdscore.empty()) || conf.force_branch == 1) {
     freq_score = comp_manager->freq_score_of(v)/15.0;
     act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = tdscore[v];

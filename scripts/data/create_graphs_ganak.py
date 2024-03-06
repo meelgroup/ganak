@@ -85,10 +85,14 @@ for ver in todo :
         for not_version in not_versions:
           if not_version in ver:
             bad = True
+
         if len(only_calls) != 0:
+          inside = False
           for only_call in only_calls:
-            if only_call not in call:
-              bad = True
+            if only_call in call:
+              inside = True
+          if not inside: bad = True
+
         if len(only_dirs) != 0:
           inside = False
           for only_dir in only_dirs:
@@ -139,7 +143,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [1000:3600][:]\\\n")
+    f.write("plot [0:3600][:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

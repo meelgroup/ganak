@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
+#include <cstdint>
 #include <gmpxx.h>
 #include <iostream>
 #include "../common.hpp"
@@ -48,11 +49,15 @@ public:
     return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
   }
 
+  // These below are to help us erase better from the cache
   void set_last_used_time(uint32_t time) { last_used_time_ = time; }
   void avg_last_used_time(uint32_t time, uint32_t div) {
     assert(time >= last_used_time_);
     last_used_time_ += (time-last_used_time_)/div;
   }
+  void set_dont_delete_before(const uint32_t time) { dont_delete_before = time; }
+  uint32_t get_dont_delete_before() const { return dont_delete_before; }
+
   void set_model_count(const mpz_class &rn) {
     assert(model_count_ == nullptr);
     model_count_ = new mpz_class(rn);
@@ -82,5 +87,6 @@ protected:
   // deletion is permitted only after
   // the copy of this comp in the stack
   // does not exist anymore
-  bool delete_permitted = false;
+  uint32_t delete_permitted:1 = false;
+  uint32_t dont_delete_before:31 = 0;
 };

@@ -155,11 +155,11 @@ bool CompCache::delete_some_entries() {
   verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
 
-
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() &&
         entry_base[id].is_deletable() &&
+        entry_base[id].get_dont_delete_before() < my_time &&
         ((!conf.do_cache_reverse_sort && entry_base[id].last_used_time() <= cutoff)
          || (conf.do_cache_reverse_sort && entry_base[id].last_used_time() >= cutoff))) {
       unlink_from_tree(id);

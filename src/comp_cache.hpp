@@ -322,6 +322,7 @@ void CompCache::unlink_from_tree(CacheEntryID id) {
   // we need a father for this all to work
   assert(entry(id).father());
   assert(exists(entry(id).father()));
+  stats.num_cache_dels_++;
 
 
   // unlink id from the father's siblings list

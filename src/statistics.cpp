@@ -125,11 +125,12 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "
     << std::setprecision(3) << in_mb(cache->get_num_entries_used()*72) << " "
   );
-  verb_print(1, "cache K (lookup/ stores/ hits) "
+  verb_print(1, "cache K (lookup/ stores/ hits/ dels) "
     << std::left
     << std::setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
     << std::setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
     << std::setw(6) << (num_cache_hits_ /(1000ULL)) << " "
+    << std::setw(6) << (num_cache_dels_ /(1000ULL)) << " "
     << std::setw(16) << " -- Klookup/s: "
     << std::setprecision(2) << std::setw(9) << std::left
     << safe_div(num_cache_look_ups_,(1000.0*(cpuTime()-counter->get_start_time())))

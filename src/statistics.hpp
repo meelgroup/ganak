@@ -113,6 +113,7 @@ public:
 
   /* cache statistics */
   uint64_t num_cache_hits_ = 0;
+  uint64_t num_cache_dels_ = 0;
   uint64_t num_cache_look_ups_ = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes_ = 0;

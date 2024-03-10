@@ -65,13 +65,12 @@ versions = get_versions()
 fname2_s = []
 not_calls = ["ExactMC"]
 not_versions = ["sharpsat", "gpmc", "6368237b"]
-# only_calls = ["--decide 0", "--sbva 0"]
 # only_calls = ["--ignore 1 --arjun 1 --maxcache 3500 --vivif 1 --decide 2 --sbva 1000"]
-# not_calls = []
 # not_versions = ["ganak"]
-# only_calls = []
-not_calls = [] # "cachetime"
-only_dirs = ["6349002", "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
+# not_calls = ["forcebranch", "target"] # "cachetime"
+only_dirs = ["6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
+# "6349002",
+not_calls = []
 not_versions = []
 only_calls = []
 # only_dirs = []

@@ -206,26 +206,59 @@ def timeout_parse(fname):
 
     return [t, m, call]
 
+# c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
+def ganak_treewidth(fname) -> list[str]:
+    tw = ""
+    t = ""
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o [td] iter" in line:
+                tw = int(line.split()[7])-1
+                tw = "%d" % tw
+                t = float(line.split()[12])
+                t = "%d" % t
+    return [tw, t]
+
+
 # c o conflicts                      2503077      -- confl/s:    1434.45
-def ganak_conflicts(fname) -> int:
-    confl = 0
+def ganak_conflicts(fname) -> str:
+    confl = ""
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if "c o conflicts   " in line:
                 confl = int(line.split()[3])
+                confl = "%d" % confl
 
     return confl
 
 
+#c o decisions K                    8         -- Kdec/s:     0.71
+def ganak_decisions(fname) -> str:
+    decisions = ""
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o decisions K" in line:
+                decisions = int(line.split()[4])
+                decisions = "%d" % decisions
+
+    return decisions
+
+
 # c o cache K (lookup/ stores/ hits) 67229  34594  32634   -- Klookup/s:  38.53
-def ganak_comps(fname) -> int:
-    comps = 0
+def ganak_comps(fname) -> str:
+    comps = ""
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if "c o cache K (lookup/ stores/ hits)" in line:
                 comps = int(line.split()[7])
+                comps = "%d" % comps
+            if "c o cache K (lookup/ stores/ hits/ dels)" in line:
+                comps = int(line.split()[8])
+                comps = "%d" % comps
 
     return comps
 
@@ -274,59 +307,54 @@ for f in file_list:
     if ".timeout_" in f:
         files[base]["solvertout"] = timeout_parse(f)
 
+    files[base]["confls"] = ""
+    files[base]["decisions"] = ""
+    files[base]["comps"] = ""
+    files[base]["td-width"] = ""
+    files[base]["td-time"] = ""
     if ".out_ganak" in f:
         files[base]["solver"] = "ganak"
         files[base]["solvertime"] = find_ganak_time_cnt(f)
         files[base]["solverver"] = ganak_version(f)
         files[base]["confls"] = ganak_conflicts(f)
+        files[base]["decisions"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
+        td = ganak_treewidth(f)
+        files[base]["td-width"] = td[0]
+        files[base]["td-time"] = td[1]
     if ".out_approxmc" in f:
         files[base]["solver"] = "approxmc"
         files[base]["solvertime"] = find_approxmc_time_cnt(f)
         files[base]["solverver"] = approxmc_version(f)
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
     if ".out_gpmc" in f:
         files[base]["solver"] = "gpmc"
         files[base]["solvertime"] = find_gpmc_time_cnt(f)
         files[base]["solverver"] = ["gpmc", "gpmc"]
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
     if ".out_sharptd" in f:
         files[base]["solver"] = "sharptd"
         files[base]["solvertime"] = find_sharpsat_time_cnt(f)
         files[base]["solverver"] = ["sharptd", "sharptd"]
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
     if ".out_d4" in f:
         files[base]["solver"] = "d4"
         files[base]["solvertime"] = find_d4_time_cnt(f)
         files[base]["solverver"] = ["d4", "d4"]
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
     if ".out_dsharp" in f:
         files[base]["solver"] = "dsharp"
         files[base]["solvertime"] = find_dsharp_time_cnt(f)
         files[base]["solverver"] = ["dsharp", "dsharp"]
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
     if ".out_minic2d" in f:
         files[base]["solver"] = "minic2d"
         files[base]["solvertime"] = find_minic2d_time_cnt(f)
         files[base]["solverver"] = ["minic2d", "minic2d"]
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
     if ".out_exactmc" in f:
         files[base]["solver"] = "exactmc"
         files[base]["solvertime"] = find_exactmc_time_cnt(f)
         files[base]["solverver"] = ["exactmc","exactmc"]
-        files[base]["confls"] = 0
-        files[base]["comps"] = 0
 
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,comps"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td-width,td-time"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -355,11 +383,14 @@ with open("mydata.csv", "w") as out:
 
         #ganak_ver
         if f["solverver"] == [None, None]:
-            toprint += ",,"
+            toprint += ",,,,,"
         else:
             toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
             toprint += "%s," % f["confls"]
-            toprint += "%s"  % f["comps"]
+            toprint += "%s," % f["decisions"]
+            toprint += "%s," % f["comps"]
+            toprint += "%s," % f["td-width"]
+            toprint += "%s"  % f["td-time"]
 
         out.write(toprint+"\n")
 

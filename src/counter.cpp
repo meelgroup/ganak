@@ -251,20 +251,17 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   }
   max_ord -= min_ord;
   assert(max_ord >= 1);
+
   // calc td weight
+  double rt = 0;
   if (width > 0) {
-    // val below is 0...1. Larger the better
-    double rt = (double)n/(double)width;
-    if (rt > 40) {
-      // width is small compared to n
-      td_weight = 1e7;
-    } else {
-      td_weight = 1e3*exp(rt);
-    }
-  } else td_weight = 1e7;
-  td_weight = std::min(td_weight, 1e7);
-  td_weight/=(double)1e5;
-  verb_print(1, "TD weight: " << td_weight);
+    // Larger the better
+    rt = (double)n/(double)width;
+    if (rt > 20) td_weight = conf.td_maxweight;
+    else td_weight = td_weight*exp(rt)/conf.td_divider;
+  } else td_weight = conf.td_maxweight;
+  td_weight = std::min(td_weight, conf.td_maxweight);
+  verb_print(1, "TD weight: " << td_weight << " rt: " << rt);
 
   // Calc td score
   for (uint32_t i = 1; i < n; i++) {
@@ -874,13 +871,12 @@ double Counter::score_of(const uint32_t v) const {
       conf.force_branch == 1) {
     freq_score = comp_manager->freq_score_of(v)/15.0;
     act_score = var_act(v)/3;
-    if (!tdscore.empty()) td_score = tdscore[v];
+    if (!tdscore.empty()) td_score = td_weight*tdscore[v];
   } else if (conf.force_branch == 0 || conf.force_branch == 2){
     // activity is prioritized
     freq_score = comp_manager->freq_score_of(v);
     act_score = 100*var_act(v);
     if (!tdscore.empty()) td_score += tdscore[v];
-    /* if (!tdscore.empty()) td_score += 10 * td_weight * tdscore[v]; */
   }
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts

@@ -128,6 +128,8 @@ void add_ganak_options()
 #ifndef SIMPLE
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
+    ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
+    ("tddiv", po::value(&conf.td_divider)->default_value(conf.td_divider), "TD divider")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("rdbkeepused", po::value(&conf.rdb_keep_used)->default_value(conf.rdb_keep_used), "RDB keeps clauses that are used")

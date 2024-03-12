@@ -217,7 +217,7 @@ def ganak_treewidth(fname) -> list[str]:
                 tw = int(line.split()[7])-1
                 tw = "%d" % tw
                 t = float(line.split()[12])
-                t = "%d" % t
+                t = "%f" % t
     return [tw, t]
 
 
@@ -227,7 +227,7 @@ def ganak_conflicts(fname) -> str:
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o conflicts   " in line:
+            if "c o conflicts" in line:
                 confl = int(line.split()[3])
                 confl = "%d" % confl
 
@@ -235,14 +235,13 @@ def ganak_conflicts(fname) -> str:
 
 
 #c o decisions K                    8         -- Kdec/s:     0.71
-def ganak_decisions(fname) -> str:
-    decisions = ""
+def ganak_decisions(fname) -> int|None:
+    decisions = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if "c o decisions K" in line:
                 decisions = int(line.split()[4])
-                decisions = "%d" % decisions
 
     return decisions
 
@@ -277,6 +276,8 @@ def ganak_version(fname):
                 aver = line.split()[5]
             if "c p CMS version" in line:
                 cver = line.split()[4]
+            if "c o CMS revision" in line:
+                cver = line.split()[4]
 
     if aver == "74816f58aa522ec39ed7a9dc118b9abadfb68f09":
         aver = "f6789ccc62c9748f03198467d2d24d2136901b1b"
@@ -307,11 +308,6 @@ for f in file_list:
     if ".timeout_" in f:
         files[base]["solvertout"] = timeout_parse(f)
 
-    files[base]["confls"] = ""
-    files[base]["decisions"] = ""
-    files[base]["comps"] = ""
-    files[base]["td-width"] = ""
-    files[base]["td-time"] = ""
     if ".out_ganak" in f:
         files[base]["solver"] = "ganak"
         files[base]["solvertime"] = find_ganak_time_cnt(f)
@@ -374,8 +370,8 @@ with open("mydata.csv", "w") as out:
             toprint += "%s," % f["solvertime"][0]
 
         #ganak_tout_t, ganak_mem_MB, ganak_call
-        if f["solvertout"] == [None, None]:
-            toprint += ",,"
+        if f["solvertout"] == [None, None, None]:
+            toprint += ",,,"
         else:
             toprint += "%s," % f["solvertout"][0]
             toprint += "%s," % f["solvertout"][1]
@@ -383,14 +379,34 @@ with open("mydata.csv", "w") as out:
 
         #ganak_ver
         if f["solverver"] == [None, None]:
-            toprint += ",,,,,"
+            toprint += ","
         else:
-            toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
-            toprint += "%s," % f["confls"]
-            toprint += "%s," % f["decisions"]
-            toprint += "%s," % f["comps"]
-            toprint += "%s," % f["td-width"]
-            toprint += "%s"  % f["td-time"]
+          toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
+
+        if not "confls" in f or f["confls"] is None:
+            toprint += ","
+        else:
+          toprint += "%s," % f["confls"]
+
+        if not "decisions" in f or f["decisions"] is None:
+            toprint += ","
+        else:
+          toprint += "%d," % f["decisions"]
+
+        if not "comps" in f or f["comps"] is None:
+            toprint += ","
+        else:
+          toprint += "%s," % f["comps"]
+
+        if not "td-width" in f or f["td-width"] is None:
+            toprint += ","
+        else:
+          toprint += "%s," % f["td-width"]
+
+        if not "td-time" in f or f["td-time"] is None:
+            toprint += ""
+        else:
+          toprint += "%s"  % f["td-time"]
 
         out.write(toprint+"\n")
 

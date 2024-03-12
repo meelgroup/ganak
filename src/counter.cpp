@@ -315,6 +315,10 @@ void Counter::td_decompose() {
 
   uint64_t n = nVars()*nVars();
   const double density = (double)primal.numEdges()/(double)n;
+  if (primal.numEdges() > 30000 ) {
+    verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
+    return;
+  }
   if (density > 0.1) {
     verb_print(1, "[td] Density is too high, " << density << " skipping TD");
     return;

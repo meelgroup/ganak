@@ -51,12 +51,12 @@ inline bool IsInt(const string& s, int64_t lb=std::numeric_limits<int64_t>::min(
 }
 
 inline bool IsDouble(const string& s, double lb=std::numeric_limits<double>::min(), double ub=std::numeric_limits<double>::max()) {
-	try {
-		double x = std::stod(s);
-		return lb <= x && x <= ub;
-	} catch (...) {
-		return false;
-	}
+  try {
+    double x = std::stod(s);
+    return lb <= x && x <= ub;
+  } catch (...) {
+    return false;
+  }
 }
 
 inline Bitset ToBitset(const std::vector<int>& a, int n) {
@@ -77,9 +77,9 @@ void SortAndDedup(vector<T>& vec) {
 
 template<typename T>
 int Ind(const std::vector<T>& a, const T& x) {
-	int ind = std::lower_bound(a.begin(), a.end(), x) - a.begin();
-	assert(a[ind] == x);
-	return ind;
+  int ind = std::lower_bound(a.begin(), a.end(), x) - a.begin();
+  assert(a[ind] == x);
+  return ind;
 }
 
 template<typename T>
@@ -120,8 +120,8 @@ inline void Timer::stop() {
 
 inline double Timer::get() const {
   if (timing) {
-  	auto tela = elapsedTime;
-  	tela += (std::chrono::steady_clock::now() - startTime);
+    auto tela = elapsedTime;
+    tela += (std::chrono::steady_clock::now() - startTime);
     return tela.count();
   }
   else {

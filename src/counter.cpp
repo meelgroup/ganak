@@ -45,8 +45,8 @@ static void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
       /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
       /* printf(" / %.1fs / %.1fs total\n", */
-	     /* (double)s->time/(double)(CLOCKS_PER_SEC), */
-	     /* (double)s->sumtime/(double)CLOCKS_PER_SEC); */
+       /* (double)s->time/(double)(CLOCKS_PER_SEC), */
+       /* (double)s->sumtime/(double)CLOCKS_PER_SEC); */
    }
 }
 

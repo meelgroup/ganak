@@ -121,26 +121,26 @@ private:
 
 class TreeDecomposition {
  public:
- 	explicit TreeDecomposition(int bs_, int n_);
- 	const vector<vector<int>>& Bags() const;
- 	const vector<int>& Neighbors(int b) const;
- 	int nverts() const;
- 	int nbags() const;
- 	void AddEdge(int a, int b);
- 	void SetBag(int v, vector<int> bag);
- 	int Width() const;
- 	bool Verify(const Graph& graph) const;
- 	bool InBag(int b, int v) const;
- 	Graph Chordal() const;
- 	int Centroid() const;
+   explicit TreeDecomposition(int bs_, int n_);
+   const vector<vector<int>>& Bags() const;
+   const vector<int>& Neighbors(int b) const;
+   int nverts() const;
+   int nbags() const;
+   void AddEdge(int a, int b);
+   void SetBag(int v, vector<int> bag);
+   int Width() const;
+   bool Verify(const Graph& graph) const;
+   bool InBag(int b, int v) const;
+   Graph Chordal() const;
+   int Centroid() const;
   vector<int> GetOrd() const;
  private:
- 	int bs, n, width;
- 	Graph tree;
- 	vector<vector<int>> bags;
+   int bs, n, width;
+   Graph tree;
+   vector<vector<int>> bags;
   void OdDes(int b, int p, int d, vector<int>& ret) const;
- 	int CenDfs(int x, int p, int& cen) const;
- 	bool dfs(int x, int v, int p, vector<int>& u) const;
+   int CenDfs(int x, int p, int& cen) const;
+   bool dfs(int x, int v, int p, vector<int>& u) const;
 };
 
 // Implementation

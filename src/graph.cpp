@@ -644,108 +644,108 @@ TreeDecomposition::TreeDecomposition(int bs_, int n_)
  : bs(bs_), n(n_), width(-1), tree(bs+1), bags(bs+1) {}
 
 void TreeDecomposition::AddEdge(int a, int b) {
-	tree.AddEdge(a, b);
+  tree.AddEdge(a, b);
 }
 
 void TreeDecomposition::SetBag(int v, vector<int> bag) {
-	assert(v >= 1 && v <= bs);
-	assert(bags[v].empty());
-	bags[v] = bag;
-	SortAndDedup(bags[v]);
-	width = std::max(width, (int)bags[v].size()-1);
-	for (int u : bags[v]) {
-		assert(0 <= u && u < n);
-	}
+  assert(v >= 1 && v <= bs);
+  assert(bags[v].empty());
+  bags[v] = bag;
+  SortAndDedup(bags[v]);
+  width = std::max(width, (int)bags[v].size()-1);
+  for (int u : bags[v]) {
+    assert(0 <= u && u < n);
+  }
 }
 
 int TreeDecomposition::Width() const {
-	return width;
+  return width;
 }
 
 bool TreeDecomposition::InBag(int b, int v) const {
-	assert(1 <= b && b <= bs && 0 <= v && v < n);
-	return BS(bags[b], v);
+  assert(1 <= b && b <= bs && 0 <= v && v < n);
+  return BS(bags[b], v);
 }
 
 bool TreeDecomposition::dfs(int x, int v, int p, vector<int>& u) const {
-	assert(InBag(x, v));
-	assert(u[x] != v);
-	u[x] = v;
-	bool ok = true;
-	for (int nx : tree.Neighbors(x)) {
-		if (InBag(nx, v) && nx != p) {
-			if (u[nx] == v) {
-				return false;
-			}
-			ok = dfs(nx, v, x, u);
-			if (!ok) {
-				return false;
-			}
-		}
-	}
-	return true;
+  assert(InBag(x, v));
+  assert(u[x] != v);
+  u[x] = v;
+  bool ok = true;
+  for (int nx : tree.Neighbors(x)) {
+    if (InBag(nx, v) && nx != p) {
+      if (u[nx] == v) {
+        return false;
+      }
+      ok = dfs(nx, v, x, u);
+      if (!ok) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 const vector<vector<int>>& TreeDecomposition::Bags() const {
-	return bags;
+  return bags;
 }
 
 Graph TreeDecomposition::Chordal() const {
-	Graph ret(n);
-	for (const auto& bag : bags) {
-		for (int i = 0; i < (int)bag.size(); i++) {
-			for (int j = i+1; j < (int)bag.size(); j++) {
-				assert(bag[i] >= 0 && bag[i] < n && bag[j] >= 0 && bag[j] < n);
-				ret.AddEdge(bag[i], bag[j]);
-			}
-		}
-	}
-	return ret;
+  Graph ret(n);
+  for (const auto& bag : bags) {
+    for (int i = 0; i < (int)bag.size(); i++) {
+      for (int j = i+1; j < (int)bag.size(); j++) {
+        assert(bag[i] >= 0 && bag[i] < n && bag[j] >= 0 && bag[j] < n);
+        ret.AddEdge(bag[i], bag[j]);
+      }
+    }
+  }
+  return ret;
 }
 
 int TreeDecomposition::nbags() const {
-	return bs;
+  return bs;
 }
 
 int TreeDecomposition::nverts() const {
-	return n;
+  return n;
 }
 
 const vector<int>& TreeDecomposition::Neighbors(int b) const {
-	assert(b >= 1 && b <= bs);
-	return tree.Neighbors(b);
+  assert(b >= 1 && b <= bs);
+  return tree.Neighbors(b);
 }
 
 int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
-	assert(b >= 1 && b <= bs);
-	assert(p >= 0 && p <= bs);
-	assert(cen == 0);
-	int intro = 0;
-	for (int nb : Neighbors(b)) {
-		if (nb == p) continue;
-		int cintro = CenDfs(nb, b, cen);
-		intro += cintro;
-		if (cintro >= n/2) {
-			assert(cen);
-			return intro;
-		}
-	}
-	for (int v : bags[b]) {
-		if (p == 0 || !InBag(p, v)) {
-			intro++;
-		}
-	}
-	if (intro >= n/2) {
-		cen = b;
-	}
-	return intro;
+  assert(b >= 1 && b <= bs);
+  assert(p >= 0 && p <= bs);
+  assert(cen == 0);
+  int intro = 0;
+  for (int nb : Neighbors(b)) {
+    if (nb == p) continue;
+    int cintro = CenDfs(nb, b, cen);
+    intro += cintro;
+    if (cintro >= n/2) {
+      assert(cen);
+      return intro;
+    }
+  }
+  for (int v : bags[b]) {
+    if (p == 0 || !InBag(p, v)) {
+      intro++;
+    }
+  }
+  if (intro >= n/2) {
+    cen = b;
+  }
+  return intro;
 }
 
 int TreeDecomposition::Centroid() const {
-	int cen = 0;
-	CenDfs(1, 0, cen);
-	assert(cen >= 1 && cen <= bs);
-	return cen;
+  int cen = 0;
+  CenDfs(1, 0, cen);
+  assert(cen >= 1 && cen <= bs);
+  return cen;
 }
 
 void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {

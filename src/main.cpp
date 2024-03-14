@@ -129,6 +129,7 @@ void add_ganak_options()
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
     ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
+    ("tdminw", po::value(&conf.td_minweight)->default_value(conf.td_minweight), "TD min weight")
     ("tddiv", po::value(&conf.td_divider)->default_value(conf.td_divider), "TD divider")
     ("tdweighted", po::value(&conf.do_td_weight)->default_value(conf.do_td_weight), "TD weight enabled")
 

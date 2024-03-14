@@ -261,6 +261,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
     else td_weight = td_weight*exp(rt)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
   td_weight = std::min(td_weight, conf.td_maxweight);
+  td_weight = std::max(td_weight, conf.td_minweight);
   if (!conf.do_td_weight) td_weight = 1;
   verb_print(1, "TD weight: " << td_weight << " rt: " << rt);
 

@@ -612,6 +612,7 @@ TreeDecomposition IFlowCutter::constructTD()
 {
   TreeDecomposition td;
   ArrayIDIDFunc preorder, inv_preorder;
+  double t = cpuTime();
 
   /* int random_seed = 0; */
   try{
@@ -699,7 +700,7 @@ TreeDecomposition IFlowCutter::constructTD()
             // TODO timeout here
             if (i % 100 == 99 || steps < next_step_print) {
                 cout << "c o [td] iter " << i << " best bag: " << td.width()
-                  << " stepsK remain: " << steps/1000 << " elapsed: " << cpuTime() << endl;
+                  << " stepsK remain: " << steps/1000 << " T: " << (cpuTime()-t) << endl;
                 next_step_print -= 1e5;
             }
           }

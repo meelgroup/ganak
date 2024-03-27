@@ -23,11 +23,9 @@ THE SOFTWARE.
 #include "counter.hpp"
 
 #include <algorithm>
-#include <complex>
 #include <ios>
 #include <iomanip>
 #include <limits>
-#include <numeric>
 #include <utility>
 #include "common.hpp"
 #include "comp_types/comp.hpp"
@@ -314,7 +312,7 @@ void Counter::td_decompose() {
 
   uint64_t n = nVars()*nVars();
   const double density = (double)primal.numEdges()/(double)n;
-  if (primal.numEdges() > 30000 ) {
+  if (primal.numEdges() > 70000 ) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
   }

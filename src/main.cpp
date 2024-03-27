@@ -390,6 +390,9 @@ int main(int argc, char *argv[])
   }
   if (!do_arjun) {
     parse_file(fname, &cnfholder);
+    if (!indep_support_given) {
+      for(uint32_t i = 0; i < cnfholder.nVars(); i++) cnfholder.optional_sampling_vars.push_back(i);
+    }
   } else {
     double my_time = cpuTime();
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
@@ -406,19 +409,19 @@ int main(int argc, char *argv[])
     arjun->run_sbva(ret, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
     cnfholder = CNFHolder();
     delete arjun;
-    // Extend
-    {
+    if (indep_support_given) {
+      // Extend only if indep support was given, i.e. it's projected
+      // otherwise, ALL will be part of it anyway
       ArjunNS::Arjun arj2;
       arj2.new_vars(ret.nvars);
       arj2.set_verbosity(arjun_verb);
       for(const auto& cl: ret.cnf) arj2.add_clause(cl);
       arj2.set_starting_sampling_set(ret.sampling_vars);
       ret.optional_sampling_vars = arj2.extend_indep_set();
-    }
-    if (ret.sampling_vars.size() != ret.nvars) ret.renumber_sampling_vars_for_ganak();
-    if (!indep_support_given) {
+    } else {
       for(uint32_t i = 0; i < ret.nvars; i++) ret.optional_sampling_vars.push_back(i);
     }
+    ret.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
     SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", ret.empty_occs, true));
 

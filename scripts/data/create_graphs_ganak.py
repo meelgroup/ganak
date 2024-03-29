@@ -68,9 +68,14 @@ not_versions = ["sharpsat", "gpmc", "6368237b"]
 # only_calls = ["--ignore 1 --arjun 1 --maxcache 3500 --vivif 1 --decide 2 --sbva 1000"]
 # not_versions = ["ganak"]
 # not_calls = ["forcebranch", "target"] # "cachetime"
-only_dirs = ["6393432", "6393432"] #, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
+# exactm: out-ganak-6318929.pbs101-5/
+# exactmc2: out-ganak-6328707.pbs101-7
+# sharpsat: out-ganak-6318929.pbs101-7
+
+only_dirs = ["out-ganak-6396805.pbs101-1/", "6396805.pbs101-12","out-ganak-6318929.pbs101-5", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"]
+#"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
 # "6349002",
-not_calls = ["--branchcutoff 120000"]
+not_calls = []
 not_versions = []
 only_calls = [] #
 # only_dirs = []
@@ -96,7 +101,7 @@ for ver in todo :
         if len(only_dirs) != 0:
           inside = False
           for only_dir in only_dirs:
-            if only_dir in dir:
+            if only_dir in (dir+"/"):
               inside = True
           if not inside: bad = True
 
@@ -143,7 +148,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [0:3600][120:]\\\n")
+    f.write("plot [0:3600][50:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

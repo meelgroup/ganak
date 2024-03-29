@@ -604,6 +604,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       verb_print(2,  "added cube CL to GANAK: " << it->cnf << " val: " << it->val);
     }
     decisions.clear();
+    verb_print(1, "Cubes this restart: " << cubes.size() << " total cnt so far: " << val);
 
     end_irred_cls();
     if (stats.num_restarts %2 == 0) {

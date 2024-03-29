@@ -43,17 +43,16 @@ struct CounterConfiguration {
   // 6 == conflict/static, taking into account next_restart
   int restart_type = 7;
 
-  int do_comp_reverse_sort = 0;
+  int do_comp_reverse_sort = 1;
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
   int do_cache_hit_scores = 0;
-  int cache_time_update = 0;
+  int cache_time_update = 2;
   int do_cache_reverse_sort = 0;
   int do_single_bump = 1; // non-single bump is OLD ganak
 
   // Below has 4 setups, two bits to manipulate.
- int decide = 0; // 1st bit 0 = sstd, 1st bit 1 = gpmc, bit 2 = act setup
-                  //
+  int decide = 2; // 1st bit 0 = sstd, 1st bit 1 = gpmc, bit 2 = act setup
   uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 1; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
@@ -74,14 +73,14 @@ struct CounterConfiguration {
 #endif
   int force_branch = 0; // 0 = no force, 1 = TD, 2 = conflict
   int do_use_cache = 1;
-  uint64_t branch_cutoff = 10000;
+  uint64_t branch_cutoff = 990000000;
 
 
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  double td_maxweight = 10.0;
-  double td_minweight = 0;
+  double td_maxweight = 5.0;
+  double td_minweight = 0.1;
   double td_divider = 1e3;
   double do_td_weight = 1;
 

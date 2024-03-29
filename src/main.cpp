@@ -64,12 +64,12 @@ bool indep_support_given = false;
 int do_check = 0;
 CounterConfiguration conf;
 int optional_indep = 1;
-int arjun_verb = 0;
+int arjun_verb = 2;
 int do_arjun = 1;
 int ignore_indep = 0;
-int sbva_steps = 200;
+int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
-int sbva_lits_cutoff = 4;
+int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
 
 struct CNFHolder {

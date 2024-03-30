@@ -75,18 +75,26 @@ int sbva_tiebreak = 1;
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
   vector<vector<CMSat::Lit>> red_clauses;
-  vector<uint32_t> sampling_vars;
-  vector<uint32_t> optional_sampling_vars;
+  vector<uint32_t> sampl_vars;
+  vector<uint32_t> opt_sampl_vars;
   uint32_t nvars = 0;
+  mpz_class multiplier_weight = 1;
+  bool weighted = false;
 
   uint32_t nVars() const { return nvars; }
   uint32_t new_vars(uint32_t vars) { nvars+=vars; return nvars; }
   uint32_t new_var() { nvars++; return nvars;}
+
   void add_xor_clause(vector<uint32_t>&, bool) { exit(-1); }
   void add_xor_clause(vector<CMSat::Lit>&, bool) { exit(-1); }
   void add_clause(vector<CMSat::Lit>& cl) { clauses.push_back(cl); }
   void add_red_clause(vector<CMSat::Lit>& cl) { red_clauses.push_back(cl); }
-  uint32_t must_mult_exp2 = 0;
+
+  void set_multiplier_weight(mpz_class m) { multiplier_weight = m; }
+  auto get_multiplier_weight() const { return multiplier_weight; }
+  void set_lit_weight(CMSat::Lit /*lit*/, double /*weight*/) { assert(false && "Not yet supported"); exit(-1); }
+  void set_weighted(bool _weighted) { weighted = _weighted; }
+  bool get_weighted() const { return weighted; }
 };
 CNFHolder cnfholder;
 
@@ -279,30 +287,7 @@ void parse_supported_options(int argc, char** argv)
 
 }
 
-void write_simpcnf(const ArjunNS::SimplifiedCNF& simpcnf,
-        const std::string& elimtofile, const uint32_t orig_cnf_must_mult_exp2,
-        bool red = true)
-{
-    uint32_t num_cls = simpcnf.cnf.size();
-    std::ofstream outf;
-    outf.open(elimtofile.c_str(), std::ios::out);
-    outf << "p cnf " << simpcnf.nvars << " " << num_cls << endl;
-
-    //Add projection
-    outf << "c p show ";
-    for(const auto& v: simpcnf.sampling_vars) {
-        assert(v < simpcnf.nvars);
-        outf << v+1  << " ";
-    }
-    outf << "0\n";
-
-    for(const auto& cl: simpcnf.cnf) outf << cl << " 0\n";
-    if (red) for(const auto& cl: simpcnf.red_cnf) outf << "c red " << cl << " 0\n";
-    outf << "c MUST MULTIPLY BY 2**" << simpcnf.empty_occs+orig_cnf_must_mult_exp2 << endl;
-}
-
-template<class T>
-void parse_file(const std::string& filename, T* reader) {
+template<class T> void parse_file(const std::string& filename, T* reader) {
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
   DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, nullptr, 0);
@@ -322,18 +307,17 @@ void parse_file(const std::string& filename, T* reader) {
   gzclose(in);
   #endif
 
-  indep_support_given = parser.sampling_vars_found && !ignore_indep;
-  if (parser.sampling_vars_found && !ignore_indep) {
-    cnfholder.sampling_vars = parser.sampling_vars;
-    if (parser.optional_sampling_vars.empty())
-      cnfholder.optional_sampling_vars = parser.sampling_vars;
-    else cnfholder.optional_sampling_vars = parser.optional_sampling_vars;
+  indep_support_given = parser.sampl_vars_found && !ignore_indep;
+  if (parser.sampl_vars_found && !ignore_indep) {
+    cnfholder.sampl_vars = parser.sampl_vars;
+    if (parser.opt_sampl_vars.empty())
+      cnfholder.opt_sampl_vars = parser.sampl_vars;
+    else cnfholder.opt_sampl_vars = parser.opt_sampl_vars;
   } else {
     // ignore indep
-    for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampling_vars.push_back(i);
-    cnfholder.optional_sampling_vars = cnfholder.sampling_vars;
+    for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampl_vars.push_back(i);
+    cnfholder.opt_sampl_vars = cnfholder.sampl_vars;
   }
-  cnfholder.must_mult_exp2 = parser.must_mult_exp2;
 }
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
@@ -391,7 +375,7 @@ int main(int argc, char *argv[])
   if (!do_arjun) {
     parse_file(fname, &cnfholder);
     if (!indep_support_given) {
-      for(uint32_t i = 0; i < cnfholder.nVars(); i++) cnfholder.optional_sampling_vars.push_back(i);
+      for(uint32_t i = 0; i < cnfholder.nVars(); i++) cnfholder.opt_sampl_vars.push_back(i);
     }
   } else {
     double my_time = cpuTime();
@@ -399,11 +383,10 @@ int main(int argc, char *argv[])
     arjun->set_seed(conf.seed);
     arjun->set_verbosity(arjun_verb);
     parse_file(fname, arjun);
-    arjun->set_starting_sampling_set(cnfholder.sampling_vars);
-    cnfholder.sampling_vars = arjun->get_indep_set();
+    arjun->set_starting_sampling_set(cnfholder.sampl_vars);
+    arjun->run_backwards();
     ArjunNS::SimpConf simp_conf;
-    auto ret = arjun->get_fully_simplified_renumbered_cnf(
-            cnfholder.sampling_vars, simp_conf, true);
+    auto ret = arjun->get_fully_simplified_renumbered_cnf(simp_conf);
 
     arjun->set_verbosity(1);
     arjun->run_sbva(ret, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
@@ -416,23 +399,22 @@ int main(int argc, char *argv[])
       arj2.new_vars(ret.nvars);
       arj2.set_verbosity(arjun_verb);
       for(const auto& cl: ret.cnf) arj2.add_clause(cl);
-      arj2.set_starting_sampling_set(ret.sampling_vars);
-      ret.optional_sampling_vars = arj2.extend_indep_set();
+      arj2.set_starting_sampling_set(ret.sampl_vars);
+      ret.opt_sampl_vars = arj2.extend_sampl_set();
     } else {
-      for(uint32_t i = 0; i < ret.nvars; i++) ret.optional_sampling_vars.push_back(i);
+      for(uint32_t i = 0; i < ret.nvars; i++) ret.opt_sampl_vars.push_back(i);
     }
     ret.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
-    SLOW_DEBUG_DO(write_simpcnf(ret, fname+"-simplified.cnf", ret.empty_occs, true));
 
     // set up cnfholder
     cnfholder = CNFHolder();
     cnfholder.clauses = ret.cnf;
     cnfholder.red_clauses = ret.red_cnf;
     cnfholder.nvars = ret.nvars;
-    cnfholder.optional_sampling_vars = ret.optional_sampling_vars;
-    cnfholder.sampling_vars = ret.sampling_vars;
-    cnfholder.must_mult_exp2 += ret.empty_occs;
+    cnfholder.opt_sampl_vars = ret.opt_sampl_vars;
+    cnfholder.sampl_vars = ret.sampl_vars;
+    cnfholder.multiplier_weight *= ret.multiplier_weight;
   }
   Counter* counter = new Counter(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
@@ -453,11 +435,11 @@ int main(int argc, char *argv[])
       counter->add_red_cl(cl2);
     }
     set<uint32_t> tmp;
-    for(auto const& s: cnfholder.sampling_vars) tmp.insert(s+1);
+    for(auto const& s: cnfholder.sampl_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
     if (optional_indep || !indep_support_given) {
       tmp.clear();
-      for(auto const& s: cnfholder.optional_sampling_vars) tmp.insert(s+1);
+      for(auto const& s: cnfholder.opt_sampl_vars) tmp.insert(s+1);
       counter->set_optional_indep_support(tmp);
     }
 
@@ -470,7 +452,7 @@ int main(int argc, char *argv[])
   else cout << "s UNSATISFIABLE" << endl;
   if (indep_support_given) cout << "c s type pmc " << endl;
   else cout << "c s type mc" << endl;
-  for(uint32_t i = 0; i < cnfholder.must_mult_exp2; i++) cnt *= 2;
+  cnt *= cnfholder.multiplier_weight;
   cout << "c s log10-estimate ";
   if (cnt == 0) {
     cout << "-inf" << endl;

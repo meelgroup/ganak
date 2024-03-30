@@ -27,7 +27,6 @@ THE SOFTWARE.
 
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);

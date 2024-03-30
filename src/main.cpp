@@ -325,13 +325,13 @@ void parse_file(const std::string& filename, T* reader) {
   indep_support_given = parser.sampling_vars_found && !ignore_indep;
   if (parser.sampling_vars_found && !ignore_indep) {
     cnfholder.sampling_vars = parser.sampling_vars;
-    cnfholder.optional_sampling_vars = parser.sampling_vars;
-  } else {
-    for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampling_vars.push_back(i);
-    if (optional_indep && parser.sampling_vars_found)
+    if (parser.optional_sampling_vars.empty())
       cnfholder.optional_sampling_vars = parser.sampling_vars;
-    else
-      cnfholder.optional_sampling_vars = cnfholder.sampling_vars;
+    else cnfholder.optional_sampling_vars = parser.optional_sampling_vars;
+  } else {
+    // ignore indep
+    for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampling_vars.push_back(i);
+    cnfholder.optional_sampling_vars = cnfholder.sampling_vars;
   }
   cnfholder.must_mult_exp2 = parser.must_mult_exp2;
 }
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
     cnfholder.sampling_vars = arjun->get_indep_set();
     ArjunNS::SimpConf simp_conf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(
-            cnfholder.sampling_vars, simp_conf, true, false);
+            cnfholder.sampling_vars, simp_conf, true);
 
     arjun->set_verbosity(1);
     arjun->run_sbva(ret, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);

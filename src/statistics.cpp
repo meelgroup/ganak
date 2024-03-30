@@ -54,7 +54,7 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setprecision(2) << std::setw(9) << std::left
     << safe_div(conflicts,((cpuTime()-counter->get_start_time())))
   );
-  verb_print(1, "conflict cls (long/bin)      " << std::fixed
+  verb_print(1, "conflict cls (long/bin)        " << std::fixed
     << counter->get_num_long_reds() << "/" << num_binary_red_clauses_);
 
   /* verb_print(1, "lits /rem lits ccmin           " */
@@ -120,6 +120,12 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
   );
   verb_print(1, "implicit BCP miss rate         "
     << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%");
+  double vm_usage = 0;
+  verb_print(1, "Mem used                       "
+    << std::setprecision(2) << (double)memUsedTotal(vm_usage) / (1e9)  << " GB");
+  verb_print(1, "cache pollutions call/removed  "
+    << cache_pollutions_called << "/"
+    << cache_pollutions_removed);
   verb_print(1, "cache entries K                " << (cache->get_num_entries_used()/1000ULL));
   verb_print(1, "MB cache                       "
     << std::setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "

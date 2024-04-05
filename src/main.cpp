@@ -89,6 +89,14 @@ struct CNFHolder {
   void add_xor_clause(vector<CMSat::Lit>&, bool) { exit(-1); }
   void add_clause(vector<CMSat::Lit>& cl) { clauses.push_back(cl); }
   void add_red_clause(vector<CMSat::Lit>& cl) { red_clauses.push_back(cl); }
+  bool get_sampl_vars_set() const { return sampl_vars_set; }
+  bool sampl_vars_set = false;
+  bool opt_sampl_vars_set = false;
+  void set_sampl_vars(vector<uint32_t>& vars)
+    { sampl_vars_set = true; sampl_vars = vars; }
+  const auto& get_sampl_vars() const { return sampl_vars; }
+  void set_opt_sampl_vars(vector<uint32_t>& vars)
+    { opt_sampl_vars_set = true; opt_sampl_vars = vars; }
 
   void set_multiplier_weight(mpz_class m) { multiplier_weight = m; }
   auto get_multiplier_weight() const { return multiplier_weight; }
@@ -307,16 +315,14 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
   gzclose(in);
   #endif
 
-  indep_support_given = parser.sampl_vars_found && !ignore_indep;
-  if (parser.sampl_vars_found && !ignore_indep) {
-    cnfholder.sampl_vars = parser.sampl_vars;
-    if (parser.opt_sampl_vars.empty())
-      cnfholder.opt_sampl_vars = parser.sampl_vars;
-    else cnfholder.opt_sampl_vars = parser.opt_sampl_vars;
+  if (reader->get_sampl_vars_set() && !ignore_indep) {
+    indep_support_given = true;
   } else {
-    // ignore indep
-    for(uint32_t i = 0; i < reader->nVars(); i++) cnfholder.sampl_vars.push_back(i);
-    cnfholder.opt_sampl_vars = cnfholder.sampl_vars;
+    indep_support_given = false;
+    vector<uint32_t> tmp;
+    for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
+    reader->set_sampl_vars(tmp);
+    reader->set_opt_sampl_vars(tmp);
   }
 }
 
@@ -374,16 +380,12 @@ int main(int argc, char *argv[])
   }
   if (!do_arjun) {
     parse_file(fname, &cnfholder);
-    if (!indep_support_given) {
-      for(uint32_t i = 0; i < cnfholder.nVars(); i++) cnfholder.opt_sampl_vars.push_back(i);
-    }
   } else {
     double my_time = cpuTime();
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
     arjun->set_seed(conf.seed);
     arjun->set_verbosity(arjun_verb);
     parse_file(fname, arjun);
-    arjun->set_starting_sampling_set(cnfholder.sampl_vars);
     arjun->run_backwards();
     ArjunNS::SimpConf simp_conf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(simp_conf);
@@ -399,22 +401,28 @@ int main(int argc, char *argv[])
       arj2.new_vars(ret.nvars);
       arj2.set_verbosity(arjun_verb);
       for(const auto& cl: ret.cnf) arj2.add_clause(cl);
-      arj2.set_starting_sampling_set(ret.sampl_vars);
+      arj2.set_sampl_vars(ret.sampl_vars);
       ret.opt_sampl_vars = arj2.extend_sampl_set();
     } else {
       for(uint32_t i = 0; i < ret.nvars; i++) ret.opt_sampl_vars.push_back(i);
     }
     ret.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
+    cout << "c o sampl_vars: ";
+    for(const auto& v: ret.sampl_vars) cout << v << " ";
+    cout << endl;
+    cout << "c o opt sampl_vars: ";
+    for(const auto& v: ret.opt_sampl_vars) cout << v << " ";
+    cout << endl;
 
     // set up cnfholder
     cnfholder = CNFHolder();
     cnfholder.clauses = ret.cnf;
     cnfholder.red_clauses = ret.red_cnf;
     cnfholder.nvars = ret.nvars;
-    cnfholder.opt_sampl_vars = ret.opt_sampl_vars;
-    cnfholder.sampl_vars = ret.sampl_vars;
-    cnfholder.multiplier_weight *= ret.multiplier_weight;
+    cnfholder.set_multiplier_weight(ret.multiplier_weight);
+    cnfholder.set_opt_sampl_vars(ret.opt_sampl_vars);
+    cnfholder.set_sampl_vars(ret.sampl_vars);
   }
   Counter* counter = new Counter(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;

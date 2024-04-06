@@ -322,7 +322,6 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
     vector<uint32_t> tmp;
     for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
     reader->set_sampl_vars(tmp);
-    reader->set_opt_sampl_vars(tmp);
   }
 }
 
@@ -445,7 +444,8 @@ int main(int argc, char *argv[])
     set<uint32_t> tmp;
     for(auto const& s: cnfholder.sampl_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
-    if (optional_indep || !indep_support_given) {
+    if (cnfholder.opt_sampl_vars_set &&
+          (optional_indep || !indep_support_given)) {
       tmp.clear();
       for(auto const& s: cnfholder.opt_sampl_vars) tmp.insert(s+1);
       counter->set_optional_indep_support(tmp);

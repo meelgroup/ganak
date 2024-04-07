@@ -40,35 +40,35 @@ public:
   void set_id(CacheEntryID id) { id_ = id; }
   CacheEntryID id() const { return id_; }
 
-  void add_var(const uint32_t var) {
+  inline void add_var(const uint32_t var) {
     // the only time a sentinel is added should be in a
     // call to closeVarData(..)
     SLOW_DEBUG_DO(assert(var != sentinel));
     vs_cls_data.push_back(var);
   }
 
-  void close_vars_data() {
+  inline void close_vars_data() {
     vs_cls_data.push_back(sentinel);
     clauses_offs = vs_cls_data.size();
   }
 
-  void add_cl(const ClauseIndex cl) {
+  inline void add_cl(const ClauseIndex cl) {
     // the only time a sentinel is added should be in a
     // call to closeClauseData(..)
     SLOW_DEBUG_DO(assert(cl != sentinel));
     vs_cls_data.push_back(cl);
   }
 
-  void close_cls_data() {
+  inline void close_cls_data() {
     vs_cls_data.push_back(sentinel);
     assert(*(cls_begin()-1) == 0);
   }
 
-  vector<uint32_t>::const_iterator vars_begin() const {
+  inline vector<uint32_t>::const_iterator vars_begin() const {
     return vs_cls_data.begin();
   }
 
-  vector<ClauseIndex>::const_iterator cls_begin() const {
+  inline vector<ClauseIndex>::const_iterator cls_begin() const {
     return vs_cls_data.begin() + clauses_offs;
   }
 

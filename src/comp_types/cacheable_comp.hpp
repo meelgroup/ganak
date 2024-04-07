@@ -23,7 +23,6 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
-#include <vector>
 
 #include "../primitive_types.hpp"
 #include "hashed_comp.hpp"

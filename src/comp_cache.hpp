@@ -126,7 +126,7 @@ public:
   bool delete_some_entries();
 
   // delete entries, keeping the descendants tree consistent
-  inline void unlink_from_tree(CacheEntryID id);
+  uint64_t unlink_from_tree(CacheEntryID id);
 
   // test function to ensure consistency of the descendant tree
   inline void test_descendantstree_consistency();
@@ -313,42 +313,6 @@ void CompCache::unlink(CacheEntryID id) {
       }
       act_id = next_id;
     }
-  }
-}
-
-// Used only during cache freeing. Unlinks from descendants tree
-void CompCache::unlink_from_tree(CacheEntryID id) {
-  assert(exists(id));
-  // we need a father for this all to work
-  assert(entry(id).father());
-  assert(exists(entry(id).father()));
-  stats.num_cache_dels_++;
-
-
-  // unlink id from the father's siblings list
-  CacheEntryID father = entry(id).father();
-  if (entry(father).first_descendant() == id) {
-    entry(father).set_first_descendant(entry(id).next_sibling());
-  } else {
-    CacheEntryID act_sibl = entry(father).first_descendant();
-    while (act_sibl) {
-      CacheEntryID next_sibl = entry(act_sibl).next_sibling();
-      if (next_sibl == id) {
-        entry(act_sibl).set_next_sibling(entry(next_sibl).next_sibling());
-        break;
-      }
-      act_sibl = next_sibl;
-    }
-  }
-
-  // link the children of this one as siblings to the current siblings
-  CacheEntryID act_child = entry(id).first_descendant();
-  while (act_child) {
-    CacheEntryID next_child = entry(act_child).next_sibling();
-    entry(act_child).set_father(father);
-    entry(act_child).set_next_sibling(entry(father).first_descendant());
-    entry(father).set_first_descendant(act_child);
-    act_child = next_child;
   }
 }
 

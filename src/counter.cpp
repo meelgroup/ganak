@@ -3122,7 +3122,11 @@ void Counter::check_sat_solution() const {
 
 
 bool Counter::do_buddy_count(const Comp* c) {
-  if (c->nVars() > 84 || c->nVars() < 6 || (c->numBinCls()+c->numLongClauses()) > conf.buddy_max_cls) return false;
+  if (c->nVars() > 84 || c->nVars() < 6 || (c->numBinCls()+c->num_long_cls()) > conf.buddy_max_cls) {
+    /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */
+    return false;
+  }
+
   decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
   stats.buddy_called++;
@@ -3213,11 +3217,11 @@ uint64_t Counter::buddy_count() {
   if (actual_bin != c->numBinCls()) {
     cout << "WARN: numbin: " << c->numBinCls() << " actual bin: " << actual_bin << endl;
   }
-  if (actual_long != c->numLongClauses()) {
-    cout << "WARN: numlong: " << c->numLongClauses() << " actual long: " << actual_long << endl;
+  if (actual_long != c->num_long_cls()) {
+    cout << "WARN: numlong: " << c->num_long_cls() << " actual long: " << actual_long << endl;
   });
 
-  assert(c->numLongClauses() == actual_long);
+  assert(c->num_long_cls() == actual_long);
   if (actual_bin > c->numBinCls()) {
     cout << "ERROR: BUDDY usage error. actual bin cls: " << actual_bin << " but c->numBins is: " << c->numBinCls() << " -- we should NEVER be over (but can be below)." << endl;
     assert(false);
@@ -3231,7 +3235,7 @@ uint64_t Counter::buddy_count() {
   cout << "----------------------------------------------" << endl);
 
   for(uint32_t i = 0; i < c->nVars(); i++) {
-    uint32_t var = c->varsBegin()[i];
+    uint32_t var = c->vars_begin()[i];
     seen[var] = 0;
   }
 

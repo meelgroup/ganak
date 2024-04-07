@@ -193,11 +193,12 @@ private:
 
 uint64_t CompCache::calc_extra_mem_after_push() const {
   bool at_capacity = entry_base.capacity() == entry_base.size();
-  bool at_capacity_table = entry_base.capacity() == entry_base.size();
+  bool at_capacity_table = table.capacity() == table.size();
   uint64_t extra_will_be_added = 0;
-  // assume it will be doubled
+
+  // assume it will be multiplied by 1.5
   if (at_capacity) extra_will_be_added =
-    (entry_base.capacity()*sizeof(CacheableComp) + stats.sum_bytes_cached_comps_)/2;
+    (entry_base.capacity()*sizeof(CacheableComp) + stats.sum_bignum_bytes)/2;
   if (at_capacity_table) extra_will_be_added += (table.capacity()*sizeof(CacheEntryID))/2;
   return extra_will_be_added;
 }
@@ -245,7 +246,7 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
     free_entry_base_slots.pop_back();
     entry_base[id] = ccomp;
   }
-  compute_size_allocated();
+  compute_size_allocated(); // TODO expensive... and should not be needed
   VERBOSE_DEBUG_DO(if (stats.total_num_cached_comps_ % 100000 == 99999) debug_dump_data());
 
   entry(id).set_father(super_comp_id);
@@ -327,11 +328,10 @@ void CompCache::store_value(const CacheEntryID id, const mpz_class &model_count)
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));
-  /* SLOW_DEBUG_DO(assert(stats.sum_bytes_cached_comps_ > entry(id).size_in_bytes())); */
-  stats.sum_bytes_cached_comps_ -= entry(id).size_in_bytes();
+  stats.sum_bignum_bytes -= entry(id).bignum_bytes();
   entry(id).set_model_count(model_count);
   entry(id).set_last_used_time(my_time);
   entry(id).set_next_bucket_element(table[table_ofs]);
   table[table_ofs] = id;
-  stats.sum_bytes_cached_comps_ += entry(id).size_in_bytes();
+  stats.sum_bignum_bytes += entry(id).bignum_bytes();
 }

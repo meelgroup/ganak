@@ -97,7 +97,7 @@ void CompCache::init(Comp &super_comp, void* hash_seed){
     << stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
 
 
-  stats.sum_bytes_cached_comps_ = 0;
+  stats.sum_bignum_bytes = 0;
   stats.cache_infrastructure_bytes_memory_usage_ = 0;
   assert(!cache_full());
   entry_base.push_back(*packed_super_comp);
@@ -166,21 +166,22 @@ bool CompCache::delete_some_entries() {
          || (conf.do_cache_reverse_sort && entry_base[id].last_used_time() >= cutoff))) {
       tot += unlink_from_tree(id);
       num++;
-      erase(id);
+      erase(id); // Note: no need to incorporate erase, we recompute bignum bytes below
     }
   verb_print(1, "free entries after:  " << free_entry_base_slots.size() << " avg len: " << (double) tot/(double) num);
 
   SLOW_DEBUG_DO(test_descendantstree_consistency());
   rehash_table(table.size());
-  stats.sum_bytes_cached_comps_ = 0;
 
+  // Recompute mem usage
+  stats.sum_bignum_bytes = 0;
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free()) {
-      stats.sum_bytes_cached_comps_ += entry_base[id].size_in_bytes();
+      stats.sum_bignum_bytes += entry_base[id].bignum_bytes();
     }
+  compute_size_allocated();
 
   stats.num_cached_comps_ = entry_base.size();
-  compute_size_allocated();
   verb_print(1, "deletion done. T: " << cpuTime()-start_del_time);
   return true;
 }
@@ -212,11 +213,11 @@ void CompCache::debug_mem_data() const {
     cout << std::setw(40) << "c o free_entry_base_slots mem use MB "
          << (double)(free_entry_base_slots.capacity()*sizeof(uint32_t))/(double)(1024*1024)
          << endl;
-    uint64_t alloc_model_counts = 0;
+    uint64_t tot_bignum_bytes = 0;
     for (auto &entry : entry_base)
-      if (!entry.is_free()) alloc_model_counts += entry.alloc_of_model_count();
-    cout << std::setw(40) << "c o model counts use MB "
-      << alloc_model_counts/(double)(1024*1024) << endl;
+      if (!entry.is_free()) tot_bignum_bytes += entry.bignum_bytes();
+    cout << std::setw(40) << "c o bignum uses MB "
+      << tot_bignum_bytes/(double)(1024*1024) << endl;
 
 
     double vm_dat;

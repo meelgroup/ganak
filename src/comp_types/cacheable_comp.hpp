@@ -40,9 +40,7 @@ public:
   CacheableComp() = default;
   CacheableComp(void* hash_seed, Comp &comp) : HashedComp(hash_seed, comp) { }
 
-  uint32_t size_in_bytes() const {
-    return HashedComp::raw_data_byte_size();
-  }
+  uint32_t bignum_bytes() const { return HashedComp::bignum_bytes(); }
 
   // Cache Pollution Management
   void set_father(CacheEntryID f) { father_ = f; }

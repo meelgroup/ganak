@@ -132,7 +132,7 @@ public:
   uint64_t lookahead_computes = 0;
 
   // the number of bytes occupied by all comps
-  uint64_t sum_bytes_cached_comps_ = 0;
+  uint64_t sum_bignum_bytes = 0;
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
   const Instance* inst;
@@ -144,18 +144,18 @@ public:
 
   uint64_t cache_bytes_memory_usage() const {
     return cache_infrastructure_bytes_memory_usage_
-           + sum_bytes_cached_comps_;
+           + sum_bignum_bytes;
   }
 
   void incorporate_cache_store(const CacheableComp &ccomp, const uint32_t comp_nvars) {
-    sum_bytes_cached_comps_ += ccomp.size_in_bytes();
+    sum_bignum_bytes += ccomp.bignum_bytes();
     sum_cache_store_sizes_ += comp_nvars;
     num_cached_comps_++;
     total_num_cached_comps_++;
   }
 
   void incorporate_cache_erase(const CacheableComp &ccomp){
-    sum_bytes_cached_comps_ -= ccomp.size_in_bytes();
+    sum_bignum_bytes -= ccomp.bignum_bytes();
     num_cached_comps_--;
   }
 

@@ -34,7 +34,7 @@ class BaseComp {
 public:
   uint32_t last_used_time() const { return last_used_time_; }
   const mpz_class &model_count() const { return *model_count_; }
-  uint32_t alloc_of_model_count() const{
+  uint32_t bignum_bytes() const{
     if (!model_count_) return 0;
     return sizeof(mpz_class)+mpz_data_size();
   }

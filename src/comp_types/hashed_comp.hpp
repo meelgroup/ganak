@@ -22,23 +22,16 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <functional>
-#include <set>
-#include <iostream>
-
 #include "base_packed_comp.hpp"
 #include "comp.hpp"
 #include "../clhash/clhash.h"
-#include "../primitive_types.hpp"
 #include "../structures.hpp"
 
 class HashedComp: public BaseComp {
 public:
   HashedComp() = default;
   inline HashedComp(void* hash_seed, Comp &r_comp);
-  uint32_t raw_data_byte_size() const {
-    return BaseComp::alloc_of_model_count();
-  }
+  uint32_t bignum_bytes() const { return BaseComp::bignum_bytes(); }
 
   uint64_t get_clhashkey() const { return clhashkey_; }
   bool equals_clhashkey(const HashedComp &comp) const {

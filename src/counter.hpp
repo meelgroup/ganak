@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <limits>
 #include <map>
 
 #include "clauseallocator.hpp"

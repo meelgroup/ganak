@@ -93,12 +93,18 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       solver_->comp_size_q.push(p_new_comp->nVars());
       stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
 
-      if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
+      if (p_new_comp->nVars() < conf.nvars_cutoff_cache ||
+          !cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
         // Cache miss
         stats.cache_hits_misses_q.push(0);
         comp_stack.push_back(p_new_comp);
-        p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
-        stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
+
+        if (p_new_comp->nVars() >= conf.nvars_cutoff_cache) {
+          p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
+          stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
+        } else {
+          p_new_comp->set_id(numeric_limits<uint32_t>::max());
+        }
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";

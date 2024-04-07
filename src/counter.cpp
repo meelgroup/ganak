@@ -3144,6 +3144,11 @@ bool Counter::do_buddy_count(const Comp* c) {
   return true;
 }
 
+// TODO Yash's ideas:
+// * merge the BDDs in a tree-like manner
+// * Mate: tune bdd_setcacheratio
+// * need to use double bdd_satcountlnset(BDD r, BDD varset) to do projected counting
+//   --> NOTE: double needs to be changed to int64_t
 uint64_t Counter::buddy_count() {
   assert(conf.do_vivify == 0 && "Vivify will change the irred cls, which will mess this up.");
   const auto& s = decisions.top();

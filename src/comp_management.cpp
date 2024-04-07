@@ -55,13 +55,16 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  assert(cache.exists(get_super_comp(top).id()));
+  if (get_super_comp(top).id() != std::numeric_limits<uint32_t>::max())
+    assert(cache.exists(get_super_comp(top).id()));
 
   if (top.remaining_comps_ofs() == comp_stack.size()) return;
 
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    assert(cache.exists(comp_stack[u]->id()));
-    stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
+    if (comp_stack[u]->id() != std::numeric_limits<uint32_t>::max()) {
+      assert(cache.exists(comp_stack[u]->id()));
+      stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
+    }
   }
   stats.cache_pollutions_called++;
 

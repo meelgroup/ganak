@@ -97,20 +97,18 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
     assert(false);
     exit(-1);
   }
-  for(const auto& v: tmp) if (v >= indep_support_end) optional_proj[v] = 1;
+  if (tmp.empty()) { opt_indep_support_end = 0; return; }
+  opt_indep_support_end = tmp.back()+1;
 
-  const auto orig_indep_support_end = indep_support_end;
-  if (!tmp.empty()) indep_support_end = tmp.back()+1;
-  else indep_support_end = 0;
-  verb_print(1, "opt ind size: " << indep_support_end-1 << " ind size: " << orig_indep_support_end-1
+  verb_print(1, "opt ind size: " << opt_indep_support_end-1 << " ind size: " << indep_support_end-1
     << " nvars: " << nVars());
 
   if (conf.verb) {
     cout << "c indep/optional/none distribution: ";
     for(uint32_t i = 0; i <= nVars(); i++) {
-      if (i < indep_support_end) {
-        if (optional_proj[i]) cout << "O";
-        else cout << "I";
+      if (i < opt_indep_support_end) {
+        if (i < indep_support_end) cout << "I";
+        else cout << "O";
       } else cout << "N";
     }
     cout << endl;
@@ -118,10 +116,16 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
 }
 
 void Counter::set_indep_support(const set<uint32_t> &indeps) {
-  optional_proj.resize(nVars()+1, 0);
+  opt_indep_support_end = nVars()+1;
   auto tmp = common_indep_code(indeps);
-  if (!tmp.empty()) indep_support_end = tmp.back()+1;
-  else indep_support_end = 0;
+  if (tmp.empty()) {
+    indep_support_end = 0;
+    opt_indep_support_end = 0;
+    return;
+  }
+  indep_support_end = tmp.back()+1;
+  opt_indep_support_end = tmp.back()+1;
+
   verb_print(1, "ind size: " << indep_support_end-1 << " nvars: " << nVars());
 }
 
@@ -619,9 +623,14 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
 void Counter::count(vector<Cube>& ret_cubes) {
   release_assert(ret_cubes.empty());
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
-  if (indep_support_end == std::numeric_limits<uint32_t>::max()) indep_support_end = nVars()+2;
+  if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
+    indep_support_end = nVars()+2;
+    opt_indep_support_end = nVars()+2;
+  }
   mini_cubes.clear();
   verb_print(1, "Sampling set size: " << indep_support_end-1);
+  verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
+  assert(opt_indep_support_end >= indep_support_end);
 
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);
@@ -900,8 +909,8 @@ uint32_t Counter::find_best_branch() {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
 
-    if (v < indep_support_end) {
-      if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
+    if (v < opt_indep_support_end) {
+      if (v < indep_support_end) only_optional_indep = false;
       double score = score_of(v) ;
 #ifdef COMP_VAR_OCC_ENABLED
       auto this_comp_var_score = comp_manager->get_super_comp(decisions.top()).get_var_occs_score(v);
@@ -947,10 +956,10 @@ uint32_t Counter::find_best_branch_gpmc() {
   bool only_optional_indep = true;
 
   for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
-      *it != sentinel; it++) if (*it < indep_support_end) {
+      *it != sentinel; it++) if (*it < opt_indep_support_end) {
     uint32_t v = *it;
     if (val(v) != X_TRI) continue;
-    if (only_optional_indep && !optional_proj[v]) only_optional_indep = false;
+    if (v < indep_support_end) only_optional_indep = false;
 
     double score_td = tdscore[v];
     double score_f = comp_manager->freq_score_of(v);
@@ -3031,7 +3040,7 @@ bool Counter::deal_with_independent() {
   for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;
-    if (*it < indep_support_end) assert(optional_proj[*it] && "only optional indep remains");
+    if (*it < opt_indep_support_end) assert(*it >= indep_support_end && "only optional indep remains");
     order_heap.insert(*it);
   }
   decisions.pop_back();

@@ -181,7 +181,6 @@ private:
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
-  vector<uint8_t> optional_proj;
   bqueue<uint32_t> depth_q;
   bqueue<double, double> cache_miss_rate_q;
   vector<VS> vars_scores; // for branch picking

@@ -95,6 +95,7 @@ protected:
 
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
+  uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   LiteralIndexedVector<LitWatchList> watches;
   double max_activity = 0;

@@ -57,9 +57,7 @@ void Counter::simplePreProcess() {
 
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  for(const auto& t: trail) {
-    if (!existsUnitClauseOf(t)) unit_clauses_.push_back(t);
-  }
+  for(const auto& t: trail) if (!existsUnitClauseOf(t)) unit_clauses_.push_back(t);
   init_decision_stack();
   qhead = 0;
 

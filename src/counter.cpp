@@ -1409,7 +1409,7 @@ RetState Counter::backtrack() {
     decisions.pop_back();
 
     // var == 0 means it's coming from a fake decision due to normal SAT solving
-    assert(decisions.top().var == 0 || decisions.top().var < indep_support_end);
+    assert(decisions.top().var == 0 || decisions.top().var < opt_indep_support_end);
     auto& dst = decisions.top();
     debug_print("[indep] -> Backtracked to level " << decisions.get_decision_level()
         // NOTE: -1 here because we have JUST processed the child

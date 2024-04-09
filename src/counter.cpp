@@ -57,6 +57,9 @@ void Counter::simplePreProcess() {
 
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
+  for(const auto& t: trail) {
+    if (!existsUnitClauseOf(t)) unit_clauses_.push_back(t);
+  }
   init_decision_stack();
   qhead = 0;
 
@@ -1251,7 +1254,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
 #ifdef VERBOSE_DEBUG
     cout << "-> Checking count. Incl all dec: " << std::boolalpha <<  include_all_dec
       << " dec lev: " << decisions.get_decision_level() << " var: " << single_var
-      << " decisions so far: " << stats.decisions << endl;
+      << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
     cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
@@ -1310,8 +1313,8 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
         cl.clear();
         for(uint32_t i = 0; i < s2.nVars(); i++) {
           if (active.count(i+1)) {
-            CMSat::Lit l = CMSat::Lit(i, s2.get_model()[i] == CMSat::l_True);
-            cl.push_back(l);
+            CMSat::Lit l = CMSat::Lit(i, s2.get_model()[i] == CMSat::l_False);
+            cl.push_back(~l);
           }
         }
         s2.add_clause(cl);
@@ -1812,7 +1815,7 @@ bool Counter::propagate(bool out_of_order) {
       if (decisions.size() <= 1) lev_at_declev = true;
       else if (var(top_dec_lit()).decision_level == lev) lev_at_declev = true;
     }
-    debug_print("&&Propagating: " << plit << " qhead: " << qhead << " lev: " << lev);
+    debug_print("&&Propagating: " << plit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
     for (const auto& bincl : watches[plit].binaries) {
@@ -1912,7 +1915,7 @@ bool Counter::propagate(bool out_of_order) {
       assert(false);
     });
   CHECK_PROPAGATED_DO(if (confl.isNull()) check_all_propagated_conflicted());
-  debug_print("After propagate, qhead is: " << qhead);
+  debug_print("After propagate, qhead is: " << qhead << " conflict: " << std::boolalpha << !confl.isNull());
   return confl.isNull();
 }
 
@@ -3289,6 +3292,12 @@ template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
 
 void Counter::check_all_propagated_conflicted() const {
   // Everything that should have propagated, propagated
+  for(const auto& t: unit_clauses_) {
+    if (val(t) != T_TRI) {
+      cout << "Unit clause: " << t << " is unset/falsified on trail." << endl;
+      assert(false);
+    }
+  }
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     check_cl_propagated_conflicted(cl);

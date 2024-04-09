@@ -143,7 +143,7 @@ private:
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
   vector<double> var_freq_scores;
-  double max_freq_score = 0;
+  double max_freq_score = 1.0;
   double act_inc = 1.0;
   CompArchetype  archetype;
   Counter* solver = nullptr;

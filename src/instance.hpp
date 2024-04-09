@@ -98,7 +98,7 @@ protected:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   LiteralIndexedVector<LitWatchList> watches;
-  double max_activity = 0;
+  double max_activity = 1.0;
   vector<Lit> unit_clauses_;
   vector<VarData> variables_;
   bool num_vars_set = false;

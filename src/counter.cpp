@@ -299,7 +299,7 @@ void Counter::td_decompose() {
     Lit l(i/2, i%2 == 0);
     for(const auto& l2: watches[l].binaries) {
       if (!l2.red() && l < l2.lit()) {
-        debug_print(l.var() << " " << l2.lit().var());
+        debug_print("bin cl: " << l.var() << " " << l2.lit().var());
         primal.addEdge(l.var(), l2.lit().var());
       }
     }
@@ -309,7 +309,7 @@ void Counter::td_decompose() {
     Clause& cl = *alloc->ptr(off);
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
-        debug_print(cl[i].var() << " " << cl[i2].var());
+        debug_print("bin cl: " <<  cl[i].var() << " " << cl[i2].var());
         primal.addEdge(cl[i].var(), cl[i2].var());
       }
     }

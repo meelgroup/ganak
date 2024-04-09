@@ -173,7 +173,7 @@ void Counter::end_irred_cls() {
 
 // Returns false if the clause is auto-satisfied
 bool Counter::remove_duplicates(vector<Lit>& lits) {
-  if (lits.size() <= 1) return false;
+  if (lits.size() <= 1) return true;
   std::sort(lits.begin(), lits.end());
   uint32_t j = 1;
   Lit last_lit = lits[0];

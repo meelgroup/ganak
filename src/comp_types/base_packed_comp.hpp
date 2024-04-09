@@ -76,7 +76,7 @@ public:
   void clear() {
     // before deleting the contents of this comp,
     // we should make sure that this comp is not present in the comp stack anymore!
-    SLOW_DEBUG_DO(assert(isDeletable()));
+    SLOW_DEBUG_DO(assert(is_deletable()));
   }
 
 protected:

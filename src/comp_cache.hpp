@@ -247,7 +247,7 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
     entry_base[id] = ccomp;
   }
   compute_size_allocated(); // TODO expensive... and should not be needed
-  VERBOSE_DEBUG_DO(if (stats.total_num_cached_comps_ % 100000 == 99999) debug_dump_data());
+  VERBOSE_DEBUG_DO(if (stats.total_num_cached_comps_ % 100000 == 99999) debug_mem_data());
 
   entry(id).set_father(super_comp_id);
   add_descendant(super_comp_id, id);

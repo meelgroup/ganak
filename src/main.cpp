@@ -61,7 +61,6 @@ po::positional_options_description p;
 
 using namespace std;
 bool indep_support_given = false;
-int do_check = 0;
 CounterConfiguration conf;
 int optional_indep = 1;
 int arjun_verb = 2;
@@ -157,7 +156,6 @@ void add_ganak_options()
     ("nvarscutoffcache", po::value(&conf.nvars_cutoff_cache)->default_value(conf.nvars_cutoff_cache), "For components with fewer than these many variables, don't cache them")
     ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Comp Caching")
     ("version", "Print version info")
-    ("check", po::value(&do_check)->default_value(do_check), "Check count at every step")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
      "Use polarity cache. Otherwise, false default polar.")

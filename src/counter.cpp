@@ -1800,7 +1800,7 @@ bool Counter::propagate(bool out_of_order) {
       if (decisions.size() <= 1) lev_at_declev = true;
       else if (var(top_dec_lit()).decision_level == lev) lev_at_declev = true;
     }
-    debug_print("&&Propagating: " << unLit.neg() << " qhead: " << qhead << " lev: " << lev);
+    debug_print("&&Propagating: " << plit << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
     for (const auto& bincl : watches[plit].binaries) {

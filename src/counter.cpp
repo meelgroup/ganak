@@ -433,6 +433,9 @@ mpz_class Counter::check_count_norestart(const Cube& c) {
   vector<Lit> tmp;
   Counter test_cnt(conf2);
   test_cnt.new_vars(nVars());
+  set<uint32_t> tmp_indep;
+  for(uint32_t i = 1; i < indep_support_end; i++) tmp_indep.insert(i);
+  test_cnt.set_indep_support(tmp_indep);
   CMSat::SATSolver test_solver;
   test_solver.new_vars(nVars());
   // Long cls

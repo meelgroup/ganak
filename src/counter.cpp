@@ -528,7 +528,7 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
     for(const auto& c: cubes) {
       auto check_cnt = check_count_norestart(c);
       /* auto check_cnt = check_count_norestart_cms(c); */
-      cout << "checking cube: " << c << " check_cnt: " << check_cnt << endl;
+      cout << "checking cube [ " << c << " ] ---- check_cnt: " << check_cnt << endl;
       assert(check_cnt == c.val);
     }
   }

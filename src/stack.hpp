@@ -45,7 +45,7 @@ private:
 
   /// active Comp, once initialized, it should not change
   const uint32_t super_comp_ = 0;
-  // branch (i.e. left/right)
+  // branch (i.e. left = false/right = true)
   bool active_branch_ = false;
 
   //  Solution count
@@ -119,8 +119,7 @@ public:
     return (!branch_found_unsat()) && hasUnprocessedComps();
   }
 
-  template<class T>
-  void includeSolution(const T& solutions) {
+  template<class T> void includeSolution(const T& solutions) {
     VERBOSE_DEBUG_DO(cout << "incl sol: " << solutions << endl);
 #ifdef VERBOSE_DEBUG
     auto before = branch_model_count_[active_branch_];
@@ -136,7 +135,7 @@ public:
       branch_model_count_[active_branch_] *= solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
-        << ((active_branch_) ? "left" : "right")
+        << ((active_branch_) ? "right" : "left")
         << " count is: " << branch_model_count_[active_branch_]
         << " before it was: " << before
         << endl);

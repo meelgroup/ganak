@@ -182,7 +182,14 @@ bool CompManager::findNextRemainingCompOf(StackLevel &top)
   }
 
   // if no comp remains then there is exactly 1 solution left
+#ifdef VERBOSE_DEBUG
+  debug_print("-*-> Went through all components, so exactly 1 solution left. CNT left: " << top.get_left_model_count() << " CNT right: "
+      << top.get_right_model_count() << " total: " <<  top.getTotalModelCount() << " Firing off incl(1)");
+#endif
   top.includeSolution(1);
-  debug_print(COLREDBG "-*-> Finished findNextRemainingCompOf, no more remaining comps. top.branchvar() was: " << top.var  <<" includeSolution(1) fired, returning.");
+  debug_print(COLREDBG "-*-> Finished findNextRemainingCompOf, no more remaining comps. top.branchvar() was: "
+      << top.var  <<" includeSolution(1) fired. "
+      " New Model cnt: " << top.getTotalModelCount() << " left: " << top.get_left_model_count() << " right: "
+      << top.get_right_model_count() << " , returning.");
   return false;
 }

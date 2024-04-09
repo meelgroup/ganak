@@ -280,7 +280,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   }
 
 #ifdef VERBOSE_DEBUG
-  for(int i = 1; i <= nVars()+1; i++) {
+  for(uint32_t i = 1; i < n; i++) {
       cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
   }
 #endif
@@ -1249,7 +1249,9 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     auto const& sup_at = s.super_comp();
     const auto& c = comp_manager->at(sup_at);
 #ifdef VERBOSE_DEBUG
-    cout << "-> Checking count. Incl all dec: " << include_all_dec << " dec lev: " << decisions.get_decision_level() << " var: " << single_var << endl;
+    cout << "-> Checking count. Incl all dec: " << std::boolalpha <<  include_all_dec
+      << " dec lev: " << decisions.get_decision_level() << " var: " << single_var
+      << " decisions so far: " << stats.decisions << endl;
     cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
@@ -1367,7 +1369,8 @@ RetState Counter::backtrack() {
       if (val(lit.neg()) == X_TRI) {
         setLiteral(lit.neg(), decisions.get_decision_level());
         VERBOSE_DEBUG_DO(print_trail());
-        debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch");
+        debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. CNT left: " << decisions.top().get_left_model_count()
+            << " CNT right: " << decisions.top().get_right_model_count());
         return RESOLVED;
       } else {
         assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");

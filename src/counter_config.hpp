@@ -58,6 +58,8 @@ struct CounterConfiguration {
   int rdb_keep_used = 1; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
 
+  uint32_t reduce_db_everyN = 10000;
+  uint32_t consolidate_every_n = 30000;
   // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
   int polar_type = 1;
 

@@ -1623,9 +1623,9 @@ void Counter::check_implied(const vector<Lit>& cl) {
 }
 
 void Counter::reduce_db_if_needed() {
-  if (stats.conflicts > last_reduceDB_conflicts+10000) {
+  if (stats.conflicts > last_reduceDB_conflicts+conf.reduce_db_everyN) {
     reduceDB();
-    if (stats.cls_deleted_since_compaction > 30000 && alloc->consolidate(this)) {
+    if (stats.cls_deleted_since_compaction > conf.consolidate_every_n && alloc->consolidate(this)) {
         stats.cls_deleted_since_compaction = 0;
     }
     last_reduceDB_conflicts = stats.conflicts;

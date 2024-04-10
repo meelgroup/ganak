@@ -54,6 +54,7 @@ public:
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
+  uint32_t nVars() const { return variables_.size() - 1; }
 protected:
   CounterConfiguration conf;
   void unset(Lit lit) {
@@ -86,10 +87,6 @@ protected:
   bool findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
   void checkWatchLists() const;
 
-  // Gives ACTUAL number of variables
-  uint32_t nVars() const {
-    return variables_.size() - 1;
-  }
 
   DataAndStatistics stats;
 

@@ -40,7 +40,7 @@ using std::set;
 // There is EXACTLY ONE of this
 class CompCache {
 public:
-  CompCache(DataAndStatistics &_stats, const CounterConfiguration& _conf);
+  CompCache(const uint32_t num_vars, DataAndStatistics &_stats, const CounterConfiguration& _conf);
   ~CompCache() { for(auto& c: entry_base) c.set_free(); }
 
   void init(Comp &super_comp, void* hash_seed);
@@ -189,6 +189,7 @@ private:
   DataAndStatistics &stats;
   const CounterConfiguration &conf;
   uint64_t my_time = 0;
+  uint32_t num_vars;
 };
 
 uint64_t CompCache::calc_extra_mem_after_push() const {

@@ -62,7 +62,9 @@ uint64_t freeram() {
 #include "stack.hpp"
 
 CompCache::CompCache(
-    DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) {}
+    uint32_t _num_vars,
+    DataAndStatistics &_stats, const CounterConfiguration &_conf):
+  stats(_stats), conf(_conf), num_vars(_num_vars) {}
 
 void CompCache::init(Comp &super_comp, void* hash_seed){
   CacheableComp *packed_super_comp;

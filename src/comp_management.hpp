@@ -43,13 +43,10 @@ class Counter;
 class CompManager
 {
 public:
+
   CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const uint32_t& indep_support_end, Counter* _solver) :
-      conf(config), stats(statistics), cache(statistics, conf),
-      ana(lit_values, indep_support_end, _solver), solver_(_solver)
-  { }
-
+                   const uint32_t& indep_support_end, Counter* _solver);
   ~CompManager() {
     free(hash_seed);
     for(auto& comp: comp_stack) delete comp;

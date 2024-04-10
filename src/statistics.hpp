@@ -45,7 +45,7 @@ class DataAndStatistics {
 public:
   DataAndStatistics (const Instance* _inst, CounterConfiguration& _conf): conf(_conf) {
     inst = _inst;
-    cache_hits_misses_q.clearAndResize(10000);
+    cache_hits_nvars.clearAndResize(10000);
     comp_size_times_depth_q.clearAndResize(10000);
   }
   CounterConfiguration& conf;
@@ -118,14 +118,14 @@ public:
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes_ = 0;
   uint64_t sum_cache_store_sizes_ = 0;
-  bqueue<uint32_t> cache_hits_misses_q;
+  bqueue<uint32_t> cache_hits_nvars;
 
   uint64_t num_cached_comps_ = 0;
   uint64_t total_num_cached_comps_ = 0;
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
 
-  bqueue<uint64_t, double> comp_size_times_depth_q;
+  bqueue<double> comp_size_times_depth_q;
 
   // Lookahead
   uint64_t lookaheads = 0;

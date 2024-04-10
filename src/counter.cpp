@@ -130,6 +130,7 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
   verb_print(1, "ind size: " << indep_support_end-1 << " nvars: " << nVars());
 }
 
+// TODO Yash we should do Jeroslow-Wang heuristic, i.e. 1/2 for binary, 1/3 for tertiary, etc.
 void Counter::init_activity_scores() {
   act_inc = 1.0;
   max_activity = 0;
@@ -884,6 +885,7 @@ double Counter::score_of(const uint32_t v) const {
   if ((conf.force_branch == 0 && stats.conflicts < conf.branch_cutoff && !tdscore.empty()) ||
       conf.force_branch == 1) {
     freq_score = comp_manager->freq_score_of(v)/15.0;
+    // TODO Yash idea: let's cut this into activities and incidence
     act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = td_weight*tdscore[v];
   } else if (conf.force_branch == 0 || conf.force_branch == 2){
@@ -1108,11 +1110,11 @@ void Counter::print_restart_data() const
       << std::right << std::setw(30) << std::left
       << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg());
   }
-  if (stats.cache_hits_misses_q.isvalid()) {
+  if (stats.cache_hits_nvars.isvalid()) {
     verb_print(1, std::setw(30) << std::left
-      << "c Lterm hit avg: " << std::setw(9) << stats.cache_hits_misses_q.getLongtTerm().avg()
+      << "c Lterm hit nvars avg: " << std::setw(9) << stats.cache_hits_nvars.getLongtTerm().avg()
       << std::right  << std::setw(30) << std::left
-      << std::left   << " Sterm hit avg: " << std::setw(5) << stats.cache_hits_misses_q.avg());
+      << std::left   << " Sterm hit nvars avg: " << std::setw(5) << stats.cache_hits_nvars.avg());
   }
   if (stats.comp_size_times_depth_q.isvalid()) {
     verb_print(1, std::setw(30) << std::left
@@ -1181,9 +1183,9 @@ bool Counter::restart_if_needed() {
       (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
-  if (conf.restart_type == 4 && stats.cache_hits_misses_q.isvalid()
-      && stats.cache_hits_misses_q.avg() <
-      stats.cache_hits_misses_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
+  if (conf.restart_type == 4 && stats.cache_hits_nvars.isvalid()
+      && stats.cache_hits_nvars.avg() <
+      stats.cache_hits_nvars.getLongtTerm().avg()*conf.restart_cutoff_mult)
       restart = true;
 
   if (conf.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&
@@ -1207,7 +1209,7 @@ bool Counter::restart_if_needed() {
   depth_q.clear();
   cache_miss_rate_q.clear();
   comp_size_q.clear();
-  stats.cache_hits_misses_q.clear();
+  stats.cache_hits_nvars.clear();
   stats.comp_size_times_depth_q.clear();
   stats.last_restart_num_conflicts = stats.conflicts;
   stats.last_restart_num_decisions = stats.decisions;

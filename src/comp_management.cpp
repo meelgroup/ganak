@@ -24,6 +24,13 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include <iomanip>
 
+CompManager::CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
+                 const LiteralIndexedVector<TriValue> &lit_values,
+                 const uint32_t& indep_support_end, Counter* _solver) :
+    conf(config), stats(statistics), cache(_solver->nVars(), statistics, conf),
+    ana(lit_values, indep_support_end, _solver), solver_(_solver)
+{ }
+
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana"
 void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
@@ -94,14 +101,13 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 
       // Update stats
       solver_->comp_size_q.push(p_new_comp->nVars());
-      stats.comp_size_times_depth_q.push(p_new_comp->nVars()*(solver_->dec_level()/20U+1));
+      stats.comp_size_times_depth_q.push((double)p_new_comp->nVars()/(double)(solver_->dec_level()+1));
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
       if (p_new_comp->nVars() < conf.nvars_cutoff_cache ||
           !cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
         // Cache miss
-        stats.cache_hits_misses_q.push(0);
         comp_stack.push_back(p_new_comp);
 
         if (p_new_comp->nVars() >= conf.nvars_cutoff_cache) {
@@ -118,7 +124,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         // Cache hit
-        stats.cache_hits_misses_q.push(p_new_comp->nVars());
+        stats.cache_hits_nvars.push(p_new_comp->nVars());
         if (conf.do_cache_hit_scores) bump_cache_hit_score(*p_new_comp);
 
 #ifdef VERBOSE_DEBUG

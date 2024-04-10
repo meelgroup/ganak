@@ -65,8 +65,7 @@ public:
 
   uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
   void save_count(const uint32_t stack_comp_id, const mpz_class &value) {
-    if (comp_stack[stack_comp_id]->id() != numeric_limits<uint32_t>::max())
-      cache.store_value(comp_stack[stack_comp_id]->id(), value);
+    cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
   Comp& get_super_comp(const StackLevel &lev) {
@@ -79,8 +78,7 @@ public:
   void cleanRemainingCompsOf(const StackLevel &top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack.size() > top.remaining_comps_ofs()) {
-      if (comp_stack.back()->id() != std::numeric_limits<uint32_t>::max() && cache.exists(comp_stack.back()->id()))
-        cache.entry(comp_stack.back()->id()).set_deletable();
+      if (cache.exists(comp_stack.back()->id())) cache.entry(comp_stack.back()->id()).set_deletable();
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());
       delete comp_stack.back();

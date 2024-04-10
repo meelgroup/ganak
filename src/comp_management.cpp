@@ -62,8 +62,7 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  if (get_super_comp(top).id() != std::numeric_limits<uint32_t>::max())
-    assert(cache.exists(get_super_comp(top).id()));
+  assert(cache.exists(get_super_comp(top).id()));
 
   if (top.remaining_comps_ofs() == comp_stack.size()) return;
 
@@ -105,17 +104,12 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
-      if (p_new_comp->nVars() < conf.nvars_cutoff_cache ||
-          !cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
+      if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
-        if (p_new_comp->nVars() >= conf.nvars_cutoff_cache) {
-          p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
-          stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
-        } else {
-          p_new_comp->set_id(numeric_limits<uint32_t>::max());
-        }
+        p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
+        stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";

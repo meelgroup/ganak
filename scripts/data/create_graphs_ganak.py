@@ -63,8 +63,9 @@ def get_dirs(ver : str):
 
 versions = get_versions()
 fname2_s = []
-not_calls = ["ExactMC"]
-not_versions = ["sharpsat", "gpmc", "6368237b"]
+# not_calls = ["ExactMC"]
+not_calls = []
+# not_versions = ["sharpsat", "gpmc", "6368237b"]
 # only_calls = ["--ignore 1 --arjun 1 --maxcache 3500 --vivif 1 --decide 2 --sbva 1000"]
 # not_versions = ["ganak"]
 # not_calls = ["forcebranch", "target"] # "cachetime"
@@ -72,11 +73,18 @@ not_versions = ["sharpsat", "gpmc", "6368237b"]
 # exactmc2: out-ganak-6328707.pbs101-7
 # sharpsat: out-ganak-6318929.pbs101-7
 
-only_dirs = ["6606250", "out-ganak-6396805.pbs101-1/", "6396805.pbs101-12","out-ganak-6318929.pbs101-5", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"]
+only_dirs = ["6683080",
+             "out-ganak-6318929.pbs101-5", # exactmc
+             "out-ganak-6328707.pbs101-7", # exactmc
+             "out-ganak-6396805.pbs101-1/",  # best, but no cache
+             "out-ganak-6396805.pbs101-12/", # used to be best
+             "out-ganak-6318929.pbs101-4/", # approxmc
+             "out-ganak-6318929.pbs101-7/", # sharpsat
+             ]
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
 # "6349002",
 # only_dirs = ["6606250"]
-not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
+# not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
 not_versions = []
 only_calls = [] #
 # only_dirs = []

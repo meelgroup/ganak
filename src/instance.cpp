@@ -32,6 +32,7 @@ THE SOFTWARE.
 
 Instance::Instance(const CounterConfiguration& _conf) : conf(_conf), stats (this, conf) {
   alloc = new ClauseAllocator(_conf);
+  lbd_cutoff = conf.base_lbd_cutoff;
 }
 
 Instance::~Instance() {
@@ -86,10 +87,10 @@ struct ClSorter {
 
 void Instance::reduceDB() {
   stats.reduceDBs++;
-  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == 2
+  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
       && num_low_lbd_cls < 100) {
     verb_print(1, " [rdb] bumping rdb cutoff to 3");
-    lbd_cutoff = 3;
+    lbd_cutoff++;
   }
   const auto cls_before = longRedCls.size();
 

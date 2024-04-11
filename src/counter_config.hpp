@@ -61,6 +61,7 @@ struct CounterConfiguration {
   uint32_t consolidate_every_n = 30000;
   // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
   int polar_type = 1;
+  uint32_t base_lbd_cutoff = 2;
 
   int do_vivify = 1;
   uint32_t vivif_every = 60000;

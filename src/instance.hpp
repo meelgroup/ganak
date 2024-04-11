@@ -103,7 +103,7 @@ protected:
   vector<double> tdscore;
   double td_weight = 1.0;
   double act_inc = 1.0;
-  uint32_t lbd_cutoff = 2;
+  uint32_t lbd_cutoff;
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
 

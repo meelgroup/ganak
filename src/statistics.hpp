@@ -125,7 +125,7 @@ public:
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
 
-  bqueue<double> comp_size_times_depth_q;
+  bqueue<double, double> comp_size_times_depth_q;
 
   // Lookahead
   uint64_t lookaheads = 0;

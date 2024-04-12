@@ -220,6 +220,22 @@ def ganak_treewidth(fname) -> list[str]:
                 t = "%f" % t
     return [tw, t]
 
+# c o width 45
+# c o CMD: timeout 60.000000s ./flow_cutter_pace17 <tmp/instance1709332682043115_14040_59941_1.tmp >tmp/instance1709332682043118_14040_59941_2.tmp 2>/dev/null
+def sstd_treewidth(fname) -> list[str]:
+    tw = ""
+    t = ""
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o width" in line:
+                tw = int(line.split()[3])
+                tw = "%d" % tw
+            if "CMD: timeout" in line:
+                t = float(line.split()[4][:-1])
+                t = "%f" % t
+    return [tw, t]
+
 
 # c o conflicts                      2503077      -- confl/s:    1434.45
 def ganak_conflicts(fname) -> str:
@@ -330,6 +346,9 @@ for f in file_list:
         files[base]["solver"] = "sharptd"
         files[base]["solvertime"] = find_sharpsat_time_cnt(f)
         files[base]["solverver"] = ["sharptd", "sharptd"]
+        td = sstd_treewidth(f)
+        files[base]["td-width"] = td[0]
+        files[base]["td-time"] = td[1]
     if ".out_d4" in f:
         files[base]["solver"] = "d4"
         files[base]["solvertime"] = find_d4_time_cnt(f)

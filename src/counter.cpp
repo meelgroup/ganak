@@ -745,7 +745,7 @@ SOLVER_StateT Counter::count_sat() {
         debug_print("before SAT mode. cnt dec: " << decisions.top().getTotalModelCount()
             << " left: " << decisions.top().get_left_model_count()
             << " right: " << decisions.top().get_right_model_count());
-        bool ret = deal_with_independent();
+        bool ret = use_sat_solver();
         debug_print("after SAT mode. cnt dec: " << decisions.top().getTotalModelCount()
             << " left: " << decisions.top().get_left_model_count()
             << " right: " << decisions.top().get_right_model_count());
@@ -3030,8 +3030,9 @@ void Counter::subsume_all() {
       << " T: " << (cpuTime() - my_time))
 }
 
-// SAT or UNSAT
-bool Counter::deal_with_independent() {
+// At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
+// because ONLY non-independent variables remain
+bool Counter::use_sat_solver() {
   assert(!isindependent);
   assert(order_heap.empty());
   assert(!decisions.empty());
@@ -3046,6 +3047,8 @@ bool Counter::deal_with_independent() {
   // Create dummy decision level in order for get_super_comp work correctly.
   decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
+
+  // Fill up order heap
   for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) {
     if (val(*it) != X_TRI) continue;

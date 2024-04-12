@@ -218,7 +218,7 @@ private:
   void td_decompose();
 
   // Actual SAT solver.
-  bool deal_with_independent();
+  bool use_sat_solver();
   bool resolve_conflict_sat();
   int32_t sat_start_dec_level = -1;
   Heap<VarOrderLt> order_heap;

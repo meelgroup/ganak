@@ -70,6 +70,7 @@ int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
+ArjunNS::SimpConf simp_conf;
 
 struct CNFHolder {
   vector<vector<CMSat::Lit>> clauses;
@@ -173,6 +174,8 @@ void add_ganak_options()
     ("sbvaclcut", po::value(&sbva_cls_cutoff)->default_value(sbva_cls_cutoff), "SBVA cls cutoff")
     ("sbvalitcut", po::value(&sbva_lits_cutoff)->default_value(sbva_lits_cutoff), "SBVA lits cutoff")
     ("sbvabreak", po::value(&sbva_tiebreak)->default_value(sbva_tiebreak), "SBVA tie breaking. 0 = old, 1 = sbva")
+    ("bveresolvmaxsz", po::value(&simp_conf.bve_too_large_resolvent)->default_value(simp_conf.bve_too_large_resolvent), "Puura BVE max resolvent size in literals. -1 == no limit")
+
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("comprevsort", po::value(&conf.do_comp_reverse_sort)->default_value(conf.do_comp_reverse_sort), "Sort components in reverse order")
 #endif
@@ -388,7 +391,6 @@ int main(int argc, char *argv[])
     arjun->set_verbosity(arjun_verb);
     parse_file(fname, arjun);
     arjun->run_backwards();
-    ArjunNS::SimpConf simp_conf;
     auto ret = arjun->get_fully_simplified_renumbered_cnf(simp_conf);
 
     arjun->set_verbosity(1);

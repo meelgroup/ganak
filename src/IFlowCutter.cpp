@@ -68,7 +68,9 @@ using namespace std;
 
 IFlowCutter::IFlowCutter(int n, int m, int _verb) :
     nodes(n), best_bag_size(numeric_limits<int>::max()), head(2*m, n), tail(2*m, n),
-    verb(_verb) {}
+    verb(_verb) {
+      start_time = cpuTime();
+    }
 
 void IFlowCutter::importGraph(const Graph& g)
 {
@@ -500,7 +502,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(
   better_td.setNumGraphNodes(node_count);
   if (verb > 0) {
   cout << "c o [td] #bags " << bag_count << ", tw " << maximum_bag_size
-      << ", elapsed " << cpuTime()  << " s"<< endl; // << endl;// << ", #vars " << node_count << endl;
+      << ", elapsed " << (cpuTime()-start_time)  << " s"<< endl; // << endl;// << ", #vars " << node_count << endl;
   }
   better_td.initBags();
 

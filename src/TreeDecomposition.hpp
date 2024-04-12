@@ -53,7 +53,7 @@ protected:
 
 class TreeDecomposition : public Graph {
 public:
-  TreeDecomposition() : tw(0), gnodes(0), cent(-1) { }
+  TreeDecomposition();
 
   void initBags() { bags.clear(); bags.resize(nodes); }
   void setBag(int v, std::vector<int> bag) { bags[v] = bag; }
@@ -67,6 +67,7 @@ public:
 
   int centroid(int npvars, int verb = 0);
   std::vector<int> distanceFromCentroid(int npvars);
+  double start_time;
 
 private:
   int findCentroid(int v, int parent, int& centroid) const;

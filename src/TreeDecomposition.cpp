@@ -23,9 +23,15 @@ THE SOFTWARE.
 #include "TreeDecomposition.hpp"
 
 #include <iostream>
-#include <assert.h>
+#include <cassert>
+#include "time_mem.hpp"
 #include "structures.hpp"
 using namespace std;
+
+
+TreeDecomposition::TreeDecomposition() : tw(0), gnodes(0), cent(-1) {
+  start_time = cpuTime();
+}
 
 Graph::Graph(int vars)
 {

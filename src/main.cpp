@@ -125,6 +125,9 @@ string ganak_version_info()
 
 void add_ganak_options()
 {
+    // see out-ganak-6749880.pbs101-10
+    simp_conf.bve_too_large_resolvent = 120;
+
     std::ostringstream my_delta;
     my_delta << std::setprecision(8) << conf.delta;
 

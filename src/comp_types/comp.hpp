@@ -122,7 +122,6 @@ public:
     clauses_offs = 0;
     vs_cls_data.clear();
   }
-  vector<uint32_t> var_occs;
   uint32_t max_var_occs;
 
 private:

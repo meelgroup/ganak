@@ -70,6 +70,7 @@ int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
+int bce = 1;
 ArjunNS::SimpConf simp_conf;
 
 struct CNFHolder {
@@ -159,6 +160,7 @@ void add_ganak_options()
     ("lbd", po::value(&conf.base_lbd_cutoff)->default_value(conf.base_lbd_cutoff), "Initial LBD cutoff")
 
     ("cscore", po::value(&conf.do_cache_hit_scores)->default_value(conf.do_cache_hit_scores), "Do cache scores")
+    ("bce", po::value(&bce)->default_value(bce), "Do BCE")
     ("cache", po::value(&conf.do_use_cache)->default_value(conf.do_use_cache), "Use (i.e. store and retrieve) cache")
     ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
     ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Comp Caching")
@@ -392,6 +394,11 @@ int main(int argc, char *argv[])
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
     arjun->set_seed(conf.seed);
     arjun->set_verbosity(arjun_verb);
+    if (!indep_support_given) {
+      cout << "c o WARNING: setting BCE to false due to non-projected counting" << endl;
+      bce = 0;
+    }
+    arjun->set_bce(bce);
     parse_file(fname, arjun);
     arjun->run_backwards();
     auto ret = arjun->get_fully_simplified_renumbered_cnf(simp_conf);

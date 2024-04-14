@@ -1632,7 +1632,7 @@ void Counter::reduce_db_if_needed() {
 // Returns TRUE if we would go further back
 bool Counter::resolve_conflict_sat() {
   assert(sat_mode());
-  debug_print("SAT mode conflict resolution, " __FUNCTION__ " start ");
+  debug_print("SAT mode conflict resolution, " << __FUNCTION__ << " start ");
   create_uip_cl();
   if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
     unit_clauses_.push_back(uip_clause[0]);
@@ -1664,7 +1664,7 @@ bool Counter::resolve_conflict_sat() {
 }
 
 RetState Counter::resolve_conflict() {
-  VERBOSE_DEBUG_DO(cout << "******" __FUNCTION__" START" << endl);
+  VERBOSE_DEBUG_DO(cout << "******" << __FUNCTION__<< " START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 
   create_uip_cl();
@@ -2657,7 +2657,7 @@ void Counter::create_uip_cl() {
   CHECK_IMPLIED_DO(check_implied(uip_clause));
   minimize_uip_cl();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
-  VERBOSE_DEBUG_DO(__FUNCTION__ " finished");
+  VERBOSE_DEBUG_DO(cout << __FUNCTION__ << " finished");
 }
 
 Counter::Counter(const CounterConfiguration& _conf) :

@@ -346,6 +346,10 @@ double biginteger_log_modified(const mpz_class& x) {
   return log10(di) + log10(2) * (double) ex;
 }
 
+void print_vars(const vector<uint32_t>& vars) {
+    for(const auto& v: vars) cout << v+1 << " ";
+}
+
 int main(int argc, char *argv[])
 {
   const double start_time = cpuTime();
@@ -388,6 +392,8 @@ int main(int argc, char *argv[])
   }
   if (!do_arjun) {
     parse_file(fname, &cnfholder);
+    cout << "c o sampl_vars: "; print_vars(cnfholder.sampl_vars); cout << endl;
+    cout << "c o opt sampl_vars: "; print_vars(cnfholder.opt_sampl_vars); cout << endl;
   } else {
     double my_time = cpuTime();
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
@@ -421,12 +427,8 @@ int main(int argc, char *argv[])
     }
     ret.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
-    cout << "c o sampl_vars: ";
-    for(const auto& v: ret.sampl_vars) cout << v << " ";
-    cout << endl;
-    cout << "c o opt sampl_vars: ";
-    for(const auto& v: ret.opt_sampl_vars) cout << v << " ";
-    cout << endl;
+    cout << "c o sampl_vars: "; print_vars(ret.sampl_vars); cout << endl;
+    cout << "c o opt sampl_vars: "; print_vars(ret.opt_sampl_vars); cout << endl;
 
     // set up cnfholder
     cnfholder = CNFHolder();

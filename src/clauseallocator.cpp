@@ -230,7 +230,7 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
       << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
       << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
       << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size
-      << " T: " << time_used);;
+      << " T: " << time_used);
   }
   return true;
 }

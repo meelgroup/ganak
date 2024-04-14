@@ -144,7 +144,7 @@ double CompCache::calc_cutoff() const {
     exit(-1);
     assert(!scores.empty());
   }
-  verb_print(1, "deletable:           " << scores.size())
+  verb_print(1, "deletable:           " << scores.size());
   sort(scores.begin(), scores.end());
   return scores[scores.size() / 2];
 }

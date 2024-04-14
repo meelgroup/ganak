@@ -2532,7 +2532,7 @@ void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) co
     else c[0] = p;
     c[1] = ante.asLit();
     size = 2;
-  } else {assert(false);}
+  } else {assert(false && "Should never be a decision");}
 }
 
 Counter::ConflictData Counter::find_conflict_level(Lit p) {
@@ -2635,7 +2635,7 @@ void Counter::create_uip_cl() {
     VERBOSE_DEBUG_DO(cout << "PathC: " << path_c << endl);
 
     do {
-      while (!seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));};
+      while (!seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));}
       p = trail[index+1];
       assert(p != NOT_A_LIT);
 #ifdef VERBOSE_DEBUG
@@ -2997,7 +2997,7 @@ void Counter::subsume_all() {
   verb_print(1, "[sub] "
       << " bin-cls: " << stats.subsumed_bin_cls - old_subsumed_bin_cls
       << " long-cls: " << stats.subsumed_cls - old_subsumed_cls
-      << " T: " << (cpuTime() - my_time))
+      << " T: " << (cpuTime() - my_time));
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,

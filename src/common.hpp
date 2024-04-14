@@ -87,10 +87,11 @@ using std::endl;
 #endif
 /////
 
-#define verb_print(a, b) if (conf.verb >= a) cout << "c o " << b << endl;
+#define verb_print(a, b) if (conf.verb >= a) cout << "c o " << b << endl
 #define clear_toclean_seen() \
-    for(const auto& x: to_clear) seen[x] = 0;\
-    to_clear.clear();
+    do {\
+      for(const auto& x: to_clear) seen[x] = 0;\
+      to_clear.clear();} while (0)
 
 
 #ifdef BUDDY_ENABLED

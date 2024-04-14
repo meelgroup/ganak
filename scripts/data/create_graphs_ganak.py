@@ -82,14 +82,15 @@ only_dirs = [
              "out-ganak-6396805.pbs101-12/", # used to be best
              "out-ganak-6318929.pbs101-4/", # approxmc
              "out-ganak-6318929.pbs101-7/", # sharpsat
-             "6749880",
+             "6749880.pbs101-0/",
+             "out-ganak-6683080.pbs101-4",
              ]
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
 # "6349002",
 # only_dirs = ["6606250"]
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
 not_versions = []
-only_calls = [] #
+only_calls = ["--lbd 1"] #
 # only_dirs = []
 todo = versions
 for ver in todo :
@@ -119,6 +120,7 @@ for ver in todo :
 
         if bad:
           continue
+        print("----")
         print("dir:", dir)
         print("call:", call)
         print("ver:", ver)

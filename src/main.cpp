@@ -410,6 +410,7 @@ int main(int argc, char *argv[])
       arj2.set_sampl_vars(ret.sampl_vars);
       ret.opt_sampl_vars = arj2.extend_sampl_set();
     } else {
+      ret.opt_sampl_vars.clear();
       for(uint32_t i = 0; i < ret.nvars; i++) ret.opt_sampl_vars.push_back(i);
     }
     ret.renumber_sampling_vars_for_ganak();

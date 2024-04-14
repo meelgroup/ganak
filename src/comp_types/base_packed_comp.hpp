@@ -55,8 +55,8 @@ public:
     assert(time >= last_used_time_);
     last_used_time_ += (time-last_used_time_)/div;
   }
-  void set_dont_delete_before(const uint32_t time) { dont_delete_before = time; }
-  uint32_t get_dont_delete_before() const { return dont_delete_before; }
+  /* void set_dont_delete_before(const uint32_t time) { dont_delete_before = time; } */
+  /* uint32_t get_dont_delete_before() const { return dont_delete_before; } */
 
   void set_model_count(const mpz_class &rn) {
     assert(model_count_ == nullptr);
@@ -82,11 +82,6 @@ public:
 protected:
   uint64_t clhashkey_;
   mpz_class* model_count_ = nullptr;
-  uint32_t last_used_time_ = 1; //effectively the score
-
-  // deletion is permitted only after
-  // the copy of this comp in the stack
-  // does not exist anymore
+  uint32_t last_used_time_:31 = 1; //effectively the score
   uint32_t delete_permitted:1 = false;
-  uint32_t dont_delete_before:31 = 0;
 };

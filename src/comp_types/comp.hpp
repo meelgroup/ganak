@@ -72,7 +72,7 @@ public:
   }
 
   uint32_t nVars() const { return clauses_offs - 1; }
-  uint32_t num_long_cls() const { return vs_cls_data.size() - clauses_offs - 1; }
+  uint32_t num_long_cls() const { return vs_cls_data.size() - clauses_offs; }
 #ifdef BUDDY_ENABLED
   uint32_t numBinCls() const { return num_bin_cls; }
   void setNumBinCls(uint32_t n) { num_bin_cls = n; }

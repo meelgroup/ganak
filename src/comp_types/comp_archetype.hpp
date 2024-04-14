@@ -172,8 +172,8 @@ public:
     BUDDY_DO(curr_comp.setNumBinCls(num_bin_cls/2));
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
-        " New comp vars: " << p_new_comp->nVars() <<
-        " long cls:" << p_new_comp->num_long_cls());
+        " New comp vars: " << curr_comp.nVars() <<
+        " long cls:" << curr_comp.num_long_cls());
     return &curr_comp;
   }
 

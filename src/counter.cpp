@@ -1631,7 +1631,7 @@ void Counter::reduce_db_if_needed() {
 // Returns TRUE if we would go further back
 bool Counter::resolve_conflict_sat() {
   assert(sat_mode());
-  debug_print("SAT mode conflict resolution");
+  debug_print("SAT mode conflict resolution, " __FUNCTION__ " start ");
   create_uip_cl();
   if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
     unit_clauses_.push_back(uip_clause[0]);
@@ -1663,7 +1663,7 @@ bool Counter::resolve_conflict_sat() {
 }
 
 RetState Counter::resolve_conflict() {
-  VERBOSE_DEBUG_DO(cout << "****** RECORD START" << endl);
+  VERBOSE_DEBUG_DO(cout << "******" __FUNCTION__" START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 
   create_uip_cl();
@@ -1671,7 +1671,6 @@ RetState Counter::resolve_conflict() {
     unit_clauses_.push_back(uip_clause[0]);
 
   assert(uip_clause.front() != NOT_A_LIT);
-  VERBOSE_DEBUG_DO(cout << "*RECORD FINISHED*" << endl);
   act_inc *= 1.0/conf.act_exp;
 
   reduce_db_if_needed();
@@ -2657,6 +2656,7 @@ void Counter::create_uip_cl() {
   CHECK_IMPLIED_DO(check_implied(uip_clause));
   minimize_uip_cl();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
+  VERBOSE_DEBUG_DO(__FUNCTION__ " finished");
 }
 
 Counter::Counter(const CounterConfiguration& _conf) :
@@ -2862,7 +2862,7 @@ void Counter::toplevel_full_probe() {
     reactivate_comps_and_backtrack_trail();
     decisions.pop_back();
     if (!ret) {
-      clear_toclean_seen();
+      clear_toclear_seen();
       setLiteral(l.neg(), 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
@@ -2890,7 +2890,7 @@ void Counter::toplevel_full_probe() {
     reactivate_comps_and_backtrack_trail();
     decisions.pop_back();
     if (!ret) {
-      clear_toclean_seen();
+      clear_toclear_seen();
       setLiteral(l, 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
@@ -2898,7 +2898,7 @@ void Counter::toplevel_full_probe() {
       continue;
     }
 
-    clear_toclean_seen();
+    clear_toclear_seen();
     for(const auto& x: bothprop_toset) {
       setLiteral(x, 0);
     }

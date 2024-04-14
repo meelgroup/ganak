@@ -49,7 +49,6 @@ struct CounterConfiguration {
   int do_cache_hit_scores = 0;
   int cache_time_update = 2;
   int do_cache_reverse_sort = 1;
-  int do_single_bump = 1; // non-single bump is OLD ganak
 
   // Below has 4 setups, two bits to manipulate.
   int decide = 2; // 1st bit 0 = sstd, 1st bit 1 = gpmc, bit 2 = act setup

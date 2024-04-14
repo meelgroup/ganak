@@ -549,8 +549,9 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
   assert(false);
 }
 
+// this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
+// to each variable during analysis
 void inline Counter::increaseActivity(const Lit lit) {
-  if (conf.do_single_bump && seen[lit.var()]) return;
   watches[lit].activity += act_inc;
   max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());

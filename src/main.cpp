@@ -142,7 +142,6 @@ void add_ganak_options()
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("optind", po::value(&optional_indep)->default_value(optional_indep), "Ignore indep support given")
-    ("singlebump", po::value(&conf.do_single_bump)->default_value(conf.do_single_bump), "Do single bumping, no double (or triple, etc) bumping of activities. Non-single bump is old ganak")
     ("forcebranch", po::value(&conf.force_branch)->default_value(conf.force_branch), "Force branch. 0 = no force, 1 = TD priority, 2 = conflict priority")
     ("branchcutoff", po::value(&conf.branch_cutoff)->default_value(conf.branch_cutoff), "Change to different branch setup after this many conflicts")
 #ifndef SIMPLE

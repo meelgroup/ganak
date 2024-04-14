@@ -88,7 +88,7 @@ using std::endl;
 /////
 
 #define verb_print(a, b) if (conf.verb >= a) cout << "c o " << b << endl
-#define clear_toclean_seen() \
+#define clear_toclear_seen() \
     do {\
       for(const auto& x: to_clear) seen[x] = 0;\
       to_clear.clear();} while (0)

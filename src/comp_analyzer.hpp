@@ -208,8 +208,6 @@ private:
     if (!archetype.clause_nil(cl_id)){
       bump_freq_score(vt);
       archetype.set_clause_seen(cl_id,all_lits_set);
-      COMP_VAR_OCC_DO( for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++)
-        if (is_unknown(*it_l)) bump_var_occs(it_l->var()));
     }
     if ((conf.decide & 2)) act_inc *= 1.0/0.98;
   }

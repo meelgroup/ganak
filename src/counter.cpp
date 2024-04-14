@@ -918,12 +918,6 @@ uint32_t Counter::find_best_branch() {
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
       double score = score_of(v) ;
-#ifdef COMP_VAR_OCC_ENABLED
-      auto this_comp_var_score = comp_manager->get_super_comp(decisions.top()).get_var_occs_score(v);
-      /* cout << " v: " << v << " extra: " << this_comp_var_score << " orig: " << score << endl; */
-      /// simp-mc2022_track1_113.cnf works well with 1/5, badly without
-      score += this_comp_var_score/5;
-#endif
       /* assert(score >= 0); */
       if (score > best_var_score) {
         best_var = v;

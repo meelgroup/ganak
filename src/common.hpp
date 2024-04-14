@@ -39,7 +39,6 @@ using std::endl;
 /* #define VERY_SLOW_DEBUG */
 /* #define CHECK_TRAIL_ENTAILMENT */
 /* #define BUDDY_ENABLED */
-/* #define COMP_VAR_OCC_ENABLED */
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */
@@ -101,11 +100,6 @@ using std::endl;
 #endif
 
 
-#ifdef COMP_VAR_OCC_ENABLED
-#define COMP_VAR_OCC_DO(x) do { x; } while (0)
-#else
-#define COMP_VAR_OCC_DO(x) do { ; } while (0)
-#endif
 
 #ifdef VERBOSE_DEBUG
 #define VERBOSE_DEBUG_DO(x) do { x; } while (0)

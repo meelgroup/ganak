@@ -79,28 +79,6 @@ public:
   void setNumBinCls(uint32_t n) { num_bin_cls = n; }
 #endif
 
-#ifdef COMP_VAR_OCC_ENABLED
-  void set_var_occs(const vector<uint32_t>& _var_occs, const uint32_t _max_var_occs) {
-    /* cout << "setting size: " << _var_occs.size() << endl; */
-    /* for(const auto& v: _var_occs) cout << v << " "; */
-    /* cout << endl; */
-    var_occs = _var_occs;
-    max_var_occs = _max_var_occs;
-    /* cout << "max var occs: " << max_var_occs << endl; */
-  }
-  double get_var_occs_score(uint32_t v) {
-    /* cout << "but var occs size: " << var_occs.size() << endl; */
-    /* cout << "max var occs: " << max_var_occs << endl; */
-    if (max_var_occs == 0) return 0;
-    if (var_occs.size() <= v) {
-      assert(false);
-      /* cout << "not there" << endl; */
-      return 0;
-    }
-      /* cout << "there+!!!" << endl; */
-    return (double)var_occs[v]/(double)max_var_occs;
-  }
-#endif
   const vector<uint32_t>& get_raw_data() const { return vs_cls_data;}
   bool empty() const { return vs_cls_data.empty(); }
 

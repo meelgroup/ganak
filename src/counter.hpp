@@ -392,7 +392,6 @@ private:
   //  possible clauses in between will be other UIP clauses
   vector<Lit> uip_clause;
 
-  void create_fake(Lit p, uint32_t& size, Lit*& c) const;
   void create_uip_cl();
   void minimize_uip_cl();
   uint32_t abst_level(const uint32_t x) const;

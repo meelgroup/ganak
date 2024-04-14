@@ -161,7 +161,7 @@ public:
 };
 
 enum class AnteType {
-  clause, lit, fake, decision
+  clause, lit, decision
 };
 
 class Antecedent {
@@ -184,7 +184,6 @@ public:
 
   bool isAClause() const { return type == AnteType::clause; }
   bool isALit() const { return type == AnteType::lit; }
-  bool isFake() const {return type == AnteType::fake;}
   bool isNull() const {return type == AnteType::decision;}
   bool isAnt() const {return !isNull();}
 
@@ -206,12 +205,6 @@ public:
   bool operator!=(const Antecedent& other) const {
     return val != other.val;
   }
-
-  static Antecedent fakeAnte() {
-    Antecedent ante;
-    ante.type = AnteType::fake;
-    return ante;
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
@@ -219,8 +212,6 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
   std::stringstream s;
   if (val.isNull()) {
     s << std::setw(5) << "DEC  " << std::setw(10) << "";
-  } else if (val.isFake()) {
-    s << std::setw(5) <<"fake " << std::setw(10) << "";
   } else if (val.isAClause()) {
     s << "CL:  " << std::setw(10) << val.asCl();
   } else if (val.isALit()) {

@@ -2519,35 +2519,11 @@ bool Counter::v_propagate() {
   return ret;
 }
 
-void Counter::create_fake(Lit p, uint32_t& size, Lit*& c) const
-{
-    tmp_lit.clear();
-    tmp_lit.push_back(p);
-    for(int32_t i = var(p).decision_level; i > 0; i--) {
-      auto const& d = decisions[i];
-      tmp_lit.push_back(Lit(d.var, val(d.var) == F_TRI));
-    }
-    size = tmp_lit.size();
-    c = tmp_lit.data();
-
-#ifdef VERBOSE_DEBUG
-    cout << "Fake cl: " << endl;
-    for(const auto& l: tmp_lit) {
-      cout << std::setw(5) << l<< " lev: " << std::setw(3) << var(l).decision_level
-        << " ante: " << std::setw(8) << var(l).ante
-        << " val : " << std::setw(7) << lit_val_str(l)
-        << endl;
-    }
-#endif
-}
-
 void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const {
   if (ante.isAClause()) {
     Clause* cl = alloc->ptr(ante.asCl());
     c = cl->data();
     size = cl->sz;
-  } else if (ante.isFake()) {
-    create_fake(p, size, c);
   } else if (ante.isALit()) {
     //Binary
     tmp_lit.resize(2);

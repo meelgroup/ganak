@@ -760,7 +760,7 @@ SOLVER_StateT Counter::count_loop() {
           decisions.top().change_to_right_branch();
           decisions.top().branch_found_unsat();
           bool ret2 = propagate(true);
-          if (!ret2) goto resolve;
+          if (!ret2) goto start1;
         }
         debug_print("after SAT mode. cnt of this comp: " << decisions.top().getTotalModelCount()
           << " unproc comps end: " << decisions.top().getUnprocessedCompsEnd()
@@ -772,10 +772,10 @@ SOLVER_StateT Counter::count_loop() {
       }
 
       while (!propagate()) {
-resolve:
+        start1:
         if (chrono_work()) continue;
         state = resolve_conflict();
-        while(state == GO_AGAIN) state = resolve_conflict();
+        while(state == GO_AGAIN) goto start1;
         if (state == BACKTRACK) break;
       }
       if (state == BACKTRACK) break;
@@ -789,9 +789,10 @@ resolve:
     if (state == EXIT) goto end;
 
     while (!propagate()) {
+      start2:
       if (chrono_work()) continue;
       state = resolve_conflict();
-      while(state == GO_AGAIN) state = resolve_conflict();
+      while(state == GO_AGAIN) goto start2;
       if (state == BACKTRACK) {
         state = backtrack();
         if (state == EXIT) goto end;

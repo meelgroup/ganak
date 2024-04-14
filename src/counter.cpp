@@ -2087,7 +2087,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
   for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
   for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
   bool ret = v_propagate();
-  assert(ret == true);
+  assert(ret);
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-my_time));
 
   // Vivify clauses

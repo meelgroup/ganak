@@ -589,8 +589,8 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
   better_td.setWidth(get_treewidth_of_multilevel_partition(cell_list)-1);
   better_td.setNumGraphNodes(get_node_count_of_multilevel_partition(cell_list));
   cout << "c o [td] #bags " << bag_count
-    << ", tw " << get_treewidth_of_multilevel_partition(cell_list)-1
-    << ", elapsed " << cpuTime()  << " s"
+    << " tw " << get_treewidth_of_multilevel_partition(cell_list)-1
+    << " elapsed " << cpuTime()-start_time  << " s"
     << endl; // << ", #vars " << get_node_count_of_multilevel_partition(cell_list) << endl;
   better_td.initBags();
 

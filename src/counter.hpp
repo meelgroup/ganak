@@ -206,7 +206,7 @@ private:
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
 
-  SOLVER_StateT count_sat();
+  SOLVER_StateT count_loop();
   bool decide_lit();
   uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch();

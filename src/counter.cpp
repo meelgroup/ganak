@@ -641,7 +641,7 @@ void Counter::count(vector<Cube>& ret_cubes) {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
   }
-  const auto exit_state = count_sat();
+  const auto exit_state = count_loop();
   if (exit_state == RESTART) {
     ret_cubes = mini_cubes;
   } else {
@@ -719,7 +719,7 @@ int Counter::chrono_work_sat() {
   return 0;
 }
 
-SOLVER_StateT Counter::count_sat() {
+SOLVER_StateT Counter::count_loop() {
   RetState state = RESOLVED;
 
   while (true) {

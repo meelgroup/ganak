@@ -151,37 +151,30 @@ public:
 
   // At this point exploreRemainingCompOf has been called already which
   // set up search_stack_, seen[] etc. so this is now quite easy.
-  Comp* make_comp(const uint32_t comp_vars_size) {
+  Comp* make_comp() {
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
-    Comp *p_new_comp = new Comp();
-    p_new_comp->reserve_space(comp_vars_size, super_comp().num_long_cls());
     curr_comp.clear();
 
     // Fill variables in new comp
     for (auto v_it = super_comp().vars_begin(); *v_it != sentinel;  v_it++)
       if (var_seen(*v_it)) { //we have to put a var into our comp
-        p_new_comp->add_var(*v_it);
         curr_comp.add_var(*v_it);
         set_var_in_other_comp(*v_it);
       }
-    p_new_comp->close_vars_data();
     curr_comp.close_vars_data();
 
     // Fill clauses in new comp
-    for (auto it_cl = super_comp().cls_begin(); *it_cl != sentinel; it_cl++)
+    for (auto it_cl = super_comp().cls_begin(); it_cl != super_comp().cls_end(); it_cl++)
       if (clause_seen(*it_cl)) {
-        p_new_comp->add_cl(*it_cl);
         if (!clause_all_lits_set(*it_cl)) curr_comp.add_cl(*it_cl);
         set_clause_in_other_comp(*it_cl);
       }
-    p_new_comp->close_cls_data();
-    curr_comp.close_cls_data();
-    BUDDY_DO(p_new_comp->setNumBinCls(num_bin_cls/2));
+    BUDDY_DO(curr_comp.setNumBinCls(num_bin_cls/2));
 
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
         " New comp vars: " << p_new_comp->nVars() <<
         " long cls:" << p_new_comp->num_long_cls());
-    return p_new_comp;
+    return &curr_comp;
   }
 
   Comp curr_comp;

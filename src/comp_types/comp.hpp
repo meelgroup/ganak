@@ -59,17 +59,16 @@ public:
     vs_cls_data.push_back(cl);
   }
 
-  inline void close_cls_data() {
-    vs_cls_data.push_back(sentinel);
-    assert(*(cls_begin()-1) == 0);
-  }
-
   inline vector<uint32_t>::const_iterator vars_begin() const {
     return vs_cls_data.begin();
   }
 
   inline vector<ClauseIndex>::const_iterator cls_begin() const {
     return vs_cls_data.begin() + clauses_offs;
+  }
+
+  inline vector<ClauseIndex>::const_iterator cls_end() const {
+    return vs_cls_data.end();
   }
 
   uint32_t nVars() const { return clauses_offs - 1; }
@@ -93,12 +92,13 @@ public:
 
     //Add all clauses to top comp
     for (uint32_t clid = 1; clid <= max_cl_id; clid++) add_cl(clid);
-    close_cls_data();
   }
 
   void clear() {
-    clauses_offs = 0;
+    BUDDY_DO(num_bin_cls = 0);
     vs_cls_data.clear();
+    clauses_offs = 0;
+    id_ = 0;
   }
   uint32_t max_var_occs;
 

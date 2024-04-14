@@ -106,6 +106,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       //       essentially, brute-forcing the count
       if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
         // Cache miss
+        p_new_comp = new Comp(*p_new_comp);
         comp_stack.push_back(p_new_comp);
 
         p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
@@ -127,7 +128,6 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
         all_vars_in_comp(p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
-        delete p_new_comp;
       }
     }
   }

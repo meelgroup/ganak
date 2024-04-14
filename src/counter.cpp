@@ -3195,7 +3195,7 @@ uint64_t Counter::buddy_count() {
   // Long clauses
   uint32_t actual_long = 0;
   const auto& ana = comp_manager->get_ana();
-  for (auto itCl = c->cls_begin(); *itCl != sentinel; itCl++) {
+  for (auto itCl = c->cls_begin(); itCl != c->cls_end(); itCl++) {
     auto idx = *itCl;
     debug_print("IDX: " << idx);
     const auto& it = ana.get_idx_to_cl().find(idx);

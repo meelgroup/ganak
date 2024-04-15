@@ -111,7 +111,7 @@ public:
       }
     }
 
-    for (auto it = super_comp.cls_begin(); it != super_comp.cls_end(); it++)
+    for (auto it = super_comp.cls_begin(); *it != sentinel; it++)
       archetype.set_clause_in_sup_comp_unseen(*it);
   }
 
@@ -119,8 +119,7 @@ public:
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
-  inline Comp *make_comp_from_archetype() {return archetype.make_comp();
-  }
+  inline Comp *make_comp_from_archetype(){ return archetype.make_comp(comp_vars.size()); }
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_max_var() const { return max_var; }

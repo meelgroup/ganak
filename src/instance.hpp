@@ -58,7 +58,7 @@ public:
 protected:
   CounterConfiguration conf;
   void unset(Lit lit) {
-    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << lit << endl);
+    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     var(lit).ante = Antecedent();
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;

@@ -64,13 +64,9 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
   assert(top.super_comp() != 0);
   assert(cache.exists(get_super_comp(top).id()));
 
-  if (top.remaining_comps_ofs() == comp_stack.size()) return;
-
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    if (comp_stack[u]->id() != std::numeric_limits<uint32_t>::max()) {
-      assert(cache.exists(comp_stack[u]->id()));
-      stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
-    }
+    assert(cache.exists(comp_stack[u]->id()));
+    stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
   }
   stats.cache_pollutions_called++;
 
@@ -106,7 +102,6 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       //       essentially, brute-forcing the count
       if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
         // Cache miss
-        p_new_comp = new Comp(*p_new_comp);
         comp_stack.push_back(p_new_comp);
 
         p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
@@ -128,6 +123,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
         all_vars_in_comp(p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
+        delete p_new_comp;
       }
     }
   }

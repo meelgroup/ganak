@@ -62,7 +62,6 @@ po::positional_options_description p;
 using namespace std;
 bool indep_support_given = false;
 CounterConfiguration conf;
-int optional_indep = 1;
 int arjun_verb = 2;
 int do_arjun = 1;
 int ignore_indep = 0;
@@ -141,7 +140,6 @@ void add_ganak_options()
     ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
-    ("optind", po::value(&optional_indep)->default_value(optional_indep), "Ignore indep support given")
     ("forcebranch", po::value(&conf.force_branch)->default_value(conf.force_branch), "Force branch. 0 = no force, 1 = TD priority, 2 = conflict priority")
     ("branchcutoff", po::value(&conf.branch_cutoff)->default_value(conf.branch_cutoff), "Change to different branch setup after this many conflicts")
 #ifndef SIMPLE
@@ -331,6 +329,7 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
     vector<uint32_t> tmp;
     for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
     reader->set_sampl_vars(tmp);
+    reader->set_opt_sampl_vars(tmp);
   }
 }
 
@@ -393,7 +392,9 @@ int main(int argc, char *argv[])
   if (!do_arjun) {
     parse_file(fname, &cnfholder);
     cout << "c o sampl_vars: "; print_vars(cnfholder.sampl_vars); cout << endl;
-    cout << "c o opt sampl_vars: "; print_vars(cnfholder.opt_sampl_vars); cout << endl;
+    if (cnfholder.opt_sampl_vars_set) {
+      cout << "c o opt sampl_vars: "; print_vars(cnfholder.opt_sampl_vars); cout << endl;
+    }
   } else {
     double my_time = cpuTime();
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
@@ -436,8 +437,8 @@ int main(int argc, char *argv[])
     cnfholder.red_clauses = ret.red_cnf;
     cnfholder.nvars = ret.nvars;
     cnfholder.set_multiplier_weight(ret.multiplier_weight);
-    cnfholder.set_opt_sampl_vars(ret.opt_sampl_vars);
     cnfholder.set_sampl_vars(ret.sampl_vars);
+    cnfholder.set_opt_sampl_vars(ret.opt_sampl_vars);
   }
   Counter* counter = new Counter(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
@@ -460,8 +461,7 @@ int main(int argc, char *argv[])
     set<uint32_t> tmp;
     for(auto const& s: cnfholder.sampl_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
-    if (cnfholder.opt_sampl_vars_set &&
-          (optional_indep || !indep_support_given)) {
+    if (cnfholder.opt_sampl_vars_set) {
       tmp.clear();
       for(auto const& s: cnfholder.opt_sampl_vars) tmp.insert(s+1);
       counter->set_optional_indep_support(tmp);

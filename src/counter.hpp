@@ -218,12 +218,12 @@ private:
   void td_decompose();
 
   // Actual SAT solver.
-  bool use_sat_solver();
-  bool resolve_conflict_sat();
+  bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
   Heap<VarOrderLt> order_heap;
-  inline bool sat_mode() const {return sat_start_dec_level != -1;}
-  int chrono_work_sat();
+  inline bool sat_mode() const {
+    return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
+  }
   void check_sat_solution() const;
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
@@ -232,7 +232,7 @@ private:
   template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   bool check_watchlists() const;
-  template<class T> void check_cl_propagated_conflicted(T& cl) const;
+  template<class T> void check_cl_propagated_conflicted(T& cl, uint32_t off = 0) const;
   void check_all_propagated_conflicted() const;
 
   void print_all_levels();
@@ -348,7 +348,7 @@ private:
   uint32_t trail_at_top() const { return variables_[decisions.top().var].sublevel; }
 
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
-    debug_print("->reactivate and backtrack...");
+    debug_print("->reactivate and backtrack. Dec lev: " << decision_level() <<  "...");
     auto jt = top_declevel_trail_begin();
     auto it = jt;
     int32_t off_by = 0;
@@ -359,16 +359,18 @@ private:
         off_by++;
         var(*it).sublevel = jt - trail.begin();
         *jt++ = *it;
-        VERBOSE_DEBUG_DO(cout << "Backing up, setting:" << std::setw(5) << *it
-            << " sublev: " << var(*it).sublevel << endl);
+        debug_print("Backing up, setting: " << std::setw(5) << *it
+            << " sublev: " << var(*it).sublevel);
       } else {
-        VERBOSE_DEBUG_DO(cout << "Backing up, unsetting: " << *it
-            << " lev: " << var(*it).decision_level << " ante was: " << var(*it).ante << endl);
+        debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
+            << " lev: " << std::setw(4) << var(*it).decision_level
+            << " ante was: " << var(*it).ante);
         if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
         unset(*it);
       }
     }
-    VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {print_trail(false, false);assert(false);});
+    VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
+        print_trail(false, false);assert(false);});
     if (!sat_mode()) comp_manager->cleanRemainingCompsOf(decisions.top());
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
@@ -494,7 +496,7 @@ inline void Counter::print_cl(const Lit* c, uint32_t size) const {
 template<class T> void Counter::print_cl(const T& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << std::setw(5) << l
+    cout << std::left << std::setw(5) << l
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante
       << " val: " << lit_val_str(l)

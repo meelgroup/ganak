@@ -704,21 +704,6 @@ bool Counter::chrono_work() {
   return false;
 }
 
-int Counter::chrono_work_sat() {
-  debug_print("SAT mode chrono check");
-  VERBOSE_DEBUG_DO(print_trail());
-  auto data = find_conflict_level(confl_lit);
-  if (data.bOnlyOneLitFromHighest) {
-    debug_print("SAT mode ChronoBT. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
-    if (data.nHighestLevel-1 < sat_start_dec_level) return -1;
-    go_back_to(data.nHighestLevel-1);
-    VERBOSE_DEBUG_DO(print_trail());
-    debug_print("now Dec lev: " << decision_level());
-    return 1;
-  }
-  return 0;
-}
-
 SOLVER_StateT Counter::count_loop() {
   RetState state = RESOLVED;
 
@@ -740,34 +725,30 @@ SOLVER_StateT Counter::count_loop() {
         decisions.top().nextUnprocessedComp();
         continue;
       }
+
       print_stat_line();
       if (!isindependent) {
+        // The only decision we could make would be non-indep for this component.
         debug_print("before SAT mode. cnt dec: " << decisions.top().getTotalModelCount()
             << " left: " << decisions.top().get_left_model_count()
             << " right: " << decisions.top().get_right_model_count());
-        bool ret = use_sat_solver();
+
+        bool ret = use_sat_solver(state);
         debug_print("after SAT mode. cnt dec: " << decisions.top().getTotalModelCount()
             << " left: " << decisions.top().get_left_model_count()
             << " right: " << decisions.top().get_right_model_count());
-        decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
-              comp_manager->comp_stack_size()));
         if (ret) {
-          decisions.top().change_to_right_branch();
-          decisions.top().includeSolution(1);
-          decisions.top().var = 0;
+          state = BACKTRACK;
         } else {
-          decisions.top().branch_found_unsat();
-          decisions.top().change_to_right_branch();
-          decisions.top().branch_found_unsat();
-          bool ret2 = propagate(true);
-          if (!ret2) goto start1;
+          goto start11;
         }
         debug_print("after SAT mode. cnt of this comp: " << decisions.top().getTotalModelCount()
           << " unproc comps end: " << decisions.top().getUnprocessedCompsEnd()
           << " remaining comps: " << decisions.top().remaining_comps_ofs()
           << " has unproc: " << decisions.top().hasUnprocessedComps());
         assert(isindependent);
-        state = BACKTRACK;
+
+        // Now backtrack
         break;
       }
 
@@ -775,6 +756,7 @@ SOLVER_StateT Counter::count_loop() {
         start1:
         if (chrono_work()) continue;
         state = resolve_conflict();
+        start11:
         while(state == GO_AGAIN) goto start1;
         if (state == BACKTRACK) break;
       }
@@ -1345,8 +1327,6 @@ RetState Counter::backtrack() {
 
     // We have NOT explored the other side and it hasn't been re-written to be
     // propagation.
-    //    TODO: not sure we need the antecedent check here...
-    //          probably doesn't hurt, but not sure.
     if (!decisions.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
       debug_print("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << decisions.get_decision_level());
@@ -1507,7 +1487,7 @@ void Counter::print_trail(bool check_entail, bool check_anything) const {
   cout << "Current trail :" << endl;
   for(uint32_t i = 0; i < trail.size(); i++) {
     const auto l = trail[i];
-    cout << "lit " << std::setw(6) << l
+    cout << "lit " << std:: left << std::setw(6) << l
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante
     << " val: " << std::setw(8) << lit_val_str(l)
@@ -1543,6 +1523,7 @@ void Counter::go_back_to(int32_t backj) {
 
 void Counter::check_trail([[maybe_unused]] bool check_entail) const {
   vector<uint32_t> num_decs_at_level(decisions.get_decision_level()+1, 0);
+  bool entailment_fail = false;
   for(const auto& t: trail) {
     int32_t lev = var(t).decision_level;
     if (lev > decisions.get_decision_level()) {
@@ -1552,14 +1533,14 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
     if (var(t).ante.isNull() && lev > 0) {
       num_decs_at_level.at(lev)++;
       if (num_decs_at_level.at(lev) >= 2) {
-        cout << "Two or more of decs at level: " << lev << endl;
+        cout << "ERROR: Two or more of decs at level: " << lev << " trail follows." << endl;
+        print_trail(false, false);
         assert(false);
       }
     }
     if (val(t) != T_TRI) {
       assert(false && "Trail is wrong, trail[val] is not TRUE");
     }
-    bool entailment_fail = false;
 #ifdef CHECK_TRAIL_ENTAILMENT
     if (check_entail && sat_solver) {
       // Check entailment
@@ -1582,19 +1563,20 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
         }
         auto ret = s2.solve();
         if (ret != CMSat::l_False) {
-          cout << "Not implied by decisions above or at its level (" << this_lev << "): " << t << endl;
+          cout << "Not implied by decisions above or at its level "
+            << this_lev << " lit: " << t << endl;
           entailment_fail = true;
         }
       }
     }
 #endif
-    if (entailment_fail) {
-      cout << "Entailment fail." << endl;
-      print_trail(false, false);
-      print_dec_info();
-    }
-    assert(!entailment_fail);
   }
+  if (entailment_fail) {
+    cout << "Entailment fail." << endl;
+    print_trail(false, false);
+    print_dec_info();
+  }
+  assert(!entailment_fail);
 }
 
 bool Counter::is_implied(const vector<Lit>& cl) {
@@ -1629,40 +1611,6 @@ void Counter::reduce_db_if_needed() {
   }
 }
 
-// Returns TRUE if we would go further back
-bool Counter::resolve_conflict_sat() {
-  assert(sat_mode());
-  debug_print("SAT mode conflict resolution, " << __FUNCTION__ << " start ");
-  create_uip_cl();
-  if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
-    unit_clauses_.push_back(uip_clause[0]);
-
-  assert(uip_clause.front() != NOT_A_LIT);
-  act_inc *= 1.0/conf.act_exp;
-  VERBOSE_DEBUG_DO(print_conflict_info());
-
-  int32_t backj = find_backtrack_level_of_learnt();
-  int32_t lev_to_set = find_lev_to_set(backj);
-  // NOTE TODO: we don't actually attach this UIP clause
-  // that would take us back further up
-  if (backj-1 < sat_start_dec_level) {
-    debug_print("SAT mode backtrack would go back too far, not attaching UIP cl");
-    return false;
-  }
-
-  stats.conflicts++;
-  debug_print("SAT mode backj: " << backj << " lev_to_set: " << lev_to_set);
-  VERBOSE_DEBUG_DO(print_trail());
-  VERBOSE_DEBUG_DO(print_conflict_info());
-  debug_print("SAT mode backj: " << backj << " lev_to_set: " << lev_to_set
-    << " current lev: " << decision_level());
-  go_back_to(backj-1);
-  auto ant = addUIPConflictClause(uip_clause);
-  setLiteral(uip_clause[0], lev_to_set, ant);
-  VERBOSE_DEBUG_DO(print_trail());
-  return true;
-}
-
 RetState Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(cout << "******" << __FUNCTION__<< " START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
@@ -1679,8 +1627,10 @@ RetState Counter::resolve_conflict() {
 
   stats.conflicts++;
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
-  decisions.top().zero_out_branch_sol();
-  decisions.top().mark_branch_unsat();
+  if (!sat_mode()) {
+    decisions.top().zero_out_branch_sol();
+    decisions.top().mark_branch_unsat();
+  }
 
   VERBOSE_DEBUG_DO(cout << "backwards cleaning" << endl);
   VERBOSE_DEBUG_DO(print_comp_stack_info());
@@ -1690,9 +1640,9 @@ RetState Counter::resolve_conflict() {
   debug_print("backj: " << backj << " lev_to_set: " << lev_to_set);
   bool flipped_declit = (
       uip_clause[0].neg().var() == decisions.at(backj).var
-       && lev_to_set+1 == backj);
+           && lev_to_set+1 == backj);
 
-  if (!flipped_declit) {
+  if (!flipped_declit || sat_mode()) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail());
     VERBOSE_DEBUG_DO(print_conflict_info());
@@ -1803,11 +1753,13 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
 
 bool Counter::propagate(bool out_of_order) {
   confl = Antecedent();
-  debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size());
+  debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size() << " dec lev: " << decision_level() << " trail follows.");
+  VERBOSE_DEBUG_DO(print_trail());
   for (; qhead < trail.size(); qhead++) {
     const Lit plit = trail[qhead].neg();
     const int32_t lev = var(plit).decision_level;
     bool lev_at_declev = false;
+
     if (!out_of_order) {
       if (decisions.size() <= 1) lev_at_declev = true;
       else if (var(top_dec_lit()).decision_level == lev) lev_at_declev = true;
@@ -3003,7 +2955,7 @@ void Counter::subsume_all() {
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
 // because ONLY non-independent variables remain
-bool Counter::use_sat_solver() {
+bool Counter::use_sat_solver(RetState& state) {
   assert(!isindependent);
   assert(order_heap.empty());
   assert(!decisions.empty());
@@ -3011,22 +2963,25 @@ bool Counter::use_sat_solver() {
   stats.sat_called++;
   auto conflicts_before = stats.conflicts;
 
-  debug_print("Entering SAT mode. Declev: " << decision_level());
-  sat_start_dec_level = decision_level();
+  debug_print("Entering SAT mode. Declev: " << decision_level() << " trail follows.");
+  VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
-
-  // Create dummy decision level in order for get_super_comp work correctly.
-  decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
+  decisions.push_back(StackLevel(decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
+  sat_start_dec_level = decision_level();
+  decisions.top().var = 0;
 
   // Fill up order heap
   for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
       *it != sentinel; it++) {
+    debug_print("checking var to put in order_heap: " << *it << " val: "
+      << val_to_str(val(*it)));
     if (val(*it) != X_TRI) continue;
-    if (*it < opt_indep_support_end) assert(*it >= indep_support_end && "only optional indep remains");
+    if (*it < opt_indep_support_end)
+      assert(*it >= indep_support_end && "only optional indep or non-indep remains");
     order_heap.insert(*it);
   }
-  decisions.pop_back();
+  debug_print("Order heap size: " << order_heap.size());
 
   // the SAT loop
   while(true) {
@@ -3036,45 +2991,41 @@ bool Counter::use_sat_solver() {
       d = order_heap.removeMin();
     } while (val(d) != X_TRI);
     if (d == 0) {
-      debug_print("SAT mode found a solution");
+      debug_print("SAT mode found a solution. dec lev: " << decision_level());
       SLOW_DEBUG_DO(check_sat_solution());
       sat = true;
       break;
     }
     assert(val(d) == X_TRI);
     Lit l(d, var(d).last_polarity);
-    decisions.push_back(StackLevel(1,2));
+    if (decisions.top().var != 0) decisions.push_back(StackLevel(1,2));
     decisions.back().var = l.var();
     setLiteral(l, decision_level());
-prop:
-    bool ret = propagate();
-    if (!ret) {
-      print_stat_line();
-      int x = chrono_work_sat();
-      if (x == -1) {
-        debug_print("SAT mode found UNSAT -- chrono BT");
-        sat = false;
-        break;
-      }
-      if (x == 1) goto prop;
-      if (resolve_conflict_sat()) {
-        goto prop;
-      } else {
-        debug_print("SAT mode found UNSAT");
-        sat = false;
-        break;
-      }
-    } else {
-      // TODO restart sometimes
+
+    while (!propagate()) {
+      start1:
+      if (chrono_work()) continue;
+      state = resolve_conflict();
+      while(state == GO_AGAIN) goto start1;
+      if (state == BACKTRACK) break;
     }
+    if (decision_level() < sat_start_dec_level) { goto end; }
   }
 
   go_back_to(sat_start_dec_level);
   assert(decision_level() == sat_start_dec_level);
+  decisions.top().includeSolution(1);
+  decisions.top().var = 0;
+  decisions.top().change_to_right_branch();
+  assert(decisions.top().getTotalModelCount() == 1);
+
+end:
   order_heap.clear();
   sat_start_dec_level = -1;
   isindependent = true;
-  debug_print("Exiting SAT mode. Declev: " << decision_level() << " sat: " << (int)sat);
+  debug_print("Exiting SAT mode. Declev: " << decision_level() << " sat: " << (int)sat
+      << " trail below.");
+  VERBOSE_DEBUG_DO(print_trail());
   if (sat) stats.sat_found_sat++;
   else stats.sat_found_unsat++;
   stats.sat_conflicts += stats.conflicts-conflicts_before;
@@ -3172,7 +3123,7 @@ uint64_t Counter::buddy_count() {
   // Long clauses
   uint32_t actual_long = 0;
   const auto& ana = comp_manager->get_ana();
-  for (auto itCl = c->cls_begin(); itCl != c->cls_end(); itCl++) {
+  for (auto itCl = c->cls_begin(); *itCl != sentinel; itCl++) {
     auto idx = *itCl;
     debug_print("IDX: " << idx);
     const auto& it = ana.get_idx_to_cl().find(idx);
@@ -3245,7 +3196,7 @@ bool Counter::do_buddy_count(const Comp*) {
 }
 #endif
 
-template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
+template<class T> void Counter::check_cl_propagated_conflicted(T& cl, uint32_t off) const {
   Lit unk = NOT_A_LIT;
   uint32_t num_unknown = 0;
   bool satisfied = false;
@@ -3256,12 +3207,12 @@ template<class T> void Counter::check_cl_propagated_conflicted(T& cl) const {
   }
 
   if (!satisfied && num_unknown == 1) {
-    cout << "ERROR! Clause should have propagated: " << unk << endl;
+    cout << "ERROR! Clause offs: " << off << " should have propagated: " << unk << endl;
     print_cl(cl);
     assert(false);
   }
   if (!satisfied && num_unknown == 0) {
-    cout << "ERROR! Clause should have conflicted" << endl;
+    cout << "ERROR! Clause offs: " << off << " should have conflicted" << endl;
     print_cl(cl);
     assert(false);
   }
@@ -3277,11 +3228,11 @@ void Counter::check_all_propagated_conflicted() const {
   }
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
-    check_cl_propagated_conflicted(cl);
+    check_cl_propagated_conflicted(cl, off);
   }
   for(const auto& off: longRedCls) {
     const Clause& cl = *alloc->ptr(off);
-    check_cl_propagated_conflicted(cl);
+    check_cl_propagated_conflicted(cl, off);
   }
 
   all_lits(i) {

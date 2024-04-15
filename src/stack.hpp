@@ -178,15 +178,7 @@ public:
 };
 
 class DecisionStack: public vector<StackLevel> {
-  uint32_t failed_lit_test_active = 0;
 public:
-
-  void startFailedLitTest() {
-    failed_lit_test_active = true;
-  }
-  void stopFailedLitTest() {
-    failed_lit_test_active = false;
-  }
 
   const StackLevel &top() const{
     assert(size() > 0);
@@ -201,6 +193,6 @@ public:
   /// 0 means pre-1st-decision
   int32_t get_decision_level() const {
     assert(size() > 0);
-    return (int)size() - 1 + failed_lit_test_active;
+    return (int)size() - 1;
   }
 };

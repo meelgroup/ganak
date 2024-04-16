@@ -37,7 +37,7 @@ class CompArchetype;
 class CacheableComp: public HashedComp {
 public:
   CacheableComp() = default;
-  CacheableComp(void* hash_seed, Comp &comp) : HashedComp(hash_seed, comp) { }
+  CacheableComp(void* hash_seed, const Comp &comp) : HashedComp(hash_seed, comp) { }
 
   uint32_t bignum_bytes() const { return HashedComp::bignum_bytes(); }
 

@@ -30,7 +30,7 @@ THE SOFTWARE.
 class HashedComp: public BaseComp {
 public:
   HashedComp() = default;
-  inline HashedComp(void* hash_seed, Comp &r_comp);
+  inline HashedComp(void* hash_seed, const Comp& r_comp);
   uint32_t bignum_bytes() const { return BaseComp::bignum_bytes(); }
 
   uint64_t get_clhashkey() const { return clhashkey_; }
@@ -39,7 +39,7 @@ public:
   }
 };
 
-HashedComp::HashedComp(void* hash_seed, Comp &comp) {
+HashedComp::HashedComp(void* hash_seed, const Comp& comp) {
   clhasher h(hash_seed);
   clhashkey_ = h(comp.get_raw_data().data(), comp.get_raw_data().size());
 }

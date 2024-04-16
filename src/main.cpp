@@ -400,11 +400,6 @@ int main(int argc, char *argv[])
     ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
     arjun->set_seed(conf.seed);
     arjun->set_verbosity(arjun_verb);
-    if (!indep_support_given) {
-      cout << "c o WARNING: setting BCE to false due to non-projected counting" << endl;
-      bce = 0;
-    }
-    arjun->set_bce(bce);
     parse_file(fname, arjun);
     arjun->run_backwards();
     auto ret = arjun->get_fully_simplified_renumbered_cnf(simp_conf);
@@ -425,6 +420,20 @@ int main(int argc, char *argv[])
     } else {
       ret.opt_sampl_vars.clear();
       for(uint32_t i = 0; i < ret.nvars; i++) ret.opt_sampl_vars.push_back(i);
+    }
+
+    if (indep_support_given && bce) {
+        ArjunNS::Arjun arj2;
+        arj2.new_vars(ret.nvars);
+        arj2.set_verbosity(conf.verb);
+        for(const auto& cl: ret.cnf) arj2.add_clause(cl);
+        for(const auto& cl: ret.red_cnf) arj2.add_red_clause(cl);
+        // Important. Only BCE clauses at are not incident on optional sampl set
+        arj2.set_sampl_vars(ret.opt_sampl_vars);
+        auto ret2 = arj2.only_bce();
+        verb_print(1, "BCE removed cls: " << ret.cnf.size()-ret2.cnf.size());
+        ret.cnf = ret2.cnf;
+        ret.red_cnf = ret2.red_cnf;
     }
     ret.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));

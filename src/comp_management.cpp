@@ -47,7 +47,6 @@ void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
   assert(comp_stack.size() == 2);
   comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
   cache.init(*comp_stack.back(), hash_seed);
-  for (uint32_t i = 0 ; i < nVars + 1; i++) cache_hit_score.push_back(0);
 }
 
 void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
@@ -115,7 +114,6 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       } else {
         // Cache hit
         stats.cache_hits_nvars.push(p_new_comp->nVars());
-        if (conf.do_cache_hit_scores) bump_cache_hit_score(*p_new_comp);
 
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."

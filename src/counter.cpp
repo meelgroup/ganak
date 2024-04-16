@@ -909,24 +909,6 @@ uint32_t Counter::find_best_branch() {
     }
   }
 
-  if (conf.do_cache_hit_scores && stats.conflicts > 1000 && best_var != 0) {
-    double c_score = comp_manager->get_cache_hit_score(best_var);
-    for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
-         *it != sentinel; it++) {
-      const uint32_t v = *it;
-      if (val(v) != X_TRI) continue;
-      if (v < indep_support_end) {
-        const double score = score_of(v);
-        if (score > best_var_score * 0.95) {
-          if (comp_manager->get_cache_hit_score(v) > c_score) {
-            best_var = v;
-            c_score = comp_manager->get_cache_hit_score(v);
-          }
-        }
-      }
-    }
-  }
-
   if (best_var != 0 && only_optional_indep) return 0;
   return best_var;
 }
@@ -1363,9 +1345,6 @@ RetState Counter::backtrack() {
         << " -- dec lev: " << decisions.get_decision_level());
     if (conf.do_use_cache)
       comp_manager->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
-    if (conf.do_cache_hit_scores)
-      comp_manager->bump_cache_hit_score(comp_manager->get_super_comp(decisions.top()));
-
     // Backtrack from end, i.e. finished.
     if (decisions.get_decision_level() == 0) {
       debug_print("[indep] Backtracking from lev 0, i.e. ending");

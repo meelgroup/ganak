@@ -46,7 +46,6 @@ struct CounterConfiguration {
   int do_comp_reverse_sort = 0;
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
-  int do_cache_hit_scores = 0;
   int cache_time_update = 2;
   int do_cache_reverse_sort = 1;
 

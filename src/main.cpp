@@ -156,7 +156,6 @@ void add_ganak_options()
     ("consolidateeveryn", po::value(&conf.consolidate_every_n)->default_value(conf.consolidate_every_n), "Consolidate every N learnt clause")
     ("lbd", po::value(&conf.base_lbd_cutoff)->default_value(conf.base_lbd_cutoff), "Initial LBD cutoff")
 
-    ("cscore", po::value(&conf.do_cache_hit_scores)->default_value(conf.do_cache_hit_scores), "Do cache scores")
     ("bce", po::value(&bce)->default_value(bce), "Do BCE")
     ("cache", po::value(&conf.do_use_cache)->default_value(conf.do_use_cache), "Use (i.e. store and retrieve) cache")
     ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")

@@ -1543,7 +1543,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
         auto ret = s2.solve();
         if (ret != CMSat::l_False) {
           cout << "Not implied by decisions above or at its level "
-            << this_lev << " lit: " << t << endl;
+            << this_lev << " lit: " << t << " solver said: " << ret << endl;
           entailment_fail = true;
         }
       }
@@ -1781,7 +1781,7 @@ bool Counter::propagate(bool out_of_order) {
       if (c[0] == plit) { std::swap(c[0], c[1]); }
 
 #ifdef VERBOSE_DEBUG
-      cout << "Prop Norm cl: " << ofs << endl;
+      cout << "Prop Norm cl: " << ofs << " red: " << std::boolalpha << (bool)c.red << endl;
       for(const auto&l: c) {
         cout << "lit " << std::setw(6) << l
           << " lev: " << std::setw(4) << var(l).decision_level

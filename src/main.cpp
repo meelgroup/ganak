@@ -416,24 +416,12 @@ int main(int argc, char *argv[])
       for(const auto& cl: ret.cnf) arj2.add_clause(cl);
       arj2.set_sampl_vars(ret.sampl_vars);
       ret.opt_sampl_vars = arj2.extend_sampl_set();
+      if (bce) arj2.only_bce(ret);
     } else {
       ret.opt_sampl_vars.clear();
       for(uint32_t i = 0; i < ret.nvars; i++) ret.opt_sampl_vars.push_back(i);
     }
 
-    if (indep_support_given && bce) {
-        ArjunNS::Arjun arj2;
-        arj2.new_vars(ret.nvars);
-        arj2.set_verbosity(conf.verb);
-        for(const auto& cl: ret.cnf) arj2.add_clause(cl);
-        for(const auto& cl: ret.red_cnf) arj2.add_red_clause(cl);
-        // Important. Only BCE clauses at are not incident on optional sampl set
-        arj2.set_sampl_vars(ret.opt_sampl_vars);
-        auto ret2 = arj2.only_bce();
-        verb_print(1, "BCE removed cls: " << ret.cnf.size()-ret2.cnf.size());
-        ret.cnf = ret2.cnf;
-        ret.red_cnf = ret2.red_cnf;
-    }
     ret.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
     cout << "c o sampl_vars: "; print_vars(ret.sampl_vars); cout << endl;
@@ -455,6 +443,7 @@ int main(int argc, char *argv[])
 
   mpz_class cnt = 0;
   for(const auto& cl: cnfholder.clauses) sat_solver->add_clause(cl);
+  for(const auto& cl: cnfholder.red_clauses) sat_solver->add_clause(cl);
   auto ret = sat_solver->solve();
   if (ret == CMSat::l_True) {
     for(const auto& cl: cnfholder.clauses) {

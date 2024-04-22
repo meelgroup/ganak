@@ -72,40 +72,6 @@ int sbva_tiebreak = 1;
 int bce = 1;
 ArjunNS::SimpConf simp_conf;
 
-struct CNFHolder {
-  vector<vector<CMSat::Lit>> clauses;
-  vector<vector<CMSat::Lit>> red_clauses;
-  vector<uint32_t> sampl_vars;
-  vector<uint32_t> opt_sampl_vars;
-  uint32_t nvars = 0;
-  mpz_class multiplier_weight = 1;
-  bool weighted = false;
-
-  uint32_t nVars() const { return nvars; }
-  uint32_t new_vars(uint32_t vars) { nvars+=vars; return nvars; }
-  uint32_t new_var() { nvars++; return nvars;}
-
-  void add_xor_clause(vector<uint32_t>&, bool) { exit(-1); }
-  void add_xor_clause(vector<CMSat::Lit>&, bool) { exit(-1); }
-  void add_clause(vector<CMSat::Lit>& cl) { clauses.push_back(cl); }
-  void add_red_clause(vector<CMSat::Lit>& cl) { red_clauses.push_back(cl); }
-  bool get_sampl_vars_set() const { return sampl_vars_set; }
-  bool sampl_vars_set = false;
-  bool opt_sampl_vars_set = false;
-  void set_sampl_vars(vector<uint32_t>& vars)
-    { sampl_vars_set = true; sampl_vars = vars; }
-  const auto& get_sampl_vars() const { return sampl_vars; }
-  void set_opt_sampl_vars(vector<uint32_t>& vars)
-    { opt_sampl_vars_set = true; opt_sampl_vars = vars; }
-
-  void set_multiplier_weight(mpz_class m) { multiplier_weight = m; }
-  auto get_multiplier_weight() const { return multiplier_weight; }
-  void set_lit_weight(CMSat::Lit /*lit*/, double /*weight*/) { assert(false && "Not yet supported"); exit(-1); }
-  void set_weighted(bool _weighted) { weighted = _weighted; }
-  bool get_weighted() const { return weighted; }
-};
-CNFHolder cnfholder;
-
 string ganak_version_info()
 {
     std::stringstream ss;
@@ -388,79 +354,61 @@ int main(int argc, char *argv[])
     cout << "ERROR: must give input file to read" << endl;
     exit(-1);
   }
+  ArjunNS::SimplifiedCNF cnf;
   if (!do_arjun) {
-    parse_file(fname, &cnfholder);
-    cout << "c o sampl_vars: "; print_vars(cnfholder.sampl_vars); cout << endl;
-    if (cnfholder.opt_sampl_vars_set) {
-      cout << "c o opt sampl_vars: "; print_vars(cnfholder.opt_sampl_vars); cout << endl;
+    parse_file(fname, &cnf);
+    cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+    if (cnf.opt_sampl_vars_set) {
+      cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
     }
   } else {
+    parse_file(fname, &cnf);
     double my_time = cpuTime();
-    ArjunNS::Arjun* arjun = new ArjunNS::Arjun;
-    arjun->set_seed(conf.seed);
-    arjun->set_verbosity(arjun_verb);
-    parse_file(fname, arjun);
-    arjun->run_backwards();
-    auto ret = arjun->get_fully_simplified_renumbered_cnf(simp_conf);
-
-    arjun->set_verbosity(1);
-    arjun->run_sbva(ret, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
-    cnfholder = CNFHolder();
-    delete arjun;
+    ArjunNS::Arjun arjun;
+    arjun.set_verb(arjun_verb);
+    arjun.only_run_minimize_indep(cnf);
+    cnf = arjun.only_get_simplified_cnf(cnf, simp_conf);
+    arjun.only_run_sbva(cnf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
     if (indep_support_given) {
       // Extend only if indep support was given, i.e. it's projected
       // otherwise, ALL will be part of it anyway
-      ArjunNS::Arjun arj2;
-      arj2.new_vars(ret.nvars);
-      arj2.set_verbosity(arjun_verb);
-      for(const auto& cl: ret.cnf) arj2.add_clause(cl);
-      arj2.set_sampl_vars(ret.sampl_vars);
-      ret.opt_sampl_vars = arj2.extend_sampl_set();
-      if (bce) arj2.only_bce(ret);
+      arjun.only_extend_sampl_vars(cnf);
+      if (bce) arjun.only_bce(cnf);
     } else {
-      ret.opt_sampl_vars.clear();
-      for(uint32_t i = 0; i < ret.nvars; i++) ret.opt_sampl_vars.push_back(i);
+      cnf.opt_sampl_vars.clear();
+      for(uint32_t i = 0; i < cnf.nvars; i++) cnf.opt_sampl_vars.push_back(i);
     }
 
-    ret.renumber_sampling_vars_for_ganak();
+    cnf.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
-    cout << "c o sampl_vars: "; print_vars(ret.sampl_vars); cout << endl;
-    cout << "c o opt sampl_vars: "; print_vars(ret.opt_sampl_vars); cout << endl;
-
-    // set up cnfholder
-    cnfholder = CNFHolder();
-    cnfholder.clauses = ret.cnf;
-    cnfholder.red_clauses = ret.red_cnf;
-    cnfholder.nvars = ret.nvars;
-    cnfholder.set_multiplier_weight(ret.multiplier_weight);
-    cnfholder.set_sampl_vars(ret.sampl_vars);
-    cnfholder.set_opt_sampl_vars(ret.opt_sampl_vars);
+    cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+    cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
   }
   Counter* counter = new Counter(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
-  counter->new_vars(cnfholder.nVars());
-  sat_solver->new_vars(cnfholder.nVars());
+  counter->new_vars(cnf.nVars());
+  sat_solver->new_vars(cnf.nVars());
 
   mpz_class cnt = 0;
-  for(const auto& cl: cnfholder.clauses) sat_solver->add_clause(cl);
-  for(const auto& cl: cnfholder.red_clauses) sat_solver->add_clause(cl);
+  for(const auto& cl: cnf.clauses) sat_solver->add_clause(cl);
+  for(const auto& cl: cnf.red_clauses) sat_solver->add_clause(cl);
   auto ret = sat_solver->solve();
   if (ret == CMSat::l_True) {
-    for(const auto& cl: cnfholder.clauses) {
+    for(const auto& cl: cnf.clauses) {
       auto cl2 = cms_to_ganak_cl(cl);
       counter->add_irred_cl(cl2);
     }
     counter->end_irred_cls();
-    for(const auto& cl: cnfholder.red_clauses) {
+    for(const auto& cl: cnf.red_clauses) {
       auto cl2 = cms_to_ganak_cl(cl);
       counter->add_red_cl(cl2);
     }
     set<uint32_t> tmp;
-    for(auto const& s: cnfholder.sampl_vars) tmp.insert(s+1);
+    for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
-    if (cnfholder.opt_sampl_vars_set) {
+    if (cnf.opt_sampl_vars_set) {
       tmp.clear();
-      for(auto const& s: cnfholder.opt_sampl_vars) tmp.insert(s+1);
+      for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
       counter->set_optional_indep_support(tmp);
     }
 
@@ -473,7 +421,7 @@ int main(int argc, char *argv[])
   else cout << "s UNSATISFIABLE" << endl;
   if (indep_support_given) cout << "c s type pmc " << endl;
   else cout << "c s type mc" << endl;
-  cnt *= cnfholder.multiplier_weight;
+  cnt *= cnf.multiplier_weight;
   cout << "c s log10-estimate ";
   if (cnt == 0) {
     cout << "-inf" << endl;

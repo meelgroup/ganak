@@ -261,13 +261,19 @@ void Counter::compute_score(TreeDecomposition& tdec) {
   if (width > 0) {
     // Larger the better
     rt = (double)n/(double)width;
-    if (rt > 20) td_weight = conf.td_maxweight;
-    else td_weight = td_weight*exp(rt)/conf.td_divider;
+    if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
+    else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
   if (!conf.do_td_weight) td_weight = 1;
-  verb_print(1, "TD weight: " << td_weight << " rt: " << rt);
+  verb_print(1,
+      "TD weight: " << td_weight
+      << " n: " << n
+      << " rt/width(=rt): " << rt
+      << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
+      << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
+      << exp(rt*conf.td_exp_mult)/conf.td_divider);
 
   // Calc td score
   for (uint32_t i = 1; i < n; i++) {

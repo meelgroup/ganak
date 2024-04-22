@@ -115,6 +115,7 @@ void add_ganak_options()
     ("tdminw", po::value(&conf.td_minweight)->default_value(conf.td_minweight), "TD min weight")
     ("tddiv", po::value(&conf.td_divider)->default_value(conf.td_divider), "TD divider")
     ("tdweighted", po::value(&conf.do_td_weight)->default_value(conf.do_td_weight), "TD weight enabled")
+    ("tdexpmult", po::value(&conf.td_exp_mult)->default_value(conf.td_exp_mult), "TD exponential multiplier")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("rdbeveryn", po::value(&conf.reduce_db_everyN)->default_value(conf.reduce_db_everyN), "Reduce the clause DB every N conflicts")

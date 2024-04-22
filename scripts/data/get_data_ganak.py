@@ -193,7 +193,7 @@ def timeout_parse(fname):
                 elif "mc2023" in call:
                     call = call.split("mc2023_")[0]
                 else:
-                    assert False
+                  call = " ".join(call.split()[:-1])
                 call = call.replace(" -t real", "")
                 call = call.split("doalarm 3600")[1]
                 call = call.replace("././ganak ", "")

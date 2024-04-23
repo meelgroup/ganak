@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
     set<uint32_t> tmp;
     for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
     counter->set_indep_support(tmp);
-    if (cnf.opt_sampl_vars_set) {
+    if (cnf.opt_sampl_vars_given) {
       tmp.clear();
       for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
       counter->set_optional_indep_support(tmp);

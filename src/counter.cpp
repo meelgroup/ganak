@@ -769,6 +769,7 @@ SOLVER_StateT Counter::count_loop() {
       if (state == BACKTRACK) break;
 
       // we are in RESOLVED or PROCESS_COMPONENT state, continue.
+      if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
       assert(state == PROCESS_COMPONENT || state == RESOLVED);
     }
     // we are here because there is no next component, or we had to backtrack

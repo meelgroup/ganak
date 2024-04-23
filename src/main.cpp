@@ -369,16 +369,14 @@ int main(int argc, char *argv[])
     arjun.set_verb(arjun_verb);
     arjun.only_run_minimize_indep(cnf);
     cnf = arjun.only_get_simplified_cnf(cnf, simp_conf);
-    arjun.only_run_sbva(cnf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
-    if (indep_support_given) {
-      // Extend only if indep support was given, i.e. it's projected
-      // otherwise, ALL will be part of it anyway
-      arjun.only_extend_sampl_vars(cnf);
-      if (bce) arjun.only_bce(cnf);
-    } else {
-      cnf.opt_sampl_vars.clear();
-      for(uint32_t i = 0; i < cnf.nvars; i++) cnf.opt_sampl_vars.push_back(i);
+    if (!indep_support_given) {
+      vector<uint32_t> tmp;
+      for(uint32_t i = 0; i < cnf.nvars; i++) tmp.push_back(i);
+      cnf.set_opt_sampl_vars(tmp);
     }
+    arjun.only_run_sbva(cnf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
+    arjun.only_extend_sampl_vars(cnf);
+    if (bce) arjun.only_bce(cnf);
 
     cnf.renumber_sampling_vars_for_ganak();
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));

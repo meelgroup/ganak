@@ -69,7 +69,7 @@ int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
-int bce = 1;
+int do_bce = 1;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -123,7 +123,7 @@ void add_ganak_options()
     ("consolidateeveryn", po::value(&conf.consolidate_every_n)->default_value(conf.consolidate_every_n), "Consolidate every N learnt clause")
     ("lbd", po::value(&conf.base_lbd_cutoff)->default_value(conf.base_lbd_cutoff), "Initial LBD cutoff")
 
-    ("bce", po::value(&bce)->default_value(bce), "Do BCE")
+    ("bce", po::value(&do_bce)->default_value(do_bce), "Do BCE")
     ("cache", po::value(&conf.do_use_cache)->default_value(conf.do_use_cache), "Use (i.e. store and retrieve) cache")
     ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
     ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Comp Caching")
@@ -368,17 +368,9 @@ int main(int argc, char *argv[])
     ArjunNS::Arjun arjun;
     arjun.set_verb(arjun_verb);
     arjun.only_run_minimize_indep(cnf);
-    cnf = arjun.only_get_simplified_cnf(cnf, simp_conf);
-    if (!indep_support_given) {
-      vector<uint32_t> tmp;
-      for(uint32_t i = 0; i < cnf.nvars; i++) tmp.push_back(i);
-      cnf.set_opt_sampl_vars(tmp);
-    }
-    arjun.only_run_sbva(cnf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
-    arjun.only_extend_sampl_vars(cnf);
-    if (bce) arjun.only_bce(cnf);
-
-    cnf.renumber_sampling_vars_for_ganak();
+    bool do_extend_indep = true;
+    bool do_unate = false;
+    arjun.elim_to_file(cnf, indep_support_given, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
     cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
     cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;

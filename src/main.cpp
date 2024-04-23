@@ -64,6 +64,7 @@ bool indep_support_given = false;
 CounterConfiguration conf;
 int arjun_verb = 2;
 int do_arjun = 1;
+int arjun_gates = 1;
 int ignore_indep = 0;
 int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
@@ -105,6 +106,7 @@ void add_ganak_options()
     ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
     ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
+    ("arjungates", po::value(&arjun_gates)->default_value(arjun_gates), "Use arjun's gate detection")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("forcebranch", po::value(&conf.force_branch)->default_value(conf.force_branch), "Force branch. 0 = no force, 1 = TD priority, 2 = conflict priority")
     ("branchcutoff", po::value(&conf.branch_cutoff)->default_value(conf.branch_cutoff), "Change to different branch setup after this many conflicts")
@@ -367,6 +369,10 @@ int main(int argc, char *argv[])
     double my_time = cpuTime();
     ArjunNS::Arjun arjun;
     arjun.set_verb(arjun_verb);
+    arjun.set_or_gate_based(arjun_gates);
+    arjun.set_xor_gates_based(arjun_gates);
+    arjun.set_ite_gate_based(arjun_gates);
+    arjun.set_irreg_gate_based(arjun_gates);
     arjun.only_run_minimize_indep(cnf);
     bool do_extend_indep = true;
     bool do_unate = false;

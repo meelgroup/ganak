@@ -64,7 +64,7 @@ bool indep_support_given = false;
 CounterConfiguration conf;
 int arjun_verb = 2;
 int do_arjun = 1;
-int arjun_gates = 1;
+int arjun_gates = 0;
 int ignore_indep = 0;
 int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
@@ -373,6 +373,7 @@ int main(int argc, char *argv[])
     arjun.set_xor_gates_based(arjun_gates);
     arjun.set_ite_gate_based(arjun_gates);
     arjun.set_irreg_gate_based(arjun_gates);
+    arjun.only_backbone(cnf);
     arjun.only_run_minimize_indep(cnf);
     bool do_extend_indep = true;
     bool do_unate = false;

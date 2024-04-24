@@ -45,8 +45,8 @@ void CompAnalyzer::initialize(
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
-  var_freq_scores.resize(max_var + 1, 0);
-  act_inc = 1.0;
+  VAR_FREQ_DO(var_freq_scores.resize(max_var + 1, 0));
+  VAR_FREQ_DO(act_inc = 1.0);
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
   vector<vector<uint32_t>>  occ_ternary_clauses(max_var + 1);
@@ -186,7 +186,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       BUDDY_DO(if (solver->val(*p) == X_TRI) archetype.num_bin_cls++);
-      if (manageSearchOccurrenceOf(*p)) { bump_freq_score(*p); bump_freq_score(v); }
+      if (manageSearchOccurrenceOf(*p)) {VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));};
     }
 
     //traverse ternary clauses
@@ -200,7 +200,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
           archetype.set_clause_nil(*p);
         } else {
           /* cout << "not satisfied" << endl; */
-          bump_freq_score(v);
+          VAR_FREQ_DO(bump_freq_score(v));
           manageSearchOccurrenceAndScoreOf(a);
           manageSearchOccurrenceAndScoreOf(b);
           archetype.set_clause_seen(*p ,is_unknown(a) && is_unknown(b));

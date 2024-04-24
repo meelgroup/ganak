@@ -39,6 +39,7 @@ using std::endl;
 /* #define VERY_SLOW_DEBUG */
 /* #define CHECK_TRAIL_ENTAILMENT */
 /* #define BUDDY_ENABLED */
+#define VAR_FREQ
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */
@@ -84,6 +85,12 @@ using std::endl;
 #define CHECK_COUNT_DO(x) do { x; } while (0)
 #else
 #define CHECK_COUNT_DO(x) do { } while (0)
+#endif
+
+#ifdef VAR_FREQ
+#define VAR_FREQ_DO(x) do { x; } while (0)
+#else
+#define VAR_FREQ_DO(x) do { } while (0)
 #endif
 /////
 

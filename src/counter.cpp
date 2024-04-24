@@ -875,13 +875,13 @@ double Counter::score_of(const uint32_t v) const {
   double td_score = 0;
   if ((conf.force_branch == 0 && stats.conflicts < conf.branch_cutoff && !tdscore.empty()) ||
       conf.force_branch == 1) {
-    freq_score = comp_manager->freq_score_of(v)/15.0;
+    VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/15.0);
     // TODO Yash idea: let's cut this into activities and incidence
     act_score = var_act(v)/3;
     if (!tdscore.empty()) td_score = td_weight*tdscore[v];
   } else if (conf.force_branch == 0 || conf.force_branch == 2){
     // activity is prioritized
-    freq_score = comp_manager->freq_score_of(v);
+    VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v));
     act_score = 100*var_act(v);
     if (!tdscore.empty()) td_score += tdscore[v];
   }
@@ -935,7 +935,8 @@ uint32_t Counter::find_best_branch_gpmc() {
     if (v < indep_support_end) only_optional_indep = false;
 
     double score_td = tdscore[v];
-    double score_f = comp_manager->freq_score_of(v);
+    double score_f = 0;
+    VAR_FREQ_DO(score_f = comp_manager->freq_score_of(v));
     double score_a = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {

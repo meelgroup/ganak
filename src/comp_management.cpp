@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "comp_management.hpp"
 #include "counter.hpp"
-#include <iomanip>
 
 CompManager::CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                  const LiteralIndexedVector<TriValue> &lit_values,

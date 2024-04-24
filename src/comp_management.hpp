@@ -22,19 +22,15 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "comp_types/base_packed_comp.hpp"
 #include "comp_types/comp.hpp"
 #include "comp_cache.hpp"
 #include "comp_analyzer.hpp"
 
-#include <limits>
-#include <unordered_map>
 #include <random>
 #include <gmpxx.h>
 #include "containers.hpp"
 #include "stack.hpp"
 #include "clhash/clhash.h"
-/* #include "clhash/minim.hpp" */
 #include "counter_config.hpp"
 
 class Counter;
@@ -53,7 +49,9 @@ public:
     comp_stack.clear();
   }
 
+#ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
+#endif
 
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);

@@ -26,11 +26,8 @@ THE SOFTWARE.
 #include "counter_config.hpp"
 #include "statistics.hpp"
 #include "comp_types/comp.hpp"
-#include "comp_types/base_packed_comp.hpp"
 #include "comp_types/comp_archetype.hpp"
 
-#include <vector>
-#include <cmath>
 #include <map>
 #include <gmpxx.h>
 #include "containers.hpp"
@@ -53,6 +50,7 @@ public:
     return idx_to_cl;
   }
 
+#ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const { return var_freq_scores[v]/max_freq_score; }
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] -= act_inc;
@@ -67,6 +65,7 @@ public:
     }
     if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
   }
+#endif
   const CompArchetype &current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
@@ -89,7 +88,7 @@ public:
   }
 
   bool manageSearchOccurrenceAndScoreOf(Lit lit){
-    if (is_unknown(lit)) bump_freq_score(lit.var());
+    VAR_FREQ_DO(if (is_unknown(lit)) bump_freq_score(lit.var()));
     return manageSearchOccurrenceOf(lit.var());
   }
 
@@ -142,9 +141,11 @@ private:
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
+#ifdef VAR_FREQ
   vector<double> var_freq_scores;
   double max_freq_score = 1.0;
   double act_inc = 1.0;
+#endif
   CompArchetype  archetype;
   Counter* solver = nullptr;
   map<uint32_t, vector<Lit>> idx_to_cl;
@@ -181,7 +182,7 @@ private:
 
   // This is called from recordCompOf, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause(uint32_t vt, ClauseIndex cl_id, Lit const* pstart_cls){
+  void search_clause([[maybe_unused]] uint32_t vt, ClauseIndex cl_id, Lit const* pstart_cls){
     const auto it_v_end = comp_vars.end();
     bool all_lits_set = true;
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
@@ -199,16 +200,18 @@ private:
           comp_vars.pop_back();
         }
         archetype.set_clause_nil(cl_id);
+#ifdef VAR_FREQ
         while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
+#endif
         break;
       }
     }
 
     if (!archetype.clause_nil(cl_id)){
-      bump_freq_score(vt);
+      VAR_FREQ_DO(bump_freq_score(vt));
       archetype.set_clause_seen(cl_id,all_lits_set);
     }
-    if ((conf.decide & 2)) act_inc *= 1.0/0.98;
+    VAR_FREQ_DO(if ((conf.decide & 2)) act_inc *= 1.0/0.98);
   }
 };

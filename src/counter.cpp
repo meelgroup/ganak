@@ -264,6 +264,7 @@ void Counter::compute_score(TreeDecomposition& tdec) {
     if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
     else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
+  if (conf.do_check_td_vs_ind && indep_support_end < width) td_weight = 0;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
   if (!conf.do_td_weight) td_weight = 1;

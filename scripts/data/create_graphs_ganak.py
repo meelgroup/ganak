@@ -76,22 +76,25 @@ not_calls = []
 only_dirs = [
   # "6683080",
              "out-ganak-6683080.pbs101-1/", # best of GANAK so far, lbd 1
-             "out-ganak-6318929.pbs101-5/", # exactmc
-             "out-ganak-6328707.pbs101-7/", # exactmc
+             #"out-ganak-6318929.pbs101-5/", # exactmc
+             #"out-ganak-6328707.pbs101-7/", # exactmc
              #"out-ganak-6396805.pbs101-1/",  # best, but no cache
              "out-ganak-6396805.pbs101-12/", # used to be best
-             "out-ganak-6318929.pbs101-4/", # approxmc
+             # "out-ganak-6318929.pbs101-4/", # approxmc
              "out-ganak-6318929.pbs101-7/", # sharpsat
              "6749880.pbs101-0/",
-             "out-ganak-6683080.pbs101-4",
+             # "out-ganak-6683080.pbs101-4/", # last run, without refactored Arjun+fixed SAT
+             "out-ganak-6841576.pbs101-0/", # trying TD exponent, turning off gates for Arjun
              ]
+# only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
 # "6349002",
 # only_dirs = ["6606250"]
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
 not_versions = []
-only_calls = ["--lbd 1"] #
+# only_calls = ["--lbd 1"] #
 # only_dirs = []
+only_calls = []
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)
@@ -162,7 +165,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [0:3600][90:]\\\n")
+    f.write("plot [0:3600][120:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

@@ -1141,7 +1141,7 @@ bool Counter::restart_if_needed() {
   // Conflicts, luby
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
-        10*(luby(2, stats.num_restarts) * conf.first_restart))
+        (luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
   // Comps, luby

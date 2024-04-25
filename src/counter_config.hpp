@@ -77,12 +77,12 @@ struct CounterConfiguration {
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  double td_maxweight = 5.0;
+  double td_maxweight = 4.0;
   double td_minweight = 0.1;
   double td_divider = 1e3;
   double do_td_weight = 1;
   double td_exp_mult = 1.0;
-  int do_check_td_vs_ind = false;
+  int do_check_td_vs_ind = 1;
 
   uint64_t seed = 0;
   double delta = 0.05;

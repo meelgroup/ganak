@@ -315,7 +315,9 @@ double biginteger_log_modified(const mpz_class& x) {
 }
 
 void print_vars(const vector<uint32_t>& vars) {
-    for(const auto& v: vars) cout << v+1 << " ";
+  auto tmp = vars;
+  std::sort(tmp.begin(), tmp.end());
+  for(const auto& v: tmp) cout << v+1 << " ";
 }
 
 int main(int argc, char *argv[])

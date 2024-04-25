@@ -323,8 +323,14 @@ void Counter::td_decompose() {
     }
   }
 
-  uint64_t n = nVars()*nVars();
+  const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();
   const double density = (double)primal.numEdges()/(double)n;
+  const double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
+  verb_print(1, "[td] Primal graph  "
+    << " nodes: " << primal.numNodes()
+    << " edges: " <<  primal.numEdges()
+    << " density: " << std::fixed << std::setprecision(3) << density
+    << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
   if (primal.numEdges() > 70000 ) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
@@ -333,24 +339,8 @@ void Counter::td_decompose() {
     verb_print(1, "[td] Density is too high, " << density << " skipping TD");
     return;
   }
-
-  const double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
   if (edge_var_ratio > 30) {
-    verb_print(1, "[td] Edge/var ratio is too high, " << edge_var_ratio << " skipping TD");
-    return;
-  }
-  verb_print(1, "[td] Primal graph  "
-    << " nodes: " << primal.numNodes()
-    << " edges: " <<  primal.numEdges()
-    << " density: " << std::fixed << std::setprecision(3) << density
-    << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
-  if (edge_var_ratio > 6*conf.td_ratiolim && nVars() > 100) {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
-    return;
-  }
-
-  if (primal.numEdges() > 1900000) {
-    verb_print(1, "[td] too many edges, not running TD");
     return;
   }
 

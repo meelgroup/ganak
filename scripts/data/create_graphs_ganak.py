@@ -85,6 +85,7 @@ only_dirs = [
              "6749880.pbs101-0/",
              # "out-ganak-6683080.pbs101-4/", # last run, without refactored Arjun+fixed SAT
              "out-ganak-6841576.pbs101-0/", # trying TD exponent, turning off gates for Arjun
+             "out-ganak-6853697.pbs101-" # backbone first, if proj is smaller than TD, td=0.1, turn off gates -- ran with CMS 58286e58ef64156ed2c16ec4104820c7fb4aeda5
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

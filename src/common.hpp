@@ -39,7 +39,7 @@ using std::endl;
 /* #define VERY_SLOW_DEBUG */
 /* #define CHECK_TRAIL_ENTAILMENT */
 /* #define BUDDY_ENABLED */
-#define VAR_FREQ
+/* #define VAR_FREQ */
 
 // WARNING below ALSO disables cache!!
 /* #define CHECK_COUNT */

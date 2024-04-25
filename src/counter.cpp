@@ -913,8 +913,8 @@ uint32_t Counter::find_best_branch() {
 
 uint32_t Counter::find_best_branch_gpmc() {
   uint32_t best_var = 0;
-  double max_score_a = -1;
-  double max_score_f = -1;
+  double max_score_act = -1;
+  double max_score_freq = -1;
   double max_score_td = -1;
   bool only_optional_indep = true;
 
@@ -925,23 +925,23 @@ uint32_t Counter::find_best_branch_gpmc() {
     if (v < indep_support_end) only_optional_indep = false;
 
     double score_td = tdscore[v];
-    double score_f = 0;
-    VAR_FREQ_DO(score_f = comp_manager->freq_score_of(v));
-    double score_a = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
+    double score_freq = 0;
+    VAR_FREQ_DO(score_freq = comp_manager->freq_score_of(v));
+    double score_act = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {
       max_score_td = score_td;
-      max_score_f = score_f;
-      max_score_a = score_a;
+      max_score_freq = score_freq;
+      max_score_act = score_act;
       best_var = v;
     }
     else if( score_td == max_score_td) {
-      if(score_f > max_score_f) {
-        max_score_f = score_f;
-        max_score_a = score_a;
+      if(score_freq > max_score_freq) {
+        max_score_freq = score_freq;
+        max_score_act = score_act;
         best_var = v;
-      } else if (score_f == max_score_f && score_a > max_score_a) {
-        max_score_a = score_a;
+      } else if (score_freq == max_score_freq && score_act > max_score_act) {
+        max_score_act = score_act;
         best_var = v;
       }
     }

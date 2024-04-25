@@ -155,6 +155,6 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
 
 
 void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
-  verb_print(1, "irred cls (all/long/bin/unit): "
+  verb_print(1, "irred cls long/bin: "
     << counter->get_num_irred_long_cls() << "/" << num_binary_irred_clauses_);
 }

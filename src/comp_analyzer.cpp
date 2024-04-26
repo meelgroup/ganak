@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter.hpp"
 #include "clauseallocator.hpp"
+#include "structures.hpp"
 
 // There is exactly ONE of these
 CompAnalyzer::CompAnalyzer(
@@ -61,14 +62,15 @@ void CompAnalyzer::initialize(
 
   vector<uint32_t> tmp;
   max_clid = 1;
+  assert(idx_to_cl_map.empty());
+  assert(idx_to_cl_data.empty());
+  idx_to_cl_map.push_back(0);
   // lit_pool contains all non-binary clauses
   for (const auto& off: long_irred_cls) {
     // Builds the occ list for 3-long and long clauses
     // it_curr_cl_st is the starting point of the clause
     // for each lit in the clause, it adds the clause to the occ list
     const Clause& cl = *alloc->ptr(off);
-    vector<Lit> cl_lit;
-    cl_lit.insert(cl_lit.end(), cl.begin(), cl.end());
     assert(cl.size() > 2);
 
     for(const auto& l: cl) {
@@ -80,17 +82,21 @@ void CompAnalyzer::initialize(
       if(tmp.size() == 2) {
         // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
         occ_ternary_clauses[var].push_back(max_clid);
-        idx_to_cl[max_clid] = cl_lit;
         occ_ternary_clauses[var].insert(occ_ternary_clauses[var].end(), tmp.begin(), tmp.end());
       } else {
         // Long clauses
         occs[var].push_back(max_clid);
-        idx_to_cl[max_clid] = cl_lit;
         occs[var].push_back(occ_long_clauses[var].size());
         occ_long_clauses[var].insert(occ_long_clauses[var].end(), tmp.begin(), tmp.end());
         occ_long_clauses[var].push_back(SENTINEL_LIT.raw());
       }
     }
+    // Fill idx
+    const uint32_t at = idx_to_cl_data.size();
+    for(const auto& l: cl) idx_to_cl_data.push_back(l);
+    idx_to_cl_data.push_back(SENTINEL_LIT);
+    assert(idx_to_cl_map.size() == max_clid);
+    idx_to_cl_map.push_back(at);
     max_clid++;
   }
   debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");

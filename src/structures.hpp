@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& co, const std::vector<Lit>& lits)
   return co;
 }
 
-static const Lit NOT_A_LIT(0, false);
+static constexpr Lit NOT_A_LIT(0, false);
 #define SENTINEL_LIT NOT_A_LIT
 
 struct ClOffsBlckL {

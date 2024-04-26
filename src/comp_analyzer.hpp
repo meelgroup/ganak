@@ -46,8 +46,8 @@ public:
         const uint32_t& _indep_support_end,
         Counter* _solver);
 
-  const map<uint32_t, vector<Lit>>& get_idx_to_cl() const {
-    return idx_to_cl;
+  Lit const* get_idx_to_cl(uint32_t cl_id) const {
+    return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
   }
 
 #ifdef VAR_FREQ
@@ -148,7 +148,10 @@ private:
 #endif
   CompArchetype  archetype;
   Counter* solver = nullptr;
-  map<uint32_t, vector<Lit>> idx_to_cl;
+
+  // Quick lookup of cl based on ID
+  vector<Lit> idx_to_cl_data; //packed clauses separated by NOT_A_LIT, idx_to_cl_map indexes in
+  vector<uint32_t> idx_to_cl_map; //ID goes in, offset of id_to_cl_data comes out. Ends with NOT_A_LIT
 
   // Used to figure out which vars are in a component
   // used in  record_comp_of

@@ -2596,7 +2596,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
     , order_heap(VarOrderLt(watches))
 {
   if (conf.do_buddy) {
-    bdd_init(1000000, 100000);
+    bdd_init(100, 100000);
     bdd_gbc_hook(my_gbchandler);
     bdd_setvarnum(64);
     bdd_autoreorder(BDD_REORDER_WIN2ITE);
@@ -3038,12 +3038,12 @@ void Counter::check_sat_solution() const {
 
 #ifdef BUDDY_ENABLED
 #define mybdd_add(a,l) \
-  if (!l.sign()) tmp |= bdd_ithvar(vmap_rev[l.var()]); \
-  else tmp |= bdd_nithvar(vmap_rev[l.var()]);
+  if (!(l).sign()) tmp |= bdd_ithvar(vmap_rev[(l).var()]); \
+  else tmp |= bdd_nithvar(vmap_rev[(l).var()]);
 
 
 bool Counter::do_buddy_count(const Comp* c) {
-  if (c->nVars() > 84 || c->nVars() < 6 || (c->numBinCls()+c->num_long_cls()) > conf.buddy_max_cls) {
+  if (c->nVars() >= 64 || c->nVars() <= 3 || (c->numBinCls()+c->num_long_cls()) > conf.buddy_max_cls) {
     /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */
     return false;
   }
@@ -3083,15 +3083,15 @@ uint64_t Counter::buddy_count() {
   // variable mapping
   for(uint32_t i = 0; i < c->nVars(); i++) {
     uint32_t var = c->vars_begin()[i];
-    seen[var] = 1;
     /* vmap_rev[var] = vmap.size(); */
     vmap.push_back(var);
   }
-  std::sort(vmap.begin(),vmap.end(),
-      [=](uint32_t a, uint32_t b) -> bool {
-      if (tdscore.empty()) return comp_manager->freq_score_of(a) > comp_manager->freq_score_of(b);
-      return tdscore[a] > tdscore[b];
-      });
+  /* std::sort(vmap.begin(),vmap.end(), */
+  /*     [=](uint32_t a, uint32_t b) -> bool { */
+  /*     VAR_FREQ_DO(if (tdscore.empty()) return comp_manager->freq_score_of(a) > comp_manager->freq_score_of(b)); */
+  /*     if (!tdscore.empty()) return tdscore[a] > tdscore[b]; */
+  /*     else return false; */
+  /*     }); */
   for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;
   VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
 
@@ -3101,19 +3101,17 @@ uint64_t Counter::buddy_count() {
   // Long clauses
   uint32_t actual_long = 0;
   const auto& ana = comp_manager->get_ana();
-  for (auto itCl = c->cls_begin(); *itCl != sentinel; itCl++) {
-    auto idx = *itCl;
+  for (auto it_cl = c->cls_begin(); *it_cl != sentinel; it_cl++) {
+    auto idx = *it_cl;
     debug_print("IDX: " << idx);
-    const auto& it = ana.get_idx_to_cl().find(idx);
-    assert(it != ana.get_idx_to_cl().end());
-    const auto& cl = it->second;
+    Lit const* cl = ana.get_idx_to_cl(idx);
     VERBOSE_DEBUG_DO( cout << "Long cl." << endl; print_cl(cl.data(), cl.size()));
 
     auto tmp = bdd_false();
-    for(const auto& l: cl) {
-      assert(val(l) != T_TRI);
-      if (val(l) != X_TRI) continue;
-      mybdd_add(tmp, l);
+    for(Lit const* l = cl; *l != SENTINEL_LIT; l++) {
+      assert(val(*l) != T_TRI);
+      if (val(*l) != X_TRI) continue;
+      mybdd_add(tmp, *l);
     }
     bdd &= tmp;
     actual_long++;
@@ -3146,6 +3144,7 @@ uint64_t Counter::buddy_count() {
   if (actual_long != c->num_long_cls()) {
     cout << "WARN: numlong: " << c->num_long_cls() << " actual long: " << actual_long << endl;
   });
+  /* cout << "bin cls: " << actual_bin << " long cls: " << actual_long << " vars: " << vmap.size() << endl; */
 
   assert(c->num_long_cls() == actual_long);
   if (actual_bin > c->numBinCls()) {
@@ -3159,11 +3158,6 @@ uint64_t Counter::buddy_count() {
   cout << "num bin cls: " << actual_bin << endl;
   cout << "num long cls: " << actual_long << endl;
   cout << "----------------------------------------------" << endl);
-
-  for(uint32_t i = 0; i < c->nVars(); i++) {
-    uint32_t var = c->vars_begin()[i];
-    seen[var] = 0;
-  }
 
   return cnt >> (64-vmap.size());
 }

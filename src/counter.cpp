@@ -751,10 +751,10 @@ SOLVER_StateT Counter::count_loop() {
 
       while (!propagate()) {
         start1:
-        if (chrono_work()) continue;
+        if (chrono_work()) continue; // will DEFINITELY conflict if TRUE
         state = resolve_conflict();
         start11:
-        while(state == GO_AGAIN) goto start1;
+        if (state == GO_AGAIN) goto start1;
         if (state == BACKTRACK) break;
       }
       if (state == BACKTRACK) break;
@@ -772,7 +772,7 @@ SOLVER_StateT Counter::count_loop() {
       start2:
       if (chrono_work()) continue;
       state = resolve_conflict();
-      while(state == GO_AGAIN) goto start2;
+      if (state == GO_AGAIN) goto start2;
       if (state == BACKTRACK) {
         state = backtrack();
         if (state == EXIT) goto end;
@@ -2984,7 +2984,7 @@ bool Counter::use_sat_solver(RetState& state) {
       start1:
       if (chrono_work()) continue;
       state = resolve_conflict();
-      while(state == GO_AGAIN) goto start1;
+      if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;
     }
     if (decision_level() < sat_start_dec_level) { goto end; }

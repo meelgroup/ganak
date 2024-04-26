@@ -78,16 +78,16 @@ only_dirs = [
              "out-ganak-6683080.pbs101-1/", # best of GANAK so far, lbd 1
              "out-ganak-6318929.pbs101-5/", # exactmc
              "out-ganak-6328707.pbs101-7/", # exactmc
-             "out-ganak-6396805.pbs101-1/",  # best, but no cache
-             "out-ganak-6396805.pbs101-12/", # used to be best
+             #"out-ganak-6396805.pbs101-1/",  # best, but no cache
+             #"out-ganak-6396805.pbs101-12/", # used to be best
              # "out-ganak-6318929.pbs101-4/", # approxmc
              "out-ganak-6318929.pbs101-7/", # sharpsat
-             "6749880.pbs101-0/",
+             #"out-ganak-6749880.pbs101-0/", # like out-ganak-6683080.pbs101-1, but cluster is slower(!!)
              # "out-ganak-6683080.pbs101-4/", # last run, without refactored Arjun+fixed SAT
-             "out-ganak-6841576.pbs101-0/", # trying TD exponent, turning off gates for Arjun
-             "out-ganak-6853697.pbs101-4/", # backbone first, if proj is smaller than TD, td=0.1, turn off gates -- ran with CMS 58286e58ef64156ed2c16ec4104820c7fb4aeda5
+             #"out-ganak-6841576.pbs101-0/", # trying TD exponent, turning off gates for Arjun
+             #"out-ganak-6853697.pbs101-4/", # backbone first, if proj is smaller than TD, td=0.1, turn off gates -- ran with CMS 58286e58ef64156ed2c16ec4104820c7fb4aeda5
              "out-ganak-6867174.pbs101-0", # fix with max grow 6, also try no freq
-             # "out-ganak-6867174.pbs101-1", # fix with max grow 6, also try no freq
+             "out-ganak-6870225.pbs101-0", # max grow 6, maxtd 5
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

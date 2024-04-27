@@ -140,7 +140,7 @@ static int    fullsatone_rec(int);
 static void   allsat_rec(BDD r);
 static double satcount_rec(int);
 static double satcountln_rec(int);
-static int64_t satcount_rec_i64(int);
+static uint64_t satcount_rec_i64(int, uint32_t);
 static void   varprofile_rec(int);
 static double bdd_pathcount_rec(BDD);
 static int    varset2vartable(BDD);
@@ -2477,16 +2477,16 @@ double bdd_satcount(BDD r)
 }
 
 
-int64_t bdd_satcount_i64(BDD r)
+uint64_t bdd_satcount_i64(BDD r, uint32_t proj_end)
 {
-   int64_t size=1;
+   uint64_t size=1;
 
    CHECKa(r, 0);
 
    miscid = CACHEID_SATCOI64;
-   size = ((int64_t)1) << LEVEL(r);
+   size = ((uint64_t)1) << LEVEL(r);
 
-   return size * satcount_rec_i64(r);
+   return size * satcount_rec_i64(r, proj_end);
 }
 
 double bdd_satcountset(BDD r, BDD varset)
@@ -2505,11 +2505,16 @@ double bdd_satcountset(BDD r, BDD varset)
    return unused >= 1.0 ? unused : 1.0;
 }
 
-static int64_t satcount_rec_i64(int root)
+static unsigned min(unsigned int a, unsigned int b)
+{
+   return a < b ? a : b;
+}
+
+static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
 {
    BddCacheData *entry;
    BddNode *node;
-   int64_t size, s;
+   uint64_t size, s;
 
    if (root < 2)
       return root;
@@ -2520,14 +2525,15 @@ static int64_t satcount_rec_i64(int root)
 
    node = &bddnodes[root];
    size = 0;
-   s = 1;
 
-   s *= ((int64_t)1) << (LEVEL(LOWp(node)) - LEVELp(node) - 1);
-   size += s * satcount_rec_i64(LOWp(node));
+   if (LEVELp(node) >= proj_end)
+      return (satcount_rec_i64(LOWp(node), proj_end) + satcount_rec_i64(HIGHp(node), proj_end)) > 0;
 
-   s = 1;
-   s *= ((int64_t)1) << (LEVEL(HIGHp(node)) - LEVELp(node) - 1);
-   size += s * satcount_rec_i64(HIGHp(node));
+   s = ((uint64_t)1) << (min(LEVEL(LOWp(node)), proj_end) - LEVELp(node) - 1);
+   size += s * satcount_rec_i64(LOWp(node), proj_end);
+
+   s = ((uint64_t)1) << (min(LEVEL(HIGHp(node)), proj_end) - LEVELp(node) - 1);
+   size += s * satcount_rec_i64(HIGHp(node), proj_end);
 
    entry->a = root;
    entry->c = miscid;

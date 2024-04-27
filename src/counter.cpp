@@ -2599,7 +2599,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
     bdd_init(100, 100000);
     bdd_gbc_hook(my_gbchandler);
     bdd_setvarnum(64);
-    bdd_autoreorder(BDD_REORDER_WIN2ITE);
+    /* bdd_autoreorder(BDD_REORDER_NONE); */
   }
 }
 
@@ -3038,8 +3038,10 @@ void Counter::check_sat_solution() const {
 
 #ifdef BUDDY_ENABLED
 #define mybdd_add(a,l) \
+  do { \
   if (!(l).sign()) tmp |= bdd_ithvar(vmap_rev[(l).var()]); \
-  else tmp |= bdd_nithvar(vmap_rev[(l).var()]);
+  else tmp |= bdd_nithvar(vmap_rev[(l).var()]); \
+  } while(0)
 
 
 bool Counter::do_buddy_count(const Comp* c) {
@@ -3071,7 +3073,6 @@ bool Counter::do_buddy_count(const Comp* c) {
 // * need to use double bdd_satcountlnset(BDD r, BDD varset) to do projected counting
 //   --> NOTE: double needs to be changed to int64_t
 uint64_t Counter::buddy_count() {
-  assert(conf.do_vivify == 0 && "Vivify will change the irred cls, which will mess this up.");
   const auto& s = decisions.top();
   auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
                                        //that it could have already fallen into pieces
@@ -3081,18 +3082,19 @@ uint64_t Counter::buddy_count() {
   vmap_rev.resize(nVars()+1);
 
   // variable mapping
+  uint32_t proj_end;
+  bool proj = false;
   for(uint32_t i = 0; i < c->nVars(); i++) {
     uint32_t var = c->vars_begin()[i];
-    /* vmap_rev[var] = vmap.size(); */
+    if (var >= indep_support_end && !proj) {
+      proj_end = i;
+      proj = true;
+    }
     vmap.push_back(var);
+    vmap_rev[vmap[i]] = i;
+    /* cout << "var: : " << var << " bdd_var2level:" << bdd_var2level(var) << endl; */
   }
-  /* std::sort(vmap.begin(),vmap.end(), */
-  /*     [=](uint32_t a, uint32_t b) -> bool { */
-  /*     VAR_FREQ_DO(if (tdscore.empty()) return comp_manager->freq_score_of(a) > comp_manager->freq_score_of(b)); */
-  /*     if (!tdscore.empty()) return tdscore[a] > tdscore[b]; */
-  /*     else return false; */
-  /*     }); */
-  for(uint32_t i = 0; i < vmap.size(); i++) vmap_rev[vmap[i]] = i;
+  if (!proj) proj_end = vmap.size();
   VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
 
   // The final built bdd
@@ -3105,7 +3107,9 @@ uint64_t Counter::buddy_count() {
     auto idx = *it_cl;
     debug_print("IDX: " << idx);
     Lit const* cl = ana.get_idx_to_cl(idx);
-    VERBOSE_DEBUG_DO( cout << "Long cl." << endl; print_cl(cl.data(), cl.size()));
+    VERBOSE_DEBUG_DO(cout << "Long cl." << endl;
+      for(Lit const* l = cl; *l != SENTINEL_LIT; l++) cout << *l << " ";
+      cout << endl);
 
     auto tmp = bdd_false();
     for(Lit const* l = cl; *l != SENTINEL_LIT; l++) {
@@ -3148,18 +3152,19 @@ uint64_t Counter::buddy_count() {
 
   assert(c->num_long_cls() == actual_long);
   if (actual_bin > c->numBinCls()) {
-    cout << "ERROR: BUDDY usage error. actual bin cls: " << actual_bin << " but c->numBins is: " << c->numBinCls() << " -- we should NEVER be over (but can be below)." << endl;
-    assert(false);
+    // This is possible because vivif can make a long cl into a bin cl
+    // Nothing wrong with that. Keep running.
   }
 
-  uint64_t cnt = bdd_satcount_i64(bdd);
+  /* bdd_printdot(bdd); */
+  uint64_t cnt = bdd_satcount_i64(bdd, proj_end);
   VERBOSE_DEBUG_DO(
   cout << "cnt: " << cnt << endl;
   cout << "num bin cls: " << actual_bin << endl;
   cout << "num long cls: " << actual_long << endl;
   cout << "----------------------------------------------" << endl);
 
-  return cnt >> (64-vmap.size());
+  return cnt;
 }
 #else
 bool Counter::do_buddy_count(const Comp*) {

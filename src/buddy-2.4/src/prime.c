@@ -43,7 +43,7 @@
 #define Random(i) ( (rand() % (i)) + 1 )
 #define isEven(src) (!((src) & 0x1))
 #define hasFactor(src,n) ( (((src)!=(n)) && ((src)%(n) == 0)) )
-#define BitIsSet(src,b) ( ((src) & (1<<(b))) != 0 )
+#define BitIsSet(src,b) ( ((src) & (1U<<(b))) != 0 )
 
 #define CHECKTIMES 20
 

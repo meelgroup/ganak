@@ -45,7 +45,7 @@ typedef struct
    union
    {
       double dres;
-      int64_t res;
+      uint64_t res;
    } r;
    int a,b,c;
 } BddCacheData;

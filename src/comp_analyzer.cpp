@@ -191,8 +191,8 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     uint32_t const* p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
-      BUDDY_DO(if (solver->val(*p) == X_TRI) archetype.num_bin_cls++);
-      if (manageSearchOccurrenceOf(*p)) {VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));};
+      /* BUDDY_DO(if (solver->val(*p) == X_TRI) archetype.num_bin_cls++); */
+      if (manageSearchOccurrenceOf(*p)) {VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));}
     }
 
     //traverse ternary clauses

@@ -298,6 +298,7 @@ if (SANITIZE)
     SET( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS}  -lasan -lubsan " )
     SET( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lasan -lubsan ")
     add_compile_options("-fsanitize=address")
+    add_link_options("-fsanitize=address")
     # add_compile_options("-fsanitize=integer")
     # add_compile_options("-fsanitize=undefined")
 

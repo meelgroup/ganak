@@ -12,7 +12,8 @@ CREATE TABLE data (
   decs INT,
   comps INT,
   td_width INT,
-  td_time FLOAT
+  td_time FLOAT,
+  arjun_time FLOAT
 );
 . mode csv
 . import -skip 1 mydata.csv data

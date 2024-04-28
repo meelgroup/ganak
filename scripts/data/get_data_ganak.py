@@ -174,6 +174,16 @@ def find_ganak_time_cnt(fname):
 
     return [t,cnt]
 
+#c o Arjun T: 206.14
+def find_arjun_time(fname):
+    t = None
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o Arjun T:" in line:
+              assert t is None
+              t = float(line.split()[4])
+    return t
 
 def timeout_parse(fname):
     t = None
@@ -331,6 +341,7 @@ for f in file_list:
         files[base]["confls"] = ganak_conflicts(f)
         files[base]["decisions"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
+        files[base]["arjuntime"] = find_arjun_time(f)
         td = ganak_treewidth(f)
         files[base]["td-width"] = td[0]
         files[base]["td-time"] = td[1]
@@ -369,7 +380,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td-width,td-time"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -423,9 +434,14 @@ with open("mydata.csv", "w") as out:
           toprint += "%s," % f["td-width"]
 
         if not "td-time" in f or f["td-time"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["td-time"]
+
+        if not "arjuntime" in f or f["arjuntime"] is None:
             toprint += ""
         else:
-          toprint += "%s"  % f["td-time"]
+          toprint += "%s"  % f["arjuntime"]
 
         out.write(toprint+"\n")
 

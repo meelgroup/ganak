@@ -64,7 +64,7 @@ bool indep_support_given = false;
 CounterConfiguration conf;
 int arjun_verb = 2;
 int do_arjun = 1;
-int arjun_gates = 0;
+int arjun_gates = 1;
 int ignore_indep = 0;
 int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;

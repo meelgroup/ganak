@@ -322,11 +322,11 @@ private:
   // The literals that have been set in this decision level
   vector<Lit>::const_iterator top_declevel_trail_begin() const
   {
-    return trail.begin() + variables_[decisions.top().var].sublevel;
+    return trail.begin() + var(decisions.top().var).sublevel;
   }
   vector<Lit>::iterator top_declevel_trail_begin()
   {
-    return trail.begin() + variables_[decisions.top().var].sublevel;
+    return trail.begin() + var(decisions.top().var).sublevel;
   }
 
   void init_decision_stack()

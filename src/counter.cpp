@@ -1252,7 +1252,7 @@ uint64_t Counter::check_count(bool include_all_dec, int32_t single_var) {
     // Checking
     VERBOSE_DEBUG_DO(print_trail());
     debug_print("dec lev: " << decisions.get_decision_level());
-    debug_print("top dec lit: " << top_dec_lit());
+    VERBOSE_DEBUG_DO(if (!trail.empty()) cout << "top dec lit: " << top_dec_lit() << endl;);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
     for(const auto& t: trail) {
@@ -2990,6 +2990,7 @@ bool Counter::use_sat_solver(RetState& state) {
     if (decision_level() < sat_start_dec_level) { goto end; }
   }
 
+  state = RESOLVED;
   go_back_to(sat_start_dec_level);
   assert(decision_level() == sat_start_dec_level);
   decisions.top().includeSolution(1);

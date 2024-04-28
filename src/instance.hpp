@@ -150,6 +150,10 @@ protected:
     return variables_[v];
   }
 
+  inline const VarData &var(const uint32_t v) const{
+    return variables_[v];
+  }
+
   inline const VarData &var(const Lit lit) const {
     return variables_[lit.var()];
   }

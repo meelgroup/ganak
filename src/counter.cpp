@@ -1661,16 +1661,10 @@ RetState Counter::resolve_conflict() {
   decisions.top().resetRemainingComps();
 
   if (decisions.top().is_right_branch()) {
-    var(uip_clause[0]).decision_level = lev_to_set; //TODO what to do with sublevel?
-    var(uip_clause[0]).ante = ant;
-    values[uip_clause[0]] = T_TRI;
-    values[uip_clause[0].neg()] = F_TRI;
-    trail[var(uip_clause[0]).sublevel] = uip_clause[0];
-    qhead = std::min(qhead, var(uip_clause[0]).sublevel);
-
     reactivate_comps_and_backtrack_trail(false);
-    bool ret = propagate();
-    if (!ret) return GO_AGAIN;
+    setLiteral(uip_clause[0], lev_to_set, ant);
+    qhead = std::min(qhead, var(uip_clause[0]).sublevel);
+    if (!propagate()) return GO_AGAIN;
 
 #ifdef VERBOSE_DEBUG
     cout << "FLIPPED Returning from resolveConflict() with:";

@@ -2596,9 +2596,9 @@ Counter::Counter(const CounterConfiguration& _conf) :
     , order_heap(VarOrderLt(watches))
 {
   if (conf.do_buddy) {
-    bdd_init(100, 100000);
+    bdd_init(10000, 100000);
     bdd_gbc_hook(my_gbchandler);
-    bdd_setvarnum(64);
+    bdd_setvarnum(63);
     bdd_autoreorder(BDD_REORDER_NONE);
   }
 }
@@ -3045,7 +3045,7 @@ void Counter::check_sat_solution() const {
 
 
 bool Counter::do_buddy_count(const Comp* c) {
-  if (c->nVars() >= 64 || c->nVars() <= 3 || (c->numBinCls()+c->num_long_cls()) > conf.buddy_max_cls) {
+  if (c->nVars() >= 62 || c->nVars() <= 3 || (c->numBinCls()+c->num_long_cls()) > conf.buddy_max_cls) {
     /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */
     return false;
   }
@@ -3082,7 +3082,7 @@ uint64_t Counter::buddy_count() {
   vmap_rev.resize(nVars()+1);
 
   // variable mapping
-  uint32_t proj_end;
+  uint32_t proj_end = 63;
   bool proj = false;
   for(uint32_t i = 0; i < c->nVars(); i++) {
     uint32_t var = c->vars_begin()[i];
@@ -3092,10 +3092,10 @@ uint64_t Counter::buddy_count() {
     }
     vmap.push_back(var);
     vmap_rev[vmap[i]] = i;
-    /* cout << "var: : " << var << " bdd_var2level:" << bdd_var2level(var) << endl; */
   }
-  if (!proj) proj_end = vmap.size();
   VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
+  debug_print("proj_end: " << proj_end << " indep_support_end: " << indep_support_end);
+
 
   // The final built bdd
   auto bdd = bdd_true();
@@ -3157,7 +3157,15 @@ uint64_t Counter::buddy_count() {
   }
 
   VERBOSE_DEBUG_DO(bdd_printdot(bdd, proj_end));
-  uint64_t cnt = bdd_satcount_i64(bdd, proj_end);
+
+  // Trick: when all is projected, we can set 64, and then subtract. This is
+  // more generic. Otherwise, bdd cache will not match if we set the correct value
+  // This way, we are more generic on non-projected, and can still use it on projected
+  uint64_t cnt;
+  if (proj_end == 63)
+    cnt = bdd_satcount_i64(bdd, proj_end)>>(63-vmap.size());
+  else
+    cnt = bdd_satcount_i64(bdd, proj_end);
   VERBOSE_DEBUG_DO(
   cout << "cnt: " << cnt << endl;
   cout << "num bin cls: " << actual_bin << endl;

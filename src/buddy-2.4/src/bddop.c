@@ -2487,11 +2487,8 @@ uint64_t bdd_satcount_i64(BDD r, uint32_t proj_end)
 
    CHECKa(r, 0);
 
-   /* printf("level: %d proj_end: %u\n", LEVEL(r), proj_end); */
-
    miscid = CACHEID_SATCOI64;
    size = ((uint64_t)1) << min(LEVEL(r), proj_end);
-   /* printf("size: %lu satcnt: %lu\n", size, satcount_rec_i64(r, proj_end)); */
 
    return size * satcount_rec_i64(r, proj_end);
 }
@@ -2522,8 +2519,9 @@ static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
       return root;
 
    entry = BddCache_lookup(&misccache, SATCOUHASH(root));
-   if (entry->a == root  &&  entry->c == miscid)
+   if (entry->a == root  &&  entry->c == miscid && entry->proj_end == proj_end) {
       return entry->r.res;
+   }
 
    node = &bddnodes[root];
    size = 0;
@@ -2540,6 +2538,7 @@ static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
    entry->a = root;
    entry->c = miscid;
    entry->r.res = size;
+   entry->proj_end = proj_end;
 
    return size;
 }

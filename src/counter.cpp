@@ -105,7 +105,7 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
     << " nvars: " << nVars());
 
   if (conf.verb) {
-    cout << "c indep/optional/none distribution: ";
+    cout << "c o indep/optional/none distribution: ";
     for(uint32_t i = 0; i <= nVars(); i++) {
       if (i < opt_indep_support_end) {
         if (i < indep_support_end) cout << "I";

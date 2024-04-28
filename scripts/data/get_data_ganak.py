@@ -185,6 +185,16 @@ def find_arjun_time(fname):
               t = float(line.split()[4])
     return t
 
+#c o deletion done. T: 3.067
+def collect_cache_deletion_time(fname):
+    t = 0.0
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o deletion done. T:" in line:
+              t += float(line.split()[5])
+    return t
+
 def timeout_parse(fname):
     t = None
     m = None
@@ -342,6 +352,7 @@ for f in file_list:
         files[base]["decisions"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
         files[base]["arjuntime"] = find_arjun_time(f)
+        files[base]["cachedeltime"] = collect_cache_deletion_time(f)
         td = ganak_treewidth(f)
         files[base]["td-width"] = td[0]
         files[base]["td-time"] = td[1]
@@ -380,7 +391,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -413,35 +424,40 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
 
-        if not "confls" in f or f["confls"] is None:
+        if "confls" not in f or f["confls"] is None:
             toprint += ","
         else:
           toprint += "%s," % f["confls"]
 
-        if not "decisions" in f or f["decisions"] is None:
+        if "decisions" not in f or f["decisions"] is None:
             toprint += ","
         else:
           toprint += "%d," % f["decisions"]
 
-        if not "comps" in f or f["comps"] is None:
+        if "comps" not in f or f["comps"] is None:
             toprint += ","
         else:
           toprint += "%s," % f["comps"]
 
-        if not "td-width" in f or f["td-width"] is None:
+        if "td-width" not in f or f["td-width"] is None:
             toprint += ","
         else:
           toprint += "%s," % f["td-width"]
 
-        if not "td-time" in f or f["td-time"] is None:
+        if "td-time" not in f or f["td-time"] is None:
             toprint += ","
         else:
           toprint += "%s,"  % f["td-time"]
 
-        if not "arjuntime" in f or f["arjuntime"] is None:
+        if "arjuntime" not in f or f["arjuntime"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["arjuntime"]
+
+        if "cachedeltime" not in f or f["cachedeltime"] is None:
             toprint += ""
         else:
-          toprint += "%s"  % f["arjuntime"]
+          toprint += "%s"  % f["cachedeltime"]
 
         out.write(toprint+"\n")
 

@@ -2599,7 +2599,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
     bdd_init(100, 100000);
     bdd_gbc_hook(my_gbchandler);
     bdd_setvarnum(64);
-    /* bdd_autoreorder(BDD_REORDER_NONE); */
+    bdd_autoreorder(BDD_REORDER_NONE);
   }
 }
 
@@ -3129,7 +3129,7 @@ uint64_t Counter::buddy_count() {
     for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;
       if (val(ws.lit()) == T_TRI) continue;
-      assert(val(ws.lit()) == X_TRI); // otherwise would have propagated/conflicted
+      SLOW_DEBUG_DO(val(ws.lit()) == X_TRI); // otherwise would have propagated/conflicted
 
       auto tmp = bdd_false();
       mybdd_add(tmp, l);
@@ -3156,7 +3156,7 @@ uint64_t Counter::buddy_count() {
     // Nothing wrong with that. Keep running.
   }
 
-  /* bdd_printdot(bdd); */
+  VERBOSE_DEBUG_DO(bdd_printdot(bdd, proj_end));
   uint64_t cnt = bdd_satcount_i64(bdd, proj_end);
   VERBOSE_DEBUG_DO(
   cout << "cnt: " << cnt << endl;

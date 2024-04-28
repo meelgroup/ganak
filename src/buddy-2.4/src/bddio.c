@@ -42,7 +42,7 @@
 #include "kernel.h"
 
 static void bdd_printset_rec(FILE *, int, int *);
-static void bdd_fprintdot_rec(FILE*, BDD);
+static void bdd_fprintdot_rec(FILE*, BDD, uint32_t proj_end);
 static int  bdd_save_rec(FILE*, int);
 static int  bdd_loaddata(FILE *);
 static int  loadhash_get(int);
@@ -299,9 +299,9 @@ NAME    {* bdd\_printdot *}
 EXTRA   {* bdd\_fprintdot *}
 SECTION {* fileio *}
 SHORT   {* prints a description of a BDD in DOT format *}
-PROTO   {* void bdd_printdot(BDD r)
-int bdd_fnprintdot(char* fname, BDD r)
-void bdd_fprintdot(FILE* ofile, BDD r) *}
+PROTO   {* void bdd_printdot(BDD r, uint32_t proj_end)
+int bdd_fnprintdot(char* fname, BDD r, uint32_t proj_end)
+void bdd_fprintdot(FILE* ofile, BDD r, uint32_t proj_end) *}
 DESCR   {* Prints a BDD in a format suitable for use with the graph
            drawing program DOT to either stdout, a designated file
 	   {\tt ofile} or the file named by {\tt fname}. In the last case
@@ -309,56 +309,58 @@ DESCR   {* Prints a BDD in a format suitable for use with the graph
 	   destroyed and then closed again. *}
 ALSO    {* bdd\_printall, bdd\_printtable, bdd\_printset *}
 */
-void bdd_printdot(BDD r)
+void bdd_printdot(BDD r, uint32_t proj_end)
 {
-   bdd_fprintdot(stdout, r);
+   bdd_fprintdot(stdout, r, proj_end);
 }
 
 
-int bdd_fnprintdot(char *fname, BDD r)
+int bdd_fnprintdot(char *fname, BDD r, uint32_t proj_end)
 {
    FILE *ofile = fopen(fname, "w");
    if (ofile == NULL)
       return bdd_error(BDD_FILE);
-   bdd_fprintdot(ofile, r);
+   bdd_fprintdot(ofile, r, proj_end);
    fclose(ofile);
    return 0;
 }
 
 
-void bdd_fprintdot(FILE* ofile, BDD r)
+void bdd_fprintdot(FILE* ofile, BDD r, uint32_t proj_end)
 {
    fprintf(ofile, "digraph G {\n");
    fprintf(ofile, "0 [shape=box, label=\"0\", style=filled, shape=box, height=0.3, width=0.3];\n");
    fprintf(ofile, "1 [shape=box, label=\"1\", style=filled, shape=box, height=0.3, width=0.3];\n");
 
-   bdd_fprintdot_rec(ofile, r);
+   bdd_fprintdot_rec(ofile, r, proj_end);
 
    fprintf(ofile, "}\n");
 
    bdd_unmark(r);
 }
 
+static unsigned min(unsigned int a, unsigned int b)
+{
+   return a < b ? a : b;
+}
 
-static void bdd_fprintdot_rec(FILE* ofile, BDD r)
+static void bdd_fprintdot_rec(FILE* ofile, BDD r, uint32_t proj_end)
 {
    if (ISCONST(r) || MARKED(r))
       return;
 
+   uint32_t size = ((uint64_t)1) << min(LEVEL(r), proj_end);
    fprintf(ofile, "%d [label=\"", r);
-   if (filehandler)
-      filehandler(ofile, bddlevel2var[LEVEL(r)]);
-   else
-      fprintf(ofile, "%d", bddlevel2var[LEVEL(r)]);
+   fprintf(ofile, "%d -- lev: %d cnt: %lu", LEVEL(r), bddlevel2var[LEVEL(r)], bdd_satcount_i64(r, proj_end)/size);
    fprintf(ofile, "\"];\n");
 
    fprintf(ofile, "%d -> %d [style=dotted];\n", r, LOW(r));
    fprintf(ofile, "%d -> %d [style=filled];\n", r, HIGH(r));
 
    SETMARK(r);
-   
-   bdd_fprintdot_rec(ofile, LOW(r));
-   bdd_fprintdot_rec(ofile, HIGH(r));
+
+   bdd_fprintdot_rec(ofile, LOW(r), proj_end);
+   bdd_fprintdot_rec(ofile, HIGH(r), proj_end);
 }
 
 

@@ -321,9 +321,9 @@ extern void     bdd_fprinttable(FILE *, BDD);
 extern void     bdd_printtable(BDD);
 extern void     bdd_fprintset(FILE *, BDD);
 extern void     bdd_printset(BDD);
-extern int      bdd_fnprintdot(char *, BDD);
-extern void     bdd_fprintdot(FILE *, BDD);
-extern void     bdd_printdot(BDD);
+extern int      bdd_fnprintdot(char *, BDD, uint32_t);
+extern void     bdd_fprintdot(FILE *, BDD, uint32_t);
+extern void     bdd_printdot(BDD, uint32_t);
 extern int      bdd_fnsave(char *, BDD);
 extern int      bdd_save(FILE *, BDD);
 extern int      bdd_fnload(char *, BDD *);
@@ -514,9 +514,9 @@ private:
    friend void   bdd_printtable(const bdd &);
    friend void   bdd_fprintset(FILE *, const bdd &);
    friend void   bdd_printset(const bdd &);
-   friend void   bdd_printdot(const bdd &);
-   friend int    bdd_fnprintdot(char*, const bdd &);
-   friend void   bdd_fprintdot(FILE*, const bdd &);
+   friend void   bdd_printdot(const bdd &, uint32_t);
+   friend int    bdd_fnprintdot(char*, const bdd &, uint32_t);
+   friend void   bdd_fprintdot(FILE*, const bdd &, uint32_t);
    friend std::ostream &operator<<(std::ostream &, const bdd &);
    friend int    bdd_fnsave(char*, const bdd &);
    friend int    bdd_save(FILE*, const bdd &);
@@ -709,14 +709,14 @@ inline void bdd_fprintset(FILE *file, const bdd &r)
 inline void bdd_printset(const bdd &r)
 { bdd_printset(r.root); }
 
-inline void bdd_printdot(const bdd &r)
-{ bdd_printdot(r.root); }
+inline void bdd_printdot(const bdd &r, uint32_t proj_end)
+{ bdd_printdot(r.root, proj_end); }
 
-inline void bdd_fprintdot(FILE* ofile, const bdd &r)
-{ bdd_fprintdot(ofile, r.root); }
+inline void bdd_fprintdot(FILE* ofile, const bdd &r, uint32_t proj_end)
+{ bdd_fprintdot(ofile, r.root, proj_end); }
 
-inline int bdd_fnprintdot(char* fname, const bdd &r)
-{ return bdd_fnprintdot(fname, r.root); }
+inline int bdd_fnprintdot(char* fname, const bdd &r, uint32_t proj_end)
+{ return bdd_fnprintdot(fname, r.root, proj_end); }
 
 inline int bdd_fnsave(char *fname, const bdd &r)
 { return bdd_fnsave(fname, r.root); }

@@ -2476,6 +2476,10 @@ double bdd_satcount(BDD r)
    return size * satcount_rec(r);
 }
 
+static unsigned min(unsigned int a, unsigned int b)
+{
+   return a < b ? a : b;
+}
 
 uint64_t bdd_satcount_i64(BDD r, uint32_t proj_end)
 {
@@ -2483,8 +2487,11 @@ uint64_t bdd_satcount_i64(BDD r, uint32_t proj_end)
 
    CHECKa(r, 0);
 
+   /* printf("level: %d proj_end: %u\n", LEVEL(r), proj_end); */
+
    miscid = CACHEID_SATCOI64;
-   size = ((uint64_t)1) << LEVEL(r);
+   size = ((uint64_t)1) << min(LEVEL(r), proj_end);
+   /* printf("size: %lu satcnt: %lu\n", size, satcount_rec_i64(r, proj_end)); */
 
    return size * satcount_rec_i64(r, proj_end);
 }
@@ -2503,11 +2510,6 @@ double bdd_satcountset(BDD r, BDD varset)
    unused = bdd_satcount(r) / pow(2.0,unused);
 
    return unused >= 1.0 ? unused : 1.0;
-}
-
-static unsigned min(unsigned int a, unsigned int b)
-{
-   return a < b ? a : b;
 }
 
 static uint64_t satcount_rec_i64(int root, uint32_t proj_end)

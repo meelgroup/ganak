@@ -134,18 +134,16 @@ void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
                     < comp_stack[j]->nVars())
                   todo_swap = true;
           break;
-        case 1:
-          if (comp_stack[i]->nVars()
-              > comp_stack[j]->nVars())
+        case 1: if (comp_stack[i]->nVars()
+                    > comp_stack[j]->nVars())
                   todo_swap = true;
           break;
         case 2: if (comp_stack[i]->num_long_cls()
                     < comp_stack[j]->num_long_cls())
                   todo_swap = true;
           break;
-        case 3:
-          if (comp_stack[i]->num_long_cls()
-              > comp_stack[j]->num_long_cls())
+        case 3: if (comp_stack[i]->num_long_cls()
+                    > comp_stack[j]->num_long_cls())
                   todo_swap = true;
           break;
         case 4: if ((double)comp_stack[i]->nVars()/(double)comp_stack[i]->num_long_cls()

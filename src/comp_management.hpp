@@ -128,10 +128,36 @@ void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
   // sort the remaining comps for processing
   for (uint32_t i = start; i < end; i++)
     for (uint32_t j = i + 1; j < end; j++) {
-      if (conf.do_comp_reverse_sort && comp_stack[i]->nVars() > comp_stack[j]->nVars())
-        std::swap(comp_stack[i], comp_stack[j]);
-      if (!conf.do_comp_reverse_sort && comp_stack[i]->nVars() < comp_stack[j]->nVars())
-        std::swap(comp_stack[i], comp_stack[j]);
+      bool todo_swap = false;
+      switch (conf.do_comp_sort) {
+        case 0: if (comp_stack[i]->nVars()
+                    < comp_stack[j]->nVars())
+                  todo_swap = true;
+          break;
+        case 1:
+          if (comp_stack[i]->nVars()
+              > comp_stack[j]->nVars())
+                  todo_swap = true;
+          break;
+        case 2: if (comp_stack[i]->num_long_cls()
+                    < comp_stack[j]->num_long_cls())
+                  todo_swap = true;
+          break;
+        case 3:
+          if (comp_stack[i]->num_long_cls()
+              > comp_stack[j]->num_long_cls())
+                  todo_swap = true;
+          break;
+        case 4: if ((double)comp_stack[i]->nVars()/(double)comp_stack[i]->num_long_cls()
+                  < (double)comp_stack[j]->nVars()/(double)comp_stack[j]->num_long_cls())
+                  todo_swap = true;
+          break;
+        case 5: if ((double)comp_stack[i]->nVars()/(double)comp_stack[i]->num_long_cls()
+                  > (double)comp_stack[j]->nVars()/(double)comp_stack[j]->num_long_cls())
+                  todo_swap = true;
+          break;
+      }
+      if (todo_swap) std::swap(comp_stack[i], comp_stack[j]);
     }
 }
 

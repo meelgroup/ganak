@@ -150,7 +150,7 @@ void add_ganak_options()
     ("bvegrowiter2", po::value(&simp_conf.bve_grow_iter2)->default_value(simp_conf.bve_grow_iter2), "Puura BVE growth allowance iter2")
 
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
-    ("comprevsort", po::value(&conf.do_comp_reverse_sort)->default_value(conf.do_comp_reverse_sort), "Sort components in reverse order")
+    ("compsort", po::value(&conf.do_comp_sort)->default_value(conf.do_comp_sort), "Sort components in different order")
 #endif
     ;
 

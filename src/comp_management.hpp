@@ -125,7 +125,10 @@ private:
 void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
+  if (start == end) return;
   // sort the remaining comps for processing
+  stats.comp_sorts++;
+  stats.comp_sizes+= end - start;
   for (uint32_t i = start; i < end; i++)
     for (uint32_t j = i + 1; j < end; j++) {
       bool todo_swap = false;

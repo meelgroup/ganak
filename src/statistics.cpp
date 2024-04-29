@@ -90,6 +90,10 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
     << std::setw(5) << safe_div(buddy_num_long_cls,buddy_called));
 
+  verb_print(1, "comp sortsK/avg sz             "
+    << std::setw(5) << comp_sorts/10000 << " / "
+    << std::setw(5) << safe_div(comp_sizes, comp_sorts));
+
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
     << std::setw(9) << vivif_tried << " "
@@ -109,19 +113,6 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setw(9) << toplevel_bothprop_fail << " "
   );
 
-  verb_print(1, "probes/flits/bplits K          "
-    << std::left
-    << std::setw(6) << (num_failed_lit_tests_/1000ULL) << " "
-    << std::setw(6) << (num_failed_literals_detected_/1000ULL) << " "
-    << std::setw(6) << (num_failed_bprop_literals_failed/1000ULL) << " "
-    << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_, num_failed_lit_tests_)
-    << " -- " << std::setprecision(2) << safe_div( num_failed_literals_detected_+num_failed_bprop_literals_failed, num_failed_lit_tests_)
-    << std::setw(16) <<" -- Kprobe/s: "
-    << std::setprecision(2) << std::setw(9) << std::left
-    << safe_div(num_failed_lit_tests_,(1000.0*(cpuTime()-counter->get_start_time())))
-  );
-  verb_print(1, "implicit BCP miss rate         "
-    << std::setprecision(2) << implicitBCP_miss_rate() * 100 << "%");
   double vm_usage = 0;
   verb_print(1, "Mem used                       "
     << std::setprecision(2) << (double)memUsedTotal(vm_usage) / (1e9)  << " GB");

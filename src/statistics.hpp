@@ -63,12 +63,6 @@ public:
 
   /// number of all decisions made
   uint64_t decisions = 0;
-  /// number of all implications derived
-  uint64_t num_implications_ = 0;
-  // number of all failed literal detections
-  uint64_t num_failed_literals_detected_ = 0;
-  uint64_t num_failed_bprop_literals_failed = 0;
-  uint64_t num_failed_lit_tests_ = 0;
 
   // number of all conflicts occurred
   uint64_t conflicts = 0;
@@ -122,6 +116,10 @@ public:
   uint64_t sum_cache_store_sizes_ = 0;
   bqueue<uint32_t> cache_hits_nvars;
 
+  // Components
+  uint64_t comp_sorts = 0;
+  uint64_t comp_sizes = 0;
+
   uint64_t num_cached_comps_ = 0;
   uint64_t total_num_cached_comps_ = 0;
   uint64_t cache_pollutions_removed = 0;
@@ -164,11 +162,6 @@ public:
   void incorporate_cache_hit(const uint32_t comp_nvars){
     num_cache_hits_++;
     sum_cache_hit_sizes_ += comp_nvars;
-  }
-
-  double implicitBCP_miss_rate() const {
-      if(num_failed_lit_tests_ == 0) return 0.0;
-      return (num_failed_lit_tests_ - num_failed_literals_detected_) / (double) num_failed_lit_tests_;
   }
 
   void incorporateConflictClauseData(const vector<Lit> &clause) {

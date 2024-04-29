@@ -91,8 +91,9 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setw(5) << safe_div(buddy_num_long_cls,buddy_called));
 
   verb_print(1, "comp sortsK/avg sz             "
-    << std::setw(5) << comp_sorts/10000 << " / "
-    << std::setw(5) << safe_div(comp_sizes, comp_sorts));
+    << std::setw(5) << comp_sorts/1000 << " / "
+    << std::setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))
+    << std::setprecision(2);
 
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "

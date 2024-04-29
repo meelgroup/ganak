@@ -37,12 +37,16 @@ using std::endl;
 /* #define CHECK_PROPAGATED */
 /* #define CHECK_IMPLIED */
 /* #define VERY_SLOW_DEBUG */
+//#define BUDDY_ENABLED
+// the slowest of all that's not verifying counts
 /* #define CHECK_TRAIL_ENTAILMENT */
-/* #define BUDDY_ENABLED */
+
+// WARNING below ALSO disables cache!! Extremely slow.
+/* #define CHECK_COUNT */
+
+// Not needed apparently. Kinda nice.
 /* #define VAR_FREQ */
 
-// WARNING below ALSO disables cache!!
-/* #define CHECK_COUNT */
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"

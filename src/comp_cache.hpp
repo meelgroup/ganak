@@ -134,6 +134,9 @@ public:
 private:
 
   void consider_table_resize() {
+    // NOTE: it's possible to e.g. half the table.size() here, but
+    // the performance gain vs mem use is not worth it
+    // Good example file to stress: mc2023_track1_138.cnf
     if (entry_base.size() > table.size()) {
       double vm_before;
       auto used_before = memUsedTotal(vm_before);

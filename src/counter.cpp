@@ -3136,6 +3136,9 @@ uint64_t Counter::buddy_count() {
       debug_print("bin cl: " << l << " " << l2 << " 0");
     }
   }
+  stats.buddy_num_bin_cls += actual_bin;
+  stats.buddy_num_long_cls += actual_long;
+
   VERBOSE_DEBUG_DO(
   if (actual_bin != c->numBinCls()) {
     cout << "WARN: numbin: " << c->numBinCls() << " actual bin: " << actual_bin << endl;

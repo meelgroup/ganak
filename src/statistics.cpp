@@ -86,6 +86,9 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setw(5) << sat_conflicts/1000 << " ");
   verb_print(1, "buddy called                   "
     << std::setw(5) << buddy_called << " ");
+  verb_print(1, "buddy avg num bin/long cls     "
+    << std::setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
+    << std::setw(5) << safe_div(buddy_num_long_cls,buddy_called));
 
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "

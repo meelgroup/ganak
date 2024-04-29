@@ -88,6 +88,8 @@ only_dirs = [
              #"out-ganak-6853697.pbs101-4/", # backbone first, if proj is smaller than TD, td=0.1, turn off gates -- ran with CMS 58286e58ef64156ed2c16ec4104820c7fb4aeda5
              "out-ganak-6867174.pbs101-0", # fix with max grow 6, also try no freq
              "out-ganak-6870225.pbs101-0", # max grow 6, maxtd 5
+             #"out-ganak-6896385.pbs101-0", # supposedly new, not really exciting
+             "out-ganak-6907885.pbs101-" # variable activity merged idea
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

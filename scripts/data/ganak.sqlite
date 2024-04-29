@@ -14,7 +14,9 @@ CREATE TABLE data (
   td_width INT,
   td_time FLOAT,
   arjun_time FLOAT,
-  cache_del_time FLOAT
+  cache_del_time FLOAT,
+  bdd_called INT,
+  sat_called INT
 );
 . mode csv
 . import -skip 1 mydata.csv data

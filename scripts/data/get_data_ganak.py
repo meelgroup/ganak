@@ -185,6 +185,26 @@ def find_arjun_time(fname):
               t = float(line.split()[4])
     return t
 
+#c o sat called/sat/unsat/conflK    6     6     0     0
+def find_sat_called(fname):
+    n = None
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o sat called/sat/unsat/conflK" in line:
+              n = int(line.split()[4])
+    return n
+
+#c o buddy called                   3
+def find_bdd_called(fname):
+    n = None
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if "c o buddy called" in line:
+              n = int(line.split()[4])
+    return n
+
 #c o deletion done. T: 3.067
 def collect_cache_deletion_time(fname):
     t = 0.0
@@ -353,6 +373,8 @@ for f in file_list:
         files[base]["comps"] = ganak_comps(f)
         files[base]["arjuntime"] = find_arjun_time(f)
         files[base]["cachedeltime"] = collect_cache_deletion_time(f)
+        files[base]["bddcalled"] = find_bdd_called(f)
+        files[base]["satcalled"] = find_sat_called(f)
         td = ganak_treewidth(f)
         files[base]["td-width"] = td[0]
         files[base]["td-time"] = td[1]
@@ -391,7 +413,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time,bdd_called,sat_called"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -455,9 +477,19 @@ with open("mydata.csv", "w") as out:
           toprint += "%s,"  % f["arjuntime"]
 
         if "cachedeltime" not in f or f["cachedeltime"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["cachedeltime"]
+
+        if "bddcalled" not in f or f["bddcalled"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["bddcalled"]
+
+        if "satcalled" not in f or f["satcalled"] is None:
             toprint += ""
         else:
-          toprint += "%s"  % f["cachedeltime"]
+          toprint += "%s"  % f["satcalled"]
 
         out.write(toprint+"\n")
 

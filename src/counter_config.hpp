@@ -40,7 +40,7 @@ struct CounterConfiguration {
   // 6 == conflict/static, taking into account next_restart
   int restart_type = 7;
 
-  int do_comp_sort = 0;
+  int do_comp_sort = 0; // they are very similar, see: out-ganak-6910211
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
   int cache_time_update = 2;

@@ -30,7 +30,7 @@ using std::endl;
 #define   CA_CL_IN_SUP_COMP_UNSEEN  8
 #define   CA_CL_SEEN 16
 #define   CA_CL_IN_OTHER_COMP  32
-#define   CA_CL_ALL_LITS_SET  64
+#define   CA_CL_ALL_LITS_UNK  64
 
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
@@ -89,9 +89,9 @@ public:
     seen[cl] = CA_CL_SEEN | (seen[cl] & CA_VAR_MASK);
   }
 
-  void set_clause_seen(const ClauseIndex cl, const bool all_lits_act) {
+  void set_clause_seen(const ClauseIndex cl, const bool all_lits_unkn) {
       set_clause_nil(cl);
-      seen[cl] = CA_CL_SEEN | (all_lits_act?CA_CL_ALL_LITS_SET:0) | (seen[cl] & CA_VAR_MASK);
+      seen[cl] = CA_CL_SEEN | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (seen[cl] & CA_VAR_MASK);
     }
 
   void set_var_in_other_comp(const uint32_t v) {
@@ -110,8 +110,8 @@ public:
     return seen[cl] & CA_CL_SEEN;
   }
 
-  bool clause_all_lits_set(const ClauseIndex cl) const {
-    return seen[cl] & CA_CL_ALL_LITS_SET;
+  bool clause_all_lits_unkn(const ClauseIndex cl) const {
+    return seen[cl] & CA_CL_ALL_LITS_UNK;
   }
 
   bool var_nil(const uint32_t v) const {
@@ -167,11 +167,11 @@ public:
     p_new_comp->close_vars_data();
     curr_comp.close_vars_data();
 
-    // Fill clauses in new comp
+    // Fill (long) clause IDs in new comp
     for (auto it_cl = super_comp().cls_begin(); *it_cl != sentinel; it_cl++)
       if (clause_seen(*it_cl)) {
         p_new_comp->add_cl(*it_cl);
-        if (!clause_all_lits_set(*it_cl)) curr_comp.add_cl(*it_cl);
+        if (!clause_all_lits_unkn(*it_cl)) curr_comp.add_cl(*it_cl);
         set_clause_in_other_comp(*it_cl);
       }
     p_new_comp->close_cls_data();

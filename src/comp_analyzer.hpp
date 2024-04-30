@@ -187,13 +187,13 @@ private:
   // belongs to a component. It's called on every long clause.
   void search_clause([[maybe_unused]] uint32_t vt, ClauseIndex cl_id, Lit const* pstart_cls){
     const auto it_v_end = comp_vars.end();
-    bool all_lits_set = true;
+    bool all_lits_unkn = true;
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
       if (!archetype.var_nil(it_l->var())) manageSearchOccurrenceAndScoreOf(*it_l);
       else {
         assert(!is_unknown(*it_l));
-        all_lits_set = false;
+        all_lits_unkn = false;
         if (is_false(*it_l)) continue;
 
         //accidentally entered a satisfied clause: undo the search process
@@ -213,7 +213,7 @@ private:
 
     if (!archetype.clause_nil(cl_id)){
       VAR_FREQ_DO(bump_freq_score(vt));
-      archetype.set_clause_seen(cl_id,all_lits_set);
+      archetype.set_clause_seen(cl_id,all_lits_unkn);
     }
     VAR_FREQ_DO(if ((conf.decide & 2)) act_inc *= 1.0/0.98);
   }

@@ -31,8 +31,8 @@ struct CounterConfiguration {
   bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;
-  uint64_t first_restart = 1000U;
-  uint64_t next_restart = 10000U;
+  uint64_t first_restart = 20000U;
+  uint64_t next_restart = 10000U; // ONLY for static restart strategies (3, and 6)
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
 

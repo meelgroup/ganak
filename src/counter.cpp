@@ -778,7 +778,12 @@ SOLVER_StateT Counter::count_loop() {
         if (state == EXIT) goto end;
       }
     }
-    if (state == PROCESS_COMPONENT && restart_if_needed()) return RESTART;
+
+    if (state == PROCESS_COMPONENT) {
+      cache_miss_rate_q.push(stats.cache_miss_rate());
+      depth_q.push(decisions.size());
+      if (restart_if_needed()) return RESTART;
+    }
 
     if (conf.do_vivify) {
       vivify_all();
@@ -1101,8 +1106,6 @@ static double luby(double y, int x){
 }
 
 bool Counter::restart_if_needed() {
-  cache_miss_rate_q.push(stats.cache_miss_rate());
-  depth_q.push(decisions.size());
   if (!conf.do_restart) return false;
 
   bool restart = false;
@@ -1131,6 +1134,7 @@ bool Counter::restart_if_needed() {
     restart = true;
 
   // Conflicts, luby
+  /* cout << "next restart: " << luby(2, stats.num_restarts) * conf.first_restart << endl; */
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
         (luby(2, stats.num_restarts) * conf.first_restart))

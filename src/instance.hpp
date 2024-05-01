@@ -23,7 +23,6 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
-#include <utility>
 #include <cryptominisat5/cryptominisat.h>
 
 #include "clauseallocator.hpp"
@@ -77,7 +76,7 @@ protected:
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
-  void reduceDB();
+  void reduce_db();
   template<class T> void minimize_uip_cl_with_bins(T& cl);
   vector<Lit> tmp_minim_with_bins;
   void markClauseDeleted(const ClauseOfs cl_ofs);
@@ -121,7 +120,7 @@ protected:
       if (lev != 0 && lbdHelper[lev] != lbdHelperFlag) {
         lbdHelper[lev] = lbdHelperFlag;
         nblevels++;
-        if (nblevels >= 250) { return nblevels; }
+        if (nblevels >= 100) { return nblevels; }
       }
     }
     return nblevels;

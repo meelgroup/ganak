@@ -1581,7 +1581,7 @@ void Counter::check_implied(const vector<Lit>& cl) {
 
 void Counter::reduce_db_if_needed() {
   if (stats.conflicts > last_reduceDB_conflicts+conf.reduce_db_everyN) {
-    reduceDB();
+    reduce_db();
     if (stats.cls_deleted_since_compaction > conf.consolidate_every_n && alloc->consolidate(this)) {
         stats.cls_deleted_since_compaction = 0;
     }
@@ -2519,7 +2519,7 @@ void Counter::create_uip_cl() {
     if (confl.isAClause()) {
       Clause& cl = *alloc->ptr(confl.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
-        cl.increaseScore();
+        cl.set_used();
         cl.update_lbd(calc_lbd(cl));
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);

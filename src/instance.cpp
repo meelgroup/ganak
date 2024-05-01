@@ -85,8 +85,8 @@ struct ClSorter {
   const uint32_t lbd_cutoff;
 };
 
-void Instance::reduceDB() {
-  stats.reduceDBs++;
+void Instance::reduce_db() {
+  stats.reduce_db++;
   if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
       && num_low_lbd_cls < 100) {
     verb_print(1, " [rdb] bumping rdb cutoff to 3");
@@ -125,7 +125,7 @@ void Instance::reduceDB() {
       << " lbd cutoff: " << lbd_cutoff
       << " cutoff computed: " << cutoff
       << " cannot be del : " << cannot_be_del
-      << " used: " << num_used_cls << " rdb: " << stats.reduceDBs);
+      << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
 }
 
 bool Instance::red_cl_can_be_deleted(ClauseOfs off){

@@ -285,7 +285,7 @@ private:
     if (conf.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
       Clause& cl = *alloc->ptr(ant.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
-        cl.increaseScore();
+        cl.set_used();
         cl.update_lbd(calc_lbd(cl));
       }
     }
@@ -311,7 +311,7 @@ private:
 
   void setConflictState(Clause* cl) {
     if (cl->red && cl->lbd > lbd_cutoff) {
-      cl->increaseScore();
+      cl->set_used();
       cl->update_lbd(calc_lbd(*cl));
     }
     confl = Antecedent(alloc->get_offset(cl));

@@ -56,7 +56,7 @@ public:
   uint64_t num_binary_red_clauses_ = 0;
 
   // Clause db management
-  uint64_t reduceDBs = 0;
+  uint64_t reduce_db = 0;
   uint32_t cls_deleted_since_compaction = 0;
   uint32_t compactions = 0;
   uint32_t cls_removed = 0;

@@ -73,7 +73,7 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
   );
 
   verb_print(1, "rdbs/low lbd/rem               "
-    << std::setw(5) << reduceDBs << " "
+    << std::setw(5) << reduce_db << " "
     << std::setw(6) << counter->get_num_low_lbds() << " "
     << std::setw(6) << cls_removed);
   verb_print(1, "looks/look-computes            "

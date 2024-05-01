@@ -248,7 +248,7 @@ public:
   Clause(bool _red, uint32_t _sz):
     sz(_sz), red(_red)  {}
 
-  void increaseScore() {
+  void set_used() {
     used = 1;
     total_used++;
   }

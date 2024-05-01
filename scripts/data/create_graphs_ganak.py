@@ -89,9 +89,11 @@ only_dirs = [
              #"out-ganak-6867174.pbs101-0", # fix with max grow 6, also try no freq
              #"out-ganak-6870225.pbs101-0", # max grow 6, maxtd 5
              "out-ganak-6896385.pbs101-0", # supposedly new, not really exciting
-             #"out-ganak-6907885.pbs101-", # variable activity merged idea
-             "out-ganak-6909164.pbs101-0", # var activity merged, polarity changed
-             "out-ganak-6910211.pbs101-0", # check diferent component sortings
+             # "out-ganak-6907885.pbs101-", # BAD variable activity merged idea
+             # "out-ganak-6909164.pbs101-", # BAD var activity merged, polarity changed
+             "out-ganak-6916780.pbs101-", # variable activity
+             "out-ganak-6910211.pbs101-", # check diferent component sortings
+             "out-ganak-6917417.pbs101-", # sortings, lbd, polarity
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

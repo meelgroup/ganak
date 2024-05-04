@@ -205,6 +205,20 @@ def find_bdd_called(fname):
               n = int(line.split()[4])
     return n
 
+#c o Num restarts: 27
+def find_restarts(fname):
+    n = None
+    cubes = 0
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+
+            if "c o Total num cubes:" in line:
+              cubes += int(line.split()[5])
+            if "c o Num restarts:" in line:
+              n = int(line.split()[4])
+    return n,cubes
+
 #c o deletion done. T: 3.067
 def collect_cache_deletion_time(fname):
     t = 0.0
@@ -374,6 +388,9 @@ for f in file_list:
         files[base]["arjuntime"] = find_arjun_time(f)
         files[base]["cachedeltime"] = collect_cache_deletion_time(f)
         files[base]["bddcalled"] = find_bdd_called(f)
+        rst,cubes = find_restarts(f)
+        files[base]["restarts"] = rst
+        files[base]["cubes"] = cubes
         files[base]["satcalled"] = find_sat_called(f)
         td = ganak_treewidth(f)
         files[base]["td-width"] = td[0]
@@ -413,7 +430,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time,bdd_called,sat_called"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time,bdd_called,sat_called,rst,cubes"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -487,9 +504,20 @@ with open("mydata.csv", "w") as out:
           toprint += "%s,"  % f["bddcalled"]
 
         if "satcalled" not in f or f["satcalled"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["satcalled"]
+
+        if "restarts" not in f or f["restarts"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["restarts"]
+
+        if "cubes" not in f or f["cubes"] is None:
             toprint += ""
         else:
-          toprint += "%s"  % f["satcalled"]
+          toprint += "%s"  % f["cubes"]
+
 
         out.write(toprint+"\n")
 

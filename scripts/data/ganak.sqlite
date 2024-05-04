@@ -16,7 +16,9 @@ CREATE TABLE data (
   arjun_time FLOAT,
   cache_del_time FLOAT,
   bdd_called INT,
-  sat_called INT
+  sat_called INT,
+  restarts INT,
+  cubes INT
 );
 . mode csv
 . import -skip 1 mydata.csv data
@@ -26,3 +28,9 @@ UPDATE data SET decs = NULL WHERE decs = '';
 UPDATE data SET comps = NULL WHERE comps = '';
 UPDATE data SET td_width = NULL WHERE td_width = '';
 UPDATE data SET td_time = NULL WHERE td_time = '';
+UPDATE data SET arjun_time = NULL WHERE arjun_time = '';
+UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
+UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
+UPDATE data SET sat_called = NULL WHERE sat_called = '';
+UPDATE data SET restarts = NULL WHERE restarts = '';
+UPDATE data SET cubes = NULL WHERE cubes = '';

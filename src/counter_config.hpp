@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <string>
+#include "common.hpp"
 using std::string;
 
 struct CounterConfiguration {

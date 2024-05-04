@@ -412,7 +412,7 @@ mpz_class Counter::check_count_norestart_cms(const Cube& c) {
     auto ret = test_solver.solve();
     if (ret == CMSat::l_False) break;
     vector<CMSat::Lit> ban;
-    for(uint32_t i = 0; i < test_solver.nVars(); i++) {
+    for(uint32_t i = 0; i < indep_support_end; i++) {
       ban.push_back(CMSat::Lit(i, test_solver.get_model()[i] == CMSat::l_True));
     }
     test_solver.add_clause(ban);

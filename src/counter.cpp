@@ -979,6 +979,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
   debug_print(COLWHT "Decisions in the c.cnf: ");
   for(const auto& l: trail) {
     if (!var(l).ante.isNull()) continue;
+    if (l.var() >= opt_indep_support_end) continue;
     if (var(l).decision_level == decisions.get_decision_level() &&
         opposite_branch) {
       assert(l == top_dec_lit());
@@ -1014,6 +1015,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
       all_vars_in_comp(comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
         debug_print("Lit from comp: " << l);
+        if (l.var() >= opt_indep_support_end) continue;
         c.cnf.push_back(l);
         c.active_vars.push_back(l.var());
       }

@@ -350,7 +350,7 @@ void Counter::td_decompose() {
   fc.importGraph(primal);
 
   // Notice that this graph returned is VERY different
-  TreeDecomposition td = fc.constructTD();
+  TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
   td.centroid(primal.numNodes(), conf.verb);
   compute_score(td);

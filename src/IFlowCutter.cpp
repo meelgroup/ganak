@@ -610,7 +610,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
   return better_td;
 }
 
-TreeDecomposition IFlowCutter::constructTD()
+TreeDecomposition IFlowCutter::constructTD(const int64_t conf_steps, const int conf_iters)
 {
   TreeDecomposition td;
   ArrayIDIDFunc preorder, inv_preorder;
@@ -662,7 +662,7 @@ TreeDecomposition IFlowCutter::constructTD()
           compute_multilevel_partition(tail, head, flow_cutter::ComputeSeparator(config), best_bag_size, on_new_multilevel_partition);
         }
 
-        int64_t steps = 1e5;
+        int64_t steps = conf_steps;
         int64_t next_step_print = steps-1e4;
         if(node_count < 50000){
           print_comment("min degree heuristic");
@@ -682,7 +682,7 @@ TreeDecomposition IFlowCutter::constructTD()
           config.max_cut_size = 10000;
           config.separator_selection = flow_cutter::Config::SeparatorSelection::node_min_expansion;
 
-          for(int i=2; i < 900 && steps > 0;++i){
+          for(int i=2; i < conf_iters && steps > 0;++i){
             /* cout << "nodes: " << nodes << " preimage count: " << head.preimage_count_ */
             /*   << " mul: " << ((int64_t)nodes * std::sqrt((int64_t)head.preimage_count_))/50 */
             /*   << endl; */

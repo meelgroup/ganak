@@ -41,7 +41,7 @@ public:
   IFlowCutter(int n, int m, int verb = 0);
 
   void importGraph(const Graph& g);
-  TreeDecomposition constructTD();
+  TreeDecomposition constructTD(const int64_t steps = 1e5, const int iters = 900);
   auto num_nodes() const { return nodes; }
 
 private:

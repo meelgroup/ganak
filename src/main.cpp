@@ -119,6 +119,8 @@ void add_ganak_options()
     ("tdweighted", po::value(&conf.do_td_weight)->default_value(conf.do_td_weight), "TD weight enabled")
     ("tdexpmult", po::value(&conf.td_exp_mult)->default_value(conf.td_exp_mult), "TD exponential multiplier")
     ("tdcheckagainstind", po::value(&conf.do_check_td_vs_ind)->default_value(conf.do_check_td_vs_ind), "Check TD against indep size")
+    ("tditers", po::value(&conf.td_iters)->default_value(conf.td_iters), "TD flowcutter iterations (restarts)")
+    ("tdsteps", po::value(&conf.td_steps)->default_value(conf.td_steps), "TD flowcutter number of steps at most")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("rdbeveryn", po::value(&conf.reduce_db_everyN)->default_value(conf.reduce_db_everyN), "Reduce the clause DB every N conflicts")

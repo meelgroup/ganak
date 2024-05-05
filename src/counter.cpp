@@ -1190,12 +1190,8 @@ bool Counter::restart_if_needed() {
       if (decisions.top().get_model_side(i) == 0) continue;
       verb_print(2, "->> branch: " << i << " doing compute_cube...");
       Cube cube;
-      if (compute_cube(cube, i)) {
-        mini_cubes.push_back(cube);
-      } else {
-        verb_print(2, "->> FALSE cube. ");
-        comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
-      }
+      if (compute_cube(cube, i)) mini_cubes.push_back(cube);
+      else comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
     }
     reactivate_comps_and_backtrack_trail();
     decisions.pop_back();

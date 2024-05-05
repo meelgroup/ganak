@@ -51,7 +51,12 @@ void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
 void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  if (cache.exists(get_super_comp(top).id())) removeAllCachePollutionsOf(top);
+
+  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
+    if (!cache.exists(comp_stack[u]->id())) continue;
+    stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
+  }
+  stats.cache_pollutions_called++;
 }
 
 void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {

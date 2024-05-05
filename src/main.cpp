@@ -139,6 +139,8 @@ void add_ganak_options()
     ("vivif", po::value(&conf.do_vivify)->default_value(conf.do_vivify), "Vivify clauses")
     ("vivifevery", po::value(&conf.vivif_every)->default_value(conf.vivif_every), "Vivify every N conflicts")
     ("vivifmult", po::value(&conf.vivif_mult)->default_value(conf.vivif_mult), "How much to multiply timeout for vivif")
+    ("vivifoutern", po::value(&conf.vivif_outer_every_n)->default_value(conf.vivif_outer_every_n), "How many restarts between outer vivif")
+
     ("buddy", po::value(&conf.do_buddy)->default_value(conf.do_buddy), "Run BuDDy")
     ("decide", po::value(&conf.decide)->default_value(conf.decide), "Decision type. 0 = sstd-inspired, 1 = gpmc-inspired")
     ("cachetime", po::value(&conf.cache_time_update)->default_value(conf.cache_time_update), "Cache score update type. 0 = standard, 1 = set tp new point, 2 = set to mid-point")

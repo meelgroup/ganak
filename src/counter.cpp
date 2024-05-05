@@ -613,10 +613,12 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     verb_print(1, "Cubes this restart: " << cubes.size() << " total cnt so far: " << val);
 
     end_irred_cls();
-    if (stats.num_restarts %2 == 0) {
+    if (stats.num_restarts % (conf.vivif_outer_every_n) == (conf.vivif_outer_every_n-1)) {
+      double my_time = cpuTime();
       vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
+      verb_print(1, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpuTime() - my_time));
     }
   }
   return val;
@@ -1957,11 +1959,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
   }
 
   // We didn't timeout, reset vivified flag.
-  if (v_tout > 0) {
-    for(const auto& off: cls) {
-      alloc->ptr(off)->vivifed = 0;
-    }
-  }
+  if (v_tout > 0) for(const auto& off: cls) alloc->ptr(off)->vivifed = 0;
   cls.resize(j);
 }
 
@@ -2018,6 +2016,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
 
   // Vivify clauses
   v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
+  if (force) v_tout *= 50;
   vivify_cls(long_irred_cls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-my_time));
@@ -2054,6 +2053,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
       << " cl tried: " << (stats.vivif_tried_cl - last_vivif_cl_tried)
       << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
       << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
+      << " force: " << (int)force
       << " tout-irred: " << (int)tout_irred
       << " tout-red: " << (int)tout_red
       << " T: " << (cpuTime()-my_time));

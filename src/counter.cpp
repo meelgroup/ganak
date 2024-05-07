@@ -39,6 +39,8 @@ THE SOFTWARE.
 #include "graph.hpp"
 #include "bdd.h"
 
+using std::setw;
+
 static void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
       /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
@@ -518,7 +520,6 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
 }
 
 void Counter::print_and_check_cubes(vector<Cube>& cubes) {
-  verb_print(1, "Num restarts: " << stats.num_restarts);
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
   if (conf.do_cube_check_count) {
@@ -586,13 +587,17 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
 void Counter::extend_cubes(vector<Cube>& cubes) {
   assert(occ.empty());
   assert(clauses.empty());
+  auto my_time = cpuTime();
+  const auto before_ext = stats.cube_lit_extend;
+  const auto before_rem = stats.cube_lit_rem;
+
   occ.resize((nVars()+1)*2);
   attach_occ(long_irred_cls, false);
 
   vivif_setup();
 
   for(auto& c: cubes) {
-    verb_print(1, "--> Working cube: " << c);
+    verb_print(2, "--> Working cube: " << c);
     bool go_again = true;
     while (go_again) {
       go_again = false;
@@ -603,7 +608,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
 
         if (ret != 0) {
           if (ret == 100) {
-            verb_print(1, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);
+            verb_print(2, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);
             c.val *= 2;
             stats.cube_lit_extend++;
           } else stats.cube_lit_rem++;
@@ -613,10 +618,14 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
         }
       }
     }
-    verb_print(1, "--> Final cube:   " << c);
+    verb_print(2, "--> Final cube:   " << c);
   }
   occ.clear();
   clauses.clear();
+  verb_print(1, "[rst-cube-ext] Extended cubes. lit-rem: "
+      << setw(4) << stats.cube_lit_rem - before_rem
+      << " lit-ext: " << setw(4) << stats.cube_lit_extend - before_ext
+      << " T: " << (cpuTime() - my_time));
 }
 
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
@@ -630,7 +639,6 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     count(cubes);
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
     stats.num_cubes += cubes.size();
-    print_and_check_cubes(cubes);
     extend_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
@@ -650,7 +658,8 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       verb_print(2,  "added cube CL to GANAK: " << it->cnf << " val: " << it->val);
     }
     decisions.clear();
-    verb_print(1, "Cubes this restart: " << cubes.size() << " total cnt so far: " << val);
+    verb_print(1, "[rst-cube] Cubes this restart: " << setw(4) << cubes.size()
+        << " total cnt so far: " << val);
 
     end_irred_cls();
     if (stats.num_restarts % (conf.vivif_outer_every_n) == (conf.vivif_outer_every_n-1)) {
@@ -1177,7 +1186,7 @@ bool Counter::restart_if_needed() {
 
   if (!restart) return false;
   verb_print(1, "c  ************* Restarting.  **************");
-  print_restart_data();
+  if (conf.verb >= 2) print_restart_data();
   verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions
     << endl
@@ -1219,6 +1228,7 @@ bool Counter::restart_if_needed() {
   assert(ret && "never UNSAT");
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
+  verb_print(1, "Num restarts: " << stats.num_restarts);
   return true;
 }
 

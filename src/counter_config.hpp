@@ -33,12 +33,11 @@ struct CounterConfiguration {
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 20000U;
-  uint64_t next_restart = 10000U; // ONLY for static restart strategies (3, and 6)
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
 
   // 7 == conflict/luby-based, taking into account first_restart
-  // 6 == conflict/static, taking into account next_restart
+  // 6 == conflict/static
   int restart_type = 7;
 
   int do_comp_sort = 0; // they are very similar, see: out-ganak-6910211
@@ -67,9 +66,9 @@ struct CounterConfiguration {
   int do_buddy = 0;
   uint32_t buddy_max_cls = 12; // see out-ganak-2060064.pbs101-7
 #ifdef CHECK_COUNT
-  int do_check_count = 1;
+  int do_cube_check_count = 1;
 #else
-  int do_check_count = 0;
+  int do_cube_check_count = 0;
 #endif
   int force_branch = 0; // 0 = no force, 1 = TD, 2 = conflict
   int do_use_cache = 1;

@@ -45,7 +45,6 @@ class DataAndStatistics {
 public:
   DataAndStatistics (const Instance* _inst, CounterConfiguration& _conf): conf(_conf) {
     inst = _inst;
-    cache_hits_nvars.clearAndResize(10000);
     comp_size_times_depth_q.clearAndResize(10000);
   }
   CounterConfiguration& conf;
@@ -54,6 +53,11 @@ public:
   uint64_t num_binary_irred_clauses_ = 0;
 
   uint64_t num_binary_red_clauses_ = 0;
+
+  // Cubes
+  uint64_t num_cubes = 0;
+  uint64_t cube_lit_extend = 0;
+  uint64_t cube_lit_rem = 0;
 
   // Clause db management
   uint64_t reduce_db = 0;
@@ -114,7 +118,6 @@ public:
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes_ = 0;
   uint64_t sum_cache_store_sizes_ = 0;
-  bqueue<uint32_t> cache_hits_nvars;
 
   // Components
   uint64_t comp_sorts = 0;

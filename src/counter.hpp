@@ -151,6 +151,9 @@ public:
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
   void extend_cubes(vector<Cube>& cubes);
+  int cube_try_extend_by_lit(const Lit torem, const Cube& c);
+  void vivif_setup();
+
   mpz_class outer_count(CMSat::SATSolver* solver = nullptr);
   void set_indep_support(const set<uint32_t>& indeps);
   void set_optional_indep_support(const set<uint32_t> &indeps);
@@ -161,8 +164,6 @@ public:
   void end_irred_cls();
   void get_unit_cls(vector<Lit>& units) const;
   void init_activity_scores();
-  void set_next_restart(uint64_t next) { conf.next_restart = next; }
-  bqueue<uint32_t> comp_size_q;
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
@@ -173,6 +174,10 @@ public:
   // test
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
+  // queues
+  bqueue<uint32_t> depth_q;
+  bqueue<uint32_t> comp_size_q;
+
 private:
   bool remove_duplicates(vector<Lit>& lits);
   mpz_class check_count_norestart(const Cube& c);
@@ -180,9 +185,6 @@ private:
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
-  bqueue<uint32_t> depth_q;
-  bqueue<double, double> cache_miss_rate_q;
-  vector<VS> vars_scores; // for branch picking
 
   // Temporaries, used during recordLastUIPClause
   mutable vector<Lit> tmp_lit; //used in recoredLastUIPClause
@@ -454,7 +456,7 @@ private:
 
   // Toplevel stuff
   void subsume_all();
-  void attach_occ(vector<ClauseOfs>& offs);
+  void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
   inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
   template <class T> uint32_t calc_abstr(const T& ps) {
     uint32_t abs = 0;

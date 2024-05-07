@@ -156,7 +156,6 @@ void Counter::end_irred_cls() {
 
   // reset stats
   depth_q.clearAndResize(conf.first_restart);
-  cache_miss_rate_q.clearAndResize(conf.first_restart);
   comp_size_q.clearAndResize(conf.first_restart);
   next_print_stat_cache = 2ULL*1000LL*1000LL;
 
@@ -427,7 +426,7 @@ mpz_class Counter::check_count_norestart(const Cube& c) {
   conf2.do_restart = 0;
   conf2.verb = 0;
   conf2.do_buddy = 0;
-  conf2.do_check_count = 0;
+  conf2.do_cube_check_count = 0;
   vector<Lit> tmp;
   Counter test_cnt(conf2);
   test_cnt.new_vars(nVars());
@@ -522,7 +521,7 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(1, "Num restarts: " << stats.num_restarts);
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
-  if (conf.do_check_count) {
+  if (conf.do_cube_check_count) {
     for(const auto& c: cubes) {
       auto check_cnt = check_count_norestart(c);
       /* auto check_cnt = check_count_norestart_cms(c); */
@@ -543,42 +542,81 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
   }
 }
 
-void Counter::extend_cubes(vector<Cube>& cubes) {
-  for(const auto& c: cubes) {
-    cout << "txt cube: ";
-    for(const auto& l: c.cnf) cout << l.neg() << " ";
-    cout << " cnt: " << c.val << endl;
-    assert(false && "TODO -- what?? below code is not executed???");
-    continue;
+int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
+  verb_print(2, "Trying to remove " << torem << " from cube " << c);
 
-    for(const auto& v: c.active_vars)  seen[v] = 1;
-    cout << "txt solution: ";
-    for(const auto& l: c.cnf) if (seen[l.var()]) cout << l << " ";
-    cout << "0" << endl;
-
-    for(const auto& off: long_irred_cls) {
-      const Clause& cl = *alloc->ptr(off);
-      bool ok = true;
-      for(const auto& l: cl) if (seen[l.var()] == 0) {ok = false;break;}
-      if (ok) {
-        cout << "txt ";
-        for(const auto& l: cl) cout << l << " ";
-        cout << "0" << endl;
-      }
-    }
-    all_lits(i) {
-      Lit l(i/2, i%2);
-      if (seen[l.var()] == 0) continue;
-      for(const auto& l2: watches[l].binaries) {
-        if (l < l2.lit() || seen[l2.lit().var()] == 0 || !l2.irred()) continue;
-        cout << "txt << " << l << " " << l2.lit() << " 0" << endl;
-      }
-    }
-
-    for(const auto& v: c.active_vars)  seen[v] = 0;
-    cout << "txt -----" << endl;
+  // Prop all but torem
+  for(int32_t i = ((int32_t)c.cnf.size())-1; i >= 0; i--) {
+    const Lit l = c.cnf[i];
+    if (l == torem) continue;
+    if (v_val(l.neg()) == T_TRI) continue;
+    if (v_val(l.neg()) == F_TRI) return 0; // don't want to deal with this
+    v_enqueue(l.neg());
   }
-  /* exit(0); */
+  bool ret = v_propagate();
+  assert(ret);
+
+  if (v_val(torem) == F_TRI) {
+    verb_print(2, "Cube  can have " << torem << " removed, but no count change.");
+    return 1;
+  }
+  if (v_val(torem) != X_TRI) {
+    verb_print(1, "Weeeeirrrddd --- " << torem << " ?????");
+    return 0;
+  }
+
+  // Check if torem doesn't occur anymore
+  for(const auto& l: {torem, torem.neg()}) {
+    for(const auto& ws: watches[l].binaries) {
+      if (ws.red()) continue;
+      if (v_val(ws.lit()) == X_TRI) return 0;
+    }
+    for(const auto& ws: occ[l.raw()]) {
+      Clause& cl = *alloc->ptr(ws.off);
+      bool ok = false;
+      for(const auto& cl_lit: cl) {
+        if (v_val(cl_lit) == T_TRI) { ok = true; break;}
+      }
+      if (!ok) return 0;
+    }
+  }
+  return 100;
+}
+
+void Counter::extend_cubes(vector<Cube>& cubes) {
+  assert(occ.empty());
+  assert(clauses.empty());
+  occ.resize((nVars()+1)*2);
+  attach_occ(long_irred_cls, false);
+
+  vivif_setup();
+
+  for(auto& c: cubes) {
+    verb_print(1, "--> Working cube: " << c);
+    bool go_again = true;
+    while (go_again) {
+      go_again = false;
+      for(auto& l: c.cnf) {
+        v_new_lev();
+        int ret = cube_try_extend_by_lit(l, c);
+        v_backtrack();
+
+        if (ret != 0) {
+          if (ret == 100) {
+            verb_print(1, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);
+            c.val *= 2;
+            stats.cube_lit_extend++;
+          } else stats.cube_lit_rem++;
+          c.cnf.erase(std::find(c.cnf.begin(), c.cnf.end(), l));
+          go_again = true;
+          break;
+        }
+      }
+    }
+    verb_print(1, "--> Final cube:   " << c);
+  }
+  occ.clear();
+  clauses.clear();
 }
 
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
@@ -591,8 +629,10 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     vector<Cube> cubes;
     count(cubes);
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
+    stats.num_cubes += cubes.size();
     print_and_check_cubes(cubes);
-    /* extend_cubes(cubes); */
+    extend_cubes(cubes);
+    print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
 
     // Add cubes to count, cubes & CMS
@@ -750,6 +790,7 @@ SOLVER_StateT Counter::count_loop() {
         // Now backtrack
         break;
       }
+      if (restart_if_needed()) return RESTART;
 
       while (!propagate()) {
         start1:
@@ -781,11 +822,6 @@ SOLVER_StateT Counter::count_loop() {
       }
     }
 
-    if (state == PROCESS_COMPONENT) {
-      cache_miss_rate_q.push(stats.cache_miss_rate());
-      depth_q.push(decisions.size());
-      if (restart_if_needed()) return RESTART;
-    }
 
     if (conf.do_vivify) {
       vivify_all();
@@ -894,7 +930,6 @@ double Counter::score_of(const uint32_t v) const {
 }
 
 uint32_t Counter::find_best_branch() {
-  vars_scores.clear();
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
@@ -1065,23 +1100,11 @@ void Counter::print_restart_data() const
        << std::right  << std::setw(30) << std::left
        << std::left   << " Sterm comp size avg: " << comp_size_q.avg());
   }
-  if (cache_miss_rate_q.isvalid()) {
-    verb_print(1, std::setw(30) << std::left
-      << "c Lterm miss avg: " << std::setw(9) << cache_miss_rate_q.getLongtTerm().avg()
-      << std::right  << std::setw(30) << std::left
-      << std::left   << " Sterm miss avg: " << std::setw(9) << cache_miss_rate_q.avg());
-  }
   if (depth_q.isvalid()) {
     verb_print(1, std::setw(30) << std::left
       << "c Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
       << std::right << std::setw(30) << std::left
       << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg());
-  }
-  if (stats.cache_hits_nvars.isvalid()) {
-    verb_print(1, std::setw(30) << std::left
-      << "c Lterm hit nvars avg: " << std::setw(9) << stats.cache_hits_nvars.getLongtTerm().avg()
-      << std::right  << std::setw(30) << std::left
-      << std::left   << " Sterm hit nvars avg: " << std::setw(5) << stats.cache_hits_nvars.avg());
   }
   if (stats.comp_size_times_depth_q.isvalid()) {
     verb_print(1, std::setw(30) << std::left
@@ -1117,10 +1140,8 @@ bool Counter::restart_if_needed() {
       && comp_size_q.isvalid() &&
       comp_size_q.avg() < comp_size_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
     restart = true;
-  if (conf.restart_type == 1
-      && cache_miss_rate_q.isvalid() &&
-      cache_miss_rate_q.avg() > cache_miss_rate_q.getLongtTerm().avg()*0.95)
-    restart = true;
+
+  if (conf.restart_type == 1) assert(false && "Not implemented");
 
   if (conf.restart_type == 2
       && depth_q.isvalid() &&
@@ -1129,12 +1150,12 @@ bool Counter::restart_if_needed() {
 
   // Decisions, static
   if (conf.restart_type == 3 &&
-      (stats.decisions-stats.last_restart_num_decisions) > conf.next_restart)
+      (stats.decisions-stats.last_restart_num_decisions) > conf.first_restart)
     restart = true;
 
   // conflicts, static
   if (conf.restart_type == 6 &&
-      (stats.conflicts-stats.last_restart_num_conflicts) > conf.next_restart)
+      (stats.conflicts-stats.last_restart_num_conflicts) > conf.first_restart)
     restart = true;
 
   // Conflicts, luby
@@ -1148,11 +1169,6 @@ bool Counter::restart_if_needed() {
   if (conf.restart_type == 8 &&
       (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
-
-  if (conf.restart_type == 4 && stats.cache_hits_nvars.isvalid()
-      && stats.cache_hits_nvars.avg() <
-      stats.cache_hits_nvars.getLongtTerm().avg()*conf.restart_cutoff_mult)
-      restart = true;
 
   if (conf.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&
         stats.comp_size_times_depth_q.avg() >
@@ -1173,9 +1189,7 @@ bool Counter::restart_if_needed() {
 
   // Reset stats
   depth_q.clear();
-  cache_miss_rate_q.clear();
   comp_size_q.clear();
-  stats.cache_hits_nvars.clear();
   stats.comp_size_times_depth_q.clear();
   stats.last_restart_num_conflicts = stats.conflicts;
   stats.last_restart_num_decisions = stats.decisions;
@@ -1963,6 +1977,24 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
   cls.resize(j);
 }
 
+void Counter::vivif_setup() {
+  // Set up internals
+  v_lev = 0;
+  v_levs.clear();
+  v_levs.resize(nVars()+1, -1);
+  v_values.clear();
+  v_values.resize(nVars()+1, X_TRI);
+  v_qhead = 0;
+
+  // Set up units
+  v_trail.clear();
+  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
+  for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
+  bool ret = v_propagate();
+  assert(ret);
+
+}
+
 void Counter::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
 
@@ -1998,20 +2030,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
     }
   }
 
-  // Set ourselves up.
-  v_lev = 0;
-  v_levs.clear();
-  v_levs.resize(nVars()+1, -1);
-  v_values.clear();
-  v_values.resize(nVars()+1, X_TRI);
-  v_qhead = 0;
-
-  // Set units up
-  v_trail.clear();
-  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
-  for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
-  bool ret = v_propagate();
-  assert(ret);
+  vivif_setup();
   verb_print(2, "[vivif] setup. T: " << (cpuTime()-my_time));
 
   // Vivify clauses
@@ -2366,11 +2385,11 @@ bool Counter::v_propagate() {
     for (const auto& bincl : wsbin) {
       const auto& l = bincl.lit();
       if (v_val(l) == F_TRI) {
-        debug_print("Conflict from bin.");
+        debug_print("v Conflict from bin.");
         return false;
       } else if (v_val(l) == X_TRI) {
         v_enqueue(l);
-        debug_print("Bin prop: " << l);
+        debug_print("v Bin prop: " << l);
       }
     }
 
@@ -2378,13 +2397,13 @@ bool Counter::v_propagate() {
     auto& ws = watches[plit].watch_list_;
     v_tout-=ws.size()/2;
 
-#if 0
-    cout << "prop-> will go through norm cl:" << endl;
+#ifdef VERBOSE_DEBUG
+    cout << "v prop-> will go through norm cl:" << endl;
     for(const auto& w: ws) {
       cout << "norm cl offs: " << w.ofs << " cl: ";
       const auto ofs = w.ofs;
-      for(Lit* c = beginOf(ofs); *c != NOT_A_LIT; c++) { cout << *c << " "; }
-      cout << endl;
+      Clause& c = *alloc->ptr(ofs);
+      cout << c << endl;
     }
     cout << " will do it now... " << endl;
 #endif
@@ -2400,7 +2419,7 @@ bool Counter::v_propagate() {
       v_tout--;
 
 #ifdef VERBOSE_DEBUG
-      cout << "Prop Norm cl: " << ofs << endl;
+      cout << "v Prop Norm cl: " << ofs << endl;
       for(const auto&l: c) {
         cout << "lit " << std::setw(6) << l
           << " lev: " << std::setw(4) << var(l).decision_level
@@ -2685,11 +2704,13 @@ bool Counter::check_watchlists() const {
   return ret;
 }
 
-void Counter::attach_occ(vector<ClauseOfs>& cls) {
+// BEWARE! It sorts clauses, hence invalidates a lot of invariants about
+// propagations
+void Counter::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
   for(const auto& off: cls) {
     clauses.push_back(off);
     Clause& cl = *alloc->ptr(off);
-    std::sort(cl.begin(), cl.end());
+    if (sort_and_clear) std::sort(cl.begin(), cl.end());
     auto abs = calc_abstr(cl);
     for(const auto& l: cl) {
       SLOW_DEBUG_DO(assert(l.var() <= nVars()));
@@ -2697,7 +2718,7 @@ void Counter::attach_occ(vector<ClauseOfs>& cls) {
       occ[l.raw()].push_back(OffAbs(off, abs));
     }
   }
-  cls.clear();
+  if (sort_and_clear) cls.clear();
 }
 
 void Counter::backw_susume_cl(ClauseOfs off) {
@@ -2852,8 +2873,8 @@ void Counter::subsume_all() {
   auto old_subsumed_bin_cls = stats.subsumed_bin_cls;
   stats.subsume_runs++;
   occ.resize((nVars()+1)*2);
-  attach_occ(long_irred_cls);
-  attach_occ(longRedCls);
+  attach_occ(long_irred_cls, true); // beware-- sorts the clauses, invalidates prop invariants
+  attach_occ(longRedCls, true);
 
   // Detach everything
   for(auto& ws: watches) ws.watch_list_.clear();

@@ -164,8 +164,8 @@ void add_ganak_options()
 
     ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
-    ("rstnext", po::value(&conf.next_restart)->default_value(conf.next_restart), "Restart interval (for type 3)")
     ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
+    ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
     ;
 #endif
 

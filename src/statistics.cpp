@@ -90,6 +90,11 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
     << std::setw(5) << safe_div(buddy_num_long_cls,buddy_called));
 
+  verb_print(1, "cubes cubesK/lit-rem/exten  "
+    << std::setw(5) << num_cubes/1000 << " / "
+    << std::setw(5) << std::setprecision(8) << safe_div(cube_lit_rem, num_cubes)
+    << std::setw(5) << std::setprecision(8) << safe_div(cube_lit_extend, num_cubes));
+
   verb_print(1, "comp sortsK/avg sz             "
     << std::setw(5) << comp_sorts/1000 << " / "
     << std::setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))

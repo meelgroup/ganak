@@ -98,6 +98,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       CacheableComp packed_comp(hash_seed, ana.get_archetype().curr_comp);
 
       // Update stats
+      solver_->depth_q.push(solver_->decision_level());
       solver_->comp_size_q.push(p_new_comp->nVars());
       stats.comp_size_times_depth_q.push((double)p_new_comp->nVars()/(double)(solver_->dec_level()+1));
 
@@ -117,8 +118,6 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 #endif
       } else {
         // Cache hit
-        stats.cache_hits_nvars.push(p_new_comp->nVars());
-
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";

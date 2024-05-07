@@ -191,6 +191,15 @@ with open(gnuplotfn, "w") as f:
     f.write(towrite)
 
 
+if os.path.exists("run.eps"):
+  os.unlink("run.eps")
+if os.path.exists("run.pdf"):
+  os.unlink("run.pdf")
+if os.path.exists("run.png"):
+  os.unlink("run.png")
+
 os.system("gnuplot "+gnuplotfn)
+os.system("epstopdf run.eps run.pdf")
+os.system("pdftoppm -png run.pdf run")
 print("okular run.eps")
 os.system("okular run.eps")

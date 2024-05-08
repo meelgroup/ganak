@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <boost/program_options.hpp>
 #include "src/GitSHA1.hpp"
+#include "breakid.hpp"
 #include <arjun/arjun.h>
 
 using CMSat::StreamBuffer;
@@ -46,15 +47,11 @@ using CMSat::DimacsParser;
 #include <cfenv>
 #endif
 
-/* #define SIMPLE */
-
 namespace po = boost::program_options;
 using std::string;
 using std::vector;
 po::options_description main_options = po::options_description("Main options");
-#ifndef SIMPLE
 po::options_description restart_options = po::options_description("Restart options");
-#endif
 po::options_description help_options;
 po::variables_map vm;
 po::positional_options_description p;
@@ -71,6 +68,7 @@ int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
 int do_bce = 1;
+int do_breakid = 1;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -110,7 +108,6 @@ void add_ganak_options()
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("forcebranch", po::value(&conf.force_branch)->default_value(conf.force_branch), "Force branch. 0 = no force, 1 = TD priority, 2 = conflict priority")
     ("branchcutoff", po::value(&conf.branch_cutoff)->default_value(conf.branch_cutoff), "Change to different branch setup after this many conflicts")
-#ifndef SIMPLE
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
     ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
@@ -155,10 +152,8 @@ void add_ganak_options()
 
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("compsort", po::value(&conf.do_comp_sort)->default_value(conf.do_comp_sort), "Sort components in different order")
-#endif
     ;
 
-#ifndef SIMPLE
     restart_options.add_options()
     ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
 
@@ -166,13 +161,11 @@ void add_ganak_options()
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
     ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
     ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
+    ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
     ;
-#endif
 
     help_options.add(main_options);
-#ifndef SIMPLE
     help_options.add(restart_options);
-#endif
 }
 
 void parse_supported_options(int argc, char** argv)
@@ -349,9 +342,6 @@ int main(int argc, char *argv[])
     cout << ganak_version_info() << endl;
     cout << "c o called with: " << command_line << endl;
   }
-#ifdef SIMPLE
-  conf.verb = 0;
-#endif
 
   string fname;
   if (vm.count("input") != 0) {
@@ -391,9 +381,40 @@ int main(int argc, char *argv[])
     cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
     cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
   }
+
+  vector<map<Lit, Lit>> generators;
+  if (conf.do_restart && do_breakid && cnf.clauses.size() > 1) {
+    double my_time = cpuTime();
+    BID::BreakID breakid;
+    /* breakid.set_useMatrixDetection(conf.useMatrixDetection); */
+    /* breakid.set_useFullTranslation(conf.useFullTranslation); */
+    breakid.set_verbosity(0);
+    breakid.start_dynamic_cnf(cnf.nVars());
+    for(const auto& cl: cnf.clauses) {
+      breakid.add_clause((BID::BLit*)cl.data(), cl.size());
+    }
+    breakid.set_steps_lim(4000);
+    breakid.end_dynamic_cnf();
+    verb_print(1, "[breakid] Num generators: " << breakid.get_num_generators());
+    breakid.detect_subgroups();
+    if (conf.verb >= 1) breakid.print_generators(std::cout, "c o ");
+    vector<unordered_map<BID::BLit, BID::BLit> > orig_gen;
+    breakid.get_perms(&orig_gen);
+    for(const auto& m: orig_gen) {
+      map<Lit, Lit> gen;
+      for(const auto& gp: m) {
+        gen[Lit(gp.first.var()+1, gp.first.sign())] = Lit(gp.second.var()+1, gp.second.sign());
+        if (conf.verb >= 2) cout << "c o " << gp.first << " -> " << gp.second << endl;
+      }
+      generators.push_back(gen);
+    }
+    verb_print(1, "[breakid] T: " << (cpuTime()-my_time));
+    /* cnf.write_simpcnf("tmp.cnf"); */
+  }
   Counter* counter = new Counter(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
   counter->new_vars(cnf.nVars());
+  counter->set_generators(generators);
   sat_solver->new_vars(cnf.nVars());
 
   mpz_class cnt = 0;

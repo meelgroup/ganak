@@ -160,6 +160,7 @@ public:
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);
   void add_red_cl(const vector<Lit>& lits, int lbd = -1);
+  void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
   const DataAndStatistics& get_stats() const;
   void end_irred_cls();
   void get_unit_cls(vector<Lit>& units) const;
@@ -185,6 +186,11 @@ private:
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
+
+
+  vector<map<Lit, Lit>> generators;
+  void symm_cubes(vector<Cube>& cubes);
+  bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
 
   // Temporaries, used during recordLastUIPClause
   mutable vector<Lit> tmp_lit; //used in recoredLastUIPClause

@@ -350,6 +350,8 @@ find_package(cryptominisat5 CONFIG REQUIRED)
 find_package(arjun CONFIG REQUIRED)
 find_package(sbva CONFIG REQUIRED)
 find_package(louvain_communities CONFIG REQUIRED)
+find_package(breakid CONFIG REQUIRED)
+
 if (cryptominisat5_FOUND)
     message(STATUS "Found CryptoMiniSat 5.x")
     message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")

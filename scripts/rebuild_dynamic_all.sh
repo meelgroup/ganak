@@ -1,4 +1,6 @@
 #!/bin/bash
+cd ../../breakid/build/
+./build_dynamic.sh
 cd ../../cryptominisat/build/
 ./build_norm.sh
 cd ../../sbva/build/

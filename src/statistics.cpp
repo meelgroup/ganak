@@ -23,10 +23,13 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include "comp_cache.hpp"
 #include "counter.hpp"
+#include "structures.hpp"
 #include "time_mem.hpp"
 
 #include <iostream>
 #include <iomanip>
+
+using std::setw;
 
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
@@ -41,82 +44,86 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
   counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
-    << std::left << std::setw(9) << decisions/1000
-    << std::setw(16) << " -- Kdec/s: "
-    << std::setprecision(2) << std::setw(9) << std::left << std::fixed
+    << std::left << setw(9) << decisions/1000
+    << setw(16) << " -- Kdec/s: "
+    << std::setprecision(2) << setw(9) << std::left << std::fixed
     << safe_div(decisions,(1000.0*(cpuTime()-counter->get_start_time())))
   );
   verb_print(1, "conflicts                      "
-    << std::left << std::setw(9) << conflicts
-    << "   " << std::left << std::setw(9)
-    << std::setw(16) << " -- confl/s: "
-    << std::setprecision(2) << std::setw(9) << std::left
+    << std::left << setw(9) << conflicts
+    << "   " << std::left << setw(9)
+    << setw(16) << " -- confl/s: "
+    << std::setprecision(2) << setw(9) << std::left
     << safe_div(conflicts,((cpuTime()-counter->get_start_time())))
   );
   verb_print(1, "conflict cls (long/bin)        " << std::fixed
     << counter->get_num_long_reds() << "/" << num_binary_red_clauses_);
 
   /* verb_print(1, "lits /rem lits ccmin           " */
-  /*   << std::setw(9) << orig_uip_lits/uip_cls << " " */
-  /*   << std::setw(9) << ccmin_uip_lits/uip_cls << " " */
+  /*   << setw(9) << orig_uip_lits/uip_cls << " " */
+  /*   << setw(9) << ccmin_uip_lits/uip_cls << " " */
   /* ); */
 
   verb_print(1, "rem lits triedK/rem lits remK  "
-    << std::setw(9) << rem_lits_tried/1000 << " "
-    << std::setw(9) << rem_lits_with_bins/1000 << " "
+    << setw(9) << rem_lits_tried/1000 << " "
+    << setw(9) << rem_lits_with_bins/1000 << " "
   );
 
   verb_print(1, "avg clsz/rem lits avg/finalavg "
-    << std::setw(9) << safe_div(orig_uip_lits,uip_cls) << " "
-    << std::setw(9) << safe_div(uip_lits_ccmin,uip_cls) << " "
-    << std::setw(9) << safe_div(final_cl_sz, uip_cls)
+    << setw(9) << safe_div(orig_uip_lits,uip_cls) << " "
+    << setw(9) << safe_div(uip_lits_ccmin,uip_cls) << " "
+    << setw(9) << safe_div(final_cl_sz, uip_cls)
   );
 
   verb_print(1, "rdbs/low lbd/rem               "
-    << std::setw(5) << reduce_db << " "
-    << std::setw(6) << counter->get_num_low_lbds() << " "
-    << std::setw(6) << cls_removed);
+    << setw(5) << reduce_db << " "
+    << setw(6) << counter->get_num_low_lbds() << " "
+    << setw(6) << cls_removed);
   verb_print(1, "looks/look-computes            "
     << lookaheads << "/" << lookahead_computes);
 
   verb_print(1, "sat called/sat/unsat/conflK    "
-    << std::setw(5) << sat_called << " "
-    << std::setw(5) << sat_found_sat << " "
-    << std::setw(5) << sat_found_unsat << " "
-    << std::setw(5) << sat_conflicts/1000 << " ");
+    << setw(5) << sat_called << " "
+    << setw(5) << sat_found_sat << " "
+    << setw(5) << sat_found_unsat << " "
+    << setw(5) << sat_conflicts/1000 << " ");
   verb_print(1, "buddy called                   "
-    << std::setw(5) << buddy_called << " ");
+    << setw(5) << buddy_called << " ");
   verb_print(1, "buddy avg num bin/long cls     "
-    << std::setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
-    << std::setw(5) << safe_div(buddy_num_long_cls,buddy_called));
+    << setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
+    << setw(5) << safe_div(buddy_num_long_cls,buddy_called));
 
-  verb_print(1, "cubes cubesK/lit-rem/exten  "
-    << std::setw(5) << num_cubes/1000 << " / "
-    << std::setw(5) << std::setprecision(8) << safe_div(cube_lit_rem, num_cubes)
-    << std::setw(5) << std::setprecision(8) << safe_div(cube_lit_extend, num_cubes));
+  verb_print(1, "orig cubes/lit-r avg/exten avg "
+    << setw(5) << num_cubes_orig << " / "
+    << setw(5) << std::setprecision(2) << safe_div(cube_lit_rem, num_cubes_orig) << " / "
+    << setw(5) << std::setprecision(2) << safe_div(cube_lit_extend, num_cubes_orig));
+  verb_print(1, "cubes orig/symm/final          "
+    << setw(5) << num_cubes_orig << " / "
+    << setw(5) << num_cubes_symm << " / "
+    << setw(5) << num_cubes_final);
 
   verb_print(1, "comp sortsK/avg sz             "
-    << std::setw(5) << comp_sorts/1000 << " / "
-    << std::setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))
+    << setw(5) << comp_sorts/1000 << " / "
+    << setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))
     << std::setprecision(2);
 
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
-    << std::setw(9) << vivif_tried << " "
-    << std::setw(9) << vivif_tried_cl << " "
-    << std::setw(9) << vivif_cl_minim << " "
-    << std::setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
+    << setw(9) << vivif_tried << " "
+    << setw(9) << vivif_tried_cl << " "
+    << setw(9) << vivif_cl_minim << " "
+    << setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
   );
 
   verb_print(1, "toplev subs runs/bins/long-cls "
-    << std::setw(9) << subsume_runs << " "
-    << std::setw(9) << subsumed_bin_cls << " "
-    << std::setw(9) << subsumed_cls << " "
+    << setw(9) << subsume_runs << " "
+    << setw(9) << subsumed_bin_cls << " "
+    << setw(9) << subsumed_cls << " "
   );
   verb_print(1, "toplevel probes/fail/bprop     "
-    << std::setw(9) << toplevel_probe_runs << " "
-    << std::setw(9) << toplevel_probe_fail << " "
-    << std::setw(9) << toplevel_bothprop_fail << " "
+    << setw(9) << toplevel_probe_runs << " "
+    << setw(9) << toplevel_probe_fail << " "
+    << setw(9) << toplevel_bothprop_fail << " "
   );
 
   double vm_usage = 0;
@@ -132,12 +139,12 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
   );
   verb_print(1, "cache K (lookup/ stores/ hits/ dels) "
     << std::left
-    << std::setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
-    << std::setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
-    << std::setw(6) << (num_cache_hits_ /(1000ULL)) << " "
-    << std::setw(6) << (num_cache_dels_ /(1000ULL)) << " "
-    << std::setw(16) << " -- Klookup/s: "
-    << std::setprecision(2) << std::setw(9) << std::left
+    << setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
+    << setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
+    << setw(6) << (num_cache_hits_ /(1000ULL)) << " "
+    << setw(6) << (num_cache_dels_ /(1000ULL)) << " "
+    << setw(16) << " -- Klookup/s: "
+    << std::setprecision(2) << setw(9) << std::left
     << safe_div(num_cache_look_ups_,(1000.0*(cpuTime()-counter->get_start_time())))
   );
   verb_print(1, "cache pollutions call/removed  "

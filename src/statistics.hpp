@@ -55,7 +55,9 @@ public:
   uint64_t num_binary_red_clauses_ = 0;
 
   // Cubes
-  uint64_t num_cubes = 0;
+  uint64_t num_cubes_orig = 0;
+  uint64_t num_cubes_final = 0;
+  uint64_t num_cubes_symm = 0;
   uint64_t cube_lit_extend = 0;
   uint64_t cube_lit_rem = 0;
 

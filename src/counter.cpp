@@ -530,7 +530,6 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
       assert(check_cnt == c.val);
     }
   }
-  verb_print(1, "Total num cubes: " << cubes.size());
 }
 
 void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
@@ -582,6 +581,43 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
     }
   }
   return 100;
+}
+
+bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
+  for(const auto& l: c1) if (c2.count(l.neg())) return true;
+  return false;
+}
+
+void Counter::symm_cubes(vector<Cube>& cubes) {
+  vector<Cube> extra_cubes;
+  for(const auto& c: cubes) {
+    set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
+    if (!c.enabled) continue;
+
+    for(const auto& gen: generators) {
+      set<Lit> symm_cube;
+      vector<Lit> tmp;
+      uint32_t mapped = 0;
+      for(auto& l: orig_cube) {
+        Lit l2 = l;
+        if (gen.count(l) != 0) {
+          mapped++;
+          l2 = gen.find(l)->second;
+          tmp.push_back(l);
+        }
+        symm_cube.insert(l2);
+      }
+      if (mapped <= 0) continue; // need at least 1 for clash
+      if (symm_cube == orig_cube) continue; // same no clash
+      /* if (!clash_cubes(symm_cube, orig_cube)) continue; // must clash */
+      verb_print(2, "[rst-symm-map] mapped lits: " << tmp
+        << " Old cube:" << orig_cube
+        << " New cube:" << symm_cube);
+      extra_cubes.push_back(Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.val));
+      stats.num_cubes_symm++;
+    }
+  }
+  cubes.insert(cubes.end(), extra_cubes.begin(), extra_cubes.end());
 }
 
 void Counter::extend_cubes(vector<Cube>& cubes) {
@@ -638,17 +674,30 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     vector<Cube> cubes;
     count(cubes);
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
-    stats.num_cubes += cubes.size();
+    stats.num_cubes_orig += cubes.size();
+
+    // Extend, tighten, symm, disable cubes
     extend_cubes(cubes);
+    symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
 
-    // Add cubes to count, cubes & CMS
+    // Add cubes to count, Ganak & CMS
+    mpz_class cubes_cnt_this_rst = 0;
     for(const auto&c: cubes) {
       if (!c.enabled) continue;
       val+=c.val;
+      cubes_cnt_this_rst += c.val;
       sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
+      stats.num_cubes_final++;
     }
+    verb_print(1, "[rst-cube] Num restarts: " << stats.num_restarts
+        << " orig cubes this rst: " << cubes.size()
+        << " total orig cubes: " << stats.num_cubes_orig
+        << " total final cubes: " << stats.num_cubes_final
+        << " counted this rst: " << cubes_cnt_this_rst
+        << " total cnt so far: " << val);
+
     ret = sat_solver->solve();
     if (ret == CMSat::l_False) break;
 
@@ -658,8 +707,6 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       verb_print(2,  "added cube CL to GANAK: " << it->cnf << " val: " << it->val);
     }
     decisions.clear();
-    verb_print(1, "[rst-cube] Cubes this restart: " << setw(4) << cubes.size()
-        << " total cnt so far: " << val);
 
     end_irred_cls();
     if (stats.num_restarts % (conf.vivif_outer_every_n) == (conf.vivif_outer_every_n-1)) {
@@ -1185,7 +1232,7 @@ bool Counter::restart_if_needed() {
       restart = true;
 
   if (!restart) return false;
-  verb_print(1, "c  ************* Restarting.  **************");
+  verb_print(1, "************* Restarting.  **************");
   if (conf.verb >= 2) print_restart_data();
   verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions
@@ -1228,7 +1275,6 @@ bool Counter::restart_if_needed() {
   assert(ret && "never UNSAT");
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
-  verb_print(1, "Num restarts: " << stats.num_restarts);
   return true;
 }
 

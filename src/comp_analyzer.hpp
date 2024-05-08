@@ -126,7 +126,7 @@ private:
   vector<uint32_t> idx_to_cl_map; //ID goes in, offset of id_to_cl_data comes out. Ends with NOT_A_LIT
 
   // Used to figure out which vars are in a component
-  // used in  record_comp_of
+  // used in  record_comp
   // its size is the number of variables in the component
   vector<uint32_t> comp_vars;
 
@@ -155,7 +155,7 @@ private:
     }
   }
 
-  // This is called from recordCompOf, i.e. during figuring out what
+  // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
   void search_clause([[maybe_unused]] uint32_t vt, ClauseIndex cl_id, Lit const* pstart_cls){
     const auto it_v_end = comp_vars.end();
@@ -174,7 +174,7 @@ private:
           archetype.set_var_in_sup_comp_unseen(comp_vars.back()); //unsets it from being seen
           comp_vars.pop_back();
         }
-        archetype.set_clause_nil(cl_id);
+        archetype.clear_cl(cl_id);
         break;
       }
     }

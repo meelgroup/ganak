@@ -164,7 +164,7 @@ bool CompAnalyzer::explore_comp(const uint32_t v) {
       archetype.stack_level().includeSolution(2);
       /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2)); */
     }
-    archetype.set_var_in_other_comp(v);
+    archetype.set_var_in_peer_comp(v);
     return false;
   }
   return true;
@@ -178,7 +178,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  // manageSearchOccurrenceAndScoreOf, manageSearchOccurrenceAndScoreOf, and searchClause
+  // manageSearchOccurrenceOf and search_clause
   // will push into search_stack_ which will make this
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
@@ -201,7 +201,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
       if (archetype.clause_unseen_in_sup_comp(*p)){
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
         if(is_true(a)|| is_true(b)) {
-          archetype.set_clause_nil(clid);
+          archetype.clear_cl(clid);
         } else {
           manageSearchOccurrenceOf(a.var());
           manageSearchOccurrenceOf(b.var());

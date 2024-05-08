@@ -22,14 +22,14 @@ using std::endl;
 // State values for variables found during comp analysis (CA)
 #define   CA_VAR_IN_SUP_COMP_UNSEEN  1
 #define   CA_VAR_SEEN 2
-#define   CA_VAR_IN_OTHER_COMP  4
+#define   CA_VAR_IN_PEER_COMP  4
 
 // 1 + 2 + 4 == 7
 #define   CA_VAR_MASK  7
 
 #define   CA_CL_IN_SUP_COMP_UNSEEN  8
 #define   CA_CL_SEEN 16
-#define   CA_CL_IN_OTHER_COMP  32
+#define   CA_CL_IN_PEER_COMP  32
 #define   CA_CL_ALL_LITS_UNK  64
 
 // 64+32+16+8 == 120
@@ -72,11 +72,11 @@ public:
     seen[cl] = CA_CL_IN_SUP_COMP_UNSEEN | (seen[cl] & CA_VAR_MASK);
   }
 
-  void set_var_nil(const uint32_t v) {
+  void clear_var(const uint32_t v) {
     seen[v] &= CA_CL_MASK;
   }
 
-  void set_clause_nil(const ClauseIndex cl) {
+  void clear_cl(const ClauseIndex cl) {
     seen[cl] &= CA_VAR_MASK;
   }
 
@@ -85,21 +85,21 @@ public:
   }
 
   void set_clause_seen(const ClauseIndex cl) {
-    set_clause_nil(cl);
+    clear_cl(cl);
     seen[cl] = CA_CL_SEEN | (seen[cl] & CA_VAR_MASK);
   }
 
   void set_clause_seen(const ClauseIndex cl, const bool all_lits_unkn) {
-      set_clause_nil(cl);
-      seen[cl] = CA_CL_SEEN | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (seen[cl] & CA_VAR_MASK);
-    }
-
-  void set_var_in_other_comp(const uint32_t v) {
-    seen[v] = CA_VAR_IN_OTHER_COMP | (seen[v] & CA_CL_MASK);
+    clear_cl(cl);
+    seen[cl] = CA_CL_SEEN | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (seen[cl] & CA_VAR_MASK);
   }
 
-  void set_clause_in_other_comp(const ClauseIndex cl) {
-    seen[cl] = CA_CL_IN_OTHER_COMP | (seen[cl] & CA_VAR_MASK);
+  void set_var_in_peer_comp(const uint32_t v) {
+    seen[v] = CA_VAR_IN_PEER_COMP | (seen[v] & CA_CL_MASK);
+  }
+
+  void set_clause_in_peer_comp(const ClauseIndex cl) {
+    seen[cl] = CA_CL_IN_PEER_COMP | (seen[cl] & CA_VAR_MASK);
   }
 
   bool var_seen(const uint32_t v) const {
@@ -130,14 +130,6 @@ public:
     return seen[cl] & CA_CL_IN_SUP_COMP_UNSEEN;
   }
 
-  bool var_seen_in_peer_comp(uint32_t v) const {
-    return seen[v] & CA_VAR_IN_OTHER_COMP;
-  }
-
-  bool clause_seen_in_peer_comp(ClauseIndex cl) const {
-    return seen[cl] & CA_CL_IN_OTHER_COMP;
-  }
-
   // called exactly once during lifetime of counter
   void init_seen(uint32_t max_var_id, uint32_t max_cl_id) {
     uint32_t seen_size = std::max(max_var_id,max_cl_id)  + 1;
@@ -162,7 +154,7 @@ public:
       if (var_seen(*v_it)) { //we have to put a var into our comp
         p_new_comp->add_var(*v_it);
         curr_comp.add_var(*v_it);
-        set_var_in_other_comp(*v_it);
+        set_var_in_peer_comp(*v_it);
       }
     p_new_comp->close_vars_data();
     curr_comp.close_vars_data();
@@ -172,7 +164,7 @@ public:
       if (clause_seen(*it_cl)) {
         p_new_comp->add_cl(*it_cl);
         if (!clause_all_lits_unkn(*it_cl)) curr_comp.add_cl(*it_cl);
-        set_clause_in_other_comp(*it_cl);
+        set_clause_in_peer_comp(*it_cl);
       }
     p_new_comp->close_cls_data();
     curr_comp.close_cls_data();

@@ -1211,9 +1211,11 @@ bool Counter::restart_if_needed() {
       depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
     restart = true;
 
-  // Decisions, static
-  if (conf.restart_type == 3 &&
-      (stats.decisions-stats.last_restart_num_decisions) > conf.first_restart)
+  // Decisions, luby
+  /* cout << "next restart dec: " << luby(2, stats.num_restarts) * conf.first_restart * 20 << " dec: " << stats.decisions << endl; */
+  if (conf.restart_type == 7 &&
+      (stats.decisions-stats.last_restart_num_decisions) >
+        (luby(2, stats.num_restarts) * conf.first_restart * 20))
     restart = true;
 
   // conflicts, static
@@ -1222,7 +1224,7 @@ bool Counter::restart_if_needed() {
     restart = true;
 
   // Conflicts, luby
-  /* cout << "next restart: " << luby(2, stats.num_restarts) * conf.first_restart << endl; */
+  /* cout << "next restart confl: " << luby(2, stats.num_restarts) * conf.first_restart << " confl: " << stats.conflicts << endl; */
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
         (luby(2, stats.num_restarts) * conf.first_restart))

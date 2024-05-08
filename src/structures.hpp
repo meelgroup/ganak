@@ -235,14 +235,15 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 
 struct Cube {
   Cube () = default;
-  Cube(const vector<Lit>& _cnf, const mpz_class& _val) : cnf(_cnf), val(_val) {}
+  Cube(const vector<Lit>& _cnf, const mpz_class& _val, bool _symm = false) : cnf(_cnf), val(_val), symm(_symm) {}
   vector<Lit> cnf;
   mpz_class val;
   bool enabled = true;
+  bool symm = false;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
-  os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled;
+  os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled << "symm: " << (int)c.symm;
   return os;
 }
 

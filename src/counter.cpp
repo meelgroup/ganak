@@ -617,7 +617,7 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
       verb_print(2, "[rst-symm-map] mapped lits: " << tmp
         << " Old cube:" << orig_cube
         << " New cube:" << symm_cube);
-      extra_cubes.push_back(Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.val));
+      extra_cubes.push_back(Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.val, true));
       stats.num_cubes_symm++;
     }
   }

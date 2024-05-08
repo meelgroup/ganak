@@ -646,6 +646,11 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
         int ret = cube_try_extend_by_lit(l, c);
         v_backtrack();
 
+        // TODO WARN: What is even going on. This disables contraction, whihc is insane.
+        // But if we don't do this, things go really-really bad in terms of performance.
+        // See: out-ganak-7015279.pbs101-4/mc2023_track1_184.cnf.gz.out_ganak
+        if (ret == 1) ret = 0;
+
         if (ret != 0) {
           if (ret == 100) {
             verb_print(2, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);

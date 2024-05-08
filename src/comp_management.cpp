@@ -100,7 +100,6 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       // Update stats
       solver_->depth_q.push(solver_->decision_level());
       solver_->comp_size_q.push(p_new_comp->nVars());
-      stats.comp_size_times_depth_q.push((double)p_new_comp->nVars()/(double)(solver_->dec_level()+1));
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count

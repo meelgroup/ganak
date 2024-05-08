@@ -23,7 +23,6 @@ using std::endl;
 #define   CA_VAR_IN_SUP_COMP_UNSEEN  1
 #define   CA_VAR_SEEN 2
 #define   CA_VAR_IN_PEER_COMP  4
-
 // 1 + 2 + 4 == 7
 #define   CA_VAR_MASK  7
 
@@ -31,7 +30,6 @@ using std::endl;
 #define   CA_CL_SEEN 16
 #define   CA_CL_IN_PEER_COMP  32
 #define   CA_CL_ALL_LITS_UNK  64
-
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
 

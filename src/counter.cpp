@@ -1166,14 +1166,6 @@ void Counter::print_restart_data() const
       << std::right << std::setw(30) << std::left
       << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg());
   }
-  if (stats.comp_size_times_depth_q.isvalid()) {
-    verb_print(1, std::setw(30) << std::left
-      << "c Lterm compsz/depth avg: " << std::setw(9)
-      << stats.comp_size_times_depth_q.getLongtTerm().avg()
-      << std::right  << std::setw(30) << std::left
-      << std::left << " Sterm compsz/depth avg: " << std::setw(9) << stats.comp_size_times_depth_q.avg()
-      << " depth: " << decisions.size()-1);
-  }
   cout << std::right;
 }
 
@@ -1232,10 +1224,7 @@ bool Counter::restart_if_needed() {
       (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
-  if (conf.restart_type == 5 && stats.comp_size_times_depth_q.isvalid() &&
-        stats.comp_size_times_depth_q.avg() >
-          stats.comp_size_times_depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
-      restart = true;
+  if (conf.restart_type == 5) assert(false);
 
   if (!restart) return false;
   verb_print(1, "************* Restarting.  **************");
@@ -1252,7 +1241,6 @@ bool Counter::restart_if_needed() {
   // Reset stats
   depth_q.clear();
   comp_size_q.clear();
-  stats.comp_size_times_depth_q.clear();
   stats.last_restart_num_conflicts = stats.conflicts;
   stats.last_restart_num_decisions = stats.decisions;
   stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;

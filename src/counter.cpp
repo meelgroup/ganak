@@ -1267,8 +1267,11 @@ bool Counter::restart_if_needed() {
       if (compute_cube(cube, i)) mini_cubes.push_back(cube);
       else comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
     }
-    reactivate_comps_and_backtrack_trail();
+    reactivate_comps_and_backtrack_trail(false);
+    bool ret = propagate(true);
+    assert(ret);
     decisions.pop_back();
+    VERY_SLOW_DEBUG_DO(if (!check_watchlists()) {print_trail(false, false);assert(false);});
   }
 
   // Because of non-chrono backtrack, we need to propagate here:

@@ -566,6 +566,9 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
   }
 
   // Check if torem doesn't occur anymore
+  //
+  // TODO: e.g a=b could be true because of the variables set, which could
+  //        remove clauses that torem/~torem is inside. So we could do more...
   for(const auto& l: {torem, torem.neg()}) {
     for(const auto& ws: watches[l].binaries) {
       if (ws.red()) continue;

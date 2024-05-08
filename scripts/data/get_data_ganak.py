@@ -206,6 +206,7 @@ def find_bdd_called(fname):
     return n
 
 #c o Num restarts: 27
+#c o [rst-cube] Num restarts: 1 orig cubes this rst: 0 total orig cubes: 0 total final cubes: 0 counted this rst: 0 total cnt so far: 0
 def find_restarts(fname):
     n = None
     cubes = 0
@@ -217,6 +218,10 @@ def find_restarts(fname):
               cubes += int(line.split()[5])
             if "c o Num restarts:" in line:
               n = int(line.split()[4])
+
+            if "c o [rst-cube] Num restarts:" in line:
+              cubes = int(line.split()[14])
+              n = int(line.split()[5])
     return n,cubes
 
 #c o deletion done. T: 3.067

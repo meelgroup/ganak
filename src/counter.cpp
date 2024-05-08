@@ -1113,7 +1113,6 @@ bool Counter::compute_cube(Cube& c, int branch) {
         debug_print("Lit from comp: " << l);
         if (l.var() >= indep_support_end) continue;
         c.cnf.push_back(l);
-        c.active_vars.push_back(l.var());
       }
     }
   }

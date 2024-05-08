@@ -237,7 +237,6 @@ struct Cube {
   Cube () = default;
   Cube(const vector<Lit>& _cnf, const mpz_class& _val) : cnf(_cnf), val(_val) {}
   vector<Lit> cnf;
-  vector<uint32_t> active_vars;
   mpz_class val;
   bool enabled = true;
 };

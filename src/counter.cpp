@@ -537,6 +537,7 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
     if (!cubes[i].enabled) continue;
     for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
       if (!cubes[i2].enabled) continue;
+      if (!cubes[i].enabled) continue;
       disable_smaller_cube_if_overlap(i, i2, cubes);
     }
   }

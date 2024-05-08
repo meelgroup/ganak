@@ -99,8 +99,10 @@ public:
 
   // Subsumption
   uint64_t subsume_runs = 0;
-  uint64_t subsumed_bin_cls = 0;
-  uint64_t subsumed_cls = 0;
+  uint64_t subsumed_bin_irred_cls = 0;
+  uint64_t subsumed_bin_red_cls = 0;
+  uint64_t subsumed_long_irred_cls = 0;
+  uint64_t subsumed_long_red_cls = 0;
 
   // SAT solver stats
   uint64_t sat_called = 0;

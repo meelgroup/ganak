@@ -699,8 +699,8 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
         << " orig cubes this rst: " << cubes.size()
         << " total orig cubes: " << stats.num_cubes_orig
         << " total final cubes: " << stats.num_cubes_final
-        << " counted this rst: " << cubes_cnt_this_rst
-        << " total cnt so far: " << val);
+        << " counted this rst: " << std::scientific << cubes_cnt_this_rst
+        << " total cnt so far: " << std::scientific << val << std::fixed);
 
     ret = sat_solver->solve();
     if (ret == CMSat::l_False) break;
@@ -1875,7 +1875,7 @@ bool Counter::propagate(bool out_of_order) {
         c[1] = c[i];
         c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
-        watches[c[1]].add_cl(ofs, c[0]);
+        watches[c[1]].add_cl(ofs, plit);
       } else {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
@@ -1896,7 +1896,7 @@ bool Counter::propagate(bool out_of_order) {
             if (maxind != 1) {
                 std::swap(c[1], c[maxind]);
                 it2--; // undo last watch
-                watches[c[1]].add_cl(ofs, it->blckLit);
+                watches[c[1]].add_cl(ofs, plit);
             }
             setLiteral(c[0], maxlev, Antecedent(ofs));
             VERBOSE_DEBUG_DO(cout << "Weird long prop: " << c[0] << " lev: " << maxlev << endl);
@@ -2809,7 +2809,8 @@ void Counter::backw_susume_cl(ClauseOfs off) {
       debug_print( "Subsumed cl: " << check_cl << endl
                 << "->by cl    : " << cl);
       alloc->clause_free(&check_cl);
-      stats.subsumed_cls++;
+      stats.subsumed_long_red_cls+=cl.red;
+      stats.subsumed_long_irred_cls+=!cl.red;
     }
   }
 }
@@ -2835,7 +2836,8 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
       debug_print( "Subsumed cl: " << check_cl << endl
                 << "->by cl    : " << cl);
       alloc->clause_free(&check_cl);
-      stats.subsumed_cls++;
+      stats.subsumed_long_red_cls+=cl.red;
+      stats.subsumed_long_irred_cls+=!cl.red;
     }
   }
 }
@@ -2930,8 +2932,10 @@ void Counter::subsume_all() {
 
   // setup
   double my_time = cpuTime();
-  auto old_subsumed_cls = stats.subsumed_cls;
-  auto old_subsumed_bin_cls = stats.subsumed_bin_cls;
+  auto old_subsumed_long_irred_cls = stats.subsumed_long_irred_cls;
+  auto old_subsumed_long_red_cls = stats.subsumed_long_red_cls;
+  auto old_subsumed_bin_irred_cls = stats.subsumed_bin_irred_cls;
+  auto old_subsumed_bin_red_cls = stats.subsumed_bin_red_cls;
   stats.subsume_runs++;
   occ.resize((nVars()+1)*2);
   attach_occ(long_irred_cls, true); // beware-- sorts the clauses, invalidates prop invariants
@@ -2954,11 +2958,16 @@ void Counter::subsume_all() {
   std::sort(bin_cls.begin(), bin_cls.end());
   uint32_t j = 0;
   for(uint32_t i = 1; i < bin_cls.size(); i++) {
-    if (bin_cls[i] == bin_cls[j]) {stats.subsumed_bin_cls++; continue;}
+    if (bin_cls[i] == bin_cls[j]) {
+      stats.subsumed_bin_red_cls+= bin_cls[i].red;
+      stats.subsumed_bin_irred_cls+= !bin_cls[i].red;
+      continue;
+  }
     if (bin_cls[i].lit[0] == bin_cls[j].lit[0]
        && bin_cls[i].lit[1] == bin_cls[j].lit[1]) {
       // ordering ensures IRRED is first
-      stats.subsumed_bin_cls++;
+      stats.subsumed_bin_red_cls+= bin_cls[i].red;
+      stats.subsumed_bin_irred_cls+= !bin_cls[i].red;
       continue;
     }
     j++;
@@ -3004,8 +3013,10 @@ void Counter::subsume_all() {
   occ.clear();
   clauses.clear();
   verb_print(1, "[sub] "
-      << " bin-cls: " << stats.subsumed_bin_cls - old_subsumed_bin_cls
-      << " long-cls: " << stats.subsumed_cls - old_subsumed_cls
+      << " bin-irred-cls: " << stats.subsumed_bin_irred_cls - old_subsumed_bin_irred_cls
+      << " bin-red-cls: " << stats.subsumed_bin_red_cls - old_subsumed_bin_red_cls
+      << " long-irred-cls: " << stats.subsumed_long_irred_cls - old_subsumed_long_irred_cls
+      << " long-red-cls: " << stats.subsumed_long_red_cls - old_subsumed_long_red_cls
       << " T: " << (cpuTime() - my_time));
 }
 

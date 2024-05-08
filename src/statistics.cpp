@@ -117,8 +117,10 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
 
   verb_print(1, "toplev subs runs/bins/long-cls "
     << setw(9) << subsume_runs << " "
-    << setw(9) << subsumed_bin_cls << " "
-    << setw(9) << subsumed_cls << " "
+    << setw(9) << subsumed_bin_irred_cls << " "
+    << setw(9) << subsumed_bin_red_cls << " "
+    << setw(9) << subsumed_long_irred_cls << " "
+    << setw(9) << subsumed_long_red_cls << " "
   );
   verb_print(1, "toplevel probes/fail/bprop     "
     << setw(9) << toplevel_probe_runs << " "

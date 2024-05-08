@@ -44,9 +44,6 @@ using std::endl;
 // WARNING below ALSO disables cache!! Extremely slow.
 /* #define CHECK_COUNT */
 
-// Not needed apparently. Kinda nice.
-/* #define VAR_FREQ */
-
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"
@@ -89,12 +86,6 @@ using std::endl;
 #define CHECK_COUNT_DO(x) do { x; } while (0)
 #else
 #define CHECK_COUNT_DO(x) do { } while (0)
-#endif
-
-#ifdef VAR_FREQ
-#define VAR_FREQ_DO(x) do { x; } while (0)
-#else
-#define VAR_FREQ_DO(x) do { } while (0)
 #endif
 /////
 

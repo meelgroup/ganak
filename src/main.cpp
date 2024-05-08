@@ -68,7 +68,7 @@ int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
 int do_bce = 1;
-int do_breakid = 1;
+int do_breakid = 0;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()

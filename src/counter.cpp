@@ -850,7 +850,6 @@ SOLVER_StateT Counter::count_loop() {
         // Now backtrack
         break;
       }
-      if (restart_if_needed()) return RESTART;
 
       while (!propagate()) {
         start1:
@@ -881,7 +880,7 @@ SOLVER_StateT Counter::count_loop() {
         if (state == EXIT) goto end;
       }
     }
-
+    if (restart_if_needed()) return RESTART;
 
     if (conf.do_vivify) {
       vivify_all();

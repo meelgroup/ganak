@@ -159,6 +159,7 @@ void add_ganak_options()
     ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
     ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
     ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
+    ("rstreadjust", po::value(&conf.do_readjust_for_restart)->default_value(conf.do_readjust_for_restart), "Readjust params for restart")
     ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
     ;
 

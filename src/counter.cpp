@@ -1272,9 +1272,11 @@ bool Counter::restart_if_needed() {
   stats.num_restarts++;
 
   // Readjust
-  conf.decide = stats.num_restarts%3;
-  conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
-  conf.act_exp = (stats.num_restarts % 2) ? 0.99 : 0.95;
+  if (conf.do_readjust_for_restart) {
+    conf.decide = stats.num_restarts%3;
+    conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
+    conf.act_exp = (stats.num_restarts % 2) ? 0.99 : 0.95;
+  }
   verb_print(1, "[rst] new config. decide: " << conf.decide
     << " polar_type: " << conf.polar_type
     << " act_exp: " << conf.act_exp);

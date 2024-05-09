@@ -36,6 +36,7 @@ struct CounterConfiguration {
   uint64_t maximum_cache_size_MB = 0;
 
   int restart_type = 8;
+  int do_readjust_for_restart = 1;
 
   int do_comp_sort = 0; // they are very similar, see: out-ganak-6910211
   double probe_only_after_ratio = 0.25;

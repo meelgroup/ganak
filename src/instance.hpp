@@ -101,6 +101,7 @@ protected:
   LiteralIndexedVector<TriValue> values;
   vector<double> tdscore;
   double td_weight = 1.0;
+  int td_width = 10000;
   double act_inc = 1.0;
   uint32_t lbd_cutoff;
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses

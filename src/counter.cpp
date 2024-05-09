@@ -226,7 +226,7 @@ void Counter::add_red_cl(const vector<Lit>& lits, int lbd) {
 void Counter::compute_score(TreeDecomposition& tdec) {
   const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
-  const uint32_t width = tdec.width();
+  td_width = tdec.width();
   const auto& adj = tdec.get_adj_list();
 #if 0
   for(uint32_t i = 0; i < bags.size(); i++) {
@@ -259,13 +259,13 @@ void Counter::compute_score(TreeDecomposition& tdec) {
 
   // calc td weight
   double rt = 0;
-  if (width > 0) {
+  if (td_width > 0) {
     // Larger the better
-    rt = (double)n/(double)width;
+    rt = (double)n/(double)td_width;
     if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
     else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
-  if (conf.do_check_td_vs_ind && indep_support_end < width) td_weight = 0.1;
+  if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) td_weight = 0.1;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
   if (!conf.do_td_weight) td_weight = 1;
@@ -1185,32 +1185,22 @@ static double luby(double y, int x){
 }
 
 bool Counter::restart_if_needed() {
-  if (!conf.do_restart) return false;
+  if (!conf.do_restart || (conf.restart_type == 8 && td_width < 90)) return false;
 
   bool restart = false;
+
+  // comp size
   if (conf.restart_type == 0
       && comp_size_q.isvalid() &&
       comp_size_q.avg() < comp_size_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
     restart = true;
 
-  if (conf.restart_type == 1) assert(false && "Not implemented");
-
+  // depth
   if (conf.restart_type == 2
       && depth_q.isvalid() &&
       depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
     restart = true;
 
-  // Decisions, luby
-  /* cout << "next restart dec: " << luby(2, stats.num_restarts) * conf.first_restart * 20 << " dec: " << stats.decisions << endl; */
-  if (conf.restart_type == 7 &&
-      (stats.decisions-stats.last_restart_num_decisions) >
-        (luby(2, stats.num_restarts) * conf.first_restart * 20))
-    restart = true;
-
-  // conflicts, static
-  if (conf.restart_type == 6 &&
-      (stats.conflicts-stats.last_restart_num_conflicts) > conf.first_restart)
-    restart = true;
 
   // Conflicts, luby
   /* cout << "next restart confl: " << luby(2, stats.num_restarts) * conf.first_restart << " confl: " << stats.conflicts << endl; */
@@ -1219,12 +1209,17 @@ bool Counter::restart_if_needed() {
         (luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
-  // Comps, luby
+  // Decisions, luby
+  /* cout << "next restart dec: " << luby(2, stats.num_restarts) * conf.first_restart * 20 << " dec: " << stats.decisions << endl; */
   if (conf.restart_type == 8 &&
-      (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
+      (stats.decisions-stats.last_restart_num_decisions) >
+        (luby(2, stats.num_restarts) * conf.first_restart * 20))
     restart = true;
 
-  if (conf.restart_type == 5) assert(false);
+  // Comps, luby
+  if (conf.restart_type == 9 &&
+      (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
+    restart = true;
 
   if (!restart) return false;
   verb_print(1, "************* Restarting.  **************");

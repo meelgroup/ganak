@@ -55,40 +55,30 @@ public:
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
-  bool isUnseenAndSet(const uint32_t v) const {
+  bool var_unvisited_sup_comp(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var));
-    return archetype.var_unseen_in_sup_comp(v);
+    return archetype.var_unvisited_in_sup_comp(v);
   }
 
   // manages the literal whenever it occurs in comp analysis
-  // returns true iff the underlying variable was unseen before
+  // returns true iff the underlying variable was unvisited before
   void manageSearchOccurrenceOf(const uint32_t v){
-    if (archetype.var_unseen_in_sup_comp(v)) {
+    if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
-      archetype.set_var_seen(v);
+      archetype.set_var_visited(v);
     }
   }
 
-  void setSeenAndStoreInSearchStack(const uint32_t v){
-    assert(is_unknown(v));
-    comp_vars.push_back(v);
-    archetype.set_var_seen(v);
-  }
-
-  void setupAnalysisContext(StackLevel &top, const Comp & super_comp){
+  void setup_analysis_context(StackLevel &top, const Comp & super_comp){
     archetype.re_initialize(top,super_comp);
 
-    debug_print("Setting VAR/CL_SUP_COMP_UNSEEN in seen[] for vars&cls inside super_comp if unknown");
+    debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
     for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
-      if (is_unknown(*vt)) {
-        archetype.set_var_in_sup_comp_unseen(*vt);
-        // TODO what is happening here....
-        /* var_freq_scores[*vt] = 0; */
-      }
+      if (is_unknown(*vt)) archetype.set_var_in_sup_comp_unvisited_raw(*vt);
     }
 
     for (auto it = super_comp.cls_begin(); *it != sentinel; it++)
-      archetype.set_clause_in_sup_comp_unseen(*it);
+      archetype.set_clause_in_sup_comp_unvisited(*it);
   }
 
   bool explore_comp(const uint32_t v);
@@ -171,7 +161,7 @@ private:
         //accidentally entered a satisfied clause: undo the search process
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
-          archetype.set_var_in_sup_comp_unseen(comp_vars.back()); //unsets it from being seen
+          archetype.set_var_in_sup_comp_unvisited(comp_vars.back()); //unsets it from being seen
           comp_vars.pop_back();
         }
         archetype.clear_cl(cl_id);
@@ -179,6 +169,6 @@ private:
       }
     }
 
-    if (!archetype.clause_nil(cl_id)) archetype.set_clause_seen(cl_id,all_lits_unkn);
+    if (!archetype.clause_nil(cl_id)) archetype.set_clause_visited(cl_id,all_lits_unkn);
   }
 };

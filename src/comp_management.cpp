@@ -84,13 +84,13 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
 
-  // This reinitializes archetype, sets up seen[] or all cls&vars unseen (if unset), etc.
+  // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.
   // Also zeroes out frequency_scores(!)
-  ana.setupAnalysisContext(top, super_comp);
+  ana.setup_analysis_context(top, super_comp);
 
   for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
-    debug_print("Going to NEXT var that's unseen & set in this component... if it exists. Var: " << *vt);
-    if (ana.isUnseenAndSet(*vt) && ana.explore_comp(*vt)) {
+    debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
+    if (ana.var_unvisited_sup_comp(*vt) && ana.explore_comp(*vt)) {
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown

@@ -99,7 +99,7 @@ void CompAnalyzer::initialize(
   }
   debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");
 
-  archetype.init_seen(max_var, max_clid);
+  archetype.init_data(max_var, max_clid);
 
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
   // the unified link list
@@ -151,19 +151,13 @@ void CompAnalyzer::initialize(
 
 // returns true, iff the comp found is non-trivial
 bool CompAnalyzer::explore_comp(const uint32_t v) {
-  SLOW_DEBUG_DO(assert(archetype.var_unseen_in_sup_comp(v)));
+  SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
   record_comp(v); // sets up the component that "v" is in
 
-  // comp only contains one variable
   if (comp_vars.size() == 1) {
-    debug_print("explore remaining with single var, v is: " <<  v);
-    if (v >= indep_support_end) {
-      archetype.stack_level().includeSolution(1);
-      /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 1)); */
-    } else {
-      archetype.stack_level().includeSolution(2);
-      /* CHECK_COUNT_DO(assert(solver->check_count(true, v) == 2)); */
-    }
+    debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
+    if (v >= indep_support_end) archetype.stack_level().includeSolution(1);
+    else archetype.stack_level().includeSolution(2);
     archetype.set_var_in_peer_comp(v);
     return false;
   }
@@ -172,8 +166,10 @@ bool CompAnalyzer::explore_comp(const uint32_t v) {
 
 // Create a component based on variable provided
 void CompAnalyzer::record_comp(const uint32_t var) {
+  SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
-  setSeenAndStoreInSearchStack(var);
+  comp_vars.push_back(var);
+  archetype.set_var_visited(var);
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
@@ -198,21 +194,21 @@ void CompAnalyzer::record_comp(const uint32_t var) {
       auto clid = *p;
       const Lit a = *(Lit*)(p + 1);
       const Lit b = *(Lit*)(p + 2);
-      if (archetype.clause_unseen_in_sup_comp(*p)){
+      if (archetype.clause_unvisited_in_sup_comp(*p)){
         /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
         if(is_true(a)|| is_true(b)) {
           archetype.clear_cl(clid);
         } else {
           manageSearchOccurrenceOf(a.var());
           manageSearchOccurrenceOf(b.var());
-          archetype.set_clause_seen(clid ,is_unknown(a) && is_unknown(b));
+          archetype.set_clause_visited(clid ,is_unknown(a) && is_unknown(b));
         }
       }
     }
 
     // traverse long clauses
     for (p++; *p ; p +=2)
-      if (archetype.clause_unseen_in_sup_comp(*p))
+      if (archetype.clause_unvisited_in_sup_comp(*p))
         search_clause(v,*p, (Lit const*)(p + 1 + *(p+1)));
   }
 

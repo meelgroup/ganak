@@ -20,14 +20,14 @@ using std::cout;
 using std::endl;
 
 // State values for variables found during comp analysis (CA)
-#define   CA_VAR_IN_SUP_COMP_UNSEEN  1
-#define   CA_VAR_SEEN 2
+#define   CA_VAR_IN_SUP_COMP_UNVISITED  1
+#define   CA_VAR_VISITED 2
 #define   CA_VAR_IN_PEER_COMP  4
 // 1 + 2 + 4 == 7
 #define   CA_VAR_MASK  7
 
-#define   CA_CL_IN_SUP_COMP_UNSEEN  8
-#define   CA_CL_SEEN 16
+#define   CA_CL_IN_SUP_COMP_UNVISITED  8
+#define   CA_CL_VISITED 16
 #define   CA_CL_IN_PEER_COMP  32
 #define   CA_CL_ALL_LITS_UNK  64
 // 64+32+16+8 == 120
@@ -39,14 +39,14 @@ class StackLevel;
 class CompArchetype {
 public:
   CompArchetype() = default;
-  ~CompArchetype() { delete[] seen; }
+  ~CompArchetype() { delete[] data; }
   CompArchetype(StackLevel &stack_level, const Comp &super_comp) :
       super_comp_ptr(&super_comp), stack_lvl_ptr(&stack_level) {
   }
 
   // called every time we want to deal with a new component
   void re_initialize(StackLevel &stack_level, const Comp &super_comp) {
-    debug_print("Reinitializing seen[] to all-zero in CompArchetype");
+    debug_print("Reinitializing data to all-zero in CompArchetype");
     super_comp_ptr = &super_comp;
     stack_lvl_ptr = &stack_level;
     clear_arrays();
@@ -62,85 +62,90 @@ public:
     return *stack_lvl_ptr;
   }
 
-  void set_var_in_sup_comp_unseen(const uint32_t v) {
-    seen[v] = CA_VAR_IN_SUP_COMP_UNSEEN | (seen[v] & CA_CL_MASK);
+  void set_var_in_sup_comp_unvisited(const uint32_t v) {
+    data[v] = CA_VAR_IN_SUP_COMP_UNVISITED | (data[v] & CA_CL_MASK);
   }
 
-  void set_clause_in_sup_comp_unseen(const ClauseIndex cl) {
-    seen[cl] = CA_CL_IN_SUP_COMP_UNSEEN | (seen[cl] & CA_VAR_MASK);
+  void set_var_in_sup_comp_unvisited_raw(const uint32_t v) {
+    data[v] = CA_VAR_IN_SUP_COMP_UNVISITED;
+  }
+
+  void set_clause_in_sup_comp_unvisited(const ClauseIndex cl) {
+    data[cl] = CA_CL_IN_SUP_COMP_UNVISITED | (data[cl] & CA_VAR_MASK);
   }
 
   void clear_var(const uint32_t v) {
-    seen[v] &= CA_CL_MASK;
+    data[v] &= CA_CL_MASK;
   }
 
   void clear_cl(const ClauseIndex cl) {
-    seen[cl] &= CA_VAR_MASK;
+    data[cl] &= CA_VAR_MASK;
   }
 
-  void set_var_seen(const uint32_t v) {
-    seen[v] = CA_VAR_SEEN | (seen[v] & CA_CL_MASK);
+  // REMOVES from unseen of super, sets visited
+  void set_var_visited(const uint32_t v) {
+    data[v] = CA_VAR_VISITED | (data[v] & CA_CL_MASK);
   }
 
-  void set_clause_seen(const ClauseIndex cl) {
+  void set_clause_visited(const ClauseIndex cl) {
     clear_cl(cl);
-    seen[cl] = CA_CL_SEEN | (seen[cl] & CA_VAR_MASK);
+    data[cl] = CA_CL_VISITED | (data[cl] & CA_VAR_MASK);
   }
 
-  void set_clause_seen(const ClauseIndex cl, const bool all_lits_unkn) {
+  void set_clause_visited(const ClauseIndex cl, const bool all_lits_unkn) {
     clear_cl(cl);
-    seen[cl] = CA_CL_SEEN | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (seen[cl] & CA_VAR_MASK);
+    data[cl] = CA_CL_VISITED | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (data[cl] & CA_VAR_MASK);
   }
 
   void set_var_in_peer_comp(const uint32_t v) {
-    seen[v] = CA_VAR_IN_PEER_COMP | (seen[v] & CA_CL_MASK);
+    data[v] = CA_VAR_IN_PEER_COMP | (data[v] & CA_CL_MASK);
   }
 
   void set_clause_in_peer_comp(const ClauseIndex cl) {
-    seen[cl] = CA_CL_IN_PEER_COMP | (seen[cl] & CA_VAR_MASK);
+    data[cl] = CA_CL_IN_PEER_COMP | (data[cl] & CA_VAR_MASK);
   }
 
-  bool var_seen(const uint32_t v) const {
-    return seen[v] & CA_VAR_SEEN;
+  bool var_visited(const uint32_t v) const {
+    return data[v] & CA_VAR_VISITED;
   }
 
-  bool clause_seen(const ClauseIndex cl) const {
-    return seen[cl] & CA_CL_SEEN;
+  bool clause_visited(const ClauseIndex cl) const {
+    return data[cl] & CA_CL_VISITED;
   }
 
   bool clause_all_lits_unkn(const ClauseIndex cl) const {
-    return seen[cl] & CA_CL_ALL_LITS_UNK;
+    return data[cl] & CA_CL_ALL_LITS_UNK;
   }
 
   bool var_nil(const uint32_t v) const {
-    return (seen[v] & CA_VAR_MASK) == 0;
+    return (data[v] & CA_VAR_MASK) == 0;
   }
 
   bool clause_nil(const ClauseIndex cl) const {
-    return (seen[cl] & CA_CL_MASK) == 0;
+    return (data[cl] & CA_CL_MASK) == 0;
   }
 
-  bool var_unseen_in_sup_comp(uint32_t v) const {
-    return seen[v] & CA_VAR_IN_SUP_COMP_UNSEEN;
+  bool var_unvisited_in_sup_comp(uint32_t v) const {
+    return data[v] & CA_VAR_IN_SUP_COMP_UNVISITED;
   }
 
-  bool clause_unseen_in_sup_comp(ClauseIndex cl) const {
-    return seen[cl] & CA_CL_IN_SUP_COMP_UNSEEN;
+  bool clause_unvisited_in_sup_comp(ClauseIndex cl) const {
+    return data[cl] & CA_CL_IN_SUP_COMP_UNVISITED;
   }
 
   // called exactly once during lifetime of counter
-  void init_seen(uint32_t max_var_id, uint32_t max_cl_id) {
-    uint32_t seen_size = std::max(max_var_id,max_cl_id)  + 1;
-    debug_print("Creating new seen[] of size: " << seen_size << " and zeroing it.");
-    seen = new uint8_t[seen_size];
-    seen_bytes_sz = sizeof(uint8_t) * (seen_size);
+  void init_data(uint32_t max_var_id, uint32_t max_cl_id) {
+    uint32_t data_sz = std::max(max_var_id,max_cl_id)  + 1;
+    debug_print("Creating new data[] of size: " << data_size << " and zeroing it.");
+    data = new uint8_t[data_sz];
+    data_sz = sizeof(uint8_t) * data_sz;
     clear_arrays();
   }
 
-  void clear_arrays() { memset(seen, 0, seen_bytes_sz); }
+  void clear_arrays() { memset(data, 0, data_sz); }
 
   // At this point exploreRemainingCompOf has been called already which
-  // set up search_stack_, seen[] etc. so this is now quite easy.
+  // set up search_stack_, data[] etc. so this is now quite easy.
   Comp* make_comp(const uint32_t comp_vars_size) {
     debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
     Comp *p_new_comp = new Comp();
@@ -149,7 +154,7 @@ public:
 
     // Fill variables in new comp
     for (auto v_it = super_comp().vars_begin(); *v_it != sentinel;  v_it++)
-      if (var_seen(*v_it)) { //we have to put a var into our comp
+      if (var_visited(*v_it)) { //we have to put a var into our comp
         p_new_comp->add_var(*v_it);
         curr_comp.add_var(*v_it);
         set_var_in_peer_comp(*v_it);
@@ -159,7 +164,7 @@ public:
 
     // Fill (long) clause IDs in new comp
     for (auto it_cl = super_comp().cls_begin(); *it_cl != sentinel; it_cl++)
-      if (clause_seen(*it_cl)) {
+      if (clause_visited(*it_cl)) {
         p_new_comp->add_cl(*it_cl);
         if (!clause_all_lits_unkn(*it_cl)) curr_comp.add_cl(*it_cl);
         set_clause_in_peer_comp(*it_cl);
@@ -182,6 +187,6 @@ public:
 private:
   Comp const* super_comp_ptr;
   StackLevel *stack_lvl_ptr;
-  uint8_t* seen = nullptr; // all variables and all clause IDXs can be indexed here
-  uint32_t seen_bytes_sz = 0;
+  uint8_t* data = nullptr; // all variables and all clause IDXs can be indexed here
+  uint32_t data_sz = 0;
 };

@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "comp_management.hpp"
+#include "common.hpp"
 #include "counter.hpp"
 
 CompManager::CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
@@ -88,7 +89,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
   // Also zeroes out frequency_scores(!)
   ana.setup_analysis_context(top, super_comp);
 
-  for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
+  all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
     if (ana.var_unvisited_sup_comp(*vt) && ana.explore_comp(*vt)) {
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
@@ -112,7 +113,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        all_vars_in_comp(p_new_comp, v) cout << *v << " ";
+        all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
       } else {
@@ -120,7 +121,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        all_vars_in_comp(p_new_comp, v) cout << *v << " ";
+        all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
         delete p_new_comp;

@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "common.hpp"
 #include "clauseallocator.hpp"
 #include "counter_config.hpp"
 #include "statistics.hpp"
@@ -62,7 +63,7 @@ public:
 
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unvisited before
-  void manageSearchOccurrenceOf(const uint32_t v){
+  void manage_occ_of(const uint32_t v){
     if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
@@ -73,11 +74,10 @@ public:
     archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
-    for (auto vt = super_comp.vars_begin(); *vt != sentinel; vt++) {
+    all_vars_in_comp(super_comp, vt)
       if (is_unknown(*vt)) archetype.set_var_in_sup_comp_unvisited_raw(*vt);
-    }
 
-    for (auto it = super_comp.cls_begin(); *it != sentinel; it++)
+    all_cls_in_comp(super_comp, it)
       archetype.set_clause_in_sup_comp_unvisited(*it);
   }
 
@@ -152,7 +152,7 @@ private:
     bool all_lits_unkn = true;
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
-      if (!archetype.var_nil(it_l->var())) manageSearchOccurrenceOf(it_l->var());
+      if (!archetype.var_nil(it_l->var())) manage_occ_of(it_l->var());
       else {
         assert(!is_unknown(*it_l));
         all_lits_unkn = false;
@@ -161,7 +161,7 @@ private:
         //accidentally entered a satisfied clause: undo the search process
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
-          archetype.set_var_in_sup_comp_unvisited(comp_vars.back()); //unsets it from being seen
+          archetype.set_var_in_sup_comp_unvisited(comp_vars.back());
           comp_vars.pop_back();
         }
         archetype.clear_cl(cl_id);

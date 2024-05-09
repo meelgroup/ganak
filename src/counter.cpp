@@ -999,8 +999,7 @@ uint32_t Counter::find_best_branch(bool ignore_td) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
-  for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
-      *it != sentinel; it++) {
+  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
 
@@ -1025,8 +1024,8 @@ uint32_t Counter::find_best_branch_gpmc() {
   double max_score_td = -1;
   bool only_optional_indep = true;
 
-  for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
-      *it != sentinel; it++) if (*it < opt_indep_support_end) {
+  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it)
+    if (*it < opt_indep_support_end) {
     uint32_t v = *it;
     if (val(v) != X_TRI) continue;
     if (v < indep_support_end) only_optional_indep = false;
@@ -1106,7 +1105,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
     if (i == decisions.get_decision_level()) off_by_one = 0;
     for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
       const auto& comp = comp_manager->at(i2);
-      all_vars_in_comp(comp, v) {
+      all_vars_in_comp(*comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
         debug_print("Lit from comp: " << l);
         if (l.var() >= indep_support_end) continue;
@@ -3022,8 +3021,7 @@ bool Counter::use_sat_solver(RetState& state) {
   decisions.top().var = 0;
 
   // Fill up order heap
-  for (auto it = comp_manager->get_super_comp(decisions.top()).vars_begin();
-      *it != sentinel; it++) {
+  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     debug_print("checking var to put in order_heap: " << *it << " val: "
       << val_to_str(val(*it)));
     if (val(*it) != X_TRI) continue;

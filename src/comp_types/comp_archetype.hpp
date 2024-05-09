@@ -152,7 +152,7 @@ public:
     curr_comp.clear();
 
     // Fill variables in new comp
-    for (auto v_it = super_comp().vars_begin(); *v_it != sentinel;  v_it++)
+    all_vars_in_comp(super_comp(), v_it)
       if (var_visited(*v_it)) { //we have to put a var into our comp
         p_new_comp->add_var(*v_it);
         curr_comp.add_var(*v_it);
@@ -162,7 +162,7 @@ public:
     curr_comp.close_vars_data();
 
     // Fill (long) clause IDs in new comp
-    for (auto it_cl = super_comp().cls_begin(); *it_cl != sentinel; it_cl++)
+    all_cls_in_comp(super_comp(), it_cl)
       if (clause_visited(*it_cl)) {
         p_new_comp->add_cl(*it_cl);
         if (!clause_all_lits_unkn(*it_cl)) curr_comp.add_cl(*it_cl);

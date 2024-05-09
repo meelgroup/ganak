@@ -119,7 +119,8 @@ using std::endl;
 #endif
 #define debug_print_tmp(x) std::cout << COLDEF << x << COLDEF << endl
 
-#define all_vars_in_comp(comp, v) for(auto v = (comp)->vars_begin(); *v != sentinel; v++)
+#define all_vars_in_comp(comp, v) for(auto v = (comp).vars_begin(); *v != sentinel; v++)
+#define all_cls_in_comp(comp, c) for(auto c = (comp).cls_begin(); *c != sentinel; c++)
 
 #define release_assert(a) \
     do { \

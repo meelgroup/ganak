@@ -174,7 +174,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  // manageSearchOccurrenceOf and search_clause
+  // manage_occ_of and search_clause
   // will push into search_stack_ which will make this
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
@@ -186,7 +186,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       /* BUDDY_DO(if (solver->val(*p) == X_TRI) archetype.num_bin_cls++); */
-      manageSearchOccurrenceOf(*p);
+      manage_occ_of(*p);
     }
 
     //traverse ternary clauses
@@ -199,8 +199,8 @@ void CompAnalyzer::record_comp(const uint32_t var) {
         if(is_true(a)|| is_true(b)) {
           archetype.clear_cl(clid);
         } else {
-          manageSearchOccurrenceOf(a.var());
-          manageSearchOccurrenceOf(b.var());
+          manage_occ_of(a.var());
+          manage_occ_of(b.var());
           archetype.set_clause_visited(clid ,is_unknown(a) && is_unknown(b));
         }
       }

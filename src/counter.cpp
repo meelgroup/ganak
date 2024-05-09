@@ -1186,7 +1186,7 @@ static double luby(double y, int x){
 }
 
 bool Counter::restart_if_needed() {
-  if (!conf.do_restart || (conf.restart_type == 8 && td_width < 90)) return false;
+  if (!conf.do_restart || (conf.restart_type == 8 && td_width < 40)) return false;
 
   bool restart = false;
 
@@ -1206,15 +1206,21 @@ bool Counter::restart_if_needed() {
   /* cout << "next restart confl: " << luby(2, stats.num_restarts) * conf.first_restart << " confl: " << stats.conflicts << endl; */
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
-        (luby(2, stats.num_restarts) * conf.first_restart))
+        (luby(2, stats.num_restarts) * conf.first_restart)) {
+    verb_print(1, "[rst] restarting. Next restart confl: "
+        << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart));
     restart = true;
+  }
 
   // Decisions, luby
-  /* cout << "next restart dec: " << luby(2, stats.num_restarts) * conf.first_restart * 20 << " dec: " << stats.decisions << endl; */
   if (conf.restart_type == 8 &&
       (stats.decisions-stats.last_restart_num_decisions) >
-        (luby(2, stats.num_restarts) * conf.first_restart * 20))
+        (luby(2, stats.num_restarts) * conf.first_restart * 20)) {
+    verb_print(1, "[rst] restarting. Next restart decK: "
+        << (stats.decisions + luby(2, stats.num_restarts+1) * conf.first_restart * 20)/1000);
     restart = true;
+  }
+
 
   // Comps, luby
   if (conf.restart_type == 9 &&

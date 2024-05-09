@@ -71,7 +71,7 @@ struct CounterConfiguration {
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  double td_maxweight = 5.0;
+  double td_maxweight = 4.0;
   double td_minweight = 0.1;
   double td_divider = 1e3;
   double do_td_weight = 1;

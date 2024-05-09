@@ -36,8 +36,6 @@ struct CounterConfiguration {
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
 
-  // 7 == conflict/luby-based, taking into account first_restart
-  // 6 == conflict/static
   int restart_type = 7;
 
   int do_comp_sort = 0; // they are very similar, see: out-ganak-6910211
@@ -46,8 +44,7 @@ struct CounterConfiguration {
   int cache_time_update = 2;
   int do_cache_reverse_sort = 1;
 
-  // Below has 4 setups, two bits to manipulate.
-  int decide = 2; // 1st bit 0 = sstd, 1st bit 1 = gpmc, bit 2 = act setup
+  int decide = 0; // 0 = sstd, 1 = gpmc
   uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 1; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
@@ -70,9 +67,7 @@ struct CounterConfiguration {
 #else
   int do_cube_check_count = 0;
 #endif
-  int force_branch = 0; // 0 = no force, 1 = TD, 2 = conflict
   int do_use_cache = 1;
-  uint64_t branch_cutoff = 990000000;
 
 
   bool do_td = 1;

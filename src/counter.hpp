@@ -145,7 +145,7 @@ public:
   };
   ConflictData find_conflict_level(Lit p);
 
-  double score_of(const uint32_t v) const;
+  double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
@@ -216,7 +216,7 @@ private:
   SOLVER_StateT count_loop();
   bool decide_lit();
   uint32_t find_best_branch_gpmc();
-  uint32_t find_best_branch();
+  uint32_t find_best_branch(bool ignore_td = false);
   template<class T> bool clause_falsified(const T& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T> bool clause_satisfied(const T& cl) const;

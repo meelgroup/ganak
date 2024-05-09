@@ -929,8 +929,16 @@ bool Counter::decide_lit() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   isindependent = true;
-  if ((conf.decide & 1) == 0) v = find_best_branch();
-  else v = find_best_branch_gpmc();
+  switch (conf.decide) {
+    case 0: v = find_best_branch(false);
+            break;
+    case 1: v = find_best_branch_gpmc();
+            break;
+    case 2: v = find_best_branch(true);
+            break;
+    default:
+            assert(false);
+  }
   if (v == 0) {
     decisions.pop_back();
     isindependent = false;
@@ -962,36 +970,32 @@ double Counter::var_act(const uint32_t v) const {
 }
 
 // The higher, the better. It is never below 0.
-double Counter::score_of(const uint32_t v) const {
+double Counter::score_of(const uint32_t v, bool ignore_td) const {
   bool print = false;
   if (stats.decisions % 40000 == 0) print = 1;
   /* print = true; */
   print = false;
-  double freq_score = 0;
   double act_score = 0;
   double td_score = 0;
-  if ((conf.force_branch == 0 && stats.conflicts < conf.branch_cutoff && !tdscore.empty()) ||
-      conf.force_branch == 1) {
-    // TODO Yash idea: let's cut this into activities and incidence
+
+  // TODO Yash idea: let's cut this into activities and incidence
+  if (!tdscore.empty() && !ignore_td) {
     act_score = var_act(v)/3;
-    if (!tdscore.empty()) td_score = td_weight*tdscore[v];
-  } else if (conf.force_branch == 0 || conf.force_branch == 2){
-    // activity is prioritized
-    act_score = 100*var_act(v);
-    if (!tdscore.empty()) td_score += tdscore[v];
+    td_score = td_weight*tdscore[v];
+  } else {
+    act_score = var_act(v);
   }
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions
-    << " freq_score: " << freq_score
     << " act_score: " << act_score
     << " td_score: " << td_score
     << endl;
 
-  return freq_score+act_score+td_score;
+  return act_score+td_score;
 }
 
-uint32_t Counter::find_best_branch() {
+uint32_t Counter::find_best_branch(bool ignore_td) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
@@ -1002,7 +1006,7 @@ uint32_t Counter::find_best_branch() {
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
-      double score = score_of(v) ;
+      double score = score_of(v, ignore_td) ;
       /* assert(score >= 0); */
       if (score > best_var_score) {
         best_var = v;
@@ -1018,7 +1022,6 @@ uint32_t Counter::find_best_branch() {
 uint32_t Counter::find_best_branch_gpmc() {
   uint32_t best_var = 0;
   double max_score_act = -1;
-  double max_score_freq = -1;
   double max_score_td = -1;
   bool only_optional_indep = true;
 
@@ -1028,28 +1031,21 @@ uint32_t Counter::find_best_branch_gpmc() {
     if (val(v) != X_TRI) continue;
     if (v < indep_support_end) only_optional_indep = false;
 
-    double score_td = tdscore[v];
-    double score_freq = 0;
+    double score_td = tdscore.empty() ? 0 : tdscore[v];
     double score_act = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {
       max_score_td = score_td;
-      max_score_freq = score_freq;
       max_score_act = score_act;
       best_var = v;
-    }
-    else if( score_td == max_score_td) {
-      if(score_freq > max_score_freq) {
-        max_score_freq = score_freq;
-        max_score_act = score_act;
-        best_var = v;
-      } else if (score_freq == max_score_freq && score_act > max_score_act) {
+    } else if(score_td == max_score_td) {
+      if (score_act > max_score_act) {
         max_score_act = score_act;
         best_var = v;
       }
     }
   }
-  if (best_var != 0 && only_optional_indep) return 0;
+  if (only_optional_indep) return 0;
   return best_var;
 }
 
@@ -1201,7 +1197,6 @@ bool Counter::restart_if_needed() {
       depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
     restart = true;
 
-
   // Conflicts, luby
   /* cout << "next restart confl: " << luby(2, stats.num_restarts) * conf.first_restart << " confl: " << stats.conflicts << endl; */
   if (conf.restart_type == 7 &&
@@ -1259,6 +1254,7 @@ bool Counter::restart_if_needed() {
     assert(ret);
     decisions.pop_back();
     VERY_SLOW_DEBUG_DO(if (!check_watchlists()) {print_trail(false, false);assert(false);});
+    conf.decide = (conf.decide+1)%3;
   }
 
   // Because of non-chrono backtrack, we need to propagate here:

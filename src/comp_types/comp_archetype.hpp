@@ -49,7 +49,7 @@ public:
     debug_print("Reinitializing data to all-zero in CompArchetype");
     super_comp_ptr = &super_comp;
     stack_lvl_ptr = &stack_level;
-    clear_arrays();
+    clear_data();
     curr_comp.reserve_space(super_comp.nVars(),super_comp.num_long_cls());
     BUDDY_DO(num_bin_cls = 0);
   }
@@ -138,10 +138,10 @@ public:
     data_sz = std::max(max_var_id,max_cl_id)  + 1;
     debug_print("Creating new data[] of size: " << data_size << " and zeroing it.");
     data = new uint8_t[data_sz];
-    clear_arrays();
+    clear_data();
   }
 
-  void clear_arrays() { memset(data, 0, data_sz); }
+  void clear_data() { memset(data, 0, data_sz); }
 
   // At this point exploreRemainingCompOf has been called already which
   // set up search_stack_, data[] etc. so this is now quite easy.

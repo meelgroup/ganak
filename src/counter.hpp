@@ -282,8 +282,7 @@ private:
     var(lit).decision_level = dec_lev;
     var(lit).ante = ant;
     if (!ant.isNull()) {
-      var(lit).last_polarity = lit.sign();
-      var(lit).set_once = true;
+      var(lit).last_polarity = !lit.sign();
     }
     var(lit).sublevel = trail.size();
     qhead = std::min<uint32_t>(qhead, trail.size());

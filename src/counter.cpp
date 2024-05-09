@@ -902,15 +902,13 @@ end:
 }
 
 bool Counter::standard_polarity(const uint32_t v) const {
-    return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;
+    return watches[Lit(v, true)].activity < watches[Lit(v, false)].activity;
 }
 
 bool Counter::get_polarity(const uint32_t v) const {
   bool polarity;
   if (conf.polar_type == 0) {
-    if (var(Lit(v, false)).set_once) {
-      polarity = var(Lit(v, false)).last_polarity;
-    } else polarity = standard_polarity(v);
+    polarity = var(Lit(v, false)).last_polarity;
   } else if (conf.polar_type == 1) polarity = standard_polarity(v);
   else if (conf.polar_type == 4) polarity = !standard_polarity(v);
   else if (conf.polar_type == 2) polarity = false;
@@ -955,7 +953,7 @@ bool Counter::decide_lit() {
 
   decisions.top().var = v;
 
-  Lit lit = Lit(v, get_polarity(v));
+  Lit lit = Lit(v, !get_polarity(v));
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << decisions.get_decision_level());
@@ -3045,7 +3043,7 @@ bool Counter::use_sat_solver(RetState& state) {
       break;
     }
     assert(val(d) == X_TRI);
-    Lit l(d, var(d).last_polarity);
+    Lit l(d, !var(d).last_polarity);
     if (decisions.top().var != 0) decisions.push_back(StackLevel(1,2));
     decisions.back().var = l.var();
     setLiteral(l, decision_level());

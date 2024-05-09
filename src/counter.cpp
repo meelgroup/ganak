@@ -1186,7 +1186,7 @@ static double luby(double y, int x){
 }
 
 bool Counter::restart_if_needed() {
-  if (!conf.do_restart || (conf.restart_type == 8 && td_width < 40)) return false;
+  if (!conf.do_restart || td_width < 60) return false;
 
   bool restart = false;
 

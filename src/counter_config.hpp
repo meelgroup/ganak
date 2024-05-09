@@ -50,8 +50,7 @@ struct CounterConfiguration {
 
   uint32_t reduce_db_everyN = 10000;
   uint32_t consolidate_every_n = 30000;
-  // 3 = TRUE, 2 = FALSE, 1 = standard, 0 = cache
-  int polar_type = 1;
+  int polar_type = 0;
   uint32_t base_lbd_cutoff = 1;
 
   int do_vivify = 1;

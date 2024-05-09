@@ -907,13 +907,25 @@ bool Counter::standard_polarity(const uint32_t v) const {
 
 bool Counter::get_polarity(const uint32_t v) const {
   bool polarity;
-  if (conf.polar_type == 0) {
-    polarity = var(Lit(v, false)).last_polarity;
-  } else if (conf.polar_type == 1) polarity = standard_polarity(v);
-  else if (conf.polar_type == 4) polarity = !standard_polarity(v);
-  else if (conf.polar_type == 2) polarity = false;
-  else if (conf.polar_type == 3) polarity = true;
-  else assert(false);
+  switch (conf.polar_type) {
+    case 0:
+      polarity = standard_polarity(v);
+      break;
+    case 1:
+      polarity = var(Lit(v, false)).last_polarity;
+      break;
+    case 2:
+      polarity = !standard_polarity(v);
+      break;
+    case 3:
+      polarity = false;
+      break;
+    case 4:
+      polarity = true;
+      break;
+    default:
+      assert(false);
+  }
   return polarity;
 }
 
@@ -1258,8 +1270,11 @@ bool Counter::restart_if_needed() {
 
   // Readjust
   conf.decide = stats.num_restarts%3;
-  conf.polar_type = (stats.num_restarts % 5 == 3) ? 0 : 1;
-  conf.act_exp = (stats.num_restarts % 4 == 2) ? 0.99 : 0.95;
+  conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%7) : 0;
+  conf.act_exp = (stats.num_restarts % 2) ? 0.99 : 0.95;
+  verb_print(1, "[rst] new config. decide: " << conf.decide
+    << " polar_type: " << conf.polar_type
+    << " act_exp: " << conf.act_exp);
   return true;
 }
 

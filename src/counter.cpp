@@ -915,12 +915,9 @@ bool Counter::get_polarity(const uint32_t v) const {
       polarity = var(Lit(v, false)).last_polarity;
       break;
     case 2:
-      polarity = !standard_polarity(v);
-      break;
-    case 3:
       polarity = false;
       break;
-    case 4:
+    case 3:
       polarity = true;
       break;
     default:
@@ -1276,7 +1273,7 @@ bool Counter::restart_if_needed() {
 
   // Readjust
   conf.decide = stats.num_restarts%3;
-  conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%7) : 0;
+  conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
   conf.act_exp = (stats.num_restarts % 2) ? 0.99 : 0.95;
   verb_print(1, "[rst] new config. decide: " << conf.decide
     << " polar_type: " << conf.polar_type

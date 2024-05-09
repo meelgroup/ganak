@@ -977,12 +977,8 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   double td_score = 0;
 
   // TODO Yash idea: let's cut this into activities and incidence
-  if (!tdscore.empty() && !ignore_td) {
-    act_score = var_act(v)/3;
-    td_score = td_weight*tdscore[v];
-  } else {
-    act_score = var_act(v);
-  }
+  if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
+  act_score = var_act(v)/3;
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions
@@ -1251,7 +1247,6 @@ bool Counter::restart_if_needed() {
     assert(ret);
     decisions.pop_back();
     VERY_SLOW_DEBUG_DO(if (!check_watchlists()) {print_trail(false, false);assert(false);});
-    conf.decide = (conf.decide+1)%3;
   }
 
   // Because of non-chrono backtrack, we need to propagate here:
@@ -1260,6 +1255,11 @@ bool Counter::restart_if_needed() {
   assert(ret && "never UNSAT");
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
+
+  // Readjust
+  conf.decide = stats.num_restarts%3;
+  conf.polar_type = (stats.num_restarts % 5 == 3) ? 0 : 1;
+  conf.act_exp = (stats.num_restarts % 4 == 2) ? 0.99 : 0.95;
   return true;
 }
 

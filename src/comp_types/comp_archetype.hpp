@@ -135,10 +135,9 @@ public:
 
   // called exactly once during lifetime of counter
   void init_data(uint32_t max_var_id, uint32_t max_cl_id) {
-    uint32_t data_sz = std::max(max_var_id,max_cl_id)  + 1;
+    data_sz = std::max(max_var_id,max_cl_id)  + 1;
     debug_print("Creating new data[] of size: " << data_size << " and zeroing it.");
     data = new uint8_t[data_sz];
-    data_sz = sizeof(uint8_t) * data_sz;
     clear_arrays();
   }
 

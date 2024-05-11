@@ -135,7 +135,7 @@ public:
   // called exactly once during lifetime of counter
   void init_data(uint32_t max_var_id, uint32_t max_cl_id) {
     data_sz = std::max(max_var_id,max_cl_id)  + 1;
-    debug_print("Creating new data[] of size: " << data_size << " and zeroing it.");
+    debug_print("Creating new data[] of size: " << data_sz << " and zeroing it.");
     data = new uint8_t[data_sz];
     cache_comp.reserve_space(max_var_id,max_cl_id);
     clear_data();

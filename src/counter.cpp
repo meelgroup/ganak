@@ -1136,7 +1136,7 @@ bool Counter::compute_cube(Cube& c, int branch) {
       assert(i2 < comp_manager->comp_stack_size());
       const auto& comp = comp_manager->at(i2);
       cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
-      all_vars_in_comp(comp, v) cout << *v << " ";
+      all_vars_in_comp(*comp, v) cout << *v << " ";
       cout << COLDEF << endl;
     }
   }

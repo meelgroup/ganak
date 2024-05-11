@@ -116,35 +116,59 @@ void CompAnalyzer::initialize(
   variable_link_list_offsets.resize(max_var + 1, 0);
 
   // now fill unified link list, for each variable
+  vector<uint32_t> lits_here(2*(max_var+1), 0);
   for (uint32_t v = 1; v < max_var + 1; v++) {
     variable_link_list_offsets[v] = unified_var_links_lists_pool.size();
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred()) unified_var_links_lists_pool.push_back(bincl.lit().var());
+        if (bincl.irred()) {
+          unified_var_links_lists_pool.push_back(bincl.lit().var());
+          lits_here[bincl.lit().raw()]++;
+        }
       }
     }
 
     // data for ternary clauses
     unified_var_links_lists_pool.push_back(0);
-    unified_var_links_lists_pool.insert(
-        unified_var_links_lists_pool.end(),
-        occ_ternary_clauses[v].begin(),
-        occ_ternary_clauses[v].end());
+    for(uint32_t i = 0; i < occ_ternary_clauses[v].size();) {
+      auto cl_id = occ_ternary_clauses[v][i++];
+      unified_var_links_lists_pool.push_back(cl_id);
+      Lit l;
+      l = Lit::toLit(occ_ternary_clauses[v][i++]);
+      unified_var_links_lists_pool.push_back(l.raw());
+      lits_here[l.raw()]++;
+      l = Lit::toLit(occ_ternary_clauses[v][i++]);
+      unified_var_links_lists_pool.push_back(l.raw());
+      lits_here[l.raw()]++;
+    }
 
     // data for long clauses
     unified_var_links_lists_pool.push_back(0);
     for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
-      unified_var_links_lists_pool.push_back(*it); //cl_id
-      unified_var_links_lists_pool.push_back(*(it + 1) + (occs[v].end() - it));
+      auto cl_id = *it;
+      unified_var_links_lists_pool.push_back(cl_id);
+      auto offs = *(it + 1) + (occs[v].end() - it);
+      unified_var_links_lists_pool.push_back(offs);
     }
 
     unified_var_links_lists_pool.push_back(0);
-    unified_var_links_lists_pool.insert(
-        unified_var_links_lists_pool.end(),
-        occ_long_clauses[v].begin(),
-        occ_long_clauses[v].end());
+    for(const auto& raw: occ_long_clauses[v]) {
+      Lit l = Lit::toLit(raw);
+      unified_var_links_lists_pool.push_back(l.raw());
+      if (l != SENTINEL_LIT) lits_here[l.raw()]++;
+    }
+
+    Lit best = SENTINEL_LIT;
+    uint32_t best_num = 0;
+    for(uint32_t i = 2; i < 2*(max_var+1); i++) {
+      if (best == SENTINEL_LIT || best_num < lits_here[i]) {
+        best = Lit::toLit(i);
+        best_num = lits_here[i];
+      }
+    }
+    cout << "best: " << best << " " << best_num << endl;
   }
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }

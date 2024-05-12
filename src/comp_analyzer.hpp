@@ -151,18 +151,14 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause(uint32_t v, ClauseIndex cl_id, Lit const* pstart_cls){
+  void search_clause(ClauseIndex cl_id, Lit const* pstart_cls){
     const auto it_v_end = comp_vars.end();
     bool all_lits_unkn = true;
 
-    /* for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) { */
-    /*   cout << "v: " << v << " cl_id: " << cl_id << " lit: " << *it_l << endl; */
-    /* } */
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
       if (!archetype.var_nil(it_l->var())) manage_occ_of(it_l->var());
       else {
-        /* cout << "going through: " << *it_l << endl; */
         assert(!is_unknown(*it_l));
         all_lits_unkn = false;
         if (is_false(*it_l)) continue;

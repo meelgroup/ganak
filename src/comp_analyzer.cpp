@@ -299,7 +299,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     // traverse long clauses
     for (p++; *p ; p +=2)
       if (archetype.clause_unvisited_in_sup_comp(*p)) {
-        search_clause(v, *p, (Lit const*)(p + 1 + *(p+1)));
+        search_clause(*p, (Lit const*)(p + 1 + *(p+1)));
       }
   }
 

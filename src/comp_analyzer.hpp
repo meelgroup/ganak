@@ -93,6 +93,12 @@ public:
   CompArchetype& get_archetype() { return archetype; }
 
 private:
+  void run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t, Lit>& best_alters,
+    const LiteralIndexedVector<LitWatchList> & watches,
+    const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls,
+    const vector<vector<uint32_t>>&  occ_ternary_clauses,
+    const vector<vector<ClauseOfs>>& occs);
+
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool

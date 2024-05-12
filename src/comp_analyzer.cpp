@@ -117,7 +117,6 @@ void CompAnalyzer::initialize(
   variable_link_list_offsets.clear();
   variable_link_list_offsets.resize(max_var + 1, 0);
 
-  // now fill unified link list, for each variable
   solver->vivif_setup();
   map<uint32_t, Lit> best_alters;
   for (uint32_t v = 1; v < max_var + 1; v++) {
@@ -176,23 +175,35 @@ void CompAnalyzer::initialize(
     best_alters[v] = best;
   }
 
+  run_one(variable_link_list_offsets_alt, best_alters, watches, alloc, long_irred_cls,
+      occ_ternary_clauses, occs);
+
+  debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
+}
+
+void CompAnalyzer::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t, Lit>& best_alters,
+    const LiteralIndexedVector<LitWatchList> & watches,
+    const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls,
+    const vector<vector<uint32_t>>&  occ_ternary_clauses,
+    const vector<vector<ClauseOfs>>& occs) {
+  // now fill unified link list, for each variable
   solver->v_backup();
-  variable_link_list_offsets_alt.clear();
-  variable_link_list_offsets_alt.resize(max_var +1);
+  alt.clear();
+  alt.resize(max_var +1);
   for (uint32_t v = 1; v < max_var + 1; v++) {
-    const Lit true_l = best_alters[v];
+    const Lit true_l = best_alters.find(v)->second;
     solver->v_new_lev();
     if (true_l != SENTINEL_LIT) {
       assert(solver->v_val(true_l) == X_TRI);
       solver->v_enqueue(true_l);
       solver->v_propagate();
     }
-    variable_link_list_offsets_alt[v] = make_pair(true_l, unified_var_links_lists_pool.size());
+    alt[v] = make_pair(true_l, unified_var_links_lists_pool.size());
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred() && bincl.lit() != true_l) {
+        if (bincl.irred() && solver->v_val(bincl.lit()) != T_TRI) {
           unified_var_links_lists_pool.push_back(bincl.lit().var());
         }
       }
@@ -201,8 +212,8 @@ void CompAnalyzer::initialize(
     // data for ternary clauses
     unified_var_links_lists_pool.push_back(0);
     for(uint32_t i = 0; i < occ_ternary_clauses[v].size();) {
-      if ((Lit::toLit(occ_ternary_clauses[v][i+1]) == true_l) ||
-          Lit::toLit(occ_ternary_clauses[v][i+2]) == true_l) {
+      if (solver->v_val(Lit::toLit(occ_ternary_clauses[v][i+1])) == T_TRI ||
+          solver->v_val(Lit::toLit(occ_ternary_clauses[v][i+2])) == T_TRI) {
         i += 3;
         continue;
       }
@@ -243,8 +254,6 @@ void CompAnalyzer::initialize(
     solver->v_backtrack();
   }
   solver->v_restore();
-
-  debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }
 
 // returns true, iff the comp found is non-trivial

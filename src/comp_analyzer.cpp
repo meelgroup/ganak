@@ -118,6 +118,7 @@ void CompAnalyzer::initialize(
   variable_link_list_offsets.resize(max_var + 1, 0);
 
   solver->vivif_setup();
+  solver->v_backup();
   map<uint32_t, Lit> best_alters;
   for (uint32_t v = 1; v < max_var + 1; v++) {
     vector<uint32_t> lits_here(2*(max_var+1), 0);
@@ -141,10 +142,10 @@ void CompAnalyzer::initialize(
       Lit l;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
       unified_var_links_lists_pool.push_back(l.raw());
-      lits_here[l.raw()]+=2;
+      lits_here[l.raw()]++;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
       unified_var_links_lists_pool.push_back(l.raw());
-      lits_here[l.raw()]+=2;
+      lits_here[l.raw()]++;
     }
 
     // data for long clauses
@@ -161,7 +162,7 @@ void CompAnalyzer::initialize(
     for(const auto& raw: occ_long_clauses[v]) {
       Lit l = Lit::toLit(raw);
       unified_var_links_lists_pool.push_back(l.raw());
-      if (l != SENTINEL_LIT) lits_here[l.raw()]+=5;
+      if (l != SENTINEL_LIT) lits_here[l.raw()]+=2;
     }
 
     Lit best = SENTINEL_LIT;
@@ -175,8 +176,11 @@ void CompAnalyzer::initialize(
     best_alters[v] = best;
   }
 
+  cout << unified_var_links_lists_pool.size() << endl;
   run_one(variable_link_list_offsets_alt, best_alters, watches, alloc, long_irred_cls,
       occ_ternary_clauses, occs);
+  cout << unified_var_links_lists_pool.size() << endl;
+  solver->v_restore();
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }
@@ -187,7 +191,6 @@ void CompAnalyzer::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t,
     const vector<vector<uint32_t>>&  occ_ternary_clauses,
     const vector<vector<ClauseOfs>>& occs) {
   // now fill unified link list, for each variable
-  solver->v_backup();
   alt.clear();
   alt.resize(max_var +1);
   for (uint32_t v = 1; v < max_var + 1; v++) {
@@ -253,7 +256,6 @@ void CompAnalyzer::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t,
     }
     solver->v_backtrack();
   }
-  solver->v_restore();
 }
 
 // returns true, iff the comp found is non-trivial

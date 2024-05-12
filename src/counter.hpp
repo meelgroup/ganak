@@ -147,6 +147,7 @@ public:
 
   double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;
+  void disable_small_cubes(vector<Cube>& cubes);
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
@@ -484,8 +485,7 @@ private:
   vector<Lit> bothprop_toset;
 
   void print_stat_line();
-  uint64_t next_print_stat_cache = 20000;
-  uint64_t next_print_stat_confl = 5000;
+  uint64_t next_print_stat_cache = 2ULL*1000LL*1000LL;
 
   // indicates if we have called end_irred_cls()
   bool ended_irred_cls = false;

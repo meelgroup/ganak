@@ -159,14 +159,12 @@ void Counter::end_irred_cls() {
   // reset stats
   depth_q.clearAndResize(conf.first_restart);
   comp_size_q.clearAndResize(conf.first_restart);
-  next_print_stat_cache = 2ULL*1000LL*1000LL;
 
   stats.maximum_cache_size_bytes_ = conf.maximum_cache_size_MB*1024*1024;
   init_decision_stack();
   simplePreProcess();
   ended_irred_cls = true;
 
-  if (conf.verb) stats.print_short_formula_info(this);
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc, long_irred_cls, nVars());
 }
@@ -667,18 +665,49 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
   }
   occ.clear();
   clauses.clear();
-  verb_print(1, "[rst-cube-ext] Extended cubes. lit-rem: "
+  verb_print(2, "[rst-cube-ext] Extended cubes. lit-rem: "
       << setw(4) << stats.cube_lit_rem - before_rem
       << " lit-ext: " << setw(4) << stats.cube_lit_extend - before_ext
       << " T: " << (cpuTime() - my_time));
+}
+
+void Counter::disable_small_cubes(vector<Cube>& cubes) {
+  /* mpf_class tot = 0; */
+  /* mpf_class avg; */
+  /* uint32_t num = 0; */
+  std::sort(cubes.begin(), cubes.end(), [](const Cube& a, const Cube& b) {
+      return a.val > b.val;
+      });
+  uint32_t enabled_so_far = 0;
+  for(auto & c : cubes) {
+    if (!c.enabled) continue;
+    if (enabled_so_far < 3) {
+      enabled_so_far++;
+      /* tot += c.val; */
+      /* num++; */
+      /* avg = tot/num; */
+      continue;
+    }
+    if (c.val < 100) c.enabled = false;
+    else {
+      enabled_so_far++;
+      /* tot += c.val; */
+      /* num++; */
+      /* avg = tot/num; */
+    }
+  }
 }
 
 mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
   mpz_class val = 0;
   sat_solver = _sat_solver;
 
+  verb_print(1, "Sampling set size: " << indep_support_end-1);
+  verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
+  if (conf.verb) stats.print_short_formula_info(this);
   auto ret = sat_solver->solve();
   start_time = cpuTime();
+  uint32_t next_rst_print = 0;
   while(ret == CMSat::l_True) {
     vector<Cube> cubes;
     count(cubes);
@@ -690,6 +719,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
+    disable_small_cubes(cubes);
 
     // Add cubes to count, Ganak & CMS
     mpz_class cubes_cnt_this_rst = 0;
@@ -700,12 +730,23 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       stats.num_cubes_final++;
     }
-    verb_print(1, "[rst-cube] Num restarts: " << stats.num_restarts
-        << " orig cubes this rst: " << cubes.size()
-        << " total orig cubes: " << stats.num_cubes_orig
-        << " total final cubes: " << stats.num_cubes_final
-        << " counted this rst: " << std::scientific << cubes_cnt_this_rst
-        << " total cnt so far: " << std::scientific << val << std::fixed);
+    if (stats.num_cache_look_ups_ > next_rst_print) {
+      next_rst_print = stats.num_cache_look_ups_ + (1ULL*1000LL*1000LL);
+      if (conf.verb) {
+        cout << "c o [rst-cube] Num restarts: " << stats.num_restarts
+          << " orig cubes this rst: " << cubes.size()
+          << " total orig cubes: " << stats.num_cubes_orig
+          << " total final cubes: " << stats.num_cubes_final;
+        cout << std::flush;
+        mpf_t tmp_float;
+        mpf_init(tmp_float);
+        mpf_set_z(tmp_float, val.get_mpz_t());
+        gmp_printf(" total so far: %.4FE", tmp_float);
+        mpf_set_z(tmp_float, cubes_cnt_this_rst.get_mpz_t());
+        gmp_printf(" this rst: %.4FE\n", tmp_float);
+        mpf_clear(tmp_float);
+      }
+    }
 
     ret = sat_solver->solve();
     if (ret == CMSat::l_False) break;
@@ -723,7 +764,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
-      verb_print(1, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpuTime() - my_time));
+      verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpuTime() - my_time));
     }
   }
   return val;
@@ -737,8 +778,6 @@ void Counter::count(vector<Cube>& ret_cubes) {
     opt_indep_support_end = nVars()+2;
   }
   mini_cubes.clear();
-  verb_print(1, "Sampling set size: " << indep_support_end-1);
-  verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
   assert(opt_indep_support_end >= indep_support_end);
 
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
@@ -783,15 +822,9 @@ void Counter::print_all_levels() {
 }
 
 void Counter::print_stat_line() {
-  if (next_print_stat_cache > stats.num_cache_look_ups_ &&
-      next_print_stat_confl > stats.conflicts) return;
-  if (conf.verb) {
-    verb_print(1, "GANAK time so far: " << (cpuTime() - start_time));
-    stats.print_short(this, &comp_manager->get_cache());
-  }
-
+  if (next_print_stat_cache > stats.num_cache_look_ups_) return;
+  if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
   next_print_stat_cache = stats.num_cache_look_ups_ + (6ULL*1000LL*1000LL);
-  next_print_stat_confl = stats.conflicts + (40LL*1000LL);
 }
 
 bool Counter::chrono_work() {
@@ -1204,7 +1237,7 @@ bool Counter::restart_if_needed() {
   if (conf.restart_type == 7 &&
       (stats.conflicts-stats.last_restart_num_conflicts) >
         (luby(2, stats.num_restarts) * conf.first_restart)) {
-    verb_print(1, "[rst] restarting. Next restart confl: "
+    verb_print(2, "[rst] restarting. Next restart confl: "
         << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart));
     restart = true;
   }
@@ -1213,7 +1246,7 @@ bool Counter::restart_if_needed() {
   if (conf.restart_type == 8 &&
       (stats.decisions-stats.last_restart_num_decisions) >
         (luby(2, stats.num_restarts) * conf.first_restart * 20)) {
-    verb_print(1, "[rst] restarting. Next restart decK: "
+    verb_print(2, "[rst] restarting. Next restart decK: "
         << (stats.decisions + luby(2, stats.num_restarts+1) * conf.first_restart * 20)/1000);
     restart = true;
   }
@@ -1225,7 +1258,7 @@ bool Counter::restart_if_needed() {
     restart = true;
 
   if (!restart) return false;
-  verb_print(1, "************* Restarting.  **************");
+  verb_print(2, "************* Restarting.  **************");
   if (conf.verb >= 2) print_restart_data();
   verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions
@@ -1277,7 +1310,7 @@ bool Counter::restart_if_needed() {
     conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
     conf.act_exp = (stats.num_restarts % 2) ? 0.99 : 0.95;
   }
-  verb_print(1, "[rst] new config. decide: " << conf.decide
+  verb_print(2, "[rst] new config. decide: " << conf.decide
     << " polar_type: " << conf.polar_type
     << " act_exp: " << conf.act_exp);
   return true;
@@ -2129,7 +2162,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
     v_cl_toplevel_repair(longRedCls);
   }
   off_to_lit12.clear();
-  verb_print(1, "[vivif] finished."
+  verb_print(2, "[vivif] finished."
       << " cl tried: " << (stats.vivif_tried_cl - last_vivif_cl_tried)
       << " cl minim: " << (stats.vivif_cl_minim - last_vivif_cl_minim)
       << " lit rem: " << (stats.vivif_lit_rem - last_vivif_lit_rem)
@@ -2502,7 +2535,7 @@ bool Counter::v_propagate() {
         c[1] = c[i];
         c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
-        watches[c[1]].add_cl(ofs, c[0]);
+        watches[c[1]].add_cl(ofs, plit);
       } else {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {
@@ -2919,7 +2952,7 @@ void Counter::toplevel_full_probe() {
   }
 
   SLOW_DEBUG_DO(for(const auto&c: seen) assert(c == 0));
-  verb_print(1, "[top-probe] "
+  verb_print(2, "[top-probe] "
       << " failed: " << (stats.toplevel_probe_fail - old_probe)
       << " bprop: " << (stats.toplevel_bothprop_fail - old_bprop)
       << " T: " << (cpuTime()-my_time));
@@ -3012,7 +3045,7 @@ void Counter::subsume_all() {
   }
   occ.clear();
   clauses.clear();
-  verb_print(1, "[sub] "
+  verb_print(2, "[sub] "
       << " bin-irred-cls: " << stats.subsumed_bin_irred_cls - old_subsumed_bin_irred_cls
       << " bin-red-cls: " << stats.subsumed_bin_red_cls - old_subsumed_bin_red_cls
       << " long-irred-cls: " << stats.subsumed_long_irred_cls - old_subsumed_long_irred_cls
@@ -3352,6 +3385,11 @@ void Counter::v_backup() {
     vector<Lit> lits(cl.begin(), cl.end());
     v_backup_cls.push_back(lits);
   }
+  for(const auto& off: longRedCls) {
+    const Clause& cl = *alloc->ptr(off);
+    vector<Lit> lits(cl.begin(), cl.end());
+    v_backup_cls.push_back(lits);
+  }
   for(const auto& ws: watches) {
     vector<ClOffsBlckL> tmp(ws.watch_list_.begin(), ws.watch_list_.end());
     v_backup_watches.push_back(tmp);
@@ -3361,6 +3399,14 @@ void Counter::v_restore() {
 
   uint32_t at = 0;
   for(const auto& off: long_irred_cls) {
+    Clause& cl = *alloc->ptr(off);
+    auto& lits = v_backup_cls[at];
+    for(uint32_t i = 0; i < cl.size(); i++) {
+      cl[i]=lits[i];
+    }
+    at++;
+  }
+  for(const auto& off: longRedCls) {
     Clause& cl = *alloc->ptr(off);
     auto& lits = v_backup_cls[at];
     for(uint32_t i = 0; i < cl.size(); i++) {

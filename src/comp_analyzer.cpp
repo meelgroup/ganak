@@ -190,12 +190,10 @@ void CompAnalyzer::initialize(
     best_alters2[v] = best;
   }
 
-  cout << unified_var_links_lists_pool.size() << endl;
   run_one(variable_link_list_offsets_alt, best_alters, watches, alloc, long_irred_cls,
       occ_ternary_clauses, occs);
   run_one(variable_link_list_offsets_alt2, best_alters2, watches, alloc, long_irred_cls,
       occ_ternary_clauses, occs);
-  cout << unified_var_links_lists_pool.size() << endl;
   solver->v_restore();
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");

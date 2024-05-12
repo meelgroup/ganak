@@ -57,7 +57,7 @@ struct CounterConfiguration {
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
-  uint32_t vivif_outer_every_n = 1;
+  uint32_t vivif_outer_every_n = 20;
   int do_extra_cl_bump = 0; // see out-ganak-2060064.pbs101-1
   int do_buddy = 0;
   uint32_t buddy_max_cls = 12; // see out-ganak-2060064.pbs101-7

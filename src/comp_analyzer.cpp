@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
+#include <boost/mpl/bool_fwd.hpp>
 
 using std::make_pair;
 
@@ -119,6 +120,7 @@ void CompAnalyzer::initialize(
   variable_link_list_offsets.resize(max_var + 1, 0);
 
   // now fill unified link list, for each variable
+  solver->vivif_setup();
   map<uint32_t, Lit> best_alters;
   for (uint32_t v = 1; v < max_var + 1; v++) {
     vector<uint32_t> lits_here(2*(max_var+1), 0);
@@ -165,10 +167,10 @@ void CompAnalyzer::initialize(
       if (l != SENTINEL_LIT) lits_here[l.raw()]++;
     }
 
-    Lit best = Lit(1, 0);;
+    Lit best = SENTINEL_LIT;
     uint32_t best_num = 0;
     for(uint32_t i = 2; i < 2*(max_var+1); i++) {
-      if (best == SENTINEL_LIT || best_num <= lits_here[i]) {
+      if (solver->v_val(Lit::toLit(i)) == X_TRI && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
         best = Lit::toLit(i);
         best_num = lits_here[i];
       }
@@ -176,16 +178,16 @@ void CompAnalyzer::initialize(
     best_alters[v] = best;
   }
 
-  /* cout << "ALT!!!!!!!!!!!!!!!" << endl; */
   variable_link_list_offsets_alt.clear();
   variable_link_list_offsets_alt.resize(max_var +1);
-  solver->vivif_setup();
   for (uint32_t v = 1; v < max_var + 1; v++) {
     const Lit true_l = best_alters[v];
     solver->v_new_lev();
-    solver->v_enqueue(true_l);
-    bool ret = solver->v_propagate();
-    assert(ret);
+    if (true_l != SENTINEL_LIT) {
+      assert(solver->v_val(true_l) == X_TRI);
+      solver->v_enqueue(true_l);
+      solver->v_propagate();
+    }
     variable_link_list_offsets_alt[v] = make_pair(true_l, unified_var_links_lists_pool.size());
 
     // data for binary clauses
@@ -279,7 +281,8 @@ void CompAnalyzer::record_comp(const uint32_t var) {
 
     //traverse binary clauses
     uint32_t const* p;
-    if (is_true(variable_link_list_offsets_alt[v].first)) p = begin_cls_of_var_alt(v);
+    if (variable_link_list_offsets_alt[v].first != SENTINEL_LIT &&
+        is_true(variable_link_list_offsets_alt[v].first)) p = begin_cls_of_var_alt(v);
     else p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls

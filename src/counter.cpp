@@ -3375,4 +3375,8 @@ void Counter::v_restore() {
     ws.watch_list_ = v_backup_watches[at];
     at++;
   }
+  v_backup_watches.clear();
+  v_backup_watches.shrink_to_fit();
+  v_backup_cls.clear();
+  v_backup_cls.shrink_to_fit();
 }

@@ -144,10 +144,10 @@ void CompAnalyzer::initialize(
       Lit l;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
       unified_var_links_lists_pool.push_back(l.raw());
-      lits_here[l.raw()]++;
+      lits_here[l.raw()]+=2;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
       unified_var_links_lists_pool.push_back(l.raw());
-      lits_here[l.raw()]++;
+      lits_here[l.raw()]+=2;
     }
 
     // data for long clauses
@@ -164,7 +164,7 @@ void CompAnalyzer::initialize(
     for(const auto& raw: occ_long_clauses[v]) {
       Lit l = Lit::toLit(raw);
       unified_var_links_lists_pool.push_back(l.raw());
-      if (l != SENTINEL_LIT) lits_here[l.raw()]++;
+      if (l != SENTINEL_LIT) lits_here[l.raw()]+=4;
     }
 
     Lit best = SENTINEL_LIT;

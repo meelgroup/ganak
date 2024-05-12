@@ -119,7 +119,9 @@ void CompAnalyzer::initialize(
 
   solver->vivif_setup();
   solver->v_backup();
+
   map<uint32_t, Lit> best_alters;
+  map<uint32_t, Lit> best_alters2;
   for (uint32_t v = 1; v < max_var + 1; v++) {
     vector<uint32_t> lits_here(2*(max_var+1), 0);
     variable_link_list_offsets[v] = unified_var_links_lists_pool.size();
@@ -129,7 +131,7 @@ void CompAnalyzer::initialize(
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
         if (bincl.irred()) {
           unified_var_links_lists_pool.push_back(bincl.lit().var());
-          lits_here[bincl.lit().raw()]++;
+          /* lits_here[bincl.lit().raw()]++; */
         }
       }
     }
@@ -174,10 +176,24 @@ void CompAnalyzer::initialize(
       }
     }
     best_alters[v] = best;
+    Lit best_old = best;
+    best = SENTINEL_LIT;
+    best_num = 0;
+    for(uint32_t i = 2; i < 2*(max_var+1); i++) {
+      if (solver->v_val(Lit::toLit(i)) == X_TRI
+          && Lit::toLit(i) != best_old
+          && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
+        best = Lit::toLit(i);
+        best_num = lits_here[i];
+      }
+    }
+    best_alters2[v] = best;
   }
 
   cout << unified_var_links_lists_pool.size() << endl;
   run_one(variable_link_list_offsets_alt, best_alters, watches, alloc, long_irred_cls,
+      occ_ternary_clauses, occs);
+  run_one(variable_link_list_offsets_alt2, best_alters2, watches, alloc, long_irred_cls,
       occ_ternary_clauses, occs);
   cout << unified_var_links_lists_pool.size() << endl;
   solver->v_restore();
@@ -206,7 +222,9 @@ void CompAnalyzer::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t,
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred() && solver->v_val(bincl.lit()) != T_TRI) {
+        if (bincl.irred()
+            && solver->v_val(bincl.lit()) != T_TRI
+            && solver->v_val(bincl.lit()) != F_TRI) {
           unified_var_links_lists_pool.push_back(bincl.lit().var());
         }
       }
@@ -293,7 +311,11 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     //traverse binary clauses
     uint32_t const* p;
     if (variable_link_list_offsets_alt[v].first != SENTINEL_LIT &&
-        is_true(variable_link_list_offsets_alt[v].first)) p = begin_cls_of_var_alt(v);
+        is_true(variable_link_list_offsets_alt[v].first))
+      p = begin_cls_of_var_alt(v);
+    else if (variable_link_list_offsets_alt2[v].first != SENTINEL_LIT &&
+        is_true(variable_link_list_offsets_alt2[v].first))
+      p = begin_cls_of_var_alt2(v);
     else p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls

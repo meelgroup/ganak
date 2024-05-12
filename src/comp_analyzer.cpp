@@ -236,7 +236,7 @@ void CompAnalyzer::initialize(
       const Clause& cl = *alloc->ptr(long_irred_cls[cl_id.first-1]);
       for(const auto& l: cl) {
         if (l.var() == v) continue;
-        if (solver->v_val(l) == F_TRI) continue;
+        /* if (solver->v_val(l) == F_TRI) continue; */
         unified_var_links_lists_pool.push_back(l.raw());
       }
       unified_var_links_lists_pool.push_back(SENTINEL_LIT.raw());

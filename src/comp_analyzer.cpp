@@ -24,9 +24,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter.hpp"
 #include "clauseallocator.hpp"
-#include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
-#include <boost/mpl/bool_fwd.hpp>
 
 using std::make_pair;
 
@@ -164,7 +162,7 @@ void CompAnalyzer::initialize(
     for(const auto& raw: occ_long_clauses[v]) {
       Lit l = Lit::toLit(raw);
       unified_var_links_lists_pool.push_back(l.raw());
-      if (l != SENTINEL_LIT) lits_here[l.raw()]+=4;
+      if (l != SENTINEL_LIT) lits_here[l.raw()]+=5;
     }
 
     Lit best = SENTINEL_LIT;

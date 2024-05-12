@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "stack.hpp"
 
 using std::map;
+using std::pair;
 
 class ClauseAllocator;
 class Counter;
@@ -104,6 +105,7 @@ private:
   vector<uint32_t> unified_var_links_lists_pool;
   vector<uint32_t> variable_link_list_offsets; // offset into unified_var_links_lists_pool
                                                 // indexed by variable.
+  vector<pair<Lit, uint32_t>> variable_link_list_offsets_alt; // offset into unified_var_links_lists_pool
 
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
@@ -126,8 +128,10 @@ private:
   bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
   bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
   uint32_t const* begin_cls_of_var(const uint32_t v) const {
-    assert(v > 0);
     return &unified_var_links_lists_pool[variable_link_list_offsets[v]];
+  }
+  uint32_t const* begin_cls_of_var_alt(const uint32_t v) const {
+    return &unified_var_links_lists_pool[variable_link_list_offsets_alt[v].second];
   }
   void bump_var_occs(const uint32_t v);
 
@@ -147,13 +151,18 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause([[maybe_unused]] uint32_t vt, ClauseIndex cl_id, Lit const* pstart_cls){
+  void search_clause(uint32_t v, ClauseIndex cl_id, Lit const* pstart_cls){
     const auto it_v_end = comp_vars.end();
     bool all_lits_unkn = true;
+
+    /* for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) { */
+    /*   cout << "v: " << v << " cl_id: " << cl_id << " lit: " << *it_l << endl; */
+    /* } */
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
       if (!archetype.var_nil(it_l->var())) manage_occ_of(it_l->var());
       else {
+        /* cout << "going through: " << *it_l << endl; */
         assert(!is_unknown(*it_l));
         all_lits_unkn = false;
         if (is_false(*it_l)) continue;

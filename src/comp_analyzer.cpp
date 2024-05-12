@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 #include "structures.hpp"
 
+using std::make_pair;
+
 // There is exactly ONE of these
 CompAnalyzer::CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
@@ -116,8 +118,9 @@ void CompAnalyzer::initialize(
   variable_link_list_offsets.resize(max_var + 1, 0);
 
   // now fill unified link list, for each variable
-  vector<uint32_t> lits_here(2*(max_var+1), 0);
+  map<uint32_t, Lit> best_alters;
   for (uint32_t v = 1; v < max_var + 1; v++) {
+    vector<uint32_t> lits_here(2*(max_var+1), 0);
     variable_link_list_offsets[v] = unified_var_links_lists_pool.size();
 
     // data for binary clauses
@@ -150,6 +153,7 @@ void CompAnalyzer::initialize(
       auto cl_id = *it;
       unified_var_links_lists_pool.push_back(cl_id);
       auto offs = *(it + 1) + (occs[v].end() - it);
+      /* cout << "clid" << cl_id << " offs " << offs << endl; */
       unified_var_links_lists_pool.push_back(offs);
     }
 
@@ -160,16 +164,76 @@ void CompAnalyzer::initialize(
       if (l != SENTINEL_LIT) lits_here[l.raw()]++;
     }
 
-    Lit best = SENTINEL_LIT;
+    Lit best = Lit(1, 0);;
     uint32_t best_num = 0;
     for(uint32_t i = 2; i < 2*(max_var+1); i++) {
-      if (best == SENTINEL_LIT || best_num < lits_here[i]) {
+      if (best == SENTINEL_LIT || best_num <= lits_here[i]) {
         best = Lit::toLit(i);
         best_num = lits_here[i];
       }
     }
-    cout << "best: " << best << " " << best_num << endl;
+    best_alters[v] = best;
   }
+
+  /* cout << "ALT!!!!!!!!!!!!!!!" << endl; */
+  variable_link_list_offsets_alt.clear();
+  variable_link_list_offsets_alt.resize(max_var +1);
+  for (uint32_t v = 1; v < max_var + 1; v++) {
+    const Lit true_l = best_alters[v];
+    variable_link_list_offsets_alt[v] = make_pair(true_l, unified_var_links_lists_pool.size());
+
+    // data for binary clauses
+    for(uint32_t i = 0; i < 2; i++) {
+      for (const auto& bincl: watches[Lit(v, i)].binaries) {
+        if (bincl.irred() && bincl.lit() != true_l) {
+          unified_var_links_lists_pool.push_back(bincl.lit().var());
+        }
+      }
+    }
+
+    // data for ternary clauses
+    unified_var_links_lists_pool.push_back(0);
+    for(uint32_t i = 0; i < occ_ternary_clauses[v].size();) {
+      if ((Lit::toLit(occ_ternary_clauses[v][i+1]) == true_l) ||
+          Lit::toLit(occ_ternary_clauses[v][i+2]) == true_l) {
+        i += 3;
+        continue;
+      }
+      auto cl_id = occ_ternary_clauses[v][i++];
+      unified_var_links_lists_pool.push_back(cl_id);
+      Lit l;
+      l = Lit::toLit(occ_ternary_clauses[v][i++]);
+      unified_var_links_lists_pool.push_back(l.raw());
+      l = Lit::toLit(occ_ternary_clauses[v][i++]);
+      unified_var_links_lists_pool.push_back(l.raw());
+    }
+
+    // data for long clauses
+    vector<pair<uint32_t, uint32_t>> cl_ids;
+    unified_var_links_lists_pool.push_back(0);
+    for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
+      auto cl_id = *it;
+      const Clause& cl = *alloc->ptr(long_irred_cls[cl_id-1]);
+      bool sat = false;
+      for(const auto& l: cl) if (l == true_l) sat = true;
+      if (sat) continue;
+      cl_ids.push_back(make_pair(cl_id, unified_var_links_lists_pool.size()+1));
+      unified_var_links_lists_pool.push_back(cl_id);
+      unified_var_links_lists_pool.push_back(SENTINEL_LIT.raw()); //placeholder
+    }
+
+    unified_var_links_lists_pool.push_back(0);
+    for(const auto& cl_id: cl_ids) {
+      unified_var_links_lists_pool[cl_id.second] = unified_var_links_lists_pool.size()-cl_id.second;
+      const Clause& cl = *alloc->ptr(long_irred_cls[cl_id.first-1]);
+      for(const auto& l: cl) {
+        if (l.var() == v) continue;
+        unified_var_links_lists_pool.push_back(l.raw());
+      }
+      unified_var_links_lists_pool.push_back(SENTINEL_LIT.raw());
+    }
+  }
+
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }
 
@@ -206,7 +270,9 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     //traverse binary clauses
-    uint32_t const* p = begin_cls_of_var(v);
+    uint32_t const* p;
+    if (is_true(variable_link_list_offsets_alt[v].first)) p = begin_cls_of_var_alt(v);
+    else p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       /* BUDDY_DO(if (solver->val(*p) == X_TRI) archetype.num_bin_cls++); */
@@ -232,8 +298,9 @@ void CompAnalyzer::record_comp(const uint32_t var) {
 
     // traverse long clauses
     for (p++; *p ; p +=2)
-      if (archetype.clause_unvisited_in_sup_comp(*p))
-        search_clause(v,*p, (Lit const*)(p + 1 + *(p+1)));
+      if (archetype.clause_unvisited_in_sup_comp(*p)) {
+        search_clause(v, *p, (Lit const*)(p + 1 + *(p+1)));
+      }
   }
 
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "

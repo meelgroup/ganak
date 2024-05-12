@@ -178,6 +178,7 @@ void CompAnalyzer::initialize(
     best_alters[v] = best;
   }
 
+  solver->v_backup();
   variable_link_list_offsets_alt.clear();
   variable_link_list_offsets_alt.resize(max_var +1);
   for (uint32_t v = 1; v < max_var + 1; v++) {
@@ -243,6 +244,7 @@ void CompAnalyzer::initialize(
     }
     solver->v_backtrack();
   }
+  solver->v_restore();
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }

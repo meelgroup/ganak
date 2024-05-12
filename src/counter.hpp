@@ -159,6 +159,10 @@ public:
   void v_enqueue(const Lit l);
   TriValue v_val(const Lit l) const;
   void v_new_lev();
+  vector<vector<Lit>> v_backup_cls;
+  vector<vector<ClOffsBlckL>> v_backup_watches;
+  void v_backup();
+  void v_restore();
 
   mpz_class outer_count(CMSat::SATSolver* solver = nullptr);
   void set_indep_support(const set<uint32_t>& indeps);

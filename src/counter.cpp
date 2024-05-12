@@ -3344,3 +3344,35 @@ void Counter::check_all_propagated_conflicted() const {
   for(const auto& cl: debug_irred_cls) check_cl_propagated_conflicted(cl);
 #endif
 }
+
+
+void Counter::v_backup() {
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    vector<Lit> lits(cl.begin(), cl.end());
+    v_backup_cls.push_back(lits);
+  }
+  for(const auto& ws: watches) {
+    vector<ClOffsBlckL> tmp(ws.watch_list_.begin(), ws.watch_list_.end());
+    v_backup_watches.push_back(tmp);
+  }
+}
+void Counter::v_restore() {
+
+  uint32_t at = 0;
+  for(const auto& off: long_irred_cls) {
+    Clause& cl = *alloc->ptr(off);
+    auto& lits = v_backup_cls[at];
+    for(uint32_t i = 0; i < cl.size(); i++) {
+      cl[i]=lits[i];
+    }
+    at++;
+  }
+
+  at = 0;
+  for(auto& ws: watches) {
+    ws.watch_list_.clear();
+    ws.watch_list_ = v_backup_watches[at];
+    at++;
+  }
+}

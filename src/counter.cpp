@@ -898,6 +898,7 @@ SOLVER_StateT Counter::count_loop() {
         if (state == BACKTRACK) break;
       }
       if (state == BACKTRACK) break;
+      if (restart_if_needed()) return RESTART;
 
       // we are in RESOLVED or PROCESS_COMPONENT state, continue.
       if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
@@ -918,7 +919,6 @@ SOLVER_StateT Counter::count_loop() {
         if (state == EXIT) goto end;
       }
     }
-    if (state == PROCESS_COMPONENT && restart_if_needed()) return RESTART;
 
     if (conf.do_vivify) {
       vivify_all();

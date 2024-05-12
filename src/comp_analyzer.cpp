@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter.hpp"
 #include "clauseallocator.hpp"
+#include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
 
 using std::make_pair;
@@ -178,8 +179,13 @@ void CompAnalyzer::initialize(
   /* cout << "ALT!!!!!!!!!!!!!!!" << endl; */
   variable_link_list_offsets_alt.clear();
   variable_link_list_offsets_alt.resize(max_var +1);
+  solver->vivif_setup();
   for (uint32_t v = 1; v < max_var + 1; v++) {
     const Lit true_l = best_alters[v];
+    solver->v_new_lev();
+    solver->v_enqueue(true_l);
+    bool ret = solver->v_propagate();
+    assert(ret);
     variable_link_list_offsets_alt[v] = make_pair(true_l, unified_var_links_lists_pool.size());
 
     // data for binary clauses
@@ -215,7 +221,7 @@ void CompAnalyzer::initialize(
       auto cl_id = *it;
       const Clause& cl = *alloc->ptr(long_irred_cls[cl_id-1]);
       bool sat = false;
-      for(const auto& l: cl) if (l == true_l) sat = true;
+      for(const auto& l: cl) if (solver->v_val(l) == T_TRI) sat = true;
       if (sat) continue;
       cl_ids.push_back(make_pair(cl_id, unified_var_links_lists_pool.size()+1));
       unified_var_links_lists_pool.push_back(cl_id);
@@ -228,10 +234,12 @@ void CompAnalyzer::initialize(
       const Clause& cl = *alloc->ptr(long_irred_cls[cl_id.first-1]);
       for(const auto& l: cl) {
         if (l.var() == v) continue;
+        if (solver->v_val(l) == F_TRI) continue;
         unified_var_links_lists_pool.push_back(l.raw());
       }
       unified_var_links_lists_pool.push_back(SENTINEL_LIT.raw());
     }
+    solver->v_backtrack();
   }
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");

@@ -153,6 +153,12 @@ public:
   void extend_cubes(vector<Cube>& cubes);
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
   void vivif_setup();
+  bool v_propagate();
+  void v_backtrack();
+  void v_unset(const Lit l);
+  void v_enqueue(const Lit l);
+  TriValue v_val(const Lit l) const;
+  void v_new_lev();
 
   mpz_class outer_count(CMSat::SATSolver* solver = nullptr);
   void set_indep_support(const set<uint32_t>& indeps);
@@ -439,17 +445,11 @@ private:
   void v_shrink(Clause& c);
   template<class T> bool v_unsat(const T& lits);
   template<class T> bool v_satisfied(const T& lits);
-  bool v_propagate();
-  void v_backtrack();
-  void v_unset(const Lit l);
-  void v_enqueue(const Lit l);
-  TriValue v_val(const Lit l) const;
   void v_fix_watch(Clause& cl, uint32_t i);
   template<class T> bool propagating_cl(T& cl) const;
   template<class T> bool conflicting_cl(T& cl) const;
   template<class T> bool propagation_correctness_of_vivified(const T& cl) const;
   template<class T> bool currently_propagating_cl(T& cl) const;
-  void v_new_lev();
   template<class T> bool v_cl_satisfied(const T& cl) const;
   void vivif_backtrack();
   vector<Lit> v_trail;

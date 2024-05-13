@@ -49,6 +49,10 @@ public:
     comp_stack.clear();
   }
 
+#ifdef VAR_FREQ
+  double freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
+#endif
+
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
   void delete_comps_with_vars(const set<uint32_t>& vars) {

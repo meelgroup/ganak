@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "statistics.hpp"
+#include "common.hpp"
 #include "comp_cache.hpp"
 #include "counter.hpp"
 #include "structures.hpp"
@@ -41,6 +42,7 @@ static double safe_div(double a, double b) {
 }
 
 void DataAndStatistics::print_short(const Counter* counter, const CompCache* cache) const {
+  verb_print(1, "total time so far: " << cpuTime());
   counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "

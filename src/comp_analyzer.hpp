@@ -52,6 +52,22 @@ public:
     return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
   }
 
+#ifdef VAR_FREQ
+  double freq_score_of(uint32_t v) const { return var_freq_scores[v]/max_freq_score; }
+  void un_bump_score(uint32_t v) {
+    var_freq_scores[v] -= act_inc;
+  }
+  inline void bump_freq_score(uint32_t v) {
+    var_freq_scores[v] += act_inc;
+    max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
+    if (var_freq_scores[v] > 1e100) {
+      for(auto& f: var_freq_scores) f *= 1e-90;
+      max_freq_score *= 1e-90;
+      act_inc *= 1e-90;
+    }
+    if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
+  }
+#endif
   const CompArchetype &current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
@@ -66,11 +82,18 @@ public:
 
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unvisited before
-  void manage_occ_of(const uint32_t v){
+  bool manage_occ_of(const uint32_t v){
     if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
+      return true;
     }
+    return false;
+  }
+
+  bool manage_occ_and_score_of(uint32_t v){
+    VAR_FREQ_DO(if (is_unknown(v)) bump_freq_score(v));
+    return manage_occ_of(v);
   }
 
   void setup_analysis_context(StackLevel &top, const Comp & super_comp){
@@ -120,6 +143,11 @@ private:
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
+#ifdef VAR_FREQ
+  vector<double> var_freq_scores;
+  double max_freq_score = 1.0;
+  double act_inc = 1.0;
+#endif
   CompArchetype  archetype;
   Counter* solver = nullptr;
 
@@ -183,11 +211,16 @@ private:
           comp_vars.pop_back();
         }
         archetype.clear_cl(cl_id);
+#ifdef VAR_FREQ
+        while(*it_l != SENTINEL_LIT)
+          if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
+#endif
         break;
       }
     }
 
     if (!archetype.clause_nil(cl_id)) {
+      VAR_FREQ_DO(bump_freq_score(v));
       archetype.set_clause_visited(cl_id,all_lits_unkn);
       occ_cnt[v]++;
     }

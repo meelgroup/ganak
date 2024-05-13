@@ -1019,18 +1019,21 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   print = false;
   double act_score = 0;
   double td_score = 0;
+  double freq_score = 0;
 
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3;
+  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/1.0);
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions
     << " act_score: " << act_score
+    << " freq_score: " << freq_score
     << " td_score: " << td_score
     << endl;
 
-  return act_score+td_score;
+  return act_score+td_score+freq_score;
 }
 
 uint32_t Counter::find_best_branch_occ() {
@@ -1091,6 +1094,8 @@ uint32_t Counter::find_best_branch_gpmc() {
     if (v < indep_support_end) only_optional_indep = false;
 
     double score_td = tdscore.empty() ? 0 : tdscore[v];
+    /* double score_freq = 0; */
+    /* VAR_FREQ_DO(score_freq = comp_manager->freq_score_of(v)); */
     double score_act = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
 
     if(score_td > max_score_td) {
@@ -1211,13 +1216,13 @@ void Counter::print_restart_data() const
 {
   if (comp_size_q.isvalid()) {
     verb_print(1, std::setw(30) << std::left
-       << "c Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
+       << "Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
        << std::right  << std::setw(30) << std::left
        << std::left   << " Sterm comp size avg: " << comp_size_q.avg());
   }
   if (depth_q.isvalid()) {
     verb_print(1, std::setw(30) << std::left
-      << "c Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
+      << "Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
       << std::right << std::setw(30) << std::left
       << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg());
   }

@@ -48,6 +48,7 @@ void CompAnalyzer::initialize(
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
+  occ_cnt.resize(max_var + 1, 0);
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
   vector<vector<uint32_t>>  occ_ternary_clauses(max_var + 1);
@@ -304,6 +305,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
+    occ_cnt[var] = 0;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     //traverse binary clauses
@@ -331,6 +333,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
         if(is_true(a)|| is_true(b)) {
           archetype.clear_cl(clid);
         } else {
+          occ_cnt[v]++;
           manage_occ_of(a.var());
           manage_occ_of(b.var());
           archetype.set_clause_visited(clid ,is_unknown(a) && is_unknown(b));
@@ -341,7 +344,7 @@ void CompAnalyzer::record_comp(const uint32_t var) {
     // traverse long clauses
     for (p++; *p ; p +=2)
       if (archetype.clause_unvisited_in_sup_comp(*p)) {
-        search_clause(*p, (Lit const*)(p + 1 + *(p+1)));
+        search_clause(v, *p, (Lit const*)(p + 1 + *(p+1)));
       }
   }
 

@@ -62,6 +62,8 @@ public:
     return archetype.var_unvisited_in_sup_comp(v);
   }
 
+  uint32_t occ_of_var(const uint32_t v) const { return occ_cnt[v]; }
+
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unvisited before
   void manage_occ_of(const uint32_t v){
@@ -104,6 +106,7 @@ private:
   // different from the offset of the clause in the literal pool
   uint32_t max_clid = 0;
   uint32_t max_var = 0;
+  vector<uint32_t> occ_cnt; // number of occurrences of a variable in the component
 
 
   // for every variable e have an array of
@@ -161,7 +164,7 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause(ClauseIndex cl_id, Lit const* pstart_cls){
+  void search_clause(uint32_t v, ClauseIndex cl_id, Lit const* pstart_cls){
     const auto it_v_end = comp_vars.end();
     bool all_lits_unkn = true;
 
@@ -184,6 +187,9 @@ private:
       }
     }
 
-    if (!archetype.clause_nil(cl_id)) archetype.set_clause_visited(cl_id,all_lits_unkn);
+    if (!archetype.clause_nil(cl_id)) {
+      archetype.set_clause_visited(cl_id,all_lits_unkn);
+      occ_cnt[v]++;
+    }
   }
 };

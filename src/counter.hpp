@@ -227,6 +227,7 @@ private:
   SOLVER_StateT count_loop();
   bool decide_lit();
   uint32_t find_best_branch_gpmc();
+  uint32_t find_best_branch_occ();
   uint32_t find_best_branch(bool ignore_td = false);
   template<class T> bool clause_falsified(const T& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;

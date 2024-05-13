@@ -730,7 +730,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
       sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       stats.num_cubes_final++;
     }
-    if (stats.num_cache_look_ups_ > next_rst_print) {
+    if (conf.verb >= 2 || stats.num_cache_look_ups_ > next_rst_print) {
       next_rst_print = stats.num_cache_look_ups_ + (1ULL*1000LL*1000LL);
       if (conf.verb) {
         cout << "c o [rst-cube] Num restarts: " << stats.num_restarts
@@ -976,6 +976,8 @@ bool Counter::decide_lit() {
             break;
     case 2: v = find_best_branch(true);
             break;
+    case 3: v = find_best_branch_occ();
+            break;
     default:
             assert(false);
   }
@@ -1029,6 +1031,28 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
     << endl;
 
   return act_score+td_score;
+}
+
+uint32_t Counter::find_best_branch_occ() {
+  bool only_optional_indep = true;
+  uint32_t best_var = 0;
+  int32_t best_var_score = -1;
+  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
+    const uint32_t v = *it;
+    if (val(v) != X_TRI) continue;
+
+    if (v < opt_indep_support_end) {
+      if (v < indep_support_end) only_optional_indep = false;
+      int score = comp_manager->get_ana().occ_of_var(v);
+      if (score > best_var_score) {
+        best_var = v;
+        best_var_score = score;
+      }
+    }
+  }
+
+  if (best_var != 0 && only_optional_indep) return 0;
+  return best_var;
 }
 
 uint32_t Counter::find_best_branch(bool ignore_td) {
@@ -1306,9 +1330,9 @@ bool Counter::restart_if_needed() {
 
   // Readjust
   if (conf.do_readjust_for_restart) {
-    conf.decide = stats.num_restarts%3;
+    conf.decide = stats.num_restarts%4;
     conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
-    conf.act_exp = (stats.num_restarts % 2) ? 0.99 : 0.95;
+    conf.act_exp = (stats.num_restarts % 3) ? 0.99 : 0.95;
   }
   verb_print(2, "[rst] new config. decide: " << conf.decide
     << " polar_type: " << conf.polar_type

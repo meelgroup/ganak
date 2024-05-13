@@ -55,10 +55,10 @@ public:
 #ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const { return (double)var_freq_scores[v]/(double)max_freq_score; }
   void un_bump_score(uint32_t v) {
-    var_freq_scores[v] -= act_inc;
+    var_freq_scores[v] --;
   }
   inline void bump_freq_score(uint32_t v) {
-    var_freq_scores[v] += act_inc;
+    var_freq_scores[v] ++;
     max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
   }
 #endif
@@ -140,7 +140,6 @@ private:
 #ifdef VAR_FREQ
   vector<uint32_t> var_freq_scores;
   uint32_t max_freq_score = 1.0;
-  uint32_t act_inc = 1.0;
 #endif
   CompArchetype  archetype;
   Counter* solver = nullptr;

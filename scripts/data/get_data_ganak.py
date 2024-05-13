@@ -171,6 +171,8 @@ def find_ganak_time_cnt(fname):
                 t = float(line.split()[5])
             if "s mc" in line:
                 cnt = decimal.Decimal(line.split()[2])
+            if "s pmc" in line:
+                cnt = decimal.Decimal(line.split()[2])
 
     return [t,cnt]
 
@@ -254,7 +256,10 @@ def timeout_parse(fname):
                 else:
                   call = " ".join(call.split()[:-1])
                 call = call.replace(" -t real", "")
-                call = call.split("doalarm 3600")[1]
+                if "doalarm 3600" in call:
+                  call = call.split("doalarm 3600")[1]
+                else:
+                  call = call.split("doalarm 900")[1]
                 call = call.replace("././ganak ", "")
                 call = call.replace("././d4-1d9cc6146f18b8 ", "")
                 call = call.replace("././approxmc ", "")
@@ -449,7 +454,7 @@ with open("mydata.csv", "w") as out:
             continue
 
         # ganak_time
-        if f["solvertime"] == [None, None]:
+        if f["solvertime"][0] is None:
             toprint += ","
         else:
             toprint += "%s," % f["solvertime"][0]

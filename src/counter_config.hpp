@@ -76,7 +76,7 @@ struct CounterConfiguration {
   double td_minweight = 0.1;
   double td_divider = 1e3;
   double do_td_weight = 1;
-  double td_exp_mult = 1.5;
+  double td_exp_mult = 1.2;
   int do_check_td_vs_ind = 1;
   int64_t td_steps = 1e5;
   int td_iters = 900;

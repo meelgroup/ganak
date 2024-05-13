@@ -1026,7 +1026,7 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3.0;
-  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/conf.var_freq_divider);
+  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider);
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions
@@ -1314,8 +1314,10 @@ bool Counter::restart_if_needed() {
   stats.num_restarts++;
 
   // Readjust
+  curr_var_freq_divider = conf.var_freq_divider;
   if (conf.do_readjust_for_restart) {
-    conf.decide = stats.num_restarts%3;
+    conf.decide = stats.num_restarts%2;
+    if (stats.num_restarts%3 == 2) curr_var_freq_divider /= 4.0;
     conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
     conf.act_exp = (stats.num_restarts % 3) ? 0.99 : 0.95;
   }
@@ -2719,6 +2721,7 @@ Counter::Counter(const CounterConfiguration& _conf) :
     bdd_setvarnum(63);
     bdd_autoreorder(BDD_REORDER_NONE);
   }
+  curr_var_freq_divider = conf.var_freq_divider;
 }
 
 Counter::~Counter() {

@@ -265,6 +265,7 @@ private:
   void check_cl_unsat(Lit* c, uint32_t size) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
+  double curr_var_freq_divider;
 
   // BDD
   bool do_buddy_count(const Comp* c);

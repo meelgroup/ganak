@@ -53,19 +53,13 @@ public:
   }
 
 #ifdef VAR_FREQ
-  double freq_score_of(uint32_t v) const { return var_freq_scores[v]/max_freq_score; }
+  double freq_score_of(uint32_t v) const { return (double)var_freq_scores[v]/(double)max_freq_score; }
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] -= act_inc;
   }
   inline void bump_freq_score(uint32_t v) {
     var_freq_scores[v] += act_inc;
     max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
-    if (var_freq_scores[v] > 1e100) {
-      for(auto& f: var_freq_scores) f *= 1e-90;
-      max_freq_score *= 1e-90;
-      act_inc *= 1e-90;
-    }
-    if ((conf.decide & 2) == 0) act_inc *= 1.0/0.98;
   }
 #endif
   const CompArchetype &current_archetype() const { return archetype; }
@@ -78,8 +72,6 @@ public:
     return archetype.var_unvisited_in_sup_comp(v);
   }
 
-  uint32_t occ_of_var(const uint32_t v) const { return occ_cnt[v]; }
-
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unvisited before
   bool manage_occ_of(const uint32_t v){
@@ -91,7 +83,6 @@ public:
     return false;
   }
 
-  void bump_act() { act_inc *= 1.0/0.99; }
   bool manage_occ_and_score_of(uint32_t v){
     VAR_FREQ_DO(if (is_unknown(v)) bump_freq_score(v));
     return manage_occ_of(v);
@@ -101,8 +92,12 @@ public:
     archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
+    max_freq_score = 1;
     all_vars_in_comp(super_comp, vt)
-      if (is_unknown(*vt)) archetype.set_var_in_sup_comp_unvisited_raw(*vt);
+      if (is_unknown(*vt)) {
+        archetype.set_var_in_sup_comp_unvisited_raw(*vt);
+        var_freq_scores[*vt] = 0;
+      }
 
     all_cls_in_comp(super_comp, it)
       archetype.set_clause_in_sup_comp_unvisited(*it);
@@ -130,8 +125,6 @@ private:
   // different from the offset of the clause in the literal pool
   uint32_t max_clid = 0;
   uint32_t max_var = 0;
-  vector<uint32_t> occ_cnt; // number of occurrences of a variable in the component
-
 
   // for every variable e have an array of
   // binarycls 0 ternary cls (consisting of: CLIDX LIT1 LIT2) 0 cls_idxs 0
@@ -145,9 +138,9 @@ private:
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
 #ifdef VAR_FREQ
-  vector<double> var_freq_scores;
-  double max_freq_score = 1.0;
-  double act_inc = 1.0;
+  vector<uint32_t> var_freq_scores;
+  uint32_t max_freq_score = 1.0;
+  uint32_t act_inc = 1.0;
 #endif
   CompArchetype  archetype;
   Counter* solver = nullptr;
@@ -199,7 +192,7 @@ private:
 
     for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
-      if (!archetype.var_nil(it_l->var())) manage_occ_of(it_l->var());
+      if (!archetype.var_nil(it_l->var())) manage_occ_and_score_of(it_l->var());
       else {
         assert(!is_unknown(*it_l));
         all_lits_unkn = false;
@@ -223,7 +216,6 @@ private:
     if (!archetype.clause_nil(cl_id)) {
       VAR_FREQ_DO(bump_freq_score(v));
       archetype.set_clause_visited(cl_id,all_lits_unkn);
-      occ_cnt[v]++;
     }
   }
 };

@@ -976,8 +976,6 @@ bool Counter::decide_lit() {
             break;
     case 2: v = find_best_branch(true);
             break;
-    case 3: v = find_best_branch_occ();
-            break;
     default:
             assert(false);
   }
@@ -1020,11 +1018,12 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   double act_score = 0;
   double td_score = 0;
   double freq_score = 0;
+  vector<uint32_t> occ_cnt; // number of occurrences of a variable in the component
 
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3;
-  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/5.0);
+  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/2.0);
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions
@@ -1034,28 +1033,6 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
     << endl;
 
   return act_score+td_score+freq_score;
-}
-
-uint32_t Counter::find_best_branch_occ() {
-  bool only_optional_indep = true;
-  uint32_t best_var = 0;
-  int32_t best_var_score = -1;
-  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
-    const uint32_t v = *it;
-    if (val(v) != X_TRI) continue;
-
-    if (v < opt_indep_support_end) {
-      if (v < indep_support_end) only_optional_indep = false;
-      int score = comp_manager->get_ana().occ_of_var(v);
-      if (score > best_var_score) {
-        best_var = v;
-        best_var_score = score;
-      }
-    }
-  }
-
-  if (best_var != 0 && only_optional_indep) return 0;
-  return best_var;
 }
 
 uint32_t Counter::find_best_branch(bool ignore_td) {
@@ -1335,7 +1312,7 @@ bool Counter::restart_if_needed() {
 
   // Readjust
   if (conf.do_readjust_for_restart) {
-    conf.decide = stats.num_restarts%4;
+    conf.decide = stats.num_restarts%3;
     conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
     conf.act_exp = (stats.num_restarts % 3) ? 0.99 : 0.95;
   }

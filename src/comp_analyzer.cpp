@@ -48,7 +48,6 @@ void CompAnalyzer::initialize(
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
-  occ_cnt.resize(max_var + 1, 0);
   VAR_FREQ_DO(var_freq_scores.resize(max_var + 1, 0));
   VAR_FREQ_DO(act_inc = 1.0);
 
@@ -307,7 +306,6 @@ void CompAnalyzer::record_comp(const uint32_t var) {
   // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
-    occ_cnt[var] = 0;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     //traverse binary clauses
@@ -335,7 +333,6 @@ void CompAnalyzer::record_comp(const uint32_t var) {
         if(is_true(a)|| is_true(b)) {
           archetype.clear_cl(clid);
         } else {
-          occ_cnt[v]++;
           VAR_FREQ_DO(bump_freq_score(v));
           manage_occ_and_score_of(a.var());
           manage_occ_and_score_of(b.var());

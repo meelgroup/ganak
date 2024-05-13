@@ -128,6 +128,7 @@ void CompManager::recordRemainingCompsFor(StackLevel &top)
       }
     }
   }
+  VAR_FREQ_DO(ana.bump_act());
 
   debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): " << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack.size());

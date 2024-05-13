@@ -91,6 +91,7 @@ public:
     return false;
   }
 
+  void bump_act() { act_inc *= 1.0/0.99; }
   bool manage_occ_and_score_of(uint32_t v){
     VAR_FREQ_DO(if (is_unknown(v)) bump_freq_score(v));
     return manage_occ_of(v);

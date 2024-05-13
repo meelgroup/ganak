@@ -1024,7 +1024,7 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3;
-  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/1.0);
+  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/5.0);
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions

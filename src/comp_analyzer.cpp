@@ -350,7 +350,6 @@ void CompAnalyzer::record_comp(const uint32_t var) {
         search_clause(v, *p, (Lit const*)(p + 1 + *(p+1)));
       }
 
-    VAR_FREQ_DO(act_inc *= 1.0/0.98);
   }
 
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "

@@ -102,7 +102,8 @@ only_dirs = [
              "out-ganak-7021521.pbs101-0", # 2023 mccomp, restarts, fixed blocking lit, cube extend only no contract
              #"out-ganak-7028560.pbs101-", # 2022 + 2023
              #"out-ganak-7041485.", # kr-24 instances from Arijit
-             "out-ganak-7041554.pbs101-", # rapid restarts
+             "out-ganak-7041554.pbs101-0", # rapid restarts
+             "out-ganak-7047972.pbs101-",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

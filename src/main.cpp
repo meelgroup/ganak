@@ -150,6 +150,7 @@ void add_ganak_options()
 
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("compsort", po::value(&conf.do_comp_sort)->default_value(conf.do_comp_sort), "Sort components in different order")
+    ("varfreqdiv", po::value(&conf.var_freq_divider)->default_value(conf.var_freq_divider), "Var freq divider in score_of")
     ;
 
     restart_options.add_options()

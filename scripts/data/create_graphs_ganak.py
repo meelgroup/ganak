@@ -97,14 +97,14 @@ only_dirs = [
             # "out-ganak-6918163.pbs101-0", # restart on mccomp 2023, 20k restarts
              # "out-ganak-6965806.pbs101", # mccomp 2022+3, restarts base etc
              #"out-ganak-7015279.pbs101", # new extension and symm run
-             # "out-ganak-7022833.pbs101-4", # best ever
+             "out-ganak-7022833.pbs101-4", # best ever
   #######
              # "out-ganak-7021521.pbs101-0", # 2023 mccomp, restarts, fixed blocking lit, cube extend only no contract
              #"out-ganak-7028560.pbs101-", # 2022 + 2023
              #"out-ganak-7041485.", # kr-24 instances from Arijit
              # "out-ganak-7041554.pbs101-0", # rapid restarts
              # "out-ganak-7047972.pbs101-0",
-             "out-ganak-7048280.pbs101-0",
+             "out-ganak-7048280.pbs101-0", # best ever now
              "out-ganak-7049225.pbs101-",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth

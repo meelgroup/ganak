@@ -722,7 +722,7 @@ mpz_class Counter::outer_count(CMSat::SATSolver* _sat_solver) {
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
-    disable_small_cubes(cubes);
+    /* disable_small_cubes(cubes); */
 
     // Add cubes to count, Ganak & CMS
     mpz_class cubes_cnt_this_rst = 0;
@@ -1015,9 +1015,9 @@ double Counter::var_act(const uint32_t v) const {
 // The higher, the better. It is never below 0.
 double Counter::score_of(const uint32_t v, bool ignore_td) const {
   bool print = false;
-  if (stats.decisions % 40000 == 0) print = 1;
+  /* if (stats.decisions % 40000 == 0) print = 1; */
   /* print = true; */
-  print = false;
+  /* print = false; */
   double act_score = 0;
   double td_score = 0;
   double freq_score = 0;
@@ -1027,15 +1027,16 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3.0;
   VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider);
+  double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << v
     << " confl: " << stats.conflicts
     << " dec: " << stats.decisions
-    << " act_score: " << act_score
-    << " freq_score: " << freq_score
-    << " td_score: " << td_score
+    << " act_score: " << act_score/score
+    << " freq_score: " << freq_score/score
+    << " td_score: " << td_score/score
     << endl;
 
-  return act_score+td_score+freq_score;
+  return score;
 }
 
 uint32_t Counter::find_best_branch(bool ignore_td) {
@@ -1318,7 +1319,7 @@ bool Counter::restart_if_needed() {
   if (conf.do_readjust_for_restart) {
     conf.decide = stats.num_restarts%2;
     if (stats.num_restarts%3 == 2) curr_var_freq_divider /= 4.0;
-    conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0;
+    /* conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0; */
     conf.act_exp = (stats.num_restarts % 3) ? 0.99 : 0.95;
   }
   verb_print(2, "[rst] new config. decide: " << conf.decide

@@ -416,7 +416,6 @@ int main(int argc, char *argv[])
   counter->set_generators(generators);
 
   mpz_class cnt = 0;
-  bool ok = true;
   for(const auto& cl: cnf.clauses) counter->add_irred_cl(cms_to_ganak_cl(cl));
   counter->end_irred_cls();
   for(const auto& cl: cnf.red_clauses) counter->add_red_cl(cms_to_ganak_cl(cl));
@@ -429,7 +428,6 @@ int main(int argc, char *argv[])
     counter->set_optional_indep_support(tmp);
   }
 
-  counter->init_activity_scores();
   cnt = counter->outer_count();
   cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
 

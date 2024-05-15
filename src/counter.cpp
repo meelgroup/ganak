@@ -627,6 +627,7 @@ T Counter<T>::outer_count() {
 
   verb_print(1, "Sampling set size: " << indep_support_end-1);
   verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
+  init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
   auto ret = sat_solver->solve();
   start_time = cpuTime();

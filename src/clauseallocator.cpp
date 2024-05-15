@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
-#include <limits>
 #include <cassert>
 #include <cmath>
 #include "counter.hpp"
@@ -37,6 +36,8 @@ using std::cout;
 using std::endl;
 
 #define ALLOC_GROW_MULT 1.5
+
+template class ClauseAllocator<mpz_class>;
 
 template<typename T>
 void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {

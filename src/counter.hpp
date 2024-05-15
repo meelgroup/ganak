@@ -170,6 +170,22 @@ public:
   void add_red_cl(const vector<Lit>& lits, int lbd = -1);
   void add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t> &indeps);
+  int32_t decision_level() const { return decisions.get_decision_level();}
+
+  // queues
+  bqueue<uint32_t> depth_q;
+  bqueue<uint32_t> comp_size_q;
+
+  // vivif stuff
+  void vivif_setup();
+  bool v_propagate();
+  void v_backtrack();
+  void v_unset(const Lit l);
+  void v_enqueue(const Lit l);
+  TriValue v_val(const Lit l) const;
+  void v_new_lev();
+  void v_backup();
+  void v_restore();
 protected:
   CounterConfiguration conf;
   void unset(Lit lit) {
@@ -283,18 +299,14 @@ protected:
   }
 
   string lit_val_str(Lit lit) const {
-    if (values[lit] == F_TRI)
-      return "FALSE";
-    else if (values[lit] == T_TRI)
-      return "TRUE";
+    if (values[lit] == F_TRI) return "FALSE";
+    else if (values[lit] == T_TRI) return "TRUE";
     else return "UNKN";
   }
 
   string val_to_str(const TriValue& tri) const {
-    if (tri == F_TRI)
-      return "FALSE";
-    else if (tri == T_TRI)
-      return "TRUE";
+    if (tri == F_TRI) return "FALSE";
+    else if (tri == T_TRI) return "TRUE";
     else return "UNKN";
   }
 
@@ -323,33 +335,19 @@ protected:
   void disable_cubes_if_overlap(vector<Cube>& cubes);
   void extend_cubes(vector<Cube>& cubes);
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
-  void vivif_setup();
-  bool v_propagate();
-  void v_backtrack();
-  void v_unset(const Lit l);
-  void v_enqueue(const Lit l);
-  TriValue v_val(const Lit l) const;
-  void v_new_lev();
-  vector<vector<Lit>> v_backup_cls;
-  vector<vector<ClOffsBlckL>> v_backup_watches;
-  void v_backup();
-  void v_restore();
 
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   const DataAndStatistics<T>& get_stats() const;
   void get_unit_cls(vector<Lit>& units) const;
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
-  int32_t decision_level() const { return decisions.get_decision_level();}
 
   // test
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
-  // queues
-  bqueue<uint32_t> depth_q;
-  bqueue<uint32_t> comp_size_q;
-
 private:
+  vector<vector<Lit>> v_backup_cls;
+  vector<vector<ClOffsBlckL>> v_backup_watches;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
@@ -382,7 +380,7 @@ private:
   // the last time conflict clauses have been deleted
   uint64_t last_reduceDB_conflicts = 0;
 
-  void simplePreProcess();
+  void simple_preprocess();
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
 

@@ -44,9 +44,7 @@ public:
   ~CompCache() { for(auto& c: entry_base) c.set_free(); }
 
   void init(Comp &super_comp, void* hash_seed);
-  void delete_comps_with_vars(const set<uint32_t>& vars);
-  uint64_t get_num_entries_used() const
-  {
+  uint64_t get_num_entries_used() const {
     uint64_t ret = 0;
     for (uint32_t id = 2; id < entry_base.size(); id++)
       if (!entry_base[id].is_free()) ret++;

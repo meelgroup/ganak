@@ -54,10 +54,7 @@ public:
 #endif
 
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
-    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
-  void delete_comps_with_vars(const set<uint32_t>& vars) {
-    cache.delete_comps_with_vars(vars);
-  }
+    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls);
   const CompCache<T>& get_cache() const { return cache; }
   const CompAnalyzer<T>& get_ana() const { return ana; }
 
@@ -226,7 +223,7 @@ CompManager<T>::CompManager(const CounterConfiguration &config, DataAndStatistic
 //   it also inits the included analyzer called "ana"
 template<typename T>
 void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watches,
-    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
+    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls){
   assert(comp_stack.empty());
 
   ana.initialize(watches, _alloc, long_irred_cls);

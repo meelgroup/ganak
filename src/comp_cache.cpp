@@ -61,6 +61,8 @@ uint64_t freeram() {
 
 #include "stack.hpp"
 
+template class CompCache<mpz_class>;
+
 template<typename T>
 void CompCache<T>::test_descendantstree_consistency() {
   for (uint32_t id = 2; id < entry_base.size(); id++)

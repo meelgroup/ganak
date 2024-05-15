@@ -209,7 +209,6 @@ void Counter<T>::compute_score(TreeDecomposition& tdec) {
   }
 #endif
 }
-template<> void Counter<mpz_class>::compute_score(TreeDecomposition&);
 
 template<typename T>
 void Counter<T>::td_decompose() {
@@ -3469,11 +3468,11 @@ void Counter<T>::end_irred_cls() {
 
   stats.maximum_cache_size_bytes_ = conf.maximum_cache_size_MB*1024*1024;
   init_decision_stack();
-  simplePreProcess();
+  simple_preprocess();
   ended_irred_cls = true;
 
   // This below will initialize the disjoint component analyzer (ana)
-  comp_manager->initialize(watches, alloc, long_irred_cls, nVars());
+  comp_manager->initialize(watches, alloc, long_irred_cls);
 }
 
 template<typename T>
@@ -3499,10 +3498,9 @@ Counter<T>::~Counter() {
   if (conf.do_buddy) bdd_done();
   delete alloc;
 }
-template<> Counter<mpz_class>::~Counter();
 
 template<typename T>
-void Counter<T>::simplePreProcess() {
+void Counter<T>::simple_preprocess() {
   for (auto lit : unit_clauses_) {
     assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) setLiteral(lit, 0);
@@ -3519,7 +3517,6 @@ void Counter<T>::simplePreProcess() {
   // deletion of clauses during subsumption
   for(auto& v: variables_) {v.ante = Antecedent();}
 }
-template<> void Counter<mpz_class>::simplePreProcess();
 
 // TODO Yash we should do Jeroslow-Wang heuristic, i.e. 1/2 for binary, 1/3 for tertiary, etc.
 template<typename T>
@@ -3541,8 +3538,6 @@ void Counter<T>::init_activity_scores() {
   }
   max_activity *= 10.0;
 }
-template<> void Counter<mpz_class>::init_activity_scores();
-
 
 template<typename T>
 void Counter<T>::checkProbabilisticHashSanity() const {
@@ -3702,4 +3697,42 @@ Clause* Counter<T>::addClause(const vector<Lit> &lits, bool red) {
   for(uint32_t i = 0; i < lits.size(); i ++) (*cl)[i] = lits[i];
   attach_cl(alloc->get_offset(cl), lits);
   return cl;
+}
+
+template<typename T>
+void Counter<T>::add_irred_cl(const vector<Lit>& lits_orig) {
+  vector<Lit> lits;
+  for(const auto& l: lits_orig) {
+    if (val(l) == T_TRI) return;
+    if (val(l) == X_TRI) lits.push_back(l);
+  }
+  if (lits.empty()) {
+    cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
+    exit(-1);
+  }
+  for(const auto& l: lits) assert(l.var() <= nVars());
+  if (!remove_duplicates(lits)) return;
+
+  stats.incorporateIrredClauseData(lits);
+  Clause* cl = addClause(lits, false);
+  auto off = alloc->get_offset(cl);
+  if (cl) long_irred_cls.push_back(off);
+  SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
+}
+
+template<typename T>
+void Counter<T>::add_red_cl(const vector<Lit>& lits, int lbd) {
+  assert(ended_irred_cls);
+  for(const auto& l: lits) release_assert(l.var() <= nVars());
+  for(const auto& l: lits) release_assert(is_unknown(l));
+  assert(lits.size() >= 2 && "No unit or empty clauses please");
+
+  Clause* cl = addClause(lits, true);
+  if (cl) {
+    auto off = alloc->get_offset(cl);
+    longRedCls.push_back(off);
+    if (lbd == -1) lbd = lits.size();
+    cl->lbd = lbd;
+    assert(cl->red);
+  }
 }

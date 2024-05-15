@@ -166,9 +166,9 @@ public:
   void end_irred_cls();
   void set_indep_support(const set<uint32_t>& indeps);
   void init_activity_scores();
-  T outer_count(CMSat::SATSolver* solver = nullptr);
-  void add_red_cl(const vector<Lit>& lits, int lbd = -1);
-  void add_irred_cl(const vector<Lit>& lits);
+  T outer_count();
+  bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
+  bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t> &indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
 
@@ -356,6 +356,7 @@ private:
   T check_count_norestart_cms(const Cube<T>& c);
   void count(vector<Cube<T>>& cubes);
   CMSat::SATSolver* sat_solver = nullptr;
+  bool ok = true;
   bool isindependent = true;
 
 

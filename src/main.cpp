@@ -412,37 +412,25 @@ int main(int argc, char *argv[])
     /* cnf.write_simpcnf("tmp.cnf"); */
   }
   Counter<mpz_class>* counter = new Counter<mpz_class>(conf);
-  CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
   counter->new_vars(cnf.nVars());
   counter->set_generators(generators);
-  sat_solver->new_vars(cnf.nVars());
 
   mpz_class cnt = 0;
-  for(const auto& cl: cnf.clauses) sat_solver->add_clause(cl);
-  for(const auto& cl: cnf.red_clauses) sat_solver->add_clause(cl);
-  auto ret = sat_solver->solve();
-  if (ret == CMSat::l_True) {
-    for(const auto& cl: cnf.clauses) {
-      auto cl2 = cms_to_ganak_cl(cl);
-      counter->add_irred_cl(cl2);
-    }
-    counter->end_irred_cls();
-    for(const auto& cl: cnf.red_clauses) {
-      auto cl2 = cms_to_ganak_cl(cl);
-      counter->add_red_cl(cl2);
-    }
-    set<uint32_t> tmp;
-    for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
-    counter->set_indep_support(tmp);
-    if (cnf.opt_sampl_vars_given) {
-      tmp.clear();
-      for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
-      counter->set_optional_indep_support(tmp);
-    }
-
-    counter->init_activity_scores();
-    cnt = counter->outer_count(sat_solver);
+  bool ok = true;
+  for(const auto& cl: cnf.clauses) counter->add_irred_cl(cms_to_ganak_cl(cl));
+  counter->end_irred_cls();
+  for(const auto& cl: cnf.red_clauses) counter->add_red_cl(cms_to_ganak_cl(cl));
+  set<uint32_t> tmp;
+  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  counter->set_indep_support(tmp);
+  if (cnf.opt_sampl_vars_given) {
+    tmp.clear();
+    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    counter->set_optional_indep_support(tmp);
   }
+
+  counter->init_activity_scores();
+  cnt = counter->outer_count();
   cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
 
   if (cnt > 0) cout << "s SATISFIABLE" << endl;
@@ -460,6 +448,5 @@ int main(int argc, char *argv[])
 
 
   delete counter;
-  delete sat_solver;
   return 0;
 }

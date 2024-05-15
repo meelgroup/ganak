@@ -53,6 +53,19 @@ void my_gbchandler(int pre, bddGbcStat *) {
    }
 }
 
+vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
+  vector<CMSat::Lit> cms_cl;
+  cms_cl.reserve(cl.size());
+  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
+vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
+  vector<CMSat::Lit> cms_cl;
+  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
 template<typename T>
 vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {
   if (!num_vars_set) {
@@ -274,19 +287,6 @@ void Counter<T>::td_decompose() {
   verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
 }
 
-vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
-  vector<CMSat::Lit> cms_cl;
-  cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
-  return cms_cl;
-}
-
-vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
-  vector<CMSat::Lit> cms_cl;
-  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
-  return cms_cl;
-}
-
 // Self-check count without restart with CMS only
 template<typename T>
 T Counter<T>::check_count_norestart_cms(const Cube<T>& c) {
@@ -353,15 +353,12 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
   set<uint32_t> tmp_indep;
   for(uint32_t i = 1; i < indep_support_end; i++) tmp_indep.insert(i);
   test_cnt.set_indep_support(tmp_indep);
-  CMSat::SATSolver test_solver;
-  test_solver.new_vars(nVars());
   // Long cls
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     tmp.clear();
     for(const auto& l: cl) tmp.push_back(l);
     test_cnt.add_irred_cl(tmp);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   // Bin cls
   all_lits(i) {
@@ -372,7 +369,6 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
         tmp.push_back(l);
         tmp.push_back(l2.lit());
         test_cnt.add_irred_cl(tmp);
-        test_solver.add_clause(ganak_to_cms_cl(tmp));
       }
     }
   }
@@ -381,18 +377,16 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
     tmp.clear();
     tmp.push_back(l);
     test_cnt.add_irred_cl(tmp);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   // The cube
   for(const auto&l: c.cnf) {
     tmp.clear();
     tmp.push_back(l.neg());
     test_cnt.add_irred_cl(tmp);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   test_cnt.end_irred_cls();
   vector<Cube<T>> ret;
-  return test_cnt.outer_count(&test_solver);
+  return test_cnt.outer_count();
 }
 
 template<typename T>
@@ -627,9 +621,9 @@ void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
 }
 
 template<typename T>
-T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
+T Counter<T>::outer_count() {
+  if (!ok) return 0;
   T value = 0;
-  sat_solver = _sat_solver;
 
   verb_print(1, "Sampling set size: " << indep_support_end-1);
   verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
@@ -3112,12 +3106,12 @@ end:
 template<typename T>
 void Counter<T>::check_sat_solution() const {
   assert(sat_mode());
-  bool ok = true;
+  bool good = true;
 
   for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
     if (clause_falsified(cl)) {
-      ok = false;
+      good = false;
       cout << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
       print_cl(cl);
     }
@@ -3126,13 +3120,13 @@ void Counter<T>::check_sat_solution() const {
   for(const auto& off: longRedCls) {
     Clause& cl = *alloc->ptr(off);
     if (clause_falsified(cl)) {
-      ok = false;
+      good = false;
       cout << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
       print_cl(cl);
     }
   }
 
-  assert(ok);
+  assert(good);
 }
 
 #ifdef BUDDY_ENABLED
@@ -3476,6 +3470,7 @@ Counter<T>::Counter(const CounterConfiguration& _conf) :
     , stats(_conf)
     , mtrand(_conf.seed)
     , order_heap(VarOrderLt(Counter<T>::watches)) {
+  sat_solver = new CMSat::SATSolver;
   alloc = new ClauseAllocator<T>(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
   if (conf.do_buddy) {
@@ -3492,6 +3487,7 @@ Counter<T>::~Counter() {
   delete comp_manager;
   if (conf.do_buddy) bdd_done();
   delete alloc;
+  delete sat_solver;
 }
 
 template<typename T>
@@ -3661,6 +3657,7 @@ void Counter<T>::new_vars(const uint32_t n) {
     cout << "ERROR: you can only call new_vars() once!" << endl;
     exit(-1);
   }
+  sat_solver->new_vars(n);
 
   assert(variables_.empty());
   assert(values.empty());
@@ -3695,10 +3692,13 @@ Clause* Counter<T>::addClause(const vector<Lit> &lits, bool red) {
 }
 
 template<typename T>
-void Counter<T>::add_irred_cl(const vector<Lit>& lits_orig) {
+bool Counter<T>::add_irred_cl(const vector<Lit>& lits_orig) {
+  if (!ok) return ok;
+  if (!sat_solver->add_clause(ganak_to_cms_cl(lits_orig))) { ok = false; return ok; }
+
   vector<Lit> lits;
   for(const auto& l: lits_orig) {
-    if (val(l) == T_TRI) return;
+    if (val(l) == T_TRI) return ok;
     if (val(l) == X_TRI) lits.push_back(l);
   }
   if (lits.empty()) {
@@ -3706,20 +3706,33 @@ void Counter<T>::add_irred_cl(const vector<Lit>& lits_orig) {
     exit(-1);
   }
   for(const auto& l: lits) assert(l.var() <= nVars());
-  if (!remove_duplicates(lits)) return;
+  if (!remove_duplicates(lits)) return ok;
 
   stats.incorporateIrredClauseData(lits);
   Clause* cl = addClause(lits, false);
   auto off = alloc->get_offset(cl);
   if (cl) long_irred_cls.push_back(off);
   SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
+  return ok;
 }
 
 template<typename T>
-void Counter<T>::add_red_cl(const vector<Lit>& lits, int lbd) {
+bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
   assert(ended_irred_cls);
-  for(const auto& l: lits) release_assert(l.var() <= nVars());
-  for(const auto& l: lits) release_assert(is_unknown(l));
+  if (!sat_solver->add_clause(ganak_to_cms_cl(lits_orig))) { ok = false; return ok; }
+
+  vector<Lit> lits;
+  for(const auto& l: lits_orig) {
+    if (val(l) == T_TRI) return ok;
+    if (val(l) == X_TRI) lits.push_back(l);
+  }
+  if (lits.empty()) {
+    cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
+    exit(-1);
+  }
+  for(const auto& l: lits) assert(l.var() <= nVars());
+  if (!remove_duplicates(lits)) return ok;
+
   assert(lits.size() >= 2 && "No unit or empty clauses please");
 
   Clause* cl = addClause(lits, true);
@@ -3730,4 +3743,5 @@ void Counter<T>::add_red_cl(const vector<Lit>& lits, int lbd) {
     cl->lbd = lbd;
     assert(cl->red);
   }
+  return ok;
 }

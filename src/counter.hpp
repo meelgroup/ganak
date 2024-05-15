@@ -165,11 +165,10 @@ public:
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
   void end_irred_cls();
   void set_indep_support(const set<uint32_t>& indeps);
-  void init_activity_scores();
   T outer_count();
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
   bool add_irred_cl(const vector<Lit>& lits);
-  void set_optional_indep_support(const set<uint32_t> &indeps);
+  void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
 
   // queues
@@ -346,6 +345,7 @@ protected:
   uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
 
 private:
+  void init_activity_scores();
   vector<vector<Lit>> v_backup_cls;
   vector<vector<ClOffsBlckL>> v_backup_watches;
 #ifdef SLOW_DEBUG
@@ -809,3 +809,48 @@ template<class T2> void Counter<T>::attach_cl(ClauseOfs off, const T2& lits) {
   watches[lits[0]].add_cl(off, blck_lit);
   watches[lits[1]].add_cl(off, blck_lit);
 }
+
+class OuterCounter {
+public:
+  OuterCounter(const CounterConfiguration& conf, bool weighted) {
+    if (weighted) w_counter = new Counter<mpf_class>(conf);
+    else unw_counter = new Counter<mpz_class>(conf);
+  }
+  ~OuterCounter() {
+    delete unw_counter;
+    delete w_counter;
+  }
+  void set_generators(const vector<map<Lit, Lit>>& _gens) {
+    if (unw_counter) unw_counter->set_generators(_gens);
+    if (w_counter) w_counter->set_generators(_gens);
+  }
+  void end_irred_cls() {
+    if (unw_counter) unw_counter->end_irred_cls();
+    if (w_counter) w_counter->end_irred_cls();
+  }
+  void set_indep_support(const set<uint32_t>& indeps) {
+    if (unw_counter) unw_counter->set_indep_support(indeps);
+    if (w_counter) w_counter->set_indep_support(indeps);
+  }
+  mpf_class w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
+  mpz_class unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
+  bool add_red_cl(const vector<Lit>& lits, int lbd = -1) {
+    if (unw_counter) return unw_counter->add_red_cl(lits, lbd);
+    if (w_counter) return w_counter->add_red_cl(lits, lbd);
+  }
+  bool add_irred_cl(const vector<Lit>& lits) {
+    if (unw_counter) return unw_counter->add_irred_cl(lits);
+    if (w_counter) return w_counter->add_irred_cl(lits);
+  }
+  void set_optional_indep_support(const set<uint32_t>& indeps) {
+    if (unw_counter) unw_counter->set_optional_indep_support(indeps);
+    if (w_counter) w_counter->set_optional_indep_support(indeps);
+  }
+  void new_vars(const uint32_t n) {
+    if (unw_counter) unw_counter->new_vars(n);
+    if (w_counter) w_counter->new_vars(n);
+  }
+private:
+  Counter<mpz_class>* unw_counter = nullptr;
+  Counter<mpf_class>* w_counter = nullptr;
+};

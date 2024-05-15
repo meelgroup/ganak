@@ -411,24 +411,23 @@ int main(int argc, char *argv[])
     verb_print(1, "[breakid] T: " << (cpuTime()-my_time));
     /* cnf.write_simpcnf("tmp.cnf"); */
   }
-  Counter<mpz_class>* counter = new Counter<mpz_class>(conf);
-  counter->new_vars(cnf.nVars());
-  counter->set_generators(generators);
+  OuterCounter counter(conf, cnf.weighted);
+  counter.new_vars(cnf.nVars());
+  counter.set_generators(generators);
 
-  mpz_class cnt = 0;
-  for(const auto& cl: cnf.clauses) counter->add_irred_cl(cms_to_ganak_cl(cl));
-  counter->end_irred_cls();
-  for(const auto& cl: cnf.red_clauses) counter->add_red_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  counter.end_irred_cls();
+  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
   set<uint32_t> tmp;
   for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
-  counter->set_indep_support(tmp);
+  counter.set_indep_support(tmp);
   if (cnf.opt_sampl_vars_given) {
     tmp.clear();
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
-    counter->set_optional_indep_support(tmp);
+    counter.set_optional_indep_support(tmp);
   }
+  mpz_class cnt = counter.unw_outer_count();
 
-  cnt = counter->outer_count();
   cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
 
   if (cnt > 0) cout << "s SATISFIABLE" << endl;
@@ -445,6 +444,5 @@ int main(int argc, char *argv[])
   cout << "c s exact arb int " << std::fixed << cnt << endl;
 
 
-  delete counter;
   return 0;
 }

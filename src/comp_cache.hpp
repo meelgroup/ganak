@@ -23,7 +23,6 @@ THE SOFTWARE.
 #pragma once
 
 #include "common.hpp"
-#include "comp_types/base_packed_comp.hpp"
 #include "comp_types/cacheable_comp.hpp"
 #include "primitive_types.hpp"
 #include "statistics.hpp"
@@ -38,9 +37,10 @@ THE SOFTWARE.
 using std::set;
 
 // There is EXACTLY ONE of this
+template<typename T>
 class CompCache {
 public:
-  CompCache(const uint32_t num_vars, DataAndStatistics &_stats, const CounterConfiguration& _conf);
+  CompCache(const uint32_t num_vars, DataAndStatistics<T> &_stats, const CounterConfiguration& _conf);
   ~CompCache() { for(auto& c: entry_base) c.set_free(); }
 
   void init(Comp &super_comp, void* hash_seed);
@@ -58,14 +58,14 @@ public:
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_allocated();
   bool cache_full(uint64_t extra_will_be_added = 0) const {
-    return stats.cache_full(free_entry_base_slots.size() * sizeof(CacheableComp),
+    return stats.cache_full(free_entry_base_slots.size() * sizeof(CacheableComp<T>),
         extra_will_be_added);
   }
 
-  CacheableComp &entry(CacheEntryID id) { return entry_base[id]; }
-  const CacheableComp &entry(CacheEntryID id) const { return entry_base[id]; }
-  CacheableComp &entry(const Comp& comp) { return entry(comp.id()); }
-  const CacheableComp &entry(const Comp& comp) const { return entry(comp.id()); }
+  CacheableComp<T> &entry(CacheEntryID id) { return entry_base[id]; }
+  const CacheableComp<T> &entry(CacheEntryID id) const { return entry_base[id]; }
+  CacheableComp<T> &entry(const Comp& comp) { return entry(comp.id()); }
+  const CacheableComp<T> &entry(const Comp& comp) const { return entry(comp.id()); }
   bool exists(CacheEntryID id) const { return !entry_base[id].is_free(); }
 
   // removes the entry id from the hash table
@@ -81,10 +81,10 @@ public:
   // returns the id of the entry created
   // stores in the entry the position of
   // comp which is a part of the comp stack
-  inline CacheEntryID new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id);
+  inline CacheEntryID new_comp(CacheableComp<T> &ccomp, CacheEntryID super_comp_id);
   inline uint64_t calc_extra_mem_after_push() const;
 
-  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const CacheableComp &packed_comp) {
+  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const CacheableComp<T> &packed_comp) {
     stats.num_cache_look_ups_++;
     uint32_t table_ofs = packed_comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
@@ -180,7 +180,7 @@ private:
       entry(compid).set_first_descendant(descendantid);
     }
 
-  vec<CacheableComp> entry_base;
+  vec<CacheableComp<T>> entry_base;
   vec<CacheEntryID> free_entry_base_slots;
 
   // the actual hash table
@@ -189,25 +189,27 @@ private:
 
   uint32_t tbl_size_mask; // table is always power-of-two size
 
-  DataAndStatistics &stats;
+  DataAndStatistics<T> &stats;
   const CounterConfiguration &conf;
   uint64_t my_time = 0;
   uint32_t num_vars;
 };
 
-uint64_t CompCache::calc_extra_mem_after_push() const {
+template<typename T>
+uint64_t CompCache<T>::calc_extra_mem_after_push() const {
   bool at_capacity = entry_base.capacity() == entry_base.size();
   bool at_capacity_table = table.capacity() == table.size();
   uint64_t extra_will_be_added = 0;
 
   // assume it will be multiplied by 1.5
   if (at_capacity) extra_will_be_added =
-    (entry_base.capacity()*sizeof(CacheableComp) + stats.sum_bignum_bytes)/2;
+    (entry_base.capacity()*sizeof(CacheableComp<T>) + stats.sum_bignum_bytes)/2;
   if (at_capacity_table) extra_will_be_added += (table.capacity()*sizeof(CacheEntryID))/2;
   return extra_will_be_added;
 }
 
-CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id) {
+template<typename T>
+CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_comp_id) {
   uint64_t extra_mem_with_push = calc_extra_mem_after_push();
   while (cache_full(extra_mem_with_push)) {
     verb_print(1, "Cache full. Deleting some entries.");
@@ -226,7 +228,7 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
       double vm_dat;
       auto dat = memUsedTotal(vm_dat);
       verb_print(2,std::setw(40) << "After enlarge entry_base mem use MB: " <<
-        (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024));
+        (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
       verb_print(3,
         "Before entry enlarge Total process MB : " << dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
@@ -237,7 +239,7 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
       double vm_dat;
       double dat = memUsedTotal(vm_dat);
       verb_print(1,std::setw(40) << "After enlarge entry_base mem use MB: " <<
-        (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024));
+        (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
       verb_print(1,
         "After entry enlarge Total process MB  : " << dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
@@ -271,7 +273,8 @@ CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_i
 }
 
 // Recursively unlinks & removes id and its descendants
-uint64_t CompCache::clean_pollutions_involving(const CacheEntryID id) {
+template<typename T>
+uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
   uint64_t removed = 0;
 
   // unlink id from the father's siblings list
@@ -305,7 +308,8 @@ uint64_t CompCache::clean_pollutions_involving(const CacheEntryID id) {
   return 1+removed;
 }
 
-void CompCache::unlink(CacheEntryID id) {
+template<typename T>
+void CompCache<T>::unlink(CacheEntryID id) {
   uint32_t act_id = table[table_pos(id)];
   if (act_id == id){
     table[table_pos(id)] = entry(act_id).next_bucket_element();
@@ -321,7 +325,8 @@ void CompCache::unlink(CacheEntryID id) {
   }
 }
 
-void CompCache::store_value(const CacheEntryID id, const mpz_class &model_count) {
+template<typename T>
+void CompCache<T>::store_value(const CacheEntryID id, const mpz_class &model_count) {
 #ifdef CHECK_COUNT
   //we disable cache on check_count, to remove an error source
   return;
@@ -339,3 +344,58 @@ void CompCache::store_value(const CacheEntryID id, const mpz_class &model_count)
   table[table_ofs] = id;
   stats.sum_bignum_bytes += entry(id).bignum_bytes();
 }
+
+
+template<typename T>
+CompCache<T>::CompCache(
+    uint32_t _num_vars,
+    DataAndStatistics<T> &_stats, const CounterConfiguration &_conf):
+  stats(_stats), conf(_conf), num_vars(_num_vars) {}
+
+
+extern uint64_t freeram();
+
+template<typename T>
+void CompCache<T>::init(Comp &super_comp, void* hash_seed){
+  CacheableComp<T> *packed_super_comp;
+  vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.num_long_cls());
+  packed_super_comp = new CacheableComp<T>(hash_seed,super_comp);
+  my_time = 1;
+
+  entry_base.clear();
+  auto x = CacheableComp<T>();
+  entry_base.push_back(x); // dummy Element
+  stats.incorporate_cache_store(x, super_comp.nVars());
+  table.clear();
+  table.resize(1024*1024);
+  std::fill(table.begin(), table.end(), 0);
+  tbl_size_mask = table.size() - 1;
+
+  free_entry_base_slots.clear();
+
+  const uint64_t free_ram = freeram();
+  uint64_t max_cache_bound = 80 * (free_ram / 100);
+
+  if (stats.maximum_cache_size_bytes_ == 0) {
+    stats.maximum_cache_size_bytes_ = max_cache_bound;
+  }
+
+  if (stats.maximum_cache_size_bytes_ > free_ram) {
+    verb_print(1, "WARNING: Maximum cache size larger than free RAM available");
+    verb_print(1, "Free RAM " << std::setprecision(2)
+      << (double)free_ram / (1024.0*1024.0) << "MB");
+  }
+  verb_print(2, "Max cache size (80% free mem-200MB): "
+    << stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
+
+
+  stats.sum_bignum_bytes = 0;
+  stats.cache_infrastructure_bytes_memory_usage_ = 0;
+  assert(!cache_full());
+  entry_base.push_back(*packed_super_comp);
+  stats.incorporate_cache_store(*packed_super_comp, super_comp.nVars());
+  delete packed_super_comp;
+  super_comp.set_id(1);
+  compute_size_allocated();
+}
+

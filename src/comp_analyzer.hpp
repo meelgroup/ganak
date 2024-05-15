@@ -37,16 +37,17 @@ THE SOFTWARE.
 using std::map;
 using std::pair;
 
-class ClauseAllocator;
-class Counter;
+template<typename T> class ClauseAllocator;
+template<typename T> class Counter;
 
 // There is exactly ONE of this, inside CompManager, which is inside Solver
+template<typename T>
 class CompAnalyzer {
 public:
   CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
-        Counter* _solver);
+        Counter<T>* _solver);
 
   Lit const* get_idx_to_cl(uint32_t cl_id) const {
     return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
@@ -65,7 +66,7 @@ public:
   const CompArchetype &current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
-      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
+      const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool var_unvisited_sup_comp(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var));
@@ -116,7 +117,7 @@ public:
 private:
   void run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t, Lit>& best_alters,
     const LiteralIndexedVector<LitWatchList> & watches,
-    const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls,
+    const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls,
     const vector<vector<uint32_t>>&  occ_ternary_clauses,
     const vector<vector<ClauseOfs>>& occs);
 
@@ -142,7 +143,7 @@ private:
   uint32_t max_freq_score = 1.0;
 #endif
   CompArchetype  archetype;
-  Counter* solver = nullptr;
+  Counter<T>* solver = nullptr;
 
   // Quick lookup of cl based on ID
   vector<Lit> idx_to_cl_data; //packed clauses separated by NOT_A_LIT, idx_to_cl_map indexes in
@@ -218,3 +219,15 @@ private:
     }
   }
 };
+
+// There is exactly ONE of these
+template<typename T>
+CompAnalyzer<T>::CompAnalyzer(
+        const LiteralIndexedVector<TriValue> & lit_values,
+        const uint32_t& _indep_support_end,
+        Counter<T>* _solver) :
+        conf(_solver->get_conf()),
+        values(lit_values),
+        indep_support_end(_indep_support_end),
+        solver(_solver)
+{}

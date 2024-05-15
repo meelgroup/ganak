@@ -28,23 +28,13 @@ THE SOFTWARE.
 
 using std::make_pair;
 
-// There is exactly ONE of these
-CompAnalyzer::CompAnalyzer(
-        const LiteralIndexedVector<TriValue> & lit_values,
-        const uint32_t& _indep_support_end,
-        Counter* _solver) :
-        conf(_solver->get_conf()),
-        values(lit_values),
-        indep_support_end(_indep_support_end),
-        solver(_solver)
-{}
-
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unified_var_links_lists_pool and variable_link_list_offsets_
-void CompAnalyzer::initialize(
+template<typename T>
+void CompAnalyzer<T>::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
-    const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
+    const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
@@ -59,7 +49,7 @@ void CompAnalyzer::initialize(
   // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_var + 1);
 
-  debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
+  debug_print(COLBLBACK "Building occ list in CompAnalyzer<T>::initialize...");
 
   vector<uint32_t> tmp;
   max_clid = 1;
@@ -100,11 +90,11 @@ void CompAnalyzer::initialize(
     idx_to_cl_map.push_back(at);
     max_clid++;
   }
-  debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");
+  debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
 
   archetype.init_data(max_var, max_clid);
 
-  debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
+  debug_print(COLBLBACK "Building unified link list in CompAnalyzer<T>::initialize...");
   // the unified link list
   // This is an array that contains, flattened:
   // [  [vars of binary clauses],
@@ -197,12 +187,13 @@ void CompAnalyzer::initialize(
       occ_ternary_clauses, occs);
   solver->v_restore();
 
-  debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
+  debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
 }
 
-void CompAnalyzer::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t, Lit>& best_alters,
+template<typename T>
+void CompAnalyzer<T>::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t, Lit>& best_alters,
     const LiteralIndexedVector<LitWatchList> & watches,
-    const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls,
+    const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls,
     const vector<vector<uint32_t>>&  occ_ternary_clauses,
     const vector<vector<ClauseOfs>>& occs) {
   // now fill unified link list, for each variable
@@ -276,7 +267,8 @@ void CompAnalyzer::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t,
 }
 
 // returns true, iff the comp found is non-trivial
-bool CompAnalyzer::explore_comp(const uint32_t v) {
+template<typename T>
+bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
   record_comp(v); // sets up the component that "v" is in
 
@@ -291,7 +283,8 @@ bool CompAnalyzer::explore_comp(const uint32_t v) {
 }
 
 // Create a component based on variable provided
-void CompAnalyzer::record_comp(const uint32_t var) {
+template<typename T>
+void CompAnalyzer<T>::record_comp(const uint32_t var) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);

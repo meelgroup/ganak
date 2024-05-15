@@ -32,16 +32,13 @@ THE SOFTWARE.
 
 using std::setw;
 
-static double in_mb(uint64_t bytes) {
-  return (double)bytes/(double)(1024*1024);
-}
-
 static double safe_div(double a, double b) {
   if (b == 0) return 0;
   else return a/b;
 }
 
-void DataAndStatistics::print_short(const Counter* counter, const CompCache* cache) const {
+template<typename T>
+void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCache<T>* cache) const {
   verb_print(1, "total time so far: " << cpuTime());
   counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
@@ -165,7 +162,8 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
 }
 
 
-void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
+template<typename T>
+void DataAndStatistics<T>::print_short_formula_info(const Counter<T>* counter) const {
   verb_print(1, "irred cls long/bin: "
     << counter->get_num_irred_long_cls() << "/" << num_binary_irred_clauses_);
 }

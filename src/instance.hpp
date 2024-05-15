@@ -32,12 +32,13 @@ THE SOFTWARE.
 #include "containers.hpp"
 #include "counter_config.hpp"
 
-class ClauseAllocator;
+template<typename T> class ClauseAllocator;
 
-class Instance {
+template<typename T>
+class Inst {
 public:
-  Instance(const CounterConfiguration& _conf);
-  ~Instance();
+  Inst(const CounterConfiguration& _conf);
+  ~Inst();
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return longRedCls.size(); }
@@ -46,8 +47,8 @@ public:
   int val(uint32_t var) const { return values[Lit(var,1)]; }
 
 
-  friend class ClauseAllocator;
-  ClauseAllocator* alloc;
+  friend class ClauseAllocator<T>;
+  ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> longRedCls;
 #ifdef SLOW_DEBUG
@@ -77,7 +78,7 @@ protected:
   }
 
   void reduce_db();
-  template<class T> void minimize_uip_cl_with_bins(T& cl);
+  template<class T2> void minimize_uip_cl_with_bins(T2& cl);
   vector<Lit> tmp_minim_with_bins;
   void markClauseDeleted(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
@@ -87,7 +88,7 @@ protected:
   void checkWatchLists() const;
 
 
-  DataAndStatistics stats;
+  DataAndStatistics<T> stats;
 
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
@@ -111,8 +112,8 @@ protected:
   vector<uint64_t> lbdHelper;
   uint64_t lbdHelperFlag = 0;
 
-  template<class T>
-  uint32_t calc_lbd(const T& lits) {
+  template<class T2>
+  uint32_t calc_lbd(const T2& lits) {
     lbdHelperFlag++;
     uint32_t nblevels = 0;
     for(const auto& l: lits) {
@@ -132,7 +133,7 @@ protected:
     return false;
   }
 
-  template<class T> void attach_cl(ClauseOfs off, const T& lits);
+  template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* addClause(const vector<Lit> &literals, bool red);
 
   // adds a UIP Conflict Clause
@@ -204,7 +205,8 @@ private:
 
 };
 
-Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
+template<typename T>
+Antecedent Inst<T>::addUIPConflictClause(const vector<Lit> &literals) {
   Antecedent ante;
   stats.num_clauses_learned_++;
   Clause* cl = addClause(literals, true);
@@ -220,14 +222,16 @@ Antecedent Instance::addUIPConflictClause(const vector<Lit> &literals) {
   return ante;
 }
 
-bool Instance::add_bin_cl(Lit a, Lit b, bool red) {
+template<typename T>
+bool Inst<T>::add_bin_cl(Lit a, Lit b, bool red) {
    watches[a].add_bin(b, red);
    watches[b].add_bin(a, red);
    return true;
 }
 
-template<class T>
-void Instance::minimize_uip_cl_with_bins(T& cl) {
+template<typename T>
+template<class T2>
+void Inst<T>::minimize_uip_cl_with_bins(T2& cl) {
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
   uint32_t rem = 0;
   assert(cl.size() > 0);
@@ -257,8 +261,21 @@ void Instance::minimize_uip_cl_with_bins(T& cl) {
   stats.rem_lits_tried++;
 }
 
-template<class T> void Instance::attach_cl(ClauseOfs off, const T& lits) {
+template<typename T>
+template<class T2> void Inst<T>::attach_cl(ClauseOfs off, const T2& lits) {
   Lit blck_lit = lits[lits.size()/2];
   watches[lits[0]].add_cl(off, blck_lit);
   watches[lits[1]].add_cl(off, blck_lit);
 }
+
+template<typename T>
+Inst<T>::Inst(const CounterConfiguration& _conf) : conf(_conf), stats (this, conf) {
+  alloc = new ClauseAllocator<T>(_conf);
+  lbd_cutoff = conf.base_lbd_cutoff;
+}
+
+template<typename T>
+Inst<T>::~Inst() {
+  delete alloc;
+}
+

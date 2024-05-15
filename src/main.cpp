@@ -411,7 +411,7 @@ int main(int argc, char *argv[])
     verb_print(1, "[breakid] T: " << (cpuTime()-my_time));
     /* cnf.write_simpcnf("tmp.cnf"); */
   }
-  Counter* counter = new Counter(conf);
+  Counter<mpz_class>* counter = new Counter<mpz_class>(conf);
   CMSat::SATSolver* sat_solver = new CMSat::SATSolver;
   counter->new_vars(cnf.nVars());
   counter->set_generators(generators);

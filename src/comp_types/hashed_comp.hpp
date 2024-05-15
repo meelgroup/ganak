@@ -25,21 +25,22 @@ THE SOFTWARE.
 #include "base_packed_comp.hpp"
 #include "comp.hpp"
 #include "../clhash/clhash.h"
-#include "../structures.hpp"
 
-class HashedComp: public BaseComp {
+template<typename T>
+class HashedComp: public BaseComp<T> {
 public:
   HashedComp() = default;
   inline HashedComp(void* hash_seed, const Comp& r_comp);
-  uint32_t bignum_bytes() const { return BaseComp::bignum_bytes(); }
+  uint32_t bignum_bytes() const { return BaseComp<T>::bignum_bytes(); }
 
-  uint64_t get_clhashkey() const { return clhashkey_; }
+  uint64_t get_clhashkey() const { return BaseComp<T>::clhashkey_; }
   bool equals_clhashkey(const HashedComp &comp) const {
-    return clhashkey_ == comp.get_clhashkey();
+    return BaseComp<T>::clhashkey_ == comp.get_clhashkey();
   }
 };
 
-HashedComp::HashedComp(void* hash_seed, const Comp& comp) {
+template<typename T>
+HashedComp<T>::HashedComp(void* hash_seed, const Comp& comp) {
   clhasher h(hash_seed);
-  clhashkey_ = h(comp.get_raw_data().data(), comp.get_raw_data().size());
+  BaseComp<T>::clhashkey_ = h(comp.get_raw_data().data(), comp.get_raw_data().size());
 }

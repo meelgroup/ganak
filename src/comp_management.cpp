@@ -24,32 +24,9 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter.hpp"
 
-CompManager::CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
-                 const LiteralIndexedVector<TriValue> &lit_values,
-                 const uint32_t& indep_support_end, Counter* _solver) :
-    conf(config), stats(statistics), cache(_solver->nVars(), statistics, conf),
-    ana(lit_values, indep_support_end, _solver), solver_(_solver)
-{ }
 
-// Initialized exactly once when Counter is created.
-//   it also inits the included analyzer called "ana"
-void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
-    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
-  assert(comp_stack.empty());
-
-  ana.initialize(watches, _alloc, long_irred_cls);
-
-  //Add dummy comp
-  comp_stack.push_back(new Comp());
-
-  //Add full comp
-  comp_stack.push_back(new Comp());
-  assert(comp_stack.size() == 2);
-  comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
-  cache.init(*comp_stack.back(), hash_seed);
-}
-
-void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
+template<typename T>
+void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
 
@@ -60,7 +37,8 @@ void CompManager::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
   stats.cache_pollutions_called++;
 }
 
-void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
+template<typename T>
+void CompManager<T>::removeAllCachePollutionsOf(const StackLevel &top) {
   // all processed comps are found in
   // [top.currentRemainingComp(), comp_stack.size())
   // first, remove the list of descendants from the father
@@ -80,7 +58,8 @@ void CompManager::removeAllCachePollutionsOf(const StackLevel &top) {
 // This creates potential component, checks if it's already in the
 // cache, and if so, uses that, otherwise, it creates it
 // and adds it to the component stack
-void CompManager::recordRemainingCompsFor(StackLevel &top)
+template<typename T>
+void CompManager<T>::recordRemainingCompsFor(StackLevel &top)
 {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();

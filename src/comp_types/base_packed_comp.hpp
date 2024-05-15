@@ -30,10 +30,11 @@ THE SOFTWARE.
 
 using std::cout;
 
+template<typename T>
 class BaseComp {
 public:
   uint32_t last_used_time() const { return last_used_time_; }
-  const mpz_class &model_count() const { return *model_count_; }
+  const T& model_count() const { return *model_count_; }
   uint32_t bignum_bytes() const{
     if (!model_count_) return 0;
     return sizeof(mpz_class)+mpz_data_size();
@@ -42,11 +43,18 @@ public:
   // raw data size with the overhead
   // for the supposed 16byte alignment of malloc
   uint32_t mpz_data_size() const {
-    uint32_t ds;
-    ds = 0;
-    uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-    uint32_t mask = 0xfffffff0;
-    return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
+    if (std::is_same<T, mpz_class*>::value) {
+      uint32_t ds;
+      ds = 0;
+      uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+      uint32_t mask = 0xfffffff0;
+      return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
+    }
+    else if (std::is_same<T, double>::value) {
+      return 0;
+    } else {
+      assert(false);
+    }
   }
 
   // These below are to help us erase better from the cache
@@ -58,9 +66,9 @@ public:
   /* void set_dont_delete_before(const uint32_t time) { dont_delete_before = time; } */
   /* uint32_t get_dont_delete_before() const { return dont_delete_before; } */
 
-  void set_model_count(const mpz_class &rn) {
+  void set_model_count(const T& rn) {
     assert(model_count_ == nullptr);
-    model_count_ = new mpz_class(rn);
+    model_count_ = new T(rn);
     delete_permitted = 1;
   }
 
@@ -81,7 +89,7 @@ public:
 
 protected:
   uint64_t clhashkey_;
-  mpz_class* model_count_ = nullptr;
+  T* model_count_ = nullptr;
   uint32_t last_used_time_:31 = 1; //effectively the score
   uint32_t delete_permitted:1 = false;
 };

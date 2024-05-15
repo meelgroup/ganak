@@ -25,21 +25,11 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 
 #include <algorithm>
-#include <fstream>
-#include <limits>
 #include <sys/stat.h>
 
 
-Instance::Instance(const CounterConfiguration& _conf) : conf(_conf), stats (this, conf) {
-  alloc = new ClauseAllocator(_conf);
-  lbd_cutoff = conf.base_lbd_cutoff;
-}
-
-Instance::~Instance() {
-  delete alloc;
-}
-
-void Instance::checkWatchLists() const {
+template<typename T>
+void Inst<T>::checkWatchLists() const {
   auto red_cls2 = longRedCls;
   // check for duplicates
   std::sort(red_cls2.begin(), red_cls2.end());
@@ -62,14 +52,16 @@ void Instance::checkWatchLists() const {
   }
 }
 
-bool Instance::findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
+template<typename T>
+bool Inst<T>::findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
 {
   for (auto& w: ws) if (w.ofs == off) { return true; }
   return false;
 }
 
+template<typename T>
 struct ClSorter {
-  ClSorter(ClauseAllocator* _alloc, uint32_t _lbd_cutoff) :
+  ClSorter(ClauseAllocator<T>* _alloc, uint32_t _lbd_cutoff) :
     alloc(_alloc), lbd_cutoff(_lbd_cutoff) {}
 
   bool operator()(ClauseOfs& a, ClauseOfs& b) const {
@@ -81,11 +73,12 @@ struct ClSorter {
     if (ah.used != bh.used) return ah.used > bh.used;
     return ah.total_used > bh.total_used;
   }
-  ClauseAllocator* alloc;
+  ClauseAllocator<T>* alloc;
   const uint32_t lbd_cutoff;
 };
 
-void Instance::reduce_db() {
+template<typename T>
+void Inst<T>::reduce_db() {
   stats.reduce_db++;
   if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
       && num_low_lbd_cls < 100) {
@@ -128,21 +121,24 @@ void Instance::reduce_db() {
       << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
 }
 
-bool Instance::red_cl_can_be_deleted(ClauseOfs off){
+template<typename T>
+bool Inst<T>::red_cl_can_be_deleted(ClauseOfs off){
   // only first literal may possibly have cl_ofs as antecedent
   Clause& cl = *alloc->ptr(off);
   if (isAntecedentOf(off, cl[0])) return false;
   return true;
 }
 
-void Instance::markClauseDeleted(const ClauseOfs off){
+template<typename T>
+void Inst<T>::markClauseDeleted(const ClauseOfs off){
   Clause& cl = *alloc->ptr(off);
   watches[cl[0]].del_c(off);
   watches[cl[1]].del_c(off);
   alloc->clause_free(off);
 }
 
-void Instance::new_vars(const uint32_t n) {
+template<typename T>
+void Inst<T>::new_vars(const uint32_t n) {
   if (num_vars_set) {
     cout << "ERROR: you can only call new_vars() once!" << endl;
     exit(-1);
@@ -161,7 +157,8 @@ void Instance::new_vars(const uint32_t n) {
   num_vars_set = true;
 }
 
-Clause* Instance::addClause(const vector<Lit> &lits, bool red) {
+template<typename T>
+Clause* Inst<T>::addClause(const vector<Lit> &lits, bool red) {
   if (lits.size() == 1) {
     assert(!existsUnitClauseOf(lits[0].neg()) && "UNSAT is not dealt with");
     if (!existsUnitClauseOf(lits[0])) unit_clauses_.push_back(lits[0]);

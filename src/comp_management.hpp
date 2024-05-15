@@ -33,16 +33,16 @@ THE SOFTWARE.
 #include "clhash/clhash.h"
 #include "counter_config.hpp"
 
-class Counter;
+template<typename T> class Counter;
 
 // There is exactly ONE of this, inside Counter
-class CompManager
-{
+template<typename T>
+class CompManager {
 public:
 
-  CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
+  CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const uint32_t& indep_support_end, Counter* _solver);
+                   const uint32_t& indep_support_end, Counter<T>* _solver);
   ~CompManager() {
     free(hash_seed);
     for(auto& comp: comp_stack) delete comp;
@@ -54,12 +54,12 @@ public:
 #endif
 
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
-    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
+    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars);
   void delete_comps_with_vars(const set<uint32_t>& vars) {
     cache.delete_comps_with_vars(vars);
   }
-  const CompCache& get_cache() const { return cache; }
-  const CompAnalyzer& get_ana() const { return ana; }
+  const CompCache<T>& get_cache() const { return cache; }
+  const CompAnalyzer<T>& get_ana() const { return ana; }
 
   uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
   void save_count(const uint32_t stack_comp_id, const mpz_class &value) {
@@ -108,21 +108,22 @@ public:
 
 private:
   const CounterConfiguration &conf;
-  DataAndStatistics &stats;
+  DataAndStatistics<T> &stats;
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp*> comp_stack;
-  CompCache cache;
-  CompAnalyzer ana;
+  CompCache<T> cache;
+  CompAnalyzer<T> ana;
 
   // indexed by variable, decremented when a variable is in a component,
   // and halved once in a while. The LARGER it is, the more likely the
   // variable gets picked for branching. So basically, the fewer times a
   // variable is in a component, the more likely the branch
-  Counter* solver_;
+  Counter<T>* solver_;
 };
 
-void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
+template<typename T>
+void CompManager<T>::sortCompStackRange(uint32_t start, uint32_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   if (start == end) return;
@@ -172,7 +173,8 @@ void CompManager::sortCompStackRange(uint32_t start, uint32_t end) {
     }
 }
 
-double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) const
+template<typename T>
+double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) const
 {
   double score = 1;
   assert(start <= end);
@@ -181,8 +183,8 @@ double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) cons
   return score;
 }
 
-
-bool CompManager::findNextRemainingCompOf(StackLevel &top)
+template<typename T>
+bool CompManager<T>::findNextRemainingCompOf(StackLevel &top)
 {
   debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack.size(): " << comp_stack.size());
@@ -210,3 +212,32 @@ bool CompManager::findNextRemainingCompOf(StackLevel &top)
       << top.get_right_model_count() << " , returning.");
   return false;
 }
+
+template<typename T>
+CompManager<T>::CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
+                 const LiteralIndexedVector<TriValue> &lit_values,
+                 const uint32_t& indep_support_end, Counter<T>* _solver) :
+    conf(config), stats(statistics), cache(_solver->nVars(), statistics, conf),
+    ana(lit_values, indep_support_end, _solver), solver_(_solver)
+{ }
+
+
+// Initialized exactly once when Counter is created.
+//   it also inits the included analyzer called "ana"
+template<typename T>
+void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watches,
+    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls, uint32_t nVars){
+  assert(comp_stack.empty());
+
+  ana.initialize(watches, _alloc, long_irred_cls);
+
+  //Add dummy comp
+  comp_stack.push_back(new Comp());
+
+  //Add full comp
+  comp_stack.push_back(new Comp());
+  assert(comp_stack.size() == 2);
+  comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
+  cache.init(*comp_stack.back(), hash_seed);
+}
+

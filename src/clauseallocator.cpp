@@ -36,23 +36,10 @@ THE SOFTWARE.
 using std::cout;
 using std::endl;
 
-#define MIN_LIST_SIZE (50000 * (sizeof(Clause) + 4*sizeof(Lit))/sizeof(uint32_t))
 #define ALLOC_GROW_MULT 1.5
-#define MAXSIZE ((1ULL << 32)-1)
 
-ClauseAllocator::ClauseAllocator(const CounterConfiguration& _conf) :
-    data_start(nullptr)
-    , size(0)
-    , capacity(0)
-    , currently_used_sz(0)
-    , conf(_conf)
-{
-    assert(MIN_LIST_SIZE < MAXSIZE);
-}
-
-ClauseAllocator::~ClauseAllocator() { free(data_start); }
-
-void* ClauseAllocator::alloc_enough( uint32_t num_lits) {
+template<typename T>
+void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {
   //Try to quickly find a place at the end of a data_start
   uint64_t neededbytes = sizeof(Clause) + sizeof(Lit)*num_lits;
   uint64_t needed = neededbytes/sizeof(uint32_t) + (bool)(neededbytes % sizeof(uint32_t));
@@ -103,7 +90,8 @@ void* ClauseAllocator::alloc_enough( uint32_t num_lits) {
   return pointer;
 }
 
-ClauseOfs ClauseAllocator::get_offset(const Clause* ptr) const {
+template<typename T>
+ClauseOfs ClauseAllocator<T>::get_offset(const Clause* ptr) const {
   return ((uint32_t*)ptr - data_start);
 }
 
@@ -120,7 +108,8 @@ be incorrect, since it was incremented by the ORIGINAL size of the clause, but
 when the clause is "freed", it is decremented by the POTENTIALLY SMALLER size
 of the clause. Therefore, the "currently_used_size" is an overestimation!!
 */
-void ClauseAllocator::clause_free(Clause* cl)
+template<typename T>
+void ClauseAllocator<T>::clause_free(Clause* cl)
 {
     assert(!cl->freed);
     cl->freed = 1;
@@ -131,13 +120,15 @@ void ClauseAllocator::clause_free(Clause* cl)
     currently_used_sz -= elems_freed;
 }
 
-void ClauseAllocator::clause_free(ClauseOfs offset)
+template<typename T>
+void ClauseAllocator<T>::clause_free(ClauseOfs offset)
 {
   Clause* cl = ptr(offset);
   clause_free(cl);
 }
 
-ClauseOfs ClauseAllocator::move_cl(
+template<typename T>
+ClauseOfs ClauseAllocator<T>::move_cl(
     ClauseOfs* new_data_start
     , ClauseOfs*& new_ptr
     , Clause* old
@@ -154,7 +145,8 @@ ClauseOfs ClauseAllocator::move_cl(
   return new_offset;
 }
 
-void ClauseAllocator::move_one_watchlist(
+template<typename T>
+void ClauseAllocator<T>::move_one_watchlist(
     vector<ClOffsBlckL>& ws, ClauseOfs* new_data_start, ClauseOfs*& new_ptr)
 {
   for(auto& w: ws) {
@@ -179,7 +171,8 @@ small compared to the problem size. If it is small, it does nothing. If it is
 large, then it allocates new stacks, copies the non-freed clauses to these new
 stacks, updates all pointers and offsets, and frees the original stacks.
 */
-bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
+template<typename T>
+bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   //If re-allocation is not really neccessary, don't do it
   //Neccesities:
   //1) There is too much memory allocated. Re-allocation will save space
@@ -235,7 +228,8 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   return true;
 }
 
-void ClauseAllocator::update_offsets(
+template<typename T>
+void ClauseAllocator<T>::update_offsets(
     vector<ClauseOfs>& offsets,
     ClauseOfs* new_data_start,
     ClauseOfs*& new_ptr
@@ -247,7 +241,8 @@ void ClauseAllocator::update_offsets(
   }
 }
 
-size_t ClauseAllocator::mem_used() const
+template<typename T>
+size_t ClauseAllocator<T>::mem_used() const
 {
   uint64_t mem = 0;
   mem += capacity*sizeof(uint32_t);

@@ -24,16 +24,18 @@ THE SOFTWARE.
 
 #include <stdlib.h>
 #include <cstdint>
-#include <map>
 #include <vector>
 
 #include "counter_config.hpp"
 #include "structures.hpp"
+#define MIN_LIST_SIZE (50000 * (sizeof(Clause) + 4*sizeof(Lit))/sizeof(uint32_t))
+#define MAXSIZE ((1ULL << 32)-1)
 
-class Counter;
+template<typename T> class Counter;
 
 using std::vector;
 
+template<typename T>
 class ClauseAllocator {
 public:
   ClauseAllocator(const CounterConfiguration& _conf);
@@ -49,7 +51,7 @@ public:
   inline Clause* ptr(const ClauseOfs offset) const { return (Clause*)(&data_start[offset]); }
   void clause_free(Clause* c);
   void clause_free(ClauseOfs offset);
-  bool consolidate(Counter* solver, const bool force = false);
+  bool consolidate(Counter<T>* solver, const bool force = false);
   size_t mem_used() const;
 
 private:
@@ -74,3 +76,17 @@ private:
   const CounterConfiguration& conf;
   void* alloc_enough(const uint32_t num_lits);
 };
+
+template<typename T>
+ClauseAllocator<T>::ClauseAllocator(const CounterConfiguration& _conf) :
+    data_start(nullptr)
+    , size(0)
+    , capacity(0)
+    , currently_used_sz(0)
+    , conf(_conf)
+{
+    assert(MIN_LIST_SIZE < MAXSIZE);
+}
+
+template<typename T>
+ClauseAllocator<T>::~ClauseAllocator() { free(data_start); }

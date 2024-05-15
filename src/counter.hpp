@@ -35,8 +35,11 @@ THE SOFTWARE.
 #include "TreeDecomposition.hpp"
 #include "structures.hpp"
 #include "heap.hpp"
+#include "bdd.h"
 
 #include <cryptominisat5/cryptominisat.h>
+
+#define using_instance using Inst<T>::values;using Inst<T>::val; using Inst<T>::var; using Inst<T>::watches; using Inst<T>::conf;using Inst<T>::stats; using Inst<T>::alloc;using Inst<T>::lbd_cutoff;using Inst<T>::calc_lbd;using Inst<T>::unit_clauses_;using Inst<T>::existsUnitClauseOf;using Inst<T>::num_vars_set;using Inst<T>::variables_;using Inst<T>::opt_indep_support_end;using Inst<T>::indep_support_end;using Inst<T>::max_activity;using Inst<T>::act_inc; using Inst<T>::nVars; using Inst<T>::long_irred_cls; using Inst<T>::longRedCls; using Inst<T>::seen;using Inst<T>::addClause;using Inst<T>::td_weight;using Inst<T>::td_width;using Inst<T>::tdscore;using Inst<T>::is_unknown;using Inst<T>::mini_cubes;using Inst<T>::lit_val_str;using Inst<T>::reduce_db;using Inst<T>::addUIPConflictClause;using Inst<T>::is_true;using Inst<T>::is_false;using Inst<T>::minimize_uip_cl_with_bins;using Inst<T>::attach_cl;using Inst<T>::add_bin_cl;
 
 using std::pair;
 using std::map;
@@ -130,15 +133,15 @@ struct VarOrderLt {
   VarOrderLt(const LiteralIndexedVector<LitWatchList>& _watches) : watches(_watches) { }
 };
 
-class ClauseAllocator;
+template<typename T> class ClauseAllocator;
 
-// There is only one counter
-class Counter : public Instance {
+template<typename T>
+class Counter: public Inst<T> {
 public:
   Counter(const CounterConfiguration& _conf);
   ~Counter();
-  const CounterConfiguration& get_conf() const {return conf;}
-  friend class ClauseAllocator;
+  const CounterConfiguration& get_conf() const { return Inst<T>::conf;}
+  friend class ClauseAllocator<T>;
   struct ConflictData {
     int32_t nHighestLevel = -1;
     bool bOnlyOneLitFromHighest = false;
@@ -165,14 +168,14 @@ public:
   void v_backup();
   void v_restore();
 
-  mpz_class outer_count(CMSat::SATSolver* solver = nullptr);
+  T outer_count(CMSat::SATSolver* solver = nullptr);
   void set_indep_support(const set<uint32_t>& indeps);
   void set_optional_indep_support(const set<uint32_t> &indeps);
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   void add_irred_cl(const vector<Lit>& lits);
   void add_red_cl(const vector<Lit>& lits, int lbd = -1);
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
-  const DataAndStatistics& get_stats() const;
+  const DataAndStatistics<T>& get_stats() const;
   void end_irred_cls();
   void get_unit_cls(vector<Lit>& units) const;
   void init_activity_scores();
@@ -192,8 +195,8 @@ public:
 
 private:
   bool remove_duplicates(vector<Lit>& lits);
-  mpz_class check_count_norestart(const Cube& c);
-  mpz_class check_count_norestart_cms(const Cube& c);
+  T check_count_norestart(const Cube& c);
+  T check_count_norestart_cms(const Cube& c);
   void count(vector<Cube>& cubes);
   CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
@@ -215,7 +218,7 @@ private:
   DecisionStack decisions;
   vector<Lit> trail;
   uint32_t qhead = 0;
-  CompManager* comp_manager = nullptr;
+  CompManager<T>* comp_manager = nullptr;
 
   // the last time conflict clauses have been deleted
   uint64_t last_reduceDB_conflicts = 0;
@@ -229,9 +232,9 @@ private:
   uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch_occ();
   uint32_t find_best_branch(bool ignore_td = false);
-  template<class T> bool clause_falsified(const T& cl) const;
+  template<class T2> bool clause_falsified(const T2& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
-  template<class T> bool clause_satisfied(const T& cl) const;
+  template<class T2> bool clause_satisfied(const T2& cl) const;
   bool compute_cube(Cube& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
@@ -251,7 +254,7 @@ private:
   template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   bool check_watchlists() const;
-  template<class T> void check_cl_propagated_conflicted(T& cl, uint32_t off = 0) const;
+  template<class T2> void check_cl_propagated_conflicted(T2& cl, uint32_t off = 0) const;
   void check_all_propagated_conflicted() const;
 
   void print_all_levels();
@@ -259,8 +262,8 @@ private:
   RetState backtrack_nonindep();
   RetState backtrack();
   void print_dec_info() const;
-  template<class T> void print_cl(const T& cl) const;
-  template<class T> void v_print_cl(const T& cl) const;
+  template<class T2> void print_cl(const T2& cl) const;
+  template<class T2> void v_print_cl(const T2& cl) const;
   void print_cl(const Lit* c, uint32_t size) const;
   void check_cl_unsat(Lit* c, uint32_t size) const;
   void print_conflict_info() const;
@@ -285,44 +288,8 @@ private:
   bool chrono_work();
   void reduce_db_if_needed();
   void increaseActivity(const Lit lit);
-  void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent()) {
-    assert(val(lit) == X_TRI);
-    if (ant.isNull())
-      debug_print("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
-    else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
-
-    VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
-    var(lit).decision_level = dec_lev;
-    var(lit).ante = ant;
-    if (!ant.isNull()) {
-      var(lit).last_polarity = !lit.sign();
-    }
-    var(lit).sublevel = trail.size();
-    qhead = std::min<uint32_t>(qhead, trail.size());
-    trail.push_back(lit);
-    __builtin_prefetch(watches[lit.neg()].binaries.data());
-    __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-    if (conf.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
-      Clause& cl = *alloc->ptr(ant.asCl());
-      if (cl.red && cl.lbd > lbd_cutoff) {
-        cl.set_used();
-        cl.update_lbd(calc_lbd(cl));
-      }
-    }
-    values[lit] = T_TRI;
-    values[lit.neg()] = F_TRI;
-  }
-
-  void checkProbabilisticHashSanity() const {
-      const uint64_t t = stats.num_cache_look_ups_ + 1;
-      // The +32 is because there is actually another hash, which is 32b and is used
-      // by the caching subsystem. Both must match.
-      if (2 * log2(t) > log2(conf.delta) + (64+32) * 0.9843) {
-        // 1 - log_2(2.004)/64 = 0.9843
-        cout << "ERROR: We need to change the hash range (-1)" << endl;
-        exit(-1);
-      }
-  }
+  void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
+  void checkProbabilisticHashSanity() const;
 
   void setConflictState(Lit a, Lit b) {
     confl_lit = a;
@@ -330,22 +297,22 @@ private:
   }
 
   void setConflictState(Clause* cl) {
-    if (cl->red && cl->lbd > lbd_cutoff) {
+    if (cl->red && cl->lbd > this->lbd_cutoff) {
       cl->set_used();
-      cl->update_lbd(calc_lbd(*cl));
+      cl->update_lbd(this->calc_lbd(*cl));
     }
-    confl = Antecedent(alloc->get_offset(cl));
+    confl = Antecedent(this->alloc->get_offset(cl));
     confl_lit = NOT_A_LIT;
   }
 
   // The literals that have been set in this decision level
   vector<Lit>::const_iterator top_declevel_trail_begin() const
   {
-    return trail.begin() + var(decisions.top().var).sublevel;
+    return trail.begin() + this->var(decisions.top().var).sublevel;
   }
   vector<Lit>::iterator top_declevel_trail_begin()
   {
-    return trail.begin() + var(decisions.top().var).sublevel;
+    return trail.begin() + this->var(decisions.top().var).sublevel;
   }
 
   void init_decision_stack()
@@ -363,8 +330,8 @@ private:
   }
 
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
-  uint32_t trail_at_dl(uint32_t dl) const { return variables_[decisions.at(dl).var].sublevel; }
-  uint32_t trail_at_top() const { return variables_[decisions.top().var].sublevel; }
+  uint32_t trail_at_dl(uint32_t dl) const { return this->variables_[decisions.at(dl).var].sublevel; }
+  uint32_t trail_at_top() const { return this->variables_[decisions.top().var].sublevel; }
 
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
     debug_print("->reactivate and backtrack. Dec lev: " << decision_level() <<  "...");
@@ -450,14 +417,14 @@ private:
   void vivify_all(bool force = false, bool only_irred = false);
   bool vivify_cl(const ClauseOfs off);
   void v_shrink(Clause& c);
-  template<class T> bool v_unsat(const T& lits);
-  template<class T> bool v_satisfied(const T& lits);
+  template<class T2> bool v_unsat(const T2& lits);
+  template<class T2> bool v_satisfied(const T2& lits);
   void v_fix_watch(Clause& cl, uint32_t i);
-  template<class T> bool propagating_cl(T& cl) const;
-  template<class T> bool conflicting_cl(T& cl) const;
-  template<class T> bool propagation_correctness_of_vivified(const T& cl) const;
-  template<class T> bool currently_propagating_cl(T& cl) const;
-  template<class T> bool v_cl_satisfied(const T& cl) const;
+  template<class T2> bool propagating_cl(T2& cl) const;
+  template<class T2> bool conflicting_cl(T2& cl) const;
+  template<class T2> bool propagation_correctness_of_vivified(const T2& cl) const;
+  template<class T2> bool currently_propagating_cl(T2& cl) const;
+  template<class T2> bool v_cl_satisfied(const T2& cl) const;
   void vivif_backtrack();
   vector<Lit> v_trail;
   uint32_t v_qhead;
@@ -470,7 +437,7 @@ private:
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
   inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
-  template <class T> uint32_t calc_abstr(const T& ps) {
+  template <class T2> uint32_t calc_abstr(const T2& ps) {
     uint32_t abs = 0;
     if (ps.size() > 50) return ~((uint32_t)(0ULL));
     for (auto l: ps) abs |= abst_var(l.var());
@@ -493,7 +460,10 @@ private:
   bool ended_irred_cls = false;
 };
 
-inline void Counter::print_cl(const Lit* c, uint32_t size) const {
+template<typename T>
+inline void Counter<T>::print_cl(const Lit* c, uint32_t size) const {
+  using Inst<T>::var;
+  using Inst<T>::lit_val_str;
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
     cout << std::setw(5) << l
@@ -505,7 +475,9 @@ inline void Counter::print_cl(const Lit* c, uint32_t size) const {
   }
 }
 
-template<class T> void Counter::print_cl(const T& cl) const {
+template<typename T>
+template<class T2>
+void Counter<T>::print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
     cout << std::left << std::setw(5) << l
@@ -517,7 +489,9 @@ template<class T> void Counter::print_cl(const T& cl) const {
   }
 }
 
-template<class T> void Counter::v_print_cl(const T& cl) const {
+template<typename T>
+template<class T2>
+void Counter<T>::v_print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
     cout << std::setw(5) << l
@@ -526,14 +500,16 @@ template<class T> void Counter::v_print_cl(const T& cl) const {
   }
 }
 
-template<class T> bool Counter::conflicting_cl(T& cl) const {
+template<typename T>
+template<class T2> bool Counter<T>::conflicting_cl(T2& cl) const {
   for(const auto&l: cl) {
     if (val(l) == T_TRI || val(l) == X_TRI) return false;
   }
   return true;
 }
 
-template<class T> bool Counter::propagating_cl(T& cl) const {
+template<typename T>
+template<class T2> bool Counter<T>::propagating_cl(T2& cl) const {
   uint32_t unk = 0;
   for(const auto&l: cl) {
     if (val(l) == T_TRI) return false;
@@ -542,7 +518,8 @@ template<class T> bool Counter::propagating_cl(T& cl) const {
   return unk == 1;
 }
 
-template<class T> bool Counter::currently_propagating_cl(T& cl) const {
+template<typename T>
+template<class T2> bool Counter<T>::currently_propagating_cl(T2& cl) const {
   uint32_t tru = 0;
   for(const auto&l: cl) {
     if (val(l) == T_TRI) {tru++; if (tru>1) return false;}
@@ -551,10 +528,11 @@ template<class T> bool Counter::currently_propagating_cl(T& cl) const {
   return tru == 1;
 }
 
-inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
+template<typename T>
+inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
   bool all_false = true;
   for(uint32_t i = 0; i < size; i++) {
-    if (val(c[i]) != F_TRI) {all_false = false; break;}
+    if (Inst<T>::val(c[i]) != F_TRI) {all_false = false; break;}
   }
   if (all_false) return;
 
@@ -565,7 +543,11 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
 // to each variable during analysis
-void inline Counter::increaseActivity(const Lit lit) {
+template<typename T>
+void inline Counter<T>::increaseActivity(const Lit lit) {
+  using Inst<T>::watches;
+  using Inst<T>::act_inc;
+  using Inst<T>::max_activity;
   watches[lit].activity += act_inc;
   max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
@@ -577,7 +559,8 @@ void inline Counter::increaseActivity(const Lit lit) {
   }
 }
 
-template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
+template<typename T>
+template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
 #ifdef VERBOSE_DEBUG
   cout << "A:" << a << endl;
   for(size_t i = 1; i < a.size(); i++) assert(a[i-1] < a[i]);
@@ -611,9 +594,3 @@ template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
   return ret;
 }
 
-template<class T> bool Counter::clause_falsified(const T& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) != F_TRI) return false;
-  }
-  return true;
-}

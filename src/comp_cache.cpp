@@ -61,55 +61,8 @@ uint64_t freeram() {
 
 #include "stack.hpp"
 
-CompCache::CompCache(
-    uint32_t _num_vars,
-    DataAndStatistics &_stats, const CounterConfiguration &_conf):
-  stats(_stats), conf(_conf), num_vars(_num_vars) {}
-
-void CompCache::init(Comp &super_comp, void* hash_seed){
-  CacheableComp *packed_super_comp;
-  vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.num_long_cls());
-  packed_super_comp = new CacheableComp(hash_seed,super_comp);
-  my_time = 1;
-
-  entry_base.clear();
-  auto x = CacheableComp();
-  entry_base.push_back(x); // dummy Element
-  stats.incorporate_cache_store(x, super_comp.nVars());
-  table.clear();
-  table.resize(1024*1024);
-  std::fill(table.begin(), table.end(), 0);
-  tbl_size_mask = table.size() - 1;
-
-  free_entry_base_slots.clear();
-
-  const uint64_t free_ram = freeram();
-  uint64_t max_cache_bound = 80 * (free_ram / 100);
-
-  if (stats.maximum_cache_size_bytes_ == 0) {
-    stats.maximum_cache_size_bytes_ = max_cache_bound;
-  }
-
-  if (stats.maximum_cache_size_bytes_ > free_ram) {
-    verb_print(1, "WARNING: Maximum cache size larger than free RAM available");
-    verb_print(1, "Free RAM " << std::setprecision(2)
-      << (double)free_ram / (1024.0*1024.0) << "MB");
-  }
-  verb_print(2, "Max cache size (80% free mem-200MB): "
-    << stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
-
-
-  stats.sum_bignum_bytes = 0;
-  stats.cache_infrastructure_bytes_memory_usage_ = 0;
-  assert(!cache_full());
-  entry_base.push_back(*packed_super_comp);
-  stats.incorporate_cache_store(*packed_super_comp, super_comp.nVars());
-  delete packed_super_comp;
-  super_comp.set_id(1);
-  compute_size_allocated();
-}
-
-void CompCache::test_descendantstree_consistency() {
+template<typename T>
+void CompCache<T>::test_descendantstree_consistency() {
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free()) {
       CacheEntryID act_child = entry(id).first_descendant();
@@ -131,7 +84,8 @@ void CompCache::test_descendantstree_consistency() {
     }
 }
 
-double CompCache::calc_cutoff() const {
+template<typename T>
+double CompCache<T>::calc_cutoff() const {
   vector<uint32_t> scores;
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
@@ -149,7 +103,8 @@ double CompCache::calc_cutoff() const {
   return scores[scores.size() / 2];
 }
 
-bool CompCache::delete_some_entries() {
+template<typename T>
+bool CompCache<T>::delete_some_entries() {
   const auto start_del_time = cpuTime();
   double cutoff = calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
@@ -188,18 +143,20 @@ bool CompCache::delete_some_entries() {
   return true;
 }
 
-uint64_t CompCache::compute_size_allocated() {
+template<typename T>
+uint64_t CompCache<T>::compute_size_allocated() {
   stats.cache_infrastructure_bytes_memory_usage_ =
       sizeof(CompCache)
       + sizeof(CacheEntryID) * table.capacity()
       + sizeof(CacheEntryID) * free_entry_base_slots.capacity()
-      + sizeof(CacheableComp)* entry_base.capacity();
+      + sizeof(CacheableComp<T>)* entry_base.capacity();
   return stats.cache_infrastructure_bytes_memory_usage_;
 }
 
-void CompCache::debug_mem_data() const {
+template<typename T>
+void CompCache<T>::debug_mem_data() const {
     cout << std::setw(40) << "c o sizeof (CacheableComp, CacheEntryID) "
-         << sizeof(CacheableComp) << ", "
+         << sizeof(CacheableComp<T>) << ", "
          << sizeof(CacheEntryID) << endl;
     cout << std::setw(40) << "c o table (size/capa) M " << table.size()/(double)1e6
          << "/" << table.capacity()/(double)1e6 << endl;
@@ -211,7 +168,7 @@ void CompCache::debug_mem_data() const {
     cout << std::setw(40) << "c o table mem use MB: "
          << (double)(table.capacity()*sizeof(CacheEntryID))/(double)(1024*1024) << endl;
     cout << std::setw(40) << "c o entry_base mem use MB: "
-         << (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024) << endl;
+         << (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024) << endl;
     cout << std::setw(40) << "c o free_entry_base_slots mem use MB "
          << (double)(free_entry_base_slots.capacity()*sizeof(uint32_t))/(double)(1024*1024)
          << endl;
@@ -229,7 +186,8 @@ void CompCache::debug_mem_data() const {
 }
 
 // Used only during cache freeing. Unlinks from descendants tree
-uint64_t CompCache::unlink_from_tree(CacheEntryID id) {
+template<typename T>
+uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   assert(exists(id));
   // we need a father for this all to work
   assert(entry(id).father());

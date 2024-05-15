@@ -37,13 +37,14 @@ using std::vector;
 using std::cout;
 using std::endl;
 
-class Instance;
-class Counter;
-class CompCache;
+template<typename T> class Inst;
+template<typename T> class Counter;
+template<typename T> class CompCache;
 
+template<typename T>
 class DataAndStatistics {
 public:
-  DataAndStatistics (const Instance* _inst, CounterConfiguration& _conf): conf(_conf) {
+  DataAndStatistics (const Inst<T>* _inst, CounterConfiguration& _conf): conf(_conf) {
     inst = _inst;
   }
   CounterConfiguration& conf;
@@ -139,7 +140,7 @@ public:
   uint64_t sum_bignum_bytes = 0;
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
 
-  const Instance* inst;
+  const Inst<T>* inst;
 
   bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
     return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)
@@ -151,14 +152,14 @@ public:
            + sum_bignum_bytes;
   }
 
-  void incorporate_cache_store(const CacheableComp &ccomp, const uint32_t comp_nvars) {
+  void incorporate_cache_store(const CacheableComp<T> &ccomp, const uint32_t comp_nvars) {
     sum_bignum_bytes += ccomp.bignum_bytes();
     sum_cache_store_sizes_ += comp_nvars;
     num_cached_comps_++;
     total_num_cached_comps_++;
   }
 
-  void incorporate_cache_erase(const CacheableComp &ccomp){
+  void incorporate_cache_erase(const CacheableComp<T> &ccomp){
     sum_bignum_bytes -= ccomp.bignum_bytes();
     num_cached_comps_--;
   }
@@ -177,8 +178,8 @@ public:
     if (clause.size() == 2) num_binary_irred_clauses_++;
   }
 
-  void print_short(const Counter* counter, const CompCache* cache) const;
-  void print_short_formula_info(const Counter* counter) const;
+  void print_short(const Counter<T>* counter, const CompCache<T>* cache) const;
+  void print_short_formula_info(const Counter<T>* counter) const;
 
   double get_avg_comp_hit_size() const {
     if (num_cache_hits_ == 0) return 0.0L;

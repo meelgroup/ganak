@@ -463,8 +463,7 @@ int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube<T>& c) {
   verb_print(2, "Trying to remove " << torem << " from cube " << c);
 
   // Prop all but torem
-  for(int32_t i = ((int32_t)c.cnf.size())-1; i >= 0; i--) {
-    const Lit l = c.cnf[i];
+  for(const auto& l: c.cnf) {
     if (l == torem) continue;
     if (v_val(l.neg()) == T_TRI) continue;
     if (v_val(l.neg()) == F_TRI) return 0; // don't want to deal with this

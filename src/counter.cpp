@@ -543,6 +543,7 @@ void Counter<T>::symm_cubes(vector<Cube<T>>& cubes) {
 
 template<typename T>
 void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
+  verb_print(2, "[rst-cube-ext] Extending cubes.");
   assert(occ.empty());
   assert(clauses.empty());
   auto my_time = cpuTime();
@@ -676,7 +677,7 @@ T Counter<T>::outer_count() {
     decisions.clear();
 
     end_irred_cls();
-    if (stats.num_restarts % (conf.vivif_outer_every_n) == (conf.vivif_outer_every_n-1)) {
+    if (conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
       double my_time = cpuTime();
       vivify_all(true, true);
       subsume_all();
@@ -2514,18 +2515,18 @@ bool Counter<T>::v_propagate() {
       if (i != c.sz) {
         c[1] = c[i];
         c[i] = plit;
-        debug_print("New watch for cl: " << c[1]);
+        debug_print("v New watch for cl: " << c[1]);
         watches[c[1]].add_cl(ofs, plit);
       } else {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {
-          debug_print("Conflicting state from norm cl offs: " << ofs);
+          debug_print("v Conflicting state from norm cl offs: " << ofs);
           ret = false;
           it++;
           break;
         } else {
           assert(v_val(c[0]) == X_TRI);
-          debug_print("prop long");
+          debug_print("v prop long");
           v_enqueue(c[0]);
         }
       }
@@ -2534,7 +2535,7 @@ bool Counter<T>::v_propagate() {
     ws.resize(it2-ws.begin());
     if (!ret) break;
   }
-  debug_print("After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
+  debug_print("v After propagate, v_qhead is: " << v_qhead << " returning: " << ret);
   return ret;
 }
 
@@ -3492,12 +3493,17 @@ Counter<T>::~Counter() {
 
 template<typename T>
 void Counter<T>::simple_preprocess() {
+  verb_print(2, "[simple-preproc] Running.");
   for (auto lit : unit_clauses_) {
     assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
-    if (val(lit) == X_TRI) setLiteral(lit, 0);
+    if (val(lit) == X_TRI) {
+      setLiteral(lit, 0);
+      verb_print(2, "[simple-preproc] set: " << lit);
+    }
     assert(val(lit) == T_TRI);
   }
 
+  verb_print(2, "[simple-preproc] propagating.");
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   for(const auto& t: trail) if (!existsUnitClauseOf(t)) unit_clauses_.push_back(t);

@@ -27,7 +27,7 @@ THE SOFTWARE.
 template class CompManager<mpz_class>;
 
 template<typename T>
-void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
+void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
 
@@ -39,7 +39,7 @@ void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel &top) {
 }
 
 template<typename T>
-void CompManager<T>::removeAllCachePollutionsOf(const StackLevel &top) {
+void CompManager<T>::removeAllCachePollutionsOf(const StackLevel<T> &top) {
   // all processed comps are found in
   // [top.currentRemainingComp(), comp_stack.size())
   // first, remove the list of descendants from the father
@@ -60,7 +60,7 @@ void CompManager<T>::removeAllCachePollutionsOf(const StackLevel &top) {
 // cache, and if so, uses that, otherwise, it creates it
 // and adds it to the component stack
 template<typename T>
-void CompManager<T>::recordRemainingCompsFor(StackLevel &top)
+void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
 {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
@@ -109,7 +109,8 @@ void CompManager<T>::recordRemainingCompsFor(StackLevel &top)
     }
   }
 
-  debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): " << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
+  debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): "
+      << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack.size());
   sortCompStackRange(new_comps_start_ofs, comp_stack.size());
 }

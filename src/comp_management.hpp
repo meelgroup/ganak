@@ -63,14 +63,14 @@ public:
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
-  Comp& get_super_comp(const StackLevel &lev) {
+  Comp& get_super_comp(const StackLevel<T>& lev) {
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
 
   uint32_t comp_stack_size() { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }
-  void cleanRemainingCompsOf(const StackLevel &top) {
+  void cleanRemainingCompsOf(const StackLevel<T>& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack.size() > top.remaining_comps_ofs()) {
       if (cache.exists(comp_stack.back()->id())) cache.entry(comp_stack.back()->id()).set_deletable();
@@ -86,13 +86,13 @@ public:
   // returns true if a non-trivial non-cached comp
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all comps have been processed
-  inline bool findNextRemainingCompOf(StackLevel &top);
-  void recordRemainingCompsFor(StackLevel &top);
+  inline bool findNextRemainingCompOf(StackLevel<T> &top);
+  void recordRemainingCompsFor(StackLevel<T> &top);
   inline void sortCompStackRange(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
-  void removeAllCachePollutionsOfIfExists(const StackLevel &top);
-  void removeAllCachePollutionsOf(const StackLevel &top);
+  void removeAllCachePollutionsOfIfExists(const StackLevel<T> &top);
+  void removeAllCachePollutionsOf(const StackLevel<T> &top);
   void* hash_seed; //stores a bunch of __m128 aligned data pieces, each
                                 //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash()
@@ -181,7 +181,7 @@ double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) c
 }
 
 template<typename T>
-bool CompManager<T>::findNextRemainingCompOf(StackLevel &top)
+bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
 {
   debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack.size(): " << comp_stack.size());
@@ -202,9 +202,9 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel &top)
   debug_print("-*-> Went through all components, so exactly 1 solution left. CNT left: " << top.get_left_model_count() << " CNT right: "
       << top.get_right_model_count() << " total: " <<  top.getTotalModelCount() << " Firing off incl(1)");
 #endif
-  top.includeSolution(1);
+  top.include_solution(1);
   debug_print(COLREDBG "-*-> Finished findNextRemainingCompOf, no more remaining comps. top.branchvar() was: "
-      << top.var  <<" includeSolution(1) fired. "
+      << top.var  <<" include_solution(1) fired. "
       " New Model cnt: " << top.getTotalModelCount() << " left: " << top.get_left_model_count() << " right: "
       << top.get_right_model_count() << " , returning.");
   return false;

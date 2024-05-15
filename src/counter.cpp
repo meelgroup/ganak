@@ -899,7 +899,7 @@ bool Counter<T>::decide_lit() {
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
-    StackLevel(decisions.top().currentRemainingComp(),
+    StackLevel<T>(decisions.top().currentRemainingComp(),
                comp_manager->comp_stack_size()));
 
   // The decision literal is now ready. Deal with it.
@@ -1042,7 +1042,7 @@ bool Counter<T>::compute_cube(Cube& c, int branch) {
   c.val = decisions.top().get_model_side(branch);
   debug_print("Own cnt: " << c.val);
   for(int32_t i = 0; i < decisions.get_decision_level(); i++) {
-    const StackLevel& dec = decisions[i];
+    const StackLevel<T>& dec = decisions[i];
     const auto& mul = dec.getBranchSols();
     if (mul == 0) continue;
     else c.val*=mul;
@@ -1080,7 +1080,7 @@ bool Counter<T>::compute_cube(Cube& c, int branch) {
       // This has been fully counted, ALL components.
       continue;
     }
-    const StackLevel& dec = decisions[i];
+    const StackLevel<T>& dec = decisions[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.getUnprocessedCompsEnd();
     debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
@@ -1362,7 +1362,7 @@ RetState Counter<T>::backtrack() {
     debug_print("[indep] top count here: " << decisions.top().getTotalModelCount() << " dec lev: " << decision_level());
     if (decisions.top().branch_found_unsat()) {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
-    } else if (decisions.top().anotherCompProcessible()) {
+    } else if (decisions.top().another_comp_possible()) {
       debug_print("[indep] Processing another comp at dec lev "
           << decisions.get_decision_level()
           << " instead of backtracking." << " Num unprocessed comps: "
@@ -1423,7 +1423,7 @@ RetState Counter<T>::backtrack() {
     const auto parent_count_before_left = (decisions.end() - 2)->get_left_model_count();
     const auto parent_count_before_right = (decisions.end() - 2)->get_right_model_count();
 #endif
-    (decisions.end() - 2)->includeSolution(decisions.top().getTotalModelCount());
+    (decisions.end() - 2)->include_solution(decisions.top().getTotalModelCount());
     debug_print("[indep] Backtracking from level " << decisions.get_decision_level()
         << " count here is: " << decisions.top().getTotalModelCount());
     decisions.pop_back();
@@ -2870,7 +2870,7 @@ void Counter<T>::toplevel_full_probe() {
     Lit l = Lit(i, 0);
     if (val(l) != X_TRI) continue;
 
-    decisions.push_back(StackLevel(1,2));
+    decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     setLiteral(l, 1);
     uint32_t trail_before = trail.size();
@@ -2895,7 +2895,7 @@ void Counter<T>::toplevel_full_probe() {
 
     // Negation
     assert(decision_level() == 0);
-    decisions.push_back(StackLevel(1,2));
+    decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     setLiteral(l.neg(), 1);
 
@@ -3047,7 +3047,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   debug_print("Entering SAT mode. Declev: " << decision_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
-  decisions.push_back(StackLevel(decisions.top().currentRemainingComp(),
+  decisions.push_back(StackLevel<T>(decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
   sat_start_dec_level = decision_level();
   decisions.top().var = 0;
@@ -3078,7 +3078,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     }
     assert(val(d) == X_TRI);
     Lit l(d, !var(d).last_polarity);
-    if (decisions.top().var != 0) decisions.push_back(StackLevel(1,2));
+    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     setLiteral(l, decision_level());
 
@@ -3095,7 +3095,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   state = RESOLVED;
   go_back_to(sat_start_dec_level);
   assert(decision_level() == sat_start_dec_level);
-  decisions.top().includeSolution(1);
+  decisions.top().include_solution(1);
   decisions.top().var = 0;
   decisions.top().change_to_right_branch();
   assert(decisions.top().getTotalModelCount() == 1);
@@ -3155,14 +3155,14 @@ bool Counter<T>::do_buddy_count(const Comp* c) {
     return false;
   }
 
-  decisions.push_back(StackLevel( decisions.top().currentRemainingComp(),
+  decisions.push_back(StackLevel<T>( decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
   stats.buddy_called++;
   uint64_t cnt = buddy_count();
 
   if (cnt > 0) {
     decisions.top().change_to_right_branch();
-    decisions.top().includeSolution(cnt);
+    decisions.top().include_solution(cnt);
     decisions.top().var = 0;
   } else {
     decisions.top().branch_found_unsat();

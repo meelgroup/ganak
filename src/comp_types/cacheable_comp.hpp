@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "hashed_comp.hpp"
 
 class Comp;
-class CompArchetype;
+template<typename T> class CompArchetype;
 
 // Adds Structure to PackedComp that is
 // necessary to store it in the cache

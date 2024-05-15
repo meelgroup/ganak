@@ -32,6 +32,7 @@ using std::vector;
 using std::cout;
 using std::endl;
 
+template<typename T>
 class StackLevel {
 public:
   StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs) :
@@ -49,7 +50,7 @@ private:
   bool active_branch_ = false;
 
   //  Solution count
-  mpz_class branch_model_count_[2] = {0,0};
+  T branch_model_count_[2] = {0,0};
   bool branch_found_unsat_[2] = {false,false};
 
   /// remaining Comps
@@ -115,11 +116,12 @@ public:
     SLOW_DEBUG_DO(assert(branch_model_count_[active_branch_] == 0));
   }
 
-  bool anotherCompProcessible() const {
+  bool another_comp_possible() const {
     return (!branch_found_unsat()) && hasUnprocessedComps();
   }
 
-  template<class T> void includeSolution(const T& solutions) {
+  template<class T2>
+  void include_solution(const T2& solutions) {
     VERBOSE_DEBUG_DO(cout << "incl sol: " << solutions << endl);
 #ifdef VERBOSE_DEBUG
     auto before = branch_model_count_[active_branch_];
@@ -148,11 +150,11 @@ public:
     branch_found_unsat_[active_branch_] = true;
   }
 
-  const mpz_class& getBranchSols() const {
+  const T& getBranchSols() const {
     return branch_model_count_[active_branch_];
   }
 
-  const mpz_class& get_model_side(int side) const {
+  const T& get_model_side(int side) const {
     return branch_model_count_[side];
   }
 
@@ -165,34 +167,35 @@ public:
     branch_model_count_[1] = 0;
   }
 
-  const mpz_class getTotalModelCount() const {
+  const T getTotalModelCount() const {
     return branch_model_count_[0] + branch_model_count_[1];
   }
 
-  const mpz_class get_left_model_count() const {
+  const T& get_left_model_count() const {
     return branch_model_count_[0];
   }
-  const mpz_class get_right_model_count() const {
+  const T& get_right_model_count() const {
     return branch_model_count_[1];
   }
 };
 
-class DecisionStack: public vector<StackLevel> {
+template<typename T>
+class DecisionStack: public vector<StackLevel<T>> {
 public:
 
-  const StackLevel &top() const{
-    assert(size() > 0);
-    return back();
+  const StackLevel<T>& top() const{
+    assert(vector<StackLevel<T>>::size() > 0);
+    return vector<StackLevel<T>>::back();
   }
 
-  StackLevel &top(){
-    assert(size() > 0);
-    return back();
+  StackLevel<T>& top(){
+    assert(vector<StackLevel<T>>::size() > 0);
+    return vector<StackLevel<T>>::back();
   }
 
   /// 0 means pre-1st-decision
   int32_t get_decision_level() const {
-    assert(size() > 0);
-    return (int)size() - 1;
+    assert(vector<StackLevel<T>>::size() > 0);
+    return (int)vector<StackLevel<T>>::size() - 1;
   }
 };

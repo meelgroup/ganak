@@ -82,7 +82,7 @@ public:
   inline CacheEntryID new_comp(CacheableComp<T> &ccomp, CacheEntryID super_comp_id);
   inline uint64_t calc_extra_mem_after_push() const;
 
-  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const CacheableComp<T> &packed_comp) {
+  bool find_comp_and_incorporate_cnt(StackLevel<T> &top, const uint32_t nvars, const CacheableComp<T> &packed_comp) {
     stats.num_cache_look_ups_++;
     uint32_t table_ofs = packed_comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
@@ -101,7 +101,7 @@ public:
           /* case 8: entry(act_id).set_dont_delete_before(my_time+1e8); break; */
           default: release_assert(false);
         }
-        top.includeSolution(entry(act_id).model_count());
+        top.include_solution(entry(act_id).model_count());
         return true;
       }
       act_id = entry(act_id).next_bucket_element();

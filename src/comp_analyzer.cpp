@@ -275,8 +275,8 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
-    if (v >= indep_support_end) archetype.stack_level().includeSolution(1);
-    else archetype.stack_level().includeSolution(2);
+    if (v >= indep_support_end) archetype.stack_level().include_solution(1);
+    else archetype.stack_level().include_solution(2);
     archetype.set_var_in_peer_comp(v);
     return false;
   }

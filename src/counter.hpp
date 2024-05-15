@@ -372,7 +372,7 @@ private:
   double start_time;
   std::mt19937_64 mtrand;
 
-  DecisionStack decisions;
+  DecisionStack<T> decisions;
   vector<Lit> trail;
   uint32_t qhead = 0;
   CompManager<T>* comp_manager = nullptr;
@@ -477,7 +477,7 @@ private:
     decisions.clear();
     trail.clear();
     // initialize the stack to contain at least level zero
-    decisions.push_back(StackLevel(
+    decisions.push_back(StackLevel<T>(
           1, // super comp
           2)); //comp stack offset
 

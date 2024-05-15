@@ -33,19 +33,20 @@ using std::endl;
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
 
-class StackLevel;
+template<typename T> class StackLevel;
 
 // There is exactly ONE of this. Inside CompAnalyzer, which is inside CompManager, which is inside Solver
+template<typename T>
 class CompArchetype {
 public:
   CompArchetype() = default;
   ~CompArchetype() { delete[] data; }
-  CompArchetype(StackLevel &stack_level, const Comp &super_comp) :
+  CompArchetype(StackLevel<T> &stack_level, const Comp &super_comp) :
       super_comp_ptr(&super_comp), stack_lvl_ptr(&stack_level) {
   }
 
   // called every time we want to deal with a new component
-  void re_initialize(StackLevel &stack_level, const Comp &super_comp) {
+  void re_initialize(StackLevel<T> &stack_level, const Comp &super_comp) {
     debug_print("Reinitializing data to all-zero in CompArchetype");
     super_comp_ptr = &super_comp;
     stack_lvl_ptr = &stack_level;
@@ -57,7 +58,7 @@ public:
     return *super_comp_ptr;
   }
 
-  StackLevel & stack_level() {
+  StackLevel<T>& stack_level() {
     return *stack_lvl_ptr;
   }
 
@@ -185,7 +186,7 @@ public:
 
 private:
   Comp const* super_comp_ptr;
-  StackLevel *stack_lvl_ptr;
+  StackLevel<T> *stack_lvl_ptr;
   uint8_t* data = nullptr; // all variables and all clause IDXs can be indexed here
   uint32_t data_sz = 0;
 };

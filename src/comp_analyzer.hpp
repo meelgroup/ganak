@@ -63,7 +63,7 @@ public:
     max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
   }
 #endif
-  const CompArchetype &current_archetype() const { return archetype; }
+  const CompArchetype<T>& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls);
@@ -89,7 +89,7 @@ public:
     return manage_occ_of(v);
   }
 
-  void setup_analysis_context(StackLevel &top, const Comp & super_comp){
+  void setup_analysis_context(StackLevel<T>& top, const Comp & super_comp){
     archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
@@ -112,7 +112,7 @@ public:
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_max_var() const { return max_var; }
-  CompArchetype& get_archetype() { return archetype; }
+  CompArchetype<T>& get_archetype() { return archetype; }
 
 private:
   void run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32_t, Lit>& best_alters,
@@ -142,7 +142,7 @@ private:
   vector<uint32_t> var_freq_scores;
   uint32_t max_freq_score = 1.0;
 #endif
-  CompArchetype  archetype;
+  CompArchetype<T> archetype;
   Counter<T>* solver = nullptr;
 
   // Quick lookup of cl based on ID

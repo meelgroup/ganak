@@ -32,6 +32,12 @@ THE SOFTWARE.
 
 using std::setw;
 
+template class DataAndStatistics<mpz_class>;
+
+static double in_mb(uint64_t bytes) {
+  return (double)bytes/(double)(1024*1024);
+}
+
 static double safe_div(double a, double b) {
   if (b == 0) return 0;
   else return a/b;

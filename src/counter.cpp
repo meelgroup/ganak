@@ -37,10 +37,12 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include "IFlowCutter.hpp"
 #include "graph.hpp"
+#include "bdd.h"
 
 using std::setw;
 
 template class Counter<mpz_class>;
+
 void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
       /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
@@ -52,7 +54,6 @@ void my_gbchandler(int pre, bddGbcStat *) {
 
 template<typename T>
 vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {
-  using_instance
   if (!num_vars_set) {
     cout << "ERROR: new_vars() MUST be called before setting indep support" << endl;
     exit(-1);
@@ -79,7 +80,6 @@ vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {
 
 template<typename T>
 void Counter<T>::set_optional_indep_support(const set<uint32_t> &indeps) {
-  using_instance
   auto tmp = common_indep_code(indeps);
   if (tmp.size() +1 < indep_support_end) {
     cout << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
@@ -106,7 +106,6 @@ void Counter<T>::set_optional_indep_support(const set<uint32_t> &indeps) {
 
 template<typename T>
 void Counter<T>::set_indep_support(const set<uint32_t> &indeps) {
-  using_instance
   opt_indep_support_end = nVars()+1;
   auto tmp = common_indep_code(indeps);
   if (tmp.empty()) {
@@ -123,7 +122,6 @@ void Counter<T>::set_indep_support(const set<uint32_t> &indeps) {
 // Returns false if the clause is auto-satisfied
 template<typename T>
 bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
-  using_instance
   if (lits.size() <= 1) return true;
   std::sort(lits.begin(), lits.end());
   uint32_t j = 1;
@@ -140,7 +138,6 @@ bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
 
 template<typename T>
 void Counter<T>::compute_score(TreeDecomposition& tdec) {
-  using_instance
   const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
@@ -216,7 +213,6 @@ template<> void Counter<mpz_class>::compute_score(TreeDecomposition&);
 
 template<typename T>
 void Counter<T>::td_decompose() {
-  using_instance
   double my_time = cpuTime();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
@@ -294,7 +290,6 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 // Self-check count without restart with CMS only
 template<typename T>
 T Counter<T>::check_count_norestart_cms(const Cube& c) {
-  using_instance
   verb_print(1, "Checking cube count with CMS (no verb, no restart)");
   vector<Lit> tmp;
   CMSat::SATSolver test_solver;
@@ -346,7 +341,6 @@ T Counter<T>::check_count_norestart_cms(const Cube& c) {
 // Self-check count without restart
 template<typename T>
 T Counter<T>::check_count_norestart(const Cube& c) {
-  using_instance
   verb_print(1, "Checking count with ourselves (no verb, no restart), CNF: " << c.cnf);
   CounterConfiguration conf2 = conf;
   conf2.do_restart = 0;
@@ -403,7 +397,6 @@ T Counter<T>::check_count_norestart(const Cube& c) {
 
 template<typename T>
 void Counter<T>::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes) {
-  using_instance
   if (cubes[i].cnf.size() < cubes[i2].cnf.size()) std::swap(i, i2);
   auto c1 = ganak_to_cms_cl(cubes[i].cnf);
   auto c2 = ganak_to_cms_cl(cubes[i2].cnf);
@@ -447,7 +440,6 @@ void Counter<T>::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector
 
 template<typename T>
 void Counter<T>::print_and_check_cubes(vector<Cube>& cubes) {
-  using_instance
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
   if (conf.do_cube_check_count) {
@@ -462,7 +454,6 @@ void Counter<T>::print_and_check_cubes(vector<Cube>& cubes) {
 
 template<typename T>
 void Counter<T>::disable_cubes_if_overlap(vector<Cube>& cubes) {
-  using_instance
   for(uint32_t i = 0; i < cubes.size(); i++) {
     if (!cubes[i].enabled) continue;
     for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
@@ -475,7 +466,6 @@ void Counter<T>::disable_cubes_if_overlap(vector<Cube>& cubes) {
 
 template<typename T>
 int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
-  using_instance
   verb_print(2, "Trying to remove " << torem << " from cube " << c);
 
   // Prop all but torem
@@ -521,14 +511,12 @@ int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
 
 template<typename T>
 bool Counter<T>::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
-  using_instance
   for(const auto& l: c1) if (c2.count(l.neg())) return true;
   return false;
 }
 
 template<typename T>
 void Counter<T>::symm_cubes(vector<Cube>& cubes) {
-  using_instance
   vector<Cube> extra_cubes;
   for(const auto& c: cubes) {
     set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
@@ -562,7 +550,6 @@ void Counter<T>::symm_cubes(vector<Cube>& cubes) {
 
 template<typename T>
 void Counter<T>::extend_cubes(vector<Cube>& cubes) {
-  using_instance
   assert(occ.empty());
   assert(clauses.empty());
   auto my_time = cpuTime();
@@ -613,7 +600,6 @@ void Counter<T>::extend_cubes(vector<Cube>& cubes) {
 
 template<typename T>
 void Counter<T>::disable_small_cubes(vector<Cube>& cubes) {
-  using_instance
   /* mpf_class tot = 0; */
   /* mpf_class avg; */
   /* uint32_t num = 0; */
@@ -642,7 +628,6 @@ void Counter<T>::disable_small_cubes(vector<Cube>& cubes) {
 
 template<typename T>
 T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
-  using_instance
   T value = 0;
   sat_solver = _sat_solver;
 
@@ -684,7 +669,7 @@ T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
         cout << std::flush;
         mpf_t tmp_float;
         mpf_init(tmp_float);
-        mpf_set_z(tmp_float, val.get_mpz_t());
+        mpf_set_z(tmp_float, value.get_mpz_t());
         gmp_printf(" total so far: %.4FE", tmp_float);
         mpf_set_z(tmp_float, cubes_cnt_this_rst.get_mpz_t());
         gmp_printf(" this rst: %.4FE\n", tmp_float);
@@ -716,7 +701,6 @@ T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
 
 template<typename T>
 void Counter<T>::count(vector<Cube>& ret_cubes) {
-  using_instance
   release_assert(ret_cubes.empty());
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
@@ -743,7 +727,6 @@ void Counter<T>::count(vector<Cube>& ret_cubes) {
 
 template<typename T>
 void Counter<T>::print_all_levels() {
-  using_instance
   cout << COLORG "--- going through all decision levels now, printing comps --" << endl;
   uint32_t dec_lev = 0;
   for(const auto& s: decisions) {
@@ -771,7 +754,6 @@ void Counter<T>::print_all_levels() {
 
 template<typename T>
 void Counter<T>::print_stat_line() {
-  using_instance
   if (next_print_stat_cache > stats.num_cache_look_ups_) return;
   if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
   next_print_stat_cache = stats.num_cache_look_ups_ + (6ULL*1000LL*1000LL);
@@ -779,7 +761,6 @@ void Counter<T>::print_stat_line() {
 
 template<typename T>
 bool Counter<T>::chrono_work() {
-  using_instance
   debug_print("--- CHRONO CHECK ----");
   VERBOSE_DEBUG_DO(print_trail());
   auto data = find_conflict_level(confl_lit);
@@ -795,7 +776,6 @@ bool Counter<T>::chrono_work() {
 
 template<typename T>
 SOLVER_StateT Counter<T>::count_loop() {
-  using_instance
   RetState state = RESOLVED;
 
   while (true) {
@@ -890,13 +870,11 @@ end:
 
 template<typename T>
 bool Counter<T>::standard_polarity(const uint32_t v) const {
-  using_instance
   return watches[Lit(v, true)].activity < watches[Lit(v, false)].activity;
 }
 
 template<typename T>
 bool Counter<T>::get_polarity(const uint32_t v) const {
-  using_instance
   bool polarity;
   switch (conf.polar_type) {
     case 0:
@@ -919,7 +897,6 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 
 template<typename T>
 bool Counter<T>::decide_lit() {
-  using_instance
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -967,14 +944,12 @@ bool Counter<T>::decide_lit() {
 
 template<typename T>
 double Counter<T>::var_act(const uint32_t v) const {
-  using_instance
   return (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/max_activity;
 }
 
 // The higher, the better. It is never below 0.
 template<typename T>
 double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
-  using_instance
   bool print = false;
   /* if (stats.decisions % 40000 == 0) print = 1; */
   /* print = true; */
@@ -1002,7 +977,6 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
 
 template<typename T>
 uint32_t Counter<T>::find_best_branch(bool ignore_td) {
-  using_instance
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
@@ -1027,7 +1001,6 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
 template<typename T>
 uint32_t Counter<T>::find_best_branch_gpmc() {
-  using_instance
   uint32_t best_var = 0;
   double max_score_act = -1;
   double max_score_td = -1;
@@ -1062,7 +1035,6 @@ uint32_t Counter<T>::find_best_branch_gpmc() {
 // returns cube in `c`. Uses branch 0/1, i.e. LEFT/RIGHT branch
 template<typename T>
 bool Counter<T>::compute_cube(Cube& c, int branch) {
-  using_instance
   assert(c.val == 0);
   assert(c.cnf.empty());
   assert(conf.do_restart);
@@ -1162,7 +1134,6 @@ bool Counter<T>::compute_cube(Cube& c, int branch) {
 
 template<typename T>
 void Counter<T>::print_restart_data() const {
-  using_instance
   if (comp_size_q.isvalid()) {
     verb_print(1, std::setw(30) << std::left
        << "Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
@@ -1195,7 +1166,6 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  using_instance
   if (!conf.do_restart || td_width < 60) return false;
 
   bool restart = false;
@@ -1301,7 +1271,6 @@ bool Counter<T>::restart_if_needed() {
 // Checks one-by-one using a SAT solver
 template<typename T>
 uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
-  using_instance
     //let's get vars active
     set<uint32_t> active;
 
@@ -1388,7 +1357,6 @@ uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
 
 template<typename T>
 RetState Counter<T>::backtrack() {
-  using_instance
   debug_print("in " << __FUNCTION__ << " now ");
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   do {
@@ -1484,7 +1452,6 @@ RetState Counter<T>::backtrack() {
 
 template<typename T>
 void Counter<T>::print_dec_info() const {
-  using_instance
   cout << "dec lits: " << endl;
   for(uint32_t i = 1; i < decisions.size(); i ++) {
     uint32_t dvar = decisions[i].var;
@@ -1533,7 +1500,6 @@ struct UIPFixer {
 
 template<typename T>
 size_t Counter<T>::find_backtrack_level_of_learnt() {
-  using_instance
   assert(!uip_clause.empty());
   uint32_t max_i = 0;
   for (uint32_t i = 0; i < uip_clause.size(); i++) {
@@ -1546,7 +1512,6 @@ size_t Counter<T>::find_backtrack_level_of_learnt() {
 
 template<typename T>
 uint32_t Counter<T>::find_lev_to_set(const int32_t backj) {
-  using_instance
   assert(!uip_clause.empty());
   if (uip_clause.size() == 1) return 0;
   int32_t lev_to_set = 0;
@@ -1568,7 +1533,6 @@ uint32_t Counter<T>::find_lev_to_set(const int32_t backj) {
 
 template<typename T>
 void Counter<T>::print_trail(bool check_entail, bool check_anything) const {
-  using_instance
   cout << "Current trail :" << endl;
   for(uint32_t i = 0; i < trail.size(); i++) {
     const auto l = trail[i];
@@ -1585,7 +1549,6 @@ void Counter<T>::print_trail(bool check_entail, bool check_anything) const {
 
 template<typename T>
 void Counter<T>::go_back_to(int32_t backj) {
-  using_instance
   debug_print("going back to lev: " << backj << " dec level now: " << decisions.get_decision_level());
   while(decisions.get_decision_level() > backj) {
     debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().getTotalModelCount());
@@ -1610,7 +1573,6 @@ void Counter<T>::go_back_to(int32_t backj) {
 
 template<typename T>
 void Counter<T>::check_trail([[maybe_unused]] bool check_entail) const {
-  using_instance
   vector<uint32_t> num_decs_at_level(decisions.get_decision_level()+1, 0);
   bool entailment_fail = false;
   for(const auto& t: trail) {
@@ -1694,7 +1656,6 @@ void Counter<T>::check_implied(const vector<Lit>& cl) {
 
 template<typename T>
 void Counter<T>::reduce_db_if_needed() {
-  using_instance
   if (stats.conflicts > last_reduceDB_conflicts+conf.reduce_db_everyN) {
     reduce_db();
     if (stats.cls_deleted_since_compaction > conf.consolidate_every_n && alloc->consolidate(this)) {
@@ -1706,7 +1667,6 @@ void Counter<T>::reduce_db_if_needed() {
 
 template<typename T>
 RetState Counter<T>::resolve_conflict() {
-  using_instance
   VERBOSE_DEBUG_DO(cout << "******" << __FUNCTION__<< " START" << endl);
   VERBOSE_DEBUG_DO(print_trail());
 
@@ -1812,7 +1772,6 @@ RetState Counter<T>::resolve_conflict() {
 
 template<typename T>
 bool Counter<T>::clause_asserting(const vector<Lit>& cl) const {
-  using_instance
   uint32_t num_unkn = 0;
   for(const auto&l: cl) {
     if (val(l) == T_TRI) return false;
@@ -1833,7 +1792,6 @@ bool Counter<T>::clause_satisfied(const T2& cl) const {
 template<typename T>
 template<uint32_t start>
 inline void Counter<T>::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind) {
-  using_instance
   Clause& cl = *alloc->ptr(ofs);
   for(auto i3 = start; i3 < cl.sz; i3++) {
     Lit l = cl[i3];
@@ -1846,7 +1804,6 @@ inline void Counter<T>::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32
 
 template<typename T>
 bool Counter<T>::propagate(bool out_of_order) {
-  using_instance
   confl = Antecedent();
   debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size() << " dec lev: " << decision_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
@@ -1965,12 +1922,10 @@ bool Counter<T>::propagate(bool out_of_order) {
 
 template<typename T>
 const DataAndStatistics<T>& Counter<T>::get_stats() const {
-  using_instance
   return stats; }
 
 template<typename T>
 bool Counter<T>::lit_redundant(Lit p, uint32_t abstract_levels) {
-  using_instance
     debug_print(__func__ << " called");
 
     analyze_stack.clear();
@@ -2015,14 +1970,12 @@ bool Counter<T>::lit_redundant(Lit p, uint32_t abstract_levels) {
 
 template<typename T>
 uint32_t Counter<T>::abst_level(const uint32_t x) const {
-  using_instance
   return ((uint32_t)1) << (variables_[x].decision_level & 31);
 }
 
 template<typename T>
 void Counter<T>::recursive_cc_min()
 {
-  using_instance
   VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("recursive ccmin now.");
   uint32_t abstract_level = 0;
@@ -2047,7 +2000,6 @@ void Counter<T>::recursive_cc_min()
 
 template<typename T>
 void Counter<T>::minimize_uip_cl() {
-  using_instance
   stats.uip_cls++;
   stats.orig_uip_lits += uip_clause.size();
   recursive_cc_min();
@@ -2071,7 +2023,6 @@ void Counter<T>::minimize_uip_cl() {
 
 template<typename T>
 void Counter<T>::vivify_cls(vector<ClauseOfs>& cls) {
-  using_instance
   stats.vivif_tried++;
   uint32_t j = 0;
   for(uint32_t i = 0; i < cls.size(); i++) {
@@ -2093,7 +2044,6 @@ void Counter<T>::vivify_cls(vector<ClauseOfs>& cls) {
 
 template<typename T>
 void Counter<T>::vivif_setup() {
-  using_instance
   // Set up internals
   v_lev = 0;
   v_levs.clear();
@@ -2113,7 +2063,6 @@ void Counter<T>::vivif_setup() {
 
 template<typename T>
 void Counter<T>::vivify_all(bool force, bool only_irred) {
-  using_instance
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
@@ -2200,7 +2149,6 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
 template<typename T>
 template<class T2>
 bool Counter<T>::v_satisfied(const T2& lits) {
-  using_instance
   for(auto& l: lits) if (v_val(l) == T_TRI) return true;
   return false;
 }
@@ -2208,7 +2156,6 @@ bool Counter<T>::v_satisfied(const T2& lits) {
 template<typename T>
 template<class T2>
 bool Counter<T>::v_unsat(const T2& lits) {
-  using_instance
   for(auto& l: lits) if (v_val(l) == T_TRI || v_val(l) == X_TRI) return false;
   return true;
 }
@@ -2225,7 +2172,6 @@ void Counter<T>::v_shrink(Clause& cl) {
 
 template<typename T>
 void Counter<T>::v_cl_toplevel_repair(vector<ClauseOfs>& offs) {
-  using_instance
   uint32_t j = 0;
   for(uint32_t i = 0; i < offs.size(); i++) {
     Clause* cl = alloc->ptr(offs[i]);
@@ -2246,7 +2192,6 @@ void Counter<T>::v_cl_toplevel_repair(vector<ClauseOfs>& offs) {
 
 template<typename T>
 void Counter<T>::v_cl_repair(ClauseOfs off) {
-  using_instance
   Clause& cl = *alloc->ptr(off);
   auto& offs = off_to_lit12[off];
 
@@ -2291,7 +2236,6 @@ void Counter<T>::v_cl_repair(ClauseOfs off) {
 // We could have removed a TRUE. This may be an issue.
 template<typename T>
 void Counter<T>::v_fix_watch(Clause& cl, uint32_t i) {
-  using_instance
   if (val(cl[i]) == X_TRI || val(cl[i]) == T_TRI) return;
   auto off = alloc->get_offset(&cl);
   watches[cl[i]].del_c(off);
@@ -2334,7 +2278,6 @@ void Counter<T>::v_backtrack() {
 template<typename T>
 template<class T2>
 bool Counter<T>::v_cl_satisfied(const T2& cl) const {
-  using_instance
   for(const auto&l : cl) {
     if (v_val(l) == T_TRI) return true;
   }
@@ -2344,7 +2287,6 @@ bool Counter<T>::v_cl_satisfied(const T2& cl) const {
 template<typename T>
 template<class T2>
 bool Counter<T>::propagation_correctness_of_vivified(const T2& cl) const {
-  using_instance
   uint32_t num_t = 0;
   int32_t t_lev = -1;
   int32_t maxlev_f = -1;
@@ -2376,7 +2318,6 @@ bool Counter<T>::propagation_correctness_of_vivified(const T2& cl) const {
 // Returns TRUE if we can remove the clause
 template<typename T>
 bool Counter<T>::vivify_cl(const ClauseOfs off) {
-  using_instance
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   bool fun_ret = false;
   Clause& cl = *alloc->ptr(off);
@@ -2520,7 +2461,6 @@ void Counter<T>::v_enqueue(const Lit l) {
 
 template<typename T>
 bool Counter<T>::v_propagate() {
-  using_instance
   bool ret = true;
   for (; v_qhead < v_trail.size(); v_qhead++) {
     const Lit plit = v_trail[v_qhead].neg();
@@ -2612,7 +2552,6 @@ bool Counter<T>::v_propagate() {
 
 template<typename T>
 void Counter<T>::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const {
-  using_instance
   if (ante.isAClause()) {
     Clause* cl = alloc->ptr(ante.asCl());
     c = cl->data();
@@ -2630,7 +2569,6 @@ void Counter<T>::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p)
 
 template<typename T>
 Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
-  using_instance
   ConflictData data;
   Lit* c;
   uint32_t size;
@@ -2671,7 +2609,6 @@ Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
 
 template<typename T>
 void Counter<T>::create_uip_cl() {
-  using_instance
   assert(to_clear.empty());
 
   uip_clause.clear();
@@ -2759,7 +2696,6 @@ void Counter<T>::create_uip_cl() {
 
 template<typename T>
 bool Counter<T>::check_watchlists() const {
-  using_instance
   bool ret = true;
 #if 0
   // All watchlists
@@ -2842,7 +2778,6 @@ bool Counter<T>::check_watchlists() const {
 // propagations
 template<typename T>
 void Counter<T>::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
-  using_instance
   for(const auto& off: cls) {
     clauses.push_back(off);
     Clause& cl = *alloc->ptr(off);
@@ -2859,7 +2794,6 @@ void Counter<T>::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
 
 template<typename T>
 void Counter<T>::backw_susume_cl(ClauseOfs off) {
-  using_instance
   Clause& cl = *alloc->ptr(off);
   uint32_t abs = calc_abstr(cl);
   uint32_t smallest = numeric_limits<uint32_t>::max();
@@ -2894,7 +2828,6 @@ void Counter<T>::backw_susume_cl(ClauseOfs off) {
 
 template<typename T>
 void Counter<T>::backw_susume_cl_with_bin(BinClSub& cl) {
-  using_instance
   uint32_t abs = calc_abstr(cl);
   uint32_t smallest = numeric_limits<uint32_t>::max();
   uint32_t smallest_at = 0;
@@ -2923,7 +2856,6 @@ void Counter<T>::backw_susume_cl_with_bin(BinClSub& cl) {
 
 template<typename T>
 void Counter<T>::toplevel_full_probe() {
-  using_instance
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   assert(to_clear.empty());
   assert(bothprop_toset.empty());
@@ -3008,7 +2940,6 @@ void Counter<T>::toplevel_full_probe() {
 
 template<typename T>
 void Counter<T>::subsume_all() {
-  using_instance
   assert(decision_level() == 0);
   assert(occ.empty());
   assert(clauses.empty());
@@ -3107,7 +3038,6 @@ void Counter<T>::subsume_all() {
 // because ONLY non-independent variables remain
 template<typename T>
 bool Counter<T>::use_sat_solver(RetState& state) {
-  using_instance
   assert(!isindependent);
   assert(order_heap.empty());
   assert(!decisions.empty());
@@ -3187,7 +3117,6 @@ end:
 
 template<typename T>
 void Counter<T>::check_sat_solution() const {
-  using_instance
   assert(sat_mode());
   bool ok = true;
 
@@ -3389,7 +3318,6 @@ void Counter<T>::check_cl_propagated_conflicted(T2& cl, uint32_t off) const {
 
 template<typename T>
 void Counter<T>::check_all_propagated_conflicted() const {
-  using_instance
   // Everything that should have propagated, propagated
   for(const auto& t: unit_clauses_) {
     if (val(t) != T_TRI) {
@@ -3441,7 +3369,6 @@ void Counter<T>::check_all_propagated_conflicted() const {
 
 template<typename T>
 void Counter<T>::v_backup() {
-  using_instance
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     vector<Lit> lits(cl.begin(), cl.end());
@@ -3460,7 +3387,6 @@ void Counter<T>::v_backup() {
 
 template<typename T>
 void Counter<T>::v_restore() {
-  using_instance
   uint32_t at = 0;
   for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
@@ -3493,7 +3419,6 @@ void Counter<T>::v_restore() {
 
 template<typename T>
 void Counter<T>::setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant) {
-  using_instance
   assert(val(lit) == X_TRI);
   if (ant.isNull())
     debug_print("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
@@ -3524,7 +3449,6 @@ void Counter<T>::setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant) {
 template<typename T>
 template<class T2>
 bool Counter<T>::clause_falsified(const T2& cl) const {
-  using_instance
   for(const auto&l: cl) {
     if (val(l) != F_TRI) return false;
   }
@@ -3533,7 +3457,6 @@ bool Counter<T>::clause_falsified(const T2& cl) const {
 
 template<typename T>
 void Counter<T>::end_irred_cls() {
-  using_instance
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   delete comp_manager;
@@ -3555,10 +3478,12 @@ void Counter<T>::end_irred_cls() {
 
 template<typename T>
 Counter<T>::Counter(const CounterConfiguration& _conf) :
-    Inst<T>(_conf)
+    conf(_conf)
+    , stats(_conf)
     , mtrand(_conf.seed)
-    , order_heap(VarOrderLt(Inst<T>::watches)) {
-  using_instance
+    , order_heap(VarOrderLt(Counter<T>::watches)) {
+  alloc = new ClauseAllocator<T>(_conf);
+  lbd_cutoff = conf.base_lbd_cutoff;
   if (conf.do_buddy) {
     bdd_init(10000, 100000);
     bdd_gbc_hook(my_gbchandler);
@@ -3570,15 +3495,14 @@ Counter<T>::Counter(const CounterConfiguration& _conf) :
 
 template<typename T>
 Counter<T>::~Counter() {
-  using_instance
   delete comp_manager;
   if (conf.do_buddy) bdd_done();
+  delete alloc;
 }
 template<> Counter<mpz_class>::~Counter();
 
 template<typename T>
 void Counter<T>::simplePreProcess() {
-  using_instance
   for (auto lit : unit_clauses_) {
     assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) setLiteral(lit, 0);
@@ -3600,7 +3524,6 @@ template<> void Counter<mpz_class>::simplePreProcess();
 // TODO Yash we should do Jeroslow-Wang heuristic, i.e. 1/2 for binary, 1/3 for tertiary, etc.
 template<typename T>
 void Counter<T>::init_activity_scores() {
-  using_instance
   act_inc = 1.0;
   max_activity = 0;
   all_lits(x) {
@@ -3623,7 +3546,6 @@ template<> void Counter<mpz_class>::init_activity_scores();
 
 template<typename T>
 void Counter<T>::checkProbabilisticHashSanity() const {
-  using_instance
   const uint64_t t = stats.num_cache_look_ups_ + 1;
   // The +32 is because there is actually another hash, which is 32b and is used
   // by the caching subsystem. Both must match.
@@ -3632,4 +3554,152 @@ void Counter<T>::checkProbabilisticHashSanity() const {
     cout << "ERROR: We need to change the hash range (-1)" << endl;
     exit(-1);
   }
+}
+
+template<typename T>
+void Counter<T>::checkWatchLists() const {
+  auto red_cls2 = longRedCls;
+  // check for duplicates
+  std::sort(red_cls2.begin(), red_cls2.end());
+  for(uint32_t i = 1; i < red_cls2.size(); i++) {
+    assert(red_cls2[i-1] != red_cls2[i]);
+  }
+
+  for(const auto& offs: longRedCls) {
+    const auto& cl = *alloc->ptr(offs);
+    if (!findOfsInWatch(watches[cl[0]].watch_list_, offs)) {
+      cout << "ERROR: Did not find watch cl[0]!!" << endl;
+      assert(false);
+      exit(-1);
+    }
+    if (!findOfsInWatch(watches[cl[1]].watch_list_, offs)) {
+      cout << "ERROR: Did not find watch cl[1]!!" << endl;
+      assert(false);
+      exit(-1);
+    }
+  }
+}
+
+template<typename T>
+bool Counter<T>::findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
+{
+  for (auto& w: ws) if (w.ofs == off) { return true; }
+  return false;
+}
+
+template<typename T>
+struct ClSorter {
+  ClSorter(ClauseAllocator<T>* _alloc, uint32_t _lbd_cutoff) :
+    alloc(_alloc), lbd_cutoff(_lbd_cutoff) {}
+
+  bool operator()(ClauseOfs& a, ClauseOfs& b) const {
+    const auto& ah = *alloc->ptr(a);
+    const auto& bh = *alloc->ptr(b);
+    assert(ah.red);
+    assert(bh.red);
+    if (ah.lbd <= lbd_cutoff || bh.lbd <= lbd_cutoff) return ah.lbd < bh.lbd;
+    if (ah.used != bh.used) return ah.used > bh.used;
+    return ah.total_used > bh.total_used;
+  }
+  ClauseAllocator<T>* alloc;
+  const uint32_t lbd_cutoff;
+};
+
+template<typename T>
+void Counter<T>::reduce_db() {
+  stats.reduce_db++;
+  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
+      && num_low_lbd_cls < 100) {
+    verb_print(1, " [rdb] bumping rdb cutoff to 3");
+    lbd_cutoff++;
+  }
+  const auto cls_before = longRedCls.size();
+
+  vector<ClauseOfs> tmp_red_cls = longRedCls;
+  longRedCls.clear();
+  num_low_lbd_cls = 0;
+  num_used_cls = 0;
+  uint32_t cannot_be_del = 0;
+  sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(alloc, lbd_cutoff));
+  uint32_t cutoff = conf.rdb_cls_target;
+
+  for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
+    const ClauseOfs& off = tmp_red_cls[i];
+    auto& h = *alloc->ptr(off);
+    if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
+    else if (h.used) num_used_cls++;
+
+    bool can_be_del = red_cl_can_be_deleted(off);
+    cannot_be_del += !can_be_del;
+    if (can_be_del && h.lbd > lbd_cutoff && (!conf.rdb_keep_used || !h.used) &&
+        i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
+      markClauseDeleted(off);
+      stats.cls_deleted_since_compaction++;
+      stats.cls_removed++;
+    } else {
+      longRedCls.push_back(off);
+      h.used = 0;
+    }
+  }
+  verb_print(1, "[rdb] cls before: " << cls_before << " after: " << longRedCls.size()
+      << " low lbd: " << num_low_lbd_cls
+      << " lbd cutoff: " << lbd_cutoff
+      << " cutoff computed: " << cutoff
+      << " cannot be del : " << cannot_be_del
+      << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
+}
+
+template<typename T>
+bool Counter<T>::red_cl_can_be_deleted(ClauseOfs off){
+  // only first literal may possibly have cl_ofs as antecedent
+  Clause& cl = *alloc->ptr(off);
+  if (isAntecedentOf(off, cl[0])) return false;
+  return true;
+}
+
+template<typename T>
+void Counter<T>::markClauseDeleted(const ClauseOfs off){
+  Clause& cl = *alloc->ptr(off);
+  watches[cl[0]].del_c(off);
+  watches[cl[1]].del_c(off);
+  alloc->clause_free(off);
+}
+
+template<typename T>
+void Counter<T>::new_vars(const uint32_t n) {
+  if (num_vars_set) {
+    cout << "ERROR: you can only call new_vars() once!" << endl;
+    exit(-1);
+  }
+
+  assert(variables_.empty());
+  assert(values.empty());
+  assert(watches.empty());
+  assert(unit_clauses_.empty());
+  assert(longRedCls.empty());
+
+  variables_.resize(n + 1);
+  values.resize(n + 1, X_TRI);
+  watches.resize(n + 1);
+  lbdHelper.resize(n+1, 0);
+  num_vars_set = true;
+}
+
+template<typename T>
+Clause* Counter<T>::addClause(const vector<Lit> &lits, bool red) {
+  if (lits.size() == 1) {
+    assert(!existsUnitClauseOf(lits[0].neg()) && "UNSAT is not dealt with");
+    if (!existsUnitClauseOf(lits[0])) unit_clauses_.push_back(lits[0]);
+    return nullptr;
+  }
+
+  if (lits.size() == 2) {
+    add_bin_cl(lits[0], lits[1], red);
+    return nullptr;
+  }
+
+  Clause* cl = alloc->new_cl(red, lits.size());
+  for(uint32_t i = 0; i < lits.size(); i ++) (*cl)[i] = lits[i];
+  attach_cl(alloc->get_offset(cl), lits);
+  return cl;
 }

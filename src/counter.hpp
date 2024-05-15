@@ -39,8 +39,6 @@ THE SOFTWARE.
 
 #include <cryptominisat5/cryptominisat.h>
 
-#define using_instance using Inst<T>::values;using Inst<T>::val; using Inst<T>::var; using Inst<T>::watches; using Inst<T>::conf;using Inst<T>::stats; using Inst<T>::alloc;using Inst<T>::lbd_cutoff;using Inst<T>::calc_lbd;using Inst<T>::unit_clauses_;using Inst<T>::existsUnitClauseOf;using Inst<T>::num_vars_set;using Inst<T>::variables_;using Inst<T>::opt_indep_support_end;using Inst<T>::indep_support_end;using Inst<T>::max_activity;using Inst<T>::act_inc; using Inst<T>::nVars; using Inst<T>::long_irred_cls; using Inst<T>::longRedCls; using Inst<T>::seen;using Inst<T>::addClause;using Inst<T>::td_weight;using Inst<T>::td_width;using Inst<T>::tdscore;using Inst<T>::is_unknown;using Inst<T>::mini_cubes;using Inst<T>::lit_val_str;using Inst<T>::reduce_db;using Inst<T>::addUIPConflictClause;using Inst<T>::is_true;using Inst<T>::is_false;using Inst<T>::minimize_uip_cl_with_bins;using Inst<T>::attach_cl;using Inst<T>::add_bin_cl;
-
 using std::pair;
 using std::map;
 
@@ -51,6 +49,7 @@ enum class RetState {
   BACKTRACK,
   GO_AGAIN
 };
+
 using enum RetState;
 
 inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
@@ -136,17 +135,185 @@ struct VarOrderLt {
 template<typename T> class ClauseAllocator;
 
 template<typename T>
-class Counter: public Inst<T> {
+class Counter {
 public:
   Counter(const CounterConfiguration& _conf);
   ~Counter();
-  const CounterConfiguration& get_conf() const { return Inst<T>::conf;}
+  const CounterConfiguration& get_conf() const { return conf;}
   friend class ClauseAllocator<T>;
   struct ConflictData {
     int32_t nHighestLevel = -1;
     bool bOnlyOneLitFromHighest = false;
   };
   ConflictData find_conflict_level(Lit p);
+  void new_vars(const uint32_t n);
+  uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
+  uint32_t get_num_long_reds() const { return longRedCls.size(); }
+  uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
+  int val(Lit lit) const { return values[lit]; }
+  int val(uint32_t var) const { return values[Lit(var,1)]; }
+
+
+  friend class ClauseAllocator<T>;
+  ClauseAllocator<T>* alloc;
+  vector<ClauseOfs> long_irred_cls;
+  vector<ClauseOfs> longRedCls;
+  uint32_t nVars() const { return variables_.size() - 1; }
+  void print_restart_data() const;
+  double get_start_time() const { return start_time;}
+  const auto& get_cache() const { return comp_manager->get_cache();}
+  void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
+  void end_irred_cls();
+  void set_indep_support(const set<uint32_t>& indeps);
+  void init_activity_scores();
+  T outer_count(CMSat::SATSolver* solver = nullptr);
+  void add_red_cl(const vector<Lit>& lits, int lbd = -1);
+  void add_irred_cl(const vector<Lit>& lits);
+  void set_optional_indep_support(const set<uint32_t> &indeps);
+protected:
+  CounterConfiguration conf;
+  void unset(Lit lit) {
+    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
+    var(lit).ante = Antecedent();
+    var(lit).decision_level = INVALID_DL;
+    values[lit] = X_TRI;
+    values[lit.neg()] = X_TRI;
+  }
+
+  const Antecedent & getAntecedent(Lit lit) const {
+    return variables_[lit.var()].ante;
+  }
+
+  bool hasAntecedent(Lit lit) const {
+    return variables_[lit.var()].ante.isAnt();
+  }
+
+  bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) const {
+    return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
+  }
+
+  void reduce_db();
+  template<class T2> void minimize_uip_cl_with_bins(T2& cl);
+  vector<Lit> tmp_minim_with_bins;
+  void markClauseDeleted(const ClauseOfs cl_ofs);
+  bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
+
+
+  bool findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
+  void checkWatchLists() const;
+
+
+  DataAndStatistics<T> stats;
+
+  // the first variable that is NOT in the independent support
+  uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
+  uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
+
+  LiteralIndexedVector<LitWatchList> watches;
+  double max_activity = 1.0;
+  vector<Lit> unit_clauses_;
+  vector<VarData> variables_;
+  bool num_vars_set = false;
+  LiteralIndexedVector<TriValue> values;
+  vector<double> tdscore;
+  double td_weight = 1.0;
+  int td_width = 10000;
+  double act_inc = 1.0;
+  uint32_t lbd_cutoff;
+  uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
+  uint32_t num_used_cls = 0; // last time counted used clauses
+
+  // Computing LBD (lbd == 2 means "glue clause")
+  vector<uint64_t> lbdHelper;
+  uint64_t lbdHelperFlag = 0;
+
+  template<class T2>
+  uint32_t calc_lbd(const T2& lits) {
+    lbdHelperFlag++;
+    uint32_t nblevels = 0;
+    for(const auto& l: lits) {
+      if (val(l) == X_TRI) {nblevels++;continue;}
+      int lev = var(l).decision_level;
+      if (lev != 0 && lbdHelper[lev] != lbdHelperFlag) {
+        lbdHelper[lev] = lbdHelperFlag;
+        nblevels++;
+        if (nblevels >= 100) { return nblevels; }
+      }
+    }
+    return nblevels;
+  }
+
+  bool existsUnitClauseOf(const Lit l) const {
+    for (const auto& l2 : unit_clauses_) if (l == l2) return true;
+    return false;
+  }
+
+  template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
+  Clause* addClause(const vector<Lit> &literals, bool red);
+
+  // adds a UIP Conflict Clause
+  // and returns it as an Antecedent to the first
+  // literal stored in literals
+  inline Antecedent addUIPConflictClause(const vector<Lit> &literals);
+
+  inline bool add_bin_cl(Lit a, Lit b, bool red);
+
+  inline VarData &var(const Lit lit) {
+    return variables_[lit.var()];
+  }
+
+  inline VarData &var(const uint32_t v) {
+    return variables_[v];
+  }
+
+  inline const VarData &var(const uint32_t v) const{
+    return variables_[v];
+  }
+
+  inline const VarData &var(const Lit lit) const {
+    return variables_[lit.var()];
+  }
+
+  inline bool is_true(const Lit &lit) const {
+    return values[lit] == T_TRI;
+  }
+
+  bool is_false(Lit lit) {
+    return values[lit] == F_TRI;
+  }
+
+  string lit_val_str(Lit lit) const {
+    if (values[lit] == F_TRI)
+      return "FALSE";
+    else if (values[lit] == T_TRI)
+      return "TRUE";
+    else return "UNKN";
+  }
+
+  string val_to_str(const TriValue& tri) const {
+    if (tri == F_TRI)
+      return "FALSE";
+    else if (tri == T_TRI)
+      return "TRUE";
+    else return "UNKN";
+  }
+
+  bool is_unknown(Lit lit) const {
+    return values[lit] == X_TRI;
+  }
+
+  bool is_unknown(uint32_t var) const {
+    return is_unknown(Lit(var, false));
+  }
+
+  bool is_satisfied(ClauseOfs off) {
+    for (auto lt: *alloc->ptr(off)) if (is_true(lt)) return true;
+    return false;
+  }
+  bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
+  vector<uint8_t> seen;
+  vector<Cube> mini_cubes;
+  void parse_with_cms(const std::string& filename);
 
   double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;
@@ -168,21 +335,10 @@ public:
   void v_backup();
   void v_restore();
 
-  T outer_count(CMSat::SATSolver* solver = nullptr);
-  void set_indep_support(const set<uint32_t>& indeps);
-  void set_optional_indep_support(const set<uint32_t> &indeps);
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
-  void add_irred_cl(const vector<Lit>& lits);
-  void add_red_cl(const vector<Lit>& lits, int lbd = -1);
-  void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
   const DataAndStatistics<T>& get_stats() const;
-  void end_irred_cls();
   void get_unit_cls(vector<Lit>& units) const;
-  void init_activity_scores();
   int32_t dec_level() const { return decisions.get_decision_level(); }
-  void print_restart_data() const;
-  double get_start_time() const { return start_time;}
-  const auto& get_cache() const { return comp_manager->get_cache();}
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
   int32_t decision_level() const { return decisions.get_decision_level();}
 
@@ -194,6 +350,9 @@ public:
   bqueue<uint32_t> comp_size_q;
 
 private:
+#ifdef SLOW_DEBUG
+  vector<vector<Lit>> debug_irred_cls;
+#endif
   bool remove_duplicates(vector<Lit>& lits);
   T check_count_norestart(const Cube& c);
   T check_count_norestart_cms(const Cube& c);
@@ -462,8 +621,6 @@ private:
 
 template<typename T>
 inline void Counter<T>::print_cl(const Lit* c, uint32_t size) const {
-  using Inst<T>::var;
-  using Inst<T>::lit_val_str;
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
     cout << std::setw(5) << l
@@ -532,7 +689,7 @@ template<typename T>
 inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
   bool all_false = true;
   for(uint32_t i = 0; i < size; i++) {
-    if (Inst<T>::val(c[i]) != F_TRI) {all_false = false; break;}
+    if (val(c[i]) != F_TRI) {all_false = false; break;}
   }
   if (all_false) return;
 
@@ -545,9 +702,6 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 // to each variable during analysis
 template<typename T>
 void inline Counter<T>::increaseActivity(const Lit lit) {
-  using Inst<T>::watches;
-  using Inst<T>::act_inc;
-  using Inst<T>::max_activity;
   watches[lit].activity += act_inc;
   max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
@@ -594,3 +748,65 @@ template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
   return ret;
 }
 
+template<typename T>
+Antecedent Counter<T>::addUIPConflictClause(const vector<Lit> &literals) {
+  Antecedent ante;
+  stats.num_clauses_learned_++;
+  Clause* cl = addClause(literals, true);
+  if (cl) {
+    auto off = alloc->get_offset(cl);
+    longRedCls.push_back(off);
+    cl->lbd = calc_lbd(*cl);
+    ante = Antecedent(off);
+  } else if (literals.size() == 2){
+    ante = Antecedent(literals.back());
+    stats.num_binary_red_clauses_++;
+  }
+  return ante;
+}
+
+template<typename T>
+bool Counter<T>::add_bin_cl(Lit a, Lit b, bool red) {
+   watches[a].add_bin(b, red);
+   watches[b].add_bin(a, red);
+   return true;
+}
+
+template<typename T>
+template<class T2>
+void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
+  SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
+  uint32_t rem = 0;
+  assert(cl.size() > 0);
+  tmp_minim_with_bins.clear();
+  for(const auto& l: cl) { seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
+  for(const auto& l: cl) {
+  /* { */
+    /* Lit l = tmp_minim_with_bins[0]; */
+    if (!seen[l.toPosInt()]) continue;
+    const auto& w = watches[l].binaries;
+    for(const auto& bincl: w) {
+      const auto& l2 = bincl.lit();
+      assert(l.var() != l2.var());
+      if (seen[(l2.neg()).toPosInt()]) { seen[(l2.neg()).toPosInt()] = 0; rem++; }
+    }
+  }
+  cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
+  seen[tmp_minim_with_bins[0].toPosInt()] = 0;
+  for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
+    Lit l = tmp_minim_with_bins[i];
+    if (seen[l.toPosInt()]) {
+      cl.push_back(l);
+      seen[l.toPosInt()] = 0;
+    }
+  }
+  stats.rem_lits_with_bins+=rem;
+  stats.rem_lits_tried++;
+}
+
+template<typename T>
+template<class T2> void Counter<T>::attach_cl(ClauseOfs off, const T2& lits) {
+  Lit blck_lit = lits[lits.size()/2];
+  watches[lits[0]].add_cl(off, blck_lit);
+  watches[lits[1]].add_cl(off, blck_lit);
+}

@@ -37,17 +37,14 @@ using std::vector;
 using std::cout;
 using std::endl;
 
-template<typename T> class Inst;
 template<typename T> class Counter;
 template<typename T> class CompCache;
 
 template<typename T>
 class DataAndStatistics {
 public:
-  DataAndStatistics (const Inst<T>* _inst, CounterConfiguration& _conf): conf(_conf) {
-    inst = _inst;
-  }
-  CounterConfiguration& conf;
+  DataAndStatistics (const CounterConfiguration& _conf): conf(_conf) {}
+  const CounterConfiguration& conf;
   uint64_t maximum_cache_size_bytes_ = 0;
 
   uint64_t num_binary_irred_clauses_ = 0;
@@ -139,8 +136,6 @@ public:
   // the number of bytes occupied by all comps
   uint64_t sum_bignum_bytes = 0;
   uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
-
-  const Inst<T>* inst;
 
   bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
     return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)

@@ -2616,7 +2616,7 @@ void Counter<T>::create_uip_cl() {
 
   SLOW_DEBUG_DO(for(const auto& t:seen) assert(t == 0););
   VERBOSE_DEBUG_DO(print_dec_info());
-  int32_t n_dec_level;
+  int32_t n_dec_level = std::numeric_limits<int32_t>::min();
 
   Lit* c;
   uint32_t size;

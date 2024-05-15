@@ -59,7 +59,7 @@ public:
   const CompAnalyzer<T>& get_ana() const { return ana; }
 
   uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
-  void save_count(const uint32_t stack_comp_id, const mpz_class &value) {
+  void save_count(const uint32_t stack_comp_id, const T& value) {
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 

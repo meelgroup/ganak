@@ -42,6 +42,7 @@ THE SOFTWARE.
 using std::setw;
 
 template class Counter<mpz_class>;
+template class Counter<mpf_class>;
 
 void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
@@ -288,7 +289,7 @@ vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 
 // Self-check count without restart with CMS only
 template<typename T>
-T Counter<T>::check_count_norestart_cms(const Cube& c) {
+T Counter<T>::check_count_norestart_cms(const Cube<T>& c) {
   verb_print(1, "Checking cube count with CMS (no verb, no restart)");
   vector<Lit> tmp;
   CMSat::SATSolver test_solver;
@@ -339,7 +340,7 @@ T Counter<T>::check_count_norestart_cms(const Cube& c) {
 
 // Self-check count without restart
 template<typename T>
-T Counter<T>::check_count_norestart(const Cube& c) {
+T Counter<T>::check_count_norestart(const Cube<T>& c) {
   verb_print(1, "Checking count with ourselves (no verb, no restart), CNF: " << c.cnf);
   CounterConfiguration conf2 = conf;
   conf2.do_restart = 0;
@@ -390,12 +391,12 @@ T Counter<T>::check_count_norestart(const Cube& c) {
     test_solver.add_clause(ganak_to_cms_cl(tmp));
   }
   test_cnt.end_irred_cls();
-  vector<Cube> ret;
+  vector<Cube<T>> ret;
   return test_cnt.outer_count(&test_solver);
 }
 
 template<typename T>
-void Counter<T>::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes) {
+void Counter<T>::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube<T>>& cubes) {
   if (cubes[i].cnf.size() < cubes[i2].cnf.size()) std::swap(i, i2);
   auto c1 = ganak_to_cms_cl(cubes[i].cnf);
   auto c2 = ganak_to_cms_cl(cubes[i2].cnf);
@@ -438,7 +439,7 @@ void Counter<T>::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector
 }
 
 template<typename T>
-void Counter<T>::print_and_check_cubes(vector<Cube>& cubes) {
+void Counter<T>::print_and_check_cubes(vector<Cube<T>>& cubes) {
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
   if (conf.do_cube_check_count) {
@@ -452,7 +453,7 @@ void Counter<T>::print_and_check_cubes(vector<Cube>& cubes) {
 }
 
 template<typename T>
-void Counter<T>::disable_cubes_if_overlap(vector<Cube>& cubes) {
+void Counter<T>::disable_cubes_if_overlap(vector<Cube<T>>& cubes) {
   for(uint32_t i = 0; i < cubes.size(); i++) {
     if (!cubes[i].enabled) continue;
     for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
@@ -464,7 +465,7 @@ void Counter<T>::disable_cubes_if_overlap(vector<Cube>& cubes) {
 }
 
 template<typename T>
-int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
+int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube<T>& c) {
   verb_print(2, "Trying to remove " << torem << " from cube " << c);
 
   // Prop all but torem
@@ -515,8 +516,8 @@ bool Counter<T>::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
 }
 
 template<typename T>
-void Counter<T>::symm_cubes(vector<Cube>& cubes) {
-  vector<Cube> extra_cubes;
+void Counter<T>::symm_cubes(vector<Cube<T>>& cubes) {
+  vector<Cube<T>> extra_cubes;
   for(const auto& c: cubes) {
     set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
     if (!c.enabled) continue;
@@ -540,7 +541,7 @@ void Counter<T>::symm_cubes(vector<Cube>& cubes) {
       verb_print(2, "[rst-symm-map] mapped lits: " << tmp
         << " Old cube:" << orig_cube
         << " New cube:" << symm_cube);
-      extra_cubes.push_back(Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.val, true));
+      extra_cubes.push_back(Cube<T>(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.val, true));
       stats.num_cubes_symm++;
     }
   }
@@ -548,7 +549,7 @@ void Counter<T>::symm_cubes(vector<Cube>& cubes) {
 }
 
 template<typename T>
-void Counter<T>::extend_cubes(vector<Cube>& cubes) {
+void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   assert(occ.empty());
   assert(clauses.empty());
   auto my_time = cpuTime();
@@ -598,11 +599,11 @@ void Counter<T>::extend_cubes(vector<Cube>& cubes) {
 }
 
 template<typename T>
-void Counter<T>::disable_small_cubes(vector<Cube>& cubes) {
+void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
   /* mpf_class tot = 0; */
   /* mpf_class avg; */
   /* uint32_t num = 0; */
-  std::sort(cubes.begin(), cubes.end(), [](const Cube& a, const Cube& b) {
+  std::sort(cubes.begin(), cubes.end(), [](const Cube<T>& a, const Cube<T>& b) {
       return a.val > b.val;
       });
   uint32_t enabled_so_far = 0;
@@ -637,7 +638,7 @@ T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
   start_time = cpuTime();
   uint32_t next_rst_print = 0;
   while(ret == CMSat::l_True) {
-    vector<Cube> cubes;
+    vector<Cube<T>> cubes;
     count(cubes);
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
     stats.num_cubes_orig += cubes.size();
@@ -650,7 +651,7 @@ T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
     /* disable_small_cubes(cubes); */
 
     // Add cubes to count, Ganak & CMS
-    mpz_class cubes_cnt_this_rst = 0;
+    T cubes_cnt_this_rst = 0;
     for(const auto&c: cubes) {
       if (!c.enabled) continue;
       value+=c.val;
@@ -664,15 +665,9 @@ T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
         cout << "c o [rst-cube] Num restarts: " << stats.num_restarts
           << " orig cubes this rst: " << cubes.size()
           << " total orig cubes: " << stats.num_cubes_orig
-          << " total final cubes: " << stats.num_cubes_final;
-        cout << std::flush;
-        mpf_t tmp_float;
-        mpf_init(tmp_float);
-        mpf_set_z(tmp_float, value.get_mpz_t());
-        gmp_printf(" total so far: %.4FE", tmp_float);
-        mpf_set_z(tmp_float, cubes_cnt_this_rst.get_mpz_t());
-        gmp_printf(" this rst: %.4FE\n", tmp_float);
-        mpf_clear(tmp_float);
+          << " total final cubes: " << stats.num_cubes_final
+          << " total so far: " << value
+          << " this rst: " << cubes_cnt_this_rst << endl;
       }
     }
 
@@ -699,7 +694,7 @@ T Counter<T>::outer_count(CMSat::SATSolver* _sat_solver) {
 }
 
 template<typename T>
-void Counter<T>::count(vector<Cube>& ret_cubes) {
+void Counter<T>::count(vector<Cube<T>>& ret_cubes) {
   release_assert(ret_cubes.empty());
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
@@ -719,7 +714,7 @@ void Counter<T>::count(vector<Cube>& ret_cubes) {
   } else {
     if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
     assert(exit_state == SUCCESS);
-    Cube c(vector<Lit>(), decisions.top().getTotalModelCount());
+    Cube<T> c(vector<Lit>(), decisions.top().getTotalModelCount());
     ret_cubes.push_back(c);
   }
 }
@@ -1033,7 +1028,7 @@ uint32_t Counter<T>::find_best_branch_gpmc() {
 
 // returns cube in `c`. Uses branch 0/1, i.e. LEFT/RIGHT branch
 template<typename T>
-bool Counter<T>::compute_cube(Cube& c, int branch) {
+bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
   assert(c.val == 0);
   assert(c.cnf.empty());
   assert(conf.do_restart);
@@ -1235,7 +1230,7 @@ bool Counter<T>::restart_if_needed() {
     for(uint32_t i = 0; i < 2; i++) {
       if (decisions.top().get_model_side(i) == 0) continue;
       verb_print(2, "->> branch: " << i << " doing compute_cube...");
-      Cube cube;
+      Cube<T> cube;
       if (compute_cube(cube, i)) mini_cubes.push_back(cube);
       else comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
     }

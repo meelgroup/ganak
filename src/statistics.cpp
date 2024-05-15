@@ -24,7 +24,6 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp_cache.hpp"
 #include "counter.hpp"
-#include "structures.hpp"
 #include "time_mem.hpp"
 
 #include <iostream>
@@ -33,6 +32,7 @@ THE SOFTWARE.
 using std::setw;
 
 template class DataAndStatistics<mpz_class>;
+template class DataAndStatistics<mpf_class>;
 
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);

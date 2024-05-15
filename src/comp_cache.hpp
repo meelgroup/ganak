@@ -118,7 +118,7 @@ public:
 
 
   // store the number in model_count as the model count of CacheEntryID id
-  inline void store_value(const CacheEntryID id, const mpz_class &model_count);
+  inline void store_value(const CacheEntryID id, const T& model_count);
 
   double calc_cutoff() const;
   bool delete_some_entries();
@@ -324,7 +324,7 @@ void CompCache<T>::unlink(CacheEntryID id) {
 }
 
 template<typename T>
-void CompCache<T>::store_value(const CacheEntryID id, const mpz_class &model_count) {
+void CompCache<T>::store_value(const CacheEntryID id, const T& model_count) {
 #ifdef CHECK_COUNT
   //we disable cache on check_count, to remove an error source
   return;

@@ -62,6 +62,7 @@ uint64_t freeram() {
 #include "stack.hpp"
 
 template class CompCache<mpz_class>;
+template class CompCache<mpf_class>;
 
 template<typename T>
 void CompCache<T>::test_descendantstree_consistency() {

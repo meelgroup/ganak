@@ -37,25 +37,18 @@ public:
   const T& model_count() const { return *model_count_; }
   uint32_t bignum_bytes() const{
     if (!model_count_) return 0;
-    return sizeof(mpz_class)+mpz_data_size();
-  }
-
-  // raw data size with the overhead
-  // for the supposed 16byte alignment of malloc
-  uint32_t mpz_data_size() const {
-    if (std::is_same<T, mpz_class*>::value) {
-      uint32_t ds;
-      ds = 0;
-      uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-      uint32_t mask = 0xfffffff0;
-      return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
-    }
-    else if (std::is_same<T, double>::value) {
-      return 0;
+    if (std::is_same<T, mpz_class>::value) {
+      return sizeof(mpz_class)+mp_data_size();
+    } else if (std::is_same<T, mpf_class>::value) {
+      return sizeof(mpf_class)+mp_data_size();
     } else {
       assert(false);
     }
   }
+
+  // raw data size with the overhead
+  // for the supposed 16byte alignment of malloc
+  uint32_t mp_data_size() const;
 
   // These below are to help us erase better from the cache
   void set_last_used_time(uint32_t time) { last_used_time_ = time; }
@@ -93,3 +86,18 @@ protected:
   uint32_t last_used_time_:31 = 1; //effectively the score
   uint32_t delete_permitted:1 = false;
 };
+
+template<>
+inline uint32_t BaseComp<mpz_class>::mp_data_size() const {
+    uint32_t ds;
+    ds = 0;
+    uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    uint32_t mask = 0xfffffff0;
+    return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
+}
+
+template<>
+inline uint32_t BaseComp<mpf_class>::mp_data_size() const {
+  assert(false);
+  return 0;
+}

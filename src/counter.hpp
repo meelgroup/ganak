@@ -324,17 +324,17 @@ protected:
   }
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> seen;
-  vector<Cube> mini_cubes;
+  vector<Cube<T>> mini_cubes;
   void parse_with_cms(const std::string& filename);
 
   double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;
-  void disable_small_cubes(vector<Cube>& cubes);
-  void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
-  void print_and_check_cubes(vector<Cube>& cubes);
-  void disable_cubes_if_overlap(vector<Cube>& cubes);
-  void extend_cubes(vector<Cube>& cubes);
-  int cube_try_extend_by_lit(const Lit torem, const Cube& c);
+  void disable_small_cubes(vector<Cube<T>>& cubes);
+  void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube<T>>& cubes);
+  void print_and_check_cubes(vector<Cube<T>>& cubes);
+  void disable_cubes_if_overlap(vector<Cube<T>>& cubes);
+  void extend_cubes(vector<Cube<T>>& cubes);
+  int cube_try_extend_by_lit(const Lit torem, const Cube<T>& c);
 
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   const DataAndStatistics<T>& get_stats() const;
@@ -352,15 +352,15 @@ private:
   vector<vector<Lit>> debug_irred_cls;
 #endif
   bool remove_duplicates(vector<Lit>& lits);
-  T check_count_norestart(const Cube& c);
-  T check_count_norestart_cms(const Cube& c);
-  void count(vector<Cube>& cubes);
+  T check_count_norestart(const Cube<T>& c);
+  T check_count_norestart_cms(const Cube<T>& c);
+  void count(vector<Cube<T>>& cubes);
   CMSat::SATSolver* sat_solver = nullptr;
   bool isindependent = true;
 
 
   vector<map<Lit, Lit>> generators;
-  void symm_cubes(vector<Cube>& cubes);
+  void symm_cubes(vector<Cube<T>>& cubes);
   bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
 
   // Temporaries, used during recordLastUIPClause
@@ -392,7 +392,7 @@ private:
   template<class T2> bool clause_falsified(const T2& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T2> bool clause_satisfied(const T2& cl) const;
-  bool compute_cube(Cube& cube, int branch);
+  bool compute_cube(Cube<T>& cube, int branch);
   void compute_score(TreeDecomposition& tdec);
   void td_decompose();
 

@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 
 template class CompManager<mpz_class>;
+template class CompManager<mpf_class>;
 
 template<typename T>
 void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {

@@ -29,6 +29,7 @@ THE SOFTWARE.
 using std::make_pair;
 
 template class CompAnalyzer<mpz_class>;
+template class CompAnalyzer<mpf_class>;
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unified_var_links_lists_pool and variable_link_list_offsets_

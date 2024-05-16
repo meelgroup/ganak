@@ -40,14 +40,14 @@ using std::pair;
 template<typename T> class ClauseAllocator;
 template<typename T> class Counter;
 
-// There is exactly ONE of this, inside CompManager, which is inside Solver
+// There is exactly ONE of this, inside CompManager, which is inside counter
 template<typename T>
 class CompAnalyzer {
 public:
   CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
-        Counter<T>* _solver);
+        Counter<T>* _counter);
 
   Lit const* get_idx_to_cl(uint32_t cl_id) const {
     return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
@@ -143,7 +143,7 @@ private:
   uint32_t max_freq_score = 1.0;
 #endif
   CompArchetype<T> archetype;
-  Counter<T>* solver = nullptr;
+  Counter<T>* counter = nullptr;
 
   // Quick lookup of cl based on ID
   vector<Lit> idx_to_cl_data; //packed clauses separated by NOT_A_LIT, idx_to_cl_map indexes in
@@ -225,9 +225,9 @@ template<typename T>
 CompAnalyzer<T>::CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
         const uint32_t& _indep_support_end,
-        Counter<T>* _solver) :
-        conf(_solver->get_conf()),
+        Counter<T>* _counter) :
+        conf(_counter->get_conf()),
         values(lit_values),
         indep_support_end(_indep_support_end),
-        solver(_solver)
+        counter(_counter)
 {}

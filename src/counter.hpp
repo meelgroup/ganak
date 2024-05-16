@@ -169,7 +169,11 @@ public:
   bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
-  void set_weight(Lit l, const mpfr::mpreal& w) { weights[l.raw()] = w;}
+  void set_weight(Lit l, const T& w) { weights[l.raw()] = w;}
+  T get_weight(const uint32_t v) {
+    Lit l(v, false);
+    return weights[l.raw()]+weights[l.neg().raw()];}
+  const T& get_weight(const Lit l) { return weights[l.raw()];}
 
   // queues
   bqueue<uint32_t> depth_q;
@@ -225,7 +229,7 @@ protected:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   LiteralIndexedVector<LitWatchList> watches;
-  vector<mpfr::mpreal> weights;
+  vector<T> weights;
   double max_activity = 1.0;
   vector<Lit> unit_clauses_;
   vector<VarData> variables_;

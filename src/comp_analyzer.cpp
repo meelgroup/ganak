@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "mpreal.h"
 
 using std::make_pair;
+using std::is_same;
 
 template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
@@ -111,8 +112,8 @@ void CompAnalyzer<T>::initialize(
   variable_link_list_offsets.clear();
   variable_link_list_offsets.resize(max_var + 1, 0);
 
-  solver->vivif_setup();
-  solver->v_backup();
+  counter->vivif_setup();
+  counter->v_backup();
 
   map<uint32_t, Lit> best_alters;
   map<uint32_t, Lit> best_alters2;
@@ -164,7 +165,7 @@ void CompAnalyzer<T>::initialize(
     Lit best = SENTINEL_LIT;
     uint32_t best_num = 0;
     for(uint32_t i = 2; i < 2*(max_var+1); i++) {
-      if (solver->v_val(Lit::toLit(i)) == X_TRI && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
+      if (counter->v_val(Lit::toLit(i)) == X_TRI && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
         best = Lit::toLit(i);
         best_num = lits_here[i];
       }
@@ -174,7 +175,7 @@ void CompAnalyzer<T>::initialize(
     best = SENTINEL_LIT;
     best_num = 0;
     for(uint32_t i = 2; i < 2*(max_var+1); i++) {
-      if (solver->v_val(Lit::toLit(i)) == X_TRI
+      if (counter->v_val(Lit::toLit(i)) == X_TRI
           && Lit::toLit(i) != best_old
           && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
         best = Lit::toLit(i);
@@ -188,7 +189,7 @@ void CompAnalyzer<T>::initialize(
       occ_ternary_clauses, occs);
   run_one(variable_link_list_offsets_alt2, best_alters2, watches, alloc, long_irred_cls,
       occ_ternary_clauses, occs);
-  solver->v_restore();
+  counter->v_restore();
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
 }
@@ -204,11 +205,11 @@ void CompAnalyzer<T>::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32
   alt.resize(max_var +1);
   for (uint32_t v = 1; v < max_var + 1; v++) {
     const Lit true_l = best_alters.find(v)->second;
-    solver->v_new_lev();
+    counter->v_new_lev();
     if (true_l != SENTINEL_LIT) {
-      assert(solver->v_val(true_l) == X_TRI);
-      solver->v_enqueue(true_l);
-      solver->v_propagate();
+      assert(counter->v_val(true_l) == X_TRI);
+      counter->v_enqueue(true_l);
+      counter->v_propagate();
     }
     alt[v] = make_pair(true_l, unified_var_links_lists_pool.size());
 
@@ -216,8 +217,8 @@ void CompAnalyzer<T>::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
         if (bincl.irred()
-            && solver->v_val(bincl.lit()) != T_TRI
-            && solver->v_val(bincl.lit()) != F_TRI) {
+            && counter->v_val(bincl.lit()) != T_TRI
+            && counter->v_val(bincl.lit()) != F_TRI) {
           unified_var_links_lists_pool.push_back(bincl.lit().var());
         }
       }
@@ -226,8 +227,8 @@ void CompAnalyzer<T>::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32
     // data for ternary clauses
     unified_var_links_lists_pool.push_back(0);
     for(uint32_t i = 0; i < occ_ternary_clauses[v].size();) {
-      if (solver->v_val(Lit::toLit(occ_ternary_clauses[v][i+1])) == T_TRI ||
-          solver->v_val(Lit::toLit(occ_ternary_clauses[v][i+2])) == T_TRI) {
+      if (counter->v_val(Lit::toLit(occ_ternary_clauses[v][i+1])) == T_TRI ||
+          counter->v_val(Lit::toLit(occ_ternary_clauses[v][i+2])) == T_TRI) {
         i += 3;
         continue;
       }
@@ -247,7 +248,7 @@ void CompAnalyzer<T>::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32
       auto cl_id = *it;
       const Clause& cl = *alloc->ptr(long_irred_cls[cl_id-1]);
       bool sat = false;
-      for(const auto& l: cl) if (solver->v_val(l) == T_TRI) sat = true;
+      for(const auto& l: cl) if (counter->v_val(l) == T_TRI) sat = true;
       if (sat) continue;
       cl_ids.push_back(make_pair(cl_id, unified_var_links_lists_pool.size()+1));
       unified_var_links_lists_pool.push_back(cl_id);
@@ -260,12 +261,12 @@ void CompAnalyzer<T>::run_one(vector<pair<Lit, uint32_t>>& alt, const map<uint32
       const Clause& cl = *alloc->ptr(long_irred_cls[cl_id.first-1]);
       for(const auto& l: cl) {
         if (l.var() == v) continue;
-        /* if (solver->v_val(l) == F_TRI) continue; */
+        /* if (counter->v_val(l) == F_TRI) continue; */
         unified_var_links_lists_pool.push_back(l.raw());
       }
       unified_var_links_lists_pool.push_back(SENTINEL_LIT.raw());
     }
-    solver->v_backtrack();
+    counter->v_backtrack();
   }
 }
 
@@ -278,7 +279,11 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
     if (v >= indep_support_end) archetype.stack_level().include_solution(1);
-    else archetype.stack_level().include_solution(2);
+    else {
+      if (is_same<T, mpfr::mpreal>::value) {
+        archetype.stack_level().include_solution(counter->get_weight(v));
+      } else archetype.stack_level().include_solution(2);
+    }
     archetype.set_var_in_peer_comp(v);
     return false;
   }
@@ -314,7 +319,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
     else p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
-      /* BUDDY_DO(if (solver->val(*p) == X_TRI) archetype.num_bin_cls++); */
+      /* BUDDY_DO(if (counter->val(*p) == X_TRI) archetype.num_bin_cls++); */
       if (manage_occ_of(*p)) {VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));}
     }
 

@@ -413,12 +413,6 @@ int main(int argc, char *argv[])
     /* cnf.write_simpcnf("tmp.cnf"); */
   }
   OuterCounter counter(conf, cnf.weighted);
-  if (cnf.weighted) {
-    for(const auto& t: cnf.weights) {
-      counter.set_weight(Lit(t.first, true), t.second.pos.get_mpq_t());
-      counter.set_weight(Lit(t.first, false), t.second.neg.get_mpq_t());
-    }
-  }
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
 
@@ -433,23 +427,36 @@ int main(int argc, char *argv[])
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
     counter.set_optional_indep_support(tmp);
   }
-  mpz_class cnt = counter.unw_outer_count();
-
-  cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) << std::fixed << (cpuTime() - start_time) << endl;
-
-  if (cnt > 0) cout << "s SATISFIABLE" << endl;
-  else cout << "s UNSATISFIABLE" << endl;
-  if (indep_support_given) cout << "c s type pmc " << endl;
-  else cout << "c s type mc" << endl;
-  cnt *= cnf.multiplier_weight;
-  cout << "c s log10-estimate ";
-  if (cnt == 0) {
-    cout << "-inf" << endl;
+  if (cnf.weighted) {
+    /* mpfr::mpreal::set_default_prec(256); */
+    for(const auto& t: cnf.weights) {
+      counter.set_weight(Lit(t.first, true), t.second.pos.get_mpq_t());
+      counter.set_weight(Lit(t.first, false), t.second.neg.get_mpq_t());
+    }
+    auto cnt = counter.w_outer_count();
+    cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
+      << std::fixed << (cpuTime() - start_time) << endl;
+    if (indep_support_given) cout << "c s type wpmc " << endl;
+    else cout << "c s type wmc" << endl;
+    cnt *= cnf.multiplier_weight.get_mpq_t();
+    cout << "c s log10-estimate ";
+    if (cnt == 0) cout << "-inf" << endl;
+    else cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;
+    cout << "c s exact arb float " << std::fixed << cnt << endl;
   } else {
-    cout << std::setprecision(6) << std::fixed << biginteger_log_modified(cnt) << endl;
+    mpz_class cnt = counter.unw_outer_count();
+    cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
+      << std::fixed << (cpuTime() - start_time) << endl;
+
+    if (cnt > 0) cout << "s SATISFIABLE" << endl;
+    else cout << "s UNSATISFIABLE" << endl;
+    if (indep_support_given) cout << "c s type pmc " << endl;
+    else cout << "c s type mc" << endl;
+    cnt *= cnf.multiplier_weight;
+    cout << "c s log10-estimate ";
+    if (cnt == 0) cout << "-inf" << endl;
+    else cout << std::setprecision(6) << std::fixed << biginteger_log_modified(cnt) << endl;
+    cout << "c s exact arb int " << std::fixed << cnt << endl;
   }
-  cout << "c s exact arb int " << std::fixed << cnt << endl;
-
-
   return 0;
 }

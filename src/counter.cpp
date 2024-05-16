@@ -41,6 +41,7 @@ THE SOFTWARE.
 #include "mpreal.h"
 
 using std::setw;
+using std::is_same;
 
 template class Counter<mpz_class>;
 template class Counter<mpfr::mpreal>;
@@ -3041,6 +3042,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   decisions.push_back(StackLevel<T>(decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
   sat_start_dec_level = decision_level();
+  const auto  sat_start_trail_level = trail.size();
   decisions.top().var = 0;
 
   // Fill up order heap
@@ -3084,9 +3086,18 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   }
 
   state = RESOLVED;
-  go_back_to(sat_start_dec_level);
+  if (is_same<T, mpfr::mpreal>::value) {
+    T prod = 1;
+    for(uint32_t i = sat_start_trail_level; i < trail.size(); i++) {
+      if (trail[i].var() < indep_support_end) prod *= get_weight(trail[i]);
+    }
+    go_back_to(sat_start_dec_level);
+    decisions.top().include_solution(prod);
+  } else {
+    go_back_to(sat_start_dec_level);
+    decisions.top().include_solution(1);
+  }
   assert(decision_level() == sat_start_dec_level);
-  decisions.top().include_solution(1);
   decisions.top().var = 0;
   decisions.top().change_to_right_branch();
   assert(decisions.top().getTotalModelCount() == 1);
@@ -3677,7 +3688,7 @@ void Counter<T>::new_vars(const uint32_t n) {
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
-  weights.resize(2*(n + 1), 0.5);
+  if (is_same<T, mpfr::mpreal>::value) weights.resize(2*(n + 1), 0.5);
   num_vars_set = true;
 }
 

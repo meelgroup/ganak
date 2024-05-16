@@ -25,11 +25,12 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "clauseallocator.hpp"
 #include "structures.hpp"
+#include "mpreal.h"
 
 using std::make_pair;
 
 template class CompAnalyzer<mpz_class>;
-template class CompAnalyzer<mpf_class>;
+template class CompAnalyzer<mpfr::mpreal>;
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unified_var_links_lists_pool and variable_link_list_offsets_

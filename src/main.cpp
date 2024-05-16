@@ -39,6 +39,7 @@ THE SOFTWARE.
 #include "src/GitSHA1.hpp"
 #include "breakid.hpp"
 #include <arjun/arjun.h>
+#include "mpreal.h"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -412,6 +413,12 @@ int main(int argc, char *argv[])
     /* cnf.write_simpcnf("tmp.cnf"); */
   }
   OuterCounter counter(conf, cnf.weighted);
+  if (cnf.weighted) {
+    for(const auto& t: cnf.weights) {
+      counter.set_weight(Lit(t.first, true), t.second.pos.get_mpq_t());
+      counter.set_weight(Lit(t.first, false), t.second.neg.get_mpq_t());
+    }
+  }
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
 

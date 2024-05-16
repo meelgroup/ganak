@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "comp_cache.hpp"
 #include "counter.hpp"
 #include "time_mem.hpp"
+#include "mpreal.h"
 
 #include <iostream>
 #include <iomanip>
@@ -32,7 +33,7 @@ THE SOFTWARE.
 using std::setw;
 
 template class DataAndStatistics<mpz_class>;
-template class DataAndStatistics<mpf_class>;
+template class DataAndStatistics<mpfr::mpreal>;
 
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);

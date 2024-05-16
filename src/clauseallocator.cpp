@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "counter_config.hpp"
 #include "time_mem.hpp"
 #include "common.hpp"
+#include "mpreal.h"
 
 using std::cout;
 using std::endl;
@@ -38,7 +39,7 @@ using std::endl;
 #define ALLOC_GROW_MULT 1.5
 
 template class ClauseAllocator<mpz_class>;
-template class ClauseAllocator<mpf_class>;
+template class ClauseAllocator<mpfr::mpreal>;
 
 template<typename T>
 void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {

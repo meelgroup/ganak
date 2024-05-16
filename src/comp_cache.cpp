@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include <algorithm>
 #include <iomanip>
+#include "mpreal.h"
 
 #ifdef __linux__
 
@@ -62,7 +63,7 @@ uint64_t freeram() {
 #include "stack.hpp"
 
 template class CompCache<mpz_class>;
-template class CompCache<mpf_class>;
+template class CompCache<mpfr::mpreal>;
 
 template<typename T>
 void CompCache<T>::test_descendantstree_consistency() {

@@ -38,11 +38,12 @@ THE SOFTWARE.
 #include "IFlowCutter.hpp"
 #include "graph.hpp"
 #include "bdd.h"
+#include "mpreal.h"
 
 using std::setw;
 
 template class Counter<mpz_class>;
-template class Counter<mpf_class>;
+template class Counter<mpfr::mpreal>;
 
 void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
@@ -492,11 +493,11 @@ int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube<T>& c) {
     }
     for(const auto& ws: occ[l.raw()]) {
       Clause& cl = *alloc->ptr(ws.off);
-      bool ok = false;
+      bool good = false;
       for(const auto& cl_lit: cl) {
         if (v_val(cl_lit) == T_TRI) { ok = true; break;}
       }
-      if (!ok) return 0;
+      if (!good) return 0;
     }
   }
   return 100;
@@ -594,8 +595,8 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
 
 template<typename T>
 void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
-  /* mpf_class tot = 0; */
-  /* mpf_class avg; */
+  /* mpfr::mpreal tot = 0; */
+  /* mpfr::mpreal avg; */
   /* uint32_t num = 0; */
   std::sort(cubes.begin(), cubes.end(), [](const Cube<T>& a, const Cube<T>& b) {
       return a.val > b.val;
@@ -3670,11 +3671,13 @@ void Counter<T>::new_vars(const uint32_t n) {
   assert(watches.empty());
   assert(unit_clauses_.empty());
   assert(longRedCls.empty());
+  assert(weights.empty());
 
   variables_.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
+  weights.resize(2*(n + 1), 0.5);
   num_vars_set = true;
 }
 

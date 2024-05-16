@@ -23,9 +23,10 @@ THE SOFTWARE.
 #include "comp_management.hpp"
 #include "common.hpp"
 #include "counter.hpp"
+#include "mpreal.h"
 
 template class CompManager<mpz_class>;
-template class CompManager<mpf_class>;
+template class CompManager<mpfr::mpreal>;
 
 template<typename T>
 void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {

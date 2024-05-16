@@ -27,6 +27,7 @@ include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${LOUVAIN_COMMUNITIES_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories( ${GMP_INCLUDE_DIR} )
+include_directories( ${MPFR_INCLUDE_DIR} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
 
 if (NOT WIN32)
@@ -73,6 +74,7 @@ target_link_libraries (ganak
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${LOUVAIN_COMMUNITIES_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
+  LINK_PUBLIC ${MPFR_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES})
 
 set_target_properties(ganak PROPERTIES

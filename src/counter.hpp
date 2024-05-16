@@ -29,13 +29,12 @@ THE SOFTWARE.
 #include "counter_config.hpp"
 #include "primitive_types.hpp"
 #include "statistics.hpp"
-#include "instance.hpp"
 #include "comp_management.hpp"
 #include "boundedqueue.hpp"
 #include "TreeDecomposition.hpp"
 #include "structures.hpp"
 #include "heap.hpp"
-#include "bdd.h"
+#include "mpreal.h"
 
 #include <cryptominisat5/cryptominisat.h>
 
@@ -170,6 +169,7 @@ public:
   bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
+  void set_weight(Lit l, const mpfr::mpreal& w) { weights[l.raw()] = w;}
 
   // queues
   bqueue<uint32_t> depth_q;
@@ -225,6 +225,7 @@ protected:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   LiteralIndexedVector<LitWatchList> watches;
+  vector<mpfr::mpreal> weights;
   double max_activity = 1.0;
   vector<Lit> unit_clauses_;
   vector<VarData> variables_;
@@ -778,25 +779,25 @@ void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
   uint32_t rem = 0;
   assert(cl.size() > 0);
   tmp_minim_with_bins.clear();
-  for(const auto& l: cl) { seen[l.toPosInt()] = 1; tmp_minim_with_bins.push_back(l);}
+  for(const auto& l: cl) { seen[l.raw()] = 1; tmp_minim_with_bins.push_back(l);}
   for(const auto& l: cl) {
   /* { */
     /* Lit l = tmp_minim_with_bins[0]; */
-    if (!seen[l.toPosInt()]) continue;
+    if (!seen[l.raw()]) continue;
     const auto& w = watches[l].binaries;
     for(const auto& bincl: w) {
       const auto& l2 = bincl.lit();
       assert(l.var() != l2.var());
-      if (seen[(l2.neg()).toPosInt()]) { seen[(l2.neg()).toPosInt()] = 0; rem++; }
+      if (seen[(l2.neg()).raw()]) { seen[(l2.neg()).raw()] = 0; rem++; }
     }
   }
   cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
-  seen[tmp_minim_with_bins[0].toPosInt()] = 0;
+  seen[tmp_minim_with_bins[0].raw()] = 0;
   for(uint32_t i = 1; i < tmp_minim_with_bins.size(); i++) {
     Lit l = tmp_minim_with_bins[i];
-    if (seen[l.toPosInt()]) {
+    if (seen[l.raw()]) {
       cl.push_back(l);
-      seen[l.toPosInt()] = 0;
+      seen[l.raw()] = 0;
     }
   }
   stats.rem_lits_with_bins+=rem;
@@ -813,7 +814,7 @@ template<class T2> void Counter<T>::attach_cl(ClauseOfs off, const T2& lits) {
 class OuterCounter {
 public:
   OuterCounter(const CounterConfiguration& conf, bool weighted) {
-    if (weighted) w_counter = new Counter<mpf_class>(conf);
+    if (weighted) w_counter = new Counter<mpfr::mpreal>(conf);
     else unw_counter = new Counter<mpz_class>(conf);
   }
   ~OuterCounter() {
@@ -832,19 +833,25 @@ public:
     if (unw_counter) unw_counter->set_indep_support(indeps);
     if (w_counter) w_counter->set_indep_support(indeps);
   }
-  mpf_class w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
+  mpfr::mpreal w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
   mpz_class unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1) {
     if (unw_counter) return unw_counter->add_red_cl(lits, lbd);
     if (w_counter) return w_counter->add_red_cl(lits, lbd);
+    release_assert(false);
   }
   bool add_irred_cl(const vector<Lit>& lits) {
     if (unw_counter) return unw_counter->add_irred_cl(lits);
     if (w_counter) return w_counter->add_irred_cl(lits);
+    release_assert(false);
   }
   void set_optional_indep_support(const set<uint32_t>& indeps) {
     if (unw_counter) unw_counter->set_optional_indep_support(indeps);
     if (w_counter) w_counter->set_optional_indep_support(indeps);
+  }
+  void set_weight(const Lit l, const mpfr::mpreal& w) {
+    release_assert(w_counter);
+    w_counter->set_weight(l, w);
   }
   void new_vars(const uint32_t n) {
     if (unw_counter) unw_counter->new_vars(n);
@@ -852,5 +859,5 @@ public:
   }
 private:
   Counter<mpz_class>* unw_counter = nullptr;
-  Counter<mpf_class>* w_counter = nullptr;
+  Counter<mpfr::mpreal>* w_counter = nullptr;
 };

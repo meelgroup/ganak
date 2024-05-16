@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <iostream>
 #include "../common.hpp"
+#include "mpreal.h"
 
 using std::cout;
 
@@ -39,8 +40,8 @@ public:
     if (!model_count_) return 0;
     if (std::is_same<T, mpz_class>::value) {
       return sizeof(mpz_class)+mp_data_size();
-    } else if (std::is_same<T, mpf_class>::value) {
-      return sizeof(mpf_class)+mp_data_size();
+    } else if (std::is_same<T, mpfr::mpreal>::value) {
+      return sizeof(mpfr::mpreal)+mp_data_size();
     } else {
       assert(false);
     }
@@ -97,7 +98,7 @@ inline uint32_t BaseComp<mpz_class>::mp_data_size() const {
 }
 
 template<>
-inline uint32_t BaseComp<mpf_class>::mp_data_size() const {
+inline uint32_t BaseComp<mpfr::mpreal>::mp_data_size() const {
   assert(false);
   return 0;
 }

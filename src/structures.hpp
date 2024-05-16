@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "primitive_types.hpp"
 #include "common.hpp"
 #include <gmpxx.h>
+#include "mpreal.h"
 
 using std::vector;
 
@@ -52,7 +53,6 @@ public:
   constexpr bool operator<(const Lit other) const { return value_ < other.value_; }
   constexpr bool operator>(const Lit other) const { return value_ > other.value_; }
   constexpr int to_visual_int() const { return ((int) value_ >> 1) * ((sign()) ? 1 : -1); }
-  constexpr uint32_t toPosInt() const { return value_; }
   constexpr void inc() {++value_;}
   constexpr static Lit toLit(uint32_t data) {
     Lit l;
@@ -247,7 +247,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cube<mpz_class>& c) {
   os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled << "symm: " << (int)c.symm;
   return os;
 }
-inline std::ostream& operator<<(std::ostream& os, const Cube<mpf_class>& c) {
+inline std::ostream& operator<<(std::ostream& os, const Cube<mpfr::mpreal>& c) {
   os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled << "symm: " << (int)c.symm;
   return os;
 }

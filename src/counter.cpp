@@ -3235,7 +3235,7 @@ uint64_t Counter<T>::buddy_count() {
     for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;
       if (val(ws.lit()) == T_TRI) continue;
-      SLOW_DEBUG_DO(val(ws.lit()) == X_TRI); // otherwise would have propagated/conflicted
+      SLOW_DEBUG_DO(assert(val(ws.lit()) == X_TRI)); // otherwise would have propagated/conflicted
 
       auto tmp = bdd_false();
       mybdd_add(tmp, l);

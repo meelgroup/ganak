@@ -360,9 +360,11 @@ int main(int argc, char *argv[])
   ArjunNS::SimplifiedCNF cnf;
   if (!do_arjun) {
     parse_file(fname, &cnf);
-    cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
-    if (cnf.opt_sampl_vars_given) {
-      cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
+    if (conf.verb) {
+      cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+      if (cnf.opt_sampl_vars_given) {
+        cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
+      }
     }
   } else {
     parse_file(fname, &cnf);

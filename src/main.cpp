@@ -368,6 +368,7 @@ int main(int argc, char *argv[])
     parse_file(fname, &cnf);
     double my_time = cpuTime();
     ArjunNS::Arjun arjun;
+    if (conf.verb == 0) arjun_verb = 0;
     arjun.set_verb(arjun_verb);
     arjun.set_or_gate_based(arjun_gates);
     arjun.set_xor_gates_based(arjun_gates);

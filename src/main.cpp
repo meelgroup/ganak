@@ -382,8 +382,10 @@ int main(int argc, char *argv[])
     bool do_unate = false;
     arjun.elim_to_file(cnf, indep_support_given, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
-    cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
-    cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
+    if (conf.verb) {
+      cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+      cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
+    }
   }
 
   vector<map<Lit, Lit>> generators;

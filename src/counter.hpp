@@ -170,10 +170,10 @@ public:
   void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
   void set_weight(Lit l, const T& w) { weights[l.raw()] = w;}
+  const T& get_weight(const Lit l) { return weights[l.raw()];}
   T get_weight(const uint32_t v) {
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
-  const T& get_weight(const Lit l) { return weights[l.raw()];}
 
   // queues
   bqueue<uint32_t> depth_q;
@@ -195,6 +195,11 @@ protected:
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     var(lit).ante = Antecedent();
     var(lit).decision_level = INVALID_DL;
+    if (weighted()) {
+      if (decisions.size() >= 2 && var(lit).mul)
+        decisions.top().dec_weight /= get_weight(lit);
+      var(lit).mul = false;
+    }
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;
   }

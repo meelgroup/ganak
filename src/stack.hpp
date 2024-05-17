@@ -42,6 +42,7 @@ public:
     assert(super_comp < comp_stack_ofs);
   }
   uint32_t var = 0;
+  T dec_weight = 1;
 private:
 
   /// active Comp, once initialized, it should not change
@@ -132,7 +133,7 @@ public:
     }
     if (solutions == 0) branch_found_unsat_[active_branch_] = true;
     if (branch_model_count_[active_branch_] == 0) {
-      branch_model_count_[active_branch_] = solutions;
+      branch_model_count_[active_branch_] = solutions * dec_weight;
     } else {
       branch_model_count_[active_branch_] *= solutions;
     }

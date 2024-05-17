@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "mpreal.h"
 
 using std::make_pair;
-using std::is_same;
 
 template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
@@ -280,9 +279,9 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
     if (v >= indep_support_end) archetype.stack_level().include_solution(1);
     else {
-      if (is_same<T, mpfr::mpreal>::value) {
+      if (weighted())
         archetype.stack_level().include_solution(counter->get_weight(v));
-      } else archetype.stack_level().include_solution(2);
+      else archetype.stack_level().include_solution(2);
     }
     archetype.set_var_in_peer_comp(v);
     return false;

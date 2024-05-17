@@ -184,11 +184,13 @@ template<typename T>
 bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
 {
   debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
-  debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs() << " comp_stack.size(): " << comp_stack.size());
-  if (comp_stack.size() <= top.remaining_comps_ofs()) {
-    recordRemainingCompsFor(top);
-  } else {
-    debug_print("Not running recordRemainingCompsFor, comp_stack.size() > top.remaining_comps_ofs(). comp_stack.size(): " << comp_stack.size() << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
+  debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs()
+      << " comp_stack.size(): " << comp_stack.size());
+  if (comp_stack.size() <= top.remaining_comps_ofs()) recordRemainingCompsFor(top);
+  else {
+    debug_print("Not running recordRemainingCompsFor, comp_stack.size() > top.remaining_comps_ofs()."
+        " comp_stack.size(): " << comp_stack.size()
+        << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
   assert(!top.branch_found_unsat());
@@ -197,13 +199,8 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
     return true;
   }
 
-  // if no comp remains then there is exactly 1 solution left
-#ifdef VERBOSE_DEBUG
-  debug_print("-*-> Went through all components, so exactly 1 solution left. CNT left: "
-      << top.get_left_model_count() << " CNT right: "
-      << top.get_right_model_count() << " total: " <<  top.getTotalModelCount()
-      << " Firing off incl(1)");
-#endif
+  // if no component remains
+  // make sure, at least that the current branch is considered SAT
   top.include_solution(1);
   debug_print(COLREDBG "-*-> Finished findNextRemainingCompOf, no more remaining comps. "
       "top.branchvar() was: "

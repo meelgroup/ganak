@@ -1092,7 +1092,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
   // Show decision stack's comps
   for(int32_t i = 0; i <= decisions.get_decision_level(); i++) {
     const auto& dst = decisions.at(i);
-    cout << COLWHT "decision_stack.at(" << i << "):"
+    cout << COLWHT "decisions.at(" << i << "):"
       << " decision var: " << dst.var
       << " num unproc comps: " << dst.numUnprocessedComps()
       << " unproc comps end: " << dst.getUnprocessedCompsEnd()
@@ -3084,7 +3084,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   }
 
   state = RESOLVED;
-  if (is_same<T, mpfr::mpreal>::value) {
+  if (weighted()) {
     T prod = 1;
     for(uint32_t i = sat_start_trail_level; i < trail.size(); i++) {
       if (trail[i].var() < indep_support_end) prod *= get_weight(trail[i]);
@@ -3441,6 +3441,12 @@ void Counter<T>::setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant) {
       cl.update_lbd(calc_lbd(cl));
     }
   }
+  if (weighted()) {
+    if (decisions.size() >= 2 && var(lit).mul) {
+      decisions.top().dec_weight /= get_weight(lit);
+    }
+    var(lit).mul = false;
+  }
   values[lit] = T_TRI;
   values[lit.neg()] = F_TRI;
 }
@@ -3687,7 +3693,7 @@ void Counter<T>::new_vars(const uint32_t n) {
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
-  if (is_same<T, mpfr::mpreal>::value) weights.resize(2*(n + 1), 0.5);
+  if (weighted()) weights.resize(2*(n + 1), 0.5);
   num_vars_set = true;
 }
 

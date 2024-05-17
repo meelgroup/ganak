@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include "../mpreal.h"
 
 using std::cout;
-using std::is_same;
 
 template<typename T>
 class BaseComp {
@@ -39,12 +38,10 @@ public:
   const T& model_count() const { return *model_count_; }
   uint32_t bignum_bytes() const{
     if (!model_count_) return 0;
-    if (is_same<T, mpz_class>::value) {
+    if (!weighted()) {
       return sizeof(mpz_class)+mp_data_size();
-    } else if (is_same<T, mpfr::mpreal>::value) {
+    } else if (weighted()) {
       return sizeof(mpfr::mpreal)+mp_data_size();
-    } else {
-      assert(false);
     }
   }
 

@@ -130,6 +130,7 @@ using std::endl;
 
 #define all_vars_in_comp(comp, v) for(auto v = (comp).vars_begin(); *v != sentinel; v++)
 #define all_cls_in_comp(comp, c) for(auto c = (comp).cls_begin(); *c != sentinel; c++)
+#define weighted() (std::is_same<T, mpfr::mpreal>::value)
 
 #define release_assert(a) \
     do { \

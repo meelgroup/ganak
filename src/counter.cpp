@@ -658,14 +658,12 @@ T Counter<T>::outer_count() {
     }
     if (conf.verb >= 2 || stats.num_cache_look_ups_ > next_rst_print) {
       next_rst_print = stats.num_cache_look_ups_ + (1ULL*1000LL*1000LL);
-      if (conf.verb) {
-        cout << "c o [rst-cube] Num restarts: " << stats.num_restarts
+      verb_print(1,"[rst-cube] Num restarts: " << stats.num_restarts
           << " orig cubes this rst: " << cubes.size()
           << " total orig cubes: " << stats.num_cubes_orig
           << " total final cubes: " << stats.num_cubes_final
           << " total so far: " << value
-          << " this rst: " << cubes_cnt_this_rst << endl;
-      }
+          << " this rst: " << cubes_cnt_this_rst);
     }
 
     ret = sat_solver->solve();

@@ -420,6 +420,13 @@ int main(int argc, char *argv[])
   OuterCounter counter(conf, cnf.weighted);
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
+  if (cnf.weighted) {
+    /* mpfr::mpreal::set_default_prec(256); */
+    for(const auto& t: cnf.weights) {
+      counter.set_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
+      counter.set_weight(Lit(t.first+1, false), t.second.neg.get_mpq_t());
+    }
+  }
 
   for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
   counter.end_irred_cls();
@@ -434,10 +441,6 @@ int main(int argc, char *argv[])
   }
   if (cnf.weighted) {
     /* mpfr::mpreal::set_default_prec(256); */
-    for(const auto& t: cnf.weights) {
-      counter.set_weight(Lit(t.first, true), t.second.pos.get_mpq_t());
-      counter.set_weight(Lit(t.first, false), t.second.neg.get_mpq_t());
-    }
     auto cnt = counter.w_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpuTime() - start_time) << endl;

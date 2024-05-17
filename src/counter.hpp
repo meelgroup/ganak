@@ -169,7 +169,9 @@ public:
   bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
-  void set_weight(Lit l, const T& w) { weights[l.raw()] = w;}
+  void set_weight(Lit l, const T& w) {
+    verb_print(2, "Setting weight of " << l << " to " << w);
+    weights[l.raw()] = w;}
   const T& get_weight(const Lit l) { return weights[l.raw()];}
   T get_weight(const uint32_t v) {
     Lit l(v, false);
@@ -183,7 +185,7 @@ public:
   void vivif_setup();
   bool v_propagate();
   void v_backtrack();
-  void v_unset(const Lit l);
+  void v_unset_lit(const Lit l);
   void v_enqueue(const Lit l);
   TriValue v_val(const Lit l) const;
   void v_new_lev();
@@ -191,11 +193,11 @@ public:
   void v_restore();
 protected:
   CounterConfiguration conf;
-  void unset(Lit lit) {
+  void unset_lit(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     var(lit).ante = Antecedent();
     var(lit).decision_level = INVALID_DL;
-    if (weighted()) {
+    if (weighted() && !sat_mode() && lit.var() < indep_support_end) {
       if (decisions.size() >= 2 && var(lit).mul)
         decisions.top().dec_weight /= get_weight(lit);
       var(lit).mul = false;
@@ -215,13 +217,12 @@ protected:
   void reduce_db();
   template<class T2> void minimize_uip_cl_with_bins(T2& cl);
   vector<Lit> tmp_minim_with_bins;
-  void markClauseDeleted(const ClauseOfs cl_ofs);
+  void delete_cl(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
 
   // Super-slow debug, not even used right now
   bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
-  void check_watchlists() const;
-
+  void check_all_cl_in_watchlists() const;
 
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
@@ -315,10 +316,13 @@ protected:
   }
 
   bool is_unknown(Lit lit) const {
+    SLOW_DEBUG_DO(assert(lit.var() <= nVars()));
+    SLOW_DEBUG_DO(assert(lit.var() != 0));
     return values[lit] == X_TRI;
   }
 
   bool is_unknown(uint32_t var) const {
+    SLOW_DEBUG_DO(assert(var != 0));
     return is_unknown(Lit(var, false));
   }
 
@@ -359,7 +363,7 @@ private:
   bool remove_duplicates(vector<Lit>& lits);
   T check_count_norestart(const Cube<T>& c);
   T check_count_norestart_cms(const Cube<T>& c);
-  void count(vector<Cube<T>>& cubes);
+  vector<Cube<T>> restart_count();
   CMSat::SATSolver* sat_solver = nullptr;
   bool ok = true;
   bool isindependent = true;
@@ -467,17 +471,15 @@ private:
   }
 
   // The literals that have been set in this decision level
-  vector<Lit>::const_iterator top_declevel_trail_begin() const
-  {
+  vector<Lit>::const_iterator top_declevel_trail_begin() const {
     return trail.begin() + this->var(decisions.top().var).sublevel;
   }
-  vector<Lit>::iterator top_declevel_trail_begin()
-  {
+  vector<Lit>::iterator top_declevel_trail_begin() {
     return trail.begin() + this->var(decisions.top().var).sublevel;
   }
 
-  void init_decision_stack()
-  {
+  void init_decision_stack() {
+    this_restart_multiplier = 1.0;
     decisions.clear();
     trail.clear();
     // initialize the stack to contain at least level zero
@@ -513,7 +515,7 @@ private:
             << " lev: " << std::setw(4) << var(*it).decision_level
             << " ante was: " << var(*it).ante);
         if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
-        unset(*it);
+        unset_lit(*it);
       }
     }
     VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
@@ -522,7 +524,10 @@ private:
     trail.resize(jt - trail.begin());
     if (decision_level() == 0) qhead = 0;
     else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
-    if (!sat_mode()) decisions.top().resetRemainingComps();
+    if (!sat_mode()) {
+      decisions.top().resetRemainingComps();
+      decisions.top().dec_weight = 1.0;
+    }
   }
 
   /////////////////////////////////////////////
@@ -533,12 +538,7 @@ private:
   // then violated_clause contains the clause determining the conflict;
   Lit confl_lit = NOT_A_LIT;
   Antecedent confl;
-  // this is an array of all the clauses found
-  // during the most recent conflict analysis
-  // it might contain more than 2 clauses
-  // but always will have:
-  //      uip_clause the 1UIP clause found
-  //  possible clauses in between will be other UIP clauses
+  T this_restart_multiplier = 1.0;
   vector<Lit> uip_clause;
 
   void create_uip_cl();

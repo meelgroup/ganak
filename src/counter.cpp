@@ -635,8 +635,7 @@ T Counter<T>::outer_count() {
   start_time = cpuTime();
   uint32_t next_rst_print = 0;
   while(ret == CMSat::l_True) {
-    vector<Cube<T>> cubes;
-    count(cubes);
+    auto cubes = restart_count();
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
     stats.num_cubes_orig += cubes.size();
 
@@ -689,8 +688,8 @@ T Counter<T>::outer_count() {
 }
 
 template<typename T>
-void Counter<T>::count(vector<Cube<T>>& ret_cubes) {
-  release_assert(ret_cubes.empty());
+vector<Cube<T>> Counter<T>::restart_count() {
+  vector<Cube<T>> ret_cubes;
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
     indep_support_end = nVars()+2;
@@ -712,6 +711,11 @@ void Counter<T>::count(vector<Cube<T>>& ret_cubes) {
     Cube<T> c(vector<Lit>(), decisions.top().getTotalModelCount());
     ret_cubes.push_back(c);
   }
+  for (auto& c: ret_cubes) {
+    debug_print("cube ret: " << c << " dec w: " << decisions.top().dec_weight);
+    c.val *= this_restart_multiplier;
+  }
+  return ret_cubes;
 }
 
 template<typename T>
@@ -1386,8 +1390,10 @@ RetState Counter<T>::backtrack() {
       if (val(lit.neg()) == X_TRI) {
         set_lit(lit.neg(), decisions.get_decision_level());
         VERBOSE_DEBUG_DO(print_trail());
-        debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. CNT left: " << decisions.top().get_left_model_count()
-            << " CNT right: " << decisions.top().get_right_model_count());
+        debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. "
+            "count left: " << decisions.top().get_left_model_count()
+            << " count right: " << decisions.top().get_right_model_count()
+            << " weight: " << decisions.top().dec_weight);
         return RESOLVED;
       } else {
         assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
@@ -2244,8 +2250,8 @@ void Counter<T>::v_new_lev() {
 }
 
 template<typename T>
-void Counter<T>::v_unset(const Lit l) {
-  debug_print("v-unset: " << l);
+void Counter<T>::v_unset_lit(const Lit l) {
+  debug_print("v_unset_lit: " << l);
   assert(v_levs[l.var()] == 1);
   v_levs[l.var()] = -1;
   v_values[l] = X_TRI;
@@ -2257,7 +2263,7 @@ void Counter<T>::v_backtrack() {
   assert(v_lev == 1);
   for(uint32_t i = v_backtrack_to; i < v_trail.size(); i++) {
     const auto& l = v_trail[i];
-    v_unset(l);
+    v_unset_lit(l);
   }
   v_trail.resize(v_backtrack_to);
   v_lev = 0;
@@ -3441,9 +3447,10 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       cl.update_lbd(calc_lbd(cl));
     }
   }
-  if (weighted()) {
-    if (decisions.size() >= 2 && var(lit).mul) {
-      decisions.top().dec_weight /= get_weight(lit);
+  if (weighted() && !sat_mode() && lit.var() < indep_support_end) {
+    // TODO what is dec_cand_s --> it's to multiply only with decision cand??
+    if (!var(lit).mul) {
+      decisions.top().dec_weight *= get_weight(lit);
     }
     var(lit).mul = false;
   }
@@ -3525,6 +3532,12 @@ void Counter<T>::simple_preprocess() {
   for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_clauses_.push_back(t);
   init_decision_stack();
   qhead = 0;
+  if (weighted()) {
+    for(uint32_t i = 1; i < nVars()+1; i++)
+      if (!is_unknown(i))
+        this_restart_multiplier *= get_weight(Lit(i, val(i) == T_TRI));
+  }
+  verb_print(2, "[simple-preproc] this restart multiplier: " << this_restart_multiplier);
 
   // Remove for reasons for 0-level clauses, these may interfere with
   // deletion of clauses during subsumption
@@ -3566,7 +3579,7 @@ void Counter<T>::checkProbabilisticHashSanity() const {
 }
 
 template<typename T>
-void Counter<T>::check_watchlists() const {
+void Counter<T>::check_all_cl_in_watchlists() const {
   auto red_cls2 = longRedCls;
   // check for duplicates
   std::sort(red_cls2.begin(), red_cls2.end());
@@ -3642,7 +3655,7 @@ void Counter<T>::reduce_db() {
     cannot_be_del += !can_be_del;
     if (can_be_del && h.lbd > lbd_cutoff && (!conf.rdb_keep_used || !h.used) &&
         i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
-      markClauseDeleted(off);
+      delete_cl(off);
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;
     } else {
@@ -3667,7 +3680,7 @@ bool Counter<T>::red_cl_can_be_deleted(ClauseOfs off){
 }
 
 template<typename T>
-void Counter<T>::markClauseDeleted(const ClauseOfs off){
+void Counter<T>::delete_cl(const ClauseOfs off){
   Clause& cl = *alloc->ptr(off);
   watches[cl[0]].del_c(off);
   watches[cl[1]].del_c(off);
@@ -3693,7 +3706,7 @@ void Counter<T>::new_vars(const uint32_t n) {
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
-  if (weighted()) weights.resize(2*(n + 1), 0.5);
+  if (weighted()) weights.resize(2*(n + 1), 1);
   num_vars_set = true;
 }
 

@@ -73,8 +73,8 @@ target_link_libraries (ganak
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${LOUVAIN_COMMUNITIES_LIBRARIES}
-  LINK_PUBLIC ${GMP_LIBRARIES}
   LINK_PUBLIC ${MPFR_LIBRARIES}
+  LINK_PUBLIC ${GMP_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES})
 
 set_target_properties(ganak PROPERTIES
@@ -90,7 +90,6 @@ add_executable (ganak-bin main.cpp)
 set(ganak_exec_link_libs
   ganak
   ${Boost_LIBRARIES} # due to program_options
-  ${GMP_LIBRARIES}
 )
 
 IF (ZLIB_FOUND)

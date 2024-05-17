@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include "structures.hpp"
 using namespace std;
+using namespace TWD;
 
 
 TreeDecomposition::TreeDecomposition() : tw(0), gnodes(0), cent(-1) {

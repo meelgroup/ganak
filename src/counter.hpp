@@ -401,7 +401,7 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T2> bool clause_satisfied(const T2& cl) const;
   bool compute_cube(Cube<T>& cube, int branch);
-  void compute_score(TreeDecomposition& tdec);
+  void compute_score(TWD::TreeDecomposition& tdec);
   void td_decompose();
 
   // Actual SAT solver.

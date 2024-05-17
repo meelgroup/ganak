@@ -27,6 +27,7 @@ THE SOFTWARE.
 
 #include "bitset.hpp"
 #include "structures.hpp"
+namespace TWD {
 
 class Graph {
 public:
@@ -78,3 +79,4 @@ private:
   int gnodes;
   int cent;
 };
+}

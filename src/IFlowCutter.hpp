@@ -36,6 +36,8 @@
 #include "flow-cutter-pace17/src/cell.hpp"
 #include "TreeDecomposition.hpp"
 
+namespace TWD {
+
 class IFlowCutter {
 public:
   IFlowCutter(int n, int m, int verb = 0);
@@ -59,3 +61,4 @@ private:
   int verb = 0;
   double start_time;
 };
+}

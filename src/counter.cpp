@@ -153,7 +153,7 @@ bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
 }
 
 template<typename T>
-void Counter<T>::compute_score(TreeDecomposition& tdec) {
+void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
   const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
@@ -234,7 +234,7 @@ void Counter<T>::td_decompose() {
     return;
   }
 
-  Graph primal(nVars()+1);
+  TWD::Graph primal(nVars()+1);
   all_lits(i) {
     Lit l(i/2, i%2 == 0);
     for(const auto& l2: watches[l].binaries) {
@@ -278,11 +278,11 @@ void Counter<T>::td_decompose() {
 
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
-  IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
+  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
   fc.importGraph(primal);
 
   // Notice that this graph returned is VERY different
-  TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
+  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
   td.centroid(primal.numNodes(), conf.verb);
   compute_score(td);

@@ -105,7 +105,8 @@ only_dirs = [
              # "out-ganak-7041554.pbs101-0", # rapid restarts
              # "out-ganak-7047972.pbs101-0",
              "out-ganak-7048280.pbs101-0", # best ever now
-             "out-ganak-7049225.pbs101-",
+             # "out-ganak-7049225.pbs101-",
+             "out-ganak-7162995.pbs101-",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -188,7 +189,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [999:][:]\\\n")
+    f.write("plot [599:][:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

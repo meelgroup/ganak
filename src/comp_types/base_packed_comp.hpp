@@ -38,11 +38,7 @@ public:
   const T& model_count() const { return *model_count_; }
   uint32_t bignum_bytes() const{
     if (!model_count_) return 0;
-    if (!weighted()) {
-      return sizeof(mpz_class)+mp_data_size();
-    } else if (weighted()) {
-      return sizeof(mpfr::mpreal)+mp_data_size();
-    }
+    return mp_data_size();
   }
 
   // raw data size with the overhead
@@ -88,15 +84,17 @@ protected:
 
 template<>
 inline uint32_t BaseComp<mpz_class>::mp_data_size() const {
-    uint32_t ds;
-    ds = 0;
-    uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-    uint32_t mask = 0xfffffff0;
-    return (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
+  uint32_t ds;
+  ds = 0;
+  uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+  uint32_t mask = 0xfffffff0;
+  return sizeof(mpz_class) + (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
 }
 
 template<>
 inline uint32_t BaseComp<mpfr::mpreal>::mp_data_size() const {
-  assert(false);
-  return 0;
+  unsigned long prec = mpfr_get_prec(model_count_->mpfr_ptr());
+  unsigned long num_limbs = (prec + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+  size_t memory_usage = sizeof(mpfr::mpreal) + num_limbs * sizeof(mp_limb_t);
+  return memory_usage;
 }

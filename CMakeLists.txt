@@ -26,6 +26,7 @@ enable_language( C )
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
 message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
@@ -129,50 +130,40 @@ if (NOT MSVC)
     add_compile_options( -g)
     add_compile_options( -pthread )
 
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O3>")
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-march=native>")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:-O3>")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:-march=native>")
 
-    add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-g0>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-DNDEBUG>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-march=native>")
+    add_compile_options("$<$<CONFIG:Release>:-O3>")
+    add_compile_options("$<$<CONFIG:Release>:-g0>")
+    add_compile_options("$<$<CONFIG:Release>:-DNDEBUG>")
+    add_compile_options("$<$<CONFIG:Release>:-march=native>")
 
-    add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
+    add_compile_options("$<$<CONFIG:Debug>:-O0>")
+    add_compile_options("$<$<CONFIG:Debug>:-march=native>")
+
+    foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG)
+        if(${flag_var} MATCHES "-O3")
+            string(REGEX REPLACE "-O3" "-O0" ${flag_var} "${${flag_var}}")
+        endif(${flag_var} MATCHES "-O3")
+        if(${flag_var} MATCHES "-O2")
+            string(REGEX REPLACE "-O2" "-O0" ${flag_var} "${${flag_var}}")
+        endif(${flag_var} MATCHES "-O2")
+    endforeach(flag_var)
 
 else()
     # see https://msdn.microsoft.com/en-us/library/fwkeyyhe.aspx for details
     # /ZI = include debug info
     # /Wall = all warnings
 
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:/Ox>")
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:/ZI>")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:/Ox>")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:/ZI>")
 
-    add_compile_options("$<$<CONFIG:RELEASE>:/Ox>")
-    add_compile_options("$<$<CONFIG:RELEASE>:/D>")
-    add_compile_options("$<$<CONFIG:RELEASE>:/NDEBUG>")
-    add_compile_options("$<$<CONFIG:RELEASE>:/ZI>")
+    add_compile_options("$<$<CONFIG:Release>:/Ox>")
+    add_compile_options("$<$<CONFIG:Release>:/D>")
+    add_compile_options("$<$<CONFIG:Release>:/NDEBUG>")
+    add_compile_options("$<$<CONFIG:Release>:/ZI>")
 
-    add_compile_options("$<$<CONFIG:DEBUG>:/Od>")
-
-    if (STATICCOMPILE)
-        # We statically link to reduce dependencies
-        foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-            # /MD -- Causes the application to use the multithread-specific and DLL-specific version of the run-time library.
-            #        Defines _MT and _DLL and causes the compiler to place the library name MSVCRT.lib into the .obj file.
-            if(${flag_var} MATCHES "/MD")
-                string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-            endif(${flag_var} MATCHES "/MD")
-
-            # /MDd	-- Defines _DEBUG, _MT, and _DLL and causes the application to use the debug multithread-specific and DLL-specific version of the run-time library.
-            #          It also causes the compiler to place the library name MSVCRTD.lib into the .obj file.
-            if(${flag_var} MATCHES "/MDd")
-                string(REGEX REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
-            endif(${flag_var} MATCHES "/MDd")
-        endforeach(flag_var)
-
-        # Creates a multithreaded executable (static) file using LIBCMT.lib.
-        add_compile_options(/MT)
-    endif()
+    add_compile_options("$<$<CONFIG:Debug>:/Od>")
 
     # buffers security check
     add_compile_options(/GS)
@@ -248,7 +239,6 @@ if (NOT WIN32)
     if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT COVERAGE)
         #dd_cxx_flag_if_supported("-fvisibility=hidden")
     endif()
-    add_compile_options("-fPIC")
 
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         #add_cxx_flag_if_supported("-flto")
@@ -283,7 +273,6 @@ endif()
 
 if (NOT WIN32)
     MESSAGE(STATUS "${CMAKE_C_FLAGS}")
-    add_c_flag_if_supported("-fPIC")
     add_c_flag_if_supported("-std=c99")
     add_c_flag_if_supported("-Wall")
     add_c_flag_if_supported("-msse4.1")
@@ -314,7 +303,7 @@ if (SANITIZE)
     add_compile_options("-fsanitize=bool")
     add_compile_options("-fsanitize=enum")
     add_compile_options("-fsanitize=float-cast-overflow")
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-D_GLIBCXX_ASSERTIONS>")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:-D_GLIBCXX_ASSERTIONS>")
 
     #add_compile_options("-Weverything")
     #add_compile_options("-Wshorten-64-to-32")

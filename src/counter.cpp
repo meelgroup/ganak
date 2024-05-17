@@ -555,6 +555,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   occ.resize((nVars()+1)*2);
   attach_occ(long_irred_cls, false);
 
+  v_backup();
   vivif_setup();
 
   for(auto& c: cubes) {
@@ -562,15 +563,11 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
     bool go_again = true;
     while (go_again) {
       go_again = false;
-      for(auto& l: c.cnf) {
+      Cube c2 = c;
+      for(const auto& l: c2.cnf) {
         v_new_lev();
-        int ret = cube_try_extend_by_lit(l, c);
+        int ret = cube_try_extend_by_lit(l, c2);
         v_backtrack();
-
-        // TODO WARN: What is even going on. This disables contraction, whihc is insane.
-        // But if we don't do this, things go really-really bad in terms of performance.
-        // See: out-ganak-7015279.pbs101-4/mc2023_track1_184.cnf.gz.out_ganak
-        if (ret == 1) ret = 0;
 
         if (ret != 0) {
           if (ret == 100) {
@@ -588,6 +585,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   }
   occ.clear();
   clauses.clear();
+  v_restore();
   verb_print(2, "[rst-cube-ext] Extended cubes. lit-rem: "
       << setw(4) << stats.cube_lit_rem - before_rem
       << " lit-ext: " << setw(4) << stats.cube_lit_extend - before_ext
@@ -3506,7 +3504,7 @@ Counter<T>::~Counter() {
 template<typename T>
 void Counter<T>::simple_preprocess() {
   verb_print(2, "[simple-preproc] Running.");
-  for (auto lit : unit_clauses_) {
+  for (const auto& lit : unit_clauses_) {
     assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) {
       setLiteral(lit, 0);
@@ -3525,6 +3523,7 @@ void Counter<T>::simple_preprocess() {
   // Remove for reasons for 0-level clauses, these may interfere with
   // deletion of clauses during subsumption
   for(auto& v: variables_) {v.ante = Antecedent();}
+  verb_print(2, "[simple-preproc] finished.");
 }
 
 // TODO Yash we should do Jeroslow-Wang heuristic, i.e. 1/2 for binary, 1/3 for tertiary, etc.

@@ -222,10 +222,10 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
   CacheEntryID id;
   if (free_entry_base_slots.empty()) {
     bool at_capacity = entry_base.capacity() == entry_base.size();
-    if (at_capacity && conf.verb >= 2) {
+    if (at_capacity && conf.verb >= 3) {
       double vm_dat;
       auto dat = memUsedTotal(vm_dat);
-      verb_print(2,std::setw(40) << "After enlarge entry_base mem use MB: " <<
+      verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
       verb_print(3,
         "Before entry enlarge Total process MB : " << dat/(double)(1024*1024)
@@ -233,12 +233,12 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
 
     }
     entry_base.push_back(ccomp);
-    if (at_capacity && conf.verb >= 2) {
+    if (at_capacity && conf.verb >= 3) {
       double vm_dat;
       double dat = memUsedTotal(vm_dat);
-      verb_print(1,std::setw(40) << "After enlarge entry_base mem use MB: " <<
+      verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
-      verb_print(1,
+      verb_print(3,
         "After entry enlarge Total process MB  : " << dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
     }

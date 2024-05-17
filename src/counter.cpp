@@ -462,7 +462,7 @@ void Counter<T>::disable_cubes_if_overlap(vector<Cube<T>>& cubes) {
 
 template<typename T>
 int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube<T>& c) {
-  verb_print(2, "Trying to remove " << torem << " from cube " << c);
+  verb_print(2, "[cube-ext] Trying to remove " << torem << " from cube " << c);
 
   // Prop all but torem
   for(const auto& l: c.cnf) {
@@ -475,11 +475,11 @@ int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube<T>& c) {
   assert(ret);
 
   if (v_val(torem) == F_TRI) {
-    verb_print(2, "Cube  can have " << torem << " removed, but no count change.");
+    verb_print(2, "[cube-ext] Cube  can have " << torem << " removed, but no count change.");
     return 1;
   }
   if (v_val(torem) != X_TRI) {
-    verb_print(1, "Weeeeirrrddd --- " << torem << " ?????");
+    verb_print(1, "[cube-ext] Weeeeirrrddd --- " << torem << " ?????");
     return 0;
   }
 
@@ -498,9 +498,11 @@ int Counter<T>::cube_try_extend_by_lit(const Lit torem, const Cube<T>& c) {
       for(const auto& cl_lit: cl) {
         if (v_val(cl_lit) == T_TRI) { ok = true; break;}
       }
+      verb_print(2, "[cube-ext] Cube can't have " << torem << " removed");
       if (!good) return 0;
     }
   }
+  verb_print(2, "[cube-ext] Cube  can have " << torem << " removed AND count doubled");
   return 100;
 }
 

@@ -132,8 +132,8 @@ private:
   vector<uint32_t> unified_var_links_lists_pool;
   vector<uint32_t> variable_link_list_offsets; // offset into unified_var_links_lists_pool
                                                 // indexed by variable.
-  vector<pair<Lit, uint32_t>> variable_link_list_offsets_alt; // offset into unified_var_links_lists_pool
-  vector<pair<Lit, uint32_t>> variable_link_list_offsets_alt2; // offset into unified_var_links_lists_pool
+  /* vector<pair<Lit, uint32_t>> variable_link_list_offsets_alt; // offset into unified_var_links_lists_pool */
+  /* vector<pair<Lit, uint32_t>> variable_link_list_offsets_alt2; // offset into unified_var_links_lists_pool */
 
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
@@ -162,12 +162,12 @@ private:
   uint32_t const* begin_cls_of_var(const uint32_t v) const {
     return &unified_var_links_lists_pool[variable_link_list_offsets[v]];
   }
-  uint32_t const* begin_cls_of_var_alt(const uint32_t v) const {
-    return &unified_var_links_lists_pool[variable_link_list_offsets_alt[v].second];
-  }
-  uint32_t const* begin_cls_of_var_alt2(const uint32_t v) const {
-    return &unified_var_links_lists_pool[variable_link_list_offsets_alt2[v].second];
-  }
+  /* uint32_t const* begin_cls_of_var_alt(const uint32_t v) const { */
+  /*   return &unified_var_links_lists_pool[variable_link_list_offsets_alt[v].second]; */
+  /* } */
+  /* uint32_t const* begin_cls_of_var_alt2(const uint32_t v) const { */
+  /*   return &unified_var_links_lists_pool[variable_link_list_offsets_alt2[v].second]; */
+  /* } */
   void bump_var_occs(const uint32_t v);
 
   // stores all information about the comp of var

@@ -112,8 +112,8 @@ void CompAnalyzer<T>::initialize(
   variable_link_list_offsets.clear();
   variable_link_list_offsets.resize(max_var + 1, 0);
 
-  counter->vivif_setup();
-  counter->v_backup();
+  /* counter->vivif_setup(); */
+  /* counter->v_backup(); */
 
   map<uint32_t, Lit> best_alters;
   map<uint32_t, Lit> best_alters2;
@@ -162,34 +162,34 @@ void CompAnalyzer<T>::initialize(
       if (l != SENTINEL_LIT) lits_here[l.raw()]+=2;
     }
 
-    Lit best = SENTINEL_LIT;
-    uint32_t best_num = 0;
-    for(uint32_t i = 2; i < 2*(max_var+1); i++) {
-      if (counter->v_val(Lit::toLit(i)) == X_TRI && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
-        best = Lit::toLit(i);
-        best_num = lits_here[i];
-      }
-    }
-    best_alters[v] = best;
-    Lit best_old = best;
-    best = SENTINEL_LIT;
-    best_num = 0;
-    for(uint32_t i = 2; i < 2*(max_var+1); i++) {
-      if (counter->v_val(Lit::toLit(i)) == X_TRI
-          && Lit::toLit(i) != best_old
-          && (best == SENTINEL_LIT || best_num <= lits_here[i])) {
-        best = Lit::toLit(i);
-        best_num = lits_here[i];
-      }
-    }
-    best_alters2[v] = best;
+    /* Lit best = SENTINEL_LIT; */
+    /* uint32_t best_num = 0; */
+    /* for(uint32_t i = 2; i < 2*(max_var+1); i++) { */
+    /*   if (counter->v_val(Lit::toLit(i)) == X_TRI && (best == SENTINEL_LIT || best_num <= lits_here[i])) { */
+    /*     best = Lit::toLit(i); */
+    /*     best_num = lits_here[i]; */
+    /*   } */
+    /* } */
+    /* best_alters[v] = best; */
+    /* Lit best_old = best; */
+    /* best = SENTINEL_LIT; */
+    /* best_num = 0; */
+    /* for(uint32_t i = 2; i < 2*(max_var+1); i++) { */
+    /*   if (counter->v_val(Lit::toLit(i)) == X_TRI */
+    /*       && Lit::toLit(i) != best_old */
+    /*       && (best == SENTINEL_LIT || best_num <= lits_here[i])) { */
+    /*     best = Lit::toLit(i); */
+    /*     best_num = lits_here[i]; */
+    /*   } */
+    /* } */
+    /* best_alters2[v] = best; */
   }
 
-  run_one(variable_link_list_offsets_alt, best_alters, watches, alloc, long_irred_cls,
-      occ_ternary_clauses, occs);
-  run_one(variable_link_list_offsets_alt2, best_alters2, watches, alloc, long_irred_cls,
-      occ_ternary_clauses, occs);
-  counter->v_restore();
+  /* run_one(variable_link_list_offsets_alt, best_alters, watches, alloc, long_irred_cls, */
+  /*     occ_ternary_clauses, occs); */
+  /* run_one(variable_link_list_offsets_alt2, best_alters2, watches, alloc, long_irred_cls, */
+  /*     occ_ternary_clauses, occs); */
+  /* counter->v_restore(); */
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
 }
@@ -310,13 +310,14 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
 
     //traverse binary clauses
     uint32_t const* p;
-    if (variable_link_list_offsets_alt[v].first != SENTINEL_LIT &&
-        is_true(variable_link_list_offsets_alt[v].first))
-      p = begin_cls_of_var_alt(v);
-    else if (variable_link_list_offsets_alt2[v].first != SENTINEL_LIT &&
-        is_true(variable_link_list_offsets_alt2[v].first))
-      p = begin_cls_of_var_alt2(v);
-    else p = begin_cls_of_var(v);
+    /* if (variable_link_list_offsets_alt[v].first != SENTINEL_LIT && */
+    /*     is_true(variable_link_list_offsets_alt[v].first)) */
+    /*   p = begin_cls_of_var_alt(v); */
+    /* else if (variable_link_list_offsets_alt2[v].first != SENTINEL_LIT && */
+    /*     is_true(variable_link_list_offsets_alt2[v].first)) */
+    /*   p = begin_cls_of_var_alt2(v); */
+    /* else */
+      p = begin_cls_of_var(v);
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       /* BUDDY_DO(if (counter->val(*p) == X_TRI) archetype.num_bin_cls++); */

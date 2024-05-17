@@ -200,8 +200,8 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   update_offsets(solver->long_irred_cls, new_data_start, new_ptr);
   update_offsets(solver->longRedCls, new_data_start, new_ptr);
 
-  //Fix up variables_
-  for (auto& vdata: solver->variables_) {
+  //Fix up var_data
+  for (auto& vdata: solver->var_data) {
     if (vdata.ante.isAnt() && vdata.ante.isAClause()) {
       Clause* old = ptr(vdata.ante.asCl());
       assert(!old->freed);

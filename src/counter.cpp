@@ -925,7 +925,7 @@ bool Counter<T>::decide_lit() {
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << decisions.get_decision_level());
-  setLiteral(lit, decision_level());
+  set_lit(lit, decision_level());
   stats.decisions++;
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   return true;
@@ -1384,7 +1384,7 @@ RetState Counter<T>::backtrack() {
       assert(ret);
       debug_print("[indep] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
       if (val(lit.neg()) == X_TRI) {
-        setLiteral(lit.neg(), decisions.get_decision_level());
+        set_lit(lit.neg(), decisions.get_decision_level());
         VERBOSE_DEBUG_DO(print_trail());
         debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. CNT left: " << decisions.top().get_left_model_count()
             << " CNT right: " << decisions.top().get_right_model_count());
@@ -1645,12 +1645,12 @@ void Counter<T>::check_implied(const vector<Lit>& cl) {
 
 template<typename T>
 void Counter<T>::reduce_db_if_needed() {
-  if (stats.conflicts > last_reduceDB_conflicts+conf.reduce_db_everyN) {
+  if (stats.conflicts > last_reducedb_confl+conf.reduce_db_everyN) {
     reduce_db();
     if (stats.cls_deleted_since_compaction > conf.consolidate_every_n && alloc->consolidate(this)) {
         stats.cls_deleted_since_compaction = 0;
     }
-    last_reduceDB_conflicts = stats.conflicts;
+    last_reducedb_confl = stats.conflicts;
   }
 }
 
@@ -1660,7 +1660,7 @@ RetState Counter<T>::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_trail());
 
   create_uip_cl();
-  if (uip_clause.size() == 1 && !existsUnitClauseOf(uip_clause[0]))
+  if (uip_clause.size() == 1 && !exists_unit_cl_of(uip_clause[0]))
     unit_clauses_.push_back(uip_clause[0]);
 
   assert(uip_clause.front() != NOT_A_LIT);
@@ -1693,8 +1693,8 @@ RetState Counter<T>::resolve_conflict() {
     debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
       << " current lev: " << decision_level());
     go_back_to(backj-1);
-    auto ant = addUIPConflictClause(uip_clause);
-    setLiteral(uip_clause[0], lev_to_set, ant);
+    auto ant = add_uip_confl_cl(uip_clause);
+    set_lit(uip_clause[0], lev_to_set, ant);
     VERBOSE_DEBUG_DO(print_trail());
     return RESOLVED;
   }
@@ -1713,7 +1713,7 @@ RetState Counter<T>::resolve_conflict() {
   if (decisions.get_decision_level() > 0 && top_dec_lit().neg() == uip_clause[0]) {
     debug_print("FLIPPING. Setting reason the conflict cl");
     assert(var(uip_clause[0]).decision_level != -1);
-    ant = addUIPConflictClause(uip_clause);
+    ant = add_uip_confl_cl(uip_clause);
     var(top_dec_lit()).ante = ant;
   }
   debug_print("Ant is :" << ant);
@@ -1728,7 +1728,7 @@ RetState Counter<T>::resolve_conflict() {
 
   if (decisions.top().is_right_branch()) {
     reactivate_comps_and_backtrack_trail(false);
-    setLiteral(uip_clause[0], lev_to_set, ant);
+    set_lit(uip_clause[0], lev_to_set, ant);
     qhead = std::min(qhead, var(uip_clause[0]).sublevel);
     if (!propagate()) return GO_AGAIN;
 
@@ -1748,7 +1748,7 @@ RetState Counter<T>::resolve_conflict() {
 
   decisions.top().change_to_right_branch();
   reactivate_comps_and_backtrack_trail(false);
-  setLiteral(uip_clause[0], lev_to_set, ant);
+  set_lit(uip_clause[0], lev_to_set, ant);
 
 #ifdef VERBOSE_DEBUG
   cout << "Returning from resolveConflict() with:";
@@ -1811,10 +1811,10 @@ bool Counter<T>::propagate(bool out_of_order) {
     for (const auto& bincl : watches[plit].binaries) {
       const auto& l = bincl.lit();
       if (val(l) == F_TRI) {
-        setConflictState(plit, l);
+        set_confl_state(plit, l);
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
       } else if (val(l) == X_TRI) {
-        setLiteral(l, lev, Antecedent(plit));
+        set_lit(l, lev, Antecedent(plit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       }
     }
@@ -1870,14 +1870,14 @@ bool Counter<T>::propagate(bool out_of_order) {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
           debug_print("Conflicting state from norm cl offs: " << ofs);
-          setConflictState(&c);
+          set_confl_state(&c);
           it++;
           break;
         } else {
           assert(val(c[0]) == X_TRI);
           debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << decisions.get_decision_level());
           if (lev_at_declev) {
-            setLiteral(c[0], lev, Antecedent(ofs));
+            set_lit(c[0], lev, Antecedent(ofs));
             debug_print("Norm long prop: " << c[0] << " lev: " << lev);
           } else {
             int32_t maxlev = lev;
@@ -1888,7 +1888,7 @@ bool Counter<T>::propagate(bool out_of_order) {
                 it2--; // undo last watch
                 watches[c[1]].add_cl(ofs, plit);
             }
-            setLiteral(c[0], maxlev, Antecedent(ofs));
+            set_lit(c[0], maxlev, Antecedent(ofs));
             VERBOSE_DEBUG_DO(cout << "Weird long prop: " << c[0] << " lev: " << maxlev << endl);
           }
         }
@@ -1959,7 +1959,7 @@ bool Counter<T>::lit_redundant(Lit p, uint32_t abstract_levels) {
 
 template<typename T>
 uint32_t Counter<T>::abst_level(const uint32_t x) const {
-  return ((uint32_t)1) << (variables_[x].decision_level & 31);
+  return ((uint32_t)1) << (var_data[x].decision_level & 31);
 }
 
 template<typename T>
@@ -2113,8 +2113,8 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
     // Move all 0-level stuff to unit_clauses_
     for(const auto& l: v_trail) {
       if (val(l) == X_TRI) {
-        setLiteral(l, 0);
-        if (!existsUnitClauseOf(l)) unit_clauses_.push_back(l);
+        set_lit(l, 0);
+        if (!exists_unit_cl_of(l)) unit_clauses_.push_back(l);
       }
       assert(val(l) != F_TRI); // it would be UNSAT
     }
@@ -2402,8 +2402,8 @@ bool Counter<T>::vivify_cl(const ClauseOfs off) {
         // cannot propagate!
         assert(false);
       }
-      for(uint32_t v = 1; v < variables_.size(); v++) {
-        auto& vdat = variables_[v];
+      for(uint32_t v = 1; v < var_data.size(); v++) {
+        auto& vdat = var_data[v];
         if (vdat.ante.isAClause() && vdat.ante.asCl() == off) {
           assert(v == cl[0].var() || v == cl[1].var());
           Lit other_lit = (v == cl[0].var()) ? cl[1] : cl[0];
@@ -2636,7 +2636,7 @@ void Counter<T>::create_uip_cl() {
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {
       Lit q = c[j];
       if (!seen[q.var()] && var(q).decision_level > 0){
-        increaseActivity(q);
+        inc_act(q);
         seen[q.var()] = 1;
         to_clear.push_back(q.var());
 #ifdef VERBOSE_DEBUG
@@ -2862,7 +2862,7 @@ void Counter<T>::toplevel_full_probe() {
 
     decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
-    setLiteral(l, 1);
+    set_lit(l, 1);
     uint32_t trail_before = trail.size();
     bool ret = propagate();
     if (ret) {
@@ -2876,7 +2876,7 @@ void Counter<T>::toplevel_full_probe() {
     decisions.pop_back();
     if (!ret) {
       clear_toclear_seen();
-      setLiteral(l.neg(), 0);
+      set_lit(l.neg(), 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
       stats.toplevel_probe_fail++;
@@ -2887,7 +2887,7 @@ void Counter<T>::toplevel_full_probe() {
     assert(decision_level() == 0);
     decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
-    setLiteral(l.neg(), 1);
+    set_lit(l.neg(), 1);
 
     trail_before = trail.size();
     ret = propagate();
@@ -2904,7 +2904,7 @@ void Counter<T>::toplevel_full_probe() {
     decisions.pop_back();
     if (!ret) {
       clear_toclear_seen();
-      setLiteral(l, 0);
+      set_lit(l, 0);
       ret = propagate();
       assert(ret && "we are never UNSAT");
       stats.toplevel_probe_fail++;
@@ -2913,7 +2913,7 @@ void Counter<T>::toplevel_full_probe() {
 
     clear_toclear_seen();
     for(const auto& x: bothprop_toset) {
-      setLiteral(x, 0);
+      set_lit(x, 0);
     }
     bothprop_toset.clear();
     ret = propagate();
@@ -3071,7 +3071,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     Lit l(d, !var(d).last_polarity);
     if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
-    setLiteral(l, decision_level());
+    set_lit(l, decision_level());
 
     while (!propagate()) {
       start1:
@@ -3417,10 +3417,10 @@ void Counter<T>::v_restore() {
 }
 
 template<typename T>
-void Counter<T>::setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant) {
+void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   assert(val(lit) == X_TRI);
   if (ant.isNull())
-    debug_print("setLiteral called with a decision. Lit: " << lit << " lev: " << dec_lev);
+    debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev);
   else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
 
   VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
@@ -3511,9 +3511,9 @@ template<typename T>
 void Counter<T>::simple_preprocess() {
   verb_print(2, "[simple-preproc] Running.");
   for (const auto& lit : unit_clauses_) {
-    assert(!existsUnitClauseOf(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
+    assert(!exists_unit_cl_of(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) {
-      setLiteral(lit, 0);
+      set_lit(lit, 0);
       verb_print(2, "[simple-preproc] set: " << lit);
     }
     assert(val(lit) == T_TRI);
@@ -3522,13 +3522,13 @@ void Counter<T>::simple_preprocess() {
   verb_print(2, "[simple-preproc] propagating.");
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  for(const auto& t: trail) if (!existsUnitClauseOf(t)) unit_clauses_.push_back(t);
+  for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_clauses_.push_back(t);
   init_decision_stack();
   qhead = 0;
 
   // Remove for reasons for 0-level clauses, these may interfere with
   // deletion of clauses during subsumption
-  for(auto& v: variables_) {v.ante = Antecedent();}
+  for(auto& v: var_data) {v.ante = Antecedent();}
   verb_print(2, "[simple-preproc] finished.");
 }
 
@@ -3566,7 +3566,7 @@ void Counter<T>::checkProbabilisticHashSanity() const {
 }
 
 template<typename T>
-void Counter<T>::checkWatchLists() const {
+void Counter<T>::check_watchlists() const {
   auto red_cls2 = longRedCls;
   // check for duplicates
   std::sort(red_cls2.begin(), red_cls2.end());
@@ -3576,12 +3576,12 @@ void Counter<T>::checkWatchLists() const {
 
   for(const auto& offs: longRedCls) {
     const auto& cl = *alloc->ptr(offs);
-    if (!findOfsInWatch(watches[cl[0]].watch_list_, offs)) {
+    if (!find_offs_in_watch(watches[cl[0]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[0]!!" << endl;
       assert(false);
       exit(-1);
     }
-    if (!findOfsInWatch(watches[cl[1]].watch_list_, offs)) {
+    if (!find_offs_in_watch(watches[cl[1]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[1]!!" << endl;
       assert(false);
       exit(-1);
@@ -3590,7 +3590,7 @@ void Counter<T>::checkWatchLists() const {
 }
 
 template<typename T>
-bool Counter<T>::findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
+bool Counter<T>::find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
 {
   for (auto& w: ws) if (w.ofs == off) { return true; }
   return false;
@@ -3662,7 +3662,7 @@ template<typename T>
 bool Counter<T>::red_cl_can_be_deleted(ClauseOfs off){
   // only first literal may possibly have cl_ofs as antecedent
   Clause& cl = *alloc->ptr(off);
-  if (isAntecedentOf(off, cl[0])) return false;
+  if (is_antec_of(off, cl[0])) return false;
   return true;
 }
 
@@ -3682,14 +3682,14 @@ void Counter<T>::new_vars(const uint32_t n) {
   }
   sat_solver->new_vars(n);
 
-  assert(variables_.empty());
+  assert(var_data.empty());
   assert(values.empty());
   assert(watches.empty());
   assert(unit_clauses_.empty());
   assert(longRedCls.empty());
   assert(weights.empty());
 
-  variables_.resize(n + 1);
+  var_data.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
@@ -3698,10 +3698,10 @@ void Counter<T>::new_vars(const uint32_t n) {
 }
 
 template<typename T>
-Clause* Counter<T>::addClause(const vector<Lit> &lits, bool red) {
+Clause* Counter<T>::add_cl(const vector<Lit> &lits, bool red) {
   if (lits.size() == 1) {
-    assert(!existsUnitClauseOf(lits[0].neg()) && "UNSAT is not dealt with");
-    if (!existsUnitClauseOf(lits[0])) unit_clauses_.push_back(lits[0]);
+    assert(!exists_unit_cl_of(lits[0].neg()) && "UNSAT is not dealt with");
+    if (!exists_unit_cl_of(lits[0])) unit_clauses_.push_back(lits[0]);
     return nullptr;
   }
 
@@ -3734,7 +3734,7 @@ bool Counter<T>::add_irred_cl(const vector<Lit>& lits_orig) {
   if (!remove_duplicates(lits)) return ok;
 
   stats.incorporateIrredClauseData(lits);
-  Clause* cl = addClause(lits, false);
+  Clause* cl = add_cl(lits, false);
   auto off = alloc->get_offset(cl);
   if (cl) long_irred_cls.push_back(off);
   SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
@@ -3760,7 +3760,7 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
 
   assert(lits.size() >= 2 && "No unit or empty clauses please");
 
-  Clause* cl = addClause(lits, true);
+  Clause* cl = add_cl(lits, true);
   if (cl) {
     auto off = alloc->get_offset(cl);
     longRedCls.push_back(off);

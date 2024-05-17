@@ -157,7 +157,7 @@ public:
   ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> longRedCls;
-  uint32_t nVars() const { return variables_.size() - 1; }
+  uint32_t nVars() const { return var_data.size() - 1; }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
   const auto& get_cache() const { return comp_manager->get_cache();}
@@ -204,15 +204,11 @@ protected:
     values[lit.neg()] = X_TRI;
   }
 
-  const Antecedent & getAntecedent(Lit lit) const {
-    return variables_[lit.var()].ante;
+  const Antecedent & get_antec(Lit lit) const {
+    return var_data[lit.var()].ante;
   }
 
-  bool hasAntecedent(Lit lit) const {
-    return variables_[lit.var()].ante.isAnt();
-  }
-
-  bool isAntecedentOf(ClauseOfs ante_cl, Lit lit) const {
+  bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
 
@@ -222,12 +218,10 @@ protected:
   void markClauseDeleted(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
 
+  // Super-slow debug, not even used right now
+  bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
+  void check_watchlists() const;
 
-  bool findOfsInWatch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
-  void checkWatchLists() const;
-
-
-  DataAndStatistics<T> stats;
 
   // the first variable that is NOT in the independent support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
@@ -237,7 +231,7 @@ protected:
   vector<T> weights;
   double max_activity = 1.0;
   vector<Lit> unit_clauses_;
-  vector<VarData> variables_;
+  vector<VarData> var_data;
   bool num_vars_set = false;
   LiteralIndexedVector<TriValue> values;
   vector<double> tdscore;
@@ -247,6 +241,7 @@ protected:
   uint32_t lbd_cutoff;
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
+  DataAndStatistics<T> stats;
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbdHelper;
@@ -268,35 +263,35 @@ protected:
     return nblevels;
   }
 
-  bool existsUnitClauseOf(const Lit l) const {
+  bool exists_unit_cl_of(const Lit l) const {
     for (const auto& l2 : unit_clauses_) if (l == l2) return true;
     return false;
   }
 
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
-  Clause* addClause(const vector<Lit> &literals, bool red);
+  Clause* add_cl(const vector<Lit> &literals, bool red);
 
   // adds a UIP Conflict Clause
   // and returns it as an Antecedent to the first
   // literal stored in literals
-  inline Antecedent addUIPConflictClause(const vector<Lit> &literals);
+  inline Antecedent add_uip_confl_cl(const vector<Lit> &literals);
 
   inline bool add_bin_cl(Lit a, Lit b, bool red);
 
   inline VarData &var(const Lit lit) {
-    return variables_[lit.var()];
+    return var_data[lit.var()];
   }
 
   inline VarData &var(const uint32_t v) {
-    return variables_[v];
+    return var_data[v];
   }
 
   inline const VarData &var(const uint32_t v) const{
-    return variables_[v];
+    return var_data[v];
   }
 
   inline const VarData &var(const Lit lit) const {
-    return variables_[lit.var()];
+    return var_data[lit.var()];
   }
 
   inline bool is_true(const Lit &lit) const {
@@ -387,9 +382,7 @@ private:
   vector<Lit> trail;
   uint32_t qhead = 0;
   CompManager<T>* comp_manager = nullptr;
-
-  // the last time conflict clauses have been deleted
-  uint64_t last_reduceDB_conflicts = 0;
+  uint64_t last_reducedb_confl = 0;
 
   void simple_preprocess();
   bool is_implied(const vector<Lit>& cp);
@@ -455,16 +448,16 @@ private:
   void check_trail(bool check_entail = true) const;
   bool chrono_work();
   void reduce_db_if_needed();
-  void increaseActivity(const Lit lit);
-  void setLiteral(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
+  void inc_act(const Lit lit);
+  void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
   void checkProbabilisticHashSanity() const;
 
-  void setConflictState(Lit a, Lit b) {
+  void set_confl_state(Lit a, Lit b) {
     confl_lit = a;
     confl = Antecedent(b);
   }
 
-  void setConflictState(Clause* cl) {
+  void set_confl_state(Clause* cl) {
     if (cl->red && cl->lbd > this->lbd_cutoff) {
       cl->set_used();
       cl->update_lbd(this->calc_lbd(*cl));
@@ -498,8 +491,8 @@ private:
   }
 
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
-  uint32_t trail_at_dl(uint32_t dl) const { return this->variables_[decisions.at(dl).var].sublevel; }
-  uint32_t trail_at_top() const { return this->variables_[decisions.top().var].sublevel; }
+  uint32_t trail_at_dl(uint32_t dl) const { return this->var_data[decisions.at(dl).var].sublevel; }
+  uint32_t trail_at_top() const { return this->var_data[decisions.top().var].sublevel; }
 
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
     debug_print("->reactivate and backtrack. Dec lev: " << decision_level() <<  "...");
@@ -710,7 +703,7 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
 // to each variable during analysis
 template<typename T>
-void inline Counter<T>::increaseActivity(const Lit lit) {
+void inline Counter<T>::inc_act(const Lit lit) {
   watches[lit].activity += act_inc;
   max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
@@ -758,10 +751,10 @@ template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
 }
 
 template<typename T>
-Antecedent Counter<T>::addUIPConflictClause(const vector<Lit> &literals) {
+Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
   Antecedent ante;
   stats.num_clauses_learned_++;
-  Clause* cl = addClause(literals, true);
+  Clause* cl = add_cl(literals, true);
   if (cl) {
     auto off = alloc->get_offset(cl);
     longRedCls.push_back(off);

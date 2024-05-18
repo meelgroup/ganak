@@ -195,13 +195,10 @@ protected:
   CounterConfiguration conf;
   void unset_lit(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
+    SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
+    if (weighted()) decisions[var(lit).decision_level].include_solution(get_weight(lit));
     var(lit).decision_level = INVALID_DL;
-    if (weighted() && !sat_mode() && lit.var() < indep_support_end) {
-      if (decisions.size() >= 2 && var(lit).mul)
-        decisions.top().dec_weight /= get_weight(lit);
-      var(lit).mul = false;
-    }
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;
   }
@@ -243,6 +240,7 @@ protected:
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
   DataAndStatistics<T> stats;
+  vector<vector<unsigned long>> dec_cands;
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbdHelper;
@@ -351,7 +349,7 @@ protected:
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
   // test
-  uint64_t check_count(bool include_all_dec = false, int32_t single_var = -1);
+  T check_count(bool include_all_dec = false);
 
 private:
   void init_activity_scores();
@@ -424,7 +422,6 @@ private:
 
   void print_all_levels();
   bool restart_if_needed();
-  RetState backtrack_nonindep();
   RetState backtrack();
   void print_dec_info() const;
   template<class T2> void print_cl(const T2& cl) const;
@@ -526,7 +523,6 @@ private:
     else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
     if (!sat_mode()) {
       decisions.top().resetRemainingComps();
-      decisions.top().dec_weight = 1.0;
     }
   }
 

@@ -279,8 +279,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
     if (v >= indep_support_end) archetype.stack_level().include_solution(1);
     else {
-      if (weighted())
-        archetype.stack_level().include_solution(counter->get_weight(v));
+      if (weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(2);
     }
     archetype.set_var_in_peer_comp(v);

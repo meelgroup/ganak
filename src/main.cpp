@@ -322,6 +322,7 @@ void print_vars(const vector<uint32_t>& vars) {
 
 int main(int argc, char *argv[])
 {
+  mpfr::mpreal::set_default_prec(256);
   const double start_time = cpuTime();
 #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |
@@ -421,7 +422,6 @@ int main(int argc, char *argv[])
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
   if (cnf.weighted) {
-    /* mpfr::mpreal::set_default_prec(256); */
     for(const auto& t: cnf.weights) {
       counter.set_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
       counter.set_weight(Lit(t.first+1, false), t.second.neg.get_mpq_t());

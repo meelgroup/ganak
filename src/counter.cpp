@@ -712,7 +712,7 @@ vector<Cube<T>> Counter<T>::restart_count() {
     ret_cubes.push_back(c);
   }
   for (auto& c: ret_cubes) {
-    debug_print("cube ret: " << c << " dec w: " << decisions.top().dec_weight);
+    debug_print("cube ret: " << c);
     c.val *= this_restart_multiplier;
   }
   return ret_cubes;
@@ -973,6 +973,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1;
+
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
@@ -1263,7 +1264,7 @@ bool Counter<T>::restart_if_needed() {
 
 // Checks one-by-one using a SAT solver
 template<typename T>
-uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
+T Counter<T>::check_count(bool include_all_dec) {
     //let's get vars active
     set<uint32_t> active;
 
@@ -1272,22 +1273,16 @@ uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
     const auto& c = comp_manager->at(sup_at);
 #ifdef VERBOSE_DEBUG
     cout << "-> Checking count. Incl all dec: " << std::boolalpha <<  include_all_dec
-      << " dec lev: " << decisions.get_decision_level() << " var: " << single_var
-      << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
+      << " dec lev: " << decisions.get_decision_level() << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
     cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
 #endif
 
-    if (single_var == -1) {
-      for(uint32_t i = 0; i < c->nVars(); i++) {
-        uint32_t var = c->vars_begin()[i];
-        if (var < indep_support_end) active.insert(var);
-      }
-    } else {
-      assert(single_var < (int)indep_support_end && "NO IDEA if this check is needed! TODO");
-      active.insert(single_var);
+    for(uint32_t i = 0; i < c->nVars(); i++) {
+      uint32_t var = c->vars_begin()[i];
+      if (var < indep_support_end) active.insert(var);
     }
 
 #ifdef VERBOSE_DEBUG
@@ -1313,7 +1308,16 @@ uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
     VERBOSE_DEBUG_DO(if (!trail.empty()) cout << "top dec lit: " << top_dec_lit() << endl;);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
+    T dec_w = 1;
+    int32_t last_dec_lev = -1;
     for(const auto& t: trail) {
+      last_dec_lev = std::max(last_dec_lev, var(t.var()).decision_level);
+    }
+    for(const auto& t: trail) {
+      if (weighted() && var(t).decision_level == last_dec_lev) {
+        dec_w *= get_weight(t);
+        debug_print("mult dec_w with lit w: " << t << " w: " << get_weight(t));
+      }
       if (!include_all_dec) {
         if (var(t).decision_level >= decisions.get_decision_level()) continue;
       }
@@ -1323,12 +1327,28 @@ uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
       cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
       s2.add_clause(cl);
     }
-    uint64_t num = 0;
+    T num = 0;
+    bool solution_exist = false;
     while(true) {
       auto ret = s2.solve();
       if (ret == CMSat::l_True) {
+        solution_exist = true;
+        if (!weighted()) num++;
+        else {
+          T val = 1;
+          for(uint32_t i = 0; i < s2.nVars(); i++) {
+            if (active.count(i+1) &&
+                (var(i+1).decision_level == last_dec_lev  || var(i+1).decision_level == INVALID_DL)) {
+              VERBOSE_DEBUG_DO(cout << std::setw(4) << std::rights
+                  << Lit(i+1, s2.get_model()[i] == CMSat::l_True) << " ");
+              if (weighted()) val *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
+            }
+          }
+          VERBOSE_DEBUG_DO(cout << " val: " << val << std::left << endl);
+          num += val;
+        }
+
         // Ban solution
-        num++;
         cl.clear();
         for(uint32_t i = 0; i < s2.nVars(); i++) {
           if (active.count(i+1)) {
@@ -1340,10 +1360,34 @@ uint64_t Counter<T>::check_count(bool include_all_dec, int32_t single_var) {
       } else if (ret == CMSat::l_False) break;
       else assert(false);
     }
-    debug_print("num                          : " << num);
-    if (single_var == -1) {
-      VERBOSE_DEBUG_DO(cout << "ds.top().getTotalModelCount(): " << decisions.top().getTotalModelCount() << endl);
-      if (num != 0) assert(decisions.top().getTotalModelCount() == num);
+    T after_mul = 0;
+    if (!decisions.top().is_right_branch()) {
+      after_mul += decisions.top().get_left_model_count()*dec_w;
+      after_mul += decisions.top().get_right_model_count();
+    } else {
+      after_mul += decisions.top().get_left_model_count();
+      after_mul += decisions.top().get_right_model_count()*dec_w;
+    }
+    debug_print("correct                            : " << num);
+    debug_print("after_mul:                         : " << after_mul);
+    debug_print("dec_w                              : " << dec_w);
+    debug_print("right active                       : " << decisions.top().is_right_branch());
+    debug_print("ds.top().get_left_model_count()    : " << decisions.top().get_left_model_count());
+    debug_print("ds.top().get_right_model_count()   : " << decisions.top().get_right_model_count());
+
+    // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
+    // and the count cannot be checked
+    if (solution_exist) {
+      if (!weighted()) assert(decisions.top().getTotalModelCount() == num);
+      else {
+        bool okay = true;
+        T diff = after_mul - num;
+        if (diff/num > 0.05 || diff/num < -0.05) {
+          debug_print("OOps, diff: " << diff << " diff ratio: " << diff/num);
+          okay = false;
+        }
+        if (decision_level() == last_dec_lev) assert(okay);
+      }
     }
     return num;
 }
@@ -1353,7 +1397,12 @@ RetState Counter<T>::backtrack() {
   debug_print("in " << __FUNCTION__ << " now ");
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   do {
-    debug_print("[indep] top count here: " << decisions.top().getTotalModelCount() << " dec lev: " << decision_level());
+    debug_print("[indep] top count here: " << decisions.top().getTotalModelCount()
+        << " left: " << decisions.top().get_left_model_count()
+        << " right: " << decisions.top().get_right_model_count()
+        << " is right: " << decisions.top().is_right_branch()
+        << " dec lit: " << top_dec_lit()
+        << " dec lev: " << decision_level());
     if (decisions.top().branch_found_unsat()) {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
     } else if (decisions.top().another_comp_possible()) {
@@ -1374,7 +1423,6 @@ RetState Counter<T>::backtrack() {
       assert(decisions.get_decision_level() > 0);
       CHECK_COUNT_DO(check_count(true));
       SLOW_DEBUG_DO(assert(decisions.top().get_right_model_count() == 0));
-      decisions.top().change_to_right_branch();
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
@@ -1384,6 +1432,7 @@ RetState Counter<T>::backtrack() {
       // not work, because we'll count (x, y) = 01 (left hand branch), and
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
       reactivate_comps_and_backtrack_trail(false);
+      decisions.top().change_to_right_branch();
       bool ret = propagate(true);
       assert(ret);
       debug_print("[indep] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
@@ -1392,8 +1441,7 @@ RetState Counter<T>::backtrack() {
         VERBOSE_DEBUG_DO(print_trail());
         debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. "
             "count left: " << decisions.top().get_left_model_count()
-            << " count right: " << decisions.top().get_right_model_count()
-            << " weight: " << decisions.top().dec_weight);
+            << " count right: " << decisions.top().get_right_model_count());
         return RESOLVED;
       } else {
         assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
@@ -1435,7 +1483,8 @@ RetState Counter<T>::backtrack() {
         << " branch: " << dst.is_right_branch()
         << " before including child it was: " <<  parent_count_before
         << " (left: " << parent_count_before_left
-        << " right: " << parent_count_before_right << ")");
+        << " right: " << parent_count_before_right
+        << ")");
 
     // step to the next comp not yet processed
     dst.nextUnprocessedComp();
@@ -1752,8 +1801,8 @@ RetState Counter<T>::resolve_conflict() {
     assert(decisions.top().remaining_comps_ofs() == comp_manager->comp_stack_size());
   }
 
-  decisions.top().change_to_right_branch();
   reactivate_comps_and_backtrack_trail(false);
+  decisions.top().change_to_right_branch();
   set_lit(uip_clause[0], lev_to_set, ant);
 
 #ifdef VERBOSE_DEBUG
@@ -3446,13 +3495,6 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       cl.set_used();
       cl.update_lbd(calc_lbd(cl));
     }
-  }
-  if (weighted() && !sat_mode() && lit.var() < indep_support_end) {
-    // TODO what is dec_cand_s --> it's to multiply only with decision cand??
-    if (!var(lit).mul) {
-      decisions.top().dec_weight *= get_weight(lit);
-    }
-    var(lit).mul = false;
   }
   values[lit] = T_TRI;
   values[lit.neg()] = F_TRI;

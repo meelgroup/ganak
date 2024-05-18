@@ -255,8 +255,8 @@ inline std::ostream& operator<<(std::ostream& os, const Cube<mpfr::mpreal>& c) {
 struct VarData {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
-  bool last_polarity = false;
   uint32_t sublevel;
+  bool last_polarity = false;
   bool mul = false;
 };
 

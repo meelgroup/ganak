@@ -81,6 +81,9 @@ struct CounterConfiguration {
   int do_check_td_vs_ind = 1;
   int64_t td_steps = 1e5;
   int td_iters = 900;
+  int td_lookahead = -1;
+  int td_lookahead_tw_cutoff = 20;
+  int td_lookahead_iters = 10;
 
 
   uint64_t seed = 0;

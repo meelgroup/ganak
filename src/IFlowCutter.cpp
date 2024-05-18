@@ -589,10 +589,11 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
   better_td.init(bag_count);
   better_td.setWidth(get_treewidth_of_multilevel_partition(cell_list)-1);
   better_td.setNumGraphNodes(get_node_count_of_multilevel_partition(cell_list));
-  cout << "c o [td] #bags " << bag_count
-    << " tw " << get_treewidth_of_multilevel_partition(cell_list)-1
-    << " elapsed " << cpuTime()-start_time  << " s"
-    << endl; // << ", #vars " << get_node_count_of_multilevel_partition(cell_list) << endl;
+  if (verb > 0)
+    cout << "c o [td] #bags " << bag_count
+      << " tw " << get_treewidth_of_multilevel_partition(cell_list)-1
+      << " elapsed " << cpuTime()-start_time  << " s"
+      << endl; // << ", #vars " << get_node_count_of_multilevel_partition(cell_list) << endl;
   better_td.initBags();
 
   for(int i=0; i<bag_count; ++i) {
@@ -702,9 +703,11 @@ TreeDecomposition IFlowCutter::constructTD(const int64_t conf_steps, const int c
 
             // TODO timeout here
             if (i % 100 == 99 || steps < next_step_print) {
+              if (verb) {
                 cout << "c o [td] iter " << i << " best bag: " << td.width()
                   << " stepsK remain: " << steps/1000 << " T: " << (cpuTime()-t) << endl;
-                next_step_print -= 1e5;
+              }
+              next_step_print -= 1e5;
             }
           }
         }

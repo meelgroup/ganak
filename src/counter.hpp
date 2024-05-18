@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <cstdint>
 #include <map>
 
 #include "clauseallocator.hpp"
@@ -401,6 +402,8 @@ private:
   bool compute_cube(Cube<T>& cube, int branch);
   void compute_score(TWD::TreeDecomposition& tdec);
   void td_decompose();
+  int32_t td_decompose_component();
+  double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
 
   // Actual SAT solver.
   bool use_sat_solver(RetState& state);

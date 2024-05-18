@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <ios>
 #include <iomanip>
 #include <limits>
@@ -224,6 +225,64 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
       cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
   }
 #endif
+}
+
+template<typename T>
+int32_t Counter<T>::td_decompose_component() {
+  auto const& sup_at = decisions.top().super_comp();
+  const auto& c = comp_manager->at(sup_at);
+  set<uint32_t> active;
+  for(uint32_t i = 0; i < c->nVars(); i++) {
+    uint32_t var = c->vars_begin()[i];
+    active.insert(var);
+  }
+
+  TWD::Graph primal(nVars()+1);
+  all_lits(i) {
+    Lit l(i/2, i%2 == 0);
+    for(const auto& l2: watches[l].binaries) {
+      if (!l2.red() && l < l2.lit() && val(l) == X_TRI && val(l2.lit()) == X_TRI
+          && active.count(l.var()) && active.count(l2.lit().var())) {
+        /* debug_print("bin cl: " << l.var() << " " << l2.lit().var()); */
+        primal.addEdge(l.var(), l2.lit().var());
+      }
+    }
+  }
+
+  for(const auto& off: long_irred_cls) {
+    Clause& cl = *alloc->ptr(off);
+    bool sat = false;
+    for(Lit& l: cl) {
+      if (val(l) == T_TRI) {sat = true; break;}
+    }
+    if (sat) continue;
+
+    for(uint32_t i = 0; i < cl.sz; i++) {
+      const Lit l = cl[i];
+      if (!active.count(l.var())) continue;
+      if (val(l) == F_TRI) continue;
+
+      for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
+        const Lit l2 = cl[i2];
+        if (!active.count(l2.var())) continue;
+        if (val(l2) == F_TRI) continue;
+
+        debug_print("bin cl: " <<  l.var() << " " << l2.var());
+        primal.addEdge(l.var(), l2.var());
+      }
+    }
+  }
+
+  // run FlowCutter
+  verb_print(2, "[td-cmp] FlowCutter is running...");
+  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), 0);
+  fc.importGraph(primal);
+
+  // Notice that this graph returned is VERY different
+  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters);
+  td.centroid(primal.numNodes(), 0);
+  verb_print(2, "[td-cmp] FlowCutter FINISHED, TD width: " << td.width());
+  return td.width();
 }
 
 template<typename T>
@@ -969,10 +1028,42 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
 }
 
 template<typename T>
+double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw) {
+  double score = 0;
+  auto my_time = cpuTime();
+
+  int32_t w[2];
+  int tdiff = 0;
+  for(bool b: {true, false}) {
+    set_lit(Lit(v, b), decision_level());
+    int tsz = trail.size();
+    bool ret = propagate();
+    if (!ret) {
+      score = 1e5;
+      reactivate_comps_and_backtrack_trail();
+      return score;
+    }
+    tdiff = trail.size()-tsz;
+    if (tdiff < 3) w[b] = base_comp_tw;
+    else w[b] = td_decompose_component();
+    reactivate_comps_and_backtrack_trail();
+  }
+  verb_print(2, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
+    << " w[1]: " << setw(4) << w[1]
+    << " trail diff: " << tdiff
+    << " T: " << (cpuTime()-my_time));
+  return -1*std::max<int32_t>({w[0],w[1]})*w[0]*w[1];
+}
+
+template<typename T>
 uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
-  double best_var_score = -1;
+  double best_var_score = -1e8;
+
+  uint32_t tw = 0;
+  if (decision_level() < conf.td_lookahead)
+    tw = td_decompose_component();
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
@@ -980,9 +1071,12 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
-      double score = score_of(v, ignore_td) ;
+      double score;
+      if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
+        score = td_lookahead_score(v, tw);
+      else score = score_of(v, ignore_td) ;
       /* assert(score >= 0); */
-      if (score > best_var_score) {
+      if (best_var == 0 || score > best_var_score) {
         best_var = v;
         best_var_score = score;
       }
@@ -990,6 +1084,8 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   }
 
   if (best_var != 0 && only_optional_indep) return 0;
+  if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
+    verb_print(1, "best var: " << best_var << " score: " << best_var_score);
   return best_var;
 }
 
@@ -1339,7 +1435,7 @@ T Counter<T>::check_count(bool include_all_dec) {
           for(uint32_t i = 0; i < s2.nVars(); i++) {
             if (active.count(i+1) &&
                 (var(i+1).decision_level == last_dec_lev  || var(i+1).decision_level == INVALID_DL)) {
-              VERBOSE_DEBUG_DO(cout << std::setw(4) << std::rights
+              VERBOSE_DEBUG_DO(cout << std::setw(4) << std::right
                   << Lit(i+1, s2.get_model()[i] == CMSat::l_True) << " ");
               if (weighted()) val *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }

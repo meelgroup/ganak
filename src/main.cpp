@@ -69,6 +69,7 @@ int sbva_tiebreak = 1;
 int do_bce = 1;
 int do_breakid = 0;
 int all_indep = 0;
+int arjun_extend_max_confl = 1000;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -105,6 +106,7 @@ void add_ganak_options()
     ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("arjungates", po::value(&arjun_gates)->default_value(arjun_gates), "Use arjun's gate detection")
+    ("arjunextendmaxconfl", po::value(&arjun_extend_max_confl)->default_value(arjun_extend_max_confl), "Max number of conflicts per extend operation in Arjun")
     ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
@@ -389,6 +391,7 @@ int main(int argc, char *argv[])
     arjun.set_xor_gates_based(arjun_gates);
     arjun.set_ite_gate_based(arjun_gates);
     arjun.set_irreg_gate_based(arjun_gates);
+    arjun.set_extend_max_confl(arjun_extend_max_confl);
     arjun.only_backbone(cnf);
     arjun.only_run_minimize_indep(cnf);
     bool do_extend_indep = true;

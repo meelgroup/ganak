@@ -70,6 +70,7 @@ int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
 int do_bce = 1;
 int do_breakid = 0;
+int all_indep = 0;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -107,6 +108,7 @@ void add_ganak_options()
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("arjungates", po::value(&arjun_gates)->default_value(arjun_gates), "Use arjun's gate detection")
     ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
+    ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
     ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
@@ -382,9 +384,14 @@ int main(int argc, char *argv[])
     arjun.set_irreg_gate_based(arjun_gates);
     arjun.only_backbone(cnf);
     arjun.only_run_minimize_indep(cnf);
-    bool do_extend_indep = true;
+    bool do_extend_indep = !all_indep;
     bool do_unate = false;
+    do_bce = do_bce && !all_indep;
     arjun.elim_to_file(cnf, indep_support_given, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
+    if (all_indep) {
+      cnf.opt_sampl_vars.clear();
+      for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
+    }
     verb_print(1, "Arjun T: " << (cpuTime()-my_time));
     if (conf.verb) {
       cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;

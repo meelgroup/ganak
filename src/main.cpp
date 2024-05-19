@@ -58,12 +58,10 @@ po::variables_map vm;
 po::positional_options_description p;
 
 using namespace std;
-bool indep_support_given = false;
 CounterConfiguration conf;
 int arjun_verb = 2;
 int do_arjun = 1;
 int arjun_gates = 1;
-int ignore_indep = 0;
 int sbva_steps = 1000;
 int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
@@ -107,7 +105,6 @@ void add_ganak_options()
     ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
     ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
     ("arjungates", po::value(&arjun_gates)->default_value(arjun_gates), "Use arjun's gate detection")
-    ("ignore", po::value(&ignore_indep)->default_value(ignore_indep), "Ignore indep support given")
     ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
     ("extraclbump", po::value(&conf.do_extra_cl_bump)->default_value(conf.do_extra_cl_bump), "Also bump clauses when they propagate. By bump, we mean: set 'used' flag, and update LBD")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
@@ -296,14 +293,24 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
   gzclose(in);
   #endif
 
-  if (reader->get_sampl_vars_set() && !ignore_indep) {
-    indep_support_given = true;
-  } else {
-    indep_support_given = false;
+  if (!reader->get_sampl_vars_set()) {
+    all_indep = true;
     vector<uint32_t> tmp;
     for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
     reader->set_sampl_vars(tmp);
     reader->set_opt_sampl_vars(tmp);
+  } else {
+    // Check if CNF has all vars as indep. Then its's all_indep
+    set<uint32_t> tmp;
+    for(auto const& s: reader->get_sampl_vars()) {
+      if (s >= reader->nVars()) {
+        cout << "ERROR: Sampling var " << s+1 << " is larger than number of vars in formula: "
+          << reader->nVars() << endl;
+        exit(-1);
+      }
+      tmp.insert(s);
+    }
+    if (tmp.size() == reader->nVars()) all_indep = true;
   }
 }
 
@@ -384,10 +391,9 @@ int main(int argc, char *argv[])
     arjun.set_irreg_gate_based(arjun_gates);
     arjun.only_backbone(cnf);
     arjun.only_run_minimize_indep(cnf);
-    bool do_extend_indep = !all_indep;
+    bool do_extend_indep = true;
     bool do_unate = false;
-    do_bce = do_bce && !all_indep;
-    arjun.elim_to_file(cnf, indep_support_given, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
+    arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
     if (all_indep) {
       cnf.opt_sampl_vars.clear();
       for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
@@ -454,7 +460,7 @@ int main(int argc, char *argv[])
     auto cnt = counter.w_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpuTime() - start_time) << endl;
-    if (indep_support_given) cout << "c s type wpmc " << endl;
+    if (!all_indep) cout << "c s type wpmc " << endl;
     else cout << "c s type wmc" << endl;
     cnt *= cnf.multiplier_weight.get_mpq_t();
     cout << "c s log10-estimate ";
@@ -468,7 +474,7 @@ int main(int argc, char *argv[])
 
     if (cnt > 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (indep_support_given) cout << "c s type pmc " << endl;
+    if (!all_indep) cout << "c s type pmc " << endl;
     else cout << "c s type mc" << endl;
     cnt *= cnf.multiplier_weight;
     cout << "c s log10-estimate ";

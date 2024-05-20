@@ -1052,7 +1052,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   uint32_t best_var = 0;
   double best_var_score = -1e8;
 
-  uint32_t tw = 0;
+  int32_t tw = 0;
   if (decision_level() < conf.td_lookahead)
     tw = td_decompose_component();
 

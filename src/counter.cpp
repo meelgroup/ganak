@@ -1475,8 +1475,9 @@ T Counter<T>::check_count(bool include_all_dec) {
         bool okay = true;
         T diff = after_mul - cnt;
         if (diff/cnt > 0.01 || diff/cnt < -0.01) {
-          debug_print("OOps, diff: " << diff << " diff ratio: " << diff/cnt);
-          debug_print("OOps, ratio orig: " << after_mul/cnt);
+          debug_print("OOps, diff              : " << diff << " diff ratio: " << diff/cnt);
+          debug_print("OOps, ratio orig        : " << after_mul/cnt);
+          debug_print("OOps, reverse ratio orig: " << cnt/after_mul);
           okay = false;
         }
         if (!include_all_dec && decision_level() == last_dec_lev) assert(okay);

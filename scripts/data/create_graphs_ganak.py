@@ -97,16 +97,17 @@ only_dirs = [
             # "out-ganak-6918163.pbs101-0", # restart on mccomp 2023, 20k restarts
              # "out-ganak-6965806.pbs101", # mccomp 2022+3, restarts base etc
              #"out-ganak-7015279.pbs101", # new extension and symm run
-             "out-ganak-7022833.pbs101-4", # best ever
   #######
              # "out-ganak-7021521.pbs101-0", # 2023 mccomp, restarts, fixed blocking lit, cube extend only no contract
              #"out-ganak-7028560.pbs101-", # 2022 + 2023
              #"out-ganak-7041485.", # kr-24 instances from Arijit
              # "out-ganak-7041554.pbs101-0", # rapid restarts
              # "out-ganak-7047972.pbs101-0",
-             "out-ganak-7048280.pbs101-0", # best ever now
              # "out-ganak-7049225.pbs101-",
-             "out-ganak-7162995.pbs101-",
+             #"out-ganak-7022833.pbs101-4", # best ever
+             #"out-ganak-7048280.pbs101-0", # best ever now
+             #"out-ganak-7162995.pbs101-", # new run, good.
+             "out-ganak-7173534.pbs101", # proj-2023 first run
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

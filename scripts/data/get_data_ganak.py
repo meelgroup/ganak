@@ -81,9 +81,8 @@ def find_d4_time_cnt(fname):
             line = line.strip()
             if "c Final time:" in line:
                 t = float(line.split()[3])
-            if len(line) >=3 and line[:2] == "s ":
-                if len(line.split()[1]) > 1000: cnt = line.split()[1]
-                else: cnt = decimal.Decimal(line.split()[1]).log10()
+            if "c exact arb int" in line:
+                cnt = decimal.Decimal(line.split()[5]).log10()
 
     # print("t:", t, "cnt: ", cnt)
     return [t,cnt]

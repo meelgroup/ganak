@@ -1490,15 +1490,19 @@ T Counter<T>::check_count(bool include_all_dec) {
 
 template<typename T>
 RetState Counter<T>::backtrack() {
-  debug_print("in " << __FUNCTION__ << " now ");
+  debug_print("in " << __FUNCTION__ << " now. Dec lev: " << decision_level());
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   do {
-    debug_print("[indep] top count here: " << decisions.top().getTotalModelCount()
+#ifdef VERBOSE_DEBUG
+    if (decision_level() > 0) {
+      debug_print("[indep] top count here: " << decisions.top().getTotalModelCount()
         << " left: " << decisions.top().get_left_model_count()
         << " right: " << decisions.top().get_right_model_count()
         << " is right: " << decisions.top().is_right_branch()
         << " dec lit: " << top_dec_lit()
         << " dec lev: " << decision_level());
+    }
+#endif
     if (decisions.top().branch_found_unsat()) {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
     } else if (decisions.top().another_comp_possible()) {

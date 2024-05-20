@@ -236,19 +236,19 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 template<typename T>
 struct Cube {
   Cube() = default;
-  Cube(const vector<Lit>& _cnf, const T& _val, bool _symm = false) : cnf(_cnf), val(_val), symm(_symm) {}
+  Cube(const vector<Lit>& _cnf, const T& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt), symm(_symm) {}
   vector<Lit> cnf;
-  T val;
+  T cnt;
   bool enabled = true;
   bool symm = false;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube<mpz_class>& c) {
-  os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
+  os << "CNF: " << c.cnf << " val: " << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
   return os;
 }
 inline std::ostream& operator<<(std::ostream& os, const Cube<mpfr::mpreal>& c) {
-  os << "CNF: " << c.cnf << " val: " << c.val << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
+  os << "CNF: " << c.cnf << " val: " << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
   return os;
 }
 

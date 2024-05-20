@@ -487,7 +487,7 @@ void Counter<T>::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector
     verb_print(2, "Two cubes overlap.");
     verb_print(2, "c1: " << c1);
     verb_print(2, "c2: " << c2);
-    uint32_t to_disable = cubes[i].val > cubes[i2].val ? i2 : i;
+    uint32_t to_disable = cubes[i].cnt > cubes[i2].cnt ? i2 : i;
     cubes[to_disable].enabled = false;
     verb_print(2, "Disabled cube " << cubes[to_disable]);
   }
@@ -502,7 +502,7 @@ void Counter<T>::print_and_check_cubes(vector<Cube<T>>& cubes) {
       auto check_cnt = check_count_norestart(c);
       /* auto check_cnt = check_count_norestart_cms(c); */
       cout << "checking cube [ " << c << " ] ---- check_cnt: " << check_cnt << endl;
-      assert(check_cnt == c.val);
+      assert(check_cnt == c.cnt);
     }
   }
 }
@@ -597,7 +597,7 @@ void Counter<T>::symm_cubes(vector<Cube<T>>& cubes) {
       verb_print(2, "[rst-symm-map] mapped lits: " << tmp
         << " Old cube:" << orig_cube
         << " New cube:" << symm_cube);
-      extra_cubes.push_back(Cube<T>(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.val, true));
+      extra_cubes.push_back(Cube<T>(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.cnt, true));
       stats.num_cubes_symm++;
     }
   }
@@ -633,7 +633,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
         if (ret != 0) {
           if (ret == 100) {
             verb_print(2, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);
-            c.val *= 2;
+            c.cnt *= 2;
             stats.cube_lit_extend++;
           } else stats.cube_lit_rem++;
           c.cnf.erase(std::find(c.cnf.begin(), c.cnf.end(), l));
@@ -655,28 +655,19 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
 
 template<typename T>
 void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
-  /* mpfr::mpreal tot = 0; */
-  /* mpfr::mpreal avg; */
-  /* uint32_t num = 0; */
   std::sort(cubes.begin(), cubes.end(), [](const Cube<T>& a, const Cube<T>& b) {
-      return a.val > b.val;
+      return a.cnt > b.cnt;
       });
   uint32_t enabled_so_far = 0;
   for(auto & c : cubes) {
     if (!c.enabled) continue;
     if (enabled_so_far < 3) {
       enabled_so_far++;
-      /* tot += c.val; */
-      /* num++; */
-      /* avg = tot/num; */
       continue;
     }
-    if (c.val < 100) c.enabled = false;
+    if (c.cnt < 100) c.enabled = false;
     else {
       enabled_so_far++;
-      /* tot += c.val; */
-      /* num++; */
-      /* avg = tot/num; */
     }
   }
 }
@@ -684,7 +675,7 @@ void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
 template<typename T>
 T Counter<T>::outer_count() {
   if (!ok) return 0;
-  T value = 0;
+  T cnt = 0;
 
   verb_print(1, "Sampling set size: " << indep_support_end-1);
   verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
@@ -709,8 +700,8 @@ T Counter<T>::outer_count() {
     T cubes_cnt_this_rst = 0;
     for(const auto&c: cubes) {
       if (!c.enabled) continue;
-      value+=c.val;
-      cubes_cnt_this_rst += c.val;
+      cnt+=c.cnt;
+      cubes_cnt_this_rst += c.cnt;
       sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       stats.num_cubes_final++;
     }
@@ -720,7 +711,7 @@ T Counter<T>::outer_count() {
           << " orig cubes this rst: " << cubes.size()
           << " total orig cubes: " << stats.num_cubes_orig
           << " total final cubes: " << stats.num_cubes_final
-          << " total so far: " << value
+          << " total so far: " << cnt
           << " this rst: " << cubes_cnt_this_rst);
     }
 
@@ -730,7 +721,7 @@ T Counter<T>::outer_count() {
     // Add cubes to counter
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
       add_irred_cl(it->cnf);
-      verb_print(2,  "added cube CL to GANAK: " << it->cnf << " value: " << it->val);
+      verb_print(2,  "added cube CL to GANAK: " << it->cnf << " cnt: " << it->cnt);
     }
     decisions.clear();
 
@@ -743,7 +734,7 @@ T Counter<T>::outer_count() {
       verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpuTime() - my_time));
     }
   }
-  return value;
+  return cnt;
 }
 
 template<typename T>
@@ -772,7 +763,7 @@ vector<Cube<T>> Counter<T>::restart_count() {
   }
   for (auto& c: ret_cubes) {
     debug_print("cube ret: " << c);
-    c.val *= this_restart_multiplier;
+    c.cnt *= this_restart_multiplier;
   }
   return ret_cubes;
 }
@@ -1125,21 +1116,21 @@ uint32_t Counter<T>::find_best_branch_gpmc() {
 // returns cube in `c`. Uses branch 0/1, i.e. LEFT/RIGHT branch
 template<typename T>
 bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
-  assert(c.val == 0);
+  assert(c.cnt == 0);
   assert(c.cnf.empty());
   assert(conf.do_restart);
   debug_print(COLWHT "-- " << __func__ << " BEGIN");
 
-  c.val = decisions.top().get_model_side(branch);
+  c.cnt = decisions.top().get_model_side(branch);
   debug_print("Own cnt: " << c.val);
   for(int32_t i = 0; i < decisions.get_decision_level(); i++) {
     const StackLevel<T>& dec = decisions[i];
     const auto& mul = dec.getBranchSols();
     if (mul == 0) continue;
-    else c.val*=mul;
+    else c.cnt*=mul;
   }
   debug_print("Mult cnt: " << c.val);
-  if (c.val == 0) return false;
+  if (c.cnt == 0) return false;
 
   const bool opposite_branch = branch != decisions.top().is_right_branch();
 
@@ -3471,7 +3462,7 @@ void Counter<T>::check_all_propagated_conflicted() const {
   // Everything that should have propagated, propagated
   for(const auto& t: unit_clauses_) {
     if (val(t) != T_TRI) {
-      cout << "Unit clause: " << t << " is unset/falsified on trail." << endl;
+      cout << "Unit clause: " << t << " is set/falsified on trail." << endl;
       assert(false);
     }
   }

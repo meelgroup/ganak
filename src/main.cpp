@@ -469,7 +469,7 @@ int main(int argc, char *argv[])
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
     else cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;
-    cout << "c s exact arb float " << std::fixed << cnt << endl;
+    cout << "c s exact arb float " << std::fixed << std::setprecision(40) << cnt << endl;
   } else {
     mpz_class cnt = counter.unw_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)

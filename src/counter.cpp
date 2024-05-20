@@ -1545,7 +1545,7 @@ RetState Counter<T>::backtrack() {
         return RESOLVED;
       } else {
         assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
-        decisions.top().branch_found_unsat();
+        decisions.top().mark_branch_unsat();
         continue;
       }
     }

@@ -1122,14 +1122,14 @@ bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
   debug_print(COLWHT "-- " << __func__ << " BEGIN");
 
   c.cnt = decisions.top().get_model_side(branch);
-  debug_print("Own cnt: " << c.val);
+  debug_print("Own cnt: " << c.cnt);
   for(int32_t i = 0; i < decisions.get_decision_level(); i++) {
     const StackLevel<T>& dec = decisions[i];
     const auto& mul = dec.getBranchSols();
     if (mul == 0) continue;
     else c.cnt*=mul;
   }
-  debug_print("Mult cnt: " << c.val);
+  debug_print("Mult cnt: " << c.cnt);
   if (c.cnt == 0) return false;
 
   const bool opposite_branch = branch != decisions.top().is_right_branch();
@@ -1208,7 +1208,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
   for(const auto& l: c.cnf) cout << l << " ";
   cout << endl;
   cout << COLORG "cube's SOLE count: " << decisions.top().get_model_side(branch) << endl;
-  cout << COLORG "cube's RECORDED count: " << c.val << COLDEF << endl;
+  cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
 #endif
   return true;
 }
@@ -1367,9 +1367,19 @@ T Counter<T>::check_count(bool include_all_dec) {
     cout << endl;
 #endif
 
+    T dec_w = 1;
     for(uint32_t i = 0; i < c->nVars(); i++) {
       uint32_t var = c->vars_begin()[i];
-      if (var < indep_support_end) active.insert(var);
+      if (var < indep_support_end) {
+        active.insert(var);
+        if (weighted() && val(var) != X_TRI) {
+          /* if (include_all_dec) { */
+          /* } else { */
+            dec_w *= get_weight(Lit(var, val(var) == T_TRI));
+            cout << "mult var: " << setw(4) << var << " val: " << setw(3) << val(var) << " weight: " << get_weight(Lit(var, val(var) == T_TRI)) << endl;
+          /* } */
+        }
+      }
     }
 
 #ifdef VERBOSE_DEBUG
@@ -1395,16 +1405,11 @@ T Counter<T>::check_count(bool include_all_dec) {
     VERBOSE_DEBUG_DO(if (!trail.empty()) cout << "top dec lit: " << top_dec_lit() << endl;);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
-    T dec_w = 1;
     int32_t last_dec_lev = -1;
     for(const auto& t: trail) {
       last_dec_lev = std::max(last_dec_lev, var(t.var()).decision_level);
     }
     for(const auto& t: trail) {
-      if (weighted() && var(t).decision_level == last_dec_lev) {
-        dec_w *= get_weight(t);
-        debug_print("mult dec_w with lit w: " << t << " w: " << get_weight(t));
-      }
       if (!include_all_dec) {
         if (var(t).decision_level >= decisions.get_decision_level()) continue;
       }
@@ -1414,25 +1419,25 @@ T Counter<T>::check_count(bool include_all_dec) {
       cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
       s2.add_clause(cl);
     }
-    T num = 0;
+    T cnt = 0;
     bool solution_exist = false;
     while(true) {
       auto ret = s2.solve();
       if (ret == CMSat::l_True) {
         solution_exist = true;
-        if (!weighted()) num++;
+        if (!weighted()) cnt++;
         else {
-          T val = 1;
+          T cube_cnt = 1;
           for(uint32_t i = 0; i < s2.nVars(); i++) {
-            if (active.count(i+1) &&
-                (var(i+1).decision_level == last_dec_lev  || var(i+1).decision_level == INVALID_DL)) {
-              VERBOSE_DEBUG_DO(cout << std::setw(4) << std::right
-                  << Lit(i+1, s2.get_model()[i] == CMSat::l_True) << " ");
-              if (weighted()) val *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
+            if (active.count(i+1)) {
+                /* (var(i+1).decision_level == last_dec_lev  || var(i+1).decision_level == INVALID_DL)) { */
+              /* VERBOSE_DEBUG_DO(cout << std::setw(4) << std::right */
+                  /* << Lit(i+1, s2.get_model()[i] == CMSat::l_True) << " "); */
+              if (weighted()) cube_cnt *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
           }
-          VERBOSE_DEBUG_DO(cout << " val: " << val << std::left << endl);
-          num += val;
+          /* VERBOSE_DEBUG_DO(cout << " val: " << std::setprecision(7) << cube_cnt << std::left << endl); */
+          cnt += cube_cnt;
         }
 
         // Ban solution
@@ -1455,7 +1460,7 @@ T Counter<T>::check_count(bool include_all_dec) {
       after_mul += decisions.top().get_left_model_count();
       after_mul += decisions.top().get_right_model_count()*dec_w;
     }
-    debug_print("correct                            : " << num);
+    debug_print("correct                            : " << std::setprecision(10) << cnt);
     debug_print("after_mul:                         : " << after_mul);
     debug_print("dec_w                              : " << dec_w);
     debug_print("right active                       : " << decisions.top().is_right_branch());
@@ -1465,18 +1470,21 @@ T Counter<T>::check_count(bool include_all_dec) {
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
     if (solution_exist) {
-      if (!weighted()) assert(decisions.top().getTotalModelCount() == num);
+      if (!weighted()) assert(decisions.top().getTotalModelCount() == cnt);
       else {
         bool okay = true;
-        T diff = after_mul - num;
-        if (diff/num > 0.05 || diff/num < -0.05) {
-          debug_print("OOps, diff: " << diff << " diff ratio: " << diff/num);
+        T diff = after_mul - cnt;
+        if (diff/cnt > 0.01 || diff/cnt < -0.01) {
+          debug_print("OOps, diff: " << diff << " diff ratio: " << diff/cnt);
+          debug_print("OOps, ratio orig: " << after_mul/cnt);
           okay = false;
         }
-        if (decision_level() == last_dec_lev) assert(okay);
+        if (!include_all_dec && decision_level() == last_dec_lev) assert(okay);
+        assert(okay);
       }
     }
-    return num;
+    cout << std::setprecision(3);
+    return cnt;
 }
 
 template<typename T>
@@ -3568,6 +3576,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
   var(lit).decision_level = dec_lev;
   var(lit).ante = ant;
+  var(lit).mul = false;
   if (!ant.isNull()) {
     var(lit).last_polarity = !lit.sign();
   }
@@ -3911,4 +3920,42 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
     assert(cl->red);
   }
   return ok;
+}
+
+template<typename T>
+void Counter<T>::reactivate_comps_and_backtrack_trail(bool check_ws) {
+  debug_print("->reactivate and backtrack. Dec lev: " << decision_level() <<  "...");
+  auto jt = top_declevel_trail_begin();
+  auto it = jt;
+  int32_t off_by = 0;
+  for (; it != trail.end(); it++) {
+    int32_t dl = var(*it).decision_level;
+    assert(dl != -1);
+    if (dl < decision_level()) {
+      off_by++;
+      var(*it).sublevel = jt - trail.begin();
+      *jt++ = *it;
+      debug_print("Backing up, setting: " << std::setw(5) << *it << " lev: " << std::setw(4) << dl
+          << " sublev: " << var(*it).sublevel);
+      if (weighted() && !sat_mode() && get_weight(*it) != 1 && !var(*it).mul) {
+          decisions[decision_level()-1].include_solution(1.0/get_weight(*it));
+          var(*it).mul = true;
+      }
+    } else {
+      debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
+          << " lev: " << std::setw(4) << var(*it).decision_level
+          << " ante was: " << var(*it).ante);
+      if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
+      unset_lit(*it);
+    }
+  }
+  VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
+      print_trail(false, false);assert(false);});
+  if (!sat_mode()) comp_manager->cleanRemainingCompsOf(decisions.top());
+  trail.resize(jt - trail.begin());
+  if (decision_level() == 0) qhead = 0;
+  else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
+  if (!sat_mode()) {
+    decisions.top().resetRemainingComps();
+  }
 }

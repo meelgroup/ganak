@@ -198,7 +198,7 @@ protected:
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if (weighted()) decisions[var(lit).decision_level].include_solution(get_weight(lit));
+    if (weighted()) decisions[decision_level()].include_solution(get_weight(lit));
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;
@@ -495,39 +495,8 @@ private:
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   uint32_t trail_at_dl(uint32_t dl) const { return this->var_data[decisions.at(dl).var].sublevel; }
   uint32_t trail_at_top() const { return this->var_data[decisions.top().var].sublevel; }
+  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
 
-  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true) {
-    debug_print("->reactivate and backtrack. Dec lev: " << decision_level() <<  "...");
-    auto jt = top_declevel_trail_begin();
-    auto it = jt;
-    int32_t off_by = 0;
-    for (; it != trail.end(); it++) {
-      int32_t dl = var(*it).decision_level;
-      assert(dl != -1);
-      if (dl < decision_level()) {
-        off_by++;
-        var(*it).sublevel = jt - trail.begin();
-        *jt++ = *it;
-        debug_print("Backing up, setting: " << std::setw(5) << *it
-            << " sublev: " << var(*it).sublevel);
-      } else {
-        debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
-            << " lev: " << std::setw(4) << var(*it).decision_level
-            << " ante was: " << var(*it).ante);
-        if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
-        unset_lit(*it);
-      }
-    }
-    VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
-        print_trail(false, false);assert(false);});
-    if (!sat_mode()) comp_manager->cleanRemainingCompsOf(decisions.top());
-    trail.resize(jt - trail.begin());
-    if (decision_level() == 0) qhead = 0;
-    else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
-    if (!sat_mode()) {
-      decisions.top().resetRemainingComps();
-    }
-  }
 
   /////////////////////////////////////////////
   //  Conflict analysis below

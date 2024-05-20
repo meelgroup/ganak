@@ -127,6 +127,7 @@ public:
     auto before = branch_model_count_[active_branch_];
 #endif
     if (branch_found_unsat_[active_branch_]) {
+      VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
       assert(branch_model_count_[active_branch_] == 0);
       return;
     }

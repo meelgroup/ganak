@@ -1568,8 +1568,6 @@ RetState Counter<T>::backtrack() {
     const auto parent_count_before_right = (decisions.end() - 2)->get_right_model_count();
 #endif
     (decisions.end() - 2)->include_solution(decisions.top().getTotalModelCount());
-    debug_print("[indep] Backtracking from level " << decisions.get_decision_level()
-        << " count here is: " << decisions.top().getTotalModelCount());
     decisions.pop_back();
 
     // var == 0 means it's coming from a fake decision due to normal SAT solving

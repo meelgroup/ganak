@@ -319,7 +319,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
     for (; *p; p++) {
       // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
       /* BUDDY_DO(if (counter->val(*p) == X_TRI) archetype.num_bin_cls++); */
-      if (manage_occ_of(*p)) {VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));}
+      if (manage_occ_of(*p)) {
+        if (!conf.do_check_unkn_bin || is_unknown(*p)) {
+          VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));
+        }
+      }
     }
 
     //traverse ternary clauses

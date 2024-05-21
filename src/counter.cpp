@@ -940,9 +940,7 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 
 template<typename T>
 bool Counter<T>::decide_lit() {
-  if (stats.decisions % 128 == 0) {
-      for(auto& w: watches) w.activity *= 0.5;
-  }
+  if (stats.decisions % conf.vsads_readjust_every == 0) for(auto& w: watches) w.activity *= 0.5;
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -3692,7 +3690,7 @@ void Counter<T>::simple_preprocess() {
 template<typename T>
 void Counter<T>::init_activity_scores() {
   act_inc = 1.0;
-  return;
+  if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit l(x/2, x%2);
     for (const auto& ws: watches[l].binaries) {

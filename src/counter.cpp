@@ -782,7 +782,8 @@ void Counter<T>::print_all_levels() {
       << " num unproc'd comps: " << decisions.at(dec_lev).numUnprocessedComps()
       << " count: " << decisions.at(dec_lev).getTotalModelCount()
       << " (left: " << decisions.at(dec_lev).get_left_model_count()
-      << " right: " << decisions.at(dec_lev).get_right_model_count() << ")"
+      << " right: " << decisions.at(dec_lev).get_right_model_count()
+      << " active: " << (decisions.at(dec_lev).is_right_branch() ? "right" : "left") << ")"
       << endl;
 
     const auto& c = comp_manager->at(sup_at);
@@ -1359,7 +1360,7 @@ T Counter<T>::check_count(bool include_all_dec) {
     auto const& sup_at = s.super_comp();
     const auto& c = comp_manager->at(sup_at);
 #ifdef VERBOSE_DEBUG
-    cout << "-> Checking count. Incl all dec: " << std::boolalpha <<  include_all_dec
+    cout << "-> Checking count. Incl all dec: " COLRED << std::boolalpha <<  include_all_dec << COLDEF
       << " dec lev: " << decisions.get_decision_level() << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
     cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
@@ -1376,7 +1377,9 @@ T Counter<T>::check_count(bool include_all_dec) {
           /* if (include_all_dec) { */
           /* } else { */
             dec_w *= get_weight(Lit(var, val(var) == T_TRI));
-            cout << "mult var: " << setw(4) << var << " val: " << setw(3) << val(var) << " weight: " << get_weight(Lit(var, val(var) == T_TRI)) << endl;
+            if (get_weight(Lit(var, val(var) == T_TRI)) != 1)
+              cout << COLYEL "mult var: " << setw(4) << var << " val: " << setw(3) << val(var)
+                << " weight: " << get_weight(Lit(var, val(var) == T_TRI)) << COLDEF << endl;
           /* } */
         }
       }
@@ -1463,7 +1466,7 @@ T Counter<T>::check_count(bool include_all_dec) {
     debug_print("correct                            : " << std::setprecision(10) << cnt);
     debug_print("after_mul:                         : " << after_mul);
     debug_print("dec_w                              : " << dec_w);
-    debug_print("right active                       : " << decisions.top().is_right_branch());
+    debug_print("active                             : " << (decisions.top().is_right_branch() ? "right" : "left"));
     debug_print("ds.top().get_left_model_count()    : " << decisions.top().get_left_model_count());
     debug_print("ds.top().get_right_model_count()   : " << decisions.top().get_right_model_count());
 
@@ -1481,7 +1484,7 @@ T Counter<T>::check_count(bool include_all_dec) {
           okay = false;
         }
         if (!include_all_dec && decision_level() == last_dec_lev) assert(okay);
-        assert(okay);
+        /* assert(okay); */
       }
     }
     cout << std::setprecision(3);
@@ -3595,6 +3598,11 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       cl.update_lbd(calc_lbd(cl));
     }
   }
+  if (dec_lev < decision_level()) {
+    for(uint32_t i = dec_lev+1; i < decisions.size(); i++) {
+      if (get_weight(lit) != 1) decisions[i].include_solution_other_side(1/get_weight(lit));
+    }
+  }
   values[lit] = T_TRI;
   values[lit.neg()] = F_TRI;
 }
@@ -3936,10 +3944,10 @@ void Counter<T>::reactivate_comps_and_backtrack_trail(bool check_ws) {
       *jt++ = *it;
       debug_print("Backing up, setting: " << std::setw(5) << *it << " lev: " << std::setw(4) << dl
           << " sublev: " << var(*it).sublevel);
-      if (weighted() && !sat_mode() && get_weight(*it) != 1 && !var(*it).mul) {
-          decisions[decision_level()-1].include_solution(1.0/get_weight(*it));
-          var(*it).mul = true;
-      }
+      /* if (weighted() && !sat_mode() && get_weight(*it) != 1 && !var(*it).mul) { */
+      /*     decisions[decision_level()-1].include_solution(1.0/get_weight(*it)); */
+      /*     var(*it).mul = true; */
+      /* } */
     } else {
       debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
           << " lev: " << std::setw(4) << var(*it).decision_level

@@ -198,7 +198,7 @@ protected:
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if (weighted()) decisions[decision_level()].include_solution(get_weight(lit));
+    if (weighted() && get_weight(lit) != 1) decisions[decision_level()].include_solution(get_weight(lit));
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;

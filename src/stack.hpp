@@ -122,7 +122,7 @@ public:
 
   template<class T2>
   void include_solution(const T2& solutions) {
-    VERBOSE_DEBUG_DO(cout << "incl sol: " << solutions << endl);
+    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
     auto before = branch_model_count_[active_branch_];
 #endif
@@ -140,6 +140,32 @@ public:
     VERBOSE_DEBUG_DO(cout << "now "
         << ((active_branch_) ? "right" : "left")
         << " count is: " << branch_model_count_[active_branch_]
+        << " before it was: " << before
+        << " var: " << var
+        << endl);
+  }
+
+  template<class T2>
+  void include_solution_other_side(const T2& solutions) {
+    VERBOSE_DEBUG_DO(cout << COLRED << "other side incl sol: " << solutions << COLDEF << " ");
+    if (active_branch_ == 0) return;
+#ifdef VERBOSE_DEBUG
+    auto before = branch_model_count_[0];
+#endif
+    if (branch_found_unsat_[0]) {
+      VERBOSE_DEBUG_DO(cout << "-> other side incl sol unsat branch, doing  nothing." << endl);
+      assert(branch_model_count_[0] == 0);
+      return;
+    }
+    if (solutions == 0) branch_found_unsat_[0] = true;
+    if (branch_model_count_[0] == 0) {
+      assert(false);
+    } else {
+      branch_model_count_[0] *= solutions;
+    }
+    VERBOSE_DEBUG_DO(cout << "now "
+        << ((0) ? "right" : "left")
+        << " count is: " << branch_model_count_[0]
         << " before it was: " << before
         << " var: " << var
         << endl);

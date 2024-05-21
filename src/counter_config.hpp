@@ -27,14 +27,13 @@ THE SOFTWARE.
 using std::string;
 
 struct CounterConfiguration {
-  double act_exp = 0.99; // 1.0 is VERY slow. Seems good, also tried 0.985
   bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 20000U;
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
-  double var_freq_divider = 10.0;
+  double var_freq_divider = 15.0;
 
   int restart_type = 8;
   int do_readjust_for_restart = 1;
@@ -74,7 +73,7 @@ struct CounterConfiguration {
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
   double td_maxweight = 4.0;
-  double td_minweight = 0.1;
+  double td_minweight = 0.05;
   double td_divider = 1e3;
   double do_td_weight = 1;
   double td_exp_mult = 1.2;

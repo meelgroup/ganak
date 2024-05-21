@@ -1345,11 +1345,9 @@ bool Counter<T>::restart_if_needed() {
     conf.decide = stats.num_restarts%2;
     if (stats.num_restarts%3 == 2) curr_var_freq_divider /= 4.0;
     /* conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0; */
-    conf.act_exp = (stats.num_restarts % 3) ? 0.99 : 0.95;
   }
   verb_print(2, "[rst] new config. decide: " << conf.decide
-    << " polar_type: " << conf.polar_type
-    << " act_exp: " << conf.act_exp);
+    << " polar_type: " << conf.polar_type);
   return true;
 }
 
@@ -3694,6 +3692,7 @@ void Counter<T>::simple_preprocess() {
 template<typename T>
 void Counter<T>::init_activity_scores() {
   act_inc = 1.0;
+  return;
   all_lits(x) {
     Lit l(x/2, x%2);
     for (const auto& ws: watches[l].binaries) {

@@ -478,7 +478,6 @@ private:
   }
 
   void init_decision_stack() {
-    this_restart_multiplier = 1.0;
     decisions.clear();
     trail.clear();
     // initialize the stack to contain at least level zero
@@ -505,7 +504,6 @@ private:
   // then violated_clause contains the clause determining the conflict;
   Lit confl_lit = NOT_A_LIT;
   Antecedent confl;
-  T this_restart_multiplier = 1.0;
   vector<Lit> uip_clause;
 
   void create_uip_cl();

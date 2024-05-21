@@ -761,9 +761,14 @@ vector<Cube<T>> Counter<T>::restart_count() {
     Cube<T> c(vector<Lit>(), decisions.top().getTotalModelCount());
     ret_cubes.push_back(c);
   }
+
+  T this_restart_multiplier = 1;
+  for(uint32_t i = 1; i < nVars()+1; i++)
+    if (!is_unknown(i)) this_restart_multiplier *= get_weight(Lit(i, val(i) == T_TRI));
+  debug_print("[cube-final] This restart multiplier: " << this_restart_multiplier);
   for (auto& c: ret_cubes) {
-    debug_print("cube ret: " << c);
     c.cnt *= this_restart_multiplier;
+    if (c.enabled) debug_print("[cube-final] cube: " << c);
   }
   return ret_cubes;
 }
@@ -1370,16 +1375,18 @@ T Counter<T>::check_count(bool include_all_dec) {
 
     T dec_w = 1;
     for(uint32_t i = 0; i < c->nVars(); i++) {
-      uint32_t var = c->vars_begin()[i];
-      if (var < indep_support_end) {
-        active.insert(var);
-        if (weighted() && val(var) != X_TRI) {
+      uint32_t v = c->vars_begin()[i];
+      if (v < indep_support_end) {
+        active.insert(v);
+        if (weighted() && val(v) != X_TRI
+            && var(v).decision_level == decision_level()
+          ) {
           /* if (include_all_dec) { */
           /* } else { */
-            dec_w *= get_weight(Lit(var, val(var) == T_TRI));
-            if (get_weight(Lit(var, val(var) == T_TRI)) != 1)
-              cout << COLYEL "mult var: " << setw(4) << var << " val: " << setw(3) << val(var)
-                << " weight: " << get_weight(Lit(var, val(var) == T_TRI)) << COLDEF << endl;
+            dec_w *= get_weight(Lit(v, val(v) == T_TRI));
+            if (get_weight(Lit(v, val(v) == T_TRI)) != 1)
+              debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
+                << " weight: " << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF);
           /* } */
         }
       }
@@ -1432,7 +1439,9 @@ T Counter<T>::check_count(bool include_all_dec) {
         else {
           T cube_cnt = 1;
           for(uint32_t i = 0; i < s2.nVars(); i++) {
-            if (active.count(i+1)) {
+            if (active.count(i+1)
+                && (val(i+1) == X_TRI || var(i+1).decision_level >= decision_level())
+                ) {
                 /* (var(i+1).decision_level == last_dec_lev  || var(i+1).decision_level == INVALID_DL)) { */
               /* VERBOSE_DEBUG_DO(cout << std::setw(4) << std::right */
                   /* << Lit(i+1, s2.get_model()[i] == CMSat::l_True) << " "); */
@@ -1559,6 +1568,7 @@ RetState Counter<T>::backtrack() {
     // Backtrack from end, i.e. finished.
     if (decisions.get_decision_level() == 0) {
       debug_print("[indep] Backtracking from lev 0, i.e. ending");
+      CHECK_COUNT_DO(check_count());
       break;
     }
 
@@ -1981,12 +1991,11 @@ bool Counter<T>::propagate(bool out_of_order) {
 #if 0
     cout << "prop-> will go through norm cl:" << endl;
     for(const auto& w: ws) {
-      cout << "norm cl offs: " << w.ofs << " cl: ";
+      cout << "norm cl offsets: " << w.ofs << " cl: ";
       const auto ofs = w.ofs;
       for(Lit* c = beginOf(ofs); *c != NOT_A_LIT; c++) { cout << *c << " "; }
-      cout << endl;
     }
-    cout << " will do it now... " << endl;
+    cout << "--> will do it now... " << endl;
 #endif
 
     auto it2 = ws.begin();
@@ -2631,12 +2640,12 @@ bool Counter<T>::v_propagate() {
 #ifdef VERBOSE_DEBUG
     cout << "v prop-> will go through norm cl:" << endl;
     for(const auto& w: ws) {
-      cout << "norm cl offs: " << w.ofs << " cl: ";
+      cout << "norm cl offsets: " << w.ofs << " cl: ";
       const auto ofs = w.ofs;
       Clause& c = *alloc->ptr(ofs);
       cout << c << endl;
     }
-    cout << " will do it now... " << endl;
+    cout << "--> will do it now... " << endl;
 #endif
 
     auto it2 = ws.begin();
@@ -3598,7 +3607,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       cl.update_lbd(calc_lbd(cl));
     }
   }
-  if (dec_lev < decision_level()) {
+  if (weighted() && dec_lev < decision_level()) {
     for(uint32_t i = dec_lev+1; i < decisions.size(); i++) {
       if (get_weight(lit) != 1) decisions[i].include_solution_other_side(1/get_weight(lit));
     }
@@ -3681,12 +3690,6 @@ void Counter<T>::simple_preprocess() {
   for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_clauses_.push_back(t);
   init_decision_stack();
   qhead = 0;
-  if (weighted()) {
-    for(uint32_t i = 1; i < nVars()+1; i++)
-      if (!is_unknown(i))
-        this_restart_multiplier *= get_weight(Lit(i, val(i) == T_TRI));
-  }
-  verb_print(2, "[simple-preproc] this restart multiplier: " << this_restart_multiplier);
 
   // Remove for reasons for 0-level clauses, these may interfere with
   // deletion of clauses during subsumption

@@ -1255,7 +1255,7 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!conf.do_restart || td_width < 60) return false;
+  if (!conf.do_restart) return false;
 
   bool restart = false;
 

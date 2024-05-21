@@ -456,7 +456,8 @@ with open("mydata.csv", "w") as out:
         if f["solvertime"][0] is None:
             toprint += ","
         else:
-            toprint += "%s," % f["solvertime"][0]
+            toprint += "%s," % f["solvertout"][0]
+            # toprint += "%s," % f["solvertime"][0]
 
         #ganak_tout_t, ganak_mem_MB, ganak_call
         if f["solvertout"] == [None, None, None]:

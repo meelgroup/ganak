@@ -69,7 +69,7 @@ struct CounterConfiguration {
   int do_use_cache = 1;
   int do_init_activity_scores = 1;
   int do_check_unkn_bin = 1;
-  int vsads_readjust_every = 128;
+  int vsads_readjust_every = 64;
 
 
   bool do_td = 1;

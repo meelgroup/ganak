@@ -107,8 +107,10 @@ only_dirs = [
              #"out-ganak-7022833.pbs101-4", # best ever
              #"out-ganak-7048280.pbs101-0", # best ever now
              #"out-ganak-7162995.pbs101-", # new run, good.
-             "out-ganak-7173534.pbs101-0", # proj-2023 first run
-             "out-ganak-7178163", # proj-2023 16GB
+
+             # "out-ganak-7173534.pbs101-0", # proj-2023 first run
+             # "out-ganak-7178163", # proj-2023 16GB
+             "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

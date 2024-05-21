@@ -104,13 +104,18 @@ only_dirs = [
              # "out-ganak-7041554.pbs101-0", # rapid restarts
              # "out-ganak-7047972.pbs101-0",
              # "out-ganak-7049225.pbs101-",
-             #"out-ganak-7022833.pbs101-4", # best ever
-             #"out-ganak-7048280.pbs101-0", # best ever now
-             #"out-ganak-7162995.pbs101-", # new run, good.
+             # "out-ganak-7022833.pbs101-4", # best ever
+             # "out-ganak-7048280.pbs101-0", # best ever now
 
-             # "out-ganak-7173534.pbs101-0", # proj-2023 first run
-             # "out-ganak-7178163", # proj-2023 16GB
-             "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
+             # "out-ganak-7173534.pbs101-0", # proj-2023 first run, 4GB
+             # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+             # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+             # "out-ganak-7180435.pbs101-2", # proj-2023 4B, vsads
+
+             "out-ganak-7162995.pbs101-0", # new run, good.
+             "out-ganak-7178422.pbs101-0", # unproj-2023 16 GB
+             "out-ganak-7180395.pbs101-3", #unproj 2023 4GB, freq-128 (vsads)
+
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

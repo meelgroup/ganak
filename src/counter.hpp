@@ -228,7 +228,6 @@ protected:
 
   LiteralIndexedVector<LitWatchList> watches;
   vector<T> weights;
-  double max_activity = 1.0;
   vector<Lit> unit_clauses_;
   vector<VarData> var_data;
   bool num_vars_set = false;
@@ -673,14 +672,7 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 template<typename T>
 void inline Counter<T>::inc_act(const Lit lit) {
   watches[lit].activity += act_inc;
-  max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
-  if (watches[lit].activity > 1e100) {
-    //rescale
-    act_inc *= 1e-90;
-    max_activity *= 1e-90;
-    for(auto& v: watches) v.activity*=1e-90;
-  }
 }
 
 template<typename T>

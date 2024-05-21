@@ -54,7 +54,9 @@ public:
   }
 
 #ifdef VAR_FREQ
-  double freq_score_of(uint32_t v) const { return (double)var_freq_scores[v]/(double)max_freq_score; }
+  double freq_score_of(uint32_t v) const { return (double)var_freq_scores[v];
+    ///(double)max_freq_score;
+  }
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] --;
   }

@@ -940,6 +940,9 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 
 template<typename T>
 bool Counter<T>::decide_lit() {
+  if (stats.decisions % 128 == 0) {
+      for(auto& w: watches) w.activity *= 0.5;
+  }
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -987,7 +990,7 @@ bool Counter<T>::decide_lit() {
 
 template<typename T>
 double Counter<T>::var_act(const uint32_t v) const {
-  return (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity)/max_activity;
+  return (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
 }
 
 // The higher, the better. It is never below 0.
@@ -1007,13 +1010,14 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
   act_score = var_act(v)/3.0;
   VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider);
   double score = act_score+td_score+freq_score;
-  if (print) cout << "v: " << v
-    << " confl: " << stats.conflicts
-    << " dec: " << stats.decisions
-    << " act_score: " << act_score/score
-    << " freq_score: " << freq_score/score
-    << " td_score: " << td_score/score
-    << endl;
+  if (print) cout << "v: " << std::setw(4) << v
+    << std::setw(3) << " conflK: " << stats.conflicts/1000
+    << std::setw(5) << " decK: " << stats.decisions/1000
+    << std::setw(6) << " act_score: " << act_score/score
+    << std::setw(6) << " freq_score: " << freq_score/score
+    << std::setw(6) << " td_score: " << td_score/score
+    << std::setw(6) << " total: " << score
+    << std::setw(6) << endl;
 
   return score;
 }
@@ -1807,6 +1811,7 @@ void Counter<T>::reduce_db_if_needed() {
   }
 }
 
+///out-ganak-7178163.pbs101-2/mc2023_track3_152.cnf.gz.out_d4
 template<typename T>
 RetState Counter<T>::resolve_conflict() {
   VERBOSE_DEBUG_DO(cout << "******" << __FUNCTION__<< " START" << endl);
@@ -1817,7 +1822,6 @@ RetState Counter<T>::resolve_conflict() {
     unit_clauses_.push_back(uip_clause[0]);
 
   assert(uip_clause.front() != NOT_A_LIT);
-  act_inc *= 1.0/conf.act_exp;
 
   reduce_db_if_needed();
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -3690,7 +3694,6 @@ void Counter<T>::simple_preprocess() {
 template<typename T>
 void Counter<T>::init_activity_scores() {
   act_inc = 1.0;
-  max_activity = 0;
   all_lits(x) {
     Lit l(x/2, x%2);
     for (const auto& ws: watches[l].binaries) {
@@ -3701,10 +3704,6 @@ void Counter<T>::init_activity_scores() {
     const auto& cl = *alloc->ptr(off);
     for(const auto& l: cl) watches[l].activity++;
   }
-  for(auto& w: watches) {
-    max_activity = std::max(w.activity, max_activity);
-  }
-  max_activity *= 10.0;
 }
 
 template<typename T>

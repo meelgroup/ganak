@@ -921,7 +921,11 @@ end:
 
 template<typename T>
 bool Counter<T>::standard_polarity(const uint32_t v) const {
-  return watches[Lit(v, true)].activity < watches[Lit(v, false)].activity;
+  if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity ||
+       (watches[Lit(v, true)].activity < 1e-10 &&watches[Lit(v, false)].activity < 1e-10)) {
+    return var(Lit(v, true)).last_polarity;
+  }
+  return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;
 }
 
 template<typename T>
@@ -984,7 +988,7 @@ bool Counter<T>::decide_lit() {
 
   decisions.top().var = v;
 
-  Lit lit = Lit(v, !get_polarity(v));
+  Lit lit = Lit(v, get_polarity(v));
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << decisions.get_decision_level());
@@ -3250,7 +3254,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       break;
     }
     assert(val(d) == X_TRI);
-    Lit l(d, !var(d).last_polarity);
+    Lit l(d, var(d).last_polarity);
     if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     set_lit(l, decision_level());
@@ -3610,7 +3614,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   var(lit).ante = ant;
   var(lit).mul = false;
   if (!ant.isNull()) {
-    var(lit).last_polarity = !lit.sign();
+    var(lit).last_polarity = lit.sign();
   }
   var(lit).sublevel = trail.size();
   qhead = std::min<uint32_t>(qhead, trail.size());

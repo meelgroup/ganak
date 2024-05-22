@@ -922,7 +922,7 @@ end:
 template<typename T>
 bool Counter<T>::standard_polarity(const uint32_t v) const {
   if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity ||
-       (watches[Lit(v, true)].activity < 1e-10 &&watches[Lit(v, false)].activity < 1e-10)) {
+       (watches[Lit(v, true)].activity < 1e-10 && watches[Lit(v, false)].activity < 1e-10)) {
     return var(Lit(v, true)).last_polarity;
   }
   return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;

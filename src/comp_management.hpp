@@ -60,6 +60,8 @@ public:
 
   uint64_t get_num_cache_entries_used() const { return cache.get_num_entries_used(); }
   void save_count(const uint32_t stack_comp_id, const T& value) {
+    debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
+        << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << value);
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
@@ -111,12 +113,11 @@ private:
   vector<Comp*> comp_stack;
   CompCache<T> cache;
   CompAnalyzer<T> ana;
-
   // indexed by variable, decremented when a variable is in a component,
   // and halved once in a while. The LARGER it is, the more likely the
   // variable gets picked for branching. So basically, the fewer times a
   // variable is in a component, the more likely the branch
-  Counter<T>* solver_;
+  Counter<T>* counter;
 };
 
 template<typename T>
@@ -214,9 +215,9 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
 template<typename T>
 CompManager<T>::CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
                  const LiteralIndexedVector<TriValue> &lit_values,
-                 const uint32_t& indep_support_end, Counter<T>* _solver) :
-    conf(config), stats(statistics), cache(_solver->nVars(), statistics, conf),
-    ana(lit_values, indep_support_end, _solver), solver_(_solver)
+                 const uint32_t& indep_support_end, Counter<T>* _counter) :
+    conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
+    ana(lit_values, indep_support_end, _counter), counter(_counter)
 { }
 
 

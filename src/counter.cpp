@@ -762,13 +762,15 @@ vector<Cube<T>> Counter<T>::restart_count() {
     ret_cubes.push_back(c);
   }
 
-  T this_restart_multiplier = 1;
-  for(uint32_t i = 1; i < nVars()+1; i++)
-    if (!is_unknown(i)) this_restart_multiplier *= get_weight(Lit(i, val(i) == T_TRI));
-  debug_print("[cube-final] This restart multiplier: " << this_restart_multiplier);
-  for (auto& c: ret_cubes) {
-    c.cnt *= this_restart_multiplier;
-    if (c.enabled) debug_print("[cube-final] cube: " << c);
+  if (weighted()) {
+    T this_restart_multiplier = 1;
+    for(uint32_t i = 1; i < nVars()+1; i++)
+      if (!is_unknown(i)) this_restart_multiplier *= get_weight(Lit(i, val(i) == T_TRI));
+    debug_print("[cube-final] This restart multiplier: " << this_restart_multiplier);
+    for (auto& c: ret_cubes) {
+      c.cnt *= this_restart_multiplier;
+      if (c.enabled) debug_print("[cube-final] cube: " << c);
+    }
   }
   return ret_cubes;
 }
@@ -1381,13 +1383,10 @@ T Counter<T>::check_count(bool include_all_dec) {
         if (weighted() && val(v) != X_TRI
             && var(v).decision_level == decision_level()
           ) {
-          /* if (include_all_dec) { */
-          /* } else { */
             dec_w *= get_weight(Lit(v, val(v) == T_TRI));
             if (get_weight(Lit(v, val(v) == T_TRI)) != 1)
               debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
                 << " weight: " << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF);
-          /* } */
         }
       }
     }
@@ -1442,13 +1441,9 @@ T Counter<T>::check_count(bool include_all_dec) {
             if (active.count(i+1)
                 && (val(i+1) == X_TRI || var(i+1).decision_level >= decision_level())
                 ) {
-                /* (var(i+1).decision_level == last_dec_lev  || var(i+1).decision_level == INVALID_DL)) { */
-              /* VERBOSE_DEBUG_DO(cout << std::setw(4) << std::right */
-                  /* << Lit(i+1, s2.get_model()[i] == CMSat::l_True) << " "); */
               if (weighted()) cube_cnt *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
           }
-          /* VERBOSE_DEBUG_DO(cout << " val: " << std::setprecision(7) << cube_cnt << std::left << endl); */
           cnt += cube_cnt;
         }
 
@@ -1493,7 +1488,6 @@ T Counter<T>::check_count(bool include_all_dec) {
           okay = false;
         }
         if (!include_all_dec && decision_level() == last_dec_lev) assert(okay);
-        /* assert(okay); */
       }
     }
     cout << std::setprecision(3);
@@ -1563,8 +1557,6 @@ RetState Counter<T>::backtrack() {
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << decisions.get_decision_level());
-    if (conf.do_use_cache)
-      comp_manager->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
     // Backtrack from end, i.e. finished.
     if (decisions.get_decision_level() == 0) {
       debug_print("[indep] Backtracking from lev 0, i.e. ending");
@@ -1575,6 +1567,31 @@ RetState Counter<T>::backtrack() {
     CHECK_COUNT_DO(check_count());
     reactivate_comps_and_backtrack_trail(false);
     assert(decision_level() >= 1);
+    if (conf.do_use_cache) {
+      T cnt = decisions.top().getTotalModelCount();
+#ifdef VERBOSE_DEBUG
+      cout << "comp vars: ";
+      all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
+        cout << *it << " ";
+      }
+      cout << endl;
+#endif
+      if (weighted()) {
+        all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
+          if (val(*it) != X_TRI && var(*it).decision_level < decision_level()) {
+            Lit l(*it, val(*it) == T_TRI);
+            if (get_weight(l) != 1) {
+              debug_print(COLYEL2 << "MULT STORE var: " << std::setw(3) << *it
+                << " val: " << val_to_str(val(*it))
+                << " dec lev: " << var(*it).decision_level);
+              cnt *= get_weight(Lit(*it, val(*it) == T_TRI));
+            }
+          }
+        }
+      }
+      comp_manager->save_count(decisions.top().super_comp(), cnt);
+    }
+
 #ifdef VERBOSE_DEBUG
     const auto parent_count_before = (decisions.end() - 2)->getTotalModelCount();
     const auto parent_count_before_left = (decisions.end() - 2)->get_left_model_count();

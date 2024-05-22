@@ -101,6 +101,7 @@ public:
           /* case 8: entry(act_id).set_dont_delete_before(my_time+1e8); break; */
           default: release_assert(false);
         }
+        debug_print(COLYEL2 << "Cache hit. cache ID: " << act_id);
         top.include_solution(entry(act_id).model_count());
         return true;
       }

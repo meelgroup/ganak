@@ -81,8 +81,8 @@ void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
       CacheableComp<T> packed_comp(hash_seed, ana.get_archetype().cache_comp);
 
       // Update stats
-      solver_->depth_q.push(solver_->decision_level());
-      solver_->comp_size_q.push(p_new_comp->nVars());
+      counter->depth_q.push(counter->decision_level());
+      counter->comp_size_q.push(p_new_comp->nVars());
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count

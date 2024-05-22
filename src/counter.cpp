@@ -1352,7 +1352,7 @@ bool Counter<T>::restart_if_needed() {
   // Readjust
   curr_var_freq_divider = conf.var_freq_divider;
   if (conf.do_readjust_for_restart) {
-    /* conf.decide = stats.num_restarts%2; */
+    conf.decide = stats.num_restarts%3;
     curr_var_freq_divider =(stats.num_restarts%2 == 0) ? conf.var_freq_divider : 100;
     /* conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0; */
   }

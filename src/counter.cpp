@@ -3243,6 +3243,8 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   // the SAT loop
   while(true) {
     uint32_t d;
+    stats.decisions++;
+    if (stats.decisions % conf.vsads_readjust_every == 0) for(auto& w: watches) w.activity *= 0.5;
     do {
       if (order_heap.empty()) {d = 0; break;}
       d = order_heap.removeMin();

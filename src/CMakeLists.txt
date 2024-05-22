@@ -53,6 +53,7 @@ add_subdirectory (clhash)
 SET(SOURCES
     comp_analyzer.cpp
 	comp_cache.cpp
+	comp_types/comp_archetype.cpp
 	comp_management.cpp
 	instance.cpp
 	counter.cpp

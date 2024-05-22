@@ -78,7 +78,7 @@ void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
       Comp *p_new_comp = ana.make_comp_from_archetype();
-      CacheableComp<T> packed_comp(hash_seed, ana.get_archetype().cache_comp);
+      CacheableComp<T> packed_comp(hash_seed, *p_new_comp);
 
       // Update stats
       counter->depth_q.push(counter->decision_level());

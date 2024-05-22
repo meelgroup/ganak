@@ -186,15 +186,17 @@ def find_arjun_time(fname):
               t = float(line.split()[4])
     return t
 
-#c o sat called/sat/unsat/conflK    6     6     0     0
+#c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
 def find_sat_called(fname):
     n = None
+    rst = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o sat called/sat/unsat/conflK" in line:
-              n = int(line.split()[4])
-    return n
+            if "c o sat call/sat/unsat/conflK/rst" in line:
+              n = int(line.split()[3])
+              rst = int(line.split()[7])
+    return n,rst
 
 #c o buddy called                   3
 def find_bdd_called(fname):
@@ -400,7 +402,9 @@ for f in file_list:
         rst,cubes = find_restarts(f)
         files[base]["restarts"] = rst
         files[base]["cubes"] = cubes
-        files[base]["satcalled"] = find_sat_called(f)
+        sat_called,sat_rst = find_sat_called(f)
+        files[base]["satcalled"] = sat_called
+        files[base]["satrst"] = sat_rst
         td = ganak_treewidth(f)
         files[base]["td-width"] = td[0]
         files[base]["td-time"] = td[1]
@@ -439,7 +443,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time,bdd_called,sat_called,rst,cubes"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -517,6 +521,11 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["satcalled"]
+
+        if "satrst" not in f or f["satrst"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["satrst"]
 
         if "restarts" not in f or f["restarts"] is None:
             toprint += ","

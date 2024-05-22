@@ -17,6 +17,7 @@ CREATE TABLE data (
   cache_del_time FLOAT,
   bdd_called INT,
   sat_called INT,
+  sat_rst INT,
   restarts INT,
   cubes INT
 );
@@ -32,5 +33,6 @@ UPDATE data SET arjun_time = NULL WHERE arjun_time = '';
 UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
 UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
 UPDATE data SET sat_called = NULL WHERE sat_called = '';
+UPDATE data SET sat_rst = NULL WHERE sat_rst = '';
 UPDATE data SET restarts = NULL WHERE restarts = '';
 UPDATE data SET cubes = NULL WHERE cubes = '';

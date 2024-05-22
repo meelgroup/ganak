@@ -3241,6 +3241,11 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   debug_print("Order heap size: " << order_heap.size());
 
   // the SAT loop
+  auto orig_confl = stats.conflicts;
+  auto last_restart = 0;
+  auto orig_polar = conf.polar_type;
+  conf.polar_type = 1;
+  uint32_t num_rst = 0;
   while(true) {
     uint32_t d;
     stats.decisions++;
@@ -3269,6 +3274,14 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       if (state == BACKTRACK) break;
     }
     if (decision_level() < sat_start_dec_level) { goto end; }
+    const auto sat_confl = stats.conflicts -orig_confl;
+    if (sat_confl-last_restart >= luby(2, num_rst)*100) {
+      last_restart = sat_confl;
+      go_back_to(sat_start_dec_level);
+      stats.sat_rst++;
+      num_rst++;
+      continue;
+    }
   }
 
   state = RESOLVED;
@@ -3289,6 +3302,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   assert(decisions.top().getTotalModelCount() == 1);
 
 end:
+  conf.polar_type = orig_polar;
   order_heap.clear();
   sat_start_dec_level = -1;
   isindependent = true;

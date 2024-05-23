@@ -942,10 +942,8 @@ end:
 
 template<typename T>
 bool Counter<T>::standard_polarity(const uint32_t v) const {
-  if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity ||
-       (watches[Lit(v, true)].activity < 1e-40 && watches[Lit(v, false)].activity < 1e-40)) {
+  if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity)
     return var(Lit(v, true)).last_polarity;
-  }
   return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;
 }
 
@@ -1275,7 +1273,7 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!conf.do_restart) return false;
+  if (!conf.do_restart || td_width < 60) return false;
 
   bool restart = false;
 
@@ -1586,7 +1584,6 @@ RetState Counter<T>::backtrack() {
     reactivate_comps_and_backtrack_trail(false);
     assert(decision_level() >= 1);
     if (conf.do_use_cache) {
-      T cnt = decisions.top().getTotalModelCount();
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
       all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
@@ -1595,6 +1592,7 @@ RetState Counter<T>::backtrack() {
       cout << endl;
 #endif
       if (weighted()) {
+        T cnt = decisions.top().getTotalModelCount();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < decision_level()) {
             Lit l(*it, val(*it) == T_TRI);
@@ -1606,8 +1604,10 @@ RetState Counter<T>::backtrack() {
             }
           }
         }
+        comp_manager->save_count(decisions.top().super_comp(), cnt);
+      } else {
+        comp_manager->save_count(decisions.top().super_comp(), decisions.top().getTotalModelCount());
       }
-      comp_manager->save_count(decisions.top().super_comp(), cnt);
     }
 
 #ifdef VERBOSE_DEBUG
@@ -3257,8 +3257,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   // the SAT loop
   auto orig_confl = stats.conflicts;
   auto last_restart = 0;
-  auto orig_polar = conf.polar_type;
-  conf.polar_type = 1;
   uint32_t num_rst = 0;
   while(true) {
     uint32_t d;
@@ -3289,7 +3287,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     }
     if (decision_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
-    if (sat_confl-last_restart >= luby(2, num_rst)*100) {
+    if (sat_confl-last_restart >= luby(2, num_rst)*300) {
       last_restart = sat_confl;
       go_back_to(sat_start_dec_level);
       stats.sat_rst++;
@@ -3302,7 +3300,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   if (weighted()) {
     T prod = 1;
     for(uint32_t i = sat_start_trail_level; i < trail.size(); i++) {
-      if (trail[i].var() < indep_support_end) prod *= get_weight(trail[i]);
+      if (trail[i].var() < opt_indep_support_end) prod *= get_weight(trail[i]);
     }
     go_back_to(sat_start_dec_level);
     decisions.top().include_solution(prod);
@@ -3316,7 +3314,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   assert(decisions.top().getTotalModelCount() == 1);
 
 end:
-  conf.polar_type = orig_polar;
   order_heap.clear();
   sat_start_dec_level = -1;
   isindependent = true;

@@ -244,11 +244,11 @@ struct Cube {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube<mpz_class>& c) {
-  os << "CNF: " << c.cnf << " val: " << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
+  os << "CNF: " << c.cnf << " cnt: " << std::setprecision(40) << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
   return os;
 }
 inline std::ostream& operator<<(std::ostream& os, const Cube<mpfr::mpreal>& c) {
-  os << "CNF: " << c.cnf << " val: " << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
+  os << "CNF: " << c.cnf << " cnt: " << std::setprecision(40) << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
   return os;
 }
 

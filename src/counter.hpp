@@ -361,7 +361,7 @@ private:
   bool remove_duplicates(vector<Lit>& lits);
   T check_count_norestart(const Cube<T>& c);
   T check_count_norestart_cms(const Cube<T>& c);
-  vector<Cube<T>> restart_count();
+  vector<Cube<T>> one_restart_count();
   CMSat::SATSolver* sat_solver = nullptr;
   bool ok = true;
   bool isindependent = true;
@@ -390,7 +390,7 @@ private:
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
 
-  SOLVER_StateT count_loop();
+  void count_loop();
   bool decide_lit();
   uint32_t find_best_branch_gpmc();
   uint32_t find_best_branch_occ();

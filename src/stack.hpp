@@ -142,6 +142,8 @@ public:
         << " count is: " << branch_model_count_[active_branch_]
         << " before it was: " << before
         << " var: " << var
+        << " while " << ((!active_branch_) ? "right" : "left")
+        << " count is: " << branch_model_count_[!active_branch_]
         << endl);
   }
 

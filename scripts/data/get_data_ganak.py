@@ -187,15 +187,18 @@ def find_arjun_time(fname):
     return t
 
 #c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
+#c o sat called/sat/unsat/conflK    6     6     0     0
 def find_sat_called(fname):
     n = None
     rst = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if "c o sat called/sat/unsat/conflK" in line:
+              n = int(line.split()[4])
             if "c o sat call/sat/unsat/conflK/rst" in line:
-              n = int(line.split()[3])
-              rst = int(line.split()[7])
+              n = int(line.split()[4])
+              rst = int(line.split()[8])
     return n,rst
 
 #c o buddy called                   3

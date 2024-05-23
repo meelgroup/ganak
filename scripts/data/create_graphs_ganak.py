@@ -113,12 +113,14 @@ only_dirs = [
              "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
              # # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
              "out-ganak-7184202.pbs101-1", #proj 2023, 4GB, freq-128 (vsads), checking vsads params
+             "out-ganak-7189867.pbs101-1" # proj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
              # "out-ganak-7162995.pbs101-0", # new run, good.
              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              # # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
+             # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
 
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth

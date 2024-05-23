@@ -113,7 +113,8 @@ only_dirs = [
              "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
              # # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
              "out-ganak-7184202.pbs101-1", #proj 2023, 4GB, freq-128 (vsads), checking vsads params
-             "out-ganak-7189867.pbs101-1" # proj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
+             # "out-ganak-7189867.pbs101-1" # proj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
+             "out-ganak-7197939"
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
              # "out-ganak-7162995.pbs101-0", # new run, good.

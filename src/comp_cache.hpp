@@ -326,11 +326,6 @@ void CompCache<T>::unlink(CacheEntryID id) {
 
 template<typename T>
 void CompCache<T>::store_value(const CacheEntryID id, const T& model_count) {
-#ifdef CHECK_COUNT
-  //we disable cache on check_count, to remove an error source
-  return;
-#endif
-
   consider_table_resize();
   uint32_t table_ofs = table_pos(id);
   // when storing the new model count the size of the model count

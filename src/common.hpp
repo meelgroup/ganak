@@ -41,7 +41,7 @@ using std::endl;
 // the slowest of all that's not verifying counts
 /* #define CHECK_TRAIL_ENTAILMENT */
 
-// WARNING below ALSO disables cache!! Extremely slow.
+// I suggest disabling the cache separately with --cache 0
 /* #define CHECK_COUNT */
 
 // Not needed apparently. Kinda nice.

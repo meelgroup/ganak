@@ -1504,6 +1504,10 @@ T Counter<T>::check_count(bool include_all_dec) {
           okay = false;
         }
         if (!include_all_dec && decision_level() == last_dec_lev) assert(okay);
+        if (!okay) {
+          debug_print("NOT OK but include_all_dec: " << include_all_dec
+              << " decision_level: " << decision_level() << " last_dec_lev: " << last_dec_lev);
+        }
       }
     }
     cout << std::setprecision(3);

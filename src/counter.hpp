@@ -199,9 +199,8 @@ protected:
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
     if (weighted() && get_weight(lit) != 1) {
-      const auto& c = comp_manager->get_super_comp(decisions.top());
-      bool found = false;
-      all_vars_in_comp(c, v) if (*v == lit.var()) found = true;
+      uint64_t* at = vars_act_dec.data()+decision_level()*(nVars()+1);
+      bool found = (at[0] == at[lit.var()]);
       if (found) decisions[decision_level()].include_solution(get_weight(lit));
     }
     var(lit).decision_level = INVALID_DL;
@@ -370,7 +369,8 @@ private:
   CMSat::SATSolver* sat_solver = nullptr;
   bool ok = true;
   bool isindependent = true;
-
+  vector<uint64_t> vars_act_dec;
+  uint64_t vars_act_dec_num = 0;
 
   vector<map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube<T>>& cubes);

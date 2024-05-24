@@ -983,9 +983,7 @@ bool Counter<T>::decide_lit() {
   switch (conf.decide) {
     case 0: v = find_best_branch(false);
             break;
-    case 1: v = find_best_branch_gpmc();
-            break;
-    case 2: v = find_best_branch(true);
+    case 1: v = find_best_branch(true);
             break;
     default:
             assert(false);
@@ -1077,6 +1075,17 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
+  uint64_t* at;
+  if (weighted()) {
+    if (vars_act_dec.size()  < (decision_level()+1) * (nVars()+1)) {
+      uint64_t todo = (decision_level()+1)*(nVars()+1) - vars_act_dec.size();
+      vars_act_dec.insert(vars_act_dec.end(), todo, 0);
+    }
+    at = vars_act_dec.data()+(nVars()+1)*decision_level();
+    vars_act_dec_num++;
+    at[0] = vars_act_dec_num;
+  }
+
 
   int32_t tw = 0;
   if (decision_level() < conf.td_lookahead)
@@ -1088,6 +1097,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
+      at[v] = vars_act_dec_num;
       double score;
       if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
         score = td_lookahead_score(v, tw);
@@ -1364,7 +1374,7 @@ bool Counter<T>::restart_if_needed() {
   // Readjust
   curr_var_freq_divider = conf.var_freq_divider;
   if (conf.do_readjust_for_restart) {
-    conf.decide = stats.num_restarts%3;
+    conf.decide = stats.num_restarts%2;
     curr_var_freq_divider =(stats.num_restarts%2 == 0) ? conf.var_freq_divider : 100;
     /* conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0; */
   }

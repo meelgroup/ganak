@@ -216,7 +216,6 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
     assert(val > -0.01 && val < 1.01);
 
     assert(i < tdscore.size());
-    assert(tdscore[i] == 0);
     tdscore[i] = val;
   }
 
@@ -228,7 +227,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
 }
 
 template<typename T>
-int32_t Counter<T>::td_decompose_component() {
+TWD::TreeDecomposition Counter<T>::td_decompose_component() {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
   set<uint32_t> active;
@@ -282,7 +281,7 @@ int32_t Counter<T>::td_decompose_component() {
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters);
   td.centroid(primal.numNodes(), 0);
   verb_print(2, "[td-cmp] FlowCutter FINISHED, TD width: " << td.width());
-  return td.width();
+  return td;
 }
 
 template<typename T>
@@ -886,6 +885,10 @@ void Counter<T>::count_loop() {
       }
       if (state == BACKTRACK) break;
       if (state == RESOLVED && restart_if_needed()) goto end;
+      if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+1) {
+        auto td = td_decompose_component();
+        compute_score(td);
+      }
 
       // we are in RESOLVED or PROCESS_COMPONENT state, continue.
       if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
@@ -1060,7 +1063,7 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
     }
     tdiff = trail.size()-tsz;
     if (tdiff < 3) w[b] = base_comp_tw;
-    else w[b] = td_decompose_component();
+    else w[b] = td_decompose_component().width();
     reactivate_comps_and_backtrack_trail();
   }
   verb_print(2, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
@@ -1089,7 +1092,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
   int32_t tw = 0;
   if (decision_level() < conf.td_lookahead)
-    tw = td_decompose_component();
+    tw = td_decompose_component().width();
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
@@ -1097,7 +1100,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
-      at[v] = vars_act_dec_num;
+      if (weighted()) at[v] = vars_act_dec_num;
       double score;
       if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
         score = td_lookahead_score(v, tw);

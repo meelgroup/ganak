@@ -406,7 +406,7 @@ private:
   bool compute_cube(Cube<T>& cube, int branch);
   void compute_score(TWD::TreeDecomposition& tdec);
   void td_decompose();
-  TWD::TreeDecomposition td_decompose_component();
+  TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
 
   // Actual SAT solver.

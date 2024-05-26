@@ -227,7 +227,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
 }
 
 template<typename T>
-TWD::TreeDecomposition Counter<T>::td_decompose_component() {
+TWD::TreeDecomposition Counter<T>::td_decompose_component(double mult) {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
   set<uint32_t> active;
@@ -278,7 +278,7 @@ TWD::TreeDecomposition Counter<T>::td_decompose_component() {
   fc.importGraph(primal);
 
   // Notice that this graph returned is VERY different
-  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters);
+  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters * mult);
   td.centroid(primal.numNodes(), 0);
   verb_print(2, "[td-cmp] FlowCutter FINISHED, TD width: " << td.width());
   return td;
@@ -885,8 +885,8 @@ void Counter<T>::count_loop() {
       }
       if (state == BACKTRACK) break;
       if (state == RESOLVED && restart_if_needed()) goto end;
-      if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+1) {
-        auto td = td_decompose_component();
+      if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+3) {
+        auto td = td_decompose_component(3);
         compute_score(td);
       }
 
@@ -908,6 +908,10 @@ void Counter<T>::count_loop() {
         state = backtrack();
         if (state == EXIT) goto end;
       }
+    }
+    if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+3) {
+      auto td = td_decompose_component(3);
+      compute_score(td);
     }
 
     if (conf.do_vivify) {

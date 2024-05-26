@@ -93,7 +93,7 @@ only_dirs = [
              # "out-ganak-6909164.pbs101-", # BAD var activity merged, polarity changed
              #"out-ganak-6916780.pbs101-", # variable activity
              #"out-ganak-6910211.pbs101-2", # check diferent component sortings
-            "out-ganak-6917417.pbs101-", # sortings, lbd, polarity
+            # "out-ganak-6917417.pbs101-", # sortings, lbd, polarity
             # "out-ganak-6918163.pbs101-0", # restart on mccomp 2023, 20k restarts
              # "out-ganak-6965806.pbs101", # mccomp 2022+3, restarts base etc
              #"out-ganak-7015279.pbs101", # new extension and symm run
@@ -107,23 +107,25 @@ only_dirs = [
              # "out-ganak-7022833.pbs101-4", # best ever
              # "out-ganak-7048280.pbs101-0", # best ever now
 
-             "out-ganak-7173534.pbs101-0", # proj-2023 first run, 4GB
-             "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
-             "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
-             "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+             # "out-ganak-7173534.pbs101-0", # proj-2023 first run, 4GB
+             # "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
+             # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+             # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
              # # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
-             "out-ganak-7184202.pbs101-1", #proj 2023, 4GB, freq-128 (vsads), checking vsads params
+             # "out-ganak-7184202.pbs101-" #proj 2023, 4GB, freq-128 (vsads), checking vsads params
              # "out-ganak-7189867.pbs101-1" # proj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
              # "out-ganak7197939",
-             "out-ganak-7205692.pbs101-6",
+             # "out-ganak-7205692.pbs101-6", # best
+             # "out-ganak-7206369.pbs101-",
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
-             # "out-ganak-7162995.pbs101-0", # new run, good.
-             # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
-             # # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
-             # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
-             # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
+              "out-ganak-7162995.pbs101-0", # new run, good.
+              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
+              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
+              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
+              # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
+              "out-ganak-7206355.pbs101"
 
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
@@ -207,7 +209,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][:]\\\n")
+    f.write("plot [:][100:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

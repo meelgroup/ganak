@@ -120,12 +120,13 @@ only_dirs = [
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
-              "out-ganak-7162995.pbs101-0", # new run, good.
               # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
               # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
               # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
               # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
-              "out-ganak-7206355.pbs101"
+              "out-ganak-7162995.pbs101-0", # new run, good. -- old freq setup
+              "out-ganak-7206355.pbs101", # unproj, new freq, not terrible with high TW weight
+              "out-ganak-7225470.pbs101",
 
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
@@ -209,7 +210,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][100:]\\\n")
+    f.write("plot [:][120:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

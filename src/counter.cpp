@@ -885,7 +885,7 @@ void Counter<T>::count_loop() {
       }
       if (state == BACKTRACK) break;
       if (state == RESOLVED && restart_if_needed()) goto end;
-      if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+3) {
+      if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
         auto td = td_decompose_component(3);
         compute_score(td);
       }
@@ -909,7 +909,7 @@ void Counter<T>::count_loop() {
         if (state == EXIT) goto end;
       }
     }
-    if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+3) {
+    if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
       auto td = td_decompose_component(3);
       compute_score(td);
     }

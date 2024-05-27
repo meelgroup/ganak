@@ -154,7 +154,7 @@ bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
 }
 
 template<typename T>
-void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
+void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
@@ -200,13 +200,15 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec) {
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
   if (!conf.do_td_weight) td_weight = 1;
-  verb_print(1,
-      "TD weight: " << td_weight
-      << " n: " << n
-      << " rt/width(=rt): " << rt
-      << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
-      << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
-      << exp(rt*conf.td_exp_mult)/conf.td_divider);
+  if (print) {
+    verb_print(1,
+        "TD weight: " << td_weight
+        << " n: " << n
+        << " rt/width(=rt): " << rt
+        << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
+        << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
+        << exp(rt*conf.td_exp_mult)/conf.td_divider);
+  }
 
   // Calc td score
   for (uint32_t i = 1; i < n; i++) {
@@ -943,7 +945,7 @@ template<typename T>
 void Counter<T>::recomp_td_weight() {
   if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
     auto td = td_decompose_component(3);
-    compute_score(td);
+    compute_score(td, false);
   }
 }
 
@@ -1059,7 +1061,7 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
   auto my_time = cpuTime();
 
   int32_t w[2];
-  int tdiff = 0;
+  int tdiff[2];
   for(bool b: {true, false}) {
     set_lit(Lit(v, b), decision_level());
     int tsz = trail.size();
@@ -1069,15 +1071,17 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
       reactivate_comps_and_backtrack_trail();
       return score;
     }
-    tdiff = trail.size()-tsz;
-    if (tdiff < 3) w[b] = base_comp_tw;
+    tdiff[b] = trail.size()-tsz;
+    if (tdiff[b] < 3) w[b] = base_comp_tw;
     else w[b] = td_decompose_component().width();
     reactivate_comps_and_backtrack_trail();
   }
-  verb_print(2, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
+  verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
     << " w[1]: " << setw(4) << w[1]
-    << " trail diff: " << tdiff
+    << " trail diff: " << setw(3) << tdiff[0]
+    << " trail diff: " << setw(3) << tdiff[1]
     << " T: " << (cpuTime()-my_time));
+  /* return tdiff[0]*tdiff[1]; */
   return -1*std::max<int32_t>({w[0],w[1]})*w[0]*w[1];
 }
 
@@ -1097,9 +1101,8 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
     at[0] = vars_act_dec_num;
   }
 
-
   int32_t tw = 0;
-  if (decision_level() < conf.td_lookahead)
+  if (decision_level() < conf.td_lookahead && !conf.td_look_only_weight)
     tw = td_decompose_component().width();
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
@@ -1110,10 +1113,10 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
       if (v < indep_support_end) only_optional_indep = false;
       if (weighted()) at[v] = vars_act_dec_num;
       double score;
-      if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
+      if (!conf.td_look_only_weight && decision_level() < conf.td_lookahead &&
+          tw > conf.td_lookahead_tw_cutoff)
         score = td_lookahead_score(v, tw);
       else score = score_of(v, ignore_td) ;
-      /* assert(score >= 0); */
       if (best_var == 0 || score > best_var_score) {
         best_var = v;
         best_var_score = score;

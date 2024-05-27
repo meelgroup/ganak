@@ -122,6 +122,7 @@ void add_ganak_options()
     ("tdlook", po::value(&conf.td_lookahead)->default_value(conf.td_lookahead), "Dec level cutoff for TD lookahead, -1 means never")
     ("tdlooktwcut", po::value(&conf.td_lookahead_tw_cutoff)->default_value(conf.td_lookahead_tw_cutoff), "TD lookahead only when TW of current comp is larger than this value")
     ("tdlookiters", po::value(&conf.td_lookahead_iters)->default_value(conf.td_lookahead_iters), "TD lookahead iterations")
+    ("tdlookonlyweight", po::value(&conf.td_look_only_weight)->default_value(conf.td_look_only_weight), "TD lookahead ONLY update weights")
 
     ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
     ("rdbeveryn", po::value(&conf.reduce_db_everyN)->default_value(conf.reduce_db_everyN), "Reduce the clause DB every N conflicts")

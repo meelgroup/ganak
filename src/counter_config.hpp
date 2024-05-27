@@ -87,6 +87,7 @@ struct CounterConfiguration {
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 20;
   int td_lookahead_iters = 10;
+  int td_look_only_weight = false;
 
 
   uint64_t seed = 0;

@@ -409,7 +409,7 @@ private:
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T2> bool clause_satisfied(const T2& cl) const;
   bool compute_cube(Cube<T>& cube, int branch);
-  void compute_score(TWD::TreeDecomposition& tdec);
+  void compute_score(TWD::TreeDecomposition& tdec, bool print = true);
   void td_decompose();
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);

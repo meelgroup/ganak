@@ -885,10 +885,6 @@ void Counter<T>::count_loop() {
       }
       if (state == BACKTRACK) break;
       if (state == RESOLVED && restart_if_needed()) goto end;
-      if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
-        auto td = td_decompose_component(3);
-        compute_score(td);
-      }
 
       // we are in RESOLVED or PROCESS_COMPONENT state, continue.
       if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
@@ -908,10 +904,6 @@ void Counter<T>::count_loop() {
         state = backtrack();
         if (state == EXIT) goto end;
       }
-    }
-    if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
-      auto td = td_decompose_component(3);
-      compute_score(td);
     }
 
     if (conf.do_vivify) {
@@ -948,6 +940,14 @@ end:
 }
 
 template<typename T>
+void Counter<T>::recomp_td_weight() {
+  if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
+    auto td = td_decompose_component(3);
+    compute_score(td);
+  }
+}
+
+template<typename T>
 bool Counter<T>::standard_polarity(const uint32_t v) const {
   if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity)
     return var(Lit(v, true)).last_polarity;
@@ -978,6 +978,7 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 
 template<typename T>
 bool Counter<T>::decide_lit() {
+  recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(

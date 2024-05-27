@@ -1038,7 +1038,8 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3.0;
-  VAR_FREQ_DO(freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider);
+  freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider;
+  freq_score/= comp_manager->get_super_comp(decisions.top()).max_freq_score;
   double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << std::setw(4) << v
     << std::setw(3) << " conflK: " << stats.conflicts/1000

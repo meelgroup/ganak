@@ -100,7 +100,7 @@ public:
     clauses_offs = 0;
     vs_cls_data.clear();
   }
-  uint32_t max_var_occs;
+  uint32_t max_freq_score = 1;
 
 private:
   // data_ stores the comp data:

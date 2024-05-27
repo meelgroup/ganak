@@ -55,10 +55,7 @@ public:
 
 #ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const {
-    if (conf.vsads_readjust_every == 0)
-      return (double)var_freq_scores[v]/max_freq_score;
-    else
-      return (double)var_freq_scores[v];
+    return (double)var_freq_scores[v];
   }
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] --;
@@ -113,7 +110,11 @@ public:
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
-  inline Comp *make_comp_from_archetype(){ return archetype.make_comp(comp_vars.size()); }
+  inline Comp *make_comp_from_archetype(){
+    auto p =  archetype.make_comp(comp_vars.size());
+    p->max_freq_score = max_freq_score;
+    return p;
+  }
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_max_var() const { return max_var; }

@@ -257,7 +257,6 @@ struct VarData {
   int32_t decision_level = INVALID_DL;
   uint32_t sublevel;
   bool last_polarity = false;
-  bool mul = false;
 };
 
 class Clause {

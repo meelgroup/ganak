@@ -1011,14 +1011,16 @@ bool Counter<T>::decide_lit() {
       << decisions.get_decision_level());
   set_lit(lit, decision_level());
   stats.decisions++;
-  if (stats.decisions % conf.vsads_readjust_every == 0) for(auto& w: watches) w.activity *= 0.5;
+  vsads_readjust();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   return true;
 }
 
 template<typename T>
 double Counter<T>::var_act(const uint32_t v) const {
-  return (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
+  auto w = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
+  if (conf.vsads_readjust_every == 0) return w/max_activity;
+  else return w;
 }
 
 // The higher, the better. It is never below 0.
@@ -1888,6 +1890,8 @@ RetState Counter<T>::resolve_conflict() {
     unit_clauses_.push_back(uip_clause[0]);
 
   assert(uip_clause.front() != NOT_A_LIT);
+  if (conf.vsads_readjust_every == 0)
+    act_inc *= 1.0/conf.act_exp;
 
   reduce_db_if_needed();
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -3245,6 +3249,14 @@ void Counter<T>::subsume_all() {
       << " T: " << (cpuTime() - my_time));
 }
 
+template<typename T>
+void Counter<T>::vsads_readjust() {
+  if (conf.vsads_readjust_every == 0) return;
+
+  if (stats.decisions % conf.vsads_readjust_every == 0)
+    for(auto& w: watches) w.activity *= 0.5;
+}
+
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
 // because ONLY non-independent variables remain
 template<typename T>
@@ -3293,7 +3305,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       break;
     }
     stats.decisions++;
-    if (stats.decisions % conf.vsads_readjust_every == 0) for(auto& w: watches) w.activity *= 0.5;
+    vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l(d, var(d).last_polarity);
     if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
@@ -3661,7 +3673,6 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
   var(lit).decision_level = dec_lev;
   var(lit).ante = ant;
-  var(lit).mul = false;
   if (!ant.isNull()) {
     var(lit).last_polarity = lit.sign();
   }
@@ -3679,7 +3690,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   }
   if (weighted() && dec_lev < decision_level()) {
     for(uint32_t i = dec_lev+1; i < decisions.size(); i++) {
-      if (get_weight(lit) != 1) decisions[i].include_solution_other_side(1/get_weight(lit));
+      if (get_weight(lit) != 1) decisions[i].include_solution_left_side(1/get_weight(lit));
     }
   }
   values[lit] = T_TRI;
@@ -3771,6 +3782,7 @@ void Counter<T>::simple_preprocess() {
 template<typename T>
 void Counter<T>::init_activity_scores() {
   act_inc = 1.0;
+  max_activity = 0;
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit l(x/2, x%2);
@@ -3781,6 +3793,12 @@ void Counter<T>::init_activity_scores() {
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
     for(const auto& l: cl) watches[l].activity++;
+  }
+  if (conf.vsads_readjust_every == 0) {
+    for(auto& w: watches) {
+      max_activity = std::max(w.activity, max_activity);
+    }
+    max_activity *= 10.0;
   }
 }
 

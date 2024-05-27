@@ -54,12 +54,18 @@ public:
   }
 
 #ifdef VAR_FREQ
-  double freq_score_of(uint32_t v) const { return (double)var_freq_scores[v]; }
+  double freq_score_of(uint32_t v) const {
+    if (conf.vsads_readjust_every == 0)
+      return (double)var_freq_scores[v]/max_freq_score;
+    else
+      return (double)var_freq_scores[v];
+  }
   void un_bump_score(uint32_t v) {
     var_freq_scores[v] --;
   }
   inline void bump_freq_score(uint32_t v) {
     var_freq_scores[v] ++;
+    max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
   }
 #endif
   const CompArchetype<T>& current_archetype() const { return archetype; }
@@ -92,6 +98,7 @@ public:
     archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
+    max_freq_score = 1;
     all_vars_in_comp(super_comp, vt)
       if (is_unknown(*vt)) {
         archetype.set_var_in_sup_comp_unvisited_raw(*vt);
@@ -138,6 +145,7 @@ private:
   const uint32_t& indep_support_end;
 #ifdef VAR_FREQ
   vector<uint32_t> var_freq_scores;
+  uint32_t max_freq_score = 1;
 #endif
   CompArchetype<T> archetype;
   Counter<T>* counter = nullptr;

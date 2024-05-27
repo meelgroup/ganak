@@ -148,7 +148,7 @@ public:
   }
 
   template<class T2>
-  void include_solution_other_side(const T2& solutions) {
+  void include_solution_left_side(const T2& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "other side incl sol: " << solutions << COLDEF << " ");
     if (active_branch_ == 0) return;
 #ifdef VERBOSE_DEBUG

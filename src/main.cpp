@@ -70,6 +70,7 @@ int do_bce = 1;
 int do_breakid = 0;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
+int unproj = 0;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -131,6 +132,7 @@ void add_ganak_options()
     ("bce", po::value(&do_bce)->default_value(do_bce), "Do BCE")
     ("cache", po::value(&conf.do_use_cache)->default_value(conf.do_use_cache), "Use (i.e. store and retrieve) cache")
     ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
+    ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Comp Caching")
     ("version", "Print version info")
     ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
     ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
@@ -169,6 +171,7 @@ void add_ganak_options()
     ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
     ("rstreadjust", po::value(&conf.do_readjust_for_restart)->default_value(conf.do_readjust_for_restart), "Readjust params for restart")
     ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
+    ("unproj", "Set for unprojected")
     ;
 
     help_options.add(main_options);
@@ -359,6 +362,13 @@ int main(int argc, char *argv[])
   if (conf.verb) {
     cout << ganak_version_info() << endl;
     cout << "c o called with: " << command_line << endl;
+  }
+
+  if (vm.count("unproj")) {
+    conf.td_maxweight = 4.0;
+    conf.td_minweight = 0.1;
+    conf.var_freq_divider = 10;
+    conf.vsads_readjust_every = 0;
   }
 
   string fname;

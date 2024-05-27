@@ -27,13 +27,14 @@ THE SOFTWARE.
 using std::string;
 
 struct CounterConfiguration {
+  double act_exp = 0.99;
   bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 20000U;
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
-  double var_freq_divider = 20.0;
+  double var_freq_divider = 20.0; //10 is best for vsads_readjust_every = 0
 
   int restart_type = 8;
   int do_readjust_for_restart = 1;
@@ -57,7 +58,7 @@ struct CounterConfiguration {
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
-  uint32_t vivif_outer_every_n = 10;
+  uint32_t vivif_outer_every_n = 1;
   int do_extra_cl_bump = 0; // see out-ganak-2060064.pbs101-1
   int do_buddy = 0;
   uint32_t buddy_max_cls = 12; // see out-ganak-2060064.pbs101-7
@@ -75,8 +76,8 @@ struct CounterConfiguration {
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  double td_maxweight = 10.0;
-  double td_minweight = 0.05;
+  double td_maxweight = 10.0; //4.0 is best for vsads_readjust_every = 0
+  double td_minweight = 0.05; //0.1 is best for vsads_readjust_every = 0
   double td_divider = 1e3;
   double do_td_weight = 1;
   double td_exp_mult = 1.2;

@@ -231,6 +231,7 @@ protected:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   LiteralIndexedVector<LitWatchList> watches;
+  double max_activity = 1.0;
   vector<T> weights;
   vector<Lit> unit_clauses_;
   vector<VarData> var_data;
@@ -244,7 +245,6 @@ protected:
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
   DataAndStatistics<T> stats;
-  vector<vector<unsigned long>> dec_cands;
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbdHelper;
@@ -369,6 +369,11 @@ private:
   CMSat::SATSolver* sat_solver = nullptr;
   bool ok = true;
   bool isindependent = true;
+
+  // Needed to know what variables were active in given decision levels
+  // It's needed for weighted counting to know what variable was active in
+  // that component (learnt clauses can propagate vars that were not active,
+  // and on backtrack, we'd multiply by them, wrongly)
   vector<uint64_t> vars_act_dec;
   uint64_t vars_act_dec_num = 0;
 
@@ -409,6 +414,7 @@ private:
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   void recomp_td_weight();
+  void vsads_readjust();
 
   // Actual SAT solver.
   bool use_sat_solver(RetState& state);
@@ -676,7 +682,14 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 template<typename T>
 void inline Counter<T>::inc_act(const Lit lit) {
   watches[lit].activity += act_inc;
+  max_activity = std::max(max_activity, watches[lit].activity);
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
+  if (conf.vsads_readjust_every == 0 && watches[lit].activity > 1e100) {
+    //rescale
+    act_inc *= 1e-90;
+    max_activity *= 1e-90;
+    for(auto& v: watches) v.activity*=1e-90;
+  }
 }
 
 template<typename T>

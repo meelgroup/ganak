@@ -3686,13 +3686,6 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if (conf.do_extra_cl_bump && ant.isAnt() && ant.isAClause()) {
-    Clause& cl = *alloc->ptr(ant.asCl());
-    if (cl.red && cl.lbd > lbd_cutoff) {
-      cl.set_used();
-      cl.update_lbd(calc_lbd(cl));
-    }
-  }
   if (weighted() && dec_lev < decision_level()) {
     for(uint32_t i = dec_lev+1; i < decisions.size(); i++) {
       if (get_weight(lit) != 1) decisions[i].include_solution_left_side(1/get_weight(lit));

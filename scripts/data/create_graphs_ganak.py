@@ -108,28 +108,31 @@ only_dirs = [
              # "out-ganak-7048280.pbs101-0", # best ever now
 
              # "out-ganak-7173534.pbs101-0", # proj-2023 first run, 4GB
-             # "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
-             # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
-             # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
-             # # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
+             # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
              # "out-ganak-7184202.pbs101-" #proj 2023, 4GB, freq-128 (vsads), checking vsads params
              # "out-ganak-7189867.pbs101-1" # proj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
              # "out-ganak7197939",
-             "out-ganak-7205692.pbs101-6", # best
              # "out-ganak-7206369.pbs101-",
              # TODO: higher maxw than out-ganak-7205692.pbs101-6, rerun fixed cadiback
+  #           "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
+            "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+            "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+             "out-ganak-7205692.pbs101-6", # best
+             "out-ganak-7247003.pbs101-", # fixed cadiback, 40 maxw seems best, but 15 is fine too actually
+             # TODO: tdmaxw 40 + play with tdminw 0.5-9
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
-              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
-              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
-              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
-              # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
-              # "out-ganak-7162995.pbs101-0", # new run, good. -- old freq setup
-              # "out-ganak-7206355.pbs101", # unproj, new freq, not terrible with high TW weight
-              # "out-ganak-7225470.pbs101-6",
-              # "out-ganak-7225470.pbs101-7",
-              # TODO: higher maxw, rerun with fixed cadiback
+             # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
+             # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
+             # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
+             # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
+             # "out-ganak-7206355.pbs101", # unproj, new freq, not terrible with high TW weight
+             # "out-ganak-7225470.pbs101-6",
+             # "out-ganak-7225470.pbs101-7",
+             # "out-ganak-7162995.pbs101-0", # new run, good. -- old freq setup
+             # "out-ganak-7246958", # fixed cadiback, high tdmaxw
+             # TODO: tdmaxw 90 + higher tdminw, say 2.5-9 would do the trick
 
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth

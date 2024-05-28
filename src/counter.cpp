@@ -3787,7 +3787,7 @@ void Counter<T>::simple_preprocess() {
 template<typename T>
 void Counter<T>::init_activity_scores() {
   act_inc = 1.0;
-  max_activity = 0;
+  max_activity = 1;
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit l(x/2, x%2);

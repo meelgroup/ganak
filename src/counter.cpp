@@ -56,18 +56,6 @@ void my_gbchandler(int pre, bddGbcStat *) {
    }
 }
 
-vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
-  vector<CMSat::Lit> cms_cl;
-  cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
-  return cms_cl;
-}
-
-vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
-  vector<CMSat::Lit> cms_cl;
-  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
-  return cms_cl;
-}
 
 template<typename T>
 vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {

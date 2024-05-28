@@ -42,6 +42,20 @@ THE SOFTWARE.
 using std::pair;
 using std::map;
 
+
+inline vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
+  vector<CMSat::Lit> cms_cl;
+  cms_cl.reserve(cl.size());
+  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
+inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
+  vector<CMSat::Lit> cms_cl;
+  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  return cms_cl;
+}
+
 enum class RetState {
   EXIT,
   RESOLVED,
@@ -172,7 +186,9 @@ public:
   int32_t decision_level() const { return decisions.get_decision_level();}
   void set_lit_weight(Lit l, const T& w) {
     verb_print(2, "Setting weight of " << l << " to " << w);
-    weights[l.raw()] = w;}
+    weights[l.raw()] = w;
+    if (w == 0) add_irred_cl({l.neg()});
+  }
   const T& get_weight(const Lit l) { return weights[l.raw()];}
   T get_weight(const uint32_t v) {
     Lit l(v, false);

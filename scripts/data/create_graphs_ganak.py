@@ -115,11 +115,12 @@ only_dirs = [
              # "out-ganak-7206369.pbs101-",
              # TODO: higher maxw than out-ganak-7205692.pbs101-6, rerun fixed cadiback
   #           "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
-            "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
-            "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+            # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+            # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
              "out-ganak-7205692.pbs101-6", # best
-             "out-ganak-7247003.pbs101-", # fixed cadiback, 40 maxw seems best, but 15 is fine too actually
+             "out-ganak-7247003.pbs101-3", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually
              # TODO: tdmaxw 40 + play with tdminw 0.5-9
+             # "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way

@@ -170,7 +170,7 @@ public:
   bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
-  void set_weight(Lit l, const T& w) {
+  void set_lit_weight(Lit l, const T& w) {
     verb_print(2, "Setting weight of " << l << " to " << w);
     weights[l.raw()] = w;}
   const T& get_weight(const Lit l) { return weights[l.raw()];}
@@ -828,9 +828,9 @@ public:
     if (unw_counter) unw_counter->set_optional_indep_support(indeps);
     if (w_counter) w_counter->set_optional_indep_support(indeps);
   }
-  void set_weight(const Lit l, const mpfr::mpreal& w) {
+  void set_lit_weight(const Lit l, const mpfr::mpreal& w) {
     release_assert(w_counter);
-    w_counter->set_weight(l, w);
+    w_counter->set_lit_weight(l, w);
   }
   void new_vars(const uint32_t n) {
     if (unw_counter) unw_counter->new_vars(n);

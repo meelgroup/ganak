@@ -426,7 +426,7 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
   if (weighted()) {
     all_lits(i) {
       Lit l(i/2, i%2 == 0);
-      test_cnt.set_weight(l, get_weight(l));
+      test_cnt.set_lit_weight(l, get_weight(l));
     }
   }
   // Long cls

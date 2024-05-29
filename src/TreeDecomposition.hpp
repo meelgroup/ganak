@@ -42,6 +42,7 @@ public:
 
   const vector<vector<int>>& get_adj_list() const;
   void addEdge(int v1, int v2);
+  void contract(int v);
   bool hasEdge(int v1, int v2) { return adj_mat[v1].Get(v2); }
   const std::vector<int> Neighbors(int v) const { return adj_list[v]; }
 

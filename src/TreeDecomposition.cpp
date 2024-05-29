@@ -71,6 +71,25 @@ void Graph::addEdge(int v1, int v2)
   edges++;
 }
 
+void Graph::contract(int v)
+{
+  for(const auto&a :adj_list[v]) {
+    if(a == v) continue;
+    for(const auto&b : adj_list[v]) {
+      if (b == v) continue;
+      if (a == b) continue;
+      addEdge(a, b);
+    }
+  }
+  for(const auto&a :adj_list[v]) {
+    if(a == v) continue;
+    adj_mat[a].SetFalse(v);
+    adj_list[a].erase(std::find(adj_list[a].begin(), adj_list[a].end(), v));
+    edges--;
+  }
+  adj_list[v].clear();
+}
+
 const vector<vector<int>>& Graph::get_adj_list() const {
   return adj_list;
 }

@@ -114,13 +114,14 @@ only_dirs = [
              # "out-ganak7197939",
              # "out-ganak-7206369.pbs101-",
              # TODO: higher maxw than out-ganak-7205692.pbs101-6, rerun fixed cadiback
-             "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
-             "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
-             "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+             # "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
+             # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+             # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
          #   "out-ganak-7205692.pbs101-6", # old best
-             "out-ganak-7247003.pbs101-3", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually # BEST
-             "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
-             "out-ganak-7257776.pbs101-9",  # contract over TDW, higher tdmaxw, higher tdminw
+             # "out-ganak-7247003.pbs101-3", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually # BEST
+             # "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
+             # "out-ganak-7257776.pbs101-",  # contract over TDW, higher tdmaxw, higher tdminw
+             # "out-ganak-7257776.pbs101-9",  # contract over TDW, higher tdmaxw, higher tdminw -- BEST (maxw 100, minw 15)
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
@@ -135,8 +136,8 @@ only_dirs = [
              # "out-ganak-7225470.pbs101-7",
              # "out-ganak-7162995.pbs101-0", # new run, good. -- old freq setup
              # "out-ganak-7246958", # fixed cadiback, high tdmaxw
-             # "out-ganak-7255018.pbs101-7", # tdmaxw 90 + higher tdminw. 12 minw seems to work well -- BEST
-             # "out-ganak-7255018.pbs101-" # tdmaxw 90 + higher tdminw. 12 minw seems to work well -- BEST
+             # "out-ganak-7255018.pbs101-" # tdmaxw 90 + higher tdminw. 12 minw seems to work well
+             "out-ganak-7255018.pbs101-7", # tdmaxw 90 + higher tdminw. 12 minw seems to work well -- BEST (maxw 90, minw 12)
 
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth

@@ -3340,7 +3340,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   assert(decision_level() == sat_start_dec_level);
   decisions.top().var = 0;
   decisions.top().change_to_right_branch();
-  assert(decisions.top().getTotalModelCount() == 1);
+  if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
 
 end:
   order_heap.clear();

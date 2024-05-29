@@ -478,6 +478,8 @@ int main(int argc, char *argv[])
     if (!all_indep) cout << "c s type wpmc " << endl;
     else cout << "c s type wmc" << endl;
     cnt *= cnf.multiplier_weight.get_mpq_t();
+    if (cnt > 0) cout << "s SATISFIABLE" << endl;
+    else cout << "s UNSATISFIABLE" << endl;
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
     else cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;

@@ -3269,7 +3269,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   decisions.push_back(StackLevel<T>(decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
   sat_start_dec_level = decision_level();
-  const auto  sat_start_trail_level = trail.size();
   decisions.top().var = 0;
 
   // Fill up order heap
@@ -3328,8 +3327,9 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   state = RESOLVED;
   if (weighted()) {
     T prod = 1;
-    for(uint32_t i = sat_start_trail_level; i < trail.size(); i++) {
-      if (trail[i].var() < opt_indep_support_end) prod *= get_weight(trail[i]);
+    all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
+      if (var(*it).decision_level < sat_start_dec_level) continue;
+      prod *= get_weight(Lit(*it, val(*it) == T_TRI));
     }
     go_back_to(sat_start_dec_level);
     decisions.top().include_solution(prod);

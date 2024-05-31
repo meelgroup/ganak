@@ -1518,7 +1518,7 @@ T Counter<T>::check_count(bool include_all_dec) {
           debug_print("OOps, reverse ratio orig: " << cnt/after_mul);
           okay = false;
         }
-        if (!include_all_dec && decision_level() == last_dec_lev) assert(okay);
+        if (!include_all_dec) assert(okay);
         if (!okay) {
           debug_print("NOT OK but include_all_dec: " << include_all_dec
               << " decision_level: " << decision_level() << " last_dec_lev: " << last_dec_lev);

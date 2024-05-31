@@ -3280,7 +3280,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     order_heap.insert(*it);
   }
   debug_print("Order heap size: " << order_heap.size());
-  decisions.pop_back();
+  decisions.top().var = 0;
 
   // the SAT loop
   auto orig_confl = stats.conflicts;
@@ -3302,11 +3302,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l(d, var(d).last_polarity);
-    if (decision_level()+1 == sat_start_dec_level)
-      decisions.push_back(StackLevel<T>(decisions.top().currentRemainingComp(),
-        comp_manager->comp_stack_size()));
-    else
-      decisions.push_back(StackLevel<T>(1,2));
+    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     set_lit(l, decision_level());
 

@@ -3682,7 +3682,9 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
   if (weighted() && dec_lev < decision_level()) {
     for(uint32_t i = dec_lev+1; i < decisions.size(); i++) {
-      if (get_weight(lit) != 1) decisions[i].include_solution_left_side(1/get_weight(lit));
+      uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
+      bool found = (at[0] == at[lit.var()]);
+      if (found && get_weight(lit) != 1) decisions[i].include_solution_left_side(1/get_weight(lit));
     }
   }
   values[lit] = T_TRI;

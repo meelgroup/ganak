@@ -149,13 +149,13 @@ public:
 
   template<class T2>
   void include_solution_left_side(const T2& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "other side incl sol: " << solutions << COLDEF << " ");
+    VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " ");
     if (active_branch_ == 0) return;
 #ifdef VERBOSE_DEBUG
     auto before = branch_model_count_[0];
 #endif
     if (branch_found_unsat_[0]) {
-      VERBOSE_DEBUG_DO(cout << "-> other side incl sol unsat branch, doing  nothing." << endl);
+      VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
       assert(branch_model_count_[0] == 0);
       return;
     }

@@ -1411,13 +1411,12 @@ T Counter<T>::check_count(bool include_all_dec) {
       uint32_t v = c->vars_begin()[i];
       if (v < opt_indep_support_end) {
         active.insert(v);
-        if (weighted() && val(v) != X_TRI
-            && var(v).decision_level == decision_level()
-          ) {
+        if (weighted() && val(v) != X_TRI && var(v).decision_level == decision_level()) {
             dec_w *= get_weight(Lit(v, val(v) == T_TRI));
             if (get_weight(Lit(v, val(v) == T_TRI)) != 1)
               debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
-                << " weight: " << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF);
+                << " weight: " << std::setw(9) << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
+                << " dec_lev: " << var(v).decision_level);
         }
       }
     }
@@ -3270,7 +3269,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   decisions.push_back(StackLevel<T>(decisions.top().currentRemainingComp(),
         comp_manager->comp_stack_size()));
   sat_start_dec_level = decision_level();
-  decisions.top().var = 0;
 
   // Fill up order heap
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
@@ -3282,6 +3280,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     order_heap.insert(*it);
   }
   debug_print("Order heap size: " << order_heap.size());
+  decisions.pop_back();
 
   // the SAT loop
   auto orig_confl = stats.conflicts;
@@ -3303,7 +3302,11 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l(d, var(d).last_polarity);
-    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
+    if (decision_level()+1 == sat_start_dec_level)
+      decisions.push_back(StackLevel<T>(decisions.top().currentRemainingComp(),
+        comp_manager->comp_stack_size()));
+    else
+      decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     set_lit(l, decision_level());
 
@@ -3325,24 +3328,27 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     }
   }
 
-  state = RESOLVED;
-  if (weighted()) {
-    T prod = 1;
-    all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
-      if (var(*it).decision_level <= sat_start_dec_level) continue;
-      if (*it >= opt_indep_support_end) continue;
-      prod *= get_weight(Lit(*it, val(*it) == T_TRI));
+  if (true) {
+    state = RESOLVED;
+    T cnt = 1;
+    if (weighted()) {
+      all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
+        uint32_t v = *it;
+        debug_print(COLYEL "SAT solver -- mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
+          << " weight: " << setw(9) << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
+          << " dec_lev: " << setw(5) << var(v).decision_level << " sat_start_dec_level: " << sat_start_dec_level);
+        if (var(v).decision_level <= sat_start_dec_level) continue; // will get multiplied when backtracking for the one that's EQUAL
+        if (v >= opt_indep_support_end) continue;
+        cnt *= get_weight(Lit(v, val(v) == T_TRI));
+      }
     }
     go_back_to(sat_start_dec_level);
-    decisions.top().include_solution(prod);
-  } else {
-    go_back_to(sat_start_dec_level);
-    decisions.top().include_solution(1);
+    assert(decision_level() == sat_start_dec_level);
+    decisions.top().var = 0;
+    decisions.top().change_to_right_branch();
+    decisions.top().include_solution(cnt);
+    if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
   }
-  assert(decision_level() == sat_start_dec_level);
-  decisions.top().var = 0;
-  decisions.top().change_to_right_branch();
-  if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
 
 end:
   order_heap.clear();

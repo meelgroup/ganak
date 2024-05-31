@@ -396,6 +396,7 @@ int main(int argc, char *argv[])
       }
     }
     cnf.renumber_sampling_vars_for_ganak();
+    /* cnf.write_simpcnf("tmp", true, true); */
   } else {
     parse_file(fname, &cnf);
     double my_time = cpuTime();
@@ -421,6 +422,7 @@ int main(int argc, char *argv[])
       cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
       cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
     }
+    /* cnf.write_simpcnf("tmp", true, false); */
   }
 
   vector<map<Lit, Lit>> generators;

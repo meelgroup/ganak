@@ -3728,6 +3728,7 @@ Counter<T>::Counter(const CounterConfiguration& _conf) :
     , mtrand(_conf.seed)
     , order_heap(VarOrderLt(Counter<T>::watches)) {
   sat_solver = new CMSat::SATSolver;
+  sat_solver->set_prefix("c o ");
   alloc = new ClauseAllocator<T>(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
   if (conf.do_buddy) {

@@ -57,7 +57,6 @@ public:
   void set_model_count(const T& rn) {
     assert(model_count_ == nullptr);
     model_count_ = new T(rn);
-    delete_permitted = 1;
   }
 
   uint32_t get_hashkey() const  { return (uint32_t)clhashkey_; }

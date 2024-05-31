@@ -1472,7 +1472,7 @@ T Counter<T>::check_count(bool include_all_dec) {
             if (active.count(i+1)
                 && (val(i+1) == X_TRI || var(i+1).decision_level >= decision_level())
                 ) {
-              if (weighted()) cube_cnt *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
+              cube_cnt *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
           }
           cnt += cube_cnt;
@@ -1486,6 +1486,7 @@ T Counter<T>::check_count(bool include_all_dec) {
             cl.push_back(~l);
           }
         }
+        /* cout << "banning sol: " << cl << endl; */
         s2.add_clause(cl);
       } else if (ret == CMSat::l_False) break;
       else assert(false);
@@ -3328,7 +3329,8 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   if (weighted()) {
     T prod = 1;
     all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
-      if (var(*it).decision_level < sat_start_dec_level) continue;
+      if (var(*it).decision_level <= sat_start_dec_level) continue;
+      if (*it >= opt_indep_support_end) continue;
       prod *= get_weight(Lit(*it, val(*it) == T_TRI));
     }
     go_back_to(sat_start_dec_level);

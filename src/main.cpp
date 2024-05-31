@@ -318,6 +318,9 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
       tmp.insert(s);
     }
     if (tmp.size() == reader->nVars()) all_indep = true;
+    if (!reader->get_opt_sampl_vars_set()) {
+      reader->set_opt_sampl_vars(reader->get_sampl_vars());
+    }
   }
 }
 
@@ -389,10 +392,11 @@ int main(int argc, char *argv[])
     parse_file(fname, &cnf);
     if (conf.verb) {
       cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
-      if (cnf.opt_sampl_vars_given) {
+      if (cnf.get_opt_sampl_vars_set()) {
         cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
       }
     }
+    cnf.renumber_sampling_vars_for_ganak();
   } else {
     parse_file(fname, &cnf);
     double my_time = cpuTime();
@@ -452,6 +456,16 @@ int main(int argc, char *argv[])
   OuterCounter counter(conf, cnf.weighted);
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
+  // indep
+  set<uint32_t> tmp;
+  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  counter.set_indep_support(tmp);
+  if (cnf.get_opt_sampl_vars_set()) {
+    tmp.clear();
+    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    counter.set_optional_indep_support(tmp);
+  }
+
   if (cnf.weighted) {
     for(const auto& t: cnf.weights) {
       counter.set_lit_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
@@ -462,14 +476,6 @@ int main(int argc, char *argv[])
   for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
   counter.end_irred_cls();
   for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
-  set<uint32_t> tmp;
-  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
-  counter.set_indep_support(tmp);
-  if (cnf.opt_sampl_vars_given) {
-    tmp.clear();
-    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
-    counter.set_optional_indep_support(tmp);
-  }
   if (cnf.weighted) {
     /* mpfr::mpreal::set_default_prec(256); */
     auto cnt = counter.w_outer_count();

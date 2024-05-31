@@ -185,6 +185,11 @@ public:
   void set_optional_indep_support(const set<uint32_t>& indeps);
   int32_t decision_level() const { return decisions.get_decision_level();}
   void set_lit_weight(Lit l, const T& w) {
+    if (l.var() >= opt_indep_support_end) {
+      cerr << "ERROR: Trying to set weight of a variable that is not in the (optional) independent support."
+        " Var: " << l << " opt_indep_support_end: " << opt_indep_support_end << endl;
+      exit(-1);
+    }
     verb_print(2, "Setting weight of " << l << " to " << w);
     weights[l.raw()] = w;
     if (w == 0) add_irred_cl({l.neg()});

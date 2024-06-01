@@ -373,8 +373,7 @@ protected:
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
-  // test
-  T check_count(bool include_all_dec = false);
+  T check_count(const bool also_incl_curr_and_later_dec = false);
 
 private:
   void init_activity_scores();

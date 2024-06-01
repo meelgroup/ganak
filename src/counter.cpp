@@ -1392,7 +1392,7 @@ bool Counter<T>::restart_if_needed() {
 
 // Checks one-by-one using a SAT solver
 template<typename T>
-T Counter<T>::check_count(bool include_all_dec) {
+T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     //let's get vars active
     set<uint32_t> active;
 
@@ -1400,7 +1400,7 @@ T Counter<T>::check_count(bool include_all_dec) {
     auto const& sup_at = s.super_comp();
     const auto& c = comp_manager->at(sup_at);
 #ifdef VERBOSE_DEBUG
-    cout << "-> Checking count. Incl all dec: " COLRED << std::boolalpha <<  include_all_dec << COLDEF
+    cout << "-> Checking count. also_incl_curr_and_later_dec: " COLRED << std::boolalpha <<  also_incl_curr_and_later_dec << COLDEF
       << " dec lev: " << decisions.get_decision_level() << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
     cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
@@ -1451,7 +1451,7 @@ T Counter<T>::check_count(bool include_all_dec) {
       last_dec_lev = std::max(last_dec_lev, var(t.var()).decision_level);
     }
     for(const auto& t: trail) {
-      if (!include_all_dec) {
+      if (!also_incl_curr_and_later_dec) {
         if (var(t).decision_level >= decisions.get_decision_level()) continue;
       }
       // don't include propagations or lev0 stuff
@@ -1520,9 +1520,9 @@ T Counter<T>::check_count(bool include_all_dec) {
           debug_print("OOps, reverse ratio orig: " << cnt/after_mul);
           okay = false;
         }
-        if (!include_all_dec) assert(okay);
+        if (!also_incl_curr_and_later_dec) assert(okay);
         if (!okay) {
-          debug_print("NOT OK but include_all_dec: " << include_all_dec
+          debug_print("NOT OK but also_incl_curr_and_later_dec: " << also_incl_curr_and_later_dec
               << " decision_level: " << decision_level() << " last_dec_lev: " << last_dec_lev);
         }
       }

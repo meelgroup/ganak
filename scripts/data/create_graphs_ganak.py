@@ -120,7 +120,7 @@ only_dirs = [
              # "out-ganak-7205692.pbs101-6", # old best
              "out-ganak-7247003.pbs101-3", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually # BEST
              "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
-             #"out-ganak-7266814.pbs101-1", # contract over TDW, higher tdmaxw, higher tdminw -- BEST (maxw 100, minw 15)
+             "out-ganak-7266814.pbs101-1", # contract over TDW, higher tdmaxw, higher tdminw -- BEST (maxw 100, minw 15)
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way

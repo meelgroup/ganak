@@ -150,8 +150,10 @@ namespace flow_cutter{
 		template<class Graph>
 		void increase(const Graph&graph, int a){
 			auto f = flow(a);
+#ifdef SLOW_DEBUG
 			assert((f == 0 || f == 1) && "Flow is already maximum; can not be increased");
 			assert(flow(graph.back_arc(a)) == 2-f && "Back arc has invalid flow");
+#endif
 			++f;
 			flow.set(a, f);
 			flow.set(graph.back_arc(a), 2-f);
@@ -160,8 +162,10 @@ namespace flow_cutter{
 		template<class Graph>
 		void decrease(const Graph&graph, int a){
 			auto f = flow(a);
+#ifdef SLOW_DEBUG
 			assert((f == 1 || f == 2) && "Flow is already minimum; can not be decreased");
 			assert(flow(graph.back_arc(a)) == 2-f && "Back arc has invalid flow");
+#endif
 			--f;
 			flow.set(a, f);
 			flow.set(graph.back_arc(a), 2-f);
@@ -207,7 +211,9 @@ namespace flow_cutter{
 			assert(can_grow());
 
 			auto see_node = [&](int x){
+#ifdef SLOW_DEBUG
 				assert(!inside_flag(x));
+#endif
 				inside_flag.set(x, true);
 				++this->node_count_inside_;
 				return on_new_node(x);
@@ -223,8 +229,10 @@ namespace flow_cutter{
 
 		template<class Graph>
 		void set_extra_node(const Graph& /*graph*/, int x){
+#ifdef SLOW_DEBUG
 			assert(!inside_flag(x));
 			assert(extra_node == -1);
+#endif
 			inside_flag.set(x, true);
 			++node_count_inside_;
 			extra_node = x;
@@ -482,7 +490,9 @@ namespace flow_cutter{
 				return false;
 			}
 
+#ifdef SLOW_DEBUG
 			assert(!assimilated[1-side].is_inside(pierce_node));
+#endif
 
 			assimilated[side].set_extra_node(graph, pierce_node);
 			reachable[side].set_extra_node(graph, pierce_node);
@@ -583,7 +593,9 @@ namespace flow_cutter{
 			int my_source_side = pierced_side;
 			int my_target_side = 1-pierced_side;
 
+#ifdef SLOW_DEBUG
 			assert(reachable[pierced_side].can_grow());
+#endif
 
 			auto is_forward_saturated = [&,this](int xy){
 				return this->is_saturated(graph, my_source_side, xy);
@@ -901,7 +913,9 @@ namespace flow_cutter{
 					};
 					if(x.is_cut_available()){
 						if((int)x.get_current_cut().size() == current_cut_size){
+#ifdef SLOW_DEBUG
 							assert(x.does_next_advance_increase_cut(graph, my_score_pierce_node));
+#endif
 							if(x.advance(graph, tmp, search_algo, my_score_pierce_node)){
 								assert((int)x.get_current_cut().size() > current_cut_size);
 								while(!x.does_next_advance_increase_cut(graph, my_score_pierce_node)){

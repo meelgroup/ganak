@@ -3283,6 +3283,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   }
   debug_print("Order heap size: " << order_heap.size());
   decisions.top().var = 0;
+  auto old_sublev = trail.size();
 
   // the SAT loop
   auto orig_confl = stats.conflicts;
@@ -3343,6 +3344,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     go_back_to(sat_start_dec_level);
     assert(decision_level() == sat_start_dec_level);
     decisions.top().var = 0;
+    var(0).sublevel = old_sublev; // hack not to re-propagate everything.
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);

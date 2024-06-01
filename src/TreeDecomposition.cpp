@@ -71,7 +71,7 @@ void Graph::addEdge(int v1, int v2)
   edges++;
 }
 
-void Graph::contract(int v)
+void Graph::contract(int v, int max_edges)
 {
   for(const auto&a :adj_list[v]) {
     if(a == v) continue;
@@ -79,6 +79,7 @@ void Graph::contract(int v)
       if (b == v) continue;
       if (a == b) continue;
       addEdge(a, b);
+      if (numEdges() > max_edges) return;
     }
   }
   for(const auto&a :adj_list[v]) {

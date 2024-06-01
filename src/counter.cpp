@@ -302,8 +302,10 @@ void Counter<T>::td_decompose() {
       }
     }
   }
-  for(uint32_t i = opt_indep_support_end; i < nVars()+1; i++)
-    primal.contract(i);
+  for(uint32_t i = opt_indep_support_end; i < nVars()+1; i++) {
+    primal.contract(i, conf.td_max_edges);
+    if (primal.numEdges() > conf.td_max_edges ) break;
+  }
 
   const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();
   const double density = (double)primal.numEdges()/(double)n;
@@ -313,7 +315,7 @@ void Counter<T>::td_decompose() {
     << " edges: " <<  primal.numEdges()
     << " density: " << std::fixed << std::setprecision(3) << density
     << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
-  if (primal.numEdges() > 70000 ) {
+  if (primal.numEdges() > conf.td_max_edges) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
   }

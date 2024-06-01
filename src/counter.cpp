@@ -3670,8 +3670,8 @@ template<typename T>
 void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   assert(val(lit) == X_TRI);
   if (ant.isNull())
-    debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev);
-  else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size());
+    debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << decision_level());
+  else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size() << " cur dec lev: " << decision_level());
 
   VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
   var(lit).decision_level = dec_lev;
@@ -4021,7 +4021,7 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
 
 template<typename T>
 void Counter<T>::reactivate_comps_and_backtrack_trail(bool check_ws) {
-  debug_print("->reactivate and backtrack. Dec lev: " << decision_level() <<  "...");
+  debug_print("->reactivate and backtrack. Dec lev: " << decision_level() << " top declevel sublev: " << var(decisions.top().var).sublevel <<  "...");
   auto jt = top_declevel_trail_begin();
   auto it = jt;
   int32_t off_by = 0;

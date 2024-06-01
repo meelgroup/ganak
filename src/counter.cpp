@@ -317,7 +317,7 @@ void Counter<T>::td_decompose() {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
   }
-  if (density > 0.3) {
+  if (density > 0.2) {
     verb_print(1, "[td] Density is too high, " << density << " skipping TD");
     return;
   }

@@ -3730,7 +3730,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       if (!found_in_children) {
         // Not found in children, so it must have been already processed and multiplied in. Compensate.
         assert(decisions.size() > i+1);
-        decisions[i].include_solution(1/get_weight(lit));
+        if (decisions[i].getTotalModelCount() != 0) decisions[i].include_solution(1/get_weight(lit));
       }
     }
   }

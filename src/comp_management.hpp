@@ -65,6 +65,7 @@ public:
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
+  const auto& get_comp_stack() const { return comp_stack; }
   Comp& get_super_comp(const StackLevel<T>& lev) {
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];

@@ -784,8 +784,7 @@ void Counter<T>::print_all_levels() {
       << " count: " << decisions.at(dec_lev).getTotalModelCount()
       << " (left: " << decisions.at(dec_lev).get_left_model_count()
       << " right: " << decisions.at(dec_lev).get_right_model_count()
-      << " active: " << (decisions.at(dec_lev).is_right_branch() ? "right" : "left") << ")"
-      << endl;
+      << " active: " << (decisions.at(dec_lev).is_right_branch() ? "right" : "left") << "). -- ";
 
     const auto& c = comp_manager->at(sup_at);
     cout << COLORG "-> Vars in comp_manager->at(" << sup_at << ")."
@@ -793,6 +792,15 @@ void Counter<T>::print_all_levels() {
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
     cout << endl;
     dec_lev++;
+  }
+
+  cout << "Full comp stack now." << endl;
+  for(uint32_t i = 1; i < comp_manager->get_comp_stack().size(); i++) {
+    const auto& c = comp_manager->at(i);
+    cout << COLORG "-> Vars in comp_manager->at(" << i << ")."
+      << " num vars: " << c->nVars() << " vars: ";
+    for(uint32_t i2 = 0; i2 < c->nVars(); i2++) cout << c->vars_begin()[i2] << " ";
+    cout << endl;
   }
   cout << COLORG "--- Went through all levels now --" << COLDEF << endl;
 }
@@ -1084,6 +1092,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   uint32_t best_var = 0;
   double best_var_score = -1e8;
   uint64_t* at;
+  VERBOSE_DEBUG_DO(cout << "decision level: " << decision_level() << " var options: ");
   if (weighted()) {
     if (vars_act_dec.size()  < (decision_level()+1) * (nVars()+1)) {
       uint64_t todo = (decision_level()+1)*(nVars()+1) - vars_act_dec.size();
@@ -1092,6 +1101,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
     at = vars_act_dec.data()+(nVars()+1)*decision_level();
     vars_act_dec_num++;
     at[0] = vars_act_dec_num;
+    VERBOSE_DEBUG_DO(cout << "(at[0] = " << at[0] << ") ");
   }
 
   int32_t tw = 0;
@@ -1101,6 +1111,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
     if (val(v) != X_TRI) continue;
+    VERBOSE_DEBUG_DO(cout << v << " ");
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
@@ -1116,6 +1127,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
       }
     }
   }
+  VERBOSE_DEBUG_DO(cout << endl);
 
   if (best_var != 0 && only_optional_indep) return 0;
   if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
@@ -1424,7 +1436,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     }
 
 #ifdef VERBOSE_DEBUG
-    cout << "active: "; for(const auto&a: active) cout << a << " "; cout << endl;
+    cout << "active for count chk: "; for(const auto&a: active) cout << a << " "; cout << endl;
 #endif
     // Check dec level 0's
     vector<CMSat::Lit> cl;
@@ -1518,6 +1530,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
           debug_print("OOps, diff              : " << diff << " diff ratio: " << diff/cnt);
           debug_print("OOps, ratio orig        : " << after_mul/cnt);
           debug_print("OOps, reverse ratio orig: " << cnt/after_mul);
+          print_all_levels();
           okay = false;
         }
         if (!also_incl_curr_and_later_dec) assert(okay);
@@ -3673,7 +3686,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
     debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << decision_level());
   else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size() << " cur dec lev: " << decision_level());
 
-  VERBOSE_DEBUG_DO(cout << "setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size() << endl);
+  debug_print("setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size());
   var(lit).decision_level = dec_lev;
   var(lit).ante = ant;
   if (!ant.isNull()) {
@@ -3684,11 +3697,41 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if (weighted() && dec_lev < decision_level()) {
-    for(uint32_t i = dec_lev+1; i < decisions.size(); i++) {
+  if (weighted() && dec_lev < decision_level() && get_weight(lit) != 1) {
+    for(int32_t i = dec_lev; i < decisions.size(); i++) {
+      debug_print("set_lit, compensating weight. i: " << i);
+      bool found = false;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
-      bool found = (at[0] == at[lit.var()]);
-      if (found && get_weight(lit) != 1) decisions[i].include_solution_left_side(1/get_weight(lit));
+      found = (at[0] == at[lit.var()]);
+      debug_print("dec val compare: " << at[0]);
+      // Not found in parent, so not in any children for sure
+      if (!found) {
+        debug_print("Var not found in parent, so not in children for sure. Exiting");
+        break;
+      } else debug_print("Var found in parent.");
+      if (i > dec_lev && found) decisions[i].include_solution_left_side(1/get_weight(lit));
+
+      // Children don't exist
+      if (i+1 >= decisions.size()) break;
+
+      bool found_in_children = false;
+      const auto& s = decisions.at(i);
+      debug_print("s.get_unprocessed_comps_end(): " << s.get_unprocessed_comps_end()
+          << " s.remaining_comps_ofs(): " << s.remaining_comps_ofs()
+          << " comp_manager->size: " << comp_manager->get_comp_stack().size());
+      for(int comp_at = s.get_unprocessed_comps_end()-1; comp_at >= s.remaining_comps_ofs() && comp_at < comp_manager->get_comp_stack().size(); comp_at--) {
+        const auto& c2 = comp_manager->at(comp_at);
+        VERBOSE_DEBUG_DO(cout << "vars in side comp: ";
+          all_vars_in_comp(*c2, v) VERBOSE_DEBUG_DO(cout << *v << " ");
+          cout << endl;);
+        all_vars_in_comp(*c2, v) if (*v == lit.var()) {found_in_children = true;}
+      }
+      debug_print("found in children: " << found_in_children);
+      if (!found_in_children) {
+        // Not found in children, so it must have been already processed and multiplied in. Compensate.
+        assert(decisions.size() > i+1);
+        decisions[i].include_solution(1/get_weight(lit));
+      }
     }
   }
   values[lit] = T_TRI;

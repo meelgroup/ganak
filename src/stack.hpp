@@ -88,6 +88,10 @@ public:
     unprocessed_comps_end_ = remaining_comps_ofs_;
   }
 
+  auto get_unprocessed_comps_end() const {
+    return unprocessed_comps_end_;
+  }
+
   uint32_t super_comp() const {
     return super_comp_;
   }
@@ -149,7 +153,7 @@ public:
 
   template<class T2>
   void include_solution_left_side(const T2& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " ");
+    VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " " << endl;);
     if (active_branch_ == 0) return;
 #ifdef VERBOSE_DEBUG
     auto before = branch_model_count_[0];

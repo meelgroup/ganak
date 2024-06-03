@@ -180,7 +180,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   double rt = 0;
   if (td_width > 0) {
     // Larger the better
-    rt = (double)n/(double)td_width;
+    rt = (double)opt_indep_support_end/(double)td_width;
     if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
     else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
@@ -303,8 +303,8 @@ void Counter<T>::td_decompose() {
     }
   }
   for(uint32_t i = opt_indep_support_end; i < nVars()+1; i++) {
-    primal.contract(i, conf.td_max_edges);
-    if (primal.numEdges() > conf.td_max_edges ) break;
+    primal.contract(i, conf.td_max_edges*100);
+    if (primal.numEdges() > conf.td_max_edges*100 ) break;
   }
 
   const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();

@@ -3724,7 +3724,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
         VERBOSE_DEBUG_DO(cout << "vars in side comp: ";
           all_vars_in_comp(*c2, v) VERBOSE_DEBUG_DO(cout << *v << " ");
           cout << endl;);
-        all_vars_in_comp(*c2, v) if (*v == lit.var()) {found_in_children = true;}
+        all_vars_in_comp(*c2, v) if (*v == lit.var()) {found_in_children = true;break;}
       }
       debug_print("found in children: " << found_in_children);
       if (!found_in_children) {

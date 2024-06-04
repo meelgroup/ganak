@@ -713,13 +713,17 @@ mpz_class Counter<mpz_class>::do_appmc_count() {
     appmc.add_red_clause(ganak_to_cms_cl(c));
   }
   vector<uint32_t> indep;
-  for(uint32_t i = 0; i < indep_support_end; i++) indep.push_back(i);
+  for(int32_t i = 0; i < (int)indep_support_end-1; i++) {
+    assert(i >= 0);
+    indep.push_back(i);
+  }
   appmc.set_sampl_vars(indep);
   ApproxMC::SolCount appmc_cnt = appmc.count();
 
   mpz_class num_sols(2);
   mpz_pow_ui(num_sols.get_mpz_t(), num_sols.get_mpz_t(), appmc_cnt.hashCount);
   num_sols *= appmc_cnt.cellSolCount;
+  verb_print(1, "[appmc] ApproxMC count: " << num_sols);
   return num_sols;
 }
 
@@ -744,7 +748,7 @@ template<typename T>
 T Counter<T>::outer_count() {
   if (!ok) return 0;
   T cnt = 0;
-  if (!weighted()) {
+  if (!weighted() && conf.appmc_timeout > 0) {
     double time_so_far = cpuTime();
     double set_timeout = std::min<double>(conf.appmc_timeout-time_so_far, 5);
     verb_print(1, "[appmc] timeout set to: " << set_timeout);

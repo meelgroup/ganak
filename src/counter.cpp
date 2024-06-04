@@ -977,6 +977,10 @@ void Counter<T>::count_loop() {
       if (state == RESOLVED && restart_if_needed()) goto end;
 
       // we are in RESOLVED or PROCESS_COMPONENT state, continue.
+      // first time bug: old/out-ganak-6870225.pbs101-9/mc2023_track1_174.cnf.gz.out_ganak
+      //       which is cc5fbdbad21351745d004b4b39e3f73244a42ecd
+      //       against, say: 71ba4c4eaf19eb74ec9fb3a2e6701ebebe71b9e5
+      //        --> seems like SAT solver, chrono work...
       if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
       assert(state == PROCESS_COMPONENT || state == RESOLVED);
     }
@@ -3420,6 +3424,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;
     }
+    assert(state != GO_AGAIN);
     if (decision_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
     if (sat_confl-last_restart >= luby(2, num_rst)*300) {

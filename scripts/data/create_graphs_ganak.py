@@ -101,7 +101,7 @@ only_dirs = [
              # "out-ganak-7021521.pbs101-0", # 2023 mccomp, restarts, fixed blocking lit, cube extend only no contract
              #"out-ganak-7028560.pbs101-", # 2022 + 2023
              #"out-ganak-7041485.", # kr-24 instances from Arijit
-             # "out-ganak-7041554.pbs101-0", # rapid restarts
+             # "out-ganak-7041554.pbs101-", # rapid restarts
              # "out-ganak-7047972.pbs101-0",
              # "out-ganak-7049225.pbs101-",
              # "out-ganak-7022833.pbs101-4", # best ever
@@ -120,16 +120,17 @@ only_dirs = [
              # "out-ganak-7205692.pbs101-6", # old best
              #"out-ganak-7247003.pbs101-", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually # BEST
              # "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
-          #   "out-ganak-7266814.pbs101-1", # contract over TDW, higher tdmaxw, higher tdminw. Was buggy in a few ways. Let's re-run. Fixed contraction in the meanwhile.
-          #   "out-ganak-7294423.pbs101-0", # fixed memout from contraction, fixed too much extend, distill-bin, BIG before backbone
-             #"out-ganak-7307327.pbs101-3", # fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
-             # "out-ganak-7308235.pbs101-4", # newest cadical -- ALL very good
+            # "out-ganak-7266814.pbs101-1", # contract over TDW, higher tdmaxw, higher tdminw. Was buggy in a few ways. Let's re-run. Fixed contraction in the meanwhile.
+            # "out-ganak-7294423.pbs101-0", # fixed memout from contraction, fixed too much extend, distill-bin, BIG before backbone
+             # "out-ganak-7307327.pbs101-4", # fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
+             "out-ganak-7308235.pbs101-4", # newest cadical -- ALL very good
                                              # best is "--tdmaxw 10 --resolvsub 0 --extraoracle 1"
 
 
+
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
-             "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
-             "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
+             # "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
+             # "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
@@ -143,7 +144,7 @@ only_dirs = [
              # "out-ganak-7255018.pbs101-7", # tdmaxw 90 + higher tdminw. 12 minw seems to work well -- BEST (maxw 90, minw 12)
              # "out-ganak-7257776.pbs101-9", # higher tdmaxw, higher tdminw -- BEST (maxw 100, minw 15)
              # "out-ganak-7295009.pbs101-0", #fixed memout from contraction, fixed too much extend, distill-bin, BIG before backbone
-             "out-ganak-7306993.pbs101-3",# fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
+             # "out-ganak-7306993.pbs101-3",# fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
                                           # best is "--tdminw 15 --tdmaxw 100 --resolvsub 0 --extraoracle 1"
 
              ]

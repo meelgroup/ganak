@@ -753,7 +753,7 @@ T Counter<T>::outer_count() {
   T cnt = 0;
   if (!weighted() && conf.appmc_timeout > 0) {
     double time_so_far = cpuTime();
-    double set_timeout = std::min<double>(conf.appmc_timeout-time_so_far, 5);
+    double set_timeout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
     if (conf.appmc_timeout > 500 && set_timeout < 500) {
       double new_set_timeout = 300;
       verb_print(1, "[appmc] Too little time would be given to ganak: " << set_timeout

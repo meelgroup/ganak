@@ -93,5 +93,6 @@ struct CounterConfiguration {
   uint64_t seed = 0;
   double delta = 0.05;
 
-  int appmc_timeout = -1;
+  double appmc_timeout = -1;
+  double appmc_epsilon = 0.2;
 };

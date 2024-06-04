@@ -691,6 +691,9 @@ mpz_class Counter<mpz_class>::do_appmc_count() {
   ApproxMC::AppMC appmc;
   appmc.new_vars(nVars());
   appmc.set_verbosity(std::max<int>(0, conf.verb));
+  appmc.set_epsilon(conf.appmc_epsilon);
+  appmc.set_delta(conf.delta);
+  appmc.set_seed(conf.seed);
   for(const auto& off: long_irred_cls) {
     const Clause& c = *alloc->ptr(off);
     appmc.add_clause(ganak_to_cms_cl(c));
@@ -731,11 +734,11 @@ class Timer {
     bool clear = false;
 public:
     template<typename Function>
-    void set_timeout(Function function, int delay) {
+    void set_timeout(Function function, double delay) {
       this->clear = false;
       std::thread t([=]() {
           if(this->clear) return;
-          std::this_thread::sleep_for(std::chrono::milliseconds(delay*1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds((int)(delay*1000.0)));
           if(this->clear) return;
           function();
       });
@@ -751,6 +754,12 @@ T Counter<T>::outer_count() {
   if (!weighted() && conf.appmc_timeout > 0) {
     double time_so_far = cpuTime();
     double set_timeout = std::min<double>(conf.appmc_timeout-time_so_far, 5);
+    if (conf.appmc_timeout > 500 && set_timeout < 500) {
+      double new_set_timeout = 300;
+      verb_print(1, "[appmc] Too little time would be given to ganak: " << set_timeout
+          << " adjusting to: " << new_set_timeout);
+      set_timeout = new_set_timeout;
+    }
     verb_print(1, "[appmc] timeout set to: " << set_timeout);
     Timer t;
     t.set_timeout([=]() { appmc_timeout_fired = true; verb_print(3, "**** ApproxMC timer fired ****");},

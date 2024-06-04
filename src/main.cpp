@@ -172,7 +172,8 @@ void add_ganak_options()
     ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
     ("rstreadjust", po::value(&conf.do_readjust_for_restart)->default_value(conf.do_readjust_for_restart), "Readjust params for restart")
     ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
-    ("appmc", po::value(&conf.appmc_timeout)->default_value(conf.appmc_timeout), "Enable AppMC restart, after K seconds")
+    ("appmct", po::value(&conf.appmc_timeout)->default_value(conf.appmc_timeout), "Enable AppMC restart, after K seconds")
+    ("epsilon", po::value(&conf.appmc_epsilon)->default_value(conf.appmc_epsilon), "AppMC epsilon")
     ;
 
     help_options.add(main_options);
@@ -499,9 +500,10 @@ int main(int argc, char *argv[])
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
     else cout << std::setprecision(6) << std::fixed << biginteger_log_modified(cnt) << endl;
-    if (is_appx)
+    if (is_appx) {
+      cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;
       cout << "c s approx arb int " << std::fixed << cnt << endl;
-    else
+    } else
       cout << "c s exact arb int " << std::fixed << cnt << endl;
   }
   return 0;

@@ -198,7 +198,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
 
   for(auto& ws: solver->watches) move_one_watchlist(ws.watch_list_, new_data_start, new_ptr);
   update_offsets(solver->long_irred_cls, new_data_start, new_ptr);
-  update_offsets(solver->longRedCls, new_data_start, new_ptr);
+  update_offsets(solver->long_red_cls, new_data_start, new_ptr);
 
   //Fix up var_data
   for (auto& vdata: solver->var_data) {

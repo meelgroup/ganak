@@ -70,7 +70,6 @@ int do_bce = 1;
 int do_breakid = 0;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
-int unproj = 0;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -173,7 +172,7 @@ void add_ganak_options()
     ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
     ("rstreadjust", po::value(&conf.do_readjust_for_restart)->default_value(conf.do_readjust_for_restart), "Readjust params for restart")
     ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
-    ("unproj", "Set for unprojected")
+    ("appmc", po::value(&conf.appmc_timeout)->default_value(conf.appmc_timeout), "Enable AppMC restart, after K seconds")
     ;
 
     help_options.add(main_options);
@@ -368,13 +367,6 @@ int main(int argc, char *argv[])
     cout << "c o called with: " << command_line << endl;
   }
 
-  if (vm.count("unproj")) {
-    conf.td_maxweight = 4.0;
-    conf.td_minweight = 0.1;
-    conf.var_freq_divider = 10;
-    conf.vsads_readjust_every = 0;
-  }
-
   string fname;
   if (vm.count("input") != 0) {
     vector<string> inp = vm["input"].as<vector<string> >();
@@ -497,6 +489,7 @@ int main(int argc, char *argv[])
     mpz_class cnt = counter.unw_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpuTime() - start_time) << endl;
+    bool is_appx = counter.get_is_approximate();
 
     if (cnt > 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
@@ -506,7 +499,10 @@ int main(int argc, char *argv[])
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
     else cout << std::setprecision(6) << std::fixed << biginteger_log_modified(cnt) << endl;
-    cout << "c s exact arb int " << std::fixed << cnt << endl;
+    if (is_appx)
+      cout << "c s approx arb int " << std::fixed << cnt << endl;
+    else
+      cout << "c s exact arb int " << std::fixed << cnt << endl;
   }
   return 0;
 }

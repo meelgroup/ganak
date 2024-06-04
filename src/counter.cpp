@@ -40,6 +40,8 @@ THE SOFTWARE.
 #include "graph.hpp"
 #include "bdd.h"
 #include "mpreal.h"
+#include "approxmc.h"
+#include <thread>
 
 using std::setw;
 using std::is_same;
@@ -658,7 +660,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   occ.clear();
   clauses.clear();
   v_restore();
-  verb_print(2, "[rst-cube-ext] Extended cubes. lit-rem: "
+  verb_print(2, "[rst-cube-ext] E{xtended cubes. lit-rem: "
       << setw(4) << stats.cube_lit_rem - before_rem
       << " lit-ext: " << setw(4) << stats.cube_lit_extend - before_ext
       << " T: " << (cpuTime() - my_time));
@@ -683,10 +685,73 @@ void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
   }
 }
 
+template<>
+mpz_class Counter<mpz_class>::do_appmc_count() {
+  is_approximate = true;
+  ApproxMC::AppMC appmc;
+  appmc.new_vars(nVars());
+  appmc.set_verbosity(std::max<int>(0, conf.verb));
+  for(const auto& off: long_irred_cls) {
+    const Clause& c = *alloc->ptr(off);
+    appmc.add_clause(ganak_to_cms_cl(c));
+  }
+
+  vector<Lit> bin(2);
+  all_lits(lit_i) {
+    Lit l(lit_i/2, lit_i%2);
+    for(const auto& l2: watches[l].binaries) {
+      if (l2.irred() && l < l2.lit()) {
+        bin[0] = l;
+        bin[1] = l2.lit();
+        if (l2.irred()) appmc.add_clause(ganak_to_cms_cl(bin));
+        else appmc.add_red_clause(ganak_to_cms_cl(bin));
+      }
+    }
+  }
+  for(const auto& off: long_red_cls) {
+    const Clause& c = *alloc->ptr(off);
+    appmc.add_red_clause(ganak_to_cms_cl(c));
+  }
+  vector<uint32_t> indep;
+  for(uint32_t i = 0; i < indep_support_end; i++) indep.push_back(i);
+  appmc.set_sampl_vars(indep);
+  ApproxMC::SolCount appmc_cnt = appmc.count();
+
+  mpz_class num_sols(2);
+  mpz_pow_ui(num_sols.get_mpz_t(), num_sols.get_mpz_t(), appmc_cnt.hashCount);
+  num_sols *= appmc_cnt.cellSolCount;
+  return num_sols;
+}
+
+class Timer {
+    bool clear = false;
+public:
+    template<typename Function>
+    void set_timeout(Function function, int delay) {
+      this->clear = false;
+      std::thread t([=]() {
+          if(this->clear) return;
+          std::this_thread::sleep_for(std::chrono::milliseconds(delay*1000));
+          if(this->clear) return;
+          function();
+      });
+      t.detach();
+    }
+    void stop() { this->clear = true; }
+};
+
 template<typename T>
 T Counter<T>::outer_count() {
   if (!ok) return 0;
   T cnt = 0;
+  if (!weighted()) {
+    double time_so_far = cpuTime();
+    double set_timeout = std::min<double>(conf.appmc_timeout-time_so_far, 5);
+    verb_print(1, "[appmc] timeout set to: " << set_timeout);
+    Timer t;
+    t.set_timeout([=]() { appmc_timeout_fired = true; verb_print(3, "**** ApproxMC timer fired ****");},
+        set_timeout);
+  }
 
   verb_print(1, "Sampling set size: " << indep_support_end-1);
   verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
@@ -695,15 +760,15 @@ T Counter<T>::outer_count() {
   auto ret = sat_solver->solve();
   start_time = cpuTime();
   uint32_t next_rst_print = 0;
+  bool done = false;
   while(ret == CMSat::l_True) {
     auto cubes = one_restart_count();
-    bool final = false;
-    if (cubes.size() == 1 && cubes[0].cnf.empty()) final = true;
+    if (cubes.size() == 1 && cubes[0].cnf.empty()) done = true;
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
     stats.num_cubes_orig += cubes.size();
 
     // Extend, tighten, symm, disable cubes
-    if (!final) extend_cubes(cubes);
+    if (!done) extend_cubes(cubes);
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
@@ -729,24 +794,34 @@ T Counter<T>::outer_count() {
     }
 
     ret = sat_solver->solve();
-    if (ret == CMSat::l_False) break;
+    if (ret == CMSat::l_False) {done = true; break;}
 
     // Add cubes to counter
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
       add_irred_cl(it->cnf);
-      verb_print(2,  "added cube CL to GANAK: " << it->cnf << " cnt: " << it->cnt);
+      verb_print(2,  "[rst-cube] added cube CL to GANAK: " << it->cnf << " cnt: " << it->cnt);
     }
     decisions.clear();
 
     end_irred_cls();
-    if (!final && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
+    if (!done && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
       double my_time = cpuTime();
       vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
       verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpuTime() - my_time));
     }
+    if (appmc_timeout_fired) break;
   }
+
+  if (!done) {
+    if (weighted()) {
+      cout << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
+      exit(-1);
+    }
+    cnt += do_appmc_count();
+  }
+  else assert(done);
   return cnt;
 }
 
@@ -1173,7 +1248,6 @@ template<typename T>
 bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
   assert(c.cnt == 0);
   assert(c.cnf.empty());
-  assert(conf.do_restart);
   debug_print(COLWHT "-- " << __func__ << " BEGIN");
 
   c.cnt = decisions.top().get_model_side(branch);
@@ -1302,9 +1376,13 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!conf.do_restart || td_width < 60) return false;
+  if (!appmc_timeout_fired && (!conf.do_restart || td_width < 60)) return false;
 
   bool restart = false;
+  if (appmc_timeout_fired) {
+    verb_print(1, "[rst] AppMC timeout fired. Restarting.");
+    restart = true;
+  }
 
   // comp size
   if (conf.restart_type == 0
@@ -2306,7 +2384,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
     bool curr_prop = currently_propagating_cl(cl);
     off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
   }
-  for(const auto& off: longRedCls) {
+  for(const auto& off: long_red_cls) {
     const Clause& cl = *alloc->ptr(off);
     bool curr_prop = currently_propagating_cl(cl);
     off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
@@ -2335,7 +2413,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
   bool tout_red = false;
   if (!only_irred) {
     v_tout = conf.vivif_mult*20LL*1000LL*1000LL;
-    vivify_cls(longRedCls);
+    vivify_cls(long_red_cls);
     verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-my_time));
     tout_red = (v_tout <= 0);
   }
@@ -2344,7 +2422,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
   for(auto& ws: watches) ws.watch_list_.clear();
   if (!decisions.empty()) {
     for(const auto& off: long_irred_cls) v_cl_repair(off);
-    for(const auto& off: longRedCls) v_cl_repair(off);
+    for(const auto& off: long_red_cls) v_cl_repair(off);
   } else {
     // Move all 0-level stuff to unit_clauses_
     for(const auto& l: v_trail) {
@@ -2357,7 +2435,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
     bool ret2 = propagate();
     assert(ret2);
     v_cl_toplevel_repair(long_irred_cls);
-    v_cl_toplevel_repair(longRedCls);
+    v_cl_toplevel_repair(long_red_cls);
   }
   off_to_lit12.clear();
   verb_print(2, "[vivif] finished."
@@ -2988,7 +3066,7 @@ bool Counter<T>::check_watchlists() const {
     off_att_num.erase(off);
   };
   for(const auto& off: long_irred_cls) check_attach(off);
-  for(const auto& off: longRedCls) check_attach(off);
+  for(const auto& off: long_red_cls) check_attach(off);
   if (!off_att_num.empty()) {
     cout << "ERROR: The following clauses are attached but are NOT in longRed/longIrred clauses" << endl;
     for(const auto& p: off_att_num) {
@@ -3178,7 +3256,7 @@ void Counter<T>::subsume_all() {
   stats.subsume_runs++;
   occ.resize((nVars()+1)*2);
   attach_occ(long_irred_cls, true); // beware-- sorts the clauses, invalidates prop invariants
-  attach_occ(longRedCls, true);
+  attach_occ(long_red_cls, true);
 
   // Detach everything
   for(auto& ws: watches) ws.watch_list_.clear();
@@ -3229,7 +3307,7 @@ void Counter<T>::subsume_all() {
   for(const auto& off: clauses) {
     Clause& cl = *alloc->ptr(off);
     if (cl.freed) continue;
-    if (cl.red) longRedCls.push_back(off);
+    if (cl.red) long_red_cls.push_back(off);
     else long_irred_cls.push_back(off);
 
     std::sort(cl.begin(), cl.end(),
@@ -3391,7 +3469,7 @@ void Counter<T>::check_sat_solution() const {
     }
   }
 
-  for(const auto& off: longRedCls) {
+  for(const auto& off: long_red_cls) {
     Clause& cl = *alloc->ptr(off);
     if (clause_falsified(cl)) {
       good = false;
@@ -3591,7 +3669,7 @@ void Counter<T>::check_all_propagated_conflicted() const {
     const Clause& cl = *alloc->ptr(off);
     check_cl_propagated_conflicted(cl, off);
   }
-  for(const auto& off: longRedCls) {
+  for(const auto& off: long_red_cls) {
     const Clause& cl = *alloc->ptr(off);
     check_cl_propagated_conflicted(cl, off);
   }
@@ -3636,7 +3714,7 @@ void Counter<T>::v_backup() {
     vector<Lit> lits(cl.begin(), cl.end());
     v_backup_cls.push_back(lits);
   }
-  for(const auto& off: longRedCls) {
+  for(const auto& off: long_red_cls) {
     const Clause& cl = *alloc->ptr(off);
     vector<Lit> lits(cl.begin(), cl.end());
     v_backup_cls.push_back(lits);
@@ -3658,7 +3736,7 @@ void Counter<T>::v_restore() {
     }
     at++;
   }
-  for(const auto& off: longRedCls) {
+  for(const auto& off: long_red_cls) {
     Clause& cl = *alloc->ptr(off);
     auto& lits = v_backup_cls[at];
     for(uint32_t i = 0; i < cl.size(); i++) {
@@ -3698,7 +3776,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
   if (weighted() && dec_lev < decision_level() && get_weight(lit) != 1) {
-    for(int32_t i = dec_lev; i < decisions.size(); i++) {
+    for(int32_t i = dec_lev; i < (int)decisions.size(); i++) {
       debug_print("set_lit, compensating weight. i: " << i);
       bool found = false;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
@@ -3712,14 +3790,14 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       if (i > dec_lev && found) decisions[i].include_solution_left_side(1/get_weight(lit));
 
       // Children don't exist
-      if (i+1 >= decisions.size()) break;
+      if (i+1 >= (int)decisions.size()) break;
 
       bool found_in_children = false;
       const auto& s = decisions.at(i);
       debug_print("s.get_unprocessed_comps_end(): " << s.get_unprocessed_comps_end()
           << " s.remaining_comps_ofs(): " << s.remaining_comps_ofs()
           << " comp_manager->size: " << comp_manager->get_comp_stack().size());
-      for(int comp_at = s.get_unprocessed_comps_end()-1; comp_at >= s.remaining_comps_ofs() && comp_at < comp_manager->get_comp_stack().size(); comp_at--) {
+      for(int comp_at = s.get_unprocessed_comps_end()-1; comp_at >= (int)s.remaining_comps_ofs() && comp_at < comp_manager->get_comp_stack().size(); comp_at--) {
         const auto& c2 = comp_manager->at(comp_at);
         VERBOSE_DEBUG_DO(cout << "vars in side comp: ";
           all_vars_in_comp(*c2, v) VERBOSE_DEBUG_DO(cout << *v << " ");
@@ -3729,7 +3807,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       debug_print("found in children: " << found_in_children);
       if (!found_in_children) {
         // Not found in children, so it must have been already processed and multiplied in. Compensate.
-        assert(decisions.size() > i+1);
+        assert((int)decisions.size() > i+1);
         if (decisions[i].getTotalModelCount() != 0) decisions[i].include_solution(1/get_weight(lit));
       }
     }
@@ -3858,14 +3936,14 @@ void Counter<T>::checkProbabilisticHashSanity() const {
 
 template<typename T>
 void Counter<T>::check_all_cl_in_watchlists() const {
-  auto red_cls2 = longRedCls;
+  auto red_cls2 = long_red_cls;
   // check for duplicates
   std::sort(red_cls2.begin(), red_cls2.end());
   for(uint32_t i = 1; i < red_cls2.size(); i++) {
     assert(red_cls2[i-1] != red_cls2[i]);
   }
 
-  for(const auto& offs: longRedCls) {
+  for(const auto& offs: long_red_cls) {
     const auto& cl = *alloc->ptr(offs);
     if (!find_offs_in_watch(watches[cl[0]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[0]!!" << endl;
@@ -3913,10 +3991,10 @@ void Counter<T>::reduce_db() {
     verb_print(1, " [rdb] bumping rdb cutoff to 3");
     lbd_cutoff++;
   }
-  const auto cls_before = longRedCls.size();
+  const auto cls_before = long_red_cls.size();
 
-  vector<ClauseOfs> tmp_red_cls = longRedCls;
-  longRedCls.clear();
+  vector<ClauseOfs> tmp_red_cls = long_red_cls;
+  long_red_cls.clear();
   num_low_lbd_cls = 0;
   num_used_cls = 0;
   uint32_t cannot_be_del = 0;
@@ -3937,11 +4015,11 @@ void Counter<T>::reduce_db() {
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;
     } else {
-      longRedCls.push_back(off);
+      long_red_cls.push_back(off);
       h.used = 0;
     }
   }
-  verb_print(1, "[rdb] cls before: " << cls_before << " after: " << longRedCls.size()
+  verb_print(1, "[rdb] cls before: " << cls_before << " after: " << long_red_cls.size()
       << " low lbd: " << num_low_lbd_cls
       << " lbd cutoff: " << lbd_cutoff
       << " cutoff computed: " << cutoff
@@ -3977,7 +4055,7 @@ void Counter<T>::new_vars(const uint32_t n) {
   assert(values.empty());
   assert(watches.empty());
   assert(unit_clauses_.empty());
-  assert(longRedCls.empty());
+  assert(long_red_cls.empty());
   assert(weights.empty());
 
   var_data.resize(n + 1);
@@ -4054,7 +4132,7 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
   Clause* cl = add_cl(lits, true);
   if (cl) {
     auto off = alloc->get_offset(cl);
-    longRedCls.push_back(off);
+    long_red_cls.push_back(off);
     if (lbd == -1) lbd = lits.size();
     cl->lbd = lbd;
     assert(cl->red);
@@ -4063,7 +4141,7 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
 }
 
 template<typename T>
-void Counter<T>::reactivate_comps_and_backtrack_trail(bool check_ws) {
+void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws) {
   debug_print("->reactivate and backtrack. Dec lev: " << decision_level() << " top declevel sublev: " << var(decisions.top().var).sublevel <<  "...");
   auto jt = top_declevel_trail_begin();
   auto it = jt;

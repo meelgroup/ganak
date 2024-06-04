@@ -43,7 +43,8 @@ using std::pair;
 using std::map;
 
 
-inline vector<CMSat::Lit> ganak_to_cms_cl(const vector<Lit>& cl) {
+template<typename T>
+inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
   cms_cl.reserve(cl.size());
   for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
@@ -162,16 +163,16 @@ public:
   ConflictData find_conflict_level(Lit p);
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
-  uint32_t get_num_long_reds() const { return longRedCls.size(); }
+  uint32_t get_num_long_reds() const { return long_red_cls.size(); }
   uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
   int val(Lit lit) const { return values[lit]; }
   int val(uint32_t var) const { return values[Lit(var,1)]; }
-
+  bool get_is_approximate() const { return is_approximate; }
 
   friend class ClauseAllocator<T>;
   ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
-  vector<ClauseOfs> longRedCls;
+  vector<ClauseOfs> long_red_cls;
   uint32_t nVars() const { return var_data.size() - 1; }
   void print_restart_data() const;
   double get_start_time() const { return start_time;}
@@ -409,6 +410,8 @@ private:
 
   double start_time;
   std::mt19937_64 mtrand;
+  volatile bool appmc_timeout_fired = false;
+  bool is_approximate = false;
 
   DecisionStack<T> decisions;
   vector<Lit> trail;
@@ -465,6 +468,9 @@ private:
   void print_conflict_info() const;
   void print_comp_stack_info() const;
   double curr_var_freq_divider;
+
+  // AppMC
+  T do_appmc_count();
 
   // BDD
   bool do_buddy_count(const Comp* c);
@@ -754,7 +760,7 @@ Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
   Clause* cl = add_cl(literals, true);
   if (cl) {
     auto off = alloc->get_offset(cl);
-    longRedCls.push_back(off);
+    long_red_cls.push_back(off);
     cl->lbd = calc_lbd(*cl);
     ante = Antecedent(off);
   } else if (literals.size() == 2){
@@ -839,6 +845,7 @@ public:
     if (w_counter) return w_counter->add_red_cl(lits, lbd);
     release_assert(false);
   }
+  bool get_is_approximate() const { release_assert(unw_counter); return unw_counter->get_is_approximate();}
   bool add_irred_cl(const vector<Lit>& lits) {
     if (unw_counter) return unw_counter->add_irred_cl(lits);
     if (w_counter) return w_counter->add_irred_cl(lits);

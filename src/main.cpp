@@ -153,6 +153,7 @@ void add_ganak_options()
     ("bveresolvmaxsz", po::value(&simp_conf.bve_too_large_resolvent)->default_value(simp_conf.bve_too_large_resolvent), "Puura BVE max resolvent size in literals. -1 == no limit")
     ("bvegrowiter1", po::value(&simp_conf.bve_grow_iter1)->default_value(simp_conf.bve_grow_iter1), "Puura BVE growth allowance iter1")
     ("bvegrowiter2", po::value(&simp_conf.bve_grow_iter2)->default_value(simp_conf.bve_grow_iter2), "Puura BVE growth allowance iter2")
+    ("extraoracle", po::value(&simp_conf.oracle_extra)->default_value(simp_conf.oracle_extra), "Extra oracle at the end of puura")
 
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("compsort", po::value(&conf.do_comp_sort)->default_value(conf.do_comp_sort), "Sort components in different order")

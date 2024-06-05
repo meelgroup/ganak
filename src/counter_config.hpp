@@ -95,5 +95,5 @@ struct CounterConfiguration {
   double delta = 0.2;
 
   double appmc_timeout = -1;
-  double appmc_epsilon = 0.2;
+  double appmc_epsilon = 0.8;
 };

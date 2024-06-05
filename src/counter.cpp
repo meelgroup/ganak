@@ -3400,7 +3400,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   }
   debug_print("Order heap size: " << order_heap.size());
   decisions.top().var = 0;
-  decisions.top().change_to_right_branch();
   auto old_sublev = trail.size();
 
   // the SAT loop
@@ -3425,7 +3424,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     Lit l(d, var(d).last_polarity);
     if (decisions.top().var != 0) {
       decisions.push_back(StackLevel<T>(1,2));
-      decisions.top().change_to_right_branch();
     }
     decisions.back().var = l.var();
     set_lit(l, decision_level());
@@ -3437,12 +3435,16 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;
     }
+    if (state == BACKTRACK) goto end;
     assert(state != GO_AGAIN);
     if (decision_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
     if (sat_confl-last_restart >= luby(2, num_rst)*conf.sat_restart_mult) {
+      debug_print("SAT restarting!");
       last_restart = sat_confl;
       go_back_to(sat_start_dec_level);
+      reactivate_comps_and_backtrack_trail(false);
+      decisions.top().var = 0;
       stats.sat_rst++;
       num_rst++;
       continue;
@@ -3467,7 +3469,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     assert(decision_level() == sat_start_dec_level);
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
-    if (!decisions.top().is_right_branch()) decisions.top().change_to_right_branch();
+    decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
   }

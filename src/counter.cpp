@@ -3459,7 +3459,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     assert(decision_level() == sat_start_dec_level);
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
-    assert(decisions.top().is_right_branch());
+    if (!decisions.top().is_right_branch()) decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
   }

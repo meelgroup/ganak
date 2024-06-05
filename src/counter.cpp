@@ -1879,15 +1879,15 @@ void Counter<T>::go_back_to(int32_t backj) {
   while(decisions.get_decision_level() > backj) {
     debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().getTotalModelCount());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
+    decisions.top().mark_branch_unsat();
+    decisions.top().zero_out_all_sol(); //not sure it's needed
     if (!sat_mode()) {
-      decisions.top().mark_branch_unsat();
-      decisions.top().zero_out_all_sol(); //not sure it's needed
       comp_manager->removeAllCachePollutionsOf(decisions.top());
     }
     reactivate_comps_and_backtrack_trail(false);
     decisions.pop_back();
+    decisions.top().zero_out_branch_sol();
     if (!sat_mode()) {
-      decisions.top().zero_out_branch_sol();
       comp_manager->removeAllCachePollutionsOf(decisions.top());
       comp_manager->cleanRemainingCompsOf(decisions.top());
     }
@@ -2010,10 +2010,8 @@ RetState Counter<T>::resolve_conflict() {
 
   stats.conflicts++;
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
-  if (!sat_mode()) {
-    decisions.top().zero_out_branch_sol();
-    decisions.top().mark_branch_unsat();
-  }
+  decisions.top().zero_out_branch_sol();
+  decisions.top().mark_branch_unsat();
 
   VERBOSE_DEBUG_DO(cout << "backwards cleaning" << endl);
   VERBOSE_DEBUG_DO(print_comp_stack_info());
@@ -2060,10 +2058,10 @@ RetState Counter<T>::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("is right here? " << decisions.top().is_right_branch());
 
+  decisions.top().zero_out_branch_sol();
+  decisions.top().mark_branch_unsat();
   if (!sat_mode()) {
     comp_manager->removeAllCachePollutionsOf(decisions.top());
-    decisions.top().zero_out_branch_sol();
-    decisions.top().mark_branch_unsat();
     decisions.top().resetRemainingComps();
   }
 
@@ -2088,7 +2086,7 @@ RetState Counter<T>::resolve_conflict() {
   }
 
   reactivate_comps_and_backtrack_trail(false);
-  if (!sat_mode()) decisions.top().change_to_right_branch();
+  decisions.top().change_to_right_branch();
   set_lit(uip_clause[0], lev_to_set, ant);
 
 #ifdef VERBOSE_DEBUG
@@ -3448,6 +3446,8 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       reactivate_comps_and_backtrack_trail(false);
       qhead = var(decisions.at(sat_start_dec_level-1).var).sublevel;
       decisions.top().var = 0;
+      decisions.top().reset();
+      if (!propagate()) goto start1;
       stats.sat_rst++;
       num_rst++;
       continue;
@@ -3472,6 +3472,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     assert(decision_level() == sat_start_dec_level);
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
+    decisions.top().reset();
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);

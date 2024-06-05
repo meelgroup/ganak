@@ -42,6 +42,13 @@ public:
     assert(super_comp < comp_stack_ofs);
   }
   uint32_t var = 0;
+  void reset() {
+    active_branch_ = false;
+    branch_found_unsat_[0] = false;
+    branch_found_unsat_[1] = false;
+    branch_model_count_[0] = 0;
+    branch_model_count_[1] = 0;
+  }
 private:
 
   /// active Comp, once initialized, it should not change

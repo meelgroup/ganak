@@ -999,6 +999,7 @@ void Counter<T>::count_loop() {
         if (state == EXIT) goto end;
       }
     }
+    assert(state != GO_AGAIN);
 
     if (conf.do_vivify) {
       vivify_all();

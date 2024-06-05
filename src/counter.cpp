@@ -694,6 +694,13 @@ mpz_class Counter<mpz_class>::do_appmc_count() {
   appmc.set_epsilon(conf.appmc_epsilon);
   appmc.set_delta(conf.delta);
   appmc.set_seed(conf.seed);
+
+  vector<Lit> unit(1);
+  for(const auto& l: unit_clauses_) {
+      unit[0] = l;
+      appmc.add_clause(ganak_to_cms_cl(unit));
+  }
+
   for(const auto& off: long_irred_cls) {
     const Clause& c = *alloc->ptr(off);
     appmc.add_clause(ganak_to_cms_cl(c));

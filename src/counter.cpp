@@ -827,14 +827,13 @@ T Counter<T>::outer_count() {
     if (appmc_timeout_fired) break;
   }
 
-  if (!done) {
+  if (!done && ret == CMSat::l_True) {
     if (weighted()) {
       cout << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
       exit(-1);
     }
     cnt += do_appmc_count();
   }
-  else assert(done);
   return cnt;
 }
 

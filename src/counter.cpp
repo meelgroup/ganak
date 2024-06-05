@@ -3392,6 +3392,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   }
   debug_print("Order heap size: " << order_heap.size());
   decisions.top().var = 0;
+  decisions.top().change_to_right_branch();
   auto old_sublev = trail.size();
 
   // the SAT loop
@@ -3414,7 +3415,10 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l(d, var(d).last_polarity);
-    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
+    if (decisions.top().var != 0) {
+      decisions.push_back(StackLevel<T>(1,2));
+      decisions.top().change_to_right_branch();
+    }
     decisions.back().var = l.var();
     set_lit(l, decision_level());
 

@@ -2025,7 +2025,7 @@ RetState Counter<T>::resolve_conflict() {
       uip_clause[0].neg().var() == decisions.at(backj).var
            && lev_to_set+1 == backj);
 
-  if (!flipped_declit || sat_mode()) {
+  if (!flipped_declit) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail());
     VERBOSE_DEBUG_DO(print_conflict_info());
@@ -2060,10 +2060,12 @@ RetState Counter<T>::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("is right here? " << decisions.top().is_right_branch());
 
-  comp_manager->removeAllCachePollutionsOf(decisions.top());
-  decisions.top().zero_out_branch_sol();
-  decisions.top().mark_branch_unsat();
-  decisions.top().resetRemainingComps();
+  if (!sat_mode()) {
+    comp_manager->removeAllCachePollutionsOf(decisions.top());
+    decisions.top().zero_out_branch_sol();
+    decisions.top().mark_branch_unsat();
+    decisions.top().resetRemainingComps();
+  }
 
   if (decisions.top().is_right_branch()) {
     reactivate_comps_and_backtrack_trail(false);
@@ -2081,12 +2083,12 @@ RetState Counter<T>::resolve_conflict() {
     return BACKTRACK;
   }
 
-  if (decisions.get_decision_level() > 0) {
+  if (decisions.get_decision_level() > 0 && !sat_mode()) {
     assert(decisions.top().remaining_comps_ofs() == comp_manager->comp_stack_size());
   }
 
   reactivate_comps_and_backtrack_trail(false);
-  decisions.top().change_to_right_branch();
+  if (!sat_mode()) decisions.top().change_to_right_branch();
   set_lit(uip_clause[0], lev_to_set, ant);
 
 #ifdef VERBOSE_DEBUG

@@ -2174,7 +2174,9 @@ bool Counter<T>::propagate(bool out_of_order) {
     auto it2 = ws.begin();
     auto it = ws.begin();
     for (; it != ws.end(); it++) {
-      if (is_true(it->blckLit)) { *it2++ = *it; continue; }
+      if (is_true(it->blckLit)) { *it2++ = *it;
+        debug_print("cl ofs: " << it->ofs << " blocked on lit: " << it->blckLit << " -> skipping");
+        continue; }
 
       const auto ofs = it->ofs;
       Clause& c = *alloc->ptr(ofs);

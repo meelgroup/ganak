@@ -3444,6 +3444,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       last_restart = sat_confl;
       go_back_to(sat_start_dec_level);
       reactivate_comps_and_backtrack_trail(false);
+      qhead = var(decisions.at(sat_start_dec_level-1).var).sublevel;
       decisions.top().var = 0;
       stats.sat_rst++;
       num_rst++;

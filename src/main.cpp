@@ -161,6 +161,7 @@ void add_ganak_options()
     ("checkunkbin", po::value(&conf.do_check_unkn_bin)->default_value(conf.do_check_unkn_bin), "Check unknown bin for VSADS bumping")
     ("initact", po::value(&conf.do_init_activity_scores)->default_value(conf.do_init_activity_scores), "Init activity scores to var freq")
     ("vsadsadjust", po::value(&conf.vsads_readjust_every)->default_value(conf.vsads_readjust_every), "VSADS ajust activity every N")
+    ("satrstmult", po::value(&conf.sat_restart_mult)->default_value(conf.sat_restart_mult), "SAT restart multiplier")
     ;
 
     restart_options.add_options()

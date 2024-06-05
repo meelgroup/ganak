@@ -89,6 +89,7 @@ struct CounterConfiguration {
   int td_look_only_weight = false;
   int td_max_edges = 70000;
 
+  int sat_restart_mult = 300;
 
   uint64_t seed = 0;
   double delta = 0.2;

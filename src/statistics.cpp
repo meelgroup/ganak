@@ -88,11 +88,11 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
   verb_print(1, "looks/look-computes            "
     << lookaheads << "/" << lookahead_computes);
 
-  verb_print(1, "sat call/sat/unsat/conflK/rst  "
+  verb_print(1, "sat call/sat/unsat/confl/rst  "
     << setw(5) << sat_called << " "
     << setw(5) << sat_found_sat << " "
     << setw(5) << sat_found_unsat << " "
-    << setw(5) << sat_conflicts/1000 << " "
+    << setw(5) << sat_conflicts << " "
     << setw(5) << sat_rst << " ");
   verb_print(1, "buddy called                   "
     << setw(5) << buddy_called << " ");

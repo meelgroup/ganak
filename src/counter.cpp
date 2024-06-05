@@ -2023,7 +2023,7 @@ RetState Counter<T>::resolve_conflict() {
       uip_clause[0].neg().var() == decisions.at(backj).var
            && lev_to_set+1 == backj);
 
-  if (!flipped_declit) {
+  if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail());
     VERBOSE_DEBUG_DO(print_conflict_info());
@@ -3443,9 +3443,6 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       debug_print("SAT restarting!");
       last_restart = sat_confl;
       go_back_to(sat_start_dec_level);
-      reactivate_comps_and_backtrack_trail(false);
-      qhead = var(decisions.at(sat_start_dec_level-1).var).sublevel;
-      decisions.top().var = 0;
       decisions.top().reset();
       if (!propagate()) goto start1;
       stats.sat_rst++;
@@ -3469,6 +3466,8 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       }
     }
     go_back_to(sat_start_dec_level);
+    bool ret = propagate();
+    assert(ret);
     assert(decision_level() == sat_start_dec_level);
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.

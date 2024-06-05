@@ -122,10 +122,10 @@ only_dirs = [
              # "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
              # "out-ganak-7266814.pbs101-1", # contract over TDW, higher tdmaxw, higher tdminw. Was buggy in a few ways. Let's re-run. Fixed contraction in the meanwhile.
              # "out-ganak-7294423.pbs101-0", # fixed memout from contraction, fixed too much extend, distill-bin, BIG before backbone
-             # "out-ganak-7307327.pbs101-4", # fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
-             # "out-ganak-7308235.pbs101-4", # newest cadical -- ALL very good
+             "out-ganak-7307327.pbs101-4", # fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
+             "out-ganak-7308235.pbs101-4", # newest cadical -- ALL very good
                                              # best is "--tdmaxw 10 --varfreqdiv 30"
-
+             # BAD PARAMS.... "out-ganak-7316071.pbs101-", # also appmc, play around with some options
 
 
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
@@ -140,12 +140,13 @@ only_dirs = [
              # "out-ganak-7225470.pbs101-7",
              # "out-ganak-7162995.pbs101-0", # new run, good. -- old freq setup
              # "out-ganak-7246958", # fixed cadiback, high tdmaxw
-             # "out-ganak-7255018.pbs101-" # tdmaxw 90 + higher tdminw. 12 minw seems to work well
              # "out-ganak-7255018.pbs101-7", # tdmaxw 90 + higher tdminw. 12 minw seems to work well -- BEST (maxw 90, minw 12)
              "out-ganak-7257776.pbs101-9", # higher tdmaxw, higher tdminw -- BEST (maxw 100, minw 15)
              "out-ganak-7295009.pbs101-0", #fixed memout from contraction, fixed too much extend, distill-bin, BIG before backbone
              "out-ganak-7306993.pbs101-0",# fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
                                           # best is "--tdminw 15 --tdmaxw 100 --resolvsub 0 --extraoracle 1"
+             # BAD PARAMS "out-ganak-7316065.pbs101", # also appmc, play around with some opitions
+
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

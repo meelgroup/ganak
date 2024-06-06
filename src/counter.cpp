@@ -4058,12 +4058,14 @@ void Counter<T>::reduce_db() {
       h.used = 0;
     }
   }
-  verb_print(1, "[rdb] cls before: " << cls_before << " after: " << long_red_cls.size()
+  if (conf.verb >= 2 || stats.reduce_db % 3 == 1) {
+    verb_print(1, "[rdb] cls before: " << cls_before << " after: " << long_red_cls.size()
       << " low lbd: " << num_low_lbd_cls
       << " lbd cutoff: " << lbd_cutoff
       << " cutoff computed: " << cutoff
       << " cannot be del : " << cannot_be_del
       << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
+  }
 }
 
 template<typename T>

@@ -222,7 +222,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   if (conf.verb) {
     size_t log_2_size = 0;
     if (size > 0) log_2_size = std::log2(size);
-    verb_print(1, "[mem] consolidate "
+    verb_print(2, "[mem] consolidate "
       << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
       << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
       << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size

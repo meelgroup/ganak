@@ -71,6 +71,7 @@ int do_breakid = 0;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
 int do_extend_indep = 1;
+int do_backbone = 1;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()
@@ -109,6 +110,7 @@ void add_ganak_options()
     ("arjungates", po::value(&arjun_gates)->default_value(arjun_gates), "Use arjun's gate detection")
     ("arjunextend", po::value(&do_extend_indep)->default_value(do_extend_indep), "Extend indep via Arjun's extend system")
     ("arjunextendmaxconfl", po::value(&arjun_extend_max_confl)->default_value(arjun_extend_max_confl), "Max number of conflicts per extend operation in Arjun")
+    ("backbone", po::value(&do_backbone)->default_value(do_backbone), "Perform backbone")
     ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
     ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
@@ -406,7 +408,7 @@ int main(int argc, char *argv[])
     arjun.set_ite_gate_based(arjun_gates);
     arjun.set_irreg_gate_based(arjun_gates);
     arjun.set_extend_max_confl(arjun_extend_max_confl);
-    arjun.only_backbone(cnf);
+    if (do_backbone) arjun.only_backbone(cnf);
     arjun.only_run_minimize_indep(cnf);
     bool do_unate = false;
     arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);

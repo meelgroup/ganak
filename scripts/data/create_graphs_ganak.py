@@ -76,12 +76,9 @@ not_calls = []
 only_dirs = [
   # "6683080",
              # "out-ganak-6683080.pbs101-1/", # best of GANAK so far, lbd 1
-        #     "out-ganak-6318929.pbs101-5/", # exactmc
-        #     "out-ganak-6328707.pbs101-7/", # exactmc
              #"out-ganak-6396805.pbs101-1/",  # best, but no cache
         #     "out-ganak-6396805.pbs101-12/", # used to be best
         #     "out-ganak-6318929.pbs101-4/", # approxmc
-        #     "out-ganak-6318929.pbs101-7/", # sharpsat
              #"out-ganak-6749880.pbs101-0/", # like out-ganak-6683080.pbs101-1, but cluster is slower(!!)
              # "out-ganak-6683080.pbs101-4/", # last run, without refactored Arjun+fixed SAT
              #"out-ganak-6841576.pbs101-0/", # trying TD exponent, turning off gates for Arjun
@@ -128,8 +125,14 @@ only_dirs = [
              # BAD PARAMS.... "out-ganak-7316071.pbs101-", # also appmc, play around with some options
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
              # "out-ganak-7320764.pbs101-9", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
+             # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000 (could try varfreqdiv 20)
+             # "out-ganak-7334726.pbs101-1", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, non-appmc
+             # "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
 
 
+             # "out-ganak-6318929.pbs101-5/", # exactmc
+             # "out-ganak-6328707.pbs101-7/", # exactmc
+             # "out-ganak-6318929.pbs101-7/", # sharpsat
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
              "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
              "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
@@ -148,8 +151,12 @@ only_dirs = [
              # "out-ganak-7306993.pbs101-0",# fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
                                           # best is "--tdminw 15 --tdmaxw 100 --resolvsub 0 --extraoracle 1"
              # BAD PARAMS "out-ganak-7316065.pbs101", # also appmc, play around with some opitions
-             "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100, --appmct 2000
-             "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100, --appmct 2000
+             # "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100, --appmct 2000
+             # "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100, --appmct 2000
+             # "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
+             # "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
+             "out-ganak-7334807.pbs101-2", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST non-appmc
+             # "out-ganak-7334807.pbs101-7", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST appmc
 
 
              ]
@@ -234,7 +241,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][120:]\\\n")
+    f.write("plot [:][160:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

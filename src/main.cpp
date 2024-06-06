@@ -481,8 +481,8 @@ int main(int argc, char *argv[])
     auto cnt = counter.w_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpuTime() - start_time) << endl;
-    if (!all_indep) cout << "c s type wpmc " << endl;
-    else cout << "c s type wmc" << endl;
+    if (!cnf.get_projected()) cout << "c s type wmc" << endl;
+    else cout << "c s type pwmc " << endl;
     cnt *= cnf.multiplier_weight.get_mpq_t();
     if (cnt > 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
@@ -498,8 +498,8 @@ int main(int argc, char *argv[])
 
     if (cnt > 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (!all_indep) cout << "c s type pmc " << endl;
-    else cout << "c s type mc" << endl;
+    if (!cnf.get_projected()) cout << "c s type mc" << endl;
+    else cout << "c s type pmc " << endl;
     cnt *= cnf.multiplier_weight;
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;

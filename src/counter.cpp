@@ -902,8 +902,10 @@ void Counter<T>::print_all_levels() {
 template<typename T>
 void Counter<T>::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups_) return;
+  if (next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
-  next_print_stat_cache = stats.num_cache_look_ups_ + (6ULL*1000LL*1000LL);
+  next_print_stat_cache = stats.num_cache_look_ups_ + (20ULL*1000LL*1000LL);
+  next_print_stat_confl = stats.conflicts + 150LL*1000LL;
 }
 
 template<typename T>
@@ -945,7 +947,6 @@ void Counter<T>::count_loop() {
         continue;
       }
 
-      print_stat_line();
       if (!isindependent) {
         // The only decision we could make would be non-indep for this component.
         debug_print("before SAT mode. cnt dec: " << decisions.top().getTotalModelCount()
@@ -992,6 +993,7 @@ void Counter<T>::count_loop() {
     }
     // we are here because there is no next component, or we had to backtrack
 
+    print_stat_line();
     state = backtrack();
     if (state == EXIT) goto end;
 

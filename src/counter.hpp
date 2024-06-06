@@ -618,7 +618,8 @@ private:
   vector<Lit> bothprop_toset;
 
   void print_stat_line();
-  uint64_t next_print_stat_cache = 2ULL*1000LL*1000LL;
+  uint64_t next_print_stat_cache = 4ULL*1000LL*1000LL;
+  uint64_t next_print_stat_confl = 100LL*1000LL;
 
   // indicates if we have called end_irred_cls()
   bool ended_irred_cls = false;

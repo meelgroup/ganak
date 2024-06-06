@@ -126,17 +126,17 @@ only_dirs = [
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
              # "out-ganak-7320764.pbs101-9", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000 (could try varfreqdiv 20)
-             # "out-ganak-7334726.pbs101-1", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, non-appmc
-             # "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
+             "out-ganak-7334726.pbs101-1", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, non-appmc, --tdmaxw 10 --varfreqdiv 25
+             "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
 
 
              # "out-ganak-6318929.pbs101-5/", # exactmc
              # "out-ganak-6328707.pbs101-7/", # exactmc
              # "out-ganak-6318929.pbs101-7/", # sharpsat
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
-             "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
-             "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
-             "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
+             # "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
+             # "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
+             # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
              # "out-ganak-7189905.pbs101-" # unproj 2023, 4GB, cache elem simplification, TD back to 0.1, SAT restarts
@@ -155,7 +155,7 @@ only_dirs = [
              # "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100, --appmct 2000
              # "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
              # "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
-             "out-ganak-7334807.pbs101-2", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST non-appmc
+             # "out-ganak-7334807.pbs101-2", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST non-appmc
              # "out-ganak-7334807.pbs101-7", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST appmc
 
 
@@ -241,7 +241,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][160:]\\\n")
+    f.write("plot [:][100:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

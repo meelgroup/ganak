@@ -178,13 +178,19 @@ def find_ganak_time_cnt(fname):
 #c o Arjun T: 206.14
 def find_arjun_time(fname):
     t = None
+    backb_t = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if line[:3] == "c o" and "% total " in line:
+              if backb_t is None:
+                backb_t = float(line.split()[2])
+              else:
+                backb_t+ = float(line.split()[2])
             if "c o Arjun T:" in line:
               assert t is None
               t = float(line.split()[4])
-    return t
+    return t, backb_t
 
 #c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
 #c o sat called/sat/unsat/conflK    6     6     0     0
@@ -399,7 +405,9 @@ for f in file_list:
         files[base]["confls"] = ganak_conflicts(f)
         files[base]["decisions"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
-        files[base]["arjuntime"] = find_arjun_time(f)
+        arjun_t, backb_t = find_arjun_time(f)
+        files[base]["arjuntime"] = arjun_t
+        files[base]["backbtime"] = backb_t
         files[base]["cachedeltime"] = collect_cache_deletion_time(f)
         files[base]["bddcalled"] = find_bdd_called(f)
         rst,cubes = find_restarts(f)
@@ -446,7 +454,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,backbone_time,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -509,6 +517,11 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["arjuntime"]
+
+        if "backbtime" not in f or f["backbtime"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["backbtime"]
 
         if "cachedeltime" not in f or f["cachedeltime"] is None:
             toprint += ","

@@ -14,6 +14,7 @@ CREATE TABLE data (
   td_width INT,
   td_time FLOAT,
   arjun_time FLOAT,
+  backbone_time FLOAT,
   cache_del_time FLOAT,
   bdd_called INT,
   sat_called INT,
@@ -30,6 +31,7 @@ UPDATE data SET comps = NULL WHERE comps = '';
 UPDATE data SET td_width = NULL WHERE td_width = '';
 UPDATE data SET td_time = NULL WHERE td_time = '';
 UPDATE data SET arjun_time = NULL WHERE arjun_time = '';
+UPDATE data SET backbone_time = NULL WHERE backbone_time = '';
 UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
 UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
 UPDATE data SET sat_called = NULL WHERE sat_called = '';

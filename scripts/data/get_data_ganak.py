@@ -186,7 +186,7 @@ def find_arjun_time(fname):
               if backb_t is None:
                 backb_t = float(line.split()[2])
               else:
-                backb_t+ = float(line.split()[2])
+                backb_t += float(line.split()[2])
             if "c o Arjun T:" in line:
               assert t is None
               t = float(line.split()[4])

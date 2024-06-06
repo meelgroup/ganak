@@ -128,8 +128,9 @@ only_dirs = [
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000 (could try varfreqdiv 20)
              "out-ganak-7334726.pbs101-1", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, non-appmc, --tdmaxw 10 --varfreqdiv 25
              "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
-             "out-ganak-7348395.pbs101-" # better extend
+             #"out-ganak-7348395.pbs101-" # better extend -- maybe extend is not good?
   # todo: no sbva, no extend, --compsort 5 & 4,
+             "out-ganak-7366311.pbs101" # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
 
 
              # "out-ganak-6318929.pbs101-5/", # exactmc

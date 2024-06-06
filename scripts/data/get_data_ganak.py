@@ -182,7 +182,7 @@ def find_arjun_time(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if line[:3] == "c o" and "% total " in line:
+            if  "% total " in line:
               if backb_t is None:
                 backb_t = float(line.split()[2])
               else:

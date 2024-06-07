@@ -130,10 +130,10 @@ only_dirs = [
              # "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
              #"out-ganak-7348395.pbs101-", # better extend -- maybe extend is not good?
   # todo: no sbva, no extend, --compsort 5 & 4,
-             # "out-ganak-7377549.pbs101", # release version, try different bacdkbone setups (probe, only oracle vivif, etc), tdminw 0
-             # "out-ganak-7366311.pbs101-4", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
-             # "out-ganak-7366311.pbs101-6", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
-             # "out-ganak-7377549.pbs101-6", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
+             "out-ganak-7377549.pbs101", # release version, try different bacdkbone setups (probe, only oracle vivif, etc), tdminw 0
+             "out-ganak-7366311.pbs101-4", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
+             "out-ganak-7366311.pbs101-6", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
+             "out-ganak-7377549.pbs101-6", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
              #"out-ganak-7400920.pbs101-0" # timeout in backbone 30s
 
 
@@ -168,9 +168,9 @@ only_dirs = [
              # also: --tdexpmult 1.25
              # TODO: do a bit more probing, but not full backbone before indep minim
              # "out-ganak-7377878.pbs101-5", # best of the above
-             "out-ganak-7334807.pbs101-2", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST non-appmc
-             "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
-             "out-ganak-7377878.pbs101-5", # best of the above
+             # "out-ganak-7334807.pbs101-2", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST non-appmc
+             # "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
+             # "out-ganak-7377878.pbs101-5", # best of the above
              #"out-ganak-7401120.pbs101" # timeout in backbone 30s
 
 

@@ -111,9 +111,9 @@ only_dirs = [
              # "out-ganak7197939",
              # "out-ganak-7206369.pbs101-",
              # TODO: higher maxw than out-ganak-7205692.pbs101-6, rerun fixed cadiback
-             # "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
-             # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
-             # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+             "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
+             "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+             "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
              # "out-ganak-7205692.pbs101-6", # old best
              # #"out-ganak-7247003.pbs101-", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually # BEST
              # "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
@@ -126,11 +126,14 @@ only_dirs = [
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
              # "out-ganak-7320764.pbs101-9", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000 (could try varfreqdiv 20)
-             "out-ganak-7334726.pbs101-1", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, non-appmc, --tdmaxw 10 --varfreqdiv 25
-             "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
-             #"out-ganak-7348395.pbs101-" # better extend -- maybe extend is not good?
+             # "out-ganak-7334726.pbs101-1", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, non-appmc, --tdmaxw 10 --varfreqdiv 25
+             # "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
+             # "out-ganak-7348395.pbs101-" # better extend -- maybe extend is not good?
   # todo: no sbva, no extend, --compsort 5 & 4,
-             "out-ganak-7366311.pbs101" # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
+             "out-ganak-7366311.pbs101-4", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
+            # TODO try  --tdminw 0
+            # TODO try  --backbonepuura 0
+            # TODO try  --arjunprobe 1
 
 
              # "out-ganak-6318929.pbs101-5/", # exactmc
@@ -244,7 +247,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][120:]\\\n")
+    f.write("plot [:][30:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

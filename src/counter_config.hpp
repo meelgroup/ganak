@@ -34,7 +34,7 @@ struct CounterConfiguration {
   uint64_t first_restart = 20000U;
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
-  double var_freq_divider = 20.0; //10 is best for vsads_readjust_every = 0
+  double var_freq_divider = 25.0; //10 is best for vsads_readjust_every = 0
 
   int restart_type = 8;
   int do_readjust_for_restart = 1;
@@ -75,7 +75,7 @@ struct CounterConfiguration {
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  double td_maxweight = 10.0; //4.0 is best for vsads_readjust_every = 0
+  double td_maxweight = 100.0; //4.0 is best for vsads_readjust_every = 0
   double td_minweight = 0.05; //0.1 is best for vsads_readjust_every = 0
   double td_divider = 1e3;
   double do_td_weight = 1;

@@ -412,7 +412,8 @@ int main(int argc, char *argv[])
     arjun.set_irreg_gate_based(arjun_gates);
     arjun.set_extend_max_confl(arjun_extend_max_confl);
     arjun.set_probe_based(do_probe_based);
-    if (do_backbone) arjun.only_backbone(cnf);
+    if (do_backbone == 2) arjun.only_backbone(cnf);
+    if (do_backbone == 1) arjun.only_backbone_short(cnf);
     arjun.only_run_minimize_indep(cnf);
     bool do_unate = false;
     arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);

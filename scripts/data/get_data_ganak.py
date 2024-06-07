@@ -4,6 +4,7 @@ import os
 import glob
 import decimal
 import sys
+import string
 
 sys.set_int_max_str_digits(2000000)
 
@@ -179,9 +180,16 @@ def find_ganak_time_cnt(fname):
 def find_arjun_time(fname):
     t = None
     backb_t = None
+    backw_t = None
+    indep_sz = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if  "backward round finished" in line:
+              line = ''.join(filter(lambda x:x in string.printable, line))
+              line = line.replace("[0m", "")
+              backw_t = float(line.split()[10])
+              indep_sz = int(line.split()[8])
             if  "% total" in line:
               if backb_t is None:
                 backb_t = float(line.split()[2])
@@ -190,7 +198,7 @@ def find_arjun_time(fname):
             if "c o Arjun T:" in line:
               assert t is None
               t = float(line.split()[4])
-    return t, backb_t
+    return t, backb_t, backw_t, indep_sz
 
 #c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
 #c o sat called/sat/unsat/conflK    6     6     0     0
@@ -405,9 +413,11 @@ for f in file_list:
         files[base]["confls"] = ganak_conflicts(f)
         files[base]["decisions"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
-        arjun_t, backb_t = find_arjun_time(f)
+        arjun_t, backb_t, backw_t, indep_sz = find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backbtime"] = backb_t
+        files[base]["backwtime"] = backw_t
+        files[base]["indepsz"] = indep_sz
         files[base]["cachedeltime"] = collect_cache_deletion_time(f)
         files[base]["bddcalled"] = find_bdd_called(f)
         rst,cubes = find_restarts(f)
@@ -454,7 +464,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,backbone_time,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -522,6 +532,16 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["backbtime"]
+
+        if "backwtime" not in f or f["backwtime"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["backwtime"]
+
+        if "indepsz" not in f or f["indepsz"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["indepsz"]
 
         if "cachedeltime" not in f or f["cachedeltime"] is None:
             toprint += ","

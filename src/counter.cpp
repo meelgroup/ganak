@@ -3836,7 +3836,8 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       debug_print("s.get_unprocessed_comps_end(): " << s.get_unprocessed_comps_end()
           << " s.remaining_comps_ofs(): " << s.remaining_comps_ofs()
           << " comp_manager->size: " << comp_manager->get_comp_stack().size());
-      for(int comp_at = s.get_unprocessed_comps_end()-1; comp_at >= (int)s.remaining_comps_ofs() && comp_at < comp_manager->get_comp_stack().size(); comp_at--) {
+      for(int comp_at = s.get_unprocessed_comps_end()-1; comp_at >= (int)s.remaining_comps_ofs() &&
+          comp_at < (int)comp_manager->get_comp_stack().size(); comp_at--) {
         const auto& c2 = comp_manager->at(comp_at);
         VERBOSE_DEBUG_DO(cout << "vars in side comp: ";
           all_vars_in_comp(*c2, v) VERBOSE_DEBUG_DO(cout << *v << " ");

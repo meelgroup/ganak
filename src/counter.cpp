@@ -853,6 +853,7 @@ vector<Cube<T>> Counter<T>::one_restart_count() {
   }
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);
+  if (opt_indep_support_end+5 < nVars()) conf.td_exp_mult = 0.3;
 
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);

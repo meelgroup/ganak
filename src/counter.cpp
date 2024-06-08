@@ -1592,6 +1592,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
               cube_cnt *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
           }
+          VERBOSE_DEBUG_DO(cout << cube_cnt << " + ";);
           cnt += cube_cnt;
         }
 
@@ -1608,6 +1609,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       } else if (ret == CMSat::l_False) break;
       else assert(false);
     }
+    VERBOSE_DEBUG_DO(cout << endl);
     T after_mul = 0;
     if (!decisions.top().is_right_branch()) {
       after_mul += decisions.top().get_left_model_count()*dec_w;

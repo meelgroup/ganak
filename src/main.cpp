@@ -71,10 +71,10 @@ int do_breakid = 0;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
 int do_extend_indep = 1;
-int do_backbone = 1;
-int do_probe_based = 0;
-int arjun_simp_level = 1;
-int arjun_backw_maxc = 50000;
+int do_backbone = 0;
+int do_probe_based = 1;
+int arjun_simp_level = 2;
+int arjun_backw_maxc = 20000;
 ArjunNS::SimpConf simp_conf;
 
 string ganak_version_info()

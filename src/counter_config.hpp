@@ -76,7 +76,7 @@ struct CounterConfiguration {
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
   double td_maxweight = 100.0; //4.0 is best for vsads_readjust_every = 0
-  double td_minweight = 0.05; //0.1 is best for vsads_readjust_every = 0
+  double td_minweight = 15.0; //0.1 is best for vsads_readjust_every = 0
   double td_divider = 1e3;
   double do_td_weight = 1;
   double td_exp_mult = 1.2;

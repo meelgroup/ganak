@@ -17,6 +17,7 @@ CREATE TABLE data (
   backbone_time FLOAT,
   backward_time FLOAT,
   indep_sz INT,
+  unkn_sz INT,
   cache_del_time FLOAT,
   bdd_called INT,
   sat_called INT,
@@ -36,6 +37,7 @@ UPDATE data SET arjun_time = NULL WHERE arjun_time = '';
 UPDATE data SET backbone_time = NULL WHERE backbone_time = '';
 UPDATE data SET backward_time = NULL WHERE backward_time = '';
 UPDATE data SET indep_sz = NULL WHERE indep_sz = '';
+UPDATE data SET unkn_sz = NULL WHERE unkn_sz = '';
 UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
 UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
 UPDATE data SET sat_called = NULL WHERE sat_called = '';

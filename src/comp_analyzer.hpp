@@ -129,8 +129,8 @@ private:
 
   // for every variable e have an array of
   // binarycls 0 ternary cls (consisting of: CLIDX LIT1 LIT2) 0 cls_idxs 0
-  vector<uint32_t> unified_var_links_lists_pool;
-  vector<uint32_t> variable_link_list_offsets; // offset into unified_var_links_lists_pool
+  vector<uint32_t> unified_occ;
+  vector<uint32_t> unified_occ_offs; // offset into unified_occ
                                                 // indexed by variable.
 
   const CounterConfiguration& conf;
@@ -158,7 +158,7 @@ private:
   bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
   bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
   uint32_t const* begin_cls_of_var(const uint32_t v) const {
-    return &unified_var_links_lists_pool[variable_link_list_offsets[v]];
+    return &unified_occ[unified_occ_offs[v]];
   }
   void bump_var_occs(const uint32_t v);
 

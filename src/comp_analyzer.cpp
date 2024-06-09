@@ -33,7 +33,7 @@ template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
-// this sets up unified_var_links_lists_pool and variable_link_list_offsets_
+// this sets up unified_occ and unified_occ_offs
 template<typename T>
 void CompAnalyzer<T>::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
@@ -102,56 +102,56 @@ void CompAnalyzer<T>::initialize(
   // This is an array that contains, flattened:
   // [  [vars of binary clauses],
   //    [cl_ids and lits] of tri clauses]
-  //    [cl_id, offset in occs+offset in unified_var_links_lists_pool]
+  //    [cl_id, offset in occs+offset in unified_occ]
   //    [the occ_long_clauses] ]
-  unified_var_links_lists_pool.clear();
+  unified_occ.clear();
 
-  // a map into unified_var_Links_lists_pool.
-  // maps var -> starting point in unified_var_links_lists_pool
-  variable_link_list_offsets.clear();
-  variable_link_list_offsets.resize(max_var + 1, 0);
+  // a map into unified_occ.
+  // maps var -> starting point in unified_occ
+  unified_occ_offs.clear();
+  unified_occ_offs.resize(max_var + 1, 0);
 
   for (uint32_t v = 1; v < max_var + 1; v++) {
     vector<uint32_t> lits_here(2*(max_var+1), 0);
-    variable_link_list_offsets[v] = unified_var_links_lists_pool.size();
+    unified_occ_offs[v] = unified_occ.size();
 
     // data for binary clauses
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
         if (bincl.irred()) {
-          unified_var_links_lists_pool.push_back(bincl.lit().var());
+          unified_occ.push_back(bincl.lit().var());
         }
       }
     }
 
     // data for ternary clauses
-    unified_var_links_lists_pool.push_back(0);
+    unified_occ.push_back(0);
     for(uint32_t i = 0; i < occ_ternary_clauses[v].size();) {
       auto cl_id = occ_ternary_clauses[v][i++];
-      unified_var_links_lists_pool.push_back(cl_id);
+      unified_occ.push_back(cl_id);
       Lit l;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
-      unified_var_links_lists_pool.push_back(l.raw());
+      unified_occ.push_back(l.raw());
       lits_here[l.raw()]++;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
-      unified_var_links_lists_pool.push_back(l.raw());
+      unified_occ.push_back(l.raw());
       lits_here[l.raw()]++;
     }
 
     // data for long clauses
-    unified_var_links_lists_pool.push_back(0);
+    unified_occ.push_back(0);
     for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
       auto cl_id = *it;
-      unified_var_links_lists_pool.push_back(cl_id);
+      unified_occ.push_back(cl_id);
       auto offs = *(it + 1) + (occs[v].end() - it);
       /* cout << "clid" << cl_id << " offs " << offs << endl; */
-      unified_var_links_lists_pool.push_back(offs);
+      unified_occ.push_back(offs);
     }
 
-    unified_var_links_lists_pool.push_back(0);
+    unified_occ.push_back(0);
     for(const auto& raw: occ_long_clauses[v]) {
       Lit l = Lit::toLit(raw);
-      unified_var_links_lists_pool.push_back(l.raw());
+      unified_occ.push_back(l.raw());
       if (l != SENTINEL_LIT) lits_here[l.raw()]+=2;
     }
   }

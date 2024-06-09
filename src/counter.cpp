@@ -1019,6 +1019,7 @@ void Counter<T>::count_loop() {
 end:
   if (state == EXIT) {
     Cube<T> c(vector<Lit>(), decisions.top().getTotalModelCount());
+    debug_print("Exiting due to EXIT state, the cube count: " << c.cnt);
     mini_cubes.push_back(c);
   } else {/*restart*/}
 
@@ -1716,7 +1717,7 @@ RetState Counter<T>::backtrack() {
         << " -- dec lev: " << decisions.get_decision_level());
     // Backtrack from end, i.e. finished.
     if (decisions.get_decision_level() == 0) {
-      debug_print("[indep] Backtracking from lev 0, i.e. ending");
+      debug_print(COLORGBG "[indep] Backtracking from lev 0, i.e. ending");
       CHECK_COUNT_DO(check_count());
       break;
     }
@@ -4213,4 +4214,16 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
   if (!sat_mode()) {
     decisions.top().resetRemainingComps();
   }
+}
+
+template<typename T>
+void Counter<T>::set_lit_weight(Lit l, const T& w) {
+  if (l.var() >= opt_indep_support_end) {
+    cerr << "ERROR: Trying to set weight of a variable that is not in the (optional) independent support."
+      " Var: " << l << " opt_indep_support_end: " << opt_indep_support_end << endl;
+    exit(-1);
+  }
+  verb_print(2, "Setting weight of " << l << " to " << w);
+  weights[l.raw()] = w;
+  if (w == 0) add_irred_cl({l.neg()});
 }

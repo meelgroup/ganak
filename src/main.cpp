@@ -76,6 +76,7 @@ int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
 ArjunNS::SimpConf simp_conf;
+string debug_arjun_cnf;
 
 string ganak_version_info()
 {
@@ -187,6 +188,7 @@ void add_ganak_options()
     ("appmct", po::value(&conf.appmc_timeout)->default_value(conf.appmc_timeout), "Enable AppMC restart, after K seconds")
     ("epsilon", po::value(&conf.appmc_epsilon)->default_value(conf.appmc_epsilon), "AppMC epsilon")
     ("maxrst", po::value(&conf.max_num_rst)->default_value(conf.max_num_rst), "Max number of restarts")
+    ("debugarjuncnf", po::value(&debug_arjun_cnf), "Write debug arjun CNF into this file")
     ;
 
     help_options.add(main_options);
@@ -356,6 +358,87 @@ void print_vars(const vector<uint32_t>& vars) {
   for(const auto& v: tmp) cout << v+1 << " ";
 }
 
+
+void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& generators,
+    OuterCounter& counter) {
+  counter.new_vars(cnf.nVars());
+  counter.set_generators(generators);
+
+  set<uint32_t> tmp;
+  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  counter.set_indep_support(tmp);
+  if (cnf.get_opt_sampl_vars_set()) {
+    tmp.clear();
+    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    counter.set_optional_indep_support(tmp);
+  }
+
+  if (cnf.weighted) {
+    for(const auto& t: cnf.weights) {
+      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
+      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg.get_mpq_t());
+    }
+  }
+
+  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
+  counter.end_irred_cls();
+}
+
+auto run_breakid(const ArjunNS::SimplifiedCNF& cnf) {
+  double my_time = cpuTime();
+  vector<map<Lit, Lit>> generators;
+  BID::BreakID breakid;
+  /* breakid.set_useMatrixDetection(conf.useMatrixDetection); */
+  /* breakid.set_useFullTranslation(conf.useFullTranslation); */
+  breakid.set_verbosity(0);
+  breakid.start_dynamic_cnf(cnf.nVars());
+  for(const auto& cl: cnf.clauses) {
+    breakid.add_clause((BID::BLit*)cl.data(), cl.size());
+  }
+  breakid.set_steps_lim(4000);
+  breakid.end_dynamic_cnf();
+  verb_print(1, "[breakid] Num generators: " << breakid.get_num_generators());
+  breakid.detect_subgroups();
+  if (conf.verb >= 1) breakid.print_generators(std::cout, "c o ");
+  vector<unordered_map<BID::BLit, BID::BLit> > orig_gen;
+  breakid.get_perms(&orig_gen);
+  for(const auto& m: orig_gen) {
+    map<Lit, Lit> gen;
+    for(const auto& gp: m) {
+      gen[Lit(gp.first.var()+1, gp.first.sign())] = Lit(gp.second.var()+1, gp.second.sign());
+      if (conf.verb >= 2) cout << "c o " << gp.first << " -> " << gp.second << endl;
+    }
+    generators.push_back(gen);
+  }
+  verb_print(1, "[breakid] T: " << (cpuTime()-my_time));
+  return generators;
+}
+
+void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
+  double my_time = cpuTime();
+  ArjunNS::Arjun arjun;
+  if (conf.verb == 0) arjun_verb = 0;
+  arjun.set_verb(arjun_verb);
+  arjun.set_or_gate_based(arjun_gates);
+  arjun.set_xor_gates_based(arjun_gates);
+  arjun.set_ite_gate_based(arjun_gates);
+  arjun.set_irreg_gate_based(arjun_gates);
+  arjun.set_extend_max_confl(arjun_extend_max_confl);
+  arjun.set_probe_based(do_probe_based);
+  arjun.set_simp(arjun_simp_level);
+  arjun.set_backw_max_confl(arjun_backw_maxc);
+  if (do_backbone) arjun.only_backbone(cnf);
+  arjun.only_run_minimize_indep(cnf);
+  bool do_unate = false;
+  arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
+  if (all_indep) {
+    cnf.opt_sampl_vars.clear();
+    for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
+  }
+  verb_print(1, "Arjun T: " << (cpuTime()-my_time));
+}
+
 int main(int argc, char *argv[])
 {
   mpfr::mpreal::set_default_prec(256);
@@ -395,102 +478,30 @@ int main(int argc, char *argv[])
     cout << "ERROR: must give input file to read" << endl;
     exit(-1);
   }
+
   ArjunNS::SimplifiedCNF cnf;
-  if (!do_arjun) {
-    parse_file(fname, &cnf);
-    if (conf.verb) {
-      cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
-      if (cnf.get_opt_sampl_vars_set()) {
-        cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
-      }
-    }
-    cnf.renumber_sampling_vars_for_ganak();
-    /* cnf.write_simpcnf("tmp", true, true); */
-  } else {
-    parse_file(fname, &cnf);
-    double my_time = cpuTime();
-    ArjunNS::Arjun arjun;
-    if (conf.verb == 0) arjun_verb = 0;
-    arjun.set_verb(arjun_verb);
-    arjun.set_or_gate_based(arjun_gates);
-    arjun.set_xor_gates_based(arjun_gates);
-    arjun.set_ite_gate_based(arjun_gates);
-    arjun.set_irreg_gate_based(arjun_gates);
-    arjun.set_extend_max_confl(arjun_extend_max_confl);
-    arjun.set_probe_based(do_probe_based);
-    arjun.set_simp(arjun_simp_level);
-    arjun.set_backw_max_confl(arjun_backw_maxc);
-    if (do_backbone) arjun.only_backbone(cnf);
-    arjun.only_run_minimize_indep(cnf);
-    bool do_unate = false;
-    arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
-    if (all_indep) {
-      cnf.opt_sampl_vars.clear();
-      for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
-    }
-    verb_print(1, "Arjun T: " << (cpuTime()-my_time));
-    if (conf.verb) {
-      cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+  parse_file(fname, &cnf);
+  if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();
+  else run_arjun(cnf);
+  if (conf.verb) {
+    cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+    if (cnf.get_opt_sampl_vars_set()) {
       cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
     }
-    /* cnf.write_simpcnf("tmp", true, false); */
   }
-
   vector<map<Lit, Lit>> generators;
-  if (conf.do_restart && do_breakid && cnf.clauses.size() > 1) {
-    double my_time = cpuTime();
-    BID::BreakID breakid;
-    /* breakid.set_useMatrixDetection(conf.useMatrixDetection); */
-    /* breakid.set_useFullTranslation(conf.useFullTranslation); */
-    breakid.set_verbosity(0);
-    breakid.start_dynamic_cnf(cnf.nVars());
-    for(const auto& cl: cnf.clauses) {
-      breakid.add_clause((BID::BLit*)cl.data(), cl.size());
-    }
-    breakid.set_steps_lim(4000);
-    breakid.end_dynamic_cnf();
-    verb_print(1, "[breakid] Num generators: " << breakid.get_num_generators());
-    breakid.detect_subgroups();
-    if (conf.verb >= 1) breakid.print_generators(std::cout, "c o ");
-    vector<unordered_map<BID::BLit, BID::BLit> > orig_gen;
-    breakid.get_perms(&orig_gen);
-    for(const auto& m: orig_gen) {
-      map<Lit, Lit> gen;
-      for(const auto& gp: m) {
-        gen[Lit(gp.first.var()+1, gp.first.sign())] = Lit(gp.second.var()+1, gp.second.sign());
-        if (conf.verb >= 2) cout << "c o " << gp.first << " -> " << gp.second << endl;
-      }
-      generators.push_back(gen);
-    }
-    verb_print(1, "[breakid] T: " << (cpuTime()-my_time));
-    /* cnf.write_simpcnf("tmp.cnf"); */
-  }
+  if (conf.do_restart && do_breakid && cnf.clauses.size() > 1)
+    generators = run_breakid(cnf);
+  if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
+
   OuterCounter counter(conf, cnf.weighted);
-  counter.new_vars(cnf.nVars());
-  counter.set_generators(generators);
-  // indep
-  set<uint32_t> tmp;
-  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
-  counter.set_indep_support(tmp);
-  if (cnf.get_opt_sampl_vars_set()) {
-    tmp.clear();
-    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
-    counter.set_optional_indep_support(tmp);
-  }
+  setup_ganak(cnf, generators, counter);
 
-  if (cnf.weighted) {
-    for(const auto& t: cnf.weights) {
-      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
-      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg.get_mpq_t());
-    }
-  }
-
-  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
-  counter.end_irred_cls();
   if (cnf.weighted) {
     /* mpfr::mpreal::set_default_prec(256); */
-    auto cnt = counter.w_outer_count();
+    mpfr::mpreal cnt;
+    if (cnf.multiplier_weight == 0) cnt = 0;
+    else cnt = counter.w_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpuTime() - start_time) << endl;
     if (!cnf.get_projected()) cout << "c s type wmc" << endl;
@@ -503,7 +514,9 @@ int main(int argc, char *argv[])
     else cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;
     cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
   } else {
-    mpz_class cnt = counter.unw_outer_count();
+    mpz_class cnt;
+    if (cnf.multiplier_weight == 0) cnt = 0;
+    else cnt = counter.unw_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpuTime() - start_time) << endl;
     bool is_appx = counter.get_is_approximate();

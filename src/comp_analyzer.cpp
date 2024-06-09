@@ -112,7 +112,6 @@ void CompAnalyzer<T>::initialize(
   unif_occ_offs.resize(max_var + 1, 0);
 
   for (uint32_t v = 1; v < max_var + 1; v++) {
-    vector<uint32_t> lits_here(2*(max_var+1), 0);
     unif_occ_offs[v] = unif_occ.size();
 
     // data for binary clauses
@@ -132,10 +131,8 @@ void CompAnalyzer<T>::initialize(
       Lit l;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
       unif_occ.push_back(l.raw());
-      lits_here[l.raw()]++;
       l = Lit::toLit(occ_ternary_clauses[v][i++]);
       unif_occ.push_back(l.raw());
-      lits_here[l.raw()]++;
     }
 
     // data for long clauses
@@ -152,7 +149,6 @@ void CompAnalyzer<T>::initialize(
     for(const auto& raw: occ_long_clauses[v]) {
       Lit l = Lit::toLit(raw);
       unif_occ.push_back(l.raw());
-      if (l != SENTINEL_LIT) lits_here[l.raw()]+=2;
     }
   }
 

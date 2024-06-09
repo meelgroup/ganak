@@ -33,7 +33,7 @@ template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
-// this sets up unif_occ and unif_occ_offs
+// this sets up unif_occ
 template<typename T>
 void CompAnalyzer<T>::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
@@ -43,54 +43,28 @@ void CompAnalyzer<T>::initialize(
   comp_vars.reserve(max_var + 1);
   VAR_FREQ_DO(var_freq_scores.resize(max_var + 1, 0));
 
-  // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
-  vector<vector<uint32_t>>  occ_ternary_clauses(max_var + 1);
-
-  // maps var -> [var1..varn, SENTINEL_LIT, var1...varn, SENTINEL_LIT, ...]
-  vector<vector<uint32_t>>  occ_long_clauses(max_var + 1);
-
-  // maps var -> [cl_id, offset in occ_long_clauses, cl_id, offset in ...]
   vector<vector<ClauseOfs>> occs(max_var + 1);
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer<T>::initialize...");
 
-  vector<uint32_t> tmp;
   max_clid = 1;
-  assert(idx_to_cl_map.empty());
-  assert(idx_to_cl_data.empty());
-  idx_to_cl_map.push_back(0);
-  // lit_pool contains all non-binary clauses
+  unif_occ.clear();
+  unif_occ.resize(max_var + 1);
+  long_clauses_data.clear();
+  vector<uint32_t> tmp;
   for (const auto& off: long_irred_cls) {
-    // Builds the occ list for 3-long and long clauses
-    // it_curr_cl_st is the starting point of the clause
-    // for each lit in the clause, it adds the clause to the occ list
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
+    uint32_t long_cl_off = long_clauses_data.size();
+    for(const auto&l: cl) long_clauses_data.push_back(l);
+    long_clauses_data.push_back(SENTINEL_LIT);
 
     for(const auto& l: cl) {
       const uint32_t var = l.var();
       assert(var <= max_var);
-      get_cl(tmp, cl, l);
-      assert(tmp.size() > 1);
-
-      if(tmp.size() == 2) {
-        // Ternary clause (but "tmp" is missing *it_lit, so it' of size 2)
-        occ_ternary_clauses[var].push_back(max_clid);
-        occ_ternary_clauses[var].insert(occ_ternary_clauses[var].end(), tmp.begin(), tmp.end());
-      } else {
-        // Long clauses
-        occs[var].push_back(max_clid);
-        occs[var].push_back(occ_long_clauses[var].size());
-        occ_long_clauses[var].insert(occ_long_clauses[var].end(), tmp.begin(), tmp.end());
-        occ_long_clauses[var].push_back(SENTINEL_LIT.raw());
-      }
+      unif_occ[var].push_back(max_clid);
+      unif_occ[var].push_back(long_cl_off);
     }
-    // Fill idx
-    const uint32_t at = idx_to_cl_data.size();
-    for(const auto& l: cl) idx_to_cl_data.push_back(l);
-    idx_to_cl_data.push_back(SENTINEL_LIT);
-    assert(idx_to_cl_map.size() == max_clid);
-    idx_to_cl_map.push_back(at);
     max_clid++;
   }
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
@@ -98,58 +72,20 @@ void CompAnalyzer<T>::initialize(
   archetype.init_data(max_var, max_clid);
 
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer<T>::initialize...");
-  // the unified link list
-  // This is an array that contains, flattened:
-  // [  [vars of binary clauses],
-  //    [cl_ids and lits] of tri clauses]
-  //    [cl_id, offset in occs+offset in unif_occ]
-  //    [the occ_long_clauses] ]
-  unif_occ.clear();
 
-  // a map into unif_occ.
-  // maps var -> starting point in unif_occ
-  unif_occ_offs.clear();
-  unif_occ_offs.resize(max_var + 1, 0);
 
+  // data for binary clauses
+  unif_occ_bin.clear();
+  unif_occ_bin.resize(max_var+1);
+  vector<uint32_t> tmp2;
   for (uint32_t v = 1; v < max_var + 1; v++) {
-    unif_occ_offs[v] = unif_occ.size();
-
-    // data for binary clauses
+    tmp2.clear();
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred()) {
-          unif_occ.push_back(bincl.lit().var());
-        }
+        if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
     }
-
-    // data for ternary clauses
-    unif_occ.push_back(0);
-    for(uint32_t i = 0; i < occ_ternary_clauses[v].size();) {
-      auto cl_id = occ_ternary_clauses[v][i++];
-      unif_occ.push_back(cl_id);
-      Lit l;
-      l = Lit::toLit(occ_ternary_clauses[v][i++]);
-      unif_occ.push_back(l.raw());
-      l = Lit::toLit(occ_ternary_clauses[v][i++]);
-      unif_occ.push_back(l.raw());
-    }
-
-    // data for long clauses
-    unif_occ.push_back(0);
-    for(auto it = occs[v].begin(); it != occs[v].end(); it+=2) { // +2 because [cl_id, offset]
-      auto cl_id = *it;
-      unif_occ.push_back(cl_id);
-      auto offs = *(it + 1) + (occs[v].end() - it);
-      /* cout << "clid" << cl_id << " offs " << offs << endl; */
-      unif_occ.push_back(offs);
-    }
-
-    unif_occ.push_back(0);
-    for(const auto& raw: occ_long_clauses[v]) {
-      Lit l = Lit::toLit(raw);
-      unif_occ.push_back(l.raw());
-    }
+    unif_occ_bin[v] = tmp2;
   }
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
@@ -193,41 +129,22 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     //traverse binary clauses
-    uint32_t const* p = begin_cls_of_var(v);
-    for (; *p; p++) {
-      // NOTE: This below gives 10% slowdown(!) just to count the number of binary cls
-      /* BUDDY_DO(if (counter->val(*p) == X_TRI) archetype.num_bin_cls++); */
-      if (manage_occ_of(*p)) {
-        if (!conf.do_check_unkn_bin || is_unknown(*p)) {
-          VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));
-        }
-      }
-    }
-
-    //traverse ternary clauses
-    for (p++; *p ; p+=3) {
-      const auto clid = *p;
-      const Lit a = *(Lit*)(p + 1);
-      const Lit b = *(Lit*)(p + 2);
-      if (archetype.clause_unvisited_in_sup_comp(*p)){
-        /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
-        if(is_true(a)|| is_true(b)) {
-          archetype.clear_cl(clid);
-        } else {
-          VAR_FREQ_DO(bump_freq_score(v));
-          manage_occ_and_score_of(a.var());
-          manage_occ_and_score_of(b.var());
-          archetype.set_clause_visited(clid ,is_unknown(a) && is_unknown(b));
+    for(const auto& p: unif_occ_bin[v]) {
+      if (manage_occ_of(p)) {
+        if (!conf.do_check_unkn_bin || is_unknown(p)) {
+          VAR_FREQ_DO(bump_freq_score(p); bump_freq_score(v));
         }
       }
     }
 
     // traverse long clauses
-    for (p++; *p ; p +=2)
-      if (archetype.clause_unvisited_in_sup_comp(*p)) {
-        search_clause(v, *p, (Lit const*)(p + 1 + *(p+1)));
+    for (uint32_t i = 0; i < unif_occ[v].size(); i+=2) {
+      const uint32_t cl_id = unif_occ[v][i];
+      const ClauseOfs cl_off = unif_occ[v][i+1];
+      if (archetype.clause_unvisited_in_sup_comp(cl_id)) {
+        search_clause(v, cl_id, long_clauses_data.data()+cl_off);
       }
-
+    }
   }
 
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "

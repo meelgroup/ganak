@@ -29,7 +29,6 @@ using std::endl;
 #define   CA_CL_IN_SUP_COMP_UNVISITED  8
 #define   CA_CL_VISITED 16
 #define   CA_CL_IN_PEER_COMP  32
-#define   CA_CL_ALL_LITS_UNK  64
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
 
@@ -92,11 +91,6 @@ public:
     data[cl] = CA_CL_VISITED | (data[cl] & CA_VAR_MASK);
   }
 
-  void set_clause_visited(const ClauseIndex cl, const bool all_lits_unkn) {
-    clear_cl(cl);
-    data[cl] = CA_CL_VISITED | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (data[cl] & CA_VAR_MASK);
-  }
-
   void set_var_in_peer_comp(const uint32_t v) {
     data[v] = CA_VAR_IN_PEER_COMP | (data[v] & CA_CL_MASK);
   }
@@ -111,10 +105,6 @@ public:
 
   bool clause_visited(const ClauseIndex cl) const {
     return data[cl] & CA_CL_VISITED;
-  }
-
-  bool clause_all_lits_unkn(const ClauseIndex cl) const {
-    return data[cl] & CA_CL_ALL_LITS_UNK;
   }
 
   bool var_nil(const uint32_t v) const {

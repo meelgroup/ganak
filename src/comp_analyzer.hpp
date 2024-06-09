@@ -49,10 +49,6 @@ public:
         const uint32_t& _indep_support_end,
         Counter<T>* _counter);
 
-  Lit const* get_idx_to_cl(uint32_t cl_id) const {
-    return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
-  }
-
 #ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const {
     return (double)var_freq_scores[v];
@@ -126,9 +122,14 @@ private:
   // different from the offset of the clause in the literal pool
   uint32_t max_clid = 0;
   uint32_t max_var = 0;
+  struct BinRem {
+    uint32_t v;
+    uint32_t lev;
+  };
 
-  vector<uint32_t> unif_occ;
-  vector<uint32_t> unif_occ_offs;
+  vector<vector<uint32_t>> unif_occ;
+  vector<vector<uint32_t>> unif_occ_bin;
+  vector<Lit> long_clauses_data;
 
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
@@ -141,8 +142,6 @@ private:
   Counter<T>* counter = nullptr;
 
   // Quick lookup of cl based on ID
-  vector<Lit> idx_to_cl_data; //packed clauses separated by NOT_A_LIT, idx_to_cl_map indexes in
-  vector<uint32_t> idx_to_cl_map; //ID goes in, offset of id_to_cl_data comes out. Ends with NOT_A_LIT
 
   // Used to figure out which vars are in a component
   // used in  record_comp
@@ -154,9 +153,6 @@ private:
   bool is_true(const Lit lit) const { return values[lit] == T_TRI; }
   bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
   bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
-  uint32_t const* begin_cls_of_var(const uint32_t v) const {
-    return &unif_occ[unif_occ_offs[v]];
-  }
   void bump_var_occs(const uint32_t v);
 
   // stores all information about the comp of var
@@ -175,16 +171,14 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause(uint32_t v, ClauseIndex cl_id, Lit const* pstart_cls){
+  void search_clause(uint32_t v, ClauseIndex cl_id, Lit const* cl_start){
     const auto it_v_end = comp_vars.end();
-    bool all_lits_unkn = true;
 
-    for (auto it_l = pstart_cls; *it_l != SENTINEL_LIT; it_l++) {
+    for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       assert(it_l->var() <= max_var);
       if (!archetype.var_nil(it_l->var())) manage_occ_and_score_of(it_l->var());
       else {
         assert(!is_unknown(*it_l));
-        all_lits_unkn = false;
         if (is_false(*it_l)) continue;
 
         //accidentally entered a satisfied clause: undo the search process
@@ -204,7 +198,7 @@ private:
 
     if (!archetype.clause_nil(cl_id)) {
       VAR_FREQ_DO(bump_freq_score(v));
-      archetype.set_clause_visited(cl_id,all_lits_unkn);
+      archetype.set_clause_visited(cl_id);
     }
   }
 };

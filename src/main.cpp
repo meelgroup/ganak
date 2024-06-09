@@ -186,6 +186,7 @@ void add_ganak_options()
     ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
     ("appmct", po::value(&conf.appmc_timeout)->default_value(conf.appmc_timeout), "Enable AppMC restart, after K seconds")
     ("epsilon", po::value(&conf.appmc_epsilon)->default_value(conf.appmc_epsilon), "AppMC epsilon")
+    ("maxrst", po::value(&conf.max_num_rst)->default_value(conf.max_num_rst), "Max number of restarts")
     ;
 
     help_options.add(main_options);

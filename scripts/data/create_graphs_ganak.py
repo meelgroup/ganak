@@ -133,12 +133,14 @@ only_dirs = [
              # "out-ganak-7377549.pbs101", # release version, try different bacdkbone setups (probe, only oracle vivif, etc), tdminw 0
              # "out-ganak-7366311.pbs101-4", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
              # "out-ganak-7366311.pbs101-6", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
-             #"out-ganak-7377549.pbs101-", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
-             "out-ganak-7400920.pbs101-0", # timeout in backbone 30s, went really bad
-             "out-ganak-7419164.pbs101-3", # more simplification pre-backward, lower backward confl
+             # "out-ganak-7377549.pbs101-", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
+             # SHITTY "out-ganak-7400920.pbs101-0", # timeout in backbone 30s, went really bad
+             #"out-ganak-7419164.pbs101-3", # more simplification pre-backward, lower backward confl
              # BEST: --tdexpmult 0.3 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
-             "out-ganak-7422213.pbs101-" # unit cls to duplicated CNF, different cutoff for gates, some param tuning
-             # Wow, wrong. Seemingly to do with cadiback what is going on....
+             # SHITTY "out-ganak-7422213.pbs101-" # unit cls to duplicated CNF, different cutoff for gates, some param tuning Wow, wrong. Seemingly to do with cadiback what is going on....
+             "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
+             #"out-ganak-7433580.pbs101-2", #d4 32G
+             # best: --tdminw 0.05 --tdexpmult 0.3
 
 
 
@@ -179,8 +181,11 @@ only_dirs = [
              # "out-ganak-7419157.pbs101-3", # more simplification pre-backward, lower backward confl
              # "out-ganak-7419157.pbs101-", # more simplification pre-backward, lower backward confl
              # BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
-             # "out-ganak-7422239.pbs101-2" #unit cls to duplicated CNF, different cutoff for gates, some param tuning
-             # best: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 10000
+             # "out-ganak-7422239.pbs101-2" #unit cls to duplicated CNF, different cutoff for gates, some param tuning best: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 10000 --HOWEVER, duplication caused cadiback to go bad
+             # both below are nice, with and without appmc
+             # "out-ganak-7433320.pbs101-0", # default config
+             # "out-ganak-7433320.pbs101-1", # --appmct 2000
+             #SHITTY"out-ganak-7435410.pbs101-"# try all tdexp, go back to before mess
 
 
              ]

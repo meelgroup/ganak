@@ -4164,7 +4164,6 @@ bool Counter<T>::add_irred_cl(const vector<Lit>& lits_orig) {
 
 template<typename T>
 bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
-  assert(ended_irred_cls);
   if (!sat_solver->add_clause(ganak_to_cms_cl(lits_orig))) { ok = false; return ok; }
 
   vector<Lit> lits;
@@ -4178,9 +4177,6 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
   }
   for(const auto& l: lits) assert(l.var() <= nVars());
   if (!remove_duplicates(lits)) return ok;
-
-  assert(lits.size() >= 2 && "No unit or empty clauses please");
-
   Clause* cl = add_cl(lits, true);
   if (cl) {
     auto off = alloc->get_offset(cl);

@@ -486,8 +486,8 @@ int main(int argc, char *argv[])
   }
 
   for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  counter.end_irred_cls();
   for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
+  counter.end_irred_cls();
   if (cnf.weighted) {
     /* mpfr::mpreal::set_default_prec(256); */
     auto cnt = counter.w_outer_count();

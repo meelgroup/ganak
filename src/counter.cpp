@@ -858,7 +858,7 @@ vector<Cube<T>> Counter<T>::one_restart_count() {
     conf.td_minweight = 0.05;
     verb_print(1, "Setting td_exp_mult to 0.3, td_minweight to 0.05 due to opt_indep_support_end: " << opt_indep_support_end << " and nVars: " << nVars());
   } else {
-    verb_print(1, "NOT setting td_exp_mult to other value, due to opt_indep_support_end: " << opt_indep_support_end << " and nVars: " << nVars());
+    verb_print(1, "NOT setting td_exp_mult or td_minweight to other value, due to opt_indep_support_end: " << opt_indep_support_end << " and nVars: " << nVars());
   }
 
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {

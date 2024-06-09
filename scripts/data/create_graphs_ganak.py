@@ -130,11 +130,15 @@ only_dirs = [
              # "out-ganak-7334726.pbs101-8", #  new run, some parameter tuning, fixed SAT restart bug (again, this time good) -- BEST, appmc
              #"out-ganak-7348395.pbs101-", # better extend -- maybe extend is not good?
   # todo: no sbva, no extend, --compsort 5 & 4,
-             "out-ganak-7377549.pbs101", # release version, try different bacdkbone setups (probe, only oracle vivif, etc), tdminw 0
-             "out-ganak-7366311.pbs101-4", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
-             "out-ganak-7366311.pbs101-6", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
-             "out-ganak-7377549.pbs101-6", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
-             #"out-ganak-7400920.pbs101-0" # timeout in backbone 30s
+             # "out-ganak-7377549.pbs101", # release version, try different bacdkbone setups (probe, only oracle vivif, etc), tdminw 0
+             # "out-ganak-7366311.pbs101-4", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
+             # "out-ganak-7366311.pbs101-6", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
+             #"out-ganak-7377549.pbs101-", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
+             "out-ganak-7400920.pbs101-0", # timeout in backbone 30s, went really bad
+             "out-ganak-7419164.pbs101-3", # more simplification pre-backward, lower backward confl
+             # BEST: --tdexpmult 0.3 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
+             "out-ganak-7422213.pbs101-" # unit cls to duplicated CNF, different cutoff for gates, some param tuning
+             # Wow, wrong. Seemingly to do with cadiback what is going on....
 
 
 
@@ -171,7 +175,12 @@ only_dirs = [
              # "out-ganak-7334807.pbs101-2", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST non-appmc
              # "out-ganak-7320968.pbs101-1", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
              # "out-ganak-7377878.pbs101-5", # best of the above
-             #"out-ganak-7401120.pbs101" # timeout in backbone 30s
+             # "out-ganak-7401120.pbs101-", # timeout in backbone 30s
+             # "out-ganak-7419157.pbs101-3", # more simplification pre-backward, lower backward confl
+             # "out-ganak-7419157.pbs101-", # more simplification pre-backward, lower backward confl
+             # BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
+             # "out-ganak-7422239.pbs101-2" #unit cls to duplicated CNF, different cutoff for gates, some param tuning
+             # best: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 10000
 
 
              ]
@@ -256,7 +265,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][100:]\\\n")
+    f.write("plot [:][130:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

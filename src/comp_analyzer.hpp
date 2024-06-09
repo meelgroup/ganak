@@ -127,11 +127,8 @@ private:
   uint32_t max_clid = 0;
   uint32_t max_var = 0;
 
-  // for every variable e have an array of
-  // binarycls 0 ternary cls (consisting of: CLIDX LIT1 LIT2) 0 cls_idxs 0
-  vector<uint32_t> unified_occ;
-  vector<uint32_t> unified_occ_offs; // offset into unified_occ
-                                                // indexed by variable.
+  vector<uint32_t> unif_occ;
+  vector<uint32_t> unif_occ_offs;
 
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
@@ -158,7 +155,7 @@ private:
   bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
   bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
   uint32_t const* begin_cls_of_var(const uint32_t v) const {
-    return &unified_occ[unified_occ_offs[v]];
+    return &unif_occ[unif_occ_offs[v]];
   }
   void bump_var_occs(const uint32_t v);
 

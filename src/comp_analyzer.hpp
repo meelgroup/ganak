@@ -95,6 +95,7 @@ public:
     if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
+      __builtin_prefetch(unif_occ[v].data);
       return true;
     }
     return false;

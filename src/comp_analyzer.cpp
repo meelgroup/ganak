@@ -208,7 +208,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     uint32_t i = 0;
     while (i < unif_occ[v].size()) {
       ClData& d = unif_occ[v][i];
-      if (archetype.clause_sat(d.id)) goto sat2;
+      if (archetype.clause_sat(d.id)) goto satl2;
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
         bool sat = false;
         if (d.tri) {
@@ -227,20 +227,20 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
             bump_freq_score(v);
             archetype.set_clause_visited(d.id);
           } else {
-            goto sat;
+            goto satl;
           }
         } else {
           sat = is_true(d.blk_lit);
-          if (!sat) sat = search_clause(v, d, long_clauses_data.data()+d.off);
-          if (sat) goto sat;
+          if (!sat) sat = search_clause(d, long_clauses_data.data()+d.off);
+          if (sat) goto satl;
         }
         i++;
       } else i++;
       continue;
 
-      sat:
+      satl:
       archetype.set_clause_sat(d.id);
-      sat2:
+      satl2:
       ClData tmp = unif_occ[v][i];
       unif_occ[v][i] = unif_occ[v].back();
       unif_occ[v].back() = tmp;

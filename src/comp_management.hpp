@@ -216,13 +216,6 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
   return false;
 }
 
-template<typename T>
-CompManager<T>::CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
-                 const LiteralIndexedVector<TriValue> &lit_values,
-                 const uint32_t& indep_support_end, Counter<T>* _counter) :
-    conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
-    ana(lit_values, indep_support_end, _counter), counter(_counter)
-{ }
 
 
 // Initialized exactly once when Counter is created.

@@ -205,6 +205,9 @@ public:
   void v_new_lev();
   void v_backup();
   void v_restore();
+
+
+  vector<VarData> var_data;
 protected:
   CounterConfiguration conf;
   void unset_lit(Lit lit) {
@@ -216,6 +219,7 @@ protected:
       bool found = (at[0] == at[lit.var()]);
       if (found) decisions[decision_level()].include_solution(get_weight(lit));
     }
+    var(lit).dirty_lev = std::min(var(lit).decision_level, var(lit).dirty_lev);
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;
@@ -247,7 +251,6 @@ protected:
   double max_activity = 1.0;
   vector<T> weights;
   vector<Lit> unit_clauses_;
-  vector<VarData> var_data;
   bool num_vars_set = false;
   LiteralIndexedVector<TriValue> values;
   vector<double> tdscore;

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 #include "structures.hpp"
 #include "mpreal.h"
+#include <climits>
 
 using std::make_pair;
 
@@ -77,11 +78,10 @@ void CompAnalyzer<T>::initialize(
     max_clid++;
   }
 
-  backtracked  = 0;
   long_sz_declevs.resize(1);
   long_sz_declevs[0].resize(max_var+1, MemData());
   for(uint32_t var = 1; var < max_var+1; var++) {
-    long_sz_declevs[0][var] = MemData(unif_occ[var].size(), stamp);
+    long_sz_declevs[0][var] = MemData(unif_occ[var].size());
     /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
   }
 
@@ -105,6 +105,7 @@ void CompAnalyzer<T>::initialize(
     }
     unif_occ_bin[v] = tmp2;
   }
+  last_seen.resize(max_var+1, 0);
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
 }
@@ -139,40 +140,33 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  if (declev >= long_sz_declevs.size()) {
+  if (declev >= (int)long_sz_declevs.size()) {
     long_sz_declevs.resize(declev+1);
     long_sz_declevs[declev].resize(max_var+1, MemData());
   }
 
-  /* cout << "cur declef is: " << declev << endl; */
-  if (backtracked != INT_MAX) {
-    /* cout << "backtracked is: " << backtracked << endl; */
-    for(int32_t k = last_declev; k <= backtracked-1; k--) {
-      int32_t d = std::max(k, 0);
-      for(uint32_t v = 1; v < max_var+1; v++) {
-        uint64_t this_stamp = stamps[d];
-        if (d == 0 || long_sz_declevs[d][v].stamp == this_stamp) {
-          unif_occ[v].resize(long_sz_declevs[d][v].sz);
-          /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
-          cout << "resetting size of occ[v " << v << "] to " << unif_occ[v].size() << " stamp:" << stamp << " d: " << d << endl;
-        }
-        /* else cout << "not resetting v " << v << " stamp does not match. stamp:" << stamp << " d: " << d << endl; */
-      }
-    }
-  }
-  last_declev = declev;
 
-  for(uint32_t v = 1; v < max_var+1; v++) {
-    /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
-    cout << "Now v " << v << " contents are: ";
-    for(const auto& d: unif_occ[v]) cout <<  d << " , ";
-    cout << endl;
-  }
-  backtracked = INT_MAX;
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
+
+    /* cout << "cur declev is: " << declev << endl; */
+    for(int32_t k = last_seen[v]; k >= std::min(var_data[v].dirty_lev, declev); k--) {
+      int32_t d = std::max(k, 0);
+      /* unif_occ[v].resize(long_sz_declevs[d][v].sz); */
+      unif_occ[v].resize(long_sz_declevs[0][v].sz);
+      /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
+      /* cout << "resetting size of occ[v " << v << "] to " << unif_occ[v].size() << " stamp:" << stamp << " d: " << d << endl; */
+      /* else cout << "not resetting v " << v << " stamp does not match. stamp:" << stamp << " d: " << d << endl; */
+    }
+    var_data[v].dirty_lev = INT_MAX;
+    /* for(uint32_t v = 1; v < max_var+1; v++) { */
+      /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
+      /* cout << "Now v " << v << " contents are: "; */
+      /* for(const auto& d: unif_occ[v]) cout <<  d << " , "; */
+      /* cout << endl; */
+    /* } */
 
     //traverse binary clauses
     for(const auto& p: unif_occ_bin[v]) {
@@ -184,11 +178,13 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     }
 
     // traverse long clauses
-    cout << "going through v " << v << endl;
+    /* cout << "going through v " << v << endl; */
     if (declev != 0) {
-      long_sz_declevs[declev][v] = MemData(unif_occ[v].size(), stamp);
-      cout << "Remembering v " << v << " size: " << unif_occ[v].size() << " stamp: " << stamp << " declev: " << declev << endl;
+      long_sz_declevs[declev][v] = MemData(unif_occ[v].size());
+      /* cout << "Remembering v " << v << " size: " << unif_occ[v].size() << " stamp: " << stamp << " declev: " << declev << endl; */
     }
+
+    last_seen[v] = declev;
     uint32_t i = 0;
     while (i < unif_occ[v].size()) {
       const ClData& d = unif_occ[v][i];
@@ -200,7 +196,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
           unif_occ[v][i] = unif_occ[v].back();
           unif_occ[v].back() = tmp;
           unif_occ[v].pop_back();
-          cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl;
+          /* cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl; */
         } else i++;
       } else i++;
     }

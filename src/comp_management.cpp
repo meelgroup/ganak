@@ -116,3 +116,12 @@ void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
   top.set_unprocessed_comps_end(comp_stack.size());
   sortCompStackRange(new_comps_start_ofs, comp_stack.size());
 }
+
+
+template<typename T>
+CompManager<T>::CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
+                 const LiteralIndexedVector<TriValue> &lit_values,
+                 const uint32_t& indep_support_end, Counter<T>* _counter) :
+    conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
+    ana(lit_values, _counter->var_data, indep_support_end, _counter), counter(_counter)
+{ }

@@ -52,7 +52,6 @@ struct ClData {
 };
 struct MemData {
   uint32_t sz = UINT_MAX;
-  uint64_t stamp = std::numeric_limits<uint64_t>::max();
 };
 
 // There is exactly ONE of this, inside CompManager, which is inside counter
@@ -61,6 +60,7 @@ class CompAnalyzer {
 public:
   CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
+        vector<VarData>& var_data,
         const uint32_t& _indep_support_end,
         Counter<T>* _counter);
 
@@ -131,7 +131,9 @@ public:
   uint32_t get_max_var() const { return max_var; }
   CompArchetype<T>& get_archetype() { return archetype; }
   void went_back_to(int32_t dec_lev) { backtracked = dec_lev; }
-  void new_declev(int32_t dec_lev) { stamp++; stamps.resize(dec_lev+1, 0); stamps[dec_lev] = stamp; }
+  void new_declev(int32_t /*dec_lev*/) {
+    /* stamp++; stamps.resize(dec_lev+1, 0); stamps[dec_lev] = stamp; */
+  }
 
 private:
   // the id of the last clause
@@ -153,9 +155,11 @@ private:
   vector<vector<MemData>> long_sz_declevs;
   vector<uint64_t> stamps;
   uint64_t stamp = 1;
+  vector<int32_t> last_seen;
+  vector<VarData>& var_data;
+  const LiteralIndexedVector<TriValue> & values;
 
   const CounterConfiguration& conf;
-  const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
 #ifdef VAR_FREQ
   vector<uint32_t> var_freq_scores;
@@ -195,12 +199,12 @@ private:
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
   bool search_clause(uint32_t v, ClauseIndex cl_id, Lit const* cl_start) {
-    cout << "searching clause " << cl_id << endl;
+    /* cout << "searching clause " << cl_id << endl; */
     bool ret = false;
     const auto it_v_end = comp_vars.end();
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
-      cout << "searching lit " << *it_l << endl;
+      /* cout << "searching lit " << *it_l << endl; */
       assert(it_l->var() <= max_var);
       if (!archetype.var_nil(it_l->var())) manage_occ_and_score_of(it_l->var());
       else {
@@ -235,10 +239,12 @@ private:
 template<typename T>
 CompAnalyzer<T>::CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
+        vector<VarData>& _var_data,
         const uint32_t& _indep_support_end,
         Counter<T>* _counter) :
-        conf(_counter->get_conf()),
+        var_data(_var_data),
         values(lit_values),
+        conf(_counter->get_conf()),
         indep_support_end(_indep_support_end),
         counter(_counter)
 {}

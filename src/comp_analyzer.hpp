@@ -127,7 +127,12 @@ private:
     uint32_t lev;
   };
 
-  vector<vector<uint32_t>> unif_occ;
+  struct ClData {
+    uint32_t id;
+    uint32_t off;
+  };
+
+  vector<vector<ClData>> unif_occ;
   vector<vector<uint32_t>> unif_occ_bin;
   vector<Lit> long_clauses_data;
 
@@ -171,7 +176,8 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause(uint32_t v, ClauseIndex cl_id, Lit const* cl_start){
+  bool search_clause(uint32_t v, ClauseIndex cl_id, Lit const* cl_start) {
+    bool ret = false;
     const auto it_v_end = comp_vars.end();
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
@@ -192,6 +198,7 @@ private:
         while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
 #endif
+        ret = true;
         break;
       }
     }
@@ -200,6 +207,7 @@ private:
       VAR_FREQ_DO(bump_freq_score(v));
       archetype.set_clause_visited(cl_id);
     }
+    return ret;
   }
 };
 

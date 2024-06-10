@@ -62,8 +62,7 @@ void CompAnalyzer<T>::initialize(
     for(const auto& l: cl) {
       const uint32_t var = l.var();
       assert(var <= max_var);
-      unif_occ[var].push_back(max_clid);
-      unif_occ[var].push_back(long_cl_off);
+      unif_occ[var].push_back(ClData(max_clid, long_cl_off));
     }
     max_clid++;
   }
@@ -121,9 +120,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  // manage_occ_of and search_clause
-  // will push into search_stack_ which will make this
-  // a recursive search for all clauses & variables that this variable is connected to
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
@@ -138,12 +134,17 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
     }
 
     // traverse long clauses
-    for (uint32_t i = 0; i < unif_occ[v].size(); i+=2) {
-      const uint32_t cl_id = unif_occ[v][i];
-      const ClauseOfs cl_off = unif_occ[v][i+1];
-      if (archetype.clause_unvisited_in_sup_comp(cl_id)) {
-        search_clause(v, cl_id, long_clauses_data.data()+cl_off);
-      }
+    uint32_t i = 0;
+    while (i < unif_occ[v].size()) {
+      const ClData& d = unif_occ[v][i];
+      if (archetype.clause_unvisited_in_sup_comp(d.id)) {
+        bool sat = search_clause(v, d.id, long_clauses_data.data()+d.off);
+        /* if (sat) { */
+        /*   unif_occ[v][i] = unif_occ[v].back(); */
+        /*   unif_occ[v].pop_back(); */
+        /* } else i++; */
+        i++;
+      } else i++;
     }
   }
 

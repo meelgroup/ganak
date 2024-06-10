@@ -152,7 +152,9 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     /* cout << "cur declev is: " << declev << endl; */
-    for(int32_t k = last_seen[v]; k >= std::min(var_data[v].dirty_lev, declev); k--) {
+    /* for(int32_t k = last_seen[v]; k >= std::min(var_data[v].dirty_lev, declev); k--) { */
+    int32_t k = std::min(var_data[v].dirty_lev, declev);
+    if (last_seen[v] >= k) {
       int32_t d = std::max(k, 0);
       /* unif_occ[v].resize(long_sz_declevs[d][v].sz); */
       unif_occ[v].resize(long_sz_declevs[d][v].sz);

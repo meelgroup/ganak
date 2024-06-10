@@ -135,13 +135,13 @@ only_dirs = [
              # "out-ganak-7366311.pbs101-6", # --backbone 0 is good, --tdexpmult 0.3 + --tdmaxw 100 is good
              # "out-ganak-7377549.pbs101-", # best: --tdmaxw 100 --varfreqdiv 25 --tdexpmult 0.3 --backbone 0 --arjunprobe 1
              # SHITTY "out-ganak-7400920.pbs101-0", # timeout in backbone 30s, went really bad
-             #"out-ganak-7419164.pbs101-3", # more simplification pre-backward, lower backward confl
-             # BEST: --tdexpmult 0.3 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
+             # "out-ganak-7419164.pbs101-3", # more simplification pre-backward, lower backward confl
+                 # BEST: --tdexpmult 0.3 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
              # SHITTY "out-ganak-7422213.pbs101-" # unit cls to duplicated CNF, different cutoff for gates, some param tuning Wow, wrong. Seemingly to do with cadiback what is going on....
              # "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
-             #"out-ganak-7433580.pbs101-2", #d4 32G
+             # "out-ganak-7433580.pbs101-2", #d4 32G
              # best: --tdminw 0.05 --tdexpmult 0.3
-             "out-ganak-7451414"
+             # "out-ganak-7451414.pbs101-1" # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
 
 
 
@@ -149,8 +149,8 @@ only_dirs = [
              # "out-ganak-6328707.pbs101-7/", # exactmc
              # "out-ganak-6318929.pbs101-7/", # sharpsat
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
-             # "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
-             # "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
+             "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
+             "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
@@ -184,10 +184,10 @@ only_dirs = [
              # BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
              # "out-ganak-7422239.pbs101-2" #unit cls to duplicated CNF, different cutoff for gates, some param tuning best: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 10000 --HOWEVER, duplication caused cadiback to go bad
              # both below are nice, with and without appmc
-             # "out-ganak-7433320.pbs101-0", # default config
+             "out-ganak-7433320.pbs101-0", # default config
              # "out-ganak-7433320.pbs101-1", # --appmct 2000
              #SHITTY"out-ganak-7435410.pbs101-"# try all tdexp, go back to before mess
-             # "out-ganak-7451423.pbs101"
+             "out-ganak-7451423.pbs101-1" # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
 
 
              ]
@@ -272,7 +272,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][130:]\\\n")
+    f.write("plot [:][100:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

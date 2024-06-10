@@ -28,8 +28,10 @@ THE SOFTWARE.
 #include "mpreal.h"
 #include <climits>
 #include <cstdint>
+#include <iomanip>
 
 using std::make_pair;
+using std::setw;
 
 template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
@@ -236,6 +238,9 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     var_data[v].dirty_lev = INT_MAX;
     if (declev != 0) long_sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size(v));
     last_seen[v] = declev;
+    /* if (v == 1) { */
+    /*   cout << setw(3) << holder.size(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
+    /* } */
 
     //traverse binary clauses
     for(uint32_t i = 0; i < holder.size_bin(v);) {

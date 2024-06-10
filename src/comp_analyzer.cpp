@@ -143,7 +143,7 @@ void CompAnalyzer<T>::initialize(
       holder.data[v*4+1] = u_bin.size();
       uint32_t offs = data_start - holder.data;
       holder.data[v*4+0] = offs;
-      assert(offs < total_sz);
+      assert(offs <= total_sz);
       memcpy(data_start, u_bin.data, u_bin.size()*sizeof(uint32_t));
       data_start += u_bin.size();
 
@@ -152,7 +152,7 @@ void CompAnalyzer<T>::initialize(
       holder.data[v*4+3] = u_long.size();
       offs = data_start - holder.data;
       holder.data[v*4+2] = offs;
-      assert(offs < total_sz);
+      assert(offs <= total_sz);
       memcpy(data_start, u_long.data, u_long.size()*sizeof(ClData));
       data_start += u_long.size()*(sizeof(ClData)/sizeof(uint32_t));
     }

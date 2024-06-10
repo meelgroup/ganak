@@ -155,7 +155,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     for(int32_t k = last_seen[v]; k >= std::min(var_data[v].dirty_lev, declev); k--) {
       int32_t d = std::max(k, 0);
       /* unif_occ[v].resize(long_sz_declevs[d][v].sz); */
-      unif_occ[v].resize(long_sz_declevs[0][v].sz);
+      unif_occ[v].resize(long_sz_declevs[d][v].sz);
       /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
       /* cout << "resetting size of occ[v " << v << "] to " << unif_occ[v].size() << " stamp:" << stamp << " d: " << d << endl; */
       /* else cout << "not resetting v " << v << " stamp does not match. stamp:" << stamp << " d: " << d << endl; */

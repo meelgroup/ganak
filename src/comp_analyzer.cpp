@@ -100,13 +100,6 @@ void CompAnalyzer<T>::initialize(
     max_clid++;
   }
 
-  long_sz_declevs.resize(1);
-  long_sz_declevs[0].resize(max_var+1, MemData());
-  for(uint32_t var = 1; var < max_var+1; var++) {
-    long_sz_declevs[0][var] = MemData(unif_occ[var].size());
-    /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
-  }
-
 
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
 
@@ -116,15 +109,15 @@ void CompAnalyzer<T>::initialize(
 
 
   // data for binary clauses
-  vector<vec<uint32_t>> unif_occ_bin;
+  vector<vec<Lit>> unif_occ_bin;
   unif_occ_bin.clear();
   unif_occ_bin.resize(max_var+1);
-  vector<uint32_t> tmp2;
+  vector<Lit> tmp2;
   for (uint32_t v = 1; v < max_var + 1; v++) {
     tmp2.clear();
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred()) tmp2.push_back(bincl.lit().var());
+        if (bincl.irred()) tmp2.push_back(bincl.lit());
       }
     }
     unif_occ_bin[v].clear();
@@ -164,6 +157,14 @@ void CompAnalyzer<T>::initialize(
       data_start += u_long.size()*(sizeof(ClData)/sizeof(uint32_t));
     }
     assert(data_start == data + total_sz);
+
+    long_sz_declevs.resize(1);
+    long_sz_declevs[0].resize(max_var+1, MemData());
+    for(uint32_t var = 1; var < max_var+1; var++) {
+      long_sz_declevs[0][var] = MemData(holder.size_bin(var), holder.size(var));
+      /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
+    }
+
 
     // check bins
     for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
@@ -222,46 +223,39 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     long_sz_declevs[declev].resize(max_var+1, MemData());
   }
 
-
-
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-    /* cout << "cur declev is: " << declev << endl; */
-    /* for(int32_t k = last_seen[v]; k >= std::min(var_data[v].dirty_lev, declev); k--) { */
     int32_t k = std::min(var_data[v].dirty_lev, declev);
     if (last_seen[v] >= k) {
       int32_t d = std::max(k, 0);
-      /* unif_occ[v].resize(long_sz_declevs[d][v].sz); */
+      holder.resize_bin(v, long_sz_declevs[d][v].sz_bin);
       holder.resize(v, long_sz_declevs[d][v].sz);
-      /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
-      /* cout << "resetting size of occ[v " << v << "] to " << unif_occ[v].size() << " stamp:" << stamp << " d: " << d << endl; */
-      /* else cout << "not resetting v " << v << " stamp does not match. stamp:" << stamp << " d: " << d << endl; */
     }
     var_data[v].dirty_lev = INT_MAX;
-    /* for(uint32_t v = 1; v < max_var+1; v++) { */
-      /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
-      /* cout << "Now v " << v << " contents are: "; */
-      /* for(const auto& d: unif_occ[v]) cout <<  d << " , "; */
-      /* cout << endl; */
-    /* } */
+    if (declev != 0) long_sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size(v));
+    last_seen[v] = declev;
 
     //traverse binary clauses
-    for(auto it = holder.begin_bin(v), end = holder.begin_bin(v)+holder.size_bin(v); it != end; it++) {
-      if (manage_occ_of(*it)) {
-        if (is_unknown(*it)) { bump_freq_score(*it); bump_freq_score(v); }
+    for(uint32_t i = 0; i < holder.size_bin(v); i++) {
+      Lit l2 = holder.begin_bin(v)[i];
+      bool sat = is_true(l2);
+      if (!sat && manage_occ_of(l2.var())) {
+        assert(is_unknown(l2.var()));
+        /* SLOW_DEBUG_DO(is_unknown(l2)); */
+        bump_freq_score(l2.var());
+        bump_freq_score(v);
       }
+      if (sat) {
+        holder.begin_bin(v)[i] = holder.back_bin(v);
+        holder.back_bin(v) = l2;
+        holder.pop_back_bin(v);
+      } else
+        i++;
     }
 
     // traverse long clauses
-    /* cout << "going through v " << v << endl; */
-    if (declev != 0) {
-      long_sz_declevs[declev][v] = MemData(holder.size(v));
-      /* cout << "Remembering v " << v << " size: " << unif_occ[v].size() << " stamp: " << stamp << " declev: " << declev << endl; */
-    }
-
-    last_seen[v] = declev;
     uint32_t i = 0;
     while (i < holder.size(v)) {
       ClData& d = holder.begin(v)[i];

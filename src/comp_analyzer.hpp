@@ -57,6 +57,10 @@ struct ClData {
   bool operator<(const ClData& other) const { return id < other.id; }
 };
 struct MemData {
+  MemData(uint32_t _sz_bin, uint32_t _sz) :
+    sz_bin(_sz_bin), sz(_sz)  {}
+  MemData() = default;
+  uint32_t sz_bin = UINT_MAX;
   uint32_t sz = UINT_MAX;
 };
 
@@ -70,7 +74,6 @@ struct MyHolder {
   ClData& back(uint32_t v) {
     return (begin(v))[size(v)-1];
   }
-
   ClData* begin(uint32_t v) {
     auto start = data[v*4+2];
     return (ClData*) (data + start);
@@ -84,9 +87,12 @@ struct MyHolder {
   }
 
   //bin
-  uint32_t* begin_bin(uint32_t v) {
+  Lit& back_bin(uint32_t v) {
+    return (begin_bin(v))[size_bin(v)-1];
+  }
+  Lit* begin_bin(uint32_t v) {
     auto start = data[v*4];
-    return (uint32_t*) (data + start);
+    return (Lit*) (data + start);
   }
   uint32_t size_bin(uint32_t v) { return data[v*4+1];}
   void pop_back_bin(uint32_t v) {

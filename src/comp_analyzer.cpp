@@ -230,7 +230,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     int32_t k = std::min(var_data[v].dirty_lev, declev);
     if (last_seen[v] >= k) {
       int32_t d = std::max(k, 0);
-      holder.resize_bin(v, long_sz_declevs[d][v].sz_bin);
+      /* holder.resize_bin(v, long_sz_declevs[d][v].sz_bin); */
       holder.resize(v, long_sz_declevs[d][v].sz);
     }
     var_data[v].dirty_lev = INT_MAX;
@@ -247,11 +247,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
         bump_freq_score(l2.var());
         bump_freq_score(v);
       }
-      if (sat) {
-        holder.begin_bin(v)[i] = holder.back_bin(v);
-        holder.back_bin(v) = l2;
-        holder.pop_back_bin(v);
-      } else
+      /* if (sat) { */
+      /*   holder.begin_bin(v)[i] = holder.back_bin(v); */
+      /*   holder.back_bin(v) = l2; */
+      /*   holder.pop_back_bin(v); */
+      /* } else */
         i++;
     }
 
@@ -259,7 +259,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     uint32_t i = 0;
     while (i < holder.size(v)) {
       ClData& d = holder.begin(v)[i];
-      if (archetype.clause_sat(d.id)) goto satl2;
+      if (archetype.clause_sat(d.id)) goto sat2;
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
         bool sat = false;
         if (d.tri) {
@@ -267,31 +267,25 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
           Lit l2 = d.get_lit2();
           sat = is_true(l1) || is_true(l2);
           if (!sat) {
-            if (is_unknown(l1) && !archetype.var_nil(l1.var())) {
-              bump_freq_score(l1.var());
-              manage_occ_of(l1.var());
-            }
-            if (is_unknown(l2) && !archetype.var_nil(l1.var())) {
-              bump_freq_score(l2.var());
-              manage_occ_of(l2.var());
-            }
+            if (is_unknown(l1) && !archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
+            if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
             bump_freq_score(v);
             archetype.set_clause_visited(d.id);
           } else {
-            goto satl;
+            archetype.clear_cl(d.id);
           }
         } else {
           sat = is_true(d.blk_lit);
           if (!sat) sat = search_clause(d, long_clauses_data.data()+d.off);
-          if (sat) goto satl;
         }
-        i++;
+        if (sat) goto sat;
+        else i++;
       } else i++;
       continue;
 
-      satl:
+      sat:
       archetype.set_clause_sat(d.id);
-      satl2:
+      sat2:
       ClData tmp = holder.begin(v)[i];
       holder.begin(v)[i] = holder.back(v);
       holder.back(v) = tmp;

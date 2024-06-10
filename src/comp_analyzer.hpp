@@ -147,6 +147,11 @@ public:
     return false;
   }
 
+  bool manage_occ_and_score_of(uint32_t v){
+    VAR_FREQ_DO(if (is_unknown(v)) bump_freq_score(v));
+    return manage_occ_of(v);
+  }
+
   void setup_analysis_context(StackLevel<T>& top, const Comp & super_comp){
     archetype.re_initialize(top,super_comp);
 
@@ -241,10 +246,8 @@ private:
       assert(it_l->var() <= max_var);
 
 
-      if (!archetype.var_nil(it_l->var())) {
-        manage_occ_of(it_l->var());
-        bump_freq_score(it_l->var());
-      } else {
+      if (!archetype.var_nil(it_l->var())) manage_occ_and_score_of(it_l->var());
+      else {
         assert(!is_unknown(*it_l));
         if (is_false(*it_l)) continue;
         d.blk_lit = *it_l;

@@ -229,7 +229,7 @@ private:
 
     if (!archetype.clause_nil(d.id)) {
       archetype.set_clause_visited(d.id);
-      bump_freq_score(v);
+      /* bump_freq_score(v); */
     }
     return sat;
   }

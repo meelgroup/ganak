@@ -146,7 +146,8 @@ private:
         "table resize -- used before: " << used_before/(double)(1024*1024)
         << " vm used before: " << vm_before/(double)(1024*1024)
         << " used after: " << used_after/(double)(1024*1024)
-        << " vm used after: " << vm_after/(double)(1024*1024));
+        << " vm used after: " << vm_after/(double)(1024*1024)
+        << " total T: " << cpuTime());
     }
   }
 

@@ -209,7 +209,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     last_seen[v] = declev;
     uint32_t i = 0;
     while (i < unif_occ[v].size()) {
-      const ClData& d = unif_occ[v][i];
+      ClData& d = unif_occ[v][i];
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
         bool sat = false;
         if (d.tri) {
@@ -226,7 +226,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
           }
         } else {
           sat = is_true(d.blk_lit);
-          if (!sat) sat = search_clause(v, d.id, long_clauses_data.data()+d.off);
+          if (!sat) sat = search_clause(v, d, long_clauses_data.data()+d.off);
         }
         if (sat) {
           ClData tmp = unif_occ[v][i];

@@ -201,7 +201,7 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  bool search_clause(uint32_t v, ClauseIndex cl_id, Lit const* cl_start) {
+  bool search_clause(uint32_t v, ClData& d, Lit const* cl_start) {
     /* cout << "searching clause " << cl_id << endl; */
     bool ret = false;
     const auto it_v_end = comp_vars.end();
@@ -213,6 +213,7 @@ private:
       else {
         assert(!is_unknown(*it_l));
         if (is_false(*it_l)) continue;
+        d.blk_lit = *it_l;
 
         //accidentally entered a satisfied clause: undo the search process
         while (comp_vars.end() != it_v_end) {
@@ -220,7 +221,7 @@ private:
           archetype.set_var_in_sup_comp_unvisited(comp_vars.back());
           comp_vars.pop_back();
         }
-        archetype.clear_cl(cl_id);
+        archetype.clear_cl(d.id);
 #ifdef VAR_FREQ
         while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
@@ -230,9 +231,9 @@ private:
       }
     }
 
-    if (!archetype.clause_nil(cl_id)) {
+    if (!archetype.clause_nil(d.id)) {
       VAR_FREQ_DO(bump_freq_score(v));
-      archetype.set_clause_visited(cl_id);
+      archetype.set_clause_visited(d.id);
     }
     return ret;
   }

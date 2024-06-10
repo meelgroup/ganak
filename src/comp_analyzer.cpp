@@ -153,7 +153,9 @@ void CompAnalyzer<T>::initialize(
         if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
     }
-    unif_occ_bin[v] = tmp2;
+    unif_occ_bin[v].clear();
+    unif_occ_bin[v].resize(tmp2.size());
+    for(uint32_t i = 0; i < tmp2.size(); i++) unif_occ_bin[v][i] = tmp2[i];
   }
   last_seen.resize(max_var+1, 0);
 

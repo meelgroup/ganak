@@ -123,6 +123,7 @@ public:
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
       __builtin_prefetch(holder.begin(v));
+      __builtin_prefetch(unif_occ_bin[v].data);
       return true;
     }
     return false;
@@ -172,7 +173,7 @@ private:
 
 
   MyHolder holder;
-  vector<vector<uint32_t>> unif_occ_bin;
+  vector<vec<uint32_t>> unif_occ_bin;
   vector<Lit> long_clauses_data;
   vector<vector<MemData>> long_sz_declevs;
   vector<uint64_t> stamps;

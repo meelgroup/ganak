@@ -228,10 +228,7 @@ private:
       }
     }
 
-    if (!archetype.clause_nil(d.id)) {
-      VAR_FREQ_DO(bump_freq_score(v));
-      archetype.set_clause_visited(d.id);
-    }
+    if (!archetype.clause_nil(d.id)) archetype.set_clause_visited(d.id);
     return ret;
   }
 };

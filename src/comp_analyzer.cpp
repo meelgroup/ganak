@@ -107,33 +107,6 @@ void CompAnalyzer<T>::initialize(
     /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
   }
 
-  if (true) {
-    // fill holder
-    uint32_t total_sz = 0;
-    for(const auto& u: unif_occ) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
-    uint32_t* data = new uint32_t[total_sz];
-    holder.data  = data;
-
-    uint32_t* data_start = holder.data + unif_occ.size()*2;
-    for(uint32_t v = 0; v < unif_occ.size(); v++) {
-      const auto& u = unif_occ[v];
-
-      holder.data[v*2+1] = u.size();
-      uint32_t offs = data_start - holder.data;
-      holder.data[v*2] = offs;
-      assert(offs < total_sz);
-      memcpy(data_start, u.data, u.size()*sizeof(ClData));
-      data_start += u.size()*(sizeof(ClData)/sizeof(uint32_t));
-    }
-    assert(data_start == data + total_sz);
-
-    for(uint32_t v = 0; v < unif_occ.size(); v++) {
-      assert(unif_occ[v].size() == holder.size(v));
-      for(uint32_t i = 0; i < unif_occ[v].size(); i++) {
-        assert(unif_occ[v][i] == holder.begin(v)[i]);
-      }
-    }
-  }
 
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
 
@@ -143,6 +116,7 @@ void CompAnalyzer<T>::initialize(
 
 
   // data for binary clauses
+  vector<vec<uint32_t>> unif_occ_bin;
   unif_occ_bin.clear();
   unif_occ_bin.resize(max_var+1);
   vector<uint32_t> tmp2;
@@ -157,6 +131,57 @@ void CompAnalyzer<T>::initialize(
     unif_occ_bin[v].resize(tmp2.size());
     for(uint32_t i = 0; i < tmp2.size(); i++) unif_occ_bin[v][i] = tmp2[i];
   }
+
+  if (true) {
+    // fill holder
+    assert(unif_occ_bin.size() == unif_occ.size());
+    uint32_t n = unif_occ.size();
+
+    uint32_t total_sz = 0;
+    for(const auto& u: unif_occ) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
+    for(const auto& u: unif_occ_bin) total_sz += u.size() + 2;
+    uint32_t* data = new uint32_t[total_sz];
+    holder.data  = data;
+    uint32_t* data_start = holder.data + n*4;
+
+    for(uint32_t v = 0; v < n; v++) {
+      // fill bins
+      const auto& u_bin = unif_occ_bin[v];
+      holder.data[v*4+1] = u_bin.size();
+      uint32_t offs = data_start - holder.data;
+      holder.data[v*4+0] = offs;
+      assert(offs < total_sz);
+      memcpy(data_start, u_bin.data, u_bin.size()*sizeof(uint32_t));
+      data_start += u_bin.size();
+
+      // fill longs
+      const auto& u_long = unif_occ[v];
+      holder.data[v*4+3] = u_long.size();
+      offs = data_start - holder.data;
+      holder.data[v*4+2] = offs;
+      assert(offs < total_sz);
+      memcpy(data_start, u_long.data, u_long.size()*sizeof(ClData));
+      data_start += u_long.size()*(sizeof(ClData)/sizeof(uint32_t));
+    }
+    assert(data_start == data + total_sz);
+
+    // check bins
+    for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
+      assert(unif_occ_bin[v].size() == holder.size_bin(v));
+      for(uint32_t i = 0; i < unif_occ_bin[v].size(); i++) {
+        assert(unif_occ_bin[v][i] == holder.begin_bin(v)[i]);
+      }
+    }
+
+    // check longs
+    for(uint32_t v = 0; v < unif_occ.size(); v++) {
+      assert(unif_occ[v].size() == holder.size(v));
+      for(uint32_t i = 0; i < unif_occ[v].size(); i++) {
+        assert(unif_occ[v][i] == holder.begin(v)[i]);
+      }
+    }
+  }
+
   last_seen.resize(max_var+1, 0);
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
@@ -223,9 +248,9 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     /* } */
 
     //traverse binary clauses
-    for(const auto& p: unif_occ_bin[v]) {
-      if (manage_occ_of(p)) {
-        if (is_unknown(p)) { bump_freq_score(p); bump_freq_score(v); }
+    for(auto it = holder.begin_bin(v), end = holder.begin_bin(v)+holder.size_bin(v); it != end; it++) {
+      if (manage_occ_of(*it)) {
+        if (is_unknown(*it)) { bump_freq_score(*it); bump_freq_score(v); }
       }
     }
 

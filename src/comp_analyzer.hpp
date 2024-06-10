@@ -64,7 +64,7 @@ struct MyHolder {
   MyHolder () = default;
   ~MyHolder() { delete data;}
   uint32_t* data;
-  // start, sz, start, sz.... data...data.... data ... data...
+  // start_bin, sz_bin, start, sz, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
   //
   ClData& back(uint32_t v) {
@@ -72,15 +72,28 @@ struct MyHolder {
   }
 
   ClData* begin(uint32_t v) {
-    auto start = data[v*2];
+    auto start = data[v*4+2];
     return (ClData*) (data + start);
   }
-  uint32_t size(uint32_t v) { return data[v*2+1];}
+  uint32_t size(uint32_t v) { return data[v*4+3];}
   void pop_back(uint32_t v) {
-    data[v*2+1]--;
+    data[v*4+3]--;
   }
   void resize(uint32_t v, uint32_t sz) {
-    data[v*2+1] = sz;
+    data[v*4+3] = sz;
+  }
+
+  //bin
+  uint32_t* begin_bin(uint32_t v) {
+    auto start = data[v*4];
+    return (uint32_t*) (data + start);
+  }
+  uint32_t size_bin(uint32_t v) { return data[v*4+1];}
+  void pop_back_bin(uint32_t v) {
+    data[v*4+1]--;
+  }
+  void resize_bin(uint32_t v, uint32_t sz) {
+    data[v*4+1] = sz;
   }
 };
 
@@ -122,8 +135,7 @@ public:
     if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
-      __builtin_prefetch(holder.begin(v));
-      __builtin_prefetch(unif_occ_bin[v].data);
+      __builtin_prefetch(holder.begin_bin(v));
       return true;
     }
     return false;
@@ -173,7 +185,6 @@ private:
 
 
   MyHolder holder;
-  vector<vec<uint32_t>> unif_occ_bin;
   vector<Lit> long_clauses_data;
   vector<vector<MemData>> long_sz_declevs;
   vector<uint64_t> stamps;

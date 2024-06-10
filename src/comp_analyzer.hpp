@@ -133,10 +133,6 @@ public:
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_max_var() const { return max_var; }
   CompArchetype<T>& get_archetype() { return archetype; }
-  void went_back_to(int32_t dec_lev) { backtracked = dec_lev; }
-  void new_declev(int32_t /*dec_lev*/) {
-    /* stamp++; stamps.resize(dec_lev+1, 0); stamps[dec_lev] = stamp; */
-  }
 
 private:
   // the id of the last clause

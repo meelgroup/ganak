@@ -65,8 +65,6 @@ public:
         << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << value);
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
-  void went_back_to(int32_t dec_lev) { ana.went_back_to(dec_lev); }
-  void new_declev(int32_t dec_lev) { ana.new_declev(dec_lev); }
 
   const auto& get_comp_stack() const { return comp_stack; }
   Comp& get_super_comp(const StackLevel<T>& lev) {

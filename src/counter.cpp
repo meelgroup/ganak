@@ -1088,7 +1088,6 @@ bool Counter<T>::decide_lit() {
   decisions.push_back(
     StackLevel<T>(decisions.top().currentRemainingComp(),
                comp_manager->comp_stack_size()));
-  comp_manager->new_declev(decision_level());
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
@@ -1404,7 +1403,7 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!appmc_timeout_fired && conf.max_num_rst > 0 && stats.num_restarts > conf.max_num_rst) return false;
+  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int)stats.num_restarts > conf.max_num_rst) return false;
   if (!appmc_timeout_fired && (!conf.do_restart || td_width < 60)) return false;
 
   bool restart = false;
@@ -4207,7 +4206,6 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
       unset_lit(*it);
     }
   }
-  comp_manager->went_back_to(decision_level());
   VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
       print_trail(false, false);assert(false);});
   if (!sat_mode()) comp_manager->cleanRemainingCompsOf(decisions.top());

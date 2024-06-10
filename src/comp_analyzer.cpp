@@ -230,7 +230,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     int32_t k = std::min(var_data[v].dirty_lev, declev);
     if (last_seen[v] >= k) {
       int32_t d = std::max(k, 0);
-      /* holder.resize_bin(v, long_sz_declevs[d][v].sz_bin); */
+      holder.resize_bin(v, long_sz_declevs[d][v].sz_bin);
       holder.resize(v, long_sz_declevs[d][v].sz);
     }
     var_data[v].dirty_lev = INT_MAX;
@@ -238,7 +238,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     last_seen[v] = declev;
 
     //traverse binary clauses
-    for(uint32_t i = 0; i < holder.size_bin(v); i++) {
+    for(uint32_t i = 0; i < holder.size_bin(v);) {
       Lit l2 = holder.begin_bin(v)[i];
       bool sat = is_true(l2);
       if (!sat && manage_occ_of(l2.var())) {
@@ -247,11 +247,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
         bump_freq_score(l2.var());
         bump_freq_score(v);
       }
-      /* if (sat) { */
-      /*   holder.begin_bin(v)[i] = holder.back_bin(v); */
-      /*   holder.back_bin(v) = l2; */
-      /*   holder.pop_back_bin(v); */
-      /* } else */
+      if (sat) {
+        holder.begin_bin(v)[i] = holder.back_bin(v);
+        holder.back_bin(v) = l2;
+        holder.pop_back_bin(v);
+      } else
         i++;
     }
 

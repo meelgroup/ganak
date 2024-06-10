@@ -272,7 +272,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
             bump_freq_score(v);
             archetype.set_clause_visited(d.id);
           } else {
-            archetype.clear_cl(d.id);
+            goto sat;
           }
         } else {
           sat = is_true(d.blk_lit);

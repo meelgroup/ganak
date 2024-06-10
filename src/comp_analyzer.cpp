@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "structures.hpp"
 #include "mpreal.h"
 #include <climits>
+#include <cstdint>
 
 using std::make_pair;
 
@@ -57,6 +58,7 @@ void CompAnalyzer<T>::initialize(
   debug_print(COLBLBACK "Building occ list in CompAnalyzer<T>::initialize...");
 
   max_clid = 1;
+  vector<vec<ClData>> unif_occ;
   unif_occ.clear();
   unif_occ.resize(max_var + 1);
   long_clauses_data.clear();
@@ -103,6 +105,34 @@ void CompAnalyzer<T>::initialize(
   for(uint32_t var = 1; var < max_var+1; var++) {
     long_sz_declevs[0][var] = MemData(unif_occ[var].size());
     /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
+  }
+
+  if (true) {
+    // fill holder
+    uint32_t total_sz = 0;
+    for(const auto& u: unif_occ) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
+    uint32_t* data = new uint32_t[total_sz];
+    holder.data  = data;
+
+    uint32_t* data_start = holder.data + unif_occ.size()*2;
+    for(uint32_t v = 0; v < unif_occ.size(); v++) {
+      const auto& u = unif_occ[v];
+
+      holder.data[v*2+1] = u.size();
+      uint32_t offs = data_start - holder.data;
+      holder.data[v*2] = offs;
+      assert(offs < total_sz);
+      memcpy(data_start, u.data, u.size()*sizeof(ClData));
+      data_start += u.size()*(sizeof(ClData)/sizeof(uint32_t));
+    }
+    assert(data_start == data + total_sz);
+
+    for(uint32_t v = 0; v < unif_occ.size(); v++) {
+      assert(unif_occ[v].size() == holder.size(v));
+      for(uint32_t i = 0; i < unif_occ[v].size(); i++) {
+        assert(unif_occ[v][i] == holder.begin(v)[i]);
+      }
+    }
   }
 
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
@@ -177,7 +207,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     if (last_seen[v] >= k) {
       int32_t d = std::max(k, 0);
       /* unif_occ[v].resize(long_sz_declevs[d][v].sz); */
-      unif_occ[v].resize(long_sz_declevs[d][v].sz);
+      holder.resize(v, long_sz_declevs[d][v].sz);
       /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
       /* cout << "resetting size of occ[v " << v << "] to " << unif_occ[v].size() << " stamp:" << stamp << " d: " << d << endl; */
       /* else cout << "not resetting v " << v << " stamp does not match. stamp:" << stamp << " d: " << d << endl; */
@@ -200,14 +230,14 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     // traverse long clauses
     /* cout << "going through v " << v << endl; */
     if (declev != 0) {
-      long_sz_declevs[declev][v] = MemData(unif_occ[v].size());
+      long_sz_declevs[declev][v] = MemData(holder.size(v));
       /* cout << "Remembering v " << v << " size: " << unif_occ[v].size() << " stamp: " << stamp << " declev: " << declev << endl; */
     }
 
     last_seen[v] = declev;
     uint32_t i = 0;
-    while (i < unif_occ[v].size()) {
-      ClData& d = unif_occ[v][i];
+    while (i < holder.size(v)) {
+      ClData& d = holder.begin(v)[i];
       if (archetype.clause_sat(d.id)) goto satl2;
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
         bool sat = false;
@@ -241,10 +271,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
       satl:
       archetype.set_clause_sat(d.id);
       satl2:
-      ClData tmp = unif_occ[v][i];
-      unif_occ[v][i] = unif_occ[v].back();
-      unif_occ[v].back() = tmp;
-      unif_occ[v].pop_back();
+      ClData tmp = holder.begin(v)[i];
+      holder.begin(v)[i] = holder.back(v);
+      holder.back(v) = tmp;
+      holder.pop_back(v);
       /* cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl; */
     }
   }

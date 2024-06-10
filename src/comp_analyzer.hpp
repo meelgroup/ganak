@@ -49,12 +49,39 @@ struct ClData {
   uint32_t tri:1 = false;
   uint32_t off;
   Lit blk_lit;
+  bool operator==(const ClData& other) const {
+    return id == other.id && tri == other.tri && off == other.off && blk_lit == other.blk_lit;
+  }
   Lit get_lit1() const { return Lit::toLit(off); }
   Lit get_lit2() const { return blk_lit; }
   bool operator<(const ClData& other) const { return id < other.id; }
 };
 struct MemData {
   uint32_t sz = UINT_MAX;
+};
+
+struct MyHolder {
+  MyHolder () = default;
+  ~MyHolder() { delete data;}
+  uint32_t* data;
+  // start, sz, start, sz.... data...data.... data ... data...
+  // start is number of uint32_t-s! not ClData. not bytes.
+  //
+  ClData& back(uint32_t v) {
+    return (begin(v))[size(v)-1];
+  }
+
+  ClData* begin(uint32_t v) {
+    auto start = data[v*2];
+    return (ClData*) (data + start);
+  }
+  uint32_t size(uint32_t v) { return data[v*2+1];}
+  void pop_back(uint32_t v) {
+    data[v*2+1]--;
+  }
+  void resize(uint32_t v, uint32_t sz) {
+    data[v*2+1] = sz;
+  }
 };
 
 // There is exactly ONE of this, inside CompManager, which is inside counter
@@ -95,7 +122,7 @@ public:
     if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
-      __builtin_prefetch(unif_occ[v].data);
+      __builtin_prefetch(holder.begin(v));
       return true;
     }
     return false;
@@ -144,7 +171,7 @@ private:
   };
 
 
-  vector<vec<ClData>> unif_occ;
+  MyHolder holder;
   vector<vector<uint32_t>> unif_occ_bin;
   vector<Lit> long_clauses_data;
   vector<vector<MemData>> long_sz_declevs;

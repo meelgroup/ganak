@@ -150,7 +150,7 @@ public:
     int  removeMin()
     {
         int x            = heap[0];
-        heap[0]          = heap.last();
+        heap[0]          = heap.back();
         indices[heap[0]] = 0;
         indices[x]       = -1;
         heap.pop_back();

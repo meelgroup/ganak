@@ -32,6 +32,14 @@ using std::make_pair;
 template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
 
+inline std::ostream& operator<<(std::ostream& os, const ClData& d)
+{
+  os << "[id: " << d.id << " off: " << d.off << " blk_lit: " << d.blk_lit << "]";
+  /* os << "id: " << d.id; */
+  return os;
+}
+
+
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unif_occ
 template<typename T>
@@ -51,21 +59,32 @@ void CompAnalyzer<T>::initialize(
   unif_occ.clear();
   unif_occ.resize(max_var + 1);
   long_clauses_data.clear();
+  long_clauses_data.push_back(SENTINEL_LIT); // MUST start with a sentinel!
   vector<uint32_t> tmp;
   for (const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
     uint32_t long_cl_off = long_clauses_data.size();
     for(const auto&l: cl) long_clauses_data.push_back(l);
+    Lit blk_lit = cl[cl.size()/2];
     long_clauses_data.push_back(SENTINEL_LIT);
 
     for(const auto& l: cl) {
       const uint32_t var = l.var();
       assert(var <= max_var);
-      unif_occ[var].push_back(ClData(max_clid, long_cl_off));
+      unif_occ[var].push_back(ClData(max_clid, long_cl_off, blk_lit));
     }
     max_clid++;
   }
+
+  backtracked  = 0;
+  long_sz_declevs.resize(1);
+  long_sz_declevs[0].resize(max_var+1, MemData());
+  for(uint32_t var = 1; var < max_var+1; var++) {
+    long_sz_declevs[0][var] = MemData(unif_occ[var].size(), stamp);
+    /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
+  }
+
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
 
   archetype.init_data(max_var, max_clid);
@@ -92,9 +111,9 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v); // sets up the component that "v" is in
+  record_comp(v, dec_lev); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
@@ -111,7 +130,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -119,6 +138,37 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
+
+  if (declev >= long_sz_declevs.size()) {
+    long_sz_declevs.resize(declev+1);
+    long_sz_declevs[declev].resize(max_var+1, MemData());
+  }
+
+  /* cout << "cur declef is: " << declev << endl; */
+  if (backtracked != INT_MAX) {
+    /* cout << "backtracked is: " << backtracked << endl; */
+    for(int32_t k = last_declev; k <= backtracked-1; k--) {
+      int32_t d = std::max(k, 0);
+      for(uint32_t v = 1; v < max_var+1; v++) {
+        uint64_t this_stamp = stamps[d];
+        if (d == 0 || long_sz_declevs[d][v].stamp == this_stamp) {
+          unif_occ[v].resize(long_sz_declevs[d][v].sz);
+          /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
+          cout << "resetting size of occ[v " << v << "] to " << unif_occ[v].size() << " stamp:" << stamp << " d: " << d << endl;
+        }
+        /* else cout << "not resetting v " << v << " stamp does not match. stamp:" << stamp << " d: " << d << endl; */
+      }
+    }
+  }
+  last_declev = declev;
+
+  for(uint32_t v = 1; v < max_var+1; v++) {
+    /* std::sort(unif_occ[v].begin(), unif_occ[v].end()); */
+    cout << "Now v " << v << " contents are: ";
+    for(const auto& d: unif_occ[v]) cout <<  d << " , ";
+    cout << endl;
+  }
+  backtracked = INT_MAX;
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
@@ -134,16 +184,24 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
     }
 
     // traverse long clauses
+    cout << "going through v " << v << endl;
+    if (declev != 0) {
+      long_sz_declevs[declev][v] = MemData(unif_occ[v].size(), stamp);
+      cout << "Remembering v " << v << " size: " << unif_occ[v].size() << " stamp: " << stamp << " declev: " << declev << endl;
+    }
     uint32_t i = 0;
     while (i < unif_occ[v].size()) {
       const ClData& d = unif_occ[v][i];
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
-        bool sat = search_clause(v, d.id, long_clauses_data.data()+d.off);
-        /* if (sat) { */
-        /*   unif_occ[v][i] = unif_occ[v].back(); */
-        /*   unif_occ[v].pop_back(); */
-        /* } else i++; */
-        i++;
+        bool sat = is_true(d.blk_lit);
+        if (!sat) sat = search_clause(v, d.id, long_clauses_data.data()+d.off);
+        if (sat) {
+          ClData tmp = unif_occ[v][i];
+          unif_occ[v][i] = unif_occ[v].back();
+          unif_occ[v].back() = tmp;
+          unif_occ[v].pop_back();
+          cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl;
+        } else i++;
       } else i++;
     }
   }

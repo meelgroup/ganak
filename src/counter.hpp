@@ -513,6 +513,7 @@ private:
     decisions.push_back(StackLevel<T>(
           1, // super comp
           2)); //comp stack offset
+    comp_manager->new_declev(decision_level());
 
     // I guess this is needed so the system later knows it's fully counted
     // since this is only a dummy.

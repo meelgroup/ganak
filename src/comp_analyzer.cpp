@@ -35,7 +35,7 @@ template class CompAnalyzer<mpfr::mpreal>;
 
 inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 {
-  os << "[id: " << d.id << " off: " << d.off << " blk_lit: " << d.blk_lit << "]";
+  os << "[id: " << d.id << " off: " << d.off << "]";
   /* os << "id: " << d.id; */
   return os;
 }
@@ -66,14 +66,34 @@ void CompAnalyzer<T>::initialize(
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
     uint32_t long_cl_off = long_clauses_data.size();
-    for(const auto&l: cl) long_clauses_data.push_back(l);
-    Lit blk_lit = cl[cl.size()/2];
-    long_clauses_data.push_back(SENTINEL_LIT);
+    if (cl.size() > 3) {
+      Lit blk_lit = cl[cl.size()/2];
+      for(const auto&l: cl) long_clauses_data.push_back(l);
+      long_clauses_data.push_back(SENTINEL_LIT);
 
-    for(const auto& l: cl) {
-      const uint32_t var = l.var();
-      assert(var <= max_var);
-      unif_occ[var].push_back(ClData(max_clid, long_cl_off, blk_lit));
+      for(const auto& l: cl) {
+        const uint32_t var = l.var();
+        assert(var <= max_var);
+        ClData d;
+        d.tri = false;
+        d.id = max_clid;
+        d.off = long_cl_off;
+        d.blk_lit = blk_lit;
+        unif_occ[var].push_back(d);
+      }
+    } else {
+      for(const auto& l: cl) {
+        uint32_t at = 0;
+        Lit lits[2];
+        for(const auto&l2: cl) if (l.var() != l2.var()) lits[at++] = l2;
+        assert(at == 2);
+        ClData d;
+        d.tri = true;
+        d.id = max_clid;
+        d.blk_lit = lits[0];
+        d.off = lits[1].raw();
+        unif_occ[l.var()].push_back(d);
+      }
     }
     max_clid++;
   }
@@ -191,8 +211,23 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     while (i < unif_occ[v].size()) {
       const ClData& d = unif_occ[v][i];
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
-        bool sat = is_true(d.blk_lit);
-        if (!sat) sat = search_clause(v, d.id, long_clauses_data.data()+d.off);
+        bool sat = false;
+        if (d.tri) {
+          Lit l1 = d.get_lit1();
+          Lit l2 = d.get_lit2();
+          sat = is_true(l1) || is_true(l2);
+          if (!sat) {
+            if (!archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
+            if (!archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
+            VAR_FREQ_DO(bump_freq_score(v));
+            archetype.set_clause_visited(d.id);
+          } else {
+            archetype.clear_cl(d.id);
+          }
+        } else {
+          sat = is_true(d.blk_lit);
+          if (!sat) sat = search_clause(v, d.id, long_clauses_data.data()+d.off);
+        }
         if (sat) {
           ClData tmp = unif_occ[v][i];
           unif_occ[v][i] = unif_occ[v].back();

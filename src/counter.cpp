@@ -4071,6 +4071,7 @@ void Counter<T>::reduce_db() {
       << " cutoff computed: " << cutoff
       << " cannot be del : " << cannot_be_del
       << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
+    verb_print(2, "Time until now: " << cpuTime());;
   }
 }
 

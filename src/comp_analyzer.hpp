@@ -45,9 +45,12 @@ template<typename T> class Counter;
 
 
 struct ClData {
-  uint32_t id;
+  uint32_t id:31;
+  uint32_t tri:1 = false;
   uint32_t off;
   Lit blk_lit;
+  Lit get_lit1() const { return Lit::toLit(off); }
+  Lit get_lit2() const { return blk_lit; }
   bool operator<(const ClData& other) const { return id < other.id; }
 };
 struct MemData {

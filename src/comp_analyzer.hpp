@@ -178,17 +178,10 @@ private:
   uint32_t max_var = 0;
   int32_t backtracked = INT_MAX;
   int32_t last_declev = 0;
-  struct BinRem {
-    uint32_t v;
-    uint32_t lev;
-  };
-
 
   MyHolder holder;
   vector<Lit> long_clauses_data;
   vector<vector<MemData>> long_sz_declevs;
-  vector<uint64_t> stamps;
-  uint64_t stamp = 1;
   vector<int32_t> last_seen;
   vector<VarData>& var_data;
   const LiteralIndexedVector<TriValue> & values;

@@ -217,8 +217,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
           Lit l2 = d.get_lit2();
           sat = is_true(l1) || is_true(l2);
           if (!sat) {
-            if (!archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
-            if (!archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
+            if (is_unknown(l1) && !archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
+            if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
             VAR_FREQ_DO(bump_freq_score(v));
             archetype.set_clause_visited(d.id);
           } else {

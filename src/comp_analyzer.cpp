@@ -111,15 +111,15 @@ void CompAnalyzer<T>::initialize(
 
 
   // data for binary clauses
-  vector<vec<Lit>> unif_occ_bin;
+  vector<vec<uint32_t>> unif_occ_bin;
   unif_occ_bin.clear();
   unif_occ_bin.resize(max_var+1);
-  vector<Lit> tmp2;
+  vector<uint32_t> tmp2;
   for (uint32_t v = 1; v < max_var + 1; v++) {
     tmp2.clear();
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
-        if (bincl.irred()) tmp2.push_back(bincl.lit());
+        if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
     }
     unif_occ_bin[v].clear();
@@ -244,17 +244,16 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
 
     //traverse binary clauses
     for(uint32_t i = 0; i < holder.size_bin(v);) {
-      Lit l2 = holder.begin_bin(v)[i];
-      bool sat = is_true(l2);
-      if (!sat && manage_occ_of(l2.var())) {
-        assert(is_unknown(l2.var()));
-        /* SLOW_DEBUG_DO(is_unknown(l2)); */
-        bump_freq_score(l2.var());
+      uint32_t v2 = holder.begin_bin(v)[i];
+      // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
+      bool sat = !is_unknown(v2);
+      if (!sat && manage_occ_of(v2)) {
+        bump_freq_score(v2);
         bump_freq_score(v);
       }
       if (sat) {
         holder.begin_bin(v)[i] = holder.back_bin(v);
-        holder.back_bin(v) = l2;
+        holder.back_bin(v) = v2;
         holder.pop_back_bin(v);
       } else
         i++;

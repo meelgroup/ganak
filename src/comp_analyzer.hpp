@@ -87,12 +87,12 @@ struct MyHolder {
   }
 
   //bin
-  Lit& back_bin(uint32_t v) {
+  uint32_t& back_bin(uint32_t v) {
     return (begin_bin(v))[size_bin(v)-1];
   }
-  Lit* begin_bin(uint32_t v) {
+  uint32_t* begin_bin(uint32_t v) {
     auto start = data[v*4];
-    return (Lit*) (data + start);
+    return (uint32_t*) (data + start);
   }
   uint32_t size_bin(uint32_t v) { return data[v*4+1];}
   void pop_back_bin(uint32_t v) {

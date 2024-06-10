@@ -210,6 +210,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     uint32_t i = 0;
     while (i < unif_occ[v].size()) {
       ClData& d = unif_occ[v][i];
+      if (archetype.clause_sat(d.id)) goto sat;
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
         bool sat = false;
         if (d.tri) {
@@ -228,14 +229,18 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
           sat = is_true(d.blk_lit);
           if (!sat) sat = search_clause(v, d, long_clauses_data.data()+d.off);
         }
-        if (sat) {
-          ClData tmp = unif_occ[v][i];
-          unif_occ[v][i] = unif_occ[v].back();
-          unif_occ[v].back() = tmp;
-          unif_occ[v].pop_back();
-          /* cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl; */
-        } else i++;
+        if (sat) goto sat;
+        else i++;
       } else i++;
+      continue;
+
+      sat:
+      archetype.set_clause_sat(d.id);
+      ClData tmp = unif_occ[v][i];
+      unif_occ[v][i] = unif_occ[v].back();
+      unif_occ[v].back() = tmp;
+      unif_occ[v].pop_back();
+      /* cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl; */
     }
   }
 

@@ -193,9 +193,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
     //traverse binary clauses
     for(const auto& p: unif_occ_bin[v]) {
       if (manage_occ_of(p)) {
-        if (!conf.do_check_unkn_bin || is_unknown(p)) {
-          VAR_FREQ_DO(bump_freq_score(p); bump_freq_score(v));
-        }
+        if (is_unknown(p)) { bump_freq_score(p); bump_freq_score(v); }
       }
     }
 
@@ -218,19 +216,25 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
           Lit l2 = d.get_lit2();
           sat = is_true(l1) || is_true(l2);
           if (!sat) {
-            if (is_unknown(l1) && !archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
-            if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
-            VAR_FREQ_DO(bump_freq_score(v));
+            if (is_unknown(l1) && !archetype.var_nil(l1.var())) {
+              bump_freq_score(l1.var());
+              manage_occ_of(l1.var());
+            }
+            if (is_unknown(l2) && !archetype.var_nil(l1.var())) {
+              bump_freq_score(l2.var());
+              manage_occ_of(l2.var());
+            }
+            bump_freq_score(v);
             archetype.set_clause_visited(d.id);
           } else {
-            archetype.clear_cl(d.id);
+            goto sat;
           }
         } else {
           sat = is_true(d.blk_lit);
           if (!sat) sat = search_clause(v, d, long_clauses_data.data()+d.off);
+          if (sat) goto sat;
         }
-        if (sat) goto sat;
-        else i++;
+        i++;
       } else i++;
       continue;
 

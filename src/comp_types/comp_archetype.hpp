@@ -93,8 +93,8 @@ public:
   }
 
   void set_clause_sat(const ClauseIndex cl) {
-    clear_cl(cl);
-    data[cl] = data[cl] | CA_CL_SAT;
+    /* clear_cl(cl); */
+    data[cl] |= CA_CL_SAT;
   }
 
   bool clause_sat(const ClauseIndex cl) const {

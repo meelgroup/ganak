@@ -200,7 +200,7 @@ private:
   // belongs to a component. It's called on every long clause.
   bool search_clause(uint32_t v, ClData& d, Lit const* cl_start) {
     /* cout << "searching clause " << cl_id << endl; */
-    bool ret = false;
+    bool sat = false;
     const auto it_v_end = comp_vars.end();
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
@@ -213,6 +213,7 @@ private:
         d.blk_lit = *it_l;
 
         //accidentally entered a satisfied clause: undo the search process
+        sat = true;
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
           archetype.set_var_in_sup_comp_unvisited(comp_vars.back());
@@ -223,13 +224,12 @@ private:
         while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
 #endif
-        ret = true;
         break;
       }
     }
 
-    if (!archetype.clause_nil(d.id)) archetype.set_clause_visited(d.id);
-    return ret;
+    if (!sat) archetype.set_clause_visited(d.id);
+    return sat;
   }
 };
 

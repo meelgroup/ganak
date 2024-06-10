@@ -81,6 +81,7 @@ public:
     if (archetype.var_unvisited_in_sup_comp(v)) {
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
+      __builtin_prefetch(begin_cls_of_var(v));
       return true;
     }
     return false;

@@ -112,8 +112,8 @@ only_dirs = [
              # "out-ganak-7206369.pbs101-",
              # TODO: higher maxw than out-ganak-7205692.pbs101-6, rerun fixed cadiback
              # "out-ganak-7178163.pbs101-0", # proj-2023 16GB, ganak
-             "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
-             "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
+             # "out-ganak-7178163.pbs101-2", # proj-2023 16GB, d4
+             # "out-ganak-7178163.pbs101-3", # proj-2023 16GB, gpmc
              # "out-ganak-7205692.pbs101-6", # old best
              # #"out-ganak-7247003.pbs101-", # fixed cadiback, --tdmaxw 40 seems best, but 15 is fine too actually # BEST
              # "out-ganak-7255014.pbs101-0", # different tdminw-s, also try lbd 2. LBD is indifferent, tdminw high is BAD
@@ -139,12 +139,14 @@ only_dirs = [
                  # BEST: --tdexpmult 0.3 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
              # SHITTY "out-ganak-7422213.pbs101-" # unit cls to duplicated CNF, different cutoff for gates, some param tuning Wow, wrong. Seemingly to do with cadiback what is going on....
              # "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
-             #"out-ganak-7433580.pbs101-2", #d4 32G
+             # "out-ganak-7433580.pbs101-2", #d4 32G
              # best: --tdminw 0.05 --tdexpmult 0.3
              # "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
-             "out-ganak-7433580.pbs101-2", #d4 32G
              # best: --tdminw 0.05 --tdexpmult 0.3
-             "out-ganak-7451414.pbs101-1" # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
+             # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
+             "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
+             "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
+             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST, also proves --arjunextend 0 is BAD.
 
 
 
@@ -190,8 +192,12 @@ only_dirs = [
              # "out-ganak-7433320.pbs101-0", # default config
              # "out-ganak-7433320.pbs101-1", # --appmct 2000
              #SHITTY"out-ganak-7435410.pbs101-"# try all tdexp, go back to before mess
-             # "out-ganak-7451423.pbs101-1" # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
-             # TODO: --arjunextend 0
+
+             # "out-ganak-7451423.pbs101-1", # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
+             # "out-ganak-7466346.pbs101-2", # d4 32GB mem
+             # "out-ganak-7466346.pbs101-",
+             # "out-ganak-7468615.pbs101-0", # without vivif
+             # "out-ganak-7468615.pbs101-1", # with vivifevery 40k
 
 
              ]
@@ -276,7 +282,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][100:]\\\n")
+    f.write("plot [:][40:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

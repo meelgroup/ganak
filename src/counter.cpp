@@ -3463,18 +3463,29 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     if (weighted()) {
       all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
         uint32_t v = *it;
-        debug_print(COLYEL "SAT solver -- mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
-          << " weight: " << setw(9) << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
-          << " dec_lev: " << setw(5) << var(v).decision_level << " sat_start_dec_level: " << sat_start_dec_level);
-        if (var(v).decision_level <= sat_start_dec_level) continue; // will get multiplied when backtracking for the one that's EQUAL
         if (v >= opt_indep_support_end) continue;
-        cnt *= get_weight(Lit(v, val(v) == T_TRI));
+        sat_solution[v] = val(v);
       }
     }
     go_back_to(sat_start_dec_level);
     bool ret = propagate();
     assert(ret);
     assert(decision_level() == sat_start_dec_level);
+
+    //  We need to multiply here, because some things may get re-propagated, and that will
+    //  be unset, which would affect the weight calculated. Yes, chrono-bt is hard.
+    if (weighted()) {
+      all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
+        uint32_t v = *it;
+        if (v >= opt_indep_support_end) continue;
+        debug_print(COLYEL "SAT solver -- mult var: " << setw(4) << v << " val: " << setw(3) << sat_solution[v]
+          << " weight: " << setw(9) << get_weight(Lit(v, sat_solution[v] == T_TRI)) << COLDEF
+          << " dec_lev: " << setw(5) << var(v).decision_level << " sat_start_dec_level: " << sat_start_dec_level);
+        if (var(v).decision_level != INVALID_DL && var(v).decision_level <= sat_start_dec_level) continue;
+        cnt *= get_weight(Lit(v, sat_solution[v] == T_TRI));
+      }
+      debug_print(COLYEL "SAT cnt will be: " << cnt);
+    }
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
     decisions.top().reset();
@@ -3819,7 +3830,9 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
   if (weighted() && dec_lev < decision_level() && get_weight(lit) != 1) {
-    for(int32_t i = dec_lev; i < (int)decisions.size(); i++) {
+    uint32_t until = decisions.size();
+    if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
+    for(int32_t i = dec_lev; i < until; i++) {
       debug_print("set_lit, compensating weight. i: " << i);
       bool found = false;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
@@ -4103,11 +4116,13 @@ void Counter<T>::new_vars(const uint32_t n) {
   assert(unit_clauses_.empty());
   assert(long_red_cls.empty());
   assert(weights.empty());
+  assert(sat_solution.empty());
 
   var_data.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
+  if (weighted()) sat_solution.resize(n+1);
   if (weighted()) weights.resize(2*(n + 1), 1);
   num_vars_set = true;
 }

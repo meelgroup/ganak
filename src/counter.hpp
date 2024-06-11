@@ -211,7 +211,7 @@ protected:
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if (weighted() && get_weight(lit) != 1) {
+    if (weighted() && !sat_mode() && get_weight(lit) != 1) {
       uint64_t* at = vars_act_dec.data()+decision_level()*(nVars()+1);
       bool found = (at[0] == at[lit.var()]);
       if (found) decisions[decision_level()].include_solution(get_weight(lit));
@@ -437,6 +437,7 @@ private:
   inline bool sat_mode() const {
     return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
   }
+  vector<int> sat_solution;
   void check_sat_solution() const;
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_

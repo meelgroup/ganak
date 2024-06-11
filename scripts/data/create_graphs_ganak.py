@@ -191,6 +191,7 @@ only_dirs = [
              # "out-ganak-7433320.pbs101-1", # --appmct 2000
              #SHITTY"out-ganak-7435410.pbs101-"# try all tdexp, go back to before mess
              # "out-ganak-7451423.pbs101-1" # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
+             # TODO: --arjunextend 0
 
 
              ]

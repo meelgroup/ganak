@@ -157,9 +157,9 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v); // sets up the component that "v" is in
+  record_comp(v, sup_comp_cls); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
@@ -176,7 +176,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v) {
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cls) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -203,6 +203,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
         }
       }
     }
+    if (sup_comp_cls == archetype.num_cls) continue;
 
     //traverse ternary clauses
     for (p++; *p ; p+=3) {
@@ -210,7 +211,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
       const Lit a = *(Lit*)(p + 1);
       const Lit b = *(Lit*)(p + 2);
       if (archetype.clause_unvisited_in_sup_comp(*p)){
-        /* cout << "Tern cl. (-?" << v << ") " << litA << " " << litB << endl; */
         if(is_true(a)|| is_true(b)) {
           archetype.clear_cl(clid);
         } else {
@@ -219,6 +219,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
           manage_occ_and_score_of(b.var());
           archetype.set_clause_visited(clid ,is_unknown(a) && is_unknown(b));
         }
+        archetype.num_cls++;
       }
     }
 
@@ -226,8 +227,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var) {
     for (p++; *p ; p +=2)
       if (archetype.clause_unvisited_in_sup_comp(*p)) {
         search_clause(v, *p, (Lit const*)(p + 1 + *(p+1)));
+        archetype.num_cls++;
       }
-
   }
 
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "

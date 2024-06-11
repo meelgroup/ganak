@@ -107,7 +107,7 @@ public:
       archetype.set_clause_in_sup_comp_unvisited(*it);
   }
 
-  bool explore_comp(const uint32_t v);
+  bool explore_comp(const uint32_t v, const uint32_t sup_comp_cls);
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
@@ -165,7 +165,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void record_comp(const uint32_t var);
+  void record_comp(const uint32_t var, const uint32_t sup_comp_cls);
 
   void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
     tmp.clear();

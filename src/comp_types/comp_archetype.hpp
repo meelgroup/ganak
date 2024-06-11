@@ -141,7 +141,10 @@ public:
     clear_data();
   }
 
-  void clear_data() { memset(data, 0, data_sz); }
+  void clear_data() {
+    num_cls = 0;
+    memset(data, 0, data_sz);
+  }
 
   // At this point explore_comp has been called already which
   // set up search_stack_, data[] etc. so this is now quite easy.
@@ -151,6 +154,7 @@ public:
   uint32_t num_bin_cls = 0;
 #endif
 
+  uint32_t num_cls = 0;
 private:
   Comp const* super_comp_ptr;
   StackLevel<T> *stack_lvl_ptr;

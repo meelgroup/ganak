@@ -532,7 +532,7 @@ int main(int argc, char *argv[])
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
-  OuterCounter counter(conf, cnf.weighted);
+  OuterCounter counter(conf, cnf.weighted, do_precise);
   setup_ganak(cnf, generators, counter);
 
   if (cnf.weighted && !do_precise) {

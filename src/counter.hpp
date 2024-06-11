@@ -839,9 +839,9 @@ public:
     if (w_counter) w_counter->set_indep_support(indeps);
     if (wq_counter) wq_counter->set_indep_support(indeps);
   }
-  auto unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
-  auto w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
-  auto wq_outer_count() { release_assert(wq_counter); return wq_counter->outer_count();}
+  mpz_class unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
+  mpfr::mpreal w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
+  mpq_class wq_outer_count() { release_assert(wq_counter); return wq_counter->outer_count();}
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1) {
     if (unw_counter) return unw_counter->add_red_cl(lits, lbd);
     if (w_counter) return w_counter->add_red_cl(lits, lbd);

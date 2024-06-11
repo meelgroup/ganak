@@ -374,8 +374,8 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
 
   if (cnf.weighted) {
     for(const auto& t: cnf.weights) {
-      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
-      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg.get_mpq_t());
+      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
+      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
     }
   }
 

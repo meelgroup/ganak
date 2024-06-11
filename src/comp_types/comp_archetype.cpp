@@ -6,9 +6,11 @@
  */
 
 #include "comp_archetype.hpp"
+#include <gmpxx.h>
 
 template class CompArchetype<mpz_class>;
 template class CompArchetype<mpfr::mpreal>;
+template class CompArchetype<mpq_class>;
 
 template<typename T>
 Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {

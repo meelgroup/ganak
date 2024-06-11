@@ -48,6 +48,7 @@ using std::is_same;
 
 template class Counter<mpz_class>;
 template class Counter<mpfr::mpreal>;
+template class Counter<mpq_class>;
 
 void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
@@ -387,7 +388,7 @@ T Counter<T>::check_count_norestart_cms(const Cube<T>& c) {
     if (ret == CMSat::l_False) break;
     vector<CMSat::Lit> ban;
     T this_cnt = 1;
-    if (weighted()) {
+    if constexpr (weighted) {
       for(uint32_t i = 0; i < opt_indep_support_end-1; i++) {
         Lit l(i+1, test_solver.get_model()[i] == CMSat::l_True);
         this_cnt *= get_weight(l);
@@ -417,7 +418,7 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
   set<uint32_t> tmp_indep;
   for(uint32_t i = 1; i < indep_support_end; i++) tmp_indep.insert(i);
   test_cnt.set_indep_support(tmp_indep);
-  if (weighted()) {
+  if constexpr (weighted) {
     all_lits(i) {
       Lit l(i/2, i%2 == 0);
       test_cnt.set_lit_weight(l, get_weight(l));
@@ -512,7 +513,7 @@ void Counter<T>::print_and_check_cubes(vector<Cube<T>>& cubes) {
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
       else check_cnt = check_count_norestart_cms(c);
       cout << "checking cube [ " << c << " ] ---- check_cnt: " << check_cnt << endl;
-      if (weighted()) {
+      if constexpr (weighted) {
         T diff = check_cnt - c.cnt;
         if (diff/check_cnt > 0.01 || diff/check_cnt < -0.01) assert(false);
       } else assert(check_cnt == c.cnt);
@@ -758,7 +759,7 @@ template<typename T>
 T Counter<T>::outer_count() {
   if (!ok) return 0;
   T cnt = 0;
-  if (!weighted() && conf.appmc_timeout > 0) {
+  if constexpr (!weighted) if (conf.appmc_timeout > 0) {
     double time_so_far = cpuTime();
     double set_timeout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
     if (conf.appmc_timeout > 500 && set_timeout < 500) {
@@ -835,11 +836,10 @@ T Counter<T>::outer_count() {
   }
 
   if (!done && ret == CMSat::l_True) {
-    if (weighted()) {
+    if constexpr (weighted) {
       cout << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
       exit(-1);
-    }
-    cnt += do_appmc_count();
+    } else cnt += do_appmc_count();
   }
   return cnt;
 }
@@ -1023,7 +1023,7 @@ end:
     mini_cubes.push_back(c);
   } else {/*restart*/}
 
-  if (weighted()) {
+  if constexpr (weighted) {
     T this_restart_multiplier = 1;
     for(uint32_t i = 1; i < opt_indep_support_end; i++)
       if (!is_unknown(i)) {
@@ -1195,7 +1195,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   double best_var_score = -1e8;
   uint64_t* at;
   VERBOSE_DEBUG_DO(cout << "decision level: " << decision_level() << " var options: ");
-  if (weighted()) {
+  if constexpr (weighted) {
     if (vars_act_dec.size()  < (decision_level()+1) * (nVars()+1)) {
       uint64_t todo = (decision_level()+1)*(nVars()+1) - vars_act_dec.size();
       vars_act_dec.insert(vars_act_dec.end(), todo, 0);
@@ -1217,7 +1217,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
-      if (weighted()) at[v] = vars_act_dec_num;
+      if constexpr (weighted) at[v] = vars_act_dec_num;
       double score;
       if (!conf.td_look_only_weight && decision_level() < conf.td_lookahead &&
           tw > conf.td_lookahead_tw_cutoff)
@@ -1403,7 +1403,7 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!appmc_timeout_fired && conf.max_num_rst > 0 && stats.num_restarts > conf.max_num_rst) return false;
+  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst) return false;
   if (!appmc_timeout_fired && (!conf.do_restart || td_width < 60)) return false;
 
   bool restart = false;
@@ -1531,7 +1531,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       uint32_t v = c->vars_begin()[i];
       if (v < opt_indep_support_end) {
         active.insert(v);
-        if (weighted() && val(v) != X_TRI && var(v).decision_level == decision_level()) {
+        if constexpr (weighted) if (val(v) != X_TRI && var(v).decision_level == decision_level()) {
             dec_w *= get_weight(Lit(v, val(v) == T_TRI));
             if (get_weight(Lit(v, val(v) == T_TRI)) != 1)
               debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
@@ -1584,7 +1584,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       auto ret = s2.solve();
       if (ret == CMSat::l_True) {
         solution_exist = true;
-        if (!weighted()) cnt++;
+        if constexpr (!weighted) cnt++;
         else {
           T cube_cnt = 1;
           for(uint32_t i = 0; i < s2.nVars(); i++) {
@@ -1630,7 +1630,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
     if (solution_exist) {
-      if (!weighted()) assert(decisions.top().getTotalModelCount() == cnt);
+      if constexpr (!weighted) assert(decisions.top().getTotalModelCount() == cnt);
       else {
         bool okay = true;
         T diff = after_mul - cnt;
@@ -1733,7 +1733,7 @@ RetState Counter<T>::backtrack() {
       }
       cout << endl;
 #endif
-      if (weighted()) {
+      if constexpr (weighted) {
         T cnt = decisions.top().getTotalModelCount();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < decision_level()) {
@@ -3460,7 +3460,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   if (true) {
     state = RESOLVED;
     T cnt = 1;
-    if (weighted()) {
+    if constexpr (weighted) {
       all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
         uint32_t v = *it;
         if (v >= opt_indep_support_end) continue;
@@ -3474,7 +3474,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
 
     //  We need to multiply here, because some things may get re-propagated, and that will
     //  be unset, which would affect the weight calculated. Yes, chrono-bt is hard.
-    if (weighted()) {
+    if constexpr (weighted) {
       all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
         uint32_t v = *it;
         if (v >= opt_indep_support_end) continue;
@@ -3491,7 +3491,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     decisions.top().reset();
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
-    if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
+    if constexpr (!weighted) assert(decisions.top().getTotalModelCount() == 1);
   }
 
 end:
@@ -3829,8 +3829,8 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if (weighted() && dec_lev < decision_level() && get_weight(lit) != 1) {
-    uint32_t until = decisions.size();
+  if constexpr (weighted) if (dec_lev < decision_level() && get_weight(lit) != 1) {
+    int32_t until = decisions.size();
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
       debug_print("set_lit, compensating weight. i: " << i);
@@ -4122,8 +4122,8 @@ void Counter<T>::new_vars(const uint32_t n) {
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
-  if (weighted()) sat_solution.resize(n+1);
-  if (weighted()) weights.resize(2*(n + 1), 1);
+  if constexpr (weighted) sat_solution.resize(n+1);
+  if constexpr (weighted) weights.resize(2*(n + 1), 1);
   num_vars_set = true;
 }
 

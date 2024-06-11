@@ -32,6 +32,7 @@ using std::make_pair;
 
 template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
+template class CompAnalyzer<mpq_class>;
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unif_occ and unif_occ_offs
@@ -166,7 +167,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
     if (v >= indep_support_end) archetype.stack_level().include_solution(1);
     else {
-      if (weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
+      if constexpr (weighted) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(2);
     }
     archetype.set_var_in_peer_comp(v);

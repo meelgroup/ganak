@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include "mpreal.h"
 
+#include <gmpxx.h>
 #include <iostream>
 #include <iomanip>
 
@@ -34,6 +35,7 @@ using std::setw;
 
 template class DataAndStatistics<mpz_class>;
 template class DataAndStatistics<mpfr::mpreal>;
+template class DataAndStatistics<mpq_class>;
 
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);

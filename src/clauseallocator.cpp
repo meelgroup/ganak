@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <cstring>
 #include <cassert>
 #include <cmath>
+#include <gmpxx.h>
 #include "counter.hpp"
 #include "counter_config.hpp"
 #include "time_mem.hpp"
@@ -40,6 +41,7 @@ using std::endl;
 
 template class ClauseAllocator<mpz_class>;
 template class ClauseAllocator<mpfr::mpreal>;
+template class ClauseAllocator<mpq_class>;
 
 template<typename T>
 void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {

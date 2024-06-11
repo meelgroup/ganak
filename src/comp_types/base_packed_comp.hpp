@@ -81,13 +81,25 @@ protected:
   uint32_t delete_permitted:1 = false;
 };
 
-template<>
-inline uint32_t BaseComp<mpz_class>::mp_data_size() const {
+inline auto helper(mpz_ptr val) {
   uint32_t ds;
   ds = 0;
-  uint32_t ms = model_count_->get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+  uint32_t ms = val->_mp_alloc * sizeof(mp_limb_t);
   uint32_t mask = 0xfffffff0;
-  return sizeof(mpz_class) + (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
+  uint32_t number = (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
+  return number;
+}
+
+template<>
+inline uint32_t BaseComp<mpz_class>::mp_data_size() const {
+  return sizeof(mpz_class) + helper(model_count_->get_mpz_t());
+}
+
+template<>
+inline uint32_t BaseComp<mpq_class>::mp_data_size() const {
+  uint32_t a = helper(model_count_->get_den_mpz_t());
+  uint32_t b = helper(model_count_->get_num_mpz_t());
+  return sizeof(mpz_class) + a + b;
 }
 
 template<>

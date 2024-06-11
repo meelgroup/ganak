@@ -128,6 +128,7 @@ private:
   // different from the offset of the clause in the literal pool
   uint32_t max_clid = 0;
   uint32_t max_var = 0;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 
   vector<uint32_t> unif_occ;
   vector<uint32_t> unif_occ_offs;

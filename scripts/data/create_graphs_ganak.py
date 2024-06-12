@@ -144,9 +144,10 @@ only_dirs = [
              # "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
              # best: --tdminw 0.05 --tdexpmult 0.3
              # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
-             "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
-             "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
+             # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
+             # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
              # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST, also proves --arjunextend 0 is BAD.
+             #"out-ganak-7482756.pbs101-", # now with more vivif -- bad, default is OK
 
 
 
@@ -195,9 +196,13 @@ only_dirs = [
 
              # "out-ganak-7451423.pbs101-1", # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
              # "out-ganak-7466346.pbs101-2", # d4 32GB mem
-             # "out-ganak-7466346.pbs101-",
+             # "out-ganak-7466346.pbs101-", # diffocc vs non-diffocc
              # "out-ganak-7468615.pbs101-0", # without vivif
-             # "out-ganak-7468615.pbs101-1", # with vivifevery 40k
+             # "out-ganak-7468615.pbs101-1", # with vivifevery 40k, best
+
+
+             # weighted
+             "out-ganak-7484977.pbs101-", # 32GB, first run
 
 
              ]

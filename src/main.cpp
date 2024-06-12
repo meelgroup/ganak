@@ -482,7 +482,6 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
 
 int main(int argc, char *argv[])
 {
-  mpfr::mpreal::set_default_prec(256);
   const double start_time = cpuTime();
 #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |

@@ -474,7 +474,16 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
         cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
       } else {
         cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl;
-        cout << "c s exact arb float " << std::scientific << std::setprecision(40) << mpfr::mpreal(cnt.get_mpq_t()) << endl;
+        cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
+        mpf_set_default_prec(1024); // Set default precision in bits
+        mpf_t f;
+        mpf_init(f);
+        mpf_set_q(f, cnt.get_mpq_t());
+        uint32_t n = 50;
+        gmp_printf ("%.*Ff", n, f, n);
+        std::flush(std::cout);
+        mpf_clear(f);
+        cout << endl;
         cout << "c o exact arb rational " << std::scientific << std::setprecision(40) << cnt << endl;
       }
     }

@@ -202,7 +202,8 @@ only_dirs = [
 
 
              # weighted
-             "out-ganak-7484977.pbs101-", # 32GB, first run
+             # "out-ganak-7484977.pbs101-", # 32GB, first run, segfault, 256B float
+             "out-ganak-7491797.pbs101-",
 
 
              ]

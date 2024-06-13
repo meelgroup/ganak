@@ -2384,7 +2384,7 @@ void Counter<T>::vivify_cls(vector<ClauseOfs>& cls) {
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
       if (cl.vivifed == 0 &&
-          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.total_used_cutoff)))))
+          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.tot_used_cutoff_vivif)))))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;

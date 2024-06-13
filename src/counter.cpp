@@ -2366,7 +2366,7 @@ void Counter<T>::vivify_cls(vector<ClauseOfs>& cls) {
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
       if (cl.vivifed == 0 &&
-          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 50)))))
+          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.total_used_cutoff)))))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;
@@ -4062,11 +4062,12 @@ void Counter<T>::reduce_db() {
     const ClauseOfs& off = tmp_red_cls[i];
     auto& h = *alloc->ptr(off);
     if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
+    else if (h.total_used >= conf.total_used_cutoff2) num_low_lbd_cls++;
     else if (h.used) num_used_cls++;
 
     bool can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
-    if (can_be_del && h.lbd > lbd_cutoff && (!conf.rdb_keep_used || !h.used) &&
+    if (can_be_del && h.lbd > lbd_cutoff && h.total_used > conf.total_used_cutoff2 && (!conf.rdb_keep_used || !h.used) &&
         i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
       delete_cl(off);
       stats.cls_deleted_since_compaction++;

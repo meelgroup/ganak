@@ -78,7 +78,7 @@ int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
-int do_precise = 0;
+int do_precise = 1;
 
 string ganak_version_info()
 {

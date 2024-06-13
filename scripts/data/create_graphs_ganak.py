@@ -104,6 +104,8 @@ only_dirs = [
              # "out-ganak-7022833.pbs101-4", # best ever
              # "out-ganak-7048280.pbs101-0", # best ever now
 
+
+             # track 3, i.e. pmc
              # "out-ganak-7173534.pbs101-0", # proj-2023 first run, 4GB
              # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
              # "out-ganak-7184202.pbs101-" #proj 2023, 4GB, freq-128 (vsads), checking vsads params
@@ -146,17 +148,19 @@ only_dirs = [
              # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
              # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
              # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
-             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST, also proves --arjunextend 0 is BAD.
+             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
+             # --> above also proves --arjunextend 0 is BAD.
              #"out-ganak-7482756.pbs101-", # now with more vivif -- bad, default is OK
 
 
 
+             # unproj, i.e. track 1
              # "out-ganak-6318929.pbs101-5/", # exactmc
              # "out-ganak-6328707.pbs101-7/", # exactmc
              # "out-ganak-6318929.pbs101-7/", # sharpsat
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
              # "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
-             # "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
+             "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params
@@ -193,17 +197,26 @@ only_dirs = [
              # "out-ganak-7433320.pbs101-0", # default config
              # "out-ganak-7433320.pbs101-1", # --appmct 2000
              #SHITTY"out-ganak-7435410.pbs101-"# try all tdexp, go back to before mess
-
              # "out-ganak-7451423.pbs101-1", # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
              # "out-ganak-7466346.pbs101-2", # d4 32GB mem
              # "out-ganak-7466346.pbs101-", # diffocc vs non-diffocc
              # "out-ganak-7468615.pbs101-0", # without vivif
-             # "out-ganak-7468615.pbs101-1", # with vivifevery 40k, best
+             # "out-ganak-7468615.pbs101-1", # with vivifevery 40k, BEST: --maxcache 26000 --vivifevery 40000
 
 
-             # weighted
-             # "out-ganak-7484977.pbs101-", # 32GB, first run, segfault, 256B float
-             "out-ganak-7491797.pbs101-",
+             # weighted wmc, i.e. track 2
+             #"out-ganak-7484977.pbs101-", # 32GB, first run, segfault, 256B float
+             # "out-ganak-7491797.pbs101-1", # ran out of memory float
+             # "out-ganak-7491797.pbs101-2", # d4
+             # "out-ganak-7491797.pbs101-3", # gpmc
+             # "out-ganak-7503909.pbs101-0", # 40k vivif is slower
+             # "out-ganak-7491797.pbs101-0", # no-memout, no-segfault mpq -- BEST: --maxcache 18000 --precise 1
+             # "out-ganak-7503909.pbs101-1", # no-memout, no-segfault mpf
+
+             # weighted, projected i.e. track 4
+             # "out-ganak-7505064.pbs101-0", # BEST ganak: --maxcache 18000 --tdminw 0.05 --tdexpmult 0.3 --precise 1
+             # "out-ganak-7505064.pbs101-4", # 32GB gpmc
+             # "out-ganak-7505064.pbs101-3", # 32GB d4
 
 
              ]
@@ -288,7 +301,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][40:]\\\n")
+    f.write("plot [:][30:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

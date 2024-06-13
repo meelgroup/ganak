@@ -198,7 +198,7 @@ only_dirs = [
              # "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
              #"out-ganak-7334807.pbs101-7", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST appmc
              # "out-ganak-7377878.pbs101", # try different backbone setups, only oracle vivif, arjun probe, etc
-             # best: --tdmaxw 100 --varfreqdiv 25 --tdminw 15 --backbone 0 --arjunprobe 1
+             # old BEST: --tdmaxw 100 --varfreqdiv 25 --tdminw 15 --backbone 0 --arjunprobe 1
              # also: --tdexpmult 1.25
              # TODO: do a bit more probing, but not full backbone before indep minim
              # "out-ganak-7377878.pbs101-5", # best of the above
@@ -208,7 +208,7 @@ only_dirs = [
              # "out-ganak-7401120.pbs101-", # timeout in backbone 30s
              # "out-ganak-7419157.pbs101-3", # more simplification pre-backward, lower backward confl
              # "out-ganak-7419157.pbs101-", # more simplification pre-backward, lower backward confl
-             # BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
+             # old BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
              # "out-ganak-7422239.pbs101-2" #unit cls to duplicated CNF, different cutoff for gates, some param tuning best: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 10000 --HOWEVER, duplication caused cadiback to go bad
              # both below are nice, with and without appmc
              # "out-ganak-7433320.pbs101-0", # default config
@@ -219,6 +219,10 @@ only_dirs = [
              # "out-ganak-7466346.pbs101-", # diffocc vs non-diffocc
              # "out-ganak-7468615.pbs101-0", # without vivif
              # "out-ganak-7468615.pbs101-1", # with vivifevery 40k, BEST: --maxcache 26000 --vivifevery 40000
+              # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
+              # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
+              # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
+              # c o GANAK SHA revision bf5867815d357f30911c0011b9d47a5941119107
 
 
              # weighted wmc, i.e. track 2

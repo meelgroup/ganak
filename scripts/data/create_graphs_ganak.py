@@ -151,11 +151,16 @@ only_dirs = [
              # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
              # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
              # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
+              # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
+              # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
+              # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
+              # c o GANAK SHA revision bf5867815d357f30911c0011b9d47a5941119107
              # --> above also proves --arjunextend 0 is BAD.
              #"out-ganak-7482756.pbs101-", # now with more vivif -- bad, default is OK
              # BAD version "out-ganak-7515096.pbs101-" # try TD once more... BAAAD due to clause keeping
              # BAD version "out-ganak-7513732.pbs101-", # total use BAAAAD
-             "out-ganak-7513092.pbs101-", # different viviv cutoff totaluse
+             # "out-ganak-7513092.pbs101-", # different viviv cutoff totaluse
+             # "out-ganak-7531643.pbs101-" # contract and new prime graph and TD
 
 
              # arijit's experiment
@@ -313,7 +318,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][130:]\\\n")
+    f.write("plot [:][30:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

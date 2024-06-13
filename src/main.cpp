@@ -482,7 +482,7 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
         mpf_init(f);
         mpf_set_q(f, cnt.get_mpq_t());
         uint32_t n = 50;
-        gmp_printf ("%.*Ff", n, f);
+        gmp_printf("%.*FE\n", n, f);
         std::flush(std::cout);
         mpf_clear(f);
         cout << endl;

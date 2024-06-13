@@ -148,9 +148,10 @@ only_dirs = [
              # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
              # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
              # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
-             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
+             "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
              # --> above also proves --arjunextend 0 is BAD.
              #"out-ganak-7482756.pbs101-", # now with more vivif -- bad, default is OK
+             "out-ganak-7515096.pbs101-" # try TD once more...
 
 
 
@@ -160,7 +161,7 @@ only_dirs = [
              # "out-ganak-6318929.pbs101-7/", # sharpsat
              # no point in combining out-ganak-7178422.pbs101-0 with out-ganak-7184237.pbs101-2, 171 either way
              # "out-ganak-7178422.pbs101-2", # unproj-2023 16 GB d4
-             "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
+             # "out-ganak-7178422.pbs101-3", # unproj-2023 16 GB gpmc
              # "out-ganak-7178422.pbs101-", # unproj-2023 16 GB
              # "out-ganak-7180395.pbs101-", #unproj 2023 4GB, freq-128 (vsads)
              # "out-ganak-7184237.pbs101-2", # unproj-2023 4GB, vsads, checking vsads params

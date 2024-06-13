@@ -4085,7 +4085,7 @@ void Counter<T>::reduce_db() {
 
     bool can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
-    if (can_be_del && h.lbd > lbd_cutoff && h.total_used > conf.total_used_cutoff2 && (!conf.rdb_keep_used || !h.used) &&
+    if (can_be_del && h.lbd > lbd_cutoff && h.total_used < conf.total_used_cutoff2 && (!conf.rdb_keep_used || !h.used) &&
         i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
       delete_cl(off);
       stats.cls_deleted_since_compaction++;

@@ -146,7 +146,6 @@ bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
 
 template<typename T>
 void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
-  const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   const auto& adj = tdec.get_adj_list();
@@ -162,17 +161,27 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
     for(const auto& nn: a) cout << i << " " << nn << endl;
   }
 #endif
-  sspp::TreeDecomposition dec(bags.size(), n);
+  std::vector<int> dists = tdec.distanceFromCentroid(opt_indep_support_end);
+  if (dists.empty()) {
+    int max_dst = 0;
+    for(int i=1; i<opt_indep_support_end; i++)
+      max_dst = std::max(max_dst, dists[i]);
+    if (max_dst == 0) {
+      verb_print(1, "All projected vars in the same bag, ignoring TD");
+      return;
+    }
+  }
+  sspp::TreeDecomposition dec(bags.size(), opt_indep_support_end);
   for(uint32_t i = 0; i < bags.size();i++) dec.SetBag(i+1, bags[i]);
   for(uint32_t i = 0; i < adj.size(); i++)
     for(const auto& nn: adj[i]) dec.AddEdge(i+1, nn+1);
 
   // We use 1-indexing, ignore index 0
   auto ord = dec.GetOrd();
-  assert(ord.size() == tdscore.size());
+  assert(ord.size() == opt_indep_support_end);
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
-  for (uint32_t i = 1; i < n; i++) {
+  for (uint32_t i = 1; i < opt_indep_support_end; i++) {
     max_ord = std::max(max_ord, ord[i]);
     min_ord = std::min(min_ord, ord[i]);
   }
@@ -194,7 +203,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   if (print) {
     verb_print(1,
         "TD weight: " << td_weight
-        << " n: " << n
+        << " opt_end: " << opt_indep_support_end
         << " rt/width(=rt): " << rt
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
         << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
@@ -202,7 +211,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   }
 
   // Calc td score
-  for (uint32_t i = 1; i < n; i++) {
+  for (uint32_t i = 1; i < opt_indep_support_end; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
     val /= (double)max_ord;
@@ -212,11 +221,9 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
     tdscore[i] = val;
   }
 
-#ifdef VERBOSE_DEBUG
-  for(uint32_t i = 1; i < n; i++) {
-      cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) {
+      verb_print(2, "TD var: " << i << " tdscore: " << tdscore[i]);
   }
-#endif
 }
 
 template<typename T>
@@ -330,16 +337,24 @@ void Counter<T>::td_decompose() {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
     return;
   }
+  TWD::Graph primal_alt(opt_indep_support_end);
+  for(uint32_t i = 0 ; i < opt_indep_support_end; i++) {
+    const auto& k = primal.get_adj_list()[i];
+    for(const auto& i2: k) {
+      if (i2 < opt_indep_support_end)
+        primal_alt.addEdge(i, i2);
+    }
+  }
 
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
-  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
-  fc.importGraph(primal);
+  TWD::IFlowCutter fc(primal_alt.numNodes(), primal_alt.numEdges(), conf.verb);
+  fc.importGraph(primal_alt);
 
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
-  td.centroid(primal.numNodes(), conf.verb);
+  td.centroid(opt_indep_support_end, conf.verb);
   compute_score(td);
   verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
 }
@@ -848,8 +863,8 @@ template<typename T>
 vector<Cube<T>> Counter<T>::one_restart_count() {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
-    indep_support_end = nVars()+2;
-    opt_indep_support_end = nVars()+2;
+    indep_support_end = nVars()+1;
+    opt_indep_support_end = nVars()+1;
   }
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);

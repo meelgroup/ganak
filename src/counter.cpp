@@ -163,11 +163,14 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
 #endif
   std::vector<int> dists = tdec.distanceFromCentroid(opt_indep_support_end);
   if (dists.empty()) {
+      verb_print(1, "All projected vars in the same bag, ignoring TD");
+      return;
+  } else {
     int max_dst = 0;
     for(int i=1; i<opt_indep_support_end; i++)
       max_dst = std::max(max_dst, dists[i]);
     if (max_dst == 0) {
-      verb_print(1, "All projected vars in the same bag, ignoring TD");
+      verb_print(1, "All projected vars are the same distance, ignoring TD");
       return;
     }
   }

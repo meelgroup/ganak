@@ -82,12 +82,7 @@ protected:
 };
 
 inline auto helper(mpz_ptr val) {
-  uint32_t ds;
-  ds = 0;
-  uint32_t ms = val->_mp_alloc * sizeof(mp_limb_t);
-  uint32_t mask = 0xfffffff0;
-  uint32_t number = (ds & mask)+((ds & 15)?16:0) + (ms & mask)+((ms & 15)?16:0);
-  return number;
+  return val->_mp_alloc * sizeof(mp_limb_t);
 }
 
 template<>

@@ -48,6 +48,7 @@ using std::is_same;
 
 template class Counter<mpz_class>;
 template class Counter<mpfr::mpreal>;
+template class Counter<mpq_class>;
 
 void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
@@ -145,7 +146,6 @@ bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
 
 template<typename T>
 void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
-  const uint32_t n = nVars()+1;
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   const auto& adj = tdec.get_adj_list();
@@ -161,17 +161,30 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
     for(const auto& nn: a) cout << i << " " << nn << endl;
   }
 #endif
-  sspp::TreeDecomposition dec(bags.size(), n);
+  std::vector<int> dists = tdec.distanceFromCentroid(opt_indep_support_end);
+  if (dists.empty()) {
+      verb_print(1, "All projected vars in the same bag, ignoring TD");
+      return;
+  } else {
+    int max_dst = 0;
+    for(int i=1; i<(int)opt_indep_support_end; i++)
+      max_dst = std::max(max_dst, dists[i]);
+    if (max_dst == 0) {
+      verb_print(1, "All projected vars are the same distance, ignoring TD");
+      return;
+    }
+  }
+  sspp::TreeDecomposition dec(bags.size(), opt_indep_support_end);
   for(uint32_t i = 0; i < bags.size();i++) dec.SetBag(i+1, bags[i]);
   for(uint32_t i = 0; i < adj.size(); i++)
     for(const auto& nn: adj[i]) dec.AddEdge(i+1, nn+1);
 
   // We use 1-indexing, ignore index 0
   auto ord = dec.GetOrd();
-  assert(ord.size() == tdscore.size());
+  assert(ord.size() == opt_indep_support_end);
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
-  for (uint32_t i = 1; i < n; i++) {
+  for (uint32_t i = 1; i < (int)opt_indep_support_end; i++) {
     max_ord = std::max(max_ord, ord[i]);
     min_ord = std::min(min_ord, ord[i]);
   }
@@ -193,7 +206,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   if (print) {
     verb_print(1,
         "TD weight: " << td_weight
-        << " n: " << n
+        << " opt_end: " << opt_indep_support_end
         << " rt/width(=rt): " << rt
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
         << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
@@ -201,7 +214,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   }
 
   // Calc td score
-  for (uint32_t i = 1; i < n; i++) {
+  for (uint32_t i = 1; i < opt_indep_support_end; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
     val /= (double)max_ord;
@@ -211,11 +224,9 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
     tdscore[i] = val;
   }
 
-#ifdef VERBOSE_DEBUG
-  for(uint32_t i = 1; i < n; i++) {
-      cout << "TD var: " << i << " tdscore: " << tdscore[i] << endl;
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) {
+      verb_print(2, "TD var: " << i << " tdscore: " << tdscore[i]);
   }
-#endif
 }
 
 template<typename T>
@@ -329,16 +340,24 @@ void Counter<T>::td_decompose() {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
     return;
   }
+  TWD::Graph primal_alt(opt_indep_support_end);
+  for(uint32_t i = 0 ; i < opt_indep_support_end; i++) {
+    const auto& k = primal.get_adj_list()[i];
+    for(const auto& i2: k) {
+      if (i2 < opt_indep_support_end)
+        primal_alt.addEdge(i, i2);
+    }
+  }
 
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
-  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
-  fc.importGraph(primal);
+  TWD::IFlowCutter fc(primal_alt.numNodes(), primal_alt.numEdges(), conf.verb);
+  fc.importGraph(primal_alt);
 
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
-  td.centroid(primal.numNodes(), conf.verb);
+  td.centroid(opt_indep_support_end, conf.verb);
   compute_score(td);
   verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
 }
@@ -387,7 +406,7 @@ T Counter<T>::check_count_norestart_cms(const Cube<T>& c) {
     if (ret == CMSat::l_False) break;
     vector<CMSat::Lit> ban;
     T this_cnt = 1;
-    if (weighted()) {
+    if constexpr (weighted) {
       for(uint32_t i = 0; i < opt_indep_support_end-1; i++) {
         Lit l(i+1, test_solver.get_model()[i] == CMSat::l_True);
         this_cnt *= get_weight(l);
@@ -417,7 +436,7 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
   set<uint32_t> tmp_indep;
   for(uint32_t i = 1; i < indep_support_end; i++) tmp_indep.insert(i);
   test_cnt.set_indep_support(tmp_indep);
-  if (weighted()) {
+  if constexpr (weighted) {
     all_lits(i) {
       Lit l(i/2, i%2 == 0);
       test_cnt.set_lit_weight(l, get_weight(l));
@@ -512,7 +531,7 @@ void Counter<T>::print_and_check_cubes(vector<Cube<T>>& cubes) {
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
       else check_cnt = check_count_norestart_cms(c);
       cout << "checking cube [ " << c << " ] ---- check_cnt: " << check_cnt << endl;
-      if (weighted()) {
+      if constexpr (weighted) {
         T diff = check_cnt - c.cnt;
         if (diff/check_cnt > 0.01 || diff/check_cnt < -0.01) assert(false);
       } else assert(check_cnt == c.cnt);
@@ -758,7 +777,7 @@ template<typename T>
 T Counter<T>::outer_count() {
   if (!ok) return 0;
   T cnt = 0;
-  if (!weighted() && conf.appmc_timeout > 0) {
+  if constexpr (!weighted) if (conf.appmc_timeout > 0) {
     double time_so_far = cpuTime();
     double set_timeout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
     if (conf.appmc_timeout > 500 && set_timeout < 500) {
@@ -835,11 +854,10 @@ T Counter<T>::outer_count() {
   }
 
   if (!done && ret == CMSat::l_True) {
-    if (weighted()) {
+    if constexpr (weighted) {
       cout << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
       exit(-1);
-    }
-    cnt += do_appmc_count();
+    } else cnt += do_appmc_count();
   }
   return cnt;
 }
@@ -848,8 +866,8 @@ template<typename T>
 vector<Cube<T>> Counter<T>::one_restart_count() {
   release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
-    indep_support_end = nVars()+2;
-    opt_indep_support_end = nVars()+2;
+    indep_support_end = nVars()+1;
+    opt_indep_support_end = nVars()+1;
   }
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);
@@ -1023,7 +1041,7 @@ end:
     mini_cubes.push_back(c);
   } else {/*restart*/}
 
-  if (weighted()) {
+  if constexpr (weighted) {
     T this_restart_multiplier = 1;
     for(uint32_t i = 1; i < opt_indep_support_end; i++)
       if (!is_unknown(i)) {
@@ -1195,7 +1213,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   double best_var_score = -1e8;
   uint64_t* at;
   VERBOSE_DEBUG_DO(cout << "decision level: " << decision_level() << " var options: ");
-  if (weighted()) {
+  if constexpr (weighted) {
     if (vars_act_dec.size()  < (decision_level()+1) * (nVars()+1)) {
       uint64_t todo = (decision_level()+1)*(nVars()+1) - vars_act_dec.size();
       vars_act_dec.insert(vars_act_dec.end(), todo, 0);
@@ -1217,7 +1235,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
 
     if (v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
-      if (weighted()) at[v] = vars_act_dec_num;
+      if constexpr (weighted) at[v] = vars_act_dec_num;
       double score;
       if (!conf.td_look_only_weight && decision_level() < conf.td_lookahead &&
           tw > conf.td_lookahead_tw_cutoff)
@@ -1403,7 +1421,7 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int)stats.num_restarts > conf.max_num_rst) return false;
+  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst) return false;
   if (!appmc_timeout_fired && (!conf.do_restart || td_width < 60)) return false;
 
   bool restart = false;
@@ -1531,7 +1549,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       uint32_t v = c->vars_begin()[i];
       if (v < opt_indep_support_end) {
         active.insert(v);
-        if (weighted() && val(v) != X_TRI && var(v).decision_level == decision_level()) {
+        if constexpr (weighted) if (val(v) != X_TRI && var(v).decision_level == decision_level()) {
             dec_w *= get_weight(Lit(v, val(v) == T_TRI));
             if (get_weight(Lit(v, val(v) == T_TRI)) != 1)
               debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
@@ -1584,7 +1602,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       auto ret = s2.solve();
       if (ret == CMSat::l_True) {
         solution_exist = true;
-        if (!weighted()) cnt++;
+        if constexpr (!weighted) cnt++;
         else {
           T cube_cnt = 1;
           for(uint32_t i = 0; i < s2.nVars(); i++) {
@@ -1630,7 +1648,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
     if (solution_exist) {
-      if (!weighted()) assert(decisions.top().getTotalModelCount() == cnt);
+      if constexpr (!weighted) assert(decisions.top().getTotalModelCount() == cnt);
       else {
         bool okay = true;
         T diff = after_mul - cnt;
@@ -1733,7 +1751,7 @@ RetState Counter<T>::backtrack() {
       }
       cout << endl;
 #endif
-      if (weighted()) {
+      if constexpr (weighted) {
         T cnt = decisions.top().getTotalModelCount();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < decision_level()) {
@@ -2366,7 +2384,7 @@ void Counter<T>::vivify_cls(vector<ClauseOfs>& cls) {
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
       if (cl.vivifed == 0 &&
-          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > 50)))))
+          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.tot_used_cutoff_vivif)))))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;
@@ -3460,27 +3478,38 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   if (true) {
     state = RESOLVED;
     T cnt = 1;
-    if (weighted()) {
+    if constexpr (weighted) {
       all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
         uint32_t v = *it;
-        debug_print(COLYEL "SAT solver -- mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
-          << " weight: " << setw(9) << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
-          << " dec_lev: " << setw(5) << var(v).decision_level << " sat_start_dec_level: " << sat_start_dec_level);
-        if (var(v).decision_level <= sat_start_dec_level) continue; // will get multiplied when backtracking for the one that's EQUAL
         if (v >= opt_indep_support_end) continue;
-        cnt *= get_weight(Lit(v, val(v) == T_TRI));
+        sat_solution[v] = val(v);
       }
     }
     go_back_to(sat_start_dec_level);
     bool ret = propagate();
     assert(ret);
     assert(decision_level() == sat_start_dec_level);
+
+    //  We need to multiply here, because some things may get re-propagated, and that will
+    //  be unset, which would affect the weight calculated. Yes, chrono-bt is hard.
+    if constexpr (weighted) {
+      all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
+        uint32_t v = *it;
+        if (v >= opt_indep_support_end) continue;
+        debug_print(COLYEL "SAT solver -- mult var: " << setw(4) << v << " val: " << setw(3) << sat_solution[v]
+          << " weight: " << setw(9) << get_weight(Lit(v, sat_solution[v] == T_TRI)) << COLDEF
+          << " dec_lev: " << setw(5) << var(v).decision_level << " sat_start_dec_level: " << sat_start_dec_level);
+        if (var(v).decision_level != INVALID_DL && var(v).decision_level <= sat_start_dec_level) continue;
+        cnt *= get_weight(Lit(v, sat_solution[v] == T_TRI));
+      }
+      debug_print(COLYEL "SAT cnt will be: " << cnt);
+    }
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
     decisions.top().reset();
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
-    if (!weighted()) assert(decisions.top().getTotalModelCount() == 1);
+    if constexpr (!weighted) assert(decisions.top().getTotalModelCount() == 1);
   }
 
 end:
@@ -3818,8 +3847,10 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if (weighted() && dec_lev < decision_level() && get_weight(lit) != 1) {
-    for(int32_t i = dec_lev; i < (int)decisions.size(); i++) {
+  if constexpr (weighted) if (dec_lev < decision_level() && get_weight(lit) != 1) {
+    int32_t until = decisions.size();
+    if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
+    for(int32_t i = dec_lev; i < until; i++) {
       debug_print("set_lit, compensating weight. i: " << i);
       bool found = false;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
@@ -4049,11 +4080,12 @@ void Counter<T>::reduce_db() {
     const ClauseOfs& off = tmp_red_cls[i];
     auto& h = *alloc->ptr(off);
     if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
+    else if (h.total_used >= conf.total_used_cutoff2) num_low_lbd_cls++;
     else if (h.used) num_used_cls++;
 
     bool can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
-    if (can_be_del && h.lbd > lbd_cutoff && (!conf.rdb_keep_used || !h.used) &&
+    if (can_be_del && h.lbd > lbd_cutoff && h.total_used < conf.total_used_cutoff2 && (!conf.rdb_keep_used || !h.used) &&
         i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
       delete_cl(off);
       stats.cls_deleted_since_compaction++;
@@ -4104,12 +4136,14 @@ void Counter<T>::new_vars(const uint32_t n) {
   assert(unit_clauses_.empty());
   assert(long_red_cls.empty());
   assert(weights.empty());
+  assert(sat_solution.empty());
 
   var_data.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
   lbdHelper.resize(n+1, 0);
-  if (weighted()) weights.resize(2*(n + 1), 1);
+  if constexpr (weighted) sat_solution.resize(n+1);
+  if constexpr (weighted) weights.resize(2*(n + 1), 1);
   num_vars_set = true;
 }
 

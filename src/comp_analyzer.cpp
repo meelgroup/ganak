@@ -29,12 +29,14 @@ THE SOFTWARE.
 #include <climits>
 #include <cstdint>
 #include <iomanip>
+#include <cstdint>
 
 using std::make_pair;
 using std::setw;
 
 template class CompAnalyzer<mpz_class>;
 template class CompAnalyzer<mpfr::mpreal>;
+template class CompAnalyzer<mpq_class>;
 
 inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 {
@@ -141,22 +143,22 @@ void CompAnalyzer<T>::initialize(
 
     for(uint32_t v = 0; v < n; v++) {
       // fill bins
-      const auto& u_bin = unif_occ_bin[v];
-      holder.data[v*4+1] = u_bin.size();
+      const auto& u_bins = unif_occ_bin[v];
+      holder.data[v*4+1] = u_bins.size();
       uint32_t offs = data_start - holder.data;
       holder.data[v*4+0] = offs;
       assert(offs <= total_sz);
-      memcpy(data_start, u_bin.data, u_bin.size()*sizeof(uint32_t));
-      data_start += u_bin.size();
+      memcpy(data_start, u_bins.data, u_bins.size()*sizeof(uint32_t));
+      data_start += u_bins.size();
 
       // fill longs
-      const auto& u_long = unif_occ[v];
-      holder.data[v*4+3] = u_long.size();
+      const auto& u_longs = unif_occ[v];
+      holder.data[v*4+3] = u_longs.size();
       offs = data_start - holder.data;
       holder.data[v*4+2] = offs;
       assert(offs <= total_sz);
-      memcpy(data_start, u_long.data, u_long.size()*sizeof(ClData));
-      data_start += u_long.size()*(sizeof(ClData)/sizeof(uint32_t));
+      memcpy(data_start, u_longs.data, u_longs.size()*sizeof(ClData));
+      data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
     }
     assert(data_start == data + total_sz);
 
@@ -192,15 +194,15 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v, dec_lev); // sets up the component that "v" is in
+  record_comp(v, dec_lev, sup_comp_cls, sup_comp_vars); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
     if (v >= indep_support_end) archetype.stack_level().include_solution(1);
     else {
-      if (weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
+      if constexpr (weighted) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(2);
     }
     archetype.set_var_in_peer_comp(v);
@@ -211,7 +213,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev) {
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -251,6 +253,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
       if (!sat && manage_occ_of(v2)) {
         bump_freq_score(v2);
         bump_freq_score(v);
+
       }
       if (sat) {
         holder.begin_bin(v)[i] = holder.back_bin(v);
@@ -260,12 +263,22 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
         i++;
     }
 
+    /* if (sup_comp_cls == archetype.num_cls) { */
+    /*   if (sup_comp_vars-1 == comp_vars.size()) { */
+    /*     // can't be more variables in this component */
+    /*     break; */
+    /*   } */
+    /*   // we have seen all long clauses */
+    /*   continue; */
+    /* } */
+
     // traverse long clauses
     uint32_t i = 0;
     while (i < holder.size(v)) {
       ClData& d = holder.begin(v)[i];
       if (archetype.clause_sat(d.id)) goto sat2;
       if (archetype.clause_unvisited_in_sup_comp(d.id)) {
+        archetype.num_cls++;
         bool sat = false;
         if (d.tri) {
           Lit l1 = d.get_lit1();
@@ -276,6 +289,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev) {
             if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
             bump_freq_score(v);
             archetype.set_clause_visited(d.id);
+            archetype.num_cls++;
           } else {
             goto sat;
           }

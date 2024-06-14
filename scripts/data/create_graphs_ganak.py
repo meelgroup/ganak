@@ -104,6 +104,8 @@ only_dirs = [
              # "out-ganak-7022833.pbs101-4", # best ever
              # "out-ganak-7048280.pbs101-0", # best ever now
 
+
+             # track 3, i.e. pmc
              # "out-ganak-7173534.pbs101-0", # proj-2023 first run, 4GB
              # "out-ganak-7180435.pbs101-0", # proj-2023 4B, vsads
              # "out-ganak-7184202.pbs101-" #proj 2023, 4GB, freq-128 (vsads), checking vsads params
@@ -120,7 +122,7 @@ only_dirs = [
              # "out-ganak-7266814.pbs101-1", # contract over TDW, higher tdmaxw, higher tdminw. Was buggy in a few ways. Let's re-run. Fixed contraction in the meanwhile.
              # "out-ganak-7294423.pbs101-0", # fixed memout from contraction, fixed too much extend, distill-bin, BIG before backbone
              # "out-ganak-7307327.pbs101-4", # fixed cadical, fixed resolv-subs, fixed oracle, 2 new options for extra oracle & resolv-subs
-             #"out-ganak-7308235.pbs101-", # newest cadical -- ALL very good
+             # "out-ganak-7308235.pbs101-", # newest cadical -- ALL very good
                                              # best is "--tdmaxw 10 --varfreqdiv 30"
              # BAD PARAMS.... "out-ganak-7316071.pbs101-", # also appmc, play around with some options
              # "out-ganak-7320764.pbs101-0", #best: --tdmaxw 10 --varfreqdiv 25 , --appmct 2000
@@ -139,12 +141,38 @@ only_dirs = [
                  # BEST: --tdexpmult 0.3 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
              # SHITTY "out-ganak-7422213.pbs101-" # unit cls to duplicated CNF, different cutoff for gates, some param tuning Wow, wrong. Seemingly to do with cadiback what is going on....
              # "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
+
              # "out-ganak-7433580.pbs101-2", #d4 32G
+             # "out-ganak-7511977.pbs101-0", # gpmc 32G
              # best: --tdminw 0.05 --tdexpmult 0.3
-             # "out-ganak-7451414.pbs101-1" # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
+             # "out-ganak-7435405.pbs101-", # try all tdexp, go back to before mess. Gates all turned off.
+             # best: --tdminw 0.05 --tdexpmult 0.3
+             # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
+             # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
+             # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
+             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
+              # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
+              # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
+              # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
+              # c o GANAK SHA revision bf5867815d357f30911c0011b9d47a5941119107
+             # --> above also proves --arjunextend 0 is BAD.
+             #"out-ganak-7482756.pbs101-", # now with more vivif -- bad, default is OK
+             # BAD version "out-ganak-7515096.pbs101-" # try TD once more... BAAAD due to clause keeping
+             # BAD version "out-ganak-7513732.pbs101-", # total use BAAAAD
+             # "out-ganak-7513092.pbs101-", # different viviv cutoff totaluse
+             # "out-ganak-7531643.pbs101-" # contract and new prime graph and TD
+             # "out-ganak-7549745.pbs101", # clause activities/no cl activities (plus minor changes)
+
+
+             # arijit's experiment
+             # "out-ganak-7511833.pbs101-", # pmc -> mc and run with all systems
+             # "out-ganak-7433580.pbs101-2", #d4 32G     # pmc
+             # "out-ganak-7511977.pbs101-0", # gpmc 32G  # pmc
+             # "out-ganak-7468556.pbs101-1", # ganak 32G  # pmc
 
 
 
+             # unproj, i.e. track 1
              # "out-ganak-6318929.pbs101-5/", # exactmc
              # "out-ganak-6328707.pbs101-7/", # exactmc
              # "out-ganak-6318929.pbs101-7/", # sharpsat
@@ -171,7 +199,7 @@ only_dirs = [
              # "out-ganak-7320968.pbs101-7", # best: --tdminw 15 --tdmaxw 100 --varfreqdiv 30, --appmct 2000 (tdexpmul 1?)
              #"out-ganak-7334807.pbs101-7", # new run, some parameter tuning, fixed SAT restart bug (again, this time good) BEST appmc
              # "out-ganak-7377878.pbs101", # try different backbone setups, only oracle vivif, arjun probe, etc
-             # best: --tdmaxw 100 --varfreqdiv 25 --tdminw 15 --backbone 0 --arjunprobe 1
+             # old BEST: --tdmaxw 100 --varfreqdiv 25 --tdminw 15 --backbone 0 --arjunprobe 1
              # also: --tdexpmult 1.25
              # TODO: do a bit more probing, but not full backbone before indep minim
              # "out-ganak-7377878.pbs101-5", # best of the above
@@ -181,13 +209,37 @@ only_dirs = [
              # "out-ganak-7401120.pbs101-", # timeout in backbone 30s
              # "out-ganak-7419157.pbs101-3", # more simplification pre-backward, lower backward confl
              # "out-ganak-7419157.pbs101-", # more simplification pre-backward, lower backward confl
-             # BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
+             # old BEST: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 20000
              # "out-ganak-7422239.pbs101-2" #unit cls to duplicated CNF, different cutoff for gates, some param tuning best: --tdminw 15 --backbone 0 --arjunprobe 1 --arjunsimplev 2 --arjunbackwmaxc 10000 --HOWEVER, duplication caused cadiback to go bad
              # both below are nice, with and without appmc
              "out-ganak-7433320.pbs101-0", # default config
              # "out-ganak-7433320.pbs101-1", # --appmct 2000
              #SHITTY"out-ganak-7435410.pbs101-"# try all tdexp, go back to before mess
-             "out-ganak-7451423.pbs101-1" # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
+             # "out-ganak-7451423.pbs101-1", # gaank 32GB, --maxcache 26000 BEST. Max mem useage 30GB
+             # "out-ganak-7466346.pbs101-2", # d4 32GB mem
+             # "out-ganak-7466346.pbs101-", # diffocc vs non-diffocc
+             # "out-ganak-7468615.pbs101-0", # without vivif
+             "out-ganak-7468615.pbs101-1", # with vivifevery 40k, BEST: --maxcache 26000 --vivifevery 40000
+              # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
+              # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
+              # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
+              # c o GANAK SHA revision bf5867815d357f30911c0011b9d47a5941119107
+             "out-ganak-7549763.pbs101" # new run, with/without clause activities -- slightly slower. clact does nothing.
+
+
+             # weighted wmc, i.e. track 2
+             #"out-ganak-7484977.pbs101-", # 32GB, first run, segfault, 256B float
+             # "out-ganak-7491797.pbs101-1", # ran out of memory float
+             # "out-ganak-7491797.pbs101-2", # d4
+             # "out-ganak-7491797.pbs101-3", # gpmc
+             # "out-ganak-7503909.pbs101-0", # 40k vivif is slower
+             # "out-ganak-7491797.pbs101-0", # no-memout, no-segfault mpq -- BEST: --maxcache 18000 --precise 1
+             # "out-ganak-7503909.pbs101-1", # no-memout, no-segfault mpf
+
+             # weighted, projected i.e. track 4
+             # "out-ganak-7505064.pbs101-0", # BEST ganak: --maxcache 18000 --tdminw 0.05 --tdexpmult 0.3 --precise 1
+             # "out-ganak-7505064.pbs101-4", # 32GB gpmc
+             # "out-ganak-7505064.pbs101-3", # 32GB d4
 
 
              ]

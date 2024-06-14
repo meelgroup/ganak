@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include <vector>
 #include <string>
 #include <iomanip>
+#include <gmpxx.h>
 #include <boost/program_options.hpp>
 #include "src/GitSHA1.hpp"
 #include "breakid.hpp"
@@ -77,6 +78,7 @@ int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
+int do_precise = 1;
 
 string ganak_version_info()
 {
@@ -139,6 +141,8 @@ void add_ganak_options()
     ("rdbkeepused", po::value(&conf.rdb_keep_used)->default_value(conf.rdb_keep_used), "RDB keeps clauses that are used")
     ("consolidateeveryn", po::value(&conf.consolidate_every_n)->default_value(conf.consolidate_every_n), "Consolidate every N learnt clause")
     ("lbd", po::value(&conf.base_lbd_cutoff)->default_value(conf.base_lbd_cutoff), "Initial LBD cutoff")
+    ("totusedcutoffvivif", po::value(&conf.tot_used_cutoff_vivif)->default_value(conf.tot_used_cutoff_vivif), "Total used vivif cutoff")
+    ("totalusedcutoff2", po::value(&conf.total_used_cutoff2)->default_value(conf.total_used_cutoff2), "Total used lock-in cutoff")
 
     ("bce", po::value(&do_bce)->default_value(do_bce), "Do BCE")
     ("cache", po::value(&conf.do_use_cache)->default_value(conf.do_use_cache), "Use (i.e. store and retrieve) cache")
@@ -173,6 +177,7 @@ void add_ganak_options()
     ("initact", po::value(&conf.do_init_activity_scores)->default_value(conf.do_init_activity_scores), "Init activity scores to var freq")
     ("vsadsadjust", po::value(&conf.vsads_readjust_every)->default_value(conf.vsads_readjust_every), "VSADS ajust activity every N")
     ("satrstmult", po::value(&conf.sat_restart_mult)->default_value(conf.sat_restart_mult), "SAT restart multiplier")
+    ("precise", po::value(&do_precise)->default_value(do_precise), "Use mpq, not so-called 'infinite' precision foats (that are far from infinite precision)")
     ;
 
     restart_options.add_options()
@@ -374,8 +379,8 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
 
   if (cnf.weighted) {
     for(const auto& t: cnf.weights) {
-      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos.get_mpq_t());
-      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg.get_mpq_t());
+      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
+      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
     }
   }
 
@@ -438,9 +443,56 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   verb_print(1, "Arjun T: " << (cpuTime()-my_time));
 }
 
+template<typename T>
+void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
+    T cnt;
+    static constexpr bool precise = std::is_same<T, mpq_class>::value;
+    if (cnf.multiplier_weight == 0) cnt = 0;
+    else {
+      if constexpr (!precise) {
+          cnt = counter.w_outer_count();
+      } else {
+          cnt = counter.wq_outer_count();
+      }
+    }
+    cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
+      << std::fixed << (cpuTime() - start_time) << endl;
+    if (!cnf.get_projected()) cout << "c s type wmc" << endl;
+    else cout << "c s type pwmc " << endl;
+
+    if constexpr(!precise) {
+      cnt *= cnf.multiplier_weight.get_mpq_t();
+    } else {
+      cnt *= cnf.multiplier_weight;
+    }
+
+    if (cnt > 0) cout << "s SATISFIABLE" << endl;
+    else cout << "s UNSATISFIABLE" << endl;
+    cout << "c s log10-estimate ";
+    if (cnt == 0) cout << "-inf" << endl;
+    else {
+      if constexpr (!precise) {
+        cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;
+        cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
+      } else {
+        cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl;
+        cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
+        mpf_set_default_prec(1024); // Set default precision in bits
+        mpf_t f;
+        mpf_init(f);
+        mpf_set_q(f, cnt.get_mpq_t());
+        uint32_t n = 50;
+        gmp_printf("%.*FE", n, f);
+        std::flush(std::cout);
+        mpf_clear(f);
+        cout << endl;
+        cout << "c o exact arb rational " << std::scientific << std::setprecision(40) << cnt << endl;
+      }
+    }
+}
+
 int main(int argc, char *argv[])
 {
-  mpfr::mpreal::set_default_prec(256);
   const double start_time = cpuTime();
 #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |
@@ -493,25 +545,13 @@ int main(int argc, char *argv[])
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
-  OuterCounter counter(conf, cnf.weighted);
+  OuterCounter counter(conf, cnf.weighted, do_precise);
   setup_ganak(cnf, generators, counter);
 
-  if (cnf.weighted) {
-    /* mpfr::mpreal::set_default_prec(256); */
-    mpfr::mpreal cnt;
-    if (cnf.multiplier_weight == 0) cnt = 0;
-    else cnt = counter.w_outer_count();
-    cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
-      << std::fixed << (cpuTime() - start_time) << endl;
-    if (!cnf.get_projected()) cout << "c s type wmc" << endl;
-    else cout << "c s type pwmc " << endl;
-    cnt *= cnf.multiplier_weight.get_mpq_t();
-    if (cnt > 0) cout << "s SATISFIABLE" << endl;
-    else cout << "s UNSATISFIABLE" << endl;
-    cout << "c s log10-estimate ";
-    if (cnt == 0) cout << "-inf" << endl;
-    else cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;
-    cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
+  if (cnf.weighted && !do_precise) {
+    run_weighted_counter<mpfr::mpreal>(counter, cnf, start_time);
+  } else if (cnf.weighted && do_precise) {
+    run_weighted_counter<mpq_class>(counter, cnf, start_time);
   } else {
     mpz_class cnt;
     if (cnf.multiplier_weight == 0) cnt = 0;

@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include "comp_types/comp_archetype.hpp"
 
 #include <climits>
-#include <limits>
+#include <cstdint>
 #include <map>
 #include <gmpxx.h>
 #include "containers.hpp"
@@ -167,7 +167,7 @@ public:
       archetype.set_clause_in_sup_comp_unvisited(*it);
   }
 
-  bool explore_comp(const uint32_t v, int32_t dec_lev);
+  bool explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
@@ -189,6 +189,7 @@ private:
   uint32_t max_var = 0;
   int32_t backtracked = INT_MAX;
   int32_t last_declev = 0;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 
   MyHolder holder;
   vector<Lit> long_clauses_data;
@@ -225,7 +226,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void record_comp(const uint32_t var, int32_t declev);
+  void record_comp(const uint32_t var, int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
 
   void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
     tmp.clear();

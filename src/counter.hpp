@@ -214,7 +214,7 @@ protected:
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if (weighted() && get_weight(lit) != 1) {
+    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != 1) {
       uint64_t* at = vars_act_dec.data()+decision_level()*(nVars()+1);
       bool found = (at[0] == at[lit.var()]);
       if (found) decisions[decision_level()].include_solution(get_weight(lit));
@@ -371,6 +371,7 @@ protected:
   T check_count(const bool also_incl_curr_and_later_dec = false);
 
 private:
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   void init_activity_scores();
   vector<vector<Lit>> v_backup_cls;
   vector<vector<ClOffsBlckL>> v_backup_watches;
@@ -440,6 +441,7 @@ private:
   inline bool sat_mode() const {
     return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
   }
+  vector<int> sat_solution;
   void check_sat_solution() const;
   // this is the actual BCP algorithm
   // starts propagating all literal in trail_
@@ -464,7 +466,7 @@ private:
   double curr_var_freq_divider;
 
   // AppMC
-  T do_appmc_count();
+  mpz_class do_appmc_count();
 
   // BDD
   bool do_buddy_count(const Comp* c);
@@ -813,52 +815,66 @@ template<class T2> void Counter<T>::attach_cl(ClauseOfs off, const T2& lits) {
 
 class OuterCounter {
 public:
-  OuterCounter(const CounterConfiguration& conf, bool weighted) {
-    if (weighted) w_counter = new Counter<mpfr::mpreal>(conf);
-    else unw_counter = new Counter<mpz_class>(conf);
+  OuterCounter(const CounterConfiguration& conf, bool weighted, bool precise = false) {
+    if (!weighted) unw_counter = new Counter<mpz_class>(conf);
+    else {
+      if (!precise) w_counter = new Counter<mpfr::mpreal>(conf);
+      else wq_counter = new Counter<mpq_class>(conf);
+    }
   }
   ~OuterCounter() {
     delete unw_counter;
     delete w_counter;
+    delete wq_counter;
   }
   void set_generators(const vector<map<Lit, Lit>>& _gens) {
     if (unw_counter) unw_counter->set_generators(_gens);
     if (w_counter) w_counter->set_generators(_gens);
+    if (wq_counter) wq_counter->set_generators(_gens);
   }
   void end_irred_cls() {
     if (unw_counter) unw_counter->end_irred_cls();
     if (w_counter) w_counter->end_irred_cls();
+    if (wq_counter) wq_counter->end_irred_cls();
   }
   void set_indep_support(const set<uint32_t>& indeps) {
     if (unw_counter) unw_counter->set_indep_support(indeps);
     if (w_counter) w_counter->set_indep_support(indeps);
+    if (wq_counter) wq_counter->set_indep_support(indeps);
   }
-  mpfr::mpreal w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
   mpz_class unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
+  mpfr::mpreal w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
+  mpq_class wq_outer_count() { release_assert(wq_counter); return wq_counter->outer_count();}
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1) {
     if (unw_counter) return unw_counter->add_red_cl(lits, lbd);
     if (w_counter) return w_counter->add_red_cl(lits, lbd);
+    if (wq_counter) return wq_counter->add_red_cl(lits, lbd);
     release_assert(false);
   }
   bool get_is_approximate() const { release_assert(unw_counter); return unw_counter->get_is_approximate();}
   bool add_irred_cl(const vector<Lit>& lits) {
     if (unw_counter) return unw_counter->add_irred_cl(lits);
     if (w_counter) return w_counter->add_irred_cl(lits);
+    if (wq_counter) return wq_counter->add_irred_cl(lits);
     release_assert(false);
   }
   void set_optional_indep_support(const set<uint32_t>& indeps) {
     if (unw_counter) unw_counter->set_optional_indep_support(indeps);
     if (w_counter) w_counter->set_optional_indep_support(indeps);
+    if (wq_counter) wq_counter->set_optional_indep_support(indeps);
   }
-  void set_lit_weight(const Lit l, const mpfr::mpreal& w) {
-    release_assert(w_counter);
-    w_counter->set_lit_weight(l, w);
+  void set_lit_weight(const Lit l, const mpq_class& w) {
+    release_assert(w_counter || wq_counter);
+    if (w_counter) w_counter->set_lit_weight(l, w.get_mpq_t());
+    if (wq_counter) wq_counter->set_lit_weight(l, w);
   }
   void new_vars(const uint32_t n) {
     if (unw_counter) unw_counter->new_vars(n);
     if (w_counter) w_counter->new_vars(n);
+    if (wq_counter) wq_counter->new_vars(n);
   }
 private:
   Counter<mpz_class>* unw_counter = nullptr;
   Counter<mpfr::mpreal>* w_counter = nullptr;
+  Counter<mpq_class>* wq_counter = nullptr;
 };

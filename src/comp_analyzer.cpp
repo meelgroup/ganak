@@ -244,6 +244,13 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
     /*   cout << setw(3) << holder.size(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
     /* } */
 
+
+    if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) {
+        // can't be more variables in this component
+        // but we still need to update stuff above, so continue but skip binary look-through
+        continue;
+    }
+
     //traverse binary clauses
     for(uint32_t i = 0; i < holder.size_bin(v);) {
       uint32_t v2 = holder.begin_bin(v)[i];
@@ -262,14 +269,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
         i++;
     }
 
-    /* if (sup_comp_cls == archetype.num_cls) { */
-    /*   if (sup_comp_vars-1 == comp_vars.size()) { */
-    /*     // can't be more variables in this component */
-    /*     break; */
-    /*   } */
-    /*   // we have seen all long clauses */
-    /*   continue; */
-    /* } */
+    if (sup_comp_cls == archetype.num_cls) {
+      // we have seen all long clauses
+      continue;
+    }
 
     // traverse long clauses
     uint32_t i = 0;
@@ -288,7 +291,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
             if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
             bump_freq_score(v);
             archetype.set_clause_visited(d.id);
-            archetype.num_cls++;
           } else {
             goto sat;
           }

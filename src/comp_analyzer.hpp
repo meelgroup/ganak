@@ -45,12 +45,11 @@ template<typename T> class Counter;
 
 
 struct ClData {
-  uint32_t id:31;
-  uint32_t tri:1 = false;
+  uint32_t id;
   uint32_t off;
   Lit blk_lit;
   bool operator==(const ClData& other) const {
-    return id == other.id && tri == other.tri && off == other.off && blk_lit == other.blk_lit;
+    return id == other.id && off == other.off && blk_lit == other.blk_lit;
   }
   Lit get_lit1() const { return Lit::toLit(off); }
   Lit get_lit2() const { return blk_lit; }
@@ -168,6 +167,7 @@ public:
   }
 
   bool explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
+  void bump_stamp() { stamp+=2; }
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
@@ -186,6 +186,7 @@ private:
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool
   uint32_t max_clid = 0;
+  uint32_t max_tri_clid = 0;
   uint32_t max_var = 0;
   int32_t backtracked = INT_MAX;
   int32_t last_declev = 0;
@@ -197,6 +198,7 @@ private:
   vector<int32_t> last_seen;
   vector<VarData>& var_data;
   const LiteralIndexedVector<TriValue> & values;
+  uint64_t stamp = 10;
 
   const CounterConfiguration& conf;
   const uint32_t& indep_support_end;

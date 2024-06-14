@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 template<typename T>
 void CompAnalyzer<T>::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
-    const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls) // longer-than-2-long clauses
+    const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls_unsorted) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
@@ -61,7 +61,16 @@ void CompAnalyzer<T>::initialize(
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer<T>::initialize...");
 
+  auto mysorter = [&] (ClauseOfs a1, ClauseOfs b1) {
+    const Clause& a = *alloc->ptr(a1);
+    const Clause& b = *alloc->ptr(b1);
+    return a.size() < b.size();
+  };
+  auto long_irred_cls = long_irred_cls_unsorted;
+  std::sort(long_irred_cls.begin(), long_irred_cls.end(), mysorter);
+
   max_clid = 1;
+  max_tri_clid = 1;
   vector<vec<ClData>> unif_occ;
   unif_occ.clear();
   unif_occ.resize(max_var + 1);
@@ -74,6 +83,9 @@ void CompAnalyzer<T>::initialize(
     uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
       Lit blk_lit = cl[cl.size()/2];
+      // stamp
+      long_clauses_data.push_back(Lit(0, 0));
+      long_clauses_data.push_back(Lit(0, 0));
       for(const auto&l: cl) long_clauses_data.push_back(l);
       long_clauses_data.push_back(SENTINEL_LIT);
 
@@ -81,12 +93,12 @@ void CompAnalyzer<T>::initialize(
         const uint32_t var = l.var();
         assert(var <= max_var);
         ClData d;
-        d.tri = false;
         d.id = max_clid;
         d.off = long_cl_off;
         d.blk_lit = blk_lit;
         unif_occ[var].push_back(d);
       }
+      max_tri_clid++;
     } else {
       for(const auto& l: cl) {
         uint32_t at = 0;
@@ -94,7 +106,6 @@ void CompAnalyzer<T>::initialize(
         for(const auto&l2: cl) if (l.var() != l2.var()) lits[at++] = l2;
         assert(at == 2);
         ClData d;
-        d.tri = true;
         d.id = max_clid;
         d.blk_lit = lits[0];
         d.off = lits[1].raw();
@@ -103,12 +114,10 @@ void CompAnalyzer<T>::initialize(
     }
     max_clid++;
   }
-
-
+  cout << "max clid: " << max_clid << " max_tri_clid: " << max_tri_clid << endl;;
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
 
-  archetype.init_data(max_var, max_clid);
-
+  archetype.init_data(max_var, max_tri_clid);
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer<T>::initialize...");
 
 
@@ -278,11 +287,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
     uint32_t i = 0;
     while (i < holder.size(v)) {
       ClData& d = holder.begin(v)[i];
-      if (archetype.clause_sat(d.id)) goto sat2;
-      if (archetype.clause_unvisited_in_sup_comp(d.id)) {
-        archetype.num_cls++;
-        bool sat = false;
-        if (d.tri) {
+      if (d.id < max_tri_clid) {
+        if (archetype.clause_sat(d.id)) goto sat2;
+        if (archetype.clause_unvisited_in_sup_comp(d.id)) {
+          archetype.num_cls++;
+          bool sat = false;
           Lit l1 = d.get_lit1();
           Lit l2 = d.get_lit2();
           sat = is_true(l1) || is_true(l2);
@@ -294,13 +303,23 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
           } else {
             goto sat;
           }
-        } else {
-          sat = is_true(d.blk_lit);
-          if (!sat) sat = search_clause(d, long_clauses_data.data()+d.off);
         }
-        if (sat) goto sat;
-        else i++;
-      } else i++;
+        i++;
+      } else {
+        bool sat = is_true(d.blk_lit);
+        if (!sat) {
+          Lit* start = long_clauses_data.data() +d.off;
+          uint64_t& cl_stamp = *((uint64_t*)start);
+          if (cl_stamp == stamp+1) goto sat2;
+          if (cl_stamp != stamp)  {
+            start+=2;
+            sat = search_clause(d, start);
+            if (sat) {cl_stamp = stamp+1; goto sat2;}
+            else cl_stamp = stamp;
+          }
+        } else goto sat2;
+        i++;
+      }
       continue;
 
       sat:

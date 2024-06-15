@@ -1,6 +1,6 @@
 #!/bin/bash
 cd ../../breakid/build/
-./build_dynamic.sh
+./build_norm.sh
 cd ../../cryptominisat/build/
 ./build_norm.sh
 cd ../../sbva/build/

@@ -150,7 +150,7 @@ only_dirs = [
              # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
              # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
              # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
-             "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
+             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
               # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
               # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
               # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
@@ -161,8 +161,22 @@ only_dirs = [
              # BAD version "out-ganak-7513732.pbs101-", # total use BAAAAD
              # "out-ganak-7513092.pbs101-", # different viviv cutoff totaluse
              # "out-ganak-7531643.pbs101-" # contract and new prime graph and TD
-             "out-ganak-7549745.pbs101", # clause activities/no cl activities (plus minor changes)
+             # "out-ganak-7549745.pbs101-2", # clause activities/no cl activities (plus minor changes)
                                          # GOOD, without clact
+             # "out-ganak-7559399.pbs101-1" # now with/without backbone only over opt-indep-set
+
+            # 2024 track 2 (wmc) public instances
+            "out-ganak-7559210.pbs101-", # all are very good
+            # BEST: --maxcache=18000
+
+            # 2024 track 1 (mc) public instances
+            # "out-ganak-7558933.pbs101-" # all very good
+            #good:  --maxcache=26000 --maxcache=26000 --vivifevery 40000
+            # BEST: --maxcache=26000 --tdminw 25 --tdmaxw 140
+
+            # 2024 track 3 (i.e. pmc) public instances
+            # "out-ganak-7559160.pbs101-"
+            # BEST: --maxcache=26000 --arjunverb 2 --tdminw 0.05 --tdexpmult 0.3
 
 
              # arijit's experiment
@@ -325,7 +339,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][140:]\\\n")
+    f.write("plot [:][0:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

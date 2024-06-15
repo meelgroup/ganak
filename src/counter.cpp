@@ -167,7 +167,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
       return;
   } else {
     int max_dst = 0;
-    for(int i=1; i<opt_indep_support_end; i++)
+    for(int i=1; i < (int)opt_indep_support_end; i++)
       max_dst = std::max(max_dst, dists[i]);
     if (max_dst == 0) {
       verb_print(1, "All projected vars are the same distance, ignoring TD");
@@ -184,7 +184,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   assert(ord.size() == opt_indep_support_end);
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
-  for (uint32_t i = 1; i < opt_indep_support_end; i++) {
+  for (uint32_t i = 1; i < (int)opt_indep_support_end; i++) {
     max_ord = std::max(max_ord, ord[i]);
     min_ord = std::min(min_ord, ord[i]);
   }

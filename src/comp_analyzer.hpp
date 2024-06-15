@@ -162,8 +162,10 @@ public:
         var_freq_scores[*vt] = 0;
       }
 
-    all_cls_in_comp(super_comp, it)
+    all_cls_in_comp(super_comp, it) {
+      if (*it > max_tri_clid) break;
       archetype.set_clause_in_sup_comp_unvisited(*it);
+    }
   }
 
   bool explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
@@ -271,7 +273,7 @@ private:
       }
     }
 
-    if (!sat) archetype.set_clause_visited(d.id);
+    /* if (!sat) archetype.set_clause_visited(d.id); */
     return sat;
   }
 };

@@ -98,7 +98,6 @@ void CompAnalyzer<T>::initialize(
         d.blk_lit = blk_lit;
         unif_occ[var].push_back(d);
       }
-      max_tri_clid++;
     } else {
       for(const auto& l: cl) {
         uint32_t at = 0;
@@ -111,6 +110,8 @@ void CompAnalyzer<T>::initialize(
         d.off = lits[1].raw();
         unif_occ[l.var()].push_back(d);
       }
+      assert(max_tri_clid == max_clid);
+      max_tri_clid++;
     }
     max_clid++;
   }

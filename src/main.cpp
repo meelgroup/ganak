@@ -79,6 +79,7 @@ int arjun_backw_maxc = 20000;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
 int do_precise = 1;
+int do_backbone_only_optindep = 0;
 
 string ganak_version_info()
 {
@@ -119,6 +120,7 @@ void add_ganak_options()
     ("backbone", po::value(&do_backbone)->default_value(do_backbone), "Perform backbone")
     ("backbonepuura", po::value(&simp_conf.do_backbone_puura)->default_value(simp_conf.do_backbone_puura), "Perform backbone in Puura")
     ("arjunprobe", po::value(&do_probe_based)->default_value(do_probe_based), "Probe based arjun")
+    ("backboneonlyoptind", po::value(&do_backbone_only_optindep)->default_value(do_backbone_only_optindep), "Backbone only over the opt indep set")
     ("arjunsimplev", po::value(&arjun_simp_level)->default_value(arjun_simp_level), "Arjun simp level")
     ("arjunbackwmaxc", po::value(&arjun_backw_maxc)->default_value(arjun_backw_maxc), "Arjun backw max confl")
     ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
@@ -432,6 +434,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_probe_based(do_probe_based);
   arjun.set_simp(arjun_simp_level);
   arjun.set_backw_max_confl(arjun_backw_maxc);
+  arjun.set_backbone_only_optindep(do_backbone_only_optindep);
   if (do_backbone) arjun.only_backbone(cnf);
   arjun.only_run_minimize_indep(cnf);
   bool do_unate = false;

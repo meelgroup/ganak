@@ -150,7 +150,7 @@ only_dirs = [
              # "out-ganak-7451414.pbs101-1", # ganak 32G mem, --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3 BEST. Max mem usage 29.82GB
              # "out-ganak-7466418.pbs101-0", # diffocc -- but still slower
              # "out-ganak-7466418.pbs101-1", # good, but with clause/variable early-exit, it's even faster below
-             # "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
+             "out-ganak-7468556.pbs101-1", # (32GB ganak) BEST: --maxcache 26000 --tdminw 0.05 --tdexpmult 0.3
               # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
               # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
               # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
@@ -161,7 +161,8 @@ only_dirs = [
              # BAD version "out-ganak-7513732.pbs101-", # total use BAAAAD
              # "out-ganak-7513092.pbs101-", # different viviv cutoff totaluse
              # "out-ganak-7531643.pbs101-" # contract and new prime graph and TD
-             # "out-ganak-7549745.pbs101", # clause activities/no cl activities (plus minor changes)
+             "out-ganak-7549745.pbs101", # clause activities/no cl activities (plus minor changes)
+                                         # GOOD, without clact
 
 
              # arijit's experiment
@@ -219,12 +220,12 @@ only_dirs = [
              # "out-ganak-7466346.pbs101-2", # d4 32GB mem
              # "out-ganak-7466346.pbs101-", # diffocc vs non-diffocc
              # "out-ganak-7468615.pbs101-0", # without vivif
-             "out-ganak-7468615.pbs101-1", # with vivifevery 40k, BEST: --maxcache 26000 --vivifevery 40000
+             # "out-ganak-7468615.pbs101-1", # with vivifevery 40k, BEST: --maxcache 26000 --vivifevery 40000
               # c o CMS revision: e897d58afa4caa767d9b4e6fe9eab244ffcdb97b
               # c o Arjun SHA revision: f8dfd3b824b2c4b404016fa7ed7fad0460dfc7ae
               # c o Arjun SBVA SHA revision: 4736d909ce8fe17b72429293d8285606a8e26925
               # c o GANAK SHA revision bf5867815d357f30911c0011b9d47a5941119107
-             "out-ganak-7549763.pbs101" # new run, with/without clause activities -- slightly slower. clact does nothing.
+             # "out-ganak-7549763.pbs101" # new run, with/without clause activities -- slightly slower. clact does nothing. GOOD, without clact
 
 
              # weighted wmc, i.e. track 2
@@ -324,7 +325,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][50:]\\\n")
+    f.write("plot [:][140:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

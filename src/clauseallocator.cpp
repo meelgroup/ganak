@@ -183,7 +183,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   //1) There is too much memory allocated. Re-allocation will save space
   //2) There is too much empty, unused space (>30%)
   if (!force
-      && (float_div(currently_used_sz, size) > 0.8 || currently_used_sz < (100ULL*1000ULL))
+      && (float_div(currently_used_sz, size) > 0.8 || capacity < (100ULL*1000ULL))
   ) {
     verb_print(1, "[mem] Not consolidating memory. Used sz/sz: " <<
         float_div(currently_used_sz, size)

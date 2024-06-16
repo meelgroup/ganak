@@ -145,6 +145,7 @@ void add_ganak_options()
     ("rdbkeepused", po::value(&conf.rdb_keep_used)->default_value(conf.rdb_keep_used), "RDB keeps clauses that are used")
     ("consolidateeveryn", po::value(&conf.consolidate_every_n)->default_value(conf.consolidate_every_n), "Consolidate every N learnt clause")
     ("lbd", po::value(&conf.base_lbd_cutoff)->default_value(conf.base_lbd_cutoff), "Initial LBD cutoff")
+    ("updatelbdcutoff", po::value(&conf.update_lbd_cutoff)->default_value(conf.update_lbd_cutoff), "Update lbd cutoff")
     ("totusedcutoffvivif", po::value(&conf.tot_used_cutoff_vivif)->default_value(conf.tot_used_cutoff_vivif), "Total used vivif cutoff")
     ("totalusedcutoff2", po::value(&conf.total_used_cutoff2)->default_value(conf.total_used_cutoff2), "Total used lock-in cutoff")
 

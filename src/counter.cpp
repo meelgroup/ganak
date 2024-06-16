@@ -1141,8 +1141,7 @@ bool Counter<T>::decide_lit() {
 template<typename T>
 double Counter<T>::var_act(const uint32_t v) const {
   auto w = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
-  if (conf.vsads_readjust_every == 0) return w/max_activity;
-  else return w;
+  return w;
 }
 
 // The higher, the better. It is never below 0.
@@ -1161,8 +1160,6 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3.0;
   freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider;
-  if (conf.vsads_readjust_every == 0)
-    freq_score/= comp_manager->get_super_comp(decisions.top()).max_freq_score;
   double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << std::setw(4) << v
     << std::setw(3) << " conflK: " << stats.conflicts/1000
@@ -3389,8 +3386,6 @@ void Counter<T>::subsume_all() {
 
 template<typename T>
 void Counter<T>::vsads_readjust() {
-  if (conf.vsads_readjust_every == 0) return;
-
   if (stats.decisions % conf.vsads_readjust_every == 0)
     for(auto& w: watches) w.activity *= 0.5;
 }
@@ -3977,7 +3972,6 @@ void Counter<T>::simple_preprocess() {
 template<typename T>
 void Counter<T>::init_activity_scores() {
   act_inc = 1.0;
-  max_activity = 1;
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit l(x/2, x%2);
@@ -3988,12 +3982,6 @@ void Counter<T>::init_activity_scores() {
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
     for(const auto& l: cl) watches[l].activity++;
-  }
-  if (conf.vsads_readjust_every == 0) {
-    for(auto& w: watches) {
-      max_activity = std::max(w.activity, max_activity);
-    }
-    max_activity *= 10.0;
   }
 }
 

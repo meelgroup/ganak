@@ -80,7 +80,7 @@ ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
 int do_precise = 1;
 int do_backbone_only_optindep = 0;
-int do_arjun_oracle_find_bins = 0;
+int arjun_oracle_find_bins = 0;
 
 string ganak_version_info()
 {
@@ -124,7 +124,7 @@ void add_ganak_options()
     ("backboneonlyoptind", po::value(&do_backbone_only_optindep)->default_value(do_backbone_only_optindep), "Backbone only over the opt indep set")
     ("arjunsimplev", po::value(&arjun_simp_level)->default_value(arjun_simp_level), "Arjun simp level")
     ("arjunbackwmaxc", po::value(&arjun_backw_maxc)->default_value(arjun_backw_maxc), "Arjun backw max confl")
-    ("arjunoraclefindbins", po::value(&do_arjun_oracle_find_bins)->default_value(do_arjun_oracle_find_bins), "Arjun's oracle should find bins or not")
+    ("arjunoraclefindbins", po::value(&arjun_oracle_find_bins)->default_value(arjun_oracle_find_bins), "Arjun's oracle should find bins or not")
     ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
     ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
     ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
@@ -437,7 +437,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_simp(arjun_simp_level);
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_backbone_only_optindep(do_backbone_only_optindep);
-  arjun.set_oracle_find_bins(do_arjun_oracle_find_bins);
+  arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   if (do_backbone) arjun.only_backbone(cnf);
   arjun.only_run_minimize_indep(cnf);
   bool do_unate = false;

@@ -4050,11 +4050,11 @@ struct ClSorter {
 template<typename T>
 void Counter<T>::reduce_db() {
   stats.reduce_db++;
-  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
-      && num_low_lbd_cls < 30) {
-    verb_print(1, " [rdb] bumping rdb cutoff to 3");
-    lbd_cutoff++;
-  }
+  /* if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff */
+  /*     && num_low_lbd_cls < 30) { */
+  /*   verb_print(1, " [rdb] bumping rdb cutoff to 3"); */
+  /*   lbd_cutoff++; */
+  /* } */
   const auto cls_before = long_red_cls.size();
 
   vector<ClauseOfs> tmp_red_cls = long_red_cls;

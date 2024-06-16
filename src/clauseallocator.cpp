@@ -119,7 +119,6 @@ void ClauseAllocator<T>::clause_free(Clause* cl)
     assert(!cl->freed);
     cl->freed = 1;
     uint64_t est_num_cl = cl->sz;
-    est_num_cl = std::max(est_num_cl, (uint64_t)3); //we sometimes allow gauss to allocate 3-long clauses
     uint64_t bytes_freed = sizeof(Clause) + est_num_cl*sizeof(Lit);
     uint64_t elems_freed = bytes_freed/sizeof(uint32_t) + (bool)(bytes_freed % sizeof(uint32_t));
     currently_used_sz -= elems_freed;
@@ -137,7 +136,7 @@ ClauseOfs ClauseAllocator<T>::move_cl(
     ClauseOfs* new_data_start
     , ClauseOfs*& new_ptr
     , Clause* old
-) const {
+) {
   uint64_t bytes_needed = sizeof(Clause) + old->sz*sizeof(Lit);
   uint64_t size_needed = bytes_needed/sizeof(uint32_t) + (bool)(bytes_needed % sizeof(uint32_t));
   memcpy(new_ptr, old, size_needed*sizeof(uint32_t));
@@ -145,6 +144,7 @@ ClauseOfs ClauseAllocator<T>::move_cl(
   ClauseOfs new_offset = new_ptr-new_data_start;
   (*old)[0] = Lit::toLit(new_offset & 0xFFFFFFFF);
   old->reloced = true;
+  new_sz_while_moving += size_needed;
 
   new_ptr += size_needed;
   return new_offset;
@@ -185,12 +185,13 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   if (!force
       && (float_div(currently_used_sz, size) > 0.8 || currently_used_sz < (100ULL*1000ULL))
   ) {
-    verb_print(2, "[mem] Not consolidating memory. Used sz/sz: " <<
+    verb_print(1, "[mem] Not consolidating memory. Used sz/sz: " <<
         float_div(currently_used_sz, size)
         << " Currently used size: " << currently_used_sz/1000 << " K");
     return false;
   }
   const double my_time = cpuTime();
+  new_sz_while_moving = 0;
 
   //Pointers that will be moved along
   uint32_t * const new_data_start = (uint32_t*)malloc(currently_used_sz*sizeof(uint32_t));
@@ -216,7 +217,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   const uint64_t old_size = size;
   size = new_ptr-new_data_start;
   capacity = currently_used_sz;
-  currently_used_sz = size;
+  currently_used_sz = new_sz_while_moving;
   free(data_start);
   data_start = new_data_start;
 
@@ -224,7 +225,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   if (conf.verb) {
     size_t log_2_size = 0;
     if (size > 0) log_2_size = std::log2(size);
-    verb_print(2, "[mem] consolidate "
+    verb_print(1, "[mem] consolidate "
       << " old-sz: " << print_value_kilo_mega(old_size*sizeof(uint32_t))
       << " new-sz: " << print_value_kilo_mega(size*sizeof(uint32_t))
       << " new bits offs: " << std::fixed << std::setprecision(2) << log_2_size

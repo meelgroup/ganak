@@ -67,8 +67,9 @@ private:
     ClauseOfs* new_data_start
     , ClauseOfs*& new_ptr
     , Clause* old
-  ) const;
+  );
 
+  uint32_t new_sz_while_moving;
   uint32_t* data_start; ///<Stack starts at these positions
   uint64_t size; ///<The number of BASE_DATA_TYPE datapieces currently used in each stack
   uint64_t capacity; ///<The number of BASE_DATA_TYPE datapieces allocated

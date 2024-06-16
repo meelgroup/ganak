@@ -73,6 +73,8 @@ not_calls = []
 # exactmc2: out-ganak-6328707.pbs101-7
 # sharpsat: out-ganak-6318929.pbs101-7
 
+# note: sharpsat thinks new track2 is all UNSAT, likely due to weights. maybe run unweighted.
+
 only_dirs = [
   # "6683080",
              # "out-ganak-6683080.pbs101-1/", # best of GANAK so far, lbd 1
@@ -172,34 +174,38 @@ only_dirs = [
             # had 2GB left over.
             "out-ganak-7602594.pbs101-", # with arjunoraclefindbins
             "out-ganak-7601364.pbs101-", ## arjunoraclefindbins (ran it twice, oops)
-            # TODO: try --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
-            # TODO: try --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 1
-            # TODO: try --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 0
+            "out-ganak-7608982.pbs101-", # more arjunoraclefindbins
+            "out-ganak-7608400.pbs101-", # more arjunoraclefindbins (or maybe sharpsat?)
+            # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 4
+            # TODO: WOW, sstd is doing very well. Check out: out-ganak-7608982.pbs101-0
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
             # BEST: --maxcache=18000
             # had 2GB left over.
-            # "out-ganak-7601766.pbs101-" # with arjunoraclefindbins
+            # "out-ganak-7601766.pbs101-", # with arjunoraclefindbins
             # BEST: --maxcache=18000 --arjunoraclefindbins 1
-            # TODO: run with --maxcache=18000 --arjunoraclefindbins 2
+            # "out-ganak-7608600.pbs101", # more arjunoraclefindbins
+            # BEST: --maxcache=18000 --arjunoraclefindbins 8
+            # TODO: sstd is very good, but it's running unweighted: out-ganak-7608600.pbs101-5
 
-
+            # We are OK here
             # 2024 track 3 (i.e. pmc) public instances
             # "out-ganak-7559160.pbs101-",
-            # BEST: --maxcache=26000 -- YES, no minw/maxw!
+            # # BEST: --maxcache=26000 -- YES, no minw/maxw!
             # had 2GB left over.
             # "out-ganak-7601744.pbs101-", # arjunoraclefindbins
             # BEST: --maxcache=26000 --arjunoraclefindbins 1
-            # TODO: try --maxcache=26000  --arjunoraclefindbins 2
-            # TODO: try --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
+            # "out-ganak-7608684.pbs101-",# more arjunoraclefindbins
+            # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
 
+            # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances
             # "out-ganak-7601777.pbs101-",
             # BEST: --maxcache=18000 --arjunverb 2
-            # TODO: try  --maxcache=18000  --arjunoraclefindbins 1
-            # TODO: try  --maxcache=18000  --arjunoraclefindbins 2
             # had 7GB left over (with --precise 0, 8.5GB left over)
+            # "out-ganak-7608937.pbs101", # more arjunoraclefindbins
+            # BEST: --maxcache=18000 --arjunoraclefindbins 2
 
              # arijit's experiment
              # "out-ganak-7511833.pbs101-", # pmc -> mc and run with all systems
@@ -361,7 +367,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][10:]\\\n")
+    f.write("plot [:][40:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
@@ -369,7 +375,11 @@ with open(gnuplotfn, "w") as f:
     for fn,call,ver,num_solved,dir in fname2_s:
         # if "restart" not in call and num_solved > 142:
         if True:
-            towrite +="\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
+            call = re.sub("\"", "", call)
+            dir  = re.sub("\"", "", dir)
+            ver  = re.sub("\"", "", ver)
+            oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
+            towrite += oneline
             towrite +=",\\\n"
     towrite = towrite[:(len(towrite)-4)]
     f.write(towrite)

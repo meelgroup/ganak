@@ -2009,6 +2009,7 @@ void Counter<T>::reduce_db_if_needed() {
         stats.cls_deleted_since_compaction = 0;
     }
     last_reducedb_confl = stats.conflicts;
+    last_reducedb_dec = stats.decisions;
   }
 }
 
@@ -2980,7 +2981,7 @@ void Counter<T>::create_uip_cl() {
       Clause& cl = *alloc->ptr(confl.asCl());
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.set_used();
-        cl.update_lbd(calc_lbd(cl));
+        /* cl.update_lbd(calc_lbd(cl)); */
       }
       if (p == NOT_A_LIT) std::swap(c[0], c[1]);
     } else if (confl.isALit()) {
@@ -4062,19 +4063,29 @@ void Counter<T>::reduce_db() {
   num_used_cls = 0;
   uint32_t cannot_be_del = 0;
   sort(tmp_red_cls.begin(), tmp_red_cls.end(), ClSorter(alloc, lbd_cutoff));
-  uint32_t cutoff = conf.rdb_cls_target;
+  int64_t new_decs = stats.decisions - last_reducedb_dec;
+  int64_t new_confls = stats.conflicts - last_reducedb_confl;
+  uint32_t target = conf.rdb_cls_target;
+  if (new_confls*4 > new_decs) target *= 2;
+  else if (new_confls*8 > new_decs) target *= 1.5;
+  else if (new_confls*16 > new_decs) target *= 1;
+  else if (new_confls*32 > new_decs) target *= 0.8;
+  /* else if (new_confls*64 > new_decs) target *= 0.5; */
+  else target *= 0.4;
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
     auto& h = *alloc->ptr(off);
     if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
-    else if (h.total_used >= conf.total_used_cutoff2) num_low_lbd_cls++;
+    /* else if (h.total_used >= conf.total_used_cutoff2) num_low_lbd_cls++; */
     else if (h.used) num_used_cls++;
 
     bool can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
-    if (can_be_del && h.lbd > lbd_cutoff && h.total_used < conf.total_used_cutoff2 && (!conf.rdb_keep_used || !h.used) &&
-        i > cutoff + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
+    if (can_be_del && h.lbd > lbd_cutoff
+        && h.total_used < conf.total_used_cutoff2
+        && (!conf.rdb_keep_used || !h.used)
+        && i > target + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
       delete_cl(off);
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;
@@ -4087,7 +4098,7 @@ void Counter<T>::reduce_db() {
     verb_print(1, "[rdb] cls before: " << cls_before << " after: " << long_red_cls.size()
       << " low lbd: " << num_low_lbd_cls
       << " lbd cutoff: " << lbd_cutoff
-      << " cutoff computed: " << cutoff
+      << " target computed: " << target
       << " cannot be del : " << cannot_be_del
       << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
     verb_print(2, "Time until now: " << cpuTime());}

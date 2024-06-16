@@ -409,6 +409,7 @@ private:
   uint32_t qhead = 0;
   CompManager<T>* comp_manager = nullptr;
   uint64_t last_reducedb_confl = 0;
+  uint64_t last_reducedb_dec = 0;
 
   void simple_preprocess();
   bool is_implied(const vector<Lit>& cp);
@@ -493,7 +494,7 @@ private:
   void set_confl_state(Clause* cl) {
     if (cl->red && cl->lbd > this->lbd_cutoff) {
       cl->set_used();
-      cl->update_lbd(this->calc_lbd(*cl));
+      /* cl->update_lbd(this->calc_lbd(*cl)); */
     }
     confl = Antecedent(this->alloc->get_offset(cl));
     confl_lit = NOT_A_LIT;
@@ -748,6 +749,9 @@ Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
     auto off = alloc->get_offset(cl);
     long_red_cls.push_back(off);
     cl->lbd = calc_lbd(*cl);
+    if (cl->lbd <= (lbd_cutoff+1)) {
+      for(const auto& l: literals) inc_act(l);
+    }
     ante = Antecedent(off);
   } else if (literals.size() == 2){
     ante = Antecedent(literals.back());

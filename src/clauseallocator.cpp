@@ -185,7 +185,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   if (!force
       && (float_div(currently_used_sz, size) > 0.8 || currently_used_sz < (100ULL*1000ULL))
   ) {
-    verb_print(1, "[mem] Not consolidating memory. Used sz/sz: " <<
+    verb_print(2, "[mem] Not consolidating memory. Used sz/sz: " <<
         float_div(currently_used_sz, size)
         << " Currently used size: " << currently_used_sz/1000 << " K");
     return false;

@@ -46,14 +46,14 @@ struct CounterConfiguration {
   int do_cache_reverse_sort = 1;
 
   int decide = 0; // 0 = sstd, 1 = gpmc
-  uint32_t rdb_cls_target = 10000;
-  int rdb_keep_used = 1; // quite a bit faster on lower time cut-off
+  uint32_t rdb_cls_target = 8000;
+  int rdb_keep_used = 0; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
 
   uint32_t reduce_db_everyN = 10000;
   uint32_t consolidate_every_n = 30000;
   int polar_type = 0;
-  uint32_t base_lbd_cutoff = 1;
+  uint32_t base_lbd_cutoff = 2;
 
   int do_vivify = 1;
   uint32_t vivif_every = 60000;

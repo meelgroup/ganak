@@ -479,10 +479,10 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
     if (cnt == 0) cout << "-inf" << endl;
     else {
       if constexpr (!precise) {
-        cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt) << endl;
+        cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt) << endl;
         cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
       } else {
-        cout << std::setprecision(6) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl;
+        cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl;
         cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
         mpf_set_default_prec(1024); // Set default precision in bits
         mpf_t f;
@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
     cnt *= cnf.multiplier_weight;
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
-    else cout << std::setprecision(6) << std::fixed << biginteger_log_modified(cnt) << endl;
+    else cout << std::setprecision(12) << std::fixed << biginteger_log_modified(cnt) << endl;
     if (is_appx) {
       cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;
       cout << "c s approx arb int " << std::fixed << cnt << endl;

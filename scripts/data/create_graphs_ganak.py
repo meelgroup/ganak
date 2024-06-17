@@ -168,16 +168,27 @@ only_dirs = [
              # "out-ganak-7559399.pbs101-1" # now with/without backbone only over opt-indep-set
 
             # 2024 track 1 (mc) public instances
-            "out-ganak-7558933.pbs101-", # all very good
+            # "out-ganak-7558933.pbs101-", # all very good
             # forget this: good:  --maxcache=26000 --maxcache=26000 --vivifevery 40000
             # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70
             # had 2GB left over.
-            "out-ganak-7602594.pbs101-", # with arjunoraclefindbins
-            "out-ganak-7601364.pbs101-", ## arjunoraclefindbins (ran it twice, oops)
-            "out-ganak-7608982.pbs101-", # more arjunoraclefindbins
-            "out-ganak-7608400.pbs101-", # more arjunoraclefindbins (or maybe sharpsat?)
+            # "out-ganak-7602594.pbs101-", # with arjunoraclefindbins
+            # "out-ganak-7601364.pbs101-", ## arjunoraclefindbins (ran it twice, oops)
+            # "out-ganak-7608982.pbs101-", # more arjunoraclefindbins
+            # "out-ganak-7608400.pbs101-", # more arjunoraclefindbins (or maybe sharpsat?)
+            # "out-ganak-7608400.pbs101-5", # sstd
             # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 4
             # TODO: WOW, sstd is doing very well. Check out: out-ganak-7608982.pbs101-0
+            # "out-ganak-7622771.pbs101-", # changed clause deletion
+            # "out-ganak-7622834.pbs101-", # changed clause deletion, update LBD
+            # "out-ganak-7623566.pbs101-", # new cldel, sbva, etc
+            # "out-ganak-7623566.pbs101-4", # BEST
+            # BEST: call: --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000 # 2.8GB left over
+            # TODO larger tdmin/max, different tdexp -- running: out-ganak-7625957.pbs101-0
+            # "out-ganak-7625957.pbs101-", # new sbva configs
+            # BEST:
+            # dir: out-ganak-7625957.pbs101-5   # 1GB left only!!
+            # call: --maxcache=23000 --arjunverb 2 --sbva 1 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -187,9 +198,18 @@ only_dirs = [
             # BEST: --maxcache=18000 --arjunoraclefindbins 1
             # "out-ganak-7608600.pbs101", # more arjunoraclefindbins
             # BEST: --maxcache=18000 --arjunoraclefindbins 8
-            # TODO: sstd is very good, but it's running unweighted: out-ganak-7608600.pbs101-5
+            # NOTE: sstd is very good, but it's running unweighted: out-ganak-7608600.pbs101-5
+            # "out-ganak-7623575.pbs101-", # sbva, tdstuff, etc.
+            # "out-ganak-7623575.pbs101-0", # sbva, tdstuff, etc.
+            # BEST:
+            # dir: out-ganak-7623575.pbs101-0 # 3.5GB left over
+            # call: --maxcache=16000 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # TODO: doing more/less td, more less/sbva -- running: 7626133.pbs101
+            # "out-ganak-7626133.pbs101-", # new sbva configs
+            # BEST:
+            # dir: out-ganak-7626133.pbs101-6 # 3.3GB left over
+            # call: --maxcache=16000 --arjunverb 2 --sbva 1 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
 
-            # We are OK here
             # 2024 track 3 (i.e. pmc) public instances
             # "out-ganak-7559160.pbs101-",
             # # BEST: --maxcache=26000 -- YES, no minw/maxw!
@@ -198,6 +218,12 @@ only_dirs = [
             # BEST: --maxcache=26000 --arjunoraclefindbins 1
             # "out-ganak-7608684.pbs101-",# more arjunoraclefindbins
             # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
+            # "out-ganak-7623571.pbs101-", # sbva, tdstuff, etc
+            # BEST seems:
+            # "out-ganak-7623571.pbs101-5", # 2GB left over
+            # call: --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # TODO: try less sbva -- running: 7626141.pbs101
+            # "out-ganak-7626141.pbs101-", # new sbva configs -- not too good
 
             # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances
@@ -206,6 +232,18 @@ only_dirs = [
             # had 7GB left over (with --precise 0, 8.5GB left over)
             # "out-ganak-7608937.pbs101", # more arjunoraclefindbins
             # BEST: --maxcache=18000 --arjunoraclefindbins 2
+            # "out-ganak-7623679.pbs101-", # sbva, new cldel, etc.
+            "out-ganak-7623679.pbs101-8", # BEST
+            # BEST: --maxcache=16000 --arjunverb 2 --sbva 0 --arjunoraclefindbins 4 --rdbclstarget 14000 # 12 GB left over
+            "out-ganak-7623679.pbs101-2", #good
+            # GOOD: --maxcache=16000 --arjunverb 2 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 14000 # had 7 GB left over
+            # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both) -- running: out-ganak-7626015.pbs101-0
+            "out-ganak-7626015.pbs101-", # new sbva configs
+            # BEST:
+            # dir: out-ganak-7626015.pbs101-6 # 4GB left over
+            # call: --maxcache=20000 --arjunverb 2 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
+
+
 
              # arijit's experiment
              # "out-ganak-7511833.pbs101-", # pmc -> mc and run with all systems
@@ -297,6 +335,7 @@ not_versions = []
 # only_calls = ["--polar"]
 only_calls = ["compsort"]
 only_calls = []
+# not_calls = []
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)
@@ -367,7 +406,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][40:]\\\n")
+    f.write("plot [:][60:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

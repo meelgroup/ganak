@@ -131,15 +131,12 @@ if (NOT MSVC)
     add_compile_options( -pthread )
 
     add_compile_options("$<$<CONFIG:RelWithDebInfo>:-O3>")
-    add_compile_options("$<$<CONFIG:RelWithDebInfo>:-march=native>")
 
     add_compile_options("$<$<CONFIG:Release>:-O3>")
     add_compile_options("$<$<CONFIG:Release>:-g0>")
     add_compile_options("$<$<CONFIG:Release>:-DNDEBUG>")
-    add_compile_options("$<$<CONFIG:Release>:-march=native>")
 
     add_compile_options("$<$<CONFIG:Debug>:-O0>")
-    add_compile_options("$<$<CONFIG:Debug>:-march=native>")
 
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG)
         if(${flag_var} MATCHES "-O3")

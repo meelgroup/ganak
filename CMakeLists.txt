@@ -238,7 +238,6 @@ if (NOT WIN32)
     endif()
 
     add_cxx_flag_if_supported("-mpopcnt")
-    add_cxx_flag_if_supported("-march=broadwell")
     add_cxx_flag_if_supported("-msse4.2")
     add_cxx_flag_if_supported("-mpclmul")
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -277,7 +276,6 @@ if (NOT WIN32)
     add_c_flag_if_supported("-msse4.2")
     add_c_flag_if_supported("-mpclmul")
     add_c_flag_if_supported("-mpopcnt")
-    add_c_flag_if_supported("-march=broadwell")
 endif()
 
 # generate JSON file of compile commands -- useful for code extension

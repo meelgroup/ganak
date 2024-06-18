@@ -188,7 +188,8 @@ only_dirs = [
             # "out-ganak-7625957.pbs101-", # new sbva configs
             # BEST:
             # dir: out-ganak-7625957.pbs101-5   # 1GB left only!!
-            # call: --maxcache=23000 --arjunverb 2 --sbva 1 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
+            # call: --maxcache=23000 --arjunverb 2 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
+            # "out-ganak-7628982.pbs101-", # getting bins from cadiback, more bin finding
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -208,7 +209,7 @@ only_dirs = [
             # "out-ganak-7626133.pbs101-", # new sbva configs
             # BEST:
             # dir: out-ganak-7626133.pbs101-6 # 3.3GB left over
-            # call: --maxcache=16000 --arjunverb 2 --sbva 1 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # call: --maxcache=16000 --arjunverb 2 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
 
             # 2024 track 3 (i.e. pmc) public instances
             # "out-ganak-7559160.pbs101-",
@@ -220,10 +221,11 @@ only_dirs = [
             # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
             # "out-ganak-7623571.pbs101-", # sbva, tdstuff, etc
             # BEST seems:
-            # "out-ganak-7623571.pbs101-5", # 2GB left over
-            # call: --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            "out-ganak-7623571.pbs101-5", # 2GB left over
+            # call: --maxcache=24000 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
             # TODO: try less sbva -- running: 7626141.pbs101
             # "out-ganak-7626141.pbs101-", # new sbva configs -- not too good
+            "out-ganak-7629018.pbs101-", # getting bins from cadiback, more bin finding
 
             # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances
@@ -233,12 +235,12 @@ only_dirs = [
             # "out-ganak-7608937.pbs101", # more arjunoraclefindbins
             # BEST: --maxcache=18000 --arjunoraclefindbins 2
             # "out-ganak-7623679.pbs101-", # sbva, new cldel, etc.
-            "out-ganak-7623679.pbs101-8", # BEST
+            # "out-ganak-7623679.pbs101-8", # BEST
             # BEST: --maxcache=16000 --arjunverb 2 --sbva 0 --arjunoraclefindbins 4 --rdbclstarget 14000 # 12 GB left over
-            "out-ganak-7623679.pbs101-2", #good
+            # "out-ganak-7623679.pbs101-2", #good
             # GOOD: --maxcache=16000 --arjunverb 2 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 14000 # had 7 GB left over
             # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both) -- running: out-ganak-7626015.pbs101-0
-            "out-ganak-7626015.pbs101-", # new sbva configs
+            # "out-ganak-7626015.pbs101-", # new sbva configs
             # BEST:
             # dir: out-ganak-7626015.pbs101-6 # 4GB left over
             # call: --maxcache=20000 --arjunverb 2 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
@@ -406,7 +408,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][60:]\\\n")
+    f.write("plot [:][10:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

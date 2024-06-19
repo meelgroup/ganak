@@ -140,7 +140,6 @@ class LitWatchList {
 public:
   vector<BinCl> binaries;
   vector<ClOffsBlckL> watch_list_;
-  uint32_t last_irred_bin = 0;
   double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
@@ -168,7 +167,6 @@ public:
 
   void add_bin(Lit lit, bool red) {
     binaries.push_back(BinCl(lit, red));
-    if (!red) last_irred_bin = binaries.size();
   }
 };
 

@@ -185,11 +185,12 @@ only_dirs = [
             # "out-ganak-7623566.pbs101-4", # BEST
             # BEST: call: --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000 # 2.8GB left over
             # TODO larger tdmin/max, different tdexp -- running: out-ganak-7625957.pbs101-0
-            # "out-ganak-7625957.pbs101-", # new sbva configs
+            "out-ganak-7625957.pbs101-", # new sbva configs
             # BEST:
             # dir: out-ganak-7625957.pbs101-5   # 1GB left only!!
             # call: --maxcache=23000 --arjunverb 2 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
             # "out-ganak-7628982.pbs101-", # getting bins from cadiback, more bin finding
+            "out-ganak-7631793.pbs101-", # arjun total timeout checks
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -221,11 +222,12 @@ only_dirs = [
             # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
             # "out-ganak-7623571.pbs101-", # sbva, tdstuff, etc
             # BEST seems:
-            "out-ganak-7623571.pbs101-5", # 2GB left over
+            # "out-ganak-7623571.pbs101-5", # 2GB left over
             # call: --maxcache=24000 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
             # TODO: try less sbva -- running: 7626141.pbs101
             # "out-ganak-7626141.pbs101-", # new sbva configs -- not too good
-            "out-ganak-7629018.pbs101-", # getting bins from cadiback, more bin finding
+            # "out-ganak-7629018.pbs101-", # getting bins from cadiback, more bin finding
+            # "out-ganak-7631789.pbs101-", # arjun total timeout checks
 
             # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances

@@ -175,6 +175,7 @@ void add_ganak_options()
     ("bvegrowiter2", po::value(&simp_conf.bve_grow_iter2)->default_value(simp_conf.bve_grow_iter2), "Puura BVE growth allowance iter2")
     ("extraoracle", po::value(&simp_conf.oracle_extra)->default_value(simp_conf.oracle_extra), "Extra oracle at the end of puura")
     ("resolvsub", po::value(&simp_conf.do_subs_with_resolvent_clauses)->default_value(simp_conf.do_subs_with_resolvent_clauses), "Extra oracle at the end of puura")
+    ("arjunoraclegetlearnt", po::value(&simp_conf.oracle_vivify_get_learnts)->default_value(simp_conf.oracle_vivify_get_learnts), "Arjun's oracle should get learnts")
 
     ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
     ("compsort", po::value(&conf.do_comp_sort)->default_value(conf.do_comp_sort), "Sort components in different order")

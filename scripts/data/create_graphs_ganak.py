@@ -185,12 +185,15 @@ only_dirs = [
             # "out-ganak-7623566.pbs101-4", # BEST
             # BEST: call: --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000 # 2.8GB left over
             # TODO larger tdmin/max, different tdexp -- running: out-ganak-7625957.pbs101-0
-            "out-ganak-7625957.pbs101-", # new sbva configs
+            # "out-ganak-7625957.pbs101-", # new sbva configs
+            # "out-ganak-7625957.pbs101-5", # new sbva configs (best)
             # BEST:
             # dir: out-ganak-7625957.pbs101-5   # 1GB left only!!
             # call: --maxcache=23000 --arjunverb 2 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
             # "out-ganak-7628982.pbs101-", # getting bins from cadiback, more bin finding
-            "out-ganak-7631793.pbs101-", # arjun total timeout checks
+            # "out-ganak-7631793.pbs101-", # arjun total timeout checks (4GB mem)
+            # "out-ganak-7632152.pbs101-", # go back to old, restart, options, slightly more bins (4GB mem)
+            "out-ganak-7632478.pbs101-", # back to 32GB, restarts, go back to old as before
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -410,7 +413,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][10:]\\\n")
+    f.write("plot [:][40:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

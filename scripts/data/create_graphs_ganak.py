@@ -193,7 +193,12 @@ only_dirs = [
             # "out-ganak-7628982.pbs101-", # getting bins from cadiback, more bin finding
             # "out-ganak-7631793.pbs101-", # arjun total timeout checks (4GB mem)
             # "out-ganak-7632152.pbs101-", # go back to old, restart, options, slightly more bins (4GB mem)
-            "out-ganak-7632478.pbs101-", # back to 32GB, restarts, go back to old as before
+            # "out-ganak-7632478.pbs101-", # back to 32GB, restarts, go back to old as before
+            # "out-ganak-7637537.pbs101-", # get bins from cadiback, do some bin pruning, only get <= 3 lbd learnt clauses
+            # DAMN!! the issue was that --sbva 1 effectively TURNSOFF SBVA!!!
+            # TODO: redo above experiments
+            # "out-ganak-7637617.pbs101-", # like above, but --sbva 1. Kinda OK.
+            # "out-ganak-7637716.pbs101-", #  sbva configs BAD, --sbva 1 is likely best
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -209,7 +214,6 @@ only_dirs = [
             # BEST:
             # dir: out-ganak-7623575.pbs101-0 # 3.5GB left over
             # call: --maxcache=16000 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 10000
-            # TODO: doing more/less td, more less/sbva -- running: 7626133.pbs101
             # "out-ganak-7626133.pbs101-", # new sbva configs
             # BEST:
             # dir: out-ganak-7626133.pbs101-6 # 3.3GB left over
@@ -225,12 +229,12 @@ only_dirs = [
             # BEST: --maxcache=26000 --tdminw 8 --tdmaxw 70 --arjunoraclefindbins 2
             # "out-ganak-7623571.pbs101-", # sbva, tdstuff, etc
             # BEST seems:
-            # "out-ganak-7623571.pbs101-5", # 2GB left over
+            "out-ganak-7623571.pbs101-5", # 2GB left over
             # call: --maxcache=24000 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
-            # TODO: try less sbva -- running: 7626141.pbs101
             # "out-ganak-7626141.pbs101-", # new sbva configs -- not too good
             # "out-ganak-7629018.pbs101-", # getting bins from cadiback, more bin finding
             # "out-ganak-7631789.pbs101-", # arjun total timeout checks
+            "out-ganak-7637633.pbs101-", # restarts -- bad (but may be because of mem/cpu)
 
             # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances
@@ -244,11 +248,12 @@ only_dirs = [
             # BEST: --maxcache=16000 --arjunverb 2 --sbva 0 --arjunoraclefindbins 4 --rdbclstarget 14000 # 12 GB left over
             # "out-ganak-7623679.pbs101-2", #good
             # GOOD: --maxcache=16000 --arjunverb 2 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 14000 # had 7 GB left over
-            # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both) -- running: out-ganak-7626015.pbs101-0
             # "out-ganak-7626015.pbs101-", # new sbva configs
             # BEST:
             # dir: out-ganak-7626015.pbs101-6 # 4GB left over
             # call: --maxcache=20000 --arjunverb 2 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
+            # TODO: --sbva 1 is turning SBVA off! So just use litcut/clcut!!
+            # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both)
 
 
 
@@ -413,7 +418,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][40:]\\\n")
+    f.write("plot [:][0:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

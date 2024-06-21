@@ -196,9 +196,9 @@ only_dirs = [
             # "out-ganak-7632478.pbs101-", # back to 32GB, restarts, go back to old as before
             # "out-ganak-7637537.pbs101-", # get bins from cadiback, do some bin pruning, only get <= 3 lbd learnt clauses
             # DAMN!! the issue was that --sbva 1 effectively TURNSOFF SBVA!!!
-            # TODO: redo above experiments
-            "out-ganak-7637617.pbs101-", # like above, but --sbva 1. Kinda OK.
+            # "out-ganak-7637617.pbs101-", # like above, but --sbva 1. Kinda OK.
             # "out-ganak-7637716.pbs101-", #  sbva configs BAD, --sbva 1 is likely best
+            "out-ganak-7639585.pbs101-", # different arjun setup
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -230,11 +230,12 @@ only_dirs = [
             # "out-ganak-7623571.pbs101-", # sbva, tdstuff, etc
             # BEST seems:
             # "out-ganak-7623571.pbs101-5", # 2GB left over
-            # call: --maxcache=24000 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # call: --maxcache=24000 --arjunverb 2 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
             # "out-ganak-7626141.pbs101-", # new sbva configs -- not too good
             # "out-ganak-7629018.pbs101-", # getting bins from cadiback, more bin finding
             # "out-ganak-7631789.pbs101-", # arjun total timeout checks
             # "out-ganak-7637633.pbs101-", # restarts -- bad (but may be because of mem/cpu)
+            # "out-ganak-7639688.pbs101-", # different arjun setup
 
             # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances
@@ -418,7 +419,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][0:]\\\n")
+    f.write("plot [:][50:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

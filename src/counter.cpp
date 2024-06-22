@@ -3847,11 +3847,11 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
     int32_t until = decisions.size();
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
-      debug_print("set_lit, compensating weight. i: " << i);
+      debug_print("set_lit, compensating weight. i: " << i << " dec_lev: " << dec_lev);
       bool found = false;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
       found = (at[0] == at[lit.var()]);
-      debug_print("dec val compare: " << at[0]);
+      /* debug_print("dec val compare: " << at[0]); */
       // Not found in parent, so not in any children for sure
       if (!found) {
         debug_print("Var not found in parent, so not in children for sure. Exiting");

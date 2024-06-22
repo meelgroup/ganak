@@ -186,7 +186,7 @@ only_dirs = [
             # BEST: call: --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000 # 2.8GB left over
             # TODO larger tdmin/max, different tdexp -- running: out-ganak-7625957.pbs101-0
             # "out-ganak-7625957.pbs101-", # new sbva configs
-            "out-ganak-7625957.pbs101-5", # new sbva configs (best)
+            # "out-ganak-7625957.pbs101-5", # new sbva configs (best)
             # BEST:
             # dir: out-ganak-7625957.pbs101-5   # 1GB left only!!
             # call: --maxcache=23000 --arjunverb 2 --sbva 1 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
@@ -198,7 +198,9 @@ only_dirs = [
             # DAMN!! the issue was that --sbva 1 effectively TURNSOFF SBVA!!!
             # "out-ganak-7637617.pbs101-", # like above, but --sbva 1. Kinda OK.
             # "out-ganak-7637716.pbs101-", #  sbva configs BAD, --sbva 1 is likely best
-            "out-ganak-7639585.pbs101-", # different arjun setup
+            # "out-ganak-7639585.pbs101-", # different arjun setup
+            # "out-ganak-7643061.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE
+            # "out-ganak-7644331.pbs101-", # FINAL
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -215,9 +217,13 @@ only_dirs = [
             # dir: out-ganak-7623575.pbs101-0 # 3.5GB left over
             # call: --maxcache=16000 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 10000
             # "out-ganak-7626133.pbs101-", # new sbva configs
+            # "out-ganak-7626133.pbs101-6", # new sbva configs
             # BEST:
             # dir: out-ganak-7626133.pbs101-6 # 3.3GB left over
-            # call: --maxcache=16000 --arjunverb 2 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # call: --maxcache=16000 --arjunverb 2 --sbva 1 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # "out-ganak-7643075.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE -- BAD
+            # "out-ganak-7644361.pbs101-", # FINAL
+
 
             # 2024 track 3 (i.e. pmc) public instances
             # "out-ganak-7559160.pbs101-",
@@ -236,6 +242,8 @@ only_dirs = [
             # "out-ganak-7631789.pbs101-", # arjun total timeout checks
             # "out-ganak-7637633.pbs101-", # restarts -- bad (but may be because of mem/cpu)
             # "out-ganak-7639688.pbs101-", # different arjun setup
+            # "out-ganak-7643068.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE -- BAD
+            # "out-ganak-7644550.pbs101-", # FINAL
 
             # We are OK here
             # 2024 track 4 (i.e. pwmc) public instances
@@ -250,11 +258,14 @@ only_dirs = [
             # "out-ganak-7623679.pbs101-2", #good
             # GOOD: --maxcache=16000 --arjunverb 2 --sbva 1 --tdminw 18 --arjunoraclefindbins 4 --rdbclstarget 14000 # had 7 GB left over
             # "out-ganak-7626015.pbs101-", # new sbva configs
+            # "out-ganak-7626015.pbs101-6", # new sbva configs
             # BEST:
             # dir: out-ganak-7626015.pbs101-6 # 4GB left over
             # call: --maxcache=20000 --arjunverb 2 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
             # TODO: --sbva 1 is turning SBVA off! So just use litcut/clcut!!
             # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both)
+            # "out-ganak-7643072.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE
+            # "out-ganak-7644569.pbs101-", # FINAL
 
 
 
@@ -346,9 +357,9 @@ not_versions = []
 # only_calls = ["--lbd 1"] #
 # only_dirs = []
 # only_calls = ["--polar"]
-only_calls = ["compsort"]
+only_calls = ["appmct"]
 only_calls = []
-# not_calls = []
+# not_calls = ["appmct"]
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)
@@ -419,7 +430,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][50:]\\\n")
+    f.write("plot [:][40:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

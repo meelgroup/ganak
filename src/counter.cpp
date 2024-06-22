@@ -1649,10 +1649,8 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       else {
         bool okay = true;
         T diff = after_mul - cnt;
-        if (diff/cnt > 0.01 || diff/cnt < -0.01) {
+        if (diff != 0) {
           debug_print("OOps, diff              : " << diff << " diff ratio: " << diff/cnt);
-          debug_print("OOps, ratio orig        : " << after_mul/cnt);
-          debug_print("OOps, reverse ratio orig: " << cnt/after_mul);
           print_all_levels();
           okay = false;
         }

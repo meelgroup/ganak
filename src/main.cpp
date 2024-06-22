@@ -474,7 +474,7 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
       cnt *= cnf.multiplier_weight;
     }
 
-    if (cnt > 0) cout << "s SATISFIABLE" << endl;
+    if (cnt != 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
@@ -568,7 +568,7 @@ int main(int argc, char *argv[])
       << std::fixed << (cpuTime() - start_time) << endl;
     bool is_appx = counter.get_is_approximate();
 
-    if (cnt > 0) cout << "s SATISFIABLE" << endl;
+    if (cnt != 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
     if (!cnf.get_projected()) cout << "c s type mc" << endl;
     else cout << "c s type pmc " << endl;

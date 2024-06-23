@@ -107,6 +107,7 @@ public:
   }
 
 private:
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   const CounterConfiguration &conf;
   DataAndStatistics<T> &stats;
 
@@ -195,7 +196,11 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
         << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
-  assert(!top.branch_found_unsat());
+  if (top.branch_found_unsat()) {
+    // can ONLY happen with negative weights
+    if constexpr (!weighted) assert(false);
+    return false;
+  }
   if (top.hasUnprocessedComps()) {
     debug_print(COLREDBG"-*-> Finished findNextRemainingCompOf, hasUnprocessedComps.");
     return true;

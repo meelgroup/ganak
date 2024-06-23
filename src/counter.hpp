@@ -174,7 +174,6 @@ public:
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> long_red_cls;
   uint32_t nVars() const { return var_data.size() - 1; }
-  void print_restart_data() const;
   double get_start_time() const { return start_time;}
   const auto& get_cache() const { return comp_manager->get_cache();}
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
@@ -190,10 +189,6 @@ public:
   T get_weight(const uint32_t v) {
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
-
-  // queues
-  bqueue<uint32_t> depth_q;
-  bqueue<uint32_t> comp_size_q;
 
   // vivif stuff
   void vivif_setup();

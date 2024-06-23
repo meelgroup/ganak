@@ -1384,23 +1384,6 @@ bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
   return true;
 }
 
-template<typename T>
-void Counter<T>::print_restart_data() const {
-  if (comp_size_q.isvalid()) {
-    verb_print(1, std::setw(30) << std::left
-       << "Lterm comp size avg: " << std::setw(9) << comp_size_q.getLongtTerm().avg()
-       << std::right  << std::setw(30) << std::left
-       << std::left   << " Sterm comp size avg: " << comp_size_q.avg());
-  }
-  if (depth_q.isvalid()) {
-    verb_print(1, std::setw(30) << std::left
-      << "Lterm dec avg: " << std::setw(9) << depth_q.getLongtTerm().avg()
-      << std::right << std::setw(30) << std::left
-      << std::left  << " Sterm dec avg: " << std::setw(9) << depth_q.avg());
-  }
-  cout << std::right;
-}
-
 static double luby(double y, int x){
     // Find the finite subsequence that contains index 'x', and the
     // size of that subsequence:
@@ -1427,18 +1410,6 @@ bool Counter<T>::restart_if_needed() {
     restart = true;
   }
 
-  // comp size
-  if (conf.restart_type == 0
-      && comp_size_q.isvalid() &&
-      comp_size_q.avg() < comp_size_q.getLongtTerm().avg()*conf.restart_cutoff_mult)
-    restart = true;
-
-  // depth
-  if (conf.restart_type == 2
-      && depth_q.isvalid() &&
-      depth_q.avg() > depth_q.getLongtTerm().avg()*(1.0/conf.restart_cutoff_mult))
-    restart = true;
-
   // Conflicts, luby
   /* cout << "next restart confl: " << luby(2, stats.num_restarts) * conf.first_restart << " confl: " << stats.conflicts << endl; */
   if (conf.restart_type == 7 &&
@@ -1458,7 +1429,6 @@ bool Counter<T>::restart_if_needed() {
     restart = true;
   }
 
-
   // Comps, luby
   if (conf.restart_type == 9 &&
       (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
@@ -1466,7 +1436,6 @@ bool Counter<T>::restart_if_needed() {
 
   if (!restart) return false;
   verb_print(2, "************* Restarting.  **************");
-  if (conf.verb >= 2) print_restart_data();
   verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions
     << endl
@@ -1477,8 +1446,6 @@ bool Counter<T>::restart_if_needed() {
     << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups);
 
   // Reset stats
-  depth_q.clear();
-  comp_size_q.clear();
   stats.last_restart_num_conflicts = stats.conflicts;
   stats.last_restart_num_decisions = stats.decisions;
   stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
@@ -3898,10 +3865,6 @@ void Counter<T>::end_irred_cls() {
   delete comp_manager;
   comp_manager = new CompManager(conf, stats, values, indep_support_end, this);
   comp_manager->getrandomseedforclhash();
-
-  // reset stats
-  depth_q.clearAndResize(conf.first_restart);
-  comp_size_q.clearAndResize(conf.first_restart);
 
   stats.maximum_cache_size_bytes_ = conf.maximum_cache_size_MB*1024*1024;
   init_decision_stack();

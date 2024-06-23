@@ -83,10 +83,6 @@ void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
       Comp *p_new_comp = ana.make_comp_from_archetype();
       CacheableComp<T> packed_comp(hash_seed, *p_new_comp);
 
-      // Update stats
-      counter->depth_q.push(counter->decision_level());
-      counter->comp_size_q.push(p_new_comp->nVars());
-
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
       if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {

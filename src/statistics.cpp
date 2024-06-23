@@ -49,7 +49,6 @@ static double safe_div(double a, double b) {
 template<typename T>
 void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCache<T>* cache) const {
   verb_print(1, "total time so far: " << cpuTime());
-  counter->print_restart_data();
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
     << std::left << setw(9) << decisions/1000

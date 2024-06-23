@@ -3857,9 +3857,6 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       } else debug_print("Var found in parent.");
       if (i > dec_lev && found) decisions[i].include_solution_left_side(1/get_weight(lit));
 
-      // Children don't exist
-      if (i+1 >= (int)decisions.size()) break;
-
       bool found_in_children = false;
       const auto& s = decisions.at(i);
       debug_print("s.get_unprocessed_comps_end(): " << s.get_unprocessed_comps_end()
@@ -3876,8 +3873,8 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       debug_print("found in children: " << found_in_children);
       if (!found_in_children) {
         // Not found in children, so it must have been already processed and multiplied in. Compensate.
-        assert((int)decisions.size() > i+1);
-        if (decisions[i].getTotalModelCount() != 0) decisions[i].include_solution(1/get_weight(lit));
+        assert((int)decisions.size() > i);
+        if (decisions[i].getBranchSols() != 0) decisions[i].include_solution(1/get_weight(lit));
       }
     }
   }

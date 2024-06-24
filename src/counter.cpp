@@ -3804,12 +3804,13 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if constexpr (weighted) if (dec_lev < decision_level() && get_weight(lit) != 1) {
+  if constexpr (weighted) if (dec_lev <= decision_level() && get_weight(lit) != 1) {
     int32_t until = decisions.size();
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
       debug_print("set_lit, compensating weight. i: " << i << " dec_lev: " << dec_lev);
       bool found = false;
+      if (vars_act_dec.size() <= i*(nVars()+1)) break;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
       found = (at[0] == at[lit.var()]);
       /* debug_print("dec val compare: " << at[0]); */

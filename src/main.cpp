@@ -476,9 +476,14 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
 
     if (cnt != 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    cout << "c s log10-estimate ";
-    if (cnt == 0) cout << "-inf" << endl;
+    if (cnt == 0) cout << "c s log10-estimate -inf" << endl;
     else {
+      if (cnt < 0) {
+        cout << "c s neglog10-estimate ";
+        cnt *= -1;
+      } else {
+        cout << "c s log10-estimate ";
+      }
       if constexpr (!precise) {
         cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt) << endl;
         cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;

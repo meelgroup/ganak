@@ -1621,11 +1621,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
           print_all_levels();
           okay = false;
         }
-        if (!also_incl_curr_and_later_dec) assert(okay);
-        if (!okay) {
-          debug_print("NOT OK but also_incl_curr_and_later_dec: " << also_incl_curr_and_later_dec
-              << " decision_level: " << decision_level() << " last_dec_lev: " << last_dec_lev);
-        }
+        assert(okay);
       }
     }
     cout << std::setprecision(3);

@@ -526,7 +526,6 @@ int main(int argc, char *argv[])
   if (conf.verb) {
     cout << ganak_version_info() << endl;
     cout << "c o called with: " << command_line << endl;
-    cout << "c o internal precision will be: " << mpfr::mpreal::get_default_prec() << endl;
   }
 
   string fname;

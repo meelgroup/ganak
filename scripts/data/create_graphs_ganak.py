@@ -201,6 +201,7 @@ only_dirs = [
             # "out-ganak-7639585.pbs101-", # different arjun setup
             # "out-ganak-7643061.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE
             # "out-ganak-7644331.pbs101-", # FINAL
+            # "out-ganak-7657683.pbs101-", # FINAL, fixed counting, basically the same
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -223,6 +224,7 @@ only_dirs = [
             # call: --maxcache=16000 --arjunverb 2 --sbva 1 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
             # "out-ganak-7643075.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE -- BAD
             # "out-ganak-7644361.pbs101-", # FINAL
+            # "out-ganak-7657686.pbs101-", # FINAL, fixed counting, basically the same
 
 
             # 2024 track 3 (i.e. pmc) public instances
@@ -244,8 +246,9 @@ only_dirs = [
             # "out-ganak-7639688.pbs101-", # different arjun setup
             # "out-ganak-7643068.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE -- BAD
             # "out-ganak-7644550.pbs101-", # FINAL
+            # "out-ganak-7657684.pbs101-", # FINAL, fixed counting, not better.
 
-            # We are OK here
+            # We are actually OK here
             # 2024 track 4 (i.e. pwmc) public instances
             # "out-ganak-7601777.pbs101-",
             # BEST: --maxcache=18000 --arjunverb 2
@@ -266,6 +269,7 @@ only_dirs = [
             # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both)
             # "out-ganak-7643072.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE
             # "out-ganak-7644569.pbs101-", # FINAL
+            # "out-ganak-7657681.pbs101-", # FINAL, fixed counting, basically the same
 
 
 

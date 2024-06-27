@@ -207,6 +207,7 @@ only_dirs = [
             # "out-ganak-7665630.pbs101-", # FINAL, bvemaxres 10-12-14
               # nice: --bveresolvmaxsz 12
               # --bveresolvmaxsz 12 --maxcache=22000 --sbva 1 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
+            # "out-ganak-7669369.pbs101-", # FINAL, double CNF minim -- NICE
 
 
             # 2024 track 2 (wmc) public instances
@@ -233,9 +234,10 @@ only_dirs = [
             # "out-ganak-7644361.pbs101-", # FINAL
             # "out-ganak-7657686.pbs101-", # FINAL, fixed counting, basically the same
             # "out-ganak-7664158.pbs101-",  # FINAL, different bve size limits
-            # "out-ganak-7665603.pbs101-," # FINAL, bvemaxsz 10-12-14
+            # "out-ganak-7665603.pbs101-", # FINAL, bvemaxsz 10-12-14
               # nice: --bveresolvmaxsz 12
               # --bveresolvmaxsz 12 --maxcache=16000 --sbva 1 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
+            # "out-ganak-7669419.pbs101-", # FINAL, doing double CNF minim -- NICE
 
 
             # 2024 track 3 (i.e. pmc) public instances

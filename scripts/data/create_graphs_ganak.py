@@ -202,6 +202,12 @@ only_dirs = [
             # "out-ganak-7643061.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE
             # "out-ganak-7644331.pbs101-", # FINAL
             # "out-ganak-7657683.pbs101-", # FINAL, fixed counting, basically the same
+            # "out-ganak-7664145.pbs101-", # FINAL, different bve size limits -- no real advantage
+            # "out-ganak-7664153.pbs101-", # FINAL, different bve size limits -- accidental re-run, no real advantage
+            # "out-ganak-7665630.pbs101-", # FINAL, bvemaxres 10-12-14
+              # nice: --bveresolvmaxsz 12
+              # --bveresolvmaxsz 12 --maxcache=22000 --sbva 1 --tdexpmult 1.1 --tdminw 7 --tdmaxw 60 --arjunoraclefindbins 6 --rdbclstarget 10000
+
 
             # 2024 track 2 (wmc) public instances
             # "out-ganak-7559210.pbs101-", # all are very good
@@ -212,6 +218,7 @@ only_dirs = [
             # "out-ganak-7608600.pbs101", # more arjunoraclefindbins
             # BEST: --maxcache=18000 --arjunoraclefindbins 8
             # NOTE: sstd is very good, but it's running unweighted: out-ganak-7608600.pbs101-5
+            # "out-ganak-7608600.pbs101-5", # sstd unweighted
             # "out-ganak-7623575.pbs101-", # sbva, tdstuff, etc.
             # "out-ganak-7623575.pbs101-0", # sbva, tdstuff, etc.
             # BEST:
@@ -225,6 +232,10 @@ only_dirs = [
             # "out-ganak-7643075.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE -- BAD
             # "out-ganak-7644361.pbs101-", # FINAL
             # "out-ganak-7657686.pbs101-", # FINAL, fixed counting, basically the same
+            # "out-ganak-7664158.pbs101-",  # FINAL, different bve size limits
+            # "out-ganak-7665603.pbs101-," # FINAL, bvemaxsz 10-12-14
+              # nice: --bveresolvmaxsz 12
+              # --bveresolvmaxsz 12 --maxcache=16000 --sbva 1 --sbvalitcut 6 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
 
 
             # 2024 track 3 (i.e. pmc) public instances
@@ -245,10 +256,13 @@ only_dirs = [
             # "out-ganak-7637633.pbs101-", # restarts -- bad (but may be because of mem/cpu)
             # "out-ganak-7639688.pbs101-", # different arjun setup
             # "out-ganak-7643068.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE -- BAD
-            # "out-ganak-7644550.pbs101-", # FINAL
+            # "out-ganak-7644550.pbs101-0", # FINAL
             # "out-ganak-7657684.pbs101-", # FINAL, fixed counting, not better.
+            # "out-ganak-7665625.pbs101-", # FINAL, bvemaxsz 10-12-14
+              # --bveresolvmaxsz 12 is NICE
+              # --bveresolvmaxsz 12 --maxcache=24000 --sbva 1 --tdminw 5 --tdmaxw 50 --arjunoraclefindbins 4 --rdbclstarget 10000
 
-            # We are actually OK here
+
             # 2024 track 4 (i.e. pwmc) public instances
             # "out-ganak-7601777.pbs101-",
             # BEST: --maxcache=18000 --arjunverb 2
@@ -265,11 +279,13 @@ only_dirs = [
             # BEST:
             # dir: out-ganak-7626015.pbs101-6 # 4GB left over
             # call: --maxcache=20000 --arjunverb 2 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
-            # TODO: --sbva 1 is turning SBVA off! So just use litcut/clcut!!
-            # TODO: try different sbva cutoffs, e.g. --sbvaclcut 5 or sbvalitcut 6 (or both)
             # "out-ganak-7643072.pbs101-", # double-arjun in case it's small, no bve expand on extra BVE
             # "out-ganak-7644569.pbs101-", # FINAL
             # "out-ganak-7657681.pbs101-", # FINAL, fixed counting, basically the same
+            # "out-ganak-7664168.pbs101-", # FINAL different bve size limits
+            # "out-ganak-7665622.pbs101-", #FINAL, bvemaxsz 10-12-14
+               # nice: --bveresolvmaxsz 12
+               # --bveresolvmaxsz 12 --maxcache=20000 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
 
 
 

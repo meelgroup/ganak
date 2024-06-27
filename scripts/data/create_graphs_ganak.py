@@ -290,7 +290,7 @@ only_dirs = [
             # "out-ganak-7665622.pbs101-", #FINAL, bvemaxsz 10-12-14
                # nice: --bveresolvmaxsz 12
                # --bveresolvmaxsz 12 --maxcache=20000 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
-            # "out-ganak-7670422.pbs101-", -- FINAL, doing double CNF minim -- OK, 7GB remain
+            # "out-ganak-7670422.pbs101-", #-- FINAL, doing double CNF minim -- OK, 7GB remain
 
 
 

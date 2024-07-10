@@ -474,6 +474,7 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
       cnt *= cnf.multiplier_weight;
     }
 
+    bool neglog = false;
     if (cnt != 0) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
     if (cnt == 0) cout << "c s log10-estimate -inf" << endl;
@@ -481,14 +482,17 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
       if (cnt < 0) {
         cout << "c s neglog10-estimate ";
         cnt *= -1;
+        neglog = true;
       } else {
         cout << "c s log10-estimate ";
       }
       if constexpr (!precise) {
         cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt) << endl;
+        if (neglog) cnt *= -1;
         cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
       } else {
         cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl;
+        if (neglog) cnt *= -1;
         cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
         mpf_set_default_prec(1024); // Set default precision in bits
         mpf_t f;

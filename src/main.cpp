@@ -36,11 +36,11 @@ THE SOFTWARE.
 #include <string>
 #include <iomanip>
 #include <gmpxx.h>
-#include <boost/program_options.hpp>
 #include "src/GitSHA1.hpp"
 #include "breakid.hpp"
 #include <arjun/arjun.h>
 #include "mpreal.h"
+#include "src/argparse.hpp"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -49,14 +49,20 @@ using CMSat::DimacsParser;
 #include <cfenv>
 #endif
 
-namespace po = boost::program_options;
+#define myopt(name, var, fun, hhelp) \
+    program.add_argument(name) \
+        .action([&](const auto& a) {var = std::fun(a.c_str());}) \
+        .default_value(var) \
+        .help(hhelp)
+#define myopt2(name1, name2, var, fun, hhelp) \
+    program.add_argument(name1, name2) \
+        .action([&](const auto& a) {var = std::fun(a.c_str());}) \
+        .default_value(var) \
+        .help(hhelp)
+
 using std::string;
 using std::vector;
-po::options_description main_options = po::options_description("Main options");
-po::options_description restart_options = po::options_description("Restart options");
-po::options_description help_options;
-po::variables_map vm;
-po::positional_options_description p;
+argparse::ArgumentParser program = argparse::ArgumentParser("approxmc");
 
 using namespace std;
 CounterConfiguration conf;
@@ -82,7 +88,7 @@ int do_precise = 1;
 int do_backbone_only_optindep = 0;
 int arjun_oracle_find_bins = 0;
 
-string ganak_version_info()
+string print_version()
 {
     std::stringstream ss;
     ss << "c o GANAK SHA revision " << GANAK::get_version_sha1() << endl;
@@ -107,204 +113,113 @@ void add_ganak_options()
     std::ostringstream my_delta;
     my_delta << std::setprecision(8) << conf.delta;
 
-    main_options.add_options()
-    ("help,h", "Prints help")
-    ("input", po::value< vector<string> >(), "file(s) to read")
-    ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verb")
-    ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
-    ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str()), "Delta")
-    ("arjun", po::value(&do_arjun)->default_value(do_arjun), "Use arjun")
-    ("arjunverb", po::value(&arjun_verb)->default_value(arjun_verb), "Arjun verb")
-    ("arjungates", po::value(&arjun_gates)->default_value(arjun_gates), "Use arjun's gate detection")
-    ("arjunextend", po::value(&do_extend_indep)->default_value(do_extend_indep), "Extend indep via Arjun's extend system")
-    ("arjunextendmaxconfl", po::value(&arjun_extend_max_confl)->default_value(arjun_extend_max_confl), "Max number of conflicts per extend operation in Arjun")
-    ("backbone", po::value(&do_backbone)->default_value(do_backbone), "Perform backbone")
-    ("backbonepuura", po::value(&simp_conf.do_backbone_puura)->default_value(simp_conf.do_backbone_puura), "Perform backbone in Puura")
-    ("arjunprobe", po::value(&do_probe_based)->default_value(do_probe_based), "Probe based arjun")
-    ("backboneonlyoptind", po::value(&do_backbone_only_optindep)->default_value(do_backbone_only_optindep), "Backbone only over the opt indep set")
-    ("arjunsimplev", po::value(&arjun_simp_level)->default_value(arjun_simp_level), "Arjun simp level")
-    ("arjunbackwmaxc", po::value(&arjun_backw_maxc)->default_value(arjun_backw_maxc), "Arjun backw max confl")
-    ("arjunoraclefindbins", po::value(&arjun_oracle_find_bins)->default_value(arjun_oracle_find_bins), "Arjun's oracle should find bins or not")
-    ("allindep", po::value(&all_indep)->default_value(all_indep), "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.")
-    ("td", po::value(&conf.do_td)->default_value(conf.do_td), "Run TD decompose")
-    ("tdmaxw", po::value(&conf.td_maxweight)->default_value(conf.td_maxweight), "TD max weight")
-    ("tdminw", po::value(&conf.td_minweight)->default_value(conf.td_minweight), "TD min weight")
-    ("tddiv", po::value(&conf.td_divider)->default_value(conf.td_divider), "TD divider")
-    ("tdweighted", po::value(&conf.do_td_weight)->default_value(conf.do_td_weight), "TD weight enabled")
-    ("tdexpmult", po::value(&conf.td_exp_mult)->default_value(conf.td_exp_mult), "TD exponential multiplier")
-    ("tdcheckagainstind", po::value(&conf.do_check_td_vs_ind)->default_value(conf.do_check_td_vs_ind), "Check TD against indep size")
-    ("tditers", po::value(&conf.td_iters)->default_value(conf.td_iters), "TD flowcutter iterations (restarts)")
-    ("tdsteps", po::value(&conf.td_steps)->default_value(conf.td_steps), "TD flowcutter number of steps at most")
-    ("tdlook", po::value(&conf.td_lookahead)->default_value(conf.td_lookahead), "Dec level cutoff for TD lookahead, -1 means never")
-    ("tdlooktwcut", po::value(&conf.td_lookahead_tw_cutoff)->default_value(conf.td_lookahead_tw_cutoff), "TD lookahead only when TW of current comp is larger than this value")
-    ("tdlookiters", po::value(&conf.td_lookahead_iters)->default_value(conf.td_lookahead_iters), "TD lookahead iterations")
-    ("tdlookonlyweight", po::value(&conf.td_look_only_weight)->default_value(conf.td_look_only_weight), "TD lookahead ONLY update weights")
-
-    ("rdbclstarget", po::value(&conf.rdb_cls_target)->default_value(conf.rdb_cls_target), "RDB clauses target size (added to this are LBD 3 or lower)")
-    ("rdbeveryn", po::value(&conf.reduce_db_everyN)->default_value(conf.reduce_db_everyN), "Reduce the clause DB every N conflicts")
-    ("rdbkeepused", po::value(&conf.rdb_keep_used)->default_value(conf.rdb_keep_used), "RDB keeps clauses that are used")
-    ("consolidateeveryn", po::value(&conf.consolidate_every_n)->default_value(conf.consolidate_every_n), "Consolidate every N learnt clause")
-    ("lbd", po::value(&conf.base_lbd_cutoff)->default_value(conf.base_lbd_cutoff), "Initial LBD cutoff")
-    ("updatelbdcutoff", po::value(&conf.update_lbd_cutoff)->default_value(conf.update_lbd_cutoff), "Update lbd cutoff")
-    ("totusedcutoffvivif", po::value(&conf.tot_used_cutoff_vivif)->default_value(conf.tot_used_cutoff_vivif), "Total used vivif cutoff")
-    ("totalusedcutoff2", po::value(&conf.total_used_cutoff2)->default_value(conf.total_used_cutoff2), "Total used lock-in cutoff")
-
-    ("bce", po::value(&do_bce)->default_value(do_bce), "Do BCE")
-    ("cache", po::value(&conf.do_use_cache)->default_value(conf.do_use_cache), "Use (i.e. store and retrieve) cache")
-    ("maxcache", po::value(&conf.maximum_cache_size_MB)->default_value(conf.maximum_cache_size_MB), "Max cache size in MB. 0 == use 80% of free mem")
-    ("actexp", po::value(&conf.act_exp)->default_value(conf.act_exp), "Probabilistic Comp Caching")
-    ("version", "Print version info")
-    ("alluipincact", po::value(&conf.alluip_inc_act)->default_value(conf.alluip_inc_act), "All UIP should increase activities")
-    ("polar", po::value(&conf.polar_type)->default_value(conf.polar_type),
-     "Use polarity cache. Otherwise, false default polar.")
-    ("vivif", po::value(&conf.do_vivify)->default_value(conf.do_vivify), "Vivify clauses")
-    ("vivifevery", po::value(&conf.vivif_every)->default_value(conf.vivif_every), "Vivify every N conflicts")
-    ("vivifmult", po::value(&conf.vivif_mult)->default_value(conf.vivif_mult), "How much to multiply timeout for vivif")
-    ("vivifoutern", po::value(&conf.vivif_outer_every_n)->default_value(conf.vivif_outer_every_n), "How many restarts between outer vivif")
-
-    ("buddy", po::value(&conf.do_buddy)->default_value(conf.do_buddy), "Run BuDDy")
-    ("decide", po::value(&conf.decide)->default_value(conf.decide), "Decision type. 0 = sstd-inspired, 1 = gpmc-inspired")
-    ("cachetime", po::value(&conf.cache_time_update)->default_value(conf.cache_time_update), "Cache score update type. 0 = standard, 1 = set tp new point, 2 = set to mid-point")
-    ("cacherevsort", po::value(&conf.do_cache_reverse_sort)->default_value(conf.do_cache_reverse_sort), "Cache score reverse sort")
-    ("sbva", po::value(&sbva_steps)->default_value(sbva_steps), "SBVA steps. 0 = no SBVA")
-    ("sbvaclcut", po::value(&sbva_cls_cutoff)->default_value(sbva_cls_cutoff), "SBVA cls cutoff")
-    ("sbvalitcut", po::value(&sbva_lits_cutoff)->default_value(sbva_lits_cutoff), "SBVA lits cutoff")
-    ("sbvabreak", po::value(&sbva_tiebreak)->default_value(sbva_tiebreak), "SBVA tie breaking. 0 = old, 1 = sbva")
-    ("bveresolvmaxsz", po::value(&simp_conf.bve_too_large_resolvent)->default_value(simp_conf.bve_too_large_resolvent), "Puura BVE max resolvent size in literals. -1 == no limit")
-    ("bvegrowiter1", po::value(&simp_conf.bve_grow_iter1)->default_value(simp_conf.bve_grow_iter1), "Puura BVE growth allowance iter1")
-    ("bvegrowiter2", po::value(&simp_conf.bve_grow_iter2)->default_value(simp_conf.bve_grow_iter2), "Puura BVE growth allowance iter2")
-    ("extraoracle", po::value(&simp_conf.oracle_extra)->default_value(simp_conf.oracle_extra), "Extra oracle at the end of puura")
-    ("resolvsub", po::value(&simp_conf.do_subs_with_resolvent_clauses)->default_value(simp_conf.do_subs_with_resolvent_clauses), "Extra oracle at the end of puura")
-    ("arjunoraclegetlearnt", po::value(&simp_conf.oracle_vivify_get_learnts)->default_value(simp_conf.oracle_vivify_get_learnts), "Arjun's oracle should get learnts")
-
-    ("buddymaxcls", po::value(&conf.buddy_max_cls)->default_value(conf.buddy_max_cls), "Run BuDDy")
-    ("compsort", po::value(&conf.do_comp_sort)->default_value(conf.do_comp_sort), "Sort components in different order")
-    ("varfreqdiv", po::value(&conf.var_freq_divider)->default_value(conf.var_freq_divider), "Var freq divider in score_of")
-    ("initact", po::value(&conf.do_init_activity_scores)->default_value(conf.do_init_activity_scores), "Init activity scores to var freq")
-    ("vsadsadjust", po::value(&conf.vsads_readjust_every)->default_value(conf.vsads_readjust_every), "VSADS ajust activity every N")
-    ("satrstmult", po::value(&conf.sat_restart_mult)->default_value(conf.sat_restart_mult), "SAT restart multiplier")
-    ("precise", po::value(&do_precise)->default_value(do_precise), "Use mpq, not so-called 'infinite' precision foats (that are far from infinite precision)")
-    ;
-
-    restart_options.add_options()
-    ("rstfirst", po::value(&conf.first_restart)->default_value(conf.first_restart), "Run restarts")
-
-    ("restart", po::value(&conf.do_restart)->default_value(conf.do_restart), "Run restarts")
-    ("rsttype", po::value(&conf.restart_type)->default_value(conf.restart_type), "Check count at every step")
-    ("rstcutoff", po::value(&conf.restart_cutoff_mult)->default_value(conf.restart_cutoff_mult), "Multiply cutoff with this")
-    ("rstcheckcnt", po::value(&conf.do_cube_check_count)->default_value(conf.do_cube_check_count), "Check the count of each cube")
-    ("rstreadjust", po::value(&conf.do_readjust_for_restart)->default_value(conf.do_readjust_for_restart), "Readjust params for restart")
-    ("breakid", po::value(&do_breakid)->default_value(do_breakid), "Enable BreakID")
-    ("appmct", po::value(&conf.appmc_timeout)->default_value(conf.appmc_timeout), "Enable AppMC restart, after K seconds")
-    ("epsilon", po::value(&conf.appmc_epsilon)->default_value(conf.appmc_epsilon), "AppMC epsilon")
-    ("maxrst", po::value(&conf.max_num_rst)->default_value(conf.max_num_rst), "Max number of restarts")
-    ("debugarjuncnf", po::value(&debug_arjun_cnf), "Write debug arjun CNF into this file")
-    ;
-
-    help_options.add(main_options);
-    help_options.add(restart_options);
+    myopt2("-v", "--verb", conf.verb, atoi, "Verbosity");
+    myopt2("-s", "--seed", conf.seed, atoi, "Seed");
+    program.add_argument("-v", "--version") \
+        .action([&](const auto&) {print_version(); exit(0);}) \
+        .flag()
+        .help("Print version and exit");
+    myopt("--delta", conf.delta, atoi, "Delta");
+    myopt("--arjun", do_arjun, atoi, "Use arjun");
+    myopt("--arjunverb", arjun_verb, atoi, "Arjun verb");
+    myopt("--arjungates", arjun_gates, atoi, "Use arjun's gate detection");
+    myopt("--arjunextend", do_extend_indep, atoi, "Extend indep via Arjun's extend system");
+    myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
+    myopt("--backbone", do_backbone, atoi, "Perform backbone");
+    myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
+    myopt("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
+    myopt("--backboneonlyoptind", do_backbone_only_optindep, atoi, "Backbone only over the opt indep set");
+    myopt("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
+    myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
+    myopt("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
+    myopt("--allindep", all_indep, atoi, "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.");
+    myopt("--td", conf.do_td, atoi, "Run TD decompose");
+    myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
+    myopt("--tdminw", conf.td_minweight, atof, "TD min weight");
+    myopt("--tddiv", conf.td_divider, atof, "TD divider");
+    myopt("--tdweighted", conf.do_td_weight, atof, "TD weight enabled");
+    myopt("--tdexpmult", conf.td_exp_mult, atof, "TD exponential multiplier");
+    myopt("--tdcheckagainstind", conf.do_check_td_vs_ind, atoi, "Check TD against indep size");
+    myopt("--tditers", conf.td_iters, atoi, "TD flowcutter iterations (restarts)");
+    myopt("--tdsteps", conf.td_steps, atoll, "TD flowcutter number of steps at most");
+    myopt("--tdlook", conf.td_lookahead, atoi, "-1 means never");
+    myopt("--tdlooktwcut", conf.td_lookahead_tw_cutoff, atoi, "TD lookahead only when TW of current comp is larger than this value");
+    myopt("--tdlookiters", conf.td_lookahead_iters, atoi, "TD lookahead iterations");
+    myopt("--tdlookonlyweight", conf.td_look_only_weight, atoi, "TD lookahead ONLY update weights");
+//
+    myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");
+    myopt("--rdbeveryn", conf.reduce_db_everyN, atoi, "Reduce the clause DB every N conflicts");
+    myopt("--rdbkeepused", conf.rdb_keep_used, atoi, "RDB keeps clauses that are used");
+    myopt("--consolidateeveryn", conf.consolidate_every_n, atoi, "Consolidate every N learnt clause");
+    myopt("--lbd", conf.base_lbd_cutoff, atoi, "Initial LBD cutoff");
+    myopt("--updatelbdcutoff", conf.update_lbd_cutoff, atoi, "Update lbd cutoff");
+    myopt("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, atoi, "Total used vivif cutoff");
+    myopt("--totalusedcutoff2", conf.total_used_cutoff2, atoi, "Total used lock-in cutoff");
+//
+    myopt("--bce", do_bce, atoi, "Do BCE");
+    myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
+    myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB. 0 == use 80% of free mem");
+    myopt("--actexp", conf.act_exp, atof, "Probabilistic Comp Caching");
+    myopt("--alluipincact", conf.alluip_inc_act, atoi, "All UIP should increase activities");
+    myopt("--polar", conf.polar_type, atoi, "Use polarity cache. Otherwise, false default polar");
+    myopt("--vivif", conf.do_vivify, atoi, "Vivify clauses");
+    myopt("--vivifevery", conf.vivif_every, atoi, "Vivify every N conflicts");
+    myopt("--vivifmult", conf.vivif_mult, atof, "How much to multiply timeout for vivif");
+    myopt("--vivifoutern", conf.vivif_outer_every_n, atoi, "How many restarts between outer vivif");
+//
+    myopt("--buddy", conf.do_buddy, atoi, "Run BuDDy");
+    myopt("--decide", conf.decide, atoi, "1 = gpmc-inspired");
+    myopt("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
+    myopt("--cacherevsort", conf.do_cache_reverse_sort, atoi, "Cache score reverse sort");
+    myopt("--sbva", sbva_steps, atoi, "SBVA steps. 0 = no SBVA");
+    myopt("--sbvaclcut", sbva_cls_cutoff, atoi, "SBVA cls cutoff");
+    myopt("--sbvalitcut", sbva_lits_cutoff, atoi, "SBVA lits cutoff");
+    myopt("--sbvabreak", sbva_tiebreak, atoi, "1 = sbva");
+    myopt("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
+    myopt("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
+    myopt("--bvegrowiter2", simp_conf.bve_grow_iter2, atoi, "Puura BVE growth allowance iter2");
+    myopt("--extraoracle", simp_conf.oracle_extra, atoi, "Extra oracle at the end of puura");
+    myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Extra oracle at the end of puura");
+    myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
+//
+    myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
+    myopt("--compsort", conf.do_comp_sort, atoi, "Sort components in different order");
+    myopt("--varfreqdiv", conf.var_freq_divider, atof, "Var freq divider in score_of");
+    myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
+    myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
+    myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
+    myopt("--precise", do_precise, atoi, "If set to 0, we use so-called 'infinite' precision foats that are far from infinite precision and can give nonsense results. Apparently acceptable by the model counting competition (why? how? what?)");
+//
+    myopt("--rstfirst", conf.first_restart, atoll, "Run restarts");
+    myopt("--restart", conf.do_restart, atoi, "Run restarts");
+    myopt("--rsttype", conf.restart_type, atoi, "Check count at every step");
+    myopt("--rstcutoff", conf.restart_cutoff_mult, atof, "Multiply cutoff with this");
+    myopt("--rstcheckcnt", conf.do_cube_check_count, atoi, "Check the count of each cube");
+    myopt("--rstreadjust", conf.do_readjust_for_restart, atoi, "Readjust params for restart");
+    myopt("--breakid", do_breakid, atoi, "Enable BreakID");
+    myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
+    myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
+    myopt("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
+    myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
+    program.add_argument("inputfile").remaining().help("input CNF");
 }
 
 void parse_supported_options(int argc, char** argv)
 {
     add_ganak_options();
-    p.add("input", 1);
-
     try {
-        po::store(po::command_line_parser(argc, argv).options(help_options).positional(p).run(), vm);
-        if (vm.count("help"))
-        {
-            cout
-            << "Approx/Exact counter" << endl;
-
-            cout
-            << "Usage: ./ganak [options] inputfile" << endl;
-
-            cout << help_options << endl;
-            std::exit(0);
+        program.parse_args(argc, argv);
+        if (program.is_used("--help")) {
+            cout << "Probilistic Approcimate Counter" << endl << endl
+            << "approxmc [options] inputfile" << endl;
+            cout << program << endl;
+            exit(0);
         }
-
-        if (vm.count("version")) {
-            cout << ganak_version_info() << endl;
-            std::exit(0);
-        }
-
-        po::notify(vm);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::unknown_option> >& c
-    ) {
-        cerr
-        << "ERROR: Some option you gave was wrong. Please give '--help' to get help" << endl
-        << "       Unknown option: " << c.what() << endl;
-        std::exit(-1);
-    } catch (boost::bad_any_cast &e) {
-        std::cerr
-        << "ERROR! You probably gave a wrong argument type" << endl
-        << "       Bad cast: " << e.what()
-        << endl;
-
-        std::exit(-1);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::invalid_option_value> >& what
-    ) {
-        cerr
-        << "ERROR: Invalid value '" << what.what() << "'" << endl
-        << "       given to option '" << what.get_option_name() << "'"
-        << endl;
-
-        std::exit(-1);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::multiple_occurrences> >& what
-    ) {
-        cerr
-        << "ERROR: " << what.what() << " of option '"
-        << what.get_option_name() << "'"
-        << endl;
-
-        std::exit(-1);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::required_option> >& what
-    ) {
-        cerr
-        << "ERROR: You forgot to give a required option '"
-        << what.get_option_name() << "'"
-        << endl;
-
-        std::exit(-1);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::too_many_positional_options_error> >& what
-    ) {
-        cerr
-        << "ERROR: You gave too many positional arguments. Only the input CNF can be given as a positional option." << endl;
-        std::exit(-1);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::ambiguous_option> >& what
-    ) {
-        cerr
-        << "ERROR: The option you gave was not fully written and matches" << endl
-        << "       more than one option. Please give the full option name." << endl
-        << "       The option you gave: '" << what.get_option_name() << "'" <<endl
-        << "       The alternatives are: ";
-        for(size_t i = 0; i < what.alternatives().size(); i++) {
-            cout << what.alternatives()[i];
-            if (i+1 < what.alternatives().size()) {
-                cout << ", ";
-            }
-        }
-        cout << endl;
-
-        std::exit(-1);
-    } catch (boost::exception_detail::clone_impl<
-        boost::exception_detail::error_info_injector<po::invalid_command_line_syntax> >& what
-    ) {
-        cerr
-        << "ERROR: The option you gave is missing the argument or the" << endl
-        << "       argument is given with space between the equal sign." << endl
-        << "       detailed error message: " << what.what() << endl
-        ;
-        std::exit(-1);
     }
-
+    catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        exit(-1);
+    }
 }
 
 template<class T> void parse_file(const std::string& filename, T* reader) {
@@ -528,24 +443,23 @@ int main(int argc, char *argv[])
   }
   parse_supported_options(argc, argv);
   if (conf.verb) {
-    cout << ganak_version_info() << endl;
+    cout << print_version() << endl;
     cout << "c o called with: " << command_line << endl;
   }
 
   string fname;
-  if (vm.count("input") != 0) {
-    vector<string> inp = vm["input"].as<vector<string> >();
-    if (inp.size() > 1) {
-        cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
-        exit(-1);
-    }
-    fname = inp[0];
-  } else {
+
+  auto files = program.get<std::vector<std::string>>("inputfile");
+  if (files.empty()) {
     // TODO read stdin, once we are a library.
     cout << "ERROR: must give input file to read" << endl;
     exit(-1);
   }
-
+  if (files.size() > 1) {
+      cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
+      exit(-1);
+  }
+  fname = files[0];
   ArjunNS::SimplifiedCNF cnf;
   parse_file(fname, &cnf);
   if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();

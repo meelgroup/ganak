@@ -24,8 +24,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/)
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
-include_directories(${LOUVAIN_COMMUNITIES_INCLUDE_DIRS})
-include_directories(${Boost_INCLUDE_DIRS})
 include_directories( ${GMP_INCLUDE_DIR} )
 include_directories( ${MPFR_INCLUDE_DIR} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
@@ -93,7 +91,6 @@ add_executable (ganak-bin main.cpp)
 
 set(ganak_exec_link_libs
   ganak
-  ${Boost_LIBRARIES} # due to program_options
 )
 
 IF (ZLIB_FOUND)

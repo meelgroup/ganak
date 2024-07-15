@@ -20,9 +20,6 @@
 
 cmake_minimum_required (VERSION 3.10 FATAL_ERROR)
 
-enable_language( CXX )
-enable_language( C )
-
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 20)
@@ -53,8 +50,9 @@ if(POLICY CMP0104)
     cmake_policy(SET CMP0104 NEW)
 endif()
 
-
 project (ganak) 
+enable_language( CXX )
+enable_language( C )
 
 # -----------------------------------------------------------------------------
 # Make RelWithDebInfo the default build type if otherwise not set

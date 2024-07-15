@@ -88,6 +88,7 @@ set_target_properties(ganak PROPERTIES
 )
 
 add_executable (ganak-bin main.cpp)
+add_executable (example example.cpp)
 
 set(ganak_exec_link_libs
   ganak
@@ -98,6 +99,7 @@ IF (ZLIB_FOUND)
 ENDIF()
 
 target_link_libraries(ganak-bin ${ganak_exec_link_libs})
+target_link_libraries(example ganak)
 
 if (NOT WIN32)
     set_target_properties(ganak-bin PROPERTIES

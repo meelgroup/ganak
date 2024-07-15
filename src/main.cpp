@@ -62,7 +62,7 @@ using CMSat::DimacsParser;
 
 using std::string;
 using std::vector;
-argparse::ArgumentParser program = argparse::ArgumentParser("approxmc");
+argparse::ArgumentParser program = argparse::ArgumentParser("ganak");
 
 using namespace std;
 CounterConfiguration conf;

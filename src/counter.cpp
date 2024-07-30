@@ -932,10 +932,11 @@ bool Counter<T>::chrono_work() {
   VERBOSE_DEBUG_DO(print_trail());
   auto data = find_conflict_level(confl_lit);
   if (data.bOnlyOneLitFromHighest) {
-    debug_print("ChronoBT. going back to " << data.nHighestLevel-1 << " curlev: " << decision_level());
+    debug_print(COLYEL2  << __func__ << " -- going back to " << data.nHighestLevel-1
+        << " curlev: " << decision_level());
     go_back_to(data.nHighestLevel-1);
     VERBOSE_DEBUG_DO(print_trail());
-    debug_print("now Dec lev: " << decision_level());
+    debug_print(COLYEL2  << __func__ << " went back -- now Declev: " << decision_level());
     return true;
   }
   return false;
@@ -2885,7 +2886,7 @@ Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
   Lit* c;
   uint32_t size;
   fill_cl(confl, c, size, p);
-  VERBOSE_DEBUG_DO(cout << "CL in find_conflict_level: " << endl;print_cl(c, size));
+  VERBOSE_DEBUG_DO(cout << "CL in find_conflict_level " << confl << " : " << endl;print_cl(c, size));
   data.nHighestLevel = var(c[0]).decision_level;
   if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
     return data;

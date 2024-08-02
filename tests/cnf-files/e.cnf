@@ -1,0 +1,7 @@
+c c RUN: %solver %s | %OutputCheck %s
+p cnf 1 1
+c t wmc
+1 0
+c p weight 1 -12 0
+c c CHECK: ^s SATISFIABLE$
+c c CHECK: ^c s exact arb float -1.20*E\+01$

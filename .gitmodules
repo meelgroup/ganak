@@ -1,0 +1,4 @@
+[submodule "tests/OutputCheck"]
+    path = tests/OutputCheck
+    url = https://github.com/msoos/OutputCheck.git
+    branch = fix-filetype

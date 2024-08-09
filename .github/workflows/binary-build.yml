@@ -59,6 +59,18 @@ jobs:
         make -j8
         sudo make install
         cd ..
+    
+    - name: Install gmp for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get install libgmp-dev
+        # wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+        # tar xf gmp-6.3.0.tar.xz
+        # cd gmp-6.3.0
+        # ./configure --enable-static -enable-cxx --enable-shared
+        # make -j8
+        # sudo make install
+        # cd ..
       
     - name: Checkout Cadical
       uses: actions/checkout@v4

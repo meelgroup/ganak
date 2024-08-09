@@ -105,7 +105,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/cryptominisat
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.BUILD_TOKEN }}
         ref: synthesis
         path: cryptominisat
         submodules: 'true'
@@ -141,7 +141,7 @@ jobs:
         repository: meelgroup/approxmc-private
         ref: synthesis
         path: approxmc
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.BUILD_TOKEN }}
     - name: Build approxmc
       run: |
         cd approxmc

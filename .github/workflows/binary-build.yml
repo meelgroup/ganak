@@ -47,6 +47,113 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install gmp for Mac
+      if: matrix.os == 'macos-13'
+      run: | 
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install cmake
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install zlib
+        wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+        tar xf gmp-6.3.0.tar.xz
+        cd gmp-6.3.0
+        ./configure --enable-static -enable-cxx --enable-shared
+        make -j8
+        sudo make install
+        cd ..
+      
+    - name: Checkout Cadical
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/cadical
+        ref: add_dynamic_lib
+        path: cadical
+        
+    - name: Build Cadical
+      run: |
+        cd cadical
+        CXXFLAGS=-fPIC ./configure --competition
+        make -j8
+        cd ..
+
+    - name: Checkout Cadiback
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/cadiback
+        ref: synthesis
+        path: cadiback
+        
+    - name: Build Cadiback
+      run: |
+        cd cadiback
+        CXX=c++ ./configure
+        make -j8
+        cd ..
+    
+    - name: Checkout breakid
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/breakid
+        ref: master
+        path: breakid
+        
+    - name: Build Breakid
+      run: |
+        cd breakid
+        mkdir build
+        cd build
+        ln -s ../scripts/*.sh .
+        ./build_norm.sh
+        cd ../../
+
+    - name: Checkout CMS
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/cryptominisat
+        ref: synthesis
+        path: cryptominisat
+        with:
+          submodules: 'true'
+        
+    - name: Build CMS
+      run: |
+        cd cryptominisat
+        mkdir build
+        cd build
+        ln -s ../scripts/build_scripts/*.sh .
+        ./build_norm.sh
+        cd ../..
+
+    - name: Checkout SBVA
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/SBVA
+        ref: master
+        path: sbva
+        
+    - name: Build SBVA
+      run: |
+        cd sbva
+        mkdir build
+        cd build
+        ln -s ../scripts/*.sh .
+        ./build_norm.sh
+        cd ../..
+    
+    - name: Checkout approxmc
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/approxmc-private
+        ref: synthesis
+        path: approxmc
+        
+    - name: Build approxmc
+      run: |
+        cd approxmc
+        mkdir build
+        cd build
+        ln -s ../scripts/build_scripts/*.sh .
+        ./build_norm.sh
+        cd ../..
+
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings

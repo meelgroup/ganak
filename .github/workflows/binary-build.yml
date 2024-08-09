@@ -61,7 +61,7 @@ jobs:
         cd ..
       
     - name: Checkout Cadical
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/cadical
         ref: add_dynamic_lib
@@ -75,7 +75,7 @@ jobs:
         cd ..
 
     - name: Checkout Cadiback
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/cadiback
         ref: synthesis
@@ -89,7 +89,7 @@ jobs:
         cd ..
     
     - name: Checkout breakid
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/breakid
         ref: master
@@ -105,13 +105,12 @@ jobs:
         cd ../../
 
     - name: Checkout CMS
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/cryptominisat
         ref: synthesis
         path: cryptominisat
-        with:
-          submodules: 'true'
+        submodules: 'true'
         
     - name: Build CMS
       run: |
@@ -123,7 +122,7 @@ jobs:
         cd ../..
 
     - name: Checkout SBVA
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/SBVA
         ref: master
@@ -139,7 +138,7 @@ jobs:
         cd ../..
     
     - name: Checkout approxmc
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/approxmc-private
         ref: synthesis

@@ -134,7 +134,7 @@ jobs:
         mkdir build
         cd build
         ln -s ../scripts/build_scripts/*.sh .
-        ./build_verbose.sh
+        ./build_norm.sh
         cd ../..
 
     - name: Checkout SBVA
@@ -147,6 +147,22 @@ jobs:
     - name: Build SBVA
       run: |
         cd sbva
+        mkdir build
+        cd build
+        ln -s ../scripts/*.sh .
+        ./build_norm.sh
+        cd ../..
+
+    - name: Checkout arjun
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/arjun-private
+        ref: synthesis
+        path: arjun
+        token: ${{ secrets.BUILD_TOKEN }}
+    - name: Build arjun
+      run: |
+        cd arjun
         mkdir build
         cd build
         ln -s ../scripts/*.sh .

@@ -26,10 +26,6 @@ THE SOFTWARE.
 #include "mpreal.h"
 #include <gmpxx.h>
 
-template class CompManager<mpz_class>;
-template class CompManager<mpfr::mpreal>;
-template class CompManager<mpq_class>;
-
 template<typename T>
 void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
@@ -115,3 +111,7 @@ void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
   top.set_unprocessed_comps_end(comp_stack.size());
   sortCompStackRange(new_comps_start_ofs, comp_stack.size());
 }
+
+template class CompManager<mpz_class>;
+template class CompManager<mpfr::mpreal>;
+template class CompManager<mpq_class>;

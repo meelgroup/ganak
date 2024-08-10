@@ -39,10 +39,6 @@ using std::endl;
 
 #define ALLOC_GROW_MULT 1.5
 
-template class ClauseAllocator<mpz_class>;
-template class ClauseAllocator<mpfr::mpreal>;
-template class ClauseAllocator<mpq_class>;
-
 template<typename T>
 void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {
   //Try to quickly find a place at the end of a data_start
@@ -255,3 +251,7 @@ size_t ClauseAllocator<T>::mem_used() const
 
   return mem;
 }
+
+template class ClauseAllocator<mpz_class>;
+template class ClauseAllocator<mpfr::mpreal>;
+template class ClauseAllocator<mpq_class>;

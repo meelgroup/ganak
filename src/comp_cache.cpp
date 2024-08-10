@@ -63,10 +63,6 @@ uint64_t freeram() {
 
 #include "stack.hpp"
 
-template class CompCache<mpz_class>;
-template class CompCache<mpfr::mpreal>;
-template class CompCache<mpq_class>;
-
 template<typename T>
 void CompCache<T>::test_descendantstree_consistency() {
   for (uint32_t id = 2; id < entry_base.size(); id++)
@@ -229,3 +225,7 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   }
   return len;
 }
+
+template class CompCache<mpz_class>;
+template class CompCache<mpfr::mpreal>;
+template class CompCache<mpq_class>;

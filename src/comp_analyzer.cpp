@@ -30,10 +30,6 @@ THE SOFTWARE.
 
 using std::make_pair;
 
-template class CompAnalyzer<mpz_class>;
-template class CompAnalyzer<mpfr::mpreal>;
-template class CompAnalyzer<mpq_class>;
-
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unif_occ and unif_occ_offs
 template<typename T>
@@ -243,3 +239,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
       << comp_vars.size() << " long");
 }
+
+template class CompAnalyzer<mpz_class>;
+template class CompAnalyzer<mpfr::mpreal>;
+template class CompAnalyzer<mpq_class>;

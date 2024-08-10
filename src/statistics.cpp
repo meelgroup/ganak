@@ -33,10 +33,6 @@ THE SOFTWARE.
 
 using std::setw;
 
-template class DataAndStatistics<mpz_class>;
-template class DataAndStatistics<mpfr::mpreal>;
-template class DataAndStatistics<mpq_class>;
-
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
@@ -176,3 +172,7 @@ void DataAndStatistics<T>::print_short_formula_info(const Counter<T>* counter) c
   verb_print(1, "irred cls long/bin: "
     << counter->get_num_irred_long_cls() << "/" << num_binary_irred_clauses_);
 }
+
+template class DataAndStatistics<mpz_class>;
+template class DataAndStatistics<mpfr::mpreal>;
+template class DataAndStatistics<mpq_class>;

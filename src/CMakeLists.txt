@@ -100,14 +100,7 @@ ENDIF()
 target_link_libraries(ganak-bin ${ganak_exec_link_libs})
 target_link_libraries(example ganak)
 
-if (NOT WIN32)
-    set_target_properties(ganak-bin PROPERTIES
-    OUTPUT_NAME ganak
-    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-    INSTALL_RPATH_USE_LINK_PATH TRUE)
-else()
-    set_target_properties(ganak-bin PROPERTIES
-    OUTPUT_NAME ganak-win
-    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-    INSTALL_RPATH_USE_LINK_PATH TRUE)
-endif()
+set_target_properties(ganak-bin PROPERTIES
+OUTPUT_NAME ganak
+RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+INSTALL_RPATH_USE_LINK_PATH TRUE)

@@ -46,10 +46,6 @@ THE SOFTWARE.
 using std::setw;
 using std::is_same;
 
-template class Counter<mpz_class>;
-template class Counter<mpfr::mpreal>;
-template class Counter<mpq_class>;
-
 void my_gbchandler(int pre, bddGbcStat *) {
    if (!pre) {
       /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
@@ -4216,3 +4212,7 @@ void Counter<T>::set_lit_weight(Lit l, const T& w) {
   weights[l.raw()] = w;
   if (w == 0) add_irred_cl({l.neg()});
 }
+
+template class Counter<mpz_class>;
+template class Counter<mpfr::mpreal>;
+template class Counter<mpq_class>;

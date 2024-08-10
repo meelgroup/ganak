@@ -125,9 +125,9 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/cryptominisat
-        token: ${{ secrets.BUILD_TOKEN }}
         ref: synthesis
         path: cryptominisat
+        token: ${{ secrets.BUILD_TOKEN }}
         submodules: 'true'
         
     - name: Build CMS
@@ -178,6 +178,7 @@ jobs:
         ref: synthesis
         path: approxmc
         token: ${{ secrets.BUILD_TOKEN }}
+        submodules: 'true'
     - name: Build approxmc
       run: |
         cd approxmc

@@ -136,7 +136,7 @@ jobs:
         mkdir build
         cd build
         ln -s ../scripts/build_scripts/*.sh .
-        ./build_norm.sh
+        ./build_verbose.sh
         cd ../..
 
     - name: Checkout SBVA

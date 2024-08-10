@@ -2881,7 +2881,7 @@ void Counter<T>::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p)
 }
 
 template<typename T>
-Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
+typename Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
   ConflictData data;
   Lit* c;
   uint32_t size;

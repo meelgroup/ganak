@@ -223,7 +223,7 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
   if (val.isNull()) {
     s << std::setw(5) << "DEC  " << std::setw(10) << "";
   } else if (val.isAClause()) {
-    s << "CL:  " << std::setw(10) << val.asCl();
+    s << "CL offs:  " << std::setw(10) << val.asCl();
   } else if (val.isALit()) {
     s << "Lit: " << std::setw(10) << val.asLit();
   } else {assert(false);}

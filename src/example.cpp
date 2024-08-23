@@ -33,7 +33,7 @@ int do_bce = 1;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
 int do_extend_indep = 1;
-int do_backbone = 0;
+int pre_backbone = 0;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
@@ -62,7 +62,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_verb(0);
-  if (do_backbone) arjun.only_backbone(cnf);
+  if (pre_backbone) arjun.only_backbone(cnf);
   arjun.only_run_minimize_indep(cnf);
   bool do_unate = false;
   assert(!all_indep);

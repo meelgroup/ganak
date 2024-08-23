@@ -78,7 +78,7 @@ int do_breakid = 0;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
 int do_extend_indep = 1;
-int do_backbone = 0;
+int do_pre_backbone = 0;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
@@ -126,7 +126,7 @@ void add_ganak_options()
     myopt("--arjungates", arjun_gates, atoi, "Use arjun's gate detection");
     myopt("--arjunextend", do_extend_indep, atoi, "Extend indep via Arjun's extend system");
     myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
-    myopt("--backbone", do_backbone, atoi, "Perform backbone");
+    myopt("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
     myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
     myopt("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
     myopt("--backboneonlyoptind", do_backbone_only_optindep, atoi, "Backbone only over the opt indep set");
@@ -358,7 +358,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backbone_only_optindep(do_backbone_only_optindep);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_mult(arjun_cms_mult);
-  if (do_backbone) arjun.only_backbone(cnf);
+  if (do_pre_backbone) arjun.only_backbone(cnf);
   arjun.only_run_minimize_indep(cnf);
   bool do_unate = false;
   arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);

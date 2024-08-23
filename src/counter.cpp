@@ -2098,10 +2098,9 @@ bool Counter<T>::clause_satisfied(const T2& cl) const {
 /* #define VERB_DEBUG_SAVED */
 
 template<typename T>
-template<uint32_t start>
 inline void Counter<T>::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind) {
   Clause& cl = *alloc->ptr(ofs);
-  for(auto i3 = start; i3 < cl.sz; i3++) {
+  for(uint32_t i3 = 2; i3 < cl.sz; i3++) {
     Lit l = cl[i3];
     int32_t nlev = var(l).decision_level;
     VERBOSE_DEBUG_DO(cout << "i3: " << i3 << " l : " << l << " var(l).decision_level: "
@@ -2902,15 +2901,15 @@ typename Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
   }
 
   // fixing clause & watchlist
-  if (highest_id != 1 && confl.isAClause()) {
+  if (highest_id != 0 && confl.isAClause()) {
     Clause& cl = *alloc->ptr(confl.asCl());
-    std::swap(cl[1], cl[highest_id]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
+    std::swap(cl[0], cl[highest_id]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
     debug_print("SWAPPED");
     VERBOSE_DEBUG_DO(print_cl(cl.data(), cl.size()));
     if (highest_id > 1 && size > 2) {
       ClauseOfs off = confl.asCl();
       watches[cl[highest_id]].del_c(off);
-      watches[c[1]].add_cl(off, c[0]);
+      watches[c[0]].add_cl(off, c[1]);
     }
   }
   return data;
@@ -2941,15 +2940,13 @@ void Counter<T>::create_uip_cl() {
         cl.set_used();
         /* cl.update_lbd(calc_lbd(cl)); */
       }
-      if (p == NOT_A_LIT) std::swap(c[0], c[1]);
-    } else if (confl.isALit()) {
-      if (p == NOT_A_LIT && var(c[0]).decision_level < var(c[1]).decision_level)
-        std::swap(c[0], c[1]);
     }
-    SLOW_DEBUG_DO(if (p == NOT_A_LIT) check_cl_unsat(c, size));
-
+    if (p == NOT_A_LIT) {
+      if (var(c[0]).decision_level < var(c[1]).decision_level) std::swap(c[0], c[1]);
+      n_dec_level = var(c[0]).decision_level;
+      SLOW_DEBUG_DO(check_cl_unsat(c, size));
+    }
     VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
-    if (p == NOT_A_LIT) n_dec_level = var(c[0]).decision_level;
     VERBOSE_DEBUG_DO(cout << "n_dec_level: " <<  n_dec_level << endl);
 
     VERBOSE_DEBUG_DO(cout << "For loop." << endl);

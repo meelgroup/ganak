@@ -439,7 +439,6 @@ private:
   // starts propagating all literal in trail_
   // beginning at offset start_at_trail_ofs
   bool propagate(bool out_of_order = false);
-  template<uint32_t start = 2>
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   bool check_watchlists() const;
   template<class T2> void check_cl_propagated_conflicted(T2& cl, uint32_t off = 0) const;

@@ -69,7 +69,7 @@ CounterConfiguration conf;
 int arjun_verb = 2;
 int do_arjun = 1;
 int arjun_gates = 1;
-int sbva_steps = 1000;
+int sbva_steps = 1;
 int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
@@ -108,9 +108,6 @@ string print_version()
 
 void add_ganak_options()
 {
-    // see out-ganak-6749880.pbs101-10
-    simp_conf.bve_too_large_resolvent = 120;
-
     std::ostringstream my_delta;
     my_delta << std::setprecision(8) << conf.delta;
 

@@ -46,7 +46,7 @@ struct CounterConfiguration {
   int do_cache_reverse_sort = 1;
 
   int decide = 0; // 0 = sstd, 1 = gpmc
-  uint32_t rdb_cls_target = 8000;
+  uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 0; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
 
@@ -77,11 +77,11 @@ struct CounterConfiguration {
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
-  double td_maxweight = 100.0; //4.0 is best for vsads_readjust_every = 0
-  double td_minweight = 15.0; //0.1 is best for vsads_readjust_every = 0
+  double td_maxweight = 60;
+  double td_minweight = 7;
   double td_divider = 1e3;
   double do_td_weight = 1;
-  double td_exp_mult = 1.2;
+  double td_exp_mult = 1.1;
   int do_check_td_vs_ind = 1;
   int64_t td_steps = 1e5;
   int td_iters = 900;

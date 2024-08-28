@@ -29,7 +29,3 @@ constexpr static uint32_t sentinel = 0;
 using ClauseIndex = uint32_t;
 using ClauseOfs = uint32_t;
 using CacheEntryID = uint32_t;
-
-enum SOLVER_StateT {
-  NO_STATE, SUCCESS, RESTART
-};

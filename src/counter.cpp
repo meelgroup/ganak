@@ -1153,7 +1153,7 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3.0;
-  freq_score = comp_manager->freq_score_of(v)/curr_var_freq_divider;
+  freq_score = comp_manager->freq_score_of(v)/25.0;
   double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << std::setw(4) << v
     << std::setw(3) << " conflK: " << stats.conflicts/1000
@@ -1473,10 +1473,8 @@ bool Counter<T>::restart_if_needed() {
   stats.num_restarts++;
 
   // Readjust
-  curr_var_freq_divider = conf.var_freq_divider;
   if (conf.do_readjust_for_restart) {
     conf.decide = stats.num_restarts%2;
-    curr_var_freq_divider =(stats.num_restarts%2 == 0) ? conf.var_freq_divider : 100;
     /* conf.polar_type = (stats.num_restarts % 5 == 3) ? (stats.num_restarts%4) : 0; */
   }
   verb_print(2, "[rst] new config. decide: " << conf.decide
@@ -1979,8 +1977,6 @@ RetState Counter<T>::resolve_conflict() {
     unit_clauses_.push_back(uip_clause[0]);
 
   assert(uip_clause.front() != NOT_A_LIT);
-  if (conf.vsads_readjust_every == 0)
-    act_inc *= 1.0/conf.act_exp;
 
   reduce_db_if_needed();
   VERBOSE_DEBUG_DO(print_conflict_info());
@@ -3879,7 +3875,6 @@ Counter<T>::Counter(const CounterConfiguration& _conf) :
     bdd_setvarnum(63);
     bdd_autoreorder(BDD_REORDER_NONE);
   }
-  curr_var_freq_divider = conf.var_freq_divider;
 }
 
 template<typename T>
@@ -3918,7 +3913,6 @@ void Counter<T>::simple_preprocess() {
 // TODO Yash we should do Jeroslow-Wang heuristic, i.e. 1/2 for binary, 1/3 for tertiary, etc.
 template<typename T>
 void Counter<T>::init_activity_scores() {
-  act_inc = 1.0;
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit l(x/2, x%2);
@@ -4016,14 +4010,12 @@ void Counter<T>::reduce_db() {
   else if (new_confls*8 > new_decs) target *= 1.5;
   else if (new_confls*16 > new_decs) target *= 1;
   else if (new_confls*32 > new_decs) target *= 0.8;
-  /* else if (new_confls*64 > new_decs) target *= 0.5; */
   else target *= 0.4;
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
     auto& h = *alloc->ptr(off);
     if (h.lbd <= lbd_cutoff) num_low_lbd_cls++;
-    /* else if (h.total_used >= conf.total_used_cutoff2) num_low_lbd_cls++; */
     else if (h.used) num_used_cls++;
 
     bool can_be_del = red_cl_can_be_deleted(off);

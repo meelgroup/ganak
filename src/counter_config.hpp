@@ -27,14 +27,12 @@ THE SOFTWARE.
 using std::string;
 
 struct CounterConfiguration {
-  double act_exp = 0.99;
   bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 20000U;
   double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 0;
-  double var_freq_divider = 25.0; //10 is best for vsads_readjust_every = 0
   int restart_type = 8;
   int do_readjust_for_restart = 1;
   int max_num_rst = -1;

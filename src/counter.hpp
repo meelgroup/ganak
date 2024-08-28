@@ -247,7 +247,6 @@ protected:
   vector<double> tdscore;
   double td_weight = 1.0;
   int td_width = 10000;
-  double act_inc = 1.0;
   uint32_t lbd_cutoff;
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
@@ -454,7 +453,6 @@ private:
   void check_cl_unsat(Lit* c, uint32_t size) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
-  double curr_var_freq_divider;
 
   // AppMC
   mpz_class do_appmc_count();
@@ -695,7 +693,7 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 // to each variable during analysis
 template<typename T>
 void inline Counter<T>::inc_act(const Lit lit) {
-  watches[lit].activity += act_inc;
+  watches[lit].activity += 1.0;
   if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
 }
 

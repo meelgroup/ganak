@@ -157,7 +157,6 @@ void add_ganak_options()
     myopt("--bce", do_bce, atoi, "Do BCE");
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
     myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB. 0 == use 80% of free mem");
-    myopt("--actexp", conf.act_exp, atof, "Probabilistic Comp Caching");
     myopt("--alluipincact", conf.alluip_inc_act, atoi, "All UIP should increase activities");
     myopt("--polar", conf.polar_type, atoi, "Use polarity cache. Otherwise, false default polar");
     myopt("--vivif", conf.do_vivify, atoi, "Vivify clauses");
@@ -181,7 +180,6 @@ void add_ganak_options()
 //
     myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
     myopt("--compsort", conf.do_comp_sort, atoi, "Sort components in different order");
-    myopt("--varfreqdiv", conf.var_freq_divider, atof, "Var freq divider in score_of");
     myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
     myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
     myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");

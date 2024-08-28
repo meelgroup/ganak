@@ -51,8 +51,6 @@ public:
     assert(time >= last_used_time_);
     last_used_time_ += (time-last_used_time_)/div;
   }
-  /* void set_dont_delete_before(const uint32_t time) { dont_delete_before = time; } */
-  /* uint32_t get_dont_delete_before() const { return dont_delete_before; } */
 
   void set_model_count(const T& rn) {
     assert(model_count_ == nullptr);

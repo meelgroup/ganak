@@ -1108,12 +1108,9 @@ bool Counter<T>::decide_lit() {
   uint32_t v = 0;
   isindependent = true;
   switch (conf.decide) {
-    case 0: v = find_best_branch(false);
-            break;
-    case 1: v = find_best_branch(true);
-            break;
-    default:
-            assert(false);
+    case 0: v = find_best_branch(false); break;
+    case 1: v = find_best_branch(true); break;
+    default: assert(false);
   }
   if (v == 0) {
     decisions.pop_back();

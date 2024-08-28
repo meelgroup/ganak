@@ -95,10 +95,6 @@ public:
           case 1: entry(act_id).set_last_used_time(my_time); break;
           case 2: entry(act_id).avg_last_used_time(my_time, 2); break;
           case 3: entry(act_id).avg_last_used_time(my_time, 3); break;
-          /* case 5: entry(act_id).set_dont_delete_before(my_time+1e5); break; */
-          /* case 6: entry(act_id).set_dont_delete_before(my_time+1e6); break; */
-          /* case 7: entry(act_id).set_dont_delete_before(my_time+1e7); break; */
-          /* case 8: entry(act_id).set_dont_delete_before(my_time+1e8); break; */
           default: release_assert(false);
         }
         debug_print(COLYEL2 << "Cache hit. cache ID: " << act_id);

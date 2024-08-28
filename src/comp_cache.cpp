@@ -34,10 +34,8 @@ THE SOFTWARE.
 #include <cstdint>
 
 uint64_t freeram() {
-
   struct sysinfo info;
   sysinfo(&info);
-
   return info.freeram *(uint64_t) info.mem_unit;
 }
 
@@ -92,13 +90,10 @@ double CompCache<T>::calc_cutoff() const {
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
-    if (!it->is_free() && it->is_deletable()) {
-      scores.push_back(it->last_used_time());
-    }
+    if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
   if (scores.empty()){
     cout<< "c ERROR Memory out!"<<endl;
     exit(-1);
-    assert(!scores.empty());
   }
   verb_print(1, "deletable:           " << scores.size());
   sort(scores.begin(), scores.end());
@@ -118,11 +113,8 @@ bool CompCache<T>::delete_some_entries() {
   uint64_t tot = 0;
   int64_t num = 0;
   for (uint32_t id = 2; id < entry_base.size(); id++)
-    if (!entry_base[id].is_free() &&
-        entry_base[id].is_deletable() &&
-        /* entry_base[id].get_dont_delete_before() < my_time && */
-        ((!conf.do_cache_reverse_sort && entry_base[id].last_used_time() <= cutoff)
-         || (conf.do_cache_reverse_sort && entry_base[id].last_used_time() >= cutoff))) {
+    if (!entry_base[id].is_free() && entry_base[id].is_deletable() &&
+        entry_base[id].last_used_time() >= cutoff) {
       tot += unlink_from_tree(id);
       num++;
       erase(id); // Note: no need to incorporate erase, we recompute bignum bytes below

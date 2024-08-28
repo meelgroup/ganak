@@ -168,7 +168,6 @@ void add_ganak_options()
     myopt("--buddy", conf.do_buddy, atoi, "Run BuDDy");
     myopt("--decide", conf.decide, atoi, "1 = gpmc-inspired");
     myopt("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
-    myopt("--cacherevsort", conf.do_cache_reverse_sort, atoi, "Cache score reverse sort");
     myopt("--sbva", sbva_steps, atoi, "SBVA steps. 0 = no SBVA");
     myopt("--sbvaclcut", sbva_cls_cutoff, atoi, "SBVA cls cutoff");
     myopt("--sbvalitcut", sbva_lits_cutoff, atoi, "SBVA lits cutoff");

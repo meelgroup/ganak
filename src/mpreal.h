@@ -2195,13 +2195,13 @@ inline mp_exp_t mpreal::get_emax_max (void)
 #define MPREAL_UNARY_MATH_FUNCTION_BODY(f)                    \
         mpreal y(0, mpfr_get_prec(x.mpfr_srcptr()));          \
         mpfr_##f(y.mpfr_ptr(), x.mpfr_srcptr(), r);           \
-        return y;
+        return y
 
 // Binary function template with 'mpreal' and 'unsigned long' arguments
 #define MPREAL_BINARY_MATH_FUNCTION_UI_BODY(f, u)             \
         mpreal y(0, mpfr_get_prec(x.mpfr_srcptr()));          \
         mpfr_##f(y.mpfr_ptr(), x.mpfr_srcptr(), u, r);        \
-        return y;
+        return y
 
 inline const mpreal sqr  (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd())
 {   MPREAL_UNARY_MATH_FUNCTION_BODY(sqr );    }

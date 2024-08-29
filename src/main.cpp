@@ -152,7 +152,6 @@ void add_ganak_options()
     myopt("--lbd", conf.base_lbd_cutoff, atoi, "Initial LBD cutoff");
     myopt("--updatelbdcutoff", conf.update_lbd_cutoff, atoi, "Update lbd cutoff");
     myopt("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, atoi, "Total used vivif cutoff");
-    myopt("--totalusedcutoff2", conf.total_used_cutoff2, atoi, "Total used lock-in cutoff");
 //
     myopt("--bce", do_bce, atoi, "Do BCE");
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");

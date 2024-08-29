@@ -340,7 +340,7 @@ void Counter<T>::td_decompose() {
   for(uint32_t i = 0 ; i < opt_indep_support_end; i++) {
     const auto& k = primal.get_adj_list()[i];
     for(const auto& i2: k) {
-      if (i2 < opt_indep_support_end)
+      if (i2 < (int)opt_indep_support_end)
         primal_alt.addEdge(i, i2);
     }
   }
@@ -3895,18 +3895,6 @@ void Counter<T>::init_activity_scores() {
 }
 
 template<typename T>
-void Counter<T>::checkProbabilisticHashSanity() const {
-  const uint64_t t = stats.num_cache_look_ups_ + 1;
-  // The +32 is because there is actually another hash, which is 32b and is used
-  // by the caching subsystem. Both must match.
-  if (2 * log2(t) > log2(conf.delta) + (64+32) * 0.9843) {
-    // 1 - log_2(2.004)/64 = 0.9843
-    cout << "ERROR: We need to change the hash range (-1)" << endl;
-    exit(-1);
-  }
-}
-
-template<typename T>
 void Counter<T>::check_all_cl_in_watchlists() const {
   auto red_cls2 = long_red_cls;
   // check for duplicates
@@ -3989,7 +3977,6 @@ void Counter<T>::reduce_db() {
     bool can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
     if (can_be_del && h.lbd > lbd_cutoff
-        && h.total_used < conf.total_used_cutoff2
         && (!conf.rdb_keep_used || !h.used)
         && i > target + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
       delete_cl(off);

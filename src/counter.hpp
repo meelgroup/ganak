@@ -474,7 +474,6 @@ private:
   void reduce_db_if_needed();
   void inc_act(const Lit lit);
   void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
-  void checkProbabilisticHashSanity() const;
 
   void set_confl_state(Lit a, Lit b) {
     confl_lit = a;

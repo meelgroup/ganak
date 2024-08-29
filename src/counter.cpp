@@ -1246,39 +1246,6 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   return best_var;
 }
 
-template<typename T>
-uint32_t Counter<T>::find_best_branch_gpmc() {
-  uint32_t best_var = 0;
-  double max_score_act = -1;
-  double max_score_td = -1;
-  bool only_optional_indep = true;
-
-  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it)
-    if (*it < opt_indep_support_end) {
-    uint32_t v = *it;
-    if (val(v) != X_TRI) continue;
-    if (v < indep_support_end) only_optional_indep = false;
-
-    double score_td = tdscore.empty() ? 0 : tdscore[v];
-    /* double score_freq = 0; */
-    /* VAR_FREQ_DO(score_freq = comp_manager->freq_score_of(v)); */
-    double score_act = watches[Lit(v, false)].activity + watches[Lit(v, true)].activity;
-
-    if(score_td > max_score_td) {
-      max_score_td = score_td;
-      max_score_act = score_act;
-      best_var = v;
-    } else if(score_td == max_score_td) {
-      if (score_act > max_score_act) {
-        max_score_act = score_act;
-        best_var = v;
-      }
-    }
-  }
-  if (only_optional_indep) return 0;
-  return best_var;
-}
-
 // returns cube in `c`. Uses branch 0/1, i.e. LEFT/RIGHT branch
 template<typename T>
 bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
@@ -1395,7 +1362,8 @@ static double luby(double y, int x){
 
 template<typename T>
 bool Counter<T>::restart_if_needed() {
-  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst) return false;
+  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst)
+    return false;
   if (!appmc_timeout_fired && (!conf.do_restart || td_width < 60)) return false;
 
   bool restart = false;

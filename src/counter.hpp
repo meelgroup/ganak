@@ -411,8 +411,6 @@ private:
 
   void count_loop();
   bool decide_lit();
-  uint32_t find_best_branch_gpmc();
-  uint32_t find_best_branch_occ();
   uint32_t find_best_branch(bool ignore_td = false);
   template<class T2> bool clause_falsified(const T2& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;

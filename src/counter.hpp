@@ -464,7 +464,7 @@ private:
   inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
   template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
-  vector<ClauseOfs> clauses;
+  vector<ClauseOfs> occ_cls;
   void backw_susume_cl(ClauseOfs off);
   void backw_susume_cl_with_bin(BinClSub& b);
   void toplevel_full_probe();

@@ -636,7 +636,7 @@ template<typename T>
 void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   verb_print(2, "[rst-cube-ext] Extending cubes.");
   assert(occ.empty());
-  assert(clauses.empty());
+  assert(occ_cls.empty());
   auto my_time = cpuTime();
   const auto before_ext = stats.cube_lit_extend;
   const auto before_rem = stats.cube_lit_rem;
@@ -673,7 +673,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
     verb_print(2, "--> Final cube:   " << c);
   }
   occ.clear();
-  clauses.clear();
+  occ_cls.clear();
   v_restore();
   verb_print(2, "[rst-cube-ext] E{xtended cubes. lit-rem: "
       << setw(4) << stats.cube_lit_rem - before_rem
@@ -3020,7 +3020,7 @@ bool Counter<T>::check_watchlists() const {
 template<typename T>
 void Counter<T>::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
   for(const auto& off: cls) {
-    clauses.push_back(off);
+    occ_cls.push_back(off);
     Clause& cl = *alloc->ptr(off);
     if (sort_and_clear) std::sort(cl.begin(), cl.end());
     auto abs = calc_abstr(cl);
@@ -3183,7 +3183,7 @@ template<typename T>
 void Counter<T>::subsume_all() {
   assert(decision_level() == 0);
   assert(occ.empty());
-  assert(clauses.empty());
+  assert(occ_cls.empty());
 
   // setup
   double my_time = cpuTime();
@@ -3233,8 +3233,8 @@ void Counter<T>::subsume_all() {
   for(auto& b: bin_cls) backw_susume_cl_with_bin(b);
 
   // Long clauses
-  std::shuffle(clauses.begin(), clauses.end(), mtrand);
-  for(const auto& off: clauses) {
+  std::shuffle(occ_cls.begin(), occ_cls.end(), mtrand);
+  for(const auto& off: occ_cls) {
     Clause* cl = alloc->ptr(off);
     if (cl->freed) continue;
     backw_susume_cl(off);
@@ -3242,7 +3242,7 @@ void Counter<T>::subsume_all() {
 
   // Cleanup
   for(const auto& b: bin_cls) add_bin_cl(b[0], b[1], b.red);
-  for(const auto& off: clauses) {
+  for(const auto& off: occ_cls) {
     Clause& cl = *alloc->ptr(off);
     if (cl.freed) continue;
     if (cl.red) long_red_cls.push_back(off);
@@ -3266,7 +3266,7 @@ void Counter<T>::subsume_all() {
     attach_cl(off, cl);
   }
   occ.clear();
-  clauses.clear();
+  occ_cls.clear();
   verb_print(2, "[sub] "
       << " bin-irred-cls: " << stats.subsumed_bin_irred_cls - old_subsumed_bin_irred_cls
       << " bin-red-cls: " << stats.subsumed_bin_red_cls - old_subsumed_bin_red_cls

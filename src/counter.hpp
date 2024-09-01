@@ -203,21 +203,22 @@ public:
 private:
   CounterConfiguration conf;
   DataAndStatistics<T> stats;
-
-  vector<Lit> unit_clauses_;
   bool num_vars_set = false;
+  std::mt19937_64 mtrand;
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbd_helper;
   uint64_t lbd_helper_flag = 0;
-  template<class T2>
-  uint32_t calc_lbd(const T2& lits);
+  template<class T2> uint32_t calc_lbd(const T2& lits);
 
+  // Clause adding
+  void simple_preprocess();
+  vector<Lit> unit_clauses_;
+  bool remove_duplicates(vector<Lit>& lits);
   bool exists_unit_cl_of(const Lit l) const {
     for (const auto& l2 : unit_clauses_) if (l == l2) return true;
     return false;
   }
-
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
   inline bool add_bin_cl(Lit a, Lit b, bool red);
@@ -250,7 +251,6 @@ private:
   vector<map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube<T>>& cubes);
 
-  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   const DataAndStatistics<T>& get_stats() const;
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
@@ -268,14 +268,10 @@ private:
   void check_trail(bool check_entail = true) const;
   bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
-
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
-  bool remove_duplicates(vector<Lit>& lits);
   CMSat::SATSolver* sat_solver = nullptr;
-  bool ok = true;
-  bool isindependent = true;
 
   // Needed to know what variables were active in given decision levels
   // It's needed for weighted counting to know what variable was active in
@@ -293,7 +289,6 @@ private:
 
   // Switch to approxmc
   double start_time;
-  std::mt19937_64 mtrand;
   volatile bool appmc_timeout_fired = false;
   bool is_approximate = false;
   mpz_class do_appmc_count();
@@ -301,6 +296,7 @@ private:
   CompManager<T>* comp_manager = nullptr;
 
   // SAT solver
+  bool ok = true;
   uint32_t qhead = 0;
   vector<VarData> var_data;
   LiteralIndexedVector<TriValue> values;
@@ -331,6 +327,8 @@ private:
   bool is_false(Lit lit) { return values[lit] == F_TRI; }
   bool is_unknown(Lit lit) const;
   bool is_unknown(uint32_t var) const;
+  void set_confl_state(Lit a, Lit b);
+  void set_confl_state(Clause* cl);
 
   // Decisions
   void init_decision_stack();
@@ -354,11 +352,17 @@ private:
   vector<double> tdscore;
   double td_weight = 1.0;
   int td_width = 10000;
-  // the first variable that is NOT in the independent support
-  uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
-  // the first variable that is NOT in the opt independent support
-  uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
+  vector<Lit>::const_iterator top_declevel_trail_begin() const;
+  vector<Lit>::iterator top_declevel_trail_begin();
+  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+
+  // independent support
+  bool isindependent = true;
+  // the first variable that's NOT in the indep support
+  uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
+  // the first variable that's NOT in the opt indep support
+  uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   // Printing
   string lit_val_str(Lit lit) const;
@@ -379,27 +383,6 @@ private:
   uint64_t buddy_count();
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
-
-  void set_confl_state(Lit a, Lit b) {
-    confl_lit = a;
-    confl = Antecedent(b);
-  }
-  void set_confl_state(Clause* cl) {
-    if (cl->red && cl->lbd > this->lbd_cutoff) {
-      cl->set_used();
-      /* cl->update_lbd(this->calc_lbd(*cl)); */
-    }
-    confl = Antecedent(this->alloc->get_offset(cl));
-    confl_lit = NOT_A_LIT;
-  }
-
-  // The literals that have been set in this decision level
-  vector<Lit>::const_iterator top_declevel_trail_begin() const {
-    return trail.begin() + this->var(decisions.top().var).sublevel;
-  }
-  vector<Lit>::iterator top_declevel_trail_begin() {
-    return trail.begin() + this->var(decisions.top().var).sublevel;
-  }
 
   //  Conflict analysis below
   RetState resolve_conflict();
@@ -468,7 +451,6 @@ private:
 
   // Toplevel stuff
   void count_loop();
-  void simple_preprocess();
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
   inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
@@ -705,6 +687,32 @@ template<typename T>
 bool Counter<T>::is_unknown(uint32_t var) const {
     SLOW_DEBUG_DO(assert(var != 0));
     return is_unknown(Lit(var, false));
+}
+
+template<typename T>
+void Counter<T>::set_confl_state(Lit a, Lit b) {
+  confl_lit = a;
+  confl = Antecedent(b);
+}
+
+template<typename T>
+void Counter<T>::set_confl_state(Clause* cl) {
+  if (cl->red && cl->lbd > this->lbd_cutoff) {
+    cl->set_used();
+    /* cl->update_lbd(this->calc_lbd(*cl)); */
+  }
+  confl = Antecedent(this->alloc->get_offset(cl));
+  confl_lit = NOT_A_LIT;
+}
+
+template<typename T>
+vector<Lit>::const_iterator Counter<T>::top_declevel_trail_begin() const {
+  return trail.begin() + this->var(decisions.top().var).sublevel;
+}
+
+template<typename T>
+vector<Lit>::iterator Counter<T>::top_declevel_trail_begin() {
+  return trail.begin() + this->var(decisions.top().var).sublevel;
 }
 
 template<typename T>

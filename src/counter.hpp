@@ -340,16 +340,25 @@ protected:
   }
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> seen;
-  vector<Cube<T>> mini_cubes;
 
   double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;
+
+  // DNF Cube stuff
+  vector<Cube<T>> mini_cubes;
   void disable_small_cubes(vector<Cube<T>>& cubes);
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube<T>>& cubes);
   void print_and_check_cubes(vector<Cube<T>>& cubes);
   void disable_cubes_if_overlap(vector<Cube<T>>& cubes);
   void extend_cubes(vector<Cube<T>>& cubes);
   int cube_try_extend_by_lit(const Lit torem, const Cube<T>& c);
+  T check_count_norestart(const Cube<T>& c);
+  T check_count_norestart_cms(const Cube<T>& c);
+  vector<Cube<T>> one_restart_count();
+  bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
+  bool compute_cube(Cube<T>& cube, int branch);
+  vector<map<Lit, Lit>> generators;
+  void symm_cubes(vector<Cube<T>>& cubes);
 
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   const DataAndStatistics<T>& get_stats() const;
@@ -357,9 +366,8 @@ protected:
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
-  T check_count(const bool also_incl_curr_and_later_dec = false);
-
 private:
+  T check_count(const bool also_incl_curr_and_later_dec = false);
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   void init_activity_scores();
   vector<vector<Lit>> v_backup_cls;
@@ -368,9 +376,6 @@ private:
   vector<vector<Lit>> debug_irred_cls;
 #endif
   bool remove_duplicates(vector<Lit>& lits);
-  T check_count_norestart(const Cube<T>& c);
-  T check_count_norestart_cms(const Cube<T>& c);
-  vector<Cube<T>> one_restart_count();
   CMSat::SATSolver* sat_solver = nullptr;
   bool ok = true;
   bool isindependent = true;
@@ -382,9 +387,6 @@ private:
   vector<uint64_t> vars_act_dec;
   uint64_t vars_act_dec_num = 0;
 
-  vector<map<Lit, Lit>> generators;
-  void symm_cubes(vector<Cube<T>>& cubes);
-  bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
 
   // Temporaries, used during recordLastUIPClause
   mutable vector<Lit> tmp_lit; //used in recoredLastUIPClause
@@ -414,7 +416,6 @@ private:
   template<class T2> bool clause_falsified(const T2& cl) const;
   bool clause_asserting(const vector<Lit>& cl) const;
   template<class T2> bool clause_satisfied(const T2& cl) const;
-  bool compute_cube(Cube<T>& cube, int branch);
   void compute_score(TWD::TreeDecomposition& tdec, bool print = true);
   void td_decompose();
   TWD::TreeDecomposition td_decompose_component(double mult = 1);

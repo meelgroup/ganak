@@ -4145,6 +4145,20 @@ void Counter<T>::init_decision_stack() {
     decisions.back().change_to_right_branch();
   }
 
+template<typename T>
+string Counter<T>::lit_val_str(Lit lit) const {
+    if (values[lit] == F_TRI) return "FALSE";
+    else if (values[lit] == T_TRI) return "TRUE";
+    else return "UNKN";
+  }
+
+template<typename T>
+string Counter<T>::val_to_str(const TriValue& tri) const {
+    if (tri == F_TRI) return "FALSE";
+    else if (tri == T_TRI) return "TRUE";
+    else return "UNKN";
+  }
+
 template class Counter<mpz_class>;
 template class Counter<mpfr::mpreal>;
 template class Counter<mpq_class>;

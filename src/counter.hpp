@@ -202,33 +202,16 @@ public:
 
 private:
   CounterConfiguration conf;
-
-  vector<T> weights;
-  vector<Lit> unit_clauses_;
-  vector<VarData> var_data;
-  bool num_vars_set = false;
-  LiteralIndexedVector<TriValue> values;
   DataAndStatistics<T> stats;
+
+  vector<Lit> unit_clauses_;
+  bool num_vars_set = false;
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbdHelper;
   uint64_t lbdHelperFlag = 0;
-
   template<class T2>
-  uint32_t calc_lbd(const T2& lits) {
-    lbdHelperFlag++;
-    uint32_t nblevels = 0;
-    for(const auto& l: lits) {
-      if (val(l) == X_TRI) {nblevels++;continue;}
-      int lev = var(l).decision_level;
-      if (lev != 0 && lbdHelper[lev] != lbdHelperFlag) {
-        lbdHelper[lev] = lbdHelperFlag;
-        nblevels++;
-        if (nblevels >= 100) { return nblevels; }
-      }
-    }
-    return nblevels;
-  }
+  uint32_t calc_lbd(const T2& lits);
 
   bool exists_unit_cl_of(const Lit l) const {
     for (const auto& l2 : unit_clauses_) if (l == l2) return true;
@@ -238,31 +221,6 @@ private:
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
   inline bool add_bin_cl(Lit a, Lit b, bool red);
-  inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
-  bool is_false(Lit lit) { return values[lit] == F_TRI; }
-
-  string lit_val_str(Lit lit) const {
-    if (values[lit] == F_TRI) return "FALSE";
-    else if (values[lit] == T_TRI) return "TRUE";
-    else return "UNKN";
-  }
-
-  string val_to_str(const TriValue& tri) const {
-    if (tri == F_TRI) return "FALSE";
-    else if (tri == T_TRI) return "TRUE";
-    else return "UNKN";
-  }
-
-  bool is_unknown(Lit lit) const {
-    SLOW_DEBUG_DO(assert(lit.var() <= nVars()));
-    SLOW_DEBUG_DO(assert(lit.var() != 0));
-    return values[lit] == X_TRI;
-  }
-
-  bool is_unknown(uint32_t var) const {
-    SLOW_DEBUG_DO(assert(var != 0));
-    return is_unknown(Lit(var, false));
-  }
 
   // vivif stuff
   void vivif_setup();
@@ -311,7 +269,6 @@ private:
   bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
 
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
@@ -326,6 +283,8 @@ private:
   // and on backtrack, we'd multiply by them, wrongly)
   vector<uint64_t> vars_act_dec;
   uint64_t vars_act_dec_num = 0;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
+  vector<T> weights;
 
   // Temporaries
   mutable vector<Lit> tmp_lit; //used as temporary binary cl
@@ -343,6 +302,8 @@ private:
 
   // SAT solver
   uint32_t qhead = 0;
+  vector<VarData> var_data;
+  LiteralIndexedVector<TriValue> values;
   vector<Lit> trail;
   bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
@@ -366,6 +327,10 @@ private:
   inline VarData& var(const uint32_t v) { return var_data[v]; }
   inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
   inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
+  inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
+  bool is_false(Lit lit) { return values[lit] == F_TRI; }
+  bool is_unknown(Lit lit) const;
+  bool is_unknown(uint32_t var) const;
 
   // Decisions
   void init_decision_stack();
@@ -395,8 +360,9 @@ private:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
 
-
   // Printing
+  string lit_val_str(Lit lit) const;
+  string val_to_str(const TriValue& tri) const;
   void print_dec_info() const;
   template<class T2> void print_cl(const T2& cl) const;
   template<class T2> void v_print_cl(const T2& cl) const;
@@ -726,6 +692,36 @@ template<class T2> void Counter<T>::attach_cl(ClauseOfs off, const T2& lits) {
   Lit blck_lit = lits[lits.size()/2];
   watches[lits[0]].add_cl(off, blck_lit);
   watches[lits[1]].add_cl(off, blck_lit);
+}
+
+template<typename T>
+bool Counter<T>::is_unknown(Lit lit) const {
+    SLOW_DEBUG_DO(assert(lit.var() <= nVars()));
+    SLOW_DEBUG_DO(assert(lit.var() != 0));
+    return values[lit] == X_TRI;
+}
+
+template<typename T>
+bool Counter<T>::is_unknown(uint32_t var) const {
+    SLOW_DEBUG_DO(assert(var != 0));
+    return is_unknown(Lit(var, false));
+}
+
+template<typename T>
+template<class T2>
+uint32_t Counter<T>::calc_lbd(const T2& lits) {
+  lbdHelperFlag++;
+  uint32_t nblevels = 0;
+  for(const auto& l: lits) {
+    if (val(l) == X_TRI) {nblevels++;continue;}
+    int lev = var(l).decision_level;
+    if (lev != 0 && lbdHelper[lev] != lbdHelperFlag) {
+      lbdHelper[lev] = lbdHelperFlag;
+      nblevels++;
+      if (nblevels >= 100) { return nblevels; }
+    }
+  }
+  return nblevels;
 }
 
 class OuterCounter {

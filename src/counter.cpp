@@ -3811,18 +3811,18 @@ Counter<T>::Counter(const CounterConfiguration& _conf) :
   sat_solver->set_prefix("c o ");
   alloc = new ClauseAllocator<T>(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
-  if (conf.do_buddy) {
+  BUDDY_DO(if (conf.do_buddy) {
     bdd_init(10000, 100000);
     bdd_gbc_hook(my_gbchandler);
     bdd_setvarnum(63);
     bdd_autoreorder(BDD_REORDER_NONE);
-  }
+  });
 }
 
 template<typename T>
 Counter<T>::~Counter() {
   delete comp_manager;
-  if (conf.do_buddy) bdd_done();
+  BUDDY_DO(if (conf.do_buddy) bdd_done());
   delete alloc;
   delete sat_solver;
 }

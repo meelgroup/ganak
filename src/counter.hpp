@@ -79,7 +79,6 @@ inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
   return os;
 }
 
-
 struct VS {
   VS() = default;
   VS(uint32_t _v, double _score1, uint32_t _score2) : v(_v), score1(_score1), score2(_score2) {}
@@ -381,9 +380,11 @@ private:
 
   // BDD
   bool do_buddy_count(const Comp* c);
+#ifdef BUDDY_ENABLED
   uint64_t buddy_count();
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
+#endif
 
   //  Conflict analysis below
   RetState resolve_conflict();

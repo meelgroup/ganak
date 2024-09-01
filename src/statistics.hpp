@@ -43,8 +43,8 @@ class DataAndStatistics {
 public:
   DataAndStatistics (const CounterConfiguration& _conf): conf(_conf) {}
   const CounterConfiguration& conf;
-  uint64_t num_binary_irred_clauses_ = 0;
-  uint64_t num_binary_red_clauses_ = 0;
+  uint64_t num_bin_irred_cls = 0;
+  uint64_t num_bin_red_cls = 0;
 
   // Cubes
   uint64_t num_cubes_orig = 0;
@@ -161,7 +161,7 @@ public:
 
   void incorporateIrredClauseData(const vector<Lit> &clause) {
     if (clause.size() == 1) return;
-    if (clause.size() == 2) num_binary_irred_clauses_++;
+    if (clause.size() == 2) num_bin_irred_cls++;
   }
 
   void print_short(const Counter<T>* counter, const CompCache<T>* cache) const;

@@ -623,7 +623,7 @@ Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
     ante = Antecedent(off);
   } else if (literals.size() == 2){
     ante = Antecedent(literals.back());
-    stats.num_binary_red_clauses_++;
+    stats.num_bin_red_cls++;
   }
   return ante;
 }

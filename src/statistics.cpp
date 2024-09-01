@@ -60,7 +60,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << safe_div(conflicts,((cpuTime()-counter->get_start_time())))
   );
   verb_print(1, "conflict cls (long/bin)        " << std::fixed
-    << counter->get_num_long_reds() << "/" << num_binary_red_clauses_);
+    << counter->get_num_long_reds() << "/" << num_bin_red_cls);
 
   /* verb_print(1, "lits /rem lits ccmin           " */
   /*   << setw(9) << orig_uip_lits/uip_cls << " " */
@@ -170,7 +170,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
 template<typename T>
 void DataAndStatistics<T>::print_short_formula_info(const Counter<T>* counter) const {
   verb_print(1, "irred cls long/bin: "
-    << counter->get_num_irred_long_cls() << "/" << num_binary_irred_clauses_);
+    << counter->get_num_irred_long_cls() << "/" << num_bin_irred_cls);
 }
 
 template class DataAndStatistics<mpz_class>;

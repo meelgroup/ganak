@@ -156,10 +156,6 @@ public:
   ~Counter();
   const CounterConfiguration& get_conf() const { return conf;}
   friend class ClauseAllocator<T>;
-  struct ConflictData {
-    int32_t nHighestLevel = -1;
-    bool bOnlyOneLitFromHighest = false;
-  };
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return long_red_cls.size(); }
@@ -189,17 +185,6 @@ public:
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
 
-  // vivif stuff
-  void vivif_setup();
-  bool v_propagate();
-  void v_backtrack();
-  void v_unset_lit(const Lit l);
-  void v_enqueue(const Lit l);
-  TriValue v_val(const Lit l) const;
-  void v_new_lev();
-  void v_backup();
-  void v_restore();
-
   // ReduceDB
   bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
@@ -215,7 +200,7 @@ public:
   uint64_t last_reducedb_confl = 0;
   uint64_t last_reducedb_dec = 0;
 
-protected:
+private:
   CounterConfiguration conf;
 
   vector<T> weights;
@@ -252,21 +237,7 @@ protected:
 
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
-
-  // adds a UIP Conflict Clause
-  // and returns it as an Antecedent to the first
-  // literal stored in literals
-  inline Antecedent add_uip_confl_cl(const vector<Lit> &literals);
-
   inline bool add_bin_cl(Lit a, Lit b, bool red);
-
-  inline VarData &var(const Lit lit) {
-    return var_data[lit.var()];
-  }
-
-  inline VarData &var(const uint32_t v) { return var_data[v]; }
-  inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
-  inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
   inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
   bool is_false(Lit lit) { return values[lit] == F_TRI; }
 
@@ -293,14 +264,16 @@ protected:
     return is_unknown(Lit(var, false));
   }
 
-  bool is_satisfied(ClauseOfs off) {
-    for (auto lt: *alloc->ptr(off)) if (is_true(lt)) return true;
-    return false;
-  }
-  bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
-  vector<uint8_t> seen;
-
-  double var_act(const uint32_t v) const;
+  // vivif stuff
+  void vivif_setup();
+  bool v_propagate();
+  void v_backtrack();
+  void v_unset_lit(const Lit l);
+  void v_enqueue(const Lit l);
+  TriValue v_val(const Lit l) const;
+  void v_new_lev();
+  void v_backup();
+  void v_restore();
 
   // DNF Cube stuff
   bool restart_if_needed();
@@ -321,11 +294,8 @@ protected:
 
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
   const DataAndStatistics<T>& get_stats() const;
-  void get_unit_cls(vector<Lit>& units) const;
-  int32_t dec_level() const { return decisions.get_decision_level(); }
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
-private:
   //Debug stuff
   T check_count(const bool also_incl_curr_and_later_dec = false);
   bool is_implied(const vector<Lit>& cp);
@@ -360,6 +330,7 @@ private:
   // Temporaries
   mutable vector<Lit> tmp_lit; //used as temporary binary cl
   vector<uint32_t> to_clear;
+  vector<uint8_t> seen;
 
   // Switch to approxmc
   double start_time;
@@ -391,11 +362,17 @@ private:
   LiteralIndexedVector<LitWatchList> watches;
   void go_back_to(int32_t backj);
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
+  inline VarData& var(const Lit lit) { return var_data[lit.var()]; }
+  inline VarData& var(const uint32_t v) { return var_data[v]; }
+  inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
+  inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
 
   // Decisions
   void init_decision_stack();
   void init_activity_scores();
+  double var_act(const uint32_t v) const;
   DecisionStack<T> decisions;
+  int32_t dec_level() const { return decisions.get_decision_level(); }
   bool decide_lit();
   uint32_t find_best_branch(bool ignore_td = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
@@ -460,6 +437,10 @@ private:
 
   //  Conflict analysis below
   RetState resolve_conflict();
+  struct ConflictData {
+    int32_t nHighestLevel = -1;
+    bool bOnlyOneLitFromHighest = false;
+  };
   ConflictData find_conflict_level(Lit p);
   Lit confl_lit = NOT_A_LIT;
   Antecedent confl;
@@ -471,6 +452,7 @@ private:
   bool lit_redundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
   void recursive_cc_min();
+  inline Antecedent add_uip_confl_cl(const vector<Lit> &literals);
 
   // Vivification
   vector<vector<Lit>> v_backup_cls;

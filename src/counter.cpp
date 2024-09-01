@@ -1077,20 +1077,11 @@ template<typename T>
 bool Counter<T>::get_polarity(const uint32_t v) const {
   bool polarity;
   switch (conf.polar_type) {
-    case 0:
-      polarity = standard_polarity(v);
-      break;
-    case 1:
-      polarity = var(v).last_polarity;
-      break;
-    case 2:
-      polarity = false;
-      break;
-    case 3:
-      polarity = true;
-      break;
-    default:
-      assert(false);
+    case 0: polarity = standard_polarity(v); break;
+    case 1: polarity = var(v).last_polarity; break;
+    case 2: polarity = false; break;
+    case 3: polarity = true; break;
+    default: assert(false);
   }
   return polarity;
 }
@@ -2037,23 +2028,6 @@ RetState Counter<T>::resolve_conflict() {
 #endif
 
   return RESOLVED; // will ALWAYS propagate afterwards.
-}
-
-template<typename T>
-bool Counter<T>::clause_asserting(const vector<Lit>& cl) const {
-  uint32_t num_unkn = 0;
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI) return false;
-    if (val(l) == X_TRI) {num_unkn++; if (num_unkn>=2) return false;}
-  }
-  return true;
-}
-
-template<typename T>
-template<typename T2>
-bool Counter<T>::clause_satisfied(const T2& cl) const {
-  for(const auto&l: cl) if (val(l) == T_TRI) return true;
-  return false;
 }
 
 /* #define VERB_DEBUG_SAVED */

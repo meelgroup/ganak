@@ -341,10 +341,10 @@ protected:
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> seen;
 
-  double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;
 
   // DNF Cube stuff
+  bool restart_if_needed();
   vector<Cube<T>> mini_cubes;
   void disable_small_cubes(vector<Cube<T>>& cubes);
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube<T>>& cubes);
@@ -367,7 +367,19 @@ protected:
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
 private:
+  //Debug stuff
   T check_count(const bool also_incl_curr_and_later_dec = false);
+  bool is_implied(const vector<Lit>& cp);
+  void check_implied(const vector<Lit>& cl);
+  template<class T2> bool clause_falsified(const T2& cl) const;
+  void check_sat_solution() const;
+  bool check_watchlists() const;
+  template<class T2> void check_cl_propagated_conflicted(T2& cl, uint32_t off = 0) const;
+  void check_all_propagated_conflicted() const;
+  void print_all_levels();
+  void check_cl_unsat(Lit* c, uint32_t size) const;
+  void check_trail(bool check_entail = true) const;
+
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   void init_activity_scores();
   vector<vector<Lit>> v_backup_cls;
@@ -387,73 +399,70 @@ private:
   vector<uint64_t> vars_act_dec;
   uint64_t vars_act_dec_num = 0;
 
-
-  // Temporaries, used during recordLastUIPClause
-  mutable vector<Lit> tmp_lit; //used in recoredLastUIPClause
+  // Temporaries
+  mutable vector<Lit> tmp_lit; //used as temporary binary cl
   vector<uint32_t> to_clear;
 
   vector<Lit> tmp_cl_minim; // Used during minimize_uip_cl
 
+  // Switch to approxmc
   double start_time;
   std::mt19937_64 mtrand;
   volatile bool appmc_timeout_fired = false;
   bool is_approximate = false;
+  mpz_class do_appmc_count();
 
-  DecisionStack<T> decisions;
-  vector<Lit> trail;
   uint32_t qhead = 0;
   CompManager<T>* comp_manager = nullptr;
   uint64_t last_reducedb_confl = 0;
   uint64_t last_reducedb_dec = 0;
 
   void simple_preprocess();
-  bool is_implied(const vector<Lit>& cp);
-  void check_implied(const vector<Lit>& cl);
-
   void count_loop();
+
+  // Decisions
+  DecisionStack<T> decisions;
   bool decide_lit();
   uint32_t find_best_branch(bool ignore_td = false);
-  template<class T2> bool clause_falsified(const T2& cl) const;
-  bool clause_asserting(const vector<Lit>& cl) const;
-  template<class T2> bool clause_satisfied(const T2& cl) const;
+  double score_of(const uint32_t v, bool ignore_td = false) const;
+  void vsads_readjust();
   void compute_score(TWD::TreeDecomposition& tdec, bool print = true);
   void td_decompose();
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   void recomp_td_weight();
-  void vsads_readjust();
+  void inc_act(const Lit lit);
+  Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
+  bool standard_polarity(const uint32_t var) const;
+  bool get_polarity(const uint32_t var) const;
 
-  // Actual SAT solver.
+  // SAT solver
+  vector<Lit> trail;
   bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
-  Heap<VarOrderLt> order_heap;
   inline bool sat_mode() const {
     return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
   }
   vector<int> sat_solution;
-  void check_sat_solution() const;
-  // this is the actual BCP algorithm
-  // starts propagating all literal in trail_
-  // beginning at offset start_at_trail_ofs
   bool propagate(bool out_of_order = false);
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
-  bool check_watchlists() const;
-  template<class T2> void check_cl_propagated_conflicted(T2& cl, uint32_t off = 0) const;
-  void check_all_propagated_conflicted() const;
-
-  void print_all_levels();
-  bool restart_if_needed();
   RetState backtrack();
+  bool chrono_work();
+  RetState resolve_conflict();
+  void go_back_to(int32_t backj);
+  uint32_t find_lev_to_set(int32_t implied_lit_lev);
+  size_t find_backtrack_level_of_learnt();
+  void reduce_db_if_needed();
+  void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
+
+  // Printing
   void print_dec_info() const;
   template<class T2> void print_cl(const T2& cl) const;
   template<class T2> void v_print_cl(const T2& cl) const;
   void print_cl(const Lit* c, uint32_t size) const;
-  void check_cl_unsat(Lit* c, uint32_t size) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
-
-  // AppMC
-  mpz_class do_appmc_count();
+  void print_trail(bool check_entail = true, bool check_anything = true) const;
 
   // BDD
   bool do_buddy_count(const Comp* c);
@@ -461,25 +470,10 @@ private:
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
 
-  // if on the current decision level
-  // a second branch can be visited, RESOLVED is returned
-  // otherwise returns BACKTRACK
-  RetState resolve_conflict();
-  void go_back_to(int32_t backj);
-  uint32_t find_lev_to_set(int32_t implied_lit_lev);
-  size_t find_backtrack_level_of_learnt();
-  void print_trail(bool check_entail = true, bool check_anything = true) const;
-  void check_trail(bool check_entail = true) const;
-  bool chrono_work();
-  void reduce_db_if_needed();
-  void inc_act(const Lit lit);
-  void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
-
   void set_confl_state(Lit a, Lit b) {
     confl_lit = a;
     confl = Antecedent(b);
   }
-
   void set_confl_state(Clause* cl) {
     if (cl->red && cl->lbd > this->lbd_cutoff) {
       cl->set_used();
@@ -511,8 +505,6 @@ private:
   }
 
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
-  uint32_t trail_at_dl(uint32_t dl) const { return this->var_data[decisions.at(dl).var].sublevel; }
-  uint32_t trail_at_top() const { return this->var_data[decisions.top().var].sublevel; }
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
 
 
@@ -520,20 +512,15 @@ private:
   //  Conflict analysis below
   /////////////////////////////////////////////
 
-  // if the state name is CONFLICT,
-  // then violated_clause contains the clause determining the conflict;
   Lit confl_lit = NOT_A_LIT;
   Antecedent confl;
   vector<Lit> uip_clause;
-
   void create_uip_cl();
   void minimize_uip_cl();
   uint32_t abst_level(const uint32_t x) const;
   bool lit_redundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
   void recursive_cc_min();
-  bool get_polarity(const uint32_t var) const;
-  bool standard_polarity(const uint32_t var) const;
 
   // Vivification
   int64_t v_tout;

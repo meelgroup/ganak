@@ -209,6 +209,11 @@ public:
   vector<Lit> tmp_minim_with_bins;
   void delete_cl(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
+  uint32_t lbd_cutoff;
+  uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
+  uint32_t num_used_cls = 0; // last time counted used clauses
+  uint64_t last_reducedb_confl = 0;
+  uint64_t last_reducedb_dec = 0;
 
 protected:
   CounterConfiguration conf;
@@ -218,9 +223,6 @@ protected:
   vector<VarData> var_data;
   bool num_vars_set = false;
   LiteralIndexedVector<TriValue> values;
-  uint32_t lbd_cutoff;
-  uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
-  uint32_t num_used_cls = 0; // last time counted used clauses
   DataAndStatistics<T> stats;
 
   // Computing LBD (lbd == 2 means "glue clause")
@@ -340,9 +342,6 @@ private:
   void check_all_cl_in_watchlists() const;
 
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
-  void init_activity_scores();
-  vector<vector<Lit>> v_backup_cls;
-  vector<vector<ClOffsBlckL>> v_backup_watches;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
@@ -369,12 +368,10 @@ private:
   bool is_approximate = false;
   mpz_class do_appmc_count();
 
-  uint32_t qhead = 0;
   CompManager<T>* comp_manager = nullptr;
-  uint64_t last_reducedb_confl = 0;
-  uint64_t last_reducedb_dec = 0;
 
   // SAT solver
+  uint32_t qhead = 0;
   vector<Lit> trail;
   bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
@@ -397,6 +394,7 @@ private:
 
   // Decisions
   void init_decision_stack();
+  void init_activity_scores();
   DecisionStack<T> decisions;
   bool decide_lit();
   uint32_t find_best_branch(bool ignore_td = false);
@@ -475,6 +473,8 @@ private:
   void recursive_cc_min();
 
   // Vivification
+  vector<vector<Lit>> v_backup_cls;
+  vector<vector<ClOffsBlckL>> v_backup_watches;
   int64_t v_tout;
   vector<Lit> v_tmp;
   vector<Lit> v_tmp2;

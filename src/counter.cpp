@@ -4009,7 +4009,7 @@ void Counter<T>::new_vars(const uint32_t n) {
   var_data.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
-  lbdHelper.resize(n+1, 0);
+  lbd_helper.resize(n+1, 0);
   if constexpr (weighted) sat_solution.resize(n+1);
   if constexpr (weighted) weights.resize(2*(n + 1), 1);
   num_vars_set = true;

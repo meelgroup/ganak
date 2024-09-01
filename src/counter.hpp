@@ -208,8 +208,8 @@ private:
   bool num_vars_set = false;
 
   // Computing LBD (lbd == 2 means "glue clause")
-  vector<uint64_t> lbdHelper;
-  uint64_t lbdHelperFlag = 0;
+  vector<uint64_t> lbd_helper;
+  uint64_t lbd_helper_flag = 0;
   template<class T2>
   uint32_t calc_lbd(const T2& lits);
 
@@ -710,13 +710,13 @@ bool Counter<T>::is_unknown(uint32_t var) const {
 template<typename T>
 template<class T2>
 uint32_t Counter<T>::calc_lbd(const T2& lits) {
-  lbdHelperFlag++;
+  lbd_helper_flag++;
   uint32_t nblevels = 0;
   for(const auto& l: lits) {
     if (val(l) == X_TRI) {nblevels++;continue;}
     int lev = var(l).decision_level;
-    if (lev != 0 && lbdHelper[lev] != lbdHelperFlag) {
-      lbdHelper[lev] = lbdHelperFlag;
+    if (lev != 0 && lbd_helper[lev] != lbd_helper_flag) {
+      lbd_helper[lev] = lbd_helper_flag;
       nblevels++;
       if (nblevels >= 100) { return nblevels; }
     }

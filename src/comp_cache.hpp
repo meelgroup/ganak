@@ -381,7 +381,7 @@ void CompCache<T>::init(Comp &super_comp, void* hash_seed){
 
 
   stats.sum_bignum_bytes = 0;
-  stats.cache_infrastructure_bytes_memory_usage_ = 0;
+  stats.cache_infra_bytes_mem_usage = 0;
   assert(!cache_full());
   entry_base.push_back(*packed_super_comp);
   stats.incorporate_cache_store(*packed_super_comp, super_comp.nVars());

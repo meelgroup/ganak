@@ -130,7 +130,7 @@ public:
 
   // the number of bytes occupied by all comps
   uint64_t sum_bignum_bytes = 0;
-  uint64_t cache_infrastructure_bytes_memory_usage_ = 0;
+  uint64_t cache_infra_bytes_mem_usage = 0;
 
   bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
     return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)
@@ -138,7 +138,7 @@ public:
   }
 
   uint64_t cache_bytes_memory_usage() const {
-    return cache_infrastructure_bytes_memory_usage_
+    return cache_infra_bytes_mem_usage
            + sum_bignum_bytes;
   }
 

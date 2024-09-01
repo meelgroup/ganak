@@ -139,12 +139,12 @@ bool CompCache<T>::delete_some_entries() {
 
 template<typename T>
 uint64_t CompCache<T>::compute_size_allocated() {
-  stats.cache_infrastructure_bytes_memory_usage_ =
+  stats.cache_infra_bytes_mem_usage =
       sizeof(CompCache)
       + sizeof(CacheEntryID) * table.capacity()
       + sizeof(CacheEntryID) * free_entry_base_slots.capacity()
       + sizeof(CacheableComp<T>)* entry_base.capacity();
-  return stats.cache_infrastructure_bytes_memory_usage_;
+  return stats.cache_infra_bytes_mem_usage;
 }
 
 template<typename T>

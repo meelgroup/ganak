@@ -213,10 +213,10 @@ private:
 
   // Clause adding
   void simple_preprocess();
-  vector<Lit> unit_clauses_;
+  vector<Lit> unit_cls;
   bool remove_duplicates(vector<Lit>& lits);
   bool exists_unit_cl_of(const Lit l) const {
-    for (const auto& l2 : unit_clauses_) if (l == l2) return true;
+    for (const auto& l2 : unit_cls) if (l == l2) return true;
     return false;
   }
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);

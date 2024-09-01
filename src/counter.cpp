@@ -385,7 +385,7 @@ T Counter<T>::check_count_norestart_cms(const Cube<T>& c) {
     }
   }
   // Unit cls
-  for(const auto& l: unit_clauses_) {
+  for(const auto& l: unit_cls) {
     tmp.clear();
     tmp.push_back(l);
     test_solver.add_clause(ganak_to_cms_cl(tmp));
@@ -458,7 +458,7 @@ T Counter<T>::check_count_norestart(const Cube<T>& c) {
     }
   }
   // Unit cls
-  for(const auto& l: unit_clauses_) {
+  for(const auto& l: unit_cls) {
     tmp.clear();
     tmp.push_back(l);
     test_cnt.add_irred_cl(tmp);
@@ -711,7 +711,7 @@ mpz_class Counter<mpz_class>::do_appmc_count() {
   appmc.set_seed(conf.seed);
 
   vector<Lit> unit(1);
-  for(const auto& l: unit_clauses_) {
+  for(const auto& l: unit_cls) {
       unit[0] = l;
       appmc.add_clause(ganak_to_cms_cl(unit));
   }
@@ -1933,7 +1933,7 @@ RetState Counter<T>::resolve_conflict() {
 
   create_uip_cl();
   if (uip_clause.size() == 1 && !exists_unit_cl_of(uip_clause[0]))
-    unit_clauses_.push_back(uip_clause[0]);
+    unit_cls.push_back(uip_clause[0]);
 
   assert(uip_clause.front() != NOT_A_LIT);
 
@@ -2298,7 +2298,7 @@ void Counter<T>::vivif_setup() {
   // Set up units
   v_trail.clear();
   for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
-  for(const auto& l: unit_clauses_) if (v_val(l) == X_TRI) v_enqueue(l);
+  for(const auto& l: unit_cls) if (v_val(l) == X_TRI) v_enqueue(l);
   bool ret = v_propagate();
   assert(ret);
 
@@ -2364,11 +2364,11 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
     for(const auto& off: long_irred_cls) v_cl_repair(off);
     for(const auto& off: long_red_cls) v_cl_repair(off);
   } else {
-    // Move all 0-level stuff to unit_clauses_
+    // Move all 0-level stuff to unit_cls
     for(const auto& l: v_trail) {
       if (val(l) == X_TRI) {
         set_lit(l, 0);
-        if (!exists_unit_cl_of(l)) unit_clauses_.push_back(l);
+        if (!exists_unit_cl_of(l)) unit_cls.push_back(l);
       }
       assert(val(l) != F_TRI); // it would be UNSAT
     }
@@ -3617,7 +3617,7 @@ void Counter<T>::check_cl_propagated_conflicted(T2& cl, uint32_t off) const {
 template<typename T>
 void Counter<T>::check_all_propagated_conflicted() const {
   // Everything that should have propagated, propagated
-  for(const auto& t: unit_clauses_) {
+  for(const auto& t: unit_cls) {
     if (val(t) != T_TRI) {
       cout << "Unit clause: " << t << " is set/falsified on trail." << endl;
       assert(false);
@@ -3830,7 +3830,7 @@ Counter<T>::~Counter() {
 template<typename T>
 void Counter<T>::simple_preprocess() {
   verb_print(2, "[simple-preproc] Running.");
-  for (const auto& lit : unit_clauses_) {
+  for (const auto& lit : unit_cls) {
     assert(!exists_unit_cl_of(lit.neg()) && "Formula is not UNSAT, we ran CMS before");
     if (val(lit) == X_TRI) {
       set_lit(lit, 0);
@@ -3842,7 +3842,7 @@ void Counter<T>::simple_preprocess() {
   verb_print(2, "[simple-preproc] propagating.");
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
-  for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_clauses_.push_back(t);
+  for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_cls.push_back(t);
   init_decision_stack();
   qhead = 0;
 
@@ -4001,7 +4001,7 @@ void Counter<T>::new_vars(const uint32_t n) {
   assert(var_data.empty());
   assert(values.empty());
   assert(watches.empty());
-  assert(unit_clauses_.empty());
+  assert(unit_cls.empty());
   assert(long_red_cls.empty());
   assert(weights.empty());
   assert(sat_solution.empty());
@@ -4019,7 +4019,7 @@ template<typename T>
 Clause* Counter<T>::add_cl(const vector<Lit> &lits, bool red) {
   if (lits.size() == 1) {
     assert(!exists_unit_cl_of(lits[0].neg()) && "UNSAT is not dealt with");
-    if (!exists_unit_cl_of(lits[0])) unit_clauses_.push_back(lits[0]);
+    if (!exists_unit_cl_of(lits[0])) unit_cls.push_back(lits[0]);
     return nullptr;
   }
 

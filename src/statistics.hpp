@@ -68,14 +68,13 @@ public:
   uint64_t conflicts = 0;
 
   // number of clauses overall learned
-  uint32_t num_clauses_learned_ = 0;
   uint64_t uip_cls = 0;
   uint64_t final_cl_sz = 0;
   uint64_t uip_lits_ccmin = 0;
   uint64_t rem_lits_with_bins = 0;
   uint32_t rem_lits_tried = 0;
 
-  uint64_t  orig_uip_lits = 0;
+  uint64_t orig_uip_lits = 0;
   uint64_t last_restart_num_conflicts = 0;
   uint64_t last_restart_num_decisions = 0;
   uint32_t num_restarts = 0;
@@ -112,18 +111,18 @@ public:
 
   /* cache statistics */
   uint64_t num_cache_hits = 0;
-  uint64_t num_cache_dels_ = 0;
-  uint64_t num_cache_look_ups_ = 0;
+  uint64_t num_cache_dels = 0;
+  uint64_t num_cache_look_ups = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes = 0;
-  uint64_t sum_cache_store_sizes_ = 0;
+  uint64_t sum_cache_store_sizes = 0;
 
   // Components
   uint64_t comp_sorts = 0;
   uint64_t comp_sizes = 0;
 
   uint64_t num_cached_comps_ = 0;
-  uint64_t total_num_cached_comps_ = 0;
+  uint64_t total_num_cached_comps = 0;
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
 
@@ -147,9 +146,9 @@ public:
 
   void incorporate_cache_store(const CacheableComp<T> &ccomp, const uint32_t comp_nvars) {
     sum_bignum_bytes += ccomp.bignum_bytes();
-    sum_cache_store_sizes_ += comp_nvars;
+    sum_cache_store_sizes += comp_nvars;
     num_cached_comps_++;
-    total_num_cached_comps_++;
+    total_num_cached_comps++;
   }
 
   void incorporate_cache_erase(const CacheableComp<T> &ccomp){
@@ -176,9 +175,9 @@ public:
   }
 
   double cache_miss_rate() const {
-    if(num_cache_look_ups_ == 0) return 0.0;
-    return (num_cache_look_ups_ - num_cache_hits)
-        / (double) num_cache_look_ups_;
+    if(num_cache_look_ups == 0) return 0.0;
+    return (num_cache_look_ups - num_cache_hits)
+        / (double) num_cache_look_ups;
   }
 
   long double get_avg_cache_store_sz() const {
@@ -187,7 +186,7 @@ public:
   }
 
   long double get_avg_cache_store_size() const {
-    if(total_num_cached_comps_ == 0) return 0.0L;
-    return sum_cache_store_sizes_ / (long double) total_num_cached_comps_;
+    if(total_num_cached_comps == 0) return 0.0L;
+    return sum_cache_store_sizes / (long double) total_num_cached_comps;
   }
 };

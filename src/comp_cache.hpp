@@ -83,7 +83,7 @@ public:
   inline uint64_t calc_extra_mem_after_push() const;
 
   bool find_comp_and_incorporate_cnt(StackLevel<T> &top, const uint32_t nvars, const CacheableComp<T> &packed_comp) {
-    stats.num_cache_look_ups_++;
+    stats.num_cache_look_ups++;
     uint32_t table_ofs = packed_comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
     if (!act_id) return false;
@@ -249,7 +249,7 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
     entry_base[id] = ccomp;
   }
   compute_size_allocated(); // TODO expensive... and should not be needed
-  VERBOSE_DEBUG_DO(if (stats.total_num_cached_comps_ % 100000 == 99999) debug_mem_data());
+  VERBOSE_DEBUG_DO(if (stats.total_num_cached_comps % 100000 == 99999) debug_mem_data());
 
   entry(id).set_father(super_comp_id);
   add_descendant(super_comp_id, id);

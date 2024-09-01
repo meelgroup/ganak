@@ -612,7 +612,6 @@ template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
 template<typename T>
 Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
   Antecedent ante;
-  stats.num_clauses_learned_++;
   Clause* cl = add_cl(literals, true);
   if (cl) {
     auto off = alloc->get_offset(cl);

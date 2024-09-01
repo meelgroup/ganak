@@ -186,7 +186,7 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   // we need a father for this all to work
   assert(entry(id).father());
   assert(exists(entry(id).father()));
-  stats.num_cache_dels_++;
+  stats.num_cache_dels++;
 
   // unlink id from the father's siblings list
   uint64_t len = 0;

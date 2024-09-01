@@ -818,8 +818,8 @@ T Counter<T>::outer_count() {
       sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       stats.num_cubes_final++;
     }
-    if (conf.verb >= 2 || stats.num_cache_look_ups_ > next_rst_print) {
-      next_rst_print = stats.num_cache_look_ups_ + (1ULL*1000LL*1000LL);
+    if (conf.verb >= 2 || stats.num_cache_look_ups > next_rst_print) {
+      next_rst_print = stats.num_cache_look_ups + (1ULL*1000LL*1000LL);
       verb_print(1,"[rst-cube] Num restarts: " << stats.num_restarts
           << " orig cubes this rst: " << cubes.size()
           << " total orig cubes: " << stats.num_cubes_orig
@@ -915,10 +915,10 @@ void Counter<T>::print_all_levels() {
 
 template<typename T>
 void Counter<T>::print_stat_line() {
-  if (next_print_stat_cache > stats.num_cache_look_ups_) return;
+  if (next_print_stat_cache > stats.num_cache_look_ups) return;
   if (next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
-  next_print_stat_cache = stats.num_cache_look_ups_ + (20ULL*1000LL*1000LL);
+  next_print_stat_cache = stats.num_cache_look_ups + (20ULL*1000LL*1000LL);
   next_print_stat_confl = stats.conflicts + 150LL*1000LL;
 }
 
@@ -1396,12 +1396,12 @@ bool Counter<T>::restart_if_needed() {
     << stats.conflicts-stats.last_restart_num_conflicts
     << endl
     << "c o Num cache lookups since last restart: "
-    << stats.num_cache_look_ups_-stats.last_restart_num_cache_look_ups);
+    << stats.num_cache_look_ups-stats.last_restart_num_cache_look_ups);
 
   // Reset stats
   stats.last_restart_num_conflicts = stats.conflicts;
   stats.last_restart_num_decisions = stats.decisions;
-  stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups_;
+  stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups;
 
   assert(mini_cubes.empty());
   while (decisions.size() > 1) {

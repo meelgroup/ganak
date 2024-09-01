@@ -145,13 +145,13 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
   );
   verb_print(1, "cache K (lookup/ stores/ hits/ dels) "
     << std::left
-    << setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
-    << setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
+    << setw(6) << (num_cache_look_ups/(1000ULL)) << " "
+    << setw(6) << (total_num_cached_comps /(1000ULL)) << " "
     << setw(6) << (num_cache_hits /(1000ULL)) << " "
-    << setw(6) << (num_cache_dels_ /(1000ULL)) << " "
+    << setw(6) << (num_cache_dels /(1000ULL)) << " "
     << setw(16) << " -- Klookup/s: "
     << std::setprecision(2) << setw(9) << std::left
-    << safe_div(num_cache_look_ups_,(1000.0*(cpuTime()-counter->get_start_time())))
+    << safe_div(num_cache_look_ups,(1000.0*(cpuTime()-counter->get_start_time())))
   );
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"

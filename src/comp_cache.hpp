@@ -367,17 +367,17 @@ void CompCache<T>::init(Comp &super_comp, void* hash_seed){
   const uint64_t free_ram = freeram();
   uint64_t max_cache_bound = 80 * (free_ram / 100);
 
-  if (stats.maximum_cache_size_bytes_ == 0) {
-    stats.maximum_cache_size_bytes_ = max_cache_bound;
+  if (stats.max_cache_size_bytes == 0) {
+    stats.max_cache_size_bytes = max_cache_bound;
   }
 
-  if (stats.maximum_cache_size_bytes_ > free_ram) {
+  if (stats.max_cache_size_bytes > free_ram) {
     verb_print(1, "WARNING: Maximum cache size larger than free RAM available");
     verb_print(1, "Free RAM " << std::setprecision(2)
       << (double)free_ram / (1024.0*1024.0) << "MB");
   }
   verb_print(2, "Max cache size (80% free mem-200MB): "
-    << stats.maximum_cache_size_bytes_ / (1024ULL*1024ULL) << " MB");
+    << stats.max_cache_size_bytes / (1024ULL*1024ULL) << " MB");
 
 
   stats.sum_bignum_bytes = 0;

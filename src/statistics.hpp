@@ -43,10 +43,7 @@ class DataAndStatistics {
 public:
   DataAndStatistics (const CounterConfiguration& _conf): conf(_conf) {}
   const CounterConfiguration& conf;
-  uint64_t maximum_cache_size_bytes_ = 0;
-
   uint64_t num_binary_irred_clauses_ = 0;
-
   uint64_t num_binary_red_clauses_ = 0;
 
   // Cubes
@@ -110,6 +107,7 @@ public:
   uint64_t buddy_num_long_cls = 0;
 
   /* cache statistics */
+  uint64_t max_cache_size_bytes = 0;
   uint64_t num_cache_hits = 0;
   uint64_t num_cache_dels = 0;
   uint64_t num_cache_look_ups = 0;
@@ -136,7 +134,7 @@ public:
 
   bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
     return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)
-      >= maximum_cache_size_bytes_;
+      >= max_cache_size_bytes;
   }
 
   uint64_t cache_bytes_memory_usage() const {

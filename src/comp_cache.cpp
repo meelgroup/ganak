@@ -106,7 +106,7 @@ bool CompCache<T>::delete_some_entries() {
   double cutoff = calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
-  verb_print(1, "maximum_cache_size_bytes_ in MB: " << (stats.maximum_cache_size_bytes_)/(1024ULL*1024ULL));
+  verb_print(1, "max_cache_size_bytes in MB: " << (stats.max_cache_size_bytes)/(1024ULL*1024ULL));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
 
   // note we start at index 2, since index 1 is the whole formula, should always stay here!

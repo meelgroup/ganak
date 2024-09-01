@@ -22,14 +22,12 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <string>
 #include <cstdint>
 #include <vector>
 #include <gmpxx.h>
 
 #include "structures.hpp"
 #include "comp_types/cacheable_comp.hpp"
-#include "primitive_types.hpp"
 #include "boundedqueue.hpp"
 #include "counter_config.hpp"
 
@@ -61,7 +59,6 @@ public:
   // Clause db management
   uint64_t reduce_db = 0;
   uint32_t cls_deleted_since_compaction = 0;
-  uint32_t compactions = 0;
   uint32_t cls_removed = 0;
 
   /// number of all decisions made
@@ -163,10 +160,6 @@ public:
   void incorporate_cache_hit(const uint32_t comp_nvars){
     num_cache_hits_++;
     sum_cache_hit_sizes_ += comp_nvars;
-  }
-
-  void incorporateConflictClauseData(const vector<Lit> &clause) {
-    if (clause.size() == 2) num_binary_red_clauses_++;
   }
 
   void incorporateIrredClauseData(const vector<Lit> &clause) {

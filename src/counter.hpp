@@ -341,7 +341,6 @@ protected:
   bool counted_bottom_comp = true; //when false, we MUST take suggested polarities
   vector<uint8_t> seen;
   vector<Cube<T>> mini_cubes;
-  void parse_with_cms(const std::string& filename);
 
   double score_of(const uint32_t v, bool ignore_td = false) const;
   double var_act(const uint32_t v) const;

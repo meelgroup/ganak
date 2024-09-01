@@ -222,6 +222,7 @@ private:
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
   inline bool add_bin_cl(Lit a, Lit b, bool red);
+  bool ended_irred_cls = false; // indicates if we have called end_irred_cls()
 
   // vivif stuff
   void vivif_setup();
@@ -468,9 +469,6 @@ private:
   void backw_susume_cl_with_bin(BinClSub& b);
   void toplevel_full_probe();
   vector<Lit> bothprop_toset;
-
-  // indicates if we have called end_irred_cls()
-  bool ended_irred_cls = false;
 };
 
 template<typename T>

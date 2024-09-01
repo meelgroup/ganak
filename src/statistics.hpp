@@ -119,7 +119,7 @@ public:
   uint64_t comp_sorts = 0;
   uint64_t comp_sizes = 0;
 
-  uint64_t num_cached_comps_ = 0;
+  uint64_t num_cached_comps = 0;
   uint64_t total_num_cached_comps = 0;
   uint64_t cache_pollutions_removed = 0;
   uint64_t cache_pollutions_called = 0;
@@ -145,13 +145,13 @@ public:
   void incorporate_cache_store(const CacheableComp<T> &ccomp, const uint32_t comp_nvars) {
     sum_bignum_bytes += ccomp.bignum_bytes();
     sum_cache_store_sizes += comp_nvars;
-    num_cached_comps_++;
+    num_cached_comps++;
     total_num_cached_comps++;
   }
 
   void incorporate_cache_erase(const CacheableComp<T> &ccomp){
     sum_bignum_bytes -= ccomp.bignum_bytes();
-    num_cached_comps_--;
+    num_cached_comps--;
   }
 
   void incorporate_cache_hit(const uint32_t comp_nvars){

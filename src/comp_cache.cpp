@@ -132,7 +132,7 @@ bool CompCache<T>::delete_some_entries() {
     }
   compute_size_allocated();
 
-  stats.num_cached_comps_ = entry_base.size();
+  stats.num_cached_comps = entry_base.size();
   verb_print(1, "deletion done. T: " << cpuTime()-start_del_time);
   return true;
 }

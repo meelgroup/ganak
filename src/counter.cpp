@@ -1384,7 +1384,7 @@ bool Counter<T>::restart_if_needed() {
 
   // Comps, luby
   if (conf.restart_type == 9 &&
-      (stats.num_cached_comps_) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
+      (stats.num_cached_comps) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
     restart = true;
 
   if (!restart) return false;

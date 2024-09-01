@@ -3946,11 +3946,6 @@ struct ClSorter {
 template<typename T>
 void Counter<T>::reduce_db() {
   stats.reduce_db++;
-  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
-      && num_low_lbd_cls < 50 && conf.update_lbd_cutoff) {
-    verb_print(1, " [rdb] bumping rdb cutoff to 3");
-    lbd_cutoff++;
-  }
   const auto cls_before = long_red_cls.size();
 
   vector<ClauseOfs> tmp_red_cls = long_red_cls;
@@ -3987,6 +3982,14 @@ void Counter<T>::reduce_db() {
       h.used = 0;
     }
   }
+
+  // Update LBD cutoff
+  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
+      && num_low_lbd_cls < 50 && conf.update_lbd_cutoff) {
+    verb_print(1, " [rdb] bumping rdb cutoff to 3");
+    lbd_cutoff++;
+  }
+
   if (conf.verb >= 2 || stats.reduce_db % 3 == 1) {
     verb_print(1, "[rdb] cls before: " << cls_before << " after: " << long_red_cls.size()
       << " low lbd: " << num_low_lbd_cls

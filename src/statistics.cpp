@@ -147,7 +147,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << std::left
     << setw(6) << (num_cache_look_ups_/(1000ULL)) << " "
     << setw(6) << (total_num_cached_comps_ /(1000ULL)) << " "
-    << setw(6) << (num_cache_hits_ /(1000ULL)) << " "
+    << setw(6) << (num_cache_hits /(1000ULL)) << " "
     << setw(6) << (num_cache_dels_ /(1000ULL)) << " "
     << setw(16) << " -- Klookup/s: "
     << std::setprecision(2) << setw(9) << std::left

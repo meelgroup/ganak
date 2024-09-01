@@ -111,11 +111,11 @@ public:
   uint64_t buddy_num_long_cls = 0;
 
   /* cache statistics */
-  uint64_t num_cache_hits_ = 0;
+  uint64_t num_cache_hits = 0;
   uint64_t num_cache_dels_ = 0;
   uint64_t num_cache_look_ups_ = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
-  uint64_t sum_cache_hit_sizes_ = 0;
+  uint64_t sum_cache_hit_sizes = 0;
   uint64_t sum_cache_store_sizes_ = 0;
 
   // Components
@@ -158,8 +158,8 @@ public:
   }
 
   void incorporate_cache_hit(const uint32_t comp_nvars){
-    num_cache_hits_++;
-    sum_cache_hit_sizes_ += comp_nvars;
+    num_cache_hits++;
+    sum_cache_hit_sizes += comp_nvars;
   }
 
   void incorporateIrredClauseData(const vector<Lit> &clause) {
@@ -171,22 +171,19 @@ public:
   void print_short_formula_info(const Counter<T>* counter) const;
 
   double get_avg_comp_hit_size() const {
-    if (num_cache_hits_ == 0) return 0.0L;
-    return (double)sum_cache_hit_sizes_ / (double) num_cache_hits_;
+    if (num_cache_hits == 0) return 0.0L;
+    return (double)sum_cache_hit_sizes / (double) num_cache_hits;
   }
-
-  uint64_t cached_comp_count() const { return num_cached_comps_; }
-  uint64_t cache_hits() const { return num_cache_hits_; }
 
   double cache_miss_rate() const {
     if(num_cache_look_ups_ == 0) return 0.0;
-    return (num_cache_look_ups_ - num_cache_hits_)
+    return (num_cache_look_ups_ - num_cache_hits)
         / (double) num_cache_look_ups_;
   }
 
   long double get_avg_cache_store_sz() const {
-    if(num_cache_hits_ == 0) return 0.0L;
-    return sum_cache_hit_sizes_ / (long double) num_cache_hits_;
+    if(num_cache_hits == 0) return 0.0L;
+    return sum_cache_hit_sizes / (long double) num_cache_hits;
   }
 
   long double get_avg_cache_store_size() const {

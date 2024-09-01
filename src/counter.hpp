@@ -160,7 +160,6 @@ public:
     int32_t nHighestLevel = -1;
     bool bOnlyOneLitFromHighest = false;
   };
-  ConflictData find_conflict_level(Lit p);
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return long_red_cls.size(); }
@@ -200,53 +199,25 @@ public:
   void v_new_lev();
   void v_backup();
   void v_restore();
-protected:
-  CounterConfiguration conf;
-  void unset_lit(Lit lit) {
-    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
-    SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
-    var(lit).ante = Antecedent();
-    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != 1) {
-      uint64_t* at = vars_act_dec.data()+decision_level()*(nVars()+1);
-      bool found = (at[0] == at[lit.var()]);
-      if (found) decisions[decision_level()].include_solution(get_weight(lit));
-    }
-    var(lit).decision_level = INVALID_DL;
-    values[lit] = X_TRI;
-    values[lit.neg()] = X_TRI;
-  }
 
-  const Antecedent & get_antec(Lit lit) const {
-    return var_data[lit.var()].ante;
-  }
-
+  // ReduceDB
   bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {
     return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
   }
-
   void reduce_db();
   template<class T2> void minimize_uip_cl_with_bins(T2& cl);
   vector<Lit> tmp_minim_with_bins;
   void delete_cl(const ClauseOfs cl_ofs);
   bool red_cl_can_be_deleted(ClauseOfs cl_ofs);
 
-  // Super-slow debug, not even used right now
-  bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
-  void check_all_cl_in_watchlists() const;
+protected:
+  CounterConfiguration conf;
 
-  // the first variable that is NOT in the independent support
-  uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
-  uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
-
-  LiteralIndexedVector<LitWatchList> watches;
   vector<T> weights;
   vector<Lit> unit_clauses_;
   vector<VarData> var_data;
   bool num_vars_set = false;
   LiteralIndexedVector<TriValue> values;
-  vector<double> tdscore;
-  double td_weight = 1.0;
-  int td_width = 10000;
   uint32_t lbd_cutoff;
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
@@ -291,25 +262,11 @@ protected:
     return var_data[lit.var()];
   }
 
-  inline VarData &var(const uint32_t v) {
-    return var_data[v];
-  }
-
-  inline const VarData &var(const uint32_t v) const{
-    return var_data[v];
-  }
-
-  inline const VarData &var(const Lit lit) const {
-    return var_data[lit.var()];
-  }
-
-  inline bool is_true(const Lit &lit) const {
-    return values[lit] == T_TRI;
-  }
-
-  bool is_false(Lit lit) {
-    return values[lit] == F_TRI;
-  }
+  inline VarData &var(const uint32_t v) { return var_data[v]; }
+  inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
+  inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
+  inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
+  bool is_false(Lit lit) { return values[lit] == F_TRI; }
 
   string lit_val_str(Lit lit) const {
     if (values[lit] == F_TRI) return "FALSE";
@@ -379,6 +336,8 @@ private:
   void print_all_levels();
   void check_cl_unsat(Lit* c, uint32_t size) const;
   void check_trail(bool check_entail = true) const;
+  bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
+  void check_all_cl_in_watchlists() const;
 
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   void init_activity_scores();
@@ -403,8 +362,6 @@ private:
   mutable vector<Lit> tmp_lit; //used as temporary binary cl
   vector<uint32_t> to_clear;
 
-  vector<Lit> tmp_cl_minim; // Used during minimize_uip_cl
-
   // Switch to approxmc
   double start_time;
   std::mt19937_64 mtrand;
@@ -417,10 +374,29 @@ private:
   uint64_t last_reducedb_confl = 0;
   uint64_t last_reducedb_dec = 0;
 
-  void simple_preprocess();
-  void count_loop();
+  // SAT solver
+  vector<Lit> trail;
+  bool use_sat_solver(RetState& state);
+  int32_t sat_start_dec_level = -1;
+  inline bool sat_mode() const {
+    return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
+  }
+  vector<int> sat_solution;
+  bool propagate(bool out_of_order = false);
+  void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
+  RetState backtrack();
+  bool chrono_work();
+  uint32_t find_lev_to_set(int32_t implied_lit_lev);
+  size_t find_backtrack_level_of_learnt();
+  void reduce_db_if_needed();
+  void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
+  void unset_lit(Lit lit);
+  LiteralIndexedVector<LitWatchList> watches;
+  void go_back_to(int32_t backj);
+  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
 
   // Decisions
+  void init_decision_stack();
   DecisionStack<T> decisions;
   bool decide_lit();
   uint32_t find_best_branch(bool ignore_td = false);
@@ -435,25 +411,15 @@ private:
   Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
   bool standard_polarity(const uint32_t var) const;
   bool get_polarity(const uint32_t var) const;
+  vector<double> tdscore;
+  double td_weight = 1.0;
+  int td_width = 10000;
+  // the first variable that is NOT in the independent support
+  uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
+  // the first variable that is NOT in the opt independent support
+  uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
+  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
 
-  // SAT solver
-  vector<Lit> trail;
-  bool use_sat_solver(RetState& state);
-  int32_t sat_start_dec_level = -1;
-  inline bool sat_mode() const {
-    return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
-  }
-  vector<int> sat_solution;
-  bool propagate(bool out_of_order = false);
-  void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
-  RetState backtrack();
-  bool chrono_work();
-  RetState resolve_conflict();
-  void go_back_to(int32_t backj);
-  uint32_t find_lev_to_set(int32_t implied_lit_lev);
-  size_t find_backtrack_level_of_learnt();
-  void reduce_db_if_needed();
-  void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
 
   // Printing
   void print_dec_info() const;
@@ -463,6 +429,9 @@ private:
   void print_conflict_info() const;
   void print_comp_stack_info() const;
   void print_trail(bool check_entail = true, bool check_anything = true) const;
+  void print_stat_line();
+  uint64_t next_print_stat_cache = 4ULL*1000LL*1000LL;
+  uint64_t next_print_stat_confl = 100LL*1000LL;
 
   // BDD
   bool do_buddy_count(const Comp* c);
@@ -491,32 +460,15 @@ private:
     return trail.begin() + this->var(decisions.top().var).sublevel;
   }
 
-  void init_decision_stack() {
-    decisions.clear();
-    trail.clear();
-    // initialize the stack to contain at least level zero
-    decisions.push_back(StackLevel<T>(
-          1, // super comp
-          2)); //comp stack offset
-
-    // I guess this is needed so the system later knows it's fully counted
-    // since this is only a dummy.
-    decisions.back().change_to_right_branch();
-  }
-
-  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
-  void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
-
-
-  /////////////////////////////////////////////
   //  Conflict analysis below
-  /////////////////////////////////////////////
-
+  RetState resolve_conflict();
+  ConflictData find_conflict_level(Lit p);
   Lit confl_lit = NOT_A_LIT;
   Antecedent confl;
   vector<Lit> uip_clause;
   void create_uip_cl();
   void minimize_uip_cl();
+  vector<Lit> tmp_cl_minim; // Used during minimize_uip_cl
   uint32_t abst_level(const uint32_t x) const;
   bool lit_redundant(Lit p, uint32_t abstract_levels);
   vector<Lit> analyze_stack;
@@ -567,6 +519,8 @@ private:
   LiteralIndexedVector<TriValue> v_values;
 
   // Toplevel stuff
+  void count_loop();
+  void simple_preprocess();
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
   inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
@@ -577,7 +531,6 @@ private:
     return abs;
   }
   inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
-
   template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
   vector<ClauseOfs> clauses;
@@ -586,13 +539,24 @@ private:
   void toplevel_full_probe();
   vector<Lit> bothprop_toset;
 
-  void print_stat_line();
-  uint64_t next_print_stat_cache = 4ULL*1000LL*1000LL;
-  uint64_t next_print_stat_confl = 100LL*1000LL;
-
   // indicates if we have called end_irred_cls()
   bool ended_irred_cls = false;
 };
+
+template<typename T>
+void Counter<T>::unset_lit(Lit lit) {
+    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
+    SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
+    var(lit).ante = Antecedent();
+    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != 1) {
+      uint64_t* at = vars_act_dec.data()+decision_level()*(nVars()+1);
+      bool found = (at[0] == at[lit.var()]);
+      if (found) decisions[decision_level()].include_solution(get_weight(lit));
+    }
+    var(lit).decision_level = INVALID_DL;
+    values[lit] = X_TRI;
+    values[lit.neg()] = X_TRI;
+  }
 
 template<typename T>
 inline void Counter<T>::print_cl(const Lit* c, uint32_t size) const {

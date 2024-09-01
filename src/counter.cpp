@@ -4131,6 +4131,20 @@ void Counter<T>::set_lit_weight(Lit l, const T& w) {
   if (w == 0) add_irred_cl({l.neg()});
 }
 
+template<typename T>
+void Counter<T>::init_decision_stack() {
+    decisions.clear();
+    trail.clear();
+    // initialize the stack to contain at least level zero
+    decisions.push_back(StackLevel<T>(
+          1, // super comp
+          2)); //comp stack offset
+
+    // I guess this is needed so the system later knows it's fully counted
+    // since this is only a dummy.
+    decisions.back().change_to_right_branch();
+  }
+
 template class Counter<mpz_class>;
 template class Counter<mpfr::mpreal>;
 template class Counter<mpq_class>;

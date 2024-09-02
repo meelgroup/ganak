@@ -280,24 +280,12 @@ public:
   Lit* data() const {
     return (Lit*)((char*)this + sizeof(Clause));
   }
-  Lit* begin() {
-    return data();
-  }
-  const Lit* begin() const {
-    return data();
-  }
-  const Lit* end() const {
-    return begin()+sz;
-  }
-  Lit* end() {
-    return begin()+sz;
-  }
-  Lit& operator[](uint32_t at) {
-    return *(data()+at);
-  }
-  const Lit& operator[](uint32_t at) const {
-    return *(data()+at);
-  }
+  Lit* begin() { return data(); }
+  Lit* end() { return begin()+sz; }
+  Lit& operator[](uint32_t at) { return *(data()+at); }
+  const Lit* begin() const { return data(); }
+  const Lit* end() const { return begin()+sz; }
+  const Lit& operator[](uint32_t at) const { return *(data()+at); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {

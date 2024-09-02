@@ -774,8 +774,10 @@ T Counter<T>::outer_count() {
     }
     verb_print(1, "[appmc] timeout set to: " << set_timeout);
     Timer t;
-    t.set_timeout([=]() { appmc_timeout_fired = true; verb_print(3, "**** ApproxMC timer fired ****");},
-        set_timeout);
+    t.set_timeout([=, this]() {
+        appmc_timeout_fired = true;
+        verb_print(3, "**** ApproxMC timer fired ****");
+      }, set_timeout);
   }
 
   verb_print(1, "Sampling set size: " << indep_support_end-1);

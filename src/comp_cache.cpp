@@ -27,13 +27,15 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <iomanip>
 #include "mpreal.h"
+#include "stack.hpp"
 
 #ifdef __linux__
 
 #include <sys/sysinfo.h>
 #include <cstdint>
 
-uint64_t freeram() {
+template<typename T>
+uint64_t CompCache<T>::freeram() {
   struct sysinfo info;
   sysinfo(&info);
   return info.freeram *(uint64_t) info.mem_unit;
@@ -44,7 +46,8 @@ uint64_t freeram() {
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-uint64_t freeram() {
+template<typename T>
+uint64_t CompCache<T>::freeram() {
   int mib[2];
   int64_t physical_memory;
   mib[0] = CTL_HW;
@@ -55,11 +58,7 @@ uint64_t freeram() {
   return physical_memory;
 }
 
-#else
-
 #endif
-
-#include "stack.hpp"
 
 template<typename T>
 void CompCache<T>::test_descendantstree_consistency() {

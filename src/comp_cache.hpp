@@ -126,8 +126,9 @@ public:
   // test function to ensure consistency of the descendant tree
   inline void test_descendantstree_consistency();
   void debug_mem_data() const;
-private:
 
+private:
+  uint64_t freeram();
   void consider_table_resize() {
     // NOTE: it's possible to e.g. half the table.size() here, but
     // the performance gain vs mem use is not worth it
@@ -344,7 +345,6 @@ CompCache<T>::CompCache(
   stats(_stats), conf(_conf), num_vars(_num_vars) {}
 
 
-extern uint64_t freeram();
 
 template<typename T>
 void CompCache<T>::init(Comp &super_comp, void* hash_seed){

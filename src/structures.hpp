@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include "primitive_types.hpp"
 #include "common.hpp"
 #include <gmpxx.h>
-#include "mpreal.h"
 
 using std::vector;
 

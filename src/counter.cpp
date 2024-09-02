@@ -1134,7 +1134,7 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/3.0;
-  freq_score = comp_manager->freq_score_of(v)/25.0;
+  freq_score = (double)comp_manager->freq_score_of(v)/25.0;
   double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << std::setw(4) << v
     << std::setw(3) << " conflK: " << stats.conflicts/1000
@@ -1748,7 +1748,7 @@ struct UIPFixer {
 };
 
 template<typename T>
-size_t Counter<T>::find_backtrack_level_of_learnt() {
+int32_t Counter<T>::find_backtrack_level_of_learnt() {
   assert(!uip_clause.empty());
   uint32_t max_i = 0;
   for (uint32_t i = 0; i < uip_clause.size(); i++) {
@@ -1760,7 +1760,7 @@ size_t Counter<T>::find_backtrack_level_of_learnt() {
 }
 
 template<typename T>
-uint32_t Counter<T>::find_lev_to_set(const int32_t backj) {
+int32_t Counter<T>::find_lev_to_set(const int32_t backj) {
   assert(!uip_clause.empty());
   if (uip_clause.size() == 1) return 0;
   int32_t lev_to_set = 0;

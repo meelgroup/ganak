@@ -54,15 +54,9 @@ public:
     return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
   }
 
-  double freq_score_of(uint32_t v) const {
-    return (double)var_freq_scores[v];
-  }
-  void un_bump_score(uint32_t v) {
-    var_freq_scores[v] --;
-  }
-  inline void bump_freq_score(uint32_t v) {
-    var_freq_scores[v] ++;
-  }
+  auto freq_score_of(uint32_t v) const { return var_freq_scores[v]; }
+  void un_bump_score(uint32_t v) { var_freq_scores[v] --; }
+  inline void bump_freq_score(uint32_t v) { var_freq_scores[v] ++; }
   const CompArchetype<T>& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,

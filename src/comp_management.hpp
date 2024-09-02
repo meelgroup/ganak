@@ -49,7 +49,7 @@ public:
     comp_stack.clear();
   }
 
-  double freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
+  auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls);
   const CompCache<T>& get_cache() const { return cache; }

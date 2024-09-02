@@ -311,8 +311,8 @@ private:
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   RetState backtrack();
   bool chrono_work();
-  uint32_t find_lev_to_set(int32_t implied_lit_lev);
-  size_t find_backtrack_level_of_learnt();
+  int32_t find_lev_to_set(int32_t implied_lit_lev);
+  int32_t find_backtrack_level_of_learnt();
   void reduce_db_if_needed();
   void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
   void unset_lit(Lit lit);

@@ -90,7 +90,7 @@ public:
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all comps have been processed
   inline bool findNextRemainingCompOf(StackLevel<T> &top);
-  void recordRemainingCompsFor(StackLevel<T> &top);
+  void record_remaining_comps_for(StackLevel<T> &top);
   inline void sortCompStackRange(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
@@ -187,9 +187,9 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
   debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs()
       << " comp_stack.size(): " << comp_stack.size());
-  if (comp_stack.size() <= top.remaining_comps_ofs()) recordRemainingCompsFor(top);
+  if (comp_stack.size() <= top.remaining_comps_ofs()) record_remaining_comps_for(top);
   else {
-    debug_print("Not running recordRemainingCompsFor, comp_stack.size() > top.remaining_comps_ofs()."
+    debug_print("Not running record_remaining_comps_for, comp_stack.size() > top.remaining_comps_ofs()."
         " comp_stack.size(): " << comp_stack.size()
         << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
@@ -199,8 +199,8 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
     if constexpr (!weighted) assert(false);
     return false;
   }
-  if (top.hasUnprocessedComps()) {
-    debug_print(COLREDBG"-*-> Finished findNextRemainingCompOf, hasUnprocessedComps.");
+  if (top.has_unproc_comps()) {
+    debug_print(COLREDBG"-*-> Finished findNextRemainingCompOf, has_unproc_comps.");
     return true;
   }
 

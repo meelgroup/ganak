@@ -78,7 +78,7 @@ private:
   uint32_t unprocessed_comps_end_ = 0;
 
 public:
-  bool hasUnprocessedComps() const {
+  bool has_unproc_comps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ > remaining_comps_ofs_;
   }
@@ -128,7 +128,7 @@ public:
   }
 
   bool another_comp_possible() const {
-    return (!branch_found_unsat()) && hasUnprocessedComps();
+    return (!branch_found_unsat()) && has_unproc_comps();
   }
 
   template<class T2>

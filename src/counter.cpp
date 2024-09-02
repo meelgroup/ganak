@@ -970,7 +970,7 @@ void Counter<T>::count_loop() {
         debug_print("after SAT mode. cnt of this comp: " << decisions.top().getTotalModelCount()
           << " unproc comps end: " << decisions.top().getUnprocessedCompsEnd()
           << " remaining comps: " << decisions.top().remaining_comps_ofs()
-          << " has unproc: " << decisions.top().hasUnprocessedComps());
+          << " has unproc: " << decisions.top().has_unproc_comps());
         assert(isindependent);
 
         // Now backtrack

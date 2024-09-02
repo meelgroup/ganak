@@ -60,7 +60,7 @@ void CompManager<T>::removeAllCachePollutionsOf(const StackLevel<T> &top) {
 // cache, and if so, uses that, otherwise, it creates it
 // and adds it to the component stack
 template<typename T>
-void CompManager<T>::recordRemainingCompsFor(StackLevel<T> &top)
+void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
 {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();

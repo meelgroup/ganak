@@ -46,16 +46,6 @@ THE SOFTWARE.
 using std::setw;
 using std::is_same;
 
-void my_gbchandler(int pre, bddGbcStat *) {
-   if (!pre) {
-      /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
-      /* printf(" / %.1fs / %.1fs total\n", */
-       /* (double)s->time/(double)(CLOCKS_PER_SEC), */
-       /* (double)s->sumtime/(double)CLOCKS_PER_SEC); */
-   }
-}
-
-
 template<typename T>
 vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {
   if (!num_vars_set) {
@@ -3800,6 +3790,17 @@ void Counter<T>::end_irred_cls() {
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc, long_irred_cls);
 }
+
+#ifdef BUDDY_ENABLED
+void my_gbchandler(int pre, bddGbcStat *) {
+   if (!pre) {
+      /* printf("Garbage collection #%d: %d nodes / %d free", s->num, s->nodes, s->freenodes); */
+      /* printf(" / %.1fs / %.1fs total\n", */
+      /* (double)s->time/(double)(CLOCKS_PER_SEC), */
+      /* (double)s->sumtime/(double)CLOCKS_PER_SEC); */
+   }
+}
+#endif
 
 template<typename T>
 Counter<T>::Counter(const CounterConfiguration& _conf) :

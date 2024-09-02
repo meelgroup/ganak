@@ -62,7 +62,6 @@ public:
   }
   inline void bump_freq_score(uint32_t v) {
     var_freq_scores[v] ++;
-    max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
   }
   const CompArchetype<T>& current_archetype() const { return archetype; }
 
@@ -95,7 +94,6 @@ public:
     archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
-    max_freq_score = 1;
     all_vars_in_comp(super_comp, vt)
       if (is_unknown(*vt)) {
         archetype.set_var_in_sup_comp_unvisited_raw(*vt);
@@ -112,7 +110,6 @@ public:
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){
     auto p =  archetype.make_comp(comp_vars.size());
-    p->max_freq_score = max_freq_score;
     return p;
   }
 
@@ -135,7 +132,6 @@ private:
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
   vector<uint32_t> var_freq_scores;
-  uint32_t max_freq_score = 1;
   CompArchetype<T> archetype;
   Counter<T>* counter = nullptr;
 

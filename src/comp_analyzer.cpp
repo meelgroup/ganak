@@ -39,7 +39,7 @@ void CompAnalyzer<T>::initialize(
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
-  VAR_FREQ_DO(var_freq_scores.resize(max_var + 1, 0));
+  var_freq_scores.resize(max_var + 1, 0);
 
   // maps var -> [cl_id, var1, var2, cl_id, var1, var2 ...]
   vector<vector<uint32_t>>  occ_ternary_clauses(max_var + 1);
@@ -197,7 +197,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
       /* BUDDY_DO(if (counter->val(*p) == X_TRI) archetype.num_bin_cls++); */
       if (manage_occ_of(*p)) {
         if (is_unknown(*p)) {
-          VAR_FREQ_DO(bump_freq_score(*p); bump_freq_score(v));
+          bump_freq_score(*p); bump_freq_score(v);
         }
       }
     }
@@ -219,7 +219,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
         if(is_true(a)|| is_true(b)) {
           archetype.clear_cl(clid);
         } else {
-          VAR_FREQ_DO(bump_freq_score(v));
+          bump_freq_score(v);
           manage_occ_and_score_of(a.var());
           manage_occ_and_score_of(b.var());
           archetype.set_clause_visited(clid ,is_unknown(a) && is_unknown(b));

@@ -109,7 +109,7 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
   debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): "
       << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack.size());
-  sortCompStackRange(new_comps_start_ofs, comp_stack.size());
+  sort_comp_stack_range(new_comps_start_ofs, comp_stack.size());
 }
 
 template class CompManager<mpz_class>;

@@ -935,9 +935,9 @@ void Counter<T>::count_loop() {
 
   while (true) {
     debug_print("var top of decision stack: " << decisions.top().var);
-    // NOTE: findNextRemainingCompOf finds disjoint comps
+    // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
-    while (comp_manager->findNextRemainingCompOf(decisions.top())) {
+    while (comp_manager->find_next_remain_comp_of(decisions.top())) {
       // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
       const Comp* c = comp_manager->at(decisions.top().super_comp());
 

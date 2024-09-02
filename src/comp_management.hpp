@@ -49,10 +49,7 @@ public:
     comp_stack.clear();
   }
 
-#ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
-#endif
-
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls);
   const CompCache<T>& get_cache() const { return cache; }
@@ -89,9 +86,9 @@ public:
   // returns true if a non-trivial non-cached comp
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all comps have been processed
-  inline bool findNextRemainingCompOf(StackLevel<T> &top);
+  inline bool find_next_remain_comp_of(StackLevel<T> &top);
   void record_remaining_comps_for(StackLevel<T> &top);
-  inline void sortCompStackRange(uint32_t start, uint32_t end);
+  inline void sort_comp_stack_range(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
   void removeAllCachePollutionsOfIfExists(const StackLevel<T> &top);
@@ -121,7 +118,7 @@ private:
 };
 
 template<typename T>
-void CompManager<T>::sortCompStackRange(uint32_t start, uint32_t end) {
+void CompManager<T>::sort_comp_stack_range(uint32_t start, uint32_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   if (start == end) return;
@@ -182,9 +179,9 @@ double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) c
 }
 
 template<typename T>
-bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
+bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top)
 {
-  debug_print(COLREDBG"-*-> Running findNextRemainingCompOf");
+  debug_print(COLREDBG"-*-> Running find_next_remain_comp_of");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs()
       << " comp_stack.size(): " << comp_stack.size());
   if (comp_stack.size() <= top.remaining_comps_ofs()) record_remaining_comps_for(top);
@@ -200,14 +197,14 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
     return false;
   }
   if (top.has_unproc_comps()) {
-    debug_print(COLREDBG"-*-> Finished findNextRemainingCompOf, has_unproc_comps.");
+    debug_print(COLREDBG"-*-> Finished find_next_remain_comp_of, has_unproc_comps.");
     return true;
   }
 
   // if no component remains
   // make sure, at least that the current branch is considered SAT
   top.include_solution(1);
-  debug_print(COLREDBG "-*-> Finished findNextRemainingCompOf, no more remaining comps. "
+  debug_print(COLREDBG "-*-> Finished find_next_remain_comp_of, no more remaining comps. "
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "
       " New Model cnt: " << top.getTotalModelCount()
@@ -217,8 +214,8 @@ bool CompManager<T>::findNextRemainingCompOf(StackLevel<T> &top)
 }
 
 template<typename T>
-CompManager<T>::CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
-                 const LiteralIndexedVector<TriValue> &lit_values,
+CompManager<T>::CompManager(const CounterConfiguration& config, DataAndStatistics<T>& statistics,
+                 const LiteralIndexedVector<TriValue>& lit_values,
                  const uint32_t& indep_support_end, Counter<T>* _counter) :
     conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
     ana(lit_values, indep_support_end, _counter), counter(_counter)

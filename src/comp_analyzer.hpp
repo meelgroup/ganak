@@ -54,7 +54,6 @@ public:
     return idx_to_cl_data.data() + idx_to_cl_map[cl_id];
   }
 
-#ifdef VAR_FREQ
   double freq_score_of(uint32_t v) const {
     return (double)var_freq_scores[v];
   }
@@ -65,7 +64,6 @@ public:
     var_freq_scores[v] ++;
     max_freq_score = std::max(max_freq_score, var_freq_scores[v]);
   }
-#endif
   const CompArchetype<T>& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
@@ -89,7 +87,7 @@ public:
   }
 
   bool manage_occ_and_score_of(uint32_t v){
-    VAR_FREQ_DO(if (is_unknown(v)) bump_freq_score(v));
+    if (is_unknown(v)) bump_freq_score(v);
     return manage_occ_of(v);
   }
 
@@ -136,10 +134,8 @@ private:
   const CounterConfiguration& conf;
   const LiteralIndexedVector<TriValue> & values;
   const uint32_t& indep_support_end;
-#ifdef VAR_FREQ
   vector<uint32_t> var_freq_scores;
   uint32_t max_freq_score = 1;
-#endif
   CompArchetype<T> archetype;
   Counter<T>* counter = nullptr;
 
@@ -197,16 +193,14 @@ private:
           comp_vars.pop_back();
         }
         archetype.clear_cl(cl_id);
-#ifdef VAR_FREQ
         while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
-#endif
         break;
       }
     }
 
     if (!archetype.clause_nil(cl_id)) {
-      VAR_FREQ_DO(bump_freq_score(v));
+      bump_freq_score(v);
       archetype.set_clause_visited(cl_id,all_lits_unkn);
     }
   }

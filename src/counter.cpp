@@ -1327,18 +1327,18 @@ bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
 }
 
 static double luby(double y, int x){
-    // Find the finite subsequence that contains index 'x', and the
-    // size of that subsequence:
-    int size, seq;
-    for (size = 1, seq = 0; size < x+1; seq++, size = 2*size+1);
+  // Find the finite subsequence that contains index 'x', and the
+  // size of that subsequence:
+  int size, seq;
+  for (size = 1, seq = 0; size < x+1; seq++, size = 2*size+1);
 
-    while (size-1 != x){
-        size = (size-1)>>1;
-        seq--;
-        x = x % size;
-    }
+  while (size-1 != x){
+      size = (size-1)>>1;
+      seq--;
+      x = x % size;
+  }
 
-    return pow(y, seq);
+  return pow(y, seq);
 }
 
 template<typename T>
@@ -2019,8 +2019,6 @@ RetState Counter<T>::resolve_conflict() {
 
   return RESOLVED; // will ALWAYS propagate afterwards.
 }
-
-/* #define VERB_DEBUG_SAVED */
 
 template<typename T>
 inline void Counter<T>::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind) {

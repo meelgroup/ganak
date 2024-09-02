@@ -571,7 +571,7 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 template<typename T>
 void inline Counter<T>::inc_act(const Lit lit) {
   watches[lit].activity += 1.0;
-  if (sat_mode() && order_heap.inHeap(lit.var())) order_heap.increase(lit.var());
+  if (sat_mode() && order_heap.in_heap(lit.var())) order_heap.increase(lit.var());
 }
 
 template<typename T>

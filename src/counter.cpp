@@ -4104,7 +4104,7 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
       debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
           << " lev: " << std::setw(4) << var(*it).decision_level
           << " ante was: " << var(*it).ante);
-      if (sat_mode() && !order_heap.inHeap(it->var())) order_heap.insert(it->var());
+      if (sat_mode() && !order_heap.in_heap(it->var())) order_heap.insert(it->var());
       unset_lit(*it);
     }
   }

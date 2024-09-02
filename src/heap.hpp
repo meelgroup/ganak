@@ -70,10 +70,6 @@ public:
     bool in_heap(int n) const {
         return n < (int)indices.size() && indices[n] >= 0;
     }
-    int  operator[](int index) const {
-        assert(index < (int)heap.size());
-        return heap[index];
-    }
     void decrease(int n) {
         assert(in_heap(n));
         percolateUp  (indices[n]);

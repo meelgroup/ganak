@@ -97,11 +97,9 @@ public:
   void removeAllCachePollutionsOfIfExists(const StackLevel<T> &top);
   void removeAllCachePollutionsOf(const StackLevel<T> &top);
   void* hash_seed; //stores a bunch of __m128 aligned data pieces, each
-                                //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
-  void getrandomseedforclhash()
-  {
-    std::mt19937_64 eng(conf.seed); //Use the 64-bit Mersenne Twister 19937 generator
-                               //and seed it with entropy.
+                   //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
+  void getrandomseedforclhash() {
+    std::mt19937_64 eng(conf.seed);
     std::uniform_int_distribution<uint64_t> distr;
     hash_seed = get_random_key_for_clhash(distr(eng), distr(eng));
   }

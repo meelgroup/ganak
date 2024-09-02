@@ -24,8 +24,7 @@ THE SOFTWARE.
 #include <arjun/arjun.h>
 using namespace std;
 CounterConfiguration conf;
-int arjun_gates = 1;
-int sbva_steps = 1000;
+int sbva_steps = 1;
 int sbva_cls_cutoff = 4;
 int sbva_lits_cutoff = 5;
 int sbva_tiebreak = 1;
@@ -33,12 +32,8 @@ int do_bce = 1;
 int all_indep = 0;
 int arjun_extend_max_confl = 1000;
 int do_extend_indep = 1;
-int pre_backbone = 0;
-int do_probe_based = 1;
-int arjun_simp_level = 2;
-int arjun_backw_maxc = 20000;
+int do_pre_backbone = 0;
 ArjunNS::SimpConf simp_conf;
-string debug_arjun_cnf;
 int do_precise = 1;
 
 int arjun_oracle_find_bins = 0;
@@ -52,17 +47,8 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
-  arjun.set_or_gate_based(arjun_gates);
-  arjun.set_xor_gates_based(arjun_gates);
-  arjun.set_ite_gate_based(arjun_gates);
-  arjun.set_irreg_gate_based(arjun_gates);
-  arjun.set_extend_max_confl(arjun_extend_max_confl);
-  arjun.set_probe_based(do_probe_based);
-  arjun.set_simp(arjun_simp_level);
-  arjun.set_backw_max_confl(arjun_backw_maxc);
-  arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_verb(0);
-  if (pre_backbone) arjun.only_backbone(cnf);
+  if (do_pre_backbone) arjun.only_backbone(cnf);
   arjun.only_run_minimize_indep(cnf);
   bool do_unate = false;
   assert(!all_indep);

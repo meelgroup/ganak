@@ -3778,11 +3778,12 @@ template<typename T>
 void Counter<T>::end_irred_cls() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
+  stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
+
   delete comp_manager;
   comp_manager = new CompManager(conf, stats, values, indep_support_end, this);
   comp_manager->getrandomseedforclhash();
 
-  stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
   init_decision_stack();
   simple_preprocess();
   ended_irred_cls = true;

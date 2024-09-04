@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "TreeDecomposition.hpp"
 
-#include <iostream>
 #include <cassert>
 #include "time_mem.hpp"
 #include "structures.hpp"

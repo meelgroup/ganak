@@ -1,5 +1,5 @@
 /******************************************
-Copyright (C) 2021 Tuukka Korhonen and Matti Jarvisalo 
+Copyright (C) 2021 Tuukka Korhonen and Matti Jarvisalo
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,7 @@ THE SOFTWARE.
 #include <cstdlib>
 #include <vector>
 #include <cstring>
-#include <random>
-#include <limits>
 #include <cassert>
-#include <functional>
 
 #define BITS 64
 
@@ -38,7 +35,7 @@ class Bitset {
  public:
   uint64_t* data_;
   size_t chunks_;
-  Bitset() {
+  explicit Bitset() {
     chunks_ = 0;
     data_ = nullptr;
   }
@@ -49,9 +46,7 @@ class Bitset {
       data_[i] = 0;
     }
   }
-  ~Bitset() {
-    std::free(data_);
-  }
+  ~Bitset() { std::free(data_); }
   Bitset(const Bitset& other) {
     chunks_ = other.chunks_;
     data_ = (uint64_t*)std::malloc(chunks_*sizeof(uint64_t));
@@ -72,13 +67,14 @@ class Bitset {
     }
     return *this;
   }
-  Bitset(Bitset&& other) {
+
+  Bitset(Bitset&& other) noexcept {
     data_ = other.data_;
     chunks_ = other.chunks_;
     other.data_ = nullptr;
     other.chunks_ = 0;
   }
-  Bitset& operator=(Bitset&& other) {
+  Bitset& operator=(Bitset&& other)  noexcept {
     if (this != &other) {
       std::free(data_);
       data_ = other.data_;
@@ -323,4 +319,5 @@ class Bitset {
     return BitsetIterator(this, chunks_, 0);
   }
 };
-} // namespace sspp
+
+}

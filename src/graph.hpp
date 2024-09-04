@@ -53,8 +53,6 @@ public:
   void AddEdge(Edge e);
   void AddEdges(const std::vector<Edge>& edges);
 
-  void RemoveEdge(int v, int u);
-
   int n() const;
   int m() const;
   bool HasEdge(int v, int u) const;
@@ -62,7 +60,6 @@ public:
   std::vector<Edge> Edges() const;
   std::vector<int> Vertices() const;
 
-  int Degeneracy() const;
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
 
@@ -77,12 +74,6 @@ public:
   std::pair<int, int> MapBack(int v, int u) const;
   int MapInto(int v) const;
   std::vector<int> MapInto(std::vector<int> vs) const;
-
-  void InheritMap(const Graph& parent);
-
-  Bitset AnotherComp(int x, const Bitset& minsep) const;
-
-  std::vector<Bitset> BitComps(Bitset vis) const;
 
   std::vector<Bitset> adj_mat2_;
 

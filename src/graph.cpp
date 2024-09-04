@@ -116,109 +116,6 @@ void Graph::AddEdges(const std::vector<Edge>& edges) {
   for (auto& edge : edges) AddEdge(edge);
 }
 
-void Graph::RemoveEdge(int v, int u) {
-  assert(HasEdge(v, u) && HasEdge(u, v));
-  m_--;
-  adj_mat2_[v].SetFalse(u);
-  adj_mat2_[u].SetFalse(v);
-  int fo = 0;
-  for (int i = 0; i < (int)adj_list_[v].size(); i++) {
-    if (adj_list_[v][i] == u) {
-      std::swap(adj_list_[v][i], adj_list_[v].back());
-      adj_list_[v].pop_back();
-      fo++;
-      break;
-    }
-  }
-  for (int i = 0; i < (int)adj_list_[u].size(); i++) {
-    if (adj_list_[u][i] == v) {
-      std::swap(adj_list_[u][i], adj_list_[u].back());
-      adj_list_[u].pop_back();
-      fo++;
-      break;
-    }
-  }
-  assert(fo == 2);
-}
-
-int Graph::Degeneracy() const {
-  std::vector<std::vector<int>> q(n_);
-  std::vector<int> dg(n_);
-  int vs = 0;
-  for (int i=0;i<n_;i++) {
-    dg[i] = adj_list_[i].size();
-    if (dg[i] > 0) {
-      q[dg[i]].push_back(i);
-      vs++;
-    }
-  }
-  int mt = 0;
-  int t = 0;
-  for (int it=0;it<vs;it++) {
-    int x = -1;
-    while (x == -1) {
-      if (q[t].empty()) {
-        t++;
-      } else {
-        x = q[t].back();
-        q[t].pop_back();
-        if (dg[x] == -1) {
-          x = -1;
-        } else {
-          assert(dg[x] == t);
-        }
-      }
-    }
-    mt = std::max(mt, t);
-    assert(x>=0&&x<n_&&dg[x]==t&&t>=0);
-    for (int nx : adj_list_[x]) {
-      if (dg[nx] >= 0) {
-        assert(dg[nx] >= 1);
-        dg[nx]--;
-        dg[x]--;
-        q[dg[nx]].push_back(nx);
-      }
-    }
-    assert(dg[x] == 0);
-    dg[x] = -1;
-    t = std::max(0, t-1);
-  }
-  return mt;
-}
-
-std::vector<Bitset> Graph::BitComps(Bitset vis) const {
-  Bitset ne(n_);
-  int chunks = vis.Chunks();
-  std::vector<Bitset> ret;
-  bool fo = false;
-  while (1) {
-    if (!fo) {
-      for (int j = 0; j < chunks; j++) {
-        if (vis.data_[j]) {
-          int x = __builtin_ctzll(vis.data_[j]) + j*BITS;
-          ne.SetTrue(x);
-          ret.push_back(Bitset(n_));
-          fo = true;
-          break;
-        }
-      }
-      if (!fo) return ret;
-    }
-    fo = false;
-    for (int j = 0; j < chunks; j++) {
-      uint64_t gv = vis.data_[j] & ne.data_[j];
-      while (gv) {
-        fo = true;
-        vis.data_[j] &= (~(gv&-gv));
-        int x = __builtin_ctzll(gv) + j*BITS;
-        ne |= adj_mat2_[x];
-        ret.back().SetTrue(x);
-        gv &= ~-gv;
-      }
-    }
-  }
-}
-
 std::vector<Edge> Graph::EdgesIn(const std::vector<int>& vs) const {
   std::vector<char> is(n_);
   for (int v : vs) {
@@ -238,31 +135,6 @@ std::vector<Edge> Graph::EdgesIn(const std::vector<int>& vs) const {
     }
   }
   return edges;
-}
-
-Bitset Graph::AnotherComp(int x, const Bitset& minsep) const {
-  // could be optimized
-  int fulls = 0;
-  bool ffx = false;
-  bool fnx = false;
-  Bitset ret;
-  Bitset vis(n_);
-  vis.FillUpTo(n_);
-  vis.TurnOff(minsep);
-  for (auto comp : BitComps(vis)) {
-    if (Neighbors(comp).Popcount() == minsep.Popcount()) {
-      fulls++;
-      if (!comp.Get(x)) {
-        fnx = true;
-        ret = comp;
-      } else {
-        ffx = true;
-      }
-    }
-  }
-  assert(fulls == 2);
-  assert(ffx && fnx);
-  return ret;
 }
 
 int Graph::FillSize(Bitset bs) const {
@@ -327,9 +199,6 @@ std::vector<Edge> Graph::MapBack(std::vector<Edge> es) const {
     e = MapBack(e);
   }
   return es;
-}
-void Graph::InheritMap(const Graph& parent) {
-  vertex_map_ = StaticSet<int>(parent.MapBack(vertex_map_.Values()));
 }
 
 int Graph::MaximalIS(const Bitset& vs) const {

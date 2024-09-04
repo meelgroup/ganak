@@ -54,7 +54,6 @@ SET(SOURCES
 	comp_cache.cpp
 	comp_types/comp_archetype.cpp
 	comp_management.cpp
-	instance.cpp
 	counter.cpp
 	statistics.cpp
     clauseallocator.cpp

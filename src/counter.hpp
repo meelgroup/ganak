@@ -31,7 +31,6 @@ THE SOFTWARE.
 #include "primitive_types.hpp"
 #include "statistics.hpp"
 #include "comp_management.hpp"
-#include "boundedqueue.hpp"
 #include "TreeDecomposition.hpp"
 #include "structures.hpp"
 #include "heap.hpp"

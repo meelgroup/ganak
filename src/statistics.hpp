@@ -28,7 +28,6 @@ THE SOFTWARE.
 
 #include "structures.hpp"
 #include "comp_types/cacheable_comp.hpp"
-#include "boundedqueue.hpp"
 #include "counter_config.hpp"
 
 using std::vector;

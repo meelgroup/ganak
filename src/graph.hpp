@@ -54,7 +54,6 @@ public:
   void AddEdges(const std::vector<Edge>& edges);
 
   void RemoveEdge(int v, int u);
-  void RemoveEdgesBetween(int v, const std::vector<int>& vs);
 
   int n() const;
   int m() const;
@@ -66,15 +65,8 @@ public:
   int Degeneracy() const;
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
-  std::vector<std::vector<int> > Comps(const std::vector<int>& separator) const;
-  std::vector<std::vector<int> > NComps(const std::vector<int>& separator) const;
-  std::vector<Bitset> NComps(const Bitset& bs) const;
-  std::vector<int> FindCompAndMark(int v, std::vector<char>& block) const;
 
   std::vector<Edge> EdgesIn(const std::vector<int>& vs) const;
-  std::vector<Edge> FillEdges(const std::vector<int>& clq) const;
-  std::vector<Edge> FillEdges(const Graph& other) const;
-  std::vector<Edge> FillEdges(Bitset bs) const;
   void FillBS(Bitset bs);
   int FillSize(Bitset bs) const;
 
@@ -88,24 +80,11 @@ public:
 
   void InheritMap(const Graph& parent);
 
-  std::vector<std::vector<int>> CompNeighs(const std::vector<int>& block) const;
-  std::vector<Bitset> CompNeighsBit(const Bitset& block) const;
-
   Bitset AnotherComp(int x, const Bitset& minsep) const;
 
-  bool IsMinsep(const std::vector<int>& separator) const;
-  bool IsMinsep(const Bitset& separator) const;
-  bool HasNFullComps(const Bitset& separator, int n) const;
-
-  void Dfs2(int v, Bitset& sep, Bitset& vis, std::vector<int>& f) const;
   std::vector<Bitset> BitComps(Bitset vis) const;
-  void Dfs22(int v, Bitset& sep, Bitset& vis, std::vector<int>& f, const Bitset& good) const;
-  void Dfs2Bit(Bitset& vis, Bitset& ne) const;
 
   std::vector<Bitset> adj_mat2_;
-
-  std::vector<int> Distances(const std::vector<int>& start) const;
-  std::vector<std::vector<int>> DistanceMatrix() const;
 
   int MaximalIS(const Bitset& vs) const;
 
@@ -116,7 +95,6 @@ private:
   int n_, m_;
   StaticSet<int> vertex_map_;
   std::vector<std::vector<int> > adj_list_;
-  void Dfs(int v, std::vector<char>& blocked, std::vector<int>& component) const;
 };
 
 class TreeDecomposition {

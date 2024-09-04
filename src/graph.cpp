@@ -23,8 +23,6 @@ THE SOFTWARE.
 #include "graph.hpp"
 #include "utils.hpp"
 
-#include <queue>
-
 namespace sspp {
 
 Graph::Graph(int n)
@@ -188,122 +186,6 @@ int Graph::Degeneracy() const {
   return mt;
 }
 
-void Graph::Dfs(int v, std::vector<char>& block, std::vector<int>& component) const {
-  block[v] = true;
-  component.push_back(v);
-  for (int nv : adj_list_[v]) {
-    if (!block[nv]) {
-      Dfs(nv, block, component);
-    }
-  }
-}
-
-std::vector<int> Graph::FindCompAndMark(int v, std::vector<char>& block) const {
-  std::vector<int> component;
-  Dfs(v, block, component);
-  return component;
-}
-
-std::vector<std::vector<int> > Graph::Comps(const std::vector<int>& separator) const {
-  std::vector<char> blocked(n_);
-  for (int v : separator) {
-    blocked[v] = true;
-  }
-  std::vector<std::vector<int> > components;
-  for (int i = 0; i < n_; i++) {
-    if (!blocked[i]) {
-      components.push_back(FindCompAndMark(i, blocked));
-    }
-  }
-  return components;
-}
-
-std::vector<std::vector<int> > Graph::NComps(const std::vector<int>& separator) const {
-  std::vector<char> blocked(n_);
-  for (int v : separator) {
-    blocked[v] = true;
-  }
-  std::vector<std::vector<int> > components;
-  for (int v : separator) {
-    for (int nv : adj_list_[v]) {
-      if (!blocked[nv]) {
-        components.push_back(FindCompAndMark(nv, blocked));
-      }
-    }
-  }
-  return components;
-}
-
-void Graph::Dfs22(int v, Bitset& sep, Bitset& vis, std::vector<int>& f, const Bitset& good) const {
-  vis.SetTrue(v);
-  int chunks = vis.Chunks();
-  Bitset ne(n_);
-  ne.SetTrue(v);
-  bool fo = true;
-  while (fo) {
-    fo = false;
-    for (int j = 0; j < chunks; j++) {
-      uint64_t gv = vis.data_[j] & ne.data_[j];
-      while (gv) {
-        fo = true;
-        vis.data_[j] &= (~(gv&-gv));
-        int x = __builtin_ctzll(gv) + j*BITS;
-        ne |= adj_mat2_[x];
-        gv &= ~-gv;
-      }
-      uint64_t gs = sep.data_[j] & ne.data_[j];
-      while (gs) {
-        sep.data_[j] &= (~(gs&-gs));
-        if (good.data_[j] & (gs&-gs)) {
-          f.push_back(__builtin_ctzll(gs) + j*BITS);
-        }
-        gs &= ~-gs;
-      }
-    }
-  }
-}
-
-void Graph::Dfs2(int v, Bitset& sep, Bitset& vis, std::vector<int>& f) const {
-  vis.SetTrue(v);
-  int chunks = vis.Chunks();
-  Bitset ne(n_);
-  ne.SetTrue(v);
-  bool fo = true;
-  while (fo) {
-    fo = false;
-    for (int j = 0; j < chunks; j++) {
-      uint64_t gv = vis.data_[j] & ne.data_[j];
-      while (gv) {
-        fo = true;
-        vis.data_[j] &= (~(gv&-gv));
-        int x = __builtin_ctzll(gv) + j*BITS;
-        ne |= adj_mat2_[x];
-        gv &= ~-gv;
-      }
-      uint64_t gs = sep.data_[j] & ne.data_[j];
-      while (gs) {
-        sep.data_[j] &= (~(gs&-gs));
-        f.push_back(__builtin_ctzll(gs) + j*BITS);
-        gs &= ~-gs;
-      }
-    }
-  }
-}
-
-std::vector<Bitset> Graph::NComps(const Bitset& separator) const {
-  Bitset vis(n_);
-  vis.FillUpTo(n_);
-  vis.TurnOff(separator);
-  Bitset nbs = Neighbors(separator);
-  std::vector<Bitset> ret;
-  for (Bitset comp : BitComps(vis)) {
-    if (comp.Intersects(nbs)) {
-      ret.push_back(comp);
-    }
-  }
-  return ret;
-}
-
 std::vector<Bitset> Graph::BitComps(Bitset vis) const {
   Bitset ne(n_);
   int chunks = vis.Chunks();
@@ -335,65 +217,6 @@ std::vector<Bitset> Graph::BitComps(Bitset vis) const {
       }
     }
   }
-}
-
-std::vector<std::vector<int>> Graph::CompNeighs(const std::vector<int>& block) const {
-  Bitset sep(n_);
-  Bitset vis(n_);
-  for (int i = 0; i < n_; i++) {
-    if (adj_list_[i].size() > 0) {
-      vis.SetTrue(i);
-    }
-  }
-  for (int x : block) {
-    sep.SetTrue(x);
-    vis.SetFalse(x);
-  }
-  Bitset sb = sep;
-  std::vector<std::vector<int>> ret;
-  std::vector<int> f;
-  f.reserve(block.size());
-  for (int i = 0; i < n_; i++) {
-    if (vis.Get(i)) {
-      Dfs2(i, sep, vis, f);
-      if (!f.empty()) {
-        ret.push_back(f);
-        f.clear();
-      }
-      sep = sb;
-    }
-  }
-  return ret;
-}
-
-bool Graph::HasNFullComps(const Bitset& separator, int n) const {
-  Bitset vis(n_);
-  vis.FillTrue();
-  vis.TurnOff(separator);
-  std::vector<int> f;
-  f.reserve(separator.Popcount());
-  int cnt = 0;
-  Bitset ne(n_);
-  for (int i = 0; i < n_; i++) {
-    if (vis.Get(i) && adj_list_[i].size() > 0) {
-      ne.SetTrue(i);
-      Dfs2Bit(vis, ne);
-      if (ne.Subsumes(separator)) {
-        cnt++;
-      }
-      if (cnt >= n) return true;
-      ne.Clear();
-    }
-  }
-  return false;
-}
-
-bool Graph::IsMinsep(const Bitset& separator) const {
-  return HasNFullComps(separator, 2);
-}
-
-bool Graph::IsMinsep(const std::vector<int>& separator) const {
-  return HasNFullComps(ToBitset(separator, n_), 2);
 }
 
 std::vector<Edge> Graph::EdgesIn(const std::vector<int>& vs) const {
@@ -442,48 +265,6 @@ Bitset Graph::AnotherComp(int x, const Bitset& minsep) const {
   return ret;
 }
 
-std::vector<Edge> Graph::FillEdges(const std::vector<int>& clq) const {
-  std::vector<Edge> ret;
-  for (int i=0;i<(int)clq.size();i++){
-    for (int ii=i+1;ii<(int)clq.size();ii++){
-      if (!HasEdge(clq[i], clq[ii])) {
-        ret.push_back(std::minmax(clq[i], clq[ii]));
-      }
-    }
-  }
-  return ret;
-}
-
-std::vector<Edge> Graph::FillEdges(const Graph& other) const {
-  std::vector<Edge> ret;
-  for (auto e : other.Edges()) {
-    if (!HasEdge(e)) {
-      ret.push_back(e);
-    }
-  }
-  return ret;
-}
-
-std::vector<Edge> Graph::FillEdges(Bitset bs) const {
-  int chunks = bs.chunks_;
-  std::vector<Edge> ret;
-  for (int i=0;i<chunks;i++){
-    while (bs.data_[i]) {
-      int v = i*BITS + __builtin_ctzll(bs.data_[i]);
-      bs.data_[i] &= ~-bs.data_[i];
-      for (int j=i;j<chunks;j++){
-        uint64_t td = bs.data_[j] & (~adj_mat2_[v].data_[j]);
-        while (td) {
-          int u = j*BITS + __builtin_ctzll(td);
-          td &= ~-td;
-          ret.push_back({v, u});
-        }
-      }
-    }
-  }
-  return ret;
-}
-
 int Graph::FillSize(Bitset bs) const {
   int chunks = bs.chunks_;
   int ans = 0;
@@ -515,46 +296,6 @@ void Graph::FillBS(Bitset bs) {
       }
     }
   }
-}
-
-void Graph::RemoveEdgesBetween(int v, const std::vector<int>& vs) {
-  for (int u : vs) {
-    assert(u != v);
-    RemoveEdge(u, v);
-  }
-}
-
-std::vector<int> Graph::Distances(const std::vector<int>& start) const {
-  assert(start.size() > 0);
-  std::vector<int> d(n_);
-  for (int i=0;i<n_;i++){
-    d[i] = n_+1;
-  }
-  std::queue<int> q;
-  for (int v : start) {
-    d[v] = 0;
-    q.push(v);
-  }
-  while (!q.empty()) {
-    int x = q.front();
-    q.pop();
-    for (int nx : adj_list_[x]){
-      if (d[nx] == n_+1) {
-        d[nx] = d[x]+1;
-        q.push(nx);
-      }
-    }
-  }
-  return d;
-}
-
-std::vector<std::vector<int>> Graph::DistanceMatrix() const {
-  std::vector<std::vector<int>> ret;
-  for (int i=0;i<n_;i++){
-    ret.push_back(Distances({i}));
-    assert((int)ret.back().size() == n_);
-  }
-  return ret;
 }
 
 int Graph::MapBack(int v) const {
@@ -589,43 +330,6 @@ std::vector<Edge> Graph::MapBack(std::vector<Edge> es) const {
 }
 void Graph::InheritMap(const Graph& parent) {
   vertex_map_ = StaticSet<int>(parent.MapBack(vertex_map_.Values()));
-}
-
-std::vector<Bitset> Graph::CompNeighsBit(const Bitset& block) const {
-  Bitset vis = ~block;
-  std::vector<Bitset> ret;
-  Bitset ne(n_);
-  Bitset sep(n_);
-  for (int i=0;i<n_;i++){
-    if (vis.Get(i)) {
-      ne.CopyFrom(adj_mat2_[i]);
-      Dfs2Bit(vis, ne);
-      sep.SetAnd(block, ne);
-      if (sep.Popcount() > 0) {
-        ret.push_back(sep);
-      }
-    }
-  }
-  return ret;
-}
-
-
-void Graph::Dfs2Bit(Bitset& vis, Bitset& ne) const {
-  int chunks = vis.Chunks();
-  bool fo = true;
-  while (fo) {
-    fo = false;
-    for (int j = 0; j < chunks; j++) {
-      uint64_t gv = vis.data_[j] & ne.data_[j];
-      while (gv) {
-        fo = true;
-        vis.data_[j] &= (~(gv&-gv));
-        int x = __builtin_ctzll(gv) + j*BITS;
-        gv &= ~-gv;
-        ne |= adj_mat2_[x];
-      }
-    }
-  }
 }
 
 int Graph::MaximalIS(const Bitset& vs) const {
@@ -665,25 +369,6 @@ int TreeDecomposition::Width() const {
 bool TreeDecomposition::InBag(int b, int v) const {
   assert(1 <= b && b <= bs && 0 <= v && v < n);
   return BS(bags[b], v);
-}
-
-bool TreeDecomposition::dfs(int x, int v, int p, vector<int>& u) const {
-  assert(InBag(x, v));
-  assert(u[x] != v);
-  u[x] = v;
-  bool ok = true;
-  for (int nx : tree.Neighbors(x)) {
-    if (InBag(nx, v) && nx != p) {
-      if (u[nx] == v) {
-        return false;
-      }
-      ok = dfs(nx, v, x, u);
-      if (!ok) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 const vector<vector<int>>& TreeDecomposition::Bags() const {

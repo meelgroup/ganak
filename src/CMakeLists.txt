@@ -30,7 +30,7 @@ include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
 
 if (NOT WIN32)
-    add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
+    #add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
     #add_cxx_flag_if_supported("-Wduplicated-cond")
     #add_cxx_flag_if_supported("-Wduplicated-branches")
     add_cxx_flag_if_supported("-Wlogical-op")

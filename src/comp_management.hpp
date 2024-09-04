@@ -207,7 +207,7 @@ bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top)
   debug_print(COLREDBG "-*-> Finished find_next_remain_comp_of, no more remaining comps. "
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "
-      " New Model cnt: " << top.getTotalModelCount()
+      " New Model cnt: " << top.get_total_model_count()
       << " left: " << top.get_left_model_count() << " right: "
       << top.get_right_model_count() << " , returning.");
   return false;

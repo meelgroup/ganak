@@ -82,16 +82,16 @@ public:
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ > remaining_comps_ofs_;
   }
-  uint32_t numUnprocessedComps() const {
+  uint32_t num_unproc_comps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ - remaining_comps_ofs_;
   }
-  void nextUnprocessedComp() {
+  void next_unproc_comp() {
     assert(unprocessed_comps_end_ > remaining_comps_ofs_);
     unprocessed_comps_end_--;
   }
 
-  void resetRemainingComps() {
+  void reset_remain_comps() {
     unprocessed_comps_end_ = remaining_comps_ofs_;
   }
 
@@ -102,7 +102,7 @@ public:
   uint32_t super_comp() const {
     return super_comp_;
   }
-  uint32_t getUnprocessedCompsEnd() const {
+  uint32_t get_unproc_comps_end() const {
     return unprocessed_comps_end_;
   }
   uint32_t remaining_comps_ofs() const {
@@ -113,7 +113,7 @@ public:
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
-  uint32_t currentRemainingComp() const {
+  uint32_t curr_remain_comp() const {
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }
@@ -191,7 +191,7 @@ public:
     branch_found_unsat_[active_branch_] = true;
   }
 
-  const T& getBranchSols() const {
+  const T& get_branch_sols() const {
     return branch_model_count_[active_branch_];
   }
 
@@ -208,7 +208,7 @@ public:
     branch_model_count_[1] = 0;
   }
 
-  const T getTotalModelCount() const {
+  const T get_total_model_count() const {
     return branch_model_count_[0] + branch_model_count_[1];
   }
 

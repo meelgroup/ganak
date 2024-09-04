@@ -41,7 +41,7 @@ void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top
 template<typename T>
 void CompManager<T>::removeAllCachePollutionsOf(const StackLevel<T> &top) {
   // all processed comps are found in
-  // [top.currentRemainingComp(), comp_stack.size())
+  // [top.curr_remain_comp(), comp_stack.size())
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);

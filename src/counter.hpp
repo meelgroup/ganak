@@ -152,18 +152,15 @@ class Counter {
 public:
   Counter(const CounterConfiguration& _conf);
   ~Counter();
+  T outer_count();
+
   const CounterConfiguration& get_conf() const { return conf;}
-  friend class ClauseAllocator<T>;
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_reds() const { return long_red_cls.size(); }
   uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
-  int val(Lit lit) const { return values[lit]; }
-  int val(uint32_t var) const { return values[Lit(var,1)]; }
   bool get_is_approximate() const { return is_approximate; }
 
-  friend class ClauseAllocator<T>;
-  ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> long_red_cls;
   uint32_t nVars() const { return var_data.size() - 1; }
@@ -172,7 +169,6 @@ public:
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
   void end_irred_cls();
   void set_indep_support(const set<uint32_t>& indeps);
-  T outer_count();
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
   bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t>& indeps);
@@ -182,6 +178,14 @@ public:
   T get_weight(const uint32_t v) {
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
+
+private:
+  CounterConfiguration conf;
+  DataAndStatistics<T> stats;
+  bool num_vars_set = false;
+  std::mt19937_64 mtrand;
+  CMSat::SATSolver* sat_solver = nullptr;
+  CompManager<T>* comp_manager = nullptr;
 
   // ReduceDB
   bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {
@@ -197,12 +201,6 @@ public:
   uint32_t num_used_cls = 0; // last time counted used clauses
   uint64_t last_reducedb_confl = 0;
   uint64_t last_reducedb_dec = 0;
-
-private:
-  CounterConfiguration conf;
-  DataAndStatistics<T> stats;
-  bool num_vars_set = false;
-  std::mt19937_64 mtrand;
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbd_helper;
@@ -270,7 +268,6 @@ private:
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
-  CMSat::SATSolver* sat_solver = nullptr;
 
   // Needed to know what variables were active in given decision levels
   // It's needed for weighted counting to know what variable was active in
@@ -292,14 +289,17 @@ private:
   bool is_approximate = false;
   mpz_class do_appmc_count();
 
-  CompManager<T>* comp_manager = nullptr;
 
   // SAT solver
   bool ok = true;
   uint32_t qhead = 0;
   vector<VarData> var_data;
   LiteralIndexedVector<TriValue> values;
+  int val(Lit lit) const { return values[lit]; }
+  int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
+  friend class ClauseAllocator<T>;
+  ClauseAllocator<T>* alloc;
   bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
   inline bool sat_mode() const {

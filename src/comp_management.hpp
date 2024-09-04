@@ -70,7 +70,7 @@ public:
 
   uint32_t comp_stack_size() { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }
-  void cleanRemainingCompsOf(const StackLevel<T>& top) {
+  void clean_remain_comps_of(const StackLevel<T>& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack.size() > top.remaining_comps_ofs()) {
       if (cache.exists(comp_stack.back()->id())) cache.entry(comp_stack.back()->id()).set_deletable();

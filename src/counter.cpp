@@ -1814,7 +1814,7 @@ void Counter<T>::go_back_to(int32_t backj) {
     decisions.top().zero_out_branch_sol();
     if (!sat_mode()) {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
-      comp_manager->cleanRemainingCompsOf(decisions.top());
+      comp_manager->clean_remain_comps_of(decisions.top());
     }
     VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().total_model_count() << endl);
   }
@@ -4112,7 +4112,7 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
   }
   VERY_SLOW_DEBUG_DO(if (check_ws && !check_watchlists()) {
       print_trail(false, false);assert(false);});
-  if (!sat_mode()) comp_manager->cleanRemainingCompsOf(decisions.top());
+  if (!sat_mode()) comp_manager->clean_remain_comps_of(decisions.top());
   trail.resize(jt - trail.begin());
   if (decision_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);

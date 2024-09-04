@@ -60,7 +60,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << safe_div(conflicts,((cpu_time()-counter->get_start_time())))
   );
   verb_print(1, "conflict cls (long/bin)        " << std::fixed
-    << counter->get_num_long_reds() << "/" << num_bin_red_cls);
+    << counter->get_num_long_red_cls() << "/" << num_bin_red_cls);
 
   /* verb_print(1, "lits /rem lits ccmin           " */
   /*   << setw(9) << orig_uip_lits/uip_cls << " " */

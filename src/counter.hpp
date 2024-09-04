@@ -157,7 +157,7 @@ public:
   const CounterConfiguration& get_conf() const { return conf;}
   void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
-  uint32_t get_num_long_reds() const { return long_red_cls.size(); }
+  uint32_t get_num_long_red_cls() const { return long_red_cls.size(); }
   uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
   bool get_is_approximate() const { return is_approximate; }
 
@@ -172,7 +172,7 @@ public:
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
   bool add_irred_cl(const vector<Lit>& lits);
   void set_optional_indep_support(const set<uint32_t>& indeps);
-  int32_t decision_level() const { return decisions.get_decision_level();}
+
   void set_lit_weight(Lit l, const T& w);
   const T& get_weight(const Lit l) { return weights[l.raw()];}
   T get_weight(const uint32_t v) {
@@ -269,14 +269,15 @@ private:
   vector<vector<Lit>> debug_irred_cls;
 #endif
 
-  // Needed to know what variables were active in given decision levels
-  // It's needed for weighted counting to know what variable was active in
-  // that component (learnt clauses can propagate vars that were not active,
-  // and on backtrack, we'd multiply by them, wrongly)
-  vector<uint64_t> vars_act_dec;
+  // Weights
   uint64_t vars_act_dec_num = 0;
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   vector<T> weights;
+  /** Needed to know what variables were active in given decision levels
+  / It's needed for weighted counting to know what variable was active in
+  / that component (learnt clauses can propagate vars that were not active,
+  / and on backtrack, we'd multiply by them, wrongly) **/
+  vector<uint64_t> vars_act_dec;
 
   // Temporaries
   mutable vector<Lit> tmp_lit; //used as temporary binary cl
@@ -298,6 +299,7 @@ private:
   int val(Lit lit) const { return values[lit]; }
   int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
+  int32_t decision_level() const { return decisions.get_decision_level();}
   friend class ClauseAllocator<T>;
   ClauseAllocator<T>* alloc;
   bool use_sat_solver(RetState& state);

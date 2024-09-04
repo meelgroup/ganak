@@ -83,7 +83,6 @@ class TreeDecomposition {
    int Width() const;
    bool Verify(const Graph& graph) const;
    bool InBag(int b, int v) const;
-   Graph Chordal() const;
    int Centroid() const;
   vector<int> GetOrd() const;
  private:

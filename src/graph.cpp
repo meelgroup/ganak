@@ -134,19 +134,6 @@ bool TreeDecomposition::InBag(int b, int v) const {
   return BS(bags[b], v);
 }
 
-Graph TreeDecomposition::Chordal() const {
-  Graph ret(n);
-  for (const auto& bag : bags) {
-    for (int i = 0; i < (int)bag.size(); i++) {
-      for (int j = i+1; j < (int)bag.size(); j++) {
-        assert(bag[i] >= 0 && bag[i] < n && bag[j] >= 0 && bag[j] < n);
-        ret.AddEdge(bag[i], bag[j]);
-      }
-    }
-  }
-  return ret;
-}
-
 int TreeDecomposition::nbags() const { return bs; }
 int TreeDecomposition::nverts() const { return n; }
 

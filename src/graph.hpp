@@ -62,12 +62,6 @@ public:
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
 
-  int MapBack(int v) const;
-  std::vector<int> MapBack(std::vector<int> vs) const;
-  Edge MapBack(Edge e) const;
-  std::vector<Edge> MapBack(std::vector<Edge> es) const;
-  std::pair<int, int> MapBack(int v, int u) const;
-
   std::vector<Bitset> adj_mat2_;
 
 

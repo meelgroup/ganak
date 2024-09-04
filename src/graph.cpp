@@ -51,13 +51,8 @@ Graph::Graph(std::vector<Edge> edges) : vertex_map_(edges) {
   }
 }
 
-int Graph::n() const {
-  return n_;
-}
-
-int Graph::m() const {
-  return m_;
-}
+int Graph::n() const { return n_; }
+int Graph::m() const { return m_; }
 
 bool Graph::HasEdge(int v, int u) const {
   return adj_mat2_[v].Get(u);
@@ -112,28 +107,6 @@ void Graph::AddEdge(Edge e) {
   AddEdge(e.first, e.second);
 }
 
-int Graph::MapBack(int v) const {
-  return vertex_map_.Kth(v);
-}
-std::vector<int> Graph::MapBack(std::vector<int> vs) const {
-  for (int& v : vs) {
-    v = MapBack(v);
-  }
-  return vs;
-}
-std::pair<int, int> Graph::MapBack(int v, int u) const {
-  return {MapBack(v), MapBack(u)};
-}
-Edge Graph::MapBack(Edge e) const {
-  return {MapBack(e.first), MapBack(e.second)};
-}
-std::vector<Edge> Graph::MapBack(std::vector<Edge> es) const {
-  for (Edge& e : es) {
-    e = MapBack(e);
-  }
-  return es;
-}
-
 TreeDecomposition::TreeDecomposition(int bs_, int n_)
  : bs(bs_), n(n_), width(-1), tree(bs+1), bags(bs+1) {}
 
@@ -178,13 +151,8 @@ Graph TreeDecomposition::Chordal() const {
   return ret;
 }
 
-int TreeDecomposition::nbags() const {
-  return bs;
-}
-
-int TreeDecomposition::nverts() const {
-  return n;
-}
+int TreeDecomposition::nbags() const { return bs; }
+int TreeDecomposition::nverts() const { return n; }
 
 const vector<int>& TreeDecomposition::Neighbors(int b) const {
   assert(b >= 1 && b <= bs);

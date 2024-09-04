@@ -81,7 +81,6 @@ class TreeDecomposition {
    void AddEdge(int a, int b);
    void SetBag(int v, vector<int> bag);
    int Width() const;
-   bool Verify(const Graph& graph) const;
    bool InBag(int b, int v) const;
    int Centroid() const;
   vector<int> GetOrd() const;
@@ -94,7 +93,6 @@ class TreeDecomposition {
    bool dfs(int x, int v, int p, vector<int>& u) const;
 };
 
-// Implementation
 template<typename T>
 StaticSet<T>::StaticSet(const std::vector<T>& values) {
   Init(values);

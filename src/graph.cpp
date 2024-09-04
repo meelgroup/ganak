@@ -134,10 +134,6 @@ bool TreeDecomposition::InBag(int b, int v) const {
   return BS(bags[b], v);
 }
 
-const vector<vector<int>>& TreeDecomposition::Bags() const {
-  return bags;
-}
-
 Graph TreeDecomposition::Chordal() const {
   Graph ret(n);
   for (const auto& bag : bags) {

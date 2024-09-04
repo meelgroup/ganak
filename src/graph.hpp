@@ -62,9 +62,6 @@ public:
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
 
-  std::vector<Bitset> adj_mat2_;
-
-
   Graph(const Graph& rhs) = default;
   Graph& operator=(const Graph& rhs) = default;
 
@@ -72,12 +69,12 @@ private:
   int n_, m_;
   StaticSet<int> vertex_map_;
   std::vector<std::vector<int> > adj_list_;
+  std::vector<Bitset> adj_mat2_;
 };
 
 class TreeDecomposition {
  public:
    explicit TreeDecomposition(int bs_, int n_);
-   const vector<vector<int>>& Bags() const;
    const vector<int>& Neighbors(int b) const;
    int nverts() const;
    int nbags() const;

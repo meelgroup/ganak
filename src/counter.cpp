@@ -748,7 +748,7 @@ public:
     template<typename Function>
     void set_timeout(Function function, double delay) {
       this->clear = false;
-      std::thread t([=]() {
+      std::thread t([=, this]() {
           if(this->clear) return;
           std::this_thread::sleep_for(std::chrono::milliseconds((int)(delay*1000.0)));
           if(this->clear) return;
@@ -2443,7 +2443,7 @@ void Counter<T>::v_cl_repair(ClauseOfs off) {
   }
 
   std::sort(cl.begin(), cl.end(),
-    [=](const Lit& a, const Lit& b) {
+    [=, this](const Lit& a, const Lit& b) {
       // undef must be at the beginning.
       if (val(a) == X_TRI && val(b) != X_TRI) return true;
       if (val(b) == X_TRI && val(a) != X_TRI) return false;
@@ -2627,7 +2627,7 @@ bool Counter<T>::vivify_cl(const ClauseOfs off) {
     assert(cl.sz >= 2);
     VERBOSE_DEBUG_DO(cout << "vivified CL: " << endl; v_print_cl(cl));
 
-    std::sort(cl.begin(), cl.end(), [=](const Lit l1, const Lit l2) {
+    std::sort(cl.begin(), cl.end(), [=, this](const Lit l1, const Lit l2) {
         if (v_val(l1) != v_val(l2)) {
           if (v_val(l1) == X_TRI) return true;
           return false;
@@ -3239,7 +3239,7 @@ void Counter<T>::subsume_all() {
     else long_irred_cls.push_back(off);
 
     std::sort(cl.begin(), cl.end(),
-      [=](const Lit& a, const Lit& b) {
+      [=, this](const Lit& a, const Lit& b) {
         // undef must be at the beginning.
         if (val(a) == X_TRI && val(b) != X_TRI) return true;
         if (val(b) == X_TRI && val(a) != X_TRI) return false;

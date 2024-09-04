@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <stdlib.h>
 #include <cstdint>
 #include <vector>
 
@@ -70,23 +69,17 @@ private:
   );
 
   uint32_t new_sz_while_moving;
-  uint32_t* data_start; ///<Stack starts at these positions
-  uint64_t size; ///<The number of BASE_DATA_TYPE datapieces currently used in each stack
-  uint64_t capacity; ///<The number of BASE_DATA_TYPE datapieces allocated
-  uint64_t currently_used_sz; ///< The estimated used size of the stack
+  uint32_t* data_start = nullptr;
+  uint64_t size = 0;
+  uint64_t capacity = 0;
+  uint64_t currently_used_sz = 0;
   const CounterConfiguration& conf;
   void* alloc_enough(const uint32_t num_lits);
 };
 
 template<typename T>
-ClauseAllocator<T>::ClauseAllocator(const CounterConfiguration& _conf) :
-    data_start(nullptr)
-    , size(0)
-    , capacity(0)
-    , currently_used_sz(0)
-    , conf(_conf)
-{
-    assert(MIN_LIST_SIZE < MAXSIZE);
+ClauseAllocator<T>::ClauseAllocator(const CounterConfiguration& _conf): conf(_conf) {
+    static_assert(MIN_LIST_SIZE < MAXSIZE);
 }
 
 template<typename T>

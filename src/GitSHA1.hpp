@@ -20,8 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#ifndef GITSHA1_H
-#define GITSHA1_H
+#pragma once
 
 namespace GANAK {
 
@@ -30,5 +29,3 @@ const char* get_version_tag();
 const char* get_compilation_env();
 
 }
-
-#endif //GITSHA1_H

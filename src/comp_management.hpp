@@ -110,10 +110,6 @@ private:
   vector<Comp*> comp_stack;
   CompCache<T> cache;
   CompAnalyzer<T> ana;
-  // indexed by variable, decremented when a variable is in a component,
-  // and halved once in a while. The LARGER it is, the more likely the
-  // variable gets picked for branching. So basically, the fewer times a
-  // variable is in a component, the more likely the branch
   Counter<T>* counter;
 };
 

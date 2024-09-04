@@ -37,48 +37,17 @@ THE SOFTWARE.
 // note: MinGW64 defines both __MINGW32__ and __MINGW64__
 #if defined (_MSC_VER) || defined (__MINGW32__) || defined(_WIN32) || defined(EMSCRIPTEN)
 #include <ctime>
-static inline double cpuTime(void)
+static inline double cpu_time(void)
 {
     return (double)clock() / CLOCKS_PER_SEC;
 }
-static inline double cpuTimeTotal(void)
-{
-    return (double)clock() / CLOCKS_PER_SEC;
-}
-static inline double realTimeSec() {
-    return 0;
-}
-
-static inline double real_time_sec() {
-    return 0;
-}
-
 
 #else //Linux or POSIX
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
 
-static inline long realTimeMicros() {
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    return 1000000 * tv.tv_sec + tv.tv_usec;
-}
-
-static inline double real_time_sec() {
-    return (double) realTimeMicros() / 1000000;
-}
-
-static inline double cpuTime(void)
-{
-    struct rusage ru;
-    int ret = getrusage(RUSAGE_SELF, &ru);
-    assert(ret == 0);
-
-    return (double)ru.ru_utime.tv_sec + ((double)ru.ru_utime.tv_usec / 1000000.0);
-}
-
-static inline double cpuTimeTotal(void)
+static inline double cpu_time(void)
 {
     struct rusage ru;
     int ret = getrusage(RUSAGE_SELF, &ru);
@@ -95,7 +64,7 @@ static inline double cpuTimeTotal(void)
 // size and resident set size, and return the results in KB.
 //
 // On failure, returns 0.0, 0.0
-static inline uint64_t memUsedTotal(double& vm_usage, std::string* max_mem_usage = nullptr)
+static inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = nullptr)
 {
    //double& vm_usage
    using std::ios_base;
@@ -191,7 +160,7 @@ static inline uint64_t memUsedTotal(double& vm_usage, std::string* max_mem_usage
 }
 #elif defined(__FreeBSD__)
 #include <sys/types.h>
-inline uint64_t memUsedTotal(double& vm_usage, std::string* max_mem_usage = nullptr)
+inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = nullptr)
 {
     vm_usage = 0;
 
@@ -200,7 +169,7 @@ inline uint64_t memUsedTotal(double& vm_usage, std::string* max_mem_usage = null
     return ru.ru_maxrss*1024;
 }
 #else //Windows
-static inline size_t memUsedTotal(double& vm_usage, std::string* max_mem_usage = nullptr)
+static inline size_t mem_used(double& vm_usage, std::string* max_mem_usage = nullptr)
 {
     vm_usage = 0;
     return 0;

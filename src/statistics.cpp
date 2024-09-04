@@ -44,20 +44,20 @@ static double safe_div(double a, double b) {
 
 template<typename T>
 void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCache<T>* cache) const {
-  verb_print(1, "total time so far: " << cpuTime());
+  verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
     << std::left << setw(9) << decisions/1000
     << setw(16) << " -- Kdec/s: "
     << std::setprecision(2) << setw(9) << std::left << std::fixed
-    << safe_div(decisions,(1000.0*(cpuTime()-counter->get_start_time())))
+    << safe_div(decisions,(1000.0*(cpu_time()-counter->get_start_time())))
   );
   verb_print(1, "conflicts                      "
     << std::left << setw(9) << conflicts
     << "   " << std::left << setw(9)
     << setw(16) << " -- confl/s: "
     << std::setprecision(2) << setw(9) << std::left
-    << safe_div(conflicts,((cpuTime()-counter->get_start_time())))
+    << safe_div(conflicts,((cpu_time()-counter->get_start_time())))
   );
   verb_print(1, "conflict cls (long/bin)        " << std::fixed
     << counter->get_num_long_reds() << "/" << num_bin_red_cls);
@@ -134,7 +134,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
 
   double vm_usage = 0;
   verb_print(1, "Mem used                       "
-    << std::setprecision(2) << (double)memUsedTotal(vm_usage) / (1e9)  << " GB");
+    << std::setprecision(2) << (double)mem_used(vm_usage) / (1e9)  << " GB");
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);
@@ -151,7 +151,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << setw(6) << (num_cache_dels /(1000ULL)) << " "
     << setw(16) << " -- Klookup/s: "
     << std::setprecision(2) << setw(9) << std::left
-    << safe_div(num_cache_look_ups,(1000.0*(cpuTime()-counter->get_start_time())))
+    << safe_div(num_cache_look_ups,(1000.0*(cpu_time()-counter->get_start_time())))
   );
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"

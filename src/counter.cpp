@@ -275,7 +275,7 @@ TWD::TreeDecomposition Counter<T>::td_decompose_component(double mult) {
 
 template<typename T>
 void Counter<T>::td_decompose() {
-  double my_time = cpuTime();
+  double my_time = cpu_time();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
@@ -345,7 +345,7 @@ void Counter<T>::td_decompose() {
 
   td.centroid(opt_indep_support_end, conf.verb);
   compute_score(td);
-  verb_print(1, "[td] decompose time: " << cpuTime() - my_time);
+  verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
 }
 
 // Self-check count without restart with CMS only
@@ -627,7 +627,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   verb_print(2, "[rst-cube-ext] Extending cubes.");
   assert(occ.empty());
   assert(occ_cls.empty());
-  auto my_time = cpuTime();
+  auto my_time = cpu_time();
   const auto before_ext = stats.cube_lit_extend;
   const auto before_rem = stats.cube_lit_rem;
 
@@ -668,7 +668,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   verb_print(2, "[rst-cube-ext] E{xtended cubes. lit-rem: "
       << setw(4) << stats.cube_lit_rem - before_rem
       << " lit-ext: " << setw(4) << stats.cube_lit_extend - before_ext
-      << " T: " << (cpuTime() - my_time));
+      << " T: " << (cpu_time() - my_time));
 }
 
 template<typename T>
@@ -764,7 +764,7 @@ T Counter<T>::outer_count() {
   if (!ok) return 0;
   T cnt = 0;
   if constexpr (!weighted) if (conf.appmc_timeout > 0) {
-    double time_so_far = cpuTime();
+    double time_so_far = cpu_time();
     double set_timeout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
     if (conf.appmc_timeout > 500 && set_timeout < 500) {
       double new_set_timeout = 300;
@@ -785,7 +785,7 @@ T Counter<T>::outer_count() {
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
   auto ret = sat_solver->solve();
-  start_time = cpuTime();
+  start_time = cpu_time();
   uint32_t next_rst_print = 0;
   bool done = false;
   while(ret == CMSat::l_True) {
@@ -832,11 +832,11 @@ T Counter<T>::outer_count() {
 
     end_irred_cls();
     if (!done && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
-      double my_time = cpuTime();
+      double my_time = cpu_time();
       vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
-      verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpuTime() - my_time));
+      verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpu_time() - my_time));
     }
     if (appmc_timeout_fired) break;
   }
@@ -1153,7 +1153,7 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
 template<typename T>
 double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw) {
   double score = 0;
-  auto my_time = cpuTime();
+  auto my_time = cpu_time();
 
   int32_t w[2];
   int tdiff[2];
@@ -1175,7 +1175,7 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
     << " w[1]: " << setw(4) << w[1]
     << " trail diff: " << setw(3) << tdiff[0]
     << " trail diff: " << setw(3) << tdiff[1]
-    << " T: " << (cpuTime()-my_time));
+    << " T: " << (cpu_time()-my_time));
   /* return tdiff[0]*tdiff[1]; */
   return -1*std::max<int32_t>({w[0],w[1]})*w[0]*w[1];
 }
@@ -2299,7 +2299,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
-  double my_time = cpuTime();
+  double my_time = cpu_time();
   uint64_t last_vivif_lit_rem = stats.vivif_lit_rem;
   uint64_t last_vivif_cl_minim = stats.vivif_cl_minim;
   auto last_vivif_cl_tried = stats.vivif_tried_cl;
@@ -2331,20 +2331,20 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
   }
 
   vivif_setup();
-  verb_print(2, "[vivif] setup. T: " << (cpuTime()-my_time));
+  verb_print(2, "[vivif] setup. T: " << (cpu_time()-my_time));
 
   // Vivify clauses
   v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
   if (force) v_tout *= 50;
   vivify_cls(long_irred_cls);
   bool tout_irred = (v_tout <= 0);
-  verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-my_time));
+  verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
 
   bool tout_red = false;
   if (!only_irred) {
     v_tout = conf.vivif_mult*20LL*1000LL*1000LL;
     vivify_cls(long_red_cls);
-    verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpuTime()-my_time));
+    verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
     tout_red = (v_tout <= 0);
   }
 
@@ -2375,7 +2375,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
       << " force: " << (int)force
       << " tout-irred: " << (int)tout_irred
       << " tout-red: " << (int)tout_red
-      << " T: " << (cpuTime()-my_time));
+      << " T: " << (cpu_time()-my_time));
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
 }
 
@@ -3091,7 +3091,7 @@ void Counter<T>::toplevel_full_probe() {
   assert(to_clear.empty());
   assert(bothprop_toset.empty());
 
-  double my_time = cpuTime();
+  double my_time = cpu_time();
   auto old_probe = stats.toplevel_probe_fail;
   auto old_bprop = stats.toplevel_bothprop_fail;
   stats.toplevel_probe_runs++;
@@ -3166,7 +3166,7 @@ void Counter<T>::toplevel_full_probe() {
   verb_print(2, "[top-probe] "
       << " failed: " << (stats.toplevel_probe_fail - old_probe)
       << " bprop: " << (stats.toplevel_bothprop_fail - old_bprop)
-      << " T: " << (cpuTime()-my_time));
+      << " T: " << (cpu_time()-my_time));
 }
 
 template<typename T>
@@ -3176,7 +3176,7 @@ void Counter<T>::subsume_all() {
   assert(occ_cls.empty());
 
   // setup
-  double my_time = cpuTime();
+  double my_time = cpu_time();
   auto old_subsumed_long_irred_cls = stats.subsumed_long_irred_cls;
   auto old_subsumed_long_red_cls = stats.subsumed_long_red_cls;
   auto old_subsumed_bin_irred_cls = stats.subsumed_bin_irred_cls;
@@ -3262,7 +3262,7 @@ void Counter<T>::subsume_all() {
       << " bin-red-cls: " << stats.subsumed_bin_red_cls - old_subsumed_bin_red_cls
       << " long-irred-cls: " << stats.subsumed_long_irred_cls - old_subsumed_long_irred_cls
       << " long-red-cls: " << stats.subsumed_long_red_cls - old_subsumed_long_red_cls
-      << " T: " << (cpuTime() - my_time));
+      << " T: " << (cpu_time() - my_time));
 }
 
 template<typename T>
@@ -3973,7 +3973,7 @@ void Counter<T>::reduce_db() {
       << " target computed: " << target
       << " cannot be del : " << cannot_be_del
       << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
-    verb_print(2, "Time until now: " << cpuTime());}
+    verb_print(2, "Time until now: " << cpu_time());}
 }
 
 template<typename T>

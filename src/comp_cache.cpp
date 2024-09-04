@@ -101,7 +101,7 @@ double CompCache<T>::calc_cutoff() const {
 
 template<typename T>
 bool CompCache<T>::delete_some_entries() {
-  const auto start_del_time = cpuTime();
+  const auto start_del_time = cpu_time();
   double cutoff = calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
@@ -132,7 +132,7 @@ bool CompCache<T>::delete_some_entries() {
   compute_size_allocated();
 
   stats.num_cached_comps = entry_base.size();
-  verb_print(1, "deletion done. T: " << cpuTime()-start_del_time);
+  verb_print(1, "deletion done. T: " << cpu_time()-start_del_time);
   return true;
 }
 
@@ -173,7 +173,7 @@ void CompCache<T>::debug_mem_data() const {
 
 
     double vm_dat;
-    auto dat = memUsedTotal(vm_dat);
+    auto dat = mem_used(vm_dat);
     verb_print(1, "Total process MB : " << dat/(double)(1024*1024)
       << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 }

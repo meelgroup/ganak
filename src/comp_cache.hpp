@@ -135,16 +135,16 @@ private:
     // Good example file to stress: mc2023_track1_138.cnf
     if (entry_base.size() > table.size()) {
       double vm_before;
-      auto used_before = memUsedTotal(vm_before);
+      auto used_before = mem_used(vm_before);
       rehash_table(2*table.size());
       double vm_after;
-      auto used_after = memUsedTotal(vm_after);
+      auto used_after = mem_used(vm_after);
       verb_print(2,
         "table resize -- used before: " << used_before/(double)(1024*1024)
         << " vm used before: " << vm_before/(double)(1024*1024)
         << " used after: " << used_after/(double)(1024*1024)
         << " vm used after: " << vm_after/(double)(1024*1024)
-        << " total T: " << cpuTime());
+        << " total T: " << cpu_time());
     }
   }
 
@@ -223,7 +223,7 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
     bool at_capacity = entry_base.capacity() == entry_base.size();
     if (at_capacity && conf.verb >= 3) {
       double vm_dat;
-      auto dat = memUsedTotal(vm_dat);
+      auto dat = mem_used(vm_dat);
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
       verb_print(3,
@@ -234,7 +234,7 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
     entry_base.push_back(ccomp);
     if (at_capacity && conf.verb >= 3) {
       double vm_dat;
-      double dat = memUsedTotal(vm_dat);
+      double dat = mem_used(vm_dat);
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
       verb_print(3,

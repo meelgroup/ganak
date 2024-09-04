@@ -306,7 +306,7 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
 }
 
 auto run_breakid(const ArjunNS::SimplifiedCNF& cnf) {
-  double my_time = cpuTime();
+  double my_time = cpu_time();
   vector<map<Lit, Lit>> generators;
   BID::BreakID breakid;
   /* breakid.set_useMatrixDetection(conf.useMatrixDetection); */
@@ -331,12 +331,12 @@ auto run_breakid(const ArjunNS::SimplifiedCNF& cnf) {
     }
     generators.push_back(gen);
   }
-  verb_print(1, "[breakid] T: " << (cpuTime()-my_time));
+  verb_print(1, "[breakid] T: " << (cpu_time()-my_time));
   return generators;
 }
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
-  double my_time = cpuTime();
+  double my_time = cpu_time();
   ArjunNS::Arjun arjun;
   if (conf.verb == 0) arjun_verb = 0;
   arjun.set_verb(arjun_verb);
@@ -359,7 +359,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
     cnf.opt_sampl_vars.clear();
     for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
   }
-  verb_print(1, "Arjun T: " << (cpuTime()-my_time));
+  verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 
 template<typename T>
@@ -375,7 +375,7 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
       }
     }
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
-      << std::fixed << (cpuTime() - start_time) << endl;
+      << std::fixed << (cpu_time() - start_time) << endl;
     if (!cnf.get_projected()) cout << "c s type wmc" << endl;
     else cout << "c s type pwmc " << endl;
 
@@ -421,7 +421,7 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
 
 int main(int argc, char *argv[])
 {
-  const double start_time = cpuTime();
+  const double start_time = cpu_time();
 #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |
                  FE_DIVBYZERO |
@@ -483,7 +483,7 @@ int main(int argc, char *argv[])
     if (cnf.multiplier_weight == 0) cnt = 0;
     else cnt = counter.unw_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
-      << std::fixed << (cpuTime() - start_time) << endl;
+      << std::fixed << (cpu_time() - start_time) << endl;
     bool is_appx = counter.get_is_approximate();
 
     if (cnt != 0) cout << "s SATISFIABLE" << endl;

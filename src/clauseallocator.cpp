@@ -186,7 +186,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
         << " Currently used size: " << currently_used_sz/1000 << " K");
     return false;
   }
-  const double my_time = cpuTime();
+  const double my_time = cpu_time();
   new_sz_while_moving = 0;
 
   //Pointers that will be moved along
@@ -217,7 +217,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   free(data_start);
   data_start = new_data_start;
 
-  const double time_used = cpuTime() - my_time;
+  const double time_used = cpu_time() - my_time;
   if (conf.verb) {
     size_t log_2_size = 0;
     if (size > 0) log_2_size = std::log2(size);

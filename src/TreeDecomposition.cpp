@@ -30,7 +30,7 @@ using namespace TWD;
 
 
 TreeDecomposition::TreeDecomposition() : tw(0), gnodes(0), cent(-1) {
-  start_time = cpuTime();
+  start_time = cpu_time();
 }
 
 Graph::Graph(int vars)

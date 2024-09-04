@@ -70,7 +70,7 @@ using namespace TWD;
 IFlowCutter::IFlowCutter(int n, int m, int _verb) :
     nodes(n), best_bag_size(numeric_limits<int>::max()), head(2*m, n), tail(2*m, n),
     verb(_verb) {
-      start_time = cpuTime();
+      start_time = cpu_time();
     }
 
 void IFlowCutter::importGraph(const Graph& g)
@@ -503,7 +503,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_order(
   better_td.setNumGraphNodes(node_count);
   if (verb > 0) {
   cout << "c o [td] #bags " << bag_count << ", tw " << maximum_bag_size
-      << ", elapsed " << (cpuTime()-start_time)  << " s"<< endl; // << endl;// << ", #vars " << node_count << endl;
+      << ", elapsed " << (cpu_time()-start_time)  << " s"<< endl; // << endl;// << ", #vars " << node_count << endl;
   }
   better_td.initBags();
 
@@ -592,7 +592,7 @@ TreeDecomposition IFlowCutter::output_tree_decompostion_of_multilevel_partition(
   if (verb > 0)
     cout << "c o [td] #bags " << bag_count
       << " tw " << get_treewidth_of_multilevel_partition(cell_list)-1
-      << " elapsed " << cpuTime()-start_time  << " s"
+      << " elapsed " << cpu_time()-start_time  << " s"
       << endl; // << ", #vars " << get_node_count_of_multilevel_partition(cell_list) << endl;
   better_td.initBags();
 
@@ -616,7 +616,7 @@ TreeDecomposition IFlowCutter::constructTD(const int64_t conf_steps, const int c
 {
   TreeDecomposition td;
   ArrayIDIDFunc preorder, inv_preorder;
-  double t = cpuTime();
+  double t = cpu_time();
 
   /* int random_seed = 0; */
   try{
@@ -705,7 +705,7 @@ TreeDecomposition IFlowCutter::constructTD(const int64_t conf_steps, const int c
             if (i % 100 == 99 || steps < next_step_print) {
               if (verb) {
                 cout << "c o [td] iter " << i << " best bag: " << td.width()
-                  << " stepsK remain: " << steps/1000 << " T: " << (cpuTime()-t) << endl;
+                  << " stepsK remain: " << steps/1000 << " T: " << (cpu_time()-t) << endl;
               }
               next_step_print -= 1e5;
             }

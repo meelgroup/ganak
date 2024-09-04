@@ -178,7 +178,6 @@ void add_ganak_options()
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
 //
     myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
-    myopt("--compsort", conf.do_comp_sort, atoi, "Sort components in different order");
     myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
     myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
     myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");

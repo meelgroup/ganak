@@ -37,7 +37,6 @@ struct CounterConfiguration {
   int do_readjust_for_restart = 1;
   int max_num_rst = -1;
 
-  int do_comp_sort = 0; // they are very similar, see: out-ganak-6910211
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
   int cache_time_update = 2;

@@ -112,64 +112,6 @@ void Graph::AddEdge(Edge e) {
   AddEdge(e.first, e.second);
 }
 
-void Graph::AddEdges(const std::vector<Edge>& edges) {
-  for (auto& edge : edges) AddEdge(edge);
-}
-
-std::vector<Edge> Graph::EdgesIn(const std::vector<int>& vs) const {
-  std::vector<char> is(n_);
-  for (int v : vs) {
-    is[v] = true;
-  }
-  std::vector<Edge> edges;
-  for (int v : vs) {
-    if (adj_list_[v].size() <= vs.size()) { // Two cases for optimization
-      for (int nv : adj_list_[v]) {
-        if (is[nv] && nv > v) edges.push_back({v, nv});
-      }
-    }
-    else {
-      for (int nv : vs) {
-        if (adj_mat2_[v].Get(nv) && nv > v) edges.push_back({v, nv});
-      }
-    }
-  }
-  return edges;
-}
-
-int Graph::FillSize(Bitset bs) const {
-  int chunks = bs.chunks_;
-  int ans = 0;
-  for (int i=0;i<chunks;i++){
-    while (bs.data_[i]) {
-      int v = i*BITS + __builtin_ctzll(bs.data_[i]);
-      bs.data_[i] &= ~-bs.data_[i];
-      for (int j=i;j<chunks;j++){
-        ans += __builtin_popcountll(bs.data_[j] & (~adj_mat2_[v].data_[j]));
-      }
-    }
-  }
-  return ans;
-}
-
-void Graph::FillBS(Bitset bs) {
-  int chunks = bs.chunks_;
-  for (int i=0;i<chunks;i++){
-    while (bs.data_[i]) {
-      int v = i*BITS + __builtin_ctzll(bs.data_[i]);
-      bs.data_[i] &= ~-bs.data_[i];
-      for (int j=i;j<chunks;j++){
-        uint64_t td = bs.data_[j] & (~adj_mat2_[v].data_[j]);
-        while (td) {
-          int u = j*BITS + __builtin_ctzll(td);
-          td &= ~-td;
-          AddEdge(v, u);
-        }
-      }
-    }
-  }
-}
-
 int Graph::MapBack(int v) const {
   return vertex_map_.Kth(v);
 }
@@ -199,18 +141,6 @@ std::vector<Edge> Graph::MapBack(std::vector<Edge> es) const {
     e = MapBack(e);
   }
   return es;
-}
-
-int Graph::MaximalIS(const Bitset& vs) const {
-  Bitset is(n_);
-  int ans = 0;
-  for (int v : vs) {
-    if (!is.Intersects(adj_mat2_[v])) {
-      is.SetTrue(v);
-      ans++;
-    }
-  }
-  return ans;
 }
 
 TreeDecomposition::TreeDecomposition(int bs_, int n_)

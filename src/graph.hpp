@@ -43,7 +43,7 @@ private:
   std::vector<T> values_;
 };
 
-typedef pair<int, int> Edge;
+using Edge = pair<int, int>;
 
 class Graph {
 public:
@@ -51,7 +51,6 @@ public:
   explicit Graph(std::vector<Edge> edges);
   void AddEdge(int v, int u);
   void AddEdge(Edge e);
-  void AddEdges(const std::vector<Edge>& edges);
 
   int n() const;
   int m() const;
@@ -63,10 +62,6 @@ public:
   Bitset Neighbors(const Bitset& vs) const;
   const std::vector<int>& Neighbors(int v) const;
 
-  std::vector<Edge> EdgesIn(const std::vector<int>& vs) const;
-  void FillBS(Bitset bs);
-  int FillSize(Bitset bs) const;
-
   int MapBack(int v) const;
   std::vector<int> MapBack(std::vector<int> vs) const;
   Edge MapBack(Edge e) const;
@@ -77,7 +72,6 @@ public:
 
   std::vector<Bitset> adj_mat2_;
 
-  int MaximalIS(const Bitset& vs) const;
 
   Graph(const Graph& rhs) = default;
   Graph& operator=(const Graph& rhs) = default;

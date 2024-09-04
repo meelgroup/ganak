@@ -124,15 +124,6 @@ std::vector<int> Graph::MapBack(std::vector<int> vs) const {
 std::pair<int, int> Graph::MapBack(int v, int u) const {
   return {MapBack(v), MapBack(u)};
 }
-int Graph::MapInto(int v) const {
-  return vertex_map_.Rank(v);
-}
-std::vector<int> Graph::MapInto(std::vector<int> vs) const {
-  for (int& v : vs) {
-    v = MapInto(v);
-  }
-  return vs;
-}
 Edge Graph::MapBack(Edge e) const {
   return {MapBack(e.first), MapBack(e.second)};
 }

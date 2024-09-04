@@ -67,8 +67,6 @@ public:
   Edge MapBack(Edge e) const;
   std::vector<Edge> MapBack(std::vector<Edge> es) const;
   std::pair<int, int> MapBack(int v, int u) const;
-  int MapInto(int v) const;
-  std::vector<int> MapInto(std::vector<int> vs) const;
 
   std::vector<Bitset> adj_mat2_;
 

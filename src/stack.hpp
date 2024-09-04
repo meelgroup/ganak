@@ -208,14 +208,14 @@ public:
     branch_model_count_[1] = 0;
   }
 
-  const T get_total_model_count() const {
+  const T total_model_count() const {
     return branch_model_count_[0] + branch_model_count_[1];
   }
 
-  const T& get_left_model_count() const {
+  const T& left_model_count() const {
     return branch_model_count_[0];
   }
-  const T& get_right_model_count() const {
+  const T& right_model_count() const {
     return branch_model_count_[1];
   }
 };

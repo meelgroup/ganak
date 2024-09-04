@@ -881,9 +881,9 @@ void Counter<T>::print_all_levels() {
       << " unproc'd comp end: " << decisions.at(dec_lev).get_unproc_comps_end()
       << " remaining comp ofs: " << decisions.at(dec_lev).remaining_comps_ofs()
       << " num unproc'd comps: " << decisions.at(dec_lev).num_unproc_comps()
-      << " count: " << decisions.at(dec_lev).get_total_model_count()
-      << " (left: " << decisions.at(dec_lev).get_left_model_count()
-      << " right: " << decisions.at(dec_lev).get_right_model_count()
+      << " count: " << decisions.at(dec_lev).total_model_count()
+      << " (left: " << decisions.at(dec_lev).left_model_count()
+      << " right: " << decisions.at(dec_lev).right_model_count()
       << " active: " << (decisions.at(dec_lev).is_right_branch() ? "right" : "left") << "). -- ";
 
     const auto& c = comp_manager->at(sup_at);
@@ -956,20 +956,20 @@ void Counter<T>::count_loop() {
 
       if (!isindependent) {
         // The only decision we could make would be non-indep for this component.
-        debug_print("before SAT mode. cnt dec: " << decisions.top().get_total_model_count()
-            << " left: " << decisions.top().get_left_model_count()
-            << " right: " << decisions.top().get_right_model_count());
+        debug_print("before SAT mode. cnt dec: " << decisions.top().total_model_count()
+            << " left: " << decisions.top().left_model_count()
+            << " right: " << decisions.top().right_model_count());
 
         bool ret = use_sat_solver(state);
-        debug_print("after SAT mode. cnt dec: " << decisions.top().get_total_model_count()
-            << " left: " << decisions.top().get_left_model_count()
-            << " right: " << decisions.top().get_right_model_count());
+        debug_print("after SAT mode. cnt dec: " << decisions.top().total_model_count()
+            << " left: " << decisions.top().left_model_count()
+            << " right: " << decisions.top().right_model_count());
         if (ret) {
           state = BACKTRACK;
         } else {
           goto start11;
         }
-        debug_print("after SAT mode. cnt of this comp: " << decisions.top().get_total_model_count()
+        debug_print("after SAT mode. cnt of this comp: " << decisions.top().total_model_count()
           << " unproc comps end: " << decisions.top().get_unproc_comps_end()
           << " remaining comps: " << decisions.top().remaining_comps_ofs()
           << " has unproc: " << decisions.top().has_unproc_comps());
@@ -1025,7 +1025,7 @@ void Counter<T>::count_loop() {
 
 end:
   if (state == EXIT) {
-    Cube<T> c(vector<Lit>(), decisions.top().get_total_model_count());
+    Cube<T> c(vector<Lit>(), decisions.top().total_model_count());
     debug_print("Exiting due to EXIT state, the cube count: " << c.cnt);
     mini_cubes.push_back(c);
   } else {/*restart*/}
@@ -1304,9 +1304,9 @@ bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
       << " num unproc comps: " << dst.num_unproc_comps()
       << " unproc comps end: " << dst.get_unproc_comps_end()
       << " remain comps offs: " << dst.remaining_comps_ofs()
-      << " total count here: " << dst.get_total_model_count()
-      << " left count here: " << dst.get_left_model_count()
-      << " right count here: " << dst.get_right_model_count()
+      << " total count here: " << dst.total_model_count()
+      << " left count here: " << dst.left_model_count()
+      << " right count here: " << dst.right_model_count()
       << " branch: " << dst.is_right_branch() << endl;
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = dst.get_unproc_comps_end();
@@ -1399,8 +1399,8 @@ bool Counter<T>::restart_if_needed() {
   while (decisions.size() > 1) {
     verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
       << " lev: " << decisions.get_decision_level()
-      << " left cnt: " << decisions.top().get_left_model_count()
-      << " right cnt: " << decisions.top().get_right_model_count()
+      << " left cnt: " << decisions.top().left_model_count()
+      << " right cnt: " << decisions.top().right_model_count()
       << COLDEF);
     for(uint32_t i = 0; i < 2; i++) {
       if (decisions.top().get_model_side(i) == 0) continue;
@@ -1539,23 +1539,23 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     VERBOSE_DEBUG_DO(cout << endl);
     T after_mul = 0;
     if (!decisions.top().is_right_branch()) {
-      after_mul += decisions.top().get_left_model_count()*dec_w;
-      after_mul += decisions.top().get_right_model_count();
+      after_mul += decisions.top().left_model_count()*dec_w;
+      after_mul += decisions.top().right_model_count();
     } else {
-      after_mul += decisions.top().get_left_model_count();
-      after_mul += decisions.top().get_right_model_count()*dec_w;
+      after_mul += decisions.top().left_model_count();
+      after_mul += decisions.top().right_model_count()*dec_w;
     }
     debug_print("correct                            : " << std::setprecision(10) << cnt);
     debug_print("after_mul:                         : " << after_mul);
     debug_print("dec_w                              : " << dec_w);
     debug_print("active                             : " << (decisions.top().is_right_branch() ? "right" : "left"));
-    debug_print("ds.top().get_left_model_count()    : " << decisions.top().get_left_model_count());
-    debug_print("ds.top().get_right_model_count()   : " << decisions.top().get_right_model_count());
+    debug_print("ds.top().left_model_count()    : " << decisions.top().left_model_count());
+    debug_print("ds.top().right_model_count()   : " << decisions.top().right_model_count());
 
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
     if (solution_exist) {
-      if constexpr (!weighted) assert(decisions.top().get_total_model_count() == cnt);
+      if constexpr (!weighted) assert(decisions.top().total_model_count() == cnt);
       else {
         bool okay = true;
         T diff = after_mul - cnt;
@@ -1578,9 +1578,9 @@ RetState Counter<T>::backtrack() {
   do {
 #ifdef VERBOSE_DEBUG
     if (decision_level() > 0) {
-      debug_print("[indep] top count here: " << decisions.top().get_total_model_count()
-        << " left: " << decisions.top().get_left_model_count()
-        << " right: " << decisions.top().get_right_model_count()
+      debug_print("[indep] top count here: " << decisions.top().total_model_count()
+        << " left: " << decisions.top().left_model_count()
+        << " right: " << decisions.top().right_model_count()
         << " is right: " << decisions.top().is_right_branch()
         << " dec lit: " << top_dec_lit()
         << " dec lev: " << decision_level());
@@ -1593,7 +1593,7 @@ RetState Counter<T>::backtrack() {
           << decisions.get_decision_level()
           << " instead of backtracking." << " Num unprocessed comps: "
           << decisions.top().num_unproc_comps()
-          << " so far the count: " << decisions.top().get_total_model_count());
+          << " so far the count: " << decisions.top().total_model_count());
       return PROCESS_COMPONENT;
     }
 
@@ -1605,7 +1605,7 @@ RetState Counter<T>::backtrack() {
       const Lit lit = top_dec_lit();
       assert(decisions.get_decision_level() > 0);
       CHECK_COUNT_DO(check_count(true));
-      SLOW_DEBUG_DO(assert(decisions.top().get_right_model_count() == 0));
+      SLOW_DEBUG_DO(assert(decisions.top().right_model_count() == 0));
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine
@@ -1623,8 +1623,8 @@ RetState Counter<T>::backtrack() {
         set_lit(lit.neg(), decisions.get_decision_level());
         VERBOSE_DEBUG_DO(print_trail());
         debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. "
-            "count left: " << decisions.top().get_left_model_count()
-            << " count right: " << decisions.top().get_right_model_count());
+            "count left: " << decisions.top().left_model_count()
+            << " count right: " << decisions.top().right_model_count());
         return RESOLVED;
       } else {
         assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
@@ -1653,7 +1653,7 @@ RetState Counter<T>::backtrack() {
       cout << endl;
 #endif
       if constexpr (weighted) {
-        T cnt = decisions.top().get_total_model_count();
+        T cnt = decisions.top().total_model_count();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < decision_level()) {
             Lit l(*it, val(*it) == T_TRI);
@@ -1667,16 +1667,16 @@ RetState Counter<T>::backtrack() {
         }
         comp_manager->save_count(decisions.top().super_comp(), cnt);
       } else {
-        comp_manager->save_count(decisions.top().super_comp(), decisions.top().get_total_model_count());
+        comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
       }
     }
 
 #ifdef VERBOSE_DEBUG
-    const auto parent_count_before = (decisions.end() - 2)->get_total_model_count();
-    const auto parent_count_before_left = (decisions.end() - 2)->get_left_model_count();
-    const auto parent_count_before_right = (decisions.end() - 2)->get_right_model_count();
+    const auto parent_count_before = (decisions.end() - 2)->total_model_count();
+    const auto parent_count_before_left = (decisions.end() - 2)->left_model_count();
+    const auto parent_count_before_right = (decisions.end() - 2)->right_model_count();
 #endif
-    (decisions.end() - 2)->include_solution(decisions.top().get_total_model_count());
+    (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
     decisions.pop_back();
 
     // var == 0 means it's coming from a fake decision due to normal SAT solving
@@ -1686,7 +1686,7 @@ RetState Counter<T>::backtrack() {
         // NOTE: -1 here because we have JUST processed the child
         //     ->> (see below next_unproc_comp() call)
         << " num unprocessed comps here: " << dst.num_unproc_comps()-1
-        << " current count here: " << dst.get_total_model_count()
+        << " current count here: " << dst.total_model_count()
         << " branch: " << dst.is_right_branch()
         << " before including child it was: " <<  parent_count_before
         << " (left: " << parent_count_before_left
@@ -1802,7 +1802,7 @@ template<typename T>
 void Counter<T>::go_back_to(int32_t backj) {
   debug_print("going back to lev: " << backj << " dec level now: " << decisions.get_decision_level());
   while(decisions.get_decision_level() > backj) {
-    debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().get_total_model_count());
+    debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_all_sol(); //not sure it's needed
@@ -1816,7 +1816,7 @@ void Counter<T>::go_back_to(int32_t backj) {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
       comp_manager->cleanRemainingCompsOf(decisions.top());
     }
-    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().get_total_model_count() << endl);
+    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().total_model_count() << endl);
   }
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
@@ -3385,7 +3385,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     decisions.top().reset();
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
-    if constexpr (!weighted) assert(decisions.top().get_total_model_count() == 1);
+    if constexpr (!weighted) assert(decisions.top().total_model_count() == 1);
   }
 
 end:

@@ -152,28 +152,26 @@ class Counter {
 public:
   Counter(const CounterConfiguration& _conf);
   ~Counter();
+  void new_vars(const uint32_t n);
+  void set_indep_support(const set<uint32_t>& indeps);
+  void set_optional_indep_support(const set<uint32_t>& indeps);
+  bool add_irred_cl(const vector<Lit>& lits);
+  bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
+  void end_irred_cls();
+  void set_lit_weight(Lit l, const T& w);
   T outer_count();
 
   const CounterConfiguration& get_conf() const { return conf;}
-  void new_vars(const uint32_t n);
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
   uint32_t get_num_long_red_cls() const { return long_red_cls.size(); }
   uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
   bool get_is_approximate() const { return is_approximate; }
 
-  vector<ClauseOfs> long_irred_cls;
-  vector<ClauseOfs> long_red_cls;
   uint32_t nVars() const { return var_data.size() - 1; }
   double get_start_time() const { return start_time;}
   const auto& get_cache() const { return comp_manager->get_cache();}
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
-  void end_irred_cls();
-  void set_indep_support(const set<uint32_t>& indeps);
-  bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
-  bool add_irred_cl(const vector<Lit>& lits);
-  void set_optional_indep_support(const set<uint32_t>& indeps);
 
-  void set_lit_weight(Lit l, const T& w);
   const T& get_weight(const Lit l) { return weights[l.raw()];}
   T get_weight(const uint32_t v) {
     Lit l(v, false);
@@ -219,17 +217,6 @@ private:
   Clause* add_cl(const vector<Lit> &literals, bool red);
   inline bool add_bin_cl(Lit a, Lit b, bool red);
   bool ended_irred_cls = false; // indicates if we have called end_irred_cls()
-
-  // vivif stuff
-  void vivif_setup();
-  bool v_propagate();
-  void v_backtrack();
-  void v_unset_lit(const Lit l);
-  void v_enqueue(const Lit l);
-  TriValue v_val(const Lit l) const;
-  void v_new_lev();
-  void v_backup();
-  void v_restore();
 
   // DNF Cube stuff
   bool restart_if_needed();
@@ -290,7 +277,6 @@ private:
   bool is_approximate = false;
   mpz_class do_appmc_count();
 
-
   // SAT solver
   bool ok = true;
   uint32_t qhead = 0;
@@ -302,6 +288,8 @@ private:
   int32_t decision_level() const { return decisions.get_decision_level();}
   friend class ClauseAllocator<T>;
   ClauseAllocator<T>* alloc;
+  vector<ClauseOfs> long_irred_cls;
+  vector<ClauseOfs> long_red_cls;
   bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
   inline bool sat_mode() const {
@@ -407,6 +395,15 @@ private:
   inline Antecedent add_uip_confl_cl(const vector<Lit> &literals);
 
   // Vivification
+  void vivif_setup();
+  bool v_propagate();
+  void v_backtrack();
+  void v_unset_lit(const Lit l);
+  void v_enqueue(const Lit l);
+  TriValue v_val(const Lit l) const;
+  void v_new_lev();
+  void v_backup();
+  void v_restore();
   vector<vector<Lit>> v_backup_cls;
   vector<vector<ClOffsBlckL>> v_backup_watches;
   int64_t v_tout;

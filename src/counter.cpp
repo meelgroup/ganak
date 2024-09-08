@@ -1309,6 +1309,7 @@ bool Counter<T>::restart_if_needed() {
   stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups;
 
   assert(mini_cubes.empty());
+  T tot_cnt = 0;
   while (dec_level() > 0) {
     verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
       << " lev: " << dec_level()
@@ -1320,7 +1321,11 @@ bool Counter<T>::restart_if_needed() {
       verb_print(2, "->> branch: " << i << " doing compute_cube...");
 
       Cube<T> cube;
-      if (compute_cube(cube, i)) mini_cubes.push_back(cube);
+      if (compute_cube(cube, i)) {
+        mini_cubes.push_back(cube);
+        tot_cnt += cube.cnt;
+        verb_print(2, "[mini-cube] rst: " << stats.num_restarts << " mini cube: " << cube);
+      }
       else comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
     }
     reactivate_comps_and_backtrack_trail(false);
@@ -1329,6 +1334,7 @@ bool Counter<T>::restart_if_needed() {
     decisions.pop_back();
     VERY_SLOW_DEBUG_DO(if (!check_watchlists()) {print_trail(false, false);assert(false);});
   }
+  verb_print(2, "[mini-cube] rst: " << stats.num_restarts << " tot cnt before overlap: " << tot_cnt);
 
   // Because of non-chrono backtrack, we need to propagate here:
   // zero decision level stuff now gets propagated at 0-level

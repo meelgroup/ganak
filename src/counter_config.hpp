@@ -41,7 +41,7 @@ struct CounterConfiguration {
   int alluip_inc_act = 1;
   int cache_time_update = 2;
 
-  int decide = 0; // 0 = TD, 1 = ignore TC
+  int decide = 0; // 0 = TD, 1 = ignore TD
   uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 0; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s

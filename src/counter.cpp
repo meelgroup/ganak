@@ -38,7 +38,9 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include "IFlowCutter.hpp"
 #include "graph.hpp"
+#ifdef BUDDY_ENABLED
 #include "bdd.h"
+#endif
 #include "mpreal.h"
 #include "approxmc.h"
 #include <thread>

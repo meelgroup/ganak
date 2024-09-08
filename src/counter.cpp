@@ -665,7 +665,7 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
   occ.clear();
   occ_cls.clear();
   v_restore();
-  verb_print(2, "[rst-cube-ext] E{xtended cubes. lit-rem: "
+  verb_print(2, "[rst-cube-ext] Extended cubes. lit-rem: "
       << setw(4) << stats.cube_lit_rem - before_rem
       << " lit-ext: " << setw(4) << stats.cube_lit_extend - before_ext
       << " T: " << (cpu_time() - my_time));

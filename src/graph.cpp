@@ -161,9 +161,7 @@ int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
       intro++;
     }
   }
-  if (intro >= n/2) {
-    cen = b;
-  }
+  if (intro >= n/2) cen = b;
   return intro;
 }
 
@@ -209,4 +207,5 @@ vector<int> TreeDecomposition::GetOrd() const {
   for (int i = 0; i < n; i++) assert(ret[i] > 0);
   return ret;
 }
-} // namespace sspp
+
+}

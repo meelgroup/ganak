@@ -187,7 +187,7 @@ private:
 
   // ReduceDB
   bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {
-    return var(lit).ante.isAClause() && (var(lit).ante.asCl() == ante_cl);
+    return var(lit).ante.isAClause() && (var(lit).ante.as_cl() == ante_cl);
   }
   void reduce_db();
   template<class T2> void minimize_uip_cl_with_bins(T2& cl);
@@ -231,7 +231,7 @@ private:
   T check_count_norestart_cms(const Cube<T>& c);
   vector<Cube<T>> one_restart_count();
   bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
-  bool compute_cube(Cube<T>& cube, int branch);
+  bool compute_cube(Cube<T>& cube, const int side);
   vector<map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube<T>>& cubes);
 

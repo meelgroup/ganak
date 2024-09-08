@@ -1229,40 +1229,42 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   return best_var;
 }
 
-// returns cube in `c`. Uses branch 0/1, i.e. LEFT/RIGHT branch
+// returns cube in `c`. Uses LEFT/RIGHT branch
+// if UNSAT that SAT solver figured out, returns false
+//    in this case, the cache elements much be deleted (they are erroneous)
 template<typename T>
-bool Counter<T>::compute_cube(Cube<T>& c, int branch) {
+bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
   assert(c.cnt == 0);
   assert(c.cnf.empty());
   debug_print(COLWHT "-- " << __func__ << " BEGIN");
 
-  c.cnt = decisions.top().get_model_side(branch);
+  c.cnt = decisions.top().get_model_side(side);
   debug_print("Own cnt: " << c.cnt);
-  for(int32_t i = 0; i < decisions.get_decision_level(); i++) {
-    const StackLevel<T>& dec = decisions[i];
-    const auto& mul = dec.get_branch_sols();
+  for(int32_t i = 0; i < dec_level(); i++) {
+    const auto& dec = decisions[i];
+    const auto& mul = dec.get_branch_sols(); // ACTIVE branch (i.e. currently counted one)
     if (mul == 0) continue;
-    else c.cnt*=mul;
+    c.cnt*=mul;
   }
   debug_print("Mult cnt: " << c.cnt);
   if (c.cnt == 0) return false;
 
-  const bool opposite_branch = branch != decisions.top().is_right_branch();
+  const bool opposite_branch = side != decisions.top().is_right_branch();
 
   // Add decisions
-  debug_print(COLWHT "Decisions in the c.cnf: ");
+  debug_print(COLWHT "Indep decisions in the c.cnf: ");
   for(const auto& l: trail) {
     if (!var(l).ante.isNull()) continue;
     if (l.var() >= opt_indep_support_end) continue;
-    if (var(l).decision_level == decisions.get_decision_level() &&
-        opposite_branch) {
+    if (var(l).decision_level == decisions.get_decision_level() && opposite_branch) {
       assert(l == top_dec_lit());
       c.cnf.push_back(l);
     } else {
       c.cnf.push_back(l.neg());
     }
-    debug_print(l << " ");
+    debug_print_noendl(l << " ");
   }
+  debug_print_noendl(COLDEF << endl);
 
   // Get a solution
   vector<CMSat::Lit> ass; ass.reserve(c.cnf.size());
@@ -1356,38 +1358,50 @@ bool Counter<T>::restart_if_needed() {
   }
 
   // Conflicts, luby
-  /* cout << "next restart confl: " << luby(2, stats.num_restarts) * conf.first_restart << " confl: " << stats.conflicts << endl; */
-  if (conf.restart_type == 7 &&
-      (stats.conflicts-stats.last_restart_num_conflicts) >
+  if (conf.restart_type == 7) {
+    verb_print(3, "[rst] Will restart at confl: " << luby(2, stats.num_restarts) * conf.first_restart
+      << " now confl: " << stats.conflicts);
+    if ((stats.conflicts-stats.last_restart_num_conflicts) >
         (luby(2, stats.num_restarts) * conf.first_restart)) {
-    verb_print(2, "[rst] restarting. Next restart confl: "
-        << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart));
-    restart = true;
+      verb_print(2, "[rst] restarting. Next restart confl: "
+          << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart));
+      restart = true;
+    }
   }
 
   // Decisions, luby
-  if (conf.restart_type == 8 &&
-      (stats.decisions-stats.last_restart_num_decisions) >
-        (luby(2, stats.num_restarts) * conf.first_restart * 20)) {
-    verb_print(2, "[rst] restarting. Next restart decK: "
+  if (conf.restart_type == 8) {
+      verb_print(3, "[rst] Will restart at decK: "
+        << (stats.decisions + luby(2, stats.num_restarts) * conf.first_restart * 20)/1000.0
+        << " now decK: " << stats.decisions/1000.0);
+
+    if ((stats.decisions-stats.last_restart_num_decisions) >
+      (luby(2, stats.num_restarts) * conf.first_restart * 20)) {
+      verb_print(2, "[rst] restarting. Next restart decK: "
         << (stats.decisions + luby(2, stats.num_restarts+1) * conf.first_restart * 20)/1000);
-    restart = true;
+      restart = true;
+    }
   }
 
   // Comps, luby
-  if (conf.restart_type == 9 &&
-      (stats.num_cached_comps) > (1000*luby(2, stats.num_restarts) * conf.first_restart))
-    restart = true;
+  if (conf.restart_type == 9) {
+    verb_print(3, "[rst] Will restart at comps: "
+        << (stats.num_cached_comps + luby(2, stats.num_restarts) * conf.first_restart * 1000)
+        << " now comps: " << stats.num_cached_comps);
+    if ((stats.num_cached_comps) > (luby(2, stats.num_restarts) * conf.first_restart*1000)) {
+      verb_print(2, "[rst] restarting. Next restart comps: "
+        << (stats.num_cached_comps + luby(2, stats.num_restarts+1) * conf.first_restart * 1000));
+      restart = true;
+    }
+  }
 
   if (!restart) return false;
   verb_print(2, "************* Restarting.  **************");
   verb_print(2, "Num decisions since last restart: "
-    << stats.decisions-stats.last_restart_num_decisions
-    << endl
+    << stats.decisions-stats.last_restart_num_decisions << endl
     << "c o Num conflicts since last restart: "
-    << stats.conflicts-stats.last_restart_num_conflicts
-    << endl
-    << "c o Num cache lookups since last restart: "
+    << stats.conflicts-stats.last_restart_num_conflicts << endl
+    << "c o Num comps since last restart: "
     << stats.num_cache_look_ups-stats.last_restart_num_cache_look_ups);
 
   // Reset stats
@@ -1396,15 +1410,16 @@ bool Counter<T>::restart_if_needed() {
   stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups;
 
   assert(mini_cubes.empty());
-  while (decisions.size() > 1) {
+  while (dec_level() > 0) {
     verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
       << " lev: " << decisions.get_decision_level()
       << " left cnt: " << decisions.top().left_model_count()
       << " right cnt: " << decisions.top().right_model_count()
       << COLDEF);
-    for(uint32_t i = 0; i < 2; i++) {
+    for(auto i: {0, 1}) {
       if (decisions.top().get_model_side(i) == 0) continue;
       verb_print(2, "->> branch: " << i << " doing compute_cube...");
+
       Cube<T> cube;
       if (compute_cube(cube, i)) mini_cubes.push_back(cube);
       else comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
@@ -2648,7 +2663,7 @@ bool Counter<T>::vivify_cl(const ClauseOfs off) {
       }
       for(uint32_t v = 1; v < var_data.size(); v++) {
         auto& vdat = var_data[v];
-        if (vdat.ante.isAClause() && vdat.ante.asCl() == off) {
+        if (vdat.ante.isAClause() && vdat.ante.as_cl() == off) {
           assert(v == cl[0].var() || v == cl[1].var());
           Lit other_lit = (v == cl[0].var()) ? cl[1] : cl[0];
           vdat.ante = Antecedent(other_lit);
@@ -2786,7 +2801,7 @@ bool Counter<T>::v_propagate() {
 template<typename T>
 void Counter<T>::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const {
   if (ante.isAClause()) {
-    Clause* cl = alloc->ptr(ante.asCl());
+    Clause* cl = alloc->ptr(ante.as_cl());
     c = cl->data();
     size = cl->sz;
   } else if (ante.isALit()) {
@@ -2795,7 +2810,7 @@ void Counter<T>::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p)
     c = tmp_lit.data();
     if (p == NOT_A_LIT) c[0] = confl_lit;
     else c[0] = p;
-    c[1] = ante.asLit();
+    c[1] = ante.as_lit();
     size = 2;
   } else {assert(false && "Should never be a decision");}
 }
@@ -2827,12 +2842,12 @@ typename Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
 
   // fixing clause & watchlist
   if (highest_id != 0 && confl.isAClause()) {
-    Clause& cl = *alloc->ptr(confl.asCl());
+    Clause& cl = *alloc->ptr(confl.as_cl());
     std::swap(cl[0], cl[highest_id]); // swap to position 1, since we'll swap 1&0 in recordLastUIPClauses
     debug_print("SWAPPED");
     VERBOSE_DEBUG_DO(print_cl(cl.data(), cl.size()));
     if (highest_id > 1 && size > 2) {
-      ClauseOfs off = confl.asCl();
+      ClauseOfs off = confl.as_cl();
       watches[cl[highest_id]].del_c(off);
       watches[c[0]].add_cl(off, c[1]);
     }
@@ -2860,7 +2875,7 @@ void Counter<T>::create_uip_cl() {
   do {
     fill_cl(confl, c, size, p);
     if (confl.isAClause()) {
-      Clause& cl = *alloc->ptr(confl.asCl());
+      Clause& cl = *alloc->ptr(confl.as_cl());
       if (cl.red && cl.lbd > lbd_cutoff) {
         cl.set_used();
         /* cl.update_lbd(calc_lbd(cl)); */

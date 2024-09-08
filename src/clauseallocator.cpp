@@ -40,7 +40,7 @@ using std::endl;
 #define ALLOC_GROW_MULT 1.5
 
 template<typename T>
-void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {
+void* ClauseAllocator<T>::alloc_enough(uint32_t num_lits) {
   //Try to quickly find a place at the end of a data_start
   uint64_t neededbytes = sizeof(Clause) + sizeof(Lit)*num_lits;
   uint64_t needed = neededbytes/sizeof(uint32_t) + (bool)(neededbytes % sizeof(uint32_t));
@@ -66,21 +66,12 @@ void* ClauseAllocator<T>::alloc_enough( uint32_t num_lits) {
       exit(-1);
     }
 
-    //Reallocate data
-    uint32_t* new_data_start;
-    new_data_start = (uint32_t*)realloc(
-      data_start
-      , newcapacity*sizeof(uint32_t)
-    );
-
-    //Realloc failed?
+    uint32_t* new_data_start = (uint32_t*)realloc(data_start , newcapacity*sizeof(uint32_t));
     if (new_data_start == nullptr) {
       std::cerr << "ERROR: while reallocating clause space" << endl;
       exit(-1);
     }
     data_start = new_data_start;
-
-    //Update capacity to reflect the update
     capacity = newcapacity;
   }
 
@@ -202,7 +193,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   //Fix up var_data
   for (auto& vdata: solver->var_data) {
     if (vdata.ante.isAnt() && vdata.ante.isAClause()) {
-      Clause* old = ptr(vdata.ante.asCl());
+      Clause* old = ptr(vdata.ante.as_cl());
       assert(!old->freed);
       ClauseOfs new_offset = (*old)[0].raw();
       vdata.ante = Antecedent(new_offset);

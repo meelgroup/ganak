@@ -32,10 +32,10 @@
 
 //#include "flow-cutter-pace17/src/id_func.hpp"
 //#include "flow-cutter-pace17/src/list_graph.hpp"
-#include "flow-cutter-pace17/src/multi_arc.hpp"
+/* #include "flow-cutter-pace17/src/multi_arc.hpp" */
 //#include "flow-cutter-pace17/src/sort_arc.hpp"
 //#include "flow-cutter-pace17/src/chain.hpp"
-#include "flow-cutter-pace17/src/union_find.hpp"
+/* #include "flow-cutter-pace17/src/union_find.hpp" */
 //#include "flow-cutter-pace17/src/node_flow_cutter.hpp"
 #include "flow-cutter-pace17/src/separator.hpp"
 #include "flow-cutter-pace17/src/id_multi_func.hpp"

@@ -171,7 +171,6 @@ void CompCache<T>::debug_mem_data() const {
     cout << std::setw(40) << "c o bignum uses MB "
       << tot_bignum_bytes/(double)(1024*1024) << endl;
 
-
     double vm_dat;
     auto dat = mem_used(vm_dat);
     verb_print(1, "Total process MB : " << dat/(double)(1024*1024)

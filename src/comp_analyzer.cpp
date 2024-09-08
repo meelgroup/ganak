@@ -28,8 +28,6 @@ THE SOFTWARE.
 #include "mpreal.h"
 #include <cstdint>
 
-using std::make_pair;
-
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unif_occ and unif_occ_offs
 template<typename T>

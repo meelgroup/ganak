@@ -152,14 +152,6 @@ public:
     assert(false && "should have found it!");
   }
 
-  void replace_cl(ClauseOfs off, ClauseOfs replace_ofs) {
-    bool found = false;
-    for (auto& w: watch_list_) {
-      if (w.ofs == off) { w.ofs = replace_ofs; found = true; break; }
-    }
-    assert(found && "Should have found watch!!!");
-  }
-
   void add_cl(ClauseIndex offs, Lit blocked_lit) {
     watch_list_.push_back(ClOffsBlckL(offs, blocked_lit));
   }
@@ -169,9 +161,7 @@ public:
   }
 };
 
-enum class AnteType {
-  clause, lit, decision
-};
+enum class AnteType { clause, lit, decision };
 
 class Antecedent {
   uint32_t val = 0;
@@ -196,23 +186,16 @@ public:
   bool isNull() const {return type == AnteType::decision;}
   bool isAnt() const {return !isNull();}
 
-  ClauseOfs asCl() const {
+  ClauseOfs as_cl() const {
     SLOW_DEBUG_DO(assert(isAClause()));
     return val;
   }
 
-  Lit asLit() const {
+  Lit as_lit() const {
     SLOW_DEBUG_DO(assert(isALit()));
     Lit idLit;
     idLit.copyRaw(val);
     return idLit;
-  }
-
-  bool operator==(const Antecedent& other) const {
-    return val == other.val;
-  }
-  bool operator!=(const Antecedent& other) const {
-    return val != other.val;
   }
 };
 
@@ -222,9 +205,9 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
   if (val.isNull()) {
     s << std::setw(5) << "DEC  " << std::setw(10) << "";
   } else if (val.isAClause()) {
-    s << "CL offs:  " << std::setw(10) << val.asCl();
+    s << "CL offs:  " << std::setw(10) << val.as_cl();
   } else if (val.isALit()) {
-    s << "Lit: " << std::setw(10) << val.asLit();
+    s << "Lit: " << std::setw(10) << val.as_lit();
   } else {assert(false);}
   os << s.str();
   return os;

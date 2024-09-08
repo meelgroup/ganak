@@ -58,7 +58,6 @@ public:
   TreeDecomposition();
 
   void initBags() { bags.clear(); bags.resize(nodes); }
-  void setBag(int v, std::vector<int> bag) { bags[v] = bag; }
   std::vector<std::vector<int>>& Bags() { return bags; }
   bool inBag(int v, int x) const { return std::binary_search(bags[v].begin(), bags[v].end(), x); }
 

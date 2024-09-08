@@ -43,22 +43,23 @@ public:
   }
   uint32_t var = 0;
   void reset() {
-    active_branch_ = false;
-    branch_found_unsat_[0] = false;
-    branch_found_unsat_[1] = false;
-    branch_model_count_[0] = 0;
-    branch_model_count_[1] = 0;
+    act_branch = 0;
+    branch_unsat[0] = false;
+    branch_unsat[1] = false;
+    branch_mc[0] = 0;
+    branch_mc[1] = 0;
   }
 private:
 
-  /// active Comp, once initialized, it should not change
+  /// active Comp, once initialized, it does not change
   const uint32_t super_comp_ = 0;
+
   // branch (i.e. left = false/right = true)
-  bool active_branch_ = false;
+  bool act_branch = false;
 
   //  Solution count
-  T branch_model_count_[2] = {0,0};
-  bool branch_found_unsat_[2] = {false,false};
+  T branch_mc[2] = {0,0};
+  bool branch_unsat[2] = {false,false};
 
   /// remaining Comps
 
@@ -90,24 +91,12 @@ public:
     assert(unprocessed_comps_end_ > remaining_comps_ofs_);
     unprocessed_comps_end_--;
   }
-
-  void reset_remain_comps() {
-    unprocessed_comps_end_ = remaining_comps_ofs_;
-  }
-
-  auto get_unprocessed_comps_end() const {
-    return unprocessed_comps_end_;
-  }
-
-  uint32_t super_comp() const {
-    return super_comp_;
-  }
-  uint32_t get_unproc_comps_end() const {
-    return unprocessed_comps_end_;
-  }
-  uint32_t remaining_comps_ofs() const {
-    return remaining_comps_ofs_;
-  }
+  void reset_remain_comps() { unprocessed_comps_end_ = remaining_comps_ofs_; }
+  auto get_unprocessed_comps_end() const { return unprocessed_comps_end_; }
+  uint32_t super_comp() const { return super_comp_; }
+  bool is_right_branch() const { return act_branch; }
+  uint32_t get_unproc_comps_end() const { return unprocessed_comps_end_; }
+  uint32_t remaining_comps_ofs() const { return remaining_comps_ofs_; }
   void set_unprocessed_comps_end(uint32_t end) {
     unprocessed_comps_end_ = end;
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
@@ -117,14 +106,11 @@ public:
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }
-  bool is_right_branch() const {
-    return active_branch_;
-  }
 
   void change_to_right_branch() {
-    assert(active_branch_ == false);
-    active_branch_ = true;
-    SLOW_DEBUG_DO(assert(branch_model_count_[active_branch_] == 0));
+    assert(act_branch == false);
+    act_branch = true;
+    SLOW_DEBUG_DO(assert(branch_mc[act_branch] == 0));
   }
 
   bool another_comp_possible() const {
@@ -135,89 +121,72 @@ public:
   void include_solution(const T2& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
-    auto before = branch_model_count_[active_branch_];
+    auto before = branch_mc[act_branch];
 #endif
-    if (branch_found_unsat_[active_branch_]) {
+    if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_model_count_[active_branch_] == 0);
+      assert(branch_mc[act_branch] == 0);
       return;
     }
-    if (solutions == 0) branch_found_unsat_[active_branch_] = true;
-    if (branch_model_count_[active_branch_] == 0) {
-      branch_model_count_[active_branch_] = solutions;
+    if (solutions == 0) branch_unsat[act_branch] = true;
+    if (branch_mc[act_branch] == 0) {
+      branch_mc[act_branch] = solutions;
     } else {
-      branch_model_count_[active_branch_] *= solutions;
+      branch_mc[act_branch] *= solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
-        << ((active_branch_) ? "right" : "left")
-        << " count is: " << branch_model_count_[active_branch_]
+        << ((act_branch) ? "right" : "left")
+        << " count is: " << branch_mc[act_branch]
         << " before it was: " << before
         << " var: " << var
-        << " while " << ((!active_branch_) ? "right" : "left")
-        << " count is: " << branch_model_count_[!active_branch_]
+        << " while " << ((!act_branch) ? "right" : "left")
+        << " count is: " << branch_mc[!act_branch]
         << endl);
   }
 
   template<class T2>
   void include_solution_left_side(const T2& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " " << endl;);
-    if (active_branch_ == 0) return;
+    if (act_branch == 0) return;
 #ifdef VERBOSE_DEBUG
-    auto before = branch_model_count_[0];
+    auto before = branch_mc[0];
 #endif
-    if (branch_found_unsat_[0]) {
+    if (branch_unsat[0]) {
       VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_model_count_[0] == 0);
+      assert(branch_mc[0] == 0);
       return;
     }
-    if (solutions == 0) branch_found_unsat_[0] = true;
-    if (branch_model_count_[0] == 0) {
+    if (solutions == 0) branch_unsat[0] = true;
+    if (branch_mc[0] == 0) {
       assert(false);
     } else {
-      branch_model_count_[0] *= solutions;
+      branch_mc[0] *= solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")
-        << " count is: " << branch_model_count_[0]
+        << " count is: " << branch_mc[0]
         << " before it was: " << before
         << " var: " << var
         << endl);
   }
 
-  bool branch_found_unsat() const {
-    return branch_found_unsat_[active_branch_];
-  }
-  void mark_branch_unsat() {
-    branch_found_unsat_[active_branch_] = true;
-  }
+  bool branch_found_unsat() const { return branch_unsat[act_branch]; }
+  void mark_branch_unsat() { branch_unsat[act_branch] = true; }
+  const T& get_branch_sols() const { return branch_mc[act_branch]; }
+  const T& get_model_side(int side) const { return branch_mc[side]; }
+  void zero_out_branch_sol() { branch_mc[act_branch] = 0; }
+  const T total_model_count() const { return branch_mc[0] + branch_mc[1]; }
 
-  const T& get_branch_sols() const {
-    return branch_model_count_[active_branch_];
-  }
-
-  const T& get_model_side(int side) const {
-    return branch_model_count_[side];
-  }
-
-  void zero_out_branch_sol() {
-    branch_model_count_[active_branch_] = 0;
-  }
+  // for cube creation
+  bool branch_found_unsat(int side) const { return branch_unsat[side]; }
+  const T& left_model_count() const { return branch_mc[0]; }
+  const T& right_model_count() const { return branch_mc[1]; }
 
   void zero_out_all_sol() {
-    branch_model_count_[0] = 0;
-    branch_model_count_[1] = 0;
+    branch_mc[0] = 0;
+    branch_mc[1] = 0;
   }
 
-  const T total_model_count() const {
-    return branch_model_count_[0] + branch_model_count_[1];
-  }
-
-  const T& left_model_count() const {
-    return branch_model_count_[0];
-  }
-  const T& right_model_count() const {
-    return branch_model_count_[1];
-  }
 };
 
 template<typename T>

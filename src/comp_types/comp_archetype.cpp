@@ -6,8 +6,9 @@
  */
 
 #include "comp_archetype.hpp"
-#include <gmpxx.h>
 
+// Note that this will ensure that variables and clauses are ordered
+// this means that their hash is easily comparable
 template<typename T>
 Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
   debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");

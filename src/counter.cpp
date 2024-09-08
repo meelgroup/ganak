@@ -1229,107 +1229,6 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   return best_var;
 }
 
-// returns cube in `c`. Uses LEFT/RIGHT branch
-// if UNSAT that SAT solver figured out, returns false
-//    in this case, the cache elements much be deleted (they are erroneous)
-template<typename T>
-bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
-  assert(c.cnt == 0);
-  assert(c.cnf.empty());
-  debug_print(COLWHT "-- " << __func__ << " BEGIN");
-
-  c.cnt = decisions.top().get_model_side(side);
-  debug_print("Own cnt: " << c.cnt);
-  for(int32_t i = 0; i < dec_level(); i++) {
-    const auto& dec = decisions[i];
-    const auto& mul = dec.get_branch_sols(); // ACTIVE branch (i.e. currently counted one)
-    if (mul == 0) continue;
-    c.cnt*=mul;
-  }
-  debug_print("Mult cnt: " << c.cnt);
-  if (c.cnt == 0) return false;
-
-  const bool opposite_branch = side != decisions.top().is_right_branch();
-
-  // Add decisions
-  debug_print(COLWHT "Indep decisions in the c.cnf: ");
-  for(const auto& l: trail) {
-    if (!var(l).ante.isNull()) continue;
-    if (l.var() >= opt_indep_support_end) continue;
-    if (var(l).decision_level == dec_level() && opposite_branch) {
-      assert(l == top_dec_lit());
-      c.cnf.push_back(l);
-    } else {
-      c.cnf.push_back(l.neg());
-    }
-    debug_print_noendl(l << " ");
-  }
-  debug_print_noendl(COLDEF << endl);
-
-  // Get a solution
-  vector<CMSat::Lit> ass; ass.reserve(c.cnf.size());
-  for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
-  auto solution = sat_solver->solve(&ass);
-  debug_print("cube solution: " << solution);
-  if (solution == CMSat::l_False) return false;
-
-  // Add values for all components not yet counted
-  for(int32_t i = 0; i <= dec_level(); i++) {
-    if (i == dec_level() && opposite_branch) {
-      // This has been fully counted, ALL components.
-      continue;
-    }
-    const StackLevel<T>& dec = decisions[i];
-    const auto off_start = dec.remaining_comps_ofs();
-    const auto off_end = dec.get_unproc_comps_end();
-    debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
-    // add all but the last component (it's the one being counted lower down)
-    int off_by_one = 1;
-    if (i == dec_level()) off_by_one = 0;
-    for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
-      const auto& comp = comp_manager->at(i2);
-      all_vars_in_comp(*comp, v) {
-        Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
-        debug_print("Lit from comp: " << l);
-        if (l.var() >= indep_support_end) continue;
-        c.cnf.push_back(l);
-      }
-    }
-  }
-
-#ifdef VERBOSE_DEBUG
-  // Show decision stack's comps
-  for(int32_t i = 0; i <= dec_level(); i++) {
-    const auto& dst = decisions.at(i);
-    cout << COLWHT "decisions.at(" << i << "):"
-      << " decision var: " << dst.var
-      << " num unproc comps: " << dst.num_unproc_comps()
-      << " unproc comps end: " << dst.get_unproc_comps_end()
-      << " remain comps offs: " << dst.remaining_comps_ofs()
-      << " total count here: " << dst.total_model_count()
-      << " left count here: " << dst.left_model_count()
-      << " right count here: " << dst.right_model_count()
-      << " branch: " << dst.is_right_branch() << endl;
-    const auto off_start = dst.remaining_comps_ofs();
-    const auto off_end = dst.get_unproc_comps_end();
-    for(uint32_t i2 = off_start; i2 < off_end; i2++) {
-      assert(i2 < comp_manager->comp_stack_size());
-      const auto& comp = comp_manager->at(i2);
-      cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
-      all_vars_in_comp(*comp, v) cout << *v << " ";
-      cout << COLDEF << endl;
-    }
-  }
-
-  cout << COLORG "cube so far. Size: " << c.cnf.size() << " cube: ";
-  for(const auto& l: c.cnf) cout << l << " ";
-  cout << endl;
-  cout << COLORG "cube's SOLE count: " << decisions.top().get_model_side(branch) << endl;
-  cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
-#endif
-  return true;
-}
-
 static double luby(double y, int x){
   // Find the finite subsequence that contains index 'x', and the
   // size of that subsequence:
@@ -1447,6 +1346,108 @@ bool Counter<T>::restart_if_needed() {
     << " polar_type: " << conf.polar_type);
   return true;
 }
+
+// returns cube in `c`. Uses LEFT/RIGHT branch
+// if UNSAT that SAT solver figured out, returns false
+//    in this case, the cache elements much be deleted (they are erroneous)
+template<typename T>
+bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
+  assert(c.cnt == 0);
+  assert(c.cnf.empty());
+  debug_print(COLWHT "-- " << __func__ << " BEGIN");
+
+  c.cnt = decisions.top().get_model_side(side);
+  debug_print("Own cnt: " << c.cnt);
+  for(int32_t i = 0; i < dec_level(); i++) {
+    const auto& dec = decisions[i];
+    const auto& mul = dec.get_branch_sols(); // ACTIVE branch (i.e. currently counted one)
+    if (mul == 0) continue;
+    c.cnt*=mul;
+  }
+  debug_print("Mult cnt: " << c.cnt);
+  if (c.cnt == 0) return false;
+
+  const bool opposite_branch = side != decisions.top().is_right_branch();
+
+  // Add decisions
+  debug_print(COLWHT "Indep decisions in the c.cnf: ");
+  for(const auto& l: trail) {
+    if (!var(l).ante.isNull()) continue;
+    if (l.var() >= opt_indep_support_end) continue;
+    if (var(l).decision_level == dec_level() && opposite_branch) {
+      assert(l == top_dec_lit());
+      c.cnf.push_back(l);
+    } else {
+      c.cnf.push_back(l.neg());
+    }
+    debug_print_noendl(l << " ");
+  }
+  debug_print_noendl(COLDEF << endl);
+
+  // Get a solution
+  vector<CMSat::Lit> ass; ass.reserve(c.cnf.size());
+  for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
+  auto solution = sat_solver->solve(&ass);
+  debug_print("cube solution: " << solution);
+  if (solution == CMSat::l_False) return false;
+
+  // Add values for all components not yet counted
+  for(int32_t i = 0; i <= dec_level(); i++) {
+    if (i == dec_level() && opposite_branch) {
+      // This has been fully counted, ALL components.
+      continue;
+    }
+    const StackLevel<T>& dec = decisions[i];
+    const auto off_start = dec.remaining_comps_ofs();
+    const auto off_end = dec.get_unproc_comps_end();
+    debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
+    // add all but the last component (it's the one being counted lower down)
+    int off_by_one = 1;
+    if (i == dec_level()) off_by_one = 0;
+    for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
+      const auto& comp = comp_manager->at(i2);
+      all_vars_in_comp(*comp, v) {
+        Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
+        debug_print("Lit from comp: " << l);
+        if (l.var() >= indep_support_end) continue;
+        c.cnf.push_back(l);
+      }
+    }
+  }
+
+#ifdef VERBOSE_DEBUG
+  // Show decision stack's comps
+  for(int32_t i = 0; i <= dec_level(); i++) {
+    const auto& dst = decisions.at(i);
+    cout << COLWHT "decisions.at(" << i << "):"
+      << " decision var: " << dst.var
+      << " num unproc comps: " << dst.num_unproc_comps()
+      << " unproc comps end: " << dst.get_unproc_comps_end()
+      << " remain comps offs: " << dst.remaining_comps_ofs()
+      << " total count here: " << dst.total_model_count()
+      << " left count here: " << dst.left_model_count()
+      << " right count here: " << dst.right_model_count()
+      << " branch: " << dst.is_right_branch() << endl;
+    const auto off_start = dst.remaining_comps_ofs();
+    const auto off_end = dst.get_unproc_comps_end();
+    for(uint32_t i2 = off_start; i2 < off_end; i2++) {
+      assert(i2 < comp_manager->comp_stack_size());
+      const auto& comp = comp_manager->at(i2);
+      cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
+      all_vars_in_comp(*comp, v) cout << *v << " ";
+      cout << COLDEF << endl;
+    }
+  }
+
+  cout << COLORG "cube so far. Size: " << c.cnf.size() << " cube: ";
+  for(const auto& l: c.cnf) cout << l << " ";
+  cout << endl;
+  cout << COLORG "cube's SOLE count: " << decisions.top().get_model_side(branch) << endl;
+  cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
+#endif
+  return true;
+}
+
 
 // Checks one-by-one using a SAT solver
 template<typename T>

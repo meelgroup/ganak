@@ -285,7 +285,7 @@ private:
   int val(Lit lit) const { return values[lit]; }
   int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
-  int32_t decision_level() const { return decisions.get_decision_level();}
+  int32_t dec_level() const { return decisions.get_decision_level(); }
   friend class ClauseAllocator<T>;
   ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
@@ -293,7 +293,7 @@ private:
   bool use_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
   inline bool sat_mode() const {
-    return sat_start_dec_level != -1 && decision_level() >= sat_start_dec_level;
+    return sat_start_dec_level != -1 && dec_level() >= sat_start_dec_level;
   }
   vector<int> sat_solution;
   bool propagate(bool out_of_order = false);
@@ -324,7 +324,6 @@ private:
   void init_activity_scores();
   double var_act(const uint32_t v) const;
   DecisionStack<T> decisions;
-  int32_t dec_level() const { return decisions.get_decision_level(); }
   bool decide_lit();
   uint32_t find_best_branch(bool ignore_td = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
@@ -476,9 +475,9 @@ void Counter<T>::unset_lit(Lit lit) {
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
     if constexpr (weighted) if(!sat_mode() && get_weight(lit) != 1) {
-      uint64_t* at = vars_act_dec.data()+decision_level()*(nVars()+1);
+      uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
       bool found = (at[0] == at[lit.var()]);
-      if (found) decisions[decision_level()].include_solution(get_weight(lit));
+      if (found) decisions[dec_level()].include_solution(get_weight(lit));
     }
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;

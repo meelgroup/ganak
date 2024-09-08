@@ -921,10 +921,10 @@ bool Counter<T>::chrono_work() {
   auto data = find_conflict_level(confl_lit);
   if (data.bOnlyOneLitFromHighest) {
     debug_print(COLYEL2  << __func__ << " -- going back to " << data.nHighestLevel-1
-        << " curlev: " << decision_level());
+        << " curlev: " << dec_level());
     go_back_to(data.nHighestLevel-1);
     VERBOSE_DEBUG_DO(print_trail());
-    debug_print(COLYEL2  << __func__ << " went back -- now Declev: " << decision_level());
+    debug_print(COLYEL2  << __func__ << " went back -- now Declev: " << dec_level());
     return true;
   }
   return false;
@@ -1052,7 +1052,7 @@ end:
 
 template<typename T>
 void Counter<T>::recomp_td_weight() {
-  if (conf.td_lookahead != -1 && decision_level() < conf.td_lookahead+5) {
+  if (conf.td_lookahead != -1 && dec_level() < conf.td_lookahead+5) {
     auto td = td_decompose_component(3);
     compute_score(td, false);
   }
@@ -1108,7 +1108,7 @@ bool Counter<T>::decide_lit() {
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << dec_level());
-  set_lit(lit, decision_level());
+  set_lit(lit, dec_level());
   stats.decisions++;
   vsads_readjust();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
@@ -1158,7 +1158,7 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
   int32_t w[2];
   int tdiff[2];
   for(bool b: {true, false}) {
-    set_lit(Lit(v, b), decision_level());
+    set_lit(Lit(v, b), dec_level());
     int tsz = trail.size();
     bool ret = propagate();
     if (!ret) {
@@ -1186,20 +1186,20 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   uint32_t best_var = 0;
   double best_var_score = -1e8;
   uint64_t* at;
-  VERBOSE_DEBUG_DO(cout << "decision level: " << decision_level() << " var options: ");
+  VERBOSE_DEBUG_DO(cout << "decision level: " << dec_level() << " var options: ");
   if constexpr (weighted) {
-    if (vars_act_dec.size()  < (decision_level()+1) * (nVars()+1)) {
-      uint64_t todo = (decision_level()+1)*(nVars()+1) - vars_act_dec.size();
+    if (vars_act_dec.size()  < (dec_level()+1) * (nVars()+1)) {
+      uint64_t todo = (dec_level()+1)*(nVars()+1) - vars_act_dec.size();
       vars_act_dec.insert(vars_act_dec.end(), todo, 0);
     }
-    at = vars_act_dec.data()+(nVars()+1)*decision_level();
+    at = vars_act_dec.data()+(nVars()+1)*dec_level();
     vars_act_dec_num++;
     at[0] = vars_act_dec_num;
     VERBOSE_DEBUG_DO(cout << "(at[0] = " << at[0] << ") ");
   }
 
   int32_t tw = 0;
-  if (decision_level() < conf.td_lookahead && !conf.td_look_only_weight)
+  if (dec_level() < conf.td_lookahead && !conf.td_look_only_weight)
     tw = td_decompose_component().width();
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
@@ -1211,7 +1211,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
       if (v < indep_support_end) only_optional_indep = false;
       if constexpr (weighted) at[v] = vars_act_dec_num;
       double score;
-      if (!conf.td_look_only_weight && decision_level() < conf.td_lookahead &&
+      if (!conf.td_look_only_weight && dec_level() < conf.td_lookahead &&
           tw > conf.td_lookahead_tw_cutoff)
         score = td_lookahead_score(v, tw);
       else score = score_of(v, ignore_td) ;
@@ -1224,7 +1224,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   VERBOSE_DEBUG_DO(cout << endl);
 
   if (best_var != 0 && only_optional_indep) return 0;
-  if (decision_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
+  if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
     verb_print(1, "best var: " << best_var << " score: " << best_var_score);
   return best_var;
 }
@@ -1471,7 +1471,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       uint32_t v = c->vars_begin()[i];
       if (v < opt_indep_support_end) {
         active.insert(v);
-        if constexpr (weighted) if (val(v) != X_TRI && var(v).decision_level == decision_level()) {
+        if constexpr (weighted) if (val(v) != X_TRI && var(v).decision_level == dec_level()) {
             dec_w *= get_weight(Lit(v, val(v) == T_TRI));
             if (get_weight(Lit(v, val(v) == T_TRI)) != 1)
               debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
@@ -1529,7 +1529,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
           T cube_cnt = 1;
           for(uint32_t i = 0; i < s2.nVars(); i++) {
             if (active.count(i+1)
-                && (val(i+1) == X_TRI || var(i+1).decision_level >= decision_level())
+                && (val(i+1) == X_TRI || var(i+1).decision_level >= dec_level())
                 ) {
               cube_cnt *= get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
@@ -1588,17 +1588,17 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
 
 template<typename T>
 RetState Counter<T>::backtrack() {
-  debug_print("in " << __FUNCTION__ << " now. Dec lev: " << decision_level());
+  debug_print("in " << __FUNCTION__ << " now. Dec lev: " << dec_level());
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   do {
 #ifdef VERBOSE_DEBUG
-    if (decision_level() > 0) {
+    if (dec_level() > 0) {
       debug_print("[indep] top count here: " << decisions.top().total_model_count()
         << " left: " << decisions.top().left_model_count()
         << " right: " << decisions.top().right_model_count()
         << " is right: " << decisions.top().is_right_branch()
         << " dec lit: " << top_dec_lit()
-        << " dec lev: " << decision_level());
+        << " dec lev: " << dec_level());
     }
 #endif
     if (decisions.top().branch_found_unsat()) {
@@ -1658,7 +1658,7 @@ RetState Counter<T>::backtrack() {
 
     CHECK_COUNT_DO(check_count());
     reactivate_comps_and_backtrack_trail(false);
-    assert(decision_level() >= 1);
+    assert(dec_level() >= 1);
     if (conf.do_use_cache) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
@@ -1670,7 +1670,7 @@ RetState Counter<T>::backtrack() {
       if constexpr (weighted) {
         T cnt = decisions.top().total_model_count();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
-          if (val(*it) != X_TRI && var(*it).decision_level < decision_level()) {
+          if (val(*it) != X_TRI && var(*it).decision_level < dec_level()) {
             Lit l(*it, val(*it) == T_TRI);
             if (get_weight(l) != 1) {
               debug_print(COLYEL2 << "MULT STORE var: " << std::setw(3) << *it
@@ -1817,7 +1817,7 @@ template<typename T>
 void Counter<T>::go_back_to(int32_t backj) {
   debug_print("going back to lev: " << backj << " dec level now: " << dec_level());
   while(dec_level() > backj) {
-    debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().total_model_count());
+    debug_print("at dec lit: " << top_dec_lit() << " lev: " << dec_level() << " cnt:" <<  decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_all_sol(); //not sure it's needed
@@ -1831,7 +1831,7 @@ void Counter<T>::go_back_to(int32_t backj) {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
     }
-    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().total_model_count() << endl);
+    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << dec_level() << " cnt:" <<  decisions.top().total_model_count() << endl);
   }
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
@@ -1967,7 +1967,7 @@ RetState Counter<T>::resolve_conflict() {
     VERBOSE_DEBUG_DO(print_trail());
     VERBOSE_DEBUG_DO(print_conflict_info());
     debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
-      << " current lev: " << decision_level());
+      << " current lev: " << dec_level());
     go_back_to(backj-1);
     auto ant = add_uip_confl_cl(uip_clause);
     set_lit(uip_clause[0], lev_to_set, ant);
@@ -2052,7 +2052,7 @@ inline void Counter<T>::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32
 template<typename T>
 bool Counter<T>::propagate(bool out_of_order) {
   confl = Antecedent();
-  debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size() << " dec lev: " << decision_level() << " trail follows.");
+  debug_print("qhead in propagate(): " << qhead << " trail sz: " << trail.size() << " dec lev: " << dec_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
   for (; qhead < trail.size(); qhead++) {
     const Lit plit = trail[qhead].neg();
@@ -2823,7 +2823,7 @@ typename Counter<T>::ConflictData Counter<T>::find_conflict_level(Lit p) {
   fill_cl(confl, c, size, p);
   VERBOSE_DEBUG_DO(cout << "CL in find_conflict_level " << confl << " : " << endl;print_cl(c, size));
   data.nHighestLevel = var(c[0]).decision_level;
-  if (data.nHighestLevel == decision_level() && var(c[1]).decision_level == decision_level())
+  if (data.nHighestLevel == dec_level() && var(c[1]).decision_level == dec_level())
     return data;
 
   int highest_id = 0;
@@ -3110,7 +3110,7 @@ void Counter<T>::toplevel_full_probe() {
   auto old_probe = stats.toplevel_probe_fail;
   auto old_bprop = stats.toplevel_bothprop_fail;
   stats.toplevel_probe_runs++;
-  assert(decision_level() == 0);
+  assert(dec_level() == 0);
 
   SLOW_DEBUG_DO(for(const auto&c: seen) assert(c == 0));
   for(uint32_t i = 1; i <= nVars(); i++) {
@@ -3141,7 +3141,7 @@ void Counter<T>::toplevel_full_probe() {
     }
 
     // Negation
-    assert(decision_level() == 0);
+    assert(dec_level() == 0);
     decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     set_lit(l.neg(), 1);
@@ -3186,7 +3186,7 @@ void Counter<T>::toplevel_full_probe() {
 
 template<typename T>
 void Counter<T>::subsume_all() {
-  assert(decision_level() == 0);
+  assert(dec_level() == 0);
   assert(occ.empty());
   assert(occ_cls.empty());
 
@@ -3297,12 +3297,12 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   stats.sat_called++;
   auto conflicts_before = stats.conflicts;
 
-  debug_print("Entering SAT mode. Declev: " << decision_level() << " trail follows.");
+  debug_print("Entering SAT mode. Declev: " << dec_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
   decisions.push_back(StackLevel<T>(decisions.top().curr_remain_comp(),
         comp_manager->comp_stack_size()));
-  sat_start_dec_level = decision_level();
+  sat_start_dec_level = dec_level();
 
   // Fill up order heap
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
@@ -3328,7 +3328,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       d = order_heap.removeMin();
     } while (val(d) != X_TRI);
     if (d == 0) {
-      debug_print("SAT mode found a solution. dec lev: " << decision_level());
+      debug_print("SAT mode found a solution. dec lev: " << dec_level());
       SLOW_DEBUG_DO(check_sat_solution());
       sat = true;
       break;
@@ -3341,7 +3341,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
       decisions.push_back(StackLevel<T>(1,2));
     }
     decisions.back().var = l.var();
-    set_lit(l, decision_level());
+    set_lit(l, dec_level());
 
     while (!propagate()) {
       start1:
@@ -3352,7 +3352,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     }
     if (state == BACKTRACK) goto end;
     assert(state != GO_AGAIN);
-    if (decision_level() < sat_start_dec_level) { goto end; }
+    if (dec_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
     if (sat_confl-last_restart >= luby(2, num_rst)*conf.sat_restart_mult) {
       debug_print("SAT restarting!");
@@ -3379,7 +3379,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     go_back_to(sat_start_dec_level);
     bool ret = propagate();
     assert(ret);
-    assert(decision_level() == sat_start_dec_level);
+    assert(dec_level() == sat_start_dec_level);
 
     //  We need to multiply here, because some things may get re-propagated, and that will
     //  be unset, which would affect the weight calculated. Yes, chrono-bt is hard.
@@ -3408,7 +3408,7 @@ end:
   order_heap.clear();
   sat_start_dec_level = -1;
   isindependent = true;
-  debug_print("Exiting SAT mode. Declev: " << decision_level() << " sat: " << (int)sat
+  debug_print("Exiting SAT mode. Declev: " << dec_level() << " sat: " << (int)sat
       << " trail below.");
   VERBOSE_DEBUG_DO(print_trail());
   if (sat) stats.sat_found_sat++;
@@ -3724,8 +3724,8 @@ template<typename T>
 void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   assert(val(lit) == X_TRI);
   if (ant.isNull())
-    debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << decision_level());
-  else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size() << " cur dec lev: " << decision_level());
+    debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << dec_level());
+  else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size() << " cur dec lev: " << dec_level());
 
   debug_print("setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size());
   var(lit).decision_level = dec_lev;
@@ -3738,7 +3738,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if constexpr (weighted) if (dec_lev <= decision_level() && get_weight(lit) != 1) {
+  if constexpr (weighted) if (dec_lev <= dec_level() && get_weight(lit) != 1) {
     int32_t until = decisions.size();
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
@@ -4104,14 +4104,14 @@ bool Counter<T>::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
 
 template<typename T>
 void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws) {
-  debug_print("->reactivate and backtrack. Dec lev: " << decision_level() << " top declevel sublev: " << var(decisions.top().var).sublevel <<  "...");
+  debug_print("->reactivate and backtrack. Dec lev: " << dec_level() << " top declevel sublev: " << var(decisions.top().var).sublevel <<  "...");
   auto jt = top_declevel_trail_begin();
   auto it = jt;
   int32_t off_by = 0;
   for (; it != trail.end(); it++) {
     int32_t dl = var(*it).decision_level;
     assert(dl != -1);
-    if (dl < decision_level()) {
+    if (dl < dec_level()) {
       off_by++;
       var(*it).sublevel = jt - trail.begin();
       *jt++ = *it;
@@ -4129,7 +4129,7 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
       print_trail(false, false);assert(false);});
   if (!sat_mode()) comp_manager->clean_remain_comps_of(decisions.top());
   trail.resize(jt - trail.begin());
-  if (decision_level() == 0) qhead = 0;
+  if (dec_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
   if (!sat_mode()) {
     decisions.top().reset_remain_comps();

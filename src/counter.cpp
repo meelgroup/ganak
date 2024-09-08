@@ -1082,7 +1082,7 @@ template<typename T>
 bool Counter<T>::decide_lit() {
   recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
-  debug_print("new decision level is about to be created, lev now: " << decisions.get_decision_level() << " branch: " << decisions.top().is_right_branch());
+  debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
     StackLevel<T>(decisions.top().curr_remain_comp(),
                comp_manager->comp_stack_size()));
@@ -1107,7 +1107,7 @@ bool Counter<T>::decide_lit() {
   Lit lit = Lit(v, get_polarity(v));
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
-      << decisions.get_decision_level());
+      << dec_level());
   set_lit(lit, decision_level());
   stats.decisions++;
   vsads_readjust();
@@ -1256,7 +1256,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
   for(const auto& l: trail) {
     if (!var(l).ante.isNull()) continue;
     if (l.var() >= opt_indep_support_end) continue;
-    if (var(l).decision_level == decisions.get_decision_level() && opposite_branch) {
+    if (var(l).decision_level == dec_level() && opposite_branch) {
       assert(l == top_dec_lit());
       c.cnf.push_back(l);
     } else {
@@ -1274,8 +1274,8 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
   if (solution == CMSat::l_False) return false;
 
   // Add values for all components not yet counted
-  for(int32_t i = 0; i <= decisions.get_decision_level(); i++) {
-    if (i == decisions.get_decision_level() && opposite_branch) {
+  for(int32_t i = 0; i <= dec_level(); i++) {
+    if (i == dec_level() && opposite_branch) {
       // This has been fully counted, ALL components.
       continue;
     }
@@ -1285,7 +1285,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
     debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
     // add all but the last component (it's the one being counted lower down)
     int off_by_one = 1;
-    if (i == decisions.get_decision_level()) off_by_one = 0;
+    if (i == dec_level()) off_by_one = 0;
     for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
       const auto& comp = comp_manager->at(i2);
       all_vars_in_comp(*comp, v) {
@@ -1299,7 +1299,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
 
 #ifdef VERBOSE_DEBUG
   // Show decision stack's comps
-  for(int32_t i = 0; i <= decisions.get_decision_level(); i++) {
+  for(int32_t i = 0; i <= dec_level(); i++) {
     const auto& dst = decisions.at(i);
     cout << COLWHT "decisions.at(" << i << "):"
       << " decision var: " << dst.var
@@ -1412,7 +1412,7 @@ bool Counter<T>::restart_if_needed() {
   assert(mini_cubes.empty());
   while (dec_level() > 0) {
     verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
-      << " lev: " << decisions.get_decision_level()
+      << " lev: " << dec_level()
       << " left cnt: " << decisions.top().left_model_count()
       << " right cnt: " << decisions.top().right_model_count()
       << COLDEF);
@@ -1459,7 +1459,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     const auto& c = comp_manager->at(sup_at);
 #ifdef VERBOSE_DEBUG
     cout << "-> Checking count. also_incl_curr_and_later_dec: " COLRED << std::boolalpha <<  also_incl_curr_and_later_dec << COLDEF
-      << " dec lev: " << decisions.get_decision_level() << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
+      << " dec lev: " << dec_level() << " [ stats: decisions so far: " << stats.decisions << " confl so far: " << stats.conflicts << " ]" << endl;
     cout << "-> Vars in comp_manager->at(" << sup_at << ")."
       << " num vars: " << c->nVars() << " vars: ";
     for(uint32_t i = 0; i < c->nVars(); i++) cout << c->vars_begin()[i] << " ";
@@ -1500,7 +1500,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
 
     // Checking
     VERBOSE_DEBUG_DO(print_trail());
-    debug_print("dec lev: " << decisions.get_decision_level());
+    debug_print("dec lev: " << dec_level());
     VERBOSE_DEBUG_DO(if (!trail.empty()) cout << "top dec lit: " << top_dec_lit() << endl;);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver, &s2);
@@ -1510,7 +1510,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
     }
     for(const auto& t: trail) {
       if (!also_incl_curr_and_later_dec) {
-        if (var(t).decision_level >= decisions.get_decision_level()) continue;
+        if (var(t).decision_level >= dec_level()) continue;
       }
       // don't include propagations or lev0 stuff
       if (!var(t).ante.isNull() || var(t).decision_level == 0) continue;
@@ -1605,7 +1605,7 @@ RetState Counter<T>::backtrack() {
       comp_manager->removeAllCachePollutionsOf(decisions.top());
     } else if (decisions.top().another_comp_possible()) {
       debug_print("[indep] Processing another comp at dec lev "
-          << decisions.get_decision_level()
+          << dec_level()
           << " instead of backtracking." << " Num unprocessed comps: "
           << decisions.top().num_unproc_comps()
           << " so far the count: " << decisions.top().total_model_count());
@@ -1616,9 +1616,9 @@ RetState Counter<T>::backtrack() {
     // propagation.
     if (!decisions.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
       debug_print("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
-          << " -- dec lev: " << decisions.get_decision_level());
+          << " -- dec lev: " << dec_level());
       const Lit lit = top_dec_lit();
-      assert(decisions.get_decision_level() > 0);
+      assert(dec_level() > 0);
       CHECK_COUNT_DO(check_count(true));
       SLOW_DEBUG_DO(assert(decisions.top().right_model_count() == 0));
       // could be the flipped that's FALSEified so that would
@@ -1635,7 +1635,7 @@ RetState Counter<T>::backtrack() {
       assert(ret);
       debug_print("[indep] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
       if (val(lit.neg()) == X_TRI) {
-        set_lit(lit.neg(), decisions.get_decision_level());
+        set_lit(lit.neg(), dec_level());
         VERBOSE_DEBUG_DO(print_trail());
         debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. "
             "count left: " << decisions.top().left_model_count()
@@ -1648,9 +1648,9 @@ RetState Counter<T>::backtrack() {
       }
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
-        << " -- dec lev: " << decisions.get_decision_level());
+        << " -- dec lev: " << dec_level());
     // Backtrack from end, i.e. finished.
-    if (decisions.get_decision_level() == 0) {
+    if (dec_level() == 0) {
       debug_print(COLORGBG "[indep] Backtracking from lev 0, i.e. ending");
       CHECK_COUNT_DO(check_count());
       break;
@@ -1697,7 +1697,7 @@ RetState Counter<T>::backtrack() {
     // var == 0 means it's coming from a fake decision due to normal SAT solving
     assert(decisions.top().var == 0 || decisions.top().var < opt_indep_support_end);
     auto& dst = decisions.top();
-    debug_print("[indep] -> Backtracked to level " << decisions.get_decision_level()
+    debug_print("[indep] -> Backtracked to level " << dec_level()
         // NOTE: -1 here because we have JUST processed the child
         //     ->> (see below next_unproc_comp() call)
         << " num unprocessed comps here: " << dst.num_unproc_comps()-1
@@ -1815,8 +1815,8 @@ void Counter<T>::print_trail(bool check_entail, bool check_anything) const {
 
 template<typename T>
 void Counter<T>::go_back_to(int32_t backj) {
-  debug_print("going back to lev: " << backj << " dec level now: " << decisions.get_decision_level());
-  while(decisions.get_decision_level() > backj) {
+  debug_print("going back to lev: " << backj << " dec level now: " << dec_level());
+  while(dec_level() > backj) {
     debug_print("at dec lit: " << top_dec_lit() << " lev: " << decision_level() << " cnt:" <<  decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
@@ -1839,11 +1839,11 @@ void Counter<T>::go_back_to(int32_t backj) {
 
 template<typename T>
 void Counter<T>::check_trail([[maybe_unused]] bool check_entail) const {
-  vector<uint32_t> num_decs_at_level(decisions.get_decision_level()+1, 0);
+  vector<uint32_t> num_decs_at_level(dec_level()+1, 0);
   bool entailment_fail = false;
   for(const auto& t: trail) {
     int32_t lev = var(t).decision_level;
-    if (lev > decisions.get_decision_level()) {
+    if (lev > dec_level()) {
       cout << "Too high decision level enqueued." << endl;
       assert(false);
     }
@@ -1981,12 +1981,12 @@ RetState Counter<T>::resolve_conflict() {
 
   go_back_to(backj);
   VERBOSE_DEBUG_DO(print_conflict_info());
-  debug_print("decisions.get_decision_level(): " << decisions.get_decision_level());
+  debug_print("dec_level(): " << dec_level());
 
   Antecedent ant;
   assert(!uip_clause.empty());
   CHECK_IMPLIED_DO(check_implied(uip_clause));
-  if (decisions.get_decision_level() > 0 && top_dec_lit().neg() == uip_clause[0]) {
+  if (dec_level() > 0 && top_dec_lit().neg() == uip_clause[0]) {
     debug_print("FLIPPING. Setting reason the conflict cl");
     assert(var(uip_clause[0]).decision_level != -1);
     ant = add_uip_confl_cl(uip_clause);
@@ -2020,7 +2020,7 @@ RetState Counter<T>::resolve_conflict() {
     return BACKTRACK;
   }
 
-  if (decisions.get_decision_level() > 0 && !sat_mode()) {
+  if (dec_level() > 0 && !sat_mode()) {
     assert(decisions.top().remaining_comps_ofs() == comp_manager->comp_stack_size());
   }
 
@@ -2134,7 +2134,7 @@ bool Counter<T>::propagate(bool out_of_order) {
           break;
         } else {
           assert(val(c[0]) == X_TRI);
-          debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << decisions.get_decision_level());
+          debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << dec_level());
           if (lev_at_declev) {
             set_lit(c[0], lev, Antecedent(ofs));
             debug_print("Norm long prop: " << c[0] << " lev: " << lev);

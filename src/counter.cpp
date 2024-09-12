@@ -1456,7 +1456,6 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
   return true;
 }
 
-
 // Checks one-by-one using a SAT solver
 template<typename T>
 T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {

@@ -221,7 +221,7 @@ private:
   // DNF Cube stuff
   bool restart_if_needed();
   vector<Cube<T>> mini_cubes;
-  void disable_small_cubes(vector<Cube<T>>& cubes);
+  uint32_t disable_small_cubes(vector<Cube<T>>& cubes);
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube<T>>& cubes);
   void print_and_check_cubes(vector<Cube<T>>& cubes);
   void disable_cubes_if_overlap(vector<Cube<T>>& cubes);

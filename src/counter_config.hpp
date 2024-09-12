@@ -36,6 +36,8 @@ struct CounterConfiguration {
   int restart_type = 8;
   int do_readjust_for_restart = 1;
   int max_num_rst = -1;
+  uint32_t lbd_cutoff_always_keep_cube = 3;
+  uint32_t max_num_cubes_per_restart = 6;
 
   double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;

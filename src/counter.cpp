@@ -47,6 +47,8 @@ THE SOFTWARE.
 
 using std::setw;
 using std::is_same;
+using std::setprecision;
+using std::setw;
 
 template<typename T>
 vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {
@@ -674,22 +676,25 @@ void Counter<T>::extend_cubes(vector<Cube<T>>& cubes) {
 }
 
 template<typename T>
-void Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
+uint32_t Counter<T>::disable_small_cubes(vector<Cube<T>>& cubes) {
+  uint32_t disabled = 0;
   std::sort(cubes.begin(), cubes.end(), [](const Cube<T>& a, const Cube<T>& b) {
-      return a.cnt > b.cnt;
-      });
+      return a.lbd < b.lbd;
+  });
   uint32_t enabled_so_far = 0;
   for(auto & c : cubes) {
     if (!c.enabled) continue;
-    if (enabled_so_far < 3) {
+    if (enabled_so_far < conf.max_num_cubes_per_restart
+        || c.lbd <= conf.lbd_cutoff_always_keep_cube
+        || c.cnf.size() <= conf.lbd_cutoff_always_keep_cube) {
       enabled_so_far++;
       continue;
-    }
-    if (c.cnt < 100) c.enabled = false;
-    else {
-      enabled_so_far++;
+    } else {
+      c.enabled = false;
+      disabled++;
     }
   }
+  return disabled;
 }
 
 template<>
@@ -801,7 +806,8 @@ T Counter<T>::outer_count() {
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
-    /* disable_small_cubes(cubes); */
+    /* const auto disabled = disable_small_cubes(cubes); */
+    /* verb_print(2, "[rst-cube] Disabled " << disabled << " cubes."); */
 
     // Add cubes to count, Ganak & CMS
     T cubes_cnt_this_rst = 0;
@@ -1389,6 +1395,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
       c.cnf.push_back(l.neg());
     }
     debug_print_noendl(l << " ");
+    c.lbd = calc_lbd(c.cnf);
   }
   debug_print_noendl(COLDEF << endl);
 
@@ -2354,7 +2361,7 @@ void Counter<T>::vivify_all(bool force, bool only_irred) {
   }
 
   vivif_setup();
-  verb_print(2, "[vivif] setup. T: " << (cpu_time()-my_time));
+  verb_print(2, "[vivif] setup. T: " << setprecision(2) << (cpu_time()-my_time));
 
   // Vivify clauses
   v_tout = conf.vivif_mult*2LL*1000LL*1000LL;

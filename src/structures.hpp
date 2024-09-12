@@ -221,11 +221,12 @@ struct Cube {
   T cnt;
   bool enabled = true;
   bool symm = false;
+  uint32_t lbd = 100;
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cube<T>& c) {
-  os << "CNF: " << c.cnf << " cnt: " << std::setprecision(40) << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm;
+  os << "CNF: " << c.cnf << " cnt: " << std::setprecision(40) << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm << " lbd: " << c.lbd;
   return os;
 }
 

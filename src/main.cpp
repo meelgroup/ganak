@@ -195,6 +195,7 @@ void add_ganak_options()
     myopt("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
     myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
     myopt("--arjuncmsmult", arjun_cms_mult, atof,  "Pass this multiplier to CMSat through Arjun");
+    myopt("--maxcubesperrst", conf.max_num_cubes_per_restart, atoi,  "Max number of cubes per restart");
     program.add_argument("inputfile").remaining().help("input CNF");
 }
 

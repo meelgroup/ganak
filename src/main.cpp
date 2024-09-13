@@ -69,19 +69,13 @@ CounterConfiguration conf;
 int arjun_verb = 2;
 int do_arjun = 1;
 int arjun_gates = 1;
-int sbva_steps = 1;
-int sbva_cls_cutoff = 4;
-int sbva_lits_cutoff = 5;
-int sbva_tiebreak = 1;
-int do_bce = 1;
 int do_breakid = 0;
-int all_indep = 0;
 int arjun_extend_max_confl = 1000;
-int do_extend_indep = 1;
 int do_pre_backbone = 0;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
+ArjunNS::Arjun::ElimToFileConf etof_conf;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
 int do_precise = 1;
@@ -121,7 +115,7 @@ void add_ganak_options()
     myopt("--arjun", do_arjun, atoi, "Use arjun");
     myopt("--arjunverb", arjun_verb, atoi, "Arjun verb");
     myopt("--arjungates", arjun_gates, atoi, "Use arjun's gate detection");
-    myopt("--arjunextend", do_extend_indep, atoi, "Extend indep via Arjun's extend system");
+    myopt("--arjunextend", etof_conf.do_extend_indep, atoi, "Extend indep via Arjun's extend system");
     myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
     myopt("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
     myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
@@ -130,7 +124,7 @@ void add_ganak_options()
     myopt("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
     myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
     myopt("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
-    myopt("--allindep", all_indep, atoi, "All variables can be made part of the indepedent support actually. Indep support is given ONLY to help the solver.");
+    myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
     myopt("--tdminw", conf.td_minweight, atof, "TD min weight");
@@ -153,7 +147,7 @@ void add_ganak_options()
     myopt("--updatelbdcutoff", conf.update_lbd_cutoff, atoi, "Update lbd cutoff");
     myopt("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, atoi, "Total used vivif cutoff");
 //
-    myopt("--bce", do_bce, atoi, "Do BCE");
+    myopt("--bce", etof_conf.do_bce, atoi, "Do static BCE");
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
     myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB. 0 == use 80% of free mem");
     myopt("--alluipincact", conf.alluip_inc_act, atoi, "All UIP should increase activities");
@@ -166,10 +160,10 @@ void add_ganak_options()
     myopt("--buddy", conf.do_buddy, atoi, "Run BuDDy");
     myopt("--decide", conf.decide, atoi, "1 = gpmc-inspired");
     myopt("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
-    myopt("--sbva", sbva_steps, atoi, "SBVA steps. 0 = no SBVA");
-    myopt("--sbvaclcut", sbva_cls_cutoff, atoi, "SBVA cls cutoff");
-    myopt("--sbvalitcut", sbva_lits_cutoff, atoi, "SBVA lits cutoff");
-    myopt("--sbvabreak", sbva_tiebreak, atoi, "1 = sbva");
+    myopt("--sbvasteps", etof_conf.num_sbva_steps, atoi, "SBVA steps. 0 = no SBVA");
+    myopt("--sbvaclcut", etof_conf.sbva_cls_cutoff, atoi, "SBVA cls cutoff");
+    myopt("--sbvalitcut", etof_conf.sbva_lits_cutoff, atoi, "SBVA lits cutoff");
+    myopt("--sbvabreak", etof_conf.sbva_tiebreak, atoi, "1 = sbva");
     myopt("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
     myopt("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
     myopt("--bvegrowiter2", simp_conf.bve_grow_iter2, atoi, "Puura BVE growth allowance iter2");
@@ -238,7 +232,7 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
   #endif
 
   if (!reader->get_sampl_vars_set()) {
-    all_indep = true;
+    etof_conf.all_indep = true;
     vector<uint32_t> tmp;
     for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
     reader->set_sampl_vars(tmp); // will automatically set the opt_sampl_vars
@@ -253,7 +247,7 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
       }
       tmp.insert(s);
     }
-    if (tmp.size() == reader->nVars()) all_indep = true;
+    if (tmp.size() == reader->nVars()) etof_conf.all_indep = true;
     if (!reader->get_opt_sampl_vars_set()) {
       reader->set_opt_sampl_vars(reader->get_sampl_vars());
     }
@@ -261,7 +255,7 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
 }
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
-  vector<Lit> ganak_cl;
+  vector<Lit> ganak_cl; ganak_cl.reserve(cl.size());
   for(const auto& l: cl) ganak_cl.push_back(Lit(l.var()+1, !l.sign()));
   return ganak_cl;
 }
@@ -353,9 +347,8 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_mult(arjun_cms_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
-  bool do_unate = false;
-  arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
-  if (all_indep) {
+  arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+  if (etof_conf.all_indep) {
     cnf.opt_sampl_vars.clear();
     for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
   }

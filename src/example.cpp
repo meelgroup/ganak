@@ -24,17 +24,10 @@ THE SOFTWARE.
 #include <arjun/arjun.h>
 using namespace std;
 CounterConfiguration conf;
-int sbva_steps = 1;
-int sbva_cls_cutoff = 4;
-int sbva_lits_cutoff = 5;
-int sbva_tiebreak = 1;
-int do_bce = 1;
-int all_indep = 0;
-int arjun_extend_max_confl = 1000;
-int do_extend_indep = 1;
 int do_pre_backbone = 0;
 ArjunNS::SimpConf simp_conf;
 int do_precise = 1;
+ArjunNS::Arjun::ElimToFileConf etof_conf;
 
 int arjun_oracle_find_bins = 0;
 
@@ -44,16 +37,13 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   return ganak_cl;
 }
 
-
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
   arjun.set_verb(0);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
-  bool do_unate = false;
-  assert(!all_indep);
-  arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate,
-      simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
+  assert(!etof_conf.all_indep);
+  arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
 }
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, OuterCounter& counter) {

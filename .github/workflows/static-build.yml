@@ -192,7 +192,7 @@ jobs:
         cd ensmallen-2.21.1
         mkdir build
         cd build
-        cmake ..
+        cmake -DUSE_OPENMP=OFF -DBUILD_SHARED_LIBS=OFF ..
         make -j6
         sudo make install
 

@@ -205,7 +205,7 @@ jobs:
         cd mlpack
         mkdir build
         cd build
-        cmake -DBUILD_SHARED_LIBS=ON -DBUILD_CLI_EXECUTABLES=OFF -DBUILD_PYTHON_BINDINGS=OFF -DBUILD_GO_BINDINGS=OFF -DBUILD_R_BINDINGS=OFF  ..
+        cmake -DBUILD_SHARED_LIBS=ON -DBUILD_CLI_EXECUTABLES=OFF ..
         make -j6
         sudo make install
 

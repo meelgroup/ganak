@@ -169,7 +169,7 @@ jobs:
         cd build
         cmake -DJUST_INSTALL_CEREAL=ON ..
         make -j12
-        make install
+        sudo make install
 
     - name: Checkout ensmallen
       run: |
@@ -181,7 +181,7 @@ jobs:
         cd build
         cmake ..
         make -j12
-        make install
+        sudo make install
 
     - name: Checkout armadillo
       run: |
@@ -192,7 +192,7 @@ jobs:
         cd armadillo-14.0.2/
         ./configure
         make -j12
-        make install
+        sudo make install
 
     - name: Checkout mlpack
       uses: actions/checkout@v4
@@ -207,7 +207,7 @@ jobs:
         cd build
         cmake ..
         make -j12
-        make install
+        sudo make install
 
     - name: Checkout arjun
       uses: actions/checkout@v4

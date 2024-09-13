@@ -175,6 +175,7 @@ jobs:
         wget https://ensmallen.org/files/ensmallen-2.21.1.tar.gz
     - name: Build ensmallen
       run: |
+        tar xvf ensmallen-2.21.1.tar.gz
         cd ensmallen-2.21.1
         mkdir build
         cd build

@@ -177,7 +177,9 @@ jobs:
       run: |
         tar xvf armadillo-14.0.2.tar.xz
         cd armadillo-14.0.2/
-        ./configure
+        mkdir build
+        cd build
+        cmake -DSTATIC_LIB=ON ..
         make -j6
         sudo make install
 

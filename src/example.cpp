@@ -39,7 +39,7 @@ int do_precise = 1;
 int arjun_oracle_find_bins = 0;
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
-  vector<Lit> ganak_cl;
+  vector<Lit> ganak_cl; ganak_cl.reserve(cl.size());
   for(const auto& l: cl) ganak_cl.push_back(Lit(l.var()+1, !l.sign()));
   return ganak_cl;
 }
@@ -48,8 +48,8 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
   arjun.set_verb(0);
-  if (do_pre_backbone) arjun.only_backbone(cnf);
-  arjun.only_run_minimize_indep(cnf);
+  if (do_pre_backbone) arjun.standalone_backbone(cnf);
+  arjun.standalone_minimize_indep(cnf);
   bool do_unate = false;
   assert(!all_indep);
   arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate,

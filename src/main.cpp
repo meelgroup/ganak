@@ -351,8 +351,8 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backbone_only_optindep(do_backbone_only_optindep);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_mult(arjun_cms_mult);
-  if (do_pre_backbone) arjun.only_backbone(cnf);
-  arjun.only_run_minimize_indep(cnf);
+  if (do_pre_backbone) arjun.standalone_backbone(cnf);
+  arjun.standalone_minimize_indep(cnf);
   bool do_unate = false;
   arjun.elim_to_file(cnf, all_indep, do_extend_indep, do_bce, do_unate, simp_conf, sbva_steps, sbva_cls_cutoff, sbva_lits_cutoff, sbva_tiebreak);
   if (all_indep) {

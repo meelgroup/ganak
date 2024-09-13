@@ -167,7 +167,7 @@ jobs:
         mkdir build
         cd build
         cmake -DJUST_INSTALL_CEREAL=ON ..
-        make -j12
+        make -j6
         sudo make install
 
     - name: Checkout armadillo
@@ -178,7 +178,7 @@ jobs:
         tar xvf armadillo-14.0.2.tar.xz
         cd armadillo-14.0.2/
         ./configure
-        make -j12
+        make -j6
         sudo make install
 
     - name: Checkout ensmallen
@@ -191,7 +191,7 @@ jobs:
         mkdir build
         cd build
         cmake ..
-        make -j12
+        make -j6
         sudo make install
 
     - name: Checkout mlpack
@@ -205,8 +205,8 @@ jobs:
         cd mlpack
         mkdir build
         cd build
-        cmake ..
-        make -j12
+        cmake -DBUILD_SHARED_LIBS=OFF -DBUILD_CLI_EXECUTABLES=OFF -DBUILD_PYTHON_BINDINGS=OFF -DBUILD_GO_BINDINGS=OFF -DBUILD_R_BINDINGS=OFF  ..
+        make -j6
         sudo make install
 
     - name: Checkout arjun

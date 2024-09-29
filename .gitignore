@@ -5,3 +5,7 @@
 tags
 build
 note*.txt
+mydiff
+perf.*
+neovide_backtraces.log
+*.diff

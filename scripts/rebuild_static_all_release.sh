@@ -33,7 +33,7 @@ git checkout master
 cd ../../
 
 cd arjun/build/
-git checkout synthesis
+git checkout synthesis2
 ./build_static_release.sh
 cd ../../
 

@@ -3606,7 +3606,7 @@ uint64_t Counter<T>::buddy_count() {
 }
 #else
 template<typename T>
-bool Counter<T>::do_buddy_count(const Comp*) {
+bool Counter<T>::do_buddy_count() {
   cout << "ERROR: you must recompiled with buddy enabled for BDD counting to work" << endl;
   exit(-1);
 }

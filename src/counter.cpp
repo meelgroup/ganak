@@ -3469,7 +3469,7 @@ void Counter<T>::check_sat_solution() const {
 
 template<typename T>
 bool Counter<T>::do_buddy_count(const Comp* c) {
-  if (c->nVars() >= 62 || c->nVars() <= 3 || (c->numBinCls()+c->num_long_cls()) > conf.buddy_max_cls) {
+  if (c->nVars() >= 62 || c->nVars() <= 3 || c->num_long_cls() > conf.buddy_max_cls) {
     /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */
     return false;
   }
@@ -3570,19 +3570,12 @@ uint64_t Counter<T>::buddy_count() {
   stats.buddy_num_long_cls += actual_long;
 
   VERBOSE_DEBUG_DO(
-  if (actual_bin != c->numBinCls()) {
-    cout << "WARN: numbin: " << c->numBinCls() << " actual bin: " << actual_bin << endl;
-  }
   if (actual_long != c->num_long_cls()) {
     cout << "WARN: numlong: " << c->num_long_cls() << " actual long: " << actual_long << endl;
   });
   /* cout << "bin cls: " << actual_bin << " long cls: " << actual_long << " vars: " << vmap.size() << endl; */
 
   assert(c->num_long_cls() == actual_long);
-  if (actual_bin > c->numBinCls()) {
-    // This is possible because vivif can make a long cl into a bin cl
-    // Nothing wrong with that. Keep running.
-  }
 
   VERBOSE_DEBUG_DO(bdd_printdot(bdd, proj_end));
 

@@ -74,10 +74,6 @@ public:
 
   uint32_t nVars() const { return clauses_offs - 1; }
   uint32_t num_long_cls() const { return vs_cls_data.size() - clauses_offs - 1; }
-#ifdef BUDDY_ENABLED
-  uint32_t numBinCls() const { return num_bin_cls; }
-  void setNumBinCls(uint32_t n) { num_bin_cls = n; }
-#endif
 
   const vector<uint32_t>& get_raw_data() const { return vs_cls_data;}
   bool empty() const { return vs_cls_data.empty(); }
@@ -117,8 +113,4 @@ private:
   // once the model count is known, a link to the packed comp will be stored
   // in the hash table
   CacheEntryID id_ = 0;
-
-#ifdef BUDDY_ENABLED
-  uint32_t num_bin_cls = 0;
-#endif
 };

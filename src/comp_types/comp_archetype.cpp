@@ -30,7 +30,6 @@ Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
       set_clause_in_peer_comp(*it_cl);
     }
   p_new_comp->close_cls_data();
-  BUDDY_DO(p_new_comp->setNumBinCls(num_bin_cls/2));
 
   debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<
       " New comp vars: " << p_new_comp->nVars() <<

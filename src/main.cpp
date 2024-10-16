@@ -451,6 +451,10 @@ int main(int argc, char *argv[])
   fname = files[0];
   ArjunNS::SimplifiedCNF cnf;
   parse_file(fname, &cnf);
+  if (cnf.get_weighted() && conf.do_buddy) {
+    cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
+    exit(-1);
+  }
   if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();
   else run_arjun(cnf);
   if (conf.verb) {

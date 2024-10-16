@@ -66,6 +66,10 @@ public:
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
+  const Comp& get_super_comp(const StackLevel<T>& lev) const {
+    assert(comp_stack.size() > lev.super_comp());
+    return *comp_stack[lev.super_comp()];
+  }
 
   uint32_t comp_stack_size() { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }

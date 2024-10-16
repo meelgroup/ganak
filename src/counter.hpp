@@ -367,7 +367,8 @@ private:
   uint64_t next_print_stat_confl = 100LL*1000LL;
 
   // BDD
-  bool do_buddy_count(const Comp* c);
+  bool should_do_buddy_count() const;
+  bool do_buddy_count();
 #ifdef BUDDY_ENABLED
   uint64_t buddy_count();
   vector<uint32_t> vmap;

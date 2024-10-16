@@ -948,15 +948,6 @@ void Counter<T>::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
-      // It's a component. It will ONLY fall into smaller pieces if we decide on a literal
-      const Comp* c = comp_manager->at(decisions.top().super_comp());
-
-      // BDD count
-      if (conf.do_buddy && do_buddy_count(c)) {
-        state = BACKTRACK;
-        break;
-      }
-
       if (!decide_lit()) {
         decisions.top().next_unproc_comp();
         continue;
@@ -968,11 +959,11 @@ void Counter<T>::count_loop() {
             << " left: " << decisions.top().left_model_count()
             << " right: " << decisions.top().right_model_count());
 
-        bool ret = use_sat_solver(state);
+        bool sat = use_sat_solver(state);
         debug_print("after SAT mode. cnt dec: " << decisions.top().total_model_count()
             << " left: " << decisions.top().left_model_count()
             << " right: " << decisions.top().right_model_count());
-        if (ret) {
+        if (sat) {
           state = BACKTRACK;
         } else {
           goto start11;
@@ -985,6 +976,15 @@ void Counter<T>::count_loop() {
 
         // Now backtrack
         break;
+      }
+
+      if (conf.do_buddy && should_do_buddy_count()) {
+        if (do_buddy_count()) {
+          state = BACKTRACK;
+          break;
+        } else {
+          goto start11;
+        }
       }
 
       while (!propagate()) {
@@ -1457,7 +1457,7 @@ bool Counter<T>::compute_cube(Cube<T>& c, const int side) {
   cout << COLORG "cube so far. Size: " << c.cnf.size() << " cube: ";
   for(const auto& l: c.cnf) cout << l << " ";
   cout << endl;
-  cout << COLORG "cube's SOLE count: " << decisions.top().get_model_side(branch) << endl;
+  cout << COLORG "cube's SOLE count: " << decisions.top().get_model_side(side) << endl;
   cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
 #endif
   return true;
@@ -3468,27 +3468,32 @@ void Counter<T>::check_sat_solution() const {
 
 
 template<typename T>
-bool Counter<T>::do_buddy_count(const Comp* c) {
-  if (c->nVars() >= 62 || c->nVars() <= 3 || c->num_long_cls() > conf.buddy_max_cls) {
+bool Counter<T>::should_do_buddy_count() const {
+  auto d = decisions.at(dec_level()-1);
+  const Comp& c = comp_manager->get_super_comp(d);
+  if (c.nVars() >= 62 || c.nVars() <= 3 || c.num_long_cls() > conf.buddy_max_cls) {
     /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */
     return false;
   }
+  return true;
+}
 
-  decisions.push_back(StackLevel<T>( decisions.top().curr_remain_comp(),
-        comp_manager->comp_stack_size()));
+template<typename T>
+bool Counter<T>::do_buddy_count() {
   stats.buddy_called++;
   uint64_t cnt = buddy_count();
 
+  debug_print("Buddy count: " << cnt);
   if (cnt > 0) {
+    decisions.top().reset();
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
-    decisions.top().var = 0;
   } else {
     decisions.top().branch_found_unsat();
     decisions.top().change_to_right_branch();
     decisions.top().branch_found_unsat();
   }
-  return true;
+  return cnt > 0;
 }
 
 // TODO Yash's ideas:
@@ -3498,6 +3503,8 @@ bool Counter<T>::do_buddy_count(const Comp* c) {
 //   --> NOTE: double needs to be changed to int64_t
 template<typename T>
 uint64_t Counter<T>::buddy_count() {
+  const Lit top_lit = trail.back();
+  const uint32_t top_var = top_lit.var();
   const auto& s = decisions.top();
   auto const& sup_at = s.super_comp(); //TODO bad -- it doesn't take into account
                                        //that it could have already fallen into pieces
@@ -3538,8 +3545,8 @@ uint64_t Counter<T>::buddy_count() {
 
     auto tmp = bdd_false();
     for(Lit const* l = cl; *l != SENTINEL_LIT; l++) {
-      assert(val(*l) != T_TRI);
-      if (val(*l) != X_TRI) continue;
+      assert(l->var() == top_var || val(*l) != T_TRI);
+      if (l->var() != top_var && val(*l) != X_TRI) continue;
       mybdd_add(tmp, *l);
     }
     bdd &= tmp;
@@ -3553,8 +3560,10 @@ uint64_t Counter<T>::buddy_count() {
     if (val(l) != X_TRI) continue;
     for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;
-      if (val(ws.lit()) == T_TRI) continue;
-      SLOW_DEBUG_DO(assert(val(ws.lit()) == X_TRI)); // otherwise would have propagated/conflicted
+      if (ws.lit().var() != top_var && val(ws.lit()) == T_TRI) continue;
+      SLOW_DEBUG_DO(assert(
+            ws.lit().var() == top_var ||
+            val(ws.lit()) == X_TRI)); // otherwise would have propagated/conflicted
 
       auto tmp = bdd_false();
       mybdd_add(tmp, l);
@@ -4117,14 +4126,16 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
   auto it = jt;
   int32_t off_by = 0;
   for (; it != trail.end(); it++) {
-    int32_t dl = var(*it).decision_level;
+    debug_print("Backing up, checking lit: " << std::setw(5) << *it << " at: " << it-trail.begin());
+    SLOW_DEBUG_DO(assert(it->var() != 0));
+    const int32_t dl = var(*it).decision_level;
     assert(dl != -1);
     if (dl < dec_level()) {
       off_by++;
       var(*it).sublevel = jt - trail.begin();
       *jt++ = *it;
-      debug_print("Backing up, setting: " << std::setw(5) << *it << " lev: " << std::setw(4) << dl
-          << " sublev: " << var(*it).sublevel);
+      debug_print("Backing up, setting: " << std::setw(5) << *it << " at lev: " << std::setw(4) << dl
+          << " to sublev: " << var(*it).sublevel);
     } else {
       debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
           << " lev: " << std::setw(4) << var(*it).decision_level

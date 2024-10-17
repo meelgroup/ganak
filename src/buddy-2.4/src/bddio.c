@@ -315,7 +315,7 @@ void bdd_printdot(BDD r, uint32_t proj_end)
 }
 
 
-int bdd_fnprintdot(char *fname, BDD r, uint32_t proj_end)
+int bdd_fnprintdot(const char *fname, BDD r, uint32_t proj_end)
 {
    FILE *ofile = fopen(fname, "w");
    if (ofile == NULL)
@@ -349,7 +349,7 @@ static void bdd_fprintdot_rec(FILE* ofile, BDD r, uint32_t proj_end)
    if (ISCONST(r) || MARKED(r))
       return;
 
-   uint32_t size = ((uint64_t)1) << min(LEVEL(r), proj_end);
+   const uint64_t size = ((uint64_t)1) << min(LEVEL(r), proj_end);
    fprintf(ofile, "%d [label=\"", r);
    fprintf(ofile, "%d -- lev: %d cnt: %lu", LEVEL(r), bddlevel2var[LEVEL(r)], bdd_satcount_i64(r, proj_end)/size);
    fprintf(ofile, "\"];\n");

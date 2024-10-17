@@ -303,7 +303,6 @@ extern BDD      bdd_satoneset(BDD, BDD, BDD);
 extern BDD      bdd_fullsatone(BDD);
 extern void     bdd_allsat(BDD r, bddallsathandler handler);
 extern uint64_t bdd_satcount_i64(BDD, uint32_t);
-extern int64_t  bdd_satcountlnset_i64(BDD, BDD);
 extern int      bdd_nodecount(BDD);
 extern int      bdd_anodecount(BDD *, int);
 extern int*     bdd_varprofile(BDD);
@@ -318,7 +317,7 @@ extern void     bdd_fprinttable(FILE *, BDD);
 extern void     bdd_printtable(BDD);
 extern void     bdd_fprintset(FILE *, BDD);
 extern void     bdd_printset(BDD);
-extern int      bdd_fnprintdot(char *, BDD, uint32_t);
+extern int      bdd_fnprintdot(const char *, BDD, uint32_t);
 extern void     bdd_fprintdot(FILE *, BDD, uint32_t);
 extern void     bdd_printdot(BDD, uint32_t);
 extern int      bdd_fnsave(char *, BDD);
@@ -498,7 +497,6 @@ private:
    friend bdd      bdd_fullsatone(const bdd &);
    friend void     bdd_allsat(const bdd &r, bddallsathandler handler);
    friend uint64_t bdd_satcount_i64(const bdd &, uint32_t);
-   friend int64_t  bdd_satcountlnset_i64(const bdd &, const bdd &);
    friend int      bdd_nodecount(const bdd &);
    friend int      bdd_anodecountpp(const bdd *, int);
    friend int*     bdd_varprofile(const bdd &);
@@ -509,7 +507,7 @@ private:
    friend void   bdd_fprintset(FILE *, const bdd &);
    friend void   bdd_printset(const bdd &);
    friend void   bdd_printdot(const bdd &, uint32_t);
-   friend int    bdd_fnprintdot(char*, const bdd &, uint32_t);
+   friend int    bdd_fnprintdot(const char*, const bdd &, uint32_t);
    friend void   bdd_fprintdot(FILE*, const bdd &, uint32_t);
    friend std::ostream &operator<<(std::ostream &, const bdd &);
    friend int    bdd_fnsave(char*, const bdd &);
@@ -667,9 +665,6 @@ inline void bdd_allsat(const bdd &r, bddallsathandler handler)
 inline uint64_t bdd_satcount_i64(const bdd &r, uint32_t proj_end)
 { return bdd_satcount_i64(r.root, proj_end); }
 
-inline int64_t bdd_satcountlnset_i64(const bdd &r, const bdd& set)
-{ return bdd_satcountlnset_i64(r.root, set.root); }
-
 inline int bdd_nodecount(const bdd &r)
 { return bdd_nodecount(r.root); }
 
@@ -700,7 +695,7 @@ inline void bdd_printdot(const bdd &r, uint32_t proj_end)
 inline void bdd_fprintdot(FILE* ofile, const bdd &r, uint32_t proj_end)
 { bdd_fprintdot(ofile, r.root, proj_end); }
 
-inline int bdd_fnprintdot(char* fname, const bdd &r, uint32_t proj_end)
+inline int bdd_fnprintdot(const char* fname, const bdd &r, uint32_t proj_end)
 { return bdd_fnprintdot(fname, r.root, proj_end); }
 
 inline int bdd_fnsave(char *fname, const bdd &r)

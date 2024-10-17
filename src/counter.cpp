@@ -3591,7 +3591,12 @@ uint64_t Counter<T>::buddy_count() {
 
   assert(c->num_long_cls() == actual_long);
 
-  VERBOSE_DEBUG_DO(bdd_printdot(bdd, proj_end));
+#ifdef VERBOSE_DEBUG
+  std::stringstream fname;
+  fname << "bdd-" << stats.buddy_called << ".dot";
+  bdd_fnprintdot(fname.str().c_str(), bdd, proj_end);
+  debug_print("BDD written to: " << fname.str());
+#endif
 
   // Trick: when all is projected, we can set 64, and then subtract. This is
   // more generic. Otherwise, bdd cache will not match if we set the correct value

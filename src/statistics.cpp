@@ -93,9 +93,14 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << setw(5) << sat_rst << " ");
   verb_print(1, "buddy called                   "
     << setw(5) << buddy_called << " ");
-  verb_print(1, "buddy avg num bin/long cls     "
+  verb_print(1, "buddy avg num bin/long cls/vs  "
     << setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
-    << setw(5) << safe_div(buddy_num_long_cls,buddy_called));
+    << setw(5) << safe_div(buddy_num_long_cls,buddy_called) << " / "
+    << setw(5) << safe_div(buddy_num_vars,buddy_called));
+  verb_print(1, "buddy max num bin/long cls/vs  "
+    << setw(5) << buddy_max_bin_cls << " / "
+    << setw(5) << buddy_max_long_cls << " / "
+    << setw(5) << buddy_max_num_vars);
 
   verb_print(1, "orig cubes/lit-r avg/exten avg "
     << setw(5) << num_cubes_orig << " / "

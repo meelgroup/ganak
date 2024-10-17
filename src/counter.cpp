@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "mpreal.h"
 #include "approxmc.h"
 #include <thread>
+#include <algorithm>
 
 using std::setw;
 using std::is_same;
@@ -3577,6 +3578,10 @@ uint64_t Counter<T>::buddy_count() {
   }
   stats.buddy_num_bin_cls += actual_bin;
   stats.buddy_num_long_cls += actual_long;
+  stats.buddy_num_vars += vmap.size();
+  stats.buddy_max_bin_cls = std::max<uint64_t>(actual_bin, stats.buddy_max_bin_cls);
+  stats.buddy_max_long_cls = std::max<uint64_t>(actual_long, stats.buddy_max_long_cls);
+  stats.buddy_max_num_vars = std::max<uint64_t>(vmap.size(), stats.buddy_max_num_vars);
 
   VERBOSE_DEBUG_DO(
   if (actual_long != c->num_long_cls()) {

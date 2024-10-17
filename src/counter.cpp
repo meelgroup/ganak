@@ -3517,7 +3517,8 @@ uint64_t Counter<T>::buddy_count() {
   uint32_t proj_end = 63;
   bool proj = false;
   for(uint32_t i = 0; i < c->nVars(); i++) {
-    uint32_t var = c->vars_begin()[i];
+    const uint32_t var = c->vars_begin()[i];
+    assert(var == top_var || val(var) == X_TRI);
     if (var >= indep_support_end && !proj) {
       proj_end = i;
       proj = true;
@@ -3527,7 +3528,6 @@ uint64_t Counter<T>::buddy_count() {
   }
   VERBOSE_DEBUG_DO(cout << "Vars in BDD: "; for(const auto& v: vmap) cout << v << " "; cout << endl);
   debug_print("proj_end: " << proj_end << " indep_support_end: " << indep_support_end);
-
 
   // The final built bdd
   auto bdd = bdd_true();
@@ -3557,7 +3557,7 @@ uint64_t Counter<T>::buddy_count() {
   uint32_t actual_bin = 0;
   for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
     Lit l(v, i);
-    if (val(l) != X_TRI) continue;
+    if (v != top_var && val(l) != X_TRI) continue;
     for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;
       if (ws.lit().var() != top_var && val(ws.lit()) == T_TRI) continue;

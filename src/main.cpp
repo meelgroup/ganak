@@ -111,7 +111,7 @@ void add_ganak_options()
         .action([&](const auto&) {print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    myopt("--delta", conf.delta, atoi, "Delta");
+    myopt("--delta", conf.delta, atof, "Delta");
     myopt("--arjun", do_arjun, atoi, "Use arjun");
     myopt("--arjunverb", arjun_verb, atoi, "Arjun verb");
     myopt("--arjungates", arjun_gates, atoi, "Use arjun's gate detection");

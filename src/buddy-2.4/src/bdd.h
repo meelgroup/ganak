@@ -303,6 +303,7 @@ extern BDD      bdd_satoneset(BDD, BDD, BDD);
 extern BDD      bdd_fullsatone(BDD);
 extern void     bdd_allsat(BDD r, bddallsathandler handler);
 extern uint64_t bdd_satcount_i64(BDD, uint32_t);
+extern int64_t  bdd_satcountlnset_i64(BDD, BDD);
 extern int      bdd_nodecount(BDD);
 extern int      bdd_anodecount(BDD *, int);
 extern int*     bdd_varprofile(BDD);
@@ -497,6 +498,7 @@ private:
    friend bdd      bdd_fullsatone(const bdd &);
    friend void     bdd_allsat(const bdd &r, bddallsathandler handler);
    friend uint64_t bdd_satcount_i64(const bdd &, uint32_t);
+   friend int64_t  bdd_satcountlnset_i64(const bdd &, const bdd &);
    friend int      bdd_nodecount(const bdd &);
    friend int      bdd_anodecountpp(const bdd *, int);
    friend int*     bdd_varprofile(const bdd &);
@@ -664,6 +666,9 @@ inline void bdd_allsat(const bdd &r, bddallsathandler handler)
 
 inline uint64_t bdd_satcount_i64(const bdd &r, uint32_t proj_end)
 { return bdd_satcount_i64(r.root, proj_end); }
+
+inline int64_t bdd_satcountlnset_i64(const bdd &r, const bdd& set)
+{ return bdd_satcountlnset_i64(r.root, set.root); }
 
 inline int bdd_nodecount(const bdd &r)
 { return bdd_nodecount(r.root); }

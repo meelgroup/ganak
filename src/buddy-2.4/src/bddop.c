@@ -2445,6 +2445,101 @@ static void allsat_rec(BDD r)
 
 /*=== COUNT NUMBER OF SATISFYING ASSIGNMENT ============================*/
 
+static int64_t satcountln_rec_i64(int root);
+
+/*
+NAME    {* bdd\_satcountln *}
+EXTRA   {* bdd\_setcountlnset *}
+SECTION {* info *}
+SHORT   {* calculates the log. number of satisfying variable assignments *}
+PROTO   {* double bdd_satcountln(BDD r)
+double bdd_satcountlnset(BDD r, BDD varset)*}
+DESCR   {* Calculates how many possible variable assignments there
+          exists such that {\tt r} is satisfied (true) and returns
+          the logarithm of this. The result is calculated in such a
+          manner that it is practically impossible to get an
+          overflow, which is very possible for {\tt bdd\_satcount} if
+          the number of defined variables is too large. All defined
+          variables are considered in the first version. In the
+          second version, only the variables in the variable
+          set {\tt varset} are considered. This makes the function
+          a {\em lot} slower! *}
+ALSO    {* bdd\_satone, bdd\_fullsatone, bdd\_satcount *}
+RETURN {* The logarithm of the number of possible assignments. *} */
+int64_t bdd_satcountln_i64(BDD r)
+{
+   int64_t size;
+
+   CHECKa(r, 0.0);
+
+   miscid = CACHEID_SATCOULN;
+   size = satcountln_rec_i64(r);
+
+   if (size >= 0.0)
+      size += LEVEL(r);
+
+   return size;
+}
+
+static int64_t satcountln_rec_i64(int root)
+{
+   BddCacheData *entry;
+   BddNode *node;
+   int64_t size, s1,s2;
+
+   if (root == 0)
+      return -1;
+
+   if (root == 1)
+      return 0;
+
+   entry = BddCache_lookup(&misccache, SATCOUHASH(root));
+   if (entry->a == root  &&  entry->c == miscid)
+      return entry->r.res;
+
+   node = &bddnodes[root];
+
+   s1 = satcountln_rec_i64(LOWp(node));
+   if (s1 >= 0.0)
+      s1 += LEVEL(LOWp(node)) - LEVELp(node) - 1;
+
+   s2 = satcountln_rec_i64(HIGHp(node));
+   if (s2 >= 0.0)
+      s2 += LEVEL(HIGHp(node)) - LEVELp(node) - 1;
+
+   if (s1 < 0)
+      size = s2;
+   else if (s2 < 0)
+      size = s1;
+   else if (s1 < s2)
+      size = s2 + log1p(pow(2.0,s1-s2)) / M_LN2;
+   else
+      size = s1 + log1p(pow(2.0,s2-s1)) / M_LN2;
+
+   entry->a = root;
+   entry->c = miscid;
+   entry->r.res = size;
+
+   return size;
+}
+
+int64_t bdd_satcountlnset_i64(BDD r, BDD varset)
+{
+   int64_t unused = bddvarnum;
+   BDD n;
+
+   if (ISCONST(varset)) /* empty set */
+      return 0;
+
+   for (n=varset ; !ISCONST(n) ; n=HIGH(n))
+      unused--;
+
+   unused = bdd_satcountln_i64(r) - unused;
+
+   return unused >= 0 ? unused : 0;
+}
+
+
 static unsigned min(unsigned int a, unsigned int b)
 {
    return a < b ? a : b;

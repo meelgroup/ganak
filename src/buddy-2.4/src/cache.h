@@ -44,7 +44,6 @@ typedef struct
 {
    union
    {
-      double dres;
       uint64_t res;
    } r;
    int a,b,c,proj_end;

@@ -138,11 +138,8 @@ static BDD    satone_rec(BDD);
 static BDD    satoneset_rec(BDD, BDD);
 static int    fullsatone_rec(int);
 static void   allsat_rec(BDD r);
-static double satcount_rec(int);
-static double satcountln_rec(int);
 static uint64_t satcount_rec_i64(int, uint32_t);
 static void   varprofile_rec(int);
-static double bdd_pathcount_rec(BDD);
 static int    varset2vartable(BDD);
 static int    varset2svartable(BDD);
 
@@ -2448,34 +2445,6 @@ static void allsat_rec(BDD r)
 
 /*=== COUNT NUMBER OF SATISFYING ASSIGNMENT ============================*/
 
-/*
-NAME    {* bdd\_satcount *}
-EXTRA   {* bdd\_setcountset *}
-SECTION {* info *}
-SHORT   {* calculates the number of satisfying variable assignments *}
-PROTO   {* double bdd_satcount(BDD r)
-double bdd_satcountset(BDD r, BDD varset) *}
-DESCR   {* Calculates how many possible variable assignments there exists
-           such that {\tt r} is satisfied (true). All defined
-	   variables are considered in the first version. In the
-	   second version, only the variables in the variable
-	   set {\tt varset} are considered. This makes the function a
-	   {\em lot} slower. *}
-ALSO    {* bdd\_satone, bdd\_fullsatone, bdd\_satcountln *}
-RETURN  {* The number of possible assignments. *}
-*/
-double bdd_satcount(BDD r)
-{
-   double size=1;
-
-   CHECKa(r, 0.0);
-
-   miscid = CACHEID_SATCOU;
-   size = pow(2.0, (double)LEVEL(r));
-
-   return size * satcount_rec(r);
-}
-
 static unsigned min(unsigned int a, unsigned int b)
 {
    return a < b ? a : b;
@@ -2491,22 +2460,6 @@ uint64_t bdd_satcount_i64(BDD r, uint32_t proj_end)
    size = ((uint64_t)1) << min(LEVEL(r), proj_end);
 
    return size * satcount_rec_i64(r, proj_end);
-}
-
-double bdd_satcountset(BDD r, BDD varset)
-{
-   double unused = bddvarnum;
-   BDD n;
-
-   if (ISCONST(varset)  ||  ISZERO(r)) /* empty set */
-      return 0.0;
-
-   for (n=varset ; !ISCONST(n) ; n=HIGH(n))
-      unused--;
-
-   unused = bdd_satcount(r) / pow(2.0,unused);
-
-   return unused >= 1.0 ? unused : 1.0;
 }
 
 static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
@@ -2542,132 +2495,6 @@ static uint64_t satcount_rec_i64(int root, uint32_t proj_end)
 
    return size;
 }
-
-static double satcount_rec(int root)
-{
-   BddCacheData *entry;
-   BddNode *node;
-   double size, s;
-
-   if (root < 2)
-      return root;
-
-   entry = BddCache_lookup(&misccache, SATCOUHASH(root));
-   if (entry->a == root  &&  entry->c == miscid)
-      return entry->r.dres;
-
-   node = &bddnodes[root];
-   size = 0;
-   s = 1;
-
-   s *= pow(2.0, (float)(LEVEL(LOWp(node)) - LEVELp(node) - 1));
-   size += s * satcount_rec(LOWp(node));
-
-   s = 1;
-   s *= pow(2.0, (float)(LEVEL(HIGHp(node)) - LEVELp(node) - 1));
-   size += s * satcount_rec(HIGHp(node));
-
-   entry->a = root;
-   entry->c = miscid;
-   entry->r.dres = size;
-
-   return size;
-}
-
-
-/*
-NAME    {* bdd\_satcountln *}
-EXTRA   {* bdd\_setcountlnset *}
-SECTION {* info *}
-SHORT   {* calculates the log. number of satisfying variable assignments *}
-PROTO   {* double bdd_satcountln(BDD r)
-double bdd_satcountlnset(BDD r, BDD varset)*}
-DESCR   {* Calculates how many possible variable assignments there
-	   exists such that {\tt r} is satisfied (true) and returns
-	   the logarithm of this. The result is calculated in such a
-	   manner that it is practically impossible to get an
-	   overflow, which is very possible for {\tt bdd\_satcount} if
-	   the number of defined variables is too large. All defined
-	   variables are considered in the first version. In the
-	   second version, only the variables in the variable
-	   set {\tt varset} are considered. This makes the function
-	   a {\em lot} slower! *}
-ALSO    {* bdd\_satone, bdd\_fullsatone, bdd\_satcount *}
-RETURN {* The logarithm of the number of possible assignments. *} */
-double bdd_satcountln(BDD r)
-{
-   double size;
-
-   CHECKa(r, 0.0);
-
-   miscid = CACHEID_SATCOULN;
-   size = satcountln_rec(r);
-
-   if (size >= 0.0)
-      size += LEVEL(r);
-
-   return size;
-}
-
-
-double bdd_satcountlnset(BDD r, BDD varset)
-{
-   double unused = bddvarnum;
-   BDD n;
-
-   if (ISCONST(varset)) /* empty set */
-      return 0.0;
-
-   for (n=varset ; !ISCONST(n) ; n=HIGH(n))
-      unused--;
-
-   unused = bdd_satcountln(r) - unused;
-
-   return unused >= 0.0 ? unused : 0.0;
-}
-
-
-static double satcountln_rec(int root)
-{
-   BddCacheData *entry;
-   BddNode *node;
-   double size, s1,s2;
-
-   if (root == 0)
-      return -1.0;
-   if (root == 1)
-      return 0.0;
-
-   entry = BddCache_lookup(&misccache, SATCOUHASH(root));
-   if (entry->a == root  &&  entry->c == miscid)
-      return entry->r.dres;
-
-   node = &bddnodes[root];
-
-   s1 = satcountln_rec(LOWp(node));
-   if (s1 >= 0.0)
-      s1 += LEVEL(LOWp(node)) - LEVELp(node) - 1;
-
-   s2 = satcountln_rec(HIGHp(node));
-   if (s2 >= 0.0)
-      s2 += LEVEL(HIGHp(node)) - LEVELp(node) - 1;
-
-   if (s1 < 0.0)
-      size = s2;
-   else if (s2 < 0.0)
-      size = s1;
-   else if (s1 < s2)
-      size = s2 + log1p(pow(2.0,s1-s2)) / M_LN2;
-   else
-      size = s1 + log1p(pow(2.0,s2-s1)) / M_LN2;
-
-   entry->a = root;
-   entry->c = miscid;
-   entry->r.dres = size;
-
-   return size;
-}
-
 
 /*=== COUNT NUMBER OF ALLOCATED NODES ==================================*/
 
@@ -2773,50 +2600,6 @@ static void varprofile_rec(int r)
 
 
 /*=== COUNT NUMBER OF PATHS ============================================*/
-
-/*
-NAME    {* bdd\_pathcount *}
-SECTION {* info *}
-SHORT   {* count the number of paths leading to the true terminal *}
-PROTO   {* double bdd_pathcount(BDD r) *}
-DESCR   {* Counts the number of paths from the root node {\tt r}
-           leading to the terminal true node. *}
-RETURN  {* The number of paths *}
-ALSO    {* bdd\_nodecount, bdd\_satcount *}
-*/
-double bdd_pathcount(BDD r)
-{
-   CHECKa(r, 0.0);
-
-   miscid = CACHEID_PATHCOU;
-
-   return bdd_pathcount_rec(r);
-}
-
-
-static double bdd_pathcount_rec(BDD r)
-{
-   BddCacheData *entry;
-   double size;
-
-   if (ISZERO(r))
-      return 0.0;
-   if (ISONE(r))
-      return 1.0;
-
-   entry = BddCache_lookup(&misccache, PATHCOUHASH(r));
-   if (entry->a == r  &&  entry->c == miscid)
-      return entry->r.dres;
-
-   size = bdd_pathcount_rec(LOW(r)) + bdd_pathcount_rec(HIGH(r));
-
-   entry->a = r;
-   entry->c = miscid;
-   entry->r.dres = size;
-
-   return size;
-}
-
 
 /*************************************************************************
   Other internal functions

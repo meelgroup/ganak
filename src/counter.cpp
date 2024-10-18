@@ -3461,7 +3461,7 @@ void Counter<T>::check_sat_solution() const {
 }
 
 #ifdef BUDDY_ENABLED
-#define mybdd_add(a,l) \
+#define mybdd_or(a,l) \
   do { \
   if (!(l).sign()) tmp |= bdd_ithvar(vmap_rev[(l).var()]); \
   else tmp |= bdd_nithvar(vmap_rev[(l).var()]); \
@@ -3548,7 +3548,7 @@ uint64_t Counter<T>::buddy_count() {
     for(Lit const* l = cl; *l != SENTINEL_LIT; l++) {
       assert(l->var() == top_var || val(*l) != T_TRI);
       if (l->var() != top_var && val(*l) != X_TRI) continue;
-      mybdd_add(tmp, *l);
+      mybdd_or(tmp, *l);
     }
     bdd &= tmp;
     actual_long++;
@@ -3567,9 +3567,9 @@ uint64_t Counter<T>::buddy_count() {
             val(ws.lit()) == X_TRI)); // otherwise would have propagated/conflicted
 
       auto tmp = bdd_false();
-      mybdd_add(tmp, l);
+      mybdd_or(tmp, l);
       auto l2 = ws.lit();
-      mybdd_add(tmp, l2);
+      mybdd_or(tmp, l2);
       bdd &= tmp;
       actual_bin++;
 

@@ -38,7 +38,7 @@ using std::endl;
 /* #define CHECK_PROPAGATED */
 /* #define CHECK_IMPLIED */
 /* #define VERY_SLOW_DEBUG */
-/* #define BUDDY_ENABLED */
+#define BUDDY_ENABLED
 // the slowest of all that's not verifying counts
 /* #define CHECK_TRAIL_ENTAILMENT */
 

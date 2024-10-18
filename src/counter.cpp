@@ -3467,6 +3467,19 @@ void Counter<T>::check_sat_solution() const {
   else tmp |= bdd_nithvar(vmap_rev[(l).var()]); \
   } while(0)
 
+template<typename T>
+bdd Counter<T>::mybdd_two_or(Lit l, Lit r) {
+  bdd tmp;
+  uint32_t lvar = l.var();
+  if (!l.sign()) tmp = bdd_ithvar(vmap_rev[lvar]);
+  else tmp = bdd_nithvar(vmap_rev[lvar]);
+
+  bdd tmp2;
+  uint32_t rvar = r.var();
+  if (!r.sign()) tmp2 = bdd_ithvar(vmap_rev[rvar]);
+  else tmp2 = bdd_nithvar(vmap_rev[rvar]);
+  return bdd_or(tmp2, tmp);
+}
 
 template<typename T>
 bool Counter<T>::should_do_buddy_count() const {
@@ -3531,7 +3544,9 @@ uint64_t Counter<T>::buddy_count() {
   debug_print("proj_end: " << proj_end << " indep_support_end: " << indep_support_end);
 
   // The final built bdd
-  auto bdd = bdd_true();
+  uint32_t num_total = 0;
+  bdd fin;
+  bdd backup;
 
   // Long clauses
   uint32_t actual_long = 0;
@@ -3550,7 +3565,10 @@ uint64_t Counter<T>::buddy_count() {
       if (l->var() != top_var && val(*l) != X_TRI) continue;
       mybdd_or(tmp, *l);
     }
-    bdd &= tmp;
+    if (num_total % 2 == 0) backup = tmp;
+    else if (num_total == 1) fin = bdd_and(backup, tmp);
+    else fin &= bdd_and(backup, tmp);
+    num_total++;
     actual_long++;
   }
 
@@ -3566,16 +3584,20 @@ uint64_t Counter<T>::buddy_count() {
             ws.lit().var() == top_var ||
             val(ws.lit()) == X_TRI)); // otherwise would have propagated/conflicted
 
-      auto tmp = bdd_false();
-      mybdd_or(tmp, l);
-      auto l2 = ws.lit();
-      mybdd_or(tmp, l2);
-      bdd &= tmp;
+      const auto tmp = mybdd_two_or(l, ws.lit());
+      if (num_total % 2 == 0) backup = tmp;
+      else if (num_total == 1) fin = bdd_and(backup, tmp);
+      else fin &= bdd_and(backup, tmp);
+      num_total++;
       actual_bin++;
 
       debug_print("bin cl: " << l << " " << l2 << " 0");
     }
   }
+  if (num_total == 0) fin = bdd_true();
+  else if (num_total == 1) fin = backup;
+  else if (num_total % 2 == 1) fin = bdd_and(backup, fin);
+
   stats.buddy_num_bin_cls += actual_bin;
   stats.buddy_num_long_cls += actual_long;
   stats.buddy_num_vars += vmap.size();
@@ -3594,7 +3616,7 @@ uint64_t Counter<T>::buddy_count() {
 #ifdef VERBOSE_DEBUG
   std::stringstream fname;
   fname << "bdd-" << stats.buddy_called << ".dot";
-  bdd_fnprintdot(fname.str().c_str(), bdd, proj_end);
+  bdd_fnprintdot(fname.str().c_str(), final, proj_end);
   debug_print("BDD written to: " << fname.str());
 #endif
 
@@ -3603,9 +3625,9 @@ uint64_t Counter<T>::buddy_count() {
   // This way, we are more generic on non-projected, and can still use it on projected
   uint64_t cnt;
   if (proj_end == 63)
-    cnt = bdd_satcount_i64(bdd, proj_end)>>(63-vmap.size());
+    cnt = bdd_satcount_i64(fin, proj_end)>>(63-vmap.size());
   else
-    cnt = bdd_satcount_i64(bdd, proj_end);
+    cnt = bdd_satcount_i64(fin, proj_end);
   VERBOSE_DEBUG_DO(
   cout << "cnt: " << cnt << endl;
   cout << "num bin cls: " << actual_bin << endl;

@@ -35,6 +35,9 @@ THE SOFTWARE.
 #include "structures.hpp"
 #include "heap.hpp"
 #include "mpreal.h"
+#ifdef BUDDY_ENABLED
+#include "bdd.h"
+#endif
 
 #include <cryptominisat5/cryptominisat.h>
 
@@ -373,6 +376,7 @@ private:
   uint64_t buddy_count();
   vector<uint32_t> vmap;
   vector<uint32_t> vmap_rev;
+  bdd mybdd_two_or(Lit l, Lit r);
 #endif
 
   //  Conflict analysis below

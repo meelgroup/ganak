@@ -59,7 +59,7 @@ struct CounterConfiguration {
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;
   int do_buddy = 0;
-  uint32_t buddy_max_cls = 12; // see out-ganak-2060064.pbs101-7
+  uint32_t buddy_max_cls = 6;
 #ifdef CHECK_COUNT
   int do_cube_check_count = 1;
 #else

@@ -102,6 +102,7 @@ public:
 
   // buddy stats
   uint64_t buddy_called = 0;
+  uint64_t buddy_unsat = 0;
   uint64_t buddy_num_vars = 0;
   uint64_t buddy_num_bin_cls = 0;
   uint64_t buddy_num_long_cls = 0;

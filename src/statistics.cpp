@@ -91,8 +91,9 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << setw(5) << sat_found_unsat << " "
     << setw(5) << sat_conflicts << " "
     << setw(5) << sat_rst << " ");
-  verb_print(1, "buddy called                   "
-    << setw(5) << buddy_called << " ");
+  verb_print(1, "buddy called /unsat ratio           "
+    << setw(5) << buddy_called << " / "
+    << setw(5) << safe_div(buddy_unsat, buddy_called) << " ");
   verb_print(1, "buddy avg num bin/long cls/vs  "
     << setw(5) << safe_div(buddy_num_bin_cls,buddy_called) << " / "
     << setw(5) << safe_div(buddy_num_long_cls,buddy_called) << " / "

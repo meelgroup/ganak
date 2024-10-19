@@ -3633,6 +3633,7 @@ uint64_t Counter<T>::buddy_count() {
   cout << "num bin cls: " << actual_bin << endl;
   cout << "num long cls: " << actual_long << endl;
   cout << "----------------------------------------------" << endl);
+  stats.buddy_unsat += cnt == 0;
 
   return cnt;
 }

@@ -331,6 +331,8 @@ if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     ENDIF (ZLIB_FOUND)
 endif()
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package (Threads REQUIRED)
 find_package(cryptominisat5 CONFIG REQUIRED)
 find_package(arjun CONFIG REQUIRED)
 find_package(sbva CONFIG REQUIRED)

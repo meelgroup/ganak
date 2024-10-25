@@ -104,31 +104,6 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
 
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
-    if(NOT BUILD_SHARED_LIBS)
-        MESSAGE(STATUS "Compiling for static library use")
-        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--whole-archive -ldl -Wl,--no-whole-archive -static ")
-            #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-        endif()
-
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-
-        # removing -rdynamic that's automatically added
-        foreach (language CXX C)
-            set(VAR_TO_MODIFY "CMAKE_SHARED_LIBRARY_LINK_${language}_FLAGS")
-            string(REGEX REPLACE "(^| )-rdynamic($| )"
-                                 " "
-                                 replacement
-                                 "${${VAR_TO_MODIFY}}")
-            #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
-            set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
-        endforeach()
-    else()
-        MESSAGE(STATUS "Compiling for dynamic library use")
-    endif()
-endif()
-
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 macro(add_cxx_flag_if_supported flagname)
@@ -359,6 +334,11 @@ foreach( d ${DirDefs} )
     set(COMPILE_DEFINES "${COMPILE_DEFINES} -D${d}")
 endforeach()
 message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
+
+
+set(DEF_INSTALL_CMAKE_DIR lib/cmake/arjun)
+set(GANAK_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+    "Installation directory for ganak CMake files")
 
 # -----------------------------------------------------------------------------
 # Add GIT version

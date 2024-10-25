@@ -53,6 +53,8 @@ endif()
 project (ganak) 
 enable_language( CXX )
 enable_language( C )
+include (GenerateExportHeader)
+include (GNUInstallDirs)
 
 # -----------------------------------------------------------------------------
 # Make RelWithDebInfo the default build type if otherwise not set

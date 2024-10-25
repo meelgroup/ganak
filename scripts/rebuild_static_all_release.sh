@@ -39,6 +39,8 @@ cd ../../
 
 cd approxmc/build/
 git checkout synthesis
+rm -f build_*.sh
+ln -s ../scripts/build_scripts/build_*.sh .
 ./build_static_release.sh
 cd ../../
 

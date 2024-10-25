@@ -48,12 +48,6 @@ if(POLICY CMP0104)
     cmake_policy(SET CMP0104 NEW)
 endif()
 
-project (ganak) 
-enable_language( CXX )
-enable_language( C )
-include (GenerateExportHeader)
-include (GNUInstallDirs)
-
 # -----------------------------------------------------------------------------
 # Make RelWithDebInfo the default build type if otherwise not set
 # -----------------------------------------------------------------------------
@@ -70,14 +64,45 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Doing a ${CMAKE_BUILD_TYPE} build")
 
+# -----------------------------------------------------------------------------
+# Option to enable/disable assertions
+# -----------------------------------------------------------------------------
+# Filter out definition of NDEBUG from the default build configuration flags.
+# We will add this ourselves if we want to disable assertions
+foreach (build_config ${build_types})
+    string(TOUPPER ${build_config} upper_case_build_config)
+    foreach (language CXX C)
+        set(VAR_TO_MODIFY "CMAKE_${language}_FLAGS_${upper_case_build_config}")
+        string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )"
+                             " "
+                             replacement
+                             "${${VAR_TO_MODIFY}}")
+        #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
+        set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
+    endforeach()
+endforeach()
+
+project (ganak)
+enable_language( CXX )
+enable_language( C )
+include (GenerateExportHeader)
+include (GNUInstallDirs)
+
 # contains some library search cmake scripts
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+# generate JSON file of compile commands -- useful for code extension
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+
+# static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(STATICCOMPILE "Compile to static executable" OFF)
 if (STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
 endif()
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package (Threads REQUIRED)
 
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
     if(NOT BUILD_SHARED_LIBS)
@@ -124,7 +149,6 @@ endmacro()
 # Note: O3 gives slight speed increase, 1 more solved from SAT Comp'14 @ 3600s
 if (NOT MSVC)
     add_compile_options( -g)
-    add_compile_options( -pthread )
 
     add_compile_options("$<$<CONFIG:RelWithDebInfo>:-O3>")
 
@@ -192,23 +216,6 @@ else()
     set(DEF_INSTALL_CMAKE_DIR CMake)
 endif()
 
-# -----------------------------------------------------------------------------
-# Option to enable/disable assertions
-# -----------------------------------------------------------------------------
-# Filter out definition of NDEBUG from the default build configuration flags.
-# We will add this ourselves if we want to disable assertions
-foreach (build_config ${build_types})
-    string(TOUPPER ${build_config} upper_case_build_config)
-    foreach (language CXX C)
-        set(VAR_TO_MODIFY "CMAKE_${language}_FLAGS_${upper_case_build_config}")
-        string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )"
-                             " "
-                             replacement
-                             "${${VAR_TO_MODIFY}}")
-        #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
-        set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
-    endforeach()
-endforeach()
 
 option(ENABLE_ASSERTIONS "Build with assertions enabled" ON)
 message(STATUS "build type is ${CMAKE_BUILD_TYPE}")
@@ -275,8 +282,6 @@ if (NOT WIN32)
     add_c_flag_if_supported("-mpopcnt")
 endif()
 
-# generate JSON file of compile commands -- useful for code extension
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
 if (SANITIZE)
@@ -331,8 +336,6 @@ if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     ENDIF (ZLIB_FOUND)
 endif()
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package (Threads REQUIRED)
 find_package(cryptominisat5 CONFIG REQUIRED)
 find_package(arjun CONFIG REQUIRED)
 find_package(sbva CONFIG REQUIRED)

@@ -80,7 +80,7 @@ ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
 int do_precise = 1;
 int do_backbone_only_optindep = 0;
-int arjun_oracle_find_bins = 0;
+int arjun_oracle_find_bins = 6;
 double arjun_cms_mult = -1.0;
 
 string print_version()

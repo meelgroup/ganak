@@ -50,7 +50,7 @@ static inline double cpu_time(void)
 static inline double cpu_time(void)
 {
     struct rusage ru;
-    int ret = getrusage(RUSAGE_SELF, &ru);
+    [[maybe_unused]] int ret = getrusage(RUSAGE_SELF, &ru);
     assert(ret == 0);
 
     return (double)ru.ru_utime.tv_sec + ((double)ru.ru_utime.tv_usec / 1000000.0);

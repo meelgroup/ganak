@@ -120,9 +120,11 @@ void TreeDecomposition::SetBag(int v, vector<int> bag) {
   bags[v] = bag;
   SortAndDedup(bags[v]);
   width = std::max(width, (int)bags[v].size()-1);
+#ifndef NDEBUG
   for (int u : bags[v]) {
     assert(0 <= u && u < n);
   }
+#endif
 }
 
 int TreeDecomposition::Width() const {

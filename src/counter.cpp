@@ -1083,7 +1083,7 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
     case 1: polarity = var(v).last_polarity; break;
     case 2: polarity = false; break;
     case 3: polarity = true; break;
-    default: assert(false);
+    default: release_assert(false);
   }
   return polarity;
 }
@@ -2323,7 +2323,6 @@ void Counter<T>::vivif_setup() {
   for(const auto& l: unit_cls) if (v_val(l) == X_TRI) v_enqueue(l);
   bool ret = v_propagate();
   assert(ret);
-
 }
 
 template<typename T>

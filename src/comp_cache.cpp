@@ -73,7 +73,7 @@ void CompCache<T>::test_descendantstree_consistency() {
       CacheEntryID father = entry(id).father();
       CacheEntryID act_sib = entry(father).first_descendant();
 
-      bool found = false;
+      [[maybe_unused]] bool found = false;
       while (act_sib) {
         CacheEntryID next_sib = entry(act_sib).next_sibling();
         if (act_sib == id) found = true;

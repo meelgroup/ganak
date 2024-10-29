@@ -165,3 +165,12 @@ inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
     unif_uint_dist(u, maximum);
     return u(mtrand);
 }
+
+#define release_assert(a) \
+    do { \
+        if (!(a)) {\
+            fprintf(stderr, "*** ASSERTION FAILURE in %s() [%s:%d]: %s\n", \
+            __FUNCTION__, __FILE__, __LINE__, #a); \
+            abort(); \
+        } \
+    } while (0)

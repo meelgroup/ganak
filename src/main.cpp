@@ -82,6 +82,7 @@ int do_precise = 1;
 int do_backbone_only_optindep = 0;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_mult = -1.0;
+int do_puura = 1;
 
 string print_version()
 {
@@ -118,6 +119,7 @@ void add_ganak_options()
     myopt("--arjunextend", etof_conf.do_extend_indep, atoi, "Extend indep via Arjun's extend system");
     myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
     myopt("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
+    myopt("--puura", do_puura, atoi, "Run Puura");
     myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
     myopt("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
     myopt("--backboneonlyoptind", do_backbone_only_optindep, atoi, "Backbone only over the opt indep set");
@@ -347,7 +349,8 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_mult(arjun_cms_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
-  arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+  if (do_puura) arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+  else cnf.renumber_sampling_vars_for_ganak();
   if (etof_conf.all_indep) {
     cnf.opt_sampl_vars.clear();
     for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);

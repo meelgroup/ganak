@@ -152,7 +152,6 @@ void add_ganak_options()
     myopt("--bce", etof_conf.do_bce, atoi, "Do static BCE");
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
     myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB. 0 == use 80% of free mem");
-    myopt("--alluipincact", conf.alluip_inc_act, atoi, "All UIP should increase activities");
     myopt("--polar", conf.polar_type, atoi, "Use polarity cache. Otherwise, false default polar");
     myopt("--vivif", conf.do_vivify, atoi, "Vivify clauses");
     myopt("--vivifevery", conf.vivif_every, atoi, "Vivify every N conflicts");

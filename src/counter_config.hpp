@@ -83,7 +83,7 @@ struct CounterConfiguration {
   int64_t td_steps = 1e5;
   int td_iters = 900;
   int td_lookahead = -1;
-  int td_lookahead_tw_cutoff = 20;
+  int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;
   int td_look_only_weight = false;
   int td_max_edges = 70000;

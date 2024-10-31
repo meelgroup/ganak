@@ -139,7 +139,7 @@ template<typename T>
 void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
-  verb_print(0, "[td] Calculated TD width: " << td_width-1);
+  if (print || conf.verb >= 1) verb_print(0, "[td] Calculated TD width: " << td_width-1);
   const auto& adj = tdec.get_adj_list();
 #if 0
   for(uint32_t i = 0; i < bags.size(); i++) {

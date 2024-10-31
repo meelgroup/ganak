@@ -39,7 +39,6 @@ struct CounterConfiguration {
   uint32_t lbd_cutoff_always_keep_cube = 3;
   uint32_t max_num_cubes_per_restart = 6;
 
-  double probe_only_after_ratio = 0.25;
   int alluip_inc_act = 1;
   int cache_time_update = 2;
 

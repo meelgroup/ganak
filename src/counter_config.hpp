@@ -27,7 +27,6 @@ THE SOFTWARE.
 using std::string;
 
 struct CounterConfiguration {
-  bool do_pre_processing = true;
   int verb = 1;
   int do_restart = 0;
   uint64_t first_restart = 20000U;

@@ -3352,7 +3352,9 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     stats.decisions++;
     vsads_readjust();
     assert(val(d) == X_TRI);
-    Lit l(d, var(d).last_polarity);
+    Lit l;
+    if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);
+    else l = Lit(d, get_polarity(d));
     if (decisions.top().var != 0) {
       decisions.push_back(StackLevel<T>(1,2));
     }

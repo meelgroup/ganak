@@ -176,6 +176,7 @@ void add_ganak_options()
     myopt("--satrst", conf.do_sat_restart, atoi, "Inside SAT solver, perform restarts");
     myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
     myopt("--satpolarcache", conf.do_sat_polar_cache, atoi, "Inside SAT solver, use polarity cache");
+    myopt("--satvsids", conf.do_sat_vsids, atoi, "Inside SAT solver, use VSIDS, not VSADS");
 //
     myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
     myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");

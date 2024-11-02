@@ -1125,12 +1125,6 @@ bool Counter<T>::decide_lit() {
   return true;
 }
 
-template<typename T>
-double Counter<T>::var_act(const uint32_t v) const {
-  auto w = (watches[Lit(v, false)].activity + watches[Lit(v, true)].activity);
-  return w;
-}
-
 // The higher, the better. It is never below 0.
 template<typename T>
 double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
@@ -1191,7 +1185,7 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
 }
 
 template<typename T>
-uint32_t Counter<T>::find_best_branch(bool ignore_td) {
+uint32_t Counter<T>::find_best_branch(bool ignore_td, bool also_indep) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
@@ -1217,7 +1211,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
     if (val(v) != X_TRI) continue;
     VERBOSE_DEBUG_DO(cout << v << " ");
 
-    if (v < opt_indep_support_end) {
+    if (also_indep || v < opt_indep_support_end) {
       if (v < indep_support_end) only_optional_indep = false;
       if constexpr (weighted) at[v] = vars_act_dec_num;
       double score;
@@ -1233,7 +1227,7 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td) {
   }
   VERBOSE_DEBUG_DO(cout << endl);
 
-  if (best_var != 0 && only_optional_indep) return 0;
+  if (best_var != 0 && only_optional_indep && !also_indep) return 0;
   if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
     verb_print(1, "best var: " << best_var << " score: " << best_var_score);
   return best_var;
@@ -3320,16 +3314,18 @@ bool Counter<T>::use_sat_solver(RetState& state) {
         comp_manager->comp_stack_size()));
   sat_start_dec_level = dec_level();
 
-  // Fill up order heap
-  all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
-    debug_print("checking var to put in order_heap: " << *it << " val: "
-      << val_to_str(val(*it)));
-    if (val(*it) != X_TRI) continue;
-    if (*it < opt_indep_support_end)
-      assert(*it >= indep_support_end && "only optional indep or non-indep remains");
-    order_heap.insert(*it);
+  if (conf.do_sat_vsids) {
+    // Fill up order heap
+    all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
+      debug_print("checking var to put in order_heap: " << *it << " val: "
+        << val_to_str(val(*it)));
+      if (val(*it) != X_TRI) continue;
+      if (*it < opt_indep_support_end)
+        assert(*it >= indep_support_end && "only optional indep or non-indep remains");
+      order_heap.insert(*it);
+    }
+    debug_print("Order heap size: " << order_heap.size());
   }
-  debug_print("Order heap size: " << order_heap.size());
   decisions.top().var = 0;
   auto old_sublev = trail.size();
 
@@ -3339,10 +3335,12 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   uint32_t num_rst = 0;
   while(true) {
     uint32_t d;
-    do {
-      if (order_heap.empty()) {d = 0; break;}
-      d = order_heap.removeMin();
-    } while (val(d) != X_TRI);
+    if (conf.do_sat_vsids) {
+      do {
+        if (order_heap.empty()) {d = 0; break;}
+        d = order_heap.removeMin();
+      } while (val(d) != X_TRI);
+    } else d = find_best_branch(false, true);
     if (d == 0) {
       debug_print("SAT mode found a solution. dec lev: " << dec_level());
       SLOW_DEBUG_DO(check_sat_solution());
@@ -3355,9 +3353,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     Lit l;
     if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);
     else l = Lit(d, get_polarity(d));
-    if (decisions.top().var != 0) {
-      decisions.push_back(StackLevel<T>(1,2));
-    }
+    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2));
     decisions.back().var = l.var();
     set_lit(l, dec_level());
 

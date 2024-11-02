@@ -325,10 +325,11 @@ private:
   // Decisions
   void init_decision_stack();
   void init_activity_scores();
-  double var_act(const uint32_t v) const;
+  double var_act(const uint32_t v) const {
+    return watches[Lit(v, false)].activity + watches[Lit(v, true)].activity; }
   DecisionStack<T> decisions;
   bool decide_lit();
-  uint32_t find_best_branch(bool ignore_td = false);
+  uint32_t find_best_branch(bool ignore_td = false, bool also_indep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
   void compute_score(TWD::TreeDecomposition& tdec, bool print = true);

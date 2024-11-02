@@ -88,6 +88,7 @@ struct CounterConfiguration {
   int sat_restart_mult = 300;
   int do_sat_restart = 1;
   int do_sat_polar_cache = 1;
+  int do_sat_vsids = 1;
 
   uint64_t seed = 0;
   double delta = 0.2;

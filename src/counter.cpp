@@ -3370,7 +3370,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     assert(state != GO_AGAIN);
     if (dec_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
-    if (sat_confl-last_restart >= luby(2, num_rst)*conf.sat_restart_mult) {
+    if (conf.do_sat_restart && sat_confl-last_restart >= luby(2, num_rst)*conf.sat_restart_mult) {
       debug_print("SAT restarting!");
       last_restart = sat_confl;
       go_back_to(sat_start_dec_level);

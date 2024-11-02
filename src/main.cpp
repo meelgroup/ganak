@@ -172,10 +172,13 @@ void add_ganak_options()
     myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Extra oracle at the end of puura");
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
 //
+//
+    myopt("--satrst", conf.do_sat_restart, atoi, "Restart in SAT solver");
+    myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
+//
     myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
     myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
     myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
-    myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
     myopt("--precise", do_precise, atoi, "If set to 0, we use so-called 'infinite' precision foats that are far from infinite precision and can give nonsense results. Apparently acceptable by the model counting competition (why? how? what?)");
 //
     myopt("--rstfirst", conf.first_restart, atoll, "Run restarts");

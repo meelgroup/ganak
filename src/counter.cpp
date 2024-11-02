@@ -950,43 +950,18 @@ void Counter<T>::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
-      if (!decide_lit()) {
-        decisions.top().next_unproc_comp();
-        continue;
-      }
-
+      decide_lit();
       if (!isindependent) {
-        // The only decision we could make would be non-indep for this component.
-        debug_print("before SAT mode. cnt dec: " << decisions.top().total_model_count()
-            << " left: " << decisions.top().left_model_count()
-            << " right: " << decisions.top().right_model_count());
-
-        bool sat = use_sat_solver(state);
-        debug_print("after SAT mode. cnt dec: " << decisions.top().total_model_count()
-            << " left: " << decisions.top().left_model_count()
-            << " right: " << decisions.top().right_model_count());
-        if (sat) {
-          state = BACKTRACK;
-        } else {
-          goto start11;
-        }
-        debug_print("after SAT mode. cnt of this comp: " << decisions.top().total_model_count()
-          << " unproc comps end: " << decisions.top().get_unproc_comps_end()
-          << " remaining comps: " << decisions.top().remaining_comps_ofs()
-          << " has unproc: " << decisions.top().has_unproc_comps());
-        assert(isindependent);
-
-        // Now backtrack
-        break;
+        if (conf.do_use_sat_solver) {
+          const bool sat = use_sat_solver(state);
+          if (sat) goto backtrack;
+          else goto start11;
+        } else assert(false && "no use of SAT not implemented");
       }
 
       if (conf.do_buddy && should_do_buddy_count()) {
-        if (do_buddy_count()) {
-          state = BACKTRACK;
-          break;
-        } else {
-          goto start11;
-        }
+        if (do_buddy_count()) break;
+        else goto start11;
       }
 
       while (!propagate()) {
@@ -995,9 +970,9 @@ void Counter<T>::count_loop() {
         state = resolve_conflict();
         start11:
         if (state == GO_AGAIN) goto start1;
-        if (state == BACKTRACK) break;
+        if (state == BACKTRACK) goto backtrack;
       }
-      if (state == BACKTRACK) break;
+      if (state == BACKTRACK) goto backtrack;
       if (state == RESOLVED && restart_if_needed()) goto end;
 
       // we are in RESOLVED or PROCESS_COMPONENT state, continue.
@@ -1008,8 +983,8 @@ void Counter<T>::count_loop() {
       if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
       assert(state == PROCESS_COMPONENT || state == RESOLVED);
     }
-    // we are here because there is no next component, or we had to backtrack
 
+    backtrack:
     print_stat_line();
     state = backtrack();
     if (state == EXIT) goto end;
@@ -1038,7 +1013,7 @@ end:
     Cube<T> c(vector<Lit>(), decisions.top().total_model_count());
     debug_print("Exiting due to EXIT state, the cube count: " << c.cnt);
     mini_cubes.push_back(c);
-  } else {/*restart*/}
+  }
 
   if constexpr (weighted) {
     T this_restart_multiplier = 1;
@@ -1089,7 +1064,7 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 }
 
 template<typename T>
-bool Counter<T>::decide_lit() {
+void Counter<T>::decide_lit() {
   recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
@@ -1108,7 +1083,7 @@ bool Counter<T>::decide_lit() {
   if (v == 0) {
     decisions.pop_back();
     isindependent = false;
-    return true;
+    return;
   }
   assert(val(v) == X_TRI);
 
@@ -1122,7 +1097,6 @@ bool Counter<T>::decide_lit() {
   stats.decisions++;
   vsads_readjust();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
-  return true;
 }
 
 // The higher, the better. It is never below 0.
@@ -1601,6 +1575,10 @@ template<typename T>
 RetState Counter<T>::backtrack() {
   debug_print("in " << __FUNCTION__ << " now. Dec lev: " << dec_level());
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
+
+  //When we enter, either it must be UNSAT, or there must be no other component possible.
+  //As we backtrack, another component can become possible
+  assert(decisions.top().branch_found_unsat() || !decisions.top().another_comp_possible() || dec_level() == 0);
   do {
 #ifdef VERBOSE_DEBUG
     if (dec_level() > 0) {
@@ -1660,8 +1638,8 @@ RetState Counter<T>::backtrack() {
     }
     debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << dec_level());
-    // Backtrack from end, i.e. finished.
     if (dec_level() == 0) {
+      // Backtrack from end, i.e. finished.
       debug_print(COLORGBG "[indep] Backtracking from lev 0, i.e. ending");
       CHECK_COUNT_DO(check_count());
       break;
@@ -1673,9 +1651,7 @@ RetState Counter<T>::backtrack() {
     if (conf.do_use_cache) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
-      all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
-        cout << *it << " ";
-      }
+      all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) cout << *it << " ";
       cout << endl;
 #endif
       if constexpr (weighted) {
@@ -3307,6 +3283,9 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   stats.sat_called++;
   auto conflicts_before = stats.conflicts;
 
+  debug_print("before SAT mode. cnt dec: " << decisions.top().total_model_count()
+      << " left: " << decisions.top().left_model_count()
+      << " right: " << decisions.top().right_model_count());
   debug_print("Entering SAT mode. Declev: " << dec_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
@@ -3429,6 +3408,16 @@ end:
   else stats.sat_found_unsat++;
   stats.sat_conflicts += stats.conflicts-conflicts_before;
 
+  debug_print("after SAT mode. cnt dec: " << decisions.top().total_model_count()
+      << " left: " << decisions.top().left_model_count()
+      << " right: " << decisions.top().right_model_count());
+  if (sat) {
+    debug_print("after SAT mode. cnt of this comp: " << decisions.top().total_model_count()
+      << " unproc comps end: " << decisions.top().get_unproc_comps_end()
+      << " remaining comps: " << decisions.top().remaining_comps_ofs()
+      << " has unproc: " << decisions.top().has_unproc_comps());
+      assert(isindependent);
+  }
   return sat;
 }
 

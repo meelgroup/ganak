@@ -173,6 +173,7 @@ void add_ganak_options()
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
 //
 //
+    myopt("--satsolver", conf.do_use_sat_solver, atoi, "Use SAT solver when all minimal indep set has been set");
     myopt("--satrst", conf.do_sat_restart, atoi, "Inside SAT solver, perform restarts");
     myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
     myopt("--satpolarcache", conf.do_sat_polar_cache, atoi, "Inside SAT solver, use polarity cache");

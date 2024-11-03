@@ -158,6 +158,7 @@ public:
   void new_vars(const uint32_t n);
   void set_indep_support(const set<uint32_t>& indeps);
   void set_optional_indep_support(const set<uint32_t>& indeps);
+  void print_indep_distrib() const;
   bool add_irred_cl(const vector<Lit>& lits);
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
   void end_irred_cls();
@@ -791,6 +792,11 @@ public:
     if (unw_counter) unw_counter->new_vars(n);
     if (w_counter) w_counter->new_vars(n);
     if (wq_counter) wq_counter->new_vars(n);
+  }
+  void print_indep_distrib() const {
+    if (unw_counter) unw_counter->print_indep_distrib();
+    if (w_counter) unw_counter->print_indep_distrib();
+    if (wq_counter) unw_counter->print_indep_distrib();
   }
 private:
   Counter<mpz_class>* unw_counter = nullptr;

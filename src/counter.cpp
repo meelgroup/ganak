@@ -90,17 +90,19 @@ void Counter<T>::set_optional_indep_support(const set<uint32_t> &indeps) {
 
   verb_print(1, "opt ind size: " << std::min<int>((int)opt_indep_support_end-1, 0) << " ind size: " << std::min<int>((int)indep_support_end-1, 0)
     << " nvars: " << nVars());
+  if (conf.verb) print_indep_distrib();
+}
 
-  if (conf.verb) {
-    cout << "c o indep/optional/none distribution: ";
-    for(uint32_t i = 0; i <= nVars(); i++) {
-      if (i < opt_indep_support_end) {
-        if (i < indep_support_end) cout << "I";
-        else cout << "O";
-      } else cout << "N";
-    }
-    cout << endl;
+template<typename T>
+void Counter<T>::print_indep_distrib() const {
+  cout << "c o indep/optional/none distribution: ";
+  for(uint32_t i = 0; i <= nVars(); i++) {
+    if (i < opt_indep_support_end) {
+      if (i < indep_support_end) cout << "I";
+      else cout << "O";
+    } else cout << "N";
   }
+  cout << endl;
 }
 
 template<typename T>

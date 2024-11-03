@@ -310,7 +310,7 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
     tmp.clear();
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
     counter.set_optional_indep_support(tmp);
-  }
+  } else if (conf.verb) counter.print_indep_distrib();
 
   if (cnf.weighted) {
     for(const auto& t: cnf.weights) {

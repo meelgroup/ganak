@@ -83,6 +83,7 @@ int do_backbone_only_optindep = 0;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_mult = -1.0;
 int do_puura = 1;
+int do_optindep = 1;
 
 string print_version()
 {
@@ -113,11 +114,16 @@ void add_ganak_options()
         .flag()
         .help("Print version and exit");
     myopt("--delta", conf.delta, atof, "Delta");
+    myopt("--precise", do_precise, atoi, "If set to 0, we use so-called 'infinite' precision foats that are far from infinite precision and can give nonsense results. Apparently acceptable by the model counting competition (why? how? what?)");
+    myopt("--breakid", do_breakid, atoi, "Enable BreakID");
+    myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
+    myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
+//
+// Arjun options
     myopt("--arjun", do_arjun, atoi, "Use arjun");
     myopt("--arjunverb", arjun_verb, atoi, "Arjun verb");
     myopt("--arjungates", arjun_gates, atoi, "Use arjun's gate detection");
     myopt("--arjunextend", etof_conf.do_extend_indep, atoi, "Extend indep via Arjun's extend system");
-    myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
     myopt("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
     myopt("--puura", do_puura, atoi, "Run Puura");
     myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
@@ -127,6 +133,17 @@ void add_ganak_options()
     myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
     myopt("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
     myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
+    myopt("--bce", etof_conf.do_bce, atoi, "Do static BCE");
+    myopt("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
+    myopt("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
+    myopt("--bvegrowiter2", simp_conf.bve_grow_iter2, atoi, "Puura BVE growth allowance iter2");
+    myopt("--extraoracle", simp_conf.oracle_extra, atoi, "Extra oracle at the end of puura");
+    myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Extra oracle at the end of puura");
+    myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
+    myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
+    myopt("--arjuncmsmult", arjun_cms_mult, atof,  "Pass this multiplier to CMSat through Arjun");
+//
+//  TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
     myopt("--tdminw", conf.td_minweight, atof, "TD min weight");
@@ -141,62 +158,64 @@ void add_ganak_options()
     myopt("--tdlookiters", conf.td_lookahead_iters, atoi, "TD lookahead iterations");
     myopt("--tdlookonlyweight", conf.td_look_only_weight, atoi, "TD lookahead ONLY update weights");
 //
+//  Clause DB options
     myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");
     myopt("--rdbeveryn", conf.reduce_db_everyN, atoi, "Reduce the clause DB every N conflicts");
     myopt("--rdbkeepused", conf.rdb_keep_used, atoi, "RDB keeps clauses that are used");
-    myopt("--consolidateeveryn", conf.consolidate_every_n, atoi, "Consolidate every N learnt clause");
+    myopt("--consolidateeveryn", conf.consolidate_every_n, atoi, "Consolidate memory after every N learnt clause");
     myopt("--lbd", conf.base_lbd_cutoff, atoi, "Initial LBD cutoff");
     myopt("--updatelbdcutoff", conf.update_lbd_cutoff, atoi, "Update lbd cutoff");
-    myopt("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, atoi, "Total used vivif cutoff");
 //
-    myopt("--bce", etof_conf.do_bce, atoi, "Do static BCE");
+//  Decision options
+    myopt("--polar", conf.polar_type, atoi, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
+    myopt("--decide", conf.decide, atoi, "1 = gpmc-inspired");
+    myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
+    myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
+//
+// Cache options
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
     myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB. 0 == use 80% of free mem");
-    myopt("--polar", conf.polar_type, atoi, "Use polarity cache. Otherwise, false default polar");
+    myopt("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
+//
+//  BuDDy options
+    myopt("--buddy", conf.do_buddy, atoi, "Run BuDDy");
+    myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
+//
+//  Vivif options -- inprocessing during Ganak
     myopt("--vivif", conf.do_vivify, atoi, "Vivify clauses");
     myopt("--vivifevery", conf.vivif_every, atoi, "Vivify every N conflicts");
     myopt("--vivifmult", conf.vivif_mult, atof, "How much to multiply timeout for vivif");
     myopt("--vivifoutern", conf.vivif_outer_every_n, atoi, "How many restarts between outer vivif");
+    myopt("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, atoi, "Total used vivif cutoff");
 //
-    myopt("--buddy", conf.do_buddy, atoi, "Run BuDDy");
-    myopt("--decide", conf.decide, atoi, "1 = gpmc-inspired");
-    myopt("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
+//  SBVA options
     myopt("--sbvasteps", etof_conf.num_sbva_steps, atoi, "SBVA steps. 0 = no SBVA");
     myopt("--sbvaclcut", etof_conf.sbva_cls_cutoff, atoi, "SBVA cls cutoff");
     myopt("--sbvalitcut", etof_conf.sbva_lits_cutoff, atoi, "SBVA lits cutoff");
     myopt("--sbvabreak", etof_conf.sbva_tiebreak, atoi, "1 = sbva");
-    myopt("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
-    myopt("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
-    myopt("--bvegrowiter2", simp_conf.bve_grow_iter2, atoi, "Puura BVE growth allowance iter2");
-    myopt("--extraoracle", simp_conf.oracle_extra, atoi, "Extra oracle at the end of puura");
-    myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Extra oracle at the end of puura");
-    myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
 //
-//
+//  SAT solver options
     myopt("--satsolver", conf.do_use_sat_solver, atoi, "Use SAT solver when all minimal indep set has been set");
     myopt("--satrst", conf.do_sat_restart, atoi, "Inside SAT solver, perform restarts");
     myopt("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
     myopt("--satpolarcache", conf.do_sat_polar_cache, atoi, "Inside SAT solver, use polarity cache");
     myopt("--satvsids", conf.do_sat_vsids, atoi, "Inside SAT solver, use VSIDS, not VSADS");
 //
-    myopt("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
-    myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
-    myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
-    myopt("--precise", do_precise, atoi, "If set to 0, we use so-called 'infinite' precision foats that are far from infinite precision and can give nonsense results. Apparently acceptable by the model counting competition (why? how? what?)");
+//  Opt independent set options
+    myopt("--optindep", do_optindep, atoi, "Use optional indep set");
+    myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
+    myopt("--arjunextend", etof_conf.do_extend_indep, atoi, "Max number of conflicts per extend operation in Arjun");
 //
+//  Restart options
     myopt("--rstfirst", conf.first_restart, atoll, "Run restarts");
     myopt("--restart", conf.do_restart, atoi, "Run restarts");
     myopt("--rsttype", conf.restart_type, atoi, "Check count at every step");
     myopt("--rstcutoff", conf.restart_cutoff_mult, atof, "Multiply cutoff with this");
     myopt("--rstcheckcnt", conf.do_cube_check_count, atoi, "Check the count of each cube");
     myopt("--rstreadjust", conf.do_readjust_for_restart, atoi, "Readjust params for restart");
-    myopt("--breakid", do_breakid, atoi, "Enable BreakID");
-    myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
-    myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
     myopt("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
-    myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
-    myopt("--arjuncmsmult", arjun_cms_mult, atof,  "Pass this multiplier to CMSat through Arjun");
     myopt("--maxcubesperrst", conf.max_num_cubes_per_restart, atoi,  "Max number of cubes per restart");
+
     program.add_argument("inputfile").remaining().help("input CNF");
 }
 
@@ -287,7 +306,7 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
   set<uint32_t> tmp;
   for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
   counter.set_indep_support(tmp);
-  if (cnf.get_opt_sampl_vars_set()) {
+  if (cnf.get_opt_sampl_vars_set() && do_optindep) {
     tmp.clear();
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
     counter.set_optional_indep_support(tmp);

@@ -1074,7 +1074,6 @@ void Counter<T>::decide_lit() {
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
-  isindependent = true;
   switch (conf.decide) {
     case 0: v = find_best_branch(false); break;
     case 1: v = find_best_branch(true); break;
@@ -1082,7 +1081,6 @@ void Counter<T>::decide_lit() {
   }
   if (v == 0) {
     decisions.pop_back();
-    isindependent = false;
     return;
   }
   assert(val(v) == X_TRI);
@@ -1159,11 +1157,13 @@ double Counter<T>::td_lookahead_score(const uint32_t v, const uint32_t base_comp
 }
 
 template<typename T>
-uint32_t Counter<T>::find_best_branch(bool ignore_td, bool also_indep) {
+uint32_t Counter<T>::find_best_branch(const bool ignore_td, const bool also_nonindep) {
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
   uint64_t* at;
+  isindependent = false;
+
   VERBOSE_DEBUG_DO(cout << "decision level: " << dec_level() << " var options: ");
   if constexpr (weighted) {
     if (vars_act_dec.size()  < (dec_level()+1) * (nVars()+1)) {
@@ -1185,7 +1185,8 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td, bool also_indep) {
     if (val(v) != X_TRI) continue;
     VERBOSE_DEBUG_DO(cout << v << " ");
 
-    if (also_indep || v < opt_indep_support_end) {
+    if (also_nonindep || v < opt_indep_support_end) {
+      if (v < opt_indep_support_end) isindependent = true;
       if (v < indep_support_end) only_optional_indep = false;
       if constexpr (weighted) at[v] = vars_act_dec_num;
       double score;
@@ -1201,7 +1202,10 @@ uint32_t Counter<T>::find_best_branch(bool ignore_td, bool also_indep) {
   }
   VERBOSE_DEBUG_DO(cout << endl);
 
-  if (best_var != 0 && only_optional_indep && !also_indep) return 0;
+  if (only_optional_indep && !also_nonindep) {
+    isindependent = false;
+    return 0;
+  }
   if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
     verb_print(1, "best var: " << best_var << " score: " << best_var_score);
   return best_var;

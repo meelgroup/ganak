@@ -329,7 +329,7 @@ private:
     return watches[Lit(v, false)].activity + watches[Lit(v, true)].activity; }
   DecisionStack<T> decisions;
   void decide_lit();
-  uint32_t find_best_branch(bool ignore_td = false, bool also_indep = false);
+  uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
   void compute_score(TWD::TreeDecomposition& tdec, bool print = true);
@@ -349,8 +349,7 @@ private:
   vector<Lit>::iterator top_declevel_trail_begin();
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
 
-  // independent support
-  bool isindependent = true;
+  bool isindependent = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
   // the first variable that's NOT in the opt indep support

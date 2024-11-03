@@ -258,7 +258,12 @@ if (NOT WIN32)
 
     add_cxx_flag_if_supported("-Wdouble-promotion")
     add_cxx_flag_if_supported("-Warith-conversion")
-    add_cxx_flag_if_supported("-fuse-ld=mold")
+endif()
+
+
+option(USE_MOLD "Use mold linker" OFF)
+if (USE_MOLD)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold")
 endif()
 
 if (NOT WIN32)

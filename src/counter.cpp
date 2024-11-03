@@ -953,8 +953,7 @@ void Counter<T>::count_loop() {
       decide_lit();
       if (!isindependent) {
         if (conf.do_use_sat_solver) {
-          const bool sat = use_sat_solver(state);
-          if (sat) goto backtrack;
+          if (use_sat_solver(state)) goto backtrack;
           else goto start11;
         } else assert(false && "no use of SAT not implemented");
       }

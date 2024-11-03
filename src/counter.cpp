@@ -1960,7 +1960,7 @@ RetState Counter<T>::resolve_conflict() {
 
   debug_print("backj: " << backj << " lev_to_set: " << lev_to_set);
   bool flipped_declit = (
-      uip_clause[0].neg().var() == decisions.at(backj).var
+      uip_clause[0].var() == decisions.at(backj).var
            && lev_to_set+1 == backj);
 
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
@@ -1987,7 +1987,8 @@ RetState Counter<T>::resolve_conflict() {
   Antecedent ant;
   assert(!uip_clause.empty());
   CHECK_IMPLIED_DO(check_implied(uip_clause));
-  if (dec_level() > 0 && top_dec_lit().neg() == uip_clause[0]) {
+  if (dec_level() > 0) {
+    assert(top_dec_lit().neg() == uip_clause[0]);
     debug_print("FLIPPING. Setting reason the conflict cl");
     assert(var(uip_clause[0]).decision_level != -1);
     ant = add_uip_confl_cl(uip_clause);

@@ -35,12 +35,14 @@ using std::endl;
 template<typename T>
 class StackLevel {
 public:
-  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs) :
+  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _isindependent) :
+      isindependent(_isindependent),
       super_comp_(super_comp),
       remaining_comps_ofs_(comp_stack_ofs),
       unprocessed_comps_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);
   }
+  bool isindependent;
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
@@ -128,11 +130,12 @@ public:
       assert(branch_mc[act_branch] == 0);
       return;
     }
+
     if (solutions == 0) branch_unsat[act_branch] = true;
-    if (branch_mc[act_branch] == 0) {
-      branch_mc[act_branch] = solutions;
-    } else {
-      branch_mc[act_branch] *= solutions;
+    if (!isindependent) branch_mc[act_branch] = (solutions > 0);
+    else {
+      if (branch_mc[act_branch] == 0) branch_mc[act_branch] = solutions;
+      else branch_mc[act_branch] *= solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((act_branch) ? "right" : "left")
@@ -156,11 +159,12 @@ public:
       assert(branch_mc[0] == 0);
       return;
     }
+
     if (solutions == 0) branch_unsat[0] = true;
-    if (branch_mc[0] == 0) {
-      assert(false);
-    } else {
-      branch_mc[0] *= solutions;
+    if (!isindependent) branch_mc[0] = (solutions > 0);
+    else {
+      if (branch_mc[0] == 0) assert(false);
+      else branch_mc[0] *= solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")
@@ -175,7 +179,9 @@ public:
   const T& get_branch_sols() const { return branch_mc[act_branch]; }
   const T& get_model_side(int side) const { return branch_mc[side]; }
   void zero_out_branch_sol() { branch_mc[act_branch] = 0; }
-  const T total_model_count() const { return branch_mc[0] + branch_mc[1]; }
+  const T total_model_count() const {
+    if (isindependent) return branch_mc[0] + branch_mc[1];
+    else return (branch_mc[0] + branch_mc[1]) > 0; }
 
   // for cube creation
   bool branch_found_unsat(int side) const { return branch_unsat[side]; }

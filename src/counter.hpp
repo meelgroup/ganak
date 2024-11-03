@@ -303,7 +303,7 @@ private:
   bool propagate(bool out_of_order = false);
   void get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind);
   RetState backtrack();
-  bool chrono_work();
+  bool chrono_check();
   int32_t find_lev_to_set(int32_t implied_lit_lev);
   int32_t find_backtrack_level_of_learnt();
   void reduce_db_if_needed();

@@ -927,7 +927,7 @@ void Counter<T>::print_stat_line() {
 }
 
 template<typename T>
-bool Counter<T>::chrono_work() {
+bool Counter<T>::chrono_check() {
   debug_print("--- CHRONO CHECK ----");
   VERBOSE_DEBUG_DO(print_trail());
   auto data = find_conflict_level(confl_lit);
@@ -965,7 +965,7 @@ void Counter<T>::count_loop() {
 
       while (!propagate()) {
         start1:
-        if (chrono_work()) continue; // will DEFINITELY conflict if TRUE
+        if (chrono_check()) continue; // will DEFINITELY conflict if TRUE
         state = resolve_conflict();
         start11:
         if (state == GO_AGAIN) goto start1;
@@ -990,7 +990,7 @@ void Counter<T>::count_loop() {
 
     while (!propagate()) {
       start2:
-      if (chrono_work()) continue;
+      if (chrono_check()) continue;
       state = resolve_conflict();
       if (state == GO_AGAIN) goto start2;
       if (state == BACKTRACK) {
@@ -1697,10 +1697,8 @@ RetState Counter<T>::backtrack() {
     (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
     decisions.pop_back();
 
-    // var == 0 means it's coming from a fake decision due to normal SAT solving
-    assert(decisions.top().var == 0 || decisions.top().var < opt_indep_support_end || !conf.do_use_sat_solver);
     auto& dst = decisions.top();
-    debug_print("[indep] -> Backtracked to level " << dec_level()
+    debug_print(__FUNCTION__  << " -> Backtracked to level " << dec_level()
         // NOTE: -1 here because we have JUST processed the child
         //     ->> (see below next_unproc_comp() call)
         << " num unprocessed comps here: " << dst.num_unproc_comps()-1
@@ -1961,8 +1959,16 @@ RetState Counter<T>::resolve_conflict() {
   debug_print("backj: " << backj << " lev_to_set: " << lev_to_set);
   bool flipped_declit = (
       uip_clause[0].var() == decisions.at(backj).var
-           && lev_to_set+1 == backj);
-
+           && lev_to_set == backj-1);
+  if (!conf.do_chronobt && !flipped_declit) {
+    // This is the case where non-chnorobt throws away the clause
+    assert(!conf.do_use_sat_solver && "If not using chronobt, SAT solver MUST be off");
+    debug_print(COLRED "No chronobt, not flipped declit.");
+    go_back_to(backj);
+    decisions.top().mark_branch_unsat();
+    decisions.top().zero_out_branch_sol();
+    return BACKTRACK;
+  }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail());
@@ -3353,7 +3359,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
 
     while (!propagate()) {
       start1:
-      if (chrono_work()) continue;
+      if (conf.do_chronobt && chrono_check()) continue;
       state = resolve_conflict();
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;

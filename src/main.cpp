@@ -118,6 +118,7 @@ void add_ganak_options()
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
     myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
+    myopt("--chronobt", conf.do_chronobt, atof, "ChronoBT. SAT must be DISABLED or this will fail");
 //
 // Arjun options
     myopt("--arjun", do_arjun, atoi, "Use arjun");
@@ -233,6 +234,10 @@ void parse_supported_options(int argc, char** argv) {
     catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
         exit(-1);
+    }
+    if (conf.do_use_sat_solver && !conf.do_chronobt) {
+      cout << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
+      exit(-1);
     }
 }
 

@@ -467,6 +467,10 @@ int main(int argc, char *argv[])
 
   string fname;
 
+  if (!program.is_used("inputfile")) {
+    cout << "ERROR: must provide input file to read as last argument" << endl;
+    exit(-1);
+  }
   auto files = program.get<std::vector<std::string>>("inputfile");
   if (files.empty()) {
     // TODO read stdin, once we are a library.

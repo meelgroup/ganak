@@ -226,7 +226,9 @@ def find_bdd_called(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o buddy called" in line:
+            if "c o buddy called /unsat ratio" in line:
+              n = int(line.split()[6])
+            elif "c o buddy called" in line:
               n = int(line.split()[4])
     return n
 
@@ -281,6 +283,8 @@ def timeout_parse(fname):
                 call = call.replace(" -t real", "")
                 if "doalarm 3600" in call:
                   call = call.split("doalarm 3600")[1]
+                elif "doalarm 60" in call:
+                  call = call.split("doalarm 60")[1]
                 else:
                   call = call.split("doalarm 900")[1]
                 call = call.replace("././ganak ", "")
@@ -408,10 +412,10 @@ for f in file_list:
     files[base]["fname"] = full_fname
     # print("Dealing with dir: %s fname: %s" % (dirname, full_fname))
 
-    if ".timeout_" in f:
+    if f.endswith(".timeout") or ".timeout_" in f:
         files[base]["solvertout"] = timeout_parse(f)
 
-    if ".out_ganak" in f:
+    if  f.endswith(".out_ganak") or f.endswith(".out"):
         files[base]["solver"] = "ganak"
         files[base]["solvertime"] = find_ganak_time_cnt(f)
         files[base]["solverver"] = ganak_version(f)

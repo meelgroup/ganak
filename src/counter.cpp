@@ -3792,9 +3792,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   debug_print("setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size());
   var(lit).decision_level = dec_lev;
   var(lit).ante = ant;
-  if (!ant.isNull()) {
-    var(lit).last_polarity = lit.sign();
-  }
+  if (!ant.isNull()) var(lit).last_polarity = lit.sign();
   var(lit).sublevel = trail.size();
   qhead = std::min<uint32_t>(qhead, trail.size());
   trail.push_back(lit);

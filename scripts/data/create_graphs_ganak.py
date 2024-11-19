@@ -381,14 +381,18 @@ only_dirs = [
             ######################
             # paper
             # "out-ganak-mc2024-track1-13871208-",
-            "out-ganak-mc2024-unw-13872773-2",
-            "out-ganak-mc2024-unw-13872773-3",
+            # "out-ganak-mc2024-unw-13872773-2", # test
+            # "out-ganak-mc2024-unw-13877518-", # test
+            # "out-ganak-mc2024-unw-13872773", # unweighted only, 2024, major combos
+            "out-ganak-mc2024-unw-13877443", # unweighted only, 2024, SAT combos
+
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
 # "6349002",
 # only_dirs = ["6606250"]
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
+not_calls = ["--satsolver 0"]
 not_versions = []
 # only_calls = ["--lbd 1"] #
 # only_dirs = []

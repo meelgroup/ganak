@@ -35,14 +35,14 @@ using std::endl;
 template<typename T>
 class StackLevel {
 public:
-  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _isindependent) :
-      isindependent(_isindependent),
+  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _is_indep) :
+      is_indep(_is_indep),
       super_comp_(super_comp),
       remaining_comps_ofs_(comp_stack_ofs),
       unprocessed_comps_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);
   }
-  bool isindependent;
+  bool is_indep;
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
@@ -132,7 +132,7 @@ public:
     }
 
     if (solutions == 0) branch_unsat[act_branch] = true;
-    if (!isindependent) branch_mc[act_branch] = (solutions > 0);
+    if (!is_indep) branch_mc[act_branch] = (solutions > 0);
     else {
       if (branch_mc[act_branch] == 0) branch_mc[act_branch] = solutions;
       else branch_mc[act_branch] *= solutions;
@@ -161,7 +161,7 @@ public:
     }
 
     if (solutions == 0) branch_unsat[0] = true;
-    if (!isindependent) branch_mc[0] = (solutions > 0);
+    if (!is_indep) branch_mc[0] = (solutions > 0);
     else {
       if (branch_mc[0] == 0) assert(false);
       else branch_mc[0] *= solutions;
@@ -180,7 +180,7 @@ public:
   const T& get_model_side(int side) const { return branch_mc[side]; }
   void zero_out_branch_sol() { branch_mc[act_branch] = 0; }
   const T total_model_count() const {
-    if (isindependent) return branch_mc[0] + branch_mc[1];
+    if (is_indep) return branch_mc[0] + branch_mc[1];
     else return (branch_mc[0] + branch_mc[1]) > 0; }
 
   // for cube creation

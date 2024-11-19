@@ -350,7 +350,7 @@ private:
   vector<Lit>::iterator top_declevel_trail_begin();
   vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
 
-  bool isindependent = true; //< We are currently in indep mode
+  bool is_indep = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support
   uint32_t indep_support_end = std::numeric_limits<uint32_t>::max();
   // the first variable that's NOT in the opt indep support

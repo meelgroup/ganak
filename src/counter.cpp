@@ -952,7 +952,7 @@ void Counter<T>::count_loop() {
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
       decide_lit();
-      if (!isindependent && conf.do_use_sat_solver) {
+      if (!is_indep && conf.do_use_sat_solver) {
         if (use_sat_solver(state)) goto backtrack;
         else goto start11;
       }
@@ -1067,8 +1067,7 @@ void Counter<T>::decide_lit() {
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
-    StackLevel<T>(decisions.top().curr_remain_comp(),
-               comp_manager->comp_stack_size(), isindependent));
+    StackLevel<T>(decisions.top().curr_remain_comp(), comp_manager->comp_stack_size(), is_indep));
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
@@ -1084,7 +1083,7 @@ void Counter<T>::decide_lit() {
   assert(val(v) == X_TRI);
 
   decisions.top().var = v;
-  decisions.top().isindependent = isindependent;
+  decisions.top().is_indep = is_indep;
 
   Lit lit = Lit(v, get_polarity(v));
   /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
@@ -1161,7 +1160,7 @@ uint32_t Counter<T>::find_best_branch(const bool ignore_td, const bool also_noni
   uint32_t best_var = 0;
   double best_var_score = -1e8;
   uint64_t* at;
-  isindependent = false;
+  is_indep = false;
   bool couldnt_find_indep = false; // only used when also_nonindep is true
 
   VERBOSE_DEBUG_DO(cout << "decision level: " << dec_level() << " var options: ");
@@ -1194,7 +1193,7 @@ uint32_t Counter<T>::find_best_branch(const bool ignore_td, const bool also_noni
       if (best_var != 0 && !couldnt_find_indep) break; // we could find an indep var
     }
 
-    if (v < opt_indep_support_end) isindependent = true;
+    if (v < opt_indep_support_end) is_indep = true;
     if (v < indep_support_end) only_optional_indep = false;
     if constexpr (weighted) at[v] = vars_act_dec_num;
     double score;
@@ -1210,7 +1209,7 @@ uint32_t Counter<T>::find_best_branch(const bool ignore_td, const bool also_noni
   VERBOSE_DEBUG_DO(cout << endl);
 
   if (only_optional_indep && !also_nonindep) {
-    isindependent = false;
+    is_indep = false;
     return 0;
   }
   if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
@@ -1556,7 +1555,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       after_mul += decisions.top().left_model_count();
       after_mul += decisions.top().right_model_count()*dec_w;
     }
-    if (!decisions.top().isindependent) {
+    if (!decisions.top().is_indep) {
       if constexpr (weighted) assert(false && "SAT solver cannot be turned off in weighted mode");
       after_mul = after_mul > 0;
     }
@@ -3296,7 +3295,7 @@ void Counter<T>::vsads_readjust() {
 // because ONLY non-independent variables remain
 template<typename T>
 bool Counter<T>::use_sat_solver(RetState& state) {
-  assert(!isindependent);
+  assert(!is_indep);
   assert(order_heap.empty());
   assert(!decisions.empty());
   assert(!sat_mode());
@@ -3310,7 +3309,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
   decisions.push_back(StackLevel<T>(decisions.top().curr_remain_comp(),
-        comp_manager->comp_stack_size(), isindependent));
+        comp_manager->comp_stack_size(), is_indep));
   sat_start_dec_level = dec_level();
 
   if (conf.do_sat_vsids) {
@@ -3352,7 +3351,7 @@ bool Counter<T>::use_sat_solver(RetState& state) {
     Lit l;
     if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);
     else l = Lit(d, get_polarity(d));
-    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2,isindependent));
+    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2,is_indep));
     decisions.back().var = l.var();
     set_lit(l, dec_level());
 
@@ -3420,7 +3419,7 @@ end:
   assert(state != GO_AGAIN);
   order_heap.clear();
   sat_start_dec_level = -1;
-  isindependent = true;
+  is_indep = true;
   debug_print("Exiting SAT mode. Declev: " << dec_level() << " sat: " << (int)sat
       << " trail below.");
   VERBOSE_DEBUG_DO(print_trail());
@@ -3436,7 +3435,7 @@ end:
       << " unproc comps end: " << decisions.top().get_unproc_comps_end()
       << " remaining comps: " << decisions.top().remaining_comps_ofs()
       << " has unproc: " << decisions.top().has_unproc_comps());
-      assert(isindependent);
+      assert(is_indep);
   }
   return sat;
 }
@@ -4221,7 +4220,7 @@ void Counter<T>::init_decision_stack() {
     decisions.push_back(StackLevel<T>(
           1, // super comp
           2, //comp stack offset
-          isindependent));
+          is_indep));
 
     // This is needed so the system later knows it's fully counted
     // since this is only a dummy.

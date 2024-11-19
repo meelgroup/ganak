@@ -795,8 +795,8 @@ public:
   }
   void print_indep_distrib() const {
     if (unw_counter) unw_counter->print_indep_distrib();
-    if (w_counter) unw_counter->print_indep_distrib();
-    if (wq_counter) unw_counter->print_indep_distrib();
+    if (w_counter) w_counter->print_indep_distrib();
+    if (wq_counter) wq_counter->print_indep_distrib();
   }
 private:
   Counter<mpz_class>* unw_counter = nullptr;

@@ -90,7 +90,6 @@ void Counter<T>::set_optional_indep_support(const set<uint32_t> &indeps) {
 
   verb_print(1, "opt ind size: " << std::min<int>((int)opt_indep_support_end-1, 0) << " ind size: " << std::min<int>((int)indep_support_end-1, 0)
     << " nvars: " << nVars());
-  if (conf.verb) print_indep_distrib();
 }
 
 template<typename T>

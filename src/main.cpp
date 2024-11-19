@@ -314,8 +314,9 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
   if (cnf.get_opt_sampl_vars_set() && do_optindep) {
     tmp.clear();
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
-    counter.set_optional_indep_support(tmp);
-  } else if (conf.verb) counter.print_indep_distrib();
+  }
+  counter.set_optional_indep_support(tmp);
+  if (conf.verb) counter.print_indep_distrib();
 
   if (cnf.weighted) {
     for(const auto& t: cnf.weights) {
@@ -397,11 +398,8 @@ void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& c
     static constexpr bool precise = std::is_same<T, mpq_class>::value;
     if (cnf.multiplier_weight == 0) cnt = 0;
     else {
-      if constexpr (!precise) {
-          cnt = counter.w_outer_count();
-      } else {
-          cnt = counter.wq_outer_count();
-      }
+      if constexpr (!precise) cnt = counter.w_outer_count();
+      else cnt = counter.wq_outer_count();
     }
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpu_time() - start_time) << endl;

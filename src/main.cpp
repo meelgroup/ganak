@@ -95,9 +95,9 @@ string print_version()
     #else
     ss << "c o GANAK compiled with non-gcc compiler";
     #endif
-    cout << "c o CMS revision: " << CMSat::SATSolver::get_version_sha1() << endl;
-    cout << "c o Arjun SHA revision: " << ArjunNS::Arjun ::get_version_info() << endl;
-    cout << "c o Arjun SBVA SHA revision: " << ArjunNS::Arjun::get_sbva_version_info() << endl;
+    ss << "c o CMS revision: " << CMSat::SATSolver::get_version_sha1() << endl;
+    ss << "c o Arjun SHA revision: " << ArjunNS::Arjun ::get_version_info() << endl;
+    ss << "c o Arjun SBVA SHA revision: " << ArjunNS::Arjun::get_sbva_version_info() << endl;
 
     return ss.str();
 }
@@ -110,7 +110,7 @@ void add_ganak_options()
     myopt2("-v", "--verb", conf.verb, atoi, "Verbosity");
     myopt2("-s", "--seed", conf.seed, atoi, "Seed");
     program.add_argument("-v", "--version") \
-        .action([&](const auto&) {print_version(); exit(0);}) \
+        .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
     myopt("--delta", conf.delta, atof, "Delta");
@@ -461,7 +461,7 @@ int main(int argc, char *argv[])
   }
   parse_supported_options(argc, argv);
   if (conf.verb) {
-    cout << print_version() << endl;
+    cout << print_version();
     cout << "c o called with: " << command_line << endl;
   }
 

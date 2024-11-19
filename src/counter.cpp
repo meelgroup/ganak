@@ -953,7 +953,7 @@ void Counter<T>::count_loop() {
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
       decide_lit();
       if (!is_indep && conf.do_use_sat_solver) {
-        if (use_sat_solver(state)) goto backtrack;
+        if (run_sat_solver(state)) goto backtrack;
         else goto start11;
       }
 
@@ -3294,7 +3294,7 @@ void Counter<T>::vsads_readjust() {
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
 // because ONLY non-independent variables remain
 template<typename T>
-bool Counter<T>::use_sat_solver(RetState& state) {
+bool Counter<T>::run_sat_solver(RetState& state) {
   assert(!is_indep);
   assert(order_heap.empty());
   assert(!decisions.empty());

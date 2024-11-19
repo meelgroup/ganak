@@ -294,7 +294,7 @@ private:
   ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> long_red_cls;
-  bool use_sat_solver(RetState& state);
+  bool run_sat_solver(RetState& state);
   int32_t sat_start_dec_level = -1;
   inline bool sat_mode() const {
     return sat_start_dec_level != -1 && dec_level() >= sat_start_dec_level;

@@ -377,6 +377,12 @@ only_dirs = [
                # nice: --bveresolvmaxsz 12
                # --bveresolvmaxsz 12 --maxcache=20000 --sbva 1 --tdminw 18 --sbvalitcut 6 --arjunoraclefindbins 4 --rdbclstarget 14000
             # "out-ganak-7670422.pbs101-", #-- FINAL, doing double CNF minim -- OK, 7GB remain
+
+            ######################
+            # paper
+            # "out-ganak-mc2024-track1-13871208-",
+            "out-ganak-mc2024-unw-13872773-2",
+            "out-ganak-mc2024-unw-13872773-3",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

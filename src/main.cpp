@@ -389,11 +389,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 
 template<typename T>
 void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
-    if (!conf.do_use_sat_solver) {
-      cout << "ERROR: Weighted model counting requires SAT solver" << endl;
-      exit(-1);
-    }
-
     T cnt;
     static constexpr bool precise = std::is_same<T, mpq_class>::value;
     if (cnf.multiplier_weight == 0) cnt = 0;

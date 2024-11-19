@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <iostream>
 #include "common.hpp"
 #include "structures.hpp"
+#include "mpreal.h"
 using std::vector;
 using std::cout;
 using std::endl;
@@ -43,6 +44,7 @@ public:
     assert(super_comp < comp_stack_ofs);
   }
   bool is_indep;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
@@ -132,7 +134,7 @@ public:
     }
 
     if (solutions == 0) branch_unsat[act_branch] = true;
-    if (!is_indep) branch_mc[act_branch] = (solutions > 0);
+    if (!is_indep && solutions == 2 && branch_mc[act_branch] == 0) branch_mc[act_branch] = 1;
     else {
       if (branch_mc[act_branch] == 0) branch_mc[act_branch] = solutions;
       else branch_mc[act_branch] *= solutions;
@@ -161,7 +163,7 @@ public:
     }
 
     if (solutions == 0) branch_unsat[0] = true;
-    if (!is_indep) branch_mc[0] = (solutions > 0);
+    if (!is_indep) branch_mc[0] = solutions;
     else {
       if (branch_mc[0] == 0) assert(false);
       else branch_mc[0] *= solutions;
@@ -181,7 +183,7 @@ public:
   void zero_out_branch_sol() { branch_mc[act_branch] = 0; }
   const T total_model_count() const {
     if (is_indep) return branch_mc[0] + branch_mc[1];
-    else return (branch_mc[0] + branch_mc[1]) > 0; }
+    else if (branch_mc[0] == 0) return branch_mc[1]; else return branch_mc[0]; }
 
   // for cube creation
   bool branch_found_unsat(int side) const { return branch_unsat[side]; }

@@ -876,7 +876,7 @@ vector<Cube<T>> Counter<T>::one_restart_count() {
     td_decompose();
   }
   count_loop();
-  if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
+  if (conf.verb >= 3) stats.print_short(this, &comp_manager->get_cache());
   return mini_cubes;
 }
 

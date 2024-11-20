@@ -112,11 +112,12 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
     << setw(5) << num_cubes_symm << " / "
     << setw(5) << num_cubes_final);
 
+  verb_print(1, "tot restarts                   " << setw(5) << num_restarts);
+
   verb_print(1, "comp sortsK/avg sz             "
     << setw(5) << comp_sorts/1000 << " / "
     << setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))
     << std::setprecision(2);
-
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
     << setw(9) << vivif_tried << " "

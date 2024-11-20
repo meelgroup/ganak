@@ -392,10 +392,14 @@ only_dirs = [
             # "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
             # "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
 
-            "out-ganak-mc2024-all-13877586-6", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-7", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-8", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-9", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-6", # all, 2024, SAT combos
+            # "out-ganak-mc2024-all-13877586-7", # all, 2024, SAT combos
+            # "out-ganak-mc2024-all-13877586-8", # all, 2024, SAT combos
+            # "out-ganak-mc2024-all-13877586-9", # all, 2024, SAT combos
+
+            "out-ganak-mc2024-all-13882587-", # unweighted, 2024, restart check
+            "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
+            # "out-ganak-mc2024-all-13882587-6", # unweighted, 2024, restart check
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -480,8 +484,8 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    # f.write("plot [:][:]\\\n")
-    f.write("plot [:][190:]\\\n")
+    f.write("plot [:][100:]\\\n")
+    # f.write("plot [:][190:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

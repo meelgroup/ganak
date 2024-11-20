@@ -1109,7 +1109,7 @@ double Counter<T>::score_of(const uint32_t v, bool ignore_td) const {
 
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
-  act_score = var_act(v)/3.0;
+  act_score = var_act(v)/conf.act_score_divisor;
   freq_score = (double)comp_manager->freq_score_of(v)/25.0;
   double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << std::setw(4) << v

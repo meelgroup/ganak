@@ -66,6 +66,7 @@ struct CounterConfiguration {
   int do_use_cache = 1;
   int do_init_activity_scores = 1;
   int vsads_readjust_every = 256;
+  double act_score_divisor = 3.0;
   uint32_t tot_used_cutoff_vivif = 50;
 
 

@@ -387,12 +387,12 @@ only_dirs = [
             # "out-ganak-mc2024-unw-13877443", # unweighted only, 2024, SAT combos
 
             # all, major combos
-            # "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-1", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-1", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
 
             # all, SAT combos
             # "out-ganak-mc2024-all-13877586-6", # all, 2024, SAT combos
@@ -404,14 +404,26 @@ only_dirs = [
             # "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
             # "out-ganak-mc2024-all-13882587-", # unweighted, 2024, restart check
             # "out-ganak-mc2024-all-13883510-", # more restart check
-            # -> readjust is BAD
+            # "out-ganak-mc2024-all-13885363-",
+            # NOTE: -> readjust is BAD
 
-            # better than plain: --restart 1 --rsttype 8 --rstreadjust 0 --vsadsadjust 64 --rstfirst 60000
-            "out-ganak-mc2024-all-13882587-6", # unweighted, 2024, restart check
-            "out-ganak-mc2024-all-13883510-2", # more restart check
-            "out-ganak-mc2024-all-13883510-9", #
+            # restart is BAD for 32 & 30k restart rsttype 8
+            # "out-ganak-mc2024-all-13885363-1/",
+            # "out-ganak-mc2024-all-13883510-3/", #  --vsadsadjust 32
 
-            # we should adust vsadsadjust to 32 !!!
+            # individual checks -- scorediv, 32/64 adjust
+            # "out-ganak-mc2024-all-13885363-6",
+            # "out-ganak-mc2024-all-13885363-14",
+            # "out-ganak-mc2024-all-13885363-12",
+            # "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
+            # "out-ganak-mc2024-all-13883510-3", #  --vsadsadjust 32
+
+            # RESTART: better than plain: --restart 1 --rsttype 8 --rstreadjust 0 --vsadsadjust 64 --rstfirst 60000
+            # "out-ganak-mc2024-all-13882587-6", # unweighted, 2024, restart check
+            # "out-ganak-mc2024-all-13883510-2", # more restart check
+            # "out-ganak-mc2024-all-13883510-9", #
+
+            # TODO: we should adust vsadsadjust to 32 !!!
             # "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
             # "out-ganak-mc2024-all-13883510-3", #  --vsadsadjust 32
              ]

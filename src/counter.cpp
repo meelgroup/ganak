@@ -858,6 +858,7 @@ T Counter<T>::outer_count() {
       exit(-1);
     } else cnt += do_appmc_count();
   }
+  if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
   return cnt;
 }
 

@@ -387,12 +387,12 @@ only_dirs = [
             # "out-ganak-mc2024-unw-13877443", # unweighted only, 2024, SAT combos
 
             # all, major combos
-            "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-1", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-1", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
 
             # all, SAT combos
             # "out-ganak-mc2024-all-13877586-6", # all, 2024, SAT combos
@@ -405,7 +405,20 @@ only_dirs = [
             # "out-ganak-mc2024-all-13882587-", # unweighted, 2024, restart check
             # "out-ganak-mc2024-all-13883510-", # more restart check
             # "out-ganak-mc2024-all-13885363-",
+            # "out-ganak-mc2024-all-13886201-",
             # NOTE: -> readjust is BAD
+
+            # nice combos
+            "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
+            "out-ganak-mc2024-all-13886201-11",
+            "out-ganak-mc2024-all-13886201-6",
+            "out-ganak-mc2024-all-13886201-5",
+            # "out-ganak-mc2024-all-13883510-3",
+            # # "out-ganak-mc2024-all-13885363-12", rstfirst 60k so not so exciting
+
+            ## vsadsadjust*actscorediv should be 16 -- except in case of restarts
+            # "out-ganak-mc2024-all-13886201-6", # --vsadsadjust 64 --actscorediv 0.25
+            # "out-ganak-mc2024-all-13886201-11" # call: --vsadsadjust 32 --actscorediv 0.5
 
             # restart is BAD for 32 & 30k restart rsttype 8
             # "out-ganak-mc2024-all-13885363-1/",
@@ -436,10 +449,10 @@ only_dirs = [
 not_versions = []
 # only_calls = ["--lbd 1"] #
 # only_dirs = []
-# only_calls = ["--polar"]
-# only_calls = ["--rstfirst"]
+# only_calls = ["vsadsadjust 128"]
 only_calls = []
-# not_calls = ["appmct"]
+# not_calls = ["restart"]
+not_calls = []
 todo = versions
 for ver in todo :
     dirs_call = get_dirs(ver)

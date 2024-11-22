@@ -379,20 +379,17 @@ only_dirs = [
             # "out-ganak-7670422.pbs101-", #-- FINAL, doing double CNF minim -- OK, 7GB remain
 
             ######################
-            # paper
-            # "out-ganak-mc2024-track1-13871208-",
-            # "out-ganak-mc2024-unw-13872773-2", # test
-            # "out-ganak-mc2024-unw-13877518-", # test
+            # paper -- BROKEN JOBS -- randomly failing ooooops
             # "out-ganak-mc2024-unw-13872773", # unweighted only, 2024, major combos
             # "out-ganak-mc2024-unw-13877443", # unweighted only, 2024, SAT combos
 
             # all, major combos
-            "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-1/", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
-            "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-1/", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
+            # "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
 
             # all, SAT combos
             # "out-ganak-mc2024-all-13877586-6", # all, 2024, SAT combos
@@ -439,6 +436,30 @@ only_dirs = [
             # TODO: we should adust vsadsadjust to 32 !!!
             # "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
             # "out-ganak-mc2024-all-13883510-3", #  --vsadsadjust 32
+
+            ######################
+            # paper -- Fixed job
+            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+
+            # all, SAT combos
+            "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-6",  # all, 2023+24, SAT combos
+            "out-ganak-mc2324-13889246-7",  # all, 2023+24, SAT combos
+            "out-ganak-mc2324-13889246-8",  # all, 2023+24, SAT combos
+            "out-ganak-mc2324-13889246-9",  # all, 2023+24, SAT combos
+
+            # allindep
+            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-5",  # all, 2023+24, allindep
+
+            # tuning
+            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-11",  # all, 2023+24
+            # "out-ganak-mc2324-13889246-12",  # all, 2023+24
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -523,7 +544,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][80:]\\\n")
+    f.write("plot [:][1080:]\\\n")
     # f.write("plot [:][190:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")

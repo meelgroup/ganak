@@ -387,12 +387,12 @@ only_dirs = [
             # "out-ganak-mc2024-unw-13877443", # unweighted only, 2024, SAT combos
 
             # all, major combos
-            # "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-1", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
-            # "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-0", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-1/", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-2", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-3", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-4", # all, 2024, major combos
+            "out-ganak-mc2024-all-13877586-5", # all, 2024, major combos
 
             # all, SAT combos
             # "out-ganak-mc2024-all-13877586-6", # all, 2024, SAT combos
@@ -409,12 +409,12 @@ only_dirs = [
             # NOTE: -> readjust is BAD
 
             # nice combos
-            "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
-            "out-ganak-mc2024-all-13886201-11",
-            "out-ganak-mc2024-all-13886201-6",
-            "out-ganak-mc2024-all-13886201-5",
+            # "out-ganak-mc2024-unw-13872773-5", # unweighted only, 2024, all-in
+            # "out-ganak-mc2024-all-13886201-11",
+            # "out-ganak-mc2024-all-13886201-6",
+            # "out-ganak-mc2024-all-13886201-5",
             # "out-ganak-mc2024-all-13883510-3",
-            # # "out-ganak-mc2024-all-13885363-12", rstfirst 60k so not so exciting
+            # "out-ganak-mc2024-all-13885363-12", rstfirst 60k so not so exciting
 
             ## vsadsadjust*actscorediv should be 16 -- except in case of restarts
             # "out-ganak-mc2024-all-13886201-6", # --vsadsadjust 64 --actscorediv 0.25
@@ -523,7 +523,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][100:]\\\n")
+    f.write("plot [:][80:]\\\n")
     # f.write("plot [:][190:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")

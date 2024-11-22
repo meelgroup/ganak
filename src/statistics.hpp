@@ -62,6 +62,7 @@ public:
 
   // number of all conflicts occurred
   uint64_t conflicts = 0;
+  uint64_t learnt_cls_added = 0;
 
   // number of clauses overall learned
   uint64_t uip_cls = 0;

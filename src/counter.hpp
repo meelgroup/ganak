@@ -202,6 +202,7 @@ private:
   uint32_t num_low_lbd_cls = 0; // Last time counted low LBD clauses
   uint32_t num_used_cls = 0; // last time counted used clauses
   uint64_t last_reducedb_confl = 0;
+  uint64_t last_reducedb_cls_added = 0;
   uint64_t last_reducedb_dec = 0;
 
   // Computing LBD (lbd == 2 means "glue clause")
@@ -614,6 +615,7 @@ template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
 
 template<typename T>
 Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
+  stats.learnt_cls_added++;
   Antecedent ante;
   Clause* cl = add_cl(literals, true);
   if (cl) {

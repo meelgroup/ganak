@@ -1920,12 +1920,13 @@ void Counter<T>::check_implied(const vector<Lit>& cl) {
 
 template<typename T>
 void Counter<T>::reduce_db_if_needed() {
-  if (stats.conflicts > last_reducedb_confl+conf.reduce_db_everyN) {
+  if (stats.learnt_cls_added > last_reducedb_cls_added+conf.reduce_db_everyN) {
     reduce_db();
     if (stats.cls_deleted_since_compaction > conf.consolidate_every_n && alloc->consolidate(this)) {
         stats.cls_deleted_since_compaction = 0;
     }
     last_reducedb_confl = stats.conflicts;
+    last_reducedb_cls_added = stats.learnt_cls_added;
     last_reducedb_dec = stats.decisions;
   }
 }

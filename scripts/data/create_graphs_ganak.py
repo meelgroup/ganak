@@ -439,18 +439,18 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # all, SAT combos
-            "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-6",  # all, 2023+24, SAT combos
-            "out-ganak-mc2324-13889246-7",  # all, 2023+24, SAT combos
-            "out-ganak-mc2324-13889246-8",  # all, 2023+24, SAT combos
-            "out-ganak-mc2324-13889246-9",  # all, 2023+24, SAT combos
+            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-6",  # all, 2023+24, SAT combos
+            # "out-ganak-mc2324-13889246-7",  # all, 2023+24, SAT combos
+            # "out-ganak-mc2324-13889246-8",  # all, 2023+24, SAT combos
+            # "out-ganak-mc2324-13889246-9",  # all, 2023+24, SAT combos
 
             # allindep
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
@@ -544,7 +544,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][1080:]\\\n")
+    f.write("plot [:][180:]\\\n")
     # f.write("plot [:][190:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")

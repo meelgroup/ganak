@@ -23,7 +23,8 @@ CREATE TABLE data (
   sat_called INT,
   sat_rst INT,
   restarts INT,
-  cubes INT
+  cubes_orig INT,
+  cubes_final INT
 );
 . mode csv
 . import -skip 1 mydata.csv data
@@ -43,4 +44,5 @@ UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
 UPDATE data SET sat_called = NULL WHERE sat_called = '';
 UPDATE data SET sat_rst = NULL WHERE sat_rst = '';
 UPDATE data SET restarts = NULL WHERE restarts = '';
-UPDATE data SET cubes = NULL WHERE cubes = '';
+UPDATE data SET cubes_orig = NULL WHERE cubes_orig = '';
+UPDATE data SET cubes_final = NULL WHERE cubes_final = '';

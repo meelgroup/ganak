@@ -6,7 +6,7 @@ import re
 
 
 def convert_to_cactus(fname, fname2):
-    print("fname:" , fname)
+    # print("fname:" , fname)
     f2 = open(fname2, "w")
     f = open(fname, "r")
     text = f.read()
@@ -439,11 +439,14 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+
+            # update for chronoBT, different clause deletion
+            "out-ganak-mc2324-13890807-"
 
             # all, SAT combos
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
@@ -475,6 +478,8 @@ only_calls = []
 # not_calls = ["restart"]
 not_calls = []
 todo = versions
+
+table_todo = []
 for ver in todo :
     dirs_call = get_dirs(ver)
     for dir,call in dirs_call:
@@ -502,10 +507,10 @@ for ver in todo :
 
         if bad:
           continue
-        print("----")
-        print("dir:", dir)
-        print("call:", call)
-        print("ver:", ver)
+        # print("----")
+        # print("dir:", dir)
+        # print("call:", call)
+        # print("ver:", ver)
 
         # if "actexp 1.0" in call:
         #     continue
@@ -528,9 +533,37 @@ for ver in todo :
         os.system("sqlite3 mydb.sql < gencsv.sqlite")
         os.unlink("gencsv.sqlite")
 
+
         fname2 = fname + ".gnuplotdata"
         num_solved = convert_to_cactus(fname, fname2)
         fname2_s.append([fname2, call, ver[:10], num_solved, dir])
+        table_todo.append([dir, ver])
+
+with open("gen_table.sqlite", "w") as f:
+  f.write(".mode table\n");
+  # f.write(".mode colum\n");
+  # f.write(".headers off\n")
+  dirs = ""
+  vers = ""
+  for dir,ver in table_todo:
+    dirs += "'" + dir + "',"
+    vers += "'" + ver + "',"
+  dirs = dirs[:-1]
+  vers = vers[:-1]
+  f.write("select \
+      replace(dirname,'out-ganak-mc','') as dirname, ganak_call, \
+      sum(mem_out) as 'mem out', \
+      CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
+      CAST(ROUND(avg(confls), 0) AS INTEGER) as 'avg confl', \
+      sum(ganak_time is not null) as 'solved',\
+      CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
+      CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
+      CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
+      CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
+      CAST(ROUND(avg(td_width),0) AS INTEGER) as 'av tdw',\
+      sum(fname is not null) as 'nfiles'\
+      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname")
+os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 gnuplotfn = "run-all.gnuplot"
 with open(gnuplotfn, "w") as f:

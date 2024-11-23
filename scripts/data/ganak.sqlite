@@ -24,7 +24,8 @@ CREATE TABLE data (
   sat_rst INT,
   restarts INT,
   cubes_orig INT,
-  cubes_final INT
+  cubes_final INT,
+  mem_out INT
 );
 . mode csv
 . import -skip 1 mydata.csv data

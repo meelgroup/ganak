@@ -215,7 +215,7 @@ def find_sat_called(fname):
             line = line.strip()
             if "c o sat called/sat/unsat/conflK" in line:
               n = int(line.split()[4])
-            if "c o sat call/sat/unsat/conflK/rst" in line:
+            if "c o sat call/sat/unsat/confl/rst" in line:
               n = int(line.split()[4])
               rst = int(line.split()[8])
     return n,rst
@@ -346,14 +346,14 @@ def ganak_conflicts(fname) -> str:
 
 #c o decisions K                    8         -- Kdec/s:     0.71
 def ganak_decisions(fname) -> int|None:
-    decisions = None
+    decisionsK = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if "c o decisions K" in line:
-                decisions = int(line.split()[4])
+                decisionsK = int(line.split()[4])
 
-    return decisions
+    return decisionsK
 
 
 # c o cache K (lookup/ stores/ hits) 67229  34594  32634   -- Klookup/s:  38.53
@@ -435,7 +435,7 @@ for f in file_list:
         files[base]["solvertime"] = find_ganak_time_cnt(f)
         files[base]["solverver"] = ganak_version(f)
         files[base]["confls"] = ganak_conflicts(f)
-        files[base]["decisions"] = ganak_decisions(f)
+        files[base]["decisionsK"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
         arjun_t, backb_t, backw_t, indep_sz, unkn_sz = find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
@@ -450,7 +450,7 @@ for f in file_list:
         files[base]["cubes_orig"] = cubes_orig
         files[base]["cubes_finale"] = cubes_final
         sat_called,sat_rst = find_sat_called(f)
-        files[base]["satcalled"] = sat_called
+        files[base]["sat_called"] = sat_called
         files[base]["satrst"] = sat_rst
         td = ganak_treewidth(f)
         files[base]["td-width"] = td[0]
@@ -490,7 +490,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decs,comps,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decisionsK,comps,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -529,10 +529,10 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s," % f["confls"]
 
-        if "decisions" not in f or f["decisions"] is None:
+        if "decisionsK" not in f or f["decisionsK"] is None:
             toprint += ","
         else:
-          toprint += "%d," % f["decisions"]
+          toprint += "%d," % f["decisionsK"]
 
         if "comps" not in f or f["comps"] is None:
             toprint += ","
@@ -584,10 +584,10 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s,"  % f["bddcalled"]
 
-        if "satcalled" not in f or f["satcalled"] is None:
+        if "sat_called" not in f or f["sat_called"] is None:
             toprint += ","
         else:
-          toprint += "%s,"  % f["satcalled"]
+          toprint += "%s,"  % f["sat_called"]
 
         if "satrst" not in f or f["satrst"] is None:
             toprint += ","

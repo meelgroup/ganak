@@ -439,14 +439,14 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
-            "out-ganak-mc2324-13890807-"
+            # "out-ganak-mc2324-13890807-"
 
             # all, SAT combos
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
@@ -551,10 +551,13 @@ with open("gen_table.sqlite", "w") as f:
   dirs = dirs[:-1]
   vers = vers[:-1]
   f.write("select \
-      replace(dirname,'out-ganak-mc','') as dirname, ganak_call, \
+      replace(dirname,'out-ganak-mc','') as dirname,\
+      replace(ganak_call,'././ganak_','') as call,\
       sum(mem_out) as 'mem out', \
       CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
-      CAST(ROUND(avg(confls), 0) AS INTEGER) as 'avg confl', \
+      ROUND(avg(confls)/(1000.0*1000.0), 2) as 'av confM', \
+      ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
+      CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
       sum(ganak_time is not null) as 'solved',\
       CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
       CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\

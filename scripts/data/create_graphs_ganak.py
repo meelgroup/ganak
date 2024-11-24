@@ -619,18 +619,19 @@ import pandas as pd
 import sqlite3
 import matplotlib.pyplot as plt
 from functools import reduce
-import numpy as numpy
+import numpy as np
 
-todo = ['out-ganak-mc2324-13889246-3','out-ganak-mc2324-13889246-4']
+todo = ["""+dirs+"""]
 """
   texts.append(text)
 
-  colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK", "comps", "td_width", "arjun_time", "backbone_time", "indep_sz", "av tdT", "sat_called"]
+  colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK", "comps", "td_width", "arjun_time", "backbone_time", "indep_sz", "td_time", "sat_called"]
   for colname in colnames:
     text= """
-    colname='"""+colname+"""'
+colname='"""+colname+"""'
 names=[]
 dfs = []
+conn = sqlite3.connect('mydb.sql')
 for d in todo:
   # Step 3: Run the SQL query and load the results into a DataFrame
   query = "SELECT fname, "+colname+", ganak_call FROM data where "+colname+" is not NULL and dirname='"+d+"' order by "+colname
@@ -639,18 +640,15 @@ for d in todo:
   dfs.append(df1)
   names.append(d+" " +df1['ganak_call'][0])
 
-#result = reduce(lambda left, right: pd.merge(left, right, on='num', how='outer'), df)
-# result = pd.merge(df, on='num', how='outer')
-def merge_with_suffixes(dfs):
-    result = dfs[0]
-    for i, df in enumerate(dfs[1:], start=1):
-        result = pd.merge(result, df, on='num', how='outer', suffixes=(f'_{i-1}', f'_{i}'))
-    return result
+result = dfs[0]
+for c in result.columns:
+    if c == 'num': continue
+    result.rename(columns={c: c+'_0'}, inplace=True)
+
+for i, df in enumerate(dfs[1:], start=1):
+    result = pd.merge(result, df, on='num', how='outer', suffixes=(f'_{i-1}', f'_{i}'))
 
 # Merge all DataFrames
-result = merge_with_suffixes(dfs)
-
-# Step 4: Close the database connection
 conn.close()
 
 # Step 5: Plot the data
@@ -672,7 +670,7 @@ plt.show()
   # Create markdown cells
   markdown_cells = []
   for t in texts:
-      markdown_cells.append(nbf.v4.new_markdown_cell(t))
+      markdown_cells.append(nbf.v4.new_code_cell(t))
 
   # Assign the cells to the notebook
   nb['cells'] = markdown_cells

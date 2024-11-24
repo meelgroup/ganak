@@ -301,7 +301,7 @@ def timeout_parse(fname):
     return [t, m, call]
 
 # c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
-def ganak_treewidth(fname) -> list[str]:
+def ganak_treewidth(fname):
     tw = ""
     t = ""
     with open(fname, "r") as f:
@@ -312,7 +312,7 @@ def ganak_treewidth(fname) -> list[str]:
                 tw = "%d" % tw
                 t = float(line.split()[12])
                 t = "%f" % t
-    return [tw, t]
+    return tw, t
 
 # c o width 45
 # c o CMD: timeout 60.000000s ./flow_cutter_pace17 <tmp/instance1709332682043115_14040_59941_1.tmp >tmp/instance1709332682043118_14040_59941_2.tmp 2>/dev/null
@@ -452,9 +452,9 @@ for f in file_list:
         sat_called,sat_rst = find_sat_called(f)
         files[base]["sat_called"] = sat_called
         files[base]["satrst"] = sat_rst
-        td = ganak_treewidth(f)
-        files[base]["td-width"] = td[0]
-        files[base]["td-time"] = td[1]
+        td_w,td_t = ganak_treewidth(f)
+        files[base]["td_width"] = td_w
+        files[base]["td_time"] = td_t
     if ".out_approxmc" in f:
         files[base]["solver"] = "approxmc"
         files[base]["solvertime"] = find_approxmc_time_cnt(f)
@@ -468,8 +468,8 @@ for f in file_list:
         files[base]["solvertime"] = find_sharpsat_time_cnt(f)
         files[base]["solverver"] = ["sharptd", "sharptd"]
         td = sstd_treewidth(f)
-        files[base]["td-width"] = td[0]
-        files[base]["td-time"] = td[1]
+        files[base]["td_width"] = td[0]
+        files[base]["td_time"] = td[1]
     if ".out_d4" in f:
         files[base]["solver"] = "d4"
         files[base]["solvertime"] = find_d4_time_cnt(f)
@@ -539,15 +539,15 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s," % f["comps"]
 
-        if "td-width" not in f or f["td-width"] is None:
+        if "td_width" not in f or f["td_width"] is None:
             toprint += ","
         else:
-          toprint += "%s," % f["td-width"]
+          toprint += "%s," % f["td_width"]
 
-        if "td-time" not in f or f["td-time"] is None:
+        if "td_time" not in f or f["td_time"] is None:
             toprint += ","
         else:
-          toprint += "%s,"  % f["td-time"]
+          toprint += "%s,"  % f["td_time"]
 
         if "arjuntime" not in f or f["arjuntime"] is None:
             toprint += ","

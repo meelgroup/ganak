@@ -656,11 +656,11 @@ plt.figure(figsize=(10, 6))
 for i in range(len(todo)):
   values = result[(colname + '_' + str(i))]
   adjusted_values = np.where(values == 0, 1, values)
-  log_values = np.log(adjusted_values)
+  log_values = np.log10(adjusted_values)
   plt.plot(result['num'],log_values,marker='o')
 plt.title('Plot of fname vs. log '+colname)
 plt.xlabel('Files')
-plt.ylabel('log '+colname)
+plt.ylabel('log10 '+colname)
 plt.legend(names,loc='center left', bbox_to_anchor=(0, -0.3))
 plt.grid(True)
 plt.show()

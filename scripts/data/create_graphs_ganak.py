@@ -661,7 +661,7 @@ for i in range(len(todo)):
 plt.title('Plot of fname vs. log '+colname)
 plt.xlabel('Files')
 plt.ylabel('log '+colname)
-plt.legend(names,loc='center left', bbox_to_anchor=(0, -0.1))
+plt.legend(names,loc='center left', bbox_to_anchor=(0, -0.3))
 plt.grid(True)
 plt.show()
   """

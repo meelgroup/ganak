@@ -8,7 +8,7 @@ CREATE TABLE data (
   ganak_mem_MB FLOAT,
   ganak_call TEXT NOT NULL,
   ganak_ver TEXT NOT NULL,
-  confls INT,
+  conflicts INT,
   decisionsK INT,
   comps INT,
   td_width INT,
@@ -30,7 +30,7 @@ CREATE TABLE data (
 . mode csv
 . import -skip 1 mydata.csv data
 UPDATE data SET ganak_time = NULL WHERE ganak_time = '';
-UPDATE data SET confls = NULL WHERE confls = '';
+UPDATE data SET conflicts = NULL WHERE conflicts = '';
 UPDATE data SET decisionsK = NULL WHERE decisionsK = '';
 UPDATE data SET comps = NULL WHERE comps = '';
 UPDATE data SET td_width = NULL WHERE td_width = '';

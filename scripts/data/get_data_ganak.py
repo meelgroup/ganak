@@ -434,7 +434,7 @@ for f in file_list:
         files[base]["solver"] = "ganak"
         files[base]["solvertime"] = find_ganak_time_cnt(f)
         files[base]["solverver"] = ganak_version(f)
-        files[base]["confls"] = ganak_conflicts(f)
+        files[base]["conflicts"] = ganak_conflicts(f)
         files[base]["decisionsK"] = ganak_decisions(f)
         files[base]["comps"] = ganak_comps(f)
         arjun_t, backb_t, backw_t, indep_sz, unkn_sz = find_arjun_time(f)
@@ -490,7 +490,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,confls,decisionsK,comps,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,comps,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -524,10 +524,10 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
 
-        if "confls" not in f or f["confls"] is None:
+        if "conflicts" not in f or f["conflicts"] is None:
             toprint += ","
         else:
-          toprint += "%s," % f["confls"]
+          toprint += "%s," % f["conflicts"]
 
         if "decisionsK" not in f or f["decisionsK"] is None:
             toprint += ","

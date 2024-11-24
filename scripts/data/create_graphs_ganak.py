@@ -3,6 +3,7 @@
 import os
 import sqlite3
 import re
+import nbformat as nbf
 
 
 def convert_to_cactus(fname, fname2):
@@ -439,14 +440,14 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
-            # "out-ganak-mc2324-13890807-"
+            "out-ganak-mc2324-13890807-"
 
             # all, SAT combos
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
@@ -555,7 +556,7 @@ with open("gen_table.sqlite", "w") as f:
       replace(ganak_call,'././ganak_','') as call,\
       sum(mem_out) as 'mem out', \
       CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
-      ROUND(avg(confls)/(1000.0*1000.0), 2) as 'av confM', \
+      ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
       ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
       CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
       sum(ganak_time is not null) as 'solved',\
@@ -606,6 +607,86 @@ if os.path.exists("run.pdf"):
 if os.path.exists("run.png"):
   os.unlink("run.png")
 
+def create_notebook():
+  # Create a new notebook
+  nb = nbf.v4.new_notebook()
+  texts = []
+
+  # Define the text content for the markdown cells
+  text = """
+# Step 1: Import necessary libraries
+import pandas as pd
+import sqlite3
+import matplotlib.pyplot as plt
+from functools import reduce
+import numpy as numpy
+
+todo = ['out-ganak-mc2324-13889246-3','out-ganak-mc2324-13889246-4']
+"""
+  texts.append(text)
+
+  colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK", "comps", "td_width", "arjun_time", "backbone_time", "indep_sz", "av tdT", "sat_called"]
+  for colname in colnames:
+    text= """
+    colname='"""+colname+"""'
+names=[]
+dfs = []
+for d in todo:
+  # Step 3: Run the SQL query and load the results into a DataFrame
+  query = "SELECT fname, "+colname+", ganak_call FROM data where "+colname+" is not NULL and dirname='"+d+"' order by "+colname
+  df1 = pd.read_sql_query(query, conn)
+  df1['num'] = range(len(df1))
+  dfs.append(df1)
+  names.append(d+" " +df1['ganak_call'][0])
+
+#result = reduce(lambda left, right: pd.merge(left, right, on='num', how='outer'), df)
+# result = pd.merge(df, on='num', how='outer')
+def merge_with_suffixes(dfs):
+    result = dfs[0]
+    for i, df in enumerate(dfs[1:], start=1):
+        result = pd.merge(result, df, on='num', how='outer', suffixes=(f'_{i-1}', f'_{i}'))
+    return result
+
+# Merge all DataFrames
+result = merge_with_suffixes(dfs)
+
+# Step 4: Close the database connection
+conn.close()
+
+# Step 5: Plot the data
+plt.figure(figsize=(10, 6))
+for i in range(len(todo)):
+  values = result[(colname + '_' + str(i))]
+  adjusted_values = np.where(values == 0, 1, values)
+  log_values = np.log(adjusted_values)
+  plt.plot(result['num'],log_values,marker='o')
+plt.title('Plot of fname vs. log '+colname)
+plt.xlabel('Files')
+plt.ylabel('log '+colname)
+plt.legend(names,loc='center left', bbox_to_anchor=(0, -0.1))
+plt.grid(True)
+plt.show()
+  """
+    texts.append(text)
+
+  # Create markdown cells
+  markdown_cells = []
+  for t in texts:
+      markdown_cells.append(nbf.v4.new_markdown_cell(t))
+
+  # Assign the cells to the notebook
+  nb['cells'] = markdown_cells
+
+  # Define the filename for the notebook
+  filename = 'overview.ipynb'
+
+  # Write the notebook to a file
+  with open(filename, 'w') as f:
+      nbf.write(nb, f)
+
+  print(f"Notebook '{filename}' created successfully.")
+
+create_notebook()
 os.system("gnuplot "+gnuplotfn)
 os.system("epstopdf run.eps run.pdf")
 os.system("pdftoppm -png run.pdf run")

@@ -440,14 +440,14 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
-            "out-ganak-mc2324-13890807-"
+            # "out-ganak-mc2324-13890807-"
 
             # all, SAT combos
             # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
@@ -565,6 +565,8 @@ with open("gen_table.sqlite", "w") as f:
       CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
       CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
       CAST(ROUND(avg(td_width),0) AS INTEGER) as 'av tdw',\
+      ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
+      ROUND(avg(compsK/1000.0),2) as 'av compsM',\
       sum(fname is not null) as 'nfiles'\
       from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
@@ -621,18 +623,19 @@ import matplotlib.pyplot as plt
 from functools import reduce
 import numpy as np
 
-todo = ["""+dirs+"""]
+dirs = ["""+dirs+"""]
 """
   texts.append(text)
 
-  colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK", "comps", "td_width", "arjun_time", "backbone_time", "indep_sz", "td_time", "sat_called"]
+  colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK", \
+      "compsK", "td_width", "arjun_time", "backbone_time", "indep_sz", "td_time", "sat_called", "cache_miss_rate"]
   for colname in colnames:
     text= """
 colname='"""+colname+"""'
 names=[]
 dfs = []
 conn = sqlite3.connect('mydb.sql')
-for d in todo:
+for d in dirs:
   # Step 3: Run the SQL query and load the results into a DataFrame
   query = "SELECT fname, "+colname+", ganak_call FROM data where "+colname+" is not NULL and dirname='"+d+"' order by "+colname
   df1 = pd.read_sql_query(query, conn)
@@ -653,7 +656,7 @@ conn.close()
 
 # Step 5: Plot the data
 plt.figure(figsize=(10, 6))
-for i in range(len(todo)):
+for i in range(len(dirs)):
   values = result[(colname + '_' + str(i))]
   adjusted_values = np.where(values == 0, 1, values)
   log_values = np.log10(adjusted_values)
@@ -665,6 +668,41 @@ plt.legend(names,loc='center left', bbox_to_anchor=(0, -0.3))
 plt.grid(True)
 plt.show()
   """
+    texts.append(text)
+
+  for col in ["td_width"]:
+    text= """
+colname='"""+col+"""'
+dirs = ["""+dirs+"""]
+
+# Assuming 'dirs' and 'colname' are defined
+names = []
+dfs = []
+conn = sqlite3.connect('mydb.sql')
+
+# Assign a color for each dirname
+colors = plt.cm.tab10(np.linspace(0, 1, len(dirs)))
+
+for d in dirs:
+    # Run the SQL query and load the results into a DataFrame
+    query = f"SELECT fname, {colname}, ganak_time, ganak_call FROM data WHERE {colname} IS NOT NULL AND dirname='{d}' ORDER BY {colname}"
+    df1 = pd.read_sql_query(query, conn)
+    dfs.append(df1)
+    names.append(d + " " + df1['ganak_call'][0])
+
+conn.close()
+
+# Plot the data
+plt.figure(figsize=(10, 10))
+for i, d in enumerate(dirs):
+    plt.scatter(np.log10(dfs[i]['ganak_time']), np.log10(dfs[i][colname]), color=colors[i], label=names[i])
+
+plt.title('Scatterplot')
+plt.xlabel('Ganak Time (log10 scale)')
+plt.ylabel(f"{colname} (log10 scale)")
+plt.legend(loc='center left', bbox_to_anchor=(0, -0.1))
+plt.show()
+"""
     texts.append(text)
 
   # Create markdown cells

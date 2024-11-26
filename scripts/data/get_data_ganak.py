@@ -255,14 +255,28 @@ def find_restarts(fname):
     return n,cubes_orig,cubes_final
 
 #c o deletion done. T: 3.067
-def collect_cache_deletion_time(fname):
-    t = 0.0
+#c o cache pollutions call/removed  56828/28682
+#c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
+#c o cache pollutions call/removed  56828/28682
+#c o cache miss rate                0.622
+def collect_cache_data(fname):
+    cache_del_time = 0.0
+    cache_miss_rate = None
+    cache_lookupK = None
+    cache_storeK = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            #c o cache miss rate                0.622
+            if "c o cache miss rate" in line:
+              cache_miss_rate = float(line.split()[5])
+            #c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
+            if "c o cache K (lookup/ stores/ hits/ dels)" in line:
+              cache_lookupK = float(line.split()[8])
+              cache_storeK = float(line.split()[9])
             if "c o deletion done. T:" in line:
-              t += float(line.split()[5])
-    return t
+              cache_del_time += float(line.split()[5])
+    return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK
 
 def timeout_parse(fname):
     t = None
@@ -356,22 +370,6 @@ def ganak_decisions(fname) -> int|None:
     return decisionsK
 
 
-# c o cache K (lookup/ stores/ hits) 67229  34594  32634   -- Klookup/s:  38.53
-def ganak_comps(fname) -> str:
-    comps = ""
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c o cache K (lookup/ stores/ hits)" in line:
-                comps = int(line.split()[7])
-                comps = "%d" % comps
-            if "c o cache K (lookup/ stores/ hits/ dels)" in line:
-                comps = int(line.split()[8])
-                comps = "%d" % comps
-
-    return comps
-
-
 def ganak_version(fname):
     aver = None
     cver = None
@@ -436,14 +434,17 @@ for f in file_list:
         files[base]["solverver"] = ganak_version(f)
         files[base]["conflicts"] = ganak_conflicts(f)
         files[base]["decisionsK"] = ganak_decisions(f)
-        files[base]["comps"] = ganak_comps(f)
         arjun_t, backb_t, backw_t, indep_sz, unkn_sz = find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backbtime"] = backb_t
         files[base]["backwtime"] = backw_t
         files[base]["indepsz"] = indep_sz
         files[base]["unknsz"] = unkn_sz
-        files[base]["cachedeltime"] = collect_cache_deletion_time(f)
+        cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK = collect_cache_data(f)
+        files[base]["compsK"] = cache_lookupK
+        files[base]["cache_miss_rate"] = cache_miss_rate
+        files[base]["cache_storeK"] = cache_storeK
+        files[base]["cache_del_time"] = cache_del_time
         files[base]["bddcalled"] = find_bdd_called(f)
         rst,cubes_orig,cubes_final = find_restarts(f)
         files[base]["restarts"] = rst
@@ -490,7 +491,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,comps,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -534,10 +535,10 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%d," % f["decisionsK"]
 
-        if "comps" not in f or f["comps"] is None:
+        if "compsK" not in f or f["compsK"] is None:
             toprint += ","
         else:
-          toprint += "%s," % f["comps"]
+          toprint += "%s," % f["compsK"]
 
         if "td_width" not in f or f["td_width"] is None:
             toprint += ","
@@ -574,10 +575,15 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s,"  % f["unknsz"]
 
-        if "cachedeltime" not in f or f["cachedeltime"] is None:
+        if "cache_del_time" not in f or f["cache_del_time"] is None:
             toprint += ","
         else:
-          toprint += "%s,"  % f["cachedeltime"]
+          toprint += "%s,"  % f["cache_del_time"]
+
+        if "cache_miss_rate" not in f or f["cache_miss_rate"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["cache_miss_rate"]
 
         if "bddcalled" not in f or f["bddcalled"] is None:
             toprint += ","

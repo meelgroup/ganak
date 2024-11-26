@@ -10,7 +10,7 @@ CREATE TABLE data (
   ganak_ver TEXT NOT NULL,
   conflicts INT,
   decisionsK INT,
-  comps INT,
+  compsK INT,
   td_width INT,
   td_time FLOAT,
   arjun_time FLOAT,
@@ -19,6 +19,7 @@ CREATE TABLE data (
   indep_sz INT,
   unkn_sz INT,
   cache_del_time FLOAT,
+  cache_miss_rate FLOAT,
   bdd_called INT,
   sat_called INT,
   sat_rst INT,
@@ -32,7 +33,7 @@ CREATE TABLE data (
 UPDATE data SET ganak_time = NULL WHERE ganak_time = '';
 UPDATE data SET conflicts = NULL WHERE conflicts = '';
 UPDATE data SET decisionsK = NULL WHERE decisionsK = '';
-UPDATE data SET comps = NULL WHERE comps = '';
+UPDATE data SET compsK = NULL WHERE compsK = '';
 UPDATE data SET td_width = NULL WHERE td_width = '';
 UPDATE data SET td_time = NULL WHERE td_time = '';
 UPDATE data SET arjun_time = NULL WHERE arjun_time = '';
@@ -47,3 +48,4 @@ UPDATE data SET sat_rst = NULL WHERE sat_rst = '';
 UPDATE data SET restarts = NULL WHERE restarts = '';
 UPDATE data SET cubes_orig = NULL WHERE cubes_orig = '';
 UPDATE data SET cubes_final = NULL WHERE cubes_final = '';
+UPDATE data SET cache_miss_rate = NULL WHERE cache_miss_rate = '';

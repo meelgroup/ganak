@@ -484,6 +484,7 @@ install(FILES
 
 # Install the export set for use with the install-tree
 install(
+    TARGETS ganak
     EXPORT ${GANAK_EXPORT_NAME}
     DESTINATION "${GANAK_INSTALL_CMAKE_DIR}"
 )

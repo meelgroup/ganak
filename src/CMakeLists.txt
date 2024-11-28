@@ -21,7 +21,7 @@
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/)
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories( ${GMP_INCLUDE_DIR} )
@@ -47,15 +47,13 @@ endif()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
-add_subdirectory (clhash)
-
 SET(SOURCES
     comp_analyzer.cpp
-	comp_cache.cpp
-	comp_types/comp_archetype.cpp
-	comp_management.cpp
-	counter.cpp
-	statistics.cpp
+    comp_cache.cpp
+    comp_types/comp_archetype.cpp
+    comp_management.cpp
+    counter.cpp
+    statistics.cpp
     clauseallocator.cpp
     IFlowCutter.cpp
     graph.cpp
@@ -63,12 +61,24 @@ SET(SOURCES
     flow-cutter-pace17/src/cell.cpp
     flow-cutter-pace17/src/greedy_order.cpp
     TreeDecomposition.cpp
-	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp)
+    clhash/clhash.cpp
+    buddy-2.4/src/bddio.c
+    buddy-2.4/src/bddop.c
+    buddy-2.4/src/bvec.c
+    buddy-2.4/src/cache.c
+    buddy-2.4/src/fdd.c
+    buddy-2.4/src/imatrix.c
+    buddy-2.4/src/kernel.c
+    buddy-2.4/src/pairs.c
+    buddy-2.4/src/prime.c
+    buddy-2.4/src/reorder.c
+    buddy-2.4/src/tree.c
+    buddy-2.4/src/cppext.cxx
+	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
+)
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak
-  LINK_PUBLIC buddy
-  LINK_PUBLIC clhash
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${MPFR_LIBRARIES}

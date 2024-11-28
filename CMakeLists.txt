@@ -396,7 +396,7 @@ if (GIT_EXECUTABLE)
 else()
   set(GIT_SHA "GIT-hash-notfound")
 endif()
-set(GANAK_FULL_VERSION "1.0.1")
+set(GANAK_FULL_VERSION "1.1.0")
 
 string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
 SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})
@@ -406,7 +406,6 @@ MESSAGE(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
 MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 
 
-add_subdirectory(src/buddy-2.4)
 add_subdirectory(src)
 
 # -----------------------------------------------------------------------------
@@ -449,7 +448,7 @@ set(GANAK_TARGETS_FILENAME "ganakTargets.cmake")
 set(GANAK_CONFIG_FILENAME "ganakConfig.cmake")
 
 # Export targets
-set(MY_TARGETS ganak buddy clhash)
+set(MY_TARGETS ganak)
 export(
     TARGETS ${MY_TARGETS}
     FILE "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_TARGETS_FILENAME}"

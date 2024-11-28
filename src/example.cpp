@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "counter.hpp"
+#include "ganak.hpp"
 #include <arjun/arjun.h>
 using namespace std;
 using namespace GanakInt;
@@ -48,7 +48,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
 }
 
-void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, OuterCounter& counter) {
+void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
   // Setup independent support
   counter.new_vars(cnf.nVars());
   set<uint32_t> tmp;
@@ -79,7 +79,7 @@ int main() {
 
   run_arjun(cnf);
   conf.verb = 0;
-  OuterCounter counter(conf, cnf.weighted, do_precise);
+  Ganak counter(conf, cnf.weighted, do_precise);
   setup_ganak(cnf, counter);
 
   mpz_class cnt;

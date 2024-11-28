@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <cryptominisat5/streambuffer.h>
 #include <cryptominisat5/solvertypesmini.h>
 
-#include "counter.hpp"
+#include "ganak.hpp"
 #include "GitSHA1.hpp"
 #include "common.hpp"
 #include "time_mem.hpp"
@@ -306,7 +306,7 @@ void print_vars(const vector<uint32_t>& vars) {
 
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& generators,
-    OuterCounter& counter) {
+    Ganak& counter) {
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
 
@@ -390,7 +390,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 }
 
 template<typename T>
-void run_weighted_counter(OuterCounter& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
+void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     T cnt;
     static constexpr bool precise = std::is_same<T, mpq_class>::value;
     if (cnf.multiplier_weight == 0) cnt = 0;
@@ -503,7 +503,7 @@ int main(int argc, char *argv[])
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
-  OuterCounter counter(conf, cnf.weighted, do_precise);
+  Ganak counter(conf, cnf.weighted, do_precise);
   setup_ganak(cnf, generators, counter);
 
   if (cnf.weighted && !do_precise) {

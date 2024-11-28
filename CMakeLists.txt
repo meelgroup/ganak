@@ -409,6 +409,12 @@ MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 add_subdirectory(src/buddy-2.4)
 add_subdirectory(src)
 
+
+# -----------------------------------------------------------------------------
+# Provide an export name to be used by targets that wish to export themselves.
+# -----------------------------------------------------------------------------
+set(GANAK_EXPORT_NAME "arjunTargets")
+
 # -----------------------------------------------------------------------------
 # Add uninstall target for makefiles
 # -----------------------------------------------------------------------------

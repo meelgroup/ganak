@@ -115,7 +115,10 @@ set_target_properties(ganak-bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter.hpp )
+ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp )
+ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp )
+ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/mpreal.hpp )
+ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/lit.hpp )
 
 # -----------------------------------------------------------------------------
 # Copy public headers into build directory include directory.

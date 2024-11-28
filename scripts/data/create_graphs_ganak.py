@@ -671,7 +671,7 @@ plt.show()
   """
     texts.append(text)
 
-  for col1, col2 in [("td_width", "ganak_time"), ("td_width", "td_time"), ("td_width", "arjun_time"), ("td_width", "backbone_time")]:
+  for col1, col2 in [("td_width", "ganak_time"), ("td_width", "td_time"), ("td_width", "arjun_time"), ("td_width", "backbone_time"), ("compsK", "ganak_time")]:
     text= """
 col1='"""+col1+"""'
 col2='"""+col2+"""'

@@ -658,7 +658,8 @@ conn.close()
 plt.figure(figsize=(10, 6))
 for i in range(len(dirs)):
   values = result[(colname + '_' + str(i))]
-  adjusted_values = np.where(values == 0, 1, values)
+  min_non_zero = values[values > 0].min()
+  adjusted_values = np.where(values == 0, min_non_zero, values)
   log_values = np.log10(adjusted_values)
   plt.plot(result['num'],log_values,marker='o')
 plt.title('Plot of CNFs counted vs. log10 '+colname)
@@ -670,12 +671,12 @@ plt.show()
   """
     texts.append(text)
 
-  for col in ["td_width"]:
+  for col1, col2 in [("td_width", "ganak_time"), ("td_width", "td_time"), ("td_width", "arjun_time"), ("td_width", "backbone_time")]:
     text= """
-colname='"""+col+"""'
+col1='"""+col1+"""'
+col2='"""+col2+"""'
 dirs = ["""+dirs+"""]
 
-# Assuming 'dirs' and 'colname' are defined
 names = []
 dfs = []
 conn = sqlite3.connect('mydb.sql')
@@ -685,7 +686,7 @@ colors = plt.cm.tab10(np.linspace(0, 1, len(dirs)))
 
 for d in dirs:
     # Run the SQL query and load the results into a DataFrame
-    query = f"SELECT fname, {colname}, ganak_time, ganak_call FROM data WHERE {colname} IS NOT NULL AND dirname='{d}' ORDER BY {colname}"
+    query = f"SELECT fname, {col1}, {col2}, ganak_call FROM data WHERE {col1} IS NOT NULL AND {col2} is not NULL and dirname='{d}' ORDER BY {colname}"
     df1 = pd.read_sql_query(query, conn)
     dfs.append(df1)
     names.append(d + " " + df1['ganak_call'][0])
@@ -695,12 +696,12 @@ conn.close()
 # Plot the data
 plt.figure(figsize=(10, 10))
 for i, d in enumerate(dirs):
-    plt.scatter(np.log10(dfs[i]['ganak_time']), np.log10(dfs[i][colname]), color=colors[i], label=names[i])
+    plt.scatter(np.log10(dfs[i][col1]), np.log10(dfs[i][col2]), color=colors[i], label=names[i])
 
 plt.title('Scatterplot')
-plt.xlabel('Ganak Time (log10 scale)')
-plt.ylabel(f"{colname} (log10 scale)")
-plt.legend(loc='center left', bbox_to_anchor=(0, -0.1))
+plt.xlabel(f"{col1} (log10 scale)")
+plt.ylabel(f"{col2} (log10 scale)")
+plt.legend(loc='center left', bbox_to_anchor=(0, -0.2))
 plt.show()
 """
     texts.append(text)

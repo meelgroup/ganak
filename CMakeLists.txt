@@ -353,6 +353,24 @@ foreach( d ${DirDefs} )
 endforeach()
 message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
 
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+macro(ganak_add_public_header LIBTARGET HEADER)
+    get_target_property(EXISTING_PUBLIC_HEADERS ${LIBTARGET} PUBLIC_HEADER)
+    if(EXISTING_PUBLIC_HEADERS)
+        list(APPEND EXISTING_PUBLIC_HEADERS "${HEADER}")
+    else()
+        # Do not append to empty list
+        set(EXISTING_PUBLIC_HEADERS "${HEADER}")
+    endif()
+    set_target_properties(
+        ${LIBTARGET}
+        PROPERTIES
+        PUBLIC_HEADER "${EXISTING_PUBLIC_HEADERS}"
+     )
+endmacro()
+
 
 set(DEF_INSTALL_CMAKE_DIR lib/cmake/ganak)
 set(GANAK_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH

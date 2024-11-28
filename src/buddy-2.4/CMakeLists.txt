@@ -36,17 +36,20 @@ src/tree.c
 src/cppext.cxx
 )
 
-set(buddy_public_headers
-    bdd.h 
-    # ilist.h 
-    # prover.h
-    # pseudoboolean.h 
-)
+# set(buddy_public_headers bdd.h)
 
 add_library(buddy ${SOURCES})
 
-set_target_properties(buddy PROPERTIES
-    PUBLIC_HEADER "${buddy_public_headers}"
-    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+# set_target_properties(buddy PROPERTIES
+#   #     PUBLIC_HEADER "${buddy_public_headers}"
+#     VERSION 1.0
+#     SOVERSION 1.0
+# )
+
+install(TARGETS buddy
+    EXPORT ${GANAK_EXPORT_NAME}
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/ganak"
 )

@@ -21,7 +21,6 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "comp_cache.hpp"
-#include "primitive_types.hpp"
 #include "time_mem.hpp"
 #include <algorithm>
 #include <gmpxx.h>
@@ -217,6 +216,6 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   return len;
 }
 
-template class CompCache<mpz_class>;
-template class CompCache<mpfr::mpreal>;
-template class CompCache<mpq_class>;
+template class GanakInt::CompCache<mpz_class>;
+template class GanakInt::CompCache<mpfr::mpreal>;
+template class GanakInt::CompCache<mpq_class>;

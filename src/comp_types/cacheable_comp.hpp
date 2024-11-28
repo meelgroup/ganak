@@ -23,8 +23,6 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
-
-#include "../primitive_types.hpp"
 #include "hashed_comp.hpp"
 
 namespace GanakInt {

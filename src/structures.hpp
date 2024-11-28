@@ -23,91 +23,28 @@ THE SOFTWARE.
 #pragma once
 
 #include <vector>
-#include <set>
 #include <cassert>
 #include <iostream>
 #include <iomanip>
-#include "primitive_types.hpp"
-#include "common.hpp"
 #include <gmpxx.h>
-
-using std::vector;
+#include <cstdint>
+#include "lit.hpp"
+#include "common.hpp"
 
 namespace GanakInt {
 
-constexpr int32_t INVALID_DL = -1;
-
+using ClauseIndex = uint32_t;
+using ClauseOfs = uint32_t;
+using CacheEntryID = uint32_t;
 using TriValue = uint8_t;
-#define   F_TRI  0
-#define   T_TRI  1
-#define   X_TRI  2
 
-
-class Lit {
-public:
-  Lit(uint32_t val) = delete;
-  Lit(int val) = delete;
-  explicit constexpr Lit() : value_(0) { }
-  explicit constexpr Lit(uint32_t var, bool sign) : value_((var << 1) + (uint32_t) sign) {}
-
-  uint32_t var() const { return (value_ >> 1U); }
-  constexpr bool operator<(const Lit other) const { return value_ < other.value_; }
-  constexpr bool operator>(const Lit other) const { return value_ > other.value_; }
-  constexpr int to_visual_int() const { return ((int) value_ >> 1) * ((sign()) ? 1 : -1); }
-  constexpr void inc() {++value_;}
-  constexpr static Lit toLit(uint32_t data) {
-    Lit l;
-    l.copyRaw(data);
-    return l;
-  }
-  constexpr void copyRaw(uint32_t v) { value_ = v; }
-
-  // True if it's NON-NEGATED and False if it's NEGATED
-  constexpr bool sign() const { return (bool) (value_ & 0x01); }
-  constexpr bool operator!=(const Lit &rL2) const { return value_ != rL2.value_; }
-  constexpr bool operator==(const Lit &rL2) const { return value_ == rL2.value_; }
-
-  constexpr Lit neg() const {
-    Lit l;
-    l.value_ = value_ ^ 1;
-    return l;
-  }
-  int val() const { return (sign() ? (int)var() : -1*(int)var()); }
-  constexpr uint32_t raw() const { return value_;}
-
-private:
-  uint32_t value_;
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Lit lit)
-{
-  if (lit.raw() == 0) os << "UNDEF";
-  else os << lit.to_visual_int();
-  return os;
-}
-
-inline std::ostream& operator<<(std::ostream& co, const std::vector<Lit>& lits)
-{
-  for (uint32_t i = 0; i < lits.size(); i++) {
-    co << lits[i];
-    if (i != lits.size()-1) co << " ";
-  }
-  return co;
-}
-
-inline std::ostream& operator<<(std::ostream& co, const std::set<Lit>& lits)
-{
-  size_t i = 0;
-  for (const auto& l: lits) {
-    co << l;
-    if (i != lits.size()-1) co << " ";
-    i++;
-  }
-  return co;
-}
-
-static constexpr Lit NOT_A_LIT(0, false);
-#define SENTINEL_LIT NOT_A_LIT
+constexpr uint32_t sentinel = 0;
+constexpr int32_t INVALID_DL = -1;
+constexpr uint8_t F_TRI = 0;
+constexpr uint8_t T_TRI = 1;
+constexpr uint8_t X_TRI = 2;
+constexpr Lit NOT_A_LIT(0, false);
+constexpr auto SENTINEL_LIT = NOT_A_LIT;
 
 struct ClOffsBlckL {
   ClOffsBlckL() = default;
@@ -139,8 +76,8 @@ struct BinCl {
 
 class LitWatchList {
 public:
-  vector<BinCl> binaries;
-  vector<ClOffsBlckL> watch_list_;
+  std::vector<BinCl> binaries;
+  std::vector<ClOffsBlckL> watch_list_;
   double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
@@ -218,8 +155,8 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 template<typename T>
 struct Cube {
   Cube() = default;
-  Cube(const vector<Lit>& _cnf, const T& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt), symm(_symm) {}
-  vector<Lit> cnf;
+  Cube(const std::vector<Lit>& _cnf, const T& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt), symm(_symm) {}
+  std::vector<Lit> cnf;
   T cnt;
   bool enabled = true;
   bool symm = false;

@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <cassert>
 #include <vector>
 #include "../common.hpp"
-#include "../primitive_types.hpp"
+#include "structures.hpp"
 
 using std::vector;
 

@@ -179,15 +179,6 @@ bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top)
   return false;
 }
 
-template<typename T>
-CompManager<T>::CompManager(const CounterConfiguration& config, DataAndStatistics<T>& statistics,
-                 const LiteralIndexedVector<TriValue>& lit_values,
-                 const uint32_t& indep_support_end, Counter<T>* _counter) :
-    conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
-    ana(lit_values, indep_support_end, _counter), counter(_counter)
-{ }
-
-
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana"
 template<typename T>
@@ -206,6 +197,5 @@ void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watch
   comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
   cache.init(*comp_stack.back(), hash_seed);
 }
-
 
 }

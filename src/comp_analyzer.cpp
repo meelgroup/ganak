@@ -240,6 +240,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
       << comp_vars.size() << " long");
 }
 
-template class CompAnalyzer<mpz_class>;
-template class CompAnalyzer<mpfr::mpreal>;
-template class CompAnalyzer<mpq_class>;
+template class GanakInt::CompAnalyzer<mpz_class>;
+template class GanakInt::CompAnalyzer<mpfr::mpreal>;
+template class GanakInt::CompAnalyzer<mpq_class>;

@@ -31,7 +31,6 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp_types/comp.hpp"
 #include "cryptominisat5/solvertypesmini.h"
-#include "primitive_types.hpp"
 #include "counter_config.hpp"
 #include "stack.hpp"
 #include "structures.hpp"

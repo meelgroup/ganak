@@ -182,6 +182,6 @@ void DataAndStatistics<T>::print_short_formula_info(const Counter<T>* counter) c
     << counter->get_num_irred_long_cls() << "/" << num_bin_irred_cls);
 }
 
-template class DataAndStatistics<mpz_class>;
-template class DataAndStatistics<mpfr::mpreal>;
-template class DataAndStatistics<mpq_class>;
+template class GanakInt::DataAndStatistics<mpz_class>;
+template class GanakInt::DataAndStatistics<mpfr::mpreal>;
+template class GanakInt::DataAndStatistics<mpq_class>;

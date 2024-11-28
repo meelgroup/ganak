@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 #include "common.hpp"
 #include "comp_types/cacheable_comp.hpp"
-#include "primitive_types.hpp"
 #include "statistics.hpp"
 #include "counter_config.hpp"
 #include "Vec.hpp"

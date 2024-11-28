@@ -24,9 +24,9 @@ THE SOFTWARE.
 
 #include <vector>
 #include <algorithm>
-
 #include "bitset.hpp"
-#include "structures.hpp"
+using std::vector;
+
 namespace TWD {
 
 class Graph {

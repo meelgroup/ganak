@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 #include "common.hpp"
 #include "counter_config.hpp"
-#include "primitive_types.hpp"
+#include "comp_management.hpp"
 #include "statistics.hpp"
 #include "comp_management.hpp"
 #include "TreeDecomposition.hpp"

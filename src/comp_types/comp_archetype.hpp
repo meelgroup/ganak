@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <iostream>
 
-#include "../primitive_types.hpp"
 #include "../common.hpp"
 #include "comp.hpp"
 #include "cacheable_comp.hpp"

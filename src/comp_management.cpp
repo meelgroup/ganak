@@ -22,11 +22,19 @@ THE SOFTWARE.
 
 #include "comp_management.hpp"
 #include "common.hpp"
-#include "counter.hpp"
 #include "mpreal.h"
+#include "counter.hpp"
 #include <gmpxx.h>
 
 using namespace GanakInt;
+
+template<typename T>
+CompManager<T>::CompManager(const CounterConfiguration& config, DataAndStatistics<T>& statistics,
+                 const LiteralIndexedVector<TriValue>& lit_values,
+                 const uint32_t& indep_support_end, Counter<T>* _counter) :
+    conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
+    ana(lit_values, indep_support_end, _counter), counter(_counter)
+{}
 
 template<typename T>
 void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {
@@ -114,6 +122,6 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
   sort_comp_stack_range(new_comps_start_ofs, comp_stack.size());
 }
 
-template class CompManager<mpz_class>;
-template class CompManager<mpfr::mpreal>;
-template class CompManager<mpq_class>;
+template class GanakInt::CompManager<mpz_class>;
+template class GanakInt::CompManager<mpfr::mpreal>;
+template class GanakInt::CompManager<mpq_class>;

@@ -1,0 +1,26 @@
+# Config file for the @EXPORT_TYPE@ cryptominisat Package
+# It defines the following variables
+#  GANAK_INCLUDE_DIRS - include directories for cryptominisat5
+#  GANAK_LIBRARIES    - libraries to link against
+#  GANAK_EXECUTABLE   - the cryptominisat executable
+
+# Compute paths
+get_filename_component(GANAK_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(GANAK_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${GANAK_CMAKE_DIR}/@GANAK_TARGETS_FILENAME@")
+
+# These are IMPORTED targets created by @GANAK_TARGETS_FILENAME@
+set(GANAK_LIBRARIES ganak)
+set(GANAK_STATIC_LIBRARIES ganak)
+set(GANAK_LIBRARIES_DEPS gmp)
+set(GANAK_LIBRARIES_DEPS mpfr)
+set(GANAK_LIBRARIES_DEPS cryptominisat5)
+set(GANAK_LIBRARIES_DEPS arjun)
+set(GANAK_LIBRARIES_DEPS sbva)
+set(GANAK_LIBRARIES_DEPS breakid)
+set(GANAK_LIBRARIES_DEPS approxmc)
+set(GANAK_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(GANAK_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(GANAK_EXECUTABLE ganak)

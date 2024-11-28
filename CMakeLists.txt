@@ -391,6 +391,19 @@ MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 add_subdirectory(src/buddy-2.4)
 add_subdirectory(src)
 
+# -----------------------------------------------------------------------------
+# Add uninstall target for makefiles
+# -----------------------------------------------------------------------------
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY
+)
+
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+)
+
 option(ENABLE_TESTING "Enables testing" ON)
 if (ENABLE_TESTING)
   find_package(Python3 COMPONENTS NumPy Interpreter Development REQUIRED)
@@ -403,3 +416,51 @@ if (ENABLE_TESTING)
   enable_testing()
   add_subdirectory(tests/cnf-files)
 endif()
+
+
+# -----------------------------------------------------------------------------
+# Export our targets so that other CMake based projects can interface with
+# the build of ganak in the build-tree
+# -----------------------------------------------------------------------------
+set(GANAK_TARGETS_FILENAME "ganakTargets.cmake")
+set(GANAK_CONFIG_FILENAME "ganakConfig.cmake")
+
+# Export targets
+set(MY_TARGETS ganak)
+export(
+    TARGETS ${MY_TARGETS}
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_TARGETS_FILENAME}"
+)
+
+# Create ganakConfig file
+set(EXPORT_TYPE "Build-tree")
+set(CONF_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
+configure_file(ganakConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_CONFIG_FILENAME}" @ONLY
+)
+
+# Export this package to the CMake user package registry
+# Now the user can just use find_package(cryptominisat5) on their system
+export(PACKAGE ganak)
+
+set(DEF_INSTALL_CMAKE_DIR lib/cmake/ganak)
+set(GANAK_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+    "Installation directory for ganak CMake files")
+
+# Create ganakConfig file
+set(EXPORT_TYPE "installed")
+set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
+configure_file(ganakConfig.cmake.in
+   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}" @ONLY
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}"
+    DESTINATION "${GANAK_INSTALL_CMAKE_DIR}"
+)
+
+# Install the export set for use with the install-tree
+install(
+    EXPORT ${GANAK_EXPORT_NAME}
+    DESTINATION "${GANAK_INSTALL_CMAKE_DIR}"
+)

@@ -33,6 +33,8 @@ THE SOFTWARE.
 
 using std::vector;
 
+namespace GanakInt {
+
 constexpr int32_t INVALID_DL = -1;
 
 using TriValue = uint8_t;
@@ -279,4 +281,6 @@ inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {
     << " vivifed: " << (int)cl.vivifed
     << " freed: " << (int)cl.freed;
   return os;
+}
+
 }

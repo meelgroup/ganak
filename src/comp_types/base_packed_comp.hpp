@@ -31,6 +31,8 @@ THE SOFTWARE.
 
 using std::cout;
 
+namespace GanakInt {
+
 template<typename T>
 class BaseComp {
 public:
@@ -101,4 +103,6 @@ inline uint32_t BaseComp<mpfr::mpreal>::mp_data_size() const {
   unsigned long num_limbs = (prec + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
   size_t memory_usage = sizeof(mpfr::mpreal) + num_limbs * sizeof(mp_limb_t);
   return memory_usage;
+}
+
 }

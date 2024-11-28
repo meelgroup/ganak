@@ -34,6 +34,8 @@ using std::vector;
 using std::cout;
 using std::endl;
 
+namespace GanakInt {
+
 template<typename T> class Counter;
 template<typename T> class CompCache;
 
@@ -193,3 +195,5 @@ public:
     return sum_cache_store_sizes / (long double) total_num_cached_comps;
   }
 };
+
+}

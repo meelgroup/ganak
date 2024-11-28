@@ -23,6 +23,8 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include <arjun/arjun.h>
 using namespace std;
+using namespace GanakInt;
+
 CounterConfiguration conf;
 int do_pre_backbone = 0;
 ArjunNS::SimpConf simp_conf;

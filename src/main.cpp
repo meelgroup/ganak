@@ -44,6 +44,7 @@ THE SOFTWARE.
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
+using namespace GanakInt;
 
 #if defined(__GNUC__) && defined(__linux__)
 #include <cfenv>

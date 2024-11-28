@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include <string>
 using std::string;
 
+namespace GanakInt {
+
 struct CounterConfiguration {
   int verb = 1;
   int do_restart = 0;
@@ -99,3 +101,5 @@ struct CounterConfiguration {
   double appmc_timeout = -1;
   double appmc_epsilon = 0.8;
 };
+
+}

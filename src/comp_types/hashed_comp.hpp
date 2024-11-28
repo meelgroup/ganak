@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "comp.hpp"
 #include "../clhash/clhash.h"
 
+namespace GanakInt {
+
 template<typename T>
 class HashedComp: public BaseComp<T> {
 public:
@@ -43,4 +45,6 @@ template<typename T>
 HashedComp<T>::HashedComp(void* hash_seed, const Comp& comp) {
   clhasher h(hash_seed);
   BaseComp<T>::clhashkey_ = h(comp.get_raw_data().data(), comp.get_raw_data().size());
+}
+
 }

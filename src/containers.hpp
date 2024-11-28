@@ -24,6 +24,8 @@ THE SOFTWARE.
 
 #include "structures.hpp"
 
+namespace GanakInt {
+
 template<class _T>
 class LiteralIndexedVector: protected vector<_T> {
 
@@ -75,3 +77,5 @@ public:
   using vector<_T>::clear;
   using vector<_T>::push_back;
 };
+
+}

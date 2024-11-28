@@ -33,6 +33,8 @@ using std::vector;
 using std::cout;
 using std::endl;
 
+namespace GanakInt {
+
 template<typename T>
 class StackLevel {
 public:
@@ -217,3 +219,5 @@ public:
     return (int)vector<StackLevel<T>>::size() - 1;
   }
 };
+
+}

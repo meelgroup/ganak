@@ -121,6 +121,8 @@ using std::endl;
 
 #define all_vars_in_comp(comp, v) for(auto v = (comp).vars_begin(); *v != sentinel; v++)
 #define all_cls_in_comp(comp, c) for(auto c = (comp).cls_begin(); *c != sentinel; c++)
+#define all_lits(x) for(uint32_t x = 2; x < (nVars()+1)*2; x++)
+#define unif_uint_dist(x,y) std::uniform_int_distribution<> x(0, y)
 
 #define release_assert(a) \
     do { \
@@ -131,14 +133,14 @@ using std::endl;
         } \
     } while (0)
 
+namespace GanakInt {
+
 inline double float_div(const double a, const double b) {
     if (b != 0)
         return a/b;
 
     return 0;
 }
-
-#define all_lits(x) for(uint32_t x = 2; x < (nVars()+1)*2; x++)
 
 inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {
   std::stringstream ss;
@@ -160,8 +162,9 @@ inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) 
   }
   return ss.str();
 }
-#define unif_uint_dist(x,y) std::uniform_int_distribution<> x(0, y)
 inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
     unif_uint_dist(u, maximum);
     return u(mtrand);
+}
+
 }

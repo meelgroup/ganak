@@ -19,6 +19,8 @@
 using std::cout;
 using std::endl;
 
+namespace GanakInt {
+
 // State values for variables found during comp analysis (CA)
 #define   CA_VAR_IN_SUP_COMP_UNVISITED  1
 #define   CA_VAR_VISITED 2
@@ -156,3 +158,5 @@ private:
   uint8_t* data = nullptr; // all variables and all clause IDXs can be indexed here
   uint32_t data_sz = 0;
 };
+
+}

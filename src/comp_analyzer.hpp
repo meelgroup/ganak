@@ -38,6 +38,8 @@ THE SOFTWARE.
 using std::map;
 using std::pair;
 
+namespace GanakInt {
+
 template<typename T> class ClauseAllocator;
 template<typename T> class Counter;
 
@@ -207,3 +209,5 @@ CompAnalyzer<T>::CompAnalyzer(
         indep_support_end(_indep_support_end),
         counter(_counter)
 {}
+
+}

@@ -36,6 +36,8 @@ THE SOFTWARE.
 #include "stack.hpp"
 using std::set;
 
+namespace GanakInt {
+
 // There is EXACTLY ONE of this
 template<typename T>
 class CompCache {
@@ -390,3 +392,4 @@ void CompCache<T>::init(Comp &super_comp, void* hash_seed){
   compute_size_allocated();
 }
 
+}

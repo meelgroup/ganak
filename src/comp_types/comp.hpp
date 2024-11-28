@@ -29,6 +29,8 @@ THE SOFTWARE.
 
 using std::vector;
 
+namespace GanakInt {
+
 class Comp {
 public:
 
@@ -114,3 +116,5 @@ private:
   // in the hash table
   CacheEntryID id_ = 0;
 };
+
+}

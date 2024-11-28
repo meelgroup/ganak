@@ -29,10 +29,12 @@ THE SOFTWARE.
 #include "mpreal.h"
 #include "stack.hpp"
 
-#ifdef __linux__
 
+#ifdef __linux__
 #include <sys/sysinfo.h>
 #include <cstdint>
+
+using namespace GanakInt;
 
 template<typename T>
 uint64_t CompCache<T>::freeram() {
@@ -57,7 +59,6 @@ uint64_t CompCache<T>::freeram() {
 
   return physical_memory;
 }
-
 #endif
 
 template<typename T>

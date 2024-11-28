@@ -27,8 +27,11 @@ THE SOFTWARE.
 
 #include "counter_config.hpp"
 #include "structures.hpp"
-#define MIN_LIST_SIZE (50000 * (sizeof(Clause) + 4*sizeof(Lit))/sizeof(uint32_t))
-#define MAXSIZE ((1ULL << 32)-1)
+
+namespace GanakInt {
+
+constexpr uint64_t MIN_LIST_SIZE = 50000 * (sizeof(Clause) + 4*sizeof(Lit))/sizeof(uint32_t);
+constexpr uint64_t MAXSIZE = ((1ULL << 32)-1);
 
 template<typename T> class Counter;
 
@@ -84,3 +87,5 @@ ClauseAllocator<T>::ClauseAllocator(const CounterConfiguration& _conf): conf(_co
 
 template<typename T>
 ClauseAllocator<T>::~ClauseAllocator() { free(data_start); }
+
+}

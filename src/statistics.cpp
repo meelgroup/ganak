@@ -33,6 +33,8 @@ THE SOFTWARE.
 
 using std::setw;
 
+using namespace GanakInt;
+
 static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }

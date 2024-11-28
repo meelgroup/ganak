@@ -44,6 +44,7 @@ THE SOFTWARE.
 using std::pair;
 using std::map;
 
+namespace GanakInt {
 
 template<typename T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
@@ -805,3 +806,5 @@ private:
   Counter<mpfr::mpreal>* w_counter = nullptr;
   Counter<mpq_class>* wq_counter = nullptr;
 };
+
+}

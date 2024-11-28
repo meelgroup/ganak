@@ -51,6 +51,8 @@ using std::is_same;
 using std::setprecision;
 using std::setw;
 
+using namespace GanakInt;
+
 template<typename T>
 vector<uint32_t> Counter<T>::common_indep_code(const set<uint32_t>& indeps) {
   if (!num_vars_set) {
@@ -4241,6 +4243,6 @@ string Counter<T>::val_to_str(const TriValue& tri) const {
     else return "UNKN";
   }
 
-template class Counter<mpz_class>;
-template class Counter<mpfr::mpreal>;
-template class Counter<mpq_class>;
+template class GanakInt::Counter<mpz_class>;
+template class GanakInt::Counter<mpfr::mpreal>;
+template class GanakInt::Counter<mpq_class>;

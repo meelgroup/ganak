@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "mpreal.h"
 #include <gmpxx.h>
 
+using namespace GanakInt;
+
 template<typename T>
 void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());

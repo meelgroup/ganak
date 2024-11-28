@@ -37,7 +37,9 @@ THE SOFTWARE.
 using std::cout;
 using std::endl;
 
-#define ALLOC_GROW_MULT 1.5
+using namespace GanakInt;
+
+constexpr double ALLOC_GROW_MULT = 1.5;
 
 template<typename T>
 void* ClauseAllocator<T>::alloc_enough(uint32_t num_lits) {
@@ -243,6 +245,6 @@ size_t ClauseAllocator<T>::mem_used() const
   return mem;
 }
 
-template class ClauseAllocator<mpz_class>;
-template class ClauseAllocator<mpfr::mpreal>;
-template class ClauseAllocator<mpq_class>;
+template class GanakInt::ClauseAllocator<mpz_class>;
+template class GanakInt::ClauseAllocator<mpfr::mpreal>;
+template class GanakInt::ClauseAllocator<mpq_class>;

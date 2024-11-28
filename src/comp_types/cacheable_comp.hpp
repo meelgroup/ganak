@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include "../primitive_types.hpp"
 #include "hashed_comp.hpp"
 
+namespace GanakInt {
+
 class Comp;
 template<typename T> class CompArchetype;
 
@@ -71,3 +73,5 @@ private:
   CacheEntryID first_descendant_ = 0;
   CacheEntryID next_sibling_ = 0;
 };
+
+}

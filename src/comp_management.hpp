@@ -33,6 +33,8 @@ THE SOFTWARE.
 #include "clhash/clhash.h"
 #include "counter_config.hpp"
 
+namespace GanakInt {
+
 template<typename T> class Counter;
 
 // There is exactly ONE of this, inside Counter
@@ -205,3 +207,5 @@ void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watch
   cache.init(*comp_stack.back(), hash_seed);
 }
 
+
+}

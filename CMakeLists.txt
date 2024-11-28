@@ -426,7 +426,7 @@ set(GANAK_TARGETS_FILENAME "ganakTargets.cmake")
 set(GANAK_CONFIG_FILENAME "ganakConfig.cmake")
 
 # Export targets
-set(MY_TARGETS ganak)
+set(MY_TARGETS ganak buddy clhash)
 export(
     TARGETS ${MY_TARGETS}
     FILE "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_TARGETS_FILENAME}"

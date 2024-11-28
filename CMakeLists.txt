@@ -354,7 +354,7 @@ endforeach()
 message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
 
 
-set(DEF_INSTALL_CMAKE_DIR lib/cmake/arjun)
+set(DEF_INSTALL_CMAKE_DIR lib/cmake/ganak)
 set(GANAK_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
     "Installation directory for ganak CMake files")
 

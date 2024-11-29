@@ -381,11 +381,11 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
             # "out-ganak-mc2324-13890807-"
@@ -527,7 +527,7 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][180:]\\\n")
+    f.write("plot [:][10:]\\\n")
     # f.write("plot [:][190:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
@@ -587,13 +587,11 @@ for d in dirs:
   dfs.append(df1)
   names.append(d+" " +df1['ganak_call'][0])
 
+for i in range(len(dfs)):
+    for c in dfs[i].columns:
+      if c == 'num': continue
+      dfs[i].rename(columns={c: c+'_'+str(i)}, inplace=True)
 result = dfs[0]
-for c in result.columns:
-    if c == 'num': continue
-    result.rename(columns={c: c+'_0'}, inplace=True)
-
-for i, df in enumerate(dfs[1:], start=1):
-    result = pd.merge(result, df, on='num', how='outer', suffixes=(f'_{i-1}', f'_{i}'))
 
 # Merge all DataFrames
 conn.close()

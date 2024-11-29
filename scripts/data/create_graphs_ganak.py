@@ -593,6 +593,9 @@ for i in range(len(dfs)):
       dfs[i].rename(columns={c: c+'_'+str(i)}, inplace=True)
 result = dfs[0]
 
+for i, df in enumerate(dfs[1:], start=1):
+    result = pd.merge(result, df, on='num', how='outer', suffixes=(f'_{i-1}', f'_{i}'))
+
 # Merge all DataFrames
 conn.close()
 

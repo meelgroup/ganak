@@ -47,13 +47,8 @@ private:
     uint32_t cap;
 
     // Don't allow copying (error prone):
-    vec<T>&  operator = (vec<T>& /*other*/) {
-        assert(0);
-        return *this;
-    }
-    vec      (vec<T>& /*other*/) {
-        assert(0);
-    }
+    vec<T>& operator= (vec<T>& ) = delete;
+    vec (vec<T>& ) = delete;
 
     // Helpers for calculating next capacity:
     static inline uint32_t  imax   (int32_t x, int32_t y)
@@ -123,7 +118,7 @@ public:
     {
         return data[sz - 1];
     }
-    T&       last  ()
+    T&       back  ()
     {
         return data[sz - 1];
     }

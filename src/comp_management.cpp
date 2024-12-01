@@ -29,11 +29,11 @@ THE SOFTWARE.
 using namespace GanakInt;
 
 template<typename T>
-CompManager<T>::CompManager(const CounterConfiguration& config, DataAndStatistics<T>& statistics,
-                 const LiteralIndexedVector<TriValue>& lit_values,
-                 const uint32_t& indep_support_end, Counter<T>* _counter) :
+CompManager<T>::CompManager(const CounterConfiguration& config,
+    DataAndStatistics<T>& statistics,
+   const LiteralIndexedVector<TriValue>& lit_values, Counter<T>* _counter) :
     conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
-    ana(lit_values, indep_support_end, _counter), counter(_counter)
+    ana(lit_values, _counter), counter(_counter)
 {}
 
 template<typename T>
@@ -74,6 +74,7 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
 {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
+  ana.bump_stamp();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.
   // Also zeroes out frequency_scores(!)
@@ -81,7 +82,7 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
 
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
-    if (ana.var_unvisited_sup_comp(*vt) && ana.explore_comp(*vt,
+    if (ana.var_unvisited_sup_comp(*vt) && ana.explore_comp(*vt,counter->dec_level(),
           super_comp.num_long_cls(), super_comp.nVars())) {
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause

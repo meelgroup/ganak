@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <climits>
 #include <vector>
 #include <cassert>
 #include <iostream>
@@ -173,6 +174,7 @@ struct VarData {
   Antecedent ante;
   int32_t decision_level = INVALID_DL;
   uint32_t sublevel;
+  int32_t dirty_lev = INT_MAX;
   bool last_polarity = false;
 };
 

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "comp_cache.hpp"
 #include "comp_analyzer.hpp"
 
+#include <cstdint>
 #include <random>
 #include <gmpxx.h>
 #include "containers.hpp"
@@ -44,7 +45,7 @@ public:
 
   CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   const uint32_t& indep_support_end, Counter<T>* _solver);
+                   Counter<T>* _counter);
   ~CompManager() {
     free(hash_seed);
     for(auto& comp: comp_stack) delete comp;

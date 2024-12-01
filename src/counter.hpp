@@ -181,6 +181,11 @@ public:
   T get_weight(const uint32_t v) {
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
+  auto get_indep_support_end() const { return indep_support_end; }
+  auto get_opt_indep_support_end() const { return opt_indep_support_end; }
+  const auto& get_var_data(uint32_t v) const { return var_data[v]; }
+  void reset_var_data(uint32_t v) { var_data[v].dirty_lev = INT_MAX; }
+  auto dec_level() const { return decisions.get_decision_level(); }
 
 private:
   CounterConfiguration conf;
@@ -291,7 +296,6 @@ private:
   int val(Lit lit) const { return values[lit]; }
   int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
-  int32_t dec_level() const { return decisions.get_decision_level(); }
   friend class ClauseAllocator<T>;
   ClauseAllocator<T>* alloc;
   vector<ClauseOfs> long_irred_cls;
@@ -487,6 +491,7 @@ void Counter<T>::unset_lit(Lit lit) {
       bool found = (at[0] == at[lit.var()]);
       if (found) decisions[dec_level()].include_solution(get_weight(lit));
     }
+    var(lit).dirty_lev = std::min(var(lit).decision_level, var(lit).dirty_lev);
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;

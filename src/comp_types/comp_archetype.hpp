@@ -30,7 +30,7 @@ namespace GanakInt {
 #define   CA_CL_IN_SUP_COMP_UNVISITED  8
 #define   CA_CL_VISITED 16
 #define   CA_CL_IN_PEER_COMP  32
-#define   CA_CL_ALL_LITS_UNK  64
+#define   CA_CL_SAT  64
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
 
@@ -92,9 +92,13 @@ public:
     data[cl] = CA_CL_VISITED | (data[cl] & CA_VAR_MASK);
   }
 
-  void set_clause_visited(const ClauseIndex cl, const bool all_lits_unkn) {
+  void set_clause_sat(const ClauseIndex cl) {
     clear_cl(cl);
-    data[cl] = CA_CL_VISITED | (all_lits_unkn?CA_CL_ALL_LITS_UNK:0) | (data[cl] & CA_VAR_MASK);
+    data[cl] |= CA_CL_SAT;
+  }
+
+  bool clause_sat(const ClauseIndex cl) const {
+    return data[cl] & CA_CL_SAT;
   }
 
   void set_var_in_peer_comp(const uint32_t v) {
@@ -111,10 +115,6 @@ public:
 
   bool clause_visited(const ClauseIndex cl) const {
     return data[cl] & CA_CL_VISITED;
-  }
-
-  bool clause_all_lits_unkn(const ClauseIndex cl) const {
-    return data[cl] & CA_CL_ALL_LITS_UNK;
   }
 
   bool var_nil(const uint32_t v) const {

@@ -3859,7 +3859,7 @@ void Counter<T>::end_irred_cls() {
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
 
   delete comp_manager;
-  comp_manager = new CompManager(conf, stats, values, indep_support_end, this);
+  comp_manager = new CompManager(conf, stats, values, this);
   comp_manager->getrandomseedforclhash();
 
   init_decision_stack();

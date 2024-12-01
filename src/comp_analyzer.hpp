@@ -234,7 +234,6 @@ private:
       /* cout << "searching lit " << *it_l << endl; */
       assert(it_l->var() <= max_var);
 
-
       if (!archetype.var_nil(it_l->var())) manage_occ_and_score_of(it_l->var());
       else {
         assert(!is_unknown(*it_l));

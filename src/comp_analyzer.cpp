@@ -76,7 +76,7 @@ void CompAnalyzer<T>::initialize(
     const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
       Lit blk_lit = cl[cl.size()/2];
-      // stamp
+      // stamp: 64b
       long_clauses_data.push_back(Lit(0, 0));
       long_clauses_data.push_back(Lit(0, 0));
       for(const auto&l: cl) long_clauses_data.push_back(l);
@@ -104,7 +104,7 @@ void CompAnalyzer<T>::initialize(
         d.off = lits[1].raw();
         unif_occ_long[l.var()].push_back(d);
       }
-      assert(max_tri_clid == max_clid);
+      assert(max_tri_clid == max_clid && "it's sorted by clause size!");
       max_tri_clid++;
     }
     max_clid++;
@@ -135,7 +135,8 @@ void CompAnalyzer<T>::initialize(
 
   if (true) {
     // fill holder
-    assert(unif_occ_bin.size() == unif_occ_long.size() == n);
+    assert(unif_occ_bin.size() == unif_occ_long.size());
+    assert(unif_occ_bin.size() == n);
 
     uint32_t total_sz = 0;
     for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
@@ -280,7 +281,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
     while (i < holder.size_long(v)) {
       ClData& d = holder.begin_long(v)[i];
       if (d.id < max_tri_clid) {
-        if (archetype.clause_sat(d.id)) goto sat2;
+        if (archetype.clause_sat(d.id)) goto sat_long;
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
           bool sat = false;
@@ -292,9 +293,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
             if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
             bump_freq_score(v);
             archetype.set_clause_visited(d.id);
-          } else {
-            goto sat;
-          }
+          } else goto sat_tri;
         }
         i++;
       } else {
@@ -302,21 +301,22 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
         if (!sat) {
           Lit* start = long_clauses_data.data() +d.off;
           uint64_t& cl_stamp = *((uint64_t*)start);
-          if (cl_stamp == stamp+1) goto sat2;
+          if (cl_stamp == stamp+1) goto sat_long;
           if (cl_stamp != stamp)  {
             start+=2;
             sat = search_clause(d, start);
-            if (sat) {cl_stamp = stamp+1; goto sat2;}
+            if (sat) {cl_stamp = stamp+1; goto sat_long;}
             else cl_stamp = stamp;
           }
-        } else goto sat2;
+        } else goto sat_long;
         i++;
       }
       continue;
 
-      sat:
+      sat_tri:
       archetype.set_clause_sat(d.id);
-      sat2:
+      sat_long:
+      // swap and shrink
       ClData tmp = holder.begin_long(v)[i];
       holder.begin_long(v)[i] = holder.back_long(v);
       holder.back_long(v) = tmp;

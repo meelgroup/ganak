@@ -49,8 +49,8 @@ void CompAnalyzer<T>::initialize(
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
-
   vector<vector<ClauseOfs>> occs(max_var + 1);
+  const uint32_t n = max_var+1;
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer<T>::initialize...");
 
@@ -64,16 +64,16 @@ void CompAnalyzer<T>::initialize(
 
   max_clid = 1;
   max_tri_clid = 1;
-  vector<vector<ClData>> unif_occ;
-  unif_occ.clear();
-  unif_occ.resize(max_var + 1);
+  vector<vector<ClData>> unif_occ_long;
+  unif_occ_long.clear();
+  unif_occ_long.resize(n);
   long_clauses_data.clear();
   long_clauses_data.push_back(SENTINEL_LIT); // MUST start with a sentinel!
   vector<uint32_t> tmp;
   for (const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
-    uint32_t long_cl_off = long_clauses_data.size();
+    const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
       Lit blk_lit = cl[cl.size()/2];
       // stamp
@@ -84,14 +84,15 @@ void CompAnalyzer<T>::initialize(
 
       for(const auto& l: cl) {
         const uint32_t var = l.var();
-        assert(var <= max_var);
+        assert(var < n);
         ClData d;
         d.id = max_clid;
         d.off = long_cl_off;
         d.blk_lit = blk_lit;
-        unif_occ[var].push_back(d);
+        unif_occ_long[var].push_back(d);
       }
     } else {
+      assert(cl.size() == 3);
       for(const auto& l: cl) {
         uint32_t at = 0;
         Lit lits[2];
@@ -101,7 +102,7 @@ void CompAnalyzer<T>::initialize(
         d.id = max_clid;
         d.blk_lit = lits[0];
         d.off = lits[1].raw();
-        unif_occ[l.var()].push_back(d);
+        unif_occ_long[l.var()].push_back(d);
       }
       assert(max_tri_clid == max_clid);
       max_tri_clid++;
@@ -118,9 +119,9 @@ void CompAnalyzer<T>::initialize(
   // data for binary clauses
   vector<vector<uint32_t>> unif_occ_bin;
   unif_occ_bin.clear();
-  unif_occ_bin.resize(max_var+1);
+  unif_occ_bin.resize(n);
   vector<uint32_t> tmp2;
-  for (uint32_t v = 1; v < max_var + 1; v++) {
+  for (uint32_t v = 1; v < n; v++) {
     tmp2.clear();
     for(uint32_t i = 0; i < 2; i++) {
       for (const auto& bincl: watches[Lit(v, i)].binaries) {
@@ -134,15 +135,14 @@ void CompAnalyzer<T>::initialize(
 
   if (true) {
     // fill holder
-    assert(unif_occ_bin.size() == unif_occ.size());
-    uint32_t n = unif_occ.size();
+    assert(unif_occ_bin.size() == unif_occ_long.size() == n);
 
     uint32_t total_sz = 0;
-    for(const auto& u: unif_occ) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
+    for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
     for(const auto& u: unif_occ_bin) total_sz += u.size() + 2;
     uint32_t* data = new uint32_t[total_sz];
-    holder.data  = data;
-    uint32_t* data_start = holder.data + n*4;
+    holder.data = data;
+    uint32_t* data_start = holder.data + n*4; // 4 per var, because (offs, size) for bin and long
 
     for(uint32_t v = 0; v < n; v++) {
       // fill bins
@@ -155,7 +155,7 @@ void CompAnalyzer<T>::initialize(
       data_start += u_bins.size();
 
       // fill longs
-      const auto& u_longs = unif_occ[v];
+      const auto& u_longs = unif_occ_long[v];
       holder.data[v*4+3] = u_longs.size();
       offs = data_start - holder.data;
       holder.data[v*4+2] = offs;
@@ -166,12 +166,11 @@ void CompAnalyzer<T>::initialize(
     assert(data_start == data + total_sz);
 
     long_sz_declevs.resize(1);
-    long_sz_declevs[0].resize(max_var+1, MemData());
-    for(uint32_t var = 1; var < max_var+1; var++) {
-      long_sz_declevs[0][var] = MemData(holder.size_bin(var), holder.size(var));
+    long_sz_declevs[0].resize(n, MemData());
+    for(uint32_t var = 1; var < n; var++) {
+      long_sz_declevs[0][var] = MemData(holder.size_bin(var), holder.size_long(var));
       /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
     }
-
 
     // check bins
     for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
@@ -182,16 +181,15 @@ void CompAnalyzer<T>::initialize(
     }
 
     // check longs
-    for(uint32_t v = 0; v < unif_occ.size(); v++) {
-      assert(unif_occ[v].size() == holder.size(v));
-      for(uint32_t i = 0; i < unif_occ[v].size(); i++) {
-        assert(unif_occ[v][i] == holder.begin(v)[i]);
+    for(uint32_t v = 0; v < unif_occ_long.size(); v++) {
+      assert(unif_occ_long[v].size() == holder.size_long(v));
+      for(uint32_t i = 0; i < unif_occ_long[v].size(); i++) {
+        assert(unif_occ_long[v][i] == holder.begin_long(v)[i]);
       }
     }
   }
 
-  last_seen.resize(max_var+1, 0);
-
+  last_seen.resize(n, 0);
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
 }
 
@@ -238,10 +236,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
     if (last_seen[v] >= k) {
       int32_t d = std::max(k, 0);
       holder.resize_bin(v, long_sz_declevs[d][v].sz_bin);
-      holder.resize(v, long_sz_declevs[d][v].sz);
+      holder.resize_long(v, long_sz_declevs[d][v].sz);
     }
     counter->reset_var_data(v);
-    if (declev != 0) long_sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size(v));
+    if (declev != 0) long_sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v));
     last_seen[v] = declev;
     /* if (v == 1) { */
     /*   cout << setw(3) << holder.size(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
@@ -279,8 +277,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
 
     // traverse long clauses
     uint32_t i = 0;
-    while (i < holder.size(v)) {
-      ClData& d = holder.begin(v)[i];
+    while (i < holder.size_long(v)) {
+      ClData& d = holder.begin_long(v)[i];
       if (d.id < max_tri_clid) {
         if (archetype.clause_sat(d.id)) goto sat2;
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
@@ -319,10 +317,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
       sat:
       archetype.set_clause_sat(d.id);
       sat2:
-      ClData tmp = holder.begin(v)[i];
-      holder.begin(v)[i] = holder.back(v);
-      holder.back(v) = tmp;
-      holder.pop_back(v);
+      ClData tmp = holder.begin_long(v)[i];
+      holder.begin_long(v)[i] = holder.back_long(v);
+      holder.back_long(v) = tmp;
+      holder.pop_back_long(v);
       /* cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl; */
     }
   }

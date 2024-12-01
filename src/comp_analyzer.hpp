@@ -71,18 +71,18 @@ struct MyHolder {
   // start_bin, sz_bin, start, sz, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
   //
-  ClData& back(uint32_t v) {
-    return (begin(v))[size(v)-1];
+  ClData& back_long(uint32_t v) {
+    return (begin_long(v))[size_long(v)-1];
   }
-  ClData* begin(uint32_t v) {
+  ClData* begin_long(uint32_t v) {
     auto start = data[v*4+2];
     return (ClData*) (data + start);
   }
-  uint32_t size(uint32_t v) { return data[v*4+3];}
-  void pop_back(uint32_t v) {
+  uint32_t size_long(uint32_t v) { return data[v*4+3];}
+  void pop_back_long(uint32_t v) {
     data[v*4+3]--;
   }
-  void resize(uint32_t v, uint32_t sz) {
+  void resize_long(uint32_t v, uint32_t sz) {
     data[v*4+3] = sz;
   }
 

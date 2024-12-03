@@ -307,14 +307,15 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
           /* if (archetype.clause_sat(d.id)) goto sat_long; */
-          /* bool sat = is_true(d.blk_lit); */
+          bool sat = is_true(d.blk_lit);
+          if (sat) {i++; continue;}
           /* if (sat) goto sat_long; */
           Lit* start = long_clauses_data.data()+d.off;
           /* uint64_t& cl_stamp = *((uint64_t*)start); */
           /* if (cl_stamp == stamp+1) goto sat_long; */
           /* if (cl_stamp != stamp)  { */
             /* start+=2; */
-            bool sat = search_clause(v, d, start);
+            sat = search_clause(v, d, start);
             /* if (sat) goto sat_long; */
             /* if (sat) {cl_stamp = stamp+1; goto sat_long;} */
             /* else cl_stamp = stamp; */

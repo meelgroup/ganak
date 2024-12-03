@@ -225,7 +225,7 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  bool search_clause(ClData& d, Lit const* cl_start) {
+  bool search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
     /* cout << "searching clause " << d.id << endl; */
     bool sat = false;
     const auto it_v_end = comp_vars.end();
@@ -265,7 +265,10 @@ private:
       }
     }
 
-    if (!sat) archetype.set_clause_visited(d.id);
+    if (!archetype.clause_nil(d.id)) {
+      bump_freq_score(v2);
+      archetype.set_clause_visited(d.id);
+    }
     return sat;
   }
 };

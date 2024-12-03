@@ -226,30 +226,30 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  if (declev >= (int)sz_declevs.size()) {
-    int32_t at = sz_declevs.size();
-    sz_declevs.resize(declev+1);
-    for(int32_t i = at; i <= declev; i++) {
-      sz_declevs[i].resize(max_var+1, MemData());
-      for(uint32_t v = 1; v <= max_var; v++) {
-        sz_declevs[i][v] = MemData(holder.size_bin(v), holder.size_long(v));
-      }
-    }
-  }
+  /* if (declev >= (int)sz_declevs.size()) { */
+  /*   int32_t at = sz_declevs.size(); */
+  /*   sz_declevs.resize(declev+1); */
+  /*   for(int32_t i = at; i <= declev; i++) { */
+  /*     sz_declevs[i].resize(max_var+1, MemData()); */
+  /*     for(uint32_t v = 1; v <= max_var; v++) { */
+  /*       sz_declevs[i][v] = MemData(holder.size_bin(v), holder.size_long(v)); */
+  /*     } */
+  /*   } */
+  /* } */
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-    const int32_t k = std::min(counter->get_var_data(v).dirty_lev, declev);
-    if (last_seen[v] >= k) {
-      const int32_t d = std::max(k, 0);
-      holder.resize_bin(v, sz_declevs[d][v].sz_bin);
-      holder.resize_long(v, sz_declevs[d][v].sz_long);
-    }
+    /* const int32_t k = std::min(counter->get_var_data(v).dirty_lev, declev); */
+    /* if (last_seen[v] >= k) { */
+    /*   const int32_t d = std::max(k, 0); */
+    /*   holder.resize_bin(v, sz_declevs[d][v].sz_bin); */
+    /*   holder.resize_long(v, sz_declevs[d][v].sz_long); */
+    /* } */
     counter->reset_var_data(v);
-    if (declev != 0) sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v));
-    last_seen[v] = declev;
+    /* if (declev != 0) sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v)); */
+    /* last_seen[v] = declev; */
     /* cout << setw(3) << holder.size_long(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
 
 
@@ -263,17 +263,17 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     for(uint32_t i = 0; i < holder.size_bin(v);) {
       uint32_t v2 = holder.begin_bin(v)[i];
       // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
-      bool sat = !is_unknown(v2);
+      const bool sat = !is_unknown(v2);
       if (!sat && manage_occ_of(v2)) {
         bump_freq_score(v2);
         bump_freq_score(v);
 
       }
-      if (sat) {
-        holder.begin_bin(v)[i] = holder.back_bin(v);
-        holder.back_bin(v) = v2;
-        holder.pop_back_bin(v);
-      } else
+      /* if (sat) { */
+      /*   holder.begin_bin(v)[i] = holder.back_bin(v); */
+      /*   holder.back_bin(v) = v2; */
+      /*   holder.pop_back_bin(v); */
+      /* } else */
         i++;
     }
 
@@ -290,43 +290,47 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
         if (archetype.clause_sat(d.id)) goto sat_long;
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
-          bool sat = false;
           const Lit l1 = d.get_lit1();
           const Lit l2 = d.get_lit2();
-          sat = is_true(l1) || is_true(l2);
-          if (!sat) {
-            if (is_unknown(l1) && !archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
-            if (is_unknown(l2) && !archetype.var_nil(l2.var())) manage_occ_and_score_of(l2.var());
+          if (is_true(l1) || is_true(l2)) {
+            goto sat_tri;
+          } else {
             bump_freq_score(v);
+            manage_occ_and_score_of(l1.var());
+            manage_occ_and_score_of(l2.var());
             archetype.set_clause_visited(d.id);
-          } else goto sat_tri;
+          }
         }
         i++;
       } else {
+        if (archetype.clause_sat(d.id)) goto sat_long;
         bool sat = is_true(d.blk_lit);
-        if (!sat) {
+        if (sat) goto sat_long;
+        if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           Lit* start = long_clauses_data.data() +d.off;
-          uint64_t& cl_stamp = *((uint64_t*)start);
+          /* uint64_t& cl_stamp = *((uint64_t*)start); */
           /* if (cl_stamp == stamp+1) goto sat_long; */
           /* if (cl_stamp != stamp)  { */
             start+=2;
-            sat = search_clause(d, start);
-            if (sat) {cl_stamp = stamp+1; goto sat_long;}
-            else cl_stamp = stamp;
+            sat = search_clause(v, d, start);
+            if (sat) goto sat_long;
+            /* if (sat) {cl_stamp = stamp+1; goto sat_long;} */
+            /* else cl_stamp = stamp; */
           /* } */
-        } else goto sat_long;
+        }
         i++;
       }
       continue;
 
       sat_tri:
-      /* archetype.set_clause_sat(d.id); */
       sat_long:
+      archetype.set_clause_sat(d.id);
       // swap and shrink
-      ClData tmp = holder.begin_long(v)[i];
-      holder.begin_long(v)[i] = holder.back_long(v);
-      holder.back_long(v) = tmp;
-      holder.pop_back_long(v);
+      i++;
+      /* ClData tmp = holder.begin_long(v)[i]; */
+      /* holder.begin_long(v)[i] = holder.back_long(v); */
+      /* holder.back_long(v) = tmp; */
+      /* holder.pop_back_long(v); */
       /* cout << "shrinking size of occ[v " << v << "] to " << holder.size_long(v) << endl; */
     }
   }

@@ -105,6 +105,10 @@ public:
     data[v] = CA_VAR_IN_PEER_COMP | (data[v] & CA_CL_MASK);
   }
 
+  bool var_in_peer_comp(const uint32_t v) const {
+    return CA_VAR_IN_PEER_COMP & (data[v] & CA_CL_MASK);
+  }
+
   void set_clause_in_peer_comp(const ClauseIndex cl) {
     data[cl] = CA_CL_IN_PEER_COMP | (data[cl] & CA_VAR_MASK);
   }

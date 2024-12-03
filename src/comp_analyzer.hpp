@@ -57,11 +57,11 @@ struct ClData {
   bool operator<(const ClData& other) const { return id < other.id; }
 };
 struct MemData {
-  MemData(uint32_t _sz_bin, uint32_t _sz) :
-    sz_bin(_sz_bin), sz(_sz)  {}
+  MemData(uint32_t _sz_bin, uint32_t _sz_long) :
+    sz_bin(_sz_bin), sz_long(_sz_long)  {}
   MemData() = default;
   uint32_t sz_bin = UINT_MAX;
-  uint32_t sz = UINT_MAX;
+  uint32_t sz_long = UINT_MAX;
 };
 
 struct MyHolder {
@@ -184,7 +184,7 @@ private:
 
   MyHolder holder;
   vector<Lit> long_clauses_data;
-  vector<vector<MemData>> long_sz_declevs;
+  vector<vector<MemData>> sz_declevs;
   vector<int32_t> last_seen;
   const LiteralIndexedVector<TriValue> & values;
   uint64_t stamp = 10;
@@ -214,7 +214,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void record_comp(const uint32_t var, int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
+  void record_comp(const uint32_t var, const int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
 
   void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
     tmp.clear();
@@ -226,21 +226,32 @@ private:
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
   bool search_clause(ClData& d, Lit const* cl_start) {
-    /* cout << "searching clause " << cl_id << endl; */
+    /* cout << "searching clause " << d.id << endl; */
     bool sat = false;
     const auto it_v_end = comp_vars.end();
 
+    /* for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) { */
+    /*   cout << *it_l << " "; */
+    /* } cout << "0 " << endl; */
+
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       /* cout << "searching lit " << *it_l << endl; */
-      assert(it_l->var() <= max_var);
+      const uint32_t v = it_l->var();
+      assert(v <= max_var);
 
-      if (!archetype.var_nil(it_l->var())) manage_occ_and_score_of(it_l->var());
+      if (!archetype.var_nil(v)) {
+        /* if (archetype.var_visited(v)) cout << "var visited" << endl; */
+        /* if (archetype.var_unvisited_in_sup_comp(v)) cout << "var unvisited in sup (must be unknown)" << endl; */
+        /* if (archetype.var_in_peer_comp(v)) cout << "var in peer comp" << endl; */
+        manage_occ_and_score_of(v);
+      }
       else {
         assert(!is_unknown(*it_l));
         if (is_false(*it_l)) continue;
         d.blk_lit = *it_l;
 
         //accidentally entered a satisfied clause: undo the search process
+        /* cout << "satisfied clause due to: " << *it_l << endl; */
         sat = true;
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
@@ -254,7 +265,7 @@ private:
       }
     }
 
-    /* if (!sat) archetype.set_clause_visited(d.id); */
+    if (!sat) archetype.set_clause_visited(d.id);
     return sat;
   }
 };

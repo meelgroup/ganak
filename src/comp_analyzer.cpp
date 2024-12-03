@@ -29,8 +29,10 @@ THE SOFTWARE.
 #include <climits>
 #include <cstdint>
 #include <cstdint>
+#include <ios>
 
 using namespace GanakInt;
+using std::setw;
 
 inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 {
@@ -109,10 +111,10 @@ void CompAnalyzer<T>::initialize(
     }
     max_clid++;
   }
-  cout << "max clid: " << max_clid << " max_tri_clid: " << max_tri_clid << endl;;
+  /* cout << "max clid: " << max_clid << " max_tri_clid: " << max_tri_clid << endl;; */
   debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
 
-  archetype.init_data(max_var, max_tri_clid);
+  archetype.init_data(max_var, max_clid);
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer<T>::initialize...");
 
 
@@ -166,10 +168,10 @@ void CompAnalyzer<T>::initialize(
     }
     assert(data_start == data + total_sz);
 
-    long_sz_declevs.resize(1);
-    long_sz_declevs[0].resize(n, MemData());
+    sz_declevs.resize(1);
+    sz_declevs[0].resize(n, MemData());
     for(uint32_t var = 1; var < n; var++) {
-      long_sz_declevs[0][var] = MemData(holder.size_bin(var), holder.size_long(var));
+      sz_declevs[0][var] = MemData(holder.size_bin(var), holder.size_long(var));
       /* std::sort(unif_occ[var].begin(), unif_occ[var].end()); */
     }
 
@@ -215,7 +217,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev, const uint
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -224,27 +226,31 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  if (declev >= (int)long_sz_declevs.size()) {
-    long_sz_declevs.resize(declev+1);
-    long_sz_declevs[declev].resize(max_var+1, MemData());
+  if (declev >= (int)sz_declevs.size()) {
+    int32_t at = sz_declevs.size();
+    sz_declevs.resize(declev+1);
+    for(int32_t i = at; i <= declev; i++) {
+      sz_declevs[i].resize(max_var+1, MemData());
+      for(uint32_t v = 1; v <= max_var; v++) {
+        sz_declevs[i][v] = MemData(holder.size_bin(v), holder.size_long(v));
+      }
+    }
   }
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-    int32_t k = std::min(counter->get_var_data(v).dirty_lev, declev);
+    const int32_t k = std::min(counter->get_var_data(v).dirty_lev, declev);
     if (last_seen[v] >= k) {
-      int32_t d = std::max(k, 0);
-      holder.resize_bin(v, long_sz_declevs[d][v].sz_bin);
-      holder.resize_long(v, long_sz_declevs[d][v].sz);
+      const int32_t d = std::max(k, 0);
+      holder.resize_bin(v, sz_declevs[d][v].sz_bin);
+      holder.resize_long(v, sz_declevs[d][v].sz_long);
     }
     counter->reset_var_data(v);
-    if (declev != 0) long_sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v));
+    if (declev != 0) sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v));
     last_seen[v] = declev;
-    /* if (v == 1) { */
-    /*   cout << setw(3) << holder.size(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
-    /* } */
+    /* cout << setw(3) << holder.size_long(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
 
 
     if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) {
@@ -285,8 +291,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
           bool sat = false;
-          Lit l1 = d.get_lit1();
-          Lit l2 = d.get_lit2();
+          const Lit l1 = d.get_lit1();
+          const Lit l2 = d.get_lit2();
           sat = is_true(l1) || is_true(l2);
           if (!sat) {
             if (is_unknown(l1) && !archetype.var_nil(l1.var())) manage_occ_and_score_of(l1.var());
@@ -301,27 +307,27 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, int32_t declev, const uint
         if (!sat) {
           Lit* start = long_clauses_data.data() +d.off;
           uint64_t& cl_stamp = *((uint64_t*)start);
-          if (cl_stamp == stamp+1) goto sat_long;
-          if (cl_stamp != stamp)  {
+          /* if (cl_stamp == stamp+1) goto sat_long; */
+          /* if (cl_stamp != stamp)  { */
             start+=2;
             sat = search_clause(d, start);
             if (sat) {cl_stamp = stamp+1; goto sat_long;}
             else cl_stamp = stamp;
-          }
+          /* } */
         } else goto sat_long;
         i++;
       }
       continue;
 
       sat_tri:
-      archetype.set_clause_sat(d.id);
+      /* archetype.set_clause_sat(d.id); */
       sat_long:
       // swap and shrink
       ClData tmp = holder.begin_long(v)[i];
       holder.begin_long(v)[i] = holder.back_long(v);
       holder.back_long(v) = tmp;
       holder.pop_back_long(v);
-      /* cout << "shrinking size of occ[v " << v << "] to " << unif_occ[v].size() << endl; */
+      /* cout << "shrinking size of occ[v " << v << "] to " << holder.size_long(v) << endl; */
     }
   }
 

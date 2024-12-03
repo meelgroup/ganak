@@ -253,11 +253,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     /* cout << setw(3) << holder.size_long(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
 
 
-    /* if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) { */
-    /*     // can't be more variables in this component */
-    /*     // but we still need to update stuff above, so continue but skip binary look-through */
-    /*     continue; */
-    /* } */
+    if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) {
+        // can't be more variables in this component
+        // but we still need to update stuff above, so continue but skip binary look-through
+        continue;
+    }
 
     //traverse binary clauses
     for(uint32_t i = 0; i < holder.size_bin(v);) {
@@ -278,10 +278,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
         i++;
     }
 
-    /* if (sup_comp_cls == archetype.num_cls) { */
-    /*   // we have seen all long clauses */
-    /*   continue; */
-    /* } */
+    if (sup_comp_cls == archetype.num_cls) {
+      // we have seen all long clauses
+      continue;
+    }
 
     // traverse long clauses
     for (uint32_t i = 0; i < holder.size_long(v);) {
@@ -308,7 +308,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
           archetype.num_cls++;
           /* if (archetype.clause_sat(d.id)) goto sat_long; */
           bool sat = is_true(d.blk_lit);
-          if (sat) {i++; continue;}
+          if (sat) {
+            archetype.clear_cl(d.id);
+            i++;
+            continue;}
           /* if (sat) goto sat_long; */
           Lit* start = long_clauses_data.data()+d.off;
           /* uint64_t& cl_stamp = *((uint64_t*)start); */

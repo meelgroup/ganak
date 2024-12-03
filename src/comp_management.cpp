@@ -74,7 +74,6 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
 {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
-  ana.bump_stamp();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.
   // Also zeroes out frequency_scores(!)

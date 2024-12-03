@@ -78,9 +78,6 @@ void CompAnalyzer<T>::initialize(
     const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
       Lit blk_lit = cl[cl.size()/2];
-      // stamp: 64b
-      /* long_clauses_data.push_back(Lit(0, 0)); */
-      /* long_clauses_data.push_back(Lit(0, 0)); */
       for(const auto&l: cl) long_clauses_data.push_back(l);
       long_clauses_data.push_back(SENTINEL_LIT);
 
@@ -314,14 +311,9 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
             continue;}
           /* if (sat) goto sat_long; */
           Lit* start = long_clauses_data.data()+d.off;
-          /* uint64_t& cl_stamp = *((uint64_t*)start); */
-          /* if (cl_stamp == stamp+1) goto sat_long; */
-          /* if (cl_stamp != stamp)  { */
             /* start+=2; */
             sat = search_clause(v, d, start);
             /* if (sat) goto sat_long; */
-            /* if (sat) {cl_stamp = stamp+1; goto sat_long;} */
-            /* else cl_stamp = stamp; */
           /* } */
         }
         i++;

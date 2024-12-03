@@ -159,7 +159,6 @@ public:
   }
 
   bool explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
-  void bump_stamp() { stamp+=2; }
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
@@ -188,7 +187,6 @@ private:
   /* vector<vector<MemData>> sz_declevs; */
   vector<int32_t> last_seen;
   const LiteralIndexedVector<TriValue> & values;
-  uint64_t stamp = 10;
 
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;
@@ -255,7 +253,7 @@ private:
           comp_vars.pop_back();
         }
         archetype.clear_cl(d.id);
-        while(*it_l != SENTINEL_LIT) // beware, does not work with stamp
+        while(*it_l != SENTINEL_LIT)
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
         break;
       }

@@ -92,14 +92,13 @@ public:
     data[cl] = CA_CL_VISITED | (data[cl] & CA_VAR_MASK);
   }
 
-  void set_clause_sat(const ClauseIndex cl) {
-    clear_cl(cl);
-    data[cl] |= CA_CL_SAT;
-  }
-
-  bool clause_sat(const ClauseIndex cl) const {
-    return data[cl] & CA_CL_SAT;
-  }
+  /* void set_clause_sat(const ClauseIndex cl) { */
+  /*   clear_cl(cl); */
+  /*   data[cl] |= CA_CL_SAT; */
+  /* } */
+  /* bool clause_sat(const ClauseIndex cl) const { */
+  /*   return data[cl] & CA_CL_SAT; */
+  /* } */
 
   void set_var_in_peer_comp(const uint32_t v) {
     data[v] = CA_VAR_IN_PEER_COMP | (data[v] & CA_CL_MASK);

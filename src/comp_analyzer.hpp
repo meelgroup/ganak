@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include "containers.hpp"
 #include "stack.hpp"
+#include "structures.hpp"
 
 using std::map;
 using std::pair;
@@ -68,7 +69,7 @@ struct MyHolder {
   MyHolder () = default;
   ~MyHolder() { delete data;}
   uint32_t* data;
-  // start_bin, sz_bin, start, sz, start_bin, sz_bin.... data...data.... data ... data...
+  // start_bin, sz_bin, start_long, sz_long, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
   //
   ClData& back_long(uint32_t v) {
@@ -152,7 +153,7 @@ public:
       }
 
     all_cls_in_comp(super_comp, it) {
-      if (*it > max_tri_clid) break;
+      /* if (*it > max_tri_clid) break; */
       archetype.set_clause_in_sup_comp_unvisited(*it);
     }
   }
@@ -184,7 +185,7 @@ private:
 
   MyHolder holder;
   vector<Lit> long_clauses_data;
-  vector<vector<MemData>> sz_declevs;
+  /* vector<vector<MemData>> sz_declevs; */
   vector<int32_t> last_seen;
   const LiteralIndexedVector<TriValue> & values;
   uint64_t stamp = 10;
@@ -226,18 +227,13 @@ private:
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
   bool search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
-    /* cout << "searching clause " << d.id << endl; */
     bool sat = false;
     const auto it_v_end = comp_vars.end();
 
-    /* for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) { */
-    /*   cout << *it_l << " "; */
-    /* } cout << "0 " << endl; */
-
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
-      /* cout << "searching lit " << *it_l << endl; */
       const uint32_t v = it_l->var();
       assert(v <= max_var);
+      if (v == v2) continue;
 
       if (!archetype.var_nil(v)) {
         /* if (archetype.var_visited(v)) cout << "var visited" << endl; */
@@ -259,7 +255,7 @@ private:
           comp_vars.pop_back();
         }
         archetype.clear_cl(d.id);
-        while(*it_l != SENTINEL_LIT)
+        while(*it_l != SENTINEL_LIT) // beware, does not work with stamp
           if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
         break;
       }

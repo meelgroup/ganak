@@ -244,8 +244,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
 
     for (uint32_t i = 0, sz = holder.size_long(v); i < sz; i++) {
       ClData& d = holder.begin_long(v)[i];
-      // traverse ternary clauses
       if (d.id < max_tri_clid) {
+        // traverse ternary clauses
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
           const Lit l1 = d.get_lit1();

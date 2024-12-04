@@ -227,27 +227,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
 
-  /* if (declev >= (int)sz_declevs.size()) { */
-  /*   int32_t at = sz_declevs.size(); */
-  /*   sz_declevs.resize(declev+1); */
-  /*   for(int32_t i = at; i <= declev; i++) { */
-  /*     sz_declevs[i].resize(max_var+1, MemData()); */
-  /*     for(uint32_t v = 1; v <= max_var; v++) { */
-  /*       sz_declevs[i][v] = MemData(holder.size_bin(v), holder.size_long(v)); */
-  /*     } */
-  /*   } */
-  /* } */
-
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-    /* const int32_t k = std::min(counter->get_var_data(v).dirty_lev, declev); */
-    /* if (last_seen[v] >= k) { */
-    /*   const int32_t d = std::max(k, 0); */
-    /*   holder.resize_bin(v, sz_declevs[d][v].sz_bin); */
-    /*   holder.resize_long(v, sz_declevs[d][v].sz_long); */
-    /* } */
+#ifdef USE_DIRTY
     const auto c_dirty = counter->get_dirty();
     auto& this_dirty = last_dirty[v];
     if (this_dirty < c_dirty) {
@@ -255,10 +239,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
       holder.resize_long(v, holder_orig_szs[v].sz_long);
     }
     this_dirty = c_dirty;
-    /* if (declev != 0) sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v)); */
-    /* last_seen[v] = declev; */
-    /* cout << setw(3) << holder.size_long(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
-
+#endif
 
     if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) {
         // can't be more variables in this component
@@ -278,11 +259,13 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
           bump_freq_score(v);
         } else sat = true;
       }
+#ifdef USE_DIRTY
       if (sat) {
         holder.begin_bin(v)[i] = holder.back_bin(v);
         holder.back_bin(v) = v2;
         holder.pop_back_bin(v);
       } else
+#endif
         i++;
     }
 
@@ -325,9 +308,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
         i++;
       }
 
-      /* sat_tri: */
-      /* sat_long: */
-      /* archetype.set_clause_sat(d.id); */
+#ifdef USE_DIRTY
       // swap and shrink
       if (sat) {
         i--;
@@ -336,7 +317,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
         holder.back_long(v) = tmp;
         holder.pop_back_long(v);
       }
-      /* cout << "shrinking size of occ[v " << v << "] to " << holder.size_long(v) << endl; */
+#endif
     }
   }
 

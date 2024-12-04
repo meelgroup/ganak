@@ -45,7 +45,7 @@ namespace GanakInt {
 template<typename T> class ClauseAllocator;
 template<typename T> class Counter;
 
-#define USE_DIRTY
+/* #define USE_DIRTY */
 
 struct ClData {
   uint32_t id;

@@ -51,6 +51,7 @@ void CompAnalyzer<T>::initialize(
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
+  last_dirty.resize(max_var + 1, 0);
   vector<vector<ClauseOfs>> occs(max_var + 1);
   const uint32_t n = max_var+1;
 
@@ -137,6 +138,7 @@ void CompAnalyzer<T>::initialize(
     assert(unif_occ_bin.size() == unif_occ_long.size());
     assert(unif_occ_bin.size() == n);
 
+    holder_orig_szs.resize(n);
     uint32_t total_sz = 0;
     for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
     for(const auto& u: unif_occ_bin) total_sz += u.size() + 2;
@@ -148,6 +150,7 @@ void CompAnalyzer<T>::initialize(
       // fill bins
       const auto& u_bins = unif_occ_bin[v];
       holder.data[v*4+1] = u_bins.size();
+      holder_orig_szs[v].sz_bin = u_bins.size();
       uint32_t offs = data_start - holder.data;
       holder.data[v*4+0] = offs;
       assert(offs <= total_sz);
@@ -157,6 +160,7 @@ void CompAnalyzer<T>::initialize(
       // fill longs
       const auto& u_longs = unif_occ_long[v];
       holder.data[v*4+3] = u_longs.size();
+      holder_orig_szs[v].sz_long = u_longs.size();
       offs = data_start - holder.data;
       holder.data[v*4+2] = offs;
       assert(offs <= total_sz);
@@ -244,7 +248,13 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     /*   holder.resize_bin(v, sz_declevs[d][v].sz_bin); */
     /*   holder.resize_long(v, sz_declevs[d][v].sz_long); */
     /* } */
-    /* counter->reset_var_data(v); */
+    const auto c_dirty = counter->get_dirty();
+    auto& this_dirty = last_dirty[v];
+    if (this_dirty < c_dirty) {
+      holder.resize_bin(v, holder_orig_szs[v].sz_bin);
+      holder.resize_long(v, holder_orig_szs[v].sz_long);
+    }
+    this_dirty = c_dirty;
     /* if (declev != 0) sz_declevs[declev][v] = MemData(holder.size_bin(v), holder.size_long(v)); */
     /* last_seen[v] = declev; */
     /* cout << setw(3) << holder.size_long(1) << " " << setw(3) << holder.size_bin(1) << setw(3) << " lev: " << declev << endl; */
@@ -261,17 +271,18 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
       uint32_t v2 = holder.begin_bin(v)[i];
       // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
       /* const bool sat = !is_unknown(v2); */
+      bool sat = false;
       if (manage_occ_of(v2)) {
         if (is_unknown(v2)) {
           bump_freq_score(v2);
           bump_freq_score(v);
-        }
+        } else sat = true;
       }
-      /* if (sat) { */
-      /*   holder.begin_bin(v)[i] = holder.back_bin(v); */
-      /*   holder.back_bin(v) = v2; */
-      /*   holder.pop_back_bin(v); */
-      /* } else */
+      if (sat) {
+        holder.begin_bin(v)[i] = holder.back_bin(v);
+        holder.back_bin(v) = v2;
+        holder.pop_back_bin(v);
+      } else
         i++;
     }
 
@@ -283,15 +294,15 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     // traverse long clauses
     for (uint32_t i = 0; i < holder.size_long(v);) {
       ClData& d = holder.begin_long(v)[i];
+      bool sat = false;
       if (d.id < max_tri_clid) {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
-          /* if (archetype.clause_sat(d.id)) goto sat_long; */
           const Lit l1 = d.get_lit1();
           const Lit l2 = d.get_lit2();
           if (is_true(l1) || is_true(l2)) {
             archetype.clear_cl(d.id);
-            /* goto sat_tri; */
+            sat = true;
           } else {
             bump_freq_score(v);
             manage_occ_and_score_of(l1.var());
@@ -303,32 +314,28 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
       } else {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
-          /* if (archetype.clause_sat(d.id)) goto sat_long; */
-          bool sat = is_true(d.blk_lit);
+          sat = is_true(d.blk_lit);
           if (sat) {
             archetype.clear_cl(d.id);
             i++;
             continue;}
-          /* if (sat) goto sat_long; */
           Lit* start = long_clauses_data.data()+d.off;
-            /* start+=2; */
             sat = search_clause(v, d, start);
-            /* if (sat) goto sat_long; */
-          /* } */
         }
         i++;
       }
-      /* continue; */
 
       /* sat_tri: */
       /* sat_long: */
       /* archetype.set_clause_sat(d.id); */
       // swap and shrink
-      /* i++; */
-      /* ClData tmp = holder.begin_long(v)[i]; */
-      /* holder.begin_long(v)[i] = holder.back_long(v); */
-      /* holder.back_long(v) = tmp; */
-      /* holder.pop_back_long(v); */
+      if (sat) {
+        i--;
+        ClData tmp = holder.begin_long(v)[i];
+        holder.begin_long(v)[i] = holder.back_long(v);
+        holder.back_long(v) = tmp;
+        holder.pop_back_long(v);
+      }
       /* cout << "shrinking size of occ[v " << v << "] to " << holder.size_long(v) << endl; */
     }
   }

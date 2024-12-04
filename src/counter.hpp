@@ -184,10 +184,11 @@ public:
   auto get_indep_support_end() const { return indep_support_end; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
   const auto& get_var_data(uint32_t v) const { return var_data[v]; }
-  void reset_var_data(uint32_t v) { var_data[v].dirty_lev = INT_MAX; }
+  auto get_dirty() const { return dirty; }
   auto dec_level() const { return decisions.get_decision_level(); }
 
 private:
+  uint64_t dirty = 0;
   CounterConfiguration conf;
   DataAndStatistics<T> stats;
   bool num_vars_set = false;
@@ -491,7 +492,7 @@ void Counter<T>::unset_lit(Lit lit) {
       bool found = (at[0] == at[lit.var()]);
       if (found) decisions[dec_level()].include_solution(get_weight(lit));
     }
-    var(lit).dirty_lev = std::min(var(lit).decision_level, var(lit).dirty_lev);
+    dirty++;
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;
     values[lit.neg()] = X_TRI;

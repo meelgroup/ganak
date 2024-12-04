@@ -183,6 +183,9 @@ private:
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 
   MyHolder holder;
+  struct HolderOrigSz {uint32_t sz_bin; uint32_t sz_long;};
+  vector<HolderOrigSz> holder_orig_szs;
+  vector<uint64_t> last_dirty;
   vector<Lit> long_clauses_data;
   /* vector<vector<MemData>> sz_declevs; */
   vector<int32_t> last_seen;

@@ -266,7 +266,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
           bool sat = is_true(d.blk_lit);
           if (sat) {
             archetype.clear_cl(d.id);
-            i++;
             continue;}
           Lit* start = long_clauses_data.data()+d.off;
             search_clause(v, d, start);

@@ -29,10 +29,8 @@ THE SOFTWARE.
 #include <climits>
 #include <cstdint>
 #include <cstdint>
-#include <ios>
 
 using namespace GanakInt;
-using std::setw;
 
 inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 {

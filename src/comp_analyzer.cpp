@@ -167,13 +167,6 @@ void CompAnalyzer<T>::initialize(
     }
     assert(data_start == data + total_sz);
 
-    /* sz_declevs.resize(1); */
-    /* sz_declevs[0].resize(n, MemData()); */
-    /* for(uint32_t var = 1; var < n; var++) { */
-    /*   sz_declevs[0][var] = MemData(holder.size_bin(var), holder.size_long(var)); */
-    /*   /1* std::sort(unif_occ[var].begin(), unif_occ[var].end()); *1/ */
-    /* } */
-
     // check bins
     for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
       assert(unif_occ_bin[v].size() == holder.size_bin(v));
@@ -229,16 +222,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-#ifdef USE_DIRTY
-    const auto c_dirty = counter->get_dirty();
-    auto& this_dirty = last_dirty[v];
-    if (this_dirty < c_dirty) {
-      holder.resize_bin(v, holder_orig_szs[v].sz_bin);
-      holder.resize_long(v, holder_orig_szs[v].sz_long);
-    }
-    this_dirty = c_dirty;
-#endif
-
     if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) {
         // can't be more variables in this component
         // but we still need to update stuff above, so continue but skip binary look-through
@@ -246,25 +229,16 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     }
 
     //traverse binary clauses
-    for(uint32_t i = 0; i < holder.size_bin(v);) {
+    for(uint32_t i = 0, sz = holder.size_bin(v); i < sz; i++) {
       uint32_t v2 = holder.begin_bin(v)[i];
       // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
       /* const bool sat = !is_unknown(v2); */
-      bool sat = false;
       if (manage_occ_of(v2)) {
         if (is_unknown(v2)) {
           bump_freq_score(v2);
           bump_freq_score(v);
-        } else sat = true;
+        }
       }
-#ifdef USE_DIRTY
-      if (sat) {
-        holder.begin_bin(v)[i] = holder.back_bin(v);
-        holder.back_bin(v) = v2;
-        holder.pop_back_bin(v);
-      } else
-#endif
-        i++;
     }
 
     if (sup_comp_cls == archetype.num_cls) {
@@ -273,9 +247,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
     }
 
     // traverse long clauses
-    for (uint32_t i = 0; i < holder.size_long(v);) {
+    for (uint32_t i = 0, sz = holder.size_long(v); i < sz; i++) {
       ClData& d = holder.begin_long(v)[i];
-      bool sat = false;
       if (d.id < max_tri_clid) {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
@@ -283,7 +256,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
           const Lit l2 = d.get_lit2();
           if (is_true(l1) || is_true(l2)) {
             archetype.clear_cl(d.id);
-            sat = true;
           } else {
             bump_freq_score(v);
             manage_occ_and_score_of(l1.var());
@@ -291,31 +263,18 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
             archetype.set_clause_visited(d.id);
           }
         }
-        i++;
       } else {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
-          sat = is_true(d.blk_lit);
+          bool sat = is_true(d.blk_lit);
           if (sat) {
             archetype.clear_cl(d.id);
             i++;
             continue;}
           Lit* start = long_clauses_data.data()+d.off;
-            sat = search_clause(v, d, start);
+            search_clause(v, d, start);
         }
-        i++;
       }
-
-#ifdef USE_DIRTY
-      // swap and shrink
-      if (sat) {
-        i--;
-        ClData tmp = holder.begin_long(v)[i];
-        holder.begin_long(v)[i] = holder.back_long(v);
-        holder.back_long(v) = tmp;
-        holder.pop_back_long(v);
-      }
-#endif
     }
   }
 

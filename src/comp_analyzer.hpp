@@ -130,9 +130,10 @@ public:
   // returns true iff the underlying variable was unvisited before
   bool manage_occ_of(const uint32_t v){
     if (archetype.var_unvisited_in_sup_comp(v)) {
+      __builtin_prefetch(holder.begin_bin(v));
+      __builtin_prefetch(holder.begin_long(v));
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
-      __builtin_prefetch(holder.begin_bin(v));
       return true;
     }
     return false;
@@ -246,7 +247,6 @@ private:
       else {
         assert(!is_unknown(*it_l));
         if (is_false(*it_l)) continue;
-        d.blk_lit = *it_l;
 
         //accidentally entered a satisfied clause: undo the search process
         /* cout << "satisfied clause due to: " << *it_l << endl; */

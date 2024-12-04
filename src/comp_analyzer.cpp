@@ -246,9 +246,9 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
       continue;
     }
 
-    // traverse long clauses
     for (uint32_t i = 0, sz = holder.size_long(v); i < sz; i++) {
       ClData& d = holder.begin_long(v)[i];
+      // traverse ternary clauses
       if (d.id < max_tri_clid) {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
@@ -264,6 +264,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, cons
           }
         }
       } else {
+        // traverse long clauses
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           archetype.num_cls++;
           bool sat = is_true(d.blk_lit);

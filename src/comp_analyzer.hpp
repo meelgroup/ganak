@@ -224,7 +224,7 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  bool search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
+  bool search_clause(uint32_t v2, const ClData& d, Lit const* cl_start) {
     const auto it_v_end = comp_vars.end();
     bool sat = false;
 

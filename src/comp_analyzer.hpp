@@ -131,7 +131,6 @@ public:
   bool manage_occ_of(const uint32_t v){
     if (archetype.var_unvisited_in_sup_comp(v)) {
       __builtin_prefetch(holder.begin_bin(v));
-      __builtin_prefetch(holder.begin_long(v));
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
       return true;
@@ -233,12 +232,7 @@ private:
       assert(v <= max_var);
       if (v == v2) continue;
 
-      if (!archetype.var_nil(v)) {
-        /* if (archetype.var_visited(v)) cout << "var visited" << endl; */
-        /* if (archetype.var_unvisited_in_sup_comp(v)) cout << "var unvisited in sup (must be unknown)" << endl; */
-        /* if (archetype.var_in_peer_comp(v)) cout << "var in peer comp" << endl; */
-        manage_occ_and_score_of(v);
-      }
+      if (!archetype.var_nil(v)) manage_occ_and_score_of(v);
       else {
         assert(!is_unknown(*it_l));
         if (is_false(*it_l)) continue;

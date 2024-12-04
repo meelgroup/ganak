@@ -244,33 +244,34 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
 
     for (uint32_t i = 0, sz = holder.size_long(v); i < sz; i++) {
       ClData& d = holder.begin_long(v)[i];
+      bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
-          archetype.num_cls++;
           const Lit l1 = d.get_lit1();
           const Lit l2 = d.get_lit2();
           if (is_true(l1) || is_true(l2)) {
             archetype.clear_cl(d.id);
+            continue;
           } else {
             bump_freq_score(v);
             manage_occ_and_score_of(l1.var());
             manage_occ_and_score_of(l2.var());
             archetype.set_clause_visited(d.id);
           }
-        }
+        } else continue;
       } else {
         // traverse long clauses
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
-          archetype.num_cls++;
-          bool sat = is_true(d.blk_lit);
-          if (sat) {
+          if (is_true(d.blk_lit)) {
             archetype.clear_cl(d.id);
-            continue;}
+            continue;
+          }
           Lit* start = long_clauses_data.data()+d.off;
-            search_clause(v, d, start);
-        }
+          sat = search_clause(v, d, start);
+        } else continue;
       }
+      if (!sat) archetype.num_cls++;
     }
   }
 

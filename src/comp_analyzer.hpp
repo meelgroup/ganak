@@ -224,8 +224,9 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  void search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
+  bool search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
     const auto it_v_end = comp_vars.end();
+    bool sat = false;
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       const uint32_t v = it_l->var();
@@ -239,6 +240,7 @@ private:
 
         //accidentally entered a satisfied clause: undo the search process
         /* cout << "satisfied clause due to: " << *it_l << endl; */
+        sat = true;
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
           archetype.set_var_in_sup_comp_unvisited(comp_vars.back());
@@ -255,6 +257,7 @@ private:
       bump_freq_score(v2);
       archetype.set_clause_visited(d.id);
     }
+    return sat;
   }
 };
 

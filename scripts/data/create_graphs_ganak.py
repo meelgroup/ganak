@@ -381,10 +381,10 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
@@ -411,6 +411,7 @@ only_dirs = [
 
             # holder+dirty new idea
             "out-ganak-mc2324-13929441-",
+            "out-ganak-mc2324-13930324-",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -511,7 +512,7 @@ with open("gen_table.sqlite", "w") as f:
       CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
       CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
       CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
-      CAST(ROUND(avg(td_width),0) AS INTEGER) as 'av tdw',\
+      ROUND(avg(td_width),0) as 'av tdw',\
       ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
       ROUND(avg(compsK/1000.0),2) as 'av compsM',\
       sum(fname is not null) as 'nfiles'\
@@ -530,8 +531,8 @@ with open(gnuplotfn, "w") as f:
     f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
-    f.write("plot [:][10:]\\\n")
-    # f.write("plot [:][190:]\\\n")
+    # f.write("plot [:][10:]\\\n")
+    f.write("plot [:][990:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

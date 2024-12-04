@@ -155,7 +155,6 @@ public:
       }
 
     all_cls_in_comp(super_comp, it) {
-      /* if (*it > max_tri_clid) break; */
       archetype.set_clause_in_sup_comp_unvisited(*it);
     }
   }

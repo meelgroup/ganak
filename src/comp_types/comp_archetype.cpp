@@ -27,7 +27,6 @@ Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
 
   // Fill (long) clause IDs in new comp
   all_cls_in_comp(super_comp(), it_cl)
-    // TODO change stamp
     if (clause_visited(*it_cl)) {
       p_new_comp->add_cl(*it_cl);
       set_clause_in_peer_comp(*it_cl);

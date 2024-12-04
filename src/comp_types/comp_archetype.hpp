@@ -30,7 +30,7 @@ namespace GanakInt {
 #define   CA_CL_IN_SUP_COMP_UNVISITED  8
 #define   CA_CL_VISITED 16
 #define   CA_CL_IN_PEER_COMP  32
-#define   CA_CL_SAT  64
+/* #define   WHATEVER  64 */
 // 64+32+16+8 == 120
 #define   CA_CL_MASK  120
 

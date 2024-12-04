@@ -49,7 +49,6 @@ void CompAnalyzer<T>::initialize(
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
-  last_dirty.resize(max_var + 1, 0);
   vector<vector<ClauseOfs>> occs(max_var + 1);
   const uint32_t n = max_var+1;
 
@@ -136,7 +135,6 @@ void CompAnalyzer<T>::initialize(
     assert(unif_occ_bin.size() == unif_occ_long.size());
     assert(unif_occ_bin.size() == n);
 
-    holder_orig_szs.resize(n);
     uint32_t total_sz = 0;
     for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
     for(const auto& u: unif_occ_bin) total_sz += u.size() + 2;
@@ -148,7 +146,6 @@ void CompAnalyzer<T>::initialize(
       // fill bins
       const auto& u_bins = unif_occ_bin[v];
       holder.data[v*4+1] = u_bins.size();
-      holder_orig_szs[v].sz_bin = u_bins.size();
       uint32_t offs = data_start - holder.data;
       holder.data[v*4+0] = offs;
       assert(offs <= total_sz);
@@ -158,7 +155,6 @@ void CompAnalyzer<T>::initialize(
       // fill longs
       const auto& u_longs = unif_occ_long[v];
       holder.data[v*4+3] = u_longs.size();
-      holder_orig_szs[v].sz_long = u_longs.size();
       offs = data_start - holder.data;
       holder.data[v*4+2] = offs;
       assert(offs <= total_sz);
@@ -190,9 +186,9 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v, dec_lev, sup_comp_cls, sup_comp_vars); // sets up the component that "v" is in
+  record_comp(v, sup_comp_cls, sup_comp_vars); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
@@ -209,7 +205,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, int32_t dec_lev, const uint
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var, const int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);

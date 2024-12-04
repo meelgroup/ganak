@@ -160,7 +160,7 @@ public:
     }
   }
 
-  bool explore_comp(const uint32_t v, int32_t dec_lev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
+  bool explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
@@ -186,10 +186,7 @@ private:
 
   MyHolder holder;
   struct HolderOrigSz {uint32_t sz_bin; uint32_t sz_long;};
-  vector<HolderOrigSz> holder_orig_szs;
-  vector<uint64_t> last_dirty;
   vector<Lit> long_clauses_data;
-  /* vector<vector<MemData>> sz_declevs; */
   vector<int32_t> last_seen;
   const LiteralIndexedVector<TriValue> & values;
 
@@ -218,7 +215,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void record_comp(const uint32_t var, const int32_t declev, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
+  void record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
 
   void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
     tmp.clear();
@@ -229,8 +226,7 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  bool search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
-    bool sat = false;
+  void search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
     const auto it_v_end = comp_vars.end();
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
@@ -250,7 +246,6 @@ private:
 
         //accidentally entered a satisfied clause: undo the search process
         /* cout << "satisfied clause due to: " << *it_l << endl; */
-        sat = true;
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
           archetype.set_var_in_sup_comp_unvisited(comp_vars.back());
@@ -267,7 +262,6 @@ private:
       bump_freq_score(v2);
       archetype.set_clause_visited(d.id);
     }
-    return sat;
   }
 };
 

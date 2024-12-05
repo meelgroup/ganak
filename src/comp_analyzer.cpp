@@ -232,6 +232,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
       if (manage_occ_of(v2)) {
         if (is_unknown(v2)) {
           bump_freq_score(v2);
+          bump_freq_score(v2);
+          bump_freq_score(v);
           bump_freq_score(v);
         }
       }

@@ -923,8 +923,8 @@ void Counter<T>::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups) return;
   if (next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
-  next_print_stat_cache = stats.num_cache_look_ups + (1000LL*1000LL);
-  next_print_stat_confl = stats.conflicts + 15LL*1000LL;
+  next_print_stat_cache = stats.num_cache_look_ups + (20LL*1000LL*1000LL);
+  next_print_stat_confl = stats.conflicts + 150LL*1000LL;
 }
 
 template<typename T>

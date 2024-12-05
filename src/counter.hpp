@@ -372,8 +372,8 @@ private:
   void print_comp_stack_info() const;
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void print_stat_line();
-  uint64_t next_print_stat_cache = 100LL*1000LL;
-  uint64_t next_print_stat_confl = 10LL*1000LL;
+  uint64_t next_print_stat_cache = 4LL*1000LL*1000LL;
+  uint64_t next_print_stat_confl = 100LL*1000LL;
 
   // BDD
   bool should_do_buddy_count() const;

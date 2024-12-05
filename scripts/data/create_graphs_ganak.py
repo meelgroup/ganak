@@ -410,8 +410,9 @@ only_dirs = [
             # "out-ganak-mc2324-13911802-",  # bdd and mini-ablation study
 
             # holder+dirty new idea
-            "out-ganak-mc2324-13929441-",
-            "out-ganak-mc2324-13930324-",
+            # "out-ganak-mc2324-13929441-", # dirty
+            # "out-ganak-mc2324-13930324-", # nodirty
+            "out-ganak-mc2324-13931851-", # better nodirty
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -532,7 +533,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][990:]\\\n")
+    f.write("plot [:][590:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

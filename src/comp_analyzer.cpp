@@ -186,9 +186,9 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v, sup_comp_cls, sup_comp_vars); // sets up the component that "v" is in
+  record_comp(v, sup_comp_cls, sup_comp_bin_cls, sup_comp_vars); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
@@ -205,7 +205,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls, const uint32_t sup_comp_vars) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -218,19 +218,22 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-    if (sup_comp_cls == archetype.num_cls && sup_comp_vars-1 == comp_vars.size()) {
-        // can't be more variables in this component
-        // but we still need to update stuff above, so continue but skip binary look-through
-        continue;
+    if (sup_comp_bin_cls == archetype.num_bin_cls) {
+      if (sup_comp_cls == archetype.num_cls) {
+          // we have seen all bin and long clauses
+          break;
+      }
+      // we have seen all bin clauses
+      goto long_cls;
     }
 
     //traverse binary clauses
     for(uint32_t i = 0, sz = holder.size_bin(v); i < sz; i++) {
       uint32_t v2 = holder.begin_bin(v)[i];
       // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
-      /* const bool sat = !is_unknown(v2); */
       if (manage_occ_of(v2)) {
         if (is_unknown(v2)) {
+          archetype.num_bin_cls++;
           bump_freq_score(v2);
           bump_freq_score(v2);
           bump_freq_score(v);
@@ -238,6 +241,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
         }
       }
     }
+long_cls:
 
     if (sup_comp_cls == archetype.num_cls) {
       // we have seen all long clauses

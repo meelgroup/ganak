@@ -322,9 +322,9 @@ private:
   inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
   inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
   inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
-  bool is_false(Lit lit) { return values[lit] == F_TRI; }
-  bool is_unknown(Lit lit) const;
-  bool is_unknown(uint32_t var) const;
+  inline bool is_false(Lit lit) { return values[lit] == F_TRI; }
+  inline bool is_unknown(Lit lit) const;
+  inline bool is_unknown(uint32_t var) const;
   void set_confl_state(Lit a, Lit b);
   void set_confl_state(Clause* cl);
 

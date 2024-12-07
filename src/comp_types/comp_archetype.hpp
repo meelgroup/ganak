@@ -146,6 +146,7 @@ public:
   Comp* make_comp(const uint32_t comp_vars_size);
 
   uint32_t num_cls = 0;
+  uint32_t num_bin_cls = 0;
 private:
   Comp const* super_comp_ptr;
   StackLevel<T> *stack_lvl_ptr;

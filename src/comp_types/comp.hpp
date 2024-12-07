@@ -76,14 +76,17 @@ public:
 
   uint32_t nVars() const { return clauses_offs - 1; }
   uint32_t num_long_cls() const { return vs_cls_data.size() - clauses_offs - 1; }
+  uint32_t num_bin_cls() const { return bin_cls; }
+  void set_num_bin_cls(const uint32_t n) { bin_cls = n; }
 
   const vector<uint32_t>& get_raw_data() const { return vs_cls_data;}
   bool empty() const { return vs_cls_data.empty(); }
 
   // Creates the full CNF as a component, at start-up. In other words, this is called ONCE
-  void create_init_comp(uint32_t max_var_id, uint32_t max_cl_id) {
+  void create_init_comp(uint32_t max_var_id, uint32_t max_cl_id, uint32_t _bin_cls) {
     vs_cls_data.clear();
     clauses_offs = 1;
+    bin_cls = _bin_cls;
 
     // Add all variables to top comp
     for (uint32_t v = 1; v <= max_var_id; v++) add_var(v);
@@ -109,6 +112,7 @@ private:
   // in the data!
   vector<uint32_t> vs_cls_data;
   uint32_t clauses_offs = 0;
+  uint32_t bin_cls = 0;
   // id_ will identify denote the entry in the cacheable comp database,
   // where a Packed version of this comp is stored
   // yet this does not imply that the model count of this comp is already known

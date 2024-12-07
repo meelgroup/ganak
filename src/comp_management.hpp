@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "comp_analyzer.hpp"
 
 #include <cstdint>
+#include <limits>
 #include <random>
 #include <gmpxx.h>
 #include "containers.hpp"
@@ -193,7 +194,7 @@ void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watch
   //Add full comp
   comp_stack.push_back(new Comp());
   assert(comp_stack.size() == 2);
-  comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid());
+  comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid(), std::numeric_limits<uint32_t>::max());
   cache.init(*comp_stack.back(), hash_seed);
 }
 

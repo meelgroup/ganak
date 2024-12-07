@@ -158,7 +158,7 @@ public:
     }
   }
 
-  bool explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
+  bool explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls, const uint32_t sup_comp_vars);
 
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
@@ -168,6 +168,7 @@ public:
   }
 
   uint32_t get_max_clid() const { return max_clid; }
+  uint32_t get_bin_cls() const { return archetype.num_bin_cls; }
   uint32_t get_max_var() const { return max_var; }
   CompArchetype<T>& get_archetype() { return archetype; }
 
@@ -213,7 +214,7 @@ private:
   // comp_search_stack
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
-  void record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_vars);
+  void record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls, const uint32_t sup_comp_vars);
 
   void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
     tmp.clear();

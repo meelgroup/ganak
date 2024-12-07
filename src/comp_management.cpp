@@ -69,9 +69,9 @@ void CompManager<T>::removeAllCachePollutionsOf(const StackLevel<T> &top) {
 // This creates potential component, checks if it's already in the
 // cache, and if so, uses that, otherwise, it creates it
 // and adds it to the component stack
+// Runs a LOT of the time, like 40%+
 template<typename T>
-void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
-{
+void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
 
@@ -82,7 +82,7 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top)
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
     if (ana.var_unvisited_sup_comp(*vt) && ana.explore_comp(*vt,
-          super_comp.num_long_cls(), super_comp.nVars())) {
+          super_comp.num_long_cls(), super_comp.num_bin_cls(), super_comp.nVars())) {
       // Actually makes both a component returned, AND an current_comp_for_caching_ in
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown

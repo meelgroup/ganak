@@ -92,7 +92,7 @@ public:
     assert(false && "should have found it!");
   }
 
-  void add_cl(ClauseIndex offs, Lit blocked_lit) {
+  inline void add_cl(ClauseIndex offs, Lit blocked_lit) {
     watch_list_.push_back(ClOffsBlckL(offs, blocked_lit));
   }
 

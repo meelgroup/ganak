@@ -186,9 +186,9 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls, const uint32_t sup_comp_vars) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v, sup_comp_cls, sup_comp_bin_cls, sup_comp_vars); // sets up the component that "v" is in
+  record_comp(v, sup_comp_cls, sup_comp_bin_cls); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
@@ -205,7 +205,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls
 
 // Create a component based on variable provided
 template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls, const uint32_t sup_comp_vars) {
+void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -219,7 +219,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     if (sup_comp_bin_cls == archetype.num_bin_cls) {
-      if (sup_comp_cls == archetype.num_cls) {
+      if (sup_comp_long_cls == archetype.num_long_cls) {
           // we have seen all bin and long clauses
           break;
       }
@@ -241,7 +241,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
     }
 long_cls:
 
-    if (sup_comp_cls == archetype.num_cls) {
+    if (sup_comp_long_cls == archetype.num_long_cls) {
       // we have seen all long clauses
       continue;
     }
@@ -275,7 +275,7 @@ long_cls:
           sat = search_clause(v, d, start);
         } else continue;
       }
-      if (!sat) archetype.num_cls++;
+      if (!sat) archetype.num_long_cls++;
     }
   }
 

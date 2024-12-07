@@ -137,7 +137,7 @@ public:
   }
 
   void clear_data() {
-    num_cls = 0;
+    num_long_cls = 0;
     memset(data, 0, data_sz);
   }
 
@@ -145,7 +145,7 @@ public:
   // set up search_stack_, data[] etc. so this is now quite easy.
   Comp* make_comp(const uint32_t comp_vars_size);
 
-  uint32_t num_cls = 0;
+  uint32_t num_long_cls = 0;
   uint32_t num_bin_cls = 0;
 private:
   Comp const* super_comp_ptr;

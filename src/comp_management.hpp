@@ -98,8 +98,8 @@ public:
   inline void sort_comp_stack_range(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
-  void removeAllCachePollutionsOfIfExists(const StackLevel<T> &top);
-  void removeAllCachePollutionsOf(const StackLevel<T> &top);
+  void remove_cache_pollutions_of_if_exists(const StackLevel<T> &top);
+  void remove_cache_pollutions_of(const StackLevel<T> &top);
   void* hash_seed; //stores a bunch of __m128 aligned data pieces, each
                    //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash() {

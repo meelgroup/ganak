@@ -1316,7 +1316,7 @@ bool Counter<T>::restart_if_needed() {
         tot_cnt += cube.cnt;
         verb_print(2, "[mini-cube] rst: " << stats.num_restarts << " mini cube: " << cube);
       }
-      else comp_manager->removeAllCachePollutionsOfIfExists(decisions.top());
+      else comp_manager->remove_cache_pollutions_of_if_exists(decisions.top());
     }
     reactivate_comps_and_backtrack_trail(false);
     bool ret = propagate(true);
@@ -1607,7 +1607,7 @@ RetState Counter<T>::backtrack() {
     }
 #endif
     if (decisions.top().branch_found_unsat()) {
-      comp_manager->removeAllCachePollutionsOf(decisions.top());
+      comp_manager->remove_cache_pollutions_of(decisions.top());
     } else if (decisions.top().another_comp_possible()) {
       debug_print("[indep] Processing another comp at dec lev "
           << dec_level()
@@ -1821,13 +1821,13 @@ void Counter<T>::go_back_to(int32_t backj) {
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_all_sol(); //not sure it's needed
     if (!sat_mode()) {
-      comp_manager->removeAllCachePollutionsOf(decisions.top());
+      comp_manager->remove_cache_pollutions_of(decisions.top());
     }
     reactivate_comps_and_backtrack_trail(false);
     decisions.pop_back();
     decisions.top().zero_out_branch_sol();
     if (!sat_mode()) {
-      comp_manager->removeAllCachePollutionsOf(decisions.top());
+      comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
     }
     VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << dec_level() << " cnt:" <<  decisions.top().total_model_count() << endl);
@@ -2009,7 +2009,7 @@ RetState Counter<T>::resolve_conflict() {
   decisions.top().zero_out_branch_sol();
   decisions.top().mark_branch_unsat();
   if (!sat_mode()) {
-    comp_manager->removeAllCachePollutionsOf(decisions.top());
+    comp_manager->remove_cache_pollutions_of(decisions.top());
     decisions.top().reset_remain_comps();
   }
 

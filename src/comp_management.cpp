@@ -37,7 +37,7 @@ CompManager<T>::CompManager(const CounterConfiguration& config,
 {}
 
 template<typename T>
-void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top) {
+void CompManager<T>::remove_cache_pollutions_of_if_exists(const StackLevel<T> &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
 
@@ -49,7 +49,7 @@ void CompManager<T>::removeAllCachePollutionsOfIfExists(const StackLevel<T> &top
 }
 
 template<typename T>
-void CompManager<T>::removeAllCachePollutionsOf(const StackLevel<T> &top) {
+void CompManager<T>::remove_cache_pollutions_of(const StackLevel<T> &top) {
   // all processed comps are found in
   // [top.curr_remain_comp(), comp_stack.size())
   // first, remove the list of descendants from the father

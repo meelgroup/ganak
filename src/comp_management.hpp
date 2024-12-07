@@ -136,8 +136,7 @@ void CompManager<T>::sort_comp_stack_range(uint32_t start, uint32_t end) {
 }
 
 template<typename T>
-double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) const
-{
+double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) const {
   double score = 1;
   assert(start <= end);
   // sort the remaining comps for processing
@@ -146,8 +145,7 @@ double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) c
 }
 
 template<typename T>
-bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top)
-{
+bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top) {
   debug_print(COLREDBG"-*-> Running find_next_remain_comp_of");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs()
       << " comp_stack.size(): " << comp_stack.size());

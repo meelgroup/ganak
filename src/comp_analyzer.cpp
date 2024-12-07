@@ -235,8 +235,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_cl
         if (is_unknown(v2)) {
           archetype.num_bin_cls++;
           bump_freq_score(v2);
-          bump_freq_score(v2);
-          bump_freq_score(v);
           bump_freq_score(v);
         }
       }

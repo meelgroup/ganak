@@ -83,7 +83,7 @@ public:
       if (cache.exists(comp_stack.back()->id())) cache.entry(comp_stack.back()->id()).set_deletable();
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());
-      delete comp_stack.back();
+      free(comp_stack.back());
       comp_stack.pop_back();
     }
     assert(top.remaining_comps_ofs() <= comp_stack.size());
@@ -189,10 +189,11 @@ void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watch
   ana.initialize(watches, _alloc, long_irred_cls);
 
   //Add dummy comp
-  comp_stack.push_back(new Comp());
+  comp_stack.push_back(nullptr);
 
   //Add full comp
-  comp_stack.push_back(new Comp());
+  Comp* ptr = reserve_comp_space(ana.get_max_var() , ana.get_max_clid());
+  comp_stack.push_back(ptr);
   assert(comp_stack.size() == 2);
   comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid(), std::numeric_limits<uint32_t>::max());
   cache.init(*comp_stack.back(), hash_seed);

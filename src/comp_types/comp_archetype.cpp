@@ -6,6 +6,7 @@
  */
 
 #include "comp_archetype.hpp"
+#include "comp_types/comp.hpp"
 
 using namespace GanakInt;
 
@@ -14,8 +15,7 @@ using namespace GanakInt;
 template<typename T>
 Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
   debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
-  Comp *p_new_comp = new Comp();
-  p_new_comp->reserve_space(comp_vars_size, super_comp().num_long_cls());
+  Comp* p_new_comp = reserve_comp_space(comp_vars_size, super_comp().num_long_cls());
 
   // Fill variables in new comp
   all_vars_in_comp(super_comp(), v_it)

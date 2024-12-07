@@ -381,10 +381,10 @@ only_dirs = [
 
             ######################
             # paper -- Fixed job
-            # "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-0",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
             "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
@@ -412,8 +412,9 @@ only_dirs = [
             # holder+dirty new idea
             # "out-ganak-mc2324-13929441-", # dirty
             # "out-ganak-mc2324-13930324-", # nodirty
-            "out-ganak-mc2324-13931851-", # better nodirty
-            "out-ganak-mc2324-13935870-", # better nodirty, double bump
+            # "out-ganak-mc2324-13931851-", # better nodirty
+            # "out-ganak-mc2324-13935870-", # better nodirty, double bump
+            "out-ganak-mc2324-13943683-", # as above, but bin cl early abort, and mem layout for Comp
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

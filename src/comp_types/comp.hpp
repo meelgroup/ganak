@@ -97,11 +97,6 @@ public:
     close_cls_data();
   }
 
-  void clear() {
-    clauses_offs = 0;
-    vs_cls_data.clear();
-  }
-
 private:
   // data_ stores the comp data:
   // for better cache performance the

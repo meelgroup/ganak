@@ -76,7 +76,8 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
   const uint32_t new_comps_start_ofs = comp_stack.size();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.
-  // Also zeroes out frequency_scores(!)
+  // Sets all unknown vars in seen[] and sets all clauses in seen[] to unvisited
+  // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
   all_vars_in_comp(super_comp, vt) {

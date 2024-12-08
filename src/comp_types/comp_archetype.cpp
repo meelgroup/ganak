@@ -16,7 +16,7 @@ using namespace GanakInt;
 template<typename T>
 Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
   debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
-  Comp* p_new_comp = reserve_comp_space(comp_vars_size, super_comp().num_long_cls());
+  Comp* p_new_comp = reserve_comp_space(comp_vars_size, num_long_cls);
 
   // Fill variables in new comp
   all_vars_in_comp(super_comp(), v_it)
@@ -32,7 +32,7 @@ Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
       p_new_comp->add_cl(*cl_it);
       set_clause_in_peer_comp(*cl_it);
     }
-  p_new_comp->set_num_bin_cls(super_comp().num_bin_cls());
+  p_new_comp->set_num_bin_cls(num_bin_cls);
   p_new_comp->close_cls_data();
 
   debug_print(COLREDBG << __PRETTY_FUNCTION__ << " finish." <<

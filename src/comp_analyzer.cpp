@@ -125,6 +125,10 @@ void CompAnalyzer<T>::initialize(
         if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
     }
+    // No duplicates, please -- note we converted to VARs so it maybe unique in LIT but not in VAR
+    set<uint32_t> s( tmp2.begin(), tmp2.end());
+    tmp2.assign( s.begin(), s.end() );
+
     unif_occ_bin[v].clear();
     unif_occ_bin[v].resize(tmp2.size());
     for(uint32_t i = 0; i < tmp2.size(); i++) unif_occ_bin[v][i] = tmp2[i];
@@ -185,9 +189,9 @@ void CompAnalyzer<T>::initialize(
 
 // returns true, iff the comp found is non-trivial
 template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls) {
+bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
-  record_comp(v, sup_comp_cls, sup_comp_bin_cls); // sets up the component that "v" is in
+  record_comp(v, sup_comp_long_cls, sup_comp_bin_cls); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
@@ -220,8 +224,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     if (sup_comp_bin_cls == archetype.num_bin_cls) {
       // we have seen all bin clauses
       if (sup_comp_long_cls == archetype.num_long_cls) {
-          // we have seen all bin and long clauses
-          break;
+        // we have seen all bin and long clauses
+        break;
       }
     } else {
       //traverse binary clauses
@@ -229,15 +233,15 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
       for(uint32_t i = 0, sz = holder.size_bin(v); i < sz; i++) {
         uint32_t v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
-        if (manage_occ_of(v2)) {
-          if (is_unknown(v2)) {
-            archetype.num_bin_cls++;
-            bump_freq_score(v2);
-            bump_freq_score(v);
-          }
+        manage_occ_of(v2);
+        if (is_unknown(v2)) {
+          archetype.num_bin_cls++;
+          bump_freq_score(v2);
+          bump_freq_score(v);
         }
       }
     }
+    SLOW_DEBUG_DO(assert(archetype.num_bin_cls <= sup_comp_bin_cls));
 
     if (sup_comp_long_cls == archetype.num_long_cls) {
       // we have seen all long clauses
@@ -245,8 +249,12 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     }
 
     auto longs = holder.begin_long(v);
-    for (uint32_t i = 0, sz = holder.size_long(v); i < sz; i++) {
+    /* auto longs2 = longs+2; */
+    auto longs_end = holder.begin_long(v)+holder.size_long(v);
+    while (longs != longs_end) {
+      SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       const ClData& d = *(longs++);
+      /* longs2++; */
       bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses
@@ -264,7 +272,11 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
           }
         } else continue;
       } else {
-        // traverse long clauses
+        /* // traverse long clauses */
+        /* if (longs2 < longs_end) { */
+        /*   const ClData& d2 = *(longs2); */
+        /*   __builtin_prefetch(long_clauses_data.data()+d2.off); */
+        /* } */
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           if (is_true(d.blk_lit)) {
             archetype.clear_cl(d.id);

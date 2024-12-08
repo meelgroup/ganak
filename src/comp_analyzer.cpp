@@ -218,35 +218,35 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
     if (sup_comp_bin_cls == archetype.num_bin_cls) {
+      // we have seen all bin clauses
       if (sup_comp_long_cls == archetype.num_long_cls) {
           // we have seen all bin and long clauses
           break;
       }
-      // we have seen all bin clauses
-      goto long_cls;
-    }
-
-    //traverse binary clauses
-    for(uint32_t i = 0, sz = holder.size_bin(v); i < sz; i++) {
-      uint32_t v2 = holder.begin_bin(v)[i];
-      // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
-      if (manage_occ_of(v2)) {
-        if (is_unknown(v2)) {
-          archetype.num_bin_cls++;
-          bump_freq_score(v2);
-          bump_freq_score(v);
+    } else {
+      //traverse binary clauses
+      auto bins = holder.begin_bin(v);
+      for(uint32_t i = 0, sz = holder.size_bin(v); i < sz; i++) {
+        uint32_t v2 = *(bins++);
+        // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
+        if (manage_occ_of(v2)) {
+          if (is_unknown(v2)) {
+            archetype.num_bin_cls++;
+            bump_freq_score(v2);
+            bump_freq_score(v);
+          }
         }
       }
     }
-long_cls:
 
     if (sup_comp_long_cls == archetype.num_long_cls) {
       // we have seen all long clauses
       continue;
     }
 
+    auto longs = holder.begin_long(v);
     for (uint32_t i = 0, sz = holder.size_long(v); i < sz; i++) {
-      const ClData& d = holder.begin_long(v)[i];
+      const ClData& d = *(longs++);
       bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses

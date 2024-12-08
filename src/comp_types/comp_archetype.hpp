@@ -138,6 +138,7 @@ public:
 
   void clear_data() {
     num_long_cls = 0;
+    num_bin_cls = 0;
     memset(data, 0, data_sz);
   }
 

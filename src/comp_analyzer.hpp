@@ -153,9 +153,7 @@ public:
         var_freq_scores[*vt] = 0;
       }
 
-    all_cls_in_comp(super_comp, it) {
-      archetype.set_clause_in_sup_comp_unvisited(*it);
-    }
+    all_cls_in_comp(super_comp, it) archetype.set_clause_in_sup_comp_unvisited(*it);
   }
 
   bool explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls);
@@ -163,7 +161,7 @@ public:
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){
-    auto p =  archetype.make_comp(comp_vars.size());
+    auto p = archetype.make_comp(comp_vars.size());
     return p;
   }
 
@@ -184,9 +182,7 @@ private:
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 
   MyHolder holder;
-  struct HolderOrigSz {uint32_t sz_bin; uint32_t sz_long;};
   vector<Lit> long_clauses_data;
-  vector<int32_t> last_seen;
   const LiteralIndexedVector<TriValue> & values;
 
   const CounterConfiguration& conf;

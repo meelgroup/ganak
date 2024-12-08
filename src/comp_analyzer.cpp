@@ -180,7 +180,6 @@ void CompAnalyzer<T>::initialize(
     }
   }
 
-  last_seen.resize(n, 0);
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
 }
 

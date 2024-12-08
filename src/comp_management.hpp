@@ -49,7 +49,7 @@ public:
                    Counter<T>* _counter);
   ~CompManager() {
     free(hash_seed);
-    for(auto& comp: comp_stack) delete comp;
+    for(auto& comp: comp_stack) free(comp);
     comp_stack.clear();
   }
 

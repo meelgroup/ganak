@@ -111,7 +111,7 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
         all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
-        delete p_new_comp;
+        free(p_new_comp);
       }
     }
   }

@@ -415,8 +415,9 @@ only_dirs = [
             # "out-ganak-mc2324-13931851-", # better nodirty
             # "out-ganak-mc2324-13935870-", # better nodirty, double bump
             # "out-ganak-mc2324-13943683-", # as above, but bin cl early abort, and mem layout for Comp -- BUGGY (used to be "GOOD")
-            "out-ganak-mc2324-13944875-", # as above, but bin cl (and long cl partially) tighter, cleanup
-            "out-ganak-mc2324-13945685-", # something went wrong above, so I went back 2x to "GOOD" but with a fix for bin that was maybe buggy
+            # "out-ganak-mc2324-13944875-", # as above, but bin cl (and long cl partially) tighter, cleanup
+            # "out-ganak-mc2324-13945685-", # something went wrong above, so I went back 2x to "GOOD" but with a fix for bin that was maybe buggy
+            "out-ganak-mc2324-13946763-", # finally fixed binary counting
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

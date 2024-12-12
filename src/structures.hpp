@@ -80,7 +80,7 @@ class LitWatchList {
 public:
   vec<BinCl> binaries;
   vec<ClOffsBlckL> watch_list_;
-  float activity = 0.0;
+  double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
     for (auto it = watch_list_.begin(); it != watch_list_.end(); it++) {

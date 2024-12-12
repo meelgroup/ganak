@@ -622,18 +622,19 @@ Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
   stats.learnt_cls_added++;
   Antecedent ante;
   Clause* cl = add_cl(literals, true);
+  bool bump_again = false;
   if (cl) {
     auto off = alloc->get_offset(cl);
     long_red_cls.push_back(off);
     cl->lbd = calc_lbd(*cl);
-    if (cl->lbd <= (lbd_cutoff+1)) {
-      for(const auto& l: literals) inc_act(l);
-    }
+    bump_again = cl->lbd <= (lbd_cutoff+1);
     ante = Antecedent(off);
   } else if (literals.size() == 2){
     ante = Antecedent(literals.back());
+    bump_again = true;
     stats.num_bin_red_cls++;
   }
+  if (bump_again) for(const auto& l: literals) inc_act(l);
   return ante;
 }
 

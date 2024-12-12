@@ -3973,7 +3973,7 @@ void Counter<T>::check_all_cl_in_watchlists() const {
 }
 
 template<typename T>
-bool Counter<T>::find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off)  const
+bool Counter<T>::find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off)  const
 {
   for (auto& w: ws) if (w.ofs == off) { return true; }
   return false;

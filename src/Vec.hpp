@@ -23,9 +23,11 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <cassert>
 #include <new>
 #include <cstdint>
+#include <cstdlib>
+#include <cerrno>
 #include <limits>
+#include <vector>
 #include <utility>
-#include "XAlloc.hpp"
 
 using std::numeric_limits;
 
@@ -37,18 +39,18 @@ using std::numeric_limits;
 template<class T>
 class vec {
 public:
-    T*  data;
-    T* begin() { return data; }
-    T* end() { return data + sz; }
-    const T* begin() const { return data; }
-    const T* end() const { return data + sz; }
+    T*  dat;
+    T* begin() { return dat; }
+    T* end() { return dat + sz; }
+    const T* begin() const { return dat; }
+    const T* end() const { return dat + sz; }
 private:
     uint32_t sz;
     uint32_t cap;
 
     // Don't allow copying (error prone):
     vec<T>& operator= (vec<T>& ) = delete;
-    vec (vec<T>& ) = delete;
+    vec (const vec<T>& other) = delete;
 
     // Helpers for calculating next capacity:
     static inline uint32_t  imax   (int32_t x, int32_t y)
@@ -58,139 +60,110 @@ private:
     }
 
 public:
-    // Constructors:
-    vec()                       : data(nullptr) , sz(0)   , cap(0)    { }
-    explicit vec(uint32_t size)      : data(nullptr) , sz(0)   , cap(0)
-    {
+    vec() : dat(nullptr) , sz(0)   , cap(0)    { }
+    explicit vec(uint32_t size) : dat(nullptr), sz(0), cap(0) {
         growTo(size);
     }
-    vec(uint32_t size, const T& pad) : data(nullptr) , sz(0)   , cap(0)
-    {
+    vec(uint32_t size, const T& pad) : dat(nullptr), sz(0), cap(0) {
         growTo(size, pad);
     }
-    ~vec()
-    {
-        clear(true);
-    }
+    ~vec() { clear(true); }
 
-    // Size operations:
-    uint32_t      size() const
-    {
-        return sz;
+    // allow moving, it's easy
+    vec (vec<T>&& other) noexcept {
+      sz = other.sz;
+      cap = other.cap;
+      dat = other.dat;
+      other.sz = 0;
+      other.cap = 0;
+      other.dat = nullptr;
     }
-    void     shrink   (uint32_t nelems)
-    {
+    uint32_t size() const { return sz; }
+    void shrink   (uint32_t nelems) {
         assert(nelems <= sz);
         for (uint32_t i = 0; i < nelems; i++) {
-            sz--, data[sz].~T();
+            sz--, dat[sz].~T();
         }
     }
-    void     shrink_  (uint32_t nelems)
-    {
+    void shrink_  (uint32_t nelems) {
         assert(nelems <= sz);
         sz -= nelems;
     }
-    uint32_t      capacity () const { return cap; }
-    void     capacity (int32_t min_cap);
-    void     growTo   (uint32_t size);
-    void     growTo   (uint32_t size, const T& pad);
-    void     clear    (bool dealloc = false);
-
-    // Stack interface:
-    void     push_back(const T& elem)
-    {
+    uint32_t capacity () const { return cap; }
+    void capacity (int32_t min_cap);
+    void growTo   (uint32_t size);
+    void growTo   (uint32_t size, const T& pad);
+    void clear    (bool dealloc = false);
+    auto data() const { return dat; }
+    auto data() { return dat; }
+    vec<T>& operator= (const std::vector<T>& v) {
+      clear();
+      for (const auto& e : v) push_back(e);
+      return *this;
+    }
+    void push_back(const T& elem) {
         if (sz == cap) {
             capacity(sz + 1);
         }
-        data[sz++] = elem;
+        dat[sz++] = elem;
     }
-    void     pop_back()
-    {
+    void pop_back() {
         assert(sz > 0);
-        sz--, data[sz].~T();
+        sz--, dat[sz].~T();
     }
     // NOTE: it seems possible that overflow can happen in the 'sz+1' expression of 'push()', but
     // in fact it can not since it requires that 'cap' is equal to INT_MAX. This in turn can not
     // happen given the way capacities are calculated (below). Essentially, all capacities are
     // even, but INT_MAX is odd.
 
-    const T& back  () const
-    {
-        return data[sz - 1];
-    }
-    T&       back  ()
-    {
-        return data[sz - 1];
-    }
-
-    // Vector interface:
-    const T& operator [] (uint32_t index) const
-    {
-        return data[index];
-    }
-    T&       operator [] (uint32_t index)
-    {
-        return data[index];
-    }
+    const T& back  () const { return dat[sz - 1]; }
+    T&       back  () { return dat[sz - 1]; }
+    const T& operator [] (uint32_t index) const { return dat[index]; }
+    T&       operator [] (uint32_t index) { return dat[index]; }
 
     // Duplicatation (preferred instead):
-    void copyTo(vec<T>& copy) const
-    {
+    void copyTo(vec<T>& copy) const {
         copy.clear();
         copy.growTo(sz);
         for (uint32_t i = 0; i < sz; i++) {
-            copy[i] = data[i];
+            copy[i] = dat[i];
         }
     }
-    void moveTo(vec<T>& dest)
-    {
+    void moveTo(vec<T>& dest) {
         dest.clear(true);
-        dest.data = data;
+        dest.dat = dat;
         dest.sz = sz;
         dest.cap = cap;
-        data = nullptr;
+        dat = nullptr;
         sz = 0;
         cap = 0;
     }
-    void swap(vec<T>& dest)
-    {
-        std::swap(dest.data, data);
+    void swap(vec<T>& dest) {
+        std::swap(dest.dat, dat);
         std::swap(dest.sz, sz);
         std::swap(dest.cap, cap);
     }
 
     void resize(uint32_t s) {
-        if (s < sz) {
-            shrink(sz - s);
-        } else {
-            growTo(s);
-        }
+        if (s < sz) shrink(sz - s);
+        else growTo(s);
     }
-
-    void insert(uint32_t num)
-    {
-        growTo(sz+num);
-    }
-
-    bool empty() const
-    {
-        return sz == 0;
-    }
-
+    void insert(uint32_t num) { growTo(sz+num); }
+    bool empty() const { return sz == 0; }
     void shrink_to_fit() {
         if (sz == 0) {
-            free(data);
+            free(dat);
             cap = 0;
-            data = nullptr;
+            dat = nullptr;
             return;
         }
 
-        T* data2 = (T*)realloc(data, sz*sizeof(T));
+        T* data2 = (T*)realloc(dat, sz*sizeof(T));
         if (data2 == 0) {
             //We just keep the size then
             return;
         }
-        data = data2;
+        dat = data2;
         cap = sz;
      }
 };
@@ -215,7 +188,7 @@ void vec<T>::capacity(int32_t min_cap)
     if ((new_size * 2 / 3) > min_cap) new_size = new_size * 2 / 3;
     cap = new_size;
 
-    if (((data = (T*)::realloc(data, cap * sizeof(T))) == nullptr) && errno == ENOMEM) {
+    if (((dat = (T*)::realloc(dat, cap * sizeof(T))) == nullptr) && errno == ENOMEM) {
         throw std::bad_alloc();
     }
 }
@@ -226,7 +199,7 @@ void vec<T>::growTo(uint32_t size, const T& pad)
 {
     if (sz >= size) return;
     capacity(size);
-    for (uint32_t i = sz; i < size; i++) data[i] = pad;
+    for (uint32_t i = sz; i < size; i++) dat[i] = pad;
     sz = size;
 }
 
@@ -243,8 +216,8 @@ void vec<T>::growTo(uint32_t size)
 template<class T>
 void vec<T>::clear(bool dealloc)
 {
-    if (data != nullptr) {
+    if (dat != nullptr) {
         sz = 0;
-        if (dealloc) {free(data); data = nullptr; cap = 0;}
+        if (dealloc) {free(dat); dat = nullptr; cap = 0;}
     }
 }

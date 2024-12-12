@@ -141,7 +141,7 @@ ClauseOfs ClauseAllocator<T>::move_cl(
 
 template<typename T>
 void ClauseAllocator<T>::move_one_watchlist(
-    vector<ClOffsBlckL>& ws, ClauseOfs* new_data_start, ClauseOfs*& new_ptr)
+    vec<ClOffsBlckL>& ws, ClauseOfs* new_data_start, ClauseOfs*& new_ptr)
 {
   for(auto& w: ws) {
     Clause* old = ptr(w.ofs);

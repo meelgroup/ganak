@@ -22,7 +22,10 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "structures.hpp"
+#include <vector>
+#include <cstdint>
+#include <lit.hpp>
+using std::vector;
 
 namespace GanakInt {
 

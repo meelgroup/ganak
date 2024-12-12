@@ -260,7 +260,7 @@ private:
   void print_all_levels();
   void check_cl_unsat(Lit* c, uint32_t size) const;
   void check_trail(bool check_entail = true) const;
-  bool find_offs_in_watch(const vector<ClOffsBlckL>& ws, ClauseOfs off) const;
+  bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
@@ -578,7 +578,7 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 // to each variable during analysis
 template<typename T>
 void inline Counter<T>::inc_act(const Lit lit) {
-  watches[lit].activity += 1.0;
+  watches[lit].activity += 1.0F;
   if (sat_mode() && order_heap.in_heap(lit.var())) order_heap.increase(lit.var());
 }
 
@@ -649,7 +649,7 @@ template<typename T>
 template<class T2>
 void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
-  uint32_t rem = 0;
+  uint32_t orig_size = cl.size();
   assert(cl.size() > 0);
   tmp_minim_with_bins.clear();
   for(const auto& l: cl) { seen[l.raw()] = 1; tmp_minim_with_bins.push_back(l);}
@@ -661,7 +661,7 @@ void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
     for(const auto& bincl: w) {
       const auto& l2 = bincl.lit();
       assert(l.var() != l2.var());
-      if (seen[(l2.neg()).raw()]) { seen[(l2.neg()).raw()] = 0; rem++; }
+      if (seen[(l2.neg()).raw()]) seen[(l2.neg()).raw()] = 0;
     }
   }
   cl.clear(); cl.push_back(tmp_minim_with_bins[0]);
@@ -673,7 +673,7 @@ void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
       seen[l.raw()] = 0;
     }
   }
-  stats.rem_lits_with_bins+=rem;
+  stats.rem_lits_with_bins += orig_size - cl.size();
   stats.rem_lits_tried++;
 }
 

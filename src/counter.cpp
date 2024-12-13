@@ -1598,7 +1598,7 @@ RetState Counter<T>::backtrack() {
   do {
 #ifdef VERBOSE_DEBUG
     if (dec_level() > 0) {
-      debug_print("[indep] top count here: " << decisions.top().total_model_count()
+      debug_print("[backtrack] top count here: " << decisions.top().total_model_count()
         << " left: " << decisions.top().left_model_count()
         << " right: " << decisions.top().right_model_count()
         << " is right: " << decisions.top().is_right_branch()
@@ -1609,7 +1609,7 @@ RetState Counter<T>::backtrack() {
     if (decisions.top().branch_found_unsat()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
     } else if (decisions.top().another_comp_possible()) {
-      debug_print("[indep] Processing another comp at dec lev "
+      debug_print("[backtrack] Processing another comp at dec lev "
           << dec_level()
           << " instead of backtracking." << " Num unprocessed comps: "
           << decisions.top().num_unproc_comps()
@@ -1620,7 +1620,7 @@ RetState Counter<T>::backtrack() {
     // We have NOT explored the other side and it hasn't been re-written to be
     // propagation.
     if (!decisions.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
-      debug_print("[indep] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
+      debug_print("[backtrack] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << dec_level());
       const Lit lit = top_dec_lit();
       assert(dec_level() > 0);
@@ -1638,11 +1638,11 @@ RetState Counter<T>::backtrack() {
       decisions.top().change_to_right_branch();
       bool ret = propagate(true);
       assert(ret);
-      debug_print("[indep] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
+      debug_print("[backtrack] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
       if (val(lit.neg()) == X_TRI) {
         set_lit(lit.neg(), dec_level());
         VERBOSE_DEBUG_DO(print_trail());
-        debug_print(COLORGBG "[indep] Backtrack finished -- we flipped the branch. "
+        debug_print(COLORGBG "[backtrack] Backtrack finished -- we flipped the branch. "
             "count left: " << decisions.top().left_model_count()
             << " count right: " << decisions.top().right_model_count());
         return RESOLVED;
@@ -1652,11 +1652,11 @@ RetState Counter<T>::backtrack() {
         continue;
       }
     }
-    debug_print(COLORGBG "[indep] We have explored BOTH branches, actually BACKTRACKING."
+    debug_print(COLORGBG "[backtrack] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << dec_level());
     if (dec_level() == 0) {
       // Backtrack from end, i.e. finished.
-      debug_print(COLORGBG "[indep] Backtracking from lev 0, i.e. ending");
+      debug_print(COLORGBG "[backtrack] Backtracking from lev 0, i.e. ending");
       CHECK_COUNT_DO(check_count());
       break;
     }

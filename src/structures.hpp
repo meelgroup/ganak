@@ -144,11 +144,11 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 {
   std::stringstream s;
   if (val.isNull()) {
-    s << std::setw(5) << "DEC  " << std::setw(10) << "";
+    s << "DEC      " << std::setw(10) << "";
   } else if (val.isAClause()) {
-    s << "CL offs:  " << std::setw(10) << val.as_cl();
+    s << "CL offs: " << std::setw(10) << val.as_cl();
   } else if (val.isALit()) {
-    s << "Lit: " << std::setw(10) << val.as_lit();
+    s << "Lit:     " << std::setw(10) << val.as_lit();
   } else {assert(false);}
   os << s.str();
   return os;

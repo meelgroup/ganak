@@ -165,6 +165,11 @@ public:
   void end_irred_cls();
   void set_lit_weight(Lit l, const T& w);
   T outer_count();
+  uint32_t get_tstamp() const { return tstamp; }
+  uint32_t get_tstamp(int32_t lev) const {
+    if (dec_level() < lev) return UINT_MAX;
+    return decisions[lev].tstamp;
+  }
 
   const CounterConfiguration& get_conf() const { return conf;}
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }

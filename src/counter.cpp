@@ -1070,7 +1070,7 @@ void Counter<T>::decide_lit() {
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
-    StackLevel<T>(decisions.top().curr_remain_comp(), comp_manager->comp_stack_size(), is_indep));
+    StackLevel<T>(decisions.top().curr_remain_comp(), comp_manager->comp_stack_size(), is_indep, tstamp));
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
@@ -3126,7 +3126,7 @@ void Counter<T>::toplevel_full_probe() {
     Lit l = Lit(i, 0);
     if (val(l) != X_TRI) continue;
 
-    decisions.push_back(StackLevel<T>(1,2,true));
+    decisions.push_back(StackLevel<T>(1,2,true,tstamp));
     decisions.back().var = l.var();
     set_lit(l, 1);
     uint32_t trail_before = trail.size();
@@ -3151,7 +3151,7 @@ void Counter<T>::toplevel_full_probe() {
 
     // Negation
     assert(dec_level() == 0);
-    decisions.push_back(StackLevel<T>(1,2,true));
+    decisions.push_back(StackLevel<T>(1,2,true,tstamp));
     decisions.back().var = l.var();
     set_lit(l.neg(), 1);
 
@@ -3313,7 +3313,7 @@ bool Counter<T>::run_sat_solver(RetState& state) {
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
   decisions.push_back(StackLevel<T>(decisions.top().curr_remain_comp(),
-        comp_manager->comp_stack_size(), is_indep));
+        comp_manager->comp_stack_size(), is_indep, tstamp));
   sat_start_dec_level = dec_level();
 
   if (conf.do_sat_vsids) {
@@ -3355,7 +3355,7 @@ bool Counter<T>::run_sat_solver(RetState& state) {
     Lit l;
     if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);
     else l = Lit(d, get_polarity(d));
-    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2,is_indep));
+    if (decisions.top().var != 0) decisions.push_back(StackLevel<T>(1,2,is_indep,tstamp));
     decisions.back().var = l.var();
     set_lit(l, dec_level());
 
@@ -4197,9 +4197,8 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
   trail.resize(jt - trail.begin());
   if (dec_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
-  if (!sat_mode()) {
-    decisions.top().reset_remain_comps();
-  }
+  if (!sat_mode()) decisions.top().reset_remain_comps();
+  decisions.top().tstamp = tstamp;
 }
 
 template<typename T>
@@ -4222,7 +4221,7 @@ void Counter<T>::init_decision_stack() {
     decisions.push_back(StackLevel<T>(
           1, // super comp
           2, //comp stack offset
-          is_indep));
+          is_indep, tstamp));
 
     // This is needed so the system later knows it's fully counted
     // since this is only a dummy.

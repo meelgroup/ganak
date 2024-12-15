@@ -73,9 +73,9 @@ struct MyHolder {
   // start_bin, sz_bin, start_long, sz_long, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
 
-  uint32_t stamp(uint32_t v) const {return data[v*hstride];}
+  uint32_t tstamp(uint32_t v) const {return data[v*hstride];}
+  uint32_t& tstamp(uint32_t v) {return data[v*hstride];}
   uint32_t lev(uint32_t v) const {return data[v*hstride+1];}
-  uint32_t& stamp(uint32_t v) {return data[v*hstride];}
   uint32_t& lev(uint32_t v) {return data[v*hstride+1];}
   static constexpr uint32_t offset = 2;
 
@@ -184,8 +184,8 @@ private:
   uint32_t max_clid = 0;
   uint32_t max_tri_clid = 0;
   uint32_t max_var = 0;
-  int32_t backtracked = INT_MAX;
-  int32_t last_declev = 0;
+  uint32_t reset_comps = 0;
+  uint32_t non_reset_comps = 0;
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 
   MyHolder holder;

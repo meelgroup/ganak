@@ -167,6 +167,8 @@ void CompAnalyzer<T>::initialize(
       assert(offs <= total_sz);
       memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
       data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
+      holder.tstamp(v) = 0;
+      holder.lev(v) = 0;
     }
     assert(data_start == data + total_sz);
 
@@ -224,10 +226,24 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
+  if (reset_comps % (1024*64) == 0 && non_reset_comps > 0) {
+    verb_print(1, COLWHT "Tot examined " << (reset_comps+non_reset_comps)/1000 << "K non-reset ratio: "
+        << (double)(reset_comps+non_reset_comps)/(double)non_reset_comps);
+  }
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
+
+    if (holder.tstamp(v) <= counter->get_tstamp(holder.lev(v))) {
+      holder.size_bin(v) = holder.orig_size_bin(v);
+      holder.size_long(v) = holder.orig_size_long(v);
+      reset_comps++;
+    } else {
+      non_reset_comps++;
+    }
+    holder.lev(v) = counter->dec_level();
+    holder.tstamp(v) = counter->get_tstamp();
 
     if (sup_comp_bin_cls == archetype.num_bin_cls) {
       // we have seen all bin clauses
@@ -256,13 +272,12 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
       continue;
     }
 
-    auto longs = holder.begin_long(v);
-    /* auto longs2 = longs+2; */
-    auto longs_end = holder.begin_long(v)+holder.size_long(v);
+    ClData* longs = holder.begin_long(v);
+    ClData* longs_end = holder.begin_long(v)+holder.size_long(v);
     while (longs != longs_end) {
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
-      const ClData& d = *(longs++);
-      /* longs2++; */
+      const ClData& d = *longs;
+      longs++;
       bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses
@@ -271,7 +286,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
           const Lit l2 = d.get_lit2();
           if (is_true(l1) || is_true(l2)) {
             archetype.clear_cl(d.id);
-            continue;
+            sat = true;
+            goto end_sat;
           } else {
             bump_freq_score(v);
             manage_occ_and_score_of(l1.var());
@@ -280,24 +296,28 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
           }
         } else continue;
       } else {
-        /* // traverse long clauses */
-        /* if (longs2 < longs_end) { */
-        /*   const ClData& d2 = *(longs2); */
-        /*   __builtin_prefetch(long_clauses_data.data()+d2.off); */
-        /* } */
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           if (is_true(d.blk_lit)) {
             archetype.clear_cl(d.id);
-            continue;
+            sat = true;
+            goto end_sat;
           }
           Lit* start = long_clauses_data.data()+d.off;
           sat = search_clause(v, d, start);
+          if (sat) goto end_sat;
         } else continue;
       }
       if (!sat) archetype.num_long_cls++;
+      continue;
+
+end_sat:;
+      longs--;
+      longs_end--;
+      std::swap(*longs, *longs_end);
+
+      holder.size_long(v)--;
     }
   }
-
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
       << comp_vars.size() << " long");
 }

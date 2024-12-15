@@ -230,15 +230,13 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
-  bool search_clause(uint32_t v2, const ClData& d, Lit const* cl_start) {
+  bool search_clause(uint32_t v2, ClData& d, Lit const* cl_start) {
     const auto it_v_end = comp_vars.end();
     bool sat = false;
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       const uint32_t v = it_l->var();
       assert(v <= max_var);
-      if (v == v2) continue;
-
       if (!archetype.var_nil(v)) manage_occ_and_score_of(v);
       else {
         assert(!is_unknown(*it_l));
@@ -253,16 +251,16 @@ private:
           comp_vars.pop_back();
         }
         archetype.clear_cl(d.id);
-        while(*it_l != SENTINEL_LIT)
-          if(is_unknown(*(--it_l))) un_bump_score(it_l->var());
+        it_l--;
+        while(*it_l != SENTINEL_LIT) {
+          if(is_unknown(*it_l)) un_bump_score(it_l->var());
+          it_l--;
+        }
         break;
       }
     }
 
-    if (!archetype.clause_nil(d.id)) {
-      bump_freq_score(v2);
-      archetype.set_clause_visited(d.id);
-    }
+    if (!sat) archetype.set_clause_visited(d.id);
     return sat;
   }
 };

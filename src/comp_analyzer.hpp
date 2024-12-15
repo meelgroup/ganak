@@ -185,8 +185,8 @@ private:
   uint32_t max_clid = 0;
   uint32_t max_tri_clid = 0;
   uint32_t max_var = 0;
-  uint32_t reset_comps = 0;
-  uint32_t non_reset_comps = 0;
+  uint64_t reset_comps = 0;
+  uint64_t non_reset_comps = 0;
   uint32_t comps_recorded = 0;
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 

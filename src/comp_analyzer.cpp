@@ -230,7 +230,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
-  if (comps_recorded % (1024*512) == 0 && reset_comps+non_reset_comps > 0) {
+  if (comps_recorded % (1024*1024) == 0 && reset_comps+non_reset_comps > 0) {
     verb_print(1, COLWHT "[record_comp] Tot recorded " << (comps_recorded)/1000 << "K non-reset ratio: "
         << (double)(non_reset_comps)/(double)(reset_comps+non_reset_comps));
   }

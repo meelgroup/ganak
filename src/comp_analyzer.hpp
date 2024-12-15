@@ -245,6 +245,7 @@ private:
         //accidentally entered a satisfied clause: undo the search process
         /* cout << "satisfied clause due to: " << *it_l << endl; */
         sat = true;
+        d.blk_lit = *it_l;
         while (comp_vars.end() != it_v_end) {
           assert(comp_vars.back() <= max_var);
           archetype.set_var_in_sup_comp_unvisited(comp_vars.back());

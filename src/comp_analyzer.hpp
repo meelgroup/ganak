@@ -45,7 +45,7 @@ namespace GanakInt {
 template<typename T> class ClauseAllocator;
 template<typename T> class Counter;
 
-/* #define USE_DIRTY */
+constexpr uint32_t hstride = 6;
 
 struct ClData {
   uint32_t id;
@@ -77,32 +77,28 @@ struct MyHolder {
     return (begin_long(v))[size_long(v)-1];
   }
   ClData* begin_long(uint32_t v) {
-    auto start = data[v*4+2];
+    auto start = data[v*hstride+3];
     return (ClData*) (data + start);
   }
-  uint32_t size_long(uint32_t v) { return data[v*4+3];}
-  void pop_back_long(uint32_t v) {
-    data[v*4+3]--;
-  }
-  void resize_long(uint32_t v, uint32_t sz) {
-    data[v*4+3] = sz;
-  }
+  uint32_t size_long(uint32_t v) const { return data[v*hstride+4];}
+  uint32_t& size_long(uint32_t v) { return data[v*hstride+4];}
+  uint32_t orig_size_long(uint32_t v) { return data[v*hstride+5];}
+  void pop_back_long(uint32_t v) { size_long(v)--; }
+  void resize_long(uint32_t v, uint32_t sz) { size_long(v) = sz; }
 
   //bin
   uint32_t& back_bin(uint32_t v) {
     return (begin_bin(v))[size_bin(v)-1];
   }
   uint32_t* begin_bin(uint32_t v) {
-    auto start = data[v*4];
+    auto start = data[v*hstride];
     return (uint32_t*) (data + start);
   }
-  uint32_t size_bin(uint32_t v) { return data[v*4+1];}
-  void pop_back_bin(uint32_t v) {
-    data[v*4+1]--;
-  }
-  void resize_bin(uint32_t v, uint32_t sz) {
-    data[v*4+1] = sz;
-  }
+  uint32_t size_bin(uint32_t v) const { return data[v*hstride+1];}
+  uint32_t& size_bin(uint32_t v) { return data[v*hstride+1];}
+  uint32_t orig_size_bin(uint32_t v) { return data[v*hstride+2];}
+  void pop_back_bin(uint32_t v) { size_bin(v)--; }
+  void resize_bin(uint32_t v, uint32_t sz) { size_bin(v) = sz; }
 };
 
 // There is exactly ONE of this, inside CompManager, which is inside counter

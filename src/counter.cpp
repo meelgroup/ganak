@@ -1065,6 +1065,7 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 
 template<typename T>
 void Counter<T>::decide_lit() {
+  tstamp++;
   recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());

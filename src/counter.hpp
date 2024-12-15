@@ -350,6 +350,7 @@ private:
   vector<double> tdscore;
   double td_weight = 1.0;
   int td_width = 10000;
+  uint64_t tstamp = 0;
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
   vector<Lit>::iterator top_declevel_trail_begin();

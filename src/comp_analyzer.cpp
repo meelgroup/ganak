@@ -140,27 +140,30 @@ void CompAnalyzer<T>::initialize(
     assert(unif_occ_bin.size() == n);
 
     uint32_t total_sz = 0;
-    for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t)) + 2;
-    for(const auto& u: unif_occ_bin) total_sz += u.size() + 2;
+    for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t));
+    for(const auto& u: unif_occ_bin) total_sz += u.size();
+    total_sz += hstride*n;
     uint32_t* data = new uint32_t[total_sz];
     holder.data = data;
-    uint32_t* data_start = holder.data + n*4; // 4 per var, because (offs, size) for bin and long
+    uint32_t* data_start = holder.data + n*hstride;
 
     for(uint32_t v = 0; v < n; v++) {
       // fill bins
       const auto& u_bins = unif_occ_bin[v];
-      holder.data[v*4+1] = u_bins.size();
+      holder.data[v*hstride+1] = u_bins.size();
+      holder.data[v*hstride+2] = u_bins.size();
       uint32_t offs = data_start - holder.data;
-      holder.data[v*4+0] = offs;
+      holder.data[v*hstride+0] = offs;
       assert(offs <= total_sz);
       memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
       data_start += u_bins.size();
 
       // fill longs
       const auto& u_longs = unif_occ_long[v];
-      holder.data[v*4+3] = u_longs.size();
+      holder.data[v*hstride+4] = u_longs.size();
+      holder.data[v*hstride+5] = u_longs.size();
       offs = data_start - holder.data;
-      holder.data[v*4+2] = offs;
+      holder.data[v*hstride+3] = offs;
       assert(offs <= total_sz);
       memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
       data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
@@ -205,6 +208,11 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_lon
   }
   return true;
 }
+
+// Each variable knows the level it was visited at, and the stimestamp at the time
+// Each level knows the HIGHEST stamp it has been seen
+// When checking a var, we go to the level, see the stamp, if it's larger than the stamp of the var,
+// we need to reset the size
 
 // Create a component based on variable provided
 template<typename T>

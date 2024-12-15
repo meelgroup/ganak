@@ -190,6 +190,8 @@ public:
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
   const auto& get_var_data(uint32_t v) const { return var_data[v]; }
   auto dec_level() const { return decisions.get_decision_level(); }
+  void print_trail(bool check_entail = true, bool check_anything = true) const;
+  void set_stamp() { decisions[dec_level()].tstamp = ++tstamp; }
 
 private:
   CounterConfiguration conf;
@@ -376,7 +378,6 @@ private:
   void print_cl(const Lit* c, uint32_t size) const;
   void print_conflict_info() const;
   void print_comp_stack_info() const;
-  void print_trail(bool check_entail = true, bool check_anything = true) const;
   void print_stat_line();
   uint64_t next_print_stat_cache = 4LL*1000LL*1000LL;
   uint64_t next_print_stat_confl = 100LL*1000LL;

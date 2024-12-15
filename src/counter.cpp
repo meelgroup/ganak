@@ -1065,7 +1065,6 @@ bool Counter<T>::get_polarity(const uint32_t v) const {
 
 template<typename T>
 void Counter<T>::decide_lit() {
-  tstamp++;
   recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
@@ -4198,7 +4197,6 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
   if (dec_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
   if (!sat_mode()) decisions.top().reset_remain_comps();
-  decisions.top().tstamp = tstamp;
 }
 
 template<typename T>

@@ -46,6 +46,7 @@ template<typename T> class ClauseAllocator;
 template<typename T> class Counter;
 
 constexpr uint32_t hstride = 8; // stamp, lev, 2*(start, size, orig_size)
+/* #define ANAYLZE_DEBUG */
 
 struct ClData {
   uint32_t id;
@@ -186,6 +187,7 @@ private:
   uint32_t max_var = 0;
   uint32_t reset_comps = 0;
   uint32_t non_reset_comps = 0;
+  uint32_t comps_recorded = 0;
   static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
 
   MyHolder holder;

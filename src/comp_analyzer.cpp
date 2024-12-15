@@ -104,6 +104,9 @@ void CompAnalyzer<T>::initialize(
       assert(max_tri_clid == max_clid && "it's sorted by clause size!");
       max_tri_clid++;
     }
+    /* cout << "cl id: " << max_clid << " size: " << cl.size() << " cl: "; */
+    /* for(const auto& l: cl) cout << " " << l; */
+    /* cout << endl; */
     max_clid++;
   }
   /* cout << "max clid: " << max_clid << " max_tri_clid: " << max_tri_clid << endl;; */
@@ -223,20 +226,32 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
   comp_vars.clear();
   comp_vars.push_back(var);
   archetype.set_var_visited(var);
+  counter->set_stamp();
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
-  if (reset_comps % (1024*64) == 0 && non_reset_comps > 0) {
-    verb_print(1, COLWHT "Tot examined " << (reset_comps+non_reset_comps)/1000 << "K non-reset ratio: "
-        << (double)(reset_comps+non_reset_comps)/(double)non_reset_comps);
+  if (comps_recorded % (1024*512) == 0 && reset_comps+non_reset_comps > 0) {
+    verb_print(1, COLWHT "[record_comp] Tot recorded " << (comps_recorded)/1000 << "K non-reset ratio: "
+        << (double)(non_reset_comps)/(double)(reset_comps+non_reset_comps));
   }
+  comps_recorded++;
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-    if (holder.tstamp(v) <= counter->get_tstamp(holder.lev(v))) {
-      holder.size_bin(v) = holder.orig_size_bin(v);
+#ifdef ANAYLZE_DEBUG
+    cout << "-----------------------" << endl;
+    cout << "record v: " << v << " start" << endl;
+    cout << "holder.lev(v): " << holder.lev(v) << endl;
+    cout << "holder.tstamp(v): " << holder.tstamp(v) << endl;
+    cout << "counter->dec_level(): " << counter->dec_level() << endl;
+    cout << "counter->get_tstamp(holder.lev(v)): " << counter->get_tstamp(holder.lev(v)) << endl;
+    counter->print_trail();
+#endif
+
+    if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
+      /* holder.size_bin(v) = holder.orig_size_bin(v); */
       holder.size_long(v) = holder.orig_size_long(v);
       reset_comps++;
     } else {
@@ -244,6 +259,10 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     }
     holder.lev(v) = counter->dec_level();
     holder.tstamp(v) = counter->get_tstamp();
+#ifdef ANAYLZE_DEBUG
+    cout << "AFTER holder.lev(v): " << holder.lev(v) << endl;
+    cout << "AFTER holder.tstamp(v): " << holder.tstamp(v) << endl;
+#endif
 
     if (sup_comp_bin_cls == archetype.num_bin_cls) {
       // we have seen all bin clauses
@@ -254,7 +273,8 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     } else {
       //traverse binary clauses
       auto bins = holder.begin_bin(v);
-      for(uint32_t i = 0, sz = holder.size_bin(v); i < sz; i++) {
+      auto bins_end = bins + holder.size_bin(v);
+      while(bins != bins_end) {
         uint32_t v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
         manage_occ_of(v2);
@@ -262,6 +282,13 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
           archetype.num_bin_cls++;
           bump_freq_score(v2);
           bump_freq_score(v);
+        } else {
+          // it's true
+          /* bins--; */
+          /* bins_end--; */
+          /* std::swap(*bins, *bins_end); */
+
+          /* holder.size_bin(v)--; */
         }
       }
     }
@@ -272,6 +299,39 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
       continue;
     }
 
+#ifdef SLOW_DEBUG
+    {
+      // checks that longs between size and orig_size are all satisfied
+      /* cout << "holder.size_long(v): " << holder.size_long(v) << endl; */
+      /* cout << "holder.orig_size_long(v): " << holder.orig_size_long(v) << endl; */
+      ClData* longs = holder.begin_long(v);
+      ClData* longs_end2 = longs+holder.size_long(v);
+      ClData* longs_end3 = longs+holder.orig_size_long(v);
+      while (longs_end2 != longs_end3) {
+        const ClData& d = *longs_end2;
+        const Lit* start = long_clauses_data.data()+d.off;
+        if (d.id < max_tri_clid) {
+          const Lit l1 = d.get_lit1();
+          const Lit l2 = d.get_lit2();
+          assert(is_true(l1) || is_true(l2));
+        } else {
+          bool sat = false;
+          for (auto it_l = start; *it_l != SENTINEL_LIT; it_l++) {
+            if (is_true(*it_l)) sat = true;
+          }
+          if (!sat) {
+            cout << "long clause id: " << d.id << " not satisfied: ";
+            for (auto it_l = start; *it_l != SENTINEL_LIT; it_l++) {
+              cout << *it_l << " ";
+            }
+            cout << endl;
+            assert(sat);
+          }
+        }
+        longs_end2++;
+      }
+    }
+#endif
     ClData* longs = holder.begin_long(v);
     ClData* longs_end = longs+holder.size_long(v);
     while (longs != longs_end) {
@@ -287,7 +347,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
           if (is_true(l1) || is_true(l2)) {
             archetype.clear_cl(d.id);
             sat = true;
-            goto end_sat;
+            /* goto end_sat; */
           } else {
             bump_freq_score(v);
             manage_occ_and_score_of(l1.var());
@@ -302,7 +362,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
             sat = true;
             goto end_sat;
           }
-          Lit* start = long_clauses_data.data()+d.off;
+          const Lit* start = long_clauses_data.data()+d.off;
           sat = search_clause(v, d, start);
           if (sat) goto end_sat;
         } else continue;
@@ -313,10 +373,19 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
 end_sat:;
       longs--;
       longs_end--;
+#ifdef ANAYLZE_DEBUG
+      const ClData& d2 = *longs;
+      cout << "SAT clause id: " << d2.id << " cl:";
+      for (auto it_l = long_clauses_data.data()+d2.off; *it_l != SENTINEL_LIT; it_l++) {
+        cout << *it_l << " ";
+      }
+      cout << endl;
+#endif
       std::swap(*longs, *longs_end);
-
       holder.size_long(v)--;
     }
+    /* cout << "AFTER holder.size_long(v): " << holder.size_long(v) << endl; */
+    /* cout << "AFTER holder.orig_size_long(v): " << holder.orig_size_long(v) << endl; */
   }
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
       << comp_vars.size() << " long");

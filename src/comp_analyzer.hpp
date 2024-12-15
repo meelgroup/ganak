@@ -45,7 +45,7 @@ namespace GanakInt {
 template<typename T> class ClauseAllocator;
 template<typename T> class Counter;
 
-constexpr uint32_t hstride = 6;
+constexpr uint32_t hstride = 8; // stamp, lev, 2*(start, size, orig_size)
 
 struct ClData {
   uint32_t id;
@@ -72,33 +72,44 @@ struct MyHolder {
   uint32_t* data;
   // start_bin, sz_bin, start_long, sz_long, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
-  //
-  ClData& back_long(uint32_t v) {
-    return (begin_long(v))[size_long(v)-1];
-  }
-  ClData* begin_long(uint32_t v) {
-    auto start = data[v*hstride+3];
-    return (ClData*) (data + start);
-  }
-  uint32_t size_long(uint32_t v) const { return data[v*hstride+4];}
-  uint32_t& size_long(uint32_t v) { return data[v*hstride+4];}
-  uint32_t orig_size_long(uint32_t v) { return data[v*hstride+5];}
-  void pop_back_long(uint32_t v) { size_long(v)--; }
-  void resize_long(uint32_t v, uint32_t sz) { size_long(v) = sz; }
 
-  //bin
+  uint32_t stamp(uint32_t v) const {return data[v*hstride];}
+  uint32_t lev(uint32_t v) const {return data[v*hstride+1];}
+  uint32_t& stamp(uint32_t v) {return data[v*hstride];}
+  uint32_t& lev(uint32_t v) {return data[v*hstride+1];}
+  static constexpr uint32_t offset = 2;
+
+  //
+  // bin
+  uint32_t* begin_bin(uint32_t v) {
+    auto start = data[v*hstride+offset+0];
+    return (uint32_t*) (data+start);
+  }
   uint32_t& back_bin(uint32_t v) {
     return (begin_bin(v))[size_bin(v)-1];
   }
-  uint32_t* begin_bin(uint32_t v) {
-    auto start = data[v*hstride];
-    return (uint32_t*) (data + start);
-  }
-  uint32_t size_bin(uint32_t v) const { return data[v*hstride+1];}
-  uint32_t& size_bin(uint32_t v) { return data[v*hstride+1];}
-  uint32_t orig_size_bin(uint32_t v) { return data[v*hstride+2];}
+  uint32_t size_bin(uint32_t v) const { return data[v*hstride+offset+1];}
+  uint32_t& size_bin(uint32_t v) { return data[v*hstride+offset+1];}
+  uint32_t orig_size_bin(uint32_t v) const { return data[v*hstride+offset+2];}
+  uint32_t& orig_size_bin(uint32_t v) { return data[v*hstride+offset+2];}
   void pop_back_bin(uint32_t v) { size_bin(v)--; }
   void resize_bin(uint32_t v, uint32_t sz) { size_bin(v) = sz; }
+
+  // long
+  ClData* begin_long(uint32_t v) {
+    auto start = data[v*hstride+offset+3];
+    return (ClData*) (data + start);
+  }
+  ClData& back_long(uint32_t v) {
+    return (begin_long(v))[size_long(v)-1];
+  }
+  uint32_t size_long(uint32_t v) const { return data[v*hstride+offset+4];}
+  uint32_t& size_long(uint32_t v) { return data[v*hstride+offset+4];}
+  uint32_t orig_size_long(uint32_t v) const { return data[v*hstride+offset+5];}
+  uint32_t& orig_size_long(uint32_t v) { return data[v*hstride+offset+5];}
+  void pop_back_long(uint32_t v) { size_long(v)--; }
+  void resize_long(uint32_t v, uint32_t sz) { size_long(v) = sz; }
+
 };
 
 // There is exactly ONE of this, inside CompManager, which is inside counter

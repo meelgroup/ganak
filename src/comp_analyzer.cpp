@@ -150,20 +150,20 @@ void CompAnalyzer<T>::initialize(
     for(uint32_t v = 0; v < n; v++) {
       // fill bins
       const auto& u_bins = unif_occ_bin[v];
-      holder.data[v*hstride+1] = u_bins.size();
-      holder.data[v*hstride+2] = u_bins.size();
+      holder.size_bin(v) = u_bins.size();
+      holder.orig_size_bin(v) = u_bins.size();
       uint32_t offs = data_start - holder.data;
-      holder.data[v*hstride+0] = offs;
+      holder.data[v*hstride+holder.offset] = offs;
       assert(offs <= total_sz);
       memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
       data_start += u_bins.size();
 
       // fill longs
       const auto& u_longs = unif_occ_long[v];
-      holder.data[v*hstride+4] = u_longs.size();
-      holder.data[v*hstride+5] = u_longs.size();
+      holder.orig_size_long(v) = u_longs.size();
+      holder.size_long(v) = u_longs.size();
       offs = data_start - holder.data;
-      holder.data[v*hstride+3] = offs;
+      holder.data[v*hstride+holder.offset+3] = offs;
       assert(offs <= total_sz);
       memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
       data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));

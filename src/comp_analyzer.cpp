@@ -273,7 +273,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     }
 
     ClData* longs = holder.begin_long(v);
-    ClData* longs_end = holder.begin_long(v)+holder.size_long(v);
+    ClData* longs_end = longs+holder.size_long(v);
     while (longs != longs_end) {
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       const ClData& d = *longs;

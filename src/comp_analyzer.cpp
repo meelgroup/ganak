@@ -363,7 +363,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
             goto end_sat;
           }
           const Lit* start = long_clauses_data.data()+d.off;
-          sat = search_clause(v, d, start);
+          sat = search_clause(d, start);
           if (sat) goto end_sat;
         } else continue;
       }

@@ -39,11 +39,11 @@ template<typename T>
 class StackLevel {
 public:
   StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _is_indep, uint64_t _tstamp) :
+      tstamp(_tstamp),
       is_indep(_is_indep),
       super_comp_(super_comp),
       remaining_comps_ofs_(comp_stack_ofs),
-      unprocessed_comps_end_(comp_stack_ofs),
-      tstamp(_tstamp) {
+      unprocessed_comps_end_(comp_stack_ofs) {
     assert(super_comp < comp_stack_ofs);
   }
   uint64_t tstamp;

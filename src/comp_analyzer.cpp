@@ -153,20 +153,19 @@ void CompAnalyzer<T>::initialize(
     for(uint32_t v = 0; v < n; v++) {
       // fill bins
       const auto& u_bins = unif_occ_bin[v];
-      holder.size_bin(v) = u_bins.size();
-      holder.orig_size_bin(v) = u_bins.size();
       uint32_t offs = data_start - holder.data;
-      holder.data[v*hstride+holder.offset] = offs;
+      holder.start_bin(v) = offs;
+      holder.set_end_bin(v, offs+u_bins.size());
       assert(offs <= total_sz);
       memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
       data_start += u_bins.size();
 
       // fill longs
       const auto& u_longs = unif_occ_long[v];
-      holder.orig_size_long(v) = u_longs.size();
-      holder.size_long(v) = u_longs.size();
       offs = data_start - holder.data;
-      holder.data[v*hstride+holder.offset+3] = offs;
+      holder.start_long(v) = offs;
+      holder.orig_start_long(v) = offs;
+      holder.set_end_long(v, offs+u_longs.size()*(sizeof(ClData)/sizeof(uint32_t)));
       assert(offs <= total_sz);
       memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
       data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
@@ -177,7 +176,7 @@ void CompAnalyzer<T>::initialize(
 
     // check bins
     for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
-      assert(unif_occ_bin[v].size() == holder.size_bin(v));
+      assert(unif_occ_bin[v].size() == (holder.end_bin(v)-holder.begin_bin(v)));
       for(uint32_t i = 0; i < unif_occ_bin[v].size(); i++) {
         assert(unif_occ_bin[v][i] == holder.begin_bin(v)[i]);
       }
@@ -185,9 +184,11 @@ void CompAnalyzer<T>::initialize(
 
     // check longs
     for(uint32_t v = 0; v < unif_occ_long.size(); v++) {
-      assert(unif_occ_long[v].size() == holder.size_long(v));
+      assert(unif_occ_long[v].size() == holder.end_long(v)-holder.begin_long(v));
+      assert(unif_occ_long[v].size() == holder.end_long(v)-holder.orig_begin_long(v));
       for(uint32_t i = 0; i < unif_occ_long[v].size(); i++) {
         assert(unif_occ_long[v][i] == holder.begin_long(v)[i]);
+        assert(unif_occ_long[v][i] == holder.orig_begin_long(v)[i]);
       }
     }
   }
@@ -240,26 +241,27 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
 
-#ifdef ANAYLZE_DEBUG
+#ifdef ANALYZE_DEBUG
     cout << "-----------------------" << endl;
     cout << "record v: " << v << " start" << endl;
     cout << "holder.lev(v): " << holder.lev(v) << endl;
     cout << "holder.tstamp(v): " << holder.tstamp(v) << endl;
     cout << "counter->dec_level(): " << counter->dec_level() << endl;
     cout << "counter->get_tstamp(holder.lev(v)): " << counter->get_tstamp(holder.lev(v)) << endl;
+    cout << "holder.start_long(v): " << holder.start_long(v) << endl;
+    cout << "holder.orig_start_long(v): " << holder.orig_start_long(v) << endl;
     counter->print_trail();
 #endif
 
     if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
-      /* holder.size_bin(v) = holder.orig_size_bin(v); */
-      holder.size_long(v) = holder.orig_size_long(v);
+      holder.reset_start_long(v);
       reset_comps++;
     } else {
       non_reset_comps++;
     }
     holder.lev(v) = counter->dec_level();
     holder.tstamp(v) = counter->get_tstamp();
-#ifdef ANAYLZE_DEBUG
+#ifdef ANALYZE_DEBUG
     cout << "AFTER holder.lev(v): " << holder.lev(v) << endl;
     cout << "AFTER holder.tstamp(v): " << holder.tstamp(v) << endl;
 #endif
@@ -273,7 +275,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
     } else {
       //traverse binary clauses
       auto bins = holder.begin_bin(v);
-      auto bins_end = bins + holder.size_bin(v);
+      auto bins_end = holder.end_bin(v);
       while(bins != bins_end) {
         uint32_t v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
@@ -282,13 +284,6 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
           archetype.num_bin_cls++;
           bump_freq_score(v2);
           bump_freq_score(v);
-        } else {
-          // it's true
-          /* bins--; */
-          /* bins_end--; */
-          /* std::swap(*bins, *bins_end); */
-
-          /* holder.size_bin(v)--; */
         }
       }
     }
@@ -302,20 +297,21 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
 #ifdef SLOW_DEBUG
     {
       // checks that longs between size and orig_size are all satisfied
-      /* cout << "holder.size_long(v): " << holder.size_long(v) << endl; */
-      /* cout << "holder.orig_size_long(v): " << holder.orig_size_long(v) << endl; */
-      ClData* longs = holder.begin_long(v);
-      ClData* longs_end2 = longs+holder.size_long(v);
-      ClData* longs_end3 = longs+holder.orig_size_long(v);
-      while (longs_end2 != longs_end3) {
-        const ClData& d = *longs_end2;
-        const Lit* start = long_clauses_data.data()+d.off;
+      ClData* longs = holder.orig_begin_long(v);
+      ClData* longs_end = holder.begin_long(v);
+      while (longs < longs_end) {
+        const ClData& d = *longs;
         if (d.id < max_tri_clid) {
           const Lit l1 = d.get_lit1();
           const Lit l2 = d.get_lit2();
+          if (!(is_true(l1) || is_true(l2))) {
+            cout << "tri clause id: " << d.id << " not satisfied: ";
+            cout << l1 << " " << l2 << endl;
+          } else cout << "tri clause id: " << d.id << " satisfied" << endl;
           assert(is_true(l1) || is_true(l2));
         } else {
           bool sat = false;
+          const Lit* start = long_clauses_data.data()+d.off;
           for (auto it_l = start; *it_l != SENTINEL_LIT; it_l++) {
             if (is_true(*it_l)) sat = true;
           }
@@ -326,14 +322,14 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
             }
             cout << endl;
             assert(sat);
-          }
+          } else cout << "long clause id: " << d.id << " satisfied" << endl;
         }
-        longs_end2++;
+        longs++;
       }
     }
 #endif
     ClData* longs = holder.begin_long(v);
-    ClData* longs_end = longs+holder.size_long(v);
+    ClData* longs_end = holder.end_long(v);
     while (longs != longs_end) {
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       ClData& d = *longs;
@@ -371,9 +367,7 @@ void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_lo
       continue;
 
 end_sat:;
-      longs--;
-      longs_end--;
-#ifdef ANAYLZE_DEBUG
+#ifdef ANALYZE_DEBUG
       const ClData& d2 = *longs;
       cout << "SAT clause id: " << d2.id << " cl:";
       for (auto it_l = long_clauses_data.data()+d2.off; *it_l != SENTINEL_LIT; it_l++) {
@@ -381,11 +375,11 @@ end_sat:;
       }
       cout << endl;
 #endif
-      std::swap(*longs, *longs_end);
-      holder.size_long(v)--;
+      std::swap(d, *holder.begin_long(v));
+      holder.start_long(v)+=sizeof(ClData)/sizeof(uint32_t);
     }
-    /* cout << "AFTER holder.size_long(v): " << holder.size_long(v) << endl; */
-    /* cout << "AFTER holder.orig_size_long(v): " << holder.orig_size_long(v) << endl; */
+    /* cout << "AFTER holder.start_long(v): " << holder.start_long(v) << endl; */
+    /* cout << "AFTER holder.orig_size_long(v): " << holder.orig_start_long(v) << endl; */
   }
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
       << comp_vars.size() << " long");

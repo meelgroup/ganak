@@ -421,7 +421,8 @@ only_dirs = [
             # "out-ganak-mc2324-13972052-", # tighter datastructs via vec<>, float instead of double, double bump bin, fixed counting of removed literals for further clause minimization
             # "out-ganak-mc2324-13973015-", # double instead of float for activities
             # "out-ganak-mc2324-13977963-", # all experiments
-            "out-ganak-mc2324-13982113-", # new stamping
+            # "out-ganak-mc2324-13982113-", # new stamping
+            "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -542,7 +543,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][290:]\\\n")
+    f.write("plot [:][790:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

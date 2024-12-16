@@ -176,7 +176,7 @@ void CompAnalyzer<T>::initialize(
 
     // check bins
     for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
-      assert(unif_occ_bin[v].size() == (holder.end_bin(v)-holder.begin_bin(v)));
+      assert(unif_occ_bin[v].size() == (size_t)(holder.end_bin(v)-holder.begin_bin(v)));
       for(uint32_t i = 0; i < unif_occ_bin[v].size(); i++) {
         assert(unif_occ_bin[v][i] == holder.begin_bin(v)[i]);
       }
@@ -184,8 +184,8 @@ void CompAnalyzer<T>::initialize(
 
     // check longs
     for(uint32_t v = 0; v < unif_occ_long.size(); v++) {
-      assert(unif_occ_long[v].size() == holder.end_long(v)-holder.begin_long(v));
-      assert(unif_occ_long[v].size() == holder.end_long(v)-holder.orig_begin_long(v));
+      assert(unif_occ_long[v].size() == (size_t)(holder.end_long(v)-holder.begin_long(v)));
+      assert(unif_occ_long[v].size() == (size_t)(holder.end_long(v)-holder.orig_begin_long(v)));
       for(uint32_t i = 0; i < unif_occ_long[v].size(); i++) {
         assert(unif_occ_long[v][i] == holder.begin_long(v)[i]);
         assert(unif_occ_long[v][i] == holder.orig_begin_long(v)[i]);

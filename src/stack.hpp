@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include <vector>
 #include <iostream>
 #include "common.hpp"
-#include "structures.hpp"
 #include "mpreal.h"
 using std::vector;
 using std::cout;

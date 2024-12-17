@@ -174,6 +174,7 @@ void add_ganak_options()
     myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
     myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
     myopt("--actscorediv", conf.act_score_divisor, atof, "Activity score divisor");
+    myopt("--freqscorediv", conf.freq_score_divisor, atof, "Component frequency score divisor");
 //
 // Cache options
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");

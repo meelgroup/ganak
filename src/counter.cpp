@@ -3806,17 +3806,16 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
       debug_print("set_lit, compensating weight. i: " << i << " dec_lev: " << dec_lev);
-      bool found = false;
       if (vars_act_dec.size() <= i*(nVars()+1)) break;
       uint64_t* at = vars_act_dec.data()+i*(nVars()+1);
-      found = (at[0] == at[lit.var()]);
+      bool in_comp = (at[0] == at[lit.var()]);
       /* debug_print("dec val compare: " << at[0]); */
-      // Not found in parent, so not in any children for sure
-      if (!found) {
+      // Not in parent, so not in any children for sure
+      if (!in_comp) {
         debug_print("Var not found in parent, so not in children for sure. Exiting");
         break;
       } else debug_print("Var found in parent.");
-      if (i > dec_lev && found) decisions[i].include_solution_left_side(1/get_weight(lit));
+      if (i > dec_lev && in_comp) decisions[i].include_solution_left_side(1/get_weight(lit));
 
       bool found_in_children = false;
       const auto& s = decisions.at(i);
@@ -3825,11 +3824,11 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
           << " comp_manager->size: " << comp_manager->get_comp_stack().size());
       for(int comp_at = s.get_unprocessed_comps_end()-1; comp_at >= (int)s.remaining_comps_ofs() &&
           comp_at < (int)comp_manager->get_comp_stack().size(); comp_at--) {
-        const auto& c2 = comp_manager->at(comp_at);
+        const auto& comp = comp_manager->at(comp_at);
         VERBOSE_DEBUG_DO(cout << "vars in side comp: ";
-          all_vars_in_comp(*c2, v) VERBOSE_DEBUG_DO(cout << *v << " ");
+          all_vars_in_comp(*comp, v) VERBOSE_DEBUG_DO(cout << *v << " ");
           cout << endl;);
-        all_vars_in_comp(*c2, v) if (*v == lit.var()) {found_in_children = true;break;}
+        all_vars_in_comp(*comp, v) if (*v == lit.var()) {found_in_children = true;break;}
       }
       debug_print("found in children: " << found_in_children);
       if (!found_in_children) {

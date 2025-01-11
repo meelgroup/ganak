@@ -385,7 +385,7 @@ only_dirs = [
             # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
-            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
             # "out-ganak-mc2324-13890807-"

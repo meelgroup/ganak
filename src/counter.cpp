@@ -3814,8 +3814,9 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       if (!in_comp) {
         debug_print("Var not found in parent, so not in children for sure. Exiting");
         break;
-      } else debug_print("Var found in parent.");
-      if (i > dec_lev && in_comp) decisions[i].include_solution_left_side(1/get_weight(lit));
+      }
+      debug_print("Var found in parent.");
+      if (i > dec_lev) decisions[i].include_solution_left_side(1/get_weight(lit));
 
       bool in_children = false;
       const auto& s = decisions.at(i);

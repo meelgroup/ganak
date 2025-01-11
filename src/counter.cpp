@@ -3817,7 +3817,7 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       } else debug_print("Var found in parent.");
       if (i > dec_lev && in_comp) decisions[i].include_solution_left_side(1/get_weight(lit));
 
-      bool found_in_children = false;
+      bool in_children = false;
       const auto& s = decisions.at(i);
       debug_print("s.get_unprocessed_comps_end(): " << s.get_unprocessed_comps_end()
           << " s.remaining_comps_ofs(): " << s.remaining_comps_ofs()
@@ -3828,10 +3828,10 @@ void Counter<T>::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
         VERBOSE_DEBUG_DO(cout << "vars in side comp: ";
           all_vars_in_comp(*comp, v) VERBOSE_DEBUG_DO(cout << *v << " ");
           cout << endl;);
-        all_vars_in_comp(*comp, v) if (*v == lit.var()) {found_in_children = true;break;}
+        all_vars_in_comp(*comp, v) if (*v == lit.var()) {in_children = true;break;}
       }
-      debug_print("found in children: " << found_in_children);
-      if (!found_in_children) {
+      debug_print("found in children: " << in_children);
+      if (!in_children) {
         // Not found in children, so it must have been already processed and multiplied in. Compensate.
         assert((int)decisions.size() > i);
         if (decisions[i].get_branch_sols() != 0) decisions[i].include_solution(1/get_weight(lit));

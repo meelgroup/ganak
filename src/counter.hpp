@@ -494,8 +494,8 @@ void Counter<T>::unset_lit(Lit lit) {
     var(lit).ante = Antecedent();
     if constexpr (weighted) if(!sat_mode() && get_weight(lit) != 1) {
       uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
-      bool found = (at[0] == at[lit.var()]);
-      if (found) decisions[dec_level()].include_solution(get_weight(lit));
+      bool in_comp = (at[0] == at[lit.var()]);
+      if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
     }
     var(lit).decision_level = INVALID_DL;
     values[lit] = X_TRI;

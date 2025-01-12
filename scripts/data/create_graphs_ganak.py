@@ -385,7 +385,7 @@ only_dirs = [
             # "out-ganak-mc2324-13889246-1/", # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-2",  # all, 2023+24, major combos
             # "out-ganak-mc2324-13889246-3",  # all, 2023+24, major combos
-            "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
+            # "out-ganak-mc2324-13889246-4",  # all, 2023+24, major combos
 
             # update for chronoBT, different clause deletion
             # "out-ganak-mc2324-13890807-"
@@ -420,9 +420,9 @@ only_dirs = [
             # "out-ganak-mc2324-13946763-", # finally fixed binary counting
             # "out-ganak-mc2324-13972052-", # tighter datastructs via vec<>, float instead of double, double bump bin, fixed counting of removed literals for further clause minimization
             # "out-ganak-mc2324-13973015-", # double instead of float for activities
-            # "out-ganak-mc2324-13977963-", # all experiments
+            "out-ganak-mc2324-13977963-", # all experiments
             # "out-ganak-mc2324-13982113-", # new stamping
-            "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
+            # "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
             # "out-ganak-mc2324-13994954-", # checking freq score divider (also move-to-front Cldata + 7 elems, no 8)
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth

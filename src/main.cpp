@@ -383,6 +383,16 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.standalone_minimize_indep(cnf);
   if (do_puura) arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
   else cnf.renumber_sampling_vars_for_ganak();
+
+  if (!do_optindep && cnf.get_weighted()) {
+    // We have to move the weights to indep support and renumber again.
+    set<uint32_t> tmp(cnf.sampl_vars.begin(), cnf.sampl_vars.end());
+    for(const auto& v: cnf.weights) {
+      if (!tmp.count(v.first)) cnf.sampl_vars.push_back(v.first);
+    }
+    cnf.renumber_sampling_vars_for_ganak();
+  }
+
   if (etof_conf.all_indep) {
     cnf.opt_sampl_vars.clear();
     for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);

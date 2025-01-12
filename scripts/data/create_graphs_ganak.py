@@ -422,7 +422,7 @@ only_dirs = [
             # "out-ganak-mc2324-13973015-", # double instead of float for activities
             "out-ganak-mc2324-13977963-", # all experiments
             # "out-ganak-mc2324-13982113-", # new stamping
-            # "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
+            "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
             # "out-ganak-mc2324-13994954-", # checking freq score divider (also move-to-front Cldata + 7 elems, no 8)
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth

@@ -177,15 +177,26 @@ def find_ganak_time_cnt(fname):
     return [t,cnt]
 
 #c o Arjun T: 206.14
+# c o Sampling set size: 94
+# c o Opt sampling set size: 94
+# c o CNF projection set size: xx
 def find_arjun_time(fname):
     t = None
     backb_t = None
     backw_t = None
-    indep_sz = None
     unkn_sz = None
+    orig_proj_sz = None
+    indep_sz = None
+    opt_indep_sz = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if "c o Sampling set size:" in line:
+              indep_sz = int(line.split()[5])
+            if "c o Opt sampling set size:" in line:
+              opt_indep_sz = int(line.split()[6])
+            if "c o CNF projection set size:" in line:
+              orig_proj_sz = int(line.split()[6])
             if "Start unknown size" in line:
               line = ''.join(filter(lambda x:x in string.printable, line))
               line = line.replace("[0m", "")
@@ -194,7 +205,6 @@ def find_arjun_time(fname):
               line = ''.join(filter(lambda x:x in string.printable, line))
               line = line.replace("[0m", "")
               backw_t = float(line.split()[10])
-              indep_sz = int(line.split()[8])
             if  "% total" in line:
               if backb_t is None:
                 backb_t = float(line.split()[2])
@@ -203,7 +213,8 @@ def find_arjun_time(fname):
             if "c o Arjun T:" in line:
               assert t is None
               t = float(line.split()[4])
-    return t, backb_t, backw_t, indep_sz, unkn_sz
+    return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz
+
 
 #c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
 #c o sat called/sat/unsat/conflK    6     6     0     0
@@ -434,11 +445,13 @@ for f in file_list:
         files[base]["solverver"] = ganak_version(f)
         files[base]["conflicts"] = ganak_conflicts(f)
         files[base]["decisionsK"] = ganak_decisions(f)
-        arjun_t, backb_t, backw_t, indep_sz, unkn_sz = find_arjun_time(f)
+        arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz = find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backbtime"] = backb_t
         files[base]["backwtime"] = backw_t
         files[base]["indepsz"] = indep_sz
+        files[base]["optindepsz"] = opt_indep_sz
+        files[base]["origprojsz"] = orig_proj_sz
         files[base]["unknsz"] = unkn_sz
         cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK = collect_cache_data(f)
         files[base]["compsK"] = cache_lookupK
@@ -491,7 +504,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -569,6 +582,16 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["indepsz"]
+
+        if "optindepsz" not in f or f["optindepsz"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["optindepsz"]
+
+        if "origprojsz" not in f or f["origprojsz"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["origprojsz"]
 
         if "unknsz" not in f or f["unknsz"] is None:
             toprint += ","

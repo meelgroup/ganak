@@ -173,6 +173,10 @@ def find_arjun_time(fname):
     indep_sz = None
     opt_indep_sz = None
     nvars = None
+    gates_extend_t = None
+    gates_extended = None
+    padoa_extend_t = None
+    padoa_extended = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
@@ -194,6 +198,17 @@ def find_arjun_time(fname):
                 opt_indep_sz = int(opt_indep_sz)
             if "c o CNF projection set size:" in line:
               orig_proj_sz = int(line.split()[6])
+            # c o [extend-gates] Gates added to opt indep: 26 T: 0.15
+            # c o [arjun-extend] Start unknown size: 1027
+            # c o [arjun-extend] Extend finished  orig size: 48 final size: 1056 Undef: 48 T: 25.36
+            if "c o [extend-gates] Gates added to opt indep:" in line:
+              gates_extended = int(line.split()[8])
+              gates_extend_t = float(line.split()[10])
+            if "c o [arjun-extend] Extend finished  orig size:" in line:
+              orig = int(line.split()[7])
+              final = int(line.split()[10])
+              padoa_extended = final - orig
+              padoa_extend_t = float(line.split()[14])
             if "Start unknown size" in line:
               line = ''.join(filter(lambda x:x in string.printable, line))
               line = line.replace("[0m", "")
@@ -210,7 +225,7 @@ def find_arjun_time(fname):
             if "c o Arjun T:" in line:
               assert t is None
               t = float(line.split()[4])
-    return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, nvars
+    return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t
 
 
 #c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
@@ -443,7 +458,7 @@ for f in file_list:
         files[base]["solverver"] = ganak_version(f)
         files[base]["conflicts"] = ganak_conflicts(f)
         files[base]["decisionsK"] = ganak_decisions(f)
-        arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars = find_arjun_time(f)
+        arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t= find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backbtime"] = backb_t
         files[base]["backwtime"] = backw_t
@@ -452,6 +467,10 @@ for f in file_list:
         files[base]["origprojsz"] = orig_proj_sz
         files[base]["unknsz"] = unkn_sz
         files[base]["newnvars"] = new_nvars
+        files[base]["gates_extended"] = gates_extended
+        files[base]["gates_extend_t"] = gates_extend_t
+        files[base]["padoa_extended"] = padoa_extended
+        files[base]["padoa_extend_t"] = padoa_extend_t
         cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK = collect_cache_data(f)
         files[base]["compsK"] = cache_lookupK
         files[base]["cache_miss_rate"] = cache_miss_rate
@@ -503,7 +522,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -643,9 +662,29 @@ with open("mydata.csv", "w") as out:
           toprint += "%s,"  % f["cubes_final"]
 
         if "mem_out" not in f or f["mem_out"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["mem_out"]
+
+        if "gates_extended" not in f or f["gates_extended"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["gates_extended"]
+
+        if "gates_extend_t" not in f or f["gates_extend_t"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["gates_extend_t"]
+
+        if "padoa_extended" not in f or f["padoa_extended"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["padoa_extended"]
+
+        if "padoa_extend_t" not in f or f["padoa_extend_t"] is None:
             toprint += ""
         else:
-          toprint += "%s"  % f["mem_out"]
+          toprint += "%s"  % f["padoa_extend_t"]
 
         out.write(toprint+"\n")
 

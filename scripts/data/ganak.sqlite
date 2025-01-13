@@ -29,7 +29,11 @@ CREATE TABLE data (
   restarts INT,
   cubes_orig INT,
   cubes_final INT,
-  mem_out INT
+  mem_out INT,
+  gates_extended INT,
+  gates_extend_t INT,
+  padoa_extended INT,
+  padoa_extend_t INT
 );
 . mode csv
 . import -skip 1 mydata.csv data
@@ -55,3 +59,7 @@ UPDATE data SET restarts = NULL WHERE restarts = '';
 UPDATE data SET cubes_orig = NULL WHERE cubes_orig = '';
 UPDATE data SET cubes_final = NULL WHERE cubes_final = '';
 UPDATE data SET cache_miss_rate = NULL WHERE cache_miss_rate = '';
+UPDATE data SET gates_extended = NULL WHERE gates_extended = '';
+UPDATE data SET gates_extend_t = NULL WHERE gates_extend_t = '';
+UPDATE data SET padoa_extended = NULL WHERE padoa_extended = '';
+UPDATE data SET padoa_extend_t = NULL WHERE padoa_extend_t = '';

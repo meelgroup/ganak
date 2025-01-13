@@ -570,6 +570,14 @@ if True:
         OFFSET (SELECT COUNT(orig_proj_sz) FROM data\
           where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
           and orig_proj_sz is not null) / 2) as 'median_orig_proj_sz'\
+        , (SELECT new_nvars as 'median_new_nvars'\
+        FROM data\
+        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and new_nvars is not null\
+        ORDER BY new_nvars\
+        LIMIT 1\
+        OFFSET (SELECT COUNT(new_nvars) FROM data\
+          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
+          and new_nvars is not null) / 2) as 'median_new_nvars'\
       ")
     os.system("sqlite3 mydb.sql < gen_table.sqlite")
 

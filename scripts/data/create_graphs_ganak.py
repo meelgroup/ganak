@@ -545,36 +545,32 @@ if True:
   for dir,ver in table_todo:
     with open("gen_table.sqlite", "w") as f:
       f.write(".mode table\n")
-      f.write("SELECT dirname, ganak_call, opt_indep_sz as 'median_opt_indep_sz'\
+      f.write("select '"+dir+"', '"+ver+"' \
+        , (SELECT opt_indep_sz as 'median_opt_indep_sz'\
         FROM data\
         where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and opt_indep_sz is not null\
         ORDER BY opt_indep_sz\
         LIMIT 1\
         OFFSET (SELECT COUNT(opt_indep_sz) FROM data\
           where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and opt_indep_sz is not null) / 2")
-    os.system("sqlite3 mydb.sql < gen_table.sqlite")
-    with open("gen_table.sqlite", "w") as f:
-      f.write(".mode table\n")
-      f.write("SELECT dirname, ganak_call, indep_sz as 'median_indep_sz'\
+          and opt_indep_sz is not null) / 2) as median_opt_indep_sz \
+        , (SELECT indep_sz as 'median_indep_sz'\
         FROM data\
         where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and indep_sz is not null\
         ORDER BY indep_sz\
         LIMIT 1\
         OFFSET (SELECT COUNT(indep_sz) FROM data\
           where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and indep_sz is not null) / 2")
-    os.system("sqlite3 mydb.sql < gen_table.sqlite")
-    with open("gen_table.sqlite", "w") as f:
-      f.write(".mode table\n")
-      f.write("SELECT dirname, ganak_call, orig_proj_sz as 'median_orig_proj_sz'\
+          and indep_sz is not null) / 2) as median_indep_sz \
+        , (SELECT orig_proj_sz as 'median_orig_proj_sz'\
         FROM data\
         where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and orig_proj_sz is not null\
         ORDER BY orig_proj_sz\
         LIMIT 1\
         OFFSET (SELECT COUNT(orig_proj_sz) FROM data\
           where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and orig_proj_sz is not null) / 2")
+          and orig_proj_sz is not null) / 2) as 'median_orig_proj_sz'\
+      ")
     os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 gnuplotfn = "run-all.gnuplot"

@@ -80,9 +80,11 @@ def find_d4_time_cnt(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c Final time:" in line:
-                t = float(line.split()[3])
+            if "c [COUNTER] Elapsed time:" in line:
+                t = float(line.split()[4])
             if "c exact arb int" in line:
+                cnt = decimal.Decimal(line.split()[5]).log10()
+            if "c s exact quadruple int" in line:
                 cnt = decimal.Decimal(line.split()[5]).log10()
 
     # print("t:", t, "cnt: ", cnt)
@@ -97,6 +99,9 @@ def find_gpmc_time_cnt(fname):
             if "c o Real time " in line:
                 t = float(line.split()[5])
             if "c s exact arb int" in line:
+                if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
+                else: cnt = decimal.Decimal(line.split()[5]).log10()
+            if "c s exact arb prec-sci" in line:
                 if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
                 else: cnt = decimal.Decimal(line.split()[5]).log10()
 
@@ -420,6 +425,7 @@ def find_mem_out(fname):
 
 
 file_list = glob.glob("out-ganak-*/*cnf*")
+file_list.extend(glob.glob("out-others-*/*cnf*"))
 files = {}
 for f in file_list:
     if ".csv" in f:

@@ -420,10 +420,15 @@ only_dirs = [
             # "out-ganak-mc2324-13946763-", # finally fixed binary counting
             # "out-ganak-mc2324-13972052-", # tighter datastructs via vec<>, float instead of double, double bump bin, fixed counting of removed literals for further clause minimization
             # "out-ganak-mc2324-13973015-", # double instead of float for activities
-            "out-ganak-mc2324-13977963-", # all experiments
+            # "out-ganak-mc2324-13977963-", # all experiments
             # "out-ganak-mc2324-13982113-", # new stamping
-            "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
+            # "out-ganak-mc2324-13982787-", # fixed score on satisfied clauses, blocked literal update
             # "out-ganak-mc2324-13994954-", # checking freq score divider (also move-to-front Cldata + 7 elems, no 8)
+
+            # everything above is new2 now.
+            "out-ganak-mc2324-14063135-", #fixed optional indep support, other solvers too
+            # "out-others-14063264-", # 16 GB of RAM
+            # "out-others-14063896-"
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -520,6 +525,8 @@ with open("gen_table.sqlite", "w") as f:
       ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
       CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
       sum(ganak_time is not null) as 'solved',\
+      CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
+      CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-sat-dec-sz',\
       CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
       CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
       CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
@@ -529,6 +536,39 @@ with open("gen_table.sqlite", "w") as f:
       ROUND(avg(compsK/1000.0),2) as 'av compsM',\
       sum(fname is not null) as 'nfiles'\
       from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname")
+os.system("sqlite3 mydb.sql < gen_table.sqlite")
+
+
+with open("gen_table.sqlite", "w") as f:
+  f.write(".mode table\n");
+  dirs = ""
+  vers = ""
+  for dir,ver in table_todo:
+    dirs += "'" + dir + "',"
+    vers += "'" + ver + "',"
+  dirs = dirs[:-1]
+  vers = vers[:-1]
+  f.write("select \
+    replace(dirname,'out-ganak-mc','') as dirname,\
+    replace(ganak_call,'././ganak_','') as call,\
+    avg(diff) as 'median-diff-sat-dec-sz', \
+    avg(satset) as 'median-sat-set', \
+    avg(decset) as 'median-dec-set' \
+    from ( \
+      select dirname, ganak_call, \
+        (opt_indep_sz-indep_sz) as diff, \
+        opt_indep_sz as satset, \
+        indep_sz as decset, \
+             row_number() over (partition by dirname order by (opt_indep_sz-indep_sz)) as rn, \
+             count(*) over (partition by dirname) as cnt \
+      from data \
+      where dirname IN ("+dirs+") \
+      and ganak_ver IN ("+vers+") \
+      and opt_indep_sz is not null \
+      and indep_sz is not null \
+    ) x \
+    where rn in ((cnt+1)/2, (cnt+2)/2) \
+    group by dirname")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 gnuplotfn = "run-all.gnuplot"
@@ -544,7 +584,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][790:]\\\n")
+    f.write("plot [:][0:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

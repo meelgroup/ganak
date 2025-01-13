@@ -506,8 +506,8 @@ for ver in todo :
         table_todo.append([dir, ver])
 
 with open("gen_table.sqlite", "w") as f:
-  f.write(".mode table\n");
-  # f.write(".mode colum\n");
+  f.write(".mode table\n")
+  # f.write(".mode colum\n")
   # f.write(".headers off\n")
   dirs = ""
   vers = ""
@@ -538,38 +538,44 @@ with open("gen_table.sqlite", "w") as f:
       from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
-
-with open("gen_table.sqlite", "w") as f:
-  f.write(".mode table\n");
+# out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
+if True:
   dirs = ""
   vers = ""
   for dir,ver in table_todo:
-    dirs += "'" + dir + "',"
-    vers += "'" + ver + "',"
-  dirs = dirs[:-1]
-  vers = vers[:-1]
-  f.write("select \
-    replace(dirname,'out-ganak-mc','') as dirname,\
-    replace(ganak_call,'././ganak_','') as call,\
-    avg(diff) as 'median-diff-sat-dec-sz', \
-    avg(satset) as 'median-sat-set', \
-    avg(decset) as 'median-dec-set' \
-    from ( \
-      select dirname, ganak_call, \
-        (opt_indep_sz-indep_sz) as diff, \
-        opt_indep_sz as satset, \
-        indep_sz as decset, \
-             row_number() over (partition by dirname order by (opt_indep_sz-indep_sz)) as rn, \
-             count(*) over (partition by dirname) as cnt \
-      from data \
-      where dirname IN ("+dirs+") \
-      and ganak_ver IN ("+vers+") \
-      and opt_indep_sz is not null \
-      and indep_sz is not null \
-    ) x \
-    where rn in ((cnt+1)/2, (cnt+2)/2) \
-    group by dirname")
-os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    with open("gen_table.sqlite", "w") as f:
+      f.write(".mode table\n")
+      f.write("SELECT dirname, ganak_call, opt_indep_sz as 'median_opt_indep_sz'\
+        FROM data\
+        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and opt_indep_sz is not null\
+        ORDER BY opt_indep_sz\
+        LIMIT 1\
+        OFFSET (SELECT COUNT(opt_indep_sz) FROM data\
+          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
+          and opt_indep_sz is not null) / 2")
+    os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    with open("gen_table.sqlite", "w") as f:
+      f.write(".mode table\n")
+      f.write("SELECT dirname, ganak_call, indep_sz as 'median_indep_sz'\
+        FROM data\
+        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and indep_sz is not null\
+        ORDER BY indep_sz\
+        LIMIT 1\
+        OFFSET (SELECT COUNT(indep_sz) FROM data\
+          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
+          and indep_sz is not null) / 2")
+    os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    with open("gen_table.sqlite", "w") as f:
+      f.write(".mode table\n")
+      f.write("SELECT dirname, ganak_call, orig_proj_sz as 'median_orig_proj_sz'\
+        FROM data\
+        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and orig_proj_sz is not null\
+        ORDER BY orig_proj_sz\
+        LIMIT 1\
+        OFFSET (SELECT COUNT(orig_proj_sz) FROM data\
+          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
+          and orig_proj_sz is not null) / 2")
+    os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 gnuplotfn = "run-all.gnuplot"
 with open(gnuplotfn, "w") as f:

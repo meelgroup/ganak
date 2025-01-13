@@ -19,6 +19,7 @@ CREATE TABLE data (
   indep_sz INT,
   opt_indep_sz INT,
   orig_proj_sz INT,
+  new_nvars INT,
   unkn_sz INT,
   cache_del_time FLOAT,
   cache_miss_rate FLOAT,
@@ -44,6 +45,7 @@ UPDATE data SET backward_time = NULL WHERE backward_time = '';
 UPDATE data SET indep_sz = NULL WHERE indep_sz = '';
 UPDATE data SET opt_indep_sz = NULL WHERE opt_indep_sz = '';
 UPDATE data SET orig_proj_sz = NULL WHERE orig_proj_sz = '';
+UPDATE data SET new_nvars = NULL WHERE new_nvars = '';
 UPDATE data SET unkn_sz = NULL WHERE unkn_sz = '';
 UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
 UPDATE data SET bdd_called = NULL WHERE bdd_called = '';

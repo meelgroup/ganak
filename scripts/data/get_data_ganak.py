@@ -8,27 +8,6 @@ import string
 
 sys.set_int_max_str_digits(2000000)
 
-def lit_cnt(fname):
-    num_cls = None
-    num_bin_cls = None
-    lits = None
-    vars = None
-    with open(fname, "r") as f:
-        for line in f:
-            line=line.strip()
-            # print(line)
-            # print(line.split())
-            if "num cls" in line:
-                num_cls = int(line.split()[2])
-            if "num bin cls" in line:
-                num_bin_cls = int(line.split()[3])
-            if "num (non-unit) lits" in line:
-                lits = int(line.split()[3])
-            if "num (non-set) vars" in line:
-                vars = int(line.split()[3])
-
-    return [vars, num_cls, num_bin_cls, lits]
-
 ##########################
 # appmx, etc.
 
@@ -193,13 +172,26 @@ def find_arjun_time(fname):
     orig_proj_sz = None
     indep_sz = None
     opt_indep_sz = None
+    nvars = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if "c o Sampling set size:" in line:
-              indep_sz = int(line.split()[5])
+              indep_sz = line.split()[5]
+              indep_sz = indep_sz.strip()
+              if indep_sz == "":
+                indep_sz = 0
+              else:
+                indep_sz = int(indep_sz)
+            if "c o opt ind size" in line:
+              nvars = int(line.split()[10])
             if "c o Opt sampling set size:" in line:
-              opt_indep_sz = int(line.split()[6])
+              opt_indep_sz = line.split()[6]
+              opt_indep_sz = opt_indep_sz.strip()
+              if opt_indep_sz == "":
+                opt_indep_sz = 0
+              else:
+                opt_indep_sz = int(opt_indep_sz)
             if "c o CNF projection set size:" in line:
               orig_proj_sz = int(line.split()[6])
             if "Start unknown size" in line:
@@ -218,7 +210,7 @@ def find_arjun_time(fname):
             if "c o Arjun T:" in line:
               assert t is None
               t = float(line.split()[4])
-    return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz
+    return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, nvars
 
 
 #c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
@@ -451,7 +443,7 @@ for f in file_list:
         files[base]["solverver"] = ganak_version(f)
         files[base]["conflicts"] = ganak_conflicts(f)
         files[base]["decisionsK"] = ganak_decisions(f)
-        arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz = find_arjun_time(f)
+        arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars = find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backbtime"] = backb_t
         files[base]["backwtime"] = backw_t
@@ -459,6 +451,7 @@ for f in file_list:
         files[base]["optindepsz"] = opt_indep_sz
         files[base]["origprojsz"] = orig_proj_sz
         files[base]["unknsz"] = unkn_sz
+        files[base]["newnvars"] = new_nvars
         cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK = collect_cache_data(f)
         files[base]["compsK"] = cache_lookupK
         files[base]["cache_miss_rate"] = cache_miss_rate
@@ -510,7 +503,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -598,6 +591,11 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["origprojsz"]
+
+        if "newnvars" not in f or f["newnvars"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["newnvars"]
 
         if "unknsz" not in f or f["unknsz"] is None:
             toprint += ","

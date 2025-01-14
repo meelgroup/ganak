@@ -426,9 +426,26 @@ only_dirs = [
             # "out-ganak-mc2324-13994954-", # checking freq score divider (also move-to-front Cldata + 7 elems, no 8)
 
             # everything above is new2 now.
-            "out-ganak-mc2324-14063135-", #fixed optional indep support, other solvers too
-            # "out-others-14063264-", # 16 GB of RAM
-            # "out-others-14063896-"
+            # "out-ganak-mc2324-14063135-",
+            # "out-ganak-mc2324-14065222-4",
+            # "out-ganak-mc2324-14065222-0",
+
+            # SAT solver combos
+            # "out-ganak-mc2324-14065222-1",
+            # "out-ganak-mc2324-14065222-2",
+            # "out-ganak-mc2324-14065222-3",
+            # "out-ganak-mc2324-14065222-4",
+
+            # other solvers
+            #"out-others-14064944", # sharpsat
+
+            "out-ganak-mc2324-14063135-1/",
+            "out-ganak-mc2324-14063135-7/",
+            "out-ganak-mc2324-14063135-4/",
+            "out-ganak-mc2324-14063135-0/",
+            "out-others-gpmc",
+            "out-others-d4",
+            # "out-others-14064944-0", # sharpsat
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -539,7 +556,7 @@ with open("gen_table.sqlite", "w") as f:
       ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
       ROUND(avg(compsK/1000.0),2) as 'av compsM',\
       sum(fname is not null) as 'nfiles'\
-      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname")
+      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname order by PAR2")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 # out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
@@ -586,7 +603,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][0:]\\\n")
+    f.write("plot [:][400:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

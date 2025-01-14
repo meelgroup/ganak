@@ -69,9 +69,15 @@ def find_d4_time_cnt(fname):
     # print("t:", t, "cnt: ", cnt)
     return [t,cnt]
 
+#c o Components            = 339421
+#c o conflicts             = 291050      (count 287680, sat 3370)
+#c o decisions             = 643616      (count 335433, sat 308183)
 def find_gpmc_time_cnt(fname):
     t = None
     cnt = None
+    compsK = None
+    conflicts = None
+    decisionsK = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
@@ -83,8 +89,14 @@ def find_gpmc_time_cnt(fname):
             if "c s exact arb prec-sci" in line:
                 if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
                 else: cnt = decimal.Decimal(line.split()[5]).log10()
+            if "c o Components" in line:
+              compsK = int(line.split()[4])/1000
+            if "c o conflicts" in line:
+              conflicts = int(line.split()[4])
+            if "c o decisions" in line:
+              decisionsK = int(line.split()[4])/1000
 
-    return [t,cnt]
+    return t,cnt,compsK,conflicts,decisionsK
 
 def find_dsharp_time_cnt(fname):
     t = None
@@ -499,7 +511,11 @@ for f in file_list:
         files[base]["solverver"] = approxmc_version(f)
     if ".out_gpmc" in f:
         files[base]["solver"] = "gpmc"
-        files[base]["solvertime"] = find_gpmc_time_cnt(f)
+        t,cnt,compsK,conflicts,decisionsK = find_gpmc_time_cnt(f)
+        files[base]["solvertime"] = [t, cnt]
+        files[base]["conflicts"] = conflicts
+        files[base]["compsK"] = compsK
+        files[base]["decisionsK"] = decisionsK
         files[base]["solverver"] = ["gpmc", "gpmc"]
     if ".out_sharptd" in f:
         files[base]["solver"] = "sharptd"

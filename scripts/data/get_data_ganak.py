@@ -201,14 +201,20 @@ def find_arjun_time(fname):
             # c o [extend-gates] Gates added to opt indep: 26 T: 0.15
             # c o [arjun-extend] Start unknown size: 1027
             # c o [arjun-extend] Extend finished  orig size: 48 final size: 1056 Undef: 48 T: 25.36
-            if "c o [extend-gates] Gates added to opt indep:" in line:
+            if "[extend-gates] Gates added to opt" in line:
+              line = line.replace("[0m", "")
+              line = line.replace("\x1b","")
               gates_extended = int(line.split()[8])
               gates_extend_t = float(line.split()[10])
-            if "c o [arjun-extend] Extend finished  orig size:" in line:
+              # print ("gates:", gates_extended, gates_extend_t)
+            if "[arjun-extend] Extend finished" in line:
+              line = line.replace("[0m", "")
+              line = line.replace("\x1b","")
               orig = int(line.split()[7])
               final = int(line.split()[10])
               padoa_extended = final - orig
               padoa_extend_t = float(line.split()[14])
+              # print ("padoa:", padoa_extended, padoa_extend_t)
             if "Start unknown size" in line:
               line = ''.join(filter(lambda x:x in string.printable, line))
               line = line.replace("[0m", "")

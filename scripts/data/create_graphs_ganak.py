@@ -527,6 +527,10 @@ with open("gen_table.sqlite", "w") as f:
       sum(ganak_time is not null) as 'solved',\
       CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
       CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-sat-dec-sz',\
+      ROUND(avg(gates_extend_t), 3) as 'gates-ext-t',\
+      ROUND(avg(padoa_extend_t), 3) as 'padoa-ext-t',\
+      ROUND(avg(gates_extended), 3) as 'gates-ext',\
+      ROUND(avg(padoa_extended), 3) as 'padoa-ext',\
       CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
       CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
       CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
@@ -545,39 +549,27 @@ if True:
   for dir,ver in table_todo:
     with open("gen_table.sqlite", "w") as f:
       f.write(".mode table\n")
-      f.write("select '"+dir+"', '"+ver+"' \
-        , (SELECT opt_indep_sz as 'median_opt_indep_sz'\
+      f.write("select '"+dir+"', '"+ver+"'");
+      for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars":
+        f.write(", (SELECT "+col+" as 'median_"+col+"'\
         FROM data\
-        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and opt_indep_sz is not null\
-        ORDER BY opt_indep_sz\
+        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null\
+        ORDER BY "+col+"\
         LIMIT 1\
-        OFFSET (SELECT COUNT(opt_indep_sz) FROM data\
-          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and opt_indep_sz is not null) / 2) as median_opt_indep_sz \
-        , (SELECT indep_sz as 'median_indep_sz'\
+        OFFSET (SELECT COUNT("+col+") FROM data\
+          where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
+          and "+col+" is not null) / 2) as median_"+col+" \
+      ")
+      for col in "gates_extended", "padoa_extended":
+        f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
         FROM data\
-        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and indep_sz is not null\
-        ORDER BY indep_sz\
+        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null\
+                    and "+col+">0\
+        ORDER BY "+col+"\
         LIMIT 1\
-        OFFSET (SELECT COUNT(indep_sz) FROM data\
-          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and indep_sz is not null) / 2) as median_indep_sz \
-        , (SELECT orig_proj_sz as 'median_orig_proj_sz'\
-        FROM data\
-        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and orig_proj_sz is not null\
-        ORDER BY orig_proj_sz\
-        LIMIT 1\
-        OFFSET (SELECT COUNT(orig_proj_sz) FROM data\
-          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and orig_proj_sz is not null) / 2) as 'median_orig_proj_sz'\
-        , (SELECT new_nvars as 'median_new_nvars'\
-        FROM data\
-        where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') and new_nvars is not null\
-        ORDER BY new_nvars\
-        LIMIT 1\
-        OFFSET (SELECT COUNT(new_nvars) FROM data\
-          where dirname IN ('"+dir+"','') and ganak_ver IN ('"+ver+"','') \
-          and new_nvars is not null) / 2) as 'median_new_nvars'\
+        OFFSET (SELECT COUNT("+col+") FROM data\
+          where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
+          and "+col+" is not null and "+col+">0) / 2) as median_"+col+" \
       ")
     os.system("sqlite3 mydb.sql < gen_table.sqlite")
 

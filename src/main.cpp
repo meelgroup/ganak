@@ -159,6 +159,7 @@ void add_ganak_options()
     myopt("--tdlooktwcut", conf.td_lookahead_tw_cutoff, atoi, "TD lookahead only when TW of current comp is larger than this value");
     myopt("--tdlookiters", conf.td_lookahead_iters, atoi, "TD lookahead iterations");
     myopt("--tdlookonlyweight", conf.td_look_only_weight, atoi, "TD lookahead ONLY update weights");
+    myopt("--tdcontract", conf.do_td_contract, atoi, "TD contract over opt indep set");
 //
 //  Clause DB options
     myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");

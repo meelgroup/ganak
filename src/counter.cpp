@@ -138,7 +138,7 @@ bool Counter<T>::remove_duplicates(vector<Lit>& lits) {
 }
 
 template<typename T>
-void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
+void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   if (print || conf.verb >= 1) verb_print(0, "[td] Calculated TD width: " << td_width-1);
@@ -155,30 +155,30 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
     for(const auto& nn: a) cout << i << " " << nn << endl;
   }
 #endif
-  std::vector<int> dists = tdec.distanceFromCentroid(opt_indep_support_end);
+  std::vector<int> dists = tdec.distanceFromCentroid(nodes);
   if (dists.empty()) {
       verb_print(1, "All projected vars in the same bag, ignoring TD");
       return;
   } else {
     int max_dst = 0;
-    for(int i=1; i < (int)opt_indep_support_end; i++)
+    for(int i=1; i < (int)nodes; i++)
       max_dst = std::max(max_dst, dists[i]);
     if (max_dst == 0) {
       verb_print(1, "All projected vars are the same distance, ignoring TD");
       return;
     }
   }
-  sspp::TreeDecomposition dec(bags.size(), opt_indep_support_end);
+  sspp::TreeDecomposition dec(bags.size(), nodes);
   for(uint32_t i = 0; i < bags.size();i++) dec.SetBag(i+1, bags[i]);
   for(uint32_t i = 0; i < adj.size(); i++)
     for(const auto& nn: adj[i]) dec.AddEdge(i+1, nn+1);
 
   // We use 1-indexing, ignore index 0
   auto ord = dec.GetOrd();
-  assert(ord.size() == opt_indep_support_end);
+  assert(ord.size() == nodes);
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();
-  for (uint32_t i = 1; i < opt_indep_support_end; i++) {
+  for (uint32_t i = 1; i < nodes; i++) {
     max_ord = std::max(max_ord, ord[i]);
     min_ord = std::min(min_ord, ord[i]);
   }
@@ -189,7 +189,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   double rt = 0;
   if (td_width > 0) {
     // Larger the better
-    rt = (double)opt_indep_support_end/(double)td_width;
+    rt = (double)nodes/(double)td_width;
     if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
     else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
@@ -200,7 +200,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   if (print) {
     verb_print(1,
         "TD weight: " << td_weight
-        << " opt_end: " << opt_indep_support_end
+        << " nodes: " << nodes
         << " rt/width(=rt): " << rt
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
         << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
@@ -208,7 +208,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
   }
 
   // Calc td score
-  for (uint32_t i = 1; i < opt_indep_support_end; i++) {
+  for (uint32_t i = 1; i < nodes; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
     val /= (double)max_ord;
@@ -218,7 +218,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, bool print) {
     tdscore[i] = val;
   }
 
-  for(uint32_t i = 1; i < opt_indep_support_end; i++) {
+  for(uint32_t i = 1; i < nodes; i++) {
       verb_print(2, "TD var: " << i << " tdscore: " << tdscore[i]);
   }
 }
@@ -309,9 +309,13 @@ void Counter<T>::td_decompose() {
       }
     }
   }
-  for(uint32_t i = opt_indep_support_end; i < nVars()+1; i++) {
-    primal.contract(i, conf.td_max_edges*100);
-    if (primal.numEdges() > conf.td_max_edges*100 ) break;
+
+
+  if (conf.do_td_contract) {
+    for(uint32_t i = opt_indep_support_end; i < nVars()+1; i++) {
+      primal.contract(i, conf.td_max_edges*100);
+      if (primal.numEdges() > conf.td_max_edges*100 ) break;
+    }
   }
 
   const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();
@@ -334,26 +338,31 @@ void Counter<T>::td_decompose() {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
     return;
   }
-  TWD::Graph primal_alt(opt_indep_support_end);
-  for(uint32_t i = 0 ; i < opt_indep_support_end; i++) {
-    const auto& k = primal.get_adj_list()[i];
-    for(const auto& i2: k) {
-      if (i2 < (int)opt_indep_support_end)
-        primal_alt.addEdge(i, i2);
+
+  TWD::Graph* primal_alt = nullptr;
+  if (conf.do_td_contract) {
+    primal_alt = new TWD::Graph(opt_indep_support_end);
+    for(uint32_t i = 0 ; i < opt_indep_support_end; i++) {
+      const auto& k = primal.get_adj_list()[i];
+      for(const auto& i2: k) {
+        if (i2 < (int)opt_indep_support_end)
+          primal_alt->addEdge(i, i2);
+      }
     }
-  }
+  } else primal_alt = &primal;
 
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
-  TWD::IFlowCutter fc(primal_alt.numNodes(), primal_alt.numEdges(), conf.verb);
-  fc.importGraph(primal_alt);
+  TWD::IFlowCutter fc(primal_alt->numNodes(), primal_alt->numEdges(), conf.verb);
+  fc.importGraph(*primal_alt);
 
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
   td.centroid(opt_indep_support_end, conf.verb);
-  compute_score(td);
+  compute_score(td, conf.do_td_contract ? opt_indep_support_end : nVars()+1, true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
+  if (conf.do_td_contract) delete primal_alt;
 }
 
 // Self-check count without restart with CMS only
@@ -1039,7 +1048,8 @@ template<typename T>
 void Counter<T>::recomp_td_weight() {
   if (conf.td_lookahead != -1 && dec_level() < conf.td_lookahead+5) {
     auto td = td_decompose_component(3);
-    compute_score(td, false);
+    assert(conf.td_lookahead);
+    compute_score(td, opt_indep_support_end, false);
   }
 }
 

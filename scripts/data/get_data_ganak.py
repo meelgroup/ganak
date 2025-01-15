@@ -130,6 +130,8 @@ def find_sharpsat_time_cnt(fname):
             if "c s exact arb int" in line:
                 if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
                 else: cnt = decimal.Decimal(line.split()[5]).log10()
+            if "c s exact arb float" in line:
+                cnt = decimal.Decimal(line.split()[5]).log10()
 
     if cnt is not None and t is None:
       t = prepro_t

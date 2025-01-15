@@ -440,12 +440,12 @@ only_dirs = [
             #"out-others-14064944", # sharpsat
 
             "out-ganak-mc2324-14063135-1/",
-            "out-ganak-mc2324-14063135-7/",
-            "out-ganak-mc2324-14063135-4/",
+            # "out-ganak-mc2324-14063135-7/",
+            # "out-ganak-mc2324-14063135-4/",
             "out-ganak-mc2324-14063135-0/",
             "out-others-gpmc",
             "out-others-d4",
-            # "out-others-14064944-0", # sharpsat
+            "out-others-14064944-0", # sharpsat
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -461,6 +461,7 @@ only_calls = []
 # not_calls = ["restart"]
 not_calls = []
 todo = versions
+fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 
 table_todo = []
 for ver in todo :
@@ -512,10 +513,10 @@ for ver in todo :
             f.write(".headers off\n")
             f.write(".mode csv\n");
             f.write(".output "+fname+"\n")
-            f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL")
+            extra = ""
+            f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
         os.system("sqlite3 mydb.sql < gencsv.sqlite")
         os.unlink("gencsv.sqlite")
-
 
         fname2 = fname + ".gnuplotdata"
         num_solved = convert_to_cactus(fname, fname2)
@@ -533,6 +534,7 @@ with open("gen_table.sqlite", "w") as f:
     vers += "'" + ver + "',"
   dirs = dirs[:-1]
   vers = vers[:-1]
+  extra = ""
   f.write("select \
       replace(dirname,'out-ganak-mc','') as dirname,\
       replace(ganak_call,'././ganak_','') as call,\
@@ -556,7 +558,7 @@ with open("gen_table.sqlite", "w") as f:
       ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
       ROUND(avg(compsK/1000.0),2) as 'av compsM',\
       sum(fname is not null) as 'nfiles'\
-      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") group by dirname order by PAR2")
+      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" group by dirname order by PAR2")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 # out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
@@ -570,7 +572,7 @@ if True:
       for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars":
         f.write(", (SELECT "+col+" as 'median_"+col+"'\
         FROM data\
-        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null\
+        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null"+fname_like+"\
         ORDER BY "+col+"\
         LIMIT 1\
         OFFSET (SELECT COUNT("+col+") FROM data\
@@ -580,13 +582,13 @@ if True:
       for col in "gates_extended", "padoa_extended":
         f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
         FROM data\
-        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null\
+        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null "+fname_like+"\
                     and "+col+">0\
         ORDER BY "+col+"\
         LIMIT 1\
         OFFSET (SELECT COUNT("+col+") FROM data\
           where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
-          and "+col+" is not null and "+col+">0) / 2) as median_"+col+" \
+          and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as median_"+col+" \
       ")
     os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
@@ -603,7 +605,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][400:]\\\n")
+    f.write("plot [:][200:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

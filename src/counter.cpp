@@ -310,7 +310,6 @@ void Counter<T>::td_decompose() {
     }
   }
 
-
   if (conf.do_td_contract) {
     for(uint32_t i = opt_indep_support_end; i < nVars()+1; i++) {
       primal.contract(i, conf.td_max_edges*100);

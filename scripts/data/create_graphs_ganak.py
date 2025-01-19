@@ -439,12 +439,12 @@ only_dirs = [
             # other solvers
             #"out-others-14064944", # sharpsat
 
-            # "out-ganak-mc2324-14063135-1/", # baseline
-            # "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
-            # "out-ganak-mc2324-14063135-7/", # also enchanced SAT
-            # "out-ganak-mc2324-14063135-4/", # also dual indep
+            "out-ganak-mc2324-14063135-1/", # baseline
+            "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
+            "out-ganak-mc2324-14063135-7/", # also enchanced SAT
+            "out-ganak-mc2324-14063135-4/", # also dual indep
             "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
-            "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
+            # "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat
@@ -568,6 +568,7 @@ with open("gen_table.sqlite", "w") as f:
       sum(fname is not null) as 'nfiles'\
       from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" group by dirname order by PAR2")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
+os.unlink("gen_table.sqlite")
 
 # out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
 if True:
@@ -599,6 +600,7 @@ if True:
           and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as median_"+col+" \
       ")
     os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    os.unlink("gen_table.sqlite")
 
 gnuplotfn = "run-all.gnuplot"
 with open(gnuplotfn, "w") as f:

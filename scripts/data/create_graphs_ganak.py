@@ -439,12 +439,12 @@ only_dirs = [
             # other solvers
             #"out-others-14064944", # sharpsat
 
-            "out-ganak-mc2324-14063135-1/", # baseline
-            "out-ganak-mc2324-14072353-0/", # TD contract off
-            "out-ganak-mc2324-14072353-1/", # ???
-            "out-ganak-mc2324-14063135-7/", # also enchanced SAT
-            "out-ganak-mc2324-14063135-4/", # also dual indep
+            # "out-ganak-mc2324-14063135-1/", # baseline
+            # "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
+            # "out-ganak-mc2324-14063135-7/", # also enchanced SAT
+            # "out-ganak-mc2324-14063135-4/", # also dual indep
             "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
+            "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat
@@ -464,11 +464,12 @@ only_calls = []
 not_calls = []
 todo = versions
 
+# all
+fname_like = ""
 # unproj only
 # fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 # proj only
 #fname_like = " and (fname like '%track3%' or fname like '%track4%') "
-fname_like = ""
 
 table_todo = []
 for ver in todo :

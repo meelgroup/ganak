@@ -448,6 +448,7 @@ only_dirs = [
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat
+            # "out-ganak-mc2324-14086287-" # sbva setup
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

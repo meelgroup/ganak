@@ -470,7 +470,7 @@ fname_like = ""
 # unproj only
 # fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 # proj only
-#fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+# fname_like = " and (fname like '%track3%' or fname like '%track4%') "
 
 table_todo = []
 for ver in todo :
@@ -532,44 +532,49 @@ for ver in todo :
         fname2_s.append([fname2, call, ver[:10], num_solved, dir])
         table_todo.append([dir, ver])
 
-with open("gen_table.sqlite", "w") as f:
-  f.write(".mode table\n")
-  # f.write(".mode colum\n")
-  # f.write(".headers off\n")
-  dirs = ""
-  vers = ""
-  for dir,ver in table_todo:
-    dirs += "'" + dir + "',"
-    vers += "'" + ver + "',"
-  dirs = dirs[:-1]
-  vers = vers[:-1]
-  extra = ""
-  f.write("select \
-      replace(dirname,'out-ganak-mc','') as dirname,\
-      replace(ganak_call,'././ganak_','') as call,\
-      sum(mem_out) as 'mem out', \
-      CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
-      ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
-      ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
-      CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
-      sum(ganak_time is not null) as 'solved',\
-      CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
-      CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-sat-dec-sz',\
-      ROUND(avg(gates_extend_t), 3) as 'gates-ext-t',\
-      ROUND(avg(padoa_extend_t), 3) as 'padoa-ext-t',\
-      ROUND(avg(gates_extended), 3) as 'gates-ext',\
-      ROUND(avg(padoa_extended), 3) as 'padoa-ext',\
-      CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
-      CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
-      CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
-      CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
-      ROUND(avg(td_width),0) as 'av tdw',\
-      ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
-      ROUND(avg(compsK/1000.0),2) as 'av compsM',\
-      sum(fname is not null) as 'nfiles'\
-      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" group by dirname order by PAR2")
-os.system("sqlite3 mydb.sql < gen_table.sqlite")
-os.unlink("gen_table.sqlite")
+for only_counted in [True, False]:
+  counted_req = ""
+  if only_counted:
+    print("::: --------- ONLY those COUNTED ------- :::")
+    counted_req = " and ganak_time is not NULL "
+  with open("gen_table.sqlite", "w") as f:
+    f.write(".mode table\n")
+    # f.write(".mode colum\n")
+    # f.write(".headers off\n")
+    dirs = ""
+    vers = ""
+    for dir,ver in table_todo:
+      dirs += "'" + dir + "',"
+      vers += "'" + ver + "',"
+    dirs = dirs[:-1]
+    vers = vers[:-1]
+    extra = ""
+    f.write("select \
+        replace(dirname,'out-ganak-mc','') as dirname,\
+        replace(ganak_call,'././ganak_','') as call,\
+        sum(mem_out) as 'mem out', \
+        CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
+        ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
+        ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
+        CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
+        sum(ganak_time is not null) as 'solved',\
+        CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
+        CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-sat-dec-sz',\
+        ROUND(avg(gates_extend_t), 3) as 'gates-ext-t',\
+        ROUND(avg(padoa_extend_t), 3) as 'padoa-ext-t',\
+        ROUND(avg(gates_extended), 3) as 'gates-ext',\
+        ROUND(avg(padoa_extended), 3) as 'padoa-ext',\
+        CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
+        CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
+        CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
+        CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
+        ROUND(avg(td_width),0) as 'av tdw',\
+        ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
+        ROUND(avg(compsK/1000.0),2) as 'av compsM',\
+        sum(fname is not null) as 'nfiles'\
+        from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by PAR2")
+  os.system("sqlite3 mydb.sql < gen_table.sqlite")
+  os.unlink("gen_table.sqlite")
 
 # out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
 if True:

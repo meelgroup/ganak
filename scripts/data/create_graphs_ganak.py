@@ -444,13 +444,14 @@ only_dirs = [
             "out-ganak-mc2324-14063135-7/", # also enchanced SAT
             "out-ganak-mc2324-14063135-4/", # also dual indep
             "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
-            "out-others-gpmc",
-            "out-others-d4",
+            # "out-others-gpmc",
+            # "out-others-d4",
             # "out-others-14064944-0", # sharpsat-td
 
             # unused
             # "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
             # "out-ganak-mc2324-14086287-" # sbva setup
+            # "out-ganak-mc2324-14098333-", # sbva checks
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

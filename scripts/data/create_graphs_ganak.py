@@ -444,10 +444,12 @@ only_dirs = [
             "out-ganak-mc2324-14063135-7/", # also enchanced SAT
             "out-ganak-mc2324-14063135-4/", # also dual indep
             "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
-            # "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
             "out-others-gpmc",
             "out-others-d4",
-            # "out-others-14064944-0", # sharpsat
+            # "out-others-14064944-0", # sharpsat-td
+
+            # unused
+            # "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
             # "out-ganak-mc2324-14086287-" # sbva setup
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
@@ -574,7 +576,7 @@ for only_counted in [False, True]:
         ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\
         sum(fname is not null) as 'nfiles'\
-        from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by PAR2")
+        from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc")
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
   os.unlink("gen_table.sqlite")
 

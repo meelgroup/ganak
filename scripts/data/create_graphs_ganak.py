@@ -445,8 +445,8 @@ only_dirs = [
             "out-ganak-mc2324-14063135-4/", # also dual indep
             "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
             # "out-ganak-mc2324-14072353-0/", # all in, but TD contract off
-            # "out-others-gpmc",
-            # "out-others-d4",
+            "out-others-gpmc",
+            "out-others-d4",
             # "out-others-14064944-0", # sharpsat
             # "out-ganak-mc2324-14086287-" # sbva setup
              ]
@@ -532,11 +532,13 @@ for ver in todo :
         fname2_s.append([fname2, call, ver[:10], num_solved, dir])
         table_todo.append([dir, ver])
 
-for only_counted in [True, False]:
+for only_counted in [False, True]:
   counted_req = ""
   if only_counted:
-    print("::: --------- ONLY those COUNTED ------- :::")
+    print("::: --------- Data based on ONLY benchmarks that are COUNTED ------- :::")
     counted_req = " and ganak_time is not NULL "
+  else:
+    print("::: --------- Data based on ALSO UNCOUNTED benchmarks ------- :::")
   with open("gen_table.sqlite", "w") as f:
     f.write(".mode table\n")
     # f.write(".mode colum\n")

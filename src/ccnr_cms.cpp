@@ -28,12 +28,13 @@ THE SOFTWARE.
 #include "ccnr_cms.hpp"
 #include "ccnr.hpp"
 #include "common.hpp"
+#include <arjun/arjun.h>
 
 using namespace CCNR;
 
-Ganak_ccnr::Ganak_ccnr(ArjunNS::SimplifiedCNF& _cnf, uint32_t _verbosity): cnf(_cnf)  {
+Ganak_ccnr::Ganak_ccnr(const ArjunNS::SimplifiedCNF* _cnf, uint32_t _verbosity): cnf(_cnf)  {
     conf.verb = _verbosity;
-    ls_s = new ls_solver(false);
+    ls_s = new ls_solver();
     ls_s->set_verbosity(conf.verb);
 }
 
@@ -43,7 +44,7 @@ int Ganak_ccnr::main()
 {
     //It might not work well with few number of variables
     //rnovelty could also die/exit(-1), etc.
-    if (cnf.nVars() < 50 || cnf.clauses.size() < 10) {
+    if (cnf->nVars() < 50 || cnf->clauses.size() < 10) {
         verb_print(1, "[ccnr] too few variables & clauses");
         return 0;
     }
@@ -51,7 +52,7 @@ int Ganak_ccnr::main()
 
     init_problem();
 
-    vector<bool> phases(cnf.nVars()+1, false);
+    vector<bool> phases(cnf->nVars()+1, false);
     int res = ls_s->local_search(&phases, conf.yalsat_max_mems*2*1000*1000, "c o");
 
     double time_used = cpuTime()-start_time;
@@ -78,12 +79,12 @@ void Ganak_ccnr::add_this_clause(const T& cl) {
 }
 
 bool Ganak_ccnr::init_problem() {
-    ls_s->_num_vars = cnf.nVars();
-    ls_s->_num_clauses = cnf.clauses.size();
+    ls_s->num_vars = cnf->nVars();
+    ls_s->num_vars = cnf->clauses.size();
     ls_s->make_space();
-    for(auto& cl: cnf.clauses) add_this_clause(cl);
+    for(auto& cl: cnf->clauses) add_this_clause(cl);
 
-    for (int c=0; c < ls_s->_num_clauses; c++) {
+    for (int c=0; c < ls_s->num_vars; c++) {
         for(CCNR::lit item: ls_s->_clauses[c].literals) {
             int v = item.var_num;
             ls_s->_vars[v].literals.push_back(item);

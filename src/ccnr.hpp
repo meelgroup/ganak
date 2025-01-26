@@ -100,8 +100,7 @@ class ls_solver {
     //formula
     vector<variable> _vars;
     vector<clause> _clauses;
-    int _num_vars;
-    int _num_clauses;
+    int num_vars;
 
     //data structure used
     vector<int> _conflict_ct;
@@ -124,17 +123,17 @@ class ls_solver {
     int _best_found_cost;
     long long _mems = 0;
     long long _step;
-    long long _max_steps;
-    int _max_tries;
+    long long max_steps;
+    int max_tries;
 
     //aiding data structure
-    Mersenne _random_gen; //random generator
+    Mersenne random_gen; //random generator
 
     //clause weighting
-    int _swt_threshold;
+    int swt_thresh;
     float _swt_p; //w=w*p+ave_w*q
     float _swt_q;
-    int _avg_clause_weight;
+    int avg_cl_weight;
     //-------------------
 
     //=================

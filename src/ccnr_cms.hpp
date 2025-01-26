@@ -25,11 +25,15 @@ THE SOFTWARE.
 #include <cstdint>
 #include <cstdio>
 #include <utility>
-#include <arjun/arjun.h>
+#include <vector>
 
 using std::pair;
 using std::make_pair;
 using std::vector;
+
+namespace ArjunNS {
+  struct SimplifiedCNF;
+}
 
 namespace CCNR {
 
@@ -43,7 +47,7 @@ struct CCNRConf {
 class Ganak_ccnr {
 public:
     int main();
-    Ganak_ccnr(ArjunNS::SimplifiedCNF& _cnf, uint32_t verbosity);
+    Ganak_ccnr(ArjunNS::SimplifiedCNF const* _cnf, uint32_t verbosity);
     ~Ganak_ccnr();
 
 private:
@@ -60,7 +64,7 @@ private:
     vector<int> yals_lits;
 
     CCNRConf conf;
-    ArjunNS::SimplifiedCNF& cnf;
+    const ArjunNS::SimplifiedCNF* cnf;
 };
 
 }

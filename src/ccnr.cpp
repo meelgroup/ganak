@@ -38,30 +38,30 @@ using std::string;
 
 //constructor with default setting.
 ls_solver::ls_solver() {
-    _max_tries = 100;
-    _max_steps = 1*1000 * 1000;
-    _random_gen.seed(1337); // random seed
-    _swt_threshold = 50;
+    max_tries = 100;
+    max_steps = 1*1000 * 1000;
+    random_gen.seed(1337); // random seed
+    swt_thresh = 50;
     _swt_p = 0.3;
     _swt_q = 0.7;
     verbosity = 0;
 }
 
 bool ls_solver::make_space() {
-    if (0 == _num_vars || 0 == _num_clauses) return false;
-    _vars.resize(_num_vars+1);
-    _clauses.resize(_num_clauses+1);
-    _solution.resize(_num_vars+1);
-    _best_solution.resize(_num_vars+1);
-    _index_in_unsat_clauses.resize(_num_clauses+1);
-    _index_in_unsat_vars.resize(_num_vars+1);
+    if (0 == num_vars || 0 == num_vars) return false;
+    _vars.resize(num_vars+1);
+    _clauses.resize(num_vars+1);
+    _solution.resize(num_vars+1);
+    _best_solution.resize(num_vars+1);
+    _index_in_unsat_clauses.resize(num_vars+1);
+    _index_in_unsat_vars.resize(num_vars+1);
 
     return true;
 }
 
 void ls_solver::build_neighborhood() {
-    vector<bool> neighbor_flag(_num_vars+1, 0);
-    for (int v = 1; v <= _num_vars; ++v) {
+    vector<bool> neighbor_flag(num_vars+1, 0);
+    for (int v = 1; v <= num_vars; ++v) {
         variable *vp = &(_vars[v]);
         for (lit lv: vp->literals) {
             int c = lv.clause_num;
@@ -84,18 +84,18 @@ bool ls_solver::local_search(
     , const char* prefix
 ) {
     bool result = false;
-    _best_found_cost = _num_clauses;
+    _best_found_cost = num_vars;
     _conflict_ct.clear();
-    _conflict_ct.resize(_num_vars+1,0);
+    _conflict_ct.resize(num_vars+1,0);
 
-    for (int t = 0; t < _max_tries; t++) {
+    for (int t = 0; t < max_tries; t++) {
         initialize(init_solution);
         if (0 == _unsat_clauses.size()) {
             result = true;
             break;
         }
 
-        for (_step = 0; _step < _max_steps; _step++) {
+        for (_step = 0; _step < max_steps; _step++) {
             int flipv = pick_var();
             flip(flipv);
             for(int var_idx:_unsat_vars) ++_conflict_ct[var_idx];
@@ -148,29 +148,29 @@ void ls_solver::initialize(const vector<bool> *init_solution) {
     clear_prev_data();
     if (!init_solution) {
         //default random generation
-        for (int v = 1; v <= _num_vars; v++) {
-            _solution[v] = (_random_gen.next(2) == 0 ? 0 : 1);
+        for (int v = 1; v <= num_vars; v++) {
+            _solution[v] = (random_gen.next(2) == 0 ? 0 : 1);
         }
     } else {
-        if ((int)init_solution->size() != _num_vars+1) {
+        if ((int)init_solution->size() != num_vars+1) {
             cout
             << "ERROR: the init solution's size"
             " is not equal to the number of variables."
             << endl;
             exit(-1);
         }
-        for (int v = 1; v <= _num_vars; v++) {
+        for (int v = 1; v <= num_vars; v++) {
             _solution[v] = init_solution->at(v);
         }
     }
 
     //unsat_appears, will be updated when calling unsat_a_clause function.
-    for (int v = 1; v <= _num_vars; v++) {
+    for (int v = 1; v <= num_vars; v++) {
         _vars[v].unsat_appear = 0;
     }
 
     //initialize data structure of clauses according to init solution
-    for (int c = 0; c < _num_clauses; c++) {
+    for (int c = 0; c < num_vars; c++) {
         _clauses[c].sat_count = 0;
         _clauses[c].sat_var = -1;
         _clauses[c].weight = 1;
@@ -185,7 +185,7 @@ void ls_solver::initialize(const vector<bool> *init_solution) {
             unsat_a_clause(c);
         }
     }
-    _avg_clause_weight = 1;
+    avg_cl_weight = 1;
     _delta_total_clause_weight = 0;
     initialize_variable_datas();
 }
@@ -193,7 +193,7 @@ void ls_solver::initialize_variable_datas()
 {
     variable *vp;
     //scores
-    for (int v = 1; v <= _num_vars; v++) {
+    for (int v = 1; v <= num_vars; v++) {
         vp = &(_vars[v]);
         vp->score = 0;
         for (lit l: vp->literals) {
@@ -206,11 +206,11 @@ void ls_solver::initialize_variable_datas()
         }
     }
     //last flip step
-    for (int v = 1; v <= _num_vars; v++) {
+    for (int v = 1; v <= num_vars; v++) {
         _vars[v].last_flip_step = 0;
     }
     //cc datas
-    for (int v = 1; v <= _num_vars; v++) {
+    for (int v = 1; v <= num_vars; v++) {
         vp = &(_vars[v]);
         vp->cc_value = 1;
         if (vp->score > 0) //&&_vars[v].cc_value==1
@@ -252,7 +252,7 @@ int ls_solver::pick_var() {
     update_clause_weights();
 
     /*focused random walk*/
-    int c = _unsat_clauses[_random_gen.next(_unsat_clauses.size())];
+    int c = _unsat_clauses[random_gen.next(_unsat_clauses.size())];
     clause *cp = &(_clauses[c]);
     best_var = cp->literals[0].var_num;
     for (size_t k = 1; k < cp->literals.size(); k++) {
@@ -388,32 +388,32 @@ void ls_solver::update_clause_weights() {
         }
     }
     _delta_total_clause_weight += _unsat_clauses.size();
-    if (_delta_total_clause_weight >= _num_clauses) {
-        _avg_clause_weight += 1;
-        _delta_total_clause_weight -= _num_clauses;
-        if (_avg_clause_weight > _swt_threshold) {
+    if (_delta_total_clause_weight >= num_vars) {
+        avg_cl_weight += 1;
+        _delta_total_clause_weight -= num_vars;
+        if (avg_cl_weight > swt_thresh) {
             smooth_clause_weights();
         }
     }
 }
 
 void ls_solver::smooth_clause_weights() {
-    for (int v = 1; v <= _num_vars; v++) {
+    for (int v = 1; v <= num_vars; v++) {
         _vars[v].score = 0;
     }
-    int scale_avg = _avg_clause_weight * _swt_q;
-    _avg_clause_weight = 0;
+    int scale_avg = avg_cl_weight * _swt_q;
+    avg_cl_weight = 0;
     _delta_total_clause_weight = 0;
-    _mems += _num_clauses;
-    for (int c = 0; c < _num_clauses; ++c) {
+    _mems += num_vars;
+    for (int c = 0; c < num_vars; ++c) {
         clause *cp = &(_clauses[c]);
         cp->weight = cp->weight * _swt_p + scale_avg;
         if (cp->weight < 1)
             cp->weight = 1;
         _delta_total_clause_weight += cp->weight;
-        if (_delta_total_clause_weight >= _num_clauses) {
-            _avg_clause_weight += 1;
-            _delta_total_clause_weight -= _num_clauses;
+        if (_delta_total_clause_weight >= num_vars) {
+            avg_cl_weight += 1;
+            _delta_total_clause_weight -= num_vars;
         }
         if (0 == cp->sat_count) {
             for (lit l: cp->literals) {
@@ -426,7 +426,7 @@ void ls_solver::smooth_clause_weights() {
 
     //reset ccd_vars
     _ccd_vars.clear();
-    for (int v = 1; v <= _num_vars; v++) {
+    for (int v = 1; v <= num_vars; v++) {
         variable* vp = &(_vars[v]);
         if (vp->score > 0 && 1 == vp->cc_value) {
             _ccd_vars.push_back(v);
@@ -438,14 +438,12 @@ void ls_solver::smooth_clause_weights() {
 }
 
 void ls_solver::print_solution(bool need_verify) {
-    if (0 == get_cost())
-        cout << "s SATISFIABLE" << endl;
-    else
-        cout << "s UNKNOWN" << endl;
+    if (0 == get_cost()) cout << "s SATISFIABLE" << endl;
+    else cout << "s UNKNOWN" << endl;
 
     bool sat_flag = false;
     if (need_verify) {
-        for (int c = 0; c < _num_clauses; c++) {
+        for (int c = 0; c < num_vars; c++) {
             sat_flag = false;
             for (lit l: _clauses[c].literals) {
                 if (_solution[l.var_num] == l.sense) {
@@ -460,9 +458,10 @@ void ls_solver::print_solution(bool need_verify) {
         }
         cout << "c Verified." << endl;
     }
+
     if (verbosity > 0) {
         cout << "v";
-        for (int v = 1; v <= _num_vars; v++) {
+        for (int v = 1; v <= num_vars; v++) {
             cout << ' ';
             if (_solution[v] == 0)
                 cout << '-';

@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <cstdlib>
+#include <ostream>
 #include <vector>
 #include "ccnr_mersenne.hpp"
 
@@ -80,6 +81,20 @@ struct clause {
     int sat_var;
     long long weight;
 };
+
+inline std::ostream& operator<<(std::ostream &os, const lit &l) {
+    os << (l.sense ? "" : "-") << l.var_num;
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream &os, const clause &cl) {
+  for(const auto &l: cl.literals) {
+    os << l << " ";
+  }
+  os << "0";
+  return os;
+}
+
 
 class LS_solver {
  public:

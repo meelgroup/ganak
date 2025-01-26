@@ -49,10 +49,11 @@ LS_solver::LS_solver() {
 bool LS_solver::make_space() {
     if (num_vars == 0) return false;
     vars.resize(num_vars+1);
-    cls.resize(num_cls+1);
     sol.resize(num_vars+1);
-    idx_in_unsat_cls.resize(num_vars+1);
     idx_in_unsat_vars.resize(num_vars+1);
+
+    cls.resize(num_cls);
+    idx_in_unsat_cls.resize(num_cls);
 
     return true;
 }
@@ -79,7 +80,7 @@ bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
     bool result = false;
     for (int t = 0; t < max_tries; t++) {
         initialize();
-        if (0 == unsat_cls.size()) {
+        if (unsat_cls.empty()) {
             result = true;
             break;
         }
@@ -103,7 +104,7 @@ bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
                 break;
             }
         }
-        if (0 == unsat_cls.size()) {
+        if (unsat_cls.empty()) {
             result = true;
             break;
         }
@@ -115,35 +116,30 @@ void LS_solver::clear_prev_data() {
     unsat_cls.clear();
     ccd_vars.clear();
     unsat_vars.clear();
-    for (int &item: idx_in_unsat_cls)
-        item = 0;
-    for (int &item: idx_in_unsat_vars)
-        item = 0;
+    for (int &item: idx_in_unsat_cls) item = 0;
+    for (int &item: idx_in_unsat_vars) item = 0;
 }
 
 void LS_solver::initialize() {
     clear_prev_data();
-      for (int v = 1; v <= num_vars; v++)
-        sol[v] = random_gen.next(2);
+    for (int v = 1; v <= num_vars; v++) sol[v] = random_gen.next(2);
 
     //unsat_appears, will be updated when calling unsat_a_clause function.
-    for (int v = 1; v <= num_vars; v++) {
-        vars[v].unsat_appear = 0;
-    }
+    for (int v = 1; v <= num_vars; v++) vars[v].unsat_appear = 0;
 
     //initialize data structure of clauses according to init solution
-    for (int c = 0; c < num_vars; c++) {
-        cls[c].sat_count = 0;
-        cls[c].sat_var = -1;
-        cls[c].weight = 1;
+    for (int cid = 0; cid < num_cls; cid++) {
+        cls[cid].sat_count = 0;
+        cls[cid].sat_var = -1;
+        cls[cid].weight = 1;
 
-        for (lit l: cls[c].literals) {
+        for (lit l: cls[cid].literals) {
             if (sol[l.var_num] == l.sense) {
-                cls[c].sat_count++;
-                cls[c].sat_var = l.var_num;
+                cls[cid].sat_count++;
+                cls[cid].sat_var = l.var_num;
             }
         }
-        if (0 == cls[c].sat_count) unsat_a_clause(c);
+        if (cls[cid].sat_count == 0) unsat_a_clause(cid);
     }
     avg_cl_weight = 1;
     delta_tot_cl_weight = 0;
@@ -165,9 +161,8 @@ void LS_solver::initialize_variable_datas() {
         }
     }
     //last flip step
-    for (int v = 1; v <= num_vars; v++) {
-        vars[v].last_flip_step = 0;
-    }
+    for (int v = 1; v <= num_vars; v++) vars[v].last_flip_step = 0;
+
     //cc datas
     for (int v = 1; v <= num_vars; v++) {
         auto& vp = vars[v];
@@ -210,8 +205,12 @@ int LS_solver::pick_var() {
     update_clause_weights();
 
     /*focused random walk*/
-    int c = unsat_cls[random_gen.next(unsat_cls.size())];
-    clause& cl = cls[c];
+    assert(!unsat_cls.empty());
+    int cid = unsat_cls[random_gen.next(unsat_cls.size())];
+    /* cout << "clause id: " << cid << endl; */
+    clause& cl = cls[cid];
+    /* cout << "clause weight: " << cl.weight << endl; */
+    /* cout << "cl: " << cl << endl; */
     best_var = cl.literals[0].var_num;
     for (size_t k = 1; k < cl.literals.size(); k++) {
         int v = cl.literals[k].var_num;
@@ -344,9 +343,9 @@ void LS_solver::update_clause_weights() {
         }
     }
     delta_tot_cl_weight += unsat_cls.size();
-    if (delta_tot_cl_weight >= num_vars) {
+    if (delta_tot_cl_weight >= num_cls) {
         avg_cl_weight += 1;
-        delta_tot_cl_weight -= num_vars;
+        delta_tot_cl_weight -= num_cls;
         if (avg_cl_weight > swt_thresh) {
             smooth_clause_weights();
         }
@@ -358,16 +357,16 @@ void LS_solver::smooth_clause_weights() {
     int scale_avg = avg_cl_weight * swt_q;
     avg_cl_weight = 0;
     delta_tot_cl_weight = 0;
-    mems += num_vars;
-    for (int c = 0; c < num_vars; ++c) {
+    mems += num_cls;
+    for (int c = 0; c < num_cls; ++c) {
         clause *cp = &(cls[c]);
         cp->weight = cp->weight * swt_p + scale_avg;
         if (cp->weight < 1)
             cp->weight = 1;
         delta_tot_cl_weight += cp->weight;
-        if (delta_tot_cl_weight >= num_vars) {
+        if (delta_tot_cl_weight >= num_cls) {
             avg_cl_weight += 1;
-            delta_tot_cl_weight -= num_vars;
+            delta_tot_cl_weight -= num_cls;
         }
         if (0 == cp->sat_count) {
             for (lit l: cp->literals) {
@@ -397,7 +396,7 @@ void LS_solver::print_solution(bool need_verify) {
 
     bool sat_flag = false;
     if (need_verify) {
-        for (int c = 0; c < num_vars; c++) {
+        for (int c = 0; c < num_cls; c++) {
             sat_flag = false;
             for (lit l: cls[c].literals) {
                 if (sol[l.var_num] == l.sense) {

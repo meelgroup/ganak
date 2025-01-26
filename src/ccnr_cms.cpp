@@ -63,29 +63,27 @@ template<class T>
 void Ganak_ccnr::add_this_clause(const T& cl) {
     uint32_t sz = 0;
     yals_lits.clear();
-    for(size_t i3 = 0; i3 < cl.size(); i3++) {
-      CMSat::Lit lit = cl[i3];
+    for(auto& lit: cl) {
         int l = lit.var()+1;
         l *= lit.sign() ? -1 : 1;
         yals_lits.push_back(l);
         sz++;
     }
     assert(sz > 0);
-    cl_num++;
 
     for(auto& lit: yals_lits) {
         ls_s->cls[cl_num].literals.push_back(CCNR::lit(lit, cl_num));
     }
+    cl_num++;
 }
 
 bool Ganak_ccnr::init_problem() {
-    cl_num = 0;
     ls_s->num_vars = cnf->nVars();
     ls_s->num_cls = cnf->clauses.size();
     ls_s->make_space();
     for(auto& cl: cnf->clauses) add_this_clause(cl);
 
-    for (int c=0; c < ls_s->num_vars; c++) {
+    for (int c=0; c < ls_s->num_cls; c++) {
         for(CCNR::lit item: ls_s->cls[c].literals) {
             int v = item.var_num;
             ls_s->vars[v].literals.push_back(item);

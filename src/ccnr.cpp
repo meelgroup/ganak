@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
-#include <vector>
 #include <cassert>
 
 using namespace CCNR;
@@ -59,7 +58,7 @@ bool LS_solver::make_space() {
 }
 
 void LS_solver::build_neighborhood() {
-    vector<bool> neighbor_flag(num_vars+1, 0);
+    vector<uint8_t> neighbor_flag(num_vars+1, 0);
     for (int v = 1; v <= num_vars; ++v) {
         variable& vp = vars[v];
         for (lit lv: vp.literals) {
@@ -185,7 +184,6 @@ void LS_solver::initialize_variable_datas() {
 
 int LS_solver::pick_var() {
     //First, try to get the var with the highest score from ccd_vars if any
-    //----------------------------------------
     int best_var = 0;
     mems += ccd_vars.size()/8;
     if (ccd_vars.size() > 0) {
@@ -207,10 +205,7 @@ int LS_solver::pick_var() {
     /*focused random walk*/
     assert(!unsat_cls.empty());
     int cid = unsat_cls[random_gen.next(unsat_cls.size())];
-    /* cout << "clause id: " << cid << endl; */
     clause& cl = cls[cid];
-    /* cout << "clause weight: " << cl.weight << endl; */
-    /* cout << "cl: " << cl << endl; */
     best_var = cl.literals[0].var_num;
     for (size_t k = 1; k < cl.literals.size(); k++) {
         int v = cl.literals[k].var_num;

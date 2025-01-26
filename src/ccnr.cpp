@@ -34,11 +34,10 @@ using std::endl;
 using std::string;
 
 
-//constructor with default setting.
 LS_solver::LS_solver() {
     max_tries = 100;
     max_steps = 1*1000 * 1000;
-    random_gen.seed(1337); // random seed
+    random_gen.seed(1337);
     swt_thresh = 50;
     swt_p = 0.3;
     swt_q = 0.7;

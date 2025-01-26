@@ -479,8 +479,7 @@ int main(int argc, char *argv[])
     cout << "c o called with: " << command_line << endl;
   }
 
-  string fname;
-
+  // Get the input CNF
   if (!program.is_used("inputfile")) {
     cout << "ERROR: must provide input file to read as last argument" << endl;
     exit(-1);
@@ -495,7 +494,9 @@ int main(int argc, char *argv[])
       cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
       exit(-1);
   }
-  fname = files[0];
+  const string& fname = files[0];
+
+  // Parse the CNF
   ArjunNS::SimplifiedCNF cnf;
   parse_file(fname, &cnf);
   if (cnf.get_weighted() && conf.do_buddy) {

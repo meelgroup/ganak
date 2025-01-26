@@ -503,6 +503,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
+
+  // Run Arjun
   if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();
   else run_arjun(cnf);
   if (conf.verb) {
@@ -511,11 +513,14 @@ int main(int argc, char *argv[])
       cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
     }
   }
+
+  // Run BreakID
   vector<map<Lit, Lit>> generators;
   if (conf.do_restart && do_breakid && cnf.clauses.size() > 1)
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
+  // Run Ganak
   Ganak counter(conf, cnf.weighted, do_precise);
   setup_ganak(cnf, generators, counter);
 

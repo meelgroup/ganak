@@ -71,8 +71,6 @@ struct variable {
     long long score;
     long long last_flip_step;
     int unsat_appear; //how many unsat clauses it appears in
-    bool cc_value;
-    bool is_in_ccd_vars;
 };
 
 struct clause {
@@ -118,7 +116,6 @@ class LS_solver {
     vector<int> idx_in_unsat_cls; // idx_in_unsat_cls[var] tells where "var" is in unsat_vars
     vector<int> unsat_vars; // clauses are UNSAT due to these vars
     vector<int> idx_in_unsat_vars;
-    vector<int> ccd_vars;
 
     vector<uint8_t> sol; //solution information
 
@@ -151,7 +148,6 @@ class LS_solver {
     void initialize_variable_datas();
     int pick_var();
     void flip(int flipv);
-    void update_cc_after_flip(int flipv);
     void update_clause_weights();
     void smooth_clause_weights();
 

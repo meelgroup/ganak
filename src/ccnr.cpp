@@ -112,7 +112,6 @@ bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
 
 void LS_solver::initialize() {
     unsat_cls.clear();
-    ccd_vars.clear();
     unsat_vars.clear();
     for (int &item: idx_in_unsat_cls) item = 0;
     for (int &item: idx_in_unsat_vars) item = 0;
@@ -157,51 +156,20 @@ void LS_solver::initialize_variable_datas() {
     //last flip step
     for (int v = 1; v <= num_vars; v++) vars[v].last_flip_step = 0;
 
-    //cc datas
-    for (int v = 1; v <= num_vars; v++) {
-        auto& vp = vars[v];
-        vp.cc_value = 1;
-        if (vp.score > 0) //&&vars[v].cc_value==1
-        {
-            ccd_vars.push_back(v);
-            vp.is_in_ccd_vars = 1;
-        } else {
-            vp.is_in_ccd_vars = 0;
-        }
-    }
     //the virtual var 0
     auto& vp = vars[0];
     vp.score = 0;
-    vp.cc_value = 0;
-    vp.is_in_ccd_vars = 0;
     vp.last_flip_step = 0;
 }
 
 int LS_solver::pick_var() {
-    //First, try to get the var with the highest score from ccd_vars if any
-    int best_var = 0;
-    mems += ccd_vars.size()/8;
-    if (ccd_vars.size() > 0) {
-        best_var = ccd_vars[0];
-        for (int v: ccd_vars) {
-            if (vars[v].score > vars[best_var].score) {
-                best_var = v;
-            } else if (vars[v].score == vars[best_var].score &&
-                       vars[v].last_flip_step < vars[best_var].last_flip_step) {
-                best_var = v;
-            }
-        }
-        return best_var;
-    }
-
-    /**Diversification Mode**/
     update_clause_weights();
 
     /*focused random walk*/
     assert(!unsat_cls.empty());
     int cid = unsat_cls[random_gen.next(unsat_cls.size())];
     clause& cl = cls[cid];
-    best_var = cl.literals[0].var_num;
+    int best_var = cl.literals[0].var_num;
     for (size_t k = 1; k < cl.literals.size(); k++) {
         int v = cl.literals[k].var_num;
         if (vars[v].score > vars[best_var].score) {
@@ -253,38 +221,8 @@ void LS_solver::flip(int flipv) {
     }
     vars[flipv].score = -org_flipv_score;
     vars[flipv].last_flip_step = step;
-    //update cc_values
-    update_cc_after_flip(flipv);
 }
 
-void LS_solver::update_cc_after_flip(int flipv) {
-    int last_item;
-    variable& vp = vars[flipv];
-    vp.cc_value = 0;
-    mems += ccd_vars.size()/4;
-    for (int index = ccd_vars.size() - 1; index >= 0; index--) {
-        int v = ccd_vars[index];
-        if (vars[v].score <= 0) {
-            last_item = ccd_vars.back();
-            ccd_vars.pop_back();
-            if (index < (int)ccd_vars.size()) {
-                ccd_vars[index] = last_item;
-            }
-
-            vars[v].is_in_ccd_vars = 0;
-        }
-    }
-
-    //update all flipv's neighbor's cc to be 1
-    mems += vp.neighbor_var_nums.size()/4;
-    for (int v: vp.neighbor_var_nums) {
-        vars[v].cc_value = 1;
-        if (vars[v].score > 0 && !(vars[v].is_in_ccd_vars)) {
-            ccd_vars.push_back(v);
-            vars[v].is_in_ccd_vars = 1;
-        }
-    }
-}
 
 void LS_solver::sat_a_clause(int cl_num) {
     //use the position of the clause to store the last unsat clause in stack
@@ -327,10 +265,6 @@ void LS_solver::update_clause_weights() {
     for (int c: unsat_cls) cls[c].weight++;
     for (int v: unsat_vars) {
         vars[v].score += vars[v].unsat_appear;
-        if (vars[v].score > 0 && 1 == vars[v].cc_value && !(vars[v].is_in_ccd_vars)) {
-            ccd_vars.push_back(v);
-            vars[v].is_in_ccd_vars = 1;
-        }
     }
     delta_tot_cl_weight += unsat_cls.size();
     if (delta_tot_cl_weight >= num_cls) {
@@ -364,18 +298,6 @@ void LS_solver::smooth_clause_weights() {
             }
         } else if (1 == cp->sat_count) {
             vars[cp->sat_var].score -= cp->weight;
-        }
-    }
-
-    //reset ccd_vars
-    ccd_vars.clear();
-    for (int v = 1; v <= num_vars; v++) {
-        variable* vp = &(vars[v]);
-        if (vp->score > 0 && 1 == vp->cc_value) {
-            ccd_vars.push_back(v);
-            vp->is_in_ccd_vars = 1;
-        } else {
-            vp->is_in_ccd_vars = 0;
         }
     }
 }

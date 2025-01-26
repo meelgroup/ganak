@@ -99,7 +99,7 @@ class LS_solver {
 
     //formula
     vector<variable> vars;
-    vector<clause> clauses;
+    vector<clause> cls;
     int num_vars;
 
     //data structure used
@@ -110,8 +110,7 @@ class LS_solver {
     vector<int> idx_in_unsat_vars;
     vector<int> _ccd_vars;
 
-    //solution information
-    vector<uint8_t> solution;
+    vector<uint8_t> sol; //solution information
 
     //functions for buiding data structure
     bool make_space();

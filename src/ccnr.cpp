@@ -50,8 +50,8 @@ LS_solver::LS_solver() {
 bool LS_solver::make_space() {
     if (num_vars == 0) return false;
     vars.resize(num_vars+1);
-    clauses.resize(num_vars+1);
-    solution.resize(num_vars+1);
+    cls.resize(num_vars+1);
+    sol.resize(num_vars+1);
     idx_in_unsat_cls.resize(num_vars+1);
     idx_in_unsat_vars.resize(num_vars+1);
 
@@ -61,19 +61,17 @@ bool LS_solver::make_space() {
 void LS_solver::build_neighborhood() {
     vector<bool> neighbor_flag(num_vars+1, 0);
     for (int v = 1; v <= num_vars; ++v) {
-        variable *vp = &(vars[v]);
-        for (lit lv: vp->literals) {
+        variable& vp = vars[v];
+        for (lit lv: vp.literals) {
             int c = lv.clause_num;
-            for (lit lc: clauses[c].literals) {
+            for (lit lc: cls[c].literals) {
                 if (!neighbor_flag[lc.var_num] && lc.var_num != v) {
                     neighbor_flag[lc.var_num] = 1;
-                    vp->neighbor_var_nums.push_back(lc.var_num);
+                    vp.neighbor_var_nums.push_back(lc.var_num);
                 }
             }
         }
-        for (uint32_t j = 0; j < vp->neighbor_var_nums.size(); ++j) {
-            neighbor_flag[vp->neighbor_var_nums[j]] = 0;
-        }
+        for (int neighbor_var_num : vp.neighbor_var_nums) neighbor_flag[neighbor_var_num] = 0;
     }
 }
 
@@ -131,7 +129,7 @@ void LS_solver::initialize(const vector<bool> *init_solution) {
     if (!init_solution) {
         //default random generation
         for (int v = 1; v <= num_vars; v++) {
-            solution[v] = (random_gen.next(2) == 0 ? 0 : 1);
+            sol[v] = (random_gen.next(2) == 0 ? 0 : 1);
         }
     } else {
         if ((int)init_solution->size() != num_vars+1) {
@@ -142,7 +140,7 @@ void LS_solver::initialize(const vector<bool> *init_solution) {
             exit(-1);
         }
         for (int v = 1; v <= num_vars; v++) {
-            solution[v] = init_solution->at(v);
+            sol[v] = init_solution->at(v);
         }
     }
 
@@ -153,17 +151,17 @@ void LS_solver::initialize(const vector<bool> *init_solution) {
 
     //initialize data structure of clauses according to init solution
     for (int c = 0; c < num_vars; c++) {
-        clauses[c].sat_count = 0;
-        clauses[c].sat_var = -1;
-        clauses[c].weight = 1;
+        cls[c].sat_count = 0;
+        cls[c].sat_var = -1;
+        cls[c].weight = 1;
 
-        for (lit l: clauses[c].literals) {
-            if (solution[l.var_num] == l.sense) {
-                clauses[c].sat_count++;
-                clauses[c].sat_var = l.var_num;
+        for (lit l: cls[c].literals) {
+            if (sol[l.var_num] == l.sense) {
+                cls[c].sat_count++;
+                cls[c].sat_var = l.var_num;
             }
         }
-        if (0 == clauses[c].sat_count) {
+        if (0 == cls[c].sat_count) {
             unsat_a_clause(c);
         }
     }
@@ -180,10 +178,10 @@ void LS_solver::initialize_variable_datas()
         vp->score = 0;
         for (lit l: vp->literals) {
             int c = l.clause_num;
-            if (0 == clauses[c].sat_count) {
-                vp->score += clauses[c].weight;
-            } else if (1 == clauses[c].sat_count && l.sense == solution[l.var_num]) {
-                vp->score -= clauses[c].weight;
+            if (0 == cls[c].sat_count) {
+                vp->score += cls[c].weight;
+            } else if (1 == cls[c].sat_count && l.sense == sol[l.var_num]) {
+                vp->score -= cls[c].weight;
             }
         }
     }
@@ -235,7 +233,7 @@ int LS_solver::pick_var() {
 
     /*focused random walk*/
     int c = unsat_cls[random_gen.next(unsat_cls.size())];
-    clause *cp = &(clauses[c]);
+    clause *cp = &(cls[c]);
     best_var = cp->literals[0].var_num;
     for (size_t k = 1; k < cp->literals.size(); k++) {
         int v = cp->literals[k].var_num;
@@ -250,14 +248,14 @@ int LS_solver::pick_var() {
 }
 
 void LS_solver::flip(int flipv) {
-    solution[flipv] = 1 - solution[flipv];
+    sol[flipv] = 1 - sol[flipv];
     int org_flipv_score = vars[flipv].score;
     mems += vars[flipv].literals.size();
 
     // Go through each clause the literal is in and update status
     for (lit l: vars[flipv].literals) {
-        clause *cp = &(clauses[l.clause_num]);
-        if (solution[flipv] == l.sense) {
+        clause *cp = &(cls[l.clause_num]);
+        if (sol[flipv] == l.sense) {
             cp->sat_count++;
             if (1 == cp->sat_count) {
                 sat_a_clause(l.clause_num);
@@ -277,7 +275,7 @@ void LS_solver::flip(int flipv) {
                 }
             } else if (1 == cp->sat_count) {
                 for (lit lc: cp->literals) {
-                    if (solution[lc.var_num] == lc.sense) {
+                    if (sol[lc.var_num] == lc.sense) {
                         vars[lc.var_num].score -= cp->weight;
                         cp->sat_var = lc.var_num;
                         break;
@@ -331,7 +329,7 @@ void LS_solver::sat_a_clause(int the_clause) {
     }
     idx_in_unsat_cls[last_item] = index;
     //update unsat_appear and unsat_vars
-    for (lit l: clauses[the_clause].literals) {
+    for (lit l: cls[the_clause].literals) {
         vars[l.var_num].unsat_appear--;
         if (0 == vars[l.var_num].unsat_appear) {
             last_item = unsat_vars.back();
@@ -349,7 +347,7 @@ void LS_solver::unsat_a_clause(int the_clause) {
     idx_in_unsat_cls[the_clause] = unsat_cls.size();
     unsat_cls.push_back(the_clause);
     //update unsat_appear and unsat_vars
-    for (lit l: clauses[the_clause].literals) {
+    for (lit l: cls[the_clause].literals) {
         vars[l.var_num].unsat_appear++;
         if (1 == vars[l.var_num].unsat_appear) {
             idx_in_unsat_vars[l.var_num] = unsat_vars.size();
@@ -360,7 +358,7 @@ void LS_solver::unsat_a_clause(int the_clause) {
 
 void LS_solver::update_clause_weights() {
     for (int c: unsat_cls) {
-        clauses[c].weight++;
+        cls[c].weight++;
     }
     for (int v: unsat_vars) {
         vars[v].score += vars[v].unsat_appear;
@@ -388,7 +386,7 @@ void LS_solver::smooth_clause_weights() {
     delta_tot_cl_weight = 0;
     mems += num_vars;
     for (int c = 0; c < num_vars; ++c) {
-        clause *cp = &(clauses[c]);
+        clause *cp = &(cls[c]);
         cp->weight = cp->weight * swt_p + scale_avg;
         if (cp->weight < 1)
             cp->weight = 1;
@@ -427,8 +425,8 @@ void LS_solver::print_solution(bool need_verify) {
     if (need_verify) {
         for (int c = 0; c < num_vars; c++) {
             sat_flag = false;
-            for (lit l: clauses[c].literals) {
-                if (solution[l.var_num] == l.sense) {
+            for (lit l: cls[c].literals) {
+                if (sol[l.var_num] == l.sense) {
                     sat_flag = true;
                     break;
                 }
@@ -445,7 +443,7 @@ void LS_solver::print_solution(bool need_verify) {
         cout << "v";
         for (int v = 1; v <= num_vars; v++) {
             cout << ' ';
-            if (solution[v] == 0)
+            if (sol[v] == 0)
                 cout << '-';
             cout << v;
         }

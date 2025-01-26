@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include <iostream>
 #include <vector>
 #include <cassert>
-#include <cstdint>
 
 using namespace CCNR;
 
@@ -71,13 +70,13 @@ void LS_solver::build_neighborhood() {
                 }
             }
         }
-        for (int neighbor_var_num : vp.neighbor_var_nums) neighbor_flag[neighbor_var_num] = 0;
+        for (int neighbor_var_num : vp.neighbor_var_nums)
+          neighbor_flag[neighbor_var_num] = 0;
     }
 }
 
 bool LS_solver::local_search(
-    const vector<bool> *init_solution
-    , long long int _mems_limit
+    long long int _mems_limit
     , const char* prefix
 ) {
     bool result = false;
@@ -124,25 +123,10 @@ void LS_solver::clear_prev_data() {
         item = 0;
 }
 
-void LS_solver::initialize(const vector<bool> *init_solution) {
+void LS_solver::initialize() {
     clear_prev_data();
-    if (!init_solution) {
-        //default random generation
-        for (int v = 1; v <= num_vars; v++) {
-            sol[v] = (random_gen.next(2) == 0 ? 0 : 1);
-        }
-    } else {
-        if ((int)init_solution->size() != num_vars+1) {
-            cout
-            << "ERROR: the init solution's size"
-            " is not equal to the number of variables."
-            << endl;
-            exit(-1);
-        }
-        for (int v = 1; v <= num_vars; v++) {
-            sol[v] = init_solution->at(v);
-        }
-    }
+      for (int v = 1; v <= num_vars; v++)
+        sol[v] = (random_gen.next(2) == 0 ? 0 : 1);
 
     //unsat_appears, will be updated when calling unsat_a_clause function.
     for (int v = 1; v <= num_vars; v++) {
@@ -169,6 +153,7 @@ void LS_solver::initialize(const vector<bool> *init_solution) {
     delta_tot_cl_weight = 0;
     initialize_variable_datas();
 }
+
 void LS_solver::initialize_variable_datas()
 {
     variable *vp;
@@ -208,7 +193,6 @@ void LS_solver::initialize_variable_datas()
     vp->is_in_ccd_vars = 0;
     vp->last_flip_step = 0;
 }
-
 
 int LS_solver::pick_var() {
     //First, try to get the var with the highest score from _ccd_vars if any

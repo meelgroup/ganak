@@ -36,35 +36,30 @@ struct lit {
     unsigned char sense : 1; //is 1 for true literals, 0 for false literals.
     int clause_num : 31;     //clause num, begin with 0
     int var_num;             //variable num, begin with 1
-    lit(int the_lit, int the_clause)
-    {
+    lit(int the_lit, int the_clause) {
         var_num = std::abs(the_lit);
         clause_num = the_clause;
         sense = the_lit > 0 ? 1 : 0;
     }
 
-    struct lit &operator^=(const struct lit &l)
-    {
+    struct lit &operator^=(const struct lit &l) {
         sense ^= l.sense;
         clause_num ^= l.clause_num;
         var_num ^= l.var_num;
         return *this;
     }
 
-    void reset(void)
-    {
+    void reset(void) {
         sense = 0;
         clause_num = 0;
         var_num = 0;
     }
 
-    bool operator==(const struct lit &l) const
-    {
+    bool operator==(const struct lit &l) const {
         return sense == l.sense && clause_num == l.clause_num && var_num == l.var_num;
     }
 
-    bool operator!=(const struct lit &l) const
-    {
+    bool operator!=(const struct lit &l) const {
         return !(*this == l);
     }
 };
@@ -90,8 +85,7 @@ class LS_solver {
  public:
     LS_solver();
     bool local_search(
-        const vector<bool> *init_solution = 0
-        , long long int _mems_limit = 100*1000*1000
+        long long int _mems_limit = 100*1000*1000
         , const char* prefix = "c "
     );
     void print_solution(bool need_verify = 0);
@@ -137,7 +131,7 @@ class LS_solver {
     long long delta_tot_cl_weight;
 
     //main functions
-    void initialize(const vector<bool> *init_solution = 0);
+    void initialize();
     void initialize_variable_datas();
     void clear_prev_data();
     int pick_var();

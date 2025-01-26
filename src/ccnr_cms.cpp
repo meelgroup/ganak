@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "time_mem.h"
 #include <cstdint>
 #include <cstdio>
 #include <cmath>
@@ -29,6 +28,7 @@ THE SOFTWARE.
 #include "ccnr.hpp"
 #include "common.hpp"
 #include <arjun/arjun.h>
+#include "time_mem.hpp"
 
 using namespace CCNR;
 
@@ -48,14 +48,14 @@ int Ganak_ccnr::main()
         verb_print(1, "[ccnr] too few variables & clauses");
         return 0;
     }
-    double start_time = cpuTime();
+    double start_time = cpu_time();
 
     init_problem();
 
     vector<bool> phases(cnf->nVars()+1, false);
     int res = ls_s->local_search(&phases, conf.yalsat_max_mems*2*1000*1000, "c o");
 
-    double time_used = cpuTime()-start_time;
+    double time_used = cpu_time()-start_time;
     verb_print(1, "[ccnr] time: " << time_used);
     return res;
 }

@@ -32,9 +32,9 @@ THE SOFTWARE.
 
 using namespace CCNR;
 
-Ganak_ccnr::Ganak_ccnr(const ArjunNS::SimplifiedCNF* _cnf, uint32_t _verbosity): cnf(_cnf)  {
-    conf.verb = _verbosity;
-    ls_s = new ls_solver();
+Ganak_ccnr::Ganak_ccnr(const ArjunNS::SimplifiedCNF* _cnf, uint32_t _verb): cnf(_cnf)  {
+    conf.verb = _verb;
+    ls_s = new LS_solver();
     ls_s->set_verbosity(conf.verb);
 }
 
@@ -72,22 +72,24 @@ void Ganak_ccnr::add_this_clause(const T& cl) {
         sz++;
     }
     assert(sz > 0);
+    cl_num++;
 
     for(auto& lit: yals_lits) {
-        ls_s->_clauses[cl_num].literals.push_back(CCNR::lit(lit, cl_num));
+        ls_s->clauses[cl_num].literals.push_back(CCNR::lit(lit, cl_num));
     }
 }
 
 bool Ganak_ccnr::init_problem() {
+    cl_num = 0;
     ls_s->num_vars = cnf->nVars();
     ls_s->num_vars = cnf->clauses.size();
     ls_s->make_space();
     for(auto& cl: cnf->clauses) add_this_clause(cl);
 
     for (int c=0; c < ls_s->num_vars; c++) {
-        for(CCNR::lit item: ls_s->_clauses[c].literals) {
+        for(CCNR::lit item: ls_s->clauses[c].literals) {
             int v = item.var_num;
-            ls_s->_vars[v].literals.push_back(item);
+            ls_s->vars[v].literals.push_back(item);
         }
     }
     ls_s->build_neighborhood();

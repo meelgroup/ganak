@@ -86,43 +86,41 @@ struct clause {
     long long weight;
 };
 
-class ls_solver {
-   public:
-    ls_solver();
+class LS_solver {
+ public:
+    LS_solver();
     bool local_search(
         const vector<bool> *init_solution = 0
         , long long int _mems_limit = 100*1000*1000
         , const char* prefix = "c "
     );
     void print_solution(bool need_verify = 0);
-    void set_verbosity(uint32_t verb);
+    void set_verbosity(uint32_t _verb) { verb = _verb; }
 
     //formula
-    vector<variable> _vars;
-    vector<clause> _clauses;
+    vector<variable> vars;
+    vector<clause> clauses;
     int num_vars;
 
     //data structure used
-    vector<int> _conflict_ct;
-    vector<int> _unsat_clauses; // list of unsatisfied clauses
-    vector<int> _index_in_unsat_clauses; // _index_in_unsat_clauses[var] tells where "var" is in _unsat_vars
-    vector<int> _unsat_vars; // clauses are UNSAT due to these vars
-    vector<int> _index_in_unsat_vars;
+    vector<int> conflict_ct;
+    vector<int> unsat_cls; // list of unsatisfied clauses
+    vector<int> idx_in_unsat_cls; // idx_in_unsat_cls[var] tells where "var" is in unsat_vars
+    vector<int> unsat_vars; // clauses are UNSAT due to these vars
+    vector<int> idx_in_unsat_vars;
     vector<int> _ccd_vars;
 
     //solution information
-    vector<uint8_t> _solution;
-    vector<uint8_t> _best_solution;
+    vector<uint8_t> solution;
 
     //functions for buiding data structure
     bool make_space();
     void build_neighborhood();
-    int get_cost() { return _unsat_clauses.size(); }
+    int get_cost() { return unsat_cls.size(); }
 
-    private:
-    int _best_found_cost;
-    long long _mems = 0;
-    long long _step;
+  private:
+    long long mems = 0;
+    long long step;
     long long max_steps;
     int max_tries;
 
@@ -131,13 +129,13 @@ class ls_solver {
 
     //clause weighting
     int swt_thresh;
-    float _swt_p; //w=w*p+ave_w*q
-    float _swt_q;
+    float swt_p; //w=w*p+ave_w*q
+    float swt_q;
     int avg_cl_weight;
     //-------------------
 
     //=================
-    long long _delta_total_clause_weight;
+    long long delta_tot_cl_weight;
 
     //main functions
     void initialize(const vector<bool> *init_solution = 0);
@@ -154,9 +152,7 @@ class ls_solver {
     void unsat_a_clause(int the_clause);
 
     //--------------------
-    uint32_t _verbosity = 0;
-
-    int verbosity; // 0 print sat/unsat & infomation; 1 print everything;
+    uint32_t verb = 0;
 };
 
 } // namespace CCNR

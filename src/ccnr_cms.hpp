@@ -37,7 +37,7 @@ namespace ArjunNS {
 
 namespace CCNR {
 
-class ls_solver;
+class LS_solver;
 
 struct CCNRConf {
   uint32_t verb = 1;
@@ -47,7 +47,7 @@ struct CCNRConf {
 class Ganak_ccnr {
 public:
     int main();
-    Ganak_ccnr(ArjunNS::SimplifiedCNF const* _cnf, uint32_t verbosity);
+    Ganak_ccnr(ArjunNS::SimplifiedCNF const* cnf, uint32_t verb);
     ~Ganak_ccnr();
 
 private:
@@ -55,12 +55,10 @@ private:
     void parse_parameters();
     void init_for_round();
     bool init_problem();
-    ls_solver* ls_s = nullptr;
+    LS_solver* ls_s = nullptr;
     uint32_t cl_num = 0;
 
-    enum class add_cl_ret {added_cl, skipped_cl, unsat};
-    template<class T>
-    void add_this_clause(const T& cl);
+    template<class T> void add_this_clause(const T& cl);
     vector<int> yals_lits;
 
     CCNRConf conf;

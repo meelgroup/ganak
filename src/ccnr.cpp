@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "ccnr.h"
+#include "ccnr.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -37,20 +37,17 @@ using std::string;
 
 
 //constructor with default setting.
-ls_solver::ls_solver()
-{
+ls_solver::ls_solver() {
     _max_tries = 100;
     _max_steps = 1*1000 * 1000;
-    _random_seed = 1;
+    _random_gen.seed(_random_seed);
     _swt_threshold = 50;
     _swt_p = 0.3;
     _swt_q = 0.7;
     verbosity = 0;
 }
 
-/**********************************build instance*******************************/
-bool ls_solver::make_space()
-{
+bool ls_solver::make_space() {
     if (0 == _num_vars || 0 == _num_clauses) return false;
     _vars.resize(_num_vars+1);
     _clauses.resize(_num_clauses+1);
@@ -62,8 +59,7 @@ bool ls_solver::make_space()
     return true;
 }
 
-void ls_solver::build_neighborhood()
-{
+void ls_solver::build_neighborhood() {
     vector<bool> neighbor_flag(_num_vars+1);
     for (uint32_t j = 0; j < neighbor_flag.size(); ++j) {
         neighbor_flag[j] = 0;
@@ -85,15 +81,12 @@ void ls_solver::build_neighborhood()
     }
 }
 
-/****************local search**********************************/
-//bool  *return value modified
 bool ls_solver::local_search(
     const vector<bool> *init_solution
     , long long int _mems_limit
     , const char* prefix
 ) {
     bool result = false;
-    _random_gen.seed(_random_seed);
     _best_found_cost = _num_clauses;
     _conflict_ct.clear();
     _conflict_ct.resize(_num_vars+1,0);
@@ -144,7 +137,6 @@ bool ls_solver::local_search(
     return result;
 }
 
-/**********************************initialize*******************************/
 void ls_solver::clear_prev_data()
 {
     _unsat_clauses.clear();
@@ -243,9 +235,7 @@ void ls_solver::initialize_variable_datas()
 }
 
 
-/**********************pick variable*******************************************/
-int ls_solver::pick_var()
-{
+int ls_solver::pick_var() {
     //First, try to get the var with the highest score from _ccd_vars if any
     //----------------------------------------
     int best_var = 0;
@@ -282,9 +272,7 @@ int ls_solver::pick_var()
     return best_var;
 }
 
-/************************flip and update functions*****************************/
-void ls_solver::flip(int flipv)
-{
+void ls_solver::flip(int flipv) {
     _solution[flipv] = 1 - _solution[flipv];
     int org_flipv_score = _vars[flipv].score;
     _mems += _vars[flipv].literals.size();
@@ -326,8 +314,8 @@ void ls_solver::flip(int flipv)
     //update cc_values
     update_cc_after_flip(flipv);
 }
-void ls_solver::update_cc_after_flip(int flipv)
-{
+
+void ls_solver::update_cc_after_flip(int flipv) {
     int last_item;
     variable *vp = &(_vars[flipv]);
     vp->cc_value = 0;
@@ -356,9 +344,7 @@ void ls_solver::update_cc_after_flip(int flipv)
     }
 }
 
-/*********************functions for basic operations***************************/
-void ls_solver::sat_a_clause(int the_clause)
-{
+void ls_solver::sat_a_clause(int the_clause) {
     //use the position of the clause to store the last unsat clause in stack
     int last_item = _unsat_clauses.back();
     _unsat_clauses.pop_back();
@@ -381,8 +367,8 @@ void ls_solver::sat_a_clause(int the_clause)
         }
     }
 }
-void ls_solver::unsat_a_clause(int the_clause)
-{
+
+void ls_solver::unsat_a_clause(int the_clause) {
     _index_in_unsat_clauses[the_clause] = _unsat_clauses.size();
     _unsat_clauses.push_back(the_clause);
     //update unsat_appear and unsat_vars
@@ -395,9 +381,7 @@ void ls_solver::unsat_a_clause(int the_clause)
     }
 }
 
-/************************clause weighting********************************/
-void ls_solver::update_clause_weights()
-{
+void ls_solver::update_clause_weights() {
     for (int c: _unsat_clauses) {
         _clauses[c].weight++;
     }
@@ -417,8 +401,8 @@ void ls_solver::update_clause_weights()
         }
     }
 }
-void ls_solver::smooth_clause_weights()
-{
+
+void ls_solver::smooth_clause_weights() {
     for (int v = 1; v <= _num_vars; v++) {
         _vars[v].score = 0;
     }
@@ -458,9 +442,7 @@ void ls_solver::smooth_clause_weights()
     }
 }
 
-/*****print solution*****************/
-void ls_solver::print_solution(bool need_verify)
-{
+void ls_solver::print_solution(bool need_verify) {
     if (0 == get_cost())
         cout << "s SATISFIABLE" << endl;
     else
@@ -495,7 +477,4 @@ void ls_solver::print_solution(bool need_verify)
     }
 }
 
-void ls_solver::set_verbosity(uint32_t verb)
-{
-    _verbosity = verb;
-}
+void ls_solver::set_verbosity(uint32_t verb) { _verbosity = verb; }

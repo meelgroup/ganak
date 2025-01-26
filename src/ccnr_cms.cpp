@@ -33,7 +33,7 @@ using namespace CCNR;
 
 Ganak_ccnr::Ganak_ccnr(ArjunNS::SimplifiedCNF& _cnf, uint32_t _verbosity): cnf(_cnf)  {
     conf.verb = _verbosity;
-    ls_s = new CCNR::ls_solver(false);
+    ls_s = new ls_solver(false);
     ls_s->set_verbosity(conf.verb);
 }
 

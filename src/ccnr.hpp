@@ -20,30 +20,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#ifndef CCNR_H
-#define CCNR_H
+#pragma once
 
 #include <cstdint>
-#include <string>
+#include <cstdlib>
 #include <vector>
-#include "ccnr_mersenne.h"
+#include "ccnr_mersenne.hpp"
 
 using std::vector;
+using std::abs;
 
 namespace CCNR {
 
-//--------------------------
-//functions in basis.h & basis.cpp
 struct lit {
     unsigned char sense : 1; //is 1 for true literals, 0 for false literals.
     int clause_num : 31;     //clause num, begin with 0
     int var_num;             //variable num, begin with 1
     lit(int the_lit, int the_clause)
     {
-        var_num = abs(the_lit);
+        var_num = std::abs(the_lit);
         clause_num = the_clause;
         sense = the_lit > 0 ? 1 : 0;
     }
+
     struct lit &operator^=(const struct lit &l)
     {
         sense ^= l.sense;
@@ -51,21 +50,25 @@ struct lit {
         var_num ^= l.var_num;
         return *this;
     }
+
     void reset(void)
     {
         sense = 0;
         clause_num = 0;
         var_num = 0;
     }
+
     bool operator==(const struct lit &l) const
     {
         return sense == l.sense && clause_num == l.clause_num && var_num == l.var_num;
     }
+
     bool operator!=(const struct lit &l) const
     {
         return !(*this == l);
     }
 };
+
 struct variable {
     vector<lit> literals;
     vector<int> neighbor_var_nums;
@@ -75,6 +78,7 @@ struct variable {
     bool cc_value;
     bool is_in_ccd_vars;
 };
+
 struct clause {
     vector<lit> literals;
     int sat_count; //no. of satisfied literals
@@ -82,26 +86,15 @@ struct clause {
     long long weight;
 };
 
-//---------------------------
-//functions in mersenne.h & mersenne.cpp
-
-class ls_solver
-{
+class ls_solver {
    public:
     ls_solver();
-    bool parse_arguments(int argc, char **argv);
-    bool build_instance(std::string inst);
     bool local_search(
         const vector<bool> *init_solution = 0
         , long long int _mems_limit = 100*1000*1000
         , const char* prefix = "c "
     );
     void print_solution(bool need_verify = 0);
-    void simple_print();
-    int get_best_cost()
-    {
-        return _best_found_cost;
-    }
     void set_verbosity(uint32_t verb);
 
     //formula
@@ -169,5 +162,3 @@ class ls_solver
 };
 
 } // namespace CCNR
-
-#endif

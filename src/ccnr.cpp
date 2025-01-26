@@ -110,16 +110,12 @@ bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
     return result;
 }
 
-void LS_solver::clear_prev_data() {
+void LS_solver::initialize() {
     unsat_cls.clear();
     ccd_vars.clear();
     unsat_vars.clear();
     for (int &item: idx_in_unsat_cls) item = 0;
     for (int &item: idx_in_unsat_vars) item = 0;
-}
-
-void LS_solver::initialize() {
-    clear_prev_data();
     for (int v = 1; v <= num_vars; v++) sol[v] = random_gen.next(2);
 
     //unsat_appears, will be updated when calling unsat_a_clause function.

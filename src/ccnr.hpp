@@ -149,7 +149,6 @@ class LS_solver {
     //main functions
     void initialize();
     void initialize_variable_datas();
-    void clear_prev_data();
     int pick_var();
     void flip(int flipv);
     void update_cc_after_flip(int flipv);

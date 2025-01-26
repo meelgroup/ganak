@@ -41,6 +41,7 @@ THE SOFTWARE.
 #include <arjun/arjun.h>
 #include "mpreal.h"
 #include "src/argparse.hpp"
+#include "ccnr_cms.hpp"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -520,6 +521,11 @@ int main(int argc, char *argv[])
   if (conf.do_restart && do_breakid && cnf.clauses.size() > 1)
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
+
+  // Run ccnr
+  CCNR::Ganak_ccnr ls_s(conf.verb);
+  ls_s.main(&cnf);
+  exit(0);
 
   // Run Ganak
   Ganak counter(conf, cnf.weighted, do_precise);

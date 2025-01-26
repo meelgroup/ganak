@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 using namespace CCNR;
 
-Ganak_ccnr::Ganak_ccnr(const ArjunNS::SimplifiedCNF* _cnf, uint32_t _verb): cnf(_cnf)  {
+Ganak_ccnr::Ganak_ccnr(uint32_t _verb) {
     conf.verb = _verb;
     ls_s = new LS_solver();
     ls_s->set_verbosity(conf.verb);
@@ -40,8 +40,9 @@ Ganak_ccnr::Ganak_ccnr(const ArjunNS::SimplifiedCNF* _cnf, uint32_t _verb): cnf(
 
 Ganak_ccnr::~Ganak_ccnr() { delete ls_s; }
 
-int Ganak_ccnr::main()
-{
+int Ganak_ccnr::main(const ArjunNS::SimplifiedCNF* _cnf) {
+    cnf = _cnf;
+
     //It might not work well with few number of variables
     //rnovelty could also die/exit(-1), etc.
     if (cnf->nVars() < 50 || cnf->clauses.size() < 10) {
@@ -51,9 +52,7 @@ int Ganak_ccnr::main()
     double start_time = cpu_time();
 
     init_problem();
-
-    vector<bool> phases(cnf->nVars()+1, false);
-    int res = ls_s->local_search(&phases, conf.yalsat_max_mems*2*1000*1000, "c o");
+    int res = ls_s->local_search(conf.yalsat_max_mems*2*1000*1000, "c o");
 
     double time_used = cpu_time()-start_time;
     verb_print(1, "[ccnr] time: " << time_used);

@@ -75,13 +75,10 @@ void LS_solver::build_neighborhood() {
     }
 }
 
-bool LS_solver::local_search(
-    long long int _mems_limit
-    , const char* prefix
-) {
+bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
     bool result = false;
     for (int t = 0; t < max_tries; t++) {
-        initialize(init_solution);
+        initialize();
         if (0 == unsat_cls.size()) {
             result = true;
             break;
@@ -90,7 +87,7 @@ bool LS_solver::local_search(
         for (step = 0; step < max_steps; step++) {
             int flipv = pick_var();
             flip(flipv);
-            if (mems > _mems_limit) return result;
+            if (mems > _mems_limit) return false;
 
             int cost = unsat_cls.size();
             if (verb && (cost == 0 || (step & 0x3ffff) == 0x3ffff)) {
@@ -101,6 +98,7 @@ bool LS_solver::local_search(
             }
 
             if (cost == 0) {
+                print_solution(1);
                 result = true;
                 break;
             }
@@ -126,7 +124,7 @@ void LS_solver::clear_prev_data() {
 void LS_solver::initialize() {
     clear_prev_data();
       for (int v = 1; v <= num_vars; v++)
-        sol[v] = (random_gen.next(2) == 0 ? 0 : 1);
+        sol[v] = random_gen.next(2);
 
     //unsat_appears, will be updated when calling unsat_a_clause function.
     for (int v = 1; v <= num_vars; v++) {
@@ -145,28 +143,24 @@ void LS_solver::initialize() {
                 cls[c].sat_var = l.var_num;
             }
         }
-        if (0 == cls[c].sat_count) {
-            unsat_a_clause(c);
-        }
+        if (0 == cls[c].sat_count) unsat_a_clause(c);
     }
     avg_cl_weight = 1;
     delta_tot_cl_weight = 0;
     initialize_variable_datas();
 }
 
-void LS_solver::initialize_variable_datas()
-{
-    variable *vp;
+void LS_solver::initialize_variable_datas() {
     //scores
     for (int v = 1; v <= num_vars; v++) {
-        vp = &(vars[v]);
-        vp->score = 0;
-        for (lit l: vp->literals) {
+        auto & vp = vars[v];
+        vp.score = 0;
+        for (lit l: vp.literals) {
             int c = l.clause_num;
             if (0 == cls[c].sat_count) {
-                vp->score += cls[c].weight;
+                vp.score += cls[c].weight;
             } else if (1 == cls[c].sat_count && l.sense == sol[l.var_num]) {
-                vp->score -= cls[c].weight;
+                vp.score -= cls[c].weight;
             }
         }
     }
@@ -176,22 +170,22 @@ void LS_solver::initialize_variable_datas()
     }
     //cc datas
     for (int v = 1; v <= num_vars; v++) {
-        vp = &(vars[v]);
-        vp->cc_value = 1;
-        if (vp->score > 0) //&&vars[v].cc_value==1
+        auto& vp = vars[v];
+        vp.cc_value = 1;
+        if (vp.score > 0) //&&vars[v].cc_value==1
         {
             _ccd_vars.push_back(v);
-            vp->is_in_ccd_vars = 1;
+            vp.is_in_ccd_vars = 1;
         } else {
-            vp->is_in_ccd_vars = 0;
+            vp.is_in_ccd_vars = 0;
         }
     }
     //the virtual var 0
-    vp = &(vars[0]);
-    vp->score = 0;
-    vp->cc_value = 0;
-    vp->is_in_ccd_vars = 0;
-    vp->last_flip_step = 0;
+    auto& vp = vars[0];
+    vp.score = 0;
+    vp.cc_value = 0;
+    vp.is_in_ccd_vars = 0;
+    vp.last_flip_step = 0;
 }
 
 int LS_solver::pick_var() {
@@ -217,10 +211,10 @@ int LS_solver::pick_var() {
 
     /*focused random walk*/
     int c = unsat_cls[random_gen.next(unsat_cls.size())];
-    clause *cp = &(cls[c]);
-    best_var = cp->literals[0].var_num;
-    for (size_t k = 1; k < cp->literals.size(); k++) {
-        int v = cp->literals[k].var_num;
+    clause& cl = cls[c];
+    best_var = cl.literals[0].var_num;
+    for (size_t k = 1; k < cl.literals.size(); k++) {
+        int v = cl.literals[k].var_num;
         if (vars[v].score > vars[best_var].score) {
             best_var = v;
         } else if (vars[v].score == vars[best_var].score &&
@@ -238,30 +232,30 @@ void LS_solver::flip(int flipv) {
 
     // Go through each clause the literal is in and update status
     for (lit l: vars[flipv].literals) {
-        clause *cp = &(cls[l.clause_num]);
+        clause& cl = cls[l.clause_num];
         if (sol[flipv] == l.sense) {
-            cp->sat_count++;
-            if (1 == cp->sat_count) {
+            cl.sat_count++;
+            if (1 == cl.sat_count) {
                 sat_a_clause(l.clause_num);
-                cp->sat_var = flipv;
-                for (lit lc: cp->literals) {
-                    vars[lc.var_num].score -= cp->weight;
+                cl.sat_var = flipv;
+                for (lit lc: cl.literals) {
+                    vars[lc.var_num].score -= cl.weight;
                 }
-            } else if (2 == cp->sat_count) {
-                vars[cp->sat_var].score += cp->weight;
+            } else if (2 == cl.sat_count) {
+                vars[cl.sat_var].score += cl.weight;
             }
         } else {
-            cp->sat_count--;
-            if (0 == cp->sat_count) {
+            cl.sat_count--;
+            if (0 == cl.sat_count) {
                 unsat_a_clause(l.clause_num);
-                for (lit lc: cp->literals) {
-                    vars[lc.var_num].score += cp->weight;
+                for (lit lc: cl.literals) {
+                    vars[lc.var_num].score += cl.weight;
                 }
-            } else if (1 == cp->sat_count) {
-                for (lit lc: cp->literals) {
+            } else if (1 == cl.sat_count) {
+                for (lit lc: cl.literals) {
                     if (sol[lc.var_num] == lc.sense) {
-                        vars[lc.var_num].score -= cp->weight;
-                        cp->sat_var = lc.var_num;
+                        vars[lc.var_num].score -= cl.weight;
+                        cl.sat_var = lc.var_num;
                         break;
                     }
                 }
@@ -276,8 +270,8 @@ void LS_solver::flip(int flipv) {
 
 void LS_solver::update_cc_after_flip(int flipv) {
     int last_item;
-    variable *vp = &(vars[flipv]);
-    vp->cc_value = 0;
+    variable& vp = vars[flipv];
+    vp.cc_value = 0;
     mems += _ccd_vars.size()/4;
     for (int index = _ccd_vars.size() - 1; index >= 0; index--) {
         int v = _ccd_vars[index];
@@ -293,8 +287,8 @@ void LS_solver::update_cc_after_flip(int flipv) {
     }
 
     //update all flipv's neighbor's cc to be 1
-    mems += vp->neighbor_var_nums.size()/4;
-    for (int v: vp->neighbor_var_nums) {
+    mems += vp.neighbor_var_nums.size()/4;
+    for (int v: vp.neighbor_var_nums) {
         vars[v].cc_value = 1;
         if (vars[v].score > 0 && !(vars[v].is_in_ccd_vars)) {
             _ccd_vars.push_back(v);
@@ -341,9 +335,7 @@ void LS_solver::unsat_a_clause(int the_clause) {
 }
 
 void LS_solver::update_clause_weights() {
-    for (int c: unsat_cls) {
-        cls[c].weight++;
-    }
+    for (int c: unsat_cls) cls[c].weight++;
     for (int v: unsat_vars) {
         vars[v].score += vars[v].unsat_appear;
         if (vars[v].score > 0 && 1 == vars[v].cc_value && !(vars[v].is_in_ccd_vars)) {
@@ -362,9 +354,7 @@ void LS_solver::update_clause_weights() {
 }
 
 void LS_solver::smooth_clause_weights() {
-    for (int v = 1; v <= num_vars; v++) {
-        vars[v].score = 0;
-    }
+    for (int v = 1; v <= num_vars; v++) vars[v].score = 0;
     int scale_avg = avg_cl_weight * swt_q;
     avg_cl_weight = 0;
     delta_tot_cl_weight = 0;
@@ -417,6 +407,7 @@ void LS_solver::print_solution(bool need_verify) {
             }
             if (!sat_flag) {
                 cout << "c Error: verify error in clause " << c << endl;
+                exit(-1);
                 return;
             }
         }

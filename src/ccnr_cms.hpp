@@ -46,8 +46,8 @@ struct CCNRConf {
 
 class Ganak_ccnr {
 public:
-    int main();
-    Ganak_ccnr(ArjunNS::SimplifiedCNF const* cnf, uint32_t verb);
+    int main(ArjunNS::SimplifiedCNF const* cnf);
+    Ganak_ccnr(uint32_t verb);
     ~Ganak_ccnr();
 
 private:

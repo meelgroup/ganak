@@ -81,7 +81,7 @@ void Ganak_ccnr::add_this_clause(const T& cl) {
 bool Ganak_ccnr::init_problem() {
     cl_num = 0;
     ls_s->num_vars = cnf->nVars();
-    ls_s->num_vars = cnf->clauses.size();
+    ls_s->num_cls = cnf->clauses.size();
     ls_s->make_space();
     for(auto& cl: cnf->clauses) add_this_clause(cl);
 

@@ -49,7 +49,7 @@ LS_solver::LS_solver() {
 bool LS_solver::make_space() {
     if (num_vars == 0) return false;
     vars.resize(num_vars+1);
-    cls.resize(num_vars+1);
+    cls.resize(num_cls+1);
     sol.resize(num_vars+1);
     idx_in_unsat_cls.resize(num_vars+1);
     idx_in_unsat_vars.resize(num_vars+1);
@@ -297,17 +297,17 @@ void LS_solver::update_cc_after_flip(int flipv) {
     }
 }
 
-void LS_solver::sat_a_clause(int the_clause) {
+void LS_solver::sat_a_clause(int cl_num) {
     //use the position of the clause to store the last unsat clause in stack
     int last_item = unsat_cls.back();
     unsat_cls.pop_back();
-    int index = idx_in_unsat_cls[the_clause];
+    int index = idx_in_unsat_cls[cl_num];
     if (index < (int)unsat_cls.size()) {
         unsat_cls[index] = last_item;
     }
     idx_in_unsat_cls[last_item] = index;
     //update unsat_appear and unsat_vars
-    for (lit l: cls[the_clause].literals) {
+    for (lit l: cls[cl_num].literals) {
         vars[l.var_num].unsat_appear--;
         if (0 == vars[l.var_num].unsat_appear) {
             last_item = unsat_vars.back();

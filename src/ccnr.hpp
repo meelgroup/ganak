@@ -95,6 +95,7 @@ class LS_solver {
     vector<variable> vars;
     vector<clause> cls;
     int num_vars;
+    int num_cls;
 
     //data structure used
     vector<int> conflict_ct;

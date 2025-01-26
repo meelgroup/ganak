@@ -40,7 +40,7 @@ using std::string;
 ls_solver::ls_solver() {
     _max_tries = 100;
     _max_steps = 1*1000 * 1000;
-    _random_gen.seed(_random_seed);
+    _random_gen.seed(1337); // random seed
     _swt_threshold = 50;
     _swt_p = 0.3;
     _swt_q = 0.7;

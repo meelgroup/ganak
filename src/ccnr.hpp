@@ -129,7 +129,6 @@ class ls_solver {
 
     //aiding data structure
     Mersenne _random_gen; //random generator
-    int _random_seed;
 
     //clause weighting
     int _swt_threshold;

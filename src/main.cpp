@@ -86,6 +86,7 @@ int arjun_oracle_find_bins = 6;
 double arjun_cms_mult = -1.0;
 int do_puura = 1;
 int do_optindep = 1;
+int do_ccnr = 0;
 
 string print_version()
 {
@@ -221,6 +222,9 @@ void add_ganak_options()
     myopt("--rstreadjust", conf.do_readjust_for_restart, atoi, "Readjust params for restart");
     myopt("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
     myopt("--maxcubesperrst", conf.max_num_cubes_per_restart, atoi,  "Max number of cubes per restart");
+
+// SLS
+    myopt("--ccnr", do_ccnr, atoi, "Run ccnr");
 
     program.add_argument("inputfile").remaining().help("input CNF");
 }
@@ -523,9 +527,11 @@ int main(int argc, char *argv[])
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run ccnr
-  CCNR::Ganak_ccnr ls_s(conf.verb);
-  ls_s.main(&cnf);
-  exit(0);
+  if (do_ccnr) {
+    CCNR::Ganak_ccnr ls_s(conf.verb);
+    ls_s.main(&cnf);
+    exit(0);
+  }
 
   // Run Ganak
   Ganak counter(conf, cnf.weighted, do_precise);

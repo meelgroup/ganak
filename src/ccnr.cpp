@@ -60,10 +60,7 @@ bool ls_solver::make_space() {
 }
 
 void ls_solver::build_neighborhood() {
-    vector<bool> neighbor_flag(_num_vars+1);
-    for (uint32_t j = 0; j < neighbor_flag.size(); ++j) {
-        neighbor_flag[j] = 0;
-    }
+    vector<bool> neighbor_flag(_num_vars+1, 0);
     for (int v = 1; v <= _num_vars; ++v) {
         variable *vp = &(_vars[v]);
         for (lit lv: vp->literals) {
@@ -137,8 +134,7 @@ bool ls_solver::local_search(
     return result;
 }
 
-void ls_solver::clear_prev_data()
-{
+void ls_solver::clear_prev_data() {
     _unsat_clauses.clear();
     _ccd_vars.clear();
     _unsat_vars.clear();
@@ -148,8 +144,7 @@ void ls_solver::clear_prev_data()
         item = 0;
 }
 
-void ls_solver::initialize(const vector<bool> *init_solution)
-{
+void ls_solver::initialize(const vector<bool> *init_solution) {
     clear_prev_data();
     if (!init_solution) {
         //default random generation

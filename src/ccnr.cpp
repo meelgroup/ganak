@@ -113,7 +113,7 @@ bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
 
 void LS_solver::clear_prev_data() {
     unsat_cls.clear();
-    _ccd_vars.clear();
+    ccd_vars.clear();
     unsat_vars.clear();
     for (int &item: idx_in_unsat_cls)
         item = 0;
@@ -174,7 +174,7 @@ void LS_solver::initialize_variable_datas() {
         vp.cc_value = 1;
         if (vp.score > 0) //&&vars[v].cc_value==1
         {
-            _ccd_vars.push_back(v);
+            ccd_vars.push_back(v);
             vp.is_in_ccd_vars = 1;
         } else {
             vp.is_in_ccd_vars = 0;
@@ -189,13 +189,13 @@ void LS_solver::initialize_variable_datas() {
 }
 
 int LS_solver::pick_var() {
-    //First, try to get the var with the highest score from _ccd_vars if any
+    //First, try to get the var with the highest score from ccd_vars if any
     //----------------------------------------
     int best_var = 0;
-    mems += _ccd_vars.size()/8;
-    if (_ccd_vars.size() > 0) {
-        best_var = _ccd_vars[0];
-        for (int v: _ccd_vars) {
+    mems += ccd_vars.size()/8;
+    if (ccd_vars.size() > 0) {
+        best_var = ccd_vars[0];
+        for (int v: ccd_vars) {
             if (vars[v].score > vars[best_var].score) {
                 best_var = v;
             } else if (vars[v].score == vars[best_var].score &&
@@ -272,14 +272,14 @@ void LS_solver::update_cc_after_flip(int flipv) {
     int last_item;
     variable& vp = vars[flipv];
     vp.cc_value = 0;
-    mems += _ccd_vars.size()/4;
-    for (int index = _ccd_vars.size() - 1; index >= 0; index--) {
-        int v = _ccd_vars[index];
+    mems += ccd_vars.size()/4;
+    for (int index = ccd_vars.size() - 1; index >= 0; index--) {
+        int v = ccd_vars[index];
         if (vars[v].score <= 0) {
-            last_item = _ccd_vars.back();
-            _ccd_vars.pop_back();
-            if (index < (int)_ccd_vars.size()) {
-                _ccd_vars[index] = last_item;
+            last_item = ccd_vars.back();
+            ccd_vars.pop_back();
+            if (index < (int)ccd_vars.size()) {
+                ccd_vars[index] = last_item;
             }
 
             vars[v].is_in_ccd_vars = 0;
@@ -291,7 +291,7 @@ void LS_solver::update_cc_after_flip(int flipv) {
     for (int v: vp.neighbor_var_nums) {
         vars[v].cc_value = 1;
         if (vars[v].score > 0 && !(vars[v].is_in_ccd_vars)) {
-            _ccd_vars.push_back(v);
+            ccd_vars.push_back(v);
             vars[v].is_in_ccd_vars = 1;
         }
     }
@@ -339,7 +339,7 @@ void LS_solver::update_clause_weights() {
     for (int v: unsat_vars) {
         vars[v].score += vars[v].unsat_appear;
         if (vars[v].score > 0 && 1 == vars[v].cc_value && !(vars[v].is_in_ccd_vars)) {
-            _ccd_vars.push_back(v);
+            ccd_vars.push_back(v);
             vars[v].is_in_ccd_vars = 1;
         }
     }
@@ -379,11 +379,11 @@ void LS_solver::smooth_clause_weights() {
     }
 
     //reset ccd_vars
-    _ccd_vars.clear();
+    ccd_vars.clear();
     for (int v = 1; v <= num_vars; v++) {
         variable* vp = &(vars[v]);
         if (vp->score > 0 && 1 == vp->cc_value) {
-            _ccd_vars.push_back(v);
+            ccd_vars.push_back(v);
             vp->is_in_ccd_vars = 1;
         } else {
             vp->is_in_ccd_vars = 0;

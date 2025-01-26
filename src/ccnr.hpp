@@ -102,7 +102,7 @@ class LS_solver {
     vector<int> idx_in_unsat_cls; // idx_in_unsat_cls[var] tells where "var" is in unsat_vars
     vector<int> unsat_vars; // clauses are UNSAT due to these vars
     vector<int> idx_in_unsat_vars;
-    vector<int> _ccd_vars;
+    vector<int> ccd_vars;
 
     vector<uint8_t> sol; //solution information
 

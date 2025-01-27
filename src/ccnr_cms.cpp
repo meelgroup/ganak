@@ -72,7 +72,7 @@ void Ganak_ccnr::add_this_clause(const T& cl) {
     assert(sz > 0);
 
     for(auto& lit: yals_lits) {
-        ls_s->cls[cl_num].literals.push_back(CCNR::lit(lit, cl_num));
+        ls_s->cls[cl_num].lits.push_back(CCNR::lit(lit, cl_num));
     }
     cl_num++;
 }
@@ -80,11 +80,14 @@ void Ganak_ccnr::add_this_clause(const T& cl) {
 bool Ganak_ccnr::init_problem() {
     ls_s->num_vars = cnf->nVars();
     ls_s->num_cls = cnf->clauses.size();
+    ls_s->indep_map.clear();
+    ls_s->indep_map.resize(cnf->nVars()+1, 0);
+    for(const auto& v: cnf->get_sampl_vars()) ls_s->indep_map[v+1] = 1;
     ls_s->make_space();
     for(auto& cl: cnf->clauses) add_this_clause(cl);
 
     for (int c=0; c < ls_s->num_cls; c++) {
-        for(CCNR::lit item: ls_s->cls[c].literals) {
+        for(CCNR::lit item: ls_s->cls[c].lits) {
             int v = item.var_num;
             ls_s->vars[v].literals.push_back(item);
         }

@@ -74,8 +74,9 @@ struct variable {
 };
 
 struct clause {
-    vector<lit> literals;
+    vector<lit> lits;
     int sat_count; //no. of satisfied literals
+    int touched_cnt; // no. of literals that are touched but not satisfied
     int sat_var;
     long long weight;
 };
@@ -86,7 +87,7 @@ inline std::ostream& operator<<(std::ostream &os, const lit &l) {
 }
 
 inline std::ostream& operator<<(std::ostream &os, const clause &cl) {
-  for(const auto &l: cl.literals) {
+  for(const auto &l: cl.lits) {
     os << l << " ";
   }
   os << "0";
@@ -111,13 +112,16 @@ class LS_solver {
     int num_cls;
 
     //data structure used
-    vector<int> conflict_ct;
     vector<int> unsat_cls; // list of unsatisfied clauses
     vector<int> idx_in_unsat_cls; // idx_in_unsat_cls[var] tells where "var" is in unsat_vars
     vector<int> unsat_vars; // clauses are UNSAT due to these vars
     vector<int> idx_in_unsat_vars;
+    vector<int> indep_map; // always num_vars+1 size, contains 0/1 if it's indep or not
+    vector<int> touched_cls; // cls that have been touched but not satisfied
+    uint32_t set_vars = 0; //vars that have been set
 
-    vector<uint8_t> sol; //solution information
+
+    vector<uint8_t> sol; //solution information. 0 = false, 1 = true, 3 = unset
 
     //functions for buiding data structure
     bool make_space();

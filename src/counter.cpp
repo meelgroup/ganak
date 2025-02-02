@@ -196,6 +196,7 @@ void Counter<T>::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, boo
   if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) td_weight = 0.1;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
+  if (td_width > conf.td_limit) td_weight = 0.1;
   if (!conf.do_td_weight) td_weight = 1;
   if (print) {
     verb_print(1,

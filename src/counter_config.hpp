@@ -90,6 +90,7 @@ struct CounterConfiguration {
   int td_look_only_weight = false;
   int td_max_edges = 70000;
   int do_td_contract = 1;
+  int td_limit = 100000;
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

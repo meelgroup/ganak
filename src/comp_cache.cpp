@@ -114,13 +114,21 @@ bool CompCache<T>::delete_some_entries() {
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
   uint64_t tot = 0;
   int64_t num = 0;
+  uint64_t desc = 0;
+  uint64_t max_desc = 0;
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() && entry_base[id].is_deletable() &&
         entry_base[id].last_used_time() >= cutoff) {
-      tot += unlink_from_tree(id);
-      num++;
-      erase(id); // Note: no need to incorporate erase, we recompute bignum bytes below
+      auto d = num_descendants(id);
+      max_desc = std::max(max_desc, d);
+      desc += d;
+      if (d < 100) {
+        tot += unlink_from_tree(id);
+        num++;
+        erase(id); // Note: no need to incorporate erase, we recompute bignum bytes below
+      }
     }
+  verb_print(1, "max descendants: " << max_desc << " avg descendants: " << (double) desc/(double) num);
   verb_print(1, "free entries after:  " << free_entry_base_slots.size() << " avg len: " << (double) tot/(double) num);
 
   SLOW_DEBUG_DO(test_descendantstree_consistency());
@@ -178,6 +186,17 @@ void CompCache<T>::debug_mem_data() const {
     auto dat = mem_used(vm_dat);
     verb_print(1, "Total process MB : " << dat/(double)(1024*1024)
       << " Total process vm MB: " << vm_dat/(double)(1024*1024));
+}
+
+template<typename T>
+uint64_t CompCache<T>::num_descendants(CacheEntryID id) {
+  uint64_t ret = 0;
+  CacheEntryID act_child = entry(id).first_descendant();
+  while (act_child) {
+    act_child = entry(act_child).next_sibling();
+    ret++;
+  }
+  return ret;
 }
 
 // Used only during cache freeing. Unlinks from descendants tree

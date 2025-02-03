@@ -325,7 +325,7 @@ def collect_cache_data(fname):
                 td_w = int(line.split()[7])-1
                 td_w = "%d" % td_w
                 td_t = float(line.split()[12])
-                td_t = "%f" % t
+                td_t = "%f" % td_t
             if "c o [td] Primal graph" in line:
               density = float(line.split()[10])
               edge_var_ratio = float(line.split()[12])

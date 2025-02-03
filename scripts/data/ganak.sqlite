@@ -11,6 +11,8 @@ CREATE TABLE data (
   conflicts INT,
   decisionsK INT,
   compsK INT,
+  primal_density FLOAT,
+  primal_edge_var_ratio FLOAT,
   td_width INT,
   td_time FLOAT,
   arjun_time FLOAT,
@@ -41,6 +43,8 @@ UPDATE data SET ganak_time = NULL WHERE ganak_time = '';
 UPDATE data SET conflicts = NULL WHERE conflicts = '';
 UPDATE data SET decisionsK = NULL WHERE decisionsK = '';
 UPDATE data SET compsK = NULL WHERE compsK = '';
+UPDATE data SET primal_density = NULL WHERE primal_density = '';
+UPDATE data SET primal_edge_var_ratio = NULL WHERE primal_edge_var_ratio = '';
 UPDATE data SET td_width = NULL WHERE td_width = '';
 UPDATE data SET td_time = NULL WHERE td_time = '';
 UPDATE data SET arjun_time = NULL WHERE arjun_time = '';

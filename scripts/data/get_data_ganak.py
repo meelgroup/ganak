@@ -307,14 +307,28 @@ def find_restarts(fname):
 #c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
 #c o cache pollutions call/removed  56828/28682
 #c o cache miss rate                0.622
+# c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
+# c o [td] Primal graph   nodes: 548 edges: 8571 density: 0.029 edge/var: 15.669
 def collect_cache_data(fname):
     cache_del_time = 0.0
     cache_miss_rate = None
     cache_lookupK = None
     cache_storeK = None
+    density = None
+    edge_var_ratio = None
+    td_w = None
+    td_t = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if "c o [td] iter" in line:
+                td_w = int(line.split()[7])-1
+                td_w = "%d" % td_w
+                td_t = float(line.split()[12])
+                td_t = "%f" % t
+            if "c o [td] Primal graph" in line:
+              density = float(line.split()[10])
+              edge_var_ratio = float(line.split()[12])
             #c o cache miss rate                0.622
             if "c o cache miss rate" in line:
               cache_miss_rate = float(line.split()[5])
@@ -324,7 +338,7 @@ def collect_cache_data(fname):
               cache_storeK = float(line.split()[9])
             if "c o deletion done. T:" in line:
               cache_del_time += float(line.split()[5])
-    return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK
+    return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t
 
 def timeout_parse(fname):
     t = None
@@ -361,20 +375,6 @@ def timeout_parse(fname):
                 call = call.strip()
 
     return [t, m, call]
-
-# c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
-def ganak_treewidth(fname):
-    tw = ""
-    t = ""
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c o [td] iter" in line:
-                tw = int(line.split()[7])-1
-                tw = "%d" % tw
-                t = float(line.split()[12])
-                t = "%f" % t
-    return tw, t
 
 # c o width 45
 # c o CMD: timeout 60.000000s ./flow_cutter_pace17 <tmp/instance1709332682043115_14040_59941_1.tmp >tmp/instance1709332682043118_14040_59941_2.tmp 2>/dev/null
@@ -496,7 +496,7 @@ for f in file_list:
         files[base]["gates_extend_t"] = gates_extend_t
         files[base]["padoa_extended"] = padoa_extended
         files[base]["padoa_extend_t"] = padoa_extend_t
-        cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK = collect_cache_data(f)
+        cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t= collect_cache_data(f)
         files[base]["compsK"] = cache_lookupK
         files[base]["cache_miss_rate"] = cache_miss_rate
         files[base]["cache_storeK"] = cache_storeK
@@ -509,9 +509,10 @@ for f in file_list:
         sat_called,sat_rst = find_sat_called(f)
         files[base]["sat_called"] = sat_called
         files[base]["satrst"] = sat_rst
-        td_w,td_t = ganak_treewidth(f)
         files[base]["td_width"] = td_w
         files[base]["td_time"] = td_t
+        files[base]["primal_density"] = density
+        files[base]["primal_edge_var_ratio"] = edge_var_ratio
     if ".out_approxmc" in f:
         files[base]["solver"] = "approxmc"
         files[base]["solvertime"] = find_approxmc_time_cnt(f)
@@ -551,7 +552,7 @@ for f in file_list:
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
+    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
@@ -599,6 +600,16 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s," % f["compsK"]
+
+        if "primal_density" not in f or f["primal_density"] is None:
+            toprint += ","
+        else:
+          toprint += "%s," % f["primal_density"]
+
+        if "primal_edge_var_ratio" not in f or f["primal_edge_var_ratio"] is None:
+            toprint += ","
+        else:
+          toprint += "%s," % f["primal_edge_var_ratio"]
 
         if "td_width" not in f or f["td_width"] is None:
             toprint += ","

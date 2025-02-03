@@ -124,6 +124,7 @@ public:
   // delete entries, keeping the descendants tree consistent
   uint64_t unlink_from_tree(CacheEntryID id);
   uint64_t num_descendants(CacheEntryID id);
+  uint64_t num_siblings(CacheEntryID id);
 
   // test function to ensure consistency of the descendant tree
   inline void test_descendantstree_consistency();

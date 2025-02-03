@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "comp_cache.hpp"
+#include "common.hpp"
 #include "time_mem.hpp"
 #include <algorithm>
 #include <gmpxx.h>
@@ -116,19 +117,25 @@ bool CompCache<T>::delete_some_entries() {
   int64_t num = 0;
   uint64_t desc = 0;
   uint64_t max_desc = 0;
+  uint64_t siblings = 0;
+  uint64_t max_siblings = 0;
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() && entry_base[id].is_deletable() &&
         entry_base[id].last_used_time() >= cutoff) {
       auto d = num_descendants(id);
       max_desc = std::max(max_desc, d);
-      desc += d;
-      if (d < 100) {
+      auto s = num_siblings(id);
+      max_siblings = std::max(max_siblings, s);
+      if (d < 100 && s < 200) {
         tot += unlink_from_tree(id);
         num++;
+        desc += d;
+        siblings += s;
         erase(id); // Note: no need to incorporate erase, we recompute bignum bytes below
       }
     }
   verb_print(1, "max descendants: " << max_desc << " avg descendants: " << (double) desc/(double) num);
+  verb_print(1, "max siblings: " << max_siblings << " avg siblings: " << (double) siblings/(double) num);
   verb_print(1, "free entries after:  " << free_entry_base_slots.size() << " avg len: " << (double) tot/(double) num);
 
   SLOW_DEBUG_DO(test_descendantstree_consistency());
@@ -196,6 +203,27 @@ uint64_t CompCache<T>::num_descendants(CacheEntryID id) {
     act_child = entry(act_child).next_sibling();
     ret++;
   }
+  return ret;
+}
+
+template<typename T>
+uint64_t CompCache<T>::num_siblings(CacheEntryID id) {
+  uint64_t ret = 0;
+  CacheEntryID father = entry(id).father();
+  if (entry(father).first_descendant() == id) {
+    return 0;
+  } else {
+    CacheEntryID act_sibl = entry(father).first_descendant();
+    while (act_sibl) {
+      ret ++;
+      CacheEntryID next_sibl = entry(act_sibl).next_sibling();
+      if (next_sibl == id) {
+        return ret;
+      }
+      act_sibl = next_sibl;
+    }
+  }
+  release_assert(false);
   return ret;
 }
 

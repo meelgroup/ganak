@@ -167,21 +167,28 @@ void LSSolver::initialize_variable_datas() {
 }
 
 int LSSolver::pick_var() {
+    assert(!unsat_cls.empty() || !touched_cls.empty());
     update_clause_weights();
 
-    assert(!unsat_cls.empty() || !touched_cls.empty());
     int cid;
     if (!unsat_cls.empty() && !touched_cls.empty()) {
+      // pick unsat in this case (could pick either)
       cid = unsat_cls[random_gen.next(unsat_cls.size())];
     } else if (!unsat_cls.empty()) {
       cid = touched_cls[random_gen.next(touched_cls.size())];
     } else {
       cid = unsat_cls[random_gen.next(unsat_cls.size())];
     }
+
     clause& cl = cls[cid];
-    int best_var = cl.lits[0].var_num;
-    for (size_t k = 1; k < cl.lits.size(); k++) {
-        int v = cl.lits[k].var_num;
+    int best_var = -1;
+    for (auto& l: cl.lits) {
+        int v = l.var_num;
+        if (indep_map[v]) {
+          assert(sol[v] == 3);
+          continue;
+        }
+
         if (vars[v].score > vars[best_var].score) {
             best_var = v;
         } else if (vars[v].score == vars[best_var].score &&
@@ -189,6 +196,7 @@ int LSSolver::pick_var() {
             best_var = v;
         }
     }
+    assert(best_var != -1);
     return best_var;
 }
 

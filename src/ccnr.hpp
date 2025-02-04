@@ -117,7 +117,6 @@ class LSSolver {
     vector<int> idx_in_unsat_vars;
     vector<int> indep_map; // always num_vars+1 size, contains 0/1 if it's indep or not
     vector<int> touched_cls; // cls that have been touched but not satisfied
-    uint32_t set_vars = 0; //vars that have been set
     vector<uint8_t> sol; //solution information. 0 = false, 1 = true, 3 = unset
 
     //functions for building data structure

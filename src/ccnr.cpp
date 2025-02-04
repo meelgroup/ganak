@@ -200,19 +200,19 @@ int LSSolver::pick_var() {
     return best_var;
 }
 
-void LSSolver::flip(int flipv) {
-    sol[flipv] = 1 - sol[flipv];
-    int org_flipv_score = vars[flipv].score;
-    mems += vars[flipv].lits.size();
+void LSSolver::flip(int v) {
+    sol[v] = 1 - sol[v];
+    const int orig_score = vars[v].score;
+    mems += vars[v].lits.size();
 
     // Go through each clause the literal is in and update status
-    for (lit l: vars[flipv].lits) {
+    for (lit l: vars[v].lits) {
         clause& cl = cls[l.cl_num];
-        if (sol[flipv] == l.sense) {
+        if (sol[v] == l.sense) {
             cl.sat_count++;
             if (1 == cl.sat_count) {
                 sat_a_clause(l.cl_num);
-                cl.sat_var = flipv;
+                cl.sat_var = v;
                 for (lit lc: cl.lits) {
                     vars[lc.var_num].score -= cl.weight;
                 }
@@ -237,8 +237,8 @@ void LSSolver::flip(int flipv) {
             }
         }
     }
-    vars[flipv].score = -org_flipv_score;
-    vars[flipv].last_flip_step = step;
+    vars[v].score = -orig_score;
+    vars[v].last_flip_step = step;
 }
 
 

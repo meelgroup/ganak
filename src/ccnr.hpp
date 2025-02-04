@@ -112,11 +112,14 @@ class LSSolver {
 
     //data structure used
     vector<int> unsat_cls; // list of unsatisfied clauses
-    vector<int> idx_in_unsat_cls; // idx_in_unsat_cls[var] tells where "var" is in unsat_vars
+    vector<int> idx_in_unsat_cls; // idx_in_unsat_cls[cl_id] tells where cl_id is in unsat_vars
+                                  //
+    vector<int> touched_cls; // cls that have been touched but not satisfied
+    vector<int> idx_in_touched_cls; // idx_in_touched_cls[cl_id] tells where cl_id is in touched_cls
+                             //
     vector<int> unsat_vars; // clauses are UNSAT due to these vars
     vector<int> idx_in_unsat_vars;
     vector<int> indep_map; // always num_vars+1 size, contains 0/1 if it's indep or not
-    vector<int> touched_cls; // cls that have been touched but not satisfied
     vector<uint8_t> sol; //solution information. 0 = false, 1 = true, 3 = unset
 
     //functions for building data structure
@@ -152,6 +155,7 @@ class LSSolver {
     //funcitons for basic operations
     void sat_a_clause(int the_clause);
     void unsat_a_clause(int the_clause);
+    void untouch_a_clause(int cl_id);
 };
 
 } // namespace CCNR

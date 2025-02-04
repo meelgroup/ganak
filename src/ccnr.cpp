@@ -203,8 +203,10 @@ int LSSolver::pick_var() {
 void LSSolver::flip(int v) {
     assert(!indep_map[v]);
 
+    bool touch = false;
     if (sol[v] == 3) {
         // set to some value
+        touch = true;
         sol[v] = random_gen.next(2);
     } else if (random_gen.next(2) == 0) {
         //flip
@@ -219,6 +221,14 @@ void LSSolver::flip(int v) {
 
     // Go through each clause the literal is in and update status
     for (const lit& l: vars[v].lits) {
+        if (touch) {
+          cls[l.cl_num].touched_cnt++;
+          if (cls[l.cl_num].touched_cnt == 1) {
+            touched_cls.push_back(l.cl_num);
+            idx_in_touched_cls[l.cl_num] = touched_cls.size()-1;
+          }
+        }
+
         clause& cl = cls[l.cl_num];
         if (sol[v] == l.sense) {
             // make it sat
@@ -248,6 +258,10 @@ void LSSolver::flip(int v) {
             }
         } else {
           // unset
+          cls[l.cl_num].touched_cnt--;
+          if (cls[l.cl_num].touched_cnt == 0) untouch_a_clause(l.cl_num);
+
+          // make it unsat
           if (cl.sat_count == 1) {
             cl.sat_count = 0;
             unsat_a_clause(l.cl_num);
@@ -269,16 +283,24 @@ void LSSolver::flip(int v) {
     vars[v].last_flip_step = step;
 }
 
-void LSSolver::sat_a_clause(int cl_num) {
+void LSSolver::untouch_a_clause(int cl_id) {
+    int last_item = touched_cls.back();
+    touched_cls.pop_back();
+    int index = idx_in_touched_cls[cl_id];
+    if (index < (int)touched_cls.size()) touched_cls[index] = last_item;
+    idx_in_touched_cls[last_item] = index;
+}
+
+void LSSolver::sat_a_clause(int cl_id) {
     //use the position of the clause to store the last unsat clause in stack
     int last_item = unsat_cls.back();
     unsat_cls.pop_back();
-    int index = idx_in_unsat_cls[cl_num];
+    int index = idx_in_unsat_cls[cl_id];
     if (index < (int)unsat_cls.size()) unsat_cls[index] = last_item;
     idx_in_unsat_cls[last_item] = index;
 
     //update unsat_appear and unsat_vars
-    for (lit l: cls[cl_num].lits) {
+    for (lit l: cls[cl_id].lits) {
         vars[l.var_num].unsat_appear--;
         if (0 == vars[l.var_num].unsat_appear) {
             last_item = unsat_vars.back();

@@ -201,33 +201,44 @@ int LSSolver::pick_var() {
 }
 
 void LSSolver::flip(int v) {
-    sol[v] = 1 - sol[v];
+    assert(!indep_map[v]);
+
+    if (sol[v] == 3) {
+        // set to some value
+        sol[v] = random_gen.next(2);
+    } else if (random_gen.next(2) == 0) {
+        //flip
+        sol[v] = 1 - sol[v];
+    } else {
+        // unset
+        sol[v] = 3;
+    }
+
     const int orig_score = vars[v].score;
     mems += vars[v].lits.size();
 
     // Go through each clause the literal is in and update status
-    for (lit l: vars[v].lits) {
+    for (const lit& l: vars[v].lits) {
         clause& cl = cls[l.cl_num];
         if (sol[v] == l.sense) {
+            // make it sat
             cl.sat_count++;
-            if (1 == cl.sat_count) {
+            if (cl.sat_count == 1) {
                 sat_a_clause(l.cl_num);
                 cl.sat_var = v;
-                for (lit lc: cl.lits) {
-                    vars[lc.var_num].score -= cl.weight;
-                }
-            } else if (2 == cl.sat_count) {
+                for (const lit& lc: cl.lits) vars[lc.var_num].score -= cl.weight;
+            } else if (cl.sat_count == 2) {
                 vars[cl.sat_var].score += cl.weight;
             }
-        } else {
+        } else if (sol[v] == !l.sense) {
+            // make it unsat
             cl.sat_count--;
-            if (0 == cl.sat_count) {
+            if (cl.sat_count == 0) {
                 unsat_a_clause(l.cl_num);
-                for (lit lc: cl.lits) {
-                    vars[lc.var_num].score += cl.weight;
-                }
-            } else if (1 == cl.sat_count) {
-                for (lit lc: cl.lits) {
+                for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
+            } else if (cl.sat_count == 1) {
+                // Have to update the var that makes the clause satisfied
+                for (const lit& lc: cl.lits) {
                     if (sol[lc.var_num] == lc.sense) {
                         vars[lc.var_num].score -= cl.weight;
                         cl.sat_var = lc.var_num;
@@ -235,12 +246,28 @@ void LSSolver::flip(int v) {
                     }
                 }
             }
+        } else {
+          // unset
+          if (cl.sat_count == 1) {
+            cl.sat_count = 0;
+            unsat_a_clause(l.cl_num);
+            for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
+          } else if (cl.sat_count > 1) {
+            cl.sat_count--;
+            // Have to update the var that makes the clause satisfied
+            for (const lit& lc: cl.lits) {
+              if (sol[lc.var_num] == lc.sense) {
+                vars[lc.var_num].score -= cl.weight;
+                cl.sat_var = lc.var_num;
+                break;
+              }
+            }
+          }
         }
     }
     vars[v].score = -orig_score;
     vars[v].last_flip_step = step;
 }
-
 
 void LSSolver::sat_a_clause(int cl_num) {
     //use the position of the clause to store the last unsat clause in stack

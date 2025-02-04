@@ -77,7 +77,7 @@ struct clause {
     vector<lit> lits;
     int sat_count; //no. of satisfied literals
     int touched_cnt; // no. of literals that are touched but not satisfied
-    int sat_var;
+    int sat_var; // the variable that makes the clause satisfied
     long long weight;
 };
 

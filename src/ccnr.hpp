@@ -119,32 +119,28 @@ class LS_solver {
     vector<int> indep_map; // always num_vars+1 size, contains 0/1 if it's indep or not
     vector<int> touched_cls; // cls that have been touched but not satisfied
     uint32_t set_vars = 0; //vars that have been set
-
-
     vector<uint8_t> sol; //solution information. 0 = false, 1 = true, 3 = unset
 
-    //functions for buiding data structure
+    //functions for building data structure
     bool make_space();
     void build_neighborhood();
     int get_cost() { return unsat_cls.size(); }
 
   private:
-    long long mems = 0;
-    long long step;
+    Mersenne random_gen;
+
+    // Config
     long long max_steps;
     int max_tries;
+    uint32_t verb = 0;
+    float swt_p = 0.3;
+    float swt_q = 0.7;
+    int swt_thresh = 50;
 
-    //aiding data structure
-    Mersenne random_gen; //random generator
-
-    //clause weighting
-    int swt_thresh;
-    float swt_p; //w=w*p+ave_w*q
-    float swt_q;
+    // internal stats
+    long long step;
+    long long mems = 0;
     int avg_cl_weight;
-    //-------------------
-
-    //=================
     long long delta_tot_cl_weight;
 
     //main functions
@@ -158,9 +154,6 @@ class LS_solver {
     //funcitons for basic operations
     void sat_a_clause(int the_clause);
     void unsat_a_clause(int the_clause);
-
-    //--------------------
-    uint32_t verb = 0;
 };
 
 } // namespace CCNR

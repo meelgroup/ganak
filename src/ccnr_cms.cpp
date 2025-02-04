@@ -87,9 +87,8 @@ bool Ganak_ccnr::init_problem() {
     for(auto& cl: cnf->clauses) add_this_clause(cl);
 
     for (int c=0; c < ls_s->num_cls; c++) {
-        for(CCNR::lit item: ls_s->cls[c].lits) {
-            int v = item.var_num;
-            ls_s->vars[v].literals.push_back(item);
+        for(auto& l: ls_s->cls[c].lits) {
+            ls_s->vars[l.var_num].lits.push_back(l);
         }
     }
     ls_s->build_neighborhood();

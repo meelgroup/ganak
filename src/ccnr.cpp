@@ -53,20 +53,21 @@ bool LSSolver::make_space() {
     return true;
 }
 
+// Updates variables' neighbor_vars, ran once
 void LSSolver::build_neighborhood() {
     vector<uint8_t> flag(num_vars+1, 0);
-    for (int v = 1; v <= num_vars; ++v) {
-        variable& vp = vars[v];
-        for (lit lv: vp.literals) {
-            int c = lv.clause_num;
-            for (lit lc: cls[c].lits) {
-                if (!flag[lc.var_num] && lc.var_num != v) {
+    for (int vnum = 1; vnum <= num_vars; ++vnum) {
+        variable& v = vars[vnum];
+        for (const auto& l: v.lits) {
+            int c_id = l.cl_num;
+            for (const auto& lc: cls[c_id].lits) {
+                if (!flag[lc.var_num] && lc.var_num != vnum) {
                     flag[lc.var_num] = 1;
-                    vp.neighbor_vars.push_back(lc.var_num);
+                    v.neighbor_vars.push_back(lc.var_num);
                 }
             }
         }
-        for (auto v2 : vp.neighbor_vars) flag[v2] = 0;
+        for (const auto& v2 : v.neighbor_vars) flag[v2] = 0;
     }
 }
 
@@ -147,8 +148,8 @@ void LSSolver::initialize_variable_datas() {
     for (int v = 1; v <= num_vars; v++) {
         auto & vp = vars[v];
         vp.score = 0;
-        for (lit l: vp.literals) {
-            int c = l.clause_num;
+        for (lit l: vp.lits) {
+            int c = l.cl_num;
             if (cls[c].sat_count == 0) {
                 vp.score += cls[c].weight;
             } else if (1 == cls[c].sat_count && l.sense == sol[l.var_num]) {
@@ -194,15 +195,15 @@ int LSSolver::pick_var() {
 void LSSolver::flip(int flipv) {
     sol[flipv] = 1 - sol[flipv];
     int org_flipv_score = vars[flipv].score;
-    mems += vars[flipv].literals.size();
+    mems += vars[flipv].lits.size();
 
     // Go through each clause the literal is in and update status
-    for (lit l: vars[flipv].literals) {
-        clause& cl = cls[l.clause_num];
+    for (lit l: vars[flipv].lits) {
+        clause& cl = cls[l.cl_num];
         if (sol[flipv] == l.sense) {
             cl.sat_count++;
             if (1 == cl.sat_count) {
-                sat_a_clause(l.clause_num);
+                sat_a_clause(l.cl_num);
                 cl.sat_var = flipv;
                 for (lit lc: cl.lits) {
                     vars[lc.var_num].score -= cl.weight;
@@ -213,7 +214,7 @@ void LSSolver::flip(int flipv) {
         } else {
             cl.sat_count--;
             if (0 == cl.sat_count) {
-                unsat_a_clause(l.clause_num);
+                unsat_a_clause(l.cl_num);
                 for (lit lc: cl.lits) {
                     vars[lc.var_num].score += cl.weight;
                 }

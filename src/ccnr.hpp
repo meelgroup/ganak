@@ -34,30 +34,30 @@ using std::abs;
 namespace CCNR {
 
 struct lit {
-    unsigned char sense : 1; //is 1 for true literals, 0 for false literals.
-    int clause_num : 31;     //clause num, begin with 0
     int var_num;             //variable num, begin with 1
+    int sense : 1;           //is 1 for true literals, 0 for false literals.
+    int cl_num : 31;         //clause ID it belongs to, begin with 0
     lit(int the_lit, int the_clause) {
         var_num = std::abs(the_lit);
-        clause_num = the_clause;
+        cl_num = the_clause;
         sense = the_lit > 0 ? 1 : 0;
     }
 
     struct lit &operator^=(const struct lit &l) {
         sense ^= l.sense;
-        clause_num ^= l.clause_num;
+        cl_num ^= l.cl_num;
         var_num ^= l.var_num;
         return *this;
     }
 
     void reset(void) {
         sense = 0;
-        clause_num = 0;
+        cl_num = 0;
         var_num = 0;
     }
 
     bool operator==(const struct lit &l) const {
-        return sense == l.sense && clause_num == l.clause_num && var_num == l.var_num;
+        return sense == l.sense && cl_num == l.cl_num && var_num == l.var_num;
     }
 
     bool operator!=(const struct lit &l) const {
@@ -66,7 +66,7 @@ struct lit {
 };
 
 struct variable {
-    vector<lit> literals;
+    vector<lit> lits;
     vector<int> neighbor_vars;
     long long score;
     long long last_flip_step;

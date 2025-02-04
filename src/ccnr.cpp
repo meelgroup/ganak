@@ -34,14 +34,14 @@ using std::endl;
 using std::string;
 
 
-LS_solver::LS_solver() {
+LSSolver::LSSolver() {
     max_tries = 100;
     max_steps = 1*1000 * 1000;
     random_gen.seed(1337);
     verb = 0;
 }
 
-bool LS_solver::make_space() {
+bool LSSolver::make_space() {
     if (num_vars == 0) return false;
     vars.resize(num_vars+1);
     sol.resize(num_vars+1, 3);
@@ -53,7 +53,7 @@ bool LS_solver::make_space() {
     return true;
 }
 
-void LS_solver::build_neighborhood() {
+void LSSolver::build_neighborhood() {
     vector<uint8_t> neighbor_flag(num_vars+1, 0);
     for (int v = 1; v <= num_vars; ++v) {
         variable& vp = vars[v];
@@ -71,7 +71,7 @@ void LS_solver::build_neighborhood() {
     }
 }
 
-bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
+bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
     bool result = false;
     for (int t = 0; t < max_tries; t++) {
         initialize();
@@ -107,7 +107,7 @@ bool LS_solver::local_search(long long int _mems_limit , const char* prefix) {
     return result;
 }
 
-void LS_solver::initialize() {
+void LSSolver::initialize() {
     unsat_cls.clear();
     unsat_vars.clear();
     for (auto &i: idx_in_unsat_cls) i = 0;
@@ -143,7 +143,7 @@ void LS_solver::initialize() {
     initialize_variable_datas();
 }
 
-void LS_solver::initialize_variable_datas() {
+void LSSolver::initialize_variable_datas() {
     //scores
     for (int v = 1; v <= num_vars; v++) {
         auto & vp = vars[v];
@@ -166,7 +166,7 @@ void LS_solver::initialize_variable_datas() {
     vp.last_flip_step = 0;
 }
 
-int LS_solver::pick_var() {
+int LSSolver::pick_var() {
     update_clause_weights();
 
     assert(!unsat_cls.empty() || !touched_cls.empty());
@@ -192,7 +192,7 @@ int LS_solver::pick_var() {
     return best_var;
 }
 
-void LS_solver::flip(int flipv) {
+void LSSolver::flip(int flipv) {
     sol[flipv] = 1 - sol[flipv];
     int org_flipv_score = vars[flipv].score;
     mems += vars[flipv].literals.size();
@@ -234,7 +234,7 @@ void LS_solver::flip(int flipv) {
 }
 
 
-void LS_solver::sat_a_clause(int cl_num) {
+void LSSolver::sat_a_clause(int cl_num) {
     //use the position of the clause to store the last unsat clause in stack
     int last_item = unsat_cls.back();
     unsat_cls.pop_back();
@@ -257,7 +257,7 @@ void LS_solver::sat_a_clause(int cl_num) {
     }
 }
 
-void LS_solver::unsat_a_clause(int cl_id) {
+void LSSolver::unsat_a_clause(int cl_id) {
     idx_in_unsat_cls[cl_id] = unsat_cls.size();
     unsat_cls.push_back(cl_id);
     //update unsat_appear and unsat_vars
@@ -270,7 +270,7 @@ void LS_solver::unsat_a_clause(int cl_id) {
     }
 }
 
-void LS_solver::update_clause_weights() {
+void LSSolver::update_clause_weights() {
     for (int c: unsat_cls) cls[c].weight++;
     for (int v: unsat_vars) vars[v].score += vars[v].unsat_appear;
 
@@ -284,7 +284,7 @@ void LS_solver::update_clause_weights() {
     }
 }
 
-void LS_solver::smooth_clause_weights() {
+void LSSolver::smooth_clause_weights() {
     for (int v = 1; v <= num_vars; v++) vars[v].score = 0;
     int scale_avg = avg_cl_weight * swt_q;
     avg_cl_weight = 0;
@@ -309,7 +309,7 @@ void LS_solver::smooth_clause_weights() {
     }
 }
 
-void LS_solver::print_solution(bool need_verify) {
+void LSSolver::print_solution(bool need_verify) {
     if (0 == get_cost()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNKNOWN" << endl;
 

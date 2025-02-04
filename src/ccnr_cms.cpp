@@ -34,7 +34,7 @@ using namespace CCNR;
 
 Ganak_ccnr::Ganak_ccnr(uint32_t _verb) {
     conf.verb = _verb;
-    ls_s = new LS_solver();
+    ls_s = new LSSolver();
     ls_s->set_verbosity(conf.verb);
 }
 

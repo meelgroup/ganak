@@ -37,7 +37,7 @@ namespace ArjunNS {
 
 namespace CCNR {
 
-class LS_solver;
+class LSSolver;
 
 struct CCNRConf {
   uint32_t verb = 1;
@@ -55,7 +55,7 @@ private:
     void parse_parameters();
     void init_for_round();
     bool init_problem();
-    LS_solver* ls_s = nullptr;
+    LSSolver* ls_s = nullptr;
     uint32_t cl_num = 0;
 
     template<class T> void add_this_clause(const T& cl);

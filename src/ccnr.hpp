@@ -94,10 +94,9 @@ inline std::ostream& operator<<(std::ostream &os, const clause &cl) {
   return os;
 }
 
-
-class LS_solver {
+class LSSolver {
  public:
-    LS_solver();
+    LSSolver();
     bool local_search(
         long long int _mems_limit = 100*1000*1000
         , const char* prefix = "c "

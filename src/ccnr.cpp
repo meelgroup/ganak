@@ -54,20 +54,20 @@ bool LSSolver::make_space() {
 }
 
 void LSSolver::build_neighborhood() {
-    vector<uint8_t> neighbor_flag(num_vars+1, 0);
+    vector<uint8_t> flag(num_vars+1, 0);
     for (int v = 1; v <= num_vars; ++v) {
         variable& vp = vars[v];
         for (lit lv: vp.literals) {
             int c = lv.clause_num;
             for (lit lc: cls[c].lits) {
-                if (!neighbor_flag[lc.var_num] && lc.var_num != v) {
-                    neighbor_flag[lc.var_num] = 1;
+                if (!flag[lc.var_num] && lc.var_num != v) {
+                    flag[lc.var_num] = 1;
                     vp.neighbor_var_nums.push_back(lc.var_num);
                 }
             }
         }
         for (int neighbor_var_num : vp.neighbor_var_nums)
-          neighbor_flag[neighbor_var_num] = 0;
+          flag[neighbor_var_num] = 0;
     }
 }
 

@@ -49,6 +49,7 @@ bool LSSolver::make_space() {
 
     cls.resize(num_cls);
     idx_in_unsat_cls.resize(num_cls);
+    idx_in_touched_cls.resize(num_cls);
 
     return true;
 }
@@ -85,15 +86,17 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
             flip(flipv);
             if (mems > _mems_limit) return false;
 
-            int cost = unsat_cls.size();
-            if (verb && (cost == 0 || (step & 0x3ffff) == 0x3ffff)) {
+            int u_cost = unsat_cls.size();
+            int t_cost = touched_cls.size();
+            if (verb && (step & 0x3ffff) == 0x3ffff) {
                 cout << prefix << "[ccnr] tries: "
                 << t << " steps: " << step
-                << " best found: " << cost
+                << " unsat found: " << u_cost
+                << " touched found: " << t_cost
                 << endl;
             }
 
-            if (cost == 0) {
+            if (u_cost == 0) {
                 print_solution(1);
                 result = true;
                 break;
@@ -136,7 +139,7 @@ void LSSolver::initialize() {
             } else if (val != 3) cl.touched_cnt++;
         }
         if (cl.sat_count == 0) unsat_a_clause(cid);
-        if (cl.touched_cnt) touched_cls.push_back(cid); // <- touch_a_clause(cid);
+        if (cl.touched_cnt > 0) touch_a_clause(cid);
     }
     avg_cl_weight = 1;
     delta_tot_cl_weight = 0;
@@ -175,13 +178,14 @@ int LSSolver::pick_var() {
       // pick unsat in this case (could pick either)
       cid = unsat_cls[random_gen.next(unsat_cls.size())];
     } else if (!unsat_cls.empty()) {
-      cid = touched_cls[random_gen.next(touched_cls.size())];
-    } else {
       cid = unsat_cls[random_gen.next(unsat_cls.size())];
+    } else {
+      cid = touched_cls[random_gen.next(touched_cls.size())];
     }
 
     clause& cl = cls[cid];
     int best_var = -1;
+    int best_score = std::numeric_limits<int>::min();
     for (auto& l: cl.lits) {
         int v = l.var_num;
         if (indep_map[v]) {
@@ -189,9 +193,10 @@ int LSSolver::pick_var() {
           continue;
         }
 
-        if (vars[v].score > vars[best_var].score) {
+        if (vars[v].score > best_score) {
             best_var = v;
-        } else if (vars[v].score == vars[best_var].score &&
+            best_score = vars[v].score;
+        } else if (vars[v].score == best_score &&
                    vars[v].last_flip_step < vars[best_var].last_flip_step) {
             best_var = v;
         }
@@ -208,7 +213,7 @@ void LSSolver::flip(int v) {
         // set to some value
         touch = true;
         sol[v] = random_gen.next(2);
-    } else if (random_gen.next(2) == 0) {
+    } else if (random_gen.next(7) <= 5) {
         //flip
         sol[v] = 1 - sol[v];
     } else {
@@ -221,15 +226,13 @@ void LSSolver::flip(int v) {
 
     // Go through each clause the literal is in and update status
     for (const lit& l: vars[v].lits) {
+        clause& cl = cls[l.cl_num];
+
         if (touch) {
-          cls[l.cl_num].touched_cnt++;
-          if (cls[l.cl_num].touched_cnt == 1) {
-            touched_cls.push_back(l.cl_num);
-            idx_in_touched_cls[l.cl_num] = touched_cls.size()-1;
-          }
+          cl.touched_cnt++;
+          if (cl.touched_cnt == 1) touch_a_clause(l.cl_num);
         }
 
-        clause& cl = cls[l.cl_num];
         if (sol[v] == l.sense) {
             // make it sat
             cl.sat_count++;
@@ -279,11 +282,22 @@ void LSSolver::flip(int v) {
           }
         }
     }
-    vars[v].score = -orig_score;
+    if (!touch) {
+      vars[v].score = -orig_score;
+    }
     vars[v].last_flip_step = step;
 }
 
+void LSSolver::touch_a_clause(int cl_id) {
+  assert(cls[cl_id].touched_cnt > 0);
+  touched_cls.push_back(cl_id);
+  idx_in_touched_cls[cl_id] = touched_cls.size()-1;
+}
+
 void LSSolver::untouch_a_clause(int cl_id) {
+    assert(!touched_cls.empty());
+    assert(cls[cl_id].touched_cnt == 0);
+
     int last_item = touched_cls.back();
     touched_cls.pop_back();
     int index = idx_in_touched_cls[cl_id];

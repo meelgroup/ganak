@@ -156,6 +156,7 @@ class LSSolver {
     void sat_a_clause(int the_clause);
     void unsat_a_clause(int the_clause);
     void untouch_a_clause(int cl_id);
+    void touch_a_clause(int cl_id);
 };
 
 } // namespace CCNR

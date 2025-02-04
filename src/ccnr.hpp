@@ -67,7 +67,7 @@ struct lit {
 
 struct variable {
     vector<lit> literals;
-    vector<int> neighbor_var_nums;
+    vector<int> neighbor_vars;
     long long score;
     long long last_flip_step;
     int unsat_appear; //how many unsat clauses it appears in

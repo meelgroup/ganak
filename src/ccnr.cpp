@@ -62,12 +62,11 @@ void LSSolver::build_neighborhood() {
             for (lit lc: cls[c].lits) {
                 if (!flag[lc.var_num] && lc.var_num != v) {
                     flag[lc.var_num] = 1;
-                    vp.neighbor_var_nums.push_back(lc.var_num);
+                    vp.neighbor_vars.push_back(lc.var_num);
                 }
             }
         }
-        for (int neighbor_var_num : vp.neighbor_var_nums)
-          flag[neighbor_var_num] = 0;
+        for (auto v2 : vp.neighbor_vars) flag[v2] = 0;
     }
 }
 

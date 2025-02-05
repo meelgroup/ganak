@@ -160,6 +160,7 @@ class LSSolver {
 
     // debug
     void print_cl(int cl_id);
+    void check_clause(int cid);
 };
 
 } // namespace CCNR

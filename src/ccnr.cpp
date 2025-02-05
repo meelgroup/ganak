@@ -146,7 +146,8 @@ void LSSolver::initialize() {
             if (val == l.sense) {
                 cl.sat_count++;
                 cl.sat_var = l.var_num;
-            } else if (val != 3) cl.touched_cnt++;
+            }
+            if (val != 3) cl.touched_cnt++;
         }
         if (cl.sat_count == 0 && cl.touched_cnt > 0) unsat_a_clause(cid);
         if (cl.touched_cnt > 0) touch_a_clause(cid);
@@ -231,8 +232,26 @@ int LSSolver::pick_var() {
     return best_var;
 }
 
+void LSSolver::check_clause(int cid) {
+  int sat_cnt = 0;
+  int touched_cnt = 0;
+  for (lit l: cls[cid].lits) {
+    if (sol[l.var_num] == l.sense) sat_cnt++;
+    if (sol[l.var_num] != 3) touched_cnt++;
+  }
+  assert(cls[cid].sat_count == sat_cnt);
+  assert(cls[cid].touched_cnt == touched_cnt);
+  if (sat_cnt == 0 && touched_cnt > 0) {
+    assert(idx_in_unsat_cls[cid] < (int)unsat_cls.size());
+    assert(unsat_cls[idx_in_unsat_cls[cid]] == cid);
+  }
+}
+
 void LSSolver::flip(int v) {
     assert(!indep_map[v]);
+    for (const lit& l: vars[v].lits) {
+      check_clause(l.cl_num);
+    }
 
     bool touch = false;
     int old_val = sol[v] ;

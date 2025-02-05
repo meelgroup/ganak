@@ -326,6 +326,7 @@ void LSSolver::flip(int v) {
             }
           }
         }
+        cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
     }
     if (!touch) {
       vars[v].score = -orig_score;
@@ -429,23 +430,27 @@ void LSSolver::print_solution(bool need_verify) {
     if (0 == get_cost()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNKNOWN" << endl;
 
-    bool sat_flag = false;
+    assert(need_verify);
     if (need_verify) {
-        for (int c = 0; c < num_cls; c++) {
-            sat_flag = false;
-            for (lit l: cls[c].lits) {
+        uint32_t num_cls_touched = 0;
+        for (int cid = 0; cid < num_cls; cid++) {
+            bool sat_flag = false;
+            bool touched_flag = false;
+            for (lit l: cls[cid].lits) {
+                if (sol[l.var_num] != 3) touched_flag = true;
                 if (sol[l.var_num] == l.sense) {
                     sat_flag = true;
                     break;
                 }
             }
-            if (!sat_flag) {
-                cout << "c Error: verify error in clause " << c << endl;
+            num_cls_touched += touched_flag;
+            if (!sat_flag && touched_flag) {
+                cout << "c Error: verify error in cl_id : " << cid << " -- "; print_cl(cid);
                 exit(-1);
                 return;
             }
         }
-        cout << "c Verified." << endl;
+        cout << "c Verified. Satisfied cls: " << num_cls_touched << endl;
     }
 
     if (verb > 0) {

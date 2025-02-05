@@ -45,7 +45,7 @@ int Ganak_ccnr::main(const ArjunNS::SimplifiedCNF* _cnf) {
 
     //It might not work well with few number of variables
     //rnovelty could also die/exit(-1), etc.
-    if (cnf->nVars() < 50 || cnf->clauses.size() < 10) {
+    if (cnf->nVars() == 0 || cnf->clauses.size() == 0) {
         verb_print(1, "[ccnr] too few variables & clauses");
         return 0;
     }
@@ -55,7 +55,7 @@ int Ganak_ccnr::main(const ArjunNS::SimplifiedCNF* _cnf) {
     int res = ls_s->local_search(conf.yalsat_max_mems*2*1000*1000, "c o");
 
     double time_used = cpu_time()-start_time;
-    verb_print(1, "[ccnr] time: " << time_used);
+    verb_print(1, "[ccnr] time: " << time_used << " res: " << res);
     return res;
 }
 

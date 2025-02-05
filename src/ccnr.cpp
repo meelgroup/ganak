@@ -83,6 +83,11 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
 
         for (step = 0; step < max_steps; step++) {
             int flipv = pick_var();
+            if (flipv == -1) {
+              cout << prefix << "[ccnr] no var to flip, restart" << endl;
+              break;
+            }
+
             flip(flipv);
             if (mems > _mems_limit) return false;
 
@@ -170,20 +175,25 @@ void LSSolver::initialize_variable_datas() {
 }
 
 int LSSolver::pick_var() {
-    assert(!unsat_cls.empty() || !touched_cls.empty());
+    assert(!unsat_cls.empty());
     update_clause_weights();
-
+    uint32_t tries = 0;
+    bool ok = false;
     int cid;
-    if (!unsat_cls.empty() && !touched_cls.empty()) {
-      // pick unsat in this case (could pick either)
+    while (!ok && tries < 100) {
       cid = unsat_cls[random_gen.next(unsat_cls.size())];
-    } else if (!unsat_cls.empty()) {
-      cid = unsat_cls[random_gen.next(unsat_cls.size())];
-    } else {
-      cid = touched_cls[random_gen.next(touched_cls.size())];
+      const clause& cl = cls[cid];
+      for (auto& l: cl.lits) {
+        if (!indep_map[l.var_num]) {
+          ok = true;
+          break;
+        }
+      }
+      tries++;
     }
+    if (!ok) return -1;
 
-    clause& cl = cls[cid];
+    const clause& cl = cls[cid];
     int best_var = -1;
     int best_score = std::numeric_limits<int>::min();
     for (auto& l: cl.lits) {
@@ -192,11 +202,13 @@ int LSSolver::pick_var() {
           assert(sol[v] == 3);
           continue;
         }
+        int score = vars[v].score;
+        if (sol[v] == 3) score /= 10;
 
-        if (vars[v].score > best_score) {
+        if (score > best_score) {
             best_var = v;
-            best_score = vars[v].score;
-        } else if (vars[v].score == best_score &&
+            best_score = score;
+        } else if (score == best_score &&
                    vars[v].last_flip_step < vars[best_var].last_flip_step) {
             best_var = v;
         }

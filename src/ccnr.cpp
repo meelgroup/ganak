@@ -148,7 +148,7 @@ void LSSolver::initialize() {
                 cl.sat_var = l.var_num;
             } else if (val != 3) cl.touched_cnt++;
         }
-        if (cl.sat_count == 0) unsat_a_clause(cid);
+        if (cl.sat_count == 0 && cl.touched_cnt > 0) unsat_a_clause(cid);
         if (cl.touched_cnt > 0) touch_a_clause(cid);
     }
     avg_cl_weight = 1;
@@ -262,7 +262,6 @@ void LSSolver::flip(int v) {
         assert(cl.sat_count <= (int)cl.lits.size());
         assert(cl.touched_cnt <= (int)cl.lits.size());
         cout << "checking effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
-        cout << "sol[v]: " << (int)sol[v] << " l.sense: " << (int)l.sense << endl;
 
         if (touch) {
           cl.touched_cnt++;
@@ -281,35 +280,38 @@ void LSSolver::flip(int v) {
             } else if (cl.sat_count == 2) {
                 vars[cl.sat_var].score += cl.weight;
             }
-        } else if (sol[v] == !l.sense && old_val != 3) {
+        } else if (sol[v] == !l.sense) {
+          if (old_val != 3) {
             // make it unsat
             cl.sat_count--;
             assert(cl.sat_count >= 0);
+          }
 
-            if (cl.sat_count == 0) {
-                unsat_a_clause(l.cl_num);
-                for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
-            } else if (cl.sat_count == 1) {
-                // Have to update the var that makes the clause satisfied
-                for (const lit& lc: cl.lits) {
-                    if (sol[lc.var_num] == lc.sense) {
-                        vars[lc.var_num].score -= cl.weight;
-                        cl.sat_var = lc.var_num;
-                        break;
-                    }
-                }
-            }
+          if (cl.sat_count == 0 && cl.touched_cnt > 0) {
+              unsat_a_clause(l.cl_num);
+              for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
+          } else if (cl.sat_count == 1) {
+              // Have to update the var that makes the clause satisfied
+              for (const lit& lc: cl.lits) {
+                  if (sol[lc.var_num] == lc.sense) {
+                      vars[lc.var_num].score -= cl.weight;
+                      cl.sat_var = lc.var_num;
+                      break;
+                  }
+              }
+          }
         } else if (sol[v] == 3) {
           // unset
           cls[l.cl_num].touched_cnt--;
           assert(cl.touched_cnt >= 0);
           if (cls[l.cl_num].touched_cnt == 0) untouch_a_clause(l.cl_num);
+
           if (old_val == l.sense) {
             cl.sat_count--;
             assert(cl.sat_count >= 0);
 
             // make it unsat
-            if (cl.sat_count == 0) {
+            if (cl.sat_count == 0 && cl.touched_cnt > 0) {
               unsat_a_clause(l.cl_num);
               for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
             } else if (cl.sat_count == 1) {

@@ -35,20 +35,20 @@ namespace CCNR {
 
 struct lit {
     int var_num;             //variable num, begin with 1
-    int sense : 1;           //is 1 for true literals, 0 for false literals.
-    int cl_num : 31;         //clause ID it belongs to, begin with 0
+    uint32_t cl_num : 31;         //clause ID it belongs to, begin with 0
+    uint32_t sense : 1;           //is 1 for true literals, 0 for false literals.
     lit(int the_lit, int the_clause) {
         var_num = std::abs(the_lit);
         cl_num = the_clause;
         sense = the_lit > 0 ? 1 : 0;
     }
 
-    struct lit &operator^=(const struct lit &l) {
-        sense ^= l.sense;
-        cl_num ^= l.cl_num;
-        var_num ^= l.var_num;
-        return *this;
-    }
+    /* struct lit &operator^=(const struct lit &l) { */
+    /*     sense ^= l.sense; */
+    /*     cl_num ^= l.cl_num; */
+    /*     var_num ^= l.var_num; */
+    /*     return *this; */
+    /* } */
 
     void reset(void) {
         sense = 0;
@@ -157,6 +157,9 @@ class LSSolver {
     void unsat_a_clause(int the_clause);
     void untouch_a_clause(int cl_id);
     void touch_a_clause(int cl_id);
+
+    // debug
+    void print_cl(int cl_id);
 };
 
 } // namespace CCNR

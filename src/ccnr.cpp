@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "ccnr.hpp"
+#include "common.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -90,6 +91,7 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
 
             flip(flipv);
             if (mems > _mems_limit) return false;
+            cout << "num unsat cls: " << unsat_cls.size() << " num cls: " << cls.size() << endl;
 
             int u_cost = unsat_cls.size();
             int t_cost = touched_cls.size();
@@ -121,7 +123,10 @@ void LSSolver::initialize() {
     for (auto &i: idx_in_unsat_cls) i = 0;
     for (auto &i: idx_in_unsat_vars) i = 0;
     for (int v = 1; v <= num_vars; v++) {
-      if (!indep_map[v]) sol[v] = random_gen.next(3);
+      if (!indep_map[v]) {
+        sol[v] = random_gen.next(3);
+        cout << "init var " << v << " to : " << (int) sol[v] << endl;
+      }
       else assert(sol[v] == 3);
     }
 
@@ -174,6 +179,12 @@ void LSSolver::initialize_variable_datas() {
     vp.last_flip_step = 0;
 }
 
+void LSSolver::print_cl(int cid) {
+    for(auto& l: cls[cid].lits) {
+      cout << l << " ";
+    }; cout << "0 " << " sat_cnt: " << cls[cid].sat_count << " touched_cnt: " << cls[cid].touched_cnt << endl;
+}
+
 int LSSolver::pick_var() {
     assert(!unsat_cls.empty());
     update_clause_weights();
@@ -192,6 +203,8 @@ int LSSolver::pick_var() {
       tries++;
     }
     if (!ok) return -1;
+    cout << " ---------  " << endl;
+    cout << "decided on cl_id: " << cid << " -- "; print_cl(cid);
 
     const clause& cl = cls[cid];
     int best_var = -1;
@@ -214,6 +227,7 @@ int LSSolver::pick_var() {
         }
     }
     assert(best_var != -1);
+    cout << "decided on var: " << best_var << endl;
     return best_var;
 }
 
@@ -221,16 +235,20 @@ void LSSolver::flip(int v) {
     assert(!indep_map[v]);
 
     bool touch = false;
+    int old_val = sol[v] ;
     if (sol[v] == 3) {
         // set to some value
         touch = true;
         sol[v] = random_gen.next(2);
+        cout << "setting var " << v << " new val: " << (int)sol[v] << endl;
     } else if (random_gen.next(7) <= 5) {
         //flip
         sol[v] = 1 - sol[v];
+        cout << "flipping var " << v << " new val: " << (int)sol[v] << endl;
     } else {
         // unset
         sol[v] = 3;
+        cout << "unsetting var " << v << endl;
     }
 
     const int orig_score = vars[v].score;
@@ -239,6 +257,12 @@ void LSSolver::flip(int v) {
     // Go through each clause the literal is in and update status
     for (const lit& l: vars[v].lits) {
         clause& cl = cls[l.cl_num];
+        assert(cl.sat_count >= 0);
+        assert(cl.touched_cnt >= 0);
+        assert(cl.sat_count <= (int)cl.lits.size());
+        assert(cl.touched_cnt <= (int)cl.lits.size());
+        cout << "checking effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
+        cout << "sol[v]: " << (int)sol[v] << " l.sense: " << (int)l.sense << endl;
 
         if (touch) {
           cl.touched_cnt++;
@@ -248,6 +272,8 @@ void LSSolver::flip(int v) {
         if (sol[v] == l.sense) {
             // make it sat
             cl.sat_count++;
+            cout << "Here, cnt: " << cl.sat_count << endl;
+
             if (cl.sat_count == 1) {
                 sat_a_clause(l.cl_num);
                 cl.sat_var = v;
@@ -255,9 +281,11 @@ void LSSolver::flip(int v) {
             } else if (cl.sat_count == 2) {
                 vars[cl.sat_var].score += cl.weight;
             }
-        } else if (sol[v] == !l.sense) {
+        } else if (sol[v] == !l.sense && old_val != 3) {
             // make it unsat
             cl.sat_count--;
+            assert(cl.sat_count >= 0);
+
             if (cl.sat_count == 0) {
                 unsat_a_clause(l.cl_num);
                 for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
@@ -271,24 +299,27 @@ void LSSolver::flip(int v) {
                     }
                 }
             }
-        } else {
+        } else if (sol[v] == 3) {
           // unset
           cls[l.cl_num].touched_cnt--;
+          assert(cl.touched_cnt >= 0);
           if (cls[l.cl_num].touched_cnt == 0) untouch_a_clause(l.cl_num);
-
-          // make it unsat
-          if (cl.sat_count == 1) {
-            cl.sat_count = 0;
-            unsat_a_clause(l.cl_num);
-            for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
-          } else if (cl.sat_count > 1) {
+          if (old_val == l.sense) {
             cl.sat_count--;
-            // Have to update the var that makes the clause satisfied
-            for (const lit& lc: cl.lits) {
-              if (sol[lc.var_num] == lc.sense) {
-                vars[lc.var_num].score -= cl.weight;
-                cl.sat_var = lc.var_num;
-                break;
+            assert(cl.sat_count >= 0);
+
+            // make it unsat
+            if (cl.sat_count == 0) {
+              unsat_a_clause(l.cl_num);
+              for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
+            } else if (cl.sat_count == 1) {
+              // Have to update the var that makes the clause satisfied
+              for (const lit& lc: cl.lits) {
+                if (sol[lc.var_num] == lc.sense) {
+                  vars[lc.var_num].score -= cl.weight;
+                  cl.sat_var = lc.var_num;
+                  break;
+                }
               }
             }
           }

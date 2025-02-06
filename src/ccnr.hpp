@@ -132,15 +132,15 @@ class LSSolver {
 
     // Config
     long long max_steps;
-    int max_tries;
+    int64_t max_tries;
     uint32_t verb = 0;
     float swt_p = 0.3;
     float swt_q = 0.7;
     int swt_thresh = 50;
 
     // internal stats
-    long long step;
-    long long mems = 0;
+    int64_t step;
+    int64_t mems = 0;
     int avg_cl_weight;
     long long delta_tot_cl_weight;
 

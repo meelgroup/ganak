@@ -41,7 +41,7 @@ class LSSolver;
 
 struct CCNRConf {
   uint32_t verb = 1;
-  uint64_t yalsat_max_mems = 1000;
+  int64_t yalsat_max_mems = 1000;
 };
 
 class Ganak_ccnr {

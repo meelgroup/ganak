@@ -36,7 +36,7 @@ using std::string;
 
 
 LSSolver::LSSolver() {
-    max_tries = 100;
+    max_tries = 1000LL*1000LL;
     max_steps = 1*1000 * 1000;
     random_gen.seed(1337);
     verb = 0;
@@ -75,14 +75,19 @@ void LSSolver::build_neighborhood() {
 
 bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
     bool result = false;
-    for (int t = 0; t < max_tries; t++) {
+    for (int t = 0; t < max_tries && !result; t++) {
         initialize();
-        if (unsat_cls.empty()) {
-            result = true;
-            break;
-        }
+        for (step = 0; step < max_steps && !result; step++) {
+            if (unsat_cls.empty() && !touched_cls.empty()) {
+                cout << "YAY" << endl;
+                result = true;
+                break;
+            }
+            if (touched_cls.empty()) {
+              cout << prefix << "[ccnr] no touched cls, restart" << endl;
+              break;
+            }
 
-        for (step = 0; step < max_steps; step++) {
             int flipv = pick_var();
             if (flipv == -1) {
               cout << prefix << "[ccnr] no var to flip, restart" << endl;
@@ -90,7 +95,10 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
             }
 
             flip(flipv);
-            if (mems > _mems_limit) return false;
+            if (mems > _mems_limit) {
+              cout << "mems limit reached" << endl;
+              return false;
+            }
             cout << "num unsat cls: " << unsat_cls.size() << " touched_cls: " << touched_cls.size() << endl;
 
             int u_cost = unsat_cls.size();
@@ -102,16 +110,6 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
                 << " touched found: " << t_cost
                 << endl;
             }
-
-            if (u_cost == 0) {
-                print_solution(1);
-                result = true;
-                break;
-            }
-        }
-        if (unsat_cls.empty()) {
-            result = true;
-            break;
         }
     }
     return result;
@@ -193,13 +191,18 @@ void LSSolver::print_cl(int cid) {
 }
 
 int LSSolver::pick_var() {
-    assert(!unsat_cls.empty());
+    assert(!touched_cls.empty());
     update_clause_weights();
     uint32_t tries = 0;
     bool ok = false;
     int cid;
     while (!ok && tries < 100) {
-      cid = touched_cls[random_gen.next(touched_cls.size())];
+      if (!unsat_cls.empty() && random_gen.next(100) < 20) {
+        cid = unsat_cls[random_gen.next(unsat_cls.size())];
+      } else {
+        assert(!touched_cls.empty());
+        cid = touched_cls[random_gen.next(touched_cls.size())];
+      }
       assert(cid < (int)cls.size());
 
       const clause& cl = cls[cid];

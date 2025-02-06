@@ -28,9 +28,12 @@ THE SOFTWARE.
 #include "ccnr.hpp"
 #include "common.hpp"
 #include <arjun/arjun.h>
+#include <iomanip>
 #include "time_mem.hpp"
 
 using namespace CCNR;
+using std::setprecision;
+using std::fixed;
 
 Ganak_ccnr::Ganak_ccnr(uint32_t _verb) {
     conf.verb = _verb;
@@ -51,11 +54,15 @@ int Ganak_ccnr::main(const ArjunNS::SimplifiedCNF* _cnf) {
     }
     double start_time = cpu_time();
 
+    if (cnf->nVars() == cnf->get_sampl_vars().size()) {
+        verb_print(1, "[ccnr] all vars are sampling vars, exiting");
+        return 0;
+    }
     init_problem();
-    int res = ls_s->local_search(conf.yalsat_max_mems*2*1000*1000, "c o");
+    int res = ls_s->local_search(conf.yalsat_max_mems*30LL*1000LL, "c o");
 
     double time_used = cpu_time()-start_time;
-    verb_print(1, "[ccnr] time: " << time_used << " res: " << res);
+    verb_print(1, "[ccnr] T: " << setprecision(2) << fixed << time_used << " res: " << res);
     return res;
 }
 

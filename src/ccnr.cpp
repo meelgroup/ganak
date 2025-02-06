@@ -194,6 +194,8 @@ int LSSolver::pick_var() {
     int cid;
     while (!ok && tries < 100) {
       cid = unsat_cls[random_gen.next(unsat_cls.size())];
+      assert(cid < (int)cls.size());
+
       const clause& cl = cls[cid];
       for (auto& l: cl.lits) {
         if (!indep_map[l.var_num]) {
@@ -245,8 +247,17 @@ void LSSolver::check_clause(int cid) {
   assert(cls[cid].sat_count == sat_cnt);
   assert(cls[cid].touched_cnt == touched_cnt);
   if (sat_cnt == 0 && touched_cnt > 0) {
+    bool found = false;
+    for(uint32_t i = 0; i < unsat_cls.size(); i++) {
+      if (unsat_cls[i] == cid) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) { cout << "NOT found in unsat cls" << endl; }
     assert(idx_in_unsat_cls[cid] < (int)unsat_cls.size());
     assert(unsat_cls[idx_in_unsat_cls[cid]] == cid);
+    assert(found);
   }
 }
 
@@ -372,17 +383,26 @@ void LSSolver::untouch_a_clause(int cl_id) {
     int last_item = touched_cls.back();
     touched_cls.pop_back();
     int index = idx_in_touched_cls[cl_id];
-    if (index < (int)touched_cls.size()) touched_cls[index] = last_item;
-    idx_in_touched_cls[last_item] = index;
+    if (index < (int)touched_cls.size()) {
+      touched_cls[index] = last_item;
+      idx_in_touched_cls[last_item] = index;
+    }
 }
 
 void LSSolver::sat_a_clause(int cl_id) {
+    assert(unsat_cls.size() > 0);
+    assert(cls[cl_id].sat_count == 1);
+    assert(cls[cl_id].touched_cnt > 0);
+
     //use the position of the clause to store the last unsat clause in stack
     int last_item = unsat_cls.back();
     unsat_cls.pop_back();
+    cout << "sat_a_clause: last_item: " << last_item << " cl_id: " << cl_id << endl;
     int index = idx_in_unsat_cls[cl_id];
-    if (index < (int)unsat_cls.size()) unsat_cls[index] = last_item;
-    idx_in_unsat_cls[last_item] = index;
+    if (index < (int)unsat_cls.size()) {
+      unsat_cls[index] = last_item;
+      idx_in_unsat_cls[last_item] = index;
+    }
 
     //update unsat_appear and unsat_vars
     for (lit l: cls[cl_id].lits) {
@@ -391,15 +411,20 @@ void LSSolver::sat_a_clause(int cl_id) {
             last_item = unsat_vars.back();
             unsat_vars.pop_back();
             index = idx_in_unsat_vars[l.var_num];
-            if (index < (int)unsat_vars.size()) unsat_vars[index] = last_item;
-            idx_in_unsat_vars[last_item] = index;
+            if (index < (int)unsat_vars.size()) {
+              unsat_vars[index] = last_item;
+              idx_in_unsat_vars[last_item] = index;
+            }
         }
     }
 }
 
 void LSSolver::unsat_a_clause(int cl_id) {
-    idx_in_unsat_cls[cl_id] = unsat_cls.size();
+    assert(cls[cl_id].sat_count == 0);
+    assert(cls[cl_id].touched_cnt > 0);
     unsat_cls.push_back(cl_id);
+    idx_in_unsat_cls[cl_id] = unsat_cls.size()-1;
+
     //update unsat_appear and unsat_vars
     for (lit l: cls[cl_id].lits) {
         vars[l.var_num].unsat_appear++;

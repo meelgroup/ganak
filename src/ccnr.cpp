@@ -239,6 +239,9 @@ void LSSolver::check_clause(int cid) {
     if (sol[l.var_num] == l.sense) sat_cnt++;
     if (sol[l.var_num] != 2) touched_cnt++;
   }
+  cout << "Checking cl_id: " << cid << " -- "; print_cl(cid);
+  cout << "sat_cnt: " << sat_cnt << " touched_cnt: " << touched_cnt << endl;
+  cout << "cls[cid].sat_count: " << cls[cid].sat_count << " cls[cid].touched_cnt: " << cls[cid].touched_cnt << endl;
   assert(cls[cid].sat_count == sat_cnt);
   assert(cls[cid].touched_cnt == touched_cnt);
   if (sat_cnt == 0 && touched_cnt > 0) {
@@ -253,7 +256,7 @@ void LSSolver::flip(int v) {
 
     bool touch = false;
     int old_val = sol[v] ;
-    assert(old_val < 2);
+    assert(old_val <= 2);
     if (sol[v] == 2) {
         // set to some value
         touch = true;
@@ -289,7 +292,7 @@ void LSSolver::flip(int v) {
         if (sol[v] == l.sense) {
             // make it sat
             cl.sat_count++;
-            cout << "Here, cnt: " << cl.sat_count << endl;
+            cout << "make sat. sat_cnt: " << cl.sat_count << endl;
 
             if (cl.sat_count == 1) {
                 sat_a_clause(l.cl_num);
@@ -345,12 +348,15 @@ void LSSolver::flip(int v) {
           }
         }
         cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
-        for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
+        check_clause(l.cl_num);
     }
     if (!touch) {
       vars[v].score = -orig_score;
     }
     vars[v].last_flip_step = step;
+
+    cout << "Done flip(). Checking all clauses" << endl;
+    for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
 }
 
 void LSSolver::touch_a_clause(int cl_id) {
@@ -385,9 +391,7 @@ void LSSolver::sat_a_clause(int cl_id) {
             last_item = unsat_vars.back();
             unsat_vars.pop_back();
             index = idx_in_unsat_vars[l.var_num];
-            if (index < (int)unsat_vars.size()) {
-                unsat_vars[index] = last_item;
-            }
+            if (index < (int)unsat_vars.size()) unsat_vars[index] = last_item;
             idx_in_unsat_vars[last_item] = index;
         }
     }

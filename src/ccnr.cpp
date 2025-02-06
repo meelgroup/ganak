@@ -91,7 +91,7 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
 
             flip(flipv);
             if (mems > _mems_limit) return false;
-            /* cout << "num unsat cls: " << unsat_cls.size() << " num cls: " << cls.size() << endl; */
+            cout << "num unsat cls: " << unsat_cls.size() << " touched_cls: " << touched_cls.size() << endl;
 
             int u_cost = unsat_cls.size();
             int t_cost = touched_cls.size();
@@ -125,7 +125,12 @@ void LSSolver::initialize() {
     for (auto &i: idx_in_unsat_vars) i = 0;
     for (int v = 1; v <= num_vars; v++) {
       if (!indep_map[v]) {
-        sol[v] = random_gen.next(3);
+        if (random_gen.next(100) < 20) {
+          sol[v] = random_gen.next(2);
+        } else {
+          sol[v] = 2;
+        }
+
         /* cout << "init var " << v << " to : " << (int) sol[v] << endl; */
       }
       else assert(sol[v] == 2);
@@ -194,7 +199,7 @@ int LSSolver::pick_var() {
     bool ok = false;
     int cid;
     while (!ok && tries < 100) {
-      cid = unsat_cls[random_gen.next(unsat_cls.size())];
+      cid = touched_cls[random_gen.next(touched_cls.size())];
       assert(cid < (int)cls.size());
 
       const clause& cl = cls[cid];
@@ -220,7 +225,7 @@ int LSSolver::pick_var() {
           continue;
         }
         int score = vars[v].score;
-        if (sol[v] == 2) score /= 10;
+        if (sol[v] == 2 && score > 0) score *= 0.8;
 
         if (score > best_score) {
             best_var = v;
@@ -293,7 +298,7 @@ void LSSolver::flip(int v) {
         touch = true;
         sol[v] = random_gen.next(2);
         /* cout << "CHG setting var " << v << " new val: " << (int)sol[v] << endl; */
-    } else if (random_gen.next(7) <= 5) {
+    } else if (random_gen.next(100) <= 60 ) {
         //flip
         sol[v] = 1 - sol[v];
         /* cout << "CHG flipping var " << v << " new val: " << (int)sol[v] << endl; */

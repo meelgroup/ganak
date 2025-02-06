@@ -350,6 +350,7 @@ void LSSolver::flip(int v) {
           assert(cl.touched_cnt >= 0);
           if (cls[l.cl_num].touched_cnt == 0) untouch_a_clause(l.cl_num);
 
+          // it was previously satisfied
           if (old_val == l.sense) {
             cl.sat_count--;
             assert(cl.sat_count >= 0);
@@ -368,17 +369,23 @@ void LSSolver::flip(int v) {
                 }
               }
             }
+          } else {
+            // it was previously unsatisfied
+            if (cl.touched_cnt == 0) {
+              // this clause is not fully untouched
+              sat_a_clause(l.cl_num);
+            }
           }
         }
         cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
         check_clause(l.cl_num);
         for(uint32_t i = 0; i < unsat_cls.size(); i++) {
           uint32_t clid = unsat_cls[i];
+          assert(cls[clid].sat_count == 0);
           if (idx_in_unsat_cls[clid] != (int)i) {
-            cout << "bad clid: " << clid << endl;
+            cout << "bad clid: " << clid << " i: " << i << endl;
           }
           assert(idx_in_unsat_cls[clid] == (int)i);
-          assert(cls[clid].sat_count == 0);
         }
     }
     if (!touch) {
@@ -411,8 +418,8 @@ void LSSolver::untouch_a_clause(int cl_id) {
 
 void LSSolver::sat_a_clause(int cl_id) {
     assert(unsat_cls.size() > 0);
-    assert(cls[cl_id].sat_count == 1);
-    assert(cls[cl_id].touched_cnt > 0);
+    if (cls[cl_id].touched_cnt > 0) assert(cls[cl_id].sat_count == 1);
+    else assert(cls[cl_id].touched_cnt == 0 && cls[cl_id].sat_count == 0);
 
     //use the position of the clause to store the last unsat clause in stack
     int last_item = unsat_cls.back();
@@ -446,6 +453,10 @@ void LSSolver::unsat_a_clause(int cl_id) {
     assert(cls[cl_id].touched_cnt > 0);
     unsat_cls.push_back(cl_id);
     idx_in_unsat_cls[cl_id] = unsat_cls.size()-1;
+    cout << "last unsat_cls: " << unsat_cls.back() << endl;
+    cout << "idx_in_unsat_cls[cl_id]: " << idx_in_unsat_cls[cl_id] << endl;
+    cout << "unsat_cls.size(): " << unsat_cls.size() << endl;
+    assert(unsat_cls[idx_in_unsat_cls[cl_id]] == cl_id);
 
     //update unsat_appear and unsat_vars
     for (const lit& l: cls[cl_id].lits) {

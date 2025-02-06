@@ -73,7 +73,7 @@ void LSSolver::build_neighborhood() {
     }
 }
 
-bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
+bool LSSolver::local_search(long long int mems_limit , const char* prefix) {
     bool result = false;
     for (int t = 0; t < max_tries && !result; t++) {
         initialize();
@@ -95,7 +95,7 @@ bool LSSolver::local_search(long long int _mems_limit , const char* prefix) {
             }
 
             flip(flipv);
-            if (mems > _mems_limit) {
+            if (mems > mems_limit) {
               cout << "mems limit reached" << endl;
               return false;
             }

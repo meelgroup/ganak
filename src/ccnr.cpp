@@ -45,7 +45,7 @@ LSSolver::LSSolver() {
 bool LSSolver::make_space() {
     if (num_vars == 0) return false;
     vars.resize(num_vars+1);
-    sol.resize(num_vars+1, 3);
+    sol.resize(num_vars+1, 2);
     idx_in_unsat_vars.resize(num_vars+1);
 
     cls.resize(num_cls);
@@ -127,7 +127,7 @@ void LSSolver::initialize() {
         sol[v] = random_gen.next(3);
         cout << "init var " << v << " to : " << (int) sol[v] << endl;
       }
-      else assert(sol[v] == 3);
+      else assert(sol[v] == 2);
     }
 
     //unsat_appears, will be updated when calling unsat_a_clause function.
@@ -147,7 +147,7 @@ void LSSolver::initialize() {
                 cl.sat_count++;
                 cl.sat_var = l.var_num;
             }
-            if (val != 3) cl.touched_cnt++;
+            if (val != 2) cl.touched_cnt++;
         }
         if (cl.sat_count == 0 && cl.touched_cnt > 0) unsat_a_clause(cid);
         if (cl.touched_cnt > 0) touch_a_clause(cid);
@@ -213,11 +213,11 @@ int LSSolver::pick_var() {
     for (auto& l: cl.lits) {
         int v = l.var_num;
         if (indep_map[v]) {
-          assert(sol[v] == 3);
+          assert(sol[v] == 2);
           continue;
         }
         int score = vars[v].score;
-        if (sol[v] == 3) score /= 10;
+        if (sol[v] == 2) score /= 10;
 
         if (score > best_score) {
             best_var = v;
@@ -235,9 +235,9 @@ int LSSolver::pick_var() {
 void LSSolver::check_clause(int cid) {
   int sat_cnt = 0;
   int touched_cnt = 0;
-  for (lit l: cls[cid].lits) {
+  for (const lit& l: cls[cid].lits) {
     if (sol[l.var_num] == l.sense) sat_cnt++;
-    if (sol[l.var_num] != 3) touched_cnt++;
+    if (sol[l.var_num] != 2) touched_cnt++;
   }
   assert(cls[cid].sat_count == sat_cnt);
   assert(cls[cid].touched_cnt == touched_cnt);
@@ -249,13 +249,12 @@ void LSSolver::check_clause(int cid) {
 
 void LSSolver::flip(int v) {
     assert(!indep_map[v]);
-    for (const lit& l: vars[v].lits) {
-      check_clause(l.cl_num);
-    }
+    for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
 
     bool touch = false;
     int old_val = sol[v] ;
-    if (sol[v] == 3) {
+    assert(old_val < 2);
+    if (sol[v] == 2) {
         // set to some value
         touch = true;
         sol[v] = random_gen.next(2);
@@ -266,8 +265,8 @@ void LSSolver::flip(int v) {
         cout << "flipping var " << v << " new val: " << (int)sol[v] << endl;
     } else {
         // unset
-        sol[v] = 3;
-        cout << "unsetting var " << v << endl;
+        sol[v] = 2;
+        cout << "unsetting var " << v << " prev val: " << (int)old_val << endl;
     }
 
     const int orig_score = vars[v].score;
@@ -300,7 +299,7 @@ void LSSolver::flip(int v) {
                 vars[cl.sat_var].score += cl.weight;
             }
         } else if (sol[v] == !l.sense) {
-          if (old_val != 3) {
+          if (old_val != 2) {
             // make it unsat
             cl.sat_count--;
             assert(cl.sat_count >= 0);
@@ -319,7 +318,7 @@ void LSSolver::flip(int v) {
                   }
               }
           }
-        } else if (sol[v] == 3) {
+        } else if (sol[v] == 2) {
           // unset
           cls[l.cl_num].touched_cnt--;
           assert(cl.touched_cnt >= 0);
@@ -346,6 +345,7 @@ void LSSolver::flip(int v) {
           }
         }
         cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
+        for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
     }
     if (!touch) {
       vars[v].score = -orig_score;
@@ -456,7 +456,7 @@ void LSSolver::print_solution(bool need_verify) {
             bool sat_flag = false;
             bool touched_flag = false;
             for (lit l: cls[cid].lits) {
-                if (sol[l.var_num] != 3) touched_flag = true;
+                if (sol[l.var_num] != 2) touched_flag = true;
                 if (sol[l.var_num] == l.sense) {
                     sat_flag = true;
                     break;

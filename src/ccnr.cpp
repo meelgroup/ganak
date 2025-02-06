@@ -246,6 +246,18 @@ void LSSolver::check_clause(int cid) {
   cout << "cls[cid].sat_count: " << cls[cid].sat_count << " cls[cid].touched_cnt: " << cls[cid].touched_cnt << endl;
   assert(cls[cid].sat_count == sat_cnt);
   assert(cls[cid].touched_cnt == touched_cnt);
+  if (touched_cnt > 0) {
+    bool found = false;
+    for(uint32_t i = 0; i < touched_cls.size(); i++) {
+      int clid = touched_cls[i];
+      if (clid == cid) {
+        found = true;
+        break;
+      }
+      assert(idx_in_touched_cls[clid] == (int)i);
+    }
+    assert(found);
+  }
   if (sat_cnt == 0 && touched_cnt > 0) {
     bool found = false;
     for(uint32_t i = 0; i < unsat_cls.size(); i++) {

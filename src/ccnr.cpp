@@ -264,6 +264,11 @@ void LSSolver::check_clause(int cid) {
 void LSSolver::flip(int v) {
     assert(!indep_map[v]);
     for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
+    for(uint32_t i = 0; i < unsat_cls.size(); i++) {
+      uint32_t clid = unsat_cls[i];
+      assert(idx_in_unsat_cls[clid] == (int)i);
+      assert(cls[clid].sat_count == 0);
+    }
 
     bool touch = false;
     int old_val = sol[v] ;
@@ -272,15 +277,15 @@ void LSSolver::flip(int v) {
         // set to some value
         touch = true;
         sol[v] = random_gen.next(2);
-        cout << "setting var " << v << " new val: " << (int)sol[v] << endl;
+        cout << "CHG setting var " << v << " new val: " << (int)sol[v] << endl;
     } else if (random_gen.next(7) <= 5) {
         //flip
         sol[v] = 1 - sol[v];
-        cout << "flipping var " << v << " new val: " << (int)sol[v] << endl;
+        cout << "CHG flipping var " << v << " new val: " << (int)sol[v] << endl;
     } else {
         // unset
         sol[v] = 2;
-        cout << "unsetting var " << v << " prev val: " << (int)old_val << endl;
+        cout << "CHG unsetting var " << v << " prev val: " << (int)old_val << endl;
     }
 
     const int orig_score = vars[v].score;
@@ -306,20 +311,27 @@ void LSSolver::flip(int v) {
             cout << "make sat. sat_cnt: " << cl.sat_count << endl;
 
             if (cl.sat_count == 1) {
-                sat_a_clause(l.cl_num);
+                if (old_val == 2 && cl.touched_cnt == 1) {
+                  // first time touching, and made it sat, no need to update unsat_cls
+                } else sat_a_clause(l.cl_num);
                 cl.sat_var = v;
                 for (const lit& lc: cl.lits) vars[lc.var_num].score -= cl.weight;
             } else if (cl.sat_count == 2) {
                 vars[cl.sat_var].score += cl.weight;
             }
         } else if (sol[v] == !l.sense) {
+          auto prev_sat_count = cl.sat_count;
           if (old_val != 2) {
             // make it unsat
             cl.sat_count--;
             assert(cl.sat_count >= 0);
           }
 
-          if (cl.sat_count == 0 && cl.touched_cnt > 0) {
+          // first time touching, and made it unsat
+          if ((cl.sat_count == 0 && cl.touched_cnt == 1) ||
+              // made it unsat with a flip
+              (prev_sat_count > 0 && cl.sat_count == 0)
+          ) {
               unsat_a_clause(l.cl_num);
               for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
           } else if (cl.sat_count == 1) {
@@ -360,6 +372,14 @@ void LSSolver::flip(int v) {
         }
         cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
         check_clause(l.cl_num);
+        for(uint32_t i = 0; i < unsat_cls.size(); i++) {
+          uint32_t clid = unsat_cls[i];
+          if (idx_in_unsat_cls[clid] != (int)i) {
+            cout << "bad clid: " << clid << endl;
+          }
+          assert(idx_in_unsat_cls[clid] == (int)i);
+          assert(cls[clid].sat_count == 0);
+        }
     }
     if (!touch) {
       vars[v].score = -orig_score;
@@ -400,6 +420,7 @@ void LSSolver::sat_a_clause(int cl_id) {
     cout << "sat_a_clause: last_item: " << last_item << " cl_id: " << cl_id << endl;
     int index = idx_in_unsat_cls[cl_id];
     if (index < (int)unsat_cls.size()) {
+      assert(unsat_cls[index] == cl_id);
       unsat_cls[index] = last_item;
       idx_in_unsat_cls[last_item] = index;
     }
@@ -420,13 +441,14 @@ void LSSolver::sat_a_clause(int cl_id) {
 }
 
 void LSSolver::unsat_a_clause(int cl_id) {
+    cout << "unsat_a_clause: cl_id: " << cl_id << endl;
     assert(cls[cl_id].sat_count == 0);
     assert(cls[cl_id].touched_cnt > 0);
     unsat_cls.push_back(cl_id);
     idx_in_unsat_cls[cl_id] = unsat_cls.size()-1;
 
     //update unsat_appear and unsat_vars
-    for (lit l: cls[cl_id].lits) {
+    for (const lit& l: cls[cl_id].lits) {
         vars[l.var_num].unsat_appear++;
         if (1 == vars[l.var_num].unsat_appear) {
             idx_in_unsat_vars[l.var_num] = unsat_vars.size();

@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required (VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required (VERSION 3.29 FATAL_ERROR)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 20)
@@ -261,9 +261,29 @@ if (NOT WIN32)
 endif()
 
 
-option(USE_MOLD "Use mold linker" OFF)
-if (USE_MOLD)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=mold")
+# Determine if the compiler is GCC or Clang
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+  message(STATUS "Detected GCC/Clang, checking for mold/sold linker...")
+
+  # Check for mold linker on general systems and ld64.mold on macOS
+  if(APPLE)
+    find_program(MOLD_LINKER ld64.mold)
+    set(CMAKE_LINKER_TYPE SOLD)
+  else()
+    find_program(MOLD_LINKER mold)
+    set(CMAKE_LINKER_TYPE MOLD)
+  endif()
+
+  if(MOLD_LINKER)
+    message(STATUS "LINKER_TYPE set to ${CMAKE_LINKER_TYPE} for faster builds")
+    list(APPEND CMAKE_MESSAGE_INDENT " ")
+    message(STATUS "(set -DUSE_MOLD=OFF to disable)")
+    list(POP_BACK CMAKE_MESSAGE_INDENT)
+  else()
+    message(STATUS "  -- No suitable mold linker found. Using default linker.")
+  endif()
+else()
+  message(STATUS "Compiler is neither GCC nor Clang. Skipping mold linker check.")
 endif()
 
 if (NOT WIN32)

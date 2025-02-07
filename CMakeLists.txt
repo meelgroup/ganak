@@ -261,7 +261,7 @@ if (NOT WIN32)
 endif()
 
 
-# Determine if the compiler is GCC or Clang
+# Use mold/sold linker if available
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   message(STATUS "Detected GCC/Clang, checking for mold/sold linker...")
 

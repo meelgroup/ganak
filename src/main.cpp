@@ -388,8 +388,9 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_mult(arjun_cms_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
-  if (do_puura) arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
-  else cnf.renumber_sampling_vars_for_ganak();
+  if (cnf.get_sampl_vars().size() > 0 && do_puura) {
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+  } else cnf.renumber_sampling_vars_for_ganak();
 
   if (!do_optindep && cnf.get_weighted()) {
     // We have to move the weights to indep support and renumber again.
@@ -523,12 +524,12 @@ int main(int argc, char *argv[])
 
   // Run BreakID
   vector<map<Lit, Lit>> generators;
-  if (conf.do_restart && do_breakid && cnf.clauses.size() > 1)
+  if (!cnf.get_sampl_vars().empty() && conf.do_restart && do_breakid && cnf.clauses.size() > 1)
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run ccnr
-  if (do_ccnr) {
+  if (!cnf.get_sampl_vars().empty() && do_ccnr) {
     CCNR::Ganak_ccnr ls_s(conf.verb);
     ls_s.main(&cnf);
     exit(0);

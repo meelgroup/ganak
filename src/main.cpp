@@ -68,7 +68,7 @@ argparse::ArgumentParser program = argparse::ArgumentParser("ganak");
 
 using namespace std;
 CounterConfiguration conf;
-int arjun_verb = 2;
+int arjun_verb = 1;
 int do_arjun = 1;
 int arjun_gates = 1;
 int do_breakid = 0;

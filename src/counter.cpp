@@ -800,8 +800,8 @@ T Counter<T>::outer_count() {
       }, set_timeout);
   }
 
-  verb_print(1, "Sampling set size: " << indep_support_end-1);
-  verb_print(1, "Opt sampling set size: " << opt_indep_support_end-1);
+  verb_print(1, "Sampling set size: " << ((indep_support_end>0) ? (indep_support_end-1) : 0));
+  verb_print(1, "Opt sampling set size: " << ((opt_indep_support_end>0) ? (opt_indep_support_end-1) : 0));
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
   auto ret = sat_solver->solve();

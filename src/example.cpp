@@ -31,8 +31,6 @@ ArjunNS::SimpConf simp_conf;
 int do_precise = 1;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 
-int arjun_oracle_find_bins = 0;
-
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   vector<Lit> ganak_cl; ganak_cl.reserve(cl.size());
   for(const auto& l: cl) ganak_cl.push_back(Lit(l.var()+1, !l.sign()));

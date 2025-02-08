@@ -83,7 +83,7 @@ string debug_arjun_cnf;
 int do_precise = 1;
 int do_backbone_only_optindep = 0;
 int arjun_oracle_find_bins = 6;
-double arjun_cms_mult = -1.0;
+double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
 int do_optindep = 1;
 int do_ccnr = 0;
@@ -145,7 +145,7 @@ void add_ganak_options()
     myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Extra oracle at the end of puura");
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
     myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
-    myopt("--arjuncmsmult", arjun_cms_mult, atof,  "Pass this multiplier to CMSat through Arjun");
+    myopt("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");
 //
 //  TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
@@ -385,7 +385,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_backbone_only_optindep(do_backbone_only_optindep);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
-  arjun.set_cms_mult(arjun_cms_mult);
+  arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
   if (cnf.get_sampl_vars().size() > 0 && do_puura) {

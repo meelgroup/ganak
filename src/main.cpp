@@ -86,6 +86,7 @@ double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
 int do_optindep = 1;
 int do_ccnr = 0;
+uint32_t arjun_further_min_cutoff = 1;
 
 string print_version()
 {
@@ -144,6 +145,7 @@ void add_ganak_options()
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
     myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
     myopt("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");
+    myopt("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
 //
 //  TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
@@ -385,7 +387,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
-  if (cnf.get_sampl_vars().size() > 0 && do_puura) {
+  if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
   } else cnf.renumber_sampling_vars_for_ganak();
 
@@ -521,7 +523,7 @@ int main(int argc, char *argv[])
 
   // Run BreakID
   vector<map<Lit, Lit>> generators;
-  if (!cnf.get_sampl_vars().empty() && conf.do_restart && do_breakid && cnf.clauses.size() > 1)
+  if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && conf.do_restart && do_breakid && cnf.clauses.size() > 1)
     generators = run_breakid(cnf);
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 

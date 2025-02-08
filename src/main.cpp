@@ -81,7 +81,6 @@ ArjunNS::Arjun::ElimToFileConf etof_conf;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
 int do_precise = 1;
-int do_backbone_only_optindep = 0;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
@@ -132,7 +131,6 @@ void add_ganak_options()
     myopt("--puura", do_puura, atoi, "Run Puura");
     myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
     myopt("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
-    myopt("--backboneonlyoptind", do_backbone_only_optindep, atoi, "Backbone only over the opt indep set");
     myopt("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
     myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
     myopt("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
@@ -383,7 +381,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_probe_based(do_probe_based);
   arjun.set_simp(arjun_simp_level);
   arjun.set_backw_max_confl(arjun_backw_maxc);
-  arjun.set_backbone_only_optindep(do_backbone_only_optindep);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);

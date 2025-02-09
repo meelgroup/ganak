@@ -87,6 +87,7 @@ int do_puura = 1;
 int do_optindep = 1;
 int do_ccnr = 0;
 uint32_t arjun_further_min_cutoff = 1;
+int arjun_extend_ccnr = 0;
 
 string print_version()
 {
@@ -146,6 +147,7 @@ void add_ganak_options()
     myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
     myopt("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");
     myopt("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
+    myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
 //
 //  TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
@@ -387,6 +389,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf);
+  arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
   } else cnf.renumber_sampling_vars_for_ganak();

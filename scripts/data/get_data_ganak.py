@@ -485,7 +485,7 @@ for f in file_list:
         files[base]["decisionsK"] = ganak_decisions(f)
         arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t= find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
-        files[base]["backbtime"] = backb_t
+        files[base]["backboneT"] = backb_t
         files[base]["backwtime"] = backw_t
         files[base]["indepsz"] = indep_sz
         files[base]["optindepsz"] = opt_indep_sz
@@ -626,10 +626,10 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s,"  % f["arjuntime"]
 
-        if "backbtime" not in f or f["backbtime"] is None:
+        if "backboneT" not in f or f["backboneT"] is None:
             toprint += ","
         else:
-          toprint += "%s,"  % f["backbtime"]
+          toprint += "%s,"  % f["backboneT"]
 
         if "backwtime" not in f or f["backwtime"] is None:
             toprint += ","

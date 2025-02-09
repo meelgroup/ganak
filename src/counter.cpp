@@ -793,6 +793,10 @@ T Counter<T>::outer_count() {
       set_timeout = new_set_timeout;
     }
     verb_print(1, "[appmc] timeout set to: " << set_timeout);
+    if (set_timeout == 0) {
+      verb_print(1, "[appmc] No time left, skipping TD");
+      conf.do_td = 0;
+    }
     Timer t;
     t.set_timeout([=, this]() {
         appmc_timeout_fired = true;

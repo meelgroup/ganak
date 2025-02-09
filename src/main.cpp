@@ -95,9 +95,9 @@ string print_version()
     ss << "c o GANAK SHA revision " << GANAK::get_version_sha1() << endl;
     ss << "c o GANAK compilation env " << GANAK::get_compilation_env() << endl;
     #ifdef __GNUC__
-    ss << "c o GANAK compiled with gcc version " << __VERSION__;
+    ss << "c o GANAK compiled with gcc version " << __VERSION__ << endl;
     #else
-    ss << "c o GANAK compiled with non-gcc compiler";
+    ss << "c o GANAK compiled with non-gcc compiler << endl;
     #endif
     ss << "c o CMS revision: " << CMSat::SATSolver::get_version_sha1() << endl;
     ss << "c o Arjun SHA revision: " << ArjunNS::Arjun ::get_version_info() << endl;

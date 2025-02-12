@@ -86,7 +86,7 @@ double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
 int do_optindep = 1;
 int do_ccnr = 0;
-uint32_t arjun_further_min_cutoff = 1;
+uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 
 string print_version()

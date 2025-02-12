@@ -780,6 +780,31 @@ public:
 };
 
 template<typename T>
+T Counter<T>::count_using_cms() {
+  T cnt = 0;
+  auto ret = sat_solver->solve();
+  assert(ret != CMSat::l_Undef);
+  while(ret == CMSat::l_True) {
+    T this_cnt = 1;
+    auto sol = sat_solver->get_model();
+    if constexpr (weighted)
+      for(int i = 0; i < (int)opt_indep_support_end-1; i++) {
+        assert(sol[i] != CMSat::l_Undef);
+        this_cnt *= get_weight(Lit(i+1, (sol[i] == CMSat::l_True)));
+      }
+    else this_cnt = 1;
+    cnt += this_cnt;
+    vector<CMSat::Lit> ban;
+    for(int j = 0; j < (int)indep_support_end-1; j++)
+      ban.push_back(CMSat::Lit(j, sol[j] == CMSat::l_True));
+    sat_solver->add_clause(ban);
+    ret = sat_solver->solve();
+    assert(ret != CMSat::l_Undef);
+  }
+  return cnt;
+}
+
+template<typename T>
 T Counter<T>::outer_count() {
   if (!ok) return 0;
   T cnt = 0;
@@ -808,7 +833,12 @@ T Counter<T>::outer_count() {
   verb_print(1, "Opt sampling set size: " << ((opt_indep_support_end>0) ? (opt_indep_support_end-1) : 0));
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
+  if (indep_support_end <= 10) {
+    cnt = count_using_cms();
+    return cnt;
+  }
   auto ret = sat_solver->solve();
+
   start_time = cpu_time();
   uint32_t next_rst_print = 0;
   bool done = false;

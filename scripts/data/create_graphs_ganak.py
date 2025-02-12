@@ -464,9 +464,13 @@ only_dirs = [
 
             # more vivification during minimization (and with it more binary XORs), apparently this matters a lot
             "out-ganak-mc2324-14167470-",
+            # c o GANAK SHA revision e246dcbba97bc937806f0863738478eec6c5c760
+            # c o CMS revision: c15cd211779400ba8ed3ec45c24666487f0acec1
+            # c o Arjun SHA revision: f24048a43411cb52410526b80eff2720d32bc942
+            # c o Arjun SBVA SHA revision: 5912435affe8c77ecf364093cea29e0fc5c1b5cb
 
             # even more minimization during vivification, etc
-            "out-ganak-mc2324-14171543-",
+            #"out-ganak-mc2324-14171543-",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]

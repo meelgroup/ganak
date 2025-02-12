@@ -200,6 +200,7 @@ private:
   std::mt19937_64 mtrand;
   CMSat::SATSolver* sat_solver = nullptr;
   CompManager<T>* comp_manager = nullptr;
+  T count_using_cms();
 
   // ReduceDB
   bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {

@@ -128,7 +128,7 @@ class LSSolver {
     int get_cost() { return unsat_cls.size(); }
 
   private:
-    void check_interals() const;
+    void check_invariants() const;
     void check_unsat_cls() const;
     Mersenne random_gen;
 
@@ -150,6 +150,7 @@ class LSSolver {
     void initialize();
     void initialize_variable_datas();
     int pick_var();
+    int unset_a_clause();
     void flip(int flipv);
     void unset(int v);
     void update_clause_weights();

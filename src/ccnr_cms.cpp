@@ -59,7 +59,10 @@ int Ganak_ccnr::main(const ArjunNS::SimplifiedCNF* _cnf) {
         return 0;
     }
     init_problem();
-    int res = ls_s->local_search(conf.yalsat_max_mems*30LL*1000LL, "c o");
+    int res = ls_s->local_search(conf.yalsat_max_mems*50LL*1000LL, "c o");
+    if (res == 1) {
+      ls_s->print_solution(true);
+    }
 
     double time_used = cpu_time()-start_time;
     verb_print(1, "[ccnr] T: " << setprecision(2) << fixed << time_used << " res: " << res);

@@ -88,18 +88,28 @@ bool LSSolver::local_search(long long int mems_limit , const char* prefix) {
               break;
             }
 
-            int flipv = pick_var();
-            if (flipv == -1) {
-              cout << prefix << "[ccnr] no var to flip, restart" << endl;
-              break;
-            }
+            update_clause_weights();
+            if (random_gen.next(100) <= 30) {
+              int ret = unset_a_clause();
+              if (ret == 1) {
+                cout << prefix << "[ccnr] no cls to unset, restart" << endl;
+                break;
+              }
+            } else {
+              int flipv = pick_var();
+              if (flipv == -1) {
+                cout << prefix << "[ccnr] no var to flip, restart" << endl;
+                break;
+              }
 
-            flip(flipv);
-            if (mems > mems_limit) {
-              cout << "mems limit reached" << endl;
-              return false;
+              flip(flipv);
+              if (mems > mems_limit) {
+                cout << "mems limit reached" << endl;
+                return false;
+              }
+              cout << "num unsat cls: " << unsat_cls.size() << " touched_cls: " << touched_cls.size() << endl;
             }
-            cout << "num unsat cls: " << unsat_cls.size() << " touched_cls: " << touched_cls.size() << endl;
+            SLOW_DEBUG_DO(check_invariants());
 
             int u_cost = unsat_cls.size();
             int t_cost = touched_cls.size();
@@ -123,7 +133,7 @@ void LSSolver::initialize() {
     for (auto &i: idx_in_unsat_vars) i = 0;
     for (int v = 1; v <= num_vars; v++) {
       if (!indep_map[v]) {
-        if (random_gen.next(100) < 20) {
+        if (random_gen.next(100) < 1) {
           sol[v] = random_gen.next(2);
         } else {
           sol[v] = 2;
@@ -190,19 +200,44 @@ void LSSolver::print_cl(int cid) const {
     }; cout << "0 " << " sat_cnt: " << cls[cid].sat_count << " touched_cnt: " << cls[cid].touched_cnt << endl;
 }
 
-int LSSolver::pick_var() {
+int LSSolver::unset_a_clause() {
+    assert(!unsat_cls.empty());
     assert(!touched_cls.empty());
-    update_clause_weights();
+
     uint32_t tries = 0;
     bool ok = false;
     int cid;
     while (!ok && tries < 100) {
-      if (!unsat_cls.empty() && random_gen.next(100) < 20) {
-        cid = unsat_cls[random_gen.next(unsat_cls.size())];
-      } else {
-        assert(!touched_cls.empty());
-        cid = touched_cls[random_gen.next(touched_cls.size())];
+      cid = unsat_cls[random_gen.next(unsat_cls.size())];
+      assert(cid < (int)cls.size());
+
+      const clause& cl = cls[cid];
+      for (auto& l: cl.lits) {
+        if (!indep_map[l.var_num]) {
+          ok = true;
+          break;
+        }
       }
+      tries++;
+    }
+    if (!ok) return -1;
+
+    for (auto& l: cls[cid].lits)
+      if (sol[l.var_num] != 2) unset(l.var_num);
+
+    /* cout << " ---------  " << endl; */
+    /* cout << "unset cl_id: " << cid << " -- "; print_cl(cid); */
+    return 0;
+}
+
+int LSSolver::pick_var() {
+    assert(!unsat_cls.empty());
+    assert(!touched_cls.empty());
+    uint32_t tries = 0;
+    bool ok = false;
+    int cid;
+    while (!ok && tries < 100) {
+      cid = unsat_cls[random_gen.next(unsat_cls.size())];
       assert(cid < (int)cls.size());
 
       const clause& cl = cls[cid];
@@ -293,7 +328,7 @@ void LSSolver::check_unsat_cls() const {
   }
 }
 
-void LSSolver::check_interals() const {
+void LSSolver::check_invariants() const {
   for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
   for(uint32_t i = 0; i < unsat_cls.size(); i++) {
     uint32_t clid = unsat_cls[i];
@@ -304,7 +339,7 @@ void LSSolver::check_interals() const {
 
 void LSSolver::unset(int v) {
   assert(sol[v] != 2);
-  SLOW_DEBUG_DO(check_interals());
+  SLOW_DEBUG_DO(check_invariants());
 
   const int old_val = sol[v] ;
   sol[v] = 2;
@@ -361,7 +396,7 @@ void LSSolver::unset(int v) {
 
 void LSSolver::flip(int v) {
     assert(!indep_map[v]);
-    SLOW_DEBUG_DO(check_interals());
+    SLOW_DEBUG_DO(check_invariants());
 
     bool touch = false;
     const int old_val = sol[v] ;
@@ -595,14 +630,18 @@ void LSSolver::print_solution(bool need_verify) {
     }
 
     if (verb > 0) {
+        uint32_t num_vars_touched = 0;
         cout << "v";
         for (int v = 1; v <= num_vars; v++) {
+            if (sol[v] != 2) num_vars_touched++;
+            if (sol[v] == 2) continue;
             cout << ' ';
             if (sol[v] == 0)
                 cout << '-';
             cout << v;
         }
         cout << endl;
+        cout << "num vars touched: " << num_vars_touched << endl;
     }
 }
 

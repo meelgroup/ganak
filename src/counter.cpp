@@ -1602,7 +1602,7 @@ T Counter<T>::check_count(const bool also_incl_curr_and_later_dec) {
       after_mul += decisions.top().left_model_count();
       after_mul += decisions.top().right_model_count()*dec_w;
     }
-    if (!decisions.top().is_indep) {
+    if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
       if constexpr (weighted) assert(false && "SAT solver cannot be turned off in weighted mode");
       after_mul = after_mul > 0;
     }

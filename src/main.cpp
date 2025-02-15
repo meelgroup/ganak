@@ -86,6 +86,7 @@ int do_puura = 1;
 int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
+int arjun_autarkies = 0;
 
 string print_version()
 {
@@ -134,6 +135,7 @@ void add_ganak_options()
     myopt("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
     myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
     myopt("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
+    myopt("--arjunautarkies", arjun_autarkies, atoi, "How much autarky for Arjun to do");
     myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
     myopt("--bce", etof_conf.do_bce, atoi, "Do static BCE");
     myopt("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
@@ -382,6 +384,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
+  arjun.set_autarkies(arjun_autarkies);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);

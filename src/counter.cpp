@@ -89,7 +89,7 @@ void Counter<T>::set_optional_indep_support(const set<uint32_t> &indeps) {
   if (tmp.empty()) { opt_indep_support_end = 0; return; }
   opt_indep_support_end = tmp.back()+1;
 
-  verb_print(1, "opt ind size: " << std::min<int>((int)opt_indep_support_end-1, 0) << " ind size: " << std::min<int>((int)indep_support_end-1, 0)
+  verb_print(1, "opt ind size: " << std::max<int>((int)opt_indep_support_end-1, 0) << " ind size: " << std::max<int>((int)indep_support_end-1, 0)
     << " nvars: " << nVars());
 }
 

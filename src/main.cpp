@@ -528,6 +528,7 @@ int main(int argc, char *argv[])
   vector<map<Lit, Lit>> generators;
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && conf.do_restart && do_breakid && cnf.clauses.size() > 1)
     generators = run_breakid(cnf);
+
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run ccnr

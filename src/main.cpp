@@ -388,7 +388,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
-  arjun.standalone_minimize_indep(cnf);
+  arjun.standalone_minimize_indep(cnf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
@@ -401,11 +401,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
       if (!tmp.count(v.first)) cnf.sampl_vars.push_back(v.first);
     }
     cnf.renumber_sampling_vars_for_ganak();
-  }
-
-  if (etof_conf.all_indep) {
-    cnf.opt_sampl_vars.clear();
-    for(uint32_t i = 0; i < cnf.nVars(); i++) cnf.opt_sampl_vars.push_back(i);
   }
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }

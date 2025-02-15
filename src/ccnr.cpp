@@ -184,7 +184,7 @@ void LSSolver::initialize_variable_datas() {
     vp.last_flip_step = 0;
 }
 
-void LSSolver::print_cl(int cid) {
+void LSSolver::print_cl(int cid) const {
     for(auto& l: cls[cid].lits) {
       cout << l << " ";
     }; cout << "0 " << " sat_cnt: " << cls[cid].sat_count << " touched_cnt: " << cls[cid].touched_cnt << endl;
@@ -243,7 +243,7 @@ int LSSolver::pick_var() {
     return best_var;
 }
 
-void LSSolver::check_clause(int cid) {
+void LSSolver::check_clause(int cid) const {
   int sat_cnt = 0;
   int touched_cnt = 0;
   for (const lit& l: cls[cid].lits) {
@@ -269,8 +269,8 @@ void LSSolver::check_clause(int cid) {
   }
   if (sat_cnt == 0 && touched_cnt > 0) {
     bool found = false;
-    for(uint32_t i = 0; i < unsat_cls.size(); i++) {
-      if (unsat_cls[i] == cid) {
+    for(int unsat_cl : unsat_cls) {
+      if (unsat_cl == cid) {
         found = true;
         break;
       }
@@ -282,33 +282,99 @@ void LSSolver::check_clause(int cid) {
   }
 }
 
+void LSSolver::check_unsat_cls() const {
+  for(uint32_t i = 0; i < unsat_cls.size(); i++) {
+    uint32_t clid = unsat_cls[i];
+    assert(cls[clid].sat_count == 0);
+    if (idx_in_unsat_cls[clid] != (int)i) {
+      cout << "bad clid: " << clid << " i: " << i << endl;
+    }
+    assert(idx_in_unsat_cls[clid] == (int)i);
+  }
+}
+
+void LSSolver::check_interals() const {
+  for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
+  for(uint32_t i = 0; i < unsat_cls.size(); i++) {
+    uint32_t clid = unsat_cls[i];
+    assert(idx_in_unsat_cls[clid] == (int)i);
+    assert(cls[clid].sat_count == 0);
+  }
+}
+
+void LSSolver::unset(int v) {
+  assert(sol[v] != 2);
+  SLOW_DEBUG_DO(check_interals());
+
+  const int old_val = sol[v] ;
+  sol[v] = 2;
+  /* cout << "CHG unsetting var " << v << " prev val: " << (int)old_val << endl; */
+
+  mems += vars[v].lits.size();
+
+  // Go through each clause the literal is in and update status
+  for (const lit& l: vars[v].lits) {
+    clause& cl = cls[l.cl_num];
+    assert(cl.sat_count >= 0);
+    assert(cl.touched_cnt >= 0);
+    assert(cl.sat_count <= (int)cl.lits.size());
+    assert(cl.touched_cnt <= (int)cl.lits.size());
+
+    cls[l.cl_num].touched_cnt--;
+    assert(cl.touched_cnt >= 0);
+    if (cls[l.cl_num].touched_cnt == 0) untouch_a_clause(l.cl_num);
+
+    // it was previously satisfied
+    if (old_val == l.sense) {
+      cl.sat_count--;
+      assert(cl.sat_count >= 0);
+
+      // make it unsat
+      if (cl.sat_count == 0 && cl.touched_cnt > 0) {
+        unsat_a_clause(l.cl_num);
+        for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
+      } else if (cl.sat_count == 1) {
+        // Have to update the var that makes the clause satisfied
+        for (const lit& lc: cl.lits) {
+          if (sol[lc.var_num] == lc.sense) {
+            vars[lc.var_num].score -= cl.weight;
+            cl.sat_var = lc.var_num;
+            break;
+          }
+        }
+      }
+    } else {
+      // it was previously unsatisfied
+      if (cl.touched_cnt == 0) {
+        // this clause is not fully untouched
+        sat_a_clause(l.cl_num);
+      }
+    }
+
+#ifdef SLOW_DEBUG
+    cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
+    check_clause(l.cl_num);
+    check_unsat_cls();
+#endif
+  }
+}
+
 void LSSolver::flip(int v) {
     assert(!indep_map[v]);
-#ifdef SLOW_DEBUG
-    for (uint32_t i = 0; i < cls.size(); i++) check_clause(i);
-    for(uint32_t i = 0; i < unsat_cls.size(); i++) {
-      uint32_t clid = unsat_cls[i];
-      assert(idx_in_unsat_cls[clid] == (int)i);
-      assert(cls[clid].sat_count == 0);
-    }
-#endif
+    SLOW_DEBUG_DO(check_interals());
 
     bool touch = false;
-    int old_val = sol[v] ;
+    const int old_val = sol[v] ;
     assert(old_val <= 2);
     if (sol[v] == 2) {
         // set to some value
         touch = true;
         sol[v] = random_gen.next(2);
         /* cout << "CHG setting var " << v << " new val: " << (int)sol[v] << endl; */
-    } else if (random_gen.next(100) <= 60 ) {
+    } else {
         //flip
         sol[v] = 1 - sol[v];
         /* cout << "CHG flipping var " << v << " new val: " << (int)sol[v] << endl; */
-    } else {
-        // unset
-        sol[v] = 2;
-        /* cout << "CHG unsetting var " << v << " prev val: " << (int)old_val << endl; */
     }
 
     const int orig_score = vars[v].score;
@@ -367,38 +433,9 @@ void LSSolver::flip(int v) {
               }
           }
         } else if (sol[v] == 2) {
-          // unset
-          cls[l.cl_num].touched_cnt--;
-          assert(cl.touched_cnt >= 0);
-          if (cls[l.cl_num].touched_cnt == 0) untouch_a_clause(l.cl_num);
-
-          // it was previously satisfied
-          if (old_val == l.sense) {
-            cl.sat_count--;
-            assert(cl.sat_count >= 0);
-
-            // make it unsat
-            if (cl.sat_count == 0 && cl.touched_cnt > 0) {
-              unsat_a_clause(l.cl_num);
-              for (const lit& lc: cl.lits) vars[lc.var_num].score += cl.weight;
-            } else if (cl.sat_count == 1) {
-              // Have to update the var that makes the clause satisfied
-              for (const lit& lc: cl.lits) {
-                if (sol[lc.var_num] == lc.sense) {
-                  vars[lc.var_num].score -= cl.weight;
-                  cl.sat_var = lc.var_num;
-                  break;
-                }
-              }
-            }
-          } else {
-            // it was previously unsatisfied
-            if (cl.touched_cnt == 0) {
-              // this clause is not fully untouched
-              sat_a_clause(l.cl_num);
-            }
-          }
+          assert(false);
         }
+
 #ifdef SLOW_DEBUG
         cout << "Effect on cl_id: " << l.cl_num << " -- "; print_cl(l.cl_num);
         check_clause(l.cl_num);

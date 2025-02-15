@@ -128,6 +128,8 @@ class LSSolver {
     int get_cost() { return unsat_cls.size(); }
 
   private:
+    void check_interals() const;
+    void check_unsat_cls() const;
     Mersenne random_gen;
 
     // Config
@@ -149,6 +151,7 @@ class LSSolver {
     void initialize_variable_datas();
     int pick_var();
     void flip(int flipv);
+    void unset(int v);
     void update_clause_weights();
     void smooth_clause_weights();
 
@@ -159,8 +162,8 @@ class LSSolver {
     void touch_a_clause(int cl_id);
 
     // debug
-    void print_cl(int cl_id);
-    void check_clause(int cid);
+    void print_cl(int cl_id) const;
+    void check_clause(int cid) const;
 };
 
 } // namespace CCNR

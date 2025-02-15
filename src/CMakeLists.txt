@@ -76,8 +76,6 @@ SET(SOURCES
     buddy-2.4/src/tree.c
     buddy-2.4/src/cppext.cxx
     ganak.cpp
-    ccnr.cpp
-    ccnr_cms.cpp
 	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 

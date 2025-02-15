@@ -5,6 +5,7 @@ import glob
 import decimal
 import sys
 import string
+import re
 
 sys.set_int_max_str_digits(2000000)
 
@@ -157,23 +158,6 @@ def approxmc_version(fname):
 
 ############################
 ## ganak
-def find_ganak_time_cnt(fname):
-    t = None
-    cnt = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c Time" in line:
-                t = float(line.split()[2])
-            if "c o Total time [Arjun+GANAK]:" in line:
-                t = float(line.split()[5])
-            if "s mc" in line:
-                cnt = decimal.Decimal(line.split()[2])
-            if "s pmc" in line:
-                cnt = decimal.Decimal(line.split()[2])
-
-    return [t,cnt]
-
 #c o Arjun T: 206.14
 # c o Sampling set size: 94
 # c o Opt sampling set size: 94
@@ -274,10 +258,6 @@ def find_bdd_called(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o buddy called /unsat ratio" in line:
-              n = int(line.split()[6])
-            elif "c o buddy called" in line:
-              n = int(line.split()[4])
     return n
 
 #c o Num restarts: 27
@@ -394,55 +374,58 @@ def sstd_treewidth(fname) -> list[str]:
 
 
 # c o conflicts                      2503077      -- confl/s:    1434.45
-def ganak_conflicts(fname) -> str:
-    confl = ""
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c o conflicts" in line:
-                confl = int(line.split()[3])
-                confl = "%d" % confl
-
-    return confl
-
-
-#c o decisions K                    8         -- Kdec/s:     0.71
-def ganak_decisions(fname) -> int|None:
-    decisionsK = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c o decisions K" in line:
-                decisionsK = int(line.split()[4])
-
-    return decisionsK
-
-
-def ganak_version(fname):
+def ganak_conflicts(fname):
     aver = None
     cver = None
+    decisionsK = None
+    conflicts = None
+    t = None
+    cnt = None
+    bdd_called = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c GANAK SHA revision" in line:
+            if "c Time" in line:
+                t = float(line.split()[2])
+            elif "c o Total time [Arjun+GANAK]:" in line:
+                t = float(line.split()[5])
+            elif "s mc" in line:
+                cnt = decimal.Decimal(line.split()[2])
+            elif "s pmc" in line:
+                cnt = decimal.Decimal(line.split()[2])
+            if re.match("c o conflicts[ ]*:", line): # cryptominisat
+                conflicts = int(line.split()[4])
+            elif "c o conflicts" in line:
+                conflicts = int(line.split()[3])
+                conflicts = "%d" % conflicts
+            elif "c o decisions K" in line:
+                decisionsK = int(line.split()[4])
+            elif "c GANAK SHA revision" in line:
                 aver = line.split()[4]
-            if "c CMS version" in line:
+            elif "c CMS version" in line:
                 cver = line.split()[3]
-            if "c o GANAK SHA revision" in line:
+            elif "c o GANAK SHA revision" in line:
                 aver = line.split()[5]
-            if "c p CMS version" in line:
+            elif "c p CMS version" in line:
                 cver = line.split()[4]
-            if "c o CMS revision" in line:
+            elif "c o CMS revision" in line:
                 cver = line.split()[4]
-
-    if aver == "74816f58aa522ec39ed7a9dc118b9abadfb68f09":
-        aver = "f6789ccc62c9748f03198467d2d24d2136901b1b"
-
+            if "c o buddy called /unsat ratio" in line:
+              bdd_called = int(line.split()[6])
+            elif "c o buddy called" in line:
+              bdd_called = int(line.split()[4])
     if aver is not None:
         aver = aver[:8]
     if cver is not None:
         cver = cver[:8]
-    return ["ganak", "%s-%s" % (aver,cver)]
+    return ["ganak", "%s-%s" % (aver,cver)], conflicts, decisionsK, t, cnt, bdd_called
+
+
+def ganak_version(fname):
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+
 
 
 def find_mem_out(fname):
@@ -462,6 +445,8 @@ files = {}
 for f in file_list:
     if ".csv" in f:
         continue
+    print("parsing file: ", f)
+
     dirname = f.split("/")[0]
     if "competitors" in dirname:
         continue
@@ -479,10 +464,12 @@ for f in file_list:
     files[base]["mem_out"] = find_mem_out(f)
     if  f.endswith(".out_ganak") or f.endswith(".out"):
         files[base]["solver"] = "ganak"
-        files[base]["solvertime"] = find_ganak_time_cnt(f)
-        files[base]["solverver"] = ganak_version(f)
-        files[base]["conflicts"] = ganak_conflicts(f)
-        files[base]["decisionsK"] = ganak_decisions(f)
+        ver, conflicts, decisionsK, t, cnt, bdd_called = ganak_conflicts(f)
+        files[base]["solvertime"] = [t, cnt]
+        files[base]["solverver"] = ver
+        files[base]["decisionsK"] = decisionsK
+        files[base]["conflicts"] = conflicts
+        files[base]["bdd_called"] = bdd_called
         arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t= find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backboneT"] = backb_t
@@ -501,7 +488,6 @@ for f in file_list:
         files[base]["cache_miss_rate"] = cache_miss_rate
         files[base]["cache_storeK"] = cache_storeK
         files[base]["cache_del_time"] = cache_del_time
-        files[base]["bddcalled"] = find_bdd_called(f)
         rst,cubes_orig,cubes_final = find_restarts(f)
         files[base]["restarts"] = rst
         files[base]["cubes_orig"] = cubes_orig
@@ -671,10 +657,10 @@ with open("mydata.csv", "w") as out:
         else:
           toprint += "%s,"  % f["cache_miss_rate"]
 
-        if "bddcalled" not in f or f["bddcalled"] is None:
+        if "bdd_called" not in f or f["bdd_called"] is None:
             toprint += ","
         else:
-          toprint += "%s,"  % f["bddcalled"]
+          toprint += "%s,"  % f["bdd_called"]
 
         if "sat_called" not in f or f["sat_called"] is None:
             toprint += ","

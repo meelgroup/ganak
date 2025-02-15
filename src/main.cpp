@@ -97,7 +97,7 @@ string print_version()
     #ifdef __GNUC__
     ss << "c o GANAK compiled with gcc version " << __VERSION__ << endl;
     #else
-    ss << "c o GANAK compiled with non-gcc compiler << endl;
+    ss << "c o GANAK compiled with non-gcc compiler" << endl;
     #endif
     ss << "c o CMS revision: " << CMSat::SATSolver::get_version_sha1() << endl;
     ss << "c o Arjun SHA revision: " << ArjunNS::Arjun ::get_version_info() << endl;

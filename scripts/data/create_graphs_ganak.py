@@ -443,7 +443,7 @@ only_dirs = [
             # "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
             # "out-ganak-mc2324-14063135-7/", # also enchanced SAT
             # "out-ganak-mc2324-14063135-4/", # also dual indep
-            # "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
+            "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat-td
@@ -454,7 +454,7 @@ only_dirs = [
             # "out-ganak-mc2324-14098333-", # sbva checks
 
             # checking revert, and cache del idea, and TD max limit
-            "out-ganak-mc2324-14145161-0", # revert, cache del, TD max limit
+            # "out-ganak-mc2324-14145161-0", # revert, cache del, TD max limit
 
             # new ccnr ideas, oracle-sparsify timeout different, 0 indep set no puura
             # "out-ganak-mc2324-14164796-",
@@ -463,7 +463,7 @@ only_dirs = [
             # "out-ganak-mc2324-14165187-",
 
             # more vivification during minimization (and with it more binary XORs), apparently this matters a lot
-            "out-ganak-mc2324-14167470-",
+            # "out-ganak-mc2324-14167470-",
             # c o GANAK SHA revision e246dcbba97bc937806f0863738478eec6c5c760
             # c o CMS revision: c15cd211779400ba8ed3ec45c24666487f0acec1
             # c o Arjun SHA revision: f24048a43411cb52410526b80eff2720d32bc942
@@ -471,6 +471,9 @@ only_dirs = [
 
             # even more minimization during vivification, etc
             #"out-ganak-mc2324-14171543-",
+
+            # fixed bugs related to ccnr backbone, and using purely CMS for very small-indep size (and no puura for <10)
+            "out-ganak-mc2324-14195954-0",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -645,7 +648,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][200:]\\\n")
+    f.write("plot [:][900:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

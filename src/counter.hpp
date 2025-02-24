@@ -186,11 +186,6 @@ public:
   T get_weight(const uint32_t v) {
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
-  T get_default_weight() const {
-    if constexpr (!weighted) return 1;
-    else if constexpr (!cpx) return 1;
-    else return T(1, 0);
-  }
   bool weight_larger_than(const T& a, const T&b) const {
     if constexpr (!weighted) return a > b;
     else if constexpr (!cpx) return a > b;
@@ -505,7 +500,7 @@ void Counter<T>::unset_lit(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != get_default_weight()) {
+    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != get_default_weight<T>()) {
       uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
       bool in_comp = (at[0] == at[lit.var()]);
       if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));

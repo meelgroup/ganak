@@ -203,7 +203,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_lon
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
-    if (v >= indep_support_end) archetype.stack_level().include_solution(get_default_weight());
+    if (v >= indep_support_end) archetype.stack_level().include_solution(get_default_weight<T>());
     else {
       if constexpr (weighted) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(2);

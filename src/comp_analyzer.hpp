@@ -192,12 +192,6 @@ private:
     std::is_same<T, complex<mpq_class>>::value;
   static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
 
-  T get_default_weight() const {
-    if constexpr (!weighted) return 1;
-    else if constexpr (!cpx) return 1;
-    else return T(1, 0);
-  }
-
   MyHolder holder;
   vector<Lit> long_clauses_data;
   const LiteralIndexedVector<TriValue> & values;

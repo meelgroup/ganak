@@ -139,12 +139,11 @@ public:
     }
 
     if (solutions == T()) branch_unsat[act_branch] = true;
-    assert(is_indep);
-    /* if (!is_indep && solutions == 2 && branch_mc[act_branch] == 0) branch_mc[act_branch] = 1; */
-    /* else { */
+    if (!is_indep && solutions != T() && branch_mc[act_branch] == T()) branch_mc[act_branch] = get_default_weight<T>();
+    else {
       if (branch_mc[act_branch] == T()) branch_mc[act_branch] = solutions;
       else branch_mc[act_branch] *= solutions;
-    /* } */
+    }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((act_branch) ? "right" : "left")
         << " count is: " << branch_mc[act_branch]

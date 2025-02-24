@@ -29,6 +29,8 @@ THE SOFTWARE.
 #include <cstdint>
 #include <random>
 #include <iostream>
+#include <mpreal.h>
+#include <gmpxx.h>
 
 using std::cerr;
 using std::cout;
@@ -167,6 +169,17 @@ inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) 
 inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
     unif_uint_dist(u, maximum);
     return u(mtrand);
+}
+
+template<typename T>
+T get_default_weight() {
+  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
+    std::is_same<T, complex<mpq_class>>::value;
+
+  if constexpr (!weighted) return 1;
+  else if constexpr (!cpx) return 1;
+  else return T(1, 1);
 }
 
 }

@@ -523,7 +523,6 @@ int main(int argc, char *argv[])
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run Ganak
-  if (do_complex) assert(cnf.weighted);
   Ganak counter(conf, cnf.weighted, do_complex);
   setup_ganak(cnf, generators, counter);
 

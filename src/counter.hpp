@@ -819,7 +819,7 @@ public:
   }
   void set_lit_weight(const Lit l, const complex<mpq_class>& w) {
     release_assert(w_counter || wq_counter || cpx_counter);
-    if (w_counter || wq_counter) release_assert(w.imag() == 0);
+    if (w_counter || wq_counter) release_assert(w.imag() == 1);
     if (w_counter) w_counter->set_lit_weight(l, w.real().get_mpq_t());
     if (wq_counter) wq_counter->set_lit_weight(l, w.real());
     if (cpx_counter) return cpx_counter->set_lit_weight(l, w);

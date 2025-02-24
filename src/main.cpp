@@ -78,7 +78,6 @@ int arjun_backw_maxc = 20000;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
-int do_precise = 1;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
@@ -86,6 +85,7 @@ int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
+int do_complex = 1;
 
 string print_version()
 {
@@ -116,7 +116,6 @@ void add_ganak_options()
         .flag()
         .help("Print version and exit");
     myopt("--delta", conf.delta, atof, "Delta");
-    myopt("--precise", do_precise, atoi, "If set to 0, we use so-called 'infinite' precision foats that are far from infinite precision and can give nonsense results. Apparently acceptable by the model counting competition (why? how? what?)");
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
     myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
@@ -519,7 +518,8 @@ int main(int argc, char *argv[])
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run Ganak
-  Ganak counter(conf, cnf.weighted);
+  if (do_complex) assert(cnf.weighted);
+  Ganak counter(conf, cnf.weighted, do_complex);
   setup_ganak(cnf, generators, counter);
 
   if (cnf.weighted) {

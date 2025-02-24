@@ -203,7 +203,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_lon
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
-    if (v >= indep_support_end) archetype.stack_level().include_solution(1);
+    if (v >= indep_support_end) archetype.stack_level().include_solution(get_default_weight());
     else {
       if constexpr (weighted) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(2);
@@ -402,6 +402,7 @@ CompAnalyzer<T>::CompAnalyzer(
       counter(_counter)
 {}
 
+template class GanakInt::CompAnalyzer<complex<mpq_class>>;
 template class GanakInt::CompAnalyzer<mpz_class>;
 template class GanakInt::CompAnalyzer<mpfr::mpreal>;
 template class GanakInt::CompAnalyzer<mpq_class>;

@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include <set>
 #include <gmpxx.h>
 #include "mpreal.h"
+#include <complex>
 
 class Ganak {
 public:
@@ -43,6 +44,7 @@ public:
   void set_indep_support(const std::set<uint32_t>& indeps);
   void set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens);
 
+  std::complex<mpq_class> cpx_outer_count();
   mpz_class unw_outer_count();
   mpfr::mpreal w_outer_count();
   mpq_class wq_outer_count();

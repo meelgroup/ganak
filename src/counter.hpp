@@ -186,6 +186,16 @@ public:
   T get_weight(const uint32_t v) {
     Lit l(v, false);
     return weights[l.raw()]+weights[l.neg().raw()];}
+  T get_default_weight() const {
+    if constexpr (!weighted) return 1;
+    else if constexpr (!cpx) return 1;
+    else return T(1, 0);
+  }
+  bool weight_larger_than(const T& a, const T&b) const {
+    if constexpr (!weighted) return a > b;
+    else if constexpr (!cpx) return a > b;
+    else return a.real()*a.imag() > b.real()*b.imag();
+  }
   auto get_indep_support_end() const { return indep_support_end; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
   const auto& get_var_data(uint32_t v) const { return var_data[v]; }
@@ -276,7 +286,9 @@ private:
 
   // Weights
   uint64_t vars_act_dec_num = 0;
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
+  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
+    std::is_same<T, complex<mpq_class>>::value;
   vector<T> weights;
   /** Needed to know what variables were active in given decision levels
   / It's needed for weighted counting to know what variable was active in
@@ -493,7 +505,7 @@ void Counter<T>::unset_lit(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != 1) {
+    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != get_default_weight()) {
       uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
       bool in_comp = (at[0] == at[lit.var()]);
       if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
@@ -750,14 +762,19 @@ uint32_t Counter<T>::calc_lbd(const T2& lits) {
 
 class OuterCounter {
 public:
-  OuterCounter(const CounterConfiguration& conf, bool weighted, bool precise = false) {
+  OuterCounter(const CounterConfiguration& conf, bool weighted, bool precise = false, bool cpx = false) {
     if (!weighted) unw_counter = new Counter<mpz_class>(conf);
     else {
       if (!precise) w_counter = new Counter<mpfr::mpreal>(conf);
-      else wq_counter = new Counter<mpq_class>(conf);
+      else {
+        if (!cpx) wq_counter = new Counter<mpq_class>(conf);
+        else cpx_counter = new Counter<complex<mpq_class>>(conf);
+      }
     }
+    release_assert(unw_counter || w_counter || wq_counter || cpx_counter);
   }
   ~OuterCounter() {
+    delete cpx_counter;
     delete unw_counter;
     delete w_counter;
     delete wq_counter;
@@ -766,17 +783,21 @@ public:
     if (unw_counter) unw_counter->set_generators(_gens);
     if (w_counter) w_counter->set_generators(_gens);
     if (wq_counter) wq_counter->set_generators(_gens);
+    if (cpx_counter) cpx_counter->set_generators(_gens);
   }
   void end_irred_cls() {
     if (unw_counter) unw_counter->end_irred_cls();
     if (w_counter) w_counter->end_irred_cls();
     if (wq_counter) wq_counter->end_irred_cls();
+    if (cpx_counter) cpx_counter->end_irred_cls();
   }
   void set_indep_support(const set<uint32_t>& indeps) {
     if (unw_counter) unw_counter->set_indep_support(indeps);
     if (w_counter) w_counter->set_indep_support(indeps);
     if (wq_counter) wq_counter->set_indep_support(indeps);
+    if (cpx_counter) cpx_counter->set_indep_support(indeps);
   }
+  complex<mpq_class> cpx_outer_count() { release_assert(cpx_counter); return cpx_counter->outer_count();}
   mpz_class unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
   mpfr::mpreal w_outer_count() { release_assert(w_counter); return w_counter->outer_count();}
   mpq_class wq_outer_count() { release_assert(wq_counter); return wq_counter->outer_count();}
@@ -784,6 +805,7 @@ public:
     if (unw_counter) return unw_counter->add_red_cl(lits, lbd);
     if (w_counter) return w_counter->add_red_cl(lits, lbd);
     if (wq_counter) return wq_counter->add_red_cl(lits, lbd);
+    if (cpx_counter) return cpx_counter->add_red_cl(lits, lbd);
     release_assert(false);
   }
   bool get_is_approximate() const { release_assert(unw_counter); return unw_counter->get_is_approximate();}
@@ -791,29 +813,36 @@ public:
     if (unw_counter) return unw_counter->add_irred_cl(lits);
     if (w_counter) return w_counter->add_irred_cl(lits);
     if (wq_counter) return wq_counter->add_irred_cl(lits);
+    if (cpx_counter) return cpx_counter->add_irred_cl(lits);
     release_assert(false);
   }
   void set_optional_indep_support(const set<uint32_t>& indeps) {
     if (unw_counter) unw_counter->set_optional_indep_support(indeps);
     if (w_counter) w_counter->set_optional_indep_support(indeps);
     if (wq_counter) wq_counter->set_optional_indep_support(indeps);
+    if (cpx_counter) return cpx_counter->set_optional_indep_support(indeps);
   }
-  void set_lit_weight(const Lit l, const mpq_class& w) {
-    release_assert(w_counter || wq_counter);
-    if (w_counter) w_counter->set_lit_weight(l, w.get_mpq_t());
-    if (wq_counter) wq_counter->set_lit_weight(l, w);
+  void set_lit_weight(const Lit l, const complex<mpq_class>& w) {
+    release_assert(w_counter || wq_counter || cpx_counter);
+    if (w_counter || wq_counter) release_assert(w.imag() == 0);
+    if (w_counter) w_counter->set_lit_weight(l, w.real().get_mpq_t());
+    if (wq_counter) wq_counter->set_lit_weight(l, w.real());
+    if (cpx_counter) return cpx_counter->set_lit_weight(l, w);
   }
   void new_vars(const uint32_t n) {
     if (unw_counter) unw_counter->new_vars(n);
     if (w_counter) w_counter->new_vars(n);
     if (wq_counter) wq_counter->new_vars(n);
+    if (cpx_counter) cpx_counter->new_vars(n);
   }
   void print_indep_distrib() const {
     if (unw_counter) unw_counter->print_indep_distrib();
     if (w_counter) w_counter->print_indep_distrib();
     if (wq_counter) wq_counter->print_indep_distrib();
+    if (cpx_counter) cpx_counter->print_indep_distrib();
   }
 private:
+  Counter<complex<mpq_class>>* cpx_counter = nullptr;
   Counter<mpz_class>* unw_counter = nullptr;
   Counter<mpfr::mpreal>* w_counter = nullptr;
   Counter<mpq_class>* wq_counter = nullptr;

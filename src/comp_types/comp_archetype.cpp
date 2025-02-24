@@ -41,6 +41,7 @@ Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
   return p_new_comp;
 }
 
+template class GanakInt::CompArchetype<complex<mpq_class>>;
 template class GanakInt::CompArchetype<mpz_class>;
 template class GanakInt::CompArchetype<mpfr::mpreal>;
 template class GanakInt::CompArchetype<mpq_class>;

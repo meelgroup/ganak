@@ -123,6 +123,8 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
   sort_comp_stack_range(new_comps_start_ofs, comp_stack.size());
 }
 
+
+template class GanakInt::CompManager<complex<mpq_class>>;
 template class GanakInt::CompManager<mpz_class>;
 template class GanakInt::CompManager<mpfr::mpreal>;
 template class GanakInt::CompManager<mpq_class>;

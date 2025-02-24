@@ -188,7 +188,15 @@ private:
   uint64_t reset_comps = 0;
   uint64_t non_reset_comps = 0;
   uint32_t comps_recorded = 0;
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
+    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+
+  T get_default_weight() const {
+    if constexpr (!weighted) return 1;
+    else if constexpr (!cpx) return 1;
+    else return T(1, 0);
+  }
 
   MyHolder holder;
   vector<Lit> long_clauses_data;

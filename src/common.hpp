@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <complex>
 #include <string>
 #include <iomanip>
 #include <sstream>
@@ -32,6 +33,7 @@ THE SOFTWARE.
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::complex;
 
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */

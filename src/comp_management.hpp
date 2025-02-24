@@ -109,7 +109,14 @@ public:
   }
 
 private:
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
+  T get_default_weight() const {
+    if constexpr (!weighted) return 1;
+    else if constexpr (!cpx) return 1;
+    else return T(1, 0);
+  }
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
+    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
   const CounterConfiguration &conf;
   DataAndStatistics<T> &stats;
 
@@ -169,7 +176,7 @@ bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top) {
 
   // if no component remains
   // make sure, at least that the current branch is considered SAT
-  top.include_solution(1);
+  top.include_solution(get_default_weight());
   debug_print(COLREDBG "-*-> Finished find_next_remain_comp_of, no more remaining comps. "
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "

@@ -245,6 +245,7 @@ size_t ClauseAllocator<T>::mem_used() const
   return mem;
 }
 
+template class GanakInt::ClauseAllocator<complex<mpq_class>>;
 template class GanakInt::ClauseAllocator<mpz_class>;
 template class GanakInt::ClauseAllocator<mpfr::mpreal>;
 template class GanakInt::ClauseAllocator<mpq_class>;

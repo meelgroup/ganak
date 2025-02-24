@@ -266,6 +266,7 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   return len;
 }
 
+template class GanakInt::CompCache<complex<mpq_class>>;
 template class GanakInt::CompCache<mpz_class>;
 template class GanakInt::CompCache<mpfr::mpreal>;
 template class GanakInt::CompCache<mpq_class>;

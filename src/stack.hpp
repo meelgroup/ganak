@@ -47,7 +47,10 @@ public:
   }
   uint64_t tstamp;
   bool is_indep;
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value;
+  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
+    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
@@ -65,7 +68,7 @@ private:
   bool act_branch = false;
 
   //  Solution count
-  T branch_mc[2] = {0,0};
+  T branch_mc[2] = {T(),T()};
   bool branch_unsat[2] = {false,false};
 
   /// remaining Comps
@@ -117,31 +120,31 @@ public:
   void change_to_right_branch() {
     assert(act_branch == false);
     act_branch = true;
-    SLOW_DEBUG_DO(assert(branch_mc[act_branch] == 0));
+    SLOW_DEBUG_DO(assert(branch_mc[act_branch] == T()));
   }
 
   bool another_comp_possible() const {
     return (!branch_found_unsat()) && has_unproc_comps();
   }
 
-  template<class T2>
-  void include_solution(const T2& solutions) {
+  void include_solution(const T& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
     auto before = branch_mc[act_branch];
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_mc[act_branch] == 0);
+      assert(branch_mc[act_branch] == T());
       return;
     }
 
-    if (solutions == 0) branch_unsat[act_branch] = true;
-    if (!is_indep && solutions == 2 && branch_mc[act_branch] == 0) branch_mc[act_branch] = 1;
-    else {
-      if (branch_mc[act_branch] == 0) branch_mc[act_branch] = solutions;
+    if (solutions == T()) branch_unsat[act_branch] = true;
+    assert(is_indep);
+    /* if (!is_indep && solutions == 2 && branch_mc[act_branch] == 0) branch_mc[act_branch] = 1; */
+    /* else { */
+      if (branch_mc[act_branch] == T()) branch_mc[act_branch] = solutions;
       else branch_mc[act_branch] *= solutions;
-    }
+    /* } */
     VERBOSE_DEBUG_DO(cout << "now "
         << ((act_branch) ? "right" : "left")
         << " count is: " << branch_mc[act_branch]
@@ -152,8 +155,7 @@ public:
         << endl);
   }
 
-  template<class T2>
-  void include_solution_left_side(const T2& solutions) {
+  void include_solution_left_side(const T& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " " << endl;);
     if (act_branch == 0) return;
 #ifdef VERBOSE_DEBUG
@@ -161,14 +163,14 @@ public:
 #endif
     if (branch_unsat[0]) {
       VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_mc[0] == 0);
+      assert(branch_mc[0] == T());
       return;
     }
 
-    if (solutions == 0) branch_unsat[0] = true;
+    if (solutions == T()) branch_unsat[0] = true;
     if (!is_indep) branch_mc[0] = solutions;
     else {
-      if (branch_mc[0] == 0) assert(false);
+      if (branch_mc[0] == T()) assert(false);
       else branch_mc[0] *= solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
@@ -186,7 +188,7 @@ public:
   void zero_out_branch_sol() { branch_mc[act_branch] = 0; }
   const T total_model_count() const {
     if (is_indep) return branch_mc[0] + branch_mc[1];
-    else if (branch_mc[0] == 0) return branch_mc[1]; else return branch_mc[0]; }
+    else if (branch_mc[0] == T()) return branch_mc[1]; else return branch_mc[0]; }
 
   // for cube creation
   bool branch_found_unsat(int side) const { return branch_unsat[side]; }
@@ -194,8 +196,8 @@ public:
   const T& right_model_count() const { return branch_mc[1]; }
 
   void zero_out_all_sol() {
-    branch_mc[0] = 0;
-    branch_mc[1] = 0;
+    branch_mc[0] = T();
+    branch_mc[1] = T();
   }
 
 };

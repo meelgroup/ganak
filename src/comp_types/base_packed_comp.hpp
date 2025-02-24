@@ -96,4 +96,13 @@ inline uint32_t BaseComp<mpq_class>::mp_data_size() const {
   return sizeof(mpz_class) + a + b;
 }
 
+template<>
+inline uint32_t BaseComp<complex<mpq_class>>::mp_data_size() const {
+  uint32_t a = helper(model_count_->real().get_den_mpz_t());
+  uint32_t b = helper(model_count_->real().get_num_mpz_t());
+  uint32_t a2 = helper(model_count_->imag().get_den_mpz_t());
+  uint32_t b2 = helper(model_count_->imag().get_num_mpz_t());
+  return 2*sizeof(mpz_class) + a + b + a2 + b2;
+}
+
 }

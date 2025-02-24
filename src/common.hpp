@@ -177,7 +177,7 @@ T get_default_weight() {
 
   if constexpr (!weighted) return 1;
   else if constexpr (!cpx) return 1;
-  else return T(1, 1);
+  else return T(1, 0);
 }
 
 }

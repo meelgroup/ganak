@@ -402,14 +402,14 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 }
 
 void print_one(const mpq_class& c) {
-      mpf_set_default_prec(1024); // Set default precision in bits
-      mpf_t f;
-      mpf_init(f);
-      mpf_set_q(f, c.get_mpq_t());
-      uint32_t n = 50;
-      gmp_printf("%.*FE", n, f);
-      std::flush(std::cout);
-      mpf_clear(f);
+   mpf_set_default_prec(1024); // Set default precision in bits
+   mpf_t f;
+   mpf_init(f);
+   mpf_set_q(f, c.get_mpq_t());
+   uint32_t n = 50;
+   gmp_printf("%.*FE", n, f);
+   std::flush(std::cout);
+   mpf_clear(f);
 }
 
 template<typename T>

@@ -450,7 +450,8 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       cout << " + ";
       print_one(cnt.imag());
       cout << "i" << endl;
-      cout << "c o exact arb rational " << std::scientific << std::setprecision(40) << cnt << endl;
+      cout << "c o exact arb rational " << std::scientific << std::setprecision(40)
+        << cnt.real() << " + " << cnt.imag() << "i" << endl;
     }
 }
 

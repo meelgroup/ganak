@@ -28,7 +28,6 @@ using namespace GanakInt;
 CounterConfiguration conf;
 int do_pre_backbone = 0;
 ArjunNS::SimpConf simp_conf;
-int do_precise = 1;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
@@ -77,7 +76,7 @@ int main() {
 
   run_arjun(cnf);
   conf.verb = 0;
-  Ganak counter(conf, cnf.weighted, do_precise);
+  Ganak counter(conf, cnf.weighted);
   setup_ganak(cnf, counter);
 
   mpz_class cnt;

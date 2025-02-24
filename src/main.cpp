@@ -414,10 +414,14 @@ void print_one(const mpq_class& c) {
 
 template<typename T>
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
-    T cnt;
     static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+
+    T cnt;
     if (cnf.multiplier_weight == std::complex<mpq_class>()) cnt = 0;
-    else cnt = counter.wq_outer_count();
+    else {
+      if constexpr(cpx) cnt = counter.cpx_outer_count();
+      else cnt = counter.wq_outer_count();
+    }
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpu_time() - start_time) << endl;
     if (!cnf.get_projected()) cout << "c s type wmc" << endl;

@@ -41,6 +41,10 @@ mpq_class Ganak::wq_outer_count() {
   OuterCounter* c = (OuterCounter*)counter;
   return c->wq_outer_count();
 }
+complex<mpq_class> Ganak::cpx_outer_count() {
+  OuterCounter* c = (OuterCounter*)counter;
+  return c->cpx_outer_count();
+}
 void Ganak::set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_generators(_gens);

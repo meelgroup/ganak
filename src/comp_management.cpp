@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "comp_management.hpp"
 #include "common.hpp"
-#include "mpreal.h"
 #include "counter.hpp"
 #include <gmpxx.h>
 
@@ -126,5 +125,4 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
 
 template class GanakInt::CompManager<complex<mpq_class>>;
 template class GanakInt::CompManager<mpz_class>;
-template class GanakInt::CompManager<mpfr::mpreal>;
 template class GanakInt::CompManager<mpq_class>;

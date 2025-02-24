@@ -25,8 +25,8 @@ THE SOFTWARE.
 
 using namespace GanakInt;
 
-Ganak::Ganak(CounterConfiguration& conf, bool weighted, bool precise) {
-  counter = new OuterCounter(conf, weighted, precise);
+Ganak::Ganak(CounterConfiguration& conf, bool weighted, bool cpx) {
+  counter = new OuterCounter(conf, weighted, cpx);
 }
 Ganak::~Ganak() {
   OuterCounter* c = (OuterCounter*)counter;
@@ -36,10 +36,6 @@ Ganak::~Ganak() {
 mpz_class Ganak::unw_outer_count() {
   OuterCounter* c = (OuterCounter*)counter;
   return c->unw_outer_count();
-}
-mpfr::mpreal Ganak::w_outer_count() {
-  OuterCounter* c = (OuterCounter*)counter;
-  return c->w_outer_count();
 }
 mpq_class Ganak::wq_outer_count() {
   OuterCounter* c = (OuterCounter*)counter;
@@ -73,7 +69,7 @@ void Ganak::set_optional_indep_support(const std::set<uint32_t>& indeps) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_optional_indep_support(indeps);
 }
-void Ganak::set_lit_weight(const GanakInt::Lit l, const mpq_class& w) {
+void Ganak::set_lit_weight(const GanakInt::Lit l, const complex<mpq_class>& w) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_lit_weight(l, w);
 }

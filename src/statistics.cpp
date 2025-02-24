@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include "comp_cache.hpp"
 #include "counter.hpp"
 #include "time_mem.hpp"
-#include "mpreal.h"
 
 #include <gmpxx.h>
 #include <iostream>
@@ -184,5 +183,4 @@ void DataAndStatistics<T>::print_short_formula_info(const Counter<T>* counter) c
 
 template class GanakInt::DataAndStatistics<complex<mpq_class>>;
 template class GanakInt::DataAndStatistics<mpz_class>;
-template class GanakInt::DataAndStatistics<mpfr::mpreal>;
 template class GanakInt::DataAndStatistics<mpq_class>;

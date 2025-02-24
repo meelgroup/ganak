@@ -40,7 +40,6 @@ THE SOFTWARE.
 #ifdef BUDDY_ENABLED
 #include "bdd.h"
 #endif
-#include "mpreal.h"
 #include "approxmc.h"
 #include <thread>
 #include <algorithm>
@@ -4287,5 +4286,4 @@ string Counter<T>::val_to_str(const TriValue& tri) const {
 
 template class GanakInt::Counter<complex<mpq_class>>;
 template class GanakInt::Counter<mpz_class>;
-template class GanakInt::Counter<mpfr::mpreal>;
 template class GanakInt::Counter<mpq_class>;

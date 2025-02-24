@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "clauseallocator.hpp"
 #include "structures.hpp"
-#include "mpreal.h"
 #include <climits>
 #include <cstdint>
 #include <cstdint>
@@ -404,5 +403,4 @@ CompAnalyzer<T>::CompAnalyzer(
 
 template class GanakInt::CompAnalyzer<complex<mpq_class>>;
 template class GanakInt::CompAnalyzer<mpz_class>;
-template class GanakInt::CompAnalyzer<mpfr::mpreal>;
 template class GanakInt::CompAnalyzer<mpq_class>;

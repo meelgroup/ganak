@@ -188,8 +188,7 @@ private:
   uint64_t reset_comps = 0;
   uint64_t non_reset_comps = 0;
   uint32_t comps_recorded = 0;
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
-    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
   static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
 
   MyHolder holder;

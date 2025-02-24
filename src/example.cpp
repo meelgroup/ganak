@@ -81,10 +81,11 @@ int main() {
   setup_ganak(cnf, counter);
 
   mpz_class cnt;
-  if (cnf.multiplier_weight == 0) cnt = 0;
+  if (cnf.multiplier_weight == std::complex<mpq_class>()) cnt = mpz_class();
   else cnt = counter.unw_outer_count();
   assert(!counter.get_is_approximate());
-  cnt *= cnf.multiplier_weight;
+  assert(cnf.multiplier_weight.imag() == 1);
+  cnt *= cnf.multiplier_weight.real();
 
   cout << "c s exact arb int " << std::fixed << cnt << endl;
   return 0;

@@ -29,12 +29,11 @@ THE SOFTWARE.
 #include <map>
 #include <set>
 #include <gmpxx.h>
-#include "mpreal.h"
 #include <complex>
 
 class Ganak {
 public:
-  Ganak(GanakInt::CounterConfiguration& conf, bool weighted, bool precise = true);
+  Ganak(GanakInt::CounterConfiguration& conf, bool weighted, bool cpx = false );
   ~Ganak();
   void* count();
   void new_vars(const uint32_t n);
@@ -46,13 +45,12 @@ public:
 
   std::complex<mpq_class> cpx_outer_count();
   mpz_class unw_outer_count();
-  mpfr::mpreal w_outer_count();
   mpq_class wq_outer_count();
 
   bool add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd = -1);
   bool get_is_approximate() const;
   void set_optional_indep_support(const std::set<uint32_t>& indeps);
-  void set_lit_weight(const GanakInt::Lit l, const mpq_class& w);
+  void set_lit_weight(const GanakInt::Lit l, const std::complex<mpq_class>& w);
   void print_indep_distrib() const;
 private:
   void* counter = nullptr;

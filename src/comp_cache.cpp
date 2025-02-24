@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include <algorithm>
 #include <gmpxx.h>
 #include <iomanip>
-#include "mpreal.h"
 #include "stack.hpp"
 
 
@@ -268,5 +267,4 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
 
 template class GanakInt::CompCache<complex<mpq_class>>;
 template class GanakInt::CompCache<mpz_class>;
-template class GanakInt::CompCache<mpfr::mpreal>;
 template class GanakInt::CompCache<mpq_class>;

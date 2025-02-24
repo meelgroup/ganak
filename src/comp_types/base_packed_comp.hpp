@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <iostream>
 #include "../common.hpp"
-#include "../mpreal.h"
 
 using std::cout;
 
@@ -95,14 +94,6 @@ inline uint32_t BaseComp<mpq_class>::mp_data_size() const {
   uint32_t a = helper(model_count_->get_den_mpz_t());
   uint32_t b = helper(model_count_->get_num_mpz_t());
   return sizeof(mpz_class) + a + b;
-}
-
-template<>
-inline uint32_t BaseComp<mpfr::mpreal>::mp_data_size() const {
-  unsigned long prec = mpfr_get_prec(model_count_->mpfr_ptr());
-  unsigned long num_limbs = (prec + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
-  size_t memory_usage = sizeof(mpfr::mpreal) + num_limbs * sizeof(mp_limb_t);
-  return memory_usage;
 }
 
 }

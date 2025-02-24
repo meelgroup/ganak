@@ -39,7 +39,6 @@ THE SOFTWARE.
 #include "src/GitSHA1.hpp"
 #include "breakid.hpp"
 #include <arjun/arjun.h>
-#include "mpreal.h"
 #include "src/argparse.hpp"
 
 using CMSat::StreamBuffer;
@@ -403,57 +402,52 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 
+void print_one(const mpq_class& c) {
+      mpf_set_default_prec(1024); // Set default precision in bits
+      mpf_t f;
+      mpf_init(f);
+      mpf_set_q(f, c.get_mpq_t());
+      uint32_t n = 50;
+      gmp_printf("%.*FE", n, f);
+      std::flush(std::cout);
+      mpf_clear(f);
+}
+
 template<typename T>
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     T cnt;
-    static constexpr bool precise = std::is_same<T, mpq_class>::value;
-    if (cnf.multiplier_weight == 0) cnt = 0;
-    else {
-      if constexpr (!precise) cnt = counter.w_outer_count();
-      else cnt = counter.wq_outer_count();
-    }
+    static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+    if (cnf.multiplier_weight == std::complex<mpq_class>()) cnt = 0;
+    else cnt = counter.wq_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpu_time() - start_time) << endl;
     if (!cnf.get_projected()) cout << "c s type wmc" << endl;
     else cout << "c s type pwmc " << endl;
 
-    if constexpr(!precise) {
-      cnt *= cnf.multiplier_weight.get_mpq_t();
-    } else {
-      cnt *= cnf.multiplier_weight;
-    }
+    if constexpr (cpx) cnt *= cnf.multiplier_weight;
+    else cnt *= cnf.multiplier_weight.real();
 
-    bool neglog = false;
-    if (cnt != 0) cout << "s SATISFIABLE" << endl;
+    /* bool neglog = false; */
+    if (cnt != complex<mpq_class>()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (cnt == 0) cout << "c s log10-estimate -inf" << endl;
+    if (cnt == complex<mpq_class>()) cout << "c s log10-estimate -inf" << endl;
     else {
-      if (cnt < 0) {
-        cout << "c s neglog10-estimate ";
-        cnt *= -1;
-        neglog = true;
-      } else {
-        cout << "c s log10-estimate ";
-      }
-      if constexpr (!precise) {
-        cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt) << endl;
-        if (neglog) cnt *= -1;
-        cout << "c s exact arb float " << std::scientific << std::setprecision(40) << cnt << endl;
-      } else {
-        cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl;
-        if (neglog) cnt *= -1;
-        cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
-        mpf_set_default_prec(1024); // Set default precision in bits
-        mpf_t f;
-        mpf_init(f);
-        mpf_set_q(f, cnt.get_mpq_t());
-        uint32_t n = 50;
-        gmp_printf("%.*FE", n, f);
-        std::flush(std::cout);
-        mpf_clear(f);
-        cout << endl;
-        cout << "c o exact arb rational " << std::scientific << std::setprecision(40) << cnt << endl;
-      }
+      /* if (cnt < 0) { */
+      /*   cout << "c s neglog10-estimate "; */
+      /*   cnt *= -1; */
+      /*   neglog = true; */
+      /* } else { */
+      /*   cout << "c s log10-estimate "; */
+      /* } */
+
+      /* cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
+      /* if (neglog) cnt *= -1; */
+      cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
+      print_one(cnt.real());
+      cout << " + ";
+      print_one(cnt.imag());
+      cout << "i" << endl;
+      cout << "c o exact arb rational " << std::scientific << std::setprecision(40) << cnt << endl;
     }
 }
 
@@ -525,16 +519,14 @@ int main(int argc, char *argv[])
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run Ganak
-  Ganak counter(conf, cnf.weighted, do_precise);
+  Ganak counter(conf, cnf.weighted);
   setup_ganak(cnf, generators, counter);
 
-  if (cnf.weighted && !do_precise) {
-    run_weighted_counter<mpfr::mpreal>(counter, cnf, start_time);
-  } else if (cnf.weighted && do_precise) {
-    run_weighted_counter<mpq_class>(counter, cnf, start_time);
+  if (cnf.weighted) {
+    run_weighted_counter<complex<mpq_class>>(counter, cnf, start_time);
   } else {
     mpz_class cnt;
-    if (cnf.multiplier_weight == 0) cnt = 0;
+    if (cnf.multiplier_weight == complex<mpq_class>()) cnt = 0;
     else cnt = counter.unw_outer_count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
       << std::fixed << (cpu_time() - start_time) << endl;
@@ -544,7 +536,8 @@ int main(int argc, char *argv[])
     else cout << "s UNSATISFIABLE" << endl;
     if (!cnf.get_projected()) cout << "c s type mc" << endl;
     else cout << "c s type pmc " << endl;
-    cnt *= cnf.multiplier_weight;
+    assert(cnf.multiplier_weight.imag() == 0);
+    cnt *= cnf.multiplier_weight.real();
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;
     else cout << std::setprecision(12) << std::fixed << biginteger_log_modified(cnt) << endl;

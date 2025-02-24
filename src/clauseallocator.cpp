@@ -32,7 +32,6 @@ THE SOFTWARE.
 #include "counter_config.hpp"
 #include "time_mem.hpp"
 #include "common.hpp"
-#include "mpreal.h"
 
 using std::cout;
 using std::endl;
@@ -247,5 +246,4 @@ size_t ClauseAllocator<T>::mem_used() const
 
 template class GanakInt::ClauseAllocator<complex<mpq_class>>;
 template class GanakInt::ClauseAllocator<mpz_class>;
-template class GanakInt::ClauseAllocator<mpfr::mpreal>;
 template class GanakInt::ClauseAllocator<mpq_class>;

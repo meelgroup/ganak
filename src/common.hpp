@@ -29,7 +29,6 @@ THE SOFTWARE.
 #include <cstdint>
 #include <random>
 #include <iostream>
-#include <mpreal.h>
 #include <gmpxx.h>
 
 using std::cerr;
@@ -174,8 +173,7 @@ inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
 template<typename T>
 T get_default_weight() {
   static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
-    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
 
   if constexpr (!weighted) return 1;
   else if constexpr (!cpx) return 1;

@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include <vector>
 #include <iostream>
 #include "common.hpp"
-#include "mpreal.h"
 using std::vector;
 using std::cout;
 using std::endl;
@@ -47,8 +46,7 @@ public:
   }
   uint64_t tstamp;
   bool is_indep;
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
-    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
   static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
 
   uint32_t var = 0;

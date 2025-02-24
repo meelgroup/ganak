@@ -83,7 +83,6 @@ ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
   LINK_PUBLIC ${ARJUN_LIBRARIES}
-  LINK_PUBLIC ${MPFR_LIBRARIES}
   LINK_PUBLIC ${APPROXMC_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
@@ -119,7 +118,6 @@ set_target_properties(ganak-bin PROPERTIES
 
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp )
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp )
-ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/mpreal.h )
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/lit.hpp )
 
 # -----------------------------------------------------------------------------

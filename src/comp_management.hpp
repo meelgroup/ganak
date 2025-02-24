@@ -109,8 +109,7 @@ public:
   }
 
 private:
-  static constexpr bool weighted = std::is_same<T, mpfr::mpreal>::value || std::is_same<T, mpq_class>::value ||
-    std::is_same<T, complex<mpq_class>>::value;
+  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
   static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
   const CounterConfiguration &conf;
   DataAndStatistics<T> &stats;

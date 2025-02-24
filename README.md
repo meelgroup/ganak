@@ -1,5 +1,5 @@
 # GANAK- A Probabilistic Exact Model Counter
-GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`. GANAK supports projected model counting (see below). 
+GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`. GANAK supports projected model counting (see below).
 
 To read more about Ganak-specific ideas, please refer to [our paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that Ganak employs many ideas by many people. See AUTHORS for a list.
 
@@ -9,7 +9,6 @@ To build ganak, you first need to build [CryptoMiniSat](github.com/msoos/cryptom
 
 ```bash
 sudo apt-get install libgmp-dev
-sudo apt-get install libmpfr-dev
 sudo apt-get install libmpc-dev
 mkdir build && cd build
 cmake ..

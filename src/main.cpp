@@ -85,7 +85,6 @@ int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
-int do_complex = 1;
 
 string print_version()
 {
@@ -523,7 +522,8 @@ int main(int argc, char *argv[])
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
 
   // Run Ganak
-  Ganak counter(conf, cnf.weighted, do_complex);
+  const bool is_complex = cnf.is_complex();
+  Ganak counter(conf, cnf.weighted, is_complex);
   setup_ganak(cnf, generators, counter);
 
   if (cnf.weighted) {

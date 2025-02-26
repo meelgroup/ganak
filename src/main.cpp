@@ -473,9 +473,7 @@ int main(int argc, char *argv[])
   string command_line;
   for(int i = 0; i < argc; i++) {
       command_line += string(argv[i]);
-      if (i+1 < argc) {
-          command_line += " ";
-      }
+      if (i+1 < argc) command_line += " ";
   }
   parse_supported_options(argc, argv);
   if (conf.verb) {

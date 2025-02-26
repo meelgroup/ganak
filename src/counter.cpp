@@ -4243,8 +4243,11 @@ void Counter<T>::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool chec
 template<typename T>
 void Counter<T>::set_lit_weight(Lit l, const T& w) {
   if (l.var() >= opt_indep_support_end) {
-    cerr << "ERROR: Trying to set weight of a variable that is not in the (optional) independent support."
-      " Var: " << l << " opt_indep_support_end: " << opt_indep_support_end << endl;
+    cerr << "ERROR: Trying to set weight of a variable that is not in the "
+            "(optional) independent support. Var: "
+         << l << " opt_indep_support_end: " << opt_indep_support_end << endl
+         << "If you KNOW that ALL variables are fully determined by the projection set,"
+         " you can give '--allindep 1', and then you can give weights to anything." << endl;
     exit(-1);
   }
   verb_print(2, "Setting weight of " << l << " to " << w);

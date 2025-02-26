@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
     else cout << "s UNSATISFIABLE" << endl;
     if (!cnf.get_projected()) cout << "c s type mc" << endl;
     else cout << "c s type pmc " << endl;
-    assert(cnf.multiplier_weight.imag() == 0);
+    release_assert(cnf.multiplier_weight.imag() == 0);
     cnt *= cnf.multiplier_weight.real();
     cout << "c s log10-estimate ";
     if (cnt == 0) cout << "-inf" << endl;

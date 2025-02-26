@@ -83,7 +83,7 @@ int main() {
   if (cnf.multiplier_weight == std::complex<mpq_class>()) cnt = mpz_class();
   else cnt = counter.unw_outer_count();
   assert(!counter.get_is_approximate());
-  assert(cnf.multiplier_weight.imag() == 1);
+  assert(cnf.multiplier_weight.imag() == 0);
   cnt *= cnf.multiplier_weight.real();
 
   cout << "c s exact arb int " << std::fixed << cnt << endl;

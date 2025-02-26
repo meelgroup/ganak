@@ -429,29 +429,34 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     if constexpr (cpx) cnt *= cnf.multiplier_weight;
     else cnt *= cnf.multiplier_weight.real();
 
-    /* bool neglog = false; */
     if (cnt != complex<mpq_class>()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (cnt == complex<mpq_class>()) cout << "c s log10-estimate -inf" << endl;
-    else {
-      /* if (cnt < 0) { */
-      /*   cout << "c s neglog10-estimate "; */
-      /*   cnt *= -1; */
-      /*   neglog = true; */
-      /* } else { */
-      /*   cout << "c s log10-estimate "; */
-      /* } */
+    /* if constexpr (!cpx) { */
+    /*   if (cnt == complex<mpq_class>()) cout << "c s log10-estimate -inf" << endl; */
+    /*   else { */
+    /*     bool neglog = false; */
+    /*     if (cnt < 0) { */
+    /*       cout << "c s neglog10-estimate "; */
+    /*       cnt *= -1; */
+    /*       neglog = true; */
+    /*     } else { */
+    /*       cout << "c s log10-estimate "; */
+    /*     } */
 
-      /* cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
-      /* if (neglog) cnt *= -1; */
-      cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
+    /*     cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
+    /*     if (neglog) cnt *= -1; */
+    /* } */
+    cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
+    if constexpr (cpx) {
       print_one(cnt.real());
       cout << " + ";
       print_one(cnt.imag());
-      cout << "i" << endl;
-      cout << "c o exact arb rational " << std::scientific << std::setprecision(40)
-        << cnt.real() << " + " << cnt.imag() << "i" << endl;
-    }
+      cout << "i";
+    } else print_one(cnt);
+    cout << endl;
+    cout << "c o exact arb rational " << std::scientific << std::setprecision(40);
+    if constexpr (cpx) cout << cnt.real() << " + " << cnt.imag() << "i" << endl;
+    else cout << cnt << endl;
 }
 
 int main(int argc, char *argv[])
@@ -527,7 +532,8 @@ int main(int argc, char *argv[])
   setup_ganak(cnf, generators, counter);
 
   if (cnf.weighted) {
-    run_weighted_counter<complex<mpq_class>>(counter, cnf, start_time);
+    if (is_complex) run_weighted_counter<complex<mpq_class>>(counter, cnf, start_time);
+    else run_weighted_counter<mpq_class>(counter, cnf, start_time);
   } else {
     mpz_class cnt;
     if (cnf.multiplier_weight == complex<mpq_class>()) cnt = 0;

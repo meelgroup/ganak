@@ -830,10 +830,7 @@ T Counter<T>::outer_count() {
   verb_print(1, "Opt sampling set size: " << ((opt_indep_support_end>0) ? (opt_indep_support_end-1) : 0));
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
-  if (indep_support_end <= 6) {
-    cnt = count_using_cms();
-    return cnt;
-  }
+  if (indep_support_end <= 6) return count_using_cms();
   auto ret = sat_solver->solve();
 
   start_time = cpu_time();

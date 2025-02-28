@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 
 #include <iostream>
+#include <memory>
 #include <set>
 #include <vector>
 #include <string>
@@ -85,6 +86,8 @@ int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
+int mode = 0;
+FG fg = nullptr;
 
 string print_version()
 {
@@ -114,6 +117,7 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
+    myopt("--mode", mode , atoi, "0=counting, 1=weightd counting, 2=complex numbers");
     myopt("--delta", conf.delta, atof, "Delta");
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
@@ -253,7 +257,7 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
   DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, nullptr, 0);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, nullptr, 0);
+  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, nullptr, 0, fg);
   #endif
   if (in == nullptr) {
       std::cout << "ERROR! Could not open file '" << filename
@@ -411,25 +415,18 @@ void print_one(const mpq_class& c) {
    mpf_clear(f);
 }
 
-template<typename T>
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
-    static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
-
-    T cnt;
-    if (cnf.multiplier_weight == std::complex<mpq_class>()) cnt = 0;
-    else {
-      if constexpr(cpx) cnt = counter.cpx_outer_count();
-      else cnt = counter.wq_outer_count();
-    }
+    FF cnt = cnf.multiplier_weight->dup();
+    if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
-      << std::fixed << (cpu_time() - start_time) << endl;
-    if (!cnf.get_projected()) cout << "c s type wmc" << endl;
-    else cout << "c s type pwmc " << endl;
+        << std::fixed << (cpu_time() - start_time) << endl;
 
-    if constexpr (cpx) cnt *= cnf.multiplier_weight;
-    else cnt *= cnf.multiplier_weight.real();
+    string out = "c o type ";
+    if (cnf.get_projected()) out+="p";
+    if (cnf.weighted) out += "wmc";
+    else out += "mc";
 
-    if (cnt != complex<mpq_class>()) cout << "s SATISFIABLE" << endl;
+    if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
     /* if constexpr (!cpx) { */
     /*   if (cnt == complex<mpq_class>()) cout << "c s log10-estimate -inf" << endl; */
@@ -446,17 +443,10 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     /*     cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
     /*     if (neglog) cnt *= -1; */
     /* } */
-    cout << "c s exact arb float " << std::scientific << std::setprecision(40) << std::flush;
-    if constexpr (cpx) {
-      print_one(cnt.real());
-      cout << " + ";
-      print_one(cnt.imag());
-      cout << "i";
-    } else print_one(cnt);
-    cout << endl;
-    cout << "c o exact arb rational " << std::scientific << std::setprecision(40);
-    if constexpr (cpx) cout << cnt.real() << " + " << cnt.imag() << "i" << endl;
-    else cout << cnt << endl;
+    cout << "c s exact arb float " << std::scientific << std::setprecision(40) << *cnt << endl;
+    /* cout << "c o exact arb rational " << std::scientific << std::setprecision(40); */
+    /* if constexpr (cpx) cout << cnt.real() << " + " << cnt.imag() << "i" << endl; */
+    /* else cout << cnt << endl; */
 }
 
 int main(int argc, char *argv[])
@@ -481,6 +471,21 @@ int main(int argc, char *argv[])
     cout << "c o called with: " << command_line << endl;
   }
 
+  switch (mode) {
+    case 0:
+        fg = std::make_unique<CMSat::FGenMpz>();
+        break;
+    case 1:
+        fg = std::make_unique<ArjunNS::FGenMpq>();
+        break;
+    case 2:
+        fg = std::make_unique<ArjunNS::FGenComplex>();
+        break;
+    default:
+        cout << "c o [arjun] ERROR: Unknown mode" << endl;
+        exit(-1);
+  }
+
   // Get the input CNF
   if (!program.is_used("inputfile")) {
     cout << "ERROR: must provide input file to read as last argument" << endl;
@@ -499,7 +504,7 @@ int main(int argc, char *argv[])
   const string& fname = files[0];
 
   // Parse the CNF
-  ArjunNS::SimplifiedCNF cnf;
+  ArjunNS::SimplifiedCNF cnf(fg);
   parse_file(fname, &cnf);
   if (cnf.get_weighted() && conf.do_buddy) {
     cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
@@ -522,38 +527,35 @@ int main(int argc, char *argv[])
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && conf.do_restart && do_breakid && cnf.clauses.size() > 1)
     generators = run_breakid(cnf);
 
-  if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true, true);
+  if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true);
 
   // Run Ganak
-  const bool is_complex = cnf.is_complex();
-  Ganak counter(conf, cnf.weighted, is_complex);
+  Ganak counter(conf, fg);
   setup_ganak(cnf, generators, counter);
 
-  if (cnf.weighted) {
-    if (is_complex) run_weighted_counter<complex<mpq_class>>(counter, cnf, start_time);
-    else run_weighted_counter<mpq_class>(counter, cnf, start_time);
-  } else {
-    mpz_class cnt;
-    if (cnf.multiplier_weight == complex<mpq_class>()) cnt = 0;
-    else cnt = counter.unw_outer_count();
-    cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
-      << std::fixed << (cpu_time() - start_time) << endl;
-    bool is_appx = counter.get_is_approximate();
+  run_weighted_counter(counter, cnf, start_time);
+  /* } else { */
+  /*   mpz_class cnt; */
+  /*   if (cnf.multiplier_weight == complex<mpq_class>()) cnt = 0; */
+  /*   else cnt = counter.unw_outer_count(); */
+  /*   cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) */
+  /*     << std::fixed << (cpu_time() - start_time) << endl; */
+  /*   bool is_appx = counter.get_is_approximate(); */
 
-    if (cnt != 0) cout << "s SATISFIABLE" << endl;
-    else cout << "s UNSATISFIABLE" << endl;
-    if (!cnf.get_projected()) cout << "c s type mc" << endl;
-    else cout << "c s type pmc " << endl;
-    release_assert(cnf.multiplier_weight.imag() == 0);
-    cnt *= cnf.multiplier_weight.real();
-    cout << "c s log10-estimate ";
-    if (cnt == 0) cout << "-inf" << endl;
-    else cout << std::setprecision(12) << std::fixed << biginteger_log_modified(cnt) << endl;
-    if (is_appx) {
-      cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;
-      cout << "c s approx arb int " << std::fixed << cnt << endl;
-    } else
-      cout << "c s exact arb int " << std::fixed << cnt << endl;
-  }
+  /*   if (cnt != 0) cout << "s SATISFIABLE" << endl; */
+  /*   else cout << "s UNSATISFIABLE" << endl; */
+  /*   if (!cnf.get_projected()) cout << "c s type mc" << endl; */
+  /*   else cout << "c s type pmc " << endl; */
+  /*   release_assert(cnf.multiplier_weight.imag() == 0); */
+  /*   cnt *= cnf.multiplier_weight.real(); */
+  /*   cout << "c s log10-estimate "; */
+  /*   if (cnt == 0) cout << "-inf" << endl; */
+  /*   else cout << std::setprecision(12) << std::fixed << biginteger_log_modified(cnt) << endl; */
+  /*   if (is_appx) { */
+  /*     cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl; */
+  /*     cout << "c s approx arb int " << std::fixed << cnt << endl; */
+  /*   } else */
+  /*     cout << "c s exact arb int " << std::fixed << cnt << endl; */
+  /* } */
   return 0;
 }

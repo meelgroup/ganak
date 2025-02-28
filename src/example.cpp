@@ -20,8 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
+#include "cryptominisat5/solvertypesmini.h"
 #include "ganak.hpp"
+#include <algorithm>
 #include <arjun/arjun.h>
+#include <memory>
 using namespace std;
 using namespace GanakInt;
 
@@ -65,7 +68,8 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
 }
 
 int main() {
-  ArjunNS::SimplifiedCNF cnf;
+  std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<CMSat::FGenMpz>();
+  ArjunNS::SimplifiedCNF cnf(fg);
   cnf.new_vars(10);
   vector<CMSat::Lit> cl;
   cl.push_back(CMSat::Lit(0, false));
@@ -76,16 +80,13 @@ int main() {
 
   run_arjun(cnf);
   conf.verb = 0;
-  Ganak counter(conf, cnf.weighted);
+  Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
 
-  mpz_class cnt;
-  if (cnf.multiplier_weight == std::complex<mpq_class>()) cnt = mpz_class();
-  else cnt = counter.unw_outer_count();
+  std::unique_ptr<CMSat::Field> cnt = cnf.multiplier_weight->dup();
+  if (!cnf.multiplier_weight->is_zero()) *cnt = *counter.count();
   assert(!counter.get_is_approximate());
-  assert(cnf.multiplier_weight.imag() == 0);
-  cnt *= cnf.multiplier_weight.real();
 
-  cout << "c s exact arb int " << std::fixed << cnt << endl;
+  cout << "c s exact arb int " << std::fixed << *cnt << endl;
   return 0;
 }

@@ -33,11 +33,10 @@ namespace GanakInt {
 constexpr uint64_t MIN_LIST_SIZE = 50000 * (sizeof(Clause) + 4*sizeof(Lit))/sizeof(uint32_t);
 constexpr uint64_t MAXSIZE = ((1ULL << 32)-1);
 
-template<typename T> class Counter;
+class Counter;
 
 using std::vector;
 
-template<typename T>
 class ClauseAllocator {
 public:
   ClauseAllocator(const CounterConfiguration& _conf);
@@ -53,7 +52,7 @@ public:
   inline Clause* ptr(const ClauseOfs offset) const { return (Clause*)(&data_start[offset]); }
   void clause_free(Clause* c);
   void clause_free(ClauseOfs offset);
-  bool consolidate(Counter<T>* solver, const bool force = false);
+  bool consolidate(Counter* solver, const bool force = false);
   size_t mem_used() const;
 
 private:
@@ -80,12 +79,10 @@ private:
   void* alloc_enough(const uint32_t num_lits);
 };
 
-template<typename T>
-ClauseAllocator<T>::ClauseAllocator(const CounterConfiguration& _conf): conf(_conf) {
+inline ClauseAllocator::ClauseAllocator(const CounterConfiguration& _conf): conf(_conf) {
     static_assert(MIN_LIST_SIZE < MAXSIZE);
 }
 
-template<typename T>
-ClauseAllocator<T>::~ClauseAllocator() { free(data_start); }
+inline ClauseAllocator::~ClauseAllocator() { free(data_start); }
 
 }

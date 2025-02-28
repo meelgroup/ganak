@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <complex>
 #include <string>
 #include <iomanip>
 #include <sstream>
@@ -30,11 +29,16 @@ THE SOFTWARE.
 #include <random>
 #include <iostream>
 #include <gmpxx.h>
+#include <cryptominisat5/solvertypesmini.h>
 
 using std::cerr;
 using std::cout;
 using std::endl;
-using std::complex;
+using CMSat::Field;
+using CMSat::FieldGen;
+
+using FG = std::unique_ptr<FieldGen>;
+using FF = std::unique_ptr<Field>;
 
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */
@@ -168,16 +172,6 @@ inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) 
 inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
     unif_uint_dist(u, maximum);
     return u(mtrand);
-}
-
-template<typename T>
-T get_default_weight() {
-  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
-  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
-
-  if constexpr (!weighted) return 1;
-  else if constexpr (!cpx) return 1;
-  else return T(1, 0);
 }
 
 }

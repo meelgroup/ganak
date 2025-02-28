@@ -42,8 +42,8 @@ using std::pair;
 
 namespace GanakInt {
 
-template<typename T> class ClauseAllocator;
-template<typename T> class Counter;
+class ClauseAllocator;
+class Counter;
 
 constexpr uint32_t hstride = 8; // stamp, lev, 2*(start, size, orig_size)
 /* #define ANALYZE_DEBUG */
@@ -114,20 +114,19 @@ struct MyHolder {
 };
 
 // There is exactly ONE of this, inside CompManager, which is inside counter
-template<typename T>
 class CompAnalyzer {
 public:
   CompAnalyzer(
         const LiteralIndexedVector<TriValue> & lit_values,
-        Counter<T>* _counter);
+        Counter* _counter);
 
   auto freq_score_of(uint32_t v) const { return var_freq_scores[v]; }
   void un_bump_score(uint32_t v) { var_freq_scores[v] --; }
   inline void bump_freq_score(uint32_t v) { var_freq_scores[v] ++; }
-  const CompArchetype<T>& current_archetype() const { return archetype; }
+  const CompArchetype& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
-      const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& long_irred_cls);
+      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool var_unvisited_sup_comp(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var));
@@ -151,7 +150,7 @@ public:
     return manage_occ_of(v);
   }
 
-  void setup_analysis_context(StackLevel<T>& top, const Comp & super_comp){
+  void setup_analysis_context(StackLevel& top, const Comp & super_comp){
     archetype.re_initialize(top,super_comp);
 
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
@@ -176,7 +175,7 @@ public:
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }
   uint32_t get_max_var() const { return max_var; }
-  CompArchetype<T>& get_archetype() { return archetype; }
+  CompArchetype& get_archetype() { return archetype; }
 
 private:
   // the id of the last clause
@@ -188,8 +187,6 @@ private:
   uint64_t reset_comps = 0;
   uint64_t non_reset_comps = 0;
   uint32_t comps_recorded = 0;
-  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
-  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
 
   MyHolder holder;
   vector<Lit> long_clauses_data;
@@ -198,8 +195,8 @@ private:
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;
   vector<uint32_t> var_freq_scores;
-  CompArchetype<T> archetype;
-  Counter<T>* counter = nullptr;
+  CompArchetype archetype;
+  Counter* counter = nullptr;
 
   // Quick lookup of cl based on ID
 

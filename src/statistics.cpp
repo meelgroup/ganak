@@ -43,8 +43,7 @@ static double safe_div(double a, double b) {
   else return a/b;
 }
 
-template<typename T>
-void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCache<T>* cache) const {
+void DataAndStatistics::print_short(const Counter* counter, const CompCache* cache) const {
   verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
@@ -175,12 +174,7 @@ void DataAndStatistics<T>::print_short(const Counter<T>* counter, const CompCach
 }
 
 
-template<typename T>
-void DataAndStatistics<T>::print_short_formula_info(const Counter<T>* counter) const {
+void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
   verb_print(1, "irred cls long/bin: "
     << counter->get_num_irred_long_cls() << "/" << num_bin_irred_cls);
 }
-
-template class GanakInt::DataAndStatistics<complex<mpq_class>>;
-template class GanakInt::DataAndStatistics<mpz_class>;
-template class GanakInt::DataAndStatistics<mpq_class>;

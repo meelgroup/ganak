@@ -24,10 +24,12 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter.hpp"
 #include "clauseallocator.hpp"
+#include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
 #include <climits>
 #include <cstdint>
 #include <cstdint>
+#include <memory>
 
 using namespace GanakInt;
 
@@ -40,10 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 
 // Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
 // this sets up unif_occ
-template<typename T>
-void CompAnalyzer<T>::initialize(
+void CompAnalyzer::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
-    const ClauseAllocator<T>* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
+    const ClauseAllocator* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
@@ -51,7 +52,7 @@ void CompAnalyzer<T>::initialize(
   vector<vector<ClauseOfs>> occs(max_var + 1);
   const uint32_t n = max_var+1;
 
-  debug_print(COLBLBACK "Building occ list in CompAnalyzer<T>::initialize...");
+  debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
 
   auto mysorter = [&] (ClauseOfs a1, ClauseOfs b1) {
     const Clause& a = *alloc->ptr(a1);
@@ -109,10 +110,10 @@ void CompAnalyzer<T>::initialize(
     max_clid++;
   }
   /* cout << "max clid: " << max_clid << " max_tri_clid: " << max_tri_clid << endl;; */
-  debug_print(COLBLBACK "Built occ list in CompAnalyzer<T>::initialize.");
+  debug_print(COLBLBACK "Built occ list in CompAnalyzer::initialize.");
 
   archetype.init_data(max_var, max_clid);
-  debug_print(COLBLBACK "Building unified link list in CompAnalyzer<T>::initialize...");
+  debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
 
 
   // data for binary clauses
@@ -191,21 +192,20 @@ void CompAnalyzer<T>::initialize(
     }
   }
 
-  debug_print(COLBLBACK "Built unified link list in CompAnalyzer<T>::initialize.");
+  debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 }
 
 // returns true, iff the comp found is non-trivial
-template<typename T>
-bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls) {
+bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls) {
   SLOW_DEBUG_DO(assert(archetype.var_unvisited_in_sup_comp(v)));
   record_comp(v, sup_comp_long_cls, sup_comp_bin_cls); // sets up the component that "v" is in
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
-    if (v >= indep_support_end) archetype.stack_level().include_solution(get_default_weight<T>());
+    if (v >= indep_support_end) archetype.stack_level().include_solution(counter->get_fg()->one());
     else {
-      if constexpr (weighted) archetype.stack_level().include_solution(counter->get_weight(v));
-      else archetype.stack_level().include_solution(2);
+      if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
+      else archetype.stack_level().include_solution(std::make_unique<CMSat::FMpz>(2));
     }
     archetype.set_var_in_peer_comp(v);
     return false;
@@ -219,8 +219,7 @@ bool CompAnalyzer<T>::explore_comp(const uint32_t v, const uint32_t sup_comp_lon
 // we need to reset the size
 
 // Create a component based on variable provided
-template<typename T>
-void CompAnalyzer<T>::record_comp(const uint32_t var, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls) {
+void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls) {
   SLOW_DEBUG_DO(assert(is_unknown(var)));
   comp_vars.clear();
   comp_vars.push_back(var);
@@ -391,16 +390,11 @@ end_sat:;
 }
 
 // There is exactly ONE of these
-template<typename T>
-CompAnalyzer<T>::CompAnalyzer(
+CompAnalyzer::CompAnalyzer(
     const LiteralIndexedVector<TriValue> & lit_values,
-    Counter<T>* _counter) :
+    Counter* _counter) :
       values(lit_values),
       conf(_counter->get_conf()),
       indep_support_end(_counter->get_indep_support_end()),
       counter(_counter)
 {}
-
-template class GanakInt::CompAnalyzer<complex<mpq_class>>;
-template class GanakInt::CompAnalyzer<mpz_class>;
-template class GanakInt::CompAnalyzer<mpq_class>;

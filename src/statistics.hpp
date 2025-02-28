@@ -26,9 +26,9 @@ THE SOFTWARE.
 #include <vector>
 #include <gmpxx.h>
 
-#include "structures.hpp"
 #include "comp_types/cacheable_comp.hpp"
 #include "counter_config.hpp"
+#include "common.hpp"
 
 using std::vector;
 using std::cout;
@@ -36,14 +36,14 @@ using std::endl;
 
 namespace GanakInt {
 
-template<typename T> class Counter;
-template<typename T> class CompCache;
+class Counter;
+class CompCache;
 
-template<typename T>
 class DataAndStatistics {
 public:
-  DataAndStatistics (const CounterConfiguration& _conf): conf(_conf) {}
+  DataAndStatistics (const CounterConfiguration& _conf, const FG& _fg): conf(_conf), fg(_fg->dup()) {}
   const CounterConfiguration& conf;
+  FG fg;
   uint64_t num_bin_irred_cls = 0;
   uint64_t num_bin_red_cls = 0;
 
@@ -149,14 +149,14 @@ public:
            + sum_bignum_bytes;
   }
 
-  void incorporate_cache_store(const CacheableComp<T> &ccomp, const uint32_t comp_nvars) {
+  void incorporate_cache_store(const CacheableComp &ccomp, const uint32_t comp_nvars) {
     sum_bignum_bytes += ccomp.bignum_bytes();
     sum_cache_store_sizes += comp_nvars;
     num_cached_comps++;
     total_num_cached_comps++;
   }
 
-  void incorporate_cache_erase(const CacheableComp<T> &ccomp){
+  void incorporate_cache_erase(const CacheableComp &ccomp){
     sum_bignum_bytes -= ccomp.bignum_bytes();
     num_cached_comps--;
   }
@@ -171,8 +171,8 @@ public:
     if (clause.size() == 2) num_bin_irred_cls++;
   }
 
-  void print_short(const Counter<T>* counter, const CompCache<T>* cache) const;
-  void print_short_formula_info(const Counter<T>* counter) const;
+  void print_short(const Counter* counter, const CompCache* cache) const;
+  void print_short_formula_info(const Counter* counter) const;
 
   double get_avg_comp_hit_size() const {
     if (num_cache_hits == 0) return 0.0L;

@@ -154,19 +154,32 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
   return os;
 }
 
-template<typename T>
 struct Cube {
   Cube() = default;
-  Cube(const std::vector<Lit>& _cnf, const T& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt), symm(_symm) {}
+  Cube(const Cube& o) {
+    cnf = o.cnf;
+    cnt = o.cnt->dup();
+    enabled = o.enabled;
+    symm = o.symm;
+    lbd = o.lbd;
+  }
+  Cube& operator=(const Cube& o) noexcept {
+    cnf = std::move(o.cnf);
+    *cnt = *o.cnt;
+    enabled = o.enabled;
+    symm = o.symm;
+    lbd = o.lbd;
+    return *this;
+  }
+  Cube(const std::vector<Lit>& _cnf, const FF& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt->dup()), symm(_symm) {}
   std::vector<Lit> cnf;
-  T cnt;
+  FF cnt = nullptr;
   bool enabled = true;
   bool symm = false;
   uint32_t lbd = 100;
 };
 
-template<typename T>
-inline std::ostream& operator<<(std::ostream& os, const Cube<T>& c) {
+inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
   os << "CNF: " << c.cnf << " cnt: " << std::setprecision(40) << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm << " lbd: " << c.lbd;
   return os;
 }

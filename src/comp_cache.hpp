@@ -38,10 +38,9 @@ using std::set;
 namespace GanakInt {
 
 // There is EXACTLY ONE of this
-template<typename T>
 class CompCache {
 public:
-  CompCache(const uint32_t num_vars, DataAndStatistics<T> &_stats, const CounterConfiguration& _conf);
+  CompCache(const uint32_t num_vars, DataAndStatistics &_stats, const CounterConfiguration& _conf);
   ~CompCache() { for(auto& c: entry_base) c.set_free(); }
 
   void init(Comp &super_comp, void* hash_seed);
@@ -57,14 +56,14 @@ public:
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_allocated();
   bool cache_full(uint64_t extra_will_be_added = 0) const {
-    return stats.cache_full(free_entry_base_slots.size() * sizeof(CacheableComp<T>),
+    return stats.cache_full(free_entry_base_slots.size() * sizeof(CacheableComp),
         extra_will_be_added);
   }
 
-  CacheableComp<T> &entry(CacheEntryID id) { return entry_base[id]; }
-  const CacheableComp<T> &entry(CacheEntryID id) const { return entry_base[id]; }
-  CacheableComp<T> &entry(const Comp& comp) { return entry(comp.id()); }
-  const CacheableComp<T> &entry(const Comp& comp) const { return entry(comp.id()); }
+  CacheableComp &entry(CacheEntryID id) { return entry_base[id]; }
+  const CacheableComp &entry(CacheEntryID id) const { return entry_base[id]; }
+  CacheableComp &entry(const Comp& comp) { return entry(comp.id()); }
+  const CacheableComp &entry(const Comp& comp) const { return entry(comp.id()); }
   bool exists(CacheEntryID id) const { return !entry_base[id].is_free(); }
 
   // removes the entry id from the hash table
@@ -80,10 +79,10 @@ public:
   // returns the id of the entry created
   // stores in the entry the position of
   // comp which is a part of the comp stack
-  inline CacheEntryID new_comp(CacheableComp<T> &ccomp, CacheEntryID super_comp_id);
+  inline CacheEntryID new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id);
   inline uint64_t calc_extra_mem_after_push() const;
 
-  bool find_comp_and_incorporate_cnt(StackLevel<T> &top, const uint32_t nvars, const CacheableComp<T> &packed_comp) {
+  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const CacheableComp &packed_comp) {
     stats.num_cache_look_ups++;
     uint32_t table_ofs = packed_comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
@@ -116,7 +115,7 @@ public:
 
 
   // store the number in model_count as the model count of CacheEntryID id
-  inline void store_value(const CacheEntryID id, const T& model_count);
+  inline void store_value(const CacheEntryID id, const FF& model_count);
 
   double calc_cutoff() const;
   bool delete_some_entries();
@@ -180,7 +179,7 @@ private:
       entry(compid).set_first_descendant(descendantid);
     }
 
-  vec<CacheableComp<T>> entry_base;
+  vec<CacheableComp> entry_base;
   vec<CacheEntryID> free_entry_base_slots;
 
   // the actual hash table
@@ -189,27 +188,25 @@ private:
 
   uint32_t tbl_size_mask; // table is always power-of-two size
 
-  DataAndStatistics<T> &stats;
+  DataAndStatistics &stats;
   const CounterConfiguration &conf;
   uint64_t my_time = 0;
   uint32_t num_vars;
 };
 
-template<typename T>
-uint64_t CompCache<T>::calc_extra_mem_after_push() const {
+inline uint64_t CompCache::calc_extra_mem_after_push() const {
   bool at_capacity = entry_base.capacity() == entry_base.size();
   bool at_capacity_table = table.capacity() == table.size();
   uint64_t extra_will_be_added = 0;
 
   // assume it will be multiplied by 1.5
   if (at_capacity) extra_will_be_added =
-    (entry_base.capacity()*sizeof(CacheableComp<T>) + stats.sum_bignum_bytes)/2;
+    (entry_base.capacity()*sizeof(CacheableComp) + stats.sum_bignum_bytes)/2;
   if (at_capacity_table) extra_will_be_added += (table.capacity()*sizeof(CacheEntryID))/2;
   return extra_will_be_added;
 }
 
-template<typename T>
-CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_comp_id) {
+inline CacheEntryID CompCache::new_comp(CacheableComp &ccomp, CacheEntryID super_comp_id) {
   uint64_t extra_mem_with_push = calc_extra_mem_after_push();
   while (cache_full(extra_mem_with_push)) {
     verb_print(1, "Cache full. Deleting some entries.");
@@ -228,7 +225,7 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
       double vm_dat;
       auto dat = mem_used(vm_dat);
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
-        (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
+        (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024));
       verb_print(3,
         "Before entry enlarge Total process MB : " << dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
@@ -239,7 +236,7 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
       double vm_dat;
       double dat = mem_used(vm_dat);
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
-        (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024));
+        (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024));
       verb_print(3,
         "After entry enlarge Total process MB  : " << dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
@@ -273,8 +270,7 @@ CacheEntryID CompCache<T>::new_comp(CacheableComp<T> &ccomp, CacheEntryID super_
 }
 
 // Recursively unlinks & removes id and its descendants
-template<typename T>
-uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
+inline uint64_t CompCache::clean_pollutions_involving(const CacheEntryID id) {
   uint64_t removed = 0;
 
   // unlink id from the father's siblings list
@@ -308,8 +304,7 @@ uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
   return 1+removed;
 }
 
-template<typename T>
-void CompCache<T>::unlink(CacheEntryID id) {
+inline void CompCache::unlink(CacheEntryID id) {
   uint32_t act_id = table[table_pos(id)];
   if (act_id == id){
     table[table_pos(id)] = entry(act_id).next_bucket_element();
@@ -325,8 +320,7 @@ void CompCache<T>::unlink(CacheEntryID id) {
   }
 }
 
-template<typename T>
-void CompCache<T>::store_value(const CacheEntryID id, const T& model_count) {
+inline void CompCache::store_value(const CacheEntryID id, const FF& model_count) {
   consider_table_resize();
   uint32_t table_ofs = table_pos(id);
   // when storing the new model count the size of the model count
@@ -340,24 +334,19 @@ void CompCache<T>::store_value(const CacheEntryID id, const T& model_count) {
   stats.sum_bignum_bytes += entry(id).bignum_bytes();
 }
 
-
-template<typename T>
-CompCache<T>::CompCache(
+inline CompCache::CompCache(
     uint32_t _num_vars,
-    DataAndStatistics<T> &_stats, const CounterConfiguration &_conf):
+    DataAndStatistics &_stats, const CounterConfiguration &_conf):
   stats(_stats), conf(_conf), num_vars(_num_vars) {}
 
-
-
-template<typename T>
-void CompCache<T>::init(Comp &super_comp, void* hash_seed){
-  CacheableComp<T> *packed_super_comp;
+inline void CompCache::init(Comp &super_comp, void* hash_seed){
+  CacheableComp *packed_super_comp;
   vector<uint32_t> tmp(100+super_comp.nVars()+super_comp.num_long_cls());
-  packed_super_comp = new CacheableComp<T>(hash_seed,super_comp);
+  packed_super_comp = new CacheableComp(hash_seed,super_comp);
   my_time = 1;
 
   entry_base.clear();
-  auto x = CacheableComp<T>();
+  auto x = CacheableComp();
   entry_base.push_back(x); // dummy Element
   stats.incorporate_cache_store(x, super_comp.nVars());
   table.clear();

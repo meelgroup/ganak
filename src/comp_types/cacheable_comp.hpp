@@ -28,19 +28,20 @@ THE SOFTWARE.
 namespace GanakInt {
 
 class Comp;
-template<typename T> class CompArchetype;
+class CompArchetype;
 
 // Adds Structure to PackedComp that is
 // necessary to store it in the cache
 // namely, the descendant tree structure that
 // allows for the removal of cache pollutions
-template<typename T>
-class CacheableComp: public HashedComp<T> {
+class CacheableComp: public HashedComp {
 public:
   CacheableComp() = default;
-  CacheableComp(void* hash_seed, const Comp &comp) : HashedComp<T>(hash_seed, comp) { }
+  CacheableComp(const CacheableComp&) = default;
+  CacheableComp& operator=(const CacheableComp&) = default;
+  CacheableComp(void* hash_seed, const Comp &comp) : HashedComp(hash_seed, comp) { }
 
-  uint32_t bignum_bytes() const { return HashedComp<T>::bignum_bytes(); }
+  uint32_t bignum_bytes() const { return HashedComp::bignum_bytes(); }
 
   // Cache Pollution Management
   void set_father(CacheEntryID f) { father_ = f; }
@@ -52,13 +53,13 @@ public:
   void set_next_bucket_element(CacheEntryID entry) { next_bucket_element_ = entry; }
   CacheEntryID next_bucket_element() const { return next_bucket_element_; }
   bool is_free() const {
-    if (father_ == std::numeric_limits<uint32_t>::max()) assert (HashedComp<T>::model_count_ == nullptr);
+    if (father_ == std::numeric_limits<uint32_t>::max())
+      assert (HashedComp::model_count_ == nullptr);
     return father_ == std::numeric_limits<uint32_t>::max();
   }
   void set_free() {
     father_ = std::numeric_limits<uint32_t>::max();
-    delete HashedComp<T>::model_count_;
-    HashedComp<T>::model_count_ = nullptr;
+    HashedComp::model_count_ = nullptr;
   }
 
 private:

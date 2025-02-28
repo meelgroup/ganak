@@ -13,8 +13,7 @@ using namespace GanakInt;
 
 // Note that this will ensure that variables and clauses are ordered
 // this means that their hash is easily comparable
-template<typename T>
-Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
+Comp* CompArchetype::make_comp(const uint32_t comp_vars_size) {
   debug_print(COLREDBG << __PRETTY_FUNCTION__ << " start.");
   Comp* p_new_comp = reserve_comp_space(comp_vars_size, num_long_cls);
 
@@ -40,7 +39,3 @@ Comp* CompArchetype<T>::make_comp(const uint32_t comp_vars_size) {
       " long cls:" << p_new_comp->num_long_cls());
   return p_new_comp;
 }
-
-template class GanakInt::CompArchetype<complex<mpq_class>>;
-template class GanakInt::CompArchetype<mpz_class>;
-template class GanakInt::CompArchetype<mpq_class>;

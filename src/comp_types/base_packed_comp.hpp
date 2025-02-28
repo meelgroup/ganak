@@ -32,11 +32,24 @@ using std::cout;
 
 namespace GanakInt {
 
-template<typename T>
 class BaseComp {
 public:
+  BaseComp() = default;
+  BaseComp& operator=(const BaseComp& b) {
+    clhashkey_ = b.clhashkey_;
+    if (b.model_count_) model_count_ = b.model_count_->dup();
+    last_used_time_ = b.last_used_time_;
+    delete_permitted = b.delete_permitted;
+    return *this;
+  }
+  BaseComp(const BaseComp& b) {
+    clhashkey_ = b.clhashkey_;
+    if (b.model_count_) model_count_ = b.model_count_->dup();
+    last_used_time_ = b.last_used_time_;
+    delete_permitted = b.delete_permitted;
+  }
   uint32_t last_used_time() const { return last_used_time_; }
-  const T& model_count() const { return *model_count_; }
+  const FF& model_count() const { return model_count_; }
   uint32_t bignum_bytes() const{
     if (!model_count_) return 0;
     return mp_data_size();
@@ -53,9 +66,9 @@ public:
     last_used_time_ += (time-last_used_time_)/div;
   }
 
-  void set_model_count(const T& rn) {
+  void set_model_count(const FF& rn) {
     assert(model_count_ == nullptr);
-    model_count_ = new T(rn);
+    model_count_ = rn->dup();
   }
 
   uint32_t get_hashkey() const  { return (uint32_t)clhashkey_; }
@@ -75,34 +88,9 @@ public:
 
 protected:
   uint64_t clhashkey_;
-  T* model_count_ = nullptr;
+  FF model_count_ = nullptr;
   uint32_t last_used_time_:31 = 1; //effectively the score
   uint32_t delete_permitted:1 = false;
 };
-
-inline auto helper(mpz_ptr val) {
-  return val->_mp_alloc * sizeof(mp_limb_t);
-}
-
-template<>
-inline uint32_t BaseComp<mpz_class>::mp_data_size() const {
-  return sizeof(mpz_class) + helper(model_count_->get_mpz_t());
-}
-
-template<>
-inline uint32_t BaseComp<mpq_class>::mp_data_size() const {
-  uint32_t a = helper(model_count_->get_den_mpz_t());
-  uint32_t b = helper(model_count_->get_num_mpz_t());
-  return sizeof(mpz_class) + a + b;
-}
-
-template<>
-inline uint32_t BaseComp<complex<mpq_class>>::mp_data_size() const {
-  uint32_t a = helper(model_count_->real().get_den_mpz_t());
-  uint32_t b = helper(model_count_->real().get_num_mpz_t());
-  uint32_t a2 = helper(model_count_->imag().get_den_mpz_t());
-  uint32_t b2 = helper(model_count_->imag().get_num_mpz_t());
-  return 2*sizeof(mpz_class) + a + b + a2 + b2;
-}
 
 }

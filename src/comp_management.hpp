@@ -37,16 +37,15 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
-template<typename T> class Counter;
+class Counter;
 
 // There is exactly ONE of this, inside Counter
-template<typename T>
 class CompManager {
 public:
 
-  CompManager(const CounterConfiguration &config, DataAndStatistics<T> &statistics,
+  CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
-                   Counter<T>* _counter);
+                   Counter* _counter);
   ~CompManager() {
     free(hash_seed);
     for(auto& comp: comp_stack) free(comp);
@@ -55,29 +54,28 @@ public:
 
   auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
-    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls);
-  const CompCache<T>& get_cache() const { return cache; }
-  const CompAnalyzer<T>& get_ana() const { return ana; }
+    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
+  const CompCache& get_cache() const { return cache; }
+  const CompAnalyzer& get_ana() const { return ana; }
 
-  void save_count(const uint32_t stack_comp_id, const T& value) {
+  void save_count(const uint32_t stack_comp_id, const FF& value) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
         << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << value);
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
   const auto& get_comp_stack() const { return comp_stack; }
-  Comp& get_super_comp(const StackLevel<T>& lev) {
+  Comp& get_super_comp(const StackLevel& lev) {
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
-  const Comp& get_super_comp(const StackLevel<T>& lev) const {
+  const Comp& get_super_comp(const StackLevel& lev) const {
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
-
   uint32_t comp_stack_size() { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }
-  void clean_remain_comps_of(const StackLevel<T>& top) {
+  void clean_remain_comps_of(const StackLevel& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack.size() > top.remaining_comps_ofs()) {
       if (cache.exists(comp_stack.back()->id())) cache.entry(comp_stack.back()->id()).set_deletable();
@@ -93,13 +91,13 @@ public:
   // returns true if a non-trivial non-cached comp
   // has been found and is now stack_.TOS_NextComp()
   // returns false if all comps have been processed
-  inline bool find_next_remain_comp_of(StackLevel<T> &top);
-  void record_remaining_comps_for(StackLevel<T> &top);
+  inline bool find_next_remain_comp_of(StackLevel &top);
+  void record_remaining_comps_for(StackLevel &top);
   inline void sort_comp_stack_range(uint32_t start, uint32_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
-  void remove_cache_pollutions_of_if_exists(const StackLevel<T> &top);
-  void remove_cache_pollutions_of(const StackLevel<T> &top);
+  void remove_cache_pollutions_of_if_exists(const StackLevel &top);
+  void remove_cache_pollutions_of(const StackLevel &top);
   void* hash_seed; //stores a bunch of __m128 aligned data pieces, each
                    //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
   void getrandomseedforclhash() {
@@ -109,20 +107,18 @@ public:
   }
 
 private:
-  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
-  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
+  FG fg;
   const CounterConfiguration &conf;
-  DataAndStatistics<T> &stats;
+  DataAndStatistics &stats;
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp*> comp_stack;
-  CompCache<T> cache;
-  CompAnalyzer<T> ana;
-  Counter<T>* counter;
+  CompCache cache;
+  CompAnalyzer ana;
+  Counter* counter;
 };
 
-template<typename T>
-void CompManager<T>::sort_comp_stack_range(uint32_t start, uint32_t end) {
+inline void CompManager::sort_comp_stack_range(uint32_t start, uint32_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   if (start == end) return;
@@ -137,8 +133,7 @@ void CompManager<T>::sort_comp_stack_range(uint32_t start, uint32_t end) {
     }
 }
 
-template<typename T>
-double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) const {
+inline double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) const {
   double score = 1;
   assert(start <= end);
   // sort the remaining comps for processing
@@ -146,8 +141,7 @@ double CompManager<T>::get_alternate_score_comps(uint32_t start, uint32_t end) c
   return score;
 }
 
-template<typename T>
-bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top) {
+inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
   debug_print(COLREDBG"-*-> Running find_next_remain_comp_of");
   debug_print("top.remaining_comps_ofs():" << top.remaining_comps_ofs()
       << " comp_stack.size(): " << comp_stack.size());
@@ -158,11 +152,7 @@ bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top) {
         << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
-  if (top.branch_found_unsat()) {
-    // can ONLY happen with negative weights
-    if constexpr (!weighted) assert(false);
-    return false;
-  }
+  if (top.branch_found_unsat()) return false;
   if (top.has_unproc_comps()) {
     debug_print(COLREDBG"-*-> Finished find_next_remain_comp_of, has_unproc_comps.");
     return true;
@@ -170,7 +160,7 @@ bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top) {
 
   // if no component remains
   // make sure, at least that the current branch is considered SAT
-  top.include_solution(get_default_weight<T>());
+  top.include_solution(fg->one());
   debug_print(COLREDBG "-*-> Finished find_next_remain_comp_of, no more remaining comps. "
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "
@@ -182,9 +172,8 @@ bool CompManager<T>::find_next_remain_comp_of(StackLevel<T>& top) {
 
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana"
-template<typename T>
-void CompManager<T>::initialize(const LiteralIndexedVector<LitWatchList> & watches,
-    const ClauseAllocator<T>* _alloc, const vector<ClauseOfs>& long_irred_cls){
+inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
+    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls){
   assert(comp_stack.empty());
 
   ana.initialize(watches, _alloc, long_irred_cls);

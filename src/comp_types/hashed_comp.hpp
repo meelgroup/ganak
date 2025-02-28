@@ -28,23 +28,23 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
-template<typename T>
-class HashedComp: public BaseComp<T> {
+class HashedComp: public BaseComp {
 public:
   HashedComp() = default;
+  HashedComp(const HashedComp&) = default;
+  HashedComp& operator=(const HashedComp&) = default;
   inline HashedComp(void* hash_seed, const Comp& r_comp);
-  uint32_t bignum_bytes() const { return BaseComp<T>::bignum_bytes(); }
+  uint32_t bignum_bytes() const { return BaseComp::bignum_bytes(); }
 
-  uint64_t get_clhashkey() const { return BaseComp<T>::clhashkey_; }
+  uint64_t get_clhashkey() const { return BaseComp::clhashkey_; }
   bool equals_clhashkey(const HashedComp &comp) const {
-    return BaseComp<T>::clhashkey_ == comp.get_clhashkey();
+    return BaseComp::clhashkey_ == comp.get_clhashkey();
   }
 };
 
-template<typename T>
-HashedComp<T>::HashedComp(void* hash_seed, const Comp& comp) {
+HashedComp::HashedComp(void* hash_seed, const Comp& comp) {
   clhasher h(hash_seed);
-  BaseComp<T>::clhashkey_ = h(comp.get_raw_data(), comp.get_size());
+  BaseComp::clhashkey_ = h(comp.get_raw_data(), comp.get_size());
 }
 
 }

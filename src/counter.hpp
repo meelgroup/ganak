@@ -24,11 +24,13 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <map>
+#include <memory>
 
 #include "clauseallocator.hpp"
 #include "common.hpp"
 #include "counter_config.hpp"
 #include "comp_management.hpp"
+#include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
 #include "comp_management.hpp"
 #include "TreeDecomposition.hpp"
@@ -42,6 +44,7 @@ THE SOFTWARE.
 
 using std::pair;
 using std::map;
+using std::unique_ptr;
 
 namespace GanakInt {
 
@@ -148,12 +151,11 @@ struct VarOrderLt {
   VarOrderLt(const LiteralIndexedVector<LitWatchList>& _watches) : watches(_watches) { }
 };
 
-template<typename T> class ClauseAllocator;
+class ClauseAllocator;
 
-template<typename T>
 class Counter {
 public:
-  Counter(const CounterConfiguration& _conf);
+  Counter(const CounterConfiguration& _conf, const FG& _fg);
   ~Counter();
   void new_vars(const uint32_t n);
   void set_indep_support(const set<uint32_t>& indeps);
@@ -162,8 +164,8 @@ public:
   bool add_irred_cl(const vector<Lit>& lits);
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
   void end_irred_cls();
-  void set_lit_weight(Lit l, const T& w);
-  T outer_count();
+  void set_lit_weight(Lit l, const FF& w);
+  FF outer_count();
   uint32_t get_tstamp() const { return tstamp; }
   uint32_t get_tstamp(int32_t lev) const {
     if (dec_level() < lev) return UINT_MAX;
@@ -181,30 +183,35 @@ public:
   const auto& get_cache() const { return comp_manager->get_cache();}
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
 
-  const T& get_weight(const Lit l) { return weights[l.raw()];}
-  T get_weight(const uint32_t v) {
+  const FF& get_weight(const Lit& l) { return weights[l.raw()];}
+  FF get_weight(const uint32_t v) {
     Lit l(v, false);
-    return weights[l.raw()]+weights[l.neg().raw()];}
-  bool weight_larger_than(const T& a, const T&b) const {
-    if constexpr (!weighted) return a > b;
-    else if constexpr (!cpx) return a > b;
-    else return a.real()*a.imag() > b.real()*b.imag();
+    auto w = weights[l.raw()]->dup();
+    *w += *weights[l.neg().raw()];
+    return w;
+  }
+  bool weight_larger_than(const FF&,  const FF&) const {
+    assert(false && "TODO with Field");
+    return false;
   }
   auto get_indep_support_end() const { return indep_support_end; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
   const auto& get_var_data(uint32_t v) const { return var_data[v]; }
-  auto dec_level() const { return decisions.get_decision_level(); }
+  int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void set_stamp() { decisions[dec_level()].tstamp = ++tstamp; }
+  const FG& get_fg() const { return fg; }
+  bool weighted() const { return fg->weighted(); }
 
 private:
+  FG fg;
   CounterConfiguration conf;
-  DataAndStatistics<T> stats;
+  DataAndStatistics stats;
   bool num_vars_set = false;
   std::mt19937_64 mtrand;
   CMSat::SATSolver* sat_solver = nullptr;
-  CompManager<T>* comp_manager = nullptr;
-  T count_using_cms();
+  CompManager* comp_manager = nullptr;
+  FF count_using_cms();
 
   // ReduceDB
   bool is_antec_of(ClauseOfs ante_cl, Lit lit) const {
@@ -242,26 +249,26 @@ private:
 
   // DNF Cube stuff
   bool restart_if_needed();
-  vector<Cube<T>> mini_cubes;
-  uint32_t disable_small_cubes(vector<Cube<T>>& cubes);
-  void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube<T>>& cubes);
-  void print_and_check_cubes(vector<Cube<T>>& cubes);
-  void disable_cubes_if_overlap(vector<Cube<T>>& cubes);
-  void extend_cubes(vector<Cube<T>>& cubes);
-  int cube_try_extend_by_lit(const Lit torem, const Cube<T>& c);
-  T check_count_norestart(const Cube<T>& c);
-  T check_count_norestart_cms(const Cube<T>& c);
-  vector<Cube<T>> one_restart_count();
+  vector<Cube> mini_cubes;
+  uint32_t disable_small_cubes(vector<Cube>& cubes);
+  void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
+  void print_and_check_cubes(vector<Cube>& cubes);
+  void disable_cubes_if_overlap(vector<Cube>& cubes);
+  void extend_cubes(vector<Cube>& cubes);
+  int cube_try_extend_by_lit(const Lit torem, const Cube& c);
+  FF check_count_norestart(const Cube& c);
+  FF check_count_norestart_cms(const Cube& c);
+  vector<Cube> one_restart_count();
   bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
-  bool compute_cube(Cube<T>& cube, const int side);
+  bool compute_cube(Cube& cube, const int side);
   vector<map<Lit, Lit>> generators;
-  void symm_cubes(vector<Cube<T>>& cubes);
+  void symm_cubes(vector<Cube>& cubes);
 
-  const DataAndStatistics<T>& get_stats() const;
+  const DataAndStatistics& get_stats() const;
   void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
   //Debug stuff
-  T check_count(const bool also_incl_curr_and_later_dec = false);
+  FF check_count(const bool also_incl_curr_and_later_dec = false);
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
   template<class T2> bool clause_falsified(const T2& cl) const;
@@ -280,9 +287,7 @@ private:
 
   // Weights
   uint64_t vars_act_dec_num = 0;
-  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
-  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
-  vector<T> weights;
+  vector<FF> weights;
   /** Needed to know what variables were active in given decision levels
   / It's needed for weighted counting to know what variable was active in
   / that component (learnt clauses can propagate vars that were not active,
@@ -298,7 +303,7 @@ private:
   double start_time;
   volatile bool appmc_timeout_fired = false;
   bool is_approximate = false;
-  mpz_class do_appmc_count();
+  FF do_appmc_count();
 
   // SAT solver
   bool ok = true;
@@ -308,8 +313,8 @@ private:
   int val(Lit lit) const { return values[lit]; }
   int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
-  friend class ClauseAllocator<T>;
-  ClauseAllocator<T>* alloc;
+  friend class ClauseAllocator;
+  ClauseAllocator* alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> long_red_cls;
   bool run_sat_solver(RetState& state);
@@ -346,7 +351,7 @@ private:
   void init_activity_scores();
   double var_act(const uint32_t v) const {
     return watches[Lit(v, false)].activity + watches[Lit(v, true)].activity; }
-  DecisionStack<T> decisions;
+  DecisionStack decisions;
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
@@ -493,12 +498,11 @@ private:
   vector<Lit> bothprop_toset;
 };
 
-template<typename T>
-void Counter<T>::unset_lit(Lit lit) {
+inline void Counter::unset_lit(Lit lit) {
     VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
-    if constexpr (weighted) if(!sat_mode() && get_weight(lit) != get_default_weight<T>()) {
+    if(weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
       uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
       bool in_comp = (at[0] == at[lit.var()]);
       if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
@@ -508,8 +512,7 @@ void Counter<T>::unset_lit(Lit lit) {
     values[lit.neg()] = X_TRI;
   }
 
-template<typename T>
-inline void Counter<T>::print_cl(const Lit* c, uint32_t size) const {
+inline void Counter::print_cl(const Lit* c, uint32_t size) const {
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
     cout << std::setw(5) << l
@@ -521,9 +524,8 @@ inline void Counter<T>::print_cl(const Lit* c, uint32_t size) const {
   }
 }
 
-template<typename T>
 template<class T2>
-void Counter<T>::print_cl(const T2& cl) const {
+void Counter::print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
     cout << std::left << std::setw(5) << l
@@ -535,9 +537,8 @@ void Counter<T>::print_cl(const T2& cl) const {
   }
 }
 
-template<typename T>
 template<class T2>
-void Counter<T>::v_print_cl(const T2& cl) const {
+void Counter::v_print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
     cout << std::setw(5) << l
@@ -546,16 +547,14 @@ void Counter<T>::v_print_cl(const T2& cl) const {
   }
 }
 
-template<typename T>
-template<class T2> bool Counter<T>::conflicting_cl(T2& cl) const {
+template<class T2> bool Counter::conflicting_cl(T2& cl) const {
   for(const auto&l: cl) {
     if (val(l) == T_TRI || val(l) == X_TRI) return false;
   }
   return true;
 }
 
-template<typename T>
-template<class T2> bool Counter<T>::propagating_cl(T2& cl) const {
+template<class T2> bool Counter::propagating_cl(T2& cl) const {
   uint32_t unk = 0;
   for(const auto&l: cl) {
     if (val(l) == T_TRI) return false;
@@ -564,8 +563,7 @@ template<class T2> bool Counter<T>::propagating_cl(T2& cl) const {
   return unk == 1;
 }
 
-template<typename T>
-template<class T2> bool Counter<T>::currently_propagating_cl(T2& cl) const {
+template<class T2> bool Counter::currently_propagating_cl(T2& cl) const {
   uint32_t tru = 0;
   for(const auto&l: cl) {
     if (val(l) == T_TRI) {tru++; if (tru>1) return false;}
@@ -574,8 +572,7 @@ template<class T2> bool Counter<T>::currently_propagating_cl(T2& cl) const {
   return tru == 1;
 }
 
-template<typename T>
-inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
+inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
   bool all_false = true;
   for(uint32_t i = 0; i < size; i++) {
     if (val(c[i]) != F_TRI) {all_false = false; break;}
@@ -589,14 +586,12 @@ inline void Counter<T>::check_cl_unsat(Lit* c, uint32_t size) const {
 
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
 // to each variable during analysis
-template<typename T>
-void inline Counter<T>::inc_act(const Lit lit) {
+inline void Counter::inc_act(const Lit lit) {
   watches[lit].activity += 1.0;
   if (sat_mode() && order_heap.in_heap(lit.var())) order_heap.increase(lit.var());
 }
 
-template<typename T>
-template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
+template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
 #ifdef VERBOSE_DEBUG
   cout << "A:" << a << endl;
   for(size_t i = 1; i < a.size(); i++) assert(a[i-1] < a[i]);
@@ -630,8 +625,7 @@ template<class T1, class T2> bool Counter<T>::subset(const T1& a, const T2& b) {
   return ret;
 }
 
-template<typename T>
-Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
+inline Antecedent Counter::add_uip_confl_cl(const vector<Lit> &literals) {
   stats.learnt_cls_added++;
   Antecedent ante;
   Clause* cl = add_cl(literals, true);
@@ -651,16 +645,14 @@ Antecedent Counter<T>::add_uip_confl_cl(const vector<Lit> &literals) {
   return ante;
 }
 
-template<typename T>
-bool Counter<T>::add_bin_cl(Lit a, Lit b, bool red) {
+inline bool Counter::add_bin_cl(Lit a, Lit b, bool red) {
    watches[a].add_bin(b, red);
    watches[b].add_bin(a, red);
    return true;
 }
 
-template<typename T>
 template<class T2>
-void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
+void Counter::minimize_uip_cl_with_bins(T2& cl) {
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
   uint32_t orig_size = cl.size();
   assert(cl.size() > 0);
@@ -690,34 +682,29 @@ void Counter<T>::minimize_uip_cl_with_bins(T2& cl) {
   stats.rem_lits_tried++;
 }
 
-template<typename T>
-template<class T2> void Counter<T>::attach_cl(ClauseOfs off, const T2& lits) {
+template<class T2> void Counter::attach_cl(ClauseOfs off, const T2& lits) {
   Lit blck_lit = lits[lits.size()/2];
   watches[lits[0]].add_cl(off, blck_lit);
   watches[lits[1]].add_cl(off, blck_lit);
 }
 
-template<typename T>
-bool Counter<T>::is_unknown(Lit lit) const {
+inline bool Counter::is_unknown(Lit lit) const {
     SLOW_DEBUG_DO(assert(lit.var() <= nVars()));
     SLOW_DEBUG_DO(assert(lit.var() != 0));
     return values[lit] == X_TRI;
 }
 
-template<typename T>
-bool Counter<T>::is_unknown(uint32_t var) const {
+inline bool Counter::is_unknown(uint32_t var) const {
     SLOW_DEBUG_DO(assert(var != 0));
     return is_unknown(Lit(var, false));
 }
 
-template<typename T>
-void Counter<T>::set_confl_state(Lit a, Lit b) {
+inline void Counter::set_confl_state(Lit a, Lit b) {
   confl_lit = a;
   confl = Antecedent(b);
 }
 
-template<typename T>
-void Counter<T>::set_confl_state(Clause* cl) {
+inline void Counter::set_confl_state(Clause* cl) {
   if (cl->red && cl->lbd > this->lbd_cutoff) {
     cl->set_used();
     /* cl->update_lbd(this->calc_lbd(*cl)); */
@@ -726,19 +713,16 @@ void Counter<T>::set_confl_state(Clause* cl) {
   confl_lit = NOT_A_LIT;
 }
 
-template<typename T>
-vector<Lit>::const_iterator Counter<T>::top_declevel_trail_begin() const {
+inline vector<Lit>::const_iterator Counter::top_declevel_trail_begin() const {
   return trail.begin() + this->var(decisions.top().var).sublevel;
 }
 
-template<typename T>
-vector<Lit>::iterator Counter<T>::top_declevel_trail_begin() {
+inline vector<Lit>::iterator Counter::top_declevel_trail_begin() {
   return trail.begin() + this->var(decisions.top().var).sublevel;
 }
 
-template<typename T>
 template<class T2>
-uint32_t Counter<T>::calc_lbd(const T2& lits) {
+uint32_t Counter::calc_lbd(const T2& lits) {
   lbd_helper_flag++;
   uint32_t nblevels = 0;
   for(const auto& l: lits) {
@@ -755,75 +739,27 @@ uint32_t Counter<T>::calc_lbd(const T2& lits) {
 
 class OuterCounter {
 public:
-  OuterCounter(const CounterConfiguration& conf, bool weighted, bool cpx = false) {
-    if (!weighted) unw_counter = new Counter<mpz_class>(conf);
-    else {
-      if (!cpx) wq_counter = new Counter<mpq_class>(conf);
-      else cpx_counter = new Counter<complex<mpq_class>>(conf);
-    }
-    release_assert(unw_counter || wq_counter || cpx_counter);
+  OuterCounter(const CounterConfiguration& conf, std::unique_ptr<FieldGen>& fg) {
+    counter = new Counter(conf, fg);
   }
-  ~OuterCounter() {
-    delete cpx_counter;
-    delete unw_counter;
-    delete wq_counter;
-  }
-  void set_generators(const vector<map<Lit, Lit>>& _gens) {
-    if (unw_counter) unw_counter->set_generators(_gens);
-    if (wq_counter) wq_counter->set_generators(_gens);
-    if (cpx_counter) cpx_counter->set_generators(_gens);
-  }
-  void end_irred_cls() {
-    if (unw_counter) unw_counter->end_irred_cls();
-    if (wq_counter) wq_counter->end_irred_cls();
-    if (cpx_counter) cpx_counter->end_irred_cls();
-  }
-  void set_indep_support(const set<uint32_t>& indeps) {
-    if (unw_counter) unw_counter->set_indep_support(indeps);
-    if (wq_counter) wq_counter->set_indep_support(indeps);
-    if (cpx_counter) cpx_counter->set_indep_support(indeps);
-  }
-  complex<mpq_class> cpx_outer_count() { release_assert(cpx_counter); return cpx_counter->outer_count();}
-  mpz_class unw_outer_count() { release_assert(unw_counter); return unw_counter->outer_count();}
-  mpq_class wq_outer_count() { release_assert(wq_counter); return wq_counter->outer_count();}
-  bool add_red_cl(const vector<Lit>& lits, int lbd = -1) {
-    if (unw_counter) return unw_counter->add_red_cl(lits, lbd);
-    if (wq_counter) return wq_counter->add_red_cl(lits, lbd);
-    if (cpx_counter) return cpx_counter->add_red_cl(lits, lbd);
-    release_assert(false);
-  }
-  bool get_is_approximate() const { release_assert(unw_counter); return unw_counter->get_is_approximate();}
-  bool add_irred_cl(const vector<Lit>& lits) {
-    if (unw_counter) return unw_counter->add_irred_cl(lits);
-    if (wq_counter) return wq_counter->add_irred_cl(lits);
-    if (cpx_counter) return cpx_counter->add_irred_cl(lits);
-    release_assert(false);
-  }
+
+  void set_generators(const vector<map<Lit, Lit>>& _gens) { counter->set_generators(_gens); }
+  void end_irred_cls() { counter->end_irred_cls(); }
+  void set_indep_support(const set<uint32_t>& indeps) { counter->set_indep_support(indeps); }
+  std::unique_ptr<CMSat::Field> outer_count() { return counter->outer_count();}
+  bool add_red_cl(const vector<Lit>& lits, int lbd = -1) { return counter->add_red_cl(lits, lbd); }
+  bool get_is_approximate() const { return counter->get_is_approximate();}
+  bool add_irred_cl(const vector<Lit>& lits) { return counter->add_irred_cl(lits); }
   void set_optional_indep_support(const set<uint32_t>& indeps) {
-    if (unw_counter) unw_counter->set_optional_indep_support(indeps);
-    if (wq_counter) wq_counter->set_optional_indep_support(indeps);
-    if (cpx_counter) return cpx_counter->set_optional_indep_support(indeps);
+    counter->set_optional_indep_support(indeps);
   }
-  void set_lit_weight(const Lit l, const complex<mpq_class>& w) {
-    release_assert(wq_counter || cpx_counter);
-    if (wq_counter) release_assert(w.imag() == 0);
-    if (wq_counter) wq_counter->set_lit_weight(l, w.real());
-    if (cpx_counter) return cpx_counter->set_lit_weight(l, w);
+  void set_lit_weight(const Lit l, const std::unique_ptr<CMSat::Field>& w) {
+    return counter->set_lit_weight(l, w);
   }
-  void new_vars(const uint32_t n) {
-    if (unw_counter) unw_counter->new_vars(n);
-    if (wq_counter) wq_counter->new_vars(n);
-    if (cpx_counter) cpx_counter->new_vars(n);
-  }
-  void print_indep_distrib() const {
-    if (unw_counter) unw_counter->print_indep_distrib();
-    if (wq_counter) wq_counter->print_indep_distrib();
-    if (cpx_counter) cpx_counter->print_indep_distrib();
-  }
+  void new_vars(const uint32_t n) { counter->new_vars(n); }
+  void print_indep_distrib() const { counter->print_indep_distrib(); }
 private:
-  Counter<complex<mpq_class>>* cpx_counter = nullptr;
-  Counter<mpz_class>* unw_counter = nullptr;
-  Counter<mpq_class>* wq_counter = nullptr;
+  Counter* counter = nullptr;
 };
 
 }

@@ -27,16 +27,14 @@ THE SOFTWARE.
 
 using namespace GanakInt;
 
-template<typename T>
-CompManager<T>::CompManager(const CounterConfiguration& config,
-    DataAndStatistics<T>& statistics,
-   const LiteralIndexedVector<TriValue>& lit_values, Counter<T>* _counter) :
-    conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
+CompManager::CompManager(const CounterConfiguration& config,
+    DataAndStatistics& statistics,
+    const LiteralIndexedVector<TriValue>& lit_values, Counter* _counter) :
+    fg(_counter->get_fg()->dup()), conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
     ana(lit_values, _counter), counter(_counter)
 {}
 
-template<typename T>
-void CompManager<T>::remove_cache_pollutions_of_if_exists(const StackLevel<T> &top) {
+void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
 
@@ -47,8 +45,7 @@ void CompManager<T>::remove_cache_pollutions_of_if_exists(const StackLevel<T> &t
   stats.cache_pollutions_called++;
 }
 
-template<typename T>
-void CompManager<T>::remove_cache_pollutions_of(const StackLevel<T> &top) {
+void CompManager::remove_cache_pollutions_of(const StackLevel &top) {
   // all processed comps are found in
   // [top.curr_remain_comp(), comp_stack.size())
   // first, remove the list of descendants from the father
@@ -69,8 +66,7 @@ void CompManager<T>::remove_cache_pollutions_of(const StackLevel<T> &top) {
 // cache, and if so, uses that, otherwise, it creates it
 // and adds it to the component stack
 // Runs a LOT of the time, like 40%+
-template<typename T>
-void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
+void CompManager::record_remaining_comps_for(StackLevel &top) {
   const Comp& super_comp = get_super_comp(top);
   const uint32_t new_comps_start_ofs = comp_stack.size();
 
@@ -87,7 +83,7 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
       //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
       //        in case  at least one lit in it is unknown
       Comp *p_new_comp = ana.make_comp_from_archetype();
-      CacheableComp<T> packed_comp(hash_seed, *p_new_comp);
+      CacheableComp packed_comp(hash_seed, *p_new_comp);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
@@ -121,8 +117,3 @@ void CompManager<T>::record_remaining_comps_for(StackLevel<T> &top) {
   top.set_unprocessed_comps_end(comp_stack.size());
   sort_comp_stack_range(new_comps_start_ofs, comp_stack.size());
 }
-
-
-template class GanakInt::CompManager<complex<mpq_class>>;
-template class GanakInt::CompManager<mpz_class>;
-template class GanakInt::CompManager<mpq_class>;

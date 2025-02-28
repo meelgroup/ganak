@@ -25,26 +25,21 @@ THE SOFTWARE.
 
 using namespace GanakInt;
 
-Ganak::Ganak(CounterConfiguration& conf, bool weighted, bool cpx) {
-  counter = new OuterCounter(conf, weighted, cpx);
+Ganak::Ganak(CounterConfiguration& conf, FG& fg) {
+  counter = new OuterCounter(conf, fg);
 }
+
 Ganak::~Ganak() {
   OuterCounter* c = (OuterCounter*)counter;
   delete c;
   counter = nullptr;
 }
-mpz_class Ganak::unw_outer_count() {
+
+FF Ganak::count() {
   OuterCounter* c = (OuterCounter*)counter;
-  return c->unw_outer_count();
+  return c->outer_count();
 }
-mpq_class Ganak::wq_outer_count() {
-  OuterCounter* c = (OuterCounter*)counter;
-  return c->wq_outer_count();
-}
-complex<mpq_class> Ganak::cpx_outer_count() {
-  OuterCounter* c = (OuterCounter*)counter;
-  return c->cpx_outer_count();
-}
+
 void Ganak::set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_generators(_gens);
@@ -73,7 +68,7 @@ void Ganak::set_optional_indep_support(const std::set<uint32_t>& indeps) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_optional_indep_support(indeps);
 }
-void Ganak::set_lit_weight(const GanakInt::Lit l, const complex<mpq_class>& w) {
+void Ganak::set_lit_weight(const GanakInt::Lit l, const FF& w) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_lit_weight(l, w);
 }

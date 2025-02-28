@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <armadillo>
 #include <gmpxx.h>
 #include <cassert>
 #include <vector>
@@ -33,7 +34,6 @@ using std::endl;
 
 namespace GanakInt {
 
-template<typename T>
 class StackLevel {
 public:
   StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _is_indep, uint64_t _tstamp) :
@@ -46,16 +46,14 @@ public:
   }
   uint64_t tstamp;
   bool is_indep;
-  static constexpr bool weighted = std::is_same<T, mpq_class>::value || std::is_same<T, complex<mpq_class>>::value;
-  static constexpr bool cpx = std::is_same<T, complex<mpq_class>>::value;
 
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
     branch_unsat[0] = false;
     branch_unsat[1] = false;
-    branch_mc[0] = 0;
-    branch_mc[1] = 0;
+    branch_mc[0] = nullptr;
+    branch_mc[1] = nullptr;
   }
 private:
 
@@ -66,7 +64,7 @@ private:
   bool act_branch = false;
 
   //  Solution count
-  T branch_mc[2] = {T(),T()};
+  FF branch_mc[2] = {nullptr, nullptr};
   bool branch_unsat[2] = {false,false};
 
   /// remaining Comps
@@ -125,22 +123,23 @@ public:
     return (!branch_found_unsat()) && has_unproc_comps();
   }
 
-  void include_solution(const T& solutions) {
+  void include_solution(const FF& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
     auto before = branch_mc[act_branch];
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_mc[act_branch] == T());
+      assert(branch_mc[act_branch]->is_zero());
       return;
     }
 
-    if (solutions == T()) branch_unsat[act_branch] = true;
-    if (!is_indep && solutions != T() && branch_mc[act_branch] == T()) branch_mc[act_branch] = get_default_weight<T>();
+    if (solutions->is_zero()) branch_unsat[act_branch] = true;
+    if (!is_indep && !solutions->is_zero() && branch_mc[act_branch] == nullptr)
+      branch_mc[act_branch]->set_one();
     else {
-      if (branch_mc[act_branch] == T()) branch_mc[act_branch] = solutions;
-      else branch_mc[act_branch] *= solutions;
+      if (branch_mc[act_branch] == nullptr) *branch_mc[act_branch] = *solutions;
+      else *branch_mc[act_branch] *= *solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((act_branch) ? "right" : "left")
@@ -152,7 +151,7 @@ public:
         << endl);
   }
 
-  void include_solution_left_side(const T& solutions) {
+  void include_solution_left_side(const FF& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " " << endl;);
     if (act_branch == 0) return;
 #ifdef VERBOSE_DEBUG
@@ -160,15 +159,15 @@ public:
 #endif
     if (branch_unsat[0]) {
       VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_mc[0] == T());
+      assert(branch_mc[0]->is_zero());
       return;
     }
 
-    if (solutions == T()) branch_unsat[0] = true;
-    if (!is_indep) branch_mc[0] = solutions;
+    if (solutions->is_zero()) branch_unsat[0] = true;
+    if (!is_indep) *branch_mc[0] = *solutions;
     else {
-      if (branch_mc[0] == T()) assert(false);
-      else branch_mc[0] *= solutions;
+      assert(!branch_mc[0]->is_zero());
+      *branch_mc[0] *= *solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")
@@ -180,43 +179,45 @@ public:
 
   bool branch_found_unsat() const { return branch_unsat[act_branch]; }
   void mark_branch_unsat() { branch_unsat[act_branch] = true; }
-  const T& get_branch_sols() const { return branch_mc[act_branch]; }
-  const T& get_model_side(int side) const { return branch_mc[side]; }
-  void zero_out_branch_sol() { branch_mc[act_branch] = 0; }
-  const T total_model_count() const {
-    if (is_indep) return branch_mc[0] + branch_mc[1];
-    else if (branch_mc[0] == T()) return branch_mc[1]; else return branch_mc[0]; }
+  const FF& get_branch_sols() const { return branch_mc[act_branch]; }
+  const FF& get_model_side(int side) const { return branch_mc[side]; }
+  void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
+  const FF total_model_count() const {
+    if (is_indep) {
+      auto ret = branch_mc[0]->dup();
+      *ret+= *branch_mc[1];
+      return ret;
+    }
+    else if (branch_mc[0]->is_zero()) return branch_mc[1]->dup(); else return branch_mc[0]->dup(); }
 
   // for cube creation
   bool branch_found_unsat(int side) const { return branch_unsat[side]; }
-  const T& left_model_count() const { return branch_mc[0]; }
-  const T& right_model_count() const { return branch_mc[1]; }
+  const FF& left_model_count() const { return branch_mc[0]; }
+  const FF& right_model_count() const { return branch_mc[1]; }
 
   void zero_out_all_sol() {
-    branch_mc[0] = T();
-    branch_mc[1] = T();
+    branch_mc[0]->set_zero();
+    branch_mc[1]->set_zero();
   }
-
 };
 
-template<typename T>
-class DecisionStack: public vector<StackLevel<T>> {
+class DecisionStack: public vector<StackLevel> {
 public:
 
-  const StackLevel<T>& top() const{
-    assert(vector<StackLevel<T>>::size() > 0);
-    return vector<StackLevel<T>>::back();
+  const StackLevel& top() const{
+    assert(vector<StackLevel>::size() > 0);
+    return vector<StackLevel>::back();
   }
 
-  StackLevel<T>& top(){
-    assert(vector<StackLevel<T>>::size() > 0);
-    return vector<StackLevel<T>>::back();
+  StackLevel& top(){
+    assert(vector<StackLevel>::size() > 0);
+    return vector<StackLevel>::back();
   }
 
   /// 0 means pre-1st-decision
   int32_t get_decision_level() const {
-    assert(vector<StackLevel<T>>::size() > 0);
-    return (int)vector<StackLevel<T>>::size() - 1;
+    assert(vector<StackLevel>::size() > 0);
+    return (int)vector<StackLevel>::size() - 1;
   }
 };
 

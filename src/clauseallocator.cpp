@@ -40,8 +40,7 @@ using namespace GanakInt;
 
 constexpr double ALLOC_GROW_MULT = 1.5;
 
-template<typename T>
-void* ClauseAllocator<T>::alloc_enough(uint32_t num_lits) {
+void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
   //Try to quickly find a place at the end of a data_start
   uint64_t neededbytes = sizeof(Clause) + sizeof(Lit)*num_lits;
   uint64_t needed = neededbytes/sizeof(uint32_t) + (bool)(neededbytes % sizeof(uint32_t));
@@ -83,8 +82,7 @@ void* ClauseAllocator<T>::alloc_enough(uint32_t num_lits) {
   return pointer;
 }
 
-template<typename T>
-ClauseOfs ClauseAllocator<T>::get_offset(const Clause* ptr) const {
+ClauseOfs ClauseAllocator::get_offset(const Clause* ptr) const {
   return ((uint32_t*)ptr - data_start);
 }
 
@@ -101,8 +99,7 @@ be incorrect, since it was incremented by the ORIGINAL size of the clause, but
 when the clause is "freed", it is decremented by the POTENTIALLY SMALLER size
 of the clause. Therefore, the "currently_used_size" is an overestimation!!
 */
-template<typename T>
-void ClauseAllocator<T>::clause_free(Clause* cl)
+void ClauseAllocator::clause_free(Clause* cl)
 {
     assert(!cl->freed);
     cl->freed = 1;
@@ -112,15 +109,13 @@ void ClauseAllocator<T>::clause_free(Clause* cl)
     currently_used_sz -= elems_freed;
 }
 
-template<typename T>
-void ClauseAllocator<T>::clause_free(ClauseOfs offset)
+void ClauseAllocator::clause_free(ClauseOfs offset)
 {
   Clause* cl = ptr(offset);
   clause_free(cl);
 }
 
-template<typename T>
-ClauseOfs ClauseAllocator<T>::move_cl(
+ClauseOfs ClauseAllocator::move_cl(
     ClauseOfs* new_data_start
     , ClauseOfs*& new_ptr
     , Clause* old
@@ -138,8 +133,7 @@ ClauseOfs ClauseAllocator<T>::move_cl(
   return new_offset;
 }
 
-template<typename T>
-void ClauseAllocator<T>::move_one_watchlist(
+void ClauseAllocator::move_one_watchlist(
     vec<ClOffsBlckL>& ws, ClauseOfs* new_data_start, ClauseOfs*& new_ptr)
 {
   for(auto& w: ws) {
@@ -164,8 +158,7 @@ small compared to the problem size. If it is small, it does nothing. If it is
 large, then it allocates new stacks, copies the non-freed clauses to these new
 stacks, updates all pointers and offsets, and frees the original stacks.
 */
-template<typename T>
-bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
+bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   //If re-allocation is not really neccessary, don't do it
   //Neccesities:
   //1) There is too much memory allocated. Re-allocation will save space
@@ -222,8 +215,7 @@ bool ClauseAllocator<T>::consolidate(Counter<T>* solver , const bool force) {
   return true;
 }
 
-template<typename T>
-void ClauseAllocator<T>::update_offsets(
+void ClauseAllocator::update_offsets(
     vector<ClauseOfs>& offsets,
     ClauseOfs* new_data_start,
     ClauseOfs*& new_ptr
@@ -235,15 +227,10 @@ void ClauseAllocator<T>::update_offsets(
   }
 }
 
-template<typename T>
-size_t ClauseAllocator<T>::mem_used() const
+size_t ClauseAllocator::mem_used() const
 {
   uint64_t mem = 0;
   mem += capacity*sizeof(uint32_t);
 
   return mem;
 }
-
-template class GanakInt::ClauseAllocator<complex<mpq_class>>;
-template class GanakInt::ClauseAllocator<mpz_class>;
-template class GanakInt::ClauseAllocator<mpq_class>;

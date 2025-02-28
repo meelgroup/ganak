@@ -35,8 +35,7 @@ THE SOFTWARE.
 
 using namespace GanakInt;
 
-template<typename T>
-uint64_t CompCache<T>::freeram() {
+uint64_t CompCache::freeram() {
   struct sysinfo info;
   sysinfo(&info);
   return info.freeram *(uint64_t) info.mem_unit;
@@ -47,8 +46,7 @@ uint64_t CompCache<T>::freeram() {
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-template<typename T>
-uint64_t CompCache<T>::freeram() {
+uint64_t CompCache::freeram() {
   int mib[2];
   int64_t physical_memory;
   mib[0] = CTL_HW;
@@ -60,8 +58,7 @@ uint64_t CompCache<T>::freeram() {
 }
 #endif
 
-template<typename T>
-void CompCache<T>::test_descendantstree_consistency() {
+void CompCache::test_descendantstree_consistency() {
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free()) {
       CacheEntryID act_child = entry(id).first_descendant();
@@ -83,8 +80,7 @@ void CompCache<T>::test_descendantstree_consistency() {
     }
 }
 
-template<typename T>
-double CompCache<T>::calc_cutoff() const {
+double CompCache::calc_cutoff() const {
   vector<uint32_t> scores;
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
@@ -102,8 +98,7 @@ double CompCache<T>::calc_cutoff() const {
 // TODO: don't delete entries that have more than 100 children
 //       it will pile up and slow down the cache and cache deletion
 //       check out: out-ganak-mc2324-14063135-0/mc2023_track1_041.cnf.gz
-template<typename T>
-bool CompCache<T>::delete_some_entries() {
+bool CompCache::delete_some_entries() {
   const auto start_del_time = cpu_time();
   double cutoff = calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
@@ -153,20 +148,18 @@ bool CompCache<T>::delete_some_entries() {
   return true;
 }
 
-template<typename T>
-uint64_t CompCache<T>::compute_size_allocated() {
+uint64_t CompCache::compute_size_allocated() {
   stats.cache_infra_bytes_mem_usage =
       sizeof(CompCache)
       + sizeof(CacheEntryID) * table.capacity()
       + sizeof(CacheEntryID) * free_entry_base_slots.capacity()
-      + sizeof(CacheableComp<T>)* entry_base.capacity();
+      + sizeof(CacheableComp)* entry_base.capacity();
   return stats.cache_infra_bytes_mem_usage;
 }
 
-template<typename T>
-void CompCache<T>::debug_mem_data() const {
+void CompCache::debug_mem_data() const {
     cout << std::setw(40) << "c o sizeof (CacheableComp, CacheEntryID) "
-         << sizeof(CacheableComp<T>) << ", "
+         << sizeof(CacheableComp) << ", "
          << sizeof(CacheEntryID) << endl;
     cout << std::setw(40) << "c o table (size/capa) M " << table.size()/(double)1e6
          << "/" << table.capacity()/(double)1e6 << endl;
@@ -178,7 +171,7 @@ void CompCache<T>::debug_mem_data() const {
     cout << std::setw(40) << "c o table mem use MB: "
          << (double)(table.capacity()*sizeof(CacheEntryID))/(double)(1024*1024) << endl;
     cout << std::setw(40) << "c o entry_base mem use MB: "
-         << (double)(entry_base.capacity()*sizeof(CacheableComp<T>))/(double)(1024*1024) << endl;
+         << (double)(entry_base.capacity()*sizeof(CacheableComp))/(double)(1024*1024) << endl;
     cout << std::setw(40) << "c o free_entry_base_slots mem use MB "
          << (double)(free_entry_base_slots.capacity()*sizeof(uint32_t))/(double)(1024*1024)
          << endl;
@@ -194,8 +187,7 @@ void CompCache<T>::debug_mem_data() const {
       << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 }
 
-template<typename T>
-uint64_t CompCache<T>::num_descendants(CacheEntryID id) {
+uint64_t CompCache::num_descendants(CacheEntryID id) {
   uint64_t ret = 0;
   CacheEntryID act_child = entry(id).first_descendant();
   while (act_child) {
@@ -205,8 +197,7 @@ uint64_t CompCache<T>::num_descendants(CacheEntryID id) {
   return ret;
 }
 
-template<typename T>
-uint64_t CompCache<T>::num_siblings(CacheEntryID id) {
+uint64_t CompCache::num_siblings(CacheEntryID id) {
   uint64_t ret = 0;
   CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) {
@@ -227,8 +218,7 @@ uint64_t CompCache<T>::num_siblings(CacheEntryID id) {
 }
 
 // Used only during cache freeing. Unlinks from descendants tree
-template<typename T>
-uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
+uint64_t CompCache::unlink_from_tree(CacheEntryID id) {
   assert(exists(id));
   // we need a father for this all to work
   assert(entry(id).father());
@@ -264,7 +254,3 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   }
   return len;
 }
-
-template class GanakInt::CompCache<complex<mpq_class>>;
-template class GanakInt::CompCache<mpz_class>;
-template class GanakInt::CompCache<mpq_class>;

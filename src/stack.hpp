@@ -135,12 +135,9 @@ public:
     }
 
     if (solutions->is_zero()) branch_unsat[act_branch] = true;
-    if (!is_indep && !solutions->is_zero() && branch_mc[act_branch] == nullptr)
-      branch_mc[act_branch]->set_one();
-    else {
-      if (branch_mc[act_branch] == nullptr) *branch_mc[act_branch] = *solutions;
-      else *branch_mc[act_branch] *= *solutions;
-    }
+    if (branch_mc[act_branch] == nullptr) branch_mc[act_branch] = solutions->dup();
+    else *branch_mc[act_branch] *= *solutions;
+    if (!is_indep && !solutions->is_zero()) branch_mc[act_branch]->set_one();
     VERBOSE_DEBUG_DO(cout << "now "
         << ((act_branch) ? "right" : "left")
         << " count is: " << branch_mc[act_branch]

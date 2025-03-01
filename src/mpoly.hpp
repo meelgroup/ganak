@@ -90,6 +90,7 @@ public:
     char* str = fmpq_mpoly_get_str_pretty(val, (const char**)varnames, ctx.get());
     os << str;
     free(str);
+    del_nvars_names(varnames);
     return os;
   }
 
@@ -111,6 +112,11 @@ public:
     return str.substr(0, end + 1);
   }
 
+  void del_nvars_names(char** names) const {
+    uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx.get());
+    for(uint32_t i = 0; i < nvars; i++) delete[] names[i];
+    delete[] names;
+  }
   char** nvars_names() const {
     uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx.get());
     char** vars = new char*[nvars];
@@ -135,6 +141,7 @@ public:
     str2.pop_back();
     auto varnames = nvars_names();
     auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), (const char**)varnames, ctx.get());
+    del_nvars_names(varnames);
     if (ret == -1) {
       std::cerr << "Error parsing polynomial on line " << line_no
         << " -- poly: " << str << std::endl;

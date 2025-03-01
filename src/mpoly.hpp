@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #pragma once
+#include <flint/fmpq.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_poly.h>
 #include <flint/fmpz_poly_factor.h>
@@ -139,11 +140,16 @@ public:
   ~FGenPoly() override = default;
 
   std::unique_ptr<CMSat::Field> zero() const override {
-      return std::make_unique<FPoly>(0, ctx);
+    fmpq_mpoly_t val;
+    fmpq_mpoly_init(val, ctx.get());
+    return std::make_unique<FPoly>(val, ctx);
   }
 
   std::unique_ptr<CMSat::Field> one() const override {
-      return std::make_unique<FPoly>(1, ctx);
+    fmpq_mpoly_t val;
+    fmpq_mpoly_init(val, ctx.get());
+    fmpq_mpoly_one(val, ctx.get());
+    return std::make_unique<FPoly>(val, ctx);
   }
 
   std::unique_ptr<FieldGen> dup() const override {

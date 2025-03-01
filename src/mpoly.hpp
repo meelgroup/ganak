@@ -22,19 +22,11 @@ THE SOFTWARE.
 
 #pragma once
 #include <flint/fmpq.h>
-#include <flint/fmpz.h>
-#include <flint/fmpz_poly.h>
-#include <flint/fmpz_poly_factor.h>
 #include <flint/fmpq_mpoly.h>
 #include <flint/mpoly_types.h>
 #include <cryptominisat5/solvertypesmini.h>
 #include <memory>
 #include <cstdlib>
-
-inline void gen_poly() {
-    fmpq_mpoly_ctx_t ctx;
-    fmpq_mpoly_ctx_init(ctx, 2, ORD_DEGREVLEX);
-}
 
 class FPoly : public CMSat::Field {
 public:
@@ -94,9 +86,9 @@ public:
   }
 
   std::ostream& display(std::ostream& os) const override {
-  char* str;
-  fmpq_mpoly_get_str_pretty(val, (const char**)&str, ctx.get());
-  os << *str;
+  const char* vars[] = {"x", "y"};
+  char* str = fmpq_mpoly_get_str_pretty(val, vars, ctx.get());
+  os << str;
   free(str);
   return os;
   }
@@ -115,7 +107,12 @@ public:
 
   bool parse(const std::string& str, const uint32_t line_no) override {
     const char* vars[] = {"x", "y"};
-    fmpq_mpoly_set_str_pretty(val, str.c_str(), vars, ctx.get());
+    auto ret = fmpq_mpoly_set_str_pretty(val, str.c_str(), vars, ctx.get());
+    if (!ret) {
+      std::cerr << "Error parsing polynomial on line " << line_no
+        << " -- poly: " << str << std::endl;
+      exit(-1);
+    }
     return true;
   }
 
@@ -138,8 +135,8 @@ public:
 
   FGenPoly(int nvars) {
     assert(nvars == 2);
-    auto c = std::make_shared<fmpq_mpoly_ctx_t>();
-    fmpq_mpoly_ctx_init(c.get(), nvars, ORD_DEGREVLEX);
+    ctx = std::make_shared<fmpq_mpoly_ctx_t>();
+    fmpq_mpoly_ctx_init(ctx.get(), nvars, ORD_DEGREVLEX);
   }
   FGenPoly(const FGenPoly& other) = default;
   ~FGenPoly() override = default;

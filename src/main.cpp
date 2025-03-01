@@ -42,6 +42,7 @@ THE SOFTWARE.
 #include "breakid.hpp"
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
+#include "mpoly.hpp"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -508,6 +509,9 @@ int main(int argc, char *argv[])
         break;
     case 2:
         fg = std::make_unique<ArjunNS::FGenComplex>();
+        break;
+    case 3:
+        fg = std::make_unique<FGenPoly>(2);
         break;
     default:
         cout << "c o [arjun] ERROR: Unknown mode" << endl;

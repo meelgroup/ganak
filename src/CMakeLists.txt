@@ -87,7 +87,8 @@ target_link_libraries (ganak
   LINK_PUBLIC ${APPROXMC_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
-  )
+  LINK_PUBLIC flint
+)
 
 
 set_target_properties(ganak PROPERTIES

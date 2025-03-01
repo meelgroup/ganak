@@ -86,7 +86,7 @@ public:
   }
 
   std::ostream& display(std::ostream& os) const override {
-  const char* vars[] = {"x", "y"};
+  const char* vars[] = {"x", "y", "z"};
   char* str = fmpq_mpoly_get_str_pretty(val, vars, ctx.get());
   os << str;
   free(str);
@@ -105,10 +105,25 @@ public:
     return fmpq_mpoly_is_one(val, ctx.get());
   }
 
+  std::string rem_trail_space(const std::string& str) {
+    size_t end = str.find_last_not_of(" \t\n\r\f\v");
+    if (end == std::string::npos) return "";
+    return str.substr(0, end + 1);
+  }
+
   bool parse(const std::string& str, const uint32_t line_no) override {
-    const char* vars[] = {"x", "y"};
-    auto ret = fmpq_mpoly_set_str_pretty(val, str.c_str(), vars, ctx.get());
-    if (!ret) {
+    const char* vars[] = {"x", "y", "z"};
+    auto str2 = rem_trail_space(str);
+    if (str2.empty() || str2.back() != '0') {
+      std::cerr << "Error parsing polynomial on line " << line_no
+        << " -- it should have a 0 at the end?"
+        << " -- poly: " << str
+        << " -- stripped poly: " << str2 << std::endl;
+      exit(-1);
+    }
+    str2.pop_back();
+    auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), vars, ctx.get());
+    if (ret == -1) {
       std::cerr << "Error parsing polynomial on line " << line_no
         << " -- poly: " << str << std::endl;
       exit(-1);
@@ -128,13 +143,12 @@ public:
   }
 };
 
-
 class FGenPoly : public CMSat::FieldGen {
 public:
   std::shared_ptr<fmpq_mpoly_ctx_t> ctx;
 
   FGenPoly(int nvars) {
-    assert(nvars == 2);
+    assert(nvars == 3);
     ctx = std::make_shared<fmpq_mpoly_ctx_t>();
     fmpq_mpoly_ctx_init(ctx.get(), nvars, ORD_DEGREVLEX);
   }

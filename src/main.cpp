@@ -511,7 +511,7 @@ int main(int argc, char *argv[])
         fg = std::make_unique<ArjunNS::FGenComplex>();
         break;
     case 3:
-        fg = std::make_unique<FGenPoly>(2);
+        fg = std::make_unique<FGenPoly>(3);
         break;
     default:
         cout << "c o [arjun] ERROR: Unknown mode" << endl;

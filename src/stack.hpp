@@ -136,7 +136,7 @@ public:
     }
 
     if (solutions->is_zero()) branch_unsat[act_branch] = true;
-    if (branch_mc[act_branch]->is_zero()) branch_mc[act_branch] = solutions->dup();
+    if (branch_mc[act_branch]->is_one()) branch_mc[act_branch] = solutions->dup();
     else *branch_mc[act_branch] *= *solutions;
     if (!is_indep && !solutions->is_zero()) branch_mc[act_branch]->set_one();
     VERBOSE_DEBUG_DO(cout << "now "

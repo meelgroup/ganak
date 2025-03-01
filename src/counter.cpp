@@ -697,7 +697,7 @@ uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) {
 FF Counter::do_appmc_count() {
   assert(!weighted());
   is_approximate = true;
-  ApproxMC::AppMC appmc;
+  ApproxMC::AppMC appmc(fg);
   appmc.new_vars(nVars());
   appmc.set_verbosity(std::max<int>(0, conf.verb));
   appmc.set_epsilon(conf.appmc_epsilon);

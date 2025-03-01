@@ -62,6 +62,14 @@ public:
     return *this;
   }
 
+  std::unique_ptr<Field> add(const Field& other) override {
+    const auto& od = dynamic_cast<const FPoly&>(other);
+    fmpq_mpoly_t v;
+    fmpq_mpoly_init(v, ctx.get());
+    fmpq_mpoly_add(v, val, od.val, ctx.get());
+    return std::make_unique<FPoly>(v, ctx);
+  }
+
   Field& operator-=(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
     fmpq_mpoly_sub(val, val, od.val, ctx.get());

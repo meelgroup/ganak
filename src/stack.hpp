@@ -184,9 +184,7 @@ public:
     if (is_indep) {
       if (branch_mc[0]->is_zero()) return branch_mc[1]->dup();
       else if (branch_mc[1]->is_zero()) return branch_mc[0]->dup();
-      auto ret = branch_mc[0]->dup();
-      *ret+= *branch_mc[1];
-      return ret;
+      return branch_mc[0]->add(*branch_mc[1]);
     }
     else {
       if (branch_mc[0]->is_zero()) return branch_mc[1]->dup();

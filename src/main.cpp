@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include <string>
 #include <iomanip>
 #include <gmpxx.h>
+#include <mpfr.h>
 #include "src/GitSHA1.hpp"
 #include "breakid.hpp"
 #include <arjun/arjun.h>
@@ -415,6 +416,16 @@ void print_one(const mpq_class& c) {
    mpf_clear(f);
 }
 
+string print_mpq_as_scientific(const mpq_class& number) {
+    mpfr_t float_number;
+    mpfr_init2(float_number, 256);
+    mpfr_set_q(float_number, number.get_mpq_t(), MPFR_RNDN);
+    char buffer[10000];
+    mpfr_sprintf (buffer, "%.6RDe", float_number);
+    mpfr_clear(float_number);
+    return string(buffer);
+}
+
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.multiplier_weight->dup();
     if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
@@ -443,10 +454,27 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     /*     cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
     /*     if (neglog) cnt *= -1; */
     /* } */
-    cout << "c s exact arb float " << std::scientific << std::setprecision(40) << *cnt << endl;
-    /* cout << "c o exact arb rational " << std::scientific << std::setprecision(40); */
-    /* if constexpr (cpx) cout << cnt.real() << " + " << cnt.imag() << "i" << endl; */
-    /* else cout << cnt << endl; */
+    if (mode == 0 || mode == 1 || mode == 2) {
+      std::stringstream ss;
+      ss << std::scientific << std::setprecision(40);
+      const CMSat::Field* ptr = cnt.get();
+      assert(ptr != nullptr);
+      if (mode == 0) {
+        const CMSat::FMpz* od = dynamic_cast<const CMSat::FMpz*>(ptr);
+        ss << *od;
+        cout << "c s exact arb int "  << ss.str() << endl;
+      } else if (mode == 1) {
+        const ArjunNS::FMpq* od = dynamic_cast<const ArjunNS::FMpq*>(ptr);
+        ss << print_mpq_as_scientific(od->val);
+        cout << "c s exact arb float "  << ss.str() << endl;
+      } else if (mode == 2) {
+        const ArjunNS::FComplex* od = dynamic_cast<const ArjunNS::FComplex*>(ptr);
+        ss << print_mpq_as_scientific(od->val.real()) << " + "
+          << print_mpq_as_scientific(od->val.imag()) << "i";
+        cout << "c s exact arb cpx "  << ss.str() << endl;
+      }
+    }
+    cout << "c o exact arb " << *cnt << endl;
 }
 
 int main(int argc, char *argv[])

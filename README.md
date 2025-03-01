@@ -9,6 +9,7 @@ To build ganak, you first need to build [CryptoMiniSat](github.com/msoos/cryptom
 
 ```bash
 sudo apt-get install libgmp-dev
+sudo apt-get install libmpfr-dev
 sudo apt-get install libmpc-dev
 mkdir build && cd build
 cmake ..

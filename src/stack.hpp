@@ -182,6 +182,8 @@ public:
   void zero_out_branch_sol() { branch_mc[act_branch]->set_zero(); }
   const FF total_model_count() const {
     if (is_indep) {
+      if (branch_mc[0]->is_zero()) return branch_mc[1]->dup();
+      else if (branch_mc[1]->is_zero()) return branch_mc[0]->dup();
       auto ret = branch_mc[0]->dup();
       *ret+= *branch_mc[1];
       return ret;

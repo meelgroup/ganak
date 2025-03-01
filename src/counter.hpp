@@ -739,27 +739,27 @@ uint32_t Counter::calc_lbd(const T2& lits) {
 
 class OuterCounter {
 public:
-  OuterCounter(const CounterConfiguration& conf, std::unique_ptr<FieldGen>& fg) {
-    counter = new Counter(conf, fg);
+  OuterCounter(const CounterConfiguration& conf, FG& fg) {
+    counter = std::make_unique<Counter>(conf, fg);
   }
 
   void set_generators(const vector<map<Lit, Lit>>& _gens) { counter->set_generators(_gens); }
   void end_irred_cls() { counter->end_irred_cls(); }
   void set_indep_support(const set<uint32_t>& indeps) { counter->set_indep_support(indeps); }
-  std::unique_ptr<CMSat::Field> outer_count() { return counter->outer_count();}
+  FF outer_count() { return counter->outer_count();}
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1) { return counter->add_red_cl(lits, lbd); }
   bool get_is_approximate() const { return counter->get_is_approximate();}
   bool add_irred_cl(const vector<Lit>& lits) { return counter->add_irred_cl(lits); }
   void set_optional_indep_support(const set<uint32_t>& indeps) {
     counter->set_optional_indep_support(indeps);
   }
-  void set_lit_weight(const Lit l, const std::unique_ptr<CMSat::Field>& w) {
+  void set_lit_weight(const Lit l, const FF& w) {
     return counter->set_lit_weight(l, w);
   }
   void new_vars(const uint32_t n) { counter->new_vars(n); }
   void print_indep_distrib() const { counter->print_indep_distrib(); }
 private:
-  Counter* counter = nullptr;
+  std::unique_ptr<Counter> counter = nullptr;
 };
 
 }

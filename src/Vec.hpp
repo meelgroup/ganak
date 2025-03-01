@@ -102,9 +102,7 @@ public:
       return *this;
     }
     void push_back(const T& elem) {
-        if (sz == cap) {
-            capacity(sz + 1);
-        }
+        if (sz == cap) capacity(sz + 1);
         dat[sz++] = elem;
     }
     void pop_back() {
@@ -125,9 +123,7 @@ public:
     void copyTo(vec<T>& copy) const {
         copy.clear();
         copy.growTo(sz);
-        for (uint32_t i = 0; i < sz; i++) {
-            copy[i] = dat[i];
-        }
+        for (uint32_t i = 0; i < sz; i++) copy[i] = dat[i];
     }
     void moveTo(vec<T>& dest) {
         dest.clear(true);
@@ -152,17 +148,13 @@ public:
     bool empty() const { return sz == 0; }
     void shrink_to_fit() {
         if (sz == 0) {
-            free(dat);
-            cap = 0;
-            dat = nullptr;
-            return;
+          clear(true);
+          return;
         }
+        for(uint32_t i = sz; i < cap; i++) dat[i].~T();
 
         T* data2 = (T*)realloc(dat, sz*sizeof(T));
-        if (data2 == 0) {
-            //We just keep the size then
-            return;
-        }
+        if (data2 == 0) throw std::bad_alloc();
         dat = data2;
         cap = sz;
      }
@@ -177,10 +169,8 @@ void vec<T>::capacity(int32_t min_cap)
 
     // NOTE: grow by approximately 3/2
     uint32_t add = imax((min_cap - (int32_t)cap + 1) & ~1, (((int32_t)cap >> 1) + 2) & ~1);
-    if (add > numeric_limits<uint32_t>::max() - cap) {
-        throw std::bad_alloc();
-    }
-    cap += (uint32_t)add;
+    if (add > numeric_limits<uint32_t>::max() - cap) throw std::bad_alloc();
+    cap += add;
 
     // This avoids memory fragmentation by many reallocations
     int32_t new_size = 2;
@@ -188,36 +178,39 @@ void vec<T>::capacity(int32_t min_cap)
     if ((new_size * 2 / 3) > min_cap) new_size = new_size * 2 / 3;
     cap = new_size;
 
-    if (((dat = (T*)::realloc(dat, cap * sizeof(T))) == nullptr) && errno == ENOMEM) {
+    if (((dat = (T*)::realloc(dat, cap * sizeof(T))) == nullptr) && errno == ENOMEM)
         throw std::bad_alloc();
-    }
+    for(uint32_t i = sz; i < cap; i++) new (&dat[i]) T();
 }
-
 
 template<class T>
 void vec<T>::growTo(uint32_t size, const T& pad)
 {
     if (sz >= size) return;
     capacity(size);
-    for (uint32_t i = sz; i < size; i++) dat[i] = pad;
+    for (uint32_t i = sz; i < size; i++) new (&dat[i]) T(pad);
     sz = size;
 }
-
 
 template<class T>
 void vec<T>::growTo(uint32_t size)
 {
     if (sz >= size) return;
     capacity(size);
+    for (uint32_t i = sz; i < size; i++) new (&dat[i]) T();
     sz = size;
 }
-
 
 template<class T>
 void vec<T>::clear(bool dealloc)
 {
     if (dat != nullptr) {
         sz = 0;
-        if (dealloc) {free(dat); dat = nullptr; cap = 0;}
+        if (dealloc) {
+          for(uint32_t i = 0; i < cap; i++) dat[i].~T();
+          free(dat);
+          dat = nullptr;
+          cap = 0;
+        }
     }
 }

@@ -64,6 +64,7 @@ struct ClOffsBlckL {
 };
 
 struct BinCl {
+  BinCl() = default;
   BinCl(uint32_t val) = delete;
   BinCl(int val) = delete;
   explicit BinCl(Lit _lit, bool _red) {
@@ -72,7 +73,7 @@ struct BinCl {
   Lit lit() const { return Lit::toLit(v >> 1); }
   bool red() const { return v&(1U); }
   bool irred() const { return !red(); }
-  uint32_t v;
+  uint32_t v = std::numeric_limits<uint32_t>::max();
 
 };
 

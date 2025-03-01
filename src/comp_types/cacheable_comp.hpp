@@ -59,7 +59,7 @@ public:
   }
   void set_free() {
     father_ = std::numeric_limits<uint32_t>::max();
-    HashedComp::model_count_ = nullptr;
+    HashedComp::model_count_.reset();
   }
 
 private:

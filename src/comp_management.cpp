@@ -32,7 +32,9 @@ CompManager::CompManager(const CounterConfiguration& config,
     const LiteralIndexedVector<TriValue>& lit_values, Counter* _counter) :
     fg(_counter->get_fg()->dup()), conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
     ana(lit_values, _counter), counter(_counter)
-{}
+{
+  getrandomseedforclhash();
+}
 
 void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());

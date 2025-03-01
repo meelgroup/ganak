@@ -38,6 +38,7 @@ public:
   BaseComp& operator=(const BaseComp& b) {
     clhashkey_ = b.clhashkey_;
     if (b.model_count_) model_count_ = b.model_count_->dup();
+    else model_count_ = nullptr;
     last_used_time_ = b.last_used_time_;
     delete_permitted = b.delete_permitted;
     return *this;
@@ -45,6 +46,7 @@ public:
   BaseComp(const BaseComp& b) {
     clhashkey_ = b.clhashkey_;
     if (b.model_count_) model_count_ = b.model_count_->dup();
+    else model_count_ = nullptr;
     last_used_time_ = b.last_used_time_;
     delete_permitted = b.delete_permitted;
   }

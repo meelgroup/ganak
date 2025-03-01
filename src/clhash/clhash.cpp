@@ -421,7 +421,7 @@ void * get_random_key_for_clhash(uint64_t seed1, uint64_t seed2) {
     void * answer;
     if (posix_memalign(&answer, sizeof(__m128i),
                        RANDOM_BYTES_NEEDED_FOR_CLHASH)) {
-        return NULL;
+        return nullptr;
     }
     uint64_t * a64 = (uint64_t *) answer;
     for(uint32_t i = 0; i < RANDOM_64BITWORDS_NEEDED_FOR_CLHASH; ++i) {

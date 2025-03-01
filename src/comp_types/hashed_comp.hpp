@@ -33,7 +33,11 @@ public:
   HashedComp() = default;
   HashedComp(const HashedComp&) = default;
   HashedComp& operator=(const HashedComp&) = default;
-  inline HashedComp(void* hash_seed, const Comp& r_comp);
+  HashedComp(void* hash_seed, const Comp& comp) {
+    clhasher h(hash_seed);
+    clhashkey_ = h(comp.get_raw_data(), comp.get_size());
+    model_count_ = nullptr;
+  }
   uint64_t bignum_bytes() const { return BaseComp::bignum_bytes(); }
 
   uint64_t get_clhashkey() const { return BaseComp::clhashkey_; }
@@ -41,10 +45,5 @@ public:
     return BaseComp::clhashkey_ == comp.get_clhashkey();
   }
 };
-
-HashedComp::HashedComp(void* hash_seed, const Comp& comp) {
-  clhasher h(hash_seed);
-  BaseComp::clhashkey_ = h(comp.get_raw_data(), comp.get_size());
-}
 
 }

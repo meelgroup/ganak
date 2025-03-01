@@ -50,6 +50,7 @@ public:
     free(hash_seed);
     for(auto& comp: comp_stack) free(comp);
     comp_stack.clear();
+    fg.reset();
   }
 
   auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
@@ -98,15 +99,16 @@ public:
 
   void remove_cache_pollutions_of_if_exists(const StackLevel &top);
   void remove_cache_pollutions_of(const StackLevel &top);
-  void* hash_seed; //stores a bunch of __m128 aligned data pieces, each
+  void* hash_seed = nullptr; //stores a bunch of __m128 aligned data pieces, each
                    //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
+
+private:
   void getrandomseedforclhash() {
+    assert(hash_seed == nullptr);
     std::mt19937_64 eng(conf.seed);
     std::uniform_int_distribution<uint64_t> distr;
     hash_seed = get_random_key_for_clhash(distr(eng), distr(eng));
   }
-
-private:
   FG fg;
   const CounterConfiguration &conf;
   DataAndStatistics &stats;
@@ -182,10 +184,11 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   comp_stack.push_back(nullptr);
 
   //Add full comp
-  Comp* ptr = reserve_comp_space(ana.get_max_var() , ana.get_max_clid());
+  Comp* ptr = reserve_comp_space(ana.get_max_var(), ana.get_max_clid());
   comp_stack.push_back(ptr);
   assert(comp_stack.size() == 2);
-  comp_stack.back()->create_init_comp(ana.get_max_var() , ana.get_max_clid(), std::numeric_limits<uint32_t>::max());
+  comp_stack.back()->create_init_comp(ana.get_max_var(), ana.get_max_clid(),
+      std::numeric_limits<uint32_t>::max());
   cache.init(*comp_stack.back(), hash_seed);
 }
 

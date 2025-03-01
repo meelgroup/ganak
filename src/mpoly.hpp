@@ -86,11 +86,11 @@ public:
   }
 
   std::ostream& display(std::ostream& os) const override {
-  const char* vars[] = {"x", "y", "z"};
-  char* str = fmpq_mpoly_get_str_pretty(val, vars, ctx.get());
-  os << str;
-  free(str);
-  return os;
+    auto varnames = nvars_names();
+    char* str = fmpq_mpoly_get_str_pretty(val, (const char**)varnames, ctx.get());
+    os << str;
+    free(str);
+    return os;
   }
 
   std::unique_ptr<Field> dup() const override {
@@ -111,8 +111,19 @@ public:
     return str.substr(0, end + 1);
   }
 
+  char** nvars_names() const {
+    uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx.get());
+    char** vars = new char*[nvars];
+    for(uint32_t i = 0; i < nvars; i++) {
+      std::string x = "x";
+      x += std::to_string(i);
+      vars[i] = new char[x.size()+1];
+      memcpy(vars[i], x.c_str(), x.size()+1);
+    }
+    return vars;
+  }
+
   bool parse(const std::string& str, const uint32_t line_no) override {
-    const char* vars[] = {"x", "y", "z"};
     auto str2 = rem_trail_space(str);
     if (str2.empty() || str2.back() != '0') {
       std::cerr << "Error parsing polynomial on line " << line_no
@@ -122,7 +133,8 @@ public:
       exit(-1);
     }
     str2.pop_back();
-    auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), vars, ctx.get());
+    auto varnames = nvars_names();
+    auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), (const char**)varnames, ctx.get());
     if (ret == -1) {
       std::cerr << "Error parsing polynomial on line " << line_no
         << " -- poly: " << str << std::endl;
@@ -148,7 +160,6 @@ public:
   std::shared_ptr<fmpq_mpoly_ctx_t> ctx;
 
   FGenPoly(int nvars) {
-    assert(nvars == 3);
     ctx = std::make_shared<fmpq_mpoly_ctx_t>();
     fmpq_mpoly_ctx_init(ctx.get(), nvars, ORD_DEGREVLEX);
   }

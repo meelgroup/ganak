@@ -89,6 +89,7 @@ uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
 int mode = 1;
+int poly_nvars = 1;
 FG fg = nullptr;
 
 string print_version()
@@ -120,6 +121,7 @@ void add_ganak_options()
         .flag()
         .help("Print version and exit");
     myopt("--mode", mode , atoi, "0=counting, 1=weightd counting, 2=complex numbers");
+    myopt("--moden", poly_nvars, atoi, "polynomial number of variables");
     myopt("--delta", conf.delta, atof, "Delta");
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
@@ -511,7 +513,7 @@ int main(int argc, char *argv[])
         fg = std::make_unique<ArjunNS::FGenComplex>();
         break;
     case 3:
-        fg = std::make_unique<FGenPoly>(3);
+        fg = std::make_unique<FGenPoly>(poly_nvars);
         break;
     default:
         cout << "c o [arjun] ERROR: Unknown mode" << endl;

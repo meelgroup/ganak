@@ -136,6 +136,11 @@ class FGenPoly : public CMSat::FieldGen {
 public:
   std::shared_ptr<fmpq_mpoly_ctx_t> ctx;
 
+  FGenPoly(int nvars) {
+    assert(nvars == 2);
+    auto c = std::make_shared<fmpq_mpoly_ctx_t>();
+    fmpq_mpoly_ctx_init(c.get(), nvars, ORD_DEGREVLEX);
+  }
   FGenPoly(const FGenPoly& other) = default;
   ~FGenPoly() override = default;
 
@@ -158,4 +163,3 @@ public:
 
   bool weighted() const override { return true; }
 };
-

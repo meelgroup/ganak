@@ -1362,7 +1362,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   assert(c.cnf.empty());
   debug_print(COLWHT "-- " << __func__ << " BEGIN");
 
-  *c.cnt = *decisions.top().get_model_side(side);
+  c.cnt = decisions.top().get_model_side(side)->dup();
   debug_print("Own cnt: " << c.cnt);
   for(int32_t i = 0; i < dec_level(); i++) {
     const auto& dec = decisions[i];

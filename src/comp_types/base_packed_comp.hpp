@@ -50,14 +50,10 @@ public:
   }
   uint32_t last_used_time() const { return last_used_time_; }
   const FF& model_count() const { return model_count_; }
-  uint32_t bignum_bytes() const{
+  uint64_t bignum_bytes() const{
     if (!model_count_) return 0;
-    return mp_data_size();
+    return model_count_->bytes_used();
   }
-
-  // raw data size with the overhead
-  // for the supposed 16byte alignment of malloc
-  uint32_t mp_data_size() const;
 
   // These below are to help us erase better from the cache
   void set_last_used_time(uint32_t time) { last_used_time_ = time; }

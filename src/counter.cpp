@@ -4046,6 +4046,10 @@ void Counter::new_vars(const uint32_t n) {
     sat_solution.resize(n+1);
     weights.resize(2*(n + 1));
     for(auto& w: weights) w = fg->one();
+    auto two = fg->one();
+    *two += *fg->one();
+    var_weights.resize(n + 1);
+    for(auto& w: var_weights) w = two->dup();
   }
   num_vars_set = true;
 }
@@ -4161,6 +4165,8 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
   }
   verb_print(2, "Setting weight of " << l << " to " << w);
   *weights[l.raw()] = *w;
+  var_weights[l.var()] = weights[l.raw()]->dup();
+  *var_weights[l.var()] += *weights[l.neg().raw()];
   if (w->is_zero()) add_irred_cl({l.neg()});
 }
 

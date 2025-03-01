@@ -184,11 +184,8 @@ public:
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
 
   const FF& get_weight(const Lit& l) { return weights[l.raw()];}
-  FF get_weight(const uint32_t v) {
-    Lit l(v, false);
-    auto w = weights[l.raw()]->dup();
-    *w += *weights[l.neg().raw()];
-    return w;
+  const FF& get_weight(const uint32_t v) {
+    return var_weights[v];
   }
   bool weight_larger_than(const FF&,  const FF&) const {
     assert(false && "TODO with Field");
@@ -288,6 +285,7 @@ private:
   // Weights
   uint64_t vars_act_dec_num = 0;
   vector<FF> weights;
+  vector<FF> var_weights;
   /** Needed to know what variables were active in given decision levels
   / It's needed for weighted counting to know what variable was active in
   / that component (learnt clauses can propagate vars that were not active,

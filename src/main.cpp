@@ -86,7 +86,7 @@ int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
-int mode = 0;
+int mode = 1;
 FG fg = nullptr;
 
 string print_version()

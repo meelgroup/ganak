@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <armadillo>
 #include <gmpxx.h>
 #include <cassert>
 #include <vector>
@@ -35,26 +36,41 @@ namespace GanakInt {
 
 class StackLevel {
 public:
-  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _is_indep, uint64_t _tstamp, const FG& fg) :
+  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _is_indep, uint64_t _tstamp,
+      const FG& _fg) :
+      fg(_fg),
       tstamp(_tstamp),
       is_indep(_is_indep),
       super_comp_(super_comp),
       remaining_comps_ofs_(comp_stack_ofs),
       unprocessed_comps_end_(comp_stack_ofs) {
-    branch_mc[0] = fg->zero();
-    branch_mc[1] = fg->zero();
+    branch_mc[0] = nullptr;
+    branch_mc[1] = nullptr;
     assert(super_comp < comp_stack_ofs);
   }
+  const FG& fg;
   uint64_t tstamp;
   bool is_indep;
+
+  inline const FF val_or_zero(const bool b) const {
+    if (branch_mc[b] == nullptr) return fg->zero();
+    return branch_mc[b]->dup();
+
+  }
+  inline bool is_zero(const bool b) const {
+    return (branch_mc[b] == nullptr || branch_mc[b]->is_zero());
+  }
+  inline bool is_one(const bool b) const {
+    return (branch_mc[b] && branch_mc[b]->is_zero());
+  }
 
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
     branch_unsat[0] = false;
     branch_unsat[1] = false;
-    branch_mc[0]->set_zero();
-    branch_mc[1]->set_zero();
+    branch_mc[0] = nullptr;
+    branch_mc[1] = nullptr;
   }
 private:
 
@@ -117,7 +133,7 @@ public:
   void change_to_right_branch() {
     assert(act_branch == false);
     act_branch = true;
-    SLOW_DEBUG_DO(assert(branch_mc[act_branch].is_zero()));
+    SLOW_DEBUG_DO(assert(is_zero(act_branch)));
   }
 
   bool another_comp_possible() const {
@@ -131,13 +147,16 @@ public:
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_mc[act_branch]->is_zero());
+      assert(is_zero(act_branch));
       return;
     }
 
     if (solutions->is_zero()) branch_unsat[act_branch] = true;
-    if (branch_mc[act_branch]->is_one()) branch_mc[act_branch] = solutions->dup();
-    else *branch_mc[act_branch] *= *solutions;
+    if (!is_zero(act_branch)) {
+      if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
+      else *branch_mc[act_branch] *= *solutions;
+    }
+
     if (!is_indep && !solutions->is_zero()) branch_mc[act_branch]->set_one();
     VERBOSE_DEBUG_DO(cout << "now "
         << ((act_branch) ? "right" : "left")
@@ -162,9 +181,9 @@ public:
     }
 
     if (solutions->is_zero()) branch_unsat[0] = true;
-    if (!is_indep) *branch_mc[0] = *solutions;
+    if (!is_indep) branch_mc[0] = solutions->dup();
     else {
-      assert(!branch_mc[0]->is_zero());
+      assert(!is_zero(0));
       *branch_mc[0] *= *solutions;
     }
     VERBOSE_DEBUG_DO(cout << "now "
@@ -179,27 +198,27 @@ public:
   void mark_branch_unsat() { branch_unsat[act_branch] = true; }
   const FF& get_branch_sols() const { return branch_mc[act_branch]; }
   const FF& get_model_side(int side) const { return branch_mc[side]; }
-  void zero_out_branch_sol() { branch_mc[act_branch]->set_zero(); }
+  void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
   const FF total_model_count() const {
     if (is_indep) {
-      if (branch_mc[0]->is_zero()) return branch_mc[1]->dup();
-      else if (branch_mc[1]->is_zero()) return branch_mc[0]->dup();
+      if (is_zero(0)) return val_or_zero(1);
+      else if (is_zero(1)) return val_or_zero(0);
       return branch_mc[0]->add(*branch_mc[1]);
     }
     else {
-      if (branch_mc[0]->is_zero()) return branch_mc[1]->dup();
-      else return branch_mc[0]->dup();
+      if (is_zero(0)) return val_or_zero(1);
+      else return val_or_zero(0);
     }
   }
 
   // for cube creation
   bool branch_found_unsat(int side) const { return branch_unsat[side]; }
-  const FF& left_model_count() const { return branch_mc[0]; }
-  const FF& right_model_count() const { return branch_mc[1]; }
+  FF left_model_count() const { return val_or_zero(0); }
+  FF right_model_count() const { return val_or_zero(1); }
 
   void zero_out_all_sol() {
-    branch_mc[0]->set_zero();
-    branch_mc[1]->set_zero();
+    branch_mc[0] = nullptr;
+    branch_mc[1] = nullptr;
   }
 };
 

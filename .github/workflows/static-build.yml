@@ -215,10 +215,9 @@ jobs:
     - name: Checkout arjun
       uses: actions/checkout@v4
       with:
-        repository: meelgroup/arjun-private
+        repository: meelgroup/arjun
         ref: synthesis2
         path: arjun
-        token: ${{ secrets.BUILD_TOKEN }}
     - name: Build arjun
       run: |
         cd arjun
@@ -231,10 +230,9 @@ jobs:
     - name: Checkout approxmc
       uses: actions/checkout@v4
       with:
-        repository: meelgroup/approxmc-private
+        repository: meelgroup/approxmc
         ref: synthesis
         path: approxmc
-        token: ${{ secrets.BUILD_TOKEN }}
         submodules: 'true'
     - name: Build approxmc
       run: |

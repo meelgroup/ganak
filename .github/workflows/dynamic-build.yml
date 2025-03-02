@@ -2,12 +2,6 @@
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: dynamic binary build
 
-on:
-  push:
-    branches: [ "nodonkey" ]
-  pull_request:
-    branches: [ "nodonkey" ]
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}

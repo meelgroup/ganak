@@ -88,7 +88,7 @@ int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
-int mode = 1;
+int mode = 0;
 int poly_nvars = 1;
 FG fg = nullptr;
 
@@ -120,8 +120,8 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    myopt("--mode", mode , atoi, "0=counting, 1=weightd counting, 2=complex numbers");
-    myopt("--moden", poly_nvars, atoi, "polynomial number of variables");
+    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field");
+    myopt("--moden", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");

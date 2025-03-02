@@ -28,74 +28,79 @@ THE SOFTWARE.
 #include <memory>
 #include <cstdlib>
 
+struct AutoPoly {
+  ~AutoPoly() { fmpq_mpoly_ctx_clear(ctx); }
+  fmpq_mpoly_ctx_t ctx;
+};
+
 class FPoly : public CMSat::Field {
 public:
   fmpq_mpoly_t val;
-  std::shared_ptr<fmpq_mpoly_ctx_t> ctx;
+  std::shared_ptr<AutoPoly> ctx;
 
   ~FPoly() override {
-    fmpq_mpoly_clear(val, ctx.get());
+    fmpq_mpoly_clear(val, ctx->ctx);
   }
 
   FPoly(const fmpq_mpoly_t& v,
-      const std::shared_ptr<fmpq_mpoly_ctx_t>& c): ctx(c) {
-    fmpq_mpoly_init(val, ctx.get());
-    fmpq_mpoly_set(val, v, ctx.get());
+      const std::shared_ptr<AutoPoly>& c): ctx(c) {
+    fmpq_mpoly_init(val, ctx->ctx);
+    fmpq_mpoly_set(val, v, ctx->ctx);
   }
 
   FPoly(const FPoly& other): ctx(other.ctx) {
     ctx = other.ctx;
-    fmpq_mpoly_init(val, ctx.get());
-    fmpq_mpoly_set(val, other.val, ctx.get());
+    fmpq_mpoly_init(val, ctx->ctx);
+    fmpq_mpoly_set(val, other.val, ctx->ctx);
   }
   const auto& get_val() const { return val; }
 
   Field& operator=(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
-    fmpq_mpoly_set(val, od.val, ctx.get());
+    fmpq_mpoly_set(val, od.val, ctx->ctx);
     return *this;
   }
 
   Field& operator+=(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
-    fmpq_mpoly_add(val, val, od.val, ctx.get());
+    fmpq_mpoly_add(val, val, od.val, ctx->ctx);
     return *this;
   }
 
   std::unique_ptr<Field> add(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
     fmpq_mpoly_t v;
-    fmpq_mpoly_init(v, ctx.get());
-    fmpq_mpoly_add(v, val, od.val, ctx.get());
+    fmpq_mpoly_init(v, ctx->ctx);
+    fmpq_mpoly_add(v, val, od.val, ctx->ctx);
     return std::make_unique<FPoly>(v, ctx);
   }
 
   Field& operator-=(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
-    fmpq_mpoly_sub(val, val, od.val, ctx.get());
+    fmpq_mpoly_sub(val, val, od.val, ctx->ctx);
     return *this;
   }
 
   Field& operator*=(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
-    fmpq_mpoly_mul(val, val, od.val, ctx.get());
+    fmpq_mpoly_mul(val, val, od.val, ctx->ctx);
     return *this;
   }
 
   Field& operator/=(const Field& other) override {
     const auto& od = dynamic_cast<const FPoly&>(other);
-    fmpq_mpoly_div(val, val, od.val, ctx.get());
+    fmpq_mpoly_div(val, val, od.val, ctx->ctx);
     return *this;
   }
 
   bool operator==(const Field& other) const override {
       const auto& od = dynamic_cast<const FPoly&>(other);
-      return fmpq_mpoly_equal(val, od.val, ctx.get());
+      return fmpq_mpoly_equal(val, od.val, ctx->ctx);
   }
 
   std::ostream& display(std::ostream& os) const override {
     auto varnames = nvars_names();
-    char* str = fmpq_mpoly_get_str_pretty(val, (const char**)varnames, ctx.get());
+    char* str = fmpq_mpoly_get_str_pretty(val, (const char**)varnames, ctx->ctx);
     os << str;
     free(str);
     del_nvars_names(varnames);
@@ -107,11 +112,11 @@ public:
   }
 
   bool is_zero() const override {
-    return fmpq_mpoly_is_zero(val, ctx.get());
+    return fmpq_mpoly_is_zero(val, ctx->ctx);
   }
 
   bool is_one() const override {
-    return fmpq_mpoly_is_one(val, ctx.get());
+    return fmpq_mpoly_is_one(val, ctx->ctx);
   }
 
   std::string rem_trail_space(const std::string& str) {
@@ -121,12 +126,12 @@ public:
   }
 
   void del_nvars_names(char** names) const {
-    uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx.get());
+    uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx->ctx);
     for(uint32_t i = 0; i < nvars; i++) delete[] names[i];
     delete[] names;
   }
   char** nvars_names() const {
-    uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx.get());
+    uint32_t nvars = fmpq_mpoly_ctx_nvars(ctx->ctx);
     char** vars = new char*[nvars];
     for(uint32_t i = 0; i < nvars; i++) {
       std::string x = "x";
@@ -148,7 +153,7 @@ public:
     }
     str2.pop_back();
     auto varnames = nvars_names();
-    auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), (const char**)varnames, ctx.get());
+    auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), (const char**)varnames, ctx->ctx);
     del_nvars_names(varnames);
     if (ret == -1) {
       std::cerr << "Error parsing polynomial on line " << line_no
@@ -159,10 +164,10 @@ public:
   }
 
   void set_zero() override {
-    fmpq_mpoly_zero(val, ctx.get());
+    fmpq_mpoly_zero(val, ctx->ctx);
   }
   void set_one() override {
-    fmpq_mpoly_one(val, ctx.get());
+    fmpq_mpoly_one(val, ctx->ctx);
   }
 
   uint64_t bytes_used() const override {
@@ -172,25 +177,26 @@ public:
 
 class FGenPoly : public CMSat::FieldGen {
 public:
-  std::shared_ptr<fmpq_mpoly_ctx_t> ctx;
+  std::shared_ptr<AutoPoly> ctx;
 
   FGenPoly(int nvars) {
-    ctx = std::make_shared<fmpq_mpoly_ctx_t>();
-    fmpq_mpoly_ctx_init(ctx.get(), nvars, ORD_DEGREVLEX);
+    ctx = std::make_shared<AutoPoly>();
+    fmpq_mpoly_ctx_init(ctx->ctx, nvars, ORD_DEGREVLEX);
   }
-  FGenPoly(const FGenPoly& other) = default;
-  ~FGenPoly() override = default;
+  ~FGenPoly() override {
+    std::cout << "use cnt: " << ctx.use_count() << std::endl;
+  }
 
   std::unique_ptr<CMSat::Field> zero() const override {
     fmpq_mpoly_t val;
-    fmpq_mpoly_init(val, ctx.get());
+    fmpq_mpoly_init(val, ctx->ctx);
     return std::make_unique<FPoly>(val, ctx);
   }
 
   std::unique_ptr<CMSat::Field> one() const override {
     fmpq_mpoly_t val;
-    fmpq_mpoly_init(val, ctx.get());
-    fmpq_mpoly_one(val, ctx.get());
+    fmpq_mpoly_init(val, ctx->ctx);
+    fmpq_mpoly_one(val, ctx->ctx);
     return std::make_unique<FPoly>(val, ctx);
   }
 

@@ -30,6 +30,9 @@ THE SOFTWARE.
 
 struct AutoPoly {
   ~AutoPoly() { fmpq_mpoly_ctx_clear(ctx); }
+  AutoPoly(int nvars) {
+    fmpq_mpoly_ctx_init(ctx, nvars, ORD_DEGREVLEX);
+  }
   fmpq_mpoly_ctx_t ctx;
 };
 
@@ -44,8 +47,7 @@ public:
 
   FPoly(const fmpq_mpoly_t& v,
       const std::shared_ptr<AutoPoly>& c): ctx(c) {
-    fmpq_mpoly_init(val, ctx->ctx);
-    fmpq_mpoly_set(val, v, ctx->ctx);
+    memcpy(val, v, sizeof(fmpq_mpoly_t));
   }
 
   FPoly(const FPoly& other): ctx(other.ctx) {
@@ -108,7 +110,10 @@ public:
   }
 
   std::unique_ptr<Field> dup() const override {
-    return std::make_unique<FPoly>(val, ctx);
+    fmpq_mpoly_t v;
+    fmpq_mpoly_init(v, ctx->ctx);
+    fmpq_mpoly_set(v, val, ctx->ctx);
+    return std::make_unique<FPoly>(v, ctx);
   }
 
   bool is_zero() const override {
@@ -179,10 +184,8 @@ class FGenPoly : public CMSat::FieldGen {
 public:
   std::shared_ptr<AutoPoly> ctx;
 
-  FGenPoly(int nvars) {
-    ctx = std::make_shared<AutoPoly>();
-    fmpq_mpoly_ctx_init(ctx->ctx, nvars, ORD_DEGREVLEX);
-  }
+  FGenPoly(int nvars) : ctx(std::make_shared<AutoPoly>(nvars)) {}
+
   ~FGenPoly() override {
     std::cout << "use cnt: " << ctx.use_count() << std::endl;
   }

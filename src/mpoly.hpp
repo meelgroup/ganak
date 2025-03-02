@@ -186,10 +186,6 @@ public:
 
   FGenPoly(int nvars) : ctx(std::make_shared<AutoPoly>(nvars)) {}
 
-  ~FGenPoly() override {
-    std::cout << "use cnt: " << ctx.use_count() << std::endl;
-  }
-
   std::unique_ptr<CMSat::Field> zero() const override {
     fmpq_mpoly_t val;
     fmpq_mpoly_init(val, ctx->ctx);

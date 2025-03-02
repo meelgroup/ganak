@@ -140,6 +140,32 @@ public:
     return (!branch_found_unsat()) && has_unproc_comps();
   }
 
+  inline void common_print(const FF& before) {
+    cout << "now "
+        << ((act_branch) ? "right" : "left")
+        << " count is: " << branch_mc[act_branch]
+        << " before it was: " << before
+        << " var: " << var
+        << " while " << ((!act_branch) ? "right" : "left")
+        << " count is: " << branch_mc[!act_branch]
+        << endl;
+  }
+
+  void include_one_sol() {
+    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: ONE" << COLDEF << " ");
+#ifdef VERBOSE_DEBUG
+    auto before = branch_mc[act_branch];
+#endif
+    if (branch_unsat[act_branch]) {
+      VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
+      assert(is_zero(act_branch));
+      return;
+    }
+    if (!is_indep || is_zero(act_branch))
+      branch_mc[act_branch] = fg->one();
+    VERBOSE_DEBUG_DO(common_print(before));
+  }
+
   void include_solution(const FF& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
@@ -151,21 +177,17 @@ public:
       return;
     }
 
-    if (solutions->is_zero()) branch_unsat[act_branch] = true;
-    if (!is_zero(act_branch)) {
-      if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
-      else *branch_mc[act_branch] *= *solutions;
+    if (solutions->is_zero()) mark_branch_unsat();
+    else {
+      if (!is_indep) branch_mc[act_branch] = fg->one();
+      else {
+        if (!is_zero(act_branch)) {
+          if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
+          else *branch_mc[act_branch] *= *solutions;
+        } else branch_mc[act_branch] = solutions->dup();
+      }
     }
-
-    if (!is_indep && !solutions->is_zero()) branch_mc[act_branch]->set_one();
-    VERBOSE_DEBUG_DO(cout << "now "
-        << ((act_branch) ? "right" : "left")
-        << " count is: " << branch_mc[act_branch]
-        << " before it was: " << before
-        << " var: " << var
-        << " while " << ((!act_branch) ? "right" : "left")
-        << " count is: " << branch_mc[!act_branch]
-        << endl);
+    VERBOSE_DEBUG_DO(common_print(before));
   }
 
   void include_solution_left_side(const FF& solutions) {
@@ -176,15 +198,19 @@ public:
 #endif
     if (branch_unsat[0]) {
       VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
-      assert(branch_mc[0]->is_zero());
+      assert(is_zero(0));
       return;
     }
 
-    if (solutions->is_zero()) branch_unsat[0] = true;
-    if (!is_indep) branch_mc[0] = solutions->dup();
-    else {
-      assert(!is_zero(0));
-      *branch_mc[0] *= *solutions;
+    if (solutions->is_zero()) {
+      branch_unsat[0] = true;
+      branch_mc[0] = nullptr;
+    } else {
+      if (!is_indep) branch_mc[0] = fg->one();
+      else {
+        assert(!is_zero(0));
+        *branch_mc[0] *= *solutions;
+      }
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")
@@ -195,11 +221,14 @@ public:
   }
 
   bool branch_found_unsat() const { return branch_unsat[act_branch]; }
-  void mark_branch_unsat() { branch_unsat[act_branch] = true; }
+  void mark_branch_unsat() {
+    branch_unsat[act_branch] = true;
+    branch_mc[act_branch] = nullptr;
+  }
   const FF& get_branch_sols() const { return branch_mc[act_branch]; }
   const FF& get_model_side(int side) const { return branch_mc[side]; }
   void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
-  const FF total_model_count() const {
+  FF total_model_count() const {
     if (is_indep) {
       if (is_zero(0)) return val_or_zero(1);
       else if (is_zero(1)) return val_or_zero(0);

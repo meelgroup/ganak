@@ -162,7 +162,7 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
 
   // if no component remains
   // make sure, at least that the current branch is considered SAT
-  top.include_solution(fg->one());
+  top.include_one_sol();
   debug_print(COLREDBG "-*-> Finished find_next_remain_comp_of, no more remaining comps. "
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "

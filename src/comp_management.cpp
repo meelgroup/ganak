@@ -81,9 +81,6 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
     if (ana.var_unvisited_sup_comp(*vt) && ana.explore_comp(*vt,
           super_comp.num_long_cls(), super_comp.num_bin_cls())) {
-      // Actually makes both a component returned, AND an current_comp_for_caching_ in
-      //        Archetype -- BUT, this current_comp_for_caching_ only contains a clause
-      //        in case  at least one lit in it is unknown
       Comp *p_new_comp = ana.make_comp_from_archetype();
       CacheableComp packed_comp(hash_seed, *p_new_comp);
 

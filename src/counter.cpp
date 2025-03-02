@@ -3796,7 +3796,8 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
       if (!in_children) {
         // Not found in children, so it must have been already processed and multiplied in. Compensate.
         assert((int)decisions.size() > i);
-        if (!decisions[i].get_branch_sols()->is_zero()) {
+        const auto& bsol = decisions[i].get_branch_sols();
+        if (bsol != nullptr && !bsol->is_zero()) {
           FF tmp = fg->one();
           *tmp /= *get_weight(lit);
           decisions[i].include_solution(tmp);

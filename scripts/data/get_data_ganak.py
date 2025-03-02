@@ -445,7 +445,7 @@ files = {}
 for f in file_list:
     if ".csv" in f:
         continue
-    print("parsing file: ", f)
+    # print("parsing file: ", f)
 
     dirname = f.split("/")[0]
     if "competitors" in dirname:

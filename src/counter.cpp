@@ -850,8 +850,8 @@ FF Counter::outer_count() {
           << " orig cubes this rst: " << cubes.size()
           << " total orig cubes: " << stats.num_cubes_orig
           << " total final cubes: " << stats.num_cubes_final
-          << " total so far: " << cnt
-          << " this rst: " << cubes_cnt_this_rst);
+          << " total so far: " << *cnt
+          << " this rst: " << *cubes_cnt_this_rst);
     }
 
     ret = sat_solver->solve();

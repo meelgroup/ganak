@@ -1318,8 +1318,8 @@ bool Counter::restart_if_needed() {
       << " right cnt: " << decisions.top().right_model_count()
       << COLDEF);
     for(auto i: {0, 1}) {
-      const auto& models = decisions.top().get_model_side(i);
-      if (!models || models->is_zero()) continue;
+      const FF& models = decisions.top().get_model_side(i);
+      if (models == nullptr || models->is_zero()) continue;
       verb_print(2, "->> branch: " << i << " doing compute_cube...");
 
       Cube cube;
@@ -1368,7 +1368,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   for(int32_t i = 0; i < dec_level(); i++) {
     const auto& dec = decisions[i];
     const auto& mul = dec.get_branch_sols(); // ACTIVE branch (i.e. currently counted one)
-    if (!mul || mul->is_zero()) continue;
+    if (mul == nullptr || mul->is_zero()) continue;
     *c.cnt *= *mul;
   }
   debug_print("Mult cnt: " << c.cnt);
@@ -1452,7 +1452,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   cout << endl;
   const auto& tmp = decisions.top().get_model_side(side);
   FF side_count = fg->zero();
-  if (tmp) *side_count2 = *tmp;
+  if (tmp != nullptr) *side_count2 = *tmp;
   cout << COLORG "cube's SOLE count: " << *tmp << endl;
   cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
 #endif
@@ -3801,7 +3801,7 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
         // Not found in children, so it must have been already processed and multiplied in. Compensate.
         assert((int)decisions.size() > i);
         const auto& bsol = decisions[i].get_branch_sols();
-        if (bsol && !bsol->is_zero()) {
+        if (bsol != nullptr && !bsol->is_zero()) {
           FF tmp = fg->one();
           *tmp /= *get_weight(lit);
           decisions[i].include_solution(tmp);

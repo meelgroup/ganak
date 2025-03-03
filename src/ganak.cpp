@@ -25,58 +25,65 @@ THE SOFTWARE.
 
 using namespace GanakInt;
 
-Ganak::Ganak(CounterConfiguration& conf, FG& fg) {
+#if defined _WIN32
+    #define DLL_PUBLIC __declspec(dllexport)
+#else
+    #define DLL_PUBLIC __attribute__ ((visibility ("default")))
+    #define DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+#endif
+
+DLL_PUBLIC Ganak::Ganak(CounterConfiguration& conf, FG& fg) {
   counter = new OuterCounter(conf, fg);
 }
 
-Ganak::~Ganak() {
+DLL_PUBLIC Ganak::~Ganak() {
   OuterCounter* c = (OuterCounter*)counter;
   delete c;
   counter = nullptr;
 }
 
-FF Ganak::count() {
+DLL_PUBLIC FF Ganak::count() {
   OuterCounter* c = (OuterCounter*)counter;
   return c->outer_count();
 }
 
-void Ganak::set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens) {
+DLL_PUBLIC void Ganak::set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_generators(_gens);
 }
-void Ganak::end_irred_cls() {
+DLL_PUBLIC void Ganak::end_irred_cls() {
   OuterCounter* c = (OuterCounter*)counter;
   c->end_irred_cls();
 }
-void Ganak::set_indep_support(const std::set<uint32_t>& indeps) {
+DLL_PUBLIC void Ganak::set_indep_support(const std::set<uint32_t>& indeps) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_indep_support(indeps);
 }
-bool Ganak::add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd) {
+DLL_PUBLIC bool Ganak::add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd) {
   OuterCounter* c = (OuterCounter*)counter;
   return c->add_red_cl(lits, lbd);
 }
-bool Ganak::get_is_approximate() const {
+DLL_PUBLIC bool Ganak::get_is_approximate() const {
   OuterCounter* c = (OuterCounter*)counter;
   return c->get_is_approximate();
 }
-bool Ganak::add_irred_cl(const std::vector<GanakInt::Lit>& lits) {
+DLL_PUBLIC bool Ganak::add_irred_cl(const std::vector<GanakInt::Lit>& lits) {
   OuterCounter* c = (OuterCounter*)counter;
   return c->add_irred_cl(lits);
 }
-void Ganak::set_optional_indep_support(const std::set<uint32_t>& indeps) {
+DLL_PUBLIC void Ganak::set_optional_indep_support(const std::set<uint32_t>& indeps) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_optional_indep_support(indeps);
 }
-void Ganak::set_lit_weight(const GanakInt::Lit l, const FF& w) {
+DLL_PUBLIC void Ganak::set_lit_weight(const GanakInt::Lit l, const FF& w) {
   OuterCounter* c = (OuterCounter*)counter;
   c->set_lit_weight(l, w);
 }
-void Ganak::new_vars(const uint32_t n) {
+DLL_PUBLIC void Ganak::new_vars(const uint32_t n) {
   OuterCounter* c = (OuterCounter*)counter;
   c->new_vars(n);
 }
-void Ganak::print_indep_distrib() const {
+DLL_PUBLIC void Ganak::print_indep_distrib() const {
   OuterCounter* c = (OuterCounter*)counter;
   c->print_indep_distrib();
 }

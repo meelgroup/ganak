@@ -124,7 +124,7 @@ jobs:
     - name: Checkout CMS
       uses: actions/checkout@v4
       with:
-        repository: meelgroup/cryptominisat
+        repository: msoos/cryptominisat
         ref: synthesis
         path: cryptominisat
         submodules: 'true'

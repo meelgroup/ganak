@@ -1,5 +1,3 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: build
 
 on:
@@ -13,7 +11,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
 
       matrix:
@@ -37,15 +34,9 @@ jobs:
           #   c_compiler: cl
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'true'
     - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-
-    - name: Create Build Environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Install python dependencies
       run: |
@@ -56,27 +47,28 @@ jobs:
       run: | 
         HOMEBREW_NO_AUTO_UPDATE=1 brew install cmake
         HOMEBREW_NO_AUTO_UPDATE=1 brew install zlib
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install mpfr
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install gmp
-        # wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
-        # tar xf gmp-6.3.0.tar.xz
-        # cd gmp-6.3.0
-        # ./configure --enable-static -enable-cxx --enable-shared
-        # make -j8
-        # sudo make install
-        # cd ..
+        wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+        tar xf gmp-6.3.0.tar.xz
+        cd gmp-6.3.0
+        ./configure --enable-static -enable-cxx --enable-shared
+        make -j8
+        sudo make install
+        cd ..
+  
+    - name: Install mpfr for Mac
+      if: matrix.os == 'macos-13'
+      run: | 
+        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz 
+        tar xf mpfr-4.2.1.tar.xz 
+        cd mpfr-4.2.1
+        ./configure --enable-static -enable-cxx --enable-shared
+        make -j8
+        sudo make install
+        cd ..
     
     - name: Install dependencies for Linux
       if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libmlpack-dev libensmallen-dev
-        # wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
-        # tar xf gmp-6.3.0.tar.xz
-        # cd gmp-6.3.0
-        # ./configure --enable-static -enable-cxx --enable-shared
-        # make -j8
-        # sudo make install
-        # cd ..
+      run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev
       
     - name: Checkout Cadical
       uses: actions/checkout@v4
@@ -119,7 +111,8 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-        cd ../../
+        cmake --build . --config ${{matrix.build_type}} -v
+        cd ../..
 
     - name: Checkout CMS
       uses: actions/checkout@v4
@@ -134,7 +127,7 @@ jobs:
         cd cryptominisat
         mkdir build &&cd build
         cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-        cmake --build . --config ${{matrix.build_type}}
+        cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
 
     - name: Checkout SBVA
@@ -151,6 +144,7 @@ jobs:
         cd build
         ln -s ../scripts/*.sh .
         cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+        cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
 
     - name: Checkout cereal
@@ -165,17 +159,19 @@ jobs:
         cmake -DJUST_INSTALL_CEREAL=ON ..
         make -j6
         sudo make install
+        cd ..
 
-    # - name: Checkout armadillo
-    #   run: |
-    #     wget https://sourceforge.net/projects/arma/files/armadillo-14.0.2.tar.xz
-    # - name: Build armadillo
-    #   run: |
-    #     tar xvf armadillo-14.0.2.tar.xz
-    #     cd armadillo-14.0.2/
-    #     ./configure
-    #     make -j6
-    #     sudo make install
+    - name: Checkout armadillo
+      run: |
+        wget https://sourceforge.net/projects/arma/files/armadillo-14.0.2.tar.xz
+    - name: Build armadillo
+      run: |
+        tar xvf armadillo-14.0.2.tar.xz
+        cd armadillo-14.0.2/
+        ./configure
+        make -j6
+        sudo make install
+        cd ..
 
     - name: Checkout ensmallen
       run: |
@@ -187,8 +183,9 @@ jobs:
         mkdir build
         cd build
         cmake ..
-        make -j6
+        cmake --build . --config ${{matrix.build_type}} -v
         sudo make install
+        cd ../..
 
     - name: Checkout mlpack
       uses: actions/checkout@v4
@@ -202,8 +199,9 @@ jobs:
         mkdir build
         cd build
         cmake -DBUILD_SHARED_LIBS=ON -DBUILD_CLI_EXECUTABLES=OFF ..
-        make -j6
+        cmake --build . --config ${{matrix.build_type}} -v
         sudo make install
+        cd ../..
 
     - name: Checkout arjun
       uses: actions/checkout@v4
@@ -216,8 +214,14 @@ jobs:
         cd arjun
         mkdir build
         cd build
-        ln -s ../scripts/*.sh .
-        ./build_norm.sh
+        cmake \
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -DENABLE_TESTING=OFF \
+        -S ..
+        cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
     
     - name: Checkout approxmc
@@ -232,31 +236,32 @@ jobs:
         cd approxmc
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+        cmake \
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -DENABLE_TESTING=OFF \
+        -S ..
+        cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
 
-    - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-      id: strings
-      shell: bash
+    - uses: actions/checkout@v4
+      with:
+        path: project
+        submodules: 'true'
+    
+    - name: Build project
       run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
-    - name: Configure CMake
-      shell: bash
-      run: |
+        cd project
         mkdir -p build && cd build
         cmake \
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
-        -S ${{ github.workspace }}
-
-    - name: Build
-      shell: bash
-      run: cmake --build . --config ${{matrix.build_type}}
+        -S ..
+        cmake --build . --config ${{matrix.build_type}} -v
 
     - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config ${{ matrix.build_type }} --verbose
+      run: ctest -C ${{matrix.build_type}} --verbose

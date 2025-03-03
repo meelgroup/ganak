@@ -69,7 +69,7 @@ jobs:
     - name: Install dependencies for Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libarmadillo-dev
+        sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libarmadillo-dev libmlpack-dev
         # wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
         # tar xf gmp-6.3.0.tar.xz
         # cd gmp-6.3.0

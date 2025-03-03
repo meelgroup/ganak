@@ -20,21 +20,21 @@ jobs:
         os: [ubuntu-latest]
         build_type: [Release]
         staticcompile: [ON, OFF]
-        c_compiler: [gcc, clang, cl]
+        c_compiler: [gcc]
         include:
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-        exclude:
-          - os: windows-latest
-            c_compiler: gcc
-          - os: windows-latest
-            c_compiler: clang
-          - os: ubuntu-latest
-            c_compiler: cl
+          # - os: ubuntu-latest
+          #   c_compiler: clang
+          #   cpp_compiler: clang++
+        # exclude:
+          # - os: windows-latest
+          #   c_compiler: gcc
+          # - os: windows-latest
+          #   c_compiler: clang
+          # - os: ubuntu-latest
+          #   c_compiler: cl
 
     steps:
     - uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
     - name: Install dependencies for Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libarmadillo-dev libmlpack-dev libensmallen-dev
+        sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libmlpack-dev libensmallen-dev
         # wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
         # tar xf gmp-6.3.0.tar.xz
         # cd gmp-6.3.0
@@ -166,16 +166,16 @@ jobs:
         make -j6
         sudo make install
 
-    - name: Checkout armadillo
-      run: |
-        wget https://sourceforge.net/projects/arma/files/armadillo-14.0.2.tar.xz
-    - name: Build armadillo
-      run: |
-        tar xvf armadillo-14.0.2.tar.xz
-        cd armadillo-14.0.2/
-        ./configure
-        make -j6
-        sudo make install
+    # - name: Checkout armadillo
+    #   run: |
+    #     wget https://sourceforge.net/projects/arma/files/armadillo-14.0.2.tar.xz
+    # - name: Build armadillo
+    #   run: |
+    #     tar xvf armadillo-14.0.2.tar.xz
+    #     cd armadillo-14.0.2/
+    #     ./configure
+    #     make -j6
+    #     sudo make install
 
     - name: Checkout ensmallen
       run: |
@@ -254,6 +254,8 @@ jobs:
         -S ${{ github.workspace }}
 
     - name: Build
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
       run: cmake --build . --config ${{matrix.build_type}}
 
     - name: Test

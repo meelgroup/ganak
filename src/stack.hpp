@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <armadillo>
 #include <gmpxx.h>
 #include <cassert>
 #include <vector>

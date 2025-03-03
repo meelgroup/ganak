@@ -114,8 +114,7 @@ jobs:
         cd breakid
         mkdir build
         cd build
-        ln -s ../scripts/*.sh .
-        ./build_norm.sh
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
         cd ../../
 
     - name: Checkout CMS
@@ -131,8 +130,7 @@ jobs:
         cd cryptominisat
         mkdir build
         cd build
-        ln -s ../scripts/build_scripts/*.sh .
-        ./build_norm.sh
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
         cd ../..
 
     - name: Checkout SBVA
@@ -148,7 +146,7 @@ jobs:
         mkdir build
         cd build
         ln -s ../scripts/*.sh .
-        ./build_norm.sh
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
         cd ../..
 
     - name: Checkout cereal
@@ -230,8 +228,7 @@ jobs:
         cd approxmc
         mkdir build
         cd build
-        ln -s ../scripts/build_scripts/*.sh .
-        ./build_norm.sh
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
         cd ../..
 
     - name: Set reusable strings
@@ -242,17 +239,17 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DSTATICCOMPILE=${{ matrix.staticcompile }}
         -S ${{ github.workspace }}
 
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
     - name: Test

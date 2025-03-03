@@ -111,6 +111,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+        cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
 
     - name: Checkout CMS

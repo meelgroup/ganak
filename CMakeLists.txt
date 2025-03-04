@@ -223,7 +223,7 @@ endif()
 # Flags
 # -----------------------------------------------------------------------------
 if (NOT WIN32)
-    if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT COVERAGE)
+    if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         #dd_cxx_flag_if_supported("-fvisibility=hidden")
     endif()
 

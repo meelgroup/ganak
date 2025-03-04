@@ -27,6 +27,7 @@ include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${MPFR_INCLUDE_DIR})
 include_directories( ${GMP_INCLUDE_DIR} )
+include_directories( ${FLINT_INCLUDE_DIRS} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
 
@@ -87,7 +88,7 @@ target_link_libraries (ganak
   LINK_PUBLIC ${APPROXMC_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
-  LINK_PUBLIC flint
+  LINK_PUBLIC ${FLINT_LIBRARIES}
 )
 
 

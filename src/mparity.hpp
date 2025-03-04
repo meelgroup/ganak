@@ -30,7 +30,7 @@ public:
     int val;
     int field;
     FPrime(const int _val, int _field) : val(_val), field(_field) {}
-    FPrime(const FPrime& other) : val(other.val) {}
+    FPrime(const FPrime& other) : val(other.val), field(other.field) {}
 
     Field& operator=(const Field& other) override {
         const auto& od = dynamic_cast<const FPrime&>(other);
@@ -61,7 +61,8 @@ public:
 
     Field& operator*=(const Field& other) override {
         const auto& od = dynamic_cast<const FPrime&>(other);
-        val &= od.val;
+        val *= od.val;
+        val %= field;
         return *this;
     }
 

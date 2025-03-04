@@ -43,6 +43,7 @@ THE SOFTWARE.
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
 #include "mpoly.hpp"
+#include "mparity.hpp"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -120,7 +121,7 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field");
+    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting");
     myopt("--moden", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
@@ -514,6 +515,9 @@ int main(int argc, char *argv[])
         break;
     case 3:
         fg = std::make_unique<FGenPoly>(poly_nvars);
+        break;
+    case 4:
+        fg = std::make_unique<FGenParity>();
         break;
     default:
         cout << "c o [arjun] ERROR: Unknown mode" << endl;

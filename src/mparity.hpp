@@ -29,7 +29,7 @@ THE SOFTWARE.
 class FParity : public CMSat::Field {
 public:
     bool val;
-    FParity() : val(0) {}
+    FParity() : val(false) {}
     FParity(const bool _val) : val(_val) {}
     FParity(const FParity& other) : val(other.val) {}
 
@@ -41,18 +41,18 @@ public:
 
     Field& operator+=(const Field& other) override {
         const auto& od = dynamic_cast<const FParity&>(other);
-        val += od.val;
+        val ^= od.val;
         return *this;
     }
 
     std::unique_ptr<Field> add(const Field& other) override {
         const auto& od = dynamic_cast<const FParity&>(other);
-        return std::make_unique<FParity>(val + od.val);
+        return std::make_unique<FParity>(val ^ od.val);
     }
 
     Field& operator-=(const Field& other) override {
         const auto& od = dynamic_cast<const FParity&>(other);
-        val -= od.val;
+        val ^= od.val;
         return *this;
     }
 
@@ -65,7 +65,6 @@ public:
     Field& operator/=(const Field& other) override {
         const auto& od = dynamic_cast<const FParity&>(other);
         if (od.val == 0) throw std::runtime_error("Division by zero");
-        val /= od.val;
         return *this;
     }
 
@@ -84,23 +83,23 @@ public:
     }
 
     bool is_zero() const override {
-        return val == 0;
+        return val == false;
     }
 
     bool is_one() const override {
-        return val == 1;
+        return val == true;
     }
 
     bool parse(const std::string& str, const uint32_t line_no) override {
         uint32_t at = 0;
         mpz_class head;
         if (!parse_int(head, str, at, line_no)) return false;
-        val = head.get_ui();
+        val = (head.get_ui() % 2) == 1;
         return check_end_of_weight(str, at, line_no);
     }
 
-    void set_zero() override { val = 0; }
-    void set_one() override { val = 1; }
+    void set_zero() override { val = false; }
+    void set_one() override { val = true; }
 
     inline uint64_t helper(const mpz_class& v) const {
       return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
@@ -115,11 +114,11 @@ class FGenParity : public CMSat::FieldGen {
 public:
     ~FGenParity() override = default;
     std::unique_ptr<CMSat::Field> zero() const override {
-        return std::make_unique<FParity>(0);
+        return std::make_unique<FParity>(false);
     }
 
     std::unique_ptr<CMSat::Field> one() const override {
-        return std::make_unique<FParity>(1);
+        return std::make_unique<FParity>(true);
     }
 
     std::unique_ptr<FieldGen> dup() const override {

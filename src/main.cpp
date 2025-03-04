@@ -262,7 +262,7 @@ void parse_supported_options(int argc, char** argv) {
 template<class T> void parse_file(const std::string& filename, T* reader) {
   #ifndef USE_ZLIB
   FILE * in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, nullptr, 0);
+  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, nullptr, 0, fg);
   #else
   gzFile in = gzopen(filename.c_str(), "rb");
   DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, nullptr, 0, fg);

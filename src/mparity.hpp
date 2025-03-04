@@ -25,6 +25,115 @@ THE SOFTWARE.
 #include <memory>
 #include <cstdlib>
 
+class FPrime : public CMSat::Field {
+public:
+    int val;
+    int field;
+    FPrime(const int _val, int _field) : val(_val), field(_field) {}
+    FPrime(const FPrime& other) : val(other.val) {}
+
+    Field& operator=(const Field& other) override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        val = od.val;
+        return *this;
+    }
+
+    Field& operator+=(const Field& other) override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        val += od.val;
+        val %= field;
+        return *this;
+    }
+
+    std::unique_ptr<Field> add(const Field& other) override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        int val2 = val + od.val;
+        val2 %= field;
+        return std::make_unique<FPrime>(val2, field);
+    }
+
+    Field& operator-=(const Field& other) override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        val -= od.val;
+        val %= field;
+        return *this;
+    }
+
+    Field& operator*=(const Field& other) override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        val &= od.val;
+        return *this;
+    }
+
+    Field& operator/=(const Field& other) override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        if (od.val == 0) throw std::runtime_error("Division by zero");
+        val /= od.val;
+        val %= field;
+        return *this;
+    }
+
+    bool operator==(const Field& other) const override {
+        const auto& od = dynamic_cast<const FPrime&>(other);
+        return val == od.val;
+    }
+
+    std::ostream& display(std::ostream& os) const override {
+        os << val << " mod " << field;
+        return os;
+    }
+
+    std::unique_ptr<Field> dup() const override {
+        return std::make_unique<FPrime>(val, field);
+    }
+
+    bool is_zero() const override {
+        return val == 0;
+    }
+
+    bool is_one() const override {
+        return val == 1;
+    }
+
+    bool parse(const std::string& str, const uint32_t line_no) override {
+        uint32_t at = 0;
+        mpz_class head;
+        if (!parse_int(head, str, at, line_no)) return false;
+        val = head.get_ui() % field;
+        return check_end_of_weight(str, at, line_no);
+    }
+
+    void set_zero() override { val = false; }
+    void set_one() override { val = true; }
+
+    inline uint64_t helper(const mpz_class& v) const {
+      return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+    }
+
+    uint64_t bytes_used() const override {
+      return sizeof(val);
+    }
+};
+
+class FGenPrime : public CMSat::FieldGen {
+public:
+    int field;
+    FGenPrime(int field) : field(field) {}
+    ~FGenPrime() override = default;
+    std::unique_ptr<CMSat::Field> zero() const override {
+        return std::make_unique<FPrime>(0, field);
+    }
+
+    std::unique_ptr<CMSat::Field> one() const override {
+        return std::make_unique<FPrime>(1, field);
+    }
+
+    std::unique_ptr<FieldGen> dup() const override {
+        return std::make_unique<FGenPrime>(field);
+    }
+
+    bool weighted() const override { return true; }
+};
 
 class FParity : public CMSat::Field {
 public:
@@ -106,7 +215,7 @@ public:
     }
 
     uint64_t bytes_used() const override {
-      return 1;
+      return sizeof(val);
     }
 };
 

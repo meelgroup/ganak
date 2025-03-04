@@ -34,7 +34,6 @@ THE SOFTWARE.
 #include <cstdint>
 
 using namespace GanakInt;
-
 uint64_t CompCache::freeram() {
   struct sysinfo info;
   sysinfo(&info);
@@ -42,20 +41,49 @@ uint64_t CompCache::freeram() {
 }
 
 #elif __APPLE__ && __MACH__
-
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#include <mach/mach.h>
+#include <mach/vm_statistics.h>
+#include <mach/mach_host.h>
+#include <mach/mach_init.h>
 
+using namespace GanakInt;
 uint64_t CompCache::freeram() {
-  int mib[2];
-  int64_t physical_memory;
-  mib[0] = CTL_HW;
-  mib[1] = HW_MEMSIZE;
-  size_t length = sizeof(int64_t);
-  sysctl(mib, 2, &physical_memory, &length, nullptr, 0);
+    vm_size_t page_size;
+    mach_port_t mach_port;
+    mach_msg_type_number_t count;
+    vm_statistics64_data_t vm_stats;
 
-  return physical_memory;
+    // Get the page size
+    host_page_size(mach_host_self(), &page_size);
+
+    // Get the mach port
+    mach_port = mach_host_self();
+
+    // Get VM statistics
+    count = sizeof(vm_stats) / sizeof(natural_t);
+    if (host_statistics64(mach_port, HOST_VM_INFO64, (host_info64_t)&vm_stats, &count) != KERN_SUCCESS) {
+        perror("Failed to get VM statistics");
+        return 0;
+    }
+
+    // Calculate free memory
+    unsigned long long free_memory = (unsigned long long)vm_stats.free_count * (unsigned long long)page_size;
+    return free_memory;
 }
+
+/* uint64_t CompCache::freeram() { */
+
+/*   int mib[2]; */
+/*   int64_t physical_memory; */
+/*   mib[0] = CTL_HW; */
+/*   mib[1] = HW_MEMSIZE; */
+/*   size_t length = sizeof(int64_t); */
+/*   sysctl(mib, 2, &physical_memory, &length, nullptr, 0); */
+
+/*   return physical_memory; */
+/* } */
 #endif
 
 void CompCache::test_descendantstree_consistency() {

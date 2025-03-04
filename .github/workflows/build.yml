@@ -271,6 +271,10 @@ jobs:
     - name: Build project
       run: |
         cd project
+        cd src
+        git clone https://github.com/DLTcollab/sse2neon.git
+        mv sse2neon/sse2neon.h .
+        cd ..
         mkdir -p build && cd build
         cmake \
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \

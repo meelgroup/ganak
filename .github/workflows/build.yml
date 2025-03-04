@@ -271,14 +271,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ganak-mac-arm64
-        path: project/ganak
+        path: build/ganak
 
     - name: Upload Artifact - Windows
       if: matrix.os == 'windows-2022' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:
         name: ganak-win64.exe
-        path: project\Release\ganak.exe
+        path: build\Release\ganak.exe
 
     - name: Test
       run: ctest -C ${{matrix.build_type}} --verbose

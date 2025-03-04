@@ -90,7 +90,8 @@ uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
 int mode = 0;
-int poly_nvars = 1;
+int poly_nvars = -1;
+int prime_field = -1;
 FG fg = nullptr;
 
 string print_version()
@@ -121,8 +122,9 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting");
-    myopt("--moden", poly_nvars, atoi, "Number of variables in the polynomial field");
+    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=weighted parity counting, 5=weighted counting over prime field");
+    myopt("--prime", prime_field, atoi, "Number of variables in the polynomial field");
+    myopt("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
     myopt("--breakid", do_breakid, atoi, "Enable BreakID");
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
@@ -514,10 +516,21 @@ int main(int argc, char *argv[])
         fg = std::make_unique<ArjunNS::FGenComplex>();
         break;
     case 3:
+        if (poly_nvars == -1) {
+          cout << "c o [arjun] ERROR: Must provide number of polynomial vars for mode 3 via --npolyvars" << endl;
+          exit(-1);
+        }
         fg = std::make_unique<FGenPoly>(poly_nvars);
         break;
     case 4:
         fg = std::make_unique<FGenParity>();
+        break;
+    case 5:
+        if (prime_field == -1) {
+          cout << "c o [arjun] ERROR: Must provide prime field for mode 5 via --prime" << endl;
+          exit(-1);
+        }
+        fg = std::make_unique<FGenPrime>(prime_field);
         break;
     default:
         cout << "c o [arjun] ERROR: Unknown mode" << endl;

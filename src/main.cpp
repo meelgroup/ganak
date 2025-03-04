@@ -320,7 +320,6 @@ void print_vars(const vector<uint32_t>& vars) {
   for(const auto& v: tmp) cout << v+1 << " ";
 }
 
-
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& generators,
     Ganak& counter) {
   counter.new_vars(cnf.nVars());

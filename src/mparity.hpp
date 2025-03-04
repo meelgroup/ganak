@@ -118,7 +118,7 @@ public:
 class FGenPrime : public CMSat::FieldGen {
 public:
     int field;
-    FGenPrime(int field) : field(field) {}
+    FGenPrime(int _field) : field(_field) {}
     ~FGenPrime() override = default;
     std::unique_ptr<CMSat::Field> zero() const override {
         return std::make_unique<FPrime>(0, field);

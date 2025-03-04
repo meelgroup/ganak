@@ -424,7 +424,7 @@ string print_mpq_as_scientific(const mpq_class& number) {
     mpfr_init2(float_number, 256);
     mpfr_set_q(float_number, number.get_mpq_t(), MPFR_RNDN);
     char buffer[10000];
-    mpfr_sprintf (buffer, "%.6RDe", float_number);
+    mpfr_sprintf (buffer, "%.4RDe", float_number);
     mpfr_clear(float_number);
     return string(buffer);
 }

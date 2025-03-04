@@ -7,4 +7,4 @@ c p weight 2 1.2e+3 0
 c p weight -2 1.2e+3 0
 c p weight 1 1.2e+3 0
 c c CHECK: ^s SATISFIABLE$
-c c CHECK: ^c s exact arb float 1.200000e\+03$
+c c CHECK: ^c s exact arb float 1.20*e\+03$

@@ -1,4 +1,4 @@
-c c RUN: %solver %s | %OutputCheck %s
+c c RUN: %solver --mode 1 %s | %OutputCheck %s
 p cnf 1 2
 c t wmc
 1 0

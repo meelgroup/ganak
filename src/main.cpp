@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "src/argparse.hpp"
 #include "mpoly.hpp"
 #include "mparity.hpp"
+#include "mcomplex.hpp"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -474,9 +475,9 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         ss << print_mpq_as_scientific(od->val);
         cout << "c s exact arb float "  << ss.str() << endl;
       } else if (mode == 2) {
-        const ArjunNS::FComplex* od = dynamic_cast<const ArjunNS::FComplex*>(ptr);
-        ss << print_mpq_as_scientific(od->val.real()) << " + "
-          << print_mpq_as_scientific(od->val.imag()) << "i";
+        const FComplex* od = dynamic_cast<const FComplex*>(ptr);
+        ss << print_mpq_as_scientific(od->real) << " + "
+          << print_mpq_as_scientific(od->imag) << "i";
         cout << "c s exact arb cpx "  << ss.str() << endl;
       }
     }
@@ -513,7 +514,7 @@ int main(int argc, char *argv[])
         fg = std::make_unique<ArjunNS::FGenMpq>();
         break;
     case 2:
-        fg = std::make_unique<ArjunNS::FGenComplex>();
+        fg = std::make_unique<FGenComplex>();
         break;
     case 3:
         if (poly_nvars == -1) {

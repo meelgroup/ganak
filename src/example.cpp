@@ -22,14 +22,12 @@ THE SOFTWARE.
 
 #include "cryptominisat5/solvertypesmini.h"
 #include "ganak.hpp"
-#include <algorithm>
 #include <arjun/arjun.h>
 #include <memory>
 using namespace std;
 using namespace GanakInt;
 
 CounterConfiguration conf;
-int do_pre_backbone = 0;
 ArjunNS::SimpConf simp_conf;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 
@@ -42,14 +40,12 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
   arjun.set_verb(0);
-  if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf, false);
   assert(!etof_conf.all_indep);
   arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
 }
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
-  // Setup independent support
   counter.new_vars(cnf.nVars());
   set<uint32_t> tmp;
   for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);

@@ -1,7 +1,7 @@
 # GANAK- A Probabilistic Exact Model Counter
 GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`. GANAK supports projected model counting (see below). 
 
-To read more about technical algorithms in Ganak, please refer to [our paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf) 
+To read more about technical algorithms in Ganak, please refer to [our paper](https://www.cs.toronto.edu/~meel/Papers/ijcai19srsm.pdf) 
 
 ## Installation
 

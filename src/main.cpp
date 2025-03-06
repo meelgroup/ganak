@@ -261,10 +261,14 @@ void parse_supported_options(int argc, char** argv) {
 
 template<class T> void parse_file(const std::string& filename, T* reader) {
   #ifndef USE_ZLIB
-  FILE * in = fopen(filename.c_str(), "rb");
+  FILE * in;
+  if (filename == "-") in = stdin;
+  else in = fopen(filename.c_str(), "rb");
   DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, nullptr, 0, fg);
   #else
-  gzFile in = gzopen(filename.c_str(), "rb");
+  gzFile in;
+  if (filename == "-") in = gzdopen(fileno(stdin), "rb");
+  else in = gzopen(filename.c_str(), "rb");
   DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, nullptr, 0, fg);
   #endif
   if (in == nullptr) {
@@ -536,27 +540,25 @@ int main(int argc, char *argv[])
         cout << "c o [arjun] ERROR: Unknown mode" << endl;
         exit(-1);
   }
-
-  // Get the input CNF
-  if (!program.is_used("inputfile")) {
-    cout << "ERROR: must provide input file to read as last argument" << endl;
-    exit(-1);
-  }
-  auto files = program.get<std::vector<std::string>>("inputfile");
-  if (files.empty()) {
-    // TODO read stdin, once we are a library.
-    cout << "ERROR: must give input file to read" << endl;
-    exit(-1);
-  }
-  if (files.size() > 1) {
-      cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
-      exit(-1);
-  }
-  const string& fname = files[0];
+  ArjunNS::SimplifiedCNF cnf(fg);
 
   // Parse the CNF
-  ArjunNS::SimplifiedCNF cnf(fg);
-  parse_file(fname, &cnf);
+  if (!program.is_used("inputfile")) parse_file("-",  &cnf);
+  else {
+    auto files = program.get<std::vector<std::string>>("inputfile");
+    if (files.empty()) {
+      cout << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
+      exit(-1);
+    } else if (files.size() == 1) {
+      const string& fname = files[0];
+      parse_file(fname, &cnf);
+    } else {
+        cout << "[appmc] ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
+        exit(-1);
+    }
+  }
+
+
   if (cnf.get_weighted() && conf.do_buddy) {
     cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
     exit(-1);

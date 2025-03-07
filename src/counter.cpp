@@ -46,7 +46,6 @@ THE SOFTWARE.
 #include <algorithm>
 
 using std::setw;
-using std::is_same;
 using std::setprecision;
 using std::setw;
 

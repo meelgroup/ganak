@@ -276,6 +276,45 @@
           ];
           postInstall = ''mv $out/include/approxmc/approxmc.h $out/include/approxmc.h'';
         };
+      ganak-package =
+        {
+          stdenv,
+          cmake,
+          pkg-config,
+          gmp,
+          mpfr,
+          flint3,
+          zlib,
+          autoPatchelfHook,
+          cryptominisat,
+          arjun,
+          sbva,
+          breakid,
+          approxmc,
+          python3,
+          python3Packages,
+        }:
+        stdenv.mkDerivation {
+          name = "ganak";
+          nativeBuildInputs = [
+            cmake
+            pkg-config
+            autoPatchelfHook
+            python3
+            python3Packages.numpy
+          ];
+          buildInputs = [
+            gmp
+            mpfr
+            flint3
+            zlib
+            cryptominisat
+            arjun
+            sbva
+            breakid
+            approxmc
+          ];
+          src = ./.;
         };
     in
     {
@@ -300,33 +339,6 @@
       packages = forAllSystems (
         system:
         let
-          ganak-package =
-            {
-              stdenv,
-              cmake,
-              pkg-config,
-              gmp,
-              autoPatchelfHook,
-            }:
-            stdenv.mkDerivation {
-              name = "ganak";
-              nativeBuildInputs = [
-                cmake
-                pkg-config
-                autoPatchelfHook
-              ];
-              buildInputs = [ gmp ];
-              src = ./.;
-              installPhase = ''
-                mkdir -p $out/bin $out/lib
-                mv ./ganak $out/bin/
-                mv ./src/libganak.so.* \
-                   ./src/clhash/libclhash.so \
-                   ./src/component_types/libcomponent_types.so \
-                   $out/lib
-              '';
-            };
-          ganak = nixpkgsFor.${system}.callPackage ganak-package { };
           cadical = nixpkgsFor.${system}.callPackage cadical-package { };
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { inherit cadical; };
           cryptominisat = nixpkgsFor.${system}.callPackage cryptominisat-package {
@@ -347,11 +359,21 @@
           ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
           mlpack = nixpkgsFor.${system}.callPackage mlpack-package { inherit ensmallen; };
           approxmc = nixpkgsFor.${system}.callPackage approxmc-package { inherit arjun sbva cryptominisat; };
+          ganak = nixpkgsFor.${system}.callPackage ganak-package {
+            inherit
+              arjun
+              sbva
+              breakid
+              approxmc
+              cryptominisat
+              ;
+          };
         in
         {
           inherit
             cadical
             arjun
+            ganak
             sbva
             breakid
             approxmc

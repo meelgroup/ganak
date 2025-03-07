@@ -64,6 +64,28 @@
             mkdir -p $out/include
           '';
         };
+      sbva-package =
+        {
+          stdenv,
+          eigen,
+          fetchFromGitHub,
+          cmake,
+          autoPatchelfHook,
+        }:
+        stdenv.mkDerivation {
+          name = "sbva";
+          src = fetchFromGitHub {
+            owner = "meelgroup";
+            repo = "SBVA";
+            rev = "5912435affe8c77ecf364093cea29e0fc5c1b5cb";
+            hash = "sha256-BoR14FBH3eCPYio6l6d+oQp3/hu4U7t1STb9NgSWJ2M=";
+          };
+          nativeBuildInputs = [
+            cmake
+            autoPatchelfHook
+          ];
+          buildInputs = [ eigen ];
+        };
       breakid-package =
         {
           stdenv,
@@ -135,11 +157,13 @@
               '';
             };
           ganak = nixpkgsFor.${system}.callPackage ganak-package { };
+          sbva = nixpkgsFor.${system}.callPackage sbva-package { };
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
         in
         {
           inherit
+            sbva
             breakid
             cadiback
             ;

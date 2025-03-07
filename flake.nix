@@ -243,6 +243,39 @@
           ];
           postInstall = ''mv $out/include/breakid/* $out/include/'';
         };
+      approxmc-package =
+        {
+          stdenv,
+          cmake,
+          autoPatchelfHook,
+          fetchFromGitHub,
+          gmp,
+          zlib,
+          cryptominisat,
+          arjun,
+          sbva,
+        }:
+        stdenv.mkDerivation {
+          name = "approxmc";
+          src = fetchFromGitHub {
+            owner = "meelgroup";
+            repo = "approxmc";
+            rev = "5551e1fde353f2d27ddbcb2ba068215b4107f1bc";
+            hash = "sha256-zvcOLLNOE83LDqLumYpWFo1TIs+1x4hBwydx/87I148=";
+          };
+          nativeBuildInputs = [
+            cmake
+            autoPatchelfHook
+          ];
+          buildInputs = [
+            gmp
+            zlib
+            cryptominisat
+            arjun
+            sbva
+          ];
+          postInstall = ''mv $out/include/approxmc/approxmc.h $out/include/approxmc.h'';
+        };
         };
     in
     {
@@ -313,6 +346,7 @@
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
           ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
           mlpack = nixpkgsFor.${system}.callPackage mlpack-package { inherit ensmallen; };
+          approxmc = nixpkgsFor.${system}.callPackage approxmc-package { inherit arjun sbva cryptominisat; };
         in
         {
           inherit
@@ -320,6 +354,7 @@
             arjun
             sbva
             breakid
+            approxmc
             cadiback
             ensmallen
             mlpack

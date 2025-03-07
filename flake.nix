@@ -46,42 +46,29 @@
           stdenv,
           fetchFromGitHub,
           git,
+          cadical,
         }:
         stdenv.mkDerivation {
           name = "cadiback";
-          srcs = [
-            (fetchFromGitHub {
-              owner = "meelgroup";
-              repo = "cadiback";
-              rev = "860b1df7f7b5e966b423163d89ec5a972e09ae67";
-              name = "cadiback";
-              hash = "sha256-sKKIOWQjW2c5Duz/jf00ggwXMlQ9KL7mVL7val47Cng=";
-              leaveDotGit = true;
-            })
-            (fetchFromGitHub {
-              owner = "meelgroup";
-              repo = "cadical";
-              rev = "45850b35836122622a983e637251299cc16f3161";
-              name = "cadical";
-              hash = "sha256-ugAudDgw91DeR90zQR5RlCKoLv/hDdv03oa1v3lG1nY=";
-            })
-          ];
-          sourceRoot = "cadiback";
+          src = fetchFromGitHub {
+            owner = "meelgroup";
+            repo = "cadiback";
+            rev = "860b1df7f7b5e966b423163d89ec5a972e09ae67";
+            name = "cadiback";
+            hash = "sha256-sKKIOWQjW2c5Duz/jf00ggwXMlQ9KL7mVL7val47Cng=";
+            leaveDotGit = true;
+          };
 
           nativeBuildInputs = [ git ];
+          buildInputs = [ cadical ];
 
           patchPhase = ''
             substituteInPlace makefile.in \
-              --replace-fail "/usr/" "$out/"
+              --replace-fail "/usr/" "$out/" \
+              --replace-fail "../cadical" "${cadical}"
           '';
-          # I don't like building cadical in this phase, but cadiback requires the build outputs during configuring.
           configurePhase = ''
-            chmod -R u+w ../cadical
-            ln -s ../cadical
-            mkdir ../cadical/build
-            cd ../cadical
-            ./configure --competition && make
-            cd ../cadiback
+            export CADICAL=${cadical} 
             ./configure
           '';
 
@@ -229,8 +216,8 @@
             };
           ganak = nixpkgsFor.${system}.callPackage ganak-package { };
           cadical = nixpkgsFor.${system}.callPackage cadical-package { };
+          cadiback = nixpkgsFor.${system}.callPackage cadiback-package { inherit cadical; };
           sbva = nixpkgsFor.${system}.callPackage sbva-package { };
-          cadiback = nixpkgsFor.${system}.callPackage cadiback-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
           ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
           mlpack = nixpkgsFor.${system}.callPackage mlpack-package { inherit ensmallen; };

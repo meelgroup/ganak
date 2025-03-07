@@ -64,6 +64,22 @@
             mkdir -p $out/include
           '';
         };
+      ensmallen-package =
+        {
+          stdenv,
+          cmake,
+          fetchzip,
+          armadillo,
+        }:
+        stdenv.mkDerivation {
+          name = "ensmallen";
+          src = fetchzip {
+            url = "https://ensmallen.org/files/ensmallen-2.21.1.tar.gz";
+            hash = "sha256-6LZooaR0rmqWgEm0AxmWoVPuIahjOfwSFu5cssc7LA8=";
+          };
+          nativeBuildInputs = [ cmake ];
+          buildInputs = [ armadillo ];
+        };
       sbva-package =
         {
           stdenv,
@@ -160,12 +176,14 @@
           sbva = nixpkgsFor.${system}.callPackage sbva-package { };
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
+          ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
         in
         {
           inherit
             sbva
             breakid
             cadiback
+            ensmallen
             ;
           default = ganak;
         }

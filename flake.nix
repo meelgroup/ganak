@@ -122,6 +122,41 @@
             cereal
           ];
         };
+      cryptominisat-package =
+        {
+          stdenv,
+          fetchFromGitHub,
+          cmake,
+          cadiback,
+          cadical,
+          pkg-config,
+          gmp,
+        }:
+        stdenv.mkDerivation {
+          name = "cryptominisat";
+          src = fetchFromGitHub {
+            owner = "msoos";
+            repo = "cryptominisat";
+            fetchSubmodules = true;
+            rev = "00e718deb3f2838c4a0fc928b705cf6b8d19c5fb";
+            hash = "sha256-elRTWx8ze53JIzvIA71j+sBTa6pzF09LzbL/NuxjW+4=";
+          };
+
+          patchPhase = ''
+            substituteInPlace src/backbone.cpp \
+              --replace-fail "../cadiback/cadiback.h" "${cadiback}/include/cadiback.h"
+          '';
+
+          nativeBuildInputs = [
+            cmake
+            pkg-config
+          ];
+          buildInputs = [
+            cadiback
+            cadical
+            gmp
+          ];
+        };
       sbva-package =
         {
           stdenv,
@@ -217,6 +252,9 @@
           ganak = nixpkgsFor.${system}.callPackage ganak-package { };
           cadical = nixpkgsFor.${system}.callPackage cadical-package { };
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { inherit cadical; };
+          cryptominisat = nixpkgsFor.${system}.callPackage cryptominisat-package {
+            inherit cadical cadiback;
+          };
           sbva = nixpkgsFor.${system}.callPackage sbva-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
           ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
@@ -230,6 +268,7 @@
             cadiback
             ensmallen
             mlpack
+            cryptominisat
             ;
           default = ganak;
         }

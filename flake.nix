@@ -64,6 +64,27 @@
             mkdir -p $out/include
           '';
         };
+      breakid-package =
+        {
+          stdenv,
+          cmake,
+          autoPatchelfHook,
+          fetchFromGitHub,
+        }:
+        stdenv.mkDerivation {
+          name = "breakid";
+          src = fetchFromGitHub {
+            owner = "meelgroup";
+            repo = "breakid";
+            rev = "f90eff992342024640f9d539c1e68ef924b22994";
+            hash = "sha256-hxVvfOfPQxZ6RUYv6BWWohEbvoPfjWIa+UNtkOuvS1Q=";
+          };
+          nativeBuildInputs = [
+            cmake
+            autoPatchelfHook
+          ];
+          buildInputs = [ ];
+        };
     in
     {
       # checks
@@ -115,9 +136,11 @@
             };
           ganak = nixpkgsFor.${system}.callPackage ganak-package { };
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { };
+          breakid = nixpkgsFor.${system}.callPackage breakid-package { };
         in
         {
           inherit
+            breakid
             cadiback
             ;
           default = ganak;

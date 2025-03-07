@@ -15,6 +15,32 @@
       forAllSystems = lib.genAttrs systems;
       nixpkgsFor = forAllSystems (system: nixpkgs.legacyPackages.${system});
 
+      cadical-package =
+        {
+          stdenv,
+          fetchFromGitHub,
+          lsd,
+        }:
+        stdenv.mkDerivation {
+          name = "cadical";
+          src = fetchFromGitHub {
+            owner = "meelgroup";
+            repo = "cadical";
+            rev = "45850b35836122622a983e637251299cc16f3161";
+            name = "cadical";
+            hash = "sha256-ugAudDgw91DeR90zQR5RlCKoLv/hDdv03oa1v3lG1nY=";
+          };
+
+          configurePhase = ''./configure --competition'';
+
+          installPhase = ''
+            mkdir -p $out/lib
+            cp -r . $out
+            cp build/libcadical.a $out/lib
+            mkdir -p $out/include
+            cp src/*.hpp $out/include
+          '';
+        };
       cadiback-package =
         {
           stdenv,
@@ -202,6 +228,7 @@
               '';
             };
           ganak = nixpkgsFor.${system}.callPackage ganak-package { };
+          cadical = nixpkgsFor.${system}.callPackage cadical-package { };
           sbva = nixpkgsFor.${system}.callPackage sbva-package { };
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
@@ -210,6 +237,7 @@
         in
         {
           inherit
+            cadical
             sbva
             breakid
             cadiback

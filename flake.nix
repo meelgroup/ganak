@@ -157,6 +157,49 @@
             gmp
           ];
         };
+      arjun-package =
+        {
+          stdenv,
+          fetchFromGitHub,
+          cmake,
+          sbva,
+          zlib,
+          gmp,
+          cadiback,
+          pkg-config,
+          mlpack,
+          armadillo,
+          cereal,
+          ensmallen,
+          cadical,
+          cryptominisat,
+        }:
+        stdenv.mkDerivation {
+          name = "arjun";
+          src = fetchFromGitHub {
+            owner = "meelgroup";
+            repo = "arjun";
+            rev = "699882822d5b83c0bcab95b52803c3880da334a1";
+            hash = "sha256-ZnXtC+ZTa1dj+QEP0jgpUcUxQWgrwsx3nLEKBVP0RcI=";
+          };
+          nativeBuildInputs = [
+            pkg-config
+            cmake
+          ];
+          buildInputs = [
+            zlib
+            sbva
+            gmp
+            cadiback
+            mlpack
+            armadillo
+            cereal
+            ensmallen
+            cadical
+            cryptominisat
+          ];
+
+        };
       sbva-package =
         {
           stdenv,
@@ -255,6 +298,16 @@
           cryptominisat = nixpkgsFor.${system}.callPackage cryptominisat-package {
             inherit cadical cadiback;
           };
+          arjun = nixpkgsFor.${system}.callPackage arjun-package {
+            inherit
+              sbva
+              cadiback
+              cadical
+              mlpack
+              cryptominisat
+              ensmallen
+              ;
+          };
           sbva = nixpkgsFor.${system}.callPackage sbva-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
           ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
@@ -263,6 +316,7 @@
         {
           inherit
             cadical
+            arjun
             sbva
             breakid
             cadiback

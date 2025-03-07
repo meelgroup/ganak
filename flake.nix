@@ -80,6 +80,35 @@
           nativeBuildInputs = [ cmake ];
           buildInputs = [ armadillo ];
         };
+      mlpack-package =
+        {
+          stdenv,
+          fetchFromGitHub,
+          lsd,
+          cmake,
+          armadillo,
+          ensmallen,
+          cereal,
+          pkg-config,
+        }:
+        stdenv.mkDerivation {
+          name = "mlpack";
+          src = fetchFromGitHub {
+            "owner" = "mlpack";
+            "repo" = "mlpack";
+            "rev" = "4.4.0";
+            "hash" = "sha256-EPz8qPTUAldS+k5/qkZf8EKXKjnxElfJxlTEMLPhTQE=";
+          };
+          nativeBuildInputs = [
+            pkg-config
+            cmake
+            armadillo
+          ];
+          buildInputs = [
+            ensmallen
+            cereal
+          ];
+        };
       sbva-package =
         {
           stdenv,
@@ -177,6 +206,7 @@
           cadiback = nixpkgsFor.${system}.callPackage cadiback-package { };
           breakid = nixpkgsFor.${system}.callPackage breakid-package { };
           ensmallen = nixpkgsFor.${system}.callPackage ensmallen-package { };
+          mlpack = nixpkgsFor.${system}.callPackage mlpack-package { inherit ensmallen; };
         in
         {
           inherit
@@ -184,6 +214,7 @@
             breakid
             cadiback
             ensmallen
+            mlpack
             ;
           default = ganak;
         }

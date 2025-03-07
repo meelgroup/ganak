@@ -241,7 +241,8 @@
             cmake
             autoPatchelfHook
           ];
-          buildInputs = [ ];
+          postInstall = ''mv $out/include/breakid/* $out/include/'';
+        };
         };
     in
     {

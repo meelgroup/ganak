@@ -13,3 +13,4 @@ neovide_backtraces.log
 /.direnv
 /.envrc
 /.ccls-cache
+/result

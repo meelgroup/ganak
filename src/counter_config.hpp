@@ -34,7 +34,7 @@ struct CounterConfiguration {
   int do_chronobt = 1;
   uint64_t first_restart = 20000U;
   double restart_cutoff_mult = 0.8;
-  uint64_t maximum_cache_size_MB = 0;
+  uint64_t maximum_cache_size_MB = 2500;
   int restart_type = 8;
   int do_readjust_for_restart = 1;
   int max_num_rst = -1;

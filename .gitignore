@@ -14,3 +14,6 @@ neovide_backtraces.log
 /.envrc
 /.ccls-cache
 /result
+benchmarks
+quickfix*
+released*

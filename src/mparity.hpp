@@ -112,7 +112,7 @@ public:
     }
 
     uint64_t bytes_used() const override {
-      return sizeof(val);
+      return sizeof(FPrime);
     }
 };
 

@@ -115,7 +115,7 @@ public:
     }
 
     uint64_t bytes_used() const override {
-      return 2*sizeof(mpq_class) +
+      return sizeof(FComplex) +
           helper(imag.get_num()) + helper(imag.get_den()) +
           helper(real.get_num()) + helper(real.get_den());
     }

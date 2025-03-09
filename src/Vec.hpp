@@ -31,11 +31,10 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 using std::numeric_limits;
 
-//=================================================================================================
-// Automatically resizable arrays
-//
-// NOTE! Don't use this vector on datatypes that cannot be re-located in memory (with realloc)
+namespace GanakInt {
 
+// Automatically resizable arrays
+// NOTE! Don't use this vector on datatypes that cannot be re-located in memory (with realloc)
 template<class T>
 class vec {
 public:
@@ -213,4 +212,6 @@ void vec<T>::clear(bool dealloc)
           cap = 0;
         }
     }
+}
+
 }

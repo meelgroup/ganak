@@ -22,6 +22,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "Vec.hpp"
 
+namespace GanakInt {
+
 // A heap implementation with support for decrease/increase key.
 template<class Comp>
 class Heap {
@@ -131,3 +133,5 @@ public:
         return heap_property(0);
     }
 };
+
+}

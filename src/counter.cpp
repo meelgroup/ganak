@@ -1544,7 +1544,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
               *cube_cnt *= *get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
           }
-          VERBOSE_DEBUG_DO(cout << cube_cnt << " + ";);
+          VERBOSE_DEBUG_DO(cout << *cube_cnt << " + ";);
           *cnt += *cube_cnt;
         }
 
@@ -1597,7 +1597,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
         if (!diff->is_zero()) {
           auto diff_ratio = diff->dup();
           *diff_ratio /= *cnt;
-          debug_print("OOps, diff              : " << diff << " diff ratio: " << *diff_ratio);
+          debug_print("OOps, diff              : " << *diff << " diff ratio: " << *diff_ratio);
           print_all_levels();
           okay = false;
         }

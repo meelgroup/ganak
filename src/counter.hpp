@@ -186,7 +186,7 @@ public:
   const FF& get_weight(const Lit& l) { return weights[l.raw()];}
   const FF& get_weight(const uint32_t v) { return var_weights[v]; }
   bool weight_larger_than(const FF& fst, const FF& snd) const { //< Returns true if the first weight is larger
-    return fg->larger_than(fst, snd);
+    return fg->larger_than(*fst, *snd);
   }
   auto get_indep_support_end() const { return indep_support_end; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }

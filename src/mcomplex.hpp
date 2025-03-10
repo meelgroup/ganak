@@ -159,5 +159,11 @@ public:
         return std::make_unique<FGenComplex>();
     }
 
+    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
+      const auto& ad = dynamic_cast<const FComplex&>(a);
+      const auto& bd = dynamic_cast<const FComplex&>(b);
+      return ad.real > bd.real || (ad.real == bd.real && ad.imag > bd.imag);
+    }
+
     bool weighted() const override { return true; }
 };

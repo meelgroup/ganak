@@ -60,7 +60,7 @@ public:
     return (branch_mc[b] == nullptr || branch_mc[b]->is_zero());
   }
   inline bool is_one(const bool b) const {
-    return (branch_mc[b] && branch_mc[b]->is_zero());
+    return (branch_mc[b] && branch_mc[b]->is_one());
   }
 
   uint32_t var = 0;

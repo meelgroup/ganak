@@ -3286,7 +3286,7 @@ bool Counter::run_sat_solver(RetState& state) {
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
   decisions.push_back(StackLevel(decisions.top().curr_remain_comp(),
-        comp_manager->comp_stack_size(), is_indep, tstamp, fg));
+        comp_manager->comp_stack_size(), true, tstamp, fg));
   sat_start_dec_level = dec_level();
 
   if (conf.do_sat_vsids) {

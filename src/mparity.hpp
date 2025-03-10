@@ -235,5 +235,11 @@ public:
         return std::make_unique<FGenParity>();
     }
 
+    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
+        const auto& ad = dynamic_cast<const FParity&>(a);
+        const auto& bd = dynamic_cast<const FParity&>(b);
+        return ad.val > bd.val;
+    }
+
     bool weighted() const override { return true; }
 };

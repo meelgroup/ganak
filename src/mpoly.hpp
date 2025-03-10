@@ -168,15 +168,11 @@ public:
     return true;
   }
 
-  void set_zero() override {
-    fmpq_mpoly_zero(val, ctx->ctx);
-  }
-  void set_one() override {
-    fmpq_mpoly_one(val, ctx->ctx);
-  }
+  void set_zero() override { fmpq_mpoly_zero(val, ctx->ctx); }
+  void set_one() override { fmpq_mpoly_one(val, ctx->ctx); }
 
   uint64_t bytes_used() const override {
-    return 0;
+    return sizeof(FPoly) + fmpq_mpoly_length(val, ctx->ctx) * 100;
   }
 };
 
@@ -201,6 +197,12 @@ public:
 
   std::unique_ptr<FieldGen> dup() const override {
       return std::make_unique<FGenPoly>(*this);
+  }
+
+  bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
+      const auto& ad = dynamic_cast<const FPoly&>(a);
+      const auto& bd = dynamic_cast<const FPoly&>(b);
+      return fmpq_mpoly_cmp(ad.val, bd.val, ctx->ctx) == -1;
   }
 
   bool weighted() const override { return true; }

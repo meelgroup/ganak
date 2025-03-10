@@ -1451,7 +1451,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   cout << endl;
   const auto& tmp = decisions.top().get_model_side(side);
   FF side_count = fg->zero();
-  if (tmp != nullptr) *side_count2 = *tmp;
+  if (tmp != nullptr) side_count = tmp->dup();
   cout << COLORG "cube's SOLE count: " << *tmp << endl;
   cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
 #endif
@@ -1579,12 +1579,12 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       if (!after_mul->is_zero()) after_mul = fg->one();
       else after_mul = fg->zero();
     }
-    debug_print("correct                            : " << std::setprecision(10) << cnt);
-    debug_print("after_mul:                         : " << after_mul);
-    debug_print("dec_w                              : " << dec_w);
+    debug_print("correct                            : " << std::setprecision(10) << *cnt);
+    debug_print("after_mul:                         : " << *after_mul);
+    debug_print("dec_w                              : " << *dec_w);
     debug_print("active                             : " << (decisions.top().is_right_branch() ? "right" : "left"));
-    debug_print("ds.top().left_model_count()    : " << decisions.top().left_model_count());
-    debug_print("ds.top().right_model_count()   : " << decisions.top().right_model_count());
+    debug_print("ds.top().left_model_count()    : " << *decisions.top().left_model_count());
+    debug_print("ds.top().right_model_count()   : " << *decisions.top().right_model_count());
 
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
@@ -1592,7 +1592,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       if (!weighted()) assert(*decisions.top().total_model_count() == *cnt);
       else {
         bool okay = true;
-        FF diff = after_mul->dup();
+        auto diff = after_mul->dup();
         *diff-= *cnt;
         if (!diff->is_zero()) {
           auto diff_ratio = diff->dup();
@@ -1645,7 +1645,7 @@ RetState Counter::backtrack() {
       const Lit lit = top_dec_lit();
       assert(dec_level() > 0);
       CHECK_COUNT_DO(check_count(true));
-      SLOW_DEBUG_DO(assert(decisions.top().right_model_count() == 0));
+      SLOW_DEBUG_DO(assert(decisions.top().right_model_count()->is_zero()));
       // could be the flipped that's FALSEified so that would
       // mean the watchlist is not "sane". We need to propagate the flipped var and
       // then it'll be fine

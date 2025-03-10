@@ -153,7 +153,8 @@ public:
   void include_one_sol() {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: ONE" << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
-    auto before = branch_mc[act_branch];
+    auto before = fg->zero();
+    if (branch_mc[act_branch]) before = branch_mc[act_branch]->dup();
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
@@ -168,7 +169,8 @@ public:
   void include_solution(const FF& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
-    auto before = branch_mc[act_branch];
+    auto before = fg->zero();
+    if (branch_mc[act_branch]) before = branch_mc[act_branch]->dup();
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
@@ -193,7 +195,8 @@ public:
     VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " " << endl;);
     if (act_branch == 0) return;
 #ifdef VERBOSE_DEBUG
-    auto before = branch_mc[0];
+    auto before = fg->zero();
+    if (branch_mc[0]) before = branch_mc[0]->dup();
 #endif
     if (branch_unsat[0]) {
       VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);

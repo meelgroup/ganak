@@ -1691,7 +1691,7 @@ RetState Counter::backtrack() {
       cout << endl;
 #endif
       if (weighted()) {
-        FF cnt = decisions.top().total_model_count();
+        FF cnt = decisions.top().total_model_count()->dup();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < dec_level()) {
             Lit l(*it, val(*it) == T_TRI);
@@ -1710,9 +1710,9 @@ RetState Counter::backtrack() {
     }
 
 #ifdef VERBOSE_DEBUG
-    const auto parent_count_before = (decisions.end() - 2)->total_model_count();
-    const auto parent_count_before_left = (decisions.end() - 2)->left_model_count();
-    const auto parent_count_before_right = (decisions.end() - 2)->right_model_count();
+    const auto parent_count_before = (decisions.end() - 2)->total_model_count()->dup();
+    const auto parent_count_before_left = (decisions.end() - 2)->left_model_count()->dup();
+    const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
     (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
     decisions.pop_back();

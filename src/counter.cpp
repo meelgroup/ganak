@@ -1829,7 +1829,8 @@ void Counter::print_trail(bool check_entail, bool check_anything) const {
 void Counter::go_back_to(int32_t backj) {
   debug_print("going back to lev: " << backj << " dec level now: " << dec_level());
   while(dec_level() > backj) {
-    debug_print("at dec lit: " << top_dec_lit() << " lev: " << dec_level() << " cnt:" <<  decisions.top().total_model_count());
+    debug_print("at dec lit: " << top_dec_lit() << " lev: " << dec_level()
+        << " cnt:" <<  decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_all_sol(); //not sure it's needed
@@ -1843,7 +1844,8 @@ void Counter::go_back_to(int32_t backj) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
     }
-    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << dec_level() << " cnt:" <<  decisions.top().total_model_count() << endl);
+    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << dec_level()
+        << " cnt:" <<  *decisions.top().total_model_count() << endl);
   }
   VERBOSE_DEBUG_DO(print_comp_stack_info());
   VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
@@ -3375,12 +3377,12 @@ bool Counter::run_sat_solver(RetState& state) {
         uint32_t v = *it;
         if (v >= opt_indep_support_end) continue;
         debug_print(COLYEL "SAT solver -- mult var: " << setw(4) << v << " val: " << setw(3) << sat_solution[v]
-          << " weight: " << setw(9) << get_weight(Lit(v, sat_solution[v] == T_TRI)) << COLDEF
+          << " weight: " << setw(9) << *get_weight(Lit(v, sat_solution[v] == T_TRI)) << COLDEF
           << " dec_lev: " << setw(5) << var(v).decision_level << " sat_start_dec_level: " << sat_start_dec_level);
         if (var(v).decision_level != INVALID_DL && var(v).decision_level <= sat_start_dec_level) continue;
         *cnt *= *get_weight(Lit(v, sat_solution[v] == T_TRI));
       }
-      debug_print(COLYEL "SAT cnt will be: " << cnt);
+      debug_print(COLYEL "SAT cnt will be: " << *cnt);
     }
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
@@ -3402,11 +3404,11 @@ end:
   else stats.sat_found_unsat++;
   stats.sat_conflicts += stats.conflicts-conflicts_before;
 
-  debug_print("after SAT mode. cnt dec: " << decisions.top().total_model_count()
-      << " left: " << decisions.top().left_model_count()
-      << " right: " << decisions.top().right_model_count());
+  debug_print("after SAT mode. cnt dec: " << *decisions.top().total_model_count()
+      << " left: " << *decisions.top().left_model_count()
+      << " right: " << *decisions.top().right_model_count());
   if (sat) {
-    debug_print("after SAT mode. cnt of this comp: " << decisions.top().total_model_count()
+    debug_print("after SAT mode. cnt of this comp: " << *decisions.top().total_model_count()
       << " unproc comps end: " << decisions.top().get_unproc_comps_end()
       << " remaining comps: " << decisions.top().remaining_comps_ofs()
       << " has unproc: " << decisions.top().has_unproc_comps());

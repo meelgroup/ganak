@@ -153,8 +153,7 @@ public:
   void include_one_sol() {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: ONE" << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
-    auto before = fg->zero();
-    if (branch_mc[act_branch]) before = branch_mc[act_branch]->dup();
+    auto before = val_or_zero(act_branch);
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
@@ -169,8 +168,7 @@ public:
   void include_solution(const FF& solutions) {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << *solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
-    auto before = fg->zero();
-    if (branch_mc[act_branch]) before = branch_mc[act_branch]->dup();
+    auto before = val_or_zero(act_branch);
 #endif
     if (branch_unsat[act_branch]) {
       VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
@@ -195,8 +193,7 @@ public:
     VERBOSE_DEBUG_DO(cout << COLRED << "left side div sol: " << *div_by << COLDEF << " " << endl;);
     if (act_branch == 0) return;
 #ifdef VERBOSE_DEBUG
-    auto before = fg->zero();
-    if (branch_mc[0]) before = branch_mc[0]->dup();
+    auto before = val_or_zero(0);
 #endif
     if (branch_unsat[0]) {
       VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
@@ -210,8 +207,8 @@ public:
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")
-        << " count is: " << branch_mc[0]
-        << " before it was: " << before
+        << " count is: " << *val_or_zero(0)
+        << " before it was: " << *before
         << " var: " << var
         << endl);
   }

@@ -4167,7 +4167,7 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
          " you can give '--allindep 1', and then you can give weights to anything." << endl;
     exit(-1);
   }
-  verb_print(2, "Setting weight of " << l << " to " << w);
+  verb_print(2, "Setting weight of " << l << " to " << *w);
   *weights[l.raw()] = *w;
   var_weights[l.var()] = weights[l.raw()]->dup();
   *var_weights[l.var()] += *weights[l.neg().raw()];

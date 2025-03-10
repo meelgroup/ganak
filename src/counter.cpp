@@ -1618,9 +1618,9 @@ RetState Counter::backtrack() {
   do {
 #ifdef VERBOSE_DEBUG
     if (dec_level() > 0) {
-      debug_print("[backtrack] top count here: " << decisions.top().total_model_count()
-        << " left: " << decisions.top().left_model_count()
-        << " right: " << decisions.top().right_model_count()
+      debug_print("[backtrack] top count here: " << *decisions.top().total_model_count()
+        << " left: " << *decisions.top().left_model_count()
+        << " right: " << *decisions.top().right_model_count()
         << " is right: " << decisions.top().is_right_branch()
         << " dec lit: " << top_dec_lit()
         << " dec lev: " << dec_level());
@@ -1633,7 +1633,7 @@ RetState Counter::backtrack() {
           << dec_level()
           << " instead of backtracking." << " Num unprocessed comps: "
           << decisions.top().num_unproc_comps()
-          << " so far the count: " << decisions.top().total_model_count());
+          << " so far the count: " << *decisions.top().total_model_count());
       return PROCESS_COMPONENT;
     }
 
@@ -1722,11 +1722,11 @@ RetState Counter::backtrack() {
         // NOTE: -1 here because we have JUST processed the child
         //     ->> (see below next_unproc_comp() call)
         << " num unprocessed comps here: " << dst.num_unproc_comps()-1
-        << " current count here: " << dst.total_model_count()
+        << " current count here: " << *dst.total_model_count()
         << " branch: " << dst.is_right_branch()
-        << " before including child it was: " <<  parent_count_before
-        << " (left: " << parent_count_before_left
-        << " right: " << parent_count_before_right
+        << " before including child it was: " <<  *parent_count_before
+        << " (left: " << *parent_count_before_left
+        << " right: " << *parent_count_before_right
         << ")");
 
     dst.next_unproc_comp(); // step to the next comp not yet processed
@@ -3776,11 +3776,7 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
         break;
       }
       debug_print("Var found in parent.");
-      if (i > dec_lev) {
-        FF tmp = fg->one();
-        *tmp /= *get_weight(lit);
-        decisions[i].include_solution_left_side(tmp);
-      }
+      if (i > dec_lev) decisions[i].div_solution_left_side(get_weight(lit));
 
       bool in_children = false;
       const auto& d = decisions.at(i);

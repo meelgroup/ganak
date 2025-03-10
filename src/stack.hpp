@@ -167,7 +167,7 @@ public:
   }
 
   void include_solution(const FF& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << solutions << COLDEF << " ");
+    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << *solutions << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
     auto before = fg->zero();
     if (branch_mc[act_branch]) before = branch_mc[act_branch]->dup();
@@ -191,8 +191,8 @@ public:
     VERBOSE_DEBUG_DO(common_print(before));
   }
 
-  void include_solution_left_side(const FF& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "left side incl sol: " << solutions << COLDEF << " " << endl;);
+  void div_solution_left_side(const FF& div_by) {
+    VERBOSE_DEBUG_DO(cout << COLRED << "left side div sol: " << *div_by << COLDEF << " " << endl;);
     if (act_branch == 0) return;
 #ifdef VERBOSE_DEBUG
     auto before = fg->zero();
@@ -204,15 +204,9 @@ public:
       return;
     }
 
-    if (solutions->is_zero()) {
-      branch_unsat[0] = true;
-      branch_mc[0] = nullptr;
-    } else {
-      if (!is_indep) branch_mc[0] = fg->one();
-      else {
-        assert(!is_zero(0));
-        *branch_mc[0] *= *solutions;
-      }
+    if (is_indep) {
+      assert(!is_zero(0));
+      *branch_mc[0] /= *div_by;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")

@@ -142,11 +142,11 @@ public:
   inline void common_print(const FF& before) {
     cout << "now "
         << ((act_branch) ? "right" : "left")
-        << " count is: " << val_or_zero(act_branch)
-        << " before it was: " << before
+        << " count is: " << *val_or_zero(act_branch)
+        << " before it was: " << *before
         << " var: " << var
         << " while " << ((!act_branch) ? "right" : "left")
-        << " count is: " << branch_mc[!act_branch]
+        << " count is: " << *val_or_zero(!act_branch)
         << endl;
   }
 

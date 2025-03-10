@@ -61,7 +61,7 @@ public:
 
   void save_count(const uint32_t stack_comp_id, const FF& value) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
-        << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << value);
+        << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << *value);
     cache.store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
@@ -166,9 +166,9 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
   debug_print(COLREDBG "-*-> Finished find_next_remain_comp_of, no more remaining comps. "
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "
-      " New Model cnt: " << top.total_model_count()
-      << " left: " << top.left_model_count() << " right: "
-      << top.right_model_count() << " , returning.");
+      " New Model cnt: " << *top.total_model_count()
+      << " left: " << *top.left_model_count() 
+      << " right: " << *top.right_model_count() << " , returning.");
   return false;
 }
 

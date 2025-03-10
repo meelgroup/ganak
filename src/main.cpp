@@ -606,9 +606,9 @@ int main(int argc, char *argv[])
   /*   else cout << std::setprecision(12) << std::fixed << biginteger_log_modified(cnt) << endl; */
   /*   if (is_appx) { */
   /*     cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl; */
-  /*     cout << "c s approx arb int " << std::fixed << cnt << endl; */
+  /*     cout << "c s approx arb int " << std::fixed << *cnt << endl; */
   /*   } else */
-  /*     cout << "c s exact arb int " << std::fixed << cnt << endl; */
+  /*     cout << "c s exact arb int " << std::fixed << *cnt << endl; */
   /* } */
   return 0;
 }

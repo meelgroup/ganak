@@ -913,9 +913,9 @@ void Counter::print_all_levels() {
       << " unproc'd comp end: " << decisions.at(dec_lev).get_unproc_comps_end()
       << " remaining comp ofs: " << decisions.at(dec_lev).remaining_comps_ofs()
       << " num unproc'd comps: " << decisions.at(dec_lev).num_unproc_comps()
-      << " count: " << decisions.at(dec_lev).total_model_count()
-      << " (left: " << decisions.at(dec_lev).left_model_count()
-      << " right: " << decisions.at(dec_lev).right_model_count()
+      << " count: " << *decisions.at(dec_lev).total_model_count()
+      << " (left: " << *decisions.at(dec_lev).left_model_count()
+      << " right: " << *decisions.at(dec_lev).right_model_count()
       << " active: " << (decisions.at(dec_lev).is_right_branch() ? "right" : "left") << "). -- ";
 
     const auto& c = comp_manager->at(sup_at);
@@ -1027,7 +1027,7 @@ void Counter::count_loop() {
 end:
   if (state == EXIT) {
     Cube c(vector<Lit>(), decisions.top().total_model_count());
-    debug_print("Exiting due to EXIT state, the cube count: " << c.cnt);
+    debug_print("Exiting due to EXIT state, the cube count: " << *c.cnt);
     mini_cubes.push_back(c);
   }
 
@@ -1037,9 +1037,9 @@ end:
       if (!is_unknown(i)) {
         Lit l(i, val(i) == T_TRI);
         *this_restart_multiplier *= *get_weight(l);
-        debug_print("[cube-final] lit: " <<  l << " mul: " << get_weight(l));
+        debug_print("[cube-final] lit: " <<  l << " mul: " << *get_weight(l));
       }
-    debug_print("[cube-final] This restart multiplier: " << this_restart_multiplier);
+    debug_print("[cube-final] This restart multiplier: " << *this_restart_multiplier);
     for (auto& c: mini_cubes) {
       *c.cnt *= *this_restart_multiplier;
       if (c.enabled) debug_print("[cube-final] cube: " << c);
@@ -1453,7 +1453,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   FF side_count = fg->zero();
   if (tmp != nullptr) side_count = tmp->dup();
   cout << COLORG "cube's SOLE count: " << *tmp << endl;
-  cout << COLORG "cube's RECORDED count: " << c.cnt << COLDEF << endl;
+  cout << COLORG "cube's RECORDED count: " << *c.cnt << COLDEF << endl;
 #endif
   return true;
 }
@@ -1484,7 +1484,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
           *dec_w *= *get_weight(Lit(v, val(v) == T_TRI));
           if (!get_weight(Lit(v, val(v) == T_TRI))->is_one()) {
             debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
-              << " weight: " << std::setw(9) << get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
+              << " weight: " << std::setw(9) << *get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
               << " dec_lev: " << var(v).decision_level);
           }
         }
@@ -1663,8 +1663,8 @@ RetState Counter::backtrack() {
         set_lit(lit.neg(), dec_level());
         VERBOSE_DEBUG_DO(print_trail());
         debug_print(COLORGBG "[backtrack] Backtrack finished -- we flipped the branch. "
-            "count left: " << decisions.top().left_model_count()
-            << " count right: " << decisions.top().right_model_count());
+            "count left: " << *decisions.top().left_model_count()
+            << " count right: " << *decisions.top().right_model_count());
         return RESOLVED;
       } else {
         assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
@@ -1830,7 +1830,7 @@ void Counter::go_back_to(int32_t backj) {
   debug_print("going back to lev: " << backj << " dec level now: " << dec_level());
   while(dec_level() > backj) {
     debug_print("at dec lit: " << top_dec_lit() << " lev: " << dec_level()
-        << " cnt:" <<  decisions.top().total_model_count());
+        << " cnt: " << *decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_all_sol(); //not sure it's needed
@@ -3279,9 +3279,9 @@ bool Counter::run_sat_solver(RetState& state) {
   stats.sat_called++;
   auto conflicts_before = stats.conflicts;
 
-  debug_print("before SAT mode. cnt dec: " << decisions.top().total_model_count()
-      << " left: " << decisions.top().left_model_count()
-      << " right: " << decisions.top().right_model_count());
+  debug_print("before SAT mode. cnt dec: " << *decisions.top().total_model_count()
+      << " left: " << *decisions.top().left_model_count()
+      << " right: " << *decisions.top().right_model_count());
   debug_print("Entering SAT mode. Declev: " << dec_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
@@ -3607,7 +3607,7 @@ uint64_t Counter::buddy_count() {
   else
     cnt = bdd_satcount_i64(fin, proj_end);
   VERBOSE_DEBUG_DO(
-  cout << "cnt: " << cnt << endl;
+  cout << "cnt: " << *cnt << endl;
   cout << "num bin cls: " << actual_bin << endl;
   cout << "num long cls: " << actual_long << endl;
   cout << "----------------------------------------------" << endl);

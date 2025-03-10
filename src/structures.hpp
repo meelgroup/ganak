@@ -181,7 +181,8 @@ struct Cube {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
-  os << "CNF: " << c.cnf << " cnt: " << std::setprecision(40) << c.cnt << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm << " lbd: " << c.lbd;
+  os << "CNF: " << c.cnf << " cnt: " << *c.cnt
+    << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm << " lbd: " << c.lbd;
   return os;
 }
 

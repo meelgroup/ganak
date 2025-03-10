@@ -166,7 +166,8 @@ public:
   }
 
   void include_solution(const FF& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << *solutions << COLDEF << " ");
+    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep
+        << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
     auto before = val_or_zero(act_branch);
 #endif

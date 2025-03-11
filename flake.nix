@@ -68,7 +68,7 @@
               --replace-fail "../cadical" "${cadical}"
           '';
           configurePhase = ''
-            export CADICAL=${cadical} 
+            export CADICAL=${cadical}
             ./configure
           '';
 
@@ -138,8 +138,8 @@
             owner = "msoos";
             repo = "cryptominisat";
             fetchSubmodules = true;
-            rev = "00e718deb3f2838c4a0fc928b705cf6b8d19c5fb";
-            hash = "sha256-elRTWx8ze53JIzvIA71j+sBTa6pzF09LzbL/NuxjW+4=";
+            rev = "7b58aa32cc7ee8416ebb09aad0f4e9c652f38e21";
+            hash = "sha256-m3WtMY83qJRoL2+cG1L+EZVL7t9ckSaMW+DMWxUsToU=";
           };
 
           patchPhase = ''
@@ -179,8 +179,8 @@
           src = fetchFromGitHub {
             owner = "meelgroup";
             repo = "arjun";
-            rev = "699882822d5b83c0bcab95b52803c3880da334a1";
-            hash = "sha256-ZnXtC+ZTa1dj+QEP0jgpUcUxQWgrwsx3nLEKBVP0RcI=";
+            rev = "b05b4cce46b5c6fca77b8829c0ab0d49b9a70159";
+            hash = "sha256-qQT16wNiRoNwpTpIxg80+SjGUhVXvuWYXFaS+kq2ezc=";
           };
           nativeBuildInputs = [
             pkg-config
@@ -260,8 +260,8 @@
           src = fetchFromGitHub {
             owner = "meelgroup";
             repo = "approxmc";
-            rev = "5551e1fde353f2d27ddbcb2ba068215b4107f1bc";
-            hash = "sha256-zvcOLLNOE83LDqLumYpWFo1TIs+1x4hBwydx/87I148=";
+            rev = "e630146ccee72b939e984874a1ecceeb9c4c4ca3";
+            hash = "sha256-Gi5wAuACucIx2E4oLv5P+CFVSQRecdA/dK4Wr3xghWI=";
           };
           nativeBuildInputs = [
             cmake

@@ -126,18 +126,8 @@ public:
         if (!_real.parse_mpq(str, at, line_no)) return false;
         skip_whitespace(str, at);
         ArjunNS::FMpq _imag;
-        if (str[at] == '+') {
-            at++;
-            if (!_imag.parse_mpq(str, at, line_no)) return false;
-            skip_whitespace(str, at);
-            if (str[at] != 'i') {
-                std::cerr << "PARSE ERROR! Expected 'i' at end of complex number"
-                << " At line " << line_no << " Probably looks like 1+2i"
-                << std::endl;
-                return false;
-            }
-            at++;
-        }
+        if (!_imag.parse_mpq(str, at, line_no)) return false;
+        skip_whitespace(str, at);
         real = _real.get_val();
         imag = _imag.get_val();
         return true;

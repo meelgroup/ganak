@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS data;
 CREATE TABLE data (
+  solver STRING NOT NULL,
   dirname STRING NOT NULL,
   fname STRING NOT NULL,
 

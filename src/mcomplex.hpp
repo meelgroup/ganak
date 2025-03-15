@@ -62,19 +62,23 @@ public:
 
     Field& operator*=(const Field& other) override {
         const auto& od = dynamic_cast<const FComplex&>(other);
-        std::tie(real,imag) = std::tuple{
-          real*od.real+imag*od.imag,
-          real*od.imag+imag*od.real};
+        mpq_class r = real;
+        mpq_class i = imag;
+        real = r*od.real+i*od.imag;
+        imag = r*od.imag+i*od.real;
         return *this;
     }
 
     Field& operator/=(const Field& other) override {
         const auto& od = dynamic_cast<const FComplex&>(other);
-        if (od.real == 0) throw std::runtime_error("Division by zero");
-        auto div = od.imag*od.imag+od.real*od.real;
-        std::tie(real,imag) = std::tuple{
-          (real*od.real+imag*od.imag)/div,
-          (imag*od.real-real*od.imag)/div};
+        if (od.is_zero()) throw std::runtime_error("Division by zero");
+        mpq_class div = od.imag*od.imag+od.real*od.real;
+        mpq_class r = real;
+        mpq_class i = imag;
+        real = r*od.real+i*od.imag;
+        real /= div;
+        imag = i*od.real-r*od.imag;
+        imag /= div;
         return *this;
     }
 

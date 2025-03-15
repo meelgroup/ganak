@@ -64,7 +64,7 @@ public:
         const auto& od = dynamic_cast<const FComplex&>(other);
         mpq_class r = real;
         mpq_class i = imag;
-        real = r*od.real+i*od.imag;
+        real = r*od.real-i*od.imag;
         imag = r*od.imag+i*od.real;
         return *this;
     }

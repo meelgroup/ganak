@@ -4,9 +4,10 @@ CREATE TABLE data (
   fname STRING NOT NULL,
 
   ganak_time FLOAT,
-  ganak_tout_time FLOAT,
   ganak_mem_MB FLOAT,
   ganak_call TEXT NOT NULL,
+  page_faults INT NOT NULL,
+  signal INT,
   ganak_ver TEXT NOT NULL,
   conflicts INT,
   decisionsK INT,
@@ -40,6 +41,7 @@ CREATE TABLE data (
 . mode csv
 . import -skip 1 mydata.csv data
 UPDATE data SET ganak_time = NULL WHERE ganak_time = '';
+UPDATE data SET signal = NULL WHERE signal = '';
 UPDATE data SET conflicts = NULL WHERE conflicts = '';
 UPDATE data SET decisionsK = NULL WHERE decisionsK = '';
 UPDATE data SET compsK = NULL WHERE compsK = '';

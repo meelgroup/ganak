@@ -12,64 +12,6 @@ sys.set_int_max_str_digits(2000000)
 ##########################
 # appmx, etc.
 
-def find_approxmc_time_cnt(fname):
-    t = None
-    cnt = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c [appmc+arjun] Total time" in line:
-                t = float(line.split()[4])
-            if "s mc" in line:
-                if len(line.split()[2]) > 1000 : cnt = len(line.split()[2])
-                else: cnt = decimal.Decimal(line.split()[2]).log10()
-
-    return [t,cnt]
-
-def find_exactmc_time_cnt(fname):
-    t = None
-    cnt = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "Total time cost" in line:
-                t = float(line.split()[3])
-            if "Number of models" in line:
-                if len(line.split()[3]) > 1000: cnt = len(line.split()[3])
-                cnt = decimal.Decimal(line.split()[3]).log10()
-
-    return [t,cnt]
-
-def find_minic2d_time_cnt(fname):
-    t = None
-    cnt = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "Total Time" in line:
-                t = float(line.split()[2].strip("s"))
-            if "Counting..." in line:
-                if len(line.split()[1]) > 1000: cnt = len(line.split()[1])
-                else: cnt = decimal.Decimal(line.split()[1]).log10()
-
-    return [t,cnt]
-
-def find_d4_time_cnt(fname):
-    t = None
-    cnt = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c [COUNTER] Elapsed time:" in line:
-                t = float(line.split()[4])
-            if "c exact arb int" in line:
-                cnt = decimal.Decimal(line.split()[5]).log10()
-            if "c s exact quadruple int" in line:
-                cnt = decimal.Decimal(line.split()[5]).log10()
-
-    # print("t:", t, "cnt: ", cnt)
-    return [t,cnt]
-
 #c o Components            = 339421
 #c o conflicts             = 291050      (count 287680, sat 3370)
 #c o decisions             = 643616      (count 335433, sat 308183)
@@ -98,45 +40,6 @@ def find_gpmc_time_cnt(fname):
               decisionsK = int(line.split()[4])/1000
 
     return t,cnt,compsK,conflicts,decisionsK
-
-def find_dsharp_time_cnt(fname):
-    t = None
-    cnt = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "Runtime: " in line:
-                t = float(line.split(":")[1].strip("s"))
-            if "#SAT (full)" in line:
-                if len(line.split()[2]) > 1000: cnt = len(line.split()[2])
-                else: cnt = decimal.Decimal(line.split()[2]).log10()
-
-    return [t,cnt]
-
-# when only preprocessing finds an answer, we don't have "c o Solved"
-# Instead, we have only "c o Preprocessed. 469.010186778s Vars: 0 Clauses: 0 Free vars: 1"
-def find_sharpsat_time_cnt(fname):
-    t = None
-    cnt = None
-    prepro_t = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "c o Solved." in line:
-                t = float(line.split()[3])
-            if "c o Preprocessed." in line:
-                d = line.split()[3]
-                d = d.strip('s')
-                prepro_t = float(d)
-            if "c s exact arb int" in line:
-                if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
-                else: cnt = decimal.Decimal(line.split()[5]).log10()
-            if "c s exact arb float" in line:
-                cnt = decimal.Decimal(line.split()[5]).log10()
-
-    if cnt is not None and t is None:
-      t = prepro_t
-    return [t,cnt]
 
 def approxmc_version(fname):
     aver = None
@@ -322,15 +225,22 @@ def collect_cache_data(fname):
 
 def timeout_parse(fname):
     t = None
-    m = None
+    signal = None
+    mem = None
     call = None
+    solver = None
+    page_faults = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if "Command terminated by signal" in line:
+              signal = int(line.split()[4])
+            if "Minor (reclaiming a frame) page faults:" in line:
+              page_faults = int(line.split()[6])
             if "User time (seconds)" in line:
                 t = float(line.split()[3])
             if "Maximum resident set size (kbytes)" in line:
-                m = float(line.split()[5])/(1000) # get it in MB
+                mem = float(line.split()[5])/(1000) # get it in MB
             if "Command being timed" in line:
                 call= " ".join(line.split()[3:])
                 if "mc2022" in call:
@@ -346,15 +256,29 @@ def timeout_parse(fname):
                   call = call.split("doalarm 60")[1]
                 else:
                   call = call.split("doalarm 900")[1]
+
+                if "./ganak " in call: solver = "ganak"
+                if "./d4"  in call: solver = "d4"
+                if "./approxmc" in call: solver = "approxmc"
+                if "./gpmc" in call: solver = "gpmc"
+                if "./gpmc-complex" in call: solver = "gpmc"
+                if "./KCBox" in call: solver = "exactmc"
+                if "./sharpSAT" in call: solver = "sharptd"
+
                 call = call.replace("././ganak ", "")
                 call = call.replace("././d4-1d9cc6146f18b8 ", "")
                 call = call.replace("././approxmc ", "")
                 call = call.replace("././gpmc ", "")
+                call = call.replace("././gpmc-complex ", "")
                 call = call.replace("././KCBox-371eb601f2aa", "")
                 call = call.replace("././sharpSAT", "")
                 call = call.strip()
 
-    return [t, m, call]
+    if signal is not None:
+      t = None
+    if signal is None:
+      signal = ""
+    return [t, mem, call, solver, page_faults, signal]
 
 # c o width 45
 # c o CMD: timeout 60.000000s ./flow_cutter_pace17 <tmp/instance1709332682043115_14040_59941_1.tmp >tmp/instance1709332682043118_14040_59941_2.tmp 2>/dev/null
@@ -459,13 +383,19 @@ for f in file_list:
     # print("Dealing with dir: %s fname: %s" % (dirname, full_fname))
 
     if f.endswith(".timeout") or ".timeout_" in f:
-        files[base]["solvertout"] = timeout_parse(f)
+        timeout_t, timeout_mem, timeout_call, timeout_solver, page_faults, signal = timeout_parse(f)
+        files[base]["timeout_t"] = timeout_t
+        files[base]["timeout_mem"] = timeout_mem
+        files[base]["timeout_call"] = timeout_call
+        files[base]["page_faults"] = page_faults
+        files[base]["signal"] = signal
+        if "solver" not in files[base] or files[base]["solver"] is None:
+          files[base]["solver"] = timeout_solver
 
     files[base]["mem_out"] = find_mem_out(f)
     if  f.endswith(".out_ganak") or f.endswith(".out"):
         files[base]["solver"] = "ganak"
         ver, conflicts, decisionsK, t, cnt, bdd_called = ganak_conflicts(f)
-        files[base]["solvertime"] = [t, cnt]
         files[base]["solverver"] = ver
         files[base]["decisionsK"] = decisionsK
         files[base]["conflicts"] = conflicts
@@ -501,73 +431,64 @@ for f in file_list:
         files[base]["primal_edge_var_ratio"] = edge_var_ratio
     if ".out_approxmc" in f:
         files[base]["solver"] = "approxmc"
-        files[base]["solvertime"] = find_approxmc_time_cnt(f)
         files[base]["solverver"] = approxmc_version(f)
     if ".out_gpmc" in f:
         files[base]["solver"] = "gpmc"
         t,cnt,compsK,conflicts,decisionsK = find_gpmc_time_cnt(f)
-        files[base]["solvertime"] = [t, cnt]
         files[base]["conflicts"] = conflicts
         files[base]["compsK"] = compsK
         files[base]["decisionsK"] = decisionsK
         files[base]["solverver"] = ["gpmc", "gpmc"]
     if ".out_sharptd" in f:
         files[base]["solver"] = "sharptd"
-        files[base]["solvertime"] = find_sharpsat_time_cnt(f)
         files[base]["solverver"] = ["sharptd", "sharptd"]
         td = sstd_treewidth(f)
         files[base]["td_width"] = td[0]
         files[base]["td_time"] = td[1]
     if ".out_d4" in f:
         files[base]["solver"] = "d4"
-        files[base]["solvertime"] = find_d4_time_cnt(f)
         files[base]["solverver"] = ["d4", "d4"]
     if ".out_dsharp" in f:
         files[base]["solver"] = "dsharp"
-        files[base]["solvertime"] = find_dsharp_time_cnt(f)
         files[base]["solverver"] = ["dsharp", "dsharp"]
     if ".out_minic2d" in f:
         files[base]["solver"] = "minic2d"
-        files[base]["solvertime"] = find_minic2d_time_cnt(f)
         files[base]["solverver"] = ["minic2d", "minic2d"]
     if ".out_exactmc" in f:
         files[base]["solver"] = "exactmc"
-        files[base]["solvertime"] = find_exactmc_time_cnt(f)
         files[base]["solverver"] = ["exactmc","exactmc"]
 
 
 with open("mydata.csv", "w") as out:
     cols = "dirname,fname,"
-    cols += "ganak_time,ganak_tout_t,ganak_mem_MB,ganak_call,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
+    cols += "ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
         toprint += f["dirname"] + ","
         toprint += f["fname"] + ","
 
-        # ganak_t
+        # check solver parsed
         if "solver" not in f:
-            print("oops")
+            print("oops, solver not found, that's wrong")
             print(f)
-            continue
+            exit(-1)
+        if "timeout_t" not in f:
+          print("timeout not parsed for f: ", f)
+          exit(-1)
 
-        # ganak_time
-        if f["solvertime"][0] is None:
-            toprint += ","
+        #timeout_t, timeout_mem, timeout_call
+        if f["timeout_t"] == None:
+            toprint += ",,,,,"
         else:
-            toprint += "%s," % f["solvertout"][0]
-            # toprint += "%s," % f["solvertime"][0]
-
-        #ganak_tout_t, ganak_mem_MB, ganak_call
-        if f["solvertout"] == [None, None, None]:
-            toprint += ",,,"
-        else:
-            toprint += "%s," % f["solvertout"][0]
-            toprint += "%s," % f["solvertout"][1]
-            toprint += "%s," % f["solvertout"][2]
+            toprint += "%s," % f["timeout_t"]
+            toprint += "%s," % f["timeout_mem"]
+            toprint += "%s," % f["timeout_call"]
+            toprint += "%s," % f["page_faults"]
+            toprint += "%s," % f["signal"]
 
         #ganak_ver
-        if f["solverver"] == [None, None]:
+        if "solverver" not in f or f["solverver"] == [None, None]:
             toprint += ","
         else:
           toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])

@@ -443,7 +443,7 @@ only_dirs = [
             # "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
             # "out-ganak-mc2324-14063135-7/", # also enchanced SAT
             # "out-ganak-mc2324-14063135-4/", # also dual indep
-            "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
+            # "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat-td
@@ -473,7 +473,10 @@ only_dirs = [
             #"out-ganak-mc2324-14171543-",
 
             # fixed bugs related to ccnr backbone, and using purely CMS for very small-indep size (and no puura for <10)
-            "out-ganak-mc2324-14195954-0",
+            # "out-ganak-mc2324-14195954-0",
+
+            # complex numbers from Mei
+             "out-ganak-gpmc-mei-14294765-",
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -794,3 +797,7 @@ os.system("epstopdf run.eps run.pdf")
 os.system("pdftoppm -png run.pdf run")
 print("okular run.eps")
 os.system("okular run.eps")
+
+
+#### examples
+# select a1.fname, a1.ganak_time, a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' order by a2.ganak_time desc limit 50;

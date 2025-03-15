@@ -257,7 +257,7 @@ def timeout_parse(fname):
                 else:
                   call = call.split("doalarm 900")[1]
 
-                if "./ganak " in call: solver = "ganak"
+                if "./ganak" in call: solver = "ganak"
                 if "./d4"  in call: solver = "d4"
                 if "./approxmc" in call: solver = "approxmc"
                 if "./gpmc" in call: solver = "gpmc"
@@ -493,16 +493,16 @@ with open("mydata.csv", "w") as out:
 
         #timeout_t, timeout_mem, timeout_call
         if f["timeout_t"] == None:
-            toprint += ",,,,,"
+            toprint += ","
         else:
             if f["not_solved"]:
               toprint += ","
             else:
               toprint += "%s," % f["timeout_t"]
-            toprint += "%s," % f["timeout_mem"]
-            toprint += "%s," % f["timeout_call"]
-            toprint += "%s," % f["page_faults"]
-            toprint += "%s," % f["signal"]
+        toprint += "%s," % f["timeout_mem"]
+        toprint += "%s," % f["timeout_call"]
+        toprint += "%s," % f["page_faults"]
+        toprint += "%s," % f["signal"]
 
         #ganak_ver
         if "solverver" not in f or f["solverver"] == [None, None]:

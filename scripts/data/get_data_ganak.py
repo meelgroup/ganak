@@ -469,9 +469,12 @@ for f in file_list:
 
 
 with open("mydata.csv", "w") as out:
-    cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
+    cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
     out.write(cols+"\n")
     for _, f in files.items():
+        if "not_solved" not in f:
+          print("WARNING no 'out' file parsed for, skipping: ", f["fname"])
+          continue
         toprint = ""
         toprint += "%s," % f["solver"]
         toprint += f["dirname"] + ","
@@ -621,11 +624,6 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["cubes_final"]
-
-        if "mem_out" not in f or f["mem_out"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["mem_out"]
 
         if "gates_extended" not in f or f["gates_extended"] is None:
             toprint += ","

@@ -583,6 +583,7 @@ for only_counted in [False, True]:
         replace(dirname,'out-ganak-mc','') as dirname,\
         replace(ganak_call,'././ganak_','') as call,\
         sum(mem_out) as 'mem out', \
+        sum(signal == 11) as 'sig11', \
         CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
         ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
         ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \

@@ -4,6 +4,7 @@ CREATE TABLE data (
   dirname STRING NOT NULL,
   fname STRING NOT NULL,
 
+  mem_out INT,
   ganak_time FLOAT,
   ganak_mem_MB FLOAT,
   ganak_call TEXT NOT NULL,
@@ -33,7 +34,6 @@ CREATE TABLE data (
   restarts INT,
   cubes_orig INT,
   cubes_final INT,
-  mem_out INT,
   gates_extended INT,
   gates_extend_t INT,
   padoa_extended INT,

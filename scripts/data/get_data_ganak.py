@@ -351,16 +351,20 @@ def ganak_version(fname):
             line = line.strip()
 
 
-
-def find_mem_out(fname):
+def find_bad_solve(fname):
     mem_out = 0
+    not_solved = True
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "std::bad_alloc" in line:
+            if "bad_alloc" in line:
                 mem_out = 1
+            elif "c s SATISFIABLE" in line:
+                not_solved = False
+            elif "c s UNSATISFIABLE" in line:
+                not_solved = False
 
-    return mem_out
+    return mem_out, not_solved
 
 
 file_list = glob.glob("out-ganak-*/*cnf*")
@@ -391,8 +395,8 @@ for f in file_list:
         files[base]["signal"] = signal
         if "solver" not in files[base] or files[base]["solver"] is None:
           files[base]["solver"] = timeout_solver
+        continue
 
-    files[base]["mem_out"] = find_mem_out(f)
     if  f.endswith(".out_ganak") or f.endswith(".out"):
         files[base]["solver"] = "ganak"
         ver, conflicts, decisionsK, t, cnt, bdd_called = ganak_conflicts(f)
@@ -458,15 +462,21 @@ for f in file_list:
         files[base]["solver"] = "exactmc"
         files[base]["solverver"] = ["exactmc","exactmc"]
 
+    if ".out" in f:
+      mem_out, not_solved = find_bad_solve(f)
+      files[base]["mem_out"] = mem_out
+      files[base]["not_solved"] = not_solved
+
 
 with open("mydata.csv", "w") as out:
-    cols = "solver,dirname,fname,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
+    cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,mem_out,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
     out.write(cols+"\n")
     for _, f in files.items():
         toprint = ""
         toprint += "%s," % f["solver"]
         toprint += f["dirname"] + ","
         toprint += f["fname"] + ","
+        toprint += "%s," % f["mem_out"]
 
         # check solver parsed
         if "solver" not in f:
@@ -482,7 +492,10 @@ with open("mydata.csv", "w") as out:
         if f["timeout_t"] == None:
             toprint += ",,,,,"
         else:
-            toprint += "%s," % f["timeout_t"]
+            if f["not_solved"]:
+              toprint += ","
+            else:
+              toprint += "%s," % f["timeout_t"]
             toprint += "%s," % f["timeout_mem"]
             toprint += "%s," % f["timeout_call"]
             toprint += "%s," % f["page_faults"]

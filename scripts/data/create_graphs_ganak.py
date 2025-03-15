@@ -800,4 +800,4 @@ os.system("okular run.eps")
 
 
 #### examples
-# select a1.fname, a1.ganak_time, a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' order by a2.ganak_time desc limit 50;
+# select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' order by a2.ganak_time desc limit 50;

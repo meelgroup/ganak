@@ -45,6 +45,7 @@ THE SOFTWARE.
 #include "mpoly.hpp"
 #include "mparity.hpp"
 #include "mcomplex.hpp"
+#include "mcomplex-mpfr.hpp"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -123,7 +124,7 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=weighted parity counting, 5=weighted counting over prime field");
+    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers");
     myopt("--prime", prime_field, atoi, "Number of variables in the polynomial field");
     myopt("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
@@ -185,7 +186,7 @@ void add_ganak_options()
 //
 //  Decision options
     myopt("--polar", conf.polar_type, atoi, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
-    myopt("--decide", conf.decide, atoi, "1 = gpmc-inspired");
+    myopt("--decide", conf.decide, atoi, "ignore or not ignore TD");
     myopt("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
     myopt("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
     myopt("--actscorediv", conf.act_score_divisor, atof, "Activity score divisor");
@@ -464,7 +465,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     /*     cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
     /*     if (neglog) cnt *= -1; */
     /* } */
-    if (mode == 0 || mode == 1 || mode == 2) {
+    if (mode == 0 || mode == 1 || mode == 2 || mode == 6) {
       std::stringstream ss;
       ss << std::scientific << std::setprecision(40);
       const CMSat::Field* ptr = cnt.get();
@@ -482,6 +483,9 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         ss << print_mpq_as_scientific(od->real) << " + "
           << print_mpq_as_scientific(od->imag) << "i";
         cout << "c s exact arb cpx "  << ss.str() << endl;
+      } else if (mode == 6) {
+        const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
+        mpfr_printf("c o exact arb cpx %.6Rf + %.6Rf i\n", od->real, od->imag);
       }
     }
     cout << "c o exact arb " << *cnt << endl;
@@ -518,6 +522,9 @@ int main(int argc, char *argv[])
         break;
     case 2:
         fg = std::make_unique<FGenComplex>();
+        break;
+    case 6:
+        fg = std::make_unique<FGenMPFComplex>();
         break;
     case 3:
         if (poly_nvars == -1) {

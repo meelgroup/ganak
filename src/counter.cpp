@@ -197,8 +197,9 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool p
         << " nodes: " << nodes
         << " rt/width(=rt): " << rt
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
-        << " exp(rt*conf.td_exp_mult)/conf.td_divider: "
-        << exp(rt*conf.td_exp_mult)/conf.td_divider);
+        << " rt: " << rt
+        << " conf.td_exp_mult: " << conf.td_exp_mult
+        << " conf.td_divider: " << conf.td_divider);
   }
 
   // Calc td score
@@ -4169,7 +4170,10 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
   *weights[l.raw()] = *w;
   var_weights[l.var()] = weights[l.raw()]->dup();
   *var_weights[l.var()] += *weights[l.neg().raw()];
-  if (w->is_zero()) add_irred_cl({l.neg()});
+  if (w->is_zero()) {
+    add_irred_cl({l.neg()});
+    verb_print(3, "Weight is zero, adding clause: " << l.neg());
+  }
 }
 
 void Counter::init_decision_stack() {

@@ -359,9 +359,9 @@ def find_bad_solve(fname):
             line = line.strip()
             if "bad_alloc" in line:
                 mem_out = 1
-            elif "c s SATISFIABLE" in line:
+            elif line.startswith("s SATISFIABLE"):
                 not_solved = False
-            elif "c s UNSATISFIABLE" in line:
+            elif line.startswith("s UNSATISFIABLE"):
                 not_solved = False
 
     return mem_out, not_solved

@@ -94,7 +94,6 @@ public:
         const auto& od = dynamic_cast<const MPFComplex&>(other);
         mpfr_t r;
         mpfr_init2(r, 256);
-
         mpfr_t tmp;
         mpfr_init2(tmp, 256);
         mpfr_t tmp2;
@@ -123,20 +122,19 @@ public:
     Field& operator/=(const Field& other) override {
         const auto& od = dynamic_cast<const MPFComplex&>(other);
         if (od.is_zero()) throw std::runtime_error("Division by zero");
-        mpfr_t div;
-        mpfr_init2(div, 256);
         mpfr_t r;
         mpfr_init2(r, 256);
-
         mpfr_t tmp;
         mpfr_init2(tmp, 256);
         mpfr_t tmp2;
         mpfr_init2(tmp2, 256);
 
         // div = od.imag*od.imag+od.real*od.real;
-        mpfr_mul(div, od.imag, od.imag, MPFR_RNDN);
-        mpfr_mul(tmp, od.real, od.real, MPFR_RNDN);
-        mpfr_add(div, div, tmp, MPFR_RNDN);
+        mpfr_t div;
+        mpfr_init2(div, 256);
+        mpfr_mul(tmp, od.imag, od.imag, MPFR_RNDN);
+        mpfr_mul(tmp2, od.real, od.real, MPFR_RNDN);
+        mpfr_add(div, tmp, tmp2, MPFR_RNDN);
 
         mpfr_mul(tmp, real, od.real, MPFR_RNDN);
         mpfr_mul(tmp2, imag, od.imag, MPFR_RNDN);
@@ -171,7 +169,7 @@ public:
 
     std::ostream& display(std::ostream& os) const override {
       char* tmp = nullptr;
-      mpfr_asprintf(&tmp, "%.6Rf + %.6Rfi", real, imag);
+      mpfr_asprintf(&tmp, "%.6Ef + %.6Efi", real, imag);
       os << tmp;
       mpfr_free_str(tmp);
       return os;
@@ -197,10 +195,6 @@ public:
     void set_one() override {
       mpfr_set_si(real, 1, MPFR_RNDN);
       mpfr_set_si(imag, 0, MPFR_RNDN);
-    }
-
-    inline uint64_t helper(const mpz_class& v) const {
-      return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     }
 
     unsigned int mpfr_memory_usage(const mpfr_t& x) const {

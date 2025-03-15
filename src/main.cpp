@@ -485,7 +485,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         cout << "c s exact arb cpx "  << ss.str() << endl;
       } else if (mode == 6) {
         const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
-        mpfr_printf("c o exact arb cpx %.6Rf + %.6Rf i\n", od->real, od->imag);
+        mpfr_printf("c o exact arb cpx %.6Rf + %.6Rfi\n", od->real, od->imag);
       }
     }
     cout << "c o exact arb " << *cnt << endl;

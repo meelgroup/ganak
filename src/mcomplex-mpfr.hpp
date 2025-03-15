@@ -169,7 +169,7 @@ public:
 
     std::ostream& display(std::ostream& os) const override {
       char* tmp = nullptr;
-      mpfr_asprintf(&tmp, "%.8Re + %.8Re", real, imag);
+      mpfr_asprintf(&tmp, "%.8Re + %.8Rei", real, imag);
       os << tmp;
       mpfr_free_str(tmp);
       return os;

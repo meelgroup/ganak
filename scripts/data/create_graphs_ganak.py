@@ -476,7 +476,8 @@ only_dirs = [
             # "out-ganak-mc2324-14195954-0",
 
             # complex numbers from Mei
-             "out-ganak-gpmc-mei-14294765-",
+             "out-ganak-gpmc-mei-14294765-", # gpmc
+             "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -801,4 +802,5 @@ os.system("okular run.eps")
 
 
 #### examples
+# .mode table
 # select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' order by a2.ganak_time desc limit 50;

@@ -3,23 +3,23 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     arjun = {
-      url = "github:itepastra/arjun/add-flake";
+      url = "github:meelgroup/arjun/synthesis2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cryptominisat = {
-      url = "github:itepastra/cryptominisat/add-flake";
+      url = "github:msoos/cryptominisat/synthesis";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sbva = {
-      url = "github:itepastra/sbva/add-flake";
+      url = "github:meelgroup/sbva/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     approxmc = {
-      url = "github:itepastra/approxmc/add-flake";
+      url = "github:meelgroup/approxmc/synthesis";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     breakid = {
-      url = "github:itepastra/breakid/add-flake";
+      url = "github:meelgroup/breakid/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

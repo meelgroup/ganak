@@ -33,41 +33,41 @@ public:
     FPrime(const FPrime& other) : val(other.val), field(other.field) {}
 
     Field& operator=(const Field& other) override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         val = od.val;
         return *this;
     }
 
     Field& operator+=(const Field& other) override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         val += od.val;
         val %= field;
         return *this;
     }
 
     std::unique_ptr<Field> add(const Field& other) override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         int val2 = val + od.val;
         val2 %= field;
         return std::make_unique<FPrime>(val2, field);
     }
 
     Field& operator-=(const Field& other) override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         val -= od.val;
         val %= field;
         return *this;
     }
 
     Field& operator*=(const Field& other) override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         val *= od.val;
         val %= field;
         return *this;
     }
 
     Field& operator/=(const Field& other) override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         if (od.val == 0) throw std::runtime_error("Division by zero");
         val /= od.val;
         val %= field;
@@ -75,7 +75,7 @@ public:
     }
 
     bool operator==(const Field& other) const override {
-        const auto& od = dynamic_cast<const FPrime&>(other);
+        const auto& od = static_cast<const FPrime&>(other);
         return val == od.val;
     }
 
@@ -134,8 +134,8 @@ public:
     }
 
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
-      const auto& ad = dynamic_cast<const FPrime&>(a);
-      const auto& bd = dynamic_cast<const FPrime&>(b);
+      const auto& ad = static_cast<const FPrime&>(a);
+      const auto& bd = static_cast<const FPrime&>(b);
       return ad.val > bd.val;
     }
 
@@ -150,42 +150,42 @@ public:
     FParity(const FParity& other) : val(other.val) {}
 
     Field& operator=(const Field& other) override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         val = od.val;
         return *this;
     }
 
     Field& operator+=(const Field& other) override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         val ^= od.val;
         return *this;
     }
 
     std::unique_ptr<Field> add(const Field& other) override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         return std::make_unique<FParity>(val ^ od.val);
     }
 
     Field& operator-=(const Field& other) override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         val ^= od.val;
         return *this;
     }
 
     Field& operator*=(const Field& other) override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         val &= od.val;
         return *this;
     }
 
     Field& operator/=(const Field& other) override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         if (od.val == 0) throw std::runtime_error("Division by zero");
         return *this;
     }
 
     bool operator==(const Field& other) const override {
-        const auto& od = dynamic_cast<const FParity&>(other);
+        const auto& od = static_cast<const FParity&>(other);
         return val == od.val;
     }
 
@@ -242,8 +242,8 @@ public:
     }
 
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
-        const auto& ad = dynamic_cast<const FParity&>(a);
-        const auto& bd = dynamic_cast<const FParity&>(b);
+        const auto& ad = static_cast<const FParity&>(a);
+        const auto& bd = static_cast<const FParity&>(b);
         return ad.val > bd.val;
     }
 

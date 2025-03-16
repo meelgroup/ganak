@@ -56,21 +56,21 @@ public:
     }
 
     Field& operator=(const Field& other) override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_set(real, od.real, MPFR_RNDN);
         mpfr_set(imag, od.imag, MPFR_RNDN);
         return *this;
     }
 
     Field& operator+=(const Field& other) override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_add(real, real, od.real, MPFR_RNDN);
         mpfr_add(imag, imag, od.imag, MPFR_RNDN);
         return *this;
     }
 
     std::unique_ptr<Field> add(const Field& other) override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_t r;
         mpfr_t i;
         mpfr_init2(r, 256);
@@ -84,14 +84,14 @@ public:
     }
 
     Field& operator-=(const Field& other) override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_sub(real, real, od.real, MPFR_RNDN);
         mpfr_sub(imag, imag, od.imag, MPFR_RNDN);
         return *this;
     }
 
     Field& operator*=(const Field& other) override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_t r;
         mpfr_init2(r, 256);
         mpfr_t tmp;
@@ -120,7 +120,7 @@ public:
     }
 
     Field& operator/=(const Field& other) override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         if (od.is_zero()) throw std::runtime_error("Division by zero");
         mpfr_t r;
         mpfr_init2(r, 256);
@@ -163,7 +163,7 @@ public:
     }
 
     bool operator==(const Field& other) const override {
-        const auto& od = dynamic_cast<const MPFComplex&>(other);
+        const auto& od = static_cast<const MPFComplex&>(other);
         return mpfr_equal_p(real, od.real) && mpfr_equal_p(imag, od.imag);
     }
 
@@ -254,8 +254,8 @@ public:
     }
 
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
-      const auto& ad = dynamic_cast<const MPFComplex&>(a);
-      const auto& bd = dynamic_cast<const MPFComplex&>(b);
+      const auto& ad = static_cast<const MPFComplex&>(a);
+      const auto& bd = static_cast<const MPFComplex&>(b);
       return mpfr_greaterequal_p(ad.real, bd.real) && mpfr_greaterequal_p(ad.imag, bd.imag);
     }
 

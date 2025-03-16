@@ -35,33 +35,33 @@ public:
     FComplex(const FComplex& other) : real(other.real), imag(other.imag) {}
 
     Field& operator=(const Field& other) override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         real = od.real;
         imag = od.imag;
         return *this;
     }
 
     Field& operator+=(const Field& other) override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         real += od.real;
         imag += od.imag;
         return *this;
     }
 
     std::unique_ptr<Field> add(const Field& other) override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         return std::make_unique<FComplex>(real+od.real, imag+od.imag);
     }
 
     Field& operator-=(const Field& other) override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         real -= od.real;
         imag -= od.imag;
         return *this;
     }
 
     Field& operator*=(const Field& other) override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         mpq_class r = real;
         mpq_class i = imag;
         real = r*od.real-i*od.imag;
@@ -70,7 +70,7 @@ public:
     }
 
     Field& operator/=(const Field& other) override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         if (od.is_zero()) throw std::runtime_error("Division by zero");
         mpq_class div = od.imag*od.imag+od.real*od.real;
         mpq_class r = real;
@@ -83,7 +83,7 @@ public:
     }
 
     bool operator==(const Field& other) const override {
-        const auto& od = dynamic_cast<const FComplex&>(other);
+        const auto& od = static_cast<const FComplex&>(other);
         return real == od.real && imag == od.imag;
     }
 
@@ -154,8 +154,8 @@ public:
     }
 
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
-      const auto& ad = dynamic_cast<const FComplex&>(a);
-      const auto& bd = dynamic_cast<const FComplex&>(b);
+      const auto& ad = static_cast<const FComplex&>(a);
+      const auto& bd = static_cast<const FComplex&>(b);
       return ad.real > bd.real || (ad.real == bd.real && ad.imag > bd.imag);
     }
 

@@ -477,7 +477,8 @@ only_dirs = [
 
             # complex numbers from Mei
              "out-ganak-gpmc-mei-14294765-", # gpmc
-             "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
+             # "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
+             "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
              ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -584,7 +585,10 @@ for only_counted in [False, True]:
         replace(dirname,'out-ganak-mc','') as dirname,\
         replace(ganak_call,'././ganak_','') as call,\
         sum(mem_out) as 'mem out', \
-        sum(signal == 11) as 'sig11', \
+        sum(signal == 11) as 'sigSEGV', \
+        sum(signal == 6) as 'sigABRT', \
+        sum(signal == 14) as 'sigALRM', \
+        sum(signal == 8) as 'sigFPE', \
         CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
         ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
         ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
@@ -610,8 +614,6 @@ for only_counted in [False, True]:
 
 # out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
 if True:
-  dirs = ""
-  vers = ""
   for dir,ver in table_todo:
     with open("gen_table.sqlite", "w") as f:
       f.write(".mode table\n")

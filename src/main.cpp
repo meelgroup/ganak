@@ -46,6 +46,7 @@ THE SOFTWARE.
 #include "mparity.hpp"
 #include "mcomplex.hpp"
 #include "mcomplex-mpfr.hpp"
+#include "approxmc.h"
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -99,17 +100,17 @@ FG fg = nullptr;
 string print_version()
 {
     std::stringstream ss;
-    ss << "c o GANAK SHA revision " << GANAK::get_version_sha1() << endl;
-    ss << "c o GANAK compilation env " << GANAK::get_compilation_env() << endl;
-    #ifdef __GNUC__
-    ss << "c o GANAK compiled with gcc version " << __VERSION__ << endl;
-    #else
-    ss << "c o GANAK compiled with non-gcc compiler" << endl;
-    #endif
-    ss << "c o CMS revision: " << CMSat::SATSolver::get_version_sha1() << endl;
-    ss << "c o Arjun SHA revision: " << ArjunNS::Arjun ::get_version_info() << endl;
-    ss << "c o Arjun SBVA SHA revision: " << ArjunNS::Arjun::get_sbva_version_info() << endl;
-
+    ss << "c o Ganak SHA: " << GANAK::get_version_sha1() << endl;
+    ss << "c o Arjun SHA1: " << ArjunNS::Arjun::get_version_sha1() << endl;
+    ss << "c o SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
+    ss << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;
+    ss << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
+    ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl;
+    ss << ArjunNS::Arjun::get_thanks_info("c o ") << endl;
+    ss << CMSat::SATSolver::get_thanks_info("c o ") << endl;
+    ss << "c o Using Graph library by Tuukka Korhonen and Matti Jarvisalo" << endl;
+    ss << "c o Using Flowcutter by Ben Strasser" << endl;
+    ss << "c o Ganak compilation env " << GANAK::get_compilation_env() << endl;
     return ss.str();
 }
 

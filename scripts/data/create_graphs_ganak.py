@@ -809,4 +809,6 @@ os.system("okular run.eps")
 
 #### examples
 # .mode table
+# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like '%2324-14195954-0%' and a2.dirname like '%comp2324-14299825-0%' order by a2.ganak_time desc limit 50;
+
 # select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;

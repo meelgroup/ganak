@@ -470,16 +470,19 @@ only_dirs = [
             # c o Arjun SBVA SHA revision: 5912435affe8c77ecf364093cea29e0fc5c1b5cb
 
             # even more minimization during vivification, etc
-            #"out-ganak-mc2324-14171543-",
+            # "out-ganak-mc2324-14171543-",
 
             # fixed bugs related to ccnr backbone, and using purely CMS for very small-indep size (and no puura for <10)
-            # "out-ganak-mc2324-14195954-0",
+            "out-ganak-mc2324-14195954-0",
 
             # complex numbers from Mei
-             "out-ganak-gpmc-mei-14294765-", # gpmc
-             # "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
-             "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
-             ]
+            # "out-ganak-gpmc-mei-14294765-", # gpmc
+            # "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
+            # "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
+
+            # blocking
+            "out-ganak-mccomp2324-14299825",
+            ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
 # "6349002",
@@ -487,11 +490,12 @@ only_dirs = [
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
 not_versions = []
-# only_calls = ["--lbd 1"] #
+# only_calls = ["track3"] #
 # only_dirs = []
 # only_calls = ["vsadsadjust 128"]
 only_calls = []
 # not_calls = ["restart"]
+only_files = ["track3", "track4"]
 not_calls = []
 todo = versions
 
@@ -655,7 +659,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][900:]\\\n")
+    f.write("plot [600:][900:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

@@ -481,7 +481,9 @@ only_dirs = [
             # "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
 
             # blocking
-            "out-ganak-mccomp2324-14299825",
+            # "out-ganak-mccomp2324-14299825",
+            "out-ganak-mccomp2324-14309534-0",
+            "out-ganak-mccomp2324-14309534-1",
             ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -495,7 +497,6 @@ not_versions = []
 # only_calls = ["vsadsadjust 128"]
 only_calls = []
 # not_calls = ["restart"]
-only_files = ["track3", "track4"]
 not_calls = []
 todo = versions
 
@@ -504,7 +505,7 @@ fname_like = ""
 # unproj only
 # fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 # proj only
-# fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+fname_like = " and (fname like '%track3%' or fname like '%track4%') "
 
 table_todo = []
 for ver in todo :
@@ -809,6 +810,6 @@ os.system("okular run.eps")
 
 #### examples
 # .mode table
-# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like '%2324-14195954-0%' and a2.dirname like '%comp2324-14299825-0%' order by a2.ganak_time desc limit 50;
+# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14309534-0' and a2.dirname like 'out-ganak-mccomp2324-14309534-1' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
 
 # select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;

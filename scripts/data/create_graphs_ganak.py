@@ -476,14 +476,14 @@ only_dirs = [
             "out-ganak-mc2324-14195954-0",
 
             # complex numbers from Mei
-            # "out-ganak-gpmc-mei-14294765-", # gpmc
+            "out-ganak-gpmc-mei-14294765-", # gpmc
             # "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
-            # "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
+            "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
 
             # blocking
             # "out-ganak-mccomp2324-14299825",
-            "out-ganak-mccomp2324-14309534-0",
-            "out-ganak-mccomp2324-14309534-1",
+            # "out-ganak-mccomp2324-14309534-0",
+            # "out-ganak-mccomp2324-14309534-1",
             ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
 #"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
@@ -505,7 +505,7 @@ fname_like = ""
 # unproj only
 # fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 # proj only
-fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+# fname_like = " and (fname like '%track3%' or fname like '%track4%') "
 
 table_todo = []
 for ver in todo :
@@ -660,7 +660,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [600:][900:]\\\n")
+    f.write("plot [:][:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
@@ -813,3 +813,7 @@ os.system("okular run.eps")
 # select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14309534-0' and a2.dirname like 'out-ganak-mccomp2324-14309534-1' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
 
 # select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;
+
+# select ganak_time, fname, dirname from data where ganak_time > 100 and dirname like '%out-ganak-gpmc-mei-14295899-0%' order by ganak_time desc limit 50;
+
+# select a1.dirname, a2.dirname, a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.dirname like '%out-ganak-gpmc-mei-14295899-0%' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;

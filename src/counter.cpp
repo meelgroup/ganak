@@ -134,7 +134,11 @@ bool Counter::remove_duplicates(vector<Lit>& lits) {
 void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
-  if (print || conf.verb >= 1) verb_print(0, "[td] Calculated TD width: " << td_width-1);
+  if (td_width <= 0) {
+    if (print) verb_print(1, "TD width is 0, ignoring TD");
+    return;
+  }
+  if (print) verb_print(2, "[td] Calculated TD width: " << td_width-1);
   const auto& adj = tdec.get_adj_list();
 #if 0
   for(uint32_t i = 0; i < bags.size(); i++) {
@@ -150,14 +154,14 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool p
 #endif
   std::vector<int> dists = tdec.distanceFromCentroid(nodes);
   if (dists.empty()) {
-      verb_print(1, "All projected vars in the same bag, ignoring TD");
+      if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
       return;
   } else {
     int max_dst = 0;
     for(int i=1; i < (int)nodes; i++)
       max_dst = std::max(max_dst, dists[i]);
     if (max_dst == 0) {
-      verb_print(1, "All projected vars are the same distance, ignoring TD");
+      if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");
       return;
     }
   }
@@ -213,9 +217,8 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool p
     tdscore[i] = val;
   }
 
-  for(uint32_t i = 1; i < nodes; i++) {
-      verb_print(2, "TD var: " << i << " tdscore: " << tdscore[i]);
-  }
+  for(uint32_t i = 1; i < nodes; i++)
+    verb_print(2, "TD var: " << i << " tdscore: " << tdscore[i]);
 }
 
 TWD::TreeDecomposition Counter::td_decompose_component(double mult) {

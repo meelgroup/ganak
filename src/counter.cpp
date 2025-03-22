@@ -4225,7 +4225,7 @@ void Counter::print_cls_stats() const {
     }
   }
 
-  verb_print(1, "Long irred cls/tri " << long_irred_cls.size()-num_tri_red_cls << "/" << num_tri_irred_cls);
-  verb_print(1, "Long red cls: " << long_red_cls.size()-num_tri_red_cls << "/" << num_tri_red_cls);
-  verb_print(1, "Long irred/red bin: " << num_bin_rred_cls/2 << "/" << num_bin_red_cls/2);
+  verb_print(1, "Bin irred/red      " << setw(10) << num_bin_rred_cls/2 << " " << setw(10) << num_bin_red_cls/2);
+  verb_print(1, "Long irred cls/tri " << setw(10) << long_irred_cls.size()-num_tri_red_cls << " " << setw(10) << num_tri_irred_cls);
+  verb_print(1, "Long red cls/tri   " << setw(10) << long_red_cls.size()-num_tri_red_cls << " " << setw(10) << num_tri_red_cls);
 }

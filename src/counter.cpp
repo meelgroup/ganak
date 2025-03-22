@@ -4055,8 +4055,6 @@ void Counter::new_vars(const uint32_t n) {
     sat_solution.resize(n+1);
     weights.resize(2*(n + 1));
     for(auto& w: weights) w = fg->one();
-    auto two = fg->one();
-    *two += *fg->one();
     var_weights.resize(n + 1);
     for(auto& w: var_weights) w = two->dup();
   }

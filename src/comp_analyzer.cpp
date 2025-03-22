@@ -205,7 +205,7 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
     if (v >= indep_support_end) archetype.stack_level().include_solution(counter->get_fg()->one());
     else {
       if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
-      else archetype.stack_level().include_solution(std::make_unique<CMSat::FMpz>(2));
+      else archetype.stack_level().include_solution(counter->get_two());
     }
     archetype.set_var_in_peer_comp(v);
     return false;

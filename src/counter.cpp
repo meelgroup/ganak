@@ -656,7 +656,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
               FF tmp = get_weight(l)->dup();
               *tmp += *get_weight(l.neg());
               *c.cnt *= *tmp;
-            } else *c.cnt *= *std::make_unique<CMSat::FMpz>(2);
+            } else *c.cnt *= *two;
             stats.cube_lit_extend++;
           } else stats.cube_lit_rem++;
           c.cnf.erase(std::find(c.cnf.begin(), c.cnf.end(), l));
@@ -3859,6 +3859,9 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
   sat_solver->set_prefix("c o ");
   alloc = new ClauseAllocator(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
+  two = fg->one();
+  *two += *fg->one();
+
   BUDDY_DO(if (conf.do_buddy) {
     bdd_init(10000, 100000);
     bdd_gbc_hook(my_gbchandler);

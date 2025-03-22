@@ -194,10 +194,12 @@ public:
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   void set_stamp() { decisions[dec_level()].tstamp = ++tstamp; }
   const FG& get_fg() const { return fg; }
+  const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
 
 private:
   FG fg;
+  FF two; //stores 1+1
   CounterConfiguration conf;
   DataAndStatistics stats;
   bool num_vars_set = false;

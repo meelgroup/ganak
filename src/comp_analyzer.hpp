@@ -110,7 +110,6 @@ struct MyHolder {
   uint32_t& orig_size_long(uint32_t v) { return data[v*hstride+offset+5];}
   void pop_back_long(uint32_t v) { size_long(v)--; }
   void resize_long(uint32_t v, uint32_t sz) { size_long(v) = sz; }
-
 };
 
 // There is exactly ONE of this, inside CompManager, which is inside counter
@@ -184,9 +183,7 @@ private:
   uint32_t max_clid = 0;
   uint32_t max_tri_clid = 0;
   uint32_t max_var = 0;
-  uint64_t reset_comps = 0;
-  uint64_t non_reset_comps = 0;
-  uint32_t comps_recorded = 0;
+  DataAndStatistics& stats;
 
   MyHolder holder;
   vector<Lit> long_clauses_data;

@@ -2189,9 +2189,6 @@ bool Counter::propagate(bool out_of_order) {
   return confl.isNull();
 }
 
-const DataAndStatistics& Counter::get_stats() const {
-  return stats; }
-
 bool Counter::lit_redundant(Lit p, uint32_t abstract_levels) {
     debug_print(__func__ << " called");
 

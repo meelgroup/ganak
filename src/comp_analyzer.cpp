@@ -228,11 +228,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
-  if (comps_recorded % (128*1024*1024) == 0 && reset_comps+non_reset_comps > 0) {
-    verb_print(1, "[record_comp] Tot recorded " << (comps_recorded)/1000 << "K non-reset ratio: "
-        << (double)(non_reset_comps)/(double)(reset_comps+non_reset_comps));
-  }
-  comps_recorded++;
+  stats.comps_recorded++;
 
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
@@ -251,9 +247,9 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
       /* holder.size_bin(v) = holder.orig_size_bin(v); */
       holder.size_long(v) = holder.orig_size_long(v);
-      reset_comps++;
+      stats.comps_reset++;
     } else {
-      non_reset_comps++;
+      stats.comps_non_reset++;
     }
     holder.lev(v) = counter->dec_level();
     holder.tstamp(v) = counter->get_tstamp();
@@ -392,6 +388,7 @@ end_sat:;
 CompAnalyzer::CompAnalyzer(
     const LiteralIndexedVector<TriValue> & lit_values,
     Counter* _counter) :
+      stats(_counter->get_stats()),
       values(lit_values),
       conf(_counter->get_conf()),
       indep_support_end(_counter->get_indep_support_end()),

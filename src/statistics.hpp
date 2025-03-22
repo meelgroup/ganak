@@ -125,6 +125,9 @@ public:
   // Components
   uint64_t comp_sorts = 0;
   uint64_t comp_sizes = 0;
+  uint64_t comps_reset = 0;
+  uint64_t comps_non_reset = 0;
+  uint32_t comps_recorded = 0;
 
   uint64_t num_cached_comps = 0;
   uint64_t total_num_cached_comps = 0;

@@ -196,6 +196,7 @@ public:
   const FG& get_fg() const { return fg; }
   const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
+  DataAndStatistics& get_stats() { return stats; }
 
 private:
   FG fg;
@@ -258,8 +259,6 @@ private:
   bool compute_cube(Cube& cube, const int side);
   vector<map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube>& cubes);
-
-  const DataAndStatistics& get_stats() const;
 
   //Debug stuff
   FF check_count(const bool also_incl_curr_and_later_dec = false);

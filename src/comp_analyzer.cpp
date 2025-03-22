@@ -285,7 +285,6 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
           /* bins--; */
           /* bins_end--; */
           /* std::swap(*bins, *bins_end); */
-
           /* holder.size_bin(v)--; */
         }
       }

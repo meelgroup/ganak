@@ -4194,13 +4194,38 @@ void Counter::init_decision_stack() {
   }
 
 string Counter::lit_val_str(Lit lit) const {
-    if (values[lit] == F_TRI) return "FALSE";
-    else if (values[lit] == T_TRI) return "TRUE";
-    else return "UNKN";
-  }
+  if (values[lit] == F_TRI) return "FALSE";
+  else if (values[lit] == T_TRI) return "TRUE";
+  else return "UNKN";
+}
 
 string Counter::val_to_str(const TriValue& tri) const {
-    if (tri == F_TRI) return "FALSE";
-    else if (tri == T_TRI) return "TRUE";
-    else return "UNKN";
+  if (tri == F_TRI) return "FALSE";
+  else if (tri == T_TRI) return "TRUE";
+  else return "UNKN";
+}
+
+void Counter::print_cls_stats() const {
+  uint32_t num_tri_irred_cls = 0;
+  for(const auto& off: long_irred_cls) {
+    const auto& cl = *alloc->ptr(off);
+    if (cl.size() == 3) num_tri_irred_cls++;
   }
+  uint32_t num_tri_red_cls = 0;
+  for(const auto& off: long_red_cls) {
+    const auto& cl = *alloc->ptr(off);
+    if (cl.size() == 3) num_tri_red_cls++;
+  }
+  uint32_t num_bin_red_cls = 0;
+  uint32_t num_bin_rred_cls = 0;
+  for(const auto& ws: watches) {
+    for(const auto& ws2: ws.binaries) {
+      if (ws2.red()) num_bin_red_cls++;
+      else num_bin_rred_cls++;
+    }
+  }
+
+  verb_print(1, "Long irred cls/tri " << long_irred_cls.size()-num_tri_red_cls << "/" << num_tri_irred_cls);
+  verb_print(1, "Long red cls: " << long_red_cls.size()-num_tri_red_cls << "/" << num_tri_red_cls);
+  verb_print(1, "Long irred/red bin: " << num_bin_rred_cls/2 << "/" << num_bin_red_cls/2);
+}

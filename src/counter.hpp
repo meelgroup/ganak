@@ -174,8 +174,7 @@ public:
 
   const CounterConfiguration& get_conf() const { return conf;}
   uint32_t get_num_low_lbds() const { return num_low_lbd_cls; }
-  uint32_t get_num_long_red_cls() const { return long_red_cls.size(); }
-  uint32_t get_num_irred_long_cls() const { return long_irred_cls.size(); }
+  void print_cls_stats() const;
   bool get_is_approximate() const { return is_approximate; }
 
   uint32_t nVars() const { return var_data.size() - 1; }

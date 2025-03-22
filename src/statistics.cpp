@@ -45,7 +45,6 @@ static double safe_div(double a, double b) {
 
 void DataAndStatistics::print_short(const Counter* counter, const CompCache* cache) const {
   verb_print(1, "total time so far: " << cpu_time());
-  verb_print(1, "cls long irred                 " << counter->get_num_irred_long_cls());
   verb_print(1, "decisions K                    "
     << std::left << setw(9) << decisions/1000
     << setw(16) << " -- Kdec/s: "
@@ -59,8 +58,6 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << std::setprecision(2) << setw(9) << std::left
     << safe_div(conflicts,((cpu_time()-counter->get_start_time())))
   );
-  verb_print(1, "conflict cls (long/bin)        " << std::fixed
-    << counter->get_num_long_red_cls() << "/" << num_bin_red_cls);
 
   /* verb_print(1, "lits /rem lits ccmin           " */
   /*   << setw(9) << orig_uip_lits/uip_cls << " " */
@@ -175,6 +172,5 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
 
 
 void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
-  verb_print(1, "irred cls long/bin: "
-    << counter->get_num_irred_long_cls() << "/" << num_bin_irred_cls);
+  counter->print_cls_stats();
 }

@@ -260,7 +260,6 @@ private:
   void symm_cubes(vector<Cube>& cubes);
 
   const DataAndStatistics& get_stats() const;
-  void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
   //Debug stuff
   FF check_count(const bool also_incl_curr_and_later_dec = false);
@@ -417,6 +416,7 @@ private:
   vector<Lit> analyze_stack;
   void recursive_cc_min();
   inline Antecedent add_uip_confl_cl(const vector<Lit> &literals);
+  void fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) const;
 
   // Vivification
   void vivif_setup();

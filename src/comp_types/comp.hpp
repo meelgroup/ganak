@@ -126,7 +126,7 @@ private:
   // for better cache performance the
   // clause and variable data are stored in
   // a contiguous piece of memory
-  // variables SENTINEL clauses SENTINEL
+  // [variables SENTINEL clauses SENTINEL]
   // this order has to be taken care of on filling
   // in the data!
   //vector<uint32_t> vs_cls_data;

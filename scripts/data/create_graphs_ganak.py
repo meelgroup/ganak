@@ -473,16 +473,17 @@ only_dirs = [
             # "out-ganak-mc2324-14171543-",
 
             # fixed bugs related to ccnr backbone, and using purely CMS for very small-indep size (and no puura for <10)
+            # this WAS the best
             "out-ganak-mc2324-14195954-0",
 
             # complex numbers from Mei
-            "out-ganak-gpmc-mei-14294765-", # gpmc
+            # "out-ganak-gpmc-mei-14294765-", # gpmc
             # "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
-            "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
+            # "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
 
             # blocking
             # "out-ganak-mccomp2324-14299825",
-            # "out-ganak-mccomp2324-14309534-0",
+            "out-ganak-mccomp2324-14309534-0", # this IS the current best
             # "out-ganak-mccomp2324-14309534-1",
             ]
 # only_dirs = ["out-ganak-6828273"] #-- functional synth
@@ -816,4 +817,8 @@ os.system("okular run.eps")
 
 # select ganak_time, fname, dirname from data where ganak_time > 100 and dirname like '%out-ganak-gpmc-mei-14295899-0%' order by ganak_time desc limit 50;
 
+# complex numbers
 # select a1.dirname, a2.dirname, a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.dirname like '%out-ganak-gpmc-mei-14295899-0%' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;
+
+# example fast problems
+# select dirname, fname, ganak_time from data where dirname = 'out-ganak-mccomp2324-14309534-0' and ganak_time is not null and ganak_time < 200 and arjun_time < 20 and td_time < 5 order by ganak_time desc limit 50;

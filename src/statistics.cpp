@@ -116,7 +116,7 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))
     << std::setprecision(2);
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
-        << (double)(comps_non_reset)/(double)(comps_reset+comps_non_reset));
+        << safe_div(comps_non_reset, comps_reset+comps_non_reset));
 
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
     << setw(9) << vivif_tried << " "

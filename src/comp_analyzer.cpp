@@ -340,7 +340,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
           if (is_true(l1) || is_true(l2)) {
             archetype.clear_cl(d.id);
             sat = true;
-            /* goto end_sat; */
+            goto end_sat;
           } else {
             bump_freq_score(v);
             manage_occ_and_score_of(l1.var());

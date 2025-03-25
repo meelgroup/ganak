@@ -474,7 +474,7 @@ only_dirs = [
 
             # fixed bugs related to ccnr backbone, and using purely CMS for very small-indep size (and no puura for <10)
             # this WAS the best
-            "out-ganak-mc2324-14195954-0",
+            # "out-ganak-mc2324-14195954-0",
 
             # complex numbers from Mei
             # "out-ganak-gpmc-mei-14294765-", # gpmc
@@ -484,13 +484,12 @@ only_dirs = [
             # blocking
             # "out-ganak-mccomp2324-14299825",
             "out-ganak-mccomp2324-14309534-0", # this IS the current best
-            # "out-ganak-mccomp2324-14309534-1",
+            # "out-ganak-mccomp2324-14309534-1", # messed up
+            "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
             ]
-# only_dirs = ["out-ganak-6828273"] #-- functional synth
-#"6393432", "6393432", "6349002",, "6349002", "6387743" "6356951"] #, "out-ganak-6318929.pbs101-4", "out-ganak-6328707.pbs101-7", "out-ganak-6318929.pbs101-7"] #,"6348728" "6346880", "6335522", "6328982", "6328707"]
-# "6349002",
+# only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
-# not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 30", "--nvarscutoffcache 40", "--nvarscutoffcache 1", "--nvarscutoffcache 2",  "--nvarscutoffcache 3"]
+# not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
 not_versions = []
 # only_calls = ["track3"] #
@@ -661,7 +660,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][:]\\\n")
+    f.write("plot [:][900:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

@@ -75,7 +75,7 @@ jobs:
         cd ..
 
     - name: Install dependencies for Linux
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev
 
     - name: Install flint
@@ -284,7 +284,7 @@ jobs:
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
 
-    - name: Upload Artifact - Linux x64
+    - name: Upload Artifact - Linux
       if: matrix.os == 'ubuntu-latest' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:

@@ -1,12 +1,19 @@
-This codebase has many authors. All authors licensed their works with MIT.
+This codebase has many authors. All authors licensed their works with MIT except BreakID, which is licensed with GPL.
+
+The authors are:
 * GANAK-specific code by: Mate Soos, Kuldeep S. Meel, Subhajit Roy, Shubham Sharma
 * CryptoMiniSat maintained by Mate Soos, see CryptoMiniSat's AUTHORS file for list of authors
+* Arjun preprocessor by Mate Soos and Kuldeep S. Meel.
 * Top-down search idea by Davis, Putnam, Logemann, and Loveland
 * Decomposition d-dNNF idea by Adnan Darwiche
 * TD idea&code by Korhonen and Jarvisalo
+* Oracle code and idea by Tuukka Korhonen and Matti Jaervisalo
+* Graph library by Tuukka Korhonen and Matti Jaervisalo
 * TD search code by Ben Strasser. BSD2 license
 * Modifications to flow_cutter & 'GPMC' heuristic by Kenji Hashimoto
 * LBD idea by Simon and Audemard
 * clhash by Daniel Lemire and Owen Kaser, fixes by Alfons Laarman
 * VSIDS idea by Moskewicz, Zhao, Zhang, and Malik
+* VSADS by Tian Sang, Paul Beame, and Henry Kautz
+* CCAnr by Shaowei Cai, Chuan Luo, Kaile Su
 * Based on SharpSAT by Marc Thurley

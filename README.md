@@ -50,8 +50,8 @@ Beware to ALWAYS give the weight of both the literal and its negation or
 different counters may give different results.
 
 We can now count the number of solutions of the above formula using Ganak:
-```plaintext
-./ganak --verb 0 --mode 1 a.cnf
+```shell
+$ ganak --verb 0 --mode 1 a.cnf
 c o Total time [Arjun+GANAK]: 0.00
 s SATISFIABLE
 c s exact arb float 1.8999e+00

@@ -64,7 +64,7 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
 }
 
 int main() {
-  std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<CMSat::FGenMpz>();
+  std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpz>();
   ArjunNS::SimplifiedCNF cnf(fg);
   cnf.new_vars(10);
   vector<CMSat::Lit> cl;

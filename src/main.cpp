@@ -472,7 +472,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       const CMSat::Field* ptr = cnt.get();
       assert(ptr != nullptr);
       if (mode == 0) {
-        const CMSat::FMpz* od = dynamic_cast<const CMSat::FMpz*>(ptr);
+        const ArjunNS::FMpz* od = dynamic_cast<const ArjunNS::FMpz*>(ptr);
         ss << *od;
         cout << "c s exact arb int "  << ss.str() << endl;
       } else if (mode == 1) {
@@ -516,7 +516,7 @@ int main(int argc, char *argv[])
 
   switch (mode) {
     case 0:
-        fg = std::make_unique<CMSat::FGenMpz>();
+        fg = std::make_unique<ArjunNS::FGenMpz>();
         break;
     case 1:
         fg = std::make_unique<ArjunNS::FGenMpq>();

@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <limits>
 #include <memory>
 #include <utility>
+#include <arjun/arjun.h>
 #include "common.hpp"
 #include "comp_types/comp.hpp"
 #include "cryptominisat5/solvertypesmini.h"
@@ -746,7 +747,7 @@ FF Counter::do_appmc_count() {
   mpz_pow_ui(num_sols.get_mpz_t(), num_sols.get_mpz_t(), appmc_cnt.hashCount);
   num_sols *= appmc_cnt.cellSolCount;
   verb_print(1, "[appmc] ApproxMC count: " << num_sols);
-  return std::make_unique<CMSat::FMpz>(num_sols);
+  return std::make_unique<ArjunNS::FMpz>(num_sols);
 }
 
 class Timer {

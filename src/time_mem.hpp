@@ -35,7 +35,7 @@ THE SOFTWARE.
 #include <cstdint>
 
 // note: MinGW64 defines both __MINGW32__ and __MINGW64__
-#if defined (_MSC_VER) || defined (__MINGW32__) || defined(_WIN32) || defined(EMSCRIPTEN)
+#if defined (_MSC_VER) || defined (__MINGW32__) || defined(_WIN32) || defined(__EMSCRIPTEN__)
 #include <ctime>
 static inline double cpu_time(void)
 {

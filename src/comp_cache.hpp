@@ -43,7 +43,7 @@ public:
   CompCache(const uint32_t num_vars, DataAndStatistics &_stats, const CounterConfiguration& _conf);
   ~CompCache() = default;
 
-  void init(Comp &super_comp, void* hash_seed);
+  void init(Comp &super_comp, uint64_t hash_seed);
   uint64_t get_num_entries_used() const {
     uint64_t ret = 0;
     for (uint32_t id = 2; id < entry_base.size(); id++)
@@ -130,7 +130,6 @@ public:
   void debug_mem_data() const;
 
 private:
-  uint64_t freeram();
   void consider_table_resize() {
     // NOTE: it's possible to e.g. half the table.size() here, but
     // the performance gain vs mem use is not worth it
@@ -339,7 +338,7 @@ inline CompCache::CompCache(
     DataAndStatistics &_stats, const CounterConfiguration &_conf):
   stats(_stats), conf(_conf), num_vars(_num_vars) {}
 
-inline void CompCache::init(Comp &super_comp, void* hash_seed){
+inline void CompCache::init(Comp &super_comp, uint64_t hash_seed){
   my_time = 1;
   entry_base.clear();
   free_entry_base_slots.clear();
@@ -351,18 +350,7 @@ inline void CompCache::init(Comp &super_comp, void* hash_seed){
   std::fill(table.begin(), table.end(), 0);
   tbl_size_mask = table.size() - 1;
 
-  const uint64_t free_ram = freeram();
-  uint64_t max_cache_bound = 80 * (free_ram / 100);
-  if (stats.max_cache_size_bytes == 0) {
-    stats.max_cache_size_bytes = max_cache_bound;
-  }
-  if (stats.max_cache_size_bytes > free_ram) {
-    verb_print(1, "WARNING: Maximum cache size larger than free RAM available");
-    verb_print(1, "Free RAM " << std::setprecision(2)
-      << (double)free_ram / (1024.0*1024.0) << "MB");
-  }
-  verb_print(2, "Max cache size (80% free mem-200MB): "
-    << stats.max_cache_size_bytes / (1024ULL*1024ULL) << " MB");
+  verb_print(2, "Max cache size set: " << stats.max_cache_size_bytes / (1024ULL*1024ULL) << " MB");
   assert(!cache_full());
 
   auto x = CacheableComp();

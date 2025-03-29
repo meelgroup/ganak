@@ -39,14 +39,16 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <mpfr.h>
 #include "src/GitSHA1.hpp"
-#include "breakid.hpp"
+#include <breakid/breakid.hpp>
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
+#ifdef POLYS
 #include "mpoly.hpp"
+#endif
 #include "mparity.hpp"
 #include "mcomplex.hpp"
 #include "mcomplex-mpfr.hpp"
-#include "approxmc.h"
+#include <approxmc/approxmc.h>
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -528,11 +530,16 @@ int main(int argc, char *argv[])
         fg = std::make_unique<FGenMPFComplex>();
         break;
     case 3:
+#ifdef POLYS
         if (poly_nvars == -1) {
           cout << "c o [arjun] ERROR: Must provide number of polynomial vars for mode 3 via --npolyvars" << endl;
           exit(-1);
         }
         fg = std::make_unique<FGenPoly>(poly_nvars);
+#else
+        cout << "c o [arjun] ERROR: Polynomials not supported in this build" << endl;
+        exit(-1);
+#endif
         break;
     case 4:
         fg = std::make_unique<FGenParity>();

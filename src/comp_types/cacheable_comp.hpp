@@ -39,7 +39,7 @@ public:
   CacheableComp() = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
-  CacheableComp(void* hash_seed, const Comp &comp) : HashedComp(hash_seed, comp) { }
+  CacheableComp(uint64_t hash_seed, const Comp &comp) : HashedComp(hash_seed, comp) { }
 
   uint64_t bignum_bytes() const { return HashedComp::bignum_bytes(); }
 

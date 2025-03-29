@@ -54,8 +54,7 @@ S& access_internal_vector(std::priority_queue<T, S, C>& q) {
 }
 
 void print_comment(std::string msg){
-	msg = "c "+std::move(msg) + "\n";
-	ignore_return_value(write(STDOUT_FILENO, msg.data(), msg.length()));
+  cout << "c " << msg << endl;
 }
 
 template<class Tail, class Head>

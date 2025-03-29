@@ -42,7 +42,7 @@ THE SOFTWARE.
 #ifdef BUDDY_ENABLED
 #include "bdd.h"
 #endif
-#include "approxmc.h"
+#include <approxmc/approxmc.h>
 #include <thread>
 #include <algorithm>
 

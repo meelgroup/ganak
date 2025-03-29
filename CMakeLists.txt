@@ -262,7 +262,7 @@ endif()
 
 
 # Use mold/sold linker if available
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND NOT EMSCRIPTEN)
   message(STATUS "Detected GCC/Clang, checking for mold/sold linker...")
 
   # Check for mold linker on general systems and ld64.mold on macOS
@@ -298,7 +298,6 @@ if (NOT WIN32)
     add_c_flag_if_supported("-mpopcnt")
 endif()
 
-
 option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
 if (SANITIZE)
     MESSAGE(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
@@ -329,14 +328,18 @@ if (SANITIZE)
     #add_compile_options("-Wconversion")
 endif()
 
-
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
 set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
-find_package(FLINT REQUIRED)
+
+option(POLYS "Allow polynomials" ON)
+if (POLYS)
+  find_package(FLINT REQUIRED)
+  add_definitions( -DPOLYS )
+endif()
 MESSAGE(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
 MESSAGE(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
 
@@ -462,7 +465,6 @@ if (ENABLE_TESTING)
   enable_testing()
   add_subdirectory(tests/cnf-files)
 endif()
-
 
 # -----------------------------------------------------------------------------
 # Export our targets so that other CMake based projects can interface with

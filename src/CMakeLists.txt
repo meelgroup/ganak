@@ -27,9 +27,11 @@ include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${MPFR_INCLUDE_DIR})
 include_directories( ${GMP_INCLUDE_DIR} )
-include_directories( ${FLINT_INCLUDE_DIRS} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
+if (POLYS)
+  include_directories( ${FLINT_INCLUDE_DIRS} )
+endif()
 
 if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
@@ -63,7 +65,6 @@ SET(SOURCES
     flow-cutter-pace17/src/cell.cpp
     flow-cutter-pace17/src/greedy_order.cpp
     TreeDecomposition.cpp
-    clhash/clhash.cpp
     buddy-2.4/src/bddio.c
     buddy-2.4/src/bddop.c
     buddy-2.4/src/bvec.c
@@ -80,17 +81,25 @@ SET(SOURCES
 	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 
-ADD_LIBRARY(ganak ${SOURCES} ${LIB})
-target_link_libraries (ganak
+set (GLIBS
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${APPROXMC_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES}
-  LINK_PUBLIC ${FLINT_LIBRARIES}
+)
+
+if (POLYS)
+  set (GLIBS ${GLIBS}
+  LINK_PUBLIC ${FLINT_LIBRARIES})
+endif()
+
+set (GLIBS ${GLIBS}
   LINK_PUBLIC ${MPFR_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
 )
 
+ADD_LIBRARY(ganak ${SOURCES} ${LIB})
+target_link_libraries (ganak ${GLIBS})
 
 set_target_properties(ganak PROPERTIES
     PUBLIC_HEADER "${ganak_public_headers}"

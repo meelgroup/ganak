@@ -23,8 +23,8 @@ THE SOFTWARE.
 #pragma once
 
 #include "base_packed_comp.hpp"
+#include "chibihash64.h"
 #include "comp.hpp"
-#include "../clhash/clhash.h"
 
 namespace GanakInt {
 
@@ -33,9 +33,8 @@ public:
   HashedComp() = default;
   HashedComp(const HashedComp&) = default;
   HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(void* hash_seed, const Comp& comp) {
-    clhasher h(hash_seed);
-    clhashkey_ = h(comp.get_raw_data(), comp.get_size());
+  HashedComp(uint64_t hash_seed, const Comp& comp) {
+    clhashkey_ = chibihash64(comp.get_raw_data(), comp.get_size(), hash_seed);
     model_count_ = nullptr;
   }
   uint64_t bignum_bytes() const { return BaseComp::bignum_bytes(); }

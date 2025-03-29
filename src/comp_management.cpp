@@ -33,7 +33,7 @@ CompManager::CompManager(const CounterConfiguration& config,
     fg(_counter->get_fg()->dup()), conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
     ana(lit_values, _counter), counter(_counter)
 {
-  getrandomseedforclhash();
+  get_random_seed_for_hash();
 }
 
 void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {

@@ -104,8 +104,7 @@ S& access_internal_vector(std::priority_queue<T, S, C>& q) {
 
 void IFlowCutter::print_comment(std::string msg){
   if (verb == 0) return;
-  msg = "c o [td] "+std::move(msg) + "\n";
-  ignore_return_value(write(STDOUT_FILENO, msg.data(), msg.length()));
+  cout << "c o [td] " << msg << endl;
 }
 
 template<class Tail, class Head>

@@ -32,7 +32,6 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include "containers.hpp"
 #include "stack.hpp"
-#include "clhash/clhash.h"
 #include "counter_config.hpp"
 
 namespace GanakInt {
@@ -47,7 +46,6 @@ public:
                    const LiteralIndexedVector<TriValue> &lit_values,
                    Counter* _counter);
   ~CompManager() {
-    free(hash_seed);
     for(auto& comp: comp_stack) free(comp);
     comp_stack.clear();
     fg.reset();
@@ -99,15 +97,13 @@ public:
 
   void remove_cache_pollutions_of_if_exists(const StackLevel &top);
   void remove_cache_pollutions_of(const StackLevel &top);
-  void* hash_seed = nullptr; //stores a bunch of __m128 aligned data pieces, each
-                   //133*8 long, see: RANDOM_BYTES_NEEDED_FOR_CLHASH
+  uint64_t hash_seed;
 
 private:
-  void getrandomseedforclhash() {
-    assert(hash_seed == nullptr);
+  void get_random_seed_for_hash() {
     std::mt19937_64 eng(conf.seed);
     std::uniform_int_distribution<uint64_t> distr;
-    hash_seed = get_random_key_for_clhash(distr(eng), distr(eng));
+    hash_seed = distr(eng);
   }
   FG fg;
   const CounterConfiguration &conf;
@@ -167,7 +163,7 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
       "top.branchvar() was: "
       << top.var  <<" include_solution(1) fired. "
       " New Model cnt: " << *top.total_model_count()
-      << " left: " << *top.left_model_count() 
+      << " left: " << *top.left_model_count()
       << " right: " << *top.right_model_count() << " , returning.");
   return false;
 }

@@ -9,11 +9,10 @@ mydiff
 perf.*
 neovide_backtraces.log
 *.diff
-
-/.direnv
-/.envrc
-/.ccls-cache
-/result
+.direnv
+.envrc
+.ccls-cache
+result
 benchmarks
 quickfix*
 released*

@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "cryptominisat5/solvertypesmini.h"
-#include "ganak.hpp"
+#include <cryptominisat5/solvertypesmini.h>
+#include <ganak/ganak.hpp>
 #include <arjun/arjun.h>
 #include <memory>
 using namespace std;

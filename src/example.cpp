@@ -21,7 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include <cryptominisat5/solvertypesmini.h>
-#include <ganak/ganak.hpp>
+#include <ganak.hpp>
 #include <arjun/arjun.h>
 #include <memory>
 using namespace std;

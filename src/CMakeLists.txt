@@ -29,9 +29,7 @@ include_directories(${MPFR_INCLUDE_DIR})
 include_directories( ${GMP_INCLUDE_DIR} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
-if (POLYS)
-  include_directories( ${FLINT_INCLUDE_DIRS} )
-endif()
+include_directories( ${FLINT_INCLUDE_DIRS} )
 
 if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
@@ -78,35 +76,26 @@ SET(SOURCES
     buddy-2.4/src/tree.c
     buddy-2.4/src/cppext.cxx
     ganak.cpp
-	${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 
-set (GLIBS
+ADD_LIBRARY(ganak ${SOURCES} ${LIB})
+target_link_libraries (ganak
   LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
   LINK_PUBLIC ${ARJUN_LIBRARIES}
   LINK_PUBLIC ${APPROXMC_LIBRARIES}
   LINK_PUBLIC ${BREAKID_LIBRARIES}
-)
-
-if (POLYS)
-  set (GLIBS ${GLIBS}
-  LINK_PUBLIC ${FLINT_LIBRARIES})
-endif()
-
-set (GLIBS ${GLIBS}
+  LINK_PUBLIC ${FLINT_LIBRARIES}
   LINK_PUBLIC ${MPFR_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
 )
 
-ADD_LIBRARY(ganak ${SOURCES} ${LIB})
-target_link_libraries (ganak ${GLIBS})
-
 set_target_properties(ganak PROPERTIES
-    PUBLIC_HEADER "${ganak_public_headers}"
-    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-    INSTALL_RPATH_USE_LINK_PATH TRUE
+  PUBLIC_HEADER "${ganak_public_headers}"
+  VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+  SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
 add_executable (ganak-bin main.cpp)

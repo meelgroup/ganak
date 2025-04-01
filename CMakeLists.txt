@@ -335,11 +335,7 @@ set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/he
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
 
-option(POLYS "Allow polynomials" ON)
-if (POLYS)
-  find_package(FLINT REQUIRED)
-  add_definitions( -DPOLYS )
-endif()
+find_package(FLINT REQUIRED)
 MESSAGE(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
 MESSAGE(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
 

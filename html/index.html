@@ -79,16 +79,22 @@
 <body>
     <div class="container">
         <h1>Ganak Model Counter in Your Browser</h1>
-        <div>Copy your CNF formula in the input box below and click "Run ganak.js" to run the counter in your browser. The output will be displayed below the input box. Example is from <a href="https://www.msoos.org/">article on model counting</a>. Format description is available <a href="https://mccompetition.org/assets/files/mccomp_format_24.pdf">here</a></div>
+        <div>Copy your CNF formula in the input box below and click "Run
+          ganak.js" to run the counter in your browser. The output will be
+          displayed below the input box. Example is from <a
+        href="https://www.msoos.org/">article on model counting</a>. Format
+      description is available <a
+        href="https://mccompetition.org/assets/files/mccomp_format_24.pdf">here</a>.
+        For polynomial weights, try "x1" or "x0+1/2*x1-x3"</div>
 
         <div>
             <label for="input-content">CNF:</label>
             <textarea id="input-content">c t pwmc
 p cnf 3 2
 c comment X = 1, Y = 2, H1 = 3
-c p weight 1 0.4 0
-c p weight 2 0.6 0
-c p weight 3 0.8 0
+c p weight 1 4/10 0
+c p weight 2 6/10 0
+c p weight 3 8/10 0
 1 2 0
 -3 -1 -2 0
 c p show 1 2 3 0
@@ -96,7 +102,8 @@ c p show 1 2 3 0
         </div>
 
         <div>
-            <button id="run-button">Run ganak.js</button>
+            <button id="run-button-w">Count weighted</button>
+            <button id="run-button-poly">Count polynomial (100 vars)</button>
             <button id="cancel-button">Cancel</button>
             <span id="status" class="status">Loading WebAssembly module...</span>
             <div class="progress-container">
@@ -117,7 +124,8 @@ c p show 1 2 3 0
             stdin: function() { return null; },
             onRuntimeInitialized: function() {
                 document.getElementById('status').textContent = 'Ready';
-                document.getElementById('run-button').disabled = false;
+                document.getElementById('run-button-w').disabled = false;
+                document.getElementById('run-button-poly').disabled = false;
             }
         };
 
@@ -132,7 +140,9 @@ c p show 1 2 3 0
                     },
                     printErr: function(text) {
                         console.error('Error:', text);
-                        //postMessage({ type: 'output', content: 'ERROR: ' + text });
+                        if (!text.includes('__syscall_getrusage')) {
+                          postMessage({ type: 'output', content: 'ERROR: ' + text });
+                        }
                     },
                     onRuntimeInitialized: function() {
                         postMessage({ type: 'ready' });
@@ -158,9 +168,9 @@ c p show 1 2 3 0
                     }
                     else if (e.data.type === 'run') {
                         try {
-                            console.log('Running with args:', e.data.args);
                             Module.FS.writeFile('/input.cnf', e.data.input);
-                            Module.callMain(['--arjunverb', '1', '--verb', '1', '--mode', '1', '/input.cnf']);
+                            console.log('running with mode:', e.data.mode);
+                            Module.callMain(['--arjunverb', '1', '--verb', '1', '--mode', e.data.mode, '--npolyvars', '100', '/input.cnf']);
                             postMessage({ type: 'done' });
                         } catch (e) {
                             postMessage({ type: 'error', content: e.toString() });
@@ -173,8 +183,7 @@ c p show 1 2 3 0
             return URL.createObjectURL(blob);
         }
 
-        // Main execution logic
-        document.getElementById('run-button').addEventListener('click', async function() {
+        const fun = function(mode) {
             const inputContent = document.getElementById('input-content').value;
             const outputDiv = document.getElementById('output');
 
@@ -184,7 +193,8 @@ c p show 1 2 3 0
             }
 
             outputDiv.textContent = 'Initializing...\n';
-            document.getElementById('run-button').disabled = true;
+            document.getElementById('run-button-w').disabled = true;
+            document.getElementById('run-button-poly').disabled = true;
             document.getElementById('status').textContent = 'Running...';
 
             // Get absolute URL for WASM file
@@ -204,19 +214,22 @@ c p show 1 2 3 0
                         //console.log('ready. Sending input:', inputContent);
                         worker.postMessage({
                             type: 'run',
-                            input: inputContent
+                            input: inputContent,
+                            mode : mode,
                         });
                         break;
                     case 'done':
                         document.getElementById('status').textContent = 'Completed';
-                        document.getElementById('run-button').disabled = false;
+                        document.getElementById('run-button-w').disabled = false;
+                        document.getElementById('run-button-poly').disabled = false;
                         worker.terminate();
                         URL.revokeObjectURL(workerUrl);
                         break;
                     case 'error':
                         outputDiv.textContent += 'Error: ' + e.data.content + '\n';
                         document.getElementById('status').textContent = 'Failed';
-                        document.getElementById('run-button').disabled = false;
+                        document.getElementById('run-button-w').disabled = false;
+                        document.getElementById('run-button-poly').disabled = false;
                         worker.terminate();
                         URL.revokeObjectURL(workerUrl);
                         break;
@@ -231,6 +244,14 @@ c p show 1 2 3 0
                     wasmPath: wasmPath
                 }
             });
+        };
+
+        // Main execution logic
+        document.getElementById('run-button-w').addEventListener('click', async function() {
+            fun("1");
+        });
+        document.getElementById('run-button-poly').addEventListener('click', async function() {
+            fun("3");
         });
 
         // Load ganak.js in main thread

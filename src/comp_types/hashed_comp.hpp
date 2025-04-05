@@ -34,7 +34,7 @@ public:
   HashedComp(const HashedComp&) = default;
   HashedComp& operator=(const HashedComp&) = default;
   HashedComp(uint64_t hash_seed, const Comp& comp) {
-    clhashkey_ = chibihash64(comp.get_raw_data(), comp.get_size(), hash_seed);
+    clhashkey_ = chibihash64(comp.get_raw_data(), comp.get_size()*4, hash_seed);
     model_count_ = nullptr;
   }
   uint64_t bignum_bytes() const { return BaseComp::bignum_bytes(); }

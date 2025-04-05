@@ -821,3 +821,6 @@ os.system("okular run.eps")
 
 # example fast problems
 # select dirname, fname, ganak_time from data where dirname = 'out-ganak-mccomp2324-14309534-0' and ganak_time is not null and ganak_time < 200 and arjun_time < 20 and td_time < 5 order by ganak_time desc limit 50;
+
+# small problems
+# select dirname, fname, ganak_time,arjun_time,td_time from data where dirname = 'out-ganak-mccomp2324-14309534-0' and ganak_time is not null and ganak_time < 200 and arjun_time < 10 and td_time < 10 and new_nvars > 400 order by ganak_time desc limit 1000;

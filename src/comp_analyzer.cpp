@@ -258,14 +258,9 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     cout << "AFTER holder.tstamp(v): " << holder.tstamp(v) << endl;
 #endif
 
-    if (sup_comp_bin_cls == archetype.num_bin_cls) {
-      // we have seen all bin clauses
-      if (sup_comp_long_cls == archetype.num_long_cls) {
-        // we have seen all bin and long clauses
-        break;
-      }
-    } else {
-      //traverse binary clauses
+    if (sup_comp_bin_cls != archetype.num_bin_cls) {
+      // we have not seen all binary clauses
+      // traverse binary clauses
       auto bins = holder.begin_bin(v);
       auto bins_end = bins + holder.size_bin(v);
       while(bins != bins_end) {

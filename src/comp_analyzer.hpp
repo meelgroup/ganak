@@ -238,8 +238,8 @@ private:
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       const uint32_t v = it_l->var();
-      assert(v <= max_var);
-      assert(is_false(*it_l) || archetype.var_unvisited_in_sup_comp(v) || archetype.var_visited(v));
+      SLOW_DEBUG_DO(assert(v <= max_var));
+      SLOW_DEBUG_DO(assert(is_false(*it_l) || archetype.var_unvisited_in_sup_comp(v) || archetype.var_visited(v)));
       manage_occ_and_score_of(v);
     }
 

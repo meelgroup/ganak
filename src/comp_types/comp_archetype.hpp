@@ -58,7 +58,6 @@ public:
   void set_var_visited(const uint32_t v) { v_data[v] = tstamp; }
   void set_clause_visited(const ClauseIndex cl) { cl_data[cl] = tstamp; }
 
-  // bool var_clear(const uint32_t v) { return v_data[v] < tstamp; }
   void set_var_clear(const uint32_t v) { v_data[v] = 0; }
   void set_cl_clear(const uint32_t cl) { cl_data[cl] = 0; }
 

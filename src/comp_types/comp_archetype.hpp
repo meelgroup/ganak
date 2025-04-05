@@ -86,7 +86,6 @@ public:
     num_long_cls = 0;
     num_bin_cls = 0;
     tstamp+=2;
-    memset(raw_data, 0, data_sz * sizeof(uint32_t));
   }
 
   // At this point explore_comp has been called already which

@@ -75,8 +75,8 @@ public:
     assert(tstamp == 0);
     data_sz = max_var_id +1 + max_cl_id + 1;
     debug_print("Creating new data[] of size: " << data_sz << " and zeroing it.");
-    raw_data = new uint32_t[data_sz];
-    memset(raw_data, 0, data_sz * sizeof(uint32_t));
+    raw_data = new uint64_t[data_sz];
+    memset(raw_data, 0, data_sz * sizeof(uint64_t));
     v_data = raw_data;
     cl_data = raw_data + max_var_id + 1;
     clear_data();
@@ -95,12 +95,12 @@ public:
   uint32_t num_long_cls = 0;
   uint32_t num_bin_cls = 0;
 private:
-  uint32_t tstamp = 0;
+  uint64_t tstamp = 0;
   Comp const* super_comp_ptr;
   StackLevel *stack_lvl_ptr;
-  uint32_t* raw_data = nullptr;
-  uint32_t* cl_data = nullptr;
-  uint32_t* v_data = nullptr;
+  uint64_t* raw_data = nullptr;
+  uint64_t* cl_data = nullptr;
+  uint64_t* v_data = nullptr;
   uint32_t data_sz = 0;
 };
 

@@ -127,38 +127,36 @@ public:
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
       const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
 
-  bool var_unvisited_sup_comp(const uint32_t v) const {
+  bool var_unvisited_in_sup_comp(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var));
     return archetype.var_unvisited_in_sup_comp(v);
   }
 
   // manages the literal whenever it occurs in comp analysis
   // returns true iff the underlying variable was unvisited before
-  bool manage_occ_of(const uint32_t v){
+  void manage_occ_of(const uint32_t v){
+    // if unvisited, it MUST be unknown
     if (archetype.var_unvisited_in_sup_comp(v)) {
       __builtin_prefetch(holder.begin_bin(v));
       comp_vars.push_back(v);
       archetype.set_var_visited(v);
-      return true;
     }
-    return false;
   }
 
-  bool manage_occ_and_score_of(uint32_t v){
-    if (is_unknown(v)) bump_freq_score(v);
-    return manage_occ_of(v);
+  void manage_occ_and_score_of(uint32_t v) {
+    if (is_unknown(v)) {
+      bump_freq_score(v);
+      manage_occ_of(v);
+    }
   }
 
-  void setup_analysis_context(StackLevel& top, const Comp & super_comp){
+  void setup_analysis_context(StackLevel& top, const Comp& super_comp){
     archetype.re_initialize(top,super_comp);
-
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
-    all_vars_in_comp(super_comp, vt)
-      if (is_unknown(*vt)) {
-        archetype.set_var_in_sup_comp_unvisited_raw(*vt);
-        var_freq_scores[*vt] = 0;
-      }
-
+    all_vars_in_comp(super_comp, vt) if (is_unknown(*vt)) {
+      archetype.set_var_in_sup_comp_unvisited(*vt);
+      var_freq_scores[*vt] = 0;
+    }
     all_cls_in_comp(super_comp, it) archetype.set_clause_in_sup_comp_unvisited(*it);
   }
 
@@ -167,6 +165,7 @@ public:
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){
+    SLOW_DEBUG_DO(for (auto&v: comp_vars) assert(is_unknown(v)));
     auto p = archetype.make_comp(comp_vars.size());
     return p;
   }
@@ -225,39 +224,27 @@ private:
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.
+  // The clause is _definitely_ in the supercomponent
   bool search_clause(ClData& d, Lit const* cl_start) {
-    const auto it_v_end = comp_vars.end();
     bool sat = false;
+    for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
+        if (is_true(*it_l)) {sat = true; break;}
+    }
+
+    if (sat) {
+      archetype.set_cl_clear(d.id);
+      return true;
+    }
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       const uint32_t v = it_l->var();
       assert(v <= max_var);
-      if (!archetype.var_nil(v)) manage_occ_and_score_of(v);
-      else {
-        assert(!is_unknown(*it_l));
-        if (is_false(*it_l)) continue;
-
-        //accidentally entered a satisfied clause: undo the search process
-        /* cout << "satisfied clause due to: " << *it_l << endl; */
-        sat = true;
-        d.blk_lit = *it_l;
-        while (comp_vars.end() != it_v_end) {
-          assert(comp_vars.back() <= max_var);
-          archetype.set_var_in_sup_comp_unvisited(comp_vars.back());
-          comp_vars.pop_back();
-        }
-        archetype.clear_cl(d.id);
-        it_l--;
-        while(*it_l != SENTINEL_LIT) {
-          if(is_unknown(*it_l)) un_bump_score(it_l->var());
-          it_l--;
-        }
-        break;
-      }
+      assert(is_false(*it_l) || archetype.var_unvisited_in_sup_comp(v) || archetype.var_visited(v));
+      manage_occ_and_score_of(v);
     }
 
-    if (!sat) archetype.set_clause_visited(d.id);
-    return sat;
+    archetype.set_clause_visited(d.id);
+    return false;
   }
 };
 

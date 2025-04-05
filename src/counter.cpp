@@ -1177,7 +1177,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
-  uint64_t* at;
+  uint64_t* at = nullptr;
   is_indep = false;
   bool couldnt_find_indep = false; // only used when also_nonindep is true
 

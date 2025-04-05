@@ -207,7 +207,7 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
       if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(counter->get_two());
     }
-    archetype.set_var_in_peer_comp(v);
+    archetype.set_var_clear(v);
     return false;
   }
   return true;
@@ -338,7 +338,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
           const Lit l1 = d.get_lit1();
           const Lit l2 = d.get_lit2();
           if (is_true(l1) || is_true(l2)) {
-            archetype.clear_cl(d.id);
+            archetype.set_cl_clear(d.id);
             sat = true;
             goto end_sat;
           } else {
@@ -351,7 +351,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       } else {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {
           if (is_true(d.blk_lit)) {
-            archetype.clear_cl(d.id);
+            archetype.set_cl_clear(d.id);
             sat = true;
             goto end_sat;
           }

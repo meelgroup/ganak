@@ -21,7 +21,7 @@ Comp* CompArchetype::make_comp(const uint32_t comp_vars_size) {
   all_vars_in_comp(super_comp(), v_it)
     if (var_visited(*v_it)) {
       p_new_comp->add_var(*v_it);
-      set_var_in_peer_comp(*v_it);
+      set_var_clear(*v_it);
     }
   p_new_comp->close_vars_data();
 
@@ -29,7 +29,7 @@ Comp* CompArchetype::make_comp(const uint32_t comp_vars_size) {
   all_cls_in_comp(super_comp(), cl_it)
     if (clause_visited(*cl_it)) {
       p_new_comp->add_cl(*cl_it);
-      set_clause_in_peer_comp(*cl_it);
+      set_cl_clear(*cl_it);
     }
   p_new_comp->set_num_bin_cls(num_bin_cls);
   p_new_comp->close_cls_data();

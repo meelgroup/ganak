@@ -1,38 +1,40 @@
-/*
- * comp_archetype.h
- *
- *  Created on: Feb 9, 2013
- *      Author: mthurley
- */
+/******************************************
+Copyright (C) 2023 Authors of GANAK, see AUTHORS file
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+***********************************************/
 
 #pragma once
 
 #include <cstring>
-#include <algorithm>
 #include <iostream>
+#include <limits>
 
 #include "../common.hpp"
 #include "comp.hpp"
 #include "cacheable_comp.hpp"
 
+using std::numeric_limits;
 using std::cout;
 using std::endl;
 
 namespace GanakInt {
-
-// State values for variables found during comp analysis (CA)
-#define   CA_VAR_IN_SUP_COMP_UNVISITED  1
-#define   CA_VAR_VISITED 2
-#define   CA_VAR_IN_PEER_COMP  4
-// 1 + 2 + 4 == 7
-#define   CA_VAR_MASK  7
-
-#define   CA_CL_IN_SUP_COMP_UNVISITED  8
-#define   CA_CL_VISITED 16
-#define   CA_CL_IN_PEER_COMP  32
-/* #define   WHATEVER  64 */
-// 64+32+16+8 == 120
-#define   CA_CL_MASK  120
 
 class StackLevel;
 
@@ -40,10 +42,7 @@ class StackLevel;
 class CompArchetype {
 public:
   CompArchetype() = default;
-  ~CompArchetype() { delete[] data; }
-  CompArchetype(StackLevel &stack_level, const Comp &super_comp) :
-      super_comp_ptr(&super_comp), stack_lvl_ptr(&stack_level) {
-  }
+  ~CompArchetype() { delete[] raw_data; }
 
   // called every time we want to deal with a new component
   void re_initialize(StackLevel &stack_level, const Comp &super_comp) {
@@ -53,92 +52,41 @@ public:
     clear_data();
   }
 
-  const Comp &super_comp() {
-    return *super_comp_ptr;
-  }
+  const Comp &super_comp() { return *super_comp_ptr; }
+  StackLevel& stack_level() { return *stack_lvl_ptr; }
 
-  StackLevel& stack_level() {
-    return *stack_lvl_ptr;
-  }
+  void set_var_visited(const uint32_t v) { v_data[v] = tstamp; }
+  void set_clause_visited(const ClauseIndex cl) { cl_data[cl] = tstamp; }
 
-  void set_var_in_sup_comp_unvisited(const uint32_t v) {
-    data[v] = CA_VAR_IN_SUP_COMP_UNVISITED | (data[v] & CA_CL_MASK);
-  }
+  // bool var_clear(const uint32_t v) { return v_data[v] < tstamp; }
+  void set_var_clear(const uint32_t v) { v_data[v] = 0; }
+  void set_cl_clear(const uint32_t cl) { cl_data[cl] = 0; }
 
-  void set_var_in_sup_comp_unvisited_raw(const uint32_t v) {
-    data[v] = CA_VAR_IN_SUP_COMP_UNVISITED;
-  }
+  void set_var_in_sup_comp_unvisited(const uint32_t v) { v_data[v] = tstamp-1; }
+  void set_clause_in_sup_comp_unvisited(const ClauseIndex cl) { cl_data[cl] = tstamp-1; }
+  bool var_unvisited_in_sup_comp(uint32_t v) const { return v_data[v] == tstamp-1; }
+  bool clause_unvisited_in_sup_comp(ClauseIndex cl) const { return cl_data[cl] == tstamp-1; }
 
-  void set_clause_in_sup_comp_unvisited(const ClauseIndex cl) {
-    data[cl] = CA_CL_IN_SUP_COMP_UNVISITED | (data[cl] & CA_VAR_MASK);
-  }
-
-  void clear_var(const uint32_t v) {
-    data[v] &= CA_CL_MASK;
-  }
-
-  void clear_cl(const ClauseIndex cl) {
-    data[cl] &= CA_VAR_MASK;
-  }
-
-  // REMOVES from unseen of super, sets visited
-  void set_var_visited(const uint32_t v) {
-    data[v] = CA_VAR_VISITED | (data[v] & CA_CL_MASK);
-  }
-
-  void set_clause_visited(const ClauseIndex cl) {
-    clear_cl(cl);
-    data[cl] = CA_CL_VISITED | (data[cl] & CA_VAR_MASK);
-  }
-
-  void set_var_in_peer_comp(const uint32_t v) {
-    data[v] = CA_VAR_IN_PEER_COMP | (data[v] & CA_CL_MASK);
-  }
-
-  bool var_in_peer_comp(const uint32_t v) const {
-    return CA_VAR_IN_PEER_COMP & (data[v] & CA_CL_MASK);
-  }
-
-  void set_clause_in_peer_comp(const ClauseIndex cl) {
-    data[cl] = CA_CL_IN_PEER_COMP | (data[cl] & CA_VAR_MASK);
-  }
-
-  bool var_visited(const uint32_t v) const {
-    return data[v] & CA_VAR_VISITED;
-  }
-
-  bool clause_visited(const ClauseIndex cl) const {
-    return data[cl] & CA_CL_VISITED;
-  }
-
-  bool var_nil(const uint32_t v) const {
-    return (data[v] & CA_VAR_MASK) == 0;
-  }
-
-  bool clause_nil(const ClauseIndex cl) const {
-    return (data[cl] & CA_CL_MASK) == 0;
-  }
-
-  bool var_unvisited_in_sup_comp(uint32_t v) const {
-    return data[v] & CA_VAR_IN_SUP_COMP_UNVISITED;
-  }
-
-  bool clause_unvisited_in_sup_comp(ClauseIndex cl) const {
-    return data[cl] & CA_CL_IN_SUP_COMP_UNVISITED;
-  }
+  bool var_visited(const uint32_t v) const { return v_data[v] == tstamp; }
+  bool clause_visited(const ClauseIndex cl) const { return cl_data[cl] == tstamp; }
 
   // called exactly once during lifetime of counter
   void init_data(uint32_t max_var_id, uint32_t max_cl_id) {
-    data_sz = std::max(max_var_id,max_cl_id)  + 1;
+    assert(tstamp == 0);
+    data_sz = max_var_id +1 + max_cl_id + 1;
     debug_print("Creating new data[] of size: " << data_sz << " and zeroing it.");
-    data = new uint8_t[data_sz];
+    raw_data = new uint32_t[data_sz];
+    memset(raw_data, 0, data_sz * sizeof(uint32_t));
+    v_data = raw_data;
+    cl_data = raw_data + max_var_id + 1;
     clear_data();
   }
 
   void clear_data() {
     num_long_cls = 0;
     num_bin_cls = 0;
-    memset(data, 0, data_sz);
+    tstamp+=2;
+    memset(raw_data, 0, data_sz * sizeof(uint32_t));
   }
 
   // At this point explore_comp has been called already which
@@ -148,9 +96,12 @@ public:
   uint32_t num_long_cls = 0;
   uint32_t num_bin_cls = 0;
 private:
+  uint32_t tstamp = 0;
   Comp const* super_comp_ptr;
   StackLevel *stack_lvl_ptr;
-  uint8_t* data = nullptr; // all variables and all clause IDXs can be indexed here
+  uint32_t* raw_data = nullptr;
+  uint32_t* cl_data = nullptr;
+  uint32_t* v_data = nullptr;
   uint32_t data_sz = 0;
 };
 

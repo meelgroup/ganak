@@ -16,3 +16,5 @@ result
 benchmarks
 quickfix*
 released*
+html/ganak.wasm
+html/ganak.js

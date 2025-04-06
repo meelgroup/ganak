@@ -4,46 +4,45 @@ set -e
 cd ../../
 
 cd cadical/
-git checkout add_dynamic_lib
+git checkout cav2025
 make clean
 CXXFLAGS=-fPIC ./configure --competition
 make -j12
 cd ..
 
 cd cadiback/
-git checkout synthesis
+git checkout cav2025
 make clean
 ./configure
 make -j12
 cd ..
 
 cd breakid/build/
-git checkout master
+git checkout cav2025
 ./build_static.sh
 cd ../../
 
 cd cryptominisat/build/
-git checkout synthesis
+git checkout cav2025
 ./build_static_release.sh
 cd ../../
 
 cd sbva/build/
-git checkout master
+git checkout cav2025
 ./build_static.sh
 cd ../../
 
 cd arjun/build/
-git checkout synthesis2
+git checkout cav2025
 ./build_static_release.sh
 cd ../../
 
 cd approxmc/build/
-git checkout synthesis
+git checkout cav2025
 rm -f build_*.sh
 ln -s ../scripts/build_scripts/build_*.sh .
 ./build_static_release.sh
 cd ../../
 
 cd ganak/build/
-# git checkout nodonkey
 ./build_static_release.sh

@@ -201,6 +201,7 @@ def find_arjun_time(fname):
                 indep_sz = 0
               else:
                 indep_sz = int(indep_sz)
+              if indep_sz == 4294967295: indep_sz = 0 
             if "c o opt ind size" in line:
               nvars = int(line.split()[10])
             if "c o Opt sampling set size:" in line:
@@ -210,6 +211,7 @@ def find_arjun_time(fname):
                 opt_indep_sz = 0
               else:
                 opt_indep_sz = int(opt_indep_sz)
+              if opt_indep_sz == 4294967295: opt_indep_sz = 0 
             if "c o CNF projection set size:" in line:
               orig_proj_sz = int(line.split()[6])
             # c o [extend-gates] Gates added to opt indep: 26 T: 0.15
@@ -451,8 +453,7 @@ def find_mem_out(fname):
     return mem_out
 
 
-file_list = glob.glob("out-ganak-*/*cnf*")
-file_list.extend(glob.glob("out-others-*/*cnf*"))
+file_list = glob.glob("out-*/*cnf*")
 files = {}
 for f in file_list:
     if ".csv" in f:

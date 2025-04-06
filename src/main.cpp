@@ -100,7 +100,7 @@ FG fg = nullptr;
 string print_version()
 {
     std::stringstream ss;
-    ss << "c o Ganak SHA: " << GANAK::get_version_sha1() << endl;
+    ss << "c o Ganak SHA1: " << GANAK::get_version_sha1() << endl;
     ss << "c o Arjun SHA1: " << ArjunNS::Arjun::get_version_sha1() << endl;
     ss << "c o SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
     ss << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;

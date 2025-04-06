@@ -30,8 +30,8 @@ using namespace GanakInt;
 CompManager::CompManager(const CounterConfiguration& config,
     DataAndStatistics& statistics,
     const LiteralIndexedVector<TriValue>& lit_values, Counter* _counter) :
-    fg(_counter->get_fg()->dup()), conf(config), stats(statistics), cache(_counter->nVars(), statistics, conf),
-    ana(lit_values, _counter), counter(_counter)
+    fg(_counter->get_fg()->dup()), conf(config), stats(statistics), cache(statistics, conf),
+    ana(lit_values, _counter)
 {
   get_random_seed_for_hash();
 }

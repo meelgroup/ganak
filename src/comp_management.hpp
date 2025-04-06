@@ -113,7 +113,6 @@ private:
   vector<Comp*> comp_stack;
   CompCache cache;
   CompAnalyzer ana;
-  Counter* counter;
 };
 
 inline void CompManager::sort_comp_stack_range(uint32_t start, uint32_t end) {

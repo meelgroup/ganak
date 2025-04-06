@@ -40,7 +40,7 @@ namespace GanakInt {
 // There is EXACTLY ONE of this
 class CompCache {
 public:
-  CompCache(const uint32_t num_vars, DataAndStatistics &_stats, const CounterConfiguration& _conf);
+  CompCache(DataAndStatistics &_stats, const CounterConfiguration& _conf);
   ~CompCache() = default;
 
   void init(Comp &super_comp, uint64_t hash_seed);
@@ -190,7 +190,6 @@ private:
   DataAndStatistics &stats;
   const CounterConfiguration &conf;
   uint64_t my_time = 0;
-  uint32_t num_vars;
 };
 
 inline uint64_t CompCache::calc_extra_mem_after_push() const {
@@ -333,10 +332,8 @@ inline void CompCache::store_value(const CacheEntryID id, const FF& model_count)
   stats.sum_bignum_bytes += entry(id).bignum_bytes();
 }
 
-inline CompCache::CompCache(
-    uint32_t _num_vars,
-    DataAndStatistics &_stats, const CounterConfiguration &_conf):
-  stats(_stats), conf(_conf), num_vars(_num_vars) {}
+inline CompCache::CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf):
+  stats(_stats), conf(_conf) {}
 
 inline void CompCache::init(Comp &super_comp, uint64_t hash_seed){
   my_time = 1;

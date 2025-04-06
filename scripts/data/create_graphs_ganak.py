@@ -4,7 +4,16 @@ import os
 import sqlite3
 import re
 import nbformat as nbf
+import sys
 
+
+if len(sys.argv) != 2:
+    print("ERROR: must call with --proj/--unproj/--all")
+    exit(-1)
+
+if sys.argv[1] != "--all" and sys.argv[1]!= "--proj" and sys.argv[1] != "--unproj":
+    print("ERROR: must call with --proj/--unproj/--all")
+    exit(-1)
 
 def convert_to_cactus(fname, fname2):
     # print("fname:" , fname)
@@ -79,7 +88,15 @@ not_versions = []
 only_calls = []
 not_calls = []
 todo = versions
-fname_like = " and (fname like '%track1%' or fname like '%track2%') "
+if sys.argv[1] == "--unproj":
+    fname_like = " and (fname like '%track1%' or fname like '%track2%') "
+elif sys.argv[1] == "--proj":
+    fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+elif sys.argv[1] == "--all":
+    fname_like = " "
+else:
+    print("ERROR: must call with --proj/--unproj/--all")
+    exit(-1)
 
 table_todo = []
 for ver in todo :
@@ -109,23 +126,7 @@ for ver in todo :
 
         if bad:
           continue
-        # print("----")
-        # print("dir:", dir)
-        # print("call:", call)
-        # print("ver:", ver)
 
-        # if "actexp 1.0" in call:
-        #     continue
-        # if "tdwithredbins 0" in call:
-        #     continue
-        # if "restart 1" in call:
-        #     continue
-        # if "vivif" not in call:
-        #     continue
-        # if "probe 1" in call:
-        #     continue
-        # if "polar" not in call:
-        #     continue
         fname = "run-"+dir+".csv"
         with open("gencsv.sqlite", "w") as f:
             f.write(".headers off\n")

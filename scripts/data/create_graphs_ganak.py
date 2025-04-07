@@ -485,7 +485,8 @@ only_dirs = [
             # "out-ganak-mccomp2324-14299825",
             "out-ganak-mccomp2324-14309534-0", # this IS the current best
             # "out-ganak-mccomp2324-14309534-1", # messed up
-            "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
+            # "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
+            "out-ganak-mccomp2324-14362931-0", # new hash, timestamp archetype
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

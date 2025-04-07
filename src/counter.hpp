@@ -197,6 +197,7 @@ public:
   const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
   DataAndStatistics& get_stats() { return stats; }
+  uint32_t last_dec_candidates = 0;
 
 private:
   FG fg;

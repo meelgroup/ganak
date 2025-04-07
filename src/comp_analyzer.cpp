@@ -244,15 +244,20 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     counter->print_trail();
 #endif
 
+    bool reset = false;
     if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
       /* holder.size_bin(v) = holder.orig_size_bin(v); */
       holder.size_long(v) = holder.orig_size_long(v);
       stats.comps_reset++;
+      reset = true;
     } else {
       stats.comps_non_reset++;
     }
-    holder.lev(v) = counter->dec_level();
-    holder.tstamp(v) = counter->get_tstamp();
+    bool update = counter->last_dec_candidates > 20 || reset;
+    if (update) {
+      holder.tstamp(v) = counter->get_tstamp();
+      holder.lev(v) = counter->dec_level();
+    }
 #ifdef ANALYZE_DEBUG
     cout << "AFTER holder.lev(v): " << holder.lev(v) << endl;
     cout << "AFTER holder.tstamp(v): " << holder.tstamp(v) << endl;
@@ -359,18 +364,20 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       continue;
 
 end_sat:;
-      longs--;
-      longs_end--;
+      if (update) {
+        longs--;
+        longs_end--;
 #ifdef ANALYZE_DEBUG
-      const ClData& d2 = *longs;
-      cout << "SAT clause id: " << d2.id << " cl:";
-      for (auto it_l = long_clauses_data.data()+d2.off; *it_l != SENTINEL_LIT; it_l++) {
-        cout << *it_l << " ";
-      }
-      cout << endl;
+        const ClData& d2 = *longs;
+        cout << "SAT clause id: " << d2.id << " cl:";
+        for (auto it_l = long_clauses_data.data()+d2.off; *it_l != SENTINEL_LIT; it_l++) {
+          cout << *it_l << " ";
+        }
+        cout << endl;
 #endif
-      std::swap(*longs, *longs_end);
-      holder.size_long(v)--;
+        std::swap(*longs, *longs_end);
+        holder.size_long(v)--;
+      }
     }
     /* cout << "AFTER holder.size_long(v): " << holder.size_long(v) << endl; */
     /* cout << "AFTER holder.orig_size_long(v): " << holder.orig_size_long(v) << endl; */

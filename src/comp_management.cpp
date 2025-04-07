@@ -79,8 +79,8 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
-    if (ana.var_unvisited_in_sup_comp(*vt) && ana.explore_comp(*vt,
-          super_comp.num_long_cls(), super_comp.num_bin_cls())) {
+    if (ana.var_unvisited_in_sup_comp(*vt) &&
+        ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
       CacheableComp packed_comp(hash_seed, *p_new_comp);
 

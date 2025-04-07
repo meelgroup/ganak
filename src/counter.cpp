@@ -1174,6 +1174,7 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
 }
 
 uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_nonindep) {
+  last_dec_candidates = 0;
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
@@ -1204,6 +1205,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
     // They are sorted by var number, so once it's over, we can break
     if (!also_nonindep && v >= opt_indep_support_end) break;
+    last_dec_candidates++;
 
     // If we all are possible, we should first pick the independent ones
     if (also_nonindep && v >= opt_indep_support_end) {

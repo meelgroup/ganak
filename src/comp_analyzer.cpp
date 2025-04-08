@@ -246,7 +246,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
 
     bool reset = false;
     if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
-      holder.size_bin(v) = holder.orig_size_bin(v);
+      /* holder.size_bin(v) = holder.orig_size_bin(v); */
       holder.size_long(v) = holder.orig_size_long(v);
       stats.comps_reset++;
       reset = true;
@@ -254,7 +254,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       stats.comps_non_reset++;
     }
     bool update = counter->last_dec_candidates > 50 || reset;
-    if (update) {
+    if (update || reset) {
       holder.tstamp(v) = counter->get_tstamp();
       holder.lev(v) = counter->dec_level();
     }
@@ -266,8 +266,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     if (sup_comp_bin_cls != archetype.num_bin_cls) {
       // we have not seen all binary clauses
       // traverse binary clauses
-      auto bins = holder.begin_bin(v);
-      auto bins_end = bins + holder.size_bin(v);
+      uint32_t* bins = holder.begin_bin(v);
+      uint32_t* bins_end = bins + holder.size_bin(v);
       while(bins != bins_end) {
         uint32_t v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
@@ -278,10 +278,10 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
           bump_freq_score(v);
         } else {
           // it's true
-          bins--;
-          bins_end--;
-          std::swap(*bins, *bins_end);
-          holder.size_bin(v)--;
+          /* bins--; */
+          /* bins_end--; */
+          /* std::swap(*bins, *bins_end); */
+          /* holder.size_bin(v)--; */
         }
       }
     }

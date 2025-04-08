@@ -483,10 +483,11 @@ only_dirs = [
 
             # blocking
             # "out-ganak-mccomp2324-14299825",
-            "out-ganak-mccomp2324-14309534-0", # this IS the current best
+            # "out-ganak-mccomp2324-14309534-0", # this IS the current best
             # "out-ganak-mccomp2324-14309534-1", # messed up
             # "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
             "out-ganak-mccomp2324-14362931-0", # new hash, timestamp archetype
+            "out-ganak-mccomp2324-14366334-0", # update archetype only when sup comp has at least 20 vars that are still decidable
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -825,3 +826,6 @@ os.system("okular run.eps")
 
 # small problems
 # select dirname, fname, ganak_time,arjun_time,td_time from data where dirname = 'out-ganak-mccomp2324-14309534-0' and ganak_time is not null and ganak_time < 200 and arjun_time < 10 and td_time < 10 and new_nvars > 400 order by ganak_time desc limit 1000;
+
+# new analyzer compare
+# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14362931-0' and a2.dirname like 'out-ganak-mccomp2324-14366334-0' and a1.ganak_time < a2.ganak_time-20 and a1.ganak_time < 500 order by a1.ganak_time desc limit 50;

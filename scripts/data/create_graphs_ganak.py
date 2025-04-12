@@ -5,10 +5,33 @@ import sqlite3
 import re
 import sys
 
-
 if len(sys.argv) != 2:
-    print("ERROR: must call with --proj/--unproj/--all/--ganak")
+    print("ERROR: must call with --proj/--unproj/--all/--ganak/--example")
     exit(-1)
+
+if sys.argv[1] == "--example":
+  with open("gen_table.sqlite", "w") as f:
+    f.write(".mode table\n")
+    only_dirs = [ "out-baseline",
+                "out-basic-sat-and-chronobt",
+                "out-also-enhanced-sat",
+                "out-also-dual-indep",
+                "out-also-extend-d-set" ]
+    dirs = ""
+    for dir in only_dirs:
+      dirs += "'" + dir + "',"
+    dirs = dirs[:-1]
+    fname = "mc2023_track3_149.cnf"
+    extra = ""
+    f.write("select \
+        replace(dirname,'out-ganak-mc','') as dirname,\
+        (CASE WHEN ganak_time is not null then ganak_time else 9999999 END) as 'time(s)', \
+        ganak_mem_MB as 'mem(MB)', \
+        (CASE WHEN ganak_time is NOT NULL THEN conflicts else NULL END)/(1000.0) as 'confls(K)', \
+        (CASE WHEN ganak_time is not NULL THEN compsK else NULL END) as 'comps(K)'\
+        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by ganak_time desc")
+  os.system("sqlite3 mydb.sql < gen_table.sqlite")
+  exit(0)
 
 if sys.argv[1] != "--all" and sys.argv[1]!= "--proj" and sys.argv[1] != "--unproj" and sys.argv[1] != "--ganak":
     print("ERROR: must call with --proj/--unproj/--all/--ganak")

@@ -55,8 +55,8 @@ if sys.argv[1] == "--numbers":
       f.write(".mode table\n")
       dir="out-also-extend-d-set"
       fname_like = ""
-      f.write("select 'reported data'");
-      for col,col2 in [("indep_sz", "median S-set"), ("opt_indep_sz", "median D-set"), ("new_nvars", "median num vars after simplification")]:
+      f.write("select 'data'");
+      for col,col2 in [("indep_sz", "med S-set"), ("opt_indep_sz", "med D-set"), ("new_nvars", "med num vars after simp")]:
         f.write(", (SELECT "+col+" as 'median_"+col+"'\
         FROM data\
         where dirname IN ('"+dir+"') and "+col+" is not null"+fname_like+"\
@@ -66,7 +66,7 @@ if sys.argv[1] == "--numbers":
           where dirname IN ('"+dir+"') \
           and "+col+" is not null) / 2) as '"+col2+"' \
       ")
-      for col,col2 in [("gates_extended", "median syntactic extension"), ("padoa_extended", "median semantic extension")]:
+      for col,col2 in [("gates_extended", "med syntactic ext."), ("padoa_extended", "med semantic ext.")]:
         f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
         FROM data\
         where dirname IN ('"+dir+"') and "+col+" is not null "+fname_like+"\
@@ -77,17 +77,8 @@ if sys.argv[1] == "--numbers":
           where dirname IN ('"+dir+"') \
           and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as '"+col2+"' \
       ")
-      for col,col2 in [("gates_extend_t", "median syntactic extension time"), ("padoa_extend_t", "median semantic extension time")]:
-        f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
-        FROM data\
-        where dirname IN ('"+dir+"') and "+col+" is not null and (fname like '%track3%' or fname like '%track4%'\
-                    and "+col+">0\
-        ORDER BY "+col+"\
-        LIMIT 1\
-        OFFSET (SELECT COUNT("+col+") FROM data\
-          where dirname IN ('"+dir+"') \
-          and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as '"+col2+"' \
-      ")
+      for col,col1, col2 in [("gates_extend_t", "gates_extended", "med syntactic ext t(s)"), ("padoa_extend_t", "padoa_extended", "med semantic ext t(s)")]:
+        f.write(", (SELECT ROUND(avg("+col+"), 2) FROM data where dirname IN ('"+dir+"')  and "+col+" is not null) as '"+col2+"' ")
     os.system("sqlite3 mydb.sql < gen_table.sqlite")
     exit(0)
 

@@ -1,7 +1,7 @@
 #!/bin/bash
-rm *.gnuplot*
-rm *.csv
-rm *.eps
-rm *.pdf
-rm *.png
+rm -f *.gnuplot*
+rm -f *.csv
+rm -f *.eps
+rm -f *.pdf
+rm -f *.png
 

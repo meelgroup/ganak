@@ -33,6 +33,65 @@ if sys.argv[1] == "--example":
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
   exit(0)
 
+if sys.argv[1] == "--numbers":
+    os.system("grep 'Init' out-gpmc/* > out-gpmc-init.txt")
+    vars = []
+    pvars = []
+    with open("out-gpmc-init.txt", "r") as f:
+      for line in f:
+        line = line.strip()
+        line = line.split()
+        v = int(line[4])
+        p = int(line[6][1:])
+        pvars.append(p)
+        vars.append(v)
+    vars = sorted(vars)
+    pvars = sorted(pvars)
+    print("median vars: ", vars[len(vars)//2])
+    print("median projected vars: ", pvars[len(pvars)//2])
+    os.unlink("out-gpmc-init.txt")
+
+    with open("gen_table.sqlite", "w") as f:
+      f.write(".mode table\n")
+      dir="out-also-extend-d-set"
+      fname_like = ""
+      f.write("select 'reported data'");
+      for col,col2 in [("indep_sz", "median S-set"), ("opt_indep_sz", "median D-set"), ("new_nvars", "median num vars after simplification")]:
+        f.write(", (SELECT "+col+" as 'median_"+col+"'\
+        FROM data\
+        where dirname IN ('"+dir+"') and "+col+" is not null"+fname_like+"\
+        ORDER BY "+col+"\
+        LIMIT 1\
+        OFFSET (SELECT COUNT("+col+") FROM data\
+          where dirname IN ('"+dir+"') \
+          and "+col+" is not null) / 2) as '"+col2+"' \
+      ")
+      for col,col2 in [("gates_extended", "median syntactic extension"), ("padoa_extended", "median semantic extension")]:
+        f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
+        FROM data\
+        where dirname IN ('"+dir+"') and "+col+" is not null "+fname_like+"\
+                    and "+col+">0\
+        ORDER BY "+col+"\
+        LIMIT 1\
+        OFFSET (SELECT COUNT("+col+") FROM data\
+          where dirname IN ('"+dir+"') \
+          and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as '"+col2+"' \
+      ")
+      for col,col2 in [("gates_extend_t", "median syntactic extension time"), ("padoa_extend_t", "median semantic extension time")]:
+        f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
+        FROM data\
+        where dirname IN ('"+dir+"') and "+col+" is not null and (fname like '%track3%' or fname like '%track4%'\
+                    and "+col+">0\
+        ORDER BY "+col+"\
+        LIMIT 1\
+        OFFSET (SELECT COUNT("+col+") FROM data\
+          where dirname IN ('"+dir+"') \
+          and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as '"+col2+"' \
+      ")
+    os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    exit(0)
+
+
 if sys.argv[1] != "--all" and sys.argv[1]!= "--proj" and sys.argv[1] != "--unproj" and sys.argv[1] != "--ganak":
     print("ERROR: must call with --proj/--unproj/--all/--ganak")
     exit(-1)
@@ -212,36 +271,6 @@ else:
         sum(fname is not null) as 'nfiles'\
         from data where dirname IN ("+dirs+") "+fname_like+" group by dirname order by PAR2 desc")
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
-
-if False:
-  dirs = ""
-  vers = ""
-  for dir,ver in table_todo:
-    with open("gen_table.sqlite", "w") as f:
-      f.write(".mode table\n")
-      f.write("select '"+dir+"', '"+ver+"'");
-      for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars":
-        f.write(", (SELECT "+col+" as 'median_"+col+"'\
-        FROM data\
-        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null"+fname_like+"\
-        ORDER BY "+col+"\
-        LIMIT 1\
-        OFFSET (SELECT COUNT("+col+") FROM data\
-          where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
-          and "+col+" is not null) / 2) as median_"+col+" \
-      ")
-      for col in "gates_extended", "padoa_extended":
-        f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
-        FROM data\
-        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null "+fname_like+"\
-                    and "+col+">0\
-        ORDER BY "+col+"\
-        LIMIT 1\
-        OFFSET (SELECT COUNT("+col+") FROM data\
-          where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
-          and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as median_"+col+" \
-      ")
-    os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 gnuplotfn = "run-all.gnuplot"
 with open(gnuplotfn, "w") as f:

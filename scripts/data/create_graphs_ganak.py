@@ -278,7 +278,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][200:]\\\n")
+    f.write("plot [:][:]\\\n")
     i = 0
     towrite = ""
     for fn,call,ver,num_solved,dir in fname2_s:

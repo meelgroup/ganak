@@ -31,7 +31,7 @@ if sys.argv[1] == "--example":
         (CASE WHEN ganak_time is not NULL THEN compsK else NULL END) as 'comps(K)',\
         (CASE WHEN indep_sz is not NULL THEN indep_sz else NULL END) as 'S-set',\
         (CASE WHEN opt_indep_sz!=indep_sz THEN opt_indep_sz else NULL END) as 'D-set'\
-        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by ganak_time desc")
+        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by time desc")
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
   exit(0)
 

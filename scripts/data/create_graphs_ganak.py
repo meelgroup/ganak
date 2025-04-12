@@ -3,7 +3,6 @@
 import os
 import sqlite3
 import re
-import nbformat as nbf
 import sys
 
 
@@ -74,26 +73,37 @@ def get_dirs(ver : str):
 versions = get_versions()
 fname2_s = []
 not_calls = []
-only_dirs = [
-            "baseline",
-            "basic-sat-and-chronobt",
-            "also-enhanced-sat",
-            "also-dual-indep",
-            "also-extend-d-set",
-            "out-gpmc",
-            "out-d4",
-            "out-sharpttd",
-             ]
 not_versions = []
 only_calls = []
 not_calls = []
 todo = versions
 if sys.argv[1] == "--unproj":
     fname_like = " and (fname like '%track1%' or fname like '%track2%') "
+    only_dirs = [ "baseline",
+                  "also-extend-d-set",
+                  "out-gpmc",
+                  "out-d4",
+                  "out-sharpttd"]
 elif sys.argv[1] == "--proj":
     fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+    only_dirs = [ "baseline",
+                 "also-extend-d-set",
+                 "out-gpmc",
+                 "out-d4",
+                 "out-sharpttd"]
 elif sys.argv[1] == "--all":
     fname_like = " "
+    only_dirs = [ "baseline",
+                  "also-extend-d-set",
+                  "out-gpmc",
+                  "out-d4"]
+elif sys.argv[1] == "--ganak":
+    fname_like = " "
+    only_dirs = [ "baseline",
+                "basic-sat-and-chronobt",
+                "also-enhanced-sat",
+                "also-dual-indep",
+                "also-extend-d-set" ]
 else:
     print("ERROR: must call with --proj/--unproj/--all")
     exit(-1)
@@ -180,7 +190,7 @@ with open("gen_table.sqlite", "w") as f:
       from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" group by dirname order by PAR2")
 os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
-if True:
+if False:
   dirs = ""
   vers = ""
   for dir,ver in table_todo:
@@ -232,7 +242,7 @@ with open(gnuplotfn, "w") as f:
             call = re.sub("\"", "", call)
             dir  = re.sub("\"", "", dir)
             ver  = re.sub("\"", "", ver)
-            oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
+            oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+dir+"\""
             towrite += oneline
             towrite +=",\\\n"
     towrite = towrite[:(len(towrite)-4)]
@@ -250,4 +260,4 @@ os.system("gnuplot "+gnuplotfn)
 os.system("epstopdf run.eps run.pdf")
 os.system("pdftoppm -png run.pdf run")
 print("okular run.eps")
-# os.system("okular run.eps")
+os.system("okular run.eps")

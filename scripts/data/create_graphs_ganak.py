@@ -25,13 +25,13 @@ if sys.argv[1] == "--example":
     extra = ""
     f.write("select \
         replace(dirname,'out-ganak-mc','') as dirname,\
-        (CASE WHEN ganak_time is not null then ganak_time else 9999999 END) as 'time(s)', \
+        (CASE WHEN ganak_time is not null then ganak_time else 9999999 END) as 'time', \
         ganak_mem_MB as 'mem(MB)', \
         (CASE WHEN ganak_time is NOT NULL THEN conflicts else NULL END)/(1000.0) as 'confls(K)', \
         (CASE WHEN ganak_time is not NULL THEN compsK else NULL END) as 'comps(K)',\
         (CASE WHEN indep_sz is not NULL THEN indep_sz else NULL END) as 'S-set',\
         (CASE WHEN opt_indep_sz!=indep_sz THEN opt_indep_sz else NULL END) as 'D-set'\
-        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by ganak_time desc")
+        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by time desc")
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
   exit(0)
 

@@ -201,7 +201,7 @@ def find_arjun_time(fname):
                 indep_sz = 0
               else:
                 indep_sz = int(indep_sz)
-              if indep_sz == 4294967295: indep_sz = 0 
+              if indep_sz == 4294967295: indep_sz = 0
             if "c o opt ind size" in line:
               nvars = int(line.split()[10])
             if "c o Opt sampling set size:" in line:
@@ -211,7 +211,7 @@ def find_arjun_time(fname):
                 opt_indep_sz = 0
               else:
                 opt_indep_sz = int(opt_indep_sz)
-              if opt_indep_sz == 4294967295: opt_indep_sz = 0 
+              if opt_indep_sz == 4294967295: opt_indep_sz = 0
             if "c o CNF projection set size:" in line:
               orig_proj_sz = int(line.split()[6])
             # c o [extend-gates] Gates added to opt indep: 26 T: 0.15
@@ -343,12 +343,16 @@ def timeout_parse(fname):
                 else:
                   call = " ".join(call.split()[:-1])
                 call = call.replace(" -t real", "")
-                if "doalarm 3600" in call:
-                  call = call.split("doalarm 3600")[1]
-                elif "doalarm 60" in call:
-                  call = call.split("doalarm 60")[1]
+                call = call.replace("runlim -o /dev/null -r", "runlim")
+                if "doalarm" in call:
+                  call = call.split("doalarm")[1].strip()
+                  call = " ".join(call.split(" ")[1:])
+                elif "runlim" in call:
+                  call = call.split("runlim")[1].strip()
+                  call = " ".join(call.split(" ")[1:])
                 else:
-                  call = call.split("doalarm 900")[1]
+                  print("Error: ", call)
+
                 call = call.replace("././ganak ", "")
                 call = call.replace("././d4-1d9cc6146f18b8 ", "")
                 call = call.replace("././approxmc ", "")

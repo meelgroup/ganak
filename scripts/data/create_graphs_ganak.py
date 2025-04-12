@@ -12,11 +12,11 @@ if len(sys.argv) != 2:
 if sys.argv[1] == "--example":
   with open("gen_table.sqlite", "w") as f:
     f.write(".mode table\n")
-    only_dirs = [ "out-baseline",
-                "out-basic-sat-and-chronobt",
-                "out-also-enhanced-sat",
-                "out-also-dual-indep",
-                "out-also-extend-d-set" ]
+    only_dirs = [ "out-ganak-baseline",
+                  "out-ganak-basic-sat-and-chronobt",
+                  "out-ganak-also-enhanced-sat",
+                  "out-ganak-also-dual-indep",
+                  "out-ganak-also-extend-d-set" ]
     dirs = ""
     for dir in only_dirs:
       dirs += "'" + dir + "',"
@@ -31,7 +31,7 @@ if sys.argv[1] == "--example":
         (CASE WHEN ganak_time is not NULL THEN compsK else NULL END) as 'comps(K)',\
         (CASE WHEN indep_sz is not NULL THEN indep_sz else NULL END) as 'S-set',\
         (CASE WHEN opt_indep_sz!=indep_sz THEN opt_indep_sz else NULL END) as 'D-set'\
-        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by time desc")
+        from data where dirname IN ("+dirs+") and fname ='"+fname+"' order by ganak_time desc")
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
   exit(0)
 
@@ -154,30 +154,30 @@ not_calls = []
 todo = versions
 if sys.argv[1] == "--unproj":
     fname_like = " and (fname like '%track1%' or fname like '%track2%') "
-    only_dirs = [ "baseline",
-                  "also-extend-d-set",
+    only_dirs = [ "out-ganak-baseline",
+                  "out-ganak-also-extend-d-set",
                   "out-gpmc",
                   "out-d4",
                   "out-sharptd"]
 elif sys.argv[1] == "--proj":
     fname_like = " and (fname like '%track3%' or fname like '%track4%') "
-    only_dirs = [ "baseline",
-                 "also-extend-d-set",
-                 "out-gpmc",
-                 "out-d4"]
+    only_dirs = [ "out-ganak-baseline",
+                  "out-ganak-also-extend-d-set",
+                  "out-gpmc",
+                  "out-d4"]
 elif sys.argv[1] == "--all":
     fname_like = " "
-    only_dirs = [ "baseline",
-                  "also-extend-d-set",
+    only_dirs = [ "out-ganak-baseline",
+                  "out-ganak-also-extend-d-set",
                   "out-gpmc",
                   "out-d4"]
 elif sys.argv[1] == "--ganak":
     fname_like = " "
-    only_dirs = [ "baseline",
-                "basic-sat-and-chronobt",
-                "also-enhanced-sat",
-                "also-dual-indep",
-                "also-extend-d-set" ]
+    only_dirs = [ "out-ganak-baseline",
+                  "out-ganak-basic-sat-and-chronobt",
+                  "out-ganak-also-enhanced-sat",
+                  "out-ganak-also-dual-indep",
+                  "out-ganak-also-extend-d-set" ]
 else:
     print("ERROR: must call with --proj/--unproj/--all")
     exit(-1)

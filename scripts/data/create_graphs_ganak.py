@@ -7,11 +7,11 @@ import sys
 
 
 if len(sys.argv) != 2:
-    print("ERROR: must call with --proj/--unproj/--all")
+    print("ERROR: must call with --proj/--unproj/--all/--ganak")
     exit(-1)
 
-if sys.argv[1] != "--all" and sys.argv[1]!= "--proj" and sys.argv[1] != "--unproj":
-    print("ERROR: must call with --proj/--unproj/--all")
+if sys.argv[1] != "--all" and sys.argv[1]!= "--proj" and sys.argv[1] != "--unproj" and sys.argv[1] != "--ganak":
+    print("ERROR: must call with --proj/--unproj/--all/--ganak")
     exit(-1)
 
 def convert_to_cactus(fname, fname2):
@@ -83,14 +83,13 @@ if sys.argv[1] == "--unproj":
                   "also-extend-d-set",
                   "out-gpmc",
                   "out-d4",
-                  "out-sharpttd"]
+                  "out-sharptd"]
 elif sys.argv[1] == "--proj":
     fname_like = " and (fname like '%track3%' or fname like '%track4%') "
     only_dirs = [ "baseline",
                  "also-extend-d-set",
                  "out-gpmc",
-                 "out-d4",
-                 "out-sharpttd"]
+                 "out-d4"]
 elif sys.argv[1] == "--all":
     fname_like = " "
     only_dirs = [ "baseline",
@@ -143,7 +142,7 @@ for ver in todo :
             f.write(".mode csv\n");
             f.write(".output "+fname+"\n")
             extra = ""
-            f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
+            f.write("select ganak_time from data where dirname='"+dir+"' and ganak_time is not NULL "+fname_like)
         os.system("sqlite3 mydb.sql < gencsv.sqlite")
         os.unlink("gencsv.sqlite")
 
@@ -152,43 +151,44 @@ for ver in todo :
         fname2_s.append([fname2, call, ver[:10], num_solved, dir])
         table_todo.append([dir, ver])
 
-with open("gen_table.sqlite", "w") as f:
-  f.write(".mode table\n")
-  # f.write(".mode colum\n")
-  # f.write(".headers off\n")
-  dirs = ""
-  vers = ""
-  for dir,ver in table_todo:
-    dirs += "'" + dir + "',"
-    vers += "'" + ver + "',"
-  dirs = dirs[:-1]
-  vers = vers[:-1]
-  extra = ""
-  f.write("select \
-      replace(dirname,'out-ganak-mc','') as dirname,\
-      replace(ganak_call,'././ganak_','') as call,\
-      sum(mem_out) as 'mem out', \
-      CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
-      ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
-      ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
-      CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
-      sum(ganak_time is not null) as 'solved',\
-      CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
-      CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-sat-dec-sz',\
-      ROUND(avg(gates_extend_t), 3) as 'gates-ext-t',\
-      ROUND(avg(padoa_extend_t), 3) as 'padoa-ext-t',\
-      ROUND(avg(gates_extended), 3) as 'gates-ext',\
-      ROUND(avg(padoa_extended), 3) as 'padoa-ext',\
-      CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
-      CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
-      CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
-      CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
-      ROUND(avg(td_width),0) as 'av tdw',\
-      ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
-      ROUND(avg(compsK/1000.0),2) as 'av compsM',\
-      sum(fname is not null) as 'nfiles'\
-      from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" group by dirname order by PAR2")
-os.system("sqlite3 mydb.sql < gen_table.sqlite")
+if sys.argv[1] != "--ganak":
+  with open("gen_table.sqlite", "w") as f:
+    f.write(".mode table\n")
+    # f.write(".mode colum\n")
+    # f.write(".headers off\n")
+    dirs = ""
+    for dir,ver in table_todo:
+      dirs += "'" + dir + "',"
+    dirs = dirs[:-1]
+    extra = ""
+    f.write("select \
+        replace(dirname,'out-ganak-mc','') as dirname,\
+        sum(ganak_time is not null) as 'counted',\
+        CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
+        CAST(ROUND(avg(CASE WHEN ganak_time IS NOT NULL THEN ganak_mem_MB ELSE NULL END), 0) AS INTEGER) as 'avg mem(MB)', \
+        sum(fname is not null) as 'nfiles'\
+        from data where dirname IN ("+dirs+") "+fname_like+" group by dirname order by PAR2 desc")
+  os.system("sqlite3 mydb.sql < gen_table.sqlite")
+else:
+  with open("gen_table.sqlite", "w") as f:
+    f.write(".mode table\n")
+    # f.write(".mode colum\n")
+    # f.write(".headers off\n")
+    dirs = ""
+    for dir,ver in table_todo:
+      dirs += "'" + dir + "',"
+    dirs = dirs[:-1]
+    extra = ""
+    f.write("select \
+        replace(dirname,'out-ganak-mc','') as dirname,\
+        sum(ganak_time is not null) as 'counted',\
+        CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
+        CAST(ROUND(avg(CASE WHEN ganak_time IS NOT NULL THEN ganak_mem_MB ELSE NULL END), 0) AS INTEGER) as 'avg mem(MB)', \
+        ROUND(avg(CASE WHEN ganak_time is NOT NULL THEN conflicts else NULL END)/(1000.0*1000.0), 2) as 'avg confls(M)', \
+        ROUND(avg(CASE WHEN ganak_time is not NULL THEN compsK else NULL END)/(1000.0),2) as 'avg comps(M)',\
+        sum(fname is not null) as 'nfiles'\
+        from data where dirname IN ("+dirs+") "+fname_like+" group by dirname order by PAR2 desc")
+  os.system("sqlite3 mydb.sql < gen_table.sqlite")
 
 if False:
   dirs = ""
@@ -241,7 +241,6 @@ with open(gnuplotfn, "w") as f:
         if True:
             call = re.sub("\"", "", call)
             dir  = re.sub("\"", "", dir)
-            ver  = re.sub("\"", "", ver)
             oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+dir+"\""
             towrite += oneline
             towrite +=",\\\n"
@@ -259,5 +258,6 @@ if os.path.exists("run.png"):
 os.system("gnuplot "+gnuplotfn)
 os.system("epstopdf run.eps run.pdf")
 os.system("pdftoppm -png run.pdf run")
-print("okular run.eps")
+print("now please run: okular run.eps")
+print("we'll run it now.. should pop up on your screen")
 os.system("okular run.eps")

@@ -255,7 +255,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       analyze_verb(debug_print("analyze NORESET"));
       stats.comps_non_reset++;
     }
-    bool update = (counter->last_dec_candidates > 5) || reset;
+    bool update = (counter->last_dec_candidates > 10) || reset;
     if (update) {
       holder.tstamp(v) = counter->get_tstamp();
       holder.set_lev(v, counter->dec_level());

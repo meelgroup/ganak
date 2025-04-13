@@ -46,6 +46,7 @@ using FF = std::unique_ptr<Field>;
 /* #define CHECK_IMPLIED */
 /* #define VERY_SLOW_DEBUG */
 /* #define BUDDY_ENABLED */
+/* #define ANALYZE_VERBOSE */
 // the slowest of all that's not verifying counts
 /* #define CHECK_TRAIL_ENTAILMENT */
 
@@ -70,6 +71,12 @@ using FF = std::unique_ptr<Field>;
 #define SLOW_DEBUG_DO(x) do { x; } while (0)
 #else
 #define SLOW_DEBUG_DO(x) do { } while (0)
+#endif
+
+#ifdef ANALYZE_VERBOSE
+#define analyze_verb(x) do { x; } while (0)
+#else
+#define analyze_verb(x) do { } while (0)
 #endif
 
 #ifdef CHECK_IMPLIED

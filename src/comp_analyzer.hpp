@@ -45,7 +45,7 @@ namespace GanakInt {
 class ClauseAllocator;
 class Counter;
 
-constexpr uint32_t hstride = 8; // stamp, lev, 2*(start, size, orig_size)
+constexpr uint32_t hstride = 9; // stamp(2), lev, 2*(start, size, orig_size)
 /* #define ANALYZE_DEBUG */
 
 struct ClData {
@@ -74,11 +74,11 @@ struct MyHolder {
   // start_bin, sz_bin, start_long, sz_long, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
 
-  uint32_t tstamp(uint32_t v) const {return data[v*hstride];}
-  uint32_t& tstamp(uint32_t v) {return data[v*hstride];}
-  uint32_t lev(uint32_t v) const {return data[v*hstride+1];}
-  uint32_t& lev(uint32_t v) {return data[v*hstride+1];}
-  static constexpr uint32_t offset = 2;
+  uint64_t tstamp(uint32_t v) const {return *(uint64_t*)(data+(v*hstride));}
+  uint64_t& tstamp(uint32_t v) {return *(uint64_t*)(data+(v*hstride));}
+  int32_t lev(uint32_t v) const {return (int32_t)data[v*hstride+2];}
+  void set_lev(uint32_t v, int32_t lev) {data[v*hstride+2] = lev;}
+  static constexpr uint32_t offset = 3;
 
   //
   // bin

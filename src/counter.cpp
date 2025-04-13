@@ -3753,9 +3753,11 @@ void Counter::v_restore() {
 }
 
 void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
+  bump_stamp();
   assert(val(lit) == X_TRI);
-  if (ant.isNull())
+  if (ant.isNull()) {
     debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << dec_level());
+  }
   else debug_print("-> lit propagated: " << lit << " trail pos will be: " << trail.size() << " cur dec lev: " << dec_level());
 
   debug_print("setting lit: " << lit << " to lev: " << dec_lev << " cur val: " << lit_val_str(lit) << " ante: " << ant << " sublev: " << trail.size());

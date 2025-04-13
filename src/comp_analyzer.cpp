@@ -29,7 +29,6 @@ THE SOFTWARE.
 #include <climits>
 #include <cstdint>
 #include <cstdint>
-#include <memory>
 
 using namespace GanakInt;
 
@@ -171,7 +170,7 @@ void CompAnalyzer::initialize(
       memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
       data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
       holder.tstamp(v) = 0;
-      holder.lev(v) = 0;
+      holder.set_lev(v, 0);
     }
     assert(data_start == data + total_sz);
 
@@ -224,7 +223,6 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   comp_vars.clear();
   comp_vars.push_back(var);
   archetype.set_var_visited(var);
-  counter->set_stamp();
 
   debug_print(COLWHT "We are NOW going through all binary/tri/long clauses "
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
@@ -233,35 +231,56 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
     const auto v = *vt;
     SLOW_DEBUG_DO(assert(is_unknown(v)));
-
-#ifdef ANALYZE_DEBUG
-    cout << "-----------------------" << endl;
-    cout << "record v: " << v << " start" << endl;
-    cout << "holder.lev(v): " << holder.lev(v) << endl;
-    cout << "holder.tstamp(v): " << holder.tstamp(v) << endl;
-    cout << "counter->dec_level(): " << counter->dec_level() << endl;
-    cout << "counter->get_tstamp(holder.lev(v)): " << counter->get_tstamp(holder.lev(v)) << endl;
-    counter->print_trail();
-#endif
+    analyze_verb(
+      debug_print("-----------------------");
+      debug_print("record v: " << v << " start");
+      debug_print("holder.lev(v): " << holder.lev(v));
+      debug_print("holder.tstamp(v): " << holder.tstamp(v));
+      debug_print("counter->dec_level(): " << counter->dec_level());
+      debug_print("counter->get_tstamp(holder.lev(v)): " << counter->get_tstamp(holder.lev(v)));
+      counter->print_trail());
 
     bool reset = false;
+    analyze_verb(debug_print("v: " << v << " holder.lev(v): " << holder.lev(v)
+      << " holder.tstamp(v): " << holder.tstamp(v)
+      << " counter->dec_lev(): " << counter->dec_level()
+      << " counter->get_tstamp(holder.lev(v))): " << counter->get_tstamp(holder.lev(v))));
     if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
-      /* holder.size_bin(v) = holder.orig_size_bin(v); */
+      holder.size_bin(v) = holder.orig_size_bin(v);
       holder.size_long(v) = holder.orig_size_long(v);
       stats.comps_reset++;
       reset = true;
+      analyze_verb(debug_print("analyze RESET"));
     } else {
+      analyze_verb(debug_print("analyze NORESET"));
       stats.comps_non_reset++;
     }
-    bool update = counter->last_dec_candidates > 50 || reset;
-    if (update || reset) {
+    bool update = (counter->last_dec_candidates > 5) || reset;
+    if (update) {
       holder.tstamp(v) = counter->get_tstamp();
-      holder.lev(v) = counter->dec_level();
+      holder.set_lev(v, counter->dec_level());
+      analyze_verb(debug_print("analyze tstamp UPDATED. v: " << v << " holder.lev(v): " << holder.lev(v)
+          << " holder.tstamp(v): " << holder.tstamp(v)));
+    } else {
+      analyze_verb(debug_print("analyze tstamp REMAIN. v: " << v << " holder.lev(v): " << holder.lev(v)
+          << " holder.tstamp(v): " << holder.tstamp(v)));
     }
-#ifdef ANALYZE_DEBUG
-    cout << "AFTER holder.lev(v): " << holder.lev(v) << endl;
-    cout << "AFTER holder.tstamp(v): " << holder.tstamp(v) << endl;
-#endif
+
+    SLOW_DEBUG_DO(
+      // checks that bins between size and orig_size are all satisfied
+      uint32_t* bins = holder.begin_bin(v);
+      uint32_t* bins_end2 = bins+holder.size_bin(v);
+      uint32_t* bins_end3 = bins+holder.orig_size_bin(v);
+      while (bins_end2 != bins_end3) {
+        const uint32_t v2 = *bins_end2;
+        if (is_unknown(v2)) {
+          cout << "ERROR: bin clause var: " << v2 << " unknown, but we thought it's set (and in the bin, true)!" << endl;
+          assert(false);
+        }
+        bins_end2++;
+      }
+      if (reset) assert(holder.size_bin(v) == holder.orig_size_bin(v));
+    );
 
     if (sup_comp_bin_cls != archetype.num_bin_cls) {
       // we have not seen all binary clauses
@@ -277,11 +296,14 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
           bump_freq_score(v2);
           bump_freq_score(v);
         } else {
-          // it's true
-          /* bins--; */
-          /* bins_end--; */
-          /* std::swap(*bins, *bins_end); */
-          /* holder.size_bin(v)--; */
+          if (update) {
+            // it's satisfied
+            bins--;
+            bins_end--;
+            std::swap(*bins, *bins_end);
+            holder.size_bin(v)--;
+            analyze_verb(verb_debug("analyze remove bin, var: "<< *bins_end));
+          }
         }
       }
     }
@@ -367,14 +389,12 @@ end_sat:;
       if (update) {
         longs--;
         longs_end--;
-#ifdef ANALYZE_DEBUG
-        const ClData& d2 = *longs;
-        cout << "SAT clause id: " << d2.id << " cl:";
-        for (auto it_l = long_clauses_data.data()+d2.off; *it_l != SENTINEL_LIT; it_l++) {
-          cout << *it_l << " ";
-        }
-        cout << endl;
-#endif
+        analyze_verb(
+          const ClData& d2 = *longs;
+          cout << "analyze remove SAT clause id: " << d2.id << " cl:";
+          for (auto it_l = long_clauses_data.data()+d2.off; *it_l != SENTINEL_LIT; it_l++) {
+            cout << *it_l << " ";
+          } cout << endl);
         std::swap(*longs, *longs_end);
         holder.size_long(v)--;
       }

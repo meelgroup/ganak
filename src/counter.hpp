@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 
@@ -166,9 +167,9 @@ public:
   void end_irred_cls();
   void set_lit_weight(Lit l, const FF& w);
   FF outer_count();
-  uint32_t get_tstamp() const { return tstamp; }
-  uint32_t get_tstamp(int32_t lev) const {
-    if (dec_level() < lev) return UINT_MAX;
+  uint64_t get_tstamp() const { return tstamp; }
+  uint64_t get_tstamp(int32_t lev) const {
+    if (dec_level() < lev) return std::numeric_limits<uint32_t>::max();
     return decisions[lev].tstamp;
   }
 
@@ -192,7 +193,10 @@ public:
   const auto& get_var_data(uint32_t v) const { return var_data[v]; }
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_trail(bool check_entail = true, bool check_anything = true) const;
-  void set_stamp() { decisions[dec_level()].tstamp = ++tstamp; }
+  void bump_stamp() {
+    decisions[dec_level()].tstamp = ++tstamp;
+    debug_print("updating tstamp, dec_level: " << dec_level() << " tstamp: " << tstamp);
+  }
   const FG& get_fg() const { return fg; }
   const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
@@ -363,7 +367,7 @@ private:
   vector<double> tdscore;
   double td_weight = 1.0;
   int td_width = 10000;
-  uint64_t tstamp = 0;
+  uint64_t tstamp = 10;
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
   vector<Lit>::iterator top_declevel_trail_begin();

@@ -5,9 +5,13 @@ import sqlite3
 import re
 import sys
 
-if len(sys.argv) != 2:
+if len(sys.argv) < 2:
     print("ERROR: must call with --proj/--unproj/--all/--ganak/--example")
     exit(-1)
+fname_like = ""
+fname_like2 = " and fname in ('mc2023_track3_107.cnf', 'mc2024_track4_081.cnf', 'mc2023_track3_157.cnf', 'mc2023_track3_051.cnf', 'mc2023_track4_193.cnf', 'mc2023_track4_111.cnf', 'mc2024_track4_080.cnf', 'mc2023_track4_067.cnf', 'mc2024_track4_129.cnf', 'mc2023_track4_106.cnf', 'mc2023_track3_063.cnf', 'mc2023_track3_080.cnf', 'mc2023_track3_061.cnf', 'mc2023_track4_182.cnf', 'mc2024_track3_022.cnf', 'mc2024_track3_147.cnf', 'mc2023_track4_174.cnf', 'mc2023_track3_128.cnf', 'mc2024_track4_077.cnf', 'mc2024_track3_001.cnf', 'mc2023_track1_107.cnf', 'mc2024_track2-random_081.cnf', 'mc2023_track1_157.cnf', 'mc2023_track1_051.cnf', 'mc2023_track2_193.cnf', 'mc2023_track2_111.cnf', 'mc2024_track2-random_080.cnf', 'mc2023_track2_067.cnf', 'mc2024_track2-random_129.cnf', 'mc2023_track2_106.cnf', 'mc2023_track1_063.cnf', 'mc2023_track1_080.cnf', 'mc2023_track1_061.cnf', 'mc2023_track2_182.cnf', 'mc2024_track1_022.cnf', 'mc2024_track1_147.cnf', 'mc2023_track2_174.cnf', 'mc2023_track1_128.cnf', 'mc2024_track2-random_077.cnf', 'mc2024_track1_001.cnf', 'mc2023_track3_149.cnf') "
+if len(sys.argv) > 2 and sys.argv[2] == "--test":
+  fname_like = fname_like2
 
 if sys.argv[1] == "--example":
   with open("gen_table.sqlite", "w") as f:
@@ -56,7 +60,6 @@ if sys.argv[1] == "--numbers":
     with open("gen_table.sqlite", "w") as f:
       f.write(".mode table\n")
       dir="out-also-extend-d-set"
-      fname_like = ""
       f.write("select 'data'");
       for col,col2 in [("indep_sz", "med S-set"), ("opt_indep_sz", "med D-set"), ("new_nvars", "med num vars after simp")]:
         f.write(", (SELECT "+col+" as 'median_"+col+"'\
@@ -181,6 +184,8 @@ elif sys.argv[1] == "--ganak":
 else:
     print("ERROR: must call with --proj/--unproj/--all")
     exit(-1)
+if len(sys.argv) > 2 and sys.argv[2] == "--test":
+  fname_like = fname_like + fname_like2
 
 table_todo = []
 for ver in todo :

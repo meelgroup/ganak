@@ -143,6 +143,15 @@ public:
     }
   }
 
+  // Sometimes, it's cheaper to look up the lit than the variable,
+  // because we have already looked up the literal, so it's in the cache
+  void manage_occ_and_score_of(Lit l) {
+    if (is_unknown(l)) {
+      bump_freq_score(l.var());
+      manage_occ_of(l.var());
+    }
+  }
+
   void manage_occ_and_score_of(uint32_t v) {
     if (is_unknown(v)) {
       bump_freq_score(v);
@@ -237,10 +246,11 @@ private:
     }
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
-      const uint32_t v = it_l->var();
-      SLOW_DEBUG_DO(assert(v <= max_var));
-      SLOW_DEBUG_DO(assert(is_false(*it_l) || archetype.var_unvisited_in_sup_comp(v) || archetype.var_visited(v)));
-      manage_occ_and_score_of(v);
+      SLOW_DEBUG_DO(
+          const uint32_t v = it_l->var();
+          assert(v <= max_var);
+          assert(is_false(*it_l) || archetype.var_unvisited_in_sup_comp(v) || archetype.var_visited(v)));
+      manage_occ_and_score_of(*it_l);
     }
 
     archetype.set_clause_visited(d.id);

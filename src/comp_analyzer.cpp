@@ -365,8 +365,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
             goto end_sat;
           } else {
             bump_freq_score(v);
-            manage_occ_and_score_of(l1.var());
-            manage_occ_and_score_of(l2.var());
+            manage_occ_and_score_of(l1);
+            manage_occ_and_score_of(l2);
             archetype.set_clause_visited(d.id);
           }
         } else continue;

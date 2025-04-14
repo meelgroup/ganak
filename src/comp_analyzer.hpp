@@ -152,13 +152,6 @@ public:
     }
   }
 
-  void manage_occ_and_score_of(uint32_t v) {
-    if (is_unknown(v)) {
-      bump_freq_score(v);
-      manage_occ_of(v);
-    }
-  }
-
   void setup_analysis_context(StackLevel& top, const Comp& super_comp){
     archetype.re_initialize(top,super_comp);
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");

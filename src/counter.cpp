@@ -1255,7 +1255,7 @@ static double luby(double y, int x){
 bool Counter::restart_if_needed() {
   if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst)
     return false;
-  if (!appmc_timeout_fired && (!conf.do_restart || td_width < 60)) return false;
+  if (!appmc_timeout_fired && (!conf.do_restart || td_width < 20)) return false;
 
   bool restart = false;
   if (appmc_timeout_fired) {
@@ -1265,12 +1265,11 @@ bool Counter::restart_if_needed() {
 
   // Conflicts, luby
   if (conf.restart_type == 7) {
-    verb_print(3, "[rst] Will restart at confl: " << luby(2, stats.num_restarts) * conf.first_restart
-      << " now confl: " << stats.conflicts);
-    if ((stats.conflicts-stats.last_restart_num_conflicts) >
-        (luby(2, stats.num_restarts) * conf.first_restart)) {
-      verb_print(2, "[rst] restarting. Next restart confl: "
-          << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart));
+    auto cutoff = luby(2, stats.num_restarts) * conf.first_restart+stats.last_restart_num_conflicts;
+    verb_print(3, "[rst] Will restart at confl: " << cutoff << " now confl: " << stats.conflicts);
+    if (stats.conflicts > cutoff) {
+      verb_print(1, "[rst] restarting. Next restart confl: "
+          << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart)+stats.conflicts);
       restart = true;
     }
   }

@@ -428,7 +428,7 @@ private:
   void v_backtrack();
   void v_unset_lit(const Lit l);
   void v_enqueue(const Lit l);
-  TriValue v_val(const Lit l) const;
+  TriValue v_val(const Lit l) const { return v_values[l]; }
   void v_new_lev();
   void v_backup();
   void v_restore();

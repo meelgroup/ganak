@@ -2238,8 +2238,7 @@ uint32_t Counter::abst_level(const uint32_t x) const {
   return ((uint32_t)1) << (var_data[x].decision_level & 31);
 }
 
-void Counter::recursive_cc_min()
-{
+void Counter::recursive_cc_min() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("recursive ccmin now.");
   uint32_t abstract_level = 0;
@@ -2689,10 +2688,6 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   for(const auto& l: to_clear) seen[l] = 0;
   to_clear.clear();
   return fun_ret;
-}
-
-TriValue Counter::v_val(const Lit l) const {
-  return v_values[l];
 }
 
 void Counter::v_enqueue(const Lit l) {

@@ -1850,11 +1850,11 @@ void Counter::go_back_to(int32_t backj) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
     }
-    VERBOSE_DEBUG_DO(cout << "now at dec lit: " << top_dec_lit() << " lev: " << dec_level()
-        << " cnt:" <<  *decisions.top().total_model_count() << endl);
+    debug_print("now at dec lit: " << top_dec_lit() << " lev: " << dec_level()
+        << " cnt:" <<  *decisions.top().total_model_count());
   }
   VERBOSE_DEBUG_DO(print_comp_stack_info());
-  VERBOSE_DEBUG_DO(cout << "DONE backw cleaning" << endl);
+  debug_print("DONE backw cleaning");
 }
 
 void Counter::check_trail([[maybe_unused]] bool check_entail) const {
@@ -2067,8 +2067,8 @@ inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t&
   for(uint32_t i3 = 2; i3 < cl.sz; i3++) {
     Lit l = cl[i3];
     int32_t nlev = var(l).decision_level;
-    VERBOSE_DEBUG_DO(cout << "i3: " << i3 << " l : " << l << " var(l).decision_level: "
-        << var(l).decision_level << " maxlev: " << maxlev << endl);
+    debug_print("i3: " << i3 << " l : " << l << " var(l).decision_level: "
+        << var(l).decision_level << " maxlev: " << maxlev);
     if (nlev > maxlev) {maxlev = nlev; maxind = i3;}
   }
 }
@@ -2879,33 +2879,29 @@ void Counter::create_uip_cl() {
       n_dec_level = var(c[0]).decision_level;
       SLOW_DEBUG_DO(check_cl_unsat(c, size));
     }
-    VERBOSE_DEBUG_DO(cout << "next cl: " << endl;print_cl(c, size));
-    VERBOSE_DEBUG_DO(cout << "n_dec_level: " <<  n_dec_level << endl);
-
-    VERBOSE_DEBUG_DO(cout << "For loop." << endl);
+    debug_print("next cl: ");VERBOSE_DEBUG_DO(print_cl(c, size));
+    debug_print("n_dec_level: " <<  n_dec_level);
+    debug_print("For loop.");
     for(uint32_t j = ((p == NOT_A_LIT) ? 0 : 1); j < size ;j++) {
       Lit q = c[j];
       if (!seen[q.var()] && var(q).decision_level > 0){
         inc_act(q);
         seen[q.var()] = 1;
         to_clear.push_back(q.var());
-#ifdef VERBOSE_DEBUG
-        cout << std::setw(5) << q
+        debug_print(std::setw(5) << q
           << " lev: " << std::setw(3) << var(q).decision_level
           << " ante: " << std::setw(8) << var(q).ante
-          << " val : " << std::setw(7) << lit_val_str(q)
-          << endl;
-#endif
+          << " val : " << std::setw(7) << lit_val_str(q));
         if (var(q).decision_level >= n_dec_level) {
           path_c++;
-          VERBOSE_DEBUG_DO(cout << "pathc inc." << endl);
+          debug_print("pathc inc.");
         } else {
           uip_clause.push_back(q);
-          VERBOSE_DEBUG_DO(cout << "added to cl." << endl);
+          debug_print("added to cl.");
         }
       }
     }
-    VERBOSE_DEBUG_DO(cout << "PathC: " << path_c << endl);
+    debug_print("PathC: " << path_c);
 
     do {
       while (!seen[trail[index--].var()]) { SLOW_DEBUG_DO(assert(index >= 0));}
@@ -2919,7 +2915,7 @@ void Counter::create_uip_cl() {
         << endl;
 #endif
     } while(var(trail[index+1]).decision_level < n_dec_level);
-    VERBOSE_DEBUG_DO(cout << "Next p: " << p << endl);
+    debug_print("Next p: " << p);
     confl = var(p).ante;
     seen[p.var()] = 0;
     path_c--;
@@ -2930,7 +2926,7 @@ void Counter::create_uip_cl() {
   CHECK_IMPLIED_DO(check_implied(uip_clause));
   minimize_uip_cl();
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
-  VERBOSE_DEBUG_DO(cout << __FUNCTION__ << " finished");
+  debug_print(__FUNCTION__ << " finished");
 }
 
 bool Counter::check_watchlists() const {

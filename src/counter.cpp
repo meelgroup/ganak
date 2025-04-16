@@ -4182,18 +4182,18 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
 }
 
 void Counter::init_decision_stack() {
-    decisions.clear();
-    trail.clear();
-    // initialize the stack to contain at least level zero
-    decisions.push_back(StackLevel(
-          1, // super comp
-          2, //comp stack offset
-          is_indep, tstamp, fg));
+  decisions.clear();
+  trail.clear();
+  // initialize the stack to contain at least level zero
+  decisions.push_back(StackLevel(
+        1, // super comp
+        2, //comp stack offset
+        is_indep, tstamp, fg));
 
-    // This is needed so the system later knows it's fully counted
-    // since this is only a dummy.
-    decisions.back().change_to_right_branch();
-  }
+  // This is needed so the system later knows it's fully counted
+  // since this is only a dummy.
+  decisions.back().change_to_right_branch();
+}
 
 string Counter::lit_val_str(Lit lit) const {
   if (values[lit] == F_TRI) return "FALSE";

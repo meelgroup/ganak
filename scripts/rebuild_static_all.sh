@@ -23,7 +23,7 @@ git checkout master
 cd ../../
 
 cd cryptominisat/build/
-git checkout synthesis
+git checkout master
 ./build_static.sh
 cd ../../
 
@@ -33,12 +33,12 @@ git checkout master
 cd ../../
 
 cd arjun/build/
-git checkout synthesis2
+git checkout master
 ./build_static.sh
 cd ../../
 
 cd approxmc/build/
-git checkout synthesis
+git checkout master
 rm -f build*.sh
 ln -s ../scripts/build_scripts/build_*.sh .
 ./build_static.sh

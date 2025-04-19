@@ -280,40 +280,42 @@ jobs:
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
 
+    - name: Test
+      run: ctest -C ${{matrix.build_type}} --verbose
+
     - name: Upload Artifact - Linux
       if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && !contains(matrix.os, 'arm')
       uses: actions/upload-artifact@v4
       with:
         name: ganak-linux-amd64
-        path: project/build/ganak
+        path: |
+          project/build/ganak
+          project/build/lib/*
 
     - name: Upload Artifact - Linux arm
       if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && contains(matrix.os, 'arm')
       uses: actions/upload-artifact@v4
       with:
         name: ganak-linux-arm64
-        path: project/build/ganak
+        path: |
+          project/build/ganak
+          project/build/lib/*
 
     - name: Upload Artifact - Mac Intel
       if: matrix.os == 'macos-13' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:
         name: ganak-mac-x86_64
-        path: project/build/ganak
+        path: |
+          project/build/ganak
+          project/build/lib/*
 
     - name: Upload Artifact - Mac Arm
       if: matrix.os == 'macos-14' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:
         name: ganak-mac-arm64
-        path: project/build/ganak
+        path: |
+          project/build/ganak
+          project/build/lib/*
 
-    - name: Upload Artifact - Windows
-      if: matrix.os == 'windows-2022' && matrix.staticcompile == 'ON'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ganak-win64.exe
-        path: project\build\Release\ganak.exe
-
-    - name: Test
-      run: ctest -C ${{matrix.build_type}} --verbose

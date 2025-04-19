@@ -100,9 +100,7 @@ set_target_properties(ganak PROPERTIES
 
 add_executable (ganak-bin main.cpp)
 add_executable (example example.cpp)
-set(ganak_exec_link_libs
-  ganak
-)
+set(ganak_exec_link_libs ganak)
 
 IF (ZLIB_FOUND)
     SET(ganak_exec_link_libs ${ganak_exec_link_libs} ${ZLIB_LIBRARY})

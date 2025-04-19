@@ -32,9 +32,9 @@ THE SOFTWARE.
 
 #include <iostream>
 #include <memory>
-#include <set>
 #include <vector>
 #include <string>
+#include <set>
 #include <iomanip>
 #include <gmpxx.h>
 #include <mpfr.h>
@@ -50,6 +50,8 @@ THE SOFTWARE.
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
+using std::set;
+using std::unordered_map;
 using namespace GanakInt;
 
 #if defined(__GNUC__) && defined(__linux__)
@@ -69,9 +71,9 @@ using namespace GanakInt;
 
 using std::string;
 using std::vector;
-argparse::ArgumentParser program = argparse::ArgumentParser("ganak");
-
-using namespace std;
+argparse::ArgumentParser program = argparse::ArgumentParser("ganak",
+        GANAK::get_version_sha1(),
+        argparse::default_arguments::help);
 CounterConfiguration conf;
 int arjun_verb = 1;
 int do_arjun = 1;

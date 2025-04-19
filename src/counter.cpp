@@ -841,22 +841,26 @@ FF Counter::outer_count() {
 
     // Add cubes to count, Ganak & CMS
     auto cubes_cnt_this_rst = fg->zero();
+    uint32_t num_cubes_final_this_rst = 0;
     for(const auto&c: cubes) {
       if (!c.enabled) continue;
+      num_cubes_final_this_rst++;
       *cnt += *c.cnt;
       *cubes_cnt_this_rst += *c.cnt;
       sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       stats.num_cubes_final++;
     }
-    if (conf.verb >= 2 || stats.num_cache_look_ups > next_rst_print) {
-      next_rst_print = stats.num_cache_look_ups + (1ULL*1000LL*1000LL);
+    /* if (conf.verb >= 2 || stats.num_cache_look_ups > next_rst_print) { */
+      /* next_rst_print = stats.num_cache_look_ups + (1ULL*1000LL*1000LL); */
       verb_print(1,"[rst-cube] Num restarts: " << stats.num_restarts
           << " orig cubes this rst: " << cubes.size()
+          << " final cubes this rst: " << num_cubes_final_this_rst
           << " total orig cubes: " << stats.num_cubes_orig
           << " total final cubes: " << stats.num_cubes_final
-          << " total so far: " << *cnt
-          << " this rst: " << *cubes_cnt_this_rst);
-    }
+          /* << " total so far: " << *cnt */
+          /* << " this rst: " << *cubes_cnt_this_rst */
+          );
+    /* } */
 
     ret = sat_solver->solve();
     if (ret == CMSat::l_False) {done = true; break;}

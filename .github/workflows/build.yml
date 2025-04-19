@@ -17,8 +17,6 @@ jobs:
         os: [ubuntu-latest, macos-14, ubuntu-24.04-arm, macos-13]
         build_type: [Release]
         staticcompile: [ON, OFF]
-        c_compiler: [gcc]
-        cpp_compiler: [g++]
 
     steps:
     - uses: actions/setup-python@v5
@@ -132,7 +130,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: msoos/cryptominisat
-        ref: synthesis
+        ref: master
         path: cryptominisat
         submodules: 'true'
     - name: Build CMS
@@ -219,7 +217,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/arjun
-        ref: synthesis2
+        ref: master
         path: arjun
     - name: Build arjun
       run: |
@@ -240,7 +238,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/approxmc
-        ref: synthesis
+        ref: master
         path: approxmc
         submodules: 'true'
     - name: Build approxmc

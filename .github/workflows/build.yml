@@ -93,7 +93,6 @@ jobs:
         repository: meelgroup/cadical
         ref: add_dynamic_lib
         path: cadical
-
     - name: Build Cadical
       run: |
         cd cadical
@@ -107,7 +106,6 @@ jobs:
         repository: meelgroup/cadiback
         ref: synthesis
         path: cadiback
-
     - name: Build Cadiback
       run: |
         cd cadiback
@@ -121,7 +119,6 @@ jobs:
         repository: meelgroup/breakid
         ref: master
         path: breakid
-
     - name: Build Breakid
       run: |
         cd breakid
@@ -138,7 +135,6 @@ jobs:
         ref: synthesis
         path: cryptominisat
         submodules: 'true'
-
     - name: Build CMS
       run: |
         cd cryptominisat
@@ -153,7 +149,6 @@ jobs:
         repository: meelgroup/SBVA
         ref: master
         path: sbva
-
     - name: Build SBVA
       run: |
         cd sbva
@@ -267,7 +262,6 @@ jobs:
       with:
         path: project
         submodules: 'true'
-
     - name: Build project
       run: |
         cd project

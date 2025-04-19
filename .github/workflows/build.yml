@@ -174,8 +174,8 @@ jobs:
         mkdir build
         cd build
         cmake -DJUST_INSTALL_CEREAL=ON ..
-        make -j6
-        sudo make install
+        cmake --build . --config ${{matrix.build_type}} -v
+        sudo cmake --install . --config ${{matrix.build_type}} -v
         cd ..
 
     - name: Checkout armadillo
@@ -201,7 +201,7 @@ jobs:
         cd build
         cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
         cmake --build . --config ${{matrix.build_type}} -v
-        sudo make install
+        sudo cmake --install . --config ${{matrix.build_type}} -v
         cd ../..
 
     - name: Checkout mlpack
@@ -217,7 +217,7 @@ jobs:
         cd build
         cmake -DBUILD_SHARED_LIBS=ON -DBUILD_CLI_EXECUTABLES=OFF ..
         cmake --build . --config ${{matrix.build_type}} -v
-        sudo make install
+        sudo cmake --install . --config ${{matrix.build_type}} -v
         cd ../..
 
     - name: Checkout arjun

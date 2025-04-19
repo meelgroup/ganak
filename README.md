@@ -18,8 +18,7 @@ nix-shell
 ```
 
 If this is somehow not what you want, you can also build it. See the GitHub
-Action for the specific set of steps.
-find a detailed set of instructions.
+Action for the specific set of steps. find a detailed set of instructions.
 
 ## Usage
 Ganak takes a CNF in a special, DIMACS-like format as specified by the

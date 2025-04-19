@@ -19,10 +19,6 @@
 # THE SOFTWARE.
 
 cmake_minimum_required (VERSION 3.29 FATAL_ERROR)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
 message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
@@ -83,6 +79,10 @@ foreach (build_config ${build_types})
 endforeach()
 
 project (ganak)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 enable_language( CXX )
 enable_language( C )
 include (GenerateExportHeader)

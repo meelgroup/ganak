@@ -291,7 +291,6 @@ endif()
 
 if (NOT WIN32)
     MESSAGE(STATUS "${CMAKE_C_FLAGS}")
-    add_c_flag_if_supported("-std=c99")
     add_c_flag_if_supported("-Wall")
     add_c_flag_if_supported("-msse4.2")
     add_c_flag_if_supported("-mpclmul")

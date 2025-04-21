@@ -23,10 +23,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install python dependencies
-      run: |
-        pip install numpy lit
-
     - name: Install gmp for Mac
       if: contains(matrix.os, 'macos')
       run: |
@@ -263,6 +259,7 @@ jobs:
         cmake \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -DENABLE_TESTING=OFF \
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
 

@@ -274,6 +274,7 @@ jobs:
         path: |
           project/build/ganak
           project/build/lib/*
+          project/build/include/*
 
     - name: Upload Artifact - Linux arm
       if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && contains(matrix.os, 'arm')
@@ -283,6 +284,7 @@ jobs:
         path: |
           project/build/ganak
           project/build/lib/*
+          project/build/include/*
 
     - name: Upload Artifact - Mac Intel
       if: matrix.os == 'macos-13' && matrix.staticcompile == 'ON'
@@ -292,6 +294,7 @@ jobs:
         path: |
           project/build/ganak
           project/build/lib/*
+          project/build/include/*
 
     - name: Upload Artifact - Mac Arm
       if: matrix.os == 'macos-14' && matrix.staticcompile == 'ON'
@@ -301,4 +304,5 @@ jobs:
         path: |
           project/build/ganak
           project/build/lib/*
+          project/build/include/*
 

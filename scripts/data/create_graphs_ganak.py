@@ -62,7 +62,7 @@ if sys.argv[1] == "--numbers":
 
     with open("gen_table.sqlite", "w") as f:
       f.write(".mode table\n")
-      dir="out-also-extend-d-set"
+      dir="out-ganak-also-extend-d-set"
       f.write("select 'data'");
       for col,col2 in [("indep_sz", "med S-set"), ("opt_indep_sz", "med D-set"), ("new_nvars", "med num vars after simp")]:
         f.write(", (SELECT "+col+" as 'median_"+col+"'\

@@ -6,7 +6,7 @@ import re
 import sys
 
 if len(sys.argv) < 2:
-    print("ERROR: must call with --proj/--unproj/--all/--ganak/--example")
+    print("ERROR: must call with --proj/--unproj/--all/--ganak/--example/--numbers")
     exit(-1)
 fname_like = ""
 # 20 examples

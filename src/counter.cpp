@@ -823,7 +823,7 @@ FF Counter::outer_count() {
   auto ret = sat_solver->solve();
 
   start_time = cpu_time();
-  uint32_t next_rst_print = 0;
+  /* uint32_t next_rst_print = 0; */
   bool done = false;
   while(ret == CMSat::l_True) {
     auto cubes = one_restart_count();

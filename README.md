@@ -1,9 +1,11 @@
 # Ganak2, A Probabilistic Exact Model Counter
 Ganak takes in a CNF formula and returns `count` such that `count` is the
-number of solutions of `F` with confidence at least `1 - delta`. Delta is fixed to
-approx 2^-40.
+number of solutions of `F` with confidence at least `1 - delta`. Delta is fixed
+to approx 2^-40.
 
-To read more about technical algorithms in Ganak, please refer to [our paper](https://www.cs.toronto.edu/~meel/Papers/ijcai19srsm.pdf)
+To read more about Ganak-specific ideas, please refer to [our
+paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that
+-Ganak employs many ideas by many people. See AUTHORS for a list.
 
 ## Building
 Use of the [release binaries](https://github.com/meelgroup/ganak/releases) is
@@ -15,12 +17,14 @@ git clone https://github.com/meelgroup/ganak
 nix-shell
 ```
 
-If this is somehow not what you want, you can also build it. See the GitHub
-Action for the specific set of steps. find a detailed set of instructions.
+If this is somehow not what you want, you can also build it. See the [GitHub
+Action](https://github.com/meelgroup/ganak/actions/workflows/build.yml) for the
+specific set of steps.
 
 ## Usage
-Ganak takes a CNF in a special, DIMACS-like format as specified by the
-model counting competition [guidelines](https://mccompetition.org/assets/files/mccomp_format_24.pdf).
+Ganak takes a CNF in a special, DIMACS-like format as specified by the model
+counting competition
+[guidelines](https://mccompetition.org/assets/files/mccomp_format_24.pdf).
 Basically, the format is as follows:
 ```plaintext
 c t pwmc

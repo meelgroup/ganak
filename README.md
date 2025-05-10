@@ -1,7 +1,8 @@
 # Ganak2, A Probabilistic Exact Model Counter
-Ganak takes in a CNF formula and returns `count` such that `count` is the
-number of solutions of `F` with confidence at least `1 - delta`. Delta is fixed
-to approx 2^-40.
+Ganak is a state-of-the art probabilistic exact model counter that won _all_
+available awards at the 2024 Model Counting Competition. It can count over ANY
+field, including but not limited to integers, rationals, complex numbers,
+integers modulo prime, and polynomials over a finite field.
 
 To read more about Ganak-specific ideas, please refer to [our
 paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that
@@ -9,7 +10,7 @@ paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that
 
 ## Building
 Use of the [release binaries](https://github.com/meelgroup/ganak/releases) is
-strongly encouraged, as Ganak requires a specific set of libraries to be
+_strongly_ encouraged, as Ganak requires a specific set of libraries to be
 installed. The second best thing to use is Nix. Simply [install
 nix](https://nixos.org/download/) and then:
 ```plaintext
@@ -48,6 +49,33 @@ count, i.e. all variables are assumed to be in the projection set.
 Beware to ALWAYS give the weight of both the literal and its negation or
 different counters may give different results.
 
+## Different Modes of Counting
+Ganak supports many different ways of counting:
+- For counting over integers, the default mode `--mode 0` works. Here, you can
+  even run approximate counting after some timeout, with e.g `--appmct 1000`
+  which will automatically switch over to approximate counting after 1000s of
+  preprocessing and Ganak.
+- For counting over rationals, you can use `--mode 1` which will give you a
+  precise count, without _any_ floating point errors.
+- For counting over the complex field, you need to specify the weight of the
+  literal as a complex number and pass the `--mode 2` flag. For example, if you
+  want to give the weight 1/2 + 4i for literal 9, you can specify the weight as
+  `c p weight 9 1/2 4 0`.
+- For counting over polynomials over a finite field, you can use `--mode 3`
+  which will give you a polynomial count. The weight of the literal is given as
+  `c p weight 9 1/2*x0+4x1+2 0` which means the weight of literal 9 is
+  `1/2*x_0 + 4*x_1+2`. In this mode you MUST specify the number of polynomial
+  variables via `--npolyvars N`
+- For parity counting, you can use the `--mode 4` flag. This will
+  count the number of solutions modulo 2
+- For counting over integers modulo a prime, you can use `--mode 5 --prime X`,
+  where X is the prime.
+
+You can also write your own field by implementing the `Field` and `FieldGen`
+interfaces. Absolutely _any_ field will work, and it's as easy as implementing
++/-/* and / operators, and the 0 and 1 constants.
+
+## Complex Numbers
 We can now count the number of solutions of the above formula using Ganak:
 ```shell
 $ ganak --verb 0 --mode 1 a.cnf

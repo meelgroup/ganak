@@ -3,9 +3,7 @@ Ganak takes in a CNF formula and returns `count` such that `count` is the
 number of solutions of `F` with confidence at least `1 - delta`. Delta is fixed to
 approx 2^-40.
 
-To read more about Ganak-specific ideas, please refer to [our
-paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that
-Ganak employs many ideas by many people. See AUTHORS for a list.
+To read more about technical algorithms in Ganak, please refer to [our paper](https://www.cs.toronto.edu/~meel/Papers/ijcai19srsm.pdf)
 
 ## Building
 Use of the [release binaries](https://github.com/meelgroup/ganak/releases) is

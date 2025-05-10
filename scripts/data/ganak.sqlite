@@ -1,0 +1,72 @@
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (
+  solver STRING NOT NULL,
+  dirname STRING NOT NULL,
+  fname STRING NOT NULL,
+
+  mem_out INT,
+  ganak_time FLOAT,
+  ganak_mem_MB FLOAT,
+  ganak_call TEXT NOT NULL,
+  page_faults INT NOT NULL,
+  signal INT,
+  ganak_ver TEXT NOT NULL,
+  conflicts INT,
+  decisionsK INT,
+  compsK INT,
+  primal_density FLOAT,
+  primal_edge_var_ratio FLOAT,
+  td_width INT,
+  td_time FLOAT,
+  arjun_time FLOAT,
+  backbone_time FLOAT,
+  backward_time FLOAT,
+  indep_sz INT,
+  opt_indep_sz INT,
+  orig_proj_sz INT,
+  new_nvars INT,
+  unkn_sz INT,
+  cache_del_time FLOAT,
+  cache_miss_rate FLOAT,
+  bdd_called INT,
+  sat_called INT,
+  sat_rst INT,
+  restarts INT,
+  cubes_orig INT,
+  cubes_final INT,
+  gates_extended INT,
+  gates_extend_t INT,
+  padoa_extended INT,
+  padoa_extend_t INT
+);
+. mode csv
+. import -skip 1 mydata.csv data
+UPDATE data SET ganak_time = NULL WHERE ganak_time = '';
+UPDATE data SET signal = NULL WHERE signal = '';
+UPDATE data SET conflicts = NULL WHERE conflicts = '';
+UPDATE data SET decisionsK = NULL WHERE decisionsK = '';
+UPDATE data SET compsK = NULL WHERE compsK = '';
+UPDATE data SET primal_density = NULL WHERE primal_density = '';
+UPDATE data SET primal_edge_var_ratio = NULL WHERE primal_edge_var_ratio = '';
+UPDATE data SET td_width = NULL WHERE td_width = '';
+UPDATE data SET td_time = NULL WHERE td_time = '';
+UPDATE data SET arjun_time = NULL WHERE arjun_time = '';
+UPDATE data SET backbone_time = NULL WHERE backbone_time = '';
+UPDATE data SET backward_time = NULL WHERE backward_time = '';
+UPDATE data SET indep_sz = NULL WHERE indep_sz = '';
+UPDATE data SET opt_indep_sz = NULL WHERE opt_indep_sz = '';
+UPDATE data SET orig_proj_sz = NULL WHERE orig_proj_sz = '';
+UPDATE data SET new_nvars = NULL WHERE new_nvars = '';
+UPDATE data SET unkn_sz = NULL WHERE unkn_sz = '';
+UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
+UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
+UPDATE data SET sat_called = NULL WHERE sat_called = '';
+UPDATE data SET sat_rst = NULL WHERE sat_rst = '';
+UPDATE data SET restarts = NULL WHERE restarts = '';
+UPDATE data SET cubes_orig = NULL WHERE cubes_orig = '';
+UPDATE data SET cubes_final = NULL WHERE cubes_final = '';
+UPDATE data SET cache_miss_rate = NULL WHERE cache_miss_rate = '';
+UPDATE data SET gates_extended = NULL WHERE gates_extended = '';
+UPDATE data SET gates_extend_t = NULL WHERE gates_extend_t = '';
+UPDATE data SET padoa_extended = NULL WHERE padoa_extended = '';
+UPDATE data SET padoa_extend_t = NULL WHERE padoa_extend_t = '';

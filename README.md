@@ -1,52 +1,63 @@
-# GANAK- A Probabilistic Exact Model Counter
-GANAK  takes in a CNF formula `F` and a confidence `delta` as input and returns `count` such that `count` is the number of solutions of `F` with confidence at least `1 - delta`. GANAK supports projected model counting (see below). 
+# Ganak2, A Probabilistic Exact Model Counter
+Ganak takes in a CNF formula and returns `count` such that `count` is the
+number of solutions of `F` with confidence at least `1 - delta`. Delta is fixed to
+approx 2^-40.
 
-To read more about technical algorithms in Ganak, please refer to [our paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf) 
+To read more about Ganak-specific ideas, please refer to [our
+paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that
+Ganak employs many ideas by many people. See AUTHORS for a list.
 
-## Installation
-
-### Compiling in Linux
-
-To build ganak, issue:
-
-```bash
-sudo apt-get install libgmp-dev libmpfr-dev libmpc-dev
+## Building
+Use of the [release binaries](https://github.com/meelgroup/ganak/releases) is
+strongly encouraged, as Ganak requires a specific set of libraries to be
+installed. The second best thing to use is Nix. Simply [install
+nix](https://nixos.org/download/) and then:
+```plaintext
 git clone https://github.com/meelgroup/ganak
-mkdir build && cd build
-cmake ..
-make
+nix-shell
 ```
 
-For Mac, pass option `cmake -DDOPCC=OFF ...` to cmake
+If this is somehow not what you want, you can also build it. See the GitHub
+Action for the specific set of steps. find a detailed set of instructions.
 
-### Model Counting
+## Usage
+Ganak takes a CNF in a special, DIMACS-like format as specified by the
+model counting competition [guidelines](https://mccompetition.org/assets/files/mccomp_format_24.pdf).
+Basically, the format is as follows:
+```plaintext
+c t pwmc
+p cnf 3 2
+c p weight 1 0.3 0
+c p weight -1 0.8 0
+1 2 3 0
+-1 2 0
+c p show 1 2 0
+```
+The first line says it's a projected weighted model counting instance. The
+second line says it has 3 variables and 2 clauses. The third and fourth lines
+specify the weights of the variables 1. The weight of the literal 1 is 0.3 and
+the weight of the literal -1 is 0.8. The weight of all unspecified variables is
+1 for both positive and negative literals.
 
-To count, run:
+The last line says that the projection set of the counter is only variables 1
+and 2. If no projection set is given, then the counter does an unprojected
+count, i.e. all variables are assumed to be in the projection set.
 
-```bash
-cd build
-./ganak myfile.cnf
+Beware to ALWAYS give the weight of both the literal and its negation or
+different counters may give different results.
+
+We can now count the number of solutions of the above formula using Ganak:
+```shell
+$ ganak --verb 0 --mode 1 a.cnf
+c o Total time [Arjun+GANAK]: 0.00
+s SATISFIABLE
+c s exact arb float 1.8999e+00
+c o exact arb 19/10
 ```
 
-### Projected Model Counting
-For some applications, one is not interested in solutions over all the variables and instead interested in counting the number of unique solutions to a subset of variables, called sampling set. GANAK allows you to specify the sampling set using the following modified version of DIMACS format:
-
-```
-$ cat myfile.cnf
-p cnf 500 1
-c ind 1 3 4 6 7 8 10 0
-3 4 0
-```
-Above, using the `c ind` line, we declare that only variables 1, 3, 4, 6, 7, 8 and 10 form part of the sampling set out of the CNF's 500 variables `1,2...500`. This line must end with a 0. The solution that GANAK will be giving is essentially answering the question: how many different combination of settings to this variables are there that satisfy this problem? Naturally, if your sampling set only contains e.g. 7 variables, then the maximum number of solutions can only be at most `2**7 = 128`. This is true even if your CNF has thousands of variables. Here, we only have `2**5*3` solutions however, since we ban `-3,-4` solution from the tuple `(3,4)`.
-
-Note: By default if sampling set is present ganak will do projected model counting, to turn off projected model counting use the -noPMC flag.
-
-## Benchmarks
-Few toy benchmarks are given in benchmarks directory. Full list of benchmarks used for our experiments is available [here](https://drive.google.com/file/d/15dUJI55drFH_0-4-qWjoF_YR0amb3xnK/view?usp=sharing)
-
-
-## Issues, questions, bugs, etc.
-Please click on "issues" at the top and [create a new issue](https://github.com/meelgroup/ganak/issues). All issues are responded to promptly.
+We need to pass `--mode 1` because it's a weighted model counting instance. The count
+is presented both in a floating point format and as a fraction. The fraction is
+always precise.
 
 ## How to Cite
 ```
@@ -58,9 +69,3 @@ month={8},
 year={2019}
 }
 ```
-
-## Contributors
-  * Shubham Sharma (sharma.shubham736@gmail.com)
-  * Mate Soos (soos.mate@gmail.com)
-  * Subhajit Roy (subhajit@iitk.ac.in)
-  * Kuldeep Meel (meel@comp.nus.edu.sg)

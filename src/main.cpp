@@ -571,11 +571,11 @@ int main(int argc, char *argv[])
     }
   }
 
-
   if (cnf.get_weighted() && conf.do_buddy) {
     cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
     exit(-1);
   }
+  cnf.check_sanity();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun

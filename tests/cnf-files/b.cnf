@@ -2,9 +2,9 @@ c c RUN: %solver --mode 1 %s | %OutputCheck %s
 p cnf 2 1
 c t wpmc
 1 0
-c p show 1 0
+c p show 1 2 0
 c p weight 2 1.2e+3 0
 c p weight -2 1.2e+3 0
 c p weight 1 1.2e+3 0
 c c CHECK: ^s SATISFIABLE$
-c c CHECK: ^c s exact arb float 1.20*e\+03$
+c c CHECK: ^c s exact arb float 2.8.*$

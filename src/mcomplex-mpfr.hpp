@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "arjun/arjun.h"
+#include <arjun/arjun.h>
 #include <cryptominisat5/solvertypesmini.h>
 #include <gmpxx.h>
 #include <memory>

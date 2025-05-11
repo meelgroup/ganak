@@ -1,3 +1,0 @@
-CompileFlags:                     # Tweak the parse settings
-  Add: [-xc++, -Wall]             # treat all files as C++, enable more warnings
-  Compiler: clang++               # Change argv[0] of compile flags to `clang++`

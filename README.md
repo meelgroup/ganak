@@ -15,8 +15,11 @@ installed. The second best thing to use is Nix. Simply [install
 nix](https://nixos.org/download/) and then:
 ```plaintext
 git clone https://github.com/meelgroup/ganak
+cd ganak
 nix-shell
 ```
+
+Then you will have `ganak` binary available and ready to use.
 
 If this is somehow not what you want, you can also build it. See the [GitHub
 Action](https://github.com/meelgroup/ganak/actions/workflows/build.yml) for the

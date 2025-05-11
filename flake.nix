@@ -3,11 +3,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     arjun = {
-      url = "github:meelgroup/arjun/synthesis2";
+      url = "github:meelgroup/arjun/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cryptominisat = {
-      url = "github:msoos/cryptominisat/synthesis";
+      url = "github:msoos/cryptominisat/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sbva = {
@@ -15,7 +15,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     approxmc = {
-      url = "github:meelgroup/approxmc/synthesis";
+      url = "github:meelgroup/approxmc/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     breakid = {

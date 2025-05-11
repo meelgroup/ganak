@@ -10,16 +10,16 @@
         "sbva": "sbva_2"
       },
       "locked": {
-        "lastModified": 1742128348,
-        "narHash": "sha256-0Rq6BxEhABw4nOJ3wrJVuFgzBs1NOJxnZlcV97GCky0=",
+        "lastModified": 1746977533,
+        "narHash": "sha256-Dn/nZ4w4fPR66bXkxdebczmu7DGUv7J/+FZyNJ/w5gw=",
         "owner": "meelgroup",
         "repo": "approxmc",
-        "rev": "fca0b991f03f5833b85c2217517d384e0cc0baa7",
+        "rev": "17bee6dfa629a0b966ef6dddcbfb0fcc1b76bcc6",
         "type": "github"
       },
       "original": {
         "owner": "meelgroup",
-        "ref": "synthesis",
+        "ref": "master",
         "repo": "approxmc",
         "type": "github"
       }
@@ -36,16 +36,16 @@
         "sbva": "sbva"
       },
       "locked": {
-        "lastModified": 1742128110,
-        "narHash": "sha256-iNh6BTmywhurF1gYg/gcdTeB7zG9Sl2jW9OAq4z7dhc=",
+        "lastModified": 1746976903,
+        "narHash": "sha256-Bqn5Dkv2IN1x+G0wYeFm2eoF2t7vWaOlTtPIil7cFJg=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "4dc67add8647da0b0bf5842e7f2dc5399ae257b9",
+        "rev": "991ef807141deaa6d321d6c4036b75aa1cbf62f4",
         "type": "github"
       },
       "original": {
         "owner": "meelgroup",
-        "ref": "synthesis2",
+        "ref": "master",
         "repo": "arjun",
         "type": "github"
       }
@@ -61,16 +61,16 @@
         "sbva": "sbva_3"
       },
       "locked": {
-        "lastModified": 1742128110,
-        "narHash": "sha256-iNh6BTmywhurF1gYg/gcdTeB7zG9Sl2jW9OAq4z7dhc=",
+        "lastModified": 1746976903,
+        "narHash": "sha256-Bqn5Dkv2IN1x+G0wYeFm2eoF2t7vWaOlTtPIil7cFJg=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "4dc67add8647da0b0bf5842e7f2dc5399ae257b9",
+        "rev": "991ef807141deaa6d321d6c4036b75aa1cbf62f4",
         "type": "github"
       },
       "original": {
         "owner": "meelgroup",
-        "ref": "synthesis2",
+        "ref": "master",
         "repo": "arjun",
         "type": "github"
       }
@@ -225,11 +225,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1742124943,
-        "narHash": "sha256-i1S5+YhYQPIod4jnkdMDHlzIHqvZaZfyN8Sa+HVoRks=",
+        "lastModified": 1746897066,
+        "narHash": "sha256-Uut5yRINTkvX91jYKR4MnWhorYiiqeb2+erWmaQu3q0=",
         "owner": "meelgroup",
         "repo": "cadiback",
-        "rev": "c24a73f62da2f984df6d3f1cf37283b1ca1c9f9e",
+        "rev": "bd1aa18a5f4d028e3075b50aa1051d883f386a0c",
         "type": "github"
       },
       "original": {
@@ -295,11 +295,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1742124921,
-        "narHash": "sha256-zJi1YgOmmqfLCbL1nCQ0qmjwvy9xhKMAOI9Udqi/tBQ=",
+        "lastModified": 1746895627,
+        "narHash": "sha256-26SEMdfn/UHP9CL6FGPK9gv+Ee0Rvs2sfhenFdKBrQ4=",
         "owner": "meelgroup",
         "repo": "cadical",
-        "rev": "8fcb8139c453e7cb85c470cea5d783db8e229518",
+        "rev": "41a2b00be9d28c49fce221f883c67bd6ed2dc7bf",
         "type": "github"
       },
       "original": {
@@ -317,11 +317,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1742124921,
-        "narHash": "sha256-zJi1YgOmmqfLCbL1nCQ0qmjwvy9xhKMAOI9Udqi/tBQ=",
+        "lastModified": 1746895627,
+        "narHash": "sha256-26SEMdfn/UHP9CL6FGPK9gv+Ee0Rvs2sfhenFdKBrQ4=",
         "owner": "meelgroup",
         "repo": "cadical",
-        "rev": "8fcb8139c453e7cb85c470cea5d783db8e229518",
+        "rev": "41a2b00be9d28c49fce221f883c67bd6ed2dc7bf",
         "type": "github"
       },
       "original": {
@@ -530,16 +530,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742125330,
-        "narHash": "sha256-neW9yD6eJuBj6LL3/2sFh3uEwRyWhp6OLuVsqKzUDhQ=",
+        "lastModified": 1746974607,
+        "narHash": "sha256-48hcrmWMWTN3VHWwfFHdWJ2fG4v1mt/kXT4OkU7aWlY=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "7bafb07aebb273bf8404212387b47dbe0ee191e9",
+        "rev": "b8d8f43d3aba2687ae7092cf82a403dbd18540a3",
         "type": "github"
       },
       "original": {
         "owner": "msoos",
-        "ref": "synthesis",
+        "ref": "master",
         "repo": "cryptominisat",
         "type": "github"
       }
@@ -554,16 +554,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742125330,
-        "narHash": "sha256-neW9yD6eJuBj6LL3/2sFh3uEwRyWhp6OLuVsqKzUDhQ=",
+        "lastModified": 1746974607,
+        "narHash": "sha256-48hcrmWMWTN3VHWwfFHdWJ2fG4v1mt/kXT4OkU7aWlY=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "7bafb07aebb273bf8404212387b47dbe0ee191e9",
+        "rev": "b8d8f43d3aba2687ae7092cf82a403dbd18540a3",
         "type": "github"
       },
       "original": {
         "owner": "msoos",
-        "ref": "synthesis",
+        "ref": "master",
         "repo": "cryptominisat",
         "type": "github"
       }
@@ -578,16 +578,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742125330,
-        "narHash": "sha256-neW9yD6eJuBj6LL3/2sFh3uEwRyWhp6OLuVsqKzUDhQ=",
+        "lastModified": 1746974607,
+        "narHash": "sha256-48hcrmWMWTN3VHWwfFHdWJ2fG4v1mt/kXT4OkU7aWlY=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "7bafb07aebb273bf8404212387b47dbe0ee191e9",
+        "rev": "b8d8f43d3aba2687ae7092cf82a403dbd18540a3",
         "type": "github"
       },
       "original": {
         "owner": "msoos",
-        "ref": "synthesis",
+        "ref": "master",
         "repo": "cryptominisat",
         "type": "github"
       }
@@ -601,16 +601,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742125330,
-        "narHash": "sha256-neW9yD6eJuBj6LL3/2sFh3uEwRyWhp6OLuVsqKzUDhQ=",
+        "lastModified": 1746974607,
+        "narHash": "sha256-48hcrmWMWTN3VHWwfFHdWJ2fG4v1mt/kXT4OkU7aWlY=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "7bafb07aebb273bf8404212387b47dbe0ee191e9",
+        "rev": "b8d8f43d3aba2687ae7092cf82a403dbd18540a3",
         "type": "github"
       },
       "original": {
         "owner": "msoos",
-        "ref": "synthesis",
+        "ref": "master",
         "repo": "cryptominisat",
         "type": "github"
       }

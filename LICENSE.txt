@@ -1,11 +1,12 @@
-There is a BSD 2-style license for Flow Cutter and an MIT license for the rest of GANAK. Here, for completeness, both are present. First is GANAK, then Flow Cutter.
+There is a BSD 2-style license for Flow Cutter and an MIT license for the rest
+of Ganak. Here, for completeness, both are present.
 
-For the rest of GANAK:
+For the rest of Ganak:
 
------ All of GANAK without FLOW CUTTER code -----
+## All of Ganak without FLOW CUTTER code
 MIT License
 
-Copyright (c) 2018 Shubham Sharma, Subhajit Roy, Mate Soos, Kuldeep S. Meel 
+Copyright (c) 2018-2025 Mate Soos, Kuldeep S. Meel, Subhajit Roy, Shubham Sharma
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,8 +26,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
------ FLOW CUTTER code -----
-
+## FLOW CUTTER code
 Copyright (c) 2016, Ben Strasser
 All rights reserved.
 

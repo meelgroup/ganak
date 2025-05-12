@@ -12,7 +12,7 @@ The authors are:
 * TD search code by Ben Strasser. BSD2 license
 * Modifications to flow_cutter & 'GPMC' heuristic by Kenji Hashimoto
 * LBD idea by Simon and Audemard
-* clhash by Daniel Lemire and Owen Kaser, fixes by Alfons Laarman
+* chibihash by N-R-K, released to the public domain
 * VSIDS idea by Moskewicz, Zhao, Zhang, and Malik
 * VSADS by Tian Sang, Paul Beame, and Henry Kautz
 * CCAnr by Shaowei Cai, Chuan Luo, Kaile Su

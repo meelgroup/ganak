@@ -45,5 +45,4 @@ ln -s ../scripts/build_scripts/build_*.sh .
 cd ../../
 
 cd ganak/build/
-# git checkout nodonkey
 ./build_norm.sh

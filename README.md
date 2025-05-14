@@ -1,3 +1,6 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![build](https://github.com/meelgroup/ganak/workflows/build/badge.svg)
+
 # Ganak2, A Probabilistic Exact Model Counter
 Ganak is a state-of-the art probabilistic exact model counter that won _all_
 available awards at the 2024 Model Counting Competition. It can count over ANY
@@ -13,7 +16,7 @@ Use of the [release binaries](https://github.com/meelgroup/ganak/releases) is
 _strongly_ encouraged, as Ganak requires a specific set of libraries to be
 installed. The second best thing to use is Nix. Simply [install
 nix](https://nixos.org/download/) and then:
-```plaintext
+```shell
 git clone https://github.com/meelgroup/ganak
 cd ganak
 nix-shell

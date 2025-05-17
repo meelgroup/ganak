@@ -23,8 +23,6 @@ THE SOFTWARE.
 #pragma once
 
 #include <cstdint>
-#include <string>
-using std::string;
 
 namespace GanakInt {
 
@@ -72,7 +70,6 @@ struct CounterConfiguration {
   double act_score_divisor = 3.0;
   double freq_score_divisor = 25.0;
   uint32_t tot_used_cutoff_vivif = 50;
-
 
   bool do_td = 1;
   uint32_t td_varlim = 150000;

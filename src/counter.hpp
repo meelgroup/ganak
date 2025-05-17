@@ -46,6 +46,7 @@ THE SOFTWARE.
 using std::pair;
 using std::map;
 using std::unique_ptr;
+using std::string;
 
 namespace GanakInt {
 

@@ -489,6 +489,7 @@ only_dirs = [
             "out-ganak-mccomp2324-14362931-0", # new hash, timestamp archetype
             "out-ganak-mccomp2324-14366334-0", # update archetype only when sup comp has at least 20 vars that are still decidable
             "out-ganak-mccomp2324-14391524-", # changeable recompute archetype cutoff, better cache usage
+            "out-ganak-mccomp2324-14513393-0", # update arjun's order and add gate-based-eqlit, also fix gate-based-rem by not doing strengthening
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

@@ -181,7 +181,7 @@ def find_restarts(fname):
               n = int(line.split()[4])
 
             if "c o [rst-cube] Num restarts:" in line:
-              cubes = int(line.split()[14])
+              # cubes = int(line.split()[14])
               n = int(line.split()[5])
     return n,cubes_orig,cubes_final
 

@@ -575,6 +575,7 @@ int main(int argc, char *argv[])
     cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
     exit(-1);
   }
+  cnf.clean_idiotic_mccomp_weights();
   cnf.check_sanity();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 

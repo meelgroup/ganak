@@ -246,7 +246,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       << " counter->dec_lev(): " << counter->dec_level()
       << " counter->get_tstamp(holder.lev(v))): " << counter->get_tstamp(holder.lev(v))));
     if (holder.tstamp(v) < counter->get_tstamp(holder.lev(v))) {
-      holder.size_bin(v) = holder.orig_size_bin(v);
+      /* holder.size_bin(v) = holder.orig_size_bin(v); */
       holder.size_long(v) = holder.orig_size_long(v);
       stats.comps_reset++;
       reset = true;
@@ -296,14 +296,14 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
           bump_freq_score(v2);
           bump_freq_score(v);
         } else {
-          if (update) {
-            // it's satisfied
-            bins--;
-            bins_end--;
-            std::swap(*bins, *bins_end);
-            holder.size_bin(v)--;
-            analyze_verb(verb_debug("analyze remove bin, var: "<< *bins_end));
-          }
+          /* if (update) { */
+          /*   // it's satisfied */
+          /*   bins--; */
+          /*   bins_end--; */
+          /*   std::swap(*bins, *bins_end); */
+          /*   holder.size_bin(v)--; */
+          /*   analyze_verb(verb_debug("analyze remove bin, var: "<< *bins_end)); */
+          /* } */
         }
       }
     }

@@ -492,6 +492,7 @@ only_dirs = [
             # "out-ganak-mccomp2324-14513393-0", # update arjun's order and add gate-based-eqlit, also fix gate-based-rem by not doing strengthening
             # "out-ganak-mccomp2324-14513746-0", # back to previous, except the strengthening fix for gate-based-rem
             "out-ganak-mccomp2324-14519572-", # as previous 2, but fixed parsing of stupid weights
+            "out-ganak-mccomp2324-14528572-", # binaries in holder are no longer updated
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

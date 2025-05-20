@@ -306,9 +306,12 @@ def ganak_conflicts(fname):
     t = None
     cnt = None
     bdd_called = None
+    error = 0
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
+            if "ERROR" in line:
+              error = 1
             if "c Time" in line:
                 t = float(line.split()[2])
             elif "c o Total time [Arjun+GANAK]:" in line:
@@ -342,7 +345,7 @@ def ganak_conflicts(fname):
         aver = aver[:8]
     if cver is not None:
         cver = cver[:8]
-    return ["ganak", "%s-%s" % (aver,cver)], conflicts, decisionsK, t, cnt, bdd_called
+    return ["ganak", "%s-%s" % (aver,cver)], conflicts, decisionsK, t, cnt, bdd_called, error
 
 
 def ganak_version(fname):
@@ -399,11 +402,12 @@ for f in file_list:
 
     if  f.endswith(".out_ganak") or f.endswith(".out"):
         files[base]["solver"] = "ganak"
-        ver, conflicts, decisionsK, t, cnt, bdd_called = ganak_conflicts(f)
+        ver, conflicts, decisionsK, t, cnt, bdd_called, error = ganak_conflicts(f)
         files[base]["solverver"] = ver
         files[base]["decisionsK"] = decisionsK
         files[base]["conflicts"] = conflicts
         files[base]["bdd_called"] = bdd_called
+        files[base]["error"] = error
         arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t= find_arjun_time(f)
         files[base]["arjuntime"] = arjun_t
         files[base]["backboneT"] = backb_t

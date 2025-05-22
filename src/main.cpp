@@ -155,7 +155,7 @@ void add_ganak_options()
     myopt("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
     myopt("--bvegrowiter2", simp_conf.bve_grow_iter2, atoi, "Puura BVE growth allowance iter2");
     myopt("--extraoracle", simp_conf.oracle_extra, atoi, "Extra oracle at the end of puura");
-    myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Extra oracle at the end of puura");
+    myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
     myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
     myopt("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");

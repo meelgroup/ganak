@@ -144,6 +144,8 @@ void add_ganak_options()
     myopt("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
     myopt("--puura", do_puura, atoi, "Run Puura");
     myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
+    myopt("--arjuniter1", simp_conf.iter1, atoi, "Arjun's iter1");
+    myopt("--arjuniter2", simp_conf.iter2, atoi, "Arjun's iter2");
     myopt("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
     myopt("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
     myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");

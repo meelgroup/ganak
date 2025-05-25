@@ -496,7 +496,8 @@ only_dirs = [
             # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
             # "out-ganak-mccomp2324-14549970-1", # LTO
             # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
-            "out-ganak-mccomp2324-14558670-" # some stuff enabled previously for no flto
+            "out-ganak-mccomp2324-14558670-", # some stuff enabled previously for no flto
+            "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

@@ -67,9 +67,6 @@ double CompCache::calc_cutoff() const {
   return scores[scores.size() / 2];
 }
 
-// TODO: don't delete entries that have more than 100 children
-//       it will pile up and slow down the cache and cache deletion
-//       check out: out-ganak-mc2324-14063135-0/mc2023_track1_041.cnf.gz
 bool CompCache::delete_some_entries() {
   const auto start_del_time = cpu_time();
   double cutoff = calc_cutoff();

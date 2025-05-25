@@ -493,9 +493,10 @@ only_dirs = [
             # "out-ganak-mccomp2324-14513746-0", # back to previous, except the strengthening fix for gate-based-rem
             # "out-ganak-mccomp2324-14519572-", # as previous 2, but fixed parsing of stupid weights
             #"out-ganak-mccomp2324-14528572-", # binaries in holder are no longer updated
-            "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
-            "out-ganak-mccomp2324-14549970-1", # LTO
-            "out-ganak-mccomp2324-14552736-1", # no LTO, but some change (e.g. sandybridge etc)
+            # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
+            # "out-ganak-mccomp2324-14549970-1", # LTO
+            # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
+            "out-ganak-mccomp2324-14558670-" # some stuff enabled previously for no flto
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -670,7 +671,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][900:]\\\n")
+    f.write("plot [:400][:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

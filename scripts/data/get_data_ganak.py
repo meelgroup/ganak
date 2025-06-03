@@ -121,14 +121,17 @@ def find_arjun_time(fname):
               padoa_extended = final - orig
               padoa_extend_t = float(line.split()[14])
               # print ("padoa:", padoa_extended, padoa_extend_t)
-            if "Start unknown size" in line:
+            if "Start unknown size:" in line:
+              line = line.replace("c o ", "c ")
               line = ''.join(filter(lambda x:x in string.printable, line))
               line = line.replace("[0m", "")
-              unkn_sz = int(line.split()[6])
+              unkn_sz = int(line.split()[5])
             if  "backward round finished" in line:
+              line = line.replace("c o ", "c ")
               line = ''.join(filter(lambda x:x in string.printable, line))
               line = line.replace("[0m", "")
-              backw_t = float(line.split()[10])
+              # print("line:", line)
+              backw_t = float(line.split()[9])
             if  "% total" in line:
               if backb_t is None:
                 backb_t = float(line.split()[2])

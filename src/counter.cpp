@@ -543,7 +543,7 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
 }
 
 int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
-  verb_print(2, "[cube-ext] Trying to remove " << torem << " from cube " << c);
+  verb_print(3, "[cube-ext] Trying to remove " << torem << " from cube " << c);
 
   // Prop all but torem
   for(const auto& l: c.cnf) {

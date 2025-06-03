@@ -10,11 +10,11 @@
         "sbva": "sbva_2"
       },
       "locked": {
-        "lastModified": 1747182537,
-        "narHash": "sha256-1mbsStFnsMiM383p6GEBO+ZNahbYFDBGeHIPZYhj+no=",
+        "lastModified": 1747674348,
+        "narHash": "sha256-IZm8wvGo7JFGadbY/GDihp8CutPC/7FdWm5CHkh/whg=",
         "owner": "meelgroup",
         "repo": "approxmc",
-        "rev": "014372559a6e2f7ca48e3955183ccc1ab6adf8bd",
+        "rev": "baa5f704a5ed80b2ab7a958187b7a42e02017c27",
         "type": "github"
       },
       "original": {
@@ -61,11 +61,11 @@
         "sbva": "sbva_3"
       },
       "locked": {
-        "lastModified": 1747182456,
-        "narHash": "sha256-Pv42kGgDNLL2qzhaGMBK4xY3wkymi3AvpO1QtDPRYIs=",
+        "lastModified": 1748957624,
+        "narHash": "sha256-PpFZPiVtYszRip8Cg5+eXON4+s1P1zg29VSeaqMV6Mk=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "37e16d24efc29d1734ef3d89c3438d79097104a3",
+        "rev": "65a359d3ca0a0247d3fb21734ecdd94f892cece1",
         "type": "github"
       },
       "original": {
@@ -82,11 +82,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1747182889,
-        "narHash": "sha256-cA48Q909i18fGpoN84rDe3sOCqH0nK/J/OR1+RZYVZY=",
+        "lastModified": 1747674632,
+        "narHash": "sha256-rth4Nw6uoIpzCUgV0WPZfYTUZFoYDXBSbwGew0Y4M9Q=",
         "owner": "meelgroup",
         "repo": "breakid",
-        "rev": "b8813847ca819a12389189e96a3f953fc4fafc98",
+        "rev": "229da25440fb86dc2f9e0bc2d3f11490076dc9c1",
         "type": "github"
       },
       "original": {
@@ -578,11 +578,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1747182427,
-        "narHash": "sha256-R3fiiBEzeZuVwATdJowcW4TZQ/yIL+f66CuMhpZtkI0=",
+        "lastModified": 1748183300,
+        "narHash": "sha256-m5cEEIv0F8zYobb9fq2tjMLxxKpANyc2Tad4nhG4Y+s=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "5de4cddfefda8fea03e719b2559c21764b036b99",
+        "rev": "fa022940b338d664efe2bce4a1be3edcfaf49c70",
         "type": "github"
       },
       "original": {
@@ -601,11 +601,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1747182427,
-        "narHash": "sha256-R3fiiBEzeZuVwATdJowcW4TZQ/yIL+f66CuMhpZtkI0=",
+        "lastModified": 1748183300,
+        "narHash": "sha256-m5cEEIv0F8zYobb9fq2tjMLxxKpANyc2Tad4nhG4Y+s=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "5de4cddfefda8fea03e719b2559c21764b036b99",
+        "rev": "fa022940b338d664efe2bce4a1be3edcfaf49c70",
         "type": "github"
       },
       "original": {
@@ -617,11 +617,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1747060738,
-        "narHash": "sha256-ByfPRQuqj+nhtVV0koinEpmJw0KLzNbgcgi9EF+NVow=",
+        "lastModified": 1748856973,
+        "narHash": "sha256-RlTsJUvvr8ErjPBsiwrGbbHYW8XbB/oek0Gi78XdWKg=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "eaeed9530c76ce5f1d2d8232e08bec5e26f18ec1",
+        "rev": "e4b09e47ace7d87de083786b404bf232eb6c89d8",
         "type": "github"
       },
       "original": {
@@ -694,11 +694,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1745248305,
-        "narHash": "sha256-7iHJxkNwq65oCpSG6mqtEsdiF5X9Cx5cOTiwkEgqGbo=",
+        "lastModified": 1747182595,
+        "narHash": "sha256-J93nY4cC0hRZNpK3DXcS5Tb46IGuZJxstUHVSeUg6QM=",
         "owner": "meelgroup",
         "repo": "sbva",
-        "rev": "6dc05afe9424bd04cd3beba50b919fde2754a637",
+        "rev": "18d080e656305261c696370f02251e57835db73a",
         "type": "github"
       },
       "original": {

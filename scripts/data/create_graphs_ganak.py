@@ -443,7 +443,7 @@ only_dirs = [
             # "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
             # "out-ganak-mc2324-14063135-7/", # also enchanced SAT
             # "out-ganak-mc2324-14063135-4/", # also dual indep
-            # "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
+            "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat-td
@@ -500,14 +500,14 @@ only_dirs = [
             # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
             "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
             # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
-            "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
+            # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
+            "out-ganak-mccomp2324-14621165", # float, also try different TD exp
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
 not_versions = []
-# only_calls = ["track3"] #
 # only_dirs = []
 # only_calls = ["vsadsadjust 128"]
 only_calls = []

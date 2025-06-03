@@ -127,7 +127,7 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers");
+    myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers, 7=mpfr normal numbers");
     myopt("--prime", prime_field, atoi, "Number of variables in the polynomial field");
     myopt("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
@@ -473,7 +473,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     /*     cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
     /*     if (neglog) cnt *= -1; */
     /* } */
-    if (mode == 0 || mode == 1 || mode == 2 || mode == 6) {
+    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
       std::stringstream ss;
       ss << std::scientific << std::setprecision(40);
       const CMSat::Field* ptr = cnt.get();
@@ -494,6 +494,9 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       } else if (mode == 6) {
         const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
         mpfr_printf("c s exact arb cpx %.8Re + %.8Rei\n", od->real, od->imag);
+      } else if (mode == 7) {
+        const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
+        mpfr_printf("c s exact arb float %.8Re\n", od->val);
       }
     }
     cout << "c o exact arb " << *cnt << endl;
@@ -527,6 +530,9 @@ int main(int argc, char *argv[])
         break;
     case 1:
         fg = std::make_unique<ArjunNS::FGenMpq>();
+        break;
+    case 7:
+        fg = std::make_unique<ArjunNS::FGenMpfr>();
         break;
     case 2:
         fg = std::make_unique<FGenComplex>();

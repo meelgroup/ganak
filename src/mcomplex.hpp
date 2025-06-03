@@ -23,7 +23,6 @@ THE SOFTWARE.
 #include <cryptominisat5/solvertypesmini.h>
 #include <gmpxx.h>
 #include <memory>
-#include <cstdlib>
 #include <arjun/arjun.h>
 
 class FComplex : public CMSat::Field {

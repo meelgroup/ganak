@@ -24,7 +24,6 @@ THE SOFTWARE.
 #include <cryptominisat5/solvertypesmini.h>
 #include <gmpxx.h>
 #include <memory>
-#include <cstdlib>
 #include <mpfr.h>
 
 class MPFComplex : public CMSat::Field {
@@ -197,31 +196,9 @@ public:
       mpfr_set_si(imag, 0, MPFR_RNDN);
     }
 
-    unsigned int mpfr_memory_usage(const mpfr_t& x) const {
-        // Get the precision of the mpfr_t variable (in bits)
-        mpfr_prec_t precision = mpfr_get_prec(x);
-
-        // Determine the size of a limb (in bits)
-        size_t limb_size = sizeof(mp_limb_t) * 8;
-
-        // Calculate the number of limbs required for the significand
-        size_t num_limbs = (precision + limb_size - 1) / limb_size;
-
-        // Calculate the memory used by the significand (in bytes)
-        size_t significand_memory = num_limbs * sizeof(mp_limb_t);
-
-        // Estimate memory used by the exponent and other fields
-        // This is an approximation and may vary depending on the MPFR implementation
-        size_t overhead_memory = sizeof(mpfr_exp_t) + sizeof(int) + sizeof(mpfr_prec_t);
-
-        // Total memory usage
-        size_t total_memory = significand_memory + overhead_memory;
-
-        return (unsigned int)total_memory;
-    }
-
     uint64_t bytes_used() const override {
-      return sizeof(MPFComplex) + mpfr_memory_usage(real) + mpfr_memory_usage(imag);
+      return sizeof(MPFComplex) + ArjunNS::mpfr_memory_usage(real)
+        + ArjunNS::mpfr_memory_usage(imag);
     }
 
     bool parse(const std::string& str, const uint32_t line_no) override {

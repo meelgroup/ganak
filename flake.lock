@@ -10,11 +10,11 @@
         "sbva": "sbva_2"
       },
       "locked": {
-        "lastModified": 1748961781,
-        "narHash": "sha256-/dyjbRCbW/jGpFJd2lLmiMR9jHG/zwk+Gg/7Q46ge40=",
+        "lastModified": 1748975332,
+        "narHash": "sha256-ZJ3IvjTZbGYBETKoFIp0WosoxLRBKbTQ9SthHeefwFg=",
         "owner": "meelgroup",
         "repo": "approxmc",
-        "rev": "f54e6874708fdfdc2630bddffe7de313f0036138",
+        "rev": "d145397d06584990a25f653c30ffbb29e4e1ff79",
         "type": "github"
       },
       "original": {
@@ -36,11 +36,11 @@
         "sbva": "sbva"
       },
       "locked": {
-        "lastModified": 1748961490,
-        "narHash": "sha256-fRF064YKTSTitMR9WoeJ1mkftYEZQmXHtvEW+OBu9IU=",
+        "lastModified": 1748975264,
+        "narHash": "sha256-ZAVFTWtiLNVoAnL15PV0vhGrWNvyMPg0KtlU7IYAvok=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "17de6d6c0509248872fc3eee7429cd96c4ed7451",
+        "rev": "8d0d3a245eb8fbacc83ed071ebd546bfa8d88d28",
         "type": "github"
       },
       "original": {
@@ -61,11 +61,11 @@
         "sbva": "sbva_3"
       },
       "locked": {
-        "lastModified": 1748961490,
-        "narHash": "sha256-fRF064YKTSTitMR9WoeJ1mkftYEZQmXHtvEW+OBu9IU=",
+        "lastModified": 1748975264,
+        "narHash": "sha256-ZAVFTWtiLNVoAnL15PV0vhGrWNvyMPg0KtlU7IYAvok=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "17de6d6c0509248872fc3eee7429cd96c4ed7451",
+        "rev": "8d0d3a245eb8fbacc83ed071ebd546bfa8d88d28",
         "type": "github"
       },
       "original": {

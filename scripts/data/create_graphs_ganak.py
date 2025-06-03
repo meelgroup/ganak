@@ -481,18 +481,20 @@ only_dirs = [
             # "out-ganak-gpmc-mei-14295250-0", # ganak, fixed complex
             # "out-ganak-gpmc-mei-14295899-0", # mpfr ganak
 
+            # NOTE! likely WRONG because it can overflow the timestamp
+            # "out-ganak-mccomp2324-14366334-0", # update archetype only when sup comp has at least 20 vars that are still decidable
+
             # blocking
             # "out-ganak-mccomp2324-14299825",
             # "out-ganak-mccomp2324-14309534-0", # this IS the current best
             # "out-ganak-mccomp2324-14309534-1", # messed up
             # "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
             # "out-ganak-mccomp2324-14362931-0", # new hash, timestamp archetype
-            # "out-ganak-mccomp2324-14366334-0", # update archetype only when sup comp has at least 20 vars that are still decidable
-            #"out-ganak-mccomp2324-14391524-", # changeable recompute archetype cutoff, better cache usage
+            # "out-ganak-mccomp2324-14391524-", # changeable recompute archetype cutoff, better cache usage
             # "out-ganak-mccomp2324-14513393-0", # update arjun's order and add gate-based-eqlit, also fix gate-based-rem by not doing strengthening
             # "out-ganak-mccomp2324-14513746-0", # back to previous, except the strengthening fix for gate-based-rem
             # "out-ganak-mccomp2324-14519572-", # as previous 2, but fixed parsing of stupid weights
-            #"out-ganak-mccomp2324-14528572-", # binaries in holder are no longer updated
+            # "out-ganak-mccomp2324-14528572-", # binaries in holder are no longer updated
             # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
             # "out-ganak-mccomp2324-14549970-1", # LTO
             # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)

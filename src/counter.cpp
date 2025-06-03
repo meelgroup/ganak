@@ -579,7 +579,7 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
       for(const auto& cl_lit: cl) {
         if (v_val(cl_lit) == T_TRI) { ok = true; break;}
       }
-      verb_print(2, "[cube-ext] Cube can't have " << torem << " removed");
+      verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
       if (!good) return 0;
     }
   }
@@ -614,10 +614,11 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
       if (mapped <= 0) continue; // need at least 1 for clash
       if (symm_cube == orig_cube) continue; // same no clash
       /* if (!clash_cubes(symm_cube, orig_cube)) continue; // must clash */
-      verb_print(2, "[rst-symm-map] mapped lits: " << tmp
-        << " Old cube:" << orig_cube
-        << " New cube:" << symm_cube);
-      extra_cubes.push_back(Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.cnt, true));
+      verb_print(2, "[rst-symm-map] mapped lits: " << tmp << endl
+        << " -->> Old cube:" << orig_cube << endl
+        << " -->> New cube:" << symm_cube);
+      extra_cubes.push_back(
+          Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.cnt, true));
       stats.num_cubes_symm++;
     }
   }
@@ -868,7 +869,10 @@ FF Counter::outer_count() {
     // Add cubes to counter
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
       add_irred_cl(it->cnf);
-      verb_print(2,  "[rst-cube] added cube CL to GANAK: " << it->cnf << " cnt: " << it->cnt);
+      verb_print(2,  "[rst-cube] added cube CL to GANAK: " << it->cnf
+          << " -- symm: " << it->symm
+          /* << " cnt: " << *it->cnt */
+          );
     }
     decisions.clear();
 

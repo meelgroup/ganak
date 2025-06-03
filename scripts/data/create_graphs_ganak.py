@@ -496,8 +496,9 @@ only_dirs = [
             # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
             # "out-ganak-mccomp2324-14549970-1", # LTO
             # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
-            "out-ganak-mccomp2324-14558670-", # some stuff enabled previously for no flto
-            "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
+            "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
+            # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
+            "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -672,7 +673,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:400][:]\\\n")
+    f.write("plot [:][900:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

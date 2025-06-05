@@ -613,10 +613,19 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
       }
       if (mapped <= 0) continue; // need at least 1 for clash
       if (symm_cube == orig_cube) continue; // same no clash
+
+      if (conf.verb >= 2) {
+        cout << "c o [rst-symm-map] generator applied: ";
+        for(auto& l: gen) {
+          cout << l.first << " -> " << l.second << " :: ";
+        }
+        cout << endl;
+      }
+
       /* if (!clash_cubes(symm_cube, orig_cube)) continue; // must clash */
-      verb_print(2, "[rst-symm-map] mapped lits: " << tmp << endl
-        << " -->> Old cube:" << orig_cube << endl
-        << " -->> New cube:" << symm_cube);
+      verb_print(2, "[rst-symm-map] mapped lits: " << tmp);
+      verb_print(2, " -->> Old cube:" << orig_cube);
+      verb_print(2, " -->> New cube:" << symm_cube);
       extra_cubes.push_back(
           Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.cnt, true));
       stats.num_cubes_symm++;
@@ -834,6 +843,7 @@ FF Counter::outer_count() {
 
     // Extend, tighten, symm, disable cubes
     if (!done) extend_cubes(cubes);
+    disable_cubes_if_overlap(cubes);
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);

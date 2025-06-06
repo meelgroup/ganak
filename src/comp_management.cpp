@@ -82,7 +82,8 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     if (ana.var_unvisited_in_sup_comp(*vt) &&
         ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
-      CacheableComp packed_comp(hash_seed, *p_new_comp);
+      CacheableComp packed_comp(hash_seed, *p_new_comp, ana.get_long_clauses_data_ptrs(),
+          ana.get_vals());
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count

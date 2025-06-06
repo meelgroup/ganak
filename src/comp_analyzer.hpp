@@ -176,6 +176,8 @@ public:
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }
   uint32_t get_max_var() const { return max_var; }
   CompArchetype& get_archetype() { return archetype; }
+  const auto& get_long_clauses_data_ptrs() const { return long_clauses_data_ptrs; }
+  const auto& get_vals() const { return values; }
 
 private:
   // the id of the last clause
@@ -188,7 +190,8 @@ private:
 
   MyHolder holder;
   vector<Lit> long_clauses_data;
-  const LiteralIndexedVector<TriValue> & values;
+  vector<Lit*> long_clauses_data_ptrs; // id -> lits (ending in SENTINEL_LIT)
+  const LiteralIndexedVector<TriValue>& values;
 
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;

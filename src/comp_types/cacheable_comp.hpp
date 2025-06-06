@@ -39,7 +39,12 @@ public:
   CacheableComp() = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
-  CacheableComp(uint64_t hash_seed, const Comp &comp) : HashedComp(hash_seed, comp) { }
+  CacheableComp(uint64_t hash_seed, const Comp &comp, vector<Lit*> long_cls,
+      const LiteralIndexedVector<TriValue>& vals) :
+    HashedComp(hash_seed, comp, long_cls, vals) { }
+  void create_super_comp() {
+    clhashkey_ = 0; // this is a super comp, special hash key
+  }
 
   uint64_t bignum_bytes() const { return HashedComp::bignum_bytes(); }
 

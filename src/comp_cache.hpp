@@ -43,7 +43,7 @@ public:
   CompCache(DataAndStatistics &_stats, const CounterConfiguration& _conf);
   ~CompCache() = default;
 
-  void init(Comp &super_comp, uint64_t hash_seed);
+  void init(Comp &super_comp);
   uint64_t get_num_entries_used() const {
     uint64_t ret = 0;
     for (uint32_t id = 2; id < entry_base.size(); id++)
@@ -335,7 +335,7 @@ inline void CompCache::store_value(const CacheEntryID id, const FF& model_count)
 inline CompCache::CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf):
   stats(_stats), conf(_conf) {}
 
-inline void CompCache::init(Comp &super_comp, uint64_t hash_seed){
+inline void CompCache::init(Comp &super_comp) {
   my_time = 1;
   entry_base.clear();
   free_entry_base_slots.clear();
@@ -355,7 +355,8 @@ inline void CompCache::init(Comp &super_comp, uint64_t hash_seed){
   stats.incorporate_cache_store(x, super_comp.nVars());
 
   CacheableComp *packed_super_comp;
-  packed_super_comp = new CacheableComp(hash_seed, super_comp);
+  packed_super_comp = new CacheableComp();
+  packed_super_comp->create_super_comp();
   entry_base.push_back(*packed_super_comp);
   stats.incorporate_cache_store(*packed_super_comp, super_comp.nVars());
   delete packed_super_comp;

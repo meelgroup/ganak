@@ -24,7 +24,11 @@ THE SOFTWARE.
 
 #include "base_packed_comp.hpp"
 #include "chibihash64.h"
+#include "common.hpp"
 #include "comp.hpp"
+#include "containers.hpp"
+#include <vector>
+using std::vector;
 
 namespace GanakInt {
 
@@ -33,8 +37,29 @@ public:
   HashedComp() = default;
   HashedComp(const HashedComp&) = default;
   HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(uint64_t hash_seed, const Comp& comp) {
-    clhashkey_ = chibihash64(comp.get_raw_data(), comp.get_size()*4, hash_seed);
+  HashedComp(uint64_t hash_seed, const Comp& comp, vector<Lit*> long_cls,
+      const LiteralIndexedVector<TriValue>& vals) {
+    vector<uint64_t> d;
+    d.reserve(comp.get_size());
+    vector<Lit> tmp;
+    all_cls_in_comp(comp, cl_id) {
+      tmp.clear();
+      Lit* cl = long_cls[*cl_id];
+      for(auto& l = cl; *l != SENTINEL_LIT; l++) {
+        assert(vals[*l] != T_TRI); //cannot be true
+        if (vals[*l] == F_TRI) continue; // skip falsified lits
+        tmp.push_back(*l);
+      }
+      uint64_t c = chibihash64(tmp.data(), tmp.size()*sizeof(uint32_t), hash_seed);
+      d.push_back(c);
+    }
+    std::sort(d.begin(), d.end());
+    auto last = std::unique(d.begin(), d.end());
+    d.erase(last, d.end());
+    d.push_back(sentinel);
+    all_vars_in_comp(comp, v) d.push_back(*v);
+
+    clhashkey_ = chibihash64(d.data(), d.size()*sizeof(uint64_t), hash_seed);
     model_count_ = nullptr;
   }
   uint64_t bignum_bytes() const { return BaseComp::bignum_bytes(); }

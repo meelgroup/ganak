@@ -184,7 +184,7 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   assert(comp_stack.size() == 2);
   comp_stack.back()->create_init_comp(ana.get_max_var(), ana.get_max_clid(),
       std::numeric_limits<uint32_t>::max());
-  cache.init(*comp_stack.back(), hash_seed);
+  cache.init(*comp_stack.back());
 }
 
 }

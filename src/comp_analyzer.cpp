@@ -61,6 +61,9 @@ void CompAnalyzer::initialize(
   auto long_irred_cls = _long_irred_cls;
   std::sort(long_irred_cls.begin(), long_irred_cls.end(), mysorter);
 
+  vector<uint32_t> long_clauses_data_offs; // id -> offs
+  long_clauses_data_offs.push_back(0); //zero ID doesn't exist
+
   max_clid = 1;
   max_tri_clid = 1;
   vector<vector<ClData>> unif_occ_long;
@@ -73,11 +76,11 @@ void CompAnalyzer::initialize(
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
     const uint32_t long_cl_off = long_clauses_data.size();
+    long_clauses_data_offs.push_back(long_cl_off);
+    for(const auto&l: cl) long_clauses_data.push_back(l);
+    long_clauses_data.push_back(SENTINEL_LIT);
     if (cl.size() > 3) {
       Lit blk_lit = cl[cl.size()/2];
-      for(const auto&l: cl) long_clauses_data.push_back(l);
-      long_clauses_data.push_back(SENTINEL_LIT);
-
       for(const auto& l: cl) {
         const uint32_t var = l.var();
         assert(var < n);
@@ -114,6 +117,8 @@ void CompAnalyzer::initialize(
   archetype.init_data(max_var, max_clid);
   debug_print(COLBLBACK "Building unified link list in CompAnalyzer::initialize...");
 
+  for(const auto& off: long_clauses_data_offs)
+    long_clauses_data_ptrs.push_back(long_clauses_data.data() + off);
 
   // data for binary clauses
   vector<vector<uint32_t>> unif_occ_bin;

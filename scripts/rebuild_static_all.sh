@@ -39,7 +39,7 @@ cd ../../
 
 cd approxmc/build/
 git checkout master
-rm -f build*.sh
+rm -f build_*.sh
 ln -s ../scripts/build_scripts/build_*.sh .
 ./build_static.sh
 cd ../../

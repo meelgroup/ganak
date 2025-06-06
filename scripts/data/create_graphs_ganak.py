@@ -443,7 +443,7 @@ only_dirs = [
             # "out-ganak-mc2324-14072353-1/", # basic SAT + ChronoBT
             # "out-ganak-mc2324-14063135-7/", # also enchanced SAT
             # "out-ganak-mc2324-14063135-4/", # also dual indep
-            "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
+            # "out-ganak-mc2324-14063135-0/", # also extend decision (all in)
             # "out-others-gpmc",
             # "out-others-d4",
             # "out-others-14064944-0", # sharpsat-td
@@ -501,7 +501,11 @@ only_dirs = [
             "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
             # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
             # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
-            "out-ganak-mccomp2324-14621165", # float, also try different TD exp
+            # "out-ganak-mccomp2324-14621165", # float, also try different TD exp
+            # "out-ganak-mccomp2324-14621994-0", # float fixed mem free, try different tdmaxw
+            "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
+            "out-ganak-mccomp2324-14624580", # exact, more exp check
+            "out-ganak-mccomp2324-14637456", # try vivif options
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -521,6 +525,10 @@ fname_like = ""
 # fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 # proj only
 # fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+# unweighted only
+# fname_like = " and (fname like '%track1%' or fname like '%track3%') "
+# weighted only
+# fname_like = " and (fname like '%track2%' or fname like '%track4%') "
 
 table_todo = []
 for ver in todo :
@@ -675,7 +683,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][900:]\\\n")
+    f.write("plot [:][0:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

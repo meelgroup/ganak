@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp.hpp"
 #include "containers.hpp"
+#include "kxsort.h"
 #include <vector>
 using std::vector;
 
@@ -43,26 +44,21 @@ public:
     static vector<Lit> tmp;
 
     d.clear();
-    d.reserve(comp.get_size());
     all_cls_in_comp(comp, cl_id) {
       tmp.clear();
       Lit* cl = long_cls[*cl_id];
       for(auto& l = cl; *l != SENTINEL_LIT; l++) {
-        assert(vals[*l] != T_TRI); //cannot be true
+        SLOW_DEBUG_DO(assert(vals[*l] != T_TRI && "clause cannot be satisfied"));
         if (vals[*l] == F_TRI) continue; // skip falsified lits
         tmp.push_back(*l);
       }
       uint64_t c = chibihash64(tmp.data(), tmp.size()*sizeof(Lit), hash_seed);
       d.push_back(c);
     }
-    auto sz = d.size();
-    std::sort(d.begin(), d.end());
+    kx::radix_sort(d.begin(), d.end());
+    /* std::sort(d.begin(), d.end()); */
     auto last = std::unique(d.begin(), d.end());
     d.erase(last, d.end());
-    if (d.size() < sz) {
-      /* cerr << "WARNING: duplicate clauses in component, size reduced from " << sz */
-      /*      << " to " << d.size() << endl; */
-    }
     d.push_back(sentinel);
     all_vars_in_comp(comp, v) d.push_back(*v);
 

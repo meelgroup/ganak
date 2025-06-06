@@ -78,6 +78,8 @@ void CompAnalyzer::initialize(
     const uint32_t long_cl_off = long_clauses_data.size();
     long_clauses_data_offs.push_back(long_cl_off);
     for(const auto&l: cl) long_clauses_data.push_back(l);
+    std::sort(long_clauses_data.begin() + long_cl_off,
+              long_clauses_data.end());
     long_clauses_data.push_back(SENTINEL_LIT);
     if (cl.size() > 3) {
       Lit blk_lit = cl[cl.size()/2];

@@ -501,7 +501,12 @@ only_dirs = [
             "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
             # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
             # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
-            "out-ganak-mccomp2324-14621165", # float, also try different TD exp
+            # "out-ganak-mccomp2324-14621165", # float, also try different TD exp
+            # "out-ganak-mccomp2324-14621994-0", # float fixed mem free, try different tdmaxw
+            # "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
+            # "out-ganak-mccomp2324-14624580", # exact, more exp check
+            # "out-ganak-mccomp2324-14637456", # try vivif options
+            # "out-ganak-mccomp2324-14648650-0", # much more precise cache
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -825,7 +830,10 @@ os.system("okular run.eps")
 
 #### examples
 # .mode table
-# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14309534-0' and a2.dirname like 'out-ganak-mccomp2324-14309534-1' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
+# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14558670-1' and a2.dirname like 'out-ganak-mccomp2324-14648650-0' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
+
+# cache hits
+# select dirname, fname, round(ganak_time-arjun_time-td_time) as ganakT, cache_miss_rate from data where dirname like 'out-ganak-mccomp2324-14558670-1' and ganak_time is not null and cache_miss_rate is not null  and ganak_time-arjun_time > 100 order by cache_miss_rate asc limit 50;
 
 # select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;
 

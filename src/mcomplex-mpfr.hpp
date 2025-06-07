@@ -204,15 +204,34 @@ public:
     bool parse(const std::string& str, const uint32_t line_no) override {
         uint32_t at = 0;
         ArjunNS::FMpq _real;
+        ArjunNS::FMpq _imag;
+
         if (!_real.parse_mpq(str, at, line_no)) return false;
         skip_whitespace(str, at);
-        ArjunNS::FMpq _imag;
-        if (!_imag.parse_mpq(str, at, line_no)) return false;
-        skip_whitespace(str, at);
+        if (at < str.size()) {
+          bool pos = true;
+          if (str[at] == '+') pos = true;
+          else if (str[at] == '-') pos = false;
+          else {
+            std::cerr << "ERROR: Expected '+' or '-' in line " << line_no << " after the real value, but got some other character" << std::endl;
+            return false;
+          }
+          at++;
+          if (!_imag.parse_mpq(str, at, line_no)) return false;
+          skip_whitespace(str, at);
+          if (at < str.size() && str[at] == 'i') {
+            at++;
+          } else {
+            std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
+            return false;
+          }
+          if (!pos) _imag *= ArjunNS::FMpq(-1);
+        }
         mpfr_set_q(real, _real.get_val().get_mpq_t(), MPFR_RNDN);
         mpfr_set_q(imag, _imag.get_val().get_mpq_t(), MPFR_RNDN);
         return true;
-    }
+   }
+
 };
 
 class FGenMPFComplex : public CMSat::FieldGen {

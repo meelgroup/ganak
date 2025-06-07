@@ -11,7 +11,7 @@ if grep -qE '^c t (mc|pmc)' "$file"; then
 elif grep -qE '^c t (wmc|pwmc)' "$file"; then
     echo "c o The file seems to be weighted. Will run with --mode 7."
     ./ganak --mode 7 --maxcache=16000 "$file"
-elif grep -qE '^c t (cpxmc)' "$file"; then
+elif grep -qE '^c t (cpxmc|pcpxmc)' "$file"; then
     echo "c o The file seems to be complex number-weighted. Will run with --mode 6."
     ./ganak --mode 6 --maxcache=10000 "$file"
 else

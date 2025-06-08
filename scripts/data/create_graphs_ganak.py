@@ -507,6 +507,8 @@ only_dirs = [
             # "out-ganak-mccomp2324-14624580", # exact, more exp check
             # "out-ganak-mccomp2324-14637456", # try vivif options
             # "out-ganak-mccomp2324-14648650-0", # much more precise cache
+            # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
+            "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -830,7 +832,9 @@ os.system("okular run.eps")
 
 #### examples
 # .mode table
-# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14558670-1' and a2.dirname like 'out-ganak-mccomp2324-14648650-0' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
+# old = comp2324-14558670-1
+# new= comp2324-14655977-0
+# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14558670-1' and a2.dirname like 'out-ganak-mccomp2324-14655977-0' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
 
 # cache hits
 # select dirname, fname, round(ganak_time-arjun_time-td_time) as ganakT, cache_miss_rate from data where dirname like 'out-ganak-mccomp2324-14558670-1' and ganak_time is not null and cache_miss_rate is not null  and ganak_time-arjun_time > 100 order by cache_miss_rate asc limit 50;

@@ -163,6 +163,7 @@ void add_ganak_options()
     myopt("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");
     myopt("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
+    myopt("--weakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
 
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");

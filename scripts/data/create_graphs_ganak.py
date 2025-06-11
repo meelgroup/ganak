@@ -509,6 +509,7 @@ only_dirs = [
             # "out-ganak-mccomp2324-14648650-0", # much more precise cache
             # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
             "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening
+            "out-ganak-mccomp2324-14661402-", # try different weakenings
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

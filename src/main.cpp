@@ -446,6 +446,45 @@ string print_mpq_as_scientific(const mpq_class& number) {
     return string(buffer);
 }
 
+void print_log(const mpfr_t& cnt, string extra = "") {
+    mpfr_t log10_val;
+    mpfr_init2(log10_val, 256);
+    mpfr_set(log10_val, cnt, MPFR_RNDN);
+    if (mpfr_sgn(log10_val) < 0) {
+      cout << "c s neglog10-estimate" << extra << " ";
+      mpfr_neg(log10_val, log10_val, MPFR_RNDN);
+    } else {
+      cout << "c s log10-estimate" << extra << " ";
+    }
+    mpfr_log10(log10_val, log10_val, MPFR_RNDN);
+
+    char* tmp = nullptr;
+    mpfr_asprintf(&tmp, "%.8Re", log10_val);
+    cout << tmp << endl;
+    mpfr_free_str(tmp);
+    mpfr_clear(log10_val);
+}
+
+void print_log(const mpz_class& cnt, string extra = "") {
+    mpz_class abs_cnt = cnt;
+    if (abs_cnt < 0) {
+      cout << "c s neglog10-estimate" << extra << " ";
+      abs_cnt *= -1;
+    } else {
+      cout << "c s log10-estimate" << extra << " ";
+    }
+    mpfr_t log10_val;
+    mpfr_init2(log10_val, 256);
+    mpfr_set_z(log10_val, abs_cnt.get_mpz_t(), MPFR_RNDN);
+    mpfr_log10(log10_val, log10_val, MPFR_RNDN);
+
+    char* tmp = nullptr;
+    mpfr_asprintf(&tmp, "%.8Re", log10_val);
+    cout << tmp << endl;
+    mpfr_free_str(tmp);
+    mpfr_clear(log10_val);
+}
+
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.multiplier_weight->dup();
     if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
@@ -459,48 +498,64 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    /* if constexpr (!cpx) { */
-    /*   if (cnt == complex<mpq_class>()) cout << "c s log10-estimate -inf" << endl; */
-    /*   else { */
-    /*     bool neglog = false; */
-    /*     if (cnt < 0) { */
-    /*       cout << "c s neglog10-estimate "; */
-    /*       cnt *= -1; */
-    /*       neglog = true; */
-    /*     } else { */
-    /*       cout << "c s log10-estimate "; */
-    /*     } */
-
-    /*     cout << std::setprecision(12) << std::fixed << mpfr::log10(cnt.get_mpq_t()) << endl; */
-    /*     if (neglog) cnt *= -1; */
-    /* } */
     if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
       std::stringstream ss;
       ss << std::scientific << std::setprecision(40);
       const CMSat::Field* ptr = cnt.get();
       assert(ptr != nullptr);
       if (mode == 0) {
+        // Integer numbers
+        if (cnf.get_projected()) cout << "c s type pmc" << endl;
+        else cout << "c s type mc" << endl;
         const ArjunNS::FMpz* od = dynamic_cast<const ArjunNS::FMpz*>(ptr);
+        print_log(od->val);
         ss << *od;
         cout << "c s exact arb int "  << ss.str() << endl;
       } else if (mode == 1) {
+        // Rational numbers
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
         const ArjunNS::FMpq* od = dynamic_cast<const ArjunNS::FMpq*>(ptr);
+        mpfr_t tmp;
+        mpfr_init_set_q(tmp, od->val.get_mpq_t(), MPFR_RNDN);
+        print_log(tmp);
+        mpfr_clear(tmp);
+
         ss << print_mpq_as_scientific(od->val);
-        cout << "c s exact arb float "  << ss.str() << endl;
+        cout << "c s double float "  << ss.str() << endl;
+        cout << "c o exact arb " << *cnt << endl;
       } else if (mode == 2) {
+        // Complex rational numbers
+        cout << "c s type amc-complex" << endl;
         const FComplex* od = dynamic_cast<const FComplex*>(ptr);
+        mpfr_t r, i;
+        mpfr_init_set_q(r, od->real.get_mpq_t(), MPFR_RNDN);
+        mpfr_init_set_q(i, od->imag.get_mpq_t(), MPFR_RNDN);
+        print_log(r, "-real");
+        print_log(i, "-imag");
+        mpfr_clear(r);
+        mpfr_clear(i);
+
         ss << print_mpq_as_scientific(od->real) << " + "
           << print_mpq_as_scientific(od->imag) << "i";
-        cout << "c s exact arb cpx "  << ss.str() << endl;
+        cout << "c s exact double float "  << ss.str() << endl;
+        cout << "c o exact arb " << *cnt << endl;
       } else if (mode == 6) {
+        // Complex MPF numbers
+        cout << "c s type amc-complex" << endl;
         const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
-        mpfr_printf("c s exact arb cpx %.8Re + %.8Rei\n", od->real, od->imag);
+        print_log(od->real, "-real");
+        print_log(od->imag, "-imag");
+        mpfr_printf("c s exact double %.8Re + %.8Rei\n", od->real, od->imag);
       } else if (mode == 7) {
+        // MPFR numbers
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
-        mpfr_printf("c s exact arb float %.8Re\n", od->val);
+        print_log(od->val);
+        mpfr_printf("c s exact double float %.8Re\n", od->val);
       }
     }
-    cout << "c o exact arb " << *cnt << endl;
 }
 
 int main(int argc, char *argv[])

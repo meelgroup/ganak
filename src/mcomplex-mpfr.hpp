@@ -229,6 +229,8 @@ public:
         }
         mpfr_set_q(real, _real.get_val().get_mpq_t(), MPFR_RNDN);
         mpfr_set_q(imag, _imag.get_val().get_mpq_t(), MPFR_RNDN);
+        /* std::cout << "real: " << _real.get_val() << ", imag: " << _imag.get_val() << std::endl; */
+        /* std::cout << "c o Parsed complex number: " << *this << std::endl; */
         return true;
    }
 

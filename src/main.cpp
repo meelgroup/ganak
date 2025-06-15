@@ -552,6 +552,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         mpfr_clear(tmp);
 
         ss << print_mpq_as_scientific(od->val);
+        cout << "c o exact double float "  << ss.str() << endl;
         cout << "c s exact arb frac " << *cnt << endl;
       } else if (mode == 2) {
         // Complex rational numbers
@@ -567,6 +568,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
         ss << print_mpq_as_scientific(od->real) << " + "
           << print_mpq_as_scientific(od->imag) << "i";
+        cout << "c o exact double float "  << ss.str() << endl;
         cout << "c s exact arb frac " << *cnt << endl;
       } else if (mode == 6) {
         // Complex MPF numbers

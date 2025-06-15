@@ -546,10 +546,6 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
         else cout << "c s type wmc" << endl;
         const ArjunNS::FMpq* od = dynamic_cast<const ArjunNS::FMpq*>(ptr);
-        mpfr_t tmp;
-        mpfr_init_set_q(tmp, od->val.get_mpq_t(), MPFR_RNDN);
-        print_log(tmp);
-        mpfr_clear(tmp);
 
         ss << print_mpq_as_scientific(od->val);
         cout << "c o exact double float "  << ss.str() << endl;
@@ -559,8 +555,10 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         cout << "c s type amc-complex" << endl;
         const FComplex* od = dynamic_cast<const FComplex*>(ptr);
         mpfr_t r, i;
-        mpfr_init_set_q(r, od->real.get_mpq_t(), MPFR_RNDN);
-        mpfr_init_set_q(i, od->imag.get_mpq_t(), MPFR_RNDN);
+        mpfr_init2(r, 256);
+        mpfr_set_q(r, od->real.get_mpq_t(), MPFR_RNDN);
+        mpfr_init2(i, 256);
+        mpfr_set_q(i, od->imag.get_mpq_t(), MPFR_RNDN);
         print_log(r, "-real");
         print_log(i, "-imag");
         mpfr_clear(r);

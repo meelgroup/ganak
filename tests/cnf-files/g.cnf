@@ -3,4 +3,4 @@ p cnf 2 1
 c t wmc
 c p weight 1 0e-1 0
 c c CHECK: ^s SATISFIABLE$
-c c CHECK: ^c s exact arb float 2.0*e\+00$
+c c CHECK: ^c o exact quadruple float 2.0*e\+00$

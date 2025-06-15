@@ -437,13 +437,10 @@ void print_one(const mpq_class& c) {
 }
 
 string print_mpq_as_scientific(const mpq_class& number) {
-    mpfr_t float_number;
-    mpfr_init2(float_number, 256);
-    mpfr_set_q(float_number, number.get_mpq_t(), MPFR_RNDN);
-    char buffer[10000];
-    mpfr_sprintf (buffer, "%.4RDe", float_number);
-    mpfr_clear(float_number);
-    return string(buffer);
+    mpf_class mpf_value(number);
+    std::ostringstream oss;
+    oss << std::scientific << std::setprecision(8) << mpf_value;
+    return oss.str();
 }
 
 void print_log(const mpfr_t& cnt, string extra = "") {
@@ -547,15 +544,14 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         else cout << "c s type wmc" << endl;
         const ArjunNS::FMpq* od = dynamic_cast<const ArjunNS::FMpq*>(ptr);
 
-        ss << print_mpq_as_scientific(od->val);
-        cout << "c o exact double float "  << ss.str() << endl;
+        cout << "c o exact quadruple float "  << print_mpq_as_scientific(od->val) << endl;
         cout << "c s exact arb frac " << *cnt << endl;
       } else if (mode == 2) {
         // Complex rational numbers
         cout << "c s type amc-complex" << endl;
         const FComplex* od = dynamic_cast<const FComplex*>(ptr);
         mpfr_t r, i;
-        mpfr_init2(r, 256);
+        mpfr_init2(i, 256);
         mpfr_set_q(r, od->real.get_mpq_t(), MPFR_RNDN);
         mpfr_init2(i, 256);
         mpfr_set_q(i, od->imag.get_mpq_t(), MPFR_RNDN);
@@ -564,9 +560,8 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         mpfr_clear(r);
         mpfr_clear(i);
 
-        ss << print_mpq_as_scientific(od->real) << " + "
-          << print_mpq_as_scientific(od->imag) << "i";
-        cout << "c o exact double float "  << ss.str() << endl;
+        cout << "c o exact quadruple float " << print_mpq_as_scientific(od->real) << " + "
+          << print_mpq_as_scientific(od->imag) << "i" << endl;
         cout << "c s exact arb frac " << *cnt << endl;
       } else if (mode == 6) {
         // Complex MPF numbers

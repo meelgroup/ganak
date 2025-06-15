@@ -3,6 +3,9 @@ set -x
 set -e
 cd ../../
 
+# export CC=gcc-14
+# export CXX=g++-14
+
 cd cadical/
 git checkout add_dynamic_lib
 make clean

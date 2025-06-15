@@ -426,7 +426,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 }
 
 void print_one(const mpq_class& c) {
-   mpf_set_default_prec(1024); // Set default precision in bits
    mpf_t f;
    mpf_init(f);
    mpf_set_q(f, c.get_mpq_t());
@@ -597,6 +596,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
 int main(int argc, char *argv[])
 {
+  mpf_set_default_prec(256);
   const double start_time = cpu_time();
 #if defined(__GNUC__) && defined(__linux__)
   feenableexcept(FE_INVALID   |

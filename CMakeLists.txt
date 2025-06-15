@@ -268,35 +268,6 @@ if (NOT WIN32)
     endif()
 endif()
 
-
-# Use mold/sold linker if available
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND NOT EMSCRIPTEN)
-  message(STATUS "Detected GCC/Clang, checking for mold/sold linker...")
-
-  # Check for mold linker on general systems and ld64.mold on macOS
-  if(APPLE)
-    find_program(MOLD_LINKER ld64.mold)
-  else()
-    find_program(MOLD_LINKER mold)
-  endif()
-
-  if(MOLD_LINKER)
-    message(STATUS "LINKER_TYPE set to ${CMAKE_LINKER_TYPE} for faster builds")
-    list(APPEND CMAKE_MESSAGE_INDENT " ")
-    message(STATUS "(set -DUSE_MOLD=OFF to disable)")
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-    if(APPLE)
-      set(CMAKE_LINKER_TYPE SOLD)
-    else()
-      set(CMAKE_LINKER_TYPE MOLD)
-    endif()
-  else()
-    message(STATUS "  -- No suitable mold linker found. Using default linker.")
-  endif()
-else()
-  message(STATUS "Compiler is neither GCC nor Clang. Skipping mold linker check.")
-endif()
-
 if (NOT WIN32)
     MESSAGE(STATUS "${CMAKE_C_FLAGS}")
     add_c_flag_if_supported("-Wall")

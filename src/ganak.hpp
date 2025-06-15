@@ -48,6 +48,8 @@ public:
   void set_optional_indep_support(const std::set<uint32_t>& indeps);
   void set_lit_weight(const GanakInt::Lit l, const std::unique_ptr<CMSat::Field>& w);
   void print_indep_distrib() const;
+  uint64_t get_num_cache_lookups() const;
+  uint64_t get_max_cache_elems() const;
 private:
   void* counter = nullptr;
 };

@@ -87,3 +87,13 @@ DLL_PUBLIC void Ganak::print_indep_distrib() const {
   OuterCounter* c = (OuterCounter*)counter;
   c->print_indep_distrib();
 }
+
+DLL_PUBLIC uint64_t Ganak::get_num_cache_lookups() const {
+  OuterCounter* c = (OuterCounter*)counter;
+  return c->get_num_cache_lookups();
+}
+
+DLL_PUBLIC uint64_t Ganak::get_max_cache_elems() const {
+  OuterCounter* c = (OuterCounter*)counter;
+  return c->get_max_cache_elems();
+}

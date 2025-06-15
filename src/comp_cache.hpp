@@ -51,6 +51,9 @@ public:
 
     return ret;
   }
+  uint64_t get_max_num_entries() const {
+    return entry_base.size();
+  }
 
   // compute the size in bytes of the comp cache from scratch
   // the value is stored in bytes_memory_usage_

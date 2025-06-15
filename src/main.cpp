@@ -485,6 +485,32 @@ void print_log(const mpz_class& cnt, string extra = "") {
     mpfr_clear(log10_val);
 }
 
+// compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 64)
+void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t elems) {
+    mpfr_t lookups2;
+    mpfr_init_set_ui(lookups2, lookups, MPFR_RNDN);
+    mpfr_log2(lookups2, lookups2, MPFR_RNDN);
+
+    mpfr_t elems2;
+    mpfr_init_set_ui(elems2, elems, MPFR_RNDN);
+    mpfr_log2(elems2, elems2, MPFR_RNDN);
+
+    mpfr_t e;
+    mpfr_init_set_si(e, -64, MPFR_RNDN);
+    mpfr_add(e, lookups2, e, MPFR_RNDN);
+    mpfr_add(e, elems2, e, MPFR_RNDN);
+    // e = log2(lookups) + log2(elems) - 64
+
+    // Compute 2^e
+    mpfr_init(result);
+    mpfr_exp2(result, e, MPFR_RNDN);
+
+    // Clear temporary variables
+    mpfr_clear(lookups2);
+    mpfr_clear(elems2);
+    mpfr_clear(e);
+}
+
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.multiplier_weight->dup();
     if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
@@ -510,7 +536,11 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         const ArjunNS::FMpz* od = dynamic_cast<const ArjunNS::FMpz*>(ptr);
         print_log(od->val);
         ss << *od;
-        cout << "c s exact arb int "  << ss.str() << endl;
+        if (counter.get_is_approximate()) {
+          cout << "c s approx arb int "  << ss.str() << endl;
+        } else {
+          cout << "c s exact arb int "  << ss.str() << endl;
+        }
       } else if (mode == 1) {
         // Rational numbers
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
@@ -522,8 +552,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         mpfr_clear(tmp);
 
         ss << print_mpq_as_scientific(od->val);
-        cout << "c s double float "  << ss.str() << endl;
-        cout << "c o exact arb " << *cnt << endl;
+        cout << "c s exact arb frac " << *cnt << endl;
       } else if (mode == 2) {
         // Complex rational numbers
         cout << "c s type amc-complex" << endl;
@@ -538,23 +567,36 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
         ss << print_mpq_as_scientific(od->real) << " + "
           << print_mpq_as_scientific(od->imag) << "i";
-        cout << "c s exact double float "  << ss.str() << endl;
-        cout << "c o exact arb " << *cnt << endl;
+        cout << "c s exact arb frac " << *cnt << endl;
       } else if (mode == 6) {
         // Complex MPF numbers
         cout << "c s type amc-complex" << endl;
         const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
         print_log(od->real, "-real");
         print_log(od->imag, "-imag");
-        mpfr_printf("c s exact double %.8Re + %.8Rei\n", od->real, od->imag);
+        mpfr_printf("c s exact quadruple float %.8Re + %.8Rei\n", od->real, od->imag);
       } else if (mode == 7) {
         // MPFR numbers
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
         else cout << "c s type wmc" << endl;
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
         print_log(od->val);
-        mpfr_printf("c s exact double float %.8Re\n", od->val);
+        mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
       }
+    }
+    if (counter.get_is_approximate()) {
+      cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;
+    } else if (counter.get_num_cache_lookups() == 0 || counter.get_max_cache_elems() == 0) {
+      cout << "c s pac guarantees epsilon: 0" << " delta: " << 0 << endl;
+    } else {
+      mpfr_t collision_prob;
+      compute_collision_prob(collision_prob, counter.get_num_cache_lookups(), counter.get_max_cache_elems());
+      cout << "c s pac guarantees epsilon: 0" << " delta: ";
+      char* tmp = nullptr;
+      mpfr_asprintf(&tmp, "%.8Re", collision_prob);
+      cout << tmp << endl;
+      mpfr_free_str(tmp);
+      mpfr_clear(collision_prob);
     }
 }
 
@@ -665,23 +707,6 @@ int main(int argc, char *argv[])
   setup_ganak(cnf, generators, counter);
 
   run_weighted_counter(counter, cnf, start_time);
-  /* } else { */
-  /*   mpz_class cnt; */
-  /*   if (cnf.multiplier_weight == complex<mpq_class>()) cnt = 0; */
-  /*   else cnt = counter.unw_outer_count(); */
-  /*   cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2) */
-  /*     << std::fixed << (cpu_time() - start_time) << endl; */
-  /*   bool is_appx = counter.get_is_approximate(); */
-
-  /*   if (cnt != 0) cout << "s SATISFIABLE" << endl; */
-  /*   else cout << "s UNSATISFIABLE" << endl; */
-  /*   if (!cnf.get_projected()) cout << "c s type mc" << endl; */
-  /*   else cout << "c s type pmc " << endl; */
-  /*   release_assert(cnf.multiplier_weight.imag() == 0); */
-  /*   cnt *= cnf.multiplier_weight.real(); */
-  /*   cout << "c s log10-estimate "; */
-  /*   if (cnt == 0) cout << "-inf" << endl; */
-  /*   else cout << std::setprecision(12) << std::fixed << biginteger_log_modified(cnt) << endl; */
   /*   if (is_appx) { */
   /*     cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl; */
   /*     cout << "c s approx arb int " << std::fixed << *cnt << endl; */

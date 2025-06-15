@@ -759,6 +759,13 @@ public:
   }
   void new_vars(const uint32_t n) { counter->new_vars(n); }
   void print_indep_distrib() const { counter->print_indep_distrib(); }
+  uint64_t get_num_cache_lookups() const {
+    return counter->get_stats().num_cache_look_ups;
+  }
+
+  uint64_t get_max_cache_elems() const {
+    return counter->get_cache().get_max_num_entries();
+  }
 private:
   std::unique_ptr<Counter> counter = nullptr;
 };

@@ -97,6 +97,7 @@ int arjun_autarkies = 0;
 int mode = 0;
 int poly_nvars = -1;
 int prime_field = -1;
+int no_arjun_over_this_many_sampl_vars = 200000;
 FG fg = nullptr;
 
 string print_version()
@@ -164,6 +165,7 @@ void add_ganak_options()
     myopt("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     myopt("--weakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
+    myopt("--noarjunover", no_arjun_over_this_many_sampl_vars, atoi,  "If the number of sampling variables is larger than this, do not run Arjun. Zero or lower means no limit.");
 
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
@@ -686,7 +688,9 @@ int main(int argc, char *argv[])
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun
-  if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();
+  if (!do_arjun ||
+      (no_arjun_over_this_many_sampl_vars > 0 && (int)cnf.get_sampl_vars().size() > no_arjun_over_this_many_sampl_vars))
+    cnf.renumber_sampling_vars_for_ganak();
   else run_arjun(cnf);
   if (conf.verb) {
     cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;

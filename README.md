@@ -131,8 +131,8 @@ exercise to do.
 ```
 @inproceedings{SM2025,
 title={Engineering an Efficient Probabilistic Exact Model Counter},
-author={Soos, Mate and  Meel, Kuldeep S.},
-booktitle={Proceedings of the International Conference on Computer Aided Verification (CAV), 2025, Zagreb, Croatia}
+author={Soos, Mate and Meel, Kuldeep S.},
+booktitle={Proceedings of the International Conference on Computer Aided Verification (CAV)}
 year={2025}
 }
 

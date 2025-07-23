@@ -8,10 +8,14 @@ field, including but not limited to integers, rationals, complex numbers,
 integers modulo prime, and polynomials over a finite field.
 
 To read more about Ganak-specific ideas, please refer to [our
-paper](https://www.comp.nus.edu.sg/~meel/Papers/ijcai19srsm.pdf). Note that
+paper](https://www.msoos.org/wordpress/wp-content/uploads/2025/05/ganak2.pdf),
+and our [older paper](https://www.ijcai.org/proceedings/2019/0163.pdf). Note that
 Ganak employs many ideas by many people. See AUTHORS for a list.
 
 ## Building
+You can use Ganak online, straight [from your
+browser](https://www.msoos.org/ganak/)
+
 Use of the [release binaries](https://github.com/meelgroup/ganak/releases) is
 _strongly_ encouraged, as Ganak requires a specific set of libraries to be
 installed. The second best thing to use is Nix. Simply [install
@@ -125,11 +129,17 @@ exercise to do.
 
 ## How to Cite
 ```
+@inproceedings{SM2025,
+title={Engineering an Efficient Probabilistic Exact Model Counter},
+author={Soos, Mate and  Meel, Kuldeep S.},
+booktitle={Proceedings of the International Conference on Computer Aided Verification (CAV), 2025, Zagreb, Croatia}
+year={2025}
+}
+
 @inproceedings{SRSM19,
 title={GANAK: A Scalable Probabilistic Exact Model Counter},
 author={Sharma, Shubham and  Roy, Subhajit and  Soos, Mate and  Meel, Kuldeep S.},
 booktitle={Proceedings of International Joint Conference on Artificial Intelligence (IJCAI)},
-month={8},
 year={2019}
 }
 ```

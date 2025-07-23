@@ -503,15 +503,15 @@ only_dirs = [
             # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
             # "out-ganak-mccomp2324-14621165", # float, also try different TD exp
             # "out-ganak-mccomp2324-14621994-0", # float fixed mem free, try different tdmaxw
-            "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
+            # "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
             # "out-ganak-mccomp2324-14624580", # exact, more exp check
             # "out-ganak-mccomp2324-14637456", # try vivif options
             # "out-ganak-mccomp2324-14648650-0", # much more precise cache
             # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
-            # "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening
+            "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening
             # "out-ganak-mccomp2324-14661402-", # try different weakenings
-            # "out-ganak-mccomp2324-14675861-2", # default setup along with appmc. Trying tditers
-            # "out-ganak-mccomp2324-14675861-1", # default setup along with appmc. Trying tditers
+            # "out-ganak-mccomp2324-14675861-2", # default setup along WITHOUT appmc. Trying tditers
+            # "out-ganak-mccomp2324-14675861-1", # default setup along WITH appmc. Trying tditers
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

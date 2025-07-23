@@ -498,20 +498,20 @@ only_dirs = [
             # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
             # "out-ganak-mccomp2324-14549970-1", # LTO
             # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
-            "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
+            # "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
             # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
             # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
             # "out-ganak-mccomp2324-14621165", # float, also try different TD exp
             # "out-ganak-mccomp2324-14621994-0", # float fixed mem free, try different tdmaxw
-            # "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
+            "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
             # "out-ganak-mccomp2324-14624580", # exact, more exp check
             # "out-ganak-mccomp2324-14637456", # try vivif options
             # "out-ganak-mccomp2324-14648650-0", # much more precise cache
             # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
             # "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening
             # "out-ganak-mccomp2324-14661402-", # try different weakenings
-            "out-ganak-mccomp2324-14675861-2", # default setup along with appmc. Trying tditers
-            "out-ganak-mccomp2324-14675861-1", # default setup along with appmc. Trying tditers
+            # "out-ganak-mccomp2324-14675861-2", # default setup along with appmc. Trying tditers
+            # "out-ganak-mccomp2324-14675861-1", # default setup along with appmc. Trying tditers
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -685,7 +685,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][900:]\\\n")
+    f.write("plot [:][0:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

@@ -9,8 +9,10 @@ integers modulo prime, and polynomials over a finite field.
 
 To read more about Ganak-specific ideas, please refer to [our
 paper](https://www.msoos.org/wordpress/wp-content/uploads/2025/05/ganak2.pdf),
-and our [older paper](https://www.ijcai.org/proceedings/2019/0163.pdf). Note that
-Ganak employs many ideas by many people. See AUTHORS for a list.
+and our [older paper](https://www.ijcai.org/proceedings/2019/0163.pdf). You
+can also check out our presentation
+[PDF here](https://github.com/meelgroup/ganak-presentation/blob/main/ganak2-jul24-cav2025-zagreb.pdf).
+Note that Ganak employs many ideas by many people. See AUTHORS for a list.
 
 ## Building
 You can use Ganak online, straight [from your

@@ -129,6 +129,11 @@ interfaces. Absolutely _any_ field will work, and it's as easy as implementing
 `+,-,*` and `/` operators, and the `0` and `1` constants. It's a fun
 exercise to do.
 
+## Fuzzing
+We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter
+fuzzer, developed by [Anna Latour](https://scholar.google.com/citations?user=nf5lfegAAAAJ&hl=nl)
+to check correctness of Ganak.
+
 ## How to Cite
 ```
 @inproceedings{SM2025,

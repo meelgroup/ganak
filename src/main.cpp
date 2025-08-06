@@ -166,9 +166,6 @@ void add_ganak_options()
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     myopt("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
     myopt("--arjunnover", no_arjun_over_this_many_sampl_vars, atoi,  "If the number of sampling variables is larger than this, do not run Arjun. Zero or lower means no limit.");
-    // Indep options
-    myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
-    myopt("--stripoptindep", strip_opt_indep, atoi, "Strip optional indep support, make it equal to indep support");
 
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
@@ -233,9 +230,10 @@ void add_ganak_options()
     myopt("--satvsids", conf.do_sat_vsids, atoi, "Inside SAT solver, use VSIDS, not VSADS");
 
     // Opt independent set options
-    myopt("--optindep", do_optindep, atoi, "Use optional indep set");
+    myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
     myopt("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
     myopt("--arjunextend", etof_conf.do_extend_indep, atoi, "Max number of conflicts per extend operation in Arjun");
+    myopt("--stripoptindep", strip_opt_indep, atoi, "Strip optional indep support");
 
     // Analyze candidates options
     myopt("--analyzecand", conf.analyze_cand_update, atoi, "Update analyze candidates if more than N vars are still undecided from opt indep set");
@@ -348,7 +346,7 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
   set<uint32_t> tmp;
   for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
   counter.set_indep_support(tmp);
-  if (cnf.get_opt_sampl_vars_set() && do_optindep) {
+  if (cnf.get_opt_sampl_vars_set()) {
     tmp.clear();
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
   }
@@ -696,7 +694,8 @@ int main(int argc, char *argv[])
       (no_arjun_over_this_many_sampl_vars > 0 && (int)cnf.get_sampl_vars().size() > no_arjun_over_this_many_sampl_vars))
     cnf.renumber_sampling_vars_for_ganak();
   else run_arjun(cnf);
-  if (strip_opt_indep) cnf.set_opt_sampl_vars(cnf.get_sampl_vars());
+  cnf.remove_equiv_weights();
+  if (strip_opt_indep) cnf.strip_opt_sampling_vars();
   if (conf.verb) {
     cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
     if (cnf.get_opt_sampl_vars_set()) {

@@ -98,6 +98,7 @@ int mode = 0;
 int poly_nvars = -1;
 int prime_field = -1;
 int no_arjun_over_this_many_sampl_vars = 200000;
+int strip_opt_indep = 0;
 FG fg = nullptr;
 
 string print_version()
@@ -152,7 +153,6 @@ void add_ganak_options()
     myopt("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
     myopt("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
     myopt("--arjunautarkies", arjun_autarkies, atoi, "How much autarky for Arjun to do");
-    myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
     myopt("--bce", etof_conf.do_bce, atoi, "Do static BCE");
     myopt("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
     myopt("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
@@ -166,6 +166,9 @@ void add_ganak_options()
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     myopt("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
     myopt("--arjunnover", no_arjun_over_this_many_sampl_vars, atoi,  "If the number of sampling variables is larger than this, do not run Arjun. Zero or lower means no limit.");
+    // Indep options
+    myopt("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
+    myopt("--stripoptindep", strip_opt_indep, atoi, "Strip optional indep support, make it equal to indep support");
 
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
@@ -692,6 +695,7 @@ int main(int argc, char *argv[])
       (no_arjun_over_this_many_sampl_vars > 0 && (int)cnf.get_sampl_vars().size() > no_arjun_over_this_many_sampl_vars))
     cnf.renumber_sampling_vars_for_ganak();
   else run_arjun(cnf);
+  if (strip_opt_indep) cnf.set_opt_sampl_vars(cnf.get_sampl_vars());
   if (conf.verb) {
     cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
     if (cnf.get_opt_sampl_vars_set()) {

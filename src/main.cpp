@@ -166,7 +166,6 @@ void add_ganak_options()
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     myopt("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
     myopt("--arjunnover", no_arjun_over_this_many_sampl_vars, atoi,  "If the number of sampling variables is larger than this, do not run Arjun. Zero or lower means no limit.");
-
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
@@ -183,6 +182,7 @@ void add_ganak_options()
     myopt("--tdlookonlyweight", conf.td_look_only_weight, atoi, "TD lookahead ONLY update weights");
     myopt("--tdcontract", conf.do_td_contract, atoi, "TD contract over opt indep set");
     myopt("--tdlimit", conf.td_limit, atoi, "If TD is over this, reduce weight to 0.1");
+    myopt("--tdoptindep", conf.do_td_use_opt_indep, atoi, "Use opt indep for TD computation");
 
     // Clause DB options
     myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");

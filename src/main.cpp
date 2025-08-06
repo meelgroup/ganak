@@ -341,6 +341,7 @@ void print_vars(const vector<uint32_t>& vars) {
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& generators,
     Ganak& counter) {
+  cnf.check_sanity();
   counter.new_vars(cnf.nVars());
   counter.set_generators(generators);
 

@@ -144,7 +144,7 @@ void add_ganak_options()
     myopt("--arjunextend", etof_conf.do_extend_indep, atoi, "Extend indep via Arjun's extend system");
     myopt("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
     myopt("--puura", do_puura, atoi, "Run Puura");
-    myopt("--backbonepuura", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
+    myopt("--puurabackbone", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
     myopt("--arjuniter1", simp_conf.iter1, atoi, "Arjun's iter1");
     myopt("--arjuniter2", simp_conf.iter2, atoi, "Arjun's iter2");
     myopt("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
@@ -160,12 +160,12 @@ void add_ganak_options()
     myopt("--extraoracle", simp_conf.oracle_extra, atoi, "Extra oracle at the end of puura");
     myopt("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
     myopt("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
-    myopt("--debugarjuncnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
+    myopt("--arjundebugcnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
     myopt("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");
     myopt("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
-    myopt("--weakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
-    myopt("--noarjunover", no_arjun_over_this_many_sampl_vars, atoi,  "If the number of sampling variables is larger than this, do not run Arjun. Zero or lower means no limit.");
+    myopt("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
+    myopt("--arjunnover", no_arjun_over_this_many_sampl_vars, atoi,  "If the number of sampling variables is larger than this, do not run Arjun. Zero or lower means no limit.");
 
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");

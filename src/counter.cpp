@@ -1149,8 +1149,8 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
 
   // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
-  act_score = var_act(v)/conf.act_score_divisor;
-  freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
+  /* act_score = var_act(v)/conf.act_score_divisor; */
+  /* freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor; */
   double score = act_score+td_score+freq_score;
   if (print) cout << "v: " << std::setw(4) << v
     << std::setw(3) << " conflK: " << stats.conflicts/1000
@@ -3279,8 +3279,8 @@ void Counter::subsume_all() {
 }
 
 void Counter::vsads_readjust() {
-  if (stats.decisions % conf.vsads_readjust_every == 0)
-    for(auto& w: watches) w.activity *= 0.5;
+  /* if (stats.decisions % conf.vsads_readjust_every == 0) */
+  /*   for(auto& w: watches) w.activity *= 0.5; */
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,

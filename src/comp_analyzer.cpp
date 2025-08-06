@@ -293,8 +293,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
         manage_occ_of(v2);
         if (is_unknown(v2)) {
           archetype.num_bin_cls++;
-          bump_freq_score(v2);
-          bump_freq_score(v);
+          /* bump_freq_score(v2); */
+          /* bump_freq_score(v); */
         } else {
           /* if (update) { */
           /*   // it's satisfied */
@@ -364,7 +364,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
             sat = true;
             goto end_sat;
           } else {
-            bump_freq_score(v);
+            /* bump_freq_score(v); */
             manage_occ_and_score_of(l1);
             manage_occ_and_score_of(l2);
             archetype.set_clause_visited(d.id);

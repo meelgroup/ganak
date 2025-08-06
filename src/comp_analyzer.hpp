@@ -147,7 +147,7 @@ public:
   // because we have already looked up the literal, so it's in the cache
   void manage_occ_and_score_of(Lit l) {
     if (is_unknown(l)) {
-      bump_freq_score(l.var());
+      /* bump_freq_score(l.var()); */
       manage_occ_of(l.var());
     }
   }

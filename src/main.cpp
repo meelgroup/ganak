@@ -90,7 +90,6 @@ string debug_arjun_cnf;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
-int do_optindep = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int arjun_autarkies = 0;
@@ -417,15 +416,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
   } else cnf.renumber_sampling_vars_for_ganak();
-
-  if (!do_optindep && cnf.get_weighted()) {
-    // We have to move the weights to indep support and renumber again.
-    set<uint32_t> tmp(cnf.sampl_vars.begin(), cnf.sampl_vars.end());
-    for(const auto& v: cnf.weights) {
-      if (!tmp.count(v.first)) cnf.sampl_vars.push_back(v.first);
-    }
-    cnf.renumber_sampling_vars_for_ganak();
-  }
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 

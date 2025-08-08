@@ -31,16 +31,16 @@ template<typename T>
 class StaticSet {
 public:
   StaticSet();
-  explicit StaticSet(const std::vector<T>& values);
-  explicit StaticSet(const std::vector<std::pair<T, T> >& values);
-  void Init(const std::vector<T>& values);
-  void Init(const std::vector<std::pair<T, T> >& values);
+  explicit StaticSet(const vector<T>& values);
+  explicit StaticSet(const vector<std::pair<T, T> >& values);
+  void Init(const vector<T>& values);
+  void Init(const vector<std::pair<T, T> >& values);
   int Rank(T value) const;
   T Kth(int k) const;
   int Size() const;
-  std::vector<T> Values() const;
+  const vector<T>& Values() const;
 private:
-  std::vector<T> values_;
+  vector<T> values_;
 };
 
 using Edge = pair<int, int>;
@@ -48,19 +48,18 @@ using Edge = pair<int, int>;
 class Graph {
 public:
   explicit Graph(int n);
-  explicit Graph(std::vector<Edge> edges);
-  void AddEdge(int v, int u);
-  void AddEdge(Edge e);
+  explicit Graph(vector<Edge> edges);
+  void addEdge(int v, int u);
+  void addEdge(Edge e);
 
   int n() const;
   int m() const;
   bool HasEdge(int v, int u) const;
   bool HasEdge(Edge e) const;
-  std::vector<Edge> Edges() const;
-  std::vector<int> Vertices() const;
+  vector<Edge> edges() const;
 
   Bitset Neighbors(const Bitset& vs) const;
-  const std::vector<int>& Neighbors(int v) const;
+  const vector<int>& Neighbors(int v) const;
 
   Graph(const Graph& rhs) = default;
   Graph& operator=(const Graph& rhs) = default;
@@ -68,8 +67,8 @@ public:
 private:
   int n_, m_;
   StaticSet<int> vertex_map_;
-  std::vector<std::vector<int> > adj_list_;
-  std::vector<Bitset> adj_mat2_;
+  vector<vector<int> > adj_list_;
+  vector<Bitset> adj_mat2_;
 };
 
 class TreeDecomposition {
@@ -78,12 +77,12 @@ class TreeDecomposition {
    const vector<int>& Neighbors(int b) const;
    int nverts() const;
    int nbags() const;
-   void AddEdge(int a, int b);
-   void SetBag(int v, vector<int> bag);
+   void addEdge(int a, int b);
+   void setBag(int v, const vector<int>& bag);
    int Width() const;
    bool InBag(int b, int v) const;
    int Centroid() const;
-  vector<int> GetOrd() const;
+  vector<int> getOrd() const;
  private:
    int bs, n, width;
    Graph tree;
@@ -94,26 +93,26 @@ class TreeDecomposition {
 };
 
 template<typename T>
-StaticSet<T>::StaticSet(const std::vector<T>& values) {
+StaticSet<T>::StaticSet(const vector<T>& values) {
   Init(values);
 }
 
 template<typename T>
-StaticSet<T>::StaticSet() : StaticSet(std::vector<T>()) { }
+StaticSet<T>::StaticSet() : StaticSet(vector<T>()) { }
 
 template<typename T>
-StaticSet<T>::StaticSet(const std::vector<std::pair<T, T> >& values) {
+StaticSet<T>::StaticSet(const vector<std::pair<T, T> >& values) {
   Init(values);
 }
 
 template<typename T>
-void StaticSet<T>::Init(const std::vector<T>& values) {
+void StaticSet<T>::Init(const vector<T>& values) {
   values_ = values;
   SortAndDedup(values_);
 }
 
 template<typename T>
-void StaticSet<T>::Init(const std::vector<std::pair<T, T> >& values) {
+void StaticSet<T>::Init(const vector<std::pair<T, T> >& values) {
   values_.clear();
   for (const std::pair<T, T>& value : values) {
     values_.push_back(value.first);
@@ -138,7 +137,7 @@ int StaticSet<T>::Size() const {
 }
 
 template<typename T>
-std::vector<T> StaticSet<T>::Values() const {
+const vector<T>& StaticSet<T>::Values() const {
   return values_;
 }
 } // namespace sspp

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace GanakInt {
 
@@ -78,7 +79,6 @@ struct CounterConfiguration {
   double td_maxweight = 60;
   double td_minweight = 7;
   double td_divider = 1e3;
-  double do_td_weight = 1;
   double td_exp_mult = 1.1;
   int do_check_td_vs_ind = 1;
   int64_t td_steps = 1e5;
@@ -93,6 +93,8 @@ struct CounterConfiguration {
   int do_td_use_opt_indep = 1;
   double td_max_density = 0.3;
   int td_max_edge_var_ratio = 30;
+  int td_do_use_adj = 1;
+  std::string td_read_file = "";
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

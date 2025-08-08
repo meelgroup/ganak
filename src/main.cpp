@@ -164,12 +164,12 @@ void add_ganak_options()
     myopt("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     myopt("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     myopt("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
+
     // TD options
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
     myopt("--tdminw", conf.td_minweight, atof, "TD min weight");
     myopt("--tddiv", conf.td_divider, atof, "TD divider");
-    myopt("--tdweighted", conf.do_td_weight, atof, "TD weight enabled");
     myopt("--tdexpmult", conf.td_exp_mult, atof, "TD exponential multiplier");
     myopt("--tdcheckagainstind", conf.do_check_td_vs_ind, atoi, "Check TD against indep size");
     myopt("--tditers", conf.td_iters, atoi, "TD flowcutter iterations (restarts)");
@@ -183,6 +183,8 @@ void add_ganak_options()
     myopt("--tdoptindep", conf.do_td_use_opt_indep, atoi, "Use opt indep for TD computation");
     myopt("--tdmaxdensity", conf.td_max_density, atof, "Max density for TD computation");
     myopt("--tdmaxedgeratio", conf.td_max_edge_var_ratio, atoi, "Max edge to var ratio for TD computation");
+    myopt("--tduseadj", conf.td_do_use_adj, atoi, "TD should use adjacency matrix for computing TD scores");
+    myopt("--tdreadfile", conf.td_read_file, string, "Read TD scores from this file");
 
     // Clause DB options
     myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");

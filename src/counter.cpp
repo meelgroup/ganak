@@ -159,8 +159,7 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool p
       return;
   } else {
     int max_dst = 0;
-    for(int i=1; i < (int)nodes; i++)
-      max_dst = std::max(max_dst, dists[i]);
+    for(int i=1; i < (int)nodes; i++) max_dst = std::max(max_dst, dists[i]);
     if (max_dst == 0) {
       if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");
       return;

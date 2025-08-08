@@ -356,7 +356,7 @@ private:
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
-  void compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool print = true);
+  void compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void td_decompose();
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);

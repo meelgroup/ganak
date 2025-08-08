@@ -132,7 +132,8 @@ bool Counter::remove_duplicates(vector<Lit>& lits) {
   return true;
 }
 
-void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool print) {
+// 1... nodes vertices
+void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   if (td_width <= 0) {
@@ -158,9 +159,9 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, uint32_t nodes, bool p
       if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
       return;
   } else {
-    int max_dst = 0;
-    for(int i=1; i < (int)nodes; i++) max_dst = std::max(max_dst, dists[i]);
-    if (max_dst == 0) {
+    int max_dist = 0;
+    for(uint32_t i = 1; i < nodes; i++) max_dist = std::max(max_dist, dists[i]);
+    if (max_dist == 0) {
       if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");
       return;
     }

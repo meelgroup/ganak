@@ -686,7 +686,7 @@ int main(int argc, char *argv[])
   else run_arjun(cnf);
   cnf.remove_equiv_weights();
   if (strip_opt_indep) cnf.strip_opt_sampling_vars();
-  if (conf.verb) {
+  if (conf.verb >= 2) {
     cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
     if (cnf.get_opt_sampl_vars_set()) {
       cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;

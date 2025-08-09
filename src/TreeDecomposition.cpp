@@ -154,5 +154,4 @@ void TreeDecomposition::computeDistance(int v, int parent, int depth, vector<int
     if (ch == parent) continue;
     computeDistance(ch, v, d, distance);
   }
-
 }

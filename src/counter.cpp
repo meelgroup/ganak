@@ -1133,7 +1133,7 @@ void Counter::recomp_td_weight() {
   if (conf.td_lookahead != -1 && dec_level() < conf.td_lookahead+5) {
     auto td = td_decompose_component(3);
     assert(conf.td_lookahead);
-    compute_score(td, opt_indep_support_end, false);
+    compute_score(td, opt_indep_support_end-1, false);
   }
 }
 

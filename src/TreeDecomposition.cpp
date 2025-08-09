@@ -109,22 +109,16 @@ int TreeDecomposition::centroid(int npvars, int verb) {
 int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const
 {
   int intros = 0;
-
   for (auto ch : Neighbors(v)) {
     if (ch == parent) continue;
     intros += findCentroid(ch, v, centroid);
-    if (centroid != -1)
-      return intros;
+    if (centroid != -1) return intros;
   }
 
   for (auto x : bags[v])
-    if (parent == -1 || !inBag(parent, x)) {
-      intros++;
-    }
+    if (parent == -1 || !inBag(parent, x)) intros++;
 
-  if (intros >= gnodes / 2)
-    centroid = v;
-
+  if (intros >= gnodes / 2) centroid = v;
   return intros;
 }
 

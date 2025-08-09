@@ -24,8 +24,6 @@ THE SOFTWARE.
 
 #include <cassert>
 #include "time_mem.hpp"
-#include "structures.hpp"
-using namespace std;
 using namespace TWD;
 
 

@@ -357,10 +357,10 @@ void Counter::td_decompose() {
     }
   }
 
-  auto td_over_vars = opt_indep_support_end-1;
-  if (!conf.do_td_use_opt_indep) td_over_vars = indep_support_end-1;
+  auto nodes = opt_indep_support_end-1;
+  if (!conf.do_td_use_opt_indep) nodes = indep_support_end-1;
   if (conf.do_td_contract) {
-    for(uint32_t i = td_over_vars; i < nVars(); i++) {
+    for(uint32_t i = nodes; i < nVars(); i++) {
       primal.contract(i, conf.td_max_edges*100);
       if (primal.numEdges() > conf.td_max_edges*100 ) break;
     }
@@ -389,11 +389,11 @@ void Counter::td_decompose() {
 
   TWD::Graph* primal_alt = nullptr;
   if (conf.do_td_contract) {
-    primal_alt = new TWD::Graph(td_over_vars);
-    for(uint32_t i = 0 ; i < td_over_vars; i++) {
+    primal_alt = new TWD::Graph(nodes);
+    for(uint32_t i = 0 ; i < nodes; i++) {
       const auto& k = primal.get_adj_list()[i];
       for(const auto& i2: k) {
-        if (i2 < (int)td_over_vars)
+        if (i2 < (int)nodes)
           primal_alt->addEdge(i, i2);
       }
     }
@@ -407,8 +407,8 @@ void Counter::td_decompose() {
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
-  td.centroid(td_over_vars, conf.verb);
-  compute_score(td, conf.do_td_contract ? td_over_vars : nVars(), true);
+  td.centroid(nodes, conf.verb);
+  compute_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
   if (conf.do_td_contract) delete primal_alt;
 }

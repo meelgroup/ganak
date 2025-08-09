@@ -79,7 +79,7 @@ class TreeDecomposition {
    int nverts() const;
    int nbags() const;
    void AddEdge(int a, int b);
-   void SetBag(int v, vector<int> bag);
+   void SetBag(int v, const vector<int>& bag);
    int Width() const;
    bool InBag(int b, int v) const;
    int Centroid() const;

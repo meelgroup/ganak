@@ -114,7 +114,7 @@ void TreeDecomposition::AddEdge(int a, int b) {
   tree.AddEdge(a, b);
 }
 
-void TreeDecomposition::SetBag(int v, vector<int> bag) {
+void TreeDecomposition::SetBag(int v, const vector<int>& bag) {
   assert(v >= 0 && v <= bs);
   assert(bags[v].empty());
   bags[v] = bag;
@@ -190,9 +190,7 @@ void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
   if (new_vs) {
     d++;
     for (int v : bags[b]) {
-      if (ret[v] == 0) {
-        ret[v] = d;
-      }
+      if (ret[v] == 0) ret[v] = d;
     }
   }
   for (int nb : Neighbors(b)) {

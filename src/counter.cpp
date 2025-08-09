@@ -177,7 +177,7 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, 
     read_td_from_file(conf.td_read_file);
   }
   for(uint32_t i = 1; i < nodes; i++)
-    verb_print(2, "TD var: " << i << " tdscore: " << tdscore[i]);
+    verb_print(2, "TD var: " << i+1 << " tdscore: " << tdscore[i+1]);
 }
 
 void Counter::read_td_from_file(const std::string& fname) {
@@ -267,12 +267,9 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     val /= (double)max_ord;
     assert(val > -0.01 && val < 1.01);
 
-    assert(i < tdscore.size());
+    assert(i+1 < tdscore.size());
     tdscore[i+1] = val;
   }
-
-  for(uint32_t i = 0; i < nodes; i++)
-    verb_print(2, "TD var: " << i+1 << " tdscore: " << tdscore[i+1]);
 }
 
 TWD::TreeDecomposition Counter::td_decompose_component(double mult) {

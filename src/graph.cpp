@@ -174,15 +174,20 @@ int TreeDecomposition::Centroid() const {
   return cen;
 }
 
+/**
+    b: Current bag/node in the tree decomposition.
+    p: Parent bag/node.
+    d: Current depth (order value being assigned).
+    ret: Output vector storing the order of each vertex.
+*/
 void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
   assert(b >= 0 && b <= bs);
   assert(p >= 0 && p <= bs);
   assert(d >= 1);
   bool new_vs = false;
   for (int v : bags[b]) {
-    if (ret[v] == 0) {
-      new_vs = true;
-    } else {
+    if (ret[v] == 0) new_vs = true;
+    else {
       assert(ret[v] <= d);
       assert(binary_search(bags[p].begin(), bags[p].end(), v));
     }
@@ -199,6 +204,12 @@ void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
   }
 }
 
+// Gets the order of vertices in the tree decomposition
+//    Assigns an incremental order to vertices in the graph based on their
+//    appearance in the tree decomposition. The order starts from the centroid
+//    and propagates outward, ensuring: Vertices in parent bags are processed
+//    before their children. Newly discovered vertices get a higher (later)
+//    order.
 vector<int> TreeDecomposition::GetOrd() const {
   int centroid = Centroid();
   assert(centroid >= 1 && centroid <= bs);

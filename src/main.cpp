@@ -172,7 +172,6 @@ void add_ganak_options()
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
     myopt("--tdminw", conf.td_minweight, atof, "TD min weight");
     myopt("--tddiv", conf.td_divider, atof, "TD divider");
-    myopt("--tdweighted", conf.do_td_weight, atof, "TD weight enabled");
     myopt("--tdexpmult", conf.td_exp_mult, atof, "TD exponential multiplier");
     myopt("--tdcheckagainstind", conf.do_check_td_vs_ind, atoi, "Check TD against indep size");
     myopt("--tditers", conf.td_iters, atoi, "TD flowcutter iterations (restarts)");

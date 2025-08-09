@@ -357,6 +357,12 @@ private:
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
   void compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
+  void compute_td_score_using_adj(const uint32_t nodes,
+    const std::vector<std::vector<int>>& bags,
+    const std::vector<std::vector<int>>& adj, bool print);
+  void compute_td_score_using_raw(const uint32_t nodes,
+      const std::vector<int>& dists, const int max_dist);
+  void read_td_from_file(const std::string& fname);
   void td_decompose();
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);

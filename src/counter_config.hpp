@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace GanakInt {
 
@@ -90,6 +91,8 @@ struct CounterConfiguration {
   int do_td_contract = 1;
   int td_limit = 100000;
   int do_td_use_opt_indep = 1;
+  int td_do_use_adj = 1;
+  std::string td_read_file = "";
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

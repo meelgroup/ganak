@@ -108,18 +108,18 @@ void Graph::AddEdge(Edge e) {
 }
 
 TreeDecomposition::TreeDecomposition(int bs_, int n_)
- : bs(bs_), n(n_), width(-1), tree(bs+1), bags(bs+1) {}
+ : bs(bs_), n(n_), width(-1), tree(bs), bags(bs) {}
 
 void TreeDecomposition::AddEdge(int a, int b) {
   tree.AddEdge(a, b);
 }
 
-void TreeDecomposition::SetBag(int v, vector<int> bag) {
-  assert(v >= 1 && v <= bs);
+void TreeDecomposition::SetBag(int v, const vector<int>& bag) {
+  assert(v >= 0 && v <= bs);
   assert(bags[v].empty());
   bags[v] = bag;
   SortAndDedup(bags[v]);
-  width = std::max(width, (int)bags[v].size()-1);
+  width = std::max(width, (int)bags[v].size());
 #ifndef NDEBUG
   for (int u : bags[v]) {
     assert(0 <= u && u < n);
@@ -132,7 +132,7 @@ int TreeDecomposition::Width() const {
 }
 
 bool TreeDecomposition::InBag(int b, int v) const {
-  assert(1 <= b && b <= bs && 0 <= v && v < n);
+  assert(0 <= b && b <= bs && 0 <= v && v < n);
   return BS(bags[b], v);
 }
 
@@ -140,12 +140,12 @@ int TreeDecomposition::nbags() const { return bs; }
 int TreeDecomposition::nverts() const { return n; }
 
 const vector<int>& TreeDecomposition::Neighbors(int b) const {
-  assert(b >= 1 && b <= bs);
+  assert(b >= 0 && b <= bs);
   return tree.Neighbors(b);
 }
 
 int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
-  assert(b >= 1 && b <= bs);
+  assert(b >= 0 && b <= bs);
   assert(p >= 0 && p <= bs);
   assert(cen == 0);
   int intro = 0;
@@ -174,15 +174,20 @@ int TreeDecomposition::Centroid() const {
   return cen;
 }
 
+/**
+    b: Current bag/node in the tree decomposition.
+    p: Parent bag/node.
+    d: Current depth (order value being assigned).
+    ret: Output vector storing the order of each vertex.
+*/
 void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
-  assert(b >= 1 && b <= bs);
+  assert(b >= 0 && b <= bs);
   assert(p >= 0 && p <= bs);
   assert(d >= 1);
   bool new_vs = false;
   for (int v : bags[b]) {
-    if (ret[v] == 0) {
-      new_vs = true;
-    } else {
+    if (ret[v] == 0) new_vs = true;
+    else {
       assert(ret[v] <= d);
       assert(binary_search(bags[p].begin(), bags[p].end(), v));
     }
@@ -190,9 +195,7 @@ void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
   if (new_vs) {
     d++;
     for (int v : bags[b]) {
-      if (ret[v] == 0) {
-        ret[v] = d;
-      }
+      if (ret[v] == 0) ret[v] = d;
     }
   }
   for (int nb : Neighbors(b)) {
@@ -201,6 +204,12 @@ void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
   }
 }
 
+// Gets the order of vertices in the tree decomposition
+//    Assigns an incremental order to vertices in the graph based on their
+//    appearance in the tree decomposition. The order starts from the centroid
+//    and propagates outward, ensuring: Vertices in parent bags are processed
+//    before their children. Newly discovered vertices get a higher (later)
+//    order.
 vector<int> TreeDecomposition::GetOrd() const {
   int centroid = Centroid();
   assert(centroid >= 1 && centroid <= bs);

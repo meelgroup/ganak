@@ -351,7 +351,7 @@ void Counter::td_decompose() {
     Clause& cl = *alloc->ptr(off);
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
-        debug_print("bin cl: " <<  cl[i].var() << " " << cl[i2].var());
+        debug_print("long cl: " <<  cl[i].var() << " " << cl[i2].var());
         primal.addEdge(cl[i].var()-1, cl[i2].var()-1);
       }
     }
@@ -365,6 +365,7 @@ void Counter::td_decompose() {
       if (primal.numEdges() > conf.td_max_edges*100 ) break;
     }
   }
+  verb_print(2, "nodes: " << nodes << " nvars: " << nVars() << " edges: " << primal.numEdges());
 
   const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();
   const double density = (double)primal.numEdges()/(double)n;

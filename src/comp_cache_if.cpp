@@ -20,28 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#pragma once
-
-#include "chibihash64.h"
-#include "common.hpp"
-#include "comp.hpp"
+#include "comp_cache_if.hpp"
 
 namespace GanakInt {
-
-class HashedComp  {
-public:
-  HashedComp() = default;
-  HashedComp(const HashedComp&) = default;
-  HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(HashedComp&&) = default;
-  static uint64_t set_comp(const Comp& comp, const uint64_t hash_seed, const BPCSizes& /*bpc*/) {
-    return chibihash64(comp.get_raw_data(), comp.get_size()*4, hash_seed);
-  }
-  bool equals(const HashedComp&) const {
-    return true;
-  }
-  uint64_t comp_bytes() const { return 0; }
-  void set_free() { }
-};
-
+  CompCacheIF::CompCacheIF() {}
+  CompCacheIF::~CompCacheIF() {}
 }

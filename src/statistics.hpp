@@ -26,9 +26,10 @@ THE SOFTWARE.
 #include <vector>
 #include <gmpxx.h>
 
-#include "comp_types/cacheable_comp.hpp"
 #include "counter_config.hpp"
+#include "comp_cache_if.hpp"
 #include "common.hpp"
+#include "lit.hpp"
 
 using std::vector;
 using std::cout;
@@ -37,7 +38,7 @@ using std::endl;
 namespace GanakInt {
 
 class Counter;
-class CompCache;
+class CompCacheIF;
 
 class DataAndStatistics {
 public:
@@ -139,7 +140,7 @@ public:
   uint64_t lookahead_computes = 0;
 
   // the number of bytes occupied by all comps
-  uint64_t sum_bignum_bytes = 0;
+  uint64_t sum_extra_bytes = 0;
   uint64_t cache_infra_bytes_mem_usage = 0;
 
   bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
@@ -149,18 +150,18 @@ public:
 
   uint64_t cache_bytes_memory_usage() const {
     return cache_infra_bytes_mem_usage
-           + sum_bignum_bytes;
+           + sum_extra_bytes;
   }
 
-  void incorporate_cache_store(const CacheableComp &ccomp, const uint32_t comp_nvars) {
-    sum_bignum_bytes += ccomp.bignum_bytes();
+  void incorporate_cache_store(const uint32_t& extra_bytes, const uint32_t comp_nvars) {
+    sum_extra_bytes += extra_bytes;
     sum_cache_store_sizes += comp_nvars;
     num_cached_comps++;
     total_num_cached_comps++;
   }
 
-  void incorporate_cache_erase(const CacheableComp &ccomp){
-    sum_bignum_bytes -= ccomp.bignum_bytes();
+  void incorporate_cache_erase(const uint32_t extra_bytes){
+    sum_extra_bytes -= extra_bytes;
     num_cached_comps--;
   }
 
@@ -169,12 +170,12 @@ public:
     sum_cache_hit_sizes += comp_nvars;
   }
 
-  void incorporateIrredClauseData(const vector<Lit> &clause) {
+  void incorporateIrredClauseData(const vector<Lit>& clause) {
     if (clause.size() == 1) return;
     if (clause.size() == 2) num_bin_irred_cls++;
   }
 
-  void print_short(const Counter* counter, const CompCache* cache) const;
+  void print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const;
   void print_short_formula_info(const Counter* counter) const;
 
   double get_avg_comp_hit_size() const {

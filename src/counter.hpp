@@ -764,7 +764,7 @@ public:
   }
 
   uint64_t get_max_cache_elems() const {
-    return counter->get_cache().get_max_num_entries();
+    return counter->get_cache()->get_max_num_entries();
   }
 private:
   std::unique_ptr<Counter> counter = nullptr;

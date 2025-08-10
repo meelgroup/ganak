@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
-#include <climits>
 #include <cstdint>
 #include <cstdint>
 

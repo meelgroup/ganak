@@ -104,6 +104,11 @@ public:
         if (sz == cap) capacity(sz + 1);
         dat[sz++] = elem;
     }
+    void emplace_back(T&& elem) {
+        if (sz == cap) capacity(sz + 1);
+        new (dat + sz) T(std::forward<T>(elem));
+        sz++;
+    }
     void pop_back() {
         assert(sz > 0);
         sz--, dat[sz].~T();

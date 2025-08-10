@@ -36,7 +36,6 @@ class BaseComp {
 public:
   BaseComp() = default;
   BaseComp& operator=(const BaseComp& b) {
-    clhashkey_ = b.clhashkey_;
     if (b.model_count_) model_count_ = b.model_count_->dup();
     else model_count_ = nullptr;
     last_used_time_ = b.last_used_time_;
@@ -44,7 +43,6 @@ public:
     return *this;
   }
   BaseComp(const BaseComp& b) {
-    clhashkey_ = b.clhashkey_;
     if (b.model_count_) model_count_ = b.model_count_->dup();
     else model_count_ = nullptr;
     last_used_time_ = b.last_used_time_;
@@ -69,7 +67,6 @@ public:
     model_count_ = rn->dup();
   }
 
-  uint32_t get_hashkey() const  { return (uint32_t)clhashkey_; }
   bool model_count_found(){ return model_count_ != nullptr; }
 
   // a cache entry is deletable
@@ -85,7 +82,6 @@ public:
   }
 
 protected:
-  uint64_t clhashkey_;
   FF model_count_ = nullptr;
   uint32_t last_used_time_:31 = 1; //effectively the score
   uint32_t delete_permitted:1 = false;

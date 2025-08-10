@@ -51,7 +51,6 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
 
 SET(SOURCES
     comp_analyzer.cpp
-    comp_cache.cpp
     comp_types/comp_archetype.cpp
     comp_management.cpp
     counter.cpp
@@ -76,6 +75,7 @@ SET(SOURCES
     buddy-2.4/src/tree.c
     buddy-2.4/src/cppext.cxx
     ganak.cpp
+    comp_cache_if.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 

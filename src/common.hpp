@@ -181,4 +181,46 @@ inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
     return u(mtrand);
 }
 
+inline uint32_t mlog2(uint32_t v) {
+  // taken from
+  // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
+  const signed char LogTable256[256] = {
+    #define LT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
+        -1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+        LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
+        LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7)
+  };
+
+  uint32_t r;     // r will be lg(v)
+  uint32_t t, tt; // temporaries
+
+  if ((tt = (v >> 16))) {
+    r = (t = (tt >> 8)) ? 24 + LogTable256[t] : 16 + LogTable256[tt];
+  }
+  else {
+    r = (t = (v >> 8)) ? 8 + LogTable256[t] : LogTable256[v];
+  }
+  return r;
+}
+
+struct BPCSizes {
+  void calcPackSize(uint32_t maxVarId, uint32_t maxClId) {
+    if (maxVarId == 0) bits_per_variable = 1;
+    else bits_per_variable =  mlog2(maxVarId) + 1;
+
+    if(maxClId == 0) bits_per_clause = 1;
+    else bits_per_clause   = mlog2(maxClId) + 1;
+
+    if (maxVarId == 0 && maxClId == 0) bits_of_data_size = 1;
+    else bits_of_data_size = mlog2(maxVarId + maxClId) + 1;
+    assert(bits_of_data_size < 32 && "Otherwise, we have an issue with nVars() that seems to convert things to uint64_t which is not allocated -- uint32_t is allocated");
+  }
+
+  uint32_t bits_per_clause;
+  uint32_t bits_per_variable;
+  uint32_t bits_of_data_size; // number of bits needed to store the data size
+  static constexpr uint32_t bits_per_block = (sizeof(uint32_t) << 3);
+};
+
+
 }

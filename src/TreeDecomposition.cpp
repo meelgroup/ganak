@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "TreeDecomposition.hpp"
 
 #include <cassert>
+#include "common.hpp"
 #include "time_mem.hpp"
 using namespace TWD;
 
@@ -60,6 +61,8 @@ void Graph::clear()
 }
 void Graph::addEdge(int v1, int v2)
 {
+  SLOW_DEBUG_DO(assert(v1 >= 0 && v1 < nodes));
+  SLOW_DEBUG_DO(assert(v2 >= 0 && v2 < nodes));
   if(adj_mat[v1].Get(v2)) return;
   adj_list[v1].push_back(v2);
   adj_list[v2].push_back(v1);

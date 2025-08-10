@@ -22,17 +22,20 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "common.hpp"
 #include "comp_types/comp.hpp"
-#include "comp_cache.hpp"
+#include "comp_cache_if.hpp"
 #include "comp_analyzer.hpp"
 
 #include <cstdint>
 #include <limits>
 #include <random>
-#include <gmpxx.h>
 #include "containers.hpp"
 #include "stack.hpp"
 #include "counter_config.hpp"
+#include "comp_types/hashed_comp.hpp"
+#include "comp_types/difference_packed_comp.hpp"
+#include "comp_cache.hpp"
 
 namespace GanakInt {
 
@@ -41,7 +44,6 @@ class Counter;
 // There is exactly ONE of this, inside Counter
 class CompManager {
 public:
-
   CompManager(const CounterConfiguration &config, DataAndStatistics &statistics,
                    const LiteralIndexedVector<TriValue> &lit_values,
                    Counter* _counter);
@@ -54,13 +56,13 @@ public:
   auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
-  const CompCache& get_cache() const { return cache; }
+  auto& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
 
   void save_count(const uint32_t stack_comp_id, const FF& value) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
         << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << *value);
-    cache.store_value(comp_stack[stack_comp_id]->id(), value);
+    cache->store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
   const auto& get_comp_stack() const { return comp_stack; }
@@ -77,7 +79,8 @@ public:
   void clean_remain_comps_of(const StackLevel& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
     while (comp_stack.size() > top.remaining_comps_ofs()) {
-      if (cache.exists(comp_stack.back()->id())) cache.entry(comp_stack.back()->id()).set_deletable();
+      if (cache->exists(comp_stack.back()->id()))
+        cache->make_entry_deletable(comp_stack.back()->id());
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());
       free(comp_stack.back());
@@ -100,6 +103,7 @@ public:
   uint64_t hash_seed;
 
 private:
+  BPCSizes bpc;
   void get_random_seed_for_hash() {
     std::mt19937_64 eng(conf.seed);
     std::uniform_int_distribution<uint64_t> distr;
@@ -111,7 +115,7 @@ private:
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp*> comp_stack;
-  CompCache cache;
+  std::unique_ptr<CompCacheIF> cache;
   CompAnalyzer ana;
 };
 
@@ -170,10 +174,18 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
 // Initialized exactly once when Counter is created.
 //   it also inits the included analyzer called "ana"
 inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & watches,
-    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls){
+    const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls) {
   assert(comp_stack.empty());
-
   ana.initialize(watches, _alloc, long_irred_cls);
+  verb_print(2, "ana.get_max_var(): " << ana.get_max_var()
+      << ", ana.get_max_clid(): " << ana.get_max_clid());
+  bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
+  get_random_seed_for_hash();
+  if (conf.do_probabilistic_hashing) {
+    cache.reset(new CompCache<CacheableComp<HashedComp>>(stats, conf));
+  } else {
+    cache.reset(new CompCache<CacheableComp<DiffPackedComp>>(stats, conf));
+  }
 
   //Add dummy comp
   comp_stack.push_back(nullptr);
@@ -184,7 +196,7 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   assert(comp_stack.size() == 2);
   comp_stack.back()->create_init_comp(ana.get_max_var(), ana.get_max_clid(),
       std::numeric_limits<uint32_t>::max());
-  cache.init(*comp_stack.back(), hash_seed);
+  cache->init(*comp_stack.back(), hash_seed, bpc);
 }
 
 }

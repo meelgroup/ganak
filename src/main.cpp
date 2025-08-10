@@ -135,6 +135,7 @@ void add_ganak_options()
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
     myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
     myopt("--chronobt", conf.do_chronobt, atof, "ChronoBT. SAT must be DISABLED or this will fail");
+    myopt("--prob", conf.do_probabilistic_hashing, atoi, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
 
     // Arjun options
     myopt("--arjun", do_arjun, atoi, "Use arjun");
@@ -579,6 +580,8 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;
     } else if (counter.get_num_cache_lookups() == 0 || counter.get_max_cache_elems() == 0) {
       cout << "c s pac guarantees epsilon: 0" << " delta: " << 0 << endl;
+    } else if (!conf.do_probabilistic_hashing) {
+      cout << "c s pac guarantees epsilon: 0 delta: 0" << endl;
     } else {
       mpfr_t collision_prob;
       compute_collision_prob(collision_prob, counter.get_num_cache_lookups(), counter.get_max_cache_elems());

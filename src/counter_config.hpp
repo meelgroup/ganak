@@ -90,6 +90,8 @@ struct CounterConfiguration {
   int do_td_contract = 1;
   int td_limit = 100000;
   int do_td_use_opt_indep = 1;
+  double td_max_density = 0.3;
+  int td_max_edge_var_ratio = 30;
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

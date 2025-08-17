@@ -328,11 +328,11 @@ void Counter::td_decompose() {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
   }
-  if (density > 0.3) {
+  if (density > conf.td_max_density) {
     verb_print(1, "[td] Density is too high, " << density << " skipping TD");
     return;
   }
-  if (edge_var_ratio > 30) {
+  if (edge_var_ratio > conf.td_max_edge_var_ratio) {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
     return;
   }

@@ -62,6 +62,14 @@ def get_dirs(ver : str):
     con.close()
     return ret
 
+def gnuplot_name_cleanup(name: str) -> str:
+    # remove all non-alphanumeric characters except for underscores and dashes
+    name = re.sub(r'\"', '', name)
+    # replace multiple underscores or dashes with a single one
+    name = re.sub(r'_', '=', name)
+    print(name)
+    return name
+
 versions = get_versions()
 fname2_s = []
 # not_calls = ["ExactMC"]
@@ -515,8 +523,8 @@ only_dirs = [
             # "out-ganak-mccomp2324-14675861-1", # default setup along WITH appmc. Trying tditers
             # "out-ganak-mccomp2324-15010600-0", # TD start from 0
             "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
-            "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
-            "out-ganak-mccomp2324-21349", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac
+            # "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
+            "out-ganak-mccomp2324-21349", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -698,9 +706,9 @@ with open(gnuplotfn, "w") as f:
     for fn,call,ver,num_solved,dir in fname2_s:
         # if "restart" not in call and num_solved > 142:
         if True:
-            call = re.sub("\"", "", call)
-            dir  = re.sub("\"", "", dir)
-            ver  = re.sub("\"", "", ver)
+            call = gnuplot_name_cleanup(call)
+            dir  = gnuplot_name_cleanup(dir)
+            ver  = gnuplot_name_cleanup(ver)
             oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
             towrite += oneline
             towrite +=",\\\n"

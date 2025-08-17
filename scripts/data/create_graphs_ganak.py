@@ -508,12 +508,15 @@ only_dirs = [
             # "out-ganak-mccomp2324-14637456", # try vivif options
             # "out-ganak-mccomp2324-14648650-0", # much more precise cache
             # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
-            "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening
+            ### "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
             # "out-ganak-mccomp2324-14661402-", # try different weakenings
-            "out-ganak-mccomp2324-14675861-0", # submitted to mccomp 2025
-            # "out-ganak-mccomp2324-14675861-2", # default setup along WITHOUT appmc. Trying tditers
+            # "out-ganak-mccomp2324-14675861-0", # submitted to mccomp 2025 -- GOOD
+            # "out-ganak-mccomp2324-14675861-", # default setup along WITHOUT appmc. Trying tditers -- ganak_7d97636055e_9104724fa_26d64aac --tdlookiters 20
             # "out-ganak-mccomp2324-14675861-1", # default setup along WITH appmc. Trying tditers
-            "out-ganak-mccomp2324-15010600-0", # TD start from 0
+            # "out-ganak-mccomp2324-15010600-0", # TD start from 0
+            "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
+            "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
+            "out-ganak-mccomp2324-21349", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

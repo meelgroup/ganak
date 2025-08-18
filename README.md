@@ -1,7 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![build](https://github.com/meelgroup/ganak/workflows/build/badge.svg)
 
-# Ganak2, A High-Performance Versatile Model Counter
+# Ganak, A High-Performance Versatile Model Counter
 Ganak is a state-of-the art model counter that won _all_
 available awards at the 2024 and 2025 Model Counting Competitions. It can count over _any_
 field, including but not limited to integers, rationals, complex numbers,

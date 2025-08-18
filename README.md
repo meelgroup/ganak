@@ -1,13 +1,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![build](https://github.com/meelgroup/ganak/workflows/build/badge.svg)
 
-# Ganak2, A Probabilistic Exact Model Counter
-Ganak is a state-of-the art probabilistic exact model counter that won _all_
-available awards at the 2024 Model Counting Competition. It can count over ANY
+# Ganak, A High-Performance Versatile Model Counter
+Ganak is a state-of-the art model counter that won _all_
+available awards at the 2024 and 2025 Model Counting Competitions. It can count over _any_
 field, including but not limited to integers, rationals, complex numbers,
 integers modulo prime, and polynomials over a finite field.
 
-To read more about Ganak-specific ideas, please refer to [our
+It can run in probabilistic mode (default), non-probabilistic mode (`--prob 0`),
+and approximate counting mode (`--appmct <timeout>`), where it switches to
+[ApproxMC](https://github.com/meelgroup/approxmc/) after a predetermined timeout.
+
+To read more about Ganak-specific ideas, refer to [our newer
 paper](https://www.msoos.org/wordpress/wp-content/uploads/2025/05/ganak2.pdf),
 and our [older paper](https://www.ijcai.org/proceedings/2019/0163.pdf). You
 can also check out our presentation
@@ -98,8 +102,21 @@ Ganak for 1000 seconds and then switch to approximate counting, you can do:
 Note that this can _only_ be used with `--mode 0`, i.e. in unweighted
 counting.
 
-## Different Modes of Counting
-Ganak supports many different ways of counting:
+## Probabilistic Counting
+By default, Ganak uses a probabilistic caching of component counts, which means
+that in extremely rare cases, often less than 1 case per billion (depending on the
+problem), it can return incorrect count. The probability of the wrong count is displayed
+at the end of solving with:
+```plaintext
+c s pac guarantees epsilon: 0 delta: 6.45757296e-10
+```
+which means that the probability of the wrong count is at most
+`6.45757296e-10`, i.e. less than 1 in a billion.
+
+If you must have a non-probabilistic count, you can use the `--prob 0` flag.
+
+## Supported Weights
+Ganak supports many different weights:
 - For counting over integers, the default mode `--mode 0` works. Here, you can
   even run approximate counting after some timeout, with e.g `--appmct 1000`
   which will automatically switch over to approximate counting after 1000s of
@@ -128,19 +145,6 @@ You can also write your own field by implementing the `Field` and `FieldGen`
 interfaces. Absolutely _any_ field will work, and it's as easy as implementing
 `+,-,*` and `/` operators, and the `0` and `1` constants. It's a fun
 exercise to do.
-
-## Probabilistic Counting
-By default, Ganak uses a probabilistic caching of component counts, which means
-that in extremely rare cases, often less than 1 case per billion (depending on the
-problem), it can return incorrect count. The probability of the wrong count is displayed
-at the end of solving with:
-```plaintext
-c s pac guarantees epsilon: 0 delta: 6.45757296e-10
-```
-which means that the probability of the wrong count is at most
-`6.45757296e-10`, i.e. less than 1 in a billion.
-
-If you must have a non-probabilistic count, you can use the `--prob 0` flag.
 
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter

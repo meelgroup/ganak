@@ -905,7 +905,7 @@ FF Counter::outer_count() {
       exit(-1);
     } else *cnt += *do_appmc_count();
   }
-  if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
+  if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
 
@@ -923,7 +923,7 @@ vector<Cube> Counter::one_restart_count() {
     td_decompose();
   }
   count_loop();
-  if (conf.verb >= 3) stats.print_short(this, &comp_manager->get_cache());
+  if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
   return mini_cubes;
 }
 
@@ -965,7 +965,7 @@ void Counter::print_all_levels() {
 void Counter::print_stat_line() {
   if (next_print_stat_cache > stats.num_cache_look_ups) return;
   if (next_print_stat_confl > stats.conflicts) return;
-  if (conf.verb) stats.print_short(this, &comp_manager->get_cache());
+  if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   next_print_stat_cache = stats.num_cache_look_ups + (20LL*1000LL*1000LL);
   next_print_stat_confl = stats.conflicts + 150LL*1000LL;
 }

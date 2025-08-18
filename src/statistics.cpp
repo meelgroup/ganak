@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "statistics.hpp"
 #include "common.hpp"
-#include "comp_cache.hpp"
 #include "counter.hpp"
 #include "time_mem.hpp"
 
@@ -43,7 +42,7 @@ static double safe_div(double a, double b) {
   else return a/b;
 }
 
-void DataAndStatistics::print_short(const Counter* counter, const CompCache* cache) const {
+void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
   verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "decisions K                    "
     << std::left << setw(9) << decisions/1000
@@ -168,7 +167,7 @@ void DataAndStatistics::print_short(const Counter* counter, const CompCache* cac
     << get_avg_cache_store_sz()
     << " / "
     << get_avg_cache_store_size());
-  if (conf.verb >= 2) counter->get_cache().debug_mem_data();
+  if (conf.verb >= 2) counter->get_cache()->debug_mem_data();
   verb_print(1, "");
 }
 

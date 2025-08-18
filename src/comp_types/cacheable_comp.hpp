@@ -23,25 +23,24 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
-#include "hashed_comp.hpp"
+#include "structures.hpp"
+#include "base_comp.hpp"
 
 namespace GanakInt {
 
 class Comp;
 class CompArchetype;
 
-// Adds Structure to PackedComp that is
-// necessary to store it in the cache
-// namely, the descendant tree structure that
-// allows for the removal of cache pollutions
-class CacheableComp: public HashedComp {
+template<typename T>
+class CacheableComp: public BaseComp, private T {
 public:
   CacheableComp() = default;
+  CacheableComp(CacheableComp&&) = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
-  CacheableComp(uint64_t hash_seed, const Comp &comp) : HashedComp(hash_seed, comp) { }
-
-  uint64_t bignum_bytes() const { return HashedComp::bignum_bytes(); }
+  CacheableComp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& bpc) {
+    hashkey = T::set_comp(comp, hash_seed, bpc);
+  }
 
   // Cache Pollution Management
   void set_father(CacheEntryID f) { father_ = f; }
@@ -54,19 +53,28 @@ public:
   CacheEntryID next_bucket_element() const { return next_bucket_element_; }
   bool is_free() const {
     if (father_ == std::numeric_limits<uint32_t>::max())
-      assert (HashedComp::model_count_ == nullptr);
+      assert (model_count_ == nullptr);
     return father_ == std::numeric_limits<uint32_t>::max();
   }
   void set_free() {
     father_ = std::numeric_limits<uint32_t>::max();
-    HashedComp::model_count_.reset();
+    T::set_free();
+    model_count_.reset();
+  }
+  auto get_hashkey() const  { return hashkey; }
+  uint64_t extra_bytes() const {
+    return BaseComp::bignum_bytes() + T::comp_bytes();
+  }
+  auto equals(const CacheableComp<T>& other) const {
+    return hashkey == other.hashkey && T::equals(other);
   }
 
 private:
+  uint64_t hashkey;
   CacheEntryID next_bucket_element_ = 0;
 
   // father and descendants:
-  // each CCacheEntry is a Node in a tree which represents the relationship
+  // each CacheEntry is a Node in a tree which represents the relationship
   // of the comps stored
   CacheEntryID father_ = 0;
   CacheEntryID first_descendant_ = 0;

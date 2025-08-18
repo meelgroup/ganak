@@ -22,18 +22,17 @@ THE SOFTWARE.
 
 #include "comp_management.hpp"
 #include "common.hpp"
+#include "comp_types/cacheable_comp.hpp"
 #include "counter.hpp"
-#include <gmpxx.h>
 
 using namespace GanakInt;
 
 CompManager::CompManager(const CounterConfiguration& config,
     DataAndStatistics& statistics,
     const LiteralIndexedVector<TriValue>& lit_values, Counter* _counter) :
-    fg(_counter->get_fg()->dup()), conf(config), stats(statistics), cache(statistics, conf),
+    fg(_counter->get_fg()->dup()), conf(config), stats(statistics),
     ana(lit_values, _counter)
 {
-  get_random_seed_for_hash();
 }
 
 void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {
@@ -41,8 +40,8 @@ void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {
   assert(top.super_comp() != 0);
 
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    if (!cache.exists(comp_stack[u]->id())) continue;
-    stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
+    if (!cache->exists(comp_stack[u]->id())) continue;
+    stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
   }
   stats.cache_pollutions_called++;
 }
@@ -53,11 +52,11 @@ void CompManager::remove_cache_pollutions_of(const StackLevel &top) {
   // first, remove the list of descendants from the father
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
-  assert(cache.exists(get_super_comp(top).id()));
+  assert(cache->exists(get_super_comp(top).id()));
 
   for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    assert(cache.exists(comp_stack[u]->id()));
-    stats.cache_pollutions_removed += cache.clean_pollutions_involving(comp_stack[u]->id());
+    assert(cache->exists(comp_stack[u]->id()));
+    stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
   }
   stats.cache_pollutions_called++;
 
@@ -82,16 +81,17 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     if (ana.var_unvisited_in_sup_comp(*vt) &&
         ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
-      CacheableComp packed_comp(hash_seed, *p_new_comp);
+      void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
-      if (!cache.find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), packed_comp)) {
+      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
-        p_new_comp->set_id(cache.new_comp(packed_comp, super_comp.id()));
-        stats.incorporate_cache_store(packed_comp, p_new_comp->nVars());
+        // Must incorporate BEFORE, because set_id will swap/emplace_back
+        stats.incorporate_cache_store(cache->get_extra_bytes(ccomp), p_new_comp->nVars());
+        p_new_comp->set_id(cache->add_new_comp(ccomp, super_comp.id()));
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
@@ -108,6 +108,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #endif
         free(p_new_comp);
       }
+      cache->free_comp(ccomp);
     }
   }
 

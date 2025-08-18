@@ -650,6 +650,8 @@ for only_counted in [False, True]:
         CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
         ROUND(avg(td_width),0) as 'av tdw',\
         ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
+        ROUND(avg(cache_avg_hit_vars),2) as 'av chitvs',\
+        ROUND(avg(cache_avg_store_vars),2) as 'av cstorevs',\
         ROUND(avg(ganak_mem_mb),2) as 'av memMB',\
         ROUND(max(ganak_mem_mb),2) as 'max memMB',\
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\

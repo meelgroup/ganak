@@ -650,6 +650,8 @@ for only_counted in [False, True]:
         CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
         ROUND(avg(td_width),0) as 'av tdw',\
         ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
+        ROUND(avg(cache_avg_hit_vars),2) as 'av chitvs',\
+        ROUND(avg(cache_avg_store_vars),2) as 'av cstorevs',\
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\
         sum(fname is not null) as 'nfiles'\
         from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc")

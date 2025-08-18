@@ -639,7 +639,7 @@ for only_counted in [False, True]:
         CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
         sum(ganak_time is not null) as 'solved',\
         CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
-        CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-sat-dec-sz',\
+        CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-opt-sz',\
         ROUND(avg(gates_extend_t), 3) as 'gates-ext-t',\
         ROUND(avg(padoa_extend_t), 3) as 'padoa-ext-t',\
         ROUND(avg(gates_extended), 3) as 'gates-ext',\
@@ -651,9 +651,7 @@ for only_counted in [False, True]:
         ROUND(avg(td_width),0) as 'av tdw',\
         ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
         ROUND(avg(cache_avg_hit_vars),2) as 'av chitvs',\
-        ROUND(avg(cache_avg_store_vars),2) as 'av cstorevs',\
         ROUND(avg(ganak_mem_mb),2) as 'av memMB',\
-        ROUND(max(ganak_mem_mb),2) as 'max memMB',\
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\
         sum(fname is not null) as 'nfiles'\
         from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc")

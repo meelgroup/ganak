@@ -650,6 +650,8 @@ for only_counted in [False, True]:
         CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
         ROUND(avg(td_width),0) as 'av tdw',\
         ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
+        ROUND(avg(ganak_mem_mb),2) as 'av memMB',\
+        ROUND(max(ganak_mem_mb),2) as 'max memMB',\
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\
         sum(fname is not null) as 'nfiles'\
         from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc")
@@ -662,7 +664,7 @@ if True:
     with open("gen_table.sqlite", "w") as f:
       f.write(".mode table\n")
       f.write("select '"+dir+"', '"+ver+"'");
-      for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars":
+      for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb":
         f.write(", (SELECT "+col+" as 'median_"+col+"'\
         FROM data\
         where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null"+fname_like+"\

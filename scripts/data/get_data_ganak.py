@@ -204,6 +204,8 @@ def collect_cache_data(fname):
     edge_var_ratio = None
     td_w = None
     td_t = None
+    cache_avg_hit_vars = None
+    cache_avg_store_vars = None
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
@@ -222,9 +224,14 @@ def collect_cache_data(fname):
             if "c o cache K (lookup/ stores/ hits/ dels)" in line:
               cache_lookupK = float(line.split()[8])
               cache_storeK = float(line.split()[9])
+            #c o avg hit/store num vars 17.841 / 96.672
+            if "c o avg hit/store num vars" in line:
+              cache_avg_hit_vars = float(line.split()[6])
+              cache_avg_store_vars = float(line.split()[8])
+              # print("cache avg hit/store vars:", cache_avg_hit_vars, cache_avg_store_vars)
             if "c o deletion done. T:" in line:
               cache_del_time += float(line.split()[5])
-    return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t
+    return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars
 
 def timeout_parse(fname):
     t = None
@@ -424,11 +431,13 @@ for f in file_list:
         files[base]["gates_extend_t"] = gates_extend_t
         files[base]["padoa_extended"] = padoa_extended
         files[base]["padoa_extend_t"] = padoa_extend_t
-        cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t= collect_cache_data(f)
+        cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars= collect_cache_data(f)
         files[base]["compsK"] = cache_lookupK
         files[base]["cache_miss_rate"] = cache_miss_rate
         files[base]["cache_storeK"] = cache_storeK
         files[base]["cache_del_time"] = cache_del_time
+        files[base]["cache_avg_hit_vars"] = cache_avg_hit_vars
+        files[base]["cache_avg_store_vars"] = cache_avg_store_vars
         rst,cubes_orig,cubes_final = find_restarts(f)
         files[base]["restarts"] = rst
         files[base]["cubes_orig"] = cubes_orig
@@ -476,7 +485,7 @@ for f in file_list:
 
 
 with open("mydata.csv", "w") as out:
-    cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time,cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
+    cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time, cache_avg_hit_vars, cache_avg_store_vars, cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
     out.write(cols+"\n")
     for _, f in files.items():
         if "not_solved" not in f:
@@ -596,6 +605,16 @@ with open("mydata.csv", "w") as out:
             toprint += ","
         else:
           toprint += "%s,"  % f["cache_del_time"]
+
+        if "cache_avg_hit_vars" not in f or f["cache_avg_hit_vars"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["cache_avg_hit_vars"]
+
+        if "cache_avg_store_vars" not in f or f["cache_avg_store_vars"] is None:
+            toprint += ","
+        else:
+          toprint += "%s,"  % f["cache_avg_store_vars"]
 
         if "cache_miss_rate" not in f or f["cache_miss_rate"] is None:
             toprint += ","

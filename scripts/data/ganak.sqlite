@@ -27,6 +27,8 @@ CREATE TABLE data (
   new_nvars INT,
   unkn_sz INT,
   cache_del_time FLOAT,
+  cache_avg_hit_vars FLOAT,
+  cache_avg_store_vars FLOAT,
   cache_miss_rate FLOAT,
   bdd_called INT,
   sat_called INT,
@@ -59,6 +61,8 @@ UPDATE data SET orig_proj_sz = NULL WHERE orig_proj_sz = '';
 UPDATE data SET new_nvars = NULL WHERE new_nvars = '';
 UPDATE data SET unkn_sz = NULL WHERE unkn_sz = '';
 UPDATE data SET cache_del_time = NULL WHERE cache_del_time = '';
+UPDATE data SET cache_avg_hit_vars = NULL WHERE cache_avg_hit_vars = '';
+UPDATE data SET cache_avg_store_vars = NULL WHERE cache_avg_store_vars = '';
 UPDATE data SET bdd_called = NULL WHERE bdd_called = '';
 UPDATE data SET sat_called = NULL WHERE sat_called = '';
 UPDATE data SET sat_rst = NULL WHERE sat_rst = '';

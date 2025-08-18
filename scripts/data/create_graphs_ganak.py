@@ -522,9 +522,10 @@ only_dirs = [
             # "out-ganak-mccomp2324-14675861-", # default setup along WITHOUT appmc. Trying tditers -- ganak_7d97636055e_9104724fa_26d64aac --tdlookiters 20
             # "out-ganak-mccomp2324-14675861-1", # default setup along WITH appmc. Trying tditers
             # "out-ganak-mccomp2324-15010600-0", # TD start from 0
-            "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
+            # "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
             # "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
             "out-ganak-mccomp2324-21349", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
+            "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -698,7 +699,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][0:]\\\n")
+    f.write("plot [:][800:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

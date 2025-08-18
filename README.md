@@ -129,6 +129,19 @@ interfaces. Absolutely _any_ field will work, and it's as easy as implementing
 `+,-,*` and `/` operators, and the `0` and `1` constants. It's a fun
 exercise to do.
 
+## Probabilistic Counting
+By default, Ganak uses a probabilistic caching of component counts, which means
+that in extremely rare cases, often less than 1 case per billion (depending on the
+problem), it can return incorrect count. The probability of the wrong count is displayed
+at the end of solving with:
+```plaintext
+c s pac guarantees epsilon: 0 delta: 6.45757296e-10
+```
+which means that the probability of the wrong count is at most
+`6.45757296e-10`, i.e. less than 1 in a billion.
+
+If you must have a non-probabilistic count, you can use the `--prob 0` flag.
+
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter
 fuzzer, developed by [Anna Latour](https://scholar.google.com/citations?user=nf5lfegAAAAJ&hl=nl)

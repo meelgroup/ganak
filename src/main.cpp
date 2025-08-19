@@ -181,6 +181,8 @@ void add_ganak_options()
     myopt("--tdcontract", conf.do_td_contract, atoi, "TD contract over opt indep set");
     myopt("--tdlimit", conf.td_limit, atoi, "If TD is over this, reduce weight to 0.1");
     myopt("--tdoptindep", conf.do_td_use_opt_indep, atoi, "Use opt indep for TD computation");
+    myopt("--tdmaxdensity", conf.td_max_density, atof, "Max density for TD computation");
+    myopt("--tdmaxedgeratio", conf.td_max_edge_var_ratio, atoi, "Max edge to var ratio for TD computation");
 
     // Clause DB options
     myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");

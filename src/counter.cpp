@@ -407,6 +407,12 @@ void Counter::td_decompose() {
     }
   } else primal_alt = &primal;
 
+  if (!primal_alt->isConnected()) {
+    verb_print(1, "ERROR: Primal graph is not connected, NOPE");
+    exit(-1);
+    return;
+  }
+
   // run FlowCutter
   verb_print(2, "[td] FlowCutter is running...");
   TWD::IFlowCutter fc(primal_alt->numNodes(), primal_alt->numEdges(), conf.verb);

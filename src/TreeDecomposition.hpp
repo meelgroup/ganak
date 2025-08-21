@@ -38,14 +38,30 @@ public:
   void init(int n);
   void clear();
 
-  int numNodes() { return this->nodes; }
-  int numEdges() { return this->edges; }
+  int numNodes() { return nodes; }
+  int numEdges() { return edges; }
 
   const vector<vector<int>>& get_adj_list() const;
   void addEdge(int v1, int v2);
   void contract(int v, int max_edges);
   bool hasEdge(int v1, int v2) { return adj_mat[v1].Get(v2); }
   const std::vector<int> Neighbors(int v) const { return adj_list[v]; }
+  bool isConnected() const {
+    if (nodes == 0) return true;
+    vector<int> visited(nodes, 0);
+
+    auto dfs = [&](int v, auto&& dfs_ref) -> void {
+        visited[v] = 1;
+        for (int u : adj_list[v]) {
+            if (!visited[u]) dfs_ref(u, dfs_ref);
+        }
+    };
+
+    dfs(0, dfs);
+
+    for (int i = 0; i < nodes; i++) if (!visited[i]) return false;
+    return true;
+  }
 
 protected:
   int nodes;

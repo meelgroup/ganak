@@ -171,12 +171,12 @@ int TreeDecomposition::getCentroid() const {
 void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) const {
   VERBOSE_DEBUG_DO(cout << "c o OdDes: bag=" << bag << ", parent=" << parent << ", depth=" << depth << endl);
   assert(bag >= 0 && bag < nBags);
-  assert(parent >= 0 && parent < nBags);
   assert(depth >= 1);
   bool new_vs = false;
   for (int v : bags[bag]) {
     if (ret[v] == 0) new_vs = true;
     else {
+      assert(parent >= 0);
       assert(ret[v] <= depth);
       assert(is_sorted(bags[parent].begin(), bags[parent].end()));
       assert(binary_search(bags[parent].begin(), bags[parent].end(), v));
@@ -204,7 +204,7 @@ vector<int> TreeDecomposition::getOrd() const {
   VERBOSE_DEBUG_DO(cout << "c o Tree decomposition centroid: " << centroid << endl);
   assert(centroid >= 0 && centroid < nBags);
   vector<int> ret(n, 0);
-  OdDes(centroid, 0, 1, ret);
+  OdDes(centroid, -1, 1, ret);
   SLOW_DEBUG_DO(
       for (int i = 0; i < n; i++) if (ret[i] == 0) {
         cout << "c o Vertex " << i << " not assigned an order!" << endl;

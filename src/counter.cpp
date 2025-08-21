@@ -372,7 +372,7 @@ void Counter::td_decompose() {
       if (primal.numEdges() > conf.td_max_edges*100 ) break;
     }
   }
-  verb_print(2, "nodes: " << nodes << " nvars: " << nVars() << " edges: " << primal.numEdges());
+  verb_print(1, "[td] nodes: " << nodes << " nvars: " << nVars() << " edges: " << primal.numEdges());
 
   const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();
   const double density = (double)primal.numEdges()/(double)n;
@@ -408,8 +408,8 @@ void Counter::td_decompose() {
   } else primal_alt = &primal;
 
   if (!primal_alt->isConnected()) {
-    verb_print(1, "ERROR: Primal graph is not connected, NOPE");
-    exit(-1);
+    verb_print(1, "WARNING: Primal graph is not connected, this NOT going to go well!");
+    verb_print(1, "WARNING: Ganak should NOT be fed a disconnected CNF");
     return;
   }
 

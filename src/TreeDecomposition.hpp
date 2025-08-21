@@ -57,7 +57,6 @@ public:
     };
 
     dfs(0, dfs);
-
     for (int i = 0; i < nodes; i++) if (!visited[i]) return false;
     return true;
   }

@@ -155,7 +155,7 @@ int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
   return intro;
 }
 
-int TreeDecomposition::Centroid() const {
+int TreeDecomposition::getCentroid() const {
   int cen = -1;
   CenDfs(1, 0, cen);
   assert(cen >= 1 && cen <= nBags);
@@ -163,9 +163,9 @@ int TreeDecomposition::Centroid() const {
 }
 
 /**
-    b: Current bag in the tree decomposition.
-    p: Parent bag.
-    d: Current depth (order value being assigned).
+    bag: Current bag in the tree decomposition.
+    pparent: Parent bag.
+    depth: Current depth (order value being assigned).
     ret: Output vector storing the order of each vertex.
 */
 void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) const {
@@ -199,7 +199,8 @@ void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) 
 //    before their children. Newly discovered vertices get a higher (later)
 //    order.
 vector<int> TreeDecomposition::getOrd() const {
-  int centroid = Centroid();
+  int centroid = getCentroid();
+  SLOW_DEBUG_DO(assert(bagsConnected(centroid)));
   VERBOSE_DEBUG_DO(cout << "c o Tree decomposition centroid: " << centroid << endl);
   assert(centroid >= 0 && centroid < nBags);
   vector<int> ret(n, 0);

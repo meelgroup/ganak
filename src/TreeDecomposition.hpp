@@ -49,12 +49,11 @@ public:
   bool isConnected() const {
     if (nodes == 0) return true;
     vector<int> visited(nodes, 0);
-
-    auto dfs = [&](int v, auto&& dfs_ref) -> void {
-        visited[v] = 1;
-        for (int u : adj_list[v]) {
-            if (!visited[u]) dfs_ref(u, dfs_ref);
-        }
+    auto dfs = [&](const int v, auto&& dfs_ref) -> void {
+      visited[v] = 1;
+      for (int u : adj_list[v]) {
+        if (!visited[u]) dfs_ref(u, dfs_ref);
+      }
     };
 
     dfs(0, dfs);

@@ -72,26 +72,42 @@ private:
 };
 
 class TreeDecomposition {
- public:
-   explicit TreeDecomposition(int nBags_, int n_);
-   const vector<int>& neighbor_bags(int b) const;
-   int nverts() const;
-   int nbags() const;
-   void addEdge(int a, int b);
-   void setBag(int v, const vector<int>& bag);
-   int Width() const;
-   bool InBag(int b, int v) const;
-   int Centroid() const;
+public:
+  explicit TreeDecomposition(int nBags_, int n_);
+  const vector<int>& neighbor_bags(int b) const;
+  int nverts() const;
+  int nbags() const;
+  void addEdge(int a, int b);
+  void setBag(int v, const vector<int>& bag);
+  int Width() const;
+  bool InBag(int b, int v) const;
+  int getCentroid() const;
   vector<int> getOrd() const;
- private:
-   int nBags; // number of bags in the tree decomposition
-   int n; // number of vertices in the original graph
-   int width; // width of the tree decomposition
-   Graph tree;
-   vector<vector<int>> bags;
+private:
+  int nBags; // number of bags in the tree decomposition
+  int n; // number of vertices in the original graph
+  int width; // width of the tree decomposition
+  Graph tree;
+  vector<vector<int>> bags;
   void OdDes(int b, int p, int d, vector<int>& ret) const;
-   int CenDfs(int x, int p, int& cen) const;
-   bool dfs(int x, int v, int p, vector<int>& u) const;
+  int CenDfs(int x, int p, int& cen) const;
+  bool dfs(int x, int v, int p, vector<int>& u) const;
+  bool bagsConnected(int start) const {
+    if (nBags == 0) return true;
+    vector<int> visited(nBags, 0);
+
+    auto dfs = [&](const int b, auto&& dfs_ref) -> void {
+      assert(b >= 0 && b < nBags);
+      visited[b] = 1;
+      for (int b2 : neighbor_bags(b)) {
+        if (!visited[b2]) dfs_ref(b2, dfs_ref);
+      }
+    };
+    dfs(start, dfs);
+
+    for (int i = 0; i < nBags; i++) if (!visited[i]) return false;
+    return true;
+  }
 };
 
 template<typename T>

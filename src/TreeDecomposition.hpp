@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <vector>
 #include <algorithm>
 #include "bitset.hpp"
+#include "common.hpp"
 using std::vector;
 
 namespace TWD {
@@ -59,7 +60,10 @@ public:
 
   void initBags() { bags.clear(); bags.resize(nodes); }
   std::vector<std::vector<int>>& Bags() { return bags; }
-  bool inBag(int v, int x) const { return std::binary_search(bags[v].begin(), bags[v].end(), x); }
+  bool inBag(int v, int x) const {
+    SLOW_DEBUG_DO(assert(std::is_sorted(bags[v].begin(), bags[v].end())));
+    return std::binary_search(bags[v].begin(), bags[v].end(), x);
+  }
 
   void setWidth(int width) { tw = width; }
   int width() const { return tw; }
@@ -71,12 +75,15 @@ public:
   double start_time;
 
 private:
+  void sortBags() {
+    for (auto& bag: bags) std::sort(bag.begin(), bag.end());
+  }
   int findCentroid(int v, int parent, int& centroid) const;
   void computeDistance(int v, int parent, int depth, std::vector<int>& distance);
 
   std::vector<std::vector<int>> bags;
   int tw;
   int gnodes;
-  int cent;
+  int cent = -1;
 };
 }

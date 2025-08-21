@@ -97,6 +97,7 @@ const vector<vector<int>>& Graph::get_adj_list() const {
 
 int TreeDecomposition::centroid(int npvars, int verb) {
   int centroid = -1;
+  sortBags();
   findCentroid(0, -1, centroid);
 
   int size = bags[centroid].size();
@@ -109,8 +110,7 @@ int TreeDecomposition::centroid(int npvars, int verb) {
   return centroid;
 }
 
-int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const
-{
+int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const {
   int intros = 0;
   for (auto ch : Neighbors(v)) {
     if (ch == parent) continue;

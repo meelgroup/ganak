@@ -142,21 +142,21 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, 
   }
   if (print) verb_print(2, "[td] Calculated TD width: " << td_width-1);
   const auto& adj = tdec.get_adj_list();
-#if 0
-  for(uint32_t i = 0; i < bags.size(); i++) {
-    const auto& b = bags[i];
-    cout << "bag id:" << i << endl;
-    for(const auto& bb: b) { cout << bb << " "; }
-    cout << endl;
-  }
-  for(uint32_t i = 0; i < adj.size(); i++) {
-    const auto& a = adj[i];
-    cout << i << " adjacent to: ";
-    for(const auto& nn: a) cout << nn << " ";
-    cout << endl;
-  }
-#endif
+  VERBOSE_DEBUG_DO(
+    for(uint32_t i = 0; i < bags.size(); i++) {
+      const auto& b = bags[i];
+      cout << "bag id: " << setw(3) << i << " contains: ";
+      for(const auto& bb: b) cout << setw(4) << bb << " ";
+      cout << endl;
+    }
+    for(uint32_t i = 0; i < adj.size(); i++) {
+      const auto& a = adj[i];
+      cout << "bag " << setw(3) << i << " is adjacent to bags: ";
+      for(const auto& nn: a) cout << setw(3) << nn << " ";
+      cout << endl;
+    });
   int max_dist = 0;
+  tdec.centroid(nodes, conf.verb);
   std::vector<int> dists = tdec.distanceFromCentroid(nodes);
   if (dists.empty()) {
       if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
@@ -216,6 +216,18 @@ void Counter::compute_td_score_using_raw(const uint32_t nodes,
 void Counter::compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
     const std::vector<std::vector<int>>& adj, bool print) {
+  SLOW_DEBUG_DO(
+    vector<int> check(nodes, 0);
+    for(const auto& b:  bags) for(const auto&v: b) {
+      assert(v < (int)nodes);
+      check[v]++;
+    }
+    for(uint32_t i = 0; i < nodes; i++) {
+      if (check[i] == 0) cout << "ERROR: vertex " << i << " is not in any bag!" << endl;
+    }
+    assert(std::all_of(check.begin(), check.end(), [](int i) { return i > 0; }));
+  );
+
   sspp::TreeDecomposition dec(bags.size(), nodes);
   for(uint32_t i = 0; i < bags.size();i++) dec.setBag(i, bags[i]);
   for(uint32_t i = 0; i < adj.size(); i++)
@@ -403,7 +415,6 @@ void Counter::td_decompose() {
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
-  td.centroid(nodes, conf.verb);
   compute_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
   if (conf.do_td_contract) delete primal_alt;

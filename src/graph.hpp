@@ -73,8 +73,8 @@ private:
 
 class TreeDecomposition {
  public:
-   explicit TreeDecomposition(int bs_, int n_);
-   const vector<int>& Neighbors(int b) const;
+   explicit TreeDecomposition(int nBags_, int n_);
+   const vector<int>& neighbor_bags(int b) const;
    int nverts() const;
    int nbags() const;
    void addEdge(int a, int b);
@@ -84,7 +84,9 @@ class TreeDecomposition {
    int Centroid() const;
   vector<int> getOrd() const;
  private:
-   int bs, n, width;
+   int nBags; // number of bags in the tree decomposition
+   int n; // number of vertices in the original graph
+   int width; // width of the tree decomposition
    Graph tree;
    vector<vector<int>> bags;
   void OdDes(int b, int p, int d, vector<int>& ret) const;

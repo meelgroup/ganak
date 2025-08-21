@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "graph.hpp"
+#include "common.hpp"
 #include "utils.hpp"
 
 namespace sspp {
@@ -99,24 +100,20 @@ void Graph::addEdge(Edge e) {
   addEdge(e.first, e.second);
 }
 
-TreeDecomposition::TreeDecomposition(int bs_, int n_)
- : bs(bs_), n(n_), width(-1), tree(bs), bags(bs) {}
+TreeDecomposition::TreeDecomposition(int nBags_, int n_)
+ : nBags(nBags_), n(n_), width(-1), tree(nBags), bags(nBags) {}
 
 void TreeDecomposition::addEdge(int a, int b) {
   tree.addEdge(a, b);
 }
 
-void TreeDecomposition::setBag(int v, const vector<int>& bag) {
-  assert(v >= 0 && v <= bs);
-  assert(bags[v].empty());
-  bags[v] = bag;
-  SortAndDedup(bags[v]);
-  width = std::max(width, (int)bags[v].size());
-#ifndef NDEBUG
-  for (int u : bags[v]) {
-    assert(0 <= u && u < n);
-  }
-#endif
+void TreeDecomposition::setBag(int b, const vector<int>& bag) {
+  assert(b >= 0 && b < nBags);
+  assert(bags[b].empty());
+  bags[b] = bag;
+  SortAndDedup(bags[b]);
+  width = std::max(width, (int)bags[b].size());
+  SLOW_DEBUG_DO(for (int u : bags[b]) assert(0 <= u && u < n));
 }
 
 int TreeDecomposition::Width() const {
@@ -124,75 +121,74 @@ int TreeDecomposition::Width() const {
 }
 
 bool TreeDecomposition::InBag(int b, int v) const {
-  assert(0 <= b && b <= bs && 0 <= v && v < n);
-  return BS(bags[b], v);
+  assert(0 <= b && b < nBags);
+  assert(0 <= v && v < n);
+  return binary_search(bags[b], v);
 }
 
-int TreeDecomposition::nbags() const { return bs; }
+int TreeDecomposition::nbags() const { return nBags; }
 int TreeDecomposition::nverts() const { return n; }
 
-const vector<int>& TreeDecomposition::Neighbors(int b) const {
-  assert(b >= 0 && b <= bs);
+const vector<int>& TreeDecomposition::neighbor_bags(int b) const {
+  assert(b >= 0 && b < nBags);
   return tree.Neighbors(b);
 }
 
 int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
-  assert(b >= 0 && b <= bs);
-  assert(p >= 0 && p <= bs);
-  assert(cen == 0);
+  assert(b >= 0 && b < nBags);
+  assert(p >= 0 && p < nBags);
+  assert(cen == -1);
   int intro = 0;
-  for (int nb : Neighbors(b)) {
+  for (int nb : neighbor_bags(b)) {
     if (nb == p) continue;
     int cintro = CenDfs(nb, b, cen);
     intro += cintro;
     if (cintro >= n/2) {
-      assert(cen);
+      assert(cen >= 0);
       return intro;
     }
   }
   for (int v : bags[b]) {
-    if (p == 0 || !InBag(p, v)) {
-      intro++;
-    }
+    if (p == 0 || !InBag(p, v)) intro++;
   }
   if (intro >= n/2) cen = b;
   return intro;
 }
 
 int TreeDecomposition::Centroid() const {
-  int cen = 0;
+  int cen = -1;
   CenDfs(1, 0, cen);
-  assert(cen >= 1 && cen <= bs);
+  assert(cen >= 1 && cen <= nBags);
   return cen;
 }
 
 /**
-    b: Current bag/node in the tree decomposition.
-    p: Parent bag/node.
+    b: Current bag in the tree decomposition.
+    p: Parent bag.
     d: Current depth (order value being assigned).
     ret: Output vector storing the order of each vertex.
 */
-void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
-  assert(b >= 0 && b <= bs);
-  assert(p >= 0 && p <= bs);
-  assert(d >= 1);
+void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) const {
+  VERBOSE_DEBUG_DO(cout << "c o OdDes: bag=" << bag << ", parent=" << parent << ", depth=" << depth << endl);
+  assert(bag >= 0 && bag < nBags);
+  assert(parent >= 0 && parent < nBags);
+  assert(depth >= 1);
   bool new_vs = false;
-  for (int v : bags[b]) {
+  for (int v : bags[bag]) {
     if (ret[v] == 0) new_vs = true;
     else {
-      assert(ret[v] <= d);
-      assert(binary_search(bags[p].begin(), bags[p].end(), v));
+      assert(ret[v] <= depth);
+      assert(is_sorted(bags[parent].begin(), bags[parent].end()));
+      assert(binary_search(bags[parent].begin(), bags[parent].end(), v));
     }
   }
   if (new_vs) {
-    d++;
-    for (int v : bags[b]) {
-      if (ret[v] == 0) ret[v] = d;
-    }
+    depth++;
+    for (int v : bags[bag]) if (ret[v] == 0) ret[v] = depth;
   }
-  for (int nb : Neighbors(b)) {
-    if (nb == p) continue;
-    OdDes(nb, b, d, ret);
+  for (int nb : neighbor_bags(bag)) {
+    if (nb == parent) continue;
+    OdDes(nb, bag, depth, ret);
   }
 }
 
@@ -204,10 +200,16 @@ void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
 //    order.
 vector<int> TreeDecomposition::getOrd() const {
   int centroid = Centroid();
-  assert(centroid >= 1 && centroid <= bs);
-  vector<int> ret(n);
+  VERBOSE_DEBUG_DO(cout << "c o Tree decomposition centroid: " << centroid << endl);
+  assert(centroid >= 0 && centroid < nBags);
+  vector<int> ret(n, 0);
   OdDes(centroid, 0, 1, ret);
-  for (int i = 0; i < n; i++) assert(ret[i] > 0);
+  SLOW_DEBUG_DO(
+      for (int i = 0; i < n; i++) if (ret[i] == 0) {
+        cout << "c o Vertex " << i << " not assigned an order!" << endl;
+      }
+      for (int i = 0; i < n; i++) assert(ret[i] > 0)
+  );
   return ret;
 }
 

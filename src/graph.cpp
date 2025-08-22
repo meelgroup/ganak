@@ -113,7 +113,7 @@ void TreeDecomposition::setBag(int b, const vector<int>& bag) {
   bags[b] = bag;
   SortAndDedup(bags[b]);
   width = std::max(width, (int)bags[b].size());
-  SLOW_DEBUG_DO(for (int u : bags[b]) assert(0 <= u && u < n));
+  for (int u : bags[b]) assert(0 <= u && u < n);
 }
 
 int TreeDecomposition::Width() const {
@@ -134,31 +134,30 @@ const vector<int>& TreeDecomposition::neighbor_bags(int b) const {
   return tree.Neighbors(b);
 }
 
-int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
-  assert(b >= 0 && b < nBags);
-  assert(p >= 0 && p < nBags);
+int TreeDecomposition::CenDfs(int bag, int parent, int& cen) const {
+  assert(bag >= 0 && bag < nBags);
   assert(cen == -1);
   int intro = 0;
-  for (int nb : neighbor_bags(b)) {
-    if (nb == p) continue;
-    int cintro = CenDfs(nb, b, cen);
+  for (int nb : neighbor_bags(bag)) {
+    if (nb == parent) continue;
+    int cintro = CenDfs(nb, bag, cen);
     intro += cintro;
     if (cintro >= n/2) {
       assert(cen >= 0);
       return intro;
     }
   }
-  for (int v : bags[b]) {
-    if (p == 0 || !InBag(p, v)) intro++;
+  for (int v : bags[bag]) {
+    if (parent == -1 || !InBag(parent, v)) intro++;
   }
-  if (intro >= n/2) cen = b;
+  if (intro >= n/2) cen = bag;
   return intro;
 }
 
 int TreeDecomposition::getCentroid() const {
   int cen = -1;
-  CenDfs(1, 0, cen);
-  assert(cen >= 1 && cen <= nBags);
+  CenDfs(0, -1, cen);
+  assert(cen >= 0 && cen < nBags);
   return cen;
 }
 

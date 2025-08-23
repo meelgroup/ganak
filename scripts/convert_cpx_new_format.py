@@ -38,12 +38,16 @@ if __name__ == '__main__':
           line = line.strip()
           if line.startswith("c p weight"):
             line = re.sub(r'\s+', ' ', line)
-            if not re.fullmatch(r'c p weight \S+ \S+ \S+ 0', line):
-                print(f"Error: Invalid line format: {line}")
-                print(f"Expected format: 'c p weight <var1> <real weight> <complex weight> 0'")
-                print(f"Instead got: {line}")
-                exit(1)
-            line = re.sub(r'c p weight (\S+) (\S+) (\S+) 0', r'c p weight \1 \2 + \3i 0', line)
+            if re.fullmatch(r'c p weight \S+ \S+ \S+ 0', line):
+              line = re.sub(r'c p weight (\S+) (\S+) (\S+) 0', r'c p weight \1 \2 + \3i 0', line)
+            elif re.fullmatch(r'c p weight \S+ \S+ 0', line):
+              line = re.sub(r'c p weight (\S+) (\S+) 0', r'c p weight \1 \2 + 0i 0', line)
+            else:
+              print(f"Error: Invalid line format: {line}")
+              print(f"Expected format: 'c p weight <var1> <real weight> <complex weight> 0'")
+              print(f"OR expected format: 'c p weight <var1> <real weight> 0'")
+              print(f"Instead got: {line}")
+              exit(1)
             out.write(line + "\n")
           else:
             out.write(line + "\n")

@@ -4167,7 +4167,7 @@ bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
     cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
     exit(-1);
   }
-  for(const auto& l: lits) assert(l.var() <= nVars());
+  for(const auto& l: lits) assert(l.var() <= nVars() && l.var() > 0);
   if (!remove_duplicates(lits)) return ok;
 
   stats.incorporateIrredClauseData(lits);

@@ -66,6 +66,15 @@ DLL_PUBLIC Ganak::~Ganak() {
 DLL_PUBLIC FF Ganak::count() {
   CDat* c = (CDat*)cdat;
   auto cnt = c->fg->one();
+
+  // Check for empty clause
+  for(const auto& cl: c->irred_cls) {
+    if (cl.size() == 0) {
+      cout << "c o intermediate count: " << *c->fg->zero() << endl;
+      return c->fg->zero();
+    }
+  }
+
   auto bags = find_disconnected(*c);
   uint32_t cls_added = 0;
   for(auto& bag: bags) {
@@ -194,6 +203,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   };
 
   for(const auto& cl: dat.irred_cls) {
+    if (cl.size() == 0) continue;
     set<int> vars_in_cl;
     for(const auto& l: cl) vars_in_cl.insert(l.var());
 
@@ -243,6 +253,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   /* cout << "c Total vars in formula: " << dat.nvars << endl; */
   vector<int> count_vars(dat.nvars+1, 0);
   for(const auto& b: bags) {
+    assert(bag_to_vars[b].size() > 0);
     for(const auto& v: bag_to_vars[b]) count_vars[v]++;
   }
   for(uint32_t i = 1; i <= dat.nvars; i++) {

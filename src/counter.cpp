@@ -408,9 +408,9 @@ void Counter::td_decompose() {
   } else primal_alt = &primal;
 
   if (!primal_alt->isConnected()) {
-    verb_print(1, "WARNING: Primal graph is not connected, this NOT going to go well!");
-    verb_print(1, "WARNING: Ganak should NOT be fed a disconnected CNF");
-    return;
+    verb_print(1, "ERROR: Primal graph is not connected, this NOT going to go well!");
+    verb_print(1, "ERROR: Counter should NOT be fed a disconnected CNF");
+    exit(-1);
   }
 
   // run FlowCutter

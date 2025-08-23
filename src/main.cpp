@@ -39,7 +39,7 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <mpfr.h>
 #include "src/GitSHA1.hpp"
-#include <breakid/breakid.hpp>
+/* #include <breakid/breakid.hpp> */
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
 #include "mpoly.hpp"
@@ -78,7 +78,7 @@ CounterConfiguration conf;
 int arjun_verb = 1;
 int do_arjun = 1;
 int arjun_gates = 1;
-int do_breakid = 0;
+/* int do_breakid = 0; */
 int arjun_extend_max_confl = 1000;
 int do_pre_backbone = 0;
 int do_probe_based = 1;
@@ -107,7 +107,7 @@ string print_version()
     ss << "c o SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
     ss << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;
     ss << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
-    ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl;
+    /* ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl; */
     ss << ArjunNS::Arjun::get_thanks_info("c o ") << endl;
     ss << CMSat::SATSolver::get_thanks_info("c o ") << endl;
     ss << "c o Using Graph library by Tuukka Korhonen and Matti Jarvisalo" << endl;
@@ -131,7 +131,7 @@ void add_ganak_options()
     myopt("--prime", prime_field, atoi, "Number of variables in the polynomial field");
     myopt("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
-    myopt("--breakid", do_breakid, atoi, "Enable BreakID");
+    /* myopt("--breakid", do_breakid, atoi, "Enable BreakID"); */
     myopt("--appmct", conf.appmc_timeout, atof, "after K seconds");
     myopt("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
     myopt("--chronobt", conf.do_chronobt, atof, "ChronoBT. SAT must be DISABLED or this will fail");
@@ -339,11 +339,9 @@ void print_vars(const vector<uint32_t>& vars) {
   for(const auto& v: tmp) cout << v+1 << " ";
 }
 
-void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& generators,
-    Ganak& counter) {
+void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
   cnf.check_sanity();
   counter.new_vars(cnf.nVars());
-  counter.set_generators(generators);
 
   set<uint32_t> tmp;
   for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
@@ -364,37 +362,6 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, vector<map<Lit, Lit>>& gener
 
   for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
   for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
-  counter.end_irred_cls();
-}
-
-auto run_breakid(const ArjunNS::SimplifiedCNF& cnf) {
-  double my_time = cpu_time();
-  vector<map<Lit, Lit>> generators;
-  BID::BreakID breakid;
-  /* breakid.set_useMatrixDetection(conf.useMatrixDetection); */
-  /* breakid.set_useFullTranslation(conf.useFullTranslation); */
-  breakid.set_verbosity(0);
-  breakid.start_dynamic_cnf(cnf.nVars());
-  for(const auto& cl: cnf.clauses) {
-    breakid.add_clause((BID::BLit*)cl.data(), cl.size());
-  }
-  breakid.set_steps_lim(4000);
-  breakid.end_dynamic_cnf();
-  verb_print(1, "[breakid] Num generators: " << breakid.get_num_generators());
-  breakid.detect_subgroups();
-  if (conf.verb >= 1) breakid.print_generators(std::cout, "c o ");
-  vector<unordered_map<BID::BLit, BID::BLit> > orig_gen;
-  breakid.get_perms(&orig_gen);
-  for(const auto& m: orig_gen) {
-    map<Lit, Lit> gen;
-    for(const auto& gp: m) {
-      gen[Lit(gp.first.var()+1, gp.first.sign())] = Lit(gp.second.var()+1, gp.second.sign());
-      if (conf.verb >= 2) cout << "c o " << gp.first << " -> " << gp.second << endl;
-    }
-    generators.push_back(gen);
-  }
-  verb_print(1, "[breakid] T: " << (cpu_time()-my_time));
-  return generators;
 }
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
@@ -696,16 +663,16 @@ int main(int argc, char *argv[])
     }
   }
 
-  // Run BreakID
-  vector<map<Lit, Lit>> generators;
-  if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && conf.do_restart && do_breakid && cnf.clauses.size() > 1)
-    generators = run_breakid(cnf);
+  /* // Run BreakID */
+  /* vector<map<Lit, Lit>> generators; */
+  /* if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && conf.do_restart && do_breakid && cnf.clauses.size() > 1) */
+  /*   generators = run_breakid(cnf); */
 
-  if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true);
+  /* if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true); */
 
   // Run Ganak
   Ganak counter(conf, fg);
-  setup_ganak(cnf, generators, counter);
+  setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);
   return 0;
 }

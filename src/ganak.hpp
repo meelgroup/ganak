@@ -51,5 +51,5 @@ public:
   uint64_t get_num_cache_lookups() const;
   uint64_t get_max_cache_elems() const;
 private:
-  void* counter = nullptr;
+  void* cdat = nullptr;
 };

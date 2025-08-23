@@ -746,7 +746,7 @@ uint32_t Counter::calc_lbd(const T2& lits) {
 
 class OuterCounter {
 public:
-  OuterCounter(const CounterConfiguration& conf, FG& fg) {
+  OuterCounter(const CounterConfiguration& conf, const FG& fg) {
     counter = std::make_unique<Counter>(conf, fg);
   }
 

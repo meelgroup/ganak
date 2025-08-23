@@ -708,11 +708,5 @@ int main(int argc, char *argv[])
   setup_ganak(cnf, generators, counter);
 
   run_weighted_counter(counter, cnf, start_time);
-  /*   if (is_appx) { */
-  /*     cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl; */
-  /*     cout << "c s approx arb int " << std::fixed << *cnt << endl; */
-  /*   } else */
-  /*     cout << "c s exact arb int " << std::fixed << *cnt << endl; */
-  /* } */
   return 0;
 }

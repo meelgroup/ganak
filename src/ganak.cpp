@@ -230,7 +230,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   for(const auto& b: bags) {
     /* cout << "c Found bag " << b << " with vars: "; */
     /* for(const auto& v: bag_to_vars[b]) cout << v << " "; */
-    cout << endl;
+    /* cout << endl; */
     vector<uint32_t> bag_vars;
     for(const auto& v: bag_to_vars[b]) bag_vars.push_back(v);
     res.push_back(bag_vars);
@@ -254,8 +254,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
   assert(total_vars == dat.nvars);
 
-
-  cout << "c Found " << bags.size() << " disconnected components" << endl;
+  if (dat.conf.verb >= 1) cout << "c o Found " << bags.size() << " disconnected components" << endl;
   return res;
 }
 

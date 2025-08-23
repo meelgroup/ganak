@@ -706,7 +706,6 @@ int main(int argc, char *argv[])
   // Run Ganak
   Ganak counter(conf, fg);
   setup_ganak(cnf, generators, counter);
-
   run_weighted_counter(counter, cnf, start_time);
   return 0;
 }

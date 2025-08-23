@@ -265,7 +265,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
   assert(total_vars == dat.nvars);
 
-  if (dat.conf.verb >= 1) cout << "c o Found " << bags.size() << " disconnected components" << endl;
+  if (dat.conf.verb >= 1) cout << "c o Found " << bags.size() << " disconnected component(s)" << endl;
   return res;
 }
 

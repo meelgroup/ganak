@@ -524,10 +524,12 @@ only_dirs = [
             # "out-ganak-mccomp2324-15010600-0", # TD start from 0
             # "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
             # "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
-            "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
+            # "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
             # "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
             # "out-ganak-mccomp2324-33393-0", # TRILLIUM, fixing td starting from 0, and maybe other TD issues too
             "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
+            "out-ganak-mccomp2324-37704-0", # TRILLIUM, trying less scc upfront, weird non-committed code
+
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

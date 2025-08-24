@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "graph.hpp"
+#include "common.hpp"
 #include "utils.hpp"
 
 namespace sspp {
@@ -28,7 +29,7 @@ namespace sspp {
 Graph::Graph(int n)
   : n_(n), m_(0), adj_list_(n) {
   adj_mat2_.resize(n_);
-  std::vector<int> identity(n);
+  vector<int> identity(n);
   for (int i = 0; i < n; i++) {
     identity[i] = i;
     adj_mat2_[i] = Bitset(n);
@@ -37,7 +38,7 @@ Graph::Graph(int n)
   vertex_map_.Init(identity);
 }
 
-Graph::Graph(std::vector<Edge> edges) : vertex_map_(edges) {
+Graph::Graph(vector<Edge> edges) : vertex_map_(edges) {
   n_ = vertex_map_.Size();
   m_ = 0;
   adj_list_.resize(n_);
@@ -47,7 +48,7 @@ Graph::Graph(std::vector<Edge> edges) : vertex_map_(edges) {
     adj_mat2_[i].SetTrue(i);
   }
   for (auto edge : edges) {
-    AddEdge(vertex_map_.Rank(edge.first), vertex_map_.Rank(edge.second));
+    addEdge(vertex_map_.Rank(edge.first), vertex_map_.Rank(edge.second));
   }
 }
 
@@ -62,8 +63,8 @@ bool Graph::HasEdge(Edge e) const {
   return HasEdge(e.first, e.second);
 }
 
-std::vector<Edge> Graph::Edges() const {
-  std::vector<Edge> ret;
+vector<Edge> Graph::edges() const {
+  vector<Edge> ret;
   for (int i = 0; i < n_; i++) {
     for (int a : adj_list_[i]) {
       if (a > i) ret.push_back({i, a});
@@ -72,15 +73,7 @@ std::vector<Edge> Graph::Edges() const {
   return ret;
 }
 
-std::vector<int> Graph::Vertices() const {
-  std::vector<int> ret(n_);
-  for (int i=0;i<n_;i++){
-    ret[i] = i;
-  }
-  return ret;
-}
-
-const std::vector<int>& Graph::Neighbors(int v) const {
+const vector<int>& Graph::Neighbors(int v) const {
   return adj_list_[v];
 }
 
@@ -93,7 +86,7 @@ Bitset Graph::Neighbors(const Bitset& vs) const {
   return nbs;
 }
 
-void Graph::AddEdge(int v, int u) {
+void Graph::addEdge(int v, int u) {
   if (HasEdge(v, u)) return;
   assert(v != u);
   m_++;
@@ -103,28 +96,24 @@ void Graph::AddEdge(int v, int u) {
   adj_mat2_[u].SetTrue(v);
 }
 
-void Graph::AddEdge(Edge e) {
-  AddEdge(e.first, e.second);
+void Graph::addEdge(Edge e) {
+  addEdge(e.first, e.second);
 }
 
-TreeDecomposition::TreeDecomposition(int bs_, int n_)
- : bs(bs_), n(n_), width(-1), tree(bs+1), bags(bs+1) {}
+TreeDecomposition::TreeDecomposition(int nBags_, int n_)
+ : nBags(nBags_), n(n_), width(-1), tree(nBags), bags(nBags) {}
 
-void TreeDecomposition::AddEdge(int a, int b) {
-  tree.AddEdge(a, b);
+void TreeDecomposition::addEdge(int a, int b) {
+  tree.addEdge(a, b);
 }
 
-void TreeDecomposition::SetBag(int v, vector<int> bag) {
-  assert(v >= 1 && v <= bs);
-  assert(bags[v].empty());
-  bags[v] = bag;
-  SortAndDedup(bags[v]);
-  width = std::max(width, (int)bags[v].size()-1);
-#ifndef NDEBUG
-  for (int u : bags[v]) {
-    assert(0 <= u && u < n);
-  }
-#endif
+void TreeDecomposition::setBag(int b, const vector<int>& bag) {
+  assert(b >= 0 && b < nBags);
+  assert(bags[b].empty());
+  bags[b] = bag;
+  SortAndDedup(bags[b]);
+  width = std::max(width, (int)bags[b].size());
+  for (int u : bags[b]) assert(0 <= u && u < n);
 }
 
 int TreeDecomposition::Width() const {
@@ -132,81 +121,95 @@ int TreeDecomposition::Width() const {
 }
 
 bool TreeDecomposition::InBag(int b, int v) const {
-  assert(1 <= b && b <= bs && 0 <= v && v < n);
-  return BS(bags[b], v);
+  assert(0 <= b && b < nBags);
+  assert(0 <= v && v < n);
+  return binary_search(bags[b], v);
 }
 
-int TreeDecomposition::nbags() const { return bs; }
+int TreeDecomposition::nbags() const { return nBags; }
 int TreeDecomposition::nverts() const { return n; }
 
-const vector<int>& TreeDecomposition::Neighbors(int b) const {
-  assert(b >= 1 && b <= bs);
+const vector<int>& TreeDecomposition::neighbor_bags(int b) const {
+  assert(b >= 0 && b < nBags);
   return tree.Neighbors(b);
 }
 
-int TreeDecomposition::CenDfs(int b, int p, int& cen) const {
-  assert(b >= 1 && b <= bs);
-  assert(p >= 0 && p <= bs);
-  assert(cen == 0);
+int TreeDecomposition::CenDfs(int bag, int parent, int& cen) const {
+  assert(bag >= 0 && bag < nBags);
+  assert(cen == -1);
   int intro = 0;
-  for (int nb : Neighbors(b)) {
-    if (nb == p) continue;
-    int cintro = CenDfs(nb, b, cen);
+  for (int nb : neighbor_bags(bag)) {
+    if (nb == parent) continue;
+    int cintro = CenDfs(nb, bag, cen);
     intro += cintro;
     if (cintro >= n/2) {
-      assert(cen);
+      assert(cen >= 0);
       return intro;
     }
   }
-  for (int v : bags[b]) {
-    if (p == 0 || !InBag(p, v)) {
-      intro++;
-    }
+  for (int v : bags[bag]) {
+    if (parent == -1 || !InBag(parent, v)) intro++;
   }
-  if (intro >= n/2) cen = b;
+  if (intro >= n/2) cen = bag;
   return intro;
 }
 
-int TreeDecomposition::Centroid() const {
-  int cen = 0;
-  CenDfs(1, 0, cen);
-  assert(cen >= 1 && cen <= bs);
+int TreeDecomposition::getCentroid() const {
+  int cen = -1;
+  CenDfs(0, -1, cen);
+  assert(cen >= 0 && cen < nBags);
   return cen;
 }
 
-void TreeDecomposition::OdDes(int b, int p, int d, vector<int>& ret) const {
-  assert(b >= 1 && b <= bs);
-  assert(p >= 0 && p <= bs);
-  assert(d >= 1);
+/**
+    bag: Current bag in the tree decomposition.
+    pparent: Parent bag.
+    depth: Current depth (order value being assigned).
+    ret: Output vector storing the order of each vertex.
+*/
+void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) const {
+  VERBOSE_DEBUG_DO(cout << "c o OdDes: bag=" << bag << ", parent=" << parent << ", depth=" << depth << endl);
+  assert(bag >= 0 && bag < nBags);
+  assert(depth >= 1);
   bool new_vs = false;
-  for (int v : bags[b]) {
-    if (ret[v] == 0) {
-      new_vs = true;
-    } else {
-      assert(ret[v] <= d);
-      assert(binary_search(bags[p].begin(), bags[p].end(), v));
+  for (int v : bags[bag]) {
+    if (ret[v] == 0) new_vs = true;
+    else {
+      assert(parent >= 0);
+      assert(ret[v] <= depth);
+      assert(is_sorted(bags[parent].begin(), bags[parent].end()));
+      assert(binary_search(bags[parent].begin(), bags[parent].end(), v));
     }
   }
   if (new_vs) {
-    d++;
-    for (int v : bags[b]) {
-      if (ret[v] == 0) {
-        ret[v] = d;
-      }
-    }
+    depth++;
+    for (int v : bags[bag]) if (ret[v] == 0) ret[v] = depth;
   }
-  for (int nb : Neighbors(b)) {
-    if (nb == p) continue;
-    OdDes(nb, b, d, ret);
+  for (int nb : neighbor_bags(bag)) {
+    if (nb == parent) continue;
+    OdDes(nb, bag, depth, ret);
   }
 }
 
-vector<int> TreeDecomposition::GetOrd() const {
-  int centroid = Centroid();
-  assert(centroid >= 1 && centroid <= bs);
-  vector<int> ret(n);
-  OdDes(centroid, 0, 1, ret);
-  for (int i = 0; i < n; i++) assert(ret[i] > 0);
+// Gets the order of vertices in the tree decomposition
+//    Assigns an incremental order to vertices in the graph based on their
+//    appearance in the tree decomposition. The order starts from the centroid
+//    and propagates outward, ensuring: Vertices in parent bags are processed
+//    before their children. Newly discovered vertices get a higher (later)
+//    order.
+vector<int> TreeDecomposition::getOrd() const {
+  int centroid = getCentroid();
+  SLOW_DEBUG_DO(assert(bagsConnected(centroid)));
+  VERBOSE_DEBUG_DO(cout << "c o Tree decomposition centroid: " << centroid << endl);
+  assert(centroid >= 0 && centroid < nBags);
+  vector<int> ret(n, 0);
+  OdDes(centroid, -1, 1, ret);
+  SLOW_DEBUG_DO(
+      for (int i = 0; i < n; i++) if (ret[i] == 0) {
+        cout << "c o Vertex " << i << " not assigned an order!" << endl;
+      }
+      for (int i = 0; i < n; i++) assert(ret[i] > 0)
+  );
   return ret;
 }
 

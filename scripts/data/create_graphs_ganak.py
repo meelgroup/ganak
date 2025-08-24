@@ -524,8 +524,10 @@ only_dirs = [
             # "out-ganak-mccomp2324-15010600-0", # TD start from 0
             # "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
             # "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
-            "out-ganak-mccomp2324-21349", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
-            "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
+            "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
+            # "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
+            # "out-ganak-mccomp2324-33393-0", # TRILLIUM, fixing td starting from 0, and maybe other TD issues too
+            "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -853,7 +855,11 @@ os.system("okular run.eps")
 # .mode table
 # old = out-ganak-mccomp2324-14675861-0 -- mccomp2025
 # new= out-ganak-mccomp2324-15010600-0 -- td start from 0
-# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14675861-0' and a2.dirname like 'out-ganak-mccomp2324-15010600-0' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
+
+# old = "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
+# new = "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
+
+# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-21349-0' and a2.dirname like 'out-ganak-mccomp2324-35541-0' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
 
 # cache hits
 # select dirname, fname, round(ganak_time-arjun_time-td_time) as ganakT, cache_miss_rate from data where dirname like 'out-ganak-mccomp2324-14558670-1' and ganak_time is not null and cache_miss_rate is not null  and ganak_time-arjun_time > 100 order by cache_miss_rate asc limit 50;

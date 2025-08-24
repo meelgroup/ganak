@@ -23,9 +23,8 @@ THE SOFTWARE.
 #include "TreeDecomposition.hpp"
 
 #include <cassert>
+#include "common.hpp"
 #include "time_mem.hpp"
-#include "structures.hpp"
-using namespace std;
 using namespace TWD;
 
 
@@ -62,6 +61,8 @@ void Graph::clear()
 }
 void Graph::addEdge(int v1, int v2)
 {
+  SLOW_DEBUG_DO(assert(v1 >= 0 && v1 < nodes));
+  SLOW_DEBUG_DO(assert(v2 >= 0 && v2 < nodes));
   if(adj_mat[v1].Get(v2)) return;
   adj_list[v1].push_back(v2);
   adj_list[v2].push_back(v1);
@@ -96,6 +97,7 @@ const vector<vector<int>>& Graph::get_adj_list() const {
 
 int TreeDecomposition::centroid(int npvars, int verb) {
   int centroid = -1;
+  sortBags();
   findCentroid(0, -1, centroid);
 
   int size = bags[centroid].size();
@@ -108,25 +110,18 @@ int TreeDecomposition::centroid(int npvars, int verb) {
   return centroid;
 }
 
-int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const
-{
+int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const {
   int intros = 0;
-
   for (auto ch : Neighbors(v)) {
     if (ch == parent) continue;
     intros += findCentroid(ch, v, centroid);
-    if (centroid != -1)
-      return intros;
+    if (centroid != -1) return intros;
   }
 
   for (auto x : bags[v])
-    if (parent == -1 || !inBag(parent, x)) {
-      intros++;
-    }
+    if (parent == -1 || !inBag(parent, x)) intros++;
 
-  if (intros >= gnodes / 2)
-    centroid = v;
-
+  if (intros >= gnodes / 2) centroid = v;
   return intros;
 }
 
@@ -156,5 +151,4 @@ void TreeDecomposition::computeDistance(int v, int parent, int depth, vector<int
     if (ch == parent) continue;
     computeDistance(ch, v, d, distance);
   }
-
 }

@@ -60,7 +60,6 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
   // Add clauses
   for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
   for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
-  counter.end_irred_cls();
 }
 
 int main() {

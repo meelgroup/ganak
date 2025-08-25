@@ -183,7 +183,7 @@ void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) 
   }
   if (new_vs) {
     depth++;
-    for (int v : bags[bag]) if (ret[v] == 0) ret[v] = depth;
+    for (int v : bags[bag]) if (ret[v] > depth || ret[v] == 0) ret[v] = depth;
   }
   for (int nb : neighbor_bags(bag)) {
     if (nb == parent) continue;

@@ -64,8 +64,8 @@ public:
   }
 
   // These below are to help us erase better from the cache
-  void set_last_used_time(uint32_t time) { last_used_time_ = time; }
-  void avg_last_used_time(uint32_t time, uint32_t div) {
+  void set_last_used_time(uint64_t time) { last_used_time_ = time; }
+  void avg_last_used_time(uint64_t time, uint64_t div) {
     assert(time >= last_used_time_);
     last_used_time_ += (time-last_used_time_)/div;
   }
@@ -91,8 +91,9 @@ public:
 
 protected:
   FF model_count_ = nullptr;
-  uint32_t last_used_time_:31 = 1; //effectively the score
-  uint32_t delete_permitted:1 = false;
+  uint64_t last_used_time_ :63 = 1; //effectively the score
+  uint64_t delete_permitted:1 = false;
 };
 
+static_assert(sizeof(BaseComp) <= 2*sizeof(uint64_t), "BaseComp is not packed");
 }

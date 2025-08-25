@@ -87,4 +87,5 @@ protected:
   uint64_t delete_permitted:1 = false;
 };
 
+static_assert(sizeof(BaseComp) <= 2*sizeof(uint64_t), "BaseComp is not packed");
 }

@@ -209,27 +209,34 @@ def collect_cache_data(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o [td] iter" in line:
+            # c o [td] iter 99 best bag: 56 stepsK remain: 99 T: 0.158
+            if re.match(r"^c o \[td\] iter [0-9]+ best bag:", line):
                 td_w = int(line.split()[7])-1
                 td_w = "%d" % td_w
                 td_t = float(line.split()[12])
                 td_t = "%f" % td_t
-            if "c o [td] Primal graph" in line:
+            # c o [td] iter 99 width: 22 stepsK remain: 99 T: 0.019
+            if re.match(r"^c o \[td\] iter [0-9]+ width:", line):
+                td_w = int(line.split()[6])-1
+                td_w = "%d" % td_w
+                td_t = float(line.split()[11])
+                td_t = "%f" % td_t
+            elif "c o [td] Primal graph" in line:
               density = float(line.split()[10])
               edge_var_ratio = float(line.split()[12])
             #c o cache miss rate                0.622
-            if "c o cache miss rate" in line:
+            elif "c o cache miss rate" in line:
               cache_miss_rate = float(line.split()[5])
             #c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
-            if "c o cache K (lookup/ stores/ hits/ dels)" in line:
+            elif "c o cache K (lookup/ stores/ hits/ dels)" in line:
               cache_lookupK = float(line.split()[8])
               cache_storeK = float(line.split()[9])
             #c o avg hit/store num vars 17.841 / 96.672
-            if "c o avg hit/store num vars" in line:
+            elif "c o avg hit/store num vars" in line:
               cache_avg_hit_vars = float(line.split()[6])
               cache_avg_store_vars = float(line.split()[8])
               # print("cache avg hit/store vars:", cache_avg_hit_vars, cache_avg_store_vars)
-            if "c o deletion done. T:" in line:
+            elif "c o deletion done. T:" in line:
               cache_del_time += float(line.split()[5])
     return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars
 
@@ -330,7 +337,7 @@ def ganak_conflicts(fname):
                 cnt = decimal.Decimal(line.split()[2])
             elif "s pmc" in line:
                 cnt = decimal.Decimal(line.split()[2])
-            if re.match("c o conflicts[ ]*:", line): # cryptominisat
+            if re.match("^c o conflicts[ ]*:", line): # cryptominisat
                 conflicts = int(line.split()[4])
             elif "c o conflicts" in line:
                 conflicts = int(line.split()[3])

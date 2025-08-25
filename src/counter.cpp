@@ -137,7 +137,7 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, 
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   if (td_width <= 0) {
-    if (print) verb_print(1, "TD width is 0, ignoring TD");
+    if (print) verb_print(1, "[td] TD width is 0, ignoring TD");
     return;
   }
   if (print) verb_print(2, "[td] Calculated TD width: " << td_width-1);
@@ -173,7 +173,7 @@ void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, 
 
   if (!conf.td_read_file.empty()) read_td_from_file(conf.td_read_file);
   for(uint32_t i = 1; i < nodes; i++)
-    verb_print(2, "TD var: " << i+1 << " tdscore: " << tdscore[i+1]);
+    verb_print(2, "[td] var: " << i+1 << " tdscore: " << tdscore[i+1]);
 }
 
 void Counter::read_td_from_file(const std::string& fname) {
@@ -199,7 +199,7 @@ void Counter::read_td_from_file(const std::string& fname) {
             throw std::runtime_error("Float out of range in file: " + line);
         }
     }
-    verb_print(1, "Read TD " << i << " td scrores from file: '" << fname << "'"
+    verb_print(1, "[td] Read " << i << " td scrores from file: '" << fname << "'"
                              << " tdscore.size(): " << tdscore.size() << " nvars: " << nVars());
     assert(i == tdscore.size());
     file.close();
@@ -258,7 +258,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   if (td_width > conf.td_limit) td_weight = 0.1;
   if (print) {
     verb_print(1,
-        "TD weight: " << td_weight
+        "[td] weight: " << td_weight
         << " nodes: " << nodes
         << " rt/width(=rt): " << rt
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
@@ -332,7 +332,7 @@ TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters * mult);
   td.centroid(primal.numNodes(), 0);
-  verb_print(2, "[td-cmp] FlowCutter FINISHED, TD width: " << td.width());
+  verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
   return td;
 }
 

@@ -96,18 +96,14 @@ const vector<vector<int>>& Graph::get_adj_list() const {
 }
 
 int TreeDecomposition::centroid(int npvars, int verb) {
-  int centroid = -1;
+  for(const auto& bag: bags) for(const auto& v: bag) assert (v < npvars);
   sortBags();
-  findCentroid(0, -1, centroid);
 
-  int size = bags[centroid].size();
-  int npvars_in_bags = 0;
-  for(int i = 0; i < size; i++)
-    if(bags[centroid][i] < npvars) npvars_in_bags++;
-
-  cent = centroid;
-  if (verb >= 1) printf("c o [td] centroid bag size %d  #npvars %d\n", size, npvars_in_bags);
-  return centroid;
+  cent = -1;
+  findCentroid(0, -1, cent);
+  assert(cent != -1);
+  if (verb >= 1) cout << "c o [td] centroid bag size " << bags[cent].size() << endl;
+  return cent;
 }
 
 int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const {
@@ -125,12 +121,11 @@ int TreeDecomposition::findCentroid(int v, int parent, int &centroid) const {
   return intros;
 }
 
-vector<int> TreeDecomposition::distanceFromCentroid(int npvars)
-{
-  int cen = cent == -1 ? centroid(npvars) : cent;
-  vector<int> distance(gnodes, -1);
+vector<int> TreeDecomposition::distanceFromCentroid(int npvars) {
+  if (cent == -1) centroid(npvars);
 
-  computeDistance(cen, -1, 0, distance);
+  vector<int> distance(gnodes, -1);
+  computeDistance(cent, -1, 0, distance);
   return distance;
 }
 

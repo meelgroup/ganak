@@ -35,7 +35,7 @@ template<typename T>
 class CacheableComp: public BaseComp, private T {
 public:
   CacheableComp() = default;
-  CacheableComp(CacheableComp&&) = default;
+  CacheableComp(CacheableComp&&) noexcept = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
   CacheableComp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& bpc) {

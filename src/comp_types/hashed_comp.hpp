@@ -33,7 +33,7 @@ public:
   HashedComp() = default;
   HashedComp(const HashedComp&) = default;
   HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(HashedComp&&) = default;
+  HashedComp(HashedComp&&) noexcept = default;
   static uint64_t set_comp(const Comp& comp, const uint64_t hash_seed, const BPCSizes& /*bpc*/) {
     return chibihash64(comp.get_raw_data(), comp.get_size()*4, hash_seed);
   }

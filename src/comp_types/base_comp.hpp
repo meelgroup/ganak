@@ -42,6 +42,14 @@ public:
     delete_permitted = b.delete_permitted;
     return *this;
   }
+  BaseComp(BaseComp&& b) noexcept
+    : model_count_(std::move(b.model_count_)),
+      last_used_time_(b.last_used_time_),
+      delete_permitted(b.delete_permitted)
+  {
+    b.last_used_time_ = 1;
+    b.delete_permitted = false;
+  }
   BaseComp(const BaseComp& b) {
     if (b.model_count_) model_count_ = b.model_count_->dup();
     else model_count_ = nullptr;

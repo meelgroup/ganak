@@ -41,6 +41,7 @@ struct CDat {
   map<GanakInt::Lit, FF> lit_weights;
   uint32_t nvars = 0;
   vector<vector<GanakInt::Lit>> irred_cls;
+  vector<uint8_t> irred_cls_used;
   vector<std::pair<vector<GanakInt::Lit>, uint32_t>> red_cls;
   bool print_indep_distrib = false;
   bool is_approximate = false;
@@ -76,42 +77,96 @@ DLL_PUBLIC FF Ganak::count() {
   }
 
   auto bags = find_disconnected(*c);
+  vector<int32_t> var_to_bag(c->nvars+1, -1);
+  for(uint32_t i = 0; i < bags.size(); i++) {
+    for(auto& v: bags[i]) {
+      assert(v < c->nvars+1);
+      assert(v > 0);
+      assert(var_to_bag[v] == -1);
+      var_to_bag[v] = i;
+    }
+  }
+  vector<vector<vector<GanakInt::Lit>>> bag_to_irred_cls(bags.size());
+  vector<vector<pair<vector<GanakInt::Lit>, uint32_t>>> bag_to_red_cls(bags.size());
+  for(const auto& cl: c->irred_cls) {
+    assert(cl.size() > 0);
+    const int b = var_to_bag[cl[0].var()];
+    bag_to_irred_cls[b].push_back(cl);
+  }
+  for(const auto& cl_p: c->red_cls) {
+    assert(cl_p.first.size() > 0);
+    const int b = var_to_bag[cl_p.first[0].var()];
+    bool ok = true;
+    for(const auto& l: cl_p.first) {
+      if (var_to_bag[l.var()] != b) { ok = false; break; }
+    }
+    if (ok) bag_to_red_cls[b].push_back(cl_p);
+    // if not ok, then red would contract two components, so ignore
+  }
+
   uint32_t cls_added = 0;
-  for(auto& bag: bags) {
+  for(uint32_t i = 0; i < bags.size(); i++) {
+    const auto& bag = bags[i];
     vector<int> var_map(c->nvars+1, -1);
     CDat sub_c;
     sub_c.conf = c->conf;
     sub_c.fg = c->fg->dup();
     sub_c.nvars = bag.size();
-    std::sort(bag.begin(), bag.end());
-    for(size_t i = 0; i < bag.size(); i++) var_map[bag[i]] = i+1;
+    assert(std::is_sorted(bag.begin(), bag.end()));
+    for(size_t i2 = 0; i2 < bag.size(); i2++) var_map[bag[i2]] = i2+1;
     for(const auto& v: bag) {
       if (c->indeps.count(v)) sub_c.indeps.insert(var_map[v]);
       if (c->opt_indeps.count(v)) sub_c.opt_indeps.insert(var_map[v]);
       if (c->lit_weights.count(GanakInt::Lit(v, false))) sub_c.lit_weights[GanakInt::Lit(var_map[v], false)] = c->lit_weights[GanakInt::Lit(v, false)]->dup();
       if (c->lit_weights.count(GanakInt::Lit(v, true))) sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = c->lit_weights[GanakInt::Lit(v, true)]->dup();
     }
-    for(const auto& cl: c->irred_cls) {
-      bool in_bag = true;
+    for(const auto& cl: bag_to_irred_cls[i]) {
       vector<GanakInt::Lit> new_cl;
       for(const auto& l: cl) {
-        if (var_map[l.var()] == -1) { in_bag = false; break; }
         new_cl.push_back(GanakInt::Lit(var_map[l.var()], l.sign()));
+        assert(var_map[l.var()] != -1);
+        assert(var_map[l.var()] < (int)sub_c.nvars +1);
       }
-      if (in_bag) sub_c.irred_cls.push_back(new_cl);
+      sub_c.irred_cls.emplace_back(new_cl);
+      /* cout << "irred new cl: "; */
+      /* for(const auto& l: new_cl) cout << (l.sign() ? "" : "-") << l.var() << " "; */
+      /* cout << endl; */
     }
-    for(const auto& cl: c->red_cls) {
-      bool in_bag = true;
+    for(const auto& cl: bag_to_red_cls[i]) {
       vector<GanakInt::Lit> new_cl;
       for(const auto& l: cl.first) {
-        if (var_map[l.var()] == -1) { in_bag = false; break; }
         new_cl.push_back(GanakInt::Lit(var_map[l.var()], l.sign()));
+        assert(var_map[l.var()] != -1);
+        assert(var_map[l.var()] < (int)sub_c.nvars +1);
       }
-      if (in_bag) sub_c.red_cls.push_back({new_cl, cl.second});
+      sub_c.red_cls.push_back({new_cl, cl.second});
+      /* cout << "red new cl: "; */
+      /* for(const auto& l: new_cl) cout << (l.sign() ? "" : "-") << l.var() << " "; */
+      /* cout << endl; */
     }
     cls_added += sub_c.irred_cls.size();
 
     // Now count
+    if (c->conf.verb >= 2)
+      cout << "c o Counting component with " << sub_c.nvars << " vars, "
+        << sub_c.irred_cls.size() << " irredundant clauses, "
+        << sub_c.red_cls.size() << " redundant clauses, "
+        << sub_c.indeps.size() << " independent vars, "
+        << sub_c.opt_indeps.size() << " optional independent vars" << endl;
+
+    if (sub_c.indeps.size() == 0) sub_c.conf.verb = 0;
+    if (sub_c.indeps.size() == 0 && sub_c.irred_cls.size() == 0) continue;
+    if (sub_c.indeps.size() == 0 && sub_c.irred_cls.size() < 10) {
+      assert(sub_c.irred_cls.size() > 0);
+      bool all_same = true;
+      auto one = sub_c.irred_cls[0];
+      assert(one.size() > 0);
+      for(size_t i2 = 1; i2 < sub_c.irred_cls.size(); i2++) {
+        if (sub_c.irred_cls[i2] != one) { all_same = false; break; }
+      }
+      if (all_same) continue;
+    }
+
     OuterCounter counter(sub_c.conf, sub_c.fg->dup());
     counter.new_vars(sub_c.nvars);
     counter.set_indep_support(sub_c.indeps);
@@ -120,9 +175,10 @@ DLL_PUBLIC FF Ganak::count() {
     for(const auto& cl: sub_c.irred_cls) counter.add_irred_cl(cl);
     counter.end_irred_cls();
     for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
-    if (c->print_indep_distrib) counter.print_indep_distrib();
-    *cnt *= *counter.outer_count();
-    cout << "c o intermediate count: " << *cnt << endl;
+    if (sub_c.conf.verb && c->print_indep_distrib) counter.print_indep_distrib();
+    auto ret = counter.outer_count();
+    *cnt *= *ret;
+    if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
     c->is_approximate |= counter.get_is_approximate();
     c->max_num_cache_lookups = std::max(c->max_num_cache_lookups, counter.get_num_cache_lookups());
     c->max_cache_elems = std::max(c->max_cache_elems, counter.get_max_cache_elems());
@@ -266,6 +322,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   assert(total_vars == dat.nvars);
 
   if (dat.conf.verb >= 1) cout << "c o Found " << bags.size() << " disconnected component(s)" << endl;
+  for(auto& b: res) std::sort(b.begin(), b.end());
   return res;
 }
 

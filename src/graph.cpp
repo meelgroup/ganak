@@ -100,8 +100,8 @@ void Graph::addEdge(Edge e) {
   addEdge(e.first, e.second);
 }
 
-TreeDecomposition::TreeDecomposition(int nBags_, int n_)
- : nBags(nBags_), n(n_), width(-1), tree(nBags), bags(nBags) {}
+TreeDecomposition::TreeDecomposition(int nBags_, int nVars_)
+ : nBags(nBags_), nVars(nVars_), width(-1), tree(nBags), bags(nBags) {}
 
 void TreeDecomposition::addEdge(int a, int b) {
   tree.addEdge(a, b);
@@ -113,7 +113,7 @@ void TreeDecomposition::setBag(int b, const vector<int>& bag) {
   bags[b] = bag;
   SortAndDedup(bags[b]);
   width = std::max(width, (int)bags[b].size());
-  for (int u : bags[b]) assert(0 <= u && u < n);
+  for (int v : bags[b]) assert(0 <= v && v < nVars);
 }
 
 int TreeDecomposition::Width() const {
@@ -122,12 +122,12 @@ int TreeDecomposition::Width() const {
 
 bool TreeDecomposition::InBag(int b, int v) const {
   assert(0 <= b && b < nBags);
-  assert(0 <= v && v < n);
+  assert(0 <= v && v < nVars);
   return binary_search(bags[b], v);
 }
 
-int TreeDecomposition::nbags() const { return nBags; }
-int TreeDecomposition::nverts() const { return n; }
+int TreeDecomposition::numBags() const { return nBags; }
+int TreeDecomposition::numVars() const { return nVars; }
 
 const vector<int>& TreeDecomposition::neighbor_bags(int b) const {
   assert(b >= 0 && b < nBags);
@@ -142,7 +142,7 @@ int TreeDecomposition::CenDfs(int bag, int parent, int& cen) const {
     if (nb == parent) continue;
     int cintro = CenDfs(nb, bag, cen);
     intro += cintro;
-    if (cintro >= n/2) {
+    if (cintro >= nVars/2) {
       assert(cen >= 0);
       return intro;
     }
@@ -150,7 +150,7 @@ int TreeDecomposition::CenDfs(int bag, int parent, int& cen) const {
   for (int v : bags[bag]) {
     if (parent == -1 || !InBag(parent, v)) intro++;
   }
-  if (intro >= n/2) cen = bag;
+  if (intro >= nVars/2) cen = bag;
   return intro;
 }
 
@@ -164,30 +164,21 @@ int TreeDecomposition::getCentroid() const {
 /**
     bag: Current bag in the tree decomposition.
     pparent: Parent bag.
-    depth: Current depth (order value being assigned).
-    ret: Output vector storing the order of each vertex.
+    depth: Current depth
+    ret: Output vector storing the order of each variable.
 */
-void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret) const {
+void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret, vector<int>& bagDepths) const {
   VERBOSE_DEBUG_DO(cout << "c o OdDes: bag=" << bag << ", parent=" << parent << ", depth=" << depth << endl);
   assert(bag >= 0 && bag < nBags);
   assert(depth >= 1);
-  bool new_vs = false;
-  for (int v : bags[bag]) {
-    if (ret[v] == 0) new_vs = true;
-    else {
-      assert(parent >= 0);
-      assert(ret[v] <= depth);
-      assert(is_sorted(bags[parent].begin(), bags[parent].end()));
-      assert(binary_search(bags[parent].begin(), bags[parent].end(), v));
-    }
-  }
-  if (new_vs) {
-    depth++;
-    for (int v : bags[bag]) if (ret[v] == 0) ret[v] = depth;
-  }
-  for (int nb : neighbor_bags(bag)) {
-    if (nb == parent) continue;
-    OdDes(nb, bag, depth, ret);
+  if (bagDepths[bag] != -1 && bagDepths[bag] <= depth) return;
+
+  depth++;
+  bagDepths[bag] = depth;
+  for (int v : bags[bag]) if (ret[v] > depth || ret[v] == -1) ret[v] = depth;
+  for (int b : neighbor_bags(bag)) {
+    if (b == parent) continue;
+    OdDes(b, bag, depth, ret, bagDepths);
   }
 }
 
@@ -202,14 +193,14 @@ vector<int> TreeDecomposition::getOrd() const {
   SLOW_DEBUG_DO(assert(bagsConnected(centroid)));
   VERBOSE_DEBUG_DO(cout << "c o Tree decomposition centroid: " << centroid << endl);
   assert(centroid >= 0 && centroid < nBags);
-  vector<int> ret(n, 0);
-  OdDes(centroid, -1, 1, ret);
-  SLOW_DEBUG_DO(
-      for (int i = 0; i < n; i++) if (ret[i] == 0) {
-        cout << "c o Vertex " << i << " not assigned an order!" << endl;
-      }
-      for (int i = 0; i < n; i++) assert(ret[i] > 0)
-  );
+  vector<int> ret(nVars, -1);
+  vector<int> bagDepths(nBags, -1);
+  OdDes(centroid, -1, 1, ret, bagDepths);
+
+  for (int i = 0; i < nVars; i++) if (ret[i] == 0) {
+    cout << "c o Vertex " << i << " not assigned an order!" << endl;
+  }
+  for (int i = 0; i < nVars; i++) assert(ret[i] > 0);
   return ret;
 }
 

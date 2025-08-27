@@ -702,7 +702,7 @@ TreeDecomposition IFlowCutter::constructTD(const int64_t conf_steps, const int c
 
             if (i % 100 == 99 || steps < next_step_print) {
               if (verb) {
-                cout << "c o [td] iter " << i << " best bag: " << td.width()
+                cout << "c o [td] iter " << i << " width: " << td.width()
                   << " stepsK remain: " << steps/1000 << " T: " << (cpu_time()-t) << endl;
               }
               next_step_print -= 1e5;

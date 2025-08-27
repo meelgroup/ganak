@@ -24,19 +24,19 @@ def find_gpmc_time_cnt(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o Real time " in line:
+            if line.startswith("c o Real time "):
                 t = float(line.split()[5])
-            if "c s exact arb int" in line:
+            if line.startswith("c s exact arb int"):
                 if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
                 else: cnt = decimal.Decimal(line.split()[5]).log10()
-            if "c s exact arb prec-sci" in line:
+            if line.startswith("c s exact arb prec-sci"):
                 if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
                 else: cnt = decimal.Decimal(line.split()[5]).log10()
-            if "c o Components" in line:
+            if line.startswith("c o Components"):
               compsK = int(line.split()[4])/1000
-            if "c o conflicts" in line:
+            if line.startswith("c o conflicts"):
               conflicts = int(line.split()[4])
-            if "c o decisions" in line:
+            if line.startswith("c o decisions"):
               decisionsK = int(line.split()[4])/1000
 
     return t,cnt,compsK,conflicts,decisionsK
@@ -47,9 +47,9 @@ def approxmc_version(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c ApproxMC SHA revision" in line:
+            if line.startswith("c ApproxMC SHA revision"):
                 aver = line.split()[4]
-            if "c CMS SHA revision" in line:
+            if line.startswith("c CMS SHA revision"):
                 cver = line.split()[4]
 
     if aver is not None:
@@ -80,8 +80,11 @@ def find_arjun_time(fname):
     padoa_extended = None
     with open(fname, "r") as f:
         for line in f:
+            line = line.replace("[0m", "")
+            line = line.replace("\x1b","")
+            line = ''.join(filter(lambda x:x in string.printable, line))
             line = line.strip()
-            if "c o Sampling set size:" in line:
+            if line.startswith("c o Sampling set size:"):
               indep_sz = line.split()[5]
               indep_sz = indep_sz.strip()
               if indep_sz == "":
@@ -91,9 +94,9 @@ def find_arjun_time(fname):
               if indep_sz == 4294967295:
                 indep_sz = 0
             #c o opt ind size: 0 ind size: 0 nvars: 3463
-            if "c o opt ind size" in line:
+            elif line.startswith("c o opt ind size"):
               nvars = int(line.split()[10])
-            if "c o Opt sampling set size:" in line:
+            elif line.startswith("c o Opt sampling set size:"):
               opt_indep_sz = line.split()[6]
               opt_indep_sz = opt_indep_sz.strip()
               if opt_indep_sz == "":
@@ -102,42 +105,30 @@ def find_arjun_time(fname):
                 opt_indep_sz = int(opt_indep_sz)
               if opt_indep_sz == 4294967295:
                 opt_indep_sz = 0
-            if "c o CNF projection set size:" in line:
+            elif line.startswith("c o CNF projection set size:"):
               orig_proj_sz = int(line.split()[6])
             # c o [extend-gates] Gates added to opt indep: 26 T: 0.15
             # c o [arjun-extend] Start unknown size: 1027
             # c o [arjun-extend] Extend finished  orig size: 48 final size: 1056 Undef: 48 T: 25.36
-            if "[extend-gates] Gates added to opt" in line:
-              line = line.replace("[0m", "")
-              line = line.replace("\x1b","")
+            elif line.startswith("c o [extend-gates] Gates added to opt"):
               gates_extended = int(line.split()[8])
               gates_extend_t = float(line.split()[10])
-              # print ("gates:", gates_extended, gates_extend_t)
-            if "[arjun-extend] Extend finished" in line:
-              line = line.replace("[0m", "")
-              line = line.replace("\x1b","")
+           # c o [arjun-extend] Extend finished  orig size: 966 final size: 1834 Undef: 0 T: 0.17
+            elif line.startswith("c o [arjun-extend] Extend finished"):
               orig = int(line.split()[7])
               final = int(line.split()[10])
               padoa_extended = final - orig
               padoa_extend_t = float(line.split()[14])
-              # print ("padoa:", padoa_extended, padoa_extend_t)
-            if "Start unknown size:" in line:
-              line = line.replace("c o ", "c ")
-              line = ''.join(filter(lambda x:x in string.printable, line))
-              line = line.replace("[0m", "")
-              unkn_sz = int(line.split()[5])
-            if  "backward round finished" in line:
-              line = line.replace("c o ", "c ")
-              line = ''.join(filter(lambda x:x in string.printable, line))
-              line = line.replace("[0m", "")
-              # print("line:", line)
-              backw_t = float(line.split()[9])
-            if  "% total" in line:
+            elif line.startswith("c o [arjun] Start unknown size:"):
+              unkn_sz = int(line.split()[6])
+            elif "c o [arjun] backward round finished" in line:
+              backw_t = float(line.split()[10])
+            elif line.startswith("c o  ") and "% total" in line:
               if backb_t is None:
                 backb_t = float(line.split()[2])
               else:
                 backb_t += float(line.split()[2])
-            if "c o Arjun T:" in line:
+            elif line.startswith("c o Arjun T:"):
               assert t is None
               t = float(line.split()[4])
     return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t
@@ -151,9 +142,9 @@ def find_sat_called(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o sat called/sat/unsat/conflK" in line:
+            if line.startswith("c o sat called/sat/unsat/conflK"):
               n = int(line.split()[4])
-            if "c o sat call/sat/unsat/confl/rst" in line:
+            if line.startswith("c o sat call/sat/unsat/confl/rst"):
               n = int(line.split()[4])
               rst = int(line.split()[8])
     return n,rst
@@ -177,13 +168,13 @@ def find_restarts(fname):
             line = line.strip()
 
             # c o cubes orig/symm/final          1     / 0     / 1
-            if "c o cubes orig:" in line:
+            if line.startswith("c o cubes orig:"):
               cubes_orig += int(line.split()[4])
               cubes_final += int(line.split()[6])
-            if "c o Num restarts:" in line:
+            if line.startswith("c o Num restarts:"):
               n = int(line.split()[4])
 
-            if "c o [rst-cube] Num restarts:" in line:
+            if line.startswith("c o [rst-cube] Num restarts:"):
               # cubes = int(line.split()[14])
               n = int(line.split()[5])
     return n,cubes_orig,cubes_final
@@ -209,27 +200,34 @@ def collect_cache_data(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if "c o [td] iter" in line:
+            # c o [td] iter 99 best bag: 56 stepsK remain: 99 T: 0.158
+            if line.startswith("c o [td] iter") and "best bag" in line:
                 td_w = int(line.split()[7])-1
                 td_w = "%d" % td_w
                 td_t = float(line.split()[12])
                 td_t = "%f" % td_t
-            if "c o [td] Primal graph" in line:
+            # c o [td] iter 99 width: 22 stepsK remain: 99 T: 0.019
+            elif line.startswith("c o [td] iter") and "width:" in line:
+                td_w = int(line.split()[6])-1
+                td_w = "%d" % td_w
+                td_t = float(line.split()[11])
+                td_t = "%f" % td_t
+            elif line.startswith("c o [td] Primal graph"):
               density = float(line.split()[10])
               edge_var_ratio = float(line.split()[12])
             #c o cache miss rate                0.622
-            if "c o cache miss rate" in line:
+            elif line.startswith("c o cache miss rate"):
               cache_miss_rate = float(line.split()[5])
             #c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
-            if "c o cache K (lookup/ stores/ hits/ dels)" in line:
+            elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
               cache_lookupK = float(line.split()[8])
               cache_storeK = float(line.split()[9])
             #c o avg hit/store num vars 17.841 / 96.672
-            if "c o avg hit/store num vars" in line:
+            elif line.startswith("c o avg hit/store num vars"):
               cache_avg_hit_vars = float(line.split()[6])
               cache_avg_store_vars = float(line.split()[8])
               # print("cache avg hit/store vars:", cache_avg_hit_vars, cache_avg_store_vars)
-            if "c o deletion done. T:" in line:
+            elif line.startswith("c o deletion done. T:"):
               cache_del_time += float(line.split()[5])
     return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars
 
@@ -322,34 +320,34 @@ def ganak_conflicts(fname):
             line = line.strip()
             if "ERROR" in line:
               error = 1
-            if "c Time" in line:
+            if line.startswith("c o Time"):
                 t = float(line.split()[2])
-            elif "c o Total time [Arjun+GANAK]:" in line:
+            elif line.startswith("c o Total time [Arjun+GANAK]:"):
                 t = float(line.split()[5])
-            elif "s mc" in line:
+            elif line.startswith("s mc"):
                 cnt = decimal.Decimal(line.split()[2])
-            elif "s pmc" in line:
+            elif line.startswith("s pmc"):
                 cnt = decimal.Decimal(line.split()[2])
-            if re.match("c o conflicts[ ]*:", line): # cryptominisat
+            elif line.startswith("c o conflicts") and " :" in line: # cryptominisat
                 conflicts = int(line.split()[4])
-            elif "c o conflicts" in line:
+            elif line.startswith("c o conflicts"):
                 conflicts = int(line.split()[3])
                 conflicts = "%d" % conflicts
-            elif "c o decisions K" in line:
+            elif line.startswith("c o decisions K"):
                 decisionsK = int(line.split()[4])
-            elif "c GANAK SHA revision" in line:
+            elif line.startswith("c GANAK SHA revision"):
                 aver = line.split()[4]
-            elif "c CMS version" in line:
+            elif line.startswith("c CMS version"):
                 cver = line.split()[3]
-            elif "c o GANAK SHA revision" in line:
+            elif line.startswith("c o GANAK SHA revision"):
                 aver = line.split()[5]
-            elif "c p CMS version" in line:
+            elif line.startswith("c p CMS version"):
                 cver = line.split()[4]
-            elif "c o CMS revision" in line:
+            elif line.startswith("c o CMS revision"):
                 cver = line.split()[4]
-            if "c o buddy called /unsat ratio" in line:
+            elif line.startswith("c o buddy called /unsat ratio"):
               bdd_called = int(line.split()[6])
-            elif "c o buddy called" in line:
+            elif line.startswith("c o buddy called"):
               bdd_called = int(line.split()[4])
     if aver is not None:
         aver = aver[:8]
@@ -386,7 +384,7 @@ files = {}
 for f in file_list:
     if ".csv" in f:
         continue
-    # print("parsing file: ", f)
+    print("parsing file: ", f)
 
     dirname = f.split("/")[0]
     if "competitors" in dirname:

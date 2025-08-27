@@ -102,7 +102,7 @@ int TreeDecomposition::centroid(int npvars, int verb) {
   cent = -1;
   findCentroid(0, -1, cent);
   assert(cent != -1);
-  if (verb >= 1) cout << "c o [td] centroid bag size " << bags[cent].size() << endl;
+  if (verb >= 1) cout << "c o [td] centroid bag id: " << cent << " bag size: " << bags[cent].size() << endl;
   return cent;
 }
 

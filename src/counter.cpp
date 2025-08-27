@@ -233,7 +233,14 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   for(uint32_t i = 0; i < adj.size(); i++)
     for(const auto& nn: adj[i]) dec.addEdge(i, nn);
 
-  auto ord = dec.getOrd();
+  int centroid = -1;
+  auto ord = dec.getOrd(centroid);
+  verb_print(1, "[td] centroid bag id: " << centroid << " bag size: " << bags[centroid].size());
+  if (!conf.td_visualize_dot_file.empty()) {
+    dec.visualizeTree(conf.td_visualize_dot_file);
+    cout << "c o [td] Wrote tree decomposition to file: " << conf.td_visualize_dot_file << endl;
+    cout << "c o [td] You can convert it to pdf using the command: dot -Tpdf " << conf.td_visualize_dot_file << " -o td_tree.pdf" << endl;
+  }
   assert(ord.size() == nodes);
   int max_ord = 0;
   int min_ord = std::numeric_limits<int>::max();

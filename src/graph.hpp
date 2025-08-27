@@ -82,7 +82,8 @@ public:
   int Width() const;
   bool InBag(int b, int v) const;
   int getCentroid() const;
-  vector<int> getOrd() const;
+  void visualizeTree(const std::string& fname) const;
+  vector<int> getOrd(int& centroid) const;
 private:
   int nBags; // number of bags in the tree decomposition
   int nVars; // number of vertices in the original graph

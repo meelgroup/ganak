@@ -41,6 +41,7 @@ struct CounterConfiguration {
   uint32_t max_num_cubes_per_restart = 6;
   uint32_t analyze_cand_update = 50;
   int do_probabilistic_hashing = 1;
+  std::string td_visualize_dot_file = "";
 
   int cache_time_update = 2;
 

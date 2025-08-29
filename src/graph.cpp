@@ -23,6 +23,12 @@ THE SOFTWARE.
 #include "graph.hpp"
 #include "common.hpp"
 #include "utils.hpp"
+#include <cassert>
+#include <iostream>
+#include <functional>
+#include <fstream>
+#include <set>
+using std::set;
 
 namespace sspp {
 
@@ -134,6 +140,39 @@ const vector<int>& TreeDecomposition::neighbor_bags(int b) const {
   return tree.Neighbors(b);
 }
 
+void TreeDecomposition::visualizeTree(const std::string& fname) const {
+    vector<int> subtreeVars(nBags, 0);
+
+    // First pass: compute subtree sizes
+    std::function<set<uint32_t>(int, int)> computeSizes = [&](int bag, int parent) -> set<uint32_t> {
+        assert(size[bag] == 0);
+        std::set<uint32_t> visited;
+        for (int nb : neighbor_bags(bag)) {
+            if (nb != parent) {
+              auto ret = computeSizes(nb, bag);
+              for(const int v : ret) visited.insert(v);
+            }
+        }
+        for(int v : bags[bag]) visited.insert(v);
+        subtreeVars[bag] = visited.size();
+        return visited;
+    };
+    computeSizes(0, -1);
+    assert(size[0] == nVars);
+
+    std::ofstream myfile;
+    myfile.open (fname);
+    myfile << "graph G {\n";
+    for(uint32_t i = 0; i < nBags; i++) {
+      myfile << "  " << i << " [label=\"" << i << " -- sz: " << bags[i].size() << " subtree sz:" << subtreeVars[i] << "\"];\n";
+      for(int nb : neighbor_bags(i)) {
+        if (nb > (int)i) myfile << "  " << i << " -- " << nb << ";\n";
+      }
+    }
+    myfile << "}\n";
+    myfile.close();
+}
+
 int TreeDecomposition::CenDfs(int bag, int parent, int& cen) const {
   assert(bag >= 0 && bag < nBags);
   assert(cen == -1);
@@ -188,10 +227,9 @@ void TreeDecomposition::OdDes(int bag, int parent, int depth, vector<int>& ret, 
 //    and propagates outward, ensuring: Vertices in parent bags are processed
 //    before their children. Newly discovered vertices get a higher (later)
 //    order.
-vector<int> TreeDecomposition::getOrd() const {
-  int centroid = getCentroid();
+vector<int> TreeDecomposition::getOrd(int& centroid) const {
+  centroid = getCentroid();
   SLOW_DEBUG_DO(assert(bagsConnected(centroid)));
-  VERBOSE_DEBUG_DO(cout << "c o Tree decomposition centroid: " << centroid << endl);
   assert(centroid >= 0 && centroid < nBags);
   vector<int> ret(nVars, -1);
   vector<int> bagDepths(nBags, -1);

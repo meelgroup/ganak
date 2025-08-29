@@ -185,6 +185,7 @@ void add_ganak_options()
     myopt("--tdmaxedgeratio", conf.td_max_edge_var_ratio, atoi, "Max edge to var ratio for TD computation");
     myopt("--tduseadj", conf.td_do_use_adj, atoi, "TD should use adjacency matrix for computing TD scores");
     myopt("--tdreadfile", conf.td_read_file, string, "Read TD scores from this file");
+    myopt("--tdvis", conf.td_visualize_dot_file, string, "Visualize the TD into this file in DOT format");
 
     // Clause DB options
     myopt("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");

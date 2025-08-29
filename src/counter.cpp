@@ -269,9 +269,9 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
         << " nodes: " << nodes
         << " rt/width(=rt): " << rt
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
-        << " rt: " << rt
         << " conf.td_exp_mult: " << conf.td_exp_mult
-        << " conf.td_divider: " << conf.td_divider);
+        << " conf.td_divider: " << conf.td_divider
+        << " max ord diff: " << max_ord);
   }
 
   // Calc td score

@@ -164,7 +164,7 @@ void TreeDecomposition::visualizeTree(const std::string& fname) const {
     myfile.open (fname);
     myfile << "graph G {\n";
     for(uint32_t i = 0; i < nBags; i++) {
-      myfile << "  " << i << " [label=\"" << i << " -- subtree vars:" << subtreeVars[i] << "\"];\n";
+      myfile << "  " << i << " [label=\"" << i << " -- sz: " << bags[i].size() << " subtree sz:" << subtreeVars[i] << "\"];\n";
       for(int nb : neighbor_bags(i)) {
         if (nb > (int)i) myfile << "  " << i << " -- " << nb << ";\n";
       }

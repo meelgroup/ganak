@@ -27,7 +27,7 @@ _strongly_ encouraged, as Ganak requires a specific set of libraries to be
 installed. The second best thing to use is Nix. Simply [install
 nix](https://nixos.org/download/) and then:
 ```shell
-nix shell github:meelgroup/ganak
+nix shell github:meelgroup/ganak#ganak
 ```
 
 Then you will have `ganak` binary available and ready to use.

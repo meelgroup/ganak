@@ -19,5 +19,4 @@ jobs:
         name: msoos
         # If you chose API tokens for write access OR if you have a private cache
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - run: nix-build
-    - run: nix-shell --run "echo OK"
+    - run: nix build

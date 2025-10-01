@@ -185,7 +185,7 @@ public:
 
   double cache_miss_rate() const {
     if(num_cache_look_ups == 0) return 0.0;
-    return (num_cache_look_ups - num_cache_hits)
+    return (double)(num_cache_look_ups - num_cache_hits)
         / (double) num_cache_look_ups;
   }
 

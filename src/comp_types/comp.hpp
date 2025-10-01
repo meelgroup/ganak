@@ -144,7 +144,7 @@ private:
 
 inline Comp* reserve_comp_space(uint32_t nVars, uint32_t num_clauses) {
   // vars, clauses, and the two sentinels
-  uint32_t bytes_needed = (nVars + num_clauses + 2) * sizeof(uint32_t);
+  uint64_t bytes_needed = (nVars + num_clauses + 2) * sizeof(uint32_t);
   bytes_needed += sizeof(Comp);
   Comp* ptr = (Comp*) malloc (bytes_needed);
   ptr->clear();

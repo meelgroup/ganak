@@ -153,14 +153,14 @@ public:
            + sum_extra_bytes;
   }
 
-  void incorporate_cache_store(const uint32_t& extra_bytes, const uint32_t comp_nvars) {
+  void incorporate_cache_store(const uint64_t& extra_bytes, const uint32_t comp_nvars) {
     sum_extra_bytes += extra_bytes;
     sum_cache_store_sizes += comp_nvars;
     num_cached_comps++;
     total_num_cached_comps++;
   }
 
-  void incorporate_cache_erase(const uint32_t extra_bytes){
+  void incorporate_cache_erase(const uint64_t extra_bytes){
     sum_extra_bytes -= extra_bytes;
     num_cached_comps--;
   }

@@ -130,7 +130,7 @@ public:
   // store the number in model_count as the model count of CacheEntryID id
   void store_value(const CacheEntryID id, const FF& model_count) override;
 
-  double calc_cutoff() const override;
+  uint64_t calc_cutoff() const override;
   bool delete_some_entries() override;
 
   // delete entries, keeping the descendants tree consistent
@@ -413,8 +413,8 @@ void CompCache<T>::test_descendantstree_consistency() {
 }
 
 template<typename T>
-double CompCache<T>::calc_cutoff() const {
-  vector<uint32_t> scores;
+uint64_t CompCache<T>::calc_cutoff() const {
+  vector<uint64_t> scores;
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
@@ -431,7 +431,7 @@ double CompCache<T>::calc_cutoff() const {
 template<typename T>
 bool CompCache<T>::delete_some_entries() {
   const auto start_del_time = cpu_time();
-  double cutoff = calc_cutoff();
+  uint64_t cutoff = (uint64_t)calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
   verb_print(1, "max_cache_size_bytes in MB: " << (stats.max_cache_size_bytes)/(1024ULL*1024ULL));

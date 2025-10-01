@@ -57,7 +57,7 @@ public:
   virtual uint64_t clean_pollutions_involving(CacheEntryID id) = 0;
   virtual void erase(CacheEntryID id) = 0;
   virtual void store_value(const CacheEntryID id, const FF& model_count) = 0;
-  virtual double calc_cutoff() const = 0;
+  virtual uint64_t calc_cutoff() const = 0;
   virtual bool delete_some_entries() = 0;
   virtual uint64_t unlink_from_tree(CacheEntryID id) = 0;
   virtual uint64_t num_descendants(CacheEntryID id) = 0;

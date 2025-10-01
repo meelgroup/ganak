@@ -35,7 +35,7 @@ namespace GanakInt {
 
 class StackLevel {
 public:
-  StackLevel(uint32_t super_comp, uint32_t comp_stack_ofs, bool _is_indep, uint64_t _tstamp,
+  StackLevel(uint64_t super_comp, uint64_t comp_stack_ofs, bool _is_indep, uint64_t _tstamp,
       const FG& _fg) :
       fg(_fg),
       tstamp(_tstamp),
@@ -74,7 +74,7 @@ public:
 private:
 
   /// active Comp, once initialized, it does not change
-  const uint32_t super_comp_ = 0;
+  const uint64_t super_comp_ = 0;
 
   // branch (i.e. left = false/right = true)
   bool act_branch = false;
@@ -90,7 +90,7 @@ private:
   // all remaining comps can hence be found in
   // [remaining_comps_ofs_, "nextLevel".remaining_comps_begin_)
   // SET ONCE, NEVER TOUCHED
-  const uint32_t remaining_comps_ofs_ = 0;
+  const uint64_t remaining_comps_ofs_ = 0;
 
   // boundary of the stack marking which comps still need to be processed
   // all comps to be processed can be found in
@@ -98,14 +98,14 @@ private:
   // also, all processed, can be found
   // in [unprocessed_comps_end_, comp_stack.size())
   // KEEPS BEING DECREMENTED, until it reaches remaining_comps_ofs_
-  uint32_t unprocessed_comps_end_ = 0;
+  uint64_t unprocessed_comps_end_ = 0;
 
 public:
   bool has_unproc_comps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ > remaining_comps_ofs_;
   }
-  uint32_t num_unproc_comps() const {
+  uint64_t num_unproc_comps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ - remaining_comps_ofs_;
   }
@@ -115,16 +115,16 @@ public:
   }
   void reset_remain_comps() { unprocessed_comps_end_ = remaining_comps_ofs_; }
   auto get_unprocessed_comps_end() const { return unprocessed_comps_end_; }
-  uint32_t super_comp() const { return super_comp_; }
+  uint64_t super_comp() const { return super_comp_; }
   bool is_right_branch() const { return act_branch; }
-  uint32_t get_unproc_comps_end() const { return unprocessed_comps_end_; }
-  uint32_t remaining_comps_ofs() const { return remaining_comps_ofs_; }
-  void set_unprocessed_comps_end(uint32_t end) {
+  uint64_t get_unproc_comps_end() const { return unprocessed_comps_end_; }
+  uint64_t remaining_comps_ofs() const { return remaining_comps_ofs_; }
+  void set_unprocessed_comps_end(uint64_t end) {
     unprocessed_comps_end_ = end;
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
-  uint32_t curr_remain_comp() const {
+  uint64_t curr_remain_comp() const {
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }

@@ -95,7 +95,7 @@ public:
   // returns false if all comps have been processed
   inline bool find_next_remain_comp_of(StackLevel &top);
   void record_remaining_comps_for(StackLevel &top);
-  inline void sort_comp_stack_range(uint32_t start, uint32_t end);
+  inline void sort_comp_stack_range(uint64_t start, uint64_t end);
   inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
 
   void remove_cache_pollutions_of_if_exists(const StackLevel &top);
@@ -119,7 +119,7 @@ private:
   CompAnalyzer ana;
 };
 
-inline void CompManager::sort_comp_stack_range(uint32_t start, uint32_t end) {
+inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   if (start == end) return;

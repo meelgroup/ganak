@@ -56,7 +56,7 @@ public:
     last_used_time_ = b.last_used_time_;
     delete_permitted = b.delete_permitted;
   }
-  uint32_t last_used_time() const { return last_used_time_; }
+  uint64_t last_used_time() const { return last_used_time_; }
   const FF& model_count() const { return model_count_; }
   uint64_t bignum_bytes() const{
     if (!model_count_) return 0;

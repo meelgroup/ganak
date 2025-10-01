@@ -164,9 +164,9 @@ private:
       double vm_after;
       auto used_after = mem_used(vm_after);
       verb_print(2,
-        "table resize -- used before: " << used_before/(double)(1024*1024)
-        << " vm used before: " << vm_before/(double)(1024*1024)
-        << " used after: " << used_after/(double)(1024*1024)
+        "table resize -- used before: " << (double)used_before/(double)(1024*1024)
+        << " vm used before: " << (double)vm_before/(double)(1024*1024)
+        << " used after: " << (double)used_after/(double)(1024*1024)
         << " vm used after: " << vm_after/(double)(1024*1024)
         << " total T: " << cpu_time());
     }
@@ -251,14 +251,14 @@ CacheEntryID CompCache<T>::add_new_comp(void* c, CacheEntryID super_comp_id) {
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(comp))/(double)(1024*1024));
       verb_print(3,
-        "Before entry enlarge Total process MB : " << dat/(double)(1024*1024)
+        "Before entry enlarge Total process MB : " << (double)dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 
     }
     entry_base.emplace_back(std::move(comp));
     if (at_capacity && conf.verb >= 3) {
       double vm_dat;
-      double dat = mem_used(vm_dat);
+      double dat = (double)mem_used(vm_dat);
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(comp))/(double)(1024*1024));
       verb_print(3,
@@ -512,11 +512,11 @@ void CompCache<T>::debug_mem_data() const {
     for (auto &entry : entry_base)
       if (!entry.is_free()) tot_extra_bytes += entry.extra_bytes();
     cout << std::setw(40) << "c o bignum(+packed comp if used) uses MB "
-      << tot_extra_bytes/(double)(1024*1024) << endl;
+      << (double)tot_extra_bytes/(double)(1024*1024) << endl;
 
     double vm_dat;
     auto dat = mem_used(vm_dat);
-    verb_print(1, "Total process MB : " << dat/(double)(1024*1024)
+    verb_print(1, "Total process MB : " << (double)dat/(double)(1024*1024)
       << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 }
 

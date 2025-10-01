@@ -39,7 +39,7 @@ void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
 
-  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
+  for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
     if (!cache->exists(comp_stack[u]->id())) continue;
     stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
   }
@@ -54,7 +54,7 @@ void CompManager::remove_cache_pollutions_of(const StackLevel &top) {
   assert(top.super_comp() != 0);
   assert(cache->exists(get_super_comp(top).id()));
 
-  for (uint32_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
+  for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
     assert(cache->exists(comp_stack[u]->id()));
     stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
   }
@@ -69,7 +69,7 @@ void CompManager::remove_cache_pollutions_of(const StackLevel &top) {
 // Runs a LOT of the time, like 40%+
 void CompManager::record_remaining_comps_for(StackLevel &top) {
   const Comp& super_comp = get_super_comp(top);
-  const uint32_t new_comps_start_ofs = comp_stack.size();
+  const uint64_t new_comps_start_ofs = comp_stack.size();
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.
   // Sets all unknown vars in seen[] and sets all clauses in seen[] to unvisited

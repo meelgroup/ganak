@@ -234,7 +234,7 @@ private:
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbd_helper;
   uint64_t lbd_helper_flag = 0;
-  template<class T2> uint32_t calc_lbd(const T2& lits);
+  template<class T2> uint8_t calc_lbd(const T2& lits);
 
   // Clause adding
   void simple_preprocess();
@@ -729,7 +729,7 @@ inline vector<Lit>::iterator Counter::top_declevel_trail_begin() {
 }
 
 template<class T2>
-uint32_t Counter::calc_lbd(const T2& lits) {
+uint8_t Counter::calc_lbd(const T2& lits) {
   lbd_helper_flag++;
   uint32_t nblevels = 0;
   for(const auto& l: lits) {

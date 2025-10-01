@@ -125,8 +125,8 @@ inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   // sort the remaining comps for processing
   stats.comp_sorts++;
   stats.comp_sizes+= end - start;
-  for (uint32_t i = start; i < end; i++)
-    for (uint32_t j = i + 1; j < end; j++) {
+  for (uint64_t i = start; i < end; i++)
+    for (uint64_t j = i + 1; j < end; j++) {
       if (comp_stack[i]->nVars()
                   < comp_stack[j]->nVars())
         std::swap(comp_stack[i], comp_stack[j]);

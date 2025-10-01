@@ -731,7 +731,7 @@ inline vector<Lit>::iterator Counter::top_declevel_trail_begin() {
 template<class T2>
 uint8_t Counter::calc_lbd(const T2& lits) {
   lbd_helper_flag++;
-  uint32_t nblevels = 0;
+  uint8_t nblevels = 0;
   for(const auto& l: lits) {
     if (val(l) == X_TRI) {nblevels++;continue;}
     int lev = var(l).decision_level;

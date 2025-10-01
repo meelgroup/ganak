@@ -54,7 +54,7 @@ public:
 
     return ret;
   }
-  uint32_t get_extra_bytes(void* c) const override {
+  uint64_t get_extra_bytes(void* c) const override {
     T* comp = reinterpret_cast<T*>(c);
     return comp->extra_bytes();
   }
@@ -98,7 +98,7 @@ public:
   bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* c) override {
     const T& comp = *reinterpret_cast<const T*>(c);
     stats.num_cache_look_ups++;
-    uint32_t table_ofs = comp.get_hashkey() & tbl_size_mask;
+    uint32_t table_ofs = (uint32_t)comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
     if (!act_id) return false;
     while(act_id){
@@ -192,7 +192,7 @@ private:
   }
 
   uint32_t table_pos(CacheEntryID id) const {
-    return entry(id).get_hashkey() & tbl_size_mask;
+    return (uint32_t)entry(id).get_hashkey() & tbl_size_mask;
   }
 
   void add_descendant(CacheEntryID compid, CacheEntryID descendantid) {

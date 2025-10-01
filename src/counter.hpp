@@ -170,7 +170,7 @@ public:
   FF outer_count();
   uint64_t get_tstamp() const { return tstamp; }
   uint64_t get_tstamp(int32_t lev) const {
-    if (dec_level() < lev) return std::numeric_limits<uint32_t>::max();
+    if (dec_level() < lev) return std::numeric_limits<uint64_t>::max();
     return decisions[lev].tstamp;
   }
 

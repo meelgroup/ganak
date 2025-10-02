@@ -23,7 +23,6 @@ THE SOFTWARE.
 #pragma once
 #include <cryptominisat5/solvertypesmini.h>
 #include <memory>
-#include <cstdlib>
 
 class FPrime : public CMSat::Field {
 public:

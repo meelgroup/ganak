@@ -41,7 +41,7 @@ namespace GanakInt {
 
 // There is EXACTLY ONE of this
 template<typename T>
-class CompCache: public CompCacheIF {
+class CompCache final: public CompCacheIF {
 public:
   CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) { }
   ~CompCache() {}

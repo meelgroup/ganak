@@ -9,7 +9,7 @@ struct Cell{
 
 	int parent_cell;
 
-	int bag_size()const{
+	size_t bag_size()const{
 		return separator_node_list.size() + boundary_node_list.size();
 	}
 

@@ -54,7 +54,7 @@ public:
 
     return ret;
   }
-  uint32_t get_extra_bytes(void* c) const override {
+  uint64_t get_extra_bytes(void* c) const override {
     T* comp = reinterpret_cast<T*>(c);
     return comp->extra_bytes();
   }
@@ -98,7 +98,7 @@ public:
   bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* c) override {
     const T& comp = *reinterpret_cast<const T*>(c);
     stats.num_cache_look_ups++;
-    uint32_t table_ofs = comp.get_hashkey() & tbl_size_mask;
+    uint32_t table_ofs = (uint32_t)comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
     if (!act_id) return false;
     while(act_id){
@@ -130,7 +130,7 @@ public:
   // store the number in model_count as the model count of CacheEntryID id
   void store_value(const CacheEntryID id, const FF& model_count) override;
 
-  double calc_cutoff() const override;
+  uint64_t calc_cutoff() const override;
   bool delete_some_entries() override;
 
   // delete entries, keeping the descendants tree consistent
@@ -164,9 +164,9 @@ private:
       double vm_after;
       auto used_after = mem_used(vm_after);
       verb_print(2,
-        "table resize -- used before: " << used_before/(double)(1024*1024)
-        << " vm used before: " << vm_before/(double)(1024*1024)
-        << " used after: " << used_after/(double)(1024*1024)
+        "table resize -- used before: " << (double)used_before/(double)(1024*1024)
+        << " vm used before: " << (double)vm_before/(double)(1024*1024)
+        << " used after: " << (double)used_after/(double)(1024*1024)
         << " vm used after: " << vm_after/(double)(1024*1024)
         << " total T: " << cpu_time());
     }
@@ -192,7 +192,7 @@ private:
   }
 
   uint32_t table_pos(CacheEntryID id) const {
-    return entry(id).get_hashkey() & tbl_size_mask;
+    return (uint32_t)entry(id).get_hashkey() & tbl_size_mask;
   }
 
   void add_descendant(CacheEntryID compid, CacheEntryID descendantid) {
@@ -251,14 +251,14 @@ CacheEntryID CompCache<T>::add_new_comp(void* c, CacheEntryID super_comp_id) {
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(comp))/(double)(1024*1024));
       verb_print(3,
-        "Before entry enlarge Total process MB : " << dat/(double)(1024*1024)
+        "Before entry enlarge Total process MB : " << (double)dat/(double)(1024*1024)
         << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 
     }
     entry_base.emplace_back(std::move(comp));
     if (at_capacity && conf.verb >= 3) {
       double vm_dat;
-      double dat = mem_used(vm_dat);
+      double dat = (double)mem_used(vm_dat);
       verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
         (double)(entry_base.capacity()*sizeof(comp))/(double)(1024*1024));
       verb_print(3,
@@ -413,8 +413,8 @@ void CompCache<T>::test_descendantstree_consistency() {
 }
 
 template<typename T>
-double CompCache<T>::calc_cutoff() const {
-  vector<uint32_t> scores;
+uint64_t CompCache<T>::calc_cutoff() const {
+  vector<uint64_t> scores;
   // TODO: this score is VERY simplistic, we actually don't touch it at all, ever
   //       just create it and that's it. Not bumped with usage(!)
   for (auto it = entry_base.begin() + 1; it != entry_base.end(); it++)
@@ -431,7 +431,7 @@ double CompCache<T>::calc_cutoff() const {
 template<typename T>
 bool CompCache<T>::delete_some_entries() {
   const auto start_del_time = cpu_time();
-  double cutoff = calc_cutoff();
+  uint64_t cutoff = (uint64_t)calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
   verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
   verb_print(1, "max_cache_size_bytes in MB: " << (stats.max_cache_size_bytes)/(1024ULL*1024ULL));
@@ -512,11 +512,11 @@ void CompCache<T>::debug_mem_data() const {
     for (auto &entry : entry_base)
       if (!entry.is_free()) tot_extra_bytes += entry.extra_bytes();
     cout << std::setw(40) << "c o bignum(+packed comp if used) uses MB "
-      << tot_extra_bytes/(double)(1024*1024) << endl;
+      << (double)tot_extra_bytes/(double)(1024*1024) << endl;
 
     double vm_dat;
     auto dat = mem_used(vm_dat);
-    verb_print(1, "Total process MB : " << dat/(double)(1024*1024)
+    verb_print(1, "Total process MB : " << (double)dat/(double)(1024*1024)
       << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 }
 

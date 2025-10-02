@@ -59,7 +59,7 @@ public:
   auto& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
 
-  void save_count(const uint32_t stack_comp_id, const FF& value) {
+  void save_count(const uint64_t stack_comp_id, const FF& value) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
         << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << *value);
     cache->store_value(comp_stack[stack_comp_id]->id(), value);
@@ -74,7 +74,7 @@ public:
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
-  uint32_t comp_stack_size() { return comp_stack.size(); }
+  size_t comp_stack_size() { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }
   void clean_remain_comps_of(const StackLevel& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
@@ -95,8 +95,7 @@ public:
   // returns false if all comps have been processed
   inline bool find_next_remain_comp_of(StackLevel &top);
   void record_remaining_comps_for(StackLevel &top);
-  inline void sort_comp_stack_range(uint32_t start, uint32_t end);
-  inline double get_alternate_score_comps(uint32_t start, uint32_t end) const;
+  inline void sort_comp_stack_range(uint64_t start, uint64_t end);
 
   void remove_cache_pollutions_of_if_exists(const StackLevel &top);
   void remove_cache_pollutions_of(const StackLevel &top);
@@ -119,27 +118,19 @@ private:
   CompAnalyzer ana;
 };
 
-inline void CompManager::sort_comp_stack_range(uint32_t start, uint32_t end) {
+inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   debug_print(COLYEL2 "sorting comp stack range");
   assert(start <= end);
   if (start == end) return;
   // sort the remaining comps for processing
   stats.comp_sorts++;
   stats.comp_sizes+= end - start;
-  for (uint32_t i = start; i < end; i++)
-    for (uint32_t j = i + 1; j < end; j++) {
+  for (uint64_t i = start; i < end; i++)
+    for (uint64_t j = i + 1; j < end; j++) {
       if (comp_stack[i]->nVars()
                   < comp_stack[j]->nVars())
         std::swap(comp_stack[i], comp_stack[j]);
     }
-}
-
-inline double CompManager::get_alternate_score_comps(uint32_t start, uint32_t end) const {
-  double score = 1;
-  assert(start <= end);
-  // sort the remaining comps for processing
-  for (uint32_t i = start; i < end; i++) score *= comp_stack[i]->nVars();
-  return score;
 }
 
 inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {

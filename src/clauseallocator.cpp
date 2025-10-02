@@ -47,7 +47,7 @@ void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
 
   if (size + needed > capacity) {
     //Grow by default, but don't go under or over the limits
-    uint64_t newcapacity = capacity * ALLOC_GROW_MULT;
+    uint64_t newcapacity = (double)capacity * ALLOC_GROW_MULT;
     newcapacity = std::max<size_t>(newcapacity, MIN_LIST_SIZE);
     while (newcapacity < size+needed) {
         newcapacity *= ALLOC_GROW_MULT;

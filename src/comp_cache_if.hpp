@@ -41,7 +41,7 @@ public:
   virtual ~CompCacheIF();
 
   virtual CacheEntryID add_new_comp(void* comp, CacheEntryID super_comp_id) = 0;
-  virtual uint32_t get_extra_bytes(void* comp) const = 0;
+  virtual uint64_t get_extra_bytes(void* comp) const = 0;
   virtual bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* comp) = 0;
   virtual void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc) = 0;
   virtual void free_comp(void* comp) = 0;
@@ -57,7 +57,7 @@ public:
   virtual uint64_t clean_pollutions_involving(CacheEntryID id) = 0;
   virtual void erase(CacheEntryID id) = 0;
   virtual void store_value(const CacheEntryID id, const FF& model_count) = 0;
-  virtual double calc_cutoff() const = 0;
+  virtual uint64_t calc_cutoff() const = 0;
   virtual bool delete_some_entries() = 0;
   virtual uint64_t unlink_from_tree(CacheEntryID id) = 0;
   virtual uint64_t num_descendants(CacheEntryID id) = 0;

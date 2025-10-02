@@ -25,13 +25,11 @@ THE SOFTWARE.
 
 #include <cassert>
 #include <functional>
-#include <ctime>
 
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <string>
-#include <csignal>
 #include <cstdint>
 
 // note: MinGW64 defines both __MINGW32__ and __MINGW64__
@@ -130,7 +128,7 @@ static inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = n
    stat_stream.close();
 
    long page_size_kb = sysconf(_SC_PAGE_SIZE); // in case x86-64 is configured to use 2MB pages
-   vm_usage     = vsize;
+   vm_usage     = (double)vsize;
    double resident_set = (double)rss * (double)page_size_kb;
 
    if (max_mem_usage != nullptr) {
@@ -156,7 +154,7 @@ static inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = n
       }
    }
 
-   return resident_set;
+   return (uint64_t)resident_set;
 }
 #elif defined(__FreeBSD__)
 #include <sys/types.h>

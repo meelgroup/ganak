@@ -120,7 +120,6 @@ public:
         Counter* _counter);
 
   auto freq_score_of(uint32_t v) const { return var_freq_scores[v]; }
-  void un_bump_score(uint32_t v) { var_freq_scores[v] --; }
   inline void bump_freq_score(uint32_t v) { var_freq_scores[v] ++; }
   const CompArchetype& current_archetype() const { return archetype; }
 

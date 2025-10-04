@@ -23,50 +23,49 @@ THE SOFTWARE.
 #pragma once
 #include <cryptominisat5/solvertypesmini.h>
 #include <memory>
-#include <cstdlib>
 
-class FPrime : public CMSat::Field {
+class FPrime final : public CMSat::Field {
 public:
     int val;
     int field;
     FPrime(const int _val, int _field) : val(_val), field(_field) {}
     FPrime(const FPrime& other) : val(other.val), field(other.field) {}
 
-    Field& operator=(const Field& other) override {
+    Field& operator=(const Field& other) final {
         const auto& od = static_cast<const FPrime&>(other);
         val = od.val;
         return *this;
     }
 
-    Field& operator+=(const Field& other) override {
+    Field& operator+=(const Field& other) final {
         const auto& od = static_cast<const FPrime&>(other);
         val += od.val;
         val %= field;
         return *this;
     }
 
-    std::unique_ptr<Field> add(const Field& other) override {
+    std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const FPrime&>(other);
         int val2 = val + od.val;
         val2 %= field;
         return std::make_unique<FPrime>(val2, field);
     }
 
-    Field& operator-=(const Field& other) override {
+    Field& operator-=(const Field& other) final {
         const auto& od = static_cast<const FPrime&>(other);
         val -= od.val;
         val %= field;
         return *this;
     }
 
-    Field& operator*=(const Field& other) override {
+    Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const FPrime&>(other);
         val *= od.val;
         val %= field;
         return *this;
     }
 
-    Field& operator/=(const Field& other) override {
+    Field& operator/=(const Field& other) final {
         const auto& od = static_cast<const FPrime&>(other);
         if (od.val == 0) throw std::runtime_error("Division by zero");
         val /= od.val;
@@ -74,29 +73,29 @@ public:
         return *this;
     }
 
-    bool operator==(const Field& other) const override {
+    bool operator==(const Field& other) const final {
         const auto& od = static_cast<const FPrime&>(other);
         return val == od.val;
     }
 
-    std::ostream& display(std::ostream& os) const override {
+    std::ostream& display(std::ostream& os) const final {
         os << val << " mod " << field;
         return os;
     }
 
-    std::unique_ptr<Field> dup() const override {
+    std::unique_ptr<Field> dup() const final {
         return std::make_unique<FPrime>(val, field);
     }
 
-    bool is_zero() const override {
+    bool is_zero() const final {
         return val == 0;
     }
 
-    bool is_one() const override {
+    bool is_one() const final {
         return val == 1;
     }
 
-    bool parse(const std::string& str, const uint32_t line_no) override {
+    bool parse(const std::string& str, const uint32_t line_no) final {
         uint32_t at = 0;
         mpz_class head;
         if (!parse_int(head, str, at, line_no)) return false;
@@ -104,109 +103,109 @@ public:
         return check_end_of_weight(str, at, line_no);
     }
 
-    void set_zero() override { val = false; }
-    void set_one() override { val = true; }
+    void set_zero() final { val = false; }
+    void set_one() final { val = true; }
 
     inline uint64_t helper(const mpz_class& v) const {
       return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     }
 
-    uint64_t bytes_used() const override {
+    uint64_t bytes_used() const final {
       return sizeof(FPrime);
     }
 };
 
-class FGenPrime : public CMSat::FieldGen {
+class FGenPrime final : public CMSat::FieldGen {
 public:
     int field;
     FGenPrime(int _field) : field(_field) {}
-    ~FGenPrime() override = default;
-    std::unique_ptr<CMSat::Field> zero() const override {
+    ~FGenPrime() final = default;
+    std::unique_ptr<CMSat::Field> zero() const final {
         return std::make_unique<FPrime>(0, field);
     }
 
-    std::unique_ptr<CMSat::Field> one() const override {
+    std::unique_ptr<CMSat::Field> one() const final {
         return std::make_unique<FPrime>(1, field);
     }
 
-    std::unique_ptr<FieldGen> dup() const override {
+    std::unique_ptr<FieldGen> dup() const final {
         return std::make_unique<FGenPrime>(field);
     }
 
-    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
+    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
       const auto& ad = static_cast<const FPrime&>(a);
       const auto& bd = static_cast<const FPrime&>(b);
       return ad.val > bd.val;
     }
 
-    bool weighted() const override { return true; }
+    bool weighted() const final { return true; }
 };
 
-class FParity : public CMSat::Field {
+class FParity final : public CMSat::Field {
 public:
     bool val;
     FParity() : val(false) {}
     FParity(const bool _val) : val(_val) {}
     FParity(const FParity& other) : val(other.val) {}
 
-    Field& operator=(const Field& other) override {
+    Field& operator=(const Field& other) final {
         const auto& od = static_cast<const FParity&>(other);
         val = od.val;
         return *this;
     }
 
-    Field& operator+=(const Field& other) override {
+    Field& operator+=(const Field& other) final {
         const auto& od = static_cast<const FParity&>(other);
         val ^= od.val;
         return *this;
     }
 
-    std::unique_ptr<Field> add(const Field& other) override {
+    std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const FParity&>(other);
         return std::make_unique<FParity>(val ^ od.val);
     }
 
-    Field& operator-=(const Field& other) override {
+    Field& operator-=(const Field& other) final {
         const auto& od = static_cast<const FParity&>(other);
         val ^= od.val;
         return *this;
     }
 
-    Field& operator*=(const Field& other) override {
+    Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const FParity&>(other);
         val &= od.val;
         return *this;
     }
 
-    Field& operator/=(const Field& other) override {
+    Field& operator/=(const Field& other) final {
         const auto& od = static_cast<const FParity&>(other);
         if (od.val == 0) throw std::runtime_error("Division by zero");
         return *this;
     }
 
-    bool operator==(const Field& other) const override {
+    bool operator==(const Field& other) const final {
         const auto& od = static_cast<const FParity&>(other);
         return val == od.val;
     }
 
-    std::ostream& display(std::ostream& os) const override {
+    std::ostream& display(std::ostream& os) const final {
         os << val;
         return os;
     }
 
-    std::unique_ptr<Field> dup() const override {
+    std::unique_ptr<Field> dup() const final {
         return std::make_unique<FParity>(val);
     }
 
-    bool is_zero() const override {
+    bool is_zero() const final {
         return val == false;
     }
 
-    bool is_one() const override {
+    bool is_one() const final {
         return val == true;
     }
 
-    bool parse(const std::string& str, const uint32_t line_no) override {
+    bool parse(const std::string& str, const uint32_t line_no) final {
         uint32_t at = 0;
         mpz_class head;
         if (!parse_int(head, str, at, line_no)) return false;
@@ -214,38 +213,38 @@ public:
         return check_end_of_weight(str, at, line_no);
     }
 
-    void set_zero() override { val = false; }
-    void set_one() override { val = true; }
+    void set_zero() final { val = false; }
+    void set_one() final { val = true; }
 
     inline uint64_t helper(const mpz_class& v) const {
       return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
     }
 
-    uint64_t bytes_used() const override {
+    uint64_t bytes_used() const final {
       return sizeof(val);
     }
 };
 
-class FGenParity : public CMSat::FieldGen {
+class FGenParity final : public CMSat::FieldGen {
 public:
-    ~FGenParity() override = default;
-    std::unique_ptr<CMSat::Field> zero() const override {
+    ~FGenParity() final = default;
+    std::unique_ptr<CMSat::Field> zero() const final {
         return std::make_unique<FParity>(false);
     }
 
-    std::unique_ptr<CMSat::Field> one() const override {
+    std::unique_ptr<CMSat::Field> one() const final {
         return std::make_unique<FParity>(true);
     }
 
-    std::unique_ptr<FieldGen> dup() const override {
+    std::unique_ptr<FieldGen> dup() const final {
         return std::make_unique<FGenParity>();
     }
 
-    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
+    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
         const auto& ad = static_cast<const FParity&>(a);
         const auto& bd = static_cast<const FParity&>(b);
         return ad.val > bd.val;
     }
 
-    bool weighted() const override { return true; }
+    bool weighted() const final { return true; }
 };

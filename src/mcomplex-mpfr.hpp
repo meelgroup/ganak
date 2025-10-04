@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include <memory>
 #include <mpfr.h>
 
-class MPFComplex : public CMSat::Field {
+class MPFComplex final : public CMSat::Field {
 public:
     mpfr_t real;
     mpfr_t imag;
@@ -49,26 +49,26 @@ public:
       mpfr_set(imag, _imag, MPFR_RNDN);
     }
     MPFComplex(const MPFComplex& other) : MPFComplex(other.real, other.imag) {}
-    ~MPFComplex() override {
+    ~MPFComplex() final {
       mpfr_clear(real);
       mpfr_clear(imag);
     }
 
-    Field& operator=(const Field& other) override {
+    Field& operator=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_set(real, od.real, MPFR_RNDN);
         mpfr_set(imag, od.imag, MPFR_RNDN);
         return *this;
     }
 
-    Field& operator+=(const Field& other) override {
+    Field& operator+=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_add(real, real, od.real, MPFR_RNDN);
         mpfr_add(imag, imag, od.imag, MPFR_RNDN);
         return *this;
     }
 
-    std::unique_ptr<Field> add(const Field& other) override {
+    std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_t r;
         mpfr_t i;
@@ -82,14 +82,14 @@ public:
         return ret;
     }
 
-    Field& operator-=(const Field& other) override {
+    Field& operator-=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_sub(real, real, od.real, MPFR_RNDN);
         mpfr_sub(imag, imag, od.imag, MPFR_RNDN);
         return *this;
     }
 
-    Field& operator*=(const Field& other) override {
+    Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_t r;
         mpfr_init2(r, 256);
@@ -118,7 +118,7 @@ public:
         return *this;
     }
 
-    Field& operator/=(const Field& other) override {
+    Field& operator/=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         if (od.is_zero()) throw std::runtime_error("Division by zero");
         mpfr_t r;
@@ -161,12 +161,12 @@ public:
         return *this;
     }
 
-    bool operator==(const Field& other) const override {
+    bool operator==(const Field& other) const final {
         const auto& od = static_cast<const MPFComplex&>(other);
         return mpfr_equal_p(real, od.real) && mpfr_equal_p(imag, od.imag);
     }
 
-    std::ostream& display(std::ostream& os) const override {
+    std::ostream& display(std::ostream& os) const final {
       char* tmp = nullptr;
       mpfr_asprintf(&tmp, "%.8Re + %.8Rei", real, imag);
       os << tmp;
@@ -174,34 +174,34 @@ public:
       return os;
     }
 
-    std::unique_ptr<Field> dup() const override {
+    std::unique_ptr<Field> dup() const final {
         return std::make_unique<MPFComplex>(real, imag);
     }
 
-    bool is_zero() const override {
+    bool is_zero() const final {
         return mpfr_zero_p(real) && mpfr_zero_p(imag);
     }
 
-    bool is_one() const override {
+    bool is_one() const final {
         return mpfr_cmp_si(real, 1) == 0 && mpfr_zero_p(imag);
     }
 
-    void set_zero() override {
+    void set_zero() final {
       mpfr_set_si(real, 0, MPFR_RNDN);
       mpfr_set_si(imag, 0, MPFR_RNDN);
     }
 
-    void set_one() override {
+    void set_one() final {
       mpfr_set_si(real, 1, MPFR_RNDN);
       mpfr_set_si(imag, 0, MPFR_RNDN);
     }
 
-    uint64_t bytes_used() const override {
+    uint64_t bytes_used() const final {
       return sizeof(MPFComplex) + ArjunNS::mpfr_memory_usage(real)
         + ArjunNS::mpfr_memory_usage(imag);
     }
 
-    bool parse(const std::string& str, const uint32_t line_no) override {
+    bool parse(const std::string& str, const uint32_t line_no) final {
         uint32_t at = 0;
         ArjunNS::FMpq _real;
         ArjunNS::FMpq _imag;
@@ -236,26 +236,26 @@ public:
 
 };
 
-class FGenMPFComplex : public CMSat::FieldGen {
+class FGenMPFComplex final : public CMSat::FieldGen {
 public:
-    ~FGenMPFComplex() override = default;
-    std::unique_ptr<CMSat::Field> zero() const override {
+    ~FGenMPFComplex() final = default;
+    std::unique_ptr<CMSat::Field> zero() const final {
         return std::make_unique<MPFComplex>();
     }
 
-    std::unique_ptr<CMSat::Field> one() const override {
+    std::unique_ptr<CMSat::Field> one() const final {
         return std::make_unique<MPFComplex>(1, 0);
     }
 
-    std::unique_ptr<FieldGen> dup() const override {
+    std::unique_ptr<FieldGen> dup() const final {
         return std::make_unique<FGenMPFComplex>();
     }
 
-    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const override {
+    bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
       const auto& ad = static_cast<const MPFComplex&>(a);
       const auto& bd = static_cast<const MPFComplex&>(b);
       return mpfr_greaterequal_p(ad.real, bd.real) && mpfr_greaterequal_p(ad.imag, bd.imag);
     }
 
-    bool weighted() const override { return true; }
+    bool weighted() const final { return true; }
 };

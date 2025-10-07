@@ -3,7 +3,7 @@
 int get_treewidth_of_multilevel_partition(const std::vector<Cell>&p){
 	int tw = 0;
 	for(auto&x:p)
-		if(tw < x.bag_size())
+		if(tw < (int)x.bag_size())
 			tw = x.bag_size();
 	return tw;
 }

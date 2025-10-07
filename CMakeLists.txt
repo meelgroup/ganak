@@ -281,6 +281,7 @@ if (SANITIZE)
     MESSAGE(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
     add_compile_options("-fsanitize=address")
     add_link_options("-fsanitize=address")
+    add_link_options("-fsanitize=undefined")
     # add_compile_options("-fsanitize=integer")
     add_compile_options("-fsanitize=undefined")
 

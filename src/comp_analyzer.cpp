@@ -156,8 +156,10 @@ void CompAnalyzer::initialize(
       uint32_t offs = data_start - holder.data;
       holder.data[v*hstride+holder.offset] = offs;
       assert(offs <= total_sz);
-      memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
-      data_start += u_bins.size();
+      if (u_bins.size() > 0) {
+        memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
+        data_start += u_bins.size();
+      }
 
       // fill longs
       const auto& u_longs = unif_occ_long[v];
@@ -166,8 +168,10 @@ void CompAnalyzer::initialize(
       offs = data_start - holder.data;
       holder.data[v*hstride+holder.offset+3] = offs;
       assert(offs <= total_sz);
-      memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
-      data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
+      if (u_longs.size() > 0) {
+        memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
+        data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
+      }
       holder.tstamp(v) = 0;
       holder.set_lev(v, 0);
     }

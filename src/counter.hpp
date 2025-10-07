@@ -301,7 +301,7 @@ private:
 
   // Switch to approxmc
   double start_time;
-  volatile bool appmc_timeout_fired = false;
+  std::atomic<bool> appmc_timeout_fired = false;
   bool is_approximate = false;
   FF do_appmc_count();
 

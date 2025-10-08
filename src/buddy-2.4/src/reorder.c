@@ -210,8 +210,8 @@ static BddTree *reorder_win2ite(BddTree *t)
 {
    BddTree *this, *first=t;
    int lastsize;
-   int c=1;
-   
+   // int c=1;
+
    if (t == NULL)
       return t;
    
@@ -246,7 +246,7 @@ static BddTree *reorder_win2ite(BddTree *t)
 
       if (verbose > 1)
 	 printf(" %d nodes\n", reorder_nodenum());
-      c++;
+      // c++;
    }
    while (reorder_nodenum() != lastsize);
 

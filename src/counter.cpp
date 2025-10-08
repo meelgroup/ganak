@@ -833,20 +833,38 @@ FF Counter::do_appmc_count() {
 }
 
 class Timer {
-    bool clear = false;
+    std::atomic<bool> finished = false;
+    std::unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
 public:
-    template<typename Function>
-    void set_timeout(Function function, double delay) {
-      this->clear = false;
-      std::thread t([=, this]() {
-          if(this->clear) return;
-          std::this_thread::sleep_for(std::chrono::milliseconds((int)(delay*1000.0)));
-          if(this->clear) return;
-          function();
+    void set_timeout(std::atomic<bool>* appmc_timeout_fired, double delay) {
+      tp = std::make_unique<std::thread>([this, appmc_timeout_fired, delay]() {
+          auto start = std::chrono::steady_clock::now();
+          auto end = start + std::chrono::milliseconds(static_cast<int>(delay * 1000.0));
+
+          // Sleep in smaller intervals to respond to stop() faster
+          while(std::chrono::steady_clock::now() < end) {
+              if (finished.load()) return;
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+          if (!finished.load()) {
+            finished.store(true);
+            *appmc_timeout_fired = true;
+            /* cout << "[appmc] Timeout fired, stopping ganak." << endl; */
+          } else {
+            /* cout << "[appmc] Timeout fired, but ganak already finished." << endl; */
+          }
       });
-      t.detach();
     }
-    void stop() { this->clear = true; }
+
+    void wait_all() {
+        finished.store(true);
+        if(tp && tp->joinable()) {
+            tp->join();
+            tp.reset();
+        }
+    }
+
+    ~Timer() { wait_all(); }
 };
 
 FF Counter::count_using_cms() {
@@ -876,25 +894,22 @@ FF Counter::count_using_cms() {
 FF Counter::outer_count() {
   if (!ok) return fg->zero();
   auto cnt = fg->zero();
+  Timer t;
   if (!weighted() && conf.appmc_timeout > 0) {
     double time_so_far = cpu_time();
-    double set_timeout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
-    if (conf.appmc_timeout > 500 && set_timeout < 500) {
+    double tout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
+    if (conf.appmc_timeout > 500 && tout < 500) {
       double new_set_timeout = 300;
-      verb_print(1, "[appmc] Too little time would be given to ganak: " << set_timeout
+      verb_print(1, "[appmc] Too little time would be given to ganak: " << tout
           << " adjusting to: " << new_set_timeout);
-      set_timeout = new_set_timeout;
+      tout = new_set_timeout;
     }
-    verb_print(1, "[appmc] timeout set to: " << set_timeout);
-    if (set_timeout == 0) {
+    verb_print(1, "[appmc] timeout set to: " << tout);
+    if (tout == 0) {
       verb_print(1, "[appmc] No time left, skipping TD");
       conf.do_td = 0;
     }
-    Timer t;
-    t.set_timeout([=, this]() {
-        appmc_timeout_fired = true;
-        verb_print(3, "**** ApproxMC timer fired ****");
-      }, set_timeout);
+    t.set_timeout(&appmc_timeout_fired, tout);
   }
 
   verb_print(1, "Sampling set size: " << ((indep_support_end>0) ? (indep_support_end-1) : 0));

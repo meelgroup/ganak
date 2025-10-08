@@ -45,7 +45,7 @@ namespace GanakInt {
 class ClauseAllocator;
 class Counter;
 
-constexpr uint32_t hstride = 9; // stamp(2), lev, 2*(start, size, orig_size)
+constexpr uint32_t hstride = 10; // stamp(2), lev, 2*(start, size, orig_size) which is 9, but we round up to 10 for alignment
 /* #define ANALYZE_DEBUG */
 
 struct ClData {

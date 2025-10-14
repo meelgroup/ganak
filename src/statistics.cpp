@@ -158,6 +158,18 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << std::setprecision(2) << setw(9) << std::left
     << safe_div(num_cache_look_ups,(1000.0*(cpu_time()-counter->get_start_time())))
   );
+  if (num_cache_look_ups < 4000) {
+    verb_print(1, "cache non-K (lookup/ stores/ hits/ dels) "
+      << std::left
+      << setw(6) << (num_cache_look_ups) << " "
+      << setw(6) << (total_num_cached_comps) << " "
+      << setw(6) << (num_cache_hits) << " "
+      << setw(6) << (num_cache_dels) << " "
+      << setw(16) << " -- lookup/s: "
+      << std::setprecision(2) << setw(9) << std::left
+      << safe_div(num_cache_look_ups,((cpu_time()-counter->get_start_time())))
+    );
+  }
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);

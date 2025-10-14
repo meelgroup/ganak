@@ -89,6 +89,8 @@ target_link_libraries (ganak
   LINK_PUBLIC ${FLINT_LIBRARIES}
   LINK_PUBLIC ${MPFR_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
+  LINK_PUBLIC kahypar
+  LINK_PUBLIC ${Boost_LIBRARIES}
 )
 
 set_target_properties(ganak PROPERTIES

@@ -45,6 +45,7 @@ THE SOFTWARE.
 #include <approxmc/approxmc.h>
 #include <thread>
 #include <algorithm>
+#include <libkahypar.h>
 
 using std::setw;
 using std::setprecision;
@@ -1006,10 +1007,65 @@ vector<Cube> Counter::one_restart_count() {
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
+    hyper_cut();
   }
   count_loop();
   if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
   return mini_cubes;
+}
+
+void Counter::hyper_cut() {
+  //use kahypar to do hypergraph partitioning
+  if (tdscore.empty()) return;
+  if (nVars() > conf.td_varlim) return;
+  if (nVars() < 20) return;
+  if (indep_support_end <= 3) return;
+  if (conf.verb) verb_print(1, "[td] Running KaHyPar hypergraph partitioner to improve TD");
+  double my_time = cpu_time();
+
+  kahypar_context_t* context = kahypar_context_new();
+  kahypar_configure_context_from_file(context, "/path/to/config.ini");
+
+  kahypar_set_seed(context, 42);
+
+  uint32_t num_bin_cls = 0;
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    for(const auto& ws: watches[lit].binaries) {
+      if (ws.irred() && lit < ws.lit()) num_bin_cls++;
+    }
+  }
+
+  const kahypar_hypernode_id_t num_vertices = 7;
+  const kahypar_hyperedge_id_t num_hyperedges = num_bin_cls + long_irred_cls.size();
+
+  std::unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(num_hyperedges);
+  for(uint32_t i = 0; i < num_hyperedges; i++) hyperedge_weights[i] = 1;
+
+  std::unique_ptr<size_t[]> hyperedge_indices = std::make_unique<size_t[]>(5);
+  //....
+  std::unique_ptr<kahypar_hyperedge_id_t[]> hyperedges = std::make_unique<kahypar_hyperedge_id_t[]>(12);
+  //...
+  const double imbalance = 0.03;
+  const kahypar_partition_id_t k = 2;
+
+  kahypar_hyperedge_weight_t objective = 0;
+
+  std::vector<kahypar_partition_id_t> partition(num_vertices, -1);
+
+  kahypar_partition(num_vertices, num_hyperedges,
+    imbalance, k,
+    /*vertex_weights */ nullptr, hyperedge_weights.get(),
+    hyperedge_indices.get(), hyperedges.get(),
+    &objective, context, partition.data());
+
+  for(int i = 0; i != num_vertices; ++i) {
+    std::cout << i << ":" << partition[i] << std::endl;
+  }
+
+  kahypar_context_free(context);
+
+  verb_print(1, "[td] KaHyPar time: " << cpu_time() - my_time);
 }
 
 void Counter::print_all_levels() {

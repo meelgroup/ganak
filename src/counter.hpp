@@ -356,6 +356,17 @@ private:
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
+  void inc_act(const Lit lit);
+  Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
+  bool standard_polarity(const uint32_t var) const;
+  bool get_polarity(const uint32_t var) const;
+  uint64_t tstamp = 10;
+  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
+  vector<Lit>::const_iterator top_declevel_trail_begin() const;
+  vector<Lit>::iterator top_declevel_trail_begin();
+  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+
+  // TD
   void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
@@ -367,18 +378,12 @@ private:
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   void recomp_td_weight();
-  void inc_act(const Lit lit);
-  Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
-  bool standard_polarity(const uint32_t var) const;
-  bool get_polarity(const uint32_t var) const;
+  int td_width = 10000;
   vector<double> tdscore;
   double td_weight = 1.0;
-  int td_width = 10000;
-  uint64_t tstamp = 10;
-  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
-  vector<Lit>::const_iterator top_declevel_trail_begin() const;
-  vector<Lit>::iterator top_declevel_trail_begin();
-  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+
+  // Hypergraph
+  void hyper_cut();
 
   bool is_indep = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support

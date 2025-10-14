@@ -1009,9 +1009,10 @@ void Counter::hyper_cut() {
   double my_time = cpu_time();
 
   kahypar_context_t* context = kahypar_context_new();
-  /* kahypar_configure_context_from_file(context, "/path/to/config.ini"); */
-
+  kahypar_supress_output(context, false);
+  kahypar_configure_context_from_file(context, "km1_rKaHyPar_sea20.ini");
   kahypar_set_seed(context, 42);
+
 
   uint32_t cl_id = 0;
   vector<kahypar_hyperedge_id_t> edges;

@@ -133,7 +133,7 @@ bool Counter::remove_duplicates(vector<Lit>& lits) {
 }
 
 // 1... nodes vertices
-void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
+void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   if (td_width <= 0) {
@@ -428,7 +428,7 @@ void Counter::td_decompose() {
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
-  compute_score(td, conf.do_td_contract ? nodes : nVars(), true);
+  compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
   if (conf.do_td_contract) delete primal_alt;
 }
@@ -1165,7 +1165,7 @@ void Counter::recomp_td_weight() {
   if (conf.td_lookahead != -1 && dec_level() < conf.td_lookahead+5) {
     auto td = td_decompose_component(3);
     assert(conf.td_lookahead);
-    compute_score(td, opt_indep_support_end-1, false);
+    compute_td_score(td, opt_indep_support_end-1, false);
   }
 }
 

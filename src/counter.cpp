@@ -1009,32 +1009,39 @@ void Counter::hyper_cut() {
   double my_time = cpu_time();
 
   kahypar_context_t* context = kahypar_context_new();
-  kahypar_configure_context_from_file(context, "/path/to/config.ini");
+  /* kahypar_configure_context_from_file(context, "/path/to/config.ini"); */
 
   kahypar_set_seed(context, 42);
 
-  uint32_t num_bin_cls = 0;
-  vector<size_t> indices;
-  vector<kahypar_hyperedge_id_t> hyperedges;
+  uint32_t cl_id = 0;
+  vector<kahypar_hyperedge_id_t> edges;
+  vector<size_t> h_indices;
+  vector<vector<uint>> occ_list(nVars());
+
   all_lits(i) {
     Lit lit(i/2, i%2);
     for(const auto& ws: watches[lit].binaries) {
       if (ws.irred() && lit < ws.lit()) {
-        num_bin_cls++;
-        indices.push_back(lit.var()-1);
-        indices.push_back(ws.lit().var()-1);
-        hyperedges.push_back(hyperedges.size() + 2);
+        occ_list[lit.var()-1].push_back(cl_id);
+        occ_list[ws.lit().var()-1].push_back(cl_id);
+        cl_id++;
       }
     }
   }
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
-    for(const auto& l: cl) indices.push_back(l.var()-1);
-    hyperedges.push_back(hyperedges.size() + cl.sz);
+    for(const auto& l: cl) occ_list[l.var()-1].push_back(cl_id);
+    cl_id++;
   }
 
-  const kahypar_hypernode_id_t num_vertices = 7;
-  const kahypar_hyperedge_id_t num_hyperedges = num_bin_cls + long_irred_cls.size();
+  h_indices.push_back(0);
+  for(uint32_t i = 0; i < nVars(); i++) {
+    for(const auto& e: occ_list[i]) edges.push_back(e);
+    h_indices.push_back(edges.size());
+  }
+
+  const kahypar_hypernode_id_t num_vertices = cl_id;
+  const kahypar_hyperedge_id_t num_hyperedges = nVars();
 
   std::unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(num_hyperedges);
   for(uint32_t i = 0; i < num_hyperedges; i++) hyperedge_weights[i] = 1;
@@ -1047,10 +1054,10 @@ void Counter::hyper_cut() {
   kahypar_partition(num_vertices, num_hyperedges,
     imbalance, k,
     /*vertex_weights */ nullptr, hyperedge_weights.get(),
-    indices.data(), hyperedges.data(),
+    h_indices.data(),edges.data(),
     &objective, context, partition.data());
 
-  for(int i = 0; i != num_vertices; ++i) {
+  for(uint32_t i = 0; i != num_vertices; ++i) {
     std::cout << i << ":" << partition[i] << std::endl;
   }
 

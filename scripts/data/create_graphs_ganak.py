@@ -533,7 +533,7 @@ only_dirs = [
             # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
             # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
             "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
-
+            "out-ganak-mccomp2324-209249", # TRILLIUM, with 64b fixes
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

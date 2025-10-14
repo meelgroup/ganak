@@ -1024,7 +1024,7 @@ void Counter::hyper_cut() {
   double my_time = cpu_time();
 
   kahypar_context_t* context = kahypar_context_new();
-  kahypar_supress_output(context, false);
+  kahypar_supress_output(context, true);
   kahypar_configure_context_from_file(context, "km1_rKaHyPar_sea20.ini");
   kahypar_set_seed(context, 42);
 

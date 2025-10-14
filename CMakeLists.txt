@@ -335,6 +335,7 @@ find_package(arjun CONFIG REQUIRED)
 find_package(sbva CONFIG REQUIRED)
 find_package(breakid CONFIG REQUIRED)
 find_package(approxmc CONFIG REQUIRED)
+find_library(kahypar REQUIRED NAMES libkahypar.so kahypar PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu /usr/local/lib/x86_64-linux-gnu)
 
 message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
 message(STATUS "CryptoMiniSat5 static lib:  ${CRYPTOMINISAT5_STATIC_LIBRARIES}")

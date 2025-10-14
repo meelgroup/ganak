@@ -1014,8 +1014,8 @@ vector<Cube> Counter::one_restart_count() {
   return mini_cubes;
 }
 
+//use kahypar to do hypergraph partitioning
 void Counter::hyper_cut() {
-  //use kahypar to do hypergraph partitioning
   if (tdscore.empty()) return;
   if (nVars() > conf.td_varlim) return;
   if (nVars() < 20) return;
@@ -1029,11 +1029,23 @@ void Counter::hyper_cut() {
   kahypar_set_seed(context, 42);
 
   uint32_t num_bin_cls = 0;
+  vector<size_t> indices;
+  vector<kahypar_hyperedge_id_t> hyperedges;
   all_lits(i) {
     Lit lit(i/2, i%2);
     for(const auto& ws: watches[lit].binaries) {
-      if (ws.irred() && lit < ws.lit()) num_bin_cls++;
+      if (ws.irred() && lit < ws.lit()) {
+        num_bin_cls++;
+        indices.push_back(lit.var()-1);
+        indices.push_back(ws.lit().var()-1);
+        hyperedges.push_back(hyperedges.size() + 2);
+      }
     }
+  }
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    for(const auto& l: cl) indices.push_back(l.var()-1);
+    hyperedges.push_back(hyperedges.size() + cl.sz);
   }
 
   const kahypar_hypernode_id_t num_vertices = 7;
@@ -1042,21 +1054,15 @@ void Counter::hyper_cut() {
   std::unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(num_hyperedges);
   for(uint32_t i = 0; i < num_hyperedges; i++) hyperedge_weights[i] = 1;
 
-  std::unique_ptr<size_t[]> hyperedge_indices = std::make_unique<size_t[]>(5);
-  //....
-  std::unique_ptr<kahypar_hyperedge_id_t[]> hyperedges = std::make_unique<kahypar_hyperedge_id_t[]>(12);
-  //...
   const double imbalance = 0.03;
   const kahypar_partition_id_t k = 2;
 
   kahypar_hyperedge_weight_t objective = 0;
-
   std::vector<kahypar_partition_id_t> partition(num_vertices, -1);
-
   kahypar_partition(num_vertices, num_hyperedges,
     imbalance, k,
     /*vertex_weights */ nullptr, hyperedge_weights.get(),
-    hyperedge_indices.get(), hyperedges.get(),
+    indices.data(), hyperedges.data(),
     &objective, context, partition.data());
 
   for(int i = 0; i != num_vertices; ++i) {

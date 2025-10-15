@@ -992,7 +992,7 @@ vector<Cube> Counter::one_restart_count() {
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
-    hyper_cut();
+    if (conf.do_hyper) hyper_cut();
   }
   count_loop();
   if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
@@ -1012,7 +1012,6 @@ void Counter::hyper_cut() {
   kahypar_supress_output(context, true);
   kahypar_configure_context_from_file(context, "km1_rKaHyPar_sea20.ini");
   kahypar_set_seed(context, 42);
-
 
   uint32_t cl_id = 0;
   vector<kahypar_hyperedge_id_t> edges;
@@ -1058,13 +1057,46 @@ void Counter::hyper_cut() {
     h_indices.data(),edges.data(),
     &objective, context, partition.data());
 
-  for(uint32_t i = 0; i != num_vertices; ++i) {
-    std::cout << i << ":" << partition[i] << std::endl;
+  /* verb_print(4, "partition: "); */
+  /* for(uint32_t i = 0; i != num_vertices; ++i) { */
+  /*   verb_print(4, i << ":" << partition[i]); */
+  /* } */
+
+  // After partitioning, determine which hyperedges are cut
+  std::vector<bool> hyperedge_cut(num_hyperedges, false);
+
+  for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
+      // Get the range of vertices for this hyperedge
+      size_t start_idx = h_indices[hid];
+      size_t end_idx = h_indices[hid + 1];
+
+      // Check if vertices of this hyperedge span multiple partitions
+      kahypar_partition_id_t first_partition = -1;
+      bool is_cut = false;
+
+      for (size_t i = start_idx; i < end_idx; ++i) {
+          kahypar_hyperedge_id_t vertex_id = edges[i];
+          kahypar_partition_id_t vertex_partition = partition[vertex_id];
+
+          if (first_partition == -1) first_partition = vertex_partition;
+          else if (vertex_partition != first_partition) { is_cut = true; break; }
+      }
+      hyperedge_cut[hid] = is_cut;
   }
 
+  // Now print or use the cut hyperedges information
+  verb_print(1, "Cut hyperedges (variables):");
+  uint32_t cut_count = 0;
+  for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
+      if (hyperedge_cut[hid]) {
+          verb_print(1, "Variable " << hid + 1 << " is cut");
+          tdscore[hid+1] *= 2;
+          cut_count++;
+      }
+  }
   kahypar_context_free(context);
-
-  verb_print(1, "[td] KaHyPar time: " << cpu_time() - my_time);
+  verb_print(1, "[hc] KaHyPar total cut hyperedges: " << cut_count << " out of " << num_hyperedges
+      << "time: " << cpu_time() - my_time);
 }
 
 void Counter::print_all_levels() {

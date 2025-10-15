@@ -1105,7 +1105,7 @@ void Counter::hyper_cut() {
   for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
       if (hyperedge_cut[hid]) {
           verb_print(1, "Variable " << hid + 1 << " is cut");
-          tdscore[hid+1] *= 2;
+          tdscore[hid+1] *= 1.5; //std::min(tdscore[hid+1]+0.3, tdscore[hid+1]*1.2);
           cut_count++;
       }
   }

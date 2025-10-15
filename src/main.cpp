@@ -675,5 +675,6 @@ int main(int argc, char *argv[])
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);
+  mpfr_free_cache();
   return 0;
 }

@@ -1023,9 +1023,75 @@ void Counter::hyper_cut() {
   if (conf.verb) verb_print(1, "[td] Running KaHyPar hypergraph partitioner to improve TD");
   double my_time = cpu_time();
 
+  std::string kaypar_config_h = R"(
+# general
+mode=recursive
+objective=km1
+seed=-1
+cmaxnet=-1
+vcycles=0
+# main -> preprocessing -> min hash sparsifier
+p-use-sparsifier=true
+p-sparsifier-min-median-he-size=28
+p-sparsifier-max-hyperedge-size=1200
+p-sparsifier-max-cluster-size=10
+p-sparsifier-min-cluster-size=2
+p-sparsifier-num-hash-func=5
+p-sparsifier-combined-num-hash-func=100
+# main -> preprocessing -> community detection
+p-detect-communities=true
+p-detect-communities-in-ip=false
+p-reuse-communities=false
+p-max-louvain-pass-iterations=100
+p-min-eps-improvement=0.0001
+p-louvain-edge-weight=hybrid
+p-large-he-threshold=1000
+# main -> preprocessing -> large he removal
+p-smallest-maxnet-threshold=50000
+p-maxnet-removal-factor=0.01
+# main -> coarsening
+c-type=heavy_lazy
+c-s=3.25
+c-t=160
+# main -> coarsening -> rating
+c-rating-score=heavy_edge
+c-rating-use-communities=true
+c-rating-heavy_node_penalty=multiplicative
+c-rating-acceptance-criterion=best
+c-fixed-vertex-acceptance-criterion=free_vertex_only
+# main -> initial partitioning
+i-mode=direct
+i-technique=flat
+# initial partitioning -> initial partitioning
+i-algo=pool
+i-runs=20
+# initial partitioning -> bin packing
+i-bp-algorithm=worst_fit
+i-bp-heuristic-prepacking=false
+i-bp-early-restart=true
+i-bp-late-restart=true
+# initial partitioning -> local search
+i-r-type=twoway_fm
+i-r-runs=-1
+i-r-fm-stop=simple
+i-r-fm-stop-i=50
+# main -> local search
+r-type=twoway_fm_hyperflow_cutter
+r-runs=-1
+r-fm-stop=adaptive_opt
+r-fm-stop-alpha=1
+r-fm-stop-i=350
+# local_search -> flow scheduling and heuristics
+r-flow-execution-policy=exponential
+# local_search -> hyperflowcutter configuration
+r-hfc-size-constraint=mf-style
+r-hfc-scaling=16
+r-hfc-distance-based-piercing=true
+r-hfc-mbc=true)";
+
   kahypar_context_t* context = kahypar_context_new();
   kahypar_supress_output(context, true);
-  kahypar_configure_context_from_file(context, "km1_rKaHyPar_sea20.ini");
+  kahypar_configure_context_from_string(context, kaypar_config_h.c_str());
   kahypar_set_seed(context, 42);
 
   uint32_t cl_id = 0;
@@ -1111,7 +1177,7 @@ void Counter::hyper_cut() {
   }
   kahypar_context_free(context);
   verb_print(1, "[hc] KaHyPar total cut hyperedges: " << cut_count << " out of " << num_hyperedges
-      << "time: " << cpu_time() - my_time);
+      << " time: " << cpu_time() - my_time);
 }
 
 void Counter::print_all_levels() {

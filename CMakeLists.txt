@@ -99,6 +99,7 @@ option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(STATICCOMPILE "Compile to static executable" OFF)
 if (STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
+    set(Boost_USE_STATIC_LIBS ON)
 endif()
 
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
@@ -115,6 +116,8 @@ endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
+find_package (Boost COMPONENTS program_options REQUIRED)
+message(STATUS "Boost include dir: ${Boost_INCLUDE_DIRS}")
 
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)

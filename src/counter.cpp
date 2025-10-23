@@ -1171,13 +1171,13 @@ r-hfc-mbc=true)";
   for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
       if (hyperedge_cut[hid]) {
           verb_print(2, "Variable " << hid + 1 << " is cut");
-          tdscore[hid+1] *= 1.5; //std::min(tdscore[hid+1]+0.3, tdscore[hid+1]*1.2);
+          tdscore[hid+1] *= conf.hyper_mult;
           cut_count++;
       }
   }
   kahypar_context_free(context);
   verb_print(1, "[hc] KaHyPar total cut hyperedges: " << cut_count << " out of " << num_hyperedges
-      << " time: " << cpu_time() - my_time);
+      << " T: " << setprecision(2) << cpu_time() - my_time);
 }
 
 void Counter::print_all_levels() {

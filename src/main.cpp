@@ -167,6 +167,7 @@ void add_ganak_options()
 
     // TD options
     myopt("--hc", conf.do_hyper, atoi, "Run hyper-cut at toplevel");
+    myopt("--hcmult", conf.hyper_mult, atof, "Amount of multiplication for hypercut");
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
     myopt("--tdminw", conf.td_minweight, atof, "TD min weight");

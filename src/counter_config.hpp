@@ -75,6 +75,7 @@ struct CounterConfiguration {
   uint32_t tot_used_cutoff_vivif = 50;
 
   bool do_hyper = 0;
+  double hyper_mult = 1.5;
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;

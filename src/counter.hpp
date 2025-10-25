@@ -374,7 +374,7 @@ private:
   void compute_td_score_using_raw(const uint32_t nodes,
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);
-  void td_decompose();
+  bool td_decompose();
   TWD::TreeDecomposition td_decompose_component(double mult = 1);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   void recomp_td_weight();

@@ -344,11 +344,11 @@ TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
   return td;
 }
 
-void Counter::td_decompose() {
+bool Counter::td_decompose() {
   double my_time = cpu_time();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
-    return;
+    return false;
   }
 
   TWD::Graph primal(nVars());
@@ -392,15 +392,15 @@ void Counter::td_decompose() {
     << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
   if (primal.numEdges() > conf.td_max_edges) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
-    return;
+    return false;
   }
   if (density > conf.td_max_density) {
     verb_print(1, "[td] Density is too high, " << density << " skipping TD");
-    return;
+    return false;
   }
   if (edge_var_ratio > conf.td_max_edge_var_ratio) {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
-    return;
+    return false;
   }
 
   TWD::Graph* primal_alt = nullptr;
@@ -432,6 +432,7 @@ void Counter::td_decompose() {
   compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
   if (conf.do_td_contract) delete primal_alt;
+  return true;
 }
 
 // Self-check count without restart with CMS only
@@ -1006,8 +1007,9 @@ vector<Cube> Counter::one_restart_count() {
 
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);
-    td_decompose();
-    if (conf.do_hyper) hyper_cut();
+    if (!td_decompose()) {
+      if (conf.do_hyper) hyper_cut();
+    }
   }
   count_loop();
   if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
@@ -1017,10 +1019,10 @@ vector<Cube> Counter::one_restart_count() {
 //use kahypar to do hypergraph partitioning
 void Counter::hyper_cut() {
   if (tdscore.empty()) return;
-  if (nVars() > conf.td_varlim) return;
+  if (nVars() > conf.td_varlim*50) return;
   if (nVars() < 20) return;
   if (indep_support_end <= 3) return;
-  if (conf.verb) verb_print(1, "[td] Running KaHyPar hypergraph partitioner to improve TD");
+  if (conf.verb) verb_print(1, "[hc] Running KaHyPar hypergraph partitioner");
   double my_time = cpu_time();
 
   std::string kaypar_config_h = R"(
@@ -1166,12 +1168,13 @@ r-hfc-mbc=true)";
   }
 
   // Now print or use the cut hyperedges information
-  verb_print(2, "Cut hyperedges (variables):");
+  td_weight = 20;
+  verb_print(2, "[hc] Cut hyperedges (variables):");
   uint32_t cut_count = 0;
   for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
       if (hyperedge_cut[hid]) {
-          verb_print(2, "Variable " << hid + 1 << " is cut");
-          tdscore[hid+1] *= conf.hyper_mult;
+          verb_print(2, "[hc] Variable " << hid + 1 << " is cut");
+          tdscore[hid+1] += 0.3;
           cut_count++;
       }
   }

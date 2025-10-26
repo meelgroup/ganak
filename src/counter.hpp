@@ -375,9 +375,8 @@ private:
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);
   bool td_decompose();
-  TWD::TreeDecomposition td_decompose_component(double mult = 1);
+  uint32_t td_decompose_component(bool update_score);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
-  void recomp_td_weight();
   int td_width = 10000;
   vector<double> tdscore;
   double td_weight = 1.0;
@@ -778,7 +777,7 @@ public:
     return counter->get_cache()->get_max_num_entries();
   }
 private:
-  std::unique_ptr<Counter> counter = nullptr;
+  unique_ptr<Counter> counter = nullptr;
 };
 
 }

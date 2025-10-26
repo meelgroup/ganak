@@ -50,6 +50,7 @@ THE SOFTWARE.
 using std::setw;
 using std::setprecision;
 using std::setw;
+using std::unique_ptr;
 
 using namespace GanakInt;
 
@@ -287,7 +288,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   }
 }
 
-TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
+uint32_t Counter::td_decompose_component(bool update_score) {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
   set<uint32_t> active;
@@ -332,16 +333,31 @@ TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
     }
   }
 
+  auto nodes = opt_indep_support_end-1;
+  if (!conf.do_td_use_opt_indep) nodes = indep_support_end-1;
+  if (conf.do_td_contract) {
+    for(uint32_t i = nodes; i < nVars(); i++) {
+      primal.contract(i, conf.td_max_edges*100);
+      if (primal.numEdges() > conf.td_max_edges*100 ) break;
+    }
+  }
+  if (primal.numEdges() > conf.td_max_edges) {
+    verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
+    return 100;
+  }
+
   // run FlowCutter
   verb_print(2, "[td-cmp] FlowCutter is running...");
   TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), 0);
   fc.importGraph(primal);
 
   // Notice that this graph returned is VERY different
-  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters * mult);
+  auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters));
   td.centroid(primal.numNodes(), 0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
-  return td;
+
+  if (update_score) compute_td_score(td, nodes, false);
+  return td.width();
 }
 
 bool Counter::td_decompose() {
@@ -428,7 +444,7 @@ bool Counter::td_decompose() {
   fc.importGraph(*primal_alt);
 
   // Notice that this graph returned is VERY different
-  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
+  auto td = fc.constructTD(conf.td_steps, conf.td_iters);
 
   assert(tdscore.empty());
   tdscore.resize(nVars()+1, 0);
@@ -839,7 +855,7 @@ FF Counter::do_appmc_count() {
 
 class Timer {
     std::atomic<bool> finished = false;
-    std::unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
+    unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
 public:
     void set_timeout(std::atomic<bool>* appmc_timeout_fired, double delay) {
       tp = std::make_unique<std::thread>([this, appmc_timeout_fired, delay]() {
@@ -1129,7 +1145,7 @@ r-hfc-mbc=true)";
   const kahypar_hypernode_id_t num_vertices = cl_id;
   const kahypar_hyperedge_id_t num_hyperedges = nVars();
 
-  std::unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(num_hyperedges);
+  unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(num_hyperedges);
   for(uint32_t i = 0; i < num_hyperedges; i++) hyperedge_weights[i] = 1;
 
   const double imbalance = 0.03;
@@ -1337,13 +1353,6 @@ end:
   assert(ret && "never UNSAT");
 }
 
-void Counter::recomp_td_weight() {
-  if (conf.td_lookahead > 0 && dec_level() < conf.td_lookahead) {
-    auto td = td_decompose_component(3);
-    compute_td_score(td, opt_indep_support_end-1, false);
-  }
-}
-
 bool Counter::standard_polarity(const uint32_t v) const {
   if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity)
     return var(Lit(v, true)).last_polarity;
@@ -1363,7 +1372,6 @@ bool Counter::get_polarity(const uint32_t v) const {
 }
 
 void Counter::decide_lit() {
-  recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -1377,6 +1385,7 @@ void Counter::decide_lit() {
     case 1: v = find_best_branch(true, !conf.do_use_sat_solver); break;
     default: assert(false);
   }
+
   if (v == 0) {
     decisions.pop_back();
     return;
@@ -1441,7 +1450,7 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     }
     tdiff[b] = trail.size()-tsz;
     if (tdiff[b] < 3) w[b] = base_comp_tw;
-    else w[b] = td_decompose_component().width();
+    else w[b] = td_decompose_component(false);
     reactivate_comps_and_backtrack_trail();
   }
   verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
@@ -1475,8 +1484,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   }
 
   int32_t tw = 0;
-  if (dec_level() < conf.td_lookahead && !conf.td_look_only_weight)
-    tw = td_decompose_component().width();
+  if (dec_level() < conf.td_lookahead) tw = td_decompose_component(false);
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
@@ -1497,7 +1505,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     if (v < indep_support_end) only_optional_indep = false;
     if (weighted()) at[v] = vars_act_dec_num;
     double score;
-    if (!conf.td_look_only_weight && dec_level() < conf.td_lookahead &&
+    if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
     else score = score_of(v, ignore_td) ;
@@ -1512,8 +1520,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     is_indep = false;
     return 0;
   }
-  if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
+
+  if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff) {
+    // Update scores (in case we don't do td lookahead later)
+    td_decompose_component(true);
     verb_print(1, "best var: " << best_var << " score: " << best_var_score);
+  }
   return best_var;
 }
 

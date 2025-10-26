@@ -345,6 +345,7 @@ TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
 }
 
 bool Counter::td_decompose() {
+  if (!conf.do_td) return false;
   double my_time = cpu_time();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
@@ -429,6 +430,8 @@ bool Counter::td_decompose() {
   // Notice that this graph returned is VERY different
   TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
 
+  assert(tdscore.empty());
+  tdscore.resize(nVars()+1, 0);
   compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
   if (conf.do_td_contract) delete primal_alt;
@@ -908,8 +911,9 @@ FF Counter::outer_count() {
     }
     verb_print(1, "[appmc] timeout set to: " << tout);
     if (tout == 0) {
-      verb_print(1, "[appmc] No time left, skipping TD");
+      verb_print(1, "[appmc] No time left, skipping TD and HC");
       conf.do_td = 0;
+      conf.do_hyper = 0;
     }
     t.set_timeout(&appmc_timeout_fired, tout);
   }
@@ -1005,8 +1009,7 @@ vector<Cube> Counter::one_restart_count() {
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);
 
-  if (tdscore.empty() && nVars() > 5 && conf.do_td) {
-    tdscore.resize(nVars()+1, 0);
+  if (tdscore.empty() && nVars() > 5) {
     if (!td_decompose()) {
       if (conf.do_hyper) hyper_cut();
     }
@@ -1167,8 +1170,10 @@ r-hfc-mbc=true)";
       hyperedge_cut[hid] = is_cut;
   }
 
-  // Now print or use the cut hyperedges information
+  // Set up weights
   td_weight = 20;
+  assert(tdscore.empty());
+  tdscore.resize(nVars()+1, 0);
   verb_print(2, "[hc] Cut hyperedges (variables):");
   uint32_t cut_count = 0;
   for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
@@ -1333,9 +1338,8 @@ end:
 }
 
 void Counter::recomp_td_weight() {
-  if (conf.td_lookahead != -1 && dec_level() < conf.td_lookahead+5) {
+  if (conf.td_lookahead > 0 && dec_level() < conf.td_lookahead) {
     auto td = td_decompose_component(3);
-    assert(conf.td_lookahead);
     compute_td_score(td, opt_indep_support_end-1, false);
   }
 }

@@ -363,7 +363,7 @@ uint32_t Counter::td_decompose_component(bool update_score) {
 bool Counter::td_decompose() {
   if (!conf.do_td) return false;
   double my_time = cpu_time();
-  if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
+  if (nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
     return false;
   }
@@ -1025,7 +1025,7 @@ vector<Cube> Counter::one_restart_count() {
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);
 
-  if (tdscore.empty() && nVars() > 5) {
+  if (tdscore.empty()) {
     if (!td_decompose()) {
       if (conf.do_hyper) hyper_cut();
     }
@@ -1039,7 +1039,6 @@ vector<Cube> Counter::one_restart_count() {
 void Counter::hyper_cut() {
   if (tdscore.empty()) return;
   if (nVars() > conf.td_varlim*50) return;
-  if (nVars() < 20) return;
   if (indep_support_end <= 3) return;
   if (conf.verb) verb_print(1, "[hc] Running KaHyPar hypergraph partitioner");
   double my_time = cpu_time();

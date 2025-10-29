@@ -55,33 +55,44 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
     for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
     counter.set_optional_indep_support(tmp);
   }
-  assert(!cnf.weighted);
+  if (cnf.weighted) {
+    for(const auto& t: cnf.weights) {
+      counter.set_lit_weight(Lit(t.first+1, false), t.second.pos);
+      counter.set_lit_weight(Lit(t.first+1, true), t.second.neg);
+    }
+  }
 
   // Add clauses
   for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
   for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
+constexpr CMSat::Lit mklit(int lit) {
+  assert (lit != 0);
+  if (lit > 0) return CMSat::Lit(lit - 1, false);
+  else return CMSat::Lit((-lit) - 1, true);
+}
+
 int main() {
-  std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpz>();
+  std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpq>();
   ArjunNS::SimplifiedCNF cnf(fg);
   cnf.new_vars(10);
   vector<CMSat::Lit> cl;
-  cl.push_back(CMSat::Lit(0, false));
-  cl.push_back(CMSat::Lit(1, false));
+  cl.push_back(mklit(1));
+  cl.push_back(mklit(2));
   cnf.add_clause(cl);
-  cnf.set_weighted(false);
-  cnf.set_sampl_vars(vector<uint32_t>{0, 1, 3});
+  cnf.set_weighted(true);
+  cnf.set_lit_weight(mklit(4), ArjunNS::FMpq(10).dup());
+  cnf.set_lit_weight(mklit(-4), ArjunNS::FMpq(1).dup());
+  cnf.set_sampl_vars(vector<uint32_t>{mklit(1).var(), mklit(2).var(), mklit(4).var()});
 
   run_arjun(cnf);
   conf.verb = 0;
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
 
-  std::unique_ptr<CMSat::Field> cnt = cnf.multiplier_weight->dup();
-  if (!cnf.multiplier_weight->is_zero()) *cnt = *counter.count();
-  assert(!counter.get_is_approximate());
-
-  cout << "c s exact arb int " << std::fixed << *cnt << endl;
+  auto cnt = cnf.multiplier_weight->dup();
+  if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
+  cout << "count is: " << std::fixed << *cnt << endl;
   return 0;
 }

@@ -82,8 +82,8 @@ int main() {
   cl.push_back(mklit(2));
   cnf.add_clause(cl);
   cnf.set_weighted(true);
-  cnf.set_lit_weight(mklit(4), ArjunNS::FMpq(10).dup());
-  cnf.set_lit_weight(mklit(-4), ArjunNS::FMpq(1).dup());
+  cnf.set_lit_weight(mklit(4), ArjunNS::FMpq(10));
+  cnf.set_lit_weight(mklit(-4), ArjunNS::FMpq(1));
   cnf.set_sampl_vars(vector<uint32_t>{mklit(1).var(), mklit(2).var(), mklit(4).var()});
 
   run_arjun(cnf);

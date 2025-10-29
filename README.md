@@ -127,8 +127,8 @@ how to use Ganak as a library. Let's go through it step by step:
   cl.push_back(mklit(2));
   cnf.add_clause(cl);
   cnf.set_weighted(true);
-  cnf.set_lit_weight(mklit(4), ArjunNS::FMpq(10).dup());
-  cnf.set_lit_weight(mklit(-4), ArjunNS::FMpq(1).dup());
+  cnf.set_lit_weight(mklit(4), ArjunNS::FMpq(10));
+  cnf.set_lit_weight(mklit(-4), ArjunNS::FMpq(1));
   cnf.set_sampl_vars(vector<uint32_t>{mklit(1).var(), mklit(2).var(), mklit(4).var()});
 
   run_arjun(cnf);
@@ -145,10 +145,10 @@ Here, we first create the mathematical field we'll be counting over. In this
 case, we use the field of rationals. Then we create a CNF with 10 variables and
 the clause `(x1 v x2)`, with a projection set of `(x1,x2,x4)`. This CNF has a
 count of 33, because over (x1,x2) there are 3 solutions, and for each solution,
-x4 can be either true or false, with a combined weight of 11 (=10+1). This makes it a
-total count of 3 * 11 = 33. We then push this CNF through Arjun's
-simplification, and then through Ganak's counting, finally, we combine
-these two systems' counts to get the final count.
+x4 can be either true or false, with a combined weight of 11 (=10+1). This
+makes it a total count of 3 * 11 = 33. We then push this CNF through Arjun's
+simplification, and then through Ganak's counting, finally, we combine these
+two systems' counts to get the final count.
 
 ## Supported Weights
 Ganak supports many different weights:

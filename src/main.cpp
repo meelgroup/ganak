@@ -177,7 +177,6 @@ void add_ganak_options()
     myopt("--tdlook", conf.td_lookahead, atoi, "-1 means never");
     myopt("--tdlooktwcut", conf.td_lookahead_tw_cutoff, atoi, "TD lookahead only when TW of current comp is larger than this value");
     myopt("--tdlookiters", conf.td_lookahead_iters, atoi, "TD lookahead iterations");
-    myopt("--tdlookonlyweight", conf.td_look_only_weight, atoi, "TD lookahead ONLY update weights");
     myopt("--tdcontract", conf.do_td_contract, atoi, "TD contract over opt indep set");
     myopt("--tdlimit", conf.td_limit, atoi, "If TD is over this, reduce weight to 0.1");
     myopt("--tdoptindep", conf.do_td_use_opt_indep, atoi, "Use opt indep for TD computation");

@@ -232,11 +232,11 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
     #endif
 
     Cell current_cell = open_cells.top_and_pop();
-    bool must_recompute_max_open_bag_size = (current_cell.bag_size() == max_open_bag_size);
+    bool must_recompute_max_open_bag_size = ((int)current_cell.bag_size() == max_open_bag_size);
 
     int closed_cell_id = closed_cells.size();
 
-    if(current_cell.bag_size() > max_closed_bag_size){
+    if((int)current_cell.bag_size() > max_closed_bag_size){
 
       auto interior_node_list = std::move(current_cell.separator_node_list);
       int interior_node_count = interior_node_list.size();
@@ -336,7 +336,7 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
           new_cell.separator_node_list.shrink_to_fit();
           new_cell.boundary_node_list.shrink_to_fit();
 
-          if(new_cell.bag_size() > max_open_bag_size)
+          if((int)new_cell.bag_size() > max_open_bag_size)
             max_open_bag_size = new_cell.bag_size();
 
           open_cells.push(std::move(new_cell));
@@ -349,13 +349,13 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
       for(int x2:interior_node_list) node_to_sub_node[x2] = -1;
     }
 
-    if(current_cell.bag_size() > max_closed_bag_size)
+    if((int)current_cell.bag_size() > max_closed_bag_size)
       max_closed_bag_size = current_cell.bag_size();
 
     if(must_recompute_max_open_bag_size){
       max_open_bag_size = 0;
       for(auto&x2:access_internal_vector(open_cells))
-        if(x2.bag_size() > max_open_bag_size) max_open_bag_size = x2.bag_size();
+        if((int)x2.bag_size() > max_open_bag_size) max_open_bag_size = x2.bag_size();
     }
 
     closed_cells.push_back(std::move(current_cell));

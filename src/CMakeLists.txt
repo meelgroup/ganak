@@ -99,7 +99,7 @@ set_target_properties(ganak PROPERTIES
 )
 
 add_executable (ganak-bin main.cpp)
-add_executable (example example.cpp)
+add_executable (example-bin example.cpp)
 set(ganak_exec_link_libs ganak)
 
 IF (ZLIB_FOUND)
@@ -107,7 +107,7 @@ IF (ZLIB_FOUND)
 ENDIF()
 
 target_link_libraries(ganak-bin ${ganak_exec_link_libs})
-target_link_libraries(example ganak)
+target_link_libraries(example-bin ganak)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set_target_properties(ganak-bin PROPERTIES
@@ -123,6 +123,11 @@ else()
     INSTALL_RPATH_USE_LINK_PATH TRUE
   )
 endif()
+set_target_properties(example-bin PROPERTIES
+  OUTPUT_NAME example
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp )
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp )

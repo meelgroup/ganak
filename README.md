@@ -115,6 +115,41 @@ which means that the probability of the wrong count is at most
 
 If you must have a non-probabilistic count, you can use the `--prob 0` flag.
 
+## Using as a Library
+Ganak can be used as a library. The file `src/example.cpp` gives an example of
+how to use Ganak as a library. Let's go through it step by step:
+```cpp
+  std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpq>();
+  ArjunNS::SimplifiedCNF cnf(fg);
+  cnf.new_vars(10);
+  vector<CMSat::Lit> cl;
+  cl.push_back(mklit(1));
+  cl.push_back(mklit(2));
+  cnf.add_clause(cl);
+  cnf.set_weighted(true);
+  cnf.set_lit_weight(mklit(4), ArjunNS::FMpq(10));
+  cnf.set_lit_weight(mklit(-4), ArjunNS::FMpq(1));
+  cnf.set_sampl_vars(vector<uint32_t>{mklit(1).var(), mklit(2).var(), mklit(4).var()});
+
+  run_arjun(cnf);
+  conf.verb = 0;
+  Ganak counter(conf, fg);
+  setup_ganak(cnf, counter);
+
+  auto cnt = cnf.multiplier_weight->dup();
+  if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
+  cout << "count is: " << std::fixed << *cnt << endl;
+```
+
+Here, we first create the mathematical field we'll be counting over. In this
+case, we use the field of rationals. Then we create a CNF with 10 variables and
+the clause `(x1 v x2)`, with a projection set of `(x1,x2,x4)`. This CNF has a
+count of 33, because over (x1,x2) there are 3 solutions, and for each solution,
+x4 can be either true or false, with a combined weight of 11 (=10+1). This
+makes it a total count of 3 * 11 = 33. We then push this CNF through Arjun's
+simplification, and then through Ganak's counting, finally, we combine these
+two systems' counts to get the final count.
+
 ## Supported Weights
 Ganak supports many different weights:
 - For counting over integers, the default mode `--mode 0` works. Here, you can

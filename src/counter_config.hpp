@@ -87,7 +87,6 @@ struct CounterConfiguration {
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;
-  int td_look_only_weight = false;
   int td_max_edges = 70000;
   int do_td_contract = 1;
   int td_limit = 100000;

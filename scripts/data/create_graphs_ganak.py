@@ -516,7 +516,7 @@ only_dirs = [
             # "out-ganak-mccomp2324-14637456", # try vivif options
             # "out-ganak-mccomp2324-14648650-0", # much more precise cache
             # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
-            ### "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
+            # "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
             # "out-ganak-mccomp2324-14661402-", # try different weakenings
             # "out-ganak-mccomp2324-14675861-0", # submitted to mccomp 2025 -- GOOD
             # "out-ganak-mccomp2324-14675861-", # default setup along WITHOUT appmc. Trying tditers -- ganak_7d97636055e_9104724fa_26d64aac --tdlookiters 20
@@ -527,13 +527,15 @@ only_dirs = [
             # "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
             # "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
             # "out-ganak-mccomp2324-33393-0", # TRILLIUM, fixing td starting from 0, and maybe other TD issues too
-            "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
+            # "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
             # "out-ganak-mccomp2324-37704-0", # TRILLIUM, trying less scc upfront, weird non-committed code
             # "out-ganak-mccomp2324-41122-0", # TRILLIUM, new TD score, but BAD, not updating depth when all vars have been decided
             # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
             # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
-            "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
-
+            # "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
+            ### "out-ganak-mccomp2324-209249", # TRILLIUM, with 64b fixes
+            "out-ganak-mccomp2324-343419-0", # hypercut tries
+            "out-ganak-mccomp2324-357608-0", # hypercut only when TD is not used
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

@@ -356,29 +356,33 @@ private:
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
-  void compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
+  void inc_act(const Lit lit);
+  Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
+  bool standard_polarity(const uint32_t var) const;
+  bool get_polarity(const uint32_t var) const;
+  uint64_t tstamp = 10;
+  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
+  vector<Lit>::const_iterator top_declevel_trail_begin() const;
+  vector<Lit>::iterator top_declevel_trail_begin();
+  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+
+  // TD
+  void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
     const std::vector<std::vector<int>>& adj, bool print);
   void compute_td_score_using_raw(const uint32_t nodes,
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);
-  void td_decompose();
-  TWD::TreeDecomposition td_decompose_component(double mult = 1);
+  bool td_decompose();
+  uint32_t td_decompose_component(bool update_score);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
-  void recomp_td_weight();
-  void inc_act(const Lit lit);
-  Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
-  bool standard_polarity(const uint32_t var) const;
-  bool get_polarity(const uint32_t var) const;
+  int td_width = 10000;
   vector<double> tdscore;
   double td_weight = 1.0;
-  int td_width = 10000;
-  uint64_t tstamp = 10;
-  const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
-  vector<Lit>::const_iterator top_declevel_trail_begin() const;
-  vector<Lit>::iterator top_declevel_trail_begin();
-  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+
+  // Hypergraph
+  void hyper_cut();
 
   bool is_indep = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support
@@ -773,7 +777,7 @@ public:
     return counter->get_cache()->get_max_num_entries();
   }
 private:
-  std::unique_ptr<Counter> counter = nullptr;
+  unique_ptr<Counter> counter = nullptr;
 };
 
 }

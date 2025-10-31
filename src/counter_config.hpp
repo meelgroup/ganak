@@ -74,6 +74,8 @@ struct CounterConfiguration {
   double freq_score_divisor = 25.0;
   uint32_t tot_used_cutoff_vivif = 50;
 
+  bool do_hyper = 0;
+  double hyper_mult = 1.5;
   bool do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
@@ -87,7 +89,6 @@ struct CounterConfiguration {
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;
-  int td_look_only_weight = false;
   int td_max_edges = 70000;
   int do_td_contract = 1;
   int td_limit = 100000;

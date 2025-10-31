@@ -45,10 +45,12 @@ THE SOFTWARE.
 #include <approxmc/approxmc.h>
 #include <thread>
 #include <algorithm>
+#include <libkahypar.h>
 
 using std::setw;
 using std::setprecision;
 using std::setw;
+using std::unique_ptr;
 
 using namespace GanakInt;
 
@@ -133,7 +135,7 @@ bool Counter::remove_duplicates(vector<Lit>& lits) {
 }
 
 // 1... nodes vertices
-void Counter::compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
+void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
   if (td_width <= 0) {
@@ -286,7 +288,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   }
 }
 
-TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
+uint32_t Counter::td_decompose_component(bool update_score) {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
   set<uint32_t> active;
@@ -331,23 +333,39 @@ TWD::TreeDecomposition Counter::td_decompose_component(double mult) {
     }
   }
 
+  auto nodes = opt_indep_support_end-1;
+  if (!conf.do_td_use_opt_indep) nodes = indep_support_end-1;
+  if (conf.do_td_contract) {
+    for(uint32_t i = nodes; i < nVars(); i++) {
+      primal.contract(i, conf.td_max_edges*100);
+      if (primal.numEdges() > conf.td_max_edges*100 ) break;
+    }
+  }
+  if (primal.numEdges() > conf.td_max_edges) {
+    verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
+    return 100;
+  }
+
   // run FlowCutter
   verb_print(2, "[td-cmp] FlowCutter is running...");
   TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), 0);
   fc.importGraph(primal);
 
   // Notice that this graph returned is VERY different
-  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_lookahead_iters * mult);
+  auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters));
   td.centroid(primal.numNodes(), 0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
-  return td;
+
+  if (update_score) compute_td_score(td, nodes, false);
+  return td.width();
 }
 
-void Counter::td_decompose() {
+bool Counter::td_decompose() {
+  if (!conf.do_td) return false;
   double my_time = cpu_time();
-  if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
+  if (nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
-    return;
+    return false;
   }
 
   TWD::Graph primal(nVars());
@@ -391,15 +409,15 @@ void Counter::td_decompose() {
     << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
   if (primal.numEdges() > conf.td_max_edges) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
-    return;
+    return false;
   }
   if (density > conf.td_max_density) {
     verb_print(1, "[td] Density is too high, " << density << " skipping TD");
-    return;
+    return false;
   }
   if (edge_var_ratio > conf.td_max_edge_var_ratio) {
     verb_print(1, "[td] edge/var ratio is too high (" << edge_var_ratio  << "), not running TD");
-    return;
+    return false;
   }
 
   TWD::Graph* primal_alt = nullptr;
@@ -426,11 +444,14 @@ void Counter::td_decompose() {
   fc.importGraph(*primal_alt);
 
   // Notice that this graph returned is VERY different
-  TWD::TreeDecomposition td = fc.constructTD(conf.td_steps, conf.td_iters);
+  auto td = fc.constructTD(conf.td_steps, conf.td_iters);
 
-  compute_score(td, conf.do_td_contract ? nodes : nVars(), true);
+  assert(tdscore.empty());
+  tdscore.resize(nVars()+1, 0);
+  compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
   if (conf.do_td_contract) delete primal_alt;
+  return true;
 }
 
 // Self-check count without restart with CMS only
@@ -834,7 +855,7 @@ FF Counter::do_appmc_count() {
 
 class Timer {
     std::atomic<bool> finished = false;
-    std::unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
+    unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
 public:
     void set_timeout(std::atomic<bool>* appmc_timeout_fired, double delay) {
       tp = std::make_unique<std::thread>([this, appmc_timeout_fired, delay]() {
@@ -906,8 +927,9 @@ FF Counter::outer_count() {
     }
     verb_print(1, "[appmc] timeout set to: " << tout);
     if (tout == 0) {
-      verb_print(1, "[appmc] No time left, skipping TD");
+      verb_print(1, "[appmc] No time left, skipping TD and HC");
       conf.do_td = 0;
+      conf.do_hyper = 0;
     }
     t.set_timeout(&appmc_timeout_fired, tout);
   }
@@ -1003,13 +1025,182 @@ vector<Cube> Counter::one_restart_count() {
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);
 
-  if (tdscore.empty() && nVars() > 5 && conf.do_td) {
-    tdscore.resize(nVars()+1, 0);
-    td_decompose();
+  if (tdscore.empty()) {
+    if (!td_decompose()) {
+      if (conf.do_hyper) hyper_cut();
+    }
   }
   count_loop();
   if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
   return mini_cubes;
+}
+
+//use kahypar to do hypergraph partitioning
+void Counter::hyper_cut() {
+  if (tdscore.empty()) return;
+  if (nVars() > conf.td_varlim*50) return;
+  if (indep_support_end <= 3) return;
+  if (conf.verb) verb_print(1, "[hc] Running KaHyPar hypergraph partitioner");
+  double my_time = cpu_time();
+
+  std::string kaypar_config_h = R"(
+# general
+mode=recursive
+objective=km1
+seed=-1
+cmaxnet=-1
+vcycles=0
+# main -> preprocessing -> min hash sparsifier
+p-use-sparsifier=true
+p-sparsifier-min-median-he-size=28
+p-sparsifier-max-hyperedge-size=1200
+p-sparsifier-max-cluster-size=10
+p-sparsifier-min-cluster-size=2
+p-sparsifier-num-hash-func=5
+p-sparsifier-combined-num-hash-func=100
+# main -> preprocessing -> community detection
+p-detect-communities=true
+p-detect-communities-in-ip=false
+p-reuse-communities=false
+p-max-louvain-pass-iterations=100
+p-min-eps-improvement=0.0001
+p-louvain-edge-weight=hybrid
+p-large-he-threshold=1000
+# main -> preprocessing -> large he removal
+p-smallest-maxnet-threshold=50000
+p-maxnet-removal-factor=0.01
+# main -> coarsening
+c-type=heavy_lazy
+c-s=3.25
+c-t=160
+# main -> coarsening -> rating
+c-rating-score=heavy_edge
+c-rating-use-communities=true
+c-rating-heavy_node_penalty=multiplicative
+c-rating-acceptance-criterion=best
+c-fixed-vertex-acceptance-criterion=free_vertex_only
+# main -> initial partitioning
+i-mode=direct
+i-technique=flat
+# initial partitioning -> initial partitioning
+i-algo=pool
+i-runs=20
+# initial partitioning -> bin packing
+i-bp-algorithm=worst_fit
+i-bp-heuristic-prepacking=false
+i-bp-early-restart=true
+i-bp-late-restart=true
+# initial partitioning -> local search
+i-r-type=twoway_fm
+i-r-runs=-1
+i-r-fm-stop=simple
+i-r-fm-stop-i=50
+# main -> local search
+r-type=twoway_fm_hyperflow_cutter
+r-runs=-1
+r-fm-stop=adaptive_opt
+r-fm-stop-alpha=1
+r-fm-stop-i=350
+# local_search -> flow scheduling and heuristics
+r-flow-execution-policy=exponential
+# local_search -> hyperflowcutter configuration
+r-hfc-size-constraint=mf-style
+r-hfc-scaling=16
+r-hfc-distance-based-piercing=true
+r-hfc-mbc=true)";
+
+  kahypar_context_t* context = kahypar_context_new();
+  kahypar_supress_output(context, true);
+  kahypar_configure_context_from_string(context, kaypar_config_h.c_str());
+  kahypar_set_seed(context, 42);
+
+  uint32_t cl_id = 0;
+  vector<kahypar_hyperedge_id_t> edges;
+  vector<size_t> h_indices;
+  vector<vector<uint>> occ_list(nVars());
+
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    for(const auto& ws: watches[lit].binaries) {
+      if (ws.irred() && lit < ws.lit()) {
+        occ_list[lit.var()-1].push_back(cl_id);
+        occ_list[ws.lit().var()-1].push_back(cl_id);
+        cl_id++;
+      }
+    }
+  }
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    for(const auto& l: cl) occ_list[l.var()-1].push_back(cl_id);
+    cl_id++;
+  }
+
+  h_indices.push_back(0);
+  for(uint32_t i = 0; i < nVars(); i++) {
+    for(const auto& e: occ_list[i]) edges.push_back(e);
+    h_indices.push_back(edges.size());
+  }
+
+  const kahypar_hypernode_id_t num_vertices = cl_id;
+  const kahypar_hyperedge_id_t num_hyperedges = nVars();
+
+  unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(num_hyperedges);
+  for(uint32_t i = 0; i < num_hyperedges; i++) hyperedge_weights[i] = 1;
+
+  const double imbalance = 0.03;
+  const kahypar_partition_id_t k = 2;
+
+  kahypar_hyperedge_weight_t objective = 0;
+  std::vector<kahypar_partition_id_t> partition(num_vertices, -1);
+  kahypar_partition(num_vertices, num_hyperedges,
+    imbalance, k,
+    /*vertex_weights */ nullptr, hyperedge_weights.get(),
+    h_indices.data(),edges.data(),
+    &objective, context, partition.data());
+
+  /* verb_print(4, "partition: "); */
+  /* for(uint32_t i = 0; i != num_vertices; ++i) { */
+  /*   verb_print(4, i << ":" << partition[i]); */
+  /* } */
+
+  // After partitioning, determine which hyperedges are cut
+  std::vector<bool> hyperedge_cut(num_hyperedges, false);
+
+  for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
+      // Get the range of vertices for this hyperedge
+      size_t start_idx = h_indices[hid];
+      size_t end_idx = h_indices[hid + 1];
+
+      // Check if vertices of this hyperedge span multiple partitions
+      kahypar_partition_id_t first_partition = -1;
+      bool is_cut = false;
+
+      for (size_t i = start_idx; i < end_idx; ++i) {
+          kahypar_hyperedge_id_t vertex_id = edges[i];
+          kahypar_partition_id_t vertex_partition = partition[vertex_id];
+
+          if (first_partition == -1) first_partition = vertex_partition;
+          else if (vertex_partition != first_partition) { is_cut = true; break; }
+      }
+      hyperedge_cut[hid] = is_cut;
+  }
+
+  // Set up weights
+  td_weight = 20;
+  assert(tdscore.empty());
+  tdscore.resize(nVars()+1, 0);
+  verb_print(2, "[hc] Cut hyperedges (variables):");
+  uint32_t cut_count = 0;
+  for (kahypar_hyperedge_id_t hid = 0; hid < num_hyperedges; ++hid) {
+      if (hyperedge_cut[hid]) {
+          verb_print(2, "[hc] Variable " << hid + 1 << " is cut");
+          tdscore[hid+1] += 0.3;
+          cut_count++;
+      }
+  }
+  kahypar_context_free(context);
+  verb_print(1, "[hc] KaHyPar total cut hyperedges: " << cut_count << " out of " << num_hyperedges
+      << " T: " << setprecision(2) << cpu_time() - my_time);
 }
 
 void Counter::print_all_levels() {
@@ -1161,14 +1352,6 @@ end:
   assert(ret && "never UNSAT");
 }
 
-void Counter::recomp_td_weight() {
-  if (conf.td_lookahead != -1 && dec_level() < conf.td_lookahead+5) {
-    auto td = td_decompose_component(3);
-    assert(conf.td_lookahead);
-    compute_score(td, opt_indep_support_end-1, false);
-  }
-}
-
 bool Counter::standard_polarity(const uint32_t v) const {
   if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity)
     return var(Lit(v, true)).last_polarity;
@@ -1188,7 +1371,6 @@ bool Counter::get_polarity(const uint32_t v) const {
 }
 
 void Counter::decide_lit() {
-  recomp_td_weight();
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -1202,6 +1384,7 @@ void Counter::decide_lit() {
     case 1: v = find_best_branch(true, !conf.do_use_sat_solver); break;
     default: assert(false);
   }
+
   if (v == 0) {
     decisions.pop_back();
     return;
@@ -1266,7 +1449,7 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     }
     tdiff[b] = trail.size()-tsz;
     if (tdiff[b] < 3) w[b] = base_comp_tw;
-    else w[b] = td_decompose_component().width();
+    else w[b] = td_decompose_component(false);
     reactivate_comps_and_backtrack_trail();
   }
   verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
@@ -1300,8 +1483,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   }
 
   int32_t tw = 0;
-  if (dec_level() < conf.td_lookahead && !conf.td_look_only_weight)
-    tw = td_decompose_component().width();
+  if (dec_level() < conf.td_lookahead) tw = td_decompose_component(false);
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
@@ -1322,7 +1504,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     if (v < indep_support_end) only_optional_indep = false;
     if (weighted()) at[v] = vars_act_dec_num;
     double score;
-    if (!conf.td_look_only_weight && dec_level() < conf.td_lookahead &&
+    if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
     else score = score_of(v, ignore_td) ;
@@ -1337,8 +1519,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     is_indep = false;
     return 0;
   }
-  if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff)
+
+  if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff) {
+    // Update scores (in case we don't do td lookahead later)
+    td_decompose_component(true);
     verb_print(1, "best var: " << best_var << " score: " << best_var_score);
+  }
   return best_var;
 }
 

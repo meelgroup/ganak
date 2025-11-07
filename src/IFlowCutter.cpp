@@ -44,7 +44,7 @@
 #include "flow-cutter-pace17/src/contraction_graph.hpp"
 //#include "flow-cutter-pace17/src/tree_decomposition.hpp"
 #include "flow-cutter-pace17/src/greedy_order.hpp"
-//#include "flow-cutter-pace17/src/min_max.hpp"
+#include "flow-cutter-pace17/src/min_max.hpp"
 #include "flow-cutter-pace17/src/heap.hpp"
 
 #include "IFlowCutter.hpp"
@@ -221,12 +221,12 @@ void compute_multilevel_partition(const Tail&tail, const Head&head, const Comput
 
     int real_max_closed_bag_size = 0;
     for(auto&x:closed_cells)
-      max_to(real_max_closed_bag_size, x.bag_size());
+      max_to(real_max_closed_bag_size, (int)x.bag_size());
     assert(max_closed_bag_size == real_max_closed_bag_size);
 
     int real_max_open_bag_size = 0;
     for(auto&x:access_internal_vector(open_cells))
-      max_to(real_max_open_bag_size, x.bag_size());
+      max_to(real_max_open_bag_size, (int)x.bag_size());
     assert(max_open_bag_size == real_max_open_bag_size);
 
     #endif

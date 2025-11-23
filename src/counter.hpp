@@ -752,7 +752,7 @@ public:
   void set_generators(const vector<map<Lit, Lit>>& _gens) { counter->set_generators(_gens); }
   void end_irred_cls() { counter->end_irred_cls(); }
   void set_indep_support(const set<uint32_t>& indeps) { counter->set_indep_support(indeps); }
-  FF outer_count() { return counter->outer_count();}
+  FF count() { return counter->outer_count();}
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1) { return counter->add_red_cl(lits, lbd); }
   bool get_is_approximate() const { return counter->get_is_approximate();}
   bool add_irred_cl(const vector<Lit>& lits) { return counter->add_irred_cl(lits); }

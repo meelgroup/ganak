@@ -328,12 +328,6 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   return ganak_cl;
 }
 
-double biginteger_log_modified(const mpz_class& x) {
-  signed long int ex;
-  const double di = mpz_get_d_2exp(&ex, x.get_mpz_t());
-  return log10(di) + log10(2) * (double) ex;
-}
-
 void print_vars(const vector<uint32_t>& vars) {
   auto tmp = vars;
   std::sort(tmp.begin(), tmp.end());
@@ -388,16 +382,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
   } else cnf.renumber_sampling_vars_for_ganak();
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
-}
-
-void print_one(const mpq_class& c) {
-   mpf_t f;
-   mpf_init(f);
-   mpf_set_q(f, c.get_mpq_t());
-   uint32_t n = 50;
-   gmp_printf("%.*FE", n, f);
-   std::flush(std::cout);
-   mpf_clear(f);
 }
 
 string print_mpq_as_scientific(const mpq_class& number) {
@@ -566,8 +550,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   mpf_set_default_prec(256);
   const double start_time = cpu_time();
 #if defined(__GNUC__) && defined(__linux__)

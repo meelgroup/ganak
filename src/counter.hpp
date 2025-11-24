@@ -356,7 +356,7 @@ private:
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
-  void compute_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
+  void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
     const std::vector<std::vector<int>>& adj, bool print);
@@ -364,16 +364,15 @@ private:
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);
   void td_decompose();
-  TWD::TreeDecomposition td_decompose_component(double mult = 1);
+  uint32_t td_decompose_component(bool update_score);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
-  void recomp_td_weight();
+  int td_width = 10000;
   void inc_act(const Lit lit);
   Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
   bool standard_polarity(const uint32_t var) const;
   bool get_polarity(const uint32_t var) const;
   vector<double> tdscore;
   double td_weight = 1.0;
-  int td_width = 10000;
   uint64_t tstamp = 10;
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
@@ -773,7 +772,7 @@ public:
     return counter->get_cache()->get_max_num_entries();
   }
 private:
-  std::unique_ptr<Counter> counter = nullptr;
+  unique_ptr<Counter> counter = nullptr;
 };
 
 }

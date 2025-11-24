@@ -176,7 +176,7 @@ DLL_PUBLIC FF Ganak::count() {
     counter.end_irred_cls();
     for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
     if (sub_c.conf.verb && c->print_indep_distrib) counter.print_indep_distrib();
-    auto ret = counter.outer_count();
+    auto ret = counter.count();
     *cnt *= *ret;
     if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
     c->is_approximate |= counter.get_is_approximate();

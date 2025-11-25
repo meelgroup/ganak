@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "ganak.hpp"
 #include "counter.hpp"
+#include "outer_counter.hpp"
 #include <set>
 
 using namespace GanakInt;

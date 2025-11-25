@@ -41,34 +41,53 @@ namespace GanakInt {
 
 class OuterCounter {
 public:
-  OuterCounter(const CounterConfiguration& conf, const FG& fg) {
-    counter = std::make_unique<Counter>(conf, fg);
+  OuterCounter(const CounterConfiguration& _conf, const FG& _fg) :
+    conf(_conf), fg(_fg->dup()), nvars(0) {
   }
 
-  void set_generators(const vector<map<Lit, Lit>>& _gens) { counter->set_generators(_gens); }
-  void end_irred_cls() { counter->end_irred_cls(); }
-  void set_indep_support(const set<uint32_t>& indeps) { counter->set_indep_support(indeps); }
-  FF count() { return counter->outer_count();}
-  bool add_red_cl(const vector<Lit>& lits, int lbd = -1) { return counter->add_red_cl(lits, lbd); }
-  bool get_is_approximate() const { return counter->get_is_approximate();}
-  bool add_irred_cl(const vector<Lit>& lits) { return counter->add_irred_cl(lits); }
-  void set_optional_indep_support(const set<uint32_t>& indeps) {
-    counter->set_optional_indep_support(indeps);
-  }
-  void set_lit_weight(const Lit l, const FF& w) {
-    return counter->set_lit_weight(l, w);
-  }
-  void new_vars(const uint32_t n) { counter->new_vars(n); }
-  void print_indep_distrib() const { counter->print_indep_distrib(); }
-  uint64_t get_num_cache_lookups() const {
-    return counter->get_stats().num_cache_look_ups;
+  void new_vars(const uint32_t n) { nvars = n; }
+  void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
+  void set_indep_support(const set<uint32_t>& indeps) { indep_support = indeps; }
+  void set_optional_indep_support(const set<uint32_t>& indeps) { opt_indep_support = indeps; }
+
+  FF count();
+
+  void add_red_cl(const vector<Lit>& lits, int lbd = -1) {
+    red_cls.push_back({lits, (uint32_t)lbd});
   }
 
-  uint64_t get_max_cache_elems() const {
-    return counter->get_cache()->get_max_num_entries();
+  /* bool get_is_approximate() const { return counter->get_is_approximate();} */
+
+  void add_irred_cl(const vector<Lit>& lits) {
+    irred_cls.push_back(lits);
   }
+
+  void set_lit_weight(const Lit l, const FF& w) { lit_weights[l] = w->dup(); }
+
+  /* void print_indep_distrib() const { counter->print_indep_distrib(); } */
+
+  /* uint64_t get_num_cache_lookups() const { */
+  /*   return counter->get_stats().num_cache_look_ups; */
+  /* } */
+
+  /* uint64_t get_max_cache_elems() const { */
+  /*   return counter->get_cache()->get_max_num_entries(); */
+  /* } */
+
 private:
-  unique_ptr<Counter> counter = nullptr;
+  FF count_with_td_parallel();
+  FF count_regular();
+
+  CounterConfiguration conf;
+  FG fg;
+  uint32_t nvars;
+
+  vector<vector<Lit>> irred_cls;
+  vector<std::pair<vector<Lit>, uint32_t>> red_cls;
+  set<uint32_t> indep_support;
+  set<uint32_t> opt_indep_support;
+  map<Lit, FF> lit_weights;
+  vector<map<Lit, Lit>> generators;
 };
 
 }

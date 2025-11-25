@@ -54,6 +54,7 @@ SET(SOURCES
     comp_types/comp_archetype.cpp
     comp_management.cpp
     counter.cpp
+    outer_counter.cpp
     statistics.cpp
     clauseallocator.cpp
     IFlowCutter.cpp

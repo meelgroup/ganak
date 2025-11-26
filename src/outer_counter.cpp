@@ -52,6 +52,8 @@ FF OuterCounter::count_regular() {
   counter->new_vars(nvars);
   counter->set_indep_support(indep_support);
   counter->set_optional_indep_support(opt_indep_support);
+  for (const auto& [lit, weight] : lit_weights)
+    counter->set_lit_weight(lit, weight->dup());
   counter->set_generators(generators);
 
   for(const auto& cl : irred_cls) counter->add_irred_cl(cl);
@@ -128,6 +130,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     local_counter.new_vars(nvars);
     local_counter.set_indep_support(indep_support);
     local_counter.set_optional_indep_support(opt_indep_support);
+    if (!generators.empty()) local_counter.set_generators(generators);
 
     for (const auto& [lit, weight] : lit_weights)
       local_counter.set_lit_weight(lit, weight->dup());
@@ -145,7 +148,6 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
 
     for (const auto& [cl, lbd] : red_cls) local_counter.add_red_cl(cl, lbd);
 
-    if (!generators.empty()) local_counter.set_generators(generators);
 
     auto ret = local_counter.outer_count();
     num_cache_lookups += local_counter.get_stats().num_cache_look_ups;

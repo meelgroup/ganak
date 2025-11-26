@@ -126,33 +126,32 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
   std::vector<std::future<FF>> futures;
   auto worker = [&](uint64_t num) -> FF {
     // Create a new Counter for this configuration
-    Counter local_counter(conf, fg->dup());
-    local_counter.new_vars(nvars);
-    local_counter.set_indep_support(indep_support);
-    local_counter.set_optional_indep_support(opt_indep_support);
-    if (!generators.empty()) local_counter.set_generators(generators);
-
+    Counter counter(conf, fg->dup());
+    counter.new_vars(nvars);
+    counter.set_indep_support(indep_support);
+    counter.set_optional_indep_support(opt_indep_support);
     for (const auto& [lit, weight] : lit_weights)
-      local_counter.set_lit_weight(lit, weight->dup());
+      counter.set_lit_weight(lit, weight->dup());
+    if (!generators.empty()) counter.set_generators(generators);
 
-    for (const auto& cl : irred_cls) local_counter.add_irred_cl(cl);
+    for (const auto& cl : irred_cls) counter.add_irred_cl(cl);
 
     // Add unit clauses for centroid variable assignment
     for (size_t i = 0; i < bits_threads; i++) {
       uint32_t var = centroid_bag[i] + 1; // Convert from 0-indexed to 1-indexed
       bool sign = (num >> i) & 1;
       Lit unit_lit(var, sign);
-      local_counter.add_irred_cl({unit_lit});
+      counter.add_irred_cl({unit_lit});
     }
-    local_counter.end_irred_cls();
+    counter.end_irred_cls();
 
-    for (const auto& [cl, lbd] : red_cls) local_counter.add_red_cl(cl, lbd);
+    for (const auto& [cl, lbd] : red_cls) counter.add_red_cl(cl, lbd);
 
 
-    auto ret = local_counter.outer_count();
-    num_cache_lookups += local_counter.get_stats().num_cache_look_ups;
-    max_cache_elems = std::max(max_cache_elems, local_counter.get_cache()->get_max_num_entries());
-    count_is_approximate |= local_counter.get_is_approximate();
+    auto ret = counter.outer_count();
+    num_cache_lookups += counter.get_stats().num_cache_look_ups;
+    max_cache_elems = std::max(max_cache_elems, counter.get_cache()->get_max_num_entries());
+    count_is_approximate |= counter.get_is_approximate();
     return ret;
   };
 

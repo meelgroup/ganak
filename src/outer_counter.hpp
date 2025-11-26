@@ -49,24 +49,15 @@ public:
   void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
   void set_indep_support(const set<uint32_t>& indeps) { indep_support = indeps; }
   void set_optional_indep_support(const set<uint32_t>& indeps) { opt_indep_support = indeps; }
-
-  FF count();
-  void print_indep_distrib() const;
-
-  void add_red_cl(const vector<Lit>& lits, int lbd = -1) {
-    red_cls.push_back({lits, (uint32_t)lbd});
-  }
-
-  /* bool get_is_approximate() const { return counter->get_is_approximate();} */
-
-  void add_irred_cl(const vector<Lit>& lits) {
-    irred_cls.push_back(lits);
-  }
-
+  void add_red_cl(const vector<Lit>& lits, int lbd = -1) { red_cls.push_back({lits, (uint32_t)lbd}); }
+  void add_irred_cl(const vector<Lit>& lits) { irred_cls.push_back(lits); }
   void set_lit_weight(const Lit l, const FF& w) { lit_weights[l] = w->dup(); }
+  FF count();
 
+  void print_indep_distrib() const;
   uint64_t get_num_cache_lookups() const { return num_cache_lookups; }
   uint64_t get_max_cache_elems() const { return max_cache_elems; }
+  bool get_is_approximate() const { return count_is_approximate; }
 
 private:
   FF count_with_td_parallel();

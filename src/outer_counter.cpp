@@ -54,6 +54,7 @@ FF OuterCounter::count_regular() {
   assert(max_cache_elems == 0);
   num_cache_lookups = counter->get_stats().num_cache_look_ups;
   max_cache_elems = counter->get_cache()->get_max_num_entries();
+  count_is_approximate |= counter->get_is_approximate();
   return ret;
 }
 
@@ -109,7 +110,7 @@ FF OuterCounter::count_with_td_parallel() {
   // Launch parallel threads
   uint64_t nthreads = 4;//std::thread::hardware_concurrency();
   uint8_t num_bits = 2;
-  assert(1<<num_bits == nthreads);
+  assert(1ULL<<num_bits == nthreads);
 
   if (conf.verb >= 1) {
     std::cout << "c o [td-par] Launching " << nthreads
@@ -147,6 +148,7 @@ FF OuterCounter::count_with_td_parallel() {
     auto ret = local_counter.outer_count();
     num_cache_lookups += local_counter.get_stats().num_cache_look_ups;
     max_cache_elems = std::max(max_cache_elems, local_counter.get_cache()->get_max_num_entries());
+    count_is_approximate |= local_counter.get_is_approximate();
     return ret;
   };
 

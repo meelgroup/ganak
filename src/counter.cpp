@@ -92,17 +92,6 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
     << " nvars: " << nVars());
 }
 
-void Counter::print_indep_distrib() const {
-  cout << "c o indep/optional/none distribution: ";
-  for(uint32_t i = 0; i <= nVars(); i++) {
-    if (i < opt_indep_support_end) {
-      if (i < indep_support_end) cout << "I";
-      else cout << "O";
-    } else cout << "N";
-  }
-  cout << endl;
-}
-
 void Counter::set_indep_support(const set<uint32_t> &indeps) {
   opt_indep_support_end = nVars()+1;
   auto tmp = common_indep_code(indeps);

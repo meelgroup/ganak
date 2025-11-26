@@ -23,7 +23,6 @@ THE SOFTWARE.
 #include "outer_counter.hpp"
 #include <iostream>
 #include <algorithm>
-#include <thread>
 #include <future>
 #include "TreeDecomposition.hpp"
 #include "IFlowCutter.hpp"
@@ -33,7 +32,7 @@ THE SOFTWARE.
 namespace GanakInt {
 
 FF OuterCounter::count() {
-  if (conf.do_td && nvars > 100 && indep_support.size() > 10 &&  nvars <= conf.td_varlim)
+  if (conf.do_td && nvars > 100 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout == 0)
     return count_with_td_parallel();
   else
     return count_regular();
@@ -49,10 +48,17 @@ FF OuterCounter::count_regular() {
   for(const auto& cl : irred_cls) counter->add_irred_cl(cl);
   counter->end_irred_cls();
   for(const auto& p : red_cls) counter->add_red_cl(p.first, (int)p.second);
-  return counter->outer_count();
+  auto ret = counter->outer_count();
+
+  assert(num_cache_lookups == 0);
+  assert(max_cache_elems == 0);
+  num_cache_lookups = counter->get_stats().num_cache_look_ups;
+  max_cache_elems = counter->get_cache()->get_max_num_entries();
+  return ret;
 }
 
 FF OuterCounter::count_with_td_parallel() {
+  assert(conf.appmc_timeout == 0 && "TD-parallel not compatible with AppMC");
   double td_start_time = cpu_time();
 
   // Build primal graph from clauses
@@ -101,7 +107,9 @@ FF OuterCounter::count_with_td_parallel() {
   }
 
   // Launch parallel threads
-  uint64_t nthreads = std::thread::hardware_concurrency();
+  uint64_t nthreads = 4;//std::thread::hardware_concurrency();
+  uint8_t num_bits = 2;
+  assert(1<<num_bits == nthreads);
 
   if (conf.verb >= 1) {
     std::cout << "c o [td-par] Launching " << nthreads
@@ -124,7 +132,7 @@ FF OuterCounter::count_with_td_parallel() {
     for (const auto& cl : irred_cls) local_counter.add_irred_cl(cl);
 
     // Add unit clauses for centroid variable assignment
-    for (size_t i = 0; i < centroid_bag.size(); i++) {
+    for (size_t i = 0; i < num_bits; i++) {
       uint32_t var = centroid_bag[i] + 1; // Convert from 0-indexed to 1-indexed
       bool sign = (num >> i) & 1;
       Lit unit_lit(var, sign);
@@ -136,7 +144,10 @@ FF OuterCounter::count_with_td_parallel() {
 
     if (!generators.empty()) local_counter.set_generators(generators);
 
-    return local_counter.outer_count();
+    auto ret = local_counter.outer_count();
+    num_cache_lookups += local_counter.get_stats().num_cache_look_ups;
+    max_cache_elems = std::max(max_cache_elems, local_counter.get_cache()->get_max_num_entries());
+    return ret;
   };
 
   for (uint32_t t = 0; t < nthreads; t++) {
@@ -156,6 +167,19 @@ FF OuterCounter::count_with_td_parallel() {
   }
 
   return total_count;
+}
+
+void OuterCounter::print_indep_distrib() const {
+  cout << "c o indep/optional/none distribution: ";
+  std::set<uint32_t> all_opt_indep = opt_indep_support;
+  std::set<uint32_t> all_indep(indep_support);
+  for(uint32_t i = 0; i <= nvars; i++) {
+    if (all_opt_indep.count(i)) {
+      if (all_indep.count(i)) cout << "I";
+      else cout << "O";
+    } else cout << "N";
+  }
+  cout << endl;
 }
 
 }

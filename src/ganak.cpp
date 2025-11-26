@@ -174,7 +174,6 @@ DLL_PUBLIC FF Ganak::count() {
     counter.set_optional_indep_support(sub_c.opt_indeps);
     for(const auto& w: sub_c.lit_weights) counter.set_lit_weight(w.first, w.second);
     for(const auto& cl: sub_c.irred_cls) counter.add_irred_cl(cl);
-    counter.end_irred_cls();
     for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
     if (sub_c.conf.verb && c->print_indep_distrib) counter.print_indep_distrib();
     auto ret = counter.count();

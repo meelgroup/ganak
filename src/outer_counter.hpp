@@ -51,6 +51,7 @@ public:
   void set_optional_indep_support(const set<uint32_t>& indeps) { opt_indep_support = indeps; }
 
   FF count();
+  void print_indep_distrib() const;
 
   void add_red_cl(const vector<Lit>& lits, int lbd = -1) {
     red_cls.push_back({lits, (uint32_t)lbd});
@@ -64,15 +65,8 @@ public:
 
   void set_lit_weight(const Lit l, const FF& w) { lit_weights[l] = w->dup(); }
 
-  /* void print_indep_distrib() const { counter->print_indep_distrib(); } */
-
-  /* uint64_t get_num_cache_lookups() const { */
-  /*   return counter->get_stats().num_cache_look_ups; */
-  /* } */
-
-  /* uint64_t get_max_cache_elems() const { */
-  /*   return counter->get_cache()->get_max_num_entries(); */
-  /* } */
+  uint64_t get_num_cache_lookups() const { return num_cache_lookups; }
+  uint64_t get_max_cache_elems() const { return max_cache_elems; }
 
 private:
   FF count_with_td_parallel();
@@ -88,6 +82,14 @@ private:
   set<uint32_t> opt_indep_support;
   map<Lit, FF> lit_weights;
   vector<map<Lit, Lit>> generators;
+
+  // stats
+  bool count_is_approximate = false;
+  bool count_is_parallel = false;
+  uint64_t num_cache_lookups = 0;
+  uint64_t max_cache_elems = 0;
+
+
 };
 
 }

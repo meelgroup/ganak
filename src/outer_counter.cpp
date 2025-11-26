@@ -24,22 +24,19 @@ THE SOFTWARE.
 #include <iostream>
 #include <algorithm>
 #include <thread>
-#include <mutex>
 #include <future>
 #include "TreeDecomposition.hpp"
 #include "IFlowCutter.hpp"
 #include "time_mem.hpp"
+#include "common.hpp"
 
 namespace GanakInt {
 
 FF OuterCounter::count() {
-  // Try TD-based parallel counting if enabled and feasible
-  if (conf.do_td && nvars > 5 && nvars <= conf.td_varlim) {
+  if (conf.do_td && nvars > 100 && indep_support.size() > 10 &&  nvars <= conf.td_varlim)
     return count_with_td_parallel();
-  }
-
-  // Fall back to regular counting
-  return count_regular();
+  else
+    return count_regular();
 }
 
 FF OuterCounter::count_regular() {
@@ -60,76 +57,40 @@ FF OuterCounter::count_with_td_parallel() {
 
   // Build primal graph from clauses
   TWD::Graph primal(nvars);
-
   for (const auto& cl : irred_cls) {
     for (size_t i = 0; i < cl.size(); i++) {
       for (size_t j = i + 1; j < cl.size(); j++) {
         uint32_t v1 = cl[i].var() - 1;
         uint32_t v2 = cl[j].var() - 1;
-        if (v1 != v2) {
-          primal.addEdge(v1, v2);
-        }
+        if (v1 != v2) primal.addEdge(v1, v2);
       }
     }
   }
 
-  // Also add edges from red clauses
-  for (const auto& cl_pair : red_cls) {
-    const auto& cl = cl_pair.first;
-    for (size_t i = 0; i < cl.size(); i++) {
-      for (size_t j = i + 1; j < cl.size(); j++) {
-        uint32_t v1 = cl[i].var() - 1;
-        uint32_t v2 = cl[j].var() - 1;
-        if (v1 != v2) {
-          primal.addEdge(v1, v2);
-        }
-      }
-    }
+  auto nodes = opt_indep_support.size();
+  for(uint32_t i = nodes; i < nvars; i++) {
+    primal.contract(i, conf.td_max_edges*100);
+    if (primal.numEdges() > conf.td_max_edges*100 ) break;
   }
-
-  if (conf.verb >= 1) {
-    std::cout << "c o [td-par] Built primal graph with " << primal.numNodes()
-              << " nodes and " << primal.numEdges() << " edges" << std::endl;
-  }
+  verb_print(1, "[td-par] nodes: " << nodes << " nvars: " << nvars << " edges: " << primal.numEdges());
 
   // Run FlowCutter to get tree decomposition
-  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb >= 2 ? 1 : 0);
+  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
   fc.importGraph(primal);
 
   // Compute TD with reduced steps to avoid timeout
-  auto td = fc.constructTD(conf.td_steps / 10, conf.td_iters / 10);
-
-  double td_time = cpu_time() - td_start_time;
-
-  // Check if TD timed out or failed
-  if (td.width() <= 1000) {
-    if (conf.verb >= 1) {
-      std::cout << "c o [td-par] TD computation timed out or failed (time: "
-                << td_time << "s), falling back to regular counting" << std::endl;
-    }
-    return count_regular();
-  }
+  auto tdec  = fc.constructTD(conf.td_steps / 10, conf.td_iters / 10);
 
   // Find centroid
-  int centroid_id = td.centroid(primal.numNodes(), conf.verb >= 2 ? 1 : 0);
-  auto& centroid_bag = td.Bags()[centroid_id];
+  //
+  /* const auto& bags = tdec.Bags(); */
+  /* const auto& adj = tdec.get_adj_list(); */
+  int centroid_id = tdec.centroid(primal.numNodes(), conf.verb);
+  auto& centroid_bag = tdec.Bags()[centroid_id];
 
-  if (conf.verb >= 1) {
-    std::cout << "c o [td-par] TD width: " << td.width()
-              << ", centroid bag size: " << centroid_bag.size()
-              << ", TD time: " << td_time << "s" << std::endl;
-  }
-
-  // Check if centroid bag is too large for parallel splitting
-  const uint32_t max_centroid_size = 20;
-  if (centroid_bag.size() > max_centroid_size) {
-    if (conf.verb >= 1) {
-      std::cout << "c o [td-par] Centroid bag too large (" << centroid_bag.size()
-                << " > " << max_centroid_size
-                << "), falling back to regular counting" << std::endl;
-    }
-    return count_regular();
-  }
+  verb_print(1, "[td-par] TD width: " << tdec.width()
+          << ", centroid bag size: " << centroid_bag.size()
+          << ", TD time: " << td_start_time-cpu_time() << "s");
 
   // If centroid bag is empty or very small, just use regular counting
   if (centroid_bag.size() <= 2) {
@@ -140,82 +101,46 @@ FF OuterCounter::count_with_td_parallel() {
   }
 
   // Launch parallel threads
-  uint64_t num_configs = 1ULL << centroid_bag.size();
+  uint64_t nthreads = std::thread::hardware_concurrency();
 
   if (conf.verb >= 1) {
-    std::cout << "c o [td-par] Launching " << num_configs
+    std::cout << "c o [td-par] Launching " << nthreads
               << " parallel threads for centroid variables: ";
-    for (auto v : centroid_bag) std::cout << (v + 1) << " ";
+    for (uint32_t i = 0; i < 4; i++) std::cout << (centroid_bag[i] + 1) << " ";
     std::cout << std::endl;
   }
 
-  // Determine number of hardware threads
-  uint32_t num_threads = std::thread::hardware_concurrency();
-  if (num_threads == 0) num_threads = 4; // Default fallback
-
-  // We'll process configurations in batches
   std::vector<std::future<FF>> futures;
-  std::atomic<uint64_t> next_config(0);
-  std::mutex result_mutex;
+  auto worker = [&](uint64_t num) -> FF {
+    // Create a new Counter for this configuration
+    Counter local_counter(conf, fg->dup());
+    local_counter.new_vars(nvars);
+    local_counter.set_indep_support(indep_support);
+    local_counter.set_optional_indep_support(opt_indep_support);
 
-  auto worker = [&](uint64_t start_config, uint64_t end_config) -> FF {
-    FF local_sum = fg->zero();
+    for (const auto& [lit, weight] : lit_weights)
+      local_counter.set_lit_weight(lit, weight->dup());
 
-    for (uint64_t config = start_config; config < end_config; config++) {
-      // Create a new Counter for this configuration
-      Counter local_counter(conf, fg->dup());
-      local_counter.new_vars(nvars);
-      local_counter.set_indep_support(indep_support);
-      local_counter.set_optional_indep_support(opt_indep_support);
+    for (const auto& cl : irred_cls) local_counter.add_irred_cl(cl);
 
-      // Set literal weights
-      for (const auto& [lit, weight] : lit_weights) {
-        local_counter.set_lit_weight(lit, weight->dup());
-      }
-
-      // Add irredundant clauses
-      for (const auto& cl : irred_cls) {
-        local_counter.add_irred_cl(cl);
-      }
-
-      // Add unit clauses for centroid variable assignment
-      for (size_t i = 0; i < centroid_bag.size(); i++) {
-        uint32_t var = centroid_bag[i] + 1; // Convert from 0-indexed to 1-indexed
-        bool sign = (config >> i) & 1;
-        Lit unit_lit(var, sign);
-        local_counter.add_irred_cl({unit_lit});
-      }
-
-      local_counter.end_irred_cls();
-
-      // Add redundant clauses
-      for (const auto& [cl, lbd] : red_cls) {
-        local_counter.add_red_cl(cl, lbd);
-      }
-
-      // Set generators if any
-      if (!generators.empty()) {
-        local_counter.set_generators(generators);
-      }
-
-      // Count
-      FF thread_result = local_counter.outer_count();
-      *local_sum += *thread_result;
+    // Add unit clauses for centroid variable assignment
+    for (size_t i = 0; i < centroid_bag.size(); i++) {
+      uint32_t var = centroid_bag[i] + 1; // Convert from 0-indexed to 1-indexed
+      bool sign = (num >> i) & 1;
+      Lit unit_lit(var, sign);
+      local_counter.add_irred_cl({unit_lit});
     }
+    local_counter.end_irred_cls();
 
-    return local_sum;
+    for (const auto& [cl, lbd] : red_cls) local_counter.add_red_cl(cl, lbd);
+
+    if (!generators.empty()) local_counter.set_generators(generators);
+
+    return local_counter.outer_count();
   };
 
-  // Divide work among threads
-  uint64_t configs_per_thread = (num_configs + num_threads - 1) / num_threads;
-
-  for (uint32_t t = 0; t < num_threads; t++) {
-    uint64_t start = t * configs_per_thread;
-    uint64_t end = std::min(start + configs_per_thread, num_configs);
-
-    if (start >= num_configs) break;
-
-    futures.push_back(std::async(std::launch::async, worker, start, end));
+  for (uint32_t t = 0; t < nthreads; t++) {
+    futures.push_back(std::async(std::launch::async, worker, t));
   }
 
   // Collect results

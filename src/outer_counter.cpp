@@ -39,7 +39,7 @@ FF OuterCounter::count(uint8_t bits_threads) {
   verb_print(2, "[par] TD variable limit: " << conf.td_varlim);
   verb_print(2, "[par] AppMC timeout: " << conf.appmc_timeout);
   if (bits_threads > 0 && conf.do_td && nvars > 30 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout < 0) {
-    verb_print(1, "[par] Attempting TD-parallel counting with " << (1ULL << bits_threads) << " threads");
+    verb_print(1, "[par] Attempting parallel counting with " << (1ULL << bits_threads) << " threads");
     return count_with_td_parallel(bits_threads);
   } else {
     verb_print(1, "[par] Using non-parallel counting");
@@ -97,11 +97,11 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
   fc.importGraph(primal);
 
   // Compute TD with reduced steps to avoid timeout
-  auto tdec  = fc.constructTD(conf.td_steps / 10, conf.td_iters / 10);
+  auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3);
 
   // Find centroid
   int centroid_id = tdec.centroid(primal.numNodes(), conf.verb);
-  auto& centroid_bag = tdec.Bags()[centroid_id];
+  vector<int> centroid_bag = tdec.Bags()[centroid_id];
 
   verb_print(1, "[par] TD width: " << tdec.width()
           << ", centroid bag size: " << centroid_bag.size()
@@ -112,14 +112,26 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     verb_print(2, "[par] Centroid bag smaller than 2**bits_threads, using regular counting");
     return count_regular();
   }
+  vector<uint32_t> var_freq(nvars+1, 0);
+  for(const auto& cl: irred_cls) {
+    for(const auto& l: cl) var_freq[l.var()]++;
+  }
+  std::sort(centroid_bag.begin(), centroid_bag.end(),
+            [&](uint32_t a, uint32_t b) {
+              return var_freq[a+1] > var_freq[b+1];
+            });
+  for(uint32_t i = 0; i < centroid_bag.size(); i++) {
+    verb_print(1, "[par] var " << centroid_bag[i]+1
+                << " with frequency " << var_freq[centroid_bag[i]+1]);
+  }
 
   uint64_t nthreads = 1ULL << bits_threads;
   assert(1ULL<<bits_threads == nthreads);
 
   if (conf.verb >= 1) {
-    std::cout << "c o [td-par] Launching " << nthreads
+    std::cout << "c o [par] Launching " << nthreads
               << " parallel threads for centroid variables: ";
-    for (uint32_t i = 0; i < 4; i++) std::cout << (centroid_bag[i] + 1) << " ";
+    for (uint32_t i = 0; i < bits_threads; i++) std::cout << (centroid_bag[i] + 1) << " ";
     std::cout << std::endl;
   }
 
@@ -142,11 +154,11 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
       bool sign = (num >> i) & 1;
       Lit unit_lit(var, sign);
       counter.add_irred_cl({unit_lit});
+      verb_print(1, "[par] Thread " << num << " fixing var " << var
+                  << " to " << (sign ? "true" : "false"));
     }
     counter.end_irred_cls();
-
     for (const auto& [cl, lbd] : red_cls) counter.add_red_cl(cl, lbd);
-
 
     auto ret = counter.outer_count();
     num_cache_lookups += counter.get_stats().num_cache_look_ups;

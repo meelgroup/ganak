@@ -32,10 +32,19 @@ THE SOFTWARE.
 namespace GanakInt {
 
 FF OuterCounter::count(uint8_t bits_threads) {
-  if (bits_threads > 0 && conf.do_td && nvars > 100 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout == 0)
+  verb_print(2, "[par] Bits threads: " << (uint32_t)bits_threads);
+  verb_print(2, "[par] TD: " << (conf.do_td ? "enabled" : "disabled"));
+  verb_print(2, "[par] Number of variables: " << nvars);
+  verb_print(2, "[par] Independent support size: " << indep_support.size());
+  verb_print(2, "[par] TD variable limit: " << conf.td_varlim);
+  verb_print(2, "[par] AppMC timeout: " << conf.appmc_timeout);
+  if (bits_threads > 0 && conf.do_td && nvars > 30 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout < 0) {
+    verb_print(1, "[par] Attempting TD-parallel counting with " << (1ULL << bits_threads) << " threads");
     return count_with_td_parallel(bits_threads);
-  else
+  } else {
+    verb_print(1, "[par] Using non-parallel counting");
     return count_regular();
+  }
 }
 
 FF OuterCounter::count_regular() {
@@ -59,7 +68,7 @@ FF OuterCounter::count_regular() {
 }
 
 FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
-  assert(conf.appmc_timeout == 0 && "TD-parallel not compatible with AppMC");
+  assert(conf.appmc_timeout < 0 && "TD-parallel not compatible with AppMC");
   double td_start_time = cpu_time();
 
   // Build primal graph from clauses
@@ -79,7 +88,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     primal.contract(i, conf.td_max_edges*100);
     if (primal.numEdges() > conf.td_max_edges*100 ) break;
   }
-  verb_print(1, "[td-par] nodes: " << nodes << " nvars: " << nvars << " edges: " << primal.numEdges());
+  verb_print(1, "[par] nodes: " << nodes << " nvars: " << nvars << " edges: " << primal.numEdges());
 
   // Run FlowCutter to get tree decomposition
   TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), conf.verb);
@@ -92,15 +101,13 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
   int centroid_id = tdec.centroid(primal.numNodes(), conf.verb);
   auto& centroid_bag = tdec.Bags()[centroid_id];
 
-  verb_print(1, "[td-par] TD width: " << tdec.width()
+  verb_print(1, "[par] TD width: " << tdec.width()
           << ", centroid bag size: " << centroid_bag.size()
           << ", TD time: " << td_start_time-cpu_time() << "s");
 
   // If centroid bag is empty or very small, just use regular counting
   if (centroid_bag.size() < bits_threads) {
-    if (conf.verb >= 1) {
-      std::cout << "c o [td-par] Centroid bag smaller than 2**bits_threads, using regular counting" << std::endl;
-    }
+    verb_print(2, "[par] Centroid bag smaller than 2**bits_threads, using regular counting");
     return count_regular();
   }
 

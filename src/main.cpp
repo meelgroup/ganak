@@ -274,7 +274,7 @@ void parse_supported_options(int argc, char** argv) {
       exit(-1);
     }
     if (bits_threads < 0 || bits_threads > 10) {
-      cout << "ERROR: bits_threads must be between 0 and 10" << endl;
+      cout << "ERROR: bits_threads must be between 0 and 10, inclusive" << endl;
       exit(-1);
     }
 }

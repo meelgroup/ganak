@@ -51,7 +51,6 @@ THE SOFTWARE.
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 using std::set;
-using std::unordered_map;
 using namespace GanakInt;
 
 #if defined(__GNUC__) && defined(__linux__)
@@ -98,6 +97,7 @@ int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
 FG fg = nullptr;
+int bits_threads = 0;
 
 string print_version()
 {
@@ -250,6 +250,7 @@ void add_ganak_options()
     myopt("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
     myopt("--maxcubesperrst", conf.max_num_cubes_per_restart, atoi,  "Max number of cubes per restart");
 
+    myopt("--bitsthreads", bits_threads, atoi, "Bits of threads (8 = 256 threads)");
     program.add_argument("inputfile").remaining().help("input CNF");
 }
 
@@ -270,6 +271,10 @@ void parse_supported_options(int argc, char** argv) {
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cout << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
+      exit(-1);
+    }
+    if (bits_threads < 0 || bits_threads > 10) {
+      cout << "ERROR: bits_threads must be between 0 and 10" << endl;
       exit(-1);
     }
 }
@@ -457,7 +462,7 @@ void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t ele
 
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.multiplier_weight->dup();
-    if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
+    if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count(bits_threads);
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 

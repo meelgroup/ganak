@@ -31,9 +31,9 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
-FF OuterCounter::count() {
-  if (conf.do_td && nvars > 100 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout == 0)
-    return count_with_td_parallel();
+FF OuterCounter::count(uint8_t bits_threads) {
+  if (bits_threads > 0 && conf.do_td && nvars > 100 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout == 0)
+    return count_with_td_parallel(bits_threads);
   else
     return count_regular();
 }
@@ -58,7 +58,7 @@ FF OuterCounter::count_regular() {
   return ret;
 }
 
-FF OuterCounter::count_with_td_parallel() {
+FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
   assert(conf.appmc_timeout == 0 && "TD-parallel not compatible with AppMC");
   double td_start_time = cpu_time();
 
@@ -100,17 +100,15 @@ FF OuterCounter::count_with_td_parallel() {
           << ", TD time: " << td_start_time-cpu_time() << "s");
 
   // If centroid bag is empty or very small, just use regular counting
-  if (centroid_bag.size() <= 2) {
+  if (centroid_bag.size() < bits_threads) {
     if (conf.verb >= 1) {
-      std::cout << "c o [td-par] Centroid bag too small, using regular counting" << std::endl;
+      std::cout << "c o [td-par] Centroid bag smaller than 2**bits_threads, using regular counting" << std::endl;
     }
     return count_regular();
   }
 
-  // Launch parallel threads
-  uint64_t nthreads = 4;//std::thread::hardware_concurrency();
-  uint8_t num_bits = 2;
-  assert(1ULL<<num_bits == nthreads);
+  uint64_t nthreads = 1ULL << bits_threads;
+  assert(1ULL<<bits_threads == nthreads);
 
   if (conf.verb >= 1) {
     std::cout << "c o [td-par] Launching " << nthreads
@@ -133,7 +131,7 @@ FF OuterCounter::count_with_td_parallel() {
     for (const auto& cl : irred_cls) local_counter.add_irred_cl(cl);
 
     // Add unit clauses for centroid variable assignment
-    for (size_t i = 0; i < num_bits; i++) {
+    for (size_t i = 0; i < bits_threads; i++) {
       uint32_t var = centroid_bag[i] + 1; // Convert from 0-indexed to 1-indexed
       bool sign = (num >> i) & 1;
       Lit unit_lit(var, sign);

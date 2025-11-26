@@ -42,7 +42,7 @@ public:
   void set_indep_support(const std::set<uint32_t>& indeps);
   void set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens);
 
-  std::unique_ptr<CMSat::Field> count();
+  std::unique_ptr<CMSat::Field> count(uint8_t bits_threads = 0);
   bool add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd = -1);
   bool get_is_approximate() const;
   void set_optional_indep_support(const std::set<uint32_t>& indeps);

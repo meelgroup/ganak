@@ -89,9 +89,6 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
   auto tdec  = fc.constructTD(conf.td_steps / 10, conf.td_iters / 10);
 
   // Find centroid
-  //
-  /* const auto& bags = tdec.Bags(); */
-  /* const auto& adj = tdec.get_adj_list(); */
   int centroid_id = tdec.centroid(primal.numNodes(), conf.verb);
   auto& centroid_bag = tdec.Bags()[centroid_id];
 
@@ -161,11 +158,8 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     *total_count += *partial;
   }
 
-  if (conf.verb >= 1) {
-    std::cout << "c o [td-par] Parallel counting completed, total time: "
-              << (cpu_time() - td_start_time) << "s" << std::endl;
-  }
-
+  /* verb_print(1, "[td-par] Parallel counting completed, total time: " */
+  /*             << (cpu_time() - td_start_time) << "s"); */
   return total_count;
 }
 

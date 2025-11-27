@@ -26,10 +26,39 @@ THE SOFTWARE.
 #include <future>
 #include "TreeDecomposition.hpp"
 #include "IFlowCutter.hpp"
+#include "arjun/arjun.h"
+#include "counter.hpp"
 #include "time_mem.hpp"
 #include "common.hpp"
 
 namespace GanakInt {
+
+CMSat::Lit ganak_to_cms_lit(const GanakInt::Lit& l) {
+  return CMSat::Lit(l.var()-1, !l.sign());
+}
+
+GanakInt::Lit cms_to_ganak_lit(const CMSat::Lit& l) {
+  return GanakInt::Lit(l.var()+1, !l.sign());
+}
+
+template<typename T>
+vector<uint32_t> ganak_to_cms_vars(const T& vars) {
+  vector<uint32_t> cms_vars; cms_vars.reserve(vars.size());
+  for(const auto& v: vars) cms_vars.push_back(v-1);
+  return cms_vars;
+}
+
+inline vector<GanakInt::Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
+  vector<GanakInt::Lit> ganak_cl; ganak_cl.reserve(cl.size());
+  for(const auto& l: cl) ganak_cl.push_back(cms_to_ganak_lit(l));
+  return ganak_cl;
+}
+
+inline vector<CMSat::Lit> ganak_to_cms_cl(const vector<GanakInt::Lit>& cl) {
+  vector<CMSat::Lit> cms_cl; cms_cl.reserve(cl.size());
+  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
+  return cms_cl;
+}
 
 FF OuterCounter::count(uint8_t bits_threads) {
   verb_print(2, "[par] Bits threads: " << (uint32_t)bits_threads);
@@ -67,6 +96,53 @@ FF OuterCounter::count_regular() {
   max_cache_elems = counter->get_cache()->get_max_num_entries();
   count_is_approximate |= counter->get_is_approximate();
   return ret;
+}
+
+void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
+  /* double my_time = cpu_time(); */
+  ArjunNS::Arjun arjun;
+  arjun.set_verb(0);
+  /* arjun.set_or_gate_based(arjun_gates); */
+  /* arjun.set_xor_gates_based(arjun_gates); */
+  /* arjun.set_ite_gate_based(arjun_gates); */
+  /* arjun.set_irreg_gate_based(arjun_gates); */
+  /* arjun.set_extend_max_confl(arjun_extend_max_confl); */
+  /* arjun.set_probe_based(do_probe_based); */
+  arjun.set_simp(0);
+  arjun.set_backw_max_confl(100);
+  arjun.set_oracle_find_bins(0);
+  arjun.set_cms_glob_mult(0.0001);
+
+  /* ArjunNS::Arjun::ElimToFileConf etof_conf; */
+  arjun.standalone_minimize_indep(cnf, false);
+  /* if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) { */
+  /*   arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf); */
+  /* } else cnf.renumber_sampling_vars_for_ganak(); */
+  /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
+}
+
+void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, OuterCounter& counter) {
+  cnf.check_sanity();
+  counter.new_vars(cnf.nVars());
+
+  set<uint32_t> tmp;
+  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  counter.set_indep_support(tmp);
+  if (cnf.get_opt_sampl_vars_set()) {
+    tmp.clear();
+    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+  }
+  counter.set_optional_indep_support(tmp);
+
+  if (cnf.weighted) {
+    for(const auto& t: cnf.weights) {
+      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
+      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
+    }
+  }
+
+  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
 FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
@@ -137,33 +213,35 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
 
   std::vector<std::future<FF>> futures;
   auto worker = [&](uint64_t num) -> FF {
-    // Create a new Counter for this configuration
-    Counter counter(conf, fg->dup());
-    counter.new_vars(nvars);
-    counter.set_indep_support(indep_support);
-    counter.set_optional_indep_support(opt_indep_support);
+    ArjunNS::SimplifiedCNF cnf(fg);
+    cnf.new_vars(nvars);
+    cnf.set_sampl_vars(ganak_to_cms_vars(indep_support));
+    cnf.set_opt_sampl_vars(ganak_to_cms_vars(opt_indep_support));
     for (const auto& [lit, weight] : lit_weights)
-      counter.set_lit_weight(lit, weight->dup());
-    if (!generators.empty()) counter.set_generators(generators);
-
-    for (const auto& cl : irred_cls) counter.add_irred_cl(cl);
+      cnf.set_lit_weight(ganak_to_cms_lit(lit), weight->dup());
+    for (const auto& cl : irred_cls) cnf.add_clause(ganak_to_cms_cl(cl));
 
     // Add unit clauses for centroid variable assignment
     for (size_t i = 0; i < bits_threads; i++) {
-      uint32_t var = centroid_bag[i] + 1; // Convert from 0-indexed to 1-indexed
+      uint32_t var = centroid_bag[i];
       bool sign = (num >> i) & 1;
-      Lit unit_lit(var, sign);
-      counter.add_irred_cl({unit_lit});
-      verb_print(1, "[par] Thread " << num << " fixing var " << var
+      CMSat::Lit unit_lit(var, sign);
+      cnf.add_clause({unit_lit});
+      verb_print(2, "[par] Thread " << num << " fixing var " << var
                   << " to " << (sign ? "true" : "false"));
     }
-    counter.end_irred_cls();
-    for (const auto& [cl, lbd] : red_cls) counter.add_red_cl(cl, lbd);
-
-    auto ret = counter.outer_count();
-    num_cache_lookups += counter.get_stats().num_cache_look_ups;
-    max_cache_elems = std::max(max_cache_elems, counter.get_cache()->get_max_num_entries());
-    count_is_approximate |= counter.get_is_approximate();
+    for (const auto& [cl, lbd] : red_cls)
+      cnf.add_red_clause(ganak_to_cms_cl(cl));
+    run_arjun(cnf);
+    cnf.renumber_sampling_vars_for_ganak();
+    auto conf_verb0 = conf;
+    conf.verb = 0; // disable verb for threads
+    auto counter = std::make_unique<OuterCounter>(conf, fg);
+    setup_ganak(cnf, *counter);
+    auto ret = counter->count();
+    num_cache_lookups += counter->get_num_cache_lookups();
+    max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
+    count_is_approximate |= counter->get_is_approximate();
     return ret;
   };
 
@@ -177,11 +255,9 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     FF partial = future.get();
     *total_count += *partial;
   }
-
-  /* verb_print(1, "[td-par] Parallel counting completed, total time: " */
-  /*             << (cpu_time() - td_start_time) << "s"); */
   return total_count;
 }
+
 
 void OuterCounter::print_indep_distrib() const {
   cout << "c o indep/optional/none distribution: ";

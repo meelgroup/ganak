@@ -197,7 +197,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
               return var_freq[a+1] > var_freq[b+1];
             });
   for(uint32_t i = 0; i < centroid_bag.size(); i++) {
-    verb_print(1, "[par] var " << centroid_bag[i]+1
+    verb_print(2, "[par] var " << centroid_bag[i]+1
                 << " with frequency " << var_freq[centroid_bag[i]+1]);
   }
 

@@ -232,7 +232,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     }
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
-    run_arjun(cnf);
+    if (true) run_arjun(cnf);
     cnf.renumber_sampling_vars_for_ganak();
     auto conf_verb0 = conf;
     conf.verb = 0; // disable verb for threads

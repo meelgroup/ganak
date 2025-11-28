@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include <iostream>
 #include <algorithm>
 #include <future>
+#include <thread>
 #include "TreeDecomposition.hpp"
 #include "IFlowCutter.hpp"
 #include "arjun/arjun.h"
@@ -113,11 +114,14 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_oracle_find_bins(0);
   arjun.set_cms_glob_mult(0.0001);
 
-  /* ArjunNS::Arjun::ElimToFileConf etof_conf; */
+  ArjunNS::SimpConf simp_conf;
+  /* simp_conf.iter1 = 1; */
+  simp_conf.iter1 = 0;
+  ArjunNS::Arjun::ElimToFileConf etof_conf;
   arjun.standalone_minimize_indep(cnf, false);
-  /* if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) { */
-  /*   arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf); */
-  /* } else cnf.renumber_sampling_vars_for_ganak(); */
+  if (cnf.get_sampl_vars().size() >= 10) {
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+  } else cnf.renumber_sampling_vars_for_ganak();
   /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
 }
 
@@ -211,7 +215,6 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     std::cout << std::endl;
   }
 
-  std::vector<std::future<FF>> futures;
   auto worker = [&](uint64_t num) -> FF {
     ArjunNS::SimplifiedCNF cnf(fg);
     cnf.new_vars(nvars);
@@ -233,28 +236,72 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
     if (true) run_arjun(cnf);
-    cnf.renumber_sampling_vars_for_ganak();
-    auto conf_verb0 = conf;
-    conf.verb = 0; // disable verb for threads
-    auto counter = std::make_unique<OuterCounter>(conf, fg);
-    setup_ganak(cnf, *counter);
-    auto ret = counter->count();
-    num_cache_lookups += counter->get_num_cache_lookups();
-    max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
-    count_is_approximate |= counter->get_is_approximate();
-    return ret;
+    if (cnf.multiplier_weight != fg->zero()) {
+      auto local_conf = conf;
+      local_conf.verb = 0; // disable verb for threads
+      auto counter = std::make_unique<OuterCounter>(local_conf, fg);
+      setup_ganak(cnf, *counter);
+      auto ret = counter->count();
+      num_cache_lookups += counter->get_num_cache_lookups();
+      max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
+      count_is_approximate |= counter->get_is_approximate();
+      *ret *= *cnf.multiplier_weight;
+      return ret;
+    } else {
+      return fg->zero();
+    }
   };
 
-  for (uint32_t t = 0; t < nthreads; t++) {
-    futures.push_back(std::async(std::launch::async, worker, t));
+  // Get number of hardware cores and limit concurrent threads
+  uint32_t num_cores = std::thread::hardware_concurrency();
+  if (num_cores == 0) num_cores = 1; // fallback if detection fails
+  uint32_t max_concurrent = std::min((uint64_t)num_cores, nthreads);
+
+  verb_print(1, "[par] Using " << max_concurrent << " concurrent threads (out of "
+             << nthreads << " total tasks) on " << num_cores << " cores");
+
+  // Thread pool: maintain at most max_concurrent active threads
+  std::vector<std::pair<uint64_t, std::future<FF>>> active_futures;
+  uint64_t next_task = 0;
+  FF total_count = fg->zero();
+
+  // Launch initial batch of threads
+  for (uint32_t i = 0; i < max_concurrent && next_task < nthreads; i++) {
+    active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
+    next_task++;
   }
 
-  // Collect results
-  FF total_count = fg->zero();
-  for (auto& future : futures) {
-    FF partial = future.get();
-    *total_count += *partial;
+  // Process results and launch new tasks as threads complete
+  while (!active_futures.empty()) {
+    for (size_t i = 0; i < active_futures.size(); ) {
+      auto& [task_id, future] = active_futures[i];
+      // Check if this future is ready
+      if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+        // Collect result
+        FF partial = future.get();
+        *total_count += *partial;
+        verb_print(1, "[par] Task " << task_id << " completed");
+
+        // Remove from active list
+        active_futures.erase(active_futures.begin() + i);
+
+        // Launch next task if available
+        if (next_task < nthreads) {
+          active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
+          verb_print(1, "[par] Launched task " << next_task);
+          next_task++;
+        }
+      } else {
+        i++;
+      }
+    }
+
+    // Small sleep to avoid busy waiting
+    if (!active_futures.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
+
   return total_count;
 }
 

@@ -76,11 +76,8 @@ private:
 
   // stats
   bool count_is_approximate = false;
-  bool count_is_parallel = false;
   uint64_t num_cache_lookups = 0;
   uint64_t max_cache_elems = 0;
-
-
 };
 
 }

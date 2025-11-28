@@ -65,7 +65,7 @@ DLL_PUBLIC Ganak::~Ganak() {
   cdat = nullptr;
 }
 
-DLL_PUBLIC FF Ganak::count(uint8_t bits_threads) {
+DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   CDat* c = (CDat*)cdat;
   auto cnt = c->fg->one();
 
@@ -176,7 +176,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_threads) {
     for(const auto& cl: sub_c.irred_cls) counter.add_irred_cl(cl);
     for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
     if (sub_c.conf.verb && c->print_indep_distrib) counter.print_indep_distrib();
-    auto ret = counter.count(bits_threads);
+    auto ret = counter.count(bits_jobs, num_threads);
     *cnt *= *ret;
     if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
     c->is_approximate |= counter.get_is_approximate();

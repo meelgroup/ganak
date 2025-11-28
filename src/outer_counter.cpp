@@ -61,16 +61,19 @@ inline vector<CMSat::Lit> ganak_to_cms_cl(const vector<GanakInt::Lit>& cl) {
   return cms_cl;
 }
 
-FF OuterCounter::count(uint8_t bits_threads) {
-  verb_print(2, "[par] Bits threads: " << (uint32_t)bits_threads);
+FF OuterCounter::count(uint8_t bits_jobs, int num_threads) {
+  verb_print(2, "[par] bits_jobs: " << (uint32_t)bits_jobs);
+  verb_print(2, "[par] num_threads: " << (uint32_t)num_threads);
   verb_print(2, "[par] TD: " << (conf.do_td ? "enabled" : "disabled"));
   verb_print(2, "[par] Number of variables: " << nvars);
   verb_print(2, "[par] Independent support size: " << indep_support.size());
   verb_print(2, "[par] TD variable limit: " << conf.td_varlim);
   verb_print(2, "[par] AppMC timeout: " << conf.appmc_timeout);
-  if (bits_threads > 0 && conf.do_td && nvars > 30 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout < 0) {
-    verb_print(1, "[par] Attempting parallel counting with " << (1ULL << bits_threads) << " threads");
-    return count_with_td_parallel(bits_threads);
+  if ((num_threads > 1 || num_threads == -1) &&
+      bits_jobs > 0 && conf.do_td && nvars > 30 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout < 0) {
+    verb_print(1, "[par] Attempting parallel counting with bits_jobs: " << bits_jobs
+        << ", num_threads: " << (uint32_t)num_threads);
+    return count_with_parallel(bits_jobs, num_threads);
   } else {
     verb_print(1, "[par] Using non-parallel counting");
     return count_regular();
@@ -149,8 +152,10 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, OuterCounter& counter) {
   for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
-FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
+FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   assert(conf.appmc_timeout < 0 && "TD-parallel not compatible with AppMC");
+  assert(bits_jobs > 0);
+  assert(bits_jobs <= 20);
   double td_start_time = cpu_time();
 
   // Build primal graph from clauses
@@ -188,9 +193,9 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
           << ", TD time: " << td_start_time-cpu_time() << "s");
 
   // If centroid bag is empty or very small, just use regular counting
-  if (centroid_bag.size() < bits_threads) {
-    verb_print(2, "[par] Centroid bag smaller than 2**bits_threads, using regular counting");
-    return count_regular();
+  if (centroid_bag.size() < bits_jobs) {
+    bits_jobs = (int)std::log2(centroid_bag.size());
+    verb_print(2, "[par] Centroid bag smaller than 2**bits_jobs, using bits_jobs: " << bits_jobs);
   }
   vector<uint32_t> var_freq(nvars+1, 0);
   for(const auto& cl: irred_cls) {
@@ -205,13 +210,19 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
                 << " with frequency " << var_freq[centroid_bag[i]+1]);
   }
 
-  uint64_t nthreads = 1ULL << bits_threads;
-  assert(1ULL<<bits_threads == nthreads);
+  uint64_t num_jobs = 1ULL << bits_jobs;
+  assert(1ULL<<bits_jobs == num_jobs);
+  if (num_threads == -1) {
+    num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 2; // Fallback
+    verb_print(1, "[par] Auto-detected num_threads: " << num_threads);
+  }
 
   if (conf.verb >= 1) {
-    std::cout << "c o [par] Launching " << nthreads
-              << " parallel threads for centroid variables: ";
-    for (uint32_t i = 0; i < bits_threads; i++) std::cout << (centroid_bag[i] + 1) << " ";
+    std::cout << "c o [par] Using " << num_jobs << " jobs for "
+      << num_threads << " concurrent threads"
+      << " centroid variables: ";
+    for (uint32_t i = 0; i < bits_jobs; i++) std::cout << (centroid_bag[i] + 1) << " ";
     std::cout << std::endl;
   }
 
@@ -225,7 +236,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     for (const auto& cl : irred_cls) cnf.add_clause(ganak_to_cms_cl(cl));
 
     // Add unit clauses for centroid variable assignment
-    for (size_t i = 0; i < bits_threads; i++) {
+    for (size_t i = 0; i < bits_jobs; i++) {
       uint32_t var = centroid_bag[i];
       bool sign = (num >> i) & 1;
       CMSat::Lit unit_lit(var, sign);
@@ -252,21 +263,14 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
     }
   };
 
-  // Get number of hardware cores and limit concurrent threads
-  uint32_t num_cores = std::thread::hardware_concurrency();
-  if (num_cores == 0) num_cores = 1; // fallback if detection fails
-  uint32_t max_concurrent = std::min((uint64_t)num_cores, nthreads);
-
-  verb_print(1, "[par] Using " << max_concurrent << " concurrent threads (for "
-             << nthreads << " total tasks) on " << num_cores << " cores");
-
   // Thread pool: maintain at most max_concurrent active threads
   std::vector<std::pair<uint64_t, std::future<FF>>> active_futures;
   uint64_t next_task = 0;
   FF total_count = fg->zero();
 
   // Launch initial batch of threads
-  for (uint32_t i = 0; i < max_concurrent && next_task < nthreads; i++) {
+  assert(num_threads > 0);
+  for (uint32_t i = 0; i < (uint32_t)num_threads && next_task < num_jobs; i++) {
     active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
     next_task++;
   }
@@ -286,7 +290,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
         active_futures.erase(active_futures.begin() + i);
 
         // Launch next task if available
-        if (next_task < nthreads) {
+        if (next_task < num_jobs) {
           active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
           verb_print(2, "[par] Launched task " << next_task);
           next_task++;

@@ -280,7 +280,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
         // Collect result
         FF partial = future.get();
         *total_count += *partial;
-        verb_print(1, "[par] Task " << task_id << " completed");
+        verb_print(2, "[par] Task " << task_id << " completed");
 
         // Remove from active list
         active_futures.erase(active_futures.begin() + i);
@@ -288,7 +288,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
         // Launch next task if available
         if (next_task < nthreads) {
           active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
-          verb_print(1, "[par] Launched task " << next_task);
+          verb_print(2, "[par] Launched task " << next_task);
           next_task++;
         }
       } else {
@@ -304,7 +304,6 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
 
   return total_count;
 }
-
 
 void OuterCounter::print_indep_distrib() const {
   cout << "c o indep/optional/none distribution: ";

@@ -257,7 +257,7 @@ FF OuterCounter::count_with_td_parallel(uint8_t bits_threads) {
   if (num_cores == 0) num_cores = 1; // fallback if detection fails
   uint32_t max_concurrent = std::min((uint64_t)num_cores, nthreads);
 
-  verb_print(1, "[par] Using " << max_concurrent << " concurrent threads (out of "
+  verb_print(1, "[par] Using " << max_concurrent << " concurrent threads (for "
              << nthreads << " total tasks) on " << num_cores << " cores");
 
   // Thread pool: maintain at most max_concurrent active threads

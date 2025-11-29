@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "ganak.hpp"
 #include "counter.hpp"
+#include "outer_counter.hpp"
 #include <set>
 
 using namespace GanakInt;
@@ -64,7 +65,7 @@ DLL_PUBLIC Ganak::~Ganak() {
   cdat = nullptr;
 }
 
-DLL_PUBLIC FF Ganak::count() {
+DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   CDat* c = (CDat*)cdat;
   auto cnt = c->fg->one();
 
@@ -173,10 +174,9 @@ DLL_PUBLIC FF Ganak::count() {
     counter.set_optional_indep_support(sub_c.opt_indeps);
     for(const auto& w: sub_c.lit_weights) counter.set_lit_weight(w.first, w.second);
     for(const auto& cl: sub_c.irred_cls) counter.add_irred_cl(cl);
-    counter.end_irred_cls();
     for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
     if (sub_c.conf.verb && c->print_indep_distrib) counter.print_indep_distrib();
-    auto ret = counter.count();
+    auto ret = counter.count(bits_jobs, num_threads);
     *cnt *= *ret;
     if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
     c->is_approximate |= counter.get_is_approximate();

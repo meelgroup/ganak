@@ -51,7 +51,6 @@ THE SOFTWARE.
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 using std::set;
-using std::unordered_map;
 using namespace GanakInt;
 
 #if defined(__GNUC__) && defined(__linux__)
@@ -98,6 +97,8 @@ int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
 FG fg = nullptr;
+int num_threads = 1;
+int bits_jobs = 10;
 
 string print_version()
 {
@@ -250,6 +251,9 @@ void add_ganak_options()
     myopt("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
     myopt("--maxcubesperrst", conf.max_num_cubes_per_restart, atoi,  "Max number of cubes per restart");
 
+    // Multi-threading options
+    myopt("--threads", num_threads, atoi, "Number of threads to use. -1 = all available cores");
+    myopt("--bitsjobs", bits_jobs, atoi, "Number of variables to multi-thread on (8 = 256 jobs)");
     program.add_argument("inputfile").remaining().help("input CNF");
 }
 
@@ -270,6 +274,22 @@ void parse_supported_options(int argc, char** argv) {
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cout << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
+      exit(-1);
+    }
+    if (bits_jobs < 0 || bits_jobs > 20) {
+      cout << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;
+      exit(-1);
+    }
+    if (num_threads < -1) {
+      cout << "ERROR: number of thrads must not be less than -1" << endl;
+      exit(-1);
+    }
+    if (num_threads > 1024) {
+      cout << "ERROR: number of threads must not be more than 1024" << endl;
+      exit(-1);
+    }
+    if (num_threads == 0) {
+      cout << "ERROR: number of threads must not be 0" << endl;
       exit(-1);
     }
 }
@@ -457,7 +477,7 @@ void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t ele
 
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.multiplier_weight->dup();
-    if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
+    if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
     cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 

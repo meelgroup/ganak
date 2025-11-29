@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest, macos-15, macos-15-intel]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel]
         build_type: [Release]
         staticcompile: [ON, OFF]
 
@@ -119,6 +119,18 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
         cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
+
+    - name: Copy cadiback and cadical libs
+      if: matrix.staticcompile == 'OFF'
+      run: |
+       sudo cp cadiback/libcadiback.so .
+       sudo cp cadical/build/libcadical.so .
+
+    - name: Copy cadiback and cadical libs
+      if: matrix.staticcompile == 'OFF' && contains(matrix.os, 'ubuntu')
+      run: |
+       sudo cp cadiback/libcadiback.so /usr/lib/
+       sudo cp cadical/build/libcadical.so /usr/lib/
 
     - name: Checkout CMS
       uses: actions/checkout@v4
@@ -272,6 +284,16 @@ jobs:
 
     - name: Test
       run: ctest -C ${{matrix.build_type}} --verbose
+
+    - name: run it to check it executes
+      run: |
+        echo "Running version command"
+        ./project/build/ganak --version
+        echo $?
+        echo "Running help command"
+        ./project/build/ganak --help
+        echo $?
+
 
     - name: Upload Artifact - Linux
       if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && !contains(matrix.os, 'arm')

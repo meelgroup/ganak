@@ -575,10 +575,10 @@ int main(int argc, char *argv[]) {
   mpf_set_default_prec(256);
   const double start_time = cpu_time();
 #if defined(__GNUC__) && defined(__linux__)
-  /* feenableexcept(FE_INVALID   | */
-  /*                FE_DIVBYZERO | */
-  /*                FE_OVERFLOW */
-  /*               ); */
+  feenableexcept(FE_INVALID   |
+                 FE_DIVBYZERO |
+                 FE_OVERFLOW
+                );
 #endif
 
   //Reconstruct the command line so we can emit it later if needed

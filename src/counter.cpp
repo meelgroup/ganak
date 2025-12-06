@@ -1022,7 +1022,7 @@ vector<Cube> Counter::one_restart_count() {
 
 //use kahypar to do hypergraph partitioning
 void Counter::hyper_cut() {
-  if (tdscore.empty()) return;
+  assert(tdscore.empty());
   if (nVars() > conf.td_varlim*50) return;
   if (nVars() < 20) return;
   if (indep_support_end <= 3) return;

@@ -536,6 +536,7 @@ only_dirs = [
             ### "out-ganak-mccomp2324-209249", # TRILLIUM, with 64b fixes
             "out-ganak-mccomp2324-343419-0", # hypercut tries
             "out-ganak-mccomp2324-357608-0", # hypercut only when TD is not used
+            "out-ganak-mccomp2324-606467-0", # hypercut tries, fixed bug in hc
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

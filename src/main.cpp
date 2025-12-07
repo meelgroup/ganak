@@ -167,6 +167,8 @@ void add_ganak_options()
     myopt("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
 
     // TD options
+    myopt("--hc", conf.do_hyper, atoi, "Run hyper-cut at toplevel");
+    myopt("--hcmult", conf.hyper_mult, atof, "Amount of multiplication for hypercut");
     myopt("--td", conf.do_td, atoi, "Run TD decompose");
     myopt("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
     myopt("--tdminw", conf.td_minweight, atof, "TD min weight");
@@ -677,5 +679,6 @@ int main(int argc, char *argv[]) {
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);
+  mpfr_free_cache();
   return 0;
 }

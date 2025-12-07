@@ -356,6 +356,9 @@ private:
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
+
+  // TD
+  void hyper_cut();
   void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
@@ -363,7 +366,7 @@ private:
   void compute_td_score_using_raw(const uint32_t nodes,
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);
-  void td_decompose();
+  bool td_decompose();
   uint32_t td_decompose_component(bool update_score);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   int td_width = 10000;

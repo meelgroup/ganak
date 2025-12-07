@@ -30,6 +30,7 @@ include_directories( ${GMP_INCLUDE_DIR} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
 include_directories( ${FLINT_INCLUDE_DIRS} )
+include_directories(${PROJECT_SOURCE_DIR}/../../kahypar/include)
 
 if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
@@ -82,13 +83,16 @@ SET(SOURCES
 
 ADD_LIBRARY(ganak ${SOURCES} ${LIB})
 target_link_libraries (ganak
-  LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
-  LINK_PUBLIC ${ARJUN_LIBRARIES}
-  LINK_PUBLIC ${APPROXMC_LIBRARIES}
-  LINK_PUBLIC ${BREAKID_LIBRARIES}
-  LINK_PUBLIC ${FLINT_LIBRARIES}
-  LINK_PUBLIC ${MPFR_LIBRARIES}
-  LINK_PUBLIC ${GMP_LIBRARIES}
+  PUBLIC
+    ${CRYPTOMINISAT5_LIBRARIES}
+    ${ARJUN_LIBRARIES}
+    ${APPROXMC_LIBRARIES}
+    ${BREAKID_LIBRARIES}
+    ${FLINT_LIBRARIES}
+    ${MPFR_LIBRARIES}
+    ${GMP_LIBRARIES}
+    ${kahypar}
+    ${Boost_LIBRARIES}
 )
 
 set_target_properties(ganak PROPERTIES

@@ -341,8 +341,8 @@ private:
     return watches[Lit(v, false)].activity + watches[Lit(v, true)].activity; }
   DecisionStack decisions;
   void decide_lit();
-  uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
-  double score_of(const uint32_t v, bool ignore_td = false) const;
+  uint32_t find_best_branch(const bool ignore_td = false, const bool ignore_minfill = false, const bool also_nonindep = false);
+  double score_of(const uint32_t v, bool ignore_td = false, bool ignore_minfill = false) const;
   void vsads_readjust();
   void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
@@ -355,12 +355,15 @@ private:
   uint32_t td_decompose_component(bool update_score);
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   int td_width = 10000;
+  void compute_minfill_score();
   void inc_act(const Lit lit);
   Heap<VarOrderLt> order_heap; // Only active during SAT solver mode
   bool standard_polarity(const uint32_t var) const;
   bool get_polarity(const uint32_t var) const;
   vector<double> tdscore;
   double td_weight = 1.0;
+  vector<double> minfill_score;
+  double minfill_weight = 1.0;
   uint64_t tstamp = 10;
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;

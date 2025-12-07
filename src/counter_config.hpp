@@ -45,7 +45,7 @@ struct CounterConfiguration {
 
   int cache_time_update = 2;
 
-  int decide = 0; // 0 = TD, 1 = ignore TD
+  int decide = 0; // 0 = TD only, 1 = ignore TD, 2 = minfill only, 3 = TD+minfill
   uint32_t rdb_cls_target = 10000;
   int rdb_keep_used = 0; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
@@ -95,6 +95,12 @@ struct CounterConfiguration {
   int td_max_edge_var_ratio = 30;
   int td_do_use_adj = 1;
   std::string td_read_file = "";
+
+  bool do_minfill = 1;
+  double minfill_maxweight = 60;
+  double minfill_minweight = 7;
+  double minfill_divider = 1e3;
+  double minfill_exp_mult = 1.1;
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

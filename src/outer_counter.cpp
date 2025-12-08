@@ -190,7 +190,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
 
   verb_print(1, "[par] TD width: " << tdec.width()
           << ", centroid bag size: " << centroid_bag.size()
-          << ", TD time: " << td_start_time-cpu_time() << "s");
+          << ", TD time: " << cpu_time()-td_start_time << "s");
 
   // If centroid bag is empty or very small, just use regular counting
   if (centroid_bag.size() < bits_jobs) {

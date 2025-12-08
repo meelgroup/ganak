@@ -128,7 +128,12 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
-    add_arg("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers, 7=mpfr normal numbers");
+    add_arg("--mode", mode , atoi, R"delimiter(0=counting,
+1=weighted counting,
+2=complex numbers,
+3=multivariate polynomials over the rational field,
+4=parity counting, 5=counting over prime field,
+6=mpfr complex numbers, 7=mpfr normal numbers)delimiter");
     add_arg("--prime", prime_field, atoi, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     add_arg("--delta", conf.delta, atof, "Delta");

@@ -205,7 +205,7 @@ void add_ganak_options()
 
     // Cache options
     myopt("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
-    myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB. 0 == use 80% of free mem");
+    myopt("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB");
     myopt("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
 
     // BuDDy options

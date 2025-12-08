@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <climits>
 #include <vector>
 #include <cassert>
 #include <iostream>
@@ -165,7 +164,7 @@ struct Cube {
     lbd = o.lbd;
   }
   Cube& operator=(const Cube& o) noexcept {
-    cnf = std::move(o.cnf);
+    cnf = o.cnf;
     *cnt = *o.cnt;
     enabled = o.enabled;
     symm = o.symm;

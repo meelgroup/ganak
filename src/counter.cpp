@@ -121,7 +121,7 @@ bool Counter::remove_duplicates(vector<Lit>& lits) {
   return true;
 }
 
-// 1... nodes vertices
+// 1...nodes vertices
 void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
@@ -188,7 +188,7 @@ void Counter::read_td_from_file(const std::string& fname) {
             throw std::runtime_error("Float out of range in file: " + line);
         }
     }
-    verb_print(1, "[td] Read " << i << " td scrores from file: '" << fname << "'"
+    verb_print(1, "[td] Read " << i << " td scores from file: '" << fname << "'"
                              << " tdscore.size(): " << tdscore.size() << " nvars: " << nVars());
     assert(i == tdscore.size());
     file.close();
@@ -419,7 +419,7 @@ void Counter::td_decompose() {
   } else primal_alt = &primal;
 
   if (!primal_alt->isConnected()) {
-    verb_print(1, "ERROR: Primal graph is not connected, this NOT going to go well!");
+    verb_print(1, "ERROR: Primal graph is not connected, this is NOT going to go well!");
     verb_print(1, "ERROR: Counter should NOT be fed a disconnected CNF");
     exit(-1);
   }

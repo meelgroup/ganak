@@ -129,7 +129,7 @@ void add_ganak_options()
         .flag()
         .help("Print version and exit");
     myopt("--mode", mode , atoi, "0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers, 7=mpfr normal numbers");
-    myopt("--prime", prime_field, atoi, "Number of variables in the polynomial field");
+    myopt("--prime", prime_field, atoi, "Prime for prime field counting");
     myopt("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     myopt("--delta", conf.delta, atof, "Delta");
     /* myopt("--breakid", do_breakid, atoi, "Enable BreakID"); */

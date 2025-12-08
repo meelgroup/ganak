@@ -101,7 +101,10 @@ public:
     uint32_t table_ofs = (uint32_t)comp.get_hashkey() & tbl_size_mask;
     CacheEntryID act_id = table[table_ofs];
     if (!act_id) return false;
+
+    // LINEAR PROBING through collision chain
     while(act_id){
+      __builtin_prefetch(entry_base.data() + entry(act_id).next_bucket_element());
       if (entry(act_id).equals(comp)) {
         stats.incorporate_cache_hit(nvars);
         switch(conf.cache_time_update) {

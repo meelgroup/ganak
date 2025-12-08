@@ -203,7 +203,7 @@ int TreeDecomposition::getCentroid() const {
 
 /**
     bag: Current bag in the tree decomposition.
-    pparent: Parent bag.
+    parent: Parent bag.
     depth: Current depth
     ret: Output vector storing the order of each variable.
 */

@@ -87,19 +87,6 @@ inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
   return os;
 }
 
-struct VS {
-  VS() = default;
-  VS(uint32_t _v, double _score1, uint32_t _score2) : v(_v), score1(_score1), score2(_score2) {}
-  bool operator<(const VS& other) const {
-    if (score1 != other.score1) return score1 > other.score1;
-    else return score2 > other.score2;
-  }
-  uint32_t v;
-  double score1 = 0;
-  uint32_t score2 = 0;
-};
-
-
 struct OffAbs {
   OffAbs(ClauseOfs _off, uint32_t _abs) : off(_off), abs(_abs) {}
   ClauseOfs off;

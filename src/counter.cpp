@@ -46,7 +46,6 @@ THE SOFTWARE.
 #include <thread>
 #include <algorithm>
 
-using std::setw;
 using std::setprecision;
 using std::setw;
 using std::unique_ptr;
@@ -392,8 +391,8 @@ void Counter::td_decompose() {
   verb_print(1, "[td] Primal graph  "
     << " nodes: " << primal.numNodes()
     << " edges: " <<  primal.numEdges()
-    << " density: " << std::fixed << std::setprecision(3) << density
-    << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
+    << " density: " << std::fixed << setprecision(3) << density
+    << " edge/var: " << std::fixed << setprecision(3) << edge_var_ratio);
   if (primal.numEdges() > conf.td_max_edges) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
@@ -1686,7 +1685,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       if (!after_mul->is_zero()) after_mul = fg->one();
       else after_mul = fg->zero();
     }
-    debug_print("correct                            : " << std::setprecision(10) << *cnt);
+    debug_print("correct                            : " << setprecision(10) << *cnt);
     debug_print("after_mul:                         : " << *after_mul);
     debug_print("dec_w                              : " << *dec_w);
     debug_print("active                             : " << (decisions.top().is_right_branch() ? "right" : "left"));
@@ -1711,7 +1710,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
         assert(okay);
       }
     }
-    cout << std::setprecision(3);
+    cout << setprecision(3);
     return cnt;
 }
 

@@ -38,7 +38,6 @@ THE SOFTWARE.
 #include <iomanip>
 #include <gmpxx.h>
 #include <mpfr.h>
-#include "src/GitSHA1.hpp"
 /* #include <breakid/breakid.hpp> */
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
@@ -52,6 +51,7 @@ using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 using std::set;
 using namespace GanakInt;
+using std::setprecision;
 
 #if defined(__GNUC__) && defined(__linux__)
 #include <cfenv>
@@ -120,7 +120,7 @@ string print_version()
 void add_ganak_options()
 {
     std::ostringstream my_delta;
-    my_delta << std::setprecision(8) << conf.delta;
+    my_delta << setprecision(8) << conf.delta;
 
     myopt2("-v", "--verb", conf.verb, atoi, "Verbosity");
     myopt2("-s", "--seed", conf.seed, atoi, "Seed");
@@ -406,7 +406,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 string print_mpq_as_scientific(const mpq_class& number) {
     mpf_class mpf_value(number);
     std::ostringstream oss;
-    oss << std::scientific << std::setprecision(8) << mpf_value;
+    oss << std::scientific << setprecision(8) << mpf_value;
     return oss.str();
 }
 
@@ -478,7 +478,7 @@ void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t ele
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.multiplier_weight->dup();
     if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
-    cout << "c o Total time [Arjun+GANAK]: " << std::setprecision(2)
+    cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 
     string out = "c o type ";
@@ -490,7 +490,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
     else cout << "s UNSATISFIABLE" << endl;
     if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
       std::stringstream ss;
-      ss << std::scientific << std::setprecision(40);
+      ss << std::scientific << setprecision(40);
       const CMSat::Field* ptr = cnt.get();
       assert(ptr != nullptr);
       if (mode == 0) {

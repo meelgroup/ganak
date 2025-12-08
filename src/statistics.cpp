@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include <iomanip>
 
 using std::setw;
+using std::setprecision;
 
 using namespace GanakInt;
 
@@ -47,14 +48,14 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
   verb_print(1, "decisions K                    "
     << std::left << setw(9) << decisions/1000
     << setw(16) << " -- Kdec/s: "
-    << std::setprecision(2) << setw(9) << std::left << std::fixed
+    << setprecision(2) << setw(9) << std::left << std::fixed
     << safe_div(decisions,(1000.0*(cpu_time()-counter->get_start_time())))
   );
   verb_print(1, "conflicts                      "
     << std::left << setw(9) << conflicts
     << "   " << std::left << setw(9)
     << setw(16) << " -- confl/s: "
-    << std::setprecision(2) << setw(9) << std::left
+    << setprecision(2) << setw(9) << std::left
     << safe_div(conflicts,((cpu_time()-counter->get_start_time())))
   );
 
@@ -101,8 +102,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 
   verb_print(1, "orig cubes/lit-r avg/exten avg "
     << setw(5) << num_cubes_orig << " / "
-    << setw(5) << std::setprecision(2) << safe_div(cube_lit_rem, num_cubes_orig) << " / "
-    << setw(5) << std::setprecision(2) << safe_div(cube_lit_extend, num_cubes_orig));
+    << setw(5) << setprecision(2) << safe_div(cube_lit_rem, num_cubes_orig) << " / "
+    << setw(5) << setprecision(2) << safe_div(cube_lit_extend, num_cubes_orig));
   verb_print(1, "cubes orig/symm/final          "
     << setw(5) << num_cubes_orig << " / "
     << setw(5) << num_cubes_symm << " / "
@@ -112,8 +113,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 
   verb_print(1, "comp sortsK/avg sz             "
     << setw(5) << comp_sorts/1000 << " / "
-    << setw(5) << std::setprecision(8) << safe_div(comp_sizes, comp_sorts))
-    << std::setprecision(2);
+    << setw(5) << setprecision(8) << safe_div(comp_sizes, comp_sorts))
+    << setprecision(2);
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
         << safe_div(comps_non_reset, comps_reset+comps_non_reset));
 
@@ -139,14 +140,14 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 
   double vm_usage = 0;
   verb_print(1, "Mem used                       "
-    << std::setprecision(2) << (double)mem_used(vm_usage) / (1e9)  << " GB");
+    << setprecision(2) << (double)mem_used(vm_usage) / (1e9)  << " GB");
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);
   verb_print(1, "cache entries K                " << (cache->get_num_entries_used()/1000ULL));
   verb_print(1, "MB cache                       "
-    << std::setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "
-    << std::setprecision(3) << in_mb(cache->get_num_entries_used()*72) << " "
+    << setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "
+    << setprecision(3) << in_mb(cache->get_num_entries_used()*72) << " "
   );
   verb_print(1, "cache K (lookup/ stores/ hits/ dels) "
     << std::left
@@ -155,14 +156,14 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(6) << (num_cache_hits /(1000ULL)) << " "
     << setw(6) << (num_cache_dels /(1000ULL)) << " "
     << setw(16) << " -- Klookup/s: "
-    << std::setprecision(2) << setw(9) << std::left
+    << setprecision(2) << setw(9) << std::left
     << safe_div(num_cache_look_ups,(1000.0*(cpu_time()-counter->get_start_time())))
   );
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);
   verb_print(1, "cache miss rate                "
-    << std::setprecision(3) << cache_miss_rate());
+    << setprecision(3) << cache_miss_rate());
   verb_print(1, "avg hit/store num vars "
     << get_avg_cache_store_sz()
     << " / "

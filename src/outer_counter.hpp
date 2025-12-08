@@ -76,9 +76,10 @@ private:
   vector<map<Lit, Lit>> generators;
 
   // stats over multiple threads
-  std::atomic<bool> count_is_approximate = false;
+  std::mutex stats_mutex;
+  bool count_is_approximate = false;
   std::atomic<uint64_t> num_cache_lookups = 0;
-  std::atomic<uint64_t> max_cache_elems = 0;
+  uint64_t max_cache_elems = 0;
 };
 
 }

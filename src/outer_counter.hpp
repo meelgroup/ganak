@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <map>
 #include <set>
 #include <vector>
+#include <atomic>
 
 #include "counter.hpp"
 #include "counter_config.hpp"
@@ -74,9 +75,10 @@ private:
   map<Lit, FF> lit_weights;
   vector<map<Lit, Lit>> generators;
 
-  // stats
+  // stats over multiple threads
+  std::mutex stats_mutex;
   bool count_is_approximate = false;
-  uint64_t num_cache_lookups = 0;
+  std::atomic<uint64_t> num_cache_lookups = 0;
   uint64_t max_cache_elems = 0;
 };
 

@@ -190,10 +190,15 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
 
   verb_print(1, "[par] TD width: " << tdec.width()
           << ", centroid bag size: " << centroid_bag.size()
-          << ", TD time: " << td_start_time-cpu_time() << "s");
+          << ", TD time: " << cpu_time()-td_start_time << "s");
 
-  // If centroid bag is empty or very small, just use regular counting
+  // If centroid bag is empty or of size 1, just use regular counting
+  if (centroid_bag.size() <= 1) {
+    verb_print(1, "[par] Centroid bag is empty, using regular counting");
+    return count_regular();
+  }
   if (centroid_bag.size() < bits_jobs) {
+    assert(centroid_bag.size() >= 2);
     bits_jobs = (int)std::log2(centroid_bag.size());
     verb_print(2, "[par] Centroid bag smaller than 2**bits_jobs, using bits_jobs: " << bits_jobs);
   }
@@ -254,8 +259,10 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       setup_ganak(cnf, *counter);
       auto ret = counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();
+      stats_mutex.lock();
       max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
       count_is_approximate |= counter->get_is_approximate();
+      stats_mutex.unlock();
       *ret *= *cnf.multiplier_weight;
       return ret;
     } else {

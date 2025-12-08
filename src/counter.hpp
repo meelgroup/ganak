@@ -47,6 +47,7 @@ using std::pair;
 using std::map;
 using std::unique_ptr;
 using std::string;
+using std::setw;
 
 namespace GanakInt {
 
@@ -85,19 +86,6 @@ inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
   }
   return os;
 }
-
-struct VS {
-  VS() = default;
-  VS(uint32_t _v, double _score1, uint32_t _score2) : v(_v), score1(_score1), score2(_score2) {}
-  bool operator<(const VS& other) const {
-    if (score1 != other.score1) return score1 > other.score1;
-    else return score2 > other.score2;
-  }
-  uint32_t v;
-  double score1 = 0;
-  uint32_t score2 = 0;
-};
-
 
 struct OffAbs {
   OffAbs(ClauseOfs _off, uint32_t _abs) : off(_off), abs(_abs) {}
@@ -505,7 +493,7 @@ private:
 };
 
 inline void Counter::unset_lit(Lit lit) {
-    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
+    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << setw(8) << lit << endl);
     SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
     var(lit).ante = Antecedent();
     if(weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
@@ -521,11 +509,11 @@ inline void Counter::unset_lit(Lit lit) {
 inline void Counter::print_cl(const Lit* c, uint32_t size) const {
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
-    cout << std::setw(5) << l
-      << " lev: " << std::setw(3) << var(l).decision_level
-      << " ante: " << std::setw(8) << var(l).ante
-      << " val: " << std::setw(7) << lit_val_str(l)
-      << " sublev: " << std::setw(3) << var(l).sublevel
+    cout << setw(5) << l
+      << " lev: " << setw(3) << var(l).decision_level
+      << " ante: " << setw(8) << var(l).ante
+      << " val: " << setw(7) << lit_val_str(l)
+      << " sublev: " << setw(3) << var(l).sublevel
       << endl;
   }
 }
@@ -534,11 +522,11 @@ template<class T2>
 void Counter::print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << std::left << std::setw(5) << l
-      << " lev: " << std::setw(4) << var(l).decision_level
-      << " ante: " << std::setw(5) << std::left << var(l).ante
+    cout << std::left << setw(5) << l
+      << " lev: " << setw(4) << var(l).decision_level
+      << " ante: " << setw(5) << std::left << var(l).ante
       << " val: " << lit_val_str(l)
-      << " sublev: " << std::setw(3) << var(l).sublevel
+      << " sublev: " << setw(3) << var(l).sublevel
       << endl;
   }
 }
@@ -547,8 +535,8 @@ template<class T2>
 void Counter::v_print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << std::setw(5) << l
-      << " lev: " << std::setw(4) << v_levs[l.var()]
+    cout << setw(5) << l
+      << " lev: " << setw(4) << v_levs[l.var()]
       << " val: " << val_to_str(v_val(l)) << endl;
   }
 }

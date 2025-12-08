@@ -125,6 +125,7 @@ ClauseOfs ClauseAllocator::move_cl(
   memcpy(new_ptr, old, size_needed*sizeof(uint32_t));
 
   ClauseOfs new_offset = new_ptr-new_data_start;
+  assert(new_offset <= 0xFFFFFFFF);
   (*old)[0] = Lit::toLit(new_offset & 0xFFFFFFFF);
   old->reloced = true;
   new_sz_while_moving += size_needed;

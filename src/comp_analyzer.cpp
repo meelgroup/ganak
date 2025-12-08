@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
 #include <cstdint>
-#include <cstdint>
 
 using namespace GanakInt;
 
@@ -38,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const ClData& d)
   return os;
 }
 
-// Builds occ lists and sets things up, Done exactly ONCE for a whole counting runkk
+// Builds occ lists and sets things up, Done exactly ONCE for a whole counting run
 // this sets up unif_occ
 void CompAnalyzer::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses

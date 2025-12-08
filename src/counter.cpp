@@ -46,7 +46,6 @@ THE SOFTWARE.
 #include <thread>
 #include <algorithm>
 
-using std::setw;
 using std::setprecision;
 using std::setw;
 using std::unique_ptr;
@@ -122,7 +121,7 @@ bool Counter::remove_duplicates(vector<Lit>& lits) {
   return true;
 }
 
-// 1... nodes vertices
+// 1...nodes vertices
 void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print) {
   const auto& bags = tdec.Bags();
   td_width = tdec.width();
@@ -189,7 +188,7 @@ void Counter::read_td_from_file(const std::string& fname) {
             throw std::runtime_error("Float out of range in file: " + line);
         }
     }
-    verb_print(1, "[td] Read " << i << " td scrores from file: '" << fname << "'"
+    verb_print(1, "[td] Read " << i << " td scores from file: '" << fname << "'"
                              << " tdscore.size(): " << tdscore.size() << " nvars: " << nVars());
     assert(i == tdscore.size());
     file.close();
@@ -392,8 +391,8 @@ void Counter::td_decompose() {
   verb_print(1, "[td] Primal graph  "
     << " nodes: " << primal.numNodes()
     << " edges: " <<  primal.numEdges()
-    << " density: " << std::fixed << std::setprecision(3) << density
-    << " edge/var: " << std::fixed << std::setprecision(3) << edge_var_ratio);
+    << " density: " << std::fixed << setprecision(3) << density
+    << " edge/var: " << std::fixed << setprecision(3) << edge_var_ratio);
   if (primal.numEdges() > conf.td_max_edges) {
     verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
     return;
@@ -420,7 +419,7 @@ void Counter::td_decompose() {
   } else primal_alt = &primal;
 
   if (!primal_alt->isConnected()) {
-    verb_print(1, "ERROR: Primal graph is not connected, this NOT going to go well!");
+    verb_print(1, "ERROR: Primal graph is not connected, this is NOT going to go well!");
     verb_print(1, "ERROR: Counter should NOT be fed a disconnected CNF");
     exit(-1);
   }
@@ -1205,7 +1204,7 @@ void Counter::decide_lit() {
   decisions.top().is_indep = is_indep;
 
   Lit lit = Lit(v, get_polarity(v));
-  /* cout << "decided on: " << std::setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
+  /* cout << "decided on: " << setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << dec_level());
   set_lit(lit, dec_level());
@@ -1230,14 +1229,14 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   act_score = var_act(v)/conf.act_score_divisor;
   freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
   double score = act_score+td_score+freq_score;
-  if (print) cout << "v: " << std::setw(4) << v
-    << std::setw(3) << " conflK: " << stats.conflicts/1000
-    << std::setw(5) << " decK: " << stats.decisions/1000
-    << std::setw(6) << " act_score: " << act_score/score
-    << std::setw(6) << " freq_score: " << freq_score/score
-    << std::setw(6) << " td_score: " << td_score/score
-    << std::setw(6) << " total: " << score
-    << std::setw(6) << endl;
+  if (print) cout << "v: " << setw(4) << v
+    << setw(3) << " conflK: " << stats.conflicts/1000
+    << setw(5) << " decK: " << stats.decisions/1000
+    << setw(6) << " act_score: " << act_score/score
+    << setw(6) << " freq_score: " << freq_score/score
+    << setw(6) << " td_score: " << td_score/score
+    << setw(6) << " total: " << score
+    << setw(6) << endl;
 
   return score;
 }
@@ -1547,7 +1546,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       assert(i2 < comp_manager->comp_stack_size());
       const auto& comp = comp_manager->at(i2);
-      cout << COLWHT "-> comp at: " << std::setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
+      cout << COLWHT "-> comp at: " << setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
       all_vars_in_comp(*comp, v) cout << *v << " ";
       cout << COLDEF << endl;
     }
@@ -1591,7 +1590,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
           *dec_w *= *get_weight(Lit(v, val(v) == T_TRI));
           if (!get_weight(Lit(v, val(v) == T_TRI))->is_one()) {
             debug_print(COLYEL "mult var: " << setw(4) << v << " val: " << setw(3) << val(v)
-              << " weight: " << std::setw(9) << *get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
+              << " weight: " << setw(9) << *get_weight(Lit(v, val(v) == T_TRI)) << COLDEF
               << " dec_lev: " << var(v).decision_level);
           }
         }
@@ -1686,7 +1685,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       if (!after_mul->is_zero()) after_mul = fg->one();
       else after_mul = fg->zero();
     }
-    debug_print("correct                            : " << std::setprecision(10) << *cnt);
+    debug_print("correct                            : " << setprecision(10) << *cnt);
     debug_print("after_mul:                         : " << *after_mul);
     debug_print("dec_w                              : " << *dec_w);
     debug_print("active                             : " << (decisions.top().is_right_branch() ? "right" : "left"));
@@ -1711,7 +1710,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
         assert(okay);
       }
     }
-    cout << std::setprecision(3);
+    cout << setprecision(3);
     return cnt;
 }
 
@@ -1803,7 +1802,7 @@ RetState Counter::backtrack() {
           if (val(*it) != X_TRI && var(*it).decision_level < dec_level()) {
             Lit l(*it, val(*it) == T_TRI);
             if (!get_weight(l)->is_one()) {
-              debug_print(COLYEL2 << "MULT STORE var: " << std::setw(3) << *it
+              debug_print(COLYEL2 << "MULT STORE var: " << setw(3) << *it
                 << " val: " << val_to_str(val(*it))
                 << " dec lev: " << var(*it).decision_level);
               *cnt *= *get_weight(Lit(*it, val(*it) == T_TRI));
@@ -1847,12 +1846,12 @@ void Counter::print_dec_info() const {
   for(uint32_t i = 1; i < decisions.size(); i ++) {
     uint32_t dvar = decisions[i].var;
     Lit l = Lit(dvar, val(dvar) == T_TRI);
-    cout << "dec lev: " << std::setw(3) << i <<
-      " lit: " << std::setw(6)
+    cout << "dec lev: " << setw(3) << i <<
+      " lit: " << setw(6)
       << l
       << " is right: "
       << (int)decisions[i].is_right_branch()
-      << " ante: " << std::setw(10) << var(l).ante
+      << " ante: " << setw(10) << var(l).ante
       << " lev: " << var(l).decision_level
       << endl;
   }
@@ -1922,12 +1921,12 @@ void Counter::print_trail(bool check_entail, bool check_anything) const {
   cout << "Current trail :" << endl;
   for(uint32_t i = 0; i < trail.size(); i++) {
     const auto l = trail[i];
-    cout << "lit " << std:: left << std::setw(6) << l
-      << " lev: " << std::setw(4) << var(l).decision_level
-      << " ante: " << std::setw(5) << std::left << var(l).ante
-    << " val: " << std::setw(8) << lit_val_str(l)
-    << " trail pos: " << std::setw(4) << i
-    << " sublevel: "  << std::setw(3) << var(l).sublevel << endl;
+    cout << "lit " << std:: left << setw(6) << l
+      << " lev: " << setw(4) << var(l).decision_level
+      << " ante: " << setw(5) << std::left << var(l).ante
+    << " val: " << setw(8) << lit_val_str(l)
+    << " trail pos: " << setw(4) << i
+    << " sublevel: "  << setw(3) << var(l).sublevel << endl;
   }
   cout << "qhead: " << qhead << endl;
   if (check_anything) check_trail(check_entail);
@@ -2228,9 +2227,9 @@ bool Counter::propagate(bool out_of_order) {
 #ifdef VERBOSE_DEBUG
       cout << "Prop Norm cl: " << ofs << " red: " << std::boolalpha << (bool)c.red << endl;
       for(const auto&l: c) {
-        cout << "lit " << std::setw(6) << l
-          << " lev: " << std::setw(4) << var(l).decision_level
-          << " ante: " << std::setw(5) << std::left << var(l).ante
+        cout << "lit " << setw(6) << l
+          << " lev: " << setw(4) << var(l).decision_level
+          << " ante: " << setw(5) << std::left << var(l).ante
           << " val: " << lit_val_str(l) << endl;
       }
 #endif
@@ -2847,9 +2846,9 @@ bool Counter::v_propagate() {
 #ifdef VERBOSE_DEBUG
       cout << "v Prop Norm cl: " << ofs << endl;
       for(const auto&l: c) {
-        cout << "lit " << std::setw(6) << l
-          << " lev: " << std::setw(4) << var(l).decision_level
-          << " ante: " << std::setw(5) << std::left << var(l).ante
+        cout << "lit " << setw(6) << l
+          << " lev: " << setw(4) << var(l).decision_level
+          << " ante: " << setw(5) << std::left << var(l).ante
           << " val: " << lit_val_str(l) << endl;
       }
 #endif
@@ -2984,10 +2983,10 @@ void Counter::create_uip_cl() {
         inc_act(q);
         seen[q.var()] = 1;
         to_clear.push_back(q.var());
-        debug_print(std::setw(5) << q
-          << " lev: " << std::setw(3) << var(q).decision_level
-          << " ante: " << std::setw(8) << var(q).ante
-          << " val : " << std::setw(7) << lit_val_str(q));
+        debug_print(setw(5) << q
+          << " lev: " << setw(3) << var(q).decision_level
+          << " ante: " << setw(8) << var(q).ante
+          << " val : " << setw(7) << lit_val_str(q));
         if (var(q).decision_level >= n_dec_level) {
           path_c++;
           debug_print("pathc inc.");
@@ -3004,10 +3003,10 @@ void Counter::create_uip_cl() {
       p = trail[index+1];
       assert(p != NOT_A_LIT);
 #ifdef VERBOSE_DEBUG
-      cout << "going back on trail: " << std::setw(5) << p
-        << " lev: " << std::setw(3) << var(p).decision_level
-        << " ante: " << std::setw(8) << var(p).ante
-        << " val : " << std::setw(7) << lit_val_str(p)
+      cout << "going back on trail: " << setw(5) << p
+        << " lev: " << setw(3) << var(p).decision_level
+        << " ante: " << setw(8) << var(p).ante
+        << " val : " << setw(7) << lit_val_str(p)
         << endl;
 #endif
     } while(var(trail[index+1]).decision_level < n_dec_level);
@@ -4227,7 +4226,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
   auto it = jt;
   int32_t off_by = 0;
   for (; it != trail.end(); it++) {
-    debug_print("Backing up, checking lit: " << std::setw(5) << *it << " at: " << it-trail.begin());
+    debug_print("Backing up, checking lit: " << setw(5) << *it << " at: " << it-trail.begin());
     SLOW_DEBUG_DO(assert(it->var() != 0));
     const int32_t dl = var(*it).decision_level;
     assert(dl != -1);
@@ -4235,11 +4234,11 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
       off_by++;
       var(*it).sublevel = jt - trail.begin();
       *jt++ = *it;
-      debug_print("Backing up, setting: " << std::setw(5) << *it << " at lev: " << std::setw(4) << dl
+      debug_print("Backing up, setting: " << setw(5) << *it << " at lev: " << setw(4) << dl
           << " to sublev: " << var(*it).sublevel);
     } else {
-      debug_print("Backing up, unsetting: " << std::right << std::setw(8) << *it
-          << " lev: " << std::setw(4) << var(*it).decision_level
+      debug_print("Backing up, unsetting: " << std::right << setw(8) << *it
+          << " lev: " << setw(4) << var(*it).decision_level
           << " ante was: " << var(*it).ante);
       if (sat_mode() && !order_heap.in_heap(it->var())) order_heap.insert(it->var());
       unset_lit(*it);

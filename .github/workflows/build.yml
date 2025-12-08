@@ -326,7 +326,7 @@ jobs:
           project/build/include/*
 
     - name: Upload Artifact - Mac Arm
-      if: matrix.os == 'macos-14' && matrix.staticcompile == 'ON'
+      if: matrix.os == 'macos-15' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:
         name: ganak-mac-arm64

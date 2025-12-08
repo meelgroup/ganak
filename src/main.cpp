@@ -281,7 +281,7 @@ void parse_supported_options(int argc, char** argv) {
       exit(-1);
     }
     if (num_threads < -1) {
-      cout << "ERROR: number of thrads must not be less than -1" << endl;
+      cout << "ERROR: number of threads must not be less than -1" << endl;
       exit(-1);
     }
     if (num_threads > 1024) {

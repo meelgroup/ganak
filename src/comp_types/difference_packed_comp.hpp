@@ -69,7 +69,7 @@ public:
   DiffPackedComp() = default;
   ~DiffPackedComp() { delete[] data; }
   DiffPackedComp& operator=(const DiffPackedComp& other) noexcept{
-    if (data != nullptr) delete[] data;
+    delete[] data;
     data_size = other.data_size;
     data = new uint32_t[data_size];
     std::memcpy(data, other.data, data_size * sizeof(uint32_t));
@@ -173,7 +173,7 @@ public:
 
 private:
   uint32_t* data = nullptr; // the packed data
-  uint32_t data_size = 0; // the size of the packed data in bytes
+  uint32_t data_size = 0; // the size of the packed data in uint32_t units
 };
 
 }

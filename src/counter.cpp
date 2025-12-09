@@ -1224,7 +1224,6 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   double freq_score = 0;
   vector<uint32_t> occ_cnt; // number of occurrences of a variable in the component
 
-  // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/conf.act_score_divisor;
   freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;

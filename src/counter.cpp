@@ -831,7 +831,7 @@ FF Counter::do_appmc_count() {
 
   mpz_class num_sols(2);
   mpz_pow_ui(num_sols.get_mpz_t(), num_sols.get_mpz_t(), appmc_cnt.hashCount);
-  num_sols *= appmc_cnt.cellSolCount;
+  num_sols *= mpz_class(appmc_cnt.cellSolCount);
   verb_print(1, "[appmc] ApproxMC count: " << num_sols);
   return std::make_unique<ArjunNS::FMpz>(num_sols);
 }

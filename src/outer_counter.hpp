@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <set>
 #include <vector>
 #include <atomic>
+#include <mutex>
 
 #include "counter.hpp"
 #include "counter_config.hpp"

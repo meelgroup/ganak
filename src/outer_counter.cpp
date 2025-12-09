@@ -259,10 +259,11 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       setup_ganak(cnf, *counter);
       auto ret = counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();
-      stats_mutex.lock();
-      max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
-      count_is_approximate |= counter->get_is_approximate();
-      stats_mutex.unlock();
+      {
+        std::lock_guard<std::mutex> lock(stats_mutex);
+        max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
+        count_is_approximate |= counter->get_is_approximate();
+      }
       *ret *= *cnf.multiplier_weight;
       return ret;
     } else {

@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "time_mem.hpp"
 #include "common.hpp"
+#include "ganak.hpp"
 
 namespace GanakInt {
 
@@ -128,7 +129,8 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
 }
 
-void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, OuterCounter& counter) {
+template<class T>
+void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, T& counter) {
   cnf.check_sanity();
   counter.new_vars(cnf.nVars());
 
@@ -255,7 +257,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     if (cnf.multiplier_weight != fg->zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
-      auto counter = std::make_unique<OuterCounter>(local_conf, fg);
+      auto counter = std::make_unique<Ganak>(local_conf, fg);
       setup_ganak(cnf, *counter);
       auto ret = counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();

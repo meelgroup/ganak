@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "time_mem.hpp"
 #include "common.hpp"
+#include "ganak.hpp"
 
 namespace GanakInt {
 
@@ -128,7 +129,8 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
 }
 
-void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, OuterCounter& counter) {
+template<class T>
+void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, T& counter) {
   cnf.check_sanity();
   counter.new_vars(cnf.nVars());
 
@@ -235,7 +237,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     ArjunNS::SimplifiedCNF cnf(fg);
     cnf.new_vars(nvars);
     cnf.set_sampl_vars(ganak_to_cms_vars(indep_support));
-    cnf.set_opt_sampl_vars(ganak_to_cms_vars(opt_indep_support));
+    /* cnf.set_opt_sampl_vars(ganak_to_cms_vars(opt_indep_support)); */
     for (const auto& [lit, weight] : lit_weights)
       cnf.set_lit_weight(ganak_to_cms_lit(lit), weight->dup());
     for (const auto& cl : irred_cls) cnf.add_clause(ganak_to_cms_cl(cl));
@@ -255,14 +257,15 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     if (cnf.multiplier_weight != fg->zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
-      auto counter = std::make_unique<OuterCounter>(local_conf, fg);
+      auto counter = std::make_unique<Ganak>(local_conf, fg);
       setup_ganak(cnf, *counter);
       auto ret = counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();
-      stats_mutex.lock();
-      max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
-      count_is_approximate |= counter->get_is_approximate();
-      stats_mutex.unlock();
+      {
+        std::lock_guard<std::mutex> lock(stats_mutex);
+        max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
+        count_is_approximate |= counter->get_is_approximate();
+      }
       *ret *= *cnf.multiplier_weight;
       return ret;
     } else {

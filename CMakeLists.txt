@@ -307,6 +307,13 @@ if (SANITIZE)
     #add_compile_options("-Wconversion")
 endif()
 
+option(ANALYZE "Run Clang static analyzer. You MUST use clang++ as the compiler for this to work" OFF)
+if (ANALYZE)
+    MESSAGE(WARNING " --Using clang static analyzer -- you MUST use clang++ or the compile WILL fail")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=clang-analyzer-*")
+    set(CMAKE_C_CLANG_TIDY "clang-tidy;-checks=clang-analyzer-*")
+endif()
+
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------

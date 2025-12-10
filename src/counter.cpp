@@ -354,13 +354,13 @@ void Counter::td_decompose() {
     return;
   }
 
-  TWD::Graph primal(nVars());
+  auto primal = std::make_unique<TWD::Graph>(nVars());
   all_lits(i) {
     Lit l(i/2, i%2 == 0);
     for(const auto& l2: watches[l].binaries) {
       if (!l2.red() && l < l2.lit()) {
         debug_print("bin cl: " << l.var() << " " << l2.lit().var());
-        primal.addEdge(l.var()-1, l2.lit().var()-1);
+        primal->addEdge(l.var()-1, l2.lit().var()-1);
       }
     }
   }
@@ -370,7 +370,7 @@ void Counter::td_decompose() {
     for(uint32_t i = 0; i < cl.sz; i++) {
       for(uint32_t i2 = i+1; i2 < cl.sz; i2++) {
         debug_print("long cl: " <<  cl[i].var() << " " << cl[i2].var());
-        primal.addEdge(cl[i].var()-1, cl[i2].var()-1);
+        primal->addEdge(cl[i].var()-1, cl[i2].var()-1);
       }
     }
   }
@@ -379,22 +379,22 @@ void Counter::td_decompose() {
   if (!conf.do_td_use_opt_indep) nodes = indep_support_end-1;
   if (conf.do_td_contract) {
     for(uint32_t i = nodes; i < nVars(); i++) {
-      primal.contract(i, conf.td_max_edges*100);
-      if (primal.numEdges() > conf.td_max_edges*100 ) break;
+      primal->contract(i, conf.td_max_edges*100);
+      if (primal->numEdges() > conf.td_max_edges*100 ) break;
     }
   }
-  verb_print(1, "[td] nodes: " << nodes << " nvars: " << nVars() << " edges: " << primal.numEdges());
+  verb_print(1, "[td] nodes: " << nodes << " nvars: " << nVars() << " edges: " << primal->numEdges());
 
   const uint64_t n = (uint64_t)nVars()*(uint64_t)nVars();
-  const double density = (double)primal.numEdges()/(double)n;
-  const double edge_var_ratio = (double)primal.numEdges()/(double)nVars();
+  const double density = (double)primal->numEdges()/(double)n;
+  const double edge_var_ratio = (double)primal->numEdges()/(double)nVars();
   verb_print(1, "[td] Primal graph  "
-    << " nodes: " << primal.numNodes()
-    << " edges: " <<  primal.numEdges()
+    << " nodes: " << primal->numNodes()
+    << " edges: " <<  primal->numEdges()
     << " density: " << std::fixed << setprecision(3) << density
     << " edge/var: " << std::fixed << setprecision(3) << edge_var_ratio);
-  if (primal.numEdges() > conf.td_max_edges) {
-    verb_print(1, "[td] Too many edges, " << primal.numEdges() << " skipping TD");
+  if (primal->numEdges() > conf.td_max_edges) {
+    verb_print(1, "[td] Too many edges, " << primal->numEdges() << " skipping TD");
     return;
   }
   if (density > conf.td_max_density) {
@@ -406,21 +406,22 @@ void Counter::td_decompose() {
     return;
   }
 
-  TWD::Graph* primal_alt = nullptr;
+  std::unique_ptr<TWD::Graph> primal_alt = nullptr;
   if (conf.do_td_contract) {
-    primal_alt = new TWD::Graph(nodes);
+    primal_alt = std::make_unique<TWD::Graph>(nodes);
     for(uint32_t i = 0 ; i < nodes; i++) {
-      const auto& k = primal.get_adj_list()[i];
+      const auto& k = primal->get_adj_list()[i];
       for(const auto& i2: k) {
         if (i2 < (int)nodes)
           primal_alt->addEdge(i, i2);
       }
     }
-  } else primal_alt = &primal;
+  } else primal_alt = std::move(primal);
 
   if (!primal_alt->isConnected()) {
-    verb_print(1, "ERROR: Primal graph is not connected, this is NOT going to go well!");
-    verb_print(1, "ERROR: Counter should NOT be fed a disconnected CNF");
+    cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;
+    cerr << "ERROR: Counter should NOT be fed a disconnected CNF" << endl;
+    assert(false);
     exit(-1);
   }
 
@@ -434,7 +435,6 @@ void Counter::td_decompose() {
 
   compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
-  if (conf.do_td_contract) delete primal_alt;
 }
 
 // Self-check count without restart with CMS only
@@ -831,7 +831,7 @@ FF Counter::do_appmc_count() {
 
   mpz_class num_sols(2);
   mpz_pow_ui(num_sols.get_mpz_t(), num_sols.get_mpz_t(), appmc_cnt.hashCount);
-  num_sols *= appmc_cnt.cellSolCount;
+  num_sols *= mpz_class(static_cast<unsigned long>(appmc_cnt.cellSolCount));
   verb_print(1, "[appmc] ApproxMC count: " << num_sols);
   return std::make_unique<ArjunNS::FMpz>(num_sols);
 }
@@ -1222,9 +1222,7 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   double act_score = 0;
   double td_score = 0;
   double freq_score = 0;
-  vector<uint32_t> occ_cnt; // number of occurrences of a variable in the component
 
-  // TODO Yash idea: let's cut this into activities and incidence
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
   act_score = var_act(v)/conf.act_score_divisor;
   freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;

@@ -113,8 +113,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 
   verb_print(1, "comp sortsK/avg sz             "
     << setw(5) << comp_sorts/1000 << " / "
-    << setw(5) << setprecision(8) << safe_div(comp_sizes, comp_sorts))
-    << setprecision(2);
+    << setw(5) << setprecision(8) << safe_div(comp_sizes, comp_sorts)
+    << setprecision(2));
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
         << safe_div(comps_non_reset, comps_reset+comps_non_reset));
 

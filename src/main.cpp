@@ -352,10 +352,9 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   return ganak_cl;
 }
 
-void print_vars(const vector<uint32_t>& vars) {
-  auto tmp = vars;
-  std::sort(tmp.begin(), tmp.end());
-  for(const auto& v: tmp) cout << v+1 << " ";
+void print_vars(vector<uint32_t> vars) {
+  std::sort(vars.begin(), vars.end());
+  for(const auto& v: vars) cout << v+1 << " ";
 }
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {

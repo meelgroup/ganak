@@ -145,10 +145,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);
   verb_print(1, "cache entries K                " << (cache->get_num_entries_used()/1000ULL));
-  verb_print(1, "MB cache                       "
-    << setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "
-    << setprecision(3) << in_mb(cache->get_num_entries_used()*72) << " "
-  );
+  verb_print(1, "MB cache                       " << setprecision(3) << in_mb(cache_bytes_memory_usage()));
+
   verb_print(1, "cache K (lookup/ stores/ hits/ dels) "
     << std::left
     << setw(6) << (num_cache_look_ups/(1000ULL)) << " "

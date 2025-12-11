@@ -38,11 +38,6 @@ static double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
 }
 
-static double safe_div(double a, double b) {
-  if (b == 0) return 0;
-  else return a/b;
-}
-
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
   verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "decisions K                    "

@@ -148,11 +148,9 @@ using FF = std::unique_ptr<Field>;
 
 namespace GanakInt {
 
-inline double float_div(const double a, const double b) {
-    if (b != 0)
-        return a/b;
-
-    return 0;
+constexpr double safe_div(double a, double b) {
+  if (b == 0) return 0;
+  else return a/b;
 }
 
 inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {

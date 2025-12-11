@@ -60,9 +60,6 @@ void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
       std::cerr << "ERROR: memory manager can't handle the load."
       << " size: " << size << " needed: " << needed << " newcapacity: " << newcapacity
       << endl;
-      std::cout << "ERROR: memory manager can't handle the load."
-      << " size: " << size << " needed: " << needed << " newcapacity: " << newcapacity
-      << endl;
       exit(-1);
     }
 

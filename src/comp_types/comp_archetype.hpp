@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <cstring>
+#include <algorithm>
 #include <iostream>
 #include <limits>
 
@@ -75,7 +75,7 @@ public:
     data_sz = max_var_id +1 + max_cl_id + 1;
     debug_print("Creating new data[] of size: " << data_sz << " and zeroing it.");
     raw_data = new uint64_t[data_sz];
-    memset(raw_data, 0, data_sz * sizeof(uint64_t));
+    std::fill_n(raw_data, data_sz, 0);
     v_data = raw_data;
     cl_data = raw_data + max_var_id + 1;
     clear_data();

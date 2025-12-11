@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "clauseallocator.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "structures.hpp"
+#include <algorithm>
 #include <cstdint>
 
 using namespace GanakInt;
@@ -126,8 +127,8 @@ void CompAnalyzer::initialize(
       }
     }
     // No duplicates, please -- note we converted to VARs so it maybe unique in LIT but not in VAR
-    set<uint32_t> s( tmp2.begin(), tmp2.end());
-    tmp2.assign( s.begin(), s.end() );
+    std::sort(tmp2.begin(), tmp2.end());
+    tmp2.erase(std::unique(tmp2.begin(), tmp2.end()), tmp2.end());
 
     unif_occ_bin[v].clear();
     unif_occ_bin[v].resize(tmp2.size());

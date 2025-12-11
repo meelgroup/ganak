@@ -158,7 +158,7 @@ struct Cube {
   Cube() = default;
   Cube(const Cube& o) {
     cnf = o.cnf;
-    cnt = o.cnt->dup();
+    *cnt = *o.cnt;
     enabled = o.enabled;
     symm = o.symm;
     lbd = o.lbd;

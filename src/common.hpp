@@ -181,6 +181,9 @@ inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
 }
 
 inline uint32_t mlog2(uint32_t v) {
+  #if defined(__GNUC__) || defined(__clang__)
+      return v == 0 ? 0 : 31 - __builtin_clz(v);
+  #else
   // taken from
   // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
   const signed char LogTable256[256] = {
@@ -200,6 +203,7 @@ inline uint32_t mlog2(uint32_t v) {
     r = (t = (v >> 8)) ? 8 + LogTable256[t] : LogTable256[v];
   }
   return r;
+#endif
 }
 
 struct BPCSizes {

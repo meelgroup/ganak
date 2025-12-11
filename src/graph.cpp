@@ -142,11 +142,9 @@ const vector<int>& TreeDecomposition::neighbor_bags(int b) const {
 
 void TreeDecomposition::visualizeTree(const std::string& fname) const {
     vector<int> subtreeVars(nBags, 0);
-    vector<int> size(nBags, 0);
 
     // First pass: compute subtree sizes
     std::function<set<uint32_t>(int, int)> computeSizes = [&](int bag, int parent) -> set<uint32_t> {
-        assert(size[bag] == 0);
         std::set<uint32_t> visited;
         for (int nb : neighbor_bags(bag)) {
             if (nb != parent) {
@@ -159,7 +157,6 @@ void TreeDecomposition::visualizeTree(const std::string& fname) const {
         return visited;
     };
     computeSizes(0, -1);
-    assert(size[0] == nVars);
 
     std::ofstream myfile;
     myfile.open (fname);

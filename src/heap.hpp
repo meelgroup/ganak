@@ -100,6 +100,7 @@ public:
     }
 
     int removeMin() {
+        assert(!empty());
         int x            = heap[0];
         heap[0]          = heap.back();
         indices[heap[0]] = 0;

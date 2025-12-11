@@ -163,9 +163,24 @@ struct Cube {
     symm = o.symm;
     lbd = o.lbd;
   }
+  Cube(Cube&& o) noexcept {
+    cnf = std::move(o.cnf);
+    cnt = std::move(o.cnt);
+    enabled = o.enabled;
+    symm = o.symm;
+    lbd = o.lbd;
+  }
   Cube& operator=(const Cube& o) noexcept {
     cnf = o.cnf;
     *cnt = *o.cnt;
+    enabled = o.enabled;
+    symm = o.symm;
+    lbd = o.lbd;
+    return *this;
+  }
+  Cube& operator=(Cube&& o) noexcept {
+    cnf = std::move(o.cnf);
+    cnt = std::move(o.cnt);
     enabled = o.enabled;
     symm = o.symm;
     lbd = o.lbd;

@@ -4093,7 +4093,7 @@ void Counter::reduce_db() {
 
   // Update LBD cutoff
   if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
-      && num_low_lbd_cls < 50 && conf.update_lbd_cutoff) {
+      && num_low_lbd_cls < 50 && conf.do_update_lbd_cutoff) {
     verb_print(1, " [rdb] bumping rdb cutoff to 3");
     lbd_cutoff++;
   }

@@ -198,7 +198,7 @@ void add_ganak_options()
     add_arg("--rdbkeepused", conf.rdb_keep_used, atoi, "RDB keeps clauses that are used");
     add_arg("--consolidateeveryn", conf.consolidate_every_n, atoi, "Consolidate memory after every N learnt clause");
     add_arg("--lbd", conf.base_lbd_cutoff, atoi, "Initial LBD cutoff");
-    add_arg("--updatelbdcutoff", conf.update_lbd_cutoff, atoi, "Update lbd cutoff");
+    add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, atoi, "Update lbd cutoff");
 
     // Decision options
     add_arg("--polar", conf.polar_type, atoi, "0=standard_polarity, 1=polar cache, 2=false, 3=true");

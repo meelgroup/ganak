@@ -421,7 +421,7 @@ uint64_t CompCache<T>::calc_cutoff() const {
     if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
   if (scores.empty()){
     cout<< "c ERROR Memory out!"<<endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   verb_print(1, "deletable:           " << scores.size());
   sort(scores.begin(), scores.end());

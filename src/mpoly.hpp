@@ -154,7 +154,7 @@ public:
         << " -- it should have a 0 at the end?"
         << " -- poly: " << str
         << " -- stripped poly: " << str2 << std::endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     str2.pop_back();
     auto varnames = nvars_names();
@@ -163,7 +163,7 @@ public:
     if (ret == -1) {
       std::cerr << "Error parsing polynomial on line " << line_no
         << " -- poly: " << str << std::endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     return true;
   }

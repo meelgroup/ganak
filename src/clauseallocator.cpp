@@ -60,13 +60,13 @@ void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
       std::cerr << "ERROR: memory manager can't handle the load."
       << " size: " << size << " needed: " << needed << " newcapacity: " << newcapacity
       << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
 
     uint32_t* new_data_start = (uint32_t*)realloc(data_start , newcapacity*sizeof(uint32_t));
     if (new_data_start == nullptr) {
       std::cerr << "ERROR: while reallocating clause space" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     data_start = new_data_start;
     capacity = newcapacity;

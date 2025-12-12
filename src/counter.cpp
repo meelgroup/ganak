@@ -55,22 +55,22 @@ using namespace GanakInt;
 vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
   if (!num_vars_set) {
     cout << "ERROR: new_vars() MUST be called before setting indep support" << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   if (indeps.count(0)) {
     cout << "ERROR: variable 0 does NOT exist!!" << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   vector<uint32_t> tmp(indeps.begin(), indeps.end());
   std::sort(tmp.begin(), tmp.end());
   for(uint32_t i = 0; i < tmp.size(); i++) {
     if (tmp[i] > nVars()) {
       cout << "ERROR: sampling set contains a variable larger than nVars()" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     if (tmp[i] != i+1) {
       cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i+1 << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -82,7 +82,7 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
   if (tmp.size() +1 < indep_support_end) {
     cout << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
     assert(false);
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   if (tmp.empty()) { opt_indep_support_end = 0; return; }
   opt_indep_support_end = tmp.back()+1;
@@ -169,7 +169,7 @@ void Counter::read_td_from_file(const std::string& fname) {
     std::ifstream file(fname);
     if (!file.is_open()) {
       std::cout << "ERROR: could not open file: " + fname << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
 
     std::string line;
@@ -422,7 +422,7 @@ void Counter::td_decompose() {
     cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;
     cerr << "ERROR: Counter should NOT be fed a disconnected CNF" << endl;
     assert(false);
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
 
   // run FlowCutter
@@ -987,7 +987,7 @@ FF Counter::outer_count() {
   if (!done && ret == CMSat::l_True) {
     if (weighted()) {
       cout << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     } else *cnt += *do_appmc_count();
   }
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
@@ -3710,12 +3710,12 @@ uint64_t Counter::buddy_count() {
 #else
 bool Counter::should_do_buddy_count() const {
   cout << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
-  exit(-1);
+  exit(EXIT_FAILURE);
   return false;
 }
 bool Counter::do_buddy_count() {
   cout << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
-  exit(-1);
+  exit(EXIT_FAILURE);
 }
 #endif
 
@@ -4019,12 +4019,12 @@ void Counter::check_all_cl_in_watchlists() const {
     if (!find_offs_in_watch(watches[cl[0]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[0]!!" << endl;
       assert(false);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     if (!find_offs_in_watch(watches[cl[1]].watch_list_, offs)) {
       cout << "ERROR: Did not find watch cl[1]!!" << endl;
       assert(false);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
   }
 }
@@ -4125,7 +4125,7 @@ void Counter::delete_cl(const ClauseOfs off){
 void Counter::new_vars(const uint32_t n) {
   if (num_vars_set) {
     cout << "ERROR: you can only call new_vars() once!" << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   sat_solver->new_vars(n);
 
@@ -4180,7 +4180,7 @@ bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
   }
   if (lits.empty()) {
     cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   for(const auto& l: lits) assert(l.var() <= nVars() && l.var() > 0);
   if (!remove_duplicates(lits)) return ok;
@@ -4203,7 +4203,7 @@ bool Counter::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
   }
   if (lits.empty()) {
     cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   for(const auto& l: lits) assert(l.var() <= nVars());
   if (!remove_duplicates(lits)) return ok;
@@ -4258,7 +4258,7 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
          << l << " opt_indep_support_end: " << opt_indep_support_end << endl
          << "If you KNOW that ALL variables are fully determined by the projection set,"
          " you can give '--allindep 1', and then you can give weights to anything." << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   verb_print(2, "Setting weight of " << l << " to " << *w);
   *weights[l.raw()] = *w;

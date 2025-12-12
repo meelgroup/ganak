@@ -158,7 +158,7 @@ struct Cube {
   Cube() = default;
   Cube(const Cube& o) {
     cnf = o.cnf;
-    *cnt = *o.cnt;
+    cnt = o.cnt->dup();
     enabled = o.enabled;
     symm = o.symm;
     lbd = o.lbd;
@@ -172,7 +172,7 @@ struct Cube {
   }
   Cube& operator=(const Cube& o) noexcept {
     cnf = o.cnf;
-    *cnt = *o.cnt;
+    cnt = o.cnt->dup();
     enabled = o.enabled;
     symm = o.symm;
     lbd = o.lbd;

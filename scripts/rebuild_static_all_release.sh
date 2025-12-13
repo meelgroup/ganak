@@ -13,7 +13,7 @@ cd ..
 cd cadiback/
 git checkout synthesis
 make clean
-./configure
+./configure --release
 make -j12
 cd ..
 

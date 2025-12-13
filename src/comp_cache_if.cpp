@@ -23,6 +23,6 @@ THE SOFTWARE.
 #include "comp_cache_if.hpp"
 
 namespace GanakInt {
-  CompCacheIF::CompCacheIF() {}
-  CompCacheIF::~CompCacheIF() {}
+  CompCacheIF::CompCacheIF() = default;
+  CompCacheIF::~CompCacheIF() = default;
 }

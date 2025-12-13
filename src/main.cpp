@@ -125,7 +125,7 @@ void add_ganak_options()
     add_arg2("-v", "--verb", conf.verb, atoi, "Verbosity");
     add_arg2("-s", "--seed", conf.seed, atoi, "Seed");
     program.add_argument("-v", "--version") \
-        .action([&](const auto&) {cout << print_version(); exit(0);}) \
+        .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);}) \
         .flag()
         .help("Print version and exit");
     add_arg("--mode", mode , atoi, R"delimiter(0=counting,
@@ -198,7 +198,7 @@ void add_ganak_options()
     add_arg("--rdbkeepused", conf.rdb_keep_used, atoi, "RDB keeps clauses that are used");
     add_arg("--consolidateeveryn", conf.consolidate_every_n, atoi, "Consolidate memory after every N learnt clause");
     add_arg("--lbd", conf.base_lbd_cutoff, atoi, "Initial LBD cutoff");
-    add_arg("--updatelbdcutoff", conf.update_lbd_cutoff, atoi, "Update lbd cutoff");
+    add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, atoi, "Update lbd cutoff");
 
     // Decision options
     add_arg("--polar", conf.polar_type, atoi, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
@@ -270,32 +270,32 @@ void parse_supported_options(int argc, char** argv) {
             cout << "Flexible Weighted Model Counter" << endl << endl
             << "ganak [options] inputfile" << endl;
             cout << program << endl;
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
     catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cout << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     if (bits_jobs < 0 || bits_jobs > 20) {
       cout << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     if (num_threads < -1) {
       cout << "ERROR: number of threads must not be less than -1" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     if (num_threads > 1024) {
       cout << "ERROR: number of threads must not be more than 1024" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     if (num_threads == 0) {
       cout << "ERROR: number of threads must not be 0" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
 }
 
@@ -314,9 +314,9 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
   if (in == nullptr) {
       std::cout << "ERROR! Could not open file '" << filename
       << "' for reading: " << strerror(errno) << endl;
-      std::exit(-1);
+      std::exit(EXIT_FAILURE);
   }
-  if (!parser.parse_DIMACS(in, true)) exit(-1);
+  if (!parser.parse_DIMACS(in, true)) exit(EXIT_FAILURE);
   #ifndef USE_ZLIB
   fclose(in);
   #else
@@ -335,7 +335,7 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
       if (s >= reader->nVars()) {
         cout << "ERROR: Sampling var " << s+1 << " is larger than number of vars in formula: "
           << reader->nVars() << endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
       }
       tmp.insert(s);
     }
@@ -352,10 +352,9 @@ vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
   return ganak_cl;
 }
 
-void print_vars(const vector<uint32_t>& vars) {
-  auto tmp = vars;
-  std::sort(tmp.begin(), tmp.end());
-  for(const auto& v: tmp) cout << v+1 << " ";
+void print_vars(vector<uint32_t> vars) {
+  std::sort(vars.begin(), vars.end());
+  for(const auto& v: vars) cout << v+1 << " ";
 }
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
@@ -615,7 +614,7 @@ int main(int argc, char *argv[]) {
     case 3:
         if (poly_nvars == -1) {
           cout << "c o [arjun] ERROR: Must provide number of polynomial vars for mode 3 via --npolyvars" << endl;
-          exit(-1);
+          exit(EXIT_FAILURE);
         }
         fg = std::make_unique<FGenPoly>(poly_nvars);
         break;
@@ -625,13 +624,13 @@ int main(int argc, char *argv[]) {
     case 5:
         if (prime_field == -1) {
           cout << "c o [arjun] ERROR: Must provide prime field for mode 5 via --prime" << endl;
-          exit(-1);
+          exit(EXIT_FAILURE);
         }
         fg = std::make_unique<FGenPrime>(prime_field);
         break;
     default:
         cout << "c o [arjun] ERROR: Unknown mode" << endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
   }
   ArjunNS::SimplifiedCNF cnf(fg);
 
@@ -641,19 +640,19 @@ int main(int argc, char *argv[]) {
     auto files = program.get<std::vector<std::string>>("inputfile");
     if (files.empty()) {
       cout << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     } else if (files.size() == 1) {
       const string& fname = files[0];
       parse_file(fname, &cnf);
     } else {
         cout << "[appmc] ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
   }
 
   if (cnf.get_weighted() && conf.do_buddy) {
     cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   cnf.clean_idiotic_mccomp_weights();
   cnf.check_sanity();

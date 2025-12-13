@@ -233,13 +233,23 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     std::cout << std::endl;
   }
 
+  // Since optional indep support cannot be provided, vars with weights must be in indep support
+  for (const auto& [lit, weight] : lit_weights) {
+    if (weight->is_one()) continue;
+    indep_support.insert(lit.var());
+  }
+
   auto worker = [&](uint64_t num) -> FF {
     ArjunNS::SimplifiedCNF cnf(fg);
     cnf.new_vars(nvars);
+    // Opt indep support is needed for literals with weights
     cnf.set_sampl_vars(ganak_to_cms_vars(indep_support));
     /* cnf.set_opt_sampl_vars(ganak_to_cms_vars(opt_indep_support)); */
-    for (const auto& [lit, weight] : lit_weights)
-      cnf.set_lit_weight(ganak_to_cms_lit(lit), weight->dup());
+    if (fg->weighted()) {
+      cnf.set_weighted(true);
+      for (const auto& [lit, weight] : lit_weights)
+        cnf.set_lit_weight(ganak_to_cms_lit(lit), weight->dup());
+    }
     for (const auto& cl : irred_cls) cnf.add_clause(ganak_to_cms_cl(cl));
 
     // Add unit clauses for centroid variable assignment

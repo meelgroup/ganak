@@ -6,14 +6,14 @@ cd ../../
 cd cadical/
 git checkout add_dynamic_lib
 make clean
-CXXFLAGS=-fPIC ./configure --competition
+./build_release.sh
 make -j12
 cd ..
 
 cd cadiback/
 git checkout synthesis
 make clean
-./configure
+./build_release.sh
 make -j12
 cd ..
 

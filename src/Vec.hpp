@@ -77,6 +77,18 @@ public:
       other.cap = 0;
       other.dat = nullptr;
     }
+    vec<T>& operator=(vec<T>&& other) noexcept {
+      if (this != &other) {
+        clear(true);
+        sz = other.sz;
+        cap = other.cap;
+        dat = other.dat;
+        other.sz = 0;
+        other.cap = 0;
+        other.dat = nullptr;
+      }
+      return *this;
+    }
     uint32_t size() const { return sz; }
     void shrink   (uint32_t nelems) {
         assert(nelems <= sz);

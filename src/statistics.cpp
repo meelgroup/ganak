@@ -34,13 +34,8 @@ using std::setprecision;
 
 using namespace GanakInt;
 
-static double in_mb(uint64_t bytes) {
+constexpr double in_mb(uint64_t bytes) {
   return (double)bytes/(double)(1024*1024);
-}
-
-static double safe_div(double a, double b) {
-  if (b == 0) return 0;
-  else return a/b;
 }
 
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
@@ -145,10 +140,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);
   verb_print(1, "cache entries K                " << (cache->get_num_entries_used()/1000ULL));
-  verb_print(1, "MB cache                       "
-    << setprecision(3) << in_mb(cache_bytes_memory_usage()) << " "
-    << setprecision(3) << in_mb(cache->get_num_entries_used()*72) << " "
-  );
+  verb_print(1, "MB cache                       " << setprecision(3) << in_mb(cache_bytes_memory_usage()));
+
   verb_print(1, "cache K (lookup/ stores/ hits/ dels) "
     << std::left
     << setw(6) << (num_cache_look_ups/(1000ULL)) << " "
@@ -159,9 +152,6 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setprecision(2) << setw(9) << std::left
     << safe_div(num_cache_look_ups,(1000.0*(cpu_time()-counter->get_start_time())))
   );
-  verb_print(1, "cache pollutions call/removed  "
-    << cache_pollutions_called << "/"
-    << cache_pollutions_removed);
   verb_print(1, "cache miss rate                "
     << setprecision(3) << cache_miss_rate());
   verb_print(1, "avg hit/store num vars "

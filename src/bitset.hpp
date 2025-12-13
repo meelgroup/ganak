@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include <cstring>
 #include <cassert>
 
-#define BITS 64
+constexpr int BITS = 64;
 
 namespace sspp {
 class Bitset {

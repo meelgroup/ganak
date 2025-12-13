@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "ganak.hpp"
 #include "counter.hpp"
 #include "outer_counter.hpp"
+#include <cstdlib>
 #include <set>
 
 using namespace GanakInt;
@@ -193,6 +194,14 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
 /* } */
 DLL_PUBLIC void Ganak::set_indep_support(const std::set<uint32_t>& indeps) {
   CDat* c = (CDat*)cdat;
+  for(const auto& v: indeps) {
+    if (v > c->nvars) {
+      cerr << "ERROR: setting independent support variable " << v
+           << " larger than number of variables: " << c->nvars << endl;
+      assert(false);
+      exit(EXIT_FAILURE);
+    }
+  }
   c->indeps = indeps;
 }
 DLL_PUBLIC bool Ganak::add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd) {
@@ -211,10 +220,24 @@ DLL_PUBLIC bool Ganak::add_irred_cl(const std::vector<GanakInt::Lit>& lits) {
 }
 DLL_PUBLIC void Ganak::set_optional_indep_support(const std::set<uint32_t>& indeps) {
   CDat* c = (CDat*)cdat;
+  for(const auto& v: indeps) {
+    if (v > c->nvars) {
+      cerr << "ERROR: setting optional independent support variable " << v
+           << " larger than number of variables: " << c->nvars << endl;
+      assert(false);
+      exit(EXIT_FAILURE);
+    }
+  }
   c->opt_indeps = indeps;
 }
 DLL_PUBLIC void Ganak::set_lit_weight(const GanakInt::Lit l, const FF& w) {
   CDat* c = (CDat*)cdat;
+  if (c->opt_indeps.count(l.var()) == 0 && c->indeps.count(l.var()) == 0) {
+    cerr << "ERROR: setting weight for literal " << (l.sign() ? "" : "-") << l.var()
+         << " which is not in independent or optional independent support" << endl;
+    assert(false);
+    exit(EXIT_FAILURE);
+  }
   c->lit_weights[l] = w->dup();
 }
 DLL_PUBLIC void Ganak::new_vars(const uint32_t n) {

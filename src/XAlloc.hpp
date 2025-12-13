@@ -26,7 +26,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 inline void* xrealloc(void* ptr, size_t size) {
   void* mem = realloc(ptr, size);
   if (mem == nullptr && errno == ENOMEM) {
-    exit(-1);
+    exit(EXIT_FAILURE);
   } else {
     return mem;
   }

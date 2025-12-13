@@ -60,16 +60,13 @@ void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
       std::cerr << "ERROR: memory manager can't handle the load."
       << " size: " << size << " needed: " << needed << " newcapacity: " << newcapacity
       << endl;
-      std::cout << "ERROR: memory manager can't handle the load."
-      << " size: " << size << " needed: " << needed << " newcapacity: " << newcapacity
-      << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
 
     uint32_t* new_data_start = (uint32_t*)realloc(data_start , newcapacity*sizeof(uint32_t));
     if (new_data_start == nullptr) {
       std::cerr << "ERROR: while reallocating clause space" << endl;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     data_start = new_data_start;
     capacity = newcapacity;
@@ -165,10 +162,10 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
   //1) There is too much memory allocated. Re-allocation will save space
   //2) There is too much empty, unused space (>30%)
   if (!force
-      && (float_div(currently_used_sz, size) > 0.8 || capacity < (100ULL*1000ULL))
+      && (safe_div(currently_used_sz, size) > 0.8 || capacity < (100ULL*1000ULL))
   ) {
     verb_print(1, "[mem] Not consolidating memory. Used sz/sz: " <<
-        float_div(currently_used_sz, size)
+        safe_div(currently_used_sz, size)
         << " Currently used size: " << currently_used_sz/1000 << " K");
     return false;
   }

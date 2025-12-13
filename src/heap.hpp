@@ -31,9 +31,9 @@ class Heap {
     vec<int> heap;     // Heap of integers
     vec<int> indices;  // Each integers position (index) in the Heap
 
-    inline int left  (int i) { return i * 2 + 1; }
-    inline int right (int i) { return (i + 1) * 2; }
-    inline int parent(int i) { return (i - 1) >> 1; }
+    static constexpr int left  (int i) { return i * 2 + 1; }
+    static constexpr int right (int i) { return (i + 1) * 2; }
+    static constexpr int parent(int i) { return (i - 1) >> 1; }
     void percolateUp(int i)
     {
         int x  = heap[i];
@@ -100,6 +100,7 @@ public:
     }
 
     int removeMin() {
+        assert(!empty());
         int x            = heap[0];
         heap[0]          = heap.back();
         indices[heap[0]] = 0;

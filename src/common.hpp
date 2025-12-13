@@ -136,7 +136,6 @@ using FF = std::unique_ptr<Field>;
 #define all_vars_in_comp(comp, v) for(auto v = (comp).vars_begin(); *v != sentinel; v++)
 #define all_cls_in_comp(comp, c) for(auto c = (comp).cls_begin(); *c != sentinel; c++)
 #define all_lits(x) for(uint32_t x = 2; x < (nVars()+1)*2; x++)
-#define unif_uint_dist(x,y) std::uniform_int_distribution<> x(0, y)
 
 #define release_assert(a) \
     do { \
@@ -149,11 +148,9 @@ using FF = std::unique_ptr<Field>;
 
 namespace GanakInt {
 
-inline double float_div(const double a, const double b) {
-    if (b != 0)
-        return a/b;
-
-    return 0;
+constexpr double safe_div(double a, double b) {
+  if (b == 0) return 0;
+  else return a/b;
 }
 
 inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {
@@ -177,11 +174,14 @@ inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) 
   return ss.str();
 }
 inline uint32_t rnd_uint(std::mt19937_64& mtrand, const uint32_t maximum) {
-    unif_uint_dist(u, maximum);
-    return u(mtrand);
+    std::uniform_int_distribution<uint32_t> dist(0, maximum);
+    return dist(mtrand);
 }
 
 inline uint32_t mlog2(uint32_t v) {
+  #if defined(__GNUC__) || defined(__clang__)
+      return v == 0 ? 0 : 31 - __builtin_clz(v);
+  #else
   // taken from
   // http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
   const signed char LogTable256[256] = {
@@ -201,6 +201,7 @@ inline uint32_t mlog2(uint32_t v) {
     r = (t = (v >> 8)) ? 8 + LogTable256[t] : LogTable256[v];
   }
   return r;
+#endif
 }
 
 struct BPCSizes {

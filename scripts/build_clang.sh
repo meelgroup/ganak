@@ -1,3 +1,3 @@
 rm -rf CMake* src cmake* ganak* sharp* Make*
-CXX=clang++ cmake ..
+cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang ..
 make -j4

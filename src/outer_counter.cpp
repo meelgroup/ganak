@@ -233,6 +233,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     std::cout << std::endl;
   }
 
+  // Since optional indep support cannot be provided, vars with weights must be in indep support
   for (const auto& [lit, weight] : lit_weights) {
     if (weight->is_one()) continue;
     indep_support.insert(lit.var());

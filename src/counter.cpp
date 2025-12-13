@@ -1098,16 +1098,17 @@ void Counter::count_loop() {
         if (state == GO_AGAIN) goto start1;
         if (state == BACKTRACK) goto backtrack;
       }
+      // If we successfully propagated, we're in RESOLVED state
+      // (chrono_check may have resolved without updating state)
+      if (state != BACKTRACK && state != PROCESS_COMPONENT) state = RESOLVED;
       if (state == BACKTRACK) goto backtrack;
       if (state == RESOLVED && restart_if_needed()) goto end;
 
-      // we are in RESOLVED or PROCESS_COMPONENT state, continue.
-      // first time bug: old/out-ganak-6870225.pbs101-9/mc2023_track1_174.cnf.gz.out_ganak
-      //       which is cc5fbdbad21351745d004b4b39e3f73244a42ecd
-      //       against, say: 71ba4c4eaf19eb74ec9fb3a2e6701ebebe71b9e5
-      //        --> seems like SAT solver, chrono work...
-      if (state != PROCESS_COMPONENT && state != RESOLVED) cout << "ERROR: state: " << state << endl;
-      assert(state == PROCESS_COMPONENT || state == RESOLVED);
+      if (state != PROCESS_COMPONENT && state != RESOLVED) {
+        cout << "ERROR: state: " << state << endl;
+        assert(false);
+        exit(EXIT_FAILURE);
+      }
     }
 
     backtrack:

@@ -43,6 +43,10 @@ class CompArchetype {
 public:
   CompArchetype() = default;
   ~CompArchetype() { delete[] raw_data; }
+  CompArchetype(const CompArchetype&) = delete;
+  CompArchetype(const CompArchetype&&) = delete;
+  CompArchetype& operator=(const CompArchetype&) = delete;
+  CompArchetype& operator=(const CompArchetype&&) = delete;
 
   // called every time we want to deal with a new component
   void re_initialize(StackLevel &stack_level, const Comp &super_comp) {

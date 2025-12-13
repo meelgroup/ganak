@@ -80,9 +80,15 @@ public:
     data = new uint32_t[data_size];
     std::memcpy(data, other.data, data_size * sizeof(uint32_t));
   }
-  DiffPackedComp(DiffPackedComp&& other) noexcept : data(other.data), data_size(other.data_size) {
-    other.data = nullptr;
-    other.data_size = 0;
+  DiffPackedComp& operator=(DiffPackedComp&& other) noexcept {
+    if (this != &other) {
+      delete[] data;
+      data = other.data;
+      data_size = other.data_size;
+      other.data = nullptr;
+      other.data_size = 0;
+    }
+    return *this;
   }
 
   uint64_t comp_bytes() const {

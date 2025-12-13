@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <algorithm>
 #include <iostream>
 #include <limits>
 

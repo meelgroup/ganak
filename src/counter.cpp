@@ -1284,7 +1284,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
       uint64_t todo = int64_t(dec_level()+1)*int64_t(nVars()+1) - vars_act_dec.size();
       vars_act_dec.insert(vars_act_dec.end(), todo, 0);
     }
-    at = vars_act_dec.data()+int64_t(nVars()+1)*dec_level();
+    at = vars_act_dec.data()+int64_t(nVars()+1)*int64_t(dec_level());
     vars_act_dec_num++;
     at[0] = vars_act_dec_num;
     VERBOSE_DEBUG_DO(cout << "(at[0] = " << at[0] << ") ");

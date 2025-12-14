@@ -551,7 +551,7 @@ void Counter::compute_minfill_score() {
   if (minfill_weight < conf.minfill_minweight) minfill_weight = conf.minfill_minweight;
   if (minfill_weight > conf.minfill_maxweight) minfill_weight = conf.minfill_maxweight;
 
-  verb_print(1, "[minfill] max fill: " << max_fill
+  verb_print(3, "[minfill] max fill: " << max_fill
     << " unassigned: " << num_unassigned
     << " ratio: " << std::fixed << std::setprecision(3) << ratio
     << " weight: " << minfill_weight);
@@ -1407,7 +1407,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool ignore_minfi
   is_indep = false;
   bool couldnt_find_indep = false; // only used when also_nonindep is true
 
-  if (!ignore_minfill && conf.do_minfill && (dec_level() < 4 || decisions.empty()))
+  if (!ignore_minfill && conf.do_minfill && (dec_level() < conf.minfill_dec_cutoff || decisions.empty()))
     compute_minfill_score();
 
   VERBOSE_DEBUG_DO(cout << "decision level: " << dec_level() << " var options: ");

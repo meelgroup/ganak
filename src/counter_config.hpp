@@ -97,6 +97,7 @@ struct CounterConfiguration {
   std::string td_read_file = "";
 
   bool do_minfill = 1;
+  int minfill_dec_cutoff = 6;
   double minfill_maxweight = 60;
   double minfill_minweight = 7;
   double minfill_divider = 1e3;

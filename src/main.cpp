@@ -194,6 +194,7 @@ void add_ganak_options()
 
     // Minfill options
     add_arg("--minfill", conf.do_minfill, atoi, "Run minfill heuristic");
+    add_arg("--minfilldec", conf.minfill_dec_cutoff, atoi, "Recompute until this dec level");
     add_arg("--minfillmaxw", conf.minfill_maxweight, atof, "Minfill max weight");
     add_arg("--minfillminw", conf.minfill_minweight, atof, "Minfill min weight");
     add_arg("--minfilldiv", conf.minfill_divider, atof, "Minfill divider");

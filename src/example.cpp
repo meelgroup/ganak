@@ -48,23 +48,23 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
   counter.new_vars(cnf.nVars());
   set<uint32_t> tmp;
-  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
   counter.set_indep_support(tmp);
   if (cnf.get_opt_sampl_vars_set()) {
     tmp.clear();
-    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
     counter.set_optional_indep_support(tmp);
   }
-  if (cnf.weighted) {
-    for(const auto& t: cnf.weights) {
+  if (cnf.get_weighted()) {
+    for(const auto& t: cnf.get_weights()) {
       counter.set_lit_weight(Lit(t.first+1, false), t.second.pos);
       counter.set_lit_weight(Lit(t.first+1, true), t.second.neg);
     }
   }
 
   // Add clauses
-  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
 constexpr CMSat::Lit mklit(int lit) {
@@ -91,8 +91,8 @@ int main() {
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
 
-  auto cnt = cnf.multiplier_weight->dup();
-  if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
+  auto cnt = cnf.get_multiplier_weight()->dup();
+  if (!cnf.get_multiplier_weight()->is_zero()) *cnt *= *counter.count();
   cout << "count is: " << std::fixed << *cnt << endl;
   return 0;
 }

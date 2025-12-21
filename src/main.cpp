@@ -362,24 +362,24 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
   counter.new_vars(cnf.nVars());
 
   set<uint32_t> tmp;
-  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
   counter.set_indep_support(tmp);
   if (cnf.get_opt_sampl_vars_set()) {
     tmp.clear();
-    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
   }
   counter.set_optional_indep_support(tmp);
   if (conf.verb) counter.print_indep_distrib();
 
-  if (cnf.weighted) {
-    for(const auto& t: cnf.weights) {
+  if (cnf.get_weighted()) {
+    for(const auto& t: cnf.get_weights()) {
       counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
       counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
     }
   }
 
-  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
@@ -480,14 +480,14 @@ void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t ele
 }
 
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
-    FF cnt = cnf.multiplier_weight->dup();
-    if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
+    FF cnt = cnf.get_multiplier_weight()->dup();
+    if (!cnf.get_multiplier_weight()->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 
     string out = "c o type ";
     if (cnf.get_projected()) out+="p";
-    if (cnf.weighted) out += "wmc";
+    if (cnf.get_weighted()) out += "wmc";
     else out += "mc";
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
@@ -664,9 +664,9 @@ int main(int argc, char *argv[]) {
   cnf.remove_equiv_weights();
   if (strip_opt_indep) cnf.strip_opt_sampling_vars();
   if (conf.verb >= 2) {
-    cout << "c o sampl_vars: "; print_vars(cnf.sampl_vars); cout << endl;
+    cout << "c o sampl_vars: "; print_vars(cnf.get_sampl_vars()); cout << endl;
     if (cnf.get_opt_sampl_vars_set()) {
-      cout << "c o opt sampl_vars: "; print_vars(cnf.opt_sampl_vars); cout << endl;
+      cout << "c o opt sampl_vars: "; print_vars(cnf.get_opt_sampl_vars()); cout << endl;
     }
   }
 

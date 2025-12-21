@@ -135,23 +135,23 @@ void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, T& counter) {
   counter.new_vars(cnf.nVars());
 
   set<uint32_t> tmp;
-  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
   counter.set_indep_support(tmp);
   if (cnf.get_opt_sampl_vars_set()) {
     tmp.clear();
-    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
   }
   counter.set_optional_indep_support(tmp);
 
-  if (cnf.weighted) {
-    for(const auto& t: cnf.weights) {
+  if (cnf.get_weighted()) {
+    for(const auto& t: cnf.get_weights()) {
       counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
       counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
     }
   }
 
-  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
 FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
@@ -264,7 +264,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
     if (true) run_arjun(cnf);
-    if (cnf.multiplier_weight != fg->zero()) {
+    if (cnf.get_multiplier_weight() != fg->zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
       auto counter = std::make_unique<Ganak>(local_conf, fg);
@@ -276,7 +276,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
         max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
         count_is_approximate |= counter->get_is_approximate();
       }
-      *ret *= *cnf.multiplier_weight;
+      *ret *= *cnf.get_multiplier_weight();
       return ret;
     } else {
       return fg->zero();

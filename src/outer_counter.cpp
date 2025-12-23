@@ -131,7 +131,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 
 template<class T>
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, T& counter) {
-  cnf.check_sanity();
+  cnf.check_cnf_sampl_sanity();
   counter.new_vars(cnf.nVars());
 
   set<uint32_t> tmp;

@@ -358,7 +358,7 @@ void print_vars(vector<uint32_t> vars) {
 }
 
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
-  cnf.check_sanity();
+  cnf.check_cnf_sampl_sanity();
   counter.new_vars(cnf.nVars());
 
   set<uint32_t> tmp;
@@ -655,7 +655,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   cnf.clean_idiotic_mccomp_weights();
-  cnf.check_sanity();
+  cnf.check_cnf_sampl_sanity();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun

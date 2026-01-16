@@ -91,7 +91,6 @@ double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
-int arjun_autarkies = 0;
 int mode = 0;
 int poly_nvars = -1;
 int prime_field = -1;
@@ -157,7 +156,6 @@ void add_ganak_options()
     add_arg("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
     add_arg("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
     add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
-    add_arg("--arjunautarkies", arjun_autarkies, atoi, "How much autarky for Arjun to do");
     add_arg("--bce", etof_conf.do_bce, atoi, "Do static BCE");
     add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
@@ -397,7 +395,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
-  arjun.set_autarkies(arjun_autarkies);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);

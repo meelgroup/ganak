@@ -343,6 +343,7 @@ find_package(arjun CONFIG REQUIRED)
 find_package(sbva CONFIG REQUIRED)
 find_package(breakid CONFIG REQUIRED)
 find_package(approxmc CONFIG REQUIRED)
+find_package(EvalMaxSAT REQUIRED)
 
 message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
 message(STATUS "CryptoMiniSat5 static lib:  ${CRYPTOMINISAT5_STATIC_LIBRARIES}")

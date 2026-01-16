@@ -192,6 +192,14 @@ void add_ganak_options()
     add_arg("--tdreadfile", conf.td_read_file, string, "Read TD scores from this file");
     add_arg("--tdvis", conf.td_visualize_dot_file, string, "Visualize the TD into this file in DOT format");
 
+    // Minfill options
+    add_arg("--minfill", conf.do_minfill, atoi, "Run minfill heuristic");
+    add_arg("--minfilldec", conf.minfill_dec_cutoff, atoi, "Recompute until this dec level");
+    add_arg("--minfillmaxw", conf.minfill_maxweight, atof, "Minfill max weight");
+    add_arg("--minfillminw", conf.minfill_minweight, atof, "Minfill min weight");
+    add_arg("--minfilldiv", conf.minfill_divider, atof, "Minfill divider");
+    add_arg("--minfillexpmult", conf.minfill_exp_mult, atof, "Minfill exponential multiplier");
+
     // Clause DB options
     add_arg("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");
     add_arg("--rdbeveryn", conf.reduce_db_everyN, atoi, "Reduce the clause DB every N conflicts");
@@ -202,7 +210,7 @@ void add_ganak_options()
 
     // Decision options
     add_arg("--polar", conf.polar_type, atoi, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
-    add_arg("--decide", conf.decide, atoi, "ignore or not ignore TD");
+    add_arg("--decide", conf.decide, atoi, "0=TD only, 1=ignore TD, 2=minfill only, 3=TD+minfill");
     add_arg("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
     add_arg("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
     add_arg("--actscorediv", conf.act_score_divisor, atof, "Activity score divisor");

@@ -437,6 +437,126 @@ void Counter::td_decompose() {
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
 }
 
+void Counter::compute_minfill_score() {
+  auto nodes = opt_indep_support_end-1;
+  if (!conf.do_td_use_opt_indep) nodes = indep_support_end-1;
+
+  // Compute minfill scores for all variables
+  // Score is based on the degree and potential fill-in when eliminating the variable
+  // Takes into account current assignments: satisfied clauses are skipped,
+  // and only unassigned variables contribute to the graph
+
+  // Build adjacency lists for each variable
+  vector<set<uint32_t>> adj(nodes + 1);
+
+  // Add edges from binary clauses
+  all_lits(i) {
+    Lit l(i/2, i%2 == 0);
+    for(const auto& l2: watches[l].binaries) {
+      if (l2.red()) continue;
+      if (l.var() > nodes || l2.lit().var() > nodes) continue;
+
+      // Skip if clause is already satisfied
+      if (val(l) == T_TRI || val(l2.lit()) == T_TRI) continue;
+
+      // Only add edge if both variables are unassigned
+      if (val(l.var()) == X_TRI && val(l2.lit().var()) == X_TRI && l.var() != l2.lit().var()) {
+        adj[l.var()].insert(l2.lit().var());
+        adj[l2.lit().var()].insert(l.var());
+      }
+    }
+  }
+
+  // Add edges from long clauses
+  for(const auto& off: long_irred_cls) {
+    Clause& cl = *alloc->ptr(off);
+
+    // Check if clause is satisfied and collect unassigned variables
+    bool satisfied = false;
+    vector<uint32_t> unassigned_vars;
+
+    for(uint32_t i = 0; i < cl.sz; i++) {
+      if (val(cl[i]) == T_TRI) {
+        satisfied = true;
+        break;
+      }
+      if (cl[i].var() <= nodes && val(cl[i].var()) == X_TRI) {
+        unassigned_vars.push_back(cl[i].var());
+      }
+    }
+
+    // Skip if clause is satisfied
+    if (satisfied) continue;
+
+    // Add edges between all pairs of unassigned variables
+    for(size_t i = 0; i < unassigned_vars.size(); i++) {
+      for(size_t j = i+1; j < unassigned_vars.size(); j++) {
+        uint32_t v1 = unassigned_vars[i];
+        uint32_t v2 = unassigned_vars[j];
+        adj[v1].insert(v2);
+        adj[v2].insert(v1);
+      }
+    }
+  }
+
+  // Compute minfill score for each variable
+  vector<uint32_t> fill_scores(nodes + 1, 0);
+  uint32_t max_fill = 0;
+  uint32_t num_unassigned = 0;
+
+  for(uint32_t v = 1; v <= nodes; v++) {
+    // Skip assigned variables
+    if (val(v) != X_TRI) continue;
+
+    num_unassigned++;
+
+    // Count how many edges would need to be added between neighbors of v
+    uint32_t fill_count = 0;
+    vector<uint32_t> neighbors(adj[v].begin(), adj[v].end());
+
+    for(size_t i = 0; i < neighbors.size(); i++) {
+      for(size_t j = i+1; j < neighbors.size(); j++) {
+        uint32_t n1 = neighbors[i];
+        uint32_t n2 = neighbors[j];
+        // If edge doesn't exist between neighbors, it would need to be added
+        if (adj[n1].find(n2) == adj[n1].end()) {
+          fill_count++;
+        }
+      }
+    }
+
+    fill_scores[v] = fill_count;
+    if (fill_count > max_fill) max_fill = fill_count;
+  }
+
+  // Normalize scores: lower fill-in gets higher score
+  // We invert so that variables with low fill-in get high scores
+  for(uint32_t v = 1; v <= nodes; v++) {
+    // Skip assigned variables
+    if (val(v) != X_TRI) {
+      minfill_score[v] = 0.0;
+      continue;
+    }
+
+    if (max_fill > 0) {
+      minfill_score[v] = (double)(max_fill - fill_scores[v]) / (double)max_fill;
+    } else {
+      minfill_score[v] = 1.0;
+    }
+  }
+
+  // Compute weight similar to TD, using unassigned variables
+  double ratio = num_unassigned > 0 ? (double)max_fill / (double)num_unassigned : 0.0;
+  minfill_weight = exp(ratio * conf.minfill_exp_mult) / conf.minfill_divider;
+  if (minfill_weight < conf.minfill_minweight) minfill_weight = conf.minfill_minweight;
+  if (minfill_weight > conf.minfill_maxweight) minfill_weight = conf.minfill_maxweight;
+
+  verb_print(3, "[minfill] max fill: " << max_fill
+    << " unassigned: " << num_unassigned
+    << " ratio: " << std::fixed << std::setprecision(3) << ratio
+    << " weight: " << minfill_weight);
+}
+
 // Self-check count without restart with CMS only
 FF Counter::check_count_norestart_cms(const Cube& c) {
   verb_print(1, "Checking cube count with CMS (no verb, no restart)");
@@ -1007,6 +1127,10 @@ vector<Cube> Counter::one_restart_count() {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
   }
+  if (conf.do_minfill) {
+    minfill_score.clear();
+    minfill_score.resize(nVars()+1, 0);
+  }
   count_loop();
   if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
   return mini_cubes;
@@ -1190,8 +1314,10 @@ void Counter::decide_lit() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   switch (conf.decide) {
-    case 0: v = find_best_branch(false, !conf.do_use_sat_solver); break;
-    case 1: v = find_best_branch(true, !conf.do_use_sat_solver); break;
+    case 0: v = find_best_branch(false, true, !conf.do_use_sat_solver); break;  // TD only
+    case 1: v = find_best_branch(true, true, !conf.do_use_sat_solver); break;   // ignore TD and minfill
+    case 2: v = find_best_branch(true, false, !conf.do_use_sat_solver); break;  // minfill only
+    case 3: v = find_best_branch(false, false, !conf.do_use_sat_solver); break; // TD+minfill
     default: assert(false);
   }
 
@@ -1215,25 +1341,28 @@ void Counter::decide_lit() {
 }
 
 // The higher, the better. It is never below 0.
-double Counter::score_of(const uint32_t v, bool ignore_td) const {
+double Counter::score_of(const uint32_t v, bool ignore_td, bool ignore_minfill) const {
   bool print = false;
   /* if (stats.decisions % 40000 == 0) print = 1; */
   /* print = true; */
   /* print = false; */
   double act_score = 0;
   double td_score = 0;
+  double minfill_sc = 0;
   double freq_score = 0;
 
   if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
+  if (!minfill_score.empty() && !ignore_minfill) minfill_sc = minfill_weight*minfill_score[v];
   act_score = var_act(v)/conf.act_score_divisor;
   freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
-  double score = act_score+td_score+freq_score;
+  double score = act_score+td_score+minfill_sc+freq_score;
   if (print) cout << "v: " << setw(4) << v
     << setw(3) << " conflK: " << stats.conflicts/1000
     << setw(5) << " decK: " << stats.decisions/1000
     << setw(6) << " act_score: " << act_score/score
     << setw(6) << " freq_score: " << freq_score/score
     << setw(6) << " td_score: " << td_score/score
+    << setw(6) << " minfill_score: " << minfill_sc/score
     << setw(6) << " total: " << score
     << setw(6) << endl;
 
@@ -1269,7 +1398,7 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
   return -1*std::max<int32_t>({w[0],w[1]})*w[0]*w[1];
 }
 
-uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_nonindep) {
+uint32_t Counter::find_best_branch(const bool ignore_td, const bool ignore_minfill, const bool also_nonindep) {
   last_dec_candidates = 0;
   bool only_optional_indep = true;
   uint32_t best_var = 0;
@@ -1277,6 +1406,9 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   uint64_t* at = nullptr;
   is_indep = false;
   bool couldnt_find_indep = false; // only used when also_nonindep is true
+
+  if (!ignore_minfill && conf.do_minfill && (dec_level() < conf.minfill_dec_cutoff || decisions.empty()))
+    compute_minfill_score();
 
   VERBOSE_DEBUG_DO(cout << "decision level: " << dec_level() << " var options: ");
   if (weighted()) {
@@ -1315,7 +1447,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
-    else score = score_of(v, ignore_td) ;
+    else score = score_of(v, ignore_td, ignore_minfill) ;
     if (best_var == 0 || score > best_var_score) {
       best_var = v;
       best_var_score = score;

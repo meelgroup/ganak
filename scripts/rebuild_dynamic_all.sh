@@ -4,41 +4,34 @@ set -e
 cd ../../
 
 cd cadical/
-git checkout add_dynamic_lib
 make clean
 ./build_norm.sh
 make -j12
 cd ..
 
 cd cadiback/
-git checkout synthesis
 make clean
 ./build_norm.sh
 make -j12
 cd ..
 
 cd breakid/build/
-git checkout master
 ./build_norm.sh
 cd ../../
 
 cd cryptominisat/build/
-git checkout master
 ./build_norm.sh
 cd ../../
 
 cd sbva/build/
-git checkout master
 ./build_norm.sh
 cd ../../
 
 cd arjun/build/
-git checkout master
 ./build_norm.sh
 cd ../../
 
 cd approxmc/build/
-git checkout master
 rm -f build_*.sh
 ln -s ../scripts/build_scripts/build_*.sh .
 ./build_norm.sh

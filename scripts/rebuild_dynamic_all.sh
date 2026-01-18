@@ -27,6 +27,10 @@ cd sbva/build/
 ./build_norm.sh
 cd ../../
 
+cd EvalMaxSAT/build/
+./build_norm.sh
+cd ../../
+
 cd arjun/build/
 ./build_norm.sh
 cd ../../

@@ -67,7 +67,6 @@ def gnuplot_name_cleanup(name: str) -> str:
     name = re.sub(r'\"', '', name)
     # replace multiple underscores or dashes with a single one
     name = re.sub(r'_', '=', name)
-    print(name)
     return name
 
 versions = get_versions()
@@ -533,6 +532,8 @@ only_dirs = [
             # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
             # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
             "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
+            # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
+            "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
 
             ]
 # only_dirs = ["out-ganak-6828273"]

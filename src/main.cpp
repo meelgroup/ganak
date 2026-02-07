@@ -150,6 +150,7 @@ void add_ganak_options()
     add_arg("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
     add_arg("--puura", do_puura, atoi, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
+    add_arg("--puuraautarky", etof_conf.do_autarky, atoi, "Do autarky in Puura");
     add_arg("--arjuniter1", simp_conf.iter1, atoi, "Arjun's iter1");
     add_arg("--arjuniter2", simp_conf.iter2, atoi, "Arjun's iter2");
     add_arg("--arjunprobe", do_probe_based, atoi, "Probe based arjun");

@@ -3,11 +3,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     arjun = {
-      url = "github:meelgroup/arjun/master";
+      url = "github:meelgroup/arjun/aig-shared-ptr-better-fix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cryptominisat = {
-      url = "github:msoos/cryptominisat/master";
+      url = "github:msoos/cryptominisat/working-on-synth";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sbva = {
@@ -15,11 +15,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     approxmc = {
-      url = "github:meelgroup/approxmc/master";
+      url = "github:meelgroup/approxmc/synth";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     breakid = {
       url = "github:meelgroup/breakid/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    evalmaxsat = {
+      url = "github:meelgroup/EvalMaxSAT/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -33,6 +37,7 @@
       breakid,
       cryptominisat,
       sbva,
+      evalmaxsat,
     }:
     let
       inherit (nixpkgs) lib;
@@ -57,6 +62,7 @@
           approxmc,
           python3,
           python3Packages,
+          evalmaxsat,
         }:
         stdenv.mkDerivation {
           name = "ganak";
@@ -77,6 +83,7 @@
             sbva
             breakid
             approxmc
+            evalmaxsat
           ];
           src = ./.;
         };
@@ -109,6 +116,7 @@
             sbva = sbva.packages.${system}.sbva;
             breakid = breakid.packages.${system}.breakid;
             approxmc = approxmc.packages.${system}.approxmc;
+            evalmaxsat = evalmaxsat.packages.${system}.evalmaxsat;
           };
         in
         {

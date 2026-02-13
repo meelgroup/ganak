@@ -70,7 +70,7 @@ jobs:
     - name: Install mpfi for Mac
       if: contains(matrix.os, 'macos')
       run: |
-        wget https://perso.ens-lyon.fr/nathalie.revol/softwares/mpfi-1.5.4.tar.gz
+        wget https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
         tar xzf mpfi-1.5.4.tar.gz
         cd mpfi-1.5.4
         ./configure --enable-static --enable-shared

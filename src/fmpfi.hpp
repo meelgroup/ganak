@@ -130,7 +130,7 @@ public:
         char* r_str = nullptr;
         mpfr_asprintf(&l_str, "%.8Re", left);
         mpfr_asprintf(&r_str, "%.8Re", right);
-        os << "[" << l_str << ", " << r_str << "]";
+        os << "[ " << l_str << " " << r_str << " ]";
         mpfr_free_str(l_str);
         mpfr_free_str(r_str);
         mpfr_clear(left);

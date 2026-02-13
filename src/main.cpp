@@ -449,7 +449,7 @@ void print_log(const mpfi_t& val, string extra = "") {
     mpfi_get_left(left, val);
     mpfi_get_right(right, val);
     print_log(left, extra + " left bound");
-    print_log(right, extra + "right bound");
+    print_log(right, extra + " right bound");
     mpfr_clear(left);
     mpfr_clear(right);
 }
@@ -580,7 +580,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         else cout << "c s type wmc" << endl;
         const FMpfi* od = dynamic_cast<const FMpfi*>(ptr);
         print_log(od->val);
-        cout << "c s exact quadruple float interval " << od << endl;
+        cout << "c s exact quadruple float interval " << *od << endl;
 
       }
     }
@@ -633,6 +633,9 @@ int main(int argc, char *argv[]) {
         break;
     case 7:
         fg = std::make_unique<ArjunNS::FGenMpfr>(mpfr_precision);
+        break;
+    case 8:
+        fg = std::make_unique<FGenMpfi>(mpfr_precision);
         break;
     case 2:
         fg = std::make_unique<FGenComplex>();

@@ -32,13 +32,13 @@ public:
     mpfr_t real;
     mpfr_t imag;
 
-    explicit MPFComplex(uint16_t prec) {
+    explicit MPFComplex(mpfr_prec_t prec) {
       mpfr_init2(real, prec);
       mpfr_init2(imag, prec);
       mpfr_set_si(real, 0, MPFR_RNDN);
       mpfr_set_si(imag, 0, MPFR_RNDN);
     }
-    explicit MPFComplex(int r, int i, uint16_t prec) {
+    explicit MPFComplex(long r, long i, mpfr_prec_t prec) {
       mpfr_init2(real, prec);
       mpfr_init2(imag, prec);
       mpfr_set_si(real, r, MPFR_RNDN);
@@ -245,7 +245,7 @@ public:
 
 class FGenMPFComplex final : public CMSat::FieldGen {
 public:
-    uint16_t prec;
+    mpfr_prec_t prec;
     ~FGenMPFComplex() final = default;
     explicit FGenMPFComplex(uint16_t _prec) : prec(_prec) {}
     std::unique_ptr<CMSat::Field> zero() const final {

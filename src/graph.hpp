@@ -23,7 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "utils.hpp"
-#include "bitset.hpp"
+#include <treedecomp/bitset.hpp>
 
 namespace sspp {
 

@@ -32,6 +32,7 @@ include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
 include_directories( ${FLINT_INCLUDE_DIRS} )
 include_directories( ${EVALMAXSAT_INCLUDE_DIRS} )
+include_directories( ${TREEDECOMP_INCLUDE_DIRS} )
 
 if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
@@ -59,12 +60,7 @@ SET(SOURCES
     outer_counter.cpp
     statistics.cpp
     clauseallocator.cpp
-    IFlowCutter.cpp
     graph.cpp
-    flow-cutter-pace17/src/tree_decomposition.cpp
-    flow-cutter-pace17/src/cell.cpp
-    flow-cutter-pace17/src/greedy_order.cpp
-    TreeDecomposition.cpp
     buddy-2.4/src/bddio.c
     buddy-2.4/src/bddop.c
     buddy-2.4/src/bvec.c
@@ -92,6 +88,7 @@ target_link_libraries (ganak
   LINK_PUBLIC ${MPFI_LIBRARIES}
   LINK_PUBLIC ${MPFR_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
+  LINK_PUBLIC ${TREEDECOMP_LIBRARIES}
 )
 
 set_target_properties(ganak PROPERTIES

@@ -34,7 +34,7 @@ THE SOFTWARE.
 #include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
 #include "comp_management.hpp"
-#include "TreeDecomposition.hpp"
+#include <treedecomp/TreeDecomposition.hpp>
 #include "structures.hpp"
 #include "heap.hpp"
 #ifdef BUDDY_ENABLED

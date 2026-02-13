@@ -25,8 +25,8 @@ THE SOFTWARE.
 #include <algorithm>
 #include <future>
 #include <thread>
-#include "TreeDecomposition.hpp"
-#include "IFlowCutter.hpp"
+#include <treedecomp/TreeDecomposition.hpp>
+#include <treedecomp/IFlowCutter.hpp>
 #include "arjun/arjun.h"
 #include "counter.hpp"
 #include "time_mem.hpp"

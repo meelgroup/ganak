@@ -45,6 +45,7 @@ THE SOFTWARE.
 #include "mparity.hpp"
 #include "mcomplex.hpp"
 #include "mcomplex-mpfr.hpp"
+#include "fmpfi.hpp"
 #include <approxmc/approxmc.h>
 
 using CMSat::StreamBuffer;
@@ -134,8 +135,12 @@ void add_ganak_options()
 1=weighted counting,
 2=complex numbers,
 3=multivariate polynomials over the rational field,
-4=parity counting, 5=counting over prime field,
-6=mpfr complex numbers, 7=mpfr normal numbers)delimiter");
+4=parity counting,
+5=counting over prime field,
+6=mpfr complex numbers,
+7=mpfr normal numbers,
+8=mpfi intervals
+)delimiter");
     add_arg("--prime", prime_field, atoi, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
     add_arg("--delta", conf.delta, atof, "Delta");
@@ -437,6 +442,18 @@ void print_log(const mpfr_t& cnt, string extra = "") {
     mpfr_clear(log10_val);
 }
 
+void print_log(const mpfi_t& val, string extra = "") {
+    mpfr_t left, right;
+    mpfr_init2(left, mpfr_precision);
+    mpfr_init2(right, mpfr_precision);
+    mpfi_get_left(left, val);
+    mpfi_get_right(right, val);
+    print_log(left, extra + " left bound");
+    print_log(right, extra + "right bound");
+    mpfr_clear(left);
+    mpfr_clear(right);
+}
+
 void print_log(const mpz_class& cnt, string extra = "") {
     mpz_class abs_cnt = cnt;
     if (abs_cnt < 0) {
@@ -496,7 +513,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
+    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7 || mode == 8) {
       std::stringstream ss;
       ss << std::scientific << setprecision(40);
       const CMSat::Field* ptr = cnt.get();
@@ -557,6 +574,14 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
         print_log(od->val);
         mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
+      } else if (mode == 8) {
+        // MPFR intervals
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
+        const FMpfi* od = dynamic_cast<const FMpfi*>(ptr);
+        print_log(od->val);
+        cout << "c s exact quadruple float interval " << od << endl;
+
       }
     }
     if (counter.get_is_approximate()) {

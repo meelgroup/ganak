@@ -48,6 +48,8 @@ THE SOFTWARE.
 #include "fmpfi.hpp"
 #include <approxmc/approxmc.h>
 
+#define MAX_DIGIT_PRECISION 1e6
+
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
 using std::set;
@@ -442,6 +444,36 @@ void print_log(const mpfr_t& cnt, string extra = "") {
     mpfr_clear(log10_val);
 }
 
+double digit_precision_mpfi(mpfi_srcptr v) {
+    mpfr_t left;
+    mpfr_init(left);
+    mpfr_t right;
+    mpfr_init(right);
+    mpfi_get_left(left, v);
+    mpfi_get_right(right, v);
+    if (mpfr_sgn(left) != mpfr_sgn(right))
+        return 0.0;
+
+    mpfr_t diam;
+    mpfr_init(diam);
+    mpfi_diam_rel(diam, v);
+    if (mpfr_sgn(diam) == 0) {
+        mpfr_clear(diam);
+        return MAX_DIGIT_PRECISION;
+    }
+
+    mpfr_log10(diam, diam, MPFR_RNDN);
+    double result = -mpfr_get_d(diam, MPFR_RNDN);
+    if (result < 0)
+        result = 0.0;
+
+    if (result > MAX_DIGIT_PRECISION)
+        result = MAX_DIGIT_PRECISION;
+
+    mpfr_clear(diam);
+    return result;
+}
+
 void print_log(const mpfi_t& val, string extra = "") {
     mpfr_t left, right;
     mpfr_init2(left, mpfr_precision);
@@ -581,7 +613,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         const FMpfi* od = dynamic_cast<const FMpfi*>(ptr);
         print_log(od->val);
         cout << "c s exact quadruple float interval " << *od << endl;
-
+        cout << "c s digit precision of interval: " << digit_precision_mpfi(od->val) << endl;
       }
     }
     if (counter.get_is_approximate()) {

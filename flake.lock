@@ -11,11 +11,11 @@
         "sbva": "sbva_2"
       },
       "locked": {
-        "lastModified": 1770978517,
-        "narHash": "sha256-jg4WcycWOn+cSiqZROeZmt7q7BGJboCNm82nOAbCyW8=",
+        "lastModified": 1770979126,
+        "narHash": "sha256-nLjHnvoMJUJoo9fce7ifGdkG5qLQp3Yy2zYiigFJ08M=",
         "owner": "meelgroup",
         "repo": "approxmc",
-        "rev": "0a3bcd335febac45842b5e1b908142c14fda60c7",
+        "rev": "9ae80b5669b6ee4a1229e1dc4e6294115c0c8c32",
         "type": "github"
       },
       "original": {

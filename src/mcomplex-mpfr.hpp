@@ -28,27 +28,28 @@ THE SOFTWARE.
 
 class MPFComplex final : public CMSat::Field {
 public:
+    uint16_t prec;
     mpfr_t real;
     mpfr_t imag;
-    MPFComplex() {
-      mpfr_init2(real, 256);
-      mpfr_init2(imag, 256);
+    explicit MPFComplex(uint16_t _prec) : prec(_prec) {
+      mpfr_init2(real, prec);
+      mpfr_init2(imag, prec);
       mpfr_set_si(real, 0, MPFR_RNDN);
       mpfr_set_si(imag, 0, MPFR_RNDN);
     }
-    MPFComplex(int r, int i) {
-      mpfr_init2(real, 256);
-      mpfr_init2(imag, 256);
+    explicit MPFComplex(int r, int i, uint16_t _prec) : prec(_prec) {
+      mpfr_init2(real, prec);
+      mpfr_init2(imag, prec);
       mpfr_set_si(real, r, MPFR_RNDN);
       mpfr_set_si(imag, i, MPFR_RNDN);
     }
-    MPFComplex(const mpfr_t& _real, const mpfr_t& _imag) {
-      mpfr_init2(real, 256);
-      mpfr_init2(imag, 256);
+    explicit MPFComplex(const mpfr_t& _real, const mpfr_t& _imag, uint16_t _prec) : prec(_prec) {
+      mpfr_init2(real, prec);
+      mpfr_init2(imag, prec);
       mpfr_set(real, _real, MPFR_RNDN);
       mpfr_set(imag, _imag, MPFR_RNDN);
     }
-    MPFComplex(const MPFComplex& other) : MPFComplex(other.real, other.imag) {}
+    explicit MPFComplex(const MPFComplex& other) : MPFComplex(other.real, other.imag, other.prec) {}
     ~MPFComplex() final {
       mpfr_clear(real);
       mpfr_clear(imag);
@@ -72,11 +73,11 @@ public:
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_t r;
         mpfr_t i;
-        mpfr_init2(r, 256);
-        mpfr_init2(i, 256);
+        mpfr_init2(r, prec);
+        mpfr_init2(i, prec);
         mpfr_add(r, real, od.real, MPFR_RNDN);
         mpfr_add(i, imag, od.imag, MPFR_RNDN);
-        auto ret = std::make_unique<MPFComplex>(r, i);
+        auto ret = std::make_unique<MPFComplex>(r, i, prec);
         mpfr_clear(r);
         mpfr_clear(i);
         return ret;
@@ -92,11 +93,11 @@ public:
     Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         mpfr_t r;
-        mpfr_init2(r, 256);
+        mpfr_init2(r, prec);
         mpfr_t tmp;
-        mpfr_init2(tmp, 256);
+        mpfr_init2(tmp, prec);
         mpfr_t tmp2;
-        mpfr_init2(tmp2, 256);
+        mpfr_init2(tmp2, prec);
 
         mpfr_mul(tmp, real, od.real, MPFR_RNDN);
         mpfr_mul(tmp2, imag, od.imag, MPFR_RNDN);
@@ -122,15 +123,15 @@ public:
         const auto& od = static_cast<const MPFComplex&>(other);
         if (od.is_zero()) throw std::runtime_error("Division by zero");
         mpfr_t r;
-        mpfr_init2(r, 256);
+        mpfr_init2(r, prec);
         mpfr_t tmp;
-        mpfr_init2(tmp, 256);
+        mpfr_init2(tmp, prec);
         mpfr_t tmp2;
-        mpfr_init2(tmp2, 256);
+        mpfr_init2(tmp2, prec);
 
         // div = od.imag*od.imag+od.real*od.real;
         mpfr_t div;
-        mpfr_init2(div, 256);
+        mpfr_init2(div, prec);
         mpfr_mul(tmp, od.imag, od.imag, MPFR_RNDN);
         mpfr_mul(tmp2, od.real, od.real, MPFR_RNDN);
         mpfr_add(div, tmp, tmp2, MPFR_RNDN);
@@ -175,7 +176,7 @@ public:
     }
 
     std::unique_ptr<Field> dup() const final {
-        return std::make_unique<MPFComplex>(real, imag);
+        return std::make_unique<MPFComplex>(real, imag, prec);
     }
 
     bool is_zero() const final {
@@ -238,17 +239,19 @@ public:
 
 class FGenMPFComplex final : public CMSat::FieldGen {
 public:
+    uint16_t prec;
     ~FGenMPFComplex() final = default;
+    explicit FGenMPFComplex(uint16_t _prec) : prec(_prec) {}
     std::unique_ptr<CMSat::Field> zero() const final {
-        return std::make_unique<MPFComplex>();
+        return std::make_unique<MPFComplex>(prec);
     }
 
     std::unique_ptr<CMSat::Field> one() const final {
-        return std::make_unique<MPFComplex>(1, 0);
+        return std::make_unique<MPFComplex>(1, 0, prec);
     }
 
     std::unique_ptr<FieldGen> dup() const final {
-        return std::make_unique<FGenMPFComplex>();
+        return std::make_unique<FGenMPFComplex>(prec);
     }
 
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {

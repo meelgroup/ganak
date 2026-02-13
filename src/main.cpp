@@ -91,13 +91,16 @@ double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
-int mode = 0;
 int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
 FG fg = nullptr;
 int num_threads = 1;
 int bits_jobs = 10;
+
+// mode
+int mode = 0;
+int mpfr_precision = 256;
 
 string print_version()
 {
@@ -259,6 +262,9 @@ void add_ganak_options()
     add_arg("--threads", num_threads, atoi, "Number of threads to use. -1 = all available cores");
     add_arg("--bitsjobs", bits_jobs, atoi, "Number of variables to multi-thread on (8 = 256 jobs)");
     program.add_argument("inputfile").remaining().help("input CNF");
+
+    // Minor options
+    add_arg("--mpfrprecision", mpfr_precision, atoi, "MPFR precision in bits");
 }
 
 void parse_supported_options(int argc, char** argv) {
@@ -601,13 +607,13 @@ int main(int argc, char *argv[]) {
         fg = std::make_unique<ArjunNS::FGenMpq>();
         break;
     case 7:
-        fg = std::make_unique<ArjunNS::FGenMpfr>();
+        fg = std::make_unique<ArjunNS::FGenMpfr>(mpfr_precision);
         break;
     case 2:
         fg = std::make_unique<FGenComplex>();
         break;
     case 6:
-        fg = std::make_unique<FGenMPFComplex>();
+        fg = std::make_unique<FGenMPFComplex>(mpfr_precision);
         break;
     case 3:
         if (poly_nvars == -1) {

@@ -234,8 +234,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/arjun
-        ref: master
-        path: aig-shared-ptr-better-fix
+        ref: aig-shared-ptr-better-fix
+        path: arjun
     - name: Build arjun
       run: |
         cd arjun

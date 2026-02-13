@@ -29,9 +29,9 @@ THE SOFTWARE.
 #include <mpfi.h>
 
 inline unsigned int mpfi_memory_usage(const mpfi_t& x) {
-    mpfr_prec_t precision = mpfi_get_prec(x);
+    mpfr_prec_t prec = mpfi_get_prec(x);
     size_t limb_size = mp_bits_per_limb;
-    size_t num_limbs = (precision + limb_size - 1) / limb_size;
+    size_t num_limbs = (prec + limb_size - 1) / limb_size;
     // Two MPFR endpoints (left and right)
     unsigned int base_size = 2 * sizeof(__mpfr_struct);
     unsigned int mantissa_size = 2 * num_limbs * sizeof(mp_limb_t);
@@ -40,33 +40,35 @@ inline unsigned int mpfi_memory_usage(const mpfi_t& x) {
 
 class FMpfi final : public CMSat::Field {
 public:
-    uint16_t prec;
     mpfi_t val;
 
     ~FMpfi() final { mpfi_clear(val); }
     FMpfi() = delete;
 
-    explicit FMpfi(uint16_t _prec) : prec(_prec) {
+    explicit FMpfi(mpfr_prec_t prec) {
         mpfi_init2(val, prec);
         mpfi_set_si(val, 0);
     }
 
-    explicit FMpfi(const int _val, uint16_t _prec) : prec(_prec) {
+    explicit FMpfi(const long _val, mpfr_prec_t prec) {
         mpfi_init2(val, prec);
         mpfi_set_si(val, _val);
     }
 
-    explicit FMpfi(const double _val, uint16_t _prec) : prec(_prec) {
+    explicit FMpfi(const double _val, mpfr_prec_t prec) {
         mpfi_init2(val, prec);
         mpfi_set_d(val, _val);
     }
 
-    explicit FMpfi(const mpfi_t& _val, uint16_t _prec) : prec(_prec) {
+    explicit FMpfi(const mpfi_t& _val) {
+        const auto prec = mpfi_get_prec(_val);
+        mpfi_init2(val, prec);
         mpfi_init2(val, prec);
         mpfi_set(val, _val);
     }
 
-    explicit FMpfi(const FMpfi& other, uint16_t _prec) : prec(_prec) {
+    explicit FMpfi(const FMpfi& other) {
+        const auto prec = mpfi_get_prec(other.val);
         mpfi_init2(val, prec);
         mpfi_set(val, other.val);
     }
@@ -87,10 +89,11 @@ public:
 
     std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const FMpfi&>(other);
+        const auto prec = mpfi_get_prec(val);
         mpfi_t res;
         mpfi_init2(res, prec);
         mpfi_add(res, val, od.val);
-        auto ret = std::make_unique<FMpfi>(res, prec);
+        auto ret = std::make_unique<FMpfi>(res);
         mpfi_clear(res);
         return ret;
     }
@@ -121,6 +124,7 @@ public:
     }
 
     std::ostream& display(std::ostream& os) const final {
+        const auto prec = mpfi_get_prec(val);
         mpfr_t left, right;
         mpfr_init2(left, prec);
         mpfr_init2(right, prec);
@@ -139,7 +143,7 @@ public:
     }
 
     std::unique_ptr<Field> dup() const final {
-        return std::make_unique<FMpfi>(val, prec);
+        return std::make_unique<FMpfi>(val);
     }
 
     bool is_zero() const final {
@@ -169,21 +173,21 @@ public:
 
 class FGenMpfi final : public CMSat::FieldGen {
 public:
-    uint16_t prec;
+    mpfr_prec_t prec;
     ~FGenMpfi() final = default;
     FGenMpfi(const FGenMpfi& other) : prec(other.prec) {}
     FGenMpfi& operator=(const FGenMpfi& other) {
         if (this != &other) prec = other.prec;
         return *this;
     }
-    explicit FGenMpfi(uint16_t _prec) : prec(_prec) {}
+    explicit FGenMpfi(mpfr_prec_t _prec) : prec(_prec) {}
 
     std::unique_ptr<CMSat::Field> zero() const final {
-        return std::make_unique<FMpfi>(0, prec);
+        return std::make_unique<FMpfi>((long)0, prec);
     }
 
     std::unique_ptr<CMSat::Field> one() const final {
-        return std::make_unique<FMpfi>(1, prec);
+        return std::make_unique<FMpfi>((long)1, prec);
     }
 
     std::unique_ptr<FieldGen> dup() const final {

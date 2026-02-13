@@ -26,6 +26,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/)
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 include_directories(${MPFR_INCLUDE_DIR})
+include_directories(${MPFI_INCLUDES})
 include_directories( ${GMP_INCLUDE_DIR} )
 include_directories( ${BREAKID_INCLUDE_DIRS} )
 include_directories( ${APPROXMC_INCLUDE_DIRS} )
@@ -89,6 +90,7 @@ target_link_libraries (ganak
   LINK_PUBLIC ${BREAKID_LIBRARIES}
   LINK_PUBLIC ${FLINT_LIBRARIES}
   LINK_PUBLIC ${MPFR_LIBRARIES}
+  LINK_PUBLIC ${MPFI_LIBRARIES}
   LINK_PUBLIC ${GMP_LIBRARIES}
 )
 

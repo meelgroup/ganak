@@ -52,6 +52,7 @@
           pkg-config,
           gmp,
           mpfr,
+          mpfi,
           flint3,
           zlib,
           autoPatchelfHook,
@@ -76,6 +77,7 @@
           buildInputs = [
             gmp
             mpfr
+            mpfi
             flint3
             zlib
             cryptominisat

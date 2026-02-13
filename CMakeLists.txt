@@ -320,9 +320,12 @@ endif()
 set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
+find_package(MPFI REQUIRED)
 
 find_package(FLINT REQUIRED)
 MESSAGE(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
+MESSAGE(STATUS "MPFI include dir: ${MPFI_INCLUDES}")
+MESSAGE(STATUS "MPFI lib dir: ${MPFI_LIBRARIES}")
 MESSAGE(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
 
 option(NOZLIB "Don't use zlib" OFF)

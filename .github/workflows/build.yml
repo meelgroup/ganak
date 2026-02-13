@@ -70,6 +70,7 @@ jobs:
     - name: Install mpfi for Mac
       if: contains(matrix.os, 'macos')
       run: |
+        brew install autoconf automake libtool
         wget https://gitlab.inria.fr/mpfi/mpfi/-/archive/1.5.4/mpfi-1.5.4.tar.gz
         tar xzf mpfi-1.5.4.tar.gz
         cd mpfi-1.5.4

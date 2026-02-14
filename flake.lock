@@ -730,7 +730,8 @@
         "cryptominisat": "cryptominisat_4",
         "evalmaxsat": "evalmaxsat_4",
         "nixpkgs": "nixpkgs",
-        "sbva": "sbva_4"
+        "sbva": "sbva_4",
+        "treedecomp": "treedecomp"
       }
     },
     "sbva": {
@@ -818,6 +819,27 @@
         "owner": "meelgroup",
         "ref": "master",
         "repo": "sbva",
+        "type": "github"
+      }
+    },
+    "treedecomp": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1771027144,
+        "narHash": "sha256-yoqXaYq5ncStSoOVJ3lICqaMlCCqSUZlTD+GF1e+ncc=",
+        "owner": "meelgroup",
+        "repo": "treedecomp",
+        "rev": "01c654e7833719b7cc5184e6ea8f1ae256dcb2ee",
+        "type": "github"
+      },
+      "original": {
+        "owner": "meelgroup",
+        "ref": "main",
+        "repo": "treedecomp",
         "type": "github"
       }
     }

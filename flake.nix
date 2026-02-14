@@ -26,6 +26,10 @@
       url = "github:meelgroup/EvalMaxSAT/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    treedecomp = {
+      url = "github:meelgroup/treedecomp/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -38,6 +42,7 @@
       cryptominisat,
       sbva,
       evalmaxsat,
+      treedecomp,
     }:
     let
       inherit (nixpkgs) lib;
@@ -64,6 +69,7 @@
           python3,
           python3Packages,
           evalmaxsat,
+          treedecomp,
         }:
         stdenv.mkDerivation {
           name = "ganak";
@@ -86,6 +92,7 @@
             breakid
             approxmc
             evalmaxsat
+            treedecomp
           ];
           src = ./.;
         };
@@ -119,6 +126,7 @@
             breakid = breakid.packages.${system}.breakid;
             approxmc = approxmc.packages.${system}.approxmc;
             evalmaxsat = evalmaxsat.packages.${system}.evalmaxsat;
+            treedecomp = treedecomp.packages.${system}.treedecomp;
           };
         in
         {

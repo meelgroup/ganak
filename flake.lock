@@ -8,14 +8,15 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "sbva": "sbva_2"
+        "sbva": "sbva_2",
+        "treedecomp": "treedecomp"
       },
       "locked": {
-        "lastModified": 1770979126,
-        "narHash": "sha256-nLjHnvoMJUJoo9fce7ifGdkG5qLQp3Yy2zYiigFJ08M=",
+        "lastModified": 1771077079,
+        "narHash": "sha256-zEzHTPwXjIVo+WymmkmmHczcDPYCO8SacJwKuiuNXp4=",
         "owner": "meelgroup",
         "repo": "approxmc",
-        "rev": "9ae80b5669b6ee4a1229e1dc4e6294115c0c8c32",
+        "rev": "1d6235212a882173af6951f01aa55d10f5c798b2",
         "type": "github"
       },
       "original": {
@@ -62,7 +63,7 @@
           "nixpkgs"
         ],
         "sbva": "sbva_3",
-        "treedecomp": "treedecomp"
+        "treedecomp": "treedecomp_2"
       },
       "locked": {
         "lastModified": 1771076830,
@@ -732,7 +733,7 @@
         "evalmaxsat": "evalmaxsat_4",
         "nixpkgs": "nixpkgs",
         "sbva": "sbva_4",
-        "treedecomp": "treedecomp_2"
+        "treedecomp": "treedecomp_3"
       }
     },
     "sbva": {
@@ -826,7 +827,7 @@
     "treedecomp": {
       "inputs": {
         "nixpkgs": [
-          "arjun",
+          "approxmc",
           "nixpkgs"
         ]
       },
@@ -846,6 +847,28 @@
       }
     },
     "treedecomp_2": {
+      "inputs": {
+        "nixpkgs": [
+          "arjun",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1771069109,
+        "narHash": "sha256-XBFxIkTXY8qe+Jr7J2LyV+7YW19KwIf41BRu7iVRL5A=",
+        "owner": "meelgroup",
+        "repo": "treedecomp",
+        "rev": "3aded0a307f570a065df3d4627254465174f6443",
+        "type": "github"
+      },
+      "original": {
+        "owner": "meelgroup",
+        "ref": "main",
+        "repo": "treedecomp",
+        "type": "github"
+      }
+    },
+    "treedecomp_3": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs"

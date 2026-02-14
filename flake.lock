@@ -61,14 +61,15 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "sbva": "sbva_3"
+        "sbva": "sbva_3",
+        "treedecomp": "treedecomp"
       },
       "locked": {
-        "lastModified": 1770978454,
-        "narHash": "sha256-i6F/7WU365vpoga12aI92vlgIZUjfuhW55yoDVg7sJo=",
+        "lastModified": 1771076830,
+        "narHash": "sha256-94Z1OWLIrVgXCygiiYz8Q1rIWJ4bQOavefWptZG0LSk=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "09fa89d2e028573a4b784d367a9bd982ce9341ca",
+        "rev": "84d3a1f0feae64b795d0d0ce2dfa19db11f24676",
         "type": "github"
       },
       "original": {
@@ -731,7 +732,7 @@
         "evalmaxsat": "evalmaxsat_4",
         "nixpkgs": "nixpkgs",
         "sbva": "sbva_4",
-        "treedecomp": "treedecomp"
+        "treedecomp": "treedecomp_2"
       }
     },
     "sbva": {
@@ -825,15 +826,37 @@
     "treedecomp": {
       "inputs": {
         "nixpkgs": [
+          "arjun",
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1771027144,
-        "narHash": "sha256-yoqXaYq5ncStSoOVJ3lICqaMlCCqSUZlTD+GF1e+ncc=",
+        "lastModified": 1771069109,
+        "narHash": "sha256-XBFxIkTXY8qe+Jr7J2LyV+7YW19KwIf41BRu7iVRL5A=",
         "owner": "meelgroup",
         "repo": "treedecomp",
-        "rev": "01c654e7833719b7cc5184e6ea8f1ae256dcb2ee",
+        "rev": "3aded0a307f570a065df3d4627254465174f6443",
+        "type": "github"
+      },
+      "original": {
+        "owner": "meelgroup",
+        "ref": "main",
+        "repo": "treedecomp",
+        "type": "github"
+      }
+    },
+    "treedecomp_2": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1771069109,
+        "narHash": "sha256-XBFxIkTXY8qe+Jr7J2LyV+7YW19KwIf41BRu7iVRL5A=",
+        "owner": "meelgroup",
+        "repo": "treedecomp",
+        "rev": "3aded0a307f570a065df3d4627254465174f6443",
         "type": "github"
       },
       "original": {

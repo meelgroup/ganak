@@ -60,7 +60,6 @@ SET(SOURCES
     outer_counter.cpp
     statistics.cpp
     clauseallocator.cpp
-    graph.cpp
     buddy-2.4/src/bddio.c
     buddy-2.4/src/bddop.c
     buddy-2.4/src/bvec.c

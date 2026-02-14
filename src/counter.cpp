@@ -38,7 +38,7 @@ THE SOFTWARE.
 #include "structures.hpp"
 #include "time_mem.hpp"
 #include <treedecomp/IFlowCutter.hpp>
-#include "graph.hpp"
+#include <treedecomp/graph.hpp>
 #ifdef BUDDY_ENABLED
 #include "bdd.h"
 #endif

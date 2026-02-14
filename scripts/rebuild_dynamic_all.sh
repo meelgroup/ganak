@@ -31,6 +31,10 @@ cd EvalMaxSAT/build/
 ./build_norm.sh
 cd ../../
 
+cd treedecomp/build/
+./build_dynamic.sh
+cd ../../
+
 cd arjun/build/
 ./build_norm.sh
 cd ../../

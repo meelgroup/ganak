@@ -31,6 +31,10 @@ cd EvalMaxSAT/build/
 ./build_static_release.sh
 cd ../../
 
+cd treedecomp/build/
+./build_static_release.sh
+cd ../../
+
 cd arjun/build/
 ./build_static_release.sh
 cd ../../

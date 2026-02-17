@@ -471,6 +471,8 @@ double digit_precision_mpfi(mpfi_srcptr v) {
         result = MAX_DIGIT_PRECISION;
 
     mpfr_clear(diam);
+    mpfr_clear(left);
+    mpfr_clear(right);
     return result;
 }
 

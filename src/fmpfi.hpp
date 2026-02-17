@@ -28,14 +28,23 @@ THE SOFTWARE.
 #include <memory>
 #include <mpfi.h>
 
-inline unsigned int mpfi_memory_usage(const mpfi_t& x) {
-    mpfr_prec_t prec = mpfi_get_prec(x);
-    size_t limb_size = mp_bits_per_limb;
-    size_t num_limbs = (prec + limb_size - 1) / limb_size;
-    // Two MPFR endpoints (left and right)
-    unsigned int base_size = 2 * sizeof(__mpfr_struct);
-    unsigned int mantissa_size = 2 * num_limbs * sizeof(mp_limb_t);
-    return base_size + mantissa_size;
+inline unsigned int mpfi_memory_usage(const mpfi_t& val) {
+    mpfr_prec_t prec = mpfi_get_prec(val);
+    const size_t MPFR_STRUCT_OVERHEAD = sizeof(__mpfr_struct) + 16; // +16 for internal GMP limbs
+
+    // Calculate memory for each endpoint's mantissa
+    size_t limb_size = sizeof(mp_limb_t);  // Usually 4 or 8 bytes
+    size_t num_limbs = (prec + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+    size_t mantissa_memory = num_limbs * limb_size;
+
+    // Total per MPFR number: structure + mantissa
+    size_t per_mpfr_size = MPFR_STRUCT_OVERHEAD + mantissa_memory;
+
+    // MPFI structure itself
+    size_t mpfi_struct_size = sizeof(__mpfi_struct);
+
+    // Total: two MPFR numbers + MPFI wrapper
+    return (2 * per_mpfr_size) + mpfi_struct_size;
 }
 
 class FMpfi final : public CMSat::Field {
@@ -62,7 +71,6 @@ public:
 
     explicit FMpfi(const mpfi_t& _val) {
         const auto prec = mpfi_get_prec(_val);
-        mpfi_init2(val, prec);
         mpfi_init2(val, prec);
         mpfi_set(val, _val);
     }

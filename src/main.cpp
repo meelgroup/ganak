@@ -449,16 +449,22 @@ double digit_precision_mpfi(mpfi_srcptr v) {
     mpfr_init(left);
     mpfr_t right;
     mpfr_init(right);
+
     mpfi_get_left(left, v);
     mpfi_get_right(right, v);
-    if (mpfr_sgn(left) != mpfr_sgn(right))
+    if (mpfr_sgn(left) != mpfr_sgn(right)) {
+        mpfr_clear(left);
+        mpfr_clear(right);
         return 0.0;
+    }
 
     mpfr_t diam;
     mpfr_init(diam);
     mpfi_diam_rel(diam, v);
     if (mpfr_sgn(diam) == 0) {
         mpfr_clear(diam);
+        mpfr_clear(left);
+        mpfr_clear(right);
         return MAX_DIGIT_PRECISION;
     }
 

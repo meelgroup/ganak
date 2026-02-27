@@ -8,15 +8,22 @@ source "/home/soos/development/emsdk/emsdk_env.sh"
 export EMINSTALL="${HOME}/development/emsdk/upstream/emscripten/cache/sysroot"
 ```
 
-build MPFI for Emscripten
-
+Build GMP for Emscripten:
 ```bash
-emconfigure ./configure --with-mpfr=$EMINSTALL --prefix=$EMINSTALL
-emmake make -j 4
+emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL
+emmake make -j16
 emmake make install
 ```
 
-Useful commands for building stuff;
+build MPFI for Emscripten:
+
+```bash
+emconfigure ./configure --with-mpfr=$EMINSTALL --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+emmake make -j16
+emmake make install
+```
+
+Useful commands for building stuff like MPFR, MPIR, and MPFI for Emscripten:
 ```
 EMCONFIGURE_JS=1 emconfigure ./configure ABI=64 --disable-assembly CFLAGS=-m64 CXXFLAGS=-m64 LDFLAGS=-m64 --enable-cxx
 EMCONFIGURE_JS=1 emconfigure ./configure ABI=64 --disable-assembly --enable-cxx

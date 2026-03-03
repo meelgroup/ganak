@@ -72,7 +72,8 @@ public:
 
   void set_model_count(const FF& rn) {
     assert(model_count_ == nullptr);
-    model_count_ = rn->dup();
+    if (rn == nullptr || rn->is_zero()) model_count_ = nullptr;
+    else model_count_ = rn->dup();
   }
 
   bool model_count_found(){ return model_count_ != nullptr; }

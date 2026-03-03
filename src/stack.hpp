@@ -136,7 +136,7 @@ public:
   }
 
   bool another_comp_possible() const {
-    return (!branch_found_unsat()) && has_unproc_comps();
+    return !branch_found_unsat() && has_unproc_comps();
   }
 
   inline void common_print(const FF& before) {
@@ -166,9 +166,9 @@ public:
   }
 
   void include_solution(const FF& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep
-        << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
+    if (solutions == nullptr) cout << COLRED << "incl sol: " << "0" << " ind: " << is_indep << COLDEF << " ");
+    else cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep << COLDEF << " ");
     auto before = val_or_zero(act_branch);
 #endif
     if (branch_unsat[act_branch]) {
@@ -177,7 +177,7 @@ public:
       return;
     }
 
-    if (solutions->is_zero()) mark_branch_unsat();
+    if (solutions == nullptr || solutions->is_zero()) mark_branch_unsat();
     else {
       if (!is_indep) branch_mc[act_branch] = fg->one();
       else {

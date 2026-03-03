@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <gmpxx.h>
 #include <mpfr.h>
+#include <charconv>
 /* #include <breakid/breakid.hpp> */
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
@@ -60,22 +61,59 @@ using std::setprecision;
 #include <cfenv>
 #endif
 
-#define add_arg(name, var, fun, hhelp) \
-    program.add_argument(name) \
-        .action([&](const auto& a) {var = std::fun(a.c_str());}) \
-        .default_value(var) \
-        .help(hhelp)
-#define add_arg2(name1, name2, var, fun, hhelp) \
-    program.add_argument(name1, name2) \
-        .action([&](const auto& a) {var = std::fun(a.c_str());}) \
-        .default_value(var) \
-        .help(hhelp)
+static int fc_int(const std::string& s) {
+    int val = 0;
+    std::from_chars(s.data(), s.data() + s.size(), val);
+    return val;
+}
+static double fc_double(const std::string& s) {
+    size_t pos;
+    double val = std::stod(s, &pos);
+    if (pos != s.size()) throw std::invalid_argument("trailing characters in double: " + s);
+    return val;
+}
+static const std::string& fc_string(const std::string& s) { return s; }
 
 using std::string;
 using std::vector;
 argparse::ArgumentParser program = argparse::ArgumentParser("ganak",
         GANAK::get_version_sha1(),
         argparse::default_arguments::help);
+
+template<typename T, typename F>
+void add_arg(const char* name, T& var, F fun, const char* hhelp) {
+    using r = std::decay_t<std::invoke_result_t<F, const std::string&>>;
+    static_assert(std::is_floating_point_v<r> == std::is_floating_point_v<T>,
+        "Floating-point mismatch: use fc_double for floating-point vars, fc_int for integral vars");
+    static_assert(std::is_integral_v<r> == std::is_integral_v<T>,
+        "Integral/string mismatch: use fc_int for integral vars, fc_string for string vars");
+    program.add_argument(name)
+        .action([&var, fun](const auto& a) { var = fun(a); })
+        .default_value(var)
+        .help(hhelp);
+}
+template<typename T, typename F>
+void add_arg2(const char* name1, const char* name2, T& var, F fun, const char* hhelp) {
+    using r = std::decay_t<std::invoke_result_t<F, const std::string&>>;
+    static_assert(std::is_floating_point_v<r> == std::is_floating_point_v<T>,
+        "Floating-point mismatch: use fc_double for floating-point vars, fc_int for integral vars");
+    static_assert(std::is_integral_v<r> == std::is_integral_v<T>,
+        "Integral/string mismatch: use fc_int for integral vars, fc_string for string vars");
+    program.add_argument(name1, name2)
+        .action([&var, fun](const auto& a) { var = fun(a); })
+        .default_value(var)
+        .help(hhelp);
+}
+template<typename T>
+void myflag(const char* name, T& var, const char* hhelp) {
+    static_assert(std::is_same_v<T, int>, "myflag var must be int");
+    program.add_argument(name)
+        .action([&var](const auto&) { var = 1; })
+        .default_value(var)
+        .flag()
+        .help(hhelp);
+}
+
 CounterConfiguration conf;
 int arjun_verb = 1;
 int do_arjun = 1;
@@ -127,13 +165,13 @@ void add_ganak_options()
     std::ostringstream my_delta;
     my_delta << setprecision(8) << conf.delta;
 
-    add_arg2("-v", "--verb", conf.verb, atoi, "Verbosity");
-    add_arg2("-s", "--seed", conf.seed, atoi, "Seed");
+    add_arg2("-v", "--verb", conf.verb, fc_int, "Verbosity");
+    add_arg2("-s", "--seed", conf.seed, fc_int, "Seed");
     program.add_argument("-v", "--version") \
         .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);}) \
         .flag()
         .help("Print version and exit");
-    add_arg("--mode", mode , atoi, R"delimiter(0=integer counting,
+    add_arg("--mode", mode , fc_int, R"delimiter(0=integer counting,
 1=weighted counting over the rationals,
 2=complex rational numbers,
 3=multivariate polynomials over the rational field,
@@ -143,135 +181,135 @@ void add_ganak_options()
 7=mpfr floating point real numbers (see --mpfrprecision),
 8=mpfi intervals
 )delimiter");
-    add_arg("--prime", prime_field, atoi, "Prime for prime field counting");
-    add_arg("--npolyvars", poly_nvars, atoi, "Number of variables in the polynomial field");
-    add_arg("--delta", conf.delta, atof, "Delta");
-    /* add_arg("--breakid", do_breakid, atoi, "Enable BreakID"); */
-    add_arg("--appmct", conf.appmc_timeout, atof, "after K seconds");
-    add_arg("--epsilon", conf.appmc_epsilon, atof, "AppMC epsilon");
-    add_arg("--chronobt", conf.do_chronobt, atof, "ChronoBT. SAT must be DISABLED or this will fail");
-    add_arg("--prob", conf.do_probabilistic_hashing, atoi, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
+    add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
+    add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
+    add_arg("--delta", conf.delta, fc_double, "Delta");
+    /* add_arg("--breakid", do_breakid, fc_int, "Enable BreakID"); */
+    add_arg("--appmct", conf.appmc_timeout, fc_double, "after K seconds");
+    add_arg("--epsilon", conf.appmc_epsilon, fc_double, "AppMC epsilon");
+    add_arg("--chronobt", conf.do_chronobt, fc_int, "ChronoBT. SAT must be DISABLED or this will fail");
+    add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
 
     // Arjun options
-    add_arg("--arjun", do_arjun, atoi, "Use arjun");
-    add_arg("--arjunverb", arjun_verb, atoi, "Arjun verb");
-    add_arg("--arjungates", arjun_gates, atoi, "Use arjun's gate detection");
-    add_arg("--arjunextend", etof_conf.do_extend_indep, atoi, "Extend indep via Arjun's extend system");
-    add_arg("--prebackbone", do_pre_backbone, atoi, "Perform backbone before other things");
-    add_arg("--puura", do_puura, atoi, "Run Puura");
-    add_arg("--puurabackbone", simp_conf.do_backbone_puura, atoi, "Perform backbone in Puura");
-    add_arg("--puuraautarky", etof_conf.do_autarky, atoi, "Do autarky in Puura");
-    add_arg("--arjuniter1", simp_conf.iter1, atoi, "Arjun's iter1");
-    add_arg("--arjuniter2", simp_conf.iter2, atoi, "Arjun's iter2");
-    add_arg("--arjunprobe", do_probe_based, atoi, "Probe based arjun");
-    add_arg("--arjunsimplev", arjun_simp_level, atoi, "Arjun simp level");
-    add_arg("--arjunbackwmaxc", arjun_backw_maxc, atoi, "Arjun backw max confl");
-    add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, atoi, "Arjun's oracle should find bins or not");
-    add_arg("--bce", etof_conf.do_bce, atoi, "Do static BCE");
-    add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, atoi, "Puura BVE max resolvent size in literals. -1 == no limit");
-    add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, atoi, "Puura BVE growth allowance iter1");
-    add_arg("--bvegrowiter2", simp_conf.bve_grow_iter2, atoi, "Puura BVE growth allowance iter2");
-    add_arg("--extraoracle", simp_conf.oracle_extra, atoi, "Extra oracle at the end of puura");
-    add_arg("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, atoi, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
-    add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, atoi, "Arjun's oracle should get learnts");
-    add_arg("--arjundebugcnf", debug_arjun_cnf, string, "Write debug arjun CNF into this file");
-    add_arg("--arjuncmsmult", arjun_cms_glob_mult, atof,  "Pass this multiplier to CMSat through Arjun");
-    add_arg("--arjunsamplcutoff", arjun_further_min_cutoff, atoi,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
-    add_arg("--arjunextendccnr", arjun_extend_ccnr, atoi,  "Filter extend of ccnr gates via CCNR mems, in the millions");
-    add_arg("--arjunweakenlim", simp_conf.weaken_limit, atoi,  "Arjun's weaken limitation");
+    add_arg("--arjun", do_arjun, fc_int, "Use arjun");
+    add_arg("--arjunverb", arjun_verb, fc_int, "Arjun verb");
+    add_arg("--arjungates", arjun_gates, fc_int, "Use arjun's gate detection");
+    add_arg("--arjunextend", etof_conf.do_extend_indep, fc_int, "Extend indep via Arjun's extend system");
+    add_arg("--prebackbone", do_pre_backbone, fc_int, "Perform backbone before other things");
+    add_arg("--puura", do_puura, fc_int, "Run Puura");
+    add_arg("--puurabackbone", simp_conf.do_backbone_puura, fc_int, "Perform backbone in Puura");
+    add_arg("--puuraautarky", etof_conf.do_autarky, fc_int, "Do autarky in Puura");
+    add_arg("--arjuniter1", simp_conf.iter1, fc_int, "Arjun's iter1");
+    add_arg("--arjuniter2", simp_conf.iter2, fc_int, "Arjun's iter2");
+    add_arg("--arjunprobe", do_probe_based, fc_int, "Probe based arjun");
+    add_arg("--arjunsimplev", arjun_simp_level, fc_int, "Arjun simp level");
+    add_arg("--arjunbackwmaxc", arjun_backw_maxc, fc_int, "Arjun backw max confl");
+    add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, fc_int, "Arjun's oracle should find bins or not");
+    add_arg("--bce", etof_conf.do_bce, fc_int, "Do static BCE");
+    add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, fc_int, "Puura BVE max resolvent size in literals. -1 == no limit");
+    add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
+    add_arg("--bvegrowiter2", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
+    add_arg("--extraoracle", simp_conf.oracle_extra, fc_int, "Extra oracle at the end of puura");
+    add_arg("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, fc_int, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
+    add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, fc_int, "Arjun's oracle should get learnts");
+    add_arg("--arjundebugcnf", debug_arjun_cnf, fc_string, "Write debug arjun CNF into this file");
+    add_arg("--arjuncmsmult", arjun_cms_glob_mult, fc_double,  "Pass this multiplier to CMSat through Arjun");
+    add_arg("--arjunsamplcutoff", arjun_further_min_cutoff, fc_int,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
+    add_arg("--arjunextendccnr", arjun_extend_ccnr, fc_int,  "Filter extend of ccnr gates via CCNR mems, in the millions");
+    add_arg("--arjunweakenlim", simp_conf.weaken_limit, fc_int,  "Arjun's weaken limitation");
 
     // TD options
-    add_arg("--td", conf.do_td, atoi, "Run TD decompose");
-    add_arg("--tdmaxw", conf.td_maxweight, atof, "TD max weight");
-    add_arg("--tdminw", conf.td_minweight, atof, "TD min weight");
-    add_arg("--tddiv", conf.td_divider, atof, "TD divider");
-    add_arg("--tdexpmult", conf.td_exp_mult, atof, "TD exponential multiplier");
-    add_arg("--tdcheckagainstind", conf.do_check_td_vs_ind, atoi, "Check TD against indep size");
-    add_arg("--tditers", conf.td_iters, atoi, "TD flowcutter iterations (restarts)");
-    add_arg("--tdsteps", conf.td_steps, atoll, "TD flowcutter number of steps at most");
-    add_arg("--tdlook", conf.td_lookahead, atoi, "-1 means never");
-    add_arg("--tdlooktwcut", conf.td_lookahead_tw_cutoff, atoi, "TD lookahead only when TW of current comp is larger than this value");
-    add_arg("--tdlookiters", conf.td_lookahead_iters, atoi, "TD lookahead iterations");
-    add_arg("--tdcontract", conf.do_td_contract, atoi, "TD contract over opt indep set");
-    add_arg("--tdlimit", conf.td_limit, atoi, "If TD is over this, reduce weight to 0.1");
-    add_arg("--tdoptindep", conf.do_td_use_opt_indep, atoi, "Use opt indep for TD computation");
-    add_arg("--tdmaxdensity", conf.td_max_density, atof, "Max density for TD computation");
-    add_arg("--tdmaxedgeratio", conf.td_max_edge_var_ratio, atoi, "Max edge to var ratio for TD computation");
-    add_arg("--tduseadj", conf.td_do_use_adj, atoi, "TD should use adjacency matrix for computing TD scores");
-    add_arg("--tdreadfile", conf.td_read_file, string, "Read TD scores from this file");
-    add_arg("--tdvis", conf.td_visualize_dot_file, string, "Visualize the TD into this file in DOT format");
+    add_arg("--td", conf.do_td, fc_int, "Run TD decompose");
+    add_arg("--tdmaxw", conf.td_maxweight, fc_double, "TD max weight");
+    add_arg("--tdminw", conf.td_minweight, fc_double, "TD min weight");
+    add_arg("--tddiv", conf.td_divider, fc_double, "TD divider");
+    add_arg("--tdexpmult", conf.td_exp_mult, fc_double, "TD exponential multiplier");
+    add_arg("--tdcheckagainstind", conf.do_check_td_vs_ind, fc_int, "Check TD against indep size");
+    add_arg("--tditers", conf.td_iters, fc_int, "TD flowcutter iterations (restarts)");
+    add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
+    add_arg("--tdlook", conf.td_lookahead, fc_int, "-1 means never");
+    add_arg("--tdlooktwcut", conf.td_lookahead_tw_cutoff, fc_int, "TD lookahead only when TW of current comp is larger than this value");
+    add_arg("--tdlookiters", conf.td_lookahead_iters, fc_int, "TD lookahead iterations");
+    add_arg("--tdcontract", conf.do_td_contract, fc_int, "TD contract over opt indep set");
+    add_arg("--tdlimit", conf.td_limit, fc_int, "If TD is over this, reduce weight to 0.1");
+    add_arg("--tdoptindep", conf.do_td_use_opt_indep, fc_int, "Use opt indep for TD computation");
+    add_arg("--tdmaxdensity", conf.td_max_density, fc_double, "Max density for TD computation");
+    add_arg("--tdmaxedgeratio", conf.td_max_edge_var_ratio, fc_int, "Max edge to var ratio for TD computation");
+    add_arg("--tduseadj", conf.td_do_use_adj, fc_int, "TD should use adjacency matrix for computing TD scores");
+    add_arg("--tdreadfile", conf.td_read_file, fc_string, "Read TD scores from this file");
+    add_arg("--tdvis", conf.td_visualize_dot_file, fc_string, "Visualize the TD into this file in DOT format");
 
     // Clause DB options
-    add_arg("--rdbclstarget", conf.rdb_cls_target, atoi, "RDB clauses target size (added to this are LBD 3 or lower)");
-    add_arg("--rdbeveryn", conf.reduce_db_everyN, atoi, "Reduce the clause DB every N conflicts");
-    add_arg("--rdbkeepused", conf.rdb_keep_used, atoi, "RDB keeps clauses that are used");
-    add_arg("--consolidateeveryn", conf.consolidate_every_n, atoi, "Consolidate memory after every N learnt clause");
-    add_arg("--lbd", conf.base_lbd_cutoff, atoi, "Initial LBD cutoff");
-    add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, atoi, "Update lbd cutoff");
+    add_arg("--rdbclstarget", conf.rdb_cls_target, fc_int, "RDB clauses target size (added to this are LBD 3 or lower)");
+    add_arg("--rdbeveryn", conf.reduce_db_everyN, fc_int, "Reduce the clause DB every N conflicts");
+    add_arg("--rdbkeepused", conf.rdb_keep_used, fc_int, "RDB keeps clauses that are used");
+    add_arg("--consolidateeveryn", conf.consolidate_every_n, fc_int, "Consolidate memory after every N learnt clause");
+    add_arg("--lbd", conf.base_lbd_cutoff, fc_int, "Initial LBD cutoff");
+    add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, fc_int, "Update lbd cutoff");
 
     // Decision options
-    add_arg("--polar", conf.polar_type, atoi, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
-    add_arg("--decide", conf.decide, atoi, "ignore or not ignore TD");
-    add_arg("--initact", conf.do_init_activity_scores, atoi, "Init activity scores to var freq");
-    add_arg("--vsadsadjust", conf.vsads_readjust_every, atoi, "VSADS ajust activity every N");
-    add_arg("--actscorediv", conf.act_score_divisor, atof, "Activity score divisor");
-    add_arg("--freqscorediv", conf.freq_score_divisor, atof, "Component frequency score divisor");
+    add_arg("--polar", conf.polar_type, fc_int, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
+    add_arg("--decide", conf.decide, fc_int, "ignore or not ignore TD");
+    add_arg("--initact", conf.do_init_activity_scores, fc_int, "Init activity scores to var freq");
+    add_arg("--vsadsadjust", conf.vsads_readjust_every, fc_int, "VSADS ajust activity every N");
+    add_arg("--actscorediv", conf.act_score_divisor, fc_double, "Activity score divisor");
+    add_arg("--freqscorediv", conf.freq_score_divisor, fc_double, "Component frequency score divisor");
 
     // Cache options
-    add_arg("--cache", conf.do_use_cache, atoi, "Use (i.e. store and retrieve) cache");
-    add_arg("--maxcache", conf.maximum_cache_size_MB, atoll, "Max cache size in MB");
-    add_arg("--cachetime", conf.cache_time_update, atoi, "2 = set to mid-point");
+    add_arg("--cache", conf.do_use_cache, fc_int, "Use (i.e. store and retrieve) cache");
+    add_arg("--maxcache", conf.maximum_cache_size_MB, fc_int, "Max cache size in MB");
+    add_arg("--cachetime", conf.cache_time_update, fc_int, "2 = set to mid-point");
 
     // BuDDy options
-    add_arg("--buddy", conf.do_buddy, atoi, "Run BuDDy");
-    add_arg("--buddymaxcls", conf.buddy_max_cls, atoi, "Run BuDDy");
+    add_arg("--buddy", conf.do_buddy, fc_int, "Run BuDDy");
+    add_arg("--buddymaxcls", conf.buddy_max_cls, fc_int, "Run BuDDy");
 
     // Vivif options -- inprocessing during Ganak
-    add_arg("--vivif", conf.do_vivify, atoi, "Vivify clauses");
-    add_arg("--vivifevery", conf.vivif_every, atoi, "Vivify every N conflicts");
-    add_arg("--vivifmult", conf.vivif_mult, atof, "How much to multiply timeout for vivif");
-    add_arg("--vivifoutern", conf.vivif_outer_every_n, atoi, "How many restarts between outer vivif");
-    add_arg("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, atoi, "Total used vivif cutoff");
+    add_arg("--vivif", conf.do_vivify, fc_int, "Vivify clauses");
+    add_arg("--vivifevery", conf.vivif_every, fc_int, "Vivify every N conflicts");
+    add_arg("--vivifmult", conf.vivif_mult, fc_double, "How much to multiply timeout for vivif");
+    add_arg("--vivifoutern", conf.vivif_outer_every_n, fc_int, "How many restarts between outer vivif");
+    add_arg("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, fc_int, "Total used vivif cutoff");
 
     // SBVA options
-    add_arg("--sbvasteps", etof_conf.num_sbva_steps, atoi, "SBVA steps. 0 = no SBVA");
-    add_arg("--sbvaclcut", etof_conf.sbva_cls_cutoff, atoi, "SBVA cls cutoff");
-    add_arg("--sbvalitcut", etof_conf.sbva_lits_cutoff, atoi, "SBVA lits cutoff");
-    add_arg("--sbvabreak", etof_conf.sbva_tiebreak, atoi, "1 = sbva");
+    add_arg("--sbvasteps", etof_conf.num_sbva_steps, fc_int, "SBVA steps. 0 = no SBVA");
+    add_arg("--sbvaclcut", etof_conf.sbva_cls_cutoff, fc_int, "SBVA cls cutoff");
+    add_arg("--sbvalitcut", etof_conf.sbva_lits_cutoff, fc_int, "SBVA lits cutoff");
+    add_arg("--sbvabreak", etof_conf.sbva_tiebreak, fc_int, "1 = sbva");
 
     // SAT solver options
-    add_arg("--satsolver", conf.do_use_sat_solver, atoi, "Use SAT solver when all minimal indep set has been set");
-    add_arg("--satrst", conf.do_sat_restart, atoi, "Inside SAT solver, perform restarts");
-    add_arg("--satrstmult", conf.sat_restart_mult, atoi, "SAT restart multiplier");
-    add_arg("--satpolarcache", conf.do_sat_polar_cache, atoi, "Inside SAT solver, use polarity cache");
-    add_arg("--satvsids", conf.do_sat_vsids, atoi, "Inside SAT solver, use VSIDS, not VSADS");
+    add_arg("--satsolver", conf.do_use_sat_solver, fc_int, "Use SAT solver when all minimal indep set has been set");
+    add_arg("--satrst", conf.do_sat_restart, fc_int, "Inside SAT solver, perform restarts");
+    add_arg("--satrstmult", conf.sat_restart_mult, fc_int, "SAT restart multiplier");
+    add_arg("--satpolarcache", conf.do_sat_polar_cache, fc_int, "Inside SAT solver, use polarity cache");
+    add_arg("--satvsids", conf.do_sat_vsids, fc_int, "Inside SAT solver, use VSIDS, not VSADS");
 
     // Opt independent set options
-    add_arg("--allindep", etof_conf.all_indep, atoi, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
-    add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, atoi, "Max number of conflicts per extend operation in Arjun");
-    add_arg("--arjunextend", etof_conf.do_extend_indep, atoi, "Max number of conflicts per extend operation in Arjun");
-    add_arg("--stripoptindep", strip_opt_indep, atoi, "Strip optional indep support");
+    add_arg("--allindep", etof_conf.all_indep, fc_int, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
+    add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, fc_int, "Max number of conflicts per extend operation in Arjun");
+    add_arg("--arjunextend", etof_conf.do_extend_indep, fc_int, "Max number of conflicts per extend operation in Arjun");
+    add_arg("--stripoptindep", strip_opt_indep, fc_int, "Strip optional indep support");
 
     // Analyze candidates options
-    add_arg("--analyzecand", conf.analyze_cand_update, atoi, "Update analyze candidates if more than N vars are still undecided from opt indep set");
+    add_arg("--analyzecand", conf.analyze_cand_update, fc_int, "Update analyze candidates if more than N vars are still undecided from opt indep set");
 
     // Restart options
-    add_arg("--rstfirst", conf.first_restart, atoll, "Run restarts");
-    add_arg("--restart", conf.do_restart, atoi, "Run restarts");
-    add_arg("--rsttype", conf.restart_type, atoi, "Check count at every step");
-    add_arg("--rstcutoff", conf.restart_cutoff_mult, atof, "Multiply cutoff with this");
-    add_arg("--rstcheckcnt", conf.do_cube_check_count, atoi, "Check the count of each cube");
-    add_arg("--rstreadjust", conf.do_readjust_for_restart, atoi, "Readjust params for restart");
-    add_arg("--maxrst", conf.max_num_rst, atoi, "Max number of restarts");
-    add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart, atoi,  "Max number of cubes per restart");
+    add_arg("--rstfirst", conf.first_restart, fc_int, "Run restarts");
+    add_arg("--restart", conf.do_restart, fc_int, "Run restarts");
+    add_arg("--rsttype", conf.restart_type, fc_int, "Check count at every step");
+    add_arg("--rstcutoff", conf.restart_cutoff_mult, fc_double, "Multiply cutoff with this");
+    add_arg("--rstcheckcnt", conf.do_cube_check_count, fc_int, "Check the count of each cube");
+    add_arg("--rstreadjust", conf.do_readjust_for_restart, fc_int, "Readjust params for restart");
+    add_arg("--maxrst", conf.max_num_rst, fc_int, "Max number of restarts");
+    add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart, fc_int,  "Max number of cubes per restart");
 
     // Multi-threading options
-    add_arg("--threads", num_threads, atoi, "Number of threads to use. -1 = all available cores");
-    add_arg("--bitsjobs", bits_jobs, atoi, "Number of variables to multi-thread on (8 = 256 jobs)");
+    add_arg("--threads", num_threads, fc_int, "Number of threads to use. -1 = all available cores");
+    add_arg("--bitsjobs", bits_jobs, fc_int, "Number of variables to multi-thread on (8 = 256 jobs)");
     program.add_argument("inputfile").remaining().help("input CNF");
 
     // Minor options
-    add_arg("--mpfrprecision", mpfr_precision, atoi, "MPFR precision in bits");
+    add_arg("--mpfrprecision", mpfr_precision, fc_int, "MPFR precision in bits");
 }
 
 void parse_supported_options(int argc, char** argv) {

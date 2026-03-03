@@ -1,52 +1,36 @@
 #!/bin/bash
-set -x
-set -e
-cd ../../ || exit 1
+set -euxo pipefail
 
-# export CC=gcc-14
-# export CXX=g++-14
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+echo "Rebuilding all in $BASE_DIR"
 
-cd cadical/ || exit 1
-make clean
-CXXFLAGS=-fPIC ./configure --competition
-make -j12
-cd .. || exit 1
-
-cd cadiback/ || exit 1
-make clean
-./configure
-make -j12
-cd .. || exit 1
-
-cd breakid/build/ || exit 1
+cd "$BASE_DIR/cadical" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd cryptominisat/build/ || exit 1
+cd "$BASE_DIR/cadiback" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd sbva/build/ || exit 1
+cd "$BASE_DIR/breakid/build" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd EvalMaxSAT/build/ || exit 1
+cd "$BASE_DIR/cryptominisat/build" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd treedecomp/build/ || exit 1
+cd "$BASE_DIR/sbva/build" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd arjun/build/ || exit 1
+cd "$BASE_DIR/EvalMaxSAT/build" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd approxmc/build/ || exit 1
-rm -f build*.sh
-ln -s ../scripts/build_scripts/build_*.sh .
+cd "$BASE_DIR/treedecomp/build" || exit 1
 ./build_static.sh
-cd ../../ || exit 1
 
-cd ganak/build/ || exit 1
+cd "$BASE_DIR/arjun/build" || exit 1
+./build_static.sh
+
+cd "$BASE_DIR/approxmc/build" || exit 1
+./build_static.sh
+
+cd "$BASE_DIR/ganak/build" || exit 1
 ./build_static.sh

@@ -133,14 +133,14 @@ void add_ganak_options()
         .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);}) \
         .flag()
         .help("Print version and exit");
-    add_arg("--mode", mode , atoi, R"delimiter(0=counting,
-1=weighted counting,
-2=complex numbers,
+    add_arg("--mode", mode , atoi, R"delimiter(0=integer counting,
+1=weighted counting over the rationals,
+2=complex rational numbers,
 3=multivariate polynomials over the rational field,
 4=parity counting,
-5=counting over prime field,
-6=mpfr complex numbers,
-7=mpfr normal numbers,
+5=counting over a prime field (see --prime),
+6=mpfr floating point complex numbers (see --mpfrprecision),
+7=mpfr floating point real numbers (see --mpfrprecision),
 8=mpfi intervals
 )delimiter");
     add_arg("--prime", prime_field, atoi, "Prime for prime field counting");

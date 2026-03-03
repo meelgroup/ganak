@@ -1,49 +1,49 @@
 #!/bin/bash
 set -x
 set -e
-cd ../../
+cd ../../ || exit 1
 
-cd cadical/
+cd cadical/ || exit 1
 make clean
 ./build_norm.sh
 make -j12
-cd ..
+cd .. || exit 1
 
-cd cadiback/
+cd cadiback/ || exit 1
 make clean
 ./build_norm.sh
 make -j12
-cd ..
+cd .. || exit 1
 
-cd breakid/build/
+cd breakid/build/ || exit 1
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd cryptominisat/build/
+cd cryptominisat/build/ || exit 1
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd sbva/build/
+cd sbva/build/ || exit 1
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd EvalMaxSAT/build/
+cd EvalMaxSAT/build/ || exit 1
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd treedecomp/build/
+cd treedecomp/build/ || exit 1
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd arjun/build/
+cd arjun/build/ || exit 1
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd approxmc/build/
+cd approxmc/build/ || exit 1
 rm -f build_*.sh
 ln -s ../scripts/build_scripts/build_*.sh .
 ./build_norm.sh
-cd ../../
+cd ../../ || exit 1
 
-cd ganak/build/
+cd ganak/build/ || exit 1
 ./build_norm.sh

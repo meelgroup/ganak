@@ -49,7 +49,7 @@ THE SOFTWARE.
 #include "fmpfi.hpp"
 #include <approxmc/approxmc.h>
 
-#define MAX_DIGIT_PRECISION 1e6
+static constexpr uint32_t max_digit_precision = 1e6;
 
 using CMSat::StreamBuffer;
 using CMSat::DimacsParser;
@@ -503,7 +503,7 @@ double digit_precision_mpfi(mpfi_srcptr v) {
         mpfr_clear(diam);
         mpfr_clear(left);
         mpfr_clear(right);
-        return MAX_DIGIT_PRECISION;
+        return max_digit_precision;
     }
 
     mpfr_log10(diam, diam, MPFR_RNDN);
@@ -511,8 +511,8 @@ double digit_precision_mpfi(mpfi_srcptr v) {
     if (result < 0)
         result = 0.0;
 
-    if (result > MAX_DIGIT_PRECISION)
-        result = MAX_DIGIT_PRECISION;
+    if (result > max_digit_precision)
+        result = max_digit_precision;
 
     mpfr_clear(diam);
     mpfr_clear(left);

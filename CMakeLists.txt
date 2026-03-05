@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 
 # CMP0104 (CUDA architectures default) was introduced in 3.18; guard needed
 if(POLICY CMP0104)
@@ -58,6 +58,8 @@ foreach(build_config ${build_types})
     endforeach()
 endforeach()
 
+set(CMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY ON)
+set(CMAKE_EXPORT_PACKAGE_REGISTRY OFF)
 project(ganak)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
@@ -297,7 +299,6 @@ set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/he
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
 find_package(MPFI REQUIRED)
-
 find_package(FLINT REQUIRED)
 message(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
 message(STATUS "MPFI include dir: ${MPFI_INCLUDES}")
@@ -315,12 +316,14 @@ if(NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     endif()
 endif()
 
+set(cryptominisat5_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat/build")
 find_package(cryptominisat5 CONFIG REQUIRED)
+set(arjun_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../arjun/build")
 find_package(arjun CONFIG REQUIRED)
-find_package(sbva CONFIG REQUIRED)
-find_package(breakid CONFIG REQUIRED)
+# find_package(breakid CONFIG REQUIRED)
+set(approxmc_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../approxmc/build")
 find_package(approxmc CONFIG REQUIRED)
-find_package(EvalMaxSAT REQUIRED)
+set(treedecomp_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp/build")
 find_package(treedecomp CONFIG REQUIRED)
 
 message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")

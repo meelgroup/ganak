@@ -70,31 +70,20 @@ target_include_directories(ganak
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/
     ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/
+    ${APPROXMC_INCLUDE_DIRS}
+    ${TREEDECOMP_INCLUDE_DIRS}
+    ${ARJUN_INCLUDE_DIRS}
   PUBLIC
     ${CRYPTOMINISAT5_INCLUDE_DIRS}
-    ${ARJUN_INCLUDE_DIRS}
-    ${MPFR_INCLUDE_DIR}
-    ${MPFI_INCLUDES}
-    ${GMP_INCLUDE_DIR}
-    ${BREAKID_INCLUDE_DIRS}
-    ${APPROXMC_INCLUDE_DIRS}
-    ${FLINT_INCLUDE_DIRS}
-    ${EVALMAXSAT_INCLUDE_DIRS}
-    ${TREEDECOMP_INCLUDE_DIRS}
 )
 
 target_link_libraries(ganak
-  PUBLIC
+  PRIVATE
     Threads::Threads
-    ${CRYPTOMINISAT5_LIBRARIES}
-    ${ARJUN_LIBRARIES}
     ${APPROXMC_LIBRARIES}
-    ${BREAKID_LIBRARIES}
-    ${FLINT_LIBRARIES}
-    ${MPFI_LIBRARIES}
-    ${MPFR_LIBRARIES}
-    ${GMP_LIBRARIES}
     ${TREEDECOMP_LIBRARIES}
+  PUBLIC
+    ${CRYPTOMINISAT5_LIBRARIES}
 )
 
 set_target_properties(ganak PROPERTIES
@@ -107,16 +96,37 @@ set_target_properties(ganak PROPERTIES
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 
-target_link_libraries(ganak-bin PRIVATE ganak)
-target_link_libraries(example-bin PRIVATE ganak)
+target_link_libraries(ganak-bin
+    PRIVATE
+      ganak
+      ${ARJUN_LIBRARIES}
+      ${FLINT_LIBRARIES}
+      ${MPFI_LIBRARIES}
+      ${MPFR_LIBRARIES}
+      ${GMP_LIBRARIES}
+      # ${BREAKID_INCLUDE_DIRS}
+      ${FLINT_INCLUDE_DIRS}
+      ${APPROXMC_LIBRARIES}
+)
+target_link_libraries(example-bin
+    PRIVATE
+      ganak
+      ${ARJUN_LIBRARIES}
+      ${GMP_LIBRARIES}
+)
 
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ARJUN_INCLUDE_DIRS}
+    ${GMP_INCLUDE_DIR}
+    ${APPROXMC_INCLUDE_DIRS}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ARJUN_INCLUDE_DIRS}
+    ${GMP_INCLUDE_DIR}
 )
 
 if(ZLIB_FOUND)

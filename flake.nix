@@ -18,10 +18,10 @@
       url = "github:meelgroup/approxmc/synth";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    breakid = {
-      url = "github:meelgroup/breakid/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # breakid = {
+    #   url = "github:meelgroup/breakid/master";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
     evalmaxsat = {
       url = "github:meelgroup/EvalMaxSAT/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -38,7 +38,7 @@
       nixpkgs,
       arjun,
       approxmc,
-      breakid,
+      # breakid,
       cryptominisat,
       sbva,
       evalmaxsat,
@@ -64,7 +64,7 @@
           cryptominisat,
           arjun,
           sbva,
-          breakid,
+          # breakid,
           approxmc,
           python3,
           python3Packages,
@@ -89,7 +89,7 @@
             cryptominisat
             arjun
             sbva
-            breakid
+            # breakid
             approxmc
             evalmaxsat
             treedecomp
@@ -123,7 +123,7 @@
             cryptominisat = cryptominisat.packages.${system}.cryptominisat;
             arjun = arjun.packages.${system}.arjun;
             sbva = sbva.packages.${system}.sbva;
-            breakid = breakid.packages.${system}.breakid;
+            # breakid = breakid.packages.${system}.breakid;
             approxmc = approxmc.packages.${system}.approxmc;
             evalmaxsat = evalmaxsat.packages.${system}.evalmaxsat;
             treedecomp = treedecomp.packages.${system}.treedecomp;

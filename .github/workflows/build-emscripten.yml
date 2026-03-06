@@ -59,11 +59,10 @@ jobs:
         wget https://github.com/flintlib/flint/releases/download/v3.4.0/flint-3.4.0.tar.gz
         tar xzf flint-3.4.0.tar.gz
         cd flint-3.4.0
-        mkdir build && cd build
         emconfigure ./configure --disable-assembly --with-mpfr=$EMINSTALL --with-gmp=$EMINSTALL --prefix=$EMINSTALL
         emmake make -j$(nproc)
         emmake make install
-        cd ../..
+        cd ..
 
     - name: Checkout Cadical
       uses: actions/checkout@v4

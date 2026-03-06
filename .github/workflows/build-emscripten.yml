@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Setup emsdk
-      uses: emscripten-core/setup-emsdk@v14
+      uses: mymindstorm/setup-emsdk@v14
       with:
         emscripten-version: latest
 

@@ -79,8 +79,9 @@ jobs:
     - name: Build Cadical for wasm
       run: |
         cd cadical
-        emconfigure ./configure --competition
+        emconfigure ./configure --no-contracts --no-tracing
         emmake make -j$(nproc)
+        cp build/libcadical* $EMINSTALL/lib/
         cd ..
 
     - name: Checkout Cadiback

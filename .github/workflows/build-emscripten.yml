@@ -59,13 +59,12 @@ jobs:
         wget https://github.com/flintlib/flint/releases/download/v3.4.0/flint-3.4.0.tar.gz
         tar xzf flint-3.4.0.tar.gz
         cd flint-3.4.0
-        printf 'flint_cv_asm_text_section=".text"\nflint_cv_asm_label_suffix="_"\n' > config.cache
         emconfigure ./configure \
-          --cache-file=config.cache \
           --disable-assembly \
           --with-mpfr=$EMINSTALL \
           --with-gmp=$EMINSTALL \
-          --prefix=$EMINSTALL
+          --prefix=$EMINSTALL \
+          --host wasm32
         emmake make -j$(nproc)
         emmake make install
         cd ..

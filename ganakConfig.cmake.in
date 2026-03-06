@@ -1,11 +1,4 @@
 # Config file for the @EXPORT_TYPE@ ganak package
-# It defines the following variables
-#  GANAK_INCLUDE_DIRS - include directories for ganak
-#  GANAK_LIBRARIES    - libraries to link against
-#  GANAK_EXECUTABLE   - the ganak executable
-
-include(CMakeFindDependencyMacro)
-find_dependency(Threads)
 
 # Compute paths
 get_filename_component(GANAK_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
@@ -17,7 +10,6 @@ include("${GANAK_CMAKE_DIR}/@GANAK_TARGETS_FILENAME@")
 # These are IMPORTED targets created by @GANAK_TARGETS_FILENAME@
 set(GANAK_LIBRARIES ganak)
 set(GANAK_STATIC_LIBRARIES ganak)
-set(GANAK_LIBRARIES_DEPS gmp mpfr cryptominisat5 arjun sbva breakid approxmc treedecomp)
 set(GANAK_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
 set(GANAK_VERSION_MINOR @PROJECT_VERSION_MINOR@)
 set(GANAK_EXECUTABLE ganak)

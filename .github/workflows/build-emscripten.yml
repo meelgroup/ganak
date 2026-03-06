@@ -1,0 +1,214 @@
+name: build-emscripten
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup emsdk
+      uses: emscripten-core/setup-emsdk@v14
+      with:
+        emscripten-version: latest
+
+    - name: Set EMINSTALL
+      run: |
+        EMINSTALL=$(em-config CACHE)/sysroot
+        echo "EMINSTALL=$EMINSTALL" >> $GITHUB_ENV
+
+    - name: Install build dependencies
+      run: sudo apt-get update && sudo apt-get install -yq wget
+
+    - name: Build GMP for wasm
+      run: |
+        wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+        tar xf gmp-6.3.0.tar.xz
+        cd gmp-6.3.0
+        emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Build MPFR for wasm
+      run: |
+        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
+        tar xf mpfr-4.2.1.tar.xz
+        cd mpfr-4.2.1
+        emconfigure ./configure --host wasm32 --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Build MPFI for wasm
+      run: |
+        wget https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
+        tar xzf mpfi-1.5.4.tar.gz
+        cd mpfi-1.5.4
+        emconfigure ./configure --with-mpfr=$EMINSTALL --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Build FLINT for wasm
+      run: |
+        wget https://github.com/flintlib/flint/releases/download/v3.2.0-rc1/flint-3.2.0-rc1.tar.gz
+        tar xzf flint-3.2.0-rc1.tar.gz
+        cd flint-3.2.0-rc1
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DBUILD_TESTING=OFF \
+          -DBUILD_DOCS=OFF \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          -DGMP_INCLUDE_DIR=$EMINSTALL/include \
+          -DGMP_LIBRARY=$EMINSTALL/lib/libgmp.a \
+          -DMPFR_INCLUDE_DIR=$EMINSTALL/include \
+          -DMPFR_LIBRARY=$EMINSTALL/lib/libmpfr.a \
+          ..
+        emmake make -j$(nproc)
+        emmake make install
+        cd ../..
+
+    - name: Checkout Cadical
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/cadical
+        ref: master
+        path: cadical
+    - name: Build Cadical for wasm
+      run: |
+        cd cadical
+        emconfigure ./configure --competition
+        emmake make -j$(nproc)
+        cd ..
+
+    - name: Checkout Cadiback
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/cadiback
+        ref: main
+        path: cadiback
+    - name: Build Cadiback for wasm
+      run: |
+        cd cadiback
+        emconfigure ./configure
+        emmake make -j$(nproc)
+        cd ..
+
+    - name: Checkout CryptoMiniSat
+      uses: actions/checkout@v4
+      with:
+        repository: msoos/cryptominisat
+        ref: working-on-synth
+        path: cryptominisat
+        submodules: 'true'
+    - name: Build CryptoMiniSat for wasm
+      run: |
+        cd cryptominisat
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout treedecomp
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/treedecomp
+        ref: main
+        path: treedecomp
+    - name: Build treedecomp for wasm
+      run: |
+        cd treedecomp
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout arjun
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/arjun
+        ref: aig-shared-ptr-better-fix
+        path: arjun
+    - name: Build arjun for wasm
+      run: |
+        cd arjun
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -S ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout approxmc
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/approxmc
+        ref: synth
+        path: approxmc
+        submodules: 'true'
+    - name: Build approxmc for wasm
+      run: |
+        cd approxmc
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -S ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout ganak
+      uses: actions/checkout@v4
+      with:
+        path: project
+        submodules: 'true'
+    - name: Build ganak for wasm
+      run: |
+        cd project
+        mkdir -p build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -DNOZLIB=ON \
+          -DGMP_INCLUDE_DIR=$EMINSTALL/include \
+          -DGMP_LIBRARIES=$EMINSTALL/lib/libgmp.a \
+          -DMPFR_INCLUDE_DIR=$EMINSTALL/include \
+          -DMPFR_LIBRARIES=$EMINSTALL/lib/libmpfr.a \
+          -DMPFI_INCLUDES=$EMINSTALL/include \
+          -DMPFI_LIBRARIES=$EMINSTALL/lib/libmpfi.a \
+          -DFLINT_INCLUDE_DIRS=$EMINSTALL/include \
+          -DFLINT_LIBRARIES=$EMINSTALL/lib/libflint.a \
+          ..
+        emmake make -j$(nproc) ganak
+        cd ../..
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ganak-wasm
+        path: |
+          project/build/ganak.js
+          project/build/ganak.wasm

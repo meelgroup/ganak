@@ -4,6 +4,32 @@
 get_filename_component(GANAK_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 set(GANAK_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
 
+include(CMakeFindDependencyMacro)
+
+# All imported targets referenced in ganakTargets.cmake must be defined before
+# that file is included, otherwise $<LINK_ONLY:foo> falls back to bare -lfoo.
+find_dependency(Threads REQUIRED)
+
+if(NOT "@CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(cryptominisat5_DIR "@CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(cryptominisat5 REQUIRED CONFIG)
+
+if(NOT "@ARJUN_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(arjun_DIR "@ARJUN_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(arjun REQUIRED CONFIG)
+
+if(NOT "@APPROXMC_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(approxmc_DIR "@APPROXMC_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(approxmc REQUIRED CONFIG)
+
+if(NOT "@TREEDECOMP_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(treedecomp_DIR "@TREEDECOMP_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(treedecomp REQUIRED CONFIG)
+
 # Our library dependencies (contains definitions for IMPORTED targets)
 include("${GANAK_CMAKE_DIR}/@GANAK_TARGETS_FILENAME@")
 

@@ -448,6 +448,10 @@ export(
 # Create ganakConfig file
 set(EXPORT_TYPE "Build-tree")
 set(CONF_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
+set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "${cryptominisat5_DIR}")
+set(ARJUN_CMAKE_DIR_FOR_CONFIG "${arjun_DIR}")
+set(APPROXMC_CMAKE_DIR_FOR_CONFIG "${approxmc_DIR}")
+set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "${treedecomp_DIR}")
 configure_file(ganakConfig.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_CONFIG_FILENAME}" @ONLY
 )
@@ -459,6 +463,10 @@ export(PACKAGE ganak)
 # Create ganakConfig file
 set(EXPORT_TYPE "installed")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
+set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "")  # installed deps found via system paths
+set(ARJUN_CMAKE_DIR_FOR_CONFIG "")
+set(APPROXMC_CMAKE_DIR_FOR_CONFIG "")
+set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "")
 configure_file(ganakConfig.cmake.in
    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}" @ONLY
 )

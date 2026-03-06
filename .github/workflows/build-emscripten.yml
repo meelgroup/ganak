@@ -136,6 +136,26 @@ jobs:
         emmake make -j$(nproc)
         cd ../..
 
+    - name: Checkout SBVA
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/SBVA
+        ref: master
+        path: sbva
+    - name: Build SBVA
+      run: |
+        cd sbva
+        mkdir build
+        cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -S ..
+        emmake make -j$(nproc)
+        cd ../..
+
     - name: Checkout arjun
       uses: actions/checkout@v4
       with:

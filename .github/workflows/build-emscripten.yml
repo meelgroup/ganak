@@ -210,22 +210,14 @@ jobs:
           -DSTATICCOMPILE=ON \
           -DENABLE_TESTING=OFF \
           -DNOZLIB=ON \
-          -DGMP_INCLUDE_DIR=$EMINSTALL/include \
-          -DGMP_LIBRARIES=$EMINSTALL/lib/libgmp.a \
-          -DMPFR_INCLUDE_DIR=$EMINSTALL/include \
-          -DMPFR_LIBRARIES=$EMINSTALL/lib/libmpfr.a \
-          -DMPFI_INCLUDES=$EMINSTALL/include \
-          -DMPFI_LIBRARIES=$EMINSTALL/lib/libmpfi.a \
-          -DFLINT_INCLUDE_DIRS=$EMINSTALL/include \
-          -DFLINT_LIBRARIES=$EMINSTALL/lib/libflint.a \
           ..
-        emmake make -j$(nproc) ganak
+        emmake make -j$(nproc)
         cd ../..
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ganak-wasm
+        name: ganak-wasm.zip
         path: |
           project/build/ganak.js
           project/build/ganak.wasm

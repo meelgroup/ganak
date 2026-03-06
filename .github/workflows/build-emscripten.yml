@@ -54,15 +54,11 @@ jobs:
         emmake make install
         cd ..
 
-    - name: Checkout fixed FLINT
-      uses: actions/checkout@v4
-      with:
-        repository: msoos/flint
-        ref: fix-emscripten-build
-        path: flint
     - name: Build FLINT for wasm
       run: |
-        cd flint
+        wget https://github.com/flintlib/flint/releases/download/v3.4.0/flint-3.4.0.tar.gz
+        tar xzf flint-3.4.0.tar.gz
+        cd flint-3.4.0
         emconfigure ./configure \
           --disable-assembly \
           --with-mpfr=$EMINSTALL \

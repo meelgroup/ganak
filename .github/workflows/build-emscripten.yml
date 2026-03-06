@@ -92,8 +92,9 @@ jobs:
     - name: Build Cadiback for wasm
       run: |
         cd cadiback
-        emconfigure ./configure
-        emmake make -j$(nproc)
+        ./configure
+        emmake make -f makefile.emscripten
+        cp libcadi* $EMINSTALL/lib/
         cd ..
 
     - name: Checkout CryptoMiniSat

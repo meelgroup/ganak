@@ -118,21 +118,6 @@ jobs:
         make -j8
         cd ..
 
-    - name: Checkout breakid
-      uses: actions/checkout@v4
-      with:
-        repository: meelgroup/breakid
-        ref: master
-        path: breakid
-    - name: Build Breakid
-      run: |
-        cd breakid
-        mkdir build
-        cd build
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-        cmake --build . --config ${{matrix.build_type}} -v
-        cd ../..
-
     - name: Copy cadiback and cadical libs
       if: matrix.staticcompile == 'OFF'
       run: |

@@ -59,23 +59,15 @@ jobs:
         wget https://github.com/flintlib/flint/releases/download/v3.4.0/flint-3.4.0.tar.gz
         tar xzf flint-3.4.0.tar.gz
         cd flint-3.4.0
-        mkdir build && cd build
-        emcmake cmake \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_SHARED_LIBS=OFF \
-          -DBUILD_TESTING=OFF \
-          -DBUILD_DOCS=OFF \
-          -DFLINT_USES_ASSEMBLY=OFF \
-          -DFLINT_USES_PTHREAD=OFF \
-          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
-          -DGMP_INCLUDE_DIR=$EMINSTALL/include \
-          -DGMP_LIBRARY=$EMINSTALL/lib/libgmp.a \
-          -DMPFR_INCLUDE_DIR=$EMINSTALL/include \
-          -DMPFR_LIBRARY=$EMINSTALL/lib/libmpfr.a \
-          ..
+        emconfigure ./configure \
+          --disable-assembly \
+          --with-mpfr=$EMINSTALL \
+          --with-gmp=$EMINSTALL \
+          --prefix=$EMINSTALL \
+          ac_cv_label_suffix=_
         emmake make -j$(nproc)
         emmake make install
-        cd ../..
+        cd ..
 
     - name: Checkout Cadical
       uses: actions/checkout@v4

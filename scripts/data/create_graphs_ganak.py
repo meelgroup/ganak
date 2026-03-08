@@ -534,6 +534,7 @@ only_dirs = [
             "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
             # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
             "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
+            "out-ganak-mccomp2324-1140000-0", # dodgy cache update
 
             ]
 # only_dirs = ["out-ganak-6828273"]

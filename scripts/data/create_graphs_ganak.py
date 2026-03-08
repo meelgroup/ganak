@@ -535,6 +535,7 @@ only_dirs = [
             # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
             "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
             "out-ganak-mccomp2324-1140000-0", # dodgy cache update
+            "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
 
             ]
 # only_dirs = ["out-ganak-6828273"]

@@ -65,11 +65,10 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   auto cnt = cdat->fg->one();
 
   // Check for empty clause
-  for(const auto& cl: cdat->irred_cls) {
-    if (cl.size() == 0) {
-      cout << "c o intermediate count: " << *cdat->fg->zero() << endl;
-      return cdat->fg->zero();
-    }
+  if (std::any_of(cdat->irred_cls.begin(), cdat->irred_cls.end(),
+      [](const auto& cl) { return cl.empty(); })) {
+    cout << "c o intermediate count: " << *cdat->fg->zero() << endl;
+    return cdat->fg->zero();
   }
 
   auto bags = find_disconnected(*cdat);

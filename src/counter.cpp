@@ -346,7 +346,7 @@ uint32_t Counter::td_decompose_component(bool update_score) {
 
   // Notice that this graph returned is VERY different
   auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters));
-  td.centroid(primal.numNodes(), 0);
+  td.centroid(0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
 
   if (update_score) compute_td_score(td, nodes, false);
@@ -497,7 +497,7 @@ FF Counter::check_count_norestart_cms(const Cube& c) {
     }
     *cnt += *this_cnt;
     for(uint32_t i = 0; i < indep_support_end-1; i++) {
-      ban.push_back(CMSat::Lit(i, test_solver.get_model()[i] == CMSat::l_True));
+      ban.emplace_back(i, test_solver.get_model()[i] == CMSat::l_True);
     }
     test_solver.add_clause(ban);
   }
@@ -829,7 +829,7 @@ FF Counter::count_using_cms() {
     *cnt += *this_cnt;
     vector<CMSat::Lit> ban;
     for(int j = 0; j < (int)indep_support_end-1; j++)
-      ban.push_back(CMSat::Lit(j, sol[j] == CMSat::l_True));
+      ban.emplace_back(j, sol[j] == CMSat::l_True);
     sat_solver->add_clause(ban);
     ret = sat_solver->solve();
     assert(ret != CMSat::l_Undef);
@@ -2491,12 +2491,13 @@ void Counter::v_cl_repair(ClauseOfs off) {
 
   if (offs.currently_propagating) {
     // Move 1st & 2nd literal to position
-    auto at = std::find(cl.begin(), cl.end(), offs.first);
-    assert(at != cl.end());
-    std::swap(cl[0], *at);
-    at = std::find(cl.begin(), cl.end(), offs.second);
-    assert(at != cl.end());
-    std::swap(cl[1], *at);
+    auto swap_to = [&](size_t pos, const Lit& lit) {
+      auto at = std::find(cl.begin(), cl.end(), lit);
+      assert(at != cl.end());
+      std::swap(cl[pos], *at);
+    };
+    swap_to(0, offs.first);
+    swap_to(1, offs.second);
 
     watches[cl[0]].add_cl(off, offs.blk1);
     watches[cl[1]].add_cl(off, offs.blk2);
@@ -2584,9 +2585,9 @@ bool Counter::propagation_correctness_of_vivified(const T2& cl) const {
       num_t++;
       if (num_t >= 2) return true;
       t_lev = var(l).decision_level;
-    }
-    if (val(l) == X_TRI) return true;
-    if (val(l) == F_TRI) {
+    } else if (val(l) == X_TRI) {
+      return true;
+    } else if (val(l) == F_TRI) {
       maxlev_f = std::max(maxlev_f, var(l).decision_level);
     }
   }
@@ -2614,14 +2615,16 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   if (it->second.currently_propagating) return false;
   v_tmp.clear();
   v_tmp2.clear();
-  for(const auto&l: cl) v_tmp2.push_back(l);
+  v_tmp2.assign(cl.begin(), cl.end());
   std::shuffle(v_tmp2.begin(), v_tmp2.end(), mtrand);
 
   // Swap to 1st & 2nd the two original 1st & 2nd
-  auto sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.first);
-  std::swap(*sw, v_tmp2[0]);
-  sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.second);
-  std::swap(*sw, v_tmp2[1]);
+  auto swap_to = [&](size_t pos, const Lit& lit) {
+    auto it2 = std::find(v_tmp2.begin(), v_tmp2.end(), lit);
+    std::swap(*it2, v_tmp2[pos]);
+  };
+  swap_to(0, it->second.first);
+  swap_to(1, it->second.second);
   if (v_val(v_tmp2[0]) != X_TRI || v_val(v_tmp2[1]) != X_TRI) return false;
 
   v_new_lev();
@@ -3587,8 +3590,8 @@ uint64_t Counter::buddy_count() {
 
   // Binary clauses
   uint32_t actual_bin = 0;
-  for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
-    Lit l(v, i);
+  for(const auto& v: vmap) for(bool sign : {false, true}) {
+    Lit l(v, sign);
     if (v != top_var && val(l) != X_TRI) continue;
     for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;

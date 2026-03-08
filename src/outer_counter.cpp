@@ -166,10 +166,10 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   // Build primal graph from clauses
   TWD::Graph primal(nvars);
   for (const auto& cl : irred_cls) {
-    for (size_t i = 0; i < cl.size(); i++) {
-      for (size_t j = i + 1; j < cl.size(); j++) {
-        uint32_t v1 = cl[i].var() - 1;
-        uint32_t v2 = cl[j].var() - 1;
+    for (auto it1 = cl.begin(); it1 != cl.end(); ++it1) {
+      for (auto it2 = std::next(it1); it2 != cl.end(); ++it2) {
+        uint32_t v1 = it1->var() - 1;
+        uint32_t v2 = it2->var() - 1;
         if (v1 != v2) primal.addEdge(v1, v2);
       }
     }
@@ -190,7 +190,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3);
 
   // Find centroid
-  int centroid_id = tdec.centroid(primal.numNodes(), conf.verb);
+  int centroid_id = tdec.centroid(conf.verb);
   vector<int> centroid_bag = tdec.Bags()[centroid_id];
 
   verb_print(1, "[par] TD width: " << tdec.width()

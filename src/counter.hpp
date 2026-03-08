@@ -57,7 +57,7 @@ template<typename T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
   cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  for(const auto& l: cl) cms_cl.emplace_back(l.var()-1, !l.sign());
   return cms_cl;
 }
 

@@ -121,8 +121,8 @@ void CompAnalyzer::initialize(
   vector<uint32_t> tmp2;
   for (uint32_t v = 1; v < n; v++) {
     tmp2.clear();
-    for(uint32_t i = 0; i < 2; i++) {
-      for (const auto& bincl: watches[Lit(v, i)].binaries) {
+    for(bool sign : {false, true}) {
+      for (const auto& bincl: watches[Lit(v, sign)].binaries) {
         if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
     }
@@ -130,9 +130,7 @@ void CompAnalyzer::initialize(
     std::sort(tmp2.begin(), tmp2.end());
     tmp2.erase(std::unique(tmp2.begin(), tmp2.end()), tmp2.end());
 
-    unif_occ_bin[v].clear();
-    unif_occ_bin[v].resize(tmp2.size());
-    for(uint32_t i = 0; i < tmp2.size(); i++) unif_occ_bin[v][i] = tmp2[i];
+    unif_occ_bin[v] = tmp2;
   }
 
   if (true) {
@@ -180,17 +178,13 @@ void CompAnalyzer::initialize(
     // check bins
     for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
       assert(unif_occ_bin[v].size() == holder.size_bin(v));
-      for(uint32_t i = 0; i < unif_occ_bin[v].size(); i++) {
-        assert(unif_occ_bin[v][i] == holder.begin_bin(v)[i]);
-      }
+      assert(std::equal(unif_occ_bin[v].begin(), unif_occ_bin[v].end(), holder.begin_bin(v)));
     }
 
     // check longs
     for(uint32_t v = 0; v < unif_occ_long.size(); v++) {
       assert(unif_occ_long[v].size() == holder.size_long(v));
-      for(uint32_t i = 0; i < unif_occ_long[v].size(); i++) {
-        assert(unif_occ_long[v][i] == holder.begin_long(v)[i]);
-      }
+      assert(std::equal(unif_occ_long[v].begin(), unif_occ_long[v].end(), holder.begin_long(v)));
     }
   }
 

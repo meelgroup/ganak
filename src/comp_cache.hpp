@@ -519,11 +519,7 @@ void CompCache<T>::debug_mem_data() const {
 template<typename T>
 uint64_t CompCache<T>::num_direct_children(CacheEntryID id) {
   uint64_t ret = 0;
-  CacheEntryID act_child = entry(id).first_descendant();
-  while (act_child) {
-    act_child = entry(act_child).next_sibling();
-    ret++;
-  }
+  for (auto c = entry(id).first_descendant(); c; c = entry(c).next_sibling()) ret++;
   return ret;
 }
 

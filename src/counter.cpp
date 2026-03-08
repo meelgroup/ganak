@@ -424,6 +424,7 @@ void Counter::td_decompose() {
       }
     }
   } else primal_alt = std::move(primal);
+  primal.reset();
 
   if (!primal_alt->isConnected()) {
     cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;

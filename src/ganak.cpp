@@ -116,30 +116,17 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
       if (cdat->lit_weights.count(GanakInt::Lit(v, false))) sub_c.lit_weights[GanakInt::Lit(var_map[v], false)] = cdat->lit_weights[GanakInt::Lit(v, false)]->dup();
       if (cdat->lit_weights.count(GanakInt::Lit(v, true))) sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = cdat->lit_weights[GanakInt::Lit(v, true)]->dup();
     }
-    for(const auto& cl: bag_to_irred_cls[i]) {
+    auto remap_clause = [&](const vector<GanakInt::Lit>& cl) {
       vector<GanakInt::Lit> new_cl;
       for(const auto& l: cl) {
-        new_cl.push_back(GanakInt::Lit(var_map[l.var()], l.sign()));
         assert(var_map[l.var()] != -1);
         assert(var_map[l.var()] < (int)sub_c.nvars +1);
-      }
-      sub_c.irred_cls.emplace_back(new_cl);
-      /* cout << "irred new cl: "; */
-      /* for(const auto& l: new_cl) cout << (l.sign() ? "" : "-") << l.var() << " "; */
-      /* cout << endl; */
-    }
-    for(const auto& cl: bag_to_red_cls[i]) {
-      vector<GanakInt::Lit> new_cl;
-      for(const auto& l: cl.first) {
         new_cl.push_back(GanakInt::Lit(var_map[l.var()], l.sign()));
-        assert(var_map[l.var()] != -1);
-        assert(var_map[l.var()] < (int)sub_c.nvars +1);
       }
-      sub_c.red_cls.push_back({new_cl, cl.second});
-      /* cout << "red new cl: "; */
-      /* for(const auto& l: new_cl) cout << (l.sign() ? "" : "-") << l.var() << " "; */
-      /* cout << endl; */
-    }
+      return new_cl;
+    };
+    for(const auto& cl: bag_to_irred_cls[i]) sub_c.irred_cls.emplace_back(remap_clause(cl));
+    for(const auto& cl: bag_to_red_cls[i]) sub_c.red_cls.push_back({remap_clause(cl.first), cl.second});
     cls_added += sub_c.irred_cls.size();
 
     // Now count

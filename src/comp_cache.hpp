@@ -298,7 +298,7 @@ template<typename T>
 uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
   uint64_t removed = 0;
 
-  // unlink id from the father's siblings list
+  // Unlink id from its father's sibling list.
   const CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) {
     entry(father).set_first_descendant(entry(id).next_sibling());

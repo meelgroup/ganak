@@ -45,7 +45,6 @@ THE SOFTWARE.
 #include "bdd.h"
 #endif
 #include <approxmc/approxmc.h>
-#include <thread>
 #include "timer.hpp"
 
 using std::set;
@@ -1662,7 +1661,8 @@ RetState Counter::backtrack() {
 
   //When we enter, either it must be UNSAT, or there must be no other component possible.
   //As we backtrack, another component can become possible
-  assert(decisions.top().branch_found_unsat() || !decisions.top().another_comp_possible() || dec_level() == 0);
+  assert(decisions.top().branch_found_unsat() || decisions.top().branch_is_zero() ||
+      !decisions.top().another_comp_possible() || dec_level() == 0);
   do {
 #ifdef VERBOSE_DEBUG
     if (dec_level() > 0) {
@@ -1882,7 +1882,6 @@ void Counter::go_back_to(int32_t backj) {
         << " cnt: " << *decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
-    decisions.top().zero_out_all_sol(); //not sure it's needed
     if (!sat_mode()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
     }

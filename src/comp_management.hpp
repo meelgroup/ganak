@@ -144,7 +144,7 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
         << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
-  if (top.branch_found_unsat()) return false;
+  if (top.branch_found_unsat() || top.branch_is_zero()) return false;
   if (top.has_unproc_comps()) {
     debug_print(COLREDBG"-*-> Finished find_next_remain_comp_of, has_unproc_comps.");
     return true;

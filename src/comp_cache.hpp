@@ -294,7 +294,6 @@ CacheEntryID CompCache<T>::add_new_comp(void* c, CacheEntryID super_comp_id) {
 template<typename T>
 uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
   uint64_t removed = 0;
-
   // Unlink id from its father's sibling list.
   const CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) {

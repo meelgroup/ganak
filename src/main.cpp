@@ -176,8 +176,8 @@ void add_ganak_options()
 3=multivariate polynomials over the rational field,
 4=parity counting,
 5=counting over a prime field (see --prime),
-6=mpfr floating point complex numbers (see --mpfrprecision),
-7=mpfr floating point real numbers (see --mpfrprecision),
+6=mpfr floating point complex numbers (see --mpfrprec),
+7=mpfr floating point real numbers (see --mpfrprec),
 8=mpfi intervals
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");

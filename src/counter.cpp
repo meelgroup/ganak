@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <ios>
 #include <iomanip>
 #include <limits>
+#include <set>
 #include <unordered_set>
 #include <memory>
 #include <utility>
@@ -47,6 +48,7 @@ THE SOFTWARE.
 #include <thread>
 #include "timer.hpp"
 
+using std::set;
 using std::setprecision;
 using std::setw;
 using std::unique_ptr;

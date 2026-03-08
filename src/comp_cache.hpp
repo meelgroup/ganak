@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include "counter_config.hpp"
 #include "Vec.hpp"
-#include <set>
 #include <gmpxx.h>
 #include "structures.hpp"
 #include "time_mem.hpp"
@@ -35,8 +34,6 @@ THE SOFTWARE.
 
 #include "comp_types/comp.hpp"
 #include "stack.hpp"
-using std::set;
-
 namespace GanakInt {
 
 // There is EXACTLY ONE of this
@@ -44,7 +41,7 @@ template<typename T>
 class CompCache final: public CompCacheIF {
 public:
   CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) { }
-  ~CompCache() {}
+  ~CompCache() = default;
 
   void init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) override;
   uint64_t get_num_entries_used() const override {
@@ -135,7 +132,7 @@ public:
 
   // delete entries, keeping the descendants tree consistent
   uint64_t unlink_from_tree(CacheEntryID id) override;
-  uint64_t num_descendants(CacheEntryID id) override;
+  uint64_t num_direct_children(CacheEntryID id) override;
   uint64_t num_siblings(CacheEntryID id) override;
 
   // test function to ensure consistency of the descendant tree
@@ -196,10 +193,10 @@ private:
   }
 
   void add_descendant(CacheEntryID compid, CacheEntryID descendantid) {
-      assert(descendantid != entry(compid).first_descendant());
-      entry(descendantid).set_next_sibling(entry(compid).first_descendant());
-      entry(compid).set_first_descendant(descendantid);
-    }
+    assert(descendantid != entry(compid).first_descendant());
+    entry(descendantid).set_next_sibling(entry(compid).first_descendant());
+    entry(compid).set_first_descendant(descendantid);
+  }
 
   vec<T> entry_base;
   vec<CacheEntryID> free_entry_base_slots;
@@ -317,7 +314,7 @@ uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
   // Recursively unlink & delete all children
   CacheEntryID next_child = entry(id).first_descendant();
   entry(id).set_first_descendant(0);
-  VERBOSE_DEBUG_DO(cout << "Pollution-based unlinking from tree. ID: " << id << " num children: " << num_descendants(id) << endl;);
+  VERBOSE_DEBUG_DO(cout << "Pollution-based unlinking from tree. ID: " << id << " num children: " << num_direct_children(id) << endl;);
   while (next_child) {
     const CacheEntryID act_child = next_child;
     next_child = entry(act_child).next_sibling();
@@ -382,10 +379,8 @@ void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bp
   entry_base.push_back(x); // dummy Element
   stats.incorporate_cache_store(x.extra_bytes(), super_comp.nVars());
 
-  T* packed_super_comp = new T(super_comp, hash_seed, bpc);
-  entry_base.push_back(*packed_super_comp);
-  stats.incorporate_cache_store(packed_super_comp->extra_bytes(), super_comp.nVars());
-  delete packed_super_comp;
+  entry_base.emplace_back(T(super_comp, hash_seed, bpc));
+  stats.incorporate_cache_store(entry_base.back().extra_bytes(), super_comp.nVars());
   super_comp.set_id(1);
   compute_size_allocated();
 }
@@ -448,7 +443,7 @@ bool CompCache<T>::delete_some_entries() {
   for (uint32_t id = 2; id < entry_base.size(); id++)
     if (!entry_base[id].is_free() && entry_base[id].is_deletable() &&
         entry_base[id].last_used_time() >= cutoff) {
-      auto d = num_descendants(id);
+      auto d = num_direct_children(id);
       max_desc = std::max(max_desc, d);
       auto s = num_siblings(id);
       max_siblings = std::max(max_siblings, s);
@@ -460,9 +455,9 @@ bool CompCache<T>::delete_some_entries() {
         erase(id); // Note: no need to incorporate erase, we recompute bignum bytes below
       }
     }
-  verb_print(1, "max descendants: " << max_desc << " avg descendants: " << (double) desc/(double) num);
-  verb_print(1, "max siblings: " << max_siblings << " avg siblings: " << (double) siblings/(double) num);
-  verb_print(1, "free entries after:  " << free_entry_base_slots.size() << " avg len: " << (double) tot/(double) num);
+  verb_print(1, "max descendants: " << max_desc << " avg descendants: " << safe_div((double)desc, (double)num));
+  verb_print(1, "max siblings: " << max_siblings << " avg siblings: " << safe_div((double)siblings, (double)num));
+  verb_print(1, "free entries after:  " << free_entry_base_slots.size() << " avg len: " << safe_div((double)tot, (double)num));
 
   SLOW_DEBUG_DO(test_descendantstree_consistency());
   rehash_table(table.size());
@@ -522,7 +517,7 @@ void CompCache<T>::debug_mem_data() const {
 }
 
 template<typename T>
-uint64_t CompCache<T>::num_descendants(CacheEntryID id) {
+uint64_t CompCache<T>::num_direct_children(CacheEntryID id) {
   uint64_t ret = 0;
   CacheEntryID act_child = entry(id).first_descendant();
   while (act_child) {
@@ -570,7 +565,7 @@ uint64_t CompCache<T>::unlink_from_tree(CacheEntryID id) {
   } else {
     CacheEntryID act_sibl = entry(father).first_descendant();
     while (act_sibl) {
-    len ++;
+      len++;
       CacheEntryID next_sibl = entry(act_sibl).next_sibling();
       if (next_sibl == id) {
         entry(act_sibl).set_next_sibling(entry(next_sibl).next_sibling());

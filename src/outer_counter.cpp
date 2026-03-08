@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "outer_counter.hpp"
 #include <iostream>
 #include <algorithm>
+#include <set>
 #include <future>
 #include <thread>
 #include <treedecomp/TreeDecomposition.hpp>
@@ -32,6 +33,8 @@ THE SOFTWARE.
 #include "time_mem.hpp"
 #include "common.hpp"
 #include "ganak.hpp"
+
+using std::set;
 
 namespace GanakInt {
 

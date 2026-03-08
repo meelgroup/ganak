@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 
 #include "clauseallocator.hpp"
 #include "common.hpp"
@@ -45,6 +46,7 @@ THE SOFTWARE.
 
 using std::pair;
 using std::map;
+using std::set;
 using std::unique_ptr;
 using std::string;
 using std::setw;

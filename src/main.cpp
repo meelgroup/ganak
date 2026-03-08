@@ -205,6 +205,7 @@ void add_ganak_options()
     add_arg("--arjunsimplev", arjun_simp_level, fc_int, "Arjun simp level");
     add_arg("--arjunbackwmaxc", arjun_backw_maxc, fc_int, "Arjun backw max confl");
     add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, fc_int, "Arjun's oracle should find bins or not");
+    add_arg("--arjunoraclemult", simp_conf.oracle_mult, fc_double, "Multiplier for Arjun's oracle timeout when it is called from Puura");
     add_arg("--bce", etof_conf.do_bce, fc_int, "Do static BCE");
     add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, fc_int, "Puura BVE max resolvent size in literals. -1 == no limit");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");

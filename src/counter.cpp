@@ -438,43 +438,45 @@ void Counter::td_decompose() {
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
 }
 
-// Self-check count without restart with CMS only
-FF Counter::check_count_norestart_cms(const Cube& c) {
-  verb_print(1, "Checking cube count with CMS (no verb, no restart)");
+template<typename Fn>
+void Counter::deal_with_irred_cls(const Cube& c, Fn fn) {
   vector<Lit> tmp;
-  CMSat::SATSolver test_solver;
-  test_solver.new_vars(nVars());
   // Long cls
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
-    tmp.clear();
-    for(const auto& l: cl) tmp.push_back(l);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
+    tmp.assign(cl.begin(), cl.end());
+    fn(tmp);
   }
   // Bin cls
   all_lits(i) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches[l].binaries) {
       if (l2.irred() && l < l2.lit()) {
-        tmp.clear();
-        tmp.push_back(l);
-        tmp.push_back(l2.lit());
-        test_solver.add_clause(ganak_to_cms_cl(tmp));
+        tmp = {l, l2.lit()};
+        fn(tmp);
       }
     }
   }
   // Unit cls
   for(const auto& l: unit_cls) {
-    tmp.clear();
-    tmp.push_back(l);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
+    tmp = {l};
+    fn(tmp);
   }
-  // The cube
-  for(const auto&l: c.cnf) {
-    tmp.clear();
-    tmp.push_back(l.neg());
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  // The cube (negated)
+  for(const auto& l: c.cnf) {
+    tmp = {l.neg()};
+    fn(tmp);
   }
+}
+
+// Self-check count without restart with CMS only
+FF Counter::check_count_norestart_cms(const Cube& c) {
+  verb_print(1, "Checking cube count with CMS (no verb, no restart)");
+  CMSat::SATSolver test_solver;
+  test_solver.new_vars(nVars());
+  deal_with_irred_cls(c, [&](const vector<Lit>& tmp) {
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  });
   auto cnt = fg->zero();
   while(true) {
     auto ret = test_solver.solve();
@@ -504,7 +506,6 @@ FF Counter::check_count_norestart(const Cube& c) {
   conf2.verb = 0;
   conf2.do_buddy = 0;
   conf2.do_cube_check_count = 0;
-  vector<Lit> tmp;
   Counter test_cnt(conf2, fg);
   test_cnt.new_vars(nVars());
   set<uint32_t> tmp_indep;
@@ -516,39 +517,10 @@ FF Counter::check_count_norestart(const Cube& c) {
       test_cnt.set_lit_weight(l, get_weight(l));
     }
   }
-  // Long cls
-  for(const auto& off: long_irred_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    tmp.clear();
-    for(const auto& l: cl) tmp.push_back(l);
+  deal_with_irred_cls(c, [&](const vector<Lit>& tmp) {
     test_cnt.add_irred_cl(tmp);
-  }
-  // Bin cls
-  all_lits(i) {
-    Lit l(i/2, i%2);
-    for(const auto& l2: watches[l].binaries) {
-      if (l2.irred() && l < l2.lit()) {
-        tmp.clear();
-        tmp.push_back(l);
-        tmp.push_back(l2.lit());
-        test_cnt.add_irred_cl(tmp);
-      }
-    }
-  }
-  // Unit cls
-  for(const auto& l: unit_cls) {
-    tmp.clear();
-    tmp.push_back(l);
-    test_cnt.add_irred_cl(tmp);
-  }
-  // The cube
-  for(const auto&l: c.cnf) {
-    tmp.clear();
-    tmp.push_back(l.neg());
-    test_cnt.add_irred_cl(tmp);
-  }
+  });
   test_cnt.end_irred_cls();
-  vector<Cube> ret;
   return test_cnt.outer_count();
 }
 

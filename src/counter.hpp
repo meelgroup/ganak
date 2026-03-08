@@ -248,6 +248,7 @@ private:
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
   FF check_count_norestart(const Cube& c);
   FF check_count_norestart_cms(const Cube& c);
+  template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
   bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
   bool compute_cube(Cube& cube, const int side);

@@ -180,6 +180,10 @@ void Counter::read_td_from_file(const std::string& fname) {
     while (std::getline(file, line)) {
         try {
             double num = std::stod(line);
+            if (i >= tdscore.size()) {
+              cout << "ERROR: td score file has more entries than nVars()" << endl;
+              exit(EXIT_FAILURE);
+            }
             tdscore[i++] = num;
         } catch (const std::invalid_argument& e) {
             // Handle error - line couldn't be converted to float
@@ -747,7 +751,7 @@ uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) {
     if (!c.enabled) continue;
     if (enabled_so_far < conf.max_num_cubes_per_restart
         || c.lbd <= conf.lbd_cutoff_always_keep_cube
-        || c.cnf.size() <= conf.lbd_cutoff_always_keep_cube) {
+        || c.cnf.size() <= conf.lbd_cutoff_always_keep_cube) { // reuses lbd cutoff as size cutoff intentionally
       enabled_so_far++;
       continue;
     } else {
@@ -849,7 +853,7 @@ FF Counter::outer_count() {
     }
     verb_print(1, "[appmc] timeout set to: " << tout);
     if (tout == 0) {
-      verb_print(1, "[appmc] No time left, skipping TD");
+      verb_print(1, "[appmc] No time left, disabling TD, we'll run ApproxMC immediately, no need to compute it");
       conf.do_td = 0;
     }
     t.set_timeout(appmc_timeout_fired, tout);
@@ -1170,9 +1174,9 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   if (print) cout << "v: " << setw(4) << v
     << setw(3) << " conflK: " << stats.conflicts/1000
     << setw(5) << " decK: " << stats.decisions/1000
-    << setw(6) << " act_score: " << act_score/score
-    << setw(6) << " freq_score: " << freq_score/score
-    << setw(6) << " td_score: " << td_score/score
+    << setw(6) << " act_score: " << safe_div(act_score, score)
+    << setw(6) << " freq_score: " << safe_div(freq_score, score)
+    << setw(6) << " td_score: " << safe_div(td_score, score)
     << setw(6) << " total: " << score
     << setw(6) << endl;
 
@@ -1307,7 +1311,7 @@ bool Counter::restart_if_needed() {
     verb_print(3, "[rst] Will restart at confl: " << cutoff << " now confl: " << stats.conflicts);
     if (stats.conflicts > cutoff) {
       verb_print(1, "[rst] restarting. Next restart confl: "
-          << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart)+stats.conflicts);
+          << luby(2, stats.num_restarts+1) * conf.first_restart + stats.conflicts);
       restart = true;
     }
   }
@@ -1850,7 +1854,8 @@ int32_t Counter::find_lev_to_set(const int32_t backj) {
       }
   }
   debug_print("lev_to_set: " << lev_to_set << " backj: " << backj << " updated: " << (int)updated);
-  assert(updated);
+  assert(updated && "Guaranteed by 1-UIP: if size > 1, "
+      "at least one non-UIP literal exists at a level strictly below backj (the UIP's level)");
   std::swap(uip_clause[1], uip_clause[switch_to]);
   return lev_to_set;
 }

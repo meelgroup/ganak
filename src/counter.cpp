@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <ios>
 #include <iomanip>
 #include <limits>
+#include <unordered_set>
 #include <memory>
 #include <utility>
 #include <arjun/arjun.h>
@@ -44,11 +45,11 @@ THE SOFTWARE.
 #endif
 #include <approxmc/approxmc.h>
 #include <thread>
-#include <algorithm>
 
 using std::setprecision;
 using std::setw;
 using std::unique_ptr;
+using std::unordered_set;
 
 using namespace GanakInt;
 
@@ -62,7 +63,6 @@ vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
     exit(EXIT_FAILURE);
   }
   vector<uint32_t> tmp(indeps.begin(), indeps.end());
-  std::sort(tmp.begin(), tmp.end());
   for(uint32_t i = 0; i < tmp.size(); i++) {
     if (tmp[i] > nVars()) {
       cout << "ERROR: sampling set contains a variable larger than nVars()" << endl;
@@ -278,7 +278,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
 uint32_t Counter::td_decompose_component(bool update_score) {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
-  set<uint32_t> active;
+  unordered_set<uint32_t> active;
   for(uint32_t i = 0; i < c->nVars(); i++) {
     uint32_t var = c->vars_begin()[i];
     active.insert(var);
@@ -577,8 +577,7 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
     overlap = true;
   }
   if (!overlap) {
-    vector<CMSat::Lit> ass;
-    ass.insert(ass.begin(), assumps.begin(), assumps.end());
+    vector<CMSat::Lit> ass(assumps.begin(), assumps.end());
     auto ret = sat_solver->solve(&ass);
     if (ret != CMSat::l_False) overlap = true;
   }
@@ -612,8 +611,8 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
     if (!cubes[i].enabled) continue;
     for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
       if (!cubes[i2].enabled) continue;
-      if (!cubes[i].enabled) continue;
       disable_smaller_cube_if_overlap(i, i2, cubes);
+      if (!cubes[i].enabled) break;
     }
   }
 }
@@ -671,8 +670,8 @@ bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
 void Counter::symm_cubes(vector<Cube>& cubes) {
   vector<Cube> extra_cubes;
   for(const auto& c: cubes) {
-    set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
     if (!c.enabled) continue;
+    set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
 
     for(const auto& gen: generators) {
       set<Lit> symm_cube;
@@ -809,7 +808,7 @@ FF Counter::do_appmc_count() {
   all_lits(lit_i) {
     Lit l(lit_i/2, lit_i%2);
     for(const auto& l2: watches[l].binaries) {
-      if (l2.irred() && l < l2.lit()) {
+      if (l < l2.lit()) {
         bin[0] = l;
         bin[1] = l2.lit();
         if (l2.irred()) appmc.add_clause(ganak_to_cms_cl(bin));
@@ -2368,8 +2367,7 @@ void Counter::minimize_uip_cl() {
   to_clear.clear();
 
   CHECK_IMPLIED_DO(check_implied(uip_clause));
-  tmp_cl_minim.clear();
-  for(const auto& l:uip_clause) tmp_cl_minim.push_back(l);
+  tmp_cl_minim = uip_clause;
 
   stats.uip_lits_ccmin+=tmp_cl_minim.size();
   if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
@@ -2377,8 +2375,7 @@ void Counter::minimize_uip_cl() {
       ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
     minimize_uip_cl_with_bins(tmp_cl_minim);
   stats.final_cl_sz+=tmp_cl_minim.size();
-  uip_clause.clear();
-  for(const auto& l: tmp_cl_minim) uip_clause.push_back(l);
+  uip_clause = tmp_cl_minim;
   CHECK_IMPLIED_DO(check_implied(uip_clause));
 }
 

@@ -653,7 +653,7 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
       Clause& cl = *alloc->ptr(ws.off);
       bool good = false;
       for(const auto& cl_lit: cl) {
-        if (v_val(cl_lit) == T_TRI) { ok = true; break;}
+        if (v_val(cl_lit) == T_TRI) { good = true; break;}
       }
       verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
       if (!good) return 0;

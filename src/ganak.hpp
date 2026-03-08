@@ -31,6 +31,8 @@ THE SOFTWARE.
 #include <map>
 #include <set>
 
+struct CDat;
+
 class Ganak {
 public:
   Ganak(GanakInt::CounterConfiguration& conf, std::unique_ptr<CMSat::FieldGen>& fg);
@@ -51,5 +53,5 @@ public:
   uint64_t get_num_cache_lookups() const;
   uint64_t get_max_cache_elems() const;
 private:
-  void* cdat = nullptr;
+  std::unique_ptr<CDat> cdat;
 };

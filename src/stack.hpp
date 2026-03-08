@@ -43,8 +43,6 @@ public:
       super_comp_(super_comp),
       remaining_comps_ofs_(comp_stack_ofs),
       unprocessed_comps_end_(comp_stack_ofs) {
-    branch_mc[0] = nullptr;
-    branch_mc[1] = nullptr;
     assert(super_comp < comp_stack_ofs);
   }
   const FG& fg;
@@ -80,8 +78,8 @@ private:
   bool act_branch = false;
 
   //  Solution count
-  FF branch_mc[2];
-  bool branch_unsat[2] = {false,false};
+  FF branch_mc[2] = {};
+  bool branch_unsat[2] = {false, false};
 
   /// remaining Comps
 

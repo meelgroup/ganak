@@ -109,9 +109,7 @@ class Antecedent {
   AnteType type = AnteType::decision;
 
 public:
-  Antecedent() {
-    type = AnteType::decision;
-  }
+  Antecedent() = default;
 
   explicit Antecedent(const ClauseOfs cl_ofs) {
      val = cl_ofs;
@@ -231,8 +229,11 @@ public:
     if (_lbd > 100) return;
     if (_lbd < lbd) lbd = _lbd;
   }
-  Lit* data() const {
-    return (Lit*)((char*)this + sizeof(Clause));
+  Lit const* data() const {
+    return reinterpret_cast<Lit const*>(reinterpret_cast<char const*>(this) + sizeof(Clause));
+  }
+  Lit* data() {
+    return reinterpret_cast<Lit*>(reinterpret_cast<char*>(this) + sizeof(Clause));
   }
   Lit* begin() { return data(); }
   Lit* end() { return begin()+sz; }

@@ -41,7 +41,7 @@ template<typename T>
 class CompCache final: public CompCacheIF {
 public:
   CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) { }
-  ~CompCache() = default;
+  ~CompCache() override = default;
 
   void init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) override;
   uint64_t get_num_entries_used() const override {

@@ -215,9 +215,8 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
             [&](uint32_t a, uint32_t b) {
               return var_freq[a+1] > var_freq[b+1];
             });
-  for(uint32_t i = 0; i < centroid_bag.size(); i++) {
-    verb_print(2, "[par] var " << centroid_bag[i]+1
-                << " with frequency " << var_freq[centroid_bag[i]+1]);
+  for(const auto v: centroid_bag) {
+    verb_print(2, "[par] var " << v+1 << " with frequency " << var_freq[v+1]);
   }
 
   uint64_t num_jobs = 1ULL << bits_jobs;

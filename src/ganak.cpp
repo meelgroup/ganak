@@ -53,36 +53,30 @@ struct CDat {
 
 vector<vector<uint32_t>> find_disconnected(const CDat& dat);
 
-DLL_PUBLIC Ganak::Ganak(CounterConfiguration& conf, FG& fg) {
-  cdat = new CDat;
-  CDat* c = (CDat*)cdat;
-  c->conf = conf;
-  c->fg = fg->dup();
+DLL_PUBLIC Ganak::Ganak(CounterConfiguration& conf, FG& fg) :
+    cdat(std::make_unique<CDat>()) {
+  cdat->conf = conf;
+  cdat->fg = fg->dup();
 }
 
-DLL_PUBLIC Ganak::~Ganak() {
-  CDat* c = (CDat*)cdat;
-  delete c;
-  cdat = nullptr;
-}
+DLL_PUBLIC Ganak::~Ganak() = default;
 
 DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
-  CDat* c = (CDat*)cdat;
-  auto cnt = c->fg->one();
+  auto cnt = cdat->fg->one();
 
   // Check for empty clause
-  for(const auto& cl: c->irred_cls) {
+  for(const auto& cl: cdat->irred_cls) {
     if (cl.size() == 0) {
-      cout << "c o intermediate count: " << *c->fg->zero() << endl;
-      return c->fg->zero();
+      cout << "c o intermediate count: " << *cdat->fg->zero() << endl;
+      return cdat->fg->zero();
     }
   }
 
-  auto bags = find_disconnected(*c);
-  vector<int32_t> var_to_bag(c->nvars+1, -1);
+  auto bags = find_disconnected(*cdat);
+  vector<int32_t> var_to_bag(cdat->nvars+1, -1);
   for(uint32_t i = 0; i < bags.size(); i++) {
     for(auto& v: bags[i]) {
-      assert(v < c->nvars+1);
+      assert(v < cdat->nvars+1);
       assert(v > 0);
       assert(var_to_bag[v] == -1);
       var_to_bag[v] = i;
@@ -90,12 +84,12 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   }
   vector<vector<vector<GanakInt::Lit>>> bag_to_irred_cls(bags.size());
   vector<vector<pair<vector<GanakInt::Lit>, uint32_t>>> bag_to_red_cls(bags.size());
-  for(const auto& cl: c->irred_cls) {
+  for(const auto& cl: cdat->irred_cls) {
     assert(cl.size() > 0);
     const int b = var_to_bag[cl[0].var()];
     bag_to_irred_cls[b].push_back(cl);
   }
-  for(const auto& cl_p: c->red_cls) {
+  for(const auto& cl_p: cdat->red_cls) {
     assert(cl_p.first.size() > 0);
     const int b = var_to_bag[cl_p.first[0].var()];
     bool ok = true;
@@ -109,18 +103,18 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   uint32_t cls_added = 0;
   for(uint32_t i = 0; i < bags.size(); i++) {
     const auto& bag = bags[i];
-    vector<int> var_map(c->nvars+1, -1);
+    vector<int> var_map(cdat->nvars+1, -1);
     CDat sub_c;
-    sub_c.conf = c->conf;
-    sub_c.fg = c->fg->dup();
+    sub_c.conf = cdat->conf;
+    sub_c.fg = cdat->fg->dup();
     sub_c.nvars = bag.size();
     assert(std::is_sorted(bag.begin(), bag.end()));
     for(size_t i2 = 0; i2 < bag.size(); i2++) var_map[bag[i2]] = i2+1;
     for(const auto& v: bag) {
-      if (c->indeps.count(v)) sub_c.indeps.insert(var_map[v]);
-      if (c->opt_indeps.count(v)) sub_c.opt_indeps.insert(var_map[v]);
-      if (c->lit_weights.count(GanakInt::Lit(v, false))) sub_c.lit_weights[GanakInt::Lit(var_map[v], false)] = c->lit_weights[GanakInt::Lit(v, false)]->dup();
-      if (c->lit_weights.count(GanakInt::Lit(v, true))) sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = c->lit_weights[GanakInt::Lit(v, true)]->dup();
+      if (cdat->indeps.count(v)) sub_c.indeps.insert(var_map[v]);
+      if (cdat->opt_indeps.count(v)) sub_c.opt_indeps.insert(var_map[v]);
+      if (cdat->lit_weights.count(GanakInt::Lit(v, false))) sub_c.lit_weights[GanakInt::Lit(var_map[v], false)] = cdat->lit_weights[GanakInt::Lit(v, false)]->dup();
+      if (cdat->lit_weights.count(GanakInt::Lit(v, true))) sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = cdat->lit_weights[GanakInt::Lit(v, true)]->dup();
     }
     for(const auto& cl: bag_to_irred_cls[i]) {
       vector<GanakInt::Lit> new_cl;
@@ -149,7 +143,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
     cls_added += sub_c.irred_cls.size();
 
     // Now count
-    if (c->conf.verb >= 2)
+    if (cdat->conf.verb >= 2)
       cout << "c o Counting component with " << sub_c.nvars << " vars, "
         << sub_c.irred_cls.size() << " irredundant clauses, "
         << sub_c.red_cls.size() << " redundant clauses, "
@@ -176,88 +170,78 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
     for(const auto& w: sub_c.lit_weights) counter.set_lit_weight(w.first, w.second);
     for(const auto& cl: sub_c.irred_cls) counter.add_irred_cl(cl);
     for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
-    if (sub_c.conf.verb && c->print_indep_distrib) counter.print_indep_distrib();
+    if (sub_c.conf.verb && cdat->print_indep_distrib) counter.print_indep_distrib();
     auto ret = counter.count(bits_jobs, num_threads);
     *cnt *= *ret;
     if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
-    c->is_approximate |= counter.get_is_approximate();
-    c->max_num_cache_lookups = std::max(c->max_num_cache_lookups, counter.get_num_cache_lookups());
-    c->max_cache_elems = std::max(c->max_cache_elems, counter.get_max_cache_elems());
+    cdat->is_approximate |= counter.get_is_approximate();
+    cdat->max_num_cache_lookups = std::max(cdat->max_num_cache_lookups, counter.get_num_cache_lookups());
+    cdat->max_cache_elems = std::max(cdat->max_cache_elems, counter.get_max_cache_elems());
   }
-  assert(cls_added == c->irred_cls.size());
+  assert(cls_added == cdat->irred_cls.size());
   return cnt;
 }
 
 /* DLL_PUBLIC void Ganak::set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens) { */
 /*   CDat* c = (CDat*)cdat; */
-/*   c->set_generators(_gens); */
+/*   cdat->set_generators(_gens); */
 /* } */
 DLL_PUBLIC void Ganak::set_indep_support(const std::set<uint32_t>& indeps) {
-  CDat* c = (CDat*)cdat;
   for(const auto& v: indeps) {
-    if (v > c->nvars) {
+    if (v > cdat->nvars) {
       cerr << "ERROR: setting independent support variable " << v
-           << " larger than number of variables: " << c->nvars << endl;
+           << " larger than number of variables: " << cdat->nvars << endl;
       assert(false);
       exit(EXIT_FAILURE);
     }
   }
-  c->indeps = indeps;
+  cdat->indeps = indeps;
 }
 DLL_PUBLIC bool Ganak::add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd) {
-  CDat* c = (CDat*)cdat;
-  c->red_cls.push_back({lits, (uint32_t)lbd});
+  cdat->red_cls.push_back({lits, (uint32_t)lbd});
   return true;
 }
 DLL_PUBLIC bool Ganak::get_is_approximate() const {
-  CDat* c = (CDat*)cdat;
-  return c->is_approximate;
+  return cdat->is_approximate;
 }
 DLL_PUBLIC bool Ganak::add_irred_cl(const std::vector<GanakInt::Lit>& lits) {
-  CDat* c = (CDat*)cdat;
-  c->irred_cls.push_back(lits);
+  cdat->irred_cls.push_back(lits);
   return true;
 }
 DLL_PUBLIC void Ganak::set_optional_indep_support(const std::set<uint32_t>& indeps) {
-  CDat* c = (CDat*)cdat;
   for(const auto& v: indeps) {
-    if (v > c->nvars) {
+    if (v > cdat->nvars) {
       cerr << "ERROR: setting optional independent support variable " << v
-           << " larger than number of variables: " << c->nvars << endl;
+           << " larger than number of variables: " << cdat->nvars << endl;
       assert(false);
       exit(EXIT_FAILURE);
     }
   }
-  c->opt_indeps = indeps;
+  cdat->opt_indeps = indeps;
 }
 DLL_PUBLIC void Ganak::set_lit_weight(const GanakInt::Lit l, const FF& w) {
-  CDat* c = (CDat*)cdat;
-  if (c->opt_indeps.count(l.var()) == 0 && c->indeps.count(l.var()) == 0) {
+  if (cdat->opt_indeps.count(l.var()) == 0 && cdat->indeps.count(l.var()) == 0) {
     cerr << "ERROR: setting weight for literal " << (l.sign() ? "" : "-") << l.var()
          << " which is not in independent or optional independent support" << endl;
     assert(false);
     exit(EXIT_FAILURE);
   }
-  c->lit_weights[l] = w->dup();
+  cdat->lit_weights[l] = w->dup();
 }
 DLL_PUBLIC void Ganak::new_vars(const uint32_t n) {
-  CDat* c = (CDat*)cdat;
-  assert(c->nvars == 0);
-  c->nvars = n;
+  assert(cdat->nvars == 0);
+  cdat->nvars = n;
 }
 DLL_PUBLIC void Ganak::print_indep_distrib() const {
-  CDat* c = (CDat*)cdat;
-  c->print_indep_distrib = true;
+  cdat->print_indep_distrib = true;
 }
 
 DLL_PUBLIC uint64_t Ganak::get_num_cache_lookups() const {
-  CDat* c = (CDat*)cdat;
-  return c->max_num_cache_lookups;
+  return cdat->max_num_cache_lookups;
 }
 
 DLL_PUBLIC uint64_t Ganak::get_max_cache_elems() const {
-  CDat* c = (CDat*)cdat;
-  return c->max_cache_elems;
+  return cdat->max_cache_elems;
 }
 
 vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
@@ -296,7 +280,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
       }
     }
     if (!found) {
-      bag_to_vars[bag_id] = vector<int>();
+      bag_to_vars[bag_id] = {};
       for(const auto& v: vars_in_cl) {
         var_to_bag[v] = bag_id;
         bag_to_vars[bag_id].push_back(v);
@@ -307,8 +291,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
   for(uint32_t i = 1; i <= dat.nvars; i++) {
     if (var_to_bag[i] == -1) {
-      bag_to_vars[bag_id] = vector<int>();
-      bag_to_vars[bag_id].push_back(i);
+      bag_to_vars[bag_id] = {(int)i};
       var_to_bag[i] = bag_id;
       bags.insert(bag_id);
       bag_id++;
@@ -320,9 +303,8 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
     /* cout << "c Found bag " << b << " with vars: "; */
     /* for(const auto& v: bag_to_vars[b]) cout << v << " "; */
     /* cout << endl; */
-    vector<uint32_t> bag_vars;
-    for(const auto& v: bag_to_vars[b]) bag_vars.push_back(v);
-    res.push_back(bag_vars);
+    const auto& bvars = bag_to_vars[b];
+    res.emplace_back(bvars.begin(), bvars.end());
   }
 
   // Check

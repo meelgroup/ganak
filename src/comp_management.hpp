@@ -173,9 +173,9 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
   get_random_seed_for_hash();
   if (conf.do_probabilistic_hashing) {
-    cache.reset(new CompCache<CacheableComp<HashedComp>>(stats, conf));
+    cache = std::make_unique<CompCache<CacheableComp<HashedComp>>>(stats, conf);
   } else {
-    cache.reset(new CompCache<CacheableComp<DiffPackedComp>>(stats, conf));
+    cache = std::make_unique<CompCache<CacheableComp<DiffPackedComp>>>(stats, conf);
   }
 
   //Add dummy comp

@@ -147,14 +147,13 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
       for(const auto& nn: a) cout << setw(3) << nn << " ";
       cout << endl;
     });
-  int max_dist = 0;
-  tdec.centroid(nodes, conf.verb);
-  std::vector<int> dists = tdec.distanceFromCentroid(nodes);
+  tdec.centroid(conf.verb);
+  std::vector<int> dists = tdec.distanceFromCentroid();
   if (dists.empty()) {
       if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
       return;
   }
-  for(uint32_t i = 0; i < nodes; i++) max_dist = std::max(max_dist, dists[i]);
+  int max_dist = *std::max_element(dists.begin(), dists.end());
   verb_print(2, "max_dist: " << max_dist << " td_width: " << td_width);
   if (max_dist == 0) {
     if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");

@@ -45,6 +45,7 @@ THE SOFTWARE.
 #endif
 #include <approxmc/approxmc.h>
 #include <thread>
+#include "timer.hpp"
 
 using std::setprecision;
 using std::setw;
@@ -835,41 +836,6 @@ FF Counter::do_appmc_count() {
   return std::make_unique<ArjunNS::FMpz>(num_sols);
 }
 
-class Timer {
-    std::atomic<bool> finished = false;
-    unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
-public:
-    void set_timeout(std::atomic<bool>* appmc_timeout_fired, double delay) {
-      tp = std::make_unique<std::thread>([this, appmc_timeout_fired, delay]() {
-          auto start = std::chrono::steady_clock::now();
-          auto end = start + std::chrono::milliseconds(static_cast<int>(delay * 1000.0));
-
-          // Sleep in smaller intervals to respond to stop() faster
-          while(std::chrono::steady_clock::now() < end) {
-              if (finished.load()) return;
-              std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          }
-          if (!finished.load()) {
-            finished.store(true);
-            *appmc_timeout_fired = true;
-            /* cout << "[appmc] Timeout fired, stopping ganak." << endl; */
-          } else {
-            /* cout << "[appmc] Timeout fired, but ganak already finished." << endl; */
-          }
-      });
-    }
-
-    void wait_all() {
-        finished.store(true);
-        if(tp && tp->joinable()) {
-            tp->join();
-            tp.reset();
-        }
-    }
-
-    ~Timer() { wait_all(); }
-};
-
 FF Counter::count_using_cms() {
   auto cnt = fg->zero();
   auto ret = sat_solver->solve();
@@ -912,7 +878,7 @@ FF Counter::outer_count() {
       verb_print(1, "[appmc] No time left, skipping TD");
       conf.do_td = 0;
     }
-    t.set_timeout(&appmc_timeout_fired, tout);
+    t.set_timeout(appmc_timeout_fired, tout);
   }
 
   verb_print(1, "Sampling set size: " << ((indep_support_end>0) ? (indep_support_end-1) : 0));

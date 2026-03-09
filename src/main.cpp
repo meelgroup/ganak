@@ -140,7 +140,7 @@ int bits_jobs = 10;
 
 // mode
 int mode = 0;
-int mpfr_precision = 256;
+int mpfr_precision = 64;
 
 string print_version()
 {
@@ -309,7 +309,7 @@ void add_ganak_options()
     program.add_argument("inputfile").remaining().help("input CNF");
 
     // Minor options
-    add_arg("--mpfrprecision", mpfr_precision, fc_int, "MPFR precision in bits");
+    add_arg("--mpfrprec", mpfr_precision, fc_int, "MPFR precision in bits");
 }
 
 void parse_supported_options(int argc, char** argv) {

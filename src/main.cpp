@@ -48,11 +48,10 @@ THE SOFTWARE.
 #include "mcomplex-mpfr.hpp"
 #include "fmpfi.hpp"
 #include <approxmc/approxmc.h>
+#include "file_read_helper.h"
 
 static constexpr uint32_t max_digit_precision = 1e6;
 
-using CMSat::StreamBuffer;
-using CMSat::DimacsParser;
 using std::set;
 using namespace GanakInt;
 using std::setprecision;
@@ -348,53 +347,6 @@ void parse_supported_options(int argc, char** argv) {
       cout << "ERROR: number of threads must not be 0" << endl;
       exit(EXIT_FAILURE);
     }
-}
-
-template<class T> void parse_file(const std::string& filename, T* reader) {
-  #ifndef USE_ZLIB
-  FILE * in;
-  if (filename == "-") in = stdin;
-  else in = fopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<FILE*, CMSat::FN>, T> parser(reader, nullptr, 0, fg);
-  #else
-  gzFile in;
-  if (filename == "-") in = gzdopen(fileno(stdin), "rb");
-  else in = gzopen(filename.c_str(), "rb");
-  DimacsParser<StreamBuffer<gzFile, CMSat::GZ>, T> parser(reader, nullptr, 0, fg);
-  #endif
-  if (in == nullptr) {
-      std::cout << "ERROR! Could not open file '" << filename
-      << "' for reading: " << strerror(errno) << endl;
-      std::exit(EXIT_FAILURE);
-  }
-  if (!parser.parse_DIMACS(in, true)) exit(EXIT_FAILURE);
-  #ifndef USE_ZLIB
-  fclose(in);
-  #else
-  gzclose(in);
-  #endif
-
-  if (!reader->get_sampl_vars_set()) {
-    etof_conf.all_indep = true;
-    vector<uint32_t> tmp;
-    for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
-    reader->set_sampl_vars(tmp); // will automatically set the opt_sampl_vars
-  } else {
-    // Check if CNF has all vars as indep. Then its's all_indep
-    set<uint32_t> tmp;
-    for(auto const& s: reader->get_sampl_vars()) {
-      if (s >= reader->nVars()) {
-        cout << "ERROR: Sampling var " << s+1 << " is larger than number of vars in formula: "
-          << reader->nVars() << endl;
-        exit(EXIT_FAILURE);
-      }
-      tmp.insert(s);
-    }
-    if (tmp.size() == reader->nVars()) etof_conf.all_indep = true;
-    if (!reader->get_opt_sampl_vars_set()) {
-      reader->set_opt_sampl_vars(reader->get_sampl_vars());
-    }
-  }
 }
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
@@ -746,7 +698,7 @@ int main(int argc, char *argv[]) {
   ArjunNS::SimplifiedCNF cnf(fg);
 
   // Parse the CNF
-  if (!program.is_used("inputfile")) parse_file("-",  &cnf);
+  if (!program.is_used("inputfile")) read_in_a_file("-",  &cnf, etof_conf.all_indep, fg);
   else {
     auto files = program.get<std::vector<std::string>>("inputfile");
     if (files.empty()) {
@@ -754,7 +706,7 @@ int main(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
     } else if (files.size() == 1) {
       const string& fname = files[0];
-      parse_file(fname, &cnf);
+      read_in_a_file(fname, &cnf, etof_conf.all_indep, fg);
     } else {
         cout << "[appmc] ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
         exit(EXIT_FAILURE);
@@ -767,6 +719,7 @@ int main(int argc, char *argv[]) {
   }
   cnf.clean_idiotic_mccomp_weights();
   cnf.check_cnf_sampl_sanity();
+  cnf.check_cnf_vars();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun

@@ -537,6 +537,7 @@ only_dirs = [
             "out-ganak-mccomp2324-1140000-0", # dodgy cache update
             "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
             "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
+            "out-ganak-mccomp2324-1152658-" # fixing bug, testing pura and oraclemult
 
 
             ]

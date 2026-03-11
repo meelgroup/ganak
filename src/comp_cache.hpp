@@ -312,8 +312,8 @@ uint64_t CompCache<T>::clean_pollutions_involving(const CacheEntryID id) {
 
   // Recursively unlink & delete all children
   CacheEntryID next_child = entry(id).first_descendant();
-  entry(id).set_first_descendant(0);
   VERBOSE_DEBUG_DO(cout << "Pollution-based unlinking from tree. ID: " << id << " num children: " << num_direct_children(id) << endl;);
+  entry(id).set_first_descendant(0);
   while (next_child) {
     const CacheEntryID act_child = next_child;
     next_child = entry(act_child).next_sibling();

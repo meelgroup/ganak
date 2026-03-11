@@ -178,7 +178,7 @@ void add_ganak_options()
 5=counting over a prime field (see --prime),
 6=mpfr floating point complex numbers (see --mpfrprec),
 7=mpfr floating point real numbers (see --mpfrprec),
-8=mpfi intervals
+8=mpfi intervals (see --mpfrprec)
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
@@ -511,7 +511,8 @@ void print_log(const mpz_class& cnt, string extra = "") {
 }
 
 // compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 64)
-void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t elems) {
+// result must be initialized with mpfr_init2 before calling
+void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elems) {
     mpfr_t lookups2;
     mpfr_init2(lookups2, 256);
     mpfr_set_ui(lookups2, lookups, MPFR_RNDN);
@@ -530,7 +531,6 @@ void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t ele
     // e = log2(lookups) + log2(elems) - 64
 
     // Compute 2^e
-    mpfr_init2(result, 256);
     mpfr_exp2(result, e, MPFR_RNDN);
 
     // Clear temporary variables
@@ -618,6 +618,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
         else cout << "c s type wmc" << endl;
         const FMpfi* od = dynamic_cast<const FMpfi*>(ptr);
+        assert(od != nullptr);
         print_log(od->val);
         cout << "c s exact quadruple float interval " << *od << endl;
         cout << "c s digit precision of interval: " << digit_precision_mpfi(od->val) << endl;
@@ -631,6 +632,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       cout << "c s pac guarantees epsilon: 0 delta: 0" << endl;
     } else {
       mpfr_t collision_prob;
+      mpfr_init2(collision_prob, 256);
       compute_collision_prob(collision_prob, counter.get_num_cache_lookups(), counter.get_max_cache_elems());
       cout << "c s pac guarantees epsilon: 0" << " delta: ";
       char* tmp = nullptr;

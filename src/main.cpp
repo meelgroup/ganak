@@ -46,6 +46,8 @@ THE SOFTWARE.
 #include "mparity.hpp"
 #include "mcomplex.hpp"
 #include "mcomplex-mpfr.hpp"
+#include "fmpfi.hpp"
+#include "fmpqi.hpp"
 #include <approxmc/approxmc.h>
 #include "file_read_helper.h"
 
@@ -179,7 +181,9 @@ void add_ganak_options()
 4=parity counting,
 5=counting over a prime field (see --prime),
 6=mpfr floating point complex numbers (see --mpfrprec),
-7=mpfr floating point real numbers (see --mpfrprec)
+7=mpfr floating point real numbers (see --mpfrprec),
+8=mpfi intervals (see --mpfrprec)
+9=mpqi rational/interval adaptive (see --mpfrprec)
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
@@ -490,7 +494,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
+    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7 || mode == 8 || mode == 9) {
       std::stringstream ss;
       ss << std::scientific << setprecision(40);
       const CMSat::Field* ptr = cnt.get();
@@ -551,6 +555,22 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
         print_log(od->val);
         mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
+      } else if (mode == 8) {
+        // MPFR intervals
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
+        const FMpfi* od = dynamic_cast<const FMpfi*>(ptr);
+        assert(od != nullptr);
+        print_log(od->val);
+        cout << "c s exact quadruple float interval " << *od << endl;
+        cout << "c s digit precision of interval: " << digit_precision_mpfi(od->val) << endl;
+      } else if (mode == 9) {
+        // mpqi rational/interval adaptive
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
+        const FMpqi* od = dynamic_cast<const FMpqi*>(ptr);
+        cout << "c s exact arb frac " << *od << endl;
+        cout << "c s digit precision: " << digit_precision_mpqi(const_cast<mpqi_ptr>(&od->val)) << endl;
       }
     }
     if (counter.get_is_approximate()) {
@@ -603,6 +623,12 @@ int main(int argc, char *argv[]) {
         break;
     case 7:
         fg = std::make_unique<ArjunNS::FGenMpfr>(mpfr_precision);
+        break;
+    case 8:
+        fg = std::make_unique<FGenMpfi>(mpfr_precision);
+        break;
+    case 9:
+        fg = std::make_unique<FGenMpqi>(mpfr_precision);
         break;
     case 2:
         fg = std::make_unique<FGenComplex>();

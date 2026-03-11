@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <limits.h>
 #include <stdatomic.h>
+#include <mpfi.h>
 
 #define MAX_DIGIT_PRECISION 1e6
 
@@ -313,6 +314,114 @@ void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
         mpqi_add_q(dest, arg1, arg2->qval);
     else
         mpqi_add_mpfi(dest, arg1, arg2->mval);
+}
+
+// written by AI -- unverified
+void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+    mpqi_arg_check(arg);
+    bool clear_m = false;
+    bool clear_q = false;
+    if (arg->qsize > 0) {
+        if (dest->qsize == 0) {
+            clear_m = true;
+            mpq_init(dest->qval);
+        }
+        mpq_sub(dest->qval, arg->qval, q);
+        dest->qsize = mpq_bytes(dest->qval);
+    } else {
+        if (dest->qsize > 0) {
+            clear_q = true;
+            mpfi_init2(dest->mval, dest->prec);
+        }
+        mpfi_sub_q(dest->mval, arg->mval, q);
+        dest->qsize = 0;
+    }
+    if (clear_m)
+        mpfi_clear(dest->mval);
+    if (clear_q)
+        mpq_clear(dest->qval);
+    mpqi_canonicalize(dest);
+}
+
+// written by AI -- unverified
+void mpqi_sub_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
+    mpqi_arg_check(arg);
+    bool clear_q = false;
+    if (dest->qsize > 0) {
+        clear_q = true;
+        mpfi_init2(dest->mval, dest->prec);
+    }
+    if (arg->qsize > 0) {
+        mpfi_set_q(dest->mval, arg->qval);
+        mpfi_sub(dest->mval, dest->mval, v);
+    } else
+        mpfi_sub(dest->mval, arg->mval, v);
+    dest->qsize = 0;
+    if (clear_q)
+        mpq_clear(dest->qval);
+    mpqi_canonicalize(dest);
+}
+
+// written by AI -- unverified
+void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
+    mpqi_arg_check(arg2);
+    if (arg2->qsize > 0)
+        mpqi_sub_q(dest, arg1, arg2->qval);
+    else
+        mpqi_sub_mpfi(dest, arg1, arg2->mval);
+}
+
+// written by AI -- unverified
+void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+    mpq_t inv;
+    mpq_init(inv);
+    mpq_inv(inv, q);
+    mpqi_mul_q(dest, arg, inv);
+    mpq_clear(inv);
+}
+
+// written by AI -- unverified
+void mpqi_div_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
+    mpqi_arg_check(arg);
+    bool clear_q = false;
+    if (dest->qsize > 0) {
+        clear_q = true;
+        mpfi_init2(dest->mval, dest->prec);
+    }
+    if (arg->qsize > 0) {
+        mpfi_set_q(dest->mval, arg->qval);
+        mpfi_div(dest->mval, dest->mval, v);
+    } else
+        mpfi_div(dest->mval, arg->mval, v);
+    dest->qsize = 0;
+    if (clear_q)
+        mpq_clear(dest->qval);
+    mpqi_canonicalize(dest);
+}
+
+// written by AI -- unverified
+void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
+    mpqi_arg_check(arg2);
+    if (arg2->qsize > 0)
+        mpqi_div_q(dest, arg1, arg2->qval);
+    else
+        mpqi_div_mpfi(dest, arg1, arg2->mval);
+}
+
+// written by AI -- unverified
+bool mpqi_is_zero(mpqi_ptr mp) {
+    if (mp->qsize > 0)
+        return mpq_sgn(mp->qval) == 0;
+    else
+        return mpfi_is_zero(mp->mval) != 0;
+}
+
+// written by AI -- unverified
+bool mpqi_has_zero(mpqi_ptr mp) {
+    if (mp->qsize > 0)
+        return mpq_sgn(mp->qval) == 0;
+    else
+        return mpfi_has_zero(mp->mval) != 0;
 }
 
 double digit_precision_mpqi(mpqi_ptr mp) {

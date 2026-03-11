@@ -1,0 +1,19 @@
+The add() function in fmpfi.hpp (lines 98-107):
+
+1. Creates a local mpfi_t called res
+2. Initializes it with mpfi_init2(res, prec) 
+3. Performs mpfi_add into res
+4. Creates a new FMpfi from this reference: std::make_unique<FMpfi>(res)
+   - This calls the copy constructor FMpfi(const mpfi_t& _val)
+   - Which initializes val and sets val = res (copying the data)
+5. THEN clears res: mpfi_clear(res)
+
+This is a use-after-free pattern. The FMpfi constructor properly copies the data,
+so clearing res should be safe in theory. But the reference-based constructor pattern
+is confusing and could be dangerous if the lifetime isn't carefully managed.
+
+Actually, looking more carefully: mpfi_t is an array type, so when you pass it to the
+constructor, it decays to a pointer. The copy constructor does mpfi_init2 and mpfi_set,
+which copies the underlying data. So this might actually be safe...
+
+But let me check mpfr's add function for comparison - similar pattern there.

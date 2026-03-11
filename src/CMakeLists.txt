@@ -58,6 +58,8 @@ set(SOURCES
     buddy-2.4/src/cppext.cxx
     ganak.cpp
     comp_cache_if.cpp
+    mpqi.c
+    mpqi.h
     ${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 

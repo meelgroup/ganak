@@ -347,6 +347,10 @@ void parse_supported_options(int argc, char** argv) {
       cout << "ERROR: number of threads must not be 0" << endl;
       exit(EXIT_FAILURE);
     }
+    if (mpfr_precision < 2) {
+      cout << "ERROR: mpfr precision must be at least 2 bits" << endl;
+      exit(EXIT_FAILURE);
+    }
 }
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
@@ -436,10 +440,11 @@ void print_log(const mpfr_t& cnt, string extra = "") {
 }
 
 double digit_precision_mpfi(mpfi_srcptr v) {
+    mpfr_prec_t prec = mpfi_get_prec(v);
     mpfr_t left;
-    mpfr_init(left);
+    mpfr_init2(left, prec);
     mpfr_t right;
-    mpfr_init(right);
+    mpfr_init2(right, prec);
 
     mpfi_get_left(left, v);
     mpfi_get_right(right, v);
@@ -450,7 +455,7 @@ double digit_precision_mpfi(mpfi_srcptr v) {
     }
 
     mpfr_t diam;
-    mpfr_init(diam);
+    mpfr_init2(diam, prec);
     mpfi_diam_rel(diam, v);
     if (mpfr_sgn(diam) == 0) {
         mpfr_clear(diam);
@@ -508,21 +513,24 @@ void print_log(const mpz_class& cnt, string extra = "") {
 // compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 64)
 void compute_collision_prob(mpfr_t& result, const uint64_t lookups, uint64_t elems) {
     mpfr_t lookups2;
-    mpfr_init_set_ui(lookups2, lookups, MPFR_RNDN);
+    mpfr_init2(lookups2, 256);
+    mpfr_set_ui(lookups2, lookups, MPFR_RNDN);
     mpfr_log2(lookups2, lookups2, MPFR_RNDN);
 
     mpfr_t elems2;
-    mpfr_init_set_ui(elems2, elems, MPFR_RNDN);
+    mpfr_init2(elems2, 256);
+    mpfr_set_ui(elems2, elems, MPFR_RNDN);
     mpfr_log2(elems2, elems2, MPFR_RNDN);
 
     mpfr_t e;
-    mpfr_init_set_si(e, -64, MPFR_RNDN);
+    mpfr_init2(e, 256);
+    mpfr_set_si(e, -64, MPFR_RNDN);
     mpfr_add(e, lookups2, e, MPFR_RNDN);
     mpfr_add(e, elems2, e, MPFR_RNDN);
     // e = log2(lookups) + log2(elems) - 64
 
     // Compute 2^e
-    mpfr_init(result);
+    mpfr_init2(result, 256);
     mpfr_exp2(result, e, MPFR_RNDN);
 
     // Clear temporary variables

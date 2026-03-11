@@ -247,7 +247,7 @@ class FGenMPFComplex final : public CMSat::FieldGen {
 public:
     mpfr_prec_t prec;
     ~FGenMPFComplex() final = default;
-    explicit FGenMPFComplex(uint16_t _prec) : prec(_prec) {}
+    explicit FGenMPFComplex(mpfr_prec_t _prec) : prec(_prec) {}
     std::unique_ptr<CMSat::Field> zero() const final {
         return std::make_unique<MPFComplex>(prec);
     }

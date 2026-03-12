@@ -373,6 +373,28 @@ void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
 
 // written by AI -- unverified
 void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+    if (mpq_sgn(q) == 0) {
+        mpqi_arg_check(arg);
+        bool had_qval = false;
+        if (dest->qsize > 0) {
+            had_qval = true;
+            mpfi_init2(dest->mval, dest->prec);
+        }
+        mpfr_t left, right;
+        mpfr_init2(left, dest->prec);
+        mpfr_init2(right, dest->prec);
+        mpfr_set_inf(left, -1);
+        mpfr_set_inf(right, +1);
+        mpfi_interv_fr(dest->mval, left, right);
+        mpfr_clear(left);
+        mpfr_clear(right);
+        dest->qsize = 0;
+        if (had_qval)
+            mpq_clear(dest->qval);
+        mpqi_canonicalize(dest);
+        return;
+    }
+
     mpq_t inv;
     mpq_init(inv);
     mpq_inv(inv, q);
@@ -452,4 +474,3 @@ double digit_precision_mpqi(mpqi_ptr mp) {
     mpfr_clear(diam);
     return result;
 }
-

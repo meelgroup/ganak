@@ -96,7 +96,6 @@ set_target_properties(ganak PROPERTIES
 
 add_executable(ganak-bin
   mpqi.c
-  mpqi.h
   main.cpp
 )
 add_executable(example-bin example.cpp)

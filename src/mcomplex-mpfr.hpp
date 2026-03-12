@@ -263,7 +263,9 @@ public:
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
       const auto& ad = static_cast<const MPFComplex&>(a);
       const auto& bd = static_cast<const MPFComplex&>(b);
-      return mpfr_greaterequal_p(ad.real, bd.real) && mpfr_greaterequal_p(ad.imag, bd.imag);
+      const int real_cmp = mpfr_cmp(ad.real, bd.real);
+      if (real_cmp != 0) return real_cmp > 0;
+      return mpfr_cmp(ad.imag, bd.imag) > 0;
     }
 
     bool weighted() const final { return true; }

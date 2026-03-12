@@ -375,18 +375,21 @@ void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
 void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     if (mpq_sgn(q) == 0) {
         mpqi_arg_check(arg);
-        bool clear_q = false;
+        bool had_qval = false;
         if (dest->qsize > 0) {
-            clear_q = true;
+            had_qval = true;
             mpfi_init2(dest->mval, dest->prec);
         }
-        if (arg->qsize > 0)
-            mpfi_set_q(dest->mval, arg->qval);
-        else
-            mpfi_set(dest->mval, arg->mval);
-        mpfi_div_q(dest->mval, dest->mval, q);
+        mpfr_t left, right;
+        mpfr_init2(left, dest->prec);
+        mpfr_init2(right, dest->prec);
+        mpfr_set_inf(left, -1);
+        mpfr_set_inf(right, +1);
+        mpfi_interv_fr(dest->mval, left, right);
+        mpfr_clear(left);
+        mpfr_clear(right);
         dest->qsize = 0;
-        if (clear_q)
+        if (had_qval)
             mpq_clear(dest->qval);
         mpqi_canonicalize(dest);
         return;

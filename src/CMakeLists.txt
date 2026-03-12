@@ -58,6 +58,8 @@ set(SOURCES
     buddy-2.4/src/cppext.cxx
     ganak.cpp
     comp_cache_if.cpp
+    mpqi.c
+    mpqi.h
     ${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 
@@ -94,11 +96,7 @@ set_target_properties(ganak PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
-add_executable(ganak-bin
-  mpqi.c
-  mpqi.h
-  main.cpp
-)
+add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 
 target_link_libraries(ganak-bin

@@ -176,9 +176,9 @@ void add_ganak_options()
 3=multivariate polynomials over the rational field,
 4=parity counting,
 5=counting over a prime field (see --prime),
-6=mpfr floating point complex numbers (see --mpfrprec),
-7=mpfr floating point real numbers (see --mpfrprec),
-8=mpfi intervals (see --mpfrprec)
+6=mpfr floating point complex numbers (see --mpfrprecision),
+7=mpfr floating point real numbers (see --mpfrprecision),
+8=mpfi intervals (see --mpfrprecision)
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
@@ -309,7 +309,7 @@ void add_ganak_options()
     program.add_argument("inputfile").remaining().help("input CNF");
 
     // Minor options
-    add_arg("--mpfrprec", mpfr_precision, fc_int, "MPFR precision in bits");
+    add_arg2("--mpfrprecision", "--mpfrprec", mpfr_precision, fc_int, "MPFR precision in bits");
 }
 
 void parse_supported_options(int argc, char** argv) {

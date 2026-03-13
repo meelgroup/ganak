@@ -143,6 +143,11 @@ int bits_jobs = 10;
 int mode = 0;
 int mpfr_precision = 64;
 
+// mpqi parameters (defaults match mpqi.c)
+int mpqi_initial_bytes = 10000;
+int mpqi_final_bytes = 1000;
+int mpqi_cross_count = 1000000;
+
 string print_version()
 {
     std::stringstream ss;
@@ -313,6 +318,11 @@ void add_ganak_options()
 
     // Minor options
     add_arg("--mpfrprec", mpfr_precision, fc_int, "MPFR precision in bits");
+
+    // mpqi rollover parameters (for fuzzing)
+    add_arg("--mpqiinitbytes", mpqi_initial_bytes, fc_int, "mpqi: max byte size of MPQ numerator+denominator before rollover is considered (initial phase)");
+    add_arg("--mpqifinalbytes", mpqi_final_bytes, fc_int, "mpqi: max byte size of MPQ numerator+denominator after rollover (final phase)");
+    add_arg("--mpqicrosscount", mpqi_cross_count, fc_int, "mpqi: number of operations before switching from initial to final byte limit");
 }
 
 void parse_supported_options(int argc, char** argv) {
@@ -354,6 +364,7 @@ void parse_supported_options(int argc, char** argv) {
       cout << "ERROR: mpfr precision must be at least 2 bits" << endl;
       exit(EXIT_FAILURE);
     }
+    mpqi_set_parameters(mpqi_initial_bytes, mpqi_final_bytes, mpqi_cross_count);
 }
 
 vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {

@@ -84,12 +84,12 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   vector<vector<vector<GanakInt::Lit>>> bag_to_irred_cls(bags.size());
   vector<vector<pair<vector<GanakInt::Lit>, uint32_t>>> bag_to_red_cls(bags.size());
   for(const auto& cl: cdat->irred_cls) {
-    assert(cl.size() > 0);
+    assert(!cl.empty() && "We filtered out empty clauses above");
     const int b = var_to_bag[cl[0].var()];
     bag_to_irred_cls[b].push_back(cl);
   }
   for(const auto& cl_p: cdat->red_cls) {
-    assert(cl_p.first.size() > 0);
+    assert(!cl_p.first.empty());
     const int b = var_to_bag[cl_p.first[0].var()];
     bool ok = true;
     for(const auto& l: cl_p.first) {
@@ -112,11 +112,14 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
     for(const auto& v: bag) {
       if (cdat->indeps.count(v)) sub_c.indeps.insert(var_map[v]);
       if (cdat->opt_indeps.count(v)) sub_c.opt_indeps.insert(var_map[v]);
-      if (cdat->lit_weights.count(GanakInt::Lit(v, false))) sub_c.lit_weights[GanakInt::Lit(var_map[v], false)] = cdat->lit_weights[GanakInt::Lit(v, false)]->dup();
-      if (cdat->lit_weights.count(GanakInt::Lit(v, true))) sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = cdat->lit_weights[GanakInt::Lit(v, true)]->dup();
+      if (auto it = cdat->lit_weights.find(GanakInt::Lit(v, false)); it != cdat->lit_weights.end())
+        sub_c.lit_weights[GanakInt::Lit(var_map[v], false)] = it->second->dup();
+      if (auto it = cdat->lit_weights.find(GanakInt::Lit(v, true)); it != cdat->lit_weights.end())
+        sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = it->second->dup();
     }
     auto remap_clause = [&](const vector<GanakInt::Lit>& cl) {
       vector<GanakInt::Lit> new_cl;
+      new_cl.reserve(cl.size());
       for(const auto& l: cl) {
         assert(var_map[l.var()] != -1);
         assert(var_map[l.var()] < (int)sub_c.nvars +1);
@@ -139,10 +142,10 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
     if (sub_c.indeps.size() == 0) sub_c.conf.verb = 0;
     if (sub_c.indeps.size() == 0 && sub_c.irred_cls.size() == 0) continue;
     if (sub_c.indeps.size() == 0 && sub_c.irred_cls.size() < 10) {
-      assert(sub_c.irred_cls.size() > 0);
+      assert(!sub_c.irred_cls.empty());
       bool all_same = true;
       auto one = sub_c.irred_cls[0];
-      assert(one.size() > 0);
+      assert(!one.empty());
       for(size_t i2 = 1; i2 < sub_c.irred_cls.size(); i2++) {
         if (sub_c.irred_cls[i2] != one) { all_same = false; break; }
       }
@@ -252,7 +255,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   };
 
   for(const auto& cl: dat.irred_cls) {
-    if (cl.size() == 0) continue;
+    assert(!cl.empty() && "We filtered out empty clauses above");
     set<int> vars_in_cl;
     for(const auto& l: cl) vars_in_cl.insert(l.var());
 
@@ -285,6 +288,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
 
   vector<vector<uint32_t>> res;
+  res.reserve(bags.size());
   for(const auto& b: bags) {
     /* cout << "c Found bag " << b << " with vars: "; */
     /* for(const auto& v: bag_to_vars[b]) cout << v << " "; */
@@ -300,7 +304,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   /* cout << "c Total vars in formula: " << dat.nvars << endl; */
   vector<int> count_vars(dat.nvars+1, 0);
   for(const auto& b: bags) {
-    assert(bag_to_vars[b].size() > 0);
+    assert(!bag_to_vars[b].empty());
     for(const auto& v: bag_to_vars[b]) count_vars[v]++;
   }
   for(uint32_t i = 1; i <= dat.nvars; i++) {

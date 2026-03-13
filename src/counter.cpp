@@ -47,9 +47,11 @@ THE SOFTWARE.
 #include <approxmc/approxmc.h>
 #include "timer.hpp"
 
+using std::map;
 using std::set;
 using std::setprecision;
 using std::setw;
+using std::string;
 using std::unique_ptr;
 using std::unordered_set;
 
@@ -483,10 +485,10 @@ FF Counter::check_count_norestart_cms(const Cube& c) {
     test_solver.add_clause(ganak_to_cms_cl(tmp));
   });
   auto cnt = fg->zero();
+  vector<CMSat::Lit> ban;
   while(true) {
     auto ret = test_solver.solve();
     if (ret == CMSat::l_False) break;
-    vector<CMSat::Lit> ban;
     auto this_cnt = fg->one();
     if (weighted()) {
       for(uint32_t i = 0; i < opt_indep_support_end-1; i++) {
@@ -495,6 +497,7 @@ FF Counter::check_count_norestart_cms(const Cube& c) {
       }
     }
     *cnt += *this_cnt;
+    ban.clear();
     for(uint32_t i = 0; i < indep_support_end-1; i++) {
       ban.emplace_back(i, test_solver.get_model()[i] == CMSat::l_True);
     }
@@ -841,21 +844,23 @@ FF Counter::outer_count() {
   if (!ok) return fg->zero();
   auto cnt = fg->zero();
   Timer t;
+  // Thresholds: if less than appmc_min_time_thresh seconds remain,
+  // give ApproxMC appmc_fallback_time seconds
+  constexpr double appmc_min_time_thresh = 500.0;
+  constexpr double appmc_fallback_time   = 300.0;
   if (!weighted() && conf.appmc_timeout > 0) {
-    double time_so_far = cpu_time();
-    double tout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
-    if (conf.appmc_timeout > 500 && tout < 500) {
-      double new_set_timeout = 300;
-      verb_print(1, "[appmc] Too little time would be given to ganak: " << tout
-          << " adjusting to: " << new_set_timeout);
-      tout = new_set_timeout;
+    double time_remain = std::max<double>(conf.appmc_timeout-cpu_time(), 0);
+    if (conf.appmc_timeout > appmc_min_time_thresh && time_remain < appmc_min_time_thresh) {
+      verb_print(1, "[appmc] Too little time would be given to ganak: " << time_remain
+          << " adjusting to: " << appmc_fallback_time);
+      time_remain = appmc_fallback_time;
     }
-    verb_print(1, "[appmc] timeout set to: " << tout);
-    if (tout == 0) {
+    verb_print(1, "[appmc] timeout set to: " << time_remain);
+    if (time_remain == 0) {
       verb_print(1, "[appmc] No time left, disabling TD, we'll run ApproxMC immediately, no need to compute it");
       conf.do_td = 0;
     }
-    t.set_timeout(appmc_timeout_fired, tout);
+    t.set_timeout(appmc_timeout_fired, time_remain);
   }
 
   verb_print(1, "Sampling set size: " << ((indep_support_end>0) ? (indep_support_end-1) : 0));
@@ -1053,6 +1058,8 @@ void Counter::count_loop() {
       }
     }
 
+    // Falls through from the inner while loop when no more components remain at this level,
+    // or jumps here via goto when a conflict/backtrack is needed.
     backtrack:
     print_stat_line();
     state = backtrack();
@@ -1830,12 +1837,11 @@ struct UIPFixer {
 
 int32_t Counter::find_backtrack_level_of_learnt() {
   assert(!uip_clause.empty());
-  uint32_t max_i = 0;
-  for (uint32_t i = 0; i < uip_clause.size(); i++) {
-    if (var(uip_clause[i]).decision_level > var(uip_clause[max_i]).decision_level)
-      max_i = i;
-  }
-  std::swap(uip_clause[max_i], uip_clause[0]);
+  auto max_it = std::max_element(uip_clause.begin(), uip_clause.end(),
+      [this](const Lit& a, const Lit& b) {
+        return var(a).decision_level < var(b).decision_level;
+      });
+  std::swap(*max_it, uip_clause[0]);
   return var(uip_clause[0]).decision_level;
 }
 
@@ -2398,16 +2404,19 @@ void Counter::vivify_all(bool force, bool only_irred) {
   vivif_setup();
   verb_print(2, "[vivif] setup. T: " << setprecision(2) << (cpu_time()-my_time));
 
-  // Vivify clauses
-  v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
-  if (force) v_tout *= 50;
+  // Vivify clauses. Budgets are in "operations" (decremented per propagation step).
+  constexpr int64_t vivif_irred_budget_base = 2LL * 1000LL * 1000LL;
+  constexpr int64_t vivif_irred_budget_force_mult = 50;
+  constexpr int64_t vivif_red_budget_base  = 20LL * 1000LL * 1000LL;
+  v_tout = conf.vivif_mult * vivif_irred_budget_base;
+  if (force) v_tout *= vivif_irred_budget_force_mult;
   vivify_cls(long_irred_cls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
 
   bool tout_red = false;
   if (!only_irred) {
-    v_tout = conf.vivif_mult*20LL*1000LL*1000LL;
+    v_tout = conf.vivif_mult * vivif_red_budget_base;
     vivify_cls(long_red_cls);
     verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
     tout_red = (v_tout <= 0);
@@ -3013,7 +3022,7 @@ bool Counter::check_watchlists() const {
   }
 
   // Check that all clauses are attached 2x in the watchlist
-  map<ClauseOfs, uint32_t> off_att_num;
+  std::unordered_map<ClauseOfs, uint32_t> off_att_num;
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     for(const auto& ws: watches[lit].watch_list_) {
@@ -3740,17 +3749,14 @@ void Counter::check_all_propagated_conflicted() const {
 void Counter::v_backup() {
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
-    vector<Lit> lits(cl.begin(), cl.end());
-    v_backup_cls.push_back(lits);
+    v_backup_cls.emplace_back(cl.begin(), cl.end());
   }
   for(const auto& off: long_red_cls) {
     const Clause& cl = *alloc->ptr(off);
-    vector<Lit> lits(cl.begin(), cl.end());
-    v_backup_cls.push_back(lits);
+    v_backup_cls.emplace_back(cl.begin(), cl.end());
   }
   for(const auto& ws: watches) {
-    vector<ClOffsBlckL> tmp(ws.watch_list_.begin(), ws.watch_list_.end());
-    v_backup_watches.push_back(tmp);
+    v_backup_watches.emplace_back(ws.watch_list_.begin(), ws.watch_list_.end());
   }
 }
 
@@ -3758,19 +3764,13 @@ void Counter::v_restore() {
   uint32_t at = 0;
   for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
-    auto& lits = v_backup_cls[at];
-    for(uint32_t i = 0; i < cl.size(); i++) {
-      cl[i]=lits[i];
-    }
-    at++;
+    const auto& lits = v_backup_cls[at++];
+    std::copy(lits.begin(), lits.end(), cl.begin());
   }
   for(const auto& off: long_red_cls) {
     Clause& cl = *alloc->ptr(off);
-    auto& lits = v_backup_cls[at];
-    for(uint32_t i = 0; i < cl.size(); i++) {
-      cl[i]=lits[i];
-    }
-    at++;
+    const auto& lits = v_backup_cls[at++];
+    std::copy(lits.begin(), lits.end(), cl.begin());
   }
 
   at = 0;
@@ -4011,10 +4011,9 @@ void Counter::reduce_db() {
   int64_t new_confls = stats.conflicts - last_reducedb_confl;
   uint32_t target = conf.rdb_cls_target;
   if (new_confls*4 > new_decs) target *= 2;
-  else if (new_confls*8 > new_decs) target *= 1.5;
-  else if (new_confls*16 > new_decs) target *= 1;
-  else if (new_confls*32 > new_decs) target *= 0.8;
-  else target *= 0.4;
+  else if (new_confls*8 > new_decs) target = static_cast<uint32_t>(target * 1.5);
+  else if (new_confls*32 > new_decs) target = static_cast<uint32_t>(target * 0.8);
+  else target = static_cast<uint32_t>(target * 0.4);
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
@@ -4036,9 +4035,12 @@ void Counter::reduce_db() {
     }
   }
 
-  // Update LBD cutoff
-  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
-      && num_low_lbd_cls < 50 && conf.do_update_lbd_cutoff) {
+  // Update LBD cutoff: once we have seen enough conflicts but still have few
+  // low-LBD clauses, bump the cutoff to retain slightly larger glue clauses.
+  constexpr uint64_t lbd_bump_min_conflicts = 100ULL * 1000ULL;
+  constexpr uint32_t lbd_bump_max_low_cls = 50;
+  if (stats.conflicts > lbd_bump_min_conflicts && lbd_cutoff == conf.base_lbd_cutoff
+      && num_low_lbd_cls < lbd_bump_max_low_cls && conf.do_update_lbd_cutoff) {
     verb_print(1, " [rdb] bumping rdb cutoff to 3");
     lbd_cutoff++;
   }
@@ -4242,16 +4244,13 @@ string Counter::val_to_str(const TriValue& tri) const {
 }
 
 void Counter::print_cls_stats() const {
-  uint32_t num_tri_irred_cls = 0;
-  for(const auto& off: long_irred_cls) {
-    const auto& cl = *alloc->ptr(off);
-    if (cl.size() == 3) num_tri_irred_cls++;
-  }
-  uint32_t num_tri_red_cls = 0;
-  for(const auto& off: long_red_cls) {
-    const auto& cl = *alloc->ptr(off);
-    if (cl.size() == 3) num_tri_red_cls++;
-  }
+  auto count_tri = [this](const vector<ClauseOfs>& offs) {
+    uint32_t n = 0;
+    for (const auto& off: offs) if (alloc->ptr(off)->size() == 3) n++;
+    return n;
+  };
+  const uint32_t num_tri_irred_cls = count_tri(long_irred_cls);
+  const uint32_t num_tri_red_cls   = count_tri(long_red_cls);
   uint32_t num_bin_red_cls = 0;
   uint32_t num_bin_rred_cls = 0;
   for(const auto& ws: watches) {

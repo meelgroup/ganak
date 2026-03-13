@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <climits>
 #include <cstring>
 #include <cstdint>
+#include <memory>
 #include <map>
 #include <gmpxx.h>
 #include "containers.hpp"
@@ -70,21 +71,20 @@ struct MemData {
 
 struct MyHolder {
   MyHolder() = default;
-  ~MyHolder() { delete[] data; }
   MyHolder(const MyHolder&) = delete;
   MyHolder& operator=(const MyHolder&) = delete;
-  uint32_t* data = nullptr;
+  std::unique_ptr<uint32_t[]> data;
   // start_bin, sz_bin, start_long, sz_long, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
 
   // we HAVE to do this copying because of uint64 vs uint32_t type aliasing rules.
   uint64_t tstamp(uint32_t v) const {
     uint64_t t;
-    memcpy(&t, data + v*hstride, sizeof(t));
+    memcpy(&t, data.get() + v*hstride, sizeof(t));
     return t;
   }
   void set_tstamp(uint32_t v, uint64_t t) {
-    memcpy(data + v*hstride, &t, sizeof(t));
+    memcpy(data.get() + v*hstride, &t, sizeof(t));
   }
   int32_t lev(uint32_t v) const {return (int32_t)data[v*hstride+2];}
   void set_lev(uint32_t v, int32_t lev) {data[v*hstride+2] = lev;}
@@ -93,7 +93,7 @@ struct MyHolder {
   // bin
   uint32_t* begin_bin(uint32_t v) {
     auto start = data[v*hstride+offset+0];
-    return data + start;
+    return data.get() + start;
   }
   uint32_t size_bin(uint32_t v) const { return data[v*hstride+offset+1];}
   uint32_t& size_bin(uint32_t v) { return data[v*hstride+offset+1];}
@@ -105,7 +105,7 @@ struct MyHolder {
   // long
   ClData* begin_long(uint32_t v) {
     auto start = data[v*hstride+offset+3];
-    return reinterpret_cast<ClData*>(data + start);
+    return reinterpret_cast<ClData*>(data.get() + start);
   }
   uint32_t size_long(uint32_t v) const { return data[v*hstride+offset+4];}
   uint32_t& size_long(uint32_t v) { return data[v*hstride+offset+4];}

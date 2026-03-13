@@ -136,16 +136,16 @@ void CompAnalyzer::initialize(
   for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t));
   for(const auto& u: unif_occ_bin) total_sz += u.size();
   total_sz += hstride*n;
-  uint32_t* data = new uint32_t[total_sz];
-  holder.data = data;
-  uint32_t* data_start = holder.data + n*hstride;
+  holder.data = std::make_unique<uint32_t[]>(total_sz);
+  uint32_t* const data = holder.data.get();
+  uint32_t* data_start = data + n*hstride;
 
   for(uint32_t v = 0; v < n; v++) {
     // fill bins
     const auto& u_bins = unif_occ_bin[v];
     holder.size_bin(v) = u_bins.size();
     holder.orig_size_bin(v) = u_bins.size();
-    uint32_t offs = data_start - holder.data;
+    uint32_t offs = data_start - data;
     holder.data[v*hstride+holder.offset] = offs;
     assert(offs <= total_sz);
     if (u_bins.size() > 0) {
@@ -157,7 +157,7 @@ void CompAnalyzer::initialize(
     const auto& u_longs = unif_occ_long[v];
     holder.orig_size_long(v) = u_longs.size();
     holder.size_long(v) = u_longs.size();
-    offs = data_start - holder.data;
+    offs = data_start - data;
     holder.data[v*hstride+holder.offset+3] = offs;
     assert(offs <= total_sz);
     if (u_longs.size() > 0) {

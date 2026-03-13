@@ -316,7 +316,6 @@ void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
         mpqi_add_mpfi(dest, arg1, arg2->mval);
 }
 
-// written by AI -- unverified
 void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     mpqi_arg_check(arg);
     bool clear_m = false;
@@ -343,7 +342,6 @@ void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     mpqi_canonicalize(dest);
 }
 
-// written by AI -- unverified
 void mpqi_sub_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_arg_check(arg);
     bool clear_q = false;
@@ -362,7 +360,6 @@ void mpqi_sub_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_canonicalize(dest);
 }
 
-// written by AI -- unverified
 void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
     mpqi_arg_check(arg2);
     if (arg2->qsize > 0)
@@ -371,10 +368,8 @@ void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
         mpqi_sub_mpfi(dest, arg1, arg2->mval);
 }
 
-// written by AI -- unverified
 void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     if (mpq_sgn(q) == 0) {
-        mpqi_arg_check(arg);
         bool had_qval = false;
         if (dest->qsize > 0) {
             had_qval = true;
@@ -402,7 +397,6 @@ void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     mpq_clear(inv);
 }
 
-// written by AI -- unverified
 void mpqi_div_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_arg_check(arg);
     bool clear_q = false;
@@ -421,7 +415,6 @@ void mpqi_div_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_canonicalize(dest);
 }
 
-// written by AI -- unverified
 void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
     mpqi_arg_check(arg2);
     if (arg2->qsize > 0)
@@ -430,7 +423,6 @@ void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
         mpqi_div_mpfi(dest, arg1, arg2->mval);
 }
 
-// written by AI -- unverified
 bool mpqi_is_zero(mpqi_ptr mp) {
     if (mp->qsize > 0)
         return mpq_sgn(mp->qval) == 0;
@@ -438,7 +430,6 @@ bool mpqi_is_zero(mpqi_ptr mp) {
         return mpfi_is_zero(mp->mval) != 0;
 }
 
-// written by AI -- unverified
 bool mpqi_has_zero(mpqi_ptr mp) {
     if (mp->qsize > 0)
         return mpq_sgn(mp->qval) == 0;
@@ -450,14 +441,18 @@ double digit_precision_mpqi(mpqi_ptr mp) {
     if (mp->qsize > 0)
         return MAX_DIGIT_PRECISION;
     mpfr_prec_t prec = mpfi_get_prec(mp->mval);
-    mpfr_t left;
+    mpfr_t left, right;
     mpfr_init2(left, prec);
-    mpfr_t right;
     mpfr_init2(right, prec);
     mpfi_get_left(left, mp->mval);
     mpfi_get_right(right, mp->mval);
-    if (mpfr_sgn(left) != mpfr_sgn(right))
+    if (mpfr_sgn(left) != mpfr_sgn(right)) {
+        mpfr_clear(left);
+        mpfr_clear(right);
         return 0.0;
+    }
+    mpfr_clear(left);
+    mpfr_clear(right);
     mpfr_t diam;
     mpfr_init2(diam, prec);
     mpfi_diam_rel(diam, mp->mval);

@@ -22,12 +22,12 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "fmpfi.hpp"
 #include "mpqi.h"
 #include <arjun/arjun.h>
 #include <cryptominisat5/solvertypesmini.h>
 #include <gmpxx.h>
 #include <memory>
-#include <mpfi.h>
 
 class FMpqi final : public CMSat::Field {
 public:
@@ -163,12 +163,8 @@ public:
     uint64_t bytes_used() const final {
         if (val.qsize > 0)
             return sizeof(FMpqi) + val.qsize;
-        else {
-            mpfr_prec_t prec = mpfi_get_prec(val.mval);
-            size_t num_limbs = (prec + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
-            return sizeof(FMpqi) + 2 * (sizeof(__mpfr_struct) + 16 + num_limbs * sizeof(mp_limb_t))
-                   + sizeof(__mpfi_struct);
-        }
+        else
+            return sizeof(FMpqi) + mpfi_memory_usage(val.mval);
     }
 };
 

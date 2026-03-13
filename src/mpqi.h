@@ -21,13 +21,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
+#pragma once
 
 #include <stdbool.h>
 #include <gmp.h>
 #include <mpfr.h>
 #include <mpfi.h>
-
-#pragma once
 
 /* Allow this headerfile to define C++ constructs if requested */
 #ifdef __cplusplus

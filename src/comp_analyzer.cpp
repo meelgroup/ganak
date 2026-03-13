@@ -218,8 +218,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
   stats.comps_recorded++;
 
-  for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
-    const auto v = *vt;
+  for (uint32_t i = 0; i < comp_vars.size(); i++) {
+    const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
     analyze_verb(
       debug_print("-----------------------");

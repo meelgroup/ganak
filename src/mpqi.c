@@ -65,7 +65,6 @@ void mpqi_get_parameters(size_t *initial_bytes, size_t *final_bytes, unsigned lo
     *cross_count = crossover_opcount;
 }
 
-
 static size_t mpq_bytes(mpq_srcptr val) {
     /* Overhead */
     size_t size = 32;

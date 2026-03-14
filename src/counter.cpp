@@ -582,7 +582,7 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
 void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
-  if (conf.do_cube_check_count) {
+  if (conf.do_cube_check_count || must_check_count) {
     if (!fg->exact()) {
       cout << "ERROR: Cannot check counts of a field that is not exact!" << endl;
       exit(EXIT_FAILURE);
@@ -591,8 +591,11 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
       FF check_cnt = nullptr;
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
       else check_cnt = check_count_norestart_cms(c);
-      cout << "checking cube [ " << c << " ] ---- check_cnt: " << *check_cnt << " cube cnt: " << *c.cnt << endl;
-      assert(fg->exact() && *check_cnt == *c.cnt);
+      cout << "checking cube [ " << c << " ] " << endl;
+      cout << "----> check_cnt: " << *check_cnt << endl;
+      cout << "----> cube cnt : " << *c.cnt << endl;
+      assert(fg->exact());
+      assert(*check_cnt == *c.cnt);
     }
   }
 }
@@ -889,7 +892,7 @@ FF Counter::outer_count() {
     stats.num_cubes_orig += cubes.size();
 
     // Extend, tighten, symm, disable cubes
-    if (!done) extend_cubes(cubes);
+    if (!done && conf.do_extend_cubes) extend_cubes(cubes);
     disable_cubes_if_overlap(cubes);
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
@@ -1377,8 +1380,8 @@ bool Counter::restart_if_needed() {
   while (dec_level() > 0) {
     verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
       << " lev: " << dec_level()
-      << " left cnt: " << decisions.top().left_model_count()
-      << " right cnt: " << decisions.top().right_model_count()
+      << " left cnt: " << *decisions.top().left_model_count()
+      << " right cnt: " << *decisions.top().right_model_count()
       << COLDEF);
     for(auto i: {0, 1}) {
       const FF& models = decisions.top().get_model_side(i);

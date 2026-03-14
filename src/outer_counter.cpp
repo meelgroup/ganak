@@ -23,15 +23,18 @@ THE SOFTWARE.
 #include "outer_counter.hpp"
 #include <iostream>
 #include <algorithm>
+#include <set>
 #include <future>
 #include <thread>
-#include "TreeDecomposition.hpp"
-#include "IFlowCutter.hpp"
+#include <treedecomp/TreeDecomposition.hpp>
+#include <treedecomp/IFlowCutter.hpp>
 #include "arjun/arjun.h"
 #include "counter.hpp"
 #include "time_mem.hpp"
 #include "common.hpp"
 #include "ganak.hpp"
+
+using std::set;
 
 namespace GanakInt {
 
@@ -131,27 +134,27 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 
 template<class T>
 void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, T& counter) {
-  cnf.check_sanity();
+  cnf.check_cnf_sampl_sanity();
   counter.new_vars(cnf.nVars());
 
   set<uint32_t> tmp;
-  for(auto const& s: cnf.sampl_vars) tmp.insert(s+1);
+  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
   counter.set_indep_support(tmp);
   if (cnf.get_opt_sampl_vars_set()) {
     tmp.clear();
-    for(auto const& s: cnf.opt_sampl_vars) tmp.insert(s+1);
+    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
   }
   counter.set_optional_indep_support(tmp);
 
-  if (cnf.weighted) {
-    for(const auto& t: cnf.weights) {
+  if (cnf.get_weighted()) {
+    for(const auto& t: cnf.get_weights()) {
       counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
       counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
     }
   }
 
-  for(const auto& cl: cnf.clauses) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.red_clauses) counter.add_red_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
 FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
@@ -163,10 +166,10 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   // Build primal graph from clauses
   TWD::Graph primal(nvars);
   for (const auto& cl : irred_cls) {
-    for (size_t i = 0; i < cl.size(); i++) {
-      for (size_t j = i + 1; j < cl.size(); j++) {
-        uint32_t v1 = cl[i].var() - 1;
-        uint32_t v2 = cl[j].var() - 1;
+    for (auto it1 = cl.begin(); it1 != cl.end(); ++it1) {
+      for (auto it2 = std::next(it1); it2 != cl.end(); ++it2) {
+        uint32_t v1 = it1->var() - 1;
+        uint32_t v2 = it2->var() - 1;
         if (v1 != v2) primal.addEdge(v1, v2);
       }
     }
@@ -187,7 +190,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3);
 
   // Find centroid
-  int centroid_id = tdec.centroid(primal.numNodes(), conf.verb);
+  int centroid_id = tdec.centroid(conf.verb);
   vector<int> centroid_bag = tdec.Bags()[centroid_id];
 
   verb_print(1, "[par] TD width: " << tdec.width()
@@ -212,9 +215,8 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
             [&](uint32_t a, uint32_t b) {
               return var_freq[a+1] > var_freq[b+1];
             });
-  for(uint32_t i = 0; i < centroid_bag.size(); i++) {
-    verb_print(2, "[par] var " << centroid_bag[i]+1
-                << " with frequency " << var_freq[centroid_bag[i]+1]);
+  for(const auto v: centroid_bag) {
+    verb_print(2, "[par] var " << v+1 << " with frequency " << var_freq[v+1]);
   }
 
   uint64_t num_jobs = 1ULL << bits_jobs;
@@ -264,7 +266,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
     if (true) run_arjun(cnf);
-    if (cnf.multiplier_weight != fg->zero()) {
+    if (cnf.get_multiplier_weight() != fg->zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
       auto counter = std::make_unique<Ganak>(local_conf, fg);
@@ -276,7 +278,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
         max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
         count_is_approximate |= counter->get_is_approximate();
       }
-      *ret *= *cnf.multiplier_weight;
+      *ret *= *cnf.get_multiplier_weight();
       return ret;
     } else {
       return fg->zero();

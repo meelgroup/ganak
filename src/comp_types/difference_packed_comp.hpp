@@ -68,17 +68,23 @@ class DiffPackedComp  {
 public:
   DiffPackedComp() = default;
   ~DiffPackedComp() { delete[] data; }
-  DiffPackedComp& operator=(const DiffPackedComp& other) noexcept{
+  // copy assign must not be noexcept — it calls new which can throw
+  DiffPackedComp& operator=(const DiffPackedComp& other) {
     delete[] data;
     data_size = other.data_size;
-    data = new uint32_t[data_size];
-    std::memcpy(data, other.data, data_size * sizeof(uint32_t));
+    data = (data_size > 0) ? new uint32_t[data_size] : nullptr;
+    if (data_size > 0) std::memcpy(data, other.data, data_size * sizeof(uint32_t));
     return *this;
   }
   DiffPackedComp(const DiffPackedComp& other) {
     data_size = other.data_size;
-    data = new uint32_t[data_size];
-    std::memcpy(data, other.data, data_size * sizeof(uint32_t));
+    data = (data_size > 0) ? new uint32_t[data_size] : nullptr;
+    if (data_size > 0) std::memcpy(data, other.data, data_size * sizeof(uint32_t));
+  }
+  DiffPackedComp(DiffPackedComp&& other) noexcept
+      : data(other.data), data_size(other.data_size) {
+    other.data = nullptr;
+    other.data_size = 0;
   }
   DiffPackedComp& operator=(DiffPackedComp&& other) noexcept {
     if (this != &other) {

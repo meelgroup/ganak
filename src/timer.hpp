@@ -22,36 +22,42 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <cstdint>
-#include "counter_config.hpp"
-#include <cryptominisat5/solvertypesmini.h>
-#include "lit.hpp"
+#include <atomic>
+#include <chrono>
 #include <memory>
-#include <vector>
-#include <map>
-#include <set>
+#include <thread>
 
-struct CDat;
-
-class Ganak {
+class Timer {
+    std::atomic<bool> finished = false;
+    std::unique_ptr<std::thread> tp;
 public:
-  Ganak(GanakInt::CounterConfiguration& conf, std::unique_ptr<CMSat::FieldGen>& fg);
-  ~Ganak();
-  void new_vars(const uint32_t n);
-  bool add_irred_cl(const std::vector<GanakInt::Lit>& lits);
-  void end_irred_cls();
+    void set_timeout(std::atomic<bool>& appmc_timeout_fired, double delay) {
+      tp = std::make_unique<std::thread>([this, &appmc_timeout_fired, delay]() {
+          auto start = std::chrono::steady_clock::now();
+          auto end = start + std::chrono::milliseconds(static_cast<int>(delay * 1000.0));
 
-  void set_indep_support(const std::set<uint32_t>& indeps);
-  void set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens);
+          // Sleep in smaller intervals to respond to stop() faster
+          while(std::chrono::steady_clock::now() < end) {
+              if (finished.load()) return;
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+          if (!finished.load()) {
+            finished.store(true);
+            appmc_timeout_fired = true;
+            /* cout << "[appmc] Timeout fired, stopping ganak." << endl; */
+          } else {
+            /* cout << "[appmc] Timeout fired, but ganak already finished." << endl; */
+          }
+      });
+    }
 
-  std::unique_ptr<CMSat::Field> count(uint8_t bits_threads = 0, int num_threads = 1);
-  bool add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd = -1);
-  bool get_is_approximate() const;
-  void set_optional_indep_support(const std::set<uint32_t>& indeps);
-  void set_lit_weight(const GanakInt::Lit l, const std::unique_ptr<CMSat::Field>& w);
-  void print_indep_distrib() const;
-  uint64_t get_num_cache_lookups() const;
-  uint64_t get_max_cache_elems() const;
-private:
-  std::unique_ptr<CDat> cdat;
+    void wait_all() {
+        finished.store(true);
+        if(tp && tp->joinable()) {
+            tp->join();
+            tp.reset();
+        }
+    }
+
+    ~Timer() { wait_all(); }
 };

@@ -1,0 +1,229 @@
+name: build-emscripten
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup emsdk
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        emscripten-version: latest
+
+    - name: Set EMINSTALL
+      run: |
+        EMINSTALL=$(em-config CACHE)/sysroot
+        echo "EMINSTALL=$EMINSTALL" >> $GITHUB_ENV
+
+    - name: Install build dependencies
+      run: sudo apt-get update && sudo apt-get install -yq wget
+
+    - name: Build GMP for wasm
+      run: |
+        wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+        tar xf gmp-6.3.0.tar.xz
+        cd gmp-6.3.0
+        emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Build MPFR for wasm
+      run: |
+        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
+        tar xf mpfr-4.2.1.tar.xz
+        cd mpfr-4.2.1
+        emconfigure ./configure --host wasm32 --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Build MPFI for wasm
+      run: |
+        wget https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
+        tar xzf mpfi-1.5.4.tar.gz
+        cd mpfi-1.5.4
+        emconfigure ./configure --with-mpfr=$EMINSTALL --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Build FLINT for wasm
+      run: |
+        wget https://github.com/flintlib/flint/releases/download/v3.4.0/flint-3.4.0.tar.gz
+        tar xzf flint-3.4.0.tar.gz
+        cd flint-3.4.0
+        sed -i 's/#if (defined(__unix__) && !defined(__CYGWIN__)) || defined(__APPLE__)/#if (defined(__unix__) \&\& !defined(__CYGWIN__) \&\& !defined(__EMSCRIPTEN__)) || defined(__APPLE__)/' src/profiler.h
+        emconfigure ./configure \
+          --disable-assembly \
+          --with-mpfr=$EMINSTALL \
+          --with-gmp=$EMINSTALL \
+          --prefix=$EMINSTALL \
+          --host wasm32
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
+    - name: Checkout Cadical
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/cadical
+        ref: master
+        path: cadical
+    - name: Build Cadical for wasm
+      run: |
+        cd cadical
+        emconfigure ./configure --no-contracts --no-tracing
+        emmake make -j$(nproc)
+        cp build/libcadical* $EMINSTALL/lib/
+        cd ..
+
+    - name: Checkout Cadiback
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/cadiback
+        ref: main
+        path: cadiback
+    - name: Build Cadiback for wasm
+      run: |
+        cd cadiback
+        ./configure
+        emmake make -f makefile.emscripten
+        cp libcadi* $EMINSTALL/lib/
+        cd ..
+
+    - name: Checkout CryptoMiniSat
+      uses: actions/checkout@v4
+      with:
+        repository: msoos/cryptominisat
+        ref: working-on-synth
+        path: cryptominisat
+        submodules: 'true'
+    - name: Build CryptoMiniSat for wasm
+      run: |
+        cd cryptominisat
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout treedecomp
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/treedecomp
+        ref: main
+        path: treedecomp
+    - name: Build treedecomp for wasm
+      run: |
+        cd treedecomp
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout SBVA
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/SBVA
+        ref: master
+        path: sbva
+    - name: Build SBVA
+      run: |
+        cd sbva
+        mkdir build
+        cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -S ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout arjun
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/arjun
+        ref: aig-shared-ptr-better-fix
+        path: arjun
+    - name: Build arjun for wasm
+      run: |
+        cd arjun
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -S ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout approxmc
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/approxmc
+        ref: synth
+        path: approxmc
+        submodules: 'true'
+    - name: Build approxmc for wasm
+      run: |
+        cd approxmc
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -S ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Checkout ganak
+      uses: actions/checkout@v4
+      with:
+        path: project
+        submodules: 'true'
+    - name: Build ganak for wasm
+      run: |
+        cd project
+        mkdir -p build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DSTATICCOMPILE=ON \
+          -DENABLE_TESTING=OFF \
+          -DNOZLIB=ON \
+          ..
+        emmake make -j$(nproc)
+        cd ../..
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ganak-approxmc-arjun-cryptominisat-wasm-js.zip
+        path: |
+          project/build/ganak.js
+          project/build/ganak.wasm
+          approxmc/build/approxmc.js
+          approxmc/build/approxmc.wasm
+          arjun/build/arjun.js
+          arjun/build/arjun.wasm
+          cryptominisat/build/cryptominisat5.js
+          cryptominisat/build/cryptominisat5.wasm

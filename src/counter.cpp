@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include <ios>
 #include <iomanip>
 #include <limits>
+#include <set>
+#include <unordered_set>
 #include <memory>
 #include <utility>
 #include <arjun/arjun.h>
@@ -37,18 +39,21 @@ THE SOFTWARE.
 #include "stack.hpp"
 #include "structures.hpp"
 #include "time_mem.hpp"
-#include "IFlowCutter.hpp"
-#include "graph.hpp"
+#include <treedecomp/IFlowCutter.hpp>
+#include <treedecomp/graph.hpp>
 #ifdef BUDDY_ENABLED
 #include "bdd.h"
 #endif
 #include <approxmc/approxmc.h>
-#include <thread>
-#include <algorithm>
+#include "timer.hpp"
 
+using std::map;
+using std::set;
 using std::setprecision;
 using std::setw;
+using std::string;
 using std::unique_ptr;
+using std::unordered_set;
 
 using namespace GanakInt;
 
@@ -62,7 +67,6 @@ vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
     exit(EXIT_FAILURE);
   }
   vector<uint32_t> tmp(indeps.begin(), indeps.end());
-  std::sort(tmp.begin(), tmp.end());
   for(uint32_t i = 0; i < tmp.size(); i++) {
     if (tmp[i] > nVars()) {
       cout << "ERROR: sampling set contains a variable larger than nVars()" << endl;
@@ -144,14 +148,13 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
       for(const auto& nn: a) cout << setw(3) << nn << " ";
       cout << endl;
     });
-  int max_dist = 0;
-  tdec.centroid(nodes, conf.verb);
-  std::vector<int> dists = tdec.distanceFromCentroid(nodes);
+  tdec.centroid(conf.verb);
+  std::vector<int> dists = tdec.distanceFromCentroid();
   if (dists.empty()) {
       if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
       return;
   }
-  for(uint32_t i = 0; i < nodes; i++) max_dist = std::max(max_dist, dists[i]);
+  int max_dist = *std::max_element(dists.begin(), dists.end());
   verb_print(2, "max_dist: " << max_dist << " td_width: " << td_width);
   if (max_dist == 0) {
     if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");
@@ -177,6 +180,10 @@ void Counter::read_td_from_file(const std::string& fname) {
     while (std::getline(file, line)) {
         try {
             double num = std::stod(line);
+            if (i >= tdscore.size()) {
+              cout << "ERROR: td score file has more entries than nVars()" << endl;
+              exit(EXIT_FAILURE);
+            }
             tdscore[i++] = num;
         } catch (const std::invalid_argument& e) {
             // Handle error - line couldn't be converted to float
@@ -278,7 +285,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
 uint32_t Counter::td_decompose_component(bool update_score) {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
-  set<uint32_t> active;
+  unordered_set<uint32_t> active;
   for(uint32_t i = 0; i < c->nVars(); i++) {
     uint32_t var = c->vars_begin()[i];
     active.insert(var);
@@ -340,7 +347,7 @@ uint32_t Counter::td_decompose_component(bool update_score) {
 
   // Notice that this graph returned is VERY different
   auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters));
-  td.centroid(primal.numNodes(), 0);
+  td.centroid(0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
 
   if (update_score) compute_td_score(td, nodes, false);
@@ -417,6 +424,7 @@ void Counter::td_decompose() {
       }
     }
   } else primal_alt = std::move(primal);
+  primal.reset();
 
   if (!primal_alt->isConnected()) {
     cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;
@@ -437,48 +445,50 @@ void Counter::td_decompose() {
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
 }
 
-// Self-check count without restart with CMS only
-FF Counter::check_count_norestart_cms(const Cube& c) {
-  verb_print(1, "Checking cube count with CMS (no verb, no restart)");
+template<typename Fn>
+void Counter::deal_with_irred_cls(const Cube& c, Fn fn) {
   vector<Lit> tmp;
-  CMSat::SATSolver test_solver;
-  test_solver.new_vars(nVars());
   // Long cls
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
-    tmp.clear();
-    for(const auto& l: cl) tmp.push_back(l);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
+    tmp.assign(cl.begin(), cl.end());
+    fn(tmp);
   }
   // Bin cls
   all_lits(i) {
     Lit l(i/2, i%2);
     for(const auto& l2: watches[l].binaries) {
       if (l2.irred() && l < l2.lit()) {
-        tmp.clear();
-        tmp.push_back(l);
-        tmp.push_back(l2.lit());
-        test_solver.add_clause(ganak_to_cms_cl(tmp));
+        tmp = {l, l2.lit()};
+        fn(tmp);
       }
     }
   }
   // Unit cls
   for(const auto& l: unit_cls) {
-    tmp.clear();
-    tmp.push_back(l);
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
+    tmp = {l};
+    fn(tmp);
   }
-  // The cube
-  for(const auto&l: c.cnf) {
-    tmp.clear();
-    tmp.push_back(l.neg());
-    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  // The cube (negated)
+  for(const auto& l: c.cnf) {
+    tmp = {l.neg()};
+    fn(tmp);
   }
+}
+
+// Self-check count without restart with CMS only
+FF Counter::check_count_norestart_cms(const Cube& c) {
+  verb_print(1, "Checking cube count with CMS (no verb, no restart)");
+  CMSat::SATSolver test_solver;
+  test_solver.new_vars(nVars());
+  deal_with_irred_cls(c, [&](const vector<Lit>& tmp) {
+    test_solver.add_clause(ganak_to_cms_cl(tmp));
+  });
   auto cnt = fg->zero();
+  vector<CMSat::Lit> ban;
   while(true) {
     auto ret = test_solver.solve();
     if (ret == CMSat::l_False) break;
-    vector<CMSat::Lit> ban;
     auto this_cnt = fg->one();
     if (weighted()) {
       for(uint32_t i = 0; i < opt_indep_support_end-1; i++) {
@@ -487,8 +497,9 @@ FF Counter::check_count_norestart_cms(const Cube& c) {
       }
     }
     *cnt += *this_cnt;
+    ban.clear();
     for(uint32_t i = 0; i < indep_support_end-1; i++) {
-      ban.push_back(CMSat::Lit(i, test_solver.get_model()[i] == CMSat::l_True));
+      ban.emplace_back(i, test_solver.get_model()[i] == CMSat::l_True);
     }
     test_solver.add_clause(ban);
   }
@@ -503,51 +514,27 @@ FF Counter::check_count_norestart(const Cube& c) {
   conf2.verb = 0;
   conf2.do_buddy = 0;
   conf2.do_cube_check_count = 0;
-  vector<Lit> tmp;
+
+  // Make a new counter from this counter, very hacky
   Counter test_cnt(conf2, fg);
   test_cnt.new_vars(nVars());
-  set<uint32_t> tmp_indep;
-  for(uint32_t i = 1; i < indep_support_end; i++) tmp_indep.insert(i);
-  test_cnt.set_indep_support(tmp_indep);
+  set<uint32_t> indep_tmp;
+  for(uint32_t i = 1; i < indep_support_end; i++) indep_tmp.insert(i);
+  test_cnt.set_indep_support(indep_tmp);
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) indep_tmp.insert(i);
+  test_cnt.set_optional_indep_support(indep_tmp);
   if (weighted()) {
-    all_lits(i) {
-      Lit l(i/2, i%2 == 0);
+    for (const auto& v: indep_tmp) {
+      Lit l(v, true);
+      test_cnt.set_lit_weight(l, get_weight(l));
+      l = l.neg();
       test_cnt.set_lit_weight(l, get_weight(l));
     }
   }
-  // Long cls
-  for(const auto& off: long_irred_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    tmp.clear();
-    for(const auto& l: cl) tmp.push_back(l);
+  deal_with_irred_cls(c, [&](const vector<Lit>& tmp) {
     test_cnt.add_irred_cl(tmp);
-  }
-  // Bin cls
-  all_lits(i) {
-    Lit l(i/2, i%2);
-    for(const auto& l2: watches[l].binaries) {
-      if (l2.irred() && l < l2.lit()) {
-        tmp.clear();
-        tmp.push_back(l);
-        tmp.push_back(l2.lit());
-        test_cnt.add_irred_cl(tmp);
-      }
-    }
-  }
-  // Unit cls
-  for(const auto& l: unit_cls) {
-    tmp.clear();
-    tmp.push_back(l);
-    test_cnt.add_irred_cl(tmp);
-  }
-  // The cube
-  for(const auto&l: c.cnf) {
-    tmp.clear();
-    tmp.push_back(l.neg());
-    test_cnt.add_irred_cl(tmp);
-  }
+  });
   test_cnt.end_irred_cls();
-  vector<Cube> ret;
   return test_cnt.outer_count();
 }
 
@@ -577,8 +564,7 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
     overlap = true;
   }
   if (!overlap) {
-    vector<CMSat::Lit> ass;
-    ass.insert(ass.begin(), assumps.begin(), assumps.end());
+    vector<CMSat::Lit> ass(assumps.begin(), assumps.end());
     auto ret = sat_solver->solve(&ass);
     if (ret != CMSat::l_False) overlap = true;
   }
@@ -597,12 +583,16 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
   if (conf.do_cube_check_count) {
+    if (!fg->exact()) {
+      cout << "ERROR: Cannot check counts of a field that is not exact!" << endl;
+      exit(EXIT_FAILURE);
+    }
     for(const auto& c: cubes) {
       FF check_cnt = nullptr;
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
       else check_cnt = check_count_norestart_cms(c);
-      cout << "checking cube [ " << c << " ] ---- check_cnt: " << check_cnt << endl;
-      assert(check_cnt == c.cnt);
+      cout << "checking cube [ " << c << " ] ---- check_cnt: " << *check_cnt << " cube cnt: " << *c.cnt << endl;
+      assert(fg->exact() && *check_cnt == *c.cnt);
     }
   }
 }
@@ -612,8 +602,8 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
     if (!cubes[i].enabled) continue;
     for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
       if (!cubes[i2].enabled) continue;
-      if (!cubes[i].enabled) continue;
       disable_smaller_cube_if_overlap(i, i2, cubes);
+      if (!cubes[i].enabled) break;
     }
   }
 }
@@ -653,7 +643,7 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
       Clause& cl = *alloc->ptr(ws.off);
       bool good = false;
       for(const auto& cl_lit: cl) {
-        if (v_val(cl_lit) == T_TRI) { ok = true; break;}
+        if (v_val(cl_lit) == T_TRI) { good = true; break;}
       }
       verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
       if (!good) return 0;
@@ -671,8 +661,8 @@ bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
 void Counter::symm_cubes(vector<Cube>& cubes) {
   vector<Cube> extra_cubes;
   for(const auto& c: cubes) {
-    set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
     if (!c.enabled) continue;
+    set<Lit> orig_cube(c.cnf.begin(), c.cnf.end());
 
     for(const auto& gen: generators) {
       set<Lit> symm_cube;
@@ -773,7 +763,7 @@ uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) {
     if (!c.enabled) continue;
     if (enabled_so_far < conf.max_num_cubes_per_restart
         || c.lbd <= conf.lbd_cutoff_always_keep_cube
-        || c.cnf.size() <= conf.lbd_cutoff_always_keep_cube) {
+        || c.cnf.size() <= conf.lbd_cutoff_always_keep_cube) { // reuses lbd cutoff as size cutoff intentionally
       enabled_so_far++;
       continue;
     } else {
@@ -809,7 +799,7 @@ FF Counter::do_appmc_count() {
   all_lits(lit_i) {
     Lit l(lit_i/2, lit_i%2);
     for(const auto& l2: watches[l].binaries) {
-      if (l2.irred() && l < l2.lit()) {
+      if (l < l2.lit()) {
         bin[0] = l;
         bin[1] = l2.lit();
         if (l2.irred()) appmc.add_clause(ganak_to_cms_cl(bin));
@@ -836,41 +826,6 @@ FF Counter::do_appmc_count() {
   return std::make_unique<ArjunNS::FMpz>(num_sols);
 }
 
-class Timer {
-    std::atomic<bool> finished = false;
-    unique_ptr<std::thread> tp;  // Use unique_ptr instead of raw pointer
-public:
-    void set_timeout(std::atomic<bool>* appmc_timeout_fired, double delay) {
-      tp = std::make_unique<std::thread>([this, appmc_timeout_fired, delay]() {
-          auto start = std::chrono::steady_clock::now();
-          auto end = start + std::chrono::milliseconds(static_cast<int>(delay * 1000.0));
-
-          // Sleep in smaller intervals to respond to stop() faster
-          while(std::chrono::steady_clock::now() < end) {
-              if (finished.load()) return;
-              std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          }
-          if (!finished.load()) {
-            finished.store(true);
-            *appmc_timeout_fired = true;
-            /* cout << "[appmc] Timeout fired, stopping ganak." << endl; */
-          } else {
-            /* cout << "[appmc] Timeout fired, but ganak already finished." << endl; */
-          }
-      });
-    }
-
-    void wait_all() {
-        finished.store(true);
-        if(tp && tp->joinable()) {
-            tp->join();
-            tp.reset();
-        }
-    }
-
-    ~Timer() { wait_all(); }
-};
-
 FF Counter::count_using_cms() {
   auto cnt = fg->zero();
   auto ret = sat_solver->solve();
@@ -886,7 +841,7 @@ FF Counter::count_using_cms() {
     *cnt += *this_cnt;
     vector<CMSat::Lit> ban;
     for(int j = 0; j < (int)indep_support_end-1; j++)
-      ban.push_back(CMSat::Lit(j, sol[j] == CMSat::l_True));
+      ban.emplace_back(j, sol[j] == CMSat::l_True);
     sat_solver->add_clause(ban);
     ret = sat_solver->solve();
     assert(ret != CMSat::l_Undef);
@@ -899,21 +854,23 @@ FF Counter::outer_count() {
   if (!ok) return fg->zero();
   auto cnt = fg->zero();
   Timer t;
+  // Thresholds: if less than appmc_min_time_thresh seconds remain,
+  // give ApproxMC appmc_fallback_time seconds
+  constexpr double appmc_min_time_thresh = 500.0;
+  constexpr double appmc_fallback_time   = 300.0;
   if (!weighted() && conf.appmc_timeout > 0) {
-    double time_so_far = cpu_time();
-    double tout = std::max<double>(conf.appmc_timeout-time_so_far, 0);
-    if (conf.appmc_timeout > 500 && tout < 500) {
-      double new_set_timeout = 300;
-      verb_print(1, "[appmc] Too little time would be given to ganak: " << tout
-          << " adjusting to: " << new_set_timeout);
-      tout = new_set_timeout;
+    double time_remain = std::max<double>(conf.appmc_timeout-cpu_time(), 0);
+    if (conf.appmc_timeout > appmc_min_time_thresh && time_remain < appmc_min_time_thresh) {
+      verb_print(1, "[appmc] Too little time would be given to ganak: " << time_remain
+          << " adjusting to: " << appmc_fallback_time);
+      time_remain = appmc_fallback_time;
     }
-    verb_print(1, "[appmc] timeout set to: " << tout);
-    if (tout == 0) {
-      verb_print(1, "[appmc] No time left, skipping TD");
+    verb_print(1, "[appmc] timeout set to: " << time_remain);
+    if (time_remain == 0) {
+      verb_print(1, "[appmc] No time left, disabling TD, we'll run ApproxMC immediately, no need to compute it");
       conf.do_td = 0;
     }
-    t.set_timeout(&appmc_timeout_fired, tout);
+    t.set_timeout(appmc_timeout_fired, time_remain);
   }
 
   verb_print(1, "Sampling set size: " << ((indep_support_end>0) ? (indep_support_end-1) : 0));
@@ -1111,6 +1068,8 @@ void Counter::count_loop() {
       }
     }
 
+    // Falls through from the inner while loop when no more components remain at this level,
+    // or jumps here via goto when a conflict/backtrack is needed.
     backtrack:
     print_stat_line();
     state = backtrack();
@@ -1231,9 +1190,9 @@ double Counter::score_of(const uint32_t v, bool ignore_td) const {
   if (print) cout << "v: " << setw(4) << v
     << setw(3) << " conflK: " << stats.conflicts/1000
     << setw(5) << " decK: " << stats.decisions/1000
-    << setw(6) << " act_score: " << act_score/score
-    << setw(6) << " freq_score: " << freq_score/score
-    << setw(6) << " td_score: " << td_score/score
+    << setw(6) << " act_score: " << safe_div(act_score, score)
+    << setw(6) << " freq_score: " << safe_div(freq_score, score)
+    << setw(6) << " td_score: " << safe_div(td_score, score)
     << setw(6) << " total: " << score
     << setw(6) << endl;
 
@@ -1368,7 +1327,7 @@ bool Counter::restart_if_needed() {
     verb_print(3, "[rst] Will restart at confl: " << cutoff << " now confl: " << stats.conflicts);
     if (stats.conflicts > cutoff) {
       verb_print(1, "[rst] restarting. Next restart confl: "
-          << (stats.conflicts + luby(2, stats.num_restarts+1) * conf.first_restart)+stats.conflicts);
+          << luby(2, stats.num_restarts+1) * conf.first_restart + stats.conflicts);
       restart = true;
     }
   }
@@ -1565,6 +1524,10 @@ bool Counter::compute_cube(Cube& c, const int side) {
 
 // Checks one-by-one using a SAT solver
 FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
+    if (!fg->exact()) {
+      cout << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
+      exit(EXIT_FAILURE);
+    }
     //let's get vars active
     set<uint32_t> active;
 
@@ -1719,7 +1682,8 @@ RetState Counter::backtrack() {
 
   //When we enter, either it must be UNSAT, or there must be no other component possible.
   //As we backtrack, another component can become possible
-  assert(decisions.top().branch_found_unsat() || !decisions.top().another_comp_possible() || dec_level() == 0);
+  assert(decisions.top().branch_found_unsat() || decisions.top().branch_is_zero() ||
+      !decisions.top().another_comp_possible() || dec_level() == 0);
   do {
 #ifdef VERBOSE_DEBUG
     if (dec_level() > 0) {
@@ -1887,12 +1851,11 @@ struct UIPFixer {
 
 int32_t Counter::find_backtrack_level_of_learnt() {
   assert(!uip_clause.empty());
-  uint32_t max_i = 0;
-  for (uint32_t i = 0; i < uip_clause.size(); i++) {
-    if (var(uip_clause[i]).decision_level > var(uip_clause[max_i]).decision_level)
-      max_i = i;
-  }
-  std::swap(uip_clause[max_i], uip_clause[0]);
+  auto max_it = std::max_element(uip_clause.begin(), uip_clause.end(),
+      [this](const Lit& a, const Lit& b) {
+        return var(a).decision_level < var(b).decision_level;
+      });
+  std::swap(*max_it, uip_clause[0]);
   return var(uip_clause[0]).decision_level;
 }
 
@@ -1911,7 +1874,8 @@ int32_t Counter::find_lev_to_set(const int32_t backj) {
       }
   }
   debug_print("lev_to_set: " << lev_to_set << " backj: " << backj << " updated: " << (int)updated);
-  assert(updated);
+  assert(updated && "Guaranteed by 1-UIP: if size > 1, "
+      "at least one non-UIP literal exists at a level strictly below backj (the UIP's level)");
   std::swap(uip_clause[1], uip_clause[switch_to]);
   return lev_to_set;
 }
@@ -1938,7 +1902,6 @@ void Counter::go_back_to(int32_t backj) {
         << " cnt: " << *decisions.top().total_model_count());
     VERBOSE_DEBUG_DO(print_comp_stack_info());
     decisions.top().mark_branch_unsat();
-    decisions.top().zero_out_all_sol(); //not sure it's needed
     if (!sat_mode()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
     }
@@ -2368,8 +2331,7 @@ void Counter::minimize_uip_cl() {
   to_clear.clear();
 
   CHECK_IMPLIED_DO(check_implied(uip_clause));
-  tmp_cl_minim.clear();
-  for(const auto& l:uip_clause) tmp_cl_minim.push_back(l);
+  tmp_cl_minim = uip_clause;
 
   stats.uip_lits_ccmin+=tmp_cl_minim.size();
   if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
@@ -2377,8 +2339,7 @@ void Counter::minimize_uip_cl() {
       ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
     minimize_uip_cl_with_bins(tmp_cl_minim);
   stats.final_cl_sz+=tmp_cl_minim.size();
-  uip_clause.clear();
-  for(const auto& l: tmp_cl_minim) uip_clause.push_back(l);
+  uip_clause = tmp_cl_minim;
   CHECK_IMPLIED_DO(check_implied(uip_clause));
 }
 
@@ -2457,16 +2418,19 @@ void Counter::vivify_all(bool force, bool only_irred) {
   vivif_setup();
   verb_print(2, "[vivif] setup. T: " << setprecision(2) << (cpu_time()-my_time));
 
-  // Vivify clauses
-  v_tout = conf.vivif_mult*2LL*1000LL*1000LL;
-  if (force) v_tout *= 50;
+  // Vivify clauses. Budgets are in "operations" (decremented per propagation step).
+  constexpr int64_t vivif_irred_budget_base = 2LL * 1000LL * 1000LL;
+  constexpr int64_t vivif_irred_budget_force_mult = 50;
+  constexpr int64_t vivif_red_budget_base  = 20LL * 1000LL * 1000LL;
+  v_tout = conf.vivif_mult * vivif_irred_budget_base;
+  if (force) v_tout *= vivif_irred_budget_force_mult;
   vivify_cls(long_irred_cls);
   bool tout_irred = (v_tout <= 0);
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
 
   bool tout_red = false;
   if (!only_irred) {
-    v_tout = conf.vivif_mult*20LL*1000LL*1000LL;
+    v_tout = conf.vivif_mult * vivif_red_budget_base;
     vivify_cls(long_red_cls);
     verb_print(2, "[vivif] red vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
     tout_red = (v_tout <= 0);
@@ -2549,12 +2513,13 @@ void Counter::v_cl_repair(ClauseOfs off) {
 
   if (offs.currently_propagating) {
     // Move 1st & 2nd literal to position
-    auto at = std::find(cl.begin(), cl.end(), offs.first);
-    assert(at != cl.end());
-    std::swap(cl[0], *at);
-    at = std::find(cl.begin(), cl.end(), offs.second);
-    assert(at != cl.end());
-    std::swap(cl[1], *at);
+    auto swap_to = [&](size_t pos, const Lit& lit) {
+      auto at = std::find(cl.begin(), cl.end(), lit);
+      assert(at != cl.end());
+      std::swap(cl[pos], *at);
+    };
+    swap_to(0, offs.first);
+    swap_to(1, offs.second);
 
     watches[cl[0]].add_cl(off, offs.blk1);
     watches[cl[1]].add_cl(off, offs.blk2);
@@ -2642,9 +2607,9 @@ bool Counter::propagation_correctness_of_vivified(const T2& cl) const {
       num_t++;
       if (num_t >= 2) return true;
       t_lev = var(l).decision_level;
-    }
-    if (val(l) == X_TRI) return true;
-    if (val(l) == F_TRI) {
+    } else if (val(l) == X_TRI) {
+      return true;
+    } else if (val(l) == F_TRI) {
       maxlev_f = std::max(maxlev_f, var(l).decision_level);
     }
   }
@@ -2672,14 +2637,16 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   if (it->second.currently_propagating) return false;
   v_tmp.clear();
   v_tmp2.clear();
-  for(const auto&l: cl) v_tmp2.push_back(l);
+  v_tmp2.assign(cl.begin(), cl.end());
   std::shuffle(v_tmp2.begin(), v_tmp2.end(), mtrand);
 
   // Swap to 1st & 2nd the two original 1st & 2nd
-  auto sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.first);
-  std::swap(*sw, v_tmp2[0]);
-  sw = std::find(v_tmp2.begin(), v_tmp2.end(), it->second.second);
-  std::swap(*sw, v_tmp2[1]);
+  auto swap_to = [&](size_t pos, const Lit& lit) {
+    auto it2 = std::find(v_tmp2.begin(), v_tmp2.end(), lit);
+    std::swap(*it2, v_tmp2[pos]);
+  };
+  swap_to(0, it->second.first);
+  swap_to(1, it->second.second);
   if (v_val(v_tmp2[0]) != X_TRI || v_val(v_tmp2[1]) != X_TRI) return false;
 
   v_new_lev();
@@ -3069,7 +3036,7 @@ bool Counter::check_watchlists() const {
   }
 
   // Check that all clauses are attached 2x in the watchlist
-  map<ClauseOfs, uint32_t> off_att_num;
+  std::unordered_map<ClauseOfs, uint32_t> off_att_num;
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     for(const auto& ws: watches[lit].watch_list_) {
@@ -3645,8 +3612,8 @@ uint64_t Counter::buddy_count() {
 
   // Binary clauses
   uint32_t actual_bin = 0;
-  for(const auto& v: vmap) for(uint32_t i = 0; i < 2; i++) {
-    Lit l(v, i);
+  for(const auto& v: vmap) for(bool sign : {false, true}) {
+    Lit l(v, sign);
     if (v != top_var && val(l) != X_TRI) continue;
     for(const auto& ws: watches[l].binaries) {
       if (!ws.irred() || ws.lit() < l) continue;
@@ -3796,17 +3763,14 @@ void Counter::check_all_propagated_conflicted() const {
 void Counter::v_backup() {
   for(const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
-    vector<Lit> lits(cl.begin(), cl.end());
-    v_backup_cls.push_back(lits);
+    v_backup_cls.emplace_back(cl.begin(), cl.end());
   }
   for(const auto& off: long_red_cls) {
     const Clause& cl = *alloc->ptr(off);
-    vector<Lit> lits(cl.begin(), cl.end());
-    v_backup_cls.push_back(lits);
+    v_backup_cls.emplace_back(cl.begin(), cl.end());
   }
   for(const auto& ws: watches) {
-    vector<ClOffsBlckL> tmp(ws.watch_list_.begin(), ws.watch_list_.end());
-    v_backup_watches.push_back(tmp);
+    v_backup_watches.emplace_back(ws.watch_list_.begin(), ws.watch_list_.end());
   }
 }
 
@@ -3814,19 +3778,13 @@ void Counter::v_restore() {
   uint32_t at = 0;
   for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
-    auto& lits = v_backup_cls[at];
-    for(uint32_t i = 0; i < cl.size(); i++) {
-      cl[i]=lits[i];
-    }
-    at++;
+    const auto& lits = v_backup_cls[at++];
+    std::copy(lits.begin(), lits.end(), cl.begin());
   }
   for(const auto& off: long_red_cls) {
     Clause& cl = *alloc->ptr(off);
-    auto& lits = v_backup_cls[at];
-    for(uint32_t i = 0; i < cl.size(); i++) {
-      cl[i]=lits[i];
-    }
-    at++;
+    const auto& lits = v_backup_cls[at++];
+    std::copy(lits.begin(), lits.end(), cl.begin());
   }
 
   at = 0;
@@ -4067,10 +4025,9 @@ void Counter::reduce_db() {
   int64_t new_confls = stats.conflicts - last_reducedb_confl;
   uint32_t target = conf.rdb_cls_target;
   if (new_confls*4 > new_decs) target *= 2;
-  else if (new_confls*8 > new_decs) target *= 1.5;
-  else if (new_confls*16 > new_decs) target *= 1;
-  else if (new_confls*32 > new_decs) target *= 0.8;
-  else target *= 0.4;
+  else if (new_confls*8 > new_decs) target = static_cast<uint32_t>(target * 1.5);
+  else if (new_confls*32 > new_decs) target = static_cast<uint32_t>(target * 0.8);
+  else target = static_cast<uint32_t>(target * 0.4);
 
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
@@ -4092,9 +4049,12 @@ void Counter::reduce_db() {
     }
   }
 
-  // Update LBD cutoff
-  if (stats.conflicts > (100ULL*1000ULL) && lbd_cutoff == conf.base_lbd_cutoff
-      && num_low_lbd_cls < 50 && conf.do_update_lbd_cutoff) {
+  // Update LBD cutoff: once we have seen enough conflicts but still have few
+  // low-LBD clauses, bump the cutoff to retain slightly larger glue clauses.
+  constexpr uint64_t lbd_bump_min_conflicts = 100ULL * 1000ULL;
+  constexpr uint32_t lbd_bump_max_low_cls = 50;
+  if (stats.conflicts > lbd_bump_min_conflicts && lbd_cutoff == conf.base_lbd_cutoff
+      && num_low_lbd_cls < lbd_bump_max_low_cls && conf.do_update_lbd_cutoff) {
     verb_print(1, " [rdb] bumping rdb cutoff to 3");
     lbd_cutoff++;
   }
@@ -4298,16 +4258,13 @@ string Counter::val_to_str(const TriValue& tri) const {
 }
 
 void Counter::print_cls_stats() const {
-  uint32_t num_tri_irred_cls = 0;
-  for(const auto& off: long_irred_cls) {
-    const auto& cl = *alloc->ptr(off);
-    if (cl.size() == 3) num_tri_irred_cls++;
-  }
-  uint32_t num_tri_red_cls = 0;
-  for(const auto& off: long_red_cls) {
-    const auto& cl = *alloc->ptr(off);
-    if (cl.size() == 3) num_tri_red_cls++;
-  }
+  auto count_tri = [this](const vector<ClauseOfs>& offs) {
+    uint32_t n = 0;
+    for (const auto& off: offs) if (alloc->ptr(off)->size() == 3) n++;
+    return n;
+  };
+  const uint32_t num_tri_irred_cls = count_tri(long_irred_cls);
+  const uint32_t num_tri_red_cls   = count_tri(long_red_cls);
   uint32_t num_bin_red_cls = 0;
   uint32_t num_bin_rred_cls = 0;
   for(const auto& ws: watches) {

@@ -64,61 +64,23 @@ static inline double cpu_time(void)
 // On failure, returns 0.0, 0.0
 static inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = nullptr)
 {
-   //double& vm_usage
    using std::ios_base;
    using std::ifstream;
    using std::string;
 
-   vm_usage     = 0.0;
+   vm_usage = 0.0;
 
    // 'file' stat seems to give the most reliable results
-   //
-   ifstream stat_stream("/proc/self/stat",ios_base::in);
+   ifstream stat_stream("/proc/self/stat", ios_base::in);
 
    // dummy vars for leading entries in stat that we don't care about
-   //
-   string pid; //                        The process ID.
-   string comm;  //The  filename  of the executable, in parentheses.
-   string state; //One of the following characters, indicating process (see man stat(2))
-   string ppid; //The PID of the parent of this process.
-   string pgrp; //The process group ID of the process.
-   string session; //The session ID of the process.
+   string pid, comm, state, ppid, pgrp, session, tty_nr, tpgid;
+   string flags, minflt, cminflt, majflt, cmajflt;
+   string utime, stime, cutime, cstime, priority, nice;
+   string num_threads, itrealvalue, starttime;
 
-   //The  controlling  terminal of the process.  (The minor device number is contained in the combina‐
-   //tion of bits 31 to 20 and 7 to 0; the major device number is in bits 15 to 8.)
-   string tty_nr;
-
-   //The ID of the foreground process group of the controlling terminal of the process.
-   string tpgid;
-
-
-   string flags;
-   string minflt;
-   string cminflt;
-   string majflt;
-   string cmajflt;
-   string utime;
-   string stime;
-   string cutime;
-   string cstime;
-   string priority;
-   string nice;
-
-   //Number of threads in this process (since Linux 2.6).  Before kernel  2.6,  this  field  was  hard
-   //coded to 0 as a placeholder for an earlier removed field.
-   string num_threads;
-
-   string itrealvalue;
-   string starttime;
-
-   /**** the two fields we want *****/
    unsigned long vsize; //Virtual memory size in bytes.
-
-   //Resident Set Size: number of pages the process has in real memory.  This is just the pages  which
-   //count toward text, data, or stack space.  This does not include pages which have not been demand-
-   //loaded in, or which are swapped out.
-   long rss;
-   /**** the two fields we want *****/
+   long rss; //Resident Set Size: number of pages the process has in real memory.
 
    stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
                >> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
@@ -158,7 +120,7 @@ static inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = n
 }
 #elif defined(__FreeBSD__)
 #include <sys/types.h>
-inline uint64_t mem_used(double& vm_usage, std::string* max_mem_usage = nullptr)
+inline uint64_t mem_used(double& vm_usage, [[maybe_unused]] std::string* max_mem_usage = nullptr)
 {
     vm_usage = 0;
 

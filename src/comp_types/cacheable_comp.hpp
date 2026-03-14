@@ -60,6 +60,7 @@ public:
     father_ = std::numeric_limits<uint32_t>::max();
     T::set_free();
     model_count_.reset();
+    model_count_is_zero_ = false; // also clear zero-count sentinel
   }
   auto get_hashkey() const  { return hashkey; }
   uint64_t extra_bytes() const {

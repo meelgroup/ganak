@@ -1,4 +1,4 @@
 rm -rf CMake* src cmake* ganak* sharp* Make*
 cmake -DCMAKE_BUILD_TYPE=Release -DSTATICCOMPILE=ON ..
-make -j4
+make -j14
 strip ganak

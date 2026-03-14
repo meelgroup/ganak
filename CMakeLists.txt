@@ -18,28 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required (VERSION 3.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 
-message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
-message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
-
-if(POLICY CMP0048)
-    cmake_policy(SET CMP0048 NEW)
-endif()
-
-
-if(POLICY CMP0022)
-    cmake_policy(SET CMP0022 NEW)
-endif()
-
-if(POLICY CMP0046)
-    cmake_policy(SET CMP0046 NEW)
-endif()
-
-if(POLICY CMP0026)
-    cmake_policy(SET CMP0026 NEW)
-endif()
-
+# CMP0104 (CUDA architectures default) was introduced in 3.18; guard needed
 if(POLICY CMP0104)
     cmake_policy(SET CMP0104 NEW)
 endif()
@@ -65,31 +46,33 @@ message(STATUS "Doing a ${CMAKE_BUILD_TYPE} build")
 # -----------------------------------------------------------------------------
 # Filter out definition of NDEBUG from the default build configuration flags.
 # We will add this ourselves if we want to disable assertions
-foreach (build_config ${build_types})
+foreach(build_config ${build_types})
     string(TOUPPER ${build_config} upper_case_build_config)
-    foreach (language CXX C)
+    foreach(language CXX C)
         set(VAR_TO_MODIFY "CMAKE_${language}_FLAGS_${upper_case_build_config}")
         string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )"
                              " "
                              replacement
                              "${${VAR_TO_MODIFY}}")
-        #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
         set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
     endforeach()
 endforeach()
 
-project (ganak)
+set(CMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY ON)
+set(CMAKE_EXPORT_PACKAGE_REGISTRY OFF)
+project(ganak)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-enable_language( CXX )
-enable_language( C )
-include (GenerateExportHeader)
-include (GNUInstallDirs)
+include(GenerateExportHeader)
+include(GNUInstallDirs)
+
+message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
+message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
 
 # contains some library search cmake scripts
-SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # generate JSON file of compile commands -- useful for code extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -97,24 +80,24 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 # static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(STATICCOMPILE "Compile to static executable" OFF)
-if (STATICCOMPILE)
+if(STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
 endif()
 
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
+if((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
     if(NOT BUILD_SHARED_LIBS)
-        MESSAGE(STATUS "Compiling statically")
-        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        message(STATUS "Compiling statically")
+        if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
         endif()
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     else()
-        MESSAGE(STATUS "Compiling for dynamic library use")
+        message(STATUS "Compiling for dynamic library use")
     endif()
 endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package (Threads REQUIRED)
+find_package(Threads REQUIRED)
 
 include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
@@ -123,14 +106,14 @@ macro(add_cxx_flag_if_supported flagname)
   check_cxx_compiler_flag("${flagname}" HAVE_FLAG_${flagname})
 
   if(HAVE_FLAG_${flagname})
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flagname}" )
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flagname}")
   endif()
 endmacro()
 macro(add_c_flag_if_supported flagname)
   check_c_compiler_flag("${flagname}" HAVE_FLAG_${flagname})
 
   if(HAVE_FLAG_${flagname})
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flagname}" )
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flagname}")
   endif()
 endmacro()
 macro(add_link_flag_if_supported flagname)
@@ -142,25 +125,24 @@ macro(add_link_flag_if_supported flagname)
 endmacro()
 
 # Note: O3 gives slight speed increase, 1 more solved from SAT Comp'14 @ 3600s
-if (NOT MSVC)
-    add_compile_options( -g)
+if(NOT MSVC)
+    add_compile_options(-g)
 
     add_compile_options("$<$<CONFIG:RelWithDebInfo>:-O3>")
 
     add_compile_options("$<$<CONFIG:Release>:-O3>")
     add_compile_options("$<$<CONFIG:Release>:-g0>")
-    add_compile_options("$<$<CONFIG:Release>:-DNDEBUG>")
 
     add_compile_options("$<$<CONFIG:Debug>:-O0>")
 
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG)
         if(${flag_var} MATCHES "-O3")
             string(REGEX REPLACE "-O3" "-O0" ${flag_var} "${${flag_var}}")
-        endif(${flag_var} MATCHES "-O3")
+        endif()
         if(${flag_var} MATCHES "-O2")
             string(REGEX REPLACE "-O2" "-O0" ${flag_var} "${${flag_var}}")
-        endif(${flag_var} MATCHES "-O2")
-    endforeach(flag_var)
+        endif()
+    endforeach()
 
 else()
     # see https://msdn.microsoft.com/en-us/library/fwkeyyhe.aspx for details
@@ -171,8 +153,7 @@ else()
     add_compile_options("$<$<CONFIG:RelWithDebInfo>:/ZI>")
 
     add_compile_options("$<$<CONFIG:Release>:/Ox>")
-    add_compile_options("$<$<CONFIG:Release>:/D>")
-    add_compile_options("$<$<CONFIG:Release>:/NDEBUG>")
+    add_compile_options("$<$<CONFIG:Release>:/DNDEBUG>")
     add_compile_options("$<$<CONFIG:Release>:/ZI>")
 
     add_compile_options("$<$<CONFIG:Debug>:/Od>")
@@ -202,12 +183,10 @@ else()
     # exception handling. c = If used with s (/EHsc), catches C++ exceptions only and tells the compiler to assume that functions declared as extern "C" never throw a C++ exception.
     add_compile_options(/EHsc)
 
-
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /INCREMENTAL:NO")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /PDBCOMPRESS")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:1572864")
 
-    #what does this do?
     set(DEF_INSTALL_CMAKE_DIR CMake)
 endif()
 
@@ -218,21 +197,21 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(ENABLE_ASSERTIONS OFF)
 endif()
 
-if (ENABLE_ASSERTIONS)
+if(ENABLE_ASSERTIONS)
     # NDEBUG was already removed.
 else()
     # Note this definition doesn't appear in the cache variables.
-    add_definitions(-DNDEBUG)
+    add_compile_definitions(NDEBUG)
     add_cxx_flag_if_supported("-fno-stack-protector")
-    add_definitions(-D_FORTIFY_SOURCE=0)
+    add_compile_definitions(_FORTIFY_SOURCE=0)
 endif()
 
 # -----------------------------------------------------------------------------
 # Flags
 # -----------------------------------------------------------------------------
-if (NOT WIN32)
+if(NOT WIN32)
     if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        #dd_cxx_flag_if_supported("-fvisibility=hidden")
+        #add_cxx_flag_if_supported("-fvisibility=hidden")
     endif()
 
     add_cxx_flag_if_supported("-mpopcnt")
@@ -242,7 +221,7 @@ if (NOT WIN32)
       # add_cxx_flag_if_supported("-flto")
       # add_c_flag_if_supported("-flto")
       # add_link_flag_if_supported("-flto")
-    else ()
+    else()
       add_cxx_flag_if_supported("-Wall")
       add_cxx_flag_if_supported("-Wextra")
       add_cxx_flag_if_supported("-Wunused")
@@ -255,7 +234,6 @@ if (NOT WIN32)
       add_cxx_flag_if_supported("-Wstrict-aliasing")
       add_cxx_flag_if_supported("-Wpointer-arith")
       add_cxx_flag_if_supported("-Wheader-guard")
-      add_cxx_flag_if_supported("-Wpointer-arith")
       add_cxx_flag_if_supported("-Wformat-nonliteral")
       add_cxx_flag_if_supported("-Winit-self")
       add_cxx_flag_if_supported("-Wparentheses")
@@ -268,8 +246,8 @@ if (NOT WIN32)
     endif()
 endif()
 
-if (NOT WIN32)
-    MESSAGE(STATUS "${CMAKE_C_FLAGS}")
+if(NOT WIN32)
+    message(STATUS "${CMAKE_C_FLAGS}")
     add_c_flag_if_supported("-Wall")
     add_c_flag_if_supported("-msse4.2")
     add_c_flag_if_supported("-mpclmul")
@@ -277,8 +255,8 @@ if (NOT WIN32)
 endif()
 
 option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
-if (SANITIZE)
-    MESSAGE(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
+if(SANITIZE)
+    message(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
     add_compile_options("-fsanitize=address")
     add_link_options("-fsanitize=address")
     add_link_options("-fsanitize=undefined")
@@ -308,8 +286,8 @@ if (SANITIZE)
 endif()
 
 option(ANALYZE "Run Clang static analyzer. You MUST use clang++ as the compiler for this to work" OFF)
-if (ANALYZE)
-    MESSAGE(WARNING " --Using clang static analyzer -- you MUST use clang++ or the compile WILL fail")
+if(ANALYZE)
+    message(WARNING " --Using clang static analyzer -- you MUST use clang++ or the compile WILL fail")
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=clang-analyzer-*")
     set(CMAKE_C_CLANG_TIDY "clang-tidy;-checks=clang-analyzer-*")
 endif()
@@ -320,29 +298,32 @@ endif()
 set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
-
+find_package(MPFI REQUIRED)
 find_package(FLINT REQUIRED)
-MESSAGE(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
-MESSAGE(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
+message(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
+message(STATUS "MPFI include dir: ${MPFI_INCLUDES}")
+message(STATUS "MPFI lib dir: ${MPFI_LIBRARIES}")
+message(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
 
 option(NOZLIB "Don't use zlib" OFF)
-if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
+if(NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     find_package(ZLIB)
-    IF (ZLIB_FOUND)
-        MESSAGE(STATUS "OK, Found ZLIB!")
-        include_directories(${ZLIB_INCLUDE_DIR})
-        link_directories(${ZLIB_LIB_DIR})
-        add_definitions( -DUSE_ZLIB )
-    ELSE (ZLIB_FOUND)
-        MESSAGE(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
-    ENDIF (ZLIB_FOUND)
+    if(ZLIB_FOUND)
+        message(STATUS "OK, Found ZLIB!")
+        add_compile_definitions(USE_ZLIB)
+    else()
+        message(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
+    endif()
 endif()
 
+set(cryptominisat5_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat/build" CACHE PATH "Path to cryptominisat5 build/install directory")
 find_package(cryptominisat5 CONFIG REQUIRED)
+set(arjun_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../arjun/build" CACHE PATH "Path to arjun build/install directory")
 find_package(arjun CONFIG REQUIRED)
-find_package(sbva CONFIG REQUIRED)
-find_package(breakid CONFIG REQUIRED)
+set(approxmc_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../approxmc/build" CACHE PATH "Path to approxmc build/install directory")
 find_package(approxmc CONFIG REQUIRED)
+set(treedecomp_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp/build" CACHE PATH "Path to treedecomp build/install directory")
+find_package(treedecomp CONFIG REQUIRED)
 
 message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
 message(STATUS "CryptoMiniSat5 static lib:  ${CRYPTOMINISAT5_STATIC_LIBRARIES}")
@@ -354,16 +335,17 @@ message(STATUS "ApproxMC static lib:  ${APPROXMC_STATIC_LIBRARIES}")
 message(STATUS "ApproxMC static lib deps: ${APPROXMC_STATIC_LIBRARIES_DEPS}")
 message(STATUS "ApproxMC include dirs: ${APPROXMC_INCLUDE_DIRS}")
 
-# add compile defines
-set(COMPILE_DEFINES)
-foreach( d ${DirDefs} )
-    # message( STATUS "Found Define: " ${d} )
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+# Collect all compile definitions set so far into a string for embedding
+# via @COMPILE_DEFINES@ in GitSHA1.cpp.in
+get_directory_property(DirDefs COMPILE_DEFINITIONS)
+set(COMPILE_DEFINES "")
+foreach(d ${DirDefs})
     set(COMPILE_DEFINES "${COMPILE_DEFINES} -D${d}")
 endforeach()
 message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
-
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 macro(ganak_add_public_header LIBTARGET HEADER)
     get_target_property(EXISTING_PUBLIC_HEADERS ${LIBTARGET} PUBLIC_HEADER)
@@ -397,30 +379,30 @@ function(SetVersionNumber PREFIX VERSION_MAJOR VERSION_MINOR VERSION_PATCH)
         PARENT_SCOPE)
 endfunction()
 
-find_program (GIT_EXECUTABLE git)
-if (GIT_EXECUTABLE)
+find_program(GIT_EXECUTABLE git)
+if(GIT_EXECUTABLE)
   include(GetGitRevisionDescription)
   get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-  MESSAGE(STATUS "GIT hash found: ${GIT_SHA1}")
+  message(STATUS "GIT hash found: ${GIT_SHA1}")
 else()
-  set(GIT_SHA "GIT-hash-notfound")
+  set(GIT_SHA1 "GIT-hash-notfound")
 endif()
 set(GANAK_FULL_VERSION "1.1.0")
 
 string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
 SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})
-MESSAGE(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
-MESSAGE(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
-MESSAGE(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
-MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
+message(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
+message(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
+message(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
+message(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 
-
-add_subdirectory(src)
 
 # -----------------------------------------------------------------------------
 # Provide an export name to be used by targets that wish to export themselves.
 # -----------------------------------------------------------------------------
 set(GANAK_EXPORT_NAME "ganakTargets")
+
+add_subdirectory(src)
 
 # -----------------------------------------------------------------------------
 # Add uninstall target for makefiles
@@ -436,7 +418,7 @@ add_custom_target(uninstall
 )
 
 option(ENABLE_TESTING "Enables testing" ON)
-if (ENABLE_TESTING)
+if(ENABLE_TESTING)
   find_package(Python3 COMPONENTS NumPy Interpreter Development REQUIRED)
   message(STATUS "Python 3 -- Python3_EXECUTABLE=${Python3_EXECUTABLE}")
   message(STATUS "Python 3 -- Python3_LIBRARIES=${Python3_LIBRARIES}")
@@ -465,21 +447,25 @@ export(
 # Create ganakConfig file
 set(EXPORT_TYPE "Build-tree")
 set(CONF_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
+set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "${cryptominisat5_DIR}")
+set(ARJUN_CMAKE_DIR_FOR_CONFIG "${arjun_DIR}")
+set(APPROXMC_CMAKE_DIR_FOR_CONFIG "${approxmc_DIR}")
+set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "${treedecomp_DIR}")
 configure_file(ganakConfig.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_CONFIG_FILENAME}" @ONLY
 )
 
 # Export this package to the CMake user package registry
-# Now the user can just use find_package(cryptominisat5) on their system
+# Now the user can just use find_package(ganak) on their system
 export(PACKAGE ganak)
-
-set(DEF_INSTALL_CMAKE_DIR lib/cmake/ganak)
-set(GANAK_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
-    "Installation directory for ganak CMake files")
 
 # Create ganakConfig file
 set(EXPORT_TYPE "installed")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
+set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "")  # installed deps found via system paths
+set(ARJUN_CMAKE_DIR_FOR_CONFIG "")
+set(APPROXMC_CMAKE_DIR_FOR_CONFIG "")
+set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "")
 configure_file(ganakConfig.cmake.in
    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}" @ONLY
 )
@@ -491,7 +477,6 @@ install(FILES
 
 # Install the export set for use with the install-tree
 install(
-    TARGETS ganak
     EXPORT ${GANAK_EXPORT_NAME}
     DESTINATION "${GANAK_INSTALL_CMAKE_DIR}"
 )

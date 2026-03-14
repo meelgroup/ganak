@@ -167,8 +167,8 @@ public:
   const auto& get_cache() const { return comp_manager->get_cache();}
   void set_generators(const vector<std::map<Lit, Lit>>& _gens) { generators = _gens; }
 
-  const FF& get_weight(const Lit& l) { return weights[l.raw()];}
-  const FF& get_weight(const uint32_t v) { return var_weights[v]; }
+  const FF& get_weight(const Lit& l) const { return weights[l.raw()];}
+  const FF& get_weight(const uint32_t v) const { return var_weights[v]; }
   bool weight_larger_than(const FF& fst, const FF& snd) const { //< Returns true if the first weight is larger
     return fg->larger_than(*fst, *snd);
   }

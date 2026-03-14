@@ -514,6 +514,8 @@ FF Counter::check_count_norestart(const Cube& c) {
   conf2.verb = 0;
   conf2.do_buddy = 0;
   conf2.do_cube_check_count = 0;
+
+  // Make a new counter from this counter, very hacky
   Counter test_cnt(conf2, fg);
   test_cnt.new_vars(nVars());
   set<uint32_t> tmp;

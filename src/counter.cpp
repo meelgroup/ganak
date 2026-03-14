@@ -516,12 +516,16 @@ FF Counter::check_count_norestart(const Cube& c) {
   conf2.do_cube_check_count = 0;
   Counter test_cnt(conf2, fg);
   test_cnt.new_vars(nVars());
-  set<uint32_t> tmp_indep;
-  for(uint32_t i = 1; i < indep_support_end; i++) tmp_indep.insert(i);
-  test_cnt.set_indep_support(tmp_indep);
+  set<uint32_t> tmp;
+  for(uint32_t i = 1; i < indep_support_end; i++) tmp.insert(i);
+  test_cnt.set_indep_support(tmp);
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) tmp.insert(i);
+  test_cnt.set_optional_indep_support(tmp);
   if (weighted()) {
-    all_lits(i) {
-      Lit l(i/2, i%2 == 0);
+    for (const auto& v: tmp) {
+      Lit l(v, true);
+      test_cnt.set_lit_weight(l, get_weight(l));
+      l = l.neg();
       test_cnt.set_lit_weight(l, get_weight(l));
     }
   }

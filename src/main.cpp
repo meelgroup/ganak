@@ -299,7 +299,7 @@ void add_ganak_options()
     add_arg("--restart", conf.do_restart, fc_int, "Run restarts");
     add_arg("--rsttype", conf.restart_type, fc_int, "Check count at every step");
     add_arg("--rstcutoff", conf.restart_cutoff_mult, fc_double, "Multiply cutoff with this");
-    add_arg("--rstcheckcnt", conf.do_cube_check_count, fc_int, "Check the count of each cube");
+    add_arg("--rstcheckcnt", conf.do_cube_check_count, fc_int, "Check the count of each cube. 1 = use ganak itself without restart. 2 = use CMS one-by-one counting");
     add_arg("--rstreadjust", conf.do_readjust_for_restart, fc_int, "Readjust params for restart");
     add_arg("--maxrst", conf.max_num_rst, fc_int, "Max number of restarts");
     add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart, fc_int,  "Max number of cubes per restart");

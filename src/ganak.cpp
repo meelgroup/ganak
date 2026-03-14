@@ -21,7 +21,6 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "ganak.hpp"
-#include "counter.hpp"
 #include "outer_counter.hpp"
 #include <cstdlib>
 #include <set>
@@ -102,13 +101,18 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
   uint32_t cls_added = 0;
   for(uint32_t i = 0; i < bags.size(); i++) {
     const auto& bag = bags[i];
-    vector<int> var_map(cdat->nvars+1, -1);
     CDat sub_c;
     sub_c.conf = cdat->conf;
     sub_c.fg = cdat->fg->dup();
-    sub_c.nvars = bag.size();
     assert(std::is_sorted(bag.begin(), bag.end()));
-    for(size_t i2 = 0; i2 < bag.size(); i2++) var_map[bag[i2]] = i2+1;
+
+    // Assign var numbers: indeps first (1..k), then opt_indeps (k+1..k+m), then rest
+    vector<int> var_map(cdat->nvars+1, -1);
+    sub_c.nvars = bag.size();
+    uint32_t next_num = 1;
+    for(const auto& v: bag) if (cdat->indeps.count(v)) var_map[v] = next_num++;
+    for(const auto& v: bag) if (!cdat->indeps.count(v) && cdat->opt_indeps.count(v)) var_map[v] = next_num++;
+    for(const auto& v: bag) if (!cdat->indeps.count(v) && !cdat->opt_indeps.count(v)) var_map[v] = next_num++;
     for(const auto& v: bag) {
       if (cdat->indeps.count(v)) sub_c.indeps.insert(var_map[v]);
       if (cdat->opt_indeps.count(v)) sub_c.opt_indeps.insert(var_map[v]);
@@ -117,6 +121,8 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
       if (auto it = cdat->lit_weights.find(GanakInt::Lit(v, true)); it != cdat->lit_weights.end())
         sub_c.lit_weights[GanakInt::Lit(var_map[v], true)] = it->second->dup();
     }
+
+    // remap clauses
     auto remap_clause = [&](const vector<GanakInt::Lit>& cl) {
       vector<GanakInt::Lit> new_cl;
       new_cl.reserve(cl.size());
@@ -131,7 +137,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
     for(const auto& cl: bag_to_red_cls[i]) sub_c.red_cls.push_back({remap_clause(cl.first), cl.second});
     cls_added += sub_c.irred_cls.size();
 
-    // Now count
+    // set up counter
     if (cdat->conf.verb >= 2)
       cout << "c o Counting component with " << sub_c.nvars << " vars, "
         << sub_c.irred_cls.size() << " irredundant clauses, "
@@ -152,20 +158,21 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
       if (all_same) continue;
     }
 
-    OuterCounter counter(sub_c.conf, sub_c.fg->dup());
-    counter.new_vars(sub_c.nvars);
-    counter.set_indep_support(sub_c.indeps);
-    counter.set_optional_indep_support(sub_c.opt_indeps);
-    for(const auto& w: sub_c.lit_weights) counter.set_lit_weight(w.first, w.second);
-    for(const auto& cl: sub_c.irred_cls) counter.add_irred_cl(cl);
-    for(const auto& p: sub_c.red_cls) counter.add_red_cl(p.first, p.second);
-    if (sub_c.conf.verb && cdat->print_indep_distrib) counter.print_indep_distrib();
-    auto ret = counter.count(bits_jobs, num_threads);
+    // run counter
+    OuterCounter out_cnt(sub_c.conf, sub_c.fg->dup());
+    out_cnt.new_vars(sub_c.nvars);
+    out_cnt.set_indep_support(sub_c.indeps);
+    out_cnt.set_optional_indep_support(sub_c.opt_indeps);
+    for(const auto& w: sub_c.lit_weights) out_cnt.set_lit_weight(w.first, w.second);
+    for(const auto& cl: sub_c.irred_cls) out_cnt.add_irred_cl(cl);
+    for(const auto& p: sub_c.red_cls) out_cnt.add_red_cl(p.first, p.second);
+    if (sub_c.conf.verb && cdat->print_indep_distrib) out_cnt.print_indep_distrib();
+    auto ret = out_cnt.count(bits_jobs, num_threads);
     *cnt *= *ret;
     if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
-    cdat->is_approximate |= counter.get_is_approximate();
-    cdat->max_num_cache_lookups = std::max(cdat->max_num_cache_lookups, counter.get_num_cache_lookups());
-    cdat->max_cache_elems = std::max(cdat->max_cache_elems, counter.get_max_cache_elems());
+    cdat->is_approximate |= out_cnt.get_is_approximate();
+    cdat->max_num_cache_lookups = std::max(cdat->max_num_cache_lookups, out_cnt.get_num_cache_lookups());
+    cdat->max_cache_elems = std::max(cdat->max_cache_elems, out_cnt.get_max_cache_elems());
   }
   assert(cls_added == cdat->irred_cls.size());
   return cnt;

@@ -95,6 +95,16 @@ public:
   // stores in the entry the position of
   // comp which is a part of the comp stack
   CacheEntryID add_new_comp(void* comp, CacheEntryID super_comp_id) override;
+  void update_entry_time(CacheEntryID id) {
+    switch(conf.cache_time_update) {
+      case 0: break;
+      case 1: entry(id).set_last_used_time(my_time); break;
+      case 2: entry(id).avg_last_used_time(my_time, 2); break;
+      case 3: entry(id).avg_last_used_time(my_time, 3); break;
+      default: release_assert(false);
+    }
+  }
+
   bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* c) override {
     const T& comp = *reinterpret_cast<const T*>(c);
     stats.num_cache_look_ups++;
@@ -104,13 +114,7 @@ public:
     while(act_id){ // LINEAR PROBING through collision chain
       if (entry(act_id).equals(comp)) {
         stats.incorporate_cache_hit(nvars);
-        switch(conf.cache_time_update) {
-          case 0: break;
-          case 1: entry(act_id).set_last_used_time(my_time); break;
-          case 2: entry(act_id).avg_last_used_time(my_time, 2); break;
-          case 3: entry(act_id).avg_last_used_time(my_time, 3); break;
-          default: release_assert(false);
-        }
+        update_entry_time(act_id);
         debug_print(COLYEL2 << "Cache hit. cache ID: " << act_id);
         top.include_solution(entry(act_id).model_count());
         return true;

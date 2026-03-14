@@ -719,7 +719,10 @@ int main(int argc, char *argv[]) {
       const string& fname = files[0];
       read_in_a_file(fname, &cnf, etof_conf.all_indep, fg);
     } else {
-        cout << "[appmc] ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
+        cout << "ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
+        cout << "       You provided " << files.size() << " files: ";
+        for (const auto& f: files) cout << f << " ";
+        cout << endl;
         exit(EXIT_FAILURE);
     }
   }

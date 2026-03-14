@@ -396,13 +396,19 @@ void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bp
   stats.sum_extra_bytes = 0;
   stats.cache_infra_bytes_mem_usage = 0;
 
+  // Size the initial table to fit within ~25% of the cache budget
+  // Cap at 1M entries; floor at 256 entries.
+  const uint32_t max_tbl = (uint32_t)std::min(
+      (uint64_t)1024*1024,
+      stats.max_cache_size_bytes / sizeof(CacheEntryID) / 4);
+  uint32_t init_tbl = 256;
+  while (init_tbl * 2 <= max_tbl) init_tbl *= 2;
   table.clear();
-  table.resize(1024*1024);
+  table.resize(init_tbl);
   std::fill(table.begin(), table.end(), 0);
   tbl_size_mask = table.size() - 1;
-
-  verb_print(2, "Max cache size set: " << stats.max_cache_size_bytes / (1024ULL*1024ULL) << " MB");
-  assert(!cache_full());
+  verb_print(2, "Max cache size set: " << std::setprecision(2)
+      << (double)stats.max_cache_size_bytes / (double)(1024ULL*1024ULL) << " MB");
 
   auto x = T();
   entry_base.push_back(x); // dummy Element
@@ -437,17 +443,13 @@ void CompCache<T>::test_descendantstree_consistency() {
     }
 }
 
-// This score is updated to mid-way when cache is used
 template<typename T>
 uint64_t CompCache<T>::calc_cutoff() const {
   vector<uint64_t> scores;
-  // skip 1st entry: root formula entry is never deletable,
+  // skip index 0 (dummy) and 1 (root formula, never deletable)
   for (auto it = entry_base.begin() + 2; it != entry_base.end(); it++)
     if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
-  if (scores.empty()){
-    cout<< "c ERROR Memory out!"<<endl;
-    exit(EXIT_FAILURE);
-  }
+  assert(!scores.empty());
   verb_print(1, "deletable:           " << scores.size());
   const auto mid = scores.begin() + scores.size() / 2;
   std::nth_element(scores.begin(), mid, scores.end());
@@ -456,6 +458,13 @@ uint64_t CompCache<T>::calc_cutoff() const {
 
 template<typename T>
 bool CompCache<T>::delete_some_entries() {
+  // Check for deletable entries before doing anything — the cache may be full
+  // purely due to infrastructure (e.g. table) with no evictable entries yet.
+  bool has_deletable = false;
+  for (uint32_t id = 2; id < entry_base.size(); id++)
+    if (!entry_base[id].is_free() && entry_base[id].is_deletable()) { has_deletable = true; break; }
+  if (!has_deletable) return false;
+
   const auto start_del_time = cpu_time();
   uint64_t cutoff = (uint64_t)calc_cutoff();
   verb_print(1, "Deleting entires. Num entries: " << entry_base.size());

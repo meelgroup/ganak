@@ -209,6 +209,7 @@ public:
   }
 
   bool weighted() const final { return true; }
+  bool exact() const final { return true; }
 };
 
 // LaurentPoly: multivariate Laurent polynomial over Q.
@@ -652,4 +653,5 @@ public:
   }
 
   bool weighted() const final { return true; }
+  bool exact() const final { return true; }
 };

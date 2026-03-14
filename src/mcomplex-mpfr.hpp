@@ -269,4 +269,5 @@ public:
     }
 
     bool weighted() const final { return true; }
+    bool exact() const final { return false; }
 };

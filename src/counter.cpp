@@ -583,12 +583,16 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
   if (conf.do_cube_check_count) {
+    if (!fg->exact()) {
+      cout << "ERROR: Cannot check counts of a field that is not exact!" << endl;
+      exit(EXIT_FAILURE);
+    }
     for(const auto& c: cubes) {
       FF check_cnt = nullptr;
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
       else check_cnt = check_count_norestart_cms(c);
-      cout << "checking cube [ " << c << " ] ---- check_cnt: " << check_cnt << endl;
-      assert(check_cnt == c.cnt);
+      cout << "checking cube [ " << c << " ] ---- check_cnt: " << *check_cnt << " cube cnt: " << *c.cnt << endl;
+      assert(fg->exact() && *check_cnt == *c.cnt);
     }
   }
 }
@@ -1520,6 +1524,10 @@ bool Counter::compute_cube(Cube& c, const int side) {
 
 // Checks one-by-one using a SAT solver
 FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
+    if (!fg->exact()) {
+      cout << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
+      exit(EXIT_FAILURE);
+    }
     //let's get vars active
     set<uint32_t> active;
 

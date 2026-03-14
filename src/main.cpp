@@ -259,6 +259,7 @@ void add_ganak_options()
     add_arg("--cache", conf.do_use_cache, fc_int, "Use (i.e. store and retrieve) cache");
     add_arg("--maxcache", conf.maximum_cache_size_MB, fc_int, "Max cache size in MB");
     add_arg("--cachetime", conf.cache_time_update, fc_int, "2 = set to mid-point");
+    add_arg("--lru", conf.lru_eviction, fc_int, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, fc_int, "Run BuDDy");

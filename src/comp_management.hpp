@@ -125,12 +125,8 @@ inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   // sort the remaining comps for processing
   stats.comp_sorts++;
   stats.comp_sizes+= end - start;
-  for (uint64_t i = start; i < end; i++)
-    for (uint64_t j = i + 1; j < end; j++) {
-      if (comp_stack[i]->nVars()
-                  < comp_stack[j]->nVars())
-        std::swap(comp_stack[i], comp_stack[j]);
-    }
+  std::sort(comp_stack.begin() + start, comp_stack.begin() + end,
+            [](const Comp* a, const Comp* b) { return a->nVars() > b->nVars(); });
 }
 
 inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {

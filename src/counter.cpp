@@ -1516,6 +1516,11 @@ bool Counter::compute_cube(Cube& c, const int side) {
       *c.cnt *= *get_weight(l);
     }
     if (c.cnt->is_zero()) return false;
+  } else {
+    // For non-weighted: the cube pins all indep-support vars via the SAT model,
+    // so this specific assignment has count = 1.
+    // (c.cnt was set to a partial DPLL sub-component count, which is wrong here.)
+    c.cnt = fg->one();
   }
 
 #if 1 //def VERBOSE_DEBUG

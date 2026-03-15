@@ -1115,6 +1115,16 @@ end:
     debug_print("[cube-final] This restart multiplier: " << *this_restart_multiplier);
     for (auto& c: mini_cubes) {
       *c.cnt *= *this_restart_multiplier;
+      CHECK_COUNT_DO({
+        if (fg->exact() && c.enabled) {
+          auto check_cnt = check_count_norestart_cms(c);
+          if (*check_cnt != *c.cnt) {
+            cout << "ERROR [weight-mul]: cube cnt mismatch after multiplier: " << c << endl;
+            cout << "  cube.cnt : " << *c.cnt << "  check: " << *check_cnt << endl;
+            assert(*check_cnt == *c.cnt);
+          }
+        }
+      });
       if (c.enabled) debug_print("[cube-final] cube: " << c);
     }
   }
@@ -1390,6 +1400,16 @@ bool Counter::restart_if_needed() {
 
       Cube cube;
       if (compute_cube(cube, i)) {
+        CHECK_COUNT_DO({
+          if (fg->exact()) {
+            auto check_cnt = check_count_norestart_cms(cube);
+            if (*check_cnt != *cube.cnt) {
+              cout << "ERROR [restart loop]: cube cnt mismatch after compute_cube: " << cube << endl;
+              cout << "  cube.cnt : " << *cube.cnt << "  check: " << *check_cnt << endl;
+              assert(*check_cnt == *cube.cnt);
+            }
+          }
+        });
         mini_cubes.push_back(cube);
         *tot_cnt += *cube.cnt;
         verb_print(2, "[mini-cube] rst: " << stats.num_restarts << " mini cube: " << cube);
@@ -1467,18 +1487,14 @@ bool Counter::compute_cube(Cube& c, const int side) {
 
   // Add values for all components not yet counted
   for(int32_t i = 0; i <= dec_level(); i++) {
-    if (i == dec_level() && opposite_branch) {
-      // This has been fully counted, ALL components.
-      continue;
-    }
     const StackLevel& dec = decisions[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.get_unproc_comps_end();
     debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
-    // add all but the last component (it's the one being counted lower down)
-    int off_by_one = 1;
-    if (i == dec_level()) off_by_one = 0;
-    for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
+    // add all components; indep-support vars not covered by decisions need to be
+    // pinned from the SAT model regardless of whether the component is the one
+    // being counted at a deeper level
+    for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       const auto& comp = comp_manager->at(i2);
       all_vars_in_comp(*comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
@@ -1489,7 +1505,20 @@ bool Counter::compute_cube(Cube& c, const int side) {
     }
   }
 
-#ifdef VERBOSE_DEBUG
+  // For weighted counting: replace the DPLL-tree-based c.cnt with the product
+  // of weights from the SAT model. The DPLL count is wrong at restart time
+  // because decision literal weights are applied by unset_lit during backtracking,
+  // which hasn't happened yet.
+  if (weighted()) {
+    c.cnt = fg->one();
+    for (uint32_t v = 1; v < opt_indep_support_end; v++) {
+      Lit l(v, sat_solver->get_model()[v-1] == CMSat::l_True);
+      *c.cnt *= *get_weight(l);
+    }
+    if (c.cnt->is_zero()) return false;
+  }
+
+#if 1 //def VERBOSE_DEBUG
   // Show decision stack's comps
   for(int32_t i = 0; i <= dec_level(); i++) {
     const auto& dst = decisions.at(i);
@@ -1521,6 +1550,66 @@ bool Counter::compute_cube(Cube& c, const int side) {
   if (tmp != nullptr) side_count = tmp->dup();
   cout << COLORG "cube's SOLE count: " << *tmp << endl;
   cout << COLORG "cube's RECORDED count: " << *c.cnt << COLDEF << endl;
+#endif
+#if 1 //def CHECK_COUNT
+  if (fg->exact()) {
+    auto check_cnt = check_count_norestart_cms(c);
+    if (*check_cnt != *c.cnt) {
+      cout << "ERROR [compute_cube]: cnt mismatch for cube: " << c << endl;
+      cout << "  recorded c.cnt : " << *c.cnt << endl;
+      cout << "  actual check   : " << *check_cnt << endl;
+      cout << "  dec_level      : " << dec_level() << " side: " << side << endl;
+#if 1//def VERBOSE_DEBUG
+      // c.cnt accumulation breakdown
+      cout << "  top get_model_side(" << side << "): "
+           << *decisions.top().get_model_side(side) << endl;
+      for (int32_t i = 0; i < dec_level(); i++) {
+        const auto& mul = decisions[i].get_branch_sols();
+        cout << "  lev " << i << " get_branch_sols: ";
+        if (mul) cout << *mul; else cout << "null";
+        cout << endl;
+      }
+      // For each level below dec_level, show the excluded "last component"
+      // and how many of its indep-support vars are/aren't pinned in c.cnf
+      {
+        set<uint32_t> cnf_vars;
+        for (const auto& l : c.cnf) cnf_vars.insert(l.var());
+        for (int32_t i = 0; i < dec_level(); i++) {
+          const StackLevel& dec = decisions[i];
+          const auto off_start = dec.remaining_comps_ofs();
+          const auto off_end   = dec.get_unproc_comps_end();
+          if (off_end == 0 || off_end <= off_start) continue;
+          const auto& excl_comp = comp_manager->at(off_end - 1);
+          cout << "  lev " << i << " excluded last comp (id=" << excl_comp->id() << ") vars: ";
+          all_vars_in_comp(*excl_comp, v) cout << *v << " ";
+          cout << endl;
+          uint32_t covered = 0, uncovered = 0;
+          all_vars_in_comp(*excl_comp, v) {
+            if (*v < indep_support_end) {
+              if (cnf_vars.count(*v)) covered++;
+              else uncovered++;
+            }
+          }
+          cout << "  lev " << i << " excluded comp indep covered/uncovered: "
+               << covered << "/" << uncovered << endl;
+          if (uncovered > 0) {
+            cout << "  lev " << i << " UNCOVERED vars: ";
+            all_vars_in_comp(*excl_comp, v) {
+              if (*v < indep_support_end && !cnf_vars.count(*v))
+                cout << *v << " ";
+            }
+            cout << endl;
+          }
+        }
+        cout << "  indep_support_end: " << indep_support_end
+             << " opt_indep_support_end: " << opt_indep_support_end << endl;
+        cout << "  opposite_branch: " << opposite_branch << endl;
+      }
+#endif
+      print_all_levels();
+      assert(*check_cnt == *c.cnt);
+    }
+  }
 #endif
   return true;
 }

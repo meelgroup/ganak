@@ -1505,6 +1505,18 @@ bool Counter::compute_cube(Cube& c, const int side) {
     }
   }
 
+  // Deduplicate c.cnf: the same variable may appear multiple times (from overlapping
+  // component ranges at different decision levels). Duplicates would cause extend_cubes
+  // to multiply the count by 2 for each extra occurrence of the same literal.
+  {
+    set<uint32_t> seen_vars;
+    // Decision literals were already added (unique), so pre-populate from them.
+    // Actually, just deduplicate the whole vector by var.
+    auto it = std::remove_if(c.cnf.begin(), c.cnf.end(),
+        [&seen_vars](const Lit& l) { return !seen_vars.insert(l.var()).second; });
+    c.cnf.erase(it, c.cnf.end());
+  }
+
   // For weighted counting: replace the DPLL-tree-based c.cnt with the product
   // of weights from the SAT model. The DPLL count is wrong at restart time
   // because decision literal weights are applied by unset_lit during backtracking,

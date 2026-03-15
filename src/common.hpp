@@ -51,7 +51,7 @@ using FF = std::unique_ptr<Field>;
 /* #define CHECK_TRAIL_ENTAILMENT */
 
 // I suggest disabling the cache separately with --cache 0
-/* #define CHECK_COUNT */
+#define CHECK_COUNT
 
 #ifdef CHECK_COUNT
 constexpr bool must_check_count = true;

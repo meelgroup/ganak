@@ -1767,7 +1767,15 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
     if (solution_exist) {
-      if (!weighted()) assert(*decisions.top().total_model_count() == *cnt);
+      if (!weighted()) {
+        // When !is_indep && !do_use_sat_solver, the DPLL tree only tracks satisfiability
+        // (0/1) not the exact count. Collapse cnt to 0/1 to match before comparing.
+        FF cnt_cmp = cnt->dup();
+        if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
+          if (!cnt_cmp->is_zero()) cnt_cmp = fg->one();
+        }
+        assert(*decisions.top().total_model_count() == *cnt_cmp);
+      }
       else {
         bool okay = true;
         auto diff = after_mul->dup();

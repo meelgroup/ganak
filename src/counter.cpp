@@ -1489,7 +1489,9 @@ bool Counter::compute_cube(Cube& c, const int side) {
   for(int32_t i = 0; i <= dec_level(); i++) {
     const StackLevel& dec = decisions[i];
     const auto off_start = dec.remaining_comps_ofs();
-    const auto off_end = dec.get_unproc_comps_end();
+    // unprocessed_comps_end_ may be stale if go_back_to() cleaned the comp_stack
+    // without resetting it (e.g. after chrono backtracking). Cap at actual stack size.
+    const auto off_end = std::min(dec.get_unproc_comps_end(), (uint64_t)comp_manager->comp_stack_size());
     debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
     // add all components; indep-support vars not covered by decisions need to be
     // pinned from the SAT model regardless of whether the component is the one
@@ -1549,9 +1551,8 @@ bool Counter::compute_cube(Cube& c, const int side) {
       << " right count here: " << dst.right_model_count()
       << " branch: " << dst.is_right_branch() << endl;
     const auto off_start = dst.remaining_comps_ofs();
-    const auto off_end = dst.get_unproc_comps_end();
+    const auto off_end = std::min(dst.get_unproc_comps_end(), (uint64_t)comp_manager->comp_stack_size());
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
-      assert(i2 < comp_manager->comp_stack_size());
       const auto& comp = comp_manager->at(i2);
       cout << COLWHT "-> comp at: " << setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
       all_vars_in_comp(*comp, v) cout << *v << " ";

@@ -1100,6 +1100,11 @@ void Counter::count_loop() {
 end:
   if (state == EXIT) {
     Cube c(vector<Lit>(), decisions.top().total_model_count());
+    // With --satsolver 0, non-indep components only track satisfiability (0/1),
+    // so total_model_count() can be wrong. Recompute via SAT enumeration.
+    if (!weighted() && !conf.do_use_sat_solver) {
+      c.cnt = check_count_norestart_cms(c);
+    }
     debug_print("Exiting due to EXIT state, the cube count: " << *c.cnt);
     mini_cubes.push_back(c);
   }

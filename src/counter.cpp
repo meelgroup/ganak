@@ -1551,7 +1551,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   cout << COLORG "cube's SOLE count: " << *tmp << endl;
   cout << COLORG "cube's RECORDED count: " << *c.cnt << COLDEF << endl;
 #endif
-#if 1 //def CHECK_COUNT
+#ifdef CHECK_COUNT
   if (fg->exact()) {
     auto check_cnt = check_count_norestart_cms(c);
     if (*check_cnt != *c.cnt) {

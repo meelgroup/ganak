@@ -184,17 +184,14 @@ public:
       return;
     }
 
-    if (!is_indep) branch_mc[act_branch] = fg->one();
-    else {
-      if (cnt_is_zero(solutions)) {
-        branch_zero[act_branch] = true;
-        branch_mc[act_branch] = nullptr;
-      } else if (is_zero(act_branch)) {
-        branch_mc[act_branch] = solutions->dup();
-      } else {
-        if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
-        else *branch_mc[act_branch] *= *solutions;
-      }
+    if (cnt_is_zero(solutions)) {
+      branch_zero[act_branch] = true;
+      branch_mc[act_branch] = nullptr;
+    } else if (is_zero(act_branch)) {
+      branch_mc[act_branch] = solutions->dup();
+    } else {
+      if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
+      else *branch_mc[act_branch] *= *solutions;
     }
     VERBOSE_DEBUG_DO(common_print(before));
   }

@@ -1100,11 +1100,6 @@ void Counter::count_loop() {
 end:
   if (state == EXIT) {
     Cube c(vector<Lit>(), decisions.top().total_model_count());
-    // With --satsolver 0, non-indep components only track satisfiability (0/1),
-    // so total_model_count() can be wrong. Recompute via SAT enumeration.
-    if (!weighted() && !conf.do_use_sat_solver) {
-      c.cnt = check_count_norestart_cms(c);
-    }
     debug_print("Exiting due to EXIT state, the cube count: " << *c.cnt);
     mini_cubes.push_back(c);
   }
@@ -1515,19 +1510,23 @@ bool Counter::compute_cube(Cube& c, const int side) {
     }
   }
 
-  // Deduplicate c.cnf: the same variable may appear multiple times (from overlapping
-  // component ranges at different decision levels). Duplicates would cause extend_cubes
-  // to multiply the count by 2 for each extra occurrence of the same literal.
+  // Deduplicate and complete c.cnf so it covers every required indep-support var.
+  // Variables in already-processed sub-components (accumulated into branch_mc) and
+  // implied (non-decided) vars are not added by the loops above; pin them from the
+  // SAT model here so the blocking clause identifies exactly one indep-support
+  // assignment and c.cnt = fg->one() is correct for non-weighted.
   {
     set<uint32_t> seen_vars;
-    // Decision literals were already added (unique), so pre-populate from them.
-    // Actually, just deduplicate the whole vector by var.
     auto it = std::remove_if(c.cnf.begin(), c.cnf.end(),
         [&seen_vars](const Lit& l) { return !seen_vars.insert(l.var()).second; });
     c.cnf.erase(it, c.cnf.end());
+    for (uint32_t v = 1; v < indep_support_end; v++) {
+      if (seen_vars.count(v)) continue;
+      c.cnf.push_back(Lit(v, sat_solver->get_model()[v-1] == CMSat::l_False));
+    }
   }
 
-  // Replace the DPLL-tree-based c.cnt with a value that matches what the cube actually pins.
+  // Replace the DPLL-tree-based c.cnt with a value that matches what the cube pins.
   if (weighted()) {
     // For weighted: multiply the weights of all vars in the SAT model.
     // The DPLL count is wrong at restart time because decision literal weights
@@ -1539,12 +1538,9 @@ bool Counter::compute_cube(Cube& c, const int side) {
     }
     if (c.cnt->is_zero()) return false;
   } else {
-    // For non-weighted: the cube pins specific indep-support vars from the SAT model,
-    // but may leave some unpinned (vars not in any unprocessed component and not decided).
-    // The DPLL branch_mc values are aggregate counts over many different assignments
-    // and cannot be used directly. Enumerate models consistent with the cube constraints.
-    c.cnt = check_count_norestart_cms(c);
-    if (c.cnt->is_zero()) return false;
+    // For non-weighted: c.cnf now pins all indep-support vars from the SAT model,
+    // so there is exactly one satisfying assignment consistent with this cube.
+    c.cnt = fg->one();
   }
 
 #if 1 //def VERBOSE_DEBUG

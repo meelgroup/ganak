@@ -1527,23 +1527,25 @@ bool Counter::compute_cube(Cube& c, const int side) {
     c.cnf.erase(it, c.cnf.end());
   }
 
-  // For weighted counting: replace the DPLL-tree-based c.cnt with the product
-  // of weights from the SAT model. The DPLL count is wrong at restart time
-  // because decision literal weights are applied by unset_lit during backtracking,
-  // which hasn't happened yet.
+  // Replace the DPLL-tree-based c.cnt with a value that matches what the cube actually pins.
   if (weighted()) {
+    // For weighted: multiply the weights of all vars in the SAT model.
+    // The DPLL count is wrong at restart time because decision literal weights
+    // are applied by unset_lit during backtracking, which hasn't happened yet.
     c.cnt = fg->one();
     for (uint32_t v = 1; v < opt_indep_support_end; v++) {
       Lit l(v, sat_solver->get_model()[v-1] == CMSat::l_True);
       *c.cnt *= *get_weight(l);
     }
     if (c.cnt->is_zero()) return false;
+  } else {
+    // For non-weighted: the cube pins specific indep-support vars from the SAT model,
+    // but may leave some unpinned (vars not in any unprocessed component and not decided).
+    // The DPLL branch_mc values are aggregate counts over many different assignments
+    // and cannot be used directly. Enumerate models consistent with the cube constraints.
+    c.cnt = check_count_norestart_cms(c);
+    if (c.cnt->is_zero()) return false;
   }
-  // For non-weighted: c.cnt (= branch_mc[side] x product of ancestor branch_mc values)
-  // is already correct. The cube is a partial assignment — already-processed sub-components
-  // at each level are NOT pinned in c.cnf, and their accumulated counts are already
-  // reflected in c.cnt. Overriding with one() would undercount and permanently lose models
-  // that the blocking clause bans but that were never added to the total.
 
 #if 1 //def VERBOSE_DEBUG
   // Show decision stack's comps

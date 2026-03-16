@@ -40,7 +40,7 @@ using CMSat::FieldGen;
 using FG = std::unique_ptr<FieldGen>;
 using FF = std::unique_ptr<Field>;
 
-#define VERBOSE_DEBUG
+/* #define VERBOSE_DEBUG */
 #define SLOW_DEBUG
 #define CHECK_PROPAGATED
 #define CHECK_IMPLIED

@@ -1272,6 +1272,10 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
+    // Update at[v] for ALL vars in the component (including already-set ones) so that
+    // in_comp stays correct for unset_lit even when find_best_branch is called multiple
+    // times at the same dec_level (e.g. inside the SAT loop with !do_sat_vsids).
+    if (weighted()) at[v] = vars_act_dec_num;
     if (val(v) != X_TRI) continue;
     VERBOSE_DEBUG_DO(cout << v << " ");
 
@@ -1287,7 +1291,6 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
     if (v < opt_indep_support_end) is_indep = true;
     if (v < indep_support_end) only_optional_indep = false;
-    if (weighted()) at[v] = vars_act_dec_num;
     double score;
     if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)

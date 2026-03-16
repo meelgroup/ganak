@@ -1538,12 +1538,12 @@ bool Counter::compute_cube(Cube& c, const int side) {
       *c.cnt *= *get_weight(l);
     }
     if (c.cnt->is_zero()) return false;
-  } else {
-    // For non-weighted: the cube pins all indep-support vars via the SAT model,
-    // so this specific assignment has count = 1.
-    // (c.cnt was set to a partial DPLL sub-component count, which is wrong here.)
-    c.cnt = fg->one();
   }
+  // For non-weighted: c.cnt (= branch_mc[side] x product of ancestor branch_mc values)
+  // is already correct. The cube is a partial assignment — already-processed sub-components
+  // at each level are NOT pinned in c.cnf, and their accumulated counts are already
+  // reflected in c.cnt. Overriding with one() would undercount and permanently lose models
+  // that the blocking clause bans but that were never added to the total.
 
 #if 1 //def VERBOSE_DEBUG
   // Show decision stack's comps
@@ -1554,9 +1554,9 @@ bool Counter::compute_cube(Cube& c, const int side) {
       << " num unproc comps: " << dst.num_unproc_comps()
       << " unproc comps end: " << dst.get_unproc_comps_end()
       << " remain comps offs: " << dst.remaining_comps_ofs()
-      << " total count here: " << dst.total_model_count()
-      << " left count here: " << dst.left_model_count()
-      << " right count here: " << dst.right_model_count()
+      << " total count here: " << *dst.total_model_count()
+      << " left count here: " << *dst.left_model_count()
+      << " right count here: " << *dst.right_model_count()
       << " branch: " << dst.is_right_branch() << endl;
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = std::min(dst.get_unproc_comps_end(), (uint64_t)comp_manager->comp_stack_size());

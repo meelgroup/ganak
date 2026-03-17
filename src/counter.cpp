@@ -1207,6 +1207,11 @@ end:
   }
 
   if (weighted()) {
+    // this_restart_multiplier accounts for level-0 assigned vars whose weights
+    // are never applied via unset_lit (they're never unset during search).
+    // It is ONLY applied to EXIT cubes (empty cnf, DPLL-derived count).
+    // Cubes from compute_cube already include all var weights from the SAT model,
+    // so applying the multiplier to them would double-count level-0 vars.
     auto this_restart_multiplier = fg->one();
     for(uint32_t i = 1; i < opt_indep_support_end; i++)
       if (!is_unknown(i)) {
@@ -1216,6 +1221,7 @@ end:
       }
     debug_print("[cube-final] This restart multiplier: " << *this_restart_multiplier);
     for (auto& c: mini_cubes) {
+      if (!c.cnf.empty()) continue; // SAT-model cube: full weight already in c.cnt
       *c.cnt *= *this_restart_multiplier;
       CHECK_COUNT_DO({
         check_exact_field(fg);
@@ -1638,6 +1644,9 @@ bool Counter::compute_cube(Cube& c, const int side) {
     // For weighted: multiply the weights of all vars in the SAT model.
     // The DPLL count is wrong at restart time because decision literal weights
     // are applied by unset_lit during backtracking, which hasn't happened yet.
+    // This produces the FULL weighted count including level-0 assigned vars.
+    // count_loop's this_restart_multiplier must NOT be applied to these cubes
+    // (it's only for EXIT cubes whose DPLL count omits level-0 var weights).
     c.cnt = fg->one();
     for (uint32_t v = 1; v < opt_indep_support_end; v++) {
       Lit l(v, sat_solver->get_model()[v-1] == CMSat::l_True);

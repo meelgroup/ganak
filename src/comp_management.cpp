@@ -89,12 +89,6 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
-        // Save extra_bytes BEFORE add_new_comp moves/swaps ccomp into entry_base.
-        // incorporate_cache_store must be called AFTER add_new_comp, because
-        // add_new_comp may call delete_some_entries() which resets sum_extra_bytes
-        // from scratch (iterating only existing entries). If we incremented
-        // sum_extra_bytes before that reset, the pending new comp's bytes would be
-        // silently dropped, causing the sum_extra_bytes invariant to break.
         const uint64_t new_comp_extra_bytes = cache->get_extra_bytes(ccomp);
         p_new_comp->set_id(cache->add_new_comp(ccomp, super_comp.id()));
         stats.incorporate_cache_store(new_comp_extra_bytes, p_new_comp->nVars());

@@ -513,8 +513,6 @@ bool CompCache<T>::delete_some_entries() {
 
   // Recompute mem usage — must start from 0 to include entry_base[1] (the root
   // formula entry, which has non-zero extra_bytes() from its packed comp data).
-  // Previously started at 2, which caused sum_extra_bytes to lose entry_base[1]'s
-  // contribution and break the invariant checked in erase().
   stats.sum_extra_bytes = 0;
   for (uint32_t id = 0; id < entry_base.size(); id++)
     if (!entry_base[id].is_free()) {

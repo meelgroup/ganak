@@ -24,12 +24,14 @@ THE SOFTWARE.
 
 #include <gmpxx.h>
 #include <cassert>
+#include <ios>
 #include <vector>
 #include <iostream>
 #include "common.hpp"
 using std::vector;
 using std::cout;
 using std::endl;
+using std::array;
 
 namespace GanakInt {
 
@@ -43,8 +45,6 @@ public:
       super_comp_(super_comp),
       remaining_comps_ofs_(comp_stack_ofs),
       unprocessed_comps_end_(comp_stack_ofs) {
-    branch_mc[0] = nullptr;
-    branch_mc[1] = nullptr;
     assert(super_comp < comp_stack_ofs);
   }
   const FG& fg;
@@ -56,8 +56,11 @@ public:
     return branch_mc[b]->dup();
 
   }
+  static inline bool cnt_is_zero(const FF& b) {
+    return b == nullptr || b->is_zero();
+  }
   inline bool is_zero(const bool b) const {
-    return (branch_mc[b] == nullptr || branch_mc[b]->is_zero());
+    return cnt_is_zero(branch_mc[b]);
   }
   inline bool is_one(const bool b) const {
     return (branch_mc[b] && branch_mc[b]->is_one());
@@ -66,10 +69,9 @@ public:
   uint32_t var = 0;
   void reset() {
     act_branch = 0;
-    branch_unsat[0] = false;
-    branch_unsat[1] = false;
-    branch_mc[0] = nullptr;
-    branch_mc[1] = nullptr;
+    branch_unsat = {};
+    branch_zero = {};
+    branch_mc = {};
   }
 private:
 
@@ -80,8 +82,9 @@ private:
   bool act_branch = false;
 
   //  Solution count
-  FF branch_mc[2];
-  bool branch_unsat[2] = {false,false};
+  array<FF,2> branch_mc = {};
+  array<bool,2> branch_unsat = {};
+  array<bool,2> branch_zero = {};
 
   /// remaining Comps
 
@@ -136,13 +139,15 @@ public:
   }
 
   bool another_comp_possible() const {
-    return (!branch_found_unsat()) && has_unproc_comps();
+    return !branch_found_unsat() && !branch_is_zero() && has_unproc_comps();
   }
 
   inline void common_print(const FF& before) {
     cout << "now "
         << ((act_branch) ? "right" : "left")
         << " count is: " << *val_or_zero(act_branch)
+        << " unsat: " << std::boolalpha << branch_unsat[act_branch] << " zero: " << branch_zero[act_branch]
+        << std::noboolalpha
         << " before it was: " << *before
         << " var: " << var
         << " while " << ((!act_branch) ? "right" : "left")
@@ -155,8 +160,8 @@ public:
 #ifdef VERBOSE_DEBUG
     auto before = val_or_zero(act_branch);
 #endif
-    if (branch_unsat[act_branch]) {
-      VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
+    if (branch_unsat[act_branch] || branch_zero[act_branch]) {
+      VERBOSE_DEBUG_DO(cout << "-> incl one sol into zero/unsat branch, doing  nothing." << endl);
       assert(is_zero(act_branch));
       return;
     }
@@ -165,26 +170,38 @@ public:
     VERBOSE_DEBUG_DO(common_print(before));
   }
 
+  // We *genuinely* found a solution. It's NOT UNSAT. But
+  // it may be that this weighted solution is zero
   void include_solution(const FF& solutions) {
-    VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep
-        << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
+    if (solutions == nullptr) cout << COLRED << "incl sol: " << "0" << " ind: " << is_indep << COLDEF << " ";
+    else cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep << COLDEF << " ";
     auto before = val_or_zero(act_branch);
 #endif
-    if (branch_unsat[act_branch]) {
-      VERBOSE_DEBUG_DO(cout << "-> incl sol unsat branch, doing  nothing." << endl);
+    if (branch_unsat[act_branch] || branch_zero[act_branch]) {
+      VERBOSE_DEBUG_DO(cout << "-> incl sol into zero/unsat branch, doing  nothing." << endl);
       assert(is_zero(act_branch));
       return;
     }
 
-    if (solutions->is_zero()) mark_branch_unsat();
-    else {
-      if (!is_indep) branch_mc[act_branch] = fg->one();
-      else {
-        if (!is_zero(act_branch)) {
-          if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
-          else *branch_mc[act_branch] *= *solutions;
-        } else branch_mc[act_branch] = solutions->dup();
+    if (!is_indep) {
+      // For non-indep levels, only track satisfiability (0/1): the projected count
+      // is semantically 0 or 1 when no indep vars remain in the component.
+      if (cnt_is_zero(solutions)) {
+        branch_zero[act_branch] = true;
+        branch_mc[act_branch] = nullptr;
+      } else {
+        branch_mc[act_branch] = fg->one();
+      }
+    } else {
+      if (cnt_is_zero(solutions)) {
+        branch_zero[act_branch] = true;
+        branch_mc[act_branch] = nullptr;
+      } else if (is_zero(act_branch)) {
+        branch_mc[act_branch] = solutions->dup();
+      } else {
+        if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
+        else *branch_mc[act_branch] *= *solutions;
       }
     }
     VERBOSE_DEBUG_DO(common_print(before));
@@ -196,15 +213,14 @@ public:
 #ifdef VERBOSE_DEBUG
     auto before = val_or_zero(0);
 #endif
-    if (branch_unsat[0]) {
-      VERBOSE_DEBUG_DO(cout << "-> left side incl sol unsat branch, doing  nothing." << endl);
+    if (branch_unsat[0] || branch_zero[0]) {
+      VERBOSE_DEBUG_DO(cout << "-> left side incl sol into zero/unsat branch, doing  nothing." << endl);
       assert(is_zero(0));
       return;
     }
 
     if (is_indep) {
-      assert(!is_zero(0));
-      *branch_mc[0] /= *div_by;
+      if (!is_zero(0)) *branch_mc[0] /= *div_by;
     }
     VERBOSE_DEBUG_DO(cout << "now "
         << ((0) ? "right" : "left")
@@ -214,6 +230,7 @@ public:
         << endl);
   }
 
+  bool branch_is_zero() const { return branch_zero[act_branch]; }
   bool branch_found_unsat() const { return branch_unsat[act_branch]; }
   void mark_branch_unsat() {
     branch_unsat[act_branch] = true;
@@ -227,22 +244,15 @@ public:
       if (is_zero(0)) return val_or_zero(1);
       else if (is_zero(1)) return val_or_zero(0);
       return branch_mc[0]->add(*branch_mc[1]);
-    }
-    else {
+    } else {
       if (is_zero(0)) return val_or_zero(1);
       else return val_or_zero(0);
     }
   }
 
   // for cube creation
-  bool branch_found_unsat(int side) const { return branch_unsat[side]; }
   FF left_model_count() const { return val_or_zero(0); }
   FF right_model_count() const { return val_or_zero(1); }
-
-  void zero_out_all_sol() {
-    branch_mc[0] = nullptr;
-    branch_mc[1] = nullptr;
-  }
 };
 
 class DecisionStack: public vector<StackLevel> {

@@ -89,9 +89,9 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
-        // Must incorporate BEFORE, because set_id will swap/emplace_back
-        stats.incorporate_cache_store(cache->get_extra_bytes(ccomp), p_new_comp->nVars());
+        const uint64_t new_comp_extra_bytes = cache->get_extra_bytes(ccomp);
         p_new_comp->set_id(cache->add_new_comp(ccomp, super_comp.id()));
+        stats.incorporate_cache_store(new_comp_extra_bytes, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";

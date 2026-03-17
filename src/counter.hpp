@@ -22,10 +22,15 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
+#include <unordered_map>
 
 #include "clauseallocator.hpp"
 #include "common.hpp"
@@ -33,8 +38,7 @@ THE SOFTWARE.
 #include "comp_management.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
-#include "comp_management.hpp"
-#include "TreeDecomposition.hpp"
+#include <treedecomp/TreeDecomposition.hpp>
 #include "structures.hpp"
 #include "heap.hpp"
 #ifdef BUDDY_ENABLED
@@ -43,26 +47,18 @@ THE SOFTWARE.
 
 #include <cryptominisat5/cryptominisat.h>
 
-using std::pair;
-using std::map;
-using std::unique_ptr;
-using std::string;
-using std::setw;
-
 namespace GanakInt {
 
 template<typename T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
   cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  for(const auto& l: cl) cms_cl.emplace_back(l.var()-1, !l.sign());
   return cms_cl;
 }
 
 inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
-  vector<CMSat::Lit> cms_cl;
-  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
-  return cms_cl;
+  return {CMSat::Lit(l.var()-1, !l.sign())};
 }
 
 enum class RetState {
@@ -76,7 +72,6 @@ enum class RetState {
 using enum RetState;
 
 inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
-  std::stringstream s;
   switch (val) {
     case RetState::EXIT : os << "EXIT"; break;
     case RetState::RESOLVED: os << "RESOLVED"; break;
@@ -119,7 +114,7 @@ struct BinClSub {
       red == other.red;
   }
 
-  Lit lit[2];
+  std::array<Lit, 2> lit;
   bool red;
 };
 
@@ -148,8 +143,8 @@ public:
   Counter(const CounterConfiguration& _conf, const FG& _fg);
   ~Counter();
   void new_vars(const uint32_t n);
-  void set_indep_support(const set<uint32_t>& indeps);
-  void set_optional_indep_support(const set<uint32_t>& indeps);
+  void set_indep_support(const std::set<uint32_t>& indeps);
+  void set_optional_indep_support(const std::set<uint32_t>& indeps);
   void print_indep_distrib() const;
   bool add_irred_cl(const vector<Lit>& lits);
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
@@ -170,10 +165,10 @@ public:
   uint32_t nVars() const { return var_data.size() - 1; }
   double get_start_time() const { return start_time;}
   const auto& get_cache() const { return comp_manager->get_cache();}
-  void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
+  void set_generators(const vector<std::map<Lit, Lit>>& _gens) { generators = _gens; }
 
-  const FF& get_weight(const Lit& l) { return weights[l.raw()];}
-  const FF& get_weight(const uint32_t v) { return var_weights[v]; }
+  const FF& get_weight(const Lit& l) const { return weights[l.raw()];}
+  const FF& get_weight(const uint32_t v) const { return var_weights[v]; }
   bool weight_larger_than(const FF& fst, const FF& snd) const { //< Returns true if the first weight is larger
     return fg->larger_than(*fst, *snd);
   }
@@ -248,10 +243,11 @@ private:
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
   FF check_count_norestart(const Cube& c);
   FF check_count_norestart_cms(const Cube& c);
+  template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
-  bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
+  bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2) const;
   bool compute_cube(Cube& cube, const int side);
-  vector<map<Lit, Lit>> generators;
+  vector<std::map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube>& cubes);
 
   //Debug stuff
@@ -328,7 +324,7 @@ private:
   inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
   inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
   inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
-  inline bool is_false(Lit lit) { return values[lit] == F_TRI; }
+  inline bool is_false(Lit lit) const { return values[lit] == F_TRI; }
   inline bool is_unknown(Lit lit) const;
   inline bool is_unknown(uint32_t var) const;
   void set_confl_state(Lit a, Lit b);
@@ -365,7 +361,7 @@ private:
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
   vector<Lit>::iterator top_declevel_trail_begin();
-  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+  vector<uint32_t> common_indep_code(const std::set<uint32_t>& indeps);
 
   bool is_indep = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support
@@ -374,8 +370,8 @@ private:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   // Printing
-  string lit_val_str(Lit lit) const;
-  string val_to_str(const TriValue& tri) const;
+  std::string lit_val_str(Lit lit) const;
+  std::string val_to_str(const TriValue& tri) const;
   void print_dec_info() const;
   template<class T2> void print_cl(const T2& cl) const;
   template<class T2> void v_print_cl(const T2& cl) const;
@@ -448,7 +444,7 @@ private:
     Lit blk2;
     bool currently_propagating = false;
   };
-  map<ClauseOfs, SavedCl> off_to_lit12;
+  std::map<ClauseOfs, SavedCl> off_to_lit12;
   void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);
@@ -493,27 +489,27 @@ private:
 };
 
 inline void Counter::unset_lit(Lit lit) {
-    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << setw(8) << lit << endl);
-    SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
-    var(lit).ante = Antecedent();
-    if(weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
-      uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
-      bool in_comp = (at[0] == at[lit.var()]);
-      if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
-    }
-    var(lit).decision_level = INVALID_DL;
-    values[lit] = X_TRI;
-    values[lit.neg()] = X_TRI;
+  VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
+  SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
+  var(lit).ante = Antecedent();
+  if (weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
+    uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
+    bool in_comp = (at[0] == at[lit.var()]);
+    if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
   }
+  var(lit).decision_level = INVALID_DL;
+  values[lit] = X_TRI;
+  values[lit.neg()] = X_TRI;
+}
 
 inline void Counter::print_cl(const Lit* c, uint32_t size) const {
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
-    cout << setw(5) << l
-      << " lev: " << setw(3) << var(l).decision_level
-      << " ante: " << setw(8) << var(l).ante
-      << " val: " << setw(7) << lit_val_str(l)
-      << " sublev: " << setw(3) << var(l).sublevel
+    cout << std::setw(5) << l
+      << " lev: " << std::setw(3) << var(l).decision_level
+      << " ante: " << std::setw(8) << var(l).ante
+      << " val: " << std::setw(7) << lit_val_str(l)
+      << " sublev: " << std::setw(3) << var(l).sublevel
       << endl;
   }
 }
@@ -522,11 +518,11 @@ template<class T2>
 void Counter::print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << std::left << setw(5) << l
-      << " lev: " << setw(4) << var(l).decision_level
-      << " ante: " << setw(5) << std::left << var(l).ante
+    cout << std::left << std::setw(5) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
       << " val: " << lit_val_str(l)
-      << " sublev: " << setw(3) << var(l).sublevel
+      << " sublev: " << std::setw(3) << var(l).sublevel
       << endl;
   }
 }
@@ -535,8 +531,8 @@ template<class T2>
 void Counter::v_print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << setw(5) << l
-      << " lev: " << setw(4) << v_levs[l.var()]
+    cout << std::setw(5) << l
+      << " lev: " << std::setw(4) << v_levs[l.var()]
       << " val: " << val_to_str(v_val(l)) << endl;
   }
 }
@@ -592,31 +588,20 @@ template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
   cout << "B:" << b << endl;
   for(size_t i = 1; i < b.size(); i++) assert(b[i-1] < b[i]);
 #endif
-  bool ret;
   uint32_t i = 0;
-  uint32_t i2;
   Lit last_b = NOT_A_LIT;
-  for (i2 = 0; i2 < b.size(); i2++) {
+  for (uint32_t i2 = 0; i2 < b.size(); i2++) {
     if (last_b != NOT_A_LIT) assert(last_b < b[i2]);
     last_b = b[i2];
     //Literals are ordered
-    if (a[i] < b[i2]) {
-        ret = false;
-        goto end;
-    }
+    if (a[i] < b[i2]) return false;
     else if (a[i] == b[i2]) {
       i++;
       //went through the whole of A now, so A subsumes B
-      if (i == a.size()) {
-          ret = true;
-          goto end;
-      }
+      if (i == a.size()) return true;
     }
   }
-  ret = false;
-
-  end:
-  return ret;
+  return false;
 }
 
 inline Antecedent Counter::add_uip_confl_cl(const vector<Lit> &literals) {

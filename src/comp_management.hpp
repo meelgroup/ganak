@@ -125,12 +125,8 @@ inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   // sort the remaining comps for processing
   stats.comp_sorts++;
   stats.comp_sizes+= end - start;
-  for (uint64_t i = start; i < end; i++)
-    for (uint64_t j = i + 1; j < end; j++) {
-      if (comp_stack[i]->nVars()
-                  < comp_stack[j]->nVars())
-        std::swap(comp_stack[i], comp_stack[j]);
-    }
+  std::sort(comp_stack.begin() + start, comp_stack.begin() + end,
+            [](const Comp* a, const Comp* b) { return a->nVars() > b->nVars(); });
 }
 
 inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
@@ -144,7 +140,7 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
         << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
-  if (top.branch_found_unsat()) return false;
+  if (top.branch_found_unsat() || top.branch_is_zero()) return false;
   if (top.has_unproc_comps()) {
     debug_print(COLREDBG"-*-> Finished find_next_remain_comp_of, has_unproc_comps.");
     return true;
@@ -173,9 +169,9 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
   get_random_seed_for_hash();
   if (conf.do_probabilistic_hashing) {
-    cache.reset(new CompCache<CacheableComp<HashedComp>>(stats, conf));
+    cache = std::make_unique<CompCache<CacheableComp<HashedComp>>>(stats, conf);
   } else {
-    cache.reset(new CompCache<CacheableComp<DiffPackedComp>>(stats, conf));
+    cache = std::make_unique<CompCache<CacheableComp<DiffPackedComp>>>(stats, conf);
   }
 
   //Add dummy comp

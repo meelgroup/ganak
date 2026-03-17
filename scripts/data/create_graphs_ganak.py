@@ -67,7 +67,6 @@ def gnuplot_name_cleanup(name: str) -> str:
     name = re.sub(r'\"', '', name)
     # replace multiple underscores or dashes with a single one
     name = re.sub(r'_', '=', name)
-    print(name)
     return name
 
 versions = get_versions()
@@ -533,6 +532,13 @@ only_dirs = [
             # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
             # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
             "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
+            # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
+            "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
+            "out-ganak-mccomp2324-1140000-0", # dodgy cache update
+            "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
+            "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
+            "out-ganak-mccomp2324-1152658-" # fixing bug, testing pura and oraclemult
+
 
             ]
 # only_dirs = ["out-ganak-6828273"]
@@ -704,12 +710,12 @@ with open(gnuplotfn, "w") as f:
     f.write("set notitle\n")
     f.write("set key bottom right\n")
     # f.write("set xtics 200\n")
-    f.write("unset logscale x\n")
-    f.write("unset logscale y\n")
+    f.write("set logscale x\n")
+    f.write("set logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [:][800:]\\\n")
+    f.write("plot [500:4000][1000:1200]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

@@ -139,6 +139,7 @@ public:
     }
 
     bool weighted() const final { return true; }
+    bool exact() const final { return true; }
 };
 
 class FParity final : public CMSat::Field {
@@ -247,4 +248,5 @@ public:
     }
 
     bool weighted() const final { return true; }
+    bool exact() const final { return true; }
 };

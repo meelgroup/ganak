@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <iostream>
 #include <limits>
+#include <memory>
 
 #include "../common.hpp"
 #include "comp.hpp"
@@ -41,11 +42,11 @@ class StackLevel;
 class CompArchetype {
 public:
   CompArchetype() = default;
-  ~CompArchetype() { delete[] raw_data; }
+  ~CompArchetype() = default;
   CompArchetype(const CompArchetype&) = delete;
-  CompArchetype(const CompArchetype&&) = delete;
+  CompArchetype(CompArchetype&&) = delete;
   CompArchetype& operator=(const CompArchetype&) = delete;
-  CompArchetype& operator=(const CompArchetype&&) = delete;
+  CompArchetype& operator=(CompArchetype&&) = delete;
 
   // called every time we want to deal with a new component
   void re_initialize(StackLevel &stack_level, const Comp &super_comp) {
@@ -77,10 +78,10 @@ public:
     assert(tstamp == 0);
     data_sz = max_var_id +1 + max_cl_id + 1;
     debug_print("Creating new data[] of size: " << data_sz << " and zeroing it.");
-    raw_data = new uint64_t[data_sz];
-    memset(raw_data, 0, data_sz * sizeof(uint64_t));
-    v_data = raw_data;
-    cl_data = raw_data + max_var_id + 1;
+    raw_data = std::make_unique<uint64_t[]>(data_sz);
+    memset(raw_data.get(), 0, data_sz * sizeof(uint64_t));
+    v_data = raw_data.get();
+    cl_data = raw_data.get() + max_var_id + 1;
     clear_data();
   }
 
@@ -100,7 +101,7 @@ private:
   uint64_t tstamp = 0;
   Comp const* super_comp_ptr;
   StackLevel *stack_lvl_ptr;
-  uint64_t* raw_data = nullptr;
+  std::unique_ptr<uint64_t[]> raw_data;
   uint64_t* cl_data = nullptr;
   uint64_t* v_data = nullptr;
   uint32_t data_sz = 0;

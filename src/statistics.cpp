@@ -106,6 +106,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
   verb_print(1, "cubes resolved/flp-removed     "
     << setw(5) << num_cubes_resolved << " / "
     << setw(5) << cube_lit_flp);
+  verb_print(1, "backbone cand-tested/found     "
+    << setw(5) << backbone_candidates_tested << " / "
+    << setw(5) << backbones_found);
 
   verb_print(1, "tot restarts                   " << setw(5) << num_restarts);
 

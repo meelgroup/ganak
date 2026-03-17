@@ -242,6 +242,8 @@ private:
   void extend_cubes(vector<Cube>& cubes);
   void try_resolve_cubes(vector<Cube>& cubes);
   void cube_strengthen_by_flp(vector<Cube>& cubes);
+  void check_cube_backbones();
+  uint32_t backbone_restart_counter = 0;
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
   FF check_count_norestart(const Cube& c);
   FF check_count_norestart_cms(const Cube& c);
@@ -359,6 +361,8 @@ private:
   bool get_polarity(const uint32_t var) const;
   vector<double> tdscore;
   double td_weight = 1.0;
+  vector<uint32_t> cube_pos_count;
+  vector<uint32_t> cube_neg_count;
   uint64_t tstamp = 10;
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;

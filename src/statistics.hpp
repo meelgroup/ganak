@@ -56,6 +56,8 @@ public:
   uint64_t cube_lit_rem = 0;
   uint64_t cube_lit_flp = 0;
   uint64_t num_cubes_resolved = 0;
+  uint64_t backbone_candidates_tested = 0;
+  uint64_t backbones_found = 0;
 
   // Clause db management
   uint64_t reduce_db = 0;

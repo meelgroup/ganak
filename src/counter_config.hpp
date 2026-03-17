@@ -48,6 +48,12 @@ struct CounterConfiguration {
   int do_small_cube_disable = 1;
   double td_weight_restart_decay = 0.5; // multiply td_weight by this after each restart (1.0 = no decay)
 
+  // Backbone detection from cube consensus
+  int do_cube_backbone = 1;
+  int backbone_check_interval = 5;   // check every N restarts
+  uint32_t backbone_min_cubes = 20;  // min cube observations before testing
+  int backbone_max_tests = 10;       // max SAT calls per check interval
+
   int cache_time_update = 2;
   int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used
 

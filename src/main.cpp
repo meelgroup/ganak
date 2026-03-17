@@ -248,7 +248,7 @@ void add_ganak_options()
     add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, fc_int, "Update lbd cutoff");
 
     // Decision options
-    add_arg("--polar", conf.polar_type, fc_int, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
+    add_arg("--polar", conf.polar_type, fc_int, "0=standard_polarity, 1=polar cache, 2=false, 3=true, 4=cube-guided");
     add_arg("--decide", conf.decide, fc_int, "ignore or not ignore TD");
     add_arg("--initact", conf.do_init_activity_scores, fc_int, "Init activity scores to var freq");
     add_arg("--vsadsadjust", conf.vsads_readjust_every, fc_int, "VSADS ajust activity every N");
@@ -308,6 +308,10 @@ void add_ganak_options()
     add_arg("--cubeflp", conf.do_cube_flp, fc_int, "Failed-literal probing to remove forced blocking literals from cubes");
     add_arg("--smallcubedisable", conf.do_small_cube_disable, fc_int, "Disable cubes beyond max-num-cubes-per-restart (sorted by LBD)");
     add_arg("--tdwrstdecay", conf.td_weight_restart_decay, fc_double, "Multiply td_weight by this after each restart (1.0=no decay, 0.5=halve)");
+    add_arg("--cubebackbone", conf.do_cube_backbone, fc_int, "Detect backbone variables from cube consensus");
+    add_arg("--backboneinterval", conf.backbone_check_interval, fc_int, "Check for backbones every N restarts");
+    add_arg("--backbonemincubes", conf.backbone_min_cubes, fc_int, "Min unanimous cube observations before testing a backbone candidate");
+    add_arg("--backbonemaxtests", conf.backbone_max_tests, fc_int, "Max SAT calls for backbone detection per check interval");
 
     // Multi-threading options
     add_arg("--threads", num_threads, fc_int, "Number of threads to use. -1 = all available cores");

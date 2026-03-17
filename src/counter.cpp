@@ -598,6 +598,31 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
 }
 
 void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
+  // Syntactic subsumption pre-filter: if cube A's literals ⊆ cube B's literals,
+  // A blocks a superset of B's solution space → B is redundant, disable it.
+  for (uint32_t i = 0; i < cubes.size(); i++) {
+    if (!cubes[i].enabled) continue;
+    for (uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
+      if (!cubes[i2].enabled) continue;
+      const uint32_t si = cubes[i].cnf.size(), si2 = cubes[i2].cnf.size();
+      if (si == si2) continue;  // no strict subset possible
+      const uint32_t smaller_idx = (si < si2) ? i : i2;
+      const uint32_t larger_idx  = (si < si2) ? i2 : i;
+      // Check if smaller.cnf ⊆ larger.cnf
+      std::unordered_set<uint32_t> larger_set;
+      for (const auto& l: cubes[larger_idx].cnf) larger_set.insert(l.raw());
+      bool subsumes = true;
+      for (const auto& l: cubes[smaller_idx].cnf) {
+        if (larger_set.count(l.raw()) == 0) { subsumes = false; break; }
+      }
+      if (subsumes) {
+        verb_print(2, "[cube-sub] Cube subsumes another -> disabling larger");
+        cubes[larger_idx].enabled = false;
+      }
+      if (!cubes[i].enabled) break;
+    }
+  }
+
   for(uint32_t i = 0; i < cubes.size(); i++) {
     if (!cubes[i].enabled) continue;
     for(uint32_t i2 = i+1; i2 < cubes.size(); i2++) {
@@ -875,6 +900,55 @@ void Counter::cube_strengthen_by_flp(vector<Cube>& cubes) {
       << " literals. T: " << (cpu_time() - my_time));
 }
 
+void Counter::check_cube_backbones() {
+  if (cube_pos_count.empty()) return;
+  uint32_t tests_done = 0;
+  for (uint32_t v = 1; v < opt_indep_support_end; v++) {
+    if (tests_done >= (uint32_t)conf.backbone_max_tests) break;
+    const uint32_t pos = cube_pos_count[v];
+    const uint32_t neg = cube_neg_count[v];
+    if (pos + neg < conf.backbone_min_cubes) continue;
+    if (pos > 0 && neg > 0) continue;  // not unanimous
+
+    // Unanimous consensus: all cubes agree on polarity of v
+    const bool consensus_true = (pos > 0);  // all cubes had v=true in model
+
+    // Assume the OPPOSITE polarity and check satisfiability
+    // If UNSAT: the opposite is impossible → confirmed backbone
+    // Blocking literal for v=true in cube is Lit(v,false) = ¬v
+    // To assume v=false: CMSat::Lit(v-1, true)   [ganak_to_cms_cl inverts sign]
+    // To assume v=true:  CMSat::Lit(v-1, false)
+    vector<CMSat::Lit> ass;
+    if (consensus_true) {
+      // All cubes had v=true; test if v=false is satisfiable
+      ass.push_back(CMSat::Lit(v-1, true));   // assume v=false
+    } else {
+      // All cubes had v=false; test if v=true is satisfiable
+      ass.push_back(CMSat::Lit(v-1, false));  // assume v=true
+    }
+
+    stats.backbone_candidates_tested++;
+    tests_done++;
+
+    auto ret = sat_solver->solve(&ass);
+    if (ret == CMSat::l_False) {
+      // Confirmed backbone
+      Lit backbone_lit = consensus_true ? Lit(v, true) : Lit(v, false);
+      verb_print(1, "[backbone] Confirmed backbone: " << backbone_lit
+          << " (pos=" << pos << " neg=" << neg << ")");
+      add_irred_cl({backbone_lit});
+      stats.backbones_found++;
+      // Reset counts for this var (formula changed, old observations no longer reliable)
+      cube_pos_count[v] = 0;
+      cube_neg_count[v] = 0;
+    }
+  }
+  if (tests_done > 0) {
+    verb_print(1, "[backbone] Tested " << tests_done << " candidates, found "
+        << stats.backbones_found << " total backbones");
+  }
+}
+
 FF Counter::do_appmc_count() {
   assert(!weighted());
   is_approximate = true;
@@ -1022,6 +1096,24 @@ FF Counter::outer_count() {
         /* << " this rst: " << *cubes_cnt_this_rst */
     );
 
+    // Update cross-restart polarity counts from enabled cubes
+    for (const auto& c: cubes) {
+      if (!c.enabled) continue;
+      for (const auto& l: c.cnf) {
+        const uint32_t v = l.var();
+        if (v < opt_indep_support_end) {
+          if (!l.sign()) cube_pos_count[v]++;  // blocking ¬v → model had v=true
+          else cube_neg_count[v]++;             // blocking v → model had v=false
+        }
+      }
+    }
+    // Backbone detection from cube consensus
+    if (conf.do_cube_backbone) {
+      backbone_restart_counter++;
+      if (backbone_restart_counter % (uint32_t)conf.backbone_check_interval == 0)
+        check_cube_backbones();
+    }
+
     ret = sat_solver->solve();
     if (ret == CMSat::l_False) {done = true; break;}
 
@@ -1068,6 +1160,10 @@ vector<Cube> Counter::one_restart_count() {
   if (tdscore.empty() && nVars() > 5 && conf.do_td) {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
+  }
+  if (cube_pos_count.empty()) {
+    cube_pos_count.assign(nVars()+1, 0);
+    cube_neg_count.assign(nVars()+1, 0);
   }
   count_loop();
   if (conf.verb >= 3) stats.print_short(this, comp_manager->get_cache());
@@ -1256,6 +1352,12 @@ bool Counter::get_polarity(const uint32_t v) const {
     case 1: polarity = var(v).last_polarity; break;
     case 2: polarity = false; break;
     case 3: polarity = true; break;
+    case 4: // Cube-guided: prefer polarity seen more often in cubes
+      if (v < opt_indep_support_end && cube_pos_count[v] + cube_neg_count[v] > 0)
+        polarity = cube_pos_count[v] > cube_neg_count[v];
+      else
+        polarity = standard_polarity(v);
+      break;
     default: release_assert(false);
   }
   return polarity;

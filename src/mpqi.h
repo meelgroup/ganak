@@ -75,19 +75,19 @@ void mpqi_mid_q(mpq_ptr mid, mpqi_srcptr mp);
 
 void mpqi_mul_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q);
 void mpqi_mul_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr m);
-void mpqi_mul(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2);
+void mpqi_mul(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2);
 
 void mpqi_add_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q);
 void mpqi_add_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr m);
-void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2);
+void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2);
 
 void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q);
 void mpqi_sub_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr m);
-void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2);
+void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2);
 
 void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q);
 void mpqi_div_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr m);
-void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2);
+void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2);
 
 bool mpqi_is_zero(mpqi_srcptr mp);
 bool mpqi_has_zero(mpqi_srcptr mp);

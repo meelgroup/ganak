@@ -263,8 +263,7 @@ void mpqi_mul_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_canonicalize(dest);
 }
 
-void mpqi_mul(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
-    mpqi_arg_check(arg2);
+void mpqi_mul(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2) {
     if (arg2->qsize > 0)
         mpqi_mul_q(dest, arg1, arg2->qval);
     else
@@ -314,8 +313,7 @@ void mpqi_add_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_canonicalize(dest);
 }
 
-void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
-    mpqi_arg_check(arg2);
+void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2) {
     if (arg2->qsize > 0)
         mpqi_add_q(dest, arg1, arg2->qval);
     else
@@ -366,8 +364,7 @@ void mpqi_sub_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_canonicalize(dest);
 }
 
-void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
-    mpqi_arg_check(arg2);
+void mpqi_sub(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2) {
     if (arg2->qsize > 0)
         mpqi_sub_q(dest, arg1, arg2->qval);
     else
@@ -421,8 +418,7 @@ void mpqi_div_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
     mpqi_canonicalize(dest);
 }
 
-void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
-    mpqi_arg_check(arg2);
+void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2) {
     if (arg2->qsize > 0)
         mpqi_div_q(dest, arg1, arg2->qval);
     else

@@ -38,15 +38,11 @@ static _Atomic int final_max_size = 1000;
 /* When to transition */
 static _Atomic unsigned long crossover_opcount = 1000000;
 
-/* Current operation count.
- * NOTE (multi-threading): this counter is shared across all threads.
- * With N threads the crossover from initial to final size limit is reached
- * approximately N times faster than the configured cross_count would suggest.
- * Each thread's rational→interval promotion decisions are therefore influenced
- * by other threads' activity, and behaviour is non-deterministic under
- * different thread counts.  This is intentional: crossover_opcount is a
- * global operation budget, not a per-thread one. */
-static _Atomic unsigned long opcount = 0;
+/* Per-thread operation count.  Each thread independently tracks how many
+ * mpqi operations it has performed and crosses over to the stricter size
+ * limit at its own pace.  No atomics needed: only the owning thread ever
+ * reads or writes this variable. */
+static _Thread_local unsigned long opcount = 0;
 
 unsigned mpqi_get_default_prec() {
     return atomic_load_explicit(&mpqi_default_prec, memory_order_relaxed);
@@ -56,12 +52,10 @@ void mpqi_set_default_prec(unsigned prec) {
     atomic_store_explicit(&mpqi_default_prec, prec, memory_order_relaxed);
 }
 
-/* NOTE (multi-threading): mpqi_reset() resets the global operation counter.
- * It must not be called while other threads are performing mpqi operations,
- * as a thread already past the crossover would suddenly revert to the initial
- * (more lenient) size limit. Safe to call before starting a parallel run. */
+/* Resets the calling thread's operation counter.  Safe to call from any
+ * thread at any time; it only affects that thread's own crossover state. */
 void mpqi_reset() {
-    atomic_store_explicit(&opcount, 0UL, memory_order_relaxed);
+    opcount = 0;
 }
 
 void mpqi_set_parameters(size_t initial_bytes, size_t final_bytes, unsigned long cross_count) {
@@ -102,9 +96,8 @@ void mpqi_clear(mpqi_ptr mp) {
 }
 
 static bool size_ok(unsigned bytes) {
-    unsigned long cnt   = atomic_load_explicit(&opcount, memory_order_relaxed);
     unsigned long cross = atomic_load_explicit(&crossover_opcount, memory_order_relaxed);
-    int max_size = (cnt < cross)
+    int max_size = (opcount < cross)
         ? atomic_load_explicit(&initial_max_size, memory_order_relaxed)
         : atomic_load_explicit(&final_max_size,   memory_order_relaxed);
     return bytes <= (unsigned)max_size;
@@ -140,7 +133,7 @@ static void mpqi_canonicalize(mpqi_ptr mp) {
         }
         mpfr_clear(val);
     }
-    atomic_fetch_add_explicit(&opcount, 1UL, memory_order_relaxed);
+    opcount++;
 }
 
 void mpqi_set_d(mpqi_ptr mp, double d) {

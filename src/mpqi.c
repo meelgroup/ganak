@@ -30,39 +30,39 @@ THE SOFTWARE.
 
 #define MAX_DIGIT_PRECISION 1e6
 
-static unsigned mpqi_default_prec = 64;
+static _Atomic unsigned mpqi_default_prec = 64;
 
 /* Limits on byte size for MPQ */
-static int initial_max_size = 10000;
-static int final_max_size = 1000;
+static _Atomic int initial_max_size = 10000;
+static _Atomic int final_max_size = 1000;
 /* When to transition */
-static unsigned long crossover_opcount = 1000000;
+static _Atomic unsigned long crossover_opcount = 1000000;
 
 /* Current status */
 static _Atomic unsigned long opcount = 0;
 
 unsigned mpqi_get_default_prec() {
-    return mpqi_default_prec;
+    return atomic_load_explicit(&mpqi_default_prec, memory_order_relaxed);
 }
 
 void mpqi_set_default_prec(unsigned prec) {
-    mpqi_default_prec = prec;
+    atomic_store_explicit(&mpqi_default_prec, prec, memory_order_relaxed);
 }
 
 void mpqi_reset() {
-    opcount = 0;
+    atomic_store_explicit(&opcount, 0UL, memory_order_relaxed);
 }
 
 void mpqi_set_parameters(size_t initial_bytes, size_t final_bytes, unsigned long cross_count) {
-    initial_max_size = initial_bytes;
-    final_max_size = final_bytes;
-    crossover_opcount = cross_count;
+    atomic_store_explicit(&initial_max_size, (int)initial_bytes, memory_order_relaxed);
+    atomic_store_explicit(&final_max_size, (int)final_bytes, memory_order_relaxed);
+    atomic_store_explicit(&crossover_opcount, cross_count, memory_order_relaxed);
 }
 
 void mpqi_get_parameters(size_t *initial_bytes, size_t *final_bytes, unsigned long *cross_count) {
-    *initial_bytes = initial_max_size;
-    *final_bytes = final_max_size;
-    *cross_count = crossover_opcount;
+    *initial_bytes = (size_t)atomic_load_explicit(&initial_max_size, memory_order_relaxed);
+    *final_bytes = (size_t)atomic_load_explicit(&final_max_size, memory_order_relaxed);
+    *cross_count = atomic_load_explicit(&crossover_opcount, memory_order_relaxed);
 }
 
 static size_t mpq_bytes(mpq_srcptr val) {
@@ -97,9 +97,12 @@ void mpqi_clear(mpqi_ptr mp) {
 }
 
 static bool size_ok(unsigned bytes) {
-    unsigned max_size = (unsigned)
-        (opcount < crossover_opcount ? initial_max_size : final_max_size);
-    return bytes <= max_size;
+    unsigned long cnt   = atomic_load_explicit(&opcount, memory_order_relaxed);
+    unsigned long cross = atomic_load_explicit(&crossover_opcount, memory_order_relaxed);
+    int max_size = (cnt < cross)
+        ? atomic_load_explicit(&initial_max_size, memory_order_relaxed)
+        : atomic_load_explicit(&final_max_size,   memory_order_relaxed);
+    return bytes <= (unsigned)max_size;
 }
 
 static void mpqi_arg_check(mpqi_ptr mp) {
@@ -132,7 +135,7 @@ static void mpqi_canonicalize(mpqi_ptr mp) {
         }
         mpfr_clear(val);
     }
-    opcount++;
+    atomic_fetch_add_explicit(&opcount, 1UL, memory_order_relaxed);
 }
 
 void mpqi_set_d(mpqi_ptr mp, double d) {

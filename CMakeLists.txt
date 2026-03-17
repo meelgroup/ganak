@@ -428,6 +428,7 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+  add_subdirectory(tests/unit)
 endif()
 
 # -----------------------------------------------------------------------------

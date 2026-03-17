@@ -105,7 +105,16 @@ public:
             return mpq_equal(val.qval, od.val.qval) != 0;
         if (val.qsize == 0 && od.val.qsize == 0)
             return mpfi_cmp(val.mval, od.val.mval) == 0;
-        return false;
+        // Mixed: promote the rational to a point interval and compare.
+        // Equal only if the interval is a perfect point at the rational value.
+        const mpqi_t* rat = val.qsize > 0 ? &val : &od.val;
+        const mpqi_t* itv = val.qsize > 0 ? &od.val : &val;
+        mpfi_t tmp;
+        mpfi_init2(tmp, rat->prec);
+        mpfi_set_q(tmp, rat->qval);
+        bool result = mpfi_cmp(tmp, itv->mval) == 0;
+        mpfi_clear(tmp);
+        return result;
     }
 
     std::ostream& display(std::ostream& os) const final {

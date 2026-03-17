@@ -68,28 +68,26 @@ public:
 
     Field& operator+=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        // const_cast: mpqi_arg_check may normalise the representation (rational→interval),
-        // which is a semantics-preserving mutation. The value is logically unchanged.
-        mpqi_add(&val, &val, const_cast<mpqi_ptr>(&od.val));
+        mpqi_add(&val, &val, &od.val);
         return *this;
     }
 
     std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
         auto ret = std::make_unique<FMpqi>(val);
-        mpqi_add(&ret->val, &ret->val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
+        mpqi_add(&ret->val, &ret->val, &od.val);
         return ret;
     }
 
     Field& operator-=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        mpqi_sub(&val, &val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
+        mpqi_sub(&val, &val, &od.val);
         return *this;
     }
 
     Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        mpqi_mul(&val, &val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
+        mpqi_mul(&val, &val, &od.val);
         return *this;
     }
 
@@ -97,7 +95,7 @@ public:
         const auto& od = static_cast<const FMpqi&>(other);
         if (mpqi_has_zero(&od.val))
             throw std::runtime_error("Division by mpqi containing zero");
-        mpqi_div(&val, &val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
+        mpqi_div(&val, &val, &od.val);
         return *this;
     }
 

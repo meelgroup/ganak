@@ -40,18 +40,18 @@ using CMSat::FieldGen;
 using FG = std::unique_ptr<FieldGen>;
 using FF = std::unique_ptr<Field>;
 
-#define VERBOSE_DEBUG
-#define SLOW_DEBUG
-#define CHECK_PROPAGATED
-#define CHECK_IMPLIED
-#define VERY_SLOW_DEBUG
+/* #define VERBOSE_DEBUG */
+/* #define SLOW_DEBUG */
+/* #define CHECK_PROPAGATED */
+/* #define CHECK_IMPLIED */
+/* #define VERY_SLOW_DEBUG */
 /* #define BUDDY_ENABLED */
 /* #define ANALYZE_VERBOSE */
 // the slowest of all that's not verifying counts
 /* #define CHECK_TRAIL_ENTAILMENT */
 
 // I suggest disabling the cache separately with --cache 0
-#define CHECK_COUNT
+/* #define CHECK_COUNT */
 
 #ifdef CHECK_COUNT
 constexpr bool must_check_count = true;

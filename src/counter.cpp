@@ -583,10 +583,7 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
   if (conf.do_cube_check_count || must_check_count) {
-    if (!fg->exact()) {
-      cout << "ERROR: Cannot check counts of a field that is not exact!" << endl;
-      exit(EXIT_FAILURE);
-    }
+    check_exact_field(fg);
     for(const auto& c: cubes) {
       FF check_cnt = nullptr;
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
@@ -1116,7 +1113,7 @@ end:
     for (auto& c: mini_cubes) {
       *c.cnt *= *this_restart_multiplier;
       CHECK_COUNT_DO({
-        assert(fg->exact());
+        check_exact_field(fg);
         if (c.enabled) {
           auto check_cnt = check_count_norestart_cms(c);
           if (*check_cnt != *c.cnt) {
@@ -1405,7 +1402,7 @@ bool Counter::restart_if_needed() {
       Cube cube;
       if (compute_cube(cube, i)) {
         CHECK_COUNT_DO({
-          assert(fg->exact());
+          check_exact_field(fg);
           auto check_cnt = check_count_norestart_cms(cube);
           if (*check_cnt != *cube.cnt) {
             cout << "ERROR [restart loop]: cube cnt mismatch after compute_cube: " << cube << endl;
@@ -1572,7 +1569,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   cout << COLORG "cube's RECORDED count: " << *c.cnt << COLDEF << endl;
 #endif
 #ifdef CHECK_COUNT
-  assert(fg->exact());
+  check_exact_field(fg);
   auto check_cnt = check_count_norestart_cms(c);
   if (*check_cnt != *c.cnt) {
     cout << "ERROR [compute_cube]: cnt mismatch for cube: " << c << endl;
@@ -1633,10 +1630,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
 
 // Checks one-by-one using a SAT solver
 FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
-    if (!fg->exact()) {
-      cout << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
-      exit(EXIT_FAILURE);
-    }
+    check_exact_field(fg);
     //let's get vars active
     set<uint32_t> active;
 

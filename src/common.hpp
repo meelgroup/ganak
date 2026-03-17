@@ -228,5 +228,11 @@ struct BPCSizes {
   static constexpr uint32_t bits_per_block = (sizeof(uint32_t) << 3);
 };
 
+inline void check_exact_field(const FG& fg) {
+    if (!fg->exact()) {
+      cout << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
+      exit(EXIT_FAILURE);
+    }
+}
 
 }

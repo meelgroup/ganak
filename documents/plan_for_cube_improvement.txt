@@ -1,0 +1,125 @@
+Plan: Additional Cube Techniques for Reducing Counting Work
+============================================================
+
+Context
+-------
+Ganak's restart system generates cubes (blocking clauses + counts) at each
+restart. We already implemented resolution-based merging and FLP. The goal is
+to find more techniques that reduce the work needed to count remaining solutions.
+
+Currently, cubes are discarded after each restart -- only the blocking clauses
+persist in the SAT solver and as irred clauses in Ganak. No cross-restart cube
+information is tracked. This is a missed opportunity.
+
+
+Techniques (in implementation order)
+--------------------------------------
+
+1. Cross-Restart Cube Polarity Tracking (infrastructure)
+
+What: Track per-variable polarity counts across all cubes from all restarts.
+For each indep-support variable, maintain cube_pos_count[v] and
+cube_neg_count[v] -- how many times v appeared positive vs negative across
+all enabled cubes.
+
+Why: This is the foundation for techniques 2 and 3 below. Zero risk, trivial
+cost.
+
+Implementation:
+- Add vector<uint32_t> cube_pos_count, cube_neg_count to Counter in
+  counter.hpp
+- Initialize (resize + zero) alongside tdscore in one_restart_count()
+- Update in outer_count() loop, for each enabled cube literal:
+  - Cube cnf stores blocking literals. Blocking literal Lit(v, false) means
+    v=false in the blocking clause, which means the model had v=true.
+    So: l.sign() == false -> model had v=true -> increment cube_pos_count[v].
+        l.sign() == true  -> model had v=false -> increment cube_neg_count[v].
+- ~25 lines
+
+
+2. Cube-Guided Polarity Selection
+
+What: Use the polarity consensus from technique 1 to guide branching polarity.
+If variable v appeared as positive in 80%+ of cubes, prefer branching v=true.
+Add as polar_type = 4 (cube-guided).
+
+Why: If the counted solutions (cubes) consistently have v=true, there's a
+structural reason. Branching in the consensus direction:
+- Explores the "dense" region of solution space first -> higher-count cubes
+- Better cache hit rates (similar assignment patterns across restarts)
+- If v happens to be a backbone, avoids wasting time on the wrong polarity
+
+Implementation:
+- Add polar_type = 4 case in get_polarity() (counter.cpp)
+- If cube_pos_count[v] + cube_neg_count[v] > 0:
+    return cube_pos_count[v] > cube_neg_count[v]
+- Else: fall back to standard_polarity(v)
+- Optionally use as a tiebreaker in standard_polarity (if activities are
+  equal, use cube consensus instead of last_polarity)
+- Enable via --polar 4 or integrate into do_readjust_for_restart rotation
+- ~15 lines
+
+
+3. Backbone Detection from Cube Consensus
+
+What: After accumulating enough cubes (configurable threshold, e.g. 20+),
+check if any indep-support variable has ALL cubes agreeing on its polarity
+(e.g. cube_pos_count[v] > 0 && cube_neg_count[v] == 0). Test each candidate
+with one SAT call: assume the opposite polarity, if UNSAT -> confirmed
+backbone -> add as unit clause.
+
+Why: Each confirmed backbone permanently eliminates a variable, simplifying
+propagation, reducing component sizes, and potentially splitting components.
+This can be transformative on structured instances.
+
+Correctness: The cube consensus is just a heuristic for candidate selection.
+The SAT call is the definitive check. If the SAT solver returns UNSAT under
+the opposite-polarity assumption, the variable is provably a backbone --
+adding it as a unit clause is sound.
+
+Implementation:
+- Add config: backbone_check_interval = 5 (check every N restarts),
+  backbone_min_cubes = 20 (minimum cube observations),
+  backbone_max_tests = 10 (max SAT calls per check)
+- New function check_cube_backbones() called in outer_count() every
+  backbone_check_interval restarts
+- For each candidate variable (one polarity count is 0, other >=
+  backbone_min_cubes):
+  - Build assumption: opposite of consensus polarity
+  - sat_solver->solve(&ass) -- if UNSAT, confirmed backbone
+  - Add unit clause to CMS and Ganak, propagate
+  - Reset polarity counts (formula has changed)
+  - Budget-limited: stop after backbone_max_tests SAT calls
+- Track stats: backbone_candidates_tested, backbones_found
+- ~80 lines
+
+
+4. Cube Subsumption Pre-filter
+
+What: Before SAT-based overlap detection, do a cheap syntactic check: if cube
+A's literal set is a subset of cube B's, A covers a superset of B's solution
+space (shorter blocking clause = less specific = covers more). Disable B (the
+longer, more specific cube with smaller count).
+
+Why: Avoids unnecessary SAT calls in overlap detection. After extension and
+FLP, cubes can have different lengths, making subset relationships possible.
+
+Implementation:
+- Add pre-filter at the start of disable_cubes_if_overlap() (counter.cpp)
+- For each pair of enabled cubes, if a.cnf.size() < b.cnf.size():
+  - Build a set from a.cnf, check if all literals of a appear in b
+    -> a subsumes b -> disable b
+- ~20 lines
+
+
+Files to Modify
+-----------------
+counter.hpp        - Add cube_pos_count, cube_neg_count vectors; declare
+                     check_cube_backbones()
+counter.cpp        - Polarity tracking in outer_count(), new get_polarity
+                     case, check_cube_backbones() function, subsumption
+                     pre-filter in disable_cubes_if_overlap()
+counter_config.hpp - Backbone config params, cube_polar_type
+statistics.hpp     - Backbone stats
+statistics.cpp     - Print backbone stats
+main.cpp           - CLI args for new configs

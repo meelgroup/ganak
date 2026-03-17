@@ -303,6 +303,7 @@ void add_ganak_options()
     add_arg("--rstreadjust", conf.do_readjust_for_restart, fc_int, "Readjust params for restart");
     add_arg("--maxrst", conf.max_num_rst, fc_int, "Max number of restarts");
     add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart, fc_int,  "Max number of cubes per restart");
+    add_arg("--extendcubes", conf.do_extend_cubes, fc_int,  "Extend cubes");
 
     // Multi-threading options
     add_arg("--threads", num_threads, fc_int, "Number of threads to use. -1 = all available cores");

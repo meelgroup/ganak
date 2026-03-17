@@ -42,6 +42,7 @@ struct CounterConfiguration {
   uint32_t analyze_cand_update = 50;
   int do_probabilistic_hashing = 1;
   std::string td_visualize_dot_file = "";
+  int do_extend_cubes = 1;
 
   int cache_time_update = 2;
   int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used

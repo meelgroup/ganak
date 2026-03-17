@@ -53,6 +53,11 @@ using FF = std::unique_ptr<Field>;
 // I suggest disabling the cache separately with --cache 0
 /* #define CHECK_COUNT */
 
+#ifdef CHECK_COUNT
+constexpr bool must_check_count = true;
+#else
+constexpr bool must_check_count = false;
+#endif
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"

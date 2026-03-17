@@ -38,7 +38,14 @@ static _Atomic int final_max_size = 1000;
 /* When to transition */
 static _Atomic unsigned long crossover_opcount = 1000000;
 
-/* Current status */
+/* Current operation count.
+ * NOTE (multi-threading): this counter is shared across all threads.
+ * With N threads the crossover from initial to final size limit is reached
+ * approximately N times faster than the configured cross_count would suggest.
+ * Each thread's rational→interval promotion decisions are therefore influenced
+ * by other threads' activity, and behaviour is non-deterministic under
+ * different thread counts.  This is intentional: crossover_opcount is a
+ * global operation budget, not a per-thread one. */
 static _Atomic unsigned long opcount = 0;
 
 unsigned mpqi_get_default_prec() {
@@ -49,6 +56,10 @@ void mpqi_set_default_prec(unsigned prec) {
     atomic_store_explicit(&mpqi_default_prec, prec, memory_order_relaxed);
 }
 
+/* NOTE (multi-threading): mpqi_reset() resets the global operation counter.
+ * It must not be called while other threads are performing mpqi operations,
+ * as a thread already past the crossover would suddenly revert to the initial
+ * (more lenient) size limit. Safe to call before starting a parallel run. */
 void mpqi_reset() {
     atomic_store_explicit(&opcount, 0UL, memory_order_relaxed);
 }
@@ -66,16 +77,10 @@ void mpqi_get_parameters(size_t *initial_bytes, size_t *final_bytes, unsigned lo
 }
 
 static size_t mpq_bytes(mpq_srcptr val) {
-    /* Overhead */
-    size_t size = 32;
-    mpz_t mp_num, mp_den;
-    mpz_init(mp_num); mpz_init(mp_den);
-    mpq_get_num(mp_num, val);
-    size += mpz_size(mp_num) * sizeof(mp_limb_t);
-    mpq_get_den(mp_den, val);
-    size += mpz_size(mp_den) * sizeof(mp_limb_t);
-    mpz_clear(mp_num); mpz_clear(mp_den);
-    return size;
+    /* 32 bytes overhead + limb storage for numerator and denominator */
+    return 32
+        + mpz_size(mpq_numref(val)) * sizeof(mp_limb_t)
+        + mpz_size(mpq_denref(val)) * sizeof(mp_limb_t);
 }
 
 void mpqi_init2(mpqi_ptr mp, unsigned prec) {
@@ -86,7 +91,7 @@ void mpqi_init2(mpqi_ptr mp, unsigned prec) {
 }
 
 void mpqi_init(mpqi_ptr mp) {
-    mpqi_init2(mp, mpqi_default_prec);
+    mpqi_init2(mp, mpqi_get_default_prec());
 }
 
 void mpqi_clear(mpqi_ptr mp) {
@@ -168,43 +173,42 @@ void mpqi_set_m(mpqi_ptr mp, mpfi_srcptr m) {
     mpqi_canonicalize(mp);
 }
 
-void mpqi_set(mpqi_ptr mp, mpqi_ptr m) {
+void mpqi_set(mpqi_ptr mp, mpqi_srcptr m) {
     if (m->qsize > 0)
         mpqi_set_q(mp, m->qval);
     else
         mpqi_set_m(mp, m->mval);
 }
 
-double mpqi_get_d(mpqi_ptr mp) {
+double mpqi_get_d(mpqi_srcptr mp) {
     if (mp->qsize > 0)
         return mpq_get_d(mp->qval);
     else
         return mpfi_get_d(mp->mval);
 }
 
-void mpqi_left(mpfr_ptr left, mpqi_ptr mp) {
+void mpqi_left(mpfr_ptr left, mpqi_srcptr mp) {
     if (mp->qsize > 0)
         mpfr_set_q(left, mp->qval, MPFR_RNDD);
     else
         mpfi_get_left(left, mp->mval);
 }
 
-void mpqi_right(mpfr_ptr right, mpqi_ptr mp) {
+void mpqi_right(mpfr_ptr right, mpqi_srcptr mp) {
     if (mp->qsize > 0)
         mpfr_set_q(right, mp->qval, MPFR_RNDU);
     else
         mpfi_get_right(right, mp->mval);
 }
 
-
-void mpqi_mid(mpfr_ptr mid, mpqi_ptr mp) {
+void mpqi_mid(mpfr_ptr mid, mpqi_srcptr mp) {
     if (mp->qsize > 0)
         mpfr_set_q(mid, mp->qval, MPFR_RNDN);
     else
         mpfi_mid(mid, mp->mval);
 }
 
-void mpqi_mid_q(mpq_ptr mid, mpqi_ptr mp) {
+void mpqi_mid_q(mpq_ptr mid, mpqi_srcptr mp) {
     if (mp->qsize > 0)
         mpq_set(mid, mp->qval);
     else {
@@ -425,36 +429,27 @@ void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2) {
         mpqi_div_mpfi(dest, arg1, arg2->mval);
 }
 
-bool mpqi_is_zero(mpqi_ptr mp) {
+bool mpqi_is_zero(mpqi_srcptr mp) {
     if (mp->qsize > 0)
         return mpq_sgn(mp->qval) == 0;
     else
         return mpfi_is_zero(mp->mval) != 0;
 }
 
-bool mpqi_has_zero(mpqi_ptr mp) {
+bool mpqi_has_zero(mpqi_srcptr mp) {
     if (mp->qsize > 0)
         return mpq_sgn(mp->qval) == 0;
     else
         return mpfi_has_zero(mp->mval) != 0;
 }
 
-double digit_precision_mpqi(mpqi_ptr mp) {
+double digit_precision_mpqi(mpqi_srcptr mp) {
     if (mp->qsize > 0)
         return MAX_DIGIT_PRECISION;
-    mpfr_prec_t prec = mpfi_get_prec(mp->mval);
-    mpfr_t left, right;
-    mpfr_init2(left, prec);
-    mpfr_init2(right, prec);
-    mpfi_get_left(left, mp->mval);
-    mpfi_get_right(right, mp->mval);
-    if (mpfr_sgn(left) != mpfr_sgn(right)) {
-        mpfr_clear(left);
-        mpfr_clear(right);
+    /* Interval touching or crossing zero has no meaningful relative digit precision */
+    if (!mpfi_is_pos(mp->mval) && !mpfi_is_neg(mp->mval))
         return 0.0;
-    }
-    mpfr_clear(left);
-    mpfr_clear(right);
+    mpfr_prec_t prec = mpfi_get_prec(mp->mval);
     mpfr_t diam;
     mpfr_init2(diam, prec);
     mpfi_diam_rel(diam, mp->mval);

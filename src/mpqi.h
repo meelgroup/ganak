@@ -46,6 +46,7 @@ typedef struct {
     mpfi_t mval; // bounded memory approximat val
     mpq_t qval; //exact GMP rational
 } mpqi_t, *mpqi_ptr;
+typedef const mpqi_t *mpqi_srcptr;
 
 unsigned mpqi_get_default_prec();
 void mpqi_set_default_prec(unsigned prec);
@@ -61,14 +62,14 @@ void mpqi_clear(mpqi_ptr mp);
 void mpqi_set_d(mpqi_ptr mp, double d);
 void mpqi_set_q(mpqi_ptr mp, mpq_srcptr q);
 void mpqi_set_m(mpqi_ptr mp, mpfi_srcptr m);
-void mpqi_set(mpqi_ptr mp, mpqi_ptr m);
-double mpqi_get_d(mpqi_ptr mp);
+void mpqi_set(mpqi_ptr mp, mpqi_srcptr m);
+double mpqi_get_d(mpqi_srcptr mp);
 
-void mpqi_left(mpfr_ptr mid, mpqi_ptr mp);
-void mpqi_right(mpfr_ptr mid, mpqi_ptr mp);
+void mpqi_left(mpfr_ptr left, mpqi_srcptr mp);
+void mpqi_right(mpfr_ptr right, mpqi_srcptr mp);
 
-void mpqi_mid(mpfr_ptr mid, mpqi_ptr mp);
-void mpqi_mid_q(mpq_ptr mid, mpqi_ptr mp);
+void mpqi_mid(mpfr_ptr mid, mpqi_srcptr mp);
+void mpqi_mid_q(mpq_ptr mid, mpqi_srcptr mp);
 
 
 
@@ -88,10 +89,10 @@ void mpqi_div_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q);
 void mpqi_div_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr m);
 void mpqi_div(mpqi_ptr dest, mpqi_ptr arg1, mpqi_ptr arg2);
 
-bool mpqi_is_zero(mpqi_ptr mp);
-bool mpqi_has_zero(mpqi_ptr mp);
+bool mpqi_is_zero(mpqi_srcptr mp);
+bool mpqi_has_zero(mpqi_srcptr mp);
 
-double digit_precision_mpqi(mpqi_ptr mp);
+double digit_precision_mpqi(mpqi_srcptr mp);
 
 #ifdef CPLUSPLUS
 }

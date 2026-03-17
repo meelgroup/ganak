@@ -52,22 +52,24 @@ public:
 
     explicit FMpqi(const mpqi_t& _val) {
         mpqi_init2(&val, _val.prec);
-        mpqi_set(&val, const_cast<mpqi_ptr>(&_val));
+        mpqi_set(&val, &_val);
     }
 
     explicit FMpqi(const FMpqi& other) {
         mpqi_init2(&val, other.val.prec);
-        mpqi_set(&val, const_cast<mpqi_ptr>(&other.val));
+        mpqi_set(&val, &other.val);
     }
 
     Field& operator=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        mpqi_set(&val, const_cast<mpqi_ptr>(&od.val));
+        mpqi_set(&val, &od.val);
         return *this;
     }
 
     Field& operator+=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
+        // const_cast: mpqi_arg_check may normalise the representation (rational→interval),
+        // which is a semantics-preserving mutation. The value is logically unchanged.
         mpqi_add(&val, &val, const_cast<mpqi_ptr>(&od.val));
         return *this;
     }
@@ -75,27 +77,27 @@ public:
     std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
         auto ret = std::make_unique<FMpqi>(val);
-        mpqi_add(&ret->val, &ret->val, const_cast<mpqi_ptr>(&od.val));
+        mpqi_add(&ret->val, &ret->val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
         return ret;
     }
 
     Field& operator-=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        mpqi_sub(&val, &val, const_cast<mpqi_ptr>(&od.val));
+        mpqi_sub(&val, &val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
         return *this;
     }
 
     Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        mpqi_mul(&val, &val, const_cast<mpqi_ptr>(&od.val));
+        mpqi_mul(&val, &val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
         return *this;
     }
 
     Field& operator/=(const Field& other) final {
         const auto& od = static_cast<const FMpqi&>(other);
-        if (mpqi_has_zero(const_cast<mpqi_ptr>(&od.val)))
+        if (mpqi_has_zero(&od.val))
             throw std::runtime_error("Division by mpqi containing zero");
-        mpqi_div(&val, &val, const_cast<mpqi_ptr>(&od.val));
+        mpqi_div(&val, &val, const_cast<mpqi_ptr>(&od.val)); // see operator+=
         return *this;
     }
 
@@ -105,8 +107,12 @@ public:
             return mpq_equal(val.qval, od.val.qval) != 0;
         if (val.qsize == 0 && od.val.qsize == 0)
             return mpfi_cmp(val.mval, od.val.mval) == 0;
-        // Mixed: promote the rational to a point interval and compare.
-        // Equal only if the interval is a perfect point at the rational value.
+        // Mixed: promote the rational to a finite-precision point interval and
+        // compare.  Can return false for mathematically equal values if the
+        // interval side was computed with rounding error (i.e. the interval is
+        // not a perfect point at the rational value).  This is intentional:
+        // once a value has been approximated as an interval it is no longer
+        // exactly represented, so strict equality with a rational is impossible.
         const mpqi_t* rat = val.qsize > 0 ? &val : &od.val;
         const mpqi_t* itv = val.qsize > 0 ? &od.val : &val;
         mpfi_t tmp;
@@ -147,7 +153,7 @@ public:
     }
 
     bool is_zero() const final {
-        return mpqi_is_zero(const_cast<mpqi_ptr>(&val));
+        return mpqi_is_zero(&val);
     }
 
     bool is_one() const final {
@@ -208,8 +214,8 @@ public:
         mpfr_t a_left, b_left;
         mpfr_init2(a_left, prec);
         mpfr_init2(b_left, prec);
-        mpqi_left(a_left, const_cast<mpqi_ptr>(&ad.val));
-        mpqi_left(b_left, const_cast<mpqi_ptr>(&bd.val));
+        mpqi_left(a_left, &ad.val);
+        mpqi_left(b_left, &bd.val);
         bool result = mpfr_cmp(a_left, b_left) > 0;
         mpfr_clear(a_left);
         mpfr_clear(b_left);

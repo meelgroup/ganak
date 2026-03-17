@@ -108,9 +108,7 @@ public:
         // Mixed: promote the rational to a finite-precision point interval and
         // compare.  Can return false for mathematically equal values if the
         // interval side was computed with rounding error (i.e. the interval is
-        // not a perfect point at the rational value).  This is intentional:
-        // once a value has been approximated as an interval it is no longer
-        // exactly represented, so strict equality with a rational is impossible.
+        // not a perfect point at the rational value).
         const mpqi_t* rat = val.qsize > 0 ? &val : &od.val;
         const mpqi_t* itv = val.qsize > 0 ? &od.val : &val;
         mpfi_t tmp;

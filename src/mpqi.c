@@ -113,25 +113,24 @@ static void mpqi_arg_check(mpqi_ptr mp) {
 }
 
 static void mpqi_canonicalize(mpqi_ptr mp) {
-    if (mp->qsize > 0)
+    if (mp->qsize > 0) {
         mpqi_arg_check(mp);
-    else {
-        mpfr_t val;
-        mpfr_init2(val, mp->prec);
-        mpfi_diam_abs(val, mp->mval);
-        if (mpfr_sgn(val) == 0) {
-            mpfi_get_left(val, mp->mval);
-            mpq_init(mp->qval);
-            mpfr_get_q(mp->qval, val);
-            mp->qsize = mpq_bytes(mp->qval);
-            if (size_ok(mp->qsize)) {
-                mpfi_clear(mp->mval);
-            } else {
-                mpq_clear(mp->qval);
-                mp->qsize = 0;
-            }
+    } else if (mpfi_is_zero(mp->mval)) {
+        /* [0,0]: recover rational 0 without mpfr_get_q */
+        mpq_init(mp->qval);
+        mpfi_clear(mp->mval);
+        mp->qsize = mpq_bytes(mp->qval);
+    } else if (mpfr_equal_p(&mp->mval->left, &mp->mval->right)) {
+        /* [a,a] non-zero: try to recover rational using the existing endpoint */
+        mpq_init(mp->qval);
+        mpfr_get_q(mp->qval, &mp->mval->left);
+        mp->qsize = mpq_bytes(mp->qval);
+        if (size_ok(mp->qsize)) {
+            mpfi_clear(mp->mval);
+        } else {
+            mpq_clear(mp->qval);
+            mp->qsize = 0;
         }
-        mpfr_clear(val);
     }
     opcount++;
 }

@@ -304,6 +304,10 @@ void add_ganak_options()
     add_arg("--maxrst", conf.max_num_rst, fc_int, "Max number of restarts");
     add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart, fc_int,  "Max number of cubes per restart");
     add_arg("--extendcubes", conf.do_extend_cubes, fc_int,  "Extend cubes");
+    add_arg("--cuberesolve", conf.do_cube_resolve, fc_int, "Resolution-merge cubes that differ in exactly one blocking literal");
+    add_arg("--cubeflp", conf.do_cube_flp, fc_int, "Failed-literal probing to remove forced blocking literals from cubes");
+    add_arg("--smallcubedisable", conf.do_small_cube_disable, fc_int, "Disable cubes beyond max-num-cubes-per-restart (sorted by LBD)");
+    add_arg("--tdwrstdecay", conf.td_weight_restart_decay, fc_double, "Multiply td_weight by this after each restart (1.0=no decay, 0.5=halve)");
 
     // Multi-threading options
     add_arg("--threads", num_threads, fc_int, "Number of threads to use. -1 = all available cores");

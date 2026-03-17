@@ -729,10 +729,15 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
           if (ret == 100) {
             verb_print(2, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);
             if (weighted()) {
-              *c.cnt /= *get_weight(l);
-              FF tmp = get_weight(l)->dup();
-              *tmp += *get_weight(l.neg());
-              *c.cnt *= *tmp;
+              // l is a BLOCKING literal (negation of model assignment).
+              // l.neg() is the MODEL literal whose weight was originally multiplied in.
+              // After removing l, both polarities are free:
+              //   new_cnt = old_cnt / weight(l.neg()) * (weight(l) + weight(l.neg()))
+              FF orig_w = get_weight(l.neg())->dup();
+              FF combined = get_weight(l)->dup();
+              *combined += *get_weight(l.neg());
+              *c.cnt /= *orig_w;
+              *c.cnt *= *combined;
             } else *c.cnt *= *two;
             stats.cube_lit_extend++;
           } else stats.cube_lit_rem++;
@@ -772,6 +777,102 @@ uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) {
     }
   }
   return disabled;
+}
+
+// Resolution-based cube merging: if two cubes differ in exactly one variable
+// (same var, opposite blocking-literal signs), they can be resolved into one
+// cube without that variable. Counts are summed. Loops until fixpoint.
+void Counter::try_resolve_cubes(vector<Cube>& cubes) {
+  auto my_time = cpu_time();
+  const auto before = stats.num_cubes_resolved;
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (uint32_t i = 0; i < cubes.size() && !changed; i++) {
+      if (!cubes[i].enabled) continue;
+      for (uint32_t j = i+1; j < cubes.size() && !changed; j++) {
+        if (!cubes[j].enabled) continue;
+        const auto& a = cubes[i].cnf;
+        const auto& b = cubes[j].cnf;
+        if (a.size() != b.size()) continue;
+
+        // Build var->lit map for b
+        std::unordered_map<uint32_t, Lit> bmap;
+        bmap.reserve(b.size());
+        for (const auto& l : b) bmap[l.var()] = l;
+
+        // Find the one literal that differs (same var, opposite sign)
+        Lit diff_a = Lit(0, false);
+        uint32_t ndiff = 0;
+        bool bad = false;
+        for (const auto& la : a) {
+          auto it = bmap.find(la.var());
+          if (it == bmap.end()) { bad = true; break; }
+          if (it->second != la) {
+            if (it->second != la.neg()) { bad = true; break; }
+            ndiff++;
+            diff_a = la;
+          }
+        }
+        if (bad || ndiff != 1) continue;
+
+        // Merge: remove diff_a from cube i, combine counts, disable cube j
+        *cubes[i].cnt += *cubes[j].cnt;
+        cubes[i].cnf.erase(std::find(cubes[i].cnf.begin(), cubes[i].cnf.end(), diff_a));
+        cubes[i].lbd = calc_lbd(cubes[i].cnf);
+        cubes[j].enabled = false;
+        stats.num_cubes_resolved++;
+        changed = true;
+        verb_print(2, "[cube-res] Resolved cube " << i << " and " << j
+            << " on var " << diff_a.var());
+      }
+    }
+  }
+  if (stats.num_cubes_resolved > before) {
+    verb_print(2, "[cube-res] Resolved " << (stats.num_cubes_resolved - before)
+        << " cubes this restart. T: " << (cpu_time() - my_time));
+  }
+}
+
+// Failed-literal probing for cube strengthening: for each blocking literal l
+// in the cube, test if assuming the opposite (model assignment = l.neg()) is
+// UNSAT under the other cube model assumptions. If UNSAT, l is redundant in
+// the blocking clause (the model assignment is forced) and can be dropped.
+// Count is unchanged.
+void Counter::cube_strengthen_by_flp(vector<Cube>& cubes) {
+  auto my_time = cpu_time();
+  const auto before = stats.cube_lit_flp;
+  for (auto& c : cubes) {
+    if (!c.enabled) continue;
+    bool changed = true;
+    while (changed) {
+      changed = false;
+      for (uint32_t i = 0; i < c.cnf.size(); i++) {
+        // Assumptions: model values for all other literals, opposite for i
+        // Blocking literal l = ¬(model_value). Model assumption = CMSat::Lit(var-1, l.sign()).
+        // Opposite-of-model assumption for l = CMSat::Lit(var-1, !l.sign()).
+        vector<CMSat::Lit> ass;
+        ass.reserve(c.cnf.size());
+        for (uint32_t j = 0; j < c.cnf.size(); j++) {
+          const Lit& lj = c.cnf[j];
+          if (j == i)
+            ass.push_back(CMSat::Lit(lj.var()-1, !lj.sign())); // opposite of model
+          else
+            ass.push_back(CMSat::Lit(lj.var()-1, lj.sign()));  // model assignment
+        }
+        if (sat_solver->solve(&ass) == CMSat::l_False) {
+          // Opposite of model for c.cnf[i] is UNSAT → model value is forced → remove
+          verb_print(2, "[cube-flp] Removing forced blocking lit " << c.cnf[i] << " from cube");
+          c.cnf.erase(c.cnf.begin() + i);
+          stats.cube_lit_flp++;
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+  verb_print(2, "[cube-flp] FLP removed " << (stats.cube_lit_flp - before)
+      << " literals. T: " << (cpu_time() - my_time));
 }
 
 FF Counter::do_appmc_count() {
@@ -890,12 +991,16 @@ FF Counter::outer_count() {
 
     // Extend, tighten, symm, disable cubes
     if (!done && conf.do_extend_cubes) extend_cubes(cubes);
+    if (!done && conf.do_cube_flp) cube_strengthen_by_flp(cubes);
+    if (!done && conf.do_cube_resolve) try_resolve_cubes(cubes);
     disable_cubes_if_overlap(cubes);
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
     disable_cubes_if_overlap(cubes);
-    /* const auto disabled = disable_small_cubes(cubes); */
-    /* verb_print(2, "[rst-cube] Disabled " << disabled << " cubes."); */
+    if (conf.do_small_cube_disable) {
+      const auto disabled = disable_small_cubes(cubes);
+      verb_print(2, "[rst-cube] Disabled " << disabled << " small cubes.");
+    }
 
     // Add cubes to count, Ganak & CMS
     auto cubes_cnt_this_rst = fg->zero();
@@ -1430,6 +1535,13 @@ bool Counter::restart_if_needed() {
   assert(ret && "never UNSAT");
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
+
+  // Decay TD weight so stale scores have less influence after each restart
+  if (conf.td_weight_restart_decay < 1.0) {
+    td_weight *= conf.td_weight_restart_decay;
+    td_weight = std::max(td_weight, (double)conf.td_minweight);
+    verb_print(2, "[rst] td_weight decayed to: " << td_weight);
+  }
 
   // Readjust
   if (conf.do_readjust_for_restart) {

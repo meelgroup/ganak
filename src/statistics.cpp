@@ -103,6 +103,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(5) << num_cubes_orig << " / "
     << setw(5) << num_cubes_symm << " / "
     << setw(5) << num_cubes_final);
+  verb_print(1, "cubes resolved/flp-removed     "
+    << setw(5) << num_cubes_resolved << " / "
+    << setw(5) << cube_lit_flp);
 
   verb_print(1, "tot restarts                   " << setw(5) << num_restarts);
 

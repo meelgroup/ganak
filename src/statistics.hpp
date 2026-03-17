@@ -54,6 +54,8 @@ public:
   uint64_t num_cubes_symm = 0;
   uint64_t cube_lit_extend = 0;
   uint64_t cube_lit_rem = 0;
+  uint64_t cube_lit_flp = 0;
+  uint64_t num_cubes_resolved = 0;
 
   // Clause db management
   uint64_t reduce_db = 0;

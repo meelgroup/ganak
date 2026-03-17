@@ -240,6 +240,8 @@ private:
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
   void extend_cubes(vector<Cube>& cubes);
+  void try_resolve_cubes(vector<Cube>& cubes);
+  void cube_strengthen_by_flp(vector<Cube>& cubes);
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
   FF check_count_norestart(const Cube& c);
   FF check_count_norestart_cms(const Cube& c);

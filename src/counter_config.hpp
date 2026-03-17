@@ -43,6 +43,10 @@ struct CounterConfiguration {
   int do_probabilistic_hashing = 1;
   std::string td_visualize_dot_file = "";
   int do_extend_cubes = 1;
+  int do_cube_resolve = 1;
+  int do_cube_flp = 1;
+  int do_small_cube_disable = 1;
+  double td_weight_restart_decay = 0.5; // multiply td_weight by this after each restart (1.0 = no decay)
 
   int cache_time_update = 2;
   int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used

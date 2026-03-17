@@ -1,0 +1,95 @@
+Cube Improvements
+=================
+
+Overview
+--------
+When restarts are enabled (--restart 1), Ganak generates "cubes" at each restart
+point. Each cube is a partial assignment (stored as a blocking clause) with an
+associated model count. The following improvements were made to the cube pipeline.
+
+
+1. TD Weight Decay After Restart
+---------------------------------
+Config: --tdwrstdecay (default 0.5)
+
+Problem: The tree decomposition (TD) scores are computed once at startup and
+never recomputed. After each restart, new blocking clauses are added to the
+formula, changing the problem structure. The old TD scores become increasingly
+stale and may misdirect variable ordering.
+
+Recomputing the TD after every restart is too expensive. Instead, td_weight
+(the global multiplier applied to TD scores in variable scoring) is decayed
+after each restart:
+
+    td_weight *= conf.td_weight_restart_decay
+    td_weight = max(td_weight, td_minweight)
+
+This gradually reduces TD influence toward the floor (td_minweight), letting
+activity-based and frequency-based scores dominate as the search progresses
+through restarts. The decay is floored at td_minweight so TD guidance is never
+completely eliminated.
+
+Values: 1.0 = no decay (old behavior), 0.5 = halve each restart (default),
+        0.0 = wipe out TD influence after the first restart.
+
+
+2. Resolution-Based Cube Merging
+----------------------------------
+Config: --cuberesolve (default 1)
+Function: try_resolve_cubes()
+Location: counter.cpp, called in outer_count() after extend_cubes/FLP
+
+Two cubes can be resolved (merged) if they have identical blocking literals
+except for exactly one variable, where they have opposite polarities:
+
+    Cube A:  { l1, l2, ...,  x, ... ln }   count_A
+    Cube B:  { l1, l2, ..., ~x, ... ln }   count_B
+    Merged:  { l1, l2, ...,    ... ln }    count_A + count_B
+
+This is the standard resolution rule applied to blocking clauses. The merged
+cube covers both the x=true and x=false cases for the shared assignment,
+producing a shorter blocking clause (lower LBD) and combined count.
+
+The function iterates to fixpoint since a merge can enable further merges.
+
+Weighted correctness: adding the counts is valid because the merged cube covers
+exactly the union of the two disjoint assignment sets, whose total weight is
+count_A + count_B.
+
+
+3. Failed Literal Probing (FLP) for Cube Strengthening
+--------------------------------------------------------
+Config: --cubeflp (default 1)
+Function: cube_strengthen_by_flp()
+Location: counter.cpp, called in outer_count() after extend_cubes
+
+Each cube literal is a blocking literal (the negation of the variable's model
+assignment). For each blocking literal l in the cube, FLP tests whether the
+opposite of the model assignment is UNSAT given the other cube literals:
+
+    Assumptions: model values for all other literals + opposite-of-model for l
+    If SAT solver returns UNSAT: l's model assignment is FORCED by the formula
+    and the other literals, so l is redundant in the blocking clause.
+
+Redundant literals are removed without changing the count (the solution set
+is identical -- no assignment consistent with the other literals can have l's
+opposite polarity). This produces shorter, stronger blocking clauses.
+
+This differs from extend_cubes:
+- extend_cubes removes literals where BOTH polarities are possible (count doubles
+  or is adjusted by weight ratio)
+- FLP removes literals where only ONE polarity is possible (count unchanged)
+
+FLP runs after extend_cubes so it operates on already-extended cubes.
+
+
+Cube Pipeline Order in outer_count()
+--------------------------------------
+1. extend_cubes          -- remove literals where both polarities are free
+2. cube_strengthen_by_flp -- remove literals that are forced (count unchanged)
+3. try_resolve_cubes     -- merge pairs differing in one variable (sum counts)
+4. disable_cubes_if_overlap -- pairwise overlap detection, disable smaller
+5. symm_cubes            -- apply symmetry generators
+6. print_and_check_cubes
+7. disable_cubes_if_overlap (second pass, catches symm-introduced overlaps)
+8. disable_small_cubes   -- drop low-priority cubes beyond the per-restart limit

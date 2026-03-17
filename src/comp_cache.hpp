@@ -511,9 +511,10 @@ bool CompCache<T>::delete_some_entries() {
   SLOW_DEBUG_DO(test_descendantstree_consistency());
   rehash_table(table.size());
 
-  // Recompute mem usage
+  // Recompute mem usage — must start from 0 to include entry_base[1] (the root
+  // formula entry, which has non-zero extra_bytes() from its packed comp data).
   stats.sum_extra_bytes = 0;
-  for (uint32_t id = 2; id < entry_base.size(); id++)
+  for (uint32_t id = 0; id < entry_base.size(); id++)
     if (!entry_base[id].is_free()) {
       stats.sum_extra_bytes += entry_base[id].extra_bytes();
     }

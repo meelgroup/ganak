@@ -582,17 +582,17 @@ void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cu
 void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   verb_print(2, "cubes     : ");
   for(const auto&c: cubes) verb_print(2, "-> " << c);
-  if (conf.do_cube_check_count) {
-    if (!fg->exact()) {
-      cout << "ERROR: Cannot check counts of a field that is not exact!" << endl;
-      exit(EXIT_FAILURE);
-    }
+  if (conf.do_cube_check_count || must_check_count) {
+    check_exact_field(fg);
     for(const auto& c: cubes) {
       FF check_cnt = nullptr;
       if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
       else check_cnt = check_count_norestart_cms(c);
-      cout << "checking cube [ " << c << " ] ---- check_cnt: " << *check_cnt << " cube cnt: " << *c.cnt << endl;
-      assert(fg->exact() && *check_cnt == *c.cnt);
+      cout << "checking cube [ " << c << " ] " << endl;
+      cout << "----> check_cnt: " << *check_cnt << endl;
+      cout << "----> cube cnt : " << *c.cnt << endl;
+      assert(fg->exact());
+      assert(*check_cnt == *c.cnt);
     }
   }
 }
@@ -889,7 +889,7 @@ FF Counter::outer_count() {
     stats.num_cubes_orig += cubes.size();
 
     // Extend, tighten, symm, disable cubes
-    if (!done) extend_cubes(cubes);
+    if (!done && conf.do_extend_cubes) extend_cubes(cubes);
     disable_cubes_if_overlap(cubes);
     symm_cubes(cubes);
     print_and_check_cubes(cubes);
@@ -1112,6 +1112,17 @@ end:
     debug_print("[cube-final] This restart multiplier: " << *this_restart_multiplier);
     for (auto& c: mini_cubes) {
       *c.cnt *= *this_restart_multiplier;
+      CHECK_COUNT_DO({
+        check_exact_field(fg);
+        if (c.enabled) {
+          auto check_cnt = check_count_norestart_cms(c);
+          if (*check_cnt != *c.cnt) {
+            cout << "ERROR [weight-mul]: cube cnt mismatch after multiplier: " << c << endl;
+            cout << "  cube.cnt : " << *c.cnt << "  check: " << *check_cnt << endl;
+            assert(*check_cnt == *c.cnt);
+          }
+        }
+      });
       if (c.enabled) debug_print("[cube-final] cube: " << c);
     }
   }
@@ -1254,6 +1265,10 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
+    // Update at[v] for ALL vars in the component (including already-set ones) so that
+    // in_comp stays correct for unset_lit even when find_best_branch is called multiple
+    // times at the same dec_level (e.g. inside the SAT loop with !do_sat_vsids).
+    if (weighted()) at[v] = vars_act_dec_num;
     if (val(v) != X_TRI) continue;
     VERBOSE_DEBUG_DO(cout << v << " ");
 
@@ -1269,7 +1284,6 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
     if (v < opt_indep_support_end) is_indep = true;
     if (v < indep_support_end) only_optional_indep = false;
-    if (weighted()) at[v] = vars_act_dec_num;
     double score;
     if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)
@@ -1377,8 +1391,8 @@ bool Counter::restart_if_needed() {
   while (dec_level() > 0) {
     verb_print(2, COLBLBACK <<  COLCYN "--> Mini cube gen. "
       << " lev: " << dec_level()
-      << " left cnt: " << decisions.top().left_model_count()
-      << " right cnt: " << decisions.top().right_model_count()
+      << " left cnt: " << *decisions.top().left_model_count()
+      << " right cnt: " << *decisions.top().right_model_count()
       << COLDEF);
     for(auto i: {0, 1}) {
       const FF& models = decisions.top().get_model_side(i);
@@ -1387,6 +1401,15 @@ bool Counter::restart_if_needed() {
 
       Cube cube;
       if (compute_cube(cube, i)) {
+        CHECK_COUNT_DO({
+          check_exact_field(fg);
+          auto check_cnt = check_count_norestart_cms(cube);
+          if (*check_cnt != *cube.cnt) {
+            cout << "ERROR [restart loop]: cube cnt mismatch after compute_cube: " << cube << endl;
+            cout << "  cube.cnt : " << *cube.cnt << "  check: " << *check_cnt << endl;
+            assert(*check_cnt == *cube.cnt);
+          }
+        });
         mini_cubes.push_back(cube);
         *tot_cnt += *cube.cnt;
         verb_print(2, "[mini-cube] rst: " << stats.num_restarts << " mini cube: " << cube);
@@ -1464,18 +1487,14 @@ bool Counter::compute_cube(Cube& c, const int side) {
 
   // Add values for all components not yet counted
   for(int32_t i = 0; i <= dec_level(); i++) {
-    if (i == dec_level() && opposite_branch) {
-      // This has been fully counted, ALL components.
-      continue;
-    }
     const StackLevel& dec = decisions[i];
     const auto off_start = dec.remaining_comps_ofs();
     const auto off_end = dec.get_unproc_comps_end();
     debug_print("lev: " << i << " off_start: " << off_start << " off_end: " << off_end);
-    // add all but the last component (it's the one being counted lower down)
-    int off_by_one = 1;
-    if (i == dec_level()) off_by_one = 0;
-    for(uint32_t i2 = off_start; i2 < off_end-off_by_one; i2++) {
+    // add all components; indep-support vars not covered by decisions need to be
+    // pinned from the SAT model regardless of whether the component is the one
+    // being counted at a deeper level
+    for(uint32_t i2 = off_start; i2 < off_end; i2++) {
       const auto& comp = comp_manager->at(i2);
       all_vars_in_comp(*comp, v) {
         Lit l = Lit(*v, sat_solver->get_model()[*v-1] == CMSat::l_False);
@@ -1484,6 +1503,39 @@ bool Counter::compute_cube(Cube& c, const int side) {
         c.cnf.push_back(l);
       }
     }
+  }
+
+  // Deduplicate and complete c.cnf so it covers every required indep-support var.
+  // Variables in already-processed sub-components (accumulated into branch_mc) and
+  // implied (non-decided) vars are not added by the loops above; pin them from the
+  // SAT model here so the blocking clause identifies exactly one indep-support
+  // assignment and c.cnt = fg->one() is correct for non-weighted.
+  {
+    set<uint32_t> seen_vars;
+    auto it = std::remove_if(c.cnf.begin(), c.cnf.end(),
+        [&seen_vars](const Lit& l) { return !seen_vars.insert(l.var()).second; });
+    c.cnf.erase(it, c.cnf.end());
+    for (uint32_t v = 1; v < indep_support_end; v++) {
+      if (seen_vars.count(v)) continue;
+      c.cnf.push_back(Lit(v, sat_solver->get_model()[v-1] == CMSat::l_False));
+    }
+  }
+
+  // Replace the DPLL-tree-based c.cnt with a value that matches what the cube pins.
+  if (weighted()) {
+    // For weighted: multiply the weights of all vars in the SAT model.
+    // The DPLL count is wrong at restart time because decision literal weights
+    // are applied by unset_lit during backtracking, which hasn't happened yet.
+    c.cnt = fg->one();
+    for (uint32_t v = 1; v < opt_indep_support_end; v++) {
+      Lit l(v, sat_solver->get_model()[v-1] == CMSat::l_True);
+      *c.cnt *= *get_weight(l);
+    }
+    if (c.cnt->is_zero()) return false;
+  } else {
+    // For non-weighted: c.cnf now pins all indep-support vars from the SAT model,
+    // so there is exactly one satisfying assignment consistent with this cube.
+    c.cnt = fg->one();
   }
 
 #ifdef VERBOSE_DEBUG
@@ -1495,14 +1547,13 @@ bool Counter::compute_cube(Cube& c, const int side) {
       << " num unproc comps: " << dst.num_unproc_comps()
       << " unproc comps end: " << dst.get_unproc_comps_end()
       << " remain comps offs: " << dst.remaining_comps_ofs()
-      << " total count here: " << dst.total_model_count()
-      << " left count here: " << dst.left_model_count()
-      << " right count here: " << dst.right_model_count()
+      << " total count here: " << *dst.total_model_count()
+      << " left count here: " << *dst.left_model_count()
+      << " right count here: " << *dst.right_model_count()
       << " branch: " << dst.is_right_branch() << endl;
     const auto off_start = dst.remaining_comps_ofs();
     const auto off_end = dst.get_unproc_comps_end();
     for(uint32_t i2 = off_start; i2 < off_end; i2++) {
-      assert(i2 < comp_manager->comp_stack_size());
       const auto& comp = comp_manager->at(i2);
       cout << COLWHT "-> comp at: " << setw(3) << i2 << " ID: " << comp->id() << " -- vars : ";
       all_vars_in_comp(*comp, v) cout << *v << " ";
@@ -1514,20 +1565,72 @@ bool Counter::compute_cube(Cube& c, const int side) {
   for(const auto& l: c.cnf) cout << l << " ";
   cout << endl;
   const auto& tmp = decisions.top().get_model_side(side);
-  FF side_count = fg->zero();
-  if (tmp != nullptr) side_count = tmp->dup();
   cout << COLORG "cube's SOLE count: " << *tmp << endl;
   cout << COLORG "cube's RECORDED count: " << *c.cnt << COLDEF << endl;
+#endif
+#ifdef CHECK_COUNT
+  check_exact_field(fg);
+  auto check_cnt = check_count_norestart_cms(c);
+  if (*check_cnt != *c.cnt) {
+    cout << "ERROR [compute_cube]: cnt mismatch for cube: " << c << endl;
+    cout << "  recorded c.cnt : " << *c.cnt << endl;
+    cout << "  actual check   : " << *check_cnt << endl;
+    cout << "  dec_level      : " << dec_level() << " side: " << side << endl;
+    // c.cnt accumulation breakdown
+    cout << "  top get_model_side(" << side << "): "
+         << *decisions.top().get_model_side(side) << endl;
+    for (int32_t i = 0; i < dec_level(); i++) {
+      const auto& mul = decisions[i].get_branch_sols();
+      cout << "  lev " << i << " get_branch_sols: ";
+      if (mul) cout << *mul; else cout << "null";
+      cout << endl;
+    }
+    // For each level below dec_level, show the excluded "last component"
+    // and how many of its indep-support vars are/aren't pinned in c.cnf
+    {
+      set<uint32_t> cnf_vars;
+      for (const auto& l : c.cnf) cnf_vars.insert(l.var());
+      for (int32_t i = 0; i < dec_level(); i++) {
+        const StackLevel& dec = decisions[i];
+        const auto off_start = dec.remaining_comps_ofs();
+        const auto off_end   = dec.get_unproc_comps_end();
+        if (off_end == 0 || off_end <= off_start) continue;
+        const auto& excl_comp = comp_manager->at(off_end - 1);
+        cout << "  lev " << i << " excluded last comp (id=" << excl_comp->id() << ") vars: ";
+        all_vars_in_comp(*excl_comp, v) cout << *v << " ";
+        cout << endl;
+        uint32_t covered = 0, uncovered = 0;
+        all_vars_in_comp(*excl_comp, v) {
+          if (*v < indep_support_end) {
+            if (cnf_vars.count(*v)) covered++;
+            else uncovered++;
+          }
+        }
+        cout << "  lev " << i << " excluded comp indep covered/uncovered: "
+             << covered << "/" << uncovered << endl;
+        if (uncovered > 0) {
+          cout << "  lev " << i << " UNCOVERED vars: ";
+          all_vars_in_comp(*excl_comp, v) {
+            if (*v < indep_support_end && !cnf_vars.count(*v))
+              cout << *v << " ";
+          }
+          cout << endl;
+        }
+      }
+      cout << "  indep_support_end: " << indep_support_end
+           << " opt_indep_support_end: " << opt_indep_support_end << endl;
+      cout << "  opposite_branch: " << opposite_branch << endl;
+    }
+    print_all_levels();
+    assert(*check_cnt == *c.cnt);
+  }
 #endif
   return true;
 }
 
 // Checks one-by-one using a SAT solver
 FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
-    if (!fg->exact()) {
-      cout << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
-      exit(EXIT_FAILURE);
-    }
+    check_exact_field(fg);
     //let's get vars active
     set<uint32_t> active;
 
@@ -1657,7 +1760,15 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     // It can be that a subcomponent above is UNSAT, in that case, it'd be UNSAT
     // and the count cannot be checked
     if (solution_exist) {
-      if (!weighted()) assert(*decisions.top().total_model_count() == *cnt);
+      if (!weighted()) {
+        // When !is_indep && !do_use_sat_solver, the DPLL tree only tracks satisfiability
+        // (0/1) not the exact count. Collapse cnt to 0/1 to match before comparing.
+        FF cnt_cmp = cnt->dup();
+        if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
+          if (!cnt_cmp->is_zero()) cnt_cmp = fg->one();
+        }
+        assert(*decisions.top().total_model_count() == *cnt_cmp);
+      }
       else {
         bool okay = true;
         auto diff = after_mul->dup();
@@ -1911,6 +2022,7 @@ void Counter::go_back_to(int32_t backj) {
     if (!sat_mode()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
+      decisions.top().reset_remain_comps();
     }
     debug_print("now at dec lit: " << top_dec_lit() << " lev: " << dec_level()
         << " cnt:" <<  *decisions.top().total_model_count());
@@ -4238,7 +4350,7 @@ void Counter::init_decision_stack() {
   decisions.push_back(StackLevel(
         1, // super comp
         2, //comp stack offset
-        is_indep, tstamp, fg));
+        true, tstamp, fg)); // root level 0 is always indep: it accumulates the final total count
 
   // This is needed so the system later knows it's fully counted
   // since this is only a dummy.

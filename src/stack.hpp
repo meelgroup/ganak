@@ -184,14 +184,25 @@ public:
       return;
     }
 
-    if (cnt_is_zero(solutions)) {
-      branch_zero[act_branch] = true;
-      branch_mc[act_branch] = nullptr;
-    } else if (is_zero(act_branch)) {
-      branch_mc[act_branch] = solutions->dup();
+    if (!is_indep) {
+      // For non-indep levels, only track satisfiability (0/1): the projected count
+      // is semantically 0 or 1 when no indep vars remain in the component.
+      if (cnt_is_zero(solutions)) {
+        branch_zero[act_branch] = true;
+        branch_mc[act_branch] = nullptr;
+      } else {
+        branch_mc[act_branch] = fg->one();
+      }
     } else {
-      if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
-      else *branch_mc[act_branch] *= *solutions;
+      if (cnt_is_zero(solutions)) {
+        branch_zero[act_branch] = true;
+        branch_mc[act_branch] = nullptr;
+      } else if (is_zero(act_branch)) {
+        branch_mc[act_branch] = solutions->dup();
+      } else {
+        if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
+        else *branch_mc[act_branch] *= *solutions;
+      }
     }
     VERBOSE_DEBUG_DO(common_print(before));
   }

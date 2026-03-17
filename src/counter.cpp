@@ -4362,7 +4362,7 @@ void Counter::init_decision_stack() {
   decisions.push_back(StackLevel(
         1, // super comp
         2, //comp stack offset
-        is_indep, tstamp, fg));
+        true, tstamp, fg)); // root level 0 is always indep: it accumulates the final total count
 
   // This is needed so the system later knows it's fully counted
   // since this is only a dummy.

@@ -41,8 +41,10 @@ extern "C" {
 typedef struct {
     unsigned prec;
     unsigned qsize;  // bytes for mpq, 0 for mpfi
-    mpfi_t mval;
-    mpq_t qval;
+
+    // One of these is active
+    mpfi_t mval; // bounded memory approximat val
+    mpq_t qval; //exact GMP rational
 } mpqi_t, *mpqi_ptr;
 
 unsigned mpqi_get_default_prec();

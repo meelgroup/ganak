@@ -221,9 +221,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     FG thread_fg = fg->dup();
     ArjunNS::SimplifiedCNF cnf(thread_fg);
     cnf.new_vars(nvars);
-    // Opt indep support is needed for literals with weights
     cnf.set_sampl_vars(ganak_to_cms_vars(indep_support));
-    /* cnf.set_opt_sampl_vars(ganak_to_cms_vars(opt_indep_support)); */
     if (thread_fg->weighted()) {
       cnf.set_weighted(true);
       for (const auto& [lit, weight] : lit_weights)

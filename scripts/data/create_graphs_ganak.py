@@ -526,20 +526,19 @@ only_dirs = [
             # "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
             # "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
             # "out-ganak-mccomp2324-33393-0", # TRILLIUM, fixing td starting from 0, and maybe other TD issues too
-            "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
+            # "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
             # "out-ganak-mccomp2324-37704-0", # TRILLIUM, trying less scc upfront, weird non-committed code
             # "out-ganak-mccomp2324-41122-0", # TRILLIUM, new TD score, but BAD, not updating depth when all vars have been decided
             # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
             # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
-            "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
+            # "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
             # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
-            "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
-            "out-ganak-mccomp2324-1140000-0", # dodgy cache update
-            "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
-            "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
-            "out-ganak-mccomp2324-1152658-" # fixing bug, testing pura and oraclemult
-
-
+            # "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
+            # "out-ganak-mccomp2324-1140000-0", # dodgy cache update
+            # "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
+            # "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
+            "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
+            "out-ganak-mccomp2324-1193808-", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]

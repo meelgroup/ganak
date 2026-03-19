@@ -132,31 +132,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
 }
 
-template<class T>
-void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, T& counter) {
-  cnf.check_cnf_sampl_sanity();
-  counter.new_vars(cnf.nVars());
-
-  set<uint32_t> tmp;
-  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
-  counter.set_indep_support(tmp);
-  if (cnf.get_opt_sampl_vars_set()) {
-    tmp.clear();
-    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
-  }
-  counter.set_optional_indep_support(tmp);
-
-  if (cnf.get_weighted()) {
-    for(const auto& t: cnf.get_weights()) {
-      counter.set_lit_weight(Lit(t.first+1, true), t.second.pos);
-      counter.set_lit_weight(Lit(t.first+1, false), t.second.neg);
-    }
-  }
-
-  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
-}
-
 FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   assert(conf.appmc_timeout < 0 && "TD-parallel not compatible with AppMC");
   assert(bits_jobs > 0);
@@ -241,7 +216,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     indep_support.insert(lit.var());
   }
 
-  auto worker = [&](uint64_t num) -> FF {
+  auto worker = [&](const uint64_t num) -> FF {
     // Each thread needs its own FieldGen copy: fg may have mutable internal state
     FG thread_fg = fg->dup();
     ArjunNS::SimplifiedCNF cnf(thread_fg);
@@ -256,10 +231,10 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     }
     for (const auto& cl : irred_cls) cnf.add_clause(ganak_to_cms_cl(cl));
 
-    // Add unit clauses for centroid variable assignment
+    // Add unit clauses that differentiates this thread
     for (size_t i = 0; i < bits_jobs; i++) {
-      uint32_t var = centroid_bag[i];
-      bool sign = (num >> i) & 1;
+      const uint32_t var = centroid_bag[i];
+      const bool sign = (num >> i) & 1;
       CMSat::Lit unit_lit(var, sign);
       cnf.add_clause({unit_lit});
       verb_print(2, "[par] Thread " << num << " fixing var " << var
@@ -267,24 +242,22 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     }
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
-    if (true) run_arjun(cnf);
-    if (cnf.get_multiplier_weight() != thread_fg->zero()) {
+    run_arjun(cnf);
+    FF ret = cnf.get_multiplier_weight()->dup();
+    if (!cnf.get_multiplier_weight()->is_zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
       auto counter = std::make_unique<Ganak>(local_conf, thread_fg);
       setup_ganak(cnf, *counter);
-      auto ret = counter->count();
+      *ret *= *counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();
       {
         std::lock_guard<std::mutex> lock(stats_mutex);
         max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
         count_is_approximate |= counter->get_is_approximate();
       }
-      *ret *= *cnf.get_multiplier_weight();
-      return ret;
-    } else {
-      return thread_fg->zero();
     }
+    return ret;
   };
 
   // Thread pool: maintain at most max_concurrent active threads

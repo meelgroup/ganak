@@ -31,40 +31,12 @@ CounterConfiguration conf;
 ArjunNS::SimpConf simp_conf;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 
-vector<Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
-  vector<Lit> ganak_cl; ganak_cl.reserve(cl.size());
-  for(const auto& l: cl) ganak_cl.push_back(Lit(l.var()+1, !l.sign()));
-  return ganak_cl;
-}
-
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
   arjun.set_verb(0);
   arjun.standalone_minimize_indep(cnf, false);
   assert(!etof_conf.all_indep);
   arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
-}
-
-void setup_ganak(const ArjunNS::SimplifiedCNF& cnf, Ganak& counter) {
-  counter.new_vars(cnf.nVars());
-  set<uint32_t> tmp;
-  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
-  counter.set_indep_support(tmp);
-  if (cnf.get_opt_sampl_vars_set()) {
-    tmp.clear();
-    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
-    counter.set_optional_indep_support(tmp);
-  }
-  if (cnf.get_weighted()) {
-    for(const auto& t: cnf.get_weights()) {
-      counter.set_lit_weight(Lit(t.first+1, false), t.second.pos);
-      counter.set_lit_weight(Lit(t.first+1, true), t.second.neg);
-    }
-  }
-
-  // Add clauses
-  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
-  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
 }
 
 constexpr CMSat::Lit mklit(int lit) {

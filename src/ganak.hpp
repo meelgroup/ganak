@@ -52,6 +52,39 @@ public:
   void print_indep_distrib() const;
   uint64_t get_num_cache_lookups() const;
   uint64_t get_max_cache_elems() const;
+
 private:
   std::unique_ptr<CDat> cdat;
 };
+
+
+inline std::vector<GanakInt::Lit> cms_to_ganak_cl(const std::vector<CMSat::Lit>& cl) {
+  std::vector<GanakInt::Lit> ganak_cl; ganak_cl.reserve(cl.size());
+  for(const auto& l: cl) ganak_cl.push_back(GanakInt::Lit(l.var()+1, !l.sign()));
+  return ganak_cl;
+}
+
+template<class T, class T2>
+void setup_ganak(const T2& cnf, T& counter) {
+  cnf.check_cnf_sampl_sanity();
+  counter.new_vars(cnf.nVars());
+
+  std::set<uint32_t> tmp;
+  for(auto const& s: cnf.get_sampl_vars()) tmp.insert(s+1);
+  counter.set_indep_support(tmp);
+  if (cnf.get_opt_sampl_vars_set()) {
+    tmp.clear();
+    for(auto const& s: cnf.get_opt_sampl_vars()) tmp.insert(s+1);
+  }
+  counter.set_optional_indep_support(tmp);
+
+  if (cnf.get_weighted()) {
+    for(const auto& t: cnf.get_weights()) {
+      counter.set_lit_weight(GanakInt::Lit(t.first+1, true), t.second.pos);
+      counter.set_lit_weight(GanakInt::Lit(t.first+1, false), t.second.neg);
+    }
+  }
+
+  for(const auto& cl: cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
+  for(const auto& cl: cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));
+}

@@ -242,12 +242,14 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   }
 
   auto worker = [&](uint64_t num) -> FF {
-    ArjunNS::SimplifiedCNF cnf(fg);
+    // Each thread needs its own FieldGen copy: fg may have mutable internal state
+    FG thread_fg = fg->dup();
+    ArjunNS::SimplifiedCNF cnf(thread_fg);
     cnf.new_vars(nvars);
     // Opt indep support is needed for literals with weights
     cnf.set_sampl_vars(ganak_to_cms_vars(indep_support));
     /* cnf.set_opt_sampl_vars(ganak_to_cms_vars(opt_indep_support)); */
-    if (fg->weighted()) {
+    if (thread_fg->weighted()) {
       cnf.set_weighted(true);
       for (const auto& [lit, weight] : lit_weights)
         cnf.set_lit_weight(ganak_to_cms_lit(lit), weight->dup());
@@ -266,10 +268,10 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
     if (true) run_arjun(cnf);
-    if (cnf.get_multiplier_weight() != fg->zero()) {
+    if (cnf.get_multiplier_weight() != thread_fg->zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
-      auto counter = std::make_unique<Ganak>(local_conf, fg);
+      auto counter = std::make_unique<Ganak>(local_conf, thread_fg);
       setup_ganak(cnf, *counter);
       auto ret = counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();
@@ -281,7 +283,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       *ret *= *cnf.get_multiplier_weight();
       return ret;
     } else {
-      return fg->zero();
+      return thread_fg->zero();
     }
   };
 

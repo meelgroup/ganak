@@ -957,10 +957,19 @@ void Counter::fix_weights() {
     return;
   }
 
-  all_lits(i) {
-    Lit l(i/2, i%2 == 0);
-    if (l.var() >= opt_indep_support_end) break;
-    if (get_weight(l) ==  nullptr) weights[l.raw()] = fg->one();
+  for (uint32_t v = 1; v < opt_indep_support_end; v++) {
+    FF& w0 = weights[Lit(v, false).raw()];
+    FF& w1 = weights[Lit(v, true).raw()];
+    if (w0 == nullptr && w1 == nullptr) {
+      w0 = fg->one();
+      w1 = fg->one();
+    } else if (w0 == nullptr) {
+      w0 = fg->one();
+      *w0 -= *w1;
+    } else if (w1 == nullptr) {
+      w1 = fg->one();
+      *w1 -= *w0;
+    }
   }
   for(uint32_t v = 1; v < indep_support_end; v++) {
     var_weights[v] = get_weight(Lit(v, false))->dup();

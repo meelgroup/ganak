@@ -50,7 +50,7 @@ struct CDat {
   uint64_t max_cache_elems = 0;
 };
 
-vector<vector<uint32_t>> find_disconnected(const CDat& dat);
+static vector<vector<uint32_t>> find_disconnected(const CDat& dat);
 
 DLL_PUBLIC Ganak::Ganak(CounterConfiguration& conf, FG& fg) :
     cdat(std::make_unique<CDat>()) {

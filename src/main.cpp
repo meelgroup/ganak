@@ -515,7 +515,7 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
 
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.get_multiplier_weight()->dup();
-    if (!cnf.get_multiplier_weight()->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
+    if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 

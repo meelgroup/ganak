@@ -241,7 +241,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       cnf.add_red_clause(ganak_to_cms_cl(cl));
     run_arjun(cnf);
     FF ret = cnf.get_multiplier_weight()->dup();
-    if (!cnf.get_multiplier_weight()->is_zero()) {
+    if (!ret->is_zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
       auto counter = std::make_unique<Ganak>(local_conf, thread_fg);

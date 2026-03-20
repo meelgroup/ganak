@@ -174,13 +174,8 @@ public:
   }
   auto get_indep_support_end() const { return indep_support_end; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
-  const auto& get_var_data(uint32_t v) const { return var_data[v]; }
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_trail(bool check_entail = true, bool check_anything = true) const;
-  void bump_stamp() {
-    decisions[dec_level()].tstamp = ++tstamp;
-    debug_print("updating tstamp, dec_level: " << dec_level() << " tstamp: " << tstamp);
-  }
   const FG& get_fg() const { return fg; }
   const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
@@ -360,6 +355,10 @@ private:
   vector<double> tdscore;
   double td_weight = 1.0;
   uint64_t tstamp = 10;
+  void bump_stamp() {
+    decisions[dec_level()].tstamp = ++tstamp;
+    debug_print("updating tstamp, dec_level: " << dec_level() << " tstamp: " << tstamp);
+  }
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
   vector<Lit>::iterator top_declevel_trail_begin();

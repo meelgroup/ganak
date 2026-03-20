@@ -148,7 +148,7 @@ public:
   void print_indep_distrib() const;
   bool add_irred_cl(const vector<Lit>& lits);
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
-  void end_irred_cls();
+  void init_and_preproc();
   void set_lit_weight(Lit l, const FF& w);
   FF outer_count();
   uint64_t get_tstamp() const { return tstamp; }
@@ -225,7 +225,6 @@ private:
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
   inline bool add_bin_cl(Lit a, Lit b, bool red);
-  bool ended_irred_cls = false; // indicates if we have called end_irred_cls()
 
   // DNF Cube stuff
   bool restart_if_needed();

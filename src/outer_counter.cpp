@@ -94,7 +94,6 @@ FF OuterCounter::count_regular() {
   counter->set_generators(generators);
 
   for(const auto& cl : irred_cls) counter->add_irred_cl(cl);
-  counter->end_irred_cls();
   for(const auto& p : red_cls) counter->add_red_cl(p.first, (int)p.second);
   auto ret = counter->outer_count();
 

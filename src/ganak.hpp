@@ -39,7 +39,6 @@ public:
   ~Ganak();
   void new_vars(const uint32_t n);
   bool add_irred_cl(const std::vector<GanakInt::Lit>& lits);
-  void end_irred_cls();
 
   void set_indep_support(const std::set<uint32_t>& indeps);
   void set_generators(const std::vector<std::map<GanakInt::Lit, GanakInt::Lit>>& _gens);

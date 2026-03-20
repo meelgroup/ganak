@@ -534,7 +534,6 @@ FF Counter::check_count_norestart(const Cube& c) {
   deal_with_irred_cls(c, [&](const vector<Lit>& tmp) {
     test_cnt.add_irred_cl(tmp);
   });
-  test_cnt.end_irred_cls();
   return test_cnt.outer_count();
 }
 
@@ -972,7 +971,7 @@ void Counter::fix_weights() {
 
 FF Counter::outer_count() {
   if (!ok) return fg->zero();
-  fix_weights();
+  init_and_preproc();
 
   auto cnt = fg->zero();
   Timer t;
@@ -1056,7 +1055,6 @@ FF Counter::outer_count() {
     }
     decisions.clear();
 
-    end_irred_cls();
     if (!done && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
       double my_time = cpu_time();
       vivify_all(true, true);
@@ -1078,7 +1076,6 @@ FF Counter::outer_count() {
 }
 
 vector<Cube> Counter::one_restart_count() {
-  release_assert(ended_irred_cls && "ERROR *must* call end_irred_cls() before solve()");
   if (indep_support_end == std::numeric_limits<uint32_t>::max()) {
     indep_support_end = nVars()+1;
     opt_indep_support_end = nVars()+1;
@@ -4125,7 +4122,8 @@ bool Counter::clause_falsified(const T2& cl) const {
   return true;
 }
 
-void Counter::end_irred_cls() {
+void Counter::init_and_preproc() {
+  fix_weights();
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
@@ -4135,7 +4133,6 @@ void Counter::end_irred_cls() {
 
   init_decision_stack();
   simple_preprocess();
-  ended_irred_cls = true;
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc, long_irred_cls);

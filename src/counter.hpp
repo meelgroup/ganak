@@ -266,6 +266,7 @@ private:
 #endif
 
   // Weights
+  void fix_weights();
   uint64_t vars_act_dec_num = 0;
   vector<FF> weights;
   vector<FF> var_weights;
@@ -493,7 +494,7 @@ inline void Counter::unset_lit(Lit lit) {
   VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
   SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
   var(lit).ante = Antecedent();
-  if (weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
+  if (weighted() && !sat_mode() && lit.var() < opt_indep_support_end && !get_weight(lit)->is_zero()) {
     uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
     bool in_comp = (at[0] == at[lit.var()]);
     if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));

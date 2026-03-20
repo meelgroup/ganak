@@ -951,8 +951,28 @@ FF Counter::count_using_cms() {
   return cnt;
 }
 
+void Counter::fix_weights() {
+  if (!weighted()) {
+    for(const auto& w: var_weights) release_assert(w == nullptr);
+    for(const auto& w: weights) release_assert(w == nullptr);
+    return;
+  }
+
+  all_lits(i) {
+    Lit l(i/2, i%2 == 0);
+    if (l.var() >= opt_indep_support_end) break;
+    if (get_weight(l) ==  nullptr) weights[l.raw()] = fg->one();
+  }
+  for(uint32_t v = 1; v < indep_support_end; v++) {
+    var_weights[v] = get_weight(Lit(v, false))->dup();
+    *var_weights[v] += *get_weight(Lit(v, true));
+  }
+}
+
 FF Counter::outer_count() {
   if (!ok) return fg->zero();
+  fix_weights();
+
   auto cnt = fg->zero();
   Timer t;
   // Thresholds: if less than appmc_min_time_thresh seconds remain,
@@ -1836,7 +1856,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
               *cube_cnt *= *get_weight(Lit(i+1, s2.get_model()[i] == CMSat::l_True));
             }
           }
-          VERBOSE_DEBUG_DO(cout << *cube_cnt << " + ";);
+          //VERBOSE_DEBUG_DO(cout << *cube_cnt << " + ";);
           *cnt += *cube_cnt;
         }
 
@@ -4049,7 +4069,7 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   trail.push_back(lit);
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
-  if (weighted() && dec_lev <= dec_level() && !get_weight(lit)->is_one()) {
+  if (weighted() && dec_lev <= dec_level() && lit.var() < opt_indep_support_end && !get_weight(lit)->is_one()) {
     int32_t until = decisions.size();
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
@@ -4338,9 +4358,7 @@ void Counter::new_vars(const uint32_t n) {
   if (weighted()) {
     sat_solution.resize(n+1);
     weights.resize(2*(n + 1));
-    for(auto& w: weights) w = fg->one();
     var_weights.resize(n + 1);
-    for(auto& w: var_weights) w = two->dup();
   }
   num_vars_set = true;
 }
@@ -4455,9 +4473,7 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
     exit(EXIT_FAILURE);
   }
   verb_print(2, "Setting weight of " << l << " to " << *w);
-  *weights[l.raw()] = *w;
-  var_weights[l.var()] = weights[l.raw()]->dup();
-  *var_weights[l.var()] += *weights[l.neg().raw()];
+  weights[l.raw()] = w->dup();
   if (w->is_zero()) {
     add_irred_cl({l.neg()});
     verb_print(3, "Weight is zero, adding clause: " << l.neg());

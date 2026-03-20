@@ -967,6 +967,7 @@ void Counter::fix_weights() {
     var_weights[v] = get_weight(Lit(v, false))->dup();
     *var_weights[v] += *get_weight(Lit(v, true));
   }
+  VERBOSE_DEBUG_DO("Fixed weights via " __func__);
 }
 
 FF Counter::outer_count() {
@@ -2016,7 +2017,7 @@ RetState Counter::backtrack() {
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < dec_level()) {
             Lit l(*it, val(*it) == T_TRI);
-            if (!get_weight(l)->is_one()) {
+            if (l.var() < opt_indep_support_end && !get_weight(l)->is_one()) {
               debug_print(COLYEL2 << "MULT STORE var: " << setw(3) << *it
                 << " val: " << val_to_str(val(*it))
                 << " dec lev: " << var(*it).decision_level);

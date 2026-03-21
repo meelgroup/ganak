@@ -50,13 +50,12 @@ public:
   ~CompManager() {
     for(auto& comp: comp_stack) free(comp);
     comp_stack.clear();
-    fg.reset();
   }
 
   auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
-  auto& get_cache() const { return cache; }
+  const auto& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
 
   void save_count(const uint64_t stack_comp_id, const FF& value) {

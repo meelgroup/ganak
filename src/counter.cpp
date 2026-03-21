@@ -4131,8 +4131,50 @@ bool Counter::clause_falsified(const T2& cl) const {
   return true;
 }
 
+void Counter::check_red_cls_deriveable() const {
+  auto debug_sat = std::make_unique<CMSat::SATSolver>();
+  debug_sat->set_prefix("c o ");
+  debug_sat->new_vars(nVars());
+  for(const auto& cl: debug_irred_cls) debug_sat->add_clause(ganak_to_cms_cl(cl));
+
+  auto check = [](CMSat::lbool ret, const vector<CMSat::Lit>& cl) {
+    assert(ret != CMSat::l_Undef);
+    if (ret != CMSat::l_False) {
+      cout << "ERROR: clause: " << cl << " is not deriveable from irredundant clauses!" << endl;
+      cout << "       did you inject a redundant clause that is not a consequence of irredundant clauses?" << endl;
+      exit(EXIT_FAILURE);
+    }
+  };
+
+  // Long clauses
+  for(const auto& offs: long_red_cls) {
+    const auto& cl = *alloc->ptr(offs);
+    vector<CMSat::Lit> cms_cl= ganak_to_cms_cl(cl);
+    vector<CMSat::Lit> assumps;
+    assumps.reserve(cms_cl.size());
+    for(const auto& l: cms_cl) assumps.push_back(~l);
+    auto ret = debug_sat->solve(&assumps);
+    check(ret, cms_cl);
+  }
+
+  // binary clauses
+  all_lits(x) {
+    Lit l(x/2, x%2);
+    for(const auto& ws: watches[l].binaries) {
+      if (ws.irred() || ws.lit() < l) continue;
+      vector<CMSat::Lit> cms_cl = ganak_to_cms_cl(vector<Lit>{l, ws.lit()});
+      vector<CMSat::Lit> assumps;
+      assumps.reserve(cms_cl.size());
+      for(const auto& l2: cms_cl) assumps.push_back(~l2);
+      auto ret = debug_sat->solve(&assumps);
+      check(ret, cms_cl);
+    }
+  }
+}
+
 void Counter::init_and_preproc() {
   fix_weights();
+  VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;

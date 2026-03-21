@@ -60,7 +60,7 @@ DLL_PUBLIC Ganak::Ganak(CounterConfiguration& conf, FG& fg) :
 
 DLL_PUBLIC Ganak::~Ganak() = default;
 
-DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
+DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_threads) {
   auto cnt = cdat->fg->one();
 
   // Check for empty clause
@@ -167,7 +167,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads) {
     for(const auto& cl: sub_c.irred_cls) out_cnt.add_irred_cl(cl);
     for(const auto& p: sub_c.red_cls) out_cnt.add_red_cl(p.first, p.second);
     if (sub_c.conf.verb && cdat->print_indep_distrib) out_cnt.print_indep_distrib();
-    auto ret = out_cnt.count(bits_jobs, num_threads);
+    auto ret = out_cnt.count(bits_jobs, num_threads, debug_threads);
     *cnt *= *ret;
     if (sub_c.conf.verb) cout << "c o intermediate count: " << *ret << endl;
     cdat->is_approximate |= out_cnt.get_is_approximate();

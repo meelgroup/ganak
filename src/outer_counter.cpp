@@ -65,7 +65,7 @@ inline vector<CMSat::Lit> ganak_to_cms_cl(const vector<GanakInt::Lit>& cl) {
   return cms_cl;
 }
 
-FF OuterCounter::count(uint8_t bits_jobs, int num_threads) {
+FF OuterCounter::count(uint8_t bits_jobs, int num_threads, const bool debug_threads) {
   verb_print(2, "[par] bits_jobs: " << (uint32_t)bits_jobs);
   verb_print(2, "[par] num_threads: " << (uint32_t)num_threads);
   verb_print(2, "[par] TD: " << (conf.do_td ? "enabled" : "disabled"));
@@ -73,7 +73,7 @@ FF OuterCounter::count(uint8_t bits_jobs, int num_threads) {
   verb_print(2, "[par] Independent support size: " << indep_support.size());
   verb_print(2, "[par] TD variable limit: " << conf.td_varlim);
   verb_print(2, "[par] AppMC timeout: " << conf.appmc_timeout);
-  if ((num_threads > 1 || num_threads == -1) &&
+  if ((debug_threads || num_threads > 1 || num_threads == -1) &&
       bits_jobs > 0 && conf.do_td && nvars > 30 && indep_support.size() > 10 &&  nvars <= conf.td_varlim && conf.appmc_timeout < 0) {
     verb_print(1, "[par] Attempting parallel counting with bits_jobs: " << bits_jobs
         << ", num_threads: " << (uint32_t)num_threads);

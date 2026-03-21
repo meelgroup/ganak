@@ -135,8 +135,11 @@ int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
 FG fg = nullptr;
+
+// threads
 int num_threads = 1;
 int bits_jobs = 10;
+int debug_threads = 0;
 
 // mode
 int mode = 0;
@@ -311,6 +314,7 @@ void add_ganak_options()
     // Multi-threading options
     add_arg("--threads", num_threads, fc_int, "Number of threads to use. -1 = all available cores");
     add_arg("--bitsjobs", bits_jobs, fc_int, "Number of variables to multi-thread on (8 = 256 jobs)");
+    add_arg("--debugthreads", debug_threads, fc_int, "Debug threads -- use thread system, even though only one thread is allowed");
     program.add_argument("inputfile").remaining().help("input CNF");
 
     // Minor options
@@ -350,6 +354,10 @@ void parse_supported_options(int argc, char** argv) {
     }
     if (num_threads == 0) {
       cout << "ERROR: number of threads must not be 0" << endl;
+      exit(EXIT_FAILURE);
+    }
+    if (debug_threads > 0 && num_threads > 1) {
+      cout << "ERROR: threads cannot be debugged when num_threads is more than 1" << endl;
       exit(EXIT_FAILURE);
     }
     if (mpfr_precision < 2) {
@@ -515,7 +523,7 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
 
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.get_multiplier_weight()->dup();
-    if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads);
+    if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 

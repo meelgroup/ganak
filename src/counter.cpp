@@ -2180,6 +2180,10 @@ void Counter::go_back_to(int32_t backj) {
 }
 
 void Counter::check_trail([[maybe_unused]] bool check_entail) const {
+  if (decisions.empty()) {
+    assert(trail.empty());
+    return; // root level before any decisions, nothing to check
+  }
   vector<uint32_t> num_decs_at_level(dec_level()+1, 0);
   bool entailment_fail = false;
   for(const auto& t: trail) {
@@ -2505,8 +2509,8 @@ bool Counter::propagate(bool out_of_order) {
   VERY_SLOW_DEBUG_DO(
       if (confl.isNull()) check_trail();
       if (confl.isNull() && !check_watchlists()) {
-      print_trail(false, false);
-      assert(false);
+        print_trail(false, false);
+        assert(false);
     });
   CHECK_PROPAGATED_DO(if (confl.isNull()) check_all_propagated_conflicted());
   debug_print("After propagate, qhead is: " << qhead << " conflict: " << std::boolalpha << !confl.isNull());

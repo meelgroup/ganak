@@ -1832,7 +1832,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     debug_print("dec lev: " << dec_level());
     VERBOSE_DEBUG_DO(if (!trail.empty()) cout << "top dec lit: " << top_dec_lit() << endl;);
     CMSat::SATSolver s2;
-    CMSat::copy_solver_to_solver(sat_solver, &s2);
+    CMSat::copy_solver_to_solver(sat_solver.get(), &s2);
     int32_t last_dec_lev = -1;
     for(const auto& t: trail) {
       last_dec_lev = std::max(last_dec_lev, var(t.var()).decision_level);
@@ -4178,15 +4178,14 @@ void Counter::init_and_preproc() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
-
-  delete comp_manager;
-  comp_manager = new CompManager(conf, stats, values, this);
+  assert(comp_manager == nullptr);
+  comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
 
   init_decision_stack();
   simple_preprocess();
 
   // This below will initialize the disjoint component analyzer (ana)
-  comp_manager->initialize(watches, alloc, long_irred_cls);
+  comp_manager->initialize(watches, alloc.get(), long_irred_cls);
 }
 
 #ifdef BUDDY_ENABLED
@@ -4206,9 +4205,9 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     , stats(_conf, _fg)
     , mtrand(_conf.seed)
     , order_heap(VarOrderLt(Counter::watches)) {
-  sat_solver = new CMSat::SATSolver;
+  sat_solver = std::make_unique<CMSat::SATSolver>();
   sat_solver->set_prefix("c o ");
-  alloc = new ClauseAllocator(_conf);
+  alloc = std::make_unique<ClauseAllocator>(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
   two = fg->one();
   *two += *fg->one();
@@ -4222,10 +4221,7 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
 }
 
 Counter::~Counter() {
-  delete comp_manager;
   BUDDY_DO(if (conf.do_buddy) bdd_done());
-  delete alloc;
-  delete sat_solver;
 }
 
 void Counter::simple_preprocess() {
@@ -4297,7 +4293,7 @@ bool Counter::find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off)  con
 }
 
 struct ClSorter {
-  ClSorter(ClauseAllocator* _alloc, uint32_t _lbd_cutoff) :
+  ClSorter(std::unique_ptr<ClauseAllocator> const& _alloc, uint32_t _lbd_cutoff) :
     alloc(_alloc), lbd_cutoff(_lbd_cutoff) {}
 
   bool operator()(ClauseOfs& a, ClauseOfs& b) const {
@@ -4309,7 +4305,7 @@ struct ClSorter {
     if (ah.used != bh.used) return ah.used > bh.used;
     return ah.total_used > bh.total_used;
   }
-  ClauseAllocator* alloc;
+  std::unique_ptr<ClauseAllocator> const& alloc;
   const uint32_t lbd_cutoff;
 };
 

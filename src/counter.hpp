@@ -189,8 +189,8 @@ private:
   DataAndStatistics stats;
   bool num_vars_set = false;
   std::mt19937_64 mtrand;
-  CMSat::SATSolver* sat_solver = nullptr;
-  CompManager* comp_manager = nullptr;
+  std::unique_ptr<CMSat::SATSolver> sat_solver;
+  std::unique_ptr<CompManager> comp_manager;
   FF count_using_cms();
 
   // ReduceDB
@@ -296,7 +296,7 @@ private:
   int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
   friend class ClauseAllocator;
-  ClauseAllocator* alloc;
+  std::unique_ptr<ClauseAllocator> alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> long_red_cls;
   bool run_sat_solver(RetState& state);

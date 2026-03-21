@@ -42,7 +42,7 @@ std::ostream& operator<<(std::ostream& os, const ClData& d)
 // this sets up unif_occ
 void CompAnalyzer::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
-    const ClauseAllocator* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
+    ClauseAllocator const* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);

@@ -127,7 +127,7 @@ public:
   const CompArchetype& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
-      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
+      ClauseAllocator const* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool var_unvisited_in_sup_comp(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var));

@@ -100,7 +100,10 @@ FF OuterCounter::count_regular() {
   assert(num_cache_lookups == 0);
   assert(max_cache_elems == 0);
   num_cache_lookups = counter->get_stats().num_cache_look_ups;
-  max_cache_elems = counter->get_cache()->get_max_num_entries();
+  // if CNF is UNSAT, we early exit, and cache is not initialized, so we need this check
+  if (counter->has_comp_manager()) {
+    max_cache_elems = counter->get_cache()->get_max_num_entries();
+  }
   count_is_approximate |= counter->get_is_approximate();
   return ret;
 }
@@ -244,6 +247,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     if (!ret->is_zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
+      cnf.write_simpcnf("simp.cnf");
       auto counter = std::make_unique<Ganak>(local_conf, thread_fg);
       setup_ganak(cnf, *counter);
       *ret *= *counter->count();

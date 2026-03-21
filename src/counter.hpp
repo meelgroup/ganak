@@ -165,6 +165,7 @@ public:
   uint32_t nVars() const { return var_data.size() - 1; }
   double get_start_time() const { return start_time;}
   const auto& get_cache() const { return comp_manager->get_cache();}
+  bool has_comp_manager() const { return comp_manager != nullptr; }
   void set_generators(const vector<std::map<Lit, Lit>>& _gens) { generators = _gens; }
 
   const FF& get_weight(const Lit& l) const { return weights[l.raw()];}

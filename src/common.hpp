@@ -136,7 +136,6 @@ constexpr bool must_check_count = false;
 #define debug_print(x) do {} while(0)
 #define debug_print_noendl(x) do {} while (0)
 #endif
-#define debug_print_tmp(x) std::cout << COLDEF << x << COLDEF << endl
 
 #define all_vars_in_comp(comp, v) for(auto v = (comp).vars_begin(); *v != sentinel; v++)
 #define all_cls_in_comp(comp, c) for(auto c = (comp).cls_begin(); *c != sentinel; c++)

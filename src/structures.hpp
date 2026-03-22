@@ -40,6 +40,7 @@ using CacheEntryID = uint32_t;
 using TriValue = uint8_t;
 
 constexpr uint32_t sentinel = 0;
+constexpr uint32_t LBD_MAX = 100;
 constexpr int32_t INVALID_DL = -1;
 constexpr uint8_t F_TRI = 0;
 constexpr uint8_t T_TRI = 1;
@@ -58,7 +59,7 @@ struct ClOffsBlckL {
   }
 
   bool operator!=(const ClOffsBlckL& other) const {
-    return !(this->operator==(other));
+    return !(*this == other);
   }
 };
 
@@ -83,9 +84,9 @@ public:
   double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
-    for (auto it = watch_list_.begin(); it != watch_list_.end(); it++) {
-      if (it->ofs == offs) {
-        *it = watch_list_.back();
+    for (auto& w : watch_list_) {
+      if (w.ofs == offs) {
+        w = watch_list_.back();
         watch_list_.pop_back();
         return;
       }
@@ -189,7 +190,7 @@ struct Cube {
   FF cnt = nullptr;
   bool enabled = true;
   bool symm = false;
-  uint32_t lbd = 100;
+  uint32_t lbd = LBD_MAX;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
@@ -226,7 +227,7 @@ public:
   auto size() const { return sz; }
   void resize(const uint32_t sz2) {sz = sz2;}
   void update_lbd(uint32_t _lbd) {
-    if (_lbd > 100) return;
+    if (_lbd > LBD_MAX) return;
     if (_lbd < lbd) lbd = _lbd;
   }
   Lit const* data() const {

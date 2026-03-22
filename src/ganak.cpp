@@ -145,9 +145,9 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
         << sub_c.indeps.size() << " independent vars, "
         << sub_c.opt_indeps.size() << " optional independent vars" << endl;
 
-    if (sub_c.indeps.size() == 0) sub_c.conf.verb = 0;
-    if (sub_c.indeps.size() == 0 && sub_c.irred_cls.size() == 0) continue;
-    if (sub_c.indeps.size() == 0 && sub_c.irred_cls.size() < 10) {
+    if (sub_c.indeps.empty()) sub_c.conf.verb = 0;
+    if (sub_c.indeps.empty() && sub_c.irred_cls.empty()) continue;
+    if (sub_c.indeps.empty() && sub_c.irred_cls.size() < 10) {
       assert(!sub_c.irred_cls.empty());
       bool all_same = true;
       auto one = sub_c.irred_cls[0];

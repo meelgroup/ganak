@@ -950,10 +950,6 @@ void Counter::fix_weights() {
 
 FF Counter::outer_count() {
   fix_weights();
-  VERY_SLOW_DEBUG_DO(
-      check_cls_deriveable();
-      check_opt_sampling_determined();
-  );
   if (!ok) return fg->zero();
 
   auto cnt = fg->zero();
@@ -1053,7 +1049,7 @@ void Counter::toplevel_vivify_subsume_fullprobe() {
     if (conf.do_vivify &&
         stats.num_restarts % conf.vivif_outer_every_n == 0 && stats.num_restarts > 0) {
       double my_time = cpu_time();
-      init_and_preproc();
+      init_and_preproc(); // TODO this sets up component analysis, but that's not really needed
 
       // Now vifif, subsume, and full prob
       vivify_all(true, true);
@@ -1080,7 +1076,7 @@ vector<Cube> Counter::one_restart_count() {
   return mini_cubes;
 }
 
-void Counter::print_all_levels() {
+void Counter::print_all_levels() const {
   cout << COLORG "--- going through all decision levels now, printing comps --" << endl;
   uint32_t dec_lev = 0;
   for(const auto& s: decisions) {
@@ -1143,7 +1139,7 @@ void Counter::count_loop() {
   RetState state = RESOLVED;
 
   while (true) {
-    VERY_SLOW_DEBUG_DO(
+    CHECK_PROPAGATED_DO(
         check_trail(true, true);
         check_all_propagated_conflicted();
     );
@@ -1182,7 +1178,7 @@ void Counter::count_loop() {
         assert(false);
         exit(EXIT_FAILURE);
       }
-      VERY_SLOW_DEBUG_DO(
+      CHECK_PROPAGATED_DO(
           check_trail(true, true);
           check_all_propagated_conflicted();
       );
@@ -4150,6 +4146,54 @@ bool Counter::clause_falsified(const T2& cl) const {
   return true;
 }
 
+void Counter::dump_current_state(const std::string fname) {
+  std::ofstream out(fname);
+  vector<array<Lit, 2>> bin_cls;
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    for(const auto& ws: watches[lit].binaries) {
+      if (ws.red() || ws.lit() < lit) continue;
+      bin_cls.push_back({lit, ws.lit()});
+    }
+  }
+
+  out << "p cnf " << nVars() << " "
+    << long_irred_cls.size() + long_red_cls.size() + unit_cls.size() + bin_cls.size()
+    << endl;
+  out << "c p show ";
+  for(uint32_t i = 1; i < indep_support_end; i++) out << i << " ";
+  out << "0" << endl;
+  out << "c p optshow ";
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) out << i << " ";
+  out << "0" << endl;
+
+  if (weighted()) {
+    for(uint32_t i = 1; i < opt_indep_support_end; i++) {
+      out << "c p weight " << i << " " << *get_weight(Lit(i, true)) << endl;
+      out << "c p weight " << i << " " << *get_weight(Lit(i, false)) << endl;
+    }
+  }
+
+
+  for(const auto& t: unit_cls) {
+    out << t << " 0" << endl;
+  }
+  for(const auto& bin: bin_cls) {
+    out << bin[0] << " " << bin[1] << " 0" << endl;
+  }
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    for(const auto& l: cl) out << l << " ";
+    out << "0" << endl;
+  }
+  out << "c trail below" << endl;
+  for(const auto& t: trail) {
+    if (val(t) == T_TRI) out << t << " 0" << endl;
+    else if (val(t) == F_TRI) out << t.neg() << " 0" << endl;
+  }
+  debug_print("Dumped current state to file, with trail: " << fname);
+}
+
 void Counter::check_opt_sampling_determined() const {
   ArjunNS::SimplifiedCNF cnf(fg);
   cnf.new_vars(nVars());
@@ -4238,7 +4282,10 @@ void Counter::check_cls_deriveable() const {
 #endif
 
 void Counter::init_and_preproc() {
-  VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
+  VERY_SLOW_DEBUG_DO(
+      check_cls_deriveable();
+      check_opt_sampling_determined();
+  );
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
@@ -4254,7 +4301,7 @@ void Counter::init_and_preproc() {
     assert(ret && "We ran CMS before, so it cannot be UNSAT");
   }
   verb_print(3, "[" << __func__ << "] finished.");
-  VERY_SLOW_DEBUG_DO(check_trail(true));
+  CHECK_PROPAGATED_DO(check_trail(true));
 }
 
 #ifdef BUDDY_ENABLED

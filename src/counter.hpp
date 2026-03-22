@@ -181,7 +181,7 @@ public:
   const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
   DataAndStatistics& get_stats() { return stats; }
-  uint32_t last_dec_candidates = 0;
+  uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
 private:
   FG fg;
@@ -246,9 +246,11 @@ private:
   void symm_cubes(vector<Cube>& cubes);
 
   //Debug stuff
+public:
+  void check_trail(bool check_entail = true, bool force_check_units = false) const;
+  void check_opt_sampling_determined() const;
   FF check_count_cms(const Cube& c);
   void check_cls_deriveable() const;
-  void check_opt_sampling_determined() const;
   FF check_count(const bool also_incl_curr_and_later_dec = false);
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
@@ -257,11 +259,11 @@ private:
   bool check_watchlists() const;
   template<class T2> void check_cl_propagated_conflicted(T2& cl, uint32_t off = 0) const;
   void check_all_propagated_conflicted() const;
-  void print_all_levels();
+  void print_all_levels() const;
   void check_cl_unsat(Lit* c, uint32_t size) const;
-  void check_trail(bool check_entail = true, bool force_check_units = false) const;
   bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
+  void dump_current_state(const std::string fname);
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif

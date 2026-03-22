@@ -192,6 +192,12 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
     if (v >= counter->get_indep_support_end()) {
+      cout << "nvars: " << counter->nVars() << endl;
+      cout << "indep_support_end: " << counter->get_indep_support_end() << endl;
+      cout << "opt_indep_support_end: " << counter->get_opt_indep_support_end() << endl;
+      counter->check_trail(true, true);
+      counter->check_opt_sampling_determined();
+      counter->dump_current_state("comp-analyzer-crash.cnf");
       release_assert(v >= counter->get_opt_indep_support_end() &&
           "Opt indep support MUST have been fully set by the indep support. Indep support"
           " is fully set now. This is wrong. Maybe your opt indep support is wrongly set?");

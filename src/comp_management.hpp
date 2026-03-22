@@ -98,6 +98,31 @@ public:
 
   void remove_cache_pollutions_of_if_exists(const StackLevel &top);
   void remove_cache_pollutions_of(const StackLevel &top);
+  // After outer vivification, clause content changes (literals removed) while
+  // clause IDs stay the same. This makes all cache entries stale (computed for
+  // a less-restrictive formula). Must call this to reset the cache.
+  void reinit_cache() {
+    assert(comp_stack.size() >= 2 && comp_stack[1] != nullptr);
+    cache->init(*comp_stack[1], hash_seed, bpc);
+  }
+
+  // After adding new irredundant clauses (e.g. cube blocking clauses between
+  // restarts), rebuild the component analyzer so it sees the new clauses.
+  // The stale ana.long_clauses_data would otherwise miss cross-component
+  // connections created by those new clauses, leading to incorrect component
+  // multiplication and wrong counts.
+  void reinit_after_new_irred_cls(const LiteralIndexedVector<LitWatchList>& watches,
+      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) {
+    ana.initialize(watches, alloc, long_irred_cls);
+    bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
+    // Rebuild initial full component with updated clause count and reinit cache.
+    assert(comp_stack.size() >= 2);
+    free(comp_stack[1]);
+    comp_stack[1] = reserve_comp_space(ana.get_max_var(), ana.get_max_clid());
+    comp_stack[1]->create_init_comp(ana.get_max_var(), ana.get_max_clid(),
+        std::numeric_limits<uint32_t>::max());
+    cache->init(*comp_stack[1], hash_seed, bpc);
+  }
   uint64_t hash_seed;
 
 private:

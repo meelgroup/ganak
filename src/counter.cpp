@@ -1062,13 +1062,29 @@ FF Counter::outer_count() {
           /* << " cnt: " << *it->cnt */
           );
     }
+    // Cube blocking clauses (added above via add_irred_cl) are long irred clauses
+    // not reflected in the comp analyzer's stale long_clauses_data snapshot.
+    // If they span multiple components they create cross-component dependencies
+    // that the component multiplier would miss, causing overcounting.
+    // Reinitialize the comp analyzer (and cache) so the new clauses are visible.
+    comp_manager->reinit_after_new_irred_cls(watches, alloc.get(), long_irred_cls);
+
+    // After restart_if_needed(), comp_stack retains level-0 subcomponents from the
+    // previous counting run (the restart loop only backtracks inner levels, never
+    // calling clean_remain_comps_of for level 0). Clean them before resetting
+    // decisions so that find_next_remain_comp_of calls record_remaining_comps_for
+    // correctly instead of seeing stale entries and skipping component analysis.
+    comp_manager->clean_remain_comps_of(decisions.front());
     decisions.clear();
     decisions.push_back(StackLevel(1, 2, true, tstamp, fg));
     decisions.back().change_to_right_branch();
 
     if (!done && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
       double my_time = cpu_time();
-      vivify_all(true, true);
+      bool vivif_modified = vivify_all(true, true);
+      // Vivification shortens clauses (same ID, different content), making all
+      // cached component counts stale. Reinit before next counting run.
+      if (vivif_modified) comp_manager->reinit_cache();
       subsume_all();
       toplevel_full_probe();
       verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpu_time() - my_time));
@@ -1222,7 +1238,8 @@ void Counter::count_loop() {
     assert(state != GO_AGAIN);
 
     if (conf.do_vivify) {
-      vivify_all();
+      bool vivif_modified = vivify_all();
+      if (vivif_modified) comp_manager->reinit_cache();
       bool ret = propagate();
       assert(ret);
     }
@@ -2646,8 +2663,8 @@ void Counter::vivif_setup() {
   assert(ret);
 }
 
-void Counter::vivify_all(bool force, bool only_irred) {
-  if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return;
+bool Counter::vivify_all(bool force, bool only_irred) {
+  if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return false;
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   double my_time = cpu_time();
@@ -2731,6 +2748,7 @@ void Counter::vivify_all(bool force, bool only_irred) {
       << " tout-red: " << (int)tout_red
       << " T: " << (cpu_time()-my_time));
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
+  return (stats.vivif_cl_minim > last_vivif_cl_minim);
 }
 
 template<class T2>

@@ -75,7 +75,7 @@ public:
 
   // called exactly once during lifetime of counter
   void init_data(uint32_t max_var_id, uint32_t max_cl_id) {
-    assert(tstamp == 0);
+    tstamp = 0; // reset so clear_data() starts fresh (allows reinit after new clauses)
     data_sz = max_var_id +1 + max_cl_id + 1;
     debug_print("Creating new data[] of size: " << data_sz << " and zeroing it.");
     raw_data = std::make_unique<uint64_t[]>(data_sz);

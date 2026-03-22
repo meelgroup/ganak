@@ -1062,6 +1062,10 @@ FF Counter::outer_count() {
           /* << " cnt: " << *it->cnt */
           );
     }
+    // Propagate any newly-added unit clauses (cube blocking may produce units).
+    // Must happen before vivify_all which checks all unit_cls are on the trail.
+    for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
+    if (!propagate()) { ok = false; break; }
     // Must be called BEFORE decisions.clear() — trims stale comp_stack entries
     // and rebuilds CompAnalyzer with new cube blocking clauses.
     comp_manager->reinit_after_new_irred_cls(watches, alloc.get(), long_irred_cls);

@@ -4143,6 +4143,7 @@ void Counter::check_opt_sampling_determined() const {
 
   ArjunNS::Arjun arjun;
   assert(arjun.standalone_check_extend(cnf));
+  verb_print(2, "[opt-sampling-check] All optimal independent variables are determined");
 }
 
 void Counter::check_red_cls_deriveable() const {
@@ -4201,6 +4202,7 @@ void Counter::init_and_preproc() {
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc.get(), long_irred_cls);
+  verb_print(3, "[" << __func__ << "] finished.");
 }
 
 #ifdef BUDDY_ENABLED

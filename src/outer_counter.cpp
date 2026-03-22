@@ -108,10 +108,10 @@ FF OuterCounter::count_regular() {
   return ret;
 }
 
-void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
+void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
   /* double my_time = cpu_time(); */
   ArjunNS::Arjun arjun;
-  arjun.set_verb(0);
+  arjun.set_verb(verb >= 3 ? verb : 0);
   /* arjun.set_or_gate_based(arjun_gates); */
   /* arjun.set_xor_gates_based(arjun_gates); */
   /* arjun.set_ite_gate_based(arjun_gates); */
@@ -242,12 +242,13 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     }
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
-    run_arjun(cnf);
+    run_arjun(cnf, 0);
     FF ret = cnf.get_multiplier_weight()->dup();
     if (!ret->is_zero()) {
       auto local_conf = conf;
-      local_conf.verb = 0; // disable verb for threads
+      local_conf.verb = conf.verb >= 3 ? conf.verb : 0;
       auto counter = std::make_unique<Ganak>(local_conf, thread_fg);
+      if (conf.verb >= 3) cnf.write_simpcnf("input_to_thread_" + std::to_string(num) + ".cnf");
       setup_ganak(cnf, *counter);
       *ret *= *counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();

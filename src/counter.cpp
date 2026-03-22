@@ -1013,6 +1013,7 @@ FF Counter::outer_count() {
   start_time = cpu_time();
   bool done = false;
   while(ret == CMSat::l_True) {
+    VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
     auto cubes = one_restart_count();
     if (cubes.size() == 1 && cubes[0].cnf.empty()) done = true;
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());

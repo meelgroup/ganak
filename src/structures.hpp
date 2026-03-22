@@ -54,13 +54,7 @@ struct ClOffsBlckL {
   ClauseOfs ofs;
   Lit blckLit;
 
-  bool operator==(const ClOffsBlckL& other) const {
-    return ofs == other.ofs && blckLit == other.blckLit;
-  }
-
-  bool operator!=(const ClOffsBlckL& other) const {
-    return !(*this == other);
-  }
+  bool operator==(const ClOffsBlckL& other) const = default;
 };
 
 struct BinCl {
@@ -162,13 +156,7 @@ struct Cube {
     symm = o.symm;
     lbd = o.lbd;
   }
-  Cube(Cube&& o) noexcept {
-    cnf = std::move(o.cnf);
-    cnt = std::move(o.cnt);
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
-  }
+  Cube(Cube&& o) noexcept = default;
   Cube& operator=(const Cube& o) noexcept {
     cnf = o.cnf;
     cnt = o.cnt->dup();
@@ -177,14 +165,7 @@ struct Cube {
     lbd = o.lbd;
     return *this;
   }
-  Cube& operator=(Cube&& o) noexcept {
-    cnf = std::move(o.cnf);
-    cnt = std::move(o.cnt);
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
-    return *this;
-  }
+  Cube& operator=(Cube&& o) noexcept = default;
   Cube(const std::vector<Lit>& _cnf, const FF& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt->dup()), symm(_symm) {}
   std::vector<Lit> cnf;
   FF cnt = nullptr;

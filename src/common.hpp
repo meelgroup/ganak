@@ -153,8 +153,7 @@ constexpr bool must_check_count = false;
 namespace GanakInt {
 
 constexpr double safe_div(double a, double b) {
-  if (b == 0) return 0;
-  else return a/b;
+  return b == 0 ? 0 : a/b;
 }
 
 inline std::string print_value_kilo_mega(const int64_t value, bool use_setw = true) {

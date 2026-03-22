@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <iomanip>
@@ -30,7 +31,6 @@ THE SOFTWARE.
 #include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
 
 #include "clauseallocator.hpp"
 #include "common.hpp"
@@ -231,8 +231,7 @@ private:
   vector<Lit> unit_cls;
   bool remove_duplicates(vector<Lit>& lits);
   bool exists_unit_cl_of(const Lit l) const {
-    for (const auto& l2 : unit_cls) if (l == l2) return true;
-    return false;
+    return std::ranges::find(unit_cls, l) != unit_cls.end();
   }
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
@@ -535,8 +534,7 @@ inline void Counter::print_cl(const Lit* c, uint32_t size) const {
 
 template<class T2>
 void Counter::print_cl(const T2& cl) const {
-  for(uint32_t i = 0; i < cl.size(); i ++) {
-    const auto l = cl[i];
+  for (const auto l : cl) {
     cout << std::left << std::setw(5) << l
       << " lev: " << std::setw(4) << var(l).decision_level
       << " ante: " << std::setw(5) << std::left << var(l).ante

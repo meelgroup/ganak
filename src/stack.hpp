@@ -251,20 +251,20 @@ public:
 class DecisionStack: public vector<StackLevel> {
 public:
 
-  const StackLevel& top() const{
-    assert(vector<StackLevel>::size() > 0);
+  const StackLevel& top() const {
+    assert(!empty());
     return vector<StackLevel>::back();
   }
 
-  StackLevel& top(){
-    assert(vector<StackLevel>::size() > 0);
+  StackLevel& top() {
+    assert(!empty());
     return vector<StackLevel>::back();
   }
 
   /// 0 means pre-1st-decision
   int32_t get_decision_level() const {
-    assert(vector<StackLevel>::size() > 0);
-    return (int)vector<StackLevel>::size() - 1;
+    assert(!empty());
+    return (int)size() - 1;
   }
 };
 

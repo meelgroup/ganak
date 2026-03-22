@@ -38,9 +38,6 @@ using std::set;
 
 namespace GanakInt {
 
-CMSat::Lit ganak_to_cms_lit(const GanakInt::Lit& l) {
-  return CMSat::Lit(l.var()-1, !l.sign());
-}
 
 GanakInt::Lit cms_to_ganak_lit(const CMSat::Lit& l) {
   return GanakInt::Lit(l.var()+1, !l.sign());

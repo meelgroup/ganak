@@ -816,16 +816,16 @@ void Counter::cube_strengthen_by_flp(vector<Cube>& cubes) {
       changed = false;
       for (uint32_t i = 0; i < c.cnf.size(); i++) {
         // Assumptions: model values for all other literals, opposite for i
-        // Blocking literal l = ¬(model_value). Model assumption = CMSat::Lit(var-1, l.sign()).
-        // Opposite-of-model assumption for l = CMSat::Lit(var-1, !l.sign()).
+        // Blocking literal l = ¬(model_value). Model assumption = ~ganak_to_cms_lit(l).
+        // Opposite-of-model assumption for l = ganak_to_cms_lit(l).
         vector<CMSat::Lit> ass;
         ass.reserve(c.cnf.size());
         for (uint32_t j = 0; j < c.cnf.size(); j++) {
           const Lit& lj = c.cnf[j];
           if (j == i)
-            ass.push_back(CMSat::Lit(lj.var()-1, !lj.sign())); // opposite of model
+            ass.push_back(ganak_to_cms_lit(lj)); // opposite of model
           else
-            ass.push_back(CMSat::Lit(lj.var()-1, lj.sign()));  // model assignment
+            ass.push_back(~ganak_to_cms_lit(lj));  // model assignment
         }
         if (sat_solver->solve(&ass) == CMSat::l_False) {
           // Opposite of model for c.cnf[i] is UNSAT → model value is forced → remove
@@ -1609,7 +1609,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
 
   // Get a solution
   vector<CMSat::Lit> ass; ass.reserve(c.cnf.size());
-  for(const auto&l: c.cnf) ass.push_back(CMSat::Lit(l.var()-1, l.sign()));
+  for(const auto&l: c.cnf) ass.push_back(~ganak_to_cms_lit(l));
   auto solution = sat_solver->solve(&ass);
   debug_print("cube solution: " << solution);
   if (solution == CMSat::l_False) return false;
@@ -1801,8 +1801,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     vector<CMSat::Lit> cl;
     for(const auto& t: trail) {
       if (var(t).decision_level == 0) {
-        cl.clear();
-        cl.push_back(CMSat::Lit(t.var()-1, t.sign()));
+        cl = { ~ganak_to_cms_lit(t) };
         auto ret = sat_solver->solve(&cl);
         if (ret != CMSat::l_False) {
           cout << "ERROR: unit " << t << " is not correct!!" << endl;
@@ -1827,8 +1826,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       }
       // don't include propagations or lev0 stuff
       if (!var(t).ante.isNull() || var(t).decision_level == 0) continue;
-      cl.clear();
-      cl.push_back(CMSat::Lit(t.var()-1, !t.sign()));
+      cl ={ ganak_to_cms_lit(t) };
       s2.add_clause(cl);
     }
     auto cnt = fg->zero();
@@ -2213,16 +2211,14 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_u
       if (!var(t).ante.isNull()) {
         CMSat::SATSolver s2;
         CMSat::copy_solver_to_solver(sat_solver.get(), &s2);
-        vector<CMSat::Lit> cl;
-        cl.push_back(CMSat::Lit(t.var()-1, t.sign())); //add opposite of implied
+        vector<CMSat::Lit> cl = { ~ganak_to_cms_lit(t) }; //add opposite of implied
         s2.add_clause(cl);
         int32_t this_lev = var(t).decision_level;
         for(const auto& t2: trail) {
           if (var(t2).ante.isNull() &&
               var(t2).decision_level <= this_lev &&
               var(t2).decision_level != 0) {
-            cl.clear();
-            cl.push_back(CMSat::Lit(t2.var()-1, !t2.sign())); // add all decisions (non-negated)
+            cl = { ganak_to_cms_lit(t2) }; // add all decisions (non-negated)
             s2.add_clause(cl);
           }
         }
@@ -2247,7 +2243,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_u
 bool Counter::is_implied(const vector<Lit>& cl) {
     assert(sat_solver);
     vector<CMSat::Lit> lits; lits.reserve(cl.size());
-    for(const auto& l: cl) lits.push_back(CMSat::Lit(l.var()-1, l.sign()));
+    for(const auto& l: cl) lits.push_back(~ganak_to_cms_lit(l));
     debug_print("to check lits: " << lits);
     auto ret = sat_solver->solve(&lits);
     debug_print("Ret: " << ret);
@@ -4158,7 +4154,7 @@ void Counter::dump_current_state(const std::string fname) const {
   }
 
   out << "p cnf " << nVars() << " "
-    << long_irred_cls.size() + unit_cls.size() + bin_cls.size()
+    << long_irred_cls.size() + unit_cls.size() + bin_cls.size()+trail.size()
     << endl;
   out << "c p show ";
   for(uint32_t i = 1; i < indep_support_end; i++) out << i << " ";
@@ -4190,6 +4186,35 @@ void Counter::dump_current_state(const std::string fname) const {
   out << "c trail below" << endl;
   for(const auto& t: trail) out << t << " 0" << endl;
   debug_print("Dumped current state to file, with trail: " << fname);
+}
+
+void Counter::check_current_state_unsat() const {
+  auto debug_sat = std::make_unique<CMSat::SATSolver>();
+  debug_sat->set_prefix("c o ");
+  debug_sat->new_vars(nVars());
+
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    debug_sat->add_clause(ganak_to_cms_cl(cl));
+  }
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    for(const auto& ws: watches[lit].binaries) {
+      if (ws.red() || ws.lit() < lit) continue;
+      debug_sat->add_clause(ganak_to_cms_cl({lit, ws.lit()}));
+    }
+  }
+  for(const auto& t: unit_cls) {
+    debug_sat->add_clause(ganak_to_cms_cl({t}));
+  }
+
+  vector<CMSat::Lit> assumps;
+  assumps.reserve(trail.size());
+  for(const auto& t: trail) assumps.push_back(ganak_to_cms_lit(t));
+
+  auto ret = debug_sat->solve(&assumps);
+  assert(ret == CMSat::l_False);
+  debug_print("[check-unsat] Current state is indeed UNSAT under trail assumptions");
 }
 
 void Counter::check_opt_sampling_determined() const {

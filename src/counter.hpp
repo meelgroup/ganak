@@ -49,16 +49,25 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
+inline CMSat::Lit ganak_to_cms_lit(const Lit& l) {
+  return CMSat::Lit(l.var()-1, !l.sign());
+}
+
 template<typename T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
-  cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.emplace_back(l.var()-1, !l.sign());
+  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
   return cms_cl;
 }
 
 inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
-  return {CMSat::Lit(l.var()-1, !l.sign())};
+  return {ganak_to_cms_lit(l)};
+}
+
+inline vector<CMSat::Lit> ganak_to_cms_cl(std::initializer_list<Lit> cl) {
+  vector<CMSat::Lit> cms_cl;
+  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
+  return cms_cl;
 }
 
 enum class RetState {
@@ -264,6 +273,7 @@ public:
   bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
   void dump_current_state(const std::string fname) const;
+  void check_current_state_unsat() const;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif

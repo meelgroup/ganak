@@ -476,8 +476,8 @@ void Counter::deal_with_irred_cls(const Cube& c, Fn fn) {
   }
 }
 
-// Self-check count without restart with CMS only
-FF Counter::check_count_norestart_cms(const Cube& c) {
+// Self-check count with CMS only
+FF Counter::check_count_cms(const Cube& c) {
   verb_print(1, "Checking cube count with CMS (no verb, no restart)");
   CMSat::SATSolver test_solver;
   test_solver.new_vars(nVars());
@@ -504,37 +504,6 @@ FF Counter::check_count_norestart_cms(const Cube& c) {
     test_solver.add_clause(ban);
   }
   return cnt;
-}
-
-// Self-check count without restart
-FF Counter::check_count_norestart(const Cube& c) {
-  verb_print(1, "Checking count with ourselves (no verb, no restart), CNF: " << c.cnf);
-  CounterConfiguration conf2 = conf;
-  conf2.do_restart = 0;
-  conf2.verb = 0;
-  conf2.do_buddy = 0;
-  conf2.do_cube_check_count = 0;
-
-  // Make a new counter from this counter, very hacky
-  Counter test_cnt(conf2, fg);
-  test_cnt.new_vars(nVars());
-  set<uint32_t> indep_tmp;
-  for(uint32_t i = 1; i < indep_support_end; i++) indep_tmp.insert(i);
-  test_cnt.set_indep_support(indep_tmp);
-  for(uint32_t i = 1; i < opt_indep_support_end; i++) indep_tmp.insert(i);
-  test_cnt.set_optional_indep_support(indep_tmp);
-  if (weighted()) {
-    for (const auto& v: indep_tmp) {
-      Lit l(v, true);
-      test_cnt.set_lit_weight(l, get_weight(l));
-      l = l.neg();
-      test_cnt.set_lit_weight(l, get_weight(l));
-    }
-  }
-  deal_with_irred_cls(c, [&](const vector<Lit>& tmp) {
-    test_cnt.add_irred_cl(tmp);
-  });
-  return test_cnt.outer_count();
 }
 
 void Counter::disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes) {
@@ -584,9 +553,7 @@ void Counter::print_and_check_cubes(vector<Cube>& cubes) {
   if (conf.do_cube_check_count || must_check_count) {
     check_exact_field(fg);
     for(const auto& c: cubes) {
-      FF check_cnt = nullptr;
-      if (conf.do_cube_check_count == 1) check_cnt = check_count_norestart(c);
-      else check_cnt = check_count_norestart_cms(c);
+      FF check_cnt = check_count_cms(c);
       cout << "checking cube [ " << c << " ] " << endl;
       cout << "----> check_cnt: " << *check_cnt << endl;
       cout << "----> cube cnt : " << *c.cnt << endl;
@@ -1266,7 +1233,7 @@ end:
       CHECK_COUNT_DO({
         check_exact_field(fg);
         if (c.enabled) {
-          auto check_cnt = check_count_norestart_cms(c);
+          auto check_cnt = check_count_cms(c);
           if (*check_cnt != *c.cnt) {
             cout << "ERROR [weight-mul]: cube cnt mismatch after multiplier: " << c << endl;
             cout << "  cube.cnt : " << *c.cnt << "  check: " << *check_cnt << endl;
@@ -1554,7 +1521,7 @@ bool Counter::restart_if_needed() {
       if (compute_cube(cube, i)) {
         CHECK_COUNT_DO({
           check_exact_field(fg);
-          auto check_cnt = check_count_norestart_cms(cube);
+          auto check_cnt = check_count_cms(cube);
           if (*check_cnt != *cube.cnt) {
             cout << "ERROR [restart loop]: cube cnt mismatch after compute_cube: " << cube << endl;
             cout << "  cube.cnt : " << *cube.cnt << "  check: " << *check_cnt << endl;
@@ -1731,7 +1698,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
 #endif
 #ifdef CHECK_COUNT
   check_exact_field(fg);
-  auto check_cnt = check_count_norestart_cms(c);
+  auto check_cnt = check_count_cms(c);
   if (*check_cnt != *c.cnt) {
     cout << "ERROR [compute_cube]: cnt mismatch for cube: " << c << endl;
     cout << "  recorded c.cnt : " << *c.cnt << endl;

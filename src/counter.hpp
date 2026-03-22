@@ -238,8 +238,7 @@ private:
   void try_resolve_cubes(vector<Cube>& cubes);
   void cube_strengthen_by_flp(vector<Cube>& cubes);
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
-  FF check_count_norestart(const Cube& c);
-  FF check_count_norestart_cms(const Cube& c);
+  FF check_count_cms(const Cube& c);
   template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
   bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2) const;

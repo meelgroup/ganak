@@ -259,7 +259,7 @@ private:
   void check_all_propagated_conflicted() const;
   void print_all_levels();
   void check_cl_unsat(Lit* c, uint32_t size) const;
-  void check_trail(bool check_entail = true) const;
+  void check_trail(bool check_entail = true, bool also_units = false) const;
   bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
 #ifdef SLOW_DEBUG

@@ -1023,9 +1023,6 @@ FF Counter::outer_count() {
         /* << " this rst: " << *cubes_cnt_this_rst */
     );
 
-    ret = sat_solver->solve();
-    if (ret == CMSat::l_False) {done = true; break;}
-
     // Add cubes to counter
     for(auto it = cubes.rbegin(); it != cubes.rend(); it++) if (it->enabled) {
       add_irred_cl(it->cnf);
@@ -1034,9 +1031,10 @@ FF Counter::outer_count() {
           /* << " cnt: " << *it->cnt */
           );
     }
-    if (!ok) break;
+    ret = sat_solver->solve();
+    if (ret == CMSat::l_False) {ok = false; done = true; break;}
     for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
-    if (!propagate()) { ok = false; break; }
+    if (!propagate()) { assert(false && "We should never get a conflict here, we just solved it above!"); }
     if (!done) toplevel_vivify_subsume_fullprobe();
     if (appmc_timeout_fired) break;
   }
@@ -1056,10 +1054,6 @@ void Counter::toplevel_vivify_subsume_fullprobe() {
         stats.num_restarts % conf.vivif_outer_every_n == 0 && stats.num_restarts > 0) {
       double my_time = cpu_time();
       init_and_preproc();
-
-      for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
-      const bool p_ret =propagate();
-      assert(p_ret && "We checked this above");
 
       // Now vifif, subsume, and full prob
       vivify_all(true, true);
@@ -1145,6 +1139,7 @@ bool Counter::chrono_check() {
 }
 
 void Counter::count_loop() {
+  VERY_SLOW_DEBUG_DO(check_trail(true, true));
   assert(mini_cubes.empty());
   RetState state = RESOLVED;
 
@@ -1209,6 +1204,7 @@ void Counter::count_loop() {
       bool ret = propagate();
       assert(ret);
     }
+    VERY_SLOW_DEBUG_DO(check_trail());
   }
 
 end:
@@ -2164,11 +2160,30 @@ void Counter::go_back_to(int32_t backj) {
   debug_print("DONE backw cleaning");
 }
 
-void Counter::check_trail([[maybe_unused]] bool check_entail) const {
+void Counter::check_trail([[maybe_unused]] bool check_entail, bool also_units) const {
+  assert(ok);
   if (decisions.empty()) {
     assert(trail.empty());
     return; // root level before any decisions, nothing to check
   }
+
+  // Check units. Dec level 0 is when we enqueue them, so can't check there
+  if (dec_level() > 0 || also_units) {
+    set<Lit> units;
+    for(const auto& l: unit_cls) {
+      assert(!units.count(l.neg()) && "UNSAT cannot be implied by units, we should be !ok then");
+      units.insert(l);
+      assert(val(l) == T_TRI);
+    }
+    for(const auto& l: trail) units.erase(l);
+    if (!units.empty()) {
+      cout << "ERROR: Unit cls not in trail: ";
+      for(const auto& u: units) cout << u << " ";
+      cout << endl;
+      assert(false);
+    }
+  }
+
   vector<uint32_t> num_decs_at_level(dec_level()+1, 0);
   bool entailment_fail = false;
   for(const auto& t: trail) {
@@ -2630,6 +2645,7 @@ void Counter::vivif_setup() {
 }
 
 bool Counter::vivify_all(bool force, bool only_irred) {
+  VERY_SLOW_DEBUG_DO(check_trail(true, true));
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return false;
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
@@ -2714,6 +2730,7 @@ bool Counter::vivify_all(bool force, bool only_irred) {
       << " tout-red: " << (int)tout_red
       << " T: " << (cpu_time()-my_time));
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
+  VERY_SLOW_DEBUG_DO(check_trail(true, true));
   return (stats.vivif_cl_minim > last_vivif_cl_minim);
 }
 
@@ -3465,9 +3482,7 @@ void Counter::toplevel_full_probe() {
     }
 
     clear_toclear_seen();
-    for(const auto& x: bothprop_toset) {
-      set_lit(x, 0);
-    }
+    for(const auto& x: bothprop_toset) add_irred_cl({x});
     bothprop_toset.clear();
     ret = propagate();
     assert(ret && "we are never UNSAT");
@@ -3478,6 +3493,7 @@ void Counter::toplevel_full_probe() {
       << " failed: " << (stats.toplevel_probe_fail - old_probe)
       << " bprop: " << (stats.toplevel_bothprop_fail - old_bprop)
       << " T: " << (cpu_time()-my_time));
+  VERY_SLOW_DEBUG_DO(check_trail(true, true));
 }
 
 void Counter::subsume_all() {
@@ -4211,6 +4227,7 @@ void Counter::init_and_preproc() {
     assert(ret && "We ran CMS before, so it cannot be UNSAT");
   }
   verb_print(3, "[" << __func__ << "] finished.");
+  VERY_SLOW_DEBUG_DO(check_trail(true, true));
 }
 
 #ifdef BUDDY_ENABLED
@@ -4264,7 +4281,6 @@ void Counter::simple_preprocess() {
   bool succeeded = propagate();
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_cls.push_back(t);
-  init_decision_stack();
 
   // Remove for reasons for 0-level clauses, these may interfere with
   // deletion of clauses during subsumption
@@ -4468,8 +4484,10 @@ bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
 
   stats.incorporateIrredClauseData(lits);
   Clause* cl = add_cl(lits, false);
-  auto off = alloc->get_offset(cl);
-  if (cl) long_irred_cls.push_back(off);
+  if (cl) {
+    auto off = alloc->get_offset(cl);
+    long_irred_cls.push_back(off);
+  }
   SLOW_DEBUG_DO(debug_irred_cls.push_back(lits));
   return ok;
 }

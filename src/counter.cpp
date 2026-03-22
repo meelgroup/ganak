@@ -4158,7 +4158,7 @@ void Counter::dump_current_state(const std::string fname) const {
   }
 
   out << "p cnf " << nVars() << " "
-    << long_irred_cls.size() + long_red_cls.size() + unit_cls.size() + bin_cls.size()
+    << long_irred_cls.size() + unit_cls.size() + bin_cls.size()
     << endl;
   out << "c p show ";
   for(uint32_t i = 1; i < indep_support_end; i++) out << i << " ";

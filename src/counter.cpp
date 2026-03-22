@@ -1031,27 +1031,27 @@ FF Counter::outer_count() {
           /* << " cnt: " << *it->cnt */
           );
     }
+
     // Propagate any newly-added unit clauses (cube blocking may produce units).
     // Must happen before vivify_all which checks all unit_cls are on the trail.
     for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
     if (!propagate()) { ok = false; break; }
-    // Must be called BEFORE decisions.clear() — trims stale comp_stack entries
-    // and rebuilds CompAnalyzer with new cube blocking clauses.
-    comp_manager->reinit_after_new_irred_cls(watches, alloc.get(), long_irred_cls);
-    decisions.clear();
-    decisions.push_back(StackLevel(1, 2, true, tstamp, fg));
-    decisions.back().change_to_right_branch();
-    if (!done && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
+
+    comp_manager.reset();
+    init_decision_stack();
+    if (!done && conf.do_vivify &&
+        stats.num_restarts % conf.vivif_outer_every_n == 0 && stats.num_restarts > 0) {
       double my_time = cpu_time();
-      bool vivif_modified = vivify_all(true, true);
-      // Vivification shortens clauses (same ID, different content), making all
-      // cached component counts stale. Reinit before next counting run.
-      if (vivif_modified) comp_manager->reinit_after_new_irred_cls(watches, alloc.get(), long_irred_cls);
+      vivify_all(true, true);
       subsume_all();
       toplevel_full_probe();
       verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpu_time() - my_time));
     }
     if (appmc_timeout_fired) break;
+
+    comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
+    init_decision_stack();
+    simple_preprocess();
   }
 
   if (!done && ret == CMSat::l_True) {
@@ -3391,6 +3391,7 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
   }
 }
 
+// TODO check -- it sets things, but I think they are unset later?
 void Counter::toplevel_full_probe() {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   assert(to_clear.empty());
@@ -4194,9 +4195,7 @@ void Counter::init_and_preproc() {
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
-  assert(comp_manager == nullptr);
   comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
-
   init_decision_stack();
   simple_preprocess();
 

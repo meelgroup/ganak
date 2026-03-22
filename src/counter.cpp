@@ -950,6 +950,10 @@ void Counter::fix_weights() {
 
 FF Counter::outer_count() {
   fix_weights();
+  VERY_SLOW_DEBUG_DO(
+      check_cls_deriveable();
+      check_opt_sampling_determined();
+  );
   if (!ok) return fg->zero();
 
   auto cnt = fg->zero();
@@ -984,8 +988,6 @@ FF Counter::outer_count() {
   bool done = false;
   while(ret == CMSat::l_True) {
     init_and_preproc();
-    VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
-    VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
     auto cubes = one_restart_count();
     if (cubes.size() == 1 && cubes[0].cnf.empty()) done = true;
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
@@ -2319,7 +2321,7 @@ RetState Counter::resolve_conflict() {
   }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
-    VERBOSE_DEBUG_DO(print_trail());
+    VERBOSE_DEBUG_DO(print_trail(true, false));
     VERBOSE_DEBUG_DO(print_conflict_info());
     debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
       << " current lev: " << dec_level());
@@ -4178,7 +4180,8 @@ void Counter::check_opt_sampling_determined() const {
   verb_print(2, "[opt-sampling-check] All optimal independent variables are determined");
 }
 
-void Counter::check_red_cls_deriveable() const {
+#ifdef SLOW_DEBUG
+void Counter::check_cls_deriveable() const {
   auto debug_sat = std::make_unique<CMSat::SATSolver>();
   debug_sat->set_prefix("c o ");
   debug_sat->new_vars(nVars());
@@ -4193,34 +4196,48 @@ void Counter::check_red_cls_deriveable() const {
     }
   };
 
-  // Long clauses
-  for(const auto& offs: long_red_cls) {
-    const auto& cl = *alloc->ptr(offs);
-    vector<CMSat::Lit> cms_cl= ganak_to_cms_cl(cl);
-    vector<CMSat::Lit> assumps;
-    assumps.reserve(cms_cl.size());
-    for(const auto& l: cms_cl) assumps.push_back(~l);
-    auto ret = debug_sat->solve(&assumps);
-    check(ret, cms_cl);
-  }
-
-  // binary clauses
-  all_lits(x) {
-    Lit l(x/2, x%2);
-    for(const auto& ws: watches[l].binaries) {
-      if (ws.irred() || ws.lit() < l) continue;
-      vector<CMSat::Lit> cms_cl = ganak_to_cms_cl(vector<Lit>{l, ws.lit()});
+  auto check_derivable = [&](const vector<CMSat::Lit>& cms_cl) {
       vector<CMSat::Lit> assumps;
       assumps.reserve(cms_cl.size());
       for(const auto& l2: cms_cl) assumps.push_back(~l2);
       auto ret = debug_sat->solve(&assumps);
       check(ret, cms_cl);
+  };
+
+
+  // Long irred clauses
+  for(const auto& offs: long_irred_cls) {
+    const auto& cl = *alloc->ptr(offs);
+    check_derivable(ganak_to_cms_cl(cl));
+  }
+
+  // binary irred clauses
+  all_lits(x) {
+    Lit l(x/2, x%2);
+    for(const auto& ws: watches[l].binaries) {
+      if (ws.red() || ws.lit() < l) continue;
+      check_derivable(ganak_to_cms_cl(vector<Lit>{l, ws.lit()}));
+    }
+  }
+
+  // Long red clauses
+  for(const auto& offs: long_red_cls) {
+    const auto& cl = *alloc->ptr(offs);
+    check_derivable(ganak_to_cms_cl(cl));
+  }
+
+  // binary red clauses
+  all_lits(x) {
+    Lit l(x/2, x%2);
+    for(const auto& ws: watches[l].binaries) {
+      if (ws.irred() || ws.lit() < l) continue;
+      check_derivable(ganak_to_cms_cl(vector<Lit>{l, ws.lit()}));
     }
   }
 }
+#endif
 
 void Counter::init_and_preproc() {
-  VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
   VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
   seen.clear();
   seen.resize(2*(nVars()+2), 0);

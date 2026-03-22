@@ -247,7 +247,7 @@ private:
 
   //Debug stuff
   FF check_count_cms(const Cube& c);
-  void check_red_cls_deriveable() const;
+  void check_cls_deriveable() const;
   void check_opt_sampling_determined() const;
   FF check_count(const bool also_incl_curr_and_later_dec = false);
   bool is_implied(const vector<Lit>& cp);

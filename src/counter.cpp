@@ -4188,10 +4188,7 @@ void Counter::dump_current_state(const std::string fname) const {
     out << "0" << endl;
   }
   out << "c trail below" << endl;
-  for(const auto& t: trail) {
-    if (val(t) == T_TRI) out << t << " 0" << endl;
-    else if (val(t) == F_TRI) out << t.neg() << " 0" << endl;
-  }
+  for(const auto& t: trail) out << t << " 0" << endl;
   debug_print("Dumped current state to file, with trail: " << fname);
 }
 

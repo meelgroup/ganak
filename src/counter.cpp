@@ -1031,9 +1031,7 @@ FF Counter::outer_count() {
           /* << " cnt: " << *it->cnt */
           );
     }
-
-    // Propagate any newly-added unit clauses (cube blocking may produce units).
-    // Must happen before vivify_all which checks all unit_cls are on the trail.
+    if (!ok) break;
     for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
     if (!propagate()) { ok = false; break; }
 

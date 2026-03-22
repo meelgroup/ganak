@@ -1063,6 +1063,8 @@ FF Counter::outer_count() {
           );
     }
     decisions.clear();
+    decisions.push_back(StackLevel(1, 2, true, tstamp, fg));
+    decisions.back().change_to_right_branch();
 
     if (!done && conf.do_vivify && (stats.num_restarts % (conf.vivif_outer_every_n)) == (conf.vivif_outer_every_n-1)) {
       double my_time = cpu_time();
@@ -2714,10 +2716,10 @@ void Counter::vivify_all(bool force, bool only_irred) {
       }
       assert(val(l) != F_TRI); // it would be UNSAT
     }
-    bool ret2 = propagate();
-    assert(ret2);
     v_cl_toplevel_repair(long_irred_cls);
     v_cl_toplevel_repair(long_red_cls);
+    bool ret2 = propagate();
+    assert(ret2);
   }
   off_to_lit12.clear();
   verb_print(2, "[vivif] finished."

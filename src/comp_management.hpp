@@ -100,34 +100,6 @@ public:
   // skip_missing=true:  silently skip comps not in cache
   void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
 
-  // After adding new irredundant clauses (e.g. cube blocking clauses between
-  // restarts), rebuild the component analyzer so it sees the new clauses, and
-  // trim comp_stack back to the initial state (size 2).
-  // - The stale ana.long_clauses_data would miss cross-component connections
-  //   from new clauses, causing overcounting via independent-component multiply.
-  // - Stale subcomponents in comp_stack (from the previous counting run) would
-  //   prevent record_remaining_comps_for from running on the fresh count.
-  // Must be called BEFORE decisions.clear().
-  void reinit_after_new_irred_cls(const LiteralIndexedVector<LitWatchList>& watches,
-      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls) {
-    // Trim stale level-0 subcomponents while old cache IDs are still valid.
-    while (comp_stack.size() > 2) {
-      if (cache->exists(comp_stack.back()->id()))
-        cache->make_entry_deletable(comp_stack.back()->id());
-      free(comp_stack.back());
-      comp_stack.pop_back();
-    }
-    // Rebuild comp analyzer with new clause list and update BPC sizes.
-    ana.initialize(watches, alloc, long_irred_cls);
-    bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
-    // Rebuild initial full component with updated clause count and reinit cache.
-    assert(comp_stack.size() >= 2);
-    free(comp_stack[1]);
-    comp_stack[1] = reserve_comp_space(ana.get_max_var(), ana.get_max_clid());
-    comp_stack[1]->create_init_comp(ana.get_max_var(), ana.get_max_clid(),
-        std::numeric_limits<uint32_t>::max());
-    cache->init(*comp_stack[1], hash_seed, bpc);
-  }
   uint64_t hash_seed;
 
 private:

@@ -247,7 +247,6 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     if (!ret->is_zero()) {
       auto local_conf = conf;
       local_conf.verb = 0; // disable verb for threads
-      cnf.write_simpcnf("simp.cnf");
       auto counter = std::make_unique<Ganak>(local_conf, thread_fg);
       setup_ganak(cnf, *counter);
       *ret *= *counter->count();

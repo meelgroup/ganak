@@ -158,22 +158,16 @@ constexpr double safe_div(double a, double b) {
   else return a/b;
 }
 
-inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {
+inline std::string print_value_kilo_mega(const int64_t value, bool use_setw = true) {
   std::stringstream ss;
   if (value > 20*1000LL*1000LL) {
-    if (setw) {
-        ss << std::setw(4);
-    }
+    if (use_setw) ss << std::setw(4);
     ss << value/(1000LL*1000LL) << "M";
   } else if (value > 20LL*1000LL) {
-    if (setw) {
-        ss << std::setw(4);
-    }
+    if (use_setw) ss << std::setw(4);
     ss << value/1000LL << "K";
   } else {
-    if (setw) {
-        ss << std::setw(5);
-    }
+    if (use_setw) ss << std::setw(5);
     ss << value;
   }
   return ss.str();

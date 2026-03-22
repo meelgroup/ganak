@@ -96,8 +96,9 @@ public:
   void record_remaining_comps_for(StackLevel &top);
   inline void sort_comp_stack_range(uint64_t start, uint64_t end);
 
-  void remove_cache_pollutions_of_if_exists(const StackLevel &top);
-  void remove_cache_pollutions_of(const StackLevel &top);
+  // skip_missing=false: assert all comps exist in cache (default)
+  // skip_missing=true:  silently skip comps not in cache
+  void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
 
   // After adding new irredundant clauses (e.g. cube blocking clauses between
   // restarts), rebuild the component analyzer so it sees the new clauses, and

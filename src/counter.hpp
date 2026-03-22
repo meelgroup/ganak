@@ -157,6 +157,8 @@ public:
   void print_indep_distrib() const;
   bool add_irred_cl(const vector<Lit>& lits);
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
+  // Filters out true lits, keeps unknown lits. Returns false if empty (UNSAT).
+  bool filter_lits(const vector<Lit>& lits_orig, vector<Lit>& lits) const;
   void init_and_preproc();
   void set_lit_weight(Lit l, const FF& w);
   FF outer_count();
@@ -246,7 +248,8 @@ private:
   void extend_cubes(vector<Cube>& cubes);
   void try_resolve_cubes(vector<Cube>& cubes);
   void cube_strengthen_by_flp(vector<Cube>& cubes);
-  int cube_try_extend_by_lit(const Lit torem, const Cube& c);
+  enum class ExtendResult { CANNOT_EXTEND, REMOVE, REMOVE_AND_DOUBLE };
+  ExtendResult cube_try_extend_by_lit(const Lit torem, const Cube& c);
   template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
   bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2) const;

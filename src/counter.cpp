@@ -575,14 +575,14 @@ void Counter::disable_cubes_if_overlap(vector<Cube>& cubes) {
   }
 }
 
-int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
+Counter::ExtendResult Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
   verb_print(3, "[cube-ext] Trying to remove " << torem << " from cube " << c);
 
   // Prop all but torem
   for(const auto& l: c.cnf) {
     if (l == torem) continue;
     if (v_val(l.neg()) == T_TRI) continue;
-    if (v_val(l.neg()) == F_TRI) return 0; // don't want to deal with this
+    if (v_val(l.neg()) == F_TRI) return ExtendResult::CANNOT_EXTEND; // don't want to deal with this
     v_enqueue(l.neg());
   }
   bool ret = v_propagate();
@@ -590,11 +590,11 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
 
   if (v_val(torem) == F_TRI) {
     verb_print(2, "[cube-ext] Cube  can have " << torem << " removed, but no count change.");
-    return 1;
+    return ExtendResult::REMOVE;
   }
   if (v_val(torem) != X_TRI) {
     verb_print(1, "[cube-ext] Weeeeirrrddd --- " << torem << " ?????");
-    return 0;
+    return ExtendResult::CANNOT_EXTEND;
   }
 
   // Check if torem doesn't occur anymore
@@ -604,7 +604,7 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
   for(const auto& l: {torem, torem.neg()}) {
     for(const auto& ws: watches[l].binaries) {
       if (ws.red()) continue;
-      if (v_val(ws.lit()) == X_TRI) return 0;
+      if (v_val(ws.lit()) == X_TRI) return ExtendResult::CANNOT_EXTEND;
     }
     for(const auto& ws: occ[l.raw()]) {
       Clause& cl = *alloc->ptr(ws.off);
@@ -613,11 +613,11 @@ int Counter::cube_try_extend_by_lit(const Lit torem, const Cube& c) {
         if (v_val(cl_lit) == T_TRI) { good = true; break;}
       }
       verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
-      if (!good) return 0;
+      if (!good) return ExtendResult::CANNOT_EXTEND;
     }
   }
   verb_print(2, "[cube-ext] Cube  can have " << torem << " removed AND count doubled");
-  return 100;
+  return ExtendResult::REMOVE_AND_DOUBLE;
 }
 
 bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
@@ -689,11 +689,11 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
       Cube c2 = c;
       for(const auto& l: c2.cnf) {
         v_new_lev();
-        int ret = cube_try_extend_by_lit(l, c2);
+        auto ret = cube_try_extend_by_lit(l, c2);
         v_backtrack();
 
-        if (ret != 0) {
-          if (ret == 100) {
+        if (ret != ExtendResult::CANNOT_EXTEND) {
+          if (ret == ExtendResult::REMOVE_AND_DOUBLE) {
             verb_print(2, COLRED "Cube " << c << " can have " << l << " removed, with cnt change" << COLDEF);
             if (weighted()) {
               // l is a BLOCKING literal (negation of model assignment).
@@ -707,7 +707,10 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
               *c.cnt *= *combined;
             } else *c.cnt *= *two;
             stats.cube_lit_extend++;
-          } else stats.cube_lit_rem++;
+          } else {
+            assert(ret == ExtendResult::REMOVE);
+            stats.cube_lit_rem++;
+          }
           c.cnf.erase(std::find(c.cnf.begin(), c.cnf.end(), l));
           go_again = true;
           break;
@@ -1536,7 +1539,7 @@ bool Counter::restart_if_needed() {
         *tot_cnt += *cube.cnt;
         verb_print(2, "[mini-cube] rst: " << stats.num_restarts << " mini cube: " << cube);
       }
-      else comp_manager->remove_cache_pollutions_of_if_exists(decisions.top());
+      else comp_manager->remove_cache_pollutions_of(decisions.top(), /*skip_missing=*/true);
     }
     reactivate_comps_and_backtrack_trail(false);
     bool ret = propagate(true);
@@ -4571,19 +4574,24 @@ Clause* Counter::add_cl(const vector<Lit> &lits, bool red) {
   return cl;
 }
 
-bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
-  if (!ok) return ok;
-  if (!sat_solver->add_clause(ganak_to_cms_cl(lits_orig))) { ok = false; return ok; }
-
-  vector<Lit> lits;
+bool Counter::filter_lits(const vector<Lit>& lits_orig, vector<Lit>& lits) const {
   for(const auto& l: lits_orig) {
-    if (val(l) == T_TRI) return ok;
+    if (val(l) == T_TRI) return true;
     if (val(l) == X_TRI) lits.push_back(l);
   }
   if (lits.empty()) {
     cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
     exit(EXIT_FAILURE);
   }
+  return false;
+}
+
+bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
+  if (!ok) return ok;
+  if (!sat_solver->add_clause(ganak_to_cms_cl(lits_orig))) { ok = false; return ok; }
+
+  vector<Lit> lits;
+  if (filter_lits(lits_orig, lits)) return ok;
   for(const auto& l: lits) assert(l.var() <= nVars() && l.var() > 0);
   if (!remove_duplicates(lits)) return ok;
 
@@ -4599,14 +4607,7 @@ bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
 
 bool Counter::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
   vector<Lit> lits;
-  for(const auto& l: lits_orig) {
-    if (val(l) == T_TRI) return ok;
-    if (val(l) == X_TRI) lits.push_back(l);
-  }
-  if (lits.empty()) {
-    cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
-    exit(EXIT_FAILURE);
-  }
+  if (filter_lits(lits_orig, lits)) return ok;
   for(const auto& l: lits) assert(l.var() <= nVars());
   if (!remove_duplicates(lits)) return ok;
   Clause* cl = add_cl(lits, true);

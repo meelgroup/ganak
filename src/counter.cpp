@@ -4106,10 +4106,10 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
 
       bool in_children = false;
       const auto& d = decisions.at(i);
-      debug_print("d.get_unprocessed_comps_end(): " << d.get_unprocessed_comps_end()
+      debug_print("d.get_unproc_comps_end(): " << d.get_unproc_comps_end()
           << " d.remaining_comps_ofs(): " << d.remaining_comps_ofs()
           << " comp_manager->size: " << comp_manager->get_comp_stack().size());
-      for(int comp_at = d.get_unprocessed_comps_end()-1; comp_at >= (int)d.remaining_comps_ofs() &&
+      for(int comp_at = d.get_unproc_comps_end()-1; comp_at >= (int)d.remaining_comps_ofs() &&
           comp_at < (int)comp_manager->get_comp_stack().size(); comp_at--) {
         const auto& comp = comp_manager->at(comp_at);
         VERBOSE_DEBUG_DO(cout << "vars in side comp: ";

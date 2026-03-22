@@ -117,7 +117,6 @@ public:
     unprocessed_comps_end_--;
   }
   void reset_remain_comps() { unprocessed_comps_end_ = remaining_comps_ofs_; }
-  auto get_unprocessed_comps_end() const { return unprocessed_comps_end_; }
   uint64_t super_comp() const { return super_comp_; }
   bool is_right_branch() const { return act_branch; }
   uint64_t get_unproc_comps_end() const { return unprocessed_comps_end_; }
@@ -184,24 +183,18 @@ public:
       return;
     }
 
-    if (!is_indep) {
+    if (cnt_is_zero(solutions)) {
+      branch_zero[act_branch] = true;
+      branch_mc[act_branch] = nullptr;
+    } else if (!is_indep) {
       // For non-indep levels, only track satisfiability (0/1): the projected count
       // is semantically 0 or 1 when no indep vars remain in the component.
-      if (cnt_is_zero(solutions)) {
-        branch_zero[act_branch] = true;
-        branch_mc[act_branch] = nullptr;
-      } else {
-        branch_mc[act_branch] = fg->one();
-      }
+      branch_mc[act_branch] = fg->one();
     } else {
-      if (cnt_is_zero(solutions)) {
-        branch_zero[act_branch] = true;
-        branch_mc[act_branch] = nullptr;
-      } else if (is_zero(act_branch)) {
+      if (is_zero(act_branch) || is_one(act_branch)) {
         branch_mc[act_branch] = solutions->dup();
       } else {
-        if (is_one(act_branch)) branch_mc[act_branch] = solutions->dup();
-        else *branch_mc[act_branch] *= *solutions;
+        *branch_mc[act_branch] *= *solutions;
       }
     }
     VERBOSE_DEBUG_DO(common_print(before));

@@ -53,13 +53,7 @@ public:
     b.delete_permitted = false;
     b.model_count_is_zero_ = false;
   }
-  BaseComp(const BaseComp& b) {
-    if (b.model_count_) model_count_ = b.model_count_->dup();
-    else model_count_ = nullptr;
-    last_used_time_ = b.last_used_time_;
-    delete_permitted = b.delete_permitted;
-    model_count_is_zero_ = b.model_count_is_zero_;
-  }
+  BaseComp(const BaseComp& b) { *this = b; }
   uint64_t last_used_time() const { return last_used_time_; }
   const FF& model_count() const { return model_count_; }
   uint64_t bignum_bytes() const{

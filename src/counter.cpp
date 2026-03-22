@@ -1034,17 +1034,7 @@ FF Counter::outer_count() {
     if (!ok) break;
     for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
     if (!propagate()) { ok = false; break; }
-
-    comp_manager.reset();
-    init_decision_stack();
-    if (!done && conf.do_vivify &&
-        stats.num_restarts % conf.vivif_outer_every_n == 0 && stats.num_restarts > 0) {
-      double my_time = cpu_time();
-      vivify_all(true, true);
-      subsume_all();
-      toplevel_full_probe();
-      verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpu_time() - my_time));
-    }
+    if (!done) toplevel_vivify_subsume_fullprobe();
     if (appmc_timeout_fired) break;
 
     comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
@@ -1060,6 +1050,26 @@ FF Counter::outer_count() {
   }
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   return cnt;
+}
+
+void Counter::toplevel_vivify_subsume_fullprobe() {
+    if (conf.do_vivify &&
+        stats.num_restarts % conf.vivif_outer_every_n == 0 && stats.num_restarts > 0) {
+      double my_time = cpu_time();
+
+      // Vivif needs all units propagated
+      comp_manager.reset();
+      init_decision_stack();
+      for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
+      const bool p_ret =propagate();
+      assert(p_ret && "We checked this above");
+
+      // Now vifif, subsume, and full prob
+      vivify_all(true, true);
+      subsume_all();
+      toplevel_full_probe();
+      verb_print(2, "[rst-vivif] Outer vivified/subsumed/probed all. T: " << (cpu_time() - my_time));
+    }
 }
 
 vector<Cube> Counter::one_restart_count() {

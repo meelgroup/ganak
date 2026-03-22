@@ -463,6 +463,7 @@ private:
   template<class T2> bool currently_propagating_cl(T2& cl) const;
   template<class T2> bool v_cl_satisfied(const T2& cl) const;
   void vivif_backtrack();
+  void toplevel_vivify_subsume_fullprobe();
   vector<Lit> v_trail;
   uint32_t v_qhead;
   uint32_t v_lev;

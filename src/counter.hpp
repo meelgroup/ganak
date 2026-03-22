@@ -238,7 +238,6 @@ private:
   void try_resolve_cubes(vector<Cube>& cubes);
   void cube_strengthen_by_flp(vector<Cube>& cubes);
   int cube_try_extend_by_lit(const Lit torem, const Cube& c);
-  FF check_count_cms(const Cube& c);
   template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
   bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2) const;
@@ -247,6 +246,7 @@ private:
   void symm_cubes(vector<Cube>& cubes);
 
   //Debug stuff
+  FF check_count_cms(const Cube& c);
   void check_red_cls_deriveable() const;
   void check_opt_sampling_determined() const;
   FF check_count(const bool also_incl_curr_and_later_dec = false);
@@ -259,7 +259,7 @@ private:
   void check_all_propagated_conflicted() const;
   void print_all_levels();
   void check_cl_unsat(Lit* c, uint32_t size) const;
-  void check_trail(bool check_entail = true, bool also_units = false) const;
+  void check_trail(bool check_entail = true, bool force_check_units = false) const;
   bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
 #ifdef SLOW_DEBUG

@@ -1033,9 +1033,7 @@ FF Counter::outer_count() {
     }
     ret = sat_solver->solve();
     if (ret == CMSat::l_False) {ok = false; done = true; break;}
-    for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
-    if (!propagate()) { assert(false && "We should never get a conflict here, we just solved it above!"); }
-    if (!done) toplevel_vivify_subsume_fullprobe();
+    toplevel_vivify_subsume_fullprobe();
     if (appmc_timeout_fired) break;
   }
 
@@ -1139,11 +1137,15 @@ bool Counter::chrono_check() {
 }
 
 void Counter::count_loop() {
-  VERY_SLOW_DEBUG_DO(check_trail(true, true));
   assert(mini_cubes.empty());
   RetState state = RESOLVED;
 
   while (true) {
+    VERY_SLOW_DEBUG_DO(
+        check_trail(true, true);
+        check_all_propagated_conflicted();
+    );
+
     debug_print("var top of decision stack: " << decisions.top().var);
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
@@ -1178,6 +1180,10 @@ void Counter::count_loop() {
         assert(false);
         exit(EXIT_FAILURE);
       }
+      VERY_SLOW_DEBUG_DO(
+          check_trail(true, true);
+          check_all_propagated_conflicted();
+      );
     }
 
     // Falls through from the inner while loop when no more components remain at this level,
@@ -1204,7 +1210,6 @@ void Counter::count_loop() {
       bool ret = propagate();
       assert(ret);
     }
-    VERY_SLOW_DEBUG_DO(check_trail());
   }
 
 end:
@@ -2160,7 +2165,7 @@ void Counter::go_back_to(int32_t backj) {
   debug_print("DONE backw cleaning");
 }
 
-void Counter::check_trail([[maybe_unused]] bool check_entail, bool also_units) const {
+void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_units) const {
   assert(ok);
   if (decisions.empty()) {
     assert(trail.empty());
@@ -2168,7 +2173,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool also_units) c
   }
 
   // Check units. Dec level 0 is when we enqueue them, so can't check there
-  if (dec_level() > 0 || also_units) {
+  if (force_check_units || dec_level() > 0) {
     set<Lit> units;
     for(const auto& l: unit_cls) {
       assert(!units.count(l.neg()) && "UNSAT cannot be implied by units, we should be !ok then");
@@ -2710,8 +2715,9 @@ bool Counter::vivify_all(bool force, bool only_irred) {
     // Move all 0-level stuff to unit_cls
     for(const auto& l: v_trail) {
       if (val(l) == X_TRI) {
+        assert(!exists_unit_cl_of(l));
+        unit_cls.push_back(l);
         set_lit(l, 0);
-        if (!exists_unit_cl_of(l)) unit_cls.push_back(l);
       }
       assert(val(l) != F_TRI); // it would be UNSAT
     }
@@ -3413,7 +3419,6 @@ void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
   }
 }
 
-// TODO check -- it sets things, but I think they are unset later?
 void Counter::toplevel_full_probe() {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
   assert(to_clear.empty());
@@ -3446,7 +3451,8 @@ void Counter::toplevel_full_probe() {
     decisions.pop_back();
     if (!ret) {
       clear_toclear_seen();
-      set_lit(l.neg(), 0);
+      debug_print("Probing setting toplevel: " << l.neg());
+      add_irred_cl({l.neg()});
       ret = propagate();
       assert(ret && "we are never UNSAT");
       stats.toplevel_probe_fail++;
@@ -3474,7 +3480,8 @@ void Counter::toplevel_full_probe() {
     decisions.pop_back();
     if (!ret) {
       clear_toclear_seen();
-      set_lit(l, 0);
+      debug_print("Probing setting toplevel: " << l);
+      add_irred_cl({l});
       ret = propagate();
       assert(ret && "we are never UNSAT");
       stats.toplevel_probe_fail++;
@@ -3482,7 +3489,10 @@ void Counter::toplevel_full_probe() {
     }
 
     clear_toclear_seen();
-    for(const auto& x: bothprop_toset) add_irred_cl({x});
+    for(const auto& x: bothprop_toset) {
+      debug_print("Both prop setting toplevel: " << x);
+      add_irred_cl({x});
+    }
     bothprop_toset.clear();
     ret = propagate();
     assert(ret && "we are never UNSAT");
@@ -3981,7 +3991,7 @@ void Counter::check_all_propagated_conflicted() const {
   // Everything that should have propagated, propagated
   for(const auto& t: unit_cls) {
     if (val(t) != T_TRI) {
-      cout << "Unit clause: " << t << " is set/falsified on trail." << endl;
+      cout << "Unit clause: " << t << " is set wrongly on the trail." << endl;
       assert(false);
     }
   }
@@ -4227,7 +4237,7 @@ void Counter::init_and_preproc() {
     assert(ret && "We ran CMS before, so it cannot be UNSAT");
   }
   verb_print(3, "[" << __func__ << "] finished.");
-  VERY_SLOW_DEBUG_DO(check_trail(true, true));
+  VERY_SLOW_DEBUG_DO(check_trail(true));
 }
 
 #ifdef BUDDY_ENABLED
@@ -4450,8 +4460,15 @@ void Counter::new_vars(const uint32_t n) {
 
 Clause* Counter::add_cl(const vector<Lit> &lits, bool red) {
   if (lits.size() == 1) {
-    assert(!exists_unit_cl_of(lits[0].neg()) && "UNSAT is not dealt with");
-    if (!exists_unit_cl_of(lits[0])) unit_cls.push_back(lits[0]);
+    Lit l = lits[0];
+    assert(!exists_unit_cl_of(l.neg()) && "UNSAT is not dealt with");
+    if (!exists_unit_cl_of(l)) {
+      assert(val(l) == X_TRI);
+      values[l] = T_TRI;
+      values[l.neg()] = F_TRI;
+      unit_cls.push_back(l);
+      trail.push_back(l);
+    }
     return nullptr;
   }
 
@@ -4568,6 +4585,7 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
 void Counter::init_decision_stack() {
   decisions.clear();
   trail.clear();
+  for(auto& val: values) val = X_TRI;
   qhead = 0;
   // initialize the stack to contain at least level zero
   decisions.push_back(StackLevel(

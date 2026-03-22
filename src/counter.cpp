@@ -60,21 +60,21 @@ using namespace GanakInt;
 
 vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
   if (!num_vars_set) {
-    cout << "ERROR: new_vars() MUST be called before setting indep support" << endl;
+    cerr << "ERROR: new_vars() MUST be called before setting indep support" << endl;
     exit(EXIT_FAILURE);
   }
   if (indeps.count(0)) {
-    cout << "ERROR: variable 0 does NOT exist!!" << endl;
+    cerr << "ERROR: variable 0 does NOT exist!!" << endl;
     exit(EXIT_FAILURE);
   }
   vector<uint32_t> tmp(indeps.begin(), indeps.end());
   for(uint32_t i = 0; i < tmp.size(); i++) {
     if (tmp[i] > nVars()) {
-      cout << "ERROR: sampling set contains a variable larger than nVars()" << endl;
+      cerr << "ERROR: sampling set contains a variable larger than nVars()" << endl;
       exit(EXIT_FAILURE);
     }
     if (tmp[i] != i+1) {
-      cout << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i+1 << endl;
+      cerr << "ERROR: independent support MUST start from variable 1 and be consecutive, e.g. 1,2,3,4,5. It cannot skip any variables. You skipped variable: " << i+1 << endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -85,9 +85,8 @@ vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
 void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
   auto tmp = common_indep_code(indeps);
   if (tmp.size() +1 < indep_support_end) {
-    cout << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
-    assert(false);
-    exit(EXIT_FAILURE);
+    cerr << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
+    release_assert(false);
   }
   if (tmp.empty()) { opt_indep_support_end = 0; return; }
   opt_indep_support_end = tmp.back()+1;
@@ -172,7 +171,7 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
 void Counter::read_td_from_file(const std::string& fname) {
     std::ifstream file(fname);
     if (!file.is_open()) {
-      std::cout << "ERROR: could not open file: " + fname << endl;
+      std::cerr << "ERROR: could not open file: " + fname << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -182,7 +181,7 @@ void Counter::read_td_from_file(const std::string& fname) {
         try {
             double num = std::stod(line);
             if (i >= tdscore.size()) {
-              cout << "ERROR: td score file has more entries than nVars()" << endl;
+              cerr << "ERROR: td score file has more entries than nVars()" << endl;
               exit(EXIT_FAILURE);
             }
             tdscore[i++] = num;
@@ -220,7 +219,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
       check[v]++;
     }
     for(uint32_t i = 0; i < nodes; i++) {
-      if (check[i] == 0) cout << "ERROR: vertex " << i << " is not in any bag!" << endl;
+      if (check[i] == 0) cerr << "ERROR: vertex " << i << " is not in any bag!" << endl;
     }
     assert(std::all_of(check.begin(), check.end(), [](int i) { return i > 0; }));
   );
@@ -430,8 +429,7 @@ void Counter::td_decompose() {
   if (!primal_alt->isConnected()) {
     cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;
     cerr << "ERROR: Counter should NOT be fed a disconnected CNF" << endl;
-    assert(false);
-    exit(EXIT_FAILURE);
+    release_assert(false);
   }
 
   // run FlowCutter
@@ -1040,7 +1038,7 @@ FF Counter::outer_count() {
 
   if (!done && ret == CMSat::l_True) {
     if (weighted()) {
-      cout << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
+      cerr << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
       exit(EXIT_FAILURE);
     } else *cnt += *do_appmc_count();
   }
@@ -1177,9 +1175,8 @@ void Counter::count_loop() {
       if (state == RESOLVED && restart_if_needed()) goto end;
 
       if (state != PROCESS_COMPONENT && state != RESOLVED) {
-        cout << "ERROR: state: " << state << endl;
-        assert(false);
-        exit(EXIT_FAILURE);
+        cerr << "ERROR: state: " << state << endl;
+        release_assert(false);
       }
       CHECK_PROPAGATED_DO(
           check_trail(true, true);
@@ -1242,7 +1239,7 @@ end:
         if (c.enabled) {
           auto check_cnt = check_count_cms(c);
           if (*check_cnt != *c.cnt) {
-            cout << "ERROR [weight-mul]: cube cnt mismatch after multiplier: " << c << endl;
+            cerr << "ERROR [weight-mul]: cube cnt mismatch after multiplier: " << c << endl;
             cout << "  cube.cnt : " << *c.cnt << "  check: " << *check_cnt << endl;
             assert(*check_cnt == *c.cnt);
           }
@@ -1530,7 +1527,7 @@ bool Counter::restart_if_needed() {
           check_exact_field(fg);
           auto check_cnt = check_count_cms(cube);
           if (*check_cnt != *cube.cnt) {
-            cout << "ERROR [restart loop]: cube cnt mismatch after compute_cube: " << cube << endl;
+            cerr << "ERROR [restart loop]: cube cnt mismatch after compute_cube: " << cube << endl;
             cout << "  cube.cnt : " << *cube.cnt << "  check: " << *check_cnt << endl;
             assert(*check_cnt == *cube.cnt);
           }
@@ -1707,7 +1704,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
   check_exact_field(fg);
   auto check_cnt = check_count_cms(c);
   if (*check_cnt != *c.cnt) {
-    cout << "ERROR [compute_cube]: cnt mismatch for cube: " << c << endl;
+    cerr << "ERROR [compute_cube]: cnt mismatch for cube: " << c << endl;
     cout << "  recorded c.cnt : " << *c.cnt << endl;
     cout << "  actual check   : " << *check_cnt << endl;
     cout << "  dec_level      : " << dec_level() << " side: " << side << endl;
@@ -1807,7 +1804,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
         cl = { ~ganak_to_cms_lit(t) };
         auto ret = sat_solver->solve(&cl);
         if (ret != CMSat::l_False) {
-          cout << "ERROR: unit " << t << " is not correct!!" << endl;
+          cerr << "ERROR: unit " << t << " is not correct!!" << endl;
           assert(false);
         }
       }
@@ -2181,7 +2178,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_u
     }
     for(const auto& l: trail) units.erase(l);
     if (!units.empty()) {
-      cout << "ERROR: Unit cls not in trail: ";
+      cerr << "ERROR: Unit cls not in trail: ";
       for(const auto& u: units) cout << u << " ";
       cout << endl;
       assert(false);
@@ -2199,7 +2196,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_u
     if (var(t).ante.isNull() && lev > 0) {
       num_decs_at_level.at(lev)++;
       if (num_decs_at_level.at(lev) >= 2) {
-        cout << "ERROR: Two or more of decs at level: " << lev << " trail follows." << endl;
+        cerr << "ERROR: Two or more of decs at level: " << lev << " trail follows." << endl;
         print_trail(false, false);
         assert(false);
       }
@@ -2257,7 +2254,7 @@ bool Counter::is_implied(const vector<Lit>& cl) {
 void Counter::check_implied(const vector<Lit>& cl) {
   bool implied = is_implied(cl);
   if (!implied) {
-    cout << "ERROR, not implied" << endl;
+    cerr << "ERROR, not implied" << endl;
     cout << "last dec lit: " << top_dec_lit() << endl;
     print_comp_stack_info();
     print_conflict_info();
@@ -3295,7 +3292,7 @@ bool Counter::check_watchlists() const {
         if (is_true(l)) sat = true;
       }
       if (!sat && num_unk >=2 && !is_unknown(lit)) {
-        cout << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: " << endl;
+        cerr << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: " << endl;
       for(const auto& l: *alloc->ptr(ofs)) {
           cout << l << " (val: " << lit_val_str(l)
             << " lev: " << var(l).decision_level << ") " << endl;
@@ -3316,12 +3313,12 @@ bool Counter::check_watchlists() const {
   }
   auto check_attach = [&](ClauseOfs off) {
     if (off_att_num.find(off) == off_att_num.end()) {
-      cout << "ERROR: Not found clause in watchlist." << endl;
+      cerr << "ERROR: Not found clause in watchlist." << endl;
       print_cl(*alloc->ptr(off));
       ret = false;
     }
     if (off_att_num[off] !=2 ) {
-      cout << "ERROR: Clause not attached 2 times. It's attached: " << off_att_num[off] << " times" << endl;
+      cerr << "ERROR: Clause not attached 2 times. It's attached: " << off_att_num[off] << " times" << endl;
       print_cl(*alloc->ptr(off));
       ret = false;
     }
@@ -3330,7 +3327,7 @@ bool Counter::check_watchlists() const {
   for(const auto& off: long_irred_cls) check_attach(off);
   for(const auto& off: long_red_cls) check_attach(off);
   if (!off_att_num.empty()) {
-    cout << "ERROR: The following clauses are attached but are NOT in longRed/longIrred clauses" << endl;
+    cerr << "ERROR: The following clauses are attached but are NOT in longRed/longIrred clauses" << endl;
     for(const auto& p: off_att_num) {
       cout << "Offset: " << p.first << endl;
       print_cl(*alloc->ptr(p.first));
@@ -3759,7 +3756,7 @@ void Counter::check_sat_solution() const {
     Clause& cl = *alloc->ptr(off);
     if (clause_falsified(cl)) {
       good = false;
-      cout << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
+      cerr << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
       print_cl(cl);
     }
   }
@@ -3768,7 +3765,7 @@ void Counter::check_sat_solution() const {
     Clause& cl = *alloc->ptr(off);
     if (clause_falsified(cl)) {
       good = false;
-      cout << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
+      cerr << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
       print_cl(cl);
     }
   }
@@ -3951,12 +3948,12 @@ uint64_t Counter::buddy_count() {
 }
 #else
 bool Counter::should_do_buddy_count() const {
-  cout << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
+  cerr << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
   exit(EXIT_FAILURE);
   return false;
 }
 bool Counter::do_buddy_count() {
-  cout << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
+  cerr << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
   exit(EXIT_FAILURE);
 }
 #endif
@@ -3973,12 +3970,12 @@ void Counter::check_cl_propagated_conflicted(T2& cl, uint32_t off) const {
   }
 
   if (!satisfied && num_unknown == 1) {
-    cout << "ERROR! Clause offs: " << off << " should have propagated: " << unk << endl;
+    cerr << "ERROR! Clause offs: " << off << " should have propagated: " << unk << endl;
     print_cl(cl);
     assert(false);
   }
   if (!satisfied && num_unknown == 0) {
-    cout << "ERROR! Clause offs: " << off << " should have conflicted" << endl;
+    cerr << "ERROR! Clause offs: " << off << " should have conflicted" << endl;
     print_cl(cl);
     assert(false);
   }
@@ -4261,7 +4258,7 @@ void Counter::check_cls_deriveable() const {
   auto check = [](CMSat::lbool ret, const vector<CMSat::Lit>& cl) {
     assert(ret != CMSat::l_Undef);
     if (ret != CMSat::l_False) {
-      cout << "ERROR: clause: " << cl << " is not deriveable from irredundant clauses!" << endl;
+      cerr << "ERROR: clause: " << cl << " is not deriveable from irredundant clauses!" << endl;
       cout << "       did you inject a redundant clause that is not a consequence of irredundant clauses?" << endl;
       exit(EXIT_FAILURE);
     }
@@ -4415,14 +4412,12 @@ void Counter::check_all_cl_in_watchlists() const {
   for(const auto& offs: long_red_cls) {
     const auto& cl = *alloc->ptr(offs);
     if (!find_offs_in_watch(watches[cl[0]].watch_list_, offs)) {
-      cout << "ERROR: Did not find watch cl[0]!!" << endl;
-      assert(false);
-      exit(EXIT_FAILURE);
+      cerr << "ERROR: Did not find watch cl[0]!!" << endl;
+      release_assert(false);
     }
     if (!find_offs_in_watch(watches[cl[1]].watch_list_, offs)) {
-      cout << "ERROR: Did not find watch cl[1]!!" << endl;
-      assert(false);
-      exit(EXIT_FAILURE);
+      cerr << "ERROR: Did not find watch cl[1]!!" << endl;
+      release_assert(false);
     }
   }
 }
@@ -4524,7 +4519,7 @@ void Counter::delete_cl(const ClauseOfs off){
 
 void Counter::new_vars(const uint32_t n) {
   if (num_vars_set) {
-    cout << "ERROR: you can only call new_vars() once!" << endl;
+    cerr << "ERROR: you can only call new_vars() once!" << endl;
     exit(EXIT_FAILURE);
   }
   sat_solver->new_vars(n);
@@ -4580,7 +4575,7 @@ bool Counter::filter_lits(const vector<Lit>& lits_orig, vector<Lit>& lits) const
     if (val(l) == X_TRI) lits.push_back(l);
   }
   if (lits.empty()) {
-    cout << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
+    cerr << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
     exit(EXIT_FAILURE);
   }
   return false;

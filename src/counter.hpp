@@ -588,9 +588,9 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
   }
   if (all_false) return;
 
-  cout << "ERROR: clause is not falsified." << endl;
+  cerr << "ERROR: clause is not falsified." << endl;
   print_cl(c, size);
-  assert(false);
+  release_assert(false);
 }
 
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump

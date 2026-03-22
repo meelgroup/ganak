@@ -275,8 +275,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       while (bins_end2 != bins_end3) {
         const uint32_t v2 = *bins_end2;
         if (is_unknown(v2)) {
-          cout << "ERROR: bin clause var: " << v2 << " unknown, but we thought it's set (and in the bin, true)!" << endl;
-          assert(false);
+          cerr << "ERROR: bin clause var: " << v2 << " unknown, but we thought it's set (and in the bin, true)!" << endl;
+          release_assert(false);
         }
         bins_end2++;
       }

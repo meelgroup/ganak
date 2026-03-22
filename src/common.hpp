@@ -223,7 +223,7 @@ struct BPCSizes {
 
 inline void check_exact_field(const FG& fg) {
     if (!fg->exact()) {
-      cout << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
+      cerr << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
       exit(EXIT_FAILURE);
     }
 }

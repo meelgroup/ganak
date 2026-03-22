@@ -72,7 +72,7 @@ template<typename T> void read_in_a_file(const std::string& filename,
         set<uint32_t> tmp;
         for(auto const& s: holder->get_sampl_vars()) {
             if (s >= holder->nVars()) {
-                cout << "ERROR: Sampling var " << s+1 << " is larger than number of vars in formula: "
+                cerr << "ERROR: Sampling var " << s+1 << " is larger than number of vars in formula: "
                     << holder->nVars() << endl;
                 exit(EXIT_FAILURE);
             }

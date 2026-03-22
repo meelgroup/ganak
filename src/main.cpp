@@ -345,31 +345,31 @@ void parse_supported_options(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
-      cout << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
+      cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
       exit(EXIT_FAILURE);
     }
     if (bits_jobs < 0 || bits_jobs > 20) {
-      cout << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;
+      cerr << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;
       exit(EXIT_FAILURE);
     }
     if (num_threads < -1) {
-      cout << "ERROR: number of threads must not be less than -1" << endl;
+      cerr << "ERROR: number of threads must not be less than -1" << endl;
       exit(EXIT_FAILURE);
     }
     if (num_threads > 1024) {
-      cout << "ERROR: number of threads must not be more than 1024" << endl;
+      cerr << "ERROR: number of threads must not be more than 1024" << endl;
       exit(EXIT_FAILURE);
     }
     if (num_threads == 0) {
-      cout << "ERROR: number of threads must not be 0" << endl;
+      cerr << "ERROR: number of threads must not be 0" << endl;
       exit(EXIT_FAILURE);
     }
     if (debug_threads > 0 && num_threads > 1) {
-      cout << "ERROR: threads cannot be debugged when num_threads is more than 1" << endl;
+      cerr << "ERROR: threads cannot be debugged when num_threads is more than 1" << endl;
       exit(EXIT_FAILURE);
     }
     if (mpfr_precision < 2) {
-      cout << "ERROR: mpfr precision must be at least 2 bits" << endl;
+      cerr << "ERROR: mpfr precision must be at least 2 bits" << endl;
       exit(EXIT_FAILURE);
     }
 }
@@ -702,13 +702,13 @@ int main(int argc, char *argv[]) {
   else {
     auto files = program.get<std::vector<std::string>>("inputfile");
     if (files.empty()) {
-      cout << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
+      cerr << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
       exit(EXIT_FAILURE);
     } else if (files.size() == 1) {
       const string& fname = files[0];
       read_in_a_file(fname, &cnf, etof_conf.all_indep, fg);
     } else {
-        cout << "ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
+        cerr << "ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
         cout << "       You provided " << files.size() << " files: ";
         for (const auto& f: files) cout << f << " ";
         cout << endl;
@@ -717,7 +717,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (cnf.get_weighted() && conf.do_buddy) {
-    cout << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
+    cerr << "ERROR: Cannot run BuDDy with weighted CNF" << endl;
     exit(EXIT_FAILURE);
   }
   cnf.clean_idiotic_mccomp_weights();

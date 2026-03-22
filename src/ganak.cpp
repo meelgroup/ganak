@@ -187,8 +187,7 @@ DLL_PUBLIC void Ganak::set_indep_support(const std::set<uint32_t>& indeps) {
     if (v > cdat->nvars) {
       cerr << "ERROR: setting independent support variable " << v
            << " larger than number of variables: " << cdat->nvars << endl;
-      assert(false);
-      exit(EXIT_FAILURE);
+      release_assert(false);
     }
   }
   cdat->indeps = indeps;
@@ -209,8 +208,7 @@ DLL_PUBLIC void Ganak::set_optional_indep_support(const std::set<uint32_t>& inde
     if (v > cdat->nvars) {
       cerr << "ERROR: setting optional independent support variable " << v
            << " larger than number of variables: " << cdat->nvars << endl;
-      assert(false);
-      exit(EXIT_FAILURE);
+      release_assert(false);
     }
   }
   cdat->opt_indeps = indeps;
@@ -219,8 +217,7 @@ DLL_PUBLIC void Ganak::set_lit_weight(const GanakInt::Lit l, const FF& w) {
   if (cdat->opt_indeps.count(l.var()) == 0 && cdat->indeps.count(l.var()) == 0) {
     cerr << "ERROR: setting weight for literal " << (l.sign() ? "" : "-") << l.var()
          << " which is not in independent or optional independent support" << endl;
-    assert(false);
-    exit(EXIT_FAILURE);
+    release_assert(false);
   }
   cdat->lit_weights[l] = w->dup();
 }

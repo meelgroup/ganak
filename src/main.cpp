@@ -333,7 +333,15 @@ void parse_supported_options(int argc, char** argv) {
         }
     }
     catch (const std::exception& err) {
-        std::cerr << err.what() << std::endl;
+        std::string msg = err.what();
+        if (msg == "Duplicate argument") {
+            std::map<std::string, int> seen;
+            for (int i = 1; i < argc; i++)
+                if (argv[i][0] == '-') seen[argv[i]]++;
+            for (auto& [k, v] : seen)
+                if (v > 1) msg += ": " + k;
+        }
+        std::cerr << msg << std::endl;
         exit(EXIT_FAILURE);
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {

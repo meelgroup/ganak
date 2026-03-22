@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 
 #include <algorithm>
+#include <cryptominisat5/cryptominisat.h>
 #include <cstdint>
 #include <ios>
 #include <iomanip>
@@ -1008,7 +1009,6 @@ FF Counter::outer_count() {
       num_cubes_final_this_rst++;
       *cnt += *c.cnt;
       *cubes_cnt_this_rst += *c.cnt;
-      sat_solver->add_clause(ganak_to_cms_cl(c.cnf));
       stats.num_cubes_final++;
     }
     verb_print(1,"[rst-cube] Num restarts: " << stats.num_restarts
@@ -2189,7 +2189,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail) const {
       // No need to check if we are flipping and immediately backtracking
       if (!var(t).ante.isNull()) {
         CMSat::SATSolver s2;
-        CMSat::copy_solver_to_solver(sat_solver, &s2);
+        CMSat::copy_solver_to_solver(sat_solver.get(), &s2);
         vector<CMSat::Lit> cl;
         cl.push_back(CMSat::Lit(t.var()-1, t.sign())); //add opposite of implied
         s2.add_clause(cl);
@@ -4466,8 +4466,6 @@ bool Counter::add_irred_cl(const vector<Lit>& lits_orig) {
 }
 
 bool Counter::add_red_cl(const vector<Lit>& lits_orig, int lbd) {
-  if (!sat_solver->add_clause(ganak_to_cms_cl(lits_orig))) { ok = false; return ok; }
-
   vector<Lit> lits;
   for(const auto& l: lits_orig) {
     if (val(l) == T_TRI) return ok;

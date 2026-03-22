@@ -4170,9 +4170,9 @@ void Counter::dump_current_state(const std::string fname) const {
   if (weighted()) {
     for(uint32_t i = 1; i < opt_indep_support_end; i++) {
       auto l = Lit(i, true);
-      out << "c p weight " << l << " " << *get_weight(l) << endl;
+      out << "c p weight " << l << " " << *get_weight(l) << " 0" << endl;
       l = l.neg();
-      out << "c p weight " << l << " " << *get_weight(l) << endl;
+      out << "c p weight " << l << " " << *get_weight(l) << " 0" << endl;
     }
   }
 

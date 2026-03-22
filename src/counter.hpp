@@ -263,7 +263,7 @@ public:
   void check_cl_unsat(Lit* c, uint32_t size) const;
   bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
   void check_all_cl_in_watchlists() const;
-  void dump_current_state(const std::string fname);
+  void dump_current_state(const std::string fname) const;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif

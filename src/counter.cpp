@@ -4146,7 +4146,7 @@ bool Counter::clause_falsified(const T2& cl) const {
   return true;
 }
 
-void Counter::dump_current_state(const std::string fname) {
+void Counter::dump_current_state(const std::string fname) const {
   std::ofstream out(fname);
   vector<array<Lit, 2>> bin_cls;
   all_lits(i) {

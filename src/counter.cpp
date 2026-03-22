@@ -171,7 +171,7 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
 void Counter::read_td_from_file(const std::string& fname) {
     std::ifstream file(fname);
     if (!file.is_open()) {
-      std::cerr << "ERROR: could not open file: " + fname << endl;
+      std::cerr << "ERROR: could not open file: " << fname << endl;
       exit(EXIT_FAILURE);
     }
 

@@ -68,7 +68,7 @@ class Heap {
 public:
     Heap(const Comp& c) : lt(c) { }
     uint32_t size() const { return heap.size(); }
-    bool empty() const { return heap.size() == 0; }
+    bool empty() const { return heap.empty(); }
     bool in_heap(int n) const {
         return n < (int)indices.size() && indices[n] >= 0;
     }

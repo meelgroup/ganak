@@ -1014,6 +1014,7 @@ FF Counter::outer_count() {
   bool done = false;
   while(ret == CMSat::l_True) {
     VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
+    VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
     auto cubes = one_restart_count();
     if (cubes.size() == 1 && cubes[0].cnf.empty()) done = true;
     CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
@@ -4148,6 +4149,35 @@ bool Counter::clause_falsified(const T2& cl) const {
   return true;
 }
 
+void Counter::check_opt_sampling_determined() const {
+  ArjunNS::SimplifiedCNF cnf(fg);
+  cnf.new_vars(nVars());
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    cnf.add_clause(ganak_to_cms_cl(cl));
+  }
+  all_lits(i) {
+    Lit lit(i/2, i%2);
+    for(const auto& ws: watches[lit].binaries) {
+      if (ws.red() || ws.lit() < lit) continue;
+      cnf.add_clause(ganak_to_cms_cl(vector<Lit>{lit, ws.lit()}));
+    }
+  }
+  for(const auto& t: unit_cls) {
+    cnf.add_clause(ganak_to_cms_cl(vector<Lit>{t}));
+  }
+  set<uint32_t> indep;
+  for(uint32_t i = 1; i < indep_support_end; i++) indep.insert(i-1);
+  cnf.set_sampl_vars(indep);
+
+  set<uint32_t> opt_indep;
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) opt_indep.insert(i-1);
+  cnf.set_opt_sampl_vars(opt_indep);
+
+  ArjunNS::Arjun arjun;
+  assert(arjun.standalone_check_extend(cnf));
+}
+
 void Counter::check_red_cls_deriveable() const {
   auto debug_sat = std::make_unique<CMSat::SATSolver>();
   debug_sat->set_prefix("c o ");
@@ -4192,6 +4222,7 @@ void Counter::check_red_cls_deriveable() const {
 void Counter::init_and_preproc() {
   fix_weights();
   VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
+  VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;

@@ -98,13 +98,6 @@ public:
 
   void remove_cache_pollutions_of_if_exists(const StackLevel &top);
   void remove_cache_pollutions_of(const StackLevel &top);
-  // After outer vivification, clause content changes (literals removed) while
-  // clause IDs stay the same. This makes all cache entries stale (computed for
-  // a less-restrictive formula). Must call this to reset the cache.
-  void reinit_cache() {
-    assert(comp_stack.size() >= 2 && comp_stack[1] != nullptr);
-    cache->init(*comp_stack[1], hash_seed, bpc);
-  }
 
   // After adding new irredundant clauses (e.g. cube blocking clauses between
   // restarts), rebuild the component analyzer so it sees the new clauses.

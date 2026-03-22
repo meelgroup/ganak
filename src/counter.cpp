@@ -904,7 +904,9 @@ FF Counter::count_using_cms() {
     if (weighted())
       for(int i = 0; i < (int)opt_indep_support_end-1; i++) {
         assert(sol[i] != CMSat::l_Undef);
-        *this_cnt *= *get_weight(Lit(i+1, (sol[i] == CMSat::l_True)));
+        Lit l = Lit(i+1, (sol[i] == CMSat::l_True));
+        assert(get_weight(l) != nullptr);
+        *this_cnt *= *get_weight(l);
       }
     *cnt += *this_cnt;
     vector<CMSat::Lit> ban;
@@ -947,8 +949,8 @@ void Counter::fix_weights() {
 }
 
 FF Counter::outer_count() {
+  fix_weights();
   if (!ok) return fg->zero();
-  init_and_preproc();
 
   auto cnt = fg->zero();
   Timer t;
@@ -981,6 +983,7 @@ FF Counter::outer_count() {
   start_time = cpu_time();
   bool done = false;
   while(ret == CMSat::l_True) {
+    init_and_preproc();
     VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
     VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
     auto cubes = one_restart_count();
@@ -1036,10 +1039,6 @@ FF Counter::outer_count() {
     if (!propagate()) { ok = false; break; }
     if (!done) toplevel_vivify_subsume_fullprobe();
     if (appmc_timeout_fired) break;
-
-    comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
-    init_decision_stack();
-    simple_preprocess();
   }
 
   if (!done && ret == CMSat::l_True) {
@@ -1056,10 +1055,8 @@ void Counter::toplevel_vivify_subsume_fullprobe() {
     if (conf.do_vivify &&
         stats.num_restarts % conf.vivif_outer_every_n == 0 && stats.num_restarts > 0) {
       double my_time = cpu_time();
+      init_and_preproc();
 
-      // Vivif needs all units propagated
-      comp_manager.reset();
-      init_decision_stack();
       for (const auto& l : unit_cls) { if (val(l) == X_TRI) set_lit(l, 0); }
       const bool p_ret =propagate();
       assert(p_ret && "We checked this above");
@@ -4197,7 +4194,6 @@ void Counter::check_red_cls_deriveable() const {
 }
 
 void Counter::init_and_preproc() {
-  fix_weights();
   VERY_SLOW_DEBUG_DO(check_red_cls_deriveable());
   VERY_SLOW_DEBUG_DO(check_opt_sampling_determined());
   seen.clear();
@@ -4209,6 +4205,11 @@ void Counter::init_and_preproc() {
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc.get(), long_irred_cls);
+  for(const auto& l: unit_cls) {
+    if (val(l) == X_TRI) set_lit(l, 0);
+    auto ret = propagate();
+    assert(ret && "We ran CMS before, so it cannot be UNSAT");
+  }
   verb_print(3, "[" << __func__ << "] finished.");
 }
 
@@ -4264,7 +4265,6 @@ void Counter::simple_preprocess() {
   release_assert(succeeded && "We ran CMS before, so it cannot be UNSAT");
   for(const auto& t: trail) if (!exists_unit_cl_of(t)) unit_cls.push_back(t);
   init_decision_stack();
-  qhead = 0;
 
   // Remove for reasons for 0-level clauses, these may interfere with
   // deletion of clauses during subsumption
@@ -4550,6 +4550,7 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
 void Counter::init_decision_stack() {
   decisions.clear();
   trail.clear();
+  qhead = 0;
   // initialize the stack to contain at least level zero
   decisions.push_back(StackLevel(
         1, // super comp

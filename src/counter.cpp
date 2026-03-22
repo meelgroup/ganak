@@ -4174,7 +4174,6 @@ void Counter::dump_current_state(const std::string fname) const {
     }
   }
 
-
   for(const auto& t: unit_cls) {
     out << t << " 0" << endl;
   }

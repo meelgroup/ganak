@@ -129,12 +129,12 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
       for(const auto& l: cl) {
         assert(var_map[l.var()] != -1);
         assert(var_map[l.var()] < (int)sub_c.nvars +1);
-        new_cl.push_back(GanakInt::Lit(var_map[l.var()], l.sign()));
+        new_cl.emplace_back(var_map[l.var()], l.sign());
       }
       return new_cl;
     };
     for(const auto& cl: bag_to_irred_cls[i]) sub_c.irred_cls.emplace_back(remap_clause(cl));
-    for(const auto& cl: bag_to_red_cls[i]) sub_c.red_cls.push_back({remap_clause(cl.first), cl.second});
+    for(const auto& cl: bag_to_red_cls[i]) sub_c.red_cls.emplace_back(remap_clause(cl.first), cl.second);
     cls_added += sub_c.irred_cls.size();
 
     // set up counter
@@ -193,7 +193,7 @@ DLL_PUBLIC void Ganak::set_indep_support(const std::set<uint32_t>& indeps) {
   cdat->indeps = indeps;
 }
 DLL_PUBLIC bool Ganak::add_red_cl(const std::vector<GanakInt::Lit>& lits, int lbd) {
-  cdat->red_cls.push_back({lits, (uint32_t)lbd});
+  cdat->red_cls.emplace_back(lits, (uint32_t)lbd);
   return true;
 }
 DLL_PUBLIC bool Ganak::get_is_approximate() const {

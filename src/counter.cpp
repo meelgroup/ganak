@@ -48,7 +48,6 @@ THE SOFTWARE.
 #include <approxmc/approxmc.h>
 #include "timer.hpp"
 
-using std::map;
 using std::set;
 using std::setprecision;
 using std::setw;
@@ -58,7 +57,7 @@ using std::unordered_set;
 
 using namespace GanakInt;
 
-vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) {
+vector<uint32_t> Counter::common_indep_code(const set<uint32_t>& indeps) const {
   if (!num_vars_set) {
     cerr << "ERROR: new_vars() MUST be called before setting indep support" << endl;
     exit(EXIT_FAILURE);
@@ -657,8 +656,8 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
       verb_print(2, "[rst-symm-map] mapped lits: " << tmp);
       verb_print(2, " -->> Old cube:" << orig_cube);
       verb_print(2, " -->> New cube:" << symm_cube);
-      extra_cubes.push_back(
-          Cube(vector<Lit>(symm_cube.begin(), symm_cube.end()), c.cnt, true));
+      extra_cubes.emplace_back(
+          vector<Lit>(symm_cube.begin(), symm_cube.end()), c.cnt, true);
       stats.num_cubes_symm++;
     }
   }
@@ -726,7 +725,7 @@ void Counter::extend_cubes(vector<Cube>& cubes) {
       << " T: " << (cpu_time() - my_time));
 }
 
-uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) {
+uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) const {
   uint32_t disabled = 0;
   std::sort(cubes.begin(), cubes.end(), [](const Cube& a, const Cube& b) {
       return a.lbd < b.lbd;
@@ -1646,7 +1645,7 @@ bool Counter::compute_cube(Cube& c, const int side) {
     c.cnf.erase(it, c.cnf.end());
     for (uint32_t v = 1; v < indep_support_end; v++) {
       if (seen_vars.count(v)) continue;
-      c.cnf.push_back(Lit(v, sat_solver->get_model()[v-1] == CMSat::l_False));
+      c.cnf.emplace_back(v, sat_solver->get_model()[v-1] == CMSat::l_False);
     }
   }
 
@@ -2746,7 +2745,7 @@ bool Counter::v_unsat(const T2& lits) {
   return true;
 }
 
-void Counter::v_shrink(Clause& cl) {
+void Counter::v_shrink(Clause& cl) const {
   uint32_t j = 0;
   for(uint32_t i = 0; i < cl.size(); i++) {
     if (v_val(cl[i]) == F_TRI) continue;
@@ -3181,7 +3180,7 @@ void Counter::create_uip_cl() {
   assert(to_clear.empty());
 
   uip_clause.clear();
-  uip_clause.push_back(Lit(0, false));
+  uip_clause.emplace_back(0, false);
   Lit p = NOT_A_LIT;
 
   SLOW_DEBUG_DO(for(const auto& t:seen) assert(t == 0););
@@ -3347,7 +3346,7 @@ void Counter::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
     for(const auto& l: cl) {
       SLOW_DEBUG_DO(assert(l.var() <= nVars()));
       SLOW_DEBUG_DO(assert(occ.size() > l.raw()));
-      occ[l.raw()].push_back(OffAbs(off, abs));
+      occ[l.raw()].emplace_back(off, abs);
     }
   }
   if (sort_and_clear) cls.clear();
@@ -3526,7 +3525,7 @@ void Counter::subsume_all() {
     for(const auto& l2: watches[lit].binaries) {
       if (l2.lit() < lit) continue;
       assert(lit < l2.lit());
-      bin_cls.push_back(BinClSub(lit, l2.lit(), l2.red()));
+      bin_cls.emplace_back(lit, l2.lit(), l2.red());
     }
     watches[lit].binaries.clear();
   }

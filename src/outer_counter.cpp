@@ -270,7 +270,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   // Launch initial batch of threads
   assert(num_threads > 0);
   for (uint32_t i = 0; i < (uint32_t)num_threads && next_task < num_jobs; i++) {
-    active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
+    active_futures.emplace_back(next_task, std::async(std::launch::async, worker, next_task));
     next_task++;
   }
 
@@ -290,7 +290,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
 
         // Launch next task if available
         if (next_task < num_jobs) {
-          active_futures.push_back({next_task, std::async(std::launch::async, worker, next_task)});
+          active_futures.emplace_back(next_task, std::async(std::launch::async, worker, next_task));
           verb_print(2, "[par] Launched task " << next_task);
           next_task++;
         }

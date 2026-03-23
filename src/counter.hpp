@@ -240,7 +240,7 @@ private:
   // DNF Cube stuff
   bool restart_if_needed();
   vector<Cube> mini_cubes;
-  uint32_t disable_small_cubes(vector<Cube>& cubes);
+  uint32_t disable_small_cubes(vector<Cube>& cubes) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
@@ -378,7 +378,7 @@ public:
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
   vector<Lit>::iterator top_declevel_trail_begin();
-  vector<uint32_t> common_indep_code(const std::set<uint32_t>& indeps);
+  vector<uint32_t> common_indep_code(const std::set<uint32_t>& indeps) const;
 
   bool is_indep = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support
@@ -467,7 +467,7 @@ public:
   void vivify_cls(vector<ClauseOfs>& cls);
   bool vivify_all(bool force = false, bool only_irred = false);
   bool vivify_cl(const ClauseOfs off);
-  void v_shrink(Clause& c);
+  void v_shrink(Clause& c) const;
   template<class T2> bool v_unsat(const T2& lits);
   template<class T2> bool v_satisfied(const T2& lits);
   void v_fix_watch(Clause& cl, uint32_t i);

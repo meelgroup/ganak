@@ -500,8 +500,8 @@ public:
   template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
   vector<ClauseOfs> occ_cls;
-  void backw_susume_cl(ClauseOfs off);
-  void backw_susume_cl_with_bin(BinClSub& b);
+  void backw_subsume_cl(ClauseOfs off);
+  void backw_subsume_cl_with_bin(BinClSub& b);
   void toplevel_full_probe();
   vector<Lit> bothprop_toset;
 };

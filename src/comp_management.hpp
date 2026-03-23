@@ -73,7 +73,7 @@ public:
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
-  size_t comp_stack_size() { return comp_stack.size(); }
+  size_t comp_stack_size() const { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }
   void clean_remain_comps_of(const StackLevel& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
@@ -166,7 +166,7 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
   else {
     debug_print("Not running record_remaining_comps_for, comp_stack.size() > top.remaining_comps_ofs()."
         " comp_stack.size(): " << comp_stack.size()
-        << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
+        << " top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
   if (top.branch_found_unsat() || top.branch_is_zero()) return false;

@@ -46,9 +46,9 @@ constexpr uint8_t F_TRI = 0;
 constexpr uint8_t T_TRI = 1;
 constexpr uint8_t X_TRI = 2;
 
-inline bool tri_is_true(TriValue v)    { return v == T_TRI; }
-inline bool tri_is_false(TriValue v)   { return v == F_TRI; }
-inline bool tri_is_unknown(TriValue v) { return v == X_TRI; }
+[[nodiscard]] inline bool tri_is_true(TriValue v)    { return v == T_TRI; }
+[[nodiscard]] inline bool tri_is_false(TriValue v)   { return v == F_TRI; }
+[[nodiscard]] inline bool tri_is_unknown(TriValue v) { return v == X_TRI; }
 constexpr Lit NOT_A_LIT(0, false);
 constexpr auto SENTINEL_LIT = NOT_A_LIT;
 
@@ -137,15 +137,15 @@ public:
   }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
+inline std::ostream& operator<<(std::ostream& os, const Antecedent& ante)
 {
   std::stringstream s;
-  if (val.isNull()) {
+  if (ante.isNull()) {
     s << "DEC      " << std::setw(10) << "";
-  } else if (val.isAClause()) {
-    s << "CL offs: " << std::setw(10) << val.as_cl();
-  } else if (val.isALit()) {
-    s << "Lit:     " << std::setw(10) << val.as_lit();
+  } else if (ante.isAClause()) {
+    s << "CL offs: " << std::setw(10) << ante.as_cl();
+  } else if (ante.isALit()) {
+    s << "Lit:     " << std::setw(10) << ante.as_lit();
   } else {assert(false);}
   os << s.str();
   return os;
@@ -208,7 +208,7 @@ public:
   uint8_t red:1 = 0;
   uint8_t freed:1 = 0;
   uint8_t reloced:1 = 0;
-  uint8_t vivifed:1 = 0;
+  uint8_t vivified:1 = 0;
   auto size() const { return sz; }
   void resize(const uint32_t sz2) {sz = sz2;}
   void update_lbd(uint32_t _lbd) {
@@ -234,7 +234,7 @@ inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {
   os << "0"
     << " (red: " << (int)cl.red << " lbd: " << (int)cl.lbd
     << " used: " << (int)cl.used << " total_used: " << (int)cl.total_used
-    << " vivifed: " << (int)cl.vivifed
+    << " vivified: " << (int)cl.vivified
     << " freed: " << (int)cl.freed;
   return os;
 }

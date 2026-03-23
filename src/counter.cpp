@@ -2614,7 +2614,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     auto& off = cls[i];
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
-      if (cl.vivifed == 0 &&
+      if (cl.vivified == 0 &&
           (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.tot_used_cutoff_vivif)))))
         rem = vivify_cl(off);
     }
@@ -2622,7 +2622,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
   }
 
   // We didn't timeout, reset vivified flag.
-  if (v_tout > 0) for(const auto& off: cls) alloc->ptr(off)->vivifed = 0;
+  if (v_tout > 0) for(const auto& off: cls) alloc->ptr(off)->vivified = 0;
   cls.resize(j);
 }
 
@@ -2917,7 +2917,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   if (v_val(v_tmp2[0]) != X_TRI || v_val(v_tmp2[1]) != X_TRI) return false;
 
   v_new_lev();
-  cl.vivifed = 1;
+  cl.vivified = 1;
   stats.vivif_tried_cl++;
 
   debug_print("vivifying cl offs: " << off);
@@ -3353,7 +3353,7 @@ void Counter::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
   if (sort_and_clear) cls.clear();
 }
 
-void Counter::backw_susume_cl(ClauseOfs off) {
+void Counter::backw_subsume_cl(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   uint32_t abs = calc_abstr(cl);
   uint32_t smallest = numeric_limits<uint32_t>::max();
@@ -3386,7 +3386,7 @@ void Counter::backw_susume_cl(ClauseOfs off) {
   }
 }
 
-void Counter::backw_susume_cl_with_bin(BinClSub& cl) {
+void Counter::backw_subsume_cl_with_bin(BinClSub& cl) {
   uint32_t abs = calc_abstr(cl);
   uint32_t smallest = numeric_limits<uint32_t>::max();
   uint32_t smallest_at = 0;
@@ -3550,14 +3550,14 @@ void Counter::subsume_all() {
   }
   j++;
   if (!bin_cls.empty()) bin_cls.resize(j);
-  for(auto& b: bin_cls) backw_susume_cl_with_bin(b);
+  for(auto& b: bin_cls) backw_subsume_cl_with_bin(b);
 
   // Long clauses
   std::shuffle(occ_cls.begin(), occ_cls.end(), mtrand);
   for(const auto& off: occ_cls) {
     Clause* cl = alloc->ptr(off);
     if (cl->freed) continue;
-    backw_susume_cl(off);
+    backw_subsume_cl(off);
   }
 
   // Cleanup

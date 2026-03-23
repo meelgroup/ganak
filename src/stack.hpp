@@ -51,7 +51,7 @@ public:
   uint64_t tstamp;
   bool is_indep;
 
-  inline const FF val_or_zero(const bool b) const {
+  [[nodiscard]] inline FF val_or_zero(const bool b) const {
     if (branch_mc[b] == nullptr) return fg->zero();
     return branch_mc[b]->dup();
 
@@ -59,10 +59,10 @@ public:
   static inline bool cnt_is_zero(const FF& b) {
     return b == nullptr || b->is_zero();
   }
-  inline bool is_zero(const bool b) const {
+  [[nodiscard]] inline bool is_zero(const bool b) const {
     return cnt_is_zero(branch_mc[b]);
   }
-  inline bool is_one(const bool b) const {
+  [[nodiscard]] inline bool is_one(const bool b) const {
     return (branch_mc[b] && branch_mc[b]->is_one());
   }
 
@@ -104,11 +104,11 @@ private:
   uint64_t unprocessed_comps_end_ = 0;
 
 public:
-  bool has_unproc_comps() const {
+  [[nodiscard]] bool has_unproc_comps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ > remaining_comps_ofs_;
   }
-  uint64_t num_unproc_comps() const {
+  [[nodiscard]] uint64_t num_unproc_comps() const {
     assert(unprocessed_comps_end_ >= remaining_comps_ofs_);
     return unprocessed_comps_end_ - remaining_comps_ofs_;
   }
@@ -117,16 +117,16 @@ public:
     unprocessed_comps_end_--;
   }
   void reset_remain_comps() { unprocessed_comps_end_ = remaining_comps_ofs_; }
-  uint64_t super_comp() const { return super_comp_; }
-  bool is_right_branch() const { return act_branch; }
-  uint64_t get_unproc_comps_end() const { return unprocessed_comps_end_; }
-  uint64_t remaining_comps_ofs() const { return remaining_comps_ofs_; }
+  [[nodiscard]] uint64_t super_comp() const { return super_comp_; }
+  [[nodiscard]] bool is_right_branch() const { return act_branch; }
+  [[nodiscard]] uint64_t get_unproc_comps_end() const { return unprocessed_comps_end_; }
+  [[nodiscard]] uint64_t remaining_comps_ofs() const { return remaining_comps_ofs_; }
   void set_unprocessed_comps_end(uint64_t end) {
     unprocessed_comps_end_ = end;
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_);
   }
 
-  uint64_t curr_remain_comp() const {
+  [[nodiscard]] uint64_t curr_remain_comp() const {
     assert(remaining_comps_ofs_ <= unprocessed_comps_end_ - 1);
     return unprocessed_comps_end_ - 1;
   }
@@ -137,7 +137,7 @@ public:
     SLOW_DEBUG_DO(assert(is_zero(act_branch)));
   }
 
-  bool another_comp_possible() const {
+  [[nodiscard]] bool another_comp_possible() const {
     return !branch_found_unsat() && !branch_is_zero() && has_unproc_comps();
   }
 
@@ -223,16 +223,16 @@ public:
         << endl);
   }
 
-  bool branch_is_zero() const { return branch_zero[act_branch]; }
-  bool branch_found_unsat() const { return branch_unsat[act_branch]; }
+  [[nodiscard]] bool branch_is_zero() const { return branch_zero[act_branch]; }
+  [[nodiscard]] bool branch_found_unsat() const { return branch_unsat[act_branch]; }
   void mark_branch_unsat() {
     branch_unsat[act_branch] = true;
     branch_mc[act_branch] = nullptr;
   }
-  const FF& get_branch_sols() const { return branch_mc[act_branch]; }
-  const FF& get_model_side(int side) const { return branch_mc[side]; }
+  [[nodiscard]] const FF& get_branch_sols() const { return branch_mc[act_branch]; }
+  [[nodiscard]] const FF& get_model_side(int side) const { return branch_mc[side]; }
   void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
-  FF total_model_count() const {
+  [[nodiscard]] FF total_model_count() const {
     if (is_indep) {
       if (is_zero(0)) return val_or_zero(1);
       else if (is_zero(1)) return val_or_zero(0);
@@ -244,14 +244,14 @@ public:
   }
 
   // for cube creation
-  FF left_model_count() const { return val_or_zero(0); }
-  FF right_model_count() const { return val_or_zero(1); }
+  [[nodiscard]] FF left_model_count() const { return val_or_zero(0); }
+  [[nodiscard]] FF right_model_count() const { return val_or_zero(1); }
 };
 
 class DecisionStack: public vector<StackLevel> {
 public:
 
-  const StackLevel& top() const {
+  [[nodiscard]] const StackLevel& top() const {
     assert(!empty());
     return vector<StackLevel>::back();
   }
@@ -262,7 +262,7 @@ public:
   }
 
   /// 0 means pre-1st-decision
-  int32_t get_decision_level() const {
+  [[nodiscard]] int32_t get_decision_level() const {
     assert(!empty());
     return (int)size() - 1;
   }

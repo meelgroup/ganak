@@ -27,6 +27,9 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
+enum class PolarType : int { standard = 0, cache = 1, forced_false = 2, forced_true = 3 };
+enum class DecideType : int { td = 0, ignore_td = 1 };
+
 struct CounterConfiguration {
   int verb = 1;
   int do_restart = 0;

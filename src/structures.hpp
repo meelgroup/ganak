@@ -45,6 +45,10 @@ constexpr int32_t INVALID_DL = -1;
 constexpr uint8_t F_TRI = 0;
 constexpr uint8_t T_TRI = 1;
 constexpr uint8_t X_TRI = 2;
+
+inline bool tri_is_true(TriValue v)    { return v == T_TRI; }
+inline bool tri_is_false(TriValue v)   { return v == F_TRI; }
+inline bool tri_is_unknown(TriValue v) { return v == X_TRI; }
 constexpr Lit NOT_A_LIT(0, false);
 constexpr auto SENTINEL_LIT = NOT_A_LIT;
 

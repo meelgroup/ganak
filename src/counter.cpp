@@ -1262,11 +1262,11 @@ bool Counter::standard_polarity(const uint32_t v) const {
 
 bool Counter::get_polarity(const uint32_t v) const {
   bool polarity;
-  switch (conf.polar_type) {
-    case 0: polarity = standard_polarity(v); break;
-    case 1: polarity = var(v).last_polarity; break;
-    case 2: polarity = false; break;
-    case 3: polarity = true; break;
+  switch (static_cast<PolarType>(conf.polar_type)) {
+    case PolarType::standard:      polarity = standard_polarity(v); break;
+    case PolarType::cache:         polarity = var(v).last_polarity; break;
+    case PolarType::forced_false:  polarity = false; break;
+    case PolarType::forced_true:   polarity = true; break;
     default: release_assert(false);
   }
   return polarity;
@@ -1281,9 +1281,9 @@ void Counter::decide_lit() {
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
-  switch (conf.decide) {
-    case 0: v = find_best_branch(false, !conf.do_use_sat_solver); break;
-    case 1: v = find_best_branch(true, !conf.do_use_sat_solver); break;
+  switch (static_cast<DecideType>(conf.decide)) {
+    case DecideType::td:        v = find_best_branch(false, !conf.do_use_sat_solver); break;
+    case DecideType::ignore_td: v = find_best_branch(true,  !conf.do_use_sat_solver); break;
     default: assert(false);
   }
 

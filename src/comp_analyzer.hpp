@@ -206,10 +206,10 @@ private:
   vector<uint32_t> comp_vars;
 
 
-  bool is_false(const Lit lit) const { return values[lit] == F_TRI; }
-  bool is_true(const Lit lit) const { return values[lit] == T_TRI; }
-  bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
-  bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
+  bool is_false(const Lit lit) const { return tri_is_false(values[lit]); }
+  bool is_true(const Lit lit) const { return tri_is_true(values[lit]); }
+  bool is_unknown(const Lit lit) const { return tri_is_unknown(values[lit]); }
+  bool is_unknown(const uint32_t v) const { return tri_is_unknown(values[Lit(v, true)]); }
   void bump_var_occs(const uint32_t v);
 
   // stores all information about the comp of var

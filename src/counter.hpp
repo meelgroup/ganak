@@ -336,8 +336,8 @@ public:
   inline VarData& var(const uint32_t v) { return var_data[v]; }
   inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
   inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
-  inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
-  inline bool is_false(Lit lit) const { return values[lit] == F_TRI; }
+  inline bool is_true(const Lit &lit) const { return tri_is_true(values[lit]); }
+  inline bool is_false(Lit lit) const { return tri_is_false(values[lit]); }
   inline bool is_unknown(Lit lit) const;
   inline bool is_unknown(uint32_t var) const;
   void set_confl_state(Lit a, Lit b);
@@ -651,7 +651,7 @@ template<class T2>
 void Counter::minimize_uip_cl_with_bins(T2& cl) {
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
   uint32_t orig_size = cl.size();
-  assert(cl.size() > 0);
+  assert(!cl.empty());
   tmp_minim_with_bins.clear();
   for(const auto& l: cl) { seen[l.raw()] = 1; tmp_minim_with_bins.push_back(l);}
   for(const auto& l: cl) {
@@ -687,7 +687,7 @@ template<class T2> void Counter::attach_cl(ClauseOfs off, const T2& lits) {
 inline bool Counter::is_unknown(Lit lit) const {
     SLOW_DEBUG_DO(assert(lit.var() <= nVars()));
     SLOW_DEBUG_DO(assert(lit.var() != 0));
-    return values[lit] == X_TRI;
+    return tri_is_unknown(values[lit]);
 }
 
 inline bool Counter::is_unknown(uint32_t var) const {

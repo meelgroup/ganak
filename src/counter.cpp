@@ -4310,6 +4310,7 @@ void Counter::init_and_preproc() {
       check_cls_deriveable();
       check_opt_sampling_determined();
   );
+  tstamp = 10;
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;

@@ -1068,7 +1068,7 @@ vector<Cube> Counter::one_restart_count() {
   mini_cubes.clear();
   assert(opt_indep_support_end >= indep_support_end);
 
-  if (tdscore.empty() && nVars() > 5 && conf.do_td) {
+  if (tdscore.empty() && nVars() > 10 && conf.do_td && indep_support_end-1 >= td_at_or_above_indep) {
     tdscore.resize(nVars()+1, 0);
     td_decompose();
   }

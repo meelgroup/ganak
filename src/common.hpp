@@ -40,6 +40,10 @@ using CMSat::FieldGen;
 using FG = std::unique_ptr<FieldGen>;
 using FF = std::unique_ptr<Field>;
 
+// Also controls Arjun in multi-threaded counting
+// Arjun will not run if below this threshold
+constexpr uint32_t td_at_or_above_indep = 10;
+
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */
 /* #define CHECK_PROPAGATED */

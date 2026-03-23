@@ -125,9 +125,13 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
   simp_conf.iter1 = 0;
   ArjunNS::Arjun::ElimToFileConf etof_conf;
   arjun.standalone_minimize_indep(cnf, false);
-  if (cnf.get_sampl_vars().size() >= 10) {
+  if (cnf.get_sampl_vars().size() >= td_at_or_above_indep) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
-  } else cnf.renumber_sampling_vars_for_ganak();
+  } else {
+    if (verb >= 5)
+      cout<< "c o skipping strong Arjun simp because size sampl_vars < " << td_at_or_above_indep << endl;
+    cnf.renumber_sampling_vars_for_ganak();
+  }
   /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
 }
 
@@ -239,7 +243,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     }
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
-    run_arjun(cnf, 0);
+    run_arjun(cnf, conf.verb >= 5 ? conf.verb : 0);
     FF ret = cnf.get_multiplier_weight()->dup();
     if (!ret->is_zero()) {
       auto local_conf = conf;

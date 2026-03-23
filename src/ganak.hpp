@@ -88,7 +88,6 @@ void setup_ganak(const T2& simp_cnf, T& counter) {
     }
   }
 
-
   // Clauses
   for(const auto& cl: simp_cnf.get_clauses()) counter.add_irred_cl(cms_to_ganak_cl(cl));
   for(const auto& cl: simp_cnf.get_red_clauses()) counter.add_red_cl(cms_to_ganak_cl(cl));

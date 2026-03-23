@@ -4546,6 +4546,10 @@ void Counter::new_vars(const uint32_t n) {
 }
 
 Clause* Counter::add_cl(const vector<Lit> &lits, bool red) {
+  if (lits.empty()) {
+    ok = false;
+    return nullptr;
+  }
   if (lits.size() == 1) {
     Lit l = lits[0];
     assert(!exists_unit_cl_of(l.neg()) && "UNSAT is not dealt with");
@@ -4574,10 +4578,6 @@ bool Counter::filter_lits(const vector<Lit>& lits_orig, vector<Lit>& lits) const
   for(const auto& l: lits_orig) {
     if (val(l) == T_TRI) return true;
     if (val(l) == X_TRI) lits.push_back(l);
-  }
-  if (lits.empty()) {
-    cerr << "ERROR: UNSAT should have been caught by external SAT solver" << endl;
-    exit(EXIT_FAILURE);
   }
   return false;
 }

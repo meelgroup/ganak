@@ -166,6 +166,6 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 }
 
 
-void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
+void DataAndStatistics::print_short_formula_info(const Counter* counter) {
   counter->print_cls_stats();
 }

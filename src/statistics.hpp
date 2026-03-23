@@ -178,7 +178,7 @@ public:
   }
 
   void print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const;
-  void print_short_formula_info(const Counter* counter) const;
+  static void print_short_formula_info(const Counter* counter);
 
   double cache_miss_rate() const {
     if(num_cache_look_ups == 0) return 0.0;

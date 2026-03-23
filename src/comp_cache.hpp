@@ -44,7 +44,7 @@ public:
   ~CompCache() override = default;
 
   void init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) override;
-  uint64_t get_num_entries_used() const override {
+  [[nodiscard]] uint64_t get_num_entries_used() const override {
     uint64_t ret = 0;
     for (uint32_t id = 2; id < entry_base.size(); id++)
       if (!entry_base[id].is_free()) ret++;
@@ -60,12 +60,12 @@ public:
     return new_comp;
   }
 
-  uint64_t get_max_num_entries() const override { return entry_base.size(); }
+  [[nodiscard]] uint64_t get_max_num_entries() const override { return entry_base.size(); }
 
   // compute the size in bytes of the comp cache from scratch
   // the value is stored in bytes_memory_usage_
   uint64_t compute_size_allocated() override;
-  bool cache_full(uint64_t extra_will_be_added = 0) const override {
+  [[nodiscard]] bool cache_full(uint64_t extra_will_be_added = 0) const override {
     // Each slot in free_entry_base_slots represents a T-sized slot in entry_base that
     // is already allocated (paid for in cache_infra_bytes_mem_usage) but currently unused.
     // Subtracting this avoids counting free entry_base slots as live memory.
@@ -77,7 +77,7 @@ public:
     entry(id).set_deletable();
   }
 
-  bool exists(CacheEntryID id) const override {
+  [[nodiscard]] bool exists(CacheEntryID id) const override {
     return !entry_base[id].is_free();
   }
 
@@ -142,7 +142,7 @@ public:
   // store the number in model_count as the model count of CacheEntryID id
   void store_value(const CacheEntryID id, const FF& model_count) override;
 
-  uint64_t calc_cutoff() const override;
+  [[nodiscard]] uint64_t calc_cutoff() const override;
   bool delete_some_entries() override;
 
   // delete entries, keeping the descendants tree consistent
@@ -160,7 +160,7 @@ public:
   }
 
 private:
-  uint64_t calc_extra_mem_after_push() const;
+  [[nodiscard]] uint64_t calc_extra_mem_after_push() const;
   T& entry(CacheEntryID id) { return entry_base[id]; }
   const T &entry(CacheEntryID id) const { return entry_base[id]; }
   T& entry(const Comp& comp) { return entry(comp.id()); }
@@ -204,7 +204,7 @@ private:
     }
   }
 
-  uint32_t table_pos(CacheEntryID id) const {
+  [[nodiscard]] uint32_t table_pos(CacheEntryID id) const {
     return (uint32_t)entry(id).get_hashkey() & tbl_size_mask;
   }
 

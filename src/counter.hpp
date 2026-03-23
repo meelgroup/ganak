@@ -105,10 +105,10 @@ struct BinClSub {
       lit[1] = _lit2;
     }
 
-  uint32_t size() const { return 2; }
-  const Lit* begin() const {return &lit[0];}
+  [[nodiscard]] uint32_t size() const { return 2; }
+  [[nodiscard]] const Lit* begin() const {return &lit[0];}
   Lit* begin() {return &lit[0];}
-  const Lit* end() const {return begin()+2;}
+  [[nodiscard]] const Lit* end() const {return begin()+2;}
   Lit* end() {return begin()+2;}
   Lit& operator[](const uint32_t at) {return lit[at];}
   const Lit& operator[](const uint32_t at) const {return lit[at];}
@@ -229,7 +229,7 @@ private:
   // Clause adding
   void simple_preprocess();
   vector<Lit> unit_cls;
-  bool remove_duplicates(vector<Lit>& lits);
+  static bool remove_duplicates(vector<Lit>& lits);
   bool exists_unit_cl_of(const Lit l) const {
     return std::ranges::find(unit_cls, l) != unit_cls.end();
   }
@@ -251,7 +251,7 @@ private:
   ExtendResult cube_try_extend_by_lit(const Lit torem, const Cube& c);
   template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
-  bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2) const;
+  static bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2);
   bool compute_cube(Cube& cube, const int side);
   vector<std::map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube>& cubes);
@@ -272,7 +272,7 @@ public:
   void check_all_propagated_conflicted() const;
   void print_all_levels() const;
   void check_cl_unsat(Lit* c, uint32_t size) const;
-  bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
+  static bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off);
   void check_all_cl_in_watchlists() const;
   void dump_current_state(const std::string fname) const;
   void check_current_state_unsat() const;
@@ -388,7 +388,7 @@ public:
 
   // Printing
   std::string lit_val_str(Lit lit) const;
-  std::string val_to_str(const TriValue& tri) const;
+  static std::string val_to_str(const TriValue& tri);
   void print_dec_info() const;
   template<class T2> void print_cl(const T2& cl) const;
   template<class T2> void v_print_cl(const T2& cl) const;

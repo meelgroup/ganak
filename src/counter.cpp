@@ -617,7 +617,7 @@ Counter::ExtendResult Counter::cube_try_extend_by_lit(const Lit torem, const Cub
   return ExtendResult::REMOVE_AND_DOUBLE;
 }
 
-bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const {
+bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) {
   for(const auto& l: c1) if (c2.count(l.neg())) return true;
   return false;
 }
@@ -632,7 +632,7 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
       set<Lit> symm_cube;
       vector<Lit> tmp;
       uint32_t mapped = 0;
-      for(auto& l: orig_cube) {
+      for(const auto& l: orig_cube) {
         Lit l2 = l;
         if (gen.count(l) != 0) {
           mapped++;
@@ -646,7 +646,7 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
 
       if (conf.verb >= 2) {
         cout << "c o [rst-symm-map] generator applied: ";
-        for(auto& l: gen) {
+        for(const auto& l: gen) {
           cout << l.first << " -> " << l.second << " :: ";
         }
         cout << endl;
@@ -2437,8 +2437,8 @@ bool Counter::propagate(bool out_of_order) {
     cout << "--> will do it now... " << endl;
 #endif
 
-    auto it2 = ws.begin();
-    auto it = ws.begin();
+    auto* it2 = ws.begin();
+    auto* it = ws.begin();
     for (; it != ws.end(); it++) {
       if (is_true(it->blckLit)) { *it2++ = *it;
         debug_print("cl ofs: " << it->ofs << " blocked on lit: " << it->blckLit << " -> skipping");
@@ -2780,7 +2780,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
   if (offs.currently_propagating) {
     // Move 1st & 2nd literal to position
     auto swap_to = [&](size_t pos, const Lit& lit) {
-      auto at = std::find(cl.begin(), cl.end(), lit);
+      auto* at = std::find(cl.begin(), cl.end(), lit);
       assert(at != cl.end());
       std::swap(cl[pos], *at);
     };
@@ -3065,8 +3065,8 @@ bool Counter::v_propagate() {
     cout << "--> will do it now... " << endl;
 #endif
 
-    auto it2 = ws.begin();
-    auto it = ws.begin();
+    auto* it2 = ws.begin();
+    auto* it = ws.begin();
     for (; it != ws.end(); it++) {
       if (v_val(it->blckLit) == T_TRI) { *it2++ = *it; continue; }
 
@@ -3281,7 +3281,7 @@ bool Counter::check_watchlists() const {
   // FALSE & UNK. Must be UNK & UNK
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
-    auto& ws = watches[lit].watch_list_;
+    const auto& ws = watches[lit].watch_list_;
     for(const auto& w: ws) {
       const auto ofs = w.ofs;
       uint32_t num_unk = 0;
@@ -3946,12 +3946,12 @@ uint64_t Counter::buddy_count() {
   return cnt;
 }
 #else
-bool Counter::should_do_buddy_count() const {
+bool Counter::should_do_buddy_count() const { // NOLINT(readability-convert-member-functions-to-static)
   cerr << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
   exit(EXIT_FAILURE);
   return false;
 }
-bool Counter::do_buddy_count() {
+bool Counter::do_buddy_count() { // NOLINT(readability-convert-member-functions-to-static)
   cerr << "ERROR: you must recompile with buddy enabled for BDD counting to work" << endl;
   exit(EXIT_FAILURE);
 }
@@ -4422,9 +4422,9 @@ void Counter::check_all_cl_in_watchlists() const {
   }
 }
 
-bool Counter::find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off)  const
+bool Counter::find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off)
 {
-  for (auto& w: ws) if (w.ofs == off) { return true; }
+  for (const auto& w: ws) if (w.ofs == off) { return true; }
   return false;
 }
 
@@ -4688,7 +4688,7 @@ string Counter::lit_val_str(Lit lit) const {
   else return "UNKN";
 }
 
-string Counter::val_to_str(const TriValue& tri) const {
+string Counter::val_to_str(const TriValue& tri) {
   if (tri == F_TRI) return "FALSE";
   else if (tri == T_TRI) return "TRUE";
   else return "UNKN";

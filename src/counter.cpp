@@ -112,15 +112,12 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
 bool Counter::remove_duplicates(vector<Lit>& lits) {
   if (lits.size() <= 1) return true;
   std::sort(lits.begin(), lits.end());
-  uint32_t j = 1;
-  Lit last_lit = lits[0];
-  for(uint32_t i = 1; i < lits.size(); i++) {
-    if (lits[i] == last_lit) continue;
-    if (lits[i] == last_lit.neg()) return false;
-    last_lit = lits[i];
-    lits[j++] = lits[i];
-  }
-  lits.resize(j);
+  // After sorting, complementary lits (a and a.neg()) are always adjacent since
+  // they differ by exactly 1 in the raw encoding (neg() flips the LSB).
+  // If a complementary pair exists, the clause is a tautology.
+  if (std::adjacent_find(lits.begin(), lits.end(),
+      [](Lit a, Lit b) { return b == a.neg(); }) != lits.end()) return false;
+  lits.erase(std::unique(lits.begin(), lits.end()), lits.end());
   return true;
 }
 

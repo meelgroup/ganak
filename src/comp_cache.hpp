@@ -387,7 +387,7 @@ void CompCache<T>::store_value(const CacheEntryID id, const FF& model_count) {
 template<typename T>
 void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) {
   // Release mem
-  for (uint32_t i = 0; i < entry_base.size(); i++) entry_base[i].set_free();
+  for (auto& e : entry_base) e.set_free();
   entry_base.clear();
 
   // Setup initial state
@@ -447,7 +447,7 @@ template<typename T>
 uint64_t CompCache<T>::calc_cutoff() const {
   vector<uint64_t> scores;
   // skip index 0 (dummy) and 1 (root formula, never deletable)
-  for (auto it = entry_base.begin() + 2; it != entry_base.end(); it++)
+  for (auto it = entry_base.begin() + 2; it != entry_base.end(); ++it)
     if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
   assert(!scores.empty());
   verb_print(1, "deletable:           " << scores.size());
@@ -460,16 +460,15 @@ template<typename T>
 bool CompCache<T>::delete_some_entries() {
   // Check for deletable entries before doing anything — the cache may be full
   // purely due to infrastructure (e.g. table) with no evictable entries yet.
-  bool has_deletable = false;
-  for (uint32_t id = 2; id < entry_base.size(); id++)
-    if (!entry_base[id].is_free() && entry_base[id].is_deletable()) { has_deletable = true; break; }
+  const bool has_deletable = std::any_of(entry_base.begin() + 2, entry_base.end(),
+    [](const auto& e) { return !e.is_free() && e.is_deletable(); });
   if (!has_deletable) return false;
 
   const auto start_del_time = cpu_time();
   uint64_t cutoff = (uint64_t)calc_cutoff();
-  verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
-  verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
-  verb_print(1, "max_cache_size_bytes in MB: " << (stats.max_cache_size_bytes)/(1024ULL*1024ULL));
+  verb_print(1, "Deleting entries. Num entries: " << entry_base.size());
+  verb_print(1, "cache_bytes_memory_usage() in MB: " << in_mb(stats.cache_bytes_memory_usage()));
+  verb_print(1, "max_cache_size_bytes in MB: " << in_mb(stats.max_cache_size_bytes));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
 
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
@@ -510,10 +509,8 @@ bool CompCache<T>::delete_some_entries() {
   // Recompute mem usage — must start from 0 to include entry_base[1] (the root
   // formula entry, which has non-zero extra_bytes() from its packed comp data).
   stats.sum_extra_bytes = 0;
-  for (uint32_t id = 0; id < entry_base.size(); id++)
-    if (!entry_base[id].is_free()) {
-      stats.sum_extra_bytes += entry_base[id].extra_bytes();
-    }
+  for (const auto& e : entry_base)
+    if (!e.is_free()) stats.sum_extra_bytes += e.extra_bytes();
   compute_size_allocated();
   verb_print(1, "deletion done. T: " << cpu_time()-start_del_time);
   return num > 0;
@@ -572,18 +569,13 @@ template<typename T>
 uint64_t CompCache<T>::num_siblings(CacheEntryID id) {
   uint64_t ret = 0;
   CacheEntryID father = entry(id).father();
-  if (entry(father).first_descendant() == id) {
-    return 0;
-  } else {
-    CacheEntryID act_sibl = entry(father).first_descendant();
-    while (act_sibl) {
-      ret ++;
-      CacheEntryID next_sibl = entry(act_sibl).next_sibling();
-      if (next_sibl == id) {
-        return ret;
-      }
-      act_sibl = next_sibl;
-    }
+  if (entry(father).first_descendant() == id) return 0;
+  CacheEntryID act_sibl = entry(father).first_descendant();
+  while (act_sibl) {
+    ret++;
+    CacheEntryID next_sibl = entry(act_sibl).next_sibling();
+    if (next_sibl == id) return ret;
+    act_sibl = next_sibl;
   }
   release_assert(false);
   return ret;

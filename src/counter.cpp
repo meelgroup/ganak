@@ -2432,12 +2432,11 @@ bool Counter::propagate(bool out_of_order) {
         continue;
       }
 
-      uint32_t i = 2;
-      for(; i < c.sz; i++) if (!is_false(c[i])) break;
+      auto it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return !is_false(l); });
       // either we found a free or satisfied lit
-      if (i != c.sz) {
-        c[1] = c[i];
-        c[i] = plit;
+      if (it3 != c.end()) {
+        c[1] = *it3;
+        *it3 = plit;
         debug_print("New watch for cl: " << c[1]);
         watches[c[1]].add_cl(ofs, plit);
       } else {
@@ -2928,7 +2927,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));
     stats.vivif_cl_minim++;
     stats.vivif_lit_rem += removable;
-    for(uint32_t i = 0; i < v_tmp.size(); i++) cl[i] = v_tmp[i];
+    std::copy(v_tmp.begin(), v_tmp.end(), cl.begin());
     cl.resize(v_tmp.size());
     assert(cl.sz >= 2);
     VERBOSE_DEBUG_DO(cout << "vivified CL: " << endl; v_print_cl(cl));
@@ -3049,12 +3048,11 @@ bool Counter::v_propagate() {
         continue;
       }
 
-      uint32_t i = 2;
-      for(; i < c.sz; i++) if (v_val(c[i]) != F_TRI) break;
+      auto it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return v_val(l) != F_TRI; });
       // either we found a free or satisfied lit
-      if (i != c.sz) {
-        c[1] = c[i];
-        c[i] = plit;
+      if (it3 != c.end()) {
+        c[1] = *it3;
+        *it3 = plit;
         debug_print("v New watch for cl: " << c[1]);
         watches[c[1]].add_cl(ofs, plit);
       } else {
@@ -3087,8 +3085,7 @@ void Counter::fill_cl(const Antecedent& ante, Lit*& c, uint32_t& size, Lit p) co
     //Binary
     tmp_lit.resize(2);
     c = tmp_lit.data();
-    if (p == NOT_A_LIT) c[0] = confl_lit;
-    else c[0] = p;
+    c[0] = (p == NOT_A_LIT) ? confl_lit : p;
     c[1] = ante.as_lit();
     size = 2;
   } else {assert(false && "Should never be a decision");}

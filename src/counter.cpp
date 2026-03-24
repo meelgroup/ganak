@@ -4212,7 +4212,7 @@ void Counter::check_cls_deriveable() const {
     Lit l(x/2, x%2);
     for(const auto& ws: watches[l].binaries) {
       if (ws.red() || ws.lit() < l) continue;
-      check_derivable(ganak_to_cms_cl(vector<Lit>{l, ws.lit()}));
+      check_derivable(ganak_to_cms_cl({l, ws.lit()}));
     }
   }
 
@@ -4227,7 +4227,7 @@ void Counter::check_cls_deriveable() const {
     Lit l(x/2, x%2);
     for(const auto& ws: watches[l].binaries) {
       if (ws.irred() || ws.lit() < l) continue;
-      check_derivable(ganak_to_cms_cl(vector<Lit>{l, ws.lit()}));
+      check_derivable(ganak_to_cms_cl({l, ws.lit()}));
     }
   }
 }
@@ -4334,9 +4334,7 @@ void Counter::check_all_cl_in_watchlists() const {
   auto red_cls2 = long_red_cls;
   // check for duplicates
   std::sort(red_cls2.begin(), red_cls2.end());
-  for(uint32_t i = 1; i < red_cls2.size(); i++) {
-    assert(red_cls2[i-1] != red_cls2[i]);
-  }
+  assert(std::adjacent_find(red_cls2.begin(), red_cls2.end()) == red_cls2.end());
 
   for(const auto& offs: long_red_cls) {
     const auto& cl = *alloc->ptr(offs);
@@ -4353,8 +4351,7 @@ void Counter::check_all_cl_in_watchlists() const {
 
 bool Counter::find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off)
 {
-  for (const auto& w: ws) if (w.ofs == off) { return true; }
-  return false;
+  return std::any_of(ws.begin(), ws.end(), [off](const ClOffsBlckL& w){ return w.ofs == off; });
 }
 
 struct ClSorter {

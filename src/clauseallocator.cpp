@@ -40,10 +40,15 @@ using namespace GanakInt;
 
 constexpr double ALLOC_GROW_MULT = 1.5;
 
+// Returns the number of uint32_t elements needed to hold the given number of bytes (ceiling).
+static constexpr uint64_t bytes_to_u32_count(uint64_t bytes) {
+  return (bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+}
+
 void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
   //Try to quickly find a place at the end of a data_start
   uint64_t neededbytes = sizeof(Clause) + sizeof(Lit)*num_lits;
-  uint64_t needed = neededbytes/sizeof(uint32_t) + (bool)(neededbytes % sizeof(uint32_t));
+  uint64_t needed = bytes_to_u32_count(neededbytes);
 
   if (size + needed > capacity) {
     //Grow by default, but don't go under or over the limits
@@ -102,7 +107,7 @@ void ClauseAllocator::clause_free(Clause* cl)
     cl->freed = 1;
     uint64_t est_num_cl = cl->sz;
     uint64_t bytes_freed = sizeof(Clause) + est_num_cl*sizeof(Lit);
-    uint64_t elems_freed = bytes_freed/sizeof(uint32_t) + (bool)(bytes_freed % sizeof(uint32_t));
+    uint64_t elems_freed = bytes_to_u32_count(bytes_freed);
     currently_used_sz -= elems_freed;
 }
 
@@ -118,7 +123,7 @@ ClauseOfs ClauseAllocator::move_cl(
     , Clause* old
 ) {
   uint64_t bytes_needed = sizeof(Clause) + old->sz*sizeof(Lit);
-  uint64_t size_needed = bytes_needed/sizeof(uint32_t) + (bool)(bytes_needed % sizeof(uint32_t));
+  uint64_t size_needed = bytes_to_u32_count(bytes_needed);
   memcpy(new_ptr, old, size_needed*sizeof(uint32_t));
 
   ClauseOfs new_offset = new_ptr-new_data_start;

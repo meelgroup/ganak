@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <cassert>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <gmpxx.h>
 #include <cstdint>
 #include "lit.hpp"
@@ -82,14 +83,11 @@ public:
   double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
-    for (auto& w : watch_list_) {
-      if (w.ofs == offs) {
-        w = watch_list_.back();
-        watch_list_.pop_back();
-        return;
-      }
-    }
-    assert(false && "should have found it!");
+    auto it = std::find_if(watch_list_.begin(), watch_list_.end(),
+      [offs](const ClOffsBlckL& w) { return w.ofs == offs; });
+    assert(it != watch_list_.end() && "should have found it!");
+    *it = watch_list_.back();
+    watch_list_.pop_back();
   }
 
   inline void add_cl(ClauseIndex offs, Lit blocked_lit) {
@@ -153,23 +151,18 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& ante)
 
 struct Cube {
   Cube() = default;
-  Cube(const Cube& o) {
-    cnf = o.cnf;
-    cnt = o.cnt->dup();
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
-  }
+  Cube(const Cube& o) : cnf(o.cnf), cnt(o.cnt->dup()), enabled(o.enabled), symm(o.symm), lbd(o.lbd) {}
   Cube(Cube&& o) noexcept = default;
-  Cube& operator=(const Cube& o) noexcept {
-    cnf = o.cnf;
-    cnt = o.cnt->dup();
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
+  // Unified copy+move assignment via copy-and-swap: avoids code duplication and is exception-safe
+  Cube& operator=(Cube o) noexcept {
+    using std::swap;
+    swap(cnf, o.cnf);
+    swap(cnt, o.cnt);
+    swap(enabled, o.enabled);
+    swap(symm, o.symm);
+    swap(lbd, o.lbd);
     return *this;
   }
-  Cube& operator=(Cube&& o) noexcept = default;
   Cube(const std::vector<Lit>& _cnf, const FF& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt->dup()), symm(_symm) {}
   std::vector<Lit> cnf;
   FF cnt = nullptr;
@@ -181,7 +174,7 @@ struct Cube {
 inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
   os << "CNF: " << c.cnf
     /* << " cnt: " << *c.cnt */
-    << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm << " lbd: " << c.lbd;
+    << " enabled: " << static_cast<int>(c.enabled) << " symm: " << static_cast<int>(c.symm) << " lbd: " << c.lbd;
   return os;
 }
 
@@ -232,10 +225,10 @@ public:
 inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {
   for(const auto& l: cl) os << l << " ";
   os << "0"
-    << " (red: " << (int)cl.red << " lbd: " << (int)cl.lbd
-    << " used: " << (int)cl.used << " total_used: " << (int)cl.total_used
-    << " vivified: " << (int)cl.vivified
-    << " freed: " << (int)cl.freed;
+    << " (red: " << static_cast<int>(cl.red) << " lbd: " << static_cast<int>(cl.lbd)
+    << " used: " << static_cast<int>(cl.used) << " total_used: " << cl.total_used
+    << " vivified: " << static_cast<int>(cl.vivified)
+    << " freed: " << static_cast<int>(cl.freed);
   return os;
 }
 

@@ -147,4 +147,10 @@ inline Comp* reserve_comp_space(uint32_t nVars, uint32_t num_clauses) {
   return ptr;
 }
 
+// Paired with reserve_comp_space — must be used to free Comp* objects
+// since they are allocated with malloc (not new).
+inline void free_comp(Comp* ptr) {
+  free(ptr);
+}
+
 }

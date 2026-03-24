@@ -4138,7 +4138,7 @@ void Counter::check_current_state_unsat() const {
 
   vector<CMSat::Lit> assumps;
   assumps.reserve(trail.size());
-  for(const auto& t: trail) assumps.push_back(ganak_to_cms_lit(t));
+  std::ranges::transform(trail, std::back_inserter(assumps), ganak_to_cms_lit);
 
   auto ret = debug_sat->solve(&assumps);
   assert(ret == CMSat::l_False);
@@ -4156,11 +4156,11 @@ void Counter::check_opt_sampling_determined() const {
     Lit lit(i/2, i%2);
     for(const auto& ws: watches[lit].binaries) {
       if (ws.red() || ws.lit() < lit) continue;
-      cnf.add_clause(ganak_to_cms_cl(vector<Lit>{lit, ws.lit()}));
+      cnf.add_clause(ganak_to_cms_cl({lit, ws.lit()}));
     }
   }
   for(const auto& t: unit_cls) {
-    cnf.add_clause(ganak_to_cms_cl(vector<Lit>{t}));
+    cnf.add_clause(ganak_to_cms_cl({t}));
   }
   set<uint32_t> indep;
   for(uint32_t i = 1; i < indep_support_end; i++) indep.insert(i-1);
@@ -4195,7 +4195,7 @@ void Counter::check_cls_deriveable() const {
   auto check_derivable = [&](const vector<CMSat::Lit>& cms_cl) {
       vector<CMSat::Lit> assumps;
       assumps.reserve(cms_cl.size());
-      for(const auto& l2: cms_cl) assumps.push_back(~l2);
+      std::ranges::transform(cms_cl, std::back_inserter(assumps), [](const CMSat::Lit& l){ return ~l; });
       auto ret = debug_sat->solve(&assumps);
       check(ret, cms_cl);
   };

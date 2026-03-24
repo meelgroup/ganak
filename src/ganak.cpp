@@ -73,16 +73,12 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
 
   auto bags = find_disconnected(*cdat);
   vector<int32_t> var_to_bag(cdat->nvars+1, -1);
-  {
-    uint32_t i = 0;
-    for(const auto& bag: bags) {
-      for(auto v: bag) {
-        assert(v < cdat->nvars+1);
-        assert(v > 0);
-        assert(var_to_bag[v] == -1);
-        var_to_bag[v] = i;
-      }
-      i++;
+  for(uint32_t i = 0; i < bags.size(); i++) {
+    for(auto v: bags[i]) {
+      assert(v < cdat->nvars+1);
+      assert(v > 0);
+      assert(var_to_bag[v] == -1);
+      var_to_bag[v] = i;
     }
   }
   vector<vector<vector<GanakInt::Lit>>> bag_to_irred_cls(bags.size());

@@ -1349,10 +1349,8 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
   VERBOSE_DEBUG_DO(cout << "decision level: " << dec_level() << " var options: ");
   if (weighted()) {
-    if (vars_act_dec.size()  < (dec_level()+1) * (nVars()+1)) {
-      uint64_t todo = int64_t(dec_level()+1)*int64_t(nVars()+1) - vars_act_dec.size();
-      vars_act_dec.insert(vars_act_dec.end(), todo, 0);
-    }
+    const auto needed = (size_t)(int64_t(dec_level()+1) * int64_t(nVars()+1));
+    if (vars_act_dec.size() < needed) vars_act_dec.resize(needed, 0);
     at = vars_act_dec.data()+int64_t(nVars()+1)*int64_t(dec_level());
     vars_act_dec_num++;
     at[0] = vars_act_dec_num;
@@ -1584,9 +1582,10 @@ bool Counter::compute_cube(Cube& c, const int side) {
   }
   debug_print_noendl(COLDEF << endl);
 
-  // Get a solution
-  vector<CMSat::Lit> ass; ass.reserve(c.cnf.size());
-  for(const auto&l: c.cnf) ass.push_back(~ganak_to_cms_lit(l));
+  // Get a solution: assume negation of each blocking literal (i.e. model value)
+  vector<CMSat::Lit> ass;
+  ass.reserve(c.cnf.size());
+  std::ranges::transform(c.cnf, std::back_inserter(ass), [](Lit l){ return ~ganak_to_cms_lit(l); });
   auto solution = sat_solver->solve(&ass);
   debug_print("cube solution: " << solution);
   if (solution == CMSat::l_False) return false;

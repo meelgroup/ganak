@@ -2346,12 +2346,12 @@ RetState Counter::resolve_conflict() {
 
 inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind) {
   Clause& cl = *alloc->ptr(ofs);
-  for(uint32_t i3 = 2; i3 < cl.sz; i3++) {
-    Lit l = cl[i3];
-    int32_t nlev = var(l).decision_level;
-    debug_print("i3: " << i3 << " l : " << l << " var(l).decision_level: "
-        << var(l).decision_level << " maxlev: " << maxlev);
-    if (nlev > maxlev) {maxlev = nlev; maxind = i3;}
+  auto best = std::max_element(cl.begin() + 2, cl.end(),
+      [this](Lit a, Lit b) { return var(a).decision_level < var(b).decision_level; });
+  if (best != cl.end()) {
+    int32_t nlev = var(*best).decision_level;
+    debug_print("best l: " << *best << " var(*best).decision_level: " << nlev << " maxlev: " << maxlev);
+    if (nlev > maxlev) { maxlev = nlev; maxind = best - cl.begin(); }
   }
 }
 

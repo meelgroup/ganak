@@ -3719,16 +3719,10 @@ void Counter::check_sat_solution() const {
   } while(0)
 
 bdd Counter::mybdd_two_or(Lit l, Lit r) {
-  bdd tmp;
-  uint32_t lvar = l.var();
-  if (!l.sign()) tmp = bdd_ithvar(vmap_rev[lvar]);
-  else tmp = bdd_nithvar(vmap_rev[lvar]);
-
-  bdd tmp2;
-  uint32_t rvar = r.var();
-  if (!r.sign()) tmp2 = bdd_ithvar(vmap_rev[rvar]);
-  else tmp2 = bdd_nithvar(vmap_rev[rvar]);
-  return bdd_or(tmp2, tmp);
+  auto to_bdd = [this](Lit lit) {
+    return !lit.sign() ? bdd_ithvar(vmap_rev[lit.var()]) : bdd_nithvar(vmap_rev[lit.var()]);
+  };
+  return bdd_or(to_bdd(l), to_bdd(r));
 }
 
 bool Counter::should_do_buddy_count() const {
@@ -3996,11 +3990,10 @@ void Counter::v_restore() {
     std::copy(lits.begin(), lits.end(), cl.begin());
   }
 
-  at = 0;
+  auto bk_it = v_backup_watches.cbegin();
   for(auto& ws: watches) {
     ws.watch_list_.clear();
-    ws.watch_list_ = v_backup_watches[at];
-    at++;
+    ws.watch_list_ = *bk_it++;
   }
   v_backup_watches.clear();
   v_backup_watches.shrink_to_fit();
@@ -4074,10 +4067,7 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
 
 template<class T2>
 bool Counter::clause_falsified(const T2& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) != F_TRI) return false;
-  }
-  return true;
+  return std::all_of(cl.begin(), cl.end(), [this](Lit l){ return val(l) == F_TRI; });
 }
 
 void Counter::dump_current_state(const std::string fname) const {

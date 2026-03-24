@@ -4493,7 +4493,7 @@ Clause* Counter::add_cl(const vector<Lit> &lits, bool red) {
   }
 
   Clause* cl = alloc->new_cl(red, lits.size());
-  for(uint32_t i = 0; i < lits.size(); i ++) (*cl)[i] = lits[i];
+  std::copy(lits.begin(), lits.end(), cl->begin());
   attach_cl(alloc->get_offset(cl), lits);
   return cl;
 }
@@ -4621,9 +4621,8 @@ string Counter::val_to_str(const TriValue& tri) {
 
 void Counter::print_cls_stats() const {
   auto count_tri = [this](const vector<ClauseOfs>& offs) {
-    uint32_t n = 0;
-    for (const auto& off: offs) if (alloc->ptr(off)->size() == 3) n++;
-    return n;
+    return std::count_if(offs.begin(), offs.end(),
+        [this](ClauseOfs off){ return alloc->ptr(off)->size() == 3; });
   };
   const uint32_t num_tri_irred_cls = count_tri(long_irred_cls);
   const uint32_t num_tri_red_cls   = count_tri(long_red_cls);

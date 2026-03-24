@@ -405,7 +405,6 @@ void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bp
   while (init_tbl * 2 <= max_tbl) init_tbl *= 2;
   table.clear();
   table.resize(init_tbl);
-  std::fill(table.begin(), table.end(), 0);
   tbl_size_mask = table.size() - 1;
   verb_print(2, "Max cache size set: " << std::setprecision(2)
       << (double)stats.max_cache_size_bytes / (double)(1024ULL*1024ULL) << " MB");

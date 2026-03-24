@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "ganak.hpp"
 #include "outer_counter.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include <set>
 
@@ -72,12 +73,16 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
 
   auto bags = find_disconnected(*cdat);
   vector<int32_t> var_to_bag(cdat->nvars+1, -1);
-  for(uint32_t i = 0; i < bags.size(); i++) {
-    for(auto& v: bags[i]) {
-      assert(v < cdat->nvars+1);
-      assert(v > 0);
-      assert(var_to_bag[v] == -1);
-      var_to_bag[v] = i;
+  {
+    uint32_t i = 0;
+    for(const auto& bag: bags) {
+      for(auto v: bag) {
+        assert(v < cdat->nvars+1);
+        assert(v > 0);
+        assert(var_to_bag[v] == -1);
+        var_to_bag[v] = i;
+      }
+      i++;
     }
   }
   vector<vector<vector<GanakInt::Lit>>> bag_to_irred_cls(bags.size());
@@ -90,12 +95,10 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
   for(const auto& cl_p: cdat->red_cls) {
     assert(!cl_p.first.empty());
     const int b = var_to_bag[cl_p.first[0].var()];
-    bool ok = true;
-    for(const auto& l: cl_p.first) {
-      if (var_to_bag[l.var()] != b) { ok = false; break; }
-    }
+    // Check all literals belong to the same bag (red clause doesn't bridge components)
+    const bool ok = std::all_of(cl_p.first.begin(), cl_p.first.end(),
+      [&](const auto& l) { return var_to_bag[l.var()] == b; });
     if (ok) bag_to_red_cls[b].push_back(cl_p);
-    // if not ok, then red would contract two components, so ignore
   }
 
   uint32_t cls_added = 0;

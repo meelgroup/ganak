@@ -43,24 +43,21 @@ GanakInt::Lit cms_to_ganak_lit(const CMSat::Lit& l) {
   return GanakInt::Lit(l.var()+1, !l.sign());
 }
 
-template<typename T>
+template<std::ranges::sized_range T>
 vector<uint32_t> ganak_to_cms_vars(const T& vars) {
-  vector<uint32_t> cms_vars; cms_vars.reserve(vars.size());
-  for(const auto& v: vars) cms_vars.push_back(v-1);
+  vector<uint32_t> cms_vars;
+  cms_vars.reserve(vars.size());
+  std::ranges::transform(vars, std::back_inserter(cms_vars), [](uint32_t v) { return v - 1; });
   return cms_vars;
 }
 
 inline vector<GanakInt::Lit> cms_to_ganak_cl(const vector<CMSat::Lit>& cl) {
-  vector<GanakInt::Lit> ganak_cl; ganak_cl.reserve(cl.size());
-  for(const auto& l: cl) ganak_cl.push_back(cms_to_ganak_lit(l));
+  vector<GanakInt::Lit> ganak_cl;
+  ganak_cl.reserve(cl.size());
+  std::ranges::transform(cl, std::back_inserter(ganak_cl), cms_to_ganak_lit);
   return ganak_cl;
 }
-
-inline vector<CMSat::Lit> ganak_to_cms_cl(const vector<GanakInt::Lit>& cl) {
-  vector<CMSat::Lit> cms_cl; cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
-  return cms_cl;
-}
+// ganak_to_cms_cl for vector<Lit> is handled by the template in counter.hpp
 
 FF OuterCounter::count(uint8_t bits_jobs, int num_threads, const bool debug_threads) {
   verb_print(2, "[par] bits_jobs: " << (uint32_t)bits_jobs);
@@ -197,8 +194,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     verb_print(2, "[par] var " << v+1 << " with frequency " << var_freq[v+1]);
   }
 
-  uint64_t num_jobs = 1ULL << bits_jobs;
-  assert(1ULL<<bits_jobs == num_jobs);
+  const uint64_t num_jobs = 1ULL << bits_jobs;
   if (num_threads == -1) {
     num_threads = std::thread::hardware_concurrency();
     if (num_threads == 0) num_threads = 2; // Fallback

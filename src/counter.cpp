@@ -810,11 +810,8 @@ void Counter::cube_strengthen_by_flp(vector<Cube>& cubes) {
         vector<CMSat::Lit> ass;
         ass.reserve(c.cnf.size());
         for (uint32_t j = 0; j < c.cnf.size(); j++) {
-          const Lit& lj = c.cnf[j];
-          if (j == i)
-            ass.push_back(ganak_to_cms_lit(lj)); // opposite of model
-          else
-            ass.push_back(~ganak_to_cms_lit(lj));  // model assignment
+          const Lit lj = c.cnf[j];
+          ass.push_back(j == i ? ganak_to_cms_lit(lj) : ~ganak_to_cms_lit(lj));
         }
         if (sat_solver->solve(&ass) == CMSat::l_False) {
           // Opposite of model for c.cnf[i] is UNSAT → model value is forced → remove
@@ -841,26 +838,20 @@ FF Counter::do_appmc_count() {
   appmc.set_delta(conf.delta);
   appmc.set_seed(conf.seed);
 
-  vector<Lit> unit(1);
-  for(const auto& l: unit_cls) {
-      unit[0] = l;
-      appmc.add_clause(ganak_to_cms_cl(unit));
-  }
+  for(const auto& l: unit_cls)
+    appmc.add_clause(ganak_to_cms_cl({l}));
 
   for(const auto& off: long_irred_cls) {
     const Clause& c = *alloc->ptr(off);
     appmc.add_clause(ganak_to_cms_cl(c));
   }
 
-  vector<Lit> bin(2);
   all_lits(lit_i) {
     Lit l(lit_i/2, lit_i%2);
     for(const auto& l2: watches[l].binaries) {
       if (l < l2.lit()) {
-        bin[0] = l;
-        bin[1] = l2.lit();
-        if (l2.irred()) appmc.add_clause(ganak_to_cms_cl(bin));
-        else appmc.add_red_clause(ganak_to_cms_cl(bin));
+        if (l2.irred()) appmc.add_clause(ganak_to_cms_cl({l, l2.lit()}));
+        else appmc.add_red_clause(ganak_to_cms_cl({l, l2.lit()}));
       }
     }
   }

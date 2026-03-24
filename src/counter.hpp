@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <limits>
 #include <map>
 #include <memory>
+#include <ranges>
 #include <set>
 #include <string>
 
@@ -53,10 +54,11 @@ inline CMSat::Lit ganak_to_cms_lit(const Lit& l) {
   return CMSat::Lit(l.var()-1, !l.sign());
 }
 
-template<typename T>
+template<std::ranges::range T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
-  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
+  if constexpr (std::ranges::sized_range<T>) cms_cl.reserve(std::ranges::size(cl));
+  std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);
   return cms_cl;
 }
 
@@ -64,9 +66,11 @@ inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return {ganak_to_cms_lit(l)};
 }
 
+// Explicit overload needed for brace-enclosed initializer lists (not deducible by templates)
 inline vector<CMSat::Lit> ganak_to_cms_cl(std::initializer_list<Lit> cl) {
   vector<CMSat::Lit> cms_cl;
-  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
+  cms_cl.reserve(cl.size());
+  std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);
   return cms_cl;
 }
 
@@ -580,12 +584,7 @@ template<class T2> bool Counter::currently_propagating_cl(T2& cl) const {
 }
 
 inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
-  bool all_false = true;
-  for(uint32_t i = 0; i < size; i++) {
-    if (val(c[i]) != F_TRI) {all_false = false; break;}
-  }
-  if (all_false) return;
-
+  if (std::all_of(c, c + size, [this](Lit l) { return val(l) == F_TRI; })) return;
   cerr << "ERROR: clause is not falsified." << endl;
   print_cl(c, size);
   release_assert(false);

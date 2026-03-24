@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <ios>
 #include <iomanip>
 #include <limits>
+#include <numeric>
 #include <set>
 #include <unordered_set>
 #include <memory>
@@ -607,8 +608,7 @@ Counter::ExtendResult Counter::cube_try_extend_by_lit(const Lit torem, const Cub
 }
 
 bool Counter::clash_cubes(const set<Lit>& c1, const set<Lit>& c2) {
-  for(const auto& l: c1) if (c2.count(l.neg())) return true;
-  return false;
+  return std::any_of(c1.begin(), c1.end(), [&](Lit l) { return c2.count(l.neg()); });
 }
 
 void Counter::symm_cubes(vector<Cube>& cubes) {
@@ -622,13 +622,14 @@ void Counter::symm_cubes(vector<Cube>& cubes) {
       vector<Lit> tmp;
       uint32_t mapped = 0;
       for(const auto& l: orig_cube) {
-        Lit l2 = l;
-        if (gen.count(l) != 0) {
+        auto it = gen.find(l);
+        if (it != gen.end()) {
           mapped++;
-          l2 = gen.find(l)->second;
           tmp.push_back(l);
+          symm_cube.insert(it->second);
+        } else {
+          symm_cube.insert(l);
         }
-        symm_cube.insert(l2);
       }
       if (mapped <= 0) continue; // need at least 1 for clash
       if (symm_cube == orig_cube) continue; // same no clash
@@ -727,10 +728,9 @@ uint32_t Counter::disable_small_cubes(vector<Cube>& cubes) const {
         || c.cnf.size() <= conf.lbd_cutoff_always_keep_cube) { // reuses lbd cutoff as size cutoff intentionally
       enabled_so_far++;
       continue;
-    } else {
-      c.enabled = false;
-      disabled++;
     }
+    c.enabled = false;
+    disabled++;
   }
   return disabled;
 }
@@ -868,11 +868,8 @@ FF Counter::do_appmc_count() {
     const Clause& c = *alloc->ptr(off);
     appmc.add_red_clause(ganak_to_cms_cl(c));
   }
-  vector<uint32_t> indep;
-  for(int32_t i = 0; i < (int)indep_support_end-1; i++) {
-    assert(i >= 0);
-    indep.push_back(i);
-  }
+  vector<uint32_t> indep(indep_support_end > 0 ? indep_support_end - 1 : 0);
+  std::iota(indep.begin(), indep.end(), 0);
   appmc.set_sampl_vars(indep);
   ApproxMC::SolCount appmc_cnt = appmc.count();
 

@@ -104,7 +104,7 @@ public:
   }
 
   std::ostream& display(std::ostream& os) const final {
-    auto varnames = nvars_names();
+    auto* varnames = nvars_names();
     char* str = fmpq_mpoly_get_str_pretty(val, (const char**)varnames, ctx->ctx);
     os << str;
     free(str);
@@ -127,7 +127,7 @@ public:
     return fmpq_mpoly_is_one(val, ctx->ctx);
   }
 
-  std::string rem_trail_space(const std::string& str) {
+  static std::string rem_trail_space(const std::string& str) {
     size_t end = str.find_last_not_of(" \t\n\r\f\v");
     if (end == std::string::npos) return "";
     return str.substr(0, end + 1);
@@ -160,7 +160,7 @@ public:
       exit(EXIT_FAILURE);
     }
     str2.pop_back();
-    auto varnames = nvars_names();
+    auto* varnames = nvars_names();
     auto ret = fmpq_mpoly_set_str_pretty(val, str2.c_str(), (const char**)varnames, ctx->ctx);
     del_nvars_names(varnames);
     if (ret == -1) {
@@ -618,7 +618,7 @@ public:
   }
 
 private:
-  std::string rem_trail_space(const std::string& str) {
+  static std::string rem_trail_space(const std::string& str) {
     size_t end = str.find_last_not_of(" \t\n\r\f\v");
     if (end == std::string::npos) return "";
     return str.substr(0, end + 1);

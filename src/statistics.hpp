@@ -145,12 +145,12 @@ public:
   uint64_t sum_extra_bytes = 0;
   uint64_t cache_infra_bytes_mem_usage = 0;
 
-  bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
+  [[nodiscard]] bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) const {
     return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)
       >= max_cache_size_bytes;
   }
 
-  uint64_t cache_bytes_memory_usage() const {
+  [[nodiscard]] uint64_t cache_bytes_memory_usage() const {
     return cache_infra_bytes_mem_usage
            + sum_extra_bytes;
   }
@@ -180,18 +180,18 @@ public:
   void print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const;
   static void print_short_formula_info(const Counter* counter);
 
-  double cache_miss_rate() const {
+  [[nodiscard]] double cache_miss_rate() const {
     if(num_cache_look_ups == 0) return 0.0;
     return (double)(num_cache_look_ups - num_cache_hits)
         / (double) num_cache_look_ups;
   }
 
-  long double get_avg_cache_store_sz() const {
+  [[nodiscard]] long double get_avg_cache_store_sz() const {
     if(num_cache_hits == 0) return 0.0L;
     return sum_cache_hit_sizes / (long double) num_cache_hits;
   }
 
-  long double get_avg_cache_store_size() const {
+  [[nodiscard]] long double get_avg_cache_store_size() const {
     if(total_num_cached_comps == 0) return 0.0L;
     return sum_cache_store_sizes / (long double) total_num_cached_comps;
   }

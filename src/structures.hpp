@@ -66,7 +66,7 @@ struct BinCl {
   BinCl(uint32_t val) = delete;
   BinCl(int val) = delete;
   explicit BinCl(Lit _lit, bool _red) {
-    v = _lit.raw() << 1 | (uint32_t)_red;
+    v = _lit.raw() << 1 | static_cast<uint32_t>(_red);
   }
   Lit lit() const { return Lit::toLit(v >> 1); }
   bool red() const { return v&(1U); }

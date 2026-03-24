@@ -34,8 +34,8 @@ using std::setprecision;
 
 using namespace GanakInt;
 
-constexpr double in_mb(uint64_t bytes) {
-  return (double)bytes/(double)(1024*1024);
+[[nodiscard]] constexpr double in_mb(uint64_t bytes) {
+  return static_cast<double>(bytes)/1048576.0;
 }
 
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {

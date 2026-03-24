@@ -489,14 +489,14 @@ public:
   void count_loop();
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
-  inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
+  static inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
   template <class T2> uint32_t calc_abstr(const T2& ps) {
     uint32_t abs = 0;
-    if (ps.size() > 50) return ~((uint32_t)(0ULL));
+    if (ps.size() > 50) return ~uint32_t{0};
     for (auto l: ps) abs |= abst_var(l.var());
     return abs;
   }
-  inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
+  static inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
   template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
   vector<ClauseOfs> occ_cls;

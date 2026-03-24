@@ -237,13 +237,9 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     cout << "c o [td] You can convert it to pdf using the command: dot -Tpdf " << conf.td_visualize_dot_file << " -o td_tree.pdf" << endl;
   }
   assert(ord.size() == nodes);
-  int max_ord = 0;
-  int min_ord = std::numeric_limits<int>::max();
-  for (uint32_t i = 0; i < nodes; i++) {
-    max_ord = std::max(max_ord, ord[i]);
-    min_ord = std::min(min_ord, ord[i]);
-  }
-  max_ord -= min_ord;
+  const auto [min_it, max_it] = std::minmax_element(ord.begin(), ord.end());
+  const int min_ord = *min_it;
+  const int max_ord = *max_it - min_ord;
   assert(max_ord >= 1);
 
   // calc td weight
@@ -284,11 +280,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
 uint32_t Counter::td_decompose_component(bool update_score) {
   auto const& sup_at = decisions.top().super_comp();
   const auto& c = comp_manager->at(sup_at);
-  unordered_set<uint32_t> active;
-  for(uint32_t i = 0; i < c->nVars(); i++) {
-    uint32_t var = c->vars_begin()[i];
-    active.insert(var);
-  }
+  const unordered_set<uint32_t> active(c->vars_begin(), c->vars_begin() + c->nVars());
 
   TWD::Graph primal(nVars());
   all_lits(i) {
@@ -910,6 +902,7 @@ FF Counter::count_using_cms() {
       }
     *cnt += *this_cnt;
     vector<CMSat::Lit> ban;
+    ban.reserve(indep_support_end - 1);
     for(int j = 0; j < (int)indep_support_end-1; j++)
       ban.emplace_back(j, sol[j] == CMSat::l_True);
     sat_solver->add_clause(ban);
@@ -1156,7 +1149,7 @@ void Counter::count_loop() {
 
       if (conf.do_buddy && should_do_buddy_count()) {
         if (do_buddy_count()) break;
-        else goto start11;
+        goto start11;
       }
 
       while (!propagate()) {
@@ -1975,11 +1968,10 @@ RetState Counter::backtrack() {
             "count left: " << *decisions.top().left_model_count()
             << " count right: " << *decisions.top().right_model_count());
         return RESOLVED;
-      } else {
-        assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
-        decisions.top().mark_branch_unsat();
-        continue;
       }
+      assert(val(lit.neg()) == F_TRI && "Cannot be TRUE because that would mean that the branch we just explored was UNSAT and we should have detected that");
+      decisions.top().mark_branch_unsat();
+      continue;
     }
     debug_print(COLORGBG "[backtrack] We have explored BOTH branches, actually BACKTRACKING."
         << " -- dec lev: " << dec_level());
@@ -2081,10 +2073,7 @@ struct UIPFixer {
     auto a_dec = vars[a.var()].decision_level;
     auto b_dec = vars[b.var()].decision_level;
     if (a_dec != b_dec) return a_dec > b_dec;
-    auto a_ante = vars[a.var()].ante;
-    /* auto b_ante = vars[b.var()].ante; */
-    if (!a_ante.isAnt()) return true;
-    return false;
+    return !vars[a.var()].ante.isAnt();
   }
   vector<VarData>& vars;
 };
@@ -2479,7 +2468,8 @@ bool Counter::propagate(bool out_of_order) {
           set_confl_state(&c);
           it++;
           break;
-        } else {
+        }
+        {
           assert(val(c[0]) == X_TRI);
           debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << dec_level());
           if (lev_at_declev) {
@@ -2973,11 +2963,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     VERBOSE_DEBUG_DO(cout << "vivified CL: " << endl; v_print_cl(cl));
 
     std::sort(cl.begin(), cl.end(), [=, this](const Lit l1, const Lit l2) {
-        if (v_val(l1) != v_val(l2)) {
-          if (v_val(l1) == X_TRI) return true;
-          return false;
-        }
-        return false;
+        return v_val(l1) != v_val(l2) && v_val(l1) == X_TRI;
       });
     if (cl.sz == 2) {
       // Not propagating
@@ -3044,7 +3030,8 @@ bool Counter::v_propagate() {
       if (v_val(l) == F_TRI) {
         debug_print("v Conflict from bin.");
         return false;
-      } else if (v_val(l) == X_TRI) {
+      }
+      if (v_val(l) == X_TRI) {
         v_enqueue(l);
         debug_print("v Bin prop: " << l);
       }
@@ -3106,11 +3093,10 @@ bool Counter::v_propagate() {
           ret = false;
           it++;
           break;
-        } else {
-          assert(v_val(c[0]) == X_TRI);
-          debug_print("v prop long");
-          v_enqueue(c[0]);
         }
+        assert(v_val(c[0]) == X_TRI);
+        debug_print("v prop long");
+        v_enqueue(c[0]);
       }
     }
     while(it != ws.end()) *it2++ = *it++;
@@ -3156,7 +3142,7 @@ typename Counter::ConflictData Counter::find_conflict_level(Lit p) {
       highest_id = i;
       data.nHighestLevel = lev;
       data.bOnlyOneLitFromHighest = true;
-    } else if (lev == data.nHighestLevel && data.bOnlyOneLitFromHighest == true) {
+    } else if (lev == data.nHighestLevel && data.bOnlyOneLitFromHighest) {
       data.bOnlyOneLitFromHighest = false;
     }
   }
@@ -3685,7 +3671,7 @@ bool Counter::run_sat_solver(RetState& state) {
     }
   }
 
-  if (true) {
+  {
     state = RESOLVED;
     auto cnt = fg->one();
     if (weighted()) {
@@ -4506,8 +4492,7 @@ void Counter::reduce_db() {
 bool Counter::red_cl_can_be_deleted(ClauseOfs off){
   // only first literal may possibly have cl_ofs as antecedent
   Clause& cl = *alloc->ptr(off);
-  if (is_antec_of(off, cl[0])) return false;
-  return true;
+  return !is_antec_of(off, cl[0]);
 }
 
 void Counter::delete_cl(const ClauseOfs off){
@@ -4684,14 +4669,14 @@ void Counter::init_decision_stack() {
 
 string Counter::lit_val_str(Lit lit) const {
   if (values[lit] == F_TRI) return "FALSE";
-  else if (values[lit] == T_TRI) return "TRUE";
-  else return "UNKN";
+  if (values[lit] == T_TRI) return "TRUE";
+  return "UNKN";
 }
 
 string Counter::val_to_str(const TriValue& tri) {
   if (tri == F_TRI) return "FALSE";
-  else if (tri == T_TRI) return "TRUE";
-  else return "UNKN";
+  if (tri == T_TRI) return "TRUE";
+  return "UNKN";
 }
 
 void Counter::print_cls_stats() const {

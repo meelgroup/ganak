@@ -2064,21 +2064,16 @@ int32_t Counter::find_backtrack_level_of_learnt() {
 int32_t Counter::find_lev_to_set(const int32_t backj) {
   assert(!uip_clause.empty());
   if (uip_clause.size() == 1) return 0;
-  int32_t lev_to_set = 0;
-  bool updated = false;
-  uint32_t switch_to = 0;
-  for (uint32_t i = 0; i < uip_clause.size(); i++) {
-    int32_t lev = var(uip_clause[i]).decision_level;
-      if (lev > lev_to_set && lev < backj) {
-        lev_to_set = lev;
-        updated = true;
-        switch_to = i;
-      }
-  }
-  debug_print("lev_to_set: " << lev_to_set << " backj: " << backj << " updated: " << (int)updated);
-  assert(updated && "Guaranteed by 1-UIP: if size > 1, "
+  // uip_clause[0] is the UIP at level backj; find the second-highest level among the rest
+  auto best_it = std::max_element(uip_clause.begin() + 1, uip_clause.end(),
+      [this](const Lit& a, const Lit& b) {
+        return var(a).decision_level < var(b).decision_level;
+      });
+  int32_t lev_to_set = var(*best_it).decision_level;
+  debug_print("lev_to_set: " << lev_to_set << " backj: " << backj);
+  assert(lev_to_set < backj && "Guaranteed by 1-UIP: if size > 1, "
       "at least one non-UIP literal exists at a level strictly below backj (the UIP's level)");
-  std::swap(uip_clause[1], uip_clause[switch_to]);
+  std::swap(uip_clause[1], *best_it);
   return lev_to_set;
 }
 
@@ -4313,9 +4308,8 @@ void Counter::init_activity_scores() {
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit l(x/2, x%2);
-    for (const auto& ws: watches[l].binaries) {
-      if (!ws.red()) watches[l].activity++;
-    }
+    watches[l].activity += std::count_if(watches[l].binaries.begin(), watches[l].binaries.end(),
+        [](const BinCl& ws) { return !ws.red(); });
   }
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);

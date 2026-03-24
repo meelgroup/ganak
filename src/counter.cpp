@@ -3260,8 +3260,7 @@ bool Counter::check_watchlists() const {
   all_lits(i) {
     Lit lit = Lit(i/2, i%2);
     for(const auto& ws: watches[lit].watch_list_) {
-      if (off_att_num.find(ws.ofs) == off_att_num.end()) off_att_num[ws.ofs] = 1;
-      else off_att_num[ws.ofs]++;
+      off_att_num[ws.ofs]++;
     }
   }
   auto check_attach = [&](ClauseOfs off) {
@@ -3309,17 +3308,10 @@ void Counter::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
 void Counter::backw_subsume_cl(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   uint32_t abs = calc_abstr(cl);
-  uint32_t smallest = numeric_limits<uint32_t>::max();
-  uint32_t smallest_at = 0;
-  for(uint32_t i = 0; i < cl.size(); i++) {
-    Lit l = cl[i];
-    if (occ[l.raw()].size() < smallest) {
-      smallest = occ[l.raw()].size();
-      smallest_at = i;
-    }
-  }
+  auto min_it = std::min_element(cl.begin(), cl.end(),
+      [this](Lit a, Lit b){ return occ[a.raw()].size() < occ[b.raw()].size(); });
 
-  for(const auto& check: occ[cl[smallest_at].raw()]) {
+  for(const auto& check: occ[min_it->raw()]) {
     if (off == check.off) continue;
     if (!subset_abstr(abs, check.abs)) continue;
     Clause& check_cl = *alloc->ptr(check.off);
@@ -3341,17 +3333,10 @@ void Counter::backw_subsume_cl(ClauseOfs off) {
 
 void Counter::backw_subsume_cl_with_bin(BinClSub& cl) {
   uint32_t abs = calc_abstr(cl);
-  uint32_t smallest = numeric_limits<uint32_t>::max();
-  uint32_t smallest_at = 0;
-  for(uint32_t i = 0; i < cl.size(); i++) {
-    Lit l = cl[i];
-    if (occ[l.raw()].size() < smallest) {
-      smallest = occ[l.raw()].size();
-      smallest_at = i;
-    }
-  }
+  auto min_it = std::min_element(cl.begin(), cl.end(),
+      [this](Lit a, Lit b){ return occ[a.raw()].size() < occ[b.raw()].size(); });
 
-  for(const auto& check: occ[cl[smallest_at].raw()]) {
+  for(const auto& check: occ[min_it->raw()]) {
     if (!subset_abstr(abs, check.abs)) continue;
     Clause& check_cl = *alloc->ptr(check.off);
     if (check_cl.freed) continue;

@@ -294,11 +294,7 @@ uint32_t Counter::td_decompose_component(bool update_score) {
 
   for(const auto& off: long_irred_cls) {
     Clause& cl = *alloc->ptr(off);
-    bool sat = false;
-    for(Lit& l: cl) {
-      if (val(l) == T_TRI) {sat = true; break;}
-    }
-    if (sat) continue;
+    if (std::any_of(cl.begin(), cl.end(), [this](Lit l) { return val(l) == T_TRI; })) continue;
 
     for(uint32_t i = 0; i < cl.sz; i++) {
       const Lit l = cl[i];
@@ -595,12 +591,9 @@ Counter::ExtendResult Counter::cube_try_extend_by_lit(const Lit torem, const Cub
     }
     for(const auto& ws: occ[l.raw()]) {
       Clause& cl = *alloc->ptr(ws.off);
-      bool good = false;
-      for(const auto& cl_lit: cl) {
-        if (v_val(cl_lit) == T_TRI) { good = true; break;}
-      }
       verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
-      if (!good) return ExtendResult::CANNOT_EXTEND;
+      if (!std::any_of(cl.begin(), cl.end(), [this](Lit cl_lit) { return v_val(cl_lit) == T_TRI; }))
+        return ExtendResult::CANNOT_EXTEND;
     }
   }
   verb_print(2, "[cube-ext] Cube  can have " << torem << " removed AND count doubled");

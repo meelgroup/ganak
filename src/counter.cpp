@@ -1792,10 +1792,6 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     VERBOSE_DEBUG_DO(if (!trail.empty()) cout << "top dec lit: " << top_dec_lit() << endl;);
     CMSat::SATSolver s2;
     CMSat::copy_solver_to_solver(sat_solver.get(), &s2);
-    int32_t last_dec_lev = -1;
-    for(const auto& t: trail) {
-      last_dec_lev = std::max(last_dec_lev, var(t.var()).decision_level);
-    }
     for(const auto& t: trail) {
       if (!also_incl_curr_and_later_dec) {
         if (var(t).decision_level >= dec_level()) continue;
@@ -2214,8 +2210,9 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_u
 
 bool Counter::is_implied(const vector<Lit>& cl) {
     assert(sat_solver);
-    vector<CMSat::Lit> lits; lits.reserve(cl.size());
-    for(const auto& l: cl) lits.push_back(~ganak_to_cms_lit(l));
+    vector<CMSat::Lit> lits;
+    lits.reserve(cl.size());
+    std::ranges::transform(cl, std::back_inserter(lits), [](Lit l){ return ~ganak_to_cms_lit(l); });
     debug_print("to check lits: " << lits);
     auto ret = sat_solver->solve(&lits);
     debug_print("Ret: " << ret);
@@ -2379,10 +2376,8 @@ bool Counter::propagate(bool out_of_order) {
     const int32_t lev = var(plit).decision_level;
     bool lev_at_declev = false;
 
-    if (!out_of_order) {
-      if (decisions.size() <= 1) lev_at_declev = true;
-      else if (var(top_dec_lit()).decision_level == lev) lev_at_declev = true;
-    }
+    if (!out_of_order)
+      lev_at_declev = decisions.size() <= 1 || var(top_dec_lit()).decision_level == lev;
     debug_print("&&Propagating: " << plit.neg() << " qhead: " << qhead << " lev: " << lev);
 
     //Propagate bin clauses
@@ -2545,8 +2540,8 @@ void Counter::recursive_cc_min() {
     abstract_level |= abst_level(uip_clause[i].var());
   }
 
-  size_t i, j;
-  for (i = j = 1; i < uip_clause.size(); i++) {
+  size_t j = 1;
+  for (size_t i = 1; i < uip_clause.size(); i++) {
     if (var(uip_clause[i]).ante.isNull()
       || !lit_redundant(uip_clause[i], abstract_level)
     ) {
@@ -2570,9 +2565,9 @@ void Counter::minimize_uip_cl() {
   tmp_cl_minim = uip_clause;
 
   stats.uip_lits_ccmin+=tmp_cl_minim.size();
+  // A || (!A && C) simplifies to A || C
   if (stats.rem_lits_tried <= (200ULL*1000ULL) ||
-      (stats.rem_lits_tried > (200ULL*1000ULL) &&
-      ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3)))
+      ((double)stats.rem_lits_with_bins/(double)stats.rem_lits_tried > 3))
     minimize_uip_cl_with_bins(tmp_cl_minim);
   stats.final_cl_sz+=tmp_cl_minim.size();
   uip_clause = tmp_cl_minim;
@@ -2588,7 +2583,7 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     if (v_tout > 0) {
       Clause& cl = *alloc->ptr(off);
       if (cl.vivified == 0 &&
-          (!cl.red || (cl.red && (cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.tot_used_cutoff_vivif)))))
+          (!cl.red || cl.lbd <= lbd_cutoff || (cl.used && cl.total_used > conf.tot_used_cutoff_vivif)))
         rem = vivify_cl(off);
     }
     if (!rem) cls[j++] = off;

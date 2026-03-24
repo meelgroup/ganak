@@ -3226,12 +3226,9 @@ bool Counter::check_watchlists() const {
     const auto& ws = watches[lit].watch_list_;
     for(const auto& w: ws) {
       const auto ofs = w.ofs;
-      uint32_t num_unk = 0;
-      bool sat = false;
-      for(const auto& l: *alloc->ptr(ofs)) {
-        if (is_unknown(l)) num_unk++;
-        if (is_true(l)) sat = true;
-      }
+      const auto& checked_cl = *alloc->ptr(ofs);
+      bool sat = std::any_of(checked_cl.begin(), checked_cl.end(), [this](Lit l){ return is_true(l); });
+      uint32_t num_unk = std::count_if(checked_cl.begin(), checked_cl.end(), [this](Lit l){ return is_unknown(l); });
       if (!sat && num_unk >=2 && !is_unknown(lit)) {
         cerr << "ERROR, we are watching a FALSE: " << lit << ", but there are at least 2 UNK in cl offs: " << ofs << " clause: " << endl;
       for(const auto& l: *alloc->ptr(ofs)) {
@@ -3678,23 +3675,18 @@ void Counter::check_sat_solution() const {
   assert(sat_mode());
   bool good = true;
 
-  for(const auto& off: long_irred_cls) {
-    Clause& cl = *alloc->ptr(off);
-    if (clause_falsified(cl)) {
-      good = false;
-      cerr << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
-      print_cl(cl);
+  auto check = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) {
+      Clause& cl = *alloc->ptr(off);
+      if (clause_falsified(cl)) {
+        good = false;
+        cerr << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
+        print_cl(cl);
+      }
     }
-  }
-
-  for(const auto& off: long_red_cls) {
-    Clause& cl = *alloc->ptr(off);
-    if (clause_falsified(cl)) {
-      good = false;
-      cerr << "ERROR: SAT mode found a solution that falsifies a clause." << endl;
-      print_cl(cl);
-    }
-  }
+  };
+  check(long_irred_cls);
+  check(long_red_cls);
 
   assert(good);
 }

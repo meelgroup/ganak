@@ -34,10 +34,6 @@ using std::setprecision;
 
 using namespace GanakInt;
 
-[[nodiscard]] constexpr double in_mb(uint64_t bytes) {
-  return static_cast<double>(bytes)/1048576.0;
-}
-
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
   verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "decisions K                    "
@@ -138,7 +134,7 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 
   double vm_usage = 0;
   verb_print(1, "Mem used                       "
-    << setprecision(2) << (double)mem_used(vm_usage) / (1e9)  << " GB");
+    << setprecision(2) << static_cast<double>(mem_used(vm_usage)) / 1e9  << " GB");
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);

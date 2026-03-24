@@ -173,7 +173,6 @@ public:
   }
 
   void incorporateIrredClauseData(const vector<Lit>& clause) {
-    if (clause.size() == 1) return;
     if (clause.size() == 2) num_bin_irred_cls++;
   }
 
@@ -182,18 +181,18 @@ public:
 
   [[nodiscard]] double cache_miss_rate() const {
     if(num_cache_look_ups == 0) return 0.0;
-    return (double)(num_cache_look_ups - num_cache_hits)
-        / (double) num_cache_look_ups;
+    return static_cast<double>(num_cache_look_ups - num_cache_hits)
+        / static_cast<double>(num_cache_look_ups);
   }
 
   [[nodiscard]] long double get_avg_cache_store_sz() const {
     if(num_cache_hits == 0) return 0.0L;
-    return sum_cache_hit_sizes / (long double) num_cache_hits;
+    return sum_cache_hit_sizes / static_cast<long double>(num_cache_hits);
   }
 
   [[nodiscard]] long double get_avg_cache_store_size() const {
     if(total_num_cached_comps == 0) return 0.0L;
-    return sum_cache_store_sizes / (long double) total_num_cached_comps;
+    return sum_cache_store_sizes / static_cast<long double>(total_num_cached_comps);
   }
 };
 

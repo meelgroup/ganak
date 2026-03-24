@@ -2704,14 +2704,12 @@ bool Counter::vivify_all(bool force, bool only_irred) {
 
 template<class T2>
 bool Counter::v_satisfied(const T2& lits) {
-  for(auto& l: lits) if (v_val(l) == T_TRI) return true;
-  return false;
+  return std::any_of(lits.begin(), lits.end(), [this](const Lit& l){ return v_val(l) == T_TRI; });
 }
 
 template<class T2>
 bool Counter::v_unsat(const T2& lits) {
-  for(auto& l: lits) if (v_val(l) == T_TRI || v_val(l) == X_TRI) return false;
-  return true;
+  return std::all_of(lits.begin(), lits.end(), [this](const Lit& l){ return v_val(l) == F_TRI; });
 }
 
 void Counter::v_shrink(Clause& cl) const {
@@ -2790,11 +2788,10 @@ void Counter::v_fix_watch(Clause& cl, uint32_t i) {
   if (val(cl[i]) == X_TRI || val(cl[i]) == T_TRI) return;
   auto off = alloc->get_offset(&cl);
   watches[cl[i]].del_c(off);
-  uint32_t i2 = 2;
-  for(; i2 < cl.size(); i2++) if (val(cl[i2]) == X_TRI || val(cl[i2]) == T_TRI) break;
-  /* print_cl(cl); */
-  assert(i2 != cl.size());
-  std::swap(cl[i], cl[i2]);
+  auto it2 = std::find_if(cl.begin() + 2, cl.end(),
+      [this](Lit l){ return val(l) == X_TRI || val(l) == T_TRI; });
+  assert(it2 != cl.end());
+  std::swap(cl[i], *it2);
   watches[cl[i]].add_cl(off, cl[cl.sz/2]);
 }
 
@@ -2814,10 +2811,8 @@ void Counter::v_unset_lit(const Lit l) {
 
 void Counter::v_backtrack() {
   assert(v_lev == 1);
-  for(uint32_t i = v_backtrack_to; i < v_trail.size(); i++) {
-    const auto& l = v_trail[i];
-    v_unset_lit(l);
-  }
+  std::for_each(v_trail.begin() + v_backtrack_to, v_trail.end(),
+      [this](const Lit& l){ v_unset_lit(l); });
   v_trail.resize(v_backtrack_to);
   v_lev = 0;
   v_qhead = v_trail.size();
@@ -2825,10 +2820,7 @@ void Counter::v_backtrack() {
 
 template<class T2>
 bool Counter::v_cl_satisfied(const T2& cl) const {
-  for(const auto&l : cl) {
-    if (v_val(l) == T_TRI) return true;
-  }
-  return false;
+  return std::any_of(cl.begin(), cl.end(), [this](const Lit& l){ return v_val(l) == T_TRI; });
 }
 
 template<class T2>

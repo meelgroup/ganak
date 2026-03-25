@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "outer_counter.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include <numeric>
 #include <set>
 
 using namespace GanakInt;
@@ -262,16 +263,12 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
     set<int> vars_in_cl;
     for(const auto& l: cl) vars_in_cl.insert(l.var());
 
-    bool found = false;
-    for(const auto& v: vars_in_cl) {
-      if (var_to_bag[v] != -1) {
-        found = true;
-        int bid = var_to_bag[v];
-        for(const auto& vv: vars_in_cl) move_to_bag(bid, vv);
-        break;
-      }
-    }
-    if (!found) {
+    auto it = std::find_if(vars_in_cl.begin(), vars_in_cl.end(),
+        [&](int v) { return var_to_bag[v] != -1; });
+    if (it != vars_in_cl.end()) {
+      int bid = var_to_bag[*it];
+      for(const auto& vv: vars_in_cl) move_to_bag(bid, vv);
+    } else {
       bag_to_vars[bag_id] = {};
       for(const auto& v: vars_in_cl) {
         var_to_bag[v] = bag_id;
@@ -301,8 +298,8 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
 
   // Check
-  uint32_t total_vars = 0;
-  for(const auto& b: bags) total_vars += bag_to_vars[b].size();
+  uint32_t total_vars = std::accumulate(bags.begin(), bags.end(), 0u,
+      [&](uint32_t acc, const auto& b) { return acc + bag_to_vars[b].size(); });
   /* cout << "c Found " << bags.size() << " bags with total vars: " << total_vars << endl; */
   /* cout << "c Total vars in formula: " << dat.nvars << endl; */
   vector<int> count_vars(dat.nvars+1, 0);

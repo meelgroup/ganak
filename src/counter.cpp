@@ -2750,14 +2750,11 @@ void Counter::v_cl_repair(ClauseOfs off) {
       return var(a).sublevel > var(b).sublevel;
     });
 
-  int32_t t_at = -1;
-  for(uint32_t i = 2; i < cl.size(); i++) {
-    if (val(cl[i]) == T_TRI) {t_at = i; break;}
-  }
+  auto t_it = std::find_if(cl.begin() + 2, cl.end(), [this](Lit l){ return val(l) == T_TRI; });
 
   debug_print("Vivified cl off: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
-  Lit blk = (t_at == -1) ? cl[cl.sz/2] : cl[t_at];
+  Lit blk = (t_it == cl.end()) ? cl[cl.sz/2] : *t_it;
   watches[cl[0]].add_cl(off, blk);
   watches[cl[1]].add_cl(off, blk);
 }

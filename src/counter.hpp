@@ -495,10 +495,9 @@ public:
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
   static inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
   template <class T2> uint32_t calc_abstr(const T2& ps) {
-    uint32_t abs = 0;
     if (ps.size() > 50) return ~uint32_t{0};
-    for (auto l: ps) abs |= abst_var(l.var());
-    return abs;
+    return std::accumulate(ps.begin(), ps.end(), 0u,
+        [](uint32_t a, auto l) { return a | abst_var(l.var()); });
   }
   static inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
   template<class T1, class T2> bool subset(const T1& a, const T2& b);

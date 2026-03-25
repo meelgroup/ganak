@@ -75,7 +75,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
   auto bags = find_disconnected(*cdat);
   vector<int32_t> var_to_bag(cdat->nvars+1, -1);
   for(uint32_t i = 0; i < bags.size(); i++) {
-    for(auto v: bags[i]) {
+    for(const auto& v: bags[i]) {
       assert(v < cdat->nvars+1);
       assert(v > 0);
       assert(var_to_bag[v] == -1);

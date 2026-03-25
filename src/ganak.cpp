@@ -23,7 +23,6 @@ THE SOFTWARE.
 #include "ganak.hpp"
 #include "outer_counter.hpp"
 #include <algorithm>
-#include <cstdlib>
 #include <numeric>
 #include <set>
 

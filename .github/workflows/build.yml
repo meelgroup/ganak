@@ -73,20 +73,9 @@ jobs:
         sudo make install
         cd ..
 
-    - name: Install mpfi for Mac
-      if: contains(matrix.os, 'macos')
-      run: |
-        wget https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
-        tar xzf mpfi-1.5.4.tar.gz
-        cd mpfi-1.5.4
-        ./configure --enable-static --enable-shared
-        make -j8
-        sudo make install
-        cd ..
-
     - name: Install dependencies for Linux
       if: contains(matrix.os, 'ubuntu')
-      run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libmpfi-dev
+      run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev
 
     - name: Install flint
       run: |

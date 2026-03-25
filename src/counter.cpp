@@ -591,9 +591,10 @@ Counter::ExtendResult Counter::cube_try_extend_by_lit(const Lit torem, const Cub
     }
     for(const auto& ws: occ[l.raw()]) {
       Clause& cl = *alloc->ptr(ws.off);
-      verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
-      if (!std::any_of(cl.begin(), cl.end(), [this](Lit cl_lit) { return v_val(cl_lit) == T_TRI; }))
+      if (!std::any_of(cl.begin(), cl.end(), [this](Lit cl_lit) { return v_val(cl_lit) == T_TRI; })) {
+        verb_print(3, "[cube-ext] Cube can't have " << torem << " removed");
         return ExtendResult::CANNOT_EXTEND;
+      }
     }
   }
   verb_print(2, "[cube-ext] Cube  can have " << torem << " removed AND count doubled");

@@ -178,9 +178,12 @@ void vec<T>::capacity(int32_t min_cap)
     if ((int32_t)cap >= min_cap) return;
 
     // Double until reaching min_cap, then back off by 1/3 to reduce fragmentation
-    int32_t new_size = 2;
-    while (new_size < min_cap) new_size *= 2;
-    if ((new_size * 2 / 3) > min_cap) new_size = new_size * 2 / 3;
+    uint32_t new_size = 2;
+    while (new_size < (uint32_t)min_cap) {
+      if (new_size > std::numeric_limits<uint32_t>::max() / 2) throw std::bad_alloc();
+      new_size *= 2;
+    }
+    if ((new_size * 2 / 3) > (uint32_t)min_cap) new_size = new_size * 2 / 3;
     cap = new_size;
 
     if (((dat = (T*)::realloc(dat, cap * sizeof(T))) == nullptr) && errno == ENOMEM)

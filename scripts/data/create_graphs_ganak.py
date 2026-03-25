@@ -554,6 +554,10 @@ todo = versions
 
 # all
 fname_like = ""
+# unweighted only
+# fname_like = " and (fname like '%track1%' or fname like '%track3%') "
+# weighted only
+# fname_like = " and (fname like '%track2%' or fname like '%track4%') "
 # unproj only
 # fname_like = " and (fname like '%track1%' or fname like '%track2%') "
 # proj only
@@ -714,7 +718,8 @@ with open(gnuplotfn, "w") as f:
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")
-    f.write("plot [500:4000][1000:1200]\\\n")
+    # f.write("plot [500:4000][1000:1200]\\\n")
+    f.write("plot [500:4000][:]\\\n")
     i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")

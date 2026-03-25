@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include "counter_config.hpp"
 #include "Vec.hpp"
+#include <algorithm>
+#include <numeric>
 #include <gmpxx.h>
 #include "structures.hpp"
 #include "time_mem.hpp"
@@ -45,19 +47,17 @@ public:
 
   void init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) override;
   [[nodiscard]] uint64_t get_num_entries_used() const override {
-    uint64_t ret = 0;
-    for (uint32_t id = 2; id < entry_base.size(); id++)
-      if (!entry_base[id].is_free()) ret++;
-
-    return ret;
+    // Skip slots 0 and 1 which are sentinel/reserved entries
+    return static_cast<uint64_t>(std::count_if(
+      entry_base.begin() + 2, entry_base.end(),
+      [](const auto& e) { return !e.is_free(); }));
   }
   uint64_t get_extra_bytes(void* c) const override {
     T* comp = reinterpret_cast<T*>(c);
     return comp->extra_bytes();
   }
   void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc) override {
-    T* new_comp = new T(comp, hash_seed, bpc);
-    return new_comp;
+    return new T(comp, hash_seed, bpc);
   }
 
   [[nodiscard]] uint64_t get_max_num_entries() const override { return entry_base.size(); }
@@ -132,9 +132,8 @@ public:
     SLOW_DEBUG_DO({
       // Verify sum_extra_bytes matches a from-scratch computation across all live entries.
       // Catches any mismatch between the incremental stat and the true allocation.
-      uint64_t actual_sum = 0;
-      for (uint32_t i = 0; i < entry_base.size(); i++)
-        if (!entry_base[i].is_free()) actual_sum += entry_base[i].extra_bytes();
+      uint64_t actual_sum = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
+          [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
       assert(actual_sum == stats.sum_extra_bytes);
     });
   }
@@ -177,19 +176,18 @@ private:
       double vm_after;
       auto used_after = mem_used(vm_after);
       verb_print(2,
-        "table resize -- used before: " << (double)used_before/(double)(1024*1024)
-        << " vm used before: " << (double)vm_before/(double)(1024*1024)
-        << " used after: " << (double)used_after/(double)(1024*1024)
-        << " vm used after: " << vm_after/(double)(1024*1024)
+        "table resize -- used before: " << in_mb(used_before)
+        << " vm used before: " << in_mb(vm_before)
+        << " used after: " << in_mb(used_after)
+        << " vm used after: " << in_mb(vm_after)
         << " total T: " << cpu_time());
     }
   }
 
   void rehash_table(const uint32_t size) {
     table.clear();
-    table.resize(size);
+    table.resize(size); // vec::growTo zero-initializes new elements
     table.shrink_to_fit();
-    std::fill(table.begin(), table.end(), 0);
     assert((table.size() & (table.size() - 1)) == 0 && "Table size must be a power of 2");
     tbl_size_mask = table.size() - 1;
 
@@ -264,23 +262,21 @@ CacheEntryID CompCache<T>::add_new_comp(void* c, CacheEntryID super_comp_id) {
     bool at_capacity = entry_base.capacity() == entry_base.size();
     if (at_capacity && conf.verb >= 3) {
       double vm_dat;
-      auto dat = mem_used(vm_dat);
-      verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
-        (double)(entry_base.capacity()*sizeof(comp))/(double)(1024*1024));
+      const auto dat = mem_used(vm_dat);
+      verb_print(3, "entry_base cap MB: " << in_mb(entry_base.capacity()*sizeof(comp)));
       verb_print(3,
-        "Before entry enlarge Total process MB : " << (double)dat/(double)(1024*1024)
-        << " Total process vm MB: " << vm_dat/(double)(1024*1024));
+        "Before entry enlarge Total process MB: " << in_mb(dat)
+        << " Total process vm MB: " << in_mb(vm_dat));
 
     }
     entry_base.emplace_back(std::move(comp));
     if (at_capacity && conf.verb >= 3) {
       double vm_dat;
-      double dat = (double)mem_used(vm_dat);
-      verb_print(3,std::setw(40) << "After enlarge entry_base mem use MB: " <<
-        (double)(entry_base.capacity()*sizeof(comp))/(double)(1024*1024));
+      const auto dat = mem_used(vm_dat);
+      verb_print(3, "entry_base cap MB: " << in_mb(entry_base.capacity()*sizeof(comp)));
       verb_print(3,
-        "After entry enlarge Total process MB  : " << dat/(double)(1024*1024)
-        << " Total process vm MB: " << vm_dat/(double)(1024*1024));
+        "After entry enlarge Total process MB: " << in_mb(dat)
+        << " Total process vm MB: " << in_mb(vm_dat));
     }
     id = entry_base.size() - 1;
     // only recompute infra size when entry_base actually grew (potentially reallocated)
@@ -391,7 +387,7 @@ void CompCache<T>::store_value(const CacheEntryID id, const FF& model_count) {
 template<typename T>
 void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) {
   // Release mem
-  for (uint32_t i = 0; i < entry_base.size(); i++) entry_base[i].set_free();
+  for (auto& e : entry_base) e.set_free();
   entry_base.clear();
 
   // Setup initial state
@@ -409,7 +405,6 @@ void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bp
   while (init_tbl * 2 <= max_tbl) init_tbl *= 2;
   table.clear();
   table.resize(init_tbl);
-  std::fill(table.begin(), table.end(), 0);
   tbl_size_mask = table.size() - 1;
   verb_print(2, "Max cache size set: " << std::setprecision(2)
       << (double)stats.max_cache_size_bytes / (double)(1024ULL*1024ULL) << " MB");
@@ -451,29 +446,28 @@ template<typename T>
 uint64_t CompCache<T>::calc_cutoff() const {
   vector<uint64_t> scores;
   // skip index 0 (dummy) and 1 (root formula, never deletable)
-  for (auto it = entry_base.begin() + 2; it != entry_base.end(); it++)
+  for (auto it = entry_base.begin() + 2; it != entry_base.end(); ++it)
     if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
   assert(!scores.empty());
   verb_print(1, "deletable:           " << scores.size());
-  const auto mid = scores.begin() + scores.size() / 2;
-  std::nth_element(scores.begin(), mid, scores.end());
-  return *mid;
+  const auto mid_idx = scores.size() / 2;
+  std::nth_element(scores.begin(), scores.begin() + mid_idx, scores.end());
+  return scores[mid_idx];
 }
 
 template<typename T>
 bool CompCache<T>::delete_some_entries() {
   // Check for deletable entries before doing anything — the cache may be full
   // purely due to infrastructure (e.g. table) with no evictable entries yet.
-  bool has_deletable = false;
-  for (uint32_t id = 2; id < entry_base.size(); id++)
-    if (!entry_base[id].is_free() && entry_base[id].is_deletable()) { has_deletable = true; break; }
+  const bool has_deletable = std::any_of(entry_base.begin() + 2, entry_base.end(),
+    [](const auto& e) { return !e.is_free() && e.is_deletable(); });
   if (!has_deletable) return false;
 
   const auto start_del_time = cpu_time();
   uint64_t cutoff = (uint64_t)calc_cutoff();
-  verb_print(1, "Deleting entires. Num entries: " << entry_base.size());
-  verb_print(1, "cache_bytes_memory_usage() in MB: " << (stats.cache_bytes_memory_usage())/(1024ULL*1024ULL));
-  verb_print(1, "max_cache_size_bytes in MB: " << (stats.max_cache_size_bytes)/(1024ULL*1024ULL));
+  verb_print(1, "Deleting entries. Num entries: " << entry_base.size());
+  verb_print(1, "cache_bytes_memory_usage() in MB: " << in_mb(stats.cache_bytes_memory_usage()));
+  verb_print(1, "max_cache_size_bytes in MB: " << in_mb(stats.max_cache_size_bytes));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
 
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
@@ -513,11 +507,8 @@ bool CompCache<T>::delete_some_entries() {
 
   // Recompute mem usage — must start from 0 to include entry_base[1] (the root
   // formula entry, which has non-zero extra_bytes() from its packed comp data).
-  stats.sum_extra_bytes = 0;
-  for (uint32_t id = 0; id < entry_base.size(); id++)
-    if (!entry_base[id].is_free()) {
-      stats.sum_extra_bytes += entry_base[id].extra_bytes();
-    }
+  stats.sum_extra_bytes = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
+      [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
   compute_size_allocated();
   verb_print(1, "deletion done. T: " << cpu_time()-start_del_time);
   return num > 0;
@@ -553,9 +544,8 @@ void CompCache<T>::debug_mem_data() const {
     cout << std::setw(40) << "c o free_entry_base_slots mem use MB "
          << (double)(free_entry_base_slots.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)
          << endl;
-    uint64_t tot_extra_bytes = 0;
-    for (auto &entry : entry_base)
-      if (!entry.is_free()) tot_extra_bytes += entry.extra_bytes();
+    uint64_t tot_extra_bytes = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
+        [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
     cout << std::setw(40) << "c o bignum(+packed comp if used) uses MB "
       << (double)tot_extra_bytes/(double)(1024*1024) << endl;
 
@@ -576,18 +566,13 @@ template<typename T>
 uint64_t CompCache<T>::num_siblings(CacheEntryID id) {
   uint64_t ret = 0;
   CacheEntryID father = entry(id).father();
-  if (entry(father).first_descendant() == id) {
-    return 0;
-  } else {
-    CacheEntryID act_sibl = entry(father).first_descendant();
-    while (act_sibl) {
-      ret ++;
-      CacheEntryID next_sibl = entry(act_sibl).next_sibling();
-      if (next_sibl == id) {
-        return ret;
-      }
-      act_sibl = next_sibl;
-    }
+  if (entry(father).first_descendant() == id) return 0;
+  CacheEntryID act_sibl = entry(father).first_descendant();
+  while (act_sibl) {
+    ret++;
+    CacheEntryID next_sibl = entry(act_sibl).next_sibling();
+    if (next_sibl == id) return ret;
+    act_sibl = next_sibl;
   }
   release_assert(false);
   return ret;

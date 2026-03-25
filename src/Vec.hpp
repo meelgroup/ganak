@@ -20,6 +20,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <new>
 #include <cstdint>
@@ -50,13 +51,6 @@ private:
     // Don't allow copying (error prone):
     vec<T>& operator= (vec<T>& ) = delete;
     vec (const vec<T>& other) = delete;
-
-    // Helpers for calculating next capacity:
-    static inline uint32_t  imax   (int32_t x, int32_t y)
-    {
-        int32_t mask = (y - x) >> (sizeof(uint32_t) * 8 - 1);
-        return (x & mask) + (y & (~mask));
-    }
 
 public:
     vec() : dat(nullptr) , sz(0)   , cap(0)    { }
@@ -135,11 +129,11 @@ public:
     const T& operator [] (uint32_t index) const { return dat[index]; }
     T&       operator [] (uint32_t index) { return dat[index]; }
 
-    // Duplicatation (preferred instead):
+    // Duplication (preferred instead):
     void copyTo(vec<T>& copy) const {
         copy.clear();
         copy.growTo(sz);
-        for (uint32_t i = 0; i < sz; i++) copy[i] = dat[i];
+        std::copy(begin(), end(), copy.begin());
     }
     void moveTo(vec<T>& dest) {
         dest.clear(true);
@@ -183,15 +177,13 @@ void vec<T>::capacity(int32_t min_cap)
 {
     if ((int32_t)cap >= min_cap) return;
 
-    // NOTE: grow by approximately 3/2
-    uint32_t add = imax((min_cap - (int32_t)cap + 1) & ~1, (((int32_t)cap >> 1) + 2) & ~1);
-    if (add > numeric_limits<uint32_t>::max() - cap) throw std::bad_alloc();
-    cap += add;
-
-    // This avoids memory fragmentation by many reallocations
-    int32_t new_size = 2;
-    while (new_size < min_cap) new_size *= 2;
-    if ((new_size * 2 / 3) > min_cap) new_size = new_size * 2 / 3;
+    // Double until reaching min_cap, then back off by 1/3 to reduce fragmentation
+    uint32_t new_size = 2;
+    while (new_size < (uint32_t)min_cap) {
+      if (new_size > std::numeric_limits<uint32_t>::max() / 2) throw std::bad_alloc();
+      new_size *= 2;
+    }
+    if ((new_size * 2 / 3) > (uint32_t)min_cap) new_size = new_size * 2 / 3;
     cap = new_size;
 
     if (((dat = (T*)::realloc(dat, cap * sizeof(T))) == nullptr) && errno == ENOMEM)

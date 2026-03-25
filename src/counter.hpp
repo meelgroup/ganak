@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <limits>
 #include <map>
 #include <memory>
+#include <ranges>
 #include <set>
 #include <string>
 
@@ -53,10 +54,11 @@ inline CMSat::Lit ganak_to_cms_lit(const Lit& l) {
   return CMSat::Lit(l.var()-1, !l.sign());
 }
 
-template<typename T>
+template<std::ranges::range T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
-  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
+  if constexpr (std::ranges::sized_range<T>) cms_cl.reserve(std::ranges::size(cl));
+  std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);
   return cms_cl;
 }
 
@@ -64,9 +66,11 @@ inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
   return {ganak_to_cms_lit(l)};
 }
 
-inline vector<CMSat::Lit> ganak_to_cms_cl(std::initializer_list<Lit> cl) {
+// Explicit overload needed for brace-enclosed initializer lists (not deducible by templates)
+inline vector<CMSat::Lit> ganak_to_cms_cl(const std::initializer_list<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
-  for(const auto& l: cl) cms_cl.push_back(ganak_to_cms_lit(l));
+  cms_cl.reserve(cl.size());
+  std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);
   return cms_cl;
 }
 
@@ -489,14 +493,13 @@ public:
   void count_loop();
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
-  inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
+  static inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
   template <class T2> uint32_t calc_abstr(const T2& ps) {
-    uint32_t abs = 0;
-    if (ps.size() > 50) return ~((uint32_t)(0ULL));
-    for (auto l: ps) abs |= abst_var(l.var());
-    return abs;
+    if (ps.size() > 50) return ~uint32_t{0};
+    return std::accumulate(ps.begin(), ps.end(), 0u,
+        [](uint32_t a, auto l) { return a | abst_var(l.var()); });
   }
-  inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
+  static inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
   template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
   vector<ClauseOfs> occ_cls;
@@ -555,37 +558,29 @@ void Counter::v_print_cl(const T2& cl) const {
 }
 
 template<class T2> bool Counter::conflicting_cl(T2& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI || val(l) == X_TRI) return false;
-  }
-  return true;
+  return std::all_of(cl.begin(), cl.end(), [this](Lit l) { return val(l) == F_TRI; });
 }
 
 template<class T2> bool Counter::propagating_cl(T2& cl) const {
   uint32_t unk = 0;
-  for(const auto&l: cl) {
+  for(const auto& l: cl) {
     if (val(l) == T_TRI) return false;
-    if (val(l) == X_TRI) {unk++; if (unk>1) break;}
+    if (val(l) == X_TRI) { unk++; if (unk > 1) break; }
   }
   return unk == 1;
 }
 
 template<class T2> bool Counter::currently_propagating_cl(T2& cl) const {
   uint32_t tru = 0;
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI) {tru++; if (tru>1) return false;}
+  for(const auto& l: cl) {
     if (val(l) == X_TRI) return false;
+    if (val(l) == T_TRI) { tru++; if (tru > 1) return false; }
   }
   return tru == 1;
 }
 
 inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
-  bool all_false = true;
-  for(uint32_t i = 0; i < size; i++) {
-    if (val(c[i]) != F_TRI) {all_false = false; break;}
-  }
-  if (all_false) return;
-
+  if (std::all_of(c, c + size, [this](Lit l) { return val(l) == F_TRI; })) return;
   cerr << "ERROR: clause is not falsified." << endl;
   print_cl(c, size);
   release_assert(false);
@@ -605,20 +600,8 @@ template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
   cout << "B:" << b << endl;
   for(size_t i = 1; i < b.size(); i++) assert(b[i-1] < b[i]);
 #endif
-  uint32_t i = 0;
-  Lit last_b = NOT_A_LIT;
-  for (uint32_t i2 = 0; i2 < b.size(); i2++) {
-    if (last_b != NOT_A_LIT) assert(last_b < b[i2]);
-    last_b = b[i2];
-    //Literals are ordered
-    if (a[i] < b[i2]) return false;
-    else if (a[i] == b[i2]) {
-      i++;
-      //went through the whole of A now, so A subsumes B
-      if (i == a.size()) return true;
-    }
-  }
-  return false;
+  // Both a and b are sorted; check whether all elements of a appear in b.
+  return std::includes(b.begin(), b.end(), a.begin(), a.end());
 }
 
 inline Antecedent Counter::add_uip_confl_cl(const vector<Lit> &literals) {

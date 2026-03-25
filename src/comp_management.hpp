@@ -48,7 +48,7 @@ public:
                    const LiteralIndexedVector<TriValue> &lit_values,
                    Counter* _counter);
   ~CompManager() {
-    for(auto& comp: comp_stack) free(comp);
+    for(auto& comp: comp_stack) free_comp(comp);
     comp_stack.clear();
   }
 
@@ -82,7 +82,7 @@ public:
         cache->make_entry_deletable(comp_stack.back()->id());
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());
-      free(comp_stack.back());
+      free_comp(comp_stack.back());
       comp_stack.pop_back();
     }
     assert(top.remaining_comps_ofs() <= comp_stack.size());
@@ -126,7 +126,7 @@ inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   // sort the remaining comps for processing
   stats.comp_sorts++;
   stats.comp_sizes+= end - start;
-  std::sort(comp_stack.begin() + start, comp_stack.begin() + end,
+  std::sort(comp_stack.begin() + static_cast<ptrdiff_t>(start), comp_stack.begin() + static_cast<ptrdiff_t>(end),
             [](const Comp* a, const Comp* b) { return a->nVars() > b->nVars(); });
 }
 

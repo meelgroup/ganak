@@ -22,7 +22,8 @@ THE SOFTWARE.
 
 #include "ganak.hpp"
 #include "outer_counter.hpp"
-#include <cstdlib>
+#include <algorithm>
+#include <numeric>
 #include <set>
 
 using namespace GanakInt;
@@ -73,7 +74,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
   auto bags = find_disconnected(*cdat);
   vector<int32_t> var_to_bag(cdat->nvars+1, -1);
   for(uint32_t i = 0; i < bags.size(); i++) {
-    for(auto& v: bags[i]) {
+    for(const auto& v: bags[i]) {
       assert(v < cdat->nvars+1);
       assert(v > 0);
       assert(var_to_bag[v] == -1);
@@ -90,12 +91,10 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
   for(const auto& cl_p: cdat->red_cls) {
     assert(!cl_p.first.empty());
     const int b = var_to_bag[cl_p.first[0].var()];
-    bool ok = true;
-    for(const auto& l: cl_p.first) {
-      if (var_to_bag[l.var()] != b) { ok = false; break; }
-    }
+    // Check all literals belong to the same bag (red clause doesn't bridge components)
+    const bool ok = std::all_of(cl_p.first.begin(), cl_p.first.end(),
+      [&](const auto& l) { return var_to_bag[l.var()] == b; });
     if (ok) bag_to_red_cls[b].push_back(cl_p);
-    // if not ok, then red would contract two components, so ignore
   }
 
   uint32_t cls_added = 0;
@@ -126,11 +125,11 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
     auto remap_clause = [&](const vector<GanakInt::Lit>& cl) {
       vector<GanakInt::Lit> new_cl;
       new_cl.reserve(cl.size());
-      for(const auto& l: cl) {
+      std::ranges::transform(cl, std::back_inserter(new_cl), [&](const auto& l) {
         assert(var_map[l.var()] != -1);
-        assert(var_map[l.var()] < (int)sub_c.nvars +1);
-        new_cl.emplace_back(var_map[l.var()], l.sign());
-      }
+        assert(var_map[l.var()] < (int)sub_c.nvars + 1);
+        return GanakInt::Lit(var_map[l.var()], l.sign());
+      });
       return new_cl;
     };
     for(const auto& cl: bag_to_irred_cls[i]) sub_c.irred_cls.emplace_back(remap_clause(cl));
@@ -149,13 +148,10 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
     if (sub_c.indeps.empty() && sub_c.irred_cls.empty()) continue;
     if (sub_c.indeps.empty() && sub_c.irred_cls.size() < 10) {
       assert(!sub_c.irred_cls.empty());
-      bool all_same = true;
-      auto one = sub_c.irred_cls[0];
+      const auto& one = sub_c.irred_cls[0];
       assert(!one.empty());
-      for(size_t i2 = 1; i2 < sub_c.irred_cls.size(); i2++) {
-        if (sub_c.irred_cls[i2] != one) { all_same = false; break; }
-      }
-      if (all_same) continue;
+      if (std::all_of(sub_c.irred_cls.begin() + 1, sub_c.irred_cls.end(),
+          [&](const auto& cl) { return cl == one; })) continue;
     }
 
     // run counter
@@ -251,7 +247,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
       return;
     }
     assert (var_to_bag[v] != bid);
-    int old_bid = var_to_bag[v];
+    int const old_bid = var_to_bag[v];
     for(const auto& vv: bag_to_vars[old_bid]) var_to_bag[vv] = bid;
     bag_to_vars[bid].insert(bag_to_vars[bid].end(), bag_to_vars[old_bid].begin(), bag_to_vars[old_bid].end());
     bag_to_vars.erase(old_bid);
@@ -263,16 +259,12 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
     set<int> vars_in_cl;
     for(const auto& l: cl) vars_in_cl.insert(l.var());
 
-    bool found = false;
-    for(const auto& v: vars_in_cl) {
-      if (var_to_bag[v] != -1) {
-        found = true;
-        int bid = var_to_bag[v];
-        for(const auto& vv: vars_in_cl) move_to_bag(bid, vv);
-        break;
-      }
-    }
-    if (!found) {
+    auto it = std::find_if(vars_in_cl.begin(), vars_in_cl.end(),
+        [&](int v) { return var_to_bag[v] != -1; });
+    if (it != vars_in_cl.end()) {
+      int const bid = var_to_bag[*it];
+      for(const auto& vv: vars_in_cl) move_to_bag(bid, vv);
+    } else {
       bag_to_vars[bag_id] = {};
       for(const auto& v: vars_in_cl) {
         var_to_bag[v] = bag_id;
@@ -302,8 +294,8 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
 
   // Check
-  uint32_t total_vars = 0;
-  for(const auto& b: bags) total_vars += bag_to_vars[b].size();
+  uint32_t const total_vars = std::accumulate(bags.begin(), bags.end(), 0u,
+      [&](uint32_t acc, const auto& b) { return acc + bag_to_vars[b].size(); });
   /* cout << "c Found " << bags.size() << " bags with total vars: " << total_vars << endl; */
   /* cout << "c Total vars in formula: " << dat.nvars << endl; */
   vector<int> count_vars(dat.nvars+1, 0);

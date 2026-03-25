@@ -122,8 +122,8 @@ public:
         return mem;
     }
 
-    bool heap_property(uint32_t i) const {
-        return i >= heap.size()
+    bool heap_property(int i) const {
+        return i >= static_cast<int>(heap.size())
             || ( (i == 0 || !lt(heap[i], heap[parent(i)]))
                   && heap_property( left(i)  )
                   && heap_property( right(i) )

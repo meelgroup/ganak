@@ -92,7 +92,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
-        free(p_new_comp);
+        free_comp(p_new_comp);
       }
       cache->free_comp(ccomp);
     }

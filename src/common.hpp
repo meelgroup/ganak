@@ -160,6 +160,11 @@ constexpr double safe_div(double a, double b) {
   return b == 0 ? 0 : a/b;
 }
 
+template<typename T>
+constexpr double in_mb(T bytes) {
+  return static_cast<double>(bytes) / (1024.0 * 1024.0);
+}
+
 inline std::string print_value_kilo_mega(const int64_t value, bool use_setw = true) {
   std::stringstream ss;
   if (value > 20*1000LL*1000LL) {

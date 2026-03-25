@@ -2613,16 +2613,14 @@ bool Counter::vivify_all(bool force, bool only_irred) {
 
   // Backup 1st&2nd watch + block lit
   off_to_lit12.clear();
-  for(const auto& off: long_irred_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    bool curr_prop = currently_propagating_cl(cl);
-    off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
-  }
-  for(const auto& off: long_red_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    bool curr_prop = currently_propagating_cl(cl);
-    off_to_lit12[off] = SavedCl(cl[0], cl[1], curr_prop);
-  }
+  auto save_cls = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) {
+      const Clause& cl = *alloc->ptr(off);
+      off_to_lit12[off] = SavedCl(cl[0], cl[1], currently_propagating_cl(cl));
+    }
+  };
+  save_cls(long_irred_cls);
+  save_cls(long_red_cls);
   all_lits(i) {
     Lit lit(i/2, i%2);
     for(const auto& ws: watches[lit].watch_list_) {

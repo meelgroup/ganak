@@ -3901,14 +3901,11 @@ void Counter::check_all_propagated_conflicted() const {
       assert(false);
     }
   }
-  for(const auto& off: long_irred_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    check_cl_propagated_conflicted(cl, off);
-  }
-  for(const auto& off: long_red_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    check_cl_propagated_conflicted(cl, off);
-  }
+  auto check_offs = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) check_cl_propagated_conflicted(*alloc->ptr(off), off);
+  };
+  check_offs(long_irred_cls);
+  check_offs(long_red_cls);
 
   all_lits(i) {
     Lit lit(i/2, i%2);
@@ -3944,14 +3941,14 @@ void Counter::check_all_propagated_conflicted() const {
 }
 
 void Counter::v_backup() {
-  for(const auto& off: long_irred_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    v_backup_cls.emplace_back(cl.begin(), cl.end());
-  }
-  for(const auto& off: long_red_cls) {
-    const Clause& cl = *alloc->ptr(off);
-    v_backup_cls.emplace_back(cl.begin(), cl.end());
-  }
+  auto backup_offs = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) {
+      const Clause& cl = *alloc->ptr(off);
+      v_backup_cls.emplace_back(cl.begin(), cl.end());
+    }
+  };
+  backup_offs(long_irred_cls);
+  backup_offs(long_red_cls);
   for(const auto& ws: watches) {
     v_backup_watches.emplace_back(ws.watch_list_.begin(), ws.watch_list_.end());
   }
@@ -3959,16 +3956,15 @@ void Counter::v_backup() {
 
 void Counter::v_restore() {
   uint32_t at = 0;
-  for(const auto& off: long_irred_cls) {
-    Clause& cl = *alloc->ptr(off);
-    const auto& lits = v_backup_cls[at++];
-    std::copy(lits.begin(), lits.end(), cl.begin());
-  }
-  for(const auto& off: long_red_cls) {
-    Clause& cl = *alloc->ptr(off);
-    const auto& lits = v_backup_cls[at++];
-    std::copy(lits.begin(), lits.end(), cl.begin());
-  }
+  auto restore_offs = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) {
+      Clause& cl = *alloc->ptr(off);
+      const auto& lits = v_backup_cls[at++];
+      std::copy(lits.begin(), lits.end(), cl.begin());
+    }
+  };
+  restore_offs(long_irred_cls);
+  restore_offs(long_red_cls);
 
   auto bk_it = v_backup_watches.cbegin();
   for(auto& ws: watches) {

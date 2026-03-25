@@ -23,6 +23,12 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.staticcompile }}
+        max-size: 500M
+
     - name: Install gmp for Mac
       if: contains(matrix.os, 'macos')
       run: |
@@ -141,7 +147,7 @@ jobs:
       run: |
         cd cryptominisat
         mkdir build &&cd build
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
         cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
 
@@ -157,11 +163,11 @@ jobs:
         mkdir build
         cd build
         ln -s ../scripts/*.sh .
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
         cmake --build . --config ${{matrix.build_type}} -v
         sudo make install
         cd ../..
- 
+
     - name: Checkout treedecomp
       uses: actions/checkout@v4
       with:
@@ -173,7 +179,7 @@ jobs:
         cd treedecomp
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DSTATICCOMPILE=${{ matrix.staticcompile }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
         cmake --build . --config ${{matrix.build_type}} -v
         sudo cmake --install . --config ${{matrix.build_type}} -v
         cd ../..
@@ -193,6 +199,8 @@ jobs:
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
         -DENABLE_TESTING=OFF \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
@@ -213,6 +221,8 @@ jobs:
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
         -DENABLE_TESTING=OFF \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
@@ -229,6 +239,8 @@ jobs:
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
         -DENABLE_TESTING=OFF \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
 

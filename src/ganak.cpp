@@ -149,13 +149,10 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
     if (sub_c.indeps.empty() && sub_c.irred_cls.empty()) continue;
     if (sub_c.indeps.empty() && sub_c.irred_cls.size() < 10) {
       assert(!sub_c.irred_cls.empty());
-      bool all_same = true;
-      auto one = sub_c.irred_cls[0];
+      const auto& one = sub_c.irred_cls[0];
       assert(!one.empty());
-      for(size_t i2 = 1; i2 < sub_c.irred_cls.size(); i2++) {
-        if (sub_c.irred_cls[i2] != one) { all_same = false; break; }
-      }
-      if (all_same) continue;
+      if (std::all_of(sub_c.irred_cls.begin() + 1, sub_c.irred_cls.end(),
+          [&](const auto& cl) { return cl == one; })) continue;
     }
 
     // run counter

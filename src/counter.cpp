@@ -2521,11 +2521,9 @@ uint32_t Counter::abst_level(const uint32_t x) const {
 void Counter::recursive_cc_min() {
   VERBOSE_DEBUG_DO(print_conflict_info());
   debug_print("recursive ccmin now.");
-  uint32_t abstract_level = 0;
-  for (size_t i = 1; i < uip_clause.size(); i++) {
-    //(maintain an abstraction of levels involved in conflict)
-    abstract_level |= abst_level(uip_clause[i].var());
-  }
+  // Maintain an abstraction of all decision levels in the conflict
+  const uint32_t abstract_level = std::accumulate(uip_clause.begin() + 1, uip_clause.end(), 0u,
+      [this](uint32_t acc, const Lit& l) { return acc | abst_level(l.var()); });
 
   size_t j = 1;
   for (size_t i = 1; i < uip_clause.size(); i++) {
@@ -2698,12 +2696,8 @@ bool Counter::v_unsat(const T2& lits) {
 }
 
 void Counter::v_shrink(Clause& cl) const {
-  uint32_t j = 0;
-  for(uint32_t i = 0; i < cl.size(); i++) {
-    if (v_val(cl[i]) == F_TRI) continue;
-    cl[j++] = cl[i];
-  }
-  cl.resize(j);
+  auto end = std::remove_if(cl.begin(), cl.end(), [this](Lit l) { return v_val(l) == F_TRI; });
+  cl.resize(end - cl.begin());
 }
 
 void Counter::v_cl_toplevel_repair(vector<ClauseOfs>& offs) {

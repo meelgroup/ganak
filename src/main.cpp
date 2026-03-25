@@ -187,7 +187,7 @@ void add_ganak_options()
 5=counting over a prime field (see --prime),
 6=mpfr floating point complex numbers (see --mpfrprec),
 7=mpfr floating point real numbers (see --mpfrprec),
-8=mpfi intervals (see --mpfrprec),
+8=mpfi floating point real number intervals (see --mpfrprec),
 9=mpqi rational/interval adaptive (see --mpfrprec)
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
@@ -442,6 +442,56 @@ void print_log(const mpfr_t& cnt, string extra = "") {
     mpfr_clear(log10_val);
 }
 
+double digit_precision_mpfi(mpfi_srcptr v) {
+    mpfr_prec_t const prec = mpfi_get_prec(v);
+    mpfr_t left;
+    mpfr_init2(left, prec);
+    mpfr_t right;
+    mpfr_init2(right, prec);
+
+    mpfi_get_left(left, v);
+    mpfi_get_right(right, v);
+    if (mpfr_sgn(left) != mpfr_sgn(right)) {
+        mpfr_clear(left);
+        mpfr_clear(right);
+        return 0.0;
+    }
+
+    mpfr_t diam;
+    mpfr_init2(diam, prec);
+    mpfi_diam_rel(diam, v);
+    if (mpfr_sgn(diam) == 0) {
+        mpfr_clear(diam);
+        mpfr_clear(left);
+        mpfr_clear(right);
+        return max_digit_precision;
+    }
+
+    mpfr_log10(diam, diam, MPFR_RNDN);
+    double result = -mpfr_get_d(diam, MPFR_RNDN);
+    if (result < 0)
+        result = 0.0;
+
+    if (result > max_digit_precision)
+        result = max_digit_precision;
+
+    mpfr_clear(diam);
+    mpfr_clear(left);
+    mpfr_clear(right);
+    return result;
+}
+
+void print_log(const mpfi_t& val, string extra = "") {
+    mpfr_t left, right;
+    mpfr_init2(left, mpfr_precision);
+    mpfr_init2(right, mpfr_precision);
+    mpfi_get_left(left, val);
+    mpfi_get_right(right, val);
+    print_log(left, extra + " left bound");
+    print_log(right, extra + " right bound");
+    mpfr_clear(left);
+    mpfr_clear(right);
+}
 
 void print_log(const mpz_class& cnt, string extra = "") {
     mpz_class abs_cnt = cnt;

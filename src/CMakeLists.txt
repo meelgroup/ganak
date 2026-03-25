@@ -105,6 +105,7 @@ target_link_libraries(ganak-bin
       ganak
       ${ARJUN_LIBRARIES}
       ${FLINT_LIBRARIES}
+      ${MPFI_LIBRARIES}
       ${MPFR_LIBRARIES}
       ${GMP_LIBRARIES}
       # ${BREAKID_INCLUDE_DIRS}

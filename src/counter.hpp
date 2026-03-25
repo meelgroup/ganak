@@ -592,20 +592,8 @@ template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
   cout << "B:" << b << endl;
   for(size_t i = 1; i < b.size(); i++) assert(b[i-1] < b[i]);
 #endif
-  uint32_t i = 0;
-  Lit last_b = NOT_A_LIT;
-  for (uint32_t i2 = 0; i2 < b.size(); i2++) {
-    if (last_b != NOT_A_LIT) assert(last_b < b[i2]);
-    last_b = b[i2];
-    //Literals are ordered
-    if (a[i] < b[i2]) return false;
-    else if (a[i] == b[i2]) {
-      i++;
-      //went through the whole of A now, so A subsumes B
-      if (i == a.size()) return true;
-    }
-  }
-  return false;
+  // Both a and b are sorted; check whether all elements of a appear in b.
+  return std::includes(b.begin(), b.end(), a.begin(), a.end());
 }
 
 inline Antecedent Counter::add_uip_confl_cl(const vector<Lit> &literals) {

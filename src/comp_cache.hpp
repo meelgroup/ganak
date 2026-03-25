@@ -448,7 +448,7 @@ uint64_t CompCache<T>::calc_cutoff() const {
   // skip index 0 (dummy) and 1 (root formula, never deletable)
   for (auto it = entry_base.begin() + 2; it != entry_base.end(); ++it)
     if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
-  assert(!scores.empty());
+  if (scores.empty()) return 0;
   verb_print(1, "deletable:           " << scores.size());
   const auto mid_idx = scores.size() / 2;
   std::nth_element(scores.begin(), scores.begin() + mid_idx, scores.end());

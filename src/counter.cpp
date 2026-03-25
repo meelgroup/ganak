@@ -880,7 +880,6 @@ FF Counter::count_using_cms() {
       }
     *cnt += *this_cnt;
     vector<CMSat::Lit> ban;
-    ban.reserve(indep_support_end - 1);
     for(int j = 0; j < (int)indep_support_end-1; j++)
       ban.emplace_back(j, sol[j] == CMSat::l_True);
     sat_solver->add_clause(ban);

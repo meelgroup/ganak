@@ -67,7 +67,7 @@ inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
 }
 
 // Explicit overload needed for brace-enclosed initializer lists (not deducible by templates)
-inline vector<CMSat::Lit> ganak_to_cms_cl(std::initializer_list<Lit> cl) {
+inline vector<CMSat::Lit> ganak_to_cms_cl(const std::initializer_list<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
   cms_cl.reserve(cl.size());
   std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);

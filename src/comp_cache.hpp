@@ -450,9 +450,9 @@ uint64_t CompCache<T>::calc_cutoff() const {
     if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
   assert(!scores.empty());
   verb_print(1, "deletable:           " << scores.size());
-  const auto mid = scores.begin() + scores.size() / 2;
-  std::nth_element(scores.begin(), mid, scores.end());
-  return *mid;
+  const auto mid_idx = scores.size() / 2;
+  std::nth_element(scores.begin(), scores.begin() + mid_idx, scores.end());
+  return scores[mid_idx];
 }
 
 template<typename T>

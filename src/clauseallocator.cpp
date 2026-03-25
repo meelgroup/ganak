@@ -78,7 +78,7 @@ void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
   }
 
   //Add clause to the set
-  Clause const* pointer = (Clause*)(data_start + size);
+  Clause* pointer = (Clause*)(data_start + size);
   size += needed;
   currently_used_sz += needed;
   return pointer;

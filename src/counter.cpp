@@ -2346,7 +2346,7 @@ RetState Counter::resolve_conflict() {
 
 inline void Counter::get_maxlev_maxind(ClauseOfs ofs, int32_t& maxlev, uint32_t& maxind) {
   Clause& cl = *alloc->ptr(ofs);
-  auto best = std::max_element(cl.begin() + 2, cl.end(),
+  auto* best = std::max_element(cl.begin() + 2, cl.end(),
       [this](Lit a, Lit b) { return var(a).decision_level < var(b).decision_level; });
   if (best != cl.end()) {
     int32_t const nlev = var(*best).decision_level;
@@ -2420,7 +2420,7 @@ bool Counter::propagate(bool out_of_order) {
         continue;
       }
 
-      auto it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return !is_false(l); });
+      auto* it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return !is_false(l); });
       // either we found a free or satisfied lit
       if (it3 != c.end()) {
         c[1] = *it3;
@@ -2696,7 +2696,7 @@ bool Counter::v_unsat(const T2& lits) {
 }
 
 void Counter::v_shrink(Clause& cl) const {
-  auto end = std::remove_if(cl.begin(), cl.end(), [this](Lit l) { return v_val(l) == F_TRI; });
+  auto* end = std::remove_if(cl.begin(), cl.end(), [this](Lit l) { return v_val(l) == F_TRI; });
   cl.resize(end - cl.begin());
 }
 
@@ -2750,7 +2750,7 @@ void Counter::v_cl_repair(ClauseOfs off) {
       return var(a).sublevel > var(b).sublevel;
     });
 
-  auto t_it = std::find_if(cl.begin() + 2, cl.end(), [this](Lit l){ return val(l) == T_TRI; });
+  auto* t_it = std::find_if(cl.begin() + 2, cl.end(), [this](Lit l){ return val(l) == T_TRI; });
 
   debug_print("Vivified cl off: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
@@ -2764,7 +2764,7 @@ void Counter::v_fix_watch(Clause& cl, uint32_t i) {
   if (val(cl[i]) == X_TRI || val(cl[i]) == T_TRI) return;
   auto off = alloc->get_offset(&cl);
   watches[cl[i]].del_c(off);
-  auto it2 = std::find_if(cl.begin() + 2, cl.end(),
+  auto* it2 = std::find_if(cl.begin() + 2, cl.end(),
       [this](Lit l){ return val(l) == X_TRI || val(l) == T_TRI; });
   assert(it2 != cl.end());
   std::swap(cl[i], *it2);
@@ -3022,7 +3022,7 @@ bool Counter::v_propagate() {
         continue;
       }
 
-      auto it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return v_val(l) != F_TRI; });
+      auto* it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return v_val(l) != F_TRI; });
       // either we found a free or satisfied lit
       if (it3 != c.end()) {
         c[1] = *it3;
@@ -3279,7 +3279,7 @@ void Counter::attach_occ(vector<ClauseOfs>& cls, bool sort_and_clear) {
 void Counter::backw_subsume_cl(ClauseOfs off) {
   Clause& cl = *alloc->ptr(off);
   uint32_t const abs = calc_abstr(cl);
-  auto min_it = std::min_element(cl.begin(), cl.end(),
+  auto* min_it = std::min_element(cl.begin(), cl.end(),
       [this](Lit a, Lit b){ return occ[a.raw()].size() < occ[b.raw()].size(); });
 
   for(const auto& check: occ[min_it->raw()]) {
@@ -3304,7 +3304,7 @@ void Counter::backw_subsume_cl(ClauseOfs off) {
 
 void Counter::backw_subsume_cl_with_bin(BinClSub& cl) {
   uint32_t const abs = calc_abstr(cl);
-  auto min_it = std::min_element(cl.begin(), cl.end(),
+  auto* min_it = std::min_element(cl.begin(), cl.end(),
       [this](Lit a, Lit b){ return occ[a.raw()].size() < occ[b.raw()].size(); });
 
   for(const auto& check: occ[min_it->raw()]) {

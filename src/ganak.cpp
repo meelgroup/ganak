@@ -247,7 +247,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
       return;
     }
     assert (var_to_bag[v] != bid);
-    int old_bid = var_to_bag[v];
+    int const old_bid = var_to_bag[v];
     for(const auto& vv: bag_to_vars[old_bid]) var_to_bag[vv] = bid;
     bag_to_vars[bid].insert(bag_to_vars[bid].end(), bag_to_vars[old_bid].begin(), bag_to_vars[old_bid].end());
     bag_to_vars.erase(old_bid);
@@ -262,7 +262,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
     auto it = std::find_if(vars_in_cl.begin(), vars_in_cl.end(),
         [&](int v) { return var_to_bag[v] != -1; });
     if (it != vars_in_cl.end()) {
-      int bid = var_to_bag[*it];
+      int const bid = var_to_bag[*it];
       for(const auto& vv: vars_in_cl) move_to_bag(bid, vv);
     } else {
       bag_to_vars[bag_id] = {};
@@ -294,7 +294,7 @@ vector<vector<uint32_t>> find_disconnected(const CDat& dat) {
   }
 
   // Check
-  uint32_t total_vars = std::accumulate(bags.begin(), bags.end(), 0u,
+  uint32_t const total_vars = std::accumulate(bags.begin(), bags.end(), 0u,
       [&](uint32_t acc, const auto& b) { return acc + bag_to_vars[b].size(); });
   /* cout << "c Found " << bags.size() << " bags with total vars: " << total_vars << endl; */
   /* cout << "c Total vars in formula: " << dat.nvars << endl; */

@@ -67,7 +67,7 @@ static int fc_int(const std::string& s) {
 }
 static double fc_double(const std::string& s) {
     size_t pos;
-    double val = std::stod(s, &pos);
+    double const val = std::stod(s, &pos);
     if (pos != s.size()) throw std::invalid_argument("trailing characters in double: " + s);
     return val;
 }
@@ -380,7 +380,7 @@ void print_vars(vector<uint32_t> vars) {
 }
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
-  double my_time = cpu_time();
+  double const my_time = cpu_time();
   ArjunNS::Arjun arjun;
   if (conf.verb == 0) arjun_verb = 0;
   arjun.set_verb(arjun_verb);
@@ -404,7 +404,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 }
 
 string print_mpq_as_scientific(const mpq_class& number) {
-    mpf_class mpf_value(number);
+    mpf_class const mpf_value(number);
     std::ostringstream oss;
     oss << std::scientific << setprecision(8) << mpf_value;
     return oss.str();
@@ -430,7 +430,7 @@ void print_log(const mpfr_t& cnt, string extra = "") {
 }
 
 double digit_precision_mpfi(mpfi_srcptr v) {
-    mpfr_prec_t prec = mpfi_get_prec(v);
+    mpfr_prec_t const prec = mpfi_get_prec(v);
     mpfr_t left;
     mpfr_init2(left, prec);
     mpfr_t right;

@@ -48,7 +48,6 @@ void CompAnalyzer::initialize(
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
-  vector<vector<ClauseOfs>> occs(max_var + 1);
   const uint32_t n = max_var+1;
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
@@ -71,7 +70,7 @@ void CompAnalyzer::initialize(
     assert(cl.size() > 2);
     const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
-      Lit blk_lit = cl[cl.size()/2];
+      Lit const blk_lit = cl[cl.size()/2];
       for(const auto&l: cl) long_clauses_data.push_back(l);
       long_clauses_data.push_back(SENTINEL_LIT);
 
@@ -117,7 +116,7 @@ void CompAnalyzer::initialize(
   vector<uint32_t> tmp2;
   for (uint32_t v = 1; v < n; v++) {
     tmp2.clear();
-    for(bool sign : {false, true}) {
+    for(bool const sign : {false, true}) {
       for (const auto& bincl: watches[Lit(v, sign)].binaries) {
         if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
@@ -133,7 +132,7 @@ void CompAnalyzer::initialize(
   assert(unif_occ_bin.size() == unif_occ_long.size());
   assert(unif_occ_bin.size() == n);
 
-  size_t total_sz = hstride * n
+  size_t const total_sz = hstride * n
     + std::accumulate(unif_occ_long.begin(), unif_occ_long.end(), size_t{0},
         [](size_t acc, const auto& u) { return acc + u.size() * (sizeof(ClData)/sizeof(uint32_t)); })
     + std::accumulate(unif_occ_bin.begin(), unif_occ_bin.end(), size_t{0},
@@ -258,7 +257,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       analyze_verb(debug_print("analyze NORESET"));
       stats.comps_non_reset++;
     }
-    bool update = (counter->last_dec_candidates > conf.analyze_cand_update) || reset;
+    bool const update = (counter->last_dec_candidates > conf.analyze_cand_update) || reset;
     if (update) {
       holder.set_tstamp(v, counter->get_tstamp());
       holder.set_lev(v, counter->dec_level());
@@ -289,9 +288,9 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       // we have not seen all binary clauses
       // traverse binary clauses
       uint32_t* bins = holder.begin_bin(v);
-      uint32_t* bins_end = bins + holder.size_bin(v);
+      uint32_t const* bins_end = bins + holder.size_bin(v);
       while(bins != bins_end) {
-        uint32_t v2 = *(bins++);
+        uint32_t const v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
         manage_occ_of(v2);
         if (is_unknown(v2)) {

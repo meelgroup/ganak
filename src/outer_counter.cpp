@@ -120,7 +120,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
   ArjunNS::SimpConf simp_conf;
   /* simp_conf.iter1 = 1; */
   simp_conf.iter1 = 0;
-  ArjunNS::Arjun::ElimToFileConf etof_conf;
+  ArjunNS::Arjun::ElimToFileConf const etof_conf;
   arjun.standalone_minimize_indep(cnf, false);
   if (cnf.get_sampl_vars().size() >= td_at_or_above_indep) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
@@ -136,15 +136,15 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   assert(conf.appmc_timeout < 0 && "TD-parallel not compatible with AppMC");
   assert(bits_jobs > 0);
   assert(bits_jobs <= 20);
-  double td_start_time = cpu_time();
+  double const td_start_time = cpu_time();
 
   // Build primal graph from clauses
   TWD::Graph primal(nvars);
   for (const auto& cl : irred_cls) {
     for (auto it1 = cl.begin(); it1 != cl.end(); ++it1) {
       for (auto it2 = std::next(it1); it2 != cl.end(); ++it2) {
-        uint32_t v1 = it1->var() - 1;
-        uint32_t v2 = it2->var() - 1;
+        uint32_t const v1 = it1->var() - 1;
+        uint32_t const v2 = it2->var() - 1;
         if (v1 != v2) primal.addEdge(v1, v2);
       }
     }
@@ -165,7 +165,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3);
 
   // Find centroid
-  int centroid_id = tdec.centroid(conf.verb);
+  int const centroid_id = tdec.centroid(conf.verb);
   vector<int> centroid_bag = tdec.Bags()[centroid_id];
 
   verb_print(1, "[par] TD width: " << tdec.width()
@@ -232,7 +232,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     for (size_t i = 0; i < bits_jobs; i++) {
       const uint32_t var = centroid_bag[i];
       const bool sign = (num >> i) & 1;
-      CMSat::Lit unit_lit(var, sign);
+      CMSat::Lit const unit_lit(var, sign);
       cnf.add_clause({unit_lit});
       verb_print(2, "[par] Thread " << num << " fixing var " << var
                   << " to " << (sign ? "true" : "false"));
@@ -250,7 +250,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       *ret *= *counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();
       {
-        std::lock_guard<std::mutex> lock(stats_mutex);
+        std::lock_guard<std::mutex> const lock(stats_mutex);
         max_cache_elems = std::max(max_cache_elems, counter->get_max_cache_elems());
         count_is_approximate |= counter->get_is_approximate();
       }
@@ -277,7 +277,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       // Check if this future is ready
       if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
         // Collect result
-        FF partial = future.get();
+        FF const partial = future.get();
         *total_count += *partial;
         verb_print(2, "[par] Task " << task_id << " completed");
 
@@ -306,8 +306,8 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
 
 void OuterCounter::print_indep_distrib() const {
   cout << "c o indep/optional/none distribution: ";
-  std::set<uint32_t> all_opt_indep = opt_indep_support;
-  std::set<uint32_t> all_indep(indep_support);
+  std::set<uint32_t> const all_opt_indep = opt_indep_support;
+  std::set<uint32_t> const all_indep(indep_support);
   for(uint32_t i = 0; i <= nvars; i++) {
     if (all_opt_indep.count(i)) {
       if (all_indep.count(i)) cout << "I";

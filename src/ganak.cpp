@@ -126,11 +126,11 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
     auto remap_clause = [&](const vector<GanakInt::Lit>& cl) {
       vector<GanakInt::Lit> new_cl;
       new_cl.reserve(cl.size());
-      for(const auto& l: cl) {
+      std::ranges::transform(cl, std::back_inserter(new_cl), [&](const auto& l) {
         assert(var_map[l.var()] != -1);
-        assert(var_map[l.var()] < (int)sub_c.nvars +1);
-        new_cl.emplace_back(var_map[l.var()], l.sign());
-      }
+        assert(var_map[l.var()] < (int)sub_c.nvars + 1);
+        return GanakInt::Lit(var_map[l.var()], l.sign());
+      });
       return new_cl;
     };
     for(const auto& cl: bag_to_irred_cls[i]) sub_c.irred_cls.emplace_back(remap_clause(cl));

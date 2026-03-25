@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "counter_config.hpp"
 #include "Vec.hpp"
 #include <algorithm>
+#include <numeric>
 #include <gmpxx.h>
 #include "structures.hpp"
 #include "time_mem.hpp"
@@ -131,9 +132,8 @@ public:
     SLOW_DEBUG_DO({
       // Verify sum_extra_bytes matches a from-scratch computation across all live entries.
       // Catches any mismatch between the incremental stat and the true allocation.
-      uint64_t actual_sum = 0;
-      for (const auto& e : entry_base)
-        if (!e.is_free()) actual_sum += e.extra_bytes();
+      uint64_t actual_sum = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
+          [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
       assert(actual_sum == stats.sum_extra_bytes);
     });
   }
@@ -507,9 +507,8 @@ bool CompCache<T>::delete_some_entries() {
 
   // Recompute mem usage — must start from 0 to include entry_base[1] (the root
   // formula entry, which has non-zero extra_bytes() from its packed comp data).
-  stats.sum_extra_bytes = 0;
-  for (const auto& e : entry_base)
-    if (!e.is_free()) stats.sum_extra_bytes += e.extra_bytes();
+  stats.sum_extra_bytes = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
+      [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
   compute_size_allocated();
   verb_print(1, "deletion done. T: " << cpu_time()-start_del_time);
   return num > 0;
@@ -545,9 +544,8 @@ void CompCache<T>::debug_mem_data() const {
     cout << std::setw(40) << "c o free_entry_base_slots mem use MB "
          << (double)(free_entry_base_slots.capacity()*sizeof(CacheEntryID))/(double)(1024*1024)
          << endl;
-    uint64_t tot_extra_bytes = 0;
-    for (auto &entry : entry_base)
-      if (!entry.is_free()) tot_extra_bytes += entry.extra_bytes();
+    uint64_t tot_extra_bytes = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
+        [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
     cout << std::setw(40) << "c o bignum(+packed comp if used) uses MB "
       << (double)tot_extra_bytes/(double)(1024*1024) << endl;
 

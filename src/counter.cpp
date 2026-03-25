@@ -2821,12 +2821,9 @@ bool Counter::propagation_correctness_of_vivified(const T2& cl) const {
   if (maxlev_f < t_lev) return false;
 
   // Have to find a FALSE at the level the TRUE is at
-  for(const auto&l: cl) {
-    if (val(l) == F_TRI) {
-      if (var(l).decision_level == t_lev) return true;
-    }
-  }
-  return false;
+  return std::any_of(cl.begin(), cl.end(), [this, t_lev](const Lit& l) {
+    return val(l) == F_TRI && var(l).decision_level == t_lev;
+  });
 }
 
 // Returns TRUE if we can remove the clause

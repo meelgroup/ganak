@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "structures.hpp"
 #include <algorithm>
 #include <cstdint>
+#include <numeric>
 
 using namespace GanakInt;
 
@@ -132,10 +133,11 @@ void CompAnalyzer::initialize(
   assert(unif_occ_bin.size() == unif_occ_long.size());
   assert(unif_occ_bin.size() == n);
 
-  size_t total_sz = 0;
-  for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t));
-  for(const auto& u: unif_occ_bin) total_sz += u.size();
-  total_sz += hstride*n;
+  size_t total_sz = hstride * n
+    + std::accumulate(unif_occ_long.begin(), unif_occ_long.end(), size_t{0},
+        [](size_t acc, const auto& u) { return acc + u.size() * (sizeof(ClData)/sizeof(uint32_t)); })
+    + std::accumulate(unif_occ_bin.begin(), unif_occ_bin.end(), size_t{0},
+        [](size_t acc, const auto& u) { return acc + u.size(); });
   holder.data = std::make_unique<uint32_t[]>(total_sz);
   uint32_t* const data = holder.data.get();
   uint32_t* data_start = data + n*hstride;

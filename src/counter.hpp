@@ -559,28 +559,17 @@ void Counter::v_print_cl(const T2& cl) const {
 }
 
 template<class T2> bool Counter::conflicting_cl(T2& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI || val(l) == X_TRI) return false;
-  }
-  return true;
+  return std::all_of(cl.begin(), cl.end(), [this](Lit l) { return val(l) == F_TRI; });
 }
 
 template<class T2> bool Counter::propagating_cl(T2& cl) const {
-  uint32_t unk = 0;
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI) return false;
-    if (val(l) == X_TRI) {unk++; if (unk>1) break;}
-  }
-  return unk == 1;
+  return std::none_of(cl.begin(), cl.end(), [this](Lit l){ return val(l) == T_TRI; })
+      && std::count_if(cl.begin(), cl.end(), [this](Lit l){ return val(l) == X_TRI; }) == 1;
 }
 
 template<class T2> bool Counter::currently_propagating_cl(T2& cl) const {
-  uint32_t tru = 0;
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI) {tru++; if (tru>1) return false;}
-    if (val(l) == X_TRI) return false;
-  }
-  return tru == 1;
+  return std::none_of(cl.begin(), cl.end(), [this](Lit l){ return val(l) == X_TRI; })
+      && std::count_if(cl.begin(), cl.end(), [this](Lit l){ return val(l) == T_TRI; }) == 1;
 }
 
 inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {

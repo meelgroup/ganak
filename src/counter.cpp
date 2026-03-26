@@ -2420,11 +2420,12 @@ bool Counter::propagate(bool out_of_order) {
         continue;
       }
 
-      auto* it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return !is_false(l); });
+      uint32_t i = 2;
+      for(; i < c.sz; i++) if (!is_false(c[i])) break;
       // either we found a free or satisfied lit
-      if (it3 != c.end()) {
-        c[1] = *it3;
-        *it3 = plit;
+      if (i != c.sz) {
+        c[1] = c[i];
+        c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
         watches[c[1]].add_cl(ofs, plit);
       } else {
@@ -3022,11 +3023,12 @@ bool Counter::v_propagate() {
         continue;
       }
 
-      auto* it3 = std::find_if(c.begin() + 2, c.end(), [this](Lit l){ return v_val(l) != F_TRI; });
+      uint32_t i = 2;
+      for(; i < c.sz; i++) if (v_val(c[i]) != F_TRI) break;
       // either we found a free or satisfied lit
-      if (it3 != c.end()) {
-        c[1] = *it3;
-        *it3 = plit;
+      if (i != c.sz) {
+        c[1] = c[i];
+        c[i] = plit;
         debug_print("v New watch for cl: " << c[1]);
         watches[c[1]].add_cl(ofs, plit);
       } else {

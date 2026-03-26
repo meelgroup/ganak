@@ -538,7 +538,9 @@ only_dirs = [
             # "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
             # "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
             "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
-            "out-ganak-mccomp2324-1193808-", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
+            "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
+            "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
+            "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
             ]
 # only_dirs = ["out-ganak-6828273"]
 # only_dirs = ["6606250"]
@@ -714,7 +716,7 @@ with open(gnuplotfn, "w") as f:
     f.write("set key bottom right\n")
     # f.write("set xtics 200\n")
     f.write("set logscale x\n")
-    f.write("set logscale y\n")
+    f.write("unset logscale y\n")
     f.write("set ylabel  \"Instances counted\"\n")
     f.write("set xlabel \"Time (s)\"\n")
     # f.write("plot [:][10:]\\\n")

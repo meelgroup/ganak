@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp.hpp"
 #include "chibihash64.h"
-#include <memory>
 
 namespace GanakInt {
 
@@ -68,30 +67,44 @@ class DiffPackedComp  {
 
 public:
   DiffPackedComp() = default;
-  ~DiffPackedComp() = default;
+  ~DiffPackedComp() { delete[] data; }
   DiffPackedComp(const DiffPackedComp& other) : data_size(other.data_size) {
     if (data_size > 0) {
-      data = std::make_unique<uint32_t[]>(data_size);
-      std::memcpy(data.get(), other.data.get(), data_size * sizeof(uint32_t));
+      data = new uint32_t[data_size];
+      std::memcpy(data, other.data, data_size * sizeof(uint32_t));
     }
   }
-  // copy assign: not noexcept — make_unique can throw
   DiffPackedComp& operator=(const DiffPackedComp& other) {
     if (this == &other) return *this;
+    delete[] data;
     data_size = other.data_size;
-    data = (data_size > 0) ? std::make_unique<uint32_t[]>(data_size) : nullptr;
-    if (data_size > 0) std::memcpy(data.get(), other.data.get(), data_size * sizeof(uint32_t));
+    data = (data_size > 0) ? new uint32_t[data_size] : nullptr;
+    if (data_size > 0) std::memcpy(data, other.data, data_size * sizeof(uint32_t));
     return *this;
   }
-  DiffPackedComp(DiffPackedComp&& other) noexcept = default;
-  DiffPackedComp& operator=(DiffPackedComp&& other) noexcept = default;
+  DiffPackedComp(DiffPackedComp&& other) noexcept
+      : data(other.data), data_size(other.data_size) {
+    other.data = nullptr;
+    other.data_size = 0;
+  }
+  DiffPackedComp& operator=(DiffPackedComp&& other) noexcept {
+    if (this != &other) {
+      delete[] data;
+      data = other.data;
+      data_size = other.data_size;
+      other.data = nullptr;
+      other.data_size = 0;
+    }
+    return *this;
+  }
 
   uint64_t comp_bytes() const {
     return data_size * sizeof(uint32_t);
   }
 
   void set_free() {
-    data.reset();
+    delete[] data;
+    data = nullptr;
     data_size = 0;
   }
 
@@ -100,7 +113,7 @@ public:
     SLOW_DEBUG_DO(assert(other.data != nullptr));
 
     if (data_size != other.data_size) return false;
-    return std::memcmp(data.get(), other.data.get(), data_size * sizeof(uint32_t)) == 0;
+    return std::memcmp(data, other.data, data_size * sizeof(uint32_t)) == 0;
   }
 
   uint64_t set_comp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& sz) {
@@ -140,9 +153,10 @@ public:
 
     const uint32_t total_bits = data_size_vars + data_size_clauses;
     data_size = (total_bits + sz.bits_per_block - 1) / sz.bits_per_block;
-    data = std::make_unique<uint32_t[]>(data_size);
+    delete[] data;
+    data = new uint32_t[data_size];
     assert((data_size >> sz.bits_of_data_size) == 0);
-    BitStuffer bs(data.get());
+    BitStuffer bs(data);
 
     bs.stuff(data_size, sz.bits_of_data_size);
     bs.stuff(comp.nVars(), sz.bits_per_variable);
@@ -172,7 +186,7 @@ public:
   }
 
 private:
-  std::unique_ptr<uint32_t[]> data; // the packed data
+  uint32_t* data = nullptr; // the packed data
   uint32_t data_size = 0; // the size of the packed data in uint32_t units
 };
 

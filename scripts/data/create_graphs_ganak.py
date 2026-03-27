@@ -5,6 +5,7 @@ import os
 import sqlite3
 import re
 import nbformat as nbf
+import plotext as plt
 
 
 def convert_to_cactus(fname, fname2):
@@ -202,29 +203,45 @@ def print_median_tables(table_todo, fname_like, verbose=False):
         os.unlink("gen_table.sqlite")
 
 
-def print_cache_miss_distributions(table_todo, fname_like):
-    import plotext as plt
+def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):
     for dir, ver in table_todo:
         con = sqlite3.connect("mydb.sql")
         cur = con.cursor()
         res = cur.execute(
-            "SELECT cache_miss_rate FROM data WHERE dirname='" + dir +
+            "SELECT " + col + " FROM data WHERE dirname='" + dir +
             "' AND ganak_ver='" + ver +
-            "' AND cache_miss_rate IS NOT NULL"
+            "' AND " + col + " IS NOT NULL"
             " AND (ganak_time - arjun_time) >= 100" + fname_like
         )
         values = [row[0] for row in res]
         con.close()
 
         if not values:
-            print(f"No cache_miss_rate data for {dir}")
+            print(f"No {label} data for {dir}")
             continue
 
+        title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
+        print(f"\n=== {title} ===")
         plt.clf()
+        plt.theme("dark")
+        plt.plot_size(160, 30)
+        if xmin is not None:
+            values = [v for v in values if v >= xmin]
+        if xscale == "log":
+            import math
+            values = [math.log10(v) for v in values if v > 0]
         plt.hist(values, bins=20)
-        plt.title(f"cache_miss_rate: {dir} [ganak_time-arjun_time >= 100s]")
-        plt.plot_size(80, 30)
+        if xmin is not None:
+            plt.xlim(xmin, max(values))
+        plt.xlabel(xlabel if xlabel is not None else col)
+        plt.ylabel("count")
         plt.show()
+
+
+def print_distributions(table_todo, fname_like):
+    print_distribution(table_todo, fname_like, "cache_miss_rate",  "cache miss rate")
+    print_distribution(table_todo, fname_like, "compsK",           "num components (K) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG compsK")
+    print_distribution(table_todo, fname_like, "td_width",         "TD width", xmin=0)
 
 
 def generate_gnuplot(fname2_s, verbose=False):
@@ -472,7 +489,7 @@ def main():
         print("Printing summary tables...")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
 
-    print_cache_miss_distributions(table_todo, fname_like)
+    print_distributions(table_todo, fname_like)
 
     if args.verbose:
         print("Printing median tables...")

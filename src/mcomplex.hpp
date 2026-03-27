@@ -131,23 +131,22 @@ public:
         if (!_real.parse_mpq(str, at, line_no)) return false;
         skip_whitespace(str, at);
         if (at < str.size()) {
-          bool pos = true;
-          if (str[at] == '+') pos = true;
-          else if (str[at] == '-') pos = false;
-          else {
-            std::cerr << "ERROR: Expected '+' or '-' in line " << line_no << " after the real value, but got some other character" << std::endl;
-            return false;
-          }
-          at++;
-          if (!_imag.parse_mpq(str, at, line_no)) return false;
-          skip_whitespace(str, at);
-          if (at < str.size() && str[at] == 'i') {
+          if (str[at] == '+' || str[at] == '-') {
+            bool pos = (str[at] == '+');
             at++;
+            if (!_imag.parse_mpq(str, at, line_no)) return false;
+            skip_whitespace(str, at);
+            if (at < str.size() && str[at] == 'i') {
+              at++;
+            } else {
+              std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
+              return false;
+            }
+            if (!pos) _imag *= ArjunNS::FMpq(-1);
           } else {
-            std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
-            return false;
+            // Space-separated format: "real imag" (e.g. "2 0")
+            if (!_imag.parse_mpq(str, at, line_no)) return false;
           }
-          if (!pos) _imag *= ArjunNS::FMpq(-1);
         }
         real = _real.get_val();
         imag = _imag.get_val();

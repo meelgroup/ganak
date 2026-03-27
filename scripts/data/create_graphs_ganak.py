@@ -438,8 +438,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1140000-0", # dodgy cache update
     # "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
     # "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
-    "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
-    "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
+    # "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
+    # "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
     "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
 ]
@@ -486,10 +486,11 @@ def main():
 
     if args.verbose:
         print(f"Selected {len(table_todo)} dir/version combinations")
+    print_distributions(table_todo, fname_like)
+
+    if args.verbose:
         print("Printing summary tables...")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
-
-    print_distributions(table_todo, fname_like)
 
     if args.verbose:
         print("Printing median tables...")

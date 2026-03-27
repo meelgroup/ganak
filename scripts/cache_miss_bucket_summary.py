@@ -38,6 +38,10 @@ def main():
     parser.add_argument("dirname", help="dirname to analyse (must exist in mydb.sql)")
     parser.add_argument("--cutoff", type=float, default=100.0,
                         help="Minimum ganak_time - arjun_time to include (default: 100)")
+    parser.add_argument("--low", type=float, default=0.4,
+                        help="Upper bound for low cache miss bucket (default: 0.4)")
+    parser.add_argument("--high", type=float, default=0.85,
+                        help="Lower bound for high cache miss bucket (default: 0.85)")
     args = parser.parse_args()
 
     con = sqlite3.connect("mydb.sql")
@@ -55,10 +59,11 @@ def main():
             f" AND cache_miss_rate IS NOT NULL"
             f" AND (ganak_time - arjun_time) >= {args.cutoff}")
 
+    lo, hi = args.low, args.high
     buckets = [
-        ("high (>=0.85)",     f"{base} AND cache_miss_rate >= 0.85"),
-        ("medium (0.4-0.85)", f"{base} AND cache_miss_rate >= 0.4 AND cache_miss_rate < 0.85"),
-        ("low (<0.4)",        f"{base} AND cache_miss_rate < 0.4"),
+        (f"high (>={hi})",        f"{base} AND cache_miss_rate >= {hi}"),
+        (f"medium ({lo}-{hi})",   f"{base} AND cache_miss_rate >= {lo} AND cache_miss_rate < {hi}"),
+        (f"low (<{lo})",          f"{base} AND cache_miss_rate < {lo}"),
     ]
 
     metrics = [

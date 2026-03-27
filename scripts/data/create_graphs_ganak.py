@@ -110,9 +110,45 @@ def build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_l
     return fname2_s, table_todo
 
 
-def print_summary_tables(table_todo, fname_like, verbose=False):
+def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
     dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
     vers = ",".join("'" + ver + "'" for _, ver in table_todo)
+
+    compact_cols = [
+        ("replace(dirname,'out-ganak-mc','')",                       "dirname"),
+        ("replace(ganak_call,'././ganak_','')",                      "call"),
+        ("sum(ganak_time is not null)",                              "solved"),
+        ("CAST(ROUND(sum(coalesce(ganak_time,3600))/COUNT(*),0) AS INTEGER)", "PAR2"),
+        ("ROUND(avg(conflicts)/(1000.0*1000.0), 2)",                 "av confM"),
+        ("CAST(ROUND(avg(ganak_mem_mb),0) AS INTEGER)",              "av memMB"),
+        ("sum(signal == 11)",                                        "sigSEGV"),
+        ("sum(signal == 6)",                                         "sigABRT"),
+        ("sum(signal == 14)",                                        "sigALRM"),
+        ("sum(signal == 8)",                                         "sigFPE"),
+        ("ROUND(avg(cache_miss_rate),2)",                            "av cmiss"),
+    ]
+    full_only_cols = [
+        ("sum(mem_out)",                                             "mem out"),
+        ("ROUND(avg(decisionsK)/(1000.0), 2)",                       "av decM"),
+        ("CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER)",         "av satcK"),
+        ("CAST(avg(opt_indep_sz-indep_sz) AS INTEGER)",              "avg-diff-opt-sz"),
+        ("ROUND(avg(gates_extend_t), 3)",                            "gates-ext-t"),
+        ("ROUND(avg(padoa_extend_t), 3)",                            "padoa-ext-t"),
+        ("ROUND(avg(gates_extended), 3)",                            "gates-ext"),
+        ("ROUND(avg(padoa_extended), 3)",                            "padoa-ext"),
+        ("CAST(ROUND(max(cache_del_time), 0) AS INTEGER)",           "max cachdT"),
+        ("CAST(ROUND(avg(backbone_time),0) AS INTEGER)",             "av backT"),
+        ("CAST(ROUND(avg(arjun_time),0) AS INTEGER)",                "av arjT"),
+        ("CAST(ROUND(avg(td_time),0) AS INTEGER)",                   "av tdT"),
+        ("ROUND(avg(td_width),0)",                                   "av tdw"),
+        ("ROUND(avg(cache_avg_hit_vars),2)",                         "av chitvs"),
+        ("ROUND(avg(compsK/1000.0),2)",                              "av compsM"),
+        ("sum(fname is not null)",                                   "nfiles"),
+    ]
+
+    cols = compact_cols + (full_only_cols if full else [])
+    select_clause = ",\n        ".join(f"{expr} as '{alias}'" for expr, alias in cols)
+
     for only_counted in [False, True]:
         counted_req = ""
         if only_counted:
@@ -124,36 +160,9 @@ def print_summary_tables(table_todo, fname_like, verbose=False):
             f.write(".mode table\n")
             # f.write(".mode colum\n")
             # f.write(".headers off\n")
-            query = "select \
-        replace(dirname,'out-ganak-mc','') as dirname,\
-        replace(ganak_call,'././ganak_','') as call,\
-        sum(mem_out) as 'mem out', \
-        sum(signal == 11) as 'sigSEGV', \
-        sum(signal == 6) as 'sigABRT', \
-        sum(signal == 14) as 'sigALRM', \
-        sum(signal == 8) as 'sigFPE', \
-        CAST(ROUND(avg(ganak_mem_MB), 0) AS INTEGER) as 'av memMB',\
-        ROUND(avg(conflicts)/(1000.0*1000.0), 2) as 'av confM', \
-        ROUND(avg(decisionsK)/(1000.0), 2) as 'av decM', \
-        CAST(ROUND(avg(sat_called/1000.0),0) AS INTEGER) as 'av satcK',\
-        sum(ganak_time is not null) as 'solved',\
-        CAST(ROUND(sum(coalesce(ganak_time, 3600))/COUNT(*),0) AS INTEGER) as 'PAR2',\
-        CAST(avg(opt_indep_sz-indep_sz) AS INTEGER) as 'avg-diff-opt-sz',\
-        ROUND(avg(gates_extend_t), 3) as 'gates-ext-t',\
-        ROUND(avg(padoa_extend_t), 3) as 'padoa-ext-t',\
-        ROUND(avg(gates_extended), 3) as 'gates-ext',\
-        ROUND(avg(padoa_extended), 3) as 'padoa-ext',\
-        CAST(ROUND(max(cache_del_time), 0) AS INTEGER) as 'max cachdT',\
-        CAST(ROUND(avg(backbone_time),0) AS INTEGER) as 'av backT',\
-        CAST(ROUND(avg(arjun_time),0) AS INTEGER) as 'av arjT',\
-        CAST(ROUND(avg(td_time),0) AS INTEGER) as 'av tdT',\
-        ROUND(avg(td_width),0) as 'av tdw',\
-        ROUND(avg(cache_miss_rate),2) as 'av cmiss',\
-        ROUND(avg(cache_avg_hit_vars),2) as 'av chitvs',\
-        ROUND(avg(ganak_mem_mb),2) as 'av memMB',\
-        ROUND(avg(compsK/1000.0),2) as 'av compsM',\
-        sum(fname is not null) as 'nfiles'\
-        from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc"
+            query = (f"select\n        {select_clause}\n"
+                     f"        from data where dirname IN ({dirs}) and ganak_ver IN ({vers})"
+                     f" {fname_like} {counted_req}group by dirname order by solved asc")
             if verbose:
                 print(f"  Summary query: {query[:120]}...")
             f.write(query)
@@ -404,16 +413,11 @@ only_calls = []
 not_calls = []
 todo = versions
 
-# all
-fname_like = ""
-# unweighted only
-# fname_like = " and (fname like '%track1%' or fname like '%track3%') "
-# weighted only
-# fname_like = " and (fname like '%track2%' or fname like '%track4%') "
-# unproj only
-# fname_like = " and (fname like '%track1%' or fname like '%track2%') "
-# proj only
-# fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+# fname filter examples (pass via --fname on the command line):
+# unweighted only: --fname "%track1%" "%track3%"
+# weighted only:   --fname "%track2%" "%track4%"
+# unproj only:     --fname "%track1%" "%track2%"
+# proj only:       --fname "%track3%" "%track4%"
 
 
 # ---- Main ----
@@ -421,7 +425,17 @@ fname_like = ""
 def main():
     parser = argparse.ArgumentParser(description="Generate cactus plots and tables for ganak benchmark data")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print progress information")
+    parser.add_argument("--full", action="store_true", help="Print full summary table (default: compact)")
+    parser.add_argument("--nograph", action="store_true", help="Skip opening the graph in okular")
+    parser.add_argument("--fname", nargs="+", metavar="PATTERN", default=[],
+                        help="Filter by fname pattern(s), e.g. --fname '%%track1%%' '%%track3%%'")
     args = parser.parse_args()
+
+    if args.fname:
+        clauses = " or ".join(f"fname like '{p}'" for p in args.fname)
+        fname_like = f" and ({clauses}) "
+    else:
+        fname_like = ""
 
     if args.verbose:
         print(f"Found {len(versions)} versions in database")
@@ -431,7 +445,7 @@ def main():
     if args.verbose:
         print(f"Selected {len(table_todo)} dir/version combinations")
         print("Printing summary tables...")
-    print_summary_tables(table_todo, fname_like, args.verbose)
+    print_summary_tables(table_todo, fname_like, args.full, args.verbose)
 
     if args.verbose:
         print("Printing median tables...")
@@ -450,8 +464,9 @@ def main():
     os.system("gnuplot "+gnuplotfn)
     os.system("epstopdf run.eps run.pdf")
     os.system("pdftoppm -png run.pdf run")
-    print("okular run.eps")
-    os.system("okular run.eps")
+    if not args.nograph:
+        print("okular run.eps")
+        os.system("okular run.eps")
 
 
 if __name__ == "__main__":

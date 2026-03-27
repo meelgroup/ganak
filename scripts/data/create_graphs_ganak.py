@@ -677,7 +677,6 @@ for only_counted in [False, True]:
   os.system("sqlite3 mydb.sql < gen_table.sqlite")
   os.unlink("gen_table.sqlite")
 
-# out-ganak-mc2324-14063135-0|mc2023_track4_050.cnf|././ganak_d622244b9c9 --arjunverb 2 --maxcache 5000|4294967295
 if True:
   for dir,ver in table_todo:
     with open("gen_table.sqlite", "w") as f:
@@ -867,7 +866,6 @@ os.system("epstopdf run.eps run.pdf")
 os.system("pdftoppm -png run.pdf run")
 print("okular run.eps")
 os.system("okular run.eps")
-
 
 #### examples
 # .mode table

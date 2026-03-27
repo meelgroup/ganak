@@ -90,13 +90,20 @@ def timeout_parse(fname):
                 else:
                     call = call.split("doalarm 900")[1]
 
-                if "./ganak" in call: solver = "ganak"
-                if "./d4" in call: solver = "d4"
-                if "./approxmc" in call: solver = "approxmc"
-                if "./gpmc" in call: solver = "gpmc"
-                if "./gpmc-complex" in call: solver = "gpmc"
-                if "./KCBox" in call: solver = "exactmc"
-                if "./sharpSAT" in call: solver = "sharptd"
+                if "./ganak" in call:
+                    solver = "ganak"
+                if "./d4" in call:
+                    solver = "d4"
+                if "./approxmc" in call:
+                    solver = "approxmc"
+                if "./gpmc" in call:
+                    solver = "gpmc"
+                if "./gpmc-complex" in call:
+                    solver = "gpmc"
+                if "./KCBox" in call:
+                    solver = "exactmc"
+                if "./sharpSAT" in call:
+                    solver = "sharptd"
 
                 call = call.replace("././ganak ", "")
                 call = call.replace("././d4-1d9cc6146f18b8 ", "")
@@ -146,18 +153,6 @@ def find_bad_solve(fname):
 
 ############################
 ## ganak — single-pass parser combining all per-line extractions
-#
-# Covers: ganak_conflicts, find_arjun_time, collect_cache_data,
-#         find_restarts, find_sat_called, find_bad_solve
-#
-#c o Arjun T: 206.14
-#c o Sampling set size: 94
-#c o Opt sampling set size: 94
-#c o CNF projection set size: xx
-#c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0
-#c o cache miss rate                0.622
-#c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
-#c o [td] Primal graph   nodes: 548 edges: 8571 density: 0.029 edge/var: 15.669
 def parse_ganak_output(fname):
     result = {
         "error": 0,

@@ -202,6 +202,31 @@ def print_median_tables(table_todo, fname_like, verbose=False):
         os.unlink("gen_table.sqlite")
 
 
+def print_cache_miss_distributions(table_todo, fname_like):
+    import plotext as plt
+    for dir, ver in table_todo:
+        con = sqlite3.connect("mydb.sql")
+        cur = con.cursor()
+        res = cur.execute(
+            "SELECT cache_miss_rate FROM data WHERE dirname='" + dir +
+            "' AND ganak_ver='" + ver +
+            "' AND cache_miss_rate IS NOT NULL"
+            " AND (ganak_time - arjun_time) >= 100" + fname_like
+        )
+        values = [row[0] for row in res]
+        con.close()
+
+        if not values:
+            print(f"No cache_miss_rate data for {dir}")
+            continue
+
+        plt.clf()
+        plt.hist(values, bins=20)
+        plt.title(f"cache_miss_rate: {dir} [ganak_time-arjun_time >= 100s]")
+        plt.plot_size(80, 30)
+        plt.show()
+
+
 def generate_gnuplot(fname2_s, verbose=False):
     gnuplotfn = "run-all.gnuplot"
     if verbose:
@@ -446,6 +471,8 @@ def main():
         print(f"Selected {len(table_todo)} dir/version combinations")
         print("Printing summary tables...")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
+
+    print_cache_miss_distributions(table_todo, fname_like)
 
     if args.verbose:
         print("Printing median tables...")

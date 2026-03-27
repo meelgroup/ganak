@@ -378,13 +378,22 @@ def find_bad_solve(fname):
     return mem_out, not_solved
 
 
-file_list = glob.glob("out-ganak-*/*cnf*")
-file_list.extend(glob.glob("out-others-*/*cnf*"))
+import argparse
+
+parser = argparse.ArgumentParser(description="Parse ganak output files into CSV")
+parser.add_argument("--files", default="out-ganak*/*cnf*",
+                    help="Glob pattern for input files (default: 'out-ganak*/*cnf*')")
+parser.add_argument("--verbose", action="store_true",
+                    help="Print each file being parsed")
+args = parser.parse_args()
+
+file_list = glob.glob(args.files)
 files = {}
 for f in file_list:
     if ".csv" in f:
         continue
-    print("parsing file: ", f)
+    if args.verbose:
+        print("parsing file: ", f)
 
     dirname = f.split("/")[0]
     if "competitors" in dirname:

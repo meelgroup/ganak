@@ -1,5 +1,6 @@
 #!/bin/python3
 
+import argparse
 import os
 import sqlite3
 import re
@@ -56,150 +57,74 @@ def gnuplot_name_cleanup(name: str) -> str:
     return name
 
 
-versions = get_versions()
-fname2_s = []
-# not_calls = ["ExactMC"]
-# exactm: out-ganak-6318929.pbs101-5/
-# exactmc2: out-ganak-6328707.pbs101-7
-# sharpsat: out-ganak-6318929.pbs101-7
+def build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_like, verbose=False):
+    fname2_s = []
+    table_todo = []
+    for ver in todo:
+        dirs_call = get_dirs(ver)
+        for dir, call in dirs_call:
+            bad = False
+            for not_call in not_calls:
+                if not_call in call:
+                    bad = True
+            for not_version in not_versions:
+                if not_version in ver:
+                    bad = True
 
-only_dirs = [
-    # "out-ganak-mccomp2324-14299825",
-    # "out-ganak-mccomp2324-14309534-0", # this IS the current best
-    # "out-ganak-mccomp2324-14309534-1", # messed up
-    # "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
-    # "out-ganak-mccomp2324-14362931-0", # new hash, timestamp archetype
-    # "out-ganak-mccomp2324-14391524-", # changeable recompute archetype cutoff, better cache usage
-    # "out-ganak-mccomp2324-14513393-0", # update arjun's order and add gate-based-eqlit, also fix gate-based-rem by not doing strengthening
-    # "out-ganak-mccomp2324-14513746-0", # back to previous, except the strengthening fix for gate-based-rem
-    # "out-ganak-mccomp2324-14519572-", # as previous 2, but fixed parsing of stupid weights
-    # "out-ganak-mccomp2324-14528572-", # binaries in holder are no longer updated
-    # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
-    # "out-ganak-mccomp2324-14549970-1", # LTO
-    # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
-    # "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
-    # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
-    # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
-    # "out-ganak-mccomp2324-14621165", # float, also try different TD exp
-    # "out-ganak-mccomp2324-14621994-0", # float fixed mem free, try different tdmaxw
-    # "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
-    # "out-ganak-mccomp2324-14624580", # exact, more exp check
-    # "out-ganak-mccomp2324-14637456", # try vivif options
-    # "out-ganak-mccomp2324-14648650-0", # much more precise cache
-    # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
-    # "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
-    # "out-ganak-mccomp2324-14661402-", # try different weakenings
-    # "out-ganak-mccomp2324-14675861-0", # submitted to mccomp 2025 -- GOOD
-    # "out-ganak-mccomp2324-14675861-", # default setup along WITHOUT appmc. Trying tditers -- ganak_7d97636055e_9104724fa_26d64aac --tdlookiters 20
-    # "out-ganak-mccomp2324-14675861-1", # default setup along WITH appmc. Trying tditers
-    # "out-ganak-mccomp2324-15010600-0", # TD start from 0
-    # "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
-    # "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
-    # "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
-    # "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
-    # "out-ganak-mccomp2324-33393-0", # TRILLIUM, fixing td starting from 0, and maybe other TD issues too
-    # "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
-    # "out-ganak-mccomp2324-37704-0", # TRILLIUM, trying less scc upfront, weird non-committed code
-    # "out-ganak-mccomp2324-41122-0", # TRILLIUM, new TD score, but BAD, not updating depth when all vars have been decided
-    # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
-    # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
-    # "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
-    # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
-    # "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
-    # "out-ganak-mccomp2324-1140000-0", # dodgy cache update
-    # "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
-    # "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
-    "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
-    "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
-    "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
-    "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
-]
-# only_dirs = [ "mei-march-2026-1237508-" ]
+            if len(only_calls) != 0:
+                inside = False
+                for only_call in only_calls:
+                    if only_call in call:
+                        inside = True
+                if not inside:
+                    bad = True
 
-# not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
-# not_calls = ["--satsolver 0"]
-not_versions = []
-# only_dirs = []
-# only_calls = ["vsadsadjust 128"]
-only_calls = []
-# not_calls = ["restart"]
-not_calls = []
-todo = versions
+            if len(only_dirs) != 0:
+                inside = False
+                for only_dir in only_dirs:
+                    if only_dir in (dir+"/"):
+                        inside = True
+                if not inside:
+                    bad = True
 
-# all
-fname_like = ""
-# unweighted only
-# fname_like = " and (fname like '%track1%' or fname like '%track3%') "
-# weighted only
-# fname_like = " and (fname like '%track2%' or fname like '%track4%') "
-# unproj only
-# fname_like = " and (fname like '%track1%' or fname like '%track2%') "
-# proj only
-# fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+            if bad:
+                if verbose:
+                    print(f"  Skipping dir={dir} ver={ver}")
+                continue
 
-table_todo = []
-for ver in todo:
-    dirs_call = get_dirs(ver)
-    for dir, call in dirs_call:
-        bad = False
-        for not_call in not_calls:
-            if not_call in call:
-                bad = True
-        for not_version in not_versions:
-            if not_version in ver:
-                bad = True
+            if verbose:
+                print(f"  Processing dir={dir} ver={ver}")
+            fname = "run-"+dir+".csv"
+            with open("gencsv.sqlite", "w") as f:
+                f.write(".headers off\n")
+                f.write(".mode csv\n")
+                f.write(".output "+fname+"\n")
+                f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
+            os.system("sqlite3 mydb.sql < gencsv.sqlite")
+            os.unlink("gencsv.sqlite")
 
-        if len(only_calls) != 0:
-            inside = False
-            for only_call in only_calls:
-                if only_call in call:
-                    inside = True
-            if not inside:
-                bad = True
+            fname2 = fname + ".gnuplotdata"
+            num_solved = convert_to_cactus(fname, fname2)
+            fname2_s.append([fname2, call, ver[:10], num_solved, dir])
+            table_todo.append([dir, ver])
+    return fname2_s, table_todo
 
-        if len(only_dirs) != 0:
-            inside = False
-            for only_dir in only_dirs:
-                if only_dir in (dir+"/"):
-                    inside = True
-            if not inside:
-                bad = True
 
-        if bad:
-            continue
-        fname = "run-"+dir+".csv"
-        with open("gencsv.sqlite", "w") as f:
-            f.write(".headers off\n")
-            f.write(".mode csv\n")
-            f.write(".output "+fname+"\n")
-            f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
-        os.system("sqlite3 mydb.sql < gencsv.sqlite")
-        os.unlink("gencsv.sqlite")
-
-        fname2 = fname + ".gnuplotdata"
-        num_solved = convert_to_cactus(fname, fname2)
-        fname2_s.append([fname2, call, ver[:10], num_solved, dir])
-        table_todo.append([dir, ver])
-
-for only_counted in [False, True]:
-    counted_req = ""
-    if only_counted:
-        print("::: --------- Data based on ONLY benchmarks that are COUNTED ------- :::")
-        counted_req = " and ganak_time is not NULL "
-    else:
-        print("::: --------- Data based on ALSO UNCOUNTED benchmarks ------- :::")
-    with open("gen_table.sqlite", "w") as f:
-        f.write(".mode table\n")
-        # f.write(".mode colum\n")
-        # f.write(".headers off\n")
-        dirs = ""
-        vers = ""
-        for dir, ver in table_todo:
-            dirs += "'" + dir + "',"
-            vers += "'" + ver + "',"
-        dirs = dirs[:-1]
-        vers = vers[:-1]
-        f.write("select \
+def print_summary_tables(table_todo, fname_like, verbose=False):
+    dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
+    vers = ",".join("'" + ver + "'" for _, ver in table_todo)
+    for only_counted in [False, True]:
+        counted_req = ""
+        if only_counted:
+            print("::: --------- Data based on ONLY benchmarks that are COUNTED ------- :::")
+            counted_req = " and ganak_time is not NULL "
+        else:
+            print("::: --------- Data based on ALSO UNCOUNTED benchmarks ------- :::")
+        with open("gen_table.sqlite", "w") as f:
+            f.write(".mode table\n")
+            # f.write(".mode colum\n")
+            # f.write(".headers off\n")
+            query = "select \
         replace(dirname,'out-ganak-mc','') as dirname,\
         replace(ganak_call,'././ganak_','') as call,\
         sum(mem_out) as 'mem out', \
@@ -228,16 +153,23 @@ for only_counted in [False, True]:
         ROUND(avg(ganak_mem_mb),2) as 'av memMB',\
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\
         sum(fname is not null) as 'nfiles'\
-        from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc")
-    os.system("sqlite3 mydb.sql < gen_table.sqlite")
-    os.unlink("gen_table.sqlite")
+        from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc"
+            if verbose:
+                print(f"  Summary query: {query[:120]}...")
+            f.write(query)
+        os.system("sqlite3 mydb.sql < gen_table.sqlite")
+        os.unlink("gen_table.sqlite")
 
-for dir, ver in table_todo:
-    with open("gen_table.sqlite", "w") as f:
-        f.write(".mode table\n")
-        f.write("select '"+dir+"', '"+ver+"'")
-        for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb":
-            f.write(", (SELECT "+col+" as 'median_"+col+"'\
+
+def print_median_tables(table_todo, fname_like, verbose=False):
+    for dir, ver in table_todo:
+        if verbose:
+            print(f"  Median table for dir={dir} ver={ver}")
+        with open("gen_table.sqlite", "w") as f:
+            f.write(".mode table\n")
+            f.write("select '"+dir+"', '"+ver+"'")
+            for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb":
+                f.write(", (SELECT "+col+" as 'median_"+col+"'\
         FROM data\
         where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null"+fname_like+"\
         ORDER BY "+col+"\
@@ -246,8 +178,8 @@ for dir, ver in table_todo:
           where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
           and "+col+" is not null) / 2) as median_"+col+" \
       ")
-        for col in "gates_extended", "padoa_extended":
-            f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
+            for col in "gates_extended", "padoa_extended":
+                f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
         FROM data\
         where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null "+fname_like+"\
                     and "+col+">0\
@@ -257,50 +189,49 @@ for dir, ver in table_todo:
           where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
           and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as median_"+col+" \
       ")
-    os.system("sqlite3 mydb.sql < gen_table.sqlite")
-    os.unlink("gen_table.sqlite")
-
-gnuplotfn = "run-all.gnuplot"
-with open(gnuplotfn, "w") as f:
-    f.write("set term postscript eps color lw 1 \"Helvetica\" 12 size 9,5\n")
-    f.write("set output \"run.eps\"\n")
-    f.write("set title \"Counter ganak\"\n")
-    f.write("set notitle\n")
-    f.write("set key bottom right\n")
-    # f.write("set xtics 200\n")
-    f.write("unset logscale x\n")
-    f.write("unset logscale y\n")
-    f.write("set ylabel  \"Instances counted\"\n")
-    f.write("set xlabel \"Time (s)\"\n")
-    # f.write("plot [:][10:]\\\n")
-    # f.write("plot [500:4000][1000:1200]\\\n")
-    f.write("plot [:][:]\\\n")
-    # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
-    # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
-    towrite = ""
-    for fn, call, ver, num_solved, dir in fname2_s:
-        # if "restart" not in call and num_solved > 142:
-        if True:
-            call = gnuplot_name_cleanup(call)
-            dir  = gnuplot_name_cleanup(dir)
-            ver  = gnuplot_name_cleanup(ver)
-            oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
-            towrite += oneline
-            towrite += ",\\\n"
-    towrite = towrite[:(len(towrite)-4)]
-    f.write(towrite)
-
-for path in ["run.eps", "run.pdf", "run.png"]:
-    if os.path.exists(path):
-        os.unlink(path)
+        os.system("sqlite3 mydb.sql < gen_table.sqlite")
+        os.unlink("gen_table.sqlite")
 
 
-def create_notebook():
-    # Create a new notebook
+def generate_gnuplot(fname2_s, verbose=False):
+    gnuplotfn = "run-all.gnuplot"
+    if verbose:
+        print(f"Writing gnuplot script to {gnuplotfn} with {len(fname2_s)} data series")
+    with open(gnuplotfn, "w") as f:
+        f.write("set term postscript eps color lw 1 \"Helvetica\" 12 size 9,5\n")
+        f.write("set output \"run.eps\"\n")
+        f.write("set title \"Counter ganak\"\n")
+        f.write("set notitle\n")
+        f.write("set key bottom right\n")
+        # f.write("set xtics 200\n")
+        f.write("unset logscale x\n")
+        f.write("unset logscale y\n")
+        f.write("set ylabel  \"Instances counted\"\n")
+        f.write("set xlabel \"Time (s)\"\n")
+        # f.write("plot [:][10:]\\\n")
+        # f.write("plot [500:4000][1000:1200]\\\n")
+        f.write("plot [:][:]\\\n")
+        # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
+        # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
+        towrite = ""
+        for fn, call, ver, _, dir in fname2_s:
+            # if "restart" not in call and num_solved > 142:
+            if True:
+                call = gnuplot_name_cleanup(call)
+                dir  = gnuplot_name_cleanup(dir)
+                ver  = gnuplot_name_cleanup(ver)
+                oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
+                towrite += oneline
+                towrite += ",\\\n"
+        towrite = towrite[:(len(towrite)-4)]
+        f.write(towrite)
+    return gnuplotfn
+
+
+def create_notebook(dirs):
     nb = nbf.v4.new_notebook()
     texts = []
 
-    # Define the text content for the markdown cells
     text = """
 # Step 1: Import necessary libraries
 import pandas as pd
@@ -393,7 +324,6 @@ plt.show()
 """
         texts.append(text)
 
-    # Create code cells
     cells = [nbf.v4.new_code_cell(t) for t in texts]
     nb['cells'] = cells
 
@@ -403,9 +333,126 @@ plt.show()
     print(f"Notebook '{filename}' created successfully.")
 
 
-create_notebook()
-os.system("gnuplot "+gnuplotfn)
-os.system("epstopdf run.eps run.pdf")
-os.system("pdftoppm -png run.pdf run")
-print("okular run.eps")
-os.system("okular run.eps")
+# ---- Configuration ----
+
+versions = get_versions()
+# not_calls = ["ExactMC"]
+# exactm: out-ganak-6318929.pbs101-5/
+# exactmc2: out-ganak-6328707.pbs101-7
+# sharpsat: out-ganak-6318929.pbs101-7
+
+only_dirs = [
+    # "out-ganak-mccomp2324-14299825",
+    # "out-ganak-mccomp2324-14309534-0", # this IS the current best
+    # "out-ganak-mccomp2324-14309534-1", # messed up
+    # "out-ganak-mccomp2324-14321462-" # let's try blocking without messing it up
+    # "out-ganak-mccomp2324-14362931-0", # new hash, timestamp archetype
+    # "out-ganak-mccomp2324-14391524-", # changeable recompute archetype cutoff, better cache usage
+    # "out-ganak-mccomp2324-14513393-0", # update arjun's order and add gate-based-eqlit, also fix gate-based-rem by not doing strengthening
+    # "out-ganak-mccomp2324-14513746-0", # back to previous, except the strengthening fix for gate-based-rem
+    # "out-ganak-mccomp2324-14519572-", # as previous 2, but fixed parsing of stupid weights
+    # "out-ganak-mccomp2324-14528572-", # binaries in holder are no longer updated
+    # "out-ganak-mccomp2324-14538562-1", # full-probe before everything in remove_eq_lits
+    # "out-ganak-mccomp2324-14549970-1", # LTO
+    # "out-ganak-mccomp2324-14552736-", # no LTO, but some change (e.g. sandybridge etc)
+    # "out-ganak-mccomp2324-14558670-1", # some stuff enabled previously for no flto
+    # "out-ganak-mccomp2324-14575065-", # occ-bve-resolv after bve
+    # "out-ganak-mccomp2324-14576195-", # as 2 above, but now playing with TD iters
+    # "out-ganak-mccomp2324-14621165", # float, also try different TD exp
+    # "out-ganak-mccomp2324-14621994-0", # float fixed mem free, try different tdmaxw
+    # "out-ganak-mccomp2324-14624577", # exact, no cache check, exp check
+    # "out-ganak-mccomp2324-14624580", # exact, more exp check
+    # "out-ganak-mccomp2324-14637456", # try vivif options
+    # "out-ganak-mccomp2324-14648650-0", # much more precise cache
+    # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
+    # "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
+    # "out-ganak-mccomp2324-14661402-", # try different weakenings
+    # "out-ganak-mccomp2324-14675861-0", # submitted to mccomp 2025 -- GOOD
+    # "out-ganak-mccomp2324-14675861-", # default setup along WITHOUT appmc. Trying tditers -- ganak_7d97636055e_9104724fa_26d64aac --tdlookiters 20
+    # "out-ganak-mccomp2324-14675861-1", # default setup along WITH appmc. Trying tditers
+    # "out-ganak-mccomp2324-15010600-0", # TD start from 0
+    # "out-ganak-mccomp2324-3382-0", # TRILLIUM -- TD start from 0
+    # "out-ganak-mccomp2324-21238", # TRILLIUM --non-eq, and eq, and no probabilistic
+    # "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
+    # "out-ganak-mccomp2324-21481-0", # TRILLIUM, fixing memory usage for --prob 0
+    # "out-ganak-mccomp2324-33393-0", # TRILLIUM, fixing td starting from 0, and maybe other TD issues too
+    # "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
+    # "out-ganak-mccomp2324-37704-0", # TRILLIUM, trying less scc upfront, weird non-committed code
+    # "out-ganak-mccomp2324-41122-0", # TRILLIUM, new TD score, but BAD, not updating depth when all vars have been decided
+    # "out-ganak-mccomp2324-41923-0", # TRILLIUM, new TD score, fixed depth update finally
+    # "out-ganak-mccomp2324-43391-0", # TRILLIUM, new TD score, fixed depth update
+    # "out-ganak-mccomp2324-44137-0", # TRILLIUM, finally good fix for TD
+    # "out-ganak-mccomp2324-983755", # TRILLIUM, new arjun with oracle cache fix, autarky
+    # "out-ganak-mccomp2324-984574", # same as above, bug not sigFPE and no loop in autarky
+    # "out-ganak-mccomp2324-1140000-0", # dodgy cache update
+    # "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
+    # "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
+    "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
+    "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
+    "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
+    "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
+]
+# only_dirs = [ "mei-march-2026-1237508-" ]
+
+# not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
+# not_calls = ["--satsolver 0"]
+not_versions = []
+# only_dirs = []
+# only_calls = ["vsadsadjust 128"]
+only_calls = []
+# not_calls = ["restart"]
+not_calls = []
+todo = versions
+
+# all
+fname_like = ""
+# unweighted only
+# fname_like = " and (fname like '%track1%' or fname like '%track3%') "
+# weighted only
+# fname_like = " and (fname like '%track2%' or fname like '%track4%') "
+# unproj only
+# fname_like = " and (fname like '%track1%' or fname like '%track2%') "
+# proj only
+# fname_like = " and (fname like '%track3%' or fname like '%track4%') "
+
+
+# ---- Main ----
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate cactus plots and tables for ganak benchmark data")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print progress information")
+    args = parser.parse_args()
+
+    if args.verbose:
+        print(f"Found {len(versions)} versions in database")
+        print("Building CSV data...")
+    fname2_s, table_todo = build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
+
+    if args.verbose:
+        print(f"Selected {len(table_todo)} dir/version combinations")
+        print("Printing summary tables...")
+    print_summary_tables(table_todo, fname_like, args.verbose)
+
+    if args.verbose:
+        print("Printing median tables...")
+    print_median_tables(table_todo, fname_like, args.verbose)
+
+    if args.verbose:
+        print("Generating gnuplot script...")
+    gnuplotfn = generate_gnuplot(fname2_s, args.verbose)
+
+    dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
+    create_notebook(dirs)
+
+    for path in ["run.eps", "run.pdf", "run.png"]:
+        if os.path.exists(path):
+            os.unlink(path)
+    os.system("gnuplot "+gnuplotfn)
+    os.system("epstopdf run.eps run.pdf")
+    os.system("pdftoppm -png run.pdf run")
+    print("okular run.eps")
+    os.system("okular run.eps")
+
+
+if __name__ == "__main__":
+    main()

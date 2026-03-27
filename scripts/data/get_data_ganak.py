@@ -1,13 +1,22 @@
 #!/usr/bin/python3
 
-import os
-import glob
+import argparse
 import decimal
-import sys
+import glob
+import os
 import string
-import re
+import sys
 
 sys.set_int_max_str_digits(2000000)
+
+
+def csv_field(f, key, fmt="%s", last=False):
+    """Return a CSV field value (with trailing comma unless last=True)."""
+    sep = "" if last else ","
+    if key not in f or f[key] is None:
+        return sep
+    return (fmt % f[key]) + sep
+
 
 ##########################
 # appmx, etc.
@@ -149,14 +158,6 @@ def find_sat_called(fname):
               rst = int(line.split()[8])
     return n,rst
 
-#c o buddy called                   3
-def find_bdd_called(fname):
-    n = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-    return n
-
 #c o Num restarts: 27
 #c o [rst-cube] Num restarts: 1 orig cubes this rst: 0 total orig cubes: 0 total final cubes: 0 counted this rst: 0 total cnt so far: 0
 def find_restarts(fname):
@@ -226,7 +227,6 @@ def collect_cache_data(fname):
             elif line.startswith("c o avg hit/store num vars"):
               cache_avg_hit_vars = float(line.split()[6])
               cache_avg_store_vars = float(line.split()[8])
-              # print("cache avg hit/store vars:", cache_avg_hit_vars, cache_avg_store_vars)
             elif line.startswith("c o deletion done. T:"):
               cache_del_time += float(line.split()[5])
     return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars
@@ -356,12 +356,6 @@ def ganak_conflicts(fname):
     return ["ganak", "%s-%s" % (aver,cver)], conflicts, decisionsK, t, cnt, bdd_called, error
 
 
-def ganak_version(fname):
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-
-
 def find_bad_solve(fname):
     mem_out = 0
     not_solved = True
@@ -378,306 +372,187 @@ def find_bad_solve(fname):
     return mem_out, not_solved
 
 
-import argparse
+def main():
+    parser = argparse.ArgumentParser(description="Parse ganak output files into CSV")
+    parser.add_argument("--files", default="out-ganak*/*cnf*",
+                        help="Glob pattern for input files (default: 'out-ganak*/*cnf*')")
+    parser.add_argument("--verbose", action="store_true",
+                        help="Print each file being parsed")
+    args = parser.parse_args()
 
-parser = argparse.ArgumentParser(description="Parse ganak output files into CSV")
-parser.add_argument("--files", default="out-ganak*/*cnf*",
-                    help="Glob pattern for input files (default: 'out-ganak*/*cnf*')")
-parser.add_argument("--verbose", action="store_true",
-                    help="Print each file being parsed")
-args = parser.parse_args()
+    file_list = glob.glob(args.files)
+    files = {}
+    for f in file_list:
+        if ".csv" in f:
+            continue
+        if args.verbose:
+            print("parsing file: ", f)
 
-file_list = glob.glob(args.files)
-files = {}
-for f in file_list:
-    if ".csv" in f:
-        continue
-    if args.verbose:
-        print("parsing file: ", f)
+        dirname = f.split("/")[0]
+        if "competitors" in dirname:
+            continue
+        full_fname = f.split("/")[1].split(".cnf")[0] + ".cnf"
+        base = dirname+"/"+full_fname
+        if base not in files:
+            files[base] = {}
+        files[base]["dirname"] = dirname
+        files[base]["fname"] = full_fname
 
-    dirname = f.split("/")[0]
-    if "competitors" in dirname:
-        continue
-    full_fname = f.split("/")[1].split(".cnf")[0] + ".cnf"
-    base = dirname+"/"+full_fname
-    if base not in files:
-        files[base] = {}
-    files[base]["dirname"] = dirname
-    files[base]["fname"] = full_fname
-    # print("Dealing with dir: %s fname: %s" % (dirname, full_fname))
+        if f.endswith(".timeout") or ".timeout_" in f:
+            timeout_t, timeout_mem, timeout_call, timeout_solver, page_faults, signal = timeout_parse(f)
+            files[base]["timeout_t"] = timeout_t
+            files[base]["timeout_mem"] = timeout_mem
+            files[base]["timeout_call"] = timeout_call
+            files[base]["page_faults"] = page_faults
+            files[base]["signal"] = signal
+            if "solver" not in files[base] or files[base]["solver"] is None:
+              files[base]["solver"] = timeout_solver
+            continue
 
-    if f.endswith(".timeout") or ".timeout_" in f:
-        timeout_t, timeout_mem, timeout_call, timeout_solver, page_faults, signal = timeout_parse(f)
-        files[base]["timeout_t"] = timeout_t
-        files[base]["timeout_mem"] = timeout_mem
-        files[base]["timeout_call"] = timeout_call
-        files[base]["page_faults"] = page_faults
-        files[base]["signal"] = signal
-        if "solver" not in files[base] or files[base]["solver"] is None:
-          files[base]["solver"] = timeout_solver
-        continue
+        if f.endswith(".out_ganak") or f.endswith(".out"):
+            files[base]["solver"] = "ganak"
+            ver, conflicts, decisionsK, t, cnt, bdd_called, error = ganak_conflicts(f)
+            files[base]["solverver"] = ver
+            files[base]["decisionsK"] = decisionsK
+            files[base]["conflicts"] = conflicts
+            files[base]["bdd_called"] = bdd_called
+            files[base]["error"] = error
+            arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t = find_arjun_time(f)
+            files[base]["arjuntime"] = arjun_t
+            files[base]["backboneT"] = backb_t
+            files[base]["backwtime"] = backw_t
+            files[base]["indepsz"] = indep_sz
+            files[base]["optindepsz"] = opt_indep_sz
+            files[base]["origprojsz"] = orig_proj_sz
+            files[base]["unknsz"] = unkn_sz
+            files[base]["newnvars"] = new_nvars
+            files[base]["gates_extended"] = gates_extended
+            files[base]["gates_extend_t"] = gates_extend_t
+            files[base]["padoa_extended"] = padoa_extended
+            files[base]["padoa_extend_t"] = padoa_extend_t
+            cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio, td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars = collect_cache_data(f)
+            files[base]["compsK"] = cache_lookupK
+            files[base]["cache_miss_rate"] = cache_miss_rate
+            files[base]["cache_storeK"] = cache_storeK
+            files[base]["cache_del_time"] = cache_del_time
+            files[base]["cache_avg_hit_vars"] = cache_avg_hit_vars
+            files[base]["cache_avg_store_vars"] = cache_avg_store_vars
+            rst, cubes_orig, cubes_final = find_restarts(f)
+            files[base]["restarts"] = rst
+            files[base]["cubes_orig"] = cubes_orig
+            files[base]["cubes_finale"] = cubes_final
+            sat_called, sat_rst = find_sat_called(f)
+            files[base]["sat_called"] = sat_called
+            files[base]["satrst"] = sat_rst
+            files[base]["td_width"] = td_w
+            files[base]["td_time"] = td_t
+            files[base]["primal_density"] = density
+            files[base]["primal_edge_var_ratio"] = edge_var_ratio
+        if ".out_approxmc" in f:
+            files[base]["solver"] = "approxmc"
+            files[base]["solverver"] = approxmc_version(f)
+        if ".out_gpmc" in f:
+            files[base]["solver"] = "gpmc"
+            t, cnt, compsK, conflicts, decisionsK = find_gpmc_time_cnt(f)
+            files[base]["conflicts"] = conflicts
+            files[base]["compsK"] = compsK
+            files[base]["decisionsK"] = decisionsK
+            files[base]["solverver"] = ["gpmc", "gpmc"]
+        if ".out_sharptd" in f:
+            files[base]["solver"] = "sharptd"
+            files[base]["solverver"] = ["sharptd", "sharptd"]
+            td = sstd_treewidth(f)
+            files[base]["td_width"] = td[0]
+            files[base]["td_time"] = td[1]
+        if ".out_d4" in f:
+            files[base]["solver"] = "d4"
+            files[base]["solverver"] = ["d4", "d4"]
+        if ".out_dsharp" in f:
+            files[base]["solver"] = "dsharp"
+            files[base]["solverver"] = ["dsharp", "dsharp"]
+        if ".out_minic2d" in f:
+            files[base]["solver"] = "minic2d"
+            files[base]["solverver"] = ["minic2d", "minic2d"]
+        if ".out_exactmc" in f:
+            files[base]["solver"] = "exactmc"
+            files[base]["solverver"] = ["exactmc", "exactmc"]
 
-    if  f.endswith(".out_ganak") or f.endswith(".out"):
-        files[base]["solver"] = "ganak"
-        ver, conflicts, decisionsK, t, cnt, bdd_called, error = ganak_conflicts(f)
-        files[base]["solverver"] = ver
-        files[base]["decisionsK"] = decisionsK
-        files[base]["conflicts"] = conflicts
-        files[base]["bdd_called"] = bdd_called
-        files[base]["error"] = error
-        arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t= find_arjun_time(f)
-        files[base]["arjuntime"] = arjun_t
-        files[base]["backboneT"] = backb_t
-        files[base]["backwtime"] = backw_t
-        files[base]["indepsz"] = indep_sz
-        files[base]["optindepsz"] = opt_indep_sz
-        files[base]["origprojsz"] = orig_proj_sz
-        files[base]["unknsz"] = unkn_sz
-        files[base]["newnvars"] = new_nvars
-        files[base]["gates_extended"] = gates_extended
-        files[base]["gates_extend_t"] = gates_extend_t
-        files[base]["padoa_extended"] = padoa_extended
-        files[base]["padoa_extend_t"] = padoa_extend_t
-        cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars= collect_cache_data(f)
-        files[base]["compsK"] = cache_lookupK
-        files[base]["cache_miss_rate"] = cache_miss_rate
-        files[base]["cache_storeK"] = cache_storeK
-        files[base]["cache_del_time"] = cache_del_time
-        files[base]["cache_avg_hit_vars"] = cache_avg_hit_vars
-        files[base]["cache_avg_store_vars"] = cache_avg_store_vars
-        rst,cubes_orig,cubes_final = find_restarts(f)
-        files[base]["restarts"] = rst
-        files[base]["cubes_orig"] = cubes_orig
-        files[base]["cubes_finale"] = cubes_final
-        sat_called,sat_rst = find_sat_called(f)
-        files[base]["sat_called"] = sat_called
-        files[base]["satrst"] = sat_rst
-        files[base]["td_width"] = td_w
-        files[base]["td_time"] = td_t
-        files[base]["primal_density"] = density
-        files[base]["primal_edge_var_ratio"] = edge_var_ratio
-    if ".out_approxmc" in f:
-        files[base]["solver"] = "approxmc"
-        files[base]["solverver"] = approxmc_version(f)
-    if ".out_gpmc" in f:
-        files[base]["solver"] = "gpmc"
-        t,cnt,compsK,conflicts,decisionsK = find_gpmc_time_cnt(f)
-        files[base]["conflicts"] = conflicts
-        files[base]["compsK"] = compsK
-        files[base]["decisionsK"] = decisionsK
-        files[base]["solverver"] = ["gpmc", "gpmc"]
-    if ".out_sharptd" in f:
-        files[base]["solver"] = "sharptd"
-        files[base]["solverver"] = ["sharptd", "sharptd"]
-        td = sstd_treewidth(f)
-        files[base]["td_width"] = td[0]
-        files[base]["td_time"] = td[1]
-    if ".out_d4" in f:
-        files[base]["solver"] = "d4"
-        files[base]["solverver"] = ["d4", "d4"]
-    if ".out_dsharp" in f:
-        files[base]["solver"] = "dsharp"
-        files[base]["solverver"] = ["dsharp", "dsharp"]
-    if ".out_minic2d" in f:
-        files[base]["solver"] = "minic2d"
-        files[base]["solverver"] = ["minic2d", "minic2d"]
-    if ".out_exactmc" in f:
-        files[base]["solver"] = "exactmc"
-        files[base]["solverver"] = ["exactmc","exactmc"]
+        if ".out" in f:
+            mem_out, not_solved = find_bad_solve(f)
+            files[base]["mem_out"] = mem_out
+            files[base]["not_solved"] = not_solved
 
-    if ".out" in f:
-      mem_out, not_solved = find_bad_solve(f)
-      files[base]["mem_out"] = mem_out
-      files[base]["not_solved"] = not_solved
+    with open("mydata.csv", "w") as out:
+        cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time, cache_avg_hit_vars, cache_avg_store_vars, cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
+        out.write(cols+"\n")
+        for _, f in files.items():
+            if "not_solved" not in f:
+                print("WARNING no 'out' file parsed for, skipping: ", f["fname"])
+                continue
 
+            if "solver" not in f:
+                print("oops, solver not found, that's wrong")
+                print(f)
+                exit(-1)
+            if "timeout_t" not in f:
+                print("timeout not parsed for f: ", f)
+                exit(-1)
 
-with open("mydata.csv", "w") as out:
-    cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time, cache_avg_hit_vars, cache_avg_store_vars, cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
-    out.write(cols+"\n")
-    for _, f in files.items():
-        if "not_solved" not in f:
-          print("WARNING no 'out' file parsed for, skipping: ", f["fname"])
-          continue
-        toprint = ""
-        toprint += "%s," % f["solver"]
-        toprint += f["dirname"] + ","
-        toprint += f["fname"] + ","
-        toprint += "%s," % f["mem_out"]
+            toprint = ""
+            toprint += "%s," % f["solver"]
+            toprint += f["dirname"] + ","
+            toprint += f["fname"] + ","
+            toprint += "%s," % f["mem_out"]
 
-        # check solver parsed
-        if "solver" not in f:
-            print("oops, solver not found, that's wrong")
-            print(f)
-            exit(-1)
-        if "timeout_t" not in f:
-          print("timeout not parsed for f: ", f)
-          exit(-1)
-
-
-        #timeout_t, timeout_mem, timeout_call
-        if f["timeout_t"] == None:
-            toprint += ","
-        else:
-            if f["not_solved"]:
-              toprint += ","
+            # timeout_t: suppress if timed out or not solved
+            if f["timeout_t"] is None or f["not_solved"]:
+                toprint += ","
             else:
-              toprint += "%s," % f["timeout_t"]
-        toprint += "%s," % f["timeout_mem"]
-        toprint += "%s," % f["timeout_call"]
-        toprint += "%s," % f["page_faults"]
-        toprint += "%s," % f["signal"]
+                toprint += "%s," % f["timeout_t"]
+            toprint += "%s," % f["timeout_mem"]
+            toprint += "%s," % f["timeout_call"]
+            toprint += "%s," % f["page_faults"]
+            toprint += "%s," % f["signal"]
 
-        #ganak_ver
-        if "solverver" not in f or f["solverver"] == [None, None]:
-            toprint += ","
-        else:
-          toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
+            if "solverver" not in f or f["solverver"] == [None, None]:
+                toprint += ","
+            else:
+                toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
 
-        if "conflicts" not in f or f["conflicts"] is None:
-            toprint += ","
-        else:
-          toprint += "%s," % f["conflicts"]
+            toprint += csv_field(f, "conflicts")
+            toprint += csv_field(f, "decisionsK", fmt="%d")
+            toprint += csv_field(f, "compsK")
+            toprint += csv_field(f, "primal_density")
+            toprint += csv_field(f, "primal_edge_var_ratio")
+            toprint += csv_field(f, "td_width")
+            toprint += csv_field(f, "td_time")
+            toprint += csv_field(f, "arjuntime")
+            toprint += csv_field(f, "backboneT")
+            toprint += csv_field(f, "backwtime")
+            toprint += csv_field(f, "indepsz")
+            toprint += csv_field(f, "optindepsz")
+            toprint += csv_field(f, "origprojsz")
+            toprint += csv_field(f, "newnvars")
+            toprint += csv_field(f, "unknsz")
+            toprint += csv_field(f, "cache_del_time")
+            toprint += csv_field(f, "cache_avg_hit_vars")
+            toprint += csv_field(f, "cache_avg_store_vars")
+            toprint += csv_field(f, "cache_miss_rate")
+            toprint += csv_field(f, "bdd_called")
+            toprint += csv_field(f, "sat_called")
+            toprint += csv_field(f, "satrst")
+            toprint += csv_field(f, "restarts")
+            toprint += csv_field(f, "cubes_orig")
+            toprint += csv_field(f, "cubes_final")
+            toprint += csv_field(f, "gates_extended")
+            toprint += csv_field(f, "gates_extend_t")
+            toprint += csv_field(f, "padoa_extended")
+            toprint += csv_field(f, "padoa_extend_t", last=True)
 
-        if "decisionsK" not in f or f["decisionsK"] is None:
-            toprint += ","
-        else:
-          toprint += "%d," % f["decisionsK"]
+            out.write(toprint+"\n")
 
-        if "compsK" not in f or f["compsK"] is None:
-            toprint += ","
-        else:
-          toprint += "%s," % f["compsK"]
+    os.system("sqlite3 mydb.sql < ganak.sqlite")
 
-        if "primal_density" not in f or f["primal_density"] is None:
-            toprint += ","
-        else:
-          toprint += "%s," % f["primal_density"]
 
-        if "primal_edge_var_ratio" not in f or f["primal_edge_var_ratio"] is None:
-            toprint += ","
-        else:
-          toprint += "%s," % f["primal_edge_var_ratio"]
-
-        if "td_width" not in f or f["td_width"] is None:
-            toprint += ","
-        else:
-          toprint += "%s," % f["td_width"]
-
-        if "td_time" not in f or f["td_time"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["td_time"]
-
-        if "arjuntime" not in f or f["arjuntime"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["arjuntime"]
-
-        if "backboneT" not in f or f["backboneT"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["backboneT"]
-
-        if "backwtime" not in f or f["backwtime"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["backwtime"]
-
-        if "indepsz" not in f or f["indepsz"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["indepsz"]
-
-        if "optindepsz" not in f or f["optindepsz"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["optindepsz"]
-
-        if "origprojsz" not in f or f["origprojsz"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["origprojsz"]
-
-        if "newnvars" not in f or f["newnvars"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["newnvars"]
-
-        if "unknsz" not in f or f["unknsz"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["unknsz"]
-
-        if "cache_del_time" not in f or f["cache_del_time"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["cache_del_time"]
-
-        if "cache_avg_hit_vars" not in f or f["cache_avg_hit_vars"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["cache_avg_hit_vars"]
-
-        if "cache_avg_store_vars" not in f or f["cache_avg_store_vars"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["cache_avg_store_vars"]
-
-        if "cache_miss_rate" not in f or f["cache_miss_rate"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["cache_miss_rate"]
-
-        if "bdd_called" not in f or f["bdd_called"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["bdd_called"]
-
-        if "sat_called" not in f or f["sat_called"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["sat_called"]
-
-        if "satrst" not in f or f["satrst"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["satrst"]
-
-        if "restarts" not in f or f["restarts"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["restarts"]
-
-        if "cubes_orig" not in f or f["cubes_orig"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["cubes_orig"]
-
-        if "cubes_final" not in f or f["cubes_final"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["cubes_final"]
-
-        if "gates_extended" not in f or f["gates_extended"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["gates_extended"]
-
-        if "gates_extend_t" not in f or f["gates_extend_t"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["gates_extend_t"]
-
-        if "padoa_extended" not in f or f["padoa_extended"] is None:
-            toprint += ","
-        else:
-          toprint += "%s,"  % f["padoa_extended"]
-
-        if "padoa_extend_t" not in f or f["padoa_extend_t"] is None:
-            toprint += ""
-        else:
-          toprint += "%s"  % f["padoa_extend_t"]
-
-        out.write(toprint+"\n")
-
-os.system("sqlite3 mydb.sql < ganak.sqlite")
+if __name__ == "__main__":
+    main()

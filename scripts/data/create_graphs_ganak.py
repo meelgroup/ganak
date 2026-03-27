@@ -130,7 +130,7 @@ only_dirs = [
     "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
 ]
-only_dirs = [ "mei-march-2026-1237508-" ]
+# only_dirs = [ "mei-march-2026-1237508-" ]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]

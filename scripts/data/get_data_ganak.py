@@ -1,54 +1,41 @@
 #!/usr/bin/python3
 
 import argparse
+import csv
 import decimal
 import glob
 import os
 import string
+import subprocess
 import sys
 
 sys.set_int_max_str_digits(2000000)
 
 
-def csv_field(f, key, fmt="%s", last=False):
-    """Return a CSV field value (with trailing comma unless last=True)."""
-    sep = "" if last else ","
-    if key not in f or f[key] is None:
-        return sep
-    return (fmt % f[key]) + sep
-
-
 ##########################
-# appmx, etc.
+# gpmc
 
 #c o Components            = 339421
 #c o conflicts             = 291050      (count 287680, sat 3370)
 #c o decisions             = 643616      (count 335433, sat 308183)
 def find_gpmc_time_cnt(fname):
-    t = None
-    cnt = None
-    compsK = None
-    conflicts = None
-    decisionsK = None
+    result = {}
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if line.startswith("c o Real time "):
-                t = float(line.split()[5])
-            if line.startswith("c s exact arb int"):
-                if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
-                else: cnt = decimal.Decimal(line.split()[5]).log10()
-            if line.startswith("c s exact arb prec-sci"):
-                if len(line.split()[5]) > 1000: cnt = len(line.split()[5])
-                else: cnt = decimal.Decimal(line.split()[5]).log10()
-            if line.startswith("c o Components"):
-              compsK = int(line.split()[4])/1000
-            if line.startswith("c o conflicts"):
-              conflicts = int(line.split()[4])
-            if line.startswith("c o decisions"):
-              decisionsK = int(line.split()[4])/1000
+                result["t"] = float(line.split()[5])
+            elif line.startswith("c s exact arb int") or line.startswith("c s exact arb prec-sci"):
+                val = line.split()[5]
+                result["cnt"] = len(val) if len(val) > 1000 else decimal.Decimal(val).log10()
+            elif line.startswith("c o Components"):
+                result["compsK"] = int(line.split()[4]) / 1000
+            elif line.startswith("c o conflicts"):
+                result["conflicts"] = int(line.split()[4])
+            elif line.startswith("c o decisions"):
+                result["decisionsK"] = int(line.split()[4]) / 1000
+    return result
 
-    return t,cnt,compsK,conflicts,decisionsK
 
 def approxmc_version(fname):
     aver = None
@@ -58,179 +45,17 @@ def approxmc_version(fname):
             line = line.strip()
             if line.startswith("c ApproxMC SHA revision"):
                 aver = line.split()[4]
-            if line.startswith("c CMS SHA revision"):
+            elif line.startswith("c CMS SHA revision"):
                 cver = line.split()[4]
-
     if aver is not None:
-        aver = "appmc"+aver[:8]
+        aver = "appmc" + aver[:8]
     if cver is not None:
         cver = cver[:8]
     return [aver, cver]
 
 
 ############################
-## ganak
-#c o Arjun T: 206.14
-# c o Sampling set size: 94
-# c o Opt sampling set size: 94
-# c o CNF projection set size: xx
-def find_arjun_time(fname):
-    t = None
-    backb_t = None
-    backw_t = None
-    unkn_sz = None
-    orig_proj_sz = None
-    indep_sz = None
-    opt_indep_sz = None
-    nvars = None
-    gates_extend_t = None
-    gates_extended = None
-    padoa_extend_t = None
-    padoa_extended = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.replace("[0m", "")
-            line = line.replace("\x1b","")
-            line = ''.join(filter(lambda x:x in string.printable, line))
-            line = line.strip()
-            if line.startswith("c o Sampling set size:"):
-              indep_sz = line.split()[5]
-              indep_sz = indep_sz.strip()
-              if indep_sz == "":
-                indep_sz = 0
-              else:
-                indep_sz = int(indep_sz)
-              if indep_sz == 4294967295:
-                indep_sz = 0
-            #c o opt ind size: 0 ind size: 0 nvars: 3463
-            elif line.startswith("c o opt ind size"):
-              nvars = int(line.split()[10])
-            elif line.startswith("c o Opt sampling set size:"):
-              opt_indep_sz = line.split()[6]
-              opt_indep_sz = opt_indep_sz.strip()
-              if opt_indep_sz == "":
-                opt_indep_sz = 0
-              else:
-                opt_indep_sz = int(opt_indep_sz)
-              if opt_indep_sz == 4294967295:
-                opt_indep_sz = 0
-            elif line.startswith("c o CNF projection set size:"):
-              orig_proj_sz = int(line.split()[6])
-            # c o [extend-gates] Gates added to opt indep: 26 T: 0.15
-            # c o [arjun-extend] Start unknown size: 1027
-            # c o [arjun-extend] Extend finished  orig size: 48 final size: 1056 Undef: 48 T: 25.36
-            elif line.startswith("c o [extend-gates] Gates added to opt"):
-              gates_extended = int(line.split()[8])
-              gates_extend_t = float(line.split()[10])
-           # c o [arjun-extend] Extend finished  orig size: 966 final size: 1834 Undef: 0 T: 0.17
-            elif line.startswith("c o [arjun-extend] Extend finished"):
-              orig = int(line.split()[7])
-              final = int(line.split()[10])
-              padoa_extended = final - orig
-              padoa_extend_t = float(line.split()[14])
-            elif line.startswith("c o [arjun] Start unknown size:"):
-              unkn_sz = int(line.split()[6])
-            elif "c o [arjun] backward round finished" in line:
-              backw_t = float(line.split()[10])
-            elif line.startswith("c o  ") and "% total" in line:
-              if backb_t is None:
-                backb_t = float(line.split()[2])
-              else:
-                backb_t += float(line.split()[2])
-            elif line.startswith("c o Arjun T:"):
-              assert t is None
-              t = float(line.split()[4])
-    return t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t
-
-
-#c o sat call/sat/unsat/conflK/rst  0     0     0     0     0
-#c o sat called/sat/unsat/conflK    6     6     0     0
-def find_sat_called(fname):
-    n = None
-    rst = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith("c o sat called/sat/unsat/conflK"):
-              n = int(line.split()[4])
-            if line.startswith("c o sat call/sat/unsat/confl/rst"):
-              n = int(line.split()[4])
-              rst = int(line.split()[8])
-    return n,rst
-
-#c o Num restarts: 27
-#c o [rst-cube] Num restarts: 1 orig cubes this rst: 0 total orig cubes: 0 total final cubes: 0 counted this rst: 0 total cnt so far: 0
-def find_restarts(fname):
-    n = None
-    cubes_orig = 0
-    cubes_final = 0
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-
-            # c o cubes orig/symm/final          1     / 0     / 1
-            if line.startswith("c o cubes orig:"):
-              cubes_orig += int(line.split()[4])
-              cubes_final += int(line.split()[6])
-            if line.startswith("c o Num restarts:"):
-              n = int(line.split()[4])
-
-            if line.startswith("c o [rst-cube] Num restarts:"):
-              # cubes = int(line.split()[14])
-              n = int(line.split()[5])
-    return n,cubes_orig,cubes_final
-
-#c o deletion done. T: 3.067
-#c o cache pollutions call/removed  56828/28682
-#c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
-#c o cache pollutions call/removed  56828/28682
-#c o cache miss rate                0.622
-# c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
-# c o [td] Primal graph   nodes: 548 edges: 8571 density: 0.029 edge/var: 15.669
-def collect_cache_data(fname):
-    cache_del_time = 0.0
-    cache_miss_rate = None
-    cache_lookupK = None
-    cache_storeK = None
-    density = None
-    edge_var_ratio = None
-    td_w = None
-    td_t = None
-    cache_avg_hit_vars = None
-    cache_avg_store_vars = None
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            # c o [td] iter 99 best bag: 56 stepsK remain: 99 T: 0.158
-            if line.startswith("c o [td] iter") and "best bag" in line:
-                td_w = int(line.split()[7])-1
-                td_w = "%d" % td_w
-                td_t = float(line.split()[12])
-                td_t = "%f" % td_t
-            # c o [td] iter 99 width: 22 stepsK remain: 99 T: 0.019
-            elif line.startswith("c o [td] iter") and "width:" in line:
-                td_w = int(line.split()[6])-1
-                td_w = "%d" % td_w
-                td_t = float(line.split()[11])
-                td_t = "%f" % td_t
-            elif line.startswith("c o [td] Primal graph"):
-              density = float(line.split()[10])
-              edge_var_ratio = float(line.split()[12])
-            #c o cache miss rate                0.622
-            elif line.startswith("c o cache miss rate"):
-              cache_miss_rate = float(line.split()[5])
-            #c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0       -- Klookup/s:  13.81
-            elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
-              cache_lookupK = float(line.split()[8])
-              cache_storeK = float(line.split()[9])
-            #c o avg hit/store num vars 17.841 / 96.672
-            elif line.startswith("c o avg hit/store num vars"):
-              cache_avg_hit_vars = float(line.split()[6])
-              cache_avg_store_vars = float(line.split()[8])
-            elif line.startswith("c o deletion done. T:"):
-              cache_del_time += float(line.split()[5])
-    return cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio,td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars
-
+## timeout wrapper
 def timeout_parse(fname):
     t = None
     signal = None
@@ -242,31 +67,31 @@ def timeout_parse(fname):
         for line in f:
             line = line.strip()
             if "Command terminated by signal" in line:
-              signal = int(line.split()[4])
-            if "Minor (reclaiming a frame) page faults:" in line:
-              page_faults = int(line.split()[6])
-            if "User time (seconds)" in line:
+                signal = int(line.split()[4])
+            elif "Minor (reclaiming a frame) page faults:" in line:
+                page_faults = int(line.split()[6])
+            elif "User time (seconds)" in line:
                 t = float(line.split()[3])
-            if "Maximum resident set size (kbytes)" in line:
-                mem = float(line.split()[5])/(1000) # get it in MB
-            if "Command being timed" in line:
-                call= " ".join(line.split()[3:])
+            elif "Maximum resident set size (kbytes)" in line:
+                mem = float(line.split()[5]) / 1000  # get it in MB
+            elif "Command being timed" in line:
+                call = " ".join(line.split()[3:])
                 if "mc2022" in call:
                     call = call.split("mc2022_")[0]
                 elif "mc2023" in call:
                     call = call.split("mc2023_")[0]
                 else:
-                  call = " ".join(call.split()[:-1])
+                    call = " ".join(call.split()[:-1])
                 call = call.replace(" -t real", "")
                 if "doalarm 3600" in call:
-                  call = call.split("doalarm 3600")[1]
+                    call = call.split("doalarm 3600")[1]
                 elif "doalarm 60" in call:
-                  call = call.split("doalarm 60")[1]
+                    call = call.split("doalarm 60")[1]
                 else:
-                  call = call.split("doalarm 900")[1]
+                    call = call.split("doalarm 900")[1]
 
                 if "./ganak" in call: solver = "ganak"
-                if "./d4"  in call: solver = "d4"
+                if "./d4" in call: solver = "d4"
                 if "./approxmc" in call: solver = "approxmc"
                 if "./gpmc" in call: solver = "gpmc"
                 if "./gpmc-complex" in call: solver = "gpmc"
@@ -283,77 +108,25 @@ def timeout_parse(fname):
                 call = call.strip()
 
     if signal is not None:
-      t = None
+        t = None
     if signal is None:
-      signal = ""
-    return [t, mem, call, solver, page_faults, signal]
+        signal = ""
+    return {"t": t, "mem": mem, "call": call, "solver": solver,
+            "page_faults": page_faults, "signal": signal}
+
 
 # c o width 45
-# c o CMD: timeout 60.000000s ./flow_cutter_pace17 <tmp/instance1709332682043115_14040_59941_1.tmp >tmp/instance1709332682043118_14040_59941_2.tmp 2>/dev/null
-def sstd_treewidth(fname) -> list[str]:
-    tw = ""
-    t = ""
+# c o CMD: timeout 60.000000s ./flow_cutter_pace17 ...
+def sstd_treewidth(fname):
+    result = {}
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
             if "c o width" in line:
-                tw = int(line.split()[3])
-                tw = "%d" % tw
-            if "CMD: timeout" in line:
-                t = float(line.split()[4][:-1])
-                t = "%f" % t
-    return [tw, t]
-
-
-# c o conflicts                      2503077      -- confl/s:    1434.45
-def ganak_conflicts(fname):
-    aver = None
-    cver = None
-    decisionsK = None
-    conflicts = None
-    t = None
-    cnt = None
-    bdd_called = None
-    error = 0
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if "ERROR" in line:
-              error = 1
-            if line.startswith("c o Time"):
-                t = float(line.split()[2])
-            elif line.startswith("c o Total time [Arjun+GANAK]:"):
-                t = float(line.split()[5])
-            elif line.startswith("s mc"):
-                cnt = decimal.Decimal(line.split()[2])
-            elif line.startswith("s pmc"):
-                cnt = decimal.Decimal(line.split()[2])
-            elif line.startswith("c o conflicts") and " :" in line: # cryptominisat
-                conflicts = int(line.split()[4])
-            elif line.startswith("c o conflicts"):
-                conflicts = int(line.split()[3])
-                conflicts = "%d" % conflicts
-            elif line.startswith("c o decisions K"):
-                decisionsK = int(line.split()[4])
-            elif line.startswith("c GANAK SHA revision"):
-                aver = line.split()[4]
-            elif line.startswith("c CMS version"):
-                cver = line.split()[3]
-            elif line.startswith("c o GANAK SHA revision"):
-                aver = line.split()[5]
-            elif line.startswith("c p CMS version"):
-                cver = line.split()[4]
-            elif line.startswith("c o CMS revision"):
-                cver = line.split()[4]
-            elif line.startswith("c o buddy called /unsat ratio"):
-              bdd_called = int(line.split()[6])
-            elif line.startswith("c o buddy called"):
-              bdd_called = int(line.split()[4])
-    if aver is not None:
-        aver = aver[:8]
-    if cver is not None:
-        cver = cver[:8]
-    return ["ganak", "%s-%s" % (aver,cver)], conflicts, decisionsK, t, cnt, bdd_called, error
+                result["td_width"] = int(line.split()[3])
+            elif "CMD: timeout" in line:
+                result["td_time"] = float(line.split()[4][:-1])
+    return result
 
 
 def find_bad_solve(fname):
@@ -368,8 +141,136 @@ def find_bad_solve(fname):
                 not_solved = False
             elif line.startswith("s UNSATISFIABLE"):
                 not_solved = False
-
     return mem_out, not_solved
+
+
+############################
+## ganak — single-pass parser combining all per-line extractions
+#
+# Covers: ganak_conflicts, find_arjun_time, collect_cache_data,
+#         find_restarts, find_sat_called, find_bad_solve
+#
+#c o Arjun T: 206.14
+#c o Sampling set size: 94
+#c o Opt sampling set size: 94
+#c o CNF projection set size: xx
+#c o cache K (lookup/ stores/ hits/ dels) 51     32     19     0
+#c o cache miss rate                0.622
+#c o [td] iter 189 best bag: 33 stepsK remain: -2 elapsed: 31.944
+#c o [td] Primal graph   nodes: 548 edges: 8571 density: 0.029 edge/var: 15.669
+def parse_ganak_output(fname):
+    result = {
+        "error": 0,
+        "mem_out": 0,
+        "not_solved": True,
+        "cache_del_time": 0.0,
+        "cubes_orig": 0,
+        "cubes_final": 0,
+    }
+    aver = None
+    cver = None
+
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.replace("[0m", "").replace("\x1b", "")
+            line = ''.join(filter(lambda x: x in string.printable, line))
+            line = line.strip()
+
+            # Unconditional status checks
+            if "ERROR" in line:
+                result["error"] = 1
+            if "bad_alloc" in line:
+                result["mem_out"] = 1
+            if line.startswith("s SATISFIABLE") or line.startswith("s UNSATISFIABLE"):
+                result["not_solved"] = False
+
+            # Mutually exclusive pattern matching
+            if line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
+                result["conflicts"] = int(line.split()[4])
+            elif line.startswith("c o conflicts"):
+                result["conflicts"] = int(line.split()[3])
+            elif line.startswith("c o decisions K"):
+                result["decisionsK"] = int(line.split()[4])
+            elif line.startswith("c GANAK SHA revision"):
+                aver = line.split()[4]
+            elif line.startswith("c CMS version"):
+                cver = line.split()[3]
+            elif line.startswith("c o GANAK SHA revision"):
+                aver = line.split()[5]
+            elif line.startswith("c p CMS version"):
+                cver = line.split()[4]
+            elif line.startswith("c o CMS revision"):
+                cver = line.split()[4]
+            elif line.startswith("c o buddy called /unsat ratio"):
+                result["bdd_called"] = int(line.split()[6])
+            elif line.startswith("c o buddy called"):
+                result["bdd_called"] = int(line.split()[4])
+            elif line.startswith("c o Sampling set size:"):
+                indep_sz = line.split()[5].strip()
+                indep_sz = 0 if indep_sz == "" else int(indep_sz)
+                result["indepsz"] = 0 if indep_sz == 4294967295 else indep_sz
+            elif line.startswith("c o opt ind size"):
+                result["newnvars"] = int(line.split()[10])
+            elif line.startswith("c o Opt sampling set size:"):
+                opt_indep_sz = line.split()[6].strip()
+                opt_indep_sz = 0 if opt_indep_sz == "" else int(opt_indep_sz)
+                result["optindepsz"] = 0 if opt_indep_sz == 4294967295 else opt_indep_sz
+            elif line.startswith("c o CNF projection set size:"):
+                result["origprojsz"] = int(line.split()[6])
+            elif line.startswith("c o [extend-gates] Gates added to opt"):
+                result["gates_extended"] = int(line.split()[8])
+                result["gates_extend_t"] = float(line.split()[10])
+            elif line.startswith("c o [arjun-extend] Extend finished"):
+                orig = int(line.split()[7])
+                final = int(line.split()[10])
+                result["padoa_extended"] = final - orig
+                result["padoa_extend_t"] = float(line.split()[14])
+            elif line.startswith("c o [arjun] Start unknown size:"):
+                result["unknsz"] = int(line.split()[6])
+            elif "c o [arjun] backward round finished" in line:
+                result["backwtime"] = float(line.split()[10])
+            elif line.startswith("c o  ") and "% total" in line:
+                result["backboneT"] = result.get("backboneT", 0) + float(line.split()[2])
+            elif line.startswith("c o Arjun T:"):
+                result["arjuntime"] = float(line.split()[4])
+            elif line.startswith("c o [td] iter") and "best bag" in line:
+                result["td_width"] = int(line.split()[7]) - 1
+                result["td_time"] = float(line.split()[12])
+            elif line.startswith("c o [td] iter") and "width:" in line:
+                result["td_width"] = int(line.split()[6]) - 1
+                result["td_time"] = float(line.split()[11])
+            elif line.startswith("c o [td] Primal graph"):
+                result["primal_density"] = float(line.split()[10])
+                result["primal_edge_var_ratio"] = float(line.split()[12])
+            elif line.startswith("c o cache miss rate"):
+                result["cache_miss_rate"] = float(line.split()[5])
+            elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
+                result["compsK"] = float(line.split()[8])
+            elif line.startswith("c o avg hit/store num vars"):
+                result["cache_avg_hit_vars"] = float(line.split()[6])
+                result["cache_avg_store_vars"] = float(line.split()[8])
+            elif line.startswith("c o deletion done. T:"):
+                result["cache_del_time"] += float(line.split()[5])
+            elif line.startswith("c o cubes orig:"):
+                result["cubes_orig"] += int(line.split()[4])
+                result["cubes_final"] += int(line.split()[6])
+            elif line.startswith("c o Num restarts:"):
+                result["restarts"] = int(line.split()[4])
+            elif line.startswith("c o [rst-cube] Num restarts:"):
+                result["restarts"] = int(line.split()[5])
+            elif line.startswith("c o sat called/sat/unsat/conflK"):
+                result["sat_called"] = int(line.split()[4])
+            elif line.startswith("c o sat call/sat/unsat/confl/rst"):
+                result["sat_called"] = int(line.split()[4])
+                result["satrst"] = int(line.split()[8])
+
+    if aver is not None:
+        aver = aver[:8]
+    if cver is not None:
+        cver = cver[:8]
+    result["solverver"] = ["ganak", "%s-%s" % (aver, cver)]
+
+    return result
 
 
 def main():
@@ -392,78 +293,42 @@ def main():
         if "competitors" in dirname:
             continue
         full_fname = f.split("/")[1].split(".cnf")[0] + ".cnf"
-        base = dirname+"/"+full_fname
+        base = dirname + "/" + full_fname
         if base not in files:
             files[base] = {}
         files[base]["dirname"] = dirname
         files[base]["fname"] = full_fname
 
         if f.endswith(".timeout") or ".timeout_" in f:
-            timeout_t, timeout_mem, timeout_call, timeout_solver, page_faults, signal = timeout_parse(f)
-            files[base]["timeout_t"] = timeout_t
-            files[base]["timeout_mem"] = timeout_mem
-            files[base]["timeout_call"] = timeout_call
-            files[base]["page_faults"] = page_faults
-            files[base]["signal"] = signal
+            tp = timeout_parse(f)
+            files[base]["timeout_t"] = tp["t"]
+            files[base]["timeout_mem"] = tp["mem"]
+            files[base]["timeout_call"] = tp["call"]
+            files[base]["page_faults"] = tp["page_faults"]
+            files[base]["signal"] = tp["signal"]
             if "solver" not in files[base] or files[base]["solver"] is None:
-              files[base]["solver"] = timeout_solver
+                files[base]["solver"] = tp["solver"]
             continue
 
         if f.endswith(".out_ganak") or f.endswith(".out"):
             files[base]["solver"] = "ganak"
-            ver, conflicts, decisionsK, t, cnt, bdd_called, error = ganak_conflicts(f)
-            files[base]["solverver"] = ver
-            files[base]["decisionsK"] = decisionsK
-            files[base]["conflicts"] = conflicts
-            files[base]["bdd_called"] = bdd_called
-            files[base]["error"] = error
-            arjun_t, backb_t, backw_t, indep_sz, opt_indep_sz, orig_proj_sz, unkn_sz, new_nvars, gates_extended, gates_extend_t, padoa_extended, padoa_extend_t = find_arjun_time(f)
-            files[base]["arjuntime"] = arjun_t
-            files[base]["backboneT"] = backb_t
-            files[base]["backwtime"] = backw_t
-            files[base]["indepsz"] = indep_sz
-            files[base]["optindepsz"] = opt_indep_sz
-            files[base]["origprojsz"] = orig_proj_sz
-            files[base]["unknsz"] = unkn_sz
-            files[base]["newnvars"] = new_nvars
-            files[base]["gates_extended"] = gates_extended
-            files[base]["gates_extend_t"] = gates_extend_t
-            files[base]["padoa_extended"] = padoa_extended
-            files[base]["padoa_extend_t"] = padoa_extend_t
-            cache_del_time, cache_miss_rate, cache_lookupK, cache_storeK, density, edge_var_ratio, td_w, td_t, cache_avg_hit_vars, cache_avg_store_vars = collect_cache_data(f)
-            files[base]["compsK"] = cache_lookupK
-            files[base]["cache_miss_rate"] = cache_miss_rate
-            files[base]["cache_storeK"] = cache_storeK
-            files[base]["cache_del_time"] = cache_del_time
-            files[base]["cache_avg_hit_vars"] = cache_avg_hit_vars
-            files[base]["cache_avg_store_vars"] = cache_avg_store_vars
-            rst, cubes_orig, cubes_final = find_restarts(f)
-            files[base]["restarts"] = rst
-            files[base]["cubes_orig"] = cubes_orig
-            files[base]["cubes_finale"] = cubes_final
-            sat_called, sat_rst = find_sat_called(f)
-            files[base]["sat_called"] = sat_called
-            files[base]["satrst"] = sat_rst
-            files[base]["td_width"] = td_w
-            files[base]["td_time"] = td_t
-            files[base]["primal_density"] = density
-            files[base]["primal_edge_var_ratio"] = edge_var_ratio
+            files[base].update(parse_ganak_output(f))
         if ".out_approxmc" in f:
             files[base]["solver"] = "approxmc"
             files[base]["solverver"] = approxmc_version(f)
         if ".out_gpmc" in f:
             files[base]["solver"] = "gpmc"
-            t, cnt, compsK, conflicts, decisionsK = find_gpmc_time_cnt(f)
-            files[base]["conflicts"] = conflicts
-            files[base]["compsK"] = compsK
-            files[base]["decisionsK"] = decisionsK
+            gpmc = find_gpmc_time_cnt(f)
+            files[base]["conflicts"] = gpmc.get("conflicts")
+            files[base]["compsK"] = gpmc.get("compsK")
+            files[base]["decisionsK"] = gpmc.get("decisionsK")
             files[base]["solverver"] = ["gpmc", "gpmc"]
         if ".out_sharptd" in f:
             files[base]["solver"] = "sharptd"
             files[base]["solverver"] = ["sharptd", "sharptd"]
             td = sstd_treewidth(f)
-            files[base]["td_width"] = td[0]
-            files[base]["td_time"] = td[1]
+            files[base]["td_width"] = td.get("td_width")
+            files[base]["td_time"] = td.get("td_time")
         if ".out_d4" in f:
             files[base]["solver"] = "d4"
             files[base]["solverver"] = ["d4", "d4"]
@@ -482,14 +347,26 @@ def main():
             files[base]["mem_out"] = mem_out
             files[base]["not_solved"] = not_solved
 
-    with open("mydata.csv", "w") as out:
-        cols = "solver,dirname,fname,mem_out,ganak_time,ganak_mem_MB,ganak_call,page_faults,signal,ganak_ver,conflicts,decisionsK,compsK,primal_density,primal_edge_var_ratio,td_width,td_time,arjun_time,backboneT,backwardT,indepsz,optindepsz,origprojsz,new_nvars,unknsz,cache_del_time, cache_avg_hit_vars, cache_avg_store_vars, cache_miss_rate,bdd_called,sat_called,sat_rst,rst,cubes_orig,cubes_final,gates_extended,gates_extend_t,padoa_extended,padoa_extend_t"
-        out.write(cols+"\n")
+    cols = ["solver", "dirname", "fname", "mem_out", "ganak_time", "ganak_mem_MB",
+            "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
+            "compsK", "primal_density", "primal_edge_var_ratio", "td_width", "td_time",
+            "arjun_time", "backboneT", "backwardT", "indepsz", "optindepsz", "origprojsz",
+            "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
+            "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
+            "sat_rst", "rst", "cubes_orig", "cubes_final", "gates_extended",
+            "gates_extend_t", "padoa_extended", "padoa_extend_t"]
+
+    def g(d, key):
+        v = d.get(key)
+        return "" if v is None else v
+
+    with open("mydata.csv", "w", newline="") as out:
+        writer = csv.writer(out)
+        writer.writerow(cols)
         for _, f in files.items():
             if "not_solved" not in f:
                 print("WARNING no 'out' file parsed for, skipping: ", f["fname"])
                 continue
-
             if "solver" not in f:
                 print("oops, solver not found, that's wrong")
                 print(f)
@@ -498,60 +375,56 @@ def main():
                 print("timeout not parsed for f: ", f)
                 exit(-1)
 
-            toprint = ""
-            toprint += "%s," % f["solver"]
-            toprint += f["dirname"] + ","
-            toprint += f["fname"] + ","
-            toprint += "%s," % f["mem_out"]
+            ganak_time = "" if (f["timeout_t"] is None or f["not_solved"]) else f["timeout_t"]
 
-            # timeout_t: suppress if timed out or not solved
-            if f["timeout_t"] is None or f["not_solved"]:
-                toprint += ","
-            else:
-                toprint += "%s," % f["timeout_t"]
-            toprint += "%s," % f["timeout_mem"]
-            toprint += "%s," % f["timeout_call"]
-            toprint += "%s," % f["page_faults"]
-            toprint += "%s," % f["signal"]
+            solverver = ""
+            if "solverver" in f and f["solverver"] != [None, None]:
+                solverver = "%s-%s" % (f["solverver"][0], f["solverver"][1])
 
-            if "solverver" not in f or f["solverver"] == [None, None]:
-                toprint += ","
-            else:
-                toprint += "%s-%s," % (f["solverver"][0], f["solverver"][1])
+            writer.writerow([
+                g(f, "solver"),
+                g(f, "dirname"),
+                g(f, "fname"),
+                g(f, "mem_out"),
+                ganak_time,
+                g(f, "timeout_mem"),
+                g(f, "timeout_call"),
+                g(f, "page_faults"),
+                g(f, "signal"),
+                solverver,
+                g(f, "conflicts"),
+                g(f, "decisionsK"),
+                g(f, "compsK"),
+                g(f, "primal_density"),
+                g(f, "primal_edge_var_ratio"),
+                g(f, "td_width"),
+                g(f, "td_time"),
+                g(f, "arjuntime"),
+                g(f, "backboneT"),
+                g(f, "backwtime"),
+                g(f, "indepsz"),
+                g(f, "optindepsz"),
+                g(f, "origprojsz"),
+                g(f, "newnvars"),
+                g(f, "unknsz"),
+                g(f, "cache_del_time"),
+                g(f, "cache_avg_hit_vars"),
+                g(f, "cache_avg_store_vars"),
+                g(f, "cache_miss_rate"),
+                g(f, "bdd_called"),
+                g(f, "sat_called"),
+                g(f, "satrst"),
+                g(f, "restarts"),
+                g(f, "cubes_orig"),
+                g(f, "cubes_final"),
+                g(f, "gates_extended"),
+                g(f, "gates_extend_t"),
+                g(f, "padoa_extended"),
+                g(f, "padoa_extend_t"),
+            ])
 
-            toprint += csv_field(f, "conflicts")
-            toprint += csv_field(f, "decisionsK", fmt="%d")
-            toprint += csv_field(f, "compsK")
-            toprint += csv_field(f, "primal_density")
-            toprint += csv_field(f, "primal_edge_var_ratio")
-            toprint += csv_field(f, "td_width")
-            toprint += csv_field(f, "td_time")
-            toprint += csv_field(f, "arjuntime")
-            toprint += csv_field(f, "backboneT")
-            toprint += csv_field(f, "backwtime")
-            toprint += csv_field(f, "indepsz")
-            toprint += csv_field(f, "optindepsz")
-            toprint += csv_field(f, "origprojsz")
-            toprint += csv_field(f, "newnvars")
-            toprint += csv_field(f, "unknsz")
-            toprint += csv_field(f, "cache_del_time")
-            toprint += csv_field(f, "cache_avg_hit_vars")
-            toprint += csv_field(f, "cache_avg_store_vars")
-            toprint += csv_field(f, "cache_miss_rate")
-            toprint += csv_field(f, "bdd_called")
-            toprint += csv_field(f, "sat_called")
-            toprint += csv_field(f, "satrst")
-            toprint += csv_field(f, "restarts")
-            toprint += csv_field(f, "cubes_orig")
-            toprint += csv_field(f, "cubes_final")
-            toprint += csv_field(f, "gates_extended")
-            toprint += csv_field(f, "gates_extend_t")
-            toprint += csv_field(f, "padoa_extended")
-            toprint += csv_field(f, "padoa_extend_t", last=True)
-
-            out.write(toprint+"\n")
-
-    os.system("sqlite3 mydb.sql < ganak.sqlite")
+    with open("ganak.sqlite") as sql_f:
+        subprocess.run(["sqlite3", "mydb.sql"], stdin=sql_f, check=True)
 
 
 if __name__ == "__main__":

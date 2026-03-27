@@ -20,11 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
+#pragma once
+
 #include "common.hpp"
-#include <arjun/arjun.h>
-#include <cryptominisat5/solvertypesmini.h>
-#include <gmpxx.h>
-#include <memory>
+#include "mcomplex.hpp"
 #include <mpfr.h>
 
 class MPFComplex final : public CMSat::Field {
@@ -209,33 +208,10 @@ public:
     }
 
     bool parse(const std::string& str, const uint32_t line_no) final {
-        uint32_t at = 0;
-        ArjunNS::FMpq _real;
-        ArjunNS::FMpq _imag;
-
-        if (!_real.parse_mpq(str, at, line_no)) return false;
-        skip_whitespace(str, at);
-        if (at < str.size()) {
-          if (str[at] == '+' || str[at] == '-') {
-            bool pos = (str[at] == '+');
-            at++;
-            if (!_imag.parse_mpq(str, at, line_no)) return false;
-            skip_whitespace(str, at);
-            if (at < str.size() && str[at] == 'i') {
-              at++;
-            } else {
-              std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
-              return false;
-            }
-            if (!pos) _imag *= ArjunNS::FMpq(-1);
-          } else {
-            // Space-separated format: "real imag" (e.g. "2 0")
-            if (!_imag.parse_mpq(str, at, line_no)) return false;
-          }
-        }
+        ArjunNS::FMpq _real, _imag;
+        if (!parse_complex_mpq(str, _real, _imag, line_no)) return false;
         mpfr_set_q(real, _real.get_val().get_mpq_t(), MPFR_RNDN);
         mpfr_set_q(imag, _imag.get_val().get_mpq_t(), MPFR_RNDN);
-        /* std::cout << "real: " << _real.get_val() << ", imag: " << _imag.get_val() << std::endl; */
         /* std::cout << "c o Parsed complex number: " << *this << std::endl; */
         return true;
    }

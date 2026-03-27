@@ -20,10 +20,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
+#pragma once
+
 #include <cryptominisat5/solvertypesmini.h>
 #include <gmpxx.h>
 #include <memory>
 #include <arjun/arjun.h>
+
+inline bool parse_complex_mpq(const std::string& str, ArjunNS::FMpq& real_out,
+    ArjunNS::FMpq& imag_out, const uint32_t line_no) {
+  uint32_t at = 0;
+  if (!real_out.parse_mpq(str, at, line_no)) return false;
+  ArjunNS::FMpq::skip_whitespace(str, at);
+  if (at < str.size()) {
+    if (str[at] == '+' || str[at] == '-') {
+      bool pos = (str[at] == '+');
+      at++;
+      if (!imag_out.parse_mpq(str, at, line_no)) return false;
+      ArjunNS::FMpq::skip_whitespace(str, at);
+      if (at < str.size() && str[at] == 'i') {
+        at++;
+      } else {
+        std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
+        return false;
+      }
+      if (!pos) imag_out *= ArjunNS::FMpq(-1);
+    } else {
+      // Space-separated format: "real imag" (e.g. "2 0")
+      if (!imag_out.parse_mpq(str, at, line_no)) return false;
+    }
+  }
+  return true;
+}
 
 class FComplex final : public CMSat::Field {
 public:
@@ -124,30 +152,8 @@ public:
     }
 
     bool parse(const std::string& str, const uint32_t line_no) final {
-        uint32_t at = 0;
-        ArjunNS::FMpq _real;
-        ArjunNS::FMpq _imag;
-
-        if (!_real.parse_mpq(str, at, line_no)) return false;
-        skip_whitespace(str, at);
-        if (at < str.size()) {
-          if (str[at] == '+' || str[at] == '-') {
-            bool pos = (str[at] == '+');
-            at++;
-            if (!_imag.parse_mpq(str, at, line_no)) return false;
-            skip_whitespace(str, at);
-            if (at < str.size() && str[at] == 'i') {
-              at++;
-            } else {
-              std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
-              return false;
-            }
-            if (!pos) _imag *= ArjunNS::FMpq(-1);
-          } else {
-            // Space-separated format: "real imag" (e.g. "2 0")
-            if (!_imag.parse_mpq(str, at, line_no)) return false;
-          }
-        }
+        ArjunNS::FMpq _real, _imag;
+        if (!parse_complex_mpq(str, _real, _imag, line_no)) return false;
         real = _real.get_val();
         imag = _imag.get_val();
         /* std::cout << "c o Parsed complex number: " << *this << std::endl; */

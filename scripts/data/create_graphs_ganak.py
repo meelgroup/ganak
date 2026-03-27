@@ -7,31 +7,17 @@ import nbformat as nbf
 
 
 def convert_to_cactus(fname, fname2):
-    # print("fname:" , fname)
-    f2 = open(fname2, "w")
-    f = open(fname, "r")
-    text = f.read()
-    mylines = text.splitlines()
-    i = 0;
-    time = []
-    for line in mylines:
-      time.append(float(line.split()[0]))
-      i += 1
+    with open(fname, "r") as f:
+        time = [float(line.split()[0]) for line in f]
 
     lastnum = -1
-    for a in range(0, 3600, 1):
-      num = 0
-      for t in time:
-        #print "t: %f a: %d" %(t, a)
-        if (t < a) :
-          num += 1
-
-      if (lastnum != num):
-          f2.write("%d \t%d\n" %(num, a))
-      lastnum = num
-    f.close()
-    f2.close()
-    return len(mylines)
+    with open(fname2, "w") as f2:
+        for a in range(0, 3600, 1):
+            num = sum(1 for t in time if t < a)
+            if lastnum != num:
+                f2.write(f"{num} \t{a}\n")
+            lastnum = num
+    return len(time)
 
 
 def get_versions():
@@ -44,11 +30,11 @@ def get_versions():
                       where ganak_ver is not NULL and ganak_ver != '' group by ganak_ver""")
     for a in res:
         vers.append(a[0])
-
     con.close()
     return vers
 
-def get_dirs(ver : str):
+
+def get_dirs(ver: str):
     ret = []
     con = sqlite3.connect("mydb.sql")
     cur = con.cursor()
@@ -58,9 +44,9 @@ def get_dirs(ver : str):
         call = re.sub("././ganak", "", call)
         call = re.sub(" mc2022.*cnf.*", "", call)
         ret.append([a[0], call])
-
     con.close()
     return ret
+
 
 def gnuplot_name_cleanup(name: str) -> str:
     # remove all non-alphanumeric characters except for underscores and dashes
@@ -69,15 +55,13 @@ def gnuplot_name_cleanup(name: str) -> str:
     name = re.sub(r'_', '=', name)
     return name
 
+
 versions = get_versions()
 fname2_s = []
 # not_calls = ["ExactMC"]
-not_calls = []
 # exactm: out-ganak-6318929.pbs101-5/
 # exactmc2: out-ganak-6328707.pbs101-7
 # sharpsat: out-ganak-6318929.pbs101-7
-
-# note: sharpsat thinks new track2 is all UNSAT, likely due to weights. maybe run unweighted.
 
 only_dirs = [
     # "out-ganak-mccomp2324-14299825",
@@ -103,7 +87,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-14637456", # try vivif options
     # "out-ganak-mccomp2324-14648650-0", # much more precise cache
     # "out-ganak-mccomp2324-14655977-", # get bins from cadiback
-    ### "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
+    # "out-ganak-mccomp2324-14656347-0", # get bins, scc, enable weakening, more weakening -- GOOD
     # "out-ganak-mccomp2324-14661402-", # try different weakenings
     # "out-ganak-mccomp2324-14675861-0", # submitted to mccomp 2025 -- GOOD
     # "out-ganak-mccomp2324-14675861-", # default setup along WITHOUT appmc. Trying tditers -- ganak_7d97636055e_9104724fa_26d64aac --tdlookiters 20
@@ -154,56 +138,40 @@ fname_like = ""
 # fname_like = " and (fname like '%track3%' or fname like '%track4%') "
 
 table_todo = []
-for ver in todo :
+for ver in todo:
     dirs_call = get_dirs(ver)
-    for dir,call in dirs_call:
+    for dir, call in dirs_call:
         bad = False
         for not_call in not_calls:
-          if not_call in call:
-            bad = True
+            if not_call in call:
+                bad = True
         for not_version in not_versions:
-          if not_version in ver:
-            bad = True
+            if not_version in ver:
+                bad = True
 
         if len(only_calls) != 0:
-          inside = False
-          for only_call in only_calls:
-            if only_call in call:
-              inside = True
-          if not inside: bad = True
+            inside = False
+            for only_call in only_calls:
+                if only_call in call:
+                    inside = True
+            if not inside:
+                bad = True
 
         if len(only_dirs) != 0:
-          inside = False
-          for only_dir in only_dirs:
-            if only_dir in (dir+"/"):
-              inside = True
-          if not inside: bad = True
+            inside = False
+            for only_dir in only_dirs:
+                if only_dir in (dir+"/"):
+                    inside = True
+            if not inside:
+                bad = True
 
         if bad:
-          continue
-        # print("----")
-        # print("dir:", dir)
-        # print("call:", call)
-        # print("ver:", ver)
-
-        # if "actexp 1.0" in call:
-        #     continue
-        # if "tdwithredbins 0" in call:
-        #     continue
-        # if "restart 1" in call:
-        #     continue
-        # if "vivif" not in call:
-        #     continue
-        # if "probe 1" in call:
-        #     continue
-        # if "polar" not in call:
-        #     continue
+            continue
         fname = "run-"+dir+".csv"
         with open("gencsv.sqlite", "w") as f:
             f.write(".headers off\n")
-            f.write(".mode csv\n");
+            f.write(".mode csv\n")
             f.write(".output "+fname+"\n")
-            extra = ""
             f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
         os.system("sqlite3 mydb.sql < gencsv.sqlite")
         os.unlink("gencsv.sqlite")
@@ -214,25 +182,24 @@ for ver in todo :
         table_todo.append([dir, ver])
 
 for only_counted in [False, True]:
-  counted_req = ""
-  if only_counted:
-    print("::: --------- Data based on ONLY benchmarks that are COUNTED ------- :::")
-    counted_req = " and ganak_time is not NULL "
-  else:
-    print("::: --------- Data based on ALSO UNCOUNTED benchmarks ------- :::")
-  with open("gen_table.sqlite", "w") as f:
-    f.write(".mode table\n")
-    # f.write(".mode colum\n")
-    # f.write(".headers off\n")
-    dirs = ""
-    vers = ""
-    for dir,ver in table_todo:
-      dirs += "'" + dir + "',"
-      vers += "'" + ver + "',"
-    dirs = dirs[:-1]
-    vers = vers[:-1]
-    extra = ""
-    f.write("select \
+    counted_req = ""
+    if only_counted:
+        print("::: --------- Data based on ONLY benchmarks that are COUNTED ------- :::")
+        counted_req = " and ganak_time is not NULL "
+    else:
+        print("::: --------- Data based on ALSO UNCOUNTED benchmarks ------- :::")
+    with open("gen_table.sqlite", "w") as f:
+        f.write(".mode table\n")
+        # f.write(".mode colum\n")
+        # f.write(".headers off\n")
+        dirs = ""
+        vers = ""
+        for dir, ver in table_todo:
+            dirs += "'" + dir + "',"
+            vers += "'" + ver + "',"
+        dirs = dirs[:-1]
+        vers = vers[:-1]
+        f.write("select \
         replace(dirname,'out-ganak-mc','') as dirname,\
         replace(ganak_call,'././ganak_','') as call,\
         sum(mem_out) as 'mem out', \
@@ -262,16 +229,15 @@ for only_counted in [False, True]:
         ROUND(avg(compsK/1000.0),2) as 'av compsM',\
         sum(fname is not null) as 'nfiles'\
         from data where dirname IN ("+dirs+") and ganak_ver IN ("+vers+") "+fname_like+" "+counted_req+"group by dirname order by solved asc")
-  os.system("sqlite3 mydb.sql < gen_table.sqlite")
-  os.unlink("gen_table.sqlite")
+    os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    os.unlink("gen_table.sqlite")
 
-if True:
-  for dir,ver in table_todo:
+for dir, ver in table_todo:
     with open("gen_table.sqlite", "w") as f:
-      f.write(".mode table\n")
-      f.write("select '"+dir+"', '"+ver+"'");
-      for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb":
-        f.write(", (SELECT "+col+" as 'median_"+col+"'\
+        f.write(".mode table\n")
+        f.write("select '"+dir+"', '"+ver+"'")
+        for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb":
+            f.write(", (SELECT "+col+" as 'median_"+col+"'\
         FROM data\
         where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null"+fname_like+"\
         ORDER BY "+col+"\
@@ -280,8 +246,8 @@ if True:
           where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
           and "+col+" is not null) / 2) as median_"+col+" \
       ")
-      for col in "gates_extended", "padoa_extended":
-        f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
+        for col in "gates_extended", "padoa_extended":
+            f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
         FROM data\
         where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null "+fname_like+"\
                     and "+col+">0\
@@ -309,11 +275,10 @@ with open(gnuplotfn, "w") as f:
     # f.write("plot [:][10:]\\\n")
     # f.write("plot [500:4000][1000:1200]\\\n")
     f.write("plot [:][:]\\\n")
-    i = 0
     # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
     # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
     towrite = ""
-    for fn,call,ver,num_solved,dir in fname2_s:
+    for fn, call, ver, num_solved, dir in fname2_s:
         # if "restart" not in call and num_solved > 142:
         if True:
             call = gnuplot_name_cleanup(call)
@@ -321,25 +286,22 @@ with open(gnuplotfn, "w") as f:
             ver  = gnuplot_name_cleanup(ver)
             oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
             towrite += oneline
-            towrite +=",\\\n"
+            towrite += ",\\\n"
     towrite = towrite[:(len(towrite)-4)]
     f.write(towrite)
 
+for path in ["run.eps", "run.pdf", "run.png"]:
+    if os.path.exists(path):
+        os.unlink(path)
 
-if os.path.exists("run.eps"):
-  os.unlink("run.eps")
-if os.path.exists("run.pdf"):
-  os.unlink("run.pdf")
-if os.path.exists("run.png"):
-  os.unlink("run.png")
 
 def create_notebook():
-  # Create a new notebook
-  nb = nbf.v4.new_notebook()
-  texts = []
+    # Create a new notebook
+    nb = nbf.v4.new_notebook()
+    texts = []
 
-  # Define the text content for the markdown cells
-  text = """
+    # Define the text content for the markdown cells
+    text = """
 # Step 1: Import necessary libraries
 import pandas as pd
 import sqlite3
@@ -349,12 +311,12 @@ import numpy as np
 
 dirs = ["""+dirs+"""]
 """
-  texts.append(text)
+    texts.append(text)
 
-  colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK", \
-      "compsK", "td_width", "arjun_time", "backbone_time", "indep_sz", "td_time", "sat_called", "cache_miss_rate"]
-  for colname in colnames:
-    text= """
+    colnames = ["ganak_time", "ganak_mem_MB", "conflicts", "decisionsK",
+        "compsK", "td_width", "arjun_time", "backbone_time", "indep_sz", "td_time", "sat_called", "cache_miss_rate"]
+    for colname in colnames:
+        text = """
 colname='"""+colname+"""'
 names=[]
 dfs = []
@@ -394,10 +356,10 @@ plt.legend(names,loc='center left', bbox_to_anchor=(0, -0.3))
 plt.grid(True)
 plt.show()
   """
-    texts.append(text)
+        texts.append(text)
 
-  for col1, col2 in [("td_width", "ganak_time"), ("td_width", "td_time"), ("td_width", "arjun_time"), ("td_width", "backbone_time"), ("compsK", "ganak_time")]:
-    text= """
+    for col1, col2 in [("td_width", "ganak_time"), ("td_width", "td_time"), ("td_width", "arjun_time"), ("td_width", "backbone_time"), ("compsK", "ganak_time")]:
+        text = """
 col1='"""+col1+"""'
 col2='"""+col2+"""'
 dirs = ["""+dirs+"""]
@@ -429,24 +391,17 @@ plt.ylabel(f"{col2} (log10 scale)")
 plt.legend(loc='center left', bbox_to_anchor=(0, -0.2))
 plt.show()
 """
-    texts.append(text)
+        texts.append(text)
 
-  # Create markdown cells
-  markdown_cells = []
-  for t in texts:
-      markdown_cells.append(nbf.v4.new_code_cell(t))
+    # Create code cells
+    cells = [nbf.v4.new_code_cell(t) for t in texts]
+    nb['cells'] = cells
 
-  # Assign the cells to the notebook
-  nb['cells'] = markdown_cells
+    filename = 'overview.ipynb'
+    with open(filename, 'w') as f:
+        nbf.write(nb, f)
+    print(f"Notebook '{filename}' created successfully.")
 
-  # Define the filename for the notebook
-  filename = 'overview.ipynb'
-
-  # Write the notebook to a file
-  with open(filename, 'w') as f:
-      nbf.write(nb, f)
-
-  print(f"Notebook '{filename}' created successfully.")
 
 create_notebook()
 os.system("gnuplot "+gnuplotfn)
@@ -454,32 +409,3 @@ os.system("epstopdf run.eps run.pdf")
 os.system("pdftoppm -png run.pdf run")
 print("okular run.eps")
 os.system("okular run.eps")
-
-#### examples
-# .mode table
-# old = out-ganak-mccomp2324-14675861-0 -- mccomp2025
-# new= out-ganak-mccomp2324-15010600-0 -- td start from 0
-
-# old = "out-ganak-mccomp2324-21349-0", # TRILLIUM, ganak_7d97636055e_9104724fa_26d64aac (i.e. old run that was the fastest)
-# new = "out-ganak-mccomp2324-35541-0", # TRILLIUM, fixing td starting from 0, now cutting disjoint components at toplevel for correct centroid
-
-# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-21349-0' and a2.dirname like 'out-ganak-mccomp2324-35541-0' and a1.ganak_time < a2.ganak_time-100 and a1.ganak_time > 10 order by a1.ganak_time desc limit 50;
-
-# cache hits
-# select dirname, fname, round(ganak_time-arjun_time-td_time) as ganakT, cache_miss_rate from data where dirname like 'out-ganak-mccomp2324-14558670-1' and ganak_time is not null and cache_miss_rate is not null  and ganak_time-arjun_time > 100 order by cache_miss_rate asc limit 50;
-
-# select a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.solver like 'ganak' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;
-
-# select ganak_time, fname, dirname from data where ganak_time > 100 and dirname like '%out-ganak-gpmc-mei-14295899-0%' order by ganak_time desc limit 50;
-
-# complex numbers
-# select a1.dirname, a2.dirname, a1.fname, a1.ganak_time as "gpmc time", a2.ganak_time from data as a1, data as a2 where  a1.fname=a2.fname and a1.fname not like 'mc%' and a1.solver like 'gpmc' and a2.dirname like '%out-ganak-gpmc-mei-14295899-0%' and a2.ganak_call like '%mode 6%' order by a2.ganak_time desc limit 50;
-
-# example fast problems
-# select dirname, fname, ganak_time from data where dirname = 'out-ganak-mccomp2324-14309534-0' and ganak_time is not null and ganak_time < 200 and arjun_time < 20 and td_time < 5 order by ganak_time desc limit 50;
-
-# small problems
-# select dirname, fname, ganak_time,arjun_time,td_time from data where dirname = 'out-ganak-mccomp2324-14309534-0' and ganak_time is not null and ganak_time < 200 and arjun_time < 10 and td_time < 10 and new_nvars > 400 order by ganak_time desc limit 1000;
-
-# new analyzer compare
-# select a1.dirname, a1.fname, a1.ganak_time as "old time", a2.dirname, a2.ganak_time as "new time" from data as a1, data as a2 where  a1.fname=a2.fname and a1.ganak_time is not null and a1.ganak_time is not null and a1.dirname like 'out-ganak-mccomp2324-14362931-0' and a2.dirname like 'out-ganak-mccomp2324-14366334-0' and a1.ganak_time < a2.ganak_time-20 and a1.ganak_time < 500 order by a1.ganak_time desc limit 50;

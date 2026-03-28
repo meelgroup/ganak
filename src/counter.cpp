@@ -3868,7 +3868,7 @@ bdd Counter::mybdd_two_or(Lit l, Lit r) {
 }
 
 bool Counter::should_do_buddy_count() const {
-  auto d = decisions.at(dec_level()-1);
+  const auto& d = decisions.at(dec_level()-1);
   const Comp& c = comp_manager->get_super_comp(d);
   if (c.nVars() >= 62 || c.nVars() <= 3 || c.num_long_cls() > conf.buddy_max_cls) {
     /* cout << "vars: " << c->nVars() << " cls: " << c->numBinCls() + c->num_long_cls() << endl; */

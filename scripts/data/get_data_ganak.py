@@ -337,7 +337,7 @@ def main():
 
         if ".out" in f:
             mem_out, not_solved = find_bad_solve(f)
-            files[base]["mem_out"] = mem_out
+            files[base]["mem_out"] = max(files[base].get("mem_out", 0), mem_out)
             files[base]["not_solved"] = not_solved
 
     cols = ["solver", "dirname", "fname", "mem_out", "ganak_time", "ganak_mem_MB",

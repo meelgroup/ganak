@@ -243,16 +243,17 @@ def print_sigabrt_files(table_todo, fname_like):
     cur = con.cursor()
     cur.execute(
         f"SELECT COUNT(*) FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
-        f" AND signal=6{fname_like}"
+        f" AND signal=6 AND (mem_out IS NULL OR mem_out=0){fname_like}"
     )
     count = cur.fetchone()[0]
     if count == 0:
         con.close()
         return
-    print(f"\n::: WARNING: {count} instance(s) with sigABRT (signal=6) :::")
+    filter_desc = f", filtered by: {fname_like.strip()}" if fname_like.strip() else ""
+    print(f"\n::: WARNING: {count} instance(s) with sigABRT (signal=6), excluding mem_out=1{filter_desc} :::")
     cur.execute(
         f"SELECT dirname, fname, timeout_t FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
-        f" AND signal=6{fname_like} ORDER BY dirname, fname"
+        f" AND signal=6 AND (mem_out IS NULL OR mem_out=0){fname_like} ORDER BY dirname, fname"
     )
     rows = cur.fetchall()
     con.close()

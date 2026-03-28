@@ -3368,6 +3368,27 @@ void Counter::create_uip_cl() {
   VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause.data(), uip_clause.size()));
   CHECK_IMPLIED_DO(check_implied(uip_clause));
   minimize_uip_cl();
+
+  // Reason-side literal bumping (CaDiCaL bumpreason): bump activity of
+  // literals in the reason clauses of learned clause literals. This helps
+  // the variable activity heuristic focus on the broader conflict neighborhood.
+  if (conf.do_bump_reason) {
+    for (uint32_t k = 1; k < uip_clause.size(); k++) {
+      const Lit q = uip_clause[k];
+      const auto& ante = var(q).ante;
+      if (ante.isNull()) continue;
+      if (ante.isALit()) {
+        const Lit other = ante.as_lit();
+        if (var(other).decision_level > 0) inc_act(other);
+      } else {
+        const Clause& cl = *alloc->ptr(ante.as_cl());
+        for (uint32_t i = 0; i < cl.sz; i++)
+          if (cl[i].var() != q.var() && var(cl[i]).decision_level > 0)
+            inc_act(cl[i]);
+      }
+    }
+  }
+
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
   debug_print(__FUNCTION__ << " finished");
 }

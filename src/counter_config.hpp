@@ -64,6 +64,7 @@ struct CounterConfiguration {
   uint32_t base_lbd_cutoff = 2;
   uint32_t lbd_tier2_cutoff = 6; // tier 2: lbd <= this kept if recently used (CaDiCaL-style)
   int do_shrink = 1;             // block-wise secondary UIP shrinking (CaDiCaL-style)
+  int do_bump_reason = 1;        // bump literals in reason clauses of learned clause (CaDiCaL bumpreason)
   int do_update_lbd_cutoff = 0;
   int rdb_ema_rate = 0;          // use EMA of conflict rate for RDB target scaling
   double rdb_ema_alpha = 0.15;   // EMA smoothing factor (0 < alpha < 1)

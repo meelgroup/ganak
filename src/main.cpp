@@ -34,7 +34,6 @@ THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include <string>
-#include <set>
 #include <iomanip>
 #include <gmpxx.h>
 #include <mpfr.h>
@@ -52,7 +51,6 @@ THE SOFTWARE.
 
 static constexpr uint32_t max_digit_precision = 1e6;
 
-using std::set;
 using namespace GanakInt;
 using std::setprecision;
 

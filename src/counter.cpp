@@ -1571,8 +1571,8 @@ bool Counter::compute_cube(Cube& c, const int side) {
       c.cnf.push_back(l.neg());
     }
     debug_print_noendl(l << " ");
-    c.lbd = calc_lbd(c.cnf);
   }
+  c.lbd = calc_lbd(c.cnf);
   debug_print_noendl(COLDEF << endl);
 
   // Get a solution: assume negation of each blocking literal (i.e. model value)

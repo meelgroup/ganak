@@ -4359,6 +4359,11 @@ void Counter::reduce_db() {
   else if (new_confls*32 > new_decs) target = static_cast<uint32_t>(target * 0.8);
   else target = static_cast<uint32_t>(target * 0.4);
 
+  // Three-tier clause management (CaDiCaL-style):
+  //   Tier 1 (lbd <= lbd_cutoff):       never deleted
+  //   Tier 2 (lbd <= lbd_tier2_cutoff): delete only if unused AND over budget
+  //   Tier 3 (lbd >  lbd_tier2_cutoff): delete whenever unused
+  uint32_t num_tier2_used_cls = 0;
   for(uint32_t i = 0; i < tmp_red_cls.size(); i++){
     const ClauseOfs& off = tmp_red_cls[i];
     auto& h = *alloc->ptr(off);
@@ -4367,9 +4372,12 @@ void Counter::reduce_db() {
 
     bool const can_be_del = red_cl_can_be_deleted(off);
     cannot_be_del += !can_be_del;
+    bool const is_tier2 = (h.lbd > lbd_cutoff && h.lbd <= conf.lbd_tier2_cutoff);
+    if (is_tier2 && h.used) num_tier2_used_cls++;
+    bool const over_budget = (i > target + num_low_lbd_cls + num_tier2_used_cls);
     if (can_be_del && h.lbd > lbd_cutoff
-        && (!conf.rdb_keep_used || !h.used)
-        && i > target + num_low_lbd_cls + (conf.rdb_keep_used ? num_used_cls : 0)) {
+        && !h.used
+        && (!is_tier2 || over_budget)) {
       delete_cl(off);
       stats.cls_deleted_since_compaction++;
       stats.cls_removed++;

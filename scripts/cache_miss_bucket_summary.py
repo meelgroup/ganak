@@ -6,6 +6,7 @@ median values for key metrics. Run from the directory containing mydb.sql.
 """
 
 import argparse
+import re
 import sqlite3
 
 
@@ -55,6 +56,9 @@ def main():
         parser.error(f"dirname '{args.dirname}' not found in mydb.sql. Known dirnames:\n  "
                      + "\n  ".join(known))
 
+    cur.execute("SELECT DISTINCT ganak_call FROM data WHERE dirname=? AND ganak_call IS NOT NULL", (args.dirname,))
+    calls = [re.sub(r" mc2022.*cnf.*", "", re.sub(r"\./\./ganak", "", r[0])) for r in cur.fetchall()]
+
     base = (f"dirname='{args.dirname}'"
             f" AND cache_miss_rate IS NOT NULL"
             f" AND (ganak_time - arjun_time) >= {args.cutoff}")
@@ -100,6 +104,8 @@ def main():
 
     headers = ["metric"] + [b[0] for b in buckets]
     print(f"\nCache miss rate bucket summary for: {args.dirname}")
+    for call in calls:
+        print(f"  call: {call}")
     print(f"NOTE: filtered to instances where ganak_time - arjun_time >= {args.cutoff}s")
     print(f"      (i.e. hard instances only; {total_solved} solved out of {total_rows} total are NOT all shown)")
     print()

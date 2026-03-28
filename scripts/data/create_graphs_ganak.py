@@ -167,36 +167,38 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         os.unlink("gen_table.sqlite")
 
 
+def _median_subquery(col, dir, ver, fname_like, nozero=False):
+    extra = f" and {col}>0" if nozero else ""
+    base = f"dirname='{dir}' and ganak_ver='{ver}' and {col} is not null{fname_like}{extra}"
+    return (f"(SELECT {col} FROM data WHERE {base}"
+            f" ORDER BY {col} LIMIT 1"
+            f" OFFSET (SELECT COUNT({col}) FROM data WHERE {base}) / 2)")
+
+
 def print_median_tables(table_todo, fname_like, verbose=False):
+    if not table_todo:
+        return
+
+    plain_cols  = ["indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb"]
+    nozero_cols = ["gates_extended", "padoa_extended"]
+
+    union_parts = []
     for dir, ver in table_todo:
-        if verbose:
-            print(f"  Median table for dir={dir} ver={ver}")
-        with open("gen_table.sqlite", "w") as f:
-            f.write(".mode table\n")
-            f.write("select '"+dir+"', '"+ver+"'")
-            for col in "indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb":
-                f.write(", (SELECT "+col+" as 'median_"+col+"'\
-        FROM data\
-        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null"+fname_like+"\
-        ORDER BY "+col+"\
-        LIMIT 1\
-        OFFSET (SELECT COUNT("+col+") FROM data\
-          where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
-          and "+col+" is not null) / 2) as median_"+col+" \
-      ")
-            for col in "gates_extended", "padoa_extended":
-                f.write(", (SELECT "+col+" as 'median_"+col+"_NOZERO'\
-        FROM data\
-        where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') and "+col+" is not null "+fname_like+"\
-                    and "+col+">0\
-        ORDER BY "+col+"\
-        LIMIT 1\
-        OFFSET (SELECT COUNT("+col+") FROM data\
-          where dirname IN ('"+dir+"') and ganak_ver IN ('"+ver+"') \
-          and "+col+" is not null "+fname_like+" and "+col+">0) / 2) as median_"+col+" \
-      ")
-        os.system("sqlite3 mydb.sql < gen_table.sqlite")
-        os.unlink("gen_table.sqlite")
+        parts = [f"'{dir}'", f"'{ver}'"]
+        for col in plain_cols:
+            parts.append(f"{_median_subquery(col, dir, ver, fname_like)} as median_{col}")
+        for col in nozero_cols:
+            parts.append(f"{_median_subquery(col, dir, ver, fname_like, nozero=True)} as median_{col}_NOZERO")
+        union_parts.append("select " + ", ".join(parts))
+
+    query = "\nUNION ALL\n".join(union_parts)
+    if verbose:
+        print(f"  Median table query ({len(table_todo)} rows)")
+    with open("gen_table.sqlite", "w") as f:
+        f.write(".mode table\n")
+        f.write(query + "\n")
+    os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    os.unlink("gen_table.sqlite")
 
 
 def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):
@@ -234,10 +236,43 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
         plt.show()
 
 
+def print_sigabrt_files(table_todo, fname_like):
+    dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
+    vers = ",".join("'" + ver + "'" for _, ver in table_todo)
+    con = sqlite3.connect("mydb.sql")
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT COUNT(*) FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
+        f" AND signal=6{fname_like}"
+    )
+    count = cur.fetchone()[0]
+    if count == 0:
+        con.close()
+        return
+    print(f"\n::: WARNING: {count} instance(s) with sigABRT (signal=6) :::")
+    cur.execute(
+        f"SELECT dirname, fname FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
+        f" AND signal=6{fname_like} ORDER BY dirname, fname"
+    )
+    rows = cur.fetchall()
+    con.close()
+    max_dir  = max(len(r[0]) for r in rows)
+    max_file = max(len(r[1]) for r in rows)
+    sep = f"+-{'-' * max_dir}-+-{'-' * max_file}-+"
+    fmt = f"| {{:<{max_dir}}} | {{:<{max_file}}} |"
+    print(sep)
+    print(fmt.format("dirname", "fname"))
+    print(sep)
+    for dirname, fname in rows:
+        print(fmt.format(dirname, fname))
+    print(sep)
+
+
 def print_distributions(table_todo, fname_like):
     print_distribution(table_todo, fname_like, "cache_miss_rate",  "cache miss rate")
     print_distribution(table_todo, fname_like, "compsK",           "num components (K) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG compsK")
     print_distribution(table_todo, fname_like, "td_width",         "TD width", xmin=0)
+    print_distribution(table_todo, fname_like, "ganak_mem_mb",     "memory usage (MB) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG mem_mb")
 
 
 def generate_gnuplot(fname2_s, verbose=False):
@@ -257,7 +292,7 @@ def generate_gnuplot(fname2_s, verbose=False):
         f.write("set xlabel \"Time (s)\"\n")
         # f.write("plot [:][10:]\\\n")
         # f.write("plot [500:4000][1000:1200]\\\n")
-        f.write("plot [0.1:3600][2900:3800]\\\n")
+        f.write("plot [0.1:3600][0.1:]\\\n")
         # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
         # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
         towrite = ""
@@ -439,7 +474,7 @@ only_dirs = [
     "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
 ]
-only_dirs = [ "mei-march-2026-1239767" ]
+# only_dirs = [ "mei-march-2026-1239767" ]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
@@ -493,6 +528,7 @@ def main():
     if args.verbose:
         print("Printing summary tables...")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
+    print_sigabrt_files(table_todo, fname_like)
 
     if args.verbose:
         print("Printing median tables...")

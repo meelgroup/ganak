@@ -10,16 +10,12 @@ import plotext as plt
 
 def convert_to_cactus(fname, fname2):
     with open(fname, "r") as f:
-        time = [float(line.split()[0]) for line in f]
+        times = sorted(float(line.split()[0]) for line in f)
 
-    lastnum = -1
     with open(fname2, "w") as f2:
-        for a in range(0, 3600, 1):
-            num = sum(1 for t in time if t < a)
-            if lastnum != num:
-                f2.write(f"{num} \t{a}\n")
-            lastnum = num
-    return len(time)
+        for i, t in enumerate(times):
+            f2.write(f"{i+1} \t{t}\n")
+    return len(times)
 
 
 def get_versions():
@@ -255,13 +251,13 @@ def generate_gnuplot(fname2_s, verbose=False):
         f.write("set notitle\n")
         f.write("set key bottom right\n")
         # f.write("set xtics 200\n")
-        f.write("unset logscale x\n")
+        f.write("set logscale x\n")
         f.write("unset logscale y\n")
         f.write("set ylabel  \"Instances counted\"\n")
         f.write("set xlabel \"Time (s)\"\n")
         # f.write("plot [:][10:]\\\n")
         # f.write("plot [500:4000][1000:1200]\\\n")
-        f.write("plot [:][:]\\\n")
+        f.write("plot [0.1:3600][2900:3800]\\\n")
         # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
         # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
         towrite = ""
@@ -443,7 +439,7 @@ only_dirs = [
     "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
 ]
-# only_dirs = [ "mei-march-2026-1237508-" ]
+only_dirs = [ "mei-march-2026-1239767" ]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
@@ -486,6 +482,12 @@ def main():
 
     if args.verbose:
         print(f"Selected {len(table_todo)} dir/version combinations")
+    seen = set()
+    for dir, _ in table_todo:
+        if dir not in seen:
+            seen.add(dir)
+            os.system(f"./cache_miss_bucket_summary.py {dir}")
+
     print_distributions(table_todo, fname_like)
 
     if args.verbose:

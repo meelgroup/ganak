@@ -3241,6 +3241,7 @@ uint32_t Counter::shrink_block(size_t bstart, size_t bend, int32_t blevel, Lit /
 // shrink each block with >= 2 literals down to a single secondary UIP.
 void Counter::shrink_uip_clause() {
   if (!conf.do_shrink || uip_clause.size() < 3) return;
+  stats.shrink_tried++;
 
   // Sort by (decision_level DESC, sublevel DESC): same-level lits are contiguous
   // and in reverse trail order (needed for the BFS to find the dominator).
@@ -3274,6 +3275,7 @@ void Counter::shrink_uip_clause() {
     for (size_t m = 1; m < uip_clause.size(); m++)
       if (uip_clause[m] != NOT_A_LIT) uip_clause[k++] = uip_clause[m];
     uip_clause.resize(k);
+    stats.shrink_success++;
     stats.shrink_shrunken += total_removed;
   }
 }

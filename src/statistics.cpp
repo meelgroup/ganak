@@ -59,6 +59,11 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(9) << rem_lits_tried/1000 << " "
     << setw(9) << rem_lits_with_bins/1000 << " "
   );
+  verb_print(1, "shrink tried/useful%/lits rem  "
+    << setw(9) << shrink_tried << " "
+    << setw(9) << setprecision(4) << safe_div(shrink_success*100.0, shrink_tried) << " "
+    << setw(9) << shrink_shrunken << " "
+  );
 
   verb_print(1, "avg clsz/rem lits avg/finalavg "
     << setw(9) << safe_div(orig_uip_lits,uip_cls) << " "

@@ -94,6 +94,8 @@ public:
 
   // On-the-fly strengthening (OTFS) and block-wise shrinking
 
+  uint64_t shrink_tried = 0;
+  uint64_t shrink_success = 0;
   uint64_t shrink_shrunken = 0;
 
   // Subsumption

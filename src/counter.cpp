@@ -1272,7 +1272,6 @@ void Counter::decide_lit() {
       << dec_level());
   set_lit(lit, dec_level());
   stats.decisions++;
-  vsads_readjust();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
@@ -2246,6 +2245,7 @@ RetState Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   stats.conflicts++;
+  vsads_decay();
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   decisions.top().zero_out_branch_sol();
   decisions.top().mark_branch_unsat();
@@ -3713,9 +3713,18 @@ void Counter::subsume_all() {
       << " T: " << (cpu_time() - my_time));
 }
 
-void Counter::vsads_readjust() {
-  if (stats.decisions % conf.vsads_readjust_every == 0)
-    for(auto& w: watches) w.activity *= 0.5;
+// EVSIDS decay: grow the activity increment after each conflict so recent
+// conflicts get exponentially more weight. Factor ~1/0.95 ≈ 1.053 matches
+// CaDiCaL's default scorefactor=950.
+void Counter::vsads_decay() {
+  var_inc *= (1.0 / 0.95);
+  if (var_inc > 1e100) rescale_var_activities();
+}
+
+void Counter::rescale_var_activities() {
+  double factor = 1.0 / var_inc;
+  for (auto& w: watches) w.activity *= factor;
+  var_inc = 1.0;
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
@@ -3772,7 +3781,6 @@ bool Counter::run_sat_solver(RetState& state) {
       break;
     }
     stats.decisions++;
-    vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l;
     if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);

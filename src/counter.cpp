@@ -2396,6 +2396,7 @@ bool Counter::propagate(bool out_of_order) {
     auto* it2 = ws.begin();
     auto* it = ws.begin();
     for (; it != ws.end(); it++) {
+      if (it + 1 != ws.end()) __builtin_prefetch(alloc->ptr((it+1)->ofs));
       if (is_true(it->blckLit)) { *it2++ = *it;
         debug_print("cl ofs: " << it->ofs << " blocked on lit: " << it->blckLit << " -> skipping");
         continue; }
@@ -2500,21 +2501,32 @@ bool Counter::lit_redundant(Lit p, uint32_t abstract_levels) {
         debug_print("at i: " << i);
         Lit const p2 = c[i];
         debug_print("Examining lit " << p2 << " seen: " << (int)seen[p2.var()]);
-        if (!seen[p2.var()] && var(p2).decision_level > 0) {
-          if (var(p2).ante.isAnt()
-              && (abst_level(p2.var()) & abstract_levels) != 0
-          ) {
-              debug_print("lit " << p2 << " OK");
-              seen[p2.var()] = 1;
-              analyze_stack.push_back(p2);
+        if (var(p2).decision_level == 0) continue;
+        if (seen[p2.var()] == 4) {
+          // Poison: a previous lit_redundant call proved this variable
+          // blocks removal. Mark all intermediates as poison too, and fail.
+          debug_print("lit " << p2 << " POISONED");
+          for (size_t j = top; j < to_clear.size(); j++) seen[to_clear[j]] = 4;
+          return false;
+        }
+        if (seen[p2.var()]) continue; // in clause or already proven removable
+        if (var(p2).ante.isAnt()
+            && (abst_level(p2.var()) & abstract_levels) != 0
+        ) {
+            debug_print("lit " << p2 << " OK");
+            seen[p2.var()] = 1;
+            analyze_stack.push_back(p2);
+            to_clear.push_back(p2.var());
+        } else {
+            debug_print("lit " << p2 << " NOT OK -- poisoning");
+            // Mark all intermediates explored in this call as poison
+            for (size_t j = top; j < to_clear.size(); j++) seen[to_clear[j]] = 4;
+            // Mark the failing variable as poison too
+            if (!seen[p2.var()]) {
+              seen[p2.var()] = 4;
               to_clear.push_back(p2.var());
-          } else {
-              debug_print("lit " << p2 << " NOT OK");
-              //Return to where we started before function executed
-              for (size_t j = top; j < to_clear.size(); j++) seen[to_clear[j]] = 0;
-              to_clear.resize(top);
-              return false;
-          }
+            }
+            return false;
         }
       }
     }

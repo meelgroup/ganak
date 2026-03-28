@@ -2142,7 +2142,7 @@ void Counter::check_trail([[maybe_unused]] bool check_entail, bool force_check_u
   }
 
   vector<uint32_t> num_decs_at_level(dec_level()+1, 0);
-  bool const entailment_fail = false;
+  bool entailment_fail = false;
   for(const auto& t: trail) {
     int32_t const lev = var(t).decision_level;
     if (lev > dec_level()) {
@@ -2550,6 +2550,7 @@ void Counter::recursive_cc_min() {
 void Counter::minimize_uip_cl() {
   stats.uip_cls++;
   stats.orig_uip_lits += uip_clause.size();
+  shrink_uip_clause();
   recursive_cc_min();
   for(const auto& c: to_clear) seen[c] = 0;
   to_clear.clear();
@@ -3111,6 +3112,170 @@ typename Counter::ConflictData Counter::find_conflict_level(Lit p) {
     }
   }
   return data;
+}
+
+// ============================================================
+
+// ============================================================
+// Block-wise secondary UIP shrinking
+// Ported from CaDiCaL (Sörenson, Biere, Heule SAT'09).
+//
+// After 1-UIP derivation, uip_clause[1..] may contain several literals at
+// the same decision level ("a block").  For each block of size >= 2 we run a
+// small BFS starting from all block literals, resolving along reason clauses.
+// If BFS reaches open=0 it has found a secondary UIP that dominates the
+// entire block; all other block members are then redundant and replaced by
+// the secondary UIP.  If BFS fails we leave the block unchanged and let the
+// subsequent recursive CCMin handle it.
+// ============================================================
+
+void Counter::reset_shrinkable() {
+  for (uint32_t v : shrinkable_vars) shrink_seen[v] = 0;
+  shrinkable_vars.clear();
+  shrink_work.clear();
+}
+
+// Try to mark false_lit as shrinkable (open) in the current block search.
+//   +1  = newly marked
+//    0  = already open, or harmlessly skippable
+//   -1  = fail (would add a new literal at a lower level)
+int Counter::shrink_literal(Lit false_lit, int32_t blevel) {
+  assert(val(false_lit) == F_TRI);
+  const auto& vd = var_data[false_lit.var()];
+
+  if (vd.decision_level == 0) return 0;        // backbone: always false
+  if (shrink_seen[false_lit.var()]) return 0;   // already in open set
+
+  if (vd.decision_level < blevel) {
+    // Lower-level literal: OK only if already tracked in uip_clause
+    if (seen[false_lit.var()]) return 0;
+    return -1;  // would add a new literal to clause — fail
+  }
+
+  // Same level: add to open set, insert into work list sorted by sublevel DESC
+  shrink_seen[false_lit.var()] = 1;
+  shrinkable_vars.push_back(false_lit.var());
+  Lit true_lit = false_lit.neg();
+  auto it = shrink_work.begin();
+  while (it != shrink_work.end() &&
+         var_data[it->var()].sublevel > vd.sublevel) ++it;
+  shrink_work.insert(it, true_lit);
+  return 1;
+}
+
+// Pop the highest-sublevel open literal from the work list.
+Lit Counter::shrink_next() {
+  assert(!shrink_work.empty());
+  Lit t = shrink_work.front();
+  shrink_work.erase(shrink_work.begin());
+  return t;
+}
+
+// Resolve along the reason of true_lit (a trail literal at blevel).
+// Returns number of newly opened literals; sets failed=true on hard failure.
+uint32_t Counter::shrink_along_reason(Lit true_lit, int32_t blevel, bool& failed) {
+  const auto& ante = var_data[true_lit.var()].ante;
+  if (ante.isNull()) { failed = true; return 0; }  // decision literal
+
+  uint32_t opened = 0;
+  if (ante.isALit()) {
+    // Binary reason: antecedent stores the other (false) literal
+    int ret = shrink_literal(ante.as_lit(), blevel);
+    if (ret < 0) { failed = true; return 0; }
+    if (ret > 0) opened++;
+  } else {
+    Clause& cl = *alloc->ptr(ante.as_cl());
+    for (uint32_t i = 0; i < cl.sz; i++) {
+      if (val(cl[i]) != F_TRI) continue;  // skip the propagated (true) literal
+      int ret = shrink_literal(cl[i], blevel);
+      if (ret < 0) { failed = true; return 0; }
+      if (ret > 0) opened++;
+    }
+  }
+  return opened;
+}
+
+// Try to shrink the block uip_clause[bstart..bend).
+// Returns number of literals removed (0 if no secondary UIP found).
+uint32_t Counter::shrink_block(size_t bstart, size_t bend, int32_t blevel, Lit /*uip0*/) {
+  assert(shrinkable_vars.empty() && shrink_work.empty());
+
+  uint32_t open = 0;
+  for (size_t k = bstart; k < bend; k++) {
+    [[maybe_unused]] int ret = shrink_literal(uip_clause[k], blevel);
+    assert(ret == 1);
+    open++;
+  }
+
+  bool failed = false;
+  Lit secondary_uip = NOT_A_LIT;
+  while (!failed && open > 0) {
+    Lit t = shrink_next();
+    open--;
+    if (open == 0) { secondary_uip = t; break; }
+    open += shrink_along_reason(t, blevel, failed);
+  }
+
+  reset_shrinkable();
+
+  if (failed || secondary_uip == NOT_A_LIT) return 0;
+
+  // Replace block with secondary UIP (negated = false form for the clause)
+  Lit suip_false = secondary_uip.neg();
+  uip_clause[bstart] = suip_false;
+  if (!seen[suip_false.var()]) {
+    seen[suip_false.var()] = 1;
+    to_clear.push_back(suip_false.var());
+  }
+  inc_act(suip_false);
+
+  uint32_t removed = 0;
+  for (size_t k = bstart + 1; k < bend; k++) {
+    uip_clause[k] = NOT_A_LIT;
+    removed++;
+  }
+  return removed;
+}
+
+// Main entry: sort uip_clause[1..] into decision-level blocks, then try to
+// shrink each block with >= 2 literals down to a single secondary UIP.
+void Counter::shrink_uip_clause() {
+  if (!conf.do_shrink || uip_clause.size() < 3) return;
+
+  // Sort by (decision_level DESC, sublevel DESC): same-level lits are contiguous
+  // and in reverse trail order (needed for the BFS to find the dominator).
+  std::sort(uip_clause.begin() + 1, uip_clause.end(),
+            [this](Lit a, Lit b) {
+              const auto& va = var_data[a.var()];
+              const auto& vb = var_data[b.var()];
+              if (va.decision_level != vb.decision_level)
+                return va.decision_level > vb.decision_level;
+              return va.sublevel > vb.sublevel;
+            });
+
+  const Lit uip0 = uip_clause[0];
+  uint32_t total_removed = 0;
+
+  size_t i = 1;
+  while (i < uip_clause.size()) {
+    int32_t blevel = var_data[uip_clause[i].var()].decision_level;
+    size_t bstart = i;
+    size_t bend = i + 1;
+    while (bend < uip_clause.size() &&
+           var_data[uip_clause[bend].var()].decision_level == blevel) bend++;
+
+    if (bend - bstart >= 2)
+      total_removed += shrink_block(bstart, bend, blevel, uip0);
+    i = bend;
+  }
+
+  if (total_removed > 0) {
+    size_t k = 1;
+    for (size_t m = 1; m < uip_clause.size(); m++)
+      if (uip_clause[m] != NOT_A_LIT) uip_clause[k++] = uip_clause[m];
+    uip_clause.resize(k);
+    stats.shrink_shrunken += total_removed;
+  }
 }
 
 void Counter::create_uip_cl() {
@@ -4212,6 +4377,7 @@ void Counter::init_and_preproc() {
   tstamp = 10;
   seen.clear();
   seen.resize(2*(nVars()+2), 0);
+  shrink_seen.assign(nVars()+2, 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
   comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
   init_decision_stack();
@@ -4617,3 +4783,5 @@ void Counter::print_cls_stats() const {
   verb_print(1, "Long irred cls/tri " << setw(10) << long_irred_cls.size()-num_tri_irred_cls << " " << setw(10) << num_tri_irred_cls);
   verb_print(1, "Long red cls/tri   " << setw(10) << long_red_cls.size()-num_tri_red_cls << " " << setw(10) << num_tri_red_cls);
 }
+
+

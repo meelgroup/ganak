@@ -268,6 +268,9 @@ void add_ganak_options()
     add_arg("--buddy", conf.do_buddy, fc_int, "Run BuDDy");
     add_arg("--buddymaxcls", conf.buddy_max_cls, fc_int, "Run BuDDy");
 
+    // Shrinking options
+    add_arg("--shrink", conf.do_shrink, fc_int, "Block-wise secondary UIP shrinking (CaDiCaL-style)");
+
     // Vivif options -- inprocessing during Ganak
     add_arg("--vivif", conf.do_vivify, fc_int, "Vivify clauses");
     add_arg("--vivifevery", conf.vivif_every, fc_int, "Vivify every N conflicts");

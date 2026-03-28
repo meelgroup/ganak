@@ -300,6 +300,11 @@ public:
   vector<uint32_t> to_clear;
   vector<uint8_t> seen;
 
+  // Shrink (block-wise secondary UIP search, Sörenson/Biere/Heule SAT'09)
+  vector<uint8_t> shrink_seen;    // indexed by var: 1 = open in current block search
+  vector<uint32_t> shrinkable_vars; // vars to clear in reset_shrinkable()
+  vector<Lit> shrink_work;         // work list of true-form literals, sorted by sublevel DESC
+
   // Switch to approxmc
   double start_time;
   std::atomic<bool> appmc_timeout_fired = false;
@@ -424,6 +429,13 @@ public:
   Antecedent confl;
   vector<Lit> uip_clause;
   void create_uip_cl();
+
+  void shrink_uip_clause();
+  void reset_shrinkable();
+  int  shrink_literal(Lit false_lit, int32_t blevel);
+  Lit  shrink_next();
+  uint32_t shrink_along_reason(Lit true_lit, int32_t blevel, bool& failed);
+  uint32_t shrink_block(size_t bstart, size_t bend, int32_t blevel, Lit uip0);
   void minimize_uip_cl();
   vector<Lit> tmp_cl_minim; // Used during minimize_uip_cl
   uint32_t abst_level(const uint32_t x) const;

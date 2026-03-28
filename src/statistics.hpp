@@ -92,6 +92,10 @@ public:
   uint64_t toplevel_probe_fail = 0;
   uint64_t toplevel_bothprop_fail = 0;
 
+  // On-the-fly strengthening (OTFS) and block-wise shrinking
+
+  uint64_t shrink_shrunken = 0;
+
   // Subsumption
   uint64_t subsume_runs = 0;
   uint64_t subsumed_bin_irred_cls = 0;

@@ -63,6 +63,7 @@ struct CounterConfiguration {
   int polar_type = 0;
   uint32_t base_lbd_cutoff = 2;
   uint32_t lbd_tier2_cutoff = 6; // tier 2: lbd <= this kept if recently used (CaDiCaL-style)
+  int do_shrink = 1;             // block-wise secondary UIP shrinking (CaDiCaL-style)
   int do_update_lbd_cutoff = 0;
 
   int do_vivify = 1;

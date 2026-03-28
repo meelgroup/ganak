@@ -114,8 +114,6 @@ def timeout_parse(fname):
                 call = call.replace("././sharpSAT", "")
                 call = call.strip()
 
-    if signal is not None:
-        t = None
     if signal is None:
         signal = ""
     return {"t": t, "mem": mem, "call": call, "solver": solver,
@@ -349,7 +347,7 @@ def main():
             "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
             "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
             "sat_rst", "rst", "cubes_orig", "cubes_final", "gates_extended",
-            "gates_extend_t", "padoa_extended", "padoa_extend_t"]
+            "gates_extend_t", "padoa_extended", "padoa_extend_t", "timeout_t"]
 
     def g(d, key):
         v = d.get(key)
@@ -416,6 +414,7 @@ def main():
                 g(f, "gates_extend_t"),
                 g(f, "padoa_extended"),
                 g(f, "padoa_extend_t"),
+                g(f, "timeout_t"),
             ])
 
     with open("ganak.sqlite") as sql_f:

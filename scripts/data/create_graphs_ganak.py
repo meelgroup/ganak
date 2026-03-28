@@ -251,20 +251,20 @@ def print_sigabrt_files(table_todo, fname_like):
         return
     print(f"\n::: WARNING: {count} instance(s) with sigABRT (signal=6) :::")
     cur.execute(
-        f"SELECT dirname, fname FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
+        f"SELECT dirname, fname, timeout_t FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
         f" AND signal=6{fname_like} ORDER BY dirname, fname"
     )
     rows = cur.fetchall()
     con.close()
-    max_dir  = max(len(r[0]) for r in rows)
-    max_file = max(len(r[1]) for r in rows)
-    sep = f"+-{'-' * max_dir}-+-{'-' * max_file}-+"
-    fmt = f"| {{:<{max_dir}}} | {{:<{max_file}}} |"
+    str_rows = [(d, f, f"{t:.2f}" if t is not None else "N/A") for d, f, t in rows]
+    widths = [max(len(h), max(len(r[i]) for r in str_rows)) for i, h in enumerate(("dirname", "fname", "timeout_t"))]
+    sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+    fmt = "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |"
     print(sep)
-    print(fmt.format("dirname", "fname"))
+    print(fmt.format("dirname", "fname", "timeout_t"))
     print(sep)
-    for dirname, fname in rows:
-        print(fmt.format(dirname, fname))
+    for row in str_rows:
+        print(fmt.format(*row))
     print(sep)
 
 

@@ -3974,7 +3974,7 @@ uint64_t Counter::buddy_count() {
       num_total++;
       actual_bin++;
 
-      debug_print("bin cl: " << l << " " << l2 << " 0");
+      debug_print("bin cl: " << l << " " << ws.lit() << " 0");
     }
   }
   if (num_total == 0) fin = bdd_true();
@@ -3999,7 +3999,7 @@ uint64_t Counter::buddy_count() {
 #ifdef VERBOSE_DEBUG
   std::stringstream fname;
   fname << "bdd-" << stats.buddy_called << ".dot";
-  bdd_fnprintdot(fname.str().c_str(), final, proj_end);
+  bdd_fnprintdot(fname.str().c_str(), fin, proj_end);
   debug_print("BDD written to: " << fname.str());
 #endif
 
@@ -4012,7 +4012,7 @@ uint64_t Counter::buddy_count() {
   else
     cnt = bdd_satcount_i64(fin, proj_end);
   VERBOSE_DEBUG_DO(
-  cout << "cnt: " << *cnt << endl;
+  cout << "cnt: " << cnt << endl;
   cout << "num bin cls: " << actual_bin << endl;
   cout << "num long cls: " << actual_long << endl;
   cout << "----------------------------------------------" << endl);
@@ -4161,8 +4161,8 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
     if (sat_mode()) until = std::min((int)decisions.size(), sat_start_dec_level);
     for(int32_t i = dec_lev; i < until; i++) {
       debug_print("set_lit, compensating weight. i: " << i << " dec_lev: " << dec_lev);
-      if (vars_act_dec.size() <= i*(nVars()+1)) break;
-      uint64_t const* at = vars_act_dec.data()+i*(nVars()+1);
+      if (vars_act_dec.size() <= (size_t)i*(nVars()+1)) break;
+      uint64_t const* at = vars_act_dec.data()+(size_t)i*(nVars()+1);
       bool const in_comp = (at[0] == at[lit.var()]);
       /* debug_print("dec val compare: " << at[0]); */
       // Not in parent, so not in any children for sure

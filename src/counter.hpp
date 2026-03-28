@@ -697,9 +697,9 @@ inline void Counter::set_confl_state(Lit a, Lit b) {
 }
 
 inline void Counter::set_confl_state(Clause* cl) {
-  if (cl->red && cl->lbd > this->lbd_cutoff) {
+  if (cl->red) {
     cl->set_used();
-    /* cl->update_lbd(this->calc_lbd(*cl)); */
+    cl->update_lbd(this->calc_lbd(*cl));
   }
   confl = Antecedent(this->alloc->get_offset(cl));
   confl_lit = NOT_A_LIT;

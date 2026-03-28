@@ -3312,9 +3312,9 @@ void Counter::create_uip_cl() {
     fill_cl(confl, c, size, p);
     if (confl.isAClause()) {
       Clause& cl = *alloc->ptr(confl.as_cl());
-      if (cl.red && cl.lbd > lbd_cutoff) {
+      if (cl.red) {
         cl.set_used();
-        /* cl.update_lbd(calc_lbd(cl)); */
+        cl.update_lbd(calc_lbd(cl));
       }
     }
     if (p == NOT_A_LIT) {

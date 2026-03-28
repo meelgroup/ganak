@@ -232,6 +232,9 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
 
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
+    // Prefetch next variable's holder metadata (timestamp, level, occ sizes/offsets)
+    if (i + 1 < comp_vars.size())
+      __builtin_prefetch(holder.data.get() + comp_vars[i+1] * hstride);
     SLOW_DEBUG_DO(assert(is_unknown(v)));
     analyze_verb(
       debug_print("-----------------------");
@@ -355,6 +358,10 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       ClData& d = *longs;
       longs++;
+      // Prefetch next long clause's literal data (only for non-ternary clauses
+      // where we need to access long_clauses_data; ternary data is inline in ClData)
+      if (longs != longs_end && longs->id >= max_tri_clid)
+        __builtin_prefetch(long_clauses_data.data() + longs->off);
       bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses

@@ -7,6 +7,9 @@ import re
 import nbformat as nbf
 import plotext as plt
 
+BLUE   = "\033[94m"
+RESET = "\033[0m"
+
 
 def convert_to_cactus(fname, fname2):
     with open(fname, "r") as f:
@@ -149,10 +152,12 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
     for only_counted in [False, True]:
         counted_req = ""
         if only_counted:
-            print("::: --------- Data based on ONLY benchmarks that are COUNTED ------- :::")
-            counted_req = " and ganak_time is not NULL "
+            title = "Data based on ONLY benchmarks that are COUNTED"
         else:
-            print("::: --------- Data based on ALSO UNCOUNTED benchmarks ------- :::")
+            title = "Data based on ALSO UNCOUNTED benchmarks"
+        print(f"\n{BLUE}{title}{RESET}")
+        if only_counted:
+            counted_req = " and ganak_time is not NULL "
         with open("gen_table.sqlite", "w") as f:
             f.write(".mode table\n")
             # f.write(".mode colum\n")
@@ -178,6 +183,9 @@ def _median_subquery(col, dir, ver, fname_like, nozero=False):
 def print_median_tables(table_todo, fname_like, verbose=False):
     if not table_todo:
         return
+
+    title = "Median values per directory"
+    print(f"\n{BLUE}{title}{RESET}")
 
     plain_cols  = ["indep_sz", "opt_indep_sz", "orig_proj_sz", "new_nvars", "ganak_mem_mb"]
     nozero_cols = ["gates_extended", "padoa_extended"]
@@ -219,7 +227,7 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
             continue
 
         title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
-        print(f"\n=== {title} ===")
+        print(f"\n{BLUE}{title}{RESET}")
         plt.clf()
         plt.theme("dark")
         plt.plot_size(160, 30)
@@ -249,8 +257,9 @@ def print_sigabrt_files(table_todo, fname_like):
     if count == 0:
         con.close()
         return
-    filter_desc = f", filtered by: {fname_like.strip()}" if fname_like.strip() else ""
-    print(f"\n::: WARNING: {count} instance(s) with sigABRT (signal=6), excluding mem_out=1{filter_desc} :::")
+    filter_desc = f"  |  filter: {fname_like.strip()}" if fname_like.strip() else ""
+    title = f"WARNING: {count} instance(s) with sigABRT (signal=6)  |  excluding mem_out=1{filter_desc}"
+    print(f"\n{BLUE}{title}{RESET}")
     cur.execute(
         f"SELECT dirname, fname, timeout_t FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
         f" AND signal=6 AND (mem_out IS NULL OR mem_out=0){fname_like} ORDER BY dirname, fname"

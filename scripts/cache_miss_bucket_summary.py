@@ -9,6 +9,9 @@ import argparse
 import re
 import sqlite3
 
+BLUE   = "\033[94m"
+RESET = "\033[0m"
+
 
 def median(cur, col, where):
     cur.execute(f"SELECT COUNT(*) FROM data WHERE {where} AND {col} IS NOT NULL")
@@ -103,7 +106,8 @@ def main():
     con.close()
 
     headers = ["metric"] + [b[0] for b in buckets]
-    print(f"\nCache miss rate bucket summary for: {args.dirname}")
+    title = f"Cache Miss Rate Bucket Summary  —  {args.dirname}"
+    print(f"\n{BLUE}{title}{RESET}")
     for call in calls:
         print(f"  call: {call}")
     print(f"NOTE: filtered to instances where ganak_time - arjun_time >= {args.cutoff}s")

@@ -196,6 +196,7 @@ public:
   }
   uint32_t sz;
   uint32_t total_used = 0;
+  uint32_t pos = 2; // cached watch-replacement search position (Gent 2013)
   uint8_t lbd = 0;
   uint8_t used:1 = 1;
   uint8_t red:1 = 0;

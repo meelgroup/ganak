@@ -2420,10 +2420,17 @@ bool Counter::propagate(bool out_of_order) {
         continue;
       }
 
-      uint32_t i = 2;
-      for(; i < c.sz; i++) if (!is_false(c[i])) break;
+      // Search from cached position, wrap around if needed (Gent 2013)
+      uint32_t start = (c.pos < c.sz) ? c.pos : 2;
+      uint32_t i = start;
+      for (; i < c.sz; i++) if (!is_false(c[i])) break;
+      if (i == c.sz) {
+        for (i = 2; i < start; i++) if (!is_false(c[i])) break;
+        if (i == start) i = c.sz; // not found
+      }
       // either we found a free or satisfied lit
       if (i != c.sz) {
+        c.pos = i;
         c[1] = c[i];
         c[i] = plit;
         debug_print("New watch for cl: " << c[1]);

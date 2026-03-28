@@ -2,7 +2,7 @@
 """Summarise solver metrics by cache-miss-rate bucket for a given dirname.
 
 Prints a table with columns for high/medium/low cache miss rate, showing
-median values for key metrics. Run from the directory containing mydb.sql.
+median values for key metrics. Run from the directory containing data.sqlite3.
 """
 
 import argparse
@@ -39,7 +39,7 @@ def print_table(rows, headers):
 
 def main():
     parser = argparse.ArgumentParser(description="Cache miss rate bucket summary")
-    parser.add_argument("dirname", help="dirname to analyse (must exist in mydb.sql)")
+    parser.add_argument("dirname", help="dirname to analyse (must exist in data.sqlite3)")
     parser.add_argument("--cutoff", type=float, default=100.0,
                         help="Minimum ganak_time - arjun_time to include (default: 100)")
     parser.add_argument("--low", type=float, default=0.4,
@@ -48,7 +48,7 @@ def main():
                         help="Lower bound for high cache miss bucket (default: 0.85)")
     args = parser.parse_args()
 
-    con = sqlite3.connect("mydb.sql")
+    con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
 
     cur.execute("SELECT COUNT(*) FROM data WHERE dirname=?", (args.dirname,))
@@ -56,7 +56,7 @@ def main():
         cur.execute("SELECT DISTINCT dirname FROM data ORDER BY dirname")
         known = [r[0] for r in cur.fetchall()]
         con.close()
-        parser.error(f"dirname '{args.dirname}' not found in mydb.sql. Known dirnames:\n  "
+        parser.error(f"dirname '{args.dirname}' not found in data.sqlite3. Known dirnames:\n  "
                      + "\n  ".join(known))
 
     cur.execute("SELECT DISTINCT ganak_call FROM data WHERE dirname=? AND ganak_call IS NOT NULL", (args.dirname,))

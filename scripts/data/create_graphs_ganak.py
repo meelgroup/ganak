@@ -23,7 +23,7 @@ def convert_to_cactus(fname, fname2):
 
 def get_versions():
     vers = []
-    con = sqlite3.connect("mydb.sql")
+    con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     res = cur.execute("""
                       SELECT ganak_ver
@@ -37,7 +37,7 @@ def get_versions():
 
 def get_dirs(ver: str):
     ret = []
-    con = sqlite3.connect("mydb.sql")
+    con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     res = cur.execute("SELECT dirname, ganak_call FROM data where ganak_ver='"+ver+"' group by dirname")
     for a in res:
@@ -100,7 +100,7 @@ def build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_l
                 f.write(".mode csv\n")
                 f.write(".output "+fname+"\n")
                 f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
-            os.system("sqlite3 mydb.sql < gencsv.sqlite")
+            os.system("sqlite3 data.sqlite3 < gencsv.sqlite")
             os.unlink("gencsv.sqlite")
 
             fname2 = fname + ".gnuplotdata"
@@ -168,7 +168,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
             if verbose:
                 print(f"  Summary query: {query[:120]}...")
             f.write(query)
-        os.system("sqlite3 mydb.sql < gen_table.sqlite")
+        os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
         os.unlink("gen_table.sqlite")
 
 
@@ -205,13 +205,13 @@ def print_median_tables(table_todo, fname_like, verbose=False):
     with open("gen_table.sqlite", "w") as f:
         f.write(".mode table\n")
         f.write(query + "\n")
-    os.system("sqlite3 mydb.sql < gen_table.sqlite")
+    os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
     os.unlink("gen_table.sqlite")
 
 
 def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):
     for dir, ver in table_todo:
-        con = sqlite3.connect("mydb.sql")
+        con = sqlite3.connect("data.sqlite3")
         cur = con.cursor()
         res = cur.execute(
             "SELECT " + col + " FROM data WHERE dirname='" + dir +
@@ -247,7 +247,7 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
 def print_sigabrt_files(table_todo, fname_like):
     dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
     vers = ",".join("'" + ver + "'" for _, ver in table_todo)
-    con = sqlite3.connect("mydb.sql")
+    con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     cur.execute(
         f"SELECT COUNT(*) FROM data WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
@@ -343,7 +343,7 @@ dirs = ["""+dirs+"""]
 colname='"""+colname+"""'
 names=[]
 dfs = []
-conn = sqlite3.connect('mydb.sql')
+conn = sqlite3.connect('data.sqlite3')
 for d in dirs:
   # Step 3: Run the SQL query and load the results into a DataFrame
   query = "SELECT fname, "+colname+", ganak_call FROM data where "+colname+" is not NULL and dirname='"+d+"' order by "+colname
@@ -389,7 +389,7 @@ dirs = ["""+dirs+"""]
 
 names = []
 dfs = []
-conn = sqlite3.connect('mydb.sql')
+conn = sqlite3.connect('data.sqlite3')
 
 # Assign a color for each dirname
 colors = plt.cm.tab10(np.linspace(0, 1, len(dirs)))

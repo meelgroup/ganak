@@ -418,7 +418,7 @@ def main():
             ])
 
     with open("ganak.sqlite") as sql_f:
-        subprocess.run(["sqlite3", "mydb.sql"], stdin=sql_f, check=True)
+        subprocess.run(["sqlite3", "data.sqlite3"], stdin=sql_f, check=True)
 
 
 if __name__ == "__main__":

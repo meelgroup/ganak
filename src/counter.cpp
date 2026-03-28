@@ -2435,7 +2435,7 @@ bool Counter::propagate(bool out_of_order) {
         c[1] = c[i];
         c[i] = plit;
         debug_print("New watch for cl: " << c[1]);
-        watches[c[1]].add_cl(ofs, plit);
+        watches[c[1]].add_cl(ofs, c[0]);
       } else {
         *it2++ = *it;
         if (val(c[0]) == F_TRI) {
@@ -3050,7 +3050,7 @@ bool Counter::v_propagate() {
         c[1] = c[i];
         c[i] = plit;
         debug_print("v New watch for cl: " << c[1]);
-        watches[c[1]].add_cl(ofs, plit);
+        watches[c[1]].add_cl(ofs, c[0]);
       } else {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {

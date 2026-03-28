@@ -3883,13 +3883,14 @@ bool Counter::do_buddy_count() {
 
   debug_print("Buddy count: " << cnt);
   if (cnt > 0) {
+    FF ff_cnt = std::make_unique<ArjunNS::FMpz>(mpz_class(cnt));
     decisions.top().reset();
     decisions.top().change_to_right_branch();
-    decisions.top().include_solution(cnt);
+    decisions.top().include_solution(ff_cnt);
   } else {
-    decisions.top().branch_found_unsat();
+    decisions.top().mark_branch_unsat();
     decisions.top().change_to_right_branch();
-    decisions.top().branch_found_unsat();
+    decisions.top().mark_branch_unsat();
   }
   return cnt > 0;
 }

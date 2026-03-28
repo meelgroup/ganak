@@ -3722,7 +3722,7 @@ bool Counter::run_sat_solver(RetState& state) {
 
   // the SAT loop
   auto orig_confl = stats.conflicts;
-  auto last_restart = 0;
+  uint64_t last_restart = 0;
   uint32_t num_rst = 0;
   while(true) {
     uint32_t d;

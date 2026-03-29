@@ -1272,7 +1272,6 @@ void Counter::decide_lit() {
       << dec_level());
   set_lit(lit, dec_level());
   stats.decisions++;
-  vsads_readjust();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
@@ -2246,6 +2245,7 @@ RetState Counter::resolve_conflict() {
   VERBOSE_DEBUG_DO(print_conflict_info());
 
   stats.conflicts++;
+  vsads_decay();
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
   decisions.top().zero_out_branch_sol();
   decisions.top().mark_branch_unsat();
@@ -3312,9 +3312,9 @@ void Counter::create_uip_cl() {
     fill_cl(confl, c, size, p);
     if (confl.isAClause()) {
       Clause& cl = *alloc->ptr(confl.as_cl());
-      if (cl.red && cl.lbd > lbd_cutoff) {
+      if (cl.red) {
         cl.set_used();
-        /* cl.update_lbd(calc_lbd(cl)); */
+        cl.update_lbd(calc_lbd(cl));
       }
     }
     if (p == NOT_A_LIT) {
@@ -3368,6 +3368,27 @@ void Counter::create_uip_cl() {
   VERBOSE_DEBUG_DO(cout << "UIP cl: " << endl; print_cl(uip_clause.data(), uip_clause.size()));
   CHECK_IMPLIED_DO(check_implied(uip_clause));
   minimize_uip_cl();
+
+  // Reason-side literal bumping (CaDiCaL bumpreason): bump activity of
+  // literals in the reason clauses of learned clause literals. This helps
+  // the variable activity heuristic focus on the broader conflict neighborhood.
+  if (conf.do_bump_reason) {
+    for (uint32_t k = 1; k < uip_clause.size(); k++) {
+      const Lit q = uip_clause[k];
+      const auto& ante = var(q).ante;
+      if (ante.isNull()) continue;
+      if (ante.isALit()) {
+        const Lit other = ante.as_lit();
+        if (var(other).decision_level > 0) inc_act(other);
+      } else {
+        const Clause& cl = *alloc->ptr(ante.as_cl());
+        for (uint32_t i = 0; i < cl.sz; i++)
+          if (cl[i].var() != q.var() && var(cl[i]).decision_level > 0)
+            inc_act(cl[i]);
+      }
+    }
+  }
+
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0));
   debug_print(__FUNCTION__ << " finished");
 }
@@ -3692,9 +3713,18 @@ void Counter::subsume_all() {
       << " T: " << (cpu_time() - my_time));
 }
 
-void Counter::vsads_readjust() {
-  if (stats.decisions % conf.vsads_readjust_every == 0)
-    for(auto& w: watches) w.activity *= 0.5;
+// EVSIDS decay: grow the activity increment after each conflict so recent
+// conflicts get exponentially more weight. Factor ~1/0.95 ≈ 1.053 matches
+// CaDiCaL's default scorefactor=950.
+void Counter::vsads_decay() {
+  var_inc *= (1.0 / 0.95);
+  if (var_inc > 1e100) rescale_var_activities();
+}
+
+void Counter::rescale_var_activities() {
+  double factor = 1.0 / var_inc;
+  for (auto& w: watches) w.activity *= factor;
+  var_inc = 1.0;
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
@@ -3751,7 +3781,6 @@ bool Counter::run_sat_solver(RetState& state) {
       break;
     }
     stats.decisions++;
-    vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l;
     if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);

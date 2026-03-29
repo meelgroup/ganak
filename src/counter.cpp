@@ -4583,8 +4583,8 @@ void Counter::reduce_db() {
   constexpr uint32_t lbd_bump_max_low_cls = 50;
   if (stats.conflicts > lbd_bump_min_conflicts && lbd_cutoff == conf.base_lbd_cutoff
       && num_low_lbd_cls < lbd_bump_max_low_cls && conf.do_update_lbd_cutoff) {
-    verb_print(1, " [rdb] bumping rdb cutoff to 3");
     lbd_cutoff++;
+    verb_print(1, " [rdb] bumping rdb cutoff to " << lbd_cutoff);
   }
 
   if (conf.verb >= 2 || stats.reduce_db % 3 == 1) {

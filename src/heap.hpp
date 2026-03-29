@@ -68,7 +68,7 @@ class Heap {
 public:
     Heap(const Comp& c) : lt(c) { }
     uint32_t size() const { return heap.size(); }
-    bool empty() const { return heap.size() == 0; }
+    bool empty() const { return heap.empty(); }
     bool in_heap(int n) const {
         return n < (int)indices.size() && indices[n] >= 0;
     }
@@ -122,8 +122,8 @@ public:
         return mem;
     }
 
-    bool heap_property(uint32_t i) const {
-        return i >= heap.size()
+    bool heap_property(int i) const {
+        return i >= static_cast<int>(heap.size())
             || ( (i == 0 || !lt(heap[i], heap[parent(i)]))
                   && heap_property( left(i)  )
                   && heap_property( right(i) )

@@ -40,22 +40,20 @@ public:
     else model_count_ = nullptr;
     last_used_time_ = b.last_used_time_;
     delete_permitted = b.delete_permitted;
+    model_count_is_zero_ = b.model_count_is_zero_;
     return *this;
   }
   BaseComp(BaseComp&& b) noexcept
     : model_count_(std::move(b.model_count_)),
       last_used_time_(b.last_used_time_),
-      delete_permitted(b.delete_permitted)
+      delete_permitted(b.delete_permitted),
+      model_count_is_zero_(b.model_count_is_zero_)
   {
     b.last_used_time_ = 1;
     b.delete_permitted = false;
+    b.model_count_is_zero_ = false;
   }
-  BaseComp(const BaseComp& b) {
-    if (b.model_count_) model_count_ = b.model_count_->dup();
-    else model_count_ = nullptr;
-    last_used_time_ = b.last_used_time_;
-    delete_permitted = b.delete_permitted;
-  }
+  BaseComp(const BaseComp& b) { *this = b; }
   uint64_t last_used_time() const { return last_used_time_; }
   const FF& model_count() const { return model_count_; }
   uint64_t bignum_bytes() const{
@@ -71,11 +69,15 @@ public:
   }
 
   void set_model_count(const FF& rn) {
-    assert(model_count_ == nullptr);
+    assert(model_count_ == nullptr && !model_count_is_zero_);
+    if (rn == nullptr) return;
+    // zero is a valid model count (UNSAT component); store it via flag so
+    // the hash table can cache it rather than recomputing it every time
+    if (rn->is_zero()) { model_count_is_zero_ = true; return; }
     model_count_ = rn->dup();
   }
 
-  bool model_count_found(){ return model_count_ != nullptr; }
+  bool model_count_found() const { return model_count_ != nullptr || model_count_is_zero_; }
 
   // a cache entry is deletable
   // only if it is not connected to an active
@@ -91,8 +93,9 @@ public:
 
 protected:
   FF model_count_ = nullptr;
-  uint64_t last_used_time_ :63 = 1; //effectively the score
+  uint64_t last_used_time_ :62 = 1; //effectively the score
   uint64_t delete_permitted:1 = false;
+  uint64_t model_count_is_zero_:1 = false;
 };
 
 static_assert(sizeof(BaseComp) <= 2*sizeof(uint64_t), "BaseComp is not packed");

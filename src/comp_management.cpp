@@ -35,32 +35,18 @@ CompManager::CompManager(const CounterConfiguration& config,
 {
 }
 
-void CompManager::remove_cache_pollutions_of_if_exists(const StackLevel &top) {
+void CompManager::remove_cache_pollutions_of(const StackLevel &top, bool skip_missing) {
+  // all processed comps are found in [top.remaining_comps_ofs(), comp_stack.size())
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
+  if (!skip_missing) assert(cache->exists(get_super_comp(top).id()));
 
   for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
-    if (!cache->exists(comp_stack[u]->id())) continue;
-    stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
-  }
-  stats.cache_pollutions_called++;
-}
-
-void CompManager::remove_cache_pollutions_of(const StackLevel &top) {
-  // all processed comps are found in
-  // [top.curr_remain_comp(), comp_stack.size())
-  // first, remove the list of descendants from the father
-  assert(top.remaining_comps_ofs() <= comp_stack.size());
-  assert(top.super_comp() != 0);
-  assert(cache->exists(get_super_comp(top).id()));
-
-  for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++) {
+    if (skip_missing && !cache->exists(comp_stack[u]->id())) continue;
     assert(cache->exists(comp_stack[u]->id()));
     stats.cache_pollutions_removed += cache->clean_pollutions_involving(comp_stack[u]->id());
   }
   stats.cache_pollutions_called++;
-
-  /* SLOW_DEBUG_DO(cache.test_descendantstree_consistency()); */
 }
 
 // This creates potential component, checks if it's already in the
@@ -89,9 +75,9 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
-        // Must incorporate BEFORE, because set_id will swap/emplace_back
-        stats.incorporate_cache_store(cache->get_extra_bytes(ccomp), p_new_comp->nVars());
+        const uint64_t new_comp_extra_bytes = cache->get_extra_bytes(ccomp);
         p_new_comp->set_id(cache->add_new_comp(ccomp, super_comp.id()));
+        stats.incorporate_cache_store(new_comp_extra_bytes, p_new_comp->nVars());
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
@@ -106,7 +92,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
-        free(p_new_comp);
+        free_comp(p_new_comp);
       }
       cache->free_comp(ccomp);
     }

@@ -22,10 +22,16 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <memory>
+#include <ranges>
+#include <set>
+#include <string>
 
 #include "clauseallocator.hpp"
 #include "common.hpp"
@@ -33,8 +39,7 @@ THE SOFTWARE.
 #include "comp_management.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
-#include "comp_management.hpp"
-#include "TreeDecomposition.hpp"
+#include <treedecomp/TreeDecomposition.hpp>
 #include "structures.hpp"
 #include "heap.hpp"
 #ifdef BUDDY_ENABLED
@@ -43,25 +48,29 @@ THE SOFTWARE.
 
 #include <cryptominisat5/cryptominisat.h>
 
-using std::pair;
-using std::map;
-using std::unique_ptr;
-using std::string;
-using std::setw;
-
 namespace GanakInt {
 
-template<typename T>
+inline CMSat::Lit ganak_to_cms_lit(const Lit& l) {
+  return CMSat::Lit(l.var()-1, !l.sign());
+}
+
+template<std::ranges::range T>
 inline vector<CMSat::Lit> ganak_to_cms_cl(const T& cl) {
   vector<CMSat::Lit> cms_cl;
-  cms_cl.reserve(cl.size());
-  for(const auto& l: cl) cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  if constexpr (std::ranges::sized_range<T>) cms_cl.reserve(std::ranges::size(cl));
+  std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);
   return cms_cl;
 }
 
 inline vector<CMSat::Lit> ganak_to_cms_cl(const Lit& l) {
+  return {ganak_to_cms_lit(l)};
+}
+
+// Explicit overload needed for brace-enclosed initializer lists (not deducible by templates)
+inline vector<CMSat::Lit> ganak_to_cms_cl(const std::initializer_list<Lit>& cl) {
   vector<CMSat::Lit> cms_cl;
-  cms_cl.push_back(CMSat::Lit(l.var()-1, !l.sign()));
+  cms_cl.reserve(cl.size());
+  std::ranges::transform(cl, std::back_inserter(cms_cl), ganak_to_cms_lit);
   return cms_cl;
 }
 
@@ -76,7 +85,6 @@ enum class RetState {
 using enum RetState;
 
 inline std::ostream& operator<<(std::ostream& os, const RetState& val) {
-  std::stringstream s;
   switch (val) {
     case RetState::EXIT : os << "EXIT"; break;
     case RetState::RESOLVED: os << "RESOLVED"; break;
@@ -101,10 +109,10 @@ struct BinClSub {
       lit[1] = _lit2;
     }
 
-  uint32_t size() const { return 2; }
-  const Lit* begin() const {return &lit[0];}
+  [[nodiscard]] uint32_t size() const { return 2; }
+  [[nodiscard]] const Lit* begin() const {return &lit[0];}
   Lit* begin() {return &lit[0];}
-  const Lit* end() const {return begin()+2;}
+  [[nodiscard]] const Lit* end() const {return begin()+2;}
   Lit* end() {return begin()+2;}
   Lit& operator[](const uint32_t at) {return lit[at];}
   const Lit& operator[](const uint32_t at) const {return lit[at];}
@@ -119,7 +127,7 @@ struct BinClSub {
       red == other.red;
   }
 
-  Lit lit[2];
+  std::array<Lit, 2> lit;
   bool red;
 };
 
@@ -148,12 +156,14 @@ public:
   Counter(const CounterConfiguration& _conf, const FG& _fg);
   ~Counter();
   void new_vars(const uint32_t n);
-  void set_indep_support(const set<uint32_t>& indeps);
-  void set_optional_indep_support(const set<uint32_t>& indeps);
+  void set_indep_support(const std::set<uint32_t>& indeps);
+  void set_optional_indep_support(const std::set<uint32_t>& indeps);
   void print_indep_distrib() const;
   bool add_irred_cl(const vector<Lit>& lits);
   bool add_red_cl(const vector<Lit>& lits, int lbd = -1);
-  void end_irred_cls();
+  // Filters out true lits, keeps unknown lits. Returns false if empty (UNSAT).
+  bool filter_lits(const vector<Lit>& lits_orig, vector<Lit>& lits) const;
+  void init_and_preproc();
   void set_lit_weight(Lit l, const FF& w);
   FF outer_count();
   uint64_t get_tstamp() const { return tstamp; }
@@ -170,27 +180,23 @@ public:
   uint32_t nVars() const { return var_data.size() - 1; }
   double get_start_time() const { return start_time;}
   const auto& get_cache() const { return comp_manager->get_cache();}
-  void set_generators(const vector<map<Lit, Lit>>& _gens) { generators = _gens; }
+  bool has_comp_manager() const { return comp_manager != nullptr; }
+  void set_generators(const vector<std::map<Lit, Lit>>& _gens) { generators = _gens; }
 
-  const FF& get_weight(const Lit& l) { return weights[l.raw()];}
-  const FF& get_weight(const uint32_t v) { return var_weights[v]; }
+  const FF& get_weight(const Lit& l) const { return weights[l.raw()];}
+  const FF& get_weight(const uint32_t v) const { return var_weights[v]; }
   bool weight_larger_than(const FF& fst, const FF& snd) const { //< Returns true if the first weight is larger
     return fg->larger_than(*fst, *snd);
   }
   auto get_indep_support_end() const { return indep_support_end; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
-  const auto& get_var_data(uint32_t v) const { return var_data[v]; }
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_trail(bool check_entail = true, bool check_anything = true) const;
-  void bump_stamp() {
-    decisions[dec_level()].tstamp = ++tstamp;
-    debug_print("updating tstamp, dec_level: " << dec_level() << " tstamp: " << tstamp);
-  }
   const FG& get_fg() const { return fg; }
   const FF& get_two() const { return two; }
   bool weighted() const { return fg->weighted(); }
   DataAndStatistics& get_stats() { return stats; }
-  uint32_t last_dec_candidates = 0;
+  uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
 private:
   FG fg;
@@ -199,8 +205,8 @@ private:
   DataAndStatistics stats;
   bool num_vars_set = false;
   std::mt19937_64 mtrand;
-  CMSat::SATSolver* sat_solver = nullptr;
-  CompManager* comp_manager = nullptr;
+  std::unique_ptr<CMSat::SATSolver> sat_solver;
+  std::unique_ptr<CompManager> comp_manager;
   FF count_using_cms();
 
   // ReduceDB
@@ -218,6 +224,7 @@ private:
   uint64_t last_reducedb_confl = 0;
   uint64_t last_reducedb_cls_added = 0;
   uint64_t last_reducedb_dec = 0;
+  double ema_conflict_rate = 0.25; // EMA of conflicts/decisions ratio
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbd_helper;
@@ -227,34 +234,39 @@ private:
   // Clause adding
   void simple_preprocess();
   vector<Lit> unit_cls;
-  bool remove_duplicates(vector<Lit>& lits);
+  static bool remove_duplicates(vector<Lit>& lits);
   bool exists_unit_cl_of(const Lit l) const {
-    for (const auto& l2 : unit_cls) if (l == l2) return true;
-    return false;
+    return std::ranges::find(unit_cls, l) != unit_cls.end();
   }
   template<typename T2> void attach_cl(ClauseOfs off, const T2& lits);
   Clause* add_cl(const vector<Lit> &literals, bool red);
   inline bool add_bin_cl(Lit a, Lit b, bool red);
-  bool ended_irred_cls = false; // indicates if we have called end_irred_cls()
 
   // DNF Cube stuff
   bool restart_if_needed();
   vector<Cube> mini_cubes;
-  uint32_t disable_small_cubes(vector<Cube>& cubes);
+  uint32_t disable_small_cubes(vector<Cube>& cubes) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);
   void print_and_check_cubes(vector<Cube>& cubes);
   void disable_cubes_if_overlap(vector<Cube>& cubes);
   void extend_cubes(vector<Cube>& cubes);
-  int cube_try_extend_by_lit(const Lit torem, const Cube& c);
-  FF check_count_norestart(const Cube& c);
-  FF check_count_norestart_cms(const Cube& c);
+  void try_resolve_cubes(vector<Cube>& cubes);
+  void cube_strengthen_by_flp(vector<Cube>& cubes);
+  enum class ExtendResult { CANNOT_EXTEND, REMOVE, REMOVE_AND_DOUBLE };
+  ExtendResult cube_try_extend_by_lit(const Lit torem, const Cube& c);
+  template<typename Fn> void deal_with_irred_cls(const Cube& c, Fn fn);
   vector<Cube> one_restart_count();
-  bool clash_cubes(const set<Lit>& c1, const set<Lit>& c2) const;
+  static bool clash_cubes(const std::set<Lit>& c1, const std::set<Lit>& c2);
   bool compute_cube(Cube& cube, const int side);
-  vector<map<Lit, Lit>> generators;
+  vector<std::map<Lit, Lit>> generators;
   void symm_cubes(vector<Cube>& cubes);
 
   //Debug stuff
+public:
+  void check_trail(bool check_entail = true, bool force_check_units = false) const;
+  void check_opt_sampling_determined() const;
+  FF check_count_cms(const Cube& c);
+  void check_cls_deriveable() const;
   FF check_count(const bool also_incl_curr_and_later_dec = false);
   bool is_implied(const vector<Lit>& cp);
   void check_implied(const vector<Lit>& cl);
@@ -263,16 +275,18 @@ private:
   bool check_watchlists() const;
   template<class T2> void check_cl_propagated_conflicted(T2& cl, uint32_t off = 0) const;
   void check_all_propagated_conflicted() const;
-  void print_all_levels();
+  void print_all_levels() const;
   void check_cl_unsat(Lit* c, uint32_t size) const;
-  void check_trail(bool check_entail = true) const;
-  bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off) const;
+  static bool find_offs_in_watch(const vec<ClOffsBlckL>& ws, ClauseOfs off);
   void check_all_cl_in_watchlists() const;
+  void dump_current_state(const std::string fname) const;
+  void check_current_state_unsat() const;
 #ifdef SLOW_DEBUG
   vector<vector<Lit>> debug_irred_cls;
 #endif
 
   // Weights
+  void fix_weights();
   uint64_t vars_act_dec_num = 0;
   vector<FF> weights;
   vector<FF> var_weights;
@@ -286,6 +300,11 @@ private:
   mutable vector<Lit> tmp_lit; //used as temporary binary cl
   vector<uint32_t> to_clear;
   vector<uint8_t> seen;
+
+  // Shrink (block-wise secondary UIP search, Sörenson/Biere/Heule SAT'09)
+  vector<uint8_t> shrink_seen;    // indexed by var: 1 = open in current block search
+  vector<uint32_t> shrinkable_vars; // vars to clear in reset_shrinkable()
+  vector<Lit> shrink_work;         // work list of true-form literals, sorted by sublevel DESC
 
   // Switch to approxmc
   double start_time;
@@ -302,7 +321,7 @@ private:
   int val(uint32_t var) const { return values[Lit(var,1)]; }
   vector<Lit> trail;
   friend class ClauseAllocator;
-  ClauseAllocator* alloc;
+  std::unique_ptr<ClauseAllocator> alloc;
   vector<ClauseOfs> long_irred_cls;
   vector<ClauseOfs> long_red_cls;
   bool run_sat_solver(RetState& state);
@@ -327,8 +346,8 @@ private:
   inline VarData& var(const uint32_t v) { return var_data[v]; }
   inline const VarData &var(const uint32_t v) const{ return var_data[v]; }
   inline const VarData &var(const Lit lit) const { return var_data[lit.var()]; }
-  inline bool is_true(const Lit &lit) const { return values[lit] == T_TRI; }
-  inline bool is_false(Lit lit) { return values[lit] == F_TRI; }
+  inline bool is_true(const Lit &lit) const { return tri_is_true(values[lit]); }
+  inline bool is_false(Lit lit) const { return tri_is_false(values[lit]); }
   inline bool is_unknown(Lit lit) const;
   inline bool is_unknown(uint32_t var) const;
   void set_confl_state(Lit a, Lit b);
@@ -362,10 +381,14 @@ private:
   vector<double> tdscore;
   double td_weight = 1.0;
   uint64_t tstamp = 10;
+  void bump_stamp() {
+    decisions[dec_level()].tstamp = ++tstamp;
+    debug_print("updating tstamp, dec_level: " << dec_level() << " tstamp: " << tstamp);
+  }
   const Lit &top_dec_lit() const { return *top_declevel_trail_begin(); }
   vector<Lit>::const_iterator top_declevel_trail_begin() const;
   vector<Lit>::iterator top_declevel_trail_begin();
-  vector<uint32_t> common_indep_code(const set<uint32_t>& indeps);
+  vector<uint32_t> common_indep_code(const std::set<uint32_t>& indeps) const;
 
   bool is_indep = true; //< We are currently in indep mode
   // the first variable that's NOT in the indep support
@@ -374,8 +397,8 @@ private:
   uint32_t opt_indep_support_end = std::numeric_limits<uint32_t>::max();
 
   // Printing
-  string lit_val_str(Lit lit) const;
-  string val_to_str(const TriValue& tri) const;
+  std::string lit_val_str(Lit lit) const;
+  static std::string val_to_str(const TriValue& tri);
   void print_dec_info() const;
   template<class T2> void print_cl(const T2& cl) const;
   template<class T2> void v_print_cl(const T2& cl) const;
@@ -407,6 +430,13 @@ private:
   Antecedent confl;
   vector<Lit> uip_clause;
   void create_uip_cl();
+
+  void shrink_uip_clause();
+  void reset_shrinkable();
+  int  shrink_literal(Lit false_lit, int32_t blevel);
+  Lit  shrink_next();
+  uint32_t shrink_along_reason(Lit true_lit, int32_t blevel, bool& failed);
+  uint32_t shrink_block(size_t bstart, size_t bend, int32_t blevel, Lit uip0);
   void minimize_uip_cl();
   vector<Lit> tmp_cl_minim; // Used during minimize_uip_cl
   uint32_t abst_level(const uint32_t x) const;
@@ -448,13 +478,13 @@ private:
     Lit blk2;
     bool currently_propagating = false;
   };
-  map<ClauseOfs, SavedCl> off_to_lit12;
+  std::map<ClauseOfs, SavedCl> off_to_lit12;
   void v_cl_toplevel_repair(vector<ClauseOfs>& offs);
   void v_cl_repair(ClauseOfs off);
   void vivify_cls(vector<ClauseOfs>& cls);
-  void vivify_all(bool force = false, bool only_irred = false);
+  bool vivify_all(bool force = false, bool only_irred = false);
   bool vivify_cl(const ClauseOfs off);
-  void v_shrink(Clause& c);
+  void v_shrink(Clause& c) const;
   template<class T2> bool v_unsat(const T2& lits);
   template<class T2> bool v_satisfied(const T2& lits);
   void v_fix_watch(Clause& cl, uint32_t i);
@@ -464,6 +494,7 @@ private:
   template<class T2> bool currently_propagating_cl(T2& cl) const;
   template<class T2> bool v_cl_satisfied(const T2& cl) const;
   void vivif_backtrack();
+  void toplevel_vivify_subsume_fullprobe();
   vector<Lit> v_trail;
   uint32_t v_qhead;
   uint32_t v_lev;
@@ -475,58 +506,56 @@ private:
   void count_loop();
   void subsume_all();
   void attach_occ(vector<ClauseOfs>& offs, bool sort_and_clear);
-  inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
+  static inline uint32_t abst_var(const uint32_t v) {return 1UL << (v % 29);}
   template <class T2> uint32_t calc_abstr(const T2& ps) {
-    uint32_t abs = 0;
-    if (ps.size() > 50) return ~((uint32_t)(0ULL));
-    for (auto l: ps) abs |= abst_var(l.var());
-    return abs;
+    if (ps.size() > 50) return ~uint32_t{0};
+    return std::accumulate(ps.begin(), ps.end(), 0u,
+        [](uint32_t a, auto l) { return a | abst_var(l.var()); });
   }
-  inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
+  static inline bool subset_abstr(const uint32_t a, const uint32_t b) { return ((a & ~b) == 0); }
   template<class T1, class T2> bool subset(const T1& a, const T2& b);
   vector<vector<OffAbs>> occ;
   vector<ClauseOfs> occ_cls;
-  void backw_susume_cl(ClauseOfs off);
-  void backw_susume_cl_with_bin(BinClSub& b);
+  void backw_subsume_cl(ClauseOfs off);
+  void backw_subsume_cl_with_bin(BinClSub& b);
   void toplevel_full_probe();
   vector<Lit> bothprop_toset;
 };
 
 inline void Counter::unset_lit(Lit lit) {
-    VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << setw(8) << lit << endl);
-    SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
-    var(lit).ante = Antecedent();
-    if(weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
-      uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
-      bool in_comp = (at[0] == at[lit.var()]);
-      if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
-    }
-    var(lit).decision_level = INVALID_DL;
-    values[lit] = X_TRI;
-    values[lit.neg()] = X_TRI;
+  VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
+  SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
+  var(lit).ante = Antecedent();
+  if (weighted() && !sat_mode() && lit.var() < opt_indep_support_end && !get_weight(lit)->is_zero()) {
+    uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);
+    bool in_comp = (at[0] == at[lit.var()]);
+    if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
   }
+  var(lit).decision_level = INVALID_DL;
+  values[lit] = X_TRI;
+  values[lit.neg()] = X_TRI;
+}
 
 inline void Counter::print_cl(const Lit* c, uint32_t size) const {
   for(uint32_t i = 0; i < size; i++) {
     Lit l = c[i];
-    cout << setw(5) << l
-      << " lev: " << setw(3) << var(l).decision_level
-      << " ante: " << setw(8) << var(l).ante
-      << " val: " << setw(7) << lit_val_str(l)
-      << " sublev: " << setw(3) << var(l).sublevel
+    cout << std::setw(5) << l
+      << " lev: " << std::setw(3) << var(l).decision_level
+      << " ante: " << std::setw(8) << var(l).ante
+      << " val: " << std::setw(7) << lit_val_str(l)
+      << " sublev: " << std::setw(3) << var(l).sublevel
       << endl;
   }
 }
 
 template<class T2>
 void Counter::print_cl(const T2& cl) const {
-  for(uint32_t i = 0; i < cl.size(); i ++) {
-    const auto l = cl[i];
-    cout << std::left << setw(5) << l
-      << " lev: " << setw(4) << var(l).decision_level
-      << " ante: " << setw(5) << std::left << var(l).ante
+  for (const auto l : cl) {
+    cout << std::left << std::setw(5) << l
+      << " lev: " << std::setw(4) << var(l).decision_level
+      << " ante: " << std::setw(5) << std::left << var(l).ante
       << " val: " << lit_val_str(l)
-      << " sublev: " << setw(3) << var(l).sublevel
+      << " sublev: " << std::setw(3) << var(l).sublevel
       << endl;
   }
 }
@@ -535,47 +564,39 @@ template<class T2>
 void Counter::v_print_cl(const T2& cl) const {
   for(uint32_t i = 0; i < cl.size(); i ++) {
     const auto l = cl[i];
-    cout << setw(5) << l
-      << " lev: " << setw(4) << v_levs[l.var()]
+    cout << std::setw(5) << l
+      << " lev: " << std::setw(4) << v_levs[l.var()]
       << " val: " << val_to_str(v_val(l)) << endl;
   }
 }
 
 template<class T2> bool Counter::conflicting_cl(T2& cl) const {
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI || val(l) == X_TRI) return false;
-  }
-  return true;
+  return std::all_of(cl.begin(), cl.end(), [this](Lit l) { return val(l) == F_TRI; });
 }
 
 template<class T2> bool Counter::propagating_cl(T2& cl) const {
   uint32_t unk = 0;
-  for(const auto&l: cl) {
+  for(const auto& l: cl) {
     if (val(l) == T_TRI) return false;
-    if (val(l) == X_TRI) {unk++; if (unk>1) break;}
+    if (val(l) == X_TRI) { unk++; if (unk > 1) break; }
   }
   return unk == 1;
 }
 
 template<class T2> bool Counter::currently_propagating_cl(T2& cl) const {
   uint32_t tru = 0;
-  for(const auto&l: cl) {
-    if (val(l) == T_TRI) {tru++; if (tru>1) return false;}
+  for(const auto& l: cl) {
     if (val(l) == X_TRI) return false;
+    if (val(l) == T_TRI) { tru++; if (tru > 1) return false; }
   }
   return tru == 1;
 }
 
 inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
-  bool all_false = true;
-  for(uint32_t i = 0; i < size; i++) {
-    if (val(c[i]) != F_TRI) {all_false = false; break;}
-  }
-  if (all_false) return;
-
-  cout << "ERROR: clause is not falsified." << endl;
+  if (std::all_of(c, c + size, [this](Lit l) { return val(l) == F_TRI; })) return;
+  cerr << "ERROR: clause is not falsified." << endl;
   print_cl(c, size);
-  assert(false);
+  release_assert(false);
 }
 
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
@@ -592,31 +613,8 @@ template<class T1, class T2> bool Counter::subset(const T1& a, const T2& b) {
   cout << "B:" << b << endl;
   for(size_t i = 1; i < b.size(); i++) assert(b[i-1] < b[i]);
 #endif
-  bool ret;
-  uint32_t i = 0;
-  uint32_t i2;
-  Lit last_b = NOT_A_LIT;
-  for (i2 = 0; i2 < b.size(); i2++) {
-    if (last_b != NOT_A_LIT) assert(last_b < b[i2]);
-    last_b = b[i2];
-    //Literals are ordered
-    if (a[i] < b[i2]) {
-        ret = false;
-        goto end;
-    }
-    else if (a[i] == b[i2]) {
-      i++;
-      //went through the whole of A now, so A subsumes B
-      if (i == a.size()) {
-          ret = true;
-          goto end;
-      }
-    }
-  }
-  ret = false;
-
-  end:
-  return ret;
+  // Both a and b are sorted; check whether all elements of a appear in b.
+  return std::includes(b.begin(), b.end(), a.begin(), a.end());
 }
 
 inline Antecedent Counter::add_uip_confl_cl(const vector<Lit> &literals) {
@@ -649,7 +647,7 @@ template<class T2>
 void Counter::minimize_uip_cl_with_bins(T2& cl) {
   SLOW_DEBUG_DO(for(const auto& s: seen) assert(s == 0););
   uint32_t orig_size = cl.size();
-  assert(cl.size() > 0);
+  assert(!cl.empty());
   tmp_minim_with_bins.clear();
   for(const auto& l: cl) { seen[l.raw()] = 1; tmp_minim_with_bins.push_back(l);}
   for(const auto& l: cl) {
@@ -685,7 +683,7 @@ template<class T2> void Counter::attach_cl(ClauseOfs off, const T2& lits) {
 inline bool Counter::is_unknown(Lit lit) const {
     SLOW_DEBUG_DO(assert(lit.var() <= nVars()));
     SLOW_DEBUG_DO(assert(lit.var() != 0));
-    return values[lit] == X_TRI;
+    return tri_is_unknown(values[lit]);
 }
 
 inline bool Counter::is_unknown(uint32_t var) const {

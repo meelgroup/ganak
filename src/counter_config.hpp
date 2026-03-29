@@ -27,14 +27,16 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
+enum class PolarType : int { standard = 0, cache = 1, forced_false = 2, forced_true = 3 };
+enum class DecideType : int { td = 0, ignore_td = 1 };
+
 struct CounterConfiguration {
   int verb = 1;
   int do_restart = 0;
   int do_chronobt = 1;
   uint64_t first_restart = 20000U;
-  double restart_cutoff_mult = 0.8;
   uint64_t maximum_cache_size_MB = 2500;
-  int restart_type = 8;
+  int restart_type = 7; // conflicts, luby
   int do_readjust_for_restart = 1;
   int max_num_rst = -1;
   uint32_t lbd_cutoff_always_keep_cube = 3;
@@ -42,8 +44,14 @@ struct CounterConfiguration {
   uint32_t analyze_cand_update = 50;
   int do_probabilistic_hashing = 1;
   std::string td_visualize_dot_file = "";
+  int do_extend_cubes = 1;
+  int do_cube_resolve = 1;
+  int do_cube_flp = 1;
+  int do_small_cube_disable = 1;
+  double td_weight_restart_decay = 0.5; // multiply td_weight by this after each restart (1.0 = no decay)
 
   int cache_time_update = 2;
+  int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used
 
   int decide = 0; // 0 = TD, 1 = ignore TD
   uint32_t rdb_cls_target = 10000;
@@ -54,7 +62,11 @@ struct CounterConfiguration {
   uint32_t consolidate_every_n = 30000;
   int polar_type = 0;
   uint32_t base_lbd_cutoff = 2;
+  uint32_t lbd_tier2_cutoff = 6; // tier 2: lbd <= this kept if recently used (CaDiCaL-style)
+  int do_shrink = 1;             // block-wise secondary UIP shrinking (CaDiCaL-style)
   int do_update_lbd_cutoff = 0;
+  int rdb_ema_rate = 0;          // use EMA of conflict rate for RDB target scaling
+  double rdb_ema_alpha = 0.15;   // EMA smoothing factor (0 < alpha < 1)
 
   int do_vivify = 1;
   uint32_t vivif_every = 60000;
@@ -74,7 +86,7 @@ struct CounterConfiguration {
   double freq_score_divisor = 25.0;
   uint32_t tot_used_cutoff_vivif = 50;
 
-  bool do_td = 1;
+  int do_td = 1;
   uint32_t td_varlim = 150000;
   double td_ratiolim = 100.0;
   double td_maxweight = 60;

@@ -1,0 +1,224 @@
+Bug Report & Debug Log: "OOps, diff" assertion in weighted model counting
+============================================================================
+
+Command that triggered the bug:
+  ./ganak --mode 1 --polar 1 --arjunoraclefindbins 0 --satvsids 0 \
+    /path/to/fuzzTest_2522.cnf
+
+Symptom:
+  Assertion failure in check_count() -- the DPLL-tracked weighted count
+  did not match the SAT-solver-verified ground truth count.
+  Specifically: after_mul = 3/5, correct = 6/25, diff = 9/25.
+
+===========================================================================
+PHASE 1: Understanding what check_count is comparing
+===========================================================================
+
+check_count() is a debug verification function. At each decision level it:
+1. Uses a CMS SAT solver to enumerate all solutions of the sub-problem,
+   multiplying in weights of indep vars → "correct" count.
+2. Computes "after_mul" from the DPLL-tracked branch counts:
+     if on left branch:  after_mul = left * dec_w + right
+     if on right branch: after_mul = left + right * dec_w
+   where dec_w = product of weights of vars set as decisions at this level.
+3. Asserts after_mul == correct.
+
+At dec_level 6 (var=6, left branch):
+  - correct = 6/25 = weight(var6=T) * weight(var10=T) = 3/5 * 2/5
+  - after_mul = left * dec_w = 1 * 3/5 = 3/5   <-- WRONG
+  - dec_w = weight(var6) = 3/5
+  - left = 1   <-- should be 2/5
+
+So: left_model_count at level 6 = 1, but it should be 2/5.
+
+===========================================================================
+PHASE 2: Tracing where left=1 came from
+===========================================================================
+
+The left branch of level 6 was populated by processing component comp8
+= {10, 12, 14, 15, 17, 18, 22, 25, 29, 30, 35, 37}.
+
+var10 is the only indep var (< opt_indep_support_end) in comp8. The weight
+of comp8 should be weight(var10 = solution_value) = 2/5.
+
+From the debug output:
+  Store. comp ID: 8 cache ID: 17 cnt: 1    <-- wrong, should be 2/5
+  incl sol: 1 ind: true now left count is: 1
+  cleaning (all remaining) comps of var: 0  <-- var=0 means SAT mode level!
+
+So comp8 was processed by a SAT mode level (decisions.top().var = 0),
+and stored with count=1 instead of 2/5. The weight of var10 was lost.
+
+===========================================================================
+PHASE 3: Why does SAT mode trigger for comp8?
+===========================================================================
+
+SAT mode (run_sat_solver) is triggered when find_best_branch returns
+is_indep=false in decide_lit(). This happens when decide_lit calls:
+  find_best_branch(false, /*also_nonindep=*/false)
+
+With also_nonindep=false, find_best_branch only considers vars <
+opt_indep_support_end. If it returns 0, it's because only "optional
+independent" vars remain (indep_support_end <= v < opt_indep_support_end).
+These trigger SAT mode (the component has no true-indep vars to decide on).
+
+var10 is in the range [indep_support_end, opt_indep_support_end) -- it's
+an OPTIONAL independent variable. So find_best_branch returns 0 with
+is_indep=false, SAT mode is triggered for comp8.
+
+===========================================================================
+PHASE 4: How should weight(var10) be applied in SAT mode?
+===========================================================================
+
+Normal DPLL weight accounting uses unset_lit():
+
+  inline void Counter::unset_lit(Lit lit) {
+    if (weighted() && !sat_mode() && !get_weight(lit)->is_zero()) {
+      uint64_t* at = vars_act_dec.data() + dec_level()*(nVars()+1);
+      bool in_comp = (at[0] == at[lit.var()]);
+      if (in_comp) decisions[dec_level()].include_solution(get_weight(lit));
+    }
+    ...
+  }
+
+When a literal is unset (during reactivate_comps_and_backtrack_trail),
+if it's "in the current component" (in_comp=true), its weight is
+multiplied into the branch count. The in_comp check uses vars_act_dec[]:
+  at[0] is a unique "epoch number" for this level's component
+  at[v] is set to at[0] for each var v that was in the component
+
+find_best_branch() sets these:
+  vars_act_dec_num++;
+  at[0] = vars_act_dec_num;
+  for each unset var v in component: at[v] = vars_act_dec_num;
+
+So when unset_lit runs later, in_comp = (at[0] == at[v]).
+
+For the SAT mode level at dec_level=7:
+- decide_lit pushes level 7, calls find_best_branch(false,false)
+  → sets at[0]=N, at[var10]=N (var10 unset at this point)
+  → returns 0 (only optional indep), pops level 7
+- run_sat_solver pushes level 7 again (SAT mode)
+- Inside SAT loop (with --satvsids 0): find_best_branch(false,true) is
+  called at dec_level=7 for EACH SAT decision
+
+===========================================================================
+PHASE 5: The actual bug -- vars_act_dec corruption by repeated calls
+===========================================================================
+
+The SAT loop (with !conf.do_sat_vsids) calls find_best_branch repeatedly
+at the SAME decision level (sat_start_dec_level=7):
+
+ITERATION 1 of SAT loop:
+  find_best_branch(false,true) at dec_level=7:
+    vars_act_dec_num++ → N+1
+    at[0] = N+1
+    var10 is UNSET → at[var10] = N+1
+    returns var10 as first SAT decision
+
+  set_lit(var10, dec_level=7)  ← var10 now SET at level 7
+  propagate() at level 7
+
+ITERATION 2 of SAT loop:
+  decisions.top().var = var10 != 0 → push new level 8
+  find_best_branch(false,true) at dec_level=7 (STILL at level 7!):
+    vars_act_dec_num++ → N+2
+    at[0] = N+2                ← UPDATED
+    var10 is SET → skipped by "if (val(v) != X_TRI) continue"
+    at[var10] STAYS at N+1    ← NOT UPDATED
+
+Now: at[0]=N+2, at[var10]=N+1.
+
+Later in backtrack(), reactivate_comps_and_backtrack_trail unsets var10:
+  unset_lit(var10):
+    at = vars_act_dec[7]
+    in_comp = (at[0] == at[var10]) = (N+2 == N+1) = FALSE  ← WRONG!
+    → include_solution(weight(var10)) is NOT called
+    → weight(var10)=2/5 is NEVER applied
+
+The problem: find_best_branch is called multiple times at the same
+dec_level inside the SAT loop. Each call increments vars_act_dec_num
+and updates at[0], but already-SET vars are skipped (val(v) != X_TRI),
+so their at[v] entry falls out of sync with at[0], making in_comp=false.
+
+===========================================================================
+PHASE 6: The fix
+===========================================================================
+
+In find_best_branch, move the `at[v] = vars_act_dec_num` assignment
+BEFORE the `if (val(v) != X_TRI) continue` check:
+
+BEFORE (buggy):
+  all_vars_in_comp(get_super_comp(decisions.top()), it) {
+    const uint32_t v = *it;
+    if (val(v) != X_TRI) continue;   // skip set vars
+    ...
+    if (weighted()) at[v] = vars_act_dec_num;  // too late for set vars
+    ...
+  }
+
+AFTER (fixed):
+  all_vars_in_comp(get_super_comp(decisions.top()), it) {
+    const uint32_t v = *it;
+    if (weighted()) at[v] = vars_act_dec_num;  // update ALL vars first
+    if (val(v) != X_TRI) continue;   // then skip for scoring purposes
+    ...
+    // (removed the at[v] assignment from here)
+    ...
+  }
+
+This ensures at[v] stays synchronized with at[0] for ALL vars in the
+component, even if find_best_branch is called multiple times at the same
+level (as happens in the SAT loop). The in_comp check then correctly
+returns true for var10 when it is unset, causing include_solution to
+apply weight(var10)=2/5, and the stored count becomes 2/5 instead of 1.
+
+===========================================================================
+WHY the fix is safe for normal DPLL (non-SAT mode)
+===========================================================================
+
+In normal DPLL, find_best_branch is called exactly ONCE per decision level
+(inside decide_lit). All vars in the component are UNSET at that point
+(component decomposition only records unset vars). So the at[v] assignment
+fires for the same set of vars whether it's before or after the continue.
+Behavior is unchanged for the normal path.
+
+The fix only changes behavior when find_best_branch is called multiple
+times at the same dec_level with some vars already set -- which only
+happens in the SAT loop with !conf.do_sat_vsids (i.e., --satvsids 0).
+
+===========================================================================
+WHY the initial fix attempt was wrong
+===========================================================================
+
+My first attempt was to change run_sat_solver's weight loop:
+  // Original:
+  if (var(v).decision_level != INVALID_DL &&
+      var(v).decision_level <= sat_start_dec_level) continue;
+
+  // Attempted fix:
+  if (var(v).decision_level != INVALID_DL &&
+      var(v).decision_level < sat_start_dec_level) continue;  // <= to <
+
+This made the weight loop apply weight(var10) directly into cnt (since
+var10 is at sat_start_dec_level). So cnt=2/5 instead of 1.
+
+But check_count ALSO applies dec_w=weight(var10) on top of cnt=2/5,
+giving after_mul = 2/5 * 2/5 = 4/25, which is wrong (expected 2/5).
+
+The check_count formula assumes: right_branch_count does NOT include
+the decision var's weight (dec_w handles that). With the bad fix, cnt
+already included weight(var10), so multiplying dec_w again double-counted.
+
+The correct fix (above) leaves cnt=1 (weight NOT in cnt), so check_count
+correctly computes after_mul = 1 * dec_w = 1 * 2/5 = 2/5. Then the
+weight is properly applied via unset_lit during reactivate, updating the
+branch count to 2/5 before MULT STORE sees it.
+
+===========================================================================
+Files changed
+===========================================================================
+
+src/counter.cpp, function find_best_branch (around line 1273):
+  Moved `if (weighted()) at[v] = vars_act_dec_num;` to before the
+  `if (val(v) != X_TRI) continue;` guard.

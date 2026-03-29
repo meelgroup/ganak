@@ -5,6 +5,7 @@ CREATE TABLE data (
   fname STRING NOT NULL,
 
   mem_out INT,
+  errored INT,
   ganak_time FLOAT,
   ganak_mem_MB FLOAT,
   ganak_call TEXT NOT NULL,
@@ -39,7 +40,8 @@ CREATE TABLE data (
   gates_extended INT,
   gates_extend_t INT,
   padoa_extended INT,
-  padoa_extend_t INT
+  padoa_extend_t INT,
+  timeout_t FLOAT
 );
 . mode csv
 . import -skip 1 mydata.csv data
@@ -74,3 +76,5 @@ UPDATE data SET gates_extended = NULL WHERE gates_extended = '';
 UPDATE data SET gates_extend_t = NULL WHERE gates_extend_t = '';
 UPDATE data SET padoa_extended = NULL WHERE padoa_extended = '';
 UPDATE data SET padoa_extend_t = NULL WHERE padoa_extend_t = '';
+UPDATE data SET errored = NULL WHERE errored = '';
+UPDATE data SET timeout_t = NULL WHERE timeout_t = '';

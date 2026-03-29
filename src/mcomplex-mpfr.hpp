@@ -20,35 +20,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include <arjun/arjun.h>
-#include <cryptominisat5/solvertypesmini.h>
-#include <gmpxx.h>
-#include <memory>
+#pragma once
+
+#include "common.hpp"
+#include "mcomplex.hpp"
 #include <mpfr.h>
 
 class MPFComplex final : public CMSat::Field {
 public:
     mpfr_t real;
     mpfr_t imag;
-    MPFComplex() {
-      mpfr_init2(real, 256);
-      mpfr_init2(imag, 256);
+
+    explicit MPFComplex(mpfr_prec_t prec) {
+      mpfr_init2(real, prec);
+      mpfr_init2(imag, prec);
       mpfr_set_si(real, 0, MPFR_RNDN);
       mpfr_set_si(imag, 0, MPFR_RNDN);
     }
-    MPFComplex(int r, int i) {
-      mpfr_init2(real, 256);
-      mpfr_init2(imag, 256);
+    explicit MPFComplex(long r, long i, mpfr_prec_t prec) {
+      mpfr_init2(real, prec);
+      mpfr_init2(imag, prec);
       mpfr_set_si(real, r, MPFR_RNDN);
       mpfr_set_si(imag, i, MPFR_RNDN);
     }
-    MPFComplex(const mpfr_t& _real, const mpfr_t& _imag) {
-      mpfr_init2(real, 256);
-      mpfr_init2(imag, 256);
+    explicit MPFComplex(const mpfr_t& _real, const mpfr_t& _imag) {
+      SLOW_DEBUG_DO(assert(mpfr_get_prec(_real) == mpfr_get_prec(_imag)));
+      const auto prec = mpfr_get_prec(_real);
+      mpfr_init2(real, prec);
+      mpfr_init2(imag, prec);
       mpfr_set(real, _real, MPFR_RNDN);
       mpfr_set(imag, _imag, MPFR_RNDN);
     }
-    MPFComplex(const MPFComplex& other) : MPFComplex(other.real, other.imag) {}
+    explicit MPFComplex(const MPFComplex& other) : MPFComplex(other.real, other.imag) {}
     ~MPFComplex() final {
       mpfr_clear(real);
       mpfr_clear(imag);
@@ -70,10 +73,11 @@ public:
 
     std::unique_ptr<Field> add(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
+        const auto prec = mpfr_get_prec(real);
         mpfr_t r;
         mpfr_t i;
-        mpfr_init2(r, 256);
-        mpfr_init2(i, 256);
+        mpfr_init2(r, prec);
+        mpfr_init2(i, prec);
         mpfr_add(r, real, od.real, MPFR_RNDN);
         mpfr_add(i, imag, od.imag, MPFR_RNDN);
         auto ret = std::make_unique<MPFComplex>(r, i);
@@ -91,12 +95,13 @@ public:
 
     Field& operator*=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
+        const auto prec = mpfr_get_prec(real);
         mpfr_t r;
-        mpfr_init2(r, 256);
+        mpfr_init2(r, prec);
         mpfr_t tmp;
-        mpfr_init2(tmp, 256);
+        mpfr_init2(tmp, prec);
         mpfr_t tmp2;
-        mpfr_init2(tmp2, 256);
+        mpfr_init2(tmp2, prec);
 
         mpfr_mul(tmp, real, od.real, MPFR_RNDN);
         mpfr_mul(tmp2, imag, od.imag, MPFR_RNDN);
@@ -121,16 +126,17 @@ public:
     Field& operator/=(const Field& other) final {
         const auto& od = static_cast<const MPFComplex&>(other);
         if (od.is_zero()) throw std::runtime_error("Division by zero");
+        const auto prec = mpfr_get_prec(real);
         mpfr_t r;
-        mpfr_init2(r, 256);
+        mpfr_init2(r, prec);
         mpfr_t tmp;
-        mpfr_init2(tmp, 256);
+        mpfr_init2(tmp, prec);
         mpfr_t tmp2;
-        mpfr_init2(tmp2, 256);
+        mpfr_init2(tmp2, prec);
 
         // div = od.imag*od.imag+od.real*od.real;
         mpfr_t div;
-        mpfr_init2(div, 256);
+        mpfr_init2(div, prec);
         mpfr_mul(tmp, od.imag, od.imag, MPFR_RNDN);
         mpfr_mul(tmp2, od.real, od.real, MPFR_RNDN);
         mpfr_add(div, tmp, tmp2, MPFR_RNDN);
@@ -202,34 +208,10 @@ public:
     }
 
     bool parse(const std::string& str, const uint32_t line_no) final {
-        uint32_t at = 0;
-        ArjunNS::FMpq _real;
-        ArjunNS::FMpq _imag;
-
-        if (!_real.parse_mpq(str, at, line_no)) return false;
-        skip_whitespace(str, at);
-        if (at < str.size()) {
-          bool pos = true;
-          if (str[at] == '+') pos = true;
-          else if (str[at] == '-') pos = false;
-          else {
-            std::cerr << "ERROR: Expected '+' or '-' in line " << line_no << " after the real value, but got some other character" << std::endl;
-            return false;
-          }
-          at++;
-          if (!_imag.parse_mpq(str, at, line_no)) return false;
-          skip_whitespace(str, at);
-          if (at < str.size() && str[at] == 'i') {
-            at++;
-          } else {
-            std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
-            return false;
-          }
-          if (!pos) _imag *= ArjunNS::FMpq(-1);
-        }
+        ArjunNS::FMpq _real, _imag;
+        if (!parse_complex_mpq(str, _real, _imag, line_no)) return false;
         mpfr_set_q(real, _real.get_val().get_mpq_t(), MPFR_RNDN);
         mpfr_set_q(imag, _imag.get_val().get_mpq_t(), MPFR_RNDN);
-        /* std::cout << "real: " << _real.get_val() << ", imag: " << _imag.get_val() << std::endl; */
         /* std::cout << "c o Parsed complex number: " << *this << std::endl; */
         return true;
    }
@@ -238,24 +220,29 @@ public:
 
 class FGenMPFComplex final : public CMSat::FieldGen {
 public:
+    mpfr_prec_t prec;
     ~FGenMPFComplex() final = default;
+    explicit FGenMPFComplex(mpfr_prec_t _prec) : prec(_prec) {}
     std::unique_ptr<CMSat::Field> zero() const final {
-        return std::make_unique<MPFComplex>();
+        return std::make_unique<MPFComplex>(prec);
     }
 
     std::unique_ptr<CMSat::Field> one() const final {
-        return std::make_unique<MPFComplex>(1, 0);
+        return std::make_unique<MPFComplex>(1, 0, prec);
     }
 
     std::unique_ptr<FieldGen> dup() const final {
-        return std::make_unique<FGenMPFComplex>();
+        return std::make_unique<FGenMPFComplex>(prec);
     }
 
     bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
       const auto& ad = static_cast<const MPFComplex&>(a);
       const auto& bd = static_cast<const MPFComplex&>(b);
-      return mpfr_greaterequal_p(ad.real, bd.real) && mpfr_greaterequal_p(ad.imag, bd.imag);
+      const int real_cmp = mpfr_cmp(ad.real, bd.real);
+      if (real_cmp != 0) return real_cmp > 0;
+      return mpfr_cmp(ad.imag, bd.imag) > 0;
     }
 
     bool weighted() const final { return true; }
+    bool exact() const final { return false; }
 };

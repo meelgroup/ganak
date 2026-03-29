@@ -48,15 +48,14 @@ public:
                    const LiteralIndexedVector<TriValue> &lit_values,
                    Counter* _counter);
   ~CompManager() {
-    for(auto& comp: comp_stack) free(comp);
+    for(auto& comp: comp_stack) free_comp(comp);
     comp_stack.clear();
-    fg.reset();
   }
 
   auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
-  auto& get_cache() const { return cache; }
+  const auto& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
 
   void save_count(const uint64_t stack_comp_id, const FF& value) {
@@ -74,7 +73,7 @@ public:
     assert(comp_stack.size() > lev.super_comp());
     return *comp_stack[lev.super_comp()];
   }
-  size_t comp_stack_size() { return comp_stack.size(); }
+  size_t comp_stack_size() const { return comp_stack.size(); }
   const Comp* at(const size_t at) const { return comp_stack.at(at); }
   void clean_remain_comps_of(const StackLevel& top) {
     debug_print(COLYEL2 "cleaning (all remaining) comps of var: " << top.var);
@@ -83,7 +82,7 @@ public:
         cache->make_entry_deletable(comp_stack.back()->id());
 
       debug_print(COLYEL2 "-> deleting comp ID: " << comp_stack.back()->id());
-      free(comp_stack.back());
+      free_comp(comp_stack.back());
       comp_stack.pop_back();
     }
     assert(top.remaining_comps_ofs() <= comp_stack.size());
@@ -97,8 +96,10 @@ public:
   void record_remaining_comps_for(StackLevel &top);
   inline void sort_comp_stack_range(uint64_t start, uint64_t end);
 
-  void remove_cache_pollutions_of_if_exists(const StackLevel &top);
-  void remove_cache_pollutions_of(const StackLevel &top);
+  // skip_missing=false: assert all comps exist in cache (default)
+  // skip_missing=true:  silently skip comps not in cache
+  void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
+
   uint64_t hash_seed;
 
 private:
@@ -125,12 +126,8 @@ inline void CompManager::sort_comp_stack_range(uint64_t start, uint64_t end) {
   // sort the remaining comps for processing
   stats.comp_sorts++;
   stats.comp_sizes+= end - start;
-  for (uint64_t i = start; i < end; i++)
-    for (uint64_t j = i + 1; j < end; j++) {
-      if (comp_stack[i]->nVars()
-                  < comp_stack[j]->nVars())
-        std::swap(comp_stack[i], comp_stack[j]);
-    }
+  std::sort(comp_stack.begin() + static_cast<ptrdiff_t>(start), comp_stack.begin() + static_cast<ptrdiff_t>(end),
+            [](const Comp* a, const Comp* b) { return a->nVars() > b->nVars(); });
 }
 
 inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
@@ -141,10 +138,10 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
   else {
     debug_print("Not running record_remaining_comps_for, comp_stack.size() > top.remaining_comps_ofs()."
         " comp_stack.size(): " << comp_stack.size()
-        << " top.reimaining_comps_ofs(): " << top.remaining_comps_ofs());
+        << " top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
-  if (top.branch_found_unsat()) return false;
+  if (top.branch_found_unsat() || top.branch_is_zero()) return false;
   if (top.has_unproc_comps()) {
     debug_print(COLREDBG"-*-> Finished find_next_remain_comp_of, has_unproc_comps.");
     return true;
@@ -173,9 +170,9 @@ inline void CompManager::initialize(const LiteralIndexedVector<LitWatchList> & w
   bpc.calcPackSize(ana.get_max_var(), ana.get_max_clid());
   get_random_seed_for_hash();
   if (conf.do_probabilistic_hashing) {
-    cache.reset(new CompCache<CacheableComp<HashedComp>>(stats, conf));
+    cache = std::make_unique<CompCache<CacheableComp<HashedComp>>>(stats, conf);
   } else {
-    cache.reset(new CompCache<CacheableComp<DiffPackedComp>>(stats, conf));
+    cache = std::make_unique<CompCache<CacheableComp<DiffPackedComp>>>(stats, conf);
   }
 
   //Add dummy comp

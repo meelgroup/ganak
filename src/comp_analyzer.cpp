@@ -28,10 +28,11 @@ THE SOFTWARE.
 #include "structures.hpp"
 #include <algorithm>
 #include <cstdint>
+#include <numeric>
 
 using namespace GanakInt;
 
-inline std::ostream& operator<<(std::ostream& os, const ClData& d)
+std::ostream& operator<<(std::ostream& os, const ClData& d)
 {
   os << "[id: " << d.id << " off: " << d.off << "]";
   /* os << "id: " << d.id; */
@@ -42,12 +43,11 @@ inline std::ostream& operator<<(std::ostream& os, const ClData& d)
 // this sets up unif_occ
 void CompAnalyzer::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
-    const ClauseAllocator* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
+    ClauseAllocator const* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
 {
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
-  vector<vector<ClauseOfs>> occs(max_var + 1);
   const uint32_t n = max_var+1;
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
@@ -62,18 +62,15 @@ void CompAnalyzer::initialize(
 
   max_clid = 1;
   max_tri_clid = 1;
-  vector<vector<ClData>> unif_occ_long;
-  unif_occ_long.clear();
-  unif_occ_long.resize(n);
+  vector<vector<ClData>> unif_occ_long(n);
   long_clauses_data.clear();
   long_clauses_data.push_back(SENTINEL_LIT); // MUST start with a sentinel!
-  vector<uint32_t> tmp;
   for (const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
     const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
-      Lit blk_lit = cl[cl.size()/2];
+      Lit const blk_lit = cl[cl.size()/2];
       for(const auto&l: cl) long_clauses_data.push_back(l);
       long_clauses_data.push_back(SENTINEL_LIT);
 
@@ -115,14 +112,12 @@ void CompAnalyzer::initialize(
 
 
   // data for binary clauses
-  vector<vector<uint32_t>> unif_occ_bin;
-  unif_occ_bin.clear();
-  unif_occ_bin.resize(n);
+  vector<vector<uint32_t>> unif_occ_bin(n);
   vector<uint32_t> tmp2;
   for (uint32_t v = 1; v < n; v++) {
     tmp2.clear();
-    for(uint32_t i = 0; i < 2; i++) {
-      for (const auto& bincl: watches[Lit(v, i)].binaries) {
+    for(bool const sign : {false, true}) {
+      for (const auto& bincl: watches[Lit(v, sign)].binaries) {
         if (bincl.irred()) tmp2.push_back(bincl.lit().var());
       }
     }
@@ -130,68 +125,61 @@ void CompAnalyzer::initialize(
     std::sort(tmp2.begin(), tmp2.end());
     tmp2.erase(std::unique(tmp2.begin(), tmp2.end()), tmp2.end());
 
-    unif_occ_bin[v].clear();
-    unif_occ_bin[v].resize(tmp2.size());
-    for(uint32_t i = 0; i < tmp2.size(); i++) unif_occ_bin[v][i] = tmp2[i];
+    unif_occ_bin[v] = tmp2;
   }
 
-  if (true) {
-    // fill holder
-    assert(unif_occ_bin.size() == unif_occ_long.size());
-    assert(unif_occ_bin.size() == n);
+  // fill holder
+  assert(unif_occ_bin.size() == unif_occ_long.size());
+  assert(unif_occ_bin.size() == n);
 
-    uint32_t total_sz = 0;
-    for(const auto& u: unif_occ_long) total_sz += u.size()*(sizeof(ClData)/sizeof(uint32_t));
-    for(const auto& u: unif_occ_bin) total_sz += u.size();
-    total_sz += hstride*n;
-    uint32_t* data = new uint32_t[total_sz];
-    holder.data = data;
-    uint32_t* data_start = holder.data + n*hstride;
+  size_t const total_sz = hstride * n
+    + std::accumulate(unif_occ_long.begin(), unif_occ_long.end(), size_t{0},
+        [](size_t acc, const auto& u) { return acc + u.size() * (sizeof(ClData)/sizeof(uint32_t)); })
+    + std::accumulate(unif_occ_bin.begin(), unif_occ_bin.end(), size_t{0},
+        [](size_t acc, const auto& u) { return acc + u.size(); });
+  holder.data = std::make_unique<uint32_t[]>(total_sz);
+  uint32_t* const data = holder.data.get();
+  uint32_t* data_start = data + n*hstride;
 
-    for(uint32_t v = 0; v < n; v++) {
-      // fill bins
-      const auto& u_bins = unif_occ_bin[v];
-      holder.size_bin(v) = u_bins.size();
-      holder.orig_size_bin(v) = u_bins.size();
-      uint32_t offs = data_start - holder.data;
-      holder.data[v*hstride+holder.offset] = offs;
-      assert(offs <= total_sz);
-      if (u_bins.size() > 0) {
-        memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
-        data_start += u_bins.size();
-      }
-
-      // fill longs
-      const auto& u_longs = unif_occ_long[v];
-      holder.orig_size_long(v) = u_longs.size();
-      holder.size_long(v) = u_longs.size();
-      offs = data_start - holder.data;
-      holder.data[v*hstride+holder.offset+3] = offs;
-      assert(offs <= total_sz);
-      if (u_longs.size() > 0) {
-        memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
-        data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
-      }
-      holder.tstamp(v) = 0;
-      holder.set_lev(v, 0);
-    }
-    assert(data_start == data + total_sz);
-
-    // check bins
-    for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
-      assert(unif_occ_bin[v].size() == holder.size_bin(v));
-      for(uint32_t i = 0; i < unif_occ_bin[v].size(); i++) {
-        assert(unif_occ_bin[v][i] == holder.begin_bin(v)[i]);
-      }
+  for(uint32_t v = 0; v < n; v++) {
+    // fill bins
+    const auto& u_bins = unif_occ_bin[v];
+    holder.size_bin(v) = u_bins.size();
+    holder.orig_size_bin(v) = u_bins.size();
+    uint32_t offs = data_start - data;
+    holder.data[v*hstride+holder.offset] = offs;
+    assert(offs <= total_sz);
+    if (!u_bins.empty()) {
+      memcpy(data_start, u_bins.data(), u_bins.size()*sizeof(uint32_t));
+      data_start += u_bins.size();
     }
 
-    // check longs
-    for(uint32_t v = 0; v < unif_occ_long.size(); v++) {
-      assert(unif_occ_long[v].size() == holder.size_long(v));
-      for(uint32_t i = 0; i < unif_occ_long[v].size(); i++) {
-        assert(unif_occ_long[v][i] == holder.begin_long(v)[i]);
-      }
+    // fill longs
+    const auto& u_longs = unif_occ_long[v];
+    holder.orig_size_long(v) = u_longs.size();
+    holder.size_long(v) = u_longs.size();
+    offs = data_start - data;
+    holder.data[v*hstride+holder.offset+3] = offs;
+    assert(offs <= total_sz);
+    if (!u_longs.empty()) {
+      memcpy(data_start, u_longs.data(), u_longs.size()*sizeof(ClData));
+      data_start += u_longs.size()*(sizeof(ClData)/sizeof(uint32_t));
     }
+    holder.set_tstamp(v, 0);
+    holder.set_lev(v, 0);
+  }
+  assert(data_start == data + total_sz);
+
+  // check bins
+  for(uint32_t v = 0; v < unif_occ_bin.size(); v++) {
+    assert(unif_occ_bin[v].size() == holder.size_bin(v));
+    assert(std::equal(unif_occ_bin[v].begin(), unif_occ_bin[v].end(), holder.begin_bin(v)));
+  }
+
+  // check longs
+  for(uint32_t v = 0; v < unif_occ_long.size(); v++) {
+    assert(unif_occ_long[v].size() == holder.size_long(v));
+    assert(std::equal(unif_occ_long[v].begin(), unif_occ_long[v].end(), holder.begin_long(v)));
   }
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
@@ -204,8 +192,19 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
 
   if (comp_vars.size() == 1) {
     debug_print("in " <<  __FUNCTION__ << " with single var: " <<  v);
-    if (v >= indep_support_end) archetype.stack_level().include_solution(counter->get_fg()->one());
-    else {
+    if (v >= counter->get_indep_support_end()) {
+      SLOW_DEBUG_DO(
+        if (v < counter->get_opt_indep_support_end()) {
+            counter->check_trail(true, true);
+            counter->check_opt_sampling_determined();
+            debug_print("This is a VERY interesting phenomenon."
+               << " We MUST be in a situation where we are UNSAT, but the solver hasn't yet determined this"
+               << " We simply multiply by one. It'll be all undone anyway, as unsat MUST be detected later");
+            counter->check_current_state_unsat();
+        }
+      );
+      archetype.stack_level().include_solution(counter->get_fg()->one());
+    } else {
       if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(counter->get_two());
     }
@@ -231,8 +230,11 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       "recursively and put into search_stack_ all the variables that are connected to var: " << var);
   stats.comps_recorded++;
 
-  for (auto vt = comp_vars.begin(); vt != comp_vars.end(); vt++) {
-    const auto v = *vt;
+  for (uint32_t i = 0; i < comp_vars.size(); i++) {
+    const auto v = comp_vars[i];
+    // Prefetch next variable's holder metadata (timestamp, level, occ sizes/offsets)
+    if (i + 1 < comp_vars.size())
+      __builtin_prefetch(holder.data.get() + comp_vars[i+1] * hstride);
     SLOW_DEBUG_DO(assert(is_unknown(v)));
     analyze_verb(
       debug_print("-----------------------");
@@ -258,9 +260,9 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       analyze_verb(debug_print("analyze NORESET"));
       stats.comps_non_reset++;
     }
-    bool update = (counter->last_dec_candidates > conf.analyze_cand_update) || reset;
+    bool const update = (counter->last_dec_candidates > conf.analyze_cand_update) || reset;
     if (update) {
-      holder.tstamp(v) = counter->get_tstamp();
+      holder.set_tstamp(v, counter->get_tstamp());
       holder.set_lev(v, counter->dec_level());
       analyze_verb(debug_print("analyze tstamp UPDATED. v: " << v << " holder.lev(v): " << holder.lev(v)
           << " holder.tstamp(v): " << holder.tstamp(v)));
@@ -277,8 +279,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       while (bins_end2 != bins_end3) {
         const uint32_t v2 = *bins_end2;
         if (is_unknown(v2)) {
-          cout << "ERROR: bin clause var: " << v2 << " unknown, but we thought it's set (and in the bin, true)!" << endl;
-          assert(false);
+          cerr << "ERROR: bin clause var: " << v2 << " unknown, but we thought it's set (and in the bin, true)!" << endl;
+          release_assert(false);
         }
         bins_end2++;
       }
@@ -289,9 +291,9 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       // we have not seen all binary clauses
       // traverse binary clauses
       uint32_t* bins = holder.begin_bin(v);
-      uint32_t* bins_end = bins + holder.size_bin(v);
+      uint32_t const* bins_end = bins + holder.size_bin(v);
       while(bins != bins_end) {
-        uint32_t v2 = *(bins++);
+        uint32_t const v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
         manage_occ_of(v2);
         if (is_unknown(v2)) {
@@ -356,6 +358,10 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       ClData& d = *longs;
       longs++;
+      // Prefetch next long clause's literal data (only for non-ternary clauses
+      // where we need to access long_clauses_data; ternary data is inline in ClData)
+      if (longs != longs_end && longs->id >= max_tri_clid)
+        __builtin_prefetch(long_clauses_data.data() + longs->off);
       bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses

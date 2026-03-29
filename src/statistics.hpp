@@ -54,6 +54,8 @@ public:
   uint64_t num_cubes_symm = 0;
   uint64_t cube_lit_extend = 0;
   uint64_t cube_lit_rem = 0;
+  uint64_t cube_lit_flp = 0;
+  uint64_t num_cubes_resolved = 0;
 
   // Clause db management
   uint64_t reduce_db = 0;
@@ -89,6 +91,12 @@ public:
   uint64_t toplevel_probe_runs = 0;
   uint64_t toplevel_probe_fail = 0;
   uint64_t toplevel_bothprop_fail = 0;
+
+  // On-the-fly strengthening (OTFS) and block-wise shrinking
+
+  uint64_t shrink_tried = 0;
+  uint64_t shrink_success = 0;
+  uint64_t shrink_shrunken = 0;
 
   // Subsumption
   uint64_t subsume_runs = 0;
@@ -143,12 +151,12 @@ public:
   uint64_t sum_extra_bytes = 0;
   uint64_t cache_infra_bytes_mem_usage = 0;
 
-  bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) {
+  [[nodiscard]] bool cache_full(const uint64_t empty_size, uint64_t extra_will_be_added) const {
     return (cache_bytes_memory_usage() - empty_size + extra_will_be_added)
       >= max_cache_size_bytes;
   }
 
-  uint64_t cache_bytes_memory_usage() const {
+  [[nodiscard]] uint64_t cache_bytes_memory_usage() const {
     return cache_infra_bytes_mem_usage
            + sum_extra_bytes;
   }
@@ -171,32 +179,26 @@ public:
   }
 
   void incorporateIrredClauseData(const vector<Lit>& clause) {
-    if (clause.size() == 1) return;
     if (clause.size() == 2) num_bin_irred_cls++;
   }
 
   void print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const;
-  void print_short_formula_info(const Counter* counter) const;
+  static void print_short_formula_info(const Counter* counter);
 
-  double get_avg_comp_hit_size() const {
-    if (num_cache_hits == 0) return 0.0L;
-    return (double)sum_cache_hit_sizes / (double) num_cache_hits;
-  }
-
-  double cache_miss_rate() const {
+  [[nodiscard]] double cache_miss_rate() const {
     if(num_cache_look_ups == 0) return 0.0;
-    return (double)(num_cache_look_ups - num_cache_hits)
-        / (double) num_cache_look_ups;
+    return static_cast<double>(num_cache_look_ups - num_cache_hits)
+        / static_cast<double>(num_cache_look_ups);
   }
 
-  long double get_avg_cache_store_sz() const {
+  [[nodiscard]] long double get_avg_cache_store_sz() const {
     if(num_cache_hits == 0) return 0.0L;
-    return sum_cache_hit_sizes / (long double) num_cache_hits;
+    return sum_cache_hit_sizes / static_cast<long double>(num_cache_hits);
   }
 
-  long double get_avg_cache_store_size() const {
+  [[nodiscard]] long double get_avg_cache_store_size() const {
     if(total_num_cached_comps == 0) return 0.0L;
-    return sum_cache_store_sizes / (long double) total_num_cached_comps;
+    return sum_cache_store_sizes / static_cast<long double>(total_num_cached_comps);
   }
 };
 

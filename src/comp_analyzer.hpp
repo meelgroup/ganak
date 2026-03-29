@@ -30,7 +30,9 @@ THE SOFTWARE.
 #include "comp_types/comp_archetype.hpp"
 
 #include <climits>
+#include <cstring>
 #include <cstdint>
+#include <memory>
 #include <map>
 #include <gmpxx.h>
 #include "containers.hpp"
@@ -48,7 +50,7 @@ class Counter;
 constexpr uint32_t hstride = 10; // stamp(2), lev, 2*(start, size, orig_size) which is 9, but we round up to 10 for alignment
 /* #define ANALYZE_DEBUG */
 
-struct ClData {
+struct [[gnu::may_alias]] ClData {
   uint32_t id;
   uint32_t off;
   Lit blk_lit;
@@ -68,26 +70,30 @@ struct MemData {
 };
 
 struct MyHolder {
-  MyHolder () = default;
-  ~MyHolder() { delete [] data;}
-  uint32_t* data;
+  MyHolder() = default;
+  MyHolder(const MyHolder&) = delete;
+  MyHolder& operator=(const MyHolder&) = delete;
+  std::unique_ptr<uint32_t[]> data;
   // start_bin, sz_bin, start_long, sz_long, start_bin, sz_bin.... data...data.... data ... data...
   // start is number of uint32_t-s! not ClData. not bytes.
 
-  uint64_t tstamp(uint32_t v) const {return *(uint64_t*)(data+(v*hstride));}
-  uint64_t& tstamp(uint32_t v) {return *(uint64_t*)(data+(v*hstride));}
+  // we HAVE to do this copying because of uint64 vs uint32_t type aliasing rules.
+  uint64_t tstamp(uint32_t v) const {
+    uint64_t t;
+    memcpy(&t, data.get() + v*hstride, sizeof(t));
+    return t;
+  }
+  void set_tstamp(uint32_t v, uint64_t t) {
+    memcpy(data.get() + v*hstride, &t, sizeof(t));
+  }
   int32_t lev(uint32_t v) const {return (int32_t)data[v*hstride+2];}
   void set_lev(uint32_t v, int32_t lev) {data[v*hstride+2] = lev;}
   static constexpr uint32_t offset = 3;
 
-  //
   // bin
   uint32_t* begin_bin(uint32_t v) {
     auto start = data[v*hstride+offset+0];
-    return (uint32_t*) (data+start);
-  }
-  uint32_t& back_bin(uint32_t v) {
-    return (begin_bin(v))[size_bin(v)-1];
+    return data.get() + start;
   }
   uint32_t size_bin(uint32_t v) const { return data[v*hstride+offset+1];}
   uint32_t& size_bin(uint32_t v) { return data[v*hstride+offset+1];}
@@ -99,10 +105,7 @@ struct MyHolder {
   // long
   ClData* begin_long(uint32_t v) {
     auto start = data[v*hstride+offset+3];
-    return (ClData*) (data + start);
-  }
-  ClData& back_long(uint32_t v) {
-    return (begin_long(v))[size_long(v)-1];
+    return reinterpret_cast<ClData*>(data.get() + start);
   }
   uint32_t size_long(uint32_t v) const { return data[v*hstride+offset+4];}
   uint32_t& size_long(uint32_t v) { return data[v*hstride+offset+4];}
@@ -124,7 +127,7 @@ public:
   const CompArchetype& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
-      const ClauseAllocator* alloc, const vector<ClauseOfs>& long_irred_cls);
+      ClauseAllocator const* alloc, const vector<ClauseOfs>& long_irred_cls);
 
   bool var_unvisited_in_sup_comp(const uint32_t v) const {
     SLOW_DEBUG_DO(assert(v <= max_var));
@@ -203,10 +206,10 @@ private:
   vector<uint32_t> comp_vars;
 
 
-  bool is_false(const Lit lit) const { return values[lit] == F_TRI; }
-  bool is_true(const Lit lit) const { return values[lit] == T_TRI; }
-  bool is_unknown(const Lit lit) const { return values[lit] == X_TRI; }
-  bool is_unknown(const uint32_t v) const { return values[Lit(v, true)] == X_TRI; }
+  bool is_false(const Lit lit) const { return tri_is_false(values[lit]); }
+  bool is_true(const Lit lit) const { return tri_is_true(values[lit]); }
+  bool is_unknown(const Lit lit) const { return tri_is_unknown(values[lit]); }
+  bool is_unknown(const uint32_t v) const { return tri_is_unknown(values[Lit(v, true)]); }
   void bump_var_occs(const uint32_t v);
 
   // stores all information about the comp of var
@@ -215,13 +218,6 @@ private:
   // we have an isolated variable iff
   // after execution comp_search_stack.size()==1
   void record_comp(const uint32_t var, const uint32_t sup_comp_cls, const uint32_t sup_comp_bin_cls);
-
-  void get_cl(vector<uint32_t> &tmp, const Clause& cl, const Lit & omit_lit) {
-    tmp.clear();
-    for (const auto&l: cl) {
-      if (l.var() != omit_lit.var()) tmp.push_back(l.raw());
-    }
-  }
 
   // This is called from record_comp, i.e. during figuring out what
   // belongs to a component. It's called on every long clause.

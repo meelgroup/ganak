@@ -2,7 +2,7 @@
 
 rm -rf CMake* src cmake* ganak* sharp* Make*
 CC=clang CXX=clang++ cmake -DSANITIZE=ON ..
-make -j6
+make -j$(nproc)
 
 
 echo "Now run with:"

@@ -1,12 +1,34 @@
-# Config file for the @EXPORT_TYPE@ cryptominisat Package
-# It defines the following variables
-#  GANAK_INCLUDE_DIRS - include directories for cryptominisat5
-#  GANAK_LIBRARIES    - libraries to link against
-#  GANAK_EXECUTABLE   - the cryptominisat executable
+# Config file for the @EXPORT_TYPE@ ganak package
 
 # Compute paths
 get_filename_component(GANAK_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 set(GANAK_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+include(CMakeFindDependencyMacro)
+
+# All imported targets referenced in ganakTargets.cmake must be defined before
+# that file is included, otherwise $<LINK_ONLY:foo> falls back to bare -lfoo.
+find_dependency(Threads REQUIRED)
+
+if(NOT "@CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(cryptominisat5_DIR "@CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(cryptominisat5 REQUIRED CONFIG)
+
+if(NOT "@ARJUN_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(arjun_DIR "@ARJUN_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(arjun REQUIRED CONFIG)
+
+if(NOT "@APPROXMC_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(approxmc_DIR "@APPROXMC_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(approxmc REQUIRED CONFIG)
+
+if(NOT "@TREEDECOMP_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(treedecomp_DIR "@TREEDECOMP_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(treedecomp REQUIRED CONFIG)
 
 # Our library dependencies (contains definitions for IMPORTED targets)
 include("${GANAK_CMAKE_DIR}/@GANAK_TARGETS_FILENAME@")
@@ -14,13 +36,6 @@ include("${GANAK_CMAKE_DIR}/@GANAK_TARGETS_FILENAME@")
 # These are IMPORTED targets created by @GANAK_TARGETS_FILENAME@
 set(GANAK_LIBRARIES ganak)
 set(GANAK_STATIC_LIBRARIES ganak)
-set(GANAK_LIBRARIES_DEPS gmp)
-set(GANAK_LIBRARIES_DEPS mpfr)
-set(GANAK_LIBRARIES_DEPS cryptominisat5)
-set(GANAK_LIBRARIES_DEPS arjun)
-set(GANAK_LIBRARIES_DEPS sbva)
-set(GANAK_LIBRARIES_DEPS breakid)
-set(GANAK_LIBRARIES_DEPS approxmc)
 set(GANAK_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
 set(GANAK_VERSION_MINOR @PROJECT_VERSION_MINOR@)
 set(GANAK_EXECUTABLE ganak)

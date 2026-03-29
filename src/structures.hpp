@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <cassert>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <gmpxx.h>
 #include <cstdint>
 #include "lit.hpp"
@@ -40,10 +41,15 @@ using CacheEntryID = uint32_t;
 using TriValue = uint8_t;
 
 constexpr uint32_t sentinel = 0;
+constexpr uint32_t LBD_MAX = 100;
 constexpr int32_t INVALID_DL = -1;
 constexpr uint8_t F_TRI = 0;
 constexpr uint8_t T_TRI = 1;
 constexpr uint8_t X_TRI = 2;
+
+[[nodiscard]] inline bool tri_is_true(TriValue v)    { return v == T_TRI; }
+[[nodiscard]] inline bool tri_is_false(TriValue v)   { return v == F_TRI; }
+[[nodiscard]] inline bool tri_is_unknown(TriValue v) { return v == X_TRI; }
 constexpr Lit NOT_A_LIT(0, false);
 constexpr auto SENTINEL_LIT = NOT_A_LIT;
 
@@ -53,13 +59,7 @@ struct ClOffsBlckL {
   ClauseOfs ofs;
   Lit blckLit;
 
-  bool operator==(const ClOffsBlckL& other) const {
-    return ofs == other.ofs && blckLit == other.blckLit;
-  }
-
-  bool operator!=(const ClOffsBlckL& other) const {
-    return !(this->operator==(other));
-  }
+  bool operator==(const ClOffsBlckL& other) const = default;
 };
 
 struct BinCl {
@@ -67,7 +67,7 @@ struct BinCl {
   BinCl(uint32_t val) = delete;
   BinCl(int val) = delete;
   explicit BinCl(Lit _lit, bool _red) {
-    v = _lit.raw() << 1 | (uint32_t)_red;
+    v = _lit.raw() << 1 | static_cast<uint32_t>(_red);
   }
   Lit lit() const { return Lit::toLit(v >> 1); }
   bool red() const { return v&(1U); }
@@ -83,14 +83,11 @@ public:
   double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
-    for (auto it = watch_list_.begin(); it != watch_list_.end(); it++) {
-      if (it->ofs == offs) {
-        *it = watch_list_.back();
-        watch_list_.pop_back();
-        return;
-      }
-    }
-    assert(false && "should have found it!");
+    auto it = std::find_if(watch_list_.begin(), watch_list_.end(),
+      [offs](const ClOffsBlckL& w) { return w.ofs == offs; });
+    assert(it != watch_list_.end() && "should have found it!");
+    *it = watch_list_.back();
+    watch_list_.pop_back();
   }
 
   inline void add_cl(ClauseIndex offs, Lit blocked_lit) {
@@ -109,9 +106,7 @@ class Antecedent {
   AnteType type = AnteType::decision;
 
 public:
-  Antecedent() {
-    type = AnteType::decision;
-  }
+  Antecedent() = default;
 
   explicit Antecedent(const ClauseOfs cl_ofs) {
      val = cl_ofs;
@@ -140,15 +135,15 @@ public:
   }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
+inline std::ostream& operator<<(std::ostream& os, const Antecedent& ante)
 {
   std::stringstream s;
-  if (val.isNull()) {
+  if (ante.isNull()) {
     s << "DEC      " << std::setw(10) << "";
-  } else if (val.isAClause()) {
-    s << "CL offs: " << std::setw(10) << val.as_cl();
-  } else if (val.isALit()) {
-    s << "Lit:     " << std::setw(10) << val.as_lit();
+  } else if (ante.isAClause()) {
+    s << "CL offs: " << std::setw(10) << ante.as_cl();
+  } else if (ante.isALit()) {
+    s << "Lit:     " << std::setw(10) << ante.as_lit();
   } else {assert(false);}
   os << s.str();
   return os;
@@ -156,34 +151,16 @@ inline std::ostream& operator<<(std::ostream& os, const Antecedent& val)
 
 struct Cube {
   Cube() = default;
-  Cube(const Cube& o) {
-    cnf = o.cnf;
-    cnt = o.cnt->dup();
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
-  }
-  Cube(Cube&& o) noexcept {
-    cnf = std::move(o.cnf);
-    cnt = std::move(o.cnt);
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
-  }
-  Cube& operator=(const Cube& o) noexcept {
-    cnf = o.cnf;
-    cnt = o.cnt->dup();
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
-    return *this;
-  }
-  Cube& operator=(Cube&& o) noexcept {
-    cnf = std::move(o.cnf);
-    cnt = std::move(o.cnt);
-    enabled = o.enabled;
-    symm = o.symm;
-    lbd = o.lbd;
+  Cube(const Cube& o) : cnf(o.cnf), cnt(o.cnt->dup()), enabled(o.enabled), symm(o.symm), lbd(o.lbd) {}
+  Cube(Cube&& o) noexcept = default;
+  // Unified copy+move assignment via copy-and-swap: avoids code duplication and is exception-safe
+  Cube& operator=(Cube o) noexcept {
+    using std::swap;
+    swap(cnf, o.cnf);
+    swap(cnt, o.cnt);
+    swap(enabled, o.enabled);
+    swap(symm, o.symm);
+    swap(lbd, o.lbd);
     return *this;
   }
   Cube(const std::vector<Lit>& _cnf, const FF& _cnt, bool _symm = false) : cnf(_cnf), cnt(_cnt->dup()), symm(_symm) {}
@@ -191,13 +168,13 @@ struct Cube {
   FF cnt = nullptr;
   bool enabled = true;
   bool symm = false;
-  uint32_t lbd = 100;
+  uint32_t lbd = LBD_MAX;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cube& c) {
   os << "CNF: " << c.cnf
     /* << " cnt: " << *c.cnt */
-    << " enabled: " << (int)c.enabled << " symm: " << (int)c.symm << " lbd: " << c.lbd;
+    << " enabled: " << static_cast<int>(c.enabled) << " symm: " << static_cast<int>(c.symm) << " lbd: " << c.lbd;
   return os;
 }
 
@@ -219,20 +196,24 @@ public:
   }
   uint32_t sz;
   uint32_t total_used = 0;
+  uint32_t pos = 2; // cached watch-replacement search position (Gent 2013)
   uint8_t lbd = 0;
   uint8_t used:1 = 1;
   uint8_t red:1 = 0;
   uint8_t freed:1 = 0;
   uint8_t reloced:1 = 0;
-  uint8_t vivifed:1 = 0;
+  uint8_t vivified:1 = 0;
   auto size() const { return sz; }
   void resize(const uint32_t sz2) {sz = sz2;}
   void update_lbd(uint32_t _lbd) {
-    if (_lbd > 100) return;
+    if (_lbd > LBD_MAX) return;
     if (_lbd < lbd) lbd = _lbd;
   }
-  Lit* data() const {
-    return (Lit*)((char*)this + sizeof(Clause));
+  Lit const* data() const {
+    return reinterpret_cast<Lit const*>(reinterpret_cast<char const*>(this) + sizeof(Clause));
+  }
+  Lit* data() {
+    return reinterpret_cast<Lit*>(reinterpret_cast<char*>(this) + sizeof(Clause));
   }
   Lit* begin() { return data(); }
   Lit* end() { return begin()+sz; }
@@ -245,10 +226,10 @@ public:
 inline std::ostream& operator<<(std::ostream& os, const Clause& cl) {
   for(const auto& l: cl) os << l << " ";
   os << "0"
-    << " (red: " << (int)cl.red << " lbd: " << (int)cl.lbd
-    << " used: " << (int)cl.used << " total_used: " << (int)cl.total_used
-    << " vivifed: " << (int)cl.vivifed
-    << " freed: " << (int)cl.freed;
+    << " (red: " << static_cast<int>(cl.red) << " lbd: " << static_cast<int>(cl.lbd)
+    << " used: " << static_cast<int>(cl.used) << " total_used: " << cl.total_used
+    << " vivified: " << static_cast<int>(cl.vivified)
+    << " freed: " << static_cast<int>(cl.freed);
   return os;
 }
 

@@ -1,0 +1,150 @@
+Weighted Cube Miscounting Bugs
+==============================
+
+
+Bug 1: Double Application of Level-0 Variable Weights
+------------------------------------------------------
+
+Symptom
+~~~~~~~
+When running with restarts enabled on weighted instances, the following error
+appears in CHECK_COUNT mode:
+
+    ERROR [weight-mul]: cube cnt mismatch after multiplier: ...
+      cube.cnt : 169/100  check: 13/10
+
+The cube count is the square of the correct value: (13/10)^2 = 169/100.
+This is the signature of a weight being multiplied in twice.
+
+Root Cause
+~~~~~~~~~~
+There are two independent mechanisms that apply variable weights to cube counts.
+For variables assigned at decision level 0 (unit propagations at the start of
+search), both mechanisms apply the weight -- causing a double-count.
+
+Mechanism 1: compute_cube() weighted section
+    When a restart occurs, the DPLL tree count is discarded because decision
+    literal weights are applied by unset_lit() during backtracking, which has
+    not happened yet at restart time. Instead, compute_cube() recomputes the
+    count by multiplying the weights of ALL opt_indep_support variables from
+    the SAT solver model:
+
+        c.cnt = fg->one();
+        for v in 1..opt_indep_support_end:
+            l = Lit(v, model[v] == l_True)
+            c.cnt *= get_weight(l)
+
+    This product includes level-0 assigned variables.
+
+Mechanism 2: this_restart_multiplier in count_loop()
+    At the end of count_loop() (the 'end:' label), a multiplier is computed
+    for all currently-assigned variables (!is_unknown(i)) and applied to all
+    mini_cubes:
+
+        for i in 1..opt_indep_support_end:
+            if not is_unknown(i):
+                this_restart_multiplier *= get_weight(...)
+        for c in mini_cubes:
+            c.cnt *= this_restart_multiplier
+
+    The purpose of this multiplier is to account for level-0 assigned variables
+    (unit propagations). These variables are never unset during the search, so
+    their weights are never accumulated via unset_lit(). This multiplier is
+    essential for EXIT cubes (the DPLL-tree cube produced when counting finishes
+    normally), whose count comes from the decision stack and omits level-0 weights.
+
+The conflict: compute_cube() produces a full weighted count (including level-0
+vars) for restart cubes. Then this_restart_multiplier multiplies the level-0
+vars in again, doubling their contribution.
+
+Example (from fuzzTest_37_min_weights.cnf)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Variables 50 and 52 are assigned at level 0:
+  - var 50 has weight 1
+  - var 52 (as ~52) has weight 13/10
+
+this_restart_multiplier = 1 * (13/10) = 13/10
+
+compute_cube() produces c.cnt = 13/10 (already includes var 52's weight)
+
+After multiplier: c.cnt = (13/10) * (13/10) = 169/100  (WRONG)
+Correct answer:   c.cnt = 13/10
+
+Fix
+~~~
+Only apply this_restart_multiplier to EXIT cubes (cubes with empty cnf).
+EXIT cubes use DPLL-derived counts that omit level-0 weights and genuinely
+need the multiplier. Restart cubes from compute_cube() already contain the
+full weighted product and must not receive the multiplier.
+
+    for c in mini_cubes:
+        if c.cnf.empty():          # EXIT cube: DPLL count, needs multiplier
+            c.cnt *= this_restart_multiplier
+        # else: SAT-model cube, already has full product
+
+The cnf of an EXIT cube is always empty (it represents the terminal state with
+no blocking constraints). The cnf of a compute_cube() restart cube is always
+non-empty (it pins at least one indep-support variable).
+
+Why This Was Not Caught Earlier
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The --restart option defaults to 0 (disabled), so this code path was rarely
+exercised. The bug only manifests in weighted mode with restarts enabled and
+at least one level-0 unit propagation. With the default --rstfirst 20000, the
+restart threshold is high enough that most instances either finish before the
+first restart or the level-0 variables happen to have weight 1, masking the
+multiplication error.
+
+
+Bug 2: Wrong Denominator in extend_cubes Weighted Count Adjustment
+-------------------------------------------------------------------
+
+Symptom
+~~~~~~~
+When extend_cubes removes a literal with count change (cube_try_extend_by_lit
+returns 100), the cube count is adjusted incorrectly in weighted mode. The count
+ends up with the wrong multiplier, silently producing wrong results.
+
+Root Cause
+~~~~~~~~~~
+c.cnf stores BLOCKING literals -- the negations of model assignments. If the
+model had v=true, the cube contains the negative literal ~v = Lit(v, false).
+
+When literal l is removed from the cube with count change, the correct adjustment
+is to divide out the original weight contribution and multiply by the combined
+weight of both polarities:
+
+    new_cnt = old_cnt / weight(model assignment) * (weight(v=true) + weight(v=false))
+
+Since l is the BLOCKING literal (negation of model), l.neg() is the MODEL literal:
+    weight(model assignment) = get_weight(l.neg())
+
+The buggy code used get_weight(l) (the OPPOSITE of the model assignment) as the
+denominator:
+
+    Buggy:  old_cnt / get_weight(l)       * (get_weight(l) + get_weight(l.neg()))
+    Fixed:  old_cnt / get_weight(l.neg()) * (get_weight(l) + get_weight(l.neg()))
+
+For example, if model had v=true and weight(v=true)=2, weight(v=false)=3:
+    Correct multiplier: (2+3)/2 = 2.5
+    Buggy multiplier:   (2+3)/3 = 1.667
+
+Fix
+~~~
+Change the denominator in the weighted branch of extend_cubes from
+get_weight(l) to get_weight(l.neg()):
+
+    FF orig_w = get_weight(l.neg())->dup();   // weight of the model assignment
+    FF combined = get_weight(l)->dup();
+    *combined += *get_weight(l.neg());
+    *c.cnt /= *orig_w;
+    *c.cnt *= *combined;
+
+Why This Was Not Caught Earlier
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+extend_cubes is only reached when conf.do_extend_cubes=1 (the default) and a
+literal can actually be removed (cube_try_extend_by_lit returns 100). This
+requires that both polarities of a variable are satisfiable under the remaining
+cube constraints, which is a relatively rare condition. Additionally, when
+weight(v=true) ≈ weight(v=false) the error is small and may not trigger the
+CHECK_COUNT assertion within tolerance.

@@ -40,6 +40,10 @@ using CMSat::FieldGen;
 using FG = std::unique_ptr<FieldGen>;
 using FF = std::unique_ptr<Field>;
 
+// Also controls Arjun in multi-threaded counting
+// Arjun will not run if below this threshold
+constexpr uint32_t td_at_or_above_indep = 10;
+
 /* #define VERBOSE_DEBUG */
 /* #define SLOW_DEBUG */
 /* #define CHECK_PROPAGATED */
@@ -53,6 +57,11 @@ using FF = std::unique_ptr<Field>;
 // I suggest disabling the cache separately with --cache 0
 /* #define CHECK_COUNT */
 
+#ifdef CHECK_COUNT
+constexpr bool must_check_count = true;
+#else
+constexpr bool must_check_count = false;
+#endif
 
 #define COLRED "\033[31m"
 #define COLYEL2 "\033[35m"
@@ -131,7 +140,6 @@ using FF = std::unique_ptr<Field>;
 #define debug_print(x) do {} while(0)
 #define debug_print_noendl(x) do {} while (0)
 #endif
-#define debug_print_tmp(x) std::cout << COLDEF << x << COLDEF << endl
 
 #define all_vars_in_comp(comp, v) for(auto v = (comp).vars_begin(); *v != sentinel; v++)
 #define all_cls_in_comp(comp, c) for(auto c = (comp).cls_begin(); *c != sentinel; c++)
@@ -149,26 +157,24 @@ using FF = std::unique_ptr<Field>;
 namespace GanakInt {
 
 constexpr double safe_div(double a, double b) {
-  if (b == 0) return 0;
-  else return a/b;
+  return b == 0 ? 0 : a/b;
 }
 
-inline std::string print_value_kilo_mega(const int64_t value, bool setw = true) {
+template<typename T>
+constexpr double in_mb(T bytes) {
+  return static_cast<double>(bytes) / (1024.0 * 1024.0);
+}
+
+inline std::string print_value_kilo_mega(const int64_t value, bool use_setw = true) {
   std::stringstream ss;
   if (value > 20*1000LL*1000LL) {
-    if (setw) {
-        ss << std::setw(4);
-    }
+    if (use_setw) ss << std::setw(4);
     ss << value/(1000LL*1000LL) << "M";
   } else if (value > 20LL*1000LL) {
-    if (setw) {
-        ss << std::setw(4);
-    }
+    if (use_setw) ss << std::setw(4);
     ss << value/1000LL << "K";
   } else {
-    if (setw) {
-        ss << std::setw(5);
-    }
+    if (use_setw) ss << std::setw(5);
     ss << value;
   }
   return ss.str();
@@ -223,5 +229,11 @@ struct BPCSizes {
   static constexpr uint32_t bits_per_block = (sizeof(uint32_t) << 3);
 };
 
+inline void check_exact_field(const FG& fg) {
+    if (!fg->exact()) {
+      cerr << "ERROR: " << __func__ << " can only work for exact counting!!" << endl;
+      exit(EXIT_FAILURE);
+    }
+}
 
 }

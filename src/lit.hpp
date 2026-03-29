@@ -74,21 +74,15 @@ inline std::ostream& operator<<(std::ostream& os, const Lit lit)
 
 inline std::ostream& operator<<(std::ostream& co, const std::vector<Lit>& lits)
 {
-  for (uint32_t i = 0; i < lits.size(); i++) {
-    co << lits[i];
-    if (i != lits.size()-1) co << " ";
-  }
+  const char* sep = "";
+  for (const auto& l : lits) { co << sep << l; sep = " "; }
   return co;
 }
 
 inline std::ostream& operator<<(std::ostream& co, const std::set<Lit>& lits)
 {
-  size_t i = 0;
-  for (const auto& l: lits) {
-    co << l;
-    if (i != lits.size()-1) co << " ";
-    i++;
-  }
+  const char* sep = "";
+  for (const auto& l : lits) { co << sep << l; sep = " "; }
   return co;
 }
 

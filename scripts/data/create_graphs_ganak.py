@@ -8,6 +8,7 @@ import nbformat as nbf
 import plotext as plt
 
 BLUE   = "\033[94m"
+RED    = "\033[91m"
 RESET = "\033[0m"
 
 
@@ -278,6 +279,39 @@ def print_sigabrt_files(table_todo, fname_like):
     print(sep)
 
 
+def print_errored_files(only_dirs):
+    if not only_dirs:
+        return
+    dirs_sql = ",".join("'" + d + "'" for d in only_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT COUNT(*) FROM data WHERE dirname IN ({dirs_sql}) AND errored=1"
+    )
+    count = cur.fetchone()[0]
+    if count == 0:
+        con.close()
+        return
+    title = f"ERROR: {count} instance(s) with ERROR or 'assertion fail' in output"
+    print(f"\n{RED}{title}{RESET}")
+    cur.execute(
+        f"SELECT dirname, fname, ganak_time FROM data WHERE dirname IN ({dirs_sql})"
+        f" AND errored=1 ORDER BY dirname, fname"
+    )
+    rows = cur.fetchall()
+    con.close()
+    str_rows = [(d, f, f"{t:.2f}" if t is not None else "N/A") for d, f, t in rows]
+    widths = [max(len(h), max(len(r[i]) for r in str_rows)) for i, h in enumerate(("dirname", "fname", "ganak_time"))]
+    sep = RED + "+-" + "-+-".join("-" * w for w in widths) + "-+" + RESET
+    fmt = RED + "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |" + RESET
+    print(sep)
+    print(fmt.format("dirname", "fname", "ganak_time"))
+    print(sep)
+    for row in str_rows:
+        print(fmt.format(*row))
+    print(sep)
+
+
 def print_distributions(table_todo, fname_like):
     print_distribution(table_todo, fname_like, "cache_miss_rate",  "cache miss rate")
     print_distribution(table_todo, fname_like, "compsK",           "num components (K) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG compsK")
@@ -540,6 +574,7 @@ def main():
         print("Printing summary tables...")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
     print_sigabrt_files(table_todo, fname_like)
+    print_errored_files(only_dirs)
 
     if args.verbose:
         print("Printing median tables...")

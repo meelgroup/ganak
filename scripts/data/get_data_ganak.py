@@ -137,6 +137,7 @@ def sstd_treewidth(fname):
 def find_bad_solve(fname):
     mem_out = 0
     not_solved = True
+    errored = 0
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
@@ -146,14 +147,16 @@ def find_bad_solve(fname):
                 not_solved = False
             elif line.startswith("s UNSATISFIABLE"):
                 not_solved = False
-    return mem_out, not_solved
+            if "ERROR" in line or "assertion fail" in line.lower():
+                errored = 1
+    return mem_out, not_solved, errored
 
 
 ############################
 ## ganak — single-pass parser combining all per-line extractions
 def parse_ganak_output(fname):
     result = {
-        "error": 0,
+        "errored": 0,
         "mem_out": 0,
         "not_solved": True,
         "cache_del_time": 0.0,
@@ -170,8 +173,8 @@ def parse_ganak_output(fname):
             line = line.strip()
 
             # Unconditional status checks
-            if "ERROR" in line:
-                result["error"] = 1
+            if "ERROR" in line or "assertion fail" in line.lower():
+                result["errored"] = 1
             if "bad_alloc" in line:
                 result["mem_out"] = 1
             if line.startswith("s SATISFIABLE") or line.startswith("s UNSATISFIABLE"):
@@ -336,11 +339,12 @@ def main():
             files[base]["solverver"] = ["exactmc", "exactmc"]
 
         if ".out" in f:
-            mem_out, not_solved = find_bad_solve(f)
+            mem_out, not_solved, errored = find_bad_solve(f)
             files[base]["mem_out"] = max(files[base].get("mem_out", 0), mem_out)
             files[base]["not_solved"] = not_solved
+            files[base]["errored"] = max(files[base].get("errored", 0), errored)
 
-    cols = ["solver", "dirname", "fname", "mem_out", "ganak_time", "ganak_mem_MB",
+    cols = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time", "ganak_mem_MB",
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
             "compsK", "primal_density", "primal_edge_var_ratio", "td_width", "td_time",
             "arjun_time", "backboneT", "backwardT", "indepsz", "optindepsz", "origprojsz",
@@ -379,6 +383,7 @@ def main():
                 g(f, "dirname"),
                 g(f, "fname"),
                 g(f, "mem_out"),
+                g(f, "errored"),
                 ganak_time,
                 g(f, "timeout_mem"),
                 g(f, "timeout_call"),

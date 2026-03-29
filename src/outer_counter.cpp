@@ -247,7 +247,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       auto counter = std::make_unique<Ganak>(local_conf, thread_fg);
       SLOW_DEBUG_DO(
         if (conf.verb >= 10) cnf.write_simpcnf("input_to_thread_" + std::to_string(num) + ".cnf");
-      )
+      );
       setup_ganak(cnf, *counter);
       *ret *= *counter->count();
       num_cache_lookups += counter->get_num_cache_lookups();

@@ -4535,19 +4535,10 @@ void Counter::reduce_db() {
   int64_t const new_decs = stats.decisions - last_reducedb_dec;
   int64_t const new_confls = stats.conflicts - last_reducedb_confl;
   uint32_t target = conf.rdb_cls_target;
-  if (conf.rdb_ema_rate) {
-    if (new_decs > 0) {
-      double const cur_rate = (double)new_confls / (double)new_decs;
-      ema_conflict_rate = conf.rdb_ema_alpha * cur_rate + (1.0 - conf.rdb_ema_alpha) * ema_conflict_rate;
-    }
-    double const mult = std::clamp(0.4 + 6.4 * ema_conflict_rate, 0.4, 2.0);
-    target = static_cast<uint32_t>(conf.rdb_cls_target * mult);
-  } else {
-    if (new_confls*4 > new_decs) target *= 2;
-    else if (new_confls*8 > new_decs) target = static_cast<uint32_t>(target * 1.5);
-    else if (new_confls*32 > new_decs) target = static_cast<uint32_t>(target * 0.8);
-    else target = static_cast<uint32_t>(target * 0.4);
-  }
+  if (new_confls*4 > new_decs) target *= 2;
+  else if (new_confls*8 > new_decs) target = static_cast<uint32_t>(target * 1.5);
+  else if (new_confls*32 > new_decs) target = static_cast<uint32_t>(target * 0.8);
+  else target = static_cast<uint32_t>(target * 0.4);
 
   // Three-tier clause management (CaDiCaL-style):
   //   Tier 1 (lbd <= lbd_cutoff):       never deleted
@@ -4593,8 +4584,7 @@ void Counter::reduce_db() {
       << " lbd cutoff: " << lbd_cutoff
       << " target computed: " << target
       << " cannot be del : " << cannot_be_del
-      << " used: " << num_used_cls << " rdb: " << stats.reduce_db
-      << (conf.rdb_ema_rate ? (std::string(" ema_rate: ") + std::to_string(ema_conflict_rate)) : std::string("")));
+      << " used: " << num_used_cls << " rdb: " << stats.reduce_db);
     verb_print(2, "Time until now: " << cpu_time());}
 }
 

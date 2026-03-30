@@ -247,8 +247,6 @@ void add_ganak_options()
     add_arg("--consolidateeveryn", conf.consolidate_every_n, fc_int, "Consolidate memory after every N learnt clause");
     add_arg("--lbd", conf.base_lbd_cutoff, fc_int, "Initial LBD cutoff");
     add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, fc_int, "Update lbd cutoff");
-    add_arg("--rdbemarate", conf.rdb_ema_rate, fc_int, "Use EMA of conflict rate for RDB target scaling (0=off, 1=on)");
-    add_arg("--rdbemalpha", conf.rdb_ema_alpha, fc_double, "EMA smoothing factor for RDB conflict rate (default 0.15)");
 
     // Decision options
     add_arg("--polar", conf.polar_type, fc_int, "0=standard_polarity, 1=polar cache, 2=false, 3=true");

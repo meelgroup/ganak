@@ -224,7 +224,6 @@ private:
   uint64_t last_reducedb_confl = 0;
   uint64_t last_reducedb_cls_added = 0;
   uint64_t last_reducedb_dec = 0;
-  double ema_conflict_rate = 0.25; // EMA of conflicts/decisions ratio
 
   // Computing LBD (lbd == 2 means "glue clause")
   vector<uint64_t> lbd_helper;

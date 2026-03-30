@@ -2396,7 +2396,6 @@ bool Counter::propagate(bool out_of_order) {
     auto* it2 = ws.begin();
     auto* it = ws.begin();
     for (; it != ws.end(); it++) {
-      if (it + 1 != ws.end()) __builtin_prefetch(alloc->ptr((it+1)->ofs));
       if (is_true(it->blckLit)) { *it2++ = *it;
         debug_print("cl ofs: " << it->ofs << " blocked on lit: " << it->blckLit << " -> skipping");
         continue; }

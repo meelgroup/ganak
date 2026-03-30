@@ -375,6 +375,8 @@ def print_two_dir_diffs(dir1, dir2, fname_like, verbose=False):
 
     title = f"Biggest diffs: {d1s}  vs  {d2s}"
     print(f"\n{BLUE}{title}{RESET}")
+    print(f"  d1 = {d1s}")
+    print(f"  d2 = {d2s}")
 
     def fmt_val(v):
         return "N/A" if v is None else str(v)
@@ -383,11 +385,11 @@ def print_two_dir_diffs(dir1, dir2, fname_like, verbose=False):
         return "N/A" if v is None else f"{v:.1f}"
 
     headers = ["fname",
-               f"nvars({d1s})",    f"nvars({d2s})",
-               f"indep({d1s})",    f"indep({d2s})",
-               f"opt_i({d1s})",    f"opt_i({d2s})",
-               f"irred({d1s})",    f"irred({d2s})",
-               f"arjT({d1s})",     f"arjT({d2s})"]
+               "nvars-d1",  "nvars-d2",
+               "indep-d1",  "indep-d2",
+               "opt_i-d1",  "opt_i-d2",
+               "irred-d1",  "irred-d2",
+               "arjT-d1",   "arjT-d2"]
 
     all_str_rows = []
     for _, sec_rows in sections:
@@ -408,10 +410,12 @@ def print_two_dir_diffs(dir1, dir2, fname_like, verbose=False):
     print(sep)
     print(fmt_row.format(*headers))
     print(sep)
+    printed = set()
     for section_label, sec_rows in sections:
-        print(f"| {'-- sorted by ' + section_label + ' diff --':<{sum(widths) + 3*len(widths) - 1}} |")
-        print(sep)
         for r in sec_rows:
+            if r[0] in printed:
+                continue
+            printed.add(r[0])
             row_str = (
                 r[0],
                 fmt_val(r[1]),  fmt_val(r[2]),
@@ -421,7 +425,7 @@ def print_two_dir_diffs(dir1, dir2, fname_like, verbose=False):
                 fmt_time(r[9]), fmt_time(r[10]),
             )
             print(fmt_row.format(*row_str))
-        print(sep)
+    print(sep)
 
 
 def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):

@@ -201,13 +201,13 @@ def parse_ganak_output(fname):
                 result["bdd_called"] = int(line.split()[6])
             elif line.startswith("c o buddy called"):
                 result["bdd_called"] = int(line.split()[4])
-            elif line.startswith("c o Sampling set size:"):
+            elif line.startswith("c o Sampling set size:") and "indepsz" not in result:
                 indep_sz = line.split()[5].strip()
                 indep_sz = 0 if indep_sz == "" else int(indep_sz)
                 result["indepsz"] = 0 if indep_sz == 4294967295 else indep_sz
-            elif line.startswith("c o opt ind size"):
+            elif line.startswith("c o opt ind size") and "newnvars" not in result:
                 result["newnvars"] = int(line.split()[10])
-            elif line.startswith("c o Opt sampling set size:"):
+            elif line.startswith("c o Opt sampling set size:") and "optindepsz" not in result:
                 opt_indep_sz = line.split()[6].strip()
                 opt_indep_sz = 0 if opt_indep_sz == "" else int(opt_indep_sz)
                 result["optindepsz"] = 0 if opt_indep_sz == 4294967295 else opt_indep_sz
@@ -229,10 +229,10 @@ def parse_ganak_output(fname):
                 result["backboneT"] = result.get("backboneT", 0) + float(line.split()[2])
             elif line.startswith("c o Arjun T:"):
                 result["arjuntime"] = float(line.split()[4])
-            elif line.startswith("c o [td] iter") and "best bag" in line:
+            elif line.startswith("c o [td] iter") and "best bag" in line and "td_width" not in result:
                 result["td_width"] = int(line.split()[7]) - 1
                 result["td_time"] = float(line.split()[12])
-            elif line.startswith("c o [td] iter") and "width:" in line:
+            elif line.startswith("c o [td] iter") and "width:" in line and "td_width" not in result:
                 result["td_width"] = int(line.split()[6]) - 1
                 result["td_time"] = float(line.split()[11])
             elif line.startswith("c o [td] Primal graph"):
@@ -259,9 +259,9 @@ def parse_ganak_output(fname):
             elif line.startswith("c o sat call/sat/unsat/confl/rst"):
                 result["sat_called"] = int(line.split()[4])
                 result["satrst"] = int(line.split()[8])
-            elif line.startswith("c o Bin irred/red"):
+            elif line.startswith("c o Bin irred/red") and "irred_bin" not in result:
                 result["irred_bin"] = int(line.split()[4])
-            elif line.startswith("c o Long irred cls/tri"):
+            elif line.startswith("c o Long irred cls/tri") and "irred_long" not in result:
                 result["irred_long"] = int(line.split()[5])
                 result["irred_tri"] = int(line.split()[6])
 

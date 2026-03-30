@@ -262,6 +262,65 @@ def print_instance_stats_table(table_todo, fname_like, verbose=False):
     os.unlink("gen_table.sqlite")
 
 
+def print_preproc_diffs(table_todo, fname_like, verbose=False):
+    if len(table_todo) < 2:
+        return
+
+    dirs = ",".join("'" + d + "'" for d, _ in table_todo)
+    vers = ",".join("'" + v + "'" for _, v in table_todo)
+
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT fname FROM data"
+        f" WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers}){fname_like}"
+        f"  AND new_nvars IS NOT NULL"
+        f" GROUP BY fname"
+        f" HAVING COUNT(DISTINCT new_nvars) > 1"
+        f"     OR COUNT(DISTINCT indep_sz) > 1"
+        f"     OR COUNT(DISTINCT opt_indep_sz) > 1"
+        f"     OR COUNT(DISTINCT irred_cls) > 1"
+        f" LIMIT 10"
+    )
+    diff_fnames = [row[0] for row in cur.fetchall()]
+
+    if not diff_fnames:
+        con.close()
+        return
+
+    title = f"Preprocessor output differences across dirs ({len(diff_fnames)} file(s) shown, up to 10)"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    fnames_sql = ",".join("'" + f + "'" for f in diff_fnames)
+    cur.execute(
+        f"SELECT fname, replace(dirname,'out-ganak-mc',''), new_nvars, indep_sz, opt_indep_sz, irred_cls"
+        f" FROM data"
+        f" WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
+        f"   AND fname IN ({fnames_sql}) AND new_nvars IS NOT NULL{fname_like}"
+        f" ORDER BY fname, dirname"
+    )
+    rows = cur.fetchall()
+    con.close()
+
+    headers = ["fname", "dirname", "nvars", "indepsz", "opt_isz", "irred_cls"]
+    str_rows = [(f, d, str(nv), str(isz), str(oisz), str(ic))
+                for f, d, nv, isz, oisz, ic in rows]
+    widths = [max(len(h), max((len(r[i]) for r in str_rows), default=0))
+              for i, h in enumerate(headers)]
+    sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+    fmt = "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |"
+    print(sep)
+    print(fmt.format(*headers))
+    print(sep)
+    prev_fname = None
+    for row in str_rows:
+        if prev_fname and prev_fname != row[0]:
+            print(sep)
+        print(fmt.format(*row))
+        prev_fname = row[0]
+    print(sep)
+
+
 def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):
     for dir, ver in table_todo:
         con = sqlite3.connect("data.sqlite3")
@@ -635,6 +694,7 @@ def main():
         print("Printing median tables...")
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
+    print_preproc_diffs(table_todo, fname_like, args.verbose)
 
     if args.verbose:
         print("Generating gnuplot script...")

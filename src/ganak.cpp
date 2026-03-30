@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <algorithm>
 #include <numeric>
 #include <set>
+#include <utility>
 
 using namespace GanakInt;
 
@@ -82,7 +83,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
     }
   }
   vector<vector<vector<GanakInt::Lit>>> bag_to_irred_cls(bags.size());
-  vector<vector<pair<vector<GanakInt::Lit>, uint32_t>>> bag_to_red_cls(bags.size());
+  vector<vector<std::pair<vector<GanakInt::Lit>, uint32_t>>> bag_to_red_cls(bags.size());
   for(const auto& cl: cdat->irred_cls) {
     assert(!cl.empty() && "We filtered out empty clauses above");
     const int b = var_to_bag[cl[0].var()];

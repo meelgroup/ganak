@@ -36,6 +36,19 @@ def get_versions():
     return vers
 
 
+def get_matching_dirs(only_dirs):
+    """Return all dirnames from DB prefixed by any entry in only_dirs.
+    Returns all dirnames if only_dirs is empty."""
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    res = cur.execute("SELECT DISTINCT dirname FROM data")
+    all_dirs = [row[0] for row in res]
+    con.close()
+    if not only_dirs:
+        return all_dirs
+    return [d for d in all_dirs if any((d + "/").startswith(p) for p in only_dirs)]
+
+
 def get_dirs(ver: str):
     ret = []
     con = sqlite3.connect("data.sqlite3")
@@ -58,9 +71,10 @@ def gnuplot_name_cleanup(name: str) -> str:
     return name
 
 
-def build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_like, verbose=False):
+def build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, verbose=False):
     fname2_s = []
     table_todo = []
+    matched_dirs_set = set(matched_dirs)
     for ver in todo:
         dirs_call = get_dirs(ver)
         for dir, call in dirs_call:
@@ -80,13 +94,8 @@ def build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_l
                 if not inside:
                     bad = True
 
-            if len(only_dirs) != 0:
-                inside = False
-                for only_dir in only_dirs:
-                    if only_dir in (dir+"/"):
-                        inside = True
-                if not inside:
-                    bad = True
+            if dir not in matched_dirs_set:
+                bad = True
 
             if bad:
                 if verbose:
@@ -279,10 +288,10 @@ def print_sigabrt_files(table_todo, fname_like):
     print(sep)
 
 
-def print_errored_files(only_dirs):
-    if not only_dirs:
+def print_errored_files(matched_dirs):
+    if not matched_dirs:
         return
-    dirs_sql = ",".join("'" + d + "'" for d in only_dirs)
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
     con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     cur.execute(
@@ -292,7 +301,7 @@ def print_errored_files(only_dirs):
     if count == 0:
         con.close()
         return
-    title = f"ERROR: {count} instance(s) with ERROR or 'assertion fail' in output"
+    title = f"ERROR: {count} instance(s) with ERROR or 'assertion fail' in output  |  {len(matched_dirs)} dirs matched"
     print(f"\n{RED}{title}{RESET}")
     cur.execute(
         f"SELECT dirname, fname, ganak_time FROM data WHERE dirname IN ({dirs_sql})"
@@ -518,6 +527,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     # "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
     "out-ganak-mccomp2324-1247484-0", ## new shrinking, fixing arjun SLOW_DEBUG, improved propagation idea from CaDiCaL, improved 3-tier clause database. Also undoing only 2 particular Claude changes (propagation and --prob 0 non-zeroing of data)
+    "out-ganak-mccomp2324-1250247-", # CMS cleanup, oracle improvements, fix parsing issue (?) of CNF header -- weird + one of them is a binary with: reason-side bumping and lbd update, evsids
 ]
 # only_dirs = [ "mei-march-2026-1239767" ]
 
@@ -555,10 +565,12 @@ def main():
     else:
         fname_like = ""
 
+    matched_dirs = get_matching_dirs(only_dirs)
     if args.verbose:
         print(f"Found {len(versions)} versions in database")
+        print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
-    fname2_s, table_todo = build_csv_data(todo, only_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
+    fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
     if args.verbose:
         print(f"Selected {len(table_todo)} dir/version combinations")
@@ -574,7 +586,7 @@ def main():
         print("Printing summary tables...")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
     print_sigabrt_files(table_todo, fname_like)
-    print_errored_files(only_dirs)
+    print_errored_files(matched_dirs)
 
     if args.verbose:
         print("Printing median tables...")

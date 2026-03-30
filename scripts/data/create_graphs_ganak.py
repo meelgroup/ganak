@@ -1,6 +1,7 @@
 #!/bin/python3
 
 import argparse
+import itertools
 import os
 import sqlite3
 import re
@@ -319,6 +320,108 @@ def print_preproc_diffs(table_todo, fname_like, verbose=False):
         print(fmt.format(*row))
         prev_fname = row[0]
     print(sep)
+
+
+def print_two_dir_diffs(dir1, dir2, fname_like, verbose=False):
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT a.fname,"
+        f"  a.new_nvars, b.new_nvars,"
+        f"  a.indep_sz, b.indep_sz,"
+        f"  a.opt_indep_sz, b.opt_indep_sz,"
+        f"  a.irred_cls, b.irred_cls,"
+        f"  a.arjun_time, b.arjun_time"
+        f" FROM data a JOIN data b ON a.fname=b.fname"
+        f" WHERE a.dirname='{dir1}' AND b.dirname='{dir2}'"
+        f"   AND a.new_nvars IS NOT NULL AND b.new_nvars IS NOT NULL{fname_like}"
+    )
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    metric_pairs = [(1, 2), (3, 4), (7, 8)]
+    if not any(r[ia] != r[ib] for r in rows for ia, ib in metric_pairs
+               if r[ia] is not None and r[ib] is not None):
+        return
+
+    def diff(r, ia, ib):
+        a, b = r[ia], r[ib]
+        return abs((a or 0) - (b or 0))
+
+    def top3(sort_ia, sort_ib):
+        return sorted(rows, key=lambda r: diff(r, sort_ia, sort_ib), reverse=True)[:3]
+
+    # (metric label, index_a, index_b)
+    metrics = [("nvars",     1, 2),
+               ("indep_sz",  3, 4),
+               ("irred_cls", 7, 8)]
+
+    # Collect top-3 per metric, preserving which metric selected each row
+    sections = []
+    seen = set()
+    for label, ia, ib in metrics:
+        section_rows = []
+        for r in top3(ia, ib):
+            if r[0] not in seen:
+                seen.add(r[0])
+            section_rows.append(r)
+        sections.append((label, section_rows))
+
+    d1s = dir1.replace("out-ganak-mc", "")
+    d2s = dir2.replace("out-ganak-mc", "")
+
+    title = f"Biggest diffs: {d1s}  vs  {d2s}"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    def fmt_val(v):
+        return "N/A" if v is None else str(v)
+
+    def fmt_time(v):
+        return "N/A" if v is None else f"{v:.1f}"
+
+    headers = ["fname",
+               f"nvars({d1s})",    f"nvars({d2s})",
+               f"indep({d1s})",    f"indep({d2s})",
+               f"opt_i({d1s})",    f"opt_i({d2s})",
+               f"irred({d1s})",    f"irred({d2s})",
+               f"arjT({d1s})",     f"arjT({d2s})"]
+
+    all_str_rows = []
+    for _, sec_rows in sections:
+        for r in sec_rows:
+            all_str_rows.append((
+                r[0],
+                fmt_val(r[1]),  fmt_val(r[2]),
+                fmt_val(r[3]),  fmt_val(r[4]),
+                fmt_val(r[5]),  fmt_val(r[6]),
+                fmt_val(r[7]),  fmt_val(r[8]),
+                fmt_time(r[9]), fmt_time(r[10]),
+            ))
+
+    widths = [max(len(h), max((len(row[i]) for row in all_str_rows), default=0))
+              for i, h in enumerate(headers)]
+    sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+    fmt_row = "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |"
+    print(sep)
+    print(fmt_row.format(*headers))
+    print(sep)
+    for section_label, sec_rows in sections:
+        print(f"| {'-- sorted by ' + section_label + ' diff --':<{sum(widths) + 3*len(widths) - 1}} |")
+        print(sep)
+        for r in sec_rows:
+            row_str = (
+                r[0],
+                fmt_val(r[1]),  fmt_val(r[2]),
+                fmt_val(r[3]),  fmt_val(r[4]),
+                fmt_val(r[5]),  fmt_val(r[6]),
+                fmt_val(r[7]),  fmt_val(r[8]),
+                fmt_time(r[9]), fmt_time(r[10]),
+            )
+            print(fmt_row.format(*row_str))
+        print(sep)
 
 
 def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):
@@ -695,6 +798,9 @@ def main():
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
     print_preproc_diffs(table_todo, fname_like, args.verbose)
+    unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
+    for dir1, dir2 in itertools.combinations(unique_dirs, 2):
+        print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
 
     if args.verbose:
         print("Generating gnuplot script...")

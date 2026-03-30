@@ -259,12 +259,23 @@ def parse_ganak_output(fname):
             elif line.startswith("c o sat call/sat/unsat/confl/rst"):
                 result["sat_called"] = int(line.split()[4])
                 result["satrst"] = int(line.split()[8])
+            elif line.startswith("c o Bin irred/red"):
+                result["irred_bin"] = int(line.split()[4])
+            elif line.startswith("c o Long irred cls/tri"):
+                result["irred_long"] = int(line.split()[5])
+                result["irred_tri"] = int(line.split()[6])
 
     if aver is not None:
         aver = aver[:8]
     if cver is not None:
         cver = cver[:8]
     result["solverver"] = ["ganak", "%s-%s" % (aver, cver)]
+
+    irred_bin  = result.get("irred_bin",  0)
+    irred_long = result.get("irred_long", 0)
+    irred_tri  = result.get("irred_tri",  0)
+    if irred_bin or irred_long or irred_tri:
+        result["irred_cls"] = irred_bin + irred_long + irred_tri
 
     return result
 
@@ -351,7 +362,8 @@ def main():
             "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
             "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
             "sat_rst", "rst", "cubes_orig", "cubes_final", "gates_extended",
-            "gates_extend_t", "padoa_extended", "padoa_extend_t", "timeout_t"]
+            "gates_extend_t", "padoa_extended", "padoa_extend_t", "timeout_t",
+            "irred_bin", "irred_long", "irred_tri", "irred_cls"]
 
     def g(d, key):
         v = d.get(key)
@@ -420,6 +432,10 @@ def main():
                 g(f, "padoa_extended"),
                 g(f, "padoa_extend_t"),
                 g(f, "timeout_t"),
+                g(f, "irred_bin"),
+                g(f, "irred_long"),
+                g(f, "irred_tri"),
+                g(f, "irred_cls"),
             ])
 
     with open("ganak.sqlite") as sql_f:

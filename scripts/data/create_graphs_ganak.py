@@ -190,6 +190,11 @@ def _median_subquery(col, dir, ver, fname_like, nozero=False):
             f" OFFSET (SELECT COUNT({col}) FROM data WHERE {base}) / 2)")
 
 
+def _avg_subquery(col, dir, ver, fname_like):
+    base = f"dirname='{dir}' and ganak_ver='{ver}' and {col} is not null{fname_like}"
+    return f"(SELECT CAST(ROUND(AVG({col}),0) AS INTEGER) FROM data WHERE {base})"
+
+
 def print_median_tables(table_todo, fname_like, verbose=False):
     if not table_todo:
         return
@@ -212,6 +217,44 @@ def print_median_tables(table_todo, fname_like, verbose=False):
     query = "\nUNION ALL\n".join(union_parts)
     if verbose:
         print(f"  Median table query ({len(table_todo)} rows)")
+    with open("gen_table.sqlite", "w") as f:
+        f.write(".mode table\n")
+        f.write(query + "\n")
+    os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
+    os.unlink("gen_table.sqlite")
+
+
+def print_instance_stats_table(table_todo, fname_like, verbose=False):
+    if not table_todo:
+        return
+
+    title = "Instance stats: variables, independent set sizes, irredundant clauses (median / avg)"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    metrics = [
+        ("new_nvars",    "nvars"),
+        ("indep_sz",     "indepsz"),
+        ("opt_indep_sz", "opt_isz"),
+        ("irred_bin",    "irr_bin"),
+        ("irred_tri",    "irr_tri"),
+        ("irred_long",   "irr_long"),
+        ("irred_cls",    "irr_cls"),
+    ]
+
+    union_parts = []
+    for dir, ver in table_todo:
+        parts = [f"replace('{dir}','out-ganak-mc','') as dirname"]
+        for col, alias in metrics:
+            parts.append(f"{_median_subquery(col, dir, ver, fname_like)} as med_{alias}")
+            parts.append(f"{_avg_subquery(col, dir, ver, fname_like)} as avg_{alias}")
+        count_sq = (f"(SELECT COUNT(*) FROM data WHERE dirname='{dir}'"
+                    f" AND ganak_ver='{ver}'{fname_like})")
+        parts.append(f"{count_sq} as n_inst")
+        union_parts.append("SELECT " + ", ".join(parts))
+
+    query = "\nUNION ALL\n".join(union_parts)
+    if verbose:
+        print(f"  Instance stats query ({len(table_todo)} rows)")
     with open("gen_table.sqlite", "w") as f:
         f.write(".mode table\n")
         f.write(query + "\n")
@@ -591,6 +634,7 @@ def main():
     if args.verbose:
         print("Printing median tables...")
     print_median_tables(table_todo, fname_like, args.verbose)
+    print_instance_stats_table(table_todo, fname_like, args.verbose)
 
     if args.verbose:
         print("Generating gnuplot script...")

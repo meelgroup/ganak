@@ -41,7 +41,11 @@ CREATE TABLE data (
   gates_extend_t INT,
   padoa_extended INT,
   padoa_extend_t INT,
-  timeout_t FLOAT
+  timeout_t FLOAT,
+  irred_bin INT,
+  irred_long INT,
+  irred_tri INT,
+  irred_cls INT
 );
 . mode csv
 . import -skip 1 mydata.csv data
@@ -78,3 +82,7 @@ UPDATE data SET padoa_extended = NULL WHERE padoa_extended = '';
 UPDATE data SET padoa_extend_t = NULL WHERE padoa_extend_t = '';
 UPDATE data SET errored = NULL WHERE errored = '';
 UPDATE data SET timeout_t = NULL WHERE timeout_t = '';
+UPDATE data SET irred_bin = NULL WHERE irred_bin = '';
+UPDATE data SET irred_long = NULL WHERE irred_long = '';
+UPDATE data SET irred_tri = NULL WHERE irred_tri = '';
+UPDATE data SET irred_cls = NULL WHERE irred_cls = '';

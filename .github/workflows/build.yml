@@ -140,7 +140,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: msoos/cryptominisat
-        ref: working-on-synth
+        ref: master
         path: cryptominisat
         submodules: 'true'
     - name: Build CMS
@@ -188,7 +188,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/arjun
-        ref: aig-shared-ptr-better-fix
+        ref: master
         path: arjun
     - name: Build arjun
       run: |
@@ -209,7 +209,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: meelgroup/approxmc
-        ref: synth
+        ref: master
         path: approxmc
         submodules: 'true'
     - name: Build approxmc

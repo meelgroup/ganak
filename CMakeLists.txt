@@ -343,9 +343,21 @@ if(GMPXX_LIBRARY)
 endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
 pkg_check_modules(flint REQUIRED IMPORTED_TARGET flint)
+find_package(MPFI REQUIRED)
+message(STATUS "MPFI include dir: ${MPFI_INCLUDES}")
+message(STATUS "MPFI lib: ${MPFI_LIBRARIES}")
 if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
     set(CMAKE_FIND_LIBRARY_SUFFIXES "${_saved_find_suffixes}")
 endif()
+set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
+find_package(GMP REQUIRED)
+find_package(MPFR REQUIRED)
+find_package(MPFI REQUIRED)
+find_package(FLINT REQUIRED)
+message(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
+message(STATUS "MPFI include dir: ${MPFI_INCLUDES}")
+message(STATUS "MPFI lib dir: ${MPFI_LIBRARIES}")
+message(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
 
 option(NOZLIB "Don't use zlib" OFF)
 if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))
@@ -570,6 +582,7 @@ if(ENABLE_TESTING)
   # larger count / --maxvars (see CLAUDE.md).
   add_test(NAME ddnnf_compile_fuzz
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
+  add_subdirectory(tests/unit)
 endif()
 
 # -----------------------------------------------------------------------------

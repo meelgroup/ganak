@@ -159,6 +159,7 @@ The counting pipeline flows through these layers:
 All arithmetic is polymorphic over `CMSat::Field` / `CMSat::FieldGen` (from
 cryptominisat5). `FG = unique_ptr<FieldGen>`, `FF = unique_ptr<Field>`. Field
 implementations are in:
+- `fmpfi.hpp` — FLINT-based polynomial interval arithmetic
 - `mcomplex.hpp` / `mcomplex-mpfr.hpp` — complex rationals / complex floats
 - `mparity.hpp` — parity (mod 2) counting
 - `mpoly.hpp` — polynomials over finite fields
@@ -284,7 +285,3 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `padoa_extended` / `padoa_extend_t` | Vars added by Padoa extension + time |
 | `primal_density` / `primal_edge_var_ratio` | Primal graph density metrics |
 
-## Dependencies
-
-GMP, MPFR, FLINT, cryptominisat5, arjun, approxmc, treedecomp, zlib (optional). ALL dependencies
-are under ../ -- you can find e.g. ../arjun ../appproxmc ../treedecomp ../sbva ../cadical ../cryptominisat5 etc

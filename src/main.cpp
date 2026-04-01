@@ -45,6 +45,8 @@ THE SOFTWARE.
 #include "mparity.hpp"
 #include "mcomplex.hpp"
 #include "mcomplex-mpfr.hpp"
+#include "fmpfi.hpp"
+#include "fmpqi.hpp"
 #include <approxmc/approxmc.h>
 #include "file_read_helper.h"
 
@@ -142,6 +144,11 @@ int debug_threads = 0;
 int mode = 0;
 int mpfr_precision = 64;
 
+// mpqi parameters (defaults match mpqi.c)
+int mpqi_initial_bytes = 10000;
+int mpqi_final_bytes = 1000;
+int mpqi_cross_count = 1000000;
+
 string print_version()
 {
     std::stringstream ss;
@@ -177,7 +184,9 @@ void add_ganak_options()
 4=parity counting,
 5=counting over a prime field (see --prime),
 6=mpfr floating point complex numbers (see --mpfrprec),
-7=mpfr floating point real numbers (see --mpfrprec)
+7=mpfr floating point real numbers (see --mpfrprec),
+8=mpfi floating point real number intervals (see --mpfrprec),
+9=mpqi rational/interval adaptive (see --mpfrprec)
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
@@ -318,6 +327,11 @@ void add_ganak_options()
 
     // Minor options
     add_arg("--mpfrprec", mpfr_precision, fc_int, "MPFR precision in bits");
+
+    // mpqi rollover parameters (for fuzzing)
+    add_arg("--mpqiinitbytes", mpqi_initial_bytes, fc_int, "mpqi: max byte size of MPQ numerator+denominator before rollover is considered (initial phase)");
+    add_arg("--mpqifinalbytes", mpqi_final_bytes, fc_int, "mpqi: max byte size of MPQ numerator+denominator after rollover (final phase)");
+    add_arg("--mpqicrosscount", mpqi_cross_count, fc_int, "mpqi: number of operations before switching from initial to final byte limit");
 }
 
 void parse_supported_options(int argc, char** argv) {
@@ -371,6 +385,7 @@ void parse_supported_options(int argc, char** argv) {
       cerr << "ERROR: mpfr precision must be at least 2 bits" << endl;
       exit(EXIT_FAILURE);
     }
+    mpqi_set_parameters(mpqi_initial_bytes, mpqi_final_bytes, mpqi_cross_count);
 }
 
 void print_vars(vector<uint32_t> vars) {
@@ -426,6 +441,57 @@ void print_log(const mpfr_t& cnt, string extra = "") {
     cout << tmp << endl;
     mpfr_free_str(tmp);
     mpfr_clear(log10_val);
+}
+
+double digit_precision_mpfi(mpfi_srcptr v) {
+    mpfr_prec_t const prec = mpfi_get_prec(v);
+    mpfr_t left;
+    mpfr_init2(left, prec);
+    mpfr_t right;
+    mpfr_init2(right, prec);
+
+    mpfi_get_left(left, v);
+    mpfi_get_right(right, v);
+    if (mpfr_sgn(left) != mpfr_sgn(right)) {
+        mpfr_clear(left);
+        mpfr_clear(right);
+        return 0.0;
+    }
+
+    mpfr_t diam;
+    mpfr_init2(diam, prec);
+    mpfi_diam_rel(diam, v);
+    if (mpfr_sgn(diam) == 0) {
+        mpfr_clear(diam);
+        mpfr_clear(left);
+        mpfr_clear(right);
+        return max_digit_precision;
+    }
+
+    mpfr_log10(diam, diam, MPFR_RNDN);
+    double result = -mpfr_get_d(diam, MPFR_RNDN);
+    if (result < 0)
+        result = 0.0;
+
+    if (result > max_digit_precision)
+        result = max_digit_precision;
+
+    mpfr_clear(diam);
+    mpfr_clear(left);
+    mpfr_clear(right);
+    return result;
+}
+
+void print_log(const mpfi_t& val, string extra = "") {
+    mpfr_t left, right;
+    mpfr_init2(left, mpfr_precision);
+    mpfr_init2(right, mpfr_precision);
+    mpfi_get_left(left, val);
+    mpfi_get_right(right, val);
+    print_log(left, extra + " left bound");
+    print_log(right, extra + " right bound");
+    mpfr_clear(left);
+    mpfr_clear(right);
 }
 
 void print_log(const mpz_class& cnt, string extra = "") {
@@ -490,7 +556,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7 || mode == 8) {
+    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7 || mode == 8 || mode == 9) {
       std::stringstream ss;
       ss << std::scientific << setprecision(40);
       const CMSat::Field* ptr = cnt.get();
@@ -551,6 +617,22 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
         print_log(od->val);
         mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
+      } else if (mode == 8) {
+        // MPFR intervals
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
+        const FMpfi* od = dynamic_cast<const FMpfi*>(ptr);
+        assert(od != nullptr);
+        print_log(od->val);
+        cout << "c s exact quadruple float interval " << *od << endl;
+        cout << "c s digit precision of interval: " << digit_precision_mpfi(od->val) << endl;
+      } else if (mode == 9) {
+        // mpqi rational/interval adaptive
+        if (cnf.get_projected()) cout << "c s type pwmc" << endl;
+        else cout << "c s type wmc" << endl;
+        const FMpqi* od = dynamic_cast<const FMpqi*>(ptr);
+        cout << "c s exact arb frac " << *od << endl;
+        cout << "c s digit precision: " << digit_precision_mpqi(const_cast<mpqi_ptr>(&od->val)) << endl;
       }
     }
     if (counter.get_is_approximate()) {
@@ -603,6 +685,12 @@ int main(int argc, char *argv[]) {
         break;
     case 7:
         fg = std::make_unique<ArjunNS::FGenMpfr>(mpfr_precision);
+        break;
+    case 8:
+        fg = std::make_unique<FGenMpfi>(mpfr_precision);
+        break;
+    case 9:
+        fg = std::make_unique<FGenMpqi>(mpfr_precision);
         break;
     case 2:
         fg = std::make_unique<FGenComplex>();

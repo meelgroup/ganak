@@ -92,7 +92,10 @@ set_target_properties(ganak PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
-add_executable(ganak-bin main.cpp)
+add_executable(ganak-bin
+  mpqi.c
+  main.cpp
+)
 add_executable(example-bin example.cpp)
 
 target_link_libraries(ganak-bin
@@ -102,6 +105,7 @@ target_link_libraries(ganak-bin
       PkgConfig::flint
       PkgConfig::MPFR
       PkgConfig::GMP
+      ${MPFI_LIBRARIES}
       approxmc
 )
 target_link_libraries(example-bin
@@ -114,6 +118,7 @@ target_link_libraries(example-bin
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${MPFI_INCLUDES}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}

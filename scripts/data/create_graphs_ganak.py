@@ -735,8 +735,10 @@ only_dirs = [
     "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
     # "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     # "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
-    "out-ganak-mccomp2324-1247484-0", ## new shrinking, fixing arjun SLOW_DEBUG, improved propagation idea from CaDiCaL, improved 3-tier clause database. Also undoing only 2 particular Claude changes (propagation and --prob 0 non-zeroing of data)
-    "out-ganak-mccomp2324-1250247-", # CMS cleanup, oracle improvements, fix parsing issue (?) of CNF header -- weird + one of them is a binary with: reason-side bumping and lbd update, evsids
+    # "out-ganak-mccomp2324-1247484-0", ## new shrinking, fixing arjun SLOW_DEBUG, improved propagation idea from CaDiCaL, improved 3-tier clause database. Also undoing only 2 particular Claude changes (propagation and --prob 0 non-zeroing of data)
+    # "out-ganak-mccomp2324-1250247-", # CMS cleanup, oracle improvements, fix parsing issue (?) of CNF header -- weird + one of them is a binary with: reason-side bumping and lbd update, evsids
+    "out-ganak-mccomp2324-1256426-0", # fixing oracle, mostly, and also header parsing more lax
+    "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
 ]
 # only_dirs = [ "mei-march-2026-1239767" ]
 

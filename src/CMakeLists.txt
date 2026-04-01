@@ -94,7 +94,10 @@ set_target_properties(ganak PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
-add_executable(ganak-bin main.cpp)
+add_executable(ganak-bin
+  mpqi.c
+  main.cpp
+)
 add_executable(example-bin example.cpp)
 
 target_link_libraries(ganak-bin
@@ -102,6 +105,7 @@ target_link_libraries(ganak-bin
       ganak
       ${ARJUN_LIBRARIES}
       ${FLINT_LIBRARIES}
+      ${MPFI_LIBRARIES}
       ${MPFR_LIBRARIES}
       ${GMP_LIBRARIES}
       # ${BREAKID_INCLUDE_DIRS}

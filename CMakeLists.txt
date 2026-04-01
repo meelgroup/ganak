@@ -298,8 +298,11 @@ endif()
 set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
+find_package(MPFI REQUIRED)
 find_package(FLINT REQUIRED)
 message(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
+message(STATUS "MPFI include dir: ${MPFI_INCLUDES}")
+message(STATUS "MPFI lib dir: ${MPFI_LIBRARIES}")
 message(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
 
 option(NOZLIB "Don't use zlib" OFF)
@@ -425,6 +428,7 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+  add_subdirectory(tests/unit)
 endif()
 
 # -----------------------------------------------------------------------------

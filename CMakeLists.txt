@@ -444,34 +444,41 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_TARGETS_FILENAME}"
 )
 
-# Create ganakConfig file
-set(EXPORT_TYPE "Build-tree")
-set(CONF_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
+# Build-tree config (absolute paths, for use without installation)
 set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "${cryptominisat5_DIR}")
 set(ARJUN_CMAKE_DIR_FOR_CONFIG "${arjun_DIR}")
 set(APPROXMC_CMAKE_DIR_FOR_CONFIG "${approxmc_DIR}")
 set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "${treedecomp_DIR}")
-configure_file(ganakConfig.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_CONFIG_FILENAME}" @ONLY
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ganakConfig-buildtree.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_CONFIG_FILENAME}"
+    @ONLY
 )
 
 # Export this package to the CMake user package registry
 # Now the user can just use find_package(ganak) on their system
 export(PACKAGE ganak)
 
-# Create ganakConfig file
-set(EXPORT_TYPE "installed")
-set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
-set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "")  # installed deps found via system paths
-set(ARJUN_CMAKE_DIR_FOR_CONFIG "")
-set(APPROXMC_CMAKE_DIR_FOR_CONFIG "")
-set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "")
-configure_file(ganakConfig.cmake.in
-   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}" @ONLY
+# Install-tree config and version files (relocatable via CMakePackageConfigHelpers)
+set(GANAK_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+set(GANAK_VERSION_FILENAME "ganakConfigVersion.cmake")
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(ganakConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}"
+    INSTALL_DESTINATION "${GANAK_INSTALL_CMAKE_DIR}"
+    PATH_VARS GANAK_INSTALL_INCLUDEDIR
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_VERSION_FILENAME}"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
 )
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${GANAK_CONFIG_FILENAME}"
+    "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_VERSION_FILENAME}"
     DESTINATION "${GANAK_INSTALL_CMAKE_DIR}"
 )
 

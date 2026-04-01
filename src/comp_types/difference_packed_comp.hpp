@@ -61,24 +61,31 @@ class DiffPackedComp  {
     uint32_t *data = nullptr;
     uint32_t *p = nullptr;
     uint32_t end_of_bits_ = 0; // in the current block, the bit postion just after the last bit written
-    const uint32_t _bits_per_block = (sizeof(uint32_t) << 3);
+    static constexpr uint32_t _bits_per_block = sizeof(uint32_t) * 8;
   };
 
 
 public:
   DiffPackedComp() = default;
   ~DiffPackedComp() { delete[] data; }
-  DiffPackedComp& operator=(const DiffPackedComp& other) noexcept{
+  DiffPackedComp(const DiffPackedComp& other) : data_size(other.data_size) {
+    if (data_size > 0) {
+      data = new uint32_t[data_size];
+      std::memcpy(data, other.data, data_size * sizeof(uint32_t));
+    }
+  }
+  DiffPackedComp& operator=(const DiffPackedComp& other) {
+    if (this == &other) return *this;
     delete[] data;
     data_size = other.data_size;
-    data = new uint32_t[data_size];
-    std::memcpy(data, other.data, data_size * sizeof(uint32_t));
+    data = (data_size > 0) ? new uint32_t[data_size] : nullptr;
+    if (data_size > 0) std::memcpy(data, other.data, data_size * sizeof(uint32_t));
     return *this;
   }
-  DiffPackedComp(const DiffPackedComp& other) {
-    data_size = other.data_size;
-    data = new uint32_t[data_size];
-    std::memcpy(data, other.data, data_size * sizeof(uint32_t));
+  DiffPackedComp(DiffPackedComp&& other) noexcept
+      : data(other.data), data_size(other.data_size) {
+    other.data = nullptr;
+    other.data_size = 0;
   }
   DiffPackedComp& operator=(DiffPackedComp&& other) noexcept {
     if (this != &other) {
@@ -144,8 +151,9 @@ public:
          + (comp.num_long_cls() - 1) * bits_per_clause_diff;
     }
 
-    data_size = (data_size_vars + data_size_clauses)/sz.bits_per_block;
-    data_size += ((data_size_vars + data_size_clauses) % sz.bits_per_block)? 1 : 0;
+    const uint32_t total_bits = data_size_vars + data_size_clauses;
+    data_size = (total_bits + sz.bits_per_block - 1) / sz.bits_per_block;
+    delete[] data;
     data = new uint32_t[data_size];
     assert((data_size >> sz.bits_of_data_size) == 0);
     BitStuffer bs(data);

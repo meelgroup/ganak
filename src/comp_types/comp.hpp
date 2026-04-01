@@ -39,15 +39,11 @@ public:
   CacheEntryID id() const { return id_; }
 
   uint32_t* vs_cls_data() {
-    uint32_t* ptr = (uint32_t*)this;
-    ptr += sizeof(Comp)/sizeof(uint32_t);
-    return ptr;
+    return reinterpret_cast<uint32_t*>(this) + sizeof(Comp)/sizeof(uint32_t);
   }
 
   uint32_t const* vs_cls_data() const {
-    uint32_t* ptr = (uint32_t*)this;
-    ptr += sizeof(Comp)/sizeof(uint32_t);
-    return ptr;
+    return reinterpret_cast<const uint32_t*>(this) + sizeof(Comp)/sizeof(uint32_t);
   }
 
   inline void add_var(const uint32_t var) {
@@ -146,9 +142,15 @@ inline Comp* reserve_comp_space(uint32_t nVars, uint32_t num_clauses) {
   // vars, clauses, and the two sentinels
   uint64_t bytes_needed = (nVars + num_clauses + 2) * sizeof(uint32_t);
   bytes_needed += sizeof(Comp);
-  Comp* ptr = (Comp*) malloc (bytes_needed);
+  Comp* ptr = static_cast<Comp*>(malloc(bytes_needed));
   ptr->clear();
   return ptr;
+}
+
+// Paired with reserve_comp_space — must be used to free Comp* objects
+// since they are allocated with malloc (not new).
+inline void free_comp(Comp* ptr) {
+  free(ptr);
 }
 
 }

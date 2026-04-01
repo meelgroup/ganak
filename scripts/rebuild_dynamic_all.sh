@@ -1,48 +1,36 @@
 #!/bin/bash
-set -x
-set -e
-cd ../../
+set -euxo pipefail
 
-cd cadical/
-git checkout add_dynamic_lib
-make clean
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+echo "Rebuilding all in $BASE_DIR"
+
+cd "$BASE_DIR/cadical" || exit 1
 ./build_norm.sh
-make -j12
-cd ..
 
-cd cadiback/
-git checkout synthesis
-make clean
+cd "$BASE_DIR/cadiback" || exit 1
 ./build_norm.sh
-make -j12
-cd ..
 
-cd breakid/build/
-git checkout master
+cd "$BASE_DIR/breakid/build" || exit 1
 ./build_norm.sh
-cd ../../
 
-cd cryptominisat/build/
-git checkout master
+cd "$BASE_DIR/cryptominisat/build" || exit 1
 ./build_norm.sh
-cd ../../
 
-cd sbva/build/
-git checkout master
+cd "$BASE_DIR/sbva/build" || exit 1
 ./build_norm.sh
-cd ../../
 
-cd arjun/build/
-git checkout master
+cd "$BASE_DIR/EvalMaxSAT/build" || exit 1
 ./build_norm.sh
-cd ../../
 
-cd approxmc/build/
-git checkout master
-rm -f build_*.sh
-ln -s ../scripts/build_scripts/build_*.sh .
+cd "$BASE_DIR/treedecomp/build" || exit 1
 ./build_norm.sh
-cd ../../
 
-cd ganak/build/
+cd "$BASE_DIR/arjun/build" || exit 1
+./build_norm.sh
+
+cd "$BASE_DIR/approxmc/build" || exit 1
+./build_norm.sh
+
+cd "$BASE_DIR/ganak/build" || exit 1
 ./build_norm.sh

@@ -34,6 +34,7 @@
   AUTH:  Jorn Lind
   DATE:  (C) june 1997
 *************************************************************************/
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -351,7 +352,7 @@ static void bdd_fprintdot_rec(FILE* ofile, BDD r, uint32_t proj_end)
 
    const uint64_t size = ((uint64_t)1) << min(LEVEL(r), proj_end);
    fprintf(ofile, "%d [label=\"", r);
-   fprintf(ofile, "%d -- lev: %d cnt: %lu", LEVEL(r), bddlevel2var[LEVEL(r)], bdd_satcount_i64(r, proj_end)/size);
+   fprintf(ofile, "%d -- lev: %d cnt: %" PRIu64, LEVEL(r), bddlevel2var[LEVEL(r)], bdd_satcount_i64(r, proj_end)/size);
    fprintf(ofile, "\"];\n");
 
    fprintf(ofile, "%d -> %d [style=dotted];\n", r, LOW(r));

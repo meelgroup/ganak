@@ -1,0 +1,88 @@
+# comp_analyzer.cpp / comp_analyzer.hpp — Bug & Performance Review
+# Date: 2026-03-13
+# Branch: integrate-mpqi
+#
+# This file summarizes findings from a code review of src/comp_analyzer.cpp and
+# src/comp_analyzer.hpp. Items are grouped by priority. To act on any of these,
+# resume the agent with ID: ae8477de8abac9e5f (if still valid), or re-run the
+# cpp-refactor-reviewer agent on those two files.
+
+=== BUGS ===
+
+[HIGH] #1 — Strict aliasing UB in tstamp() (hpp:77-78)
+  data is uint32_t* but is read/written as uint64_t* via a C-style cast.
+  The compiler is allowed to assume no uint64_t aliases a uint32_t object, so
+  this can be silently miscompiled at -O2/-O3. Also potentially misaligned:
+  new uint32_t[] gives 4-byte alignment, but uint64_t needs 8.
+  Fix: use memcpy/std::bit_cast, or store tstamp in its own uint64_t field.
+
+[HIGH] #2 — Strict aliasing UB in begin_long() (hpp:100-103)
+  The uint32_t* data array is cast to ClData* to read back ClData structs.
+  Same aliasing issue as #1 — works in practice but is undefined behaviour.
+  Fix: use memcpy to read ClData out of the array, or rework storage to use
+  a properly typed buffer.
+
+[MEDIUM] #3 — Uninitialized data pointer in MyHolder (hpp:71-73)
+  MyHolder's default constructor leaves `data` uninitialized. If the destructor
+  runs before initialize() is called (e.g. on an exception), delete[] fires on a
+  garbage pointer — instant undefined behaviour / crash.
+  Fix: uint32_t* data = nullptr;
+
+[MEDIUM] #4 — Rule of Five violation on MyHolder (hpp:71-113)
+  MyHolder has a destructor that calls delete[] data, but no copy/move
+  constructor or assignment operator. Accidental copy = double-free corruption.
+  Fix: explicitly delete copy/move, or implement them.
+
+[MEDIUM] #5 — uint32_t overflow in total_sz (cpp:141-143)
+  The buffer size is accumulated into a uint32_t. For large formulas with many
+  long clauses (each occupying 3 uint32_t slots), this can overflow before the
+  buffer is allocated, resulting in an under-sized allocation and heap corruption.
+  Fix: use uint64_t (or size_t) for the accumulator.
+
+[LOW] #6 — back_bin / back_long underflow on empty list (hpp:89-91, 104-106)
+  If size_bin(v) or size_long(v) is 0, subtracting 1 wraps a uint32_t to
+  ~4 billion, producing a wild out-of-bounds access. These are dead helpers
+  today but a latent trap for future callers.
+  Fix: add an assert(size > 0) guard, or remove the methods if truly unused.
+
+=== PERFORMANCE ===
+
+[MEDIUM] #7 — search_clause scans the clause twice (hpp:229-249)
+  Pass 1 scans for any true literal (short-circuits on sat).
+  Pass 2 calls manage_occ_and_score_of on all literals (only runs if not sat).
+  In the common unsatisfied case, both passes scan the full clause. Merging
+  into a single pass (accumulate unknowns, only process them if no true lit
+  found) would save one full traversal per unsatisfied clause per record_comp.
+
+[MEDIUM] #8 — Binary clause compaction entirely commented out (cpp:296-303)
+  The swap-and-shrink logic for removing satisfied binary clauses from the
+  active list is commented out. Every record_comp call re-scans ALL original
+  binary clauses for a variable, including those already satisfied. The long-
+  clause path has this optimization; the binary path does not.
+  Fix: re-evaluate whether to re-enable the binary compaction (the code is
+  already written, just commented out).
+
+[LOW-MEDIUM] #9 — Satisfied long clause removal gated on update (cpp:386-397)
+  When update=false (low decision candidate count), satisfied long clauses are
+  NOT swapped out of the active list. They will be re-visited on subsequent
+  record_comp calls. This is intentional to avoid swap cost, but means the
+  benefit of compaction is inconsistently applied.
+
+[LOW] #10 — Iterator-based BFS over vector being appended to (cpp:228)
+  comp_vars is used simultaneously as BFS queue and result array. The iterator
+  loop tolerates appends only because reserve(max_var+1) was called earlier.
+  If that reserve is ever removed or max_var changes, this is iterator-
+  invalidation UB. An index-based loop (for uint32_t i = 0; i < comp_vars.size(); i++)
+  would be self-contained and clearer.
+
+=== DEAD CODE / READABILITY ===
+
+#11 — if (true) block (cpp:136): always-taken branch, relic of old if/else.
+#12 — unused `tmp` variable (cpp:70): declared but never used.
+#13 — unused get_cl private method (hpp:219-224): dead private helper.
+#14 — redundant .clear() on freshly constructed vectors (cpp:66, 119).
+#15 — goto end_sat pattern (cpp:370-385): makes set_clause_visited /
+      set_cl_clear invariant very hard to reason about. Consider refactoring
+      into a helper function with an early return.
+#16 — inline operator<< for ClData defined in .cpp (cpp:34-39): unusual,
+      not visible from other TUs that include the header.

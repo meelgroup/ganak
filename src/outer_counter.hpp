@@ -30,9 +30,9 @@ THE SOFTWARE.
 #include <atomic>
 #include <mutex>
 
-#include "counter.hpp"
 #include "counter_config.hpp"
 #include "common.hpp"
+#include "lit.hpp"
 
 using std::unique_ptr;
 using std::vector;
@@ -54,7 +54,7 @@ public:
   void add_red_cl(const vector<Lit>& lits, int lbd = -1) { red_cls.push_back({lits, (uint32_t)lbd}); }
   void add_irred_cl(const vector<Lit>& lits) { irred_cls.push_back(lits); }
   void set_lit_weight(const Lit l, const FF& w) { lit_weights[l] = w->dup(); }
-  FF count(uint8_t bits_jobs = 0, int num_threads = 1);
+  FF count(uint8_t bits_jobs = 0, int num_threads = 1, const bool debug_threads = false);
 
   void print_indep_distrib() const;
   uint64_t get_num_cache_lookups() const { return num_cache_lookups; }

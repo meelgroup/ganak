@@ -40,10 +40,15 @@ using namespace GanakInt;
 
 constexpr double ALLOC_GROW_MULT = 1.5;
 
+// Returns the number of uint32_t elements needed to hold the given number of bytes (ceiling).
+static constexpr uint64_t bytes_to_u32_count(uint64_t bytes) {
+  return (bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+}
+
 void* ClauseAllocator::alloc_enough(uint32_t num_lits) {
   //Try to quickly find a place at the end of a data_start
-  uint64_t neededbytes = sizeof(Clause) + sizeof(Lit)*num_lits;
-  uint64_t needed = neededbytes/sizeof(uint32_t) + (bool)(neededbytes % sizeof(uint32_t));
+  uint64_t const neededbytes = sizeof(Clause) + sizeof(Lit)*num_lits;
+  uint64_t const needed = bytes_to_u32_count(neededbytes);
 
   if (size + needed > capacity) {
     //Grow by default, but don't go under or over the limits
@@ -100,9 +105,9 @@ void ClauseAllocator::clause_free(Clause* cl)
 {
     assert(!cl->freed);
     cl->freed = 1;
-    uint64_t est_num_cl = cl->sz;
-    uint64_t bytes_freed = sizeof(Clause) + est_num_cl*sizeof(Lit);
-    uint64_t elems_freed = bytes_freed/sizeof(uint32_t) + (bool)(bytes_freed % sizeof(uint32_t));
+    uint64_t const est_num_cl = cl->sz;
+    uint64_t const bytes_freed = sizeof(Clause) + est_num_cl*sizeof(Lit);
+    uint64_t const elems_freed = bytes_to_u32_count(bytes_freed);
     currently_used_sz -= elems_freed;
 }
 
@@ -117,11 +122,11 @@ ClauseOfs ClauseAllocator::move_cl(
     , ClauseOfs*& new_ptr
     , Clause* old
 ) {
-  uint64_t bytes_needed = sizeof(Clause) + old->sz*sizeof(Lit);
-  uint64_t size_needed = bytes_needed/sizeof(uint32_t) + (bool)(bytes_needed % sizeof(uint32_t));
+  uint64_t const bytes_needed = sizeof(Clause) + old->sz*sizeof(Lit);
+  uint64_t const size_needed = bytes_to_u32_count(bytes_needed);
   memcpy(new_ptr, old, size_needed*sizeof(uint32_t));
 
-  ClauseOfs new_offset = new_ptr-new_data_start;
+  ClauseOfs const new_offset = new_ptr-new_data_start;
   assert(new_offset <= 0xFFFFFFFF);
   (*old)[0] = Lit::toLit(new_offset & 0xFFFFFFFF);
   old->reloced = true;
@@ -137,12 +142,12 @@ void ClauseAllocator::move_one_watchlist(
   for(auto& w: ws) {
     Clause* old = ptr(w.ofs);
     assert(!old->freed);
-    Lit blocked = w.blckLit;
+    Lit const blocked = w.blckLit;
     if (old->reloced) {
-      ClauseOfs new_offset = (*old)[0].raw();
+      ClauseOfs const new_offset = (*old)[0].raw();
       w = ClOffsBlckL(new_offset, blocked);
     } else {
-      ClauseOfs new_offset = move_cl(new_data_start, new_ptr, old);
+      ClauseOfs const new_offset = move_cl(new_data_start, new_ptr, old);
       w = ClOffsBlckL(new_offset, blocked);
     }
   }
@@ -187,7 +192,7 @@ bool ClauseAllocator::consolidate(Counter* solver , const bool force) {
     if (vdata.ante.isAnt() && vdata.ante.isAClause()) {
       Clause* old = ptr(vdata.ante.as_cl());
       assert(!old->freed);
-      ClauseOfs new_offset = (*old)[0].raw();
+      ClauseOfs const new_offset = (*old)[0].raw();
       vdata.ante = Antecedent(new_offset);
     }
   }

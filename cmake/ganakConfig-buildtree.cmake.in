@@ -1,0 +1,33 @@
+# Config file for the Build-tree ganak package (not relocatable).
+set(GANAK_INCLUDE_DIRS "@CMAKE_CURRENT_BINARY_DIR@/include")
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Threads REQUIRED)
+
+if(NOT "@CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(cryptominisat5_DIR "@CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(cryptominisat5 REQUIRED CONFIG)
+
+if(NOT "@ARJUN_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(arjun_DIR "@ARJUN_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(arjun REQUIRED CONFIG)
+
+if(NOT "@APPROXMC_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(approxmc_DIR "@APPROXMC_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(approxmc REQUIRED CONFIG)
+
+if(NOT "@TREEDECOMP_CMAKE_DIR_FOR_CONFIG@" STREQUAL "")
+    set(treedecomp_DIR "@TREEDECOMP_CMAKE_DIR_FOR_CONFIG@")
+endif()
+find_dependency(treedecomp REQUIRED CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/ganakTargets.cmake")
+set(GANAK_LIBRARIES ganak)
+set(GANAK_STATIC_LIBRARIES ganak)
+set(GANAK_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(GANAK_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(GANAK_EXECUTABLE ganak)

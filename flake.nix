@@ -3,11 +3,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     arjun = {
-      url = "github:meelgroup/arjun/master";
+      url = "github:meelgroup/arjun/aig-shared-ptr-better-fix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cryptominisat = {
-      url = "github:msoos/cryptominisat/master";
+      url = "github:msoos/cryptominisat/working-on-synth";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     sbva = {
@@ -15,11 +15,19 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     approxmc = {
-      url = "github:meelgroup/approxmc/master";
+      url = "github:meelgroup/approxmc/synth";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    breakid = {
-      url = "github:meelgroup/breakid/master";
+    # breakid = {
+    #   url = "github:meelgroup/breakid/master";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
+    # evalmaxsat = {
+    #   url = "github:meelgroup/EvalMaxSAT/master";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
+    treedecomp = {
+      url = "github:meelgroup/treedecomp/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -30,9 +38,11 @@
       nixpkgs,
       arjun,
       approxmc,
-      breakid,
+      # breakid,
       cryptominisat,
       sbva,
+      # evalmaxsat,
+      treedecomp,
     }:
     let
       inherit (nixpkgs) lib;
@@ -53,10 +63,12 @@
           cryptominisat,
           arjun,
           sbva,
-          breakid,
+          # breakid,
           approxmc,
           python3,
           python3Packages,
+          # evalmaxsat,
+          treedecomp,
         }:
         stdenv.mkDerivation {
           name = "ganak";
@@ -75,8 +87,10 @@
             cryptominisat
             arjun
             sbva
-            breakid
+            # breakid
             approxmc
+            # evalmaxsat
+            treedecomp
           ];
           src = ./.;
         };
@@ -107,8 +121,10 @@
             cryptominisat = cryptominisat.packages.${system}.cryptominisat;
             arjun = arjun.packages.${system}.arjun;
             sbva = sbva.packages.${system}.sbva;
-            breakid = breakid.packages.${system}.breakid;
+            # breakid = breakid.packages.${system}.breakid;
             approxmc = approxmc.packages.${system}.approxmc;
+            # evalmaxsat = evalmaxsat.packages.${system}.evalmaxsat;
+            treedecomp = treedecomp.packages.${system}.treedecomp;
           };
         in
         {

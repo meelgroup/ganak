@@ -34,10 +34,6 @@ using std::setprecision;
 
 using namespace GanakInt;
 
-constexpr double in_mb(uint64_t bytes) {
-  return (double)bytes/(double)(1024*1024);
-}
-
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
   verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "decisions K                    "
@@ -62,6 +58,11 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
   verb_print(1, "rem lits triedK/rem lits remK  "
     << setw(9) << rem_lits_tried/1000 << " "
     << setw(9) << rem_lits_with_bins/1000 << " "
+  );
+  verb_print(1, "shrink tried/useful%/lits rem  "
+    << setw(9) << shrink_tried << " "
+    << setw(9) << setprecision(4) << safe_div(shrink_success*100.0, shrink_tried) << " "
+    << setw(9) << shrink_shrunken << " "
   );
 
   verb_print(1, "avg clsz/rem lits avg/finalavg "
@@ -103,6 +104,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(5) << num_cubes_orig << " / "
     << setw(5) << num_cubes_symm << " / "
     << setw(5) << num_cubes_final);
+  verb_print(1, "cubes resolved/flp-removed     "
+    << setw(5) << num_cubes_resolved << " / "
+    << setw(5) << cube_lit_flp);
 
   verb_print(1, "tot restarts                   " << setw(5) << num_restarts);
 
@@ -135,7 +139,7 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 
   double vm_usage = 0;
   verb_print(1, "Mem used                       "
-    << setprecision(2) << (double)mem_used(vm_usage) / (1e9)  << " GB");
+    << setprecision(2) << static_cast<double>(mem_used(vm_usage)) / 1e9  << " GB");
   verb_print(1, "cache pollutions call/removed  "
     << cache_pollutions_called << "/"
     << cache_pollutions_removed);
@@ -163,6 +167,6 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
 }
 
 
-void DataAndStatistics::print_short_formula_info(const Counter* counter) const {
+void DataAndStatistics::print_short_formula_info(const Counter* counter) {
   counter->print_cls_stats();
 }

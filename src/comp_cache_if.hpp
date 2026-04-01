@@ -26,11 +26,8 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp_types/cacheable_comp.hpp"
 #include "statistics.hpp"
-#include <set>
 #include <gmpxx.h>
 #include "stack.hpp"
-
-using std::set;
 
 namespace GanakInt {
 
@@ -60,7 +57,7 @@ public:
   virtual uint64_t calc_cutoff() const = 0;
   virtual bool delete_some_entries() = 0;
   virtual uint64_t unlink_from_tree(CacheEntryID id) = 0;
-  virtual uint64_t num_descendants(CacheEntryID id) = 0;
+  virtual uint64_t num_direct_children(CacheEntryID id) = 0;
   virtual uint64_t num_siblings(CacheEntryID id) = 0;
   virtual void test_descendantstree_consistency() = 0;
   virtual void debug_mem_data() const = 0;

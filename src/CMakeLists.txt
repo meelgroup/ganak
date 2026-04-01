@@ -107,7 +107,10 @@ if(WIN32)
   set_target_properties(ganak PROPERTIES OUTPUT_NAME ganakwin)
 endif()
 
-add_executable(ganak-bin main.cpp)
+add_executable(ganak-bin
+  mpqi.c
+  main.cpp
+)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
 add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
@@ -121,6 +124,7 @@ target_link_libraries(ganak-bin
       arjun
       PkgConfig::flint
       PkgConfig::MPFR
+      PkgConfig::MPFI
       PkgConfig::GMP
       approxmc
       treedecomp
@@ -141,6 +145,7 @@ target_link_libraries(example-c-bin
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${MPFI_INCLUDES}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}

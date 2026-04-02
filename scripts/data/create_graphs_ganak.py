@@ -1,12 +1,13 @@
 #!/bin/python3
 
 import argparse
+import base64
 import itertools
+import math
 import os
 import sqlite3
 import re
 import nbformat as nbf
-import plotext as plt
 
 BLUE   = "\033[94m"
 RED    = "\033[91m"
@@ -445,22 +446,60 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
             print(f"No {label} data for {dir}")
             continue
 
-        title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
-        print(f"\n{BLUE}{title}{RESET}")
-        plt.clf()
-        plt.theme("dark")
-        plt.plot_size(160, 30)
         if xmin is not None:
             values = [v for v in values if v >= xmin]
         if xscale == "log":
-            import math
             values = [math.log10(v) for v in values if v > 0]
-        plt.hist(values, bins=20)
-        if xmin is not None:
-            plt.xlim(xmin, max(values))
-        plt.xlabel(xlabel if xlabel is not None else col)
-        plt.ylabel("count")
-        plt.show()
+
+        if not values:
+            continue
+
+        title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
+        safe_dir = re.sub(r'[^a-zA-Z0-9_-]', '_', dir)
+        safe_col = re.sub(r'[^a-zA-Z0-9_-]', '_', col)
+        pdf_file = f"hist_{safe_col}_{safe_dir}.pdf"
+        png_file = f"hist_{safe_col}_{safe_dir}.png"
+        print(f"\n{BLUE}{title}{RESET}")
+        print(f"  PDF: {pdf_file}  PNG: {png_file}")
+
+        dat_file = f"hist_{safe_col}_{safe_dir}.dat"
+        gp_file  = f"hist_{safe_col}_{safe_dir}.gnuplot"
+
+        with open(dat_file, "w") as f:
+            for v in values:
+                f.write(f"{v}\n")
+
+        vmin, vmax = min(values), max(values)
+        binwidth = (vmax - vmin) / 20.0 if vmax > vmin else 1.0
+        actual_xlabel = xlabel if xlabel is not None else col
+
+        def gp_str(s):
+            return s.replace('"', '\\"')
+
+        with open(gp_file, "w") as f:
+            for term, out in [
+                ('pdfcairo size 15cm,15cm', pdf_file),
+                ('pngcairo size 600,600',   png_file),
+            ]:
+                f.write(f'set terminal {term}\n')
+                f.write(f'set output "{out}"\n')
+                f.write(f'set title "{gp_str(title)}"\n')
+                f.write(f'set xlabel "{gp_str(actual_xlabel)}"\n')
+                f.write( 'set ylabel "count"\n')
+                f.write( 'set grid\n')
+                f.write( 'set key off\n')
+                f.write( 'set style fill solid 0.5 border -1\n')
+                f.write(f'binwidth = {binwidth}\n')
+                f.write( 'set boxwidth binwidth\n')
+                f.write( 'bin(x,w) = w * floor(x/w + 0.5)\n')
+                f.write(f'plot "{dat_file}" using (bin($1,binwidth)):(1) smooth freq with boxes lc rgb "blue"\n\n')
+
+        os.system(f"gnuplot {gp_file}")
+
+        if os.path.exists(png_file):
+            with open(png_file, "rb") as fh:
+                img_b64 = base64.b64encode(fh.read()).decode()
+            print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
 
 
 def print_sigabrt_files(table_todo, fname_like):
@@ -606,14 +645,14 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
                 f.write(f'plot "{dat_file}" using 1:2 with points pt 7 ps 0.5 lc rgb "blue" notitle\n')
                 f.write( 'unset arrow 1\n\n')
 
-        os.system(f"gnuplot {gp_file}")
+        console_title = f"Scatter solve time: {dir1} vs {dir2} (n={len(rows)})"
+        print(f"\n{BLUE}{console_title}{RESET}")
+        print(f"  PDF: {pdf_file}  PNG: {png_file}")
 
-        if verbose:
-            print(f"  scatter: wrote {pdf_file}, {png_file} ({len(rows)} points)")
+        os.system(f"gnuplot {gp_file}")
 
         # Display PNG inline (wezterm / iTerm2 inline-image protocol)
         if os.path.exists(png_file):
-            import base64
             with open(png_file, "rb") as fh:
                 img_b64 = base64.b64encode(fh.read()).decode()
             print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")

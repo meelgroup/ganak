@@ -89,8 +89,10 @@ def timeout_parse(fname):
                     call = call.split("doalarm 1800")[1]
                 elif "doalarm 60" in call:
                     call = call.split("doalarm 60")[1]
-                else:
+                elif "doalarm 900" in call:
                     call = call.split("doalarm 900")[1]
+                else:
+                    print("WARNING: no doalarm found in call: ", call)
 
                 if "./ganak" in call:
                     solver = "ganak"

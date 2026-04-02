@@ -537,6 +537,90 @@ def print_distributions(table_todo, fname_like):
     print_distribution(table_todo, fname_like, "ganak_mem_mb",     "memory usage (MB) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG mem_mb")
 
 
+def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
+    """For every pair of matched dirs, generate a gnuplot scatter plot of
+    solve times (NULL -> 3600).  Writes a PDF and a PNG to disk and displays
+    the PNG inline in the terminal (wezterm / iTerm2 protocol)."""
+    TIMEOUT = 3600
+
+    pairs = list(itertools.combinations(matched_dirs, 2))
+    if not pairs:
+        return
+
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+
+    for dir1, dir2 in pairs:
+        query = (
+            f"SELECT a.fname,"
+            f" COALESCE(a.ganak_time, {TIMEOUT}),"
+            f" COALESCE(b.ganak_time, {TIMEOUT})"
+            f" FROM data a JOIN data b ON a.fname = b.fname"
+            f" WHERE a.dirname = '{dir1}' AND b.dirname = '{dir2}'"
+            f"{fname_like}"
+        )
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        if not rows:
+            if verbose:
+                print(f"  scatter: no common fnames for {dir1} vs {dir2}")
+            continue
+
+        safe1 = re.sub(r'[^a-zA-Z0-9_-]', '_', dir1)
+        safe2 = re.sub(r'[^a-zA-Z0-9_-]', '_', dir2)
+        dat_file = f"scatter_{safe1}_vs_{safe2}.dat"
+        pdf_file = f"scatter_{safe1}_vs_{safe2}.pdf"
+        png_file = f"scatter_{safe1}_vs_{safe2}.png"
+        gp_file  = f"scatter_{safe1}_vs_{safe2}.gnuplot"
+
+        with open(dat_file, "w") as f:
+            f.write(f"# col1={dir1}  col2={dir2}\n")
+            for _fname, t1, t2 in rows:
+                f.write(f"{t1}\t{t2}\n")
+
+        # Escape double quotes for gnuplot strings
+        def gp_str(s):
+            return s.replace('"', '\\"')
+
+        title  = f"Solve time: {gp_str(dir1)} vs {gp_str(dir2)}"
+        xlabel = f"{gp_str(dir1)} time (s)"
+        ylabel = f"{gp_str(dir2)} time (s)"
+
+        with open(gp_file, "w") as f:
+            for term, out in [
+                (f'pdfcairo size 15cm,15cm', pdf_file),
+                (f'pngcairo size 600,600',   png_file),
+            ]:
+                f.write(f'set terminal {term}\n')
+                f.write(f'set output "{out}"\n')
+                f.write(f'set title "{title}"\n')
+                f.write(f'set xlabel "{xlabel}"\n')
+                f.write(f'set ylabel "{ylabel}"\n')
+                f.write( 'set logscale xy\n')
+                f.write( 'set xrange [0.1:4000]\n')
+                f.write( 'set yrange [0.1:4000]\n')
+                f.write( 'set grid\n')
+                f.write( 'set key off\n')
+                f.write( 'set arrow 1 from 0.1,0.1 to 3600,3600 nohead lc rgb "gray50" lw 1\n')
+                f.write(f'plot "{dat_file}" using 1:2 with points pt 7 ps 0.5 lc rgb "blue" notitle\n')
+                f.write( 'unset arrow 1\n\n')
+
+        os.system(f"gnuplot {gp_file}")
+
+        if verbose:
+            print(f"  scatter: wrote {pdf_file}, {png_file} ({len(rows)} points)")
+
+        # Display PNG inline (wezterm / iTerm2 inline-image protocol)
+        if os.path.exists(png_file):
+            import base64
+            with open(png_file, "rb") as fh:
+                img_b64 = base64.b64encode(fh.read()).decode()
+            print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
+
+    con.close()
+
+
 def generate_gnuplot(fname2_s, verbose=False):
     gnuplotfn = "run-all.gnuplot"
     if verbose:
@@ -740,7 +824,11 @@ only_dirs = [
     "out-ganak-mccomp2324-1256426-0", # fixing oracle, mostly, and also header parsing more lax
     "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
 ]
-# only_dirs = [ "mei-march-2026-1239767" ]
+only_dirs = [
+     "mei-march-2026-1239767-1", # gpmc
+     # "mei-march-2026-1239767-0", # ganak old
+     "mei-march-2026-1269673-0" # ganak release
+]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
@@ -781,6 +869,7 @@ def main():
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
+    scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
     if args.verbose:

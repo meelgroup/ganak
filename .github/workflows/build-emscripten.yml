@@ -78,7 +78,7 @@ jobs:
         emconfigure ./configure --no-contracts --no-tracing
         emmake make -j$(nproc)
         cp build/libcadical* $EMINSTALL/lib/
-        cp src/cadical.hpp $EMINSTALL/include/
+        cp src/*.hpp $EMINSTALL/include/
         cd ..
 
     - name: Checkout Cadiback

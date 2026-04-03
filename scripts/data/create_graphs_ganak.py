@@ -661,28 +661,18 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
 
 
 def generate_gnuplot(fname2_s, verbose=False):
-    gnuplotfn = "run-all.gnuplot"
+    gnuplotfn = "cdf.gnuplot"
+    pdf_file = "cdf.pdf"
+    png_file = "cdf.png"
     if verbose:
         print(f"Writing gnuplot script to {gnuplotfn} with {len(fname2_s)} data series")
-    with open(gnuplotfn, "w") as f:
-        f.write("set term postscript eps color lw 1 \"Helvetica\" 12 size 9,5\n")
-        f.write("set output \"run.eps\"\n")
-        f.write("set title \"Counter ganak\"\n")
-        f.write("set notitle\n")
-        f.write("set key bottom right\n")
-        # f.write("set xtics 200\n")
-        f.write("set logscale x\n")
-        f.write("unset logscale y\n")
-        f.write("set ylabel  \"Instances counted\"\n")
-        f.write("set xlabel \"Time (s)\"\n")
-        # f.write("plot [:][10:]\\\n")
-        # f.write("plot [500:4000][1000:1200]\\\n")
-        f.write("plot [0.1:3600][0.1:]\\\n")
-        # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
-        # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
+
+    def gp_str(s):
+        return s.replace('"', '\\"')
+
+    def plot_lines():
         towrite = ""
         for fn, call, ver, _, dir in fname2_s:
-            # if "restart" not in call and num_solved > 142:
             if True:
                 call = gnuplot_name_cleanup(call)
                 dir  = gnuplot_name_cleanup(dir)
@@ -690,9 +680,26 @@ def generate_gnuplot(fname2_s, verbose=False):
                 oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
                 towrite += oneline
                 towrite += ",\\\n"
-        towrite = towrite[:(len(towrite)-4)]
-        f.write(towrite)
-    return gnuplotfn
+        return towrite[:(len(towrite)-4)]
+
+    with open(gnuplotfn, "w") as f:
+        for term, out in [
+            ('pdfcairo size 15cm,15cm', pdf_file),
+            ('pngcairo size 600,600',   png_file),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write('set title "Counter ganak"\n')
+            f.write('set key bottom right\n')
+            f.write('set logscale x\n')
+            f.write('unset logscale y\n')
+            f.write('set ylabel "Instances counted"\n')
+            f.write('set xlabel "Time (s)"\n')
+            f.write('set grid\n')
+            f.write('plot [0.1:3600][0.1:]\\\n')
+            f.write(plot_lines())
+            f.write('\n\n')
+    return gnuplotfn, pdf_file, png_file
 
 
 def create_notebook(dirs):
@@ -866,7 +873,8 @@ only_dirs = [
 only_dirs = [
      "mei-march-2026-1239767-1", # gpmc
      # "mei-march-2026-1239767-0", # ganak old
-     "mei-march-2026-1269673-0", # ganak release, but WRONG SED
+     # "mei-march-2026-1269673-0", # ganak release, but WRONG SED
+     "mei-march-2026-1274973-0", # ganak release, new SED
 ]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
@@ -889,10 +897,10 @@ todo = versions
 # ---- Main ----
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate cactus plots and tables for ganak benchmark data")
+    parser = argparse.ArgumentParser(description="Generate CDF plots and tables for ganak benchmark data")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print progress information")
     parser.add_argument("--full", action="store_true", help="Print full summary table (default: compact)")
-    parser.add_argument("--nograph", action="store_true", help="Skip opening the graph in okular")
+
     parser.add_argument("--fname", nargs="+", metavar="PATTERN", default=[],
                         help="Filter by fname pattern(s), e.g. --fname '%%track1%%' '%%track3%%'")
     args = parser.parse_args()
@@ -938,20 +946,24 @@ def main():
 
     if args.verbose:
         print("Generating gnuplot script...")
-    gnuplotfn = generate_gnuplot(fname2_s, args.verbose)
+    gnuplotfn, pdf_file, png_file = generate_gnuplot(fname2_s, args.verbose)
 
     dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
     create_notebook(dirs)
 
-    for path in ["run.eps", "run.pdf", "run.png"]:
+    for path in [pdf_file, png_file]:
         if os.path.exists(path):
             os.unlink(path)
-    os.system("gnuplot "+gnuplotfn)
-    os.system("epstopdf run.eps run.pdf")
-    os.system("pdftoppm -png run.pdf run")
-    if not args.nograph:
-        print("okular run.eps")
-        os.system("okular run.eps")
+    os.system(f"gnuplot {gnuplotfn}")
+
+    console_title = f"CDF: instances counted vs. solve time"
+    print(f"\n{BLUE}{console_title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+
+    if os.path.exists(png_file):
+        with open(png_file, "rb") as fh:
+            img_b64 = base64.b64encode(fh.read()).decode()
+        print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
 
 
 if __name__ == "__main__":

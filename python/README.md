@@ -102,6 +102,18 @@ each `count()` call starts a fresh Arjun + Ganak run.
 
 ---
 
+### `new_vars(n)`
+
+Declare `n` new variables, extending the variable universe by `n`.
+Useful when you want to count over a known number of variables without
+adding any clauses for them.
+
+```python
+c = Counter()
+c.new_vars(10)
+print(c.count())   # 2^10 = 1024  (no constraints → all assignments valid)
+```
+
 ### `nof_vars() → int`
 
 Return the number of variables seen so far (highest variable index).

@@ -97,8 +97,9 @@ print(c.count())             # → 4  (all four assignments of x1,x2 work)
 Run Arjun preprocessing and Ganak model counting.  Returns the exact model
 count as a Python `int` (arbitrary precision).
 
-The same `Counter` instance can be reused after adding more clauses;
-each `count()` call starts a fresh Arjun + Ganak run.
+`count()` may only be called **once** per `Counter` instance.  Calling it
+a second time raises `RuntimeError`.  To count a modified formula, create a
+new `Counter` and add the desired clauses to it.
 
 ---
 
@@ -165,9 +166,6 @@ print(c.count())            # 1073741824
 ```bash
 # Standard pip install (scikit-build-core handles everything)
 pip install .
-
-# Or, with an editable install for development
-pip install --no-build-isolation -e .
 ```
 
 Requires: GMP ≥ 5, MPFR ≥ 3, FLINT ≥ 2.  On Ubuntu/Debian:
@@ -180,6 +178,19 @@ On macOS:
 
 ```bash
 brew install gmp mpfr flint
+```
+
+## Development testing (after building with CMake)
+
+If you have already built Ganak with CMake (see the top-level `README.md`),
+the extension is available as `build/lib/pyganak*.so`.  You can test it
+without a full `pip install` by creating a venv and pointing `PYTHONPATH` at
+that directory:
+
+```bash
+python3 -m venv venv
+venv/bin/pip install pytest
+PYTHONPATH=build/lib venv/bin/pytest python/tests/ -v
 ```
 
 ## License

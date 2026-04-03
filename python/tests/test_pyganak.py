@@ -239,11 +239,13 @@ class TestCounting:
         result = c.count()
         assert result == 2**20
 
-    def test_count_can_be_called_twice(self):
-        # Calling count() twice should give the same result.
+    def test_count_second_call_raises(self):
+        # count() may only be called once per instance.
         c = pyganak.Counter()
         c.add_clause([1, 2])
-        assert c.count() == c.count()
+        c.count()
+        with pytest.raises(RuntimeError):
+            c.count()
 
     def test_sampling_set_projection(self):
         # (x1 ∨ x2 ∨ x3) projected onto {x1, x2}:
@@ -298,23 +300,30 @@ class TestMultipleCounters:
 
 
 # ---------------------------------------------------------------------------
-# Add more clauses after a count (incremental-style, fresh Arjun each time)
+# Successive counts use separate Counter instances (count() is one-shot)
 # ---------------------------------------------------------------------------
 
-class TestIncrementalStyle:
-    def test_add_then_count_then_add_then_count(self):
-        c = pyganak.Counter()
-        c.add_clause([1, 2])
-        first = c.count()    # 3 models
-        assert first == 3
+class TestSuccessiveCounts:
+    def test_tighter_formula_has_fewer_models(self):
+        # (x1 ∨ x2) alone: 3 models.
+        # (x1 ∨ x2) ∧ (¬x1 ∨ ¬x2): 2 models (XOR).
+        # Use two separate Counter instances.
+        c1 = pyganak.Counter()
+        c1.add_clause([1, 2])
+        assert c1.count() == 3
 
-        c.add_clause([-1, -2])   # now x1 XOR x2 (well, AND with existing: TF or FT)
-        second = c.count()
-        assert second == 2
+        c2 = pyganak.Counter()
+        c2.add_clause([1, 2])
+        c2.add_clause([-1, -2])
+        assert c2.count() == 2
 
-    def test_add_unsat_clause_after_sat(self):
-        c = pyganak.Counter()
-        c.add_clause([1])
-        assert c.count() == 1
-        c.add_clause([-1])   # contradiction
-        assert c.count() == 0
+    def test_contradiction_gives_zero(self):
+        # x1 alone: 1 model.  x1 ∧ ¬x1: 0 models.
+        c1 = pyganak.Counter()
+        c1.add_clause([1])
+        assert c1.count() == 1
+
+        c2 = pyganak.Counter()
+        c2.add_clause([1])
+        c2.add_clause([-1])
+        assert c2.count() == 0

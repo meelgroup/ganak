@@ -47,6 +47,7 @@ struct CounterState {
     std::vector<std::vector<CMSat::Lit>> clauses;
     std::vector<uint32_t> sampling_set;   // 0-indexed (CMSat convention)
     bool sampling_set_given = false;
+    bool counted = false;  // count() may only be called once
 };
 
 typedef struct {
@@ -245,14 +246,21 @@ static std::unique_ptr<CMSat::Field> do_count(
     Ganak counter(conf, fg);
     setup_ganak(cnf, counter);
 
-    auto cnt = cnf.get_multiplier_weight()->dup();
-    if (!cnf.get_multiplier_weight()->is_zero()) {
+    const auto& mw = cnf.get_multiplier_weight();
+    auto cnt = mw->dup();
+    if (!mw->is_zero()) {
         *cnt *= *counter.count();
     }
     return cnt;
 }
 
 static PyObject* Counter_count(Counter* self, PyObject*) {
+    if (self->state->counted) {
+        PyErr_SetString(PyExc_RuntimeError, "count() may only be called once per Counter instance");
+        return nullptr;
+    }
+    self->state->counted = true;
+
     // Snapshot all state with GIL held, then release GIL for the slow work.
     const int      verbose  = self->state->verbose;
     const uint64_t seed     = self->state->seed;
@@ -345,15 +353,17 @@ static PyMethodDef counter_methods[] = {
      "Only variables in this set are counted; variables not in the set are\n"
      "treated as existentially quantified.  If this method is never called,\n"
      "all variables are included in the sampling set (unweighted projected\n"
-     "model counting becomes plain model counting).\n"},
+     "model counting becomes plain model counting).\n\n"
+     "If any variable index in *vars* exceeds the current variable count,\n"
+     "the variable universe is extended automatically to accommodate it.\n"},
 
     {"count",            (PyCFunction)Counter_count,            METH_NOARGS,
      "count() -> int\n\n"
      "Run Arjun preprocessing followed by the Ganak model counter and\n"
      "return the exact model count as a Python integer.\n\n"
-     "The formula may be called multiple times (e.g. after adding more\n"
-     "clauses), but note that a fresh Arjun+Ganak run is performed every\n"
-     "time.\n"},
+     "count() may only be called once per Counter instance.  Calling it\n"
+     "a second time raises RuntimeError.  To count a modified formula,\n"
+     "create a new Counter and add the desired clauses to it.\n"},
 
     {"new_vars",         (PyCFunction)Counter_new_vars,         METH_VARARGS,
      "new_vars(n)\n\n"

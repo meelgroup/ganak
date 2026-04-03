@@ -15,7 +15,7 @@ rm -rf .cmake
 rm -rf lib*
 rm -rf deps
 rm -rf _deps
-cmake -DSTATICCOMPILE=ON \
+cmake -DBUILD_SHARED_LIBS=OFF \
     -DGMP_LIBRARY=/usr/local/lib/libgmp.a \
     -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
     -Dcadical_DIR=../../cadical/build \

@@ -27,7 +27,7 @@ mkdir -p build && cd build && cmake ..
 Common build options:
 - `-DCMAKE_BUILD_TYPE=Debug` — debug symbols, assertions enabled
 - `-DSANITIZE=ON` — enable Clang sanitizers
-- `-DSTATICCOMPILE=ON` — static binary
+- `-DBUILD_SHARED_LIBS=OFF` — static binary
 
 ## After Building: Fuzz Testing
 After a new build, run the fuzzer to check for regressions:

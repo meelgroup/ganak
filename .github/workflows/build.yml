@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel]
         build_type: [Release]
-        staticcompile: [ON, OFF]
+        shared_libs: [ON, OFF]
 
     steps:
     - uses: actions/setup-python@v5
@@ -26,7 +26,7 @@ jobs:
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
-        key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.staticcompile }}
+        key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.shared_libs }}
         max-size: 500M
 
     - name: Install gmp for Mac
@@ -41,7 +41,7 @@ jobs:
         cd ..
 
     - name: Install zlib for Mac dynamic
-      if: contains(matrix.os, 'macos') && matrix.staticcompile == 'OFF'
+      if: contains(matrix.os, 'macos') && matrix.shared_libs == 'ON'
       run: |
         wget https://zlib.net/fossils/zlib-1.3.1.tar.gz
         tar xzvf zlib-1.3.1.tar.gz
@@ -52,7 +52,7 @@ jobs:
         cd ..
 
     - name: Install zlib for Mac static
-      if: contains(matrix.os, 'macos') && matrix.staticcompile == 'ON'
+      if: contains(matrix.os, 'macos') && matrix.shared_libs == 'OFF'
       run: |
         wget https://zlib.net/fossils/zlib-1.3.1.tar.gz
         tar xzvf zlib-1.3.1.tar.gz
@@ -114,13 +114,13 @@ jobs:
         cd ..
 
     - name: Copy cadiback and cadical libs
-      if: matrix.staticcompile == 'OFF'
+      if: matrix.shared_libs == 'ON'
       run: |
        sudo cp cadiback/libcadiback.so .
        sudo cp cadical/build/libcadical.so .
 
     - name: Copy cadiback and cadical libs
-      if: matrix.staticcompile == 'OFF' && contains(matrix.os, 'ubuntu')
+      if: matrix.shared_libs == 'ON' && contains(matrix.os, 'ubuntu')
       run: |
        sudo cp cadiback/libcadiback.so /usr/lib/
        sudo cp cadical/build/libcadical.so /usr/lib/
@@ -136,7 +136,7 @@ jobs:
       run: |
         cd cryptominisat
         mkdir build &&cd build
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
         cmake --build . --config ${{matrix.build_type}} -v
         cd ../..
 
@@ -152,7 +152,7 @@ jobs:
         mkdir build
         cd build
         ln -s ../scripts/*.sh .
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
         cmake --build . --config ${{matrix.build_type}} -v
         sudo make install
         cd ../..
@@ -168,7 +168,7 @@ jobs:
         cd treedecomp
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DSTATICCOMPILE=${{ matrix.staticcompile }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
+        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ..
         cmake --build . --config ${{matrix.build_type}} -v
         sudo cmake --install . --config ${{matrix.build_type}} -v
         cd ../..
@@ -186,7 +186,7 @@ jobs:
         cd build
         cmake \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-        -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
         -DENABLE_TESTING=OFF \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -208,7 +208,7 @@ jobs:
         cd build
         cmake \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-        -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
         -DENABLE_TESTING=OFF \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -226,7 +226,7 @@ jobs:
         mkdir -p build && cd build
         cmake \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-        -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
         -DENABLE_TESTING=OFF \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -247,7 +247,7 @@ jobs:
 
 
     - name: Upload Artifact - Linux
-      if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && !contains(matrix.os, 'arm')
+      if: contains(matrix.os, 'ubuntu') && matrix.shared_libs == 'OFF' && !contains(matrix.os, 'arm')
       uses: actions/upload-artifact@v4
       with:
         name: ganak-linux-amd64
@@ -257,7 +257,7 @@ jobs:
           project/build/include/*
 
     - name: Upload Artifact - Linux arm
-      if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && contains(matrix.os, 'arm')
+      if: contains(matrix.os, 'ubuntu') && matrix.shared_libs == 'OFF' && contains(matrix.os, 'arm')
       uses: actions/upload-artifact@v4
       with:
         name: ganak-linux-arm64
@@ -267,7 +267,7 @@ jobs:
           project/build/include/*
 
     - name: Upload Artifact - Mac Intel
-      if: matrix.os == 'macos-15-intel' && matrix.staticcompile == 'ON'
+      if: matrix.os == 'macos-15-intel' && matrix.shared_libs == 'OFF'
       uses: actions/upload-artifact@v4
       with:
         name: ganak-mac-x86_64
@@ -277,7 +277,7 @@ jobs:
           project/build/include/*
 
     - name: Upload Artifact - Mac Arm
-      if: matrix.os == 'macos-15' && matrix.staticcompile == 'ON'
+      if: matrix.os == 'macos-15' && matrix.shared_libs == 'OFF'
       uses: actions/upload-artifact@v4
       with:
         name: ganak-mac-arm64

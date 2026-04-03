@@ -15,7 +15,7 @@ rm -rf .cmake
 rm -rf lib*
 rm -rf deps
 rm -rf _deps
-cmake -DCMAKE_BUILD_TYPE=Release -DSTATICCOMPILE=ON \
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
     -DGMP_LIBRARY=/usr/local/lib/libgmp.a \
     -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
     -Dcadical_DIR=../../cadical/build \

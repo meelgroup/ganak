@@ -202,3 +202,39 @@ install(TARGETS ganak-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# ---------------------------------------------------------------
+# Python extension module (pyganak)
+# Activated by scikit-build-core via -DBUILD_PYTHON_EXTENSION=ON.
+# Requires CMake >= 3.18 (python_add_library).
+# ---------------------------------------------------------------
+option(BUILD_PYTHON_EXTENSION "Build the pyganak Python extension module" OFF)
+if(BUILD_PYTHON_EXTENSION)
+    find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+
+    python_add_library(pyganak MODULE WITH_SOABI
+        ${PROJECT_SOURCE_DIR}/python/src/pyganak.cpp
+    )
+
+    target_compile_definitions(pyganak PRIVATE
+        PYGANAK_VERSION="${PROJECT_VERSION}"
+    )
+
+    target_include_directories(pyganak PRIVATE
+        ${PROJECT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${ARJUN_INCLUDE_DIRS}
+        ${GMP_INCLUDE_DIR}
+        ${CRYPTOMINISAT5_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(pyganak PRIVATE
+        ganak
+        ${ARJUN_LIBRARIES}
+        ${GMP_LIBRARIES}
+    )
+
+    target_compile_features(pyganak PRIVATE cxx_std_20)
+
+    install(TARGETS pyganak DESTINATION . COMPONENT python)
+endif()

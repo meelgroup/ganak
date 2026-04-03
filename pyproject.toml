@@ -1,0 +1,63 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "cmake>=3.18,<4", "ninja"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyganak"
+version = "1.1.0"
+description = "Bindings to Ganak, a high-performance exact model counter"
+keywords = ["sat", "model counting", "exact counting", "projected counting"]
+license = { file = "LICENSE.txt" }
+maintainers = [{name="Mate Soos", email="soos.mate@gmail.com"}]
+authors = [{name="Mate Soos", email="soos.mate@gmail.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.8"
+readme = "python/README.md"
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+# BUILD_SHARED_LIBS=OFF → all dependencies become static libs linked into the extension.
+# CMAKE_POSITION_INDEPENDENT_CODE=ON → required for linking static libs into a .so.
+cmake.args = [
+    "-DBUILD_PYTHON_EXTENSION=ON",
+    "-DENABLE_TESTING=OFF",
+    "-DBUILD_SHARED_LIBS=OFF",
+    "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+]
+wheel.packages = []           # no pure-Python packages; extension only
+install.components = ["python"]  # only install pyganak.so, not the full ganak install
+
+[tool.cibuildwheel]
+build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+skip = "pp* *-musllinux* *i686"
+build-frontend = "build"
+test-requires = "pytest"
+test-command = "cd /tmp && pytest {project}/python/tests -v"
+
+[tool.cibuildwheel.linux]
+# manylinux_2_28 = AlmaLinux 8; has working dnf/yum repos and modern GCC
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+before-all = "yum install -y epel-release && yum install -y gmp-devel mpfr-devel flint-devel"
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.macos]
+before-all = "brew install gmp mpfr flint || true"
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"

@@ -24,10 +24,19 @@ if(PKG_CONFIG_FOUND)
     pkg_check_modules(PC_MPFR QUIET mpfr)
 endif()
 
+if(APPLE)
+    execute_process(
+        COMMAND brew --prefix mpfr
+        OUTPUT_VARIABLE HOMEBREW_MPFR_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+
 find_path(MPFR_INCLUDES
   NAMES
   mpfr.h
-  HINTS ${PC_MPFR_INCLUDEDIR}
+  HINTS ${PC_MPFR_INCLUDEDIR} ${HOMEBREW_MPFR_PREFIX}/include
   PATHS
   $ENV{GMPDIR}
   ${INCLUDE_INSTALL_DIR}
@@ -83,7 +92,7 @@ endif()
 # Set MPFR_LIBRARIES
 
 find_library(MPFR_LIBRARIES mpfr
-  HINTS ${PC_MPFR_LIBDIR}
+  HINTS ${PC_MPFR_LIBDIR} ${HOMEBREW_MPFR_PREFIX}/lib
   PATHS
   $ENV{GMPDIR}
   ${LIB_INSTALL_DIR}

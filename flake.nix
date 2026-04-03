@@ -72,6 +72,12 @@
         }:
         stdenv.mkDerivation {
           name = "ganak";
+          cmakeFlags = [
+            "-Dcryptominisat5_DIR=${cryptominisat}/lib/cmake/cryptominisat5"
+            "-Darjun_DIR=${arjun}/lib/cmake/arjun"
+            "-Dapproxmc_DIR=${approxmc}/lib/cmake/approxmc"
+            "-Dtreedecomp_DIR=${treedecomp}/lib/cmake/treedecomp"
+          ];
           nativeBuildInputs = [
             cmake
             pkg-config

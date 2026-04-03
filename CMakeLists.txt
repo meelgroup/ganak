@@ -79,16 +79,26 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 # static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
+# STATIC_BINARY controls whether the ganak executable is linked fully statically.
+# Defaults to ON when BUILD_SHARED_LIBS=OFF, but can be set to OFF independently
+# (e.g. when building the Python wheel: BUILD_SHARED_LIBS=OFF embeds static .a
+# deps in the .so, but we don't want a fully static ganak binary).
+if(NOT BUILD_SHARED_LIBS)
+    option(STATIC_BINARY "Link the ganak binary fully statically" ON)
+else()
+    option(STATIC_BINARY "Link the ganak binary fully statically" OFF)
+endif()
 
 if((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
     if(NOT BUILD_SHARED_LIBS)
-        message(STATUS "Compiling statically")
-        if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-        endif()
+        message(STATUS "Compiling with static libraries")
         set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     else()
         message(STATUS "Compiling for dynamic library use")
+    endif()
+    if(STATIC_BINARY AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        message(STATUS "Linking ganak binary statically")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
     endif()
 endif()
 

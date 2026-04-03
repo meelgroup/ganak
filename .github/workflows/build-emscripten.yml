@@ -111,6 +111,8 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback \
           ..
         emmake make -j$(nproc)
         cd ../..
@@ -171,6 +173,11 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback \
+          -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dsbva_DIR=$GITHUB_WORKSPACE/sbva/build \
+          -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -S ..
         emmake make -j$(nproc)
         cd ../..
@@ -192,6 +199,8 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -S ..
         emmake make -j$(nproc)
         cd ../..
@@ -212,6 +221,10 @@ jobs:
           -DNOZLIB=ON \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
+          -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
+          -Dapproxmc_DIR=$GITHUB_WORKSPACE/approxmc/build \
           ..
         emmake make -j$(nproc)
         cd ../..

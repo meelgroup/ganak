@@ -228,10 +228,13 @@ if(BUILD_PYTHON_EXTENSION)
         ${CRYPTOMINISAT5_INCLUDE_DIRS}
     )
 
+    # GMP: link by name (not by the cached .a path) so the linker picks the
+    # shared library, which was built with -fPIC unlike the static one.
     target_link_libraries(pyganak PRIVATE
         ganak
         ${ARJUN_LIBRARIES}
-        ${GMP_LIBRARIES}
+        gmpxx
+        gmp
     )
 
     target_compile_features(pyganak PRIVATE cxx_std_20)

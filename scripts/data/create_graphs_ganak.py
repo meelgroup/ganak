@@ -866,7 +866,7 @@ only_dirs = [
 only_dirs = [
      "mei-march-2026-1239767-1", # gpmc
      # "mei-march-2026-1239767-0", # ganak old
-     "mei-march-2026-1269673-0" # ganak release
+     "mei-march-2026-1269673-0", # ganak release, but WRONG SED
 ]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]

@@ -40,6 +40,8 @@ cmake.args = [
     "-DENABLE_TESTING=OFF",
     "-DBUILD_SHARED_LIBS=OFF",
     "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+    "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+    "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
 ]
 wheel.packages = []           # no pure-Python packages; extension only
 install.components = ["python"]  # only install pyganak.so, not the full ganak install
@@ -55,9 +57,11 @@ test-command = "cd /tmp && pytest {project}/python/tests -v"
 # manylinux_2_28 = AlmaLinux 8; has working dnf/yum repos and modern GCC
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
-before-all = "yum install -y epel-release && yum install -y gmp-devel mpfr-devel flint-devel"
+before-all = "yum install -y epel-release && yum install -y ccache gmp-devel mpfr-devel flint-devel"
+# CCACHE_DIR must be under /project so the host-side actions/cache step can reach it.
+environment = { CCACHE_DIR = "/project/.ccache" }
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
-before-all = "brew install gmp mpfr flint || true"
+before-all = "brew install gmp mpfr flint ccache || true"
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"

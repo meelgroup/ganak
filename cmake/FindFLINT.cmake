@@ -1,13 +1,30 @@
-# Taken from symengine
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_FLINT QUIET flint)
+endif()
 
-include(LibFindMacros)
+find_path(FLINT_INCLUDE_DIR
+    NAMES flint/flint.h
+    HINTS ${PC_FLINT_INCLUDEDIR}
+    PATHS
+    /opt/homebrew/include
+    /usr/local/include
+    /usr/include
+)
 
-libfind_include(flint/flint.h flint)
-libfind_library(flint flint)
+find_library(FLINT_LIBRARY
+    NAMES flint
+    HINTS ${PC_FLINT_LIBDIR}
+    PATHS
+    /opt/homebrew/lib
+    /usr/local/lib
+    /usr/local/lib64
+    /usr/lib
+    /usr/lib64
+)
 
 set(FLINT_LIBRARIES ${FLINT_LIBRARY})
 set(FLINT_INCLUDE_DIRS ${FLINT_INCLUDE_DIR})
-set(FLINT_TARGETS flint)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(FLINT DEFAULT_MSG FLINT_LIBRARIES

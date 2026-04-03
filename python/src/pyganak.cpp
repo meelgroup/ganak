@@ -208,63 +208,67 @@ static PyObject* Counter_set_sampling_set(Counter* self, PyObject* args) {
 // Arjun preprocessing is run automatically.
 // -------------------------------------------------------------------------
 
+// Worker: runs entirely outside the GIL.  Returns the count or throws.
+static std::unique_ptr<CMSat::Field> do_count(
+        int verbose, uint64_t seed, uint32_t max_var,
+        const std::vector<std::vector<CMSat::Lit>>& clauses,
+        const std::vector<uint32_t>& sampl_set, bool ss_given)
+{
+    std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpz>();
+
+    // Trivial case: no variables → 1 satisfying assignment (empty assignment).
+    if (max_var == 0) return fg->one();
+
+    ArjunNS::SimplifiedCNF cnf(fg);
+    cnf.new_vars(max_var);
+    for (const auto& cl : clauses) cnf.add_clause(cl);
+
+    if (ss_given) {
+        cnf.set_sampl_vars(sampl_set);
+    } else {
+        std::vector<uint32_t> all_vars;
+        all_vars.reserve(max_var);
+        for (uint32_t i = 0; i < max_var; i++) all_vars.push_back(i);
+        cnf.set_sampl_vars(all_vars);
+    }
+
+    ArjunNS::Arjun arjun;
+    arjun.set_verb(0);
+    ArjunNS::Arjun::ElimToFileConf etof_conf;
+    ArjunNS::SimpConf simp_conf;
+    arjun.standalone_minimize_indep(cnf, /*all_indep=*/false);
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+
+    GanakInt::CounterConfiguration conf;
+    conf.verb = verbose;
+    conf.seed = seed;
+    Ganak counter(conf, fg);
+    setup_ganak(cnf, counter);
+
+    auto cnt = cnf.get_multiplier_weight()->dup();
+    if (!cnf.get_multiplier_weight()->is_zero()) {
+        *cnt *= *counter.count();
+    }
+    return cnt;
+}
+
 static PyObject* Counter_count(Counter* self, PyObject*) {
-    // Snapshot mutable state while we hold the GIL
-    const int verbose         = self->state->verbose;
-    const uint64_t seed       = self->state->seed;
-    const uint32_t max_var    = self->state->max_var;
-    const bool ss_given       = self->state->sampling_set_given;
+    // Snapshot all state with GIL held, then release GIL for the slow work.
+    const int      verbose  = self->state->verbose;
+    const uint64_t seed     = self->state->seed;
+    const uint32_t max_var  = self->state->max_var;
+    const bool     ss_given = self->state->sampling_set_given;
+    auto clauses_copy   = self->state->clauses;
+    auto sampl_set_copy = self->state->sampling_set;
 
-    // Take copies so we can release the GIL safely
-    auto clauses_copy    = self->state->clauses;
-    auto sampl_set_copy  = self->state->sampling_set;
-
-    // ---- Result / error storage (no Python objects!) ----
     std::unique_ptr<CMSat::Field> result_field;
     std::string error_msg;
     bool success = false;
 
     Py_BEGIN_ALLOW_THREADS
     try {
-        // ---- Field generator: integer (mpz) ----
-        std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpz>();
-
-        // ---- Build SimplifiedCNF ----
-        ArjunNS::SimplifiedCNF cnf(fg);
-        if (max_var > 0) cnf.new_vars(max_var);
-        for (const auto& cl : clauses_copy) cnf.add_clause(cl);
-
-        // ---- Sampling set ----
-        if (ss_given) {
-            cnf.set_sampl_vars(sampl_set_copy);
-        } else {
-            // All variables are in the sampling set
-            std::vector<uint32_t> all_vars;
-            all_vars.reserve(max_var);
-            for (uint32_t i = 0; i < max_var; i++) all_vars.push_back(i);
-            cnf.set_sampl_vars(all_vars);
-        }
-
-        // ---- Arjun preprocessing ----
-        ArjunNS::Arjun arjun;
-        arjun.set_verb(0);
-        ArjunNS::Arjun::ElimToFileConf etof_conf;  // default settings
-        ArjunNS::SimpConf simp_conf;                // default settings
-        arjun.standalone_minimize_indep(cnf, /*all_indep=*/false);
-        arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
-
-        // ---- Ganak counting ----
-        GanakInt::CounterConfiguration conf;
-        conf.verb = verbose;
-        conf.seed = seed;
-        Ganak counter(conf, fg);
-        setup_ganak(cnf, counter);
-
-        auto cnt = cnf.get_multiplier_weight()->dup();
-        if (!cnf.get_multiplier_weight()->is_zero()) {
-            *cnt *= *counter.count();
-        }
-        result_field = std::move(cnt);
+        result_field = do_count(verbose, seed, max_var,
+                                clauses_copy, sampl_set_copy, ss_given);
         success = true;
     } catch (const std::exception& e) {
         error_msg = e.what();
@@ -278,10 +282,26 @@ static PyObject* Counter_count(Counter* self, PyObject*) {
         return nullptr;
     }
 
-    // Convert mpz result to Python int via string representation
     auto& mpz_result = static_cast<ArjunNS::FMpz&>(*result_field);
     std::string s = mpz_result.val.get_str(10);
     return PyLong_FromString(s.c_str(), nullptr, 10);
+}
+
+// -------------------------------------------------------------------------
+// Counter.new_vars(n)  -- declare n additional variables
+// (Useful to force the variable count without adding clauses.)
+// -------------------------------------------------------------------------
+
+static PyObject* Counter_new_vars(Counter* self, PyObject* args) {
+    unsigned int n = 0;
+    if (!PyArg_ParseTuple(args, "I", &n)) return nullptr;
+    uint32_t new_max = self->state->max_var + n;
+    if (new_max < self->state->max_var) {
+        PyErr_SetString(PyExc_OverflowError, "new_vars: variable count overflow");
+        return nullptr;
+    }
+    self->state->max_var = new_max;
+    Py_RETURN_NONE;
 }
 
 // -------------------------------------------------------------------------
@@ -334,6 +354,12 @@ static PyMethodDef counter_methods[] = {
      "The formula may be called multiple times (e.g. after adding more\n"
      "clauses), but note that a fresh Arjun+Ganak run is performed every\n"
      "time.\n"},
+
+    {"new_vars",         (PyCFunction)Counter_new_vars,         METH_VARARGS,
+     "new_vars(n)\n\n"
+     "Declare *n* new variables.  Equivalent to extending the variable\n"
+     "universe without adding any clauses.  Useful when you want to count\n"
+     "over a known number of variables without adding tautological clauses.\n"},
 
     {"nof_vars",         (PyCFunction)Counter_nof_vars,         METH_NOARGS,
      "nof_vars() -> int\n\nReturn the number of variables seen so far.\n"},

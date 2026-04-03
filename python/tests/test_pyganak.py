@@ -127,26 +127,22 @@ class TestCounting:
 
     def test_no_vars_no_clauses(self):
         # Empty formula over 0 variables: exactly 1 model (the empty assignment).
-        # Ganak/Arjun may return 1 or may not support this edge case gracefully;
-        # accept both 0 and 1 if the solver returns without error.
         c = pyganak.Counter()
         result = c.count()
-        assert result in (0, 1)
+        assert result == 1
 
-    def test_single_var_no_clauses(self):
-        # Formula: no clauses, 1 variable → 2 models (x1=T, x1=F)
+    def test_two_unconstrained_vars(self):
+        # 2 unconstrained variables → 4 models.
         c = pyganak.Counter()
-        c.add_clause([1])   # x1 must be true → but remove for real test
-        # Actually test with unconstrained: add a tautological structure
-        # Easiest: just declare the variable via a trivially-true pair
-        # We test this indirectly via a real formula instead (see below).
-
-    def test_two_vars_no_clauses_via_tautology(self):
-        # (x1 ∨ ¬x1) ∧ (x2 ∨ ¬x2): always true, 4 models for 2 vars.
-        c = pyganak.Counter()
-        c.add_clause([1, -1])
-        c.add_clause([2, -2])
+        c.new_vars(2)
         assert c.count() == 4
+
+    def test_new_vars_increases_nof_vars(self):
+        c = pyganak.Counter()
+        c.new_vars(5)
+        assert c.nof_vars() == 5
+        c.new_vars(3)
+        assert c.nof_vars() == 8
 
     def test_unit_clause_positive(self):
         # x1: exactly 1 model (x1=T), var x2 free → 2 models (if 2 vars declared)

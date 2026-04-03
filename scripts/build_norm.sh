@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-rm -rf CMake* src cmake* ganak* sharp* Make* Testing* tests* include .cmake
+rm -rf CMake*
+rm -rf src
+rm -rf cmake*
+rm -rf ganak*
+rm -rf sharp*
+rm -rf Make*
+rm -rf Testing*
+rm -rf tests*
+rm -rf include
+rm -rf .cmake
+rm -rf deps
+rm -rf _deps
 cmake -DENABLE_TESTING=ON \
     -Dcadical_DIR=../cadical \
     -Dcadiback_DIR=../cadiback \

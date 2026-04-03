@@ -1,4 +1,11 @@
-rm -rf CMake* src cmake* ganak* sharp* Make*
+rm -rf CMake*
+rm -rf src
+rm -rf cmake*
+rm -rf ganak*
+rm -rf sharp*
+rm -rf Make*
+rm -rf deps
+rm -rf _deps
 cmake -DCMAKE_BUILD_TYPE=Release \
     -Dcadical_DIR=../cadical \
     -Dcadiback_DIR=../cadiback \

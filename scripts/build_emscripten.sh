@@ -1,7 +1,18 @@
 #!/bin/bash
 set -e
 
-rm -rf lib* Test* tests* include tests CM* cmake* arjun Makefile rjun-src
+rm -rf lib*
+rm -rf Test*
+rm -rf tests*
+rm -rf include
+rm -rf tests
+rm -rf CM*
+rm -rf cmake*
+rm -rf arjun
+rm -rf Makefile
+rm -rf rjun-src
+rm -rf deps
+rm -rf _deps
 emcmake cmake -DCMAKE_INSTALL_PREFIX=$EMINSTALL -DENABLE_TESTING=OFF \
     -Dcadical_DIR=../cadical \
     -Dcadiback_DIR=../cadiback \

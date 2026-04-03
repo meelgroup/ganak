@@ -19,12 +19,21 @@
 
 # Set MPFR_INCLUDES
 
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_MPFR QUIET mpfr)
+endif()
+
 find_path(MPFR_INCLUDES
   NAMES
   mpfr.h
+  HINTS ${PC_MPFR_INCLUDEDIR}
   PATHS
   $ENV{GMPDIR}
   ${INCLUDE_INSTALL_DIR}
+  /opt/homebrew/include
+  /usr/local/include
+  /usr/include
 )
 
 # Set MPFR_FIND_VERSION to 1.0.0 if no minimum version is specified
@@ -73,7 +82,17 @@ endif()
 
 # Set MPFR_LIBRARIES
 
-find_library(MPFR_LIBRARIES mpfr PATHS $ENV{GMPDIR} ${LIB_INSTALL_DIR})
+find_library(MPFR_LIBRARIES mpfr
+  HINTS ${PC_MPFR_LIBDIR}
+  PATHS
+  $ENV{GMPDIR}
+  ${LIB_INSTALL_DIR}
+  /opt/homebrew/lib
+  /usr/local/lib
+  /usr/local/lib64
+  /usr/lib
+  /usr/lib64
+)
 
 # Epilogue
 

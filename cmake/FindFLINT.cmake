@@ -18,6 +18,7 @@ find_path(FLINT_INCLUDE_DIR
     NAMES flint/flint.h
     HINTS ${PC_FLINT_INCLUDEDIR} ${HOMEBREW_FLINT_PREFIX}/include
     PATHS
+    /opt/homebrew/opt/flint/include
     /opt/homebrew/include
     /usr/local/include
     /usr/include
@@ -27,6 +28,7 @@ find_library(FLINT_LIBRARY
     NAMES flint
     HINTS ${PC_FLINT_LIBDIR} ${HOMEBREW_FLINT_PREFIX}/lib
     PATHS
+    /opt/homebrew/opt/flint/lib
     /opt/homebrew/lib
     /usr/local/lib
     /usr/local/lib64

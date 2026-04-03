@@ -80,11 +80,11 @@ target_include_directories(ganak
 
 target_link_libraries(ganak
   PRIVATE
-    Threads::Threads
     ${APPROXMC_LIBRARIES}
     ${TREEDECOMP_LIBRARIES}
     ${ARJUN_LIBRARIES}
   PUBLIC
+    Threads::Threads
     ${CRYPTOMINISAT5_LIBRARIES}
 )
 

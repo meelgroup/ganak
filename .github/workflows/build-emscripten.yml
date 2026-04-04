@@ -38,6 +38,7 @@ jobs:
         emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
     - name: Build MPFR for wasm
@@ -48,6 +49,7 @@ jobs:
         emconfigure ./configure --host wasm32 --with-gmp=$EMINSTALL --prefix=$EMINSTALL
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
     - name: Build FLINT for wasm
@@ -64,6 +66,7 @@ jobs:
           --host wasm32
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
     - name: Checkout Cadical
@@ -85,6 +88,7 @@ jobs:
           ..
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout Cadiback
@@ -107,6 +111,7 @@ jobs:
           ..
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout CryptoMiniSat
@@ -126,10 +131,13 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout treedecomp
@@ -147,8 +155,11 @@ jobs:
           -DBUILD_SHARED_LIBS=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout SBVA
@@ -168,8 +179,11 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -S ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout arjun
@@ -188,6 +202,7 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
@@ -195,6 +210,8 @@ jobs:
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -S ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout approxmc
@@ -214,12 +231,14 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
-          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -S ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout ganak
@@ -239,7 +258,6 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
-          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \

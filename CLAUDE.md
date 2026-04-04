@@ -167,4 +167,5 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 
 ## Dependencies
 
-GMP, MPFR, FLINT, cryptominisat5, arjun, approxmc, treedecomp, zlib (optional).
+GMP, MPFR, FLINT, cryptominisat5, arjun, approxmc, treedecomp, zlib (optional). ALL dependencies
+are under ../ -- you can find e.g. ../arjun ../appproxmc ../treedecomp ../sbva ../cadical ../cryptominisat5 etc

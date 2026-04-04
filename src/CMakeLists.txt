@@ -161,6 +161,20 @@ ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/lit.hpp)
 
+# Ensure headers from sub-builds are copied before we compile against them.
+foreach(_dep_copy_target
+        CopyPublicHeaders_cryptominisat5
+        CopyPublicHeaders_approxmc
+        CopyPublicHeaders_treedecomp
+        CopyPublicHeaders_sbva
+        CopyPublicHeaders)
+    if(TARGET ${_dep_copy_target})
+        foreach(_tgt ganak ganak-bin example-bin)
+            add_dependencies(${_tgt} ${_dep_copy_target})
+        endforeach()
+    endif()
+endforeach()
+
 # Public headers are fully known now; the CopyPublicHeaders target below reads
 # this property, so it must be set before that target is created.
 get_target_property(ganak_public_headers ganak PUBLIC_HEADER)
@@ -171,10 +185,10 @@ get_target_property(ganak_public_headers ganak PUBLIC_HEADER)
 # this.
 # -----------------------------------------------------------------------------
 set(HEADER_DEST "${PROJECT_BINARY_DIR}/include/ganak")
-add_custom_target(CopyPublicHeaders ALL)
+add_custom_target(CopyPublicHeaders_ganak ALL)
 foreach(public_header ${ganak_public_headers})
     get_filename_component(HEADER_NAME ${public_header} NAME)
-    add_custom_command(TARGET CopyPublicHeaders PRE_BUILD
+    add_custom_command(TARGET CopyPublicHeaders_ganak PRE_BUILD
                        COMMAND ${CMAKE_COMMAND} -E make_directory
                                "${HEADER_DEST}"
                        COMMAND ${CMAKE_COMMAND} -E echo

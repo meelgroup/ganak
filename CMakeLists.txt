@@ -315,8 +315,6 @@ if(GMPXX_LIBRARY)
 endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
 pkg_check_modules(FLINT REQUIRED IMPORTED_TARGET flint)
-message(STATUS "MPFR include dirs: ${MPFR_INCLUDE_DIRS}")
-message(STATUS "MPFR libraries: ${MPFR_LIBRARIES}")
 
 option(NOZLIB "Don't use zlib" OFF)
 if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))

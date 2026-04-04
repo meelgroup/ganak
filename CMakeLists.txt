@@ -77,6 +77,9 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # generate JSON file of compile commands -- useful for code extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+# Python extension — defined early so the GMP/MPFR/flint discovery below can use it.
+option(BUILD_PYTHON_EXTENSION "Build the pyganak Python extension module" OFF)
+
 # static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 # STATIC_BINARY controls whether the ganak executable is linked fully statically.
@@ -310,6 +313,14 @@ endif()
 if(EXISTS "/usr/local/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 endif()
+# GMP, MPFR, and flint are external pre-built system libraries.  When building the
+# Python extension (.so), their static .a may lack -fPIC and cannot be linked into a
+# shared object.  Restore the platform-default suffix order (.so first) only in that
+# case.  For a fully-static binary build we still need .a.
+if(BUILD_PYTHON_EXTENSION)
+    set(_saved_find_suffixes "${CMAKE_FIND_LIBRARY_SUFFIXES}")
+    unset(CMAKE_FIND_LIBRARY_SUFFIXES)
+endif()
 pkg_check_modules(GMP REQUIRED IMPORTED_TARGET gmp)
 find_library(GMPXX_LIBRARY NAMES gmpxx HINTS ${GMP_LIBRARY_DIRS})
 if(GMPXX_LIBRARY)
@@ -318,6 +329,9 @@ if(GMPXX_LIBRARY)
 endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
 pkg_check_modules(flint REQUIRED IMPORTED_TARGET flint)
+if(BUILD_PYTHON_EXTENSION)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "${_saved_find_suffixes}")
+endif()
 
 option(NOZLIB "Don't use zlib" OFF)
 if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))

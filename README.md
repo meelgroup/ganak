@@ -38,7 +38,11 @@ specific set of steps.
 
 ### Building statically
 
-To build a static binary, you first need to build GMP with static library support:
+To build a static binary, you first need to build GMP with position-independent code
+enabled. GMP's hand-optimised assembly is normally compiled without `-fPIC` (fine for
+a native static binary), but `-fPIC` is required whenever the static `.a` is linked
+into a shared object — for example, the Python extension (`.so`). Passing `--with-pic`
+to GMP's `configure` makes both uses work:
 
 ```shell
 wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
@@ -195,10 +199,19 @@ The `prec` constructor argument controls the MPFR precision in bits:
 c = WeightedCounter(prec=256)   # 256-bit internal precision
 ```
 
-### Building from source with a venv
+### Building from source
 
-If you have already built Ganak with CMake, the extension is in
-`build/lib/pyganak*.so`.  To rebuild and test without a full `pip install`:
+Build and install into a venv (requires GMP and MPFR:
+`apt-get install libgmp-dev libmpfr-dev` / `brew install gmp mpfr`):
+
+```bash
+git clone --recurse-submodules https://github.com/meelgroup/ganak
+cd ganak
+python -m venv venv
+venv/bin/pip install .
+```
+
+For iterative development (rebuilding only the extension after CMake changes):
 
 ```bash
 # Enable the Python extension (only needed once):
@@ -207,8 +220,7 @@ cmake -DBUILD_PYTHON_EXTENSION=ON build
 # Rebuild after editing python/src/pyganak.cpp:
 cmake --build build --target pyganak -j$(nproc)
 
-# Run tests using a venv:
-python3 -m venv venv
+# Run tests:
 venv/bin/pip install pytest
 PYTHONPATH=build/lib venv/bin/pytest python/tests/ -v
 ```

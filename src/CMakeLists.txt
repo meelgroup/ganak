@@ -216,8 +216,8 @@ install(TARGETS ganak-bin
 # Python extension module (pyganak)
 # Activated by scikit-build-core via -DBUILD_PYTHON_EXTENSION=ON.
 # Requires CMake >= 3.18 (python_add_library).
+# (option defined early in root CMakeLists.txt so GMP/MPFR/flint discovery can use it)
 # ---------------------------------------------------------------
-option(BUILD_PYTHON_EXTENSION "Build the pyganak Python extension module" OFF)
 if(BUILD_PYTHON_EXTENSION)
     find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 

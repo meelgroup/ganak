@@ -355,6 +355,21 @@ if(POLICY CMP0169)
 endif()
 
 
+# ---- cadical / cadiback (transitive deps of arjun/cryptominisat) ----
+# These are not used directly by ganak, but arjun's exported target lists
+# them in its INTERFACE_LINK_LIBRARIES.  Import them here so CMake resolves
+# them to actual library paths rather than bare -l flags.
+set(cadical_DIR "" CACHE PATH "cadical build dir containing cadicalConfig.cmake")
+if(cadical_DIR AND NOT TARGET cadical)
+    find_package(cadical CONFIG REQUIRED HINTS "${cadical_DIR}")
+    message(STATUS "cadical: using pre-built at ${cadical_DIR}")
+endif()
+set(cadiback_DIR "" CACHE PATH "cadiback build dir containing cadibackConfig.cmake")
+if(cadiback_DIR AND NOT TARGET cadiback)
+    find_package(cadiback CONFIG REQUIRED HINTS "${cadiback_DIR}")
+    message(STATUS "cadiback: using pre-built at ${cadiback_DIR}")
+endif()
+
 # ---- CryptoMiniSat5 ----
 set(cryptominisat5_DIR "" CACHE PATH "cryptominisat5 install/build prefix (contains lib/cmake/cryptominisat5/). Auto-resolved if empty.")
 if(NOT TARGET cryptominisat5)

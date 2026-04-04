@@ -189,6 +189,7 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
           -Dsbva_DIR=$GITHUB_WORKSPACE/sbva/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
@@ -214,6 +215,8 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -S ..
         emmake make -j$(nproc)
@@ -236,6 +239,8 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -Dapproxmc_DIR=$GITHUB_WORKSPACE/approxmc/build \

@@ -63,7 +63,7 @@ yum install -y epel-release && yum install -y ccache wget gcc-c++ gmp-devel mpfr
 FLINT_VER=3.1.2
 wget -q https://github.com/flintlib/flint/releases/download/v${FLINT_VER}/flint-${FLINT_VER}.tar.gz
 tar xf flint-${FLINT_VER}.tar.gz
-cd flint-${FLINT_VER} && ./configure --disable-static --with-gmp=/usr --with-mpfr=/usr && make -j$(nproc) && make install && cd ..
+cd flint-${FLINT_VER} && ./configure --prefix=/usr --disable-static --with-gmp=/usr --with-mpfr=/usr && make -j$(nproc) && make install && cd ..
 ldconfig
 """
 # CCACHE_DIR must be under /project so the host-side actions/cache step can reach it.

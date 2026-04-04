@@ -306,7 +306,7 @@ if(APPLE)
         set(ENV{PKG_CONFIG_PATH} "${_homebrew_prefix}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
     endif()
 endif()
-# Ensure /usr/local/lib/pkgconfig is searched (needed on some Linux installs)
+# Ensure /usr/local/lib/pkgconfig is searched (for locally-installed libraries).
 if(EXISTS "/usr/local/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 endif()

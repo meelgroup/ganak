@@ -70,21 +70,19 @@ target_include_directories(ganak
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/
     ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/
-    ${APPROXMC_INCLUDE_DIRS}
-    ${TREEDECOMP_INCLUDE_DIRS}
-    ${ARJUN_INCLUDE_DIRS}
   PUBLIC
-    ${CRYPTOMINISAT5_INCLUDE_DIRS}
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(ganak
   PRIVATE
-    Threads::Threads
-    ${APPROXMC_LIBRARIES}
-    ${TREEDECOMP_LIBRARIES}
-    ${ARJUN_LIBRARIES}
+    approxmc
+    treedecomp
+    arjun
   PUBLIC
-    ${CRYPTOMINISAT5_LIBRARIES}
+    Threads::Threads
+    cryptominisat5
 )
 
 set_target_properties(ganak PROPERTIES
@@ -100,33 +98,26 @@ add_executable(example-bin example.cpp)
 target_link_libraries(ganak-bin
     PRIVATE
       ganak
-      ${ARJUN_LIBRARIES}
-      ${FLINT_LIBRARIES}
-      ${MPFR_LIBRARIES}
-      ${GMP_LIBRARIES}
-      # ${BREAKID_INCLUDE_DIRS}
-      ${FLINT_INCLUDE_DIRS}
-      ${APPROXMC_LIBRARIES}
+      arjun
+      PkgConfig::flint
+      PkgConfig::MPFR
+      PkgConfig::GMP
+      approxmc
 )
 target_link_libraries(example-bin
     PRIVATE
       ganak
-      ${ARJUN_LIBRARIES}
-      ${GMP_LIBRARIES}
+      arjun
+      PkgConfig::GMP
 )
 
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ARJUN_INCLUDE_DIRS}
-    ${GMP_INCLUDE_DIR}
-    ${APPROXMC_INCLUDE_DIRS}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ARJUN_INCLUDE_DIRS}
-    ${GMP_INCLUDE_DIR}
 )
 
 if(ZLIB_FOUND)
@@ -164,6 +155,21 @@ ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/lit.hpp)
 
+# Ensure headers from sub-builds are copied before we compile against them.
+foreach(_dep_copy_target
+        CopyPublicHeaders_cryptominisat5
+        CopyPublicHeaders_arjun
+        CopyPublicHeaders_approxmc
+        CopyPublicHeaders_treedecomp
+        CopyPublicHeaders_sbva
+        CopyPublicHeaders)
+    if(TARGET ${_dep_copy_target})
+        foreach(_tgt ganak ganak-bin example-bin)
+            add_dependencies(${_tgt} ${_dep_copy_target})
+        endforeach()
+    endif()
+endforeach()
+
 # Public headers are fully known now; the CopyPublicHeaders target below reads
 # this property, so it must be set before that target is created.
 get_target_property(ganak_public_headers ganak PUBLIC_HEADER)
@@ -174,10 +180,10 @@ get_target_property(ganak_public_headers ganak PUBLIC_HEADER)
 # this.
 # -----------------------------------------------------------------------------
 set(HEADER_DEST "${PROJECT_BINARY_DIR}/include/ganak")
-add_custom_target(CopyPublicHeaders ALL)
+add_custom_target(CopyPublicHeaders_ganak ALL)
 foreach(public_header ${ganak_public_headers})
     get_filename_component(HEADER_NAME ${public_header} NAME)
-    add_custom_command(TARGET CopyPublicHeaders PRE_BUILD
+    add_custom_command(TARGET CopyPublicHeaders_ganak PRE_BUILD
                        COMMAND ${CMAKE_COMMAND} -E make_directory
                                "${HEADER_DEST}"
                        COMMAND ${CMAKE_COMMAND} -E echo
@@ -187,6 +193,10 @@ foreach(public_header ${ganak_public_headers})
                            ${public_header}
                            "${HEADER_DEST}"
                       )
+endforeach()
+
+foreach(_tgt ganak-bin example-bin)
+    add_dependencies(${_tgt} CopyPublicHeaders_ganak)
 endforeach()
 
 install(TARGETS ganak
@@ -201,3 +211,36 @@ install(TARGETS ganak-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# ---------------------------------------------------------------
+# Python extension module (pyganak)
+# Activated by scikit-build-core via -DBUILD_PYTHON_EXTENSION=ON.
+# Requires CMake >= 3.18 (python_add_library).
+# (option defined early in root CMakeLists.txt so GMP/MPFR/flint discovery can use it)
+# ---------------------------------------------------------------
+if(BUILD_PYTHON_EXTENSION)
+    find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+
+    python_add_library(pyganak MODULE WITH_SOABI
+        ${PROJECT_SOURCE_DIR}/python/src/pyganak.cpp
+    )
+
+    target_compile_definitions(pyganak PRIVATE
+        PYGANAK_VERSION="${PROJECT_VERSION}"
+    )
+
+    target_include_directories(pyganak PRIVATE
+        ${PROJECT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    target_link_libraries(pyganak PRIVATE
+        ganak
+        arjun
+        PkgConfig::GMP
+    )
+
+    target_compile_features(pyganak PRIVATE cxx_std_20)
+
+    install(TARGETS pyganak DESTINATION . COMPONENT python)
+endif()

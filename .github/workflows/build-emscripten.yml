@@ -38,6 +38,7 @@ jobs:
         emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
     - name: Build MPFR for wasm
@@ -48,6 +49,7 @@ jobs:
         emconfigure ./configure --host wasm32 --with-gmp=$EMINSTALL --prefix=$EMINSTALL
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
     - name: Build FLINT for wasm
@@ -64,6 +66,7 @@ jobs:
           --host wasm32
         emmake make -j$(nproc)
         emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
     - name: Checkout Cadical
@@ -75,10 +78,18 @@ jobs:
     - name: Build Cadical for wasm
       run: |
         cd cadical
-        emconfigure ./configure --no-contracts --no-tracing
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          ..
         emmake make -j$(nproc)
-        cp build/libcadical* $EMINSTALL/lib/
-        cd ..
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
+        cd ../..
 
     - name: Checkout Cadiback
       uses: actions/checkout@v4
@@ -89,10 +100,19 @@ jobs:
     - name: Build Cadiback for wasm
       run: |
         cd cadiback
-        ./configure
-        emmake make -f makefile.emscripten
-        cp libcadi* $EMINSTALL/lib/
-        cd ..
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          ..
+        emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
+        cd ../..
 
     - name: Checkout CryptoMiniSat
       uses: actions/checkout@v4
@@ -108,12 +128,16 @@ jobs:
         emcmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_SHARED_LIBS=OFF \
-          -DSTATICCOMPILE=ON \
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout treedecomp
@@ -129,11 +153,13 @@ jobs:
         emcmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_SHARED_LIBS=OFF \
-          -DSTATICCOMPILE=ON \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout SBVA
@@ -150,12 +176,14 @@ jobs:
         emcmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_SHARED_LIBS=OFF \
-          -DSTATICCOMPILE=ON \
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -S ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout arjun
@@ -171,12 +199,19 @@ jobs:
         emcmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_SHARED_LIBS=OFF \
-          -DSTATICCOMPILE=ON \
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
+          -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dsbva_DIR=$GITHUB_WORKSPACE/sbva/build \
+          -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -S ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout approxmc
@@ -193,12 +228,17 @@ jobs:
         emcmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_SHARED_LIBS=OFF \
-          -DSTATICCOMPILE=ON \
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
+          -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -S ..
         emmake make -j$(nproc)
+        emmake make install
+        cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ../..
 
     - name: Checkout ganak
@@ -213,11 +253,15 @@ jobs:
         emcmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_SHARED_LIBS=OFF \
-          -DSTATICCOMPILE=ON \
           -DENABLE_TESTING=OFF \
           -DNOZLIB=ON \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
+          -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
+          -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
+          -Dapproxmc_DIR=$GITHUB_WORKSPACE/approxmc/build \
           ..
         emmake make -j$(nproc)
         cd ../..

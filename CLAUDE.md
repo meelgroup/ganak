@@ -27,7 +27,7 @@ mkdir -p build && cd build && cmake ..
 Common build options:
 - `-DCMAKE_BUILD_TYPE=Debug` — debug symbols, assertions enabled
 - `-DSANITIZE=ON` — enable Clang sanitizers
-- `-DSTATICCOMPILE=ON` — static binary
+- `-DBUILD_SHARED_LIBS=OFF` — static binary
 
 ## After Building: Fuzz Testing
 After a new build, run the fuzzer to check for regressions:
@@ -167,4 +167,5 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 
 ## Dependencies
 
-GMP, MPFR, FLINT, cryptominisat5, arjun, approxmc, treedecomp, zlib (optional).
+GMP, MPFR, FLINT, cryptominisat5, arjun, approxmc, treedecomp, zlib (optional). ALL dependencies
+are under ../ -- you can find e.g. ../arjun ../appproxmc ../treedecomp ../sbva ../cadical ../cryptominisat5 etc

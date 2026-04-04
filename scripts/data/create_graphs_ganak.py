@@ -1,12 +1,13 @@
 #!/bin/python3
 
 import argparse
+import base64
 import itertools
+import math
 import os
 import sqlite3
 import re
 import nbformat as nbf
-import plotext as plt
 
 BLUE   = "\033[94m"
 RED    = "\033[91m"
@@ -445,22 +446,60 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
             print(f"No {label} data for {dir}")
             continue
 
-        title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
-        print(f"\n{BLUE}{title}{RESET}")
-        plt.clf()
-        plt.theme("dark")
-        plt.plot_size(160, 30)
         if xmin is not None:
             values = [v for v in values if v >= xmin]
         if xscale == "log":
-            import math
             values = [math.log10(v) for v in values if v > 0]
-        plt.hist(values, bins=20)
-        if xmin is not None:
-            plt.xlim(xmin, max(values))
-        plt.xlabel(xlabel if xlabel is not None else col)
-        plt.ylabel("count")
-        plt.show()
+
+        if not values:
+            continue
+
+        title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
+        safe_dir = re.sub(r'[^a-zA-Z0-9_-]', '_', dir)
+        safe_col = re.sub(r'[^a-zA-Z0-9_-]', '_', col)
+        pdf_file = f"hist_{safe_col}_{safe_dir}.pdf"
+        png_file = f"hist_{safe_col}_{safe_dir}.png"
+        print(f"\n{BLUE}{title}{RESET}")
+        print(f"  PDF: {pdf_file}  PNG: {png_file}")
+
+        dat_file = f"hist_{safe_col}_{safe_dir}.dat"
+        gp_file  = f"hist_{safe_col}_{safe_dir}.gnuplot"
+
+        with open(dat_file, "w") as f:
+            for v in values:
+                f.write(f"{v}\n")
+
+        vmin, vmax = min(values), max(values)
+        binwidth = (vmax - vmin) / 20.0 if vmax > vmin else 1.0
+        actual_xlabel = xlabel if xlabel is not None else col
+
+        def gp_str(s):
+            return s.replace('"', '\\"')
+
+        with open(gp_file, "w") as f:
+            for term, out in [
+                ('pdfcairo size 15cm,15cm', pdf_file),
+                ('pngcairo size 600,600',   png_file),
+            ]:
+                f.write(f'set terminal {term}\n')
+                f.write(f'set output "{out}"\n')
+                f.write(f'set title "{gp_str(title)}"\n')
+                f.write(f'set xlabel "{gp_str(actual_xlabel)}"\n')
+                f.write( 'set ylabel "count"\n')
+                f.write( 'set grid\n')
+                f.write( 'set key off\n')
+                f.write( 'set style fill solid 0.5 border -1\n')
+                f.write(f'binwidth = {binwidth}\n')
+                f.write( 'set boxwidth binwidth\n')
+                f.write( 'bin(x,w) = w * floor(x/w + 0.5)\n')
+                f.write(f'plot "{dat_file}" using (bin($1,binwidth)):(1) smooth freq with boxes lc rgb "blue"\n\n')
+
+        os.system(f"gnuplot {gp_file}")
+
+        if os.path.exists(png_file):
+            with open(png_file, "rb") as fh:
+                img_b64 = base64.b64encode(fh.read()).decode()
+            print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
 
 
 def print_sigabrt_files(table_todo, fname_like):
@@ -537,29 +576,103 @@ def print_distributions(table_todo, fname_like):
     print_distribution(table_todo, fname_like, "ganak_mem_mb",     "memory usage (MB) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG mem_mb")
 
 
+def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
+    """For every pair of matched dirs, generate a gnuplot scatter plot of
+    solve times (NULL -> 3600).  Writes a PDF and a PNG to disk and displays
+    the PNG inline in the terminal (wezterm / iTerm2 protocol)."""
+    TIMEOUT = 3600
+
+    pairs = list(itertools.combinations(matched_dirs, 2))
+    if not pairs:
+        return
+
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+
+    for dir1, dir2 in pairs:
+        query = (
+            f"SELECT a.fname,"
+            f" COALESCE(a.ganak_time, {TIMEOUT}),"
+            f" COALESCE(b.ganak_time, {TIMEOUT})"
+            f" FROM data a JOIN data b ON a.fname = b.fname"
+            f" WHERE a.dirname = '{dir1}' AND b.dirname = '{dir2}'"
+            f"{fname_like}"
+        )
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        if not rows:
+            if verbose:
+                print(f"  scatter: no common fnames for {dir1} vs {dir2}")
+            continue
+
+        safe1 = re.sub(r'[^a-zA-Z0-9_-]', '_', dir1)
+        safe2 = re.sub(r'[^a-zA-Z0-9_-]', '_', dir2)
+        dat_file = f"scatter_{safe1}_vs_{safe2}.dat"
+        pdf_file = f"scatter_{safe1}_vs_{safe2}.pdf"
+        png_file = f"scatter_{safe1}_vs_{safe2}.png"
+        gp_file  = f"scatter_{safe1}_vs_{safe2}.gnuplot"
+
+        with open(dat_file, "w") as f:
+            f.write(f"# col1={dir1}  col2={dir2}\n")
+            for _fname, t1, t2 in rows:
+                f.write(f"{t1}\t{t2}\n")
+
+        # Escape double quotes for gnuplot strings
+        def gp_str(s):
+            return s.replace('"', '\\"')
+
+        title  = f"Solve time: {gp_str(dir1)} vs {gp_str(dir2)}"
+        xlabel = f"{gp_str(dir1)} time (s)"
+        ylabel = f"{gp_str(dir2)} time (s)"
+
+        with open(gp_file, "w") as f:
+            for term, out in [
+                (f'pdfcairo size 15cm,15cm', pdf_file),
+                (f'pngcairo size 600,600',   png_file),
+            ]:
+                f.write(f'set terminal {term}\n')
+                f.write(f'set output "{out}"\n')
+                f.write(f'set title "{title}"\n')
+                f.write(f'set xlabel "{xlabel}"\n')
+                f.write(f'set ylabel "{ylabel}"\n')
+                f.write( 'set logscale xy\n')
+                f.write( 'set xrange [0.1:4000]\n')
+                f.write( 'set yrange [0.1:4000]\n')
+                f.write( 'set grid\n')
+                f.write( 'set key off\n')
+                f.write( 'set arrow 1 from 0.1,0.1 to 3600,3600 nohead lc rgb "gray50" lw 1\n')
+                f.write(f'plot "{dat_file}" using 1:2 with points pt 7 ps 0.5 lc rgb "blue" notitle\n')
+                f.write( 'unset arrow 1\n\n')
+
+        console_title = f"Scatter solve time: {dir1} vs {dir2} (n={len(rows)})"
+        print(f"\n{BLUE}{console_title}{RESET}")
+        print(f"  PDF: {pdf_file}  PNG: {png_file}")
+
+        os.system(f"gnuplot {gp_file}")
+
+        # Display PNG inline (wezterm / iTerm2 inline-image protocol)
+        if os.path.exists(png_file):
+            with open(png_file, "rb") as fh:
+                img_b64 = base64.b64encode(fh.read()).decode()
+            print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
+
+    con.close()
+
+
 def generate_gnuplot(fname2_s, verbose=False):
-    gnuplotfn = "run-all.gnuplot"
+    gnuplotfn = "cdf.gnuplot"
+    pdf_file = "cdf.pdf"
+    png_file = "cdf.png"
     if verbose:
         print(f"Writing gnuplot script to {gnuplotfn} with {len(fname2_s)} data series")
-    with open(gnuplotfn, "w") as f:
-        f.write("set term postscript eps color lw 1 \"Helvetica\" 12 size 9,5\n")
-        f.write("set output \"run.eps\"\n")
-        f.write("set title \"Counter ganak\"\n")
-        f.write("set notitle\n")
-        f.write("set key bottom right\n")
-        # f.write("set xtics 200\n")
-        f.write("set logscale x\n")
-        f.write("unset logscale y\n")
-        f.write("set ylabel  \"Instances counted\"\n")
-        f.write("set xlabel \"Time (s)\"\n")
-        # f.write("plot [:][10:]\\\n")
-        # f.write("plot [500:4000][1000:1200]\\\n")
-        f.write("plot [0.1:3600][0.1:]\\\n")
-        # f.write(" \"runkcbox-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"KCBox\",\\\n")
-        # f.write(" \"runsharptd-prearjun.csv.gnuplotdata\" u 2:1 with linespoints  title \"SharptTD\",\\\n")
+
+    def gp_str(s):
+        return s.replace('"', '\\"')
+
+    def plot_lines():
         towrite = ""
         for fn, call, ver, _, dir in fname2_s:
-            # if "restart" not in call and num_solved > 142:
             if True:
                 call = gnuplot_name_cleanup(call)
                 dir  = gnuplot_name_cleanup(dir)
@@ -567,9 +680,26 @@ def generate_gnuplot(fname2_s, verbose=False):
                 oneline = "\""+fn+"\" u 2:1 with linespoints  title \""+ver+"-"+dir+"-"+call+"\""
                 towrite += oneline
                 towrite += ",\\\n"
-        towrite = towrite[:(len(towrite)-4)]
-        f.write(towrite)
-    return gnuplotfn
+        return towrite[:(len(towrite)-4)]
+
+    with open(gnuplotfn, "w") as f:
+        for term, out in [
+            ('pdfcairo size 15cm,15cm', pdf_file),
+            ('pngcairo size 600,600',   png_file),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write('set title "Counter ganak"\n')
+            f.write('set key bottom right\n')
+            f.write('set logscale x\n')
+            f.write('unset logscale y\n')
+            f.write('set ylabel "Instances counted"\n')
+            f.write('set xlabel "Time (s)"\n')
+            f.write('set grid\n')
+            f.write('plot [0.1:3600][0.1:]\\\n')
+            f.write(plot_lines())
+            f.write('\n\n')
+    return gnuplotfn, pdf_file, png_file
 
 
 def create_notebook(dirs):
@@ -740,7 +870,12 @@ only_dirs = [
     "out-ganak-mccomp2324-1256426-0", # fixing oracle, mostly, and also header parsing more lax
     "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
 ]
-# only_dirs = [ "mei-march-2026-1239767" ]
+only_dirs = [
+     "mei-march-2026-1239767-1", # gpmc
+     # "mei-march-2026-1239767-0", # ganak old
+     # "mei-march-2026-1269673-0", # ganak release, but WRONG SED
+     "mei-march-2026-1274973-0", # ganak release, new SED
+]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
@@ -762,10 +897,10 @@ todo = versions
 # ---- Main ----
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate cactus plots and tables for ganak benchmark data")
+    parser = argparse.ArgumentParser(description="Generate CDF plots and tables for ganak benchmark data")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print progress information")
     parser.add_argument("--full", action="store_true", help="Print full summary table (default: compact)")
-    parser.add_argument("--nograph", action="store_true", help="Skip opening the graph in okular")
+
     parser.add_argument("--fname", nargs="+", metavar="PATTERN", default=[],
                         help="Filter by fname pattern(s), e.g. --fname '%%track1%%' '%%track3%%'")
     args = parser.parse_args()
@@ -781,6 +916,7 @@ def main():
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
+    scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
     if args.verbose:
@@ -810,20 +946,24 @@ def main():
 
     if args.verbose:
         print("Generating gnuplot script...")
-    gnuplotfn = generate_gnuplot(fname2_s, args.verbose)
+    gnuplotfn, pdf_file, png_file = generate_gnuplot(fname2_s, args.verbose)
 
     dirs = ",".join("'" + dir + "'" for dir, _ in table_todo)
     create_notebook(dirs)
 
-    for path in ["run.eps", "run.pdf", "run.png"]:
+    for path in [pdf_file, png_file]:
         if os.path.exists(path):
             os.unlink(path)
-    os.system("gnuplot "+gnuplotfn)
-    os.system("epstopdf run.eps run.pdf")
-    os.system("pdftoppm -png run.pdf run")
-    if not args.nograph:
-        print("okular run.eps")
-        os.system("okular run.eps")
+    os.system(f"gnuplot {gnuplotfn}")
+
+    console_title = f"CDF: instances counted vs. solve time"
+    print(f"\n{BLUE}{console_title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+
+    if os.path.exists(png_file):
+        with open(png_file, "rb") as fh:
+            img_b64 = base64.b64encode(fh.read()).decode()
+        print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
 
 
 if __name__ == "__main__":

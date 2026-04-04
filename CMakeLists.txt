@@ -77,22 +77,25 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # generate JSON file of compile commands -- useful for code extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+# Python extension — defined early so the GMP/MPFR/flint discovery below can use it.
+option(BUILD_PYTHON_EXTENSION "Build the pyganak Python extension module" OFF)
+
 # static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
-option(STATICCOMPILE "Compile to static executable" OFF)
-if(STATICCOMPILE)
-    set(BUILD_SHARED_LIBS OFF)
+# STATIC_BINARY controls whether the ganak executable is linked fully statically.
+# Defaults to ON when BUILD_SHARED_LIBS=OFF, but can be set to OFF independently
+# (e.g. when building the Python wheel: BUILD_SHARED_LIBS=OFF embeds static .a
+# deps in the .so, but we don't want a fully static ganak binary).
+if(NOT BUILD_SHARED_LIBS)
+    option(STATIC_BINARY "Link the ganak binary fully statically" ON)
+else()
+    option(STATIC_BINARY "Link the ganak binary fully statically" OFF)
 endif()
 
 if((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
-    if(NOT BUILD_SHARED_LIBS)
-        message(STATUS "Compiling statically")
-        if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-        endif()
-        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    else()
-        message(STATUS "Compiling for dynamic library use")
+    if(STATIC_BINARY AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        message(STATUS "Linking ganak binary statically")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
     endif()
 endif()
 
@@ -295,15 +298,46 @@ endif()
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
-set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
-find_package(GMP REQUIRED)
-find_package(MPFR REQUIRED)
-find_package(FLINT REQUIRED)
-message(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
-message(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
+# When building statically, prefer .a over .so for all find_library/find_package calls
+if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so" ".dylib")
+endif()
+find_package(PkgConfig REQUIRED)
+if(APPLE)
+    execute_process(COMMAND brew --prefix OUTPUT_VARIABLE _homebrew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(_homebrew_prefix)
+        set(ENV{PKG_CONFIG_PATH} "${_homebrew_prefix}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    endif()
+endif()
+# Ensure /usr/local/lib/pkgconfig is searched (for locally-installed libraries).
+if(EXISTS "/usr/local/lib/pkgconfig")
+    set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+endif()
+# GMP, MPFR, and flint are external pre-built system libraries.  On Linux, a
+# source-built static .a typically lacks -fPIC and cannot be linked into a shared
+# object (.so).  Restore the platform-default suffix order (.so first) when building
+# the Python extension on Linux so the shared versions are found instead.
+# On macOS, Homebrew always builds static libs with PIC so the .a works fine, and
+# using the .dylib would drag in a macOS-version-specific deployment target that
+# breaks the wheel's declared minimum OS version.
+if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
+    set(_saved_find_suffixes "${CMAKE_FIND_LIBRARY_SUFFIXES}")
+    unset(CMAKE_FIND_LIBRARY_SUFFIXES)
+endif()
+pkg_check_modules(GMP REQUIRED IMPORTED_TARGET gmp)
+find_library(GMPXX_LIBRARY NAMES gmpxx HINTS ${GMP_LIBRARY_DIRS})
+if(GMPXX_LIBRARY)
+    get_property(_gmp_iface_libs TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES)
+    set_property(TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES "${GMPXX_LIBRARY}" ${_gmp_iface_libs})
+endif()
+pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
+pkg_check_modules(flint REQUIRED IMPORTED_TARGET flint)
+if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "${_saved_find_suffixes}")
+endif()
 
 option(NOZLIB "Don't use zlib" OFF)
-if(NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
+if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))
     find_package(ZLIB)
     if(ZLIB_FOUND)
         message(STATUS "OK, Found ZLIB!")
@@ -313,24 +347,73 @@ if(NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     endif()
 endif()
 
-set(cryptominisat5_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat/build" CACHE PATH "Path to cryptominisat5 build/install directory")
-find_package(cryptominisat5 CONFIG REQUIRED)
-set(arjun_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../arjun/build" CACHE PATH "Path to arjun build/install directory")
-find_package(arjun CONFIG REQUIRED)
-set(approxmc_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../approxmc/build" CACHE PATH "Path to approxmc build/install directory")
-find_package(approxmc CONFIG REQUIRED)
-set(treedecomp_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp/build" CACHE PATH "Path to treedecomp build/install directory")
-find_package(treedecomp CONFIG REQUIRED)
+include(FetchContent)
+# FetchContent_Populate with declared details is deprecated in CMake 3.30+ (CMP0169).
+# We call it intentionally to clone-only without add_subdirectory, so silence the warning.
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
 
-message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
-message(STATUS "CryptoMiniSat5 static lib:  ${CRYPTOMINISAT5_STATIC_LIBRARIES}")
-message(STATUS "CryptoMiniSat5 static lib deps: ${CRYPTOMINISAT5_STATIC_LIBRARIES_DEPS}")
-message(STATUS "CryptoMiniSat5 include dirs: ${CRYPTOMINISAT5_INCLUDE_DIRS}")
 
-message(STATUS "ApproxMC dynamic lib: ${APPROXMC_LIBRARIES}")
-message(STATUS "ApproxMC static lib:  ${APPROXMC_STATIC_LIBRARIES}")
-message(STATUS "ApproxMC static lib deps: ${APPROXMC_STATIC_LIBRARIES_DEPS}")
-message(STATUS "ApproxMC include dirs: ${APPROXMC_INCLUDE_DIRS}")
+# ---- CryptoMiniSat5 ----
+set(cryptominisat5_DIR "" CACHE PATH "cryptominisat5 install/build prefix (contains lib/cmake/cryptominisat5/). Auto-resolved if empty.")
+if(NOT TARGET cryptominisat5)
+    if(cryptominisat5_DIR)
+        find_package(cryptominisat5 CONFIG REQUIRED HINTS "${cryptominisat5_DIR}")
+        message(STATUS "CryptoMiniSat5: using pre-built at ${cryptominisat5_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat"
+                         "${CMAKE_CURRENT_BINARY_DIR}/cryptominisat-build")
+        message(STATUS "CryptoMiniSat5: using sibling repo")
+    else()
+        FetchContent_Declare(cryptominisat5
+            GIT_REPOSITORY https://github.com/msoos/cryptominisat
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(cryptominisat5)
+        message(STATUS "CryptoMiniSat5: fetched from GitHub")
+    endif()
+endif()
+
+# ---- Arjun ----
+set(arjun_DIR "" CACHE PATH "arjun install/build prefix (contains lib/cmake/arjun/). Auto-resolved if empty.")
+if(NOT TARGET arjun)
+    if(arjun_DIR)
+        find_package(arjun CONFIG REQUIRED HINTS "${arjun_DIR}")
+        message(STATUS "Arjun: using pre-built at ${arjun_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../arjun/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../arjun"
+                         "${CMAKE_CURRENT_BINARY_DIR}/arjun-build")
+        message(STATUS "Arjun: using sibling repo")
+    else()
+        FetchContent_Declare(arjun
+            GIT_REPOSITORY https://github.com/meelgroup/arjun.git
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(arjun)
+        message(STATUS "Arjun: fetched from GitHub")
+    endif()
+endif()
+
+# ---- ApproxMC ----
+set(approxmc_DIR "" CACHE PATH "approxmc install/build prefix (contains lib/cmake/approxmc/). Auto-resolved if empty.")
+if(NOT TARGET approxmc)
+    if(approxmc_DIR)
+        find_package(approxmc CONFIG REQUIRED HINTS "${approxmc_DIR}")
+        message(STATUS "ApproxMC: using pre-built at ${approxmc_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../approxmc/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../approxmc"
+                         "${CMAKE_CURRENT_BINARY_DIR}/approxmc-build")
+        message(STATUS "ApproxMC: using sibling repo")
+    else()
+        FetchContent_Declare(approxmc
+            GIT_REPOSITORY https://github.com/meelgroup/ApproxMC.git
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(approxmc)
+        message(STATUS "ApproxMC: fetched from GitHub")
+    endif()
+endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
@@ -384,7 +467,10 @@ if(GIT_EXECUTABLE)
 else()
   set(GIT_SHA1 "GIT-hash-notfound")
 endif()
-set(GANAK_FULL_VERSION "1.1.0")
+file(READ "${CMAKE_SOURCE_DIR}/pyproject.toml" PYPROJECT_TOML_CONTENTS)
+string(REGEX MATCH "version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\"" _ ${PYPROJECT_TOML_CONTENTS})
+set(GANAK_FULL_VERSION "${CMAKE_MATCH_1}")
+message(STATUS "Version read from pyproject.toml: ${GANAK_FULL_VERSION}")
 
 string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
 SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})
@@ -410,7 +496,7 @@ configure_file(
     IMMEDIATE @ONLY
 )
 
-add_custom_target(uninstall
+add_custom_target(uninstall_ganak
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
 )
 
@@ -442,10 +528,6 @@ export(
 )
 
 # Build-tree config (absolute paths, for use without installation)
-set(CRYPTOMINISAT5_CMAKE_DIR_FOR_CONFIG "${cryptominisat5_DIR}")
-set(ARJUN_CMAKE_DIR_FOR_CONFIG "${arjun_DIR}")
-set(APPROXMC_CMAKE_DIR_FOR_CONFIG "${approxmc_DIR}")
-set(TREEDECOMP_CMAKE_DIR_FOR_CONFIG "${treedecomp_DIR}")
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ganakConfig-buildtree.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/${GANAK_CONFIG_FILENAME}"

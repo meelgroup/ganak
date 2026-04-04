@@ -266,6 +266,7 @@ void add_ganak_options()
 
     // Shrinking options
     add_arg("--shrink", conf.do_shrink, fc_int, "Block-wise secondary UIP shrinking (CaDiCaL-style)");
+    add_arg("--bumpreason", conf.do_bump_reason, fc_int, "Bump reason clause literals during conflict analysis (CaDiCaL-style)");
 
     // Vivif options -- inprocessing during Ganak
     add_arg("--vivif", conf.do_vivify, fc_int, "Vivify clauses");

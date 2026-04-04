@@ -361,7 +361,9 @@ public:
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   double score_of(const uint32_t v, bool ignore_td = false) const;
-  void vsads_readjust();
+  void vsads_decay();
+  void rescale_var_activities();
+  double var_inc = 1.0;  // EVSIDS: geometrically growing activity increment
   void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
@@ -601,7 +603,8 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
 // to each variable during analysis
 inline void Counter::inc_act(const Lit lit) {
-  watches[lit].activity += 1.0;
+  watches[lit].activity += var_inc;
+  if (watches[lit].activity > 1e100) rescale_var_activities();
   if (sat_mode() && order_heap.in_heap(lit.var())) order_heap.increase(lit.var());
 }
 
@@ -696,9 +699,9 @@ inline void Counter::set_confl_state(Lit a, Lit b) {
 }
 
 inline void Counter::set_confl_state(Clause* cl) {
-  if (cl->red && cl->lbd > this->lbd_cutoff) {
+  if (cl->red) {
     cl->set_used();
-    /* cl->update_lbd(this->calc_lbd(*cl)); */
+    cl->update_lbd(this->calc_lbd(*cl));
   }
   confl = Antecedent(this->alloc->get_offset(cl));
   confl_lit = NOT_A_LIT;

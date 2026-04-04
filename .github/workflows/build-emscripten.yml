@@ -189,7 +189,6 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
-          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
           -Dsbva_DIR=$GITHUB_WORKSPACE/sbva/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \

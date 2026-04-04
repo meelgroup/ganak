@@ -301,12 +301,22 @@ endif()
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
-set(FPHSA_NAME_MISMATCHED 1) # Suppress warnings, see https://cmake.org/cmake/help/v3.17/module/FindPackageHandleStandardArgs.html
-find_package(GMP REQUIRED)
-find_package(MPFR REQUIRED)
-find_package(FLINT REQUIRED)
-message(STATUS "MPFR include dir: ${MPFR_INCLUDE_DIR}")
-message(STATUS "MPFR lib dir: ${MPFR_LIBRARIES}")
+find_package(PkgConfig REQUIRED)
+if(APPLE)
+    execute_process(COMMAND brew --prefix OUTPUT_VARIABLE _homebrew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(_homebrew_prefix)
+        set(ENV{PKG_CONFIG_PATH} "${_homebrew_prefix}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    endif()
+endif()
+pkg_check_modules(GMP REQUIRED IMPORTED_TARGET gmp)
+find_library(GMPXX_LIBRARY NAMES gmpxx HINTS ${GMP_LIBRARY_DIRS})
+if(GMPXX_LIBRARY)
+    set_property(TARGET PkgConfig::GMP APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${GMPXX_LIBRARY}")
+endif()
+pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
+pkg_check_modules(FLINT REQUIRED IMPORTED_TARGET flint)
+message(STATUS "MPFR include dirs: ${MPFR_INCLUDE_DIRS}")
+message(STATUS "MPFR libraries: ${MPFR_LIBRARIES}")
 
 option(NOZLIB "Don't use zlib" OFF)
 if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))
@@ -621,10 +631,7 @@ if(NOT arjun_DIR)
         if(EvalMaxSAT_DIR)
             list(APPEND _arjun_extra_args "-DEvalMaxSAT_DIR=${EvalMaxSAT_DIR}")
         endif()
-        list(APPEND _arjun_extra_args
-            -DMPFR_LIBRARY=${MPFR_LIBRARIES}
-            -DMPFR_INCLUDE_DIR=${MPFR_INCLUDE_DIR}
-            ${_osx_cmake_args})
+        list(APPEND _arjun_extra_args ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_arjun_src}" -B "${_arjun_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -675,10 +682,7 @@ if(NOT approxmc_DIR)
         if(arjun_DIR)
             list(APPEND _approxmc_extra_args "-Darjun_DIR=${arjun_DIR}")
         endif()
-        list(APPEND _approxmc_extra_args
-            -DMPFR_LIBRARY=${MPFR_LIBRARIES}
-            -DMPFR_INCLUDE_DIR=${MPFR_INCLUDE_DIR}
-            ${_osx_cmake_args})
+        list(APPEND _approxmc_extra_args ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_approxmc_src}" -B "${_approxmc_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}

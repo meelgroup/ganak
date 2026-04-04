@@ -102,32 +102,28 @@ target_link_libraries(ganak-bin
     PRIVATE
       ganak
       ${ARJUN_LIBRARIES}
-      ${FLINT_LIBRARIES}
-      ${MPFR_LIBRARIES}
-      ${GMP_LIBRARIES}
-      # ${BREAKID_INCLUDE_DIRS}
-      ${FLINT_INCLUDE_DIRS}
+      PkgConfig::flint
+      PkgConfig::MPFR
+      PkgConfig::GMP
       ${APPROXMC_LIBRARIES}
 )
 target_link_libraries(example-bin
     PRIVATE
       ganak
       ${ARJUN_LIBRARIES}
-      ${GMP_LIBRARIES}
+      PkgConfig::GMP
 )
 
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ARJUN_INCLUDE_DIRS}
-    ${GMP_INCLUDE_DIR}
     ${APPROXMC_INCLUDE_DIRS}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ARJUN_INCLUDE_DIRS}
-    ${GMP_INCLUDE_DIR}
 )
 
 if(ZLIB_FOUND)
@@ -224,17 +220,13 @@ if(BUILD_PYTHON_EXTENSION)
         ${PROJECT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${ARJUN_INCLUDE_DIRS}
-        ${GMP_INCLUDE_DIR}
         ${CRYPTOMINISAT5_INCLUDE_DIRS}
     )
 
-    # GMP: link by name (not by the cached .a path) so the linker picks the
-    # shared library, which was built with -fPIC unlike the static one.
     target_link_libraries(pyganak PRIVATE
         ganak
         ${ARJUN_LIBRARIES}
-        gmpxx
-        gmp
+        PkgConfig::GMP
     )
 
     target_compile_features(pyganak PRIVATE cxx_std_20)

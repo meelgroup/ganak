@@ -70,22 +70,19 @@ target_include_directories(ganak
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/
     ${CMAKE_CURRENT_SOURCE_DIR}/buddy-2.4/src/
-    ${APPROXMC_INCLUDE_DIRS}
-    ${TREEDECOMP_INCLUDE_DIRS}
-    ${ARJUN_INCLUDE_DIRS}
   PUBLIC
-    $<BUILD_INTERFACE:${CRYPTOMINISAT5_INCLUDE_DIRS}>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(ganak
   PRIVATE
-    ${APPROXMC_LIBRARIES}
-    ${TREEDECOMP_LIBRARIES}
-    ${ARJUN_LIBRARIES}
+    approxmc
+    treedecomp
+    arjun
   PUBLIC
     Threads::Threads
-    ${CRYPTOMINISAT5_LIBRARIES}
+    cryptominisat5
 )
 
 set_target_properties(ganak PROPERTIES
@@ -101,29 +98,26 @@ add_executable(example-bin example.cpp)
 target_link_libraries(ganak-bin
     PRIVATE
       ganak
-      ${ARJUN_LIBRARIES}
+      arjun
       PkgConfig::flint
       PkgConfig::MPFR
       PkgConfig::GMP
-      ${APPROXMC_LIBRARIES}
+      approxmc
 )
 target_link_libraries(example-bin
     PRIVATE
       ganak
-      ${ARJUN_LIBRARIES}
+      arjun
       PkgConfig::GMP
 )
 
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ARJUN_INCLUDE_DIRS}
-    ${APPROXMC_INCLUDE_DIRS}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ARJUN_INCLUDE_DIRS}
 )
 
 if(ZLIB_FOUND)
@@ -164,6 +158,7 @@ ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/lit.hpp)
 # Ensure headers from sub-builds are copied before we compile against them.
 foreach(_dep_copy_target
         CopyPublicHeaders_cryptominisat5
+        CopyPublicHeaders_arjun
         CopyPublicHeaders_approxmc
         CopyPublicHeaders_treedecomp
         CopyPublicHeaders_sbva
@@ -200,6 +195,10 @@ foreach(public_header ${ganak_public_headers})
                       )
 endforeach()
 
+foreach(_tgt ganak-bin example-bin)
+    add_dependencies(${_tgt} CopyPublicHeaders_ganak)
+endforeach()
+
 install(TARGETS ganak
     EXPORT ${GANAK_EXPORT_NAME}
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -233,13 +232,11 @@ if(BUILD_PYTHON_EXTENSION)
     target_include_directories(pyganak PRIVATE
         ${PROJECT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${ARJUN_INCLUDE_DIRS}
-        ${CRYPTOMINISAT5_INCLUDE_DIRS}
     )
 
     target_link_libraries(pyganak PRIVATE
         ganak
-        ${ARJUN_LIBRARIES}
+        arjun
         PkgConfig::GMP
     )
 

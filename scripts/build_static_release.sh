@@ -18,13 +18,14 @@ rm -rf _deps
 SAT_DIR=$(cd ../.. && pwd)
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
     -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
-    -Dcadical_DIR="${SAT_DIR}/cadical/build" \
     -Dcryptominisat5_DIR="${SAT_DIR}/cryptominisat/build" \
     -Dsbva_DIR="${SAT_DIR}/sbva/build" \
     -DEvalMaxSAT_DIR="${SAT_DIR}/EvalMaxSAT/build" \
     -Dtreedecomp_DIR="${SAT_DIR}/treedecomp/build" \
     -Darjun_DIR="${SAT_DIR}/arjun/build" \
     -Dapproxmc_DIR="${SAT_DIR}/approxmc/build" \
+    -Dcadical_DIR="${SAT_DIR}/cadical/build" \
+    -Dcadiback_DIR="${SAT_DIR}/cadiback/build" \
     ..
 make -j$(nproc)
 strip ganak

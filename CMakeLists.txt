@@ -338,87 +338,9 @@ if(POLICY CMP0169)
 endif()
 
 
-# ---- CryptoMiniSat5 and its deps (cadical, cadiback) ----
-# cadical and cadiback are only needed when auto-building CryptoMiniSat5.
-# cadiback's configure looks for ../cadical, so both must be fetched as siblings
-# under the same deps/ directory — only CryptoMiniSat5's own cmake handles this correctly.
-set(cadical_DIR "" CACHE PATH "Directory where CaDiCaL is built (contains libcadical.a). Auto-fetched if empty.")
-set(cadiback_DIR "" CACHE PATH "Directory where CaDiBaCk is built. Auto-fetched if empty.")
+# ---- CryptoMiniSat5 ----
 set(cryptominisat5_DIR "" CACHE PATH "Directory where CryptoMiniSat5 is built. Auto-fetched if empty.")
 if(NOT cryptominisat5_DIR)
-    if(NOT cadical_DIR)
-        set(_cadical_src "${CMAKE_BINARY_DIR}/deps/cadical")
-        set(_cadical_lib "${_cadical_src}/build/libcadical.a")
-        FetchContent_Declare(cadical_src
-            GIT_REPOSITORY https://github.com/meelgroup/cadical
-            GIT_TAG        master
-            SOURCE_DIR     "${_cadical_src}"
-            GIT_SHALLOW    TRUE
-        )
-        FetchContent_GetProperties(cadical_src)
-        if(NOT cadical_src_POPULATED)
-            message(STATUS "CaDiCaL: fetching from meelgroup/cadical master")
-            FetchContent_Populate(cadical_src)
-        endif()
-        if(NOT EXISTS "${_cadical_lib}")
-            message(STATUS "CaDiCaL: building in ${_cadical_src}")
-            execute_process(
-                COMMAND bash -c "CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=\"-fPIC\" ./configure --no-contracts --no-tracing --fp"
-                WORKING_DIRECTORY "${_cadical_src}"
-                RESULT_VARIABLE _cadical_cfg_ret
-            )
-            if(NOT _cadical_cfg_ret EQUAL 0)
-                message(FATAL_ERROR "CaDiCaL configure failed (exit ${_cadical_cfg_ret})")
-            endif()
-            execute_process(
-                COMMAND make -j8
-                WORKING_DIRECTORY "${_cadical_src}"
-                RESULT_VARIABLE _cadical_make_ret
-            )
-            if(NOT _cadical_make_ret EQUAL 0)
-                message(FATAL_ERROR "CaDiCaL build failed (exit ${_cadical_make_ret})")
-            endif()
-        endif()
-        set(cadical_DIR "${_cadical_src}/build" CACHE PATH "Directory where CaDiCaL is built" FORCE)
-        set(cadical_SRC_DIR "${_cadical_src}/src" CACHE PATH "CaDiCaL source dir (for cadical.hpp)" FORCE)
-        message(STATUS "CaDiCaL: using auto-built ${cadical_DIR}")
-    endif()
-    if(NOT cadiback_DIR)
-        set(_cadiback_src "${CMAKE_BINARY_DIR}/deps/cadiback")
-        set(_cadiback_lib "${_cadiback_src}/libcadiback.a")
-        FetchContent_Declare(cadiback_src
-            GIT_REPOSITORY https://github.com/meelgroup/cadiback
-            GIT_TAG        main
-            SOURCE_DIR     "${_cadiback_src}"
-            GIT_SHALLOW    TRUE
-        )
-        FetchContent_GetProperties(cadiback_src)
-        if(NOT cadiback_src_POPULATED)
-            message(STATUS "CaDiBaCk: fetching from meelgroup/cadiback main")
-            FetchContent_Populate(cadiback_src)
-        endif()
-        if(NOT EXISTS "${_cadiback_lib}")
-            message(STATUS "CaDiBaCk: building in ${_cadiback_src}")
-            execute_process(
-                COMMAND bash -c "CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=\"-fPIC\" ./configure --release"
-                WORKING_DIRECTORY "${_cadiback_src}"
-                RESULT_VARIABLE _cadiback_cfg_ret
-            )
-            if(NOT _cadiback_cfg_ret EQUAL 0)
-                message(FATAL_ERROR "CaDiBaCk configure failed (exit ${_cadiback_cfg_ret})")
-            endif()
-            execute_process(
-                COMMAND make -j8 libcadiback.a
-                WORKING_DIRECTORY "${_cadiback_src}"
-                RESULT_VARIABLE _cadiback_make_ret
-            )
-            if(NOT _cadiback_make_ret EQUAL 0)
-                message(FATAL_ERROR "CaDiBaCk build failed (exit ${_cadiback_make_ret})")
-            endif()
-        endif()
-        set(cadiback_DIR "${_cadiback_src}" CACHE PATH "Directory where CaDiBaCk is built" FORCE)
-        message(STATUS "CaDiBaCk: using auto-built ${cadiback_DIR}")
-    endif()
     set(_cms_src "${CMAKE_BINARY_DIR}/deps/cryptominisat")
     set(_cms_build "${_cms_src}/build")
     FetchContent_Declare(cryptominisat5_src
@@ -434,19 +356,11 @@ if(NOT cryptominisat5_DIR)
     endif()
     if(NOT EXISTS "${_cms_build}/cryptominisat5Config.cmake")
         message(STATUS "CryptoMiniSat5: configuring and building in ${_cms_build}")
-        set(_cms_extra_args "")
-        if(cadical_DIR)
-            list(APPEND _cms_extra_args "-Dcadical_DIR=${cadical_DIR}")
-        endif()
-        if(cadiback_DIR)
-            list(APPEND _cms_extra_args "-Dcadiback_DIR=${cadiback_DIR}")
-        endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_cms_src}" -B "${_cms_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                 -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
-                ${_cms_extra_args}
             RESULT_VARIABLE _cms_cfg_ret
         )
         if(NOT _cms_cfg_ret EQUAL 0)
@@ -599,9 +513,6 @@ if(NOT arjun_DIR)
     if(NOT EXISTS "${_arjun_build}/arjunConfig.cmake")
         message(STATUS "Arjun: configuring and building in ${_arjun_build}")
         set(_arjun_extra_args "")
-        if(cadical_DIR)
-            list(APPEND _arjun_extra_args "-Dcadical_DIR=${cadical_DIR}")
-        endif()
         if(cryptominisat5_DIR)
             list(APPEND _arjun_extra_args "-Dcryptominisat5_DIR=${cryptominisat5_DIR}")
         endif()

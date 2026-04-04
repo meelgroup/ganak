@@ -59,13 +59,15 @@ test-command = "cd /tmp && pytest {project}/python/tests -v"
 manylinux-x86_64-image = "manylinux_2_34"
 manylinux-aarch64-image = "manylinux_2_34"
 before-all = """
-yum install -y epel-release && yum install -y ccache wget gcc-c++ mpfr-devel
+set -e
+yum install -y epel-release && yum install -y ccache curl gcc-c++ mpfr-devel
 GMP_VER=6.3.0
-wget -q https://gmplib.org/download/gmp/gmp-${GMP_VER}.tar.xz
+curl -fL -o gmp-${GMP_VER}.tar.xz https://gmplib.org/download/gmp/gmp-${GMP_VER}.tar.xz || \
+  curl -fL -o gmp-${GMP_VER}.tar.xz https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VER}.tar.xz
 tar xf gmp-${GMP_VER}.tar.xz
 cd gmp-${GMP_VER} && ./configure --prefix=/usr --enable-cxx --disable-static && make -j$(nproc) && make install && cd ..
 FLINT_VER=3.1.2
-wget -q https://github.com/flintlib/flint/releases/download/v${FLINT_VER}/flint-${FLINT_VER}.tar.gz
+curl -fL -o flint-${FLINT_VER}.tar.gz https://github.com/flintlib/flint/releases/download/v${FLINT_VER}/flint-${FLINT_VER}.tar.gz
 tar xf flint-${FLINT_VER}.tar.gz
 cd flint-${FLINT_VER} && ./configure --prefix=/usr --disable-static --with-gmp=/usr --with-mpfr=/usr && make -j$(nproc) && make install && cd ..
 ldconfig

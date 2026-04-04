@@ -58,7 +58,7 @@ test-command = "cd /tmp && pytest {project}/python/tests -v"
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 before-all = """
-yum install -y epel-release && /usr/bin/crb enable && yum install -y ccache wget glibc-static
+yum install -y epel-release && /usr/bin/crb enable && yum install -y ccache wget glibc-static gcc-c++
 GMP_VER=6.3.0
 wget -q https://gmplib.org/download/gmp/gmp-${GMP_VER}.tar.xz
 tar xf gmp-${GMP_VER}.tar.xz

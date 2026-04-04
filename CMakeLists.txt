@@ -621,7 +621,10 @@ if(NOT arjun_DIR)
         if(EvalMaxSAT_DIR)
             list(APPEND _arjun_extra_args "-DEvalMaxSAT_DIR=${EvalMaxSAT_DIR}")
         endif()
-        list(APPEND _arjun_extra_args ${_osx_cmake_args})
+        list(APPEND _arjun_extra_args
+            -DMPFR_LIBRARY=${MPFR_LIBRARIES}
+            -DMPFR_INCLUDE_DIR=${MPFR_INCLUDE_DIR}
+            ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_arjun_src}" -B "${_arjun_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -672,7 +675,10 @@ if(NOT approxmc_DIR)
         if(arjun_DIR)
             list(APPEND _approxmc_extra_args "-Darjun_DIR=${arjun_DIR}")
         endif()
-        list(APPEND _approxmc_extra_args ${_osx_cmake_args})
+        list(APPEND _approxmc_extra_args
+            -DMPFR_LIBRARY=${MPFR_LIBRARIES}
+            -DMPFR_INCLUDE_DIR=${MPFR_INCLUDE_DIR}
+            ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_approxmc_src}" -B "${_approxmc_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}

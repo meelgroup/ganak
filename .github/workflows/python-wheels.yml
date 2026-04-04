@@ -41,7 +41,7 @@ jobs:
           restore-keys: ccache-wheels-${{ matrix.os }}-
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21
+        uses: pypa/cibuildwheel@v3.1.0
         # All per-platform settings live in [tool.cibuildwheel] in pyproject.toml.
         env:
           CIBW_ARCHS_LINUX: native   # x86_64 on ubuntu-latest, aarch64 on ubuntu-24.04-arm

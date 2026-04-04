@@ -17,7 +17,6 @@ rm -rf deps
 rm -rf _deps
 SAT_DIR=$(cd ../.. && pwd)
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
-    -DGMP_LIBRARY=/usr/local/lib/libgmp.a \
     -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
     -Dcadical_DIR="${SAT_DIR}/cadical/build" \
     -Dcryptominisat5_DIR="${SAT_DIR}/cryptominisat/build" \

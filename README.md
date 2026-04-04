@@ -56,7 +56,6 @@ not a custom build directory, as those may be compiled for the wrong architectur
 ```shell
 mkdir build && cd build
 cmake -DBUILD_SHARED_LIBS=OFF \
-    -DGMP_LIBRARY=/usr/local/lib/libgmp.a \
     -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
     -DGMP_INCLUDE_DIR=/usr/local/include \
     ..

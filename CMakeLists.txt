@@ -326,6 +326,21 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
+# Collect macOS-specific flags to forward to child CMake builds so that
+# cross-compilation (e.g. universal2, x86_64 under Rosetta) works correctly.
+# CMAKE_OSX_ARCHITECTURES is set by scikit-build-core when building Python wheels.
+set(_osx_cmake_args "")
+set(_osx_arch_cxxflags "")
+if(CMAKE_OSX_ARCHITECTURES)
+    list(APPEND _osx_cmake_args "-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}")
+    foreach(_arch ${CMAKE_OSX_ARCHITECTURES})
+        string(APPEND _osx_arch_cxxflags " -arch ${_arch}")
+    endforeach()
+endif()
+if(CMAKE_OSX_DEPLOYMENT_TARGET)
+    list(APPEND _osx_cmake_args "-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+endif()
+
 # ---- CryptoMiniSat5 and its deps (cadical, cadiback) ----
 # cadical and cadiback are only needed when auto-building CryptoMiniSat5.
 # cadiback's configure looks for ../cadical, so both must be fetched as siblings
@@ -351,7 +366,7 @@ if(NOT cryptominisat5_DIR)
         if(NOT EXISTS "${_cadical_lib}")
             message(STATUS "CaDiCaL: building in ${_cadical_src}")
             execute_process(
-                COMMAND bash -c "CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=-fPIC ./configure --no-contracts --no-tracing --fp"
+                COMMAND bash -c "CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=\"-fPIC${_osx_arch_cxxflags}\" ./configure --no-contracts --no-tracing --fp"
                 WORKING_DIRECTORY "${_cadical_src}"
                 RESULT_VARIABLE _cadical_cfg_ret
             )
@@ -388,7 +403,7 @@ if(NOT cryptominisat5_DIR)
         if(NOT EXISTS "${_cadiback_lib}")
             message(STATUS "CaDiBaCk: building in ${_cadiback_src}")
             execute_process(
-                COMMAND bash -c "CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=-fPIC ./configure --release"
+                COMMAND bash -c "CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=\"-fPIC${_osx_arch_cxxflags}\" ./configure --release"
                 WORKING_DIRECTORY "${_cadiback_src}"
                 RESULT_VARIABLE _cadiback_cfg_ret
             )
@@ -429,6 +444,7 @@ if(NOT cryptominisat5_DIR)
         if(cadiback_DIR)
             list(APPEND _cms_extra_args "-Dcadiback_DIR=${cadiback_DIR}")
         endif()
+        list(APPEND _cms_extra_args ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_cms_src}" -B "${_cms_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -481,6 +497,7 @@ if(NOT arjun_DIR)
                     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+                    ${_osx_cmake_args}
                 RESULT_VARIABLE _sbva_cfg_ret
             )
             if(NOT _sbva_cfg_ret EQUAL 0)
@@ -518,6 +535,7 @@ if(NOT arjun_DIR)
                     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+                    ${_osx_cmake_args}
                 RESULT_VARIABLE _tdec_cfg_ret
             )
             if(NOT _tdec_cfg_ret EQUAL 0)
@@ -555,6 +573,7 @@ if(NOT arjun_DIR)
                     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+                    ${_osx_cmake_args}
                 RESULT_VARIABLE _evalmaxsat_cfg_ret
             )
             if(NOT _evalmaxsat_cfg_ret EQUAL 0)
@@ -602,6 +621,7 @@ if(NOT arjun_DIR)
         if(EvalMaxSAT_DIR)
             list(APPEND _arjun_extra_args "-DEvalMaxSAT_DIR=${EvalMaxSAT_DIR}")
         endif()
+        list(APPEND _arjun_extra_args ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_arjun_src}" -B "${_arjun_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -652,6 +672,7 @@ if(NOT approxmc_DIR)
         if(arjun_DIR)
             list(APPEND _approxmc_extra_args "-Darjun_DIR=${arjun_DIR}")
         endif()
+        list(APPEND _approxmc_extra_args ${_osx_cmake_args})
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S "${_approxmc_src}" -B "${_approxmc_build}"
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}

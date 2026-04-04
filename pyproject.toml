@@ -17,7 +17,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -28,7 +27,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Utilities",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme = "python/README.md"
 
 [tool.scikit-build]
@@ -48,7 +47,7 @@ wheel.packages = []           # no pure-Python packages; extension only
 install.components = ["python"]  # only install pyganak.so, not the full ganak install
 
 [tool.cibuildwheel]
-build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux* *i686"
 build-frontend = "build"
 test-requires = "pytest"

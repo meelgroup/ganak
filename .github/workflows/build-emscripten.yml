@@ -75,11 +75,17 @@ jobs:
     - name: Build Cadical for wasm
       run: |
         cd cadical
-        emconfigure ./configure --no-contracts --no-tracing
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          ..
         emmake make -j$(nproc)
-        cp build/libcadical* $EMINSTALL/lib/
-        cp src/*.hpp $EMINSTALL/include/
-        cd ..
+        emmake make install
+        cd ../..
 
     - name: Checkout Cadiback
       uses: actions/checkout@v4
@@ -90,11 +96,18 @@ jobs:
     - name: Build Cadiback for wasm
       run: |
         cd cadiback
-        ./configure
-        emmake make -f makefile.emscripten
-        cp libcadi* $EMINSTALL/lib/
-        cp include/cadiback.h $EMINSTALL/include/
-        cd ..
+        mkdir build && cd build
+        emcmake cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
+          -Dcadical_DIR=$EMINSTALL/lib \
+          ..
+        emmake make -j$(nproc)
+        emmake make install
+        cd ../..
 
     - name: Checkout CryptoMiniSat
       uses: actions/checkout@v4

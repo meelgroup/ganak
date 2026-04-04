@@ -467,7 +467,7 @@ if(GIT_EXECUTABLE)
 else()
   set(GIT_SHA1 "GIT-hash-notfound")
 endif()
-set(GANAK_FULL_VERSION "1.1.0")
+set(GANAK_FULL_VERSION "2.6.0")
 
 string(REPLACE "." ";" GANAK_FULL_VERSION_LIST ${GANAK_FULL_VERSION})
 SetVersionNumber("PROJECT" ${GANAK_FULL_VERSION_LIST})

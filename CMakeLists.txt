@@ -313,11 +313,14 @@ endif()
 if(EXISTS "/usr/local/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 endif()
-# GMP, MPFR, and flint are external pre-built system libraries.  When building the
-# Python extension (.so), their static .a may lack -fPIC and cannot be linked into a
-# shared object.  Restore the platform-default suffix order (.so first) only in that
-# case.  For a fully-static binary build we still need .a.
-if(BUILD_PYTHON_EXTENSION)
+# GMP, MPFR, and flint are external pre-built system libraries.  On Linux, a
+# source-built static .a typically lacks -fPIC and cannot be linked into a shared
+# object (.so).  Restore the platform-default suffix order (.so first) when building
+# the Python extension on Linux so the shared versions are found instead.
+# On macOS, Homebrew always builds static libs with PIC so the .a works fine, and
+# using the .dylib would drag in a macOS-version-specific deployment target that
+# breaks the wheel's declared minimum OS version.
+if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
     set(_saved_find_suffixes "${CMAKE_FIND_LIBRARY_SUFFIXES}")
     unset(CMAKE_FIND_LIBRARY_SUFFIXES)
 endif()
@@ -329,7 +332,7 @@ if(GMPXX_LIBRARY)
 endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
 pkg_check_modules(flint REQUIRED IMPORTED_TARGET flint)
-if(BUILD_PYTHON_EXTENSION)
+if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
     set(CMAKE_FIND_LIBRARY_SUFFIXES "${_saved_find_suffixes}")
 endif()
 

@@ -141,6 +141,80 @@ which means that the probability of the wrong count is at most
 
 If you must have a non-probabilistic count, you can use the `--prob 0` flag.
 
+## Python Package (pyganak)
+
+Ganak is available as a Python package on [PyPI](https://pypi.org/project/pyganak/):
+
+```bash
+pip install pyganak
+```
+
+Pre-built wheels are available for Linux (x86-64, ARM64) and macOS (Apple Silicon, Intel).
+
+### Unweighted counting
+
+```python
+from pyganak import Counter
+
+c = Counter()
+c.add_clause([1, 2])      # x1 OR x2
+c.add_clause([-1, 2])     # NOT x1 OR x2
+print(c.count())          # → 2  (exact Python int, arbitrary precision)
+```
+
+### Weighted counting
+
+```python
+from pyganak import WeightedCounter
+
+c = WeightedCounter()
+c.add_clause([1, 2])           # x1 OR x2
+
+# Set weights for both polarities of each variable.
+c.set_lit_weight( 1, 0.3)     # weight of  x1 = 0.3
+c.set_lit_weight(-1, 0.7)     # weight of ¬x1 = 0.7
+c.set_lit_weight( 2, 0.4)     # weight of  x2 = 0.4
+c.set_lit_weight(-2, 0.6)     # weight of ¬x2 = 0.6
+
+# Models: (T,T)=0.12  (T,F)=0.18  (F,T)=0.28  → total=0.58
+print(c.count())               # → 0.58  (Python float)
+```
+
+Weights are supplied as Python `float` (double) values.  Internally,
+`WeightedCounter` uses [MPFR](https://www.mpfr.org/) floating-point
+arithmetic at configurable precision (default 128 bits, roughly 38 significant
+decimal digits).  However, because floating-point arithmetic is **not
+associative**, the result is a high-precision approximation rather than an
+exact value — the order in which terms are accumulated can affect the last few
+bits of the result.  For exact rational weighted counting use `--mode 1` from
+the command line (or the C++ library with `FGenMpq`).
+
+The `prec` constructor argument controls the MPFR precision in bits:
+
+```python
+c = WeightedCounter(prec=256)   # 256-bit internal precision
+```
+
+### Building from source with a venv
+
+If you have already built Ganak with CMake, the extension is in
+`build/lib/pyganak*.so`.  To rebuild and test without a full `pip install`:
+
+```bash
+# Enable the Python extension (only needed once):
+cmake -DBUILD_PYTHON_EXTENSION=ON build
+
+# Rebuild after editing python/src/pyganak.cpp:
+cmake --build build --target pyganak -j$(nproc)
+
+# Run tests using a venv:
+python3 -m venv venv
+venv/bin/pip install pytest
+PYTHONPATH=build/lib venv/bin/pytest python/tests/ -v
+```
+
+See `python/README.md` for the full API reference.
+
 ## Using as a Library
 Ganak can be used as a library. The file `src/example.cpp` gives an example of
 how to use Ganak as a library. Let's go through it step by step:

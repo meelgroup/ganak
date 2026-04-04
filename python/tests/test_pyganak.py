@@ -5,6 +5,7 @@ Each test verifies model counts against independently known correct values.
 Variable indices are 1-based (positive = positive literal, negative = negated).
 """
 
+import math
 import pytest
 import pyganak
 
@@ -327,3 +328,135 @@ class TestSuccessiveCounts:
         c2.add_clause([1])
         c2.add_clause([-1])
         assert c2.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# WeightedCounter
+# ---------------------------------------------------------------------------
+
+class TestWeightedCounterBasic:
+    def test_class_exists(self):
+        assert hasattr(pyganak, "WeightedCounter")
+
+    def test_default_construction(self):
+        c = pyganak.WeightedCounter()
+        assert c.nof_vars() == 0
+        assert c.nof_clauses() == 0
+
+    def test_prec_kwarg(self):
+        c = pyganak.WeightedCounter(prec=256)
+        assert c is not None
+
+    def test_prec_too_small_raises(self):
+        with pytest.raises(ValueError):
+            pyganak.WeightedCounter(prec=1)
+
+    def test_result_is_float(self):
+        c = pyganak.WeightedCounter()
+        c.add_clause([1])
+        c.set_lit_weight(1, 1.0)
+        c.set_lit_weight(-1, 0.0)
+        result = c.count()
+        assert type(result) is float
+
+    def test_count_once_only(self):
+        c = pyganak.WeightedCounter()
+        c.add_clause([1])
+        c.count()
+        with pytest.raises(RuntimeError):
+            c.count()
+
+    def test_zero_lit_weight_raises(self):
+        c = pyganak.WeightedCounter()
+        with pytest.raises((ValueError, TypeError)):
+            c.set_lit_weight(0, 1.0)
+
+
+class TestWeightedCounterCorrectness:
+    def test_unit_clause_weighted(self):
+        # x1 forced true, w(x1)=0.3, w(¬x1)=0.7 → count = 0.3
+        c = pyganak.WeightedCounter()
+        c.add_clause([1])
+        c.set_lit_weight( 1, 0.3)
+        c.set_lit_weight(-1, 0.7)
+        assert math.isclose(c.count(), 0.3, rel_tol=1e-9)
+
+    def test_two_var_disjunction_weighted(self):
+        # (x1 ∨ x2):  models (T,T), (T,F), (F,T)
+        # w(x1=T)=0.3, w(x1=F)=0.7, w(x2=T)=0.4, w(x2=F)=0.6
+        # (T,T)=0.3*0.4=0.12, (T,F)=0.3*0.6=0.18, (F,T)=0.7*0.4=0.28
+        # total = 0.58
+        c = pyganak.WeightedCounter()
+        c.add_clause([1, 2])
+        c.set_lit_weight( 1, 0.3)
+        c.set_lit_weight(-1, 0.7)
+        c.set_lit_weight( 2, 0.4)
+        c.set_lit_weight(-2, 0.6)
+        assert math.isclose(c.count(), 0.58, rel_tol=1e-9)
+
+    def test_unsat_formula_weighted(self):
+        # x1 ∧ ¬x1 is UNSAT → count = 0
+        c = pyganak.WeightedCounter()
+        c.add_clause([1])
+        c.add_clause([-1])
+        c.set_lit_weight( 1, 0.5)
+        c.set_lit_weight(-1, 0.5)
+        assert c.count() == 0.0
+
+    def test_unit_weight_equals_unweighted(self):
+        # When all weights are 1.0, the weighted count equals the plain count.
+        c_plain = pyganak.Counter()
+        c_plain.add_clause([1, 2])
+        plain = c_plain.count()  # 3
+
+        c_weighted = pyganak.WeightedCounter()
+        c_weighted.add_clause([1, 2])
+        c_weighted.set_lit_weight( 1, 1.0)
+        c_weighted.set_lit_weight(-1, 1.0)
+        c_weighted.set_lit_weight( 2, 1.0)
+        c_weighted.set_lit_weight(-2, 1.0)
+        assert math.isclose(c_weighted.count(), float(plain), rel_tol=1e-9)
+
+    def test_higher_precision_same_result(self):
+        # prec=128 and prec=256 should give the same double-precision result.
+        def make():
+            c = pyganak.WeightedCounter(prec=128)
+            c.add_clause([1, 2])
+            c.set_lit_weight( 1, 0.3)
+            c.set_lit_weight(-1, 0.7)
+            c.set_lit_weight( 2, 0.4)
+            c.set_lit_weight(-2, 0.6)
+            return c.count()
+
+        def make256():
+            c = pyganak.WeightedCounter(prec=256)
+            c.add_clause([1, 2])
+            c.set_lit_weight( 1, 0.3)
+            c.set_lit_weight(-1, 0.7)
+            c.set_lit_weight( 2, 0.4)
+            c.set_lit_weight(-2, 0.6)
+            return c.count()
+
+        assert math.isclose(make(), make256(), rel_tol=1e-12)
+
+    def test_add_clauses_weighted(self):
+        c = pyganak.WeightedCounter()
+        c.add_clauses([[1, 2], [-1, 2]])
+        c.set_lit_weight( 1, 0.5)
+        c.set_lit_weight(-1, 0.5)
+        c.set_lit_weight( 2, 0.5)
+        c.set_lit_weight(-2, 0.5)
+        result = c.count()
+        assert isinstance(result, float)
+        assert result >= 0.0
+
+    def test_sampling_set_weighted(self):
+        # (x1 ∨ x2 ∨ x3) projected onto {x1, x2}, all weights 0.5
+        c = pyganak.WeightedCounter()
+        c.add_clause([1, 2, 3])
+        c.set_sampling_set([1, 2])
+        for lit in [1, -1, 2, -2, 3, -3]:
+            c.set_lit_weight(lit, 0.5)
+        result = c.count()
+        assert isinstance(result, float)
+        assert result >= 0.0

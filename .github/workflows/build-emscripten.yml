@@ -103,7 +103,7 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
-          -Dcadical_DIR=$EMINSTALL/lib \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           ..
         emmake make -j$(nproc)
         emmake make install
@@ -126,9 +126,8 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-          -Dcadical_DIR=$EMINSTALL/lib \
-          -Dcadical_SRC_DIR=$EMINSTALL/include \
-          -Dcadiback_DIR=$EMINSTALL \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           ..
         emmake make -j$(nproc)
         cd ../..
@@ -189,9 +188,8 @@ jobs:
           -DENABLE_TESTING=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-          -Dcadical_DIR=$EMINSTALL/lib \
-          -Dcadical_SRC_DIR=$EMINSTALL/include \
-          -Dcadiback_DIR=$EMINSTALL \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
+          -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
           -Dsbva_DIR=$GITHUB_WORKSPACE/sbva/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \

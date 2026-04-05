@@ -10,6 +10,7 @@ import re
 import nbformat as nbf
 
 BLUE   = "\033[94m"
+GREEN  = "\033[92m"
 RED    = "\033[91m"
 RESET = "\033[0m"
 
@@ -243,25 +244,30 @@ def print_instance_stats_table(table_todo, fname_like, verbose=False):
         ("irred_cls",    "irr_cls"),
     ]
 
-    union_parts = []
-    for dir, ver in table_todo:
-        parts = [f"replace('{dir}','out-ganak-mc','') as dirname"]
-        for col, alias in metrics:
-            parts.append(f"{_median_subquery(col, dir, ver, fname_like)} as med_{alias}")
-            parts.append(f"{_avg_subquery(col, dir, ver, fname_like)} as avg_{alias}")
-        count_sq = (f"(SELECT COUNT(*) FROM data WHERE dirname='{dir}'"
-                    f" AND ganak_ver='{ver}'{fname_like})")
-        parts.append(f"{count_sq} as n_inst")
-        union_parts.append("SELECT " + ", ".join(parts))
+    for min_nvars, label in [(None, "all"), (20, "nvars>=20")]:
+        nvars_filter = f" and new_nvars >= {min_nvars}" if min_nvars is not None else ""
+        fl = fname_like + nvars_filter
 
-    query = "\nUNION ALL\n".join(union_parts)
-    if verbose:
-        print(f"  Instance stats query ({len(table_todo)} rows)")
-    with open("gen_table.sqlite", "w") as f:
-        f.write(".mode table\n")
-        f.write(query + "\n")
-    os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
-    os.unlink("gen_table.sqlite")
+        union_parts = []
+        for dir, ver in table_todo:
+            parts = [f"replace('{dir}','out-ganak-mc','') as dirname"]
+            for col, alias in metrics:
+                parts.append(f"{_median_subquery(col, dir, ver, fl)} as med_{alias}")
+                parts.append(f"{_avg_subquery(col, dir, ver, fl)} as avg_{alias}")
+            count_sq = (f"(SELECT COUNT(*) FROM data WHERE dirname='{dir}'"
+                        f" AND ganak_ver='{ver}'{fl})")
+            parts.append(f"{count_sq} as n_inst")
+            union_parts.append("SELECT " + ", ".join(parts))
+
+        query = "\nUNION ALL\n".join(union_parts)
+        print(f"\n  [{label}]")
+        if verbose:
+            print(f"  Instance stats query ({len(table_todo)} rows)")
+        with open("gen_table.sqlite", "w") as f:
+            f.write(".mode table\n")
+            f.write(query + "\n")
+        os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
+        os.unlink("gen_table.sqlite")
 
 
 def print_preproc_diffs(table_todo, fname_like, verbose=False):
@@ -478,7 +484,7 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
 
         with open(gp_file, "w") as f:
             for term, out in [
-                ('pdfcairo size 15cm,15cm', pdf_file),
+                ('pdfcairo size 52cm,40cm', pdf_file),
                 ('pngcairo size 600,600',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
@@ -787,6 +793,7 @@ def print_preproc_time_breakdown(matched_dirs):
                ROUND(SUM(step_time), 2)                                               AS total_s,
                ROUND(AVG(step_time) * 1000, 1)                                        AS avg_ms,
                -SUM(delta_irred_long_lits)                                             AS lits_rmvd,
+               -SUM(delta_irred_long_cls)                                              AS cls_rmvd,
                -SUM(delta_free_vars)                                                   AS fvars_rmvd,
                SUM(IFNULL(delta_elimed_vars, 0))                                       AS elim_vars,
                SUM(IFNULL(delta_units, 0))                                             AS units_found
@@ -807,15 +814,17 @@ def print_preproc_time_breakdown(matched_dirs):
     print(f"\n{BLUE}{title}{RESET}")
     print(f"  Total preprocessing time: {total_t:.1f}s across {len(matched_dirs)} dirs")
     print("  (n_calls = total invocations; lits_rmvd = irred long lits removed;"
-          " fvars_rmvd = free vars freed; elim_vars = vars eliminated by BVE;"
-          " units = unit clauses found; lits/s = lits removed per second of step time)")
+          " cls_rmvd = irred long clauses removed; fvars_rmvd = free vars freed;"
+          " elim_vars = vars eliminated by BVE;"
+          " units = unit clauses found; lits/s, cls/s = removed per second of step time)")
 
-    headers = ["step", "n_calls", "total_s", "%time", "avg_ms", "lits_rmvd", "fvars_rmvd",
-               "elim_vars", "units", "lits/s"]
+    headers = ["step", "n_calls", "total_s", "%time", "avg_ms", "lits_rmvd", "cls_rmvd",
+               "fvars_rmvd", "elim_vars", "units", "lits/s", "cls/s"]
     str_rows = []
-    for name, n_calls, total_s, avg_ms, lits_rmvd, fvars_rmvd, elim_vars, units_found in rows:
+    for name, n_calls, total_s, avg_ms, lits_rmvd, cls_rmvd, fvars_rmvd, elim_vars, units_found in rows:
         pct = f"{100.0 * total_s / total_t:.1f}%" if total_t else "0%"
         lits_per_s = int(max(lits_rmvd, 0) / total_s) if total_s and total_s > 0 else 0
+        cls_per_s  = int(max(cls_rmvd,  0) / total_s) if total_s and total_s > 0 else 0
         str_rows.append((
             name,
             str(n_calls),
@@ -823,10 +832,12 @@ def print_preproc_time_breakdown(matched_dirs):
             pct,
             f"{avg_ms:.1f}",
             f"{max(lits_rmvd, 0):,}",
+            f"{max(cls_rmvd,  0):,}",
             f"{max(fvars_rmvd, 0):,}",
             f"{elim_vars:,}" if elim_vars else "0",
             f"{units_found:,}" if units_found else "0",
             f"{lits_per_s:,}",
+            f"{cls_per_s:,}",
         ))
     _print_table(headers, str_rows)
 
@@ -1050,7 +1061,7 @@ def preproc_time_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size {width_cm:.0f}cm,16cm', pdf_file),
+            (f'pdfcairo size {width_cm:.0f}cm,40cm', pdf_file),
             (f'pngcairo size {int(width_cm * 40)},640', png_file),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1118,7 +1129,7 @@ def preproc_efficiency_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size {width_cm:.0f}cm,16cm', pdf_file),
+            (f'pdfcairo size {width_cm:.0f}cm,40cm', pdf_file),
             (f'pngcairo size {int(width_cm * 40)},640', png_file),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1201,7 +1212,7 @@ def preproc_time_pie_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out, sz in [
-            (f'pdfcairo size 20cm,16cm', pdf_file, ""),
+            (f'pdfcairo size 52cm,40cm', pdf_file, ""),
             (f'pngcairo size 800,640',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1340,7 +1351,7 @@ def preproc_share_chart(matched_dirs):
     xtics = ", ".join(f'"{name}" {i+1}' for i, (name, _, __) in enumerate(kept))
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size {width_cm:.0f}cm,16cm', pdf_file),
+            (f'pdfcairo size {width_cm:.0f}cm,40cm', pdf_file),
             (f'pngcairo size {int(width_cm * 40)},640', png_file),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1418,7 +1429,7 @@ def preproc_cumulative_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size 32cm,{height_cm:.0f}cm', pdf_file),
+            (f'pdfcairo size 52cm,{height_cm:.0f}cm', pdf_file),
             (f'pngcairo size 1200,{int(height_cm * 50)}', png_file),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1810,8 +1821,10 @@ only_dirs = [
     # "out-ganak-mccomp2324-1250247-", # CMS cleanup, oracle improvements, fix parsing issue (?) of CNF header -- weird + one of them is a binary with: reason-side bumping and lbd update, evsids
     # "out-ganak-mccomp2324-1256426-0", # fixing oracle, mostly, and also header parsing more lax
     # "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
-    # "out-ganak-mccomp2324-1279568-", # release
-    "out-ganak-mccomp2324-1281478-0", # more data
+    # "out-ganak-mccomp2324-1279568-0", # release
+    # "out-ganak-mccomp2324-1281478-0", # more data
+    "out-ganak-mccomp2324-1282000-0", # new preproc
+    "out-ganak-mccomp2324-1282412-0", # new preproc v2
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -1890,9 +1903,9 @@ def main():
         # Preprocessing step analysis — one block per directory
         for d in matched_dirs:
             one = [d]
-            print(f"\n{BLUE}{'='*70}{RESET}")
-            print(f"{BLUE}  Preprocessing analysis  ---  {d}{RESET}")
-            print(f"{BLUE}{'='*70}{RESET}")
+            print(f"\n{GREEN}{'='*70}{RESET}")
+            print(f"{GREEN}  Preprocessing analysis  ---  {d}{RESET}")
+            print(f"{GREEN}{'='*70}{RESET}")
             print_preproc_delta_table(one, args.verbose)
             print_preproc_step_efficiency(one)
             print_preproc_per_step_detail(one, args.verbose)

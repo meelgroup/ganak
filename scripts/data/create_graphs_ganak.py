@@ -683,6 +683,8 @@ def print_preproc_delta_table(matched_dirs, verbose=False):
                SUM(delta_free_vars)                                           as sum_d_vars,
                ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits < 0
                                  THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_lits,
+               ROUND(100.0 * SUM(CASE WHEN delta_free_vars < 0
+                                 THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_vars,
                ROUND(SUM(step_time), 2)                                       as total_step_s
         FROM preproc WHERE dirname IN ({dirs_sql})
         GROUP BY name
@@ -697,21 +699,24 @@ def print_preproc_delta_table(matched_dirs, verbose=False):
     title = "Preprocessing step total contribution (sum across all invocations, sorted by lits removed)"
     print(f"\n{BLUE}{title}{RESET}")
     print("  (n_calls = total invocations; d_lits/d_cls/d_bins/d_fvars = raw delta,"
-          " negative = removed; %calls_lit = % of calls that reduced lits; total_s = wall time)")
+          " negative = removed; %calls_lit = % of calls that reduced lits;"
+          " %calls_vars = % of calls that removed a var; total_s = wall time)")
 
     if has_time:
-        headers = ["step", "n_calls", "d_lits", "d_long_cls", "d_bin_cls", "d_fvars", "%calls_lit", "total_s"]
+        headers = ["step", "n_calls", "d_lits", "d_long_cls", "d_bin_cls", "d_fvars", "%calls_lit", "%calls_vars", "total_s"]
         str_rows = [
             (str(r[0]), str(r[1]), str(int(r[2] or 0)), str(int(r[3] or 0)),
              str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%",
-             f"{r[7]:.1f}" if r[7] is not None else "N/A")
+             f"{int(r[7] or 0)}%",
+             f"{r[8]:.1f}" if r[8] is not None else "N/A")
             for r in rows
         ]
     else:
-        headers = ["step", "n_calls", "d_lits", "d_long_cls", "d_bin_cls", "d_fvars", "%calls_lit"]
+        headers = ["step", "n_calls", "d_lits", "d_long_cls", "d_bin_cls", "d_fvars", "%calls_lit", "%calls_vars"]
         str_rows = [
             (str(r[0]), str(r[1]), str(int(r[2] or 0)), str(int(r[3] or 0)),
-             str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%")
+             str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%",
+             f"{int(r[7] or 0)}%")
             for r in rows
         ]
     _print_table(headers, str_rows)
@@ -731,8 +736,10 @@ def print_preproc_step_efficiency(matched_dirs):
         SELECT name,
                COUNT(*)                                                              AS n_calls,
                -SUM(delta_irred_long_lits)                                           AS lits_rmvd,
+               -SUM(delta_irred_long_cls)                                            AS cls_rmvd,
                -SUM(delta_free_vars)                                                 AS fvars_rmvd,
                SUM(CASE WHEN delta_irred_long_lits < 0 THEN 1 ELSE 0 END)           AS calls_lit,
+               SUM(CASE WHEN delta_irred_long_cls < 0 THEN 1 ELSE 0 END)            AS calls_cls,
                SUM(CASE WHEN delta_free_vars < 0 THEN 1 ELSE 0 END)                 AS calls_var,
                ROUND(SUM(step_time), 2)                                              AS total_s
         FROM preproc
@@ -750,32 +757,38 @@ def print_preproc_step_efficiency(matched_dirs):
     title = "Preprocessing step efficiency (sum across all invocations)"
     print(f"\n{BLUE}{title}{RESET}")
     print("  (lits_rmvd = irred long lits removed; fvars_rmvd = free vars freed;"
-          " %lits_act/%vars_act = % of calls with nonzero removal;"
-          " lits/act, vars/act = avg removed per active call)")
+          " %lits_act/%cls_act/%vars_act = % of calls with nonzero removal;"
+          " lits/act, cls/act, vars/act = avg removed per active call)")
 
     if has_time:
-        headers = ["step", "n_calls", "lits_rmvd", "fvars_rmvd", "%lits_act", "%vars_act",
-                   "lits/act", "vars/act", "total_s"]
+        headers = ["step", "n_calls", "lits_rmvd", "fvars_rmvd", "%lits_act", "%cls_act", "%vars_act",
+                   "lits/act", "cls/act", "vars/act", "total_s"]
         str_rows = []
-        for name, n_calls, lits_rmvd, fvars_rmvd, calls_lit, calls_var, total_s in rows:
+        for name, n_calls, lits_rmvd, cls_rmvd, fvars_rmvd, calls_lit, calls_cls, calls_var, total_s in rows:
             avg_lits = int(lits_rmvd / calls_lit) if calls_lit else 0
+            avg_cls  = int(cls_rmvd  / calls_cls)  if calls_cls  else 0
             avg_vars = int(fvars_rmvd / calls_var) if calls_var else 0
             pct_lits = f"{100*calls_lit//n_calls}%" if n_calls else "0%"
+            pct_cls  = f"{100*calls_cls//n_calls}%" if n_calls else "0%"
             pct_vars = f"{100*calls_var//n_calls}%" if n_calls else "0%"
             str_rows.append((name, str(n_calls), f"{lits_rmvd:,}", f"{fvars_rmvd:,}",
-                             pct_lits, pct_vars, f"{avg_lits:,}", f"{avg_vars:,}",
+                             pct_lits, pct_cls, pct_vars,
+                             f"{avg_lits:,}", f"{avg_cls:,}", f"{avg_vars:,}",
                              f"{total_s:.1f}" if total_s is not None else "N/A"))
     else:
-        headers = ["step", "n_calls", "lits_rmvd", "fvars_rmvd", "%lits_act", "%vars_act",
-                   "lits/act", "vars/act"]
+        headers = ["step", "n_calls", "lits_rmvd", "fvars_rmvd", "%lits_act", "%cls_act", "%vars_act",
+                   "lits/act", "cls/act", "vars/act"]
         str_rows = []
-        for name, n_calls, lits_rmvd, fvars_rmvd, calls_lit, calls_var, _ in rows:
+        for name, n_calls, lits_rmvd, cls_rmvd, fvars_rmvd, calls_lit, calls_cls, calls_var, _ in rows:
             avg_lits = int(lits_rmvd / calls_lit) if calls_lit else 0
+            avg_cls  = int(cls_rmvd  / calls_cls)  if calls_cls  else 0
             avg_vars = int(fvars_rmvd / calls_var) if calls_var else 0
             pct_lits = f"{100*calls_lit//n_calls}%" if n_calls else "0%"
+            pct_cls  = f"{100*calls_cls//n_calls}%" if n_calls else "0%"
             pct_vars = f"{100*calls_var//n_calls}%" if n_calls else "0%"
             str_rows.append((name, str(n_calls), f"{lits_rmvd:,}", f"{fvars_rmvd:,}",
-                             pct_lits, pct_vars, f"{avg_lits:,}", f"{avg_vars:,}"))
+                             pct_lits, pct_cls, pct_vars,
+                             f"{avg_lits:,}", f"{avg_cls:,}", f"{avg_vars:,}"))
     _print_table(headers, str_rows)
 
 
@@ -1051,12 +1064,11 @@ def preproc_time_chart(matched_dirs):
 
     n = len(rows)
     with open(dat_file, "w") as f:
-        f.write("# idx  total_s  wasted_s  step\n")
-        for i, (name, total_s, wasted_s) in enumerate(rows):
+        f.write("# step  useful_s  wasted_s\n")
+        for name, total_s, wasted_s in rows:
             useful_s = (total_s or 0) - (wasted_s or 0)
-            f.write(f"{i+1}\t{useful_s:.2f}\t{wasted_s:.2f}\t{name}\n")
+            f.write(f'"{name}"\t{useful_s:.2f}\t{wasted_s:.2f}\n')
 
-    xtics = ", ".join(f'"{name}" {i+1}' for i, (name, _, __) in enumerate(rows))
     width_cm = max(22, n * 2.2)
 
     with open(gp_file, "w") as f:
@@ -1069,14 +1081,13 @@ def preproc_time_chart(matched_dirs):
             f.write(f'set title "Preprocessing time per step (useful vs wasted/no-op time)\\n{lbl}"\n')
             f.write('set ylabel "Time (seconds)"\n')
             f.write('set yrange [0:*]\n')
-            f.write(f'set xrange [0.5:{n + 0.5}]\n')
             f.write('set grid ytics\n')
             f.write('set key top right\n')
             f.write('set style fill solid 0.8 border -1\n')
             f.write('set style data histograms\n')
             f.write('set style histogram rowstacked\n')
             f.write('set boxwidth 0.6\n')
-            f.write(f'set xtics ({xtics}) rotate by -45 left\n')
+            f.write('set xtics rotate by -45 right\n')
             f.write('set bmargin 10\n')
             f.write(f'plot "{dat_file}" using 2:xtic(1) lc rgb "steelblue" title "useful time",\\\n')
             f.write(f'     "{dat_file}" using 3 lc rgb "red" title "no-op waste"\n\n')
@@ -1412,14 +1423,15 @@ def preproc_cumulative_chart(matched_dirs):
     gp_file  = f"preproc_cumul_{lbl}.gnuplot"
 
     # Normalise to millions for readability
-    cum_lits = cum_cls = cum_bins = cum_vars = 0.0
+    cum_lits = cum_cls = cum_vars = 0.0
     with open(dat_file, "w") as f:
-        f.write("# i  cum_lits_M  cum_vars_M  step_name\n")
-        f.write("0\t0.0\t0.0\tstart\n")
-        for i, (name, s_lits, s_cls, s_bins, s_vars, _pos) in enumerate(rows):
+        f.write("# i  cum_lits_M  cum_cls_M  cum_vars_M  step_name\n")
+        f.write("0\t0.0\t0.0\t0.0\tstart\n")
+        for i, (name, s_lits, s_long_cls, s_bins, s_vars, _pos) in enumerate(rows):
             cum_lits += max(s_lits, 0) / 1e6
+            cum_cls  += max((s_long_cls or 0) + (s_bins or 0), 0) / 1e6
             cum_vars += max(s_vars, 0) / 1e6
-            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_vars:.3f}\t{name}\n")
+            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_cls:.3f}\t{cum_vars:.3f}\t{name}\n")
 
     n = len(rows)
     height_cm = max(16, n * 1.1)
@@ -1443,7 +1455,8 @@ def preproc_cumulative_chart(matched_dirs):
             f.write('set key top left\n')
             f.write(f'set ytics ({ytics_str})\n')
             f.write(f'plot "{dat_file}" using 2:1 with linespoints lc rgb "steelblue" lw 2 pt 7 ps 1 title "lits removed",\\\n')
-            f.write(f'     "{dat_file}" using 3:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed"\n\n')
+            f.write(f'     "{dat_file}" using 3:1 with linespoints lc rgb "dark-orange" lw 2 pt 5 ps 1 title "cls removed (bin+long)",\\\n')
+            f.write(f'     "{dat_file}" using 4:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed"\n\n')
 
     title = f"Preproc cumulative chart (all steps, n={n}, ordered by pipeline position)"
     print(f"\n{BLUE}{title}{RESET}")
@@ -1452,13 +1465,13 @@ def preproc_cumulative_chart(matched_dirs):
 
 
 def print_preproc_per_step_detail(matched_dirs, verbose=False):
-    """Top steps by total absolute lits impact (first occurrence), sorted by median lits reduction."""
+    """Top steps by total absolute lits impact (all occurrences), sorted by median lits reduction."""
     if not _preproc_has_data(matched_dirs):
         return
 
     dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
     con = sqlite3.connect("data.sqlite3")
-    stats = _preproc_step_stats(con, dirs_sql, where_extra=" AND occurrence = 0")
+    stats = _preproc_step_stats(con, dirs_sql)
 
     # Also need n_active_any (active on any metric) — fetch from DB
     cur = con.cursor()
@@ -1466,7 +1479,7 @@ def print_preproc_per_step_detail(matched_dirs, verbose=False):
         f"SELECT name,"
         f" ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits != 0 OR delta_irred_bins != 0"
         f"   OR delta_free_vars != 0 THEN 1 ELSE 0 END) / COUNT(*), 1)"
-        f" FROM preproc WHERE dirname IN ({dirs_sql}) AND occurrence = 0 GROUP BY name"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}) GROUP BY name"
     )
     pct_active = {row[0]: row[1] for row in cur.fetchall()}
     con.close()
@@ -1477,7 +1490,7 @@ def print_preproc_per_step_detail(matched_dirs, verbose=False):
     # Sort by median lits reduction (most reduction first)
     ordered = sorted(stats.items(), key=lambda kv: kv[1]['med_lits'])[:10]
 
-    title = "Top steps by median lits reduction (first occurrence only)"
+    title = "Top steps by median lits reduction (all occurrences)"
     print(f"\n{BLUE}{title}{RESET}")
 
     headers = ["step", "n", "med_d_lits", "med_d_bins", "med_d_vars", "%active"]
@@ -1908,16 +1921,13 @@ def main():
             print(f"{GREEN}{'='*70}{RESET}")
             print_preproc_delta_table(one, args.verbose)
             print_preproc_step_efficiency(one)
-            print_preproc_per_step_detail(one, args.verbose)
+
             print_preproc_time_breakdown(one)
             print_preproc_noop_waste(one)
             print_preproc_extended_vars(one)
             print_step_predecessor_effectiveness(one, step="must-scc-vrepl")
-            preproc_share_chart(one)
             preproc_cumulative_chart(one)
-            preproc_time_chart(one)
             preproc_time_pie_chart(one)
-            preproc_efficiency_chart(one)
 
     unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
     for dir1, dir2 in itertools.combinations(unique_dirs, 2):

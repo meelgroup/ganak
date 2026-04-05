@@ -131,6 +131,11 @@ public:
   uint64_t sum_cache_hit_sizes = 0;
   uint64_t sum_cache_store_sizes = 0;
 
+  // WL canonical hashing stats
+  uint64_t wl_canon_computed = 0; // comps with valid WL CanonInfo (size <= threshold)
+  uint64_t wl_canon_skipped = 0;  // comps skipped (size > threshold or threshold==0)
+  uint64_t wl_canon_hits = 0;     // cache hits on lookups that used WL canonical hash
+
   // Components
   uint64_t comp_sorts = 0;
   uint64_t comp_sizes = 0;

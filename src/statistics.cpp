@@ -162,6 +162,13 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << get_avg_cache_store_sz()
     << " / "
     << get_avg_cache_store_size());
+  verb_print(1, "WL canon: computed/skipped/hits "
+    << setw(7) << wl_canon_computed << " / "
+    << setw(7) << wl_canon_skipped << " / "
+    << setw(7) << wl_canon_hits
+    << "  (canon hit rate: "
+    << setprecision(3) << safe_div(wl_canon_hits * 100.0, wl_canon_computed) << "%)");
+
   if (conf.verb >= 2) counter->get_cache()->debug_mem_data();
   verb_print(1, "");
 }

@@ -187,6 +187,7 @@ void add_ganak_options()
     add_arg("--epsilon", conf.appmc_epsilon, fc_double, "AppMC epsilon");
     add_arg("--chronobt", conf.do_chronobt, fc_int, "ChronoBT. SAT must be DISABLED or this will fail");
     add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
+    add_arg("--wlcanon", conf.wl_canonize_threshold, fc_int, "WL canonical component hashing threshold: components with nVars <= this get a structure-invariant hash so isomorphic components hit the same cache entry. Set to 0 to disable.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");

@@ -69,6 +69,8 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
       const CanonInfo canon = ana.compute_canon_info(*p_new_comp, hash_seed, conf.wl_canonize_threshold);
+      if (canon.valid) stats.wl_canon_computed++;
+      else stats.wl_canon_skipped++;
       void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc, canon.valid ? &canon : nullptr);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
@@ -88,6 +90,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #endif
       } else {
         // Cache hit
+        if (canon.valid) stats.wl_canon_hits++;
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";

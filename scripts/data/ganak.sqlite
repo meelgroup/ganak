@@ -86,3 +86,38 @@ UPDATE data SET irred_bin = NULL WHERE irred_bin = '';
 UPDATE data SET irred_long = NULL WHERE irred_long = '';
 UPDATE data SET irred_tri = NULL WHERE irred_tri = '';
 UPDATE data SET irred_cls = NULL WHERE irred_cls = '';
+
+DROP TABLE IF EXISTS preproc;
+CREATE TABLE preproc (
+  dirname STRING NOT NULL,
+  fname STRING NOT NULL,
+  step_num INT NOT NULL,
+  occurrence INT NOT NULL,
+  name STRING NOT NULL,
+  before_irred_bins INT,
+  before_irred_long_cls INT,
+  before_irred_long_lits INT,
+  before_free_vars INT,
+  after_irred_bins INT,
+  after_irred_long_cls INT,
+  after_irred_long_lits INT,
+  after_free_vars INT,
+  delta_irred_bins INT,
+  delta_irred_long_cls INT,
+  delta_irred_long_lits INT,
+  delta_free_vars INT
+);
+. mode csv
+. import -skip 1 preproc.csv preproc
+UPDATE preproc SET before_irred_bins = NULL WHERE before_irred_bins = '';
+UPDATE preproc SET before_irred_long_cls = NULL WHERE before_irred_long_cls = '';
+UPDATE preproc SET before_irred_long_lits = NULL WHERE before_irred_long_lits = '';
+UPDATE preproc SET before_free_vars = NULL WHERE before_free_vars = '';
+UPDATE preproc SET after_irred_bins = NULL WHERE after_irred_bins = '';
+UPDATE preproc SET after_irred_long_cls = NULL WHERE after_irred_long_cls = '';
+UPDATE preproc SET after_irred_long_lits = NULL WHERE after_irred_long_lits = '';
+UPDATE preproc SET after_free_vars = NULL WHERE after_free_vars = '';
+UPDATE preproc SET delta_irred_bins = NULL WHERE delta_irred_bins = '';
+UPDATE preproc SET delta_irred_long_cls = NULL WHERE delta_irred_long_cls = '';
+UPDATE preproc SET delta_irred_long_lits = NULL WHERE delta_irred_long_lits = '';
+UPDATE preproc SET delta_free_vars = NULL WHERE delta_free_vars = '';

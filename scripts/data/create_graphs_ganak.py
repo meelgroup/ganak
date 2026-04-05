@@ -495,11 +495,7 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
                 f.write(f'plot "{dat_file}" using (bin($1,binwidth)):(1) smooth freq with boxes lc rgb "blue"\n\n')
 
         os.system(f"gnuplot {gp_file}")
-
-        if os.path.exists(png_file):
-            with open(png_file, "rb") as fh:
-                img_b64 = base64.b64encode(fh.read()).decode()
-            print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
+        _display_png(png_file)
 
 
 def print_sigabrt_files(table_todo, fname_like):
@@ -534,6 +530,422 @@ def print_sigabrt_files(table_todo, fname_like):
     for row in str_rows:
         print(fmt.format(*row))
     print(sep)
+
+
+def _preproc_has_data(matched_dirs):
+    """Return True if the preproc table exists and has data for any of the matched dirs."""
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='preproc'")
+        if not cur.fetchone():
+            return False
+        if not matched_dirs:
+            return False
+        dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+        cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql})")
+        count = cur.fetchone()[0]
+        return count > 0
+    except Exception:
+        return False
+    finally:
+        con.close()
+
+
+def _preproc_step_stats(con, dirs_sql, where_extra="", per_cnf=False):
+    """Fetch all preproc delta rows and compute per-step stats including medians in Python.
+
+    If per_cnf=True, first sum all occurrences within each (dirname, fname) before computing
+    the median across CNFs — giving the total effect per CNF per step.
+
+    Returns dict: name -> {n, n_active, med_lits, med_bins, med_cls, med_vars,
+                            med_step_num}
+    """
+    from collections import defaultdict
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT name, dirname, fname, delta_irred_bins, delta_irred_long_cls,"
+        f" delta_irred_long_lits, delta_free_vars, step_num"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}){where_extra}"
+    )
+
+    if per_cnf:
+        # Accumulate per (name, dirname, fname), then collect per name
+        # cnf_totals[name][(dirname, fname)] = {'bins': int, 'cls': int, 'lits': int, 'vars': int, 'snums': list}
+        cnf_totals: dict = {}
+        for name, dirname, fname, d_bins, d_cls, d_lits, d_vars, snum in cur.fetchall():
+            key = (dirname, fname)
+            if name not in cnf_totals:
+                cnf_totals[name] = {}
+            if key not in cnf_totals[name]:
+                cnf_totals[name][key] = {'bins': 0, 'cls': 0, 'lits': 0, 'vars': 0, 'snums': []}
+            t = cnf_totals[name][key]
+            t['bins'] += d_bins if d_bins is not None else 0
+            t['cls']  += d_cls  if d_cls  is not None else 0
+            t['lits'] += d_lits if d_lits is not None else 0
+            t['vars'] += d_vars if d_vars is not None else 0
+            if snum is not None:
+                t['snums'].append(snum)
+        groups = defaultdict(lambda: {'bins': [], 'cls': [], 'lits': [], 'vars': [], 'snums': []})
+        for name, cnf_dict in cnf_totals.items():
+            g = groups[name]
+            for t in cnf_dict.values():
+                g['bins'].append(t['bins'])
+                g['cls'].append(t['cls'])
+                g['lits'].append(t['lits'])
+                g['vars'].append(t['vars'])
+                g['snums'].extend(t['snums'])
+    else:
+        groups = defaultdict(lambda: {'bins': [], 'cls': [], 'lits': [], 'vars': [], 'snums': []})
+        for name, _, _, d_bins, d_cls, d_lits, d_vars, snum in cur.fetchall():
+            g = groups[name]
+            g['bins'].append(d_bins if d_bins is not None else 0)
+            g['cls'].append(d_cls  if d_cls  is not None else 0)
+            g['lits'].append(d_lits if d_lits is not None else 0)
+            g['vars'].append(d_vars if d_vars is not None else 0)
+            if snum is not None:
+                g['snums'].append(snum)
+
+    def median(vals):
+        s = sorted(vals)
+        return s[len(s) // 2] if s else 0
+
+    result = {}
+    for name, g in groups.items():
+        lits = g['lits']
+        vars_ = g['vars']
+        result[name] = {
+            'n':            len(lits),
+            'med_bins':     median(g['bins']),
+            'med_cls':      median(g['cls']),
+            'med_lits':     median(lits),
+            'med_vars':     median(vars_),
+            'med_step_num': median(g['snums']) if g['snums'] else 0,
+        }
+    return result
+
+
+def _print_table(headers, str_rows):
+    widths = [max(len(h), max((len(r[i]) for r in str_rows), default=0))
+              for i, h in enumerate(headers)]
+    sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+    fmt = "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |"
+    print(sep)
+    print(fmt.format(*headers))
+    print(sep)
+    for row in str_rows:
+        print(fmt.format(*row))
+    print(sep)
+
+
+def print_preproc_delta_table(matched_dirs, verbose=False):
+    """Per-step total contribution: SUM of each delta across all CNFs, sorted by lits impact."""
+    if not _preproc_has_data(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               COUNT(*)                                                       as n_invoc,
+               SUM(delta_irred_long_lits)                                     as sum_d_lits,
+               SUM(delta_irred_long_cls)                                      as sum_d_cls,
+               SUM(delta_irred_bins)                                          as sum_d_bins,
+               SUM(delta_free_vars)                                           as sum_d_vars,
+               ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits < 0
+                                 THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_lits
+        FROM preproc WHERE dirname IN ({dirs_sql})
+        GROUP BY name
+        ORDER BY sum_d_lits ASC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    title = "Preprocessing step total contribution (sum across all invocations, sorted by lits removed)"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    headers = ["step", "n_invoc", "sum_d_lits", "sum_d_cls", "sum_d_bins", "sum_d_vars", "%invoc_red"]
+    str_rows = [
+        (str(r[0]), str(r[1]), str(int(r[2] or 0)), str(int(r[3] or 0)),
+         str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%")
+        for r in rows
+    ]
+    _print_table(headers, str_rows)
+
+
+def print_preproc_step_efficiency(matched_dirs):
+    """Step efficiency: total lits/vars removed (SUM), % of invocations that do anything,
+    and average removal per active invocation. Sorted by total lits removed."""
+    if not _preproc_has_data(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               COUNT(*)                                                              AS n_invoc,
+               -SUM(delta_irred_long_lits)                                           AS sum_lits,
+               -SUM(delta_free_vars)                                                 AS sum_vars,
+               SUM(CASE WHEN delta_irred_long_lits < 0 THEN 1 ELSE 0 END)           AS act_lits,
+               SUM(CASE WHEN delta_free_vars < 0 THEN 1 ELSE 0 END)                 AS act_vars
+        FROM preproc
+        WHERE dirname IN ({dirs_sql})
+        GROUP BY name
+        HAVING sum_lits > 0 OR sum_vars > 0
+        ORDER BY sum_lits DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    title = "Preprocessing step efficiency (sum across all invocations)"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    headers = ["step", "n_invoc", "sum_lits", "sum_vars", "%act_lits", "%act_vars",
+               "avg_lits/act", "avg_vars/act"]
+    str_rows = []
+    for name, n_invoc, sum_lits, sum_vars, act_lits, act_vars in rows:
+        avg_lits = int(sum_lits / act_lits) if act_lits else 0
+        avg_vars = int(sum_vars / act_vars) if act_vars else 0
+        pct_lits = f"{100*act_lits//n_invoc}%" if n_invoc else "0%"
+        pct_vars = f"{100*act_vars//n_invoc}%" if n_invoc else "0%"
+        str_rows.append((name, str(n_invoc), f"{sum_lits:,}", f"{sum_vars:,}",
+                         pct_lits, pct_vars, f"{avg_lits:,}", f"{avg_vars:,}"))
+    _print_table(headers, str_rows)
+
+
+def _display_png(png_file):
+    if os.path.exists(png_file):
+        with open(png_file, "rb") as fh:
+            img_b64 = base64.b64encode(fh.read()).decode()
+        w, h = _png_dimensions(png_file)
+        print(f"\033]1337;File=inline=1;width={w}px;height={h}px:{img_b64}\a")
+
+
+def _png_dimensions(png_file):
+    """Read width/height from PNG header (bytes 16-24)."""
+    try:
+        with open(png_file, "rb") as fh:
+            fh.seek(16)
+            w = int.from_bytes(fh.read(4), "big")
+            h = int.from_bytes(fh.read(4), "big")
+        return w, h
+    except Exception:
+        return 800, 600
+
+
+def _gnuplot_run(gp_file, png_file):
+    """Run gnuplot and display the result inline."""
+    os.system(f"gnuplot {gp_file}")
+    _display_png(png_file)
+
+
+def preproc_share_chart(matched_dirs):
+    """Chart A: what fraction of total lits/vars removal each step accounts for.
+    Shows two horizontal 100%-normalised bars side by side (lits and vars).
+    Steps with <1% share in both are merged into 'other'."""
+    if not _preproc_has_data(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               -SUM(delta_irred_long_lits) as sum_lits,
+               -SUM(delta_free_vars)       as sum_vars
+        FROM preproc
+        WHERE dirname IN ({dirs_sql})
+        GROUP BY name
+        ORDER BY sum_lits DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    total_lits = sum(max(r[1], 0) for r in rows)
+    total_vars = sum(max(r[2], 0) for r in rows)
+    if total_lits == 0 and total_vars == 0:
+        return
+
+    # Keep steps with >= 1% share in either metric; merge rest into "other"
+    kept, other_lits, other_vars = [], 0, 0
+    for name, lits, vars_ in rows:
+        lits = max(lits, 0); vars_ = max(vars_, 0)
+        pct_l = 100.0 * lits / total_lits if total_lits else 0
+        pct_v = 100.0 * vars_ / total_vars if total_vars else 0
+        if pct_l >= 1.0 or pct_v >= 1.0:
+            kept.append((name, lits, vars_))
+        else:
+            other_lits += lits; other_vars += vars_
+    if other_lits > 0 or other_vars > 0:
+        kept.append(("other", other_lits, other_vars))
+
+    # Sort kept by lits% descending so largest bar is on the left
+    kept.sort(key=lambda r: r[1], reverse=True)
+    n = len(kept)
+    width_cm = max(20, n * 2.0)
+
+    dat_file = "preproc_share.dat"
+    pdf_file = "preproc_share.pdf"
+    png_file = "preproc_share.png"
+    gp_file  = "preproc_share.gnuplot"
+
+    with open(dat_file, "w") as f:
+        f.write("# idx  pct_lits  pct_vars  step_name\n")
+        for i, (name, lits, vars_) in enumerate(kept):
+            pl = 100.0 * lits / total_lits if total_lits else 0
+            pv = 100.0 * vars_ / total_vars if total_vars else 0
+            f.write(f"{i+1}\t{pl:.1f}\t{pv:.1f}\t{name}\n")
+
+    xtics = ", ".join(f'"{name}" {i+1}' for i, (name, _, __) in enumerate(kept))
+    with open(gp_file, "w") as f:
+        for term, out in [
+            (f'pdfcairo size {width_cm:.0f}cm,16cm', pdf_file),
+            (f'pngcairo size {int(width_cm * 40)},640', png_file),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write('set title "Share of total preprocessing work per step"\n')
+            f.write('set ylabel "% of all lits / vars removed across all CNFs"\n')
+            f.write('set yrange [0:100]\n')
+            f.write(f'set xrange [0.5:{n + 0.5}]\n')
+            f.write('set grid ytics\n')
+            f.write('set key top right\n')
+            f.write('set style fill solid 0.7 border -1\n')
+            f.write('set boxwidth 0.3\n')
+            f.write(f'set xtics ({xtics}) rotate by -45 left\n')
+            f.write('set bmargin 10\n')
+            f.write(f'plot "{dat_file}" using ($1-0.18):2 with boxes lc rgb "steelblue" title "% lits removed",\\\n')
+            f.write(f'     "{dat_file}" using ($1+0.18):3 with boxes lc rgb "dark-green" title "% vars removed"\n\n')
+
+    title = "Preproc share chart: % of total lits/vars removed per step"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
+
+
+
+def preproc_cumulative_chart(matched_dirs):
+    """Chart C: cumulative SUM of lits/vars removed across pipeline stages (ordered by avg position).
+    Each step is one horizontal tick; lines show how the running total grows."""
+    if not _preproc_has_data(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+
+    # Per-step: sum removed and average pipeline position (avg step_num)
+    cur.execute(f"""
+        SELECT name,
+               -SUM(delta_irred_long_lits) as sum_lits,
+               -SUM(delta_irred_long_cls)  as sum_cls,
+               -SUM(delta_irred_bins)      as sum_bins,
+               -SUM(delta_free_vars)       as sum_vars,
+               AVG(step_num)               as avg_pos
+        FROM preproc
+        WHERE dirname IN ({dirs_sql})
+        GROUP BY name
+        ORDER BY avg_pos ASC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    dat_file = "preproc_cumul.dat"
+    pdf_file = "preproc_cumul.pdf"
+    png_file = "preproc_cumul.png"
+    gp_file  = "preproc_cumul.gnuplot"
+
+    # Normalise to millions for readability
+    cum_lits = cum_cls = cum_bins = cum_vars = 0.0
+    with open(dat_file, "w") as f:
+        f.write("# i  cum_lits_M  cum_vars_M  step_name\n")
+        f.write("0\t0.0\t0.0\tstart\n")
+        for i, (name, s_lits, s_cls, s_bins, s_vars, _pos) in enumerate(rows):
+            cum_lits += max(s_lits, 0) / 1e6
+            cum_vars += max(s_vars, 0) / 1e6
+            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_vars:.3f}\t{name}\n")
+
+    n = len(rows)
+    height_cm = max(16, n * 1.1)
+
+    ytics_parts = ['"start" 0'] + [f'"{name}" {i+1}' for i, (name, *_) in enumerate(rows)]
+    ytics_str = ", ".join(ytics_parts)
+
+    with open(gp_file, "w") as f:
+        for term, out in [
+            (f'pdfcairo size 32cm,{height_cm:.0f}cm', pdf_file),
+            (f'pngcairo size 1200,{int(height_cm * 50)}', png_file),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write('set title "Cumulative preprocessing effect across pipeline (total across all CNFs)"\n')
+            f.write('set xlabel "Cumulative total removed (millions)"\n')
+            f.write('set ylabel ""\n')
+            f.write(f'set yrange [-0.5:{n + 0.5}]\n')
+            f.write('set xrange [0:*]\n')
+            f.write('set grid xtics\n')
+            f.write('set key top left\n')
+            f.write(f'set ytics ({ytics_str})\n')
+            f.write(f'plot "{dat_file}" using 2:1 with linespoints lc rgb "steelblue" lw 2 pt 7 ps 1 title "lits removed",\\\n')
+            f.write(f'     "{dat_file}" using 3:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed"\n\n')
+
+    title = f"Preproc cumulative chart (all steps, n={n}, ordered by pipeline position)"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
+
+
+def print_preproc_per_step_detail(matched_dirs, verbose=False):
+    """Top steps by total absolute lits impact (first occurrence), sorted by median lits reduction."""
+    if not _preproc_has_data(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    stats = _preproc_step_stats(con, dirs_sql, where_extra=" AND occurrence = 0")
+
+    # Also need n_active_any (active on any metric) — fetch from DB
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT name,"
+        f" ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits != 0 OR delta_irred_bins != 0"
+        f"   OR delta_free_vars != 0 THEN 1 ELSE 0 END) / COUNT(*), 1)"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}) AND occurrence = 0 GROUP BY name"
+    )
+    pct_active = {row[0]: row[1] for row in cur.fetchall()}
+    con.close()
+
+    if not stats:
+        return
+
+    # Sort by median lits reduction (most reduction first)
+    ordered = sorted(stats.items(), key=lambda kv: kv[1]['med_lits'])[:10]
+
+    title = "Top steps by median lits reduction (first occurrence only)"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    headers = ["step", "n", "med_d_lits", "med_d_bins", "med_d_vars", "%active"]
+    str_rows = [
+        (name,
+         str(s['n']),
+         str(s['med_lits']),
+         str(s['med_bins']),
+         str(s['med_vars']),
+         str(pct_active.get(name, 0)))
+        for name, s in ordered
+    ]
+    _print_table(headers, str_rows)
 
 
 def print_errored_files(matched_dirs):
@@ -650,12 +1062,7 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
         print(f"  PDF: {pdf_file}  PNG: {png_file}")
 
         os.system(f"gnuplot {gp_file}")
-
-        # Display PNG inline (wezterm / iTerm2 inline-image protocol)
-        if os.path.exists(png_file):
-            with open(png_file, "rb") as fh:
-                img_b64 = base64.b64encode(fh.read()).decode()
-            print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
+        _display_png(png_file)
 
     con.close()
 
@@ -862,20 +1269,22 @@ only_dirs = [
     # "out-ganak-mccomp2324-1140184-", # no dodgy cache, check SBVA
     # "out-ganak-mccomp2324-1146702-", # sbva checks, oracle mult checks
     # "out-ganak-mccomp2324-1152658-1", # fixing bug, testing pura and oraclemult
-    "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
+    # "out-ganak-mccomp2324-1193808-0", # fixing counting bug, adding new cube extend system, fixing cube counting (and maybe effectiveness)
     # "out-ganak-mccomp2324-1229753-0", # lots of bug fixes, beauty changes with Claude, etc
     # "out-ganak-mccomp2324-1231407-0", # the same as above but without (most) of the Claude improvements
     # "out-ganak-mccomp2324-1247484-0", ## new shrinking, fixing arjun SLOW_DEBUG, improved propagation idea from CaDiCaL, improved 3-tier clause database. Also undoing only 2 particular Claude changes (propagation and --prob 0 non-zeroing of data)
     # "out-ganak-mccomp2324-1250247-", # CMS cleanup, oracle improvements, fix parsing issue (?) of CNF header -- weird + one of them is a binary with: reason-side bumping and lbd update, evsids
-    "out-ganak-mccomp2324-1256426-0", # fixing oracle, mostly, and also header parsing more lax
-    "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
+    # "out-ganak-mccomp2324-1256426-0", # fixing oracle, mostly, and also header parsing more lax
+    # "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
+    # "out-ganak-mccomp2324-1279568-", # release
+    "out-ganak-mccomp2324-1281478-0", # more data
 ]
-only_dirs = [
-     "mei-march-2026-1239767-1", # gpmc
-     # "mei-march-2026-1239767-0", # ganak old
-     # "mei-march-2026-1269673-0", # ganak release, but WRONG SED
-     "mei-march-2026-1274973-0", # ganak release, new SED
-]
+# only_dirs = [
+#      "mei-march-2026-1239767-1", # gpmc
+#      # "mei-march-2026-1239767-0", # ganak old
+#      # "mei-march-2026-1269673-0", # ganak release, but WRONG SED
+#      "mei-march-2026-1274973-0", # ganak release, new SED
+# ]
 
 # not_calls = ["--nvarscutoffcache 20", "--nvarscutoffcache 3"]
 # not_calls = ["--satsolver 0"]
@@ -940,6 +1349,14 @@ def main():
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
     print_preproc_diffs(table_todo, fname_like, args.verbose)
+
+    # Preprocessing step analysis
+    print_preproc_delta_table(matched_dirs, args.verbose)
+    print_preproc_step_efficiency(matched_dirs)
+    print_preproc_per_step_detail(matched_dirs, args.verbose)
+    preproc_share_chart(matched_dirs)
+    preproc_cumulative_chart(matched_dirs)
+
     unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
     for dir1, dir2 in itertools.combinations(unique_dirs, 2):
         print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
@@ -959,11 +1376,7 @@ def main():
     console_title = f"CDF: instances counted vs. solve time"
     print(f"\n{BLUE}{console_title}{RESET}")
     print(f"  PDF: {pdf_file}  PNG: {png_file}")
-
-    if os.path.exists(png_file):
-        with open(png_file, "rb") as fh:
-            img_b64 = base64.b64encode(fh.read()).decode()
-        print(f"\033]1337;File=inline=1;width=600px;height=600px:{img_b64}\a")
+    _display_png(png_file)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import csv
 import decimal
 import glob
 import os
+import re
 import string
 import subprocess
 import sys
@@ -284,6 +285,57 @@ def parse_ganak_output(fname):
     return result
 
 
+_SIMP_STATS_RE = re.compile(
+    r'c o \[simp-stats\] (BEFORE|AFTER) (\S+) '
+    r'irred_bins (\d+) irred_long_cls (\d+) irred_long_lits (\d+) free_vars (\d+)'
+)
+
+
+def parse_simp_stats(fname):
+    """Parse [simp-stats] BEFORE/AFTER pairs from a ganak output file.
+    Returns a list of dicts, one per matched BEFORE/AFTER pair."""
+    pending = {}   # name -> list of (irred_bins, irred_long_cls, irred_long_lits, free_vars)
+    step_counts = {}  # name -> number of completed pairs so far
+    records = []
+
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.replace("[0m", "").replace("\x1b", "").strip()
+            m = _SIMP_STATS_RE.search(line)
+            if not m:
+                continue
+            kind = m.group(1)
+            name = m.group(2)
+            vals = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+
+            if kind == "BEFORE":
+                pending.setdefault(name, []).append(vals)
+            elif kind == "AFTER":
+                if pending.get(name):
+                    before = pending[name].pop(0)
+                    occurrence = step_counts.get(name, 0)
+                    step_counts[name] = occurrence + 1
+                    step_num = len(records)
+                    records.append({
+                        "step_num": step_num,
+                        "occurrence": occurrence,
+                        "name": name,
+                        "before_irred_bins":     before[0],
+                        "before_irred_long_cls": before[1],
+                        "before_irred_long_lits": before[2],
+                        "before_free_vars":      before[3],
+                        "after_irred_bins":      vals[0],
+                        "after_irred_long_cls":  vals[1],
+                        "after_irred_long_lits": vals[2],
+                        "after_free_vars":       vals[3],
+                        "delta_irred_bins":      vals[0] - before[0],
+                        "delta_irred_long_cls":  vals[1] - before[1],
+                        "delta_irred_long_lits": vals[2] - before[2],
+                        "delta_free_vars":       vals[3] - before[3],
+                    })
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser(description="Parse ganak output files into CSV")
     parser.add_argument("--files", default="out-ganak*/*cnf*",
@@ -324,6 +376,9 @@ def main():
         if f.endswith(".out_ganak") or f.endswith(".out"):
             files[base]["solver"] = "ganak"
             files[base].update(parse_ganak_output(f))
+            simp = parse_simp_stats(f)
+            if simp:
+                files[base]["simp_stats"] = simp
         if ".out_approxmc" in f:
             files[base]["solver"] = "approxmc"
             files[base]["solverver"] = approxmc_version(f)
@@ -441,6 +496,40 @@ def main():
                 g(f, "irred_tri"),
                 g(f, "irred_cls"),
             ])
+
+    preproc_cols = [
+        "dirname", "fname", "step_num", "occurrence", "name",
+        "before_irred_bins", "before_irred_long_cls", "before_irred_long_lits", "before_free_vars",
+        "after_irred_bins", "after_irred_long_cls", "after_irred_long_lits", "after_free_vars",
+        "delta_irred_bins", "delta_irred_long_cls", "delta_irred_long_lits", "delta_free_vars",
+    ]
+
+    with open("preproc.csv", "w", newline="") as out:
+        writer = csv.writer(out)
+        writer.writerow(preproc_cols)
+        for _, f in files.items():
+            if "simp_stats" not in f:
+                continue
+            for rec in f["simp_stats"]:
+                writer.writerow([
+                    f["dirname"],
+                    f["fname"],
+                    rec["step_num"],
+                    rec["occurrence"],
+                    rec["name"],
+                    rec["before_irred_bins"],
+                    rec["before_irred_long_cls"],
+                    rec["before_irred_long_lits"],
+                    rec["before_free_vars"],
+                    rec["after_irred_bins"],
+                    rec["after_irred_long_cls"],
+                    rec["after_irred_long_lits"],
+                    rec["after_free_vars"],
+                    rec["delta_irred_bins"],
+                    rec["delta_irred_long_cls"],
+                    rec["delta_irred_long_lits"],
+                    rec["delta_free_vars"],
+                ])
 
     with open("ganak.sqlite") as sql_f:
         subprocess.run(["sqlite3", "data.sqlite3"], stdin=sql_f, check=True)

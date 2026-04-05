@@ -94,6 +94,7 @@ CREATE TABLE preproc (
   step_num INT NOT NULL,
   occurrence INT NOT NULL,
   name STRING NOT NULL,
+  prev_step STRING NOT NULL DEFAULT 'none',
   before_irred_bins INT,
   before_irred_long_cls INT,
   before_irred_long_lits INT,
@@ -105,7 +106,21 @@ CREATE TABLE preproc (
   delta_irred_bins INT,
   delta_irred_long_cls INT,
   delta_irred_long_lits INT,
-  delta_free_vars INT
+  delta_free_vars INT,
+  -- Extended fields (present only in newer log format)
+  before_elimed_vars INT,
+  before_replaced_vars INT,
+  before_units INT,
+  before_mem_MB INT,
+  after_elimed_vars INT,
+  after_replaced_vars INT,
+  after_units INT,
+  after_mem_MB INT,
+  delta_elimed_vars INT,
+  delta_replaced_vars INT,
+  delta_units INT,
+  delta_mem_MB INT,
+  step_time FLOAT
 );
 . mode csv
 . import -skip 1 preproc.csv preproc
@@ -121,3 +136,16 @@ UPDATE preproc SET delta_irred_bins = NULL WHERE delta_irred_bins = '';
 UPDATE preproc SET delta_irred_long_cls = NULL WHERE delta_irred_long_cls = '';
 UPDATE preproc SET delta_irred_long_lits = NULL WHERE delta_irred_long_lits = '';
 UPDATE preproc SET delta_free_vars = NULL WHERE delta_free_vars = '';
+UPDATE preproc SET before_elimed_vars = NULL WHERE before_elimed_vars = '';
+UPDATE preproc SET before_replaced_vars = NULL WHERE before_replaced_vars = '';
+UPDATE preproc SET before_units = NULL WHERE before_units = '';
+UPDATE preproc SET before_mem_MB = NULL WHERE before_mem_MB = '';
+UPDATE preproc SET after_elimed_vars = NULL WHERE after_elimed_vars = '';
+UPDATE preproc SET after_replaced_vars = NULL WHERE after_replaced_vars = '';
+UPDATE preproc SET after_units = NULL WHERE after_units = '';
+UPDATE preproc SET after_mem_MB = NULL WHERE after_mem_MB = '';
+UPDATE preproc SET delta_elimed_vars = NULL WHERE delta_elimed_vars = '';
+UPDATE preproc SET delta_replaced_vars = NULL WHERE delta_replaced_vars = '';
+UPDATE preproc SET delta_units = NULL WHERE delta_units = '';
+UPDATE preproc SET delta_mem_MB = NULL WHERE delta_mem_MB = '';
+UPDATE preproc SET step_time = NULL WHERE step_time = '';

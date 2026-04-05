@@ -638,23 +638,46 @@ def _print_table(headers, str_rows):
     print(sep)
 
 
+def _preproc_file_label(matched_dirs):
+    """Return a filesystem-safe label for chart filenames, derived from the dirname."""
+    if len(matched_dirs) == 1:
+        return re.sub(r'[^a-zA-Z0-9_-]', '_', matched_dirs[0])[-50:]
+    return "combined"
+
+
+def _preproc_has_step_time(matched_dirs):
+    """Return True if step_time column exists and has data for matched dirs."""
+    try:
+        con = sqlite3.connect("data.sqlite3")
+        cur = con.cursor()
+        dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+        cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL")
+        count = cur.fetchone()[0]
+        con.close()
+        return count > 0
+    except Exception:
+        return False
+
+
 def print_preproc_delta_table(matched_dirs, verbose=False):
     """Per-step total contribution: SUM of each delta across all CNFs, sorted by lits impact."""
     if not _preproc_has_data(matched_dirs):
         return
 
+    has_time = _preproc_has_step_time(matched_dirs)
     dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
     con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     cur.execute(f"""
         SELECT name,
-               COUNT(*)                                                       as n_invoc,
+               COUNT(*)                                                       as n_calls,
                SUM(delta_irred_long_lits)                                     as sum_d_lits,
                SUM(delta_irred_long_cls)                                      as sum_d_cls,
                SUM(delta_irred_bins)                                          as sum_d_bins,
                SUM(delta_free_vars)                                           as sum_d_vars,
                ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits < 0
-                                 THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_lits
+                                 THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_lits,
+               ROUND(SUM(step_time), 2)                                       as total_step_s
         FROM preproc WHERE dirname IN ({dirs_sql})
         GROUP BY name
         ORDER BY sum_d_lits ASC
@@ -667,13 +690,24 @@ def print_preproc_delta_table(matched_dirs, verbose=False):
 
     title = "Preprocessing step total contribution (sum across all invocations, sorted by lits removed)"
     print(f"\n{BLUE}{title}{RESET}")
+    print("  (n_calls = total invocations; d_lits/d_cls/d_bins/d_fvars = raw delta,"
+          " negative = removed; %calls_lit = % of calls that reduced lits; total_s = wall time)")
 
-    headers = ["step", "n_invoc", "sum_d_lits", "sum_d_cls", "sum_d_bins", "sum_d_vars", "%invoc_red"]
-    str_rows = [
-        (str(r[0]), str(r[1]), str(int(r[2] or 0)), str(int(r[3] or 0)),
-         str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%")
-        for r in rows
-    ]
+    if has_time:
+        headers = ["step", "n_calls", "d_lits", "d_long_cls", "d_bin_cls", "d_fvars", "%calls_lit", "total_s"]
+        str_rows = [
+            (str(r[0]), str(r[1]), str(int(r[2] or 0)), str(int(r[3] or 0)),
+             str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%",
+             f"{r[7]:.1f}" if r[7] is not None else "N/A")
+            for r in rows
+        ]
+    else:
+        headers = ["step", "n_calls", "d_lits", "d_long_cls", "d_bin_cls", "d_fvars", "%calls_lit"]
+        str_rows = [
+            (str(r[0]), str(r[1]), str(int(r[2] or 0)), str(int(r[3] or 0)),
+             str(int(r[4] or 0)), str(int(r[5] or 0)), f"{int(r[6] or 0)}%")
+            for r in rows
+        ]
     _print_table(headers, str_rows)
 
 
@@ -683,21 +717,23 @@ def print_preproc_step_efficiency(matched_dirs):
     if not _preproc_has_data(matched_dirs):
         return
 
+    has_time = _preproc_has_step_time(matched_dirs)
     dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
     con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     cur.execute(f"""
         SELECT name,
-               COUNT(*)                                                              AS n_invoc,
-               -SUM(delta_irred_long_lits)                                           AS sum_lits,
-               -SUM(delta_free_vars)                                                 AS sum_vars,
-               SUM(CASE WHEN delta_irred_long_lits < 0 THEN 1 ELSE 0 END)           AS act_lits,
-               SUM(CASE WHEN delta_free_vars < 0 THEN 1 ELSE 0 END)                 AS act_vars
+               COUNT(*)                                                              AS n_calls,
+               -SUM(delta_irred_long_lits)                                           AS lits_rmvd,
+               -SUM(delta_free_vars)                                                 AS fvars_rmvd,
+               SUM(CASE WHEN delta_irred_long_lits < 0 THEN 1 ELSE 0 END)           AS calls_lit,
+               SUM(CASE WHEN delta_free_vars < 0 THEN 1 ELSE 0 END)                 AS calls_var,
+               ROUND(SUM(step_time), 2)                                              AS total_s
         FROM preproc
         WHERE dirname IN ({dirs_sql})
         GROUP BY name
-        HAVING sum_lits > 0 OR sum_vars > 0
-        ORDER BY sum_lits DESC
+        HAVING lits_rmvd > 0 OR fvars_rmvd > 0
+        ORDER BY lits_rmvd DESC
     """)
     rows = cur.fetchall()
     con.close()
@@ -707,18 +743,514 @@ def print_preproc_step_efficiency(matched_dirs):
 
     title = "Preprocessing step efficiency (sum across all invocations)"
     print(f"\n{BLUE}{title}{RESET}")
+    print("  (lits_rmvd = irred long lits removed; fvars_rmvd = free vars freed;"
+          " %lits_act/%vars_act = % of calls with nonzero removal;"
+          " lits/act, vars/act = avg removed per active call)")
 
-    headers = ["step", "n_invoc", "sum_lits", "sum_vars", "%act_lits", "%act_vars",
-               "avg_lits/act", "avg_vars/act"]
-    str_rows = []
-    for name, n_invoc, sum_lits, sum_vars, act_lits, act_vars in rows:
-        avg_lits = int(sum_lits / act_lits) if act_lits else 0
-        avg_vars = int(sum_vars / act_vars) if act_vars else 0
-        pct_lits = f"{100*act_lits//n_invoc}%" if n_invoc else "0%"
-        pct_vars = f"{100*act_vars//n_invoc}%" if n_invoc else "0%"
-        str_rows.append((name, str(n_invoc), f"{sum_lits:,}", f"{sum_vars:,}",
-                         pct_lits, pct_vars, f"{avg_lits:,}", f"{avg_vars:,}"))
+    if has_time:
+        headers = ["step", "n_calls", "lits_rmvd", "fvars_rmvd", "%lits_act", "%vars_act",
+                   "lits/act", "vars/act", "total_s"]
+        str_rows = []
+        for name, n_calls, lits_rmvd, fvars_rmvd, calls_lit, calls_var, total_s in rows:
+            avg_lits = int(lits_rmvd / calls_lit) if calls_lit else 0
+            avg_vars = int(fvars_rmvd / calls_var) if calls_var else 0
+            pct_lits = f"{100*calls_lit//n_calls}%" if n_calls else "0%"
+            pct_vars = f"{100*calls_var//n_calls}%" if n_calls else "0%"
+            str_rows.append((name, str(n_calls), f"{lits_rmvd:,}", f"{fvars_rmvd:,}",
+                             pct_lits, pct_vars, f"{avg_lits:,}", f"{avg_vars:,}",
+                             f"{total_s:.1f}" if total_s is not None else "N/A"))
+    else:
+        headers = ["step", "n_calls", "lits_rmvd", "fvars_rmvd", "%lits_act", "%vars_act",
+                   "lits/act", "vars/act"]
+        str_rows = []
+        for name, n_calls, lits_rmvd, fvars_rmvd, calls_lit, calls_var, _ in rows:
+            avg_lits = int(lits_rmvd / calls_lit) if calls_lit else 0
+            avg_vars = int(fvars_rmvd / calls_var) if calls_var else 0
+            pct_lits = f"{100*calls_lit//n_calls}%" if n_calls else "0%"
+            pct_vars = f"{100*calls_var//n_calls}%" if n_calls else "0%"
+            str_rows.append((name, str(n_calls), f"{lits_rmvd:,}", f"{fvars_rmvd:,}",
+                             pct_lits, pct_vars, f"{avg_lits:,}", f"{avg_vars:,}"))
     _print_table(headers, str_rows)
+
+
+def print_preproc_time_breakdown(matched_dirs):
+    """Time breakdown: total seconds and % of preprocessing time per step, sorted by time."""
+    if not _preproc_has_data(matched_dirs) or not _preproc_has_step_time(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               COUNT(*)                                                               AS n_calls,
+               ROUND(SUM(step_time), 2)                                               AS total_s,
+               ROUND(AVG(step_time) * 1000, 1)                                        AS avg_ms,
+               -SUM(delta_irred_long_lits)                                             AS lits_rmvd,
+               -SUM(delta_free_vars)                                                   AS fvars_rmvd,
+               SUM(IFNULL(delta_elimed_vars, 0))                                       AS elim_vars,
+               SUM(IFNULL(delta_units, 0))                                             AS units_found
+        FROM preproc
+        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        GROUP BY name
+        ORDER BY total_s DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    total_t = sum(r[2] for r in rows if r[2] is not None)
+
+    title = "Preprocessing time breakdown per step (sorted by time)"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  Total preprocessing time: {total_t:.1f}s across {len(matched_dirs)} dirs")
+    print("  (n_calls = total invocations; lits_rmvd = irred long lits removed;"
+          " fvars_rmvd = free vars freed; elim_vars = vars eliminated by BVE;"
+          " units = unit clauses found; lits/s = lits removed per second of step time)")
+
+    headers = ["step", "n_calls", "total_s", "%time", "avg_ms", "lits_rmvd", "fvars_rmvd",
+               "elim_vars", "units", "lits/s"]
+    str_rows = []
+    for name, n_calls, total_s, avg_ms, lits_rmvd, fvars_rmvd, elim_vars, units_found in rows:
+        pct = f"{100.0 * total_s / total_t:.1f}%" if total_t else "0%"
+        lits_per_s = int(max(lits_rmvd, 0) / total_s) if total_s and total_s > 0 else 0
+        str_rows.append((
+            name,
+            str(n_calls),
+            f"{total_s:.1f}",
+            pct,
+            f"{avg_ms:.1f}",
+            f"{max(lits_rmvd, 0):,}",
+            f"{max(fvars_rmvd, 0):,}",
+            f"{elim_vars:,}" if elim_vars else "0",
+            f"{units_found:,}" if units_found else "0",
+            f"{lits_per_s:,}",
+        ))
+    _print_table(headers, str_rows)
+
+
+def print_preproc_noop_waste(matched_dirs):
+    """No-op waste: time spent in steps that do absolutely nothing. Potential optimization target."""
+    if not _preproc_has_data(matched_dirs) or not _preproc_has_step_time(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               COUNT(*)                                                                     AS n_total,
+               SUM(CASE WHEN delta_irred_long_lits = 0 AND delta_free_vars = 0
+                             AND IFNULL(delta_elimed_vars, 0) = 0
+                             AND IFNULL(delta_replaced_vars, 0) = 0
+                             AND IFNULL(delta_units, 0) = 0
+                        THEN 1 ELSE 0 END)                                                  AS n_noop,
+               ROUND(SUM(CASE WHEN delta_irred_long_lits = 0 AND delta_free_vars = 0
+                             AND IFNULL(delta_elimed_vars, 0) = 0
+                             AND IFNULL(delta_replaced_vars, 0) = 0
+                             AND IFNULL(delta_units, 0) = 0
+                        THEN step_time ELSE 0 END), 2)                                      AS wasted_s,
+               ROUND(SUM(step_time), 2)                                                     AS total_s
+        FROM preproc
+        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        GROUP BY name
+        HAVING n_noop > 0
+        ORDER BY wasted_s DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    total_wasted = sum(r[3] for r in rows if r[3] is not None)  # r[3] = wasted_s
+    title = "No-op waste: time in steps that change nothing (potential optimization targets)"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  Total wasted time: {total_wasted:.1f}s")
+
+    headers = ["step", "n_total", "n_noop", "%noop", "wasted_s", "total_s", "%wasted_of_step"]
+    str_rows = []
+    for name, n_total, n_noop, wasted_s, total_s in rows:
+        pct_noop = f"{100 * n_noop // n_total}%" if n_total else "0%"
+        pct_wasted = f"{100.0 * wasted_s / total_s:.0f}%" if total_s else "0%"
+        str_rows.append((name, str(n_total), str(n_noop), pct_noop,
+                         f"{wasted_s:.1f}", f"{total_s:.1f}", pct_wasted))
+    _print_table(headers, str_rows)
+
+
+def print_preproc_extended_vars(matched_dirs):
+    """Extended var analysis: elim_vars, replaced_vars, units found per step."""
+    if not _preproc_has_data(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               COUNT(*)                                   AS n_active,
+               SUM(IFNULL(delta_elimed_vars, 0))           AS sum_elim,
+               SUM(IFNULL(delta_replaced_vars, 0))         AS sum_repl,
+               SUM(IFNULL(delta_units, 0))                 AS sum_units,
+               ROUND(SUM(step_time), 2)                    AS total_s
+        FROM preproc
+        WHERE dirname IN ({dirs_sql})
+          AND (IFNULL(delta_elimed_vars,0) != 0
+            OR IFNULL(delta_replaced_vars,0) != 0
+            OR IFNULL(delta_units,0) != 0)
+        GROUP BY name
+        ORDER BY (sum_elim + sum_repl + sum_units) DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    has_time = _preproc_has_step_time(matched_dirs)
+    title = "Extended variable analysis: elim/replaced/unit propagations per step"
+    print(f"\n{BLUE}{title}{RESET}")
+
+    print("  (n_active = invocations where step changed at least one of elim/repl/units; "
+          "total_s = time across those active invocations only)")
+    if has_time:
+        headers = ["step", "n_active", "elim_vars", "repl_vars", "units_found", "total_s"]
+        str_rows = [(name, str(n), f"{e:,}", f"{r:,}", f"{u:,}",
+                     f"{t:.1f}" if t is not None else "N/A")
+                    for name, n, e, r, u, t in rows]
+    else:
+        headers = ["step", "n_active", "elim_vars", "repl_vars", "units_found"]
+        str_rows = [(name, str(n), f"{e:,}", f"{r:,}", f"{u:,}")
+                    for name, n, e, r, u, _ in rows]
+    _print_table(headers, str_rows)
+
+
+def print_step_predecessor_effectiveness(matched_dirs, step="must-scc-vrepl"):
+    """For a given step, show how effective it is depending on which step preceded it.
+    Rows are sorted by total lits removed DESC; cumulative columns show what fraction
+    of the step's total work is explained by the top-N predecessor contexts."""
+    if not _preproc_has_data(matched_dirs):
+        return
+    # Only meaningful if prev_step column exists (newer log format)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    # Check that at least some rows have a non-'none' prev_step
+    cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql})"
+                f" AND name='{step}' AND prev_step != 'none'")
+    if cur.fetchone()[0] == 0:
+        con.close()
+        return
+
+    cur.execute(f"""
+        SELECT prev_step,
+               COUNT(*)                                                                    AS n,
+               -SUM(delta_irred_long_lits)                                                 AS sum_lits,
+               -SUM(delta_free_vars)                                                       AS sum_vars,
+               ROUND(AVG(-delta_irred_long_lits), 1)                                       AS avg_lits,
+               ROUND(AVG(-delta_free_vars), 1)                                             AS avg_vars,
+               ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits < 0
+                                        OR delta_free_vars < 0 THEN 1 ELSE 0 END)
+                     / COUNT(*), 1)                                                        AS pct_active
+        FROM preproc
+        WHERE dirname IN ({dirs_sql}) AND name='{step}'
+        GROUP BY prev_step
+        ORDER BY sum_lits DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    total_lits = sum(max(r[2] or 0, 0) for r in rows)
+    total_vars = sum(max(r[3] or 0, 0) for r in rows)
+    total_n    = sum(r[1] for r in rows)
+
+    title = f"'{step}' effectiveness by predecessor step (sorted by lits removed, with cumulative)"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  Total across all predecessors: {total_n:,} invocations, "
+          f"{total_lits:,} lits removed, {total_vars:,} vars removed")
+
+    print("  (lits_rmvd/fvars_rmvd = total removed in that predecessor context;"
+          " avg_lit/var = per-call average; %active = % of calls with any effect;"
+          " cum_lits%/cum_vars% = cumulative share of step's total work)")
+    headers = ["prev_step", "n", "%n", "lits_rmvd", "fvars_rmvd",
+               "avg_lit", "avg_var", "%active", "cum_lits%", "cum_vars%"]
+    cum_lits = 0
+    cum_vars = 0
+    str_rows = []
+    for prev, n, s_lits, s_vars, a_lits, a_vars, pct_act in rows:
+        s_lits = max(s_lits or 0, 0)
+        s_vars = max(s_vars or 0, 0)
+        cum_lits += s_lits
+        cum_vars += s_vars
+        pct_n      = f"{100 * n // total_n}%"       if total_n    else "0%"
+        cum_lits_p = f"{100 * cum_lits // total_lits}%" if total_lits else "0%"
+        cum_vars_p = f"{100 * cum_vars // total_vars}%" if total_vars else "0%"
+        str_rows.append((
+            str(prev),
+            str(n),
+            pct_n,
+            f"{s_lits:,}",
+            f"{s_vars:,}",
+            f"{a_lits:.1f}",
+            f"{a_vars:.1f}",
+            f"{pct_act:.1f}%",
+            cum_lits_p,
+            cum_vars_p,
+        ))
+    _print_table(headers, str_rows)
+
+
+def preproc_time_chart(matched_dirs):
+    """Chart: time breakdown bar chart — total seconds per step, colored by effect type."""
+    if not _preproc_has_data(matched_dirs) or not _preproc_has_step_time(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               ROUND(SUM(step_time), 2)                                                 AS total_s,
+               ROUND(SUM(CASE WHEN delta_irred_long_lits = 0 AND delta_free_vars = 0
+                               AND IFNULL(delta_elimed_vars,0) = 0
+                               AND IFNULL(delta_replaced_vars,0) = 0
+                               AND IFNULL(delta_units,0) = 0
+                          THEN step_time ELSE 0 END), 2)                                AS wasted_s
+        FROM preproc
+        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        GROUP BY name
+        ORDER BY total_s DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    lbl = _preproc_file_label(matched_dirs)
+    dat_file  = f"preproc_time_{lbl}.dat"
+    pdf_file  = f"preproc_time_{lbl}.pdf"
+    png_file  = f"preproc_time_{lbl}.png"
+    gp_file   = f"preproc_time_{lbl}.gnuplot"
+
+    n = len(rows)
+    with open(dat_file, "w") as f:
+        f.write("# idx  total_s  wasted_s  step\n")
+        for i, (name, total_s, wasted_s) in enumerate(rows):
+            useful_s = (total_s or 0) - (wasted_s or 0)
+            f.write(f"{i+1}\t{useful_s:.2f}\t{wasted_s:.2f}\t{name}\n")
+
+    xtics = ", ".join(f'"{name}" {i+1}' for i, (name, _, __) in enumerate(rows))
+    width_cm = max(22, n * 2.2)
+
+    with open(gp_file, "w") as f:
+        for term, out in [
+            (f'pdfcairo size {width_cm:.0f}cm,16cm', pdf_file),
+            (f'pngcairo size {int(width_cm * 40)},640', png_file),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write(f'set title "Preprocessing time per step (useful vs wasted/no-op time)\\n{lbl}"\n')
+            f.write('set ylabel "Time (seconds)"\n')
+            f.write('set yrange [0:*]\n')
+            f.write(f'set xrange [0.5:{n + 0.5}]\n')
+            f.write('set grid ytics\n')
+            f.write('set key top right\n')
+            f.write('set style fill solid 0.8 border -1\n')
+            f.write('set style data histograms\n')
+            f.write('set style histogram rowstacked\n')
+            f.write('set boxwidth 0.6\n')
+            f.write(f'set xtics ({xtics}) rotate by -45 left\n')
+            f.write('set bmargin 10\n')
+            f.write(f'plot "{dat_file}" using 2:xtic(1) lc rgb "steelblue" title "useful time",\\\n')
+            f.write(f'     "{dat_file}" using 3 lc rgb "red" title "no-op waste"\n\n')
+
+    title = "Preproc time chart: useful vs no-op time per step"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
+
+
+def preproc_efficiency_chart(matched_dirs):
+    """Chart: lits removed per second for each step (efficiency ratio)."""
+    if not _preproc_has_data(matched_dirs) or not _preproc_has_step_time(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name,
+               -SUM(delta_irred_long_lits)  AS sum_lits,
+               ROUND(SUM(step_time), 2)     AS total_s
+        FROM preproc
+        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL AND step_time > 0
+        GROUP BY name
+        HAVING sum_lits > 0 AND total_s > 0
+        ORDER BY (sum_lits / total_s) DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    lbl = _preproc_file_label(matched_dirs)
+    dat_file = f"preproc_eff_{lbl}.dat"
+    pdf_file = f"preproc_eff_{lbl}.pdf"
+    png_file = f"preproc_eff_{lbl}.png"
+    gp_file  = f"preproc_eff_{lbl}.gnuplot"
+
+    n = len(rows)
+    with open(dat_file, "w") as f:
+        f.write("# idx  lits_per_s  step\n")
+        for i, (name, lits, total_s) in enumerate(rows):
+            lits_per_s = (lits or 0) / total_s if total_s else 0
+            f.write(f"{i+1}\t{lits_per_s:.0f}\t{name}\n")
+
+    xtics = ", ".join(f'"{name}" {i+1}' for i, (name, _, __) in enumerate(rows))
+    width_cm = max(20, n * 2.2)
+
+    with open(gp_file, "w") as f:
+        for term, out in [
+            (f'pdfcairo size {width_cm:.0f}cm,16cm', pdf_file),
+            (f'pngcairo size {int(width_cm * 40)},640', png_file),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write(f'set title "Preprocessing efficiency: lits removed per second of CPU time\\n{lbl}"\n')
+            f.write('set ylabel "Lits removed per second"\n')
+            f.write('set yrange [0:*]\n')
+            f.write(f'set xrange [0.5:{n + 0.5}]\n')
+            f.write('set grid ytics\n')
+            f.write('set key off\n')
+            f.write('set style fill solid 0.8 border -1\n')
+            f.write('set boxwidth 0.6\n')
+            f.write(f'set xtics ({xtics}) rotate by -45 left\n')
+            f.write('set bmargin 10\n')
+            f.write(f'plot "{dat_file}" using ($1):2 with boxes lc rgb "steelblue" notitle\n\n')
+
+    title = "Preproc efficiency chart: lits removed per second per step"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
+
+
+def preproc_time_pie_chart(matched_dirs):
+    """Pie chart: share of total preprocessing wall time per step.
+    Steps with <1% share are merged into 'other'."""
+    if not _preproc_has_data(matched_dirs) or not _preproc_has_step_time(matched_dirs):
+        return
+
+    dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(f"""
+        SELECT name, ROUND(SUM(step_time), 2) AS total_s
+        FROM preproc
+        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        GROUP BY name
+        ORDER BY total_s DESC
+    """)
+    rows = cur.fetchall()
+    con.close()
+
+    if not rows:
+        return
+
+    grand_total = sum(r[1] for r in rows if r[1])
+    if grand_total <= 0:
+        return
+
+    # Merge steps < 1% into "other"
+    kept, other_s = [], 0.0
+    for name, total_s in rows:
+        pct = 100.0 * (total_s or 0) / grand_total
+        if pct >= 1.0:
+            kept.append((name, total_s or 0))
+        else:
+            other_s += total_s or 0
+    if other_s > 0:
+        kept.append(("other", other_s))
+
+    lbl = _preproc_file_label(matched_dirs)
+    dat_file = f"preproc_timepie_{lbl}.dat"
+    pdf_file = f"preproc_timepie_{lbl}.pdf"
+    png_file = f"preproc_timepie_{lbl}.png"
+    gp_file  = f"preproc_timepie_{lbl}.gnuplot"
+
+    with open(dat_file, "w") as f:
+        f.write("# step  seconds  pct\n")
+        for name, s in kept:
+            pct = 100.0 * s / grand_total
+            f.write(f'"{name}"\t{s:.2f}\t{pct:.1f}\n')
+
+    # gnuplot pie chart via filled circles — gnuplot doesn't have native pie,
+    # so we use a parametric polar approach with filled boxes as wedges.
+    # We write an explicit set of 'object circle' / wedge commands per slice.
+    n_slices = len(kept)
+    # Assign gnuplot line colors cyclically from a palette
+    colors = ["#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f",
+              "#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac",
+              "#d37295","#fabfd2","#8cd17d","#b6992d","#499894"]
+
+    with open(gp_file, "w") as f:
+        for term, out, sz in [
+            (f'pdfcairo size 20cm,16cm', pdf_file, ""),
+            (f'pngcairo size 800,640',   png_file, ""),
+        ]:
+            f.write(f'set terminal {term}\n')
+            f.write(f'set output "{out}"\n')
+            f.write(f'set title "Preprocessing time breakdown (total {grand_total:.0f}s)\\n{lbl}"\n')
+            f.write('set size ratio -1\n')
+            f.write('unset border\n')
+            f.write('unset tics\n')
+            f.write('unset key\n')
+            f.write('set xrange [-1.5:2.5]\n')
+            f.write('set yrange [-1.3:1.3]\n')
+            # Draw wedges as filled polygons
+            angle = 0.0
+            label_lines = []
+            for i, (name, s) in enumerate(kept):
+                pct = s / grand_total
+                end_angle = angle + pct * 2 * math.pi
+                color = colors[i % len(colors)]
+                # Build polygon points for the wedge (center + arc)
+                steps = max(3, int(pct * 60))
+                arc_pts = []
+                for k in range(steps + 1):
+                    a = angle + (end_angle - angle) * k / steps
+                    arc_pts.append(f"{math.cos(a):.4f},{math.sin(a):.4f}")
+                poly = "0,0 to " + " to ".join(arc_pts) + " to 0,0"
+                f.write(f'set object {i+1} polygon from {poly} '
+                        f'fc rgb "{color}" fs solid 0.85 border lc rgb "white" lw 0.5\n')
+                # Label at midpoint of arc
+                mid = (angle + end_angle) / 2
+                r_label = 0.65
+                lx = r_label * math.cos(mid)
+                ly = r_label * math.sin(mid)
+                pct_str = f"{pct*100:.1f}%"
+                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",8"\n')
+                # Legend entry at right
+                lx2 = 1.25
+                ly2 = 0.95 - i * 0.13
+                f.write(f'set object {n_slices+i+1} rect from {lx2-0.05},{ly2-0.04} to {lx2+0.05},{ly2+0.04} '
+                        f'fc rgb "{color}" fs solid 0.85 border lc rgb "grey"\n')
+                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",9"\n')
+                angle = end_angle
+            for ll in label_lines:
+                f.write(ll)
+            f.write('plot NaN notitle\n\n')
+
+    title = "Preproc time pie chart: share of total preprocessing time per step"
+    print(f"\n{BLUE}{title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
 
 
 def _display_png(png_file):
@@ -792,10 +1324,11 @@ def preproc_share_chart(matched_dirs):
     n = len(kept)
     width_cm = max(20, n * 2.0)
 
-    dat_file = "preproc_share.dat"
-    pdf_file = "preproc_share.pdf"
-    png_file = "preproc_share.png"
-    gp_file  = "preproc_share.gnuplot"
+    lbl = _preproc_file_label(matched_dirs)
+    dat_file = f"preproc_share_{lbl}.dat"
+    pdf_file = f"preproc_share_{lbl}.pdf"
+    png_file = f"preproc_share_{lbl}.png"
+    gp_file  = f"preproc_share_{lbl}.gnuplot"
 
     with open(dat_file, "w") as f:
         f.write("# idx  pct_lits  pct_vars  step_name\n")
@@ -812,7 +1345,7 @@ def preproc_share_chart(matched_dirs):
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
-            f.write('set title "Share of total preprocessing work per step"\n')
+            f.write(f'set title "Share of total preprocessing work per step\\n{lbl}"\n')
             f.write('set ylabel "% of all lits / vars removed across all CNFs"\n')
             f.write('set yrange [0:100]\n')
             f.write(f'set xrange [0.5:{n + 0.5}]\n')
@@ -861,10 +1394,11 @@ def preproc_cumulative_chart(matched_dirs):
     if not rows:
         return
 
-    dat_file = "preproc_cumul.dat"
-    pdf_file = "preproc_cumul.pdf"
-    png_file = "preproc_cumul.png"
-    gp_file  = "preproc_cumul.gnuplot"
+    lbl = _preproc_file_label(matched_dirs)
+    dat_file = f"preproc_cumul_{lbl}.dat"
+    pdf_file = f"preproc_cumul_{lbl}.pdf"
+    png_file = f"preproc_cumul_{lbl}.png"
+    gp_file  = f"preproc_cumul_{lbl}.gnuplot"
 
     # Normalise to millions for readability
     cum_lits = cum_cls = cum_bins = cum_vars = 0.0
@@ -889,7 +1423,7 @@ def preproc_cumulative_chart(matched_dirs):
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
-            f.write('set title "Cumulative preprocessing effect across pipeline (total across all CNFs)"\n')
+            f.write(f'set title "Cumulative preprocessing effect across pipeline (total across all CNFs)\\n{lbl}"\n')
             f.write('set xlabel "Cumulative total removed (millions)"\n')
             f.write('set ylabel ""\n')
             f.write(f'set yrange [-0.5:{n + 0.5}]\n')
@@ -1350,12 +1884,24 @@ def main():
     print_instance_stats_table(table_todo, fname_like, args.verbose)
     print_preproc_diffs(table_todo, fname_like, args.verbose)
 
-    # Preprocessing step analysis
-    print_preproc_delta_table(matched_dirs, args.verbose)
-    print_preproc_step_efficiency(matched_dirs)
-    print_preproc_per_step_detail(matched_dirs, args.verbose)
-    preproc_share_chart(matched_dirs)
-    preproc_cumulative_chart(matched_dirs)
+    # Preprocessing step analysis — one block per directory
+    for d in matched_dirs:
+        one = [d]
+        print(f"\n{BLUE}{'='*70}{RESET}")
+        print(f"{BLUE}  Preprocessing analysis  ---  {d}{RESET}")
+        print(f"{BLUE}{'='*70}{RESET}")
+        print_preproc_delta_table(one, args.verbose)
+        print_preproc_step_efficiency(one)
+        print_preproc_per_step_detail(one, args.verbose)
+        print_preproc_time_breakdown(one)
+        print_preproc_noop_waste(one)
+        print_preproc_extended_vars(one)
+        print_step_predecessor_effectiveness(one, step="must-scc-vrepl")
+        preproc_share_chart(one)
+        preproc_cumulative_chart(one)
+        preproc_time_chart(one)
+        preproc_time_pie_chart(one)
+        preproc_efficiency_chart(one)
 
     unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
     for dir1, dir2 in itertools.combinations(unique_dirs, 2):

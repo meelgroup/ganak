@@ -288,15 +288,22 @@ def parse_ganak_output(fname):
 _SIMP_STATS_RE = re.compile(
     r'c o \[simp-stats\] (BEFORE|AFTER) (\S+) '
     r'irred_bins (\d+) irred_long_cls (\d+) irred_long_lits (\d+) free_vars (\d+)'
+    r'(?:\s+elimed_vars (\d+) replaced_vars (\d+) units (\d+) mem_MB (\d+) T:\s*([\d.]+))?'
 )
 
 
 def parse_simp_stats(fname):
     """Parse [simp-stats] BEFORE/AFTER pairs from a ganak output file.
-    Returns a list of dicts, one per matched BEFORE/AFTER pair."""
-    pending = {}   # name -> list of (irred_bins, irred_long_cls, irred_long_lits, free_vars)
+    Returns a list of dicts, one per matched BEFORE/AFTER pair.
+
+    New fields (from extended log format):
+      elimed_vars, replaced_vars, units, mem_MB, step_time, prev_step
+    """
+    # pending[name] -> list of full parsed tuples waiting for matching AFTER
+    pending = {}
     step_counts = {}  # name -> number of completed pairs so far
     records = []
+    last_completed_step = "none"  # tracks prev_step
 
     with open(fname, "r") as f:
         for line in f:
@@ -306,33 +313,57 @@ def parse_simp_stats(fname):
                 continue
             kind = m.group(1)
             name = m.group(2)
-            vals = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+            # Core fields (always present)
+            core = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+            # Extended fields (present in newer logs)
+            ext = None
+            if m.group(7) is not None:
+                ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
+                       int(m.group(10)), float(m.group(11)))
 
             if kind == "BEFORE":
-                pending.setdefault(name, []).append(vals)
+                pending.setdefault(name, []).append((core, ext))
             elif kind == "AFTER":
                 if pending.get(name):
-                    before = pending[name].pop(0)
+                    before_core, before_ext = pending[name].pop(0)
                     occurrence = step_counts.get(name, 0)
                     step_counts[name] = occurrence + 1
                     step_num = len(records)
-                    records.append({
-                        "step_num": step_num,
+                    rec = {
+                        "step_num":  step_num,
                         "occurrence": occurrence,
-                        "name": name,
-                        "before_irred_bins":     before[0],
-                        "before_irred_long_cls": before[1],
-                        "before_irred_long_lits": before[2],
-                        "before_free_vars":      before[3],
-                        "after_irred_bins":      vals[0],
-                        "after_irred_long_cls":  vals[1],
-                        "after_irred_long_lits": vals[2],
-                        "after_free_vars":       vals[3],
-                        "delta_irred_bins":      vals[0] - before[0],
-                        "delta_irred_long_cls":  vals[1] - before[1],
-                        "delta_irred_long_lits": vals[2] - before[2],
-                        "delta_free_vars":       vals[3] - before[3],
-                    })
+                        "name":      name,
+                        "prev_step": last_completed_step,
+                        "before_irred_bins":      before_core[0],
+                        "before_irred_long_cls":  before_core[1],
+                        "before_irred_long_lits": before_core[2],
+                        "before_free_vars":       before_core[3],
+                        "after_irred_bins":       core[0],
+                        "after_irred_long_cls":   core[1],
+                        "after_irred_long_lits":  core[2],
+                        "after_free_vars":        core[3],
+                        "delta_irred_bins":       core[0] - before_core[0],
+                        "delta_irred_long_cls":   core[1] - before_core[1],
+                        "delta_irred_long_lits":  core[2] - before_core[2],
+                        "delta_free_vars":        core[3] - before_core[3],
+                    }
+                    # Extended fields
+                    if ext is not None and before_ext is not None:
+                        rec["before_elimed_vars"]   = before_ext[0]
+                        rec["before_replaced_vars"] = before_ext[1]
+                        rec["before_units"]         = before_ext[2]
+                        rec["before_mem_MB"]        = before_ext[3]
+                        rec["after_elimed_vars"]    = ext[0]
+                        rec["after_replaced_vars"]  = ext[1]
+                        rec["after_units"]          = ext[2]
+                        rec["after_mem_MB"]         = ext[3]
+                        rec["delta_elimed_vars"]    = ext[0] - before_ext[0]
+                        rec["delta_replaced_vars"]  = ext[1] - before_ext[1]
+                        rec["delta_units"]          = ext[2] - before_ext[2]
+                        rec["delta_mem_MB"]         = ext[3] - before_ext[3]
+                        rec["step_time"]            = ext[4] - before_ext[4]
+                    records.append(rec)
+                    last_completed_step = name
     return records
 
 
@@ -498,11 +529,20 @@ def main():
             ])
 
     preproc_cols = [
-        "dirname", "fname", "step_num", "occurrence", "name",
+        "dirname", "fname", "step_num", "occurrence", "name", "prev_step",
         "before_irred_bins", "before_irred_long_cls", "before_irred_long_lits", "before_free_vars",
         "after_irred_bins", "after_irred_long_cls", "after_irred_long_lits", "after_free_vars",
         "delta_irred_bins", "delta_irred_long_cls", "delta_irred_long_lits", "delta_free_vars",
+        # Extended fields (newer log format)
+        "before_elimed_vars", "before_replaced_vars", "before_units", "before_mem_MB",
+        "after_elimed_vars", "after_replaced_vars", "after_units", "after_mem_MB",
+        "delta_elimed_vars", "delta_replaced_vars", "delta_units", "delta_mem_MB",
+        "step_time",
     ]
+
+    def g_rec(rec, key):
+        v = rec.get(key)
+        return "" if v is None else v
 
     with open("preproc.csv", "w", newline="") as out:
         writer = csv.writer(out)
@@ -517,6 +557,7 @@ def main():
                     rec["step_num"],
                     rec["occurrence"],
                     rec["name"],
+                    rec.get("prev_step", "none"),
                     rec["before_irred_bins"],
                     rec["before_irred_long_cls"],
                     rec["before_irred_long_lits"],
@@ -529,6 +570,19 @@ def main():
                     rec["delta_irred_long_cls"],
                     rec["delta_irred_long_lits"],
                     rec["delta_free_vars"],
+                    g_rec(rec, "before_elimed_vars"),
+                    g_rec(rec, "before_replaced_vars"),
+                    g_rec(rec, "before_units"),
+                    g_rec(rec, "before_mem_MB"),
+                    g_rec(rec, "after_elimed_vars"),
+                    g_rec(rec, "after_replaced_vars"),
+                    g_rec(rec, "after_units"),
+                    g_rec(rec, "after_mem_MB"),
+                    g_rec(rec, "delta_elimed_vars"),
+                    g_rec(rec, "delta_replaced_vars"),
+                    g_rec(rec, "delta_units"),
+                    g_rec(rec, "delta_mem_MB"),
+                    g_rec(rec, "step_time"),
                 ])
 
     with open("ganak.sqlite") as sql_f:

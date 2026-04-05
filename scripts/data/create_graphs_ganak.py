@@ -1846,6 +1846,8 @@ def main():
 
     parser.add_argument("--fname", nargs="+", metavar="PATTERN", default=[],
                         help="Filter by fname pattern(s), e.g. --fname '%%track1%%' '%%track3%%'")
+    parser.add_argument("--nopreproc", action="store_true",
+                        help="Skip all preprocessing tables and graphs (preproc table)")
     args = parser.parse_args()
 
     if args.fname:
@@ -1882,26 +1884,27 @@ def main():
         print("Printing median tables...")
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
-    print_preproc_diffs(table_todo, fname_like, args.verbose)
+    if not args.nopreproc:
+        print_preproc_diffs(table_todo, fname_like, args.verbose)
 
-    # Preprocessing step analysis — one block per directory
-    for d in matched_dirs:
-        one = [d]
-        print(f"\n{BLUE}{'='*70}{RESET}")
-        print(f"{BLUE}  Preprocessing analysis  ---  {d}{RESET}")
-        print(f"{BLUE}{'='*70}{RESET}")
-        print_preproc_delta_table(one, args.verbose)
-        print_preproc_step_efficiency(one)
-        print_preproc_per_step_detail(one, args.verbose)
-        print_preproc_time_breakdown(one)
-        print_preproc_noop_waste(one)
-        print_preproc_extended_vars(one)
-        print_step_predecessor_effectiveness(one, step="must-scc-vrepl")
-        preproc_share_chart(one)
-        preproc_cumulative_chart(one)
-        preproc_time_chart(one)
-        preproc_time_pie_chart(one)
-        preproc_efficiency_chart(one)
+        # Preprocessing step analysis — one block per directory
+        for d in matched_dirs:
+            one = [d]
+            print(f"\n{BLUE}{'='*70}{RESET}")
+            print(f"{BLUE}  Preprocessing analysis  ---  {d}{RESET}")
+            print(f"{BLUE}{'='*70}{RESET}")
+            print_preproc_delta_table(one, args.verbose)
+            print_preproc_step_efficiency(one)
+            print_preproc_per_step_detail(one, args.verbose)
+            print_preproc_time_breakdown(one)
+            print_preproc_noop_waste(one)
+            print_preproc_extended_vars(one)
+            print_step_predecessor_effectiveness(one, step="must-scc-vrepl")
+            preproc_share_chart(one)
+            preproc_cumulative_chart(one)
+            preproc_time_chart(one)
+            preproc_time_pie_chart(one)
+            preproc_efficiency_chart(one)
 
     unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
     for dir1, dir2 in itertools.combinations(unique_dirs, 2):

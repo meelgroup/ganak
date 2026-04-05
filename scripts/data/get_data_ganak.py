@@ -180,7 +180,7 @@ def parse_ganak_output(fname):
             # Unconditional status checks
             if "ERROR" in line or "assertion fail" in line.lower():
                 result["errored"] = 1
-            if "bad_alloc" in line:
+            if "Cannot allocate memory" in line or"bad_alloc" in line:
                 result["mem_out"] = 1
             if line.startswith("s SATISFIABLE") or line.startswith("s UNSATISFIABLE"):
                 result["not_solved"] = False

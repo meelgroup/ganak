@@ -484,8 +484,8 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
 
         with open(gp_file, "w") as f:
             for term, out in [
-                ('pdfcairo size 52cm,40cm', pdf_file),
-                ('pngcairo size 600,600',   png_file),
+                ('pdfcairo size 52cm,40cm background "#d0d0d0"', pdf_file),
+                ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
                 f.write(f'set output "{out}"\n')
@@ -1061,8 +1061,8 @@ def preproc_time_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size {width_cm:.0f}cm,40cm', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640', png_file),
+            (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
+            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1129,8 +1129,8 @@ def preproc_efficiency_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size {width_cm:.0f}cm,40cm', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640', png_file),
+            (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
+            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1212,8 +1212,8 @@ def preproc_time_pie_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out, sz in [
-            (f'pdfcairo size 52cm,40cm', pdf_file, ""),
-            (f'pngcairo size 800,640',   png_file, ""),
+            (f'pdfcairo size 52cm,40cm background "#d0d0d0"', pdf_file, ""),
+            (f'pngcairo size 800,640 background "#d0d0d0"',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1351,8 +1351,8 @@ def preproc_share_chart(matched_dirs):
     xtics = ", ".join(f'"{name}" {i+1}' for i, (name, _, __) in enumerate(kept))
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size {width_cm:.0f}cm,40cm', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640', png_file),
+            (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
+            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1429,8 +1429,8 @@ def preproc_cumulative_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size 52cm,{height_cm:.0f}cm', pdf_file),
-            (f'pngcairo size 1200,{int(height_cm * 50)}', png_file),
+            (f'pdfcairo size 52cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
+            (f'pngcairo size 1200,{int(height_cm * 50)} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1585,8 +1585,8 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
 
         with open(gp_file, "w") as f:
             for term, out in [
-                (f'pdfcairo size 15cm,15cm', pdf_file),
-                (f'pngcairo size 600,600',   png_file),
+                (f'pdfcairo size 15cm,15cm background "#d0d0d0"', pdf_file),
+                (f'pngcairo size 600,600 background "#d0d0d0"',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
                 f.write(f'set output "{out}"\n')
@@ -1636,8 +1636,8 @@ def generate_gnuplot(fname2_s, verbose=False):
 
     with open(gnuplotfn, "w") as f:
         for term, out in [
-            ('pdfcairo size 15cm,15cm', pdf_file),
-            ('pngcairo size 600,600',   png_file),
+            ('pdfcairo size 15cm,15cm background "#d0d0d0"', pdf_file),
+            ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1824,7 +1824,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-1279568-0", # release
     # "out-ganak-mccomp2324-1281478-0", # more data
     "out-ganak-mccomp2324-1282000-0", # new preproc
-    "out-ganak-mccomp2324-1282412-0", # new preproc v2
+    # "out-ganak-mccomp2324-1282412-0", # new preproc v2
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "comp_management.hpp"
 #include "common.hpp"
 #include "comp_types/cacheable_comp.hpp"
+#include "comp_types/canon_info.hpp"
 #include "counter.hpp"
 
 using namespace GanakInt;
@@ -67,7 +68,8 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     if (ana.var_unvisited_in_sup_comp(*vt) &&
         ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
-      void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc);
+      const CanonInfo canon = ana.compute_canon_info(*p_new_comp, hash_seed, conf.wl_canonize_threshold);
+      void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc, canon.valid ? &canon : nullptr);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count

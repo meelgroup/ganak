@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "common.hpp"
 #include "comp_types/cacheable_comp.hpp"
+#include "comp_types/canon_info.hpp"
 #include "statistics.hpp"
 #include <gmpxx.h>
 #include "stack.hpp"
@@ -40,7 +41,8 @@ public:
   virtual CacheEntryID add_new_comp(void* comp, CacheEntryID super_comp_id) = 0;
   virtual uint64_t get_extra_bytes(void* comp) const = 0;
   virtual bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* comp) = 0;
-  virtual void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc) = 0;
+  virtual void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc,
+                                const CanonInfo* canon = nullptr) = 0;
   virtual void free_comp(void* comp) = 0;
 
   virtual void make_entry_deletable(CacheEntryID id) = 0;

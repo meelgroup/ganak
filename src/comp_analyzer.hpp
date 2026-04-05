@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include "comp_types/comp.hpp"
 #include "comp_types/comp_archetype.hpp"
+#include "comp_types/canon_info.hpp"
 
 #include <climits>
 #include <cstring>
@@ -95,6 +96,10 @@ struct MyHolder {
     auto start = data[v*hstride+offset+0];
     return data.get() + start;
   }
+  const uint32_t* begin_bin(uint32_t v) const {
+    auto start = data[v*hstride+offset+0];
+    return data.get() + start;
+  }
   uint32_t size_bin(uint32_t v) const { return data[v*hstride+offset+1];}
   uint32_t& size_bin(uint32_t v) { return data[v*hstride+offset+1];}
   uint32_t orig_size_bin(uint32_t v) const { return data[v*hstride+offset+2];}
@@ -106,6 +111,10 @@ struct MyHolder {
   ClData* begin_long(uint32_t v) {
     auto start = data[v*hstride+offset+3];
     return reinterpret_cast<ClData*>(data.get() + start);
+  }
+  const ClData* begin_long(uint32_t v) const {
+    auto start = data[v*hstride+offset+3];
+    return reinterpret_cast<const ClData*>(data.get() + start);
   }
   uint32_t size_long(uint32_t v) const { return data[v*hstride+offset+4];}
   uint32_t& size_long(uint32_t v) { return data[v*hstride+offset+4];}
@@ -178,6 +187,12 @@ public:
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }
   uint32_t get_max_var() const { return max_var; }
   CompArchetype& get_archetype() { return archetype; }
+
+  // Compute WL-based canonical information for comp (only if nVars <= threshold).
+  // Must be called immediately after make_comp_from_archetype() and before the
+  // next explore_comp(), because it relies on the current holder state.
+  // Returns a CanonInfo with valid=false if nVars > threshold or threshold == 0.
+  CanonInfo compute_canon_info(const Comp& comp, uint64_t hash_seed, uint32_t threshold) const;
 
 private:
   // the id of the last clause

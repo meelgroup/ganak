@@ -115,6 +115,13 @@ struct CounterConfiguration {
   uint64_t seed = 0;
   double delta = 0.2;
 
+  // Weisfeiler-Lehman canonical component hashing.
+  // Components with nVars <= this threshold get a structure-invariant hash and
+  // (in DiffPackedComp mode) a canonical equality representation, so that
+  // structurally isomorphic components hit the same cache entry regardless of
+  // their variable numbering.  Set to 0 to disable.
+  uint32_t wl_canonize_threshold = 25;
+
   double appmc_timeout = -1;
   double appmc_epsilon = 0.8;
 };

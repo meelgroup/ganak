@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <cassert>
 #include "structures.hpp"
 #include "base_comp.hpp"
+#include "canon_info.hpp"
 
 namespace GanakInt {
 
@@ -38,8 +39,9 @@ public:
   CacheableComp(CacheableComp&&) noexcept = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
-  CacheableComp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& bpc) {
-    hashkey = T::set_comp(comp, hash_seed, bpc);
+  CacheableComp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& bpc,
+                const CanonInfo* canon = nullptr) {
+    hashkey = T::set_comp(comp, hash_seed, bpc, canon);
   }
 
   // Cache Pollution Management

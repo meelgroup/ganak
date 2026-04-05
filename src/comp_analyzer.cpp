@@ -29,6 +29,10 @@ THE SOFTWARE.
 #include <algorithm>
 #include <cstdint>
 #include <numeric>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include "chibihash64.h"
 
 using namespace GanakInt;
 
@@ -406,6 +410,180 @@ end_sat:;
   }
   debug_print(COLWHT "-> Went through all bin/tri/long and now comp_vars is "
       << comp_vars.size() << " long");
+}
+
+// Computes Weisfeiler-Lehman canonical component information for cache lookup.
+//
+// Approach:
+//   1. Build a clause->variable mapping restricted to this component's vars/clauses.
+//   2. Compute an initial "color" for each variable: (long_degree, binary_degree, is_indep).
+//   3. Run one round of WL refinement: each variable's new color incorporates the sorted
+//      multiset of its long-clause neighbours' initial colors.
+//   4. Sort variables by WL color (original var_id as tiebreaker) to get canonical order.
+//   5. Express every clause (long + binary) in terms of canonical variable indices and sort.
+//   6. Hash the resulting canonical clause list to produce a structure-invariant cache key.
+//
+// The result is invariant to variable/clause ID renaming: two structurally isomorphic
+// components will produce identical sorted_canon_clauses and the same hash, enabling a
+// cache hit even if they involve completely different variable numberings.
+CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
+                                           uint64_t hash_seed,
+                                           uint32_t threshold) const {
+  CanonInfo info;
+  const uint32_t n = comp.nVars();
+  if (threshold == 0 || n > threshold || n == 0) return info;
+
+  // --- Build membership lookups ---
+
+  // comp clause set for O(1) membership test
+  std::unordered_set<uint32_t> comp_clause_set;
+  comp_clause_set.reserve(comp.num_long_cls() * 2);
+  for (auto it = comp.cls_begin(); *it != sentinel; ++it) comp_clause_set.insert(*it);
+
+  // var_id -> position in comp (0..n-1)
+  std::unordered_map<uint32_t, uint32_t> var_to_pos;
+  var_to_pos.reserve(n * 2);
+  for (uint32_t i = 0; i < n; ++i) var_to_pos[comp.vars_begin()[i]] = i;
+
+  // --- Compute degree-based initial color per variable (position) ---
+
+  // long_deg[i]  = number of comp clauses containing position-i variable
+  // bin_deg[i]   = number of comp variables that position-i variable shares a binary clause with
+  vector<uint32_t> long_deg(n, 0);
+  vector<uint32_t> bin_deg(n, 0);
+
+  // clause_id -> list of comp-variable positions that appear in it
+  std::unordered_map<uint32_t, vector<uint32_t>> clause_to_pos;
+  clause_to_pos.reserve(comp.num_long_cls() * 2);
+
+  for (uint32_t i = 0; i < n; ++i) {
+    const uint32_t v = comp.vars_begin()[i];
+
+    // Long clauses: iterate over all long clauses v appears in (including possibly
+    // some that were satisfied since record_comp, but we filter by comp_clause_set).
+    const ClData* longs     = holder.begin_long(v);
+    const ClData* longs_end = longs + holder.orig_size_long(v);
+    for (const ClData* d = longs; d != longs_end; ++d) {
+      if (comp_clause_set.count(d->id)) {
+        clause_to_pos[d->id].push_back(i);
+        ++long_deg[i];
+      }
+    }
+
+    // Binary clauses (irredundant only – stored in holder).
+    const uint32_t* bins = holder.begin_bin(v);
+    for (uint32_t j = 0; j < holder.orig_size_bin(v); ++j) {
+      if (var_to_pos.count(bins[j])) ++bin_deg[i];
+    }
+  }
+
+  // --- Initial WL color per position ---
+  using Color3 = std::tuple<uint32_t, uint32_t, uint32_t>;
+  vector<Color3> init_color(n);
+  for (uint32_t i = 0; i < n; ++i) {
+    const bool is_indep = (comp.vars_begin()[i] < indep_support_end);
+    init_color[i] = {long_deg[i], bin_deg[i], static_cast<uint32_t>(is_indep)};
+  }
+
+  // --- Build long-clause neighbour adjacency (for WL round) ---
+  // cl_neighbors[i] = positions of variables that share a long clause with position i
+  vector<vector<uint32_t>> cl_neighbors(n);
+  for (auto& [cl_id, positions] : clause_to_pos) {
+    for (uint32_t u : positions)
+      for (uint32_t w : positions)
+        if (u != w) cl_neighbors[u].push_back(w);
+  }
+
+  // --- One round of WL refinement ---
+  // wl1[i] = hash of (init_color[i], sorted multiset of init_colors of clause-neighbours)
+  vector<uint64_t> wl1(n);
+  for (uint32_t i = 0; i < n; ++i) {
+    vector<Color3> ncolors;
+    ncolors.reserve(cl_neighbors[i].size());
+    for (uint32_t j : cl_neighbors[i]) ncolors.push_back(init_color[j]);
+    sort(ncolors.begin(), ncolors.end());
+
+    // Mix into a 64-bit hash using simple polynomial mixing
+    uint64_t h = (static_cast<uint64_t>(get<0>(init_color[i])) * 2654435761ULL)
+               ^ (static_cast<uint64_t>(get<1>(init_color[i])) * 40503ULL)
+               ^ (static_cast<uint64_t>(get<2>(init_color[i])) * 2246822519ULL);
+    for (const auto& [ld, bd, indp] : ncolors) {
+      h ^= (h >> 16) * 0x45d9f3bULL;
+      h += (static_cast<uint64_t>(ld) * 2654435761ULL)
+         ^ (static_cast<uint64_t>(bd) * 40503ULL)
+         ^ (static_cast<uint64_t>(indp));
+    }
+    wl1[i] = h;
+  }
+
+  // --- Sort variables by (wl1, init_color, var_id) to get canonical order ---
+  vector<uint32_t> perm(n);
+  iota(perm.begin(), perm.end(), 0);
+  sort(perm.begin(), perm.end(), [&](uint32_t a, uint32_t b) {
+    if (wl1[a] != wl1[b]) return wl1[a] < wl1[b];
+    if (init_color[a] != init_color[b]) return init_color[a] < init_color[b];
+    return comp.vars_begin()[a] < comp.vars_begin()[b]; // stable tiebreak
+  });
+
+  // canon_vars[i] = original var_id at canonical position i
+  info.canon_vars.resize(n);
+  for (uint32_t i = 0; i < n; ++i) info.canon_vars[i] = comp.vars_begin()[perm[i]];
+
+  // orig_pos -> canonical index
+  vector<uint32_t> orig_to_canon(n);
+  for (uint32_t i = 0; i < n; ++i) orig_to_canon[perm[i]] = i;
+
+  // --- Build canonical clause representations (long clauses) ---
+  info.sorted_canon_clauses.reserve(clause_to_pos.size() + n); // upper bound
+  for (auto& [cl_id, positions] : clause_to_pos) {
+    vector<uint32_t> cv;
+    cv.reserve(positions.size());
+    for (uint32_t pos : positions) cv.push_back(orig_to_canon[pos]);
+    sort(cv.begin(), cv.end());
+    info.sorted_canon_clauses.push_back(std::move(cv));
+  }
+
+  // --- Build canonical binary clause representations ---
+  // Binary clauses: irredundant, stored as unordered pairs of variables.
+  // We deduplicate by only adding each pair once (ci < cj).
+  // Use a sorted vector of pairs for deduplication.
+  vector<pair<uint32_t,uint32_t>> bin_pairs;
+  bin_pairs.reserve(n * 2);
+  for (uint32_t pos_i = 0; pos_i < n; ++pos_i) {
+    const uint32_t v = comp.vars_begin()[pos_i];
+    const uint32_t* bins = holder.begin_bin(v);
+    for (uint32_t j = 0; j < holder.orig_size_bin(v); ++j) {
+      auto it = var_to_pos.find(bins[j]);
+      if (it == var_to_pos.end()) continue; // not in this comp
+      const uint32_t pos_j = it->second;
+      uint32_t ci = orig_to_canon[pos_i];
+      uint32_t cj = orig_to_canon[pos_j];
+      if (ci > cj) std::swap(ci, cj);
+      bin_pairs.push_back({ci, cj});
+    }
+  }
+  sort(bin_pairs.begin(), bin_pairs.end());
+  bin_pairs.erase(unique(bin_pairs.begin(), bin_pairs.end()), bin_pairs.end());
+  for (auto& [ci, cj] : bin_pairs)
+    info.sorted_canon_clauses.push_back({ci, cj});
+
+  // --- Sort all canonical clauses lexicographically ---
+  sort(info.sorted_canon_clauses.begin(), info.sorted_canon_clauses.end());
+
+  // --- Compute structural hash of (nVars, canonical clauses) ---
+  // Encoding: [n, n_total_clauses, for each clause: (size, v0, v1, ...)]
+  vector<uint32_t> hdata;
+  hdata.reserve(2 + info.sorted_canon_clauses.size() * 4);
+  hdata.push_back(n);
+  hdata.push_back(static_cast<uint32_t>(info.sorted_canon_clauses.size()));
+  for (const auto& cv : info.sorted_canon_clauses) {
+    hdata.push_back(static_cast<uint32_t>(cv.size()));
+    for (uint32_t idx : cv) hdata.push_back(idx);
+  }
+  info.hash = chibihash64(hdata.data(), hdata.size() * sizeof(uint32_t), hash_seed);
+
+  info.valid = true;
+  return info;
 }
 
 // There is exactly ONE of these

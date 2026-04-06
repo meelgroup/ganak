@@ -216,7 +216,6 @@ void add_ganak_options()
     add_arg("--arjunsamplcutoff", arjun_further_min_cutoff, fc_int,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     add_arg("--arjunextendccnr", arjun_extend_ccnr, fc_int,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     add_arg("--arjunweakenlim", simp_conf.weaken_limit, fc_int,  "Arjun's weaken limitation");
-    add_arg("--puuraconfig", simp_conf.puura_order, fc_int, "Puura pipeline order: 0=default, 1=oracle-lite, 2=front-loaded-kill, 3=no-aggressive-iter2, 4=synergy-reorder");
 
     // TD options
     add_arg("--td", conf.do_td, fc_int, "Run TD decompose");

@@ -432,7 +432,12 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
                                            uint32_t threshold) const {
   CanonInfo info;
   const uint32_t n = comp.nVars();
-  if (threshold == 0 || n > threshold || n == 0) return info;
+  // WL canonicalization is only sound for unweighted counting (mode 0).
+  // For weighted modes, each variable has an individual weight; two components
+  // with the same clause structure but different per-variable weights have
+  // different weighted counts, so structural isomorphism does not imply
+  // cache equivalence.  weighted() is false only for FGenMpz (mode 0).
+  if (threshold == 0 || n > threshold || n == 0 || counter->weighted()) return info;
 
   // --- Build membership lookups ---
 

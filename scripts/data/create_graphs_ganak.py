@@ -15,7 +15,7 @@ RED    = "\033[91m"
 RESET = "\033[0m"
 
 
-def convert_to_cactus(fname, fname2):
+def convert_to_cdf(fname, fname2):
     with open(fname, "r") as f:
         times = sorted(float(line.split()[0]) for line in f)
 
@@ -117,7 +117,7 @@ def build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fnam
             os.unlink("gencsv.sqlite")
 
             fname2 = fname + ".gnuplotdata"
-            num_solved = convert_to_cactus(fname, fname2)
+            num_solved = convert_to_cdf(fname, fname2)
             fname2_s.append([fname2, call, ver[:10], num_solved, dir])
             table_todo.append([dir, ver])
     return fname2_s, table_todo
@@ -1838,6 +1838,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1281478-0", # more data
     "out-ganak-mccomp2324-1282000-0", # new preproc
     # "out-ganak-mccomp2324-1282412-0", # new preproc v2
+    # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
+    # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

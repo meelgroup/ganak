@@ -206,6 +206,7 @@ private:
   MyHolder holder;
   vector<Lit> long_clauses_data;
   const LiteralIndexedVector<TriValue> & values;
+  const LiteralIndexedVector<LitWatchList>* watches_ = nullptr;
 
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;

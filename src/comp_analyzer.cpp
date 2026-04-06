@@ -49,6 +49,7 @@ void CompAnalyzer::initialize(
     const LiteralIndexedVector<LitWatchList> & watches, // binary clauses
     ClauseAllocator const* alloc, const vector<ClauseOfs>& _long_irred_cls) // longer-than-2-long clauses
 {
+  watches_ = &watches;
   max_var = watches.end_lit().var() - 1;
   comp_vars.reserve(max_var + 1);
   var_freq_scores.resize(max_var + 1, 0);
@@ -452,25 +453,45 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
   vector<uint32_t> long_deg(n, 0);
   vector<uint32_t> bin_deg(n, 0);
 
-  // clause_id -> list of comp-variable positions that appear in it
+  // clause_id -> list of comp-variable positions that appear in it (for WL neighbor graph)
   std::unordered_map<uint32_t, vector<uint32_t>> clause_to_pos;
   clause_to_pos.reserve(comp.num_long_cls() * 2);
+
+  // clause_id -> all Lits with signs (for polarity-aware canonical form)
+  // For ternary clauses: accumulated across all 3 variable visits.
+  // For long clauses: read from long_clauses_data on first encounter.
+  std::unordered_map<uint32_t, vector<Lit>> clause_all_lits;
+  clause_all_lits.reserve(comp.num_long_cls() * 2);
 
   for (uint32_t i = 0; i < n; ++i) {
     const uint32_t v = comp.vars_begin()[i];
 
-    // Long clauses: iterate over all long clauses v appears in (including possibly
-    // some that were satisfied since record_comp, but we filter by comp_clause_set).
+    // Long clauses: iterate over all long clauses v appears in.
     const ClData* longs     = holder.begin_long(v);
     const ClData* longs_end = longs + holder.orig_size_long(v);
     for (const ClData* d = longs; d != longs_end; ++d) {
-      if (comp_clause_set.count(d->id)) {
-        clause_to_pos[d->id].push_back(i);
-        ++long_deg[i];
+      if (!comp_clause_set.count(d->id)) continue;
+      clause_to_pos[d->id].push_back(i);
+      ++long_deg[i];
+
+      auto& lits = clause_all_lits[d->id];
+      if (d->id < max_tri_clid) {
+        // Ternary clause: contribute the 2 "other" literals from this visit.
+        // After all 3 vars are visited, lits will contain all 3 signed literals.
+        const Lit l1 = d->get_lit1();
+        const Lit l2 = d->get_lit2();
+        if (std::find(lits.begin(), lits.end(), l1) == lits.end()) lits.push_back(l1);
+        if (std::find(lits.begin(), lits.end(), l2) == lits.end()) lits.push_back(l2);
+      } else {
+        // Long clause: read all signed literals from the literal pool on first encounter.
+        if (lits.empty()) {
+          const Lit* start = long_clauses_data.data() + d->off;
+          for (const Lit* it_l = start; *it_l != SENTINEL_LIT; ++it_l) lits.push_back(*it_l);
+        }
       }
     }
 
-    // Binary clauses (irredundant only – stored in holder).
+    // Binary degree (polarity-blind, used for WL initial color only).
     const uint32_t* bins = holder.begin_bin(v);
     for (uint32_t j = 0; j < holder.orig_size_bin(v); ++j) {
       if (var_to_pos.count(bins[j])) ++bin_deg[i];
@@ -486,7 +507,7 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
   }
   VERBOSE_DEBUG_DO(
     cout << "WL canon: nVars=" << n
-         << " nLongCls=" << clause_to_pos.size()
+         << " nLongCls=" << clause_all_lits.size()
          << " initial colors (var longdeg bindeg isindep):";
     for (uint32_t i = 0; i < n; ++i)
       cout << " [" << comp.vars_begin()[i] << " "
@@ -546,57 +567,76 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
   info.canon_vars.resize(n);
   for (uint32_t i = 0; i < n; ++i) info.canon_vars[i] = comp.vars_begin()[perm[i]];
 
+  // canon_is_indep[i] = 1 if canonical position i is in the independent support, else 0.
+  // Must be included in the hash/equality data so that two structurally isomorphic
+  // components that differ only in their indep-support assignments are not confused.
+  info.canon_is_indep.resize(n);
+  for (uint32_t i = 0; i < n; ++i)
+    info.canon_is_indep[i] = static_cast<uint32_t>(comp.vars_begin()[perm[i]] < indep_support_end);
+
   // orig_pos -> canonical index
   vector<uint32_t> orig_to_canon(n);
   for (uint32_t i = 0; i < n; ++i) orig_to_canon[perm[i]] = i;
 
-  // --- Build canonical clause representations (long clauses) ---
-  info.sorted_canon_clauses.reserve(clause_to_pos.size() + n); // upper bound
-  for (auto& [cl_id, positions] : clause_to_pos) {
+  // --- Build polarity-aware canonical clause representations ---
+  // Canonical literal index: 2 * canon_pos + (uint32_t)lit.sign()
+  //   (sign()=false → negative literal, sign()=true → positive literal)
+  //
+  // Long/ternary: from clause_all_lits, filter to in-component (unknown) vars.
+  info.sorted_canon_clauses.reserve(clause_all_lits.size() + n);
+  for (auto& [cl_id, lits] : clause_all_lits) {
     vector<uint32_t> cv;
-    cv.reserve(positions.size());
-    for (uint32_t pos : positions) cv.push_back(orig_to_canon[pos]);
+    cv.reserve(lits.size());
+    for (const Lit l : lits) {
+      auto it = var_to_pos.find(l.var());
+      if (it == var_to_pos.end()) continue; // satisfied/false lit, skip
+      cv.push_back(2 * orig_to_canon[it->second] + static_cast<uint32_t>(l.sign()));
+    }
+    if (cv.size() < 2) continue; // should not happen for in-comp clauses
     sort(cv.begin(), cv.end());
     info.sorted_canon_clauses.push_back(std::move(cv));
   }
 
-  // --- Build canonical binary clause representations ---
-  // Binary clauses: irredundant, stored as unordered pairs of variables.
-  // We deduplicate by only adding each pair once (ci < cj).
-  // Use a sorted vector of pairs for deduplication.
-  vector<pair<uint32_t,uint32_t>> bin_pairs;
-  bin_pairs.reserve(n * 2);
+  // Binary clauses: use watches_ directly to get full literal polarities.
+  // watches_[Lit(v,s)] contains binary clauses of the form (Lit(v,s) ∨ bincl.lit()).
+  // Deduplicate via a 64-bit key (packed canonical lit-index pair, lo<<32|hi).
+  std::unordered_set<uint64_t> seen_bin;
+  seen_bin.reserve(n * 4);
   for (uint32_t pos_i = 0; pos_i < n; ++pos_i) {
     const uint32_t v = comp.vars_begin()[pos_i];
-    const uint32_t* bins = holder.begin_bin(v);
-    for (uint32_t j = 0; j < holder.orig_size_bin(v); ++j) {
-      auto it = var_to_pos.find(bins[j]);
-      if (it == var_to_pos.end()) continue; // not in this comp
-      const uint32_t pos_j = it->second;
-      uint32_t ci = orig_to_canon[pos_i];
-      uint32_t cj = orig_to_canon[pos_j];
-      if (ci > cj) std::swap(ci, cj);
-      bin_pairs.push_back({ci, cj});
+    for (const bool s : {false, true}) {
+      for (const auto& bincl : (*watches_)[Lit(v, s)].binaries) {
+        if (!bincl.irred()) continue;
+        const Lit other = bincl.lit();
+        auto it = var_to_pos.find(other.var());
+        if (it == var_to_pos.end()) continue; // other end not in comp
+        const uint32_t cli = 2 * orig_to_canon[pos_i] + static_cast<uint32_t>(s);
+        const uint32_t clj = 2 * orig_to_canon[it->second] + static_cast<uint32_t>(other.sign());
+        const uint32_t lo = std::min(cli, clj);
+        const uint32_t hi = std::max(cli, clj);
+        const uint64_t key = (static_cast<uint64_t>(lo) << 32) | hi;
+        if (seen_bin.insert(key).second)
+          info.sorted_canon_clauses.push_back({lo, hi});
+      }
     }
   }
-  sort(bin_pairs.begin(), bin_pairs.end());
-  bin_pairs.erase(unique(bin_pairs.begin(), bin_pairs.end()), bin_pairs.end());
-  for (auto& [ci, cj] : bin_pairs)
-    info.sorted_canon_clauses.push_back({ci, cj});
 
   // --- Sort all canonical clauses lexicographically ---
   sort(info.sorted_canon_clauses.begin(), info.sorted_canon_clauses.end());
 
-  // --- Compute structural hash of (nVars, canonical clauses) ---
-  // Encoding: [n, n_total_clauses, for each clause: (size, v0, v1, ...)]
+  // --- Compute structural hash of (nVars, canonical clauses, is_indep profile) ---
+  // Encoding: [n, n_total_clauses, for each clause: (size, v0, v1, ...), is_indep[0..n-1]]
+  // The is_indep profile distinguishes components whose clause structures are isomorphic
+  // but differ in which canonical positions belong to the independent (projection) support.
   vector<uint32_t> hdata;
-  hdata.reserve(2 + info.sorted_canon_clauses.size() * 4);
+  hdata.reserve(2 + info.sorted_canon_clauses.size() * 4 + n);
   hdata.push_back(n);
   hdata.push_back(static_cast<uint32_t>(info.sorted_canon_clauses.size()));
   for (const auto& cv : info.sorted_canon_clauses) {
     hdata.push_back(static_cast<uint32_t>(cv.size()));
     for (uint32_t idx : cv) hdata.push_back(idx);
   }
+  for (uint32_t i = 0; i < n; ++i) hdata.push_back(info.canon_is_indep[i]);
   info.hash = chibihash64(hdata.data(), hdata.size() * sizeof(uint32_t), hash_seed);
 
   VERBOSE_DEBUG_DO(

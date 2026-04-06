@@ -127,7 +127,9 @@ public:
     if (canon && canon->valid) {
       is_canonical_ = true;
       // Store the same hdata that was used to compute canon->hash, for equality checking.
-      // Format: [nVars, n_clauses, (size, v0, v1, ...) per clause ...]
+      // Format: [nVars, n_clauses, (size, v0, v1, ...) per clause ..., is_indep[0..n-1]]
+      // The is_indep profile is appended so components that differ only in
+      // independent-support membership are correctly distinguished.
       std::vector<uint32_t> hdata;
       const uint32_t n = comp.nVars();
       hdata.push_back(n);
@@ -136,6 +138,7 @@ public:
         hdata.push_back(static_cast<uint32_t>(cv.size()));
         for (uint32_t idx : cv) hdata.push_back(idx);
       }
+      for (uint32_t i = 0; i < n; ++i) hdata.push_back(canon->canon_is_indep[i]);
       delete[] data;
       data_size = static_cast<uint32_t>(hdata.size());
       data = new uint32_t[data_size];

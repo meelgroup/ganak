@@ -45,7 +45,13 @@ struct CanonInfo {
   // Binary clauses appear as 2-element inner vectors.
   std::vector<std::vector<uint32_t>> sorted_canon_clauses;
 
-  // Pre-computed structural hash derived from sorted_canon_clauses and nVars.
+  // is_indep[i] = 1 if the variable at canonical position i is in the independent support,
+  // 0 otherwise. Included in both the hash and the equality comparison so that two
+  // structurally isomorphic components that differ only in their projection-variable
+  // assignments are NOT considered equivalent (they may have different projected counts).
+  std::vector<uint32_t> canon_is_indep;
+
+  // Pre-computed structural hash derived from sorted_canon_clauses, nVars, and canon_is_indep.
   // Used directly as the cache key hash for both HashedComp and DiffPackedComp modes.
   uint64_t hash = 0;
 };

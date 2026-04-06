@@ -484,6 +484,16 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
     const bool is_indep = (comp.vars_begin()[i] < indep_support_end);
     init_color[i] = {long_deg[i], bin_deg[i], static_cast<uint32_t>(is_indep)};
   }
+  VERBOSE_DEBUG_DO(
+    cout << "WL canon: nVars=" << n
+         << " nLongCls=" << clause_to_pos.size()
+         << " initial colors (var longdeg bindeg isindep):";
+    for (uint32_t i = 0; i < n; ++i)
+      cout << " [" << comp.vars_begin()[i] << " "
+           << long_deg[i] << " " << bin_deg[i] << " "
+           << (comp.vars_begin()[i] < indep_support_end ? 1 : 0) << "]";
+    cout << endl;
+  );
 
   // --- Build long-clause neighbour adjacency (for WL round) ---
   // cl_neighbors[i] = positions of variables that share a long clause with position i
@@ -515,6 +525,13 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
     }
     wl1[i] = h;
   }
+
+  VERBOSE_DEBUG_DO(
+    cout << "WL canon: wl1 colors (var wl1hash):";
+    for (uint32_t i = 0; i < n; ++i)
+      cout << " [" << comp.vars_begin()[i] << " 0x" << std::hex << wl1[i] << std::dec << "]";
+    cout << endl;
+  );
 
   // --- Sort variables by (wl1, init_color, var_id) to get canonical order ---
   vector<uint32_t> perm(n);
@@ -581,6 +598,21 @@ CanonInfo CompAnalyzer::compute_canon_info(const Comp& comp,
     for (uint32_t idx : cv) hdata.push_back(idx);
   }
   info.hash = chibihash64(hdata.data(), hdata.size() * sizeof(uint32_t), hash_seed);
+
+  VERBOSE_DEBUG_DO(
+    cout << "WL canon: final hash=0x" << std::hex << info.hash << std::dec
+         << " nclauses=" << info.sorted_canon_clauses.size()
+         << " canonical clauses:";
+    for (const auto& cv : info.sorted_canon_clauses) {
+      cout << " (";
+      for (uint32_t idx = 0; idx < cv.size(); ++idx) {
+        if (idx) cout << ",";
+        cout << cv[idx];
+      }
+      cout << ")";
+    }
+    cout << endl;
+  );
 
   info.valid = true;
   return info;

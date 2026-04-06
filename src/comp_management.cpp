@@ -71,6 +71,19 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
       const CanonInfo canon = ana.compute_canon_info(*p_new_comp, hash_seed, conf.wl_canonize_threshold);
       if (canon.valid) stats.wl_canon_computed++;
       else stats.wl_canon_skipped++;
+#ifdef VERBOSE_DEBUG
+      if (canon.valid) {
+        cout << COLYEL2 "WL canon computed for comp nVars=" << p_new_comp->nVars()
+             << " hash=0x" << std::hex << canon.hash << std::dec
+             << " nclauses=" << canon.sorted_canon_clauses.size()
+             << " canon_vars:";
+        for (uint32_t cv : canon.canon_vars) cout << " " << cv;
+        cout << endl;
+      } else {
+        cout << COLYEL2 "WL canon skipped for comp nVars=" << p_new_comp->nVars()
+             << " (threshold=" << conf.wl_canonize_threshold << ")" << endl;
+      }
+#endif
       void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc, canon.valid ? &canon : nullptr);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
@@ -93,7 +106,9 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         if (canon.valid) stats.wl_canon_hits++;
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."
-            << " num vars: " << p_new_comp->nVars() << " vars: ";
+            << " num vars: " << p_new_comp->nVars()
+            << " wl_canonical=" << (canon.valid ? "yes" : "no")
+            << " vars: ";
         all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif

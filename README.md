@@ -36,6 +36,36 @@ If this is somehow not what you want, you can also build it. See the [GitHub
 Action](https://github.com/meelgroup/ganak/actions/workflows/build.yml) for the
 specific set of steps.
 
+### Building statically
+
+To build a static binary, you first need to build GMP with position-independent code
+enabled. GMP's hand-optimised assembly is normally compiled without `-fPIC` (fine for
+a native static binary), but `-fPIC` is required whenever the static `.a` is linked
+into a shared object — for example, the Python extension (`.so`). Passing `--with-pic`
+to GMP's `configure` makes both uses work:
+
+```shell
+wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+tar xf gmp-6.3.0.tar.xz
+cd gmp-6.3.0
+./configure --enable-static --enable-cxx --enable-shared --with-pic
+make -j$(nproc)
+sudo make install
+cd ..
+```
+
+Then point CMake to the installed GMP static libraries (note: use `/usr/local/lib/`,
+not a custom build directory, as those may be compiled for the wrong architecture):
+
+```shell
+mkdir build && cd build
+cmake -DBUILD_SHARED_LIBS=OFF \
+    -DGMPXX_LIBRARY=/usr/local/lib/libgmpxx.a \
+    -DGMP_INCLUDE_DIR=/usr/local/include \
+    ..
+make -j$(nproc)
+```
+
 ## Usage
 Ganak takes a CNF in a special, DIMACS-like format as specified by the model
 counting competition
@@ -114,6 +144,88 @@ which means that the probability of the wrong count is at most
 `6.45757296e-10`, i.e. less than 1 in a billion.
 
 If you must have a non-probabilistic count, you can use the `--prob 0` flag.
+
+## Python Package (pyganak)
+
+Ganak is available as a Python package on [PyPI](https://pypi.org/project/pyganak/):
+
+```bash
+pip install pyganak
+```
+
+Pre-built wheels are available for Linux (x86-64, ARM64) and macOS (Apple Silicon, Intel).
+
+### Unweighted counting
+
+```python
+from pyganak import Counter
+
+c = Counter()
+c.add_clause([1, 2])      # x1 OR x2
+c.add_clause([-1, 2])     # NOT x1 OR x2
+print(c.count())          # → 2  (exact Python int, arbitrary precision)
+```
+
+### Weighted counting
+
+```python
+from pyganak import WeightedCounter
+
+c = WeightedCounter()
+c.add_clause([1, 2])           # x1 OR x2
+
+# Set weights for both polarities of each variable.
+c.set_lit_weight( 1, 0.3)     # weight of  x1 = 0.3
+c.set_lit_weight(-1, 0.7)     # weight of ¬x1 = 0.7
+c.set_lit_weight( 2, 0.4)     # weight of  x2 = 0.4
+c.set_lit_weight(-2, 0.6)     # weight of ¬x2 = 0.6
+
+# Models: (T,T)=0.12  (T,F)=0.18  (F,T)=0.28  → total=0.58
+print(c.count())               # → 0.58  (Python float)
+```
+
+Weights are supplied as Python `float` (double) values.  Internally,
+`WeightedCounter` uses [MPFR](https://www.mpfr.org/) floating-point
+arithmetic at configurable precision (default 128 bits, roughly 38 significant
+decimal digits).  However, because floating-point arithmetic is **not
+associative**, the result is a high-precision approximation rather than an
+exact value — the order in which terms are accumulated can affect the last few
+bits of the result.  For exact rational weighted counting use `--mode 1` from
+the command line (or the C++ library with `FGenMpq`).
+
+The `prec` constructor argument controls the MPFR precision in bits:
+
+```python
+c = WeightedCounter(prec=256)   # 256-bit internal precision
+```
+
+### Building from source
+
+Build and install into a venv (requires GMP and MPFR:
+`apt-get install libgmp-dev libmpfr-dev` / `brew install gmp mpfr`):
+
+```bash
+git clone --recurse-submodules https://github.com/meelgroup/ganak
+cd ganak
+python -m venv venv
+venv/bin/pip install .
+```
+
+For iterative development (rebuilding only the extension after CMake changes):
+
+```bash
+# Enable the Python extension (only needed once):
+cmake -DBUILD_PYTHON_EXTENSION=ON build
+
+# Rebuild after editing python/src/pyganak.cpp:
+cmake --build build --target pyganak -j$(nproc)
+
+# Run tests:
+venv/bin/pip install pytest
+PYTHONPATH=build/lib venv/bin/pytest python/tests/ -v
+```
+
+See `python/README.md` for the full API reference.
 
 ## Using as a Library
 Ganak can be used as a library. The file `src/example.cpp` gives an example of

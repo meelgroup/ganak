@@ -116,6 +116,7 @@ int do_arjun = 1;
 int arjun_gates = 1;
 /* int do_breakid = 0; */
 int arjun_extend_max_confl = 1000;
+int arjun_backbone_max_confl = -1;
 int do_pre_backbone = 0;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
@@ -196,6 +197,7 @@ void add_ganak_options()
     add_arg("--prebackbone", do_pre_backbone, fc_int, "Perform backbone before other things");
     add_arg("--puura", do_puura, fc_int, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, fc_int, "Perform backbone in Puura");
+    add_arg("--puurabackbonemaxconfl", arjun_backbone_max_confl, fc_int, "Max conflicts for backbone in Puura (-1 = unlimited)");
     add_arg("--puuraautarky", etof_conf.do_autarky, fc_int, "Do autarky in Puura");
     add_arg("--arjuniter1", simp_conf.iter1, fc_int, "Arjun's iter1");
     add_arg("--arjuniter2", simp_conf.iter2, fc_int, "Arjun's iter2");
@@ -393,6 +395,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
+  simp_conf.backbone_max_confl = arjun_backbone_max_confl;
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);

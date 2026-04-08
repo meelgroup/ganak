@@ -105,6 +105,7 @@ target_link_libraries(ganak-bin
       PkgConfig::flint
       PkgConfig::MPFR
       PkgConfig::GMP
+      ${MPFI_LIBRARIES}
       approxmc
       ${MPFI_LIBRARIES}
 )

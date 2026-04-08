@@ -52,6 +52,16 @@ jobs:
         cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
         cd ..
 
+    - name: Build MPFI for wasm
+      run: |
+        wget https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
+        tar xzf mpfi-1.5.4.tar.gz
+        cd mpfi-1.5.4
+        emconfigure ./configure --with-mpfr=$EMINSTALL --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+        emmake make -j$(nproc)
+        emmake make install
+        cd ..
+
     - name: Build FLINT for wasm
       run: |
         wget https://github.com/flintlib/flint/releases/download/v3.4.0/flint-3.4.0.tar.gz

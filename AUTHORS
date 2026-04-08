@@ -17,4 +17,4 @@ The authors are:
 * VSADS by Tian Sang, Paul Beame, and Henry Kautz
 * CCAnr by Shaowei Cai, Chuan Luo, Kaile Su
 * Based on SharpSAT by Marc Thurley
-* Randal Bryant for BDDs
+* Randal Bryant for BDDs and digit_precision_mpfi

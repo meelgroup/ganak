@@ -1,0 +1,10 @@
+c c RUN: %solver --mode 3 --npolyvars 2 %s | %OutputCheck %s
+p cnf 2 1
+c t wmc
+1 2 0
+c p weight 1 x0+1 0
+c p weight -1 x0 0
+c p weight 2 x1+1 0
+c p weight -2 x1 0
+c c CHECK: ^s SATISFIABLE$
+c c CHECK: ^c s exact poly 3\*x0\*x1 \+ 2\*x0 \+ 2\*x1 \+ 1$

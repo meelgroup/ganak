@@ -552,6 +552,12 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         print_log(od->val);
         mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
       }
+    } else if (mode == 3) {
+      cout << "c s exact poly " << *cnt << endl;
+    } else if (mode == 4) {
+      cout << "c s exact parity " << *cnt << endl;
+    } else if (mode == 5) {
+      cout << "c s exact modprime " << *cnt << endl;
     }
     if (counter.get_is_approximate()) {
       cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;

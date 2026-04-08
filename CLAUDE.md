@@ -18,10 +18,10 @@ Always disable ccache and build the `ganak` target:
 CCACHE_DISABLE=1 cmake --build build --target ganak -j8 2>&1 | tail -20
 ```
 
-The build directory is `build/`. If it doesn't exist or CMake needs to be re-run:
+The build directory is `build/`. Go to that directory, and run:
 
 ```
-mkdir -p build && cd build && cmake ..
+./build_norm.sh
 ```
 
 Common build options:

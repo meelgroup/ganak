@@ -388,7 +388,13 @@ def main():
                         help="Glob pattern for input files (default: 'out-ganak*/*cnf*')")
     parser.add_argument("--verbose", action="store_true",
                         help="Print each file being parsed")
+    parser.add_argument("--reparse", action="store_true",
+                        help="Delete data.sqlite3 and reparse all files from scratch")
     args = parser.parse_args()
+
+    if args.reparse and os.path.exists("data.sqlite3"):
+        os.remove("data.sqlite3")
+        print("Deleted data.sqlite3, reparsing all files")
 
     already_parsed = load_already_parsed("data.sqlite3")
     if already_parsed:

@@ -301,7 +301,7 @@ def print_preproc_diffs(table_todo, fname_like, verbose=False):
 
     fnames_sql = ",".join("'" + f + "'" for f in diff_fnames)
     cur.execute(
-        f"SELECT fname, replace(dirname,'out-ganak-mc',''), new_nvars, indep_sz, opt_indep_sz, irred_cls"
+        f"SELECT fname, replace(dirname,'out-ganak-mc',''), new_nvars, indep_sz, opt_indep_sz, irred_cls, arjun_time, ganak_time"
         f" FROM data"
         f" WHERE dirname IN ({dirs}) AND ganak_ver IN ({vers})"
         f"   AND fname IN ({fnames_sql}) AND new_nvars IS NOT NULL{fname_like}"
@@ -310,9 +310,11 @@ def print_preproc_diffs(table_todo, fname_like, verbose=False):
     rows = cur.fetchall()
     con.close()
 
-    headers = ["fname", "dirname", "nvars", "indepsz", "opt_isz", "irred_cls"]
-    str_rows = [(f, d, str(nv), str(isz), str(oisz), str(ic))
-                for f, d, nv, isz, oisz, ic in rows]
+    headers = ["fname", "dirname", "nvars", "indepsz", "opt_isz", "irred_cls", "arjun_t", "ganak_t"]
+    str_rows = [(f, d, str(nv), str(isz), str(oisz), str(ic),
+                 f"{at:.2f}" if at is not None else "NULL",
+                 f"{gt:.2f}" if gt is not None else "NULL")
+                for f, d, nv, isz, oisz, ic, at, gt in rows]
     widths = [max(len(h), max((len(r[i]) for r in str_rows), default=0))
               for i, h in enumerate(headers)]
     sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
@@ -1840,6 +1842,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1282412-0", # new preproc v2
     # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
     # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
+    # "out-ganak-mccomp2324-1294423-0", # improve CMS's subsumption/strengthening, fix oracle to work non-backbone, add units from oracle, allow to set linit to cadiback
+    "out-ganak-mccomp2324-1296621", # same as above, but fixing CMS bug
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

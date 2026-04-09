@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import collections
 import csv
 import decimal
 import glob
@@ -86,7 +87,7 @@ def timeout_parse(fname):
                 call = call.replace(" -t real", "")
                 if "doalarm 3600" in call:
                     call = call.split("doalarm 3600")[1]
-                if "doalarm 1800" in call:
+                elif "doalarm 1800" in call:
                     call = call.split("doalarm 1800")[1]
                 elif "doalarm 60" in call:
                     call = call.split("doalarm 60")[1]
@@ -398,7 +399,10 @@ def main():
 
     already_parsed = load_already_parsed("data.sqlite3")
     if already_parsed:
-        print(f"Skipping {len(already_parsed)} already-parsed (dirname, fname) pairs from data.sqlite3")
+        skip_counts = collections.Counter(dirname for dirname, _ in already_parsed)
+        print(f"Skipping {len(already_parsed)} already-parsed files from data.sqlite3:")
+        for d in sorted(skip_counts):
+            print(f"  {d}: {skip_counts[d]} files")
 
     file_list = glob.glob(args.files)
     files = {}
@@ -480,6 +484,11 @@ def main():
     if not files:
         print("No new files to insert into data.sqlite3")
         return
+
+    new_counts = collections.Counter(v["dirname"] for v in files.values())
+    print(f"Parsing {len(files)} new files:")
+    for d in sorted(new_counts):
+        print(f"  {d}: {new_counts[d]} files")
 
     cols = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time", "ganak_mem_MB",
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
@@ -777,7 +786,7 @@ def main():
         ))
 
     conn.executemany(
-        "INSERT INTO data VALUES (" + ",".join(["?"] * 44) + ")",
+        "INSERT INTO data VALUES (" + ",".join(["?"] * 45) + ")",
         data_rows
     )
 

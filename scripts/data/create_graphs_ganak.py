@@ -1843,7 +1843,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
     # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
     # "out-ganak-mccomp2324-1294423-0", # improve CMS's subsumption/strengthening, fix oracle to work non-backbone, add units from oracle, allow to set linit to cadiback
-    "out-ganak-mccomp2324-1296621", # same as above, but fixing CMS bug
+    # "out-ganak-mccomp2324-1296621-", # same as above, but fixing CMS bug
+    "out-ganak-mccomp2324-1299016-0", # trying to get back to old ganak speed -- CMS changes (reverts)
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

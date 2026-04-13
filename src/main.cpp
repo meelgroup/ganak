@@ -120,6 +120,7 @@ int do_pre_backbone = 0;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
+int arjun_backw_type = 0;
 int arjun_backw_order = 9;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 ArjunNS::SimpConf simp_conf;
@@ -205,6 +206,7 @@ void add_ganak_options()
     add_arg("--arjunsimplev", arjun_simp_level, fc_int, "Arjun simp level");
     add_arg("--arjunbackwmaxc", arjun_backw_maxc, fc_int, "Arjun backw max confl");
     add_arg("--arjunbackworder", arjun_backw_order, fc_int, "Arjun static ordering for backward elimination. 0=min(pos,neg)-desc, 1=sum-desc, 2=max-desc, 3=min-asc, 4=sum-asc, 5=balance-then-min, 6=binary-cls-desc, 7=clause-size-weighted-desc, 8=long-cls-desc, 9=pos*neg-desc (default), 10=random, 46=borda(min,bin)-equal (good)");
+    add_arg("--arjunbackwtype", arjun_backw_type, fc_int, "Arjun Backward Type (bve=0 or more=1)");
     add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, fc_int, "Arjun's oracle should find bins or not");
     add_arg("--arjunoraclemult", simp_conf.oracle_mult, fc_double, "Multiplier for Arjun's oracle timeout when it is called from Puura");
     add_arg("--bce", etof_conf.do_bce, fc_int, "Do static BCE");
@@ -394,6 +396,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_probe_based(do_probe_based);
   arjun.set_simp(arjun_simp_level);
   arjun.set_backw_max_confl(arjun_backw_maxc);
+  arjun.set_backw_type(arjun_backw_type);
   arjun.set_backw_order(arjun_backw_order);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);

@@ -30,6 +30,8 @@ def find_gpmc_time_cnt(fname):
             elif line.startswith("c s exact arb int") or line.startswith("c s exact arb prec-sci"):
                 val = line.split()[5]
                 result["cnt"] = len(val) if len(val) > 1000 else decimal.Decimal(val).log10()
+            elif line.startswith("c s log10-estimate"):
+                result["mc_log10"] = float(line.split()[3])
             elif line.startswith("c o Components"):
                 result["compsK"] = int(line.split()[4]) / 1000
             elif line.startswith("c o conflicts"):
@@ -270,6 +272,8 @@ def parse_ganak_output(fname):
             elif line.startswith("c o Long irred cls/tri") and "irred_long" not in result:
                 result["irred_long"] = int(line.split()[5])
                 result["irred_tri"] = int(line.split()[6])
+            elif line.startswith("c s log10-estimate"):
+                result["mc_log10"] = float(line.split()[3])
 
     if aver is not None:
         aver = aver[:8]
@@ -681,7 +685,8 @@ def main():
           irred_bin INT,
           irred_long INT,
           irred_tri INT,
-          irred_cls INT
+          irred_cls INT,
+          mc_log10 FLOAT
         );
         CREATE TABLE IF NOT EXISTS preproc (
           dirname STRING NOT NULL,
@@ -783,10 +788,11 @@ def main():
             n(f.get("irred_long", "")),
             n(f.get("irred_tri", "")),
             n(f.get("irred_cls", "")),
+            n(f.get("mc_log10", "")),
         ))
 
     conn.executemany(
-        "INSERT INTO data VALUES (" + ",".join(["?"] * 45) + ")",
+        "INSERT INTO data VALUES (" + ",".join(["?"] * 46) + ")",
         data_rows
     )
 

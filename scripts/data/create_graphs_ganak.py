@@ -437,6 +437,167 @@ def print_two_dir_diffs(dir1, dir2, fname_like, verbose=False):
     print(sep)
 
 
+def print_solved_only_diffs(dir1, dir2, fname_like, verbose=False):
+    """For the pair (dir1, dir2), print two tables:
+      - files solved by dir1 but NOT by dir2
+      - files solved by dir2 but NOT by dir1
+    'Solved' means ganak_time IS NOT NULL.
+    """
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT fname, dirname, new_nvars, indep_sz, opt_indep_sz,"
+        f"       irred_cls, ganak_time, arjun_time, td_width"
+        f" FROM data WHERE dirname IN ('{dir1}','{dir2}'){fname_like}"
+    )
+    per_dir = {dir1: {}, dir2: {}}
+    for fname, dirname, nvars, isz, oisz, irred, gt, at, td in cur.fetchall():
+        per_dir[dirname][fname] = (nvars, isz, oisz, irred, gt, at, td)
+    con.close()
+
+    def solved(d, f):
+        row = per_dir[d].get(f)
+        return row is not None and row[4] is not None
+
+    all_fnames = set(per_dir[dir1]) | set(per_dir[dir2])
+    only_in_1 = sorted(f for f in all_fnames if solved(dir1, f) and not solved(dir2, f))
+    only_in_2 = sorted(f for f in all_fnames if solved(dir2, f) and not solved(dir1, f))
+
+    d1s = dir1.replace("out-ganak-mc", "")
+    d2s = dir2.replace("out-ganak-mc", "")
+
+    def fmt_val(v):
+        return "N/A" if v is None else str(v)
+    def fmt_time(v):
+        return "N/A" if v is None else f"{v:.1f}"
+
+    headers = ["fname",
+               "nvars-d1", "nvars-d2",
+               "indep-d1", "indep-d2",
+               "opt_i-d1", "opt_i-d2",
+               "irred-d1", "irred-d2",
+               "gnkT-d1",  "gnkT-d2",
+               "arjT-d1",  "arjT-d2",
+               "td-d1",    "td-d2"]
+
+    def build_row(f):
+        a = per_dir[dir1].get(f, (None,)*7)
+        b = per_dir[dir2].get(f, (None,)*7)
+        return (f,
+                fmt_val(a[0]),  fmt_val(b[0]),
+                fmt_val(a[1]),  fmt_val(b[1]),
+                fmt_val(a[2]),  fmt_val(b[2]),
+                fmt_val(a[3]),  fmt_val(b[3]),
+                fmt_time(a[4]), fmt_time(b[4]),
+                fmt_time(a[5]), fmt_time(b[5]),
+                fmt_val(a[6]),  fmt_val(b[6]))
+
+    def print_section(label, fnames):
+        str_rows = [build_row(f) for f in fnames]
+        widths = [max(len(h), max((len(row[i]) for row in str_rows), default=0))
+                  for i, h in enumerate(headers)]
+        sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+        fmt_row = "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |"
+        print(f"\n{BLUE}{label}{RESET}")
+        print(f"  d1 = {d1s}")
+        print(f"  d2 = {d2s}")
+        print(sep)
+        print(fmt_row.format(*headers))
+        print(sep)
+        if not str_rows:
+            print(f"{GREEN}EMPTY{RESET}")
+        else:
+            for row in str_rows:
+                print(fmt_row.format(*row))
+        print(sep)
+
+    print_section(
+        f"Solved only by d1 ({d1s}), not by d2 ({d2s})  [{len(only_in_1)} files]",
+        only_in_1)
+    print_section(
+        f"Solved only by d2 ({d2s}), not by d1 ({d1s})  [{len(only_in_2)} files]",
+        only_in_2)
+
+
+def print_solution_mismatches(dir1, dir2, fname_like, verbose=False):
+    """For the pair (dir1, dir2), print files where BOTH solved but the
+    log10-estimate of the model count differs. Table is all red."""
+    con = sqlite3.connect("data.sqlite3")
+    cur = con.cursor()
+    cur.execute(
+        f"SELECT a.fname,"
+        f"  a.new_nvars, b.new_nvars,"
+        f"  a.indep_sz, b.indep_sz,"
+        f"  a.opt_indep_sz, b.opt_indep_sz,"
+        f"  a.irred_cls, b.irred_cls,"
+        f"  a.ganak_time, b.ganak_time,"
+        f"  a.arjun_time, b.arjun_time,"
+        f"  a.mc_log10, b.mc_log10"
+        f" FROM data a JOIN data b ON a.fname=b.fname"
+        f" WHERE a.dirname='{dir1}' AND b.dirname='{dir2}'"
+        f"   AND a.ganak_time IS NOT NULL AND b.ganak_time IS NOT NULL"
+        f"   AND a.mc_log10 IS NOT NULL AND b.mc_log10 IS NOT NULL{fname_like}"
+    )
+    rows = cur.fetchall()
+    con.close()
+
+    # Compare with a small tolerance to avoid floating-point noise.
+    def mismatched(a, b):
+        return abs(a - b) > 1e-6 * max(1.0, abs(a), abs(b))
+
+    bad = [r for r in rows if mismatched(r[13], r[14])]
+    d1s = dir1.replace("out-ganak-mc", "")
+    d2s = dir2.replace("out-ganak-mc", "")
+
+    def fmt_val(v):
+        return "N/A" if v is None else str(v)
+    def fmt_time(v):
+        return "N/A" if v is None else f"{v:.1f}"
+    def fmt_log(v):
+        return "N/A" if v is None else f"{v:.6g}"
+
+    headers = ["fname",
+               "nvars-d1", "nvars-d2",
+               "indep-d1", "indep-d2",
+               "opt_i-d1", "opt_i-d2",
+               "irred-d1", "irred-d2",
+               "gnkT-d1",  "gnkT-d2",
+               "arjT-d1",  "arjT-d2",
+               "log10-d1", "log10-d2"]
+
+    str_rows = []
+    for r in bad:
+        str_rows.append((
+            r[0],
+            fmt_val(r[1]),  fmt_val(r[2]),
+            fmt_val(r[3]),  fmt_val(r[4]),
+            fmt_val(r[5]),  fmt_val(r[6]),
+            fmt_val(r[7]),  fmt_val(r[8]),
+            fmt_time(r[9]), fmt_time(r[10]),
+            fmt_time(r[11]), fmt_time(r[12]),
+            fmt_log(r[13]), fmt_log(r[14]),
+        ))
+
+    widths = [max(len(h), max((len(row[i]) for row in str_rows), default=0))
+              for i, h in enumerate(headers)]
+    sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+    fmt_row = "| " + " | ".join(f"{{:<{w}}}" for w in widths) + " |"
+
+    title = f"SOLUTION MISMATCH (both solved, different log10): {d1s} vs {d2s}  [{len(bad)} files]"
+    print(f"\n{RED}{title}{RESET}")
+    print(f"{RED}  d1 = {d1s}{RESET}")
+    print(f"{RED}  d2 = {d2s}{RESET}")
+    print(f"{RED}{sep}{RESET}")
+    print(f"{RED}{fmt_row.format(*headers)}{RESET}")
+    print(f"{RED}{sep}{RESET}")
+    if not str_rows:
+        print(f"{GREEN}EMPTY{RESET}")
+    else:
+        for row in str_rows:
+            print(f"{RED}{fmt_row.format(*row)}{RESET}")
+    print(f"{RED}{sep}{RESET}")
+
+
 def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin=None, xlabel=None):
     for dir, ver in table_todo:
         con = sqlite3.connect("data.sqlite3")
@@ -1838,13 +1999,15 @@ only_dirs = [
     # "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
     # "out-ganak-mccomp2324-1279568-0", # release
     # "out-ganak-mccomp2324-1281478-0", # more data
-    "out-ganak-mccomp2324-1282000-0", # new preproc
+    # "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
     # "out-ganak-mccomp2324-1282412-0", # new preproc v2
     # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
     # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
     # "out-ganak-mccomp2324-1294423-0", # improve CMS's subsumption/strengthening, fix oracle to work non-backbone, add units from oracle, allow to set linit to cadiback
     # "out-ganak-mccomp2324-1296621-", # same as above, but fixing CMS bug
-    "out-ganak-mccomp2324-1299016-0", # trying to get back to old ganak speed -- CMS changes (reverts)
+    "out-ganak-mccomp2324-1299016-0", # trying to get back to old ganak speed -- CMS changes (reverts) GOOOOOOOD!!!!
+    #"out-ganak-mccomp2324-1315264-", # Vivification, new order for backw, new setup for backw -- GOTO BUG!
+    "out-ganak-mccomp2324-1318712-3", # fixed goto1 and now vivif is turned on/off with backwtype=0
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -1939,6 +2102,8 @@ def main():
     unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
     for dir1, dir2 in itertools.combinations(unique_dirs, 2):
         print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
+        print_solved_only_diffs(dir1, dir2, fname_like, args.verbose)
+        print_solution_mismatches(dir1, dir2, fname_like, args.verbose)
 
     if args.verbose:
         print("Generating gnuplot script...")

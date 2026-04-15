@@ -5,10 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 echo "Rebuilding all in $BASE_DIR"
 
-cd "$BASE_DIR/cadical" || exit 1
+cd "$BASE_DIR/cadical/build" || exit 1
 ./build_static_release.sh
 
-cd "$BASE_DIR/cadiback" || exit 1
+cd "$BASE_DIR/cadiback/build" || exit 1
 ./build_static_release.sh
 
 cd "$BASE_DIR/breakid/build" || exit 1

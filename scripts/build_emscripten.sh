@@ -14,7 +14,8 @@ rm -rf rjun-src
 rm -rf deps
 rm -rf _deps
 SAT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-emcmake cmake -DCMAKE_INSTALL_PREFIX=$EMINSTALL -DENABLE_TESTING=OFF \
+emcmake cmake -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$EMINSTALL -DENABLE_TESTING=OFF \
     -Dcadical_DIR="${SAT_DIR}/cadical/build" \
     -Dcadiback_DIR="${SAT_DIR}/cadiback/build" \
     -Dcryptominisat5_DIR="${SAT_DIR}/cryptominisat/build" \

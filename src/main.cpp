@@ -121,7 +121,7 @@ int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
 int arjun_backw_type = 0;
-int arjun_backw_order = 9;
+int arjun_backw_order = 0;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
 ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;

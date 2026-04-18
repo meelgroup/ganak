@@ -91,6 +91,13 @@ set_target_properties(ganak PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+# On MinGW both DLL and EXE import libs share the libganak.dll.a name,
+# so the ganak library and ganak-bin executable (OUTPUT_NAME=ganak)
+# collide on the import lib. Rename the library's output on Windows to
+# avoid the clash.
+if(WIN32)
+  set_target_properties(ganak PROPERTIES OUTPUT_NAME ganakwin)
+endif()
 
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)

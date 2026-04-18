@@ -2009,7 +2009,7 @@ only_dirs = [
     #"out-ganak-mccomp2324-1315264-", # Vivification, new order for backw, new setup for backw -- GOTO BUG!
     # "out-ganak-mccomp2324-1318712-3", # fixed goto1 and now vivif is turned on/off with backwtype=0
     # "out-ganak-mccomp2324-1351541-", # let's fix it, plus llm improve it(?) -- NOOOOO, we left the CMS nonsense in!
-    "out-ganak-mccomp2324-1358071-1", # same as above, but with CMS changes reverted
+    "out-ganak-mccomp2324-1358071-1", # same as above, but with CMS changes reverted -- Current best (kinda...)
     # "out-ganak-mccomp2324-1358071-", # same as above, but with CMS changes reverted
 ]
 # only_dirs = [

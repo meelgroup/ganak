@@ -14,16 +14,40 @@ jobs:
       fail-fast: true
 
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-latest]
         build_type: [Release]
         shared_libs: [ON, OFF]
+        exclude:
+          # Windows only builds statically: the shared build scatters DLLs
+          # across _deps subdirs so ganak.exe can't find them at runtime.
+          - os: windows-latest
+            shared_libs: ON
 
     steps:
+    - name: Set up MSYS2
+      if: contains(matrix.os, 'windows')
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-gmp
+          mingw-w64-x86_64-mpfr
+          mingw-w64-x86_64-flint
+          mingw-w64-x86_64-zlib
+          mingw-w64-x86_64-pkgconf
+          make
+
     - uses: actions/setup-python@v5
+      if: "!contains(matrix.os, 'windows')"
       with:
         python-version: '3.10'
 
     - name: Setup ccache
+      if: "!contains(matrix.os, 'windows')"
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.shared_libs }}
@@ -78,6 +102,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev
 
     - name: Install flint
+      if: "!contains(matrix.os, 'windows')"
       run: |
         wget https://github.com/flintlib/flint/releases/download/v3.2.0-rc1/flint-3.2.0-rc1.tar.gz
         tar xzf flint-3.2.0-rc1.tar.gz
@@ -92,7 +117,8 @@ jobs:
         path: project
         submodules: 'true'
 
-    - name: Build project
+    - name: Build project (non-Windows)
+      if: "!contains(matrix.os, 'windows')"
       run: |
         cd project
         mkdir -p build && cd build
@@ -105,16 +131,44 @@ jobs:
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
 
+    - name: Build project (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        cd project
+        mkdir -p build && cd build
+        cmake \
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
+        -DENABLE_TESTING=OFF \
+        -G Ninja \
+        -S ..
+        cmake --build . --config ${{matrix.build_type}} -v
+
     - name: Test
+      if: "!contains(matrix.os, 'windows')"
       run: ctest -C ${{matrix.build_type}} --verbose
 
-    - name: run it to check it executes
+    - name: run it to check it executes (non-Windows)
+      if: "!contains(matrix.os, 'windows')"
       run: |
         echo "Running version command"
         ./project/build/ganak --version
         echo $?
         echo "Running help command"
         ./project/build/ganak --help
+        echo $?
+
+    - name: run it to check it executes (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        EXE=./project/build/ganak.exe
+        echo "Running: $EXE --version"
+        $EXE --version
+        echo $?
+        echo "Running: $EXE --help"
+        $EXE --help
         echo $?
 
 
@@ -155,5 +209,15 @@ jobs:
         name: ganak-mac-arm64
         path: |
           project/build/ganak
+          project/build/lib/*
+          project/build/include/*
+
+    - name: Upload Artifact - Windows
+      if: matrix.os == 'windows-latest' && matrix.shared_libs == 'OFF'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ganak-windows-x86_64
+        path: |
+          project/build/ganak.exe
           project/build/lib/*
           project/build/include/*

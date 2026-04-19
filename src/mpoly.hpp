@@ -632,26 +632,26 @@ public:
   explicit LaurentPolyGen(int nvars)
       : ctx(std::make_shared<AutoPoly>(nvars)) {}
 
-  std::unique_ptr<CMSat::Field> zero() const final {
+  [[nodiscard]] std::unique_ptr<CMSat::Field> zero() const final {
     return std::make_unique<LaurentPoly>(ctx);
   }
 
-  std::unique_ptr<CMSat::Field> one() const final {
+  [[nodiscard]] std::unique_ptr<CMSat::Field> one() const final {
     auto p = std::make_unique<LaurentPoly>(ctx);
     p->set_one();
     return p;
   }
 
-  std::unique_ptr<FieldGen> dup() const final {
+  [[nodiscard]] std::unique_ptr<FieldGen> dup() const final {
     return std::make_unique<LaurentPolyGen>(*this);
   }
 
-  bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
+  [[nodiscard]] bool larger_than(const CMSat::Field& a, const CMSat::Field& b) const final {
     const auto& ad = dynamic_cast<const LaurentPoly&>(a);
     const auto& bd = dynamic_cast<const LaurentPoly&>(b);
     return fmpq_mpoly_cmp(ad.poly, bd.poly, ctx->ctx) == -1;
   }
 
-  bool weighted() const final { return true; }
-  bool exact() const final { return true; }
+  [[nodiscard]] bool weighted() const final { return true; }
+  [[nodiscard]] bool exact() const final { return true; }
 };

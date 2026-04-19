@@ -14,6 +14,8 @@ GREEN  = "\033[92m"
 RED    = "\033[91m"
 RESET = "\033[0m"
 
+TMP_DIR = "tmp"
+
 
 def convert_to_cdf(fname, fname2):
     with open(fname, "r") as f:
@@ -107,14 +109,15 @@ def build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fnam
 
             if verbose:
                 print(f"  Processing dir={dir} ver={ver}")
-            fname = "run-"+dir+".csv"
-            with open("gencsv.sqlite", "w") as f:
+            fname = f"{TMP_DIR}/run-"+dir+".csv"
+            gencsv = f"{TMP_DIR}/gencsv.sqlite"
+            with open(gencsv, "w") as f:
                 f.write(".headers off\n")
                 f.write(".mode csv\n")
                 f.write(".output "+fname+"\n")
                 f.write("select ganak_time from data where dirname='"+dir+"' and ganak_ver='"+ver+"'\n and ganak_time is not NULL "+fname_like)
-            os.system("sqlite3 data.sqlite3 < gencsv.sqlite")
-            os.unlink("gencsv.sqlite")
+            os.system(f"sqlite3 data.sqlite3 < {gencsv}")
+            os.unlink(gencsv)
 
             fname2 = fname + ".gnuplotdata"
             num_solved = convert_to_cdf(fname, fname2)
@@ -171,7 +174,8 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         print(f"\n{BLUE}{title}{RESET}")
         if only_counted:
             counted_req = " and ganak_time is not NULL "
-        with open("gen_table.sqlite", "w") as f:
+        gen_table = f"{TMP_DIR}/gen_table.sqlite"
+        with open(gen_table, "w") as f:
             f.write(".mode table\n")
             # f.write(".mode colum\n")
             # f.write(".headers off\n")
@@ -181,8 +185,8 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
             if verbose:
                 print(f"  Summary query: {query[:120]}...")
             f.write(query)
-        os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
-        os.unlink("gen_table.sqlite")
+        os.system(f"sqlite3 data.sqlite3 < {gen_table}")
+        os.unlink(gen_table)
 
 
 def _median_subquery(col, dir, ver, fname_like, nozero=False):
@@ -220,11 +224,12 @@ def print_median_tables(table_todo, fname_like, verbose=False):
     query = "\nUNION ALL\n".join(union_parts)
     if verbose:
         print(f"  Median table query ({len(table_todo)} rows)")
-    with open("gen_table.sqlite", "w") as f:
+    gen_table = f"{TMP_DIR}/gen_table.sqlite"
+    with open(gen_table, "w") as f:
         f.write(".mode table\n")
         f.write(query + "\n")
-    os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
-    os.unlink("gen_table.sqlite")
+    os.system(f"sqlite3 data.sqlite3 < {gen_table}")
+    os.unlink(gen_table)
 
 
 def print_instance_stats_table(table_todo, fname_like, verbose=False):
@@ -263,11 +268,12 @@ def print_instance_stats_table(table_todo, fname_like, verbose=False):
         print(f"\n  [{label}]")
         if verbose:
             print(f"  Instance stats query ({len(table_todo)} rows)")
-        with open("gen_table.sqlite", "w") as f:
+        gen_table = f"{TMP_DIR}/gen_table.sqlite"
+        with open(gen_table, "w") as f:
             f.write(".mode table\n")
             f.write(query + "\n")
-        os.system("sqlite3 data.sqlite3 < gen_table.sqlite")
-        os.unlink("gen_table.sqlite")
+        os.system(f"sqlite3 data.sqlite3 < {gen_table}")
+        os.unlink(gen_table)
 
 
 def print_preproc_diffs(table_todo, fname_like, verbose=False):
@@ -626,13 +632,13 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
         title = f"{label}: {dir} [ganak_time-arjun_time >= 100s, n={len(values)}]"
         safe_dir = re.sub(r'[^a-zA-Z0-9_-]', '_', dir)
         safe_col = re.sub(r'[^a-zA-Z0-9_-]', '_', col)
-        pdf_file = f"hist_{safe_col}_{safe_dir}.pdf"
-        png_file = f"hist_{safe_col}_{safe_dir}.png"
+        pdf_file = f"{TMP_DIR}/hist_{safe_col}_{safe_dir}.pdf"
+        png_file = f"{TMP_DIR}/hist_{safe_col}_{safe_dir}.png"
         print(f"\n{BLUE}{title}{RESET}")
         print(f"  PDF: {pdf_file}  PNG: {png_file}")
 
-        dat_file = f"hist_{safe_col}_{safe_dir}.dat"
-        gp_file  = f"hist_{safe_col}_{safe_dir}.gnuplot"
+        dat_file = f"{TMP_DIR}/hist_{safe_col}_{safe_dir}.dat"
+        gp_file  = f"{TMP_DIR}/hist_{safe_col}_{safe_dir}.gnuplot"
 
         with open(dat_file, "w") as f:
             for v in values:
@@ -1220,10 +1226,10 @@ def preproc_time_chart(matched_dirs):
         return
 
     lbl = _preproc_file_label(matched_dirs)
-    dat_file  = f"preproc_time_{lbl}.dat"
-    pdf_file  = f"preproc_time_{lbl}.pdf"
-    png_file  = f"preproc_time_{lbl}.png"
-    gp_file   = f"preproc_time_{lbl}.gnuplot"
+    dat_file  = f"{TMP_DIR}/preproc_time_{lbl}.dat"
+    pdf_file  = f"{TMP_DIR}/preproc_time_{lbl}.pdf"
+    png_file  = f"{TMP_DIR}/preproc_time_{lbl}.png"
+    gp_file   = f"{TMP_DIR}/preproc_time_{lbl}.gnuplot"
 
     n = len(rows)
     with open(dat_file, "w") as f:
@@ -1286,10 +1292,10 @@ def preproc_efficiency_chart(matched_dirs):
         return
 
     lbl = _preproc_file_label(matched_dirs)
-    dat_file = f"preproc_eff_{lbl}.dat"
-    pdf_file = f"preproc_eff_{lbl}.pdf"
-    png_file = f"preproc_eff_{lbl}.png"
-    gp_file  = f"preproc_eff_{lbl}.gnuplot"
+    dat_file = f"{TMP_DIR}/preproc_eff_{lbl}.dat"
+    pdf_file = f"{TMP_DIR}/preproc_eff_{lbl}.pdf"
+    png_file = f"{TMP_DIR}/preproc_eff_{lbl}.png"
+    gp_file  = f"{TMP_DIR}/preproc_eff_{lbl}.gnuplot"
 
     n = len(rows)
     with open(dat_file, "w") as f:
@@ -1364,10 +1370,10 @@ def preproc_time_pie_chart(matched_dirs):
         kept.append(("other", other_s))
 
     lbl = _preproc_file_label(matched_dirs)
-    dat_file = f"preproc_timepie_{lbl}.dat"
-    pdf_file = f"preproc_timepie_{lbl}.pdf"
-    png_file = f"preproc_timepie_{lbl}.png"
-    gp_file  = f"preproc_timepie_{lbl}.gnuplot"
+    dat_file = f"{TMP_DIR}/preproc_timepie_{lbl}.dat"
+    pdf_file = f"{TMP_DIR}/preproc_timepie_{lbl}.pdf"
+    png_file = f"{TMP_DIR}/preproc_timepie_{lbl}.png"
+    gp_file  = f"{TMP_DIR}/preproc_timepie_{lbl}.gnuplot"
 
     with open(dat_file, "w") as f:
         f.write("# step  seconds  pct\n")
@@ -1510,10 +1516,10 @@ def preproc_share_chart(matched_dirs):
     width_cm = max(20, n * 2.0)
 
     lbl = _preproc_file_label(matched_dirs)
-    dat_file = f"preproc_share_{lbl}.dat"
-    pdf_file = f"preproc_share_{lbl}.pdf"
-    png_file = f"preproc_share_{lbl}.png"
-    gp_file  = f"preproc_share_{lbl}.gnuplot"
+    dat_file = f"{TMP_DIR}/preproc_share_{lbl}.dat"
+    pdf_file = f"{TMP_DIR}/preproc_share_{lbl}.pdf"
+    png_file = f"{TMP_DIR}/preproc_share_{lbl}.png"
+    gp_file  = f"{TMP_DIR}/preproc_share_{lbl}.gnuplot"
 
     with open(dat_file, "w") as f:
         f.write("# idx  pct_lits  pct_vars  step_name\n")
@@ -1580,10 +1586,10 @@ def preproc_cumulative_chart(matched_dirs):
         return
 
     lbl = _preproc_file_label(matched_dirs)
-    dat_file = f"preproc_cumul_{lbl}.dat"
-    pdf_file = f"preproc_cumul_{lbl}.pdf"
-    png_file = f"preproc_cumul_{lbl}.png"
-    gp_file  = f"preproc_cumul_{lbl}.gnuplot"
+    dat_file = f"{TMP_DIR}/preproc_cumul_{lbl}.dat"
+    pdf_file = f"{TMP_DIR}/preproc_cumul_{lbl}.pdf"
+    png_file = f"{TMP_DIR}/preproc_cumul_{lbl}.png"
+    gp_file  = f"{TMP_DIR}/preproc_cumul_{lbl}.gnuplot"
 
     # Normalise to millions for readability
     cum_lits = cum_cls = cum_vars = 0.0
@@ -1741,10 +1747,10 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
 
         safe1 = re.sub(r'[^a-zA-Z0-9_-]', '_', dir1)
         safe2 = re.sub(r'[^a-zA-Z0-9_-]', '_', dir2)
-        dat_file = f"scatter_{safe1}_vs_{safe2}.dat"
-        pdf_file = f"scatter_{safe1}_vs_{safe2}.pdf"
-        png_file = f"scatter_{safe1}_vs_{safe2}.png"
-        gp_file  = f"scatter_{safe1}_vs_{safe2}.gnuplot"
+        dat_file = f"{TMP_DIR}/scatter_{safe1}_vs_{safe2}.dat"
+        pdf_file = f"{TMP_DIR}/scatter_{safe1}_vs_{safe2}.pdf"
+        png_file = f"{TMP_DIR}/scatter_{safe1}_vs_{safe2}.png"
+        gp_file  = f"{TMP_DIR}/scatter_{safe1}_vs_{safe2}.gnuplot"
 
         with open(dat_file, "w") as f:
             f.write(f"# col1={dir1}  col2={dir2}\n")
@@ -1789,9 +1795,9 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
 
 
 def generate_gnuplot(fname2_s, verbose=False):
-    gnuplotfn = "cdf.gnuplot"
-    pdf_file = "cdf.pdf"
-    png_file = "cdf.png"
+    gnuplotfn = f"{TMP_DIR}/cdf.gnuplot"
+    pdf_file = f"{TMP_DIR}/cdf.pdf"
+    png_file = f"{TMP_DIR}/cdf.png"
     if verbose:
         print(f"Writing gnuplot script to {gnuplotfn} with {len(fname2_s)} data series")
 
@@ -1929,7 +1935,7 @@ plt.show()
     cells = [nbf.v4.new_code_cell(t) for t in texts]
     nb['cells'] = cells
 
-    filename = 'overview.ipynb'
+    filename = f'{TMP_DIR}/overview.ipynb'
     with open(filename, 'w') as f:
         nbf.write(nb, f)
     print(f"Notebook '{filename}' created successfully.")
@@ -2048,6 +2054,8 @@ def main():
     parser.add_argument("--nopreproc", action="store_true",
                         help="Skip all preprocessing tables and graphs (preproc table)")
     args = parser.parse_args()
+
+    os.makedirs(TMP_DIR, exist_ok=True)
 
     if args.fname:
         clauses = " or ".join(f"fname like '{p}'" for p in args.fname)

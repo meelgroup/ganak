@@ -2005,19 +2005,20 @@ only_dirs = [
     # "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
     # "out-ganak-mccomp2324-1279568-0", # release
     # "out-ganak-mccomp2324-1281478-0", # more data
-    # "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
+    "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
     # "out-ganak-mccomp2324-1282412-0", # new preproc v2
     # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
     # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
     # "out-ganak-mccomp2324-1294423-0", # improve CMS's subsumption/strengthening, fix oracle to work non-backbone, add units from oracle, allow to set linit to cadiback
     # "out-ganak-mccomp2324-1296621-", # same as above, but fixing CMS bug
-    "out-ganak-mccomp2324-1299016-0", # trying to get back to old ganak speed -- CMS changes (reverts) GOOOOOOOD!!!!
+    # "out-ganak-mccomp2324-1299016-0", # trying to get back to old ganak speed -- CMS changes (reverts) GOOOOOOOD!!!!
     #"out-ganak-mccomp2324-1315264-", # Vivification, new order for backw, new setup for backw -- GOTO BUG!
     # "out-ganak-mccomp2324-1318712-3", # fixed goto1 and now vivif is turned on/off with backwtype=0
     # "out-ganak-mccomp2324-1351541-", # let's fix it, plus llm improve it(?) -- NOOOOO, we left the CMS nonsense in!
     # "out-ganak-mccomp2324-1358071-1", # same as above, but with CMS changes reverted -- Current best (kinda...)
-    "out-ganak-mccomp2324-1373930-1", # no grow after
+    # "out-ganak-mccomp2324-1373930-1", # no grow after
     # "out-ganak-mccomp2324-1358071-", # same as above, but with CMS changes reverted
+    "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0"
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

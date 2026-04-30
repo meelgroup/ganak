@@ -59,12 +59,16 @@ using std::setprecision;
 
 static int fc_int(const std::string& s) {
     int val = 0;
-    std::from_chars(s.data(), s.data() + s.size(), val);
+    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), val);
+    if (ec != std::errc{}) throw std::invalid_argument("not an integer: " + s);
+    if (ptr != s.data() + s.size()) throw std::invalid_argument("trailing characters in integer: " + s);
     return val;
 }
 static double fc_double(const std::string& s) {
-    size_t pos;
-    double const val = std::stod(s, &pos);
+    size_t pos = 0;
+    double val;
+    try { val = std::stod(s, &pos); }
+    catch (const std::exception&) { throw std::invalid_argument("not a double: " + s); }
     if (pos != s.size()) throw std::invalid_argument("trailing characters in double: " + s);
     return val;
 }

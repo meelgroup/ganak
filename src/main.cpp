@@ -286,6 +286,7 @@ void add_ganak_options()
     add_arg("--sbvaclcut", etof_conf.sbva_cls_cutoff, fc_int, "SBVA cls cutoff");
     add_arg("--sbvalitcut", etof_conf.sbva_lits_cutoff, fc_int, "SBVA lits cutoff");
     add_arg("--sbvabreak", etof_conf.sbva_tiebreak, fc_int, "1 = sbva");
+    add_arg("--sbvamaxnewvars", etof_conf.sbva_max_new_vars, fc_int, "Max number of new variables SBVA may add. 0 = no limit");
 
     // SAT solver options
     add_arg("--satsolver", conf.do_use_sat_solver, fc_int, "Use SAT solver when all minimal indep set has been set");

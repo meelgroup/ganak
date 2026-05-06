@@ -371,6 +371,7 @@ public:
   void read_td_from_file(const std::string& fname);
   void td_decompose();
   uint32_t td_decompose_component(bool update_score);
+  void dump_td_cnf(const std::string& fname) const;
   double td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw);
   int td_width = 10000;
   void inc_act(const Lit lit);

@@ -339,11 +339,49 @@ uint32_t Counter::td_decompose_component(bool update_score) {
   return td.width();
 }
 
+void Counter::dump_td_cnf(const std::string& fname) const {
+  std::ofstream out(fname);
+  if (!out.is_open()) {
+    cerr << "ERROR: could not open file for TD CNF dump: " << fname << endl;
+    exit(EXIT_FAILURE);
+  }
+  vector<array<Lit, 2>> bin_cls;
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& ws: watches[lit].binaries) {
+      if (ws.red() || ws.lit() < lit) continue;
+      bin_cls.push_back({lit, ws.lit()});
+    }
+  }
+
+  out << "p cnf " << nVars() << " "
+    << long_irred_cls.size() + unit_cls.size() + bin_cls.size()
+    << endl;
+  out << "c p show ";
+  for(uint32_t i = 1; i < indep_support_end; i++) out << i << " ";
+  out << "0" << endl;
+  out << "c p optshow ";
+  for(uint32_t i = 1; i < opt_indep_support_end; i++) out << i << " ";
+  out << "0" << endl;
+
+  for(const auto& t: unit_cls) out << t << " 0" << endl;
+  for(const auto& bin: bin_cls) out << bin[0] << " " << bin[1] << " 0" << endl;
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    for(const auto& l: cl) out << l << " ";
+    out << "0" << endl;
+  }
+}
+
 void Counter::td_decompose() {
   double const my_time = cpu_time();
   if (indep_support_end <= 3 || nVars() <= 20 || nVars() > conf.td_varlim) {
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
+  }
+  if (!conf.td_dump_cnf_file.empty()) {
+    dump_td_cnf(conf.td_dump_cnf_file);
+    cout << "c o [td] Wrote TD-input CNF to file: " << conf.td_dump_cnf_file << endl;
   }
 
   auto primal = std::make_unique<TWD::Graph>(nVars());

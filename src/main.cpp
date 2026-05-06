@@ -243,6 +243,7 @@ void add_ganak_options()
     add_arg("--tduseadj", conf.td_do_use_adj, fc_int, "TD should use adjacency matrix for computing TD scores");
     add_arg("--tdreadfile", conf.td_read_file, fc_string, "Read TD scores from this file");
     add_arg("--tdvis", conf.td_visualize_dot_file, fc_string, "Visualize the TD into this file in DOT format");
+    add_arg("--tddumpcnf", conf.td_dump_cnf_file, fc_string, "Dump the CNF used to build the primal graph for TD computation into this file (DIMACS)");
 
     // Clause DB options
     add_arg("--rdbclstarget", conf.rdb_cls_target, fc_int, "RDB clauses target size (added to this are LBD 3 or lower)");

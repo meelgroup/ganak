@@ -106,6 +106,7 @@ struct CounterConfiguration {
   int td_max_edge_var_ratio = 30;
   int td_do_use_adj = 1;
   std::string td_read_file = "";
+  std::string td_dump_cnf_file = "";
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

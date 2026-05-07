@@ -2018,7 +2018,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-1358071-1", # same as above, but with CMS changes reverted -- Current best (kinda...)
     # "out-ganak-mccomp2324-1373930-1", # no grow after
     # "out-ganak-mccomp2324-1358071-", # same as above, but with CMS changes reverted
-    "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0"
+    "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
+    #"out-ganak-mccomp2324-1458467-", # let's try some new ideas from LLM for arjun improvement -- but cadiback was wrongly set up
+    # "out-ganak-mccomp2324-1514564-", # let's try some new ideas from LLM for arjun improvement -- there's been another f*ck up
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

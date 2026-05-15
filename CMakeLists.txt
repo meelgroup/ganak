@@ -437,6 +437,29 @@ if(NOT TARGET approxmc)
     endif()
 endif()
 
+# ---- TreeDecomp ----
+# Used directly by ganak (counter.hpp / outer_counter.cpp include
+# <treedecomp/TreeDecomposition.hpp>), so its imported target must be
+# available to propagate INTERFACE_INCLUDE_DIRECTORIES.
+set(treedecomp_DIR "" CACHE PATH "treedecomp install/build prefix (contains treedecompConfig.cmake). Auto-resolved if empty.")
+if(NOT TARGET treedecomp)
+    if(treedecomp_DIR)
+        find_package(treedecomp CONFIG REQUIRED HINTS "${treedecomp_DIR}")
+        message(STATUS "TreeDecomp: using pre-built at ${treedecomp_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp"
+                         "${CMAKE_CURRENT_BINARY_DIR}/treedecomp-build")
+        message(STATUS "TreeDecomp: using sibling repo")
+    else()
+        FetchContent_Declare(treedecomp
+            GIT_REPOSITORY https://github.com/meelgroup/treedecomp.git
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(treedecomp)
+        message(STATUS "TreeDecomp: fetched from GitHub")
+    endif()
+endif()
+
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 

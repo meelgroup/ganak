@@ -5,6 +5,9 @@
         "arjun": [
           "arjun"
         ],
+        "cadiback": [
+          "cadiback"
+        ],
         "cryptominisat": [
           "cryptominisat"
         ],
@@ -22,11 +25,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1777573927,
-        "narHash": "sha256-8sC/xANyPYdfFt7vzovCvvJb+UNOdwjz9R3IAJGK39Q=",
+        "lastModified": 1779492286,
+        "narHash": "sha256-hrYN8M/mrrqqxye6Sa8NMbEtgcu+rFsgVPNpZ/HYvXw=",
         "owner": "meelgroup",
         "repo": "approxmc",
-        "rev": "c8183001b5804b03ebab13825554fc6e442e2447",
+        "rev": "3d38aa80f9593ebb83318327e588bd71279c77ff",
         "type": "github"
       },
       "original": {
@@ -62,11 +65,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1777573444,
-        "narHash": "sha256-S1l75Y/su1yIJDVz0tGtoL667ZZWcVTxung2gSNwjf0=",
+        "lastModified": 1779491705,
+        "narHash": "sha256-XGxBgYM+71wad5syNG3p6ZJE87CRLP3w2GtITmntXd8=",
         "owner": "meelgroup",
         "repo": "arjun",
-        "rev": "ece5005a31e4d1cb55636befdcd409f34fef5c6f",
+        "rev": "f7d1b2c42a90d7c3aefec3aee553b8a50fbdb6d0",
         "type": "github"
       },
       "original": {
@@ -135,11 +138,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1779438047,
-        "narHash": "sha256-DrbsZDFf/78b1tVdL4qdETuBi5QEkwpGeooHZvfMkUs=",
+        "lastModified": 1779490324,
+        "narHash": "sha256-XTYn9W3wIjHdSPkQpastof/YqvGTNA57PdP9qUylfYo=",
         "owner": "msoos",
         "repo": "cryptominisat",
-        "rev": "a50a0ec7d7f372e8fe7107bc91e9ea912a595749",
+        "rev": "2321db410a30ab8558ded837f120524749dd4896",
         "type": "github"
       },
       "original": {

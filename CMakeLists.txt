@@ -457,7 +457,7 @@ if(NOT TARGET treedecomp)
     else()
         FetchContent_Declare(treedecomp
             GIT_REPOSITORY https://github.com/meelgroup/treedecomp.git
-            GIT_TAG        master
+            GIT_TAG        main
             GIT_SHALLOW    TRUE)
         FetchContent_MakeAvailable(treedecomp)
         message(STATUS "TreeDecomp: fetched from GitHub")

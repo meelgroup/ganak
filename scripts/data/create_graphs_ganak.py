@@ -1392,12 +1392,12 @@ def preproc_time_pie_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out, sz in [
-            (f'pdfcairo size 52cm,40cm background "#d0d0d0"', pdf_file, ""),
-            (f'pngcairo size 800,640 background "#d0d0d0"',   png_file, ""),
+            (f'pdfcairo size 20cm,16cm font ",18" background "#d0d0d0"', pdf_file, ""),
+            (f'pngcairo size 800,640 font ",12" background "#d0d0d0"',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
-            f.write(f'set title "Preprocessing time breakdown (total {grand_total:.0f}s)\\n{lbl}"\n')
+            f.write(f'set title "Preprocessing time breakdown (total {grand_total:.0f}s)\\n{lbl}" font ",20"\n')
             f.write('set size ratio -1\n')
             f.write('unset border\n')
             f.write('unset tics\n')
@@ -1426,13 +1426,13 @@ def preproc_time_pie_chart(matched_dirs):
                 lx = r_label * math.cos(mid)
                 ly = r_label * math.sin(mid)
                 pct_str = f"{pct*100:.1f}%"
-                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",8"\n')
+                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",16"\n')
                 # Legend entry at right
                 lx2 = 1.25
                 ly2 = 0.95 - i * 0.13
                 f.write(f'set object {n_slices+i+1} rect from {lx2-0.05},{ly2-0.04} to {lx2+0.05},{ly2+0.04} '
                         f'fc rgb "{color}" fs solid 0.85 border lc rgb "grey"\n')
-                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",9"\n')
+                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",16"\n')
                 angle = end_angle
             for ll in label_lines:
                 f.write(ll)
@@ -1605,15 +1605,16 @@ def preproc_cumulative_chart(matched_dirs):
             f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_cls:.3f}\t{cum_vars:.3f}\t{cum_units:.3f}\t{name}\n")
 
     n = len(rows)
-    height_cm = max(16, n * 1.1)
+    height_cm = max(8, n * 0.40)
+    width_cm  = 24
 
     ytics_parts = ['"start" 0'] + [f'"{name}" {i+1}' for i, (name, *_) in enumerate(rows)]
     ytics_str = ", ".join(ytics_parts)
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size 52cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size 1200,{int(height_cm * 50)} background "#d0d0d0"', png_file),
+            (f'pdfcairo size {width_cm}cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
+            (f'pngcairo size {width_cm * 50},{int(height_cm * 50)} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1623,7 +1624,7 @@ def preproc_cumulative_chart(matched_dirs):
             f.write(f'set yrange [-0.5:{n + 0.5}]\n')
             f.write('set xrange [0:*]\n')
             f.write('set grid xtics\n')
-            f.write('set key top left\n')
+            f.write('set key bottom right\n')
             f.write(f'set ytics ({ytics_str})\n')
             f.write(f'plot "{dat_file}" using 2:1 with linespoints lc rgb "steelblue" lw 2 pt 7 ps 1 title "lits removed",\\\n')
             f.write(f'     "{dat_file}" using 3:1 with linespoints lc rgb "dark-orange" lw 2 pt 5 ps 1 title "cls removed (bin+long)",\\\n')

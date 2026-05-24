@@ -2005,7 +2005,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
     # "out-ganak-mccomp2324-1279568-0", # release
     # "out-ganak-mccomp2324-1281478-0", # more data
-    "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
+    # "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
     # "out-ganak-mccomp2324-1282412-0", # new preproc v2
     # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
     # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
@@ -2018,10 +2018,10 @@ only_dirs = [
     # "out-ganak-mccomp2324-1358071-1", # same as above, but with CMS changes reverted -- Current best (kinda...)
     # "out-ganak-mccomp2324-1373930-1", # no grow after
     # "out-ganak-mccomp2324-1358071-", # same as above, but with CMS changes reverted
-    "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
+    # "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
     #"out-ganak-mccomp2324-1458467-", # let's try some new ideas from LLM for arjun improvement -- but cadiback was wrongly set up
     # "out-ganak-mccomp2324-1514564-", # let's try some new ideas from LLM for arjun improvement -- there's been another f*ck up
-    # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
+    "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

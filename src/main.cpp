@@ -499,7 +499,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7 || mode == 8) {
+    if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
       std::stringstream ss;
       ss << std::scientific << setprecision(40);
       const CMSat::Field* ptr = cnt.get();

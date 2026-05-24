@@ -36,12 +36,6 @@ THE SOFTWARE.
 #include <stddef.h>
 #include <arjun/arjun_c.h>
 
-#if defined _WIN32
-    #define GANAK_C_DLL_PUBLIC __declspec(dllexport)
-#else
-    #define GANAK_C_DLL_PUBLIC __attribute__ ((visibility ("default")))
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

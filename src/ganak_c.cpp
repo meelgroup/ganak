@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "ganak_c.h"
 #include "ganak.hpp"
+#include "common.hpp"
 
 #include <arjun/arjun_c_priv.hpp>
 
@@ -49,9 +50,9 @@ struct ganak_counter {
 
 extern "C" {
 
-const char* ganak_last_error(void) { return g_last_error.c_str(); }
+DLL_PUBLIC const char* ganak_last_error(void) { return g_last_error.c_str(); }
 
-ganak_counter_t* ganak_counter_new(uint32_t verb, uint64_t seed,
+DLL_PUBLIC ganak_counter_t* ganak_counter_new(uint32_t verb, uint64_t seed,
                                    const arjun_fgen_t* fg) {
     try {
         clear_error();
@@ -65,13 +66,13 @@ ganak_counter_t* ganak_counter_new(uint32_t verb, uint64_t seed,
     } catch (const std::exception& e) { set_error(e.what()); return nullptr; }
 }
 
-void ganak_counter_free(ganak_counter_t* c) {
+DLL_PUBLIC void ganak_counter_free(ganak_counter_t* c) {
     if (c == nullptr) return;
     delete c->counter;
     delete c;
 }
 
-int ganak_counter_setup_from_simpcnf(ganak_counter_t* c,
+DLL_PUBLIC int ganak_counter_setup_from_simpcnf(ganak_counter_t* c,
                                      const arjun_simpcnf_t* cnf) {
     clear_error();
     try {
@@ -80,7 +81,7 @@ int ganak_counter_setup_from_simpcnf(ganak_counter_t* c,
     } catch (const std::exception& e) { set_error(e.what()); return -1; }
 }
 
-arjun_field_t* ganak_counter_count(ganak_counter_t* c,
+DLL_PUBLIC arjun_field_t* ganak_counter_count(ganak_counter_t* c,
                                    uint8_t bits_threads,
                                    int num_threads,
                                    int debug_threads) {
@@ -94,7 +95,7 @@ arjun_field_t* ganak_counter_count(ganak_counter_t* c,
     } catch (const std::exception& e) { set_error(e.what()); return nullptr; }
 }
 
-int ganak_counter_is_approximate(const ganak_counter_t* c) {
+DLL_PUBLIC int ganak_counter_is_approximate(const ganak_counter_t* c) {
     return c->counter->get_is_approximate() ? 1 : 0;
 }
 

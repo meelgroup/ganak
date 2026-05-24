@@ -40,6 +40,14 @@ using CMSat::FieldGen;
 using FG = std::unique_ptr<FieldGen>;
 using FF = std::unique_ptr<Field>;
 
+#if defined _WIN32
+    #define DLL_PUBLIC __declspec(dllexport)
+    #define DLL_LOCAL
+#else
+    #define DLL_PUBLIC __attribute__ ((visibility ("default")))
+    #define DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+#endif
+
 // Also controls Arjun in multi-threaded counting
 // Arjun will not run if below this threshold
 constexpr uint32_t td_at_or_above_indep = 10;

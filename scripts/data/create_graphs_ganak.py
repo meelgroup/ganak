@@ -741,7 +741,7 @@ def _preproc_step_stats(con, dirs_sql, where_extra="", per_cnf=False):
     cur.execute(
         f"SELECT name, dirname, fname, delta_irred_bins, delta_irred_long_cls,"
         f" delta_irred_long_lits, delta_free_vars, step_num"
-        f" FROM preproc WHERE dirname IN ({dirs_sql}){where_extra}"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}) AND depth = 0{where_extra}"
     )
 
     if per_cnf:
@@ -855,7 +855,7 @@ def print_preproc_delta_table(matched_dirs, verbose=False):
                ROUND(100.0 * SUM(CASE WHEN delta_free_vars < 0
                                  THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_vars,
                ROUND(SUM(step_time), 2)                                       as total_step_s
-        FROM preproc WHERE dirname IN ({dirs_sql})
+        FROM preproc WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         ORDER BY sum_d_lits ASC
     """)
@@ -912,7 +912,7 @@ def print_preproc_step_efficiency(matched_dirs):
                SUM(CASE WHEN delta_free_vars < 0 THEN 1 ELSE 0 END)                 AS calls_var,
                ROUND(SUM(step_time), 2)                                              AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         HAVING lits_rmvd > 0 OR fvars_rmvd > 0
         ORDER BY lits_rmvd DESC
@@ -980,7 +980,7 @@ def print_preproc_time_breakdown(matched_dirs):
                SUM(IFNULL(delta_elimed_vars, 0))                                       AS elim_vars,
                SUM(IFNULL(delta_units, 0))                                             AS units_found
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         ORDER BY total_s DESC
     """)
@@ -1047,7 +1047,7 @@ def print_preproc_noop_waste(matched_dirs):
                         THEN step_time ELSE 0 END), 2)                                      AS wasted_s,
                ROUND(SUM(step_time), 2)                                                     AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         HAVING n_noop > 0
         ORDER BY wasted_s DESC
@@ -1089,7 +1089,7 @@ def print_preproc_extended_vars(matched_dirs):
                SUM(IFNULL(delta_units, 0))                 AS sum_units,
                ROUND(SUM(step_time), 2)                    AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
           AND (IFNULL(delta_elimed_vars,0) != 0
             OR IFNULL(delta_replaced_vars,0) != 0
             OR IFNULL(delta_units,0) != 0)
@@ -1148,7 +1148,7 @@ def print_step_predecessor_effectiveness(matched_dirs, step="must-scc-vrepl"):
                                         OR delta_free_vars < 0 THEN 1 ELSE 0 END)
                      / COUNT(*), 1)                                                        AS pct_active
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND name='{step}'
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND name='{step}'
         GROUP BY prev_step
         ORDER BY sum_lits DESC
     """)
@@ -1215,7 +1215,7 @@ def preproc_time_chart(matched_dirs):
                                AND IFNULL(delta_units,0) = 0
                           THEN step_time ELSE 0 END), 2)                                AS wasted_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         ORDER BY total_s DESC
     """)
@@ -1280,7 +1280,7 @@ def preproc_efficiency_chart(matched_dirs):
                -SUM(delta_irred_long_lits)  AS sum_lits,
                ROUND(SUM(step_time), 2)     AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL AND step_time > 0
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL AND step_time > 0
         GROUP BY name
         HAVING sum_lits > 0 AND total_s > 0
         ORDER BY (sum_lits / total_s) DESC
@@ -1344,7 +1344,7 @@ def preproc_time_pie_chart(matched_dirs):
     cur.execute(f"""
         SELECT name, ROUND(SUM(step_time), 2) AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         ORDER BY total_s DESC
     """)
@@ -1485,7 +1485,7 @@ def preproc_share_chart(matched_dirs):
                -SUM(delta_irred_long_lits) as sum_lits,
                -SUM(delta_free_vars)       as sum_vars
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         ORDER BY sum_lits DESC
     """)
@@ -1575,7 +1575,7 @@ def preproc_cumulative_chart(matched_dirs):
                -SUM(delta_free_vars)       as sum_vars,
                AVG(step_num)               as avg_pos
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         ORDER BY avg_pos ASC
     """)
@@ -1648,7 +1648,7 @@ def print_preproc_per_step_detail(matched_dirs, verbose=False):
         f"SELECT name,"
         f" ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits != 0 OR delta_irred_bins != 0"
         f"   OR delta_free_vars != 0 THEN 1 ELSE 0 END) / COUNT(*), 1)"
-        f" FROM preproc WHERE dirname IN ({dirs_sql}) GROUP BY name"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}) AND depth = 0 GROUP BY name"
     )
     pct_active = {row[0]: row[1] for row in cur.fetchall()}
     con.close()
@@ -2021,6 +2021,7 @@ only_dirs = [
     "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
     #"out-ganak-mccomp2324-1458467-", # let's try some new ideas from LLM for arjun improvement -- but cadiback was wrongly set up
     # "out-ganak-mccomp2324-1514564-", # let's try some new ideas from LLM for arjun improvement -- there's been another f*ck up
+    # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

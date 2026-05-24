@@ -294,6 +294,7 @@ _SIMP_STATS_RE = re.compile(
     r'c o \[simp-stats\] (BEFORE|AFTER) (\S+) '
     r'irred_bins (\d+) irred_long_cls (\d+) irred_long_lits (\d+) free_vars (\d+)'
     r'(?:\s+elimed_vars (\d+) replaced_vars (\d+) units (\d+) mem_MB (\d+) T:\s*([\d.]+))?'
+    r'(?:\s+depth (\d+))?'
 )
 
 
@@ -301,10 +302,16 @@ def parse_simp_stats(fname):
     """Parse [simp-stats] BEFORE/AFTER pairs from a ganak output file.
     Returns a list of dicts, one per matched BEFORE/AFTER pair.
 
-    New fields (from extended log format):
-      elimed_vars, replaced_vars, units, mem_MB, step_time, prev_step
+    Each record carries `depth` (nesting level of the wrapper at emission
+    time). Top-level steps are depth=0; nested children are depth>=1 and
+    their work is already counted by the parent — sum only depth=0 for
+    total-time accounting.
+
+    Older logs without the `depth N` suffix get depth=0 (treated as flat).
     """
-    # pending[name] -> list of full parsed tuples waiting for matching AFTER
+    # pending[(name, depth)] -> stack of pending BEFOREs awaiting matching AFTER.
+    # LIFO matching is required when the same-name step nests (e.g. clean-cls
+    # called from inside another clean-cls dispatch).
     pending = {}
     step_counts = {}  # name -> number of completed pairs so far
     records = []
@@ -325,12 +332,14 @@ def parse_simp_stats(fname):
             if m.group(7) is not None:
                 ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
                        int(m.group(10)), float(m.group(11)))
+            depth = int(m.group(12)) if m.group(12) is not None else 0
 
+            key = (name, depth)
             if kind == "BEFORE":
-                pending.setdefault(name, []).append((core, ext))
+                pending.setdefault(key, []).append((core, ext))
             elif kind == "AFTER":
-                if pending.get(name):
-                    before_core, before_ext = pending[name].pop(0)
+                if pending.get(key):
+                    before_core, before_ext = pending[key].pop()
                     occurrence = step_counts.get(name, 0)
                     step_counts[name] = occurrence + 1
                     step_num = len(records)
@@ -338,6 +347,7 @@ def parse_simp_stats(fname):
                         "step_num":  step_num,
                         "occurrence": occurrence,
                         "name":      name,
+                        "depth":     depth,
                         "prev_step": last_completed_step,
                         "before_irred_bins":      before_core[0],
                         "before_irred_long_cls":  before_core[1],
@@ -578,7 +588,7 @@ def main():
             ])
 
     preproc_cols = [
-        "dirname", "fname", "step_num", "occurrence", "name", "prev_step",
+        "dirname", "fname", "step_num", "occurrence", "name", "depth", "prev_step",
         "before_irred_bins", "before_irred_long_cls", "before_irred_long_lits", "before_free_vars",
         "after_irred_bins", "after_irred_long_cls", "after_irred_long_lits", "after_free_vars",
         "delta_irred_bins", "delta_irred_long_cls", "delta_irred_long_lits", "delta_free_vars",
@@ -606,6 +616,7 @@ def main():
                     rec["step_num"],
                     rec["occurrence"],
                     rec["name"],
+                    rec.get("depth", 0),
                     rec.get("prev_step", "none"),
                     rec["before_irred_bins"],
                     rec["before_irred_long_cls"],
@@ -694,6 +705,7 @@ def main():
           step_num INT NOT NULL,
           occurrence INT NOT NULL,
           name STRING NOT NULL,
+          depth INT NOT NULL DEFAULT 0,
           prev_step STRING NOT NULL DEFAULT 'none',
           before_irred_bins INT,
           before_irred_long_cls INT,
@@ -807,6 +819,7 @@ def main():
                 rec["step_num"],
                 rec["occurrence"],
                 rec["name"],
+                rec.get("depth", 0),
                 rec.get("prev_step", "none"),
                 n(rec.get("before_irred_bins")),
                 n(rec.get("before_irred_long_cls")),
@@ -836,7 +849,7 @@ def main():
             ))
 
     conn.executemany(
-        "INSERT INTO preproc VALUES (" + ",".join(["?"] * 31) + ")",
+        "INSERT INTO preproc VALUES (" + ",".join(["?"] * 32) + ")",
         preproc_rows
     )
 

@@ -93,6 +93,20 @@ count, i.e. all variables are assumed to be in the projection set.
 Beware to ALWAYS give the weight of both the literal and its negation or
 different counters may give different results.
 
+### Accepted header directives
+
+| Directive | Meaning |
+|-----------|---------|
+| `c t mc` | Unweighted, unprojected model counting (default) |
+| `c t pmc` | Unweighted projected model counting |
+| `c t wmc` | Weighted model counting |
+| `c t wpmc` / `c t pwmc` | Weighted projected model counting (aliases) |
+| `c p show v1 v2 ... 0` | Projection (sampling) set |
+| `c p weight L W 0` | Weight `W` for literal `L` (positive or negative integer) |
+
+`c t wmc` and `c t pwmc` require a weighted field generator (i.e. not
+`--mode 0`); otherwise the parser will reject the file.
+
 ## Weights
 It is _highly_ encouraged to give both the positive and the negative literal's
 weight, e.g. `1` and `-1`:
@@ -199,34 +213,6 @@ The `prec` constructor argument controls the MPFR precision in bits:
 c = WeightedCounter(prec=256)   # 256-bit internal precision
 ```
 
-### Building from source
-
-Build and install into a venv (requires GMP and MPFR:
-`apt-get install libgmp-dev libmpfr-dev` / `brew install gmp mpfr`):
-
-```bash
-git clone --recurse-submodules https://github.com/meelgroup/ganak
-cd ganak
-python -m venv venv
-venv/bin/pip install .
-```
-
-For iterative development (rebuilding only the extension after CMake changes):
-
-```bash
-# Enable the Python extension (only needed once):
-cmake -DBUILD_PYTHON_EXTENSION=ON build
-
-# Rebuild after editing python/src/pyganak.cpp:
-cmake --build build --target pyganak -j$(nproc)
-
-# Run tests:
-venv/bin/pip install pytest
-PYTHONPATH=build/lib venv/bin/pytest python/tests/ -v
-```
-
-See `python/README.md` for the full API reference.
-
 ## Using as a Library
 Ganak can be used as a library. The file `src/example.cpp` gives an example of
 how to use Ganak as a library. Let's go through it step by step:
@@ -248,8 +234,8 @@ how to use Ganak as a library. Let's go through it step by step:
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
 
-  auto cnt = cnf.multiplier_weight->dup();
-  if (!cnf.multiplier_weight->is_zero()) *cnt *= *counter.count();
+  auto cnt = cnf.get_multiplier_weight()->dup();
+  if (!cnf.get_multiplier_weight()->is_zero()) *cnt *= *counter.count();
   cout << "count is: " << std::fixed << *cnt << endl;
 ```
 
@@ -266,7 +252,7 @@ two systems' counts to get the final count.
 
 | Mode | Flag | Field | Weight format example | Notes |
 |------|------|-------|-----------------------|-------|
-| 0 | `--mode 0` | Integer | `c p weight 1 5 0` | Default; supports `--appmct` |
+| 0 | `--mode 0` | Integer | _unweighted_ | Default; weights not supported. Supports `--appmct` |
 | 1 | `--mode 1` | Rational (exact) | `c p weight 1 1/4 0` | No floating-point error |
 | 2 | `--mode 2` | Complex rational | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi` |
 | 3 | `--mode 3` | Polynomial over rationals | `c p weight 9 1/2*x0+4*x1+2 0` | Requires `--npolyvars N` |

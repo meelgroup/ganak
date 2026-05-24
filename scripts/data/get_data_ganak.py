@@ -454,7 +454,7 @@ def main():
                 files[base]["solver"] = tp["solver"]
             continue
 
-        if f.endswith(".out_ganak") or f.endswith(".out"):
+        if f.endswith(".out_ganak") or f.endswith(".out_arjun") or f.endswith(".out"):
             files[base]["solver"] = "ganak"
             files[base].update(parse_ganak_output(f))
             simp = parse_simp_stats(f)

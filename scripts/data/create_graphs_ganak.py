@@ -1573,6 +1573,7 @@ def preproc_cumulative_chart(matched_dirs):
                -SUM(delta_irred_long_cls)  as sum_cls,
                -SUM(delta_irred_bins)      as sum_bins,
                -SUM(delta_free_vars)       as sum_vars,
+               SUM(IFNULL(delta_units, 0)) as sum_units,
                AVG(step_num)               as avg_pos
         FROM preproc
         WHERE dirname IN ({dirs_sql}) AND depth = 0
@@ -1592,15 +1593,16 @@ def preproc_cumulative_chart(matched_dirs):
     gp_file  = f"{TMP_DIR}/preproc_cumul_{lbl}.gnuplot"
 
     # Normalise to millions for readability
-    cum_lits = cum_cls = cum_vars = 0.0
+    cum_lits = cum_cls = cum_vars = cum_units = 0.0
     with open(dat_file, "w") as f:
-        f.write("# i  cum_lits_M  cum_cls_M  cum_vars_M  step_name\n")
-        f.write("0\t0.0\t0.0\t0.0\tstart\n")
-        for i, (name, s_lits, s_long_cls, s_bins, s_vars, _pos) in enumerate(rows):
-            cum_lits += max(s_lits, 0) / 1e6
-            cum_cls  += max((s_long_cls or 0) + (s_bins or 0), 0) / 1e6
-            cum_vars += max(s_vars, 0) / 1e6
-            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_cls:.3f}\t{cum_vars:.3f}\t{name}\n")
+        f.write("# i  cum_lits_M  cum_cls_M  cum_vars_M  cum_units_M  step_name\n")
+        f.write("0\t0.0\t0.0\t0.0\t0.0\tstart\n")
+        for i, (name, s_lits, s_long_cls, s_bins, s_vars, s_units, _pos) in enumerate(rows):
+            cum_lits  += max(s_lits, 0) / 1e6
+            cum_cls   += max((s_long_cls or 0) + (s_bins or 0), 0) / 1e6
+            cum_vars  += max(s_vars, 0) / 1e6
+            cum_units += max(s_units or 0, 0) / 1e6
+            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_cls:.3f}\t{cum_vars:.3f}\t{cum_units:.3f}\t{name}\n")
 
     n = len(rows)
     height_cm = max(16, n * 1.1)
@@ -1625,7 +1627,8 @@ def preproc_cumulative_chart(matched_dirs):
             f.write(f'set ytics ({ytics_str})\n')
             f.write(f'plot "{dat_file}" using 2:1 with linespoints lc rgb "steelblue" lw 2 pt 7 ps 1 title "lits removed",\\\n')
             f.write(f'     "{dat_file}" using 3:1 with linespoints lc rgb "dark-orange" lw 2 pt 5 ps 1 title "cls removed (bin+long)",\\\n')
-            f.write(f'     "{dat_file}" using 4:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed"\n\n')
+            f.write(f'     "{dat_file}" using 4:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed",\\\n')
+            f.write(f'     "{dat_file}" using 5:1 with linespoints lc rgb "dark-violet" lw 2 pt 11 ps 1 title "units found"\n\n')
 
     title = f"Preproc cumulative chart (all steps, n={n}, ordered by pipeline position)"
     print(f"\n{BLUE}{title}{RESET}")
@@ -2021,7 +2024,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
     #"out-ganak-mccomp2324-1458467-", # let's try some new ideas from LLM for arjun improvement -- but cadiback was wrongly set up
     # "out-ganak-mccomp2324-1514564-", # let's try some new ideas from LLM for arjun improvement -- there's been another f*ck up
-    "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
+    # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
+    "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

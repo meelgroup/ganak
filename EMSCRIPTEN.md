@@ -15,6 +15,13 @@ emmake make -j16
 emmake make install
 ```
 
+NOTE: after the above, you need to "make distclean" and also to configure GMP, run:
+```
+./configure --enable-cxx --enable-static --enable-shared CC="gcc -std=gnu17"
+```
+because newest GCC complains
+
+
 Useful commands for building stuff like MPFR and MPIR for Emscripten:
 ```
 EMCONFIGURE_JS=1 emconfigure ./configure ABI=64 --disable-assembly CFLAGS=-m64 CXXFLAGS=-m64 LDFLAGS=-m64 --enable-cxx

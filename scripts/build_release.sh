@@ -6,7 +6,7 @@ rm -rf sharp*
 rm -rf Make*
 rm -rf deps
 rm -rf _deps
-SAT_DIR=$(cd ../.. && pwd)
+SAT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cmake -DCMAKE_BUILD_TYPE=Release \
     -Dcryptominisat5_DIR="${SAT_DIR}/cryptominisat/build" \
     -Dsbva_DIR="${SAT_DIR}/sbva/build" \

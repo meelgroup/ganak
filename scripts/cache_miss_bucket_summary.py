@@ -105,7 +105,7 @@ def main():
     total_rows, total_solved = cur.fetchone()
     con.close()
 
-    headers = ["metric"] + [b[0] for b in buckets]
+    headers = ["cache miss rate"] + [b[0] for b in buckets]
     title = f"Cache Miss Rate Bucket Summary  —  {args.dirname}"
     print(f"\n{BLUE}{title}{RESET}")
     for call in calls:

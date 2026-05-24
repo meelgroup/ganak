@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "ganak.hpp"
+#include "common.hpp"
 #include "outer_counter.hpp"
 #include <algorithm>
 #include <numeric>
@@ -28,13 +29,6 @@ THE SOFTWARE.
 #include <utility>
 
 using namespace GanakInt;
-
-#if defined _WIN32
-    #define DLL_PUBLIC __declspec(dllexport)
-#else
-    #define DLL_PUBLIC __attribute__ ((visibility ("default")))
-    #define DLL_LOCAL  __attribute__ ((visibility ("hidden")))
-#endif
 
 struct CDat {
   CounterConfiguration conf;

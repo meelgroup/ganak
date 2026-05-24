@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
 import argparse
+import collections
 import csv
 import decimal
 import glob
 import os
+import re
+import sqlite3 as sqlite_mod
 import string
-import subprocess
 import sys
 
 sys.set_int_max_str_digits(2000000)
@@ -28,6 +30,8 @@ def find_gpmc_time_cnt(fname):
             elif line.startswith("c s exact arb int") or line.startswith("c s exact arb prec-sci"):
                 val = line.split()[5]
                 result["cnt"] = len(val) if len(val) > 1000 else decimal.Decimal(val).log10()
+            elif line.startswith("c s log10-estimate"):
+                result["mc_log10"] = float(line.split()[3])
             elif line.startswith("c o Components"):
                 result["compsK"] = int(line.split()[4]) / 1000
             elif line.startswith("c o conflicts"):
@@ -85,7 +89,7 @@ def timeout_parse(fname):
                 call = call.replace(" -t real", "")
                 if "doalarm 3600" in call:
                     call = call.split("doalarm 3600")[1]
-                if "doalarm 1800" in call:
+                elif "doalarm 1800" in call:
                     call = call.split("doalarm 1800")[1]
                 elif "doalarm 60" in call:
                     call = call.split("doalarm 60")[1]
@@ -179,7 +183,7 @@ def parse_ganak_output(fname):
             # Unconditional status checks
             if "ERROR" in line or "assertion fail" in line.lower():
                 result["errored"] = 1
-            if "bad_alloc" in line:
+            if "Cannot allocate memory" in line or"bad_alloc" in line:
                 result["mem_out"] = 1
             if line.startswith("s SATISFIABLE") or line.startswith("s UNSATISFIABLE"):
                 result["not_solved"] = False
@@ -268,6 +272,8 @@ def parse_ganak_output(fname):
             elif line.startswith("c o Long irred cls/tri") and "irred_long" not in result:
                 result["irred_long"] = int(line.split()[5])
                 result["irred_tri"] = int(line.split()[6])
+            elif line.startswith("c s log10-estimate"):
+                result["mc_log10"] = float(line.split()[3])
 
     if aver is not None:
         aver = aver[:8]
@@ -284,27 +290,144 @@ def parse_ganak_output(fname):
     return result
 
 
+_SIMP_STATS_RE = re.compile(
+    r'c o \[simp-stats\] (BEFORE|AFTER) (\S+) '
+    r'irred_bins (\d+) irred_long_cls (\d+) irred_long_lits (\d+) free_vars (\d+)'
+    r'(?:\s+elimed_vars (\d+) replaced_vars (\d+) units (\d+) mem_MB (\d+) T:\s*([\d.]+))?'
+)
+
+
+def parse_simp_stats(fname):
+    """Parse [simp-stats] BEFORE/AFTER pairs from a ganak output file.
+    Returns a list of dicts, one per matched BEFORE/AFTER pair.
+
+    New fields (from extended log format):
+      elimed_vars, replaced_vars, units, mem_MB, step_time, prev_step
+    """
+    # pending[name] -> list of full parsed tuples waiting for matching AFTER
+    pending = {}
+    step_counts = {}  # name -> number of completed pairs so far
+    records = []
+    last_completed_step = "none"  # tracks prev_step
+
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.replace("[0m", "").replace("\x1b", "").strip()
+            m = _SIMP_STATS_RE.search(line)
+            if not m:
+                continue
+            kind = m.group(1)
+            name = m.group(2)
+            # Core fields (always present)
+            core = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+            # Extended fields (present in newer logs)
+            ext = None
+            if m.group(7) is not None:
+                ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
+                       int(m.group(10)), float(m.group(11)))
+
+            if kind == "BEFORE":
+                pending.setdefault(name, []).append((core, ext))
+            elif kind == "AFTER":
+                if pending.get(name):
+                    before_core, before_ext = pending[name].pop(0)
+                    occurrence = step_counts.get(name, 0)
+                    step_counts[name] = occurrence + 1
+                    step_num = len(records)
+                    rec = {
+                        "step_num":  step_num,
+                        "occurrence": occurrence,
+                        "name":      name,
+                        "prev_step": last_completed_step,
+                        "before_irred_bins":      before_core[0],
+                        "before_irred_long_cls":  before_core[1],
+                        "before_irred_long_lits": before_core[2],
+                        "before_free_vars":       before_core[3],
+                        "after_irred_bins":       core[0],
+                        "after_irred_long_cls":   core[1],
+                        "after_irred_long_lits":  core[2],
+                        "after_free_vars":        core[3],
+                        "delta_irred_bins":       core[0] - before_core[0],
+                        "delta_irred_long_cls":   core[1] - before_core[1],
+                        "delta_irred_long_lits":  core[2] - before_core[2],
+                        "delta_free_vars":        core[3] - before_core[3],
+                    }
+                    # Extended fields
+                    if ext is not None and before_ext is not None:
+                        rec["before_elimed_vars"]   = before_ext[0]
+                        rec["before_replaced_vars"] = before_ext[1]
+                        rec["before_units"]         = before_ext[2]
+                        rec["before_mem_MB"]        = before_ext[3]
+                        rec["after_elimed_vars"]    = ext[0]
+                        rec["after_replaced_vars"]  = ext[1]
+                        rec["after_units"]          = ext[2]
+                        rec["after_mem_MB"]         = ext[3]
+                        rec["delta_elimed_vars"]    = ext[0] - before_ext[0]
+                        rec["delta_replaced_vars"]  = ext[1] - before_ext[1]
+                        rec["delta_units"]          = ext[2] - before_ext[2]
+                        rec["delta_mem_MB"]         = ext[3] - before_ext[3]
+                        rec["step_time"]            = ext[4] - before_ext[4]
+                    records.append(rec)
+                    last_completed_step = name
+    return records
+
+
+def load_already_parsed(db_path):
+    """Return set of (dirname, fname) tuples already in data.sqlite3."""
+    if not os.path.exists(db_path):
+        return set()
+    try:
+        conn = sqlite_mod.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT dirname, fname FROM data")
+        result = set(cur.fetchall())
+        conn.close()
+        return result
+    except Exception:
+        return set()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Parse ganak output files into CSV")
     parser.add_argument("--files", default="out-ganak*/*cnf*",
                         help="Glob pattern for input files (default: 'out-ganak*/*cnf*')")
     parser.add_argument("--verbose", action="store_true",
                         help="Print each file being parsed")
+    parser.add_argument("--reparse", action="store_true",
+                        help="Delete data.sqlite3 and reparse all files from scratch")
     args = parser.parse_args()
+
+    if args.reparse and os.path.exists("data.sqlite3"):
+        os.remove("data.sqlite3")
+        print("Deleted data.sqlite3, reparsing all files")
+
+    already_parsed = load_already_parsed("data.sqlite3")
+    if already_parsed:
+        skip_counts = collections.Counter(dirname for dirname, _ in already_parsed)
+        print(f"Skipping {len(already_parsed)} already-parsed files from data.sqlite3:")
+        for d in sorted(skip_counts):
+            print(f"  {d}: {skip_counts[d]} files")
 
     file_list = glob.glob(args.files)
     files = {}
     for f in file_list:
         if ".csv" in f:
             continue
-        if args.verbose:
-            print("parsing file: ", f)
 
         dirname = f.split("/")[0]
         if "competitors" in dirname:
             continue
         full_fname = f.split("/")[1].split(".cnf")[0] + ".cnf"
         base = dirname + "/" + full_fname
+
+        if (dirname, full_fname) in already_parsed:
+            if args.verbose:
+                print(f"skipping (already in DB): {base}")
+            continue
+
+        if args.verbose:
+            print("parsing file: ", f)
+
         if base not in files:
             files[base] = {}
         files[base]["dirname"] = dirname
@@ -324,6 +447,9 @@ def main():
         if f.endswith(".out_ganak") or f.endswith(".out"):
             files[base]["solver"] = "ganak"
             files[base].update(parse_ganak_output(f))
+            simp = parse_simp_stats(f)
+            if simp:
+                files[base]["simp_stats"] = simp
         if ".out_approxmc" in f:
             files[base]["solver"] = "approxmc"
             files[base]["solverver"] = approxmc_version(f)
@@ -358,6 +484,15 @@ def main():
             files[base]["mem_out"] = max(files[base].get("mem_out", 0), mem_out)
             files[base]["not_solved"] = not_solved
             files[base]["errored"] = max(files[base].get("errored", 0), errored)
+
+    if not files:
+        print("No new files to insert into data.sqlite3")
+        return
+
+    new_counts = collections.Counter(v["dirname"] for v in files.values())
+    print(f"Parsing {len(files)} new files:")
+    for d in sorted(new_counts):
+        print(f"  {d}: {new_counts[d]} files")
 
     cols = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time", "ganak_mem_MB",
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
@@ -442,8 +577,272 @@ def main():
                 g(f, "irred_cls"),
             ])
 
-    with open("ganak.sqlite") as sql_f:
-        subprocess.run(["sqlite3", "data.sqlite3"], stdin=sql_f, check=True)
+    preproc_cols = [
+        "dirname", "fname", "step_num", "occurrence", "name", "prev_step",
+        "before_irred_bins", "before_irred_long_cls", "before_irred_long_lits", "before_free_vars",
+        "after_irred_bins", "after_irred_long_cls", "after_irred_long_lits", "after_free_vars",
+        "delta_irred_bins", "delta_irred_long_cls", "delta_irred_long_lits", "delta_free_vars",
+        # Extended fields (newer log format)
+        "before_elimed_vars", "before_replaced_vars", "before_units", "before_mem_MB",
+        "after_elimed_vars", "after_replaced_vars", "after_units", "after_mem_MB",
+        "delta_elimed_vars", "delta_replaced_vars", "delta_units", "delta_mem_MB",
+        "step_time",
+    ]
+
+    def g_rec(rec, key):
+        v = rec.get(key)
+        return "" if v is None else v
+
+    with open("preproc.csv", "w", newline="") as out:
+        writer = csv.writer(out)
+        writer.writerow(preproc_cols)
+        for _, f in files.items():
+            if "simp_stats" not in f:
+                continue
+            for rec in f["simp_stats"]:
+                writer.writerow([
+                    f["dirname"],
+                    f["fname"],
+                    rec["step_num"],
+                    rec["occurrence"],
+                    rec["name"],
+                    rec.get("prev_step", "none"),
+                    rec["before_irred_bins"],
+                    rec["before_irred_long_cls"],
+                    rec["before_irred_long_lits"],
+                    rec["before_free_vars"],
+                    rec["after_irred_bins"],
+                    rec["after_irred_long_cls"],
+                    rec["after_irred_long_lits"],
+                    rec["after_free_vars"],
+                    rec["delta_irred_bins"],
+                    rec["delta_irred_long_cls"],
+                    rec["delta_irred_long_lits"],
+                    rec["delta_free_vars"],
+                    g_rec(rec, "before_elimed_vars"),
+                    g_rec(rec, "before_replaced_vars"),
+                    g_rec(rec, "before_units"),
+                    g_rec(rec, "before_mem_MB"),
+                    g_rec(rec, "after_elimed_vars"),
+                    g_rec(rec, "after_replaced_vars"),
+                    g_rec(rec, "after_units"),
+                    g_rec(rec, "after_mem_MB"),
+                    g_rec(rec, "delta_elimed_vars"),
+                    g_rec(rec, "delta_replaced_vars"),
+                    g_rec(rec, "delta_units"),
+                    g_rec(rec, "delta_mem_MB"),
+                    g_rec(rec, "step_time"),
+                ])
+
+    def n(v):
+        """Convert empty string to None for sqlite NULL."""
+        return None if v == "" else v
+
+    conn = sqlite_mod.connect("data.sqlite3")
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS data (
+          solver STRING NOT NULL,
+          dirname STRING NOT NULL,
+          fname STRING NOT NULL,
+          mem_out INT,
+          errored INT,
+          ganak_time FLOAT,
+          ganak_mem_MB FLOAT,
+          ganak_call TEXT NOT NULL,
+          page_faults INT NOT NULL,
+          signal INT,
+          ganak_ver TEXT NOT NULL,
+          conflicts INT,
+          decisionsK INT,
+          compsK INT,
+          primal_density FLOAT,
+          primal_edge_var_ratio FLOAT,
+          td_width INT,
+          td_time FLOAT,
+          arjun_time FLOAT,
+          backbone_time FLOAT,
+          backward_time FLOAT,
+          indep_sz INT,
+          opt_indep_sz INT,
+          orig_proj_sz INT,
+          new_nvars INT,
+          unkn_sz INT,
+          cache_del_time FLOAT,
+          cache_avg_hit_vars FLOAT,
+          cache_avg_store_vars FLOAT,
+          cache_miss_rate FLOAT,
+          bdd_called INT,
+          sat_called INT,
+          sat_rst INT,
+          restarts INT,
+          cubes_orig INT,
+          cubes_final INT,
+          gates_extended INT,
+          gates_extend_t INT,
+          padoa_extended INT,
+          padoa_extend_t INT,
+          timeout_t FLOAT,
+          irred_bin INT,
+          irred_long INT,
+          irred_tri INT,
+          irred_cls INT,
+          mc_log10 FLOAT
+        );
+        CREATE TABLE IF NOT EXISTS preproc (
+          dirname STRING NOT NULL,
+          fname STRING NOT NULL,
+          step_num INT NOT NULL,
+          occurrence INT NOT NULL,
+          name STRING NOT NULL,
+          prev_step STRING NOT NULL DEFAULT 'none',
+          before_irred_bins INT,
+          before_irred_long_cls INT,
+          before_irred_long_lits INT,
+          before_free_vars INT,
+          after_irred_bins INT,
+          after_irred_long_cls INT,
+          after_irred_long_lits INT,
+          after_free_vars INT,
+          delta_irred_bins INT,
+          delta_irred_long_cls INT,
+          delta_irred_long_lits INT,
+          delta_free_vars INT,
+          before_elimed_vars INT,
+          before_replaced_vars INT,
+          before_units INT,
+          before_mem_MB INT,
+          after_elimed_vars INT,
+          after_replaced_vars INT,
+          after_units INT,
+          after_mem_MB INT,
+          delta_elimed_vars INT,
+          delta_replaced_vars INT,
+          delta_units INT,
+          delta_mem_MB INT,
+          step_time FLOAT
+        );
+    """)
+
+    data_rows = []
+    for _, f in files.items():
+        if "not_solved" not in f:
+            print("WARNING no 'out' file parsed for, skipping: ", f["fname"])
+            continue
+        if "solver" not in f:
+            print("oops, solver not found, that's wrong")
+            print(f)
+            exit(-1)
+        if "timeout_t" not in f:
+            print("timeout not parsed for f: ", f)
+            exit(-1)
+
+        ganak_time = None if (f["timeout_t"] is None or f["not_solved"]) else f["timeout_t"]
+
+        solverver = ""
+        if "solverver" in f and f["solverver"] != [None, None]:
+            solverver = "%s-%s" % (f["solverver"][0], f["solverver"][1])
+
+        data_rows.append((
+            f.get("solver", ""),
+            f.get("dirname", ""),
+            f.get("fname", ""),
+            n(f.get("mem_out", "")),
+            n(f.get("errored", "")),
+            ganak_time,
+            n(f.get("timeout_mem", "")),
+            f.get("timeout_call", "") or "",
+            f.get("page_faults", "") or "",
+            n(f.get("signal", "")),
+            solverver,
+            n(f.get("conflicts", "")),
+            n(f.get("decisionsK", "")),
+            n(f.get("compsK", "")),
+            n(f.get("primal_density", "")),
+            n(f.get("primal_edge_var_ratio", "")),
+            n(f.get("td_width", "")),
+            n(f.get("td_time", "")),
+            n(f.get("arjuntime", "")),
+            n(f.get("backboneT", "")),
+            n(f.get("backwtime", "")),
+            n(f.get("indepsz", "")),
+            n(f.get("optindepsz", "")),
+            n(f.get("origprojsz", "")),
+            n(f.get("newnvars", "")),
+            n(f.get("unknsz", "")),
+            n(f.get("cache_del_time", "")),
+            n(f.get("cache_avg_hit_vars", "")),
+            n(f.get("cache_avg_store_vars", "")),
+            n(f.get("cache_miss_rate", "")),
+            n(f.get("bdd_called", "")),
+            n(f.get("sat_called", "")),
+            n(f.get("satrst", "")),
+            n(f.get("restarts", "")),
+            n(f.get("cubes_orig", "")),
+            n(f.get("cubes_final", "")),
+            n(f.get("gates_extended", "")),
+            n(f.get("gates_extend_t", "")),
+            n(f.get("padoa_extended", "")),
+            n(f.get("padoa_extend_t", "")),
+            n(f.get("timeout_t", "")),
+            n(f.get("irred_bin", "")),
+            n(f.get("irred_long", "")),
+            n(f.get("irred_tri", "")),
+            n(f.get("irred_cls", "")),
+            n(f.get("mc_log10", "")),
+        ))
+
+    conn.executemany(
+        "INSERT INTO data VALUES (" + ",".join(["?"] * 46) + ")",
+        data_rows
+    )
+
+    preproc_rows = []
+    for _, f in files.items():
+        if "simp_stats" not in f:
+            continue
+        for rec in f["simp_stats"]:
+            preproc_rows.append((
+                f["dirname"],
+                f["fname"],
+                rec["step_num"],
+                rec["occurrence"],
+                rec["name"],
+                rec.get("prev_step", "none"),
+                n(rec.get("before_irred_bins")),
+                n(rec.get("before_irred_long_cls")),
+                n(rec.get("before_irred_long_lits")),
+                n(rec.get("before_free_vars")),
+                n(rec.get("after_irred_bins")),
+                n(rec.get("after_irred_long_cls")),
+                n(rec.get("after_irred_long_lits")),
+                n(rec.get("after_free_vars")),
+                n(rec.get("delta_irred_bins")),
+                n(rec.get("delta_irred_long_cls")),
+                n(rec.get("delta_irred_long_lits")),
+                n(rec.get("delta_free_vars")),
+                n(rec.get("before_elimed_vars")),
+                n(rec.get("before_replaced_vars")),
+                n(rec.get("before_units")),
+                n(rec.get("before_mem_MB")),
+                n(rec.get("after_elimed_vars")),
+                n(rec.get("after_replaced_vars")),
+                n(rec.get("after_units")),
+                n(rec.get("after_mem_MB")),
+                n(rec.get("delta_elimed_vars")),
+                n(rec.get("delta_replaced_vars")),
+                n(rec.get("delta_units")),
+                n(rec.get("delta_mem_MB")),
+                n(rec.get("step_time")),
+            ))
+
+    conn.executemany(
+        "INSERT INTO preproc VALUES (" + ",".join(["?"] * 31) + ")",
+        preproc_rows
+    )
+
+    conn.commit()
+    conn.close()
+    print(f"Inserted {len(data_rows)} new rows into data, {len(preproc_rows)} rows into preproc")
 
 
 if __name__ == "__main__":

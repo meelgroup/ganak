@@ -64,6 +64,7 @@ struct CounterConfiguration {
   uint32_t base_lbd_cutoff = 2;
   uint32_t lbd_tier2_cutoff = 6; // tier 2: lbd <= this kept if recently used (CaDiCaL-style)
   int do_shrink = 1;             // block-wise secondary UIP shrinking (CaDiCaL-style)
+  int do_bump_reason = 1;        // bump literals in reason clauses of learned clause (CaDiCaL bumpreason)
   int do_update_lbd_cutoff = 0;
 
   int do_vivify = 1;
@@ -105,6 +106,7 @@ struct CounterConfiguration {
   int td_max_edge_var_ratio = 30;
   int td_do_use_adj = 1;
   std::string td_read_file = "";
+  std::string td_dump_cnf_file = "";
 
   int do_use_sat_solver = 1;
   int sat_restart_mult = 300;

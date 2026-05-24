@@ -59,12 +59,16 @@ using std::setprecision;
 
 static int fc_int(const std::string& s) {
     int val = 0;
-    std::from_chars(s.data(), s.data() + s.size(), val);
+    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), val);
+    if (ec != std::errc{}) throw std::invalid_argument("not an integer: " + s);
+    if (ptr != s.data() + s.size()) throw std::invalid_argument("trailing characters in integer: " + s);
     return val;
 }
 static double fc_double(const std::string& s) {
-    size_t pos;
-    double const val = std::stod(s, &pos);
+    size_t pos = 0;
+    double val;
+    try { val = std::stod(s, &pos); }
+    catch (const std::exception&) { throw std::invalid_argument("not a double: " + s); }
     if (pos != s.size()) throw std::invalid_argument("trailing characters in double: " + s);
     return val;
 }
@@ -115,7 +119,7 @@ int arjun_verb = 1;
 int do_arjun = 1;
 int arjun_gates = 1;
 /* int do_breakid = 0; */
-int arjun_extend_max_confl = 1000;
+int arjun_extend_max_confl = 30000;
 int do_pre_backbone = 0;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
@@ -196,6 +200,7 @@ void add_ganak_options()
     add_arg("--prebackbone", do_pre_backbone, fc_int, "Perform backbone before other things");
     add_arg("--puura", do_puura, fc_int, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, fc_int, "Perform backbone in Puura");
+    add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, fc_int, "Max conflicts for backbone in Puura (-1 = unlimited)");
     add_arg("--puuraautarky", etof_conf.do_autarky, fc_int, "Do autarky in Puura");
     add_arg("--arjuniter1", simp_conf.iter1, fc_int, "Arjun's iter1");
     add_arg("--arjuniter2", simp_conf.iter2, fc_int, "Arjun's iter2");
@@ -216,6 +221,7 @@ void add_ganak_options()
     add_arg("--arjunsamplcutoff", arjun_further_min_cutoff, fc_int,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     add_arg("--arjunextendccnr", arjun_extend_ccnr, fc_int,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     add_arg("--arjunweakenlim", simp_conf.weaken_limit, fc_int,  "Arjun's weaken limitation");
+    add_arg("--puurastrategy", simp_conf.puura_strategy, fc_int, "Puura iter1 simplification strategy: 0=default, 1=new-model");
 
     // TD options
     add_arg("--td", conf.do_td, fc_int, "Run TD decompose");
@@ -237,6 +243,7 @@ void add_ganak_options()
     add_arg("--tduseadj", conf.td_do_use_adj, fc_int, "TD should use adjacency matrix for computing TD scores");
     add_arg("--tdreadfile", conf.td_read_file, fc_string, "Read TD scores from this file");
     add_arg("--tdvis", conf.td_visualize_dot_file, fc_string, "Visualize the TD into this file in DOT format");
+    add_arg("--tddumpcnf", conf.td_dump_cnf_file, fc_string, "Dump the CNF used to build the primal graph for TD computation into this file (DIMACS)");
 
     // Clause DB options
     add_arg("--rdbclstarget", conf.rdb_cls_target, fc_int, "RDB clauses target size (added to this are LBD 3 or lower)");
@@ -266,6 +273,7 @@ void add_ganak_options()
 
     // Shrinking options
     add_arg("--shrink", conf.do_shrink, fc_int, "Block-wise secondary UIP shrinking (CaDiCaL-style)");
+    add_arg("--bumpreason", conf.do_bump_reason, fc_int, "Bump reason clause literals during conflict analysis (CaDiCaL-style)");
 
     // Vivif options -- inprocessing during Ganak
     add_arg("--vivif", conf.do_vivify, fc_int, "Vivify clauses");
@@ -279,6 +287,7 @@ void add_ganak_options()
     add_arg("--sbvaclcut", etof_conf.sbva_cls_cutoff, fc_int, "SBVA cls cutoff");
     add_arg("--sbvalitcut", etof_conf.sbva_lits_cutoff, fc_int, "SBVA lits cutoff");
     add_arg("--sbvabreak", etof_conf.sbva_tiebreak, fc_int, "1 = sbva");
+    add_arg("--sbvamaxnewvars", etof_conf.sbva_max_new_vars, fc_int, "Max number of new variables SBVA may add. 0 = no limit");
 
     // SAT solver options
     add_arg("--satsolver", conf.do_use_sat_solver, fc_int, "Use SAT solver when all minimal indep set has been set");
@@ -552,6 +561,12 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         print_log(od->val);
         mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
       }
+    } else if (mode == 3) {
+      cout << "c s exact poly " << *cnt << endl;
+    } else if (mode == 4) {
+      cout << "c s exact parity " << *cnt << endl;
+    } else if (mode == 5) {
+      cout << "c s exact modprime " << *cnt << endl;
     }
     if (counter.get_is_approximate()) {
       cout << "c s pac guarantees epsilon: " << conf.appmc_epsilon << " delta: " << conf.delta << endl;

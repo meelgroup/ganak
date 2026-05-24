@@ -263,30 +263,17 @@ simplification, and then through Ganak's counting, finally, we combine these
 two systems' counts to get the final count.
 
 ## Supported Weights
-Ganak supports many different weights:
-- For counting over integers, the default mode `--mode 0` works. Here, you can
-  even run approximate counting after some timeout, with e.g `--appmct 1000`
-  which will automatically switch over to approximate counting after 1000s of
-  preprocessing and Ganak.
-- For counting over rationals (i.e. infinite precision weighted counting), you
-  can use `--mode 1` which will give you a precise count, without _any_
-  floating point errors.
-- For counting over the complex rationals field, you need to specify the weight of the
-  literal as a complex number and pass the `--mode 2` flag. For example, if you
-  want to give the weight 1/2 + 4i for literal 9, you can specify the weight as
-  `c p weight 9 1/2 4 0`.
-- For counting over polynomials over a finite field, you can use `--mode 3`
-  which will give you a polynomial count. The weight of the literal is given as
-  `c p weight 9 1/2*x0+4x1+2 0` which means the weight of literal 9 is
-  `1/2*x_0 + 4*x_1+2`. In this mode you MUST specify the number of polynomial
-  variables via `--npolyvars N`
-- For parity counting, you can use the `--mode 4` flag. This will
-  count the number of solutions modulo 2
-- For counting over integers modulo a prime, you can use `--mode 5 --prime X`,
-  where X is the prime.
-- For counting over the complex numbers, but using floats instead of infinite
-  precision rationals, you can use `--mode 6`, and specify the weights as
-  per `--mode 2`.
+
+| Mode | Flag | Field | Weight format example | Notes |
+|------|------|-------|-----------------------|-------|
+| 0 | `--mode 0` | Integer | `c p weight 1 5 0` | Default; supports `--appmct` |
+| 1 | `--mode 1` | Rational (exact) | `c p weight 1 1/4 0` | No floating-point error |
+| 2 | `--mode 2` | Complex rational | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi` |
+| 3 | `--mode 3` | Polynomial over rationals | `c p weight 9 1/2*x0+4*x1+2 0` | Requires `--npolyvars N` |
+| 4 | `--mode 4` | Parity (mod 2) | `c p weight 1 1 0` | |
+| 5 | `--mode 5` | Integer mod prime | `c p weight 1 3 0` | Requires `--prime X` |
+| 6 | `--mode 6` | Complex float (MPFR) | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi`; see `--mpfrprec` |
+| 7 | `--mode 7` | Real float (MPFR) | `c p weight 1 0.3 0` | See `--mpfrprec` |
 
 You can also write your own field by implementing the `Field` and `FieldGen`
 interfaces. Absolutely _any_ field will work, and it's as easy as implementing

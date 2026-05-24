@@ -13,10 +13,11 @@ rm -rf Makefile
 rm -rf rjun-src
 rm -rf deps
 rm -rf _deps
-SAT_DIR=$(cd ../.. && pwd)
-emcmake cmake -DCMAKE_INSTALL_PREFIX=$EMINSTALL -DENABLE_TESTING=OFF \
+SAT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+emcmake cmake -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$EMINSTALL -DENABLE_TESTING=OFF \
     -Dcadical_DIR="${SAT_DIR}/cadical/build" \
-    -Dcadiback_DIR="${SAT_DIR}/cadiback" \
+    -Dcadiback_DIR="${SAT_DIR}/cadiback/build" \
     -Dcryptominisat5_DIR="${SAT_DIR}/cryptominisat/build" \
     -Dsbva_DIR="${SAT_DIR}/sbva/build" \
     -Dtreedecomp_DIR="${SAT_DIR}/treedecomp/build" \

@@ -57,6 +57,7 @@ set(SOURCES
     buddy-2.4/src/tree.c
     buddy-2.4/src/cppext.cxx
     ganak.cpp
+    ganak_c.cpp
     comp_cache_if.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
@@ -91,9 +92,17 @@ set_target_properties(ganak PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+# On MinGW both DLL and EXE import libs share the libganak.dll.a name,
+# so the ganak library and ganak-bin executable (OUTPUT_NAME=ganak)
+# collide on the import lib. Rename the library's output on Windows to
+# avoid the clash.
+if(WIN32)
+  set_target_properties(ganak PROPERTIES OUTPUT_NAME ganakwin)
+endif()
 
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
+add_executable(example-c-bin example.c)
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -110,12 +119,22 @@ target_link_libraries(example-bin
       arjun
       PkgConfig::GMP
 )
+target_link_libraries(example-c-bin
+    PRIVATE
+      ganak
+      arjun
+      PkgConfig::GMP
+)
 
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(example-bin PRIVATE
+    ${PROJECT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(example-c-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -150,10 +169,17 @@ set_target_properties(example-bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+set_target_properties(example-c-bin PROPERTIES
+  OUTPUT_NAME example_c
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+  C_STANDARD 11
+)
 
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/lit.hpp)
+ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak_c.h)
 
 # Ensure headers from sub-builds are copied before we compile against them.
 foreach(_dep_copy_target
@@ -164,7 +190,7 @@ foreach(_dep_copy_target
         CopyPublicHeaders_sbva
         CopyPublicHeaders)
     if(TARGET ${_dep_copy_target})
-        foreach(_tgt ganak ganak-bin example-bin)
+        foreach(_tgt ganak ganak-bin example-bin example-c-bin)
             add_dependencies(${_tgt} ${_dep_copy_target})
         endforeach()
     endif()
@@ -195,7 +221,7 @@ foreach(public_header ${ganak_public_headers})
                       )
 endforeach()
 
-foreach(_tgt ganak-bin example-bin)
+foreach(_tgt ganak-bin example-bin example-c-bin)
     add_dependencies(${_tgt} CopyPublicHeaders_ganak)
 endforeach()
 

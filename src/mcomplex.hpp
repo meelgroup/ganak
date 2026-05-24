@@ -27,30 +27,32 @@ THE SOFTWARE.
 #include <memory>
 #include <arjun/arjun.h>
 
+// Only accepted format: a+bi or a-bi (spaces around '+'/'-' are optional).
+// Both the real part and the imaginary part must always be present.
+// Examples: "1/2+4i", "1/2 + 4i", "1/2-4i", "-1/2+4i"
+// The weight string must end with the DIMACS terminator " 0".
 inline bool parse_complex_mpq(const std::string& str, ArjunNS::FMpq& real_out,
     ArjunNS::FMpq& imag_out, const uint32_t line_no) {
   uint32_t at = 0;
   if (!real_out.parse_mpq(str, at, line_no)) return false;
   ArjunNS::FMpq::skip_whitespace(str, at);
-  if (at < str.size()) {
-    if (str[at] == '+' || str[at] == '-') {
-      bool pos = (str[at] == '+');
-      at++;
-      if (!imag_out.parse_mpq(str, at, line_no)) return false;
-      ArjunNS::FMpq::skip_whitespace(str, at);
-      if (at < str.size() && str[at] == 'i') {
-        at++;
-      } else {
-        std::cerr << "ERROR: Expected 'i' at position " << at << " in line " << line_no << std::endl;
-        return false;
-      }
-      if (!pos) imag_out *= ArjunNS::FMpq(-1);
-    } else {
-      // Space-separated format: "real imag" (e.g. "2 0")
-      if (!imag_out.parse_mpq(str, at, line_no)) return false;
-    }
+  if (at >= str.size() || (str[at] != '+' && str[at] != '-')) {
+    std::cerr << "ERROR: complex weight requires both real and imaginary parts (a+bi or a-bi),"
+              << " missing '+' or '-' at line " << line_no << std::endl;
+    return false;
   }
-  return true;
+  bool pos = (str[at] == '+');
+  at++;
+  ArjunNS::FMpq::skip_whitespace(str, at);
+  if (!imag_out.parse_mpq(str, at, line_no)) return false;
+  ArjunNS::FMpq::skip_whitespace(str, at);
+  if (at >= str.size() || str[at] != 'i') {
+    std::cerr << "ERROR: Expected 'i' after imaginary part at line " << line_no << std::endl;
+    return false;
+  }
+  at++;
+  if (!pos) imag_out *= ArjunNS::FMpq(-1);
+  return ArjunNS::FMpq::check_end_of_weight(str, at, line_no);
 }
 
 class FComplex final : public CMSat::Field {

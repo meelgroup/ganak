@@ -94,8 +94,19 @@ endif()
 
 if((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
     if(STATIC_BINARY AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        message(STATUS "Linking ganak binary statically")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+        message(STATUS "Linking ganak binary fully statically")
+        set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+
+        # CMake probes the compiler without -static, so its captured
+        # CMAKE_<LANG>_IMPLICIT_LINK_LIBRARIES name the *shared* libgcc/libatomic
+        # variants (gcc_s, gcc_s_asneeded, atomic_asneeded) whose .a counterparts
+        # don't exist. Under -static -static-libgcc -static-libstdc++ the gcc/clang
+        # driver links libgcc.a + libgcc_eh.a + libstdc++.a itself, so we don't
+        # need CMake to re-inject anything. Clear both lists outright rather than
+        # playing whack-a-mole with distro-specific names.
+        set(CMAKE_C_IMPLICIT_LINK_LIBRARIES   "")
+        set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
     endif()
 endif()
 
@@ -355,6 +366,21 @@ if(POLICY CMP0169)
 endif()
 
 
+# ---- cadical / cadiback (transitive deps of arjun/cryptominisat) ----
+# These are not used directly by ganak, but arjun's exported target lists
+# them in its INTERFACE_LINK_LIBRARIES.  Import them here so CMake resolves
+# them to actual library paths rather than bare -l flags.
+set(cadical_DIR "" CACHE PATH "cadical build dir containing cadicalConfig.cmake")
+if(cadical_DIR AND NOT TARGET cadical)
+    find_package(cadical CONFIG REQUIRED HINTS "${cadical_DIR}")
+    message(STATUS "cadical: using pre-built at ${cadical_DIR}")
+endif()
+set(cadiback_DIR "" CACHE PATH "cadiback build dir containing cadibackConfig.cmake")
+if(cadiback_DIR AND NOT TARGET cadiback)
+    find_package(cadiback CONFIG REQUIRED HINTS "${cadiback_DIR}")
+    message(STATUS "cadiback: using pre-built at ${cadiback_DIR}")
+endif()
+
 # ---- CryptoMiniSat5 ----
 set(cryptominisat5_DIR "" CACHE PATH "cryptominisat5 install/build prefix (contains lib/cmake/cryptominisat5/). Auto-resolved if empty.")
 if(NOT TARGET cryptominisat5)
@@ -412,6 +438,29 @@ if(NOT TARGET approxmc)
             GIT_SHALLOW    TRUE)
         FetchContent_MakeAvailable(approxmc)
         message(STATUS "ApproxMC: fetched from GitHub")
+    endif()
+endif()
+
+# ---- TreeDecomp ----
+# Used directly by ganak (counter.hpp / outer_counter.cpp include
+# <treedecomp/TreeDecomposition.hpp>), so its imported target must be
+# available to propagate INTERFACE_INCLUDE_DIRECTORIES.
+set(treedecomp_DIR "" CACHE PATH "treedecomp install/build prefix (contains treedecompConfig.cmake). Auto-resolved if empty.")
+if(NOT TARGET treedecomp)
+    if(treedecomp_DIR)
+        find_package(treedecomp CONFIG REQUIRED HINTS "${treedecomp_DIR}")
+        message(STATUS "TreeDecomp: using pre-built at ${treedecomp_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../treedecomp"
+                         "${CMAKE_CURRENT_BINARY_DIR}/treedecomp-build")
+        message(STATUS "TreeDecomp: using sibling repo")
+    else()
+        FetchContent_Declare(treedecomp
+            GIT_REPOSITORY https://github.com/meelgroup/treedecomp.git
+            GIT_TAG        main
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(treedecomp)
+        message(STATUS "TreeDecomp: fetched from GitHub")
     endif()
 endif()
 

@@ -13,15 +13,35 @@ jobs:
       fail-fast: true
 
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-latest]
         build_type: [Release]
 
     steps:
+    - name: Set up MSYS2
+      if: contains(matrix.os, 'windows')
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-gmp
+          mingw-w64-x86_64-mpfr
+          mingw-w64-x86_64-flint
+          mingw-w64-x86_64-zlib
+          mingw-w64-x86_64-pkgconf
+          make
+          zip
+
     - uses: actions/setup-python@v5
+      if: "!contains(matrix.os, 'windows')"
       with:
         python-version: '3.10'
 
     - name: Setup ccache
+      if: "!contains(matrix.os, 'windows')"
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ matrix.os }}-${{ matrix.build_type }}
@@ -65,6 +85,7 @@ jobs:
         cd ..
 
     - name: Install flint
+      if: "!contains(matrix.os, 'windows')"
       run: |
         wget https://github.com/flintlib/flint/releases/download/v3.2.0-rc1/flint-3.2.0-rc1.tar.gz
         tar xzf flint-3.2.0-rc1.tar.gz
@@ -80,7 +101,8 @@ jobs:
         path: project
         submodules: 'true'
 
-    - name: Build ganak
+    - name: Build ganak (non-Windows)
+      if: "!contains(matrix.os, 'windows')"
       run: |
         cd project
         mkdir -p build && cd build
@@ -93,17 +115,46 @@ jobs:
         -S ..
         cmake --build . --config ${{ matrix.build_type }} -v
 
+    - name: Build ganak (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        cd project
+        mkdir -p build && cd build
+        cmake \
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_TESTING=OFF \
+        -G Ninja \
+        -S ..
+        cmake --build . --config ${{ matrix.build_type }} -v
+
     - name: Test
+      if: "!contains(matrix.os, 'windows')"
       run: ctest -C ${{ matrix.build_type }} --verbose
 
-    - name: Run to check it executes
+    - name: Run to check it executes (non-Windows)
+      if: "!contains(matrix.os, 'windows')"
       run: |
         ./project/build/ganak --version
         echo $?
         ./project/build/ganak --help
         echo $?
 
-    - name: Package artifacts
+    - name: Run to check it executes (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        EXE=./project/build/ganak.exe
+        echo "Running: $EXE --version"
+        $EXE --version
+        echo $?
+        echo "Running: $EXE --help"
+        $EXE --help
+        echo $?
+
+    - name: Package artifacts (non-Windows)
+      if: "!contains(matrix.os, 'windows')"
       run: |
         TAG="${{ github.ref_name }}"
         TAG="${TAG#release/}"
@@ -122,6 +173,18 @@ jobs:
           ganak \
           lib \
           include
+        echo "ARCHIVE=${ARCHIVE}" >> $GITHUB_ENV
+
+    - name: Package artifacts (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        TAG="${{ github.ref_name }}"
+        TAG="${TAG#release/}"
+        ARCHIVE="ganak-${TAG}-windows-x86_64.zip"
+        cd project/build
+        zip -r "../../${ARCHIVE}" ganak.exe lib include
+        cd ../..
         echo "ARCHIVE=${ARCHIVE}" >> $GITHUB_ENV
 
     - name: Upload release asset

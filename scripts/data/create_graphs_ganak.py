@@ -1426,13 +1426,13 @@ def preproc_time_pie_chart(matched_dirs):
                 lx = r_label * math.cos(mid)
                 ly = r_label * math.sin(mid)
                 pct_str = f"{pct*100:.1f}%"
-                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",16"\n')
+                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",13"\n')
                 # Legend entry at right
                 lx2 = 1.25
                 ly2 = 0.95 - i * 0.13
                 f.write(f'set object {n_slices+i+1} rect from {lx2-0.05},{ly2-0.04} to {lx2+0.05},{ly2+0.04} '
                         f'fc rgb "{color}" fs solid 0.85 border lc rgb "grey"\n')
-                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",16"\n')
+                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",13"\n')
                 angle = end_angle
             for ll in label_lines:
                 f.write(ll)

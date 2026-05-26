@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp.hpp"
 #include "chibihash64.h"
+#include "canon_info.hpp"
 
 namespace GanakInt {
 
@@ -68,7 +69,7 @@ class DiffPackedComp  {
 public:
   DiffPackedComp() = default;
   ~DiffPackedComp() { delete[] data; }
-  DiffPackedComp(const DiffPackedComp& other) : data_size(other.data_size) {
+  DiffPackedComp(const DiffPackedComp& other) : data_size(other.data_size), is_canonical_(other.is_canonical_) {
     if (data_size > 0) {
       data = new uint32_t[data_size];
       std::memcpy(data, other.data, data_size * sizeof(uint32_t));
@@ -78,22 +79,26 @@ public:
     if (this == &other) return *this;
     delete[] data;
     data_size = other.data_size;
+    is_canonical_ = other.is_canonical_;
     data = (data_size > 0) ? new uint32_t[data_size] : nullptr;
     if (data_size > 0) std::memcpy(data, other.data, data_size * sizeof(uint32_t));
     return *this;
   }
   DiffPackedComp(DiffPackedComp&& other) noexcept
-      : data(other.data), data_size(other.data_size) {
+      : data(other.data), data_size(other.data_size), is_canonical_(other.is_canonical_) {
     other.data = nullptr;
     other.data_size = 0;
+    other.is_canonical_ = false;
   }
   DiffPackedComp& operator=(DiffPackedComp&& other) noexcept {
     if (this != &other) {
       delete[] data;
       data = other.data;
       data_size = other.data_size;
+      is_canonical_ = other.is_canonical_;
       other.data = nullptr;
       other.data_size = 0;
+      other.is_canonical_ = false;
     }
     return *this;
   }
@@ -112,11 +117,35 @@ public:
     SLOW_DEBUG_DO(assert(data != nullptr));
     SLOW_DEBUG_DO(assert(other.data != nullptr));
 
+    if (is_canonical_ != other.is_canonical_) return false;
     if (data_size != other.data_size) return false;
     return std::memcmp(data, other.data, data_size * sizeof(uint32_t)) == 0;
   }
 
-  uint64_t set_comp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& sz) {
+  uint64_t set_comp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& sz,
+                    const CanonInfo* canon = nullptr) {
+    if (canon && canon->valid) {
+      is_canonical_ = true;
+      // Store the same hdata that was used to compute canon->hash, for equality checking.
+      // Format: [nVars, n_clauses, (size, v0, v1, ...) per clause ..., is_indep[0..n-1]]
+      // The is_indep profile is appended so components that differ only in
+      // independent-support membership are correctly distinguished.
+      std::vector<uint32_t> hdata;
+      const uint32_t n = comp.nVars();
+      hdata.push_back(n);
+      hdata.push_back(static_cast<uint32_t>(canon->sorted_canon_clauses.size()));
+      for (const auto& cv : canon->sorted_canon_clauses) {
+        hdata.push_back(static_cast<uint32_t>(cv.size()));
+        for (uint32_t idx : cv) hdata.push_back(idx);
+      }
+      for (uint32_t i = 0; i < n; ++i) hdata.push_back(canon->canon_is_indep[i]);
+      delete[] data;
+      data_size = static_cast<uint32_t>(hdata.size());
+      data = new uint32_t[data_size];
+      std::memcpy(data, hdata.data(), data_size * sizeof(uint32_t));
+      return canon->hash;
+    }
+    is_canonical_ = false;
     // first, generate hashkey, and compute max diff for cls and vars
     uint32_t max_var_diff = 0;
     uint32_t v = *comp.vars_begin();
@@ -188,6 +217,7 @@ public:
 private:
   uint32_t* data = nullptr; // the packed data
   uint32_t data_size = 0; // the size of the packed data in uint32_t units
+  bool is_canonical_ = false; // true when data stores canonical clause representation
 };
 
 }

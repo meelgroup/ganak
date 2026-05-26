@@ -56,8 +56,9 @@ public:
     T* comp = reinterpret_cast<T*>(c);
     return comp->extra_bytes();
   }
-  void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc) override {
-    return new T(comp, hash_seed, bpc);
+  void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc,
+                        const CanonInfo* canon = nullptr) override {
+    return new T(comp, hash_seed, bpc, canon);
   }
 
   [[nodiscard]] uint64_t get_max_num_entries() const override { return entry_base.size(); }

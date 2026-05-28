@@ -309,6 +309,74 @@ interfaces. Absolutely _any_ field will work, and it's as easy as implementing
 `+,-,*` and `/` operators, and the `0` and `1` constants. It's a fun
 exercise to do.
 
+## Compiling to a d-DNNF circuit
+
+Besides reporting the count, Ganak can compile its search trace into a
+[d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit in the d4 `.nnf`
+format. The circuit can then be reused for repeated queries, model enumeration,
+or Boolean functional synthesis. Counting the circuit structurally (OR = sum of
+children, AND = product, `t` = 1, `f` = 0) reproduces exactly the count Ganak
+prints for the same CNF.
+
+### 1. Dumping the circuit
+
+```shell
+./ganak --compile out.nnf in.cnf
+```
+
+This writes the circuit to `out.nnf` (and still prints the count on the
+`c s exact ...` line). To keep the trace a faithful circuit, `--compile` forces
+a single, clean DPLL search: it turns off restarts, probabilistic hashing,
+BuDDy, vivification, and the Arjun/Puura preprocessing that would remap
+variables, and runs single-threaded. The circuit is *streamed* to disk as it is
+built, so compilation does not hold the whole circuit in memory.
+
+Two compilation modes are available:
+- `--weak 0` (the default) — a faithful d-DNNF: its structural count equals the
+  true model count.
+- `--weak 3` — the synthesis "share-and-branch" mode for projected formulas
+  (sound for functional synthesis; see `--help` and `tests/ddnnf_synth.py`).
+
+### 2. Fixing up the dumped circuit
+
+The streamed file is correct for counting/synthesis *from the root*, but it is
+not a *strict* d4 file: it keeps the node ids Ganak used internally, declares
+the root first (the d4 convention), and may contain unreachable ("dead") nodes
+left over from search branches that collapsed to `false`. Some d4 consumers
+require a clean circuit — root numbered `1`, ids contiguous, and no dead nodes.
+
+The standalone `ddnnf-cleanup` tool produces exactly that:
+
+```shell
+./ddnnf-cleanup out.nnf clean.nnf      # omit the 2nd arg (or pass "-") to write to stdout
+```
+
+It keeps only the nodes reachable from the root, renumbers them `root = 1` and
+contiguous (breadth-first from the root), and writes the classic two-section d4
+file (all node declarations, then all arc lines). The structural model count is
+unchanged. A one-line summary goes to stderr, e.g.:
+
+```
+ddnnf-cleanup: declared=812 reachable=809 dropped=3
+```
+
+### 3. Checking the circuit with the verifier
+
+`tests/ddnnf_verify.py` parses a `.nnf` file and prints its structural model
+count, which should match the count Ganak reports for the same CNF:
+
+```shell
+./ganak in.cnf | grep "c s exact"          # Ganak's count
+python3 tests/ddnnf_verify.py clean.nnf    # structural count of the circuit (must agree)
+```
+
+The verifier works on both the raw `--compile` output and the cleaned file (it
+tolerates the dead nodes in the raw output). Once run through `ddnnf-cleanup`,
+the file additionally satisfies the strict checks — there are no unreachable
+nodes — which you can confirm with the module's `unreachable_nodes()` helper
+(empty set) and `check_decomposable()`. The fuzzer `tests/ddnnf_fuzz.py`
+exercises this entire pipeline (compile → cleanup → verify) on random CNFs.
+
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter
 fuzzer, developed by [Anna Latour](https://scholar.google.com/citations?user=nf5lfegAAAAJ&hl=nl)

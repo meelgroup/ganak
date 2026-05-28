@@ -87,12 +87,39 @@ python3 tests/ddnnf_fuzz.py 200 --weak 2   # WEAK level 2 (residual monotone): c
 python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
 ```
 
-`ganak --compile out.nnf in.cnf` writes the circuit; `--weak 0|1|2` selects the
+`ganak --compile out.nnf in.cnf` writes the circuit; `--weak 0|1|2|3` selects the
 relaxation (see `--help`); `--ddnfcheck 1` makes Ganak cross-check each decision
 level's circuit sub-count against its own count (debugging the compiler). Temp
 files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
 processes can run concurrently. Failing cases are copied to
 `/tmp/ddnnf_fuzz/fail_*.{cnf,nnf}`.
+
+### 3. Functional-synthesis round-trip (`tests/ddnnf_synth.py`)
+
+For a *projected* CNF (inputs X = sampling vars, outputs Y = the rest), the
+compiled circuit can be used for Boolean functional synthesis: for an input
+assignment X, `ddnnf_verify.synthesize()` reads a witness ψ(X) off the circuit.
+The fuzzer checks that for every satisfiable X, `F(X, ψ(X))` holds, and reports
+the circuit size vs `--weak 0`.
+
+```
+python3 tests/ddnnf_synth.py 200            # --weak 0 (faithful d-DNNF)
+python3 tests/ddnnf_synth.py 200 --weak 3   # share-and-branch; also prints size ratio
+```
+
+Synthesis notes (empirically established):
+- The witness for Y comes from the **SAT oracle** (it stays on in `--compile`),
+  which records one example assignment of Y at each SAT leaf (`set_override` in
+  `DDNNFCompiler`). This is the main compactness for synthesis (Y is not
+  enumerated). `--weak 0` + SAT is a correct, compact synthesis compiler.
+- `--weak 3` (share-and-branch): input vars (`< opt_indep_support_end`) may be
+  shared across AND children while outputs stay disjoint; cache is selective
+  (shared components are not cached, for soundness). It is **sound** (synthesis
+  round-trip 0 failures) but **not more compact** than `--weak 0` (~1.05-1.10x
+  larger): duplicating shared inputs and losing their caching outweighs the
+  finer decomposition. The compactness that `--weak 1/2` show for *counting*
+  comes from dropping constraints (over-approximation) and is unsound for
+  synthesis, which is why `--weak 3` does not reproduce it.
 
 ## Running Tests
 ```

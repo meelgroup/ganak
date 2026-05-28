@@ -215,6 +215,7 @@ public:
 
 private:
   std::unique_ptr<DDNNFCompiler> ddnnf;
+  std::vector<int> sat_witness; // DIMACS lits of synthesized (Y) vars from the SAT oracle
 
   // ---- --weak 2 incremental residual-polarity tracking ----
   // For each variable, how many currently-active (no true literal) irredundant

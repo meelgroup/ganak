@@ -129,11 +129,15 @@ public:
   std::vector<std::array<std::vector<int>, 2>> children;
   // left_lits[lev] = literals captured for the left branch of decision level lev
   std::vector<std::vector<int>> left_lits;
+  // override_node[lev] >= 0: the SAT oracle solved this level; its node is a
+  // witness leaf (set_override), bypassing the normal OR-from-children build.
+  std::vector<int> override_node;
 
   void ensure_level(int lev) {
     if ((int)children.size() <= lev) {
       children.resize(lev + 1);
       left_lits.resize(lev + 1);
+      override_node.resize(lev + 1, -1);
     }
   }
   void on_new_level(int lev) {
@@ -141,6 +145,17 @@ public:
     children[lev][0].clear();
     children[lev][1].clear();
     left_lits[lev].clear();
+    override_node[lev] = -1;
+  }
+  void set_override(int lev, int node) {
+    ensure_level(lev);
+    override_node[lev] = node;
+  }
+  int take_override(int lev) {
+    if (lev < 0 || (int)override_node.size() <= lev) return -1;
+    int n = override_node[lev];
+    override_node[lev] = -1;
+    return n;
   }
   void add_child(int lev, bool branch, int node) {
     if (node == true_node) return;

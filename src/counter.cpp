@@ -1064,6 +1064,10 @@ void Counter::compile_on_cache_hit(int node) {
 int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lits) {
   auto& top = decisions.top();
   ddnnf->ensure_level(lev);
+  // SAT-oracle leaf: this level was solved by the SAT solver, which recorded a
+  // witness for the synthesized variables. Use that leaf instead of building an
+  // OR from (stale) children.
+  if (int ov = ddnnf->take_override(lev); ov >= 0) return ov;
   int left  = top.is_zero(0) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][0]);
   int right = top.is_zero(1) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][1]);
   std::vector<DDNNFCompiler::Arc> arcs;
@@ -4015,6 +4019,17 @@ bool Counter::run_sat_solver(RetState& state) {
         sat_solution[v] = val(v);
       }
     }
+    // d-DNNF compilation: record the SAT oracle's witness for the synthesized
+    // variables (>= opt_indep_support_end) of this component, before the trail
+    // is backtracked. This is the example solution functional synthesis needs.
+    if (compiling()) {
+      sat_witness.clear();
+      all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
+        uint32_t const v = *it;
+        if (v >= opt_indep_support_end && val(v) != X_TRI)
+          sat_witness.push_back(Lit(v, val(v) == T_TRI).to_visual_int());
+      }
+    }
     go_back_to(sat_start_dec_level);
     bool const ret = propagate();
     assert(ret);
@@ -4040,6 +4055,10 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
+    // Make this SAT level's circuit node the witness leaf (TRUE constrained by
+    // the recorded synthesized-variable assignment).
+    if (compiling())
+      ddnnf->set_override(dec_level(), ddnnf->wrap_lits(ddnnf->true_node, sat_witness));
   }
 
 end:

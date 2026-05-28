@@ -70,6 +70,15 @@ public:
     cache->set_compile_node(comp_stack[stack_comp_id]->id(), node);
   }
 
+  // --weak 3: a component that contains a shared input var is not independent of
+  // its siblings (they share that var), so it must NOT be cached -- a hit would
+  // reuse its result in a context where the shared var differs and under-cover.
+  bool comp_has_shareable(const uint64_t stack_comp_id) const {
+    const Comp& c = *comp_stack[stack_comp_id];
+    all_vars_in_comp(c, v) if (ana.is_shareable(*v)) return true;
+    return false;
+  }
+
   const auto& get_comp_stack() const { return comp_stack; }
   Comp& get_super_comp(const StackLevel& lev) {
     assert(comp_stack.size() > lev.super_comp());

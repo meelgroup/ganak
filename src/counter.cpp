@@ -2162,7 +2162,12 @@ RetState Counter::backtrack() {
     }
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
-    if (conf.do_use_cache) {
+    // --weak 3: do not cache components that contain a shared input var (they are
+    // not independent of their siblings; a hit would under-cover). Components with
+    // no shared var are variable-disjoint and safe to cache.
+    const bool cacheable = conf.do_use_cache &&
+        !(conf.weak == 3 && comp_manager->comp_has_shareable(decisions.top().super_comp()));
+    if (cacheable) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
       all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) cout << *it << " ";

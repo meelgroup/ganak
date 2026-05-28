@@ -181,7 +181,8 @@ void add_ganak_options()
 4=parity counting,
 5=counting over a prime field (see --prime),
 6=mpfr floating point complex numbers (see --mpfrprec),
-7=mpfr floating point real numbers (see --mpfrprec)
+7=mpfr floating point real numbers (see --mpfrprec),
+13=multivariate Laurent polynomials over the rational field (see --npolyvars)
 )delimiter");
     add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
     add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
@@ -562,6 +563,8 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       }
     } else if (mode == 3) {
       cout << "c s exact poly " << *cnt << endl;
+    } else if (mode == 13) {
+      cout << "c s exact laurent " << *cnt << endl;
     } else if (mode == 4) {
       cout << "c s exact parity " << *cnt << endl;
     } else if (mode == 5) {
@@ -630,6 +633,13 @@ int main(int argc, char *argv[]) {
           exit(EXIT_FAILURE);
         }
         fg = std::make_unique<FGenPoly>(poly_nvars);
+        break;
+    case 13:
+        if (poly_nvars == -1) {
+          cout << "c o [arjun] ERROR: Must provide number of polynomial vars for mode 13 via --npolyvars" << endl;
+          exit(EXIT_FAILURE);
+        }
+        fg = std::make_unique<LaurentPolyGen>(poly_nvars);
         break;
     case 4:
         fg = std::make_unique<FGenParity>();

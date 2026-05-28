@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ddnnf_verify as dv
 
 GANAK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ganak")
-TMP = "/tmp/ddnnf_fuzz"
+# Process-unique temp dir so concurrent fuzzer runs don't clobber each other's files.
+TMP = f"/tmp/ddnnf_fuzz_{os.getpid()}"
 os.makedirs(TMP, exist_ok=True)
 
 

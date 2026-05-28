@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter_config.hpp"
 #include "comp_management.hpp"
+#include "ddnnf.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
 #include <treedecomp/TreeDecomposition.hpp>
@@ -198,7 +199,28 @@ public:
   DataAndStatistics& get_stats() { return stats; }
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
+  // ---- d-DNNF compilation ----
+  bool compiling() const { return ddnnf != nullptr; }
+  // Called from the component analyzer when an unconstrained independent
+  // variable is found (it contributes a factor of two = OR(v, -v)).
+  void compile_add_free_var(uint32_t v);
+  // Called from the component manager on a cache hit: share the cached sub-DAG.
+  void compile_on_cache_hit(int node);
+
 private:
+  std::unique_ptr<DDNNFCompiler> ddnnf;
+  std::vector<int> compile_cur_level_lits() const; // current top decision level's trail lits
+  std::vector<int> compile_level0_lits() const;    // literals forced at decision level 0
+  int compile_build_level_node(int lev, const std::vector<int>& right_lits);
+  void compile_finalize_root();
+  // Mirror zero_out_branch_sol(): drop the current branch's accumulated children,
+  // since Ganak is discarding the branch's count to re-explore it.
+  void compile_reset_cur_branch() {
+    if (!compiling()) return;
+    ddnnf->ensure_level(dec_level());
+    ddnnf->children[dec_level()][decisions.top().is_right_branch()].clear();
+  }
+
   FG fg;
   FF two; //stores 1+1
   CounterConfiguration conf;

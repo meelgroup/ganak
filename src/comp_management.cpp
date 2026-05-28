@@ -31,7 +31,7 @@ CompManager::CompManager(const CounterConfiguration& config,
     DataAndStatistics& statistics,
     const LiteralIndexedVector<TriValue>& lit_values, Counter* _counter) :
     fg(_counter->get_fg()->dup()), conf(config), stats(statistics),
-    ana(lit_values, _counter)
+    counter(_counter), ana(lit_values, _counter)
 {
 }
 
@@ -71,7 +71,10 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
-      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp)) {
+      int hit_node = -1;
+      const bool compiling = !conf.compile_fname.empty();
+      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp,
+            compiling ? &hit_node : nullptr)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
@@ -92,6 +95,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
+        if (compiling) counter->compile_on_cache_hit(hit_node);
         free_comp(p_new_comp);
       }
       cache->free_comp(ccomp);

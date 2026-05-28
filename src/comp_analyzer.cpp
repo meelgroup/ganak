@@ -183,6 +183,27 @@ void CompAnalyzer::initialize(
   }
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
+
+  // Weak compilation: precompute which variables are monotone (single polarity)
+  // in the irredundant formula. POS bit = 1, NEG bit = 2.
+  if (conf.weak) {
+    vector<uint8_t> pol(max_var + 1, 0);
+    for (const auto& off : long_irred_cls) {
+      const Clause& cl = *alloc->ptr(off);
+      for (const auto& l : cl) pol[l.var()] |= (l.sign() ? 1u : 2u);
+    }
+    for (uint32_t v = 1; v <= max_var; v++)
+      for (const bool s : {false, true})
+        for (const auto& bincl : watches[Lit(v, s)].binaries)
+          if (bincl.irred()) pol[v] |= (s ? 1u : 2u);
+    is_monotone_var.assign(max_var + 1, 0);
+    uint32_t nmono = 0;
+    std::cout << "c o [compile-weak] monotone vars:";
+    for (uint32_t v = 1; v <= max_var; v++)
+      if (pol[v] == 1 || pol[v] == 2) { is_monotone_var[v] = 1; nmono++; std::cout << " " << v; }
+    std::cout << std::endl;
+    verb_print(1, "[compile-weak] monotone (cuttable) vars: " << nmono << "/" << max_var);
+  }
 }
 
 // returns true, iff the comp found is non-trivial
@@ -207,6 +228,7 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
     } else {
       if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(counter->get_two());
+      if (counter->compiling()) counter->compile_add_free_var(v);
     }
     archetype.set_var_clear(v);
     return false;
@@ -233,6 +255,11 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
+    // Weak d-DNNF: a monotone variable is recorded in this component but does
+    // not bridge to others -- skip traversing its clauses so it cannot pull in
+    // further variables/clauses. This relaxes decomposability (the resulting
+    // count is intentionally wrong) but yields a smaller, faster decomposition.
+    if (conf.weak && is_monotone_var[v]) continue;
     analyze_verb(
       debug_print("-----------------------");
       debug_print("record v: " << v << " start");

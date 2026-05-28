@@ -32,6 +32,15 @@ enum class DecideType : int { td = 0, ignore_td = 1 };
 
 struct CounterConfiguration {
   int verb = 1;
+
+  // d-DNNF compilation: when compile_fname is non-empty, Ganak emits the
+  // search trace as a (Decision-)d-DNNF circuit to that file (d4 .nnf format)
+  // instead of (only) reporting a count. weak=1 enables the weak relaxation
+  // (monotone variables do not bridge components), producing a weak d-DNNF
+  // whose model count is intentionally wrong but which compiles faster.
+  std::string compile_fname = "";
+  int weak = 0;
+
   int do_restart = 0;
   int do_chronobt = 1;
   uint64_t first_restart = 20000U;

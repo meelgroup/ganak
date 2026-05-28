@@ -193,6 +193,10 @@ void add_ganak_options()
     add_arg("--chronobt", conf.do_chronobt, fc_int, "ChronoBT. SAT must be DISABLED or this will fail");
     add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
 
+    // d-DNNF compilation
+    add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
+    add_arg("--weak", conf.weak, fc_int, "When compiling, produce a WEAK d-DNNF: monotone (single-polarity-in-residual) variables do not bridge components. Compiles faster; the resulting model count is intentionally wrong.");
+
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");
     add_arg("--arjunverb", arjun_verb, fc_int, "Arjun verb");
@@ -351,6 +355,20 @@ void parse_supported_options(int argc, char** argv) {
         }
         std::cerr << msg << std::endl;
         exit(EXIT_FAILURE);
+    }
+    if (!conf.compile_fname.empty()) {
+      // d-DNNF compilation needs a single, clean DPLL search tree so the trace
+      // is a faithful circuit. Force the relevant options.
+      conf.do_restart = 0;             // one monolithic search, not restart+cube
+      conf.do_probabilistic_hashing = 0; // exact cache: sound DAG sharing
+      conf.do_use_sat_solver = 0;      // no opaque SAT-oracle leaves
+      conf.do_buddy = 0;               // no opaque BuDDy leaves
+      conf.do_vivify = 0;              // do not rewrite clauses mid-search
+      do_arjun = 0;                    // compile over the original variables
+      do_puura = 0;                    // no preprocessing that remaps variables
+      num_threads = 1;                 // single compiler instance
+      cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
+           << (conf.weak ? " (WEAK)" : "") << endl;
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;

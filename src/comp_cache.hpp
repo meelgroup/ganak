@@ -105,7 +105,8 @@ public:
     }
   }
 
-  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* c) override {
+  bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* c,
+      int* out_node = nullptr) override {
     const T& comp = *reinterpret_cast<const T*>(c);
     stats.num_cache_look_ups++;
     uint32_t table_ofs = (uint32_t)comp.get_hashkey() & tbl_size_mask;
@@ -117,11 +118,17 @@ public:
         update_entry_time(act_id);
         debug_print(COLYEL2 << "Cache hit. cache ID: " << act_id);
         top.include_solution(entry(act_id).model_count());
+        if (out_node != nullptr) *out_node = (act_id < compile_nodes.size()) ? compile_nodes[act_id] : -1;
         return true;
       }
       act_id = entry(act_id).next_bucket_element();
     }
     return false;
+  }
+
+  void set_compile_node(CacheEntryID id, int node) override {
+    if (id >= compile_nodes.size()) compile_nodes.resize(id + 1, -1);
+    compile_nodes[id] = node;
   }
 
   // unchecked erase of an entry from entry_base
@@ -214,6 +221,10 @@ private:
 
   vec<T> entry_base;
   vec<CacheEntryID> free_entry_base_slots;
+
+  // d-DNNF compilation only: maps a CacheEntryID to the circuit node id of the
+  // component's compiled sub-DAG. Lazily sized; -1 = none. Empty when not compiling.
+  std::vector<int> compile_nodes;
 
   // the actual hash table
   // by means of which the cache is accessed

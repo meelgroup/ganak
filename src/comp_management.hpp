@@ -64,6 +64,12 @@ public:
     cache->store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
+  // d-DNNF compilation: record the compiled circuit node for a component, so
+  // that future cache hits on the same component reference the same sub-DAG.
+  void set_comp_node(const uint64_t stack_comp_id, int node) {
+    cache->set_compile_node(comp_stack[stack_comp_id]->id(), node);
+  }
+
   const auto& get_comp_stack() const { return comp_stack; }
   Comp& get_super_comp(const StackLevel& lev) {
     assert(comp_stack.size() > lev.super_comp());
@@ -112,6 +118,7 @@ private:
   FG fg;
   const CounterConfiguration &conf;
   DataAndStatistics &stats;
+  Counter* counter; // used for d-DNNF compilation hooks
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp*> comp_stack;

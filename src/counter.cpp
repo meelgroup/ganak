@@ -957,9 +957,67 @@ void Counter::fix_weights() {
   debug_print("Fixed weights via " << __func__);
 }
 
+std::vector<int> Counter::compile_cur_level_lits() const {
+  std::vector<int> r;
+  for (auto it = top_declevel_trail_begin(); it != trail.end(); ++it)
+    r.push_back(it->to_visual_int());
+  return r;
+}
+
+std::vector<int> Counter::compile_level0_lits() const {
+  std::vector<int> r;
+  for (const auto& l : trail) if (var(l).decision_level == 0) r.push_back(l.to_visual_int());
+  return r;
+}
+
+void Counter::compile_add_free_var(uint32_t v) {
+  ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), ddnnf->mk_free_var((int)v));
+}
+
+void Counter::compile_on_cache_hit(int node) {
+  if (node < 0) node = ddnnf->true_node; // safety: missing node -> neutral element
+  ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), node);
+}
+
+int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lits) {
+  auto& top = decisions.top();
+  ddnnf->ensure_level(lev);
+  int left  = top.is_zero(0) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][0]);
+  int right = top.is_zero(1) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][1]);
+  std::vector<DDNNFCompiler::Arc> arcs;
+  if (left  != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{left,  ddnnf->left_lits[lev]});
+  if (right != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{right, right_lits});
+  int or_node = ddnnf->mk_or(std::move(arcs));
+  // Optional built-in self-check (env DDNNF_CHECK=1): the circuit sub-count of
+  // each level must match Ganak's own count for that level. Strong mode only.
+  if (!conf.weak && getenv("DDNNF_CHECK") != nullptr) {
+    std::stringstream ss; ss << *top.total_model_count();
+    if (ss.str() != std::to_string(ddnnf->scount(or_node)))
+      std::cerr << "DDNNF MISMATCH lev " << lev << " node " << or_node
+        << " struct=" << ddnnf->scount(or_node) << " ganak=" << ss.str() << std::endl;
+  }
+  return or_node;
+}
+
+void Counter::compile_finalize_root() {
+  ddnnf->ensure_level(0);
+  // Level 0 is initialised to the right branch (see init_decision_stack), so the
+  // top-level components accumulate in its active branch.
+  const bool b = decisions.top().is_right_branch();
+  int inner = ddnnf->mk_and(ddnnf->children[0][b]);
+  ddnnf->root = ddnnf->wrap_lits(inner, compile_level0_lits());
+}
+
 FF Counter::outer_count() {
   fix_weights();
-  if (!ok) return fg->zero();
+  if (!conf.compile_fname.empty()) {
+    ddnnf = std::make_unique<DDNNFCompiler>();
+    ddnnf->nvars = nVars();
+  }
+  if (!ok) {
+    if (compiling()) { ddnnf->root = ddnnf->false_node; ddnnf->write_d4(conf.compile_fname); }
+    return fg->zero();
+  }
 
   auto cnt = fg->zero();
   Timer t;
@@ -986,7 +1044,7 @@ FF Counter::outer_count() {
   verb_print(1, "Opt sampling set size: " << ((opt_indep_support_end>0) ? (opt_indep_support_end-1) : 0));
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
-  if (indep_support_end <= 6) return count_using_cms();
+  if (indep_support_end <= 6 && !compiling()) return count_using_cms();
   auto ret = sat_solver->solve();
 
   start_time = cpu_time();
@@ -1049,6 +1107,14 @@ FF Counter::outer_count() {
       cerr << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
       exit(EXIT_FAILURE);
     } else *cnt += *do_appmc_count();
+  }
+  if (compiling()) {
+    if (ddnnf->root < 0) ddnnf->root = ddnnf->false_node;
+    ddnnf->nvars = nVars();
+    ddnnf->write_d4(conf.compile_fname);
+    verb_print(0, "[compile] d-DNNF written to " << conf.compile_fname
+        << " nodes: " << ddnnf->num_nodes() << " edges: " << ddnnf->num_edges()
+        << (conf.weak ? " (WEAK)" : ""));
   }
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   return cnt;
@@ -1223,6 +1289,7 @@ end:
     Cube const c(vector<Lit>(), decisions.top().total_model_count());
     debug_print("Exiting due to EXIT state, the cube count: " << *c.cnt);
     mini_cubes.push_back(c);
+    if (compiling()) compile_finalize_root();
   }
 
   if (weighted()) {
@@ -1311,6 +1378,7 @@ void Counter::decide_lit() {
   set_lit(lit, dec_level());
   stats.decisions++;
   vsads_readjust();
+  if (compiling()) ddnnf->on_new_level(dec_level());
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
@@ -1967,6 +2035,11 @@ RetState Counter::backtrack() {
       // NOTE: replacing a decision literal x with y when y->x binary clause exists does
       // not work, because we'll count (x, y) = 01 (left hand branch), and
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
+      // d-DNNF: capture the left branch's literals before the trail is undone.
+      if (compiling()) {
+        ddnnf->ensure_level(dec_level());
+        ddnnf->left_lits[dec_level()] = compile_cur_level_lits();
+      }
       reactivate_comps_and_backtrack_trail(false);
       decisions.top().change_to_right_branch();
       bool const ret = propagate(true);
@@ -1994,6 +2067,13 @@ RetState Counter::backtrack() {
     }
 
     CHECK_COUNT_DO(check_count());
+    // d-DNNF: build this level's OR (decision) node before the trail is undone,
+    // so we can read the right branch's literals from the trail.
+    int compiled_node = -1;
+    if (compiling()) {
+      auto right_lits = compile_cur_level_lits();
+      compiled_node = compile_build_level_node(dec_level(), right_lits);
+    }
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
     if (conf.do_use_cache) {
@@ -2019,6 +2099,7 @@ RetState Counter::backtrack() {
       } else {
         comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
       }
+      if (compiling()) comp_manager->set_comp_node(decisions.top().super_comp(), compiled_node);
     }
 
 #ifdef VERBOSE_DEBUG
@@ -2027,6 +2108,8 @@ RetState Counter::backtrack() {
     const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
     (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    if (compiling())
+      ddnnf->add_child(dec_level() - 1, (decisions.end() - 2)->is_right_branch(), compiled_node);
     decisions.pop_back();
 
     auto& dst = decisions.top();
@@ -2143,6 +2226,7 @@ void Counter::go_back_to(int32_t backj) {
     reactivate_comps_and_backtrack_trail(false);
     decisions.pop_back();
     decisions.top().zero_out_branch_sol();
+    compile_reset_cur_branch();
     if (!sat_mode()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
@@ -2304,6 +2388,7 @@ RetState Counter::resolve_conflict() {
     go_back_to(backj);
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_branch_sol();
+    compile_reset_cur_branch();
     return BACKTRACK;
   }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {

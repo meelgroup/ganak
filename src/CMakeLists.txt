@@ -103,6 +103,9 @@ endif()
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
+# Standalone d4 .nnf post-processor: drops dead nodes + renumbers root=1.
+# Self-contained (no ganak/arjun/GMP deps).
+add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -175,6 +178,11 @@ set_target_properties(example-c-bin PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
   C_STANDARD 11
 )
+set_target_properties(ddnnf-cleanup-bin PROPERTIES
+  OUTPUT_NAME ddnnf-cleanup
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp)
@@ -234,6 +242,11 @@ install(TARGETS ganak
 )
 
 install(TARGETS ganak-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf-cleanup-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

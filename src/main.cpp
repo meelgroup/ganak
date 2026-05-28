@@ -382,6 +382,13 @@ void parse_supported_options(int argc, char** argv) {
       // cache hit would under-cover). Components with no shared var are still
       // variable-disjoint and safe to cache -- see CompManager::comp_has_shareable
       // and the save_count guard in Counter::backtrack.
+      if (conf.ddnf_check) {
+        // The per-level structural self-check needs the whole in-memory DAG,
+        // which streaming compilation no longer retains. Disable it.
+        cout << "c o [compile] WARNING: --ddnfcheck is unavailable in streaming "
+                "compilation mode; disabling it" << endl;
+        conf.ddnf_check = 0;
+      }
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
            << (conf.weak ? " (WEAK)" : "") << endl;
     } else if (conf.weak != 0) {

@@ -247,11 +247,34 @@ def subtree_vars(nodes, arcs, root):
     return memo
 
 
+def reachable_nodes(nodes, arcs, root):
+    """Set of node ids reachable from the root."""
+    seen = set()
+    stack = [root]
+    while stack:
+        nid = stack.pop()
+        if nid in seen:
+            continue
+        seen.add(nid)
+        for c, _ in arcs.get(nid, []):
+            stack.append(c)
+    return seen
+
+
+def unreachable_nodes(nodes, arcs, root):
+    """Declared-but-unreachable ("dead") node ids. Empty for a cleaned circuit;
+    `ganak --compile` raw output may contain some. Used to assert that
+    `ddnnf-cleanup` drops them all (so a strict, non-relaxed reading passes)."""
+    return set(nodes) - reachable_nodes(nodes, arcs, root)
+
+
 def check_decomposable(nodes, arcs, root):
     """Strict d-DNNF: every AND node's children have pairwise-disjoint variable sets."""
     sv = subtree_vars(nodes, arcs, root)
     for nid, t in nodes.items():
         if t != 'a':
+            continue
+        if nid not in sv:           # unreachable ("dead") node: not part of the circuit
             continue
         seen = set()
         for c, _ in arcs.get(nid, []):
@@ -269,6 +292,8 @@ def check_weak_decomposable(nodes, arcs, root):
     sv = subtree_vars(nodes, arcs, root)
     for nid, t in nodes.items():
         if t != 'a':
+            continue
+        if nid not in sv:           # unreachable ("dead") node: not part of the circuit
             continue
         kids = [sv[c] for c, _ in arcs.get(nid, [])]
         for i in range(len(kids)):
@@ -288,6 +313,8 @@ def shared_and_vars(nodes, arcs, root):
     shared = set()
     for nid, t in nodes.items():
         if t != 'a':
+            continue
+        if nid not in sv:           # unreachable ("dead") node: not part of the circuit
             continue
         seen = set()
         for c, _ in arcs.get(nid, []):

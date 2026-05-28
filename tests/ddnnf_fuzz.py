@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ddnnf_verify as dv
 
 GANAK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ganak")
+CLEANUP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ddnnf-cleanup")
 TMP = "/tmp/ddnnf_fuzz"
 os.makedirs(TMP, exist_ok=True)
 
@@ -118,11 +119,14 @@ def main():
     # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL).
     cnf = unique_file("fz", ".cnf")
     nnf = cnf + ".nnf"
+    clean = nnf + ".clean"
 
     def save_fail(t):
         shutil.copy(cnf, unique_file("fail", ".cnf"))
         if os.path.exists(nnf):
             shutil.copy(nnf, unique_file("fail", ".nnf"))
+        if os.path.exists(clean):
+            shutil.copy(clean, unique_file("fail", ".clean.nnf"))
 
     for t in range(n):
         nv = random.randint(7, 16)
@@ -171,6 +175,43 @@ def main():
         if fmodels != bmodels:
             print(f"FAIL[{t}] strong circuit not faithful as a function "
                   f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")
+            save_fail(t)
+            fails += 1
+            continue
+
+        # CLEANUP TOOL: the streamed raw .nnf keeps Ganak's internal ids and may
+        # carry dead (unreachable) nodes. `ddnnf-cleanup` must drop them and
+        # renumber root=1 while preserving the circuit. Validate strictly: the
+        # cleaned circuit must have NO dead nodes (so a non-relaxed reading
+        # passes), stay decomposable, and keep the same count + model set.
+        if os.path.exists(clean):
+            os.remove(clean)
+        rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
+        if not os.path.exists(clean):
+            print(f"FAIL[{t}] ddnnf-cleanup produced no output. stderr:\n{rc.stderr}")
+            save_fail(t)
+            fails += 1
+            continue
+        cn, ca, cr = dv.parse(clean)
+        dead = dv.unreachable_nodes(cn, ca, cr)
+        if dead:
+            print(f"FAIL[{t}] cleaned circuit still has dead nodes: {sorted(dead)[:10]}")
+            save_fail(t)
+            fails += 1
+            continue
+        ok, msg = dv.check_decomposable(cn, ca, cr)
+        if not ok:
+            print(f"FAIL[{t}] cleaned circuit not decomposable: {msg}")
+            save_fail(t)
+            fails += 1
+            continue
+        if dv.count(cn, ca, cr) != bc:
+            print(f"FAIL[{t}] cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
+            save_fail(t)
+            fails += 1
+            continue
+        if dv.models(cn, ca, cr, nv) != bmodels:
+            print(f"FAIL[{t}] cleaned model-set mismatch")
             save_fail(t)
             fails += 1
             continue

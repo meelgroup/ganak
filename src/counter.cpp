@@ -992,14 +992,9 @@ int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lit
   if (left  != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{left,  ddnnf->left_lits[lev]});
   if (right != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{right, right_lits});
   int or_node = ddnnf->mk_or(std::move(arcs));
-  // Optional built-in self-check (--ddnfcheck 1): the circuit sub-count of each
-  // level must match Ganak's own count for that level. Strong mode only.
-  if (!conf.weak && conf.ddnf_check) {
-    std::stringstream ss; ss << *top.total_model_count();
-    if (ss.str() != std::to_string(ddnnf->scount(or_node)))
-      std::cerr << "DDNNF MISMATCH lev " << lev << " node " << or_node
-        << " struct=" << ddnnf->scount(or_node) << " ganak=" << ss.str() << std::endl;
-  }
+  // NOTE: --ddnfcheck (the per-level structural sub-count self-check) is not
+  // available in streaming mode -- it needs random access to the whole in-memory
+  // DAG, which is no longer retained. It is neutralized at setup in main.cpp.
   return or_node;
 }
 
@@ -1015,7 +1010,7 @@ void Counter::compile_finalize_root() {
 FF Counter::outer_count() {
   fix_weights();
   if (!conf.compile_fname.empty()) {
-    ddnnf = std::make_unique<DDNNFCompiler>();
+    ddnnf = std::make_unique<DDNNFCompiler>(conf.compile_fname);
     ddnnf->nvars = nVars();
   }
   if (!ok) {

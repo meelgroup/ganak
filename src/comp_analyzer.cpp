@@ -184,11 +184,13 @@ void CompAnalyzer::initialize(
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 
-  // Weak compilation. --weak 1: a variable monotone (single polarity) in the
-  // whole irredundant formula is cuttable; computed once here. --weak 2: the
-  // monotone set is recomputed per node over the residual (see
-  // compute_residual_monotone); here we just allocate it.
-  if (conf.weak >= 2) {
+  // Weak compilation (only when compiling). --weak 1: a variable monotone
+  // (single polarity) in the whole irredundant formula is cuttable; computed
+  // once here. --weak 2: the monotone set is recomputed per node over the
+  // residual (see compute_residual_monotone); here we just allocate it.
+  if (conf.compile_fname.empty()) {
+    // not compiling: weak has no effect (see main.cpp guard)
+  } else if (conf.weak >= 2) {
     is_monotone_var.assign(max_var + 1, 0);
   } else if (conf.weak == 1) {
     vector<uint8_t> pol(max_var + 1, 0);
@@ -306,7 +308,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     // not bridge to others -- skip traversing its clauses so it cannot pull in
     // further variables/clauses. This relaxes decomposability (the resulting
     // count is intentionally wrong) but yields a smaller, faster decomposition.
-    if (conf.weak && is_monotone_var[v]) continue;
+    // Only ever active while compiling (otherwise it would corrupt the count).
+    if (conf.weak && !conf.compile_fname.empty() && is_monotone_var[v]) continue;
     analyze_verb(
       debug_print("-----------------------");
       debug_print("record v: " << v << " start");

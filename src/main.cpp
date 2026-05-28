@@ -370,6 +370,12 @@ void parse_supported_options(int argc, char** argv) {
       num_threads = 1;                 // single compiler instance
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
            << (conf.weak ? " (WEAK)" : "") << endl;
+    } else if (conf.weak != 0) {
+      // --weak only makes sense when compiling: it deliberately produces a wrong
+      // count, so without --compile it would silently corrupt normal counting.
+      cerr << "ERROR: --weak requires --compile (it intentionally produces a "
+              "wrong count and is only meaningful for weak d-DNNF compilation)" << endl;
+      exit(EXIT_FAILURE);
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;

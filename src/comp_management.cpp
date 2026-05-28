@@ -63,7 +63,8 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   ana.setup_analysis_context(top, super_comp);
 
   // Weak d-DNNF level 2: recompute monotone vars over the residual before cutting.
-  if (conf.weak >= 2) ana.compute_residual_monotone(super_comp);
+  // Only when compiling (the cut is gated on compiling too).
+  if (conf.weak >= 2 && !conf.compile_fname.empty()) ana.compute_residual_monotone(super_comp);
 
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);

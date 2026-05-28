@@ -85,6 +85,8 @@ def main():
     nnf = cnf + ".nnf"
     fails = 0
     no_witness = 0
+    size_w = 0
+    size_0 = 0
     for t in range(n):
         nv = random.randint(6, 14)
         k = random.randint(2, max(2, nv - 2))   # |X|
@@ -106,6 +108,13 @@ def main():
             fails += 1
             continue
         nodes, arcs, root = dv.parse(nnf)
+        size_w += len(nodes)
+        if weak:  # compile weak 0 too, to compare circuit size
+            n0 = nnf + ".w0"
+            subprocess.run([GANAK, "--compile", n0, cnf], capture_output=True)
+            if os.path.exists(n0):
+                nn0, _, _ = dv.parse(n0)
+                size_0 += len(nn0)
 
         # which input assignments X are satisfiable (extendable to a full model)?
         solvable = set()
@@ -133,8 +142,11 @@ def main():
             shutil.copy(nnf, unique_file("fail", ".nnf"))
             fails += 1
 
-    print(f"done {n} synth tests, {fails} failures "
-          f"({no_witness} with a satisfiable X that the circuit gave no witness for)")
+    msg = (f"done {n} synth tests, {fails} failures "
+           f"({no_witness} satisfiable-X with no witness)")
+    if weak and size_0:
+        msg += f"; circuit size weak{weak}/weak0 = {size_w/size_0:.2f}"
+    print(msg)
     return 1 if fails else 0
 
 

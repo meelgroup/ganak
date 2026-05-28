@@ -362,12 +362,16 @@ void parse_supported_options(int argc, char** argv) {
       // is a faithful circuit. Force the relevant options.
       conf.do_restart = 0;             // one monolithic search, not restart+cube
       conf.do_probabilistic_hashing = 0; // exact cache: sound DAG sharing
-      conf.do_use_sat_solver = 0;      // no opaque SAT-oracle leaves
       conf.do_buddy = 0;               // no opaque BuDDy leaves
       conf.do_vivify = 0;              // do not rewrite clauses mid-search
       do_arjun = 0;                    // compile over the original variables
       do_puura = 0;                    // no preprocessing that remaps variables
       num_threads = 1;                 // single compiler instance
+      // NOTE: the SAT oracle stays ON. For a projected formula it provides, once
+      // the independent support is branched, one example assignment of the
+      // remaining (to-be-synthesized) variables -- exactly the witness functional
+      // synthesis needs. For a non-projected formula (all vars independent) it
+      // never fires, so it does not affect the plain d-DNNF.
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
            << (conf.weak ? " (WEAK)" : "") << endl;
     } else if (conf.weak != 0) {

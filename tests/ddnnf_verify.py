@@ -170,6 +170,61 @@ def function_models(nodes, arcs, root, nvars):
     return out
 
 
+def synthesize(nodes, arcs, root, xassign):
+    """Functional synthesis: given an assignment to the input variables `xassign`
+    (dict var->bool over X), follow the circuit to a satisfying path and return a
+    full variable assignment along it (dict var->bool), reading the to-be-
+    synthesized (Y) variables off the arc literals. Returns None if no path is
+    consistent with xassign (i.e. the circuit has no witness for this X)."""
+
+    def lit_ok(l):
+        v = abs(l)
+        if v in xassign:        # input variable: must match X
+            return (l > 0) == xassign[v]
+        return True             # output variable: free to take the arc's value
+
+    def add(a, lits):
+        for l in lits:
+            v, b = abs(l), l > 0
+            if v in a and a[v] != b:
+                return False
+            a[v] = b
+        return True
+
+    def rec(nid):
+        t = nodes[nid]
+        if t == 't':
+            return {}
+        if t == 'f':
+            return None
+        if t == 'o':
+            for c, lits in arcs[nid]:
+                if not all(lit_ok(l) for l in lits):
+                    continue
+                sub = rec(c)
+                if sub is None:
+                    continue
+                a = dict(sub)
+                if add(a, lits):
+                    return a
+            return None
+        # AND: all children must agree
+        a = {}
+        for c, lits in arcs[nid]:
+            if not all(lit_ok(l) for l in lits):
+                return None
+            sub = rec(c)
+            if sub is None or not add(a, lits):
+                return None
+            for v, b in sub.items():
+                if v in a and a[v] != b:
+                    return None
+                a[v] = b
+        return a
+
+    return rec(root)
+
+
 def subtree_vars(nodes, arcs, root):
     """node -> (pos_vars, neg_vars) appearing on arcs in its reachable subgraph."""
     memo = {}

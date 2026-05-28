@@ -242,49 +242,6 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
   return true;
 }
 
-// Recompute is_monotone_var over the residual (currently-unsatisfied) clauses of
-// super_comp. Binary polarities come from the counter's watch lists; ternary and
-// long polarities come from the holder. A ternary entry only exposes its two
-// *neighbour* literals (signed), so a variable's own polarity is picked up when
-// it is a neighbour in its neighbours' lists -- across the full pass every
-// variable is covered without storing its own polarity.
-void CompAnalyzer::compute_residual_monotone(const Comp& super_comp) {
-  if (residual_pol.size() < (size_t)max_var + 1) residual_pol.resize(max_var + 1, 0);
-  if (is_monotone_var.size() < (size_t)max_var + 1) is_monotone_var.assign(max_var + 1, 0);
-
-  all_vars_in_comp(super_comp, vt) if (is_unknown(*vt)) residual_pol[*vt] = 0;
-
-  all_vars_in_comp(super_comp, vt) {
-    const uint32_t v = *vt;
-    if (!is_unknown(v)) continue;
-    residual_pol[v] |= counter->residual_bin_polarity(v);
-
-    ClData* longs = holder.begin_long(v);
-    const uint32_t n = holder.orig_size_long(v);
-    for (uint32_t i = 0; i < n; i++) {
-      const ClData& d = longs[i];
-      if (d.id < max_tri_clid) {
-        const Lit l1 = d.get_lit1();
-        const Lit l2 = d.get_lit2();
-        if (is_true(l1) || is_true(l2)) continue; // satisfied (v is unknown)
-        if (is_unknown(l1)) residual_pol[l1.var()] |= (l1.sign() ? 1u : 2u);
-        if (is_unknown(l2)) residual_pol[l2.var()] |= (l2.sign() ? 1u : 2u);
-      } else {
-        const Lit* start = long_clauses_data.data() + d.off;
-        bool sat = false;
-        for (const Lit* it = start; *it != SENTINEL_LIT; it++)
-          if (is_true(*it)) { sat = true; break; }
-        if (sat) continue;
-        for (const Lit* it = start; *it != SENTINEL_LIT; it++)
-          if (is_unknown(*it)) residual_pol[it->var()] |= (it->sign() ? 1u : 2u);
-      }
-    }
-  }
-
-  all_vars_in_comp(super_comp, vt) if (is_unknown(*vt))
-    is_monotone_var[*vt] = (residual_pol[*vt] == 1 || residual_pol[*vt] == 2) ? 1 : 0;
-}
-
 // Each variable knows the level it was visited at, and the stimestamp at the time
 // Each level knows the HIGHEST stamp it has been seen
 // When checking a var, we go to the level, see the stamp, if it's larger than the stamp of the var,
@@ -309,7 +266,10 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     // further variables/clauses. This relaxes decomposability (the resulting
     // count is intentionally wrong) but yields a smaller, faster decomposition.
     // Only ever active while compiling (otherwise it would corrupt the count).
-    if (conf.weak && !conf.compile_fname.empty() && is_monotone_var[v]) continue;
+    // --weak 1: global monotone set; --weak 2: incremental residual monotone.
+    if (conf.weak && !conf.compile_fname.empty() &&
+        (conf.weak >= 2 ? counter->is_monotone_residual(v) : (bool)is_monotone_var[v]))
+      continue;
     analyze_verb(
       debug_print("-----------------------");
       debug_print("record v: " << v << " start");

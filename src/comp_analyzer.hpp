@@ -166,11 +166,6 @@ public:
 
   bool explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls);
 
-  // Weak d-DNNF (--weak 2): recompute is_monotone_var over the *residual* (only
-  // currently-unsatisfied clauses of super_comp), so monotone vars are detected
-  // dynamically as the search satisfies their opposite-polarity clauses.
-  void compute_residual_monotone(const Comp& super_comp);
-
   // explore_comp has been called already
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){
@@ -207,7 +202,6 @@ private:
   // once in initialize(). This is the global/conservative version of the
   // residual-monotone condition.
   vector<char> is_monotone_var;
-  vector<uint8_t> residual_pol; // scratch for compute_residual_monotone (POS=1, NEG=2)
   CompArchetype archetype;
   Counter* counter = nullptr;
 

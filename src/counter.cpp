@@ -957,17 +957,86 @@ void Counter::fix_weights() {
   debug_print("Fixed weights via " << __func__);
 }
 
-uint8_t Counter::residual_bin_polarity(uint32_t v) const {
-  uint8_t p = 0;
-  for (const bool s : {true, false}) { // s=true -> +v, s=false -> -v
-    for (const auto& bincl : watches[Lit(v, s)].binaries) {
-      if (!bincl.irred()) continue;
-      if (val(bincl.lit()) == T_TRI) continue; // clause already satisfied
-      p |= (s ? 1u : 2u);
-      break;
+void Counter::build_residual_mono() {
+  rm_active = false;
+  const uint32_t nlits = 2 * (nVars() + 1);
+  rm_occ.assign(nlits, {});
+  rm_cl_lits.clear();
+  rm_cl_start.assign(1, 0);
+  rm_cl_numtrue.clear();
+  rm_pos_cnt.assign(nVars() + 1, 0);
+  rm_neg_cnt.assign(nVars() + 1, 0);
+
+  auto add_clause = [&](const auto& lits) {
+    const uint32_t c = (uint32_t)rm_cl_start.size() - 1;
+    uint32_t ntrue = 0;
+    for (const Lit l : lits) {
+      rm_cl_lits.push_back(l);
+      rm_occ[l.raw()].push_back(c);
+      if (val(l) == T_TRI) ntrue++;
     }
+    rm_cl_start.push_back((uint32_t)rm_cl_lits.size());
+    rm_cl_numtrue.push_back(ntrue);
+    if (ntrue == 0)
+      for (const Lit l : lits) (l.sign() ? rm_pos_cnt : rm_neg_cnt)[l.var()]++;
+  };
+
+  // irredundant binaries (each stored in two watch lists -> add once)
+  for (uint32_t v = 1; v <= nVars(); v++)
+    for (const bool s : {false, true}) {
+      const Lit l(v, s);
+      for (const auto& bincl : watches[l].binaries)
+        if (bincl.irred() && l.raw() < bincl.lit().raw()) {
+          const Lit binarr[2] = {l, bincl.lit()};
+          add_clause(binarr);
+        }
+    }
+  // irredundant ternary + long clauses
+  for (const auto& off : long_irred_cls) add_clause(*alloc->ptr(off));
+
+  rm_active = true;
+}
+
+void Counter::rm_on_assign(Lit l) {
+  for (const uint32_t c : rm_occ[l.raw()]) {
+    if (rm_cl_numtrue[c]++ == 0) // clause was active, now satisfied
+      for (uint32_t i = rm_cl_start[c]; i < rm_cl_start[c + 1]; i++) {
+        const Lit x = rm_cl_lits[i];
+        (x.sign() ? rm_pos_cnt : rm_neg_cnt)[x.var()]--;
+      }
   }
-  return p;
+}
+
+void Counter::rm_on_unassign(Lit l) {
+  for (const uint32_t c : rm_occ[l.raw()]) {
+    if (--rm_cl_numtrue[c] == 0) // clause became active again
+      for (uint32_t i = rm_cl_start[c]; i < rm_cl_start[c + 1]; i++) {
+        const Lit x = rm_cl_lits[i];
+        (x.sign() ? rm_pos_cnt : rm_neg_cnt)[x.var()]++;
+      }
+  }
+}
+
+void Counter::rm_verify() const {
+  if (!rm_active) return;
+  std::vector<uint32_t> pos(nVars() + 1, 0), neg(nVars() + 1, 0);
+  for (uint32_t c = 0; c + 1 < rm_cl_start.size(); c++) {
+    uint32_t nt = 0;
+    for (uint32_t i = rm_cl_start[c]; i < rm_cl_start[c + 1]; i++)
+      if (val(rm_cl_lits[i]) == T_TRI) nt++;
+    if (nt != rm_cl_numtrue[c])
+      std::cerr << "RM numtrue mismatch clause " << c << " rm=" << rm_cl_numtrue[c]
+                << " actual=" << nt << std::endl;
+    if (nt == 0)
+      for (uint32_t i = rm_cl_start[c]; i < rm_cl_start[c + 1]; i++) {
+        const Lit x = rm_cl_lits[i];
+        (x.sign() ? pos : neg)[x.var()]++;
+      }
+  }
+  for (uint32_t v = 1; v <= nVars(); v++)
+    if (pos[v] != rm_pos_cnt[v] || neg[v] != rm_neg_cnt[v])
+      std::cerr << "RM count mismatch var " << v << " rm=(" << rm_pos_cnt[v] << ","
+                << rm_neg_cnt[v] << ") actual=(" << pos[v] << "," << neg[v] << ")" << std::endl;
 }
 
 std::vector<int> Counter::compile_cur_level_lits() const {
@@ -4320,6 +4389,7 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   var(lit).sublevel = trail.size();
   qhead = std::min<uint32_t>(qhead, trail.size());
   trail.push_back(lit);
+  if (rm_active) rm_on_assign(lit); // --weak 2 incremental residual polarity
   __builtin_prefetch(watches[lit.neg()].binaries.data());
   __builtin_prefetch(watches[lit.neg()].watch_list_.data());
   if (weighted() && dec_lev <= dec_level() && lit.var() < opt_indep_support_end && !get_weight(lit)->is_one()) {
@@ -4558,6 +4628,10 @@ void Counter::init_and_preproc() {
     auto ret = propagate();
     assert(ret && "We ran CMS before, so it cannot be UNSAT");
   }
+  // --weak 2: build the incremental residual-polarity tracker over the current
+  // (post level-0) state; set_lit/unset_lit maintain it from here on.
+  if (compiling() && conf.weak >= 2) build_residual_mono();
+  else rm_active = false;
   verb_print(3, "[" << __func__ << "] finished.");
   CHECK_PROPAGATED_DO(check_trail(true));
 }

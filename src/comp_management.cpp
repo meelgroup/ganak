@@ -62,6 +62,9 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
+  // Weak d-DNNF level 2: recompute monotone vars over the residual before cutting.
+  if (conf.weak >= 2) ana.compute_residual_monotone(super_comp);
+
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
     if (ana.var_unvisited_in_sup_comp(*vt) &&

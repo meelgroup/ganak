@@ -201,6 +201,10 @@ public:
 
   // ---- d-DNNF compilation ----
   bool compiling() const { return ddnnf != nullptr; }
+  // Residual polarity of v over active irredundant binary clauses (POS=1, NEG=2
+  // bits). Used by the weak (--weak 2) residual-monotone census; binary clauses
+  // are the only ones whose polarity the component analyzer cannot recover itself.
+  uint8_t residual_bin_polarity(uint32_t v) const;
   // Called from the component analyzer when an unconstrained independent
   // variable is found (it contributes a factor of two = OR(v, -v)).
   void compile_add_free_var(uint32_t v);

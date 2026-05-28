@@ -184,9 +184,13 @@ void CompAnalyzer::initialize(
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 
-  // Weak compilation: precompute which variables are monotone (single polarity)
-  // in the irredundant formula. POS bit = 1, NEG bit = 2.
-  if (conf.weak) {
+  // Weak compilation. --weak 1: a variable monotone (single polarity) in the
+  // whole irredundant formula is cuttable; computed once here. --weak 2: the
+  // monotone set is recomputed per node over the residual (see
+  // compute_residual_monotone); here we just allocate it.
+  if (conf.weak >= 2) {
+    is_monotone_var.assign(max_var + 1, 0);
+  } else if (conf.weak == 1) {
     vector<uint8_t> pol(max_var + 1, 0);
     for (const auto& off : long_irred_cls) {
       const Clause& cl = *alloc->ptr(off);
@@ -202,7 +206,7 @@ void CompAnalyzer::initialize(
     for (uint32_t v = 1; v <= max_var; v++)
       if (pol[v] == 1 || pol[v] == 2) { is_monotone_var[v] = 1; nmono++; std::cout << " " << v; }
     std::cout << std::endl;
-    verb_print(1, "[compile-weak] monotone (cuttable) vars: " << nmono << "/" << max_var);
+    verb_print(1, "[compile-weak] global monotone (cuttable) vars: " << nmono << "/" << max_var);
   }
 }
 
@@ -234,6 +238,49 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
     return false;
   }
   return true;
+}
+
+// Recompute is_monotone_var over the residual (currently-unsatisfied) clauses of
+// super_comp. Binary polarities come from the counter's watch lists; ternary and
+// long polarities come from the holder. A ternary entry only exposes its two
+// *neighbour* literals (signed), so a variable's own polarity is picked up when
+// it is a neighbour in its neighbours' lists -- across the full pass every
+// variable is covered without storing its own polarity.
+void CompAnalyzer::compute_residual_monotone(const Comp& super_comp) {
+  if (residual_pol.size() < (size_t)max_var + 1) residual_pol.resize(max_var + 1, 0);
+  if (is_monotone_var.size() < (size_t)max_var + 1) is_monotone_var.assign(max_var + 1, 0);
+
+  all_vars_in_comp(super_comp, vt) if (is_unknown(*vt)) residual_pol[*vt] = 0;
+
+  all_vars_in_comp(super_comp, vt) {
+    const uint32_t v = *vt;
+    if (!is_unknown(v)) continue;
+    residual_pol[v] |= counter->residual_bin_polarity(v);
+
+    ClData* longs = holder.begin_long(v);
+    const uint32_t n = holder.orig_size_long(v);
+    for (uint32_t i = 0; i < n; i++) {
+      const ClData& d = longs[i];
+      if (d.id < max_tri_clid) {
+        const Lit l1 = d.get_lit1();
+        const Lit l2 = d.get_lit2();
+        if (is_true(l1) || is_true(l2)) continue; // satisfied (v is unknown)
+        if (is_unknown(l1)) residual_pol[l1.var()] |= (l1.sign() ? 1u : 2u);
+        if (is_unknown(l2)) residual_pol[l2.var()] |= (l2.sign() ? 1u : 2u);
+      } else {
+        const Lit* start = long_clauses_data.data() + d.off;
+        bool sat = false;
+        for (const Lit* it = start; *it != SENTINEL_LIT; it++)
+          if (is_true(*it)) { sat = true; break; }
+        if (sat) continue;
+        for (const Lit* it = start; *it != SENTINEL_LIT; it++)
+          if (is_unknown(*it)) residual_pol[it->var()] |= (it->sign() ? 1u : 2u);
+      }
+    }
+  }
+
+  all_vars_in_comp(super_comp, vt) if (is_unknown(*vt))
+    is_monotone_var[*vt] = (residual_pol[*vt] == 1 || residual_pol[*vt] == 2) ? 1 : 0;
 }
 
 // Each variable knows the level it was visited at, and the stimestamp at the time

@@ -40,6 +40,9 @@ struct CounterConfiguration {
   // whose model count is intentionally wrong but which compiles faster.
   std::string compile_fname = "";
   int weak = 0;
+  // Self-check: when compiling (strong mode), verify each decision level's
+  // circuit sub-count equals Ganak's own count for that level.
+  int ddnf_check = 0;
 
   int do_restart = 0;
   int do_chronobt = 1;

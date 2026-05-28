@@ -80,12 +80,17 @@ emitted d4 `.nnf` circuit (parsed/counted by `tests/ddnnf_verify.py`):
 python3 tests/ddnnf_fuzz.py 200            # STRONG: circuit count == true count,
                                            #   model set == true models (validates
                                            #   arc literals), strictly decomposable
-python3 tests/ddnnf_fuzz.py 200 --weak     # WEAK: well-formed, stable, count
-                                           #   over-approximates the true count
+python3 tests/ddnnf_fuzz.py 200 --weak 1   # WEAK level 1 (global monotone):
+                                           #   well-formed, stable, over-approximates
+python3 tests/ddnnf_fuzz.py 200 --weak 2   # WEAK level 2 (residual monotone): cuts
+                                           #   ~2x more often, same checks
 python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
 ```
 
-Temp files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
+`ganak --compile out.nnf in.cnf` writes the circuit; `--weak 0|1|2` selects the
+relaxation (see `--help`); `--ddnfcheck 1` makes Ganak cross-check each decision
+level's circuit sub-count against its own count (debugging the compiler). Temp
+files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
 processes can run concurrently. Failing cases are copied to
 `/tmp/ddnnf_fuzz/fail_*.{cnf,nnf}`.
 

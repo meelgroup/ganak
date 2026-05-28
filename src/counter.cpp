@@ -957,6 +957,19 @@ void Counter::fix_weights() {
   debug_print("Fixed weights via " << __func__);
 }
 
+uint8_t Counter::residual_bin_polarity(uint32_t v) const {
+  uint8_t p = 0;
+  for (const bool s : {true, false}) { // s=true -> +v, s=false -> -v
+    for (const auto& bincl : watches[Lit(v, s)].binaries) {
+      if (!bincl.irred()) continue;
+      if (val(bincl.lit()) == T_TRI) continue; // clause already satisfied
+      p |= (s ? 1u : 2u);
+      break;
+    }
+  }
+  return p;
+}
+
 std::vector<int> Counter::compile_cur_level_lits() const {
   std::vector<int> r;
   for (auto it = top_declevel_trail_begin(); it != trail.end(); ++it)
@@ -988,9 +1001,9 @@ int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lit
   if (left  != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{left,  ddnnf->left_lits[lev]});
   if (right != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{right, right_lits});
   int or_node = ddnnf->mk_or(std::move(arcs));
-  // Optional built-in self-check (env DDNNF_CHECK=1): the circuit sub-count of
-  // each level must match Ganak's own count for that level. Strong mode only.
-  if (!conf.weak && getenv("DDNNF_CHECK") != nullptr) {
+  // Optional built-in self-check (--ddnfcheck 1): the circuit sub-count of each
+  // level must match Ganak's own count for that level. Strong mode only.
+  if (!conf.weak && conf.ddnf_check) {
     std::stringstream ss; ss << *top.total_model_count();
     if (ss.str() != std::to_string(ddnnf->scount(or_node)))
       std::cerr << "DDNNF MISMATCH lev " << lev << " node " << or_node

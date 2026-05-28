@@ -195,7 +195,8 @@ void add_ganak_options()
 
     // d-DNNF compilation
     add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
-    add_arg("--weak", conf.weak, fc_int, "When compiling, produce a WEAK d-DNNF: monotone (single-polarity-in-residual) variables do not bridge components. Compiles faster; the resulting model count is intentionally wrong.");
+    add_arg("--weak", conf.weak, fc_int, "When compiling, produce a WEAK d-DNNF: monotone variables do not bridge components (smaller/faster circuit; model count intentionally wrong). 0=off, 1=global monotone (single polarity in the whole formula), 2=residual monotone (recomputed per node over still-unsatisfied clauses; cuts more, costs an extra analysis pass per node).");
+    add_arg("--ddnfcheck", conf.ddnf_check, fc_int, "When compiling (strong mode), cross-check every decision level's circuit sub-count against Ganak's own count and report mismatches. For debugging the compiler.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");

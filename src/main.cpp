@@ -372,6 +372,13 @@ void parse_supported_options(int argc, char** argv) {
       // remaining (to-be-synthesized) variables -- exactly the witness functional
       // synthesis needs. For a non-projected formula (all vars independent) it
       // never fires, so it does not affect the plain d-DNNF.
+      if (conf.weak == 3) {
+        // Share-and-branch makes components share input vars, so they are no
+        // longer independent -- the component cache (which assumes independence)
+        // would reuse a sub-result in a context where the shared var differs and
+        // under-cover. Disable it for soundness.
+        conf.do_use_cache = 0;
+      }
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
            << (conf.weak ? " (WEAK)" : "") << endl;
     } else if (conf.weak != 0) {

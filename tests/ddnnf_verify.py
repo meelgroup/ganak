@@ -132,6 +132,44 @@ def models(nodes, arcs, root, nvars):
     return full
 
 
+def evaluate(nodes, arcs, root, assign):
+    """Evaluate the circuit as a Boolean FUNCTION on a complete assignment.
+    assign: dict var->bool (1-indexed). Arc literals must be satisfied for the
+    arc to fire. This is the semantics that matters for functional synthesis;
+    it is correct regardless of (weak-)decomposability."""
+    memo = {}
+
+    def lit_true(l):
+        return (l > 0) == assign[abs(l)]
+
+    def rec(nid):
+        if nid in memo:
+            return memo[nid]
+        t = nodes[nid]
+        if t == 't':
+            r = True
+        elif t == 'f':
+            r = False
+        elif t == 'o':
+            r = any(all(lit_true(l) for l in lits) and rec(c) for c, lits in arcs[nid])
+        else:  # 'a'
+            r = all(all(lit_true(l) for l in lits) and rec(c) for c, lits in arcs[nid])
+        memo[nid] = r
+        return r
+
+    return rec(root)
+
+
+def function_models(nodes, arcs, root, nvars):
+    """Models of the circuit as a function (brute force over all assignments)."""
+    out = set()
+    for bits in __import__('itertools').product((False, True), repeat=nvars):
+        assign = {v + 1: bits[v] for v in range(nvars)}
+        if evaluate(nodes, arcs, root, assign):
+            out.add(frozenset(v if assign[v] else -v for v in range(1, nvars + 1)))
+    return out
+
+
 def subtree_vars(nodes, arcs, root):
     """node -> (pos_vars, neg_vars) appearing on arcs in its reachable subgraph."""
     memo = {}

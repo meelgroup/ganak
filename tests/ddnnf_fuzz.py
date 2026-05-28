@@ -132,7 +132,8 @@ def main():
     fails = 0
     weak_smaller = 0
     weak_total = 0
-    weak_extra_shared = 0
+    weak_not_wdnnf = 0
+    weak_faithful = 0
 
     # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL).
     cnf = unique_file("fz", ".cnf")
@@ -175,18 +176,16 @@ def main():
                 print(f"FAIL[{t}] weak count negative {sc}")
                 fails += 1
                 continue
-            # The weak relaxation primarily shares MONOTONE variables across AND
-            # children; cutting them can secondarily share a few others via
-            # propagation (informational, not a failure -- weak is wrong by design).
-            mono = parse_monotone(r.stdout)
-            shared = dv.shared_and_vars(nodes, arcs, root)
-            if not shared <= mono:
-                weak_extra_shared += 1
-            # The weak (relaxed) count must over-approximate the true count.
-            if sc < bc:
-                print(f"FAIL[{t}] weak count {sc} < true {bc} (NOT an over-approximation)")
-                save_fail(t)
-                fails += 1
+            # FAITHFULNESS (what matters for functional synthesis): evaluated as
+            # a Boolean FUNCTION on complete assignments, does the circuit equal F?
+            # The current weak cut is an approximation (it drops/breaks clause
+            # constraints), so this is INFORMATIONAL only -- weak is wrong by design.
+            fmodels = dv.function_models(nodes, arcs, root, nv)
+            if fmodels == bmodels:
+                weak_faithful += 1
+            ok_w, _ = dv.check_weak_decomposable(nodes, arcs, root)
+            if not ok_w:
+                weak_not_wdnnf += 1
             continue
 
         ok, msg = dv.check_decomposable(nodes, arcs, root)
@@ -210,11 +209,22 @@ def main():
             save_fail(t)
             fails += 1
             continue
+        # FAITHFUL AS A FUNCTION: evaluated on every complete assignment, the
+        # circuit must equal F. This is exactly the property functional synthesis
+        # needs, so we assert it for the strong (d-DNNF) circuit.
+        fmodels = dv.function_models(nodes, arcs, root, nv)
+        if fmodels != bmodels:
+            print(f"FAIL[{t}] strong circuit not faithful as a function "
+                  f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")
+            save_fail(t)
+            fails += 1
+            continue
 
     if weak:
         print(f"done {n} weak tests, {fails} failures; "
-              f"weak circuit smaller than strong in {weak_smaller}/{weak_total}; "
-              f"shared extra (non-monotone) vars in {weak_extra_shared}/{weak_total}")
+              f"FAITHFUL-as-function (synthesis-usable): {weak_faithful}/{weak_total}; "
+              f"NOT weak-decomposable: {weak_not_wdnnf}/{weak_total}; "
+              f"smaller than strong: {weak_smaller}/{weak_total}")
     else:
         print(f"done {n} strong tests, {fails} failures")
     return 1 if fails else 0

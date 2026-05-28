@@ -90,10 +90,10 @@ def ganak_count(path):
     return None
 
 
-def compile_nnf(path, nnf, weak):
+def compile_nnf(path, nnf, weak_level):
     args = [GANAK, "--compile", nnf]
-    if weak:
-        args += ["--weak", "1"]
+    if weak_level:
+        args += ["--weak", str(weak_level)]
     args.append(path)
     r = subprocess.run(args, capture_output=True, text=True)
     return r
@@ -108,21 +108,26 @@ def parse_monotone(stdout):
 
 def main():
     n = 200
-    weak = False
+    weak_level = 0   # 0=strong, 1=global monotone, 2=residual monotone
     seed = random.randrange(1 << 30)
     args = sys.argv[1:]
     i = 0
     while i < len(args):
         if args[i] == "--weak":
-            weak = True
+            if i + 1 < len(args) and args[i + 1].isdigit():
+                weak_level = int(args[i + 1])
+                i += 1
+            else:
+                weak_level = 1
         elif args[i] == "--seed":
             seed = int(args[i + 1])
             i += 1
         else:
             n = int(args[i])
         i += 1
+    weak = weak_level > 0
     random.seed(seed)
-    print(f"seed={seed} tests={n} mode={'WEAK' if weak else 'STRONG'}")
+    print(f"seed={seed} tests={n} mode={'WEAK-' + str(weak_level) if weak else 'STRONG'}")
 
     fails = 0
     weak_smaller = 0
@@ -149,7 +154,7 @@ def main():
 
         if os.path.exists(nnf):
             os.remove(nnf)
-        r = compile_nnf(cnf, nnf, weak)
+        r = compile_nnf(cnf, nnf, weak_level)
         if not os.path.exists(nnf):
             print(f"FAIL[{t}] no .nnf produced. stderr:\n{r.stderr}")
             save_fail(t)
@@ -159,7 +164,7 @@ def main():
         sc = dv.count(nodes, arcs, root)
 
         # strong circuit node count for comparison
-        compile_nnf(cnf, strong_nnf, False)
+        compile_nnf(cnf, strong_nnf, 0)
         snodes, sarcs, sroot = dv.parse(strong_nnf)
 
         if weak:

@@ -65,7 +65,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Weak d-DNNF level 2 uses incremental residual monotonicity (maintained in
   // Counter via set_lit/unset_lit), so no per-node recompute is needed. With
   // --ddnfcheck, verify the incremental counts against a from-val() recompute.
-  if (conf.weak >= 2 && !conf.compile_fname.empty() && conf.ddnf_check)
+  if (conf.weak == 2 && !conf.compile_fname.empty() && conf.ddnf_check)
     counter->rm_verify();
 
   all_vars_in_comp(super_comp, vt) {

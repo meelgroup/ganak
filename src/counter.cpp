@@ -4649,7 +4649,7 @@ void Counter::init_and_preproc() {
   }
   // --weak 2: build the incremental residual-polarity tracker over the current
   // (post level-0) state; set_lit/unset_lit maintain it from here on.
-  if (compiling() && conf.weak >= 2) build_residual_mono();
+  if (compiling() && conf.weak == 2) build_residual_mono();
   else rm_active = false;
   verb_print(3, "[" << __func__ << "] finished.");
   CHECK_PROPAGATED_DO(check_trail(true));

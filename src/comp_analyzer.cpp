@@ -190,7 +190,7 @@ void CompAnalyzer::initialize(
   // residual (see compute_residual_monotone); here we just allocate it.
   if (conf.compile_fname.empty()) {
     // not compiling: weak has no effect (see main.cpp guard)
-  } else if (conf.weak >= 2) {
+  } else if (conf.weak == 2) {
     is_monotone_var.assign(max_var + 1, 0);
   } else if (conf.weak == 1) {
     vector<uint8_t> pol(max_var + 1, 0);
@@ -267,9 +267,13 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     // count is intentionally wrong) but yields a smaller, faster decomposition.
     // Only ever active while compiling (otherwise it would corrupt the count).
     // --weak 1: global monotone set; --weak 2: incremental residual monotone.
-    if (conf.weak && !conf.compile_fname.empty() &&
-        (conf.weak >= 2 ? counter->is_monotone_residual(v) : (bool)is_monotone_var[v]))
-      continue;
+    // --weak 3: synthesis share-and-branch (handled separately below).
+    if (!conf.compile_fname.empty()) {
+      bool cut = false;
+      if (conf.weak == 1) cut = is_monotone_var[v];
+      else if (conf.weak == 2) cut = counter->is_monotone_residual(v);
+      if (cut) continue;
+    }
     analyze_verb(
       debug_print("-----------------------");
       debug_print("record v: " << v << " start");

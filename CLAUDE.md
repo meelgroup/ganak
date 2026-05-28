@@ -29,14 +29,65 @@ Common build options:
 - `-DSANITIZE=ON` — enable Clang sanitizers
 - `-DBUILD_SHARED_LIBS=OFF` — static binary
 
-## After Building: Fuzz Testing
-After a new build, run the fuzzer to check for regressions:
+## Fuzzing (DO THIS AFTER EVERY CHANGE)
+
+Ganak MUST be fuzzed after every change. A wrong count is a silent, severe bug,
+and the fuzzers are the main line of defence. Build the binary first — note the
+*executable* target is `ganak-bin` (output `build/ganak`); the `ganak` target
+only builds the library:
+
 ```
-cd ~/development/sat_solvers/count_fuzzer && ./fuzz.py --only 20 --exact
+CCACHE_DISABLE=1 cmake --build build --target ganak-bin -j4 2>&1 | tail -20
 ```
 
-`--only K` limits fuzz runs to K. ~20 is enough for a quick sanity check; run
-more (e.g. `--only 200`) for thorough validation.
+### 1. count_fuzzer (`../count_fuzzer`) — the primary fuzzer
+
+Lives at `../count_fuzzer` (a sibling of this repo). Git remote:
+`git@github.com:meelgroup/count_fuzzer.git` (`meelgroup/count_fuzzer`). It is a
+crude, Ganak/ApproxMC-specific fork of
+[SharpVelvet](https://github.com/meelgroup/SharpVelvet).
+
+How it works: it builds random CNF instances with the generators in
+`generators/` (build them once: `cd generators && g++ cnf-fuzz-biere.c -o
+biere-fuzz`), runs `../ganak/build/ganak` on each with a wide variety of option
+combinations (cache on/off, restarts, td, arjun, threads, polarity, modes,
+weights, projection, complex, ...), and checks the result. For exact counting it
+cross-checks the count against a trusted oracle / alternate configs; it also
+catches crashes, assertion failures, OOM, and timeouts.
+
+```
+cd ../count_fuzzer
+./fuzz.py --only 20 --exact      # quick sanity check after a build
+./fuzz.py --only 200 --exact     # thorough
+./fuzz.py --unweighted           # only unweighted
+./fuzz.py --weighted             # only weighted
+./fuzz.py --proj | --unproj      # projected / unprojected only
+./fuzz.py --cpx                  # complex field only
+./fuzz.py --threads K            # fuzz with --threads K passed to ganak
+./fuzz.py --tout T               # per-instance timeout (default 4s)
+./fuzz.py                        # non-stop: EVERYTHING (cpx, proj, weighted, ...)
+```
+
+`fuzz_session_ganak.sh` runs a longer pre-canned session.
+
+### 2. d-DNNF compilation fuzzer (`tests/ddnnf_fuzz.py`)
+
+Validates the `--compile` (d-DNNF) feature specifically. It generates random
+CNFs, brute-forces the true model count + model set as an oracle, and checks the
+emitted d4 `.nnf` circuit (parsed/counted by `tests/ddnnf_verify.py`):
+
+```
+python3 tests/ddnnf_fuzz.py 200            # STRONG: circuit count == true count,
+                                           #   model set == true models (validates
+                                           #   arc literals), strictly decomposable
+python3 tests/ddnnf_fuzz.py 200 --weak     # WEAK: well-formed, stable, count
+                                           #   over-approximates the true count
+python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
+```
+
+Temp files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
+processes can run concurrently. Failing cases are copied to
+`/tmp/ddnnf_fuzz/fail_*.{cnf,nnf}`.
 
 ## Running Tests
 ```
@@ -102,11 +153,57 @@ implementations are in:
 | 6 | Complex float (MPFR) | |
 
 ## Debug flags (in `src/common.hpp`)
-Uncomment to enable expensive debug checks:
-- `VERBOSE_DEBUG` — verbose output
-- `SLOW_DEBUG` — slow assertion checks
-- `CHECK_COUNT` — verify counts (disables cache to allow cross-checking)
-- `CHECK_TRAIL_ENTAILMENT` — slowest trail check
+
+These are compile-time `#define`s near the top of `src/common.hpp`, all
+commented out by default. Uncomment the ones you need, then **rebuild**
+(`CCACHE_DISABLE=1 cmake --build build --target ganak-bin -j4`). Each flag gates
+a `*_DO(x)` macro (e.g. `SLOW_DEBUG_DO(...)`) that expands to the wrapped check
+only when the flag is on, so they cost nothing in normal builds but get *very*
+slow when enabled. Turn on the least expensive flag that catches your bug.
+
+| Flag | Gates | What it does | Cost |
+|------|-------|--------------|------|
+| `VERBOSE_DEBUG` | `debug_print` / `VERBOSE_DEBUG_DO` | Prints a full trace of the search (decisions, propagations, backtracks, component splits, counts). Enable on a *minimized* instance only — output is huge. | very high |
+| `SLOW_DEBUG` | `SLOW_DEBUG_DO` | Internal consistency assertions (trail sanity, component/var invariants, cache invariants). First thing to turn on for a suspected logic bug. | high |
+| `CHECK_PROPAGATED` | `CHECK_PROPAGATED_DO` | After key steps, asserts every clause is properly propagated / not silently conflicting (`check_all_propagated_conflicted`, `check_trail`). Catches BCP / watch-list bugs. | high |
+| `CHECK_IMPLIED` | `CHECK_IMPLIED_DO` | Asserts learnt / 1-UIP clauses are actually implied by the formula (`check_implied`). Catches conflict-analysis bugs. | high |
+| `VERY_SLOW_DEBUG` | `VERY_SLOW_DEBUG_DO` | Even more expensive invariant checks than `SLOW_DEBUG`. | very high |
+| `ANALYZE_VERBOSE` | `analyze_verb` | Verbose tracing inside component analysis (`comp_analyzer.cpp`) only. | high |
+| `CHECK_TRAIL_ENTAILMENT` | trail-entailment check | The slowest check that does *not* verify counts: re-verifies the whole trail is entailed at each step. Last resort for trail/entailment bugs. | extreme |
+| `CHECK_COUNT` | `CHECK_COUNT_DO` | **The flag for wrong-count bugs.** Cross-checks every (sub-)count against an independent recount (`check_count*`). Also disables count reuse so cross-checking is valid — additionally pass `--cache 0` on the command line (see the note next to the define). Only `CHECK_COUNT_DO`/`check_count_norestart*` code may call those checkers (see "Notes about the code"). | extreme |
+| `BUDDY_ENABLED` | BuDDy code | Not a debug check: compile-time enable of BuDDy BDD-based counting of small components (pairs with the `--buddy` option). | n/a |
+
+## Debugging a fuzzer-found bug
+
+When `count_fuzzer` reports a wrong count or crash, isolate it before staring at
+code. `../count_fuzzer` is a fairly complete find-and-isolate system:
+
+1. **Minimize.** `minim_all.py` is the one-stop pipeline — it auto-detects
+   crash vs. wrong-count, backs up the file, then minimizes options, weights,
+   and clauses, re-verifying at each step:
+   ```
+   cd ../count_fuzzer
+   ./minim_all.py "../ganak/build/ganak --mode 1 --polar 1 file.cnf"
+   ```
+   Individual tools if you need them:
+   - `minim_cnf.py` — **delta debugger** for clauses (hierarchical delta
+     debugging); produces `file_min_clauses.cnf`.
+   - `minim_opts.py` / `minim_opts_crash.py` / `minim_opts_count.py` — minimize
+     the command-line options (auto / crash-preserving / count-preserving;
+     count-preserving allows 0.1% tolerance).
+   - `minim_weights.py` — minimize `c p weight` lines.
+   - `propagate.py` — unit-propagate a CNF to fixpoint to shrink it before
+     minimizing.
+
+2. **Pinpoint.** Once you have a tiny instance, rebuild with the relevant
+   `common.hpp` flags and run it directly:
+   - wrong count → enable `CHECK_COUNT` **and** run with `--cache 0`; it aborts
+     at the first component whose recount disagrees.
+   - crash / bad invariant → enable `SLOW_DEBUG` (then `CHECK_PROPAGATED` /
+     `CHECK_IMPLIED` / `CHECK_TRAIL_ENTAILMENT` as needed).
+   - then add `VERBOSE_DEBUG` to read the exact trace around the failure.
+
+3. **Re-fuzz** after the fix (`./fuzz.py --only 200 ...`) before committing.
 
 ## Data Analysis
 

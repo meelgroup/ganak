@@ -207,32 +207,9 @@ public:
   // Called from the component manager on a cache hit: share the cached sub-DAG.
   void compile_on_cache_hit(int node);
 
-  // --weak 2: is v monotone (single polarity) among the currently-unsatisfied
-  // irredundant clauses? Maintained incrementally (see rm_* below).
-  bool is_monotone_residual(uint32_t v) const {
-    return rm_active && ((rm_pos_cnt[v] > 0) != (rm_neg_cnt[v] > 0));
-  }
-
 private:
   std::unique_ptr<DDNNFCompiler> ddnnf;
   std::vector<int> sat_witness; // DIMACS lits of synthesized (Y) vars from the SAT oracle
-
-  // ---- --weak 2 incremental residual-polarity tracking ----
-  // For each variable, how many currently-active (no true literal) irredundant
-  // clauses contain +v / -v. Updated in O(occ) on each assign/unassign instead
-  // of rescanning the formula per node.
-  bool rm_active = false;
-  std::vector<std::vector<uint32_t>> rm_occ;  // lit.raw() -> clause indices
-  std::vector<Lit> rm_cl_lits;                // flat literal pool
-  std::vector<uint32_t> rm_cl_start;          // clause c lits: [rm_cl_start[c], rm_cl_start[c+1])
-  std::vector<uint32_t> rm_cl_numtrue;        // # currently-true literals per clause
-  std::vector<uint32_t> rm_pos_cnt, rm_neg_cnt;
-  void build_residual_mono();
-  void rm_on_assign(Lit l);    // l just became TRUE
-  void rm_on_unassign(Lit l);  // l (was TRUE) just became unknown
-public:
-  void rm_verify() const;      // debug: recompute counts from val() and compare
-private:
   std::vector<int> compile_cur_level_lits() const; // current top decision level's trail lits
   std::vector<int> compile_level0_lits() const;    // literals forced at decision level 0
   int compile_build_level_node(int lev, const std::vector<int>& right_lits);
@@ -571,7 +548,6 @@ public:
 inline void Counter::unset_lit(Lit lit) {
   VERBOSE_DEBUG_DO(cout << "Unsetting lit: " << std::setw(8) << lit << endl);
   SLOW_DEBUG_DO(assert(val(lit) == T_TRI));
-  if (rm_active) rm_on_unassign(lit); // --weak 2 incremental residual polarity
   var(lit).ante = Antecedent();
   if (weighted() && !sat_mode() && lit.var() < opt_indep_support_end && !get_weight(lit)->is_zero()) {
     uint64_t* at = vars_act_dec.data()+dec_level()*(nVars()+1);

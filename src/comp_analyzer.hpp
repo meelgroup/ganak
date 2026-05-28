@@ -210,13 +210,6 @@ private:
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;
   vector<uint32_t> var_freq_scores;
-
-  // Weak d-DNNF compilation (conf.weak): a variable that occurs with a single
-  // polarity in the (irredundant) formula is "monotone" and may be shared across
-  // AND-node children (it does not bridge components). 1 = monotone. Computed
-  // once in initialize(). This is the global/conservative version of the
-  // residual-monotone condition.
-  vector<char> is_monotone_var;
   CompArchetype archetype;
   Counter* counter = nullptr;
 

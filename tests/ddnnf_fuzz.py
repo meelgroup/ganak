@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Fuzz-test Ganak's d-DNNF compilation (`ganak --compile`).
+"""Fuzz-test Ganak's faithful d-DNNF compilation (`ganak --compile`).
 
 For each random CNF:
   * brute-force the exact model count and model set (oracle),
   * compile the CNF to a d4 .nnf with `ganak --compile`,
-  * check the circuit's structural model count == brute count (STRONG mode),
+  * check the circuit is strictly decomposable,
+  * check the circuit's structural model count == brute count,
   * check the circuit's model set == brute model set (validates arc literals),
+  * check the circuit is faithful as a Boolean function (== F),
   * also sanity-check against Ganak's own reported count.
 
-For --weak it only checks the file is well-formed and counts without crashing
-(the weak count is intentionally wrong), and reports how much smaller the weak
-circuit is.
+(For functional synthesis with projected CNFs / --weak 3, see ddnnf_synth.py.)
 
-Usage: ddnnf_fuzz.py [num_tests] [--weak] [--seed N]
+Usage: ddnnf_fuzz.py [num_tests] [--seed N]
 """
 import itertools
 import os
@@ -95,50 +95,29 @@ def compile_nnf(path, nnf, weak_level):
     if weak_level:
         args += ["--weak", str(weak_level)]
     args.append(path)
-    r = subprocess.run(args, capture_output=True, text=True)
-    return r
-
-
-def parse_monotone(stdout):
-    for line in stdout.splitlines():
-        if line.startswith("c o [compile-weak] monotone vars:"):
-            return set(int(x) for x in line.split(":", 1)[1].split())
-    return set()
+    return subprocess.run(args, capture_output=True, text=True)
 
 
 def main():
     n = 200
-    weak_level = 0   # 0=strong, 1=global monotone, 2=residual monotone
     seed = random.randrange(1 << 30)
     args = sys.argv[1:]
     i = 0
     while i < len(args):
-        if args[i] == "--weak":
-            if i + 1 < len(args) and args[i + 1].isdigit():
-                weak_level = int(args[i + 1])
-                i += 1
-            else:
-                weak_level = 1
-        elif args[i] == "--seed":
+        if args[i] == "--seed":
             seed = int(args[i + 1])
             i += 1
         else:
             n = int(args[i])
         i += 1
-    weak = weak_level > 0
     random.seed(seed)
-    print(f"seed={seed} tests={n} mode={'WEAK-' + str(weak_level) if weak else 'STRONG'}")
+    print(f"seed={seed} tests={n} mode=STRONG")
 
     fails = 0
-    weak_smaller = 0
-    weak_total = 0
-    weak_not_wdnnf = 0
-    weak_faithful = 0
 
     # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL).
     cnf = unique_file("fz", ".cnf")
     nnf = cnf + ".nnf"
-    strong_nnf = cnf + ".strong.nnf"
 
     def save_fail(t):
         shutil.copy(cnf, unique_file("fail", ".cnf"))
@@ -155,7 +134,7 @@ def main():
 
         if os.path.exists(nnf):
             os.remove(nnf)
-        r = compile_nnf(cnf, nnf, weak_level)
+        r = compile_nnf(cnf, nnf, 0)
         if not os.path.exists(nnf):
             print(f"FAIL[{t}] no .nnf produced. stderr:\n{r.stderr}")
             save_fail(t)
@@ -163,30 +142,6 @@ def main():
             continue
         nodes, arcs, root = dv.parse(nnf)
         sc = dv.count(nodes, arcs, root)
-
-        # strong circuit node count for comparison
-        compile_nnf(cnf, strong_nnf, 0)
-        snodes, sarcs, sroot = dv.parse(strong_nnf)
-
-        if weak:
-            weak_total += 1
-            if len(nodes) < len(snodes):
-                weak_smaller += 1
-            if sc < 0:
-                print(f"FAIL[{t}] weak count negative {sc}")
-                fails += 1
-                continue
-            # FAITHFULNESS (what matters for functional synthesis): evaluated as
-            # a Boolean FUNCTION on complete assignments, does the circuit equal F?
-            # The current weak cut is an approximation (it drops/breaks clause
-            # constraints), so this is INFORMATIONAL only -- weak is wrong by design.
-            fmodels = dv.function_models(nodes, arcs, root, nv)
-            if fmodels == bmodels:
-                weak_faithful += 1
-            ok_w, _ = dv.check_weak_decomposable(nodes, arcs, root)
-            if not ok_w:
-                weak_not_wdnnf += 1
-            continue
 
         ok, msg = dv.check_decomposable(nodes, arcs, root)
         if not ok:
@@ -220,13 +175,7 @@ def main():
             fails += 1
             continue
 
-    if weak:
-        print(f"done {n} weak tests, {fails} failures; "
-              f"FAITHFUL-as-function (synthesis-usable): {weak_faithful}/{weak_total}; "
-              f"NOT weak-decomposable: {weak_not_wdnnf}/{weak_total}; "
-              f"smaller than strong: {weak_smaller}/{weak_total}")
-    else:
-        print(f"done {n} strong tests, {fails} failures")
+    print(f"done {n} strong tests, {fails} failures")
     return 1 if fails else 0
 
 

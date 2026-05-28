@@ -77,18 +77,15 @@ CNFs, brute-forces the true model count + model set as an oracle, and checks the
 emitted d4 `.nnf` circuit (parsed/counted by `tests/ddnnf_verify.py`):
 
 ```
-python3 tests/ddnnf_fuzz.py 200            # STRONG: circuit count == true count,
-                                           #   model set == true models (validates
-                                           #   arc literals), strictly decomposable
-python3 tests/ddnnf_fuzz.py 200 --weak 1   # WEAK level 1 (global monotone):
-                                           #   well-formed, stable, over-approximates
-python3 tests/ddnnf_fuzz.py 200 --weak 2   # WEAK level 2 (residual monotone): cuts
-                                           #   ~2x more often, same checks
+python3 tests/ddnnf_fuzz.py 200            # circuit count == true count, model set
+                                           #   == true models (validates arc literals),
+                                           #   strictly decomposable, faithful as a fn
 python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
 ```
 
-`ganak --compile out.nnf in.cnf` writes the circuit; `--weak 0|1|2|3` selects the
-relaxation (see `--help`); `--ddnfcheck 1` makes Ganak cross-check each decision
+`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF. `--weak 0` is that
+(the default); `--weak 3` is the synthesis share-and-branch (see section 3 and
+`--help`). `--ddnfcheck 1` makes Ganak cross-check each decision
 level's circuit sub-count against its own count (debugging the compiler). Temp
 files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
 processes can run concurrently. Failing cases are copied to
@@ -117,9 +114,9 @@ Synthesis notes (empirically established):
   (shared components are not cached, for soundness). It is **sound** (synthesis
   round-trip 0 failures) but **not more compact** than `--weak 0` (~1.05-1.10x
   larger): duplicating shared inputs and losing their caching outweighs the
-  finer decomposition. The compactness that `--weak 1/2` show for *counting*
-  comes from dropping constraints (over-approximation) and is unsound for
-  synthesis, which is why `--weak 3` does not reproduce it.
+  finer decomposition. (A weak cut can be smaller only by dropping constraints /
+  over-approximating, which is unsound for synthesis -- so `--weak 3` can't
+  reproduce that and stays faithful instead.)
 
 ## Running Tests
 ```

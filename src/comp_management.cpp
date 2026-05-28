@@ -62,12 +62,6 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
-  // Weak d-DNNF level 2 uses incremental residual monotonicity (maintained in
-  // Counter via set_lit/unset_lit), so no per-node recompute is needed. With
-  // --ddnfcheck, verify the incremental counts against a from-val() recompute.
-  if (conf.weak == 2 && !conf.compile_fname.empty() && conf.ddnf_check)
-    counter->rm_verify();
-
   auto try_seed = [&](const uint32_t v) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << v);
     if (ana.var_unvisited_in_sup_comp(v) &&

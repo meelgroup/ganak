@@ -195,7 +195,7 @@ void add_ganak_options()
 
     // d-DNNF compilation
     add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
-    add_arg("--weak", conf.weak, fc_int, "When compiling, produce a WEAK d-DNNF. 0=off (faithful d-DNNF). 1=global monotone cut, 2=residual monotone cut (both for count-bounding; the model count is intentionally wrong). 3=synthesis share-and-branch: input vars (< opt_indep_support_end) may be shared across AND children while the to-be-synthesized vars stay disjoint; faithful (valid Skolem witnesses), for functional synthesis.");
+    add_arg("--weak", conf.weak, fc_int, "When compiling: 0=off (faithful d-DNNF). 3=synthesis share-and-branch: input vars (< opt_indep_support_end) may be shared across AND children while the to-be-synthesized vars stay disjoint; faithful (valid Skolem witnesses), for functional synthesis.");
     add_arg("--ddnfcheck", conf.ddnf_check, fc_int, "When compiling (strong mode), cross-check every decision level's circuit sub-count against Ganak's own count and report mismatches. For debugging the compiler.");
 
     // Arjun options
@@ -356,6 +356,11 @@ void parse_supported_options(int argc, char** argv) {
         }
         std::cerr << msg << std::endl;
         exit(EXIT_FAILURE);
+    }
+    if (conf.weak != 0 && conf.weak != 3) {
+      cerr << "ERROR: --weak must be 0 (faithful d-DNNF) or 3 (synthesis "
+              "share-and-branch)" << endl;
+      exit(EXIT_FAILURE);
     }
     if (!conf.compile_fname.empty()) {
       // d-DNNF compilation needs a single, clean DPLL search tree so the trace

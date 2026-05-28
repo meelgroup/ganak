@@ -184,10 +184,6 @@ void CompAnalyzer::initialize(
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 
-  // Weak compilation (only when compiling). --weak 1: a variable monotone
-  // (single polarity) in the whole irredundant formula is cuttable; computed
-  // once here. --weak 2: the monotone set is recomputed per node over the
-  // residual (see compute_residual_monotone); here we just allocate it.
   // --weak 3 (synthesis share-and-branch): input vars (< opt_indep_end) are
   // shareable across components.
   share_mode = (conf.weak == 3 && !conf.compile_fname.empty());
@@ -195,29 +191,6 @@ void CompAnalyzer::initialize(
   if (share_mode) {
     claimed_share.assign(max_var + 1, 0);
     verb_print(1, "[compile-weak3] share-and-branch over inputs < " << opt_indep_end);
-  }
-
-  if (conf.compile_fname.empty()) {
-    // not compiling: weak has no effect (see main.cpp guard)
-  } else if (conf.weak == 2) {
-    is_monotone_var.assign(max_var + 1, 0);
-  } else if (conf.weak == 1) {
-    vector<uint8_t> pol(max_var + 1, 0);
-    for (const auto& off : long_irred_cls) {
-      const Clause& cl = *alloc->ptr(off);
-      for (const auto& l : cl) pol[l.var()] |= (l.sign() ? 1u : 2u);
-    }
-    for (uint32_t v = 1; v <= max_var; v++)
-      for (const bool s : {false, true})
-        for (const auto& bincl : watches[Lit(v, s)].binaries)
-          if (bincl.irred()) pol[v] |= (s ? 1u : 2u);
-    is_monotone_var.assign(max_var + 1, 0);
-    uint32_t nmono = 0;
-    std::cout << "c o [compile-weak] monotone vars:";
-    for (uint32_t v = 1; v <= max_var; v++)
-      if (pol[v] == 1 || pol[v] == 2) { is_monotone_var[v] = 1; nmono++; std::cout << " " << v; }
-    std::cout << std::endl;
-    verb_print(1, "[compile-weak] global monotone (cuttable) vars: " << nmono << "/" << max_var);
   }
 }
 
@@ -270,23 +243,12 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
-    // Weak d-DNNF: a monotone variable is recorded in this component but does
-    // not bridge to others -- skip traversing its clauses so it cannot pull in
-    // further variables/clauses. This relaxes decomposability (the resulting
-    // count is intentionally wrong) but yields a smaller, faster decomposition.
-    // --weak 3: a shared input var is a component member but never bridges, so
-    // its other clauses are not pulled in (kept disjoint over synthesized vars).
-    // It is enforced because whichever clause reached it is owned by that clause's
-    // synthesized var. Re-claimable by later components (make_comp_from_archetype).
+    // --weak 3 (synthesis): a shared input var is a component member but never
+    // bridges, so its other clauses are not pulled in (components are kept
+    // disjoint over the synthesized vars). It is still enforced, because whichever
+    // clause reached it is owned by that clause's synthesized var. Re-claimable by
+    // later sibling components (see make_comp_from_archetype).
     if (is_shareable(v)) { claimed_share[v] = 1; continue; }
-    // Only ever active while compiling (otherwise it would corrupt the count).
-    // --weak 1: global monotone set; --weak 2: incremental residual monotone.
-    if (!conf.compile_fname.empty()) {
-      bool cut = false;
-      if (conf.weak == 1) cut = is_monotone_var[v];
-      else if (conf.weak == 2) cut = counter->is_monotone_residual(v);
-      if (cut) continue;
-    }
     analyze_verb(
       debug_print("-----------------------");
       debug_print("record v: " << v << " start");

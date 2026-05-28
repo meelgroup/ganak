@@ -154,12 +154,22 @@ public:
     }
   }
 
+  // --weak 3 (synthesis): an input variable (< opt_indep_end) may be shared
+  // across AND-node children. It is recorded as a member of every component that
+  // has a clause mentioning it, but does not bridge (does not pull its other
+  // clauses in), and is re-claimable by later components.
+  bool share_mode = false;
+  uint32_t opt_indep_end = 0;
+  vector<char> claimed_share; // per var: was it added to some component this round
+  bool is_shareable(uint32_t v) const { return share_mode && v < opt_indep_end; }
+
   void setup_analysis_context(StackLevel& top, const Comp& super_comp){
     archetype.re_initialize(top,super_comp);
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
     all_vars_in_comp(super_comp, vt) if (is_unknown(*vt)) {
       archetype.set_var_in_sup_comp_unvisited(*vt);
       var_freq_scores[*vt] = 0;
+      if (share_mode) claimed_share[*vt] = 0;
     }
     all_cls_in_comp(super_comp, it) archetype.set_clause_in_sup_comp_unvisited(*it);
   }
@@ -171,8 +181,13 @@ public:
   inline Comp *make_comp_from_archetype(){
     SLOW_DEBUG_DO(for (auto&v: comp_vars) assert(is_unknown(v)));
     auto p = archetype.make_comp(comp_vars.size());
+    // --weak 3: re-mark shared input vars as unvisited so a later sibling
+    // component can claim them too (make_comp cleared them to 0).
+    if (share_mode)
+      for (const auto v : comp_vars) if (is_shareable(v)) archetype.set_var_in_sup_comp_unvisited(v);
     return p;
   }
+  bool var_claimable_share(uint32_t v) const { return is_shareable(v) && !claimed_share[v]; }
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }

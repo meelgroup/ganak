@@ -68,10 +68,10 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   if (conf.weak == 2 && !conf.compile_fname.empty() && conf.ddnf_check)
     counter->rm_verify();
 
-  all_vars_in_comp(super_comp, vt) {
-    debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
-    if (ana.var_unvisited_in_sup_comp(*vt) &&
-        ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
+  auto try_seed = [&](const uint32_t v) {
+    debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << v);
+    if (ana.var_unvisited_in_sup_comp(v) &&
+        ana.explore_comp(v, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
       void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc);
 
@@ -90,22 +90,27 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
+        all_vars_in_comp(*p_new_comp, v2) cout << *v2 << " ";
         cout << endl;
 #endif
       } else {
         // Cache hit
-#ifdef VERBOSE_DEBUG
-        cout << COLYEL2 "Comp already in cache."
-            << " num vars: " << p_new_comp->nVars() << " vars: ";
-        all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
-        cout << endl;
-#endif
         if (compiling) counter->compile_on_cache_hit(hit_node);
         free_comp(p_new_comp);
       }
       cache->free_comp(ccomp);
     }
+  };
+
+  if (conf.weak == 3 && !conf.compile_fname.empty()) {
+    // Synthesis share-and-branch. Pass 1: seed from synthesized (output) vars so
+    // components are disjoint over them (input vars get pulled in as shared,
+    // non-bridging members). Pass 2: any input var not claimed by an output
+    // component becomes its own (free / input-only) component.
+    all_vars_in_comp(super_comp, vt) if (!ana.is_shareable(*vt)) try_seed(*vt);
+    all_vars_in_comp(super_comp, vt) if (ana.var_claimable_share(*vt)) try_seed(*vt);
+  } else {
+    all_vars_in_comp(super_comp, vt) try_seed(*vt);
   }
 
   debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): "

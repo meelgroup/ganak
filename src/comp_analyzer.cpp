@@ -188,6 +188,15 @@ void CompAnalyzer::initialize(
   // (single polarity) in the whole irredundant formula is cuttable; computed
   // once here. --weak 2: the monotone set is recomputed per node over the
   // residual (see compute_residual_monotone); here we just allocate it.
+  // --weak 3 (synthesis share-and-branch): input vars (< opt_indep_end) are
+  // shareable across components.
+  share_mode = (conf.weak == 3 && !conf.compile_fname.empty());
+  opt_indep_end = counter->get_opt_indep_support_end();
+  if (share_mode) {
+    claimed_share.assign(max_var + 1, 0);
+    verb_print(1, "[compile-weak3] share-and-branch over inputs < " << opt_indep_end);
+  }
+
   if (conf.compile_fname.empty()) {
     // not compiling: weak has no effect (see main.cpp guard)
   } else if (conf.weak == 2) {
@@ -265,9 +274,13 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
     // not bridge to others -- skip traversing its clauses so it cannot pull in
     // further variables/clauses. This relaxes decomposability (the resulting
     // count is intentionally wrong) but yields a smaller, faster decomposition.
+    // --weak 3: a shared input var is a component member but never bridges, so
+    // its other clauses are not pulled in (kept disjoint over synthesized vars).
+    // It is enforced because whichever clause reached it is owned by that clause's
+    // synthesized var. Re-claimable by later components (make_comp_from_archetype).
+    if (is_shareable(v)) { claimed_share[v] = 1; continue; }
     // Only ever active while compiling (otherwise it would corrupt the count).
     // --weak 1: global monotone set; --weak 2: incremental residual monotone.
-    // --weak 3: synthesis share-and-branch (handled separately below).
     if (!conf.compile_fname.empty()) {
       bool cut = false;
       if (conf.weak == 1) cut = is_monotone_var[v];

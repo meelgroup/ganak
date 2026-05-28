@@ -16,6 +16,8 @@ Usage: ddnnf_fuzz.py [num_tests] [--weak] [--seed N]
 """
 import itertools
 import os
+import shutil
+import stat
 import random
 import subprocess
 import sys
@@ -24,9 +26,26 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ddnnf_verify as dv
 
 GANAK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ganak")
-# Process-unique temp dir so concurrent fuzzer runs don't clobber each other's files.
-TMP = f"/tmp/ddnnf_fuzz_{os.getpid()}"
+TMP = "/tmp/ddnnf_fuzz"
 os.makedirs(TMP, exist_ok=True)
+
+
+def unique_file(fname_begin, fname_end=".cnf", max_num_files=100000):
+    """Atomically reserve a unique filename (O_CREAT|O_EXCL), so concurrent
+    fuzzer runs never collide on temp files."""
+    counter = 1
+    while True:
+        fname = os.path.join(TMP, f"{fname_begin}_{counter}{fname_end}")
+        try:
+            fd = os.open(fname, os.O_CREAT | os.O_EXCL, stat.S_IREAD | stat.S_IWRITE)
+            os.close(fd)
+            return fname
+        except OSError:
+            pass
+        counter += 1
+        if counter > max_num_files:
+            print(f"Cannot create unique_file, last try was: {fname}")
+            sys.exit(-1)
 
 
 def gen_cnf(nv, nc, k):
@@ -109,27 +128,37 @@ def main():
     weak_smaller = 0
     weak_total = 0
     weak_extra_shared = 0
+
+    # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL).
+    cnf = unique_file("fz", ".cnf")
+    nnf = cnf + ".nnf"
+    strong_nnf = cnf + ".strong.nnf"
+
+    def save_fail(t):
+        shutil.copy(cnf, unique_file("fail", ".cnf"))
+        if os.path.exists(nnf):
+            shutil.copy(nnf, unique_file("fail", ".nnf"))
+
     for t in range(n):
         nv = random.randint(7, 16)
         nc = random.randint(nv, nv * 4)
         k = random.choice([2, 3, 3, 4])
         clauses = gen_cnf(nv, nc, k)
-        cnf = f"{TMP}/fz.cnf"
-        nnf = f"{TMP}/fz.nnf"
         write_cnf(cnf, nv, clauses)
         bc, bmodels = brute(nv, clauses)
 
+        if os.path.exists(nnf):
+            os.remove(nnf)
         r = compile_nnf(cnf, nnf, weak)
         if not os.path.exists(nnf):
             print(f"FAIL[{t}] no .nnf produced. stderr:\n{r.stderr}")
-            os.system(f"cp {cnf} {TMP}/fail_{t}.cnf")
+            save_fail(t)
             fails += 1
             continue
         nodes, arcs, root = dv.parse(nnf)
         sc = dv.count(nodes, arcs, root)
 
         # strong circuit node count for comparison
-        strong_nnf = f"{TMP}/fz_strong.nnf"
         compile_nnf(cnf, strong_nnf, False)
         snodes, sarcs, sroot = dv.parse(strong_nnf)
 
@@ -151,23 +180,20 @@ def main():
             # The weak (relaxed) count must over-approximate the true count.
             if sc < bc:
                 print(f"FAIL[{t}] weak count {sc} < true {bc} (NOT an over-approximation)")
-                os.system(f"cp {cnf} {TMP}/fail_{t}.cnf")
-                os.system(f"cp {nnf} {TMP}/fail_{t}.nnf")
+                save_fail(t)
                 fails += 1
             continue
 
         ok, msg = dv.check_decomposable(nodes, arcs, root)
         if not ok:
             print(f"FAIL[{t}] strong circuit not decomposable: {msg}")
-            os.system(f"cp {cnf} {TMP}/fail_{t}.cnf")
-            os.system(f"cp {nnf} {TMP}/fail_{t}.nnf")
+            save_fail(t)
             fails += 1
             continue
 
         if sc != bc:
             print(f"FAIL[{t}] structural count {sc} != brute {bc}  nv={nv} nc={nc} k={k}")
-            os.system(f"cp {cnf} {TMP}/fail_{t}.cnf")
-            os.system(f"cp {nnf} {TMP}/fail_{t}.nnf")
+            save_fail(t)
             fails += 1
             continue
         gc = ganak_count(cnf)
@@ -176,8 +202,7 @@ def main():
         cmodels = dv.models(nodes, arcs, root, nv)
         if cmodels != bmodels:
             print(f"FAIL[{t}] model-set mismatch nv={nv} |circuit|={len(cmodels)} |brute|={len(bmodels)}")
-            os.system(f"cp {cnf} {TMP}/fail_{t}.cnf")
-            os.system(f"cp {nnf} {TMP}/fail_{t}.nnf")
+            save_fail(t)
             fails += 1
             continue
 

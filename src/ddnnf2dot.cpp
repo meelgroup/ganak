@@ -26,8 +26,9 @@ THE SOFTWARE.
 //   OR  node ('o')  -> blue ellipse "∨"
 //   AND node ('a')  -> yellow box   "∧"
 //   FALSE ('f')      -> "⊥"
-//   arc            -> edge. An arc carrying literals (a decision branch / implied
-//                     lits) is labelled with them in bold blue. An AND node's
+//   arc            -> edge. An arc carrying literals is labelled in bold blue as
+//                     "1 [2,-3]" -- the decided literal, then the propagated ones
+//                     in brackets (just "1" when nothing propagated). An AND node's
 //                     decomposition arcs carry no literals, so we instead label
 //                     each with the set of variables in that child's component --
 //                     this shows how the AND cut the problem into disjoint parts.
@@ -171,10 +172,16 @@ int main(int argc, char** argv) {
   bool need_true = is_true(root);         // a lone ⊤ root still needs one node
   std::ostringstream edges;
 
-  // The bold-blue decided/propagated-literals edge label, e.g. ` [label=2 -3]`.
+  // The bold-blue edge label. lits[0] is the DECIDED literal; the rest were unit-
+  // propagated. Rendered as "1 [2,-3,4]" (decided, then propagated in brackets), or
+  // just "1" when nothing propagated.
   auto blue_lits = [](std::ostream& os, const std::vector<int>& lits) {
-    os << " [label=<<FONT COLOR=\"#1565c0\"><B>";
-    for (size_t k = 0; k < lits.size(); k++) os << (k ? " " : "") << lits[k];
+    os << " [label=<<FONT COLOR=\"#1565c0\"><B>" << lits[0];
+    if (lits.size() > 1) {
+      os << " [";
+      for (size_t k = 1; k < lits.size(); k++) os << (k > 1 ? "," : "") << lits[k];
+      os << "]";
+    }
     os << "</B></FONT>>]";
   };
 

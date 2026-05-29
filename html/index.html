@@ -409,7 +409,7 @@ c p show 1 2 3 0
             const status = document.getElementById('status');
 
             try {
-                // 1. ganak --compile: dump the raw d4 .nnf (faithful, --weak 0 default).
+                // 1. ganak --compile: dump the raw d4 .nnf (faithful by default).
                 status.textContent = 'Compiling d-DNNF...';
                 append('=== ganak --compile ===');
                 // --mode 1 (weighted rational) handles weighted and plain CNFs; the

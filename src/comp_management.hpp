@@ -69,7 +69,7 @@ public:
     cache->set_compile_node(comp_stack[stack_comp_id]->id(), node);
   }
 
-  // --weak 3: a component with a shared input var is not independent of its
+  // --synthesis: a component with a shared output var is not independent of its
   // siblings, so it must NOT be cached -- a hit would under-cover.
   bool comp_has_shareable(const uint64_t stack_comp_id) const {
     const Comp& c = *comp_stack[stack_comp_id];

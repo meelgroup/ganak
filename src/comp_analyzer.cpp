@@ -184,12 +184,13 @@ void CompAnalyzer::initialize(
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 
-  // --weak 3 (synthesis): input vars (< opt_indep_end) are shareable across comps.
-  share_mode = (conf.weak == 3 && !conf.compile_fname.empty());
-  opt_indep_end = counter->get_opt_indep_support_end();
+  // --synthesis: non-input (output) vars (>= indep_end) are shareable across
+  // comps; input vars (< indep_end) are kept disjoint.
+  share_mode = (conf.synthesis && !conf.compile_fname.empty());
+  indep_end = counter->get_indep_support_end();
   if (share_mode) {
     claimed_share.assign(max_var + 1, 0);
-    verb_print(1, "[compile-weak3] share-and-branch over inputs < " << opt_indep_end);
+    verb_print(1, "[compile-synthesis] share-and-branch over outputs >= " << indep_end);
   }
 }
 
@@ -242,8 +243,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
-    // --weak 3: a shared input var is a component member but does not bridge (its
-    // other clauses aren't pulled in), keeping comps disjoint over the synthesized
+    // --synthesis: a shared output var is a component member but does not bridge (its
+    // other clauses aren't pulled in), keeping comps disjoint over the input
     // vars. Re-claimable by later siblings (see make_comp_from_archetype).
     if (is_shareable(v)) { claimed_share[v] = 1; continue; }
     analyze_verb(

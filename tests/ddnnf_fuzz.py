@@ -4,7 +4,7 @@
 For each random CNF: brute-force the count + model set (oracle), compile to a d4
 .nnf, then check it is strictly decomposable, its count and model set match the
 oracle, and it is faithful as a Boolean function. Also cross-checks ddnnf-cleanup.
-(Functional synthesis / --weak 3: see ddnnf_synth.py.)
+(Functional synthesis / --synthesis: see ddnnf_synth.py.)
 
 Usage: ddnnf_fuzz.py [num_tests] [--seed N]
 """
@@ -85,11 +85,8 @@ def ganak_count(path):
     return None
 
 
-def compile_nnf(path, nnf, weak_level):
-    args = [GANAK, "--compile", nnf]
-    if weak_level:
-        args += ["--weak", str(weak_level)]
-    args.append(path)
+def compile_nnf(path, nnf):
+    args = [GANAK, "--compile", nnf, path]
     return subprocess.run(args, capture_output=True, text=True)
 
 
@@ -140,7 +137,7 @@ def main():
 
         if os.path.exists(nnf):
             os.remove(nnf)
-        r = compile_nnf(cnf, nnf, 0)
+        r = compile_nnf(cnf, nnf)
         if not os.path.exists(nnf):
             print(f"FAIL[{t}] no .nnf produced. stderr:\n{r.stderr}")
             save_fail(t)

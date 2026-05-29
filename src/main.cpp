@@ -195,7 +195,7 @@ void add_ganak_options()
 
     // d-DNNF compilation
     add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
-    add_arg("--weak", conf.weak, fc_int, "When compiling: 0=off (faithful d-DNNF). 3=synthesis share-and-branch: input vars (< opt_indep_support_end) may be shared across AND children while the to-be-synthesized vars stay disjoint; faithful (valid Skolem witnesses), for functional synthesis.");
+    add_arg("--synthesis", conf.synthesis, fc_int, "When compiling: 1=enable synthesis share-and-branch. Output (non-input) vars (>= indep_support_end) may be shared across AND children while input vars (< indep_support_end) stay disjoint. ONLY for functional synthesis: it deliberately produces a WRONG model count.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");
@@ -356,8 +356,8 @@ void parse_supported_options(int argc, char** argv) {
         std::cerr << msg << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (conf.weak != 0 && conf.weak != 3) {
-      cerr << "ERROR: --weak must be 0 (faithful d-DNNF) or 3 (synthesis "
+    if (conf.synthesis != 0 && conf.synthesis != 1) {
+      cerr << "ERROR: --synthesis must be 0 (off) or 1 (synthesis "
               "share-and-branch)" << endl;
       exit(EXIT_FAILURE);
     }
@@ -371,16 +371,16 @@ void parse_supported_options(int argc, char** argv) {
       do_puura = 0;                    // no var-remapping preprocessing
       num_threads = 1;                 // single compiler instance
       // The SAT oracle stays ON: for a projected formula it supplies a witness for
-      // the synthesized vars; for a non-projected one it never fires. weak 3 keeps
-      // the cache ON but skips components with a shared input var (see
+      // the synthesized vars; for a non-projected one it never fires. --synthesis
+      // keeps the cache ON but skips components with a shared output var (see
       // CompManager::comp_has_shareable and the save_count guard in backtrack).
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
-           << (conf.weak ? " (WEAK)" : "") << endl;
-    } else if (conf.weak != 0) {
-      // --weak only makes sense when compiling: it deliberately produces a wrong
-      // count, so without --compile it would corrupt normal counting.
-      cerr << "ERROR: --weak requires --compile (it intentionally produces a "
-              "wrong count and is only meaningful for weak d-DNNF compilation)" << endl;
+           << (conf.synthesis ? " (SYNTHESIS)" : "") << endl;
+    } else if (conf.synthesis != 0) {
+      // --synthesis only makes sense when compiling: it deliberately produces a
+      // wrong count, so without --compile it would corrupt normal counting.
+      cerr << "ERROR: --synthesis requires --compile (it intentionally produces a "
+              "wrong count and is only meaningful for synthesis d-DNNF compilation)" << endl;
       exit(EXIT_FAILURE);
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {

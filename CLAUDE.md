@@ -86,9 +86,10 @@ python3 tests/ddnnf_fuzz.py 200 --maxvars 14  # cap var count (oracle is 2^nv, s
                                            #   also --minvars N)
 ```
 
-`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF. `--weak 0` is that
-(the default); `--weak 3` is the synthesis share-and-branch (see section 3 and
-`--help`). `--ddnfcheck 1` makes Ganak cross-check each decision
+`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF (the default).
+`--synthesis 1` is the synthesis share-and-branch (see section 3 and `--help`);
+it **deliberately produces a WRONG count** and is for synthesis only.
+`--ddnfcheck 1` makes Ganak cross-check each decision
 level's circuit sub-count against its own count (debugging the compiler). Temp
 files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
 processes can run concurrently. Failing cases are copied to
@@ -100,26 +101,34 @@ For a *projected* CNF (inputs X = sampling vars, outputs Y = the rest), the
 compiled circuit can be used for Boolean functional synthesis: for an input
 assignment X, `ddnnf_verify.synthesize()` reads a witness ψ(X) off the circuit.
 The fuzzer checks that for every satisfiable X, `F(X, ψ(X))` holds, and reports
-the circuit size vs `--weak 0`.
+the circuit size vs the faithful compile.
 
 ```
-python3 tests/ddnnf_synth.py 200            # --weak 0 (faithful d-DNNF)
-python3 tests/ddnnf_synth.py 200 --weak 3   # share-and-branch; also prints size ratio
+python3 tests/ddnnf_synth.py 200              # faithful d-DNNF (default)
+python3 tests/ddnnf_synth.py 200 --synthesis  # share-and-branch; also prints size ratio
 ```
 
 Synthesis notes (empirically established):
 - The witness for Y comes from the **SAT oracle** (it stays on in `--compile`),
   which records one example assignment of Y at each SAT leaf (`set_override` in
   `DDNNFCompiler`). This is the main compactness for synthesis (Y is not
-  enumerated). `--weak 0` + SAT is a correct, compact synthesis compiler.
-- `--weak 3` (share-and-branch): input vars (`< opt_indep_support_end`) may be
-  shared across AND children while outputs stay disjoint; cache is selective
-  (shared components are not cached, for soundness). It is **sound** (synthesis
-  round-trip 0 failures) but **not more compact** than `--weak 0` (~1.05-1.10x
-  larger): duplicating shared inputs and losing their caching outweighs the
-  finer decomposition. (A weak cut can be smaller only by dropping constraints /
-  over-approximating, which is unsound for synthesis -- so `--weak 3` can't
-  reproduce that and stays faithful instead.)
+  enumerated). Faithful (default) `--compile` + SAT is a correct, compact
+  synthesis compiler — the `ddnnf_synth_faithful` ctest exercises it.
+- `--synthesis` (share-and-branch): output/non-input vars
+  (`>= indep_support_end`) may be shared across AND children while input vars
+  (`< indep_support_end`) stay disjoint; cache is selective (shared components
+  are not cached). A shared var is made *non-bridging* (its clauses are not
+  followed at the component boundary, see `CompAnalyzer::record_comp` /
+  `is_shareable`). For inputs that would be safe (Ganak branches on them and the
+  SAT leaf re-validates), but for **outputs it drops their constraints**: the
+  count goes **wrong** (intended — synthesis-only) AND it is currently
+  **UNSOUND for synthesis** — the round-trip fails (~73% of instances; a full
+  backtracking witness extractor confirms the witnesses are genuinely missing,
+  not just unreachable greedily). The circuit is ~0.7× the faithful size,
+  precisely *because* it drops those constraints. This matches the general rule
+  "a weak cut can be smaller only by dropping constraints / over-approximating,
+  which is unsound for synthesis." Work in progress; there is intentionally no
+  ctest for it (it would fail).
 
 ## Running Tests
 ```
@@ -145,9 +154,10 @@ do not break when search heuristics reshape the circuit:
   the cleaned file `--strict`, and `ddnnf2dot`. `ddnnf_verify.py` doubles as a
   CLI checker (`--expect-count`, `--cnf`, `--check-decomposable`,
   `--check-weak-decomposable`, `--strict`); bare invocation still prints the count.
-- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_weak0`, `ddnnf_synth_weak3` —
-  the property fuzzers run seeded (so a regression reproduces) and self-check
-  against a brute-force oracle.
+- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful` — the property
+  fuzzers run seeded (so a regression reproduces) and self-check against a
+  brute-force oracle. (No `--synthesis` ctest: that mode is currently unsound,
+  see section 3.)
 
 ## Architecture
 

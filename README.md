@@ -317,12 +317,22 @@ format, for reuse in repeated queries, model enumeration, or functional
 synthesis.
 
 **1. Dump** (still prints the count; streamed to disk, so it is not held in
-memory). Use `--weak 0` (default) for a faithful circuit, or `--weak 3` for the
-synthesis share-and-branch mode (see `--help`):
+memory). The default is a faithful d-DNNF:
 
 ```shell
 ./ganak --compile out.nnf in.cnf
 ```
+
+> **`--synthesis` (experimental, for functional synthesis only).** Adding
+> `--synthesis 1` enables the synthesis share-and-branch mode: output
+> (non-input) vars (`>= indep_support_end`) may be shared across AND children
+> while input vars (`< indep_support_end`) stay disjoint. This is **only** for
+> functional synthesis — it **deliberately produces a WRONG model count** (the
+> shared outputs make sibling components non-independent), so never use it for
+> counting. It yields a smaller circuit (~0.7× of the faithful one) by dropping
+> the shared outputs' clauses, but that same dropping currently makes it
+> **UNSOUND for synthesis too** (witnesses are missing for some inputs); it is a
+> work in progress.
 
 **2. Fix up.** The raw file is correct from the root but keeps Ganak's internal
 ids and may carry unreachable "dead" nodes. `ddnnf-cleanup` drops them and

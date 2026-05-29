@@ -1110,7 +1110,7 @@ FF Counter::outer_count() {
     ddnnf->write_d4(conf.compile_fname);
     verb_print(0, "[compile] d-DNNF written to " << conf.compile_fname
         << " nodes: " << ddnnf->num_nodes() << " edges: " << ddnnf->num_edges()
-        << (conf.weak ? " (WEAK)" : ""));
+        << (conf.synthesis ? " (SYNTHESIS)" : ""));
   }
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   return cnt;
@@ -2072,10 +2072,10 @@ RetState Counter::backtrack() {
     }
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
-    // --weak 3: don't cache components with a shared input var (not independent of
-    // siblings -- a hit would under-cover); shared-var-free comps are safe.
+    // --synthesis: don't cache components with a shared output var (not independent
+    // of siblings -- a hit would under-cover); shared-var-free comps are safe.
     const bool cacheable = conf.do_use_cache &&
-        !(conf.weak == 3 && comp_manager->comp_has_shareable(decisions.top().super_comp()));
+        !(conf.synthesis && comp_manager->comp_has_shareable(decisions.top().super_comp()));
     if (cacheable) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";

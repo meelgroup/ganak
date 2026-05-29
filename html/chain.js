@@ -59,7 +59,7 @@ function runTool(jsFile, args, inFiles, outFile) {
   const outPath = process.argv[3];
   const cnf = inPath ? fs.readFileSync(inPath, 'utf8') : DEFAULT_CNF;
 
-  // 1. ganak --compile: dump the raw d4 .nnf (faithful, --weak 0 default).
+  // 1. ganak --compile: dump the raw d4 .nnf (faithful by default).
   //    --mode 1 (weighted rational) handles both weighted and plain CNFs.
   const raw = await runTool('ganak.js',
     ['--verb', '1', '--mode', '1', '--compile', '/out.nnf', '/input.cnf'],

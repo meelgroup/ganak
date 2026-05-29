@@ -6,7 +6,7 @@ compile to a circuit; for every satisfiable X, synthesize psi(X) off the circuit
 and check F(X, psi(X)) holds. The real correctness criterion for synthesis (not
 model counting or faithfulness).
 
-Usage: ddnnf_synth.py [num_tests] [--weak N] [--seed S]
+Usage: ddnnf_synth.py [num_tests] [--synthesis] [--seed S]
 """
 import itertools
 import os
@@ -61,14 +61,14 @@ def sat(cls, a):
 
 def main():
     n = 200
-    weak = 0
+    synth = False
     satoff = False
     seed = random.randrange(1 << 30)
     args = sys.argv[1:]
     i = 0
     while i < len(args):
-        if args[i] == "--weak":
-            weak = int(args[i + 1]); i += 1
+        if args[i] == "--synthesis":
+            synth = True
         elif args[i] == "--seed":
             seed = int(args[i + 1]); i += 1
         elif args[i] == "--satoff":
@@ -77,7 +77,7 @@ def main():
             n = int(args[i])
         i += 1
     random.seed(seed)
-    print(f"seed={seed} tests={n} weak={weak}")
+    print(f"seed={seed} tests={n} synthesis={synth}")
 
     cnf = unique_file("s", ".cnf")
     nnf = cnf + ".nnf"
@@ -95,8 +95,8 @@ def main():
         if os.path.exists(nnf):
             os.remove(nnf)
         a = [GANAK, "--compile", nnf]
-        if weak:
-            a += ["--weak", str(weak)]
+        if synth:
+            a += ["--synthesis", "1"]
         if satoff:
             a += ["--satsolver", "0"]
         a.append(cnf)
@@ -107,7 +107,7 @@ def main():
             continue
         nodes, arcs, root = dv.parse(nnf)
         size_w += len(nodes)
-        if weak:  # compile weak 0 too, to compare circuit size
+        if synth:  # compile faithful (no --synthesis) too, to compare circuit size
             n0 = nnf + ".w0"
             subprocess.run([GANAK, "--compile", n0, cnf], capture_output=True)
             if os.path.exists(n0):
@@ -142,8 +142,8 @@ def main():
 
     msg = (f"done {n} synth tests, {fails} failures "
            f"({no_witness} satisfiable-X with no witness)")
-    if weak and size_0:
-        msg += f"; circuit size weak{weak}/weak0 = {size_w/size_0:.2f}"
+    if synth and size_0:
+        msg += f"; circuit size synthesis/faithful = {size_w/size_0:.2f}"
     print(msg)
     return 1 if fails else 0
 

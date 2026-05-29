@@ -154,13 +154,14 @@ public:
     }
   }
 
-  // --weak 3 (synthesis): an input var (< opt_indep_end) may be shared across
-  // AND children -- a member of every comp mentioning it, but non-bridging and
-  // re-claimable by later comps.
+  // --synthesis: a non-input (output) var (>= indep_end) may be shared
+  // across AND children -- a member of every comp mentioning it, but non-bridging
+  // and re-claimable by later comps. Input vars (< indep_end) are never shared,
+  // so comps stay disjoint over the inputs.
   bool share_mode = false;
-  uint32_t opt_indep_end = 0;
+  uint32_t indep_end = 0;
   vector<char> claimed_share; // per var: was it added to some component this round
-  bool is_shareable(uint32_t v) const { return share_mode && v < opt_indep_end; }
+  bool is_shareable(uint32_t v) const { return share_mode && v >= indep_end; }
 
   void setup_analysis_context(StackLevel& top, const Comp& super_comp){
     archetype.re_initialize(top,super_comp);
@@ -180,7 +181,7 @@ public:
   inline Comp *make_comp_from_archetype(){
     SLOW_DEBUG_DO(for (auto&v: comp_vars) assert(is_unknown(v)));
     auto p = archetype.make_comp(comp_vars.size());
-    // --weak 3: re-mark shared input vars unvisited so a later sibling can claim
+    // --synthesis: re-mark shared output vars unvisited so a later sibling can claim
     // them too (make_comp cleared them).
     if (share_mode)
       for (const auto v : comp_vars) if (is_shareable(v)) archetype.set_var_in_sup_comp_unvisited(v);

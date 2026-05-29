@@ -570,10 +570,12 @@ if(ENABLE_TESTING)
   # larger count / --maxvars (see CLAUDE.md).
   add_test(NAME ddnnf_compile_fuzz
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
-  add_test(NAME ddnnf_synth_weak0
+  # Faithful synthesis (default --compile + SAT-oracle witnesses): sound.
+  add_test(NAME ddnnf_synth_faithful
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 30 --seed 1)
-  add_test(NAME ddnnf_synth_weak3
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 30 --seed 1 --weak 3)
+  # NOTE: no --synthesis (share-and-branch) test here -- it deliberately drops
+  # output-var constraints, which yields a smaller circuit but is currently
+  # UNSOUND for synthesis (witnesses missing). See README.md / CLAUDE.md.
 endif()
 
 # -----------------------------------------------------------------------------

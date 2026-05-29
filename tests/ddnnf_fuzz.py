@@ -102,17 +102,25 @@ def compile_nnf(path, nnf, weak_level):
 def main():
     n = 200
     seed = random.randrange(1 << 30)
+    minv, maxv = 7, 16    # var-count range; the oracle is 2^nv, so this drives runtime
     args = sys.argv[1:]
     i = 0
     while i < len(args):
         if args[i] == "--seed":
             seed = int(args[i + 1])
             i += 1
+        elif args[i] == "--minvars":
+            minv = int(args[i + 1])
+            i += 1
+        elif args[i] == "--maxvars":
+            maxv = int(args[i + 1])
+            i += 1
         else:
             n = int(args[i])
         i += 1
+    minv = min(minv, maxv)
     random.seed(seed)
-    print(f"seed={seed} tests={n} mode=STRONG")
+    print(f"seed={seed} tests={n} vars={minv}..{maxv} mode=STRONG")
 
     fails = 0
 
@@ -129,7 +137,7 @@ def main():
             shutil.copy(clean, unique_file("fail", ".clean.nnf"))
 
     for t in range(n):
-        nv = random.randint(7, 16)
+        nv = random.randint(minv, maxv)
         nc = random.randint(nv, nv * 4)
         k = random.choice([2, 3, 3, 4])
         clauses = gen_cnf(nv, nc, k)

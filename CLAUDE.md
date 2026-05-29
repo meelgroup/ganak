@@ -81,6 +81,9 @@ python3 tests/ddnnf_fuzz.py 200            # circuit count == true count, model 
                                            #   == true models (validates arc literals),
                                            #   strictly decomposable, faithful as a fn
 python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
+python3 tests/ddnnf_fuzz.py 200 --maxvars 14  # cap var count (oracle is 2^nv, so
+                                           #   this is the main runtime/coverage knob;
+                                           #   also --minvars N)
 ```
 
 `ganak --compile out.nnf in.cnf` writes a faithful d-DNNF. `--weak 0` is that

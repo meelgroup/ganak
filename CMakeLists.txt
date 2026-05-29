@@ -565,12 +565,15 @@ if(ENABLE_TESTING)
   # count/model set as an oracle, and check the emitted circuit against it.
   # Seeded so a regression reproduces identically; they self-check against the
   # oracle, so there is no golden file to break when the circuit shape changes.
+  # Small/few by design: the oracle is 2^nv and each case spawns ganak, so we
+  # keep these quick for `make test`. For deep fuzzing run them by hand with a
+  # larger count / --maxvars (see CLAUDE.md).
   add_test(NAME ddnnf_compile_fuzz
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 100 --seed 1)
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
   add_test(NAME ddnnf_synth_weak0
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 60 --seed 1)
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 30 --seed 1)
   add_test(NAME ddnnf_synth_weak3
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 60 --seed 1 --weak 3)
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 30 --seed 1 --weak 3)
 endif()
 
 # -----------------------------------------------------------------------------

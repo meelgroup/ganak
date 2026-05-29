@@ -62,6 +62,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
+  const bool compiling = !conf.compile_fname.empty();
   auto try_seed = [&](const uint32_t v) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << v);
     if (ana.var_unvisited_in_sup_comp(v) &&
@@ -72,7 +73,6 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
       int hit_node = -1;
-      const bool compiling = !conf.compile_fname.empty();
       if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp,
             compiling ? &hit_node : nullptr)) {
         // Cache miss
@@ -96,7 +96,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     }
   };
 
-  if (conf.weak == 3 && !conf.compile_fname.empty()) {
+  if (conf.weak == 3 && compiling) {
     // Synthesis share-and-branch. Pass 1: seed from synthesized (output) vars so
     // components are disjoint over them (input vars get pulled in as shared,
     // non-bridging members). Pass 2: any input var not claimed by an output

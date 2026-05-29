@@ -91,18 +91,15 @@ public:
   // Simplifications: drop TRUE children; any FALSE child -> FALSE; empty -> TRUE;
   // single child -> that child (no spurious AND node).
   int mk_and(const std::vector<int>& comps) {
-    std::vector<int> kids;
-    kids.reserve(comps.size());
+    std::vector<Arc> arcs;
+    arcs.reserve(comps.size());
     for (int c : comps) {
       if (c == true_node) continue;
       if (c == false_node) return false_node;
-      kids.push_back(c);
+      arcs.push_back(Arc{c, {}});
     }
-    if (kids.empty()) return true_node;
-    if (kids.size() == 1) return kids[0];
-    std::vector<Arc> arcs;
-    arcs.reserve(kids.size());
-    for (int c : kids) arcs.push_back(Arc{c, {}});
+    if (arcs.empty()) return true_node;
+    if (arcs.size() == 1) return arcs[0].child;
     return emit(N_AND, arcs);
   }
 

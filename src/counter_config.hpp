@@ -35,14 +35,12 @@ struct CounterConfiguration {
 
   // d-DNNF compilation: when compile_fname is non-empty, Ganak emits the
   // search trace as a (Decision-)d-DNNF circuit to that file (d4 .nnf format)
-  // instead of (only) reporting a count. weak=1 enables the weak relaxation
-  // (monotone variables do not bridge components), producing a weak d-DNNF
-  // whose model count is intentionally wrong but which compiles faster.
+  // instead of (only) reporting a count. weak=0 produces a faithful d-DNNF;
+  // weak=3 is the synthesis share-and-branch (input vars may be shared across
+  // AND children while the to-be-synthesized vars stay disjoint) -- also
+  // faithful, intended for Boolean functional synthesis.
   std::string compile_fname = "";
   int weak = 0;
-  // Self-check: when compiling (strong mode), verify each decision level's
-  // circuit sub-count equals Ganak's own count for that level.
-  int ddnf_check = 0;
 
   int do_restart = 0;
   int do_chronobt = 1;

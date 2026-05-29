@@ -975,7 +975,10 @@ void Counter::compile_add_free_var(uint32_t v) {
 }
 
 void Counter::compile_on_cache_hit(int node) {
-  if (node < 0) node = ddnnf->true_node; // safety: missing node -> neutral element
+  // A cached component must have had its compiled sub-DAG recorded (set_comp_node
+  // in backtrack). A missing node would mean substituting the neutral element
+  // (factor 1) for a real sub-count -- a silent undercount -- so fail loudly.
+  release_assert(node >= 0); // d-DNNF cache hit with no recorded compile node
   ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), node);
 }
 
@@ -991,11 +994,7 @@ int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lit
   std::vector<DDNNFCompiler::Arc> arcs;
   if (left  != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{left,  ddnnf->left_lits[lev]});
   if (right != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{right, right_lits});
-  int or_node = ddnnf->mk_or(std::move(arcs));
-  // NOTE: --ddnfcheck (the per-level structural sub-count self-check) is not
-  // available in streaming mode -- it needs random access to the whole in-memory
-  // DAG, which is no longer retained. It is neutralized at setup in main.cpp.
-  return or_node;
+  return ddnnf->mk_or(std::move(arcs));
 }
 
 void Counter::compile_finalize_root() {

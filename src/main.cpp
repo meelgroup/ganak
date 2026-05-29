@@ -196,7 +196,6 @@ void add_ganak_options()
     // d-DNNF compilation
     add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
     add_arg("--weak", conf.weak, fc_int, "When compiling: 0=off (faithful d-DNNF). 3=synthesis share-and-branch: input vars (< opt_indep_support_end) may be shared across AND children while the to-be-synthesized vars stay disjoint; faithful (valid Skolem witnesses), for functional synthesis.");
-    add_arg("--ddnfcheck", conf.ddnf_check, fc_int, "When compiling (strong mode), cross-check every decision level's circuit sub-count against Ganak's own count and report mismatches. For debugging the compiler.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");
@@ -382,13 +381,6 @@ void parse_supported_options(int argc, char** argv) {
       // cache hit would under-cover). Components with no shared var are still
       // variable-disjoint and safe to cache -- see CompManager::comp_has_shareable
       // and the save_count guard in Counter::backtrack.
-      if (conf.ddnf_check) {
-        // The per-level structural self-check needs the whole in-memory DAG,
-        // which streaming compilation no longer retains. Disable it.
-        cout << "c o [compile] WARNING: --ddnfcheck is unavailable in streaming "
-                "compilation mode; disabling it" << endl;
-        conf.ddnf_check = 0;
-      }
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
            << (conf.weak ? " (WEAK)" : "") << endl;
     } else if (conf.weak != 0) {

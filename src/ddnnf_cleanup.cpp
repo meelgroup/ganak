@@ -36,22 +36,19 @@ THE SOFTWARE.
 //
 // Usage:  ddnnf-cleanup <in.nnf> [out.nnf]      ("-" or omitted out => stdout)
 
-#include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <queue>
-#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "ddnnf_io.hpp"
+
 namespace {
 
-struct Arc {
-  int child;
-  std::vector<int> lits;
-};
+using ddnnf_io::Arc;
 
 [[noreturn]] void die(const std::string& msg) {
   std::cerr << "ddnnf-cleanup: " << msg << std::endl;
@@ -72,42 +69,12 @@ int main(int argc, char** argv) {
   std::ifstream in(in_path);
   if (!in.good()) die("cannot open input file: " + in_path);
 
-  std::unordered_map<int, char> type;            // node id -> 'f'|'t'|'a'|'o'
+  std::unordered_map<int, char> type;             // node id -> 'f'|'t'|'a'|'o'
   std::unordered_map<int, std::vector<Arc>> arcs; // node id -> outgoing arcs
-  int root = -1;
-
-  std::string line;
-  while (std::getline(in, line)) {
-    // First non-space token decides the line kind.
-    size_t i = 0;
-    while (i < line.size() && std::isspace((unsigned char)line[i])) i++;
-    if (i >= line.size()) continue;                 // blank
-    if (line[i] == 'c') continue;                   // comment
-
-    std::istringstream ss(line);
-    if (line[i] == 'f' || line[i] == 't' || line[i] == 'a' || line[i] == 'o') {
-      // Node declaration:  <type> <id> 0
-      char t;
-      int id;
-      ss >> t >> id;
-      if (!ss) die("malformed node declaration: " + line);
-      type[id] = t;
-      arcs.emplace(id, std::vector<Arc>{});
-      if (root == -1) root = id;                    // first declared node is the root
-    } else {
-      // Arc line:  <parent> <child> [lits...] 0
-      std::vector<int> nums;
-      int x;
-      while (ss >> x) nums.push_back(x);
-      if (!nums.empty() && nums.back() == 0) nums.pop_back();  // drop terminator
-      if (nums.size() < 2) die("malformed arc line: " + line);
-      Arc a;
-      a.child = nums[1];
-      a.lits.assign(nums.begin() + 2, nums.end());
-      arcs[nums[0]].push_back(std::move(a));
-    }
-  }
-  if (root == -1) die("input has no nodes");
+  std::vector<int> decl_order;                    // declaration order (unused; we renumber by BFS)
+  std::string err;
+  const int root = ddnnf_io::parse_nnf(in, type, arcs, decl_order, err);
+  if (root == -1) die(err);
 
   // Breadth-first renumber from the root: root => 1, then children in arc order.
   // Unvisited nodes (dead) never receive an id and are dropped.

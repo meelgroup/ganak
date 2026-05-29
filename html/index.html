@@ -435,7 +435,15 @@ c p show 1 2 3 0
             }
             for (const [id] of type) {
                 for (const a of (arcs.get(id) || [])) {
-                    const lbl = a.lits.length ? ' [label="' + a.lits.join(' ') + '"]' : '';
+                    // HTML-like label: a filled (opaque) green cell with the arc's
+                    // decided+propagated literals centered in white. Native Graphviz.
+                    let lbl = '';
+                    if (a.lits.length) {
+                        const txt = a.lits.join(' ');
+                        lbl = ' [label=<<TABLE border="0" cellborder="0" cellspacing="0" cellpadding="3">' +
+                              '<TR><TD bgcolor="#5cb85c"><FONT color="white">' + txt +
+                              '</FONT></TD></TR></TABLE>>]';
+                    }
                     dot += '  n' + id + ' -> n' + a.child + lbl + ';\n';
                 }
             }

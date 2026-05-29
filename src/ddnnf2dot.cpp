@@ -141,14 +141,14 @@ int main(int argc, char** argv) {
     out << "];\n";
   }
 
-  // Arcs, labelled with their decided+propagated literals.
+  // Arcs, labelled with their decided+propagated literals (bold blue, no box).
   for (int id : order) {
     for (const auto& a : arcs[id]) {
       out << "  n" << id << " -> n" << a.child;
       if (!a.lits.empty()) {
-        out << " [label=\"";
+        out << " [label=<<FONT COLOR=\"#1565c0\"><B>";
         for (size_t k = 0; k < a.lits.size(); k++) out << (k ? " " : "") << a.lits[k];
-        out << "\"]";
+        out << "</B></FONT>>]";
       }
       out << ";\n";
     }

@@ -131,6 +131,21 @@ To run a single test file:
 cd build && lit tests/cnf-files/a.cnf
 ```
 
+### d-DNNF compile tests
+
+`ctest` also runs deterministic d-DNNF compile/cleanup checks. They assert only
+*semantic* invariants of the emitted circuit (model count, model set,
+decomposability, canonical cleaned form) — never the byte-exact `.nnf` — so they
+do not break when search heuristics reshape the circuit:
+- `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
+  `ddnnf_verify.py` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify
+  the cleaned file `--strict`, and `ddnnf2dot`. `ddnnf_verify.py` doubles as a
+  CLI checker (`--expect-count`, `--cnf`, `--check-decomposable`,
+  `--check-weak-decomposable`, `--strict`); bare invocation still prints the count.
+- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_weak0`, `ddnnf_synth_weak3` —
+  the property fuzzers run seeded (so a regression reproduces) and self-check
+  against a brute-force oracle.
+
 ## Architecture
 
 The counting pipeline flows through these layers:

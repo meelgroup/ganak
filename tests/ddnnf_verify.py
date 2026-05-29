@@ -325,6 +325,104 @@ def shared_and_vars(nodes, arcs, root):
     return shared
 
 
+def read_cnf(path):
+    """Parse a small DIMACS CNF (one clause per line, 0-terminated). Returns
+    (nvars, clauses). Comment/sampling-set lines are ignored -- this is only
+    used to brute-force tiny, *unprojected* test fixtures."""
+    nvars = 0
+    clauses = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line[0] == 'c':
+                continue
+            if line[0] == 'p':
+                nvars = int(line.split()[2])
+                continue
+            lits = [int(x) for x in line.split() if x not in ('', '0')]
+            if lits:
+                clauses.append(lits)
+    return nvars, clauses
+
+
+def brute_models(nvars, clauses):
+    """Exact model set of a CNF by brute force (frozenset of signed lits per
+    model). Only for tiny nvars."""
+    import itertools
+    out = set()
+    for bits in itertools.product((False, True), repeat=nvars):
+        assign = {v + 1: bits[v] for v in range(nvars)}
+        if all(any((l > 0) == assign[abs(l)] for l in cl) for cl in clauses):
+            out.add(frozenset(v if assign[v] else -v for v in range(1, nvars + 1)))
+    return out
+
+
 if __name__ == '__main__':
-    nodes, arcs, root = parse(sys.argv[1])
-    print(count(nodes, arcs, root))
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Verify a d4 .nnf circuit from `ganak --compile`. With no "
+                    "check flag, just prints the structural model count.")
+    ap.add_argument('nnf')
+    ap.add_argument('--expect-count', type=int, default=None,
+                    help="assert the circuit's structural model count equals N")
+    ap.add_argument('--cnf', default=None,
+                    help="brute-force this small UNPROJECTED CNF and assert the "
+                         "circuit's count AND full model set match it exactly "
+                         "(also validates arc literals)")
+    ap.add_argument('--check-decomposable', action='store_true',
+                    help="assert strict decomposability (AND children var-disjoint)")
+    ap.add_argument('--check-weak-decomposable', action='store_true',
+                    help="assert weak decomposability (no var both polarities across AND children)")
+    ap.add_argument('--strict', action='store_true',
+                    help="assert canonical cleaned form: no dead nodes, root id 1, ids 1..N contiguous")
+    ap.add_argument('-q', '--quiet', action='store_true')
+    args = ap.parse_args()
+
+    nodes, arcs, root = parse(args.nnf)
+    c = count(nodes, arcs, root)
+
+    any_check = (args.expect_count is not None or args.cnf or args.check_decomposable
+                 or args.check_weak_decomposable or args.strict)
+    if not any_check:
+        print(c)               # backward-compatible: bare invocation prints the count
+        sys.exit(0)
+
+    def fail(msg):
+        print("ddnnf-verify: FAIL: " + msg)
+        sys.exit(1)
+
+    if args.expect_count is not None and c != args.expect_count:
+        fail("count %d != expected %d" % (c, args.expect_count))
+
+    if args.cnf:
+        nvars, clauses = read_cnf(args.cnf)
+        true_models = brute_models(nvars, clauses)
+        if c != len(true_models):
+            fail("count %d != #models(CNF) %d" % (c, len(true_models)))
+        circ = models(nodes, arcs, root, nvars)
+        if circ != true_models:
+            fail("model set mismatch: +%d extra, -%d missing"
+                 % (len(circ - true_models), len(true_models - circ)))
+
+    if args.check_decomposable:
+        ok, msg = check_decomposable(nodes, arcs, root)
+        if not ok:
+            fail("not decomposable: " + msg)
+
+    if args.check_weak_decomposable:
+        ok, msg = check_weak_decomposable(nodes, arcs, root)
+        if not ok:
+            fail("not weak-decomposable: " + msg)
+
+    if args.strict:
+        dead = unreachable_nodes(nodes, arcs, root)
+        if dead:
+            fail("%d dead node(s) present: %s" % (len(dead), sorted(dead)[:8]))
+        if root != 1:
+            fail("root id %d != 1" % root)
+        if set(nodes) != set(range(1, len(nodes) + 1)):
+            fail("node ids not contiguous 1..N")
+
+    if not args.quiet:
+        print("ddnnf-verify: OK (count=%d, nodes=%d)" % (c, len(nodes)))
+    sys.exit(0)

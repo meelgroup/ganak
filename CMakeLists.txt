@@ -560,6 +560,17 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+
+  # Property-based d-DNNF tests: generate random CNFs, brute-force the true
+  # count/model set as an oracle, and check the emitted circuit against it.
+  # Seeded so a regression reproduces identically; they self-check against the
+  # oracle, so there is no golden file to break when the circuit shape changes.
+  add_test(NAME ddnnf_compile_fuzz
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 100 --seed 1)
+  add_test(NAME ddnnf_synth_weak0
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 60 --seed 1)
+  add_test(NAME ddnnf_synth_weak3
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py 60 --seed 1 --weak 3)
 endif()
 
 # -----------------------------------------------------------------------------

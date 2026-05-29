@@ -1,0 +1,12 @@
+c c d-DNNF compile: small satisfiable unprojected formula.
+c c The circuit's structural count AND full model set must match the CNF, the
+c c circuit must be (strictly) decomposable, and after cleanup it must be in
+c c canonical form (no dead nodes, root id 1, ids contiguous).
+c c RUN: %solver --compile %t.nnf %s
+c c RUN: %ddnnf_verify %t.nnf --cnf %s --check-decomposable
+c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
+c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
+c c RUN: %ddnnf2dot %t.clean.nnf %t.dot
+p cnf 3 2
+1 2 0
+-2 3 0

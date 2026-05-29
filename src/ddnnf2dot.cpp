@@ -27,7 +27,7 @@ THE SOFTWARE.
 //   AND node ('a')  -> yellow box   "∧"
 //   FALSE ('f')      -> "⊥"
 //   arc            -> edge. An arc carrying literals is labelled in bold blue as
-//                     "1 [2,-3]" -- the decided literal, then the propagated ones
+//                     "1[2,-3]" -- the decided literal, then the propagated ones
 //                     in brackets (just "1" when nothing propagated). An AND node's
 //                     decomposition arcs carry no literals, so we instead label
 //                     each with the set of variables in that child's component --
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
   auto blue_lits = [](std::ostream& os, const std::vector<int>& lits) {
     os << " [label=<<FONT COLOR=\"#1565c0\" POINT-SIZE=\"9\"><B>" << lits[0];
     if (lits.size() > 1) {
-      os << " [";
+      os << "[";
       for (size_t k = 1; k < lits.size(); k++) os << (k > 1 ? "," : "") << lits[k];
       os << "]";
     }

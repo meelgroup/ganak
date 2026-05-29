@@ -23,14 +23,22 @@ THE SOFTWARE.
 // ddnnf2dot: render a d4 .nnf circuit (raw from `ganak --compile`, or cleaned by
 // `ddnnf-cleanup`) as a Graphviz DOT graph for visualization.
 //
-//   OR  node ('o') -> blue ellipse  labelled  "∨" + id
-//   AND node ('a') -> yellow box     labelled  "∧" + id
-//   TRUE ('t')      -> "⊤" ;  FALSE ('f') -> "⊥"
+//   OR  node ('o')  -> blue ellipse "∨"
+//   AND node ('a')  -> yellow box   "∧"
+//   FALSE ('f')      -> "⊥"
 //   arc            -> edge. An arc carrying literals (a decision branch / implied
 //                     lits) is labelled with them in bold blue. An AND node's
 //                     decomposition arcs carry no literals, so we instead label
 //                     each with the set of variables in that child's component --
 //                     this shows how the AND cut the problem into disjoint parts.
+//
+// The single TRUE ('t') sink is NOT drawn as one shared ⊤ node. Instead, every
+// literal labelling an arc into ⊤ becomes its own (shared) green leaf ("3", "¬1",
+// ...). A terminal arc with several literals fans out through a fresh AND node to
+// each literal's leaf. This declutters the otherwise-hub-like ⊤. (A ⊤ node is only
+// kept for the degenerate cases: a literal-free terminal arc, or a tautology whose
+// whole circuit is ⊤.) Node labels carry no ids -- variables appear only on edges
+// and leaves.
 //
 // Nodes are emitted in declaration order (root first, the d4 convention), arcs in
 // file order. This is a pure pretty-printer: it does not require the circuit to be
@@ -123,32 +131,10 @@ int main(int argc, char** argv) {
   }
   std::ostream& out = *outp;
 
-  out << "digraph ddnnf {\n";
-  out << "  rankdir=TB;\n";
-  out << "  node [fontname=\"monospace\", fontsize=11];\n";
-  out << "  edge [fontname=\"monospace\", fontsize=10];\n";
-
-  // Node declarations (in file order).
-  for (int id : order) {
-    out << "  n" << id << " [";
-    switch (type[id]) {
-      // Just the operator symbol -- the node id is internal and would be easily
-      // mistaken for a variable. Variables only ever appear on edge labels.
-      case 'o':
-        out << "shape=ellipse, style=filled, fillcolor=\"#cfe8ff\", label=\"∨\"";
-        break;
-      case 'a':
-        out << "shape=box, style=filled, fillcolor=\"#fff3c4\", label=\"∧\"";
-        break;
-      case 't':
-        out << "shape=plaintext, label=\"⊤\"";
-        break;
-      default: // 'f'
-        out << "shape=plaintext, label=\"⊥\"";
-        break;
-    }
-    out << "];\n";
-  }
+  auto is_true = [&](int id) {
+    auto it = type.find(id);
+    return it != type.end() && it->second == 't';
+  };
 
   // Variables appearing in a node's reachable subtree (on arc literals). Used to
   // describe how an AND node splits its component across children. Memoized DFS
@@ -167,29 +153,89 @@ int main(int argc, char** argv) {
     return vec;
   };
 
-  // Arcs. Literal-bearing arcs (decisions / implied lits) -> bold-blue literals.
-  // An AND node's literal-free decomposition arcs -> the child component's vars.
+  // Per-literal TRUE sinks. Instead of one shared ⊤ with many incoming arcs, every
+  // literal that labels an arc into ⊤ gets its own (shared) leaf node. An arc with
+  // several literals (a decision + propagated lits) fans out through a fresh AND
+  // node to each literal's sink. We build the edges first (discovering the needed
+  // sinks/fan-out nodes), then declare everything.
+  std::map<int, std::string> sink_name;   // literal -> dot node name
+  std::vector<int> sink_order;            // literals in first-seen order
+  auto sink_for = [&](int l) -> const std::string& {
+    auto it = sink_name.find(l);
+    if (it != sink_name.end()) return it->second;
+    std::string nm = std::string("lit") + (l > 0 ? "p" : "n") + std::to_string(std::abs(l));
+    sink_order.push_back(l);
+    return sink_name.emplace(l, std::move(nm)).first->second;
+  };
+  std::vector<std::string> fanout_nodes;  // fresh AND nodes for multi-literal arcs
+  bool need_true = is_true(root);         // a lone ⊤ root still needs one node
+  std::ostringstream edges;
+
   for (int id : order) {
+    if (is_true(id)) continue;            // ⊤ nodes are replaced by per-literal sinks
     const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
-      out << "  n" << id << " -> n" << a.child;
+      if (is_true(a.child)) {
+        // Terminal arc -> per-literal sink(s).
+        if (a.lits.empty()) {
+          need_true = true;
+          edges << "  n" << id << " -> T;\n";
+        } else if (a.lits.size() == 1) {
+          edges << "  n" << id << " -> " << sink_for(a.lits[0]) << ";\n";
+        } else {
+          std::string an = "and" + std::to_string(fanout_nodes.size());
+          fanout_nodes.push_back(an);
+          edges << "  n" << id << " -> " << an << ";\n";
+          for (int l : a.lits) edges << "  " << an << " -> " << sink_for(l) << ";\n";
+        }
+        continue;
+      }
+      // Non-terminal arc.
+      edges << "  n" << id << " -> n" << a.child;
       if (!a.lits.empty()) {
-        out << " [label=<<FONT COLOR=\"#1565c0\"><B>";
-        for (size_t k = 0; k < a.lits.size(); k++) out << (k ? " " : "") << a.lits[k];
-        out << "</B></FONT>>]";
+        // Decision / implied literals, bold blue.
+        edges << " [label=<<FONT COLOR=\"#1565c0\"><B>";
+        for (size_t k = 0; k < a.lits.size(); k++) edges << (k ? " " : "") << a.lits[k];
+        edges << "</B></FONT>>]";
       } else if (parent_and) {
+        // AND decomposition: show this child component's variables.
         const auto& vs = vars_of(a.child);
         if (!vs.empty()) {
-          out << " [label=<<FONT COLOR=\"#777777\">{";
-          for (size_t k = 0; k < vs.size(); k++) out << (k ? "," : "") << vs[k];
-          out << "}</FONT>>, fontsize=9]";
+          edges << " [label=<<FONT COLOR=\"#777777\">{";
+          for (size_t k = 0; k < vs.size(); k++) edges << (k ? "," : "") << vs[k];
+          edges << "}</FONT>>, fontsize=9]";
         }
       }
-      out << ";\n";
+      edges << ";\n";
     }
   }
 
-  out << "  // root = n" << root << "\n";
+  out << "digraph ddnnf {\n";
+  out << "  rankdir=TB;\n";
+  out << "  node [fontname=\"monospace\", fontsize=11];\n";
+  out << "  edge [fontname=\"monospace\", fontsize=10];\n";
+
+  // Operator / FALSE node declarations (in file order; ⊤ nodes dropped). Labels
+  // are just the operator symbol -- variables only ever appear on edges/sinks.
+  for (int id : order) {
+    if (is_true(id)) continue;
+    out << "  n" << id << " [";
+    if (type[id] == 'o')      out << "shape=ellipse, style=filled, fillcolor=\"#cfe8ff\", label=\"∨\"";
+    else if (type[id] == 'a') out << "shape=box, style=filled, fillcolor=\"#fff3c4\", label=\"∧\"";
+    else                      out << "shape=plaintext, label=\"⊥\"";  // 'f'
+    out << "];\n";
+  }
+  // Fan-out AND nodes (for multi-literal terminal arcs).
+  for (const auto& an : fanout_nodes)
+    out << "  " << an << " [shape=box, style=filled, fillcolor=\"#fff3c4\", label=\"∧\"];\n";
+  // Per-literal TRUE sinks (green leaves), e.g. "3" or "¬1".
+  for (int l : sink_order)
+    out << "  " << sink_name[l] << " [shape=box, style=\"rounded,filled\", fillcolor=\"#c8e6c9\", "
+        << "label=\"" << (l > 0 ? "" : "¬") << std::abs(l) << "\"];\n";
+  if (need_true) out << "  T [shape=plaintext, label=\"⊤\"];\n";
+
+  out << edges.str();
+  out << "  // root = " << (is_true(root) ? "T" : "n" + std::to_string(root)) << "\n";
   out << "}\n";
   out.flush();
 

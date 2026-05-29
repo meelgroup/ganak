@@ -171,21 +171,34 @@ int main(int argc, char** argv) {
   bool need_true = is_true(root);         // a lone ⊤ root still needs one node
   std::ostringstream edges;
 
+  // The bold-blue decided/propagated-literals edge label, e.g. ` [label=2 -3]`.
+  auto blue_lits = [](std::ostream& os, const std::vector<int>& lits) {
+    os << " [label=<<FONT COLOR=\"#1565c0\"><B>";
+    for (size_t k = 0; k < lits.size(); k++) os << (k ? " " : "") << lits[k];
+    os << "</B></FONT>>]";
+  };
+
   for (int id : order) {
     if (is_true(id)) continue;            // ⊤ nodes are replaced by per-literal sinks
     const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
       if (is_true(a.child)) {
-        // Terminal arc -> per-literal sink(s).
+        // Terminal arc -> per-literal sink(s). The branch's literals are still shown
+        // on the edge (bold blue) so a decision node's two edges stay symmetric --
+        // even though those literals also appear on the leaves they point to.
         if (a.lits.empty()) {
           need_true = true;
           edges << "  n" << id << " -> T;\n";
         } else if (a.lits.size() == 1) {
-          edges << "  n" << id << " -> " << sink_for(a.lits[0]) << ";\n";
+          edges << "  n" << id << " -> " << sink_for(a.lits[0]);
+          blue_lits(edges, a.lits);
+          edges << ";\n";
         } else {
           std::string an = "and" + std::to_string(fanout_nodes.size());
           fanout_nodes.push_back(an);
-          edges << "  n" << id << " -> " << an << ";\n";
+          edges << "  n" << id << " -> " << an;
+          blue_lits(edges, a.lits);
+          edges << ";\n";
           for (int l : a.lits) edges << "  " << an << " -> " << sink_for(l) << ";\n";
         }
         continue;
@@ -194,9 +207,7 @@ int main(int argc, char** argv) {
       edges << "  n" << id << " -> n" << a.child;
       if (!a.lits.empty()) {
         // Decision / implied literals, bold blue.
-        edges << " [label=<<FONT COLOR=\"#1565c0\"><B>";
-        for (size_t k = 0; k < a.lits.size(); k++) edges << (k ? " " : "") << a.lits[k];
-        edges << "</B></FONT>>]";
+        blue_lits(edges, a.lits);
       } else if (parent_and) {
         // AND decomposition: show this child component's variables.
         const auto& vs = vars_of(a.child);

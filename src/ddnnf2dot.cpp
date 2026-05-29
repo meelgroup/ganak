@@ -183,16 +183,15 @@ int main(int argc, char** argv) {
     const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
       if (is_true(a.child)) {
-        // Terminal arc -> per-literal sink(s). The branch's literals are still shown
-        // on the edge (bold blue) so a decision node's two edges stay symmetric --
-        // even though those literals also appear on the leaves they point to.
+        // Terminal arc -> per-literal sink(s). Edges that land DIRECTLY on a green
+        // leaf carry no label (the leaf already names the literal). A multi-literal
+        // arc goes via a fresh AND node, and that n->AND edge is not a leaf edge, so
+        // it keeps its bold-blue literals (and the AND->leaf edges stay bare).
         if (a.lits.empty()) {
           need_true = true;
           edges << "  n" << id << " -> T;\n";
         } else if (a.lits.size() == 1) {
-          edges << "  n" << id << " -> " << sink_for(a.lits[0]);
-          blue_lits(edges, a.lits);
-          edges << ";\n";
+          edges << "  n" << id << " -> " << sink_for(a.lits[0]) << ";\n";
         } else {
           std::string an = "and" + std::to_string(fanout_nodes.size());
           fanout_nodes.push_back(an);

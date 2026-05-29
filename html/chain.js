@@ -1,9 +1,10 @@
 // Headless test of the in-browser d-DNNF pipeline, run under Node.js.
 //
 // It exercises the exact same chain the page does, but without a browser:
-//   ganak --compile (raw d4 .nnf)  ->  ddnnf-cleanup (strict d4)
-// using the very same ganak.js / ddnnf-cleanup.js Emscripten modules that ship
-// in this directory. Useful as a smoke test after rebuilding the wasm.
+//   ganak --compile (raw d4 .nnf)  ->  ddnnf-cleanup (strict d4)  ->  ddnnf2dot (DOT)
+// using the very same ganak.js / ddnnf-cleanup.js / ddnnf2dot.js Emscripten
+// modules that ship in this directory. Useful as a smoke test after rebuilding
+// the wasm.
 //
 // Both .js files are non-MODULARIZE Emscripten CLI modules that expect a global
 // `Module`. In the browser we give each its own Web Worker (own global scope);
@@ -12,8 +13,8 @@
 // `var Module` shadow ours).
 //
 // Usage:
-//   node chain.js [input.cnf] [out.nnf]
-//   node chain.js                      # uses the built-in pwmc example, prints cleaned .nnf
+//   node chain.js [input.cnf] [out.dot]
+//   node chain.js                      # uses the built-in pwmc example, prints DOT
 
 const fs = require('fs');
 const path = require('path');
@@ -75,11 +76,15 @@ function runTool(jsFile, args, inFiles, outFile) {
   const cleaned = await runTool('ddnnf-cleanup.js',
     ['/in.nnf', '/out.nnf'], { '/in.nnf': raw }, '/out.nnf');
 
+  // 3. ddnnf2dot: render the cleaned circuit as Graphviz DOT.
+  const dot = await runTool('ddnnf2dot.js',
+    ['/in.nnf', '/out.dot'], { '/in.nnf': cleaned }, '/out.dot');
+
   if (outPath) {
-    fs.writeFileSync(outPath, cleaned);
-    process.stderr.write('\nwrote cleaned d-DNNF to ' + outPath + '\n');
+    fs.writeFileSync(outPath, dot);
+    process.stderr.write('\nwrote DOT to ' + outPath + '\n');
   } else {
-    process.stdout.write(cleaned);
+    process.stdout.write(dot);
   }
   process.exit(0);
 })().catch(e => { process.stderr.write('FAIL: ' + e + '\n'); process.exit(1); });

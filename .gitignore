@@ -21,5 +21,7 @@ html/ganak.wasm
 html/ganak.js
 html/ddnnf-cleanup.wasm
 html/ddnnf-cleanup.js
+html/ddnnf2dot.wasm
+html/ddnnf2dot.js
 /python/tests/__pycache__
 tests/__pycache__

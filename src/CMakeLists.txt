@@ -106,6 +106,8 @@ add_executable(example-c-bin example.c)
 # Standalone d4 .nnf post-processor: drops dead nodes + renumbers root=1.
 # Self-contained (no ganak/arjun/GMP deps).
 add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
+# Standalone d4 .nnf -> Graphviz DOT renderer for visualization. Self-contained.
+add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -183,10 +185,21 @@ set_target_properties(ddnnf-cleanup-bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+set_target_properties(ddnnf2dot-bin PROPERTIES
+  OUTPUT_NAME ddnnf2dot
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-  # Same runtime exports as ganak-bin so the browser can drive it: write the raw
-  # .nnf into the in-memory FS, call main, read the cleaned file back out.
+  # Same runtime exports as ganak-bin so the browser can drive these: write the
+  # input .nnf into the in-memory FS, call main, read the output file back out.
   target_link_options(ddnnf-cleanup-bin PRIVATE
+    "SHELL:-s WASM=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
+    "SHELL:-s FORCE_FILESYSTEM=1"
+  )
+  target_link_options(ddnnf2dot-bin PRIVATE
     "SHELL:-s WASM=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
@@ -257,6 +270,11 @@ install(TARGETS ganak-bin
 )
 
 install(TARGETS ddnnf-cleanup-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf2dot-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

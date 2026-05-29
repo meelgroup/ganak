@@ -379,79 +379,6 @@ c p show 1 2 3 0
             });
         }
 
-        // ---- d-DNNF -> DOT translation (client-side) --------------------------
-
-        // Parse a d4 .nnf file (raw or cleaned) into {type, arcs, root}.
-        //   type: Map id -> 'f'|'t'|'a'|'o'
-        //   arcs: Map id -> [{child, lits:[...]}]
-        //   root: id of the first declared node (the d4 convention)
-        function parseNnf(text) {
-            const type = new Map();
-            const arcs = new Map();
-            let root = -1;
-            for (const raw of text.split('\n')) {
-                let i = 0;
-                while (i < raw.length && /\s/.test(raw[i])) i++;
-                if (i >= raw.length) continue;       // blank
-                const c0 = raw[i];
-                if (c0 === 'c') continue;            // comment
-                const toks = raw.trim().split(/\s+/);
-                if (c0 === 'f' || c0 === 't' || c0 === 'a' || c0 === 'o') {
-                    // Node declaration: <type> <id> 0
-                    const id = parseInt(toks[1], 10);
-                    type.set(id, c0);
-                    if (!arcs.has(id)) arcs.set(id, []);
-                    if (root === -1) root = id;
-                } else {
-                    // Arc line: <parent> <child> [lits...] 0
-                    const nums = toks.map(x => parseInt(x, 10));
-                    if (nums.length && nums[nums.length - 1] === 0) nums.pop();   // drop terminator
-                    if (nums.length < 2) continue;
-                    const parent = nums[0];
-                    if (!arcs.has(parent)) arcs.set(parent, []);
-                    arcs.get(parent).push({ child: nums[1], lits: nums.slice(2) });
-                }
-            }
-            return { type, arcs, root };
-        }
-
-        // Translate a (cleaned) d4 .nnf circuit into Graphviz DOT.
-        function nnfToDot(text) {
-            const { type, arcs, root } = parseNnf(text);
-            // Graphviz interprets \n as a line break inside labels; Unicode glyphs
-            // must be the literal characters (\uXXXX is NOT a DOT escape).
-            const style = {
-                o: 'shape=ellipse, style=filled, fillcolor="#cfe8ff", label="∨\\n#ID"',
-                a: 'shape=box, style=filled, fillcolor="#fff3c4", label="∧\\n#ID"',
-                t: 'shape=plaintext, label="⊤"',
-                f: 'shape=plaintext, label="⊥"',
-            };
-            let dot = 'digraph ddnnf {\n';
-            dot += '  rankdir=TB;\n';
-            dot += '  node [fontname="monospace", fontsize=11];\n';
-            dot += '  edge [fontname="monospace", fontsize=10];\n';
-            for (const [id, t] of type) {
-                dot += '  n' + id + ' [' + style[t].replace('#ID', String(id)) + '];\n';
-            }
-            for (const [id] of type) {
-                for (const a of (arcs.get(id) || [])) {
-                    // HTML-like label: a filled (opaque) green cell with the arc's
-                    // decided+propagated literals centered in white. Native Graphviz.
-                    let lbl = '';
-                    if (a.lits.length) {
-                        const txt = a.lits.join(' ');
-                        lbl = ' [label=<<TABLE border="0" cellborder="0" cellspacing="0" cellpadding="3">' +
-                              '<TR><TD bgcolor="#5cb85c"><FONT color="white">' + txt +
-                              '</FONT></TD></TR></TABLE>>]';
-                    }
-                    dot += '  n' + id + ' -> n' + a.child + lbl + ';\n';
-                }
-            }
-            dot += '  // root = n' + root + '\n';
-            dot += '}\n';
-            return dot;
-        }
-
         let vizInstance = null;
         async function renderDot(dot) {
             if (!vizInstance) {
@@ -509,9 +436,16 @@ c p show 1 2 3 0
                 if (!cleaned || !cleaned.trim()) throw new Error('empty cleaned d-DNNF');
                 document.getElementById('ddnnf-text').textContent = cleaned;
 
-                // 3. Translate to DOT and render to SVG.
+                // 3. ddnnf2dot: translate the cleaned circuit into Graphviz DOT.
                 status.textContent = 'Rendering...';
-                const dot = nnfToDot(cleaned);
+                append('\n=== ddnnf2dot ===');
+                const dot = await runWasmTool(
+                    'ddnnf2dot.js', 'ddnnf2dot.wasm',
+                    ['/in.nnf', '/out.dot'],
+                    { '/in.nnf': cleaned }, '/out.dot', append);
+                if (!dot || !dot.trim()) throw new Error('empty DOT output');
+
+                // 4. Render the DOT to SVG.
                 await renderDot(dot);
                 document.getElementById('graph-section').style.display = 'block';
                 status.textContent = 'Completed';

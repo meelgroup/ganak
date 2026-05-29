@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
   // propagated. Rendered as "1 [2,-3,4]" (decided, then propagated in brackets), or
   // just "1" when nothing propagated.
   auto blue_lits = [](std::ostream& os, const std::vector<int>& lits) {
-    os << " [label=<<FONT COLOR=\"#1565c0\"><B>" << lits[0];
+    os << " [label=<<FONT COLOR=\"#1565c0\" POINT-SIZE=\"9\"><B>" << lits[0];
     if (lits.size() > 1) {
       os << " [";
       for (size_t k = 1; k < lits.size(); k++) os << (k > 1 ? "," : "") << lits[k];

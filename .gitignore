@@ -19,4 +19,7 @@ quickfix*
 released*
 html/ganak.wasm
 html/ganak.js
+html/ddnnf-cleanup.wasm
+html/ddnnf-cleanup.js
 /python/tests/__pycache__
+tests/__pycache__

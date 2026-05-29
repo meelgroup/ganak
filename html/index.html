@@ -81,6 +81,35 @@
             width: 0%;
             transition: width 0.3s;
         }
+        #graph-output {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #fff;
+            overflow: auto;
+            max-height: 600px;
+            text-align: center;
+        }
+        #graph-output svg {
+            max-width: 100%;
+            height: auto;
+        }
+        details summary {
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        #ddnnf-text {
+            white-space: pre;
+            font-family: monospace;
+            font-size: 12px;
+            overflow: auto;
+            max-height: 300px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -92,7 +121,11 @@
         href="https://www.msoos.org/">article on model counting</a>. Format
       description is available <a
         href="https://mccompetition.org/assets/files/mccomp_format_24.pdf">here</a>.
-        For polynomial weights, try "x1" or "x0+1/2*x1-x3"</div>
+        For polynomial weights, try "x1" or "x0+1/2*x1-x3". Click "Compile &amp;
+        visualize d-DNNF" to compile the formula into a
+        <a href="https://en.wikipedia.org/wiki/Decision-DNNF">d-DNNF</a> circuit
+        (<code>ganak --compile</code>), tidy it up (<code>ddnnf-cleanup</code>),
+        and draw it as a graph below &mdash; all in your browser.</div>
 
         <div>
             <label for="input-content">CNF:</label>
@@ -111,6 +144,7 @@ c p show 1 2 3 0
         <div>
             <button id="run-button-w">Count weighted</button>
             <button id="run-button-poly">Count polynomial (100 vars)</button>
+            <button id="run-button-ddnnf">Compile &amp; visualize d-DNNF</button>
             <button id="cancel-button">Cancel</button>
             <span id="status" class="status">Loading WebAssembly module...</span>
             <div class="progress-container">
@@ -121,6 +155,15 @@ c p show 1 2 3 0
         <div>
             <label for="output">Output:</label>
             <div id="output">Ready - enter your input and click "Count Weighted"</div>
+        </div>
+
+        <div id="graph-section" style="display:none;">
+            <label>d-DNNF circuit:</label>
+            <div id="graph-output"></div>
+            <details>
+                <summary>Cleaned d4 .nnf (after ddnnf-cleanup)</summary>
+                <div id="ddnnf-text"></div>
+            </details>
         </div>
     </div>
 
@@ -133,6 +176,7 @@ c p show 1 2 3 0
                 document.getElementById('status').textContent = 'Ready';
                 document.getElementById('run-button-w').disabled = false;
                 document.getElementById('run-button-poly').disabled = false;
+                document.getElementById('run-button-ddnnf').disabled = false;
             }
         };
 
@@ -253,12 +297,235 @@ c p show 1 2 3 0
             });
         };
 
+        // ---- generic "run a wasm CLI tool" helper -----------------------------
+        // Both ganak.js and ddnnf-cleanup.js are Emscripten CLI modules that expect
+        // a global `Module`. We run each in its own Web Worker (own global scope),
+        // write the input files into its in-memory FS, call main, and read an output
+        // file back out. Returns a Promise of the output file's contents.
+        function createGenericWorker() {
+            const workerCode = `
+                var Module = {
+                    noInitialRun: true,
+                    stdin: function() { return null; },
+                    print: function(text) { postMessage({ type: 'output', content: text }); },
+                    printErr: function(text) {
+                        if (!text.includes('__syscall_getrusage')) {
+                            postMessage({ type: 'output', content: text });
+                        }
+                    },
+                    onRuntimeInitialized: function() { postMessage({ type: 'ready' }); },
+                    locateFile: function(path) {
+                        if (path.endsWith('.wasm')) return self.workerOptions.wasmPath || path;
+                        return path;
+                    }
+                };
+                onmessage = function(e) {
+                    if (e.data.type === 'init') {
+                        self.workerOptions = e.data.options;
+                        importScripts(e.data.options.jsPath);
+                    } else if (e.data.type === 'run') {
+                        try {
+                            var inFiles = e.data.inFiles || {};
+                            for (var p in inFiles) Module.FS.writeFile(p, inFiles[p]);
+                            Module.callMain(e.data.args);
+                            var out = null;
+                            if (e.data.outFile) {
+                                try {
+                                    out = Module.FS.readFile(e.data.outFile, { encoding: 'utf8' });
+                                } catch (readErr) {
+                                    postMessage({ type: 'error', content: 'output file not produced: ' + readErr.toString() });
+                                    return;
+                                }
+                            }
+                            postMessage({ type: 'result', outContent: out });
+                        } catch (err) {
+                            postMessage({ type: 'error', content: err.toString() });
+                        }
+                    }
+                };
+            `;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            return URL.createObjectURL(blob);
+        }
+
+        // Run an Emscripten CLI tool once. `onOutput` receives each stdout/stderr line.
+        function runWasmTool(jsName, wasmName, args, inFiles, outFile, onOutput) {
+            return new Promise(function(resolve, reject) {
+                const jsPath = new URL(jsName, window.location.href).href;
+                const wasmPath = new URL(wasmName, window.location.href).href;
+                const workerUrl = createGenericWorker();
+                const worker = new Worker(workerUrl);
+                const dispose = function() { worker.terminate(); URL.revokeObjectURL(workerUrl); };
+                worker.onmessage = function(e) {
+                    switch (e.data.type) {
+                        case 'output':
+                            if (onOutput) onOutput(e.data.content);
+                            break;
+                        case 'ready':
+                            worker.postMessage({ type: 'run', args: args, inFiles: inFiles, outFile: outFile });
+                            break;
+                        case 'result':
+                            dispose();
+                            resolve(e.data.outContent);
+                            break;
+                        case 'error':
+                            dispose();
+                            reject(new Error(e.data.content));
+                            break;
+                    }
+                };
+                worker.onerror = function(err) { dispose(); reject(err); };
+                worker.postMessage({ type: 'init', options: { jsPath: jsPath, wasmPath: wasmPath } });
+            });
+        }
+
+        // ---- d-DNNF -> DOT translation (client-side) --------------------------
+
+        // Parse a d4 .nnf file (raw or cleaned) into {type, arcs, root}.
+        //   type: Map id -> 'f'|'t'|'a'|'o'
+        //   arcs: Map id -> [{child, lits:[...]}]
+        //   root: id of the first declared node (the d4 convention)
+        function parseNnf(text) {
+            const type = new Map();
+            const arcs = new Map();
+            let root = -1;
+            for (const raw of text.split('\n')) {
+                let i = 0;
+                while (i < raw.length && /\s/.test(raw[i])) i++;
+                if (i >= raw.length) continue;       // blank
+                const c0 = raw[i];
+                if (c0 === 'c') continue;            // comment
+                const toks = raw.trim().split(/\s+/);
+                if (c0 === 'f' || c0 === 't' || c0 === 'a' || c0 === 'o') {
+                    // Node declaration: <type> <id> 0
+                    const id = parseInt(toks[1], 10);
+                    type.set(id, c0);
+                    if (!arcs.has(id)) arcs.set(id, []);
+                    if (root === -1) root = id;
+                } else {
+                    // Arc line: <parent> <child> [lits...] 0
+                    const nums = toks.map(x => parseInt(x, 10));
+                    if (nums.length && nums[nums.length - 1] === 0) nums.pop();   // drop terminator
+                    if (nums.length < 2) continue;
+                    const parent = nums[0];
+                    if (!arcs.has(parent)) arcs.set(parent, []);
+                    arcs.get(parent).push({ child: nums[1], lits: nums.slice(2) });
+                }
+            }
+            return { type, arcs, root };
+        }
+
+        // Translate a (cleaned) d4 .nnf circuit into Graphviz DOT.
+        function nnfToDot(text) {
+            const { type, arcs, root } = parseNnf(text);
+            // Graphviz interprets \n as a line break inside labels; Unicode glyphs
+            // must be the literal characters (\uXXXX is NOT a DOT escape).
+            const style = {
+                o: 'shape=ellipse, style=filled, fillcolor="#cfe8ff", label="∨\\n#ID"',
+                a: 'shape=box, style=filled, fillcolor="#fff3c4", label="∧\\n#ID"',
+                t: 'shape=plaintext, label="⊤"',
+                f: 'shape=plaintext, label="⊥"',
+            };
+            let dot = 'digraph ddnnf {\n';
+            dot += '  rankdir=TB;\n';
+            dot += '  node [fontname="monospace", fontsize=11];\n';
+            dot += '  edge [fontname="monospace", fontsize=10];\n';
+            for (const [id, t] of type) {
+                dot += '  n' + id + ' [' + style[t].replace('#ID', String(id)) + '];\n';
+            }
+            for (const [id] of type) {
+                for (const a of (arcs.get(id) || [])) {
+                    const lbl = a.lits.length ? ' [label="' + a.lits.join(' ') + '"]' : '';
+                    dot += '  n' + id + ' -> n' + a.child + lbl + ';\n';
+                }
+            }
+            dot += '  // root = n' + root + '\n';
+            dot += '}\n';
+            return dot;
+        }
+
+        let vizInstance = null;
+        async function renderDot(dot) {
+            if (!vizInstance) {
+                const { instance } = await import("https://cdn.jsdelivr.net/npm/@viz-js/viz@3.7.0/+esm");
+                vizInstance = await instance();
+            }
+            const svg = vizInstance.renderSVGElement(dot);
+            const graphDiv = document.getElementById('graph-output');
+            graphDiv.innerHTML = '';
+            graphDiv.appendChild(svg);
+        }
+
+        // Pipeline: ganak --compile (raw d-DNNF) -> ddnnf-cleanup (strict d4) ->
+        // DOT -> rendered SVG. Each wasm tool runs in its own worker.
+        async function compileAndVisualize() {
+            const inputContent = document.getElementById('input-content').value;
+            const outputDiv = document.getElementById('output');
+
+            if (!inputContent.trim()) {
+                outputDiv.textContent = 'Error: Please enter input content';
+                return;
+            }
+
+            const append = function(text) {
+                outputDiv.textContent += text + '\n';
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            };
+
+            outputDiv.textContent = '';
+            document.getElementById('graph-section').style.display = 'none';
+            document.getElementById('run-button-w').disabled = true;
+            document.getElementById('run-button-poly').disabled = true;
+            document.getElementById('run-button-ddnnf').disabled = true;
+            const status = document.getElementById('status');
+
+            try {
+                // 1. ganak --compile: dump the raw d4 .nnf (faithful, --weak 0 default).
+                status.textContent = 'Compiling d-DNNF...';
+                append('=== ganak --compile ===');
+                // --mode 1 (weighted rational) handles both weighted (`c t [p]wmc`)
+                // and plain CNFs; the compiled circuit's STRUCTURE is field-independent.
+                const rawNnf = await runWasmTool(
+                    'ganak.js', 'ganak.wasm',
+                    ['--verb', '1', '--mode', '1', '--compile', '/out.nnf', '/input.cnf'],
+                    { '/input.cnf': inputContent }, '/out.nnf', append);
+                if (!rawNnf || !rawNnf.trim()) throw new Error('empty d-DNNF output');
+
+                // 2. ddnnf-cleanup: drop dead nodes, renumber root=1 contiguous -> strict d4.
+                status.textContent = 'Cleaning up...';
+                append('\n=== ddnnf-cleanup ===');
+                const cleaned = await runWasmTool(
+                    'ddnnf-cleanup.js', 'ddnnf-cleanup.wasm',
+                    ['/in.nnf', '/out.nnf'],
+                    { '/in.nnf': rawNnf }, '/out.nnf', append);
+                if (!cleaned || !cleaned.trim()) throw new Error('empty cleaned d-DNNF');
+                document.getElementById('ddnnf-text').textContent = cleaned;
+
+                // 3. Translate to DOT and render to SVG.
+                status.textContent = 'Rendering...';
+                const dot = nnfToDot(cleaned);
+                await renderDot(dot);
+                document.getElementById('graph-section').style.display = 'block';
+                status.textContent = 'Completed';
+            } catch (err) {
+                append('\nError: ' + err.toString());
+                status.textContent = 'Failed';
+            } finally {
+                document.getElementById('run-button-w').disabled = false;
+                document.getElementById('run-button-poly').disabled = false;
+                document.getElementById('run-button-ddnnf').disabled = false;
+            }
+        }
+
         // Main execution logic
         document.getElementById('run-button-w').addEventListener('click', async function() {
             fun("1");
         });
         document.getElementById('run-button-poly').addEventListener('click', async function() {
             fun("3");
+        });
+        document.getElementById('run-button-ddnnf').addEventListener('click', function() {
+            compileAndVisualize();
         });
 
         // Load ganak.js in main thread

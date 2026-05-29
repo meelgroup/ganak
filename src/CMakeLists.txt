@@ -183,6 +183,16 @@ set_target_properties(ddnnf-cleanup-bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  # Same runtime exports as ganak-bin so the browser can drive it: write the raw
+  # .nnf into the in-memory FS, call main, read the cleaned file back out.
+  target_link_options(ddnnf-cleanup-bin PRIVATE
+    "SHELL:-s WASM=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
+    "SHELL:-s FORCE_FILESYSTEM=1"
+  )
+endif()
 
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp)

@@ -26,7 +26,11 @@ THE SOFTWARE.
 //   OR  node ('o') -> blue ellipse  labelled  "∨" + id
 //   AND node ('a') -> yellow box     labelled  "∧" + id
 //   TRUE ('t')      -> "⊤" ;  FALSE ('f') -> "⊥"
-//   arc            -> edge labelled with its decided+propagated literals.
+//   arc            -> edge. An arc carrying literals (a decision branch / implied
+//                     lits) is labelled with them in bold blue. An AND node's
+//                     decomposition arcs carry no literals, so we instead label
+//                     each with the set of variables in that child's component --
+//                     this shows how the AND cut the problem into disjoint parts.
 //
 // Nodes are emitted in declaration order (root first, the d4 convention), arcs in
 // file order. This is a pure pretty-printer: it does not require the circuit to be
@@ -37,7 +41,10 @@ THE SOFTWARE.
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -141,14 +148,40 @@ int main(int argc, char** argv) {
     out << "];\n";
   }
 
-  // Arcs, labelled with their decided+propagated literals (bold blue, no box).
+  // Variables appearing in a node's reachable subtree (on arc literals). Used to
+  // describe how an AND node splits its component across children. Memoized DFS
+  // over the DAG; std::map keeps cached references stable across insertions.
+  std::map<int, std::vector<int>> sub_vars;
+  std::function<const std::vector<int>&(int)> vars_of = [&](int nid) -> const std::vector<int>& {
+    auto it = sub_vars.find(nid);
+    if (it != sub_vars.end()) return it->second;
+    std::set<int> acc;
+    for (const auto& a : arcs[nid]) {
+      for (int l : a.lits) acc.insert(std::abs(l));
+      for (int v : vars_of(a.child)) acc.insert(v);
+    }
+    auto& vec = sub_vars[nid];
+    vec.assign(acc.begin(), acc.end());
+    return vec;
+  };
+
+  // Arcs. Literal-bearing arcs (decisions / implied lits) -> bold-blue literals.
+  // An AND node's literal-free decomposition arcs -> the child component's vars.
   for (int id : order) {
+    const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
       out << "  n" << id << " -> n" << a.child;
       if (!a.lits.empty()) {
         out << " [label=<<FONT COLOR=\"#1565c0\"><B>";
         for (size_t k = 0; k < a.lits.size(); k++) out << (k ? " " : "") << a.lits[k];
         out << "</B></FONT>>]";
+      } else if (parent_and) {
+        const auto& vs = vars_of(a.child);
+        if (!vs.empty()) {
+          out << " [label=<<FONT COLOR=\"#777777\">{";
+          for (size_t k = 0; k < vs.size(); k++) out << (k ? "," : "") << vs[k];
+          out << "}</FONT>>, fontsize=9]";
+        }
       }
       out << ";\n";
     }

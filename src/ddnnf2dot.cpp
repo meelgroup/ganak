@@ -132,11 +132,13 @@ int main(int argc, char** argv) {
   for (int id : order) {
     out << "  n" << id << " [";
     switch (type[id]) {
+      // Just the operator symbol -- the node id is internal and would be easily
+      // mistaken for a variable. Variables only ever appear on edge labels.
       case 'o':
-        out << "shape=ellipse, style=filled, fillcolor=\"#cfe8ff\", label=\"∨\\n" << id << "\"";
+        out << "shape=ellipse, style=filled, fillcolor=\"#cfe8ff\", label=\"∨\"";
         break;
       case 'a':
-        out << "shape=box, style=filled, fillcolor=\"#fff3c4\", label=\"∧\\n" << id << "\"";
+        out << "shape=box, style=filled, fillcolor=\"#fff3c4\", label=\"∧\"";
         break;
       case 't':
         out << "shape=plaintext, label=\"⊤\"";

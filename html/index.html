@@ -121,11 +121,11 @@
         href="https://www.msoos.org/">article on model counting</a>. Format
       description is available <a
         href="https://mccompetition.org/assets/files/mccomp_format_24.pdf">here</a>.
-        For polynomial weights, try "x1" or "x0+1/2*x1-x3". Click "Compile &amp;
-        visualize d-DNNF" to compile the formula into a
+        Click "Compile &amp; visualize d-DNNF" to compile the formula into a
         <a href="https://en.wikipedia.org/wiki/Decision-DNNF">d-DNNF</a> circuit
         (<code>ganak --compile</code>), tidy it up (<code>ddnnf-cleanup</code>),
-        and draw it as a graph below &mdash; all in your browser.</div>
+        and draw it as a graph (shown above the buttons) &mdash; all in your
+        browser.</div>
 
         <div>
             <label for="input-content">CNF:</label>
@@ -141,9 +141,17 @@ c p show 1 2 3 0
 </textarea>
         </div>
 
+        <div id="graph-section" style="display:none;">
+            <label>d-DNNF circuit:</label>
+            <div id="graph-output"></div>
+            <details>
+                <summary>Cleaned d4 .nnf (after ddnnf-cleanup)</summary>
+                <div id="ddnnf-text"></div>
+            </details>
+        </div>
+
         <div>
             <button id="run-button-w">Count weighted</button>
-            <button id="run-button-poly">Count polynomial (100 vars)</button>
             <button id="run-button-ddnnf">Compile &amp; visualize d-DNNF</button>
             <button id="cancel-button">Cancel</button>
             <span id="status" class="status">Loading WebAssembly module...</span>
@@ -156,15 +164,6 @@ c p show 1 2 3 0
             <label for="output">Output:</label>
             <div id="output">Ready - enter your input and click "Count Weighted"</div>
         </div>
-
-        <div id="graph-section" style="display:none;">
-            <label>d-DNNF circuit:</label>
-            <div id="graph-output"></div>
-            <details>
-                <summary>Cleaned d4 .nnf (after ddnnf-cleanup)</summary>
-                <div id="ddnnf-text"></div>
-            </details>
-        </div>
     </div>
 
     <script>
@@ -175,7 +174,6 @@ c p show 1 2 3 0
             onRuntimeInitialized: function() {
                 document.getElementById('status').textContent = 'Ready';
                 document.getElementById('run-button-w').disabled = false;
-                document.getElementById('run-button-poly').disabled = false;
                 document.getElementById('run-button-ddnnf').disabled = false;
             }
         };
@@ -244,8 +242,8 @@ c p show 1 2 3 0
             }
 
             outputDiv.textContent = 'Initializing...\n';
+            document.getElementById('graph-section').style.display = 'none';  // hide any d-DNNF
             document.getElementById('run-button-w').disabled = true;
-            document.getElementById('run-button-poly').disabled = true;
             document.getElementById('status').textContent = 'Running...';
 
             // Get absolute URL for WASM file
@@ -272,7 +270,6 @@ c p show 1 2 3 0
                     case 'done':
                         document.getElementById('status').textContent = 'Completed';
                         document.getElementById('run-button-w').disabled = false;
-                        document.getElementById('run-button-poly').disabled = false;
                         worker.terminate();
                         URL.revokeObjectURL(workerUrl);
                         break;
@@ -280,7 +277,6 @@ c p show 1 2 3 0
                         outputDiv.textContent += 'Error: ' + e.data.content + '\n';
                         document.getElementById('status').textContent = 'Failed';
                         document.getElementById('run-button-w').disabled = false;
-                        document.getElementById('run-button-poly').disabled = false;
                         worker.terminate();
                         URL.revokeObjectURL(workerUrl);
                         break;
@@ -410,7 +406,6 @@ c p show 1 2 3 0
             outputDiv.textContent = '';
             document.getElementById('graph-section').style.display = 'none';
             document.getElementById('run-button-w').disabled = true;
-            document.getElementById('run-button-poly').disabled = true;
             document.getElementById('run-button-ddnnf').disabled = true;
             const status = document.getElementById('status');
 
@@ -454,7 +449,6 @@ c p show 1 2 3 0
                 status.textContent = 'Failed';
             } finally {
                 document.getElementById('run-button-w').disabled = false;
-                document.getElementById('run-button-poly').disabled = false;
                 document.getElementById('run-button-ddnnf').disabled = false;
             }
         }
@@ -462,9 +456,6 @@ c p show 1 2 3 0
         // Main execution logic
         document.getElementById('run-button-w').addEventListener('click', async function() {
             fun("1");
-        });
-        document.getElementById('run-button-poly').addEventListener('click', async function() {
-            fun("3");
         });
         document.getElementById('run-button-ddnnf').addEventListener('click', function() {
             compileAndVisualize();

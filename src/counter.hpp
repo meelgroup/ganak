@@ -201,10 +201,9 @@ public:
 
   // ---- d-DNNF compilation ----
   bool compiling() const { return ddnnf != nullptr; }
-  // Called from the component analyzer when an unconstrained independent
-  // variable is found (it contributes a factor of two = OR(v, -v)).
+  // From the analyzer on a free var (factor two = OR(v, -v)).
   void compile_add_free_var(uint32_t v);
-  // Called from the component manager on a cache hit: share the cached sub-DAG.
+  // From the comp manager on a cache hit: share the cached sub-DAG.
   void compile_on_cache_hit(int node);
 
 private:
@@ -214,8 +213,8 @@ private:
   std::vector<int> compile_level0_lits() const;    // literals forced at decision level 0
   int compile_build_level_node(int lev, const std::vector<int>& right_lits);
   void compile_finalize_root();
-  // Mirror zero_out_branch_sol(): drop the current branch's accumulated children,
-  // since Ganak is discarding the branch's count to re-explore it.
+  // Mirror zero_out_branch_sol(): drop the current branch's children, as Ganak
+  // discards its count to re-explore.
   void compile_reset_cur_branch() {
     if (!compiling()) return;
     ddnnf->ensure_level(dec_level());

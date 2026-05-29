@@ -20,19 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-cleanup: post-process a d4 .nnf circuit emitted by `ganak --compile`.
+// ddnnf-cleanup: post-process a d4 .nnf circuit from `ganak --compile`.
 //
-// The streaming compiler writes a valid-but-loose file: the root is declared
-// first (the d4 convention), but the file keeps the node ids it used internally
-// and may contain UNREACHABLE ("dead") nodes (orphaned when an AND
-// short-circuited to FALSE). Those are harmless to a root-rooted count, but a
-// strict d4 reader (and the non-relaxed verifier) wants a clean circuit.
+// The streaming compiler writes a valid-but-loose file: root declared first (d4
+// convention), but with the internal node ids and possibly unreachable ("dead")
+// nodes (orphaned when an AND short-circuited to FALSE). Harmless to a root count,
+// but a strict d4 reader wants a clean circuit.
 //
-// This tool reads such a file, keeps only the nodes reachable from the root,
-// renumbers them root=1 and contiguous (in breadth-first order from the root --
-// the same layout the in-memory compiler used to produce), and writes the
-// classic two-section d4 file (all node declarations, then all arc lines). The
-// structural model count is unchanged.
+// This keeps only nodes reachable from the root, renumbers them root=1 and
+// contiguous (breadth-first), and writes the classic two-section d4 file (all
+// declarations, then all arcs). The model count is unchanged.
 //
 // Usage:  ddnnf-cleanup <in.nnf> [out.nnf]      ("-" or omitted out => stdout)
 
@@ -76,8 +73,8 @@ int main(int argc, char** argv) {
   const int root = ddnnf_io::parse_nnf(in, type, arcs, decl_order, err);
   if (root == -1) die(err);
 
-  // Breadth-first renumber from the root: root => 1, then children in arc order.
-  // Unvisited nodes (dead) never receive an id and are dropped.
+  // BFS renumber from the root: root => 1, then children in arc order. Unvisited
+  // (dead) nodes get no id and are dropped.
   std::unordered_map<int, int> newid;
   std::vector<int> order;                           // new-id order -> old id
   std::queue<int> q;

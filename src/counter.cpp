@@ -975,9 +975,8 @@ void Counter::compile_add_free_var(uint32_t v) {
 }
 
 void Counter::compile_on_cache_hit(int node) {
-  // A cached component must have had its compiled sub-DAG recorded (set_comp_node
-  // in backtrack). A missing node would mean substituting the neutral element
-  // (factor 1) for a real sub-count -- a silent undercount -- so fail loudly.
+  // A cached component must have its sub-DAG recorded (set_comp_node in
+  // backtrack); a missing node would silently undercount, so fail loudly.
   release_assert(node >= 0); // d-DNNF cache hit with no recorded compile node
   ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), node);
 }
@@ -985,9 +984,8 @@ void Counter::compile_on_cache_hit(int node) {
 int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lits) {
   auto& top = decisions.top();
   ddnnf->ensure_level(lev);
-  // SAT-oracle leaf: this level was solved by the SAT solver, which recorded a
-  // witness for the synthesized variables. Use that leaf instead of building an
-  // OR from (stale) children.
+  // SAT-oracle leaf: level solved by the SAT solver, which recorded a witness for
+  // the synthesized vars. Use that leaf instead of an OR over (stale) children.
   if (int ov = ddnnf->take_override(lev); ov >= 0) return ov;
   int left  = top.is_zero(0) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][0]);
   int right = top.is_zero(1) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][1]);
@@ -999,8 +997,8 @@ int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lit
 
 void Counter::compile_finalize_root() {
   ddnnf->ensure_level(0);
-  // Level 0 is initialised to the right branch (see init_decision_stack), so the
-  // top-level components accumulate in its active branch.
+  // Level 0 starts on the right branch (init_decision_stack), so top-level
+  // components accumulate there.
   const bool b = decisions.top().is_right_branch();
   int inner = ddnnf->mk_and(ddnnf->children[0][b]);
   ddnnf->root = ddnnf->wrap_lits(inner, compile_level0_lits());
@@ -2033,7 +2031,7 @@ RetState Counter::backtrack() {
       // NOTE: replacing a decision literal x with y when y->x binary clause exists does
       // not work, because we'll count (x, y) = 01 (left hand branch), and
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
-      // d-DNNF: capture the left branch's literals before the trail is undone.
+      // d-DNNF: capture left-branch literals before the trail is undone.
       if (compiling()) {
         ddnnf->ensure_level(dec_level());
         ddnnf->left_lits[dec_level()] = compile_cur_level_lits();
@@ -2065,8 +2063,8 @@ RetState Counter::backtrack() {
     }
 
     CHECK_COUNT_DO(check_count());
-    // d-DNNF: build this level's OR (decision) node before the trail is undone,
-    // so we can read the right branch's literals from the trail.
+    // d-DNNF: build this level's OR node before the trail is undone (to read the
+    // right branch's literals).
     int compiled_node = -1;
     if (compiling()) {
       auto right_lits = compile_cur_level_lits();
@@ -2074,9 +2072,8 @@ RetState Counter::backtrack() {
     }
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
-    // --weak 3: do not cache components that contain a shared input var (they are
-    // not independent of their siblings; a hit would under-cover). Components with
-    // no shared var are variable-disjoint and safe to cache.
+    // --weak 3: don't cache components with a shared input var (not independent of
+    // siblings -- a hit would under-cover); shared-var-free comps are safe.
     const bool cacheable = conf.do_use_cache &&
         !(conf.weak == 3 && comp_manager->comp_has_shareable(decisions.top().super_comp()));
     if (cacheable) {
@@ -3936,9 +3933,9 @@ bool Counter::run_sat_solver(RetState& state) {
         sat_solution[v] = val(v);
       }
     }
-    // d-DNNF compilation: record the SAT oracle's witness for the synthesized
-    // variables (>= opt_indep_support_end) of this component, before the trail
-    // is backtracked. This is the example solution functional synthesis needs.
+    // d-DNNF: record the SAT oracle's witness for this component's synthesized
+    // vars (>= opt_indep_support_end) before backtracking -- the example solution
+    // functional synthesis needs.
     if (compiling()) {
       sat_witness.clear();
       all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
@@ -3972,8 +3969,8 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
-    // Make this SAT level's circuit node the witness leaf (TRUE constrained by
-    // the recorded synthesized-variable assignment).
+    // This SAT level's node is the witness leaf (TRUE constrained by the recorded
+    // synthesized-var assignment).
     if (compiling())
       ddnnf->set_override(dec_level(), ddnnf->wrap_lits(ddnnf->true_node, sat_witness));
   }

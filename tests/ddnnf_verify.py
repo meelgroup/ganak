@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-"""Verify a d4 .nnf circuit emitted by `ganak --compile`.
+"""Verify a d4 .nnf circuit from `ganak --compile`.
 
-Provides:
-  - parse(path): parse a d4 .nnf file -> (nodes, arcs, root)
-  - count(nodes, arcs, root): structural model count
-        (OR = sum of children, AND = product, t = 1, f = 0; arc literals ignored)
-  - models(nodes, arcs, root, nvars): the exact set of full models (small inputs only),
-        using arc literals; used to validate the edge literals too.
-
-Counting is structural because the compiler makes every factor of two explicit
-(free variables become OR(v,-v) nodes), so no smoothing is needed.
+parse() -> (nodes, arcs, root); count() = structural count (OR=sum, AND=product,
+t=1, f=0, arc lits ignored); models() = exact model set (small inputs) using arc
+lits. Counting is structural: free vars are explicit OR(v,-v), so no smoothing.
 """
 import sys
 
@@ -133,10 +127,9 @@ def models(nodes, arcs, root, nvars):
 
 
 def evaluate(nodes, arcs, root, assign):
-    """Evaluate the circuit as a Boolean FUNCTION on a complete assignment.
-    assign: dict var->bool (1-indexed). Arc literals must be satisfied for the
-    arc to fire. This is the semantics that matters for functional synthesis;
-    it is correct regardless of (weak-)decomposability."""
+    """Evaluate the circuit as a Boolean function on a complete assignment
+    (var->bool, 1-indexed); an arc fires only if its literals hold. The semantics
+    functional synthesis needs; correct regardless of decomposability."""
     memo = {}
 
     def lit_true(l):
@@ -171,11 +164,9 @@ def function_models(nodes, arcs, root, nvars):
 
 
 def synthesize(nodes, arcs, root, xassign):
-    """Functional synthesis: given an assignment to the input variables `xassign`
-    (dict var->bool over X), follow the circuit to a satisfying path and return a
-    full variable assignment along it (dict var->bool), reading the to-be-
-    synthesized (Y) variables off the arc literals. Returns None if no path is
-    consistent with xassign (i.e. the circuit has no witness for this X)."""
+    """Functional synthesis: given input assignment `xassign` (var->bool over X),
+    follow the circuit to a satisfying path and return a full assignment, reading
+    the Y vars off arc literals. None if no path is consistent with xassign."""
 
     def lit_ok(l):
         v = abs(l)
@@ -263,8 +254,7 @@ def reachable_nodes(nodes, arcs, root):
 
 def unreachable_nodes(nodes, arcs, root):
     """Declared-but-unreachable ("dead") node ids. Empty for a cleaned circuit;
-    `ganak --compile` raw output may contain some. Used to assert that
-    `ddnnf-cleanup` drops them all (so a strict, non-relaxed reading passes)."""
+    raw `ganak --compile` output may have some. Asserts ddnnf-cleanup drops them."""
     return set(nodes) - reachable_nodes(nodes, arcs, root)
 
 
@@ -326,9 +316,8 @@ def shared_and_vars(nodes, arcs, root):
 
 
 def read_cnf(path):
-    """Parse a small DIMACS CNF (one clause per line, 0-terminated). Returns
-    (nvars, clauses). Comment/sampling-set lines are ignored -- this is only
-    used to brute-force tiny, *unprojected* test fixtures."""
+    """Parse a small DIMACS CNF -> (nvars, clauses). Comment/sampling lines
+    ignored; only for brute-forcing tiny unprojected fixtures."""
     nvars = 0
     clauses = []
     with open(path) as f:

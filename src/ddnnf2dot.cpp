@@ -20,30 +20,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf2dot: render a d4 .nnf circuit (raw from `ganak --compile`, or cleaned by
-// `ddnnf-cleanup`) as a Graphviz DOT graph for visualization.
+// ddnnf2dot: render a d4 .nnf circuit (raw from `ganak --compile` or cleaned by
+// `ddnnf-cleanup`) as a Graphviz DOT graph.
 //
-//   OR  node ('o')  -> blue ellipse "∨"
-//   AND node ('a')  -> yellow box   "∧"
-//   FALSE ('f')      -> "⊥"
-//   arc            -> edge. An arc carrying literals is labelled in bold blue as
-//                     "1[2,-3]" -- the decided literal, then the propagated ones
-//                     in brackets (just "1" when nothing propagated). An AND node's
-//                     decomposition arcs carry no literals, so we instead label
-//                     each with the set of variables in that child's component --
-//                     this shows how the AND cut the problem into disjoint parts.
+//   OR ('o') -> blue ellipse "∨";  AND ('a') -> yellow box "∧";  FALSE ('f') -> "⊥"
+//   arc with lits -> bold-blue label "1[2,-3]" (decided lit, then propagated in
+//     brackets). AND decomposition arcs carry no lits, so they are labelled with
+//     the child component's variable set instead.
 //
-// The single TRUE ('t') sink is NOT drawn as one shared ⊤ node. Instead, every
-// literal labelling an arc into ⊤ becomes its own (shared) green leaf ("3", "¬1",
-// ...). A terminal arc with several literals fans out through a fresh AND node to
-// each literal's leaf. This declutters the otherwise-hub-like ⊤. (A ⊤ node is only
-// kept for the degenerate cases: a literal-free terminal arc, or a tautology whose
-// whole circuit is ⊤.) Node labels carry no ids -- variables appear only on edges
-// and leaves.
+// The shared TRUE ('t') sink is not drawn; instead each literal on an arc into ⊤
+// becomes its own green leaf ("3", "¬1"). A multi-literal terminal arc fans out
+// through a fresh AND node. A ⊤ node is kept only for the degenerate cases (a
+// literal-free terminal arc, or a whole-circuit tautology). Node labels carry no
+// ids -- variables appear only on edges/leaves.
 //
-// Nodes are emitted in declaration order (root first, the d4 convention), arcs in
-// file order. This is a pure pretty-printer: it does not require the circuit to be
-// clean, and it changes nothing structurally.
+// Pure pretty-printer (no structural change); does not require a clean circuit.
 //
 // Usage:  ddnnf2dot <in.nnf> [out.dot]      ("-" or omitted out => stdout)
 
@@ -104,9 +95,8 @@ int main(int argc, char** argv) {
     return it != type.end() && it->second == 't';
   };
 
-  // Variables appearing in a node's reachable subtree (on arc literals). Used to
-  // describe how an AND node splits its component across children. Memoized DFS
-  // over the DAG; std::map keeps cached references stable across insertions.
+  // Variables in a node's reachable subtree (on arc lits); labels AND children.
+  // Memoized DFS; std::map keeps cached references stable across insertions.
   std::map<int, std::vector<int>> sub_vars;
   std::function<const std::vector<int>&(int)> vars_of = [&](int nid) -> const std::vector<int>& {
     auto it = sub_vars.find(nid);
@@ -121,11 +111,9 @@ int main(int argc, char** argv) {
     return vec;
   };
 
-  // Per-literal TRUE sinks. Instead of one shared ⊤ with many incoming arcs, every
-  // literal that labels an arc into ⊤ gets its own (shared) leaf node. An arc with
-  // several literals (a decision + propagated lits) fans out through a fresh AND
-  // node to each literal's sink. We build the edges first (discovering the needed
-  // sinks/fan-out nodes), then declare everything.
+  // Per-literal TRUE sinks: each literal on an arc into ⊤ gets its own shared leaf;
+  // a multi-literal arc fans out through a fresh AND node. Build edges first
+  // (discovering the needed sinks/fan-out nodes), then declare everything.
   std::map<int, std::string> sink_name;   // literal -> dot node name
   std::vector<int> sink_order;            // literals in first-seen order
   auto sink_for = [&](int l) -> const std::string& {
@@ -139,9 +127,8 @@ int main(int argc, char** argv) {
   bool need_true = is_true(root);         // a lone ⊤ root still needs one node
   std::ostringstream edges;
 
-  // The bold-blue edge label. lits[0] is the DECIDED literal; the rest were unit-
-  // propagated. Rendered as "1 [2,-3,4]" (decided, then propagated in brackets), or
-  // just "1" when nothing propagated.
+  // Bold-blue edge label. lits[0] is the decided literal, the rest propagated:
+  // "1[2,-3,4]", or just "1" when nothing propagated.
   auto blue_lits = [](std::ostream& os, const std::vector<int>& lits) {
     os << " [label=<<FONT COLOR=\"#1565c0\" POINT-SIZE=\"9\"><B>" << lits[0];
     if (lits.size() > 1) {
@@ -153,14 +140,13 @@ int main(int argc, char** argv) {
   };
 
   for (int id : order) {
-    if (is_true(id)) continue;            // ⊤ nodes are replaced by per-literal sinks
+    if (is_true(id)) continue;            // ⊤ replaced by per-literal sinks
     const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
       if (is_true(a.child)) {
-        // Terminal arc -> per-literal sink(s). Edges that land DIRECTLY on a green
-        // leaf carry no label (the leaf already names the literal). A multi-literal
-        // arc goes via a fresh AND node, and that n->AND edge is not a leaf edge, so
-        // it keeps its bold-blue literals (and the AND->leaf edges stay bare).
+        // Terminal arc -> per-literal sink(s). An edge landing directly on a leaf
+        // carries no label (the leaf names the literal); a multi-literal arc goes
+        // via a fresh AND node (that edge keeps the bold-blue lits, AND->leaf bare).
         if (a.lits.empty()) {
           need_true = true;
           edges << "  n" << id << " -> T;\n";
@@ -199,8 +185,8 @@ int main(int argc, char** argv) {
   out << "  node [fontname=\"monospace\", fontsize=11];\n";
   out << "  edge [fontname=\"monospace\", fontsize=10];\n";
 
-  // Operator / FALSE node declarations (in file order; ⊤ nodes dropped). Labels
-  // are just the operator symbol -- variables only ever appear on edges/sinks.
+  // Operator / FALSE declarations (file order; ⊤ dropped). Labels are just the
+  // operator symbol -- variables appear only on edges/sinks.
   for (int id : order) {
     if (is_true(id)) continue;
     out << "  n" << id << " [";

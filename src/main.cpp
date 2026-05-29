@@ -362,30 +362,23 @@ void parse_supported_options(int argc, char** argv) {
       exit(EXIT_FAILURE);
     }
     if (!conf.compile_fname.empty()) {
-      // d-DNNF compilation needs a single, clean DPLL search tree so the trace
-      // is a faithful circuit. Force the relevant options.
+      // d-DNNF needs a single clean DPLL tree for a faithful circuit. Force it.
       conf.do_restart = 0;             // one monolithic search, not restart+cube
       conf.do_probabilistic_hashing = 0; // exact cache: sound DAG sharing
       conf.do_buddy = 0;               // no opaque BuDDy leaves
       conf.do_vivify = 0;              // do not rewrite clauses mid-search
       do_arjun = 0;                    // compile over the original variables
-      do_puura = 0;                    // no preprocessing that remaps variables
+      do_puura = 0;                    // no var-remapping preprocessing
       num_threads = 1;                 // single compiler instance
-      // NOTE: the SAT oracle stays ON. For a projected formula it provides, once
-      // the independent support is branched, one example assignment of the
-      // remaining (to-be-synthesized) variables -- exactly the witness functional
-      // synthesis needs. For a non-projected formula (all vars independent) it
-      // never fires, so it does not affect the plain d-DNNF.
-      // weak 3 keeps the cache ON, but components that contain a shared input
-      // var are NOT stored (they are not independent of their siblings, so a
-      // cache hit would under-cover). Components with no shared var are still
-      // variable-disjoint and safe to cache -- see CompManager::comp_has_shareable
-      // and the save_count guard in Counter::backtrack.
+      // The SAT oracle stays ON: for a projected formula it supplies a witness for
+      // the synthesized vars; for a non-projected one it never fires. weak 3 keeps
+      // the cache ON but skips components with a shared input var (see
+      // CompManager::comp_has_shareable and the save_count guard in backtrack).
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
            << (conf.weak ? " (WEAK)" : "") << endl;
     } else if (conf.weak != 0) {
       // --weak only makes sense when compiling: it deliberately produces a wrong
-      // count, so without --compile it would silently corrupt normal counting.
+      // count, so without --compile it would corrupt normal counting.
       cerr << "ERROR: --weak requires --compile (it intentionally produces a "
               "wrong count and is only meaningful for weak d-DNNF compilation)" << endl;
       exit(EXIT_FAILURE);

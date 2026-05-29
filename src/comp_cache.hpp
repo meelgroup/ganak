@@ -222,8 +222,7 @@ private:
   vec<T> entry_base;
   vec<CacheEntryID> free_entry_base_slots;
 
-  // d-DNNF compilation only: maps a CacheEntryID to the circuit node id of the
-  // component's compiled sub-DAG. Lazily sized; -1 = none. Empty when not compiling.
+  // d-DNNF only: CacheEntryID -> compiled sub-DAG node id. Lazily sized; -1 = none.
   std::vector<int> compile_nodes;
 
   // the actual hash table

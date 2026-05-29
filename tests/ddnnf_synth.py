@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Functional-synthesis round-trip test for `ganak --compile`.
 
-For each random projected CNF (inputs X = sampling vars 1..k, outputs Y = the
-rest), compile to a circuit, then for every input assignment X that the formula
-can satisfy, synthesize an output assignment psi(X) by reading it off the
-circuit and check that F(X, psi(X)) actually holds. This is the real
-correctness criterion for using the (weak) circuit in Boolean functional
-synthesis -- it does not care about model counting or faithfulness-as-a-function.
+For each random projected CNF (inputs X = sampling vars 1..k, outputs Y = rest),
+compile to a circuit; for every satisfiable X, synthesize psi(X) off the circuit
+and check F(X, psi(X)) holds. The real correctness criterion for synthesis (not
+model counting or faithfulness).
 
 Usage: ddnnf_synth.py [num_tests] [--weak N] [--seed S]
 """
@@ -116,7 +114,7 @@ def main():
                 nn0, _, _ = dv.parse(n0)
                 size_0 += len(nn0)
 
-        # which input assignments X are satisfiable (extendable to a full model)?
+        # which input assignments X are satisfiable?
         solvable = set()
         for bits in itertools.product((False, True), repeat=nv):
             assign = {v + 1: bits[v] for v in range(nv)}

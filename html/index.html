@@ -294,10 +294,9 @@ c p show 1 2 3 0
         };
 
         // ---- generic "run a wasm CLI tool" helper -----------------------------
-        // Both ganak.js and ddnnf-cleanup.js are Emscripten CLI modules that expect
-        // a global `Module`. We run each in its own Web Worker (own global scope),
-        // write the input files into its in-memory FS, call main, and read an output
-        // file back out. Returns a Promise of the output file's contents.
+        // ganak.js / ddnnf-cleanup.js are Emscripten CLI modules expecting a global
+        // `Module`; each runs in its own Web Worker. Write inputs to its FS, call
+        // main, read an output file back. Returns a Promise of that file's contents.
         function createGenericWorker() {
             const workerCode = `
                 var Module = {
@@ -413,8 +412,8 @@ c p show 1 2 3 0
                 // 1. ganak --compile: dump the raw d4 .nnf (faithful, --weak 0 default).
                 status.textContent = 'Compiling d-DNNF...';
                 append('=== ganak --compile ===');
-                // --mode 1 (weighted rational) handles both weighted (`c t [p]wmc`)
-                // and plain CNFs; the compiled circuit's STRUCTURE is field-independent.
+                // --mode 1 (weighted rational) handles weighted and plain CNFs; the
+                // circuit's STRUCTURE is field-independent.
                 const rawNnf = await runWasmTool(
                     'ganak.js', 'ganak.wasm',
                     ['--verb', '1', '--mode', '1', '--compile', '/out.nnf', '/input.cnf'],

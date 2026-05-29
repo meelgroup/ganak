@@ -1,20 +1,15 @@
-// Headless test of the in-browser d-DNNF pipeline, run under Node.js.
+// Headless (Node.js) test of the in-browser d-DNNF pipeline. Runs the same chain
+// the page does, without a browser:
+//   ganak --compile (raw d4 .nnf) -> ddnnf-cleanup (strict d4) -> ddnnf2dot (DOT)
+// using the same Emscripten modules shipped here. A smoke test after rebuilding wasm.
 //
-// It exercises the exact same chain the page does, but without a browser:
-//   ganak --compile (raw d4 .nnf)  ->  ddnnf-cleanup (strict d4)  ->  ddnnf2dot (DOT)
-// using the very same ganak.js / ddnnf-cleanup.js / ddnnf2dot.js Emscripten
-// modules that ship in this directory. Useful as a smoke test after rebuilding
-// the wasm.
-//
-// Both .js files are non-MODULARIZE Emscripten CLI modules that expect a global
-// `Module`. In the browser we give each its own Web Worker (own global scope);
-// here we run each in a fresh function scope with `Module` already in scope,
-// which is the equivalent trick (a plain `require` would let the module's own
-// `var Module` shadow ours).
+// These are non-MODULARIZE Emscripten CLI modules expecting a global `Module`. The
+// browser gives each its own Web Worker; here we run each in a fresh function scope
+// with `Module` in scope (a plain `require` would let its own `var Module` shadow ours).
 //
 // Usage:
 //   node chain.js [input.cnf] [out.dot]
-//   node chain.js                      # uses the built-in pwmc example, prints DOT
+//   node chain.js                      # built-in pwmc example, prints DOT
 
 const fs = require('fs');
 const path = require('path');
@@ -32,9 +27,8 @@ c p weight 3 8/10 0
 c p show 1 2 3 0
 `;
 
-// Run one Emscripten CLI tool once: write inFiles into its in-memory FS, call
-// main with args, return the contents of outFile (or null). Mirrors the worker
-// in index.html.
+// Run one Emscripten CLI tool: write inFiles into its in-memory FS, call main with
+// args, return outFile's contents (or null). Mirrors the worker in index.html.
 function runTool(jsFile, args, inFiles, outFile) {
   return new Promise((resolve, reject) => {
     const code = fs.readFileSync(path.join(HERE, jsFile), 'utf8');

@@ -34,40 +34,23 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
-// Builds a (Decision-)d-DNNF circuit out of Ganak's search trace and STREAMS it
-// to disk in the d4 `.nnf` format. The mapping is the classic "DPLL with a
-// trace = Decision-DNNF" (Huang & Darwiche, IJCAI 2005):
-//   - a decision on a variable        -> OR node (its two arcs carry the
-//                                         decision literal + implied literals)
-//   - a component decomposition (AND)  -> AND node (arcs carry no literals)
-//   - a free independent variable      -> OR(v -> T, -v -> T)   (factor 2)
-//   - a SAT leaf / no remaining comps  -> TRUE leaf
-//   - a conflict / UNSAT branch        -> FALSE leaf
-//   - a component-cache hit            -> a shared edge to an existing node
+// Builds a (Decision-)d-DNNF circuit from Ganak's search trace and STREAMS it to
+// disk in d4 `.nnf` format ("DPLL trace = Decision-DNNF", Huang & Darwiche 2005):
+//   decision          -> OR node (arcs carry decision + implied lits)
+//   AND-decomposition -> AND node (no arc lits)
+//   free var          -> OR(v->T, -v->T) (factor 2)
+//   SAT leaf -> TRUE;  conflict -> FALSE;  cache hit -> shared edge
+// Counting structurally (OR=sum, AND=product, T=1, F=0; arc lits ignored)
+// reproduces count().
 //
-// Counting the resulting circuit structurally (OR = sum of children, AND =
-// product, TRUE = 1, FALSE = 0; literals on arcs ignored) reproduces exactly
-// the value Ganak's internal count() returns.
+// STREAMING: the DAG is never fully in memory. Nodes are complete at creation and
+// every arc points to a lower id (children exist first), so each node is emitted
+// as it is built. Declarations stream to one temp file, arcs to another;
+// write_d4() stitches them with the root declared first (d4 convention).
 //
-// STREAMING. The whole DAG is never held in memory. Two invariants make this
-// possible:
-//   (1) a node is COMPLETE at creation -- every builder below sets all of a
-//       node's arcs at the moment its id is assigned, and they are never
-//       mutated afterwards; and
-//   (2) every arc points to a LOWER id, because a node is only ever created
-//       after all of its children already exist (cache hits, free vars,
-//       SAT/override leaves and wrapped inner nodes are all pre-existing).
-// So each node can be emitted the instant it is built, and a child is always
-// already on disk before any parent references it. We stream declaration lines
-// to one temp file and arc lines to another, then finalize() stitches them into
-// the target file with the root declared first (the d4 convention: the
-// first-declared node is the root).
-//
-// The emitted file may contain UNREACHABLE ("dead") nodes: mk_and short-circuits
-// to FALSE when any child is FALSE, orphaning already-emitted non-false
-// siblings. They are harmless to a root-rooted traversal (count/synthesis), and
-// the separate `ddnnf-cleanup` tool removes them + renumbers root=1 contiguous
-// for consumers that require a strict d4 file.
+// The file may contain unreachable ("dead") nodes (mk_and short-circuits to FALSE,
+// orphaning siblings); harmless to a root traversal, and `ddnnf-cleanup` removes
+// them + renumbers root=1 for strict d4 consumers.
 class DDNNFCompiler {
 public:
   enum NType : uint8_t { N_FALSE = 0, N_TRUE = 1, N_AND = 2, N_OR = 3 };
@@ -87,9 +70,8 @@ public:
   int root = -1;
   int nvars = 0;
 
-  // AND of the given children (arcs carry no literals).
-  // Simplifications: drop TRUE children; any FALSE child -> FALSE; empty -> TRUE;
-  // single child -> that child (no spurious AND node).
+  // AND of children (no arc lits): drop TRUE; any FALSE -> FALSE; empty -> TRUE;
+  // single child -> that child.
   int mk_and(const std::vector<int>& comps) {
     std::vector<Arc> arcs;
     arcs.reserve(comps.size());
@@ -115,7 +97,7 @@ public:
     return emit(N_OR, kept);
   }
 
-  // A free independent variable (unconstrained): contributes a factor of two.
+  // Free (unconstrained) variable: factor of two.
   int mk_free_var(int dimacs_var) {
     std::vector<Arc> arcs;
     arcs.push_back(Arc{true_node, {dimacs_var}});
@@ -133,12 +115,11 @@ public:
   }
 
   // ---- per-search bookkeeping (not part of the emitted DAG) ----
-  // children[lev][branch] = component node ids that are AND-ed into that branch
+  // children[lev][branch] = component nodes AND-ed into that branch
   std::vector<std::array<std::vector<int>, 2>> children;
-  // left_lits[lev] = literals captured for the left branch of decision level lev
+  // left_lits[lev] = left-branch literals of level lev
   std::vector<std::vector<int>> left_lits;
-  // override_node[lev] >= 0: the SAT oracle solved this level; its node is a
-  // witness leaf (set_override), bypassing the normal OR-from-children build.
+  // override_node[lev] >= 0: SAT oracle solved this level; node is a witness leaf
   std::vector<int> override_node;
 
   void ensure_level(int lev) {
@@ -174,9 +155,8 @@ public:
   size_t num_nodes() const { return n_nodes; }
   size_t num_edges() const { return n_edges; }
 
-  // Stitch the streamed temp files into the final d4 .nnf at `fname`, with the
-  // root declared first. O(1) memory: two sequential passes over the (decls-only)
-  // temp file plus a raw copy of the (arcs-only) temp file.
+  // Stitch the temp files into the final d4 .nnf at `fname`, root declared first.
+  // O(1) memory: two passes over the decls temp + a raw copy of the arcs temp.
   void write_d4(const std::string& fname) {
     decl_out.flush();
     arc_out.flush();
@@ -184,7 +164,7 @@ public:
     arc_out.close();
     int r = (root < 0) ? false_node : root;
 
-    // Pass 1: find the root's node type char (so we can declare it first).
+    // Pass 1: find the root's type char.
     char root_char = (r == false_node) ? 'f' : (r == true_node) ? 't' : 'o';
     {
       std::ifstream d(decl_path);
@@ -198,7 +178,7 @@ public:
 
     std::ofstream o(fname);
     o << root_char << " " << r << " 0\n";
-    // Pass 2: copy every declaration except the root's (already written above).
+    // Pass 2: copy every declaration except the root's.
     {
       std::ifstream d(decl_path);
       std::string line;
@@ -261,8 +241,7 @@ private:
     }
   }
 
-  // Reserve a unique temp path atomically (O_CREAT|O_EXCL via mkstemp), close
-  // the fd, and return the name for an ofstream to truncate+reuse.
+  // Reserve a unique temp path atomically (mkstemp), close the fd, return name.
   static std::string mk_temp(const std::string& tmpl) {
     std::vector<char> buf(tmpl.begin(), tmpl.end());
     buf.push_back('\0');

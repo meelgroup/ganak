@@ -59,12 +59,10 @@ DLL_PUBLIC Ganak::~Ganak() = default;
 DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_threads) {
   auto cnt = cdat->fg->one();
 
-  // d-DNNF compilation: run a single counter over the whole formula (over the
-  // original variable numbering) so the emitted circuit is one self-contained
-  // file. The bag-splitting/var-remapping path below would otherwise renumber
-  // variables per bag and overwrite the file once per bag. Ganak's internal
-  // component analysis still decomposes disconnected parts, so the count is the
-  // same.
+  // d-DNNF: run one counter over the whole formula (original var numbering) so the
+  // circuit is one self-contained file. The bag-splitting path below would renumber
+  // vars per bag and overwrite the file each bag. Internal component analysis still
+  // decomposes disconnected parts, so the count is unchanged.
   if (!cdat->conf.compile_fname.empty()) {
     OuterCounter out_cnt(cdat->conf, cdat->fg->dup());
     out_cnt.new_vars(cdat->nvars);

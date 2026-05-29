@@ -33,12 +33,10 @@ enum class DecideType : int { td = 0, ignore_td = 1 };
 struct CounterConfiguration {
   int verb = 1;
 
-  // d-DNNF compilation: when compile_fname is non-empty, Ganak emits the
-  // search trace as a (Decision-)d-DNNF circuit to that file (d4 .nnf format)
-  // instead of (only) reporting a count. weak=0 produces a faithful d-DNNF;
-  // weak=3 is the synthesis share-and-branch (input vars may be shared across
-  // AND children while the to-be-synthesized vars stay disjoint) -- also
-  // faithful, intended for Boolean functional synthesis.
+  // d-DNNF: if compile_fname is non-empty, emit the search trace as a
+  // (Decision-)d-DNNF circuit (d4 .nnf) to that file. weak=0 = faithful d-DNNF;
+  // weak=3 = synthesis share-and-branch (inputs shared across AND children,
+  // synthesized vars disjoint) -- also faithful, for functional synthesis.
   std::string compile_fname = "";
   int weak = 0;
 

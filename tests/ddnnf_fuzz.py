@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 """Fuzz-test Ganak's faithful d-DNNF compilation (`ganak --compile`).
 
-For each random CNF:
-  * brute-force the exact model count and model set (oracle),
-  * compile the CNF to a d4 .nnf with `ganak --compile`,
-  * check the circuit is strictly decomposable,
-  * check the circuit's structural model count == brute count,
-  * check the circuit's model set == brute model set (validates arc literals),
-  * check the circuit is faithful as a Boolean function (== F),
-  * also sanity-check against Ganak's own reported count.
-
-(For functional synthesis with projected CNFs / --weak 3, see ddnnf_synth.py.)
+For each random CNF: brute-force the count + model set (oracle), compile to a d4
+.nnf, then check it is strictly decomposable, its count and model set match the
+oracle, and it is faithful as a Boolean function. Also cross-checks ddnnf-cleanup.
+(Functional synthesis / --weak 3: see ddnnf_synth.py.)
 
 Usage: ddnnf_fuzz.py [num_tests] [--seed N]
 """
@@ -176,9 +170,8 @@ def main():
             save_fail(t)
             fails += 1
             continue
-        # FAITHFUL AS A FUNCTION: evaluated on every complete assignment, the
-        # circuit must equal F. This is exactly the property functional synthesis
-        # needs, so we assert it for the strong (d-DNNF) circuit.
+        # FAITHFUL AS A FUNCTION: on every complete assignment the circuit must
+        # equal F (the property functional synthesis needs).
         fmodels = dv.function_models(nodes, arcs, root, nv)
         if fmodels != bmodels:
             print(f"FAIL[{t}] strong circuit not faithful as a function "
@@ -187,11 +180,9 @@ def main():
             fails += 1
             continue
 
-        # CLEANUP TOOL: the streamed raw .nnf keeps Ganak's internal ids and may
-        # carry dead (unreachable) nodes. `ddnnf-cleanup` must drop them and
-        # renumber root=1 while preserving the circuit. Validate strictly: the
-        # cleaned circuit must have NO dead nodes (so a non-relaxed reading
-        # passes), stay decomposable, and keep the same count + model set.
+        # CLEANUP TOOL: the raw .nnf keeps internal ids and may carry dead nodes.
+        # `ddnnf-cleanup` must drop them and renumber root=1. Check strictly: no
+        # dead nodes, still decomposable, same count + model set.
         if os.path.exists(clean):
             os.remove(clean)
         rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)

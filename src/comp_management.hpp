@@ -64,15 +64,13 @@ public:
     cache->store_value(comp_stack[stack_comp_id]->id(), value);
   }
 
-  // d-DNNF compilation: record the compiled circuit node for a component, so
-  // that future cache hits on the same component reference the same sub-DAG.
+  // d-DNNF: record a component's compiled node so future cache hits reuse it.
   void set_comp_node(const uint64_t stack_comp_id, int node) {
     cache->set_compile_node(comp_stack[stack_comp_id]->id(), node);
   }
 
-  // --weak 3: a component that contains a shared input var is not independent of
-  // its siblings (they share that var), so it must NOT be cached -- a hit would
-  // reuse its result in a context where the shared var differs and under-cover.
+  // --weak 3: a component with a shared input var is not independent of its
+  // siblings, so it must NOT be cached -- a hit would under-cover.
   bool comp_has_shareable(const uint64_t stack_comp_id) const {
     const Comp& c = *comp_stack[stack_comp_id];
     all_vars_in_comp(c, v) if (ana.is_shareable(*v)) return true;

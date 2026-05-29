@@ -22,9 +22,8 @@ THE SOFTWARE.
 
 #pragma once
 
-// Shared, header-only reader for the d4 .nnf circuit format emitted by
-// `ganak --compile`. Used by the standalone ddnnf-cleanup and ddnnf2dot tools;
-// keeps them self-contained (no ganak/arjun/GMP link deps).
+// Header-only reader for the d4 .nnf format from `ganak --compile`. Used by the
+// standalone ddnnf-cleanup and ddnnf2dot tools (no ganak/arjun/GMP link deps).
 
 #include <cctype>
 #include <istream>
@@ -40,10 +39,9 @@ struct Arc {
   std::vector<int> lits; // DIMACS literals true on this arc
 };
 
-// Parse a d4 .nnf stream. Fills `type` (id -> 'f'|'t'|'a'|'o'), `arcs` (id ->
-// outgoing arcs) and `order` (node ids in declaration order). Returns the root
-// id (the first-declared node, the d4 convention), or -1 with `err` set on
-// malformed input or a file that declares no nodes.
+// Parse a d4 .nnf stream into `type` (id -> 'f'|'t'|'a'|'o'), `arcs` (outgoing)
+// and `order` (declaration order). Returns the root (first-declared node), or -1
+// with `err` set on malformed input or no nodes.
 inline int parse_nnf(std::istream& in,
                      std::unordered_map<int, char>& type,
                      std::unordered_map<int, std::vector<Arc>>& arcs,

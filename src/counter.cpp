@@ -982,6 +982,18 @@ Lit Counter::synth_forced_lit(uint32_t v) {
     debug_print(COLYEL "[synth] v=" << v << " rp=" << rp << " IMPURE -> no pin");
     return Lit(); // impure -> not shared, decide normally
   }
+  // Instrumentation: track which call site pinned and which residual case.
+  // Bumped after the impure early-out so only ACTUAL pins are counted.
+  // sat_mode() distinguishes the SAT-loop call from the (now no-op under
+  // Tier-1A) decide_lit call -- the latter should never increment under the
+  // current invariant; if it ever does, the SLOW_DEBUG assert in decide_lit
+  // also fires.
+  if (sat_mode()) {
+    if (rp == 0) stats.synth_pin_sat_free++;
+    else         stats.synth_pin_sat_pure++;
+  } else {
+    stats.synth_pin_decide_lit++;
+  }
   // Soundness fix (was the ~1-2% wDNNF bug): the residual polarity is
   // state-dependent -- if all of v's clauses are satisfied by some sibling's
   // decisions, rp becomes 0 (FREE) and the old code defaulted to +v in that
@@ -2123,8 +2135,10 @@ RetState Counter::backtrack() {
     assert(dec_level() >= 1);
     // --synthesis: don't cache components with a shared output var (not independent
     // of siblings -- a hit would under-cover); shared-var-free comps are safe.
-    const bool cacheable = conf.do_use_cache &&
-        !(conf.synthesis && comp_manager->comp_has_shareable(decisions.top().super_comp()));
+    const bool synth_blocks_cache =
+        conf.synthesis && comp_manager->comp_has_shareable(decisions.top().super_comp());
+    if (synth_blocks_cache) stats.synth_cache_skipped_comps++;
+    const bool cacheable = conf.do_use_cache && !synth_blocks_cache;
     if (cacheable) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";

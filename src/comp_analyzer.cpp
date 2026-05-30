@@ -276,6 +276,7 @@ int CompAnalyzer::residual_polarity(uint32_t v) {
 // the var to opposite polarities across siblings, and the AND-of-siblings node
 // loses wDNNF. The mitigation lives in synth_forced_lit and pin_polarity[].
 void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
+  stats.synth_shareable_calls++;
   // --- residual polarity purity ---
   all_vars_in_comp(super_comp, vt) {
     const uint32_t v = *vt;
@@ -313,6 +314,7 @@ void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
     if (seen_pos[v] && seen_neg[v]) continue;     // impure right now
     if (orig_polarity[v] == 3) continue;           // both polarities in original CNF
     shareable[v] = 1;
+    stats.synth_shareable_marked++;
   }
 
   // --- demotion fixpoint: no active clause may be entirely shareable ---
@@ -328,17 +330,21 @@ void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
       if (shareable[vv]) demote = (int)vv;
       else { all_share = false; break; }
     }
-    if (all_share && demote >= 0) shareable[demote] = 0;
+    if (all_share && demote >= 0) { shareable[demote] = 0; stats.synth_shareable_demoted++; }
   }
   // binaries: handle each (v OR o) once, demoting v at its smaller-index endpoint.
   all_vars_in_comp(super_comp, vt) {
     const uint32_t v = *vt;
     if (!shareable[v]) continue;
     for (const Lit o : bin_pos[v])
-      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) { shareable[v] = 0; break; }
+      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) {
+        shareable[v] = 0; stats.synth_shareable_demoted++; break;
+      }
     if (!shareable[v]) continue;
     for (const Lit o : bin_neg[v])
-      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) { shareable[v] = 0; break; }
+      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) {
+        shareable[v] = 0; stats.synth_shareable_demoted++; break;
+      }
   }
 }
 

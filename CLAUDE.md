@@ -121,12 +121,14 @@ Synthesis notes (empirically established):
   enumerated). Faithful (default) `--compile` + SAT is a correct, compact
   synthesis compiler — the `ddnnf_synth_faithful` ctest exercises it.
 - `--synthesis` (wDNNF share-and-branch): an output var
-  (`>= indep_support_end`) may be shared across AND children **only when it is
-  pure (single polarity) in the residual formula AND originally pure (or unused)
-  in the CNF** — the weak-decomposability condition (Akshay et al. 2018) plus a
-  soundness gate (see below). Input vars (`< indep_support_end`) are never
-  shared, so comps stay disjoint over inputs. See `CompAnalyzer::compute_shareable_vars`:
-  it computes per-round purity, then runs a **demotion fixpoint** so every active
+  (`>= opt_indep_support_end` — the shareability cutoff, **not**
+  `indep_support_end`; see "Performance gates" below) may be shared across AND
+  children **only when it is pure (single polarity) in the residual formula AND
+  originally pure (or unused) in the CNF** — the weak-decomposability condition
+  (Akshay et al. 2018) plus a soundness gate (see below). Vars
+  `< opt_indep_support_end` are never shared, so comps stay disjoint over the
+  vars main DPLL branches on. See `CompAnalyzer::compute_shareable_vars`: it
+  computes per-round purity, then runs a **demotion fixpoint** so every active
   clause keeps a non-shareable (bridging) var — nothing is dropped, the circuit
   stays faithful as a function. A shared output var must be pinned to its
   polarity everywhere it is set so sibling witnesses agree
@@ -137,6 +139,28 @@ Synthesis notes (empirically established):
   residual went from "pure neg" to "free" and the pin flipped to +v, while
   another sibling still pinned -v. The count is **meaningless** in this mode
   (intended — synthesis-only; `main.cpp` suppresses it).
+- **Performance gates (don't break these without re-fuzzing):**
+  - **Shareability cutoff = `opt_indep_support_end`.** Matches the upper bound
+    of `find_best_branch` exactly, so `synth_forced_lit` is a no-op in
+    `decide_lit` and the polarity heuristic for the [`indep_support_end`,
+    `opt_indep_support_end`) "optional indep" band is preserved. Asserted in
+    `decide_lit` under `SLOW_DEBUG`.
+  - **`synth_forced_lit` early-out on `orig_polarity[v] == 3`.** Skips the
+    `residual_polarity` scan and pinning for vars that
+    `compute_shareable_vars` would never mark shareable anyway. **Must NOT be
+    gated on `is_shareable(v)`** — that array is per-super-comp scratch and
+    nested `compute_shareable_vars` calls overwrite it; the SAT-leaf would
+    read stale state and sibling witnesses would diverge
+    (`tests/cnf-files/ddnnf/synthesis_stale_shareable_regression.cnf`
+    catches this).
+  - **`share_mode` auto-off when no candidate exists.** If every output var
+    has `orig_polarity == 3`, `initialize()` flips `share_mode` off so the
+    `compute_shareable_vars` + cache-skip machinery costs nothing. Printed at
+    startup as `[compile-synthesis] no output var is originally pure --
+    share_mode disabled`.
+  - **Tier-2A memo in `compute_shareable_vars`.** Skips recompute when
+    `(super_comp pointer, counter->get_tstamp())` matches the last call —
+    same trail-state on the same super-comp ⇒ same result, no walk needed.
 - **Status:** sound. `ddnnf_synth_share_and_branch` ctest exercises it; the
   fuzzer (`tests/ddnnf_synth.py --synthesis`) is at 0 failures across thousands
   of random projected instances. The fix has two parts:

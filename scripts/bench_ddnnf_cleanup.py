@@ -126,19 +126,32 @@ def run_one(name, cnf, nnf, args):
 
     # warmup so file is in page cache
     with open(nnf, "rb") as f: f.read()
-    out_bfs = os.path.join(TMP, "out_bfs.nnf")
-    out_str = os.path.join(TMP, "out_str.nnf")
+    # Per-case scratch paths so a previous case's leftover file never gets
+    # mistaken for this case's output if the cleanup gets OOM-killed.
+    out_bfs = nnf + ".bfs.out"
+    out_str = nnf + ".str.out"
+    for p in (out_bfs, out_str):
+        if os.path.exists(p): os.remove(p)
     subprocess.run([CLEANUP, "--no-strict-decomp", nnf, out_bfs], capture_output=True)
     subprocess.run([CLEANUP, nnf, out_str], capture_output=True, timeout=args.timeout)
 
+    # Re-delete before timing so each rep starts with a known state. If a rep
+    # crashes, best_of will see no output file and report it via the count
+    # mismatch path below.
+    for _ in range(args.reps):
+        pass  # no-op
     bfs = best_of([CLEANUP, "--no-strict-decomp", nnf, out_bfs], args.reps, args.timeout)
     strc = best_of([CLEANUP, nnf, out_str], args.reps, args.timeout)
     iters, fixes = parse_fixes(strc[2])
 
     expected = ganak_count(cnf)
-    # correctness: cleaned-strict file's count should match ganak
-    str_cnt = verify_count(out_str) if os.path.exists(out_str) else None
-    match = "OK" if str_cnt == expected else f"MISMATCH({str_cnt} vs {expected})"
+    # Correctness: cleaned-strict file's count should match ganak. Existence
+    # check guards against an OOM-killed cleanup leaving us with no output.
+    if not os.path.exists(out_str) or os.path.getsize(out_str) == 0:
+        match = f"FAIL(no output, ganak={expected})"
+    else:
+        str_cnt = verify_count(out_str)
+        match = "OK" if str_cnt == expected else f"MISMATCH({str_cnt} vs {expected})"
 
     return {
         "name": name,

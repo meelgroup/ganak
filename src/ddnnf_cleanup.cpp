@@ -51,12 +51,11 @@ THE SOFTWARE.
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
-#include <functional>
 #include <iostream>
 #include <queue>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "ddnnf_io.hpp"
@@ -150,91 +149,118 @@ void measure_nvars(
   words = (size_t)(max_var / 64) + 1;
 }
 
-// Compute, for each reachable node, the set of vars appearing anywhere in its
-// subtree (arc lits + child subtree vars). Bottom-up via memoized recursion.
-void compute_subtree_vars(
+// Iterative post-order DFS from `root`: emits children before parents.
+// `visited` must be sized to at least max_id+1 (cleared by the caller). At
+// 14M-node circuits this matters -- a recursive version blows the 8 MB stack.
+void post_order(
     int root,
     const std::unordered_map<int, std::vector<Arc>>& arcs,
+    std::vector<char>& visited,   // 0 = unseen, 1 = entered, 2 = emitted
+    std::vector<int>& out) {
+  // Stack of (node, next_child_index_to_visit). When we revisit a node and its
+  // next index is past its arc count, we emit it.
+  std::vector<std::pair<int, int>> stack;
+  stack.reserve(64);
+  if (visited[root]) return;
+  visited[root] = 1;
+  stack.emplace_back(root, 0);
+  while (!stack.empty()) {
+    auto& top = stack.back();
+    int n = top.first;
+    int idx = top.second;
+    auto it = arcs.find(n);
+    int sz = (it == arcs.end()) ? 0 : (int)it->second.size();
+    if (idx >= sz) {
+      out.push_back(n);
+      visited[n] = 2;
+      stack.pop_back();
+      continue;
+    }
+    int c = it->second[idx].child;
+    top.second = idx + 1;
+    if (!visited[c]) {
+      visited[c] = 1;
+      stack.emplace_back(c, 0);
+    }
+  }
+}
+
+// Compute, for each reachable node, the set of vars appearing anywhere in its
+// subtree (arc lits + child subtree vars). Iterative bottom-up over post-order.
+// `out` is sized to max_id+1; entry per reachable node.
+void compute_subtree_vars(
+    const std::vector<int>& post,
+    const std::unordered_map<int, std::vector<Arc>>& arcs,
     size_t words,
-    std::unordered_map<int, VarSet>& out) {
-  std::function<const VarSet&(int)> rec = [&](int n) -> const VarSet& {
-    auto it = out.find(n);
-    if (it != out.end()) return it->second;
+    std::vector<VarSet>& out) {
+  for (int n : post) {
     VarSet& vs = out[n];
     vs.resize(0, words);
     auto ait = arcs.find(n);
-    if (ait != arcs.end()) {
-      for (const auto& a : ait->second) {
-        for (int l : a.lits) vs.set(l > 0 ? l : -l);
-        const VarSet& cvs = rec(a.child);
-        vs.or_with(cvs);
-      }
+    if (ait == arcs.end()) continue;
+    for (const auto& a : ait->second) {
+      for (int l : a.lits) vs.set(l > 0 ? l : -l);
+      vs.or_with(out[a.child]);
     }
-    return vs;
-  };
-  rec(root);
+  }
 }
 
 // Compute, for each reachable node, the literals true in EVERY model of the
-// subtree (the node's "forced" lits). is_false[nid] = true => node is FALSE
-// (no models). OR: intersection of (arc_lits + child_forced) across arcs. AND:
-// union; FALSE if union contradicts.
+// subtree (the node's "forced" lits). is_false[nid] = 1 => node is FALSE (no
+// models). OR: intersection of (arc_lits + child_forced) across non-FALSE arcs.
+// AND: union; FALSE if union contradicts. Iterative bottom-up over post-order.
 void compute_forced(
-    int root,
-    const std::unordered_map<int, char>& type,
+    const std::vector<int>& post,
+    const std::vector<char>& type_v,           // node id -> 'f'|'t'|'a'|'o'|0
     const std::unordered_map<int, std::vector<Arc>>& arcs,
     size_t words,
-    std::unordered_map<int, LitSet>& forced,
-    std::unordered_set<int>& is_false) {
-  std::function<bool(int)> rec = [&](int n) -> bool {
-    if (forced.count(n)) return true;
-    if (is_false.count(n)) return false;
-    char t = type.at(n);
-    if (t == 't') { forced[n].resize(words); return true; }
-    if (t == 'f') { is_false.insert(n); return false; }
+    std::vector<LitSet>& forced,
+    std::vector<char>& is_false) {
+  LitSet scratch;
+  for (int n : post) {
+    char t = type_v[n];
+    if (t == 't') { forced[n].resize(words); continue; }
+    if (t == 'f') { is_false[n] = 1; continue; }
     const auto& kids = arcs.at(n);
     if (t == 'o') {
-      LitSet r;
       bool any = false;
+      LitSet& r = forced[n];
       for (const auto& a : kids) {
-        if (!rec(a.child)) continue;
-        LitSet s = forced.at(a.child);     // copy (small, word-count words)
-        for (int l : a.lits) s.set(l);
-        if (!any) { r = std::move(s); any = true; }
-        else      { r.intersect_with(s); }
+        if (is_false[a.child]) continue;
+        // scratch = forced[child] | arc_lits
+        scratch = forced[a.child];
+        for (int l : a.lits) scratch.set(l);
+        if (!any) { r = std::move(scratch); any = true; scratch.resize(words); }
+        else      { r.intersect_with(scratch); }
       }
-      if (!any) { is_false.insert(n); return false; }
-      forced[n] = std::move(r);
-      return true;
+      if (!any) { is_false[n] = 1; r.pos.clear(); r.neg.clear(); }
     } else { // 'a'
-      LitSet r;
+      LitSet& r = forced[n];
       r.resize(words);
+      bool dead = false;
       for (const auto& a : kids) {
-        if (!rec(a.child)) { is_false.insert(n); forced.erase(n); return false; }
-        const LitSet& cf = forced.at(a.child);
-        r.union_with(cf);
+        if (is_false[a.child]) { dead = true; break; }
+        r.union_with(forced[a.child]);
         for (int l : a.lits) r.set(l);
       }
-      if (r.contradicts()) { is_false.insert(n); return false; }
-      forced[n] = std::move(r);
-      return true;
+      if (dead || r.contradicts()) { is_false[n] = 1; r.pos.clear(); r.neg.clear(); }
     }
-  };
-  rec(root);
+  }
 }
 
 // Count parents of each reachable node (so we know whether modifying it in place
 // is safe -- nodes with multiple parents must be cloned before modification).
+// parent_count must be sized to max_id+1, zero-initialized.
 void compute_parents(
     int root,
     const std::unordered_map<int, std::vector<Arc>>& arcs,
-    std::unordered_map<int, int>& parent_count) {
-  std::unordered_set<int> seen;
+    std::vector<int>& parent_count) {
+  std::vector<char> seen(parent_count.size(), 0);
   std::vector<int> stack = {root};
-  parent_count[root] = 0;   // root has no parent
   while (!stack.empty()) {
     int n = stack.back(); stack.pop_back();
-    if (!seen.insert(n).second) continue;
+    if (seen[n]) continue;
+    seen[n] = 1;
     auto it = arcs.find(n);
     if (it == arcs.end()) continue;
     for (const auto& a : it->second) {
@@ -246,70 +272,100 @@ void compute_parents(
 
 // Scrub `var` from the subtree rooted at `nid`, knowing that an enclosing AND
 // forces var to `polarity`. Returns the new root id (== nid if modified in
-// place, else a fresh clone id). Caller passes max_id (mutable) for cloning.
+// place, else a fresh clone id). Iterative post-order walk over the subtree --
+// recursive at 14M nodes blew the 8 MB stack.
 //
 // In each arc within the subtree:
 //   - Drop the redundant (forced-polarity) literal from arc lits.
 //   - If the OPPOSITE-polarity literal appears, the arc is dead under the
 //     enclosing AND -- drop the arc entirely.
-//   - Recurse into the child to scrub deeper occurrences.
 // An OR whose arcs all get dropped becomes FALSE. Nodes with multiple parents
 // (DAG sharing) get cloned before modification so other parents stay correct.
 int scrub_var(
     int nid, int var, bool polarity,
     std::unordered_map<int, char>& type,
     std::unordered_map<int, std::vector<Arc>>& arcs,
-    const std::unordered_map<int, int>& parent_count,
-    std::unordered_map<long long, int>& memo,  // (nid, var, polarity) -> new id
+    const std::vector<int>& parent_count,
     int& max_id) {
-  long long key = ((long long)nid << 32) | (long long)(var * 2 + (polarity ? 1 : 0));
-  auto mit = memo.find(key);
-  if (mit != memo.end()) return mit->second;
-
-  char t = type.at(nid);
-  if (t == 't' || t == 'f') { memo[key] = nid; return nid; }
-
-  int forced_lit = polarity ? var : -var;
-  int opposite_lit = -forced_lit;
-
-  std::vector<Arc> new_arcs;
-  bool changed = false;
-  for (const auto& a : arcs.at(nid)) {
-    // arc dead under enclosing AND if it constrains var to opposite polarity
-    if (std::find(a.lits.begin(), a.lits.end(), opposite_lit) != a.lits.end()) {
-      changed = true;
-      continue;
+  // 1. Iterative post-order over the subtree rooted at nid (gives us children
+  //    before parents so each parent can look up its (possibly remapped) kids).
+  std::vector<int> post;
+  {
+    // Reuse a local visited map. The subtree can repeat nodes that are shared
+    // up in the DAG, so dedupe per-walk via this map.
+    std::unordered_map<int, char> visited;
+    std::vector<std::pair<int, int>> stack;
+    stack.reserve(64);
+    visited[nid] = 1;
+    stack.emplace_back(nid, 0);
+    while (!stack.empty()) {
+      auto& top = stack.back();
+      int n = top.first;
+      int idx = top.second;
+      char t = type.at(n);
+      auto it = arcs.find(n);
+      int sz = (t == 't' || t == 'f' || it == arcs.end()) ? 0 : (int)it->second.size();
+      if (idx >= sz) {
+        post.push_back(n);
+        stack.pop_back();
+        continue;
+      }
+      int c = it->second[idx].child;
+      top.second = idx + 1;
+      if (!visited.count(c)) {
+        visited[c] = 1;
+        stack.emplace_back(c, 0);
+      }
     }
-    // strip the redundant forced literal
-    Arc na{a.child, {}};
-    for (int l : a.lits) if (l != forced_lit) na.lits.push_back(l);
-    if (na.lits.size() != a.lits.size()) changed = true;
-    // recurse into the child
-    int new_c = scrub_var(a.child, var, polarity, type, arcs, parent_count, memo, max_id);
-    if (new_c != na.child) changed = true;
-    na.child = new_c;
-    new_arcs.push_back(std::move(na));
   }
 
-  if (!changed) { memo[key] = nid; return nid; }
+  const int forced_lit = polarity ? var : -var;
+  const int opposite_lit = -forced_lit;
+  std::unordered_map<int, int> remap;  // old id -> (possibly cloned) new id
 
-  // Pick: modify in place (only if exactly one parent) or clone.
-  auto pcit = parent_count.find(nid);
-  int p_count = (pcit == parent_count.end()) ? 1 : pcit->second;
-  int target = (p_count <= 1) ? nid : (++max_id);
-  type[target] = t;
-  if (t == 'o' && new_arcs.empty()) {
-    type[target] = 'f';
-    arcs[target] = {};
-  } else {
-    arcs[target] = std::move(new_arcs);
+  // 2. Process children-first, building new arc lists and deciding modify-in-
+  //    place vs clone for each node touched. Nodes whose arcs+kids didn't
+  //    change keep their identity (remap[n] = n).
+  for (int n : post) {
+    char t = type.at(n);
+    if (t == 't' || t == 'f') { remap[n] = n; continue; }
+    const auto& orig = arcs.at(n);
+    std::vector<Arc> new_arcs;
+    bool changed = false;
+    for (const auto& a : orig) {
+      if (std::find(a.lits.begin(), a.lits.end(), opposite_lit) != a.lits.end()) {
+        changed = true;
+        continue;
+      }
+      Arc na{a.child, {}};
+      for (int l : a.lits) if (l != forced_lit) na.lits.push_back(l);
+      if (na.lits.size() != a.lits.size()) changed = true;
+      auto rit = remap.find(a.child);
+      int new_c = (rit == remap.end()) ? a.child : rit->second;
+      if (new_c != na.child) { na.child = new_c; changed = true; }
+      new_arcs.push_back(std::move(na));
+    }
+    if (!changed) { remap[n] = n; continue; }
+    int p_count = (n < (int)parent_count.size()) ? parent_count[n] : 1;
+    int target = (p_count <= 1) ? n : (++max_id);
+    type[target] = t;
+    if (t == 'o' && new_arcs.empty()) {
+      type[target] = 'f';
+      arcs[target] = {};
+    } else {
+      arcs[target] = std::move(new_arcs);
+    }
+    remap[n] = target;
   }
-  memo[key] = target;
-  return target;
+  auto rit = remap.find(nid);
+  return (rit == remap.end()) ? nid : rit->second;
 }
 
 // Top-level driver: iterate, batching as many independent fixes per pass as we
-// can, until no AND violations remain (or we run out of iterations).
+// can, until no AND violations remain (or we run out of iterations). Per-node
+// data (type_v, subtree_vars, forced, is_false, parent_count) lives in plain
+// vectors indexed by node id, sized to the current max_id+1 -- way cheaper
+// than unordered_map<int, X> at multi-million-node scale.
 int cleanup_decomp(
     int root,
     std::unordered_map<int, char>& type,
@@ -328,44 +384,51 @@ int cleanup_decomp(
                 << std::endl;
       break;
     }
-    std::unordered_map<int, VarSet> subtree_vars;
-    compute_subtree_vars(root, arcs, words, subtree_vars);
-    std::unordered_map<int, LitSet> forced;
-    std::unordered_set<int> is_false;
-    compute_forced(root, type, arcs, words, forced, is_false);
-    std::unordered_map<int, int> parent_count;
+    // Size storage to current max_id (which grows as scrub_var clones nodes).
+    const size_t sz = (size_t)max_id + 1;
+    std::vector<char> type_v(sz, 0);
+    for (const auto& p : type) {
+      if ((size_t)p.first < sz) type_v[p.first] = p.second;
+    }
+    std::vector<char> visited(sz, 0);
+    std::vector<int> post;
+    post.reserve(sz);
+    post_order(root, arcs, visited, post);
+
+    std::vector<VarSet> subtree_vars(sz);
+    compute_subtree_vars(post, arcs, words, subtree_vars);
+
+    std::vector<LitSet> forced(sz);
+    std::vector<char> is_false(sz, 0);
+    compute_forced(post, type_v, arcs, words, forced, is_false);
+
+    std::vector<int> parent_count(sz, 0);
     compute_parents(root, arcs, parent_count);
 
     // One pass: collect every (AND, scrub_child, var, polarity) we can act on,
     // then apply them. Skipping ANDs whose modified arcs would interfere this
     // pass keeps things sane; remaining violations re-surface next iteration.
     int fixes = 0;
-    std::unordered_set<int> touched_children;   // children we've already scrubbed this pass
-    for (auto& tpair : type) {
-      int nid = tpair.first;
-      if (tpair.second != 'a') continue;
+    std::vector<char> touched(sz, 0);
+    for (int nid : post) {
+      if (type_v[nid] != 'a') continue;
       auto ait = arcs.find(nid);
       if (ait == arcs.end()) continue;
       auto& kids = ait->second;
       for (size_t i = 0; i < kids.size(); i++) {
         for (size_t j = i + 1; j < kids.size(); j++) {
           int ci = kids[i].child, cj = kids[j].child;
-          if (touched_children.count(ci) || touched_children.count(cj)) continue;
-          auto svi = subtree_vars.find(ci);
-          auto svj = subtree_vars.find(cj);
-          if (svi == subtree_vars.end() || svj == subtree_vars.end()) continue;
-          int shared_var = svi->second.first_intersect_var(svj->second);
+          if (touched[ci] || touched[cj]) continue;
+          int shared_var = subtree_vars[ci].first_intersect_var(subtree_vars[cj]);
           if (shared_var == 0) continue;
-          auto fi = forced.find(ci);
-          auto fj = forced.find(cj);
           int pi = 0, pj = 0;
-          if (fi != forced.end()) {
-            if (fi->second.has(shared_var))  pi = +1;
-            if (fi->second.has(-shared_var)) pi = -1;
+          if (!is_false[ci]) {
+            if (forced[ci].has(shared_var))  pi = +1;
+            if (forced[ci].has(-shared_var)) pi = -1;
           }
-          if (fj != forced.end()) {
-            if (fj->second.has(shared_var))  pj = +1;
-            if (fj->second.has(-shared_var)) pj = -1;
+          if (!is_false[cj]) {
+            if (forced[cj].has(shared_var))  pj = +1;
+            if (forced[cj].has(-shared_var)) pj = -1;
           }
           int scrub_child = 0;
           bool polarity = true;
@@ -376,14 +439,13 @@ int cleanup_decomp(
                       << " but neither child forces it; leaving as-is" << std::endl;
             continue;
           }
-          std::unordered_map<long long, int> memo;
           int new_scrub = scrub_var(scrub_child, shared_var, polarity, type, arcs,
-                                     parent_count, memo, max_id);
+                                    parent_count, max_id);
           if (new_scrub != scrub_child) {
             for (auto& a : kids) if (a.child == scrub_child) a.child = new_scrub;
           }
-          touched_children.insert(scrub_child);
-          touched_children.insert(new_scrub);
+          touched[scrub_child] = 1;
+          if (new_scrub < (int)sz) touched[new_scrub] = 1;
           fixes++;
         }
       }

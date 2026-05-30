@@ -22,6 +22,8 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "common.hpp"
+
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -30,6 +32,7 @@ THE SOFTWARE.
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <unordered_set>
 #include <unistd.h>
 
 namespace GanakInt {
@@ -82,7 +85,15 @@ public:
     }
     if (arcs.empty()) return true_node;
     if (arcs.size() == 1) return arcs[0].child;
-    return emit(N_AND, arcs);
+    int id = emit(N_AND, arcs);
+    // SLOW_DEBUG: assert this AND node is weak-decomposable. With wDNNF, every
+    // var shared across two AND children must appear in the same polarity in both
+    // subtrees -- otherwise functional synthesis loses witnesses on inputs that
+    // force both children to fire. Catches the bug at *emission time* (with
+    // arc-lit and decision context still on the stack) rather than waiting for
+    // the synth fuzzer to notice missing witnesses post-hoc.
+    SLOW_DEBUG_DO(check_wdnnf_at_and(id, arcs));
+    return id;
   }
 
   // OR of (literal-set -> child) arcs. Drop arcs to FALSE; empty -> FALSE.
@@ -207,6 +218,67 @@ private:
   std::string decl_path;
   std::string arc_path;
 
+#ifdef SLOW_DEBUG
+  // (pos_vars, neg_vars) of every node's reachable subtree (arc lits + child
+  // subtrees). Cheap because we only build it under SLOW_DEBUG.
+  std::vector<std::unordered_set<int>> subtree_pos;
+  std::vector<std::unordered_set<int>> subtree_neg;
+
+  void ensure_subtree(int id) {
+    if ((int)subtree_pos.size() <= id) {
+      subtree_pos.resize(id + 1);
+      subtree_neg.resize(id + 1);
+    }
+  }
+  void record_subtree(int id, const std::vector<Arc>& arcs) {
+    ensure_subtree(id);
+    auto& pos = subtree_pos[id];
+    auto& neg = subtree_neg[id];
+    for (const auto& a : arcs) {
+      for (int l : a.lits) {
+        if (l > 0) pos.insert(l); else neg.insert(-l);
+      }
+      if (a.child >= 0 && a.child < (int)subtree_pos.size()) {
+        for (int v : subtree_pos[a.child]) pos.insert(v);
+        for (int v : subtree_neg[a.child]) neg.insert(v);
+      }
+    }
+  }
+  void check_wdnnf_at_and(int id, const std::vector<Arc>& arcs) {
+    // wDNNF: a var that appears positively in one child's subtree (or its arc)
+    // must not appear negatively in another child's subtree (or its arc).
+    std::vector<std::unordered_set<int>> kid_pos(arcs.size()), kid_neg(arcs.size());
+    for (size_t i = 0; i < arcs.size(); i++) {
+      for (int l : arcs[i].lits) {
+        if (l > 0) kid_pos[i].insert(l); else kid_neg[i].insert(-l);
+      }
+      if (arcs[i].child >= 0 && arcs[i].child < (int)subtree_pos.size()) {
+        for (int v : subtree_pos[arcs[i].child]) kid_pos[i].insert(v);
+        for (int v : subtree_neg[arcs[i].child]) kid_neg[i].insert(v);
+      }
+    }
+    for (size_t i = 0; i < arcs.size(); i++) {
+      for (size_t j = 0; j < arcs.size(); j++) {
+        if (i == j) continue;
+        for (int v : kid_pos[i]) if (kid_neg[j].count(v)) {
+          std::cerr << "*** wDNNF VIOLATION at AND node " << id
+                    << ": var " << v << " is POS in child " << i
+                    << " (node " << arcs[i].child << ") and NEG in child " << j
+                    << " (node " << arcs[j].child << ").\n";
+          std::cerr << "    arcs:";
+          for (const auto& a : arcs) {
+            std::cerr << " (->n" << a.child << " lits:";
+            for (int l : a.lits) std::cerr << " " << l;
+            std::cerr << ")";
+          }
+          std::cerr << "\n";
+          std::abort();
+        }
+      }
+    }
+  }
+#endif
+
   static char type_char(NType t) {
     switch (t) {
       case N_FALSE: return 'f';
@@ -265,6 +337,10 @@ private:
       n_edges++;
     }
     n_nodes++;
+    // SLOW_DEBUG: track the (pos, neg) vars in every node's subtree so the wDNNF
+    // check on AND nodes has correct child subtrees even when the children are
+    // OR/TRUE/FALSE leaves rather than other ANDs.
+    SLOW_DEBUG_DO(record_subtree(id, arcs));
     return id;
   }
 };

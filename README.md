@@ -323,13 +323,14 @@ memory). The default is a faithful d-DNNF:
 ./ganak --compile out.nnf in.cnf
 ```
 
-> **`--synthesis` (experimental, for Boolean functional synthesis only).**
+> **`--synthesis` (for Boolean functional synthesis only).**
 > Adding `--synthesis 1` enables the synthesis share-and-branch mode: an output
 > (non-input) var (`>= indep_support_end`) may be shared across AND children
-> **when it is pure (single polarity) in the residual formula**, while input
-> vars (`< indep_support_end`) stay disjoint. This is the *weak decomposability*
-> condition for **wDNNF** circuits, and the resulting circuit supports Boolean
-> functional synthesis (Skolem functions of the inputs) per:
+> **when it is pure (single polarity) in the residual formula and originally
+> pure (or unused) in the CNF**, while input vars (`< indep_support_end`) stay
+> disjoint. This is the *weak decomposability* condition for **wDNNF** circuits,
+> and the resulting circuit supports Boolean functional synthesis (Skolem
+> functions of the inputs) per:
 >
 > - S. Akshay, J. Arora, S. Chakraborty, S. Krishna, D. Raghunathan, S. Shah,
 >   *Knowledge Compilation for Boolean Functional Synthesis*, FMCAD 2019 —
@@ -341,11 +342,8 @@ memory). The default is a faithful d-DNNF:
 >
 > This mode is **only** for synthesis — it **deliberately produces a WRONG model
 > count** (the shared outputs make sibling components non-independent), so never
-> use it for counting. It yields a smaller circuit (~0.7× of the faithful one).
-> It is a **work in progress**: the round-trip is currently sound on ~98% of
-> fuzzed instances, with a known ~1–2% consistency bug. The default `--compile`
-> (faithful d-DNNF) is already a correct, compact synthesis compiler and should
-> be preferred unless you are working on `--synthesis` itself.
+> use it for counting. The default `--compile` (faithful d-DNNF) is a correct,
+> compact synthesis compiler and may be preferred when its circuit size suffices.
 
 **2. Fix up.** The raw file is correct from the root but keeps Ganak's internal
 ids and may carry unreachable "dead" nodes. `ddnnf-cleanup` drops them and

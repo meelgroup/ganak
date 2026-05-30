@@ -122,28 +122,33 @@ Synthesis notes (empirically established):
   synthesis compiler — the `ddnnf_synth_faithful` ctest exercises it.
 - `--synthesis` (wDNNF share-and-branch): an output var
   (`>= indep_support_end`) may be shared across AND children **only when it is
-  pure (single polarity) in the residual formula** — the weak-decomposability
-  condition (Akshay et al. 2018). Input vars (`< indep_support_end`) are never
+  pure (single polarity) in the residual formula AND originally pure (or unused)
+  in the CNF** — the weak-decomposability condition (Akshay et al. 2018) plus a
+  soundness gate (see below). Input vars (`< indep_support_end`) are never
   shared, so comps stay disjoint over inputs. See `CompAnalyzer::compute_shareable_vars`:
   it computes per-round purity, then runs a **demotion fixpoint** so every active
   clause keeps a non-shareable (bridging) var — nothing is dropped, the circuit
-  stays faithful as a function. A shared (pure) output var must be pinned to its
-  pure polarity everywhere it is set so sibling witnesses agree
-  (`Counter::synth_forced_lit`, used in `decide_lit` and the SAT loop). The count
-  is still **meaningless** (intended — synthesis-only; `main.cpp` suppresses it).
-- **Status:** with the SAT oracle on (the default), the round-trip is sound on
-  ~98% of fuzzed instances (was ~73% *failing*). The remaining ~1–2% is a known
-  consistency bug: the shareable/pure-polarity decision lives in **global** arrays
-  (`shareable[]`), so a var shared at a parent decompose can be (a) mis-forced
-  from a stale value after backtracking, or (b) left unforced because a fresh
-  per-context purity recompute disagrees — two sibling SAT leaves then pin the
-  shared var to conflicting values and the AND of them is empty. A correct fix
-  needs the share decision tied to the **component (stack)**, not a global array,
-  or output-pure-literal *fixing* (assign the pure output var instead of sharing
-  it). `--satsolver 0` is **unsound by design**: without the SAT oracle, output
-  vars get branched in the main search and the backtrack flips a forced-pure
-  decision to its other phase. There is intentionally no `--synthesis` ctest yet
-  (the remaining ~1–2% would fail); `tests/ddnnf_synth.py --synthesis` fuzzes it.
+  stays faithful as a function. A shared output var must be pinned to its
+  polarity everywhere it is set so sibling witnesses agree
+  (`Counter::synth_forced_lit`, used in `decide_lit` and the SAT loop). The pin
+  uses the var's **original** polarity in the CNF (`orig_polarity[]`, computed
+  once in `initialize`), NOT its per-state residual polarity — that was the old
+  wDNNF leak: when one sibling's decisions satisfied all of v's clauses, the
+  residual went from "pure neg" to "free" and the pin flipped to +v, while
+  another sibling still pinned -v. The count is **meaningless** in this mode
+  (intended — synthesis-only; `main.cpp` suppresses it).
+- **Status:** sound. `ddnnf_synth_share_and_branch` ctest exercises it; the
+  fuzzer (`tests/ddnnf_synth.py --synthesis`) is at 0 failures across thousands
+  of random projected instances. The fix has two parts:
+  (1) `compute_shareable_vars` refuses to share an output var whose original CNF
+  has BOTH polarities (no globally-consistent pin exists); and
+  (2) `synth_forced_lit` falls back to `orig_polarity[v]` when the residual is
+  free, instead of always defaulting to +v.
+  The SLOW_DEBUG check `check_wdnnf_at_and` in `ddnnf.hpp` verifies the wDNNF
+  invariant at every `mk_and` and aborts on a violation — turn it on before
+  changing share-mode heuristics. `--satsolver 0` is **still unsound by design**
+  (without the SAT oracle, output vars get branched in the main search and the
+  backtrack flips a forced-pure decision to its other phase).
 
 ### Theory references (`--synthesis`)
 
@@ -198,10 +203,9 @@ do not break when search heuristics reshape the circuit:
   the cleaned file `--strict`, and `ddnnf2dot`. `ddnnf_verify.py` doubles as a
   CLI checker (`--expect-count`, `--cnf`, `--check-decomposable`,
   `--check-weak-decomposable`, `--strict`); bare invocation still prints the count.
-- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful` — the property
-  fuzzers run seeded (so a regression reproduces) and self-check against a
-  brute-force oracle. (No `--synthesis` ctest: that mode is currently unsound,
-  see section 3.)
+- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful`,
+  `ddnnf_synth_share_and_branch` — the property fuzzers run seeded (so a
+  regression reproduces) and self-check against a brute-force oracle.
 
 ## Architecture
 

@@ -573,9 +573,12 @@ if(ENABLE_TESTING)
   # Faithful synthesis (default --compile + SAT-oracle witnesses): sound.
   add_test(NAME ddnnf_synth_faithful
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py --num 30 --seed 1)
-  # NOTE: no --synthesis (share-and-branch) test here -- it deliberately drops
-  # output-var constraints, which yields a smaller circuit but is currently
-  # UNSOUND for synthesis (witnesses missing). See README.md / CLAUDE.md.
+  # wDNNF share-and-branch (--synthesis 1): now sound after the orig_polarity
+  # fix (no originally-impure output shared + state-independent polarity pin).
+  # The fuzzer counts every "no witness" satisfiable X as a failure, so any
+  # regression reintroducing a wDNNF leak is caught here.
+  add_test(NAME ddnnf_synth_share_and_branch
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py --num 30 --seed 1 --synthesis)
 endif()
 
 # -----------------------------------------------------------------------------

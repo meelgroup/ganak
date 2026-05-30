@@ -206,6 +206,21 @@ void CompAnalyzer::initialize(
       for (const auto& bincl: watches[Lit(v, false)].binaries)
         if (bincl.irred()) bin_neg[v].push_back(bincl.lit());
     }
+    // ORIGINAL polarity: scan every irredundant clause once and record which
+    // polarities of v occur. State-independent: never recomputed. Synthesis uses
+    // this to pin a deterministic polarity when the residual is ambiguous (esp.
+    // FREE = no active occurrence, which would otherwise default-pin differently
+    // in different sibling sub-comps -- the wDNNF bug).
+    orig_polarity.assign(n, 0);
+    for (uint32_t v = 1; v < n; v++) {
+      if (!bin_pos[v].empty()) orig_polarity[v] |= 1;
+      if (!bin_neg[v].empty()) orig_polarity[v] |= 2;
+    }
+    for (uint32_t cid = 1; cid < cls_lits.size(); cid++) {
+      for (const Lit l : cls_lits[cid]) {
+        orig_polarity[l.var()] |= (l.sign() ? 1 : 2);
+      }
+    }
     verb_print(1, "[compile-synthesis] wDNNF share-and-branch over pure outputs >= " << indep_end);
   }
 }
@@ -239,6 +254,14 @@ int CompAnalyzer::residual_polarity(uint32_t v) {
 // Boolean function. (The model count stays meaningless; that's fine -- in
 // --synthesis we synthesize, not count.) Inputs (< indep_end) are never shareable,
 // so components stay disjoint over the inputs.
+//
+// SOUNDNESS NOTE (the historical ~1-2% synth-failure bug): purity is a *residual*
+// property -- it depends on which clauses are still active. Two sibling sub-comps
+// (post-decomposition) see DIFFERENT residuals once decisions inside one have
+// flipped clauses on/off, so the same var can end up "pure positive" in one
+// sibling and "pure negative" (or free) in another. synth_forced_lit then pins
+// the var to opposite polarities across siblings, and the AND-of-siblings node
+// loses wDNNF. The mitigation lives in synth_forced_lit and pin_polarity[].
 void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
   // --- residual polarity purity ---
   all_vars_in_comp(super_comp, vt) {
@@ -264,10 +287,19 @@ void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
     for (const Lit o : bin_pos[v]) if (!is_true(o)) { seen_pos[v] = 1; break; }
     for (const Lit o : bin_neg[v]) if (!is_true(o)) { seen_neg[v] = 1; break; }
   }
-  // pure output var -> shareable
+  // pure output var -> shareable, but only if it's also ORIGINALLY pure (or
+  // never occurs) in the formula. Originally-impure outputs (both +v and -v
+  // appear somewhere in the CNF) are NEVER shared because two sibling sub-comps
+  // can land in residuals where v is pure with DIFFERENT polarities (one sibling
+  // has the +v clauses satisfied -> pure neg; another has -v satisfied -> pure
+  // pos). No globally-consistent pin polarity exists for such a var, so sharing
+  // it inevitably violates wDNNF.
   all_vars_in_comp(super_comp, vt) {
     const uint32_t v = *vt;
-    if (v >= indep_end && is_unknown(v) && !(seen_pos[v] && seen_neg[v])) shareable[v] = 1;
+    if (v < indep_end || !is_unknown(v)) continue;
+    if (seen_pos[v] && seen_neg[v]) continue;     // impure right now
+    if (orig_polarity[v] == 3) continue;           // both polarities in original CNF
+    shareable[v] = 1;
   }
 
   // --- demotion fixpoint: no active clause may be entirely shareable ---

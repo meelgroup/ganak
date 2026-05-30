@@ -182,6 +182,16 @@ public:
   vector<vector<Lit>> cls_lits;
   vector<char> seen_pos, seen_neg; // scratch for compute_shareable_vars()
 
+  // Original (state-independent) polarity of every var in the ORIGINAL formula.
+  // Bit 1 set <=> v has some +v occurrence anywhere; bit 2 <=> some -v occurrence.
+  // 0 means v never occurs (truly free in the formula). Computed once in
+  // initialize(); never changes with assignment. The deterministic default the
+  // synthesis pin uses when the *residual* would give a state-dependent answer.
+  vector<uint8_t> orig_polarity;
+  uint8_t get_orig_polarity(uint32_t v) const {
+    return v < orig_polarity.size() ? orig_polarity[v] : 0;
+  }
+
   // Recompute shareable[] for the vars of `super_comp`: a var is shareable iff it
   // is an unknown output var, pure in the residual formula, and -- after a
   // demotion fixpoint -- not the sole bridge of an otherwise all-shareable clause

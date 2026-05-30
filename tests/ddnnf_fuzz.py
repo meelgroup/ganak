@@ -184,7 +184,7 @@ def main():
         # dead nodes, still decomposable, same count + model set.
         if os.path.exists(clean):
             os.remove(clean)
-        rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
+        rc = subprocess.run([CLEANUP, "--strict-decomp", nnf, clean], capture_output=True, text=True)
         if not os.path.exists(clean):
             print(f"FAIL[{t}] ddnnf-cleanup produced no output. stderr:\n{rc.stderr}")
             save_fail(t)

@@ -7,17 +7,18 @@ c c sub-components (the analyzer only sees irreducible clauses). Propagation
 c c inside one sub-component then sets a variable that "belongs" to another
 c c sub-component, which leaks into the OR's arc-lits.
 c c
-c c ddnnf-cleanup REPAIRS this post hoc: its strict-decomp pass scrubs the shared
-c c var from the child that doesn't force it (the other child's models all imply
-c c that var-polarity, so the scrub preserves count + model set). The first two
+c c ddnnf-cleanup --strict-decomp REPAIRS this post hoc: scrubs the shared var
+c c from the child that doesn't force it (the other child's models all imply
+c c that var-polarity, so the scrub preserves count + model set). The pass is
+c c off by default because it can be expensive on large circuits; the first two
 c c RUN lines exercise the raw circuit (count + set still correct), the rest
-c c assert that after cleanup the circuit is strictly decomposable.
+c c assert that after --strict-decomp cleanup the circuit is strictly decomposable.
 c c
 c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
 c c
 c c RUN: %solver --compile %t.nnf %s
 c c RUN: %ddnnf_verify %t.nnf --cnf %s
-c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
+c c RUN: %ddnnf_cleanup --strict-decomp %t.nnf %t.clean.nnf
 c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
 p cnf 16 40
 -6 -14 2 4 0

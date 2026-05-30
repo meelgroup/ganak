@@ -25,25 +25,27 @@ THE SOFTWARE.
 // The streaming compiler writes a valid-but-loose file: root declared first (d4
 // convention), but with the internal node ids and possibly unreachable ("dead")
 // nodes (orphaned when an AND short-circuited to FALSE). Harmless to a root count,
-// but a strict d4 reader wants a clean circuit. Cleanup steps:
+// but a strict d4 reader wants a clean circuit.
 //
-//   1. STRICT-DECOMP REPAIR: when an AND node's children share a variable (a
-//      known artifact of conflict-learned clauses bridging vars across the
-//      analyzer's component split -- the analyzer only sees irreducible
-//      clauses), scrub the shared var from one child's subtree. We pick the
-//      child that DOESN'T force the var (the other child unconditionally
-//      forces it, so the shared mentions are redundant in this AND context).
-//      Cloning protects DAG-shared nodes; arcs with the wrong-polarity lit
-//      become FALSE (dead under this AND anyway). Model count and model set
-//      are preserved (each AND-of-siblings model is unchanged).
-//   2. DEAD-NODE DROP + RENUMBER: BFS from the root, keep only reachable nodes,
-//      renumber to root=1 contiguous (breadth-first).
+// Default pass: BFS from the root, keep only reachable nodes, renumber to root=1
+// contiguous. The model count is unchanged. Final output is the classic two-
+// section d4 file (all declarations, then all arcs).
 //
-// Final output is the classic two-section d4 file (all declarations, then all
-// arcs). Pass --no-strict-decomp to skip step 1.
+// Optional --strict-decomp pass (off by default): repair AND nodes whose
+// children share a variable. Such violations occur when conflict-learned
+// (redundant) clauses bridge variables that CompAnalyzer placed in different
+// sub-components -- the analyzer only sees irreducible clauses. The repair
+// scrubs the shared var from the child that doesn't force it (the other child
+// unconditionally forces it, so the shared mentions are redundant under this
+// AND). Cloning protects DAG-shared nodes; arcs constraining the shared var to
+// the opposite polarity become FALSE (dead under this AND anyway). Model count
+// and model set are preserved. NOTE: O(iters * N * V) where V is the var-set
+// size per node; can be EXPENSIVE on large circuits (10s of seconds + several GB
+// of memory on multi-million-node inputs). Useful when a downstream consumer
+// requires the strict d-DNNF invariant (e.g. circuit-guided sampling).
 //
-// Usage:  ddnnf-cleanup [--no-strict-decomp] <in.nnf> [out.nnf]
-//                                                       ("-" or omitted => stdout)
+// Usage:  ddnnf-cleanup [--strict-decomp] <in.nnf> [out.nnf]
+//                                                  ("-" or omitted => stdout)
 
 #include <algorithm>
 #include <cstdlib>
@@ -244,17 +246,21 @@ int scrub_var(
   return target;
 }
 
-// Top-level driver: iterate until no AND violations remain.
+// Top-level driver: iterate, batching as many independent fixes per pass as we
+// can, until no AND violations remain (or we run out of iterations).
 int cleanup_decomp(
     int root,
     std::unordered_map<int, char>& type,
     std::unordered_map<int, std::vector<Arc>>& arcs) {
   int max_id = 0;
   for (const auto& p : type) max_id = std::max(max_id, p.first);
+  constexpr int kMaxIters = 100;
   int iterations = 0;
+  long long total_fixes = 0;
   while (true) {
-    if (++iterations > 100) {
-      std::cerr << "ddnnf-cleanup: WARN: strict-decomp cleanup did not converge in 100 iterations"
+    if (++iterations > kMaxIters) {
+      std::cerr << "ddnnf-cleanup: WARN: strict-decomp cleanup did not converge in "
+                << kMaxIters << " iterations; output may still violate strict d-DNNF"
                 << std::endl;
       break;
     }
@@ -266,18 +272,21 @@ int cleanup_decomp(
     std::unordered_map<int, int> parent_count;
     compute_parents(root, arcs, parent_count);
 
-    // Find first AND violation
-    bool fixed = false;
+    // One pass: collect every (AND, scrub_child, var, polarity) we can act on,
+    // then apply them. Skipping ANDs whose modified arcs would interfere this
+    // pass keeps things sane; remaining violations re-surface next iteration.
+    int fixes = 0;
+    std::unordered_set<int> touched_children;   // children we've already scrubbed this pass
     for (auto& tpair : type) {
       int nid = tpair.first;
       if (tpair.second != 'a') continue;
       auto ait = arcs.find(nid);
       if (ait == arcs.end()) continue;
       auto& kids = ait->second;
-      // pairwise check for shared vars
-      for (size_t i = 0; i < kids.size() && !fixed; i++) {
-        for (size_t j = i + 1; j < kids.size() && !fixed; j++) {
+      for (size_t i = 0; i < kids.size(); i++) {
+        for (size_t j = i + 1; j < kids.size(); j++) {
           int ci = kids[i].child, cj = kids[j].child;
+          if (touched_children.count(ci) || touched_children.count(cj)) continue;
           auto svi = subtree_vars.find(ci);
           auto svj = subtree_vars.find(cj);
           if (svi == subtree_vars.end() || svj == subtree_vars.end()) continue;
@@ -286,7 +295,6 @@ int cleanup_decomp(
             if (svj->second.count(v)) { shared_var = v; break; }
           }
           if (shared_var == 0) continue;
-          // Decide which child forces the var
           auto fi = forced.find(ci);
           auto fj = forced.find(cj);
           int pi = 0, pj = 0;
@@ -298,46 +306,47 @@ int cleanup_decomp(
             if (fj->second.count(shared_var))  pj = +1;
             if (fj->second.count(-shared_var)) pj = -1;
           }
-          int forced_child = 0, scrub_child = 0;
+          int scrub_child = 0;
           bool polarity = true;
-          if (pi != 0) { forced_child = ci; scrub_child = cj; polarity = (pi > 0); }
-          else if (pj != 0) { forced_child = cj; scrub_child = ci; polarity = (pj > 0); }
+          if (pi != 0)      { scrub_child = cj; polarity = (pi > 0); }
+          else if (pj != 0) { scrub_child = ci; polarity = (pj > 0); }
           else {
             std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var " << shared_var
                       << " but neither child forces it; leaving as-is" << std::endl;
             continue;
           }
-          // Scrub
           std::unordered_map<long long, int> memo;
           int new_scrub = scrub_var(scrub_child, shared_var, polarity, type, arcs,
                                      parent_count, memo, max_id);
           if (new_scrub != scrub_child) {
-            // Patch THIS AND's arc to point at the new (cloned) child
             for (auto& a : kids) if (a.child == scrub_child) a.child = new_scrub;
           }
-          (void)forced_child;
-          fixed = true;
+          touched_children.insert(scrub_child);
+          touched_children.insert(new_scrub);
+          fixes++;
         }
       }
-      if (fixed) break;
     }
-    if (!fixed) break;
+    total_fixes += fixes;
+    if (fixes == 0) break;
   }
+  std::cerr << "ddnnf-cleanup: strict-decomp iters=" << iterations
+            << " fixes=" << total_fixes << std::endl;
   return root;
 }
 
 } // namespace
 
 int main(int argc, char** argv) {
-  bool do_strict_decomp = true;
+  bool do_strict_decomp = false;
   int argi = 1;
-  if (argi < argc && std::string(argv[argi]) == "--no-strict-decomp") {
-    do_strict_decomp = false;
+  if (argi < argc && std::string(argv[argi]) == "--strict-decomp") {
+    do_strict_decomp = true;
     argi++;
   }
   if (argc - argi < 1 || argc - argi > 2) {
     std::cerr << "Usage: " << argv[0]
-              << " [--no-strict-decomp] <in.nnf> [out.nnf]"
+              << " [--strict-decomp] <in.nnf> [out.nnf]"
                  "   (\"-\"/omitted out => stdout)" << std::endl;
     return EXIT_FAILURE;
   }

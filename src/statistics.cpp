@@ -96,6 +96,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
       << setw(5) << synth_shareable_calls << " / "
       << setw(5) << synth_shareable_marked << " / "
       << setw(5) << synth_shareable_demoted);
+    verb_print(1, "synth shareable memo hits      "
+      << setw(5) << synth_shareable_memo_hits);
     verb_print(1, "synth cache-skipped comps      "
       << setw(5) << synth_cache_skipped_comps);
   }

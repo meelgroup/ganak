@@ -167,6 +167,17 @@ public:
   vector<char> claimed_share; // per var: was it added to some component this round
   vector<char> shareable;     // per var: pure output var, kept shared this round
   bool is_shareable(uint32_t v) const { return share_mode && shareable[v]; }
+  // --synthesis Tier-2A memoization: skip compute_shareable_vars when the
+  // (super-comp object, global trail tstamp) pair matches the last call. Same
+  // super-comp at the same trail state -> same result, and shareable[] still
+  // holds that result because no intervening compute_shareable_vars call would
+  // have hit the same pointer (each one updates these fields). Pointer
+  // equality is the right key: it captures "was the most recent call also for
+  // THIS super-comp"; if a different super-comp's analysis ran in between, the
+  // pointer mismatches and we recompute (shareable[] for our vars may have
+  // been overwritten where the vars overlap).
+  const Comp* last_share_super_comp = nullptr;
+  uint64_t last_share_tstamp = 0;
   // Freshly recompute v's residual polarity from the *current* assignment. Bit 1 =
   // v occurs positively in some active (unsatisfied) clause, bit 2 = occurs
   // negatively. 0 => no active occurrence (free). This is the canonical purity

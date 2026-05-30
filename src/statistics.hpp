@@ -122,6 +122,7 @@ public:
   // --synthesis: how often compute_shareable_vars ran, how many vars survived
   // each filter on average, how often cache exclusion fired.
   uint64_t synth_shareable_calls       = 0;
+  uint64_t synth_shareable_memo_hits   = 0; // Tier-2A: skipped recompute (cache hit)
   uint64_t synth_shareable_marked      = 0; // sum across calls
   uint64_t synth_shareable_demoted     = 0; // sum across calls
   uint64_t synth_cache_skipped_comps   = 0;

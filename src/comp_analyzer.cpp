@@ -293,6 +293,18 @@ int CompAnalyzer::residual_polarity(uint32_t v) {
 // the var to opposite polarities across siblings, and the AND-of-siblings node
 // loses wDNNF. The mitigation lives in synth_forced_lit and pin_polarity[].
 void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
+  // Tier-2A memoization: if we ran this same analysis for the same super-comp
+  // at the same global trail tstamp, shareable[] is still valid -- no decision
+  // happened (tstamp unchanged) AND no other super-comp's analysis ran in
+  // between (otherwise last_share_super_comp would point elsewhere). Skipping
+  // saves an O(super-comp) walk and the demotion fixpoint.
+  const uint64_t cur_tstamp = counter->get_tstamp();
+  if (&super_comp == last_share_super_comp && cur_tstamp == last_share_tstamp) {
+    stats.synth_shareable_memo_hits++;
+    return;
+  }
+  last_share_super_comp = &super_comp;
+  last_share_tstamp = cur_tstamp;
   stats.synth_shareable_calls++;
   // --- residual polarity purity ---
   all_vars_in_comp(super_comp, vt) {

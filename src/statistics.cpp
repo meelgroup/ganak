@@ -87,7 +87,7 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
   // --synthesis: zeros in non-synth runs, useful for diagnosing wDNNF cost
   // (high sat_free/sat_pure ratio = lots of redundant pins on free vars).
   if (synth_pin_decide_lit + synth_pin_sat_pure + synth_pin_sat_free
-      + synth_shareable_calls + synth_cache_skipped_comps > 0) {
+      + synth_shareable_calls + synth_share_comps_seen > 0) {
     verb_print(1, "synth pin dec/sat-pure/sat-free "
       << setw(5) << synth_pin_decide_lit << " "
       << setw(5) << synth_pin_sat_pure << " "
@@ -98,8 +98,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
       << setw(5) << synth_shareable_demoted);
     verb_print(1, "synth shareable memo hits      "
       << setw(5) << synth_shareable_memo_hits);
-    verb_print(1, "synth cache-skipped comps      "
-      << setw(5) << synth_cache_skipped_comps);
+    verb_print(1, "synth share-comps (cached)     "
+      << setw(5) << synth_share_comps_seen);
   }
   verb_print(1, "buddy called /unsat ratio           "
     << setw(5) << buddy_called << " / "

@@ -2149,12 +2149,18 @@ RetState Counter::backtrack() {
     }
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
-    // --synthesis: don't cache components with a shared output var (not independent
-    // of siblings -- a hit would under-cover); shared-var-free comps are safe.
-    const bool synth_blocks_cache =
+    // Tier-3A experiment: previously synthesis blocked caching of any
+    // comp containing a shared output var, citing "not independent of
+    // siblings". Pin polarity for shareable v is deterministic from
+    // (residual_polarity, orig_polarity) -- both functions of the comp's
+    // own state, which the cache key already captures. So a cache hit
+    // reuses a sub-circuit that was compiled with the SAME pin, which
+    // means the same Skolem witness -- sound for synthesis. Just count
+    // skips for stats and leave caching on.
+    const bool synth_has_share =
         conf.synthesis && comp_manager->comp_has_shareable(decisions.top().super_comp());
-    if (synth_blocks_cache) stats.synth_cache_skipped_comps++;
-    const bool cacheable = conf.do_use_cache && !synth_blocks_cache;
+    if (synth_has_share) stats.synth_share_comps_seen++;
+    const bool cacheable = conf.do_use_cache;
     if (cacheable) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";

@@ -125,7 +125,7 @@ public:
   uint64_t synth_shareable_memo_hits   = 0; // Tier-2A: skipped recompute (cache hit)
   uint64_t synth_shareable_marked      = 0; // sum across calls
   uint64_t synth_shareable_demoted     = 0; // sum across calls
-  uint64_t synth_cache_skipped_comps   = 0;
+  uint64_t synth_share_comps_seen      = 0; // comps containing a shareable var (Tier-3A: now cached, was excluded)
 
   // buddy stats
   uint64_t buddy_called = 0;

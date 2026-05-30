@@ -145,22 +145,35 @@ Synthesis notes (empirically established):
     `decide_lit` and the polarity heuristic for the [`indep_support_end`,
     `opt_indep_support_end`) "optional indep" band is preserved. Asserted in
     `decide_lit` under `SLOW_DEBUG`.
-  - **`synth_forced_lit` early-out on `orig_polarity[v] == 3`.** Skips the
-    `residual_polarity` scan and pinning for vars that
-    `compute_shareable_vars` would never mark shareable anyway. **Must NOT be
-    gated on `is_shareable(v)`** — that array is per-super-comp scratch and
-    nested `compute_shareable_vars` calls overwrite it; the SAT-leaf would
-    read stale state and sibling witnesses would diverge
-    (`tests/cnf-files/ddnnf/synthesis_stale_shareable_regression.cnf`
+  - **`synth_forced_lit` pins op==3 vars too (Tier 4)** when they're now
+    shareable. Sound because `compute_shareable_vars` only marks an op==3
+    var when the super-comp's residual is NOT pure-neg — so all sibling rps
+    land in {0,1} (decisions never un-satisfy clauses) and the default-+v
+    pin is consistent across siblings. The op==3 + super-comp-rp==2 case
+    stays excluded (no consistent pin exists with the current single-default
+    machinery). **Do NOT gate the pin on `is_shareable(v)`** — that array
+    is per-super-comp scratch and nested `compute_shareable_vars` calls
+    overwrite it; the SAT-leaf would read stale state and sibling witnesses
+    would diverge (`tests/cnf-files/ddnnf/synthesis_stale_shareable_regression.cnf`
     catches this).
   - **`share_mode` auto-off when no candidate exists.** If every output var
     has `orig_polarity == 3`, `initialize()` flips `share_mode` off so the
     `compute_shareable_vars` + cache-skip machinery costs nothing. Printed at
     startup as `[compile-synthesis] no output var is originally pure --
-    share_mode disabled`.
+    share_mode disabled`. (Tier 4 narrowed the "candidate" predicate but
+    didn't widen it — instances where ALL outputs are op==3 still disable
+    share_mode entirely; Tier 4 only buys the op==3 share-and-branch on
+    instances where SOMETHING else triggers share_mode being on.)
   - **Tier-2A memo in `compute_shareable_vars`.** Skips recompute when
     `(super_comp pointer, counter->get_tstamp())` matches the last call —
     same trail-state on the same super-comp ⇒ same result, no walk needed.
+    SLOW_DEBUG cross-checks the memo result against a fresh recompute.
+  - **Tier-3A caches shareable-containing comps.** Pin polarity for a
+    shareable v is state-independent (for op in {0,1,2} the pin is fully
+    determined by op alone; for op==3, Tier 4's rp-≠-2 restriction makes the
+    +v default consistent across siblings). So the cached sub-circuit's
+    baked-in v-witness is correct on reuse. Empirically: synth/faithful
+    circuit-size ratio drops from ~1.01 to ~0.99 across fuzzer runs.
 - **Status:** sound. `ddnnf_synth_share_and_branch` ctest exercises it; the
   fuzzer (`tests/ddnnf_synth.py --synthesis`) is at 0 failures across thousands
   of random projected instances. The fix has two parts:

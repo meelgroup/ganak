@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <unordered_set>
 #include <unistd.h>
 
 namespace GanakInt {
@@ -84,7 +85,12 @@ public:
     }
     if (arcs.empty()) return true_node;
     if (arcs.size() == 1) return arcs[0].child;
-    return emit(N_AND, arcs);
+    int id = emit(N_AND, arcs);
+    // SLOW_DEBUG: strict d-DNNF requires the child subtrees to be pairwise
+    // var-disjoint. Catches the violation at emission time (decision context
+    // still live) instead of after-the-fact via ddnnf_verify.py.
+    SLOW_DEBUG_DO(check_decomposable_at_and(id, arcs));
+    return id;
   }
 
   // OR of (literal-set -> child) arcs. Drop arcs to FALSE; empty -> FALSE.
@@ -209,6 +215,47 @@ private:
   std::string decl_path;
   std::string arc_path;
 
+#ifdef SLOW_DEBUG
+  // Per-node set of vars reachable in its subtree (arc lits + child subtree vars).
+  // Built incrementally because every arc points to a lower id (children always
+  // exist when we add an arc).
+  std::vector<std::unordered_set<int>> subtree_vars;
+  void record_subtree(int id, const std::vector<Arc>& arcs) {
+    if ((int)subtree_vars.size() <= id) subtree_vars.resize(id + 1);
+    auto& vs = subtree_vars[id];
+    for (const auto& a : arcs) {
+      for (int l : a.lits) vs.insert(std::abs(l));
+      if (a.child >= 0 && a.child < (int)subtree_vars.size())
+        for (int v : subtree_vars[a.child]) vs.insert(v);
+    }
+  }
+  void check_decomposable_at_and(int id, const std::vector<Arc>& arcs) {
+    std::vector<std::unordered_set<int>> kid_vars(arcs.size());
+    for (size_t i = 0; i < arcs.size(); i++) {
+      for (int l : arcs[i].lits) kid_vars[i].insert(std::abs(l));
+      if (arcs[i].child >= 0 && arcs[i].child < (int)subtree_vars.size())
+        for (int v : subtree_vars[arcs[i].child]) kid_vars[i].insert(v);
+    }
+    for (size_t i = 0; i < arcs.size(); i++) {
+      for (size_t j = i + 1; j < arcs.size(); j++) {
+        for (int v : kid_vars[i]) if (kid_vars[j].count(v)) {
+          std::cerr << "*** STRICT-DECOMP VIOLATION at AND node " << id
+                    << ": var " << v << " in both child " << i
+                    << " (node " << arcs[i].child << ") and child " << j
+                    << " (node " << arcs[j].child << ").\n    arcs:";
+          for (const auto& a : arcs) {
+            std::cerr << " (->n" << a.child << " lits:";
+            for (int l : a.lits) std::cerr << " " << l;
+            std::cerr << ")";
+          }
+          std::cerr << "\n";
+          std::abort();
+        }
+      }
+    }
+  }
+#endif
+
   static char type_char(NType t) {
     switch (t) {
       case N_FALSE: return 'f';
@@ -267,6 +314,9 @@ private:
       n_edges++;
     }
     n_nodes++;
+    // SLOW_DEBUG: maintain per-node subtree var sets so check_decomposable_at_and
+    // sees correct child sets even when a child is a leaf (TRUE/FALSE) or OR.
+    SLOW_DEBUG_DO(record_subtree(id, arcs));
     return id;
   }
 };

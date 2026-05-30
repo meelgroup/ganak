@@ -208,7 +208,7 @@ slow when enabled. Turn on the least expensive flag that catches your bug.
 | Flag | Gates | What it does | Cost |
 |------|-------|--------------|------|
 | `VERBOSE_DEBUG` | `debug_print` / `VERBOSE_DEBUG_DO` | Prints a full trace of the search (decisions, propagations, backtracks, component splits, counts). Enable on a *minimized* instance only — output is huge. | very high |
-| `SLOW_DEBUG` | `SLOW_DEBUG_DO` | Internal consistency assertions (trail sanity, component/var invariants, cache invariants). First thing to turn on for a suspected logic bug. | high |
+| `SLOW_DEBUG` | `SLOW_DEBUG_DO` | Internal consistency assertions (trail sanity, component/var invariants, cache invariants). Also enables `check_decomposable_at_and` in `ddnnf.hpp`: aborts at emission time if an AND child shares a var with another, with the offending var + child node ids + arc-lits printed. First thing to turn on for a suspected logic bug. | high |
 | `CHECK_PROPAGATED` | `CHECK_PROPAGATED_DO` | After key steps, asserts every clause is properly propagated / not silently conflicting (`check_all_propagated_conflicted`, `check_trail`). Catches BCP / watch-list bugs. | high |
 | `CHECK_IMPLIED` | `CHECK_IMPLIED_DO` | Asserts learnt / 1-UIP clauses are actually implied by the formula (`check_implied`). Catches conflict-analysis bugs. | high |
 | `VERY_SLOW_DEBUG` | `VERY_SLOW_DEBUG_DO` | Even more expensive invariant checks than `SLOW_DEBUG`. | very high |

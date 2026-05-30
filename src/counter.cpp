@@ -992,6 +992,16 @@ int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lit
   std::vector<DDNNFCompiler::Arc> arcs;
   if (left  != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{left,  ddnnf->left_lits[lev]});
   if (right != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{right, right_lits});
+  VERBOSE_DEBUG_DO({
+    std::cerr << "[OR-build] lev=" << lev << " super_comp_id=" << top.super_comp() << " super_vars={";
+    const auto& sc = comp_manager->get_super_comp(top);
+    all_vars_in_comp(sc, vp) std::cerr << " " << *vp;
+    std::cerr << " } left_lits={";
+    for (int l : ddnnf->left_lits[lev]) std::cerr << " " << l;
+    std::cerr << " } right_lits={";
+    for (int l : right_lits) std::cerr << " " << l;
+    std::cerr << " } left_kid=" << left << " right_kid=" << right << "\n";
+  });
   return ddnnf->mk_or(std::move(arcs));
 }
 

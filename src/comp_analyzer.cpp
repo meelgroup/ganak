@@ -299,10 +299,25 @@ void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
   // between (otherwise last_share_super_comp would point elsewhere). Skipping
   // saves an O(super-comp) walk and the demotion fixpoint.
   const uint64_t cur_tstamp = counter->get_tstamp();
-  if (&super_comp == last_share_super_comp && cur_tstamp == last_share_tstamp) {
+  const bool memo_hit =
+      (&super_comp == last_share_super_comp && cur_tstamp == last_share_tstamp);
+#ifndef SLOW_DEBUG
+  if (memo_hit) {
     stats.synth_shareable_memo_hits++;
     return;
   }
+#else
+  // SLOW_DEBUG: don't trust the memo blindly. Snapshot shareable[] for the
+  // super-comp's vars, run the full recompute, then assert byte-equal. Catches
+  // a future change that breaks the "same (super_comp, tstamp) -> same result"
+  // invariant (e.g. quietly mutating shareable[] from elsewhere, or computing
+  // shareability from state not captured by tstamp).
+  vector<char> memo_snapshot;
+  if (memo_hit) {
+    stats.synth_shareable_memo_hits++;
+    all_vars_in_comp(super_comp, vt) memo_snapshot.push_back(shareable[*vt]);
+  }
+#endif
   last_share_super_comp = &super_comp;
   last_share_tstamp = cur_tstamp;
   stats.synth_shareable_calls++;
@@ -375,6 +390,25 @@ void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
         shareable[v] = 0; stats.synth_shareable_demoted++; break;
       }
   }
+#ifdef SLOW_DEBUG
+  // Verify the Tier-2A memo: if this was a memo hit, the freshly recomputed
+  // shareable[] for super_comp's vars must byte-equal the snapshot we took
+  // before recomputing. Aborts at the first diverging var, naming it.
+  if (memo_hit) {
+    size_t i = 0;
+    all_vars_in_comp(super_comp, vt) {
+      const uint32_t v = *vt;
+      if (shareable[v] != memo_snapshot[i]) {
+        cerr << "Tier-2A memo divergence: super_comp=" << &super_comp
+             << " tstamp=" << cur_tstamp << " v=" << v
+             << " memo=" << (int)memo_snapshot[i]
+             << " recompute=" << (int)shareable[v] << endl;
+        release_assert(false && "Tier-2A memo: shareable[] diverged from fresh recompute");
+      }
+      i++;
+    }
+  }
+#endif
 }
 
 // returns true, iff the comp found is non-trivial

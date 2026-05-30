@@ -310,6 +310,47 @@ code. `../count_fuzzer` is a fairly complete find-and-isolate system:
 
 3. **Re-fuzz** after the fix (`./fuzz.py --only 200 ...`) before committing.
 
+## Debugging a synthesis bug (`--synthesis` / wDNNF)
+
+When `ddnnf_synth.py --synthesis` reports a "no witness" failure or a SLOW_DEBUG
+abort (`check_wdnnf_at_and` in `ddnnf.hpp`), the script has the same
+find-and-isolate flow as `count_fuzzer`:
+
+1. **Reproduce.** The fuzzer prints `seed=<N>` on every run; rerun with that
+   seed to get the same instance. `--diagnose` classifies the failure: is the
+   emitted circuit weak-decomposable? strictly decomposable? which AND node
+   leaks which shared var? which input assignment `X` had no witness?
+   ```
+   python3 tests/ddnnf_synth.py --synthesis --num 200 --seed N --diagnose
+   ```
+
+2. **Minimize.** `--minimize` runs a per-clause delta debugger that keeps
+   removing clauses while the failure persists. Treats both "wrong witness"
+   and "ganak crashed (no .nnf)" as failures, so SLOW_DEBUG aborts can be
+   reduced the same way as silent witness failures. Saves to
+   `/tmp/ddnnf_synth/fail_min_*.cnf` (typically 3–6 clauses).
+   ```
+   python3 tests/ddnnf_synth.py --synthesis --num 200 --seed N --diagnose --minimize
+   ```
+   Tip: pass `--minvars 4 --maxvars 9` to bias toward small instances —
+   minimization is faster and the reproducer is easier to read.
+
+3. **Pinpoint.** Once you have a tiny CNF, rebuild with the relevant
+   `common.hpp` flags and run it directly:
+   - wrong witness or wDNNF leak → enable `SLOW_DEBUG`; the wDNNF check in
+     `ddnnf.hpp::mk_and` aborts at the first AND node whose children disagree
+     on a shared var's polarity, printing the offending var and child node ids
+     with the live decision context still on the stack.
+   - then add `VERBOSE_DEBUG` to read the trace; `synth_forced_lit` already
+     emits `[synth] v=<v> rp=<rp> orig_pol=<op> pin_pol=<pol>` per call, which
+     is usually enough to see which sibling pinned which polarity.
+
+4. **Re-fuzz** after the fix:
+   - `python3 tests/ddnnf_synth.py --synthesis --num 200 --seed N` (the failing
+     seed) — confirms this specific case is fixed.
+   - `python3 tests/ddnnf_synth.py --synthesis --num 200` (random seeds) and
+     `cd build && ctest -R synth` — confirms no new regressions.
+
 ## Data Analysis
 
 Previous benchmark runs are stored under `build/data/` as `out-ganak-*/`

@@ -977,6 +977,14 @@ void Counter::compile_add_free_var(uint32_t v) {
 Lit Counter::synth_forced_lit(uint32_t v) {
   auto& ana = comp_manager->get_ana();
   if (!compiling() || !ana.share_mode || v < ana.indep_end) return Lit();
+  // Soundness/perf gate: pin only vars that compute_shareable_vars actually
+  // marked shareable in the current super-comp. If shareable[v]==0, v is in
+  // at most ONE sub-comp (record_comp short-circuits at line 386 only when
+  // is_shareable; otherwise normal traversal claims v exactly once), so no
+  // sibling SAT call needs to agree on v's value -- pinning would be pure
+  // overhead, plus the residual_polarity scan below. On example2.cnf this
+  // skips ~1.5M residual_polarity scans per run (sharing never fires there).
+  if (!ana.is_shareable(v)) return Lit();
   const int rp = ana.residual_polarity(v);
   if ((rp & 1) && (rp & 2)) {
     debug_print(COLYEL "[synth] v=" << v << " rp=" << rp << " IMPURE -> no pin");

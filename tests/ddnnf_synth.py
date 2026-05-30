@@ -37,13 +37,23 @@ def unique_file(begin, end=".cnf"):
             i += 1
 
 
-def gen(nv, nc):
+def gen(nv, nc, drop_taut=True):
     cls = []
-    for _ in range(nc):
+    while len(cls) < nc:
         c = set()
-        while len(c) < min(3, nv):
+        seen = set()
+        ok = True
+        for _ in range(min(3, nv)):
             v = random.randint(1, nv)
+            if v in seen:
+                # repeated var -> tautology or duplicate lit; skip & retry this lit
+                continue
+            seen.add(v)
             c.add(v if random.random() < 0.5 else -v)
+        if drop_taut and any(-l in c for l in c):
+            ok = False  # tautology; skip
+        if not ok or not c:
+            continue
         cls.append(list(c))
     return cls
 
@@ -58,6 +68,107 @@ def write_cnf(path, nv, k, cls):
 
 def sat(cls, a):
     return all(any((l > 0) == a[abs(l)] for l in c) for c in cls)
+
+
+def _fails(cnf_path, args, synth):
+    """Compile `cnf_path` and return True iff some satisfiable X has no witness."""
+    nnf_path = cnf_path + ".nnf"
+    if os.path.exists(nnf_path):
+        os.remove(nnf_path)
+    a = [GANAK, "--compile", nnf_path]
+    if synth:
+        a += ["--synthesis", "1"]
+    if args.satoff:
+        a += ["--satsolver", "0"]
+    if args.ganak_args:
+        a += args.ganak_args.split()
+    a.append(cnf_path)
+    subprocess.run(a, capture_output=True, text=True)
+    if not os.path.exists(nnf_path):
+        return False  # no nnf -> not the failure we're chasing
+    nodes, arcs, root = dv.parse(nnf_path)
+    # parse cnf
+    cls = []
+    k = None
+    nv = 0
+    with open(cnf_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("c p show"):
+                ks = [int(x) for x in line.split()[3:] if x != "0"]
+                k = len(ks)
+                continue
+            if line[0] == "c":
+                continue
+            if line[0] == "p":
+                nv = int(line.split()[2])
+                continue
+            lits = [int(x) for x in line.split() if x != "0"]
+            if lits:
+                cls.append(lits)
+    if k is None:
+        return False
+    for bits in itertools.product((False, True), repeat=nv):
+        assign = {v + 1: bits[v] for v in range(nv)}
+        if not sat(cls, assign):
+            continue
+        xb = bits[:k]
+        xa = {v + 1: xb[v] for v in range(k)}
+        psi = dv.synthesize(nodes, arcs, root, xa)
+        if psi is None:
+            return True
+        full = {v: psi.get(v, False) for v in range(1, nv + 1)}
+        full.update(xa)
+        if not sat(cls, full):
+            return True
+    return False
+
+
+def _minimize(orig_cnf, fail_cnf, args, synth):
+    """Delta-debug clauses: try removing each clause; keep removal if the
+    failure persists. Saves to fail_min_*.cnf."""
+    print("  minimizing (delta-debug clauses)...")
+    with open(orig_cnf) as f:
+        lines = f.readlines()
+    header = [l for l in lines if l.startswith("c") or l.startswith("p")]
+    cls_lines = [l for l in lines if not (l.startswith("c") or l.startswith("p"))]
+    tmp = os.path.join(TMP, "minim_tmp.cnf")
+    cur = list(cls_lines)
+    changed = True
+    while changed:
+        changed = False
+        i = 0
+        while i < len(cur):
+            cand = cur[:i] + cur[i + 1:]
+            with open(tmp, "w") as f:
+                pcnf = next((l for l in header if l.startswith("p")), None)
+                if pcnf:
+                    parts = pcnf.split()
+                    parts[3] = str(len(cand))
+                    pcnf = " ".join(parts) + "\n"
+                f.writelines(l for l in header if not l.startswith("p"))
+                if pcnf:
+                    f.write(pcnf)
+                f.writelines(cand)
+            if _fails(tmp, args, synth):
+                cur = cand
+                changed = True
+            else:
+                i += 1
+    out = unique_file("fail_min", ".cnf")
+    with open(out, "w") as f:
+        pcnf = next((l for l in header if l.startswith("p")), None)
+        if pcnf:
+            parts = pcnf.split()
+            parts[3] = str(len(cur))
+            pcnf = " ".join(parts) + "\n"
+        f.writelines(l for l in header if not l.startswith("p"))
+        if pcnf:
+            f.write(pcnf)
+        f.writelines(cur)
+    print(f"  minimized: {out} ({len(cur)} clauses)")
 
 
 def parse_args(argv):
@@ -87,6 +198,19 @@ def parse_args(argv):
                    help="run all instances instead of stopping at the first wrong "
                         "case, and tally every failing X within each instance "
                         "(default: stop immediately on the first failure)")
+    p.add_argument("--diagnose", action="store_true",
+                   help="on failure, classify (weak-decomposable yes/no, which AND "
+                        "node violates wDNNF, which X has no witness) and print")
+    p.add_argument("--noTautology", action="store_true", default=True,
+                   help="(default on) reject tautological / repeated-var clauses "
+                        "in random generation -- they confuse the diagnostic; pass "
+                        "--no-noTautology to allow them")
+    p.add_argument("--no-noTautology", dest="noTautology", action="store_false")
+    p.add_argument("--minimize", action="store_true",
+                   help="after first failure, delta-debug (delete clauses) while "
+                        "preserving the failure; saves the minimized fail_min_*.cnf")
+    p.add_argument("--ganak-args", default="",
+                   help="extra args to pass to ganak (e.g. '--cache 0')")
     args = p.parse_args(argv)
     if args.minvars < 1 or args.maxvars < args.minvars:
         p.error("need 1 <= --minvars <= --maxvars")
@@ -118,7 +242,7 @@ def main():
         nv = random.randint(args.minvars, args.maxvars)
         k = random.randint(2, max(2, nv - 2))   # |X|
         nc = random.randint(nv, nv * 3)
-        cls = gen(nv, nc)
+        cls = gen(nv, nc, drop_taut=args.noTautology)
         write_cnf(cnf, nv, k, cls)
 
         if os.path.exists(nnf):
@@ -128,6 +252,8 @@ def main():
             a += ["--synthesis", "1"]
         if args.satoff:
             a += ["--satsolver", "0"]
+        if args.ganak_args:
+            a += args.ganak_args.split()
         a.append(cnf)
         r = subprocess.run(a, capture_output=True, text=True)
         if not os.path.exists(nnf):
@@ -172,8 +298,20 @@ def main():
         if bad:
             print(f"FAIL[{t}] synthesis invalid (nv={nv} k={k} nc={nc} "
                   f"bad_X={bad}/{len(solvable)})")
-            shutil.copy(cnf, unique_file("fail", ".cnf"))
-            shutil.copy(nnf, unique_file("fail", ".nnf"))
+            cnf_fail = unique_file("fail", ".cnf")
+            nnf_fail = unique_file("fail", ".nnf")
+            shutil.copy(cnf, cnf_fail)
+            shutil.copy(nnf, nnf_fail)
+            if args.diagnose:
+                ok_w, msg_w = dv.check_weak_decomposable(nodes, arcs, root)
+                ok_d, msg_d = dv.check_decomposable(nodes, arcs, root)
+                shared = dv.shared_and_vars(nodes, arcs, root)
+                print(f"  wDNNF: {ok_w} ({msg_w})")
+                print(f"  d-DNNF: {ok_d} ({msg_d})")
+                print(f"  shared vars across AND children: {sorted(shared)}")
+                print(f"  saved: {cnf_fail} / {nnf_fail}")
+            if args.minimize and not args.keep_going:
+                _minimize(cnf, cnf_fail, args, synth)
             fails += 1
             if not args.keep_going:
                 print(f"stopping at first failure (seed={args.seed}); "

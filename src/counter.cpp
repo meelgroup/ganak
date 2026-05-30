@@ -4408,8 +4408,15 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
     // clause propagation that immediately conflicts (so no circuit emission for
     // this branch). The fuzzer + wDNNF check on mk_and catches the real
     // soundness violations, so we only WARN here instead of aborting.
+    //
+    // Also gated on orig_polarity[v] != 3: synth_forced_lit ONLY pins vars
+    // with orig_polarity != 3 (vars with both polarities in the original CNF
+    // are never shareable so don't need a consistent pin), so any
+    // orig_polarity==3 var can legitimately be decided to either polarity --
+    // checking it would fire on harmless decisions, not on actual unsoundness.
     if (compiling() && comp_manager->get_ana().share_mode
         && lit.var() >= comp_manager->get_ana().indep_end && val(lit) == X_TRI
+        && comp_manager->get_ana().get_orig_polarity(lit.var()) != 3
         && ant.isNull()) {
       // Only check DECISIONS (ant.isNull()); propagations may legitimately set
       // an "anti-pure" lit and then immediately conflict.

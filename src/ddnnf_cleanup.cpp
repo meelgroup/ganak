@@ -25,26 +25,26 @@ THE SOFTWARE.
 // The streaming compiler writes a valid-but-loose file: root declared first (d4
 // convention), but with the internal node ids and possibly unreachable ("dead")
 // nodes (orphaned when an AND short-circuited to FALSE). Harmless to a root count,
-// but a strict d4 reader wants a clean circuit.
+// but a strict d4 reader wants a clean circuit. Cleanup steps:
 //
-// Default pass: BFS from the root, keep only reachable nodes, renumber to root=1
-// contiguous. The model count is unchanged. Final output is the classic two-
-// section d4 file (all declarations, then all arcs).
+//   1. STRICT-DECOMP REPAIR: when an AND node's children share a variable (a
+//      known artifact of conflict-learned clauses bridging vars across the
+//      analyzer's component split -- the analyzer only sees irreducible
+//      clauses), scrub the shared var from one child's subtree. We pick the
+//      child that DOESN'T force the var (the other child unconditionally
+//      forces it, so the shared mentions are redundant in this AND context).
+//      Cloning protects DAG-shared nodes; arcs with the wrong-polarity lit
+//      become FALSE (dead under this AND anyway). Model count and model set
+//      are preserved (each AND-of-siblings model is unchanged). O(iters * N *
+//      V) per pass with hash-set var/lit sets; can be slow + memory-hungry on
+//      multi-million-node circuits, so pass --no-strict-decomp to skip it.
+//   2. DEAD-NODE DROP + RENUMBER: BFS from the root, keep only reachable nodes,
+//      renumber to root=1 contiguous (breadth-first).
 //
-// Optional --strict-decomp pass (off by default): repair AND nodes whose
-// children share a variable. Such violations occur when conflict-learned
-// (redundant) clauses bridge variables that CompAnalyzer placed in different
-// sub-components -- the analyzer only sees irreducible clauses. The repair
-// scrubs the shared var from the child that doesn't force it (the other child
-// unconditionally forces it, so the shared mentions are redundant under this
-// AND). Cloning protects DAG-shared nodes; arcs constraining the shared var to
-// the opposite polarity become FALSE (dead under this AND anyway). Model count
-// and model set are preserved. NOTE: O(iters * N * V) where V is the var-set
-// size per node; can be EXPENSIVE on large circuits (10s of seconds + several GB
-// of memory on multi-million-node inputs). Useful when a downstream consumer
-// requires the strict d-DNNF invariant (e.g. circuit-guided sampling).
+// Final output is the classic two-section d4 file (all declarations, then all
+// arcs).
 //
-// Usage:  ddnnf-cleanup [--strict-decomp] <in.nnf> [out.nnf]
+// Usage:  ddnnf-cleanup [--no-strict-decomp] <in.nnf> [out.nnf]
 //                                                  ("-" or omitted => stdout)
 
 #include <algorithm>
@@ -338,15 +338,15 @@ int cleanup_decomp(
 } // namespace
 
 int main(int argc, char** argv) {
-  bool do_strict_decomp = false;
+  bool do_strict_decomp = true;
   int argi = 1;
-  if (argi < argc && std::string(argv[argi]) == "--strict-decomp") {
-    do_strict_decomp = true;
+  if (argi < argc && std::string(argv[argi]) == "--no-strict-decomp") {
+    do_strict_decomp = false;
     argi++;
   }
   if (argc - argi < 1 || argc - argi > 2) {
     std::cerr << "Usage: " << argv[0]
-              << " [--strict-decomp] <in.nnf> [out.nnf]"
+              << " [--no-strict-decomp] <in.nnf> [out.nnf]"
                  "   (\"-\"/omitted out => stdout)" << std::endl;
     return EXIT_FAILURE;
   }

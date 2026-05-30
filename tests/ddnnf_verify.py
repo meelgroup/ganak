@@ -165,55 +165,57 @@ def function_models(nodes, arcs, root, nvars):
 
 def synthesize(nodes, arcs, root, xassign):
     """Functional synthesis: given input assignment `xassign` (var->bool over X),
-    follow the circuit to a satisfying path and return a full assignment, reading
-    the Y vars off arc literals. None if no path is consistent with xassign."""
+    find a satisfying path through the circuit and return a full assignment, reading
+    the Y vars off arc literals. None if no path is consistent with xassign.
 
-    def lit_ok(l):
-        v = abs(l)
-        if v in xassign:        # input variable: must match X
-            return (l > 0) == xassign[v]
-        return True             # output variable: free to take the arc's value
+    This is a COMPLETE backtracking extractor: it explores alternative OR arcs and
+    AND-child combinations rather than greedily committing, so it only returns None
+    when the circuit (conditioned on X) genuinely has no model. A greedy extractor
+    can report spurious failures on a faithful wDNNF circuit, so completeness is
+    what makes "no witness" a real soundness signal rather than a test artefact."""
 
-    def add(a, lits):
+    def merge(a, lits):
+        # extend assignment `a` with arc literals; None on any conflict (with X or a)
+        b = dict(a)
         for l in lits:
-            v, b = abs(l), l > 0
-            if v in a and a[v] != b:
-                return False
-            a[v] = b
-        return True
+            v, val = abs(l), l > 0
+            if v in xassign and val != xassign[v]:
+                return None
+            if v in b and b[v] != val:
+                return None
+            b[v] = val
+        return b
 
-    def rec(nid):
+    def gen(nid, a):
+        # yield every assignment that satisfies subtree `nid` and extends `a`
         t = nodes[nid]
-        if t == 't':
-            return {}
         if t == 'f':
-            return None
+            return
+        if t == 't':
+            yield a
+            return
         if t == 'o':
             for c, lits in arcs[nid]:
-                if not all(lit_ok(l) for l in lits):
-                    continue
-                sub = rec(c)
-                if sub is None:
-                    continue
-                a = dict(sub)
-                if add(a, lits):
-                    return a
-            return None
-        # AND: all children must agree
-        a = {}
-        for c, lits in arcs[nid]:
-            if not all(lit_ok(l) for l in lits):
-                return None
-            sub = rec(c)
-            if sub is None or not add(a, lits):
-                return None
-            for v, b in sub.items():
-                if v in a and a[v] != b:
-                    return None
-                a[v] = b
-        return a
+                b = merge(a, lits)
+                if b is not None:
+                    yield from gen(c, b)
+            return
+        # AND: every child must hold simultaneously (shared vars must agree)
+        def comb(i, acc):
+            if i == len(arcs[nid]):
+                yield acc
+                return
+            c, lits = arcs[nid][i]
+            b = merge(acc, lits)
+            if b is None:
+                return
+            for sol in gen(c, b):
+                yield from comb(i + 1, sol)
+        yield from comb(0, a)
 
-    return rec(root)
+    for sol in gen(root, dict(xassign)):
+        return sol
+    return None
 
 
 def subtree_vars(nodes, arcs, root):

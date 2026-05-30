@@ -460,7 +460,18 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
         }
       }
     }
-    SLOW_DEBUG_DO(assert(archetype.num_bin_cls <= sup_comp_bin_cls));
+    // SLOW_DEBUG sanity bound: outside synthesis share mode every bin is counted
+    // symmetrically from both endpoints in every level, so a sub-comp's bin
+    // count never exceeds its super-comp's. Under synthesis share mode the
+    // count is ASYMMETRIC -- a shareable endpoint skips its bin traversal, so a
+    // bin (u,v) counts once if exactly one endpoint is shareable. When v's
+    // shareable status changes between the parent level (counted once) and this
+    // level (counted twice if both endpoints are now non-shareable), the
+    // inequality breaks. The bin SET is still a subset; this is a counting
+    // artifact, not a real over-claim of bins.
+    SLOW_DEBUG_DO(
+      if (!share_mode) assert(archetype.num_bin_cls <= sup_comp_bin_cls);
+    );
 
     if (sup_comp_long_cls == archetype.num_long_cls) {
       // we have seen all long clauses

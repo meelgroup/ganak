@@ -234,7 +234,24 @@ void CompAnalyzer::initialize(
         orig_polarity[l.var()] |= (l.sign() ? 1 : 2);
       }
     }
-    verb_print(1, "[compile-synthesis] wDNNF share-and-branch over pure outputs >= " << indep_end);
+    // If NO output var has orig_polarity < 3 (i.e. every output var appears in
+    // both polarities in the original CNF), compute_shareable_vars can NEVER
+    // mark anything as shareable -- the orig_polarity==3 filter (the soundness
+    // gate for "no globally-consistent pin polarity") rules them all out
+    // regardless of the residual. In that case the whole share_mode pipeline is
+    // dead weight: O(super-comp) work per analysis round and a SAT-loop pin
+    // check per decision, all producing nothing. Disable share_mode up front.
+    bool any_candidate = false;
+    for (uint32_t v = indep_end; v <= max_var; v++) {
+      if (orig_polarity[v] != 3) { any_candidate = true; break; }
+    }
+    if (!any_candidate) {
+      share_mode = false;
+      verb_print(1, "[compile-synthesis] no output var is originally pure"
+        " -- share_mode disabled (faithful-mode performance)");
+    } else {
+      verb_print(1, "[compile-synthesis] wDNNF share-and-branch over pure outputs >= " << indep_end);
+    }
   }
 }
 

@@ -50,6 +50,11 @@ void CompAnalyzer::initialize(
   var_freq_scores.resize(max_var + 1, 0);
   const uint32_t n = max_var+1;
 
+  // --synthesis (wDNNF): set up sharing of pure output vars. We build signed
+  // occurrence data below so residual polarity purity can be computed per round.
+  share_mode = (conf.synthesis && !conf.compile_fname.empty());
+  indep_end = counter->get_indep_support_end();
+
   debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
 
   auto mysorter = [&] (ClauseOfs a1, ClauseOfs b1) {
@@ -65,9 +70,12 @@ void CompAnalyzer::initialize(
   vector<vector<ClData>> unif_occ_long(n);
   long_clauses_data.clear();
   long_clauses_data.push_back(SENTINEL_LIT); // MUST start with a sentinel!
+  // --synthesis: full signed literals per clause id (ids run 1..#long_cls).
+  if (share_mode) { cls_lits.clear(); cls_lits.resize(long_irred_cls.size() + 2); }
   for (const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
+    if (share_mode) cls_lits[max_clid].assign(cl.begin(), cl.end());
     const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
       Lit const blk_lit = cl[cl.size()/2];
@@ -184,13 +192,90 @@ void CompAnalyzer::initialize(
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
 
-  // --synthesis: non-input (output) vars (>= indep_end) are shareable across
-  // comps; input vars (< indep_end) are kept disjoint.
-  share_mode = (conf.synthesis && !conf.compile_fname.empty());
-  indep_end = counter->get_indep_support_end();
+  // --synthesis (wDNNF): build signed binary occ lists and per-round scratch.
   if (share_mode) {
     claimed_share.assign(max_var + 1, 0);
-    verb_print(1, "[compile-synthesis] share-and-branch over outputs >= " << indep_end);
+    shareable.assign(max_var + 1, 0);
+    seen_pos.assign(max_var + 1, 0);
+    seen_neg.assign(max_var + 1, 0);
+    bin_pos.assign(n, {});
+    bin_neg.assign(n, {});
+    for (uint32_t v = 1; v < n; v++) {
+      for (const auto& bincl: watches[Lit(v, true)].binaries)
+        if (bincl.irred()) bin_pos[v].push_back(bincl.lit());
+      for (const auto& bincl: watches[Lit(v, false)].binaries)
+        if (bincl.irred()) bin_neg[v].push_back(bincl.lit());
+    }
+    verb_print(1, "[compile-synthesis] wDNNF share-and-branch over pure outputs >= " << indep_end);
+  }
+}
+
+// --synthesis (wDNNF): recompute shareable[] for the current super-comp.
+// A var is initially shareable iff it is an unknown OUTPUT var (>= indep_end) that
+// is PURE (appears in a single polarity) in the residual formula -- this is the
+// weak-decomposability condition (Akshay et al. 2018): a shared var in a single
+// polarity never causes a witness-extraction conflict. Then a demotion fixpoint
+// un-shares one var of every *active* clause whose remaining literals are ALL
+// shareable, so each clause keeps a bridging (non-shareable) var and is claimed by
+// exactly one component -- nothing is dropped, keeping the circuit faithful as a
+// Boolean function. (The model count stays meaningless; that's fine -- in
+// --synthesis we synthesize, not count.) Inputs (< indep_end) are never shareable,
+// so components stay disjoint over the inputs.
+void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
+  // --- residual polarity purity ---
+  all_vars_in_comp(super_comp, vt) {
+    const uint32_t v = *vt;
+    shareable[v] = 0; seen_pos[v] = 0; seen_neg[v] = 0;
+  }
+  // long/ternary clauses (signed lits via cls_lits); skip satisfied clauses.
+  all_cls_in_comp(super_comp, ci) {
+    const auto& lits = cls_lits[*ci];
+    bool sat = false;
+    for (const Lit l : lits) if (is_true(l)) { sat = true; break; }
+    if (sat) continue;
+    for (const Lit l : lits) {
+      const uint32_t vv = l.var();
+      if (vv < indep_end || !is_unknown(vv)) continue;
+      if (l.sign()) seen_pos[vv] = 1; else seen_neg[vv] = 1;
+    }
+  }
+  // binary clauses (signed via bin_pos/bin_neg); (v OR o) is active iff o not true.
+  all_vars_in_comp(super_comp, vt) {
+    const uint32_t v = *vt;
+    if (v < indep_end || !is_unknown(v)) continue;
+    for (const Lit o : bin_pos[v]) if (!is_true(o)) { seen_pos[v] = 1; break; }
+    for (const Lit o : bin_neg[v]) if (!is_true(o)) { seen_neg[v] = 1; break; }
+  }
+  // pure output var -> shareable
+  all_vars_in_comp(super_comp, vt) {
+    const uint32_t v = *vt;
+    if (v >= indep_end && is_unknown(v) && !(seen_pos[v] && seen_neg[v])) shareable[v] = 1;
+  }
+
+  // --- demotion fixpoint: no active clause may be entirely shareable ---
+  all_cls_in_comp(super_comp, ci) {
+    const auto& lits = cls_lits[*ci];
+    bool sat = false;
+    for (const Lit l : lits) if (is_true(l)) { sat = true; break; }
+    if (sat) continue;
+    int demote = -1; bool all_share = true;
+    for (const Lit l : lits) {
+      if (is_false(l)) continue;
+      const uint32_t vv = l.var();
+      if (shareable[vv]) demote = (int)vv;
+      else { all_share = false; break; }
+    }
+    if (all_share && demote >= 0) shareable[demote] = 0;
+  }
+  // binaries: handle each (v OR o) once, demoting v at its smaller-index endpoint.
+  all_vars_in_comp(super_comp, vt) {
+    const uint32_t v = *vt;
+    if (!shareable[v]) continue;
+    for (const Lit o : bin_pos[v])
+      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) { shareable[v] = 0; break; }
+    if (!shareable[v]) continue;
+    for (const Lit o : bin_neg[v])
+      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) { shareable[v] = 0; break; }
   }
 }
 
@@ -243,9 +328,11 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
-    // --synthesis: a shared output var is a component member but does not bridge (its
-    // other clauses aren't pulled in), keeping comps disjoint over the input
-    // vars. Re-claimable by later siblings (see make_comp_from_archetype).
+    // --synthesis (wDNNF): a shareable var (pure output, see compute_shareable_vars)
+    // is a component member but does not bridge -- its other clauses aren't pulled
+    // in, keeping comps disjoint over inputs. Re-claimable by later siblings (see
+    // make_comp_from_archetype). The demotion fixpoint guarantees every active
+    // clause still has a non-shareable var, so no clause is ever dropped.
     if (is_shareable(v)) { claimed_share[v] = 1; continue; }
     analyze_verb(
       debug_print("-----------------------");

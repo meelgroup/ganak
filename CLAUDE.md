@@ -104,9 +104,15 @@ The fuzzer checks that for every satisfiable X, `F(X, ψ(X))` holds, and reports
 the circuit size vs the faithful compile.
 
 ```
-python3 tests/ddnnf_synth.py 200              # faithful d-DNNF (default)
-python3 tests/ddnnf_synth.py 200 --synthesis  # share-and-branch; also prints size ratio
+./tests/ddnnf_synth.py --num 40              # faithful d-DNNF (default)
+./tests/ddnnf_synth.py --num 40 --synthesis  # share-and-branch; also prints size ratio
 ```
+
+With no `--num` it runs **forever** (until the first failure; it fail-fasts by
+default, `--keep-going` runs everything). Always pass `--num 40` for a quick
+check. **If it seems to hang, that is NOT ganak — it is the agent sandbox
+blocking `/tmp/ddnnf_synth` writes; `unique_file()` then retries `O_CREAT`
+forever. Run these scripts with the sandbox disabled (they need `/tmp`).**
 
 Synthesis notes (empirically established):
 - The witness for Y comes from the **SAT oracle** (it stays on in `--compile`),

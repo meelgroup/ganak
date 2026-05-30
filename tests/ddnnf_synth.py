@@ -6,8 +6,9 @@ compile to a circuit; for every satisfiable X, synthesize psi(X) off the circuit
 and check F(X, psi(X)) holds. The real correctness criterion for synthesis (not
 model counting or faithfulness).
 
-Usage: ddnnf_synth.py [num_tests] [--synthesis] [--seed S]
+Run `ddnnf_synth.py --help` for all options.
 """
+import argparse
 import itertools
 import os
 import random
@@ -36,7 +37,7 @@ def unique_file(begin, end=".cnf"):
             i += 1
 
 
-def gen(nv, nc, k):
+def gen(nv, nc):
     cls = []
     for _ in range(nc):
         c = set()
@@ -59,25 +60,49 @@ def sat(cls, a):
     return all(any((l > 0) == a[abs(l)] for l in c) for c in cls)
 
 
+def parse_args(argv):
+    p = argparse.ArgumentParser(
+        prog="ddnnf_synth.py",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--num", type=int, default=None, metavar="N",
+                   help="number of random instances to test (default: run forever)")
+    p.add_argument("--synthesis", action="store_true",
+                   help="compile with --synthesis 1 (wDNNF share-and-branch) and "
+                        "report circuit size vs the faithful compile")
+    p.add_argument("--seed", type=int, default=None,
+                   help="RNG seed (default: random; printed so runs can be reproduced)")
+    p.add_argument("--satoff", action="store_true",
+                   help="pass --satsolver 0 to ganak (disable the SAT oracle)")
+    p.add_argument("--minvars", type=int, default=6, metavar="N",
+                   help="min variables per instance (default: 6)")
+    p.add_argument("--maxvars", type=int, default=14, metavar="N",
+                   help="max variables per instance; the brute-force oracle is 2^N, "
+                        "so this is the main runtime/coverage knob (default: 14)")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="print per-instance progress (params, #solvable X, OK/FAIL)")
+    p.add_argument("-q", "--quiet", action="store_true",
+                   help="only print the final summary line")
+    p.add_argument("--keep-going", action="store_true",
+                   help="run all instances instead of stopping at the first wrong "
+                        "case, and tally every failing X within each instance "
+                        "(default: stop immediately on the first failure)")
+    args = p.parse_args(argv)
+    if args.minvars < 1 or args.maxvars < args.minvars:
+        p.error("need 1 <= --minvars <= --maxvars")
+    if args.seed is None:
+        args.seed = random.randrange(1 << 30)
+    return args
+
+
 def main():
-    n = 200
-    synth = False
-    satoff = False
-    seed = random.randrange(1 << 30)
-    args = sys.argv[1:]
-    i = 0
-    while i < len(args):
-        if args[i] == "--synthesis":
-            synth = True
-        elif args[i] == "--seed":
-            seed = int(args[i + 1]); i += 1
-        elif args[i] == "--satoff":
-            satoff = True
-        else:
-            n = int(args[i])
-        i += 1
-    random.seed(seed)
-    print(f"seed={seed} tests={n} synthesis={synth}")
+    args = parse_args(sys.argv[1:])
+    n = args.num   # None => run forever (until a failure, with fail-fast)
+    synth = args.synthesis
+    random.seed(args.seed)
+    if not args.quiet:
+        print(f"seed={args.seed} tests={n if n is not None else 'forever'} "
+              f"synthesis={synth} vars=[{args.minvars}..{args.maxvars}]")
 
     cnf = unique_file("s", ".cnf")
     nnf = cnf + ".nnf"
@@ -85,11 +110,15 @@ def main():
     no_witness = 0
     size_w = 0
     size_0 = 0
-    for t in range(n):
-        nv = random.randint(6, 14)
+    ran = 0
+    t = 0
+    while n is None or t < n:
+        t += 1
+        ran += 1
+        nv = random.randint(args.minvars, args.maxvars)
         k = random.randint(2, max(2, nv - 2))   # |X|
         nc = random.randint(nv, nv * 3)
-        cls = gen(nv, nc, 3)
+        cls = gen(nv, nc)
         write_cnf(cnf, nv, k, cls)
 
         if os.path.exists(nnf):
@@ -97,13 +126,16 @@ def main():
         a = [GANAK, "--compile", nnf]
         if synth:
             a += ["--synthesis", "1"]
-        if satoff:
+        if args.satoff:
             a += ["--satsolver", "0"]
         a.append(cnf)
         r = subprocess.run(a, capture_output=True, text=True)
         if not os.path.exists(nnf):
             print(f"FAIL[{t}] no .nnf. stderr:\n{r.stderr[-500:]}")
+            shutil.copy(cnf, unique_file("fail", ".cnf"))
             fails += 1
+            if not args.keep_going:
+                break
             continue
         nodes, arcs, root = dv.parse(nnf)
         size_w += len(nodes)
@@ -128,19 +160,30 @@ def main():
             if psi is None:
                 no_witness += 1
                 bad += 1
-                break
+                if not args.keep_going:
+                    break
+                continue
             full = {v: psi.get(v, False) for v in range(1, nv + 1)}
             full.update(xassign)
             if not sat(cls, full):
                 bad += 1
-                break
+                if not args.keep_going:
+                    break
         if bad:
-            print(f"FAIL[{t}] synthesis invalid (nv={nv} k={k} nc={nc})")
+            print(f"FAIL[{t}] synthesis invalid (nv={nv} k={k} nc={nc} "
+                  f"bad_X={bad}/{len(solvable)})")
             shutil.copy(cnf, unique_file("fail", ".cnf"))
             shutil.copy(nnf, unique_file("fail", ".nnf"))
             fails += 1
+            if not args.keep_going:
+                print(f"stopping at first failure (seed={args.seed}); "
+                      f"saved to {TMP}/fail_*.{{cnf,nnf}}. Use --keep-going to run all.")
+                break
+        elif args.verbose:
+            print(f"ok[{t}] nv={nv} k={k} nc={nc} nodes={len(nodes)} "
+                  f"solvable_X={len(solvable)}")
 
-    msg = (f"done {n} synth tests, {fails} failures "
+    msg = (f"done {ran} synth tests, {fails} failures "
            f"({no_witness} satisfiable-X with no witness)")
     if synth and size_0:
         msg += f"; circuit size synthesis/faithful = {size_w/size_0:.2f}"

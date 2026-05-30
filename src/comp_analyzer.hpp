@@ -154,14 +154,33 @@ public:
     }
   }
 
-  // --synthesis: a non-input (output) var (>= indep_end) may be shared
-  // across AND children -- a member of every comp mentioning it, but non-bridging
-  // and re-claimable by later comps. Input vars (< indep_end) are never shared,
-  // so comps stay disjoint over the inputs.
+  // --synthesis (wDNNF, Akshay et al. 2018 / Illner & Kucera AAAI-24):
+  // an output var (>= indep_end) may be shared across AND children -- a member of
+  // every comp mentioning it, but non-bridging and re-claimable by later comps --
+  // *only if it is pure (monotone) in the current residual formula*. Purity is
+  // exactly the weak-decomposability condition: a shared var must appear in a
+  // single polarity, so witness extraction never hits a polarity conflict.
+  // Input vars (< indep_end) are NEVER shared, so comps stay disjoint over inputs.
+  // `shareable[]` is recomputed every analysis round by compute_shareable_vars().
   bool share_mode = false;
   uint32_t indep_end = 0;
   vector<char> claimed_share; // per var: was it added to some component this round
-  bool is_shareable(uint32_t v) const { return share_mode && v >= indep_end; }
+  vector<char> shareable;     // per var: pure output var, kept shared this round
+  bool is_shareable(uint32_t v) const { return share_mode && shareable[v]; }
+
+  // share_mode signed occurrence data (built once in initialize), used to compute
+  // residual polarity purity per round. bin_{pos,neg}[v] = the other literal of
+  // each irredundant binary in which v occurs positively/negatively; cls_lits[id]
+  // = the full signed literals of long/ternary clause `id`.
+  vector<vector<Lit>> bin_pos, bin_neg;
+  vector<vector<Lit>> cls_lits;
+  vector<char> seen_pos, seen_neg; // scratch for compute_shareable_vars()
+
+  // Recompute shareable[] for the vars of `super_comp`: a var is shareable iff it
+  // is an unknown output var, pure in the residual formula, and -- after a
+  // demotion fixpoint -- not the sole bridge of an otherwise all-shareable clause
+  // (so no clause is dropped). See comp_analyzer.cpp.
+  void compute_shareable_vars(const Comp& super_comp);
 
   void setup_analysis_context(StackLevel& top, const Comp& super_comp){
     archetype.re_initialize(top,super_comp);
@@ -172,6 +191,7 @@ public:
       if (share_mode) claimed_share[*vt] = 0;
     }
     all_cls_in_comp(super_comp, it) archetype.set_clause_in_sup_comp_unvisited(*it);
+    if (share_mode) compute_shareable_vars(super_comp);
   }
 
   bool explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls);

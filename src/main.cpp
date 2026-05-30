@@ -530,6 +530,14 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
+    if (conf.synthesis) {
+      // --synthesis emits a wDNNF circuit for functional synthesis; its model
+      // count is intentionally meaningless (pure output vars are shared across
+      // AND children), so we do not print it.
+      cout << "c o [synthesis] model count omitted -- wDNNF circuit is for "
+              "functional synthesis, not counting" << endl;
+      return;
+    }
     if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
       std::stringstream ss;
       ss << std::scientific << setprecision(40);

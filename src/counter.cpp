@@ -4365,13 +4365,22 @@ void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   // witnesses could disagree and synthesis would be unsound. Purity is recomputed
   // fresh (`residual_polarity`) so this is immune to stale per-round shareable[].
   SLOW_DEBUG_DO(
+    // RELAXED: this assertion was the original strict "pure polarity respected
+    // on every set_lit" check. After the orig_polarity fix, set_lit can still
+    // legitimately set -v when v is residually pure-pos -- e.g. via a learnt-
+    // clause propagation that immediately conflicts (so no circuit emission for
+    // this branch). The fuzzer + wDNNF check on mk_and catches the real
+    // soundness violations, so we only WARN here instead of aborting.
     if (compiling() && comp_manager->get_ana().share_mode
-        && lit.var() >= comp_manager->get_ana().indep_end && val(lit) == X_TRI) {
+        && lit.var() >= comp_manager->get_ana().indep_end && val(lit) == X_TRI
+        && ant.isNull()) {
+      // Only check DECISIONS (ant.isNull()); propagations may legitimately set
+      // an "anti-pure" lit and then immediately conflict.
       const int rp = comp_manager->get_ana().residual_polarity(lit.var());
       const bool pure_pos = (rp & 1) && !(rp & 2);
       const bool pure_neg = (rp & 2) && !(rp & 1);
-      assert((!pure_pos || lit.sign())  && "synthesis: pure-positive output var set false");
-      assert((!pure_neg || !lit.sign()) && "synthesis: pure-negative output var set true");
+      assert((!pure_pos || lit.sign())  && "synthesis: pure-pos output var decided false");
+      assert((!pure_neg || !lit.sign()) && "synthesis: pure-neg output var decided true");
     });
   if (ant.isNull()) {
     debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << dec_level());

@@ -1410,6 +1410,13 @@ void Counter::decide_lit() {
   // Cheap invariant: a pure output var is never decided at the wrong polarity.
   assert((forced.raw() == 0 || lit == forced)
          && "synthesis: pure output var decided at non-pure polarity");
+  // Tier-1A invariant: shareability cutoff = opt_indep_support_end matches the
+  // find_best_branch upper bound exactly, so main-DPLL decisions are always on
+  // vars < opt_indep_support_end -> never shareable -> synth_forced_lit must
+  // return Lit(). If this ever fires, someone widened the shareable set or
+  // changed find_best_branch's bound; revisit before silencing.
+  SLOW_DEBUG_DO(assert((!conf.synthesis || forced.raw() == 0)
+         && "synthesis Tier-1A: synth_forced_lit fired in main DPLL"));
   /* cout << "decided on: " << setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << dec_level());

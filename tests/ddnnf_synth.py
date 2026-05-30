@@ -71,7 +71,10 @@ def sat(cls, a):
 
 
 def _fails(cnf_path, args, synth):
-    """Compile `cnf_path` and return True iff some satisfiable X has no witness."""
+    """Compile `cnf_path` and return True iff ganak crashed (no .nnf written) or
+    some satisfiable X has no witness. Crash counts as a failure too -- that's
+    how the SLOW_DEBUG wDNNF assertion surfaces, and we want to delta-debug
+    crashes the same way."""
     nnf_path = cnf_path + ".nnf"
     if os.path.exists(nnf_path):
         os.remove(nnf_path)
@@ -83,9 +86,10 @@ def _fails(cnf_path, args, synth):
     if args.ganak_args:
         a += args.ganak_args.split()
     a.append(cnf_path)
-    subprocess.run(a, capture_output=True, text=True)
+    r = subprocess.run(a, capture_output=True, text=True)
     if not os.path.exists(nnf_path):
-        return False  # no nnf -> not the failure we're chasing
+        # ganak crashed (e.g. SLOW_DEBUG wDNNF abort): this IS the failure
+        return r.returncode != 0
     nodes, arcs, root = dv.parse(nnf_path)
     # parse cnf
     cls = []
@@ -258,7 +262,10 @@ def main():
         r = subprocess.run(a, capture_output=True, text=True)
         if not os.path.exists(nnf):
             print(f"FAIL[{t}] no .nnf. stderr:\n{r.stderr[-500:]}")
-            shutil.copy(cnf, unique_file("fail", ".cnf"))
+            cnf_fail = unique_file("fail", ".cnf")
+            shutil.copy(cnf, cnf_fail)
+            if args.minimize and not args.keep_going:
+                _minimize(cnf, cnf_fail, args, synth)
             fails += 1
             if not args.keep_going:
                 break

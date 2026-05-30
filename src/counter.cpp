@@ -978,10 +978,36 @@ Lit Counter::synth_forced_lit(uint32_t v) {
   auto& ana = comp_manager->get_ana();
   if (!compiling() || !ana.share_mode || v < ana.indep_end) return Lit();
   const int rp = ana.residual_polarity(v);
-  if ((rp & 1) && (rp & 2)) return Lit(); // impure -> not shared, decide normally
-  // pure-negative -> false; pure-positive or free -> true (a deterministic choice
-  // so that every sibling that touches v agrees on its value).
-  return Lit(v, rp != 2);
+  if ((rp & 1) && (rp & 2)) {
+    debug_print(COLYEL "[synth] v=" << v << " rp=" << rp << " IMPURE -> no pin");
+    return Lit(); // impure -> not shared, decide normally
+  }
+  // Soundness fix (was the ~1-2% wDNNF bug): the residual polarity is
+  // state-dependent -- if all of v's clauses are satisfied by some sibling's
+  // decisions, rp becomes 0 (FREE) and the old code defaulted to +v in that
+  // sibling, while another sibling (where some of v's clauses are still active)
+  // pinned -v. The AND of those siblings then has v in both polarities, and
+  // functional synthesis loses witnesses. Fix: pick the polarity from the
+  // *original* formula (state-independent), so all siblings agree.
+  //   - rp pure pos (only +v active here):           +v
+  //   - rp pure neg (only -v active here):           -v
+  //   - rp free here, but orig has only -v anywhere: -v
+  //   - rp free here, but orig has only +v anywhere: +v
+  //   - rp free here, orig impure or v never occurs: +v default
+  int pol;
+  if (rp == 1) pol = 1;
+  else if (rp == 2) pol = 2;
+  else { // rp == 0: free in residual; consult original polarity
+    const uint8_t op = ana.get_orig_polarity(v);
+    if (op == 2) pol = 2;           // only -v in original formula
+    else pol = 1;                   // +v only / impure / unused -> default +v
+  }
+  Lit r = Lit(v, pol == 1);
+  debug_print(COLYEL "[synth] v=" << v << " rp=" << rp
+              << " orig_pol=" << (int)ana.get_orig_polarity(v)
+              << " pin_pol=" << pol << " forced=" << r
+              << " dec_lev=" << dec_level());
+  return r;
 }
 
 void Counter::compile_on_cache_hit(int node) {

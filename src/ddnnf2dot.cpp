@@ -46,7 +46,6 @@ THE SOFTWARE.
 #include <set>
 #include <sstream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "ddnnf_io.hpp"
@@ -74,9 +73,9 @@ int main(int argc, char** argv) {
   std::ifstream in(in_path);
   if (!in.good()) die("cannot open input file: " + in_path);
 
-  std::unordered_map<int, char> type;             // node id -> 'f'|'t'|'a'|'o'
-  std::unordered_map<int, std::vector<Arc>> arcs; // node id -> outgoing arcs
-  std::vector<int> order;                         // node ids in declaration order
+  std::vector<char> type;                          // node id -> 'f'|'t'|'a'|'o' (0 = no node)
+  std::vector<std::vector<Arc>> arcs;              // node id -> outgoing arcs
+  std::vector<int> order;                          // node ids in declaration order
   std::string err;
   const int root = ddnnf_io::parse_nnf(in, type, arcs, order, err);
   if (root == -1) die(err);
@@ -91,8 +90,7 @@ int main(int argc, char** argv) {
   std::ostream& out = *outp;
 
   auto is_true = [&](int id) {
-    auto it = type.find(id);
-    return it != type.end() && it->second == 't';
+    return id >= 0 && id < (int)type.size() && type[id] == 't';
   };
 
   // Variables in a node's reachable subtree (on arc lits); labels AND children.

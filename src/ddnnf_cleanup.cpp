@@ -135,11 +135,11 @@ struct LitSet {
 // Scan every arc literal to find the max variable; sets max_var and the
 // per-node word count used for VarSet/LitSet allocation.
 void measure_nvars(
-    const std::unordered_map<int, std::vector<Arc>>& arcs,
+    const std::vector<std::vector<Arc>>& arcs,
     int& max_var, size_t& words) {
   max_var = 0;
-  for (const auto& kv : arcs) {
-    for (const auto& a : kv.second) {
+  for (const auto& kids : arcs) {
+    for (const auto& a : kids) {
       for (int l : a.lits) {
         int v = (l > 0 ? l : -l);
         if (v > max_var) max_var = v;
@@ -154,7 +154,7 @@ void measure_nvars(
 // 14M-node circuits this matters -- a recursive version blows the 8 MB stack.
 void post_order(
     int root,
-    const std::unordered_map<int, std::vector<Arc>>& arcs,
+    const std::vector<std::vector<Arc>>& arcs,
     std::vector<char>& visited,   // 0 = unseen, 1 = entered, 2 = emitted
     std::vector<int>& out) {
   // Stack of (node, next_child_index_to_visit). When we revisit a node and its
@@ -168,15 +168,14 @@ void post_order(
     auto& top = stack.back();
     int n = top.first;
     int idx = top.second;
-    auto it = arcs.find(n);
-    int sz = (it == arcs.end()) ? 0 : (int)it->second.size();
+    int sz = (n < (int)arcs.size()) ? (int)arcs[n].size() : 0;
     if (idx >= sz) {
       out.push_back(n);
       visited[n] = 2;
       stack.pop_back();
       continue;
     }
-    int c = it->second[idx].child;
+    int c = arcs[n][idx].child;
     top.second = idx + 1;
     if (!visited[c]) {
       visited[c] = 1;
@@ -190,15 +189,14 @@ void post_order(
 // `out` is sized to max_id+1; entry per reachable node.
 void compute_subtree_vars(
     const std::vector<int>& post,
-    const std::unordered_map<int, std::vector<Arc>>& arcs,
+    const std::vector<std::vector<Arc>>& arcs,
     size_t words,
     std::vector<VarSet>& out) {
   for (int n : post) {
     VarSet& vs = out[n];
     vs.resize(0, words);
-    auto ait = arcs.find(n);
-    if (ait == arcs.end()) continue;
-    for (const auto& a : ait->second) {
+    if (n >= (int)arcs.size()) continue;
+    for (const auto& a : arcs[n]) {
       for (int l : a.lits) vs.set(l > 0 ? l : -l);
       vs.or_with(out[a.child]);
     }
@@ -211,17 +209,17 @@ void compute_subtree_vars(
 // AND: union; FALSE if union contradicts. Iterative bottom-up over post-order.
 void compute_forced(
     const std::vector<int>& post,
-    const std::vector<char>& type_v,           // node id -> 'f'|'t'|'a'|'o'|0
-    const std::unordered_map<int, std::vector<Arc>>& arcs,
+    const std::vector<char>& type,             // node id -> 'f'|'t'|'a'|'o'|0
+    const std::vector<std::vector<Arc>>& arcs,
     size_t words,
     std::vector<LitSet>& forced,
     std::vector<char>& is_false) {
   LitSet scratch;
   for (int n : post) {
-    char t = type_v[n];
+    char t = type[n];
     if (t == 't') { forced[n].resize(words); continue; }
     if (t == 'f') { is_false[n] = 1; continue; }
-    const auto& kids = arcs.at(n);
+    const auto& kids = arcs[n];
     if (t == 'o') {
       bool any = false;
       LitSet& r = forced[n];
@@ -253,7 +251,7 @@ void compute_forced(
 // parent_count must be sized to max_id+1, zero-initialized.
 void compute_parents(
     int root,
-    const std::unordered_map<int, std::vector<Arc>>& arcs,
+    const std::vector<std::vector<Arc>>& arcs,
     std::vector<int>& parent_count) {
   std::vector<char> seen(parent_count.size(), 0);
   std::vector<int> stack = {root};
@@ -261,9 +259,8 @@ void compute_parents(
     int n = stack.back(); stack.pop_back();
     if (seen[n]) continue;
     seen[n] = 1;
-    auto it = arcs.find(n);
-    if (it == arcs.end()) continue;
-    for (const auto& a : it->second) {
+    if (n >= (int)arcs.size()) continue;
+    for (const auto& a : arcs[n]) {
       parent_count[a.child]++;
       stack.push_back(a.child);
     }
@@ -283,16 +280,23 @@ void compute_parents(
 // (DAG sharing) get cloned before modification so other parents stay correct.
 int scrub_var(
     int nid, int var, bool polarity,
-    std::unordered_map<int, char>& type,
-    std::unordered_map<int, std::vector<Arc>>& arcs,
+    std::vector<char>& type,
+    std::vector<std::vector<Arc>>& arcs,
     const std::vector<int>& parent_count,
     int& max_id) {
+  auto ensure_node_slot = [&](int id) {
+    if ((int)type.size() <= id) {
+      type.resize((size_t)id + 1, 0);
+      arcs.resize((size_t)id + 1);
+    }
+  };
   // 1. Iterative post-order over the subtree rooted at nid (gives us children
   //    before parents so each parent can look up its (possibly remapped) kids).
   std::vector<int> post;
   {
-    // Reuse a local visited map. The subtree can repeat nodes that are shared
-    // up in the DAG, so dedupe per-walk via this map.
+    // The subtree can repeat nodes that are shared up in the DAG, so dedupe
+    // per-walk. The subtree is typically a small fraction of the full DAG, so
+    // a hash map is cheaper than a max_id-sized vector for this scratch.
     std::unordered_map<int, char> visited;
     std::vector<std::pair<int, int>> stack;
     stack.reserve(64);
@@ -302,15 +306,14 @@ int scrub_var(
       auto& top = stack.back();
       int n = top.first;
       int idx = top.second;
-      char t = type.at(n);
-      auto it = arcs.find(n);
-      int sz = (t == 't' || t == 'f' || it == arcs.end()) ? 0 : (int)it->second.size();
+      char t = type[n];
+      int sz = (t == 't' || t == 'f') ? 0 : (int)arcs[n].size();
       if (idx >= sz) {
         post.push_back(n);
         stack.pop_back();
         continue;
       }
-      int c = it->second[idx].child;
+      int c = arcs[n][idx].child;
       top.second = idx + 1;
       if (!visited.count(c)) {
         visited[c] = 1;
@@ -327,9 +330,9 @@ int scrub_var(
   //    place vs clone for each node touched. Nodes whose arcs+kids didn't
   //    change keep their identity (remap[n] = n).
   for (int n : post) {
-    char t = type.at(n);
+    char t = type[n];
     if (t == 't' || t == 'f') { remap[n] = n; continue; }
-    const auto& orig = arcs.at(n);
+    const auto& orig = arcs[n];
     std::vector<Arc> new_arcs;
     bool changed = false;
     for (const auto& a : orig) {
@@ -348,10 +351,11 @@ int scrub_var(
     if (!changed) { remap[n] = n; continue; }
     int p_count = (n < (int)parent_count.size()) ? parent_count[n] : 1;
     int target = (p_count <= 1) ? n : (++max_id);
+    ensure_node_slot(target);
     type[target] = t;
     if (t == 'o' && new_arcs.empty()) {
       type[target] = 'f';
-      arcs[target] = {};
+      arcs[target].clear();
     } else {
       arcs[target] = std::move(new_arcs);
     }
@@ -363,15 +367,14 @@ int scrub_var(
 
 // Top-level driver: iterate, batching as many independent fixes per pass as we
 // can, until no AND violations remain (or we run out of iterations). Per-node
-// data (type_v, subtree_vars, forced, is_false, parent_count) lives in plain
-// vectors indexed by node id, sized to the current max_id+1 -- way cheaper
-// than unordered_map<int, X> at multi-million-node scale.
+// data (subtree_vars, forced, is_false, parent_count) lives in plain vectors
+// indexed by node id, sized to the current max_id+1 -- way cheaper than
+// unordered_map<int, X> at multi-million-node scale.
 int cleanup_decomp(
     int root,
-    std::unordered_map<int, char>& type,
-    std::unordered_map<int, std::vector<Arc>>& arcs) {
-  int max_id = 0;
-  for (const auto& p : type) max_id = std::max(max_id, p.first);
+    std::vector<char>& type,
+    std::vector<std::vector<Arc>>& arcs) {
+  int max_id = (int)type.size() - 1;
   constexpr int kMaxIters = 100;
   int iterations = 0;
   long long total_fixes = 0;
@@ -384,12 +387,9 @@ int cleanup_decomp(
                 << std::endl;
       break;
     }
-    // Size storage to current max_id (which grows as scrub_var clones nodes).
+    // Size scratch to current max_id (which grows as scrub_var clones nodes).
     const size_t sz = (size_t)max_id + 1;
-    std::vector<char> type_v(sz, 0);
-    for (const auto& p : type) {
-      if ((size_t)p.first < sz) type_v[p.first] = p.second;
-    }
+    if (type.size() < sz) { type.resize(sz, 0); arcs.resize(sz); }
     std::vector<char> visited(sz, 0);
     std::vector<int> post;
     post.reserve(sz);
@@ -400,7 +400,7 @@ int cleanup_decomp(
 
     std::vector<LitSet> forced(sz);
     std::vector<char> is_false(sz, 0);
-    compute_forced(post, type_v, arcs, words, forced, is_false);
+    compute_forced(post, type, arcs, words, forced, is_false);
 
     std::vector<int> parent_count(sz, 0);
     compute_parents(root, arcs, parent_count);
@@ -411,10 +411,8 @@ int cleanup_decomp(
     int fixes = 0;
     std::vector<char> touched(sz, 0);
     for (int nid : post) {
-      if (type_v[nid] != 'a') continue;
-      auto ait = arcs.find(nid);
-      if (ait == arcs.end()) continue;
-      auto& kids = ait->second;
+      if (type[nid] != 'a') continue;
+      auto& kids = arcs[nid];
       for (size_t i = 0; i < kids.size(); i++) {
         for (size_t j = i + 1; j < kids.size(); j++) {
           int ci = kids[i].child, cj = kids[j].child;
@@ -480,9 +478,9 @@ int main(int argc, char** argv) {
   std::ifstream in(in_path);
   if (!in.good()) die("cannot open input file: " + in_path);
 
-  std::unordered_map<int, char> type;             // node id -> 'f'|'t'|'a'|'o'
-  std::unordered_map<int, std::vector<Arc>> arcs; // node id -> outgoing arcs
-  std::vector<int> decl_order;                    // declaration order (unused; we renumber by BFS)
+  std::vector<char> type;                          // node id -> 'f'|'t'|'a'|'o' (0 = no node)
+  std::vector<std::vector<Arc>> arcs;              // node id -> outgoing arcs
+  std::vector<int> decl_order;                     // declaration order (unused; we renumber by BFS)
   std::string err;
   int root = ddnnf_io::parse_nnf(in, type, arcs, decl_order, err);
   if (root == -1) die(err);
@@ -490,8 +488,9 @@ int main(int argc, char** argv) {
   if (do_strict_decomp) root = cleanup_decomp(root, type, arcs);
 
   // BFS renumber from the root: root => 1, then children in arc order. Unvisited
-  // (dead) nodes get no id and are dropped.
-  std::unordered_map<int, int> newid;
+  // (dead) nodes get no id and are dropped. `newid` indexed by node id; 0 = not
+  // yet reached (real new ids start at 1 so this is a safe sentinel).
+  std::vector<int> newid(type.size(), 0);
   std::vector<int> order;                           // new-id order -> old id
   std::queue<int> q;
   newid[root] = 1;
@@ -500,10 +499,9 @@ int main(int argc, char** argv) {
   while (!q.empty()) {
     int nid = q.front();
     q.pop();
-    auto it = arcs.find(nid);
-    if (it == arcs.end()) continue;
-    for (const auto& a : it->second) {
-      if (newid.find(a.child) == newid.end()) {
+    if (nid >= (int)arcs.size()) continue;
+    for (const auto& a : arcs[nid]) {
+      if (newid[a.child] == 0) {
         newid[a.child] = (int)order.size() + 1;
         order.push_back(a.child);
         q.push(a.child);
@@ -531,8 +529,11 @@ int main(int argc, char** argv) {
   }
   out->flush();
 
-  std::cerr << "ddnnf-cleanup: declared=" << type.size()
+  // `type` includes 0-sentinels for unused ids; count the real declarations.
+  size_t declared = 0;
+  for (char c : type) if (c != 0) declared++;
+  std::cerr << "ddnnf-cleanup: declared=" << declared
             << " reachable=" << order.size()
-            << " dropped=" << (type.size() - order.size()) << std::endl;
+            << " dropped=" << (declared - order.size()) << std::endl;
   return EXIT_SUCCESS;
 }

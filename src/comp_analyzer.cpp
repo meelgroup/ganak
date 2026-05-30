@@ -53,7 +53,20 @@ void CompAnalyzer::initialize(
   // --synthesis (wDNNF): set up sharing of pure output vars. We build signed
   // occurrence data below so residual polarity purity can be computed per round.
   share_mode = (conf.synthesis && !conf.compile_fname.empty());
-  indep_end = counter->get_indep_support_end();
+  // Shareability cutoff is opt_indep_support_end, NOT indep_support_end. Reason:
+  // main-DPLL's find_best_branch picks vars `< opt_indep_support_end`, so vars in
+  // [indep_support_end, opt_indep_support_end) ARE branched in the main search.
+  // If those vars were shareable, synth_forced_lit would override the polarity
+  // heuristic on every such decision (forcing orig_polarity, which defaults to
+  // +v) -- a serious search-quality regression that empirically dominated the
+  // wDNNF runtime cost (see git history). Vars >= opt_indep_support_end are
+  // ONLY set by the SAT oracle (witness recording) or by propagation, so pinning
+  // them inside the SAT loop is free of main-DPLL heuristic damage. Sharing
+  // soundness is unchanged -- the SAT-loop pin (counter.cpp synth_forced_lit
+  // call from the SAT branch) still enforces sibling agreement for the vars
+  // that remain shareable. The vars we're DROPPING from the shareable set are
+  // now treated exactly as in faithful mode: ordinary branch vars.
+  indep_end = counter->get_opt_indep_support_end();
 
   debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
 

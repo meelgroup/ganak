@@ -48,6 +48,7 @@ THE SOFTWARE.
 //                                                  ("-" or omitted => stdout)
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -69,91 +70,152 @@ using ddnnf_io::Arc;
   exit(EXIT_FAILURE);
 }
 
+// Fixed-width bitset over [0, nvars]. Var v -> bit v. nvars is set globally per
+// cleanup pass; the same word-count is used for every node's set so the inner
+// loops are plain word-parallel ANDs/ORs (no hash-table overhead).
+//
+// For nvars=100 and 14M nodes, this is ~16 B per node (224 MB) instead of
+// ~120 B+ for an unordered_set<int> (1.7 GB+), and intersection/union become
+// 2-word loops instead of hashing.
+struct VarSet {
+  std::vector<uint64_t> w;
+  void resize(int nvars_plus1, size_t words) { (void)nvars_plus1; w.assign(words, 0); }
+  void set(int v) { w[v >> 6] |= 1ULL << (v & 63); }
+  bool test(int v) const { return ((w[v >> 6] >> (v & 63)) & 1ULL) != 0; }
+  void or_with(const VarSet& o) {
+    const size_t n = w.size();
+    for (size_t i = 0; i < n; i++) w[i] |= o.w[i];
+  }
+  bool intersects(const VarSet& o) const {
+    const size_t n = w.size();
+    for (size_t i = 0; i < n; i++) if (w[i] & o.w[i]) return true;
+    return false;
+  }
+  // Return any var in (this & o), or 0 if none.
+  int first_intersect_var(const VarSet& o) const {
+    const size_t n = w.size();
+    for (size_t i = 0; i < n; i++) {
+      uint64_t b = w[i] & o.w[i];
+      if (b) return (int)(i * 64) + __builtin_ctzll(b);
+    }
+    return 0;
+  }
+};
+
+// Forced literals: track positive and negative bits per var separately. has(+v)
+// = "subtree forces v=true", has(-v) = "subtree forces v=false". intersection
+// (OR-node merge) and union (AND-node merge) are still word-parallel; an AND
+// contradicts iff any var has both pos and neg bits set.
+struct LitSet {
+  std::vector<uint64_t> pos, neg;
+  void resize(size_t words) { pos.assign(words, 0); neg.assign(words, 0); }
+  void set(int l) {
+    int v = (l > 0 ? l : -l);
+    (l > 0 ? pos : neg)[v >> 6] |= 1ULL << (v & 63);
+  }
+  bool has(int l) const {
+    int v = (l > 0 ? l : -l);
+    const auto& bv = (l > 0 ? pos : neg);
+    return ((bv[v >> 6] >> (v & 63)) & 1ULL) != 0;
+  }
+  void union_with(const LitSet& o) {
+    const size_t n = pos.size();
+    for (size_t i = 0; i < n; i++) { pos[i] |= o.pos[i]; neg[i] |= o.neg[i]; }
+  }
+  void intersect_with(const LitSet& o) {
+    const size_t n = pos.size();
+    for (size_t i = 0; i < n; i++) { pos[i] &= o.pos[i]; neg[i] &= o.neg[i]; }
+  }
+  bool contradicts() const {
+    const size_t n = pos.size();
+    for (size_t i = 0; i < n; i++) if (pos[i] & neg[i]) return true;
+    return false;
+  }
+};
+
+// Scan every arc literal to find the max variable; sets max_var and the
+// per-node word count used for VarSet/LitSet allocation.
+void measure_nvars(
+    const std::unordered_map<int, std::vector<Arc>>& arcs,
+    int& max_var, size_t& words) {
+  max_var = 0;
+  for (const auto& kv : arcs) {
+    for (const auto& a : kv.second) {
+      for (int l : a.lits) {
+        int v = (l > 0 ? l : -l);
+        if (v > max_var) max_var = v;
+      }
+    }
+  }
+  words = (size_t)(max_var / 64) + 1;
+}
+
 // Compute, for each reachable node, the set of vars appearing anywhere in its
-// subtree (arc lits + child subtree vars). Bottom-up via post-order DFS.
+// subtree (arc lits + child subtree vars). Bottom-up via memoized recursion.
 void compute_subtree_vars(
     int root,
-    const std::unordered_map<int, char>& type,
     const std::unordered_map<int, std::vector<Arc>>& arcs,
-    std::unordered_map<int, std::unordered_set<int>>& out) {
-  std::vector<int> stack = {root};
-  std::vector<int> order;
-  std::unordered_set<int> seen;
-  while (!stack.empty()) {
-    int n = stack.back(); stack.pop_back();
-    if (!seen.insert(n).second) continue;
-    order.push_back(n);
-    auto it = arcs.find(n);
-    if (it == arcs.end()) continue;
-    for (const auto& a : it->second) stack.push_back(a.child);
-  }
-  // post-order processing: leaves first
-  std::reverse(order.begin(), order.end());
-  // Build child-->parents reverse map so we can process in dependency order via
-  // topological-ish iteration. Simpler: just iterate twice (DAG depth is small in
-  // practice) or use memoized recursion. We do memoized recursion to keep it simple.
-  std::unordered_map<int, bool> in_progress;
-  std::function<const std::unordered_set<int>&(int)> rec =
-      [&](int n) -> const std::unordered_set<int>& {
+    size_t words,
+    std::unordered_map<int, VarSet>& out) {
+  std::function<const VarSet&(int)> rec = [&](int n) -> const VarSet& {
     auto it = out.find(n);
     if (it != out.end()) return it->second;
-    out[n] = {};   // placeholder against cycles (none expected, but safe)
-    auto& vs = out[n];
+    VarSet& vs = out[n];
+    vs.resize(0, words);
     auto ait = arcs.find(n);
     if (ait != arcs.end()) {
       for (const auto& a : ait->second) {
-        for (int l : a.lits) vs.insert(std::abs(l));
-        const auto& cvs = rec(a.child);
-        vs.insert(cvs.begin(), cvs.end());
+        for (int l : a.lits) vs.set(l > 0 ? l : -l);
+        const VarSet& cvs = rec(a.child);
+        vs.or_with(cvs);
       }
     }
     return vs;
   };
   rec(root);
-  (void)type; (void)order; (void)in_progress;
 }
 
-// Compute, for each reachable node, the set of literals true in EVERY model of
-// the subtree (the node's "forced" lits). nullopt = node is FALSE (no models).
-// OR: intersection of (arc_lits + child_forced). AND: union (FALSE if contradictory).
+// Compute, for each reachable node, the literals true in EVERY model of the
+// subtree (the node's "forced" lits). is_false[nid] = true => node is FALSE
+// (no models). OR: intersection of (arc_lits + child_forced) across arcs. AND:
+// union; FALSE if union contradicts.
 void compute_forced(
     int root,
     const std::unordered_map<int, char>& type,
     const std::unordered_map<int, std::vector<Arc>>& arcs,
-    std::unordered_map<int, std::unordered_set<int>>& forced,
+    size_t words,
+    std::unordered_map<int, LitSet>& forced,
     std::unordered_set<int>& is_false) {
   std::function<bool(int)> rec = [&](int n) -> bool {
-    if (forced.count(n) || is_false.count(n)) return !is_false.count(n);
+    if (forced.count(n)) return true;
+    if (is_false.count(n)) return false;
     char t = type.at(n);
-    if (t == 't') { forced[n] = {}; return true; }
+    if (t == 't') { forced[n].resize(words); return true; }
     if (t == 'f') { is_false.insert(n); return false; }
-    auto it = arcs.find(n);
-    const auto& kids = it->second;
+    const auto& kids = arcs.at(n);
     if (t == 'o') {
-      std::vector<std::unordered_set<int>> sets;
+      LitSet r;
+      bool any = false;
       for (const auto& a : kids) {
         if (!rec(a.child)) continue;
-        std::unordered_set<int> s(a.lits.begin(), a.lits.end());
-        for (int l : forced[a.child]) s.insert(l);
-        sets.push_back(std::move(s));
+        LitSet s = forced.at(a.child);     // copy (small, word-count words)
+        for (int l : a.lits) s.set(l);
+        if (!any) { r = std::move(s); any = true; }
+        else      { r.intersect_with(s); }
       }
-      if (sets.empty()) { is_false.insert(n); return false; }
-      auto r = sets[0];
-      for (size_t i = 1; i < sets.size(); i++) {
-        std::unordered_set<int> next;
-        for (int l : r) if (sets[i].count(l)) next.insert(l);
-        r = std::move(next);
-      }
+      if (!any) { is_false.insert(n); return false; }
       forced[n] = std::move(r);
       return true;
     } else { // 'a'
-      std::unordered_set<int> r;
+      LitSet r;
+      r.resize(words);
       for (const auto& a : kids) {
-        if (!rec(a.child)) { is_false.insert(n); return false; }
-        for (int l : a.lits) r.insert(l);
-        for (int l : forced[a.child]) r.insert(l);
+        if (!rec(a.child)) { is_false.insert(n); forced.erase(n); return false; }
+        const LitSet& cf = forced.at(a.child);
+        r.union_with(cf);
+        for (int l : a.lits) r.set(l);
       }
-      for (int l : r) if (r.count(-l)) { is_false.insert(n); return false; }
+      if (r.contradicts()) { is_false.insert(n); return false; }
       forced[n] = std::move(r);
       return true;
     }
@@ -257,6 +319,8 @@ int cleanup_decomp(
   constexpr int kMaxIters = 100;
   int iterations = 0;
   long long total_fixes = 0;
+  int max_var; size_t words;
+  measure_nvars(arcs, max_var, words);
   while (true) {
     if (++iterations > kMaxIters) {
       std::cerr << "ddnnf-cleanup: WARN: strict-decomp cleanup did not converge in "
@@ -264,11 +328,11 @@ int cleanup_decomp(
                 << std::endl;
       break;
     }
-    std::unordered_map<int, std::unordered_set<int>> subtree_vars;
-    compute_subtree_vars(root, type, arcs, subtree_vars);
-    std::unordered_map<int, std::unordered_set<int>> forced;
+    std::unordered_map<int, VarSet> subtree_vars;
+    compute_subtree_vars(root, arcs, words, subtree_vars);
+    std::unordered_map<int, LitSet> forced;
     std::unordered_set<int> is_false;
-    compute_forced(root, type, arcs, forced, is_false);
+    compute_forced(root, type, arcs, words, forced, is_false);
     std::unordered_map<int, int> parent_count;
     compute_parents(root, arcs, parent_count);
 
@@ -290,21 +354,18 @@ int cleanup_decomp(
           auto svi = subtree_vars.find(ci);
           auto svj = subtree_vars.find(cj);
           if (svi == subtree_vars.end() || svj == subtree_vars.end()) continue;
-          int shared_var = 0;
-          for (int v : svi->second) {
-            if (svj->second.count(v)) { shared_var = v; break; }
-          }
+          int shared_var = svi->second.first_intersect_var(svj->second);
           if (shared_var == 0) continue;
           auto fi = forced.find(ci);
           auto fj = forced.find(cj);
           int pi = 0, pj = 0;
           if (fi != forced.end()) {
-            if (fi->second.count(shared_var))  pi = +1;
-            if (fi->second.count(-shared_var)) pi = -1;
+            if (fi->second.has(shared_var))  pi = +1;
+            if (fi->second.has(-shared_var)) pi = -1;
           }
           if (fj != forced.end()) {
-            if (fj->second.count(shared_var))  pj = +1;
-            if (fj->second.count(-shared_var)) pj = -1;
+            if (fj->second.has(shared_var))  pj = +1;
+            if (fj->second.has(-shared_var)) pj = -1;
           }
           int scrub_child = 0;
           bool polarity = true;
@@ -331,7 +392,8 @@ int cleanup_decomp(
     if (fixes == 0) break;
   }
   std::cerr << "ddnnf-cleanup: strict-decomp iters=" << iterations
-            << " fixes=" << total_fixes << std::endl;
+            << " fixes=" << total_fixes
+            << " max_var=" << max_var << std::endl;
   return root;
 }
 

@@ -145,6 +145,35 @@ Synthesis notes (empirically established):
   decision to its other phase. There is intentionally no `--synthesis` ctest yet
   (the remaining ~1–2% would fail); `tests/ddnnf_synth.py --synthesis` fuzzes it.
 
+### Theory references (`--synthesis`)
+
+`--synthesis 1` does Boolean **functional synthesis** in the knowledge-compilation
+sense of these two papers:
+
+- **Knowledge Compilation for Boolean Functional Synthesis** — S. Akshay, Jatin
+  Arora, Supratik Chakraborty, S. Krishna, Divya Raghunathan, Shetal Shah, *FMCAD
+  2019* (IIT Bombay). https://www.cse.iitb.ac.in/~supratik/publications/papers/FMCAD19.pdf
+  Introduces **SynNNF**, the precise normal form that admits poly-time synthesis,
+  and recaps **wDNNF** (weak DNNF) from Akshay et al. 2018 (CAV) as a sufficient
+  sub-class. **Convention warning:** that paper writes `F(X, Y)` with `X` = the
+  **outputs** to synthesize and `Y` = the **inputs** — the *opposite* of Ganak's
+  code, where `X` = inputs/sampling vars (`< indep_support_end`) and `Y` = outputs
+  (`>= indep_support_end`). The synthesis goal matches up either way: express the
+  outputs as Skolem functions of the inputs.
+- **A Compiler for Weak Decomposable Negation Normal Form** — Petr Illner, Petr
+  Kučera, *AAAI 2024* (Charles University). https://ojs.aaai.org/index.php/AAAI/article/download/28926/29761
+  Places wDNNF on the knowledge-compilation map and gives the compiler *Bella*.
+  Their **Definition 1 (Akshay et al. 2018)** is the one Ganak implements: an AND
+  node is *weak decomposable* if every variable shared by two of its children is
+  **pure** (only `x`, or only `¬x`, appears in the subcircuit rooted at that AND).
+
+The wDNNF/SynNNF synthesizability condition is about **polarity purity / the
+output variables**, *not* about an input-vs-output split per se. Ganak's
+"only outputs may be shared" rule is **stricter than the theory requires** — see
+the analysis of sharing inputs in the git history / TODO. (FMCAD19 §III: SynNNF
+constrains only the synthesized variables; the inputs carry no decomposability
+constraint at all.)
+
 ## Running Tests
 ```
 cd build && ctest -V

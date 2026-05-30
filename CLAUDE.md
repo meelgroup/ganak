@@ -120,21 +120,30 @@ Synthesis notes (empirically established):
   `DDNNFCompiler`). This is the main compactness for synthesis (Y is not
   enumerated). Faithful (default) `--compile` + SAT is a correct, compact
   synthesis compiler — the `ddnnf_synth_faithful` ctest exercises it.
-- `--synthesis` (share-and-branch): output/non-input vars
-  (`>= indep_support_end`) may be shared across AND children while input vars
-  (`< indep_support_end`) stay disjoint; cache is selective (shared components
-  are not cached). A shared var is made *non-bridging* (its clauses are not
-  followed at the component boundary, see `CompAnalyzer::record_comp` /
-  `is_shareable`). For inputs that would be safe (Ganak branches on them and the
-  SAT leaf re-validates), but for **outputs it drops their constraints**: the
-  count goes **wrong** (intended — synthesis-only) AND it is currently
-  **UNSOUND for synthesis** — the round-trip fails (~73% of instances; a full
-  backtracking witness extractor confirms the witnesses are genuinely missing,
-  not just unreachable greedily). The circuit is ~0.7× the faithful size,
-  precisely *because* it drops those constraints. This matches the general rule
-  "a weak cut can be smaller only by dropping constraints / over-approximating,
-  which is unsound for synthesis." Work in progress; there is intentionally no
-  ctest for it (it would fail).
+- `--synthesis` (wDNNF share-and-branch): an output var
+  (`>= indep_support_end`) may be shared across AND children **only when it is
+  pure (single polarity) in the residual formula** — the weak-decomposability
+  condition (Akshay et al. 2018). Input vars (`< indep_support_end`) are never
+  shared, so comps stay disjoint over inputs. See `CompAnalyzer::compute_shareable_vars`:
+  it computes per-round purity, then runs a **demotion fixpoint** so every active
+  clause keeps a non-shareable (bridging) var — nothing is dropped, the circuit
+  stays faithful as a function. A shared (pure) output var must be pinned to its
+  pure polarity everywhere it is set so sibling witnesses agree
+  (`Counter::synth_forced_lit`, used in `decide_lit` and the SAT loop). The count
+  is still **meaningless** (intended — synthesis-only; `main.cpp` suppresses it).
+- **Status:** with the SAT oracle on (the default), the round-trip is sound on
+  ~98% of fuzzed instances (was ~73% *failing*). The remaining ~1–2% is a known
+  consistency bug: the shareable/pure-polarity decision lives in **global** arrays
+  (`shareable[]`), so a var shared at a parent decompose can be (a) mis-forced
+  from a stale value after backtracking, or (b) left unforced because a fresh
+  per-context purity recompute disagrees — two sibling SAT leaves then pin the
+  shared var to conflicting values and the AND of them is empty. A correct fix
+  needs the share decision tied to the **component (stack)**, not a global array,
+  or output-pure-literal *fixing* (assign the pure output var instead of sharing
+  it). `--satsolver 0` is **unsound by design**: without the SAT oracle, output
+  vars get branched in the main search and the backtrack flips a forced-pure
+  decision to its other phase. There is intentionally no `--synthesis` ctest yet
+  (the remaining ~1–2% would fail); `tests/ddnnf_synth.py --synthesis` fuzzes it.
 
 ## Running Tests
 ```

@@ -356,7 +356,17 @@ void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
     const uint32_t v = *vt;
     if (v < indep_end || !is_unknown(v)) continue;
     if (seen_pos[v] && seen_neg[v]) continue;     // impure right now
-    if (orig_polarity[v] == 3) continue;           // both polarities in original CNF
+    // Tier-4: previously skipped orig_polarity==3 vars unconditionally because
+    // synth_forced_lit's pin polarity could disagree across siblings (one
+    // sibling sees rp=0 -> default +v; sibling sees rp=2 -> pin -v -> AND
+    // node has v in both polarities). We now allow op==3 vars IF the
+    // super-comp's residual is not pure-negative -- then all siblings see
+    // rp in {0,1} (decisions only add to the trail, never un-satisfy +v
+    // clauses), and synth_forced_lit's default-+v pin is consistent.
+    // The "super-comp pure-neg" case (seen_neg && !seen_pos) is still
+    // excluded for op==3 because the default-+v pin would clash with the
+    // rp=2 pin in some siblings.
+    if (orig_polarity[v] == 3 && seen_neg[v]) continue;
     shareable[v] = 1;
     stats.synth_shareable_marked++;
   }

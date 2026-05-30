@@ -977,22 +977,14 @@ void Counter::compile_add_free_var(uint32_t v) {
 Lit Counter::synth_forced_lit(uint32_t v) {
   auto& ana = comp_manager->get_ana();
   if (!compiling() || !ana.share_mode || v < ana.indep_end) return Lit();
-  // Perf gate on a STABLE per-var property: orig_polarity[v] == 3 means v
-  // appears in both polarities anywhere in the original CNF, so
-  // compute_shareable_vars' soundness filter rules it out for EVERY future
-  // super-comp -- no need to consult shareable[], and no residual_polarity
-  // scan below. Skips pinning for the entire (often dominant) population of
-  // double-polarity output vars.
-  //
-  // DO NOT gate on ana.is_shareable(v) here: shareable[] is per-super-comp
-  // and overwritten by nested compute_shareable_vars calls. By the time
-  // synth_forced_lit is consulted in a SAT leaf, shareable[] reflects the
-  // INNERMOST super-comp's analysis, not the ancestor's where v was
-  // actually shared across siblings. That mismatch fired the synth fuzzer
-  // (FAIL[152] seed=816418904: AND 7 children share var 12 with both
-  // polarities) when this gate read stale per-round state. orig_polarity is
-  // computed once and immutable, so it's safe.
-  if (ana.get_orig_polarity(v) == 3) return Lit();
+  // After Tier-4, orig_polarity==3 vars CAN be shareable (when the super-comp's
+  // residual rp is 0 or 1 -- see compute_shareable_vars). When shareable, the
+  // pin must fire so sibling SAT calls agree. When NOT shareable (op==3 + super
+  // rp==2 case), pinning to +v default would force a sub-optimal SAT polarity
+  // but is still sound for synthesis (each non-shared use of v can have any
+  // polarity, the pin just biases). We accept that mild SAT-search cost in
+  // exchange for soundly pinning the now-shareable op==3 vars. The earlier
+  // orig_polarity==3 gate is removed.
   const int rp = ana.residual_polarity(v);
   if ((rp & 1) && (rp & 2)) {
     debug_print(COLYEL "[synth] v=" << v << " rp=" << rp << " IMPURE -> no pin");

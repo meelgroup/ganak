@@ -1,18 +1,24 @@
-c c KNOWN-LIMITATION regression: faithful --compile of this CNF emits a circuit
+c c Strict-decomp regression: faithful --compile of this CNF emits a circuit
 c c whose model count + model SET are correct (5897, matches brute force) but
-c c which violates strict d-DNNF decomposability: some AND node has two
-c c children whose subtrees both mention var 16. Root cause: conflict-learned
-c c (redundant) clauses can bridge variables that CompAnalyzer placed in
-c c different sub-components (the analyzer only sees irreducible clauses).
-c c Propagation inside one sub-component then sets a variable that "belongs"
-c c to another sub-component, which leaks into the OR's arc-lits.
+c c which violates strict d-DNNF decomposability: some AND node has two children
+c c whose subtrees both mention var 16. Root cause: conflict-learned (redundant)
+c c clauses can bridge variables that CompAnalyzer placed in different
+c c sub-components (the analyzer only sees irreducible clauses). Propagation
+c c inside one sub-component then sets a variable that "belongs" to another
+c c sub-component, which leaks into the OR's arc-lits.
 c c
-c c Test fixed at the count level only; --check-decomposable is intentionally
-c c omitted because it currently fails. See git log for the deeper diagnosis.
+c c ddnnf-cleanup REPAIRS this post hoc: its strict-decomp pass scrubs the shared
+c c var from the child that doesn't force it (the other child's models all imply
+c c that var-polarity, so the scrub preserves count + model set). The first two
+c c RUN lines exercise the raw circuit (count + set still correct), the rest
+c c assert that after cleanup the circuit is strictly decomposable.
+c c
 c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
 c c
 c c RUN: %solver --compile %t.nnf %s
 c c RUN: %ddnnf_verify %t.nnf --cnf %s
+c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
+c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
 p cnf 16 40
 -6 -14 2 4 0
 9 14 -10 -1 0

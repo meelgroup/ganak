@@ -361,6 +361,17 @@ void parse_supported_options(int argc, char** argv) {
               "share-and-branch)" << endl;
       exit(EXIT_FAILURE);
     }
+    if (conf.synthesis != 0 && !conf.do_use_sat_solver) {
+      // wDNNF synthesis needs the SAT oracle: it supplies one consistent witness
+      // for the shared output vars per component. Without it, output vars are
+      // branched in the main search and the backtrack flips a forced-pure decision
+      // to its other phase -> unsound for synthesis. (See the --synthesis notes in
+      // CLAUDE.md.)
+      cerr << "ERROR: --synthesis requires --satsolver 1 (the SAT oracle is needed "
+              "to record consistent witnesses; --satsolver 0 is unsound for "
+              "synthesis)" << endl;
+      exit(EXIT_FAILURE);
+    }
     if (!conf.compile_fname.empty()) {
       // d-DNNF needs a single clean DPLL tree for a faithful circuit. Force it.
       conf.do_restart = 0;             // one monolithic search, not restart+cube

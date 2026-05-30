@@ -96,15 +96,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
     }
   };
 
-  if (conf.synthesis && compiling) {
-    // Synthesis share-and-branch. Pass 1: seed from input vars so comps are
-    // disjoint over them (outputs pulled in as shared, non-bridging members).
-    // Pass 2: any unclaimed output var becomes its own component.
-    all_vars_in_comp(super_comp, vt) if (!ana.is_shareable(*vt)) try_seed(*vt);
-    all_vars_in_comp(super_comp, vt) if (ana.var_claimable_share(*vt)) try_seed(*vt);
-  } else {
-    all_vars_in_comp(super_comp, vt) try_seed(*vt);
-  }
+  all_vars_in_comp(super_comp, vt) try_seed(*vt);
 
   debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): "
       << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());

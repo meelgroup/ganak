@@ -50,24 +50,6 @@ void CompAnalyzer::initialize(
   var_freq_scores.resize(max_var + 1, 0);
   const uint32_t n = max_var+1;
 
-  // --synthesis (wDNNF): set up sharing of pure output vars. We build signed
-  // occurrence data below so residual polarity purity can be computed per round.
-  share_mode = (conf.synthesis && !conf.compile_fname.empty());
-  // Shareability cutoff is opt_indep_support_end, NOT indep_support_end. Reason:
-  // main-DPLL's find_best_branch picks vars `< opt_indep_support_end`, so vars in
-  // [indep_support_end, opt_indep_support_end) ARE branched in the main search.
-  // If those vars were shareable, synth_forced_lit would override the polarity
-  // heuristic on every such decision (forcing orig_polarity, which defaults to
-  // +v) -- a serious search-quality regression that empirically dominated the
-  // wDNNF runtime cost (see git history). Vars >= opt_indep_support_end are
-  // ONLY set by the SAT oracle (witness recording) or by propagation, so pinning
-  // them inside the SAT loop is free of main-DPLL heuristic damage. Sharing
-  // soundness is unchanged -- the SAT-loop pin (counter.cpp synth_forced_lit
-  // call from the SAT branch) still enforces sibling agreement for the vars
-  // that remain shareable. The vars we're DROPPING from the shareable set are
-  // now treated exactly as in faithful mode: ordinary branch vars.
-  indep_end = counter->get_opt_indep_support_end();
-
   debug_print(COLBLBACK "Building occ list in CompAnalyzer::initialize...");
 
   auto mysorter = [&] (ClauseOfs a1, ClauseOfs b1) {
@@ -83,12 +65,9 @@ void CompAnalyzer::initialize(
   vector<vector<ClData>> unif_occ_long(n);
   long_clauses_data.clear();
   long_clauses_data.push_back(SENTINEL_LIT); // MUST start with a sentinel!
-  // --synthesis: full signed literals per clause id (ids run 1..#long_cls).
-  if (share_mode) { cls_lits.clear(); cls_lits.resize(long_irred_cls.size() + 2); }
   for (const auto& off: long_irred_cls) {
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
-    if (share_mode) cls_lits[max_clid].assign(cl.begin(), cl.end());
     const uint32_t long_cl_off = long_clauses_data.size();
     if (cl.size() > 3) {
       Lit const blk_lit = cl[cl.size()/2];
@@ -204,221 +183,6 @@ void CompAnalyzer::initialize(
   }
 
   debug_print(COLBLBACK "Built unified link list in CompAnalyzer::initialize.");
-
-  // --synthesis (wDNNF): build signed binary occ lists and per-round scratch.
-  if (share_mode) {
-    claimed_share.assign(max_var + 1, 0);
-    shareable.assign(max_var + 1, 0);
-    seen_pos.assign(max_var + 1, 0);
-    seen_neg.assign(max_var + 1, 0);
-    bin_pos.assign(n, {});
-    bin_neg.assign(n, {});
-    for (uint32_t v = 1; v < n; v++) {
-      for (const auto& bincl: watches[Lit(v, true)].binaries)
-        if (bincl.irred()) bin_pos[v].push_back(bincl.lit());
-      for (const auto& bincl: watches[Lit(v, false)].binaries)
-        if (bincl.irred()) bin_neg[v].push_back(bincl.lit());
-    }
-    // ORIGINAL polarity: scan every irredundant clause once and record which
-    // polarities of v occur. State-independent: never recomputed. Synthesis uses
-    // this to pin a deterministic polarity when the residual is ambiguous (esp.
-    // FREE = no active occurrence, which would otherwise default-pin differently
-    // in different sibling sub-comps -- the wDNNF bug).
-    orig_polarity.assign(n, 0);
-    for (uint32_t v = 1; v < n; v++) {
-      if (!bin_pos[v].empty()) orig_polarity[v] |= 1;
-      if (!bin_neg[v].empty()) orig_polarity[v] |= 2;
-    }
-    for (uint32_t cid = 1; cid < cls_lits.size(); cid++) {
-      for (const Lit l : cls_lits[cid]) {
-        orig_polarity[l.var()] |= (l.sign() ? 1 : 2);
-      }
-    }
-    // If NO output var has orig_polarity < 3 (i.e. every output var appears in
-    // both polarities in the original CNF), compute_shareable_vars can NEVER
-    // mark anything as shareable -- the orig_polarity==3 filter (the soundness
-    // gate for "no globally-consistent pin polarity") rules them all out
-    // regardless of the residual. In that case the whole share_mode pipeline is
-    // dead weight: O(super-comp) work per analysis round and a SAT-loop pin
-    // check per decision, all producing nothing. Disable share_mode up front.
-    bool any_candidate = false;
-    for (uint32_t v = indep_end; v <= max_var; v++) {
-      if (orig_polarity[v] != 3) { any_candidate = true; break; }
-    }
-    if (!any_candidate) {
-      share_mode = false;
-      verb_print(1, "[compile-synthesis] no output var is originally pure"
-        " -- share_mode disabled (faithful-mode performance)");
-    } else {
-      verb_print(1, "[compile-synthesis] wDNNF share-and-branch over pure outputs >= " << indep_end);
-    }
-  }
-}
-
-// SLOW_DEBUG: current residual polarity of v (see header). Recomputed fresh from
-// `values`, so it reflects the live assignment regardless of shareable[] staleness.
-int CompAnalyzer::residual_polarity(uint32_t v) {
-  int res = 0;
-  for (const Lit o : bin_pos[v]) if (!is_true(o)) { res |= 1; break; }
-  for (const Lit o : bin_neg[v]) if (!is_true(o)) { res |= 2; break; }
-  const ClData* longs = holder.begin_long(v);
-  const uint32_t nl = holder.orig_size_long(v);
-  for (uint32_t i = 0; i < nl; i++) {
-    const auto& lits = cls_lits[longs[i].id];
-    bool sat = false;
-    for (const Lit l : lits) if (is_true(l)) { sat = true; break; }
-    if (sat) continue;
-    for (const Lit l : lits) if (l.var() == v) res |= (l.sign() ? 1 : 2);
-  }
-  return res;
-}
-
-// --synthesis (wDNNF): recompute shareable[] for the current super-comp.
-// A var is initially shareable iff it is an unknown OUTPUT var (>= indep_end) that
-// is PURE (appears in a single polarity) in the residual formula -- this is the
-// weak-decomposability condition (Akshay et al. 2018): a shared var in a single
-// polarity never causes a witness-extraction conflict. Then a demotion fixpoint
-// un-shares one var of every *active* clause whose remaining literals are ALL
-// shareable, so each clause keeps a bridging (non-shareable) var and is claimed by
-// exactly one component -- nothing is dropped, keeping the circuit faithful as a
-// Boolean function. (The model count stays meaningless; that's fine -- in
-// --synthesis we synthesize, not count.) Inputs (< indep_end) are never shareable,
-// so components stay disjoint over the inputs.
-//
-// SOUNDNESS NOTE (the historical ~1-2% synth-failure bug): purity is a *residual*
-// property -- it depends on which clauses are still active. Two sibling sub-comps
-// (post-decomposition) see DIFFERENT residuals once decisions inside one have
-// flipped clauses on/off, so the same var can end up "pure positive" in one
-// sibling and "pure negative" (or free) in another. synth_forced_lit then pins
-// the var to opposite polarities across siblings, and the AND-of-siblings node
-// loses wDNNF. The mitigation lives in synth_forced_lit and pin_polarity[].
-void CompAnalyzer::compute_shareable_vars(const Comp& super_comp) {
-  // Tier-2A memoization: if we ran this same analysis for the same super-comp
-  // at the same global trail tstamp, shareable[] is still valid -- no decision
-  // happened (tstamp unchanged) AND no other super-comp's analysis ran in
-  // between (otherwise last_share_super_comp would point elsewhere). Skipping
-  // saves an O(super-comp) walk and the demotion fixpoint.
-  const uint64_t cur_tstamp = counter->get_tstamp();
-  const bool memo_hit =
-      (&super_comp == last_share_super_comp && cur_tstamp == last_share_tstamp);
-#ifndef SLOW_DEBUG
-  if (memo_hit) {
-    stats.synth_shareable_memo_hits++;
-    return;
-  }
-#else
-  // SLOW_DEBUG: don't trust the memo blindly. Snapshot shareable[] for the
-  // super-comp's vars, run the full recompute, then assert byte-equal. Catches
-  // a future change that breaks the "same (super_comp, tstamp) -> same result"
-  // invariant (e.g. quietly mutating shareable[] from elsewhere, or computing
-  // shareability from state not captured by tstamp).
-  vector<char> memo_snapshot;
-  if (memo_hit) {
-    stats.synth_shareable_memo_hits++;
-    all_vars_in_comp(super_comp, vt) memo_snapshot.push_back(shareable[*vt]);
-  }
-#endif
-  last_share_super_comp = &super_comp;
-  last_share_tstamp = cur_tstamp;
-  stats.synth_shareable_calls++;
-  // --- residual polarity purity ---
-  all_vars_in_comp(super_comp, vt) {
-    const uint32_t v = *vt;
-    shareable[v] = 0; seen_pos[v] = 0; seen_neg[v] = 0;
-  }
-  // long/ternary clauses (signed lits via cls_lits); skip satisfied clauses.
-  all_cls_in_comp(super_comp, ci) {
-    const auto& lits = cls_lits[*ci];
-    bool sat = false;
-    for (const Lit l : lits) if (is_true(l)) { sat = true; break; }
-    if (sat) continue;
-    for (const Lit l : lits) {
-      const uint32_t vv = l.var();
-      if (vv < indep_end || !is_unknown(vv)) continue;
-      if (l.sign()) seen_pos[vv] = 1; else seen_neg[vv] = 1;
-    }
-  }
-  // binary clauses (signed via bin_pos/bin_neg); (v OR o) is active iff o not true.
-  all_vars_in_comp(super_comp, vt) {
-    const uint32_t v = *vt;
-    if (v < indep_end || !is_unknown(v)) continue;
-    for (const Lit o : bin_pos[v]) if (!is_true(o)) { seen_pos[v] = 1; break; }
-    for (const Lit o : bin_neg[v]) if (!is_true(o)) { seen_neg[v] = 1; break; }
-  }
-  // pure output var -> shareable, but only if it's also ORIGINALLY pure (or
-  // never occurs) in the formula. Originally-impure outputs (both +v and -v
-  // appear somewhere in the CNF) are NEVER shared because two sibling sub-comps
-  // can land in residuals where v is pure with DIFFERENT polarities (one sibling
-  // has the +v clauses satisfied -> pure neg; another has -v satisfied -> pure
-  // pos). No globally-consistent pin polarity exists for such a var, so sharing
-  // it inevitably violates wDNNF.
-  all_vars_in_comp(super_comp, vt) {
-    const uint32_t v = *vt;
-    if (v < indep_end || !is_unknown(v)) continue;
-    if (seen_pos[v] && seen_neg[v]) continue;     // impure right now
-    // Tier-4: previously skipped orig_polarity==3 vars unconditionally because
-    // synth_forced_lit's pin polarity could disagree across siblings (one
-    // sibling sees rp=0 -> default +v; sibling sees rp=2 -> pin -v -> AND
-    // node has v in both polarities). We now allow op==3 vars IF the
-    // super-comp's residual is not pure-negative -- then all siblings see
-    // rp in {0,1} (decisions only add to the trail, never un-satisfy +v
-    // clauses), and synth_forced_lit's default-+v pin is consistent.
-    // The "super-comp pure-neg" case (seen_neg && !seen_pos) is still
-    // excluded for op==3 because the default-+v pin would clash with the
-    // rp=2 pin in some siblings.
-    if (orig_polarity[v] == 3 && seen_neg[v]) continue;
-    shareable[v] = 1;
-    stats.synth_shareable_marked++;
-  }
-
-  // --- demotion fixpoint: no active clause may be entirely shareable ---
-  all_cls_in_comp(super_comp, ci) {
-    const auto& lits = cls_lits[*ci];
-    bool sat = false;
-    for (const Lit l : lits) if (is_true(l)) { sat = true; break; }
-    if (sat) continue;
-    int demote = -1; bool all_share = true;
-    for (const Lit l : lits) {
-      if (is_false(l)) continue;
-      const uint32_t vv = l.var();
-      if (shareable[vv]) demote = (int)vv;
-      else { all_share = false; break; }
-    }
-    if (all_share && demote >= 0) { shareable[demote] = 0; stats.synth_shareable_demoted++; }
-  }
-  // binaries: handle each (v OR o) once, demoting v at its smaller-index endpoint.
-  all_vars_in_comp(super_comp, vt) {
-    const uint32_t v = *vt;
-    if (!shareable[v]) continue;
-    for (const Lit o : bin_pos[v])
-      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) {
-        shareable[v] = 0; stats.synth_shareable_demoted++; break;
-      }
-    if (!shareable[v]) continue;
-    for (const Lit o : bin_neg[v])
-      if (!is_true(o) && !is_false(o) && o.var() > v && shareable[o.var()]) {
-        shareable[v] = 0; stats.synth_shareable_demoted++; break;
-      }
-  }
-#ifdef SLOW_DEBUG
-  // Verify the Tier-2A memo: if this was a memo hit, the freshly recomputed
-  // shareable[] for super_comp's vars must byte-equal the snapshot we took
-  // before recomputing. Aborts at the first diverging var, naming it.
-  if (memo_hit) {
-    size_t i = 0;
-    all_vars_in_comp(super_comp, vt) {
-      const uint32_t v = *vt;
-      if (shareable[v] != memo_snapshot[i]) {
-        cerr << "Tier-2A memo divergence: super_comp=" << &super_comp
-             << " tstamp=" << cur_tstamp << " v=" << v
-             << " memo=" << (int)memo_snapshot[i]
-             << " recompute=" << (int)shareable[v] << endl;
-        release_assert(false && "Tier-2A memo: shareable[] diverged from fresh recompute");
-      }
-      i++;
-    }
-  }
-#endif
 }
 
 // returns true, iff the comp found is non-trivial
@@ -470,12 +234,6 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
   for (uint32_t i = 0; i < comp_vars.size(); i++) {
     const auto v = comp_vars[i];
     SLOW_DEBUG_DO(assert(is_unknown(v)));
-    // --synthesis (wDNNF): a shareable var (pure output, see compute_shareable_vars)
-    // is a component member but does not bridge -- its other clauses aren't pulled
-    // in, keeping comps disjoint over inputs. Re-claimable by later siblings (see
-    // make_comp_from_archetype). The demotion fixpoint guarantees every active
-    // clause still has a non-shareable var, so no clause is ever dropped.
-    if (is_shareable(v)) { claimed_share[v] = 1; continue; }
     analyze_verb(
       debug_print("-----------------------");
       debug_print("record v: " << v << " start");
@@ -552,18 +310,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
         }
       }
     }
-    // SLOW_DEBUG sanity bound: outside synthesis share mode every bin is counted
-    // symmetrically from both endpoints in every level, so a sub-comp's bin
-    // count never exceeds its super-comp's. Under synthesis share mode the
-    // count is ASYMMETRIC -- a shareable endpoint skips its bin traversal, so a
-    // bin (u,v) counts once if exactly one endpoint is shareable. When v's
-    // shareable status changes between the parent level (counted once) and this
-    // level (counted twice if both endpoints are now non-shareable), the
-    // inequality breaks. The bin SET is still a subset; this is a counting
-    // artifact, not a real over-claim of bins.
-    SLOW_DEBUG_DO(
-      if (!share_mode) assert(archetype.num_bin_cls <= sup_comp_bin_cls);
-    );
+    SLOW_DEBUG_DO(assert(archetype.num_bin_cls <= sup_comp_bin_cls));
 
     if (sup_comp_long_cls == archetype.num_long_cls) {
       // we have seen all long clauses

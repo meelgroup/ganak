@@ -570,15 +570,9 @@ if(ENABLE_TESTING)
   # larger count / --maxvars (see CLAUDE.md).
   add_test(NAME ddnnf_compile_fuzz
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
-  # Faithful synthesis (default --compile + SAT-oracle witnesses): sound.
+  # Functional synthesis via faithful --compile + SAT-oracle witnesses.
   add_test(NAME ddnnf_synth_faithful
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py --num 30 --seed 1)
-  # wDNNF share-and-branch (--synthesis 1): now sound after the orig_polarity
-  # fix (no originally-impure output shared + state-independent polarity pin).
-  # The fuzzer counts every "no witness" satisfiable X as a failure, so any
-  # regression reintroducing a wDNNF leak is caught here.
-  add_test(NAME ddnnf_synth_share_and_branch
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py --num 30 --seed 1 --synthesis)
 endif()
 
 # -----------------------------------------------------------------------------

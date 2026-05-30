@@ -317,33 +317,17 @@ format, for reuse in repeated queries, model enumeration, or functional
 synthesis.
 
 **1. Dump** (still prints the count; streamed to disk, so it is not held in
-memory). The default is a faithful d-DNNF:
+memory). The output is a faithful d-DNNF:
 
 ```shell
 ./ganak --compile out.nnf in.cnf
 ```
 
-> **`--synthesis` (for Boolean functional synthesis only).**
-> Adding `--synthesis 1` enables the synthesis share-and-branch mode: an output
-> (non-input) var (`>= indep_support_end`) may be shared across AND children
-> **when it is pure (single polarity) in the residual formula and originally
-> pure (or unused) in the CNF**, while input vars (`< indep_support_end`) stay
-> disjoint. This is the *weak decomposability* condition for **wDNNF** circuits,
-> and the resulting circuit supports Boolean functional synthesis (Skolem
-> functions of the inputs) per:
->
-> - S. Akshay, J. Arora, S. Chakraborty, S. Krishna, D. Raghunathan, S. Shah,
->   *Knowledge Compilation for Boolean Functional Synthesis*, FMCAD 2019 —
->   <https://www.cse.iitb.ac.in/~supratik/publications/papers/FMCAD19.pdf>
->   (introduces **SynNNF**; recaps **wDNNF** from Akshay et al. 2018).
-> - P. Illner, P. Kučera, *A Compiler for Weak Decomposable Negation Normal
->   Form*, AAAI 2024 —
->   <https://ojs.aaai.org/index.php/AAAI/article/download/28926/29761>.
->
-> This mode is **only** for synthesis — it **deliberately produces a WRONG model
-> count** (the shared outputs make sibling components non-independent), so never
-> use it for counting. The default `--compile` (faithful d-DNNF) is a correct,
-> compact synthesis compiler and may be preferred when its circuit size suffices.
+For a projected CNF (inputs `< indep_support_end`, outputs `>= indep_support_end`),
+the SAT oracle records one example assignment of the output vars at each SAT
+leaf, so the same faithful circuit is also a sound Boolean functional-synthesis
+compiler — read a Skolem witness off the circuit with
+`tests/ddnnf_verify.synthesize()`.
 
 **2. Fix up.** The raw file is correct from the root but keeps Ganak's internal
 ids and may carry unreachable "dead" nodes. `ddnnf-cleanup` drops them and

@@ -154,71 +154,14 @@ public:
     }
   }
 
-  // --synthesis (wDNNF, Akshay et al. 2018 / Illner & Kucera AAAI-24):
-  // an output var (>= indep_end) may be shared across AND children -- a member of
-  // every comp mentioning it, but non-bridging and re-claimable by later comps --
-  // *only if it is pure (monotone) in the current residual formula*. Purity is
-  // exactly the weak-decomposability condition: a shared var must appear in a
-  // single polarity, so witness extraction never hits a polarity conflict.
-  // Input vars (< indep_end) are NEVER shared, so comps stay disjoint over inputs.
-  // `shareable[]` is recomputed every analysis round by compute_shareable_vars().
-  bool share_mode = false;
-  uint32_t indep_end = 0;
-  vector<char> claimed_share; // per var: was it added to some component this round
-  vector<char> shareable;     // per var: pure output var, kept shared this round
-  bool is_shareable(uint32_t v) const { return share_mode && shareable[v]; }
-  // --synthesis Tier-2A memoization: skip compute_shareable_vars when the
-  // (super-comp object, global trail tstamp) pair matches the last call. Same
-  // super-comp at the same trail state -> same result, and shareable[] still
-  // holds that result because no intervening compute_shareable_vars call would
-  // have hit the same pointer (each one updates these fields). Pointer
-  // equality is the right key: it captures "was the most recent call also for
-  // THIS super-comp"; if a different super-comp's analysis ran in between, the
-  // pointer mismatches and we recompute (shareable[] for our vars may have
-  // been overwritten where the vars overlap).
-  const Comp* last_share_super_comp = nullptr;
-  uint64_t last_share_tstamp = 0;
-  // Freshly recompute v's residual polarity from the *current* assignment. Bit 1 =
-  // v occurs positively in some active (unsatisfied) clause, bit 2 = occurs
-  // negatively. 0 => no active occurrence (free). This is the canonical purity
-  // oracle used both to force decision polarity and to assert the invariant -- it
-  // never relies on the per-round (possibly stale post-backtrack) shareable[].
-  int residual_polarity(uint32_t v);
-
-  // share_mode signed occurrence data (built once in initialize), used to compute
-  // residual polarity purity per round. bin_{pos,neg}[v] = the other literal of
-  // each irredundant binary in which v occurs positively/negatively; cls_lits[id]
-  // = the full signed literals of long/ternary clause `id`.
-  vector<vector<Lit>> bin_pos, bin_neg;
-  vector<vector<Lit>> cls_lits;
-  vector<char> seen_pos, seen_neg; // scratch for compute_shareable_vars()
-
-  // Original (state-independent) polarity of every var in the ORIGINAL formula.
-  // Bit 1 set <=> v has some +v occurrence anywhere; bit 2 <=> some -v occurrence.
-  // 0 means v never occurs (truly free in the formula). Computed once in
-  // initialize(); never changes with assignment. The deterministic default the
-  // synthesis pin uses when the *residual* would give a state-dependent answer.
-  vector<uint8_t> orig_polarity;
-  uint8_t get_orig_polarity(uint32_t v) const {
-    return v < orig_polarity.size() ? orig_polarity[v] : 0;
-  }
-
-  // Recompute shareable[] for the vars of `super_comp`: a var is shareable iff it
-  // is an unknown output var, pure in the residual formula, and -- after a
-  // demotion fixpoint -- not the sole bridge of an otherwise all-shareable clause
-  // (so no clause is dropped). See comp_analyzer.cpp.
-  void compute_shareable_vars(const Comp& super_comp);
-
   void setup_analysis_context(StackLevel& top, const Comp& super_comp){
     archetype.re_initialize(top,super_comp);
     debug_print("Setting VAR/CL_SUP_COMP_unvisited for unset vars");
     all_vars_in_comp(super_comp, vt) if (is_unknown(*vt)) {
       archetype.set_var_in_sup_comp_unvisited(*vt);
       var_freq_scores[*vt] = 0;
-      if (share_mode) claimed_share[*vt] = 0;
     }
     all_cls_in_comp(super_comp, it) archetype.set_clause_in_sup_comp_unvisited(*it);
-    if (share_mode) compute_shareable_vars(super_comp);
   }
 
   bool explore_comp(const uint32_t v, const uint32_t sup_comp_long_cls, const uint32_t sup_comp_bin_cls);
@@ -227,14 +170,8 @@ public:
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){
     SLOW_DEBUG_DO(for (auto&v: comp_vars) assert(is_unknown(v)));
-    auto p = archetype.make_comp(comp_vars.size());
-    // --synthesis: re-mark shared output vars unvisited so a later sibling can claim
-    // them too (make_comp cleared them).
-    if (share_mode)
-      for (const auto v : comp_vars) if (is_shareable(v)) archetype.set_var_in_sup_comp_unvisited(v);
-    return p;
+    return archetype.make_comp(comp_vars.size());
   }
-  bool var_claimable_share(uint32_t v) const { return is_shareable(v) && !claimed_share[v]; }
 
   uint32_t get_max_clid() const { return max_clid; }
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }

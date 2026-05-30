@@ -86,9 +86,7 @@ python3 tests/ddnnf_fuzz.py 200 --maxvars 14  # cap var count (oracle is 2^nv, s
                                            #   also --minvars N)
 ```
 
-`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF (the default).
-`--synthesis 1` is the synthesis share-and-branch (see section 3 and `--help`);
-it **deliberately produces a WRONG count** and is for synthesis only.
+`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF.
 `--ddnfcheck 1` makes Ganak cross-check each decision
 level's circuit sub-count against its own count (debugging the compiler). Temp
 files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
@@ -100,12 +98,10 @@ processes can run concurrently. Failing cases are copied to
 For a *projected* CNF (inputs X = sampling vars, outputs Y = the rest), the
 compiled circuit can be used for Boolean functional synthesis: for an input
 assignment X, `ddnnf_verify.synthesize()` reads a witness ψ(X) off the circuit.
-The fuzzer checks that for every satisfiable X, `F(X, ψ(X))` holds, and reports
-the circuit size vs the faithful compile.
+The fuzzer checks that for every satisfiable X, `F(X, ψ(X))` holds.
 
 ```
-./tests/ddnnf_synth.py --num 40              # faithful d-DNNF (default)
-./tests/ddnnf_synth.py --num 40 --synthesis  # share-and-branch; also prints size ratio
+./tests/ddnnf_synth.py --num 40
 ```
 
 With no `--num` it runs **forever** (until the first failure; it fail-fasts by
@@ -114,118 +110,13 @@ check. **If it seems to hang, that is NOT ganak — it is the agent sandbox
 blocking `/tmp/ddnnf_synth` writes; `unique_file()` then retries `O_CREAT`
 forever. Run these scripts with the sandbox disabled (they need `/tmp`).**
 
-Synthesis notes (empirically established):
-- The witness for Y comes from the **SAT oracle** (it stays on in `--compile`),
-  which records one example assignment of Y at each SAT leaf (`set_override` in
-  `DDNNFCompiler`). This is the main compactness for synthesis (Y is not
-  enumerated). Faithful (default) `--compile` + SAT is a correct, compact
-  synthesis compiler — the `ddnnf_synth_faithful` ctest exercises it.
-- `--synthesis` (wDNNF share-and-branch): an output var
-  (`>= opt_indep_support_end` — the shareability cutoff, **not**
-  `indep_support_end`; see "Performance gates" below) may be shared across AND
-  children **only when it is pure (single polarity) in the residual formula AND
-  originally pure (or unused) in the CNF** — the weak-decomposability condition
-  (Akshay et al. 2018) plus a soundness gate (see below). Vars
-  `< opt_indep_support_end` are never shared, so comps stay disjoint over the
-  vars main DPLL branches on. See `CompAnalyzer::compute_shareable_vars`: it
-  computes per-round purity, then runs a **demotion fixpoint** so every active
-  clause keeps a non-shareable (bridging) var — nothing is dropped, the circuit
-  stays faithful as a function. A shared output var must be pinned to its
-  polarity everywhere it is set so sibling witnesses agree
-  (`Counter::synth_forced_lit`, used in `decide_lit` and the SAT loop). The pin
-  uses the var's **original** polarity in the CNF (`orig_polarity[]`, computed
-  once in `initialize`), NOT its per-state residual polarity — that was the old
-  wDNNF leak: when one sibling's decisions satisfied all of v's clauses, the
-  residual went from "pure neg" to "free" and the pin flipped to +v, while
-  another sibling still pinned -v. The count is **meaningless** in this mode
-  (intended — synthesis-only; `main.cpp` suppresses it).
-- **Performance gates (don't break these without re-fuzzing):**
-  - **Shareability cutoff = `opt_indep_support_end`.** Matches the upper bound
-    of `find_best_branch` exactly, so `synth_forced_lit` is a no-op in
-    `decide_lit` and the polarity heuristic for the [`indep_support_end`,
-    `opt_indep_support_end`) "optional indep" band is preserved. Asserted in
-    `decide_lit` under `SLOW_DEBUG`.
-  - **`synth_forced_lit` pins op==3 vars too (Tier 4)** when they're now
-    shareable. Sound because `compute_shareable_vars` only marks an op==3
-    var when the super-comp's residual is NOT pure-neg — so all sibling rps
-    land in {0,1} (decisions never un-satisfy clauses) and the default-+v
-    pin is consistent across siblings. The op==3 + super-comp-rp==2 case
-    stays excluded (no consistent pin exists with the current single-default
-    machinery). **Do NOT gate the pin on `is_shareable(v)`** — that array
-    is per-super-comp scratch and nested `compute_shareable_vars` calls
-    overwrite it; the SAT-leaf would read stale state and sibling witnesses
-    would diverge (`tests/cnf-files/ddnnf/synthesis_stale_shareable_regression.cnf`
-    catches this).
-  - **`share_mode` auto-off when no candidate exists.** If every output var
-    has `orig_polarity == 3`, `initialize()` flips `share_mode` off so the
-    `compute_shareable_vars` + cache-skip machinery costs nothing. Printed at
-    startup as `[compile-synthesis] no output var is originally pure --
-    share_mode disabled`. (Tier 4 narrowed the "candidate" predicate but
-    didn't widen it — instances where ALL outputs are op==3 still disable
-    share_mode entirely; Tier 4 only buys the op==3 share-and-branch on
-    instances where SOMETHING else triggers share_mode being on.)
-  - **Tier-2A memo in `compute_shareable_vars`.** Skips recompute when
-    `(super_comp pointer, counter->get_tstamp())` matches the last call —
-    same trail-state on the same super-comp ⇒ same result, no walk needed.
-    SLOW_DEBUG cross-checks the memo result against a fresh recompute.
-  - **Tier-3A caches shareable-containing comps.** Pin polarity for a
-    shareable v is state-independent (for op in {0,1,2} the pin is fully
-    determined by op alone; for op==3, Tier 4's rp-≠-2 restriction makes the
-    +v default consistent across siblings). So the cached sub-circuit's
-    baked-in v-witness is correct on reuse. Empirically: synth/faithful
-    circuit-size ratio drops from ~1.01 to ~0.99 across fuzzer runs.
-- **Status:** sound. `ddnnf_synth_share_and_branch` ctest exercises it; the
-  fuzzer (`tests/ddnnf_synth.py --synthesis`) is at 0 failures across thousands
-  of random projected instances at multiple seeds (including seed=51326094 which
-  produced a real bug under the old "block op==3 entirely" rule). The fix has
-  three parts:
-  (1) `compute_shareable_vars` refuses to share an output var whose original CNF
-  has BOTH polarities AND whose super-comp residual is pure-neg (`seen_neg` set
-  in current scratch). The op==3 + super-rp=2 corner is the only remaining
-  exclusion; op==3 with super-rp in {0,1} is now allowed (Tier-4). The "no
-  globally-consistent pin exists" hazard is averted because decisions only ADD
-  to the trail, so all siblings see rp in {0,1} → default-+v pin agrees.
-  (2) `synth_forced_lit` falls back to `orig_polarity[v]` when the residual is
-  free, instead of always defaulting to +v.
-  (3) Shareable-containing comps are CACHED (Tier-3A). Pin polarity is
-  state-independent for the now-allowed shareable population, so reusing a
-  cached sub-circuit reuses the correct v-witness. Empirically this also
-  produces a circuit ~1% smaller than faithful (the first concrete wDNNF
-  compaction signal in the codebase).
-  The SLOW_DEBUG check `check_wdnnf_at_and` in `ddnnf.hpp` verifies the wDNNF
-  invariant at every `mk_and` and aborts on a violation — turn it on before
-  changing share-mode heuristics. `--satsolver 0` is **still unsound by design**
-  (without the SAT oracle, output vars get branched in the main search and the
-  backtrack flips a forced-pure decision to its other phase).
-
-### Theory references (`--synthesis`)
-
-`--synthesis 1` does Boolean **functional synthesis** in the knowledge-compilation
-sense of these two papers:
-
-- **Knowledge Compilation for Boolean Functional Synthesis** — S. Akshay, Jatin
-  Arora, Supratik Chakraborty, S. Krishna, Divya Raghunathan, Shetal Shah, *FMCAD
-  2019* (IIT Bombay). https://www.cse.iitb.ac.in/~supratik/publications/papers/FMCAD19.pdf
-  Introduces **SynNNF**, the precise normal form that admits poly-time synthesis,
-  and recaps **wDNNF** (weak DNNF) from Akshay et al. 2018 (CAV) as a sufficient
-  sub-class. **Convention warning:** that paper writes `F(X, Y)` with `X` = the
-  **outputs** to synthesize and `Y` = the **inputs** — the *opposite* of Ganak's
-  code, where `X` = inputs/sampling vars (`< indep_support_end`) and `Y` = outputs
-  (`>= indep_support_end`). The synthesis goal matches up either way: express the
-  outputs as Skolem functions of the inputs.
-- **A Compiler for Weak Decomposable Negation Normal Form** — Petr Illner, Petr
-  Kučera, *AAAI 2024* (Charles University). https://ojs.aaai.org/index.php/AAAI/article/download/28926/29761
-  Places wDNNF on the knowledge-compilation map and gives the compiler *Bella*.
-  Their **Definition 1 (Akshay et al. 2018)** is the one Ganak implements: an AND
-  node is *weak decomposable* if every variable shared by two of its children is
-  **pure** (only `x`, or only `¬x`, appears in the subcircuit rooted at that AND).
-
-The wDNNF/SynNNF synthesizability condition is about **polarity purity / the
-output variables**, *not* about an input-vs-output split per se. Ganak's
-"only outputs may be shared" rule is **stricter than the theory requires** — see
-the analysis of sharing inputs in the git history / TODO. (FMCAD19 §III: SynNNF
-constrains only the synthesized variables; the inputs carry no decomposability
-constraint at all.)
+The witness for Y comes from the **SAT oracle** (it stays on in `--compile`),
+which records one example assignment of Y at each SAT leaf (`set_override` in
+`DDNNFCompiler`). This is the main compactness for synthesis (Y is not
+enumerated). Faithful `--compile` + SAT is a correct, compact synthesis
+compiler — the `ddnnf_synth_faithful` ctest exercises it. `--satsolver 0` is
+unsound for synthesis (without the SAT oracle, output vars get branched in the
+main search and the backtrack flips a forced-pure decision to its other phase).
 
 ## Running Tests
 ```
@@ -250,10 +141,10 @@ do not break when search heuristics reshape the circuit:
   `ddnnf_verify.py` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify
   the cleaned file `--strict`, and `ddnnf2dot`. `ddnnf_verify.py` doubles as a
   CLI checker (`--expect-count`, `--cnf`, `--check-decomposable`,
-  `--check-weak-decomposable`, `--strict`); bare invocation still prints the count.
-- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful`,
-  `ddnnf_synth_share_and_branch` — the property fuzzers run seeded (so a
-  regression reproduces) and self-check against a brute-force oracle.
+  `--strict`); bare invocation still prints the count.
+- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful` — the property
+  fuzzers run seeded (so a regression reproduces) and self-check against a
+  brute-force oracle.
 
 ## Architecture
 
@@ -358,45 +249,36 @@ code. `../count_fuzzer` is a fairly complete find-and-isolate system:
 
 3. **Re-fuzz** after the fix (`./fuzz.py --only 200 ...`) before committing.
 
-## Debugging a synthesis bug (`--synthesis` / wDNNF)
+## Debugging a synthesis bug
 
-When `ddnnf_synth.py --synthesis` reports a "no witness" failure or a SLOW_DEBUG
-abort (`check_wdnnf_at_and` in `ddnnf.hpp`), the script has the same
-find-and-isolate flow as `count_fuzzer`:
+When `ddnnf_synth.py` reports a "no witness" failure or a SLOW_DEBUG abort, the
+script has the same find-and-isolate flow as `count_fuzzer`:
 
 1. **Reproduce.** The fuzzer prints `seed=<N>` on every run; rerun with that
-   seed to get the same instance. `--diagnose` classifies the failure: is the
-   emitted circuit weak-decomposable? strictly decomposable? which AND node
-   leaks which shared var? which input assignment `X` had no witness?
+   seed to get the same instance. `--diagnose` classifies the failure (is the
+   emitted circuit decomposable? which input assignment `X` had no witness?):
    ```
-   python3 tests/ddnnf_synth.py --synthesis --num 200 --seed N --diagnose
+   python3 tests/ddnnf_synth.py --num 200 --seed N --diagnose
    ```
 
 2. **Minimize.** `--minimize` runs a per-clause delta debugger that keeps
    removing clauses while the failure persists. Treats both "wrong witness"
-   and "ganak crashed (no .nnf)" as failures, so SLOW_DEBUG aborts can be
-   reduced the same way as silent witness failures. Saves to
+   and "ganak crashed (no .nnf)" as failures. Saves to
    `/tmp/ddnnf_synth/fail_min_*.cnf` (typically 3–6 clauses).
    ```
-   python3 tests/ddnnf_synth.py --synthesis --num 200 --seed N --diagnose --minimize
+   python3 tests/ddnnf_synth.py --num 200 --seed N --diagnose --minimize
    ```
    Tip: pass `--minvars 4 --maxvars 9` to bias toward small instances —
    minimization is faster and the reproducer is easier to read.
 
 3. **Pinpoint.** Once you have a tiny CNF, rebuild with the relevant
-   `common.hpp` flags and run it directly:
-   - wrong witness or wDNNF leak → enable `SLOW_DEBUG`; the wDNNF check in
-     `ddnnf.hpp::mk_and` aborts at the first AND node whose children disagree
-     on a shared var's polarity, printing the offending var and child node ids
-     with the live decision context still on the stack.
-   - then add `VERBOSE_DEBUG` to read the trace; `synth_forced_lit` already
-     emits `[synth] v=<v> rp=<rp> orig_pol=<op> pin_pol=<pol>` per call, which
-     is usually enough to see which sibling pinned which polarity.
+   `common.hpp` flags and run it directly: `SLOW_DEBUG` first, then add
+   `VERBOSE_DEBUG` to read the trace around the failure.
 
 4. **Re-fuzz** after the fix:
-   - `python3 tests/ddnnf_synth.py --synthesis --num 200 --seed N` (the failing
-     seed) — confirms this specific case is fixed.
-   - `python3 tests/ddnnf_synth.py --synthesis --num 200` (random seeds) and
+   - `python3 tests/ddnnf_synth.py --num 200 --seed N` (the failing seed) —
+     confirms this specific case is fixed.
+   - `python3 tests/ddnnf_synth.py --num 200` (random seeds) and
      `cd build && ctest -R synth` — confirms no new regressions.
 
 ## Data Analysis

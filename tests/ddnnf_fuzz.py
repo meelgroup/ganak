@@ -4,7 +4,7 @@
 For each random CNF: brute-force the count + model set (oracle), compile to a d4
 .nnf, then check it is strictly decomposable, its count and model set match the
 oracle, and it is faithful as a Boolean function. Also cross-checks ddnnf-cleanup.
-(Functional synthesis / --synthesis: see ddnnf_synth.py.)
+(Functional synthesis round-trip: see ddnnf_synth.py.)
 
 Usage: ddnnf_fuzz.py [num_tests] [--seed N]
 """

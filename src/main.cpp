@@ -195,7 +195,6 @@ void add_ganak_options()
 
     // d-DNNF compilation
     add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
-    add_arg("--synthesis", conf.synthesis, fc_int, "When compiling: 1=enable synthesis share-and-branch. Output (non-input) vars (>= indep_support_end) may be shared across AND children while input vars (< indep_support_end) stay disjoint. ONLY for functional synthesis: it deliberately produces a WRONG model count.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");
@@ -356,22 +355,6 @@ void parse_supported_options(int argc, char** argv) {
         std::cerr << msg << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (conf.synthesis != 0 && conf.synthesis != 1) {
-      cerr << "ERROR: --synthesis must be 0 (off) or 1 (synthesis "
-              "share-and-branch)" << endl;
-      exit(EXIT_FAILURE);
-    }
-    if (conf.synthesis != 0 && !conf.do_use_sat_solver) {
-      // wDNNF synthesis needs the SAT oracle: it supplies one consistent witness
-      // for the shared output vars per component. Without it, output vars are
-      // branched in the main search and the backtrack flips a forced-pure decision
-      // to its other phase -> unsound for synthesis. (See the --synthesis notes in
-      // CLAUDE.md.)
-      cerr << "ERROR: --synthesis requires --satsolver 1 (the SAT oracle is needed "
-              "to record consistent witnesses; --satsolver 0 is unsound for "
-              "synthesis)" << endl;
-      exit(EXIT_FAILURE);
-    }
     if (!conf.compile_fname.empty()) {
       // d-DNNF needs a single clean DPLL tree for a faithful circuit. Force it.
       conf.do_restart = 0;             // one monolithic search, not restart+cube
@@ -382,17 +365,8 @@ void parse_supported_options(int argc, char** argv) {
       do_puura = 0;                    // no var-remapping preprocessing
       num_threads = 1;                 // single compiler instance
       // The SAT oracle stays ON: for a projected formula it supplies a witness for
-      // the synthesized vars; for a non-projected one it never fires. --synthesis
-      // keeps the cache ON but skips components with a shared output var (see
-      // CompManager::comp_has_shareable and the save_count guard in backtrack).
-      cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname
-           << (conf.synthesis ? " (SYNTHESIS)" : "") << endl;
-    } else if (conf.synthesis != 0) {
-      // --synthesis only makes sense when compiling: it deliberately produces a
-      // wrong count, so without --compile it would corrupt normal counting.
-      cerr << "ERROR: --synthesis requires --compile (it intentionally produces a "
-              "wrong count and is only meaningful for synthesis d-DNNF compilation)" << endl;
-      exit(EXIT_FAILURE);
+      // the synthesized vars; for a non-projected one it never fires.
+      cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
@@ -541,14 +515,6 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
 
     if (!cnt->is_zero()) cout << "s SATISFIABLE" << endl;
     else cout << "s UNSATISFIABLE" << endl;
-    if (conf.synthesis) {
-      // --synthesis emits a wDNNF circuit for functional synthesis; its model
-      // count is intentionally meaningless (pure output vars are shared across
-      // AND children), so we do not print it.
-      cout << "c o [synthesis] model count omitted -- wDNNF circuit is for "
-              "functional synthesis, not counting" << endl;
-      return;
-    }
     if (mode == 0 || mode == 1 || mode == 2 || mode == 6 || mode == 7) {
       std::stringstream ss;
       ss << std::scientific << setprecision(40);

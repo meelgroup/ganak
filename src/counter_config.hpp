@@ -34,13 +34,10 @@ struct CounterConfiguration {
   int verb = 1;
 
   // d-DNNF: if compile_fname is non-empty, emit the search trace as a
-  // (Decision-)d-DNNF circuit (d4 .nnf) to that file. By default this is a
-  // faithful d-DNNF. With `synthesis` on, it is the synthesis share-and-branch
-  // (output/non-input vars shared across AND children, input vars disjoint):
-  // this deliberately produces a WRONG model count and is ONLY for functional
-  // synthesis -- see the --synthesis help and the README/CLAUDE.md notes.
+  // (Decision-)d-DNNF circuit (d4 .nnf) to that file. This is a faithful
+  // d-DNNF; the SAT-oracle witnesses make it a sound functional-synthesis
+  // compiler too (no separate synthesis mode).
   std::string compile_fname = "";
-  int synthesis = 0;
 
   int do_restart = 0;
   int do_chronobt = 1;

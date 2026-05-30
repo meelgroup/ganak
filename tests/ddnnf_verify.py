@@ -170,8 +170,7 @@ def synthesize(nodes, arcs, root, xassign):
 
     This is a COMPLETE backtracking extractor: it explores alternative OR arcs and
     AND-child combinations rather than greedily committing, so it only returns None
-    when the circuit (conditioned on X) genuinely has no model. A greedy extractor
-    can report spurious failures on a faithful wDNNF circuit, so completeness is
+    when the circuit (conditioned on X) genuinely has no model. Completeness is
     what makes "no witness" a real soundness signal rather than a test artefact."""
 
     def merge(a, lits):
@@ -278,26 +277,6 @@ def check_decomposable(nodes, arcs, root):
     return True, "ok"
 
 
-def check_weak_decomposable(nodes, arcs, root):
-    """Weak (Akshay) d-DNNF: no variable appears positively in one child of an AND
-    node and negatively in another child."""
-    sv = subtree_vars(nodes, arcs, root)
-    for nid, t in nodes.items():
-        if t != 'a':
-            continue
-        if nid not in sv:           # unreachable ("dead") node: not part of the circuit
-            continue
-        kids = [sv[c] for c, _ in arcs.get(nid, [])]
-        for i in range(len(kids)):
-            for j in range(len(kids)):
-                if i == j:
-                    continue
-                bad = kids[i][0] & kids[j][1]   # pos in i, neg in j
-                if bad:
-                    return False, f"AND {nid}: var(s) {sorted(bad)} both polarities across children"
-    return True, "ok"
-
-
 def shared_and_vars(nodes, arcs, root):
     """Return the set of variables that appear in more than one child subtree of
     some AND node (i.e. the variables on which decomposability is relaxed)."""
@@ -362,8 +341,6 @@ if __name__ == '__main__':
                          "(also validates arc literals)")
     ap.add_argument('--check-decomposable', action='store_true',
                     help="assert strict decomposability (AND children var-disjoint)")
-    ap.add_argument('--check-weak-decomposable', action='store_true',
-                    help="assert weak decomposability (no var both polarities across AND children)")
     ap.add_argument('--strict', action='store_true',
                     help="assert canonical cleaned form: no dead nodes, root id 1, ids 1..N contiguous")
     ap.add_argument('-q', '--quiet', action='store_true')
@@ -373,7 +350,7 @@ if __name__ == '__main__':
     c = count(nodes, arcs, root)
 
     any_check = (args.expect_count is not None or args.cnf or args.check_decomposable
-                 or args.check_weak_decomposable or args.strict)
+                 or args.strict)
     if not any_check:
         print(c)               # backward-compatible: bare invocation prints the count
         sys.exit(0)
@@ -399,11 +376,6 @@ if __name__ == '__main__':
         ok, msg = check_decomposable(nodes, arcs, root)
         if not ok:
             fail("not decomposable: " + msg)
-
-    if args.check_weak_decomposable:
-        ok, msg = check_weak_decomposable(nodes, arcs, root)
-        if not ok:
-            fail("not weak-decomposable: " + msg)
 
     if args.strict:
         dead = unreachable_nodes(nodes, arcs, root)

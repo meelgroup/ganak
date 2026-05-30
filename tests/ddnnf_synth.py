@@ -70,17 +70,14 @@ def sat(cls, a):
     return all(any((l > 0) == a[abs(l)] for l in c) for c in cls)
 
 
-def _fails(cnf_path, args, synth):
+def _fails(cnf_path, args):
     """Compile `cnf_path` and return True iff ganak crashed (no .nnf written) or
-    some satisfiable X has no witness. Crash counts as a failure too -- that's
-    how the SLOW_DEBUG wDNNF assertion surfaces, and we want to delta-debug
-    crashes the same way."""
+    some satisfiable X has no witness. Crash counts as a failure too, and we
+    want to delta-debug crashes the same way."""
     nnf_path = cnf_path + ".nnf"
     if os.path.exists(nnf_path):
         os.remove(nnf_path)
     a = [GANAK, "--compile", nnf_path]
-    if synth:
-        a += ["--synthesis", "1"]
     if args.satoff:
         a += ["--satsolver", "0"]
     if args.ganak_args:
@@ -88,7 +85,7 @@ def _fails(cnf_path, args, synth):
     a.append(cnf_path)
     r = subprocess.run(a, capture_output=True, text=True)
     if not os.path.exists(nnf_path):
-        # ganak crashed (e.g. SLOW_DEBUG wDNNF abort): this IS the failure
+        # ganak crashed: this IS the failure
         return r.returncode != 0
     nodes, arcs, root = dv.parse(nnf_path)
     # parse cnf
@@ -130,7 +127,7 @@ def _fails(cnf_path, args, synth):
     return False
 
 
-def _minimize(orig_cnf, fail_cnf, args, synth):
+def _minimize(orig_cnf, fail_cnf, args):
     """Delta-debug clauses: try removing each clause; keep removal if the
     failure persists. Saves to fail_min_*.cnf."""
     print("  minimizing (delta-debug clauses)...")
@@ -156,7 +153,7 @@ def _minimize(orig_cnf, fail_cnf, args, synth):
                 if pcnf:
                     f.write(pcnf)
                 f.writelines(cand)
-            if _fails(tmp, args, synth):
+            if _fails(tmp, args):
                 cur = cand
                 changed = True
             else:
@@ -182,9 +179,6 @@ def parse_args(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--num", type=int, default=None, metavar="N",
                    help="number of random instances to test (default: run forever)")
-    p.add_argument("--synthesis", action="store_true",
-                   help="compile with --synthesis 1 (wDNNF share-and-branch) and "
-                        "report circuit size vs the faithful compile")
     p.add_argument("--seed", type=int, default=None,
                    help="RNG seed (default: random; printed so runs can be reproduced)")
     p.add_argument("--satoff", action="store_true",
@@ -203,8 +197,8 @@ def parse_args(argv):
                         "case, and tally every failing X within each instance "
                         "(default: stop immediately on the first failure)")
     p.add_argument("--diagnose", action="store_true",
-                   help="on failure, classify (weak-decomposable yes/no, which AND "
-                        "node violates wDNNF, which X has no witness) and print")
+                   help="on failure, classify (decomposable yes/no, which X has "
+                        "no witness) and print")
     p.add_argument("--noTautology", action="store_true", default=True,
                    help="(default on) reject tautological / repeated-var clauses "
                         "in random generation -- they confuse the diagnostic; pass "
@@ -226,18 +220,15 @@ def parse_args(argv):
 def main():
     args = parse_args(sys.argv[1:])
     n = args.num   # None => run forever (until a failure, with fail-fast)
-    synth = args.synthesis
     random.seed(args.seed)
     if not args.quiet:
         print(f"seed={args.seed} tests={n if n is not None else 'forever'} "
-              f"synthesis={synth} vars=[{args.minvars}..{args.maxvars}]")
+              f"vars=[{args.minvars}..{args.maxvars}]")
 
     cnf = unique_file("s", ".cnf")
     nnf = cnf + ".nnf"
     fails = 0
     no_witness = 0
-    size_w = 0
-    size_0 = 0
     ran = 0
     t = 0
     while n is None or t < n:
@@ -252,8 +243,6 @@ def main():
         if os.path.exists(nnf):
             os.remove(nnf)
         a = [GANAK, "--compile", nnf]
-        if synth:
-            a += ["--synthesis", "1"]
         if args.satoff:
             a += ["--satsolver", "0"]
         if args.ganak_args:
@@ -265,19 +254,12 @@ def main():
             cnf_fail = unique_file("fail", ".cnf")
             shutil.copy(cnf, cnf_fail)
             if args.minimize and not args.keep_going:
-                _minimize(cnf, cnf_fail, args, synth)
+                _minimize(cnf, cnf_fail, args)
             fails += 1
             if not args.keep_going:
                 break
             continue
         nodes, arcs, root = dv.parse(nnf)
-        size_w += len(nodes)
-        if synth:  # compile faithful (no --synthesis) too, to compare circuit size
-            n0 = nnf + ".w0"
-            subprocess.run([GANAK, "--compile", n0, cnf], capture_output=True)
-            if os.path.exists(n0):
-                nn0, _, _ = dv.parse(n0)
-                size_0 += len(nn0)
 
         # which input assignments X are satisfiable?
         solvable = set()
@@ -310,15 +292,13 @@ def main():
             shutil.copy(cnf, cnf_fail)
             shutil.copy(nnf, nnf_fail)
             if args.diagnose:
-                ok_w, msg_w = dv.check_weak_decomposable(nodes, arcs, root)
                 ok_d, msg_d = dv.check_decomposable(nodes, arcs, root)
                 shared = dv.shared_and_vars(nodes, arcs, root)
-                print(f"  wDNNF: {ok_w} ({msg_w})")
                 print(f"  d-DNNF: {ok_d} ({msg_d})")
                 print(f"  shared vars across AND children: {sorted(shared)}")
                 print(f"  saved: {cnf_fail} / {nnf_fail}")
             if args.minimize and not args.keep_going:
-                _minimize(cnf, cnf_fail, args, synth)
+                _minimize(cnf, cnf_fail, args)
             fails += 1
             if not args.keep_going:
                 print(f"stopping at first failure (seed={args.seed}); "
@@ -330,8 +310,6 @@ def main():
 
     msg = (f"done {ran} synth tests, {fails} failures "
            f"({no_witness} satisfiable-X with no witness)")
-    if synth and size_0:
-        msg += f"; circuit size synthesis/faithful = {size_w/size_0:.2f}"
     print(msg)
     return 1 if fails else 0
 

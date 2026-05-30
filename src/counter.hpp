@@ -201,6 +201,12 @@ public:
 
   // ---- d-DNNF compilation ----
   bool compiling() const { return ddnnf != nullptr; }
+  // --synthesis (wDNNF): if v is an output var that is currently pure (single
+  // polarity in the residual), return the literal forcing its pure polarity;
+  // otherwise return Lit() (raw 0). A pure output var must take its pure value so
+  // that every sibling component agrees on it -- otherwise synthesis is unsound.
+  // Recomputed fresh each call, so it is immune to stale per-round shareable[].
+  Lit synth_forced_lit(uint32_t v);
   // From the analyzer on a free var (factor two = OR(v, -v)).
   void compile_add_free_var(uint32_t v);
   // From the comp manager on a cache hit: share the cached sub-DAG.

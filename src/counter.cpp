@@ -974,6 +974,16 @@ void Counter::compile_add_free_var(uint32_t v) {
   ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), ddnnf->mk_free_var((int)v));
 }
 
+Lit Counter::synth_forced_lit(uint32_t v) {
+  auto& ana = comp_manager->get_ana();
+  if (!compiling() || !ana.share_mode || v < ana.indep_end) return Lit();
+  const int rp = ana.residual_polarity(v);
+  if ((rp & 1) && (rp & 2)) return Lit(); // impure -> not shared, decide normally
+  // pure-negative -> false; pure-positive or free -> true (a deterministic choice
+  // so that every sibling that touches v agrees on its value).
+  return Lit(v, rp != 2);
+}
+
 void Counter::compile_on_cache_hit(int node) {
   // A cached component must have its sub-DAG recorded (set_comp_node in
   // backtrack); a missing node would silently undercount, so fail loudly.
@@ -1367,7 +1377,13 @@ void Counter::decide_lit() {
   decisions.top().var = v;
   decisions.top().is_indep = is_indep;
 
-  Lit const lit = Lit(v, get_polarity(v));
+  // --synthesis (wDNNF): a pure output var must be decided at its pure polarity so
+  // every sibling agrees on its value (see synth_forced_lit / the SAT-oracle path).
+  const Lit forced = synth_forced_lit(v);
+  Lit const lit = (forced.raw() != 0) ? forced : Lit(v, get_polarity(v));
+  // Cheap invariant: a pure output var is never decided at the wrong polarity.
+  assert((forced.raw() == 0 || lit == forced)
+         && "synthesis: pure output var decided at non-pure polarity");
   /* cout << "decided on: " << setw(4) << lit.var() << " sign:" << lit.sign() <<  endl; */
   debug_print(COLYEL "decide_lit() is deciding: " << lit << " dec level: "
       << dec_level());
@@ -3894,8 +3910,16 @@ bool Counter::run_sat_solver(RetState& state) {
     vsads_readjust();
     assert(val(d) == X_TRI);
     Lit l;
-    if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);
+    // --synthesis (wDNNF): a pure output var must be decided at its pure polarity.
+    // That value satisfies all its clauses, so every sibling SAT leaf agrees on it
+    // -- otherwise sibling witnesses conflict and synthesis is unsound.
+    const Lit forced = synth_forced_lit(d);
+    if (forced.raw() != 0) l = forced;
+    else if (conf.do_sat_polar_cache) l = Lit(d, var(d).last_polarity);
     else l = Lit(d, get_polarity(d));
+    // Cheap invariant: a pure output var is never decided at the wrong polarity.
+    assert((forced.raw() == 0 || l == forced)
+           && "synthesis: pure output var (SAT) decided at non-pure polarity");
     if (decisions.top().var != 0) decisions.push_back(StackLevel(1,2,is_indep,tstamp,fg));
     decisions.back().var = l.var();
     set_lit(l, dec_level());
@@ -4310,6 +4334,19 @@ void Counter::v_restore() {
 void Counter::set_lit(const Lit lit, int32_t dec_lev, Antecedent ant) {
   bump_stamp();
   assert(val(lit) == X_TRI);
+  // --synthesis (wDNNF): a GENUINELY pure output var must never be set (by decision
+  // OR propagation) to the opposite of its pure polarity -- otherwise sibling
+  // witnesses could disagree and synthesis would be unsound. Purity is recomputed
+  // fresh (`residual_polarity`) so this is immune to stale per-round shareable[].
+  SLOW_DEBUG_DO(
+    if (compiling() && comp_manager->get_ana().share_mode
+        && lit.var() >= comp_manager->get_ana().indep_end && val(lit) == X_TRI) {
+      const int rp = comp_manager->get_ana().residual_polarity(lit.var());
+      const bool pure_pos = (rp & 1) && !(rp & 2);
+      const bool pure_neg = (rp & 2) && !(rp & 1);
+      assert((!pure_pos || lit.sign())  && "synthesis: pure-positive output var set false");
+      assert((!pure_neg || !lit.sign()) && "synthesis: pure-negative output var set true");
+    });
   if (ant.isNull()) {
     debug_print("set_lit called with a decision. Lit: " << lit << " lev: " << dec_lev << " cur dec lev: " << dec_level());
   }

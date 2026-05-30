@@ -210,6 +210,24 @@ void CompAnalyzer::initialize(
   }
 }
 
+// SLOW_DEBUG: current residual polarity of v (see header). Recomputed fresh from
+// `values`, so it reflects the live assignment regardless of shareable[] staleness.
+int CompAnalyzer::residual_polarity(uint32_t v) {
+  int res = 0;
+  for (const Lit o : bin_pos[v]) if (!is_true(o)) { res |= 1; break; }
+  for (const Lit o : bin_neg[v]) if (!is_true(o)) { res |= 2; break; }
+  const ClData* longs = holder.begin_long(v);
+  const uint32_t nl = holder.orig_size_long(v);
+  for (uint32_t i = 0; i < nl; i++) {
+    const auto& lits = cls_lits[longs[i].id];
+    bool sat = false;
+    for (const Lit l : lits) if (is_true(l)) { sat = true; break; }
+    if (sat) continue;
+    for (const Lit l : lits) if (l.var() == v) res |= (l.sign() ? 1 : 2);
+  }
+  return res;
+}
+
 // --synthesis (wDNNF): recompute shareable[] for the current super-comp.
 // A var is initially shareable iff it is an unknown OUTPUT var (>= indep_end) that
 // is PURE (appears in a single polarity) in the residual formula -- this is the

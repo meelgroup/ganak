@@ -57,6 +57,7 @@ public:
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
   const auto& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
+  CompAnalyzer& get_ana() { return ana; } // non-const: SLOW_DEBUG residual_polarity
 
   void save_count(const uint64_t stack_comp_id, const FF& value) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id

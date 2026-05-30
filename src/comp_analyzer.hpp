@@ -167,6 +167,12 @@ public:
   vector<char> claimed_share; // per var: was it added to some component this round
   vector<char> shareable;     // per var: pure output var, kept shared this round
   bool is_shareable(uint32_t v) const { return share_mode && shareable[v]; }
+  // Freshly recompute v's residual polarity from the *current* assignment. Bit 1 =
+  // v occurs positively in some active (unsatisfied) clause, bit 2 = occurs
+  // negatively. 0 => no active occurrence (free). This is the canonical purity
+  // oracle used both to force decision polarity and to assert the invariant -- it
+  // never relies on the per-round (possibly stale post-backtrack) shareable[].
+  int residual_polarity(uint32_t v);
 
   // share_mode signed occurrence data (built once in initialize), used to compute
   // residual polarity purity per round. bin_{pos,neg}[v] = the other literal of

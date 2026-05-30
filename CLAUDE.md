@@ -176,11 +176,22 @@ Synthesis notes (empirically established):
     circuit-size ratio drops from ~1.01 to ~0.99 across fuzzer runs.
 - **Status:** sound. `ddnnf_synth_share_and_branch` ctest exercises it; the
   fuzzer (`tests/ddnnf_synth.py --synthesis`) is at 0 failures across thousands
-  of random projected instances. The fix has two parts:
+  of random projected instances at multiple seeds (including seed=51326094 which
+  produced a real bug under the old "block op==3 entirely" rule). The fix has
+  three parts:
   (1) `compute_shareable_vars` refuses to share an output var whose original CNF
-  has BOTH polarities (no globally-consistent pin exists); and
+  has BOTH polarities AND whose super-comp residual is pure-neg (`seen_neg` set
+  in current scratch). The op==3 + super-rp=2 corner is the only remaining
+  exclusion; op==3 with super-rp in {0,1} is now allowed (Tier-4). The "no
+  globally-consistent pin exists" hazard is averted because decisions only ADD
+  to the trail, so all siblings see rp in {0,1} → default-+v pin agrees.
   (2) `synth_forced_lit` falls back to `orig_polarity[v]` when the residual is
   free, instead of always defaulting to +v.
+  (3) Shareable-containing comps are CACHED (Tier-3A). Pin polarity is
+  state-independent for the now-allowed shareable population, so reusing a
+  cached sub-circuit reuses the correct v-witness. Empirically this also
+  produces a circuit ~1% smaller than faithful (the first concrete wDNNF
+  compaction signal in the codebase).
   The SLOW_DEBUG check `check_wdnnf_at_and` in `ddnnf.hpp` verifies the wDNNF
   invariant at every `mk_and` and aborts on a violation — turn it on before
   changing share-mode heuristics. `--satsolver 0` is **still unsound by design**

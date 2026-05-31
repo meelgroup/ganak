@@ -267,6 +267,48 @@ void compute_parents(
   }
 }
 
+// Top-down pass: for each reachable node, compute the lits forced on EVERY path
+// from the root to it ("ambient context"). An ancestor's OR-arc lit, taken on
+// every reaching path, pins a var's polarity even if neither subtree of an AND
+// below it forces the var on its own.
+//
+// Per edge (p -> c): contribution = ambient[p] ∪ arc.lits. For a DAG-shared
+// child, the ambient is the INTERSECTION across all incoming edges (lits common
+// to every reaching path). Iterating reverse-post-order means every parent has
+// already pushed before we touch the child, so the meet finishes in one pass.
+//
+// ambient[c] is left in its default (empty) state for unreachable c; the caller
+// only reads it for nodes that appeared in `post`.
+void compute_ambient_forced(
+    const std::vector<int>& post,
+    int root,
+    const std::vector<std::vector<Arc>>& arcs,
+    size_t words,
+    std::vector<LitSet>& ambient,
+    std::vector<char>& ambient_set) {
+  ambient[root].resize(words);
+  ambient_set[root] = 1;
+  LitSet contrib;
+  contrib.resize(words);
+  for (auto it = post.rbegin(); it != post.rend(); ++it) {
+    int n = *it;
+    if (!ambient_set[n]) continue;  // unreachable from root
+    if (n >= (int)arcs.size()) continue;
+    for (const auto& a : arcs[n]) {
+      int c = a.child;
+      // contrib = ambient[n] ∪ arc lits  (reuse scratch capacity)
+      contrib = ambient[n];
+      for (int l : a.lits) contrib.set(l);
+      if (!ambient_set[c]) {
+        ambient[c] = contrib;
+        ambient_set[c] = 1;
+      } else {
+        ambient[c].intersect_with(contrib);
+      }
+    }
+  }
+}
+
 // Scrub `var` from the subtree rooted at `nid`, knowing that an enclosing AND
 // forces var to `polarity`. Returns the new root id (== nid if modified in
 // place, else a fresh clone id). Iterative post-order walk over the subtree --
@@ -405,6 +447,10 @@ int cleanup_decomp(
     std::vector<int> parent_count(sz, 0);
     compute_parents(root, arcs, parent_count);
 
+    std::vector<LitSet> ambient(sz);
+    std::vector<char> ambient_set(sz, 0);
+    compute_ambient_forced(post, root, arcs, words, ambient, ambient_set);
+
     // One pass: collect every (AND, scrub_child, var, polarity) we can act on,
     // then apply them. Skipping ANDs whose modified arcs would interfere this
     // pass keeps things sane; remaining violations re-surface next iteration.
@@ -435,9 +481,21 @@ int cleanup_decomp(
           if (pi != 0)      { scrub_child = cj; polarity = (pi > 0); }
           else if (pj != 0) { scrub_child = ci; polarity = (pj > 0); }
           else {
-            std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var " << shared_var
-                      << " but neither child forces it; leaving as-is" << std::endl;
-            continue;
+            // Neither child forces v in its own subtree. But if v is pinned by
+            // the ambient context (an ancestor OR-arc lit on every path to
+            // this AND), we can still scrub. Sound because every model passing
+            // through `nid` agrees with the ambient polarity; the matching lit
+            // is redundant and the opposite-lit arcs are dead under this AND.
+            int pa = 0;
+            if (ambient[nid].has(shared_var))  pa = +1;
+            if (ambient[nid].has(-shared_var)) pa = -1;
+            if (pa != 0) { scrub_child = ci; polarity = (pa > 0); }
+            else {
+              std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var " << shared_var
+                        << " but neither child nor ambient context forces it; leaving as-is"
+                        << std::endl;
+              continue;
+            }
           }
           int new_scrub = scrub_var(scrub_child, shared_var, polarity, type, arcs,
                                     parent_count, max_id);

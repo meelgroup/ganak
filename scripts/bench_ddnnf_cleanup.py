@@ -68,24 +68,37 @@ def gen_cnf(path, nv, nc, k, rng):
             f.write(" ".join(map(str, cl)) + " 0\n")
 
 
+VERBOSE = False
+
+
+def vlog(msg):
+    if VERBOSE:
+        print(f"[v] {msg}", file=sys.stderr, flush=True)
+
+
 def time_proc(argv, timeout):
     """Run argv under /usr/bin/time, return (wall_seconds, peak_kb, stderr, ok)."""
     full = ["/usr/bin/time", "-f", "%e %M"] + argv
+    vlog(f"run: {' '.join(argv)}")
     try:
         r = subprocess.run(full, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
+        vlog(f"  -> TIMEOUT after {timeout}s")
         return (timeout, 0, "TIMEOUT", False)
     # /usr/bin/time prints "<wall> <kb>" on its own line at the end of stderr
     m = re.search(r"(\d+(?:\.\d+)?)\s+(\d+)\s*$", r.stderr.strip())
     if not m:
+        vlog(f"  -> no time line; rc={r.returncode}; stderr tail:\n{r.stderr[-400:]}")
         return (None, None, r.stderr, False)
+    vlog(f"  -> wall={m.group(1)}s rss={int(m.group(2))/1024:.0f}MB rc={r.returncode}")
     return (float(m.group(1)), int(m.group(2)), r.stderr, r.returncode == 0)
 
 
 def best_of(argv, reps, timeout):
     """Take min wall + corresponding mem across reps."""
     best = (float("inf"), 0, "", False)
-    for _ in range(reps):
+    for i in range(reps):
+        vlog(f"  rep {i+1}/{reps}")
         t, m, err, ok = time_proc(argv, timeout)
         if t is None:
             return (None, 0, err, False)
@@ -126,14 +139,19 @@ def fmt_t(t):
 
 def run_one(name, cnf, nnf, args):
     """Compile + bench both modes. Returns a dict row."""
+    vlog(f"=== {name}: cnf={cnf} ({os.path.getsize(cnf)} B)")
     if os.path.exists(nnf):
         os.remove(nnf)
+    vlog(f"compile: ganak --compile {nnf} {cnf}")
+    t0 = time.time()
     subprocess.run([GANAK, "--compile", nnf, cnf], capture_output=True, timeout=300)
+    vlog(f"  -> compile took {time.time()-t0:.2f}s")
     if not os.path.exists(nnf):
         print(f"  {name}: ganak compile FAILED", file=sys.stderr)
         return None
     nodes = sum(1 for line in open(nnf) if line[:1] in "oatf")
     in_size = os.path.getsize(nnf)
+    vlog(f"  raw .nnf: {nodes} nodes, {in_size/1024/1024:.2f} MB")
 
     # warmup so file is in page cache
     with open(nnf, "rb") as f: f.read()
@@ -143,25 +161,29 @@ def run_one(name, cnf, nnf, args):
     out_str = nnf + ".str.out"
     for p in (out_bfs, out_str):
         if os.path.exists(p): os.remove(p)
+    vlog("warmup cleanup: --no-strict-decomp")
     subprocess.run([CLEANUP, "--no-strict-decomp", nnf, out_bfs], capture_output=True)
+    vlog("warmup cleanup: strict-decomp")
     subprocess.run([CLEANUP, nnf, out_str], capture_output=True, timeout=args.timeout)
 
-    # Re-delete before timing so each rep starts with a known state. If a rep
-    # crashes, best_of will see no output file and report it via the count
-    # mismatch path below.
-    for _ in range(args.reps):
-        pass  # no-op
+    vlog(f"timed bfs ({args.reps} reps):")
     bfs = best_of([CLEANUP, "--no-strict-decomp", nnf, out_bfs], args.reps, args.timeout)
+    vlog(f"timed strict ({args.reps} reps):")
     strc = best_of([CLEANUP, nnf, out_str], args.reps, args.timeout)
     iters, fixes = parse_fixes(strc[2])
+    vlog(f"  strict-decomp: iters={iters} fixes={fixes}")
 
+    vlog("ganak count (oracle)")
     expected = ganak_count(cnf)
+    vlog(f"  -> {expected}")
     # Correctness: cleaned-strict file's count should match ganak. Existence
     # check guards against an OOM-killed cleanup leaving us with no output.
     if not os.path.exists(out_str) or os.path.getsize(out_str) == 0:
         match = f"FAIL(no output, ganak={expected})"
     else:
+        vlog(f"verify count on {out_str}")
         str_cnt = verify_count(out_str)
+        vlog(f"  -> {str_cnt}")
         match = "OK" if str_cnt == expected else f"MISMATCH({str_cnt} vs {expected})"
 
     return {
@@ -195,7 +217,15 @@ def main():
     p.add_argument("--compile", action="store_true",
                    help="(with --gen-only) also run `ganak --compile` to "
                         "produce the raw .nnf for each generated CNF")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="print each subprocess invocation, per-rep timings, "
+                        "and intermediate sizes/counts to stderr as the bench "
+                        "progresses (useful for diagnosing where time/memory "
+                        "is going on big instances)")
     args = p.parse_args()
+
+    global VERBOSE
+    VERBOSE = args.verbose
 
     if args.gen_only:
         args.keep = True
@@ -223,16 +253,23 @@ def main():
         print(f"regression(16v/40c)  cnf={reg_cnf}")
         if args.compile:
             nnf = os.path.join(TMP, "regression.nnf")
+            vlog(f"ganak --compile {nnf} {reg_cnf}")
+            t0 = time.time()
             subprocess.run([GANAK, "--compile", nnf, reg_cnf], capture_output=True)
+            vlog(f"  -> {time.time()-t0:.2f}s")
             print(f"                     nnf={nnf}")
         for nv in sizes:
             nc = nv * 3
             cnf = os.path.join(TMP, f"random_nv{nv}.cnf")
+            vlog(f"generating CNF nv={nv} nc={nc}")
             gen_cnf(cnf, nv, nc, 3, rng)
             print(f"nv={nv}/nc={nc:<6}    cnf={cnf}")
             if args.compile:
                 nnf = os.path.join(TMP, f"random_nv{nv}.nnf")
+                vlog(f"ganak --compile {nnf} {cnf}")
+                t0 = time.time()
                 subprocess.run([GANAK, "--compile", nnf, cnf], capture_output=True, timeout=600)
+                vlog(f"  -> {time.time()-t0:.2f}s")
                 if os.path.exists(nnf):
                     print(f"                     nnf={nnf}  ({os.path.getsize(nnf)/1024/1024:.1f} MB)")
                 else:

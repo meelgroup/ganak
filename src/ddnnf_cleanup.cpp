@@ -203,6 +203,31 @@ void compute_subtree_vars(
   }
 }
 
+// Compute, for each reachable node, the union of every literal appearing in any
+// arc lit anywhere in its subtree (polarity-aware). Iterative bottom-up over
+// post-order, parallel to compute_subtree_vars but distinguishing polarity.
+//
+// Use case: at an AND with a shared var v, when neither child *forces* v and
+// the ambient context doesn't pin it either, ganak's compiler invariant is
+// that the sharing is learnt-clause BCP residue with a CONSISTENT polarity
+// across both subtrees (no choice OR on v inside, so subtree_lits[c] sees only
+// one polarity of v). The cleanup reads that polarity from this set and scrubs.
+void compute_subtree_lits(
+    const std::vector<int>& post,
+    const std::vector<std::vector<Arc>>& arcs,
+    size_t words,
+    std::vector<LitSet>& out) {
+  for (int n : post) {
+    LitSet& ls = out[n];
+    ls.resize(words);
+    if (n >= (int)arcs.size()) continue;
+    for (const auto& a : arcs[n]) {
+      for (int l : a.lits) ls.set(l);
+      ls.union_with(out[a.child]);
+    }
+  }
+}
+
 // Compute, for each reachable node, the literals true in EVERY model of the
 // subtree (the node's "forced" lits). is_false[nid] = 1 => node is FALSE (no
 // models). OR: intersection of (arc_lits + child_forced) across non-FALSE arcs.
@@ -451,6 +476,9 @@ int cleanup_decomp(
     std::vector<char> ambient_set(sz, 0);
     compute_ambient_forced(post, root, arcs, words, ambient, ambient_set);
 
+    std::vector<LitSet> subtree_lits(sz);
+    compute_subtree_lits(post, arcs, words, subtree_lits);
+
     // One pass: collect every (AND, scrub_child, var, polarity) we can act on,
     // then apply them. Skipping ANDs whose modified arcs would interfere this
     // pass keeps things sane; remaining violations re-surface next iteration.
@@ -489,10 +517,27 @@ int cleanup_decomp(
             int pa = 0;
             if (ambient[nid].has(shared_var))  pa = +1;
             if (ambient[nid].has(-shared_var)) pa = -1;
+            if (pa == 0) {
+              // Last resort: arc-lit residue. By the compiler invariant, v
+              // appears in both subtrees only as learnt-clause BCP residue,
+              // never as a choice OR(v,-v) -- so subtree_lits sees a single
+              // polarity of v in each child, and the two agree. Scrub that
+              // polarity: the matching arc lits are redundant in this AND
+              // context, and the opposite-polarity arcs don't exist (so the
+              // "kill" half of scrub_var is a no-op). Structural count is
+              // preserved (arc lits don't contribute to structural count and
+              // no choice node on v exists to be removed).
+              bool i_pos = subtree_lits[ci].has(shared_var);
+              bool i_neg = subtree_lits[ci].has(-shared_var);
+              bool j_pos = subtree_lits[cj].has(shared_var);
+              bool j_neg = subtree_lits[cj].has(-shared_var);
+              if (i_pos && !i_neg && j_pos && !j_neg) pa = +1;
+              else if (i_neg && !i_pos && j_neg && !j_pos) pa = -1;
+            }
             if (pa != 0) { scrub_child = ci; polarity = (pa > 0); }
             else {
               std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var " << shared_var
-                        << " but neither child nor ambient context forces it; leaving as-is"
+                        << " but no child/ambient/arc-lit-residue rule applies; leaving as-is"
                         << std::endl;
               continue;
             }

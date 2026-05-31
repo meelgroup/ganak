@@ -34,9 +34,7 @@ struct CounterConfiguration {
   int verb = 1;
 
   // d-DNNF: if compile_fname is non-empty, emit the search trace as a
-  // (Decision-)d-DNNF circuit (d4 .nnf) to that file. This is a faithful
-  // d-DNNF; the SAT-oracle witnesses make it a sound functional-synthesis
-  // compiler too (no separate synthesis mode).
+  // (Decision-)d-DNNF circuit (d4 .nnf) to that file.
   std::string compile_fname = "";
 
   int do_restart = 0;

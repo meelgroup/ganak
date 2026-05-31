@@ -3939,8 +3939,7 @@ bool Counter::run_sat_solver(RetState& state) {
       }
     }
     // d-DNNF: record the SAT oracle's witness for this component's synthesized
-    // vars (>= opt_indep_support_end) before backtracking -- the example solution
-    // functional synthesis needs.
+    // vars (>= opt_indep_support_end) before backtracking
     if (compiling()) {
       sat_witness.clear();
       all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {

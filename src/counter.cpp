@@ -3973,10 +3973,8 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
-    // This SAT level's node is the witness leaf (TRUE constrained by the recorded
-    // synthesized-var assignment).
-    if (compiling())
-      ddnnf->set_override(dec_level(), ddnnf->wrap_lits(ddnnf->true_node, sat_witness));
+    // This SAT level's node is the witness leaf
+    if (compiling()) ddnnf->set_override(dec_level(), ddnnf->wrap_lits(ddnnf->true_node, sat_witness));
   }
 
 end:

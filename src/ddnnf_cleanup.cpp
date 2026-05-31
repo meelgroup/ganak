@@ -509,36 +509,45 @@ int cleanup_decomp(
           if (pi != 0)      { scrub_child = cj; polarity = (pi > 0); }
           else if (pj != 0) { scrub_child = ci; polarity = (pj > 0); }
           else {
-            // Neither child forces v in its own subtree. But if v is pinned by
-            // the ambient context (an ancestor OR-arc lit on every path to
-            // this AND), we can still scrub. Sound because every model passing
-            // through `nid` agrees with the ambient polarity; the matching lit
-            // is redundant and the opposite-lit arcs are dead under this AND.
-            int pa = 0;
-            if (ambient[nid].has(shared_var))  pa = +1;
-            if (ambient[nid].has(-shared_var)) pa = -1;
-            if (pa == 0) {
-              // Last resort: arc-lit residue. By the compiler invariant, v
-              // appears in both subtrees only as learnt-clause BCP residue,
-              // never as a choice OR(v,-v) -- so subtree_lits sees a single
-              // polarity of v in each child, and the two agree. Scrub that
-              // polarity: the matching arc lits are redundant in this AND
-              // context, and the opposite-polarity arcs don't exist (so the
-              // "kill" half of scrub_var is a no-op). Structural count is
-              // preserved (arc lits don't contribute to structural count and
-              // no choice node on v exists to be removed).
-              bool i_pos = subtree_lits[ci].has(shared_var);
-              bool i_neg = subtree_lits[ci].has(-shared_var);
-              bool j_pos = subtree_lits[cj].has(shared_var);
-              bool j_neg = subtree_lits[cj].has(-shared_var);
-              if (i_pos && !i_neg && j_pos && !j_neg) pa = +1;
-              else if (i_neg && !i_pos && j_neg && !j_pos) pa = -1;
+            // Neither child *forces* v in its own subtree. Try, in order:
+            //   1. Ambient context (ancestor arc-lit on every path) pins v.
+            //   2. Arc-lit residue: one side has v in arc lits as a SINGLE
+            //      polarity (= no choice OR(v,-v) inside; it's learnt-clause
+            //      BCP residue). Scrub that side. The other side may have v
+            //      as residue too (same polarity) OR as a real choice node /
+            //      free-var OR (both polarities visible) -- scrubbing only
+            //      the residue side preserves the count contribution from
+            //      the choice side.
+            bool i_pos = subtree_lits[ci].has(shared_var);
+            bool i_neg = subtree_lits[ci].has(-shared_var);
+            bool j_pos = subtree_lits[cj].has(shared_var);
+            bool j_neg = subtree_lits[cj].has(-shared_var);
+            bool i_single_pos = i_pos && !i_neg;
+            bool i_single_neg = i_neg && !i_pos;
+            bool j_single_pos = j_pos && !j_neg;
+            bool j_single_neg = j_neg && !j_pos;
+            bool amb_pos = ambient[nid].has(shared_var);
+            bool amb_neg = ambient[nid].has(-shared_var);
+
+            if (amb_pos || amb_neg) {
+              scrub_child = ci;
+              polarity = amb_pos;
             }
-            if (pa != 0) { scrub_child = ci; polarity = (pa > 0); }
+            else if (i_single_pos) { scrub_child = ci; polarity = true; }
+            else if (i_single_neg) { scrub_child = ci; polarity = false; }
+            else if (j_single_pos) { scrub_child = cj; polarity = true; }
+            else if (j_single_neg) { scrub_child = cj; polarity = false; }
             else {
-              std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var " << shared_var
-                        << " but no child/ambient/arc-lit-residue rule applies; leaving as-is"
-                        << std::endl;
+              std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var "
+                        << shared_var << " [arc-pols ci=" << ci << ":"
+                        << (i_pos?"+":"") << (i_neg?"-":"")
+                        << (!i_pos && !i_neg ? "none" : "")
+                        << " cj=" << cj << ":" << (j_pos?"+":"") << (j_neg?"-":"")
+                        << (!j_pos && !j_neg ? "none" : "")
+                        << "; ambient=" << (amb_pos?"+":"") << (amb_neg?"-":"")
+                        << (!amb_pos && !amb_neg ? "none" : "")
+                        << "; forced ci=" << pi << " cj=" << pj
+                        << "]; leaving as-is" << std::endl;
               continue;
             }
           }

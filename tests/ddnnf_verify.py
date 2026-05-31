@@ -35,26 +35,36 @@ def parse(path):
 
 
 def count(nodes, arcs, root):
+    # Iterative post-order: a recursive version blows the 1000-frame Python
+    # stack on multi-million-node circuits (the large random_nvN benches).
     memo = {}
-
-    def rec(nid):
+    stack = [(root, 0)]                         # (nid, next-child-index)
+    while stack:
+        nid, idx = stack[-1]
         if nid in memo:
-            return memo[nid]
-        t = nodes[nid]
-        if t == 't':
-            r = 1
-        elif t == 'f':
-            r = 0
-        elif t == 'o':
-            r = sum(rec(c) for c, _ in arcs[nid])
-        else:  # 'a'
-            r = 1
-            for c, _ in arcs[nid]:
-                r *= rec(c)
-        memo[nid] = r
-        return r
-
-    return rec(root)
+            stack.pop()
+            continue
+        kids = arcs.get(nid, [])
+        if idx >= len(kids):
+            t = nodes[nid]
+            if t == 't':
+                r = 1
+            elif t == 'f':
+                r = 0
+            elif t == 'o':
+                r = sum(memo[c] for c, _ in kids)
+            else:                               # 'a'
+                r = 1
+                for c, _ in kids:
+                    r *= memo[c]
+            memo[nid] = r
+            stack.pop()
+            continue
+        c = kids[idx][0]
+        stack[-1] = (nid, idx + 1)
+        if c not in memo:
+            stack.append((c, 0))
+    return memo[root]
 
 
 def models(nodes, arcs, root, nvars):
@@ -219,23 +229,31 @@ def synthesize(nodes, arcs, root, xassign):
 
 def subtree_vars(nodes, arcs, root):
     """node -> (pos_vars, neg_vars) appearing on arcs in its reachable subgraph."""
+    # Iterative post-order, same reason as count(): a recursive walk blows the
+    # stack on multi-million-node circuits.
     memo = {}
-
-    def rec(nid):
+    stack = [(root, 0)]
+    while stack:
+        nid, idx = stack[-1]
         if nid in memo:
-            return memo[nid]
-        memo[nid] = (set(), set())   # guard against cycles (there are none, but safe)
-        pos, neg = set(), set()
-        for c, lits in arcs.get(nid, []):
-            for l in lits:
-                (pos if l > 0 else neg).add(abs(l))
-            cp, cn = rec(c)
-            pos |= cp
-            neg |= cn
-        memo[nid] = (pos, neg)
-        return memo[nid]
-
-    rec(root)
+            stack.pop()
+            continue
+        kids = arcs.get(nid, [])
+        if idx >= len(kids):
+            pos, neg = set(), set()
+            for c, lits in kids:
+                for l in lits:
+                    (pos if l > 0 else neg).add(abs(l))
+                cp, cn = memo[c]
+                pos |= cp
+                neg |= cn
+            memo[nid] = (pos, neg)
+            stack.pop()
+            continue
+        c = kids[idx][0]
+        stack[-1] = (nid, idx + 1)
+        if c not in memo:
+            stack.append((c, 0))
     return memo
 
 

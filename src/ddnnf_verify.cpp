@@ -26,15 +26,20 @@ THE SOFTWARE.
 // ddnnf_fuzz.py; this binary handles the big-circuit cases (multi-million-node
 // random_nvN benches) that exhaust Python's stack and dict overhead.
 //
-// Usage:  ddnnf-verify <in.nnf>                       (bare: prints structural count)
+// Usage:  ddnnf-verify <in.nnf>                       (default: --check-decomposable
+//                                                      and --strict are both ON)
 //         ddnnf-verify <in.nnf> --expect-count N
 //         ddnnf-verify <in.nnf> --cnf <c.cnf>         (small CNFs only: brute-forces
 //                                                      the model set 2^nvars)
-//         ddnnf-verify <in.nnf> --check-decomposable
-//         ddnnf-verify <in.nnf> --strict              (canonical cleaned form:
+//         ddnnf-verify <in.nnf> --no-check-decomposable   (opt out of decomp check)
+//         ddnnf-verify <in.nnf> --no-strict           (opt out of strict-form check:
 //                                                      root id 1, ids 1..N contiguous,
 //                                                      no dead nodes)
 //         ddnnf-verify <in.nnf> -q | --quiet          (suppress final "OK" message)
+//
+// `--check-decomposable` and `--strict` are accepted as no-ops for back-compat
+// (they used to be opt-in). To get the raw structural count alone, opt out of
+// both checks: `ddnnf-verify in.nnf --no-check-decomposable --no-strict`.
 
 #include <cctype>
 #include <cstdint>
@@ -374,17 +379,19 @@ int main(int argc, char** argv) {
   std::string cnf_path;
   mpz_class expect_count;
   bool have_expect = false;
-  bool check_decomp = false;
-  bool strict = false;
+  bool check_decomp = true;   // default ON; opt out with --no-check-decomposable
+  bool strict = true;         // default ON; opt out with --no-strict
   bool quiet = false;
 
   auto usage = [&]() {
     std::cerr <<
       "Usage: " << argv[0] << " <in.nnf>\n"
       "         [--expect-count N] [--cnf <file>]\n"
-      "         [--check-decomposable] [--strict] [-q|--quiet]\n"
+      "         [--no-check-decomposable] [--no-strict] [-q|--quiet]\n"
       "\n"
-      "With no check flag, just prints the structural model count.\n";
+      "--check-decomposable and --strict are ON by default. Opt out with\n"
+      "--no-check-decomposable / --no-strict; opt out of BOTH to print just\n"
+      "the structural count.\n";
     std::exit(EXIT_FAILURE);
   };
 
@@ -392,8 +399,10 @@ int main(int argc, char** argv) {
     std::string a = argv[i];
     if (a == "-h" || a == "--help") usage();
     else if (a == "-q" || a == "--quiet") quiet = true;
-    else if (a == "--check-decomposable") check_decomp = true;
-    else if (a == "--strict") strict = true;
+    else if (a == "--check-decomposable") check_decomp = true;   // no-op, kept for back-compat
+    else if (a == "--strict") strict = true;                     // no-op, kept for back-compat
+    else if (a == "--no-check-decomposable") check_decomp = false;
+    else if (a == "--no-strict") strict = false;
     else if (a == "--expect-count") {
       if (i + 1 >= argc) usage();
       expect_count.set_str(argv[++i], 10);

@@ -1,7 +1,7 @@
 c c d-DNNF compile: two variable-disjoint sub-problems ({1,2} and {3,4}).
 c c Exercises AND-node component decomposition; structural count = product.
 c c RUN: %solver --compile %t.nnf %s
-c c RUN: %ddnnf_verify %t.nnf --cnf %s --check-decomposable
+c c RUN: %ddnnf_verify %t.nnf --cnf %s --no-strict
 c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
 c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
 c c RUN: %ddnnf2dot %t.clean.nnf %t.dot

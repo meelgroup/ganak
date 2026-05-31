@@ -17,7 +17,7 @@ c c
 c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
 c c
 c c RUN: %solver --compile %t.nnf %s
-c c RUN: %ddnnf_verify %t.nnf --cnf %s
+c c RUN: %ddnnf_verify %t.nnf --cnf %s --no-strict --no-check-decomposable
 c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
 c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
 p cnf 16 40

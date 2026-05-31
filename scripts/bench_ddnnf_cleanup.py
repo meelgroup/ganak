@@ -51,7 +51,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GANAK = os.path.join(ROOT, "build", "ganak")
 CLEANUP = os.path.join(ROOT, "build", "ddnnf-cleanup")
-VERIFY = os.path.join(ROOT, "tests", "ddnnf_verify.py")
+VERIFY = os.path.join(ROOT, "build", "ddnnf-verify")
 REGRESSION_CNF = os.path.join(ROOT, "tests", "cnf-files", "ddnnf",
                               "known_nondecomp_regression.cnf")
 TMP = "/tmp/bench_ddnnf_cleanup"
@@ -103,7 +103,7 @@ def ganak_count(cnf):
 
 
 def verify_count(nnf):
-    r = subprocess.run(["python3", VERIFY, nnf], capture_output=True, text=True, timeout=300)
+    r = subprocess.run([VERIFY, nnf], capture_output=True, text=True, timeout=300)
     return r.stdout.strip().splitlines()[-1] if r.stdout.strip() else None
 
 
@@ -204,6 +204,9 @@ def main():
         sys.exit(1)
     if not os.path.exists(CLEANUP) and not args.gen_only:
         print(f"ERROR: build/ddnnf-cleanup not found. Build first.", file=sys.stderr)
+        sys.exit(1)
+    if not os.path.exists(VERIFY) and not args.gen_only:
+        print(f"ERROR: build/ddnnf-verify not found. Build first.", file=sys.stderr)
         sys.exit(1)
     if args.compile and not os.path.exists(GANAK):
         print(f"ERROR: --compile needs build/ganak.", file=sys.stderr)

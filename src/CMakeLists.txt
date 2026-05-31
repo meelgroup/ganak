@@ -108,6 +108,10 @@ add_executable(example-c-bin example.c)
 add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
 # Standalone d4 .nnf -> Graphviz DOT renderer for visualization. Self-contained.
 add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
+# Standalone d4 .nnf verifier: structural count + invariant checks (links GMP
+# for big-int counts).
+add_executable(ddnnf-verify-bin ddnnf_verify.cpp)
+target_link_libraries(ddnnf-verify-bin PRIVATE PkgConfig::GMP)
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -187,6 +191,11 @@ set_target_properties(ddnnf-cleanup-bin PROPERTIES
 )
 set_target_properties(ddnnf2dot-bin PROPERTIES
   OUTPUT_NAME ddnnf2dot
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+set_target_properties(ddnnf-verify-bin PROPERTIES
+  OUTPUT_NAME ddnnf-verify
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
@@ -275,6 +284,11 @@ install(TARGETS ddnnf-cleanup-bin
 )
 
 install(TARGETS ddnnf2dot-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf-verify-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

@@ -138,10 +138,14 @@ cd build && lit tests/cnf-files/a.cnf
 decomposability, canonical cleaned form) — never the byte-exact `.nnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
-  `ddnnf_verify.py` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify
-  the cleaned file `--strict`, and `ddnnf2dot`. `ddnnf_verify.py` doubles as a
-  CLI checker (`--expect-count`, `--cnf`, `--check-decomposable`,
-  `--strict`); bare invocation still prints the count.
+  `ddnnf-verify` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify the
+  cleaned file `--strict`, and `ddnnf2dot`. `ddnnf-verify` is a C++ binary
+  (`build/ddnnf-verify`, source `src/ddnnf_verify.cpp`); CLI flags
+  `--expect-count`, `--cnf`, `--check-decomposable`, `--strict`; bare
+  invocation prints the structural model count. `tests/ddnnf_verify.py`
+  remains for tiny-N programmatic use (it's what `ddnnf_synth.py` /
+  `ddnnf_fuzz.py` import — `synthesize`, `models`, etc.); use the binary for
+  large circuits where Python recursion + dict overhead blow up.
 - ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful` — the property
   fuzzers run seeded (so a regression reproduces) and self-check against a
   brute-force oracle.

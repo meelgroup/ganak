@@ -492,6 +492,12 @@ int cleanup_decomp(
       for (size_t i = 0; i < arcs[nid].size(); i++) {
         for (size_t j = i + 1; j < arcs[nid].size(); j++) {
           int ci = arcs[nid][i].child, cj = arcs[nid][j].child;
+          // A prior scrub_var in this pass may have cloned a child to a fresh
+          // id (> sz - 1) and re-pointed an arc here. Per-node scratch
+          // (touched/subtree_vars/subtree_lits/forced/ambient) is sized to sz,
+          // so anything past that is OOB. Skip; the next iteration's recompute
+          // sees the new id and handles it then.
+          if (ci >= (int)sz || cj >= (int)sz) continue;
           if (touched[ci] || touched[cj]) continue;
           int shared_var = subtree_vars[ci].first_intersect_var(subtree_vars[cj]);
           if (shared_var == 0) continue;

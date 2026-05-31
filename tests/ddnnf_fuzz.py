@@ -21,6 +21,7 @@ import ddnnf_verify as dv
 
 GANAK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ganak")
 CLEANUP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ddnnf-cleanup")
+VERIFY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ddnnf-verify")
 TMP = "/tmp/ddnnf_fuzz"
 os.makedirs(TMP, exist_ok=True)
 
@@ -90,10 +91,45 @@ def compile_nnf(path, nnf):
     return subprocess.run(args, capture_output=True, text=True)
 
 
+def run_big(t, cnf, nnf, clean):
+    """--big mode: ganak as oracle (no brute), C++ ddnnf-verify for checks.
+    Returns (ok, msg). Catches ddnnf-cleanup crashes (the main thing this mode
+    exists to find): subprocess.run() returns non-zero on SIGSEGV/SIGABRT.
+    """
+    gc = ganak_count(cnf)
+    if gc is None:
+        return True, "ganak unable to count (skipping)"
+    r = compile_nnf(cnf, nnf)
+    if not os.path.exists(nnf):
+        return False, f"no .nnf produced. stderr tail:\n{r.stderr[-1500:]}"
+    # Raw circuit may not be strict / decomposable; check count only.
+    rv = subprocess.run([VERIFY, nnf, "--expect-count", str(gc),
+                         "--no-strict", "--no-check-decomposable"],
+                        capture_output=True, text=True)
+    if rv.returncode != 0:
+        return False, f"raw count mismatch (oracle {gc}):\n{rv.stdout}{rv.stderr}"
+    if os.path.exists(clean):
+        os.remove(clean)
+    rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
+    if rc.returncode != 0:
+        return False, (f"ddnnf-cleanup exit={rc.returncode} "
+                       f"(signal? {-rc.returncode if rc.returncode < 0 else 'n/a'}). "
+                       f"stderr tail:\n{rc.stderr[-1500:]}")
+    if not os.path.exists(clean):
+        return False, f"cleanup produced no output. stderr tail:\n{rc.stderr[-1500:]}"
+    # Defaults: --strict --check-decomposable; --expect-count cross-checks count.
+    rv = subprocess.run([VERIFY, clean, "--expect-count", str(gc)],
+                        capture_output=True, text=True)
+    if rv.returncode != 0:
+        return False, f"cleaned verify failed:\n{rv.stdout}{rv.stderr}"
+    return True, ""
+
+
 def main():
     n = 200
     seed = random.randrange(1 << 30)
     minv, maxv = 7, 16    # var-count range; the oracle is 2^nv, so this drives runtime
+    big_mode = False
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -106,12 +142,21 @@ def main():
         elif args[i] == "--maxvars":
             maxv = int(args[i + 1])
             i += 1
+        elif args[i] == "--big":
+            # Cleanup-focused mode: ganak as oracle (no brute), bigger CNFs to
+            # provoke DAG sharing + cloning interactions that small-nv brute
+            # mode can't reach. Catches ddnnf-cleanup crashes / wrong counts /
+            # surviving non-decomposability at scale.
+            big_mode = True
         else:
             n = int(args[i])
         i += 1
+    if big_mode:
+        if minv == 7 and maxv == 16: minv, maxv = 30, 60
+        if n == 200: n = 30
     minv = min(minv, maxv)
     random.seed(seed)
-    print(f"seed={seed} tests={n} vars={minv}..{maxv} mode=STRONG")
+    print(f"seed={seed} tests={n} vars={minv}..{maxv} mode={'BIG' if big_mode else 'STRONG'}")
 
     fails = 0
 
@@ -133,6 +178,17 @@ def main():
         k = random.choice([2, 3, 3, 4])
         clauses = gen_cnf(nv, nc, k)
         write_cnf(cnf, nv, clauses)
+
+        if big_mode:
+            ok, msg = run_big(t, cnf, nnf, clean)
+            if not ok:
+                print(f"FAIL[{t}] nv={nv} nc={nc} k={k}: {msg}")
+                save_fail(t)
+                fails += 1
+            elif msg:
+                print(f"NOTE[{t}] nv={nv} nc={nc} k={k}: {msg}")
+            continue
+
         bc, bmodels = brute(nv, clauses)
 
         if os.path.exists(nnf):
@@ -214,7 +270,7 @@ def main():
             fails += 1
             continue
 
-    print(f"done {n} strong tests, {fails} failures")
+    print(f"done {n} {'big' if big_mode else 'strong'} tests, {fails} failures")
     return 1 if fails else 0
 
 

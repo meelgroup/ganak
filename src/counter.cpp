@@ -2081,8 +2081,7 @@ RetState Counter::backtrack() {
     }
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
-    const bool cacheable = conf.do_use_cache;
-    if (cacheable) {
+    if (conf.do_use_cache) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
       all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) cout << *it << " ";

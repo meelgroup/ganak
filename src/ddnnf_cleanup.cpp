@@ -412,10 +412,12 @@ int cleanup_decomp(
     std::vector<char> touched(sz, 0);
     for (int nid : post) {
       if (type[nid] != 'a') continue;
-      auto& kids = arcs[nid];
-      for (size_t i = 0; i < kids.size(); i++) {
-        for (size_t j = i + 1; j < kids.size(); j++) {
-          int ci = kids[i].child, cj = kids[j].child;
+      // NB: do NOT hold a reference into `arcs` across scrub_var() -- it may
+      // call arcs.resize() to clone a node, which reallocates the outer vector
+      // and invalidates any reference/pointer into it. Index via arcs[nid].
+      for (size_t i = 0; i < arcs[nid].size(); i++) {
+        for (size_t j = i + 1; j < arcs[nid].size(); j++) {
+          int ci = arcs[nid][i].child, cj = arcs[nid][j].child;
           if (touched[ci] || touched[cj]) continue;
           int shared_var = subtree_vars[ci].first_intersect_var(subtree_vars[cj]);
           if (shared_var == 0) continue;
@@ -440,7 +442,7 @@ int cleanup_decomp(
           int new_scrub = scrub_var(scrub_child, shared_var, polarity, type, arcs,
                                     parent_count, max_id);
           if (new_scrub != scrub_child) {
-            for (auto& a : kids) if (a.child == scrub_child) a.child = new_scrub;
+            for (auto& a : arcs[nid]) if (a.child == scrub_child) a.child = new_scrub;
           }
           touched[scrub_child] = 1;
           if (new_scrub < (int)sz) touched[new_scrub] = 1;

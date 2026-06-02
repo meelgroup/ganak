@@ -247,6 +247,20 @@ std::pair<bool, std::string> check_strict(
       }
     }
   }
+  // unary AND: an AND with a single arc conjoins nothing -- it is its child plus
+  // the arc's literals, so it belongs folded into its parent edge. wrap_lits()
+  // emits these for projected / SAT-witnessed components; ddnnf-cleanup's
+  // elide_unary_ands pass removes every non-root one. (The root may stay unary:
+  // it carries the top-level literals and has no parent to fold into.)
+  for (int n = 0; n < (int)type.size(); n++) {
+    if (!seen[n] || type[n] != 'a' || n == root) continue;
+    if (arcs[n].size() == 1) {
+      std::ostringstream m;
+      m << "unary AND: AND " << n << " has a single arc (should be elided into "
+           "its parent edge)";
+      return {false, m.str()};
+    }
+  }
   return {true, ""};
 }
 

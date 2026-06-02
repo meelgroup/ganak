@@ -312,6 +312,17 @@ def nested_and_arcs(nodes, arcs, root):
     return out
 
 
+def unary_and_nodes(nodes, arcs, root):
+    """Reachable non-root AND nodes with a single outgoing arc. Such a node
+    conjoins nothing (it is its child plus the arc's literals) and `ddnnf-cleanup`
+    folds it into its parent edge (elide_unary_ands). A cleaned circuit has none
+    except possibly the root (which carries the top-level literals). Returns a
+    list of node ids."""
+    reach = reachable_nodes(nodes, arcs, root)
+    return [nid for nid in reach
+            if nid != root and nodes.get(nid) == 'a' and len(arcs.get(nid, [])) == 1]
+
+
 def shared_and_vars(nodes, arcs, root):
     """Return the set of variables that appear in more than one child subtree of
     some AND node (i.e. the variables on which decomposability is relaxed)."""

@@ -266,6 +266,13 @@ def main():
             save_fail(t)
             fails += 1
             continue
+        unary = dv.unary_and_nodes(cn, ca, cr)
+        if unary:
+            print(f"FAIL[{t}] cleaned circuit has unary (single-arc) AND nodes "
+                  f"(should be elided): {unary[:10]}")
+            save_fail(t)
+            fails += 1
+            continue
         if dv.count(cn, ca, cr) != bc:
             print(f"FAIL[{t}] cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
             save_fail(t)

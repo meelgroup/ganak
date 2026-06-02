@@ -621,6 +621,41 @@ int flatten_ands(std::vector<char>& type, std::vector<std::vector<Arc>>& arcs) {
   return inlined;
 }
 
+// ELIDE UNARY ANDs: an AND with a single arc conjoins nothing -- it is just its
+// child, plus the literals forced on that arc. wrap_lits() emits one for every
+// projected / SAT-witnessed component (a lone witness arc into TRUE); when its
+// parent is a decision OR (not another AND) flatten_ands above leaves it, so it
+// survives as a degenerate one-input AND gate. Fold it into each parent arc:
+// parent arc (A, Lp) becomes (G, Lp u La), where A's only arc is (G, La). The
+// node, once unreferenced, is dropped by the BFS renumber. Count, model set,
+// per-path literals and decomposability are preserved -- the lits stay together
+// on the single arc that reaches G. The root is never elided: it has no parent
+// to fold into and legitimately carries the top-level (level-0) literals.
+int elide_unary_ands(int root, std::vector<char>& type,
+                     std::vector<std::vector<Arc>>& arcs) {
+  int elided = 0;
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int p = 0; p < (int)arcs.size(); p++) {
+      if (p >= (int)type.size() || type[p] == 0) continue;
+      for (auto& a : arcs[p]) {
+        const int c = a.child;
+        if (c == root || c == p || c < 0 || c >= (int)type.size()) continue;
+        if (type[c] != 'a' || arcs[c].size() != 1) continue;
+        // Fold the unary AND `c` into this arc (copy lits first: arcs[c] is
+        // const here, and `c` may be DAG-shared by other parents).
+        const Arc inner = arcs[c][0];
+        a.child = inner.child;
+        a.lits.insert(a.lits.end(), inner.lits.begin(), inner.lits.end());
+        elided++;
+        changed = true;
+      }
+    }
+  }
+  return elided;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -651,9 +686,18 @@ int main(int argc, char** argv) {
 
   if (do_strict_decomp) root = cleanup_decomp(root, type, arcs);
 
-  // Collapse redundant AND-of-AND layers (wrap_lits witness wrappers etc.).
-  int flat = flatten_ands(type, arcs);
-  std::cerr << "ddnnf-cleanup: flattened-nested-and arcs=" << flat << std::endl;
+  // Canonicalise AND structure: collapse redundant AND-of-AND layers
+  // (associativity) and elide degenerate one-input ANDs (wrap_lits witness
+  // wrappers under OR parents). Each feeds the other, so iterate to a fixpoint.
+  int flat = 0, unary = 0, f, u;
+  do {
+    f = flatten_ands(type, arcs);
+    u = elide_unary_ands(root, type, arcs);
+    flat += f;
+    unary += u;
+  } while (f || u);
+  std::cerr << "ddnnf-cleanup: flattened-nested-and arcs=" << flat
+            << " elided-unary-and=" << unary << std::endl;
 
   // BFS renumber from the root: root => 1, then children in arc order. Unvisited
   // (dead) nodes get no id and are dropped. `newid` indexed by node id; 0 = not

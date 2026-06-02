@@ -24,9 +24,12 @@ THE SOFTWARE.
 // `ddnnf-cleanup`) as a Graphviz DOT graph.
 //
 //   OR ('o') -> blue ellipse "∨";  AND ('a') -> yellow box "∧";  FALSE ('f') -> "⊥"
-//   arc with lits -> bold-blue label "1[2,-3]" (decided lit, then propagated in
-//     brackets). AND decomposition arcs carry no lits, so they are labelled with
-//     the child component's variable set instead.
+//   OR arc with lits -> bold-blue label "1[2,-3]" (decided lit, then propagated
+//     in brackets). AND arcs carry no blue lits: the structural edge is labelled
+//     with the child component's variable set, and any literals fixed on the arc
+//     are pulled out as their own green literal-leaf children (gray "{v}" edges).
+//     This keeps an AND a visible conjunction of operands -- e.g. a root that
+//     forces a unit literal renders as a real two-input AND, not a single arc.
 //
 // The shared TRUE ('t') sink is not drawn; instead each literal on an arc into ⊤
 // becomes its own green leaf ("3", "¬1"). A multi-literal terminal arc fans out
@@ -150,10 +153,11 @@ int main(int argc, char** argv) {
   };
 
   // Every AND out-edge is a decomposition arc, so it ALWAYS carries the child
-  // component's variable set "{...}" (gray). When the arc also fixes literals
-  // (a decision / witness), those ride above the var-set in bold blue. Non-AND
-  // (OR) edges keep the plain blue decided-literal label, and terminal arcs into
-  // ⊤ keep landing on per-literal leaves.
+  // component's variable set "{...}" (gray). AND arcs never show blue literals:
+  // any literal fixed on an AND arc is split off as its own literal-leaf child
+  // (see lit_leaf), so the structural edge only needs the child's var-set.
+  // Non-AND (OR) edges keep the plain blue decided-literal label, and terminal
+  // arcs into ⊤ keep landing on per-literal leaves.
   auto and_label = [&](std::ostream& os, const std::vector<int>& lits, int child) {
     std::ostringstream body;
     const bool has_blue = !lits.empty();
@@ -168,29 +172,37 @@ int main(int argc, char** argv) {
     if (!has_blue) os << ", fontsize=9";   // gray-only labels match decomp style
     os << "]";
   };
+  // A literal fixed on an AND arc, rendered as its own green literal-leaf child
+  // with a gray "{v}" decomposition-style edge (so every AND out-edge is a
+  // labelled conjunct, and the AND is a visible conjunction of its operands).
+  auto lit_leaf = [&](std::ostream& os, int from_id, int l) {
+    os << "  n" << from_id << " -> " << sink_for(l)
+       << " [label=<<FONT COLOR=\"#777777\">{" << std::abs(l)
+       << "}</FONT>>, fontsize=9];\n";
+  };
 
   for (int id : order) {
     if (is_true(id)) continue;            // ⊤ replaced by per-literal sinks
     const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
       if (is_true(a.child)) {
-        // Terminal arc -> per-literal sink(s). The leaf names the literal, so the
-        // edge itself stays bare for OR parents; an AND parent still gets its
-        // "{...}" var-set label. Multi-literal arcs fan out through a fresh AND.
+        // Terminal arc -> per-literal sink(s). For an AND parent each fixed
+        // literal becomes its own gray-"{v}" leaf child (no fan-out node, no
+        // blue). For an OR parent the leaf names the literal so a single-literal
+        // edge stays bare; a multi-literal edge fans out through a fresh AND.
         if (a.lits.empty()) {
           need_true = true;
           edges << "  n" << id << " -> T;\n";
+        } else if (parent_and) {
+          for (int l : a.lits) lit_leaf(edges, id, l);
         } else if (a.lits.size() == 1) {
-          edges << "  n" << id << " -> " << sink_for(a.lits[0]);
-          if (parent_and) and_label(edges, a.lits, a.child);
-          edges << ";\n";
+          edges << "  n" << id << " -> " << sink_for(a.lits[0]) << ";\n";
         } else {
           std::string an = "and" + std::to_string(fanout_nodes.size());
           fanout_nodes.push_back(an);
-          edges << "  n" << id << " -> " << an;
-          if (parent_and) and_label(edges, a.lits, a.child);
-          else            { edges << " [label=<"; blue_frag(edges, a.lits); edges << ">]"; }
-          edges << ";\n";
+          edges << "  n" << id << " -> " << an << " [label=<";
+          blue_frag(edges, a.lits);
+          edges << ">];\n";
           for (int l : a.lits) edges << "  " << an << " -> " << sink_for(l) << ";\n";
         }
         continue;
@@ -198,10 +210,18 @@ int main(int argc, char** argv) {
       // Non-terminal arc.
       edges << "  n" << id << " -> n" << a.child;
       if (parent_and) {
-        // AND decomposition: always show the child component's variables (plus
-        // any decided literals fixed on the arc).
-        and_label(edges, a.lits, a.child);
-      } else if (!a.lits.empty()) {
+        // AND decomposition: the structural edge shows just the child
+        // component's variables; any decided literals fixed on this arc are
+        // pulled out as their own literal-leaf children below, so the AND
+        // visibly conjoins them. (A single-child arc carrying the literal only
+        // in its label would look like the AND "ANDs nothing".)
+        static const std::vector<int> none;
+        and_label(edges, none, a.child);
+        edges << ";\n";
+        for (int l : a.lits) lit_leaf(edges, id, l);
+        continue;
+      }
+      if (!a.lits.empty()) {
         // OR edge: decided / implied literals, bold blue.
         edges << " [label=<"; blue_frag(edges, a.lits); edges << ">]";
       }

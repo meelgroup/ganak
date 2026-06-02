@@ -577,6 +577,50 @@ int cleanup_decomp(
   return root;
 }
 
+// FLATTEN NESTED ANDs (associativity): an AND reached from another AND through a
+// *literal-free* arc is redundant -- splice its arcs straight into the parent.
+// The dominant source is wrap_lits() component witnesses: a projected / SAT-
+// solved sub-component is emitted as a single-arc AND (a TRUE child carrying the
+// witness lits), then mk_and() conjoins it with its sibling components, giving
+// AND( AND(TRUE; witness), sibling... ). Inlining rewrites the parent's arc to
+// that wrapper into a direct arc carrying the witness lits, dropping a whole AND
+// layer (the "AND -> AND -> literals" stack seen in ddnnf2dot output).
+//
+// mk_and() always emits literal-free AND arcs, so this catches every such stack.
+// Count, model set, per-path literals and strict decomposability are preserved:
+// the inlined children keep their own arcs/lits and (being one decomposable AND
+// child of the parent) were already var-disjoint from the parent's other
+// children. A now-unreachable inner node is dropped by the BFS renumber.
+//
+// Literal-carrying AND arcs (e.g. the level-0 root wrap_lits) are left alone --
+// moving their lits onto one spliced arc could place that var in a child that is
+// no longer var-disjoint from its new siblings, breaking decomposability.
+int flatten_ands(std::vector<char>& type, std::vector<std::vector<Arc>>& arcs) {
+  int inlined = 0;
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int id = 0; id < (int)arcs.size(); id++) {
+      if (id >= (int)type.size() || type[id] != 'a') continue;
+      std::vector<Arc> out;
+      out.reserve(arcs[id].size());
+      for (auto& a : arcs[id]) {
+        const bool inlineable =
+            a.lits.empty() && a.child >= 0 && a.child != id &&
+            a.child < (int)type.size() && type[a.child] == 'a' &&
+            !arcs[a.child].empty();
+        if (!inlineable) { out.push_back(std::move(a)); continue; }
+        // Copy (not move): the inner AND may be DAG-shared by other parents.
+        for (const auto& g : arcs[a.child]) out.push_back(g);
+        inlined++;
+        changed = true;
+      }
+      arcs[id] = std::move(out);
+    }
+  }
+  return inlined;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -606,6 +650,10 @@ int main(int argc, char** argv) {
   if (root == -1) die(err);
 
   if (do_strict_decomp) root = cleanup_decomp(root, type, arcs);
+
+  // Collapse redundant AND-of-AND layers (wrap_lits witness wrappers etc.).
+  int flat = flatten_ands(type, arcs);
+  std::cerr << "ddnnf-cleanup: flattened-nested-and arcs=" << flat << std::endl;
 
   // BFS renumber from the root: root => 1, then children in arc order. Unvisited
   // (dead) nodes get no id and are dropped. `newid` indexed by node id; 0 = not

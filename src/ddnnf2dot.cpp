@@ -125,16 +125,48 @@ int main(int argc, char** argv) {
   bool need_true = is_true(root);         // a lone ⊤ root still needs one node
   std::ostringstream edges;
 
-  // Bold-blue edge label. lits[0] is the decided literal, the rest propagated:
-  // "1[2,-3,4]", or just "1" when nothing propagated.
-  auto blue_lits = [](std::ostream& os, const std::vector<int>& lits) {
-    os << " [label=<<FONT COLOR=\"#1565c0\" POINT-SIZE=\"9\"><B>" << lits[0];
+  // Bold-blue decided/implied literals: "1[2,-3,4]", or just "1". HTML fragment.
+  auto blue_frag = [](std::ostream& os, const std::vector<int>& lits) {
+    os << "<FONT COLOR=\"#1565c0\" POINT-SIZE=\"9\"><B>" << lits[0];
     if (lits.size() > 1) {
       os << "[";
       for (size_t k = 1; k < lits.size(); k++) os << (k > 1 ? "," : "") << lits[k];
       os << "]";
     }
-    os << "</B></FONT>>]";
+    os << "</B></FONT>";
+  };
+  // Gray variable-set "{2,3,4}" of an arc: its lit vars plus the child subtree's
+  // vars (none for a ⊤ child). HTML fragment. Empty set -> nothing written.
+  auto gray_frag = [&](std::ostream& os, const std::vector<int>& lits, int child) {
+    std::set<int> vs;
+    for (int l : lits) vs.insert(l > 0 ? l : -l);
+    if (!is_true(child)) for (int v : vars_of(child)) vs.insert(v);
+    if (vs.empty()) return false;
+    os << "<FONT COLOR=\"#777777\">{";
+    bool first = true;
+    for (int v : vs) { os << (first ? "" : ",") << v; first = false; }
+    os << "}</FONT>";
+    return true;
+  };
+
+  // Every AND out-edge is a decomposition arc, so it ALWAYS carries the child
+  // component's variable set "{...}" (gray). When the arc also fixes literals
+  // (a decision / witness), those ride above the var-set in bold blue. Non-AND
+  // (OR) edges keep the plain blue decided-literal label, and terminal arcs into
+  // ⊤ keep landing on per-literal leaves.
+  auto and_label = [&](std::ostream& os, const std::vector<int>& lits, int child) {
+    std::ostringstream body;
+    const bool has_blue = !lits.empty();
+    if (has_blue) blue_frag(body, lits);
+    std::ostringstream g;
+    const bool has_gray = gray_frag(g, lits, child);
+    if (has_blue && has_gray) body << "<BR/>";
+    if (has_gray) body << g.str();
+    const std::string b = body.str();
+    if (b.empty()) return;
+    os << " [label=<" << b << ">";
+    if (!has_blue) os << ", fontsize=9";   // gray-only labels match decomp style
+    os << "]";
   };
 
   for (int id : order) {
@@ -142,19 +174,22 @@ int main(int argc, char** argv) {
     const bool parent_and = (type[id] == 'a');
     for (const auto& a : arcs[id]) {
       if (is_true(a.child)) {
-        // Terminal arc -> per-literal sink(s). An edge landing directly on a leaf
-        // carries no label (the leaf names the literal); a multi-literal arc goes
-        // via a fresh AND node (that edge keeps the bold-blue lits, AND->leaf bare).
+        // Terminal arc -> per-literal sink(s). The leaf names the literal, so the
+        // edge itself stays bare for OR parents; an AND parent still gets its
+        // "{...}" var-set label. Multi-literal arcs fan out through a fresh AND.
         if (a.lits.empty()) {
           need_true = true;
           edges << "  n" << id << " -> T;\n";
         } else if (a.lits.size() == 1) {
-          edges << "  n" << id << " -> " << sink_for(a.lits[0]) << ";\n";
+          edges << "  n" << id << " -> " << sink_for(a.lits[0]);
+          if (parent_and) and_label(edges, a.lits, a.child);
+          edges << ";\n";
         } else {
           std::string an = "and" + std::to_string(fanout_nodes.size());
           fanout_nodes.push_back(an);
           edges << "  n" << id << " -> " << an;
-          blue_lits(edges, a.lits);
+          if (parent_and) and_label(edges, a.lits, a.child);
+          else            { edges << " [label=<"; blue_frag(edges, a.lits); edges << ">]"; }
           edges << ";\n";
           for (int l : a.lits) edges << "  " << an << " -> " << sink_for(l) << ";\n";
         }
@@ -162,17 +197,13 @@ int main(int argc, char** argv) {
       }
       // Non-terminal arc.
       edges << "  n" << id << " -> n" << a.child;
-      if (!a.lits.empty()) {
-        // Decision / implied literals, bold blue.
-        blue_lits(edges, a.lits);
-      } else if (parent_and) {
-        // AND decomposition: show this child component's variables.
-        const auto& vs = vars_of(a.child);
-        if (!vs.empty()) {
-          edges << " [label=<<FONT COLOR=\"#777777\">{";
-          for (size_t k = 0; k < vs.size(); k++) edges << (k ? "," : "") << vs[k];
-          edges << "}</FONT>>, fontsize=9]";
-        }
+      if (parent_and) {
+        // AND decomposition: always show the child component's variables (plus
+        // any decided literals fixed on the arc).
+        and_label(edges, a.lits, a.child);
+      } else if (!a.lits.empty()) {
+        // OR edge: decided / implied literals, bold blue.
+        edges << " [label=<"; blue_frag(edges, a.lits); edges << ">]";
       }
       edges << ";\n";
     }

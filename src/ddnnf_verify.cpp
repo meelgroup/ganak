@@ -230,6 +230,23 @@ std::pair<bool, std::string> check_strict(
     m << "1 or more dead node(s) present; first: " << id;
     return {false, m.str()};
   }
+  // nested AND: a literal-free arc from an AND to another AND is associatively
+  // redundant -- the inner AND's conjuncts belong directly in the parent. The
+  // streaming compiler emits these (e.g. wrap_lits() witness wrappers conjoined
+  // by mk_and()); ddnnf-cleanup's flatten_ands pass removes them. A surviving one
+  // means a non-canonical circuit (or a regression in that pass).
+  for (int n = 0; n < (int)type.size(); n++) {
+    if (!seen[n] || type[n] != 'a') continue;
+    for (const auto& a : arcs[n]) {
+      if (a.lits.empty() && a.child >= 0 && a.child < (int)type.size()
+          && type[a.child] == 'a') {
+        std::ostringstream m;
+        m << "nested AND: AND " << n << " has a literal-free arc to AND "
+          << a.child << " (should be flattened)";
+        return {false, m.str()};
+      }
+    }
+  }
   return {true, ""};
 }
 

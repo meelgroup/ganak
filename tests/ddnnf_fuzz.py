@@ -259,6 +259,13 @@ def main():
             save_fail(t)
             fails += 1
             continue
+        nested = dv.nested_and_arcs(cn, ca, cr)
+        if nested:
+            print(f"FAIL[{t}] cleaned circuit has nested AND-of-AND arcs "
+                  f"(should be flattened): {nested[:10]}")
+            save_fail(t)
+            fails += 1
+            continue
         if dv.count(cn, ca, cr) != bc:
             print(f"FAIL[{t}] cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
             save_fail(t)

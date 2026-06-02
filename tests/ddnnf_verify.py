@@ -295,6 +295,23 @@ def check_decomposable(nodes, arcs, root):
     return True, "ok"
 
 
+def nested_and_arcs(nodes, arcs, root):
+    """Literal-free arcs from an AND node to another AND node. These are
+    associatively redundant (the inner AND's conjuncts belong directly in the
+    parent) and `ddnnf-cleanup`'s flatten_ands pass must remove them. A cleaned
+    circuit has none; any survivor is a non-canonical-form regression. Returns a
+    list of (parent_and, child_and) pairs (reachable nodes only)."""
+    reach = reachable_nodes(nodes, arcs, root)
+    out = []
+    for nid in reach:
+        if nodes.get(nid) != 'a':
+            continue
+        for c, lits in arcs.get(nid, []):
+            if not lits and nodes.get(c) == 'a':
+                out.append((nid, c))
+    return out
+
+
 def shared_and_vars(nodes, arcs, root):
     """Return the set of variables that appear in more than one child subtree of
     some AND node (i.e. the variables on which decomposability is relaxed)."""

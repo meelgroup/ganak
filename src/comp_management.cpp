@@ -89,6 +89,12 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #endif
       } else {
         // Cache hit
+#ifdef VERBOSE_DEBUG
+        cout << COLYEL2 "Comp already in cache."
+            << " num vars: " << p_new_comp->nVars() << " vars: ";
+        all_vars_in_comp(*p_new_comp, v2) cout << *v2 << " ";
+        cout << endl;
+#endif
         counter->get_compiler().cache_hit(hit_node);
         free_comp(p_new_comp);
       }

@@ -957,71 +957,11 @@ void Counter::fix_weights() {
   debug_print("Fixed weights via " << __func__);
 }
 
-std::vector<int> Counter::compile_cur_level_lits() const {
-  std::vector<int> r;
-  for (auto it = top_declevel_trail_begin(); it != trail.end(); ++it)
-    r.push_back(it->to_visual_int());
-  return r;
-}
-
-std::vector<int> Counter::compile_level0_lits() const {
-  std::vector<int> r;
-  for (const auto& l : trail) if (var(l).decision_level == 0) r.push_back(l.to_visual_int());
-  return r;
-}
-
-void Counter::compile_add_free_var(uint32_t v) {
-  ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), ddnnf->mk_free_var((int)v));
-}
-
-void Counter::compile_on_cache_hit(int node) {
-  // A cached component must have its sub-DAG recorded (set_comp_node in
-  // backtrack); a missing node would silently undercount, so fail loudly.
-  release_assert(node >= 0); // d-DNNF cache hit with no recorded compile node
-  ddnnf->add_child(dec_level(), decisions.top().is_right_branch(), node);
-}
-
-int Counter::compile_build_level_node(int lev, const std::vector<int>& right_lits) {
-  auto& top = decisions.top();
-  ddnnf->ensure_level(lev);
-  // SAT-oracle leaf: level solved by the SAT solver, which recorded a witness for
-  // the synthesized vars. Use that leaf instead of an OR over (stale) children.
-  if (int ov = ddnnf->take_override(lev); ov >= 0) return ov;
-  int left  = top.is_zero(0) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][0]);
-  int right = top.is_zero(1) ? ddnnf->false_node : ddnnf->mk_and(ddnnf->children[lev][1]);
-  std::vector<DDNNFCompiler::Arc> arcs;
-  if (left  != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{left,  ddnnf->left_lits[lev]});
-  if (right != ddnnf->false_node) arcs.push_back(DDNNFCompiler::Arc{right, right_lits});
-  VERBOSE_DEBUG_DO({
-    std::cerr << "[OR-build] lev=" << lev << " super_comp_id=" << top.super_comp() << " super_vars={";
-    const auto& sc = comp_manager->get_super_comp(top);
-    all_vars_in_comp(sc, vp) std::cerr << " " << *vp;
-    std::cerr << " } left_lits={";
-    for (int l : ddnnf->left_lits[lev]) std::cerr << " " << l;
-    std::cerr << " } right_lits={";
-    for (int l : right_lits) std::cerr << " " << l;
-    std::cerr << " } left_kid=" << left << " right_kid=" << right << "\n";
-  });
-  return ddnnf->mk_or(std::move(arcs));
-}
-
-void Counter::compile_finalize_root() {
-  ddnnf->ensure_level(0);
-  // Level 0 starts on the right branch (init_decision_stack), so top-level
-  // components accumulate there.
-  const bool b = decisions.top().is_right_branch();
-  int inner = ddnnf->mk_and(ddnnf->children[0][b]);
-  ddnnf->root = ddnnf->wrap_lits(inner, compile_level0_lits());
-}
-
 FF Counter::outer_count() {
   fix_weights();
-  if (!conf.compile_fname.empty()) {
-    ddnnf = std::make_unique<DDNNFCompiler>(conf.compile_fname);
-    ddnnf->nvars = nVars();
-  }
+  if (!conf.compile_fname.empty()) compiler = make_ddnnf_compiler(*this, conf.compile_fname);
   if (!ok) {
-    if (compiling()) { ddnnf->root = ddnnf->false_node; ddnnf->write_d4(conf.compile_fname); }
+    if (compiler->active()) compiler->finalize_and_write(/*unsat=*/true);
     return fg->zero();
   }
 
@@ -1050,7 +990,7 @@ FF Counter::outer_count() {
   verb_print(1, "Opt sampling set size: " << ((opt_indep_support_end>0) ? (opt_indep_support_end-1) : 0));
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
-  if (indep_support_end <= 6 && !compiling()) return count_using_cms();
+  if (indep_support_end <= 6 && compiler->allows_cms_shortcut()) return count_using_cms();
   auto ret = sat_solver->solve();
 
   start_time = cpu_time();
@@ -1114,13 +1054,7 @@ FF Counter::outer_count() {
       exit(EXIT_FAILURE);
     } else *cnt += *do_appmc_count();
   }
-  if (compiling()) {
-    if (ddnnf->root < 0) ddnnf->root = ddnnf->false_node;
-    ddnnf->nvars = nVars();
-    ddnnf->write_d4(conf.compile_fname);
-    verb_print(0, "[compile] d-DNNF written to " << conf.compile_fname
-        << " nodes: " << ddnnf->num_nodes() << " edges: " << ddnnf->num_edges());
-  }
+  compiler->finalize_and_write(/*unsat=*/false);
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
@@ -1294,7 +1228,7 @@ end:
     Cube const c(vector<Lit>(), decisions.top().total_model_count());
     debug_print("Exiting due to EXIT state, the cube count: " << *c.cnt);
     mini_cubes.push_back(c);
-    if (compiling()) compile_finalize_root();
+    compiler->finalize_root();
   }
 
   if (weighted()) {
@@ -1383,7 +1317,7 @@ void Counter::decide_lit() {
   set_lit(lit, dec_level());
   stats.decisions++;
   vsads_readjust();
-  if (compiling()) ddnnf->on_new_level(dec_level());
+  compiler->new_decision_level();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
@@ -2041,10 +1975,7 @@ RetState Counter::backtrack() {
       // not work, because we'll count (x, y) = 01 (left hand branch), and
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
       // d-DNNF: capture left-branch literals before the trail is undone.
-      if (compiling()) {
-        ddnnf->ensure_level(dec_level());
-        ddnnf->left_lits[dec_level()] = compile_cur_level_lits();
-      }
+      compiler->save_left_lits();
       reactivate_comps_and_backtrack_trail(false);
       decisions.top().change_to_right_branch();
       bool const ret = propagate(true);
@@ -2073,12 +2004,9 @@ RetState Counter::backtrack() {
 
     CHECK_COUNT_DO(check_count());
     // d-DNNF: build this level's OR node before the trail is undone (to read the
-    // right branch's literals).
-    int compiled_node = -1;
-    if (compiling()) {
-      auto right_lits = compile_cur_level_lits();
-      compiled_node = compile_build_level_node(dec_level(), right_lits);
-    }
+    // right branch's literals). The built node is held by the compiler and
+    // consumed by record_comp_node() / attach_to_parent() below.
+    compiler->build_level_node();
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
     if (conf.do_use_cache) {
@@ -2104,7 +2032,7 @@ RetState Counter::backtrack() {
       } else {
         comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
       }
-      if (compiling()) comp_manager->set_comp_node(decisions.top().super_comp(), compiled_node);
+      compiler->record_comp_node();
     }
 
 #ifdef VERBOSE_DEBUG
@@ -2113,8 +2041,7 @@ RetState Counter::backtrack() {
     const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
     (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
-    if (compiling())
-      ddnnf->add_child(dec_level() - 1, (decisions.end() - 2)->is_right_branch(), compiled_node);
+    compiler->attach_to_parent();
     decisions.pop_back();
 
     auto& dst = decisions.top();
@@ -2231,7 +2158,7 @@ void Counter::go_back_to(int32_t backj) {
     reactivate_comps_and_backtrack_trail(false);
     decisions.pop_back();
     decisions.top().zero_out_branch_sol();
-    compile_reset_cur_branch();
+    compiler->branch_reset();
     if (!sat_mode()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
@@ -2393,7 +2320,7 @@ RetState Counter::resolve_conflict() {
     go_back_to(backj);
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_branch_sol();
-    compile_reset_cur_branch();
+    compiler->branch_reset(); // TODO remove non-chronobt, then we can remove this
     return BACKTRACK;
   }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
@@ -3940,14 +3867,7 @@ bool Counter::run_sat_solver(RetState& state) {
     }
     // d-DNNF: record the SAT oracle's witness for this component's synthesized
     // vars (>= opt_indep_support_end) before backtracking
-    if (compiling()) {
-      sat_witness.clear();
-      all_vars_in_comp(comp_manager->get_super_comp(decisions.at(sat_start_dec_level)), it) {
-        uint32_t const v = *it;
-        if (v >= opt_indep_support_end && val(v) != X_TRI)
-          sat_witness.push_back(Lit(v, val(v) == T_TRI).to_visual_int());
-      }
-    }
+    compiler->sat_witness_capture(sat_start_dec_level);
     go_back_to(sat_start_dec_level);
     bool const ret = propagate();
     assert(ret);
@@ -3974,7 +3894,7 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
     // This SAT level's node is the witness leaf
-    if (compiling()) ddnnf->set_override(dec_level(), ddnnf->wrap_lits(ddnnf->true_node, sat_witness));
+    compiler->sat_witness_apply();
   }
 
 end:
@@ -4585,6 +4505,7 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     , order_heap(VarOrderLt(Counter::watches)) {
   sat_solver = std::make_unique<CMSat::SATSolver>();
   sat_solver->set_prefix("c o ");
+  compiler = make_null_compiler();
   alloc = std::make_unique<ClauseAllocator>(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
   two = fg->one();

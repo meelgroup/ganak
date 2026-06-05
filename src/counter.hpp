@@ -37,7 +37,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter_config.hpp"
 #include "comp_management.hpp"
-#include "ddnnf.hpp"
+#include "compiler.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
 #include <treedecomp/TreeDecomposition.hpp>
@@ -200,26 +200,16 @@ public:
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
   // ---- d-DNNF compilation ----
-  bool compiling() const { return ddnnf != nullptr; }
-  // From the analyzer on a free var (factor two = OR(v, -v)).
-  void compile_add_free_var(uint32_t v);
-  // From the comp manager on a cache hit: share the cached sub-DAG.
-  void compile_on_cache_hit(int node);
+  // The compile observer is always non-null (a no-op NullCompiler when not
+  // compiling), so the engine notifies it unconditionally -- no `compiling()`
+  // checks scattered through the search. See compiler.hpp.
+  Compiler& get_compiler() { return *compiler; }
 
 private:
-  std::unique_ptr<DDNNFCompiler> ddnnf;
-  std::vector<int> sat_witness; // DIMACS lits of synthesized (Y) vars from the SAT oracle
-  std::vector<int> compile_cur_level_lits() const; // current top decision level's trail lits
-  std::vector<int> compile_level0_lits() const;    // literals forced at decision level 0
-  int compile_build_level_node(int lev, const std::vector<int>& right_lits);
-  void compile_finalize_root();
-  // Mirror zero_out_branch_sol(): drop the current branch's children, as Ganak
-  // discards its count to re-explore.
-  void compile_reset_cur_branch() {
-    if (!compiling()) return;
-    ddnnf->ensure_level(dec_level());
-    ddnnf->children[dec_level()][decisions.top().is_right_branch()].clear();
-  }
+  // DDNNFCompiler reads private search state (trail, decisions, components) to
+  // label arcs and decompose nodes.
+  friend class DDNNFCompiler;
+  std::unique_ptr<Compiler> compiler;
 
   FG fg;
   FF two; //stores 1+1

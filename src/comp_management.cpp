@@ -62,7 +62,6 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
-  const bool compiling = !conf.compile_fname.empty();
   auto try_seed = [&](const uint32_t v) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << v);
     if (ana.var_unvisited_in_sup_comp(v) &&
@@ -72,9 +71,10 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
+      // hit_node is filled only when compiling (else compile_nodes is empty -> -1);
+      // get_compiler().cache_hit() is a no-op unless compiling.
       int hit_node = -1;
-      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp,
-            compiling ? &hit_node : nullptr)) {
+      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp, &hit_node)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
@@ -89,7 +89,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #endif
       } else {
         // Cache hit
-        if (compiling) counter->compile_on_cache_hit(hit_node);
+        counter->get_compiler().cache_hit(hit_node);
         free_comp(p_new_comp);
       }
       cache->free_comp(ccomp);

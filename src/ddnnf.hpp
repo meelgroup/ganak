@@ -54,7 +54,7 @@ namespace GanakInt {
 // The file may contain unreachable ("dead") nodes (mk_and short-circuits to FALSE,
 // orphaning siblings); harmless to a root traversal, and `ddnnf-cleanup` removes
 // them + renumbers root=1 for strict d4 consumers.
-class DDNNFCompiler {
+class DDNNFCircuit {
 public:
   enum NType : uint8_t { N_FALSE = 0, N_TRUE = 1, N_AND = 2, N_OR = 3 };
   struct Arc {
@@ -62,7 +62,7 @@ public:
     std::vector<int> lits; // DIMACS literals true on this arc
   };
 
-  explicit DDNNFCompiler(const std::string& target_fname) {
+  explicit DDNNFCircuit(const std::string& target_fname) {
     open_temps(target_fname);
     false_node = emit(N_FALSE, {});
     true_node = emit(N_TRUE, {});
@@ -124,12 +124,14 @@ public:
 
   // ---- per-search bookkeeping (not part of the emitted DAG) ----
   // children[lev][branch] = component nodes AND-ed into that branch
+  // TODO this should be somewhat more persistent for mem alloc efficiency
   std::vector<std::array<std::vector<int>, 2>> children;
   // left_lits[lev] = left-branch literals of level lev
   std::vector<std::vector<int>> left_lits;
   // override_node[lev] >= 0: SAT oracle solved this level; node is a witness leaf
   std::vector<int> override_node;
 
+  // TODO this should be insert, for mem perf
   void ensure_level(int lev) {
     if ((int)children.size() <= lev) {
       children.resize(lev + 1);

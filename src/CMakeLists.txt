@@ -40,6 +40,7 @@ set(SOURCES
     comp_analyzer.cpp
     comp_types/comp_archetype.cpp
     comp_management.cpp
+    compiler.cpp
     counter.cpp
     outer_counter.cpp
     statistics.cpp

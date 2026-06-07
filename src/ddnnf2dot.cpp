@@ -34,8 +34,9 @@ THE SOFTWARE.
 // The shared TRUE ('t') sink is not drawn; instead each literal on an arc into ⊤
 // becomes its own green leaf ("3", "¬1"). A multi-literal terminal arc fans out
 // through a fresh AND node. A ⊤ node is kept only for the degenerate cases (a
-// literal-free terminal arc, or a whole-circuit tautology). Node labels carry no
-// ids -- variables appear only on edges/leaves.
+// literal-free terminal arc, or a whole-circuit tautology). Operator/FALSE nodes
+// carry the .nnf node id as a small gray "#<id>" under the symbol; variables
+// still appear only on edges/leaves.
 //
 // Pure pretty-printer (no structural change); does not require a clean circuit.
 //
@@ -238,10 +239,14 @@ int main(int argc, char** argv) {
   // operator symbol -- variables appear only on edges/sinks.
   for (int id : order) {
     if (is_true(id)) continue;
+    // Two-line label: the operator symbol on top, the .nnf node id below it
+    // (a smaller gray "#<id>") so nodes can be referenced back to the circuit.
+    const std::string idtag = "<BR/><FONT COLOR=\"#777777\" POINT-SIZE=\"8\">#"
+                              + std::to_string(id) + "</FONT>";
     out << "  n" << id << " [";
-    if (type[id] == 'o')      out << "shape=ellipse, style=filled, fillcolor=\"#cfe8ff\", label=\"∨\"";
-    else if (type[id] == 'a') out << "shape=box, style=filled, fillcolor=\"#fff3c4\", label=\"∧\"";
-    else                      out << "shape=plaintext, label=\"⊥\"";  // 'f'
+    if (type[id] == 'o')      out << "shape=ellipse, style=filled, fillcolor=\"#cfe8ff\", label=<∨" << idtag << ">";
+    else if (type[id] == 'a') out << "shape=box, style=filled, fillcolor=\"#fff3c4\", label=<∧" << idtag << ">";
+    else                      out << "shape=plaintext, label=<⊥" << idtag << ">";  // 'f'
     out << "];\n";
   }
   // Fan-out AND nodes (for multi-literal terminal arcs).

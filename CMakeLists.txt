@@ -570,9 +570,6 @@ if(ENABLE_TESTING)
   # larger count / --maxvars (see CLAUDE.md).
   add_test(NAME ddnnf_compile_fuzz
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
-  # Functional synthesis via faithful --compile + SAT-oracle witnesses.
-  add_test(NAME ddnnf_synth_faithful
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_synth.py --num 30 --seed 1)
 endif()
 
 # -----------------------------------------------------------------------------

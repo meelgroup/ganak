@@ -22,8 +22,8 @@ THE SOFTWARE.
 
 // ddnnf-verify: structural-count + invariant checker for d4 .nnf files from
 // `ganak --compile`. C++ port of tests/ddnnf_verify.py (CLI surface only). The
-// Python version stays for tiny-N programmatic use from ddnnf_synth.py and
-// ddnnf_fuzz.py; this binary handles the big-circuit cases (multi-million-node
+// Python version stays for tiny-N programmatic use from ddnnf_fuzz.py; this
+// binary handles the big-circuit cases (multi-million-node
 // random_nvN benches) that exhaust Python's stack and dict overhead.
 //
 // Usage:  ddnnf-verify <in.nnf>                       (default: --check-decomposable

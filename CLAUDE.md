@@ -93,31 +93,6 @@ files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
 processes can run concurrently. Failing cases are copied to
 `/tmp/ddnnf_fuzz/fail_*.{cnf,nnf}`.
 
-### 3. Functional-synthesis round-trip (`tests/ddnnf_synth.py`)
-
-For a *projected* CNF (inputs X = sampling vars, outputs Y = the rest), the
-compiled circuit can be used for Boolean functional synthesis: for an input
-assignment X, `ddnnf_verify.synthesize()` reads a witness ψ(X) off the circuit.
-The fuzzer checks that for every satisfiable X, `F(X, ψ(X))` holds.
-
-```
-./tests/ddnnf_synth.py --num 40
-```
-
-With no `--num` it runs **forever** (until the first failure; it fail-fasts by
-default, `--keep-going` runs everything). Always pass `--num 40` for a quick
-check. **If it seems to hang, that is NOT ganak — it is the agent sandbox
-blocking `/tmp/ddnnf_synth` writes; `unique_file()` then retries `O_CREAT`
-forever. Run these scripts with the sandbox disabled (they need `/tmp`).**
-
-The witness for Y comes from the **SAT oracle** (it stays on in `--compile`),
-which records one example assignment of Y at each SAT leaf (`set_override` in
-`DDNNFCompiler`). This is the main compactness for synthesis (Y is not
-enumerated). Faithful `--compile` + SAT is a correct, compact synthesis
-compiler — the `ddnnf_synth_faithful` ctest exercises it. `--satsolver 0` is
-unsound for synthesis (without the SAT oracle, output vars get branched in the
-main search and the backtrack flips a forced-pure decision to its other phase).
-
 ## Running Tests
 ```
 cd build && ctest -V
@@ -143,12 +118,11 @@ do not break when search heuristics reshape the circuit:
   (`build/ddnnf-verify`, source `src/ddnnf_verify.cpp`); CLI flags
   `--expect-count`, `--cnf`, `--check-decomposable`, `--strict`; bare
   invocation prints the structural model count. `tests/ddnnf_verify.py`
-  remains for tiny-N programmatic use (it's what `ddnnf_synth.py` /
-  `ddnnf_fuzz.py` import — `synthesize`, `models`, etc.); use the binary for
-  large circuits where Python recursion + dict overhead blow up.
-- ctest targets `ddnnf_compile_fuzz`, `ddnnf_synth_faithful` — the property
-  fuzzers run seeded (so a regression reproduces) and self-check against a
-  brute-force oracle.
+  remains for tiny-N programmatic use (it's what `ddnnf_fuzz.py` imports —
+  `models`, etc.); use the binary for large circuits where Python recursion +
+  dict overhead blow up.
+- ctest target `ddnnf_compile_fuzz` — the property fuzzer runs seeded (so a
+  regression reproduces) and self-checks against a brute-force oracle.
 
 ## Architecture
 
@@ -252,38 +226,6 @@ code. `../count_fuzzer` is a fairly complete find-and-isolate system:
    - then add `VERBOSE_DEBUG` to read the exact trace around the failure.
 
 3. **Re-fuzz** after the fix (`./fuzz.py --only 200 ...`) before committing.
-
-## Debugging a synthesis bug
-
-When `ddnnf_synth.py` reports a "no witness" failure or a SLOW_DEBUG abort, the
-script has the same find-and-isolate flow as `count_fuzzer`:
-
-1. **Reproduce.** The fuzzer prints `seed=<N>` on every run; rerun with that
-   seed to get the same instance. `--diagnose` classifies the failure (is the
-   emitted circuit decomposable? which input assignment `X` had no witness?):
-   ```
-   python3 tests/ddnnf_synth.py --num 200 --seed N --diagnose
-   ```
-
-2. **Minimize.** `--minimize` runs a per-clause delta debugger that keeps
-   removing clauses while the failure persists. Treats both "wrong witness"
-   and "ganak crashed (no .nnf)" as failures. Saves to
-   `/tmp/ddnnf_synth/fail_min_*.cnf` (typically 3–6 clauses).
-   ```
-   python3 tests/ddnnf_synth.py --num 200 --seed N --diagnose --minimize
-   ```
-   Tip: pass `--minvars 4 --maxvars 9` to bias toward small instances —
-   minimization is faster and the reproducer is easier to read.
-
-3. **Pinpoint.** Once you have a tiny CNF, rebuild with the relevant
-   `common.hpp` flags and run it directly: `SLOW_DEBUG` first, then add
-   `VERBOSE_DEBUG` to read the trace around the failure.
-
-4. **Re-fuzz** after the fix:
-   - `python3 tests/ddnnf_synth.py --num 200 --seed N` (the failing seed) —
-     confirms this specific case is fixed.
-   - `python3 tests/ddnnf_synth.py --num 200` (random seeds) and
-     `cd build && ctest -R synth` — confirms no new regressions.
 
 ## Data Analysis
 

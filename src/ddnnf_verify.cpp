@@ -71,7 +71,7 @@ struct VarSet {
     for (size_t i = 0; i < n; i++) w[i] |= o.w[i];
   }
   // Returns any var in (this & o), else 0.
-  int first_intersect_var(const VarSet& o) const {
+  [[nodiscard]] int first_intersect_var(const VarSet& o) const {
     const size_t n = w.size();
     for (size_t i = 0; i < n; i++) {
       uint64_t b = w[i] & o.w[i];

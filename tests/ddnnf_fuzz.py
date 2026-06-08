@@ -272,9 +272,7 @@ def main():
         if cmodels != bmodels:
             fail(t, nv, nc, k,
                  f"model-set mismatch |circuit|={len(cmodels)} |brute|={len(bmodels)}")
-        # FAITHFUL AS A FUNCTION: on every complete assignment the circuit must
-        # equal F (the property functional synthesis needs).
-        fmodels = dv.function_models(nodes, arcs, root, nv)
+        fmodels = dv.brute_force_eval_tree(nodes, arcs, root, nv)
         if fmodels != bmodels:
             fail(t, nv, nc, k, f"strong circuit not faithful as a function "
                  f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")

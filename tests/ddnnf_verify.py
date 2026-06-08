@@ -163,7 +163,7 @@ def evaluate(nodes, arcs, root, assign):
     return rec(root)
 
 
-def function_models(nodes, arcs, root, nvars):
+def brute_force_eval_tree(nodes, arcs, root, nvars):
     """Models of the circuit as a function (brute force over all assignments)."""
     out = set()
     for bits in __import__('itertools').product((False, True), repeat=nvars):

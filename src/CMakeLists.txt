@@ -104,13 +104,8 @@ endif()
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
-# Standalone d4 .nnf post-processor: drops dead nodes + renumbers root=1.
-# Self-contained (no ganak/arjun/GMP deps).
 add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
-# Standalone d4 .nnf -> Graphviz DOT renderer for visualization. Self-contained.
 add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
-# Standalone d4 .nnf verifier: structural count + invariant checks (links GMP
-# for big-int counts).
 add_executable(ddnnf-verify-bin ddnnf_verify.cpp)
 target_link_libraries(ddnnf-verify-bin PRIVATE PkgConfig::GMP)
 
@@ -201,8 +196,6 @@ set_target_properties(ddnnf-verify-bin PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-  # Same runtime exports as ganak-bin so the browser can drive these: write the
-  # input .nnf into the in-memory FS, call main, read the output file back out.
   target_link_options(ddnnf-cleanup-bin PRIVATE
     "SHELL:-s WASM=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"

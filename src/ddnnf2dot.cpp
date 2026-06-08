@@ -24,16 +24,18 @@ THE SOFTWARE.
 // `ddnnf-cleanup`) as a Graphviz DOT graph.
 //
 //   OR ('o') -> blue ellipse "∨";  AND ('a') -> yellow box "∧";  FALSE ('f') -> "⊥"
-//   OR arc with lits -> bold-blue label "1[2,-3]" (decided lit, then propagated
-//     in brackets). AND arcs carry no blue lits: the structural edge is labelled
-//     with the child component's variable set, and any literals fixed on the arc
-//     are pulled out as their own green literal-leaf children (gray "{v}" edges).
-//     This keeps an AND a visible conjunction of operands -- e.g. a root that
-//     forces a unit literal renders as a real two-input AND, not a single arc.
+//   No operator arc carries literals. An OR branch that fixes literal(s) and
+//     continues to a child operator routes through a fresh AND node: OR -> AND,
+//     AND -> child (gray "{vars}"), AND -> one green "{v}" literal-leaf per fixed
+//     literal -- so there are no literal-carrying OR->operator edges. AND arcs
+//     likewise pull each fixed literal out as its own green literal-leaf child
+//     (gray "{v}" edge), so every operator stays a visible conjunction/
+//     disjunction of its drawn operands.
 //
 // The shared TRUE ('t') sink is not drawn; instead each literal on an arc into ⊤
-// becomes its own green leaf ("3", "¬1"). A multi-literal terminal arc fans out
-// through a fresh AND node. A ⊤ node is kept only for the degenerate cases (a
+// becomes its own green leaf ("3", "¬1"). A single-literal terminal OR arc lands
+// directly on that leaf; a multi-literal one fans out through a fresh AND with a
+// "{v}" leaf per literal. A ⊤ node is kept only for the degenerate cases (a
 // literal-free terminal arc, or a whole-circuit tautology). Operator/FALSE nodes
 // carry the .nnf node id as a small gray "#<id>" under the symbol; variables
 // still appear only on edges/leaves.
@@ -176,10 +178,13 @@ int main(int argc, char** argv) {
   // A literal fixed on an AND arc, rendered as its own green literal-leaf child
   // with a gray "{v}" decomposition-style edge (so every AND out-edge is a
   // labelled conjunct, and the AND is a visible conjunction of its operands).
-  auto lit_leaf = [&](std::ostream& os, int from_id, int l) {
-    os << "  n" << from_id << " -> " << sink_for(l)
+  auto lit_leaf_from = [&](std::ostream& os, const std::string& from, int l) {
+    os << "  " << from << " -> " << sink_for(l)
        << " [label=<<FONT COLOR=\"#777777\">{" << std::abs(l)
        << "}</FONT>>, fontsize=9];\n";
+  };
+  auto lit_leaf = [&](std::ostream& os, int from_id, int l) {
+    lit_leaf_from(os, "n" + std::to_string(from_id), l);
   };
 
   for (int id : order) {
@@ -199,34 +204,57 @@ int main(int argc, char** argv) {
         } else if (a.lits.size() == 1) {
           edges << "  n" << id << " -> " << sink_for(a.lits[0]) << ";\n";
         } else {
+          // OR branch fixing several literals (all terminal): fan out through a
+          // fresh AND with one gray-"{v}" literal-leaf per literal. The decided
+          // literal (lits[0]) labels the OR->AND edge in bold blue so the OR's
+          // branch variable stays visible.
           std::string an = "and" + std::to_string(fanout_nodes.size());
           fanout_nodes.push_back(an);
+          const std::vector<int> dec{a.lits[0]};
           edges << "  n" << id << " -> " << an << " [label=<";
-          blue_frag(edges, a.lits);
+          blue_frag(edges, dec);
           edges << ">];\n";
-          for (int l : a.lits) edges << "  " << an << " -> " << sink_for(l) << ";\n";
+          for (int l : a.lits) lit_leaf_from(edges, an, l);
         }
         continue;
       }
       // Non-terminal arc.
-      edges << "  n" << id << " -> n" << a.child;
       if (parent_and) {
         // AND decomposition: the structural edge shows just the child
         // component's variables; any decided literals fixed on this arc are
         // pulled out as their own literal-leaf children below, so the AND
         // visibly conjoins them. (A single-child arc carrying the literal only
         // in its label would look like the AND "ANDs nothing".)
+        edges << "  n" << id << " -> n" << a.child;
         static const std::vector<int> none;
         and_label(edges, none, a.child);
         edges << ";\n";
         for (int l : a.lits) lit_leaf(edges, id, l);
         continue;
       }
-      if (!a.lits.empty()) {
-        // OR edge: decided / implied literals, bold blue.
-        edges << " [label=<"; blue_frag(edges, a.lits); edges << ">]";
+      // OR parent.
+      if (a.lits.empty()) {
+        // Bare structural edge to the child operator.
+        edges << "  n" << id << " -> n" << a.child << ";\n";
+      } else {
+        // OR branch that fixes literal(s): the OR->child edge becomes
+        // OR -> AND -> child, with the *decided* literal (lits[0]) kept as a
+        // bold-blue label on the OR->AND edge so the OR's branch variable stays
+        // visible. The AND then conjoins the child (gray "{vars}") with one
+        // green "{v}" literal-leaf per fixed literal -- no literal-carrying
+        // OR->operator edge remains.
+        std::string an = "and" + std::to_string(fanout_nodes.size());
+        fanout_nodes.push_back(an);
+        const std::vector<int> dec{a.lits[0]};
+        edges << "  n" << id << " -> " << an << " [label=<";
+        blue_frag(edges, dec);
+        edges << ">];\n";
+        edges << "  " << an << " -> n" << a.child;
+        static const std::vector<int> none;
+        and_label(edges, none, a.child);
+        edges << ";\n";
+        for (int l : a.lits) lit_leaf_from(edges, an, l);
       }
-      edges << ";\n";
     }
   }
 

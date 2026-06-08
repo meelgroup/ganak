@@ -1055,7 +1055,7 @@ FF Counter::outer_count() {
     } else *cnt += *do_appmc_count();
   }
   compiler->finalize_and_write(/*unsat=*/false);
-  if (conf.verb) stats.print_short(this, comp_manager->get_cache());
+  if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
 

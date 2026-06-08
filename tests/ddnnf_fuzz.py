@@ -10,7 +10,6 @@ Usage: ddnnf_fuzz.py [num_tests] [--seed N]
 """
 import itertools
 import os
-import shutil
 import stat
 import random
 import subprocess
@@ -187,8 +186,6 @@ def main():
     random.seed(seed)
     print(f"seed={seed} tests={n} vars={minv}..{maxv} mode={'BIG' if big_mode else 'STRONG'}")
 
-    fails = 0
-
     # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL), so
     # many fuzzers (e.g. one per tmux window) never clobber each other's files.
     # The .nnf / .clean outputs are reserved the same way; they are emptied with
@@ -197,37 +194,33 @@ def main():
     nnf = unique_file("fz", ".nnf")
     clean = unique_file("fz", ".clean.nnf")
 
-    def save_fail(t):
-        shutil.copy(cnf, unique_file("fail", ".cnf"))
+    def repro():
+        """Any failure exits immediately, so the reserved temp files still hold
+        the failing instance -- they ARE the reproducer, no copying needed."""
+        lines = [f"    CNF:         {cnf}"]
         if produced(nnf):
-            shutil.copy(nnf, unique_file("fail", ".nnf"))
-        if produced(clean):
-            shutil.copy(clean, unique_file("fail", ".clean.nnf"))
+            lines.append(f"    nnf:         {nnf}")
+        lines.append(f"    rerun batch: {sys.argv[0]} {n} --seed {seed}")
+        return "\n".join(lines)
+
+    def fail(t, nv, nc, k, msg):
+        """A check failed -- print it and the reproducer, then exit hard."""
+        print(f"\n*** FAIL[{t}] nv={nv} nc={nc} k={k}: {msg}")
+        print(repro())
+        sys.exit(1)
 
     def crash_exit(r, how, t, nv, nc, k):
-        """A tool was killed by a signal. Save a standalone reproducer, print
-        exactly how to reproduce it, and exit immediately (rc 1)."""
-        sig = -r.returncode
-        repro = unique_file("crash", ".cnf")
-        shutil.copy(cnf, repro)
-        rnnf = repro + ".nnf"
-        if produced(nnf):
-            shutil.copy(nnf, rnnf)
-        print(f"\n*** CRASH: '{how}' killed by signal {sig} "
-              f"(test {t}, nv={nv} nc={nc} k={k})")
-        print(f"    reproducer CNF:  {repro}")
-        if how == "--compile":
-            print(f"    reproduce:       {GANAK} --compile {rnnf} {repro}")
-        elif how == "count":
-            print(f"    reproduce:       {GANAK} {repro}")
-        elif how == "ddnnf-cleanup":
-            print(f"    reproduce:       {CLEANUP} {rnnf} /tmp/out.clean.nnf")
-        elif how.startswith("ddnnf-verify"):
-            tgt = rnnf if "raw" in how else (repro + ".clean.nnf")
-            if how.endswith("(clean)") and produced(clean):
-                shutil.copy(clean, tgt)
-            print(f"    reproduce:       {VERIFY} {tgt}")
-        print(f"    (or rerun batch: {sys.argv[0]} {n} --seed {seed})")
+        """A tool was killed by a signal -- exit hard, show how to reproduce."""
+        print(f"\n*** CRASH[{t}] '{how}' killed by signal {-r.returncode} "
+              f"nv={nv} nc={nc} k={k}")
+        cmd = {"--compile": f"{GANAK} --compile {nnf} {cnf}",
+               "count": f"{GANAK} {cnf}",
+               "ddnnf-cleanup": f"{CLEANUP} {nnf} /tmp/out.clean.nnf"}.get(how)
+        if cmd is None and how.startswith("ddnnf-verify"):
+            cmd = f"{VERIFY} {nnf if 'raw' in how else clean}"
+        if cmd:
+            print(f"    reproduce:   {cmd}")
+        print(repro())
         if r.stderr and r.stderr.strip():
             print(f"    stderr tail:\n{r.stderr[-1500:]}")
         sys.exit(1)
@@ -242,9 +235,7 @@ def main():
         if big_mode:
             ok, msg = run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit)
             if not ok:
-                print(f"FAIL[{t}] nv={nv} nc={nc} k={k}: {msg}")
-                save_fail(t)
-                fails += 1
+                fail(t, nv, nc, k, msg)
             elif msg:
                 print(f"NOTE[{t}] nv={nv} nc={nc} k={k}: {msg}")
             continue
@@ -256,10 +247,7 @@ def main():
         if r.returncode < 0:
             crash_exit(r, "--compile", t, nv, nc, k)
         if not produced(nnf):
-            print(f"FAIL[{t}] no .nnf produced. stderr:\n{r.stderr}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"no .nnf produced. stderr:\n{r.stderr}")
         nodes, arcs, root = dv.parse(nnf)
         sc = dv.count(nodes, arcs, root)
 
@@ -273,10 +261,7 @@ def main():
             print(f"NOTE[{t}] raw circuit not strict-decomposable (will check post-cleanup): {msg}")
 
         if sc != bc:
-            print(f"FAIL[{t}] structural count {sc} != brute {bc}  nv={nv} nc={nc} k={k}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"structural count {sc} != brute {bc}")
         rcount = run_ganak_count(cnf)
         if rcount.returncode < 0:
             crash_exit(rcount, "count", t, nv, nc, k)
@@ -285,19 +270,14 @@ def main():
             print(f"WARN[{t}] ganak normal count {gc} != brute {bc} (oracle disagreement)")
         cmodels = dv.models(nodes, arcs, root, nv)
         if cmodels != bmodels:
-            print(f"FAIL[{t}] model-set mismatch nv={nv} |circuit|={len(cmodels)} |brute|={len(bmodels)}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k,
+                 f"model-set mismatch |circuit|={len(cmodels)} |brute|={len(bmodels)}")
         # FAITHFUL AS A FUNCTION: on every complete assignment the circuit must
         # equal F (the property functional synthesis needs).
         fmodels = dv.function_models(nodes, arcs, root, nv)
         if fmodels != bmodels:
-            print(f"FAIL[{t}] strong circuit not faithful as a function "
-                  f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"strong circuit not faithful as a function "
+                 f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")
 
         # CLEANUP TOOL: the raw .nnf keeps internal ids and may carry dead nodes.
         # `ddnnf-cleanup` must drop them and renumber root=1. Check strictly: no
@@ -307,50 +287,29 @@ def main():
         if rc.returncode < 0:
             crash_exit(rc, "ddnnf-cleanup", t, nv, nc, k)
         if not produced(clean):
-            print(f"FAIL[{t}] ddnnf-cleanup produced no output. stderr:\n{rc.stderr}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"ddnnf-cleanup produced no output. stderr:\n{rc.stderr}")
         cn, ca, cr = dv.parse(clean)
         dead = dv.unreachable_nodes(cn, ca, cr)
         if dead:
-            print(f"FAIL[{t}] cleaned circuit still has dead nodes: {sorted(dead)[:10]}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"cleaned circuit still has dead nodes: {sorted(dead)[:10]}")
         ok, msg = dv.check_decomposable(cn, ca, cr)
         if not ok:
-            print(f"FAIL[{t}] cleaned circuit not decomposable: {msg}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"cleaned circuit not decomposable: {msg}")
         nested = dv.nested_and_arcs(cn, ca, cr)
         if nested:
-            print(f"FAIL[{t}] cleaned circuit has nested AND-of-AND arcs "
-                  f"(should be flattened): {nested[:10]}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"cleaned circuit has nested AND-of-AND arcs "
+                 f"(should be flattened): {nested[:10]}")
         unary = dv.unary_and_nodes(cn, ca, cr)
         if unary:
-            print(f"FAIL[{t}] cleaned circuit has unary (single-arc) AND nodes "
-                  f"(should be elided): {unary[:10]}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"cleaned circuit has unary (single-arc) AND nodes "
+                 f"(should be elided): {unary[:10]}")
         if dv.count(cn, ca, cr) != bc:
-            print(f"FAIL[{t}] cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, f"cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
         if dv.models(cn, ca, cr, nv) != bmodels:
-            print(f"FAIL[{t}] cleaned model-set mismatch")
-            save_fail(t)
-            fails += 1
-            continue
+            fail(t, nv, nc, k, "cleaned model-set mismatch")
 
-    print(f"done {n} {'big' if big_mode else 'strong'} tests, {fails} failures")
-    return 1 if fails else 0
+    print(f"done {n} {'big' if big_mode else 'strong'} tests, all passed")
+    return 0
 
 
 if __name__ == "__main__":

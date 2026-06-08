@@ -78,9 +78,28 @@ def brute(nv, clauses):
     return cnt, models
 
 
-def ganak_count(path):
-    out = subprocess.run([GANAK, path], capture_output=True, text=True).stdout
-    for line in out.splitlines():
+def reset(path):
+    """Empty a reserved temp file in place (do NOT unlink it). Unlinking would
+    free the name for another concurrent fuzzer's unique_file() to grab while we
+    are still using it; truncating keeps the O_CREAT|O_EXCL reservation valid.
+    ganak/ddnnf-cleanup open their output with truncation, so an empty file is
+    equivalent to a fresh one."""
+    open(path, "w").close()
+
+
+def produced(path):
+    """True iff a tool actually wrote output (the reserved file is non-empty)."""
+    return os.path.exists(path) and os.path.getsize(path) > 0
+
+
+def run_ganak_count(path):
+    """Run ganak for a plain count. Returns the CompletedProcess so the caller
+    can inspect .returncode (a negative value means killed by a signal)."""
+    return subprocess.run([GANAK, path], capture_output=True, text=True)
+
+
+def parse_count(r):
+    for line in r.stdout.splitlines():
         if line.startswith("c s exact arb int"):
             return int(line.split()[-1])
     return None
@@ -91,35 +110,45 @@ def compile_nnf(path, nnf):
     return subprocess.run(args, capture_output=True, text=True)
 
 
-def run_big(t, cnf, nnf, clean):
+def run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit):
     """--big mode: ganak as oracle (no brute), C++ ddnnf-verify for checks.
-    Returns (ok, msg). Catches ddnnf-cleanup crashes (the main thing this mode
-    exists to find): subprocess.run() returns non-zero on SIGSEGV/SIGABRT.
+    Returns (ok, msg). Any tool killed by a signal (returncode < 0) triggers
+    crash_exit(), which prints a reproducer and exits immediately.
     """
-    gc = ganak_count(cnf)
+    rcount = run_ganak_count(cnf)
+    if rcount.returncode < 0:
+        crash_exit(rcount, "count", t, nv, nc, k)
+    gc = parse_count(rcount)
     if gc is None:
         return True, "ganak unable to count (skipping)"
+    reset(nnf)
     r = compile_nnf(cnf, nnf)
-    if not os.path.exists(nnf):
+    if r.returncode < 0:
+        crash_exit(r, "--compile", t, nv, nc, k)
+    if not produced(nnf):
         return False, f"no .nnf produced. stderr tail:\n{r.stderr[-1500:]}"
     # Raw circuit may not be strict / decomposable; check count only.
     rv = subprocess.run([VERIFY, nnf, "--expect-count", str(gc),
                          "--no-strict", "--no-check-decomposable"],
                         capture_output=True, text=True)
+    if rv.returncode < 0:
+        crash_exit(rv, "ddnnf-verify(raw)", t, nv, nc, k)
     if rv.returncode != 0:
         return False, f"raw count mismatch (oracle {gc}):\n{rv.stdout}{rv.stderr}"
-    if os.path.exists(clean):
-        os.remove(clean)
+    reset(clean)
     rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
+    if rc.returncode < 0:
+        crash_exit(rc, "ddnnf-cleanup", t, nv, nc, k)
     if rc.returncode != 0:
-        return False, (f"ddnnf-cleanup exit={rc.returncode} "
-                       f"(signal? {-rc.returncode if rc.returncode < 0 else 'n/a'}). "
+        return False, (f"ddnnf-cleanup exit={rc.returncode}. "
                        f"stderr tail:\n{rc.stderr[-1500:]}")
-    if not os.path.exists(clean):
+    if not produced(clean):
         return False, f"cleanup produced no output. stderr tail:\n{rc.stderr[-1500:]}"
     # Defaults: --strict --check-decomposable; --expect-count cross-checks count.
     rv = subprocess.run([VERIFY, clean, "--expect-count", str(gc)],
                         capture_output=True, text=True)
+    if rv.returncode < 0:
+        crash_exit(rv, "ddnnf-verify(clean)", t, nv, nc, k)
     if rv.returncode != 0:
         return False, f"cleaned verify failed:\n{rv.stdout}{rv.stderr}"
     return True, ""
@@ -160,17 +189,48 @@ def main():
 
     fails = 0
 
-    # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL).
+    # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL), so
+    # many fuzzers (e.g. one per tmux window) never clobber each other's files.
+    # The .nnf / .clean outputs are reserved the same way; they are emptied with
+    # reset() (not unlinked) between iterations to keep the reservation valid.
     cnf = unique_file("fz", ".cnf")
-    nnf = cnf + ".nnf"
-    clean = nnf + ".clean"
+    nnf = unique_file("fz", ".nnf")
+    clean = unique_file("fz", ".clean.nnf")
 
     def save_fail(t):
         shutil.copy(cnf, unique_file("fail", ".cnf"))
-        if os.path.exists(nnf):
+        if produced(nnf):
             shutil.copy(nnf, unique_file("fail", ".nnf"))
-        if os.path.exists(clean):
+        if produced(clean):
             shutil.copy(clean, unique_file("fail", ".clean.nnf"))
+
+    def crash_exit(r, how, t, nv, nc, k):
+        """A tool was killed by a signal. Save a standalone reproducer, print
+        exactly how to reproduce it, and exit immediately (rc 1)."""
+        sig = -r.returncode
+        repro = unique_file("crash", ".cnf")
+        shutil.copy(cnf, repro)
+        rnnf = repro + ".nnf"
+        if produced(nnf):
+            shutil.copy(nnf, rnnf)
+        print(f"\n*** CRASH: '{how}' killed by signal {sig} "
+              f"(test {t}, nv={nv} nc={nc} k={k})")
+        print(f"    reproducer CNF:  {repro}")
+        if how == "--compile":
+            print(f"    reproduce:       {GANAK} --compile {rnnf} {repro}")
+        elif how == "count":
+            print(f"    reproduce:       {GANAK} {repro}")
+        elif how == "ddnnf-cleanup":
+            print(f"    reproduce:       {CLEANUP} {rnnf} /tmp/out.clean.nnf")
+        elif how.startswith("ddnnf-verify"):
+            tgt = rnnf if "raw" in how else (repro + ".clean.nnf")
+            if how.endswith("(clean)") and produced(clean):
+                shutil.copy(clean, tgt)
+            print(f"    reproduce:       {VERIFY} {tgt}")
+        print(f"    (or rerun batch: {sys.argv[0]} {n} --seed {seed})")
+        if r.stderr and r.stderr.strip():
+            print(f"    stderr tail:\n{r.stderr[-1500:]}")
+        sys.exit(1)
 
     for t in range(n):
         nv = random.randint(minv, maxv)
@@ -180,7 +240,7 @@ def main():
         write_cnf(cnf, nv, clauses)
 
         if big_mode:
-            ok, msg = run_big(t, cnf, nnf, clean)
+            ok, msg = run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit)
             if not ok:
                 print(f"FAIL[{t}] nv={nv} nc={nc} k={k}: {msg}")
                 save_fail(t)
@@ -191,10 +251,11 @@ def main():
 
         bc, bmodels = brute(nv, clauses)
 
-        if os.path.exists(nnf):
-            os.remove(nnf)
+        reset(nnf)
         r = compile_nnf(cnf, nnf)
-        if not os.path.exists(nnf):
+        if r.returncode < 0:
+            crash_exit(r, "--compile", t, nv, nc, k)
+        if not produced(nnf):
             print(f"FAIL[{t}] no .nnf produced. stderr:\n{r.stderr}")
             save_fail(t)
             fails += 1
@@ -216,7 +277,10 @@ def main():
             save_fail(t)
             fails += 1
             continue
-        gc = ganak_count(cnf)
+        rcount = run_ganak_count(cnf)
+        if rcount.returncode < 0:
+            crash_exit(rcount, "count", t, nv, nc, k)
+        gc = parse_count(rcount)
         if gc is not None and gc != bc:
             print(f"WARN[{t}] ganak normal count {gc} != brute {bc} (oracle disagreement)")
         cmodels = dv.models(nodes, arcs, root, nv)
@@ -238,10 +302,11 @@ def main():
         # CLEANUP TOOL: the raw .nnf keeps internal ids and may carry dead nodes.
         # `ddnnf-cleanup` must drop them and renumber root=1. Check strictly: no
         # dead nodes, still decomposable, same count + model set.
-        if os.path.exists(clean):
-            os.remove(clean)
+        reset(clean)
         rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
-        if not os.path.exists(clean):
+        if rc.returncode < 0:
+            crash_exit(rc, "ddnnf-cleanup", t, nv, nc, k)
+        if not produced(clean):
             print(f"FAIL[{t}] ddnnf-cleanup produced no output. stderr:\n{rc.stderr}")
             save_fail(t)
             fails += 1

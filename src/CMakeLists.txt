@@ -66,6 +66,11 @@ set(SOURCES
 
 add_library(ganak ${SOURCES})
 
+# MurmurHash3.cpp intentionally falls through in its switch; silence the warning.
+if (NOT MSVC)
+  set_source_files_properties(MurmurHash3.cpp PROPERTIES COMPILE_OPTIONS "-Wno-implicit-fallthrough")
+endif()
+
 target_include_directories(ganak
   PRIVATE
     ${PROJECT_SOURCE_DIR}

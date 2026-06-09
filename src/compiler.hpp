@@ -30,36 +30,63 @@ namespace GanakInt {
 
 class Counter;
 
-// Observer that the counting engine notifies at every search event relevant to
-// d-DNNF compilation. The default (NullCompiler) does nothing, so the engine can
-// call these hooks unconditionally -- no scattered `if (compiling())` checks. When
-// `--compile` is on, a DDNNFCompiler (defined in compiler.cpp) drives a DDNNFCircuit
-// from these events.
+// Observer the counting engine notifies at every search event relevant to
+// d-DNNF compilation. The default (NullCompiler) does nothing, so the engine
+// can call these hooks unconditionally -- no scattered `if (compiling())`
+// checks. When `--compile` is on, a DDNNFCompiler (defined in compiler.cpp)
+// drives a DDNNFCircuit from these events.
+//
+// The public hook methods are non-virtual; each is an inline wrapper that
+// short-circuits on `active_` before any virtual dispatch. With --compile off
+// this collapses to a single predicted-not-taken branch (no vtable load, no
+// indirect call), so the steady-state counting loop stays as fast as before
+// the compiler observer was introduced. With --compile on the wrapper hands
+// off to the virtual `do_*` method overridden by DDNNFCompiler.
 struct Compiler {
   virtual ~Compiler() = default;
 
-  // ---- queries ----
-  // Whether compilation is active (true only for the real compiler).
-  virtual bool active() const { return false; }
-  // Whether the engine may take the small-formula CMS shortcut (count_using_cms).
-  // The compiler needs the full DPLL tree, so it disallows the shortcut.
-  virtual bool allows_cms_shortcut() const { return true; }
+  // ---- queries (inline, no virtual dispatch) ----
+  [[nodiscard]] bool active() const { return active_; }
+  // Whether the engine may take the small-formula CMS shortcut. The compiler
+  // needs the full DPLL tree, so it disallows the shortcut.
+  [[nodiscard]] bool allows_cms_shortcut() const { return !active_; }
 
   // ---- search events ----
-  virtual void new_decision_level() {}      // a decision was made: open a fresh level
-  virtual void save_left_lits() {}          // left branch done: snapshot its trail lits
-  virtual void build_level_node() {}        // both branches done: build this level's OR node
-  virtual void record_comp_node() {}        // store the built node against the cached component
-  virtual void attach_to_parent() {}        // AND the built node into the parent branch
-  virtual void branch_reset() {}            // current branch's count is discarded; drop its children
-  virtual void free_var(uint32_t /*v*/) {}  // a free (unconstrained) var: factor of two
-  virtual void cache_hit(int /*node*/) {}   // a cached component was reused: share its sub-DAG
-  virtual void sat_witness_capture(int /*sat_start_dec_level*/) {} // SAT leaf: record synthesized-var witness
-  virtual void sat_witness_apply() {}       // install the captured witness as this level's leaf
+  void new_decision_level()    { if (active_) do_new_decision_level(); }
+  void save_left_lits()        { if (active_) do_save_left_lits(); }
+  void build_level_node()      { if (active_) do_build_level_node(); }
+  void record_comp_node()      { if (active_) do_record_comp_node(); }
+  void attach_to_parent()      { if (active_) do_attach_to_parent(); }
+  void branch_reset()          { if (active_) do_branch_reset(); }
+  void free_var(uint32_t v)    { if (active_) do_free_var(v); }
+  void cache_hit(int node)     { if (active_) do_cache_hit(node); }
+  void sat_witness_capture(int sat_start_dec_level) {
+    if (active_) do_sat_witness_capture(sat_start_dec_level);
+  }
+  void sat_witness_apply()     { if (active_) do_sat_witness_apply(); }
 
   // ---- lifecycle ----
-  virtual void finalize_root() {}                  // EXIT state: build the root from level-0 children
-  virtual void finalize_and_write(bool /*unsat*/) {} // write the d4 .nnf file
+  void finalize_root()                 { if (active_) do_finalize_root(); }
+  void finalize_and_write(bool unsat)  { if (active_) do_finalize_and_write(unsat); }
+
+protected:
+  // Set to true by DDNNFCompiler; stays false for NullCompiler.
+  bool active_ = false;
+
+  // Subclasses override these. The wrappers above gate them on `active_`, so
+  // these are only called when compilation is on.
+  virtual void do_new_decision_level() {}
+  virtual void do_save_left_lits() {}
+  virtual void do_build_level_node() {}
+  virtual void do_record_comp_node() {}
+  virtual void do_attach_to_parent() {}
+  virtual void do_branch_reset() {}
+  virtual void do_free_var(uint32_t /*v*/) {}
+  virtual void do_cache_hit(int /*node*/) {}
+  virtual void do_sat_witness_capture(int /*sat_start_dec_level*/) {}
+  virtual void do_sat_witness_apply() {}
+  virtual void do_finalize_root() {}
+  virtual void do_finalize_and_write(bool /*unsat*/) {}
 };
 
 std::unique_ptr<Compiler> make_null_compiler();

@@ -62,19 +62,24 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
-  auto try_seed = [&](const uint32_t v) {
-    debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << v);
-    if (ana.var_unvisited_in_sup_comp(v) &&
-        ana.explore_comp(v, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
+  // Hoisted snapshot of "are we compiling" so we can skip filling hit_node on
+  // cache hits in the common (no-compile) path. Cache lookups happen many times
+  // per decision; the extra store-through-pointer would otherwise show up in
+  // perf even though the result is never read.
+  const bool compiling = counter->get_compiler().active();
+
+  all_vars_in_comp(super_comp, vt) {
+    debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
+    if (ana.var_unvisited_in_sup_comp(*vt) &&
+        ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
       void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
-      // hit_node is filled only when compiling (else compile_nodes is empty -> -1);
-      // get_compiler().cache_hit() is a no-op unless compiling.
       int hit_node = -1;
-      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp, &hit_node)) {
+      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp,
+            compiling ? &hit_node : nullptr)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
@@ -84,7 +89,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "New comp. ID: " << p_new_comp->id()
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        all_vars_in_comp(*p_new_comp, v2) cout << *v2 << " ";
+        all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
       } else {
@@ -92,7 +97,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";
-        all_vars_in_comp(*p_new_comp, v2) cout << *v2 << " ";
+        all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
         counter->get_compiler().cache_hit(hit_node);
@@ -100,9 +105,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
       }
       cache->free_comp(ccomp);
     }
-  };
-
-  all_vars_in_comp(super_comp, vt) try_seed(*vt);
+  }
 
   debug_print("We now set the unprocessed_comps_end_ in 'top' to comp_stack.size(): "
       << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());

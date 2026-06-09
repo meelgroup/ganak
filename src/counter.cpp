@@ -961,7 +961,7 @@ FF Counter::outer_count() {
   fix_weights();
   if (!conf.compile_fname.empty()) compiler = make_ddnnf_compiler(*this, conf.compile_fname);
   if (!ok) {
-    if (compiler->active()) compiler->finalize_and_write(/*unsat=*/true);
+    compiler->finalize_and_write(/*unsat=*/true);
     return fg->zero();
   }
 

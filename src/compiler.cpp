@@ -28,8 +28,9 @@ THE SOFTWARE.
 
 namespace GanakInt {
 
-// Trivial no-op compiler: every event is ignored. This is what the engine holds
-// when `--compile` is off, which is why none of the hook call sites need guards.
+// Trivial no-op compiler: every event is ignored (the public hooks in the
+// base class short-circuit on `active_` before any virtual dispatch, so this
+// class doesn't even need to override the do_* methods).
 struct NullCompiler final : public Compiler {};
 
 // Real compiler: bridges the engine's search events to a streamed DDNNFCircuit.
@@ -39,23 +40,21 @@ class DDNNFCompiler final : public Compiler {
 public:
   DDNNFCompiler(Counter& _counter, const std::string& _fname)
       : counter(_counter), fname(_fname) {
+    active_ = true;
     circuit = std::make_unique<DDNNFCircuit>(fname);
     circuit->nvars = counter.nVars();
   }
 
-  bool active() const override { return true; }
-  bool allows_cms_shortcut() const override { return false; }
+  void do_new_decision_level() override { circuit->on_new_level(counter.dec_level()); }
 
-  void new_decision_level() override { circuit->on_new_level(counter.dec_level()); }
-
-  void save_left_lits() override {
+  void do_save_left_lits() override {
     // d-DNNF: capture left-branch literals before the trail is undone.
     const int lev = counter.dec_level();
     circuit->ensure_level(lev);
     circuit->left_lits[lev] = cur_level_lits();
   }
 
-  void build_level_node() override {
+  void do_build_level_node() override {
     // Build this level's OR node before the trail is undone (to read the right
     // branch's literals). The result is held until record_comp_node() /
     // attach_to_parent() consume it.
@@ -84,16 +83,16 @@ public:
     compiled_node = circuit->mk_or(std::move(arcs));
   }
 
-  void record_comp_node() override {
+  void do_record_comp_node() override {
     counter.comp_manager->set_comp_node(counter.decisions.top().super_comp(), compiled_node);
   }
 
-  void attach_to_parent() override {
+  void do_attach_to_parent() override {
     circuit->add_child(counter.dec_level() - 1,
         (counter.decisions.end() - 2)->is_right_branch(), compiled_node);
   }
 
-  void branch_reset() override {
+  void do_branch_reset() override {
     // Mirror zero_out_branch_sol(): drop the current branch's children, as Ganak
     // discards its count to re-explore.
     const int lev = counter.dec_level();
@@ -101,20 +100,20 @@ public:
     circuit->children[lev][counter.decisions.top().is_right_branch()].clear();
   }
 
-  void free_var(uint32_t v) override {
+  void do_free_var(uint32_t v) override {
     // From the analyzer on a free var (factor two = OR(v, -v)).
     circuit->add_child(counter.dec_level(), counter.decisions.top().is_right_branch(),
         circuit->mk_free_var((int)v));
   }
 
-  void cache_hit(int node) override {
+  void do_cache_hit(int node) override {
     // A cached component must have its sub-DAG recorded (set_comp_node in
     // backtrack); a missing node would silently undercount, so fail loudly.
     release_assert(node >= 0); // d-DNNF cache hit with no recorded compile node
     circuit->add_child(counter.dec_level(), counter.decisions.top().is_right_branch(), node);
   }
 
-  void sat_witness_capture(int sat_start_dec_level) override {
+  void do_sat_witness_capture(int sat_start_dec_level) override {
     // Record the SAT oracle's witness for this component's synthesized vars
     // (>= opt_indep_support_end) before backtracking.
     sat_witness.clear();
@@ -125,12 +124,12 @@ public:
     }
   }
 
-  void sat_witness_apply() override {
+  void do_sat_witness_apply() override {
     // This SAT level's node is the witness leaf.
     circuit->set_override(counter.dec_level(), circuit->wrap_lits(circuit->true_node, sat_witness));
   }
 
-  void finalize_root() override {
+  void do_finalize_root() override {
     circuit->ensure_level(0);
     // Level 0 starts on the right branch (init_decision_stack), so top-level
     // components accumulate there.
@@ -139,7 +138,7 @@ public:
     circuit->root = circuit->wrap_lits(inner, level0_lits());
   }
 
-  void finalize_and_write(bool unsat) override {
+  void do_finalize_and_write(bool unsat) override {
     if (unsat) {
       circuit->root = circuit->false_node;
       circuit->write_d4(fname);

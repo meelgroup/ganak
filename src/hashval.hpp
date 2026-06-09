@@ -24,6 +24,8 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <cstddef>
+#include <ostream>
+#include <iomanip>
 #include "MurmurHash3.h"
 
 namespace GanakInt {
@@ -34,6 +36,18 @@ struct HashVal {
   bool operator==(const HashVal& o) const { return hash == o.hash && hash2 == o.hash2; }
   bool operator!=(const HashVal& o) const { return !(*this == o); }
 };
+
+// Print the full 128-bit value as fixed-width hex (high word, then zero-padded
+// low word). Saves/restores stream flags so it's independent of the caller's
+// formatting state.
+inline std::ostream& operator<<(std::ostream& os, const HashVal& h) {
+  std::ios_base::fmtflags f(os.flags());
+  char fill = os.fill();
+  os << std::hex << h.hash2 << std::setw(16) << std::setfill('0') << h.hash;
+  os.fill(fill);
+  os.flags(f);
+  return os;
+}
 
 // Returns the 128-bit MurmurHash3_x64_128 result as a HashVal.
 inline HashVal murmur3_128(const void* key, const size_t len, const uint32_t seed) {

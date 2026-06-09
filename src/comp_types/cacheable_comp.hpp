@@ -65,6 +65,7 @@ public:
   }
   // low 64-bit word -- used to index the cache hash table (table is power-of-two sized)
   uint64_t get_hashkey() const  { return hashkey.hash; }
+  auto get_full_hashkey() const  { return hashkey; }
   uint64_t extra_bytes() const {
     return BaseComp::bignum_bytes() + T::comp_bytes();
   }

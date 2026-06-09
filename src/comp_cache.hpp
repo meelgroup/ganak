@@ -122,9 +122,9 @@ public:
         return true;
       }
       // Hashkey matched but the (exact, content-comparing) equals() rejected it, oops
-      if (entry(act_id).get_hashkey() == comp.get_hashkey()) {
+      if (entry(act_id).get_full_hashkey() == comp.get_full_hashkey()) {
         verb_print(1, "WARNING: hash collision -- cache entry ID " << act_id
-             << " has the same hashkey (0x" << std::hex << comp.get_hashkey() << std::dec
+             << " has the same hashkey (0x" << std::hex << comp.get_full_hashkey() << std::dec
              << ") as the looked-up component but DIFFERENT content."
              << " Under --prob 1 this would have been a wrong cache hit.");
       }

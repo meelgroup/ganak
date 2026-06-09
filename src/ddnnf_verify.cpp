@@ -410,8 +410,8 @@ int main(int argc, char** argv) {
   std::string cnf_path;
   mpz_class expect_count;
   bool have_expect = false;
-  bool check_decomp = true;   // default ON; opt out with --no-check-decomposable
-  bool strict = true;         // default ON; opt out with --no-strict
+  bool check_decomp = true;
+  bool strict = true;
   bool quiet = false;
 
   auto usage = [&]() {

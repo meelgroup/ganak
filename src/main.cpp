@@ -194,7 +194,7 @@ void add_ganak_options()
     add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
 
     // d-DNNF compilation
-    add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no SAT-oracle/BuDDy, no Arjun/Puura).");
+    add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");
@@ -356,16 +356,17 @@ void parse_supported_options(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
     if (!conf.compile_fname.empty()) {
-      // d-DNNF needs a single clean DPLL tree for a faithful circuit. Force it.
-      conf.do_restart = 0;             // one monolithic search, not restart+cube
-      conf.do_probabilistic_hashing = 0; // exact cache: sound DAG sharing
-      conf.do_buddy = 0;               // no opaque BuDDy leaves
-      conf.do_vivify = 0;              // do not rewrite clauses mid-search
-      do_arjun = 0;                    // compile over the original variables
-      do_puura = 0;                    // no var-remapping preprocessing
-      num_threads = 1;                 // single compiler instance
-      // The SAT oracle stays ON: for a projected formula it supplies a witness for
-      // the synthesized vars; for a non-projected one it never fires.
+      // d-DNNF needs a single clean DPLL tree: no restarts, exact cache, no
+      // opaque leaves (BuDDy), no clause rewriting (vivify), original var
+      // numbering (Arjun/Puura off), one thread. SAT oracle stays on; it
+      // witnesses synthesized vars on projected inputs and never fires otherwise.
+      conf.do_restart = 0;
+      conf.do_probabilistic_hashing = 0;
+      conf.do_buddy = 0;
+      conf.do_vivify = 0;
+      do_arjun = 0;
+      do_puura = 0;
+      num_threads = 1;
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
     }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {

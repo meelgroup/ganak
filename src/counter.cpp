@@ -1974,7 +1974,6 @@ RetState Counter::backtrack() {
       // NOTE: replacing a decision literal x with y when y->x binary clause exists does
       // not work, because we'll count (x, y) = 01 (left hand branch), and
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
-      // d-DNNF: capture left-branch literals before the trail is undone.
       compiler->save_left_lits();
       reactivate_comps_and_backtrack_trail(false);
       decisions.top().change_to_right_branch();
@@ -2003,9 +2002,7 @@ RetState Counter::backtrack() {
     }
 
     CHECK_COUNT_DO(check_count());
-    // d-DNNF: build this level's OR node before the trail is undone (to read the
-    // right branch's literals). The built node is held by the compiler and
-    // consumed by record_comp_node() / attach_to_parent() below.
+    // d-DNNF: build this level's OR node before the trail is undone (right-branch lits).
     compiler->build_level_node();
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
@@ -3865,8 +3862,6 @@ bool Counter::run_sat_solver(RetState& state) {
         sat_solution[v] = val(v);
       }
     }
-    // d-DNNF: record the SAT oracle's witness for this component's synthesized
-    // vars (>= opt_indep_support_end) before backtracking
     compiler->sat_witness_capture(sat_start_dec_level);
     go_back_to(sat_start_dec_level);
     bool const ret = propagate();
@@ -3893,7 +3888,6 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
-    // This SAT level's node is the witness leaf
     compiler->sat_witness_apply();
   }
 

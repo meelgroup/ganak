@@ -78,7 +78,7 @@ using ddnnf_io::Arc;
 // 2-word loops instead of hashing.
 struct VarSet {
   std::vector<uint64_t> w;
-  void resize(int nvars_plus1, size_t words) { (void)nvars_plus1; w.assign(words, 0); }
+  void resize(size_t words) { w.assign(words, 0); }
   void set(int v) { w[v >> 6] |= 1ULL << (v & 63); }
   bool test(int v) const { return ((w[v >> 6] >> (v & 63)) & 1ULL) != 0; }
   void or_with(const VarSet& o) {
@@ -194,7 +194,7 @@ void compute_subtree_vars(
     std::vector<VarSet>& out) {
   for (int n : post) {
     VarSet& vs = out[n];
-    vs.resize(0, words);
+    vs.resize(words);
     if (n >= (int)arcs.size()) continue;
     for (const auto& a : arcs[n]) {
       for (int l : a.lits) vs.set(l > 0 ? l : -l);

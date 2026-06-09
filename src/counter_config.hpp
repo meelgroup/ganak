@@ -33,9 +33,8 @@ enum class DecideType : int { td = 0, ignore_td = 1 };
 struct CounterConfiguration {
   int verb = 1;
 
-  // d-DNNF: if compile_fname is non-empty, emit the search trace as a
-  // (Decision-)d-DNNF circuit (d4 .nnf) to that file.
-  std::string compile_fname = "";
+  // d-DNNF: if non-empty, emit the search trace as a d4 .nnf circuit to this file.
+  std::string compile_fname;
 
   int do_restart = 0;
   int do_chronobt = 1;

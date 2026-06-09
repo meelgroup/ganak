@@ -62,10 +62,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
-  // Hoisted snapshot of "are we compiling" so we can skip filling hit_node on
-  // cache hits in the common (no-compile) path. Cache lookups happen many times
-  // per decision; the extra store-through-pointer would otherwise show up in
-  // perf even though the result is never read.
+  // Skip the hit_node store on every cache lookup in the common no-compile path.
   const bool compiling = counter->get_compiler().active();
 
   all_vars_in_comp(super_comp, vt) {

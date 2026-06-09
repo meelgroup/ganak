@@ -31,24 +31,15 @@ namespace GanakInt {
 class Counter;
 
 // Observer the counting engine notifies at every search event relevant to
-// d-DNNF compilation. The default (NullCompiler) does nothing, so the engine
-// can call these hooks unconditionally -- no scattered `if (compiling())`
-// checks. When `--compile` is on, a DDNNFCompiler (defined in compiler.cpp)
-// drives a DDNNFCircuit from these events.
-//
-// The public hook methods are non-virtual; each is an inline wrapper that
-// short-circuits on `active_` before any virtual dispatch. With --compile off
-// this collapses to a single predicted-not-taken branch (no vtable load, no
-// indirect call), so the steady-state counting loop stays as fast as before
-// the compiler observer was introduced. With --compile on the wrapper hands
-// off to the virtual `do_*` method overridden by DDNNFCompiler.
+// d-DNNF compilation. Default NullCompiler is a no-op; the public hooks are
+// non-virtual inline wrappers that short-circuit on `active_`, so with
+// --compile off the steady-state loop pays only one not-taken branch per
+// event. With --compile on, DDNNFCompiler (compiler.cpp) drives a DDNNFCircuit.
 struct Compiler {
   virtual ~Compiler() = default;
 
-  // ---- queries (inline, no virtual dispatch) ----
   [[nodiscard]] bool active() const { return active_; }
-  // Whether the engine may take the small-formula CMS shortcut. The compiler
-  // needs the full DPLL tree, so it disallows the shortcut.
+  // Compiler needs the full DPLL tree, so it disallows the small-formula CMS shortcut.
   [[nodiscard]] bool allows_cms_shortcut() const { return !active_; }
 
   // ---- search events ----
@@ -73,8 +64,7 @@ protected:
   // Set to true by DDNNFCompiler; stays false for NullCompiler.
   bool active_ = false;
 
-  // Subclasses override these. The wrappers above gate them on `active_`, so
-  // these are only called when compilation is on.
+  // Subclasses override these; only called when `active_` is true.
   virtual void do_new_decision_level() {}
   virtual void do_save_left_lits() {}
   virtual void do_build_level_node() {}

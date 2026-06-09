@@ -199,15 +199,11 @@ public:
   DataAndStatistics& get_stats() { return stats; }
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
-  // ---- d-DNNF compilation ----
-  // The compile observer is always non-null (a no-op NullCompiler when not
-  // compiling), so the engine notifies it unconditionally -- no `compiling()`
-  // checks scattered through the search. See compiler.hpp.
+  // d-DNNF compile observer. Never null (NullCompiler by default). See compiler.hpp.
   Compiler& get_compiler() { return *compiler; }
 
 private:
-  // DDNNFCompiler reads private search state (trail, decisions, components) to
-  // label arcs and decompose nodes.
+  // DDNNFCompiler reads private search state (trail, decisions, components).
   friend class DDNNFCompiler;
   std::unique_ptr<Compiler> compiler;
 

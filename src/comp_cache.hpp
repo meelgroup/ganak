@@ -121,6 +121,13 @@ public:
         if (out_node != nullptr) *out_node = (act_id < compile_nodes.size()) ? compile_nodes[act_id] : -1;
         return true;
       }
+      // Hashkey matched but the (exact, content-comparing) equals() rejected it, oops
+      if (entry(act_id).get_hashkey() == comp.get_hashkey()) {
+        verb_print(1, "WARNING: hash collision -- cache entry ID " << act_id
+             << " has the same hashkey (0x" << std::hex << comp.get_hashkey() << std::dec
+             << ") as the looked-up component but DIFFERENT content."
+             << " Under --prob 1 this would have been a wrong cache hit.");
+      }
       act_id = entry(act_id).next_bucket_element();
     }
     return false;

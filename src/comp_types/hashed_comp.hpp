@@ -34,7 +34,7 @@ public:
   HashedComp(const HashedComp&) = default;
   HashedComp& operator=(const HashedComp&) = default;
   HashedComp(HashedComp&&) noexcept = default;
-  static HashVal set_comp(const Comp& comp, const uint64_t hash_seed, const BPCSizes& /*bpc*/) {
+  static HashVal set_comp(const Comp& comp, const uint32_t hash_seed, const BPCSizes& /*bpc*/) {
     return murmur3_128(comp.get_raw_data(), (size_t)comp.get_size()*4, hash_seed);
   }
   bool equals(const HashedComp&) const {

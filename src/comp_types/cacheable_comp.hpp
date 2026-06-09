@@ -39,7 +39,7 @@ public:
   CacheableComp(CacheableComp&&) noexcept = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
-  CacheableComp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& bpc) {
+  CacheableComp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& bpc) {
     hashkey = T::set_comp(comp, hash_seed, bpc);
   }
 

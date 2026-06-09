@@ -45,7 +45,7 @@ public:
   CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) { }
   ~CompCache() override = default;
 
-  void init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) override;
+  void init(Comp &super_comp, uint32_t hash_seed, const BPCSizes& bpc) override;
   [[nodiscard]] uint64_t get_num_entries_used() const override {
     // Skip slots 0 and 1 which are sentinel/reserved entries
     return static_cast<uint64_t>(std::count_if(
@@ -56,7 +56,7 @@ public:
     T* comp = reinterpret_cast<T*>(c);
     return comp->extra_bytes();
   }
-  void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc) override {
+  void* create_new_comp(const Comp &comp, uint32_t hash_seed, const BPCSizes& bpc) override {
     return new T(comp, hash_seed, bpc);
   }
 
@@ -402,7 +402,7 @@ void CompCache<T>::store_value(const CacheEntryID id, const FF& model_count) {
 }
 
 template<typename T>
-void CompCache<T>::init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) {
+void CompCache<T>::init(Comp &super_comp, uint32_t hash_seed, const BPCSizes& bpc) {
   // Release mem
   for (auto& e : entry_base) e.set_free();
   entry_base.clear();

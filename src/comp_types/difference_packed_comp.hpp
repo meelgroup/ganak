@@ -116,7 +116,7 @@ public:
     return std::memcmp(data, other.data, data_size * sizeof(uint32_t)) == 0;
   }
 
-  HashVal set_comp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& sz) {
+  HashVal set_comp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& sz) {
     // first, generate hashkey, and compute max diff for cls and vars
     uint32_t max_var_diff = 0;
     uint32_t v = *comp.vars_begin();

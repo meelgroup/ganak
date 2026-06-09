@@ -22,12 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-// Thin wrapper around the vendored, verbatim MurmurHash3 (src/MurmurHash3.{h,cpp},
-// from https://github.com/aappleby/smhasher). We use the full 128-bit x64 output:
-// a cache-key collision then needs BOTH 64-bit words to match (~2^-128), which is
-// what makes exact counting safe at the scale of distinct components hashed over a
-// run -- a 64-bit key hits the birthday bound.
-
 #include <cstdint>
 #include <cstddef>
 #include "MurmurHash3.h"
@@ -42,11 +36,9 @@ struct HashVal {
 };
 
 // Returns the 128-bit MurmurHash3_x64_128 result as a HashVal.
-// NOTE: upstream's API takes a 32-bit seed, so the 64-bit seed is truncated here.
-// (Collision resistance comes from the 128-bit output, not the seed width.)
-inline HashVal murmur3_128(const void* key, const size_t len, const uint64_t seed) {
+inline HashVal murmur3_128(const void* key, const size_t len, const uint32_t seed) {
   uint64_t out[2];
-  MurmurHash3_x64_128(key, (int)len, (uint32_t)seed, out);
+  MurmurHash3_x64_128(key, (int)len, seed, out);
   return HashVal{out[0], out[1]};
 }
 

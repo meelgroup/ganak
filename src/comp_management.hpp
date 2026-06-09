@@ -106,13 +106,14 @@ public:
   // skip_missing=true:  silently skip comps not in cache
   void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
 
-  uint64_t hash_seed;
+  // MurmurHash3_x64_128's API takes a 32-bit seed
+  uint32_t hash_seed;
 
 private:
   BPCSizes bpc;
   void get_random_seed_for_hash() {
-    std::mt19937_64 eng(conf.seed);
-    std::uniform_int_distribution<uint64_t> distr;
+    std::mt19937 eng(conf.seed);
+    std::uniform_int_distribution<uint32_t> distr;
     hash_seed = distr(eng);
   }
   FG fg;

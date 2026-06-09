@@ -22,26 +22,32 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "hashval.h"
-#include "common.hpp"
-#include "comp.hpp"
+// Thin wrapper around the vendored, verbatim MurmurHash3 (src/MurmurHash3.{h,cpp},
+// from https://github.com/aappleby/smhasher). We use the full 128-bit x64 output:
+// a cache-key collision then needs BOTH 64-bit words to match (~2^-128), which is
+// what makes exact counting safe at the scale of distinct components hashed over a
+// run -- a 64-bit key hits the birthday bound.
+
+#include <cstdint>
+#include <cstddef>
+#include "MurmurHash3.h"
 
 namespace GanakInt {
 
-class HashedComp  {
-public:
-  HashedComp() = default;
-  HashedComp(const HashedComp&) = default;
-  HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(HashedComp&&) noexcept = default;
-  static HashVal set_comp(const Comp& comp, const uint64_t hash_seed, const BPCSizes& /*bpc*/) {
-    return murmur3_128(comp.get_raw_data(), (size_t)comp.get_size()*4, hash_seed);
-  }
-  bool equals(const HashedComp&) const {
-    return true;
-  }
-  uint64_t comp_bytes() const { return 0; }
-  void set_free() { }
+struct HashVal {
+  uint64_t hash = 0;   // low word  -- ALSO used to index the cache hash table
+  uint64_t hash2 = 0;  // high word -- extra collision discriminator
+  bool operator==(const HashVal& o) const { return hash == o.hash && hash2 == o.hash2; }
+  bool operator!=(const HashVal& o) const { return !(*this == o); }
 };
+
+// Returns the 128-bit MurmurHash3_x64_128 result as a HashVal.
+// NOTE: upstream's API takes a 32-bit seed, so the 64-bit seed is truncated here.
+// (Collision resistance comes from the 128-bit output, not the seed width.)
+inline HashVal murmur3_128(const void* key, const size_t len, const uint64_t seed) {
+  uint64_t out[2];
+  MurmurHash3_x64_128(key, (int)len, (uint32_t)seed, out);
+  return HashVal{out[0], out[1]};
+}
 
 }

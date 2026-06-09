@@ -45,6 +45,7 @@ set(SOURCES
     outer_counter.cpp
     statistics.cpp
     clauseallocator.cpp
+    MurmurHash3.cpp
     buddy-2.4/src/bddio.c
     buddy-2.4/src/bddop.c
     buddy-2.4/src/bvec.c

@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 #include "common.hpp"
 #include "comp.hpp"
-#include "hashval.h"
+#include "hashval.hpp"
 
 namespace GanakInt {
 

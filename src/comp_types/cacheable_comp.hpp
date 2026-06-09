@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <cassert>
 #include "structures.hpp"
 #include "base_comp.hpp"
-#include "hashval.h"
+#include "hashval.hpp"
 
 namespace GanakInt {
 

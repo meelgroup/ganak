@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "hashval.h"
+#include "hashval.hpp"
 #include "common.hpp"
 #include "comp.hpp"
 

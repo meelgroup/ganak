@@ -2027,7 +2027,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1514564-", # let's try some new ideas from LLM for arjun improvement -- there's been another f*ck up
     # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
     "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
-    "out-ganak-mccomp2324-1743408", # ddnnf
+    # "out-ganak-mccomp2324-1743408", # ddnnf
+    "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

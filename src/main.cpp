@@ -130,6 +130,7 @@ string debug_arjun_cnf;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
+bool disconnected_allowed = false;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int poly_nvars = -1;
@@ -424,7 +425,15 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
-  } else cnf.renumber_sampling_vars_for_ganak();
+  } else {
+    disconnected_allowed = true;
+    verb_print(1, "WARNING. Not performing puura.  "
+        << "Number of sampling variables: " << cnf.get_sampl_vars().size()
+        << " vs " << arjun_further_min_cutoff
+        << " and  --puura is: " << do_puura
+        << " components may be disconnected, which will interfere with proper TD weight calculation");
+    cnf.renumber_sampling_vars_for_ganak();
+  }
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 
@@ -703,8 +712,10 @@ int main(int argc, char *argv[]) {
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun
-  if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();
-  else run_arjun(cnf);
+  if (!do_arjun) {
+    cnf.renumber_sampling_vars_for_ganak();
+    disconnected_allowed = true;
+  } else run_arjun(cnf);
   cnf.remove_equiv_weights();
   if (strip_opt_indep) cnf.strip_opt_sampling_vars();
   if (conf.verb >= 2) {
@@ -722,6 +733,7 @@ int main(int argc, char *argv[]) {
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true);
 
   // Run Ganak
+  conf.disconnected_allowed = disconnected_allowed;
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);

@@ -449,7 +449,7 @@ void Counter::td_decompose() {
   } else primal_alt = std::move(primal);
   primal.reset();
 
-  if (!primal_alt->isConnected()) {
+  if (!primal_alt->isConnected() && !conf.disconnected_allowed) {
     cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;
     cerr << "ERROR: Counter should NOT be fed a disconnected CNF" << endl;
     release_assert(false);

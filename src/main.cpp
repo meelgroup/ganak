@@ -474,7 +474,7 @@ void print_log(const mpz_class& cnt, string extra = "") {
     mpfr_clear(log10_val);
 }
 
-// compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 64)
+// compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 128)
 // result must be initialized with mpfr_init2 before calling
 void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elems) {
     mpfr_t lookups2;
@@ -489,10 +489,10 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
 
     mpfr_t e;
     mpfr_init2(e, 256);
-    mpfr_set_si(e, -64, MPFR_RNDN);
+    mpfr_set_si(e, -128, MPFR_RNDN);
     mpfr_add(e, lookups2, e, MPFR_RNDN);
     mpfr_add(e, elems2, e, MPFR_RNDN);
-    // e = log2(lookups) + log2(elems) - 64
+    // e = log2(lookups) + log2(elems) - 128
 
     // Compute 2^e
     mpfr_exp2(result, e, MPFR_RNDN);

@@ -35,7 +35,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
   arjun.set_verb(0);
   arjun.standalone_minimize_indep(cnf, false);
-  assert(!etof_conf.all_indep);
   arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
 }
 

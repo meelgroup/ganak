@@ -741,7 +741,7 @@ def _preproc_step_stats(con, dirs_sql, where_extra="", per_cnf=False):
     cur.execute(
         f"SELECT name, dirname, fname, delta_irred_bins, delta_irred_long_cls,"
         f" delta_irred_long_lits, delta_free_vars, step_num"
-        f" FROM preproc WHERE dirname IN ({dirs_sql}){where_extra}"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}) AND depth = 0{where_extra}"
     )
 
     if per_cnf:
@@ -855,7 +855,7 @@ def print_preproc_delta_table(matched_dirs, verbose=False):
                ROUND(100.0 * SUM(CASE WHEN delta_free_vars < 0
                                  THEN 1 ELSE 0 END) / COUNT(*), 0)            as pct_invoc_red_vars,
                ROUND(SUM(step_time), 2)                                       as total_step_s
-        FROM preproc WHERE dirname IN ({dirs_sql})
+        FROM preproc WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         ORDER BY sum_d_lits ASC
     """)
@@ -912,7 +912,7 @@ def print_preproc_step_efficiency(matched_dirs):
                SUM(CASE WHEN delta_free_vars < 0 THEN 1 ELSE 0 END)                 AS calls_var,
                ROUND(SUM(step_time), 2)                                              AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         HAVING lits_rmvd > 0 OR fvars_rmvd > 0
         ORDER BY lits_rmvd DESC
@@ -980,7 +980,7 @@ def print_preproc_time_breakdown(matched_dirs):
                SUM(IFNULL(delta_elimed_vars, 0))                                       AS elim_vars,
                SUM(IFNULL(delta_units, 0))                                             AS units_found
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         ORDER BY total_s DESC
     """)
@@ -1047,7 +1047,7 @@ def print_preproc_noop_waste(matched_dirs):
                         THEN step_time ELSE 0 END), 2)                                      AS wasted_s,
                ROUND(SUM(step_time), 2)                                                     AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         HAVING n_noop > 0
         ORDER BY wasted_s DESC
@@ -1089,7 +1089,7 @@ def print_preproc_extended_vars(matched_dirs):
                SUM(IFNULL(delta_units, 0))                 AS sum_units,
                ROUND(SUM(step_time), 2)                    AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
           AND (IFNULL(delta_elimed_vars,0) != 0
             OR IFNULL(delta_replaced_vars,0) != 0
             OR IFNULL(delta_units,0) != 0)
@@ -1148,7 +1148,7 @@ def print_step_predecessor_effectiveness(matched_dirs, step="must-scc-vrepl"):
                                         OR delta_free_vars < 0 THEN 1 ELSE 0 END)
                      / COUNT(*), 1)                                                        AS pct_active
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND name='{step}'
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND name='{step}'
         GROUP BY prev_step
         ORDER BY sum_lits DESC
     """)
@@ -1215,7 +1215,7 @@ def preproc_time_chart(matched_dirs):
                                AND IFNULL(delta_units,0) = 0
                           THEN step_time ELSE 0 END), 2)                                AS wasted_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         ORDER BY total_s DESC
     """)
@@ -1280,7 +1280,7 @@ def preproc_efficiency_chart(matched_dirs):
                -SUM(delta_irred_long_lits)  AS sum_lits,
                ROUND(SUM(step_time), 2)     AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL AND step_time > 0
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL AND step_time > 0
         GROUP BY name
         HAVING sum_lits > 0 AND total_s > 0
         ORDER BY (sum_lits / total_s) DESC
@@ -1344,7 +1344,7 @@ def preproc_time_pie_chart(matched_dirs):
     cur.execute(f"""
         SELECT name, ROUND(SUM(step_time), 2) AS total_s
         FROM preproc
-        WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL
+        WHERE dirname IN ({dirs_sql}) AND depth = 0 AND step_time IS NOT NULL
         GROUP BY name
         ORDER BY total_s DESC
     """)
@@ -1392,12 +1392,12 @@ def preproc_time_pie_chart(matched_dirs):
 
     with open(gp_file, "w") as f:
         for term, out, sz in [
-            (f'pdfcairo size 52cm,40cm background "#d0d0d0"', pdf_file, ""),
-            (f'pngcairo size 800,640 background "#d0d0d0"',   png_file, ""),
+            (f'pdfcairo size 20cm,16cm font ",18" background "#d0d0d0"', pdf_file, ""),
+            (f'pngcairo size 800,640 font ",12" background "#d0d0d0"',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
-            f.write(f'set title "Preprocessing time breakdown (total {grand_total:.0f}s)\\n{lbl}"\n')
+            f.write(f'set title "Preprocessing time breakdown (total {grand_total:.0f}s)\\n{lbl}" font ",20"\n')
             f.write('set size ratio -1\n')
             f.write('unset border\n')
             f.write('unset tics\n')
@@ -1426,13 +1426,13 @@ def preproc_time_pie_chart(matched_dirs):
                 lx = r_label * math.cos(mid)
                 ly = r_label * math.sin(mid)
                 pct_str = f"{pct*100:.1f}%"
-                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",8"\n')
+                label_lines.append(f'set label "{name}\\n{pct_str}" at {lx:.3f},{ly:.3f} center font ",13"\n')
                 # Legend entry at right
                 lx2 = 1.25
                 ly2 = 0.95 - i * 0.13
                 f.write(f'set object {n_slices+i+1} rect from {lx2-0.05},{ly2-0.04} to {lx2+0.05},{ly2+0.04} '
                         f'fc rgb "{color}" fs solid 0.85 border lc rgb "grey"\n')
-                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",9"\n')
+                label_lines.append(f'set label "{name} ({pct*100:.1f}%)" at {lx2+0.08},{ly2} left font ",13"\n')
                 angle = end_angle
             for ll in label_lines:
                 f.write(ll)
@@ -1485,7 +1485,7 @@ def preproc_share_chart(matched_dirs):
                -SUM(delta_irred_long_lits) as sum_lits,
                -SUM(delta_free_vars)       as sum_vars
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         ORDER BY sum_lits DESC
     """)
@@ -1573,9 +1573,10 @@ def preproc_cumulative_chart(matched_dirs):
                -SUM(delta_irred_long_cls)  as sum_cls,
                -SUM(delta_irred_bins)      as sum_bins,
                -SUM(delta_free_vars)       as sum_vars,
+               SUM(IFNULL(delta_units, 0)) as sum_units,
                AVG(step_num)               as avg_pos
         FROM preproc
-        WHERE dirname IN ({dirs_sql})
+        WHERE dirname IN ({dirs_sql}) AND depth = 0
         GROUP BY name
         ORDER BY avg_pos ASC
     """)
@@ -1592,26 +1593,28 @@ def preproc_cumulative_chart(matched_dirs):
     gp_file  = f"{TMP_DIR}/preproc_cumul_{lbl}.gnuplot"
 
     # Normalise to millions for readability
-    cum_lits = cum_cls = cum_vars = 0.0
+    cum_lits = cum_cls = cum_vars = cum_units = 0.0
     with open(dat_file, "w") as f:
-        f.write("# i  cum_lits_M  cum_cls_M  cum_vars_M  step_name\n")
-        f.write("0\t0.0\t0.0\t0.0\tstart\n")
-        for i, (name, s_lits, s_long_cls, s_bins, s_vars, _pos) in enumerate(rows):
-            cum_lits += max(s_lits, 0) / 1e6
-            cum_cls  += max((s_long_cls or 0) + (s_bins or 0), 0) / 1e6
-            cum_vars += max(s_vars, 0) / 1e6
-            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_cls:.3f}\t{cum_vars:.3f}\t{name}\n")
+        f.write("# i  cum_lits_M  cum_cls_M  cum_vars_M  cum_units_M  step_name\n")
+        f.write("0\t0.0\t0.0\t0.0\t0.0\tstart\n")
+        for i, (name, s_lits, s_long_cls, s_bins, s_vars, s_units, _pos) in enumerate(rows):
+            cum_lits  += max(s_lits, 0) / 1e6
+            cum_cls   += max((s_long_cls or 0) + (s_bins or 0), 0) / 1e6
+            cum_vars  += max(s_vars, 0) / 1e6
+            cum_units += max(s_units or 0, 0) / 1e6
+            f.write(f"{i+1}\t{cum_lits:.3f}\t{cum_cls:.3f}\t{cum_vars:.3f}\t{cum_units:.3f}\t{name}\n")
 
     n = len(rows)
-    height_cm = max(16, n * 1.1)
+    height_cm = max(8, n * 0.40)
+    width_cm  = 24
 
     ytics_parts = ['"start" 0'] + [f'"{name}" {i+1}' for i, (name, *_) in enumerate(rows)]
     ytics_str = ", ".join(ytics_parts)
 
     with open(gp_file, "w") as f:
         for term, out in [
-            (f'pdfcairo size 52cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size 1200,{int(height_cm * 50)} background "#d0d0d0"', png_file),
+            (f'pdfcairo size {width_cm}cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
+            (f'pngcairo size {width_cm * 50},{int(height_cm * 50)} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1621,11 +1624,12 @@ def preproc_cumulative_chart(matched_dirs):
             f.write(f'set yrange [-0.5:{n + 0.5}]\n')
             f.write('set xrange [0:*]\n')
             f.write('set grid xtics\n')
-            f.write('set key top left\n')
+            f.write('set key bottom right\n')
             f.write(f'set ytics ({ytics_str})\n')
             f.write(f'plot "{dat_file}" using 2:1 with linespoints lc rgb "steelblue" lw 2 pt 7 ps 1 title "lits removed",\\\n')
             f.write(f'     "{dat_file}" using 3:1 with linespoints lc rgb "dark-orange" lw 2 pt 5 ps 1 title "cls removed (bin+long)",\\\n')
-            f.write(f'     "{dat_file}" using 4:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed"\n\n')
+            f.write(f'     "{dat_file}" using 4:1 with linespoints lc rgb "dark-green" lw 2 pt 9 ps 1 title "vars removed",\\\n')
+            f.write(f'     "{dat_file}" using 5:1 with linespoints lc rgb "dark-violet" lw 2 pt 11 ps 1 title "units found"\n\n')
 
     title = f"Preproc cumulative chart (all steps, n={n}, ordered by pipeline position)"
     print(f"\n{BLUE}{title}{RESET}")
@@ -1648,7 +1652,7 @@ def print_preproc_per_step_detail(matched_dirs, verbose=False):
         f"SELECT name,"
         f" ROUND(100.0 * SUM(CASE WHEN delta_irred_long_lits != 0 OR delta_irred_bins != 0"
         f"   OR delta_free_vars != 0 THEN 1 ELSE 0 END) / COUNT(*), 1)"
-        f" FROM preproc WHERE dirname IN ({dirs_sql}) GROUP BY name"
+        f" FROM preproc WHERE dirname IN ({dirs_sql}) AND depth = 0 GROUP BY name"
     )
     pct_active = {row[0]: row[1] for row in cur.fetchall()}
     con.close()
@@ -2005,7 +2009,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-1261017-0", # Different order in Arjun
     # "out-ganak-mccomp2324-1279568-0", # release
     # "out-ganak-mccomp2324-1281478-0", # more data
-    "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
+    # "out-ganak-mccomp2324-1282000-0", # new preproc VERY GOOD !!!!!!!!!!!!!!!!!
     # "out-ganak-mccomp2324-1282412-0", # new preproc v2
     # "out-ganak-mccomp2324-1286085-", # 4 new puura orders
     # "out-ganak-mccomp2324-1286556-", # 4 new puura orders, and wl-based cache compact
@@ -2018,9 +2022,11 @@ only_dirs = [
     # "out-ganak-mccomp2324-1358071-1", # same as above, but with CMS changes reverted -- Current best (kinda...)
     # "out-ganak-mccomp2324-1373930-1", # no grow after
     # "out-ganak-mccomp2324-1358071-", # same as above, but with CMS changes reverted
-    "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
+    # "out-ganak-mccomp2324-1452294-1", # same as above, but with arjun changes back to "out-ganak-mccomp2324-1299016-0" (with option for 1 new idea)
     #"out-ganak-mccomp2324-1458467-", # let's try some new ideas from LLM for arjun improvement -- but cadiback was wrongly set up
     # "out-ganak-mccomp2324-1514564-", # let's try some new ideas from LLM for arjun improvement -- there's been another f*ck up
+    # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
+    "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

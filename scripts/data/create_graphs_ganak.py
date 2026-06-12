@@ -2028,7 +2028,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
     # "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
     # "out-ganak-mccomp2324-1743408", # ddnnf
-    "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
+    # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
+    "out-ganak-mccomp2324-1755057-", # 5 min timeout
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2065,6 +2066,8 @@ def main():
                         help="Filter by fname pattern(s), e.g. --fname '%%track1%%' '%%track3%%'")
     parser.add_argument("--nopreproc", action="store_true",
                         help="Skip all preprocessing tables and graphs (preproc table)")
+    parser.add_argument("--nopairwise", action="store_true",
+                        help="No pairwise comparisons")
     args = parser.parse_args()
 
     os.makedirs(TMP_DIR, exist_ok=True)
@@ -2080,7 +2083,8 @@ def main():
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
-    scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
+    if not args.nopairwise:
+      scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
     if args.verbose:
@@ -2122,11 +2126,12 @@ def main():
             preproc_cumulative_chart(one)
             preproc_time_pie_chart(one)
 
-    unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
-    for dir1, dir2 in itertools.combinations(unique_dirs, 2):
-        print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
-        print_solved_only_diffs(dir1, dir2, fname_like, args.verbose)
-        print_solution_mismatches(dir1, dir2, fname_like, args.verbose)
+    if not args.nopairwise:
+      unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
+      for dir1, dir2 in itertools.combinations(unique_dirs, 2):
+          print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
+          print_solved_only_diffs(dir1, dir2, fname_like, args.verbose)
+          print_solution_mismatches(dir1, dir2, fname_like, args.verbose)
 
     if args.verbose:
         print("Generating gnuplot script...")

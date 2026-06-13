@@ -234,6 +234,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -S ..
@@ -259,6 +260,7 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \

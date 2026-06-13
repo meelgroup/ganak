@@ -171,8 +171,8 @@ void add_ganak_options()
 
     add_arg2("-v", "--verb", conf.verb, fc_int, "Verbosity");
     add_arg2("-s", "--seed", conf.seed, fc_int, "Seed");
-    program.add_argument("-v", "--version") \
-        .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);}) \
+    program.add_argument("-v", "--version")
+        .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);})
         .flag()
         .help("Print version and exit");
     add_arg("--mode", mode , fc_int, R"delimiter(0=integer counting,

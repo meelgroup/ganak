@@ -31,7 +31,7 @@ CompManager::CompManager(const CounterConfiguration& config,
     DataAndStatistics& statistics,
     const LiteralIndexedVector<TriValue>& lit_values, Counter* _counter) :
     fg(_counter->get_fg()->dup()), conf(config), stats(statistics),
-    ana(lit_values, _counter)
+    counter(_counter), ana(lit_values, _counter)
 {
 }
 
@@ -62,6 +62,9 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Also zeroes out frequency_scores. Sets num_long_cls and num_bin_cls to 0
   ana.setup_analysis_context(top, super_comp);
 
+  // Skip the hit_node store on every cache lookup in the common no-compile path.
+  const bool compiling = counter->get_compiler().active();
+
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
     if (ana.var_unvisited_in_sup_comp(*vt) &&
@@ -71,7 +74,9 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
-      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp)) {
+      int hit_node = -1;
+      if (!cache->find_comp_and_incorporate_cnt(top, p_new_comp->nVars(), ccomp,
+            compiling ? &hit_node : nullptr)) {
         // Cache miss
         comp_stack.push_back(p_new_comp);
 
@@ -92,6 +97,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
         all_vars_in_comp(*p_new_comp, v) cout << *v << " ";
         cout << endl;
 #endif
+        counter->get_compiler().cache_hit(hit_node);
         free_comp(p_new_comp);
       }
       cache->free_comp(ccomp);

@@ -35,7 +35,7 @@ jobs:
         wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
         tar xf gmp-6.3.0.tar.xz
         cd gmp-6.3.0
-        emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL
+        emconfigure ./configure --disable-assembly --host wasm32 --enable-cxx --prefix=$EMINSTALL CFLAGS="-fPIC" CXXFLAGS="-fPIC"
         emmake make -j$(nproc)
         emmake make install
         cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
@@ -46,7 +46,7 @@ jobs:
         wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
         tar xf mpfr-4.2.1.tar.xz
         cd mpfr-4.2.1
-        emconfigure ./configure --host wasm32 --with-gmp=$EMINSTALL --prefix=$EMINSTALL
+        emconfigure ./configure --host wasm32 --with-gmp=$EMINSTALL --prefix=$EMINSTALL CFLAGS="-fPIC" CXXFLAGS="-fPIC"
         emmake make -j$(nproc)
         emmake make install
         cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
@@ -63,7 +63,8 @@ jobs:
           --with-mpfr=$EMINSTALL \
           --with-gmp=$EMINSTALL \
           --prefix=$EMINSTALL \
-          --host wasm32
+          --host wasm32 \
+          CFLAGS="-fPIC" CXXFLAGS="-fPIC"
         emmake make -j$(nproc)
         emmake make install
         cp $EMINSTALL/lib/lib*.a $EMINSTALL/lib/wasm32-emscripten/ 2>/dev/null || true
@@ -233,6 +234,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_INSTALL_PREFIX=$EMINSTALL \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \
           -S ..
@@ -258,6 +260,7 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -Dcryptominisat5_DIR=$GITHUB_WORKSPACE/cryptominisat/build \
+          -Dcadical_DIR=$GITHUB_WORKSPACE/cadical/build \
           -Dcadiback_DIR=$GITHUB_WORKSPACE/cadiback/build \
           -Dtreedecomp_DIR=$GITHUB_WORKSPACE/treedecomp/build \
           -Darjun_DIR=$GITHUB_WORKSPACE/arjun/build \

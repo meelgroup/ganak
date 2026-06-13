@@ -32,6 +32,10 @@ enum class DecideType : int { td = 0, ignore_td = 1 };
 
 struct CounterConfiguration {
   int verb = 1;
+
+  // d-DNNF: if non-empty, emit the search trace as a d4 .nnf circuit to this file.
+  std::string compile_fname;
+
   int do_restart = 0;
   int do_chronobt = 1;
   uint64_t first_restart = 20000U;
@@ -49,7 +53,8 @@ struct CounterConfiguration {
   int do_cube_flp = 1;
   int do_small_cube_disable = 1;
   double td_weight_restart_decay = 0.5; // multiply td_weight by this after each restart (1.0 = no decay)
-
+  bool disconnected_allowed = true; // allow disconnected components in the input CNF
+                                    // normally a BAD idea, but on small instances, it's OK
   int cache_time_update = 2;
   int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used
 

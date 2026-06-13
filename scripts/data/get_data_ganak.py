@@ -89,6 +89,8 @@ def timeout_parse(fname):
                 call = call.replace(" -t real", "")
                 if "doalarm 3600" in call:
                     call = call.split("doalarm 3600")[1]
+                if "doalarm 300" in call:
+                    call = call.split("doalarm 300")[1]
                 elif "doalarm 1800" in call:
                     call = call.split("doalarm 1800")[1]
                 elif "doalarm 60" in call:

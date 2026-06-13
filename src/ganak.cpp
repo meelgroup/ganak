@@ -59,6 +59,25 @@ DLL_PUBLIC Ganak::~Ganak() = default;
 DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_threads) {
   auto cnt = cdat->fg->one();
 
+  // d-DNNF: run one counter over the whole formula (original var numbering) so the
+  // circuit is one self-contained file. The bag-splitting path below would renumber
+  // vars per bag and overwrite the file each bag. Internal component analysis still
+  // decomposes disconnected parts, so the count is unchanged.
+  if (!cdat->conf.compile_fname.empty()) {
+    OuterCounter out_cnt(cdat->conf, cdat->fg->dup());
+    out_cnt.new_vars(cdat->nvars);
+    out_cnt.set_indep_support(cdat->indeps);
+    out_cnt.set_optional_indep_support(cdat->opt_indeps);
+    for (const auto& w : cdat->lit_weights) out_cnt.set_lit_weight(w.first, w.second);
+    for (const auto& cl : cdat->irred_cls) out_cnt.add_irred_cl(cl);
+    for (const auto& p : cdat->red_cls) out_cnt.add_red_cl(p.first, p.second);
+    auto ret = out_cnt.count(bits_jobs, 1, debug_threads);
+    cdat->is_approximate |= out_cnt.get_is_approximate();
+    cdat->max_num_cache_lookups = std::max(cdat->max_num_cache_lookups, out_cnt.get_num_cache_lookups());
+    cdat->max_cache_elems = std::max(cdat->max_cache_elems, out_cnt.get_max_cache_elems());
+    return ret;
+  }
+
   // Check for empty clause
   if (std::any_of(cdat->irred_cls.begin(), cdat->irred_cls.end(),
       [](const auto& cl) { return cl.empty(); })) {

@@ -27,5 +27,9 @@ emcmake cmake -DCMAKE_BUILD_TYPE=Release \
     ..
 emmake make -j$(nproc)
 emmake make install
+cp ddnnf-cleanup.wasm ../html
+cp ddnnf-cleanup.js ../html
+cp ddnnf2dot.wasm ../html
+cp ddnnf2dot.js ../html
 cp ganak.wasm ../html
 cp $EMINSTALL/bin/ganak.js ../html

@@ -207,6 +207,7 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
     } else {
       if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(counter->get_two());
+      counter->get_compiler().free_var(v);
     }
     archetype.set_var_clear(v);
     return false;

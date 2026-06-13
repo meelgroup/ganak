@@ -449,7 +449,7 @@ void Counter::td_decompose() {
   } else primal_alt = std::move(primal);
   primal.reset();
 
-  if (!primal_alt->isConnected()) {
+  if (!primal_alt->isConnected() && !conf.disconnected_allowed) {
     cerr << "ERROR: Primal graph is not connected, this is NOT going to go well!" << endl;
     cerr << "ERROR: Counter should NOT be fed a disconnected CNF" << endl;
     release_assert(false);
@@ -959,7 +959,11 @@ void Counter::fix_weights() {
 
 FF Counter::outer_count() {
   fix_weights();
-  if (!ok) return fg->zero();
+  if (!conf.compile_fname.empty()) compiler = make_ddnnf_compiler(*this, conf.compile_fname);
+  if (!ok) {
+    compiler->finalize_and_write(/*unsat=*/true);
+    return fg->zero();
+  }
 
   auto cnt = fg->zero();
   Timer t;
@@ -986,7 +990,7 @@ FF Counter::outer_count() {
   verb_print(1, "Opt sampling set size: " << ((opt_indep_support_end>0) ? (opt_indep_support_end-1) : 0));
   init_activity_scores();
   if (conf.verb) stats.print_short_formula_info(this);
-  if (indep_support_end <= 6) return count_using_cms();
+  if (indep_support_end <= 6 && compiler->allows_cms_shortcut()) return count_using_cms();
   auto ret = sat_solver->solve();
 
   start_time = cpu_time();
@@ -1050,7 +1054,8 @@ FF Counter::outer_count() {
       exit(EXIT_FAILURE);
     } else *cnt += *do_appmc_count();
   }
-  if (conf.verb) stats.print_short(this, comp_manager->get_cache());
+  compiler->finalize_and_write(/*unsat=*/false);
+  if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
 
@@ -1223,6 +1228,7 @@ end:
     Cube const c(vector<Lit>(), decisions.top().total_model_count());
     debug_print("Exiting due to EXIT state, the cube count: " << *c.cnt);
     mini_cubes.push_back(c);
+    compiler->finalize_root();
   }
 
   if (weighted()) {
@@ -1311,6 +1317,7 @@ void Counter::decide_lit() {
   set_lit(lit, dec_level());
   stats.decisions++;
   vsads_readjust();
+  compiler->new_decision_level();
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
@@ -1967,6 +1974,7 @@ RetState Counter::backtrack() {
       // NOTE: replacing a decision literal x with y when y->x binary clause exists does
       // not work, because we'll count (x, y) = 01 (left hand branch), and
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
+      compiler->save_left_lits();
       reactivate_comps_and_backtrack_trail(false);
       decisions.top().change_to_right_branch();
       bool const ret = propagate(true);
@@ -1994,6 +2002,8 @@ RetState Counter::backtrack() {
     }
 
     CHECK_COUNT_DO(check_count());
+    // d-DNNF: build this level's OR node before the trail is undone (right-branch lits).
+    compiler->build_level_node();
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
     if (conf.do_use_cache) {
@@ -2019,6 +2029,7 @@ RetState Counter::backtrack() {
       } else {
         comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
       }
+      compiler->record_comp_node();
     }
 
 #ifdef VERBOSE_DEBUG
@@ -2027,6 +2038,7 @@ RetState Counter::backtrack() {
     const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
     (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    compiler->attach_to_parent();
     decisions.pop_back();
 
     auto& dst = decisions.top();
@@ -2143,6 +2155,7 @@ void Counter::go_back_to(int32_t backj) {
     reactivate_comps_and_backtrack_trail(false);
     decisions.pop_back();
     decisions.top().zero_out_branch_sol();
+    compiler->branch_reset();
     if (!sat_mode()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
@@ -2304,6 +2317,7 @@ RetState Counter::resolve_conflict() {
     go_back_to(backj);
     decisions.top().mark_branch_unsat();
     decisions.top().zero_out_branch_sol();
+    compiler->branch_reset(); // TODO remove non-chronobt, then we can remove this
     return BACKTRACK;
   }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
@@ -3848,6 +3862,7 @@ bool Counter::run_sat_solver(RetState& state) {
         sat_solution[v] = val(v);
       }
     }
+    compiler->sat_witness_capture(sat_start_dec_level);
     go_back_to(sat_start_dec_level);
     bool const ret = propagate();
     assert(ret);
@@ -3873,6 +3888,7 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().change_to_right_branch();
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
+    compiler->sat_witness_apply();
   }
 
 end:
@@ -4483,6 +4499,7 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     , order_heap(VarOrderLt(Counter::watches)) {
   sat_solver = std::make_unique<CMSat::SATSolver>();
   sat_solver->set_prefix("c o ");
+  compiler = make_null_compiler();
   alloc = std::make_unique<ClauseAllocator>(_conf);
   lbd_cutoff = conf.base_lbd_cutoff;
   two = fg->one();

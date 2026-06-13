@@ -22,26 +22,38 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "hashval.hpp"
-#include "common.hpp"
-#include "comp.hpp"
+#include <cstdint>
+#include <cstddef>
+#include <ostream>
+#include <iomanip>
+#include "MurmurHash3.h"
 
 namespace GanakInt {
 
-class HashedComp  {
-public:
-  HashedComp() = default;
-  HashedComp(const HashedComp&) = default;
-  HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(HashedComp&&) noexcept = default;
-  static HashVal set_comp(const Comp& comp, const uint32_t hash_seed, const BPCSizes& /*bpc*/) {
-    return murmur3_128(comp.get_raw_data(), (size_t)comp.get_size()*4, hash_seed);
-  }
-  bool equals(const HashedComp&) const {
-    return true;
-  }
-  uint64_t comp_bytes() const { return 0; }
-  void set_free() { }
+struct HashVal {
+  uint64_t hash = 0;   // low word  -- ALSO used to index the cache hash table
+  uint64_t hash2 = 0;  // high word -- extra collision discriminator
+  bool operator==(const HashVal& o) const { return hash == o.hash && hash2 == o.hash2; }
+  bool operator!=(const HashVal& o) const { return !(*this == o); }
 };
+
+// Print the full 128-bit value as fixed-width hex (high word, then zero-padded
+// low word). Saves/restores stream flags so it's independent of the caller's
+// formatting state.
+inline std::ostream& operator<<(std::ostream& os, const HashVal& h) {
+  std::ios_base::fmtflags f(os.flags());
+  char fill = os.fill();
+  os << std::hex << h.hash2 << std::setw(16) << std::setfill('0') << h.hash;
+  os.fill(fill);
+  os.flags(f);
+  return os;
+}
+
+// Returns the 128-bit MurmurHash3_x64_128 result as a HashVal.
+inline HashVal murmur3_128(const void* key, const size_t len, const uint32_t seed) {
+  uint64_t out[2];
+  MurmurHash3_x64_128(key, (int)len, seed, out);
+  return HashVal{out[0], out[1]};
+}
 
 }

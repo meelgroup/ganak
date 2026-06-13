@@ -107,6 +107,9 @@ different counters may give different results.
 `c t wmc` and `c t pwmc` require a weighted field generator (i.e. not
 `--mode 0`); otherwise the parser will reject the file.
 
+You can run the system with the `--fast` flag when you expect the counting
+to take no more than 5 minutes. In these cases, `--fast` will terminate faster.
+
 ## Weights
 It is _highly_ encouraged to give both the positive and the negative literal's
 weight, e.g. `1` and `-1`:
@@ -308,6 +311,41 @@ You can also write your own field by implementing the `Field` and `FieldGen`
 interfaces. Absolutely _any_ field will work, and it's as easy as implementing
 `+,-,*` and `/` operators, and the `0` and `1` constants. It's a fun
 exercise to do.
+
+## Compiling to a d-DNNF circuit
+
+Ganak can compile its search trace into a
+[d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit in the d4 `.nnf`
+format, for reuse in repeated queries, model enumeration, or functional
+synthesis.
+
+**1. Dump** (still prints the count; streamed to disk, so it is not held in
+memory). The output is a faithful d-DNNF:
+
+```shell
+./ganak --compile out.nnf in.cnf
+```
+
+For a projected CNF (inputs `< indep_support_end`, outputs `>= indep_support_end`),
+the SAT oracle records one example assignment of the output vars at each SAT
+leaf, so the same faithful circuit is also a sound Boolean functional-synthesis
+compiler — read a Skolem witness off the circuit with
+`tests/ddnnf_verify.synthesize()`.
+
+**2. Fix up.** The raw file is correct from the root but keeps Ganak's internal
+ids and may carry unreachable "dead" nodes. `ddnnf-cleanup` drops them and
+renumbers `root = 1`, contiguous, yielding a strict d4 file:
+
+```shell
+./ddnnf-cleanup out.nnf clean.nnf      # omit 2nd arg (or "-") to write to stdout
+```
+
+**3. Verify.** `tests/ddnnf_verify.py` prints the circuit's structural count,
+which must match Ganak's. It accepts both the raw and cleaned files:
+
+```shell
+python3 tests/ddnnf_verify.py clean.nnf
+```
 
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter

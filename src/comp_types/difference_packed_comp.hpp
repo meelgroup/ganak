@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 #include "common.hpp"
 #include "comp.hpp"
-#include "chibihash64.h"
+#include "hashval.hpp"
 
 namespace GanakInt {
 
@@ -116,7 +116,7 @@ public:
     return std::memcmp(data, other.data, data_size * sizeof(uint32_t)) == 0;
   }
 
-  uint64_t set_comp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& sz) {
+  HashVal set_comp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& sz) {
     // first, generate hashkey, and compute max diff for cls and vars
     uint32_t max_var_diff = 0;
     uint32_t v = *comp.vars_begin();
@@ -182,7 +182,7 @@ public:
     // This will tell us if we computed the data_size correctly
     bs.assert_size(data_size);
 
-    return chibihash64(comp.get_raw_data(), comp.get_size()*4, hash_seed);
+    return murmur3_128(comp.get_raw_data(), (size_t)comp.get_size()*4, hash_seed);
   }
 
 private:

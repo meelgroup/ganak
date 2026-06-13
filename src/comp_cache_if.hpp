@@ -39,12 +39,16 @@ public:
 
   virtual CacheEntryID add_new_comp(void* comp, CacheEntryID super_comp_id) = 0;
   virtual uint64_t get_extra_bytes(void* comp) const = 0;
-  virtual bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* comp) = 0;
-  virtual void* create_new_comp(const Comp &comp, uint64_t hash_seed, const BPCSizes& bpc) = 0;
+  virtual bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* comp,
+      int* out_node = nullptr) = 0;
+  // d-DNNF: associate a circuit node id with a cache entry (retrieved on a hit via
+  // out_node above). No-op unless compiling.
+  virtual void set_compile_node(CacheEntryID, int) {}
+  virtual void* create_new_comp(const Comp &comp, uint32_t hash_seed, const BPCSizes& bpc) = 0;
   virtual void free_comp(void* comp) = 0;
 
   virtual void make_entry_deletable(CacheEntryID id) = 0;
-  virtual void init(Comp &super_comp, uint64_t hash_seed, const BPCSizes& bpc) = 0;
+  virtual void init(Comp &super_comp, uint32_t hash_seed, const BPCSizes& bpc) = 0;
   virtual uint64_t get_num_entries_used() const = 0;
   virtual uint64_t get_max_num_entries() const = 0;
   virtual uint64_t compute_size_allocated() = 0;

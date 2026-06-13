@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pyganak"
-version = "2.6.2"
+version = "2.6.3"
 description = "Bindings to Ganak, a high-performance exact model counter"
 keywords = ["sat", "model counting", "exact counting", "projected counting"]
 license = { file = "LICENSE.txt" }

@@ -1,0 +1,15 @@
+c c d-DNNF compile: PROJECTED count over the sampling set {1,2}. The SAT oracle
+c c records a witness for the projected-out vars {3,4}, so the structural count
+c c is the projected count (2), not the total model count. We pin the projected
+c c count and decomposability (a full model-set check does not apply here).
+c p show 1 2 0
+c c RUN: %solver --compile %t.nnf %s
+c c RUN: %ddnnf_verify %t.nnf --expect-count 2 --no-strict
+c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
+c c RUN: %ddnnf_verify %t.clean.nnf --expect-count 2 --check-decomposable --strict
+c c RUN: %ddnnf2dot %t.clean.nnf %t.dot
+p cnf 4 4
+1 2 0
+-1 2 0
+3 4 0
+-3 -4 0

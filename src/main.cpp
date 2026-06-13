@@ -130,6 +130,7 @@ string debug_arjun_cnf;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
 int do_puura = 1;
+bool disconnected_allowed = false;
 uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int poly_nvars = -1;
@@ -170,8 +171,8 @@ void add_ganak_options()
 
     add_arg2("-v", "--verb", conf.verb, fc_int, "Verbosity");
     add_arg2("-s", "--seed", conf.seed, fc_int, "Seed");
-    program.add_argument("-v", "--version") \
-        .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);}) \
+    program.add_argument("-v", "--version")
+        .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);})
         .flag()
         .help("Print version and exit");
     add_arg("--mode", mode , fc_int, R"delimiter(0=integer counting,
@@ -192,6 +193,17 @@ void add_ganak_options()
     add_arg("--epsilon", conf.appmc_epsilon, fc_double, "AppMC epsilon");
     add_arg("--chronobt", conf.do_chronobt, fc_int, "ChronoBT. SAT must be DISABLED or this will fail");
     add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
+    program.add_argument("--fast")
+        .action([&](const auto&) {
+          arjun_cms_glob_mult = 0.1;
+          simp_conf.oracle_mult = 0.1;
+          arjun_backw_maxc = 50;
+        })
+        .flag()
+        .help("Optimize for quick/easy instances (<5 mins)");
+
+    // d-DNNF compilation
+    add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
 
     // Arjun options
     add_arg("--arjun", do_arjun, fc_int, "Use arjun");
@@ -210,6 +222,9 @@ void add_ganak_options()
     add_arg("--arjunbackwmaxc", arjun_backw_maxc, fc_int, "Arjun backw max confl");
     add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, fc_int, "Arjun's oracle should find bins or not");
     add_arg("--arjunoraclemult", simp_conf.oracle_mult, fc_double, "Multiplier for Arjun's oracle timeout when it is called from Puura");
+    add_arg("--puuraoraclevivif", simp_conf.oracle_vivify, fc_int, "Run Puura's main oracle vivification pass");
+    add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, fc_int, "Run Puura's main oracle sparsification pass");
+    add_arg("--puurabve", simp_conf.do_bve, fc_int, "Run BVE in Puura");
     add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, fc_int, "Puura BVE max resolvent size in literals. -1 == no limit");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
     add_arg("--bvegrowiter2", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
@@ -352,6 +367,20 @@ void parse_supported_options(int argc, char** argv) {
         std::cerr << msg << std::endl;
         exit(EXIT_FAILURE);
     }
+    if (!conf.compile_fname.empty()) {
+      // d-DNNF needs a single clean DPLL tree: no restarts, exact cache, no
+      // opaque leaves (BuDDy), no clause rewriting (vivify), original var
+      // numbering (Arjun/Puura off), one thread. SAT oracle stays on; it
+      // witnesses synthesized vars on projected inputs and never fires otherwise.
+      conf.do_restart = 0;
+      conf.do_probabilistic_hashing = 0;
+      conf.do_buddy = 0;
+      conf.do_vivify = 0;
+      do_arjun = 0;
+      do_puura = 0;
+      num_threads = 1;
+      cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
+    }
     if (conf.do_use_sat_solver && !conf.do_chronobt) {
       cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
       exit(EXIT_FAILURE);
@@ -407,7 +436,15 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
-  } else cnf.renumber_sampling_vars_for_ganak();
+  } else {
+    disconnected_allowed = true;
+    verb_print(1, "WARNING. Not performing puura.  "
+        << "Number of sampling variables: " << cnf.get_sampl_vars().size()
+        << " vs " << arjun_further_min_cutoff
+        << " and  --puura is: " << do_puura
+        << " components may be disconnected, which will interfere with proper TD weight calculation");
+    cnf.renumber_sampling_vars_for_ganak();
+  }
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 
@@ -457,7 +494,7 @@ void print_log(const mpz_class& cnt, string extra = "") {
     mpfr_clear(log10_val);
 }
 
-// compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 64)
+// compute collision probability, i.e. 2^(log2(lookups) + log2(elems) - 128)
 // result must be initialized with mpfr_init2 before calling
 void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elems) {
     mpfr_t lookups2;
@@ -472,10 +509,10 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
 
     mpfr_t e;
     mpfr_init2(e, 256);
-    mpfr_set_si(e, -64, MPFR_RNDN);
+    mpfr_set_si(e, -128, MPFR_RNDN);
     mpfr_add(e, lookups2, e, MPFR_RNDN);
     mpfr_add(e, elems2, e, MPFR_RNDN);
-    // e = log2(lookups) + log2(elems) - 64
+    // e = log2(lookups) + log2(elems) - 128
 
     // Compute 2^e
     mpfr_exp2(result, e, MPFR_RNDN);
@@ -686,8 +723,10 @@ int main(int argc, char *argv[]) {
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun
-  if (!do_arjun) cnf.renumber_sampling_vars_for_ganak();
-  else run_arjun(cnf);
+  if (!do_arjun) {
+    cnf.renumber_sampling_vars_for_ganak();
+    disconnected_allowed = true;
+  } else run_arjun(cnf);
   cnf.remove_equiv_weights();
   if (strip_opt_indep) cnf.strip_opt_sampling_vars();
   if (conf.verb >= 2) {
@@ -705,6 +744,7 @@ int main(int argc, char *argv[]) {
   if (!debug_arjun_cnf.empty()) cnf.write_simpcnf(debug_arjun_cnf, true);
 
   // Run Ganak
+  conf.disconnected_allowed = disconnected_allowed;
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);

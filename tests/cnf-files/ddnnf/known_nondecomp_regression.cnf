@@ -1,0 +1,63 @@
+c c Strict-decomp regression: faithful --compile of this CNF emits a circuit
+c c whose model count + model SET are correct (5897, matches brute force) but
+c c which violates strict d-DNNF decomposability: some AND node has two children
+c c whose subtrees both mention var 16. Root cause: conflict-learned (redundant)
+c c clauses can bridge variables that CompAnalyzer placed in different
+c c sub-components (the analyzer only sees irreducible clauses). Propagation
+c c inside one sub-component then sets a variable that "belongs" to another
+c c sub-component, which leaks into the OR's arc-lits.
+c c
+c c ddnnf-cleanup REPAIRS this post hoc by default: its strict-decomp pass
+c c scrubs the shared var from the child that doesn't force it (the other
+c c child's models all imply that var-polarity, so the scrub preserves count
+c c + model set). The first two RUN lines exercise the raw circuit (count
+c c + set still correct), the rest assert that after cleanup the circuit is
+c c strictly decomposable.
+c c
+c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
+c c
+c c RUN: %solver --compile %t.nnf %s
+c c RUN: %ddnnf_verify %t.nnf --cnf %s --no-strict --no-check-decomposable
+c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
+c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
+p cnf 16 40
+-6 -14 2 4 0
+9 14 -10 -1 0
+-8 -5 -11 14 0
+-7 13 -11 15 0
+8 9 2 4 0
+-15 2 -14 -7 0
+-7 2 -14 13 0
+13 -4 -3 -1 0
+8 11 13 6 0
+8 11 12 4 0
+-15 13 -5 -3 0
+1 -6 11 15 0
+-7 -14 -12 -1 0
+9 7 13 15 0
+9 -6 -15 -2 0
+-8 16 -3 7 0
+-5 4 14 6 0
+-7 -5 4 9 0
+8 -12 5 14 0
+3 -15 11 -5 0
+-15 -13 -4 12 0
+3 4 13 -10 0
+-15 -5 -12 -7 0
+8 -15 -10 -9 0
+16 -14 3 -13 0
+-16 10 13 -1 0
+16 8 2 -3 0
+16 -4 -3 -2 0
+-15 13 5 6 0
+8 -6 4 13 0
+8 9 3 14 0
+16 -7 11 -4 0
+8 -12 14 -2 0
+1 4 -3 7 0
+16 15 -2 7 0
+-16 9 -12 7 0
+-6 11 -9 7 0
+2 4 13 14 0
+2 3 -11 15 0
+8 9 -12 6 0

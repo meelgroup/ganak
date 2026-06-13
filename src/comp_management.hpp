@@ -57,11 +57,17 @@ public:
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
   const auto& get_cache() const { return cache; }
   const CompAnalyzer& get_ana() const { return ana; }
+  CompAnalyzer& get_ana() { return ana; }
 
   void save_count(const uint64_t stack_comp_id, const FF& value) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
         << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << *value);
     cache->store_value(comp_stack[stack_comp_id]->id(), value);
+  }
+
+  // d-DNNF: record a component's compiled node so future cache hits reuse it.
+  void set_comp_node(const uint64_t stack_comp_id, int node) {
+    cache->set_compile_node(comp_stack[stack_comp_id]->id(), node);
   }
 
   const auto& get_comp_stack() const { return comp_stack; }
@@ -100,18 +106,20 @@ public:
   // skip_missing=true:  silently skip comps not in cache
   void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
 
-  uint64_t hash_seed;
+  // MurmurHash3_x64_128's API takes a 32-bit seed
+  uint32_t hash_seed;
 
 private:
   BPCSizes bpc;
   void get_random_seed_for_hash() {
-    std::mt19937_64 eng(conf.seed);
-    std::uniform_int_distribution<uint64_t> distr;
+    std::mt19937 eng(conf.seed);
+    std::uniform_int_distribution<uint32_t> distr;
     hash_seed = distr(eng);
   }
   FG fg;
   const CounterConfiguration &conf;
   DataAndStatistics &stats;
+  Counter* counter; // used for d-DNNF compilation hooks
 
   // components thus far found. There is one at pos 0 that's DUMMY (empty!)
   vector<Comp*> comp_stack;

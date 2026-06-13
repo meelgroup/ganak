@@ -560,6 +560,16 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+
+  # Property-based d-DNNF tests: generate random CNFs, brute-force the true
+  # count/model set as an oracle, and check the emitted circuit against it.
+  # Seeded so a regression reproduces identically; they self-check against the
+  # oracle, so there is no golden file to break when the circuit shape changes.
+  # Small/few by design: the oracle is 2^nv and each case spawns ganak, so we
+  # keep these quick for `make test`. For deep fuzzing run them by hand with a
+  # larger count / --maxvars (see CLAUDE.md).
+  add_test(NAME ddnnf_compile_fuzz
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
 endif()
 
 # -----------------------------------------------------------------------------

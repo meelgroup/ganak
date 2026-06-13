@@ -170,8 +170,7 @@ public:
   // which set up search_stack, seen[] etc.
   inline Comp *make_comp_from_archetype(){
     SLOW_DEBUG_DO(for (auto&v: comp_vars) assert(is_unknown(v)));
-    auto p = archetype.make_comp(comp_vars.size());
-    return p;
+    return archetype.make_comp(comp_vars.size());
   }
 
   uint32_t get_max_clid() const { return max_clid; }

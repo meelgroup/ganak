@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "counter_config.hpp"
 #include "comp_management.hpp"
+#include "compiler.hpp"
 #include "cryptominisat5/solvertypesmini.h"
 #include "statistics.hpp"
 #include <treedecomp/TreeDecomposition.hpp>
@@ -198,7 +199,14 @@ public:
   DataAndStatistics& get_stats() { return stats; }
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
+  // d-DNNF compile observer. Never null (NullCompiler by default). See compiler.hpp.
+  Compiler& get_compiler() { return *compiler; }
+
 private:
+  // DDNNFCompiler reads private search state (trail, decisions, components).
+  friend class DDNNFCompiler;
+  std::unique_ptr<Compiler> compiler;
+
   FG fg;
   FF two; //stores 1+1
   CounterConfiguration conf;

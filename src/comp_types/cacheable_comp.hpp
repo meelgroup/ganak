@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <cassert>
 #include "structures.hpp"
 #include "base_comp.hpp"
+#include "hashval.hpp"
 
 namespace GanakInt {
 
@@ -38,7 +39,7 @@ public:
   CacheableComp(CacheableComp&&) noexcept = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
-  CacheableComp(const Comp &comp, const uint64_t hash_seed, const BPCSizes& bpc) {
+  CacheableComp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& bpc) {
     hashkey = T::set_comp(comp, hash_seed, bpc);
   }
 
@@ -62,16 +63,20 @@ public:
     model_count_.reset();
     model_count_is_zero_ = false; // also clear zero-count sentinel
   }
-  auto get_hashkey() const  { return hashkey; }
+  // low 64-bit word -- used to index the cache hash table (table is power-of-two sized)
+  uint64_t get_hashkey() const  { return hashkey.hash; }
+  auto get_full_hashkey() const  { return hashkey; }
   uint64_t extra_bytes() const {
     return BaseComp::bignum_bytes() + T::comp_bytes();
   }
   auto equals(const CacheableComp<T>& other) const {
+    // full 128-bit key compare (collision needs BOTH words to match, ~2^-128) plus,
+    // for the content-comparing variant, the exact-content check in T::equals()
     return hashkey == other.hashkey && T::equals(other);
   }
 
 private:
-  uint64_t hashkey;
+  HashVal hashkey;
   CacheEntryID next_bucket_element_ = 0;
 
   // father and descendants:

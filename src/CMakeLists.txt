@@ -40,10 +40,12 @@ set(SOURCES
     comp_analyzer.cpp
     comp_types/comp_archetype.cpp
     comp_management.cpp
+    compiler.cpp
     counter.cpp
     outer_counter.cpp
     statistics.cpp
     clauseallocator.cpp
+    MurmurHash3.cpp
     buddy-2.4/src/bddio.c
     buddy-2.4/src/bddop.c
     buddy-2.4/src/bvec.c
@@ -63,6 +65,11 @@ set(SOURCES
 )
 
 add_library(ganak ${SOURCES})
+
+# MurmurHash3.cpp intentionally falls through in its switch; silence the warning.
+if (NOT MSVC)
+  set_source_files_properties(MurmurHash3.cpp PROPERTIES COMPILE_OPTIONS "-Wno-implicit-fallthrough")
+endif()
 
 target_include_directories(ganak
   PRIVATE
@@ -103,6 +110,10 @@ endif()
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
+add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
+add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
+add_executable(ddnnf-verify-bin ddnnf_verify.cpp)
+target_link_libraries(ddnnf-verify-bin PRIVATE PkgConfig::GMP)
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -175,6 +186,35 @@ set_target_properties(example-c-bin PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
   C_STANDARD 11
 )
+set_target_properties(ddnnf-cleanup-bin PROPERTIES
+  OUTPUT_NAME ddnnf-cleanup
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+set_target_properties(ddnnf2dot-bin PROPERTIES
+  OUTPUT_NAME ddnnf2dot
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+set_target_properties(ddnnf-verify-bin PROPERTIES
+  OUTPUT_NAME ddnnf-verify
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_link_options(ddnnf-cleanup-bin PRIVATE
+    "SHELL:-s WASM=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
+    "SHELL:-s FORCE_FILESYSTEM=1"
+  )
+  target_link_options(ddnnf2dot-bin PRIVATE
+    "SHELL:-s WASM=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
+    "SHELL:-s FORCE_FILESYSTEM=1"
+  )
+endif()
 
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/ganak.hpp)
 ganak_add_public_header(ganak ${CMAKE_CURRENT_SOURCE_DIR}/counter_config.hpp)
@@ -234,6 +274,21 @@ install(TARGETS ganak
 )
 
 install(TARGETS ganak-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf-cleanup-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf2dot-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf-verify-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

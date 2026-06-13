@@ -2029,7 +2029,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
     # "out-ganak-mccomp2324-1743408", # ddnnf
     # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
-    "out-ganak-mccomp2324-1755057-", # 5 min timeout
+    "out-ganak-mccomp2324-1755057-0", # 5 min timeout
+    "out-ganak-mccomp2324-1755057-3", # 5 min timeout
+    "out-ganak-mccomp2324-1758343-", # new 5 min timeout run
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2068,6 +2070,8 @@ def main():
                         help="Skip all preprocessing tables and graphs (preproc table)")
     parser.add_argument("--nopairwise", action="store_true",
                         help="No pairwise comparisons")
+    parser.add_argument("--nodistribution", action="store_true",
+                        help="Don't print distributions of metrics")
     args = parser.parse_args()
 
     os.makedirs(TMP_DIR, exist_ok=True)
@@ -2095,7 +2099,8 @@ def main():
             seen.add(dir)
             os.system(f"./cache_miss_bucket_summary.py {dir}")
 
-    print_distributions(table_todo, fname_like)
+    if not args.nodistribution:
+      print_distributions(table_todo, fname_like)
 
     if args.verbose:
         print("Printing summary tables...")

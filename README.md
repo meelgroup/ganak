@@ -107,6 +107,9 @@ different counters may give different results.
 `c t wmc` and `c t pwmc` require a weighted field generator (i.e. not
 `--mode 0`); otherwise the parser will reject the file.
 
+You can run the system with the `--fast` flag when you expect the counting
+to take no more than 5 minutes. In these cases, `--fast` will terminate faster.
+
 ## Weights
 It is _highly_ encouraged to give both the positive and the negative literal's
 weight, e.g. `1` and `-1`:

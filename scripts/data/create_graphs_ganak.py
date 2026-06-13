@@ -2031,7 +2031,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
     "out-ganak-mccomp2324-1755057-0", # 5 min timeout
     "out-ganak-mccomp2324-1755057-3", # 5 min timeout
-    "out-ganak-mccomp2324-1758343-", # new 5 min timeout run
+    "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
+    "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

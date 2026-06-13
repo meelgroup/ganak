@@ -193,6 +193,14 @@ void add_ganak_options()
     add_arg("--epsilon", conf.appmc_epsilon, fc_double, "AppMC epsilon");
     add_arg("--chronobt", conf.do_chronobt, fc_int, "ChronoBT. SAT must be DISABLED or this will fail");
     add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
+    program.add_argument("-fast")
+        .action([&](const auto&) {
+          arjun_cms_glob_mult = 0.1;
+          simp_conf.oracle_mult = 0.1;
+          arjun_backw_maxc = 50;
+        })
+        .flag()
+        .help("Optimize for quick/easy instances (<5 mins)");
 
     // d-DNNF compilation
     add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");

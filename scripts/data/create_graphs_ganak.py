@@ -2028,11 +2028,18 @@ only_dirs = [
     # "out-ganak-mccomp2324-1517017-0", # 4 full runs for all the 4 new arjun orders
     # "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
     # "out-ganak-mccomp2324-1743408", # ddnnf
-    "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
-    # "out-ganak-mccomp2324-1755057-0", # 5 min timeout
-    # "out-ganak-mccomp2324-1755057-3", # 5 min timeout
-    # "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
-    # "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
+
+    # 5 min timeout runs:
+    "out-ganak-mccomp2324-1755057-0", # 5 min timeout
+    "out-ganak-mccomp2324-1755057-3", # 5 min timeout
+    "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
+    "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
+    "out-ganak-mccomp2324-1783926-", # also extend
+    # best is: --fast --tditers 100--arjunextendmaxconfl 3000
+
+    # final MCC
+    # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
+    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

@@ -2034,7 +2034,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-1755057-3", # 5 min timeout
     # "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
     # "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
-    "out-ganak-mccomp2324-1783926-2", # also extend
+    # "out-ganak-mccomp2324-1783926-2", # also extend
     # best is: --fast --tditers 100--arjunextendmaxconfl 3000
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 

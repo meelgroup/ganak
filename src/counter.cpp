@@ -1175,7 +1175,7 @@ void Counter::count_loop() {
 
       while (!propagate()) {
         start1:
-        if (chrono_check()) continue; // will DEFINITELY conflict if TRUE
+        if (chrono_check()) continue;
         state = resolve_conflict();
         start11:
         if (state == GO_AGAIN) goto start1;
@@ -3837,7 +3837,7 @@ bool Counter::run_sat_solver(RetState& state) {
       if (state == BACKTRACK) break;
     }
     if (state == BACKTRACK) goto end;
-    assert(state != GO_AGAIN);
+    state = RESOLVED;
     if (dec_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
     if (conf.do_sat_restart && sat_confl-last_restart >= luby(2, num_rst)*conf.sat_restart_mult) {

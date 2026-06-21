@@ -2041,6 +2041,7 @@ only_dirs = [
     # final MCC
     # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
     "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    "out-ganak-mccomp2324-1783906-1", # kitten
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 ]
 # only_dirs = [

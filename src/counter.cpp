@@ -3831,7 +3831,7 @@ bool Counter::run_sat_solver(RetState& state) {
 
     while (!propagate()) {
       start1:
-      if (conf.do_chronobt && chrono_check()) continue;
+      if (conf.do_chronobt && chrono_check()) continue;  // will DEFINITELY conflict if TRUE
       state = resolve_conflict();
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;

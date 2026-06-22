@@ -2042,6 +2042,8 @@ only_dirs = [
     # final MCC
     # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
     "out-ganak-mccomp2324-1812040-0", # 2 min timeout
+    "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
+    "out-ganak-mccomp2324-1812683-", # 2 min timeout, more configs
 
     ## other stuff
     # "out-ganak-mccomp2324-1783906-1", # kitten

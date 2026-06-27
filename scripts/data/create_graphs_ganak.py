@@ -2040,13 +2040,14 @@ only_dirs = [
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 
     # final MCC
-    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
-    "out-ganak-mccomp2324-1812040-0", # 2 min timeout
-    "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
-    "out-ganak-mccomp2324-1812683-", # 2 min timeout, more configs
+    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
+    # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
+    # "out-ganak-mccomp2324-1812683-", # 2 min timeout, more configs
 
     ## other stuff
     # "out-ganak-mccomp2324-1783906-1", # kitten
+    "out-ganak-mccomp2324-1817408-0", # gates-eq + replace in the middle after gates-based eq
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

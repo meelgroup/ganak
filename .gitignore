@@ -25,3 +25,4 @@ html/ddnnf2dot.wasm
 html/ddnnf2dot.js
 /python/tests/__pycache__
 tests/__pycache__
+*.pdf

@@ -2029,10 +2029,26 @@ only_dirs = [
     # "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
     # "out-ganak-mccomp2324-1743408", # ddnnf
     # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
-    "out-ganak-mccomp2324-1755057-0", # 5 min timeout
-    "out-ganak-mccomp2324-1755057-3", # 5 min timeout
-    "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
-    "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
+
+    # 5 min timeout runs:
+    # "out-ganak-mccomp2324-1755057-0", # 5 min timeout
+    # "out-ganak-mccomp2324-1755057-3", # 5 min timeout
+    # "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
+    # "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
+    # "out-ganak-mccomp2324-1783926-2", # also extend
+    # best is: --fast --tditers 100--arjunextendmaxconfl 3000
+    # 0b4881b4_11e203ea_67c5648a_5e1ee18e
+
+    # final MCC
+    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+                                      # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
+    # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
+    # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
+    # "out-ganak-mccomp2324-1812683-", # 2 min timeout, more configs
+    ## other stuff
+    # "out-ganak-mccomp2324-1783906-1", # kitten
+    # "out-ganak-mccomp2324-1817408-0", # gates-eq + replace in the middle after gates-based eq
+    "out-ganak-mccomp2324-1835807-", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2073,6 +2089,8 @@ def main():
                         help="No pairwise comparisons")
     parser.add_argument("--nodistribution", action="store_true",
                         help="Don't print distributions of metrics")
+    parser.add_argument("--cdf", action="store_true",
+                        help="ONLY generate the PAR2/solved summary table and the CDF graph; skip everything else")
     args = parser.parse_args()
 
     os.makedirs(TMP_DIR, exist_ok=True)
@@ -2088,9 +2106,26 @@ def main():
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
-    if not args.nopairwise:
+    if not args.cdf and not args.nopairwise:
       scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
+
+    if args.cdf:
+        if args.verbose:
+            print("Printing summary tables...")
+        print_summary_tables(table_todo, fname_like, args.full, args.verbose)
+        if args.verbose:
+            print("Generating gnuplot script...")
+        gnuplotfn, pdf_file, png_file = generate_gnuplot(fname2_s, args.verbose)
+        for path in [pdf_file, png_file]:
+            if os.path.exists(path):
+                os.unlink(path)
+        os.system(f"gnuplot {gnuplotfn}")
+        console_title = "CDF: instances counted vs. solve time"
+        print(f"\n{BLUE}{console_title}{RESET}")
+        print(f"  PDF: {pdf_file}  PNG: {png_file}")
+        _display_png(png_file)
+        return
 
     if args.verbose:
         print(f"Selected {len(table_todo)} dir/version combinations")

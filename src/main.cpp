@@ -405,6 +405,10 @@ void parse_supported_options(int argc, char** argv) {
       cerr << "ERROR: threads cannot be debugged when num_threads is more than 1" << endl;
       exit(EXIT_FAILURE);
     }
+    if (mpfr_precision > 256) {
+      cerr << "ERROR: mpfr precision must not be more than 256 bits" << endl;
+      exit(EXIT_FAILURE);
+    }
     if (mpfr_precision < 2) {
       cerr << "ERROR: mpfr precision must be at least 2 bits" << endl;
       exit(EXIT_FAILURE);

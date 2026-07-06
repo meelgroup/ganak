@@ -145,7 +145,7 @@ int debug_threads = 0;
 
 // mode
 int mode = 0;
-int mpfr_precision = 64;
+int mpfr_precision = 128;
 
 string print_version()
 {

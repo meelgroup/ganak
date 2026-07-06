@@ -452,6 +452,14 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 
+const char* mpfr_prec_name(const int prec) {
+    if (prec <= 16) return "half float";
+    if (prec <= 32) return "single float";
+    if (prec <= 64) return "double float";
+    if (prec <= 128) return "quadruple float";
+    return "octuple float";
+}
+
 string print_mpq_as_scientific(const mpq_class& number) {
     mpf_class const mpf_value(number);
     std::ostringstream oss;
@@ -593,14 +601,14 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
         print_log(od->real, "-real");
         print_log(od->imag, "-imag");
-        mpfr_printf("c s exact quadruple float %.8Re + %.8Rei\n", od->real, od->imag);
+        mpfr_printf("c s exact %s %.8Re + %.8Rei\n", mpfr_prec_name(mpfr_precision), od->real, od->imag);
       } else if (mode == 7) {
         // MPFR numbers
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
         else cout << "c s type wmc" << endl;
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
         print_log(od->val);
-        mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
+        mpfr_printf("c s exact %s %.8Re\n", mpfr_prec_name(mpfr_precision), od->val);
       }
     } else if (mode == 3) {
       cout << "c s exact poly " << *cnt << endl;

@@ -423,6 +423,7 @@ void print_vars(vector<uint32_t> vars) {
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   double const my_time = cpu_time();
   ArjunNS::Arjun arjun;
+  ArjunNS::Arjun::InterpConf iconf;
   if (conf.verb == 0) arjun_verb = 0;
   arjun.set_verb(arjun_verb);
   arjun.set_or_gate_based(arjun_gates);
@@ -436,10 +437,10 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
-  arjun.standalone_minimize_indep(cnf, etof_conf.all_indep);
+  arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
-    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
   } else {
     disconnected_allowed = true;
     verb_print(1, "WARNING. Not performing puura.  "

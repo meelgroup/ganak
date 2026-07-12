@@ -33,15 +33,16 @@ ArjunNS::Arjun::ElimToFileConf etof_conf;
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   ArjunNS::Arjun arjun;
+  ArjunNS::Arjun ::InterpConf iconf;
   arjun.set_verb(0);
-  arjun.standalone_minimize_indep(cnf, false);
-  arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+  arjun.standalone_minimize_indep(cnf, iconf, false);
+  arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
 }
 
 constexpr CMSat::Lit mklit(int lit) {
   assert (lit != 0);
   if (lit > 0) return CMSat::Lit(lit - 1, false);
-  else return CMSat::Lit((-lit) - 1, true);
+  return CMSat::Lit((-lit) - 1, true);
 }
 
 int main() {

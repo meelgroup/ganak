@@ -4393,8 +4393,9 @@ void Counter::check_opt_sampling_determined() const {
   cnf.set_opt_sampl_vars(opt_indep);
 
   ArjunNS::Arjun arjun;
+  ArjunNS::Arjun::InterpConf iconf;
   VERBOSE_DEBUG_DO(arjun.set_verb(10));
-  assert(arjun.standalone_check_extend(cnf));
+  assert(arjun.standalone_check_extend(cnf, iconf));
   verb_print(2, "[opt-sampling-check] All optimal independent variables are determined");
 }
 

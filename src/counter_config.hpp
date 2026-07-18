@@ -65,7 +65,7 @@ struct CounterConfiguration {
 
   uint32_t reduce_db_everyN = 10000;
   uint32_t consolidate_every_n = 30000;
-  int polar_type = 0;
+  int polar_type = static_cast<int>(PolarType::standard);
   uint32_t base_lbd_cutoff = 2;
   uint32_t lbd_tier2_cutoff = 6; // tier 2: lbd <= this kept if recently used (CaDiCaL-style)
   int do_shrink = 1;             // block-wise secondary UIP shrinking (CaDiCaL-style)

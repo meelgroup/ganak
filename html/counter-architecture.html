@@ -27,6 +27,10 @@
     padding: 1.2rem; margin: 1rem 0 1.5rem; overflow-x: auto;
   }
   .diagram .mermaid { text-align: center; min-width: 0; }
+  .diagram .mermaid code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 400; font-size: .93em; background: none; padding: 0;
+  }
   table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; font-size: .93rem; }
   th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule);
            vertical-align: top; }
@@ -57,10 +61,10 @@ zooms into the two shaded boxes.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-  START(["<b>Counter::count_loop()</b>"]) --> FIND{"any component left<br/>to process at this level?"}
+  START(["<code>Counter::count_loop()</code>"]) --> FIND{"Any component left<br/>to process at this level?"}
 
-  FIND -->|"yes"| DESC["<b>DESCEND</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
-  FIND -->|"no — all done here"| ASC["<b>ASCEND</b><br/><b>Counter::backtrack()</b>: combine the two branches,<br/>store in cache, fold into the parent"]
+  FIND -->|"yes"| DESC["<b>Descend</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
+  FIND -->|"no — all done here"| ASC["<b>Ascend</b><br/><code>Counter::backtrack()</code>: combine the two branches,<br/>store in cache, fold into the parent"]
 
   DESC --> CONFL{"conflict?"}
   CONFL -->|"no"| FIND
@@ -91,30 +95,30 @@ it kills.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-  IN(["a component was selected"]) --> DECIDE["<b>Counter::decide_lit()</b><br/>push a new <b>StackLevel</b>"]
-  DECIDE --> SCORE["<b>Counter::find_best_branch()</b> → <b>Counter::score_of(v)</b><br/>over vars of this component:<br/>td_weight+ VSIDS+ frequency in the component"]
-  SCORE --> POLAR["<b>Counter::get_polarity(v)</b><br/>activity-based, if equal, cached "]
+  IN(["a component was selected"]) --> DECIDE["<code>Counter::decide_lit()</code><br/>push a new <code>StackLevel</code>"]
+  DECIDE --> SCORE["<code>Counter::find_best_branch()</code> → <code>Counter::score_of(v)</code><br/>over vars of this component:<br/>td_weight+ VSIDS+ frequency in the component"]
+  SCORE --> POLAR["<code>Counter::get_polarity(v)</code><br/>activity-based, if equal, cached "]
   POLAR --> SATQ{"only non-independent<br/>vars left?"}
 
-  SATQ -->|"yes"| SAT["<b>Counter::run_sat_solver()</b><br/>plain CDCL — existence is enough,<br/>no need to enumerate"]
+  SATQ -->|"yes"| SAT["<code>Counter::run_sat_solver()</code><br/>plain CDCL — existence is enough,<br/>no need to enumerate"]
   SAT --> OUT2(["fold result into the branch"])
 
-  SATQ -->|"no"| PROP{"<b>Counter::propagate()</b><br/>two-watch BCP"}
+  SATQ -->|"no"| PROP{"<code>Counter::propagate()</code><br/>two-watch BCP"}
   PROP -->|"no conflict"| OUT(["back to component selection"])
-  PROP -->|"CONFLICT"| CHRONO{"<b>Counter::chrono_check()</b><br/>only one literal from<br/>the top level?"}
+  PROP -->|"CONFLICT"| CHRONO{"<code>Counter::chrono_check()</code><br/>only one literal from<br/>the top level?"}
   CHRONO -->|"yes"| BACKONE["chronological backtrack<br/>one level"] --> PROP
 
-  CHRONO -->|"no"| RESOLVE["<b>Counter::resolve_conflict()</b>"]
-  RESOLVE --> ZERO["<b>StackLevel::zero_out_branch_sol()</b><br/>this branch counts 0"]
-  RESOLVE --> UIP["<b>Counter::create_uip_cl()</b><br/>walk the trail back to the 1-UIP,<br/>bump activities"]
+  CHRONO -->|"no"| RESOLVE["<code>Counter::resolve_conflict()</code>"]
+  RESOLVE --> ZERO["<code>StackLevel::zero_out_branch_sol()</code><br/>this branch counts 0"]
+  RESOLVE --> UIP["<code>Counter::create_uip_cl()</code><br/>walk the trail back to the 1-UIP,<br/>bump activities"]
   UIP --> MIN["minimize: clause shrinking,<br/>recursive self-subsumption,<br/>binary-clause minimization"]
-  MIN --> LEARN["<b>Counter::add_uip_confl_cl()</b><br/>attach, compute LBD, store"]
-  LEARN --> BJ["<b>Counter::find_backtrack_level_of_learnt()</b><br/><b>Counter::go_back_to()</b>"]
+  MIN --> LEARN["<code>Counter::add_uip_confl_cl()</code><br/>attach, compute LBD, store"]
+  LEARN --> BJ["<code>Counter::find_backtrack_level_of_learnt()</code><br/><code>Counter::go_back_to()</code>"]
   BJ --> R1(["asserting literal set →<br/>propagate again"])
   BJ --> R2(["backtrack — ascend"])
   ZERO --> POLL["invalidate cached counts<br/>below the backjump point"]
 
-  MAINT["periodic maintenance:<br/><b>Counter::vivify_all()</b> · <b>Counter::subsume_all()</b><br/><b>Counter::reduce_db()</b> on the learnt clauses"]
+  MAINT["periodic maintenance:<br/><code>Counter::vivify_all()</code> · <code>Counter::subsume_all()</code><br/><code>Counter::reduce_db()</code> on the learnt clauses"]
   LEARN -.-> MAINT
 
   classDef search fill:#e8f0fe,stroke:#2563eb,color:#12233f
@@ -140,30 +144,30 @@ never searched again.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-  A{"<b>CompManager::<br/>find_next_remain_comp_of()</b>"}
-  A -->|"stack empty here —<br/>need to split"| B["<b>CompAnalyzer::explore_comp()</b><br/>BFS over watches and clauses<br/>→ connected components"]
-  B --> C["<b>CompAnalyzer::make_comp_from_archetype()</b><br/>pack vars + clause ids<br/>into a <b>CacheableComp</b> key"]
-  C --> D{"cache lookup<br/><b>CompCache::<br/>find_comp_and_incorporate_cnt()</b>"}
+  A{"<code>CompManager::<br/>find_next_remain_comp_of()</code>"}
+  A -->|"stack empty here —<br/>need to split"| B["<code>CompAnalyzer::explore_comp()</code><br/>BFS over watches and clauses<br/>→ connected components"]
+  B --> C["<code>CompAnalyzer::make_comp_from_archetype()</code><br/>pack vars + clause ids<br/>into a <code>CacheableComp</code> key"]
+  C --> D{"cache lookup<br/><code>CompCache::<br/>find_comp_and_incorporate_cnt()</code>"}
 
-  D -->|"HIT"| E["<b>StackLevel::include_solution()</b><br/>multiply into the active branch —<br/>never searched again"]
+  D -->|"HIT"| E["<code>StackLevel::include_solution()</code><br/>multiply into the active branch —<br/>never searched again"]
   D -->|"MISS"| F["push the component<br/>onto the component stack"]
   E --> G["sort: biggest component last"]
   F --> G
   G --> A
 
   A -->|"a component remains"| H(["descend — see section 2"])
-  A -->|"none remain,<br/>branch satisfied"| I["<b>StackLevel::include_one_sol()</b><br/>branch := 1"]
+  A -->|"none remain,<br/>branch satisfied"| I["<code>StackLevel::include_one_sol()</code><br/>branch := 1"]
 
   I --> J
   H -.->|"branch exhausted"| J
 
-  J["<b>Counter::backtrack()</b>"] --> K["<b>StackLevel::total_model_count()</b><br/>branch[0] + branch[1]"]
-  K --> L["<b>CompCache::store_value()</b> into the cache<br/>keyed on this level's component"]
-  L --> M["parent <b>StackLevel::include_solution()</b><br/>← sibling components MULTIPLY"]
+  J["<code>Counter::backtrack()</code>"] --> K["<code>StackLevel::total_model_count()</code><br/>branch[0] + branch[1]"]
+  K --> L["<code>CompCache::store_value()</code> into the cache<br/>keyed on this level's component"]
+  L --> M["parent <code>StackLevel::include_solution()</code><br/>← sibling components MULTIPLY"]
   M --> N["pop the level,<br/>advance to the next component"]
   N --> A
 
-  W["<b>Counter::unset_lit()</b>: multiply in a variable's<br/>weight when it leaves the component"]
+  W["<code>Counter::unset_lit()</code>: multiply in a variable's<br/>weight when it leaves the component"]
   W -.-> K
 
   classDef decomp fill:#f3ebfd,stroke:#7c3aed,color:#2b1250
@@ -191,15 +195,15 @@ and <code>×</code> above; the engine never knows which.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart LR
-  A["<b>Component</b><br/>active vars + clause ids"] --> B["<b>CacheableComp</b>&lt;T&gt;<br/>packed representation"]
-  B --> B1["<b>HashedComp</b><br/>probabilistic"]
-  B --> B2["<b>DiffPackedComp</b><br/>exact, difference-packed"]
+  A["<code>Component</code><br/>active vars + clause ids"] --> B["<code>CacheableComp&lt;T&gt;</code><br/>packed representation"]
+  B --> B1["<code>HashedComp</code><br/>probabilistic"]
+  B --> B2["<code>DiffPackedComp</code><br/>exact, difference-packed"]
   B1 --> H
   B2 --> H
-  H["<b>MurmurHash3</b> → bucket,<br/>linear collision chain,<br/>equals() confirms match"]
-  H --> E["<b>CacheEntry</b><br/>model_count · timestamp"]
-  E --> R["<b>evicted</b>: delete_some_entries()<br/>"]
-  E --> D["<b>invalidated</b>: clean_pollutions_involving()<br/>walks descendants on backjump"]
+  H["<code>MurmurHash3</code> → bucket,<br/>linear collision chain,<br/><code>equals()</code> confirms match"]
+  H --> E["<code>CacheEntry</code><br/><code>model_count</code> · <code>timestamp</code>"]
+  E --> R["evicted: <code>delete_some_entries()</code>"]
+  E --> D["invalidated: <code>clean_pollutions_involving()</code><br/>walks descendants on backjump"]
 
   classDef c fill:#fff4e5,stroke:#d97706,color:#432b06
   classDef p fill:#f3ebfd,stroke:#7c3aed,color:#2b1250

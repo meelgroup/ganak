@@ -201,7 +201,7 @@ flowchart LR
   B1 --> H
   B2 --> H
   H["<code>MurmurHash3</code> → bucket,<br/>linear collision chain,<br/><code>equals()</code> confirms match"]
-  H --> E["<code>CacheEntry</code><br/><code>model_count</code> · <code>timestamp</code>"]
+  H --> E["the entry <code>CacheableComp&lt;T&gt;</code><br/>with model count & score"]
   E --> R["evicted: <code>delete_some_entries()</code>"]
   E --> D["invalidated: <code>clean_pollutions_involving()</code><br/>walks descendants on backjump"]
 
@@ -214,7 +214,7 @@ flowchart LR
 
 <table>
   <tr><th>Aspect</th><th>Detail</th></tr>
-  <tr><td>Key</td><td>The packed set of still-active variables and clause ids of the component, hashed with MurmurHash3 under a per-run random seed.</td></tr>
+  <tr><td>Key</td><td>The packed set of still-active variables and clause ids of the component, hashed with MurmurHash3 (128-bit; the low word picks the bucket, the high word discriminates collisions)</td></tr>
   <tr><td>Hit</td><td>Count is folded <em>immediately</em> into the current branch via <code>include_solution</code>; the component is never pushed on the stack.</td></tr>
   <tr><td>Miss</td><td>Entry is created but not yet inserted into the hash table — only entries that actually have a count get inserted.</td></tr>
   <tr><td>Store</td><td>In <code>backtrack()</code>, after <em>both</em> branches of the level are done and before the level is popped. For weighted counting the value is first normalised by the weights of component variables assigned at lower levels, so the entry is level-independent.</td></tr>

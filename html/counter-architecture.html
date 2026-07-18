@@ -57,10 +57,10 @@ zooms into the two shaded boxes.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-  START(["count_loop()"]) --> FIND{"any component left<br/>to process at this level?"}
+  START(["<b>Counter::count_loop()</b>"]) --> FIND{"any component left<br/>to process at this level?"}
 
   FIND -->|"yes"| DESC["<b>DESCEND</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
-  FIND -->|"no — all done here"| ASC["<b>ASCEND</b><br/>backtrack(): combine the two branches,<br/>store in cache, fold into the parent"]
+  FIND -->|"no — all done here"| ASC["<b>ASCEND</b><br/><b>Counter::backtrack()</b>: combine the two branches,<br/>store in cache, fold into the parent"]
 
   DESC --> CONFL{"conflict?"}
   CONFL -->|"no"| FIND
@@ -91,30 +91,30 @@ it kills.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-  IN(["a component was selected"]) --> DECIDE["decide_lit()<br/>push a new StackLevel"]
-  DECIDE --> SCORE["find_best_branch → score_of(v)<br/>over vars of this component only:<br/>td_weight · tree-decomposition score<br/>+ VSIDS activity<br/>+ frequency in the component"]
-  SCORE --> POLAR["get_polarity(v)<br/>activity-based / cached / forced"]
+  IN(["a component was selected"]) --> DECIDE["<b>Counter::decide_lit()</b><br/>push a new <b>StackLevel</b>"]
+  DECIDE --> SCORE["<b>Counter::find_best_branch()</b> → <b>Counter::score_of(v)</b><br/>over vars of this component:<br/>td_weight+ VSIDS+ frequency in the component"]
+  SCORE --> POLAR["<b>Counter::get_polarity(v)</b><br/>activity-based, if equal, cached "]
   POLAR --> SATQ{"only non-independent<br/>vars left?"}
 
-  SATQ -->|"yes"| SAT["run_sat_solver()<br/>plain CDCL — existence is enough,<br/>no need to enumerate"]
+  SATQ -->|"yes"| SAT["<b>Counter::run_sat_solver()</b><br/>plain CDCL — existence is enough,<br/>no need to enumerate"]
   SAT --> OUT2(["fold result into the branch"])
 
-  SATQ -->|"no"| PROP{"propagate()<br/>two-watch BCP"}
+  SATQ -->|"no"| PROP{"<b>Counter::propagate()</b><br/>two-watch BCP"}
   PROP -->|"no conflict"| OUT(["back to component selection"])
-  PROP -->|"CONFLICT"| CHRONO{"chrono_check()<br/>only one literal from<br/>the top level?"}
+  PROP -->|"CONFLICT"| CHRONO{"<b>Counter::chrono_check()</b><br/>only one literal from<br/>the top level?"}
   CHRONO -->|"yes"| BACKONE["chronological backtrack<br/>one level"] --> PROP
 
-  CHRONO -->|"no"| RESOLVE["resolve_conflict()"]
-  RESOLVE --> ZERO["zero_out_branch_sol()<br/>this branch counts 0"]
-  RESOLVE --> UIP["create_uip_cl()<br/>walk the trail back to the 1-UIP,<br/>bump activities"]
+  CHRONO -->|"no"| RESOLVE["<b>Counter::resolve_conflict()</b>"]
+  RESOLVE --> ZERO["<b>StackLevel::zero_out_branch_sol()</b><br/>this branch counts 0"]
+  RESOLVE --> UIP["<b>Counter::create_uip_cl()</b><br/>walk the trail back to the 1-UIP,<br/>bump activities"]
   UIP --> MIN["minimize: clause shrinking,<br/>recursive self-subsumption,<br/>binary-clause minimization"]
-  MIN --> LEARN["add_uip_confl_cl()<br/>attach, compute LBD, store"]
-  LEARN --> BJ["find_backtrack_level_of_learnt()<br/>go_back_to(...)"]
+  MIN --> LEARN["<b>Counter::add_uip_confl_cl()</b><br/>attach, compute LBD, store"]
+  LEARN --> BJ["<b>Counter::find_backtrack_level_of_learnt()</b><br/><b>Counter::go_back_to()</b>"]
   BJ --> R1(["asserting literal set →<br/>propagate again"])
   BJ --> R2(["backtrack — ascend"])
   ZERO --> POLL["invalidate cached counts<br/>below the backjump point"]
 
-  MAINT["periodic maintenance:<br/>vivify_all() · subsume_all()<br/>reduce_db() on the learnt clauses"]
+  MAINT["periodic maintenance:<br/><b>Counter::vivify_all()</b> · <b>Counter::subsume_all()</b><br/><b>Counter::reduce_db()</b> on the learnt clauses"]
   LEARN -.-> MAINT
 
   classDef search fill:#e8f0fe,stroke:#2563eb,color:#12233f
@@ -140,30 +140,30 @@ never searched again.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-  A{"find_next_remain_comp_of<br/>(decisions.top())"}
-  A -->|"stack empty here —<br/>need to split"| B["CompAnalyzer::explore_comp()<br/>BFS over watches and clauses<br/>→ connected components"]
-  B --> C["make_comp_from_archetype()<br/>pack vars + clause ids<br/>into a CacheableComp key"]
-  C --> D{"cache lookup<br/>find_comp_and_incorporate_cnt"}
+  A{"<b>CompManager::<br/>find_next_remain_comp_of()</b>"}
+  A -->|"stack empty here —<br/>need to split"| B["<b>CompAnalyzer::explore_comp()</b><br/>BFS over watches and clauses<br/>→ connected components"]
+  B --> C["<b>CompAnalyzer::make_comp_from_archetype()</b><br/>pack vars + clause ids<br/>into a <b>CacheableComp</b> key"]
+  C --> D{"cache lookup<br/><b>CompCache::<br/>find_comp_and_incorporate_cnt()</b>"}
 
-  D -->|"HIT"| E["include_solution(cached)<br/>multiply into the active branch —<br/>never searched again"]
+  D -->|"HIT"| E["<b>StackLevel::include_solution()</b><br/>multiply into the active branch —<br/>never searched again"]
   D -->|"MISS"| F["push the component<br/>onto the component stack"]
   E --> G["sort: biggest component last"]
   F --> G
   G --> A
 
   A -->|"a component remains"| H(["descend — see section 2"])
-  A -->|"none remain,<br/>branch satisfied"| I["include_one_sol()<br/>branch := 1"]
+  A -->|"none remain,<br/>branch satisfied"| I["<b>StackLevel::include_one_sol()</b><br/>branch := 1"]
 
   I --> J
   H -.->|"branch exhausted"| J
 
-  J["<b>backtrack()</b>"] --> K["total_model_count()<br/>branch[0] + branch[1]"]
-  K --> L["store_value() into the cache<br/>keyed on this level's component"]
-  L --> M["parent.include_solution(total)<br/>← sibling components MULTIPLY"]
+  J["<b>Counter::backtrack()</b>"] --> K["<b>StackLevel::total_model_count()</b><br/>branch[0] + branch[1]"]
+  K --> L["<b>CompCache::store_value()</b> into the cache<br/>keyed on this level's component"]
+  L --> M["parent <b>StackLevel::include_solution()</b><br/>← sibling components MULTIPLY"]
   M --> N["pop the level,<br/>advance to the next component"]
   N --> A
 
-  W["unset_lit(): multiply in a variable's<br/>weight when it leaves the component"]
+  W["<b>Counter::unset_lit()</b>: multiply in a variable's<br/>weight when it leaves the component"]
   W -.-> K
 
   classDef decomp fill:#f3ebfd,stroke:#7c3aed,color:#2b1250

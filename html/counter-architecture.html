@@ -50,23 +50,20 @@
 </head>
 <body>
 
-<h1>Ganak — the <code>Counter</code></h1>
-<p class="sub">Anatomy of <code>count_loop()</code> — the search, the component decomposition, the cache,
-and the count arithmetic. Everything above it is deliberately left out.</p>
+<h1>Ganak's<code>Counter</code> class, i.e. the heavy-lifting that does the actual counting</h1>
 
-<h2>1. The main loop — the skeleton</h2>
-<p>Everything below is <code>count_loop()</code>. Stripped to its bones it is a two-part cycle: descend
+<h2>1. The main loop</h2>
+<p>Below is <code>count_loop()</code>. Stripped to its bones it is a two-part cycle: descend
 by carving the formula into independent components and deciding a variable in one of them, then ascend
-by adding and multiplying sub-counts back up the stack. Conflicts short-circuit the descent; the rest of the page
-zooms into the two shaded boxes.</p>
+by adding and multiplying sub-counts back up the stack. Conflicts short-circuit the descent</p>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
   START(["<code>Counter::count_loop()</code>"]) --> FIND{"Any component left<br/>to process at this level?"}
 
-  FIND -->|"yes"| DESC["<b>Descend</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
-  FIND -->|"no — all done here"| ASC["<b>Ascend</b><br/><code>Counter::backtrack()</code>: add up the two branches,<br/>cache the result, multiply it into the parent"]
+  FIND -->|"yes"| DESC["<b>Descend (see Flowchart below)</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
+  FIND -->|"no — all done here"| ASC["<b>Ascend (see flowchart below)</b><br/><code>Counter::backtrack()</code>: add up the two branches,<br/>cache the result, multiply it into the parent"]
 
   DESC --> CONFL{"conflict?"}
   CONFL -->|"no"| FIND
@@ -88,7 +85,7 @@ flowchart TD
 
 <h2>2. Descending — decide, propagate, analyse conflicts</h2>
 <p>This is the CDCL half, and it is close to a normal SAT solver: pick a variable, propagate, and on a
-conflict learn a 1-UIP clause and backjump. The counting-specific parts are that the branch variable is
+conflict learn a 1-UIP clause and backjump. The counting-specific parts are that the branch variables are
 picked only from the <em>current component</em>, and that a conflict zeroes out the count of the branch
 it kills.</p>
 
@@ -202,22 +199,8 @@ flowchart LR
   <tr><td>Key</td><td>The packed set of still-active variables and clause ids of the component, hashed with MurmurHash3 (128-bit; the low word picks the bucket, the high word discriminates collisions)</td></tr>
   <tr><td>Hit</td><td>Count is folded <em>immediately</em> into the current branch via <code>include_solution</code>; the component is never pushed on the stack.</td></tr>
   <tr><td>Miss</td><td>Entry is created but not yet inserted into the hash table — only entries that actually have a count get inserted.</td></tr>
-  <tr><td>Store</td><td>In <code>backtrack()</code>, after <em>both</em> branches of the level are done and before the level is popped. For weighted counting the value is first normalised by the weights of component variables assigned at lower levels, so the entry is level-independent.</td></tr>
-  <tr><td>Invalidate</td><td>On backjump or a flipped decision literal, every descendant entry of the popped level is purged — those counts were computed under an assignment that no longer holds.</td></tr>
-  <tr><td>Disable</td><td><code>--cache 0</code>. Required when debugging wrong counts with <code>CHECK_COUNT</code>.</td></tr>
-</table>
-
-<h2>5. Reading the code</h2>
-<table>
-  <tr><th>Concept</th><th>Where</th></tr>
-  <tr><td>Main state machine</td><td><code>Counter::count_loop()</code> — <code>RetState</code> in <code>counter.hpp</code></td></tr>
-  <tr><td>Decisions</td><td><code>decide_lit()</code>, <code>find_best_branch()</code>, <code>score_of()</code></td></tr>
-  <tr><td>BCP</td><td><code>propagate()</code> over <code>LitWatchList</code></td></tr>
-  <tr><td>Conflict analysis</td><td><code>resolve_conflict()</code>, <code>create_uip_cl()</code>, <code>minimize_uip_cl()</code></td></tr>
-  <tr><td>Backtrack + count fold-up</td><td><code>backtrack()</code>, <code>go_back_to()</code></td></tr>
-  <tr><td>Components</td><td><code>CompManager::find_next_remain_comp_of()</code>, <code>record_remaining_comps_for()</code>, <code>CompAnalyzer::explore_comp()</code></td></tr>
-  <tr><td>Count arithmetic</td><td><code>StackLevel</code> in <code>stack.hpp</code>: <code>include_solution</code>, <code>include_one_sol</code>, <code>total_model_count</code></td></tr>
-  <tr><td>Cache</td><td><code>CompCache&lt;T&gt;</code> in <code>comp_cache.hpp</code></td></tr>
+  <tr><td>Store</td><td>In <code>backtrack()</code>, after <em>both</em> branches of the level are done and before the level is popped. </td></tr>
+  <tr><td>Invalidate</td><td>On backjump or a flipped decision literal, every descendant entry of the popped level is purged.</td></tr>
 </table>
 
 <hr>

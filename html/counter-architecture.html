@@ -50,12 +50,11 @@
 </head>
 <body>
 
-<h1>Ganak's<code>Counter</code> class, i.e. the heavy-lifting that does the actual counting</h1>
-
 <h2>1. The main loop</h2>
 <p>Below is <code>count_loop()</code>. Stripped to its bones it is a two-part cycle: descend
-by carving the formula into independent components and deciding a variable in one of them, then ascend
-by adding and multiplying sub-counts back up the stack. Conflicts short-circuit the descent</p>
+by cutting the formula into independent components and deciding a variable in one of them, then ascend
+by adding and multiplying sub-counts back up the stack. Conflicts short-circuit the descent. We
+count on ascending, because it's a LOT cheaper (e.g. we don't have to count if there is a conflict!)</p>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -83,11 +82,12 @@ flowchart TD
 </pre>
 </div>
 
-<h2>2. Descending — decide, propagate, analyse conflicts</h2>
-<p>This is the CDCL half, and it is close to a normal SAT solver: pick a variable, propagate, and on a
-conflict learn a 1-UIP clause and backjump. The counting-specific parts are that the branch variables are
-picked only from the <em>current component</em>, and that a conflict zeroes out the count of the branch
-it kills.</p>
+<h2>2. Descending: decide, propagate, analyse conflicts</h2>
+<p>This is the "CDCL" part of the counter, and it is very close to a normal SAT solver:
+we pick a variable, recursively propagate it, and on a conflict learn a 1-UIP
+clause and do chronological backtracking. The counting-specific parts are that the branch variables
+are picked only from the <em>current component</em>, and that a conflict zeroes
+out the count of the branch(es) it's on.</p>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -130,10 +130,10 @@ flowchart TD
 </pre>
 </div>
 
-<h2>3. Ascending — components, cache, and the count arithmetic</h2>
-<p>The counting half, and what makes this a model counter rather than a SAT solver. Two rules govern
-everything: <strong>independent components multiply, the two polarities of a decision variable add.</strong>
-The cache is what makes it fast — a component whose count is already known is folded straight in and
+<h2>3. Ascending: components, cache, and the count arithmetic</h2>
+<p>The counting part, i.e. what makes this a model counter rather than a SAT solver. Two main rules:
+<strong>independent components multiply, the two polarities of a decision variable add.</strong>
+The cache is what makes it fast -- a component whose count is already known is folded straight in and
 never searched again.</p>
 
 <div class="diagram">

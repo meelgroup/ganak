@@ -77,12 +77,10 @@ flowchart TD
   EMPTY -->|"no"| FIND
   EMPTY -->|"yes"| DONE(["EXIT — total count"])
 
-  classDef big  fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b,font-size:14px
-  classDef dec  fill:#fff4e5,stroke:#d97706,color:#432b06
-  classDef proc fill:#e8f0fe,stroke:#2563eb,color:#12233f
+  classDef big  fill:#ffffff,stroke:#0e7490,color:#06333d,font-size:14px
+  classDef proc fill:#fdecea,stroke:#dc2626,color:#4a1010
   classDef term fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
   class DESC,ASC big
-  class FIND,CONFL,EMPTY dec
   class ANA proc
   class DONE,START term
 </pre>
@@ -123,13 +121,11 @@ flowchart TD
   MAINT["periodic maintenance:<br/><code>Counter::vivify_all()</code> · <code>Counter::subsume_all()</code><br/><code>Counter::reduce_db()</code> on the learnt clauses"]
   LEARN -.-> MAINT
 
-  classDef search fill:#e8f0fe,stroke:#2563eb,color:#12233f
-  classDef dec    fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef search fill:#fdecea,stroke:#dc2626,color:#4a1010
   classDef math   fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
   classDef cache  fill:#fff4e5,stroke:#d97706,color:#432b06
   classDef ghost  fill:#f0f0f0,stroke:#999999,color:#333333
   class DECIDE,SCORE,POLAR,SAT,RESOLVE,UIP,MIN,LEARN,BJ,BACKONE search
-  class SATQ,PROP,CHRONO dec
   class ZERO math
   class POLL cache
   class MAINT ghost
@@ -186,7 +182,7 @@ value produced by the <code>FieldGen fg</code>. Integers, rationals, complex rat
 floats, GF(2) parity, and polynomials over a finite field all flow through the exact same <code>+</code>
 and <code>×</code> above; the engine never knows which.</p>
 <h2>4. The cache in a bit more detail</h2>
-<div class="diagram">
+<div class="diagram nolegend">
 <pre class="mermaid">
 flowchart LR
   A["<code>Component</code><br/>active vars + clause ids"] --> B["<code>CacheableComp&lt;T&gt;</code><br/>packed representation"]
@@ -198,11 +194,6 @@ flowchart LR
   H --> E["the entry <code>CacheableComp&lt;T&gt;</code><br/>with model count & score"]
   E --> R["evicted: <code>delete_some_entries()</code>"]
   E --> D["invalidated: <code>clean_pollutions_involving()</code><br/>walks descendants on backjump"]
-
-  classDef c fill:#fff4e5,stroke:#d97706,color:#432b06
-  classDef p fill:#f3ebfd,stroke:#7c3aed,color:#2b1250
-  class A,B,B1,B2 p
-  class H,E,R,D c
 </pre>
 </div>
 
@@ -235,8 +226,8 @@ flowchart LR
      by the script below. Edit this block only; do not paste copies. -->
 <template id="legend-tpl">
   <div class="legend">
-    <span><i class="swatch" style="background:#eef2ff;border-color:#4f46e5"></i>Headline stage — descend / ascend</span>
-    <span><i class="swatch" style="background:#e8f0fe;border-color:#2563eb"></i>Search — decide, BCP, conflict analysis</span>
+    <span><i class="swatch" style="background:#ffffff;border-color:#0e7490"></i>Main loop phase — descend / ascend</span>
+    <span><i class="swatch" style="background:#fdecea;border-color:#dc2626"></i>Search — decide, BCP, conflict analysis</span>
     <span><i class="swatch" style="background:#f3ebfd;border-color:#7c3aed"></i>Decomposition — connected components</span>
     <span><i class="swatch" style="background:#fff4e5;border-color:#d97706"></i>Cache — lookup, store, invalidate</span>
     <span><i class="swatch" style="background:#e9f7ef;border-color:#16a34a"></i>Count arithmetic over the Field</span>
@@ -247,7 +238,7 @@ flowchart LR
 
 <script>
   const legendTpl = document.getElementById('legend-tpl');
-  for (const d of document.querySelectorAll('.diagram'))
+  for (const d of document.querySelectorAll('.diagram:not(.nolegend)'))
     d.append(legendTpl.content.cloneNode(true));
 </script>
 

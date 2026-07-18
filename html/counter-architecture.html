@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ganak — Counter architecture</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1b1f24; --muted: #5b6570; --rule: #e2e6ea;
+    --card: #f7f9fb; --accent: #2563eb;
+  }
+  html { background: var(--bg); color-scheme: light; }
+  body {
+    margin: 0 auto; padding: 2.5rem 1.5rem 6rem; max-width: 1180px;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 .3rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.25rem; margin: 3rem 0 .4rem; letter-spacing: -.01em; }
+  h3 { font-size: 1rem; margin: 1.8rem 0 .4rem; }
+  .sub { color: var(--muted); margin: 0 0 2rem; }
+  p { margin: .5rem 0 1rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em;
+         background: var(--card); padding: .12em .38em; border-radius: 4px; }
+  .diagram {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 1.2rem; margin: 1rem 0 1.5rem; overflow-x: auto;
+  }
+  .diagram .mermaid { text-align: center; min-width: 0; }
+  .diagram .mermaid code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 400; font-size: .93em; background: none; padding: 0;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule);
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .82rem;
+       text-transform: uppercase; letter-spacing: .04em; }
+  td:first-child { white-space: nowrap; }
+  .legend { display: flex; flex-direction: column; gap: .45rem; margin: 1.1rem 0 0;
+            padding-top: .9rem; border-top: 1px solid var(--rule);
+            font-size: 1rem; color: var(--fg); }
+  .legend span { display: flex; align-items: center; gap: .55rem; }
+  .swatch { display: inline-block; width: 1.05rem; height: 1.05rem; border-radius: 3px;
+            border: 1px solid var(--rule); flex: none; }
+  .legend .shape { margin-top: .15rem; padding-left: 1.6rem; font-size: .95rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 3rem 0 0; }
+  .note { border-left: 3px solid var(--accent); padding-left: .9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Ganak's<code>Counter</code> class, i.e. the heavy-lifting that does the actual counting</h1>
+
+<h2>1. The main loop</h2>
+<p>Below is <code>count_loop()</code>. Stripped to its bones it is a two-part cycle: descend
+by carving the formula into independent components and deciding a variable in one of them, then ascend
+by adding and multiplying sub-counts back up the stack. Conflicts short-circuit the descent</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  START(["<code>Counter::count_loop()</code>"]) --> FIND{"Any component left<br/>to process at this level?"}
+
+  FIND -->|"yes"| DESC["<b>Descend (see Flowchart below)</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
+  FIND -->|"no — all done here"| ASC["<b>Ascend (see flowchart below)</b><br/><code>Counter::backtrack()</code>: add up the two branches,<br/>cache the result, multiply it into the parent"]
+
+  DESC --> CONFL{"conflict?"}
+  CONFL -->|"no"| FIND
+  CONFL -->|"yes"| ANA["conflict analysis:<br/>learn a clause, backjump"]
+  ANA --> ASC
+
+  ASC --> EMPTY{"decision stack empty?"}
+  EMPTY -->|"no"| FIND
+  EMPTY -->|"yes"| DONE(["EXIT — total count"])
+
+  classDef big  fill:#ffffff,stroke:#0e7490,color:#06333d,font-size:14px
+  classDef proc fill:#fdecea,stroke:#dc2626,color:#4a1010
+  classDef term fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
+  class DESC,ASC big
+  class ANA proc
+  class DONE,START term
+</pre>
+</div>
+
+<h2>2. Descending — decide, propagate, analyse conflicts</h2>
+<p>This is the CDCL half, and it is close to a normal SAT solver: pick a variable, propagate, and on a
+conflict learn a 1-UIP clause and backjump. The counting-specific parts are that the branch variables are
+picked only from the <em>current component</em>, and that a conflict zeroes out the count of the branch
+it kills.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  IN(["a component was selected"]) --> DECIDE["<code>Counter::decide_lit()</code><br/>push a new <code>StackLevel</code>"]
+  DECIDE --> SCORE["<code>Counter::find_best_branch()</code> → <code>Counter::score_of(v)</code><br/>over vars of this component:<br/>td_weight+ VSIDS+ frequency in the component"]
+  SCORE --> POLAR["<code>Counter::get_polarity(v)</code><br/>activity-based, if equal, cached "]
+  POLAR --> SATQ{"only non-independent<br/>vars left?"}
+
+  SATQ -->|"yes"| SAT["<code>Counter::run_sat_solver()</code><br/>plain CDCL — existence is enough,<br/>no need to enumerate"]
+  SAT --> OUT2(["fold result into the branch"])
+
+  SATQ -->|"no"| PROP{"<code>Counter::propagate()</code><br/>two-watch BCP"}
+  PROP -->|"no conflict"| OUT(["back to component selection"])
+  PROP -->|"CONFLICT"| CHRONO{"<code>Counter::chrono_check()</code><br/>only one literal from<br/>the top level?"}
+  CHRONO -->|"yes"| BACKONE["chronological backtrack<br/>one level"] --> PROP
+
+  CHRONO -->|"no"| RESOLVE["<code>Counter::resolve_conflict()</code>"]
+  RESOLVE --> ZERO["<code>StackLevel::zero_out_branch_sol()</code><br/>this branch counts 0"]
+  RESOLVE --> UIP["<code>Counter::create_uip_cl()</code><br/>walk the trail back to the 1-UIP,<br/>bump activities"]
+  UIP --> MIN["minimize: clause shrinking,<br/>recursive self-subsumption,<br/>binary-clause minimization"]
+  MIN --> LEARN["<code>Counter::add_uip_confl_cl()</code><br/>attach, compute LBD, store"]
+  LEARN --> BJ["<code>Counter::find_backtrack_level_of_learnt()</code><br/><code>Counter::go_back_to()</code>"]
+  BJ --> R1(["asserting literal set →<br/>propagate again"])
+  BJ --> R2(["backtrack — ascend"])
+  ZERO --> POLL["invalidate cached counts<br/>below the backjump point"]
+
+  MAINT["periodic maintenance:<br/><code>Counter::vivify_all()</code> · <code>Counter::subsume_all()</code><br/><code>Counter::reduce_db()</code> on the learnt clauses"]
+  LEARN -.-> MAINT
+
+  classDef search fill:#fdecea,stroke:#dc2626,color:#4a1010
+  classDef math   fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
+  classDef cache  fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef ghost  fill:#f0f0f0,stroke:#999999,color:#333333
+  class DECIDE,SCORE,POLAR,SAT,RESOLVE,UIP,MIN,LEARN,BJ,BACKONE search
+  class ZERO math
+  class POLL cache
+  class MAINT ghost
+  class IN,OUT,OUT2,R1,R2 math
+</pre>
+</div>
+
+<h2>3. Ascending — components, cache, and the count arithmetic</h2>
+<p>The counting half, and what makes this a model counter rather than a SAT solver. Two rules govern
+everything: <strong>independent components multiply, the two polarities of a decision variable add.</strong>
+The cache is what makes it fast — a component whose count is already known is folded straight in and
+never searched again.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A{"<code>CompManager::<br/>find_next_remain_comp_of()</code>"}
+  A -->|"stack empty here —<br/>need to split"| B["<code>CompAnalyzer::explore_comp()</code><br/>BFS over watches and clauses<br/>→ connected components"]
+  B --> C["<code>CompAnalyzer::make_comp_from_archetype()</code><br/>pack vars + clause ids<br/>into a <code>CacheableComp</code> key"]
+  C --> D{"cache lookup<br/><code>CompCache::<br/>find_comp_and_incorporate_cnt()</code>"}
+
+  D -->|"HIT"| E["<code>StackLevel::include_solution()</code><br/>multiply into the active branch —<br/>never searched again"]
+  D -->|"MISS"| F["push the component<br/>onto the component stack"]
+  E --> G["sort: biggest component last"]
+  F --> G
+  G --> A
+
+  A -->|"a component remains"| H(["descend — see section 2"])
+  A -->|"none remain,<br/>branch satisfied"| I["<code>StackLevel::include_one_sol()</code><br/>branch := 1"]
+
+  I --> J
+  H -.->|"branch exhausted"| J
+
+  J["<code>Counter::backtrack()</code>"] --> K["<code>StackLevel::total_model_count()</code><br/>branch[0] + branch[1]"]
+  K --> L["<code>CompCache::store_value()</code> into the cache<br/>keyed on this level's component"]
+  L --> M["parent <code>StackLevel::include_solution()</code><br/>← sibling components MULTIPLY"]
+  M --> N["pop the level,<br/>advance to the next component"]
+  N --> A
+
+  W["<code>Counter::unset_lit()</code>: multiply in a variable's<br/>weight when it leaves the component"]
+  W -.-> K
+
+  classDef decomp fill:#f3ebfd,stroke:#7c3aed,color:#2b1250
+  classDef cache  fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef math   fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
+  class A,B,C,F,G decomp
+  class D,E,L cache
+  class I,J,K,M,N,W,H math
+</pre>
+</div>
+
+<p class="note" style="margin-top:1.5rem">Every count is an <code>FF</code> — a <code>CMSat::Field</code>
+value produced by the <code>FieldGen fg</code>. Integers, rationals, complex rationals, MPFR complex
+floats, GF(2) parity, and polynomials over a finite field all flow through the exact same <code>+</code>
+and <code>×</code> above; the engine never knows which.</p>
+<h2>4. The cache in a bit more detail</h2>
+<div class="diagram nolegend">
+<pre class="mermaid">
+flowchart LR
+  A["<code>Component</code><br/>active vars + clause ids"] --> B["<code>CacheableComp&lt;T&gt;</code><br/>packed representation"]
+  B --> B1["<code>HashedComp</code><br/>probabilistic"]
+  B --> B2["<code>DiffPackedComp</code><br/>exact, difference-packed"]
+  B1 --> H
+  B2 --> H
+  H["<code>MurmurHash3</code> → bucket,<br/>linear collision chain,<br/><code>equals()</code> confirms match"]
+  H --> E["the entry <code>CacheableComp&lt;T&gt;</code><br/>with model count & score"]
+  E --> R["evicted: <code>delete_some_entries()</code>"]
+  E --> D["invalidated: <code>clean_pollutions_involving()</code><br/>walks descendants on backjump"]
+</pre>
+</div>
+
+<table>
+  <tr><th>Aspect</th><th>Detail</th></tr>
+  <tr><td>Key</td><td>The packed set of still-active variables and clause ids of the component, hashed with MurmurHash3 (128-bit; the low word picks the bucket, the high word discriminates collisions)</td></tr>
+  <tr><td>Hit</td><td>Count is folded <em>immediately</em> into the current branch via <code>include_solution</code>; the component is never pushed on the stack.</td></tr>
+  <tr><td>Miss</td><td>Entry is created but not yet inserted into the hash table — only entries that actually have a count get inserted.</td></tr>
+  <tr><td>Store</td><td>In <code>backtrack()</code>, after <em>both</em> branches of the level are done and before the level is popped. </td></tr>
+  <tr><td>Invalidate</td><td>On backjump or a flipped decision literal, every descendant entry of the popped level is purged.</td></tr>
+</table>
+
+<hr>
+
+<!-- The legend is authored ONCE here and cloned into the bottom of every .diagram
+     by the script below. Edit this block only; do not paste copies. -->
+<template id="legend-tpl">
+  <div class="legend">
+    <span><i class="swatch" style="background:#ffffff;border-color:#0e7490"></i>Main loop phase — descend / ascend</span>
+    <span><i class="swatch" style="background:#fdecea;border-color:#dc2626"></i>Search — decide, BCP, conflict analysis</span>
+    <span><i class="swatch" style="background:#f3ebfd;border-color:#7c3aed"></i>Decomposition — connected components</span>
+    <span><i class="swatch" style="background:#fff4e5;border-color:#d97706"></i>Cache — lookup, store, invalidate</span>
+    <span><i class="swatch" style="background:#e9f7ef;border-color:#16a34a"></i>Count arithmetic over the Field</span>
+    <span><i class="swatch" style="background:#f0f0f0;border-color:#999"></i>Optional / periodic</span>
+    <span class="shape">Shape is separate from colour: <b>◇</b> a branch point · <b>▭</b> a step · <b>⬭</b> an entry or exit.</span>
+  </div>
+</template>
+
+<script>
+  const legendTpl = document.getElementById('legend-tpl');
+  for (const d of document.querySelectorAll('.diagram:not(.nolegend)'))
+    d.append(legendTpl.content.cloneNode(true));
+</script>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+    flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true }
+  });
+</script>
+</body>
+</html>

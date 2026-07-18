@@ -194,18 +194,17 @@ flowchart LR
   A["Comp<br/>live component:<br/>active vars + clause ids"] --> B["CacheableComp&lt;T&gt;<br/>packed representation"]
   B --> B1["HashedComp<br/>probabilistic"]
   B --> B2["DiffPackedComp<br/>exact, difference-packed"]
-  B1 --> H["MurmurHash3<br/>seeded by hash_seed"]
+  B1 --> H
   B2 --> H
-  H --> K["hashkey &amp; tbl_size_mask"]
-  K --> BK["bucket + linear collision chain<br/>equals() confirms exact match"]
-  BK --> E["CacheEntry:<br/>model_count · timestamp"]
-  E --> R["rehash / delete_some_entries<br/>vs maximum_cache_size_MB"]
-  E --> D["clean_pollutions_involving(id)<br/>walks descendants on backjump"]
+  H["MurmurHash3 → bucket,<br/>linear collision chain,<br/>equals() confirms match"]
+  H --> E["CacheEntry<br/>model_count · timestamp"]
+  E --> R["evicted: delete_some_entries()<br/>"]
+  E --> D["invalidated: clean_pollutions_involving()<br/>walks descendants on backjump"]
 
   classDef c fill:#fff4e5,stroke:#d97706,color:#432b06
   classDef p fill:#f3ebfd,stroke:#7c3aed,color:#2b1250
   class A,B,B1,B2 p
-  class H,K,BK,E,R,D c
+  class H,E,R,D c
 </pre>
 </div>
 

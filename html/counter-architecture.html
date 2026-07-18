@@ -191,15 +191,15 @@ and <code>×</code> above; the engine never knows which.</p>
 <div class="diagram">
 <pre class="mermaid">
 flowchart LR
-  A["Comp<br/>live component:<br/>active vars + clause ids"] --> B["CacheableComp&lt;T&gt;<br/>packed representation"]
-  B --> B1["HashedComp<br/>probabilistic"]
-  B --> B2["DiffPackedComp<br/>exact, difference-packed"]
+  A["<b>Component</b><br/>active vars + clause ids"] --> B["<b>CacheableComp</b>&lt;T&gt;<br/>packed representation"]
+  B --> B1["<b>HashedComp</b><br/>probabilistic"]
+  B --> B2["<b>DiffPackedComp</b><br/>exact, difference-packed"]
   B1 --> H
   B2 --> H
-  H["MurmurHash3 → bucket,<br/>linear collision chain,<br/>equals() confirms match"]
-  H --> E["CacheEntry<br/>model_count · timestamp"]
-  E --> R["evicted: delete_some_entries()<br/>"]
-  E --> D["invalidated: clean_pollutions_involving()<br/>walks descendants on backjump"]
+  H["<b>MurmurHash3</b> → bucket,<br/>linear collision chain,<br/>equals() confirms match"]
+  H --> E["<b>CacheEntry</b><br/>model_count · timestamp"]
+  E --> R["<b>evicted</b>: delete_some_entries()<br/>"]
+  E --> D["<b>invalidated</b>: clean_pollutions_involving()<br/>walks descendants on backjump"]
 
   classDef c fill:#fff4e5,stroke:#d97706,color:#432b06
   classDef p fill:#f3ebfd,stroke:#7c3aed,color:#2b1250

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ganak — Counter architecture</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1b1f24; --muted: #5b6570; --rule: #e2e6ea;
+    --card: #f7f9fb; --accent: #2563eb;
+  }
+  html { background: var(--bg); color-scheme: light; }
+  body {
+    margin: 0 auto; padding: 2.5rem 1.5rem 6rem; max-width: 1180px;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 .3rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.25rem; margin: 3rem 0 .4rem; letter-spacing: -.01em; }
+  h3 { font-size: 1rem; margin: 1.8rem 0 .4rem; }
+  .sub { color: var(--muted); margin: 0 0 2rem; }
+  p { margin: .5rem 0 1rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em;
+         background: var(--card); padding: .12em .38em; border-radius: 4px; }
+  .diagram {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 1.2rem; margin: 1rem 0 1.5rem; overflow-x: auto;
+  }
+  .diagram .mermaid { text-align: center; min-width: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule);
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .82rem;
+       text-transform: uppercase; letter-spacing: .04em; }
+  td:first-child { white-space: nowrap; }
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin: 1rem 0 0;
+            font-size: .88rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: .4rem; }
+  .swatch { display: inline-block; width: .85rem; height: .85rem; border-radius: 3px;
+            border: 1px solid var(--rule); flex: none; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 3rem 0 0; }
+  .note { border-left: 3px solid var(--accent); padding-left: .9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Ganak — the <code>Counter</code></h1>
+<p class="sub">Anatomy of <code>count_loop()</code> — the search, the component decomposition, the cache,
+and the count arithmetic. Everything above it is deliberately left out.</p>
+
+<h2>1. The main loop — the skeleton</h2>
+<p>Everything below is <code>count_loop()</code>. Stripped to its bones it is a two-part cycle: descend
+by carving the formula into independent components and deciding a variable in one of them, then ascend
+by combining sub-counts back up the stack. Conflicts short-circuit the descent; the rest of the page
+zooms into the two shaded boxes.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  START(["count_loop()"]) --> FIND{"any component left<br/>to process at this level?"}
+
+  FIND -->|"yes"| DESC["<b>DESCEND</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
+  FIND -->|"no — all done here"| ASC["<b>ASCEND</b><br/>backtrack(): combine the two branches,<br/>store in cache, fold into the parent"]
+
+  DESC --> CONFL{"conflict?"}
+  CONFL -->|"no"| FIND
+  CONFL -->|"yes"| ANA["conflict analysis:<br/>learn a clause, backjump"]
+  ANA --> ASC
+
+  ASC --> EMPTY{"decision stack empty?"}
+  EMPTY -->|"no"| FIND
+  EMPTY -->|"yes"| DONE(["EXIT — total count"])
+
+  classDef big  fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b,font-size:14px
+  classDef dec  fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef proc fill:#e8f0fe,stroke:#2563eb,color:#12233f
+  classDef term fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
+  class DESC,ASC big
+  class FIND,CONFL,EMPTY dec
+  class ANA proc
+  class DONE,START term
+</pre>
+</div>
+
+<h2>2. Descending — decide, propagate, analyse conflicts</h2>
+<p>This is the CDCL half, and it is close to a normal SAT solver: pick a variable, propagate, and on a
+conflict learn a 1-UIP clause and backjump. The counting-specific parts are that the branch variable is
+picked only from the <em>current component</em>, and that a conflict zeroes out the count of the branch
+it kills.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  IN(["a component was selected"]) --> DECIDE["decide_lit()<br/>push a new StackLevel"]
+  DECIDE --> SCORE["find_best_branch → score_of(v)<br/>over vars of this component only:<br/>td_weight · tree-decomposition score<br/>+ VSIDS activity<br/>+ frequency in the component"]
+  SCORE --> POLAR["get_polarity(v)<br/>activity-based / cached / forced"]
+  POLAR --> SATQ{"only non-independent<br/>vars left?"}
+
+  SATQ -->|"yes"| SAT["run_sat_solver()<br/>plain CDCL — existence is enough,<br/>no need to enumerate"]
+  SAT --> OUT2(["fold result into the branch"])
+
+  SATQ -->|"no"| PROP{"propagate()<br/>two-watch BCP"}
+  PROP -->|"no conflict"| OUT(["back to component selection"])
+  PROP -->|"CONFLICT"| CHRONO{"chrono_check()<br/>only one literal from<br/>the top level?"}
+  CHRONO -->|"yes"| BACKONE["chronological backtrack<br/>one level"] --> PROP
+
+  CHRONO -->|"no"| RESOLVE["resolve_conflict()"]
+  RESOLVE --> ZERO["zero_out_branch_sol()<br/>this branch counts 0"]
+  RESOLVE --> UIP["create_uip_cl()<br/>walk the trail back to the 1-UIP,<br/>bump activities"]
+  UIP --> MIN["minimize: clause shrinking,<br/>recursive self-subsumption,<br/>binary-clause minimization"]
+  MIN --> LEARN["add_uip_confl_cl()<br/>attach, compute LBD, store"]
+  LEARN --> BJ["find_backtrack_level_of_learnt()<br/>go_back_to(...)"]
+  BJ --> R1(["asserting literal set →<br/>propagate again"])
+  BJ --> R2(["backtrack — ascend"])
+  ZERO --> POLL["invalidate cached counts<br/>below the backjump point"]
+
+  MAINT["periodic maintenance:<br/>vivify_all() · subsume_all()<br/>reduce_db() on the learnt clauses"]
+  LEARN -.-> MAINT
+
+  classDef search fill:#e8f0fe,stroke:#2563eb,color:#12233f
+  classDef dec    fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef math   fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
+  classDef cache  fill:#fdf0e2,stroke:#d97706,color:#432b06
+  classDef ghost  fill:#f0f0f0,stroke:#999999,color:#333333
+  class DECIDE,SCORE,POLAR,SAT,RESOLVE,UIP,MIN,LEARN,BJ,BACKONE search
+  class SATQ,PROP,CHRONO dec
+  class ZERO math
+  class POLL cache
+  class MAINT ghost
+  class IN,OUT,OUT2,R1,R2 math
+</pre>
+</div>
+
+<h2>3. Ascending — components, cache, and the count arithmetic</h2>
+<p>The counting half, and what makes this a model counter rather than a SAT solver. Two rules govern
+everything: <strong>independent components multiply, the two polarities of a decision variable add.</strong>
+The cache is what makes it fast — a component whose count is already known is folded straight in and
+never searched again.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A{"find_next_remain_comp_of<br/>(decisions.top())"}
+  A -->|"stack empty here —<br/>need to split"| B["CompAnalyzer::explore_comp()<br/>BFS over watches and clauses<br/>→ connected components"]
+  B --> C["make_comp_from_archetype()<br/>pack vars + clause ids<br/>into a CacheableComp key"]
+  C --> D{"cache lookup<br/>find_comp_and_incorporate_cnt"}
+
+  D -->|"HIT"| E["include_solution(cached)<br/>multiply into the active branch —<br/>never searched again"]
+  D -->|"MISS"| F["push the component<br/>onto the component stack"]
+  E --> G["sort: biggest component last"]
+  F --> G
+  G --> A
+
+  A -->|"a component remains"| H(["descend — see section 2"])
+  A -->|"none remain,<br/>branch satisfied"| I["include_one_sol()<br/>branch := 1"]
+
+  I --> J
+  H -.->|"branch exhausted"| J
+
+  J["<b>backtrack()</b>"] --> K["total_model_count()<br/>branch[0] + branch[1]"]
+  K --> L["store_value() into the cache<br/>keyed on this level's component"]
+  L --> M["parent.include_solution(total)<br/>← sibling components MULTIPLY"]
+  M --> N["pop the level,<br/>advance to the next component"]
+  N --> A
+
+  W["unset_lit(): multiply in a variable's<br/>weight when it leaves the component"]
+  W -.-> K
+
+  classDef decomp fill:#f3ebfd,stroke:#7c3aed,color:#2b1250
+  classDef cache  fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef math   fill:#e9f7ef,stroke:#16a34a,color:#0d2e1c
+  class A,B,C,F,G decomp
+  class D,E,L cache
+  class I,J,K,M,N,W,H math
+</pre>
+</div>
+
+<div class="legend">
+  <span><i class="swatch" style="background:#e8f0fe;border-color:#2563eb"></i>Search — decide, BCP, conflict analysis</span>
+  <span><i class="swatch" style="background:#f3ebfd;border-color:#7c3aed"></i>Decomposition — connected components</span>
+  <span><i class="swatch" style="background:#fff4e5;border-color:#d97706"></i>Cache — lookup, store, invalidate</span>
+  <span><i class="swatch" style="background:#e9f7ef;border-color:#16a34a"></i>Count arithmetic over the Field</span>
+  <span><i class="swatch" style="background:#f0f0f0;border-color:#999"></i>Optional / periodic</span>
+</div>
+
+<p class="note" style="margin-top:1.5rem">Every count is an <code>FF</code> — a <code>CMSat::Field</code>
+value produced by the <code>FieldGen fg</code>. Integers, rationals, complex rationals, MPFR complex
+floats, GF(2) parity, and polynomials over a finite field all flow through the exact same <code>+</code>
+and <code>×</code> above; the engine never knows which.</p>
+<h2>4. The cache in a bit more detail</h2>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["Comp<br/>live component:<br/>active vars + clause ids"] --> B["CacheableComp&lt;T&gt;<br/>packed representation"]
+  B --> B1["HashedComp<br/>probabilistic"]
+  B --> B2["DiffPackedComp<br/>exact, difference-packed"]
+  B1 --> H["MurmurHash3<br/>seeded by hash_seed"]
+  B2 --> H
+  H --> K["hashkey &amp; tbl_size_mask"]
+  K --> BK["bucket + linear collision chain<br/>equals() confirms exact match"]
+  BK --> E["CacheEntry:<br/>model_count · timestamp"]
+  E --> R["rehash / delete_some_entries<br/>vs maximum_cache_size_MB"]
+  E --> D["clean_pollutions_involving(id)<br/>walks descendants on backjump"]
+
+  classDef c fill:#fff4e5,stroke:#d97706,color:#432b06
+  classDef p fill:#f3ebfd,stroke:#7c3aed,color:#2b1250
+  class A,B,B1,B2 p
+  class H,K,BK,E,R,D c
+</pre>
+</div>
+
+<table>
+  <tr><th>Aspect</th><th>Detail</th></tr>
+  <tr><td>Key</td><td>The packed set of still-active variables and clause ids of the component, hashed with MurmurHash3 under a per-run random seed.</td></tr>
+  <tr><td>Hit</td><td>Count is folded <em>immediately</em> into the current branch via <code>include_solution</code>; the component is never pushed on the stack.</td></tr>
+  <tr><td>Miss</td><td>Entry is created but not yet inserted into the hash table — only entries that actually have a count get inserted.</td></tr>
+  <tr><td>Store</td><td>In <code>backtrack()</code>, after <em>both</em> branches of the level are done and before the level is popped. For weighted counting the value is first normalised by the weights of component variables assigned at lower levels, so the entry is level-independent.</td></tr>
+  <tr><td>Invalidate</td><td>On backjump or a flipped decision literal, every descendant entry of the popped level is purged — those counts were computed under an assignment that no longer holds.</td></tr>
+  <tr><td>Disable</td><td><code>--cache 0</code>. Required when debugging wrong counts with <code>CHECK_COUNT</code>.</td></tr>
+</table>
+
+<h2>5. Reading the code</h2>
+<table>
+  <tr><th>Concept</th><th>Where</th></tr>
+  <tr><td>Main state machine</td><td><code>Counter::count_loop()</code> — <code>RetState</code> in <code>counter.hpp</code></td></tr>
+  <tr><td>Decisions</td><td><code>decide_lit()</code>, <code>find_best_branch()</code>, <code>score_of()</code></td></tr>
+  <tr><td>BCP</td><td><code>propagate()</code> over <code>LitWatchList</code></td></tr>
+  <tr><td>Conflict analysis</td><td><code>resolve_conflict()</code>, <code>create_uip_cl()</code>, <code>minimize_uip_cl()</code></td></tr>
+  <tr><td>Backtrack + count fold-up</td><td><code>backtrack()</code>, <code>go_back_to()</code></td></tr>
+  <tr><td>Components</td><td><code>CompManager::find_next_remain_comp_of()</code>, <code>record_remaining_comps_for()</code>, <code>CompAnalyzer::explore_comp()</code></td></tr>
+  <tr><td>Count arithmetic</td><td><code>StackLevel</code> in <code>stack.hpp</code>: <code>include_solution</code>, <code>include_one_sol</code>, <code>total_model_count</code></td></tr>
+  <tr><td>Cache</td><td><code>CompCache&lt;T&gt;</code> in <code>comp_cache.hpp</code></td></tr>
+</table>
+
+<hr>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+    flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true }
+  });
+</script>
+</body>
+</html>

@@ -131,8 +131,8 @@ flowchart TD
 </div>
 
 <h2>3. Ascending: components, cache, and the count arithmetic</h2>
-<p>The counting part, i.e. what makes this a model counter rather than a SAT solver. Two main rules:
-<strong>independent components multiply, the two polarities of a decision variable add.</strong>
+<p>The counting part, i.e. what makes this a model counter rather than a SAT solver. When counting,
+<i>independent components MULTIPLY, and the two polarities of a decision variable ADD.</i>
 Uses a cache to record and look up component's counts, so we don't do double work.</p>
 
 <div class="diagram">

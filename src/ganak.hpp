@@ -59,7 +59,7 @@ private:
 
 inline std::vector<GanakInt::Lit> cms_to_ganak_cl(const std::vector<CMSat::Lit>& cl) {
   std::vector<GanakInt::Lit> ganak_cl; ganak_cl.reserve(cl.size());
-  for(const auto& l: cl) ganak_cl.push_back(GanakInt::Lit(l.var()+1, !l.sign()));
+  for(const auto& l: cl) ganak_cl.emplace_back(l.var()+1, !l.sign());
   return ganak_cl;
 }
 

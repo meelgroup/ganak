@@ -55,7 +55,7 @@ and the count arithmetic. Everything above it is deliberately left out.</p>
 <h2>1. The main loop — the skeleton</h2>
 <p>Everything below is <code>count_loop()</code>. Stripped to its bones it is a two-part cycle: descend
 by carving the formula into independent components and deciding a variable in one of them, then ascend
-by combining sub-counts back up the stack. Conflicts short-circuit the descent; the rest of the page
+by adding and multiplying sub-counts back up the stack. Conflicts short-circuit the descent; the rest of the page
 zooms into the two shaded boxes.</p>
 
 <div class="diagram">
@@ -64,7 +64,7 @@ flowchart TD
   START(["<code>Counter::count_loop()</code>"]) --> FIND{"Any component left<br/>to process at this level?"}
 
   FIND -->|"yes"| DESC["<b>Descend</b><br/>pick a component, look it up in the cache;<br/>on a miss, decide a variable and propagate"]
-  FIND -->|"no — all done here"| ASC["<b>Ascend</b><br/><code>Counter::backtrack()</code>: combine the two branches,<br/>store in cache, fold into the parent"]
+  FIND -->|"no — all done here"| ASC["<b>Ascend</b><br/><code>Counter::backtrack()</code>: add up the two branches,<br/>cache the result, multiply it into the parent"]
 
   DESC --> CONFL{"conflict?"}
   CONFL -->|"no"| FIND

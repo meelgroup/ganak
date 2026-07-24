@@ -183,8 +183,9 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
     cdat->is_approximate |= out_cnt.get_is_approximate();
     cdat->max_num_cache_lookups = std::max(cdat->max_num_cache_lookups, out_cnt.get_num_cache_lookups());
     cdat->max_cache_elems = std::max(cdat->max_cache_elems, out_cnt.get_max_cache_elems());
+    if (cnt->is_zero()) break;
   }
-  assert(cls_added == cdat->irred_cls.size());
+  assert(cls_added == cdat->irred_cls.size()  || cnt->is_zero()); // either early-exit or we went through all components
   return cnt;
 }
 

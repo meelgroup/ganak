@@ -81,6 +81,7 @@ DLL_PUBLIC FF Ganak::count(uint8_t bits_jobs, int num_threads, bool debug_thread
   // Check for empty clause
   if (std::any_of(cdat->irred_cls.begin(), cdat->irred_cls.end(),
       [](const auto& cl) { return cl.empty(); })) {
+    if (cdat->conf.verb) cout << "c o empty clause in formula, count = 0" << endl;
     cout << "c o intermediate count: " << *cdat->fg->zero() << endl;
     return cdat->fg->zero();
   }

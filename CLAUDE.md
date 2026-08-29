@@ -159,7 +159,8 @@ The counting pipeline flows through these layers:
 All arithmetic is polymorphic over `CMSat::Field` / `CMSat::FieldGen` (from
 cryptominisat5). `FG = unique_ptr<FieldGen>`, `FF = unique_ptr<Field>`. Field
 implementations are in:
-- `mcomplex.hpp` / `mcomplex-mpfr.hpp` — complex rationals / complex floats
+- `ArjunNS::FComplex` / `ArjunNS::MPFComplex` (in arjun's `arjun.h`) — complex
+  rationals / complex floats
 - `mparity.hpp` — parity (mod 2) counting
 - `mpoly.hpp` — polynomials over finite fields
 

@@ -43,8 +43,6 @@ THE SOFTWARE.
 #include "src/argparse.hpp"
 #include "mpoly.hpp"
 #include "mparity.hpp"
-#include "mcomplex.hpp"
-#include "mcomplex-mpfr.hpp"
 #include <approxmc/approxmc.h>
 #include "file_read_helper.h"
 
@@ -582,7 +580,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       } else if (mode == 2) {
         // Complex rational numbers
         cout << "c s type amc-complex" << endl;
-        const FComplex* od = dynamic_cast<const FComplex*>(ptr);
+        const ArjunNS::FComplex* od = dynamic_cast<const ArjunNS::FComplex*>(ptr);
         mpfr_t r, i;
         mpfr_init2(r, 256);
         mpfr_set_q(r, od->real.get_mpq_t(), MPFR_RNDN);
@@ -599,7 +597,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       } else if (mode == 6) {
         // Complex MPF numbers
         cout << "c s type amc-complex" << endl;
-        const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
+        const ArjunNS::MPFComplex* od = dynamic_cast<const ArjunNS::MPFComplex*>(ptr);
         print_log(od->real, "-real");
         print_log(od->imag, "-imag");
         mpfr_printf("c s exact %s %.8Re + %.8Rei\n", mpfr_prec_name(mpfr_precision), od->real, od->imag);
@@ -672,10 +670,10 @@ int main(int argc, char *argv[]) {
         fg = std::make_unique<ArjunNS::FGenMpfr>(mpfr_precision);
         break;
     case 2:
-        fg = std::make_unique<FGenComplex>();
+        fg = std::make_unique<ArjunNS::FGenComplex>();
         break;
     case 6:
-        fg = std::make_unique<FGenMPFComplex>(mpfr_precision);
+        fg = std::make_unique<ArjunNS::FGenMPFComplex>(mpfr_precision);
         break;
     case 3:
         if (poly_nvars == -1) {

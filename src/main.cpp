@@ -152,6 +152,8 @@ string print_version()
     ss << "c o Arjun SHA1: " << ArjunNS::Arjun::get_version_sha1() << endl;
     ss << "c o SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
     ss << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;
+    ss << "c o CaDiCaL SHA1: " << CMSat::SATSolver::get_cadical_version_sha1() << endl;
+    ss << "c o CadiBack SHA1: " << CMSat::SATSolver::get_cadiback_version_sha1() << endl;
     ss << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
     /* ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl; */
     ss << ArjunNS::Arjun::get_thanks_info("c o ") << endl;

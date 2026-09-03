@@ -224,6 +224,8 @@ void add_ganak_options()
     add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, fc_int, "Run Puura's main oracle sparsification pass");
     add_arg("--puurabve", simp_conf.do_bve, fc_int, "Run BVE in Puura");
     add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, fc_int, "Puura BVE max resolvent size in literals. -1 == no limit");
+    add_arg("--bveresolvmaxsz2", simp_conf.bve_too_large_resolvent2, fc_int, "Like --bveresolvmaxsz, for the 2nd elim pass");
+    add_arg("--xorgatemaxsize", simp_conf.xor_gate_find_maxsize, fc_int, "Max clause size for XOR-gate finding");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
     add_arg("--bvegrowiter2", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
     add_arg("--extraoracle", simp_conf.oracle_extra, fc_int, "Extra oracle at the end of puura");

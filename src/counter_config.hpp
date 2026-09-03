@@ -59,7 +59,7 @@ struct CounterConfiguration {
   int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used
 
   int decide = 0; // 0 = TD, 1 = ignore TD
-  uint32_t rdb_cls_target = 10000;
+  uint32_t rdb_cls_target = 15000;
   int rdb_keep_used = 0; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
 

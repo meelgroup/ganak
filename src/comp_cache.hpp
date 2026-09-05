@@ -160,8 +160,8 @@ public:
 
   // delete entries, keeping the descendants tree consistent
   uint64_t unlink_from_tree(CacheEntryID id) override;
-  uint64_t num_direct_children(CacheEntryID id) override;
-  uint64_t num_siblings(CacheEntryID id) override;
+  uint64_t num_direct_children(CacheEntryID id, uint64_t limit) override;
+  uint64_t num_siblings(CacheEntryID id, uint64_t limit) override;
 
   // test function to ensure consistency of the descendant tree
   void test_descendantstree_consistency() override;
@@ -225,6 +225,11 @@ private:
     entry(descendantid).set_next_sibling(entry(compid).first_descendant());
     entry(compid).set_first_descendant(descendantid);
   }
+
+  // an entry is only evicted if it has fewer than this many children / preceding
+  // siblings, so the walks that count them stop as soon as the limit is reached
+  static constexpr uint64_t max_children = 100;
+  static constexpr uint64_t max_sibs = 200;
 
   vec<T> entry_base;
   vec<CacheEntryID> free_entry_base_slots;
@@ -503,11 +508,11 @@ bool CompCache<T>::delete_some_entries() {
         // conf.lru_eviction=0: evict most-recently-used
         (conf.lru_eviction ? entry_base[id].last_used_time() <= cutoff
                            : entry_base[id].last_used_time() >= cutoff)) {
-      auto d = num_direct_children(id);
+      auto d = num_direct_children(id, max_children);
       max_desc = std::max(max_desc, d);
-      auto s = num_siblings(id);
+      auto s = num_siblings(id, max_sibs);
       max_siblings = std::max(max_siblings, s);
-      if (d < 100 && s < 200) {
+      if (d < max_children && s < max_sibs) {
         tot += unlink_from_tree(id);
         num++;
         desc += d;
@@ -572,20 +577,24 @@ void CompCache<T>::debug_mem_data() const {
       << " Total process vm MB: " << vm_dat/(double)(1024*1024));
 }
 
+// Both stop at `limit` -- the caller only needs to know whether the count is below
+// it. Walking a father's whole child list for every one of its children that gets
+// considered made eviction quadratic in the length of that list.
 template<typename T>
-uint64_t CompCache<T>::num_direct_children(CacheEntryID id) {
+uint64_t CompCache<T>::num_direct_children(CacheEntryID id, uint64_t limit) {
   uint64_t ret = 0;
-  for (auto c = entry(id).first_descendant(); c; c = entry(c).next_sibling()) ret++;
+  for (auto c = entry(id).first_descendant(); c && ret < limit; c = entry(c).next_sibling()) ret++;
   return ret;
 }
 
 template<typename T>
-uint64_t CompCache<T>::num_siblings(CacheEntryID id) {
+uint64_t CompCache<T>::num_siblings(CacheEntryID id, uint64_t limit) {
   uint64_t ret = 0;
   CacheEntryID father = entry(id).father();
   if (entry(father).first_descendant() == id) return 0;
   CacheEntryID act_sibl = entry(father).first_descendant();
   while (act_sibl) {
+    if (ret >= limit) return ret;
     ret++;
     CacheEntryID next_sibl = entry(act_sibl).next_sibling();
     if (next_sibl == id) return ret;

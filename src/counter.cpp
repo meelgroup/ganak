@@ -1269,9 +1269,9 @@ end:
 }
 
 bool Counter::standard_polarity(const uint32_t v) const {
-  if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity)
+  if (lit_act.lit(v, true) == lit_act.lit(v, false))
     return var(Lit(v, true)).last_polarity;
-  return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;
+  return lit_act.lit(v, true) > lit_act.lit(v, false);
 }
 
 bool Counter::get_polarity(const uint32_t v) const {
@@ -3763,7 +3763,7 @@ void Counter::subsume_all() {
 
 void Counter::vsads_readjust() {
   if (stats.decisions % conf.vsads_readjust_every == 0)
-    for(auto& w: watches) w.activity *= 0.5;
+    for(auto& a: lit_act) a *= 0.5;
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
@@ -4497,7 +4497,7 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     , conf(_conf)
     , stats(_conf, _fg)
     , mtrand(_conf.seed)
-    , order_heap(VarOrderLt(Counter::watches)) {
+    , order_heap(VarOrderLt(Counter::lit_act)) {
   sat_solver = std::make_unique<CMSat::SATSolver>();
   sat_solver->set_prefix("c o ");
   compiler = make_null_compiler();
@@ -4545,12 +4545,12 @@ void Counter::init_activity_scores() {
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit const l(x/2, x%2);
-    watches[l].activity += std::count_if(watches[l].binaries.begin(), watches[l].binaries.end(),
+    lit_act[l] += std::count_if(watches[l].binaries.begin(), watches[l].binaries.end(),
         [](const BinCl& ws) { return !ws.red(); });
   }
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
-    for(const auto& l: cl) watches[l].activity++;
+    for(const auto& l: cl) lit_act[l]++;
   }
 }
 
@@ -4692,6 +4692,7 @@ void Counter::new_vars(const uint32_t n) {
   var_data.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
+  lit_act.resize(n + 1, 0.0);
   lbd_helper.resize(n+1, 0);
   if (weighted()) {
     sat_solution.resize(n+1);

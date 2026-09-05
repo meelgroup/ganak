@@ -293,8 +293,10 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       while(bins != bins_end) {
         uint32_t const v2 = *(bins++);
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
-        manage_occ_of(v2);
+        // assigned vars are never marked unvisited-in-sup-comp, so manage_occ_of()
+        // is a no-op for them
         if (is_unknown(v2)) {
+          manage_occ_of(v2);
           archetype.num_bin_cls++;
           bump_freq_score(v2);
           bump_freq_score(v);

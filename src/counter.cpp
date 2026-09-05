@@ -2423,10 +2423,11 @@ bool Counter::propagate(bool out_of_order) {
     //Propagate bin clauses
     for (const auto& bincl : watches[plit].binaries) {
       const auto& l = bincl.lit();
-      if (val(l) == F_TRI) {
+      const auto lval = val(l);
+      if (lval == F_TRI) {
         set_confl_state(plit, l);
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
-      } else if (val(l) == X_TRI) {
+      } else if (lval == X_TRI) {
         set_lit(l, lev, Antecedent(plit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       }

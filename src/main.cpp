@@ -133,7 +133,6 @@ uint32_t arjun_further_min_cutoff = 10;
 int arjun_extend_ccnr = 0;
 int cnfrw = 1;
 int cnfrw_encoder = 0;
-int cnfrw_fraig = 1;
 int cnfrw_kary = 1;
 int cnfrw_varw = 6;
 int cnfrw_clsw = 1;
@@ -218,7 +217,6 @@ void add_ganak_options()
     add_arg("--arjungates", arjun_gates, fc_int, "Use arjun's gate detection");
     add_arg("--cnfrw", cnfrw, fc_int, "Arjun CNF rewriting through AIG lifting, bitmask: 1 = after the first puura pass, 2 = before puura, 4 = portfolio (puura with and without the pre-puura rewrite, keep the smaller)");
     add_arg("--cnfrwenc", cnfrw_encoder, fc_int, "cnfrw encoder: 0 = AIGToCNF, 1 = cut mapper, 2 = both, keep the cheaper per gate group");
-    add_arg("--cnfrwfraig", cnfrw_fraig, fc_int, "cnfrw: SAT-sweep the lifted AIG");
     add_arg("--cnfrwkary", cnfrw_kary, fc_int, "cnfrw: k-ary AND fusion in the encoder");
     add_arg("--cnfrwvarw", cnfrw_varw, fc_int, "cnfrw: cost weight of a variable");
     add_arg("--cnfrwclsw", cnfrw_clsw, fc_int, "cnfrw: cost weight of a clause");
@@ -446,7 +444,6 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_verb(arjun_verb);
   arjun.set_cnf_rewrite(cnfrw);
   arjun.set_cnfrw_encoder(cnfrw_encoder);
-  arjun.set_cnfrw_fraig(cnfrw_fraig);
   arjun.set_cnfrw_kary_fusion(cnfrw_kary);
   arjun.set_cnfrw_var_weight(cnfrw_varw);
   arjun.set_cnfrw_cls_weight(cnfrw_clsw);

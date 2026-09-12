@@ -2063,7 +2063,8 @@ only_dirs = [
     # "out-ganak-mccomp2324-1783906-1", # kitten
     # "out-ganak-mccomp2324-1817408-0", # gates-eq + replace in the middle after gates-based eq
     "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
-    "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
+    # "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
+    "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

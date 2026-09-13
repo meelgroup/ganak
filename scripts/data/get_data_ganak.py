@@ -87,16 +87,9 @@ def timeout_parse(fname):
                 else:
                     call = " ".join(call.split()[:-1])
                 call = call.replace(" -t real", "")
-                if "doalarm 3600" in call:
-                    call = call.split("doalarm 3600")[1]
-                if "doalarm 300" in call:
-                    call = call.split("doalarm 300")[1]
-                elif "doalarm 1800" in call:
-                    call = call.split("doalarm 1800")[1]
-                elif "doalarm 60" in call:
-                    call = call.split("doalarm 60")[1]
-                elif "doalarm 900" in call:
-                    call = call.split("doalarm 900")[1]
+                m = re.search(r"doalarm \d+", call)
+                if m:
+                    call = call.split(m.group(0))[1]
                 else:
                     print("WARNING: no doalarm found in call: ", call)
 

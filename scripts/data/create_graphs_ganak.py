@@ -16,6 +16,9 @@ RESET = "\033[0m"
 
 TMP_DIR = "tmp"
 
+#The run timeout, in seconds. PAR2 charges 2x this for every unsolved instance.
+TIMEOUT = 3600
+
 
 def convert_to_cdf(fname, fname2):
     with open(fname, "r") as f:
@@ -134,7 +137,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         ("replace(dirname,'out-ganak-mc','')",                       "dirname"),
         ("replace(ganak_call,'././ganak_','')",                      "call"),
         ("sum(ganak_time is not null)",                              "solved"),
-        ("CAST(ROUND(sum(coalesce(ganak_time,3600))/COUNT(*),0) AS INTEGER)", "PAR2"),
+        ("COUNT(*)",                                                 "attempted"),
         ("ROUND(avg(conflicts)/(1000.0*1000.0), 2)",                 "av confM"),
         ("CAST(ROUND(avg(ganak_mem_mb),0) AS INTEGER)",              "av memMB"),
         ("sum(signal == 11)",                                        "sigSEGV"),
@@ -162,8 +165,14 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         ("sum(fname is not null)",                                   "nfiles"),
     ]
 
-    cols = compact_cols + (full_only_cols if full else [])
-    select_clause = ",\n        ".join(f"{expr} as '{alias}'" for expr, alias in cols)
+    #PAR2 charges an unsolved instance 2x the timeout. Only meaningful over a
+    #set that includes the unsolved ones -- restricted to solved instances the
+    #coalesce never fires and it degenerates into the mean time over whatever
+    #each config happened to solve, which *punishes* solving more hard
+    #instances. So that table gets an honestly-named average instead.
+    par2_col = (f"CAST(ROUND(sum(coalesce(ganak_time,{2*TIMEOUT}))/COUNT(*),0) AS INTEGER)",
+                "PAR2")
+    avg_t_col = ("CAST(ROUND(sum(ganak_time)/COUNT(*),0) AS INTEGER)", "avg-T-solved")
 
     for only_counted in [False, True]:
         counted_req = ""
@@ -174,6 +183,12 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         print(f"\n{BLUE}{title}{RESET}")
         if only_counted:
             counted_req = " and ganak_time is not NULL "
+
+        #'attempted' is PAR2's denominator: if it differs between dirs they were
+        #run on different benchmark sets and the PAR2 column is not comparable
+        cols = (compact_cols[:4] + [avg_t_col if only_counted else par2_col]
+                + compact_cols[4:] + (full_only_cols if full else []))
+        select_clause = ",\n        ".join(f"{expr} as '{alias}'" for expr, alias in cols)
         gen_table = f"{TMP_DIR}/gen_table.sqlite"
         with open(gen_table, "w") as f:
             f.write(".mode table\n")
@@ -1721,9 +1736,8 @@ def print_distributions(table_todo, fname_like):
 
 def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
     """For every pair of matched dirs, generate a gnuplot scatter plot of
-    solve times (NULL -> 3600).  Writes a PDF and a PNG to disk and displays
-    the PNG inline in the terminal (wezterm / iTerm2 protocol)."""
-    TIMEOUT = 3600
+    solve times (NULL -> the timeout).  Writes a PDF and a PNG to disk and
+    displays the PNG inline in the terminal (wezterm / iTerm2 protocol)."""
 
     pairs = list(itertools.combinations(matched_dirs, 2))
     if not pairs:
@@ -2029,10 +2043,28 @@ only_dirs = [
     # "out-ganak-mccomp2324-1635700-0", # fix the printing of the preproc data
     # "out-ganak-mccomp2324-1743408", # ddnnf
     # "out-ganak-mccomp2324-1747186-0", # faster ddnnf, new hash function
-    "out-ganak-mccomp2324-1755057-0", # 5 min timeout
-    "out-ganak-mccomp2324-1755057-3", # 5 min timeout
-    "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
-    "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
+
+    # 5 min timeout runs:
+    # "out-ganak-mccomp2324-1755057-0", # 5 min timeout
+    # "out-ganak-mccomp2324-1755057-3", # 5 min timeout
+    # "out-ganak-mccomp2324-1758343-5", # new 5 min timeout run
+    # "out-ganak-mccomp2324-1762059-", # new 5 min timeout run
+    # "out-ganak-mccomp2324-1783926-2", # also extend
+    # best is: --fast --tditers 100--arjunextendmaxconfl 3000
+    # 0b4881b4_11e203ea_67c5648a_5e1ee18e
+
+    # final MCC
+    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+                                      # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
+    # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
+    # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
+    # "out-ganak-mccomp2324-1812683-", # 2 min timeout, more configs
+    ## other stuff
+    # "out-ganak-mccomp2324-1783906-1", # kitten
+    # "out-ganak-mccomp2324-1817408-0", # gates-eq + replace in the middle after gates-based eq
+    "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
+    # "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
+    "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2073,6 +2105,8 @@ def main():
                         help="No pairwise comparisons")
     parser.add_argument("--nodistribution", action="store_true",
                         help="Don't print distributions of metrics")
+    parser.add_argument("--cdf", action="store_true",
+                        help="ONLY generate the PAR2/solved summary table and the CDF graph; skip everything else")
     args = parser.parse_args()
 
     os.makedirs(TMP_DIR, exist_ok=True)
@@ -2088,9 +2122,26 @@ def main():
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
-    if not args.nopairwise:
+    if not args.cdf and not args.nopairwise:
       scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
+
+    if args.cdf:
+        if args.verbose:
+            print("Printing summary tables...")
+        print_summary_tables(table_todo, fname_like, args.full, args.verbose)
+        if args.verbose:
+            print("Generating gnuplot script...")
+        gnuplotfn, pdf_file, png_file = generate_gnuplot(fname2_s, args.verbose)
+        for path in [pdf_file, png_file]:
+            if os.path.exists(path):
+                os.unlink(path)
+        os.system(f"gnuplot {gnuplotfn}")
+        console_title = "CDF: instances counted vs. solve time"
+        print(f"\n{BLUE}{console_title}{RESET}")
+        print(f"  PDF: {pdf_file}  PNG: {png_file}")
+        _display_png(png_file)
+        return
 
     if args.verbose:
         print(f"Selected {len(table_todo)} dir/version combinations")

@@ -80,7 +80,6 @@ class LitWatchList {
 public:
   vec<BinCl> binaries;
   vec<ClOffsBlckL> watch_list_;
-  double activity = 0.0;
 
   void del_c(ClauseOfs offs) {
     auto it = std::find_if(watch_list_.begin(), watch_list_.end(),

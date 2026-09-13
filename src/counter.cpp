@@ -1175,7 +1175,7 @@ void Counter::count_loop() {
 
       while (!propagate()) {
         start1:
-        if (chrono_check()) continue; // will DEFINITELY conflict if TRUE
+        if (chrono_check()) continue;
         state = resolve_conflict();
         start11:
         if (state == GO_AGAIN) goto start1;
@@ -1269,9 +1269,9 @@ end:
 }
 
 bool Counter::standard_polarity(const uint32_t v) const {
-  if (watches[Lit(v, true)].activity == watches[Lit(v, false)].activity)
+  if (lit_act.lit(v, true) == lit_act.lit(v, false))
     return var(Lit(v, true)).last_polarity;
-  return watches[Lit(v, true)].activity > watches[Lit(v, false)].activity;
+  return lit_act.lit(v, true) > lit_act.lit(v, false);
 }
 
 bool Counter::get_polarity(const uint32_t v) const {
@@ -2423,10 +2423,11 @@ bool Counter::propagate(bool out_of_order) {
     //Propagate bin clauses
     for (const auto& bincl : watches[plit].binaries) {
       const auto& l = bincl.lit();
-      if (val(l) == F_TRI) {
+      const auto lval = val(l);
+      if (lval == F_TRI) {
         set_confl_state(plit, l);
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
-      } else if (val(l) == X_TRI) {
+      } else if (lval == X_TRI) {
         set_lit(l, lev, Antecedent(plit));
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       }
@@ -3763,7 +3764,7 @@ void Counter::subsume_all() {
 
 void Counter::vsads_readjust() {
   if (stats.decisions % conf.vsads_readjust_every == 0)
-    for(auto& w: watches) w.activity *= 0.5;
+    for(auto& a: lit_act) a *= 0.5;
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
@@ -3831,13 +3832,13 @@ bool Counter::run_sat_solver(RetState& state) {
 
     while (!propagate()) {
       start1:
-      if (conf.do_chronobt && chrono_check()) continue;
+      if (conf.do_chronobt && chrono_check()) continue;  // will DEFINITELY conflict if TRUE
       state = resolve_conflict();
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;
     }
     if (state == BACKTRACK) goto end;
-    assert(state != GO_AGAIN);
+    state = RESOLVED;
     if (dec_level() < sat_start_dec_level) { goto end; }
     const auto sat_confl = stats.conflicts -orig_confl;
     if (conf.do_sat_restart && sat_confl-last_restart >= luby(2, num_rst)*conf.sat_restart_mult) {
@@ -4393,8 +4394,9 @@ void Counter::check_opt_sampling_determined() const {
   cnf.set_opt_sampl_vars(opt_indep);
 
   ArjunNS::Arjun arjun;
+  ArjunNS::Arjun::InterpConf iconf;
   VERBOSE_DEBUG_DO(arjun.set_verb(10));
-  assert(arjun.standalone_check_extend(cnf));
+  assert(arjun.standalone_check_extend(cnf, iconf));
   verb_print(2, "[opt-sampling-check] All optimal independent variables are determined");
 }
 
@@ -4496,7 +4498,7 @@ Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     , conf(_conf)
     , stats(_conf, _fg)
     , mtrand(_conf.seed)
-    , order_heap(VarOrderLt(Counter::watches)) {
+    , order_heap(VarOrderLt(Counter::lit_act)) {
   sat_solver = std::make_unique<CMSat::SATSolver>();
   sat_solver->set_prefix("c o ");
   compiler = make_null_compiler();
@@ -4544,12 +4546,12 @@ void Counter::init_activity_scores() {
   if (!conf.do_init_activity_scores) return;
   all_lits(x) {
     Lit const l(x/2, x%2);
-    watches[l].activity += std::count_if(watches[l].binaries.begin(), watches[l].binaries.end(),
+    lit_act[l] += std::count_if(watches[l].binaries.begin(), watches[l].binaries.end(),
         [](const BinCl& ws) { return !ws.red(); });
   }
   for(const auto& off: long_irred_cls) {
     const auto& cl = *alloc->ptr(off);
-    for(const auto& l: cl) watches[l].activity++;
+    for(const auto& l: cl) lit_act[l]++;
   }
 }
 
@@ -4691,6 +4693,7 @@ void Counter::new_vars(const uint32_t n) {
   var_data.resize(n + 1);
   values.resize(n + 1, X_TRI);
   watches.resize(n + 1);
+  lit_act.resize(n + 1, 0.0);
   lbd_helper.resize(n+1, 0);
   if (weighted()) {
     sat_solution.resize(n+1);

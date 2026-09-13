@@ -59,13 +59,13 @@ struct CounterConfiguration {
   int lru_eviction = 0; // 0 = evict most-recently-used (old default), 1 = evict least-recently-used
 
   int decide = 0; // 0 = TD, 1 = ignore TD
-  uint32_t rdb_cls_target = 10000;
+  uint32_t rdb_cls_target = 15000;
   int rdb_keep_used = 0; // quite a bit faster on lower time cut-off
                          // but loses the edge after ~2000s
 
   uint32_t reduce_db_everyN = 10000;
   uint32_t consolidate_every_n = 30000;
-  int polar_type = 0;
+  int polar_type = static_cast<int>(PolarType::standard);
   uint32_t base_lbd_cutoff = 2;
   uint32_t lbd_tier2_cutoff = 6; // tier 2: lbd <= this kept if recently used (CaDiCaL-style)
   int do_shrink = 1;             // block-wise secondary UIP shrinking (CaDiCaL-style)

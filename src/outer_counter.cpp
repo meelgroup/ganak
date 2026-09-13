@@ -121,9 +121,10 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
   /* simp_conf.iter1 = 1; */
   simp_conf.iter1 = 0;
   ArjunNS::Arjun::ElimToFileConf const etof_conf;
-  arjun.standalone_minimize_indep(cnf, false);
+  ArjunNS::Arjun::InterpConf iconf;
+  arjun.standalone_minimize_indep(cnf, iconf, false);
   if (cnf.get_sampl_vars().size() >= td_at_or_above_indep) {
-    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
   } else {
     if (verb >= 5)
       cout<< "c o skipping strong Arjun simp because size sampl_vars < " << td_at_or_above_indep << endl;

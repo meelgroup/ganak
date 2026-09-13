@@ -48,6 +48,15 @@ public:
     return *(vector<_T>::begin() + lit.raw());
   }
 
+  // for when you have the var and the sign separately, rather than a Lit
+  inline _T &lit(const uint32_t var, const bool sign) {
+    return (*this)[Lit(var, sign)];
+  }
+
+  inline const _T &lit(const uint32_t var, const bool sign) const {
+    return (*this)[Lit(var, sign)];
+  }
+
   inline typename vector<_T>::iterator begin() {
     return vector<_T>::begin() + 2;
   }

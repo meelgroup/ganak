@@ -139,15 +139,12 @@ inline std::ostream& operator<<(std::ostream& os, const BinClSub& cl) {
 }
 
 struct VarOrderLt {
-  const LiteralIndexedVector<LitWatchList>& watches;
+  const LiteralIndexedVector<double>& lit_act;
   bool operator () (uint32_t x, uint32_t y) const {
-    Lit l1 = Lit(x, 0);
-    auto act1 = watches[l1].activity + watches[l1.neg()].activity;
-    Lit l2 = Lit(y, 0);
-    auto act2 = watches[l2].activity + watches[l2.neg()].activity;
-    return act1 > act2;
+    return lit_act.lit(x, false) + lit_act.lit(x, true) >
+           lit_act.lit(y, false) + lit_act.lit(y, true);
   }
-  VarOrderLt(const LiteralIndexedVector<LitWatchList>& _watches) : watches(_watches) { }
+  VarOrderLt(const LiteralIndexedVector<double>& _lit_act) : lit_act(_lit_act) { }
 };
 
 class ClauseAllocator;
@@ -363,8 +360,9 @@ public:
   // Decisions
   void init_decision_stack();
   void init_activity_scores();
+  LiteralIndexedVector<double> lit_act;
   double var_act(const uint32_t v) const {
-    return watches[Lit(v, false)].activity + watches[Lit(v, true)].activity; }
+    return lit_act.lit(v, false) + lit_act.lit(v, true); }
   DecisionStack decisions;
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
@@ -610,7 +608,7 @@ inline void Counter::check_cl_unsat(Lit* c, uint32_t size) const {
 // this is ONLY entered, if seen[lit.var()] is false, hence this is ALWAYS a single bump
 // to each variable during analysis
 inline void Counter::inc_act(const Lit lit) {
-  watches[lit].activity += 1.0;
+  lit_act[lit] += 1.0;
   if (sat_mode() && order_heap.in_heap(lit.var())) order_heap.increase(lit.var());
 }
 

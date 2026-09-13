@@ -43,8 +43,6 @@ THE SOFTWARE.
 #include "src/argparse.hpp"
 #include "mpoly.hpp"
 #include "mparity.hpp"
-#include "mcomplex.hpp"
-#include "mcomplex-mpfr.hpp"
 #include <approxmc/approxmc.h>
 #include "file_read_helper.h"
 
@@ -145,7 +143,7 @@ int debug_threads = 0;
 
 // mode
 int mode = 0;
-int mpfr_precision = 64;
+int mpfr_precision = 128;
 
 string print_version()
 {
@@ -154,6 +152,8 @@ string print_version()
     ss << "c o Arjun SHA1: " << ArjunNS::Arjun::get_version_sha1() << endl;
     ss << "c o SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
     ss << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;
+    ss << "c o CaDiCaL SHA1: " << CMSat::SATSolver::get_cadical_version_sha1() << endl;
+    ss << "c o CadiBack SHA1: " << CMSat::SATSolver::get_cadiback_version_sha1() << endl;
     ss << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
     /* ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl; */
     ss << ArjunNS::Arjun::get_thanks_info("c o ") << endl;
@@ -226,8 +226,13 @@ void add_ganak_options()
     add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, fc_int, "Run Puura's main oracle sparsification pass");
     add_arg("--puurabve", simp_conf.do_bve, fc_int, "Run BVE in Puura");
     add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, fc_int, "Puura BVE max resolvent size in literals. -1 == no limit");
+    add_arg("--bveresolvmaxsz2", simp_conf.bve_too_large_resolvent2, fc_int, "Like --bveresolvmaxsz, for the 2nd elim pass");
+    add_arg("--xorgatemaxsize", simp_conf.xor_gate_find_maxsize, fc_int, "Max clause size for XOR-gate finding");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
-    add_arg("--bvegrowiter2", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
+    add_arg("--iter2grow", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
+    add_arg("--bveocclim", simp_conf.bve_occ_cutoff, fc_int, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
+    add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, fc_int, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
+    add_arg("--distillremlevel", simp_conf.distill_rem_level, fc_int, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");
     add_arg("--extraoracle", simp_conf.oracle_extra, fc_int, "Extra oracle at the end of puura");
     add_arg("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, fc_int, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
     add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, fc_int, "Arjun's oracle should get learnts");
@@ -236,7 +241,6 @@ void add_ganak_options()
     add_arg("--arjunsamplcutoff", arjun_further_min_cutoff, fc_int,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     add_arg("--arjunextendccnr", arjun_extend_ccnr, fc_int,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     add_arg("--arjunweakenlim", simp_conf.weaken_limit, fc_int,  "Arjun's weaken limitation");
-    add_arg("--puurastrategy", simp_conf.puura_strategy, fc_int, "Puura iter1 simplification strategy: 0=default, 1=new-model");
 
     // TD options
     add_arg("--td", conf.do_td, fc_int, "Run TD decompose");
@@ -405,6 +409,10 @@ void parse_supported_options(int argc, char** argv) {
       cerr << "ERROR: threads cannot be debugged when num_threads is more than 1" << endl;
       exit(EXIT_FAILURE);
     }
+    if (mpfr_precision > 256) {
+      cerr << "ERROR: mpfr precision must not be more than 256 bits" << endl;
+      exit(EXIT_FAILURE);
+    }
     if (mpfr_precision < 2) {
       cerr << "ERROR: mpfr precision must be at least 2 bits" << endl;
       exit(EXIT_FAILURE);
@@ -419,6 +427,7 @@ void print_vars(vector<uint32_t> vars) {
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   double const my_time = cpu_time();
   ArjunNS::Arjun arjun;
+  ArjunNS::Arjun::InterpConf iconf;
   if (conf.verb == 0) arjun_verb = 0;
   arjun.set_verb(arjun_verb);
   arjun.set_or_gate_based(arjun_gates);
@@ -432,10 +441,10 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
-  arjun.standalone_minimize_indep(cnf, etof_conf.all_indep);
+  arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
-    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
   } else {
     disconnected_allowed = true;
     verb_print(1, "WARNING. Not performing puura.  "
@@ -446,6 +455,14 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
     cnf.renumber_sampling_vars_for_ganak();
   }
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
+}
+
+const char* mpfr_prec_name(const int prec) {
+    if (prec <= 16) return "half float";
+    if (prec <= 32) return "single float";
+    if (prec <= 64) return "double float";
+    if (prec <= 128) return "quadruple float";
+    return "octuple float";
 }
 
 string print_mpq_as_scientific(const mpq_class& number) {
@@ -569,7 +586,7 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       } else if (mode == 2) {
         // Complex rational numbers
         cout << "c s type amc-complex" << endl;
-        const FComplex* od = dynamic_cast<const FComplex*>(ptr);
+        const ArjunNS::FComplex* od = dynamic_cast<const ArjunNS::FComplex*>(ptr);
         mpfr_t r, i;
         mpfr_init2(r, 256);
         mpfr_set_q(r, od->real.get_mpq_t(), MPFR_RNDN);
@@ -586,17 +603,17 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
       } else if (mode == 6) {
         // Complex MPF numbers
         cout << "c s type amc-complex" << endl;
-        const MPFComplex* od = dynamic_cast<const MPFComplex*>(ptr);
+        const ArjunNS::MPFComplex* od = dynamic_cast<const ArjunNS::MPFComplex*>(ptr);
         print_log(od->real, "-real");
         print_log(od->imag, "-imag");
-        mpfr_printf("c s exact quadruple float %.8Re + %.8Rei\n", od->real, od->imag);
+        mpfr_printf("c s exact %s %.8Re + %.8Rei\n", mpfr_prec_name(mpfr_precision), od->real, od->imag);
       } else if (mode == 7) {
         // MPFR numbers
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
         else cout << "c s type wmc" << endl;
         const ArjunNS::FMpfr* od = dynamic_cast<const ArjunNS::FMpfr*>(ptr);
         print_log(od->val);
-        mpfr_printf("c s exact quadruple float %.8Re\n", od->val);
+        mpfr_printf("c s exact %s %.8Re\n", mpfr_prec_name(mpfr_precision), od->val);
       }
     } else if (mode == 3) {
       cout << "c s exact poly " << *cnt << endl;
@@ -659,10 +676,10 @@ int main(int argc, char *argv[]) {
         fg = std::make_unique<ArjunNS::FGenMpfr>(mpfr_precision);
         break;
     case 2:
-        fg = std::make_unique<FGenComplex>();
+        fg = std::make_unique<ArjunNS::FGenComplex>();
         break;
     case 6:
-        fg = std::make_unique<FGenMPFComplex>(mpfr_precision);
+        fg = std::make_unique<ArjunNS::FGenMPFComplex>(mpfr_precision);
         break;
     case 3:
         if (poly_nvars == -1) {

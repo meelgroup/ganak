@@ -238,8 +238,9 @@ static std::unique_ptr<CMSat::Field> do_count(
     arjun.set_verb(0);
     ArjunNS::Arjun::ElimToFileConf etof_conf;
     ArjunNS::SimpConf simp_conf;
-    arjun.standalone_minimize_indep(cnf, /*all_indep=*/false);
-    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+    ArjunNS::Arjun::InterpConf iconf;
+    arjun.standalone_minimize_indep(cnf, iconf, /*all_indep=*/false);
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
 
     GanakInt::CounterConfiguration conf;
     conf.verb = verbose;
@@ -494,8 +495,9 @@ static std::unique_ptr<CMSat::Field> do_count_weighted(
     arjun.set_verb(0);
     ArjunNS::Arjun::ElimToFileConf etof_conf;
     ArjunNS::SimpConf simp_conf;
-    arjun.standalone_minimize_indep(cnf, /*all_indep=*/false);
-    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf);
+    ArjunNS::Arjun::InterpConf iconf;
+    arjun.standalone_minimize_indep(cnf, iconf, /*all_indep=*/false);
+    arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
 
     GanakInt::CounterConfiguration conf;
     conf.verb = verbose;

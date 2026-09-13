@@ -250,6 +250,8 @@ void add_ganak_options()
     add_arg("--xorgatemaxsize", simp_conf.xor_gate_find_maxsize, fc_int, "Max clause size for XOR-gate finding");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
     add_arg("--iter2grow", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
+    add_arg("--iter2growlarge", simp_conf.bve_grow_iter2_large, fc_int, "If >= 0: used instead of --iter2grow when more than --iter2growlargevars vars are left before iter2");
+    add_arg("--iter2growlargevars", simp_conf.bve_grow_iter2_large_vars, fc_int, "Vars-left threshold for --iter2growlarge");
     add_arg("--bveocclim", simp_conf.bve_occ_cutoff, fc_int, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
     add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, fc_int, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
     add_arg("--distillremlevel", simp_conf.distill_rem_level, fc_int, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");

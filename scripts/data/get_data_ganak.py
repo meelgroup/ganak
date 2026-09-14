@@ -155,6 +155,45 @@ def find_bad_solve(fname):
     return mem_out, not_solved, errored
 
 
+def td_update(c, width, t):
+    if "td_width" not in c or width < c["td_width"]:
+        c["td_width"] = width
+        if t is not None:
+            c["td_iter_time"] = t
+
+
+_COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
+                  "conflicts", "decisionsK", "compsK"]
+_COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio"]
+_COMP_BUSIEST_KEYS = ["cache_miss_rate", "cache_avg_hit_vars", "cache_avg_store_vars"]
+
+
+# Timed-out runs only have the components that were started, so sizes are partial
+def aggregate_comps(result, comps):
+    for k in _COMP_SUM_KEYS:
+        vals = [c[k] for c in comps if k in c]
+        if vals:
+            result[k] = sum(vals)
+
+    largest = max(comps, key=lambda c: c.get("newnvars", -1), default=None)
+    busiest = max(comps, key=lambda c: c.get("compsK", -1), default=None)
+
+    # TD runs once per component: report the largest component's, not a
+    # small side component's (and nothing if TD was skipped for it)
+    if largest is not None and "td_width" in largest:
+        result["td_width"] = largest["td_width"]
+        if "td_time" in largest:
+            result["td_time"] = largest["td_time"]
+        elif "td_iter_time" in largest:
+            result["td_time"] = largest["td_iter_time"]
+    for k in _COMP_LARGEST_KEYS:
+        if largest is not None and k in largest:
+            result[k] = largest[k]
+    for k in _COMP_BUSIEST_KEYS:
+        if busiest is not None and k in busiest:
+            result[k] = busiest[k]
+
+
 ############################
 ## ganak — single-pass parser combining all per-line extractions
 def parse_ganak_output(fname):
@@ -168,6 +207,16 @@ def parse_ganak_output(fname):
     }
     aver = None
     cver = None
+    # Ganak counts each disconnected component separately and prints the
+    # size/TD/search stats once per component, so collect them per component
+    # Stats seen before the first component (older logs, or arjun's own) go to
+    # a placeholder that the first real component replaces
+    comps = []
+
+    def comp():
+        if not comps:
+            comps.append({"pre": True})
+        return comps[-1]
 
     with open(fname, "r") as f:
         for line in f:
@@ -184,12 +233,16 @@ def parse_ganak_output(fname):
                 result["not_solved"] = False
 
             # Mutually exclusive pattern matching
-            if line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
-                result["conflicts"] = int(line.split()[4])
+            if line.startswith("c o ind size:"):
+                if len(comps) == 1 and comps[0].get("pre"):
+                    comps.clear()
+                comps.append({})
+            elif line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
+                comp()["conflicts"] = int(line.split()[4])
             elif line.startswith("c o conflicts"):
-                result["conflicts"] = int(line.split()[3])
+                comp()["conflicts"] = int(line.split()[3])
             elif line.startswith("c o decisions K"):
-                result["decisionsK"] = int(line.split()[4])
+                comp()["decisionsK"] = int(line.split()[4])
             elif line.startswith("c GANAK SHA revision"):
                 aver = line.split()[4]
             elif line.startswith("c CMS version"):
@@ -204,16 +257,16 @@ def parse_ganak_output(fname):
                 result["bdd_called"] = int(line.split()[6])
             elif line.startswith("c o buddy called"):
                 result["bdd_called"] = int(line.split()[4])
-            elif line.startswith("c o Sampling set size:") and "indepsz" not in result:
+            elif line.startswith("c o Sampling set size:") and "indepsz" not in comp():
                 indep_sz = line.split()[5].strip()
                 indep_sz = 0 if indep_sz == "" else int(indep_sz)
-                result["indepsz"] = 0 if indep_sz == 4294967295 else indep_sz
-            elif line.startswith("c o opt ind size") and "newnvars" not in result:
-                result["newnvars"] = int(line.split()[10])
-            elif line.startswith("c o Opt sampling set size:") and "optindepsz" not in result:
+                comp()["indepsz"] = 0 if indep_sz == 4294967295 else indep_sz
+            elif line.startswith("c o opt ind size") and "newnvars" not in comp():
+                comp()["newnvars"] = int(line.split()[10])
+            elif line.startswith("c o Opt sampling set size:") and "optindepsz" not in comp():
                 opt_indep_sz = line.split()[6].strip()
                 opt_indep_sz = 0 if opt_indep_sz == "" else int(opt_indep_sz)
-                result["optindepsz"] = 0 if opt_indep_sz == 4294967295 else opt_indep_sz
+                comp()["optindepsz"] = 0 if opt_indep_sz == 4294967295 else opt_indep_sz
             elif line.startswith("c o CNF projection set size:"):
                 result["origprojsz"] = int(line.split()[6])
             elif line.startswith("c o [extend-gates] Gates added to opt"):
@@ -232,22 +285,26 @@ def parse_ganak_output(fname):
                 result["backboneT"] = result.get("backboneT", 0) + float(line.split()[2])
             elif line.startswith("c o Arjun T:"):
                 result["arjuntime"] = float(line.split()[4])
-            elif line.startswith("c o [td] iter") and "best bag" in line and "td_width" not in result:
-                result["td_width"] = int(line.split()[7]) - 1
-                result["td_time"] = float(line.split()[12])
-            elif line.startswith("c o [td] iter") and "width:" in line and "td_width" not in result:
-                result["td_width"] = int(line.split()[6]) - 1
-                result["td_time"] = float(line.split()[11])
+            # The heuristics and FlowCutter print improving widths, the
+            # component's final width is the smallest one printed
+            elif line.startswith("c o [td] iter") and "best bag" in line:
+                td_update(comp(), int(line.split()[7]) - 1, float(line.split()[12]))
+            elif line.startswith("c o [td] iter") and "width:" in line:
+                td_update(comp(), int(line.split()[6]) - 1, float(line.split()[11]))
+            elif line.startswith("c o [td] #bags") and " tw " in line:
+                td_update(comp(), int(line.split(" tw ")[1].split()[0].rstrip(",")) - 1, None)
+            elif line.startswith("c o [td] decompose time:"):
+                comp()["td_time"] = float(line.split()[5])
             elif line.startswith("c o [td] Primal graph"):
-                result["primal_density"] = float(line.split()[10])
-                result["primal_edge_var_ratio"] = float(line.split()[12])
+                comp()["primal_density"] = float(line.split()[10])
+                comp()["primal_edge_var_ratio"] = float(line.split()[12])
             elif line.startswith("c o cache miss rate"):
-                result["cache_miss_rate"] = float(line.split()[5])
+                comp()["cache_miss_rate"] = float(line.split()[5])
             elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
-                result["compsK"] = float(line.split()[8])
+                comp()["compsK"] = float(line.split()[8])
             elif line.startswith("c o avg hit/store num vars"):
-                result["cache_avg_hit_vars"] = float(line.split()[6])
-                result["cache_avg_store_vars"] = float(line.split()[8])
+                comp()["cache_avg_hit_vars"] = float(line.split()[6])
+                comp()["cache_avg_store_vars"] = float(line.split()[8])
             elif line.startswith("c o deletion done. T:"):
                 result["cache_del_time"] += float(line.split()[5])
             elif line.startswith("c o cubes orig:"):
@@ -262,11 +319,11 @@ def parse_ganak_output(fname):
             elif line.startswith("c o sat call/sat/unsat/confl/rst"):
                 result["sat_called"] = int(line.split()[4])
                 result["satrst"] = int(line.split()[8])
-            elif line.startswith("c o Bin irred/red") and "irred_bin" not in result:
-                result["irred_bin"] = int(line.split()[4])
-            elif line.startswith("c o Long irred cls/tri") and "irred_long" not in result:
-                result["irred_long"] = int(line.split()[5])
-                result["irred_tri"] = int(line.split()[6])
+            elif line.startswith("c o Bin irred/red") and "irred_bin" not in comp():
+                comp()["irred_bin"] = int(line.split()[4])
+            elif line.startswith("c o Long irred cls/tri") and "irred_long" not in comp():
+                comp()["irred_long"] = int(line.split()[5])
+                comp()["irred_tri"] = int(line.split()[6])
             elif line.startswith("c s log10-estimate"):
                 result["mc_log10"] = float(line.split()[3])
 
@@ -275,6 +332,7 @@ def parse_ganak_output(fname):
     if cver is not None:
         cver = cver[:8]
     result["solverver"] = ["ganak", "%s-%s" % (aver, cver)]
+    aggregate_comps(result, comps)
 
     irred_bin  = result.get("irred_bin",  0)
     irred_long = result.get("irred_long", 0)

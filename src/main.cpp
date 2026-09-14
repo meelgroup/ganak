@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "mpoly.hpp"
 #include "mparity.hpp"
 #include <approxmc/approxmc.h>
+#include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
 
 static constexpr uint32_t max_digit_precision = 1e6;
@@ -164,6 +165,7 @@ string print_version()
     ss << "c o CaDiCaL SHA1: " << CMSat::SATSolver::get_cadical_version_sha1() << endl;
     ss << "c o CadiBack SHA1: " << CMSat::SATSolver::get_cadiback_version_sha1() << endl;
     ss << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
+    ss << "c o TreeDecomp SHA1: " << TWD::get_version_sha1() << endl;
     /* ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl; */
     ss << ArjunNS::Arjun::get_thanks_info("c o ") << endl;
     ss << CMSat::SATSolver::get_thanks_info("c o ") << endl;

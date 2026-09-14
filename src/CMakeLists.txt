@@ -123,6 +123,7 @@ target_link_libraries(ganak-bin
       PkgConfig::MPFR
       PkgConfig::GMP
       approxmc
+      treedecomp
 )
 target_link_libraries(example-bin
     PRIVATE

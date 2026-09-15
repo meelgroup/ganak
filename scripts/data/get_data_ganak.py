@@ -156,10 +156,9 @@ def find_bad_solve(fname):
 
 
 def td_update(c, width, t):
-    if "td_width" not in c or width < c["td_width"]:
-        c["td_width"] = width
-        if t is not None:
-            c["td_iter_time"] = t
+    c["td_width"] = width
+    if t is not None:
+        c["td_iter_time"] = t
 
 
 _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
@@ -285,14 +284,16 @@ def parse_ganak_output(fname):
                 result["backboneT"] = result.get("backboneT", 0) + float(line.split()[2])
             elif line.startswith("c o Arjun T:"):
                 result["arjuntime"] = float(line.split()[4])
-            # The heuristics and FlowCutter print improving widths, the
-            # component's final width is the smallest one printed
+            # Last one wins: newer treedecomp may accept a slightly wider TD
+            # that splits better, older logs only ever printed narrower ones
             elif line.startswith("c o [td] iter") and "best bag" in line:
                 td_update(comp(), int(line.split()[7]) - 1, float(line.split()[12]))
             elif line.startswith("c o [td] iter") and "width:" in line:
                 td_update(comp(), int(line.split()[6]) - 1, float(line.split()[11]))
             elif line.startswith("c o [td] #bags") and " tw " in line:
                 td_update(comp(), int(line.split(" tw ")[1].split()[0].rstrip(",")) - 1, None)
+            elif line.startswith("c o [td] accepted TD,"):
+                td_update(comp(), int(line.split(" tw: ")[1].split()[0]) - 1, None)
             elif line.startswith("c o [td] decompose time:"):
                 comp()["td_time"] = float(line.split()[5])
             elif line.startswith("c o [td] Primal graph"):

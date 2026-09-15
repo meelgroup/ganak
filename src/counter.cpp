@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cryptominisat5/cryptominisat.h>
 #include <cstdint>
 #include <ios>
@@ -339,7 +340,10 @@ uint32_t Counter::td_decompose_component(bool update_score) {
   return td.width();
 }
 
-void Counter::dump_td_cnf(const std::string& fname) const {
+void Counter::dump_td_cnf(const std::string& base_fname) const {
+  // Every component gets its own Counter and TD, possibly on other threads
+  static std::atomic<int> dump_num{0};
+  const std::string fname = base_fname + "." + std::to_string(dump_num++);
   std::ofstream out(fname);
   if (!out.is_open()) {
     cerr << "ERROR: could not open file for TD CNF dump: " << fname << endl;
@@ -371,6 +375,7 @@ void Counter::dump_td_cnf(const std::string& fname) const {
     for(const auto& l: cl) out << l << " ";
     out << "0" << endl;
   }
+  cout << "c o [td] Wrote TD-input CNF to file: " << fname << endl;
 }
 
 void Counter::td_decompose() {
@@ -379,10 +384,7 @@ void Counter::td_decompose() {
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
   }
-  if (!conf.td_dump_cnf_file.empty()) {
-    dump_td_cnf(conf.td_dump_cnf_file);
-    cout << "c o [td] Wrote TD-input CNF to file: " << conf.td_dump_cnf_file << endl;
-  }
+  if (!conf.td_dump_cnf_file.empty()) dump_td_cnf(conf.td_dump_cnf_file);
 
   auto primal = std::make_unique<TWD::Graph>(nVars());
   all_lits(i) {

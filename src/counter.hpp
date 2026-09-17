@@ -386,6 +386,7 @@ public:
   bool get_polarity(const uint32_t var) const;
   vector<double> tdscore;
   double td_weight = 1.0;
+  double td_split = -1;
   uint64_t tstamp = 10;
   void bump_stamp() {
     decisions[dec_level()].tstamp = ++tstamp;

@@ -102,6 +102,7 @@ struct CounterConfiguration {
   int td_iters = 900;
   int td_band_pct = 10;
   int td_dense_pct = 30;
+  int td_split_weight_pct = 0;
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;

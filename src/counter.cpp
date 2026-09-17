@@ -146,6 +146,7 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
       for(const auto& nn: a) cout << setw(3) << nn << " ";
       cout << endl;
     });
+  td_split = tdec.splitFrac();
   tdec.centroid(conf.verb);
   std::vector<int> dists = tdec.distanceFromCentroid();
   if (dists.empty()) {
@@ -252,6 +253,16 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) td_weight = 0.1;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
+  // A TD whose centroid bag barely splits the graph says little about which
+  // vars to branch on, one that cuts it into small pieces says a lot: scale
+  // how hard the TD steers branching by that. After the clamp above, else it
+  // does nothing: on the wide TDs this is about, the weight sits at the floor.
+  // 0 = off, the weight then only depends on nodes/width
+  if (conf.td_split_weight_pct != 0 && td_split >= 0) {
+    td_weight *= 1.0 + (conf.td_split_weight_pct/100.0) * (0.5 - td_split)/0.5;
+    td_weight = std::min(td_weight, conf.td_maxweight*(1.0 + conf.td_split_weight_pct/100.0));
+    td_weight = std::max(td_weight, 0.1);
+  }
   if (td_width > conf.td_limit) td_weight = 0.1;
   if (print) {
     verb_print(1,
@@ -261,7 +272,8 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
         << " conf.td_exp_mult: " << conf.td_exp_mult
         << " conf.td_divider: " << conf.td_divider
-        << " max ord diff: " << max_ord);
+        << " max ord diff: " << max_ord
+        << " td split: " << td_split);
   }
 
   // Calc td score

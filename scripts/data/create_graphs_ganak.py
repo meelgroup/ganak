@@ -291,6 +291,89 @@ def print_instance_stats_table(table_todo, fname_like, verbose=False):
         os.unlink(gen_table)
 
 
+def _td_rows(con, dir, ver, fname_like, where):
+    """(instances, solved, PAR2, median width, median split, median bags) for a TD subset."""
+    q = (f"select ganak_time, td_width, td_split, td_bags from data "
+         f"where dirname='{dir}' and ganak_ver='{ver}'{fname_like} and {where}")
+    rows = list(con.execute(q))
+    if not rows:
+        return None
+    def med(vals):
+        vals = sorted(v for v in vals if v is not None)
+        return vals[len(vals)//2] if vals else None
+    solved = sum(1 for r in rows if r[0] is not None)
+    par2 = sum(r[0] if r[0] is not None else 2*TIMEOUT for r in rows) / len(rows)
+    return (len(rows), solved, par2, med(r[1] for r in rows),
+            med(r[2] for r in rows), med(r[3] for r in rows))
+
+
+def print_td_tables(table_todo, fname_like, verbose=False):
+    """Where the TD selection acts: dense graphs (the band is on) vs sparse ones,
+    and which heuristic the chosen TD came from. Needs the td_* columns, i.e.
+    logs from a treedecomp that prints 'final TD'."""
+    if not table_todo:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_split" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    print(f"\n{BLUE}TD regime: dense (width > 30% of nodes, split decides) vs sparse{RESET}")
+    headers = ["dirname", "regime", "inst", "solved", "PAR2", "med tw", "med split", "med bags"]
+    rows = []
+    for dir, ver in table_todo:
+        for label, where in (("dense", "td_band=1"), ("sparse", "td_band=0"),
+                             ("no TD/old log", "td_band is null")):
+            r = _td_rows(con, dir, ver, fname_like, where)
+            if r is None or r[0] == 0:
+                continue
+            rows.append([dir.replace("out-ganak-mc", ""), label, str(r[0]), str(r[1]),
+                         f"{r[2]:.0f}",
+                         "-" if r[3] is None else f"{r[3]:.0f}",
+                         "-" if r[4] is None else f"{r[4]:.2f}",
+                         "-" if r[5] is None else f"{r[5]:.0f}"])
+    if rows:
+        _print_table(headers, rows)
+
+    print(f"\n{BLUE}TD source: which heuristic produced the chosen TD{RESET}")
+    headers = ["dirname", "src", "inst", "solved", "PAR2", "med tw", "med split"]
+    rows = []
+    for dir, ver in table_todo:
+        srcs = [r[0] for r in con.execute(
+            f"select distinct td_src from data where dirname='{dir}' and ganak_ver='{ver}'"
+            f"{fname_like} and td_src is not null order by td_src")]
+        for src in srcs:
+            r = _td_rows(con, dir, ver, fname_like, f"td_src='{src}'")
+            if r is None:
+                continue
+            rows.append([dir.replace("out-ganak-mc", ""), src, str(r[0]), str(r[1]),
+                         f"{r[2]:.0f}",
+                         "-" if r[3] is None else f"{r[3]:.0f}",
+                         "-" if r[4] is None else f"{r[4]:.2f}"])
+    if rows:
+        _print_table(headers, rows)
+
+    print(f"\n{BLUE}Solve rate by split (largest comp left after branching on the centroid bag){RESET}")
+    headers = ["dirname", "regime", "split<0.2", "0.2-0.35", ">=0.35"]
+    rows = []
+    buckets = [("split<0.2", "td_split < 0.2"), ("0.2-0.35", "td_split >= 0.2 and td_split < 0.35"),
+               (">=0.35", "td_split >= 0.35")]
+    for dir, ver in table_todo:
+        for label, band in (("dense", "td_band=1"), ("sparse", "td_band=0")):
+            cells = []
+            any_data = False
+            for _, cond in buckets:
+                r = _td_rows(con, dir, ver, fname_like, f"{band} and {cond}")
+                if r is None or r[0] == 0:
+                    cells.append("-")
+                    continue
+                any_data = True
+                cells.append(f"{r[1]}/{r[0]} PAR2 {r[2]:.0f}")
+            if any_data:
+                rows.append([dir.replace("out-ganak-mc", ""), label] + cells)
+    if rows:
+        _print_table(headers, rows)
+
+
 def print_preproc_diffs(table_todo, fname_like, verbose=False):
     if len(table_todo) < 2:
         return
@@ -1794,8 +1877,8 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
                 f.write(f'set xlabel "{xlabel}"\n')
                 f.write(f'set ylabel "{ylabel}"\n')
                 f.write( 'set logscale xy\n')
-                f.write( 'set xrange [0.1:4000]\n')
-                f.write( 'set yrange [0.1:4000]\n')
+                f.write( 'set xrange [10:4000]\n')
+                f.write( 'set yrange [10:4000]\n')
                 f.write( 'set grid\n')
                 f.write( 'set key off\n')
                 f.write( 'set arrow 1 from 0.1,0.1 to 3600,3600 nohead lc rgb "gray50" lw 1\n')
@@ -1836,7 +1919,7 @@ def generate_gnuplot(fname2_s, verbose=False):
 
     with open(gnuplotfn, "w") as f:
         for term, out in [
-            ('pdfcairo size 45cm,65cm background "#d0d0d0"', pdf_file),
+            ('pdfcairo size 65cm,45cm background "#d0d0d0"', pdf_file),
             ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1848,7 +1931,7 @@ def generate_gnuplot(fname2_s, verbose=False):
             f.write('set ylabel "Instances counted"\n')
             f.write('set xlabel "Time (s)"\n')
             f.write('set grid\n')
-            f.write('plot [0.1:3600][0.1:]\\\n')
+            f.write('plot [100:3600][:]\\\n')
             f.write(plot_lines())
             f.write('\n\n')
     return gnuplotfn, pdf_file, png_file
@@ -2064,8 +2147,10 @@ only_dirs = [
     # "out-ganak-mccomp2324-1817408-0", # gates-eq + replace in the middle after gates-based eq
     # "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
-    "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
+    # "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
     "out-ganak-mccomp2324-2304308-4", # new system checks including RW
+    # "out-ganak-mccomp2324-2312282-3", # new setup, better TD setup, ostensibly
+    "out-ganak-mccomp2324-2329268-0", # fixing TD
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2165,6 +2250,7 @@ def main():
         print("Printing median tables...")
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
+    print_td_tables(table_todo, fname_like, args.verbose)
     if not args.nopreproc:
         print_preproc_diffs(table_todo, fname_like, args.verbose)
 

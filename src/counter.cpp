@@ -332,7 +332,8 @@ uint32_t Counter::td_decompose_component(bool update_score) {
   fc.importGraph(primal);
 
   // Notice that this graph returned is VERY different
-  auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters));
+  auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters,
+        conf.td_band_pct, conf.td_dense_pct));
   td.centroid(0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
 
@@ -463,7 +464,7 @@ void Counter::td_decompose() {
   fc.importGraph(*primal_alt);
 
   // Notice that this graph returned is VERY different
-  auto td = fc.constructTD(conf.td_steps, conf.td_iters);
+  auto td = fc.constructTD(conf.td_steps, conf.td_iters, conf.td_band_pct, conf.td_dense_pct);
 
   compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);

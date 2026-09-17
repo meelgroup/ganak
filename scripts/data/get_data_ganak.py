@@ -163,7 +163,8 @@ def td_update(c, width, t):
 
 _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
                   "conflicts", "decisionsK", "compsK"]
-_COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio"]
+_COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
+                      "td_bags", "td_src", "td_band", "td_cands", "td_accepts"]
 _COMP_BUSIEST_KEYS = ["cache_miss_rate", "cache_avg_hit_vars", "cache_avg_store_vars"]
 
 
@@ -294,6 +295,20 @@ def parse_ganak_output(fname):
                 td_update(comp(), int(line.split(" tw ")[1].split()[0].rstrip(",")) - 1, None)
             elif line.startswith("c o [td] accepted TD,"):
                 td_update(comp(), int(line.split(" tw: ")[1].split()[0]) - 1, None)
+            # Summary of which TD the component ended up with, and why
+            elif line.startswith("c o [td] final TD:"):
+                f = line.split()
+                c = comp()
+                td_update(c, int(f[6]) - 1, None)
+                split, nodes = f[8].split("/")
+                c["td_nodes"] = int(nodes)
+                # largest comp left after branching on the centroid bag
+                c["td_split"] = int(split) / int(nodes) if int(nodes) else 0
+                c["td_bags"] = int(f[10])
+                c["td_src"] = f[12]
+                c["td_band"] = 1 if f[14] == "on" else 0
+                c["td_cands"] = int(f[20])
+                c["td_accepts"] = int(f[22])
             elif line.startswith("c o [td] decompose time:"):
                 comp()["td_time"] = float(line.split()[5])
             elif line.startswith("c o [td] Primal graph"):
@@ -350,6 +365,50 @@ _SIMP_STATS_RE = re.compile(
     r'(?:\s+elimed_vars (\d+) replaced_vars (\d+) units (\d+) mem_MB (\d+) T:\s*([\d.]+))?'
     r'(?:\s+depth (\d+))?'
 )
+# Newer CMS: two lines per event, lowercase bef/aft, colour codes around the name
+_SIMP_STATS_NEW1_RE = re.compile(
+    r'c o \[simp-stats\] (bef|aft) (\S+)\s+'
+    r'irred_bins (\d+) irred_long_cls (\d+) irred_long_lits (\d+) units (\d+)'
+)
+_SIMP_STATS_NEW2_RE = re.compile(
+    r'c o \[simp-stats\]\s+free_vars (\d+) elimed_vars (\d+) replaced_vars (\d+) '
+    r'mem_MB (\d+) T:\s*([\d.]+)(?:\s+T-step:\s*[\d.]+)?\s+depth (\d+)'
+)
+_ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
+
+
+def _simp_stats_events(f):
+    """Yield (kind, name, core, ext, depth) for old one-line and new two-line formats."""
+    new1 = None
+    for line in f:
+        line = _ANSI_RE.sub("", line).replace("[0m", "").strip()
+        if "[simp-stats]" not in line:
+            continue
+        m = _SIMP_STATS_NEW1_RE.search(line)
+        if m:
+            new1 = m
+            continue
+        m = _SIMP_STATS_NEW2_RE.search(line)
+        if m:
+            if new1 is None:
+                continue
+            kind = "BEFORE" if new1.group(1) == "bef" else "AFTER"
+            core = (int(new1.group(3)), int(new1.group(4)), int(new1.group(5)), int(m.group(1)))
+            ext = (int(m.group(2)), int(m.group(3)), int(new1.group(6)),
+                   int(m.group(4)), float(m.group(5)))
+            yield kind, new1.group(2), core, ext, int(m.group(6))
+            new1 = None
+            continue
+        m = _SIMP_STATS_RE.search(line)
+        if not m:
+            continue
+        core = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+        ext = None
+        if m.group(7) is not None:
+            ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
+                   int(m.group(10)), float(m.group(11)))
+        depth = int(m.group(12)) if m.group(12) is not None else 0
+        yield m.group(1), m.group(2), core, ext, depth
 
 
 def parse_simp_stats(fname):
@@ -372,22 +431,7 @@ def parse_simp_stats(fname):
     last_completed_step = "none"  # tracks prev_step
 
     with open(fname, "r") as f:
-        for line in f:
-            line = line.replace("[0m", "").replace("\x1b", "").strip()
-            m = _SIMP_STATS_RE.search(line)
-            if not m:
-                continue
-            kind = m.group(1)
-            name = m.group(2)
-            # Core fields (always present)
-            core = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
-            # Extended fields (present in newer logs)
-            ext = None
-            if m.group(7) is not None:
-                ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
-                       int(m.group(10)), float(m.group(11)))
-            depth = int(m.group(12)) if m.group(12) is not None else 0
-
+        for kind, name, core, ext, depth in _simp_stats_events(f):
             key = (name, depth)
             if kind == "BEFORE":
                 pending.setdefault(key, []).append((core, ext))
@@ -561,6 +605,7 @@ def main():
     cols = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time", "ganak_mem_MB",
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
             "compsK", "primal_density", "primal_edge_var_ratio", "td_width", "td_time",
+            "td_nodes", "td_split", "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
             "arjun_time", "backboneT", "backwardT", "indepsz", "optindepsz", "origprojsz",
             "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
             "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
@@ -612,6 +657,13 @@ def main():
                 g(f, "primal_edge_var_ratio"),
                 g(f, "td_width"),
                 g(f, "td_time"),
+                g(f, "td_nodes"),
+                g(f, "td_split"),
+                g(f, "td_bags"),
+                g(f, "td_src"),
+                g(f, "td_band"),
+                g(f, "td_cands"),
+                g(f, "td_accepts"),
                 g(f, "arjuntime"),
                 g(f, "backboneT"),
                 g(f, "backwtime"),
@@ -724,6 +776,13 @@ def main():
           primal_edge_var_ratio FLOAT,
           td_width INT,
           td_time FLOAT,
+          td_nodes INT,
+          td_split FLOAT,
+          td_bags INT,
+          td_src STRING,
+          td_band INT,
+          td_cands INT,
+          td_accepts INT,
           arjun_time FLOAT,
           backbone_time FLOAT,
           backward_time FLOAT,
@@ -827,6 +886,13 @@ def main():
             n(f.get("primal_edge_var_ratio", "")),
             n(f.get("td_width", "")),
             n(f.get("td_time", "")),
+            n(f.get("td_nodes", "")),
+            n(f.get("td_split", "")),
+            n(f.get("td_bags", "")),
+            n(f.get("td_src", "")),
+            n(f.get("td_band", "")),
+            n(f.get("td_cands", "")),
+            n(f.get("td_accepts", "")),
             n(f.get("arjuntime", "")),
             n(f.get("backboneT", "")),
             n(f.get("backwtime", "")),
@@ -857,8 +923,34 @@ def main():
             n(f.get("mc_log10", "")),
         ))
 
+    # an older data.sqlite3 predates the td_* columns, add them rather than
+    # forcing a full --reparse
+    have = {r[1] for r in conn.execute("PRAGMA table_info(data)")}
+    for col, typ in (("td_nodes", "INT"), ("td_split", "FLOAT"), ("td_bags", "INT"),
+                     ("td_src", "STRING"), ("td_band", "INT"), ("td_cands", "INT"),
+                     ("td_accepts", "INT")):
+        if col not in have:
+            conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
+
+    data_cols = [r[1] for r in conn.execute("PRAGMA table_info(data)")]
+    # name the columns: ALTER TABLE appends, so positions may differ from the
+    # CREATE TABLE order above
+    ordered = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time",
+               "ganak_mem_MB", "ganak_call", "page_faults", "signal", "ganak_ver",
+               "conflicts", "decisionsK", "compsK", "primal_density",
+               "primal_edge_var_ratio", "td_width", "td_time", "td_nodes", "td_split",
+               "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "arjun_time",
+               "backbone_time", "backward_time", "indep_sz", "opt_indep_sz",
+               "orig_proj_sz", "new_nvars", "unkn_sz", "cache_del_time",
+               "cache_avg_hit_vars", "cache_avg_store_vars", "cache_miss_rate",
+               "bdd_called", "sat_called", "sat_rst", "restarts", "cubes_orig",
+               "cubes_final", "gates_extended", "gates_extend_t", "padoa_extended",
+               "padoa_extend_t", "timeout_t", "irred_bin", "irred_long", "irred_tri",
+               "irred_cls", "mc_log10"]
+    assert sorted(ordered) == sorted(data_cols), (set(ordered) ^ set(data_cols))
     conn.executemany(
-        "INSERT INTO data VALUES (" + ",".join(["?"] * 46) + ")",
+        "INSERT INTO data (" + ",".join(ordered) + ") VALUES ("
+        + ",".join(["?"] * len(ordered)) + ")",
         data_rows
     )
 

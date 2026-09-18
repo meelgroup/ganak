@@ -1413,6 +1413,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   int32_t tw = 0;
   if (dec_level() < conf.td_lookahead) tw = td_decompose_component(false);
 
+  // Branching stats, see statistics.hpp
+  const bool use_td = !tdscore.empty() && !ignore_td;
+  double br_max_td = -1;
+  double br_min_td = 1e9;
+  uint32_t br_td_ties = 0;
+
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
     // Update at[v] for ALL vars in the component (including already-set ones) so that
@@ -1439,6 +1445,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
     else score = score_of(v, ignore_td) ;
+    if (use_td) {
+      const double t = tdscore[v];
+      if (t > br_max_td) { br_max_td = t; br_td_ties = 1; }
+      else if (t == br_max_td) br_td_ties++;
+      br_min_td = std::min(br_min_td, t);
+    }
     if (best_var == 0 || score > best_var_score) {
       best_var = v;
       best_var_score = score;
@@ -1449,6 +1461,26 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   if (only_optional_indep && !also_nonindep) {
     is_indep = false;
     return 0;
+  }
+
+  if (best_var != 0) {
+    stats.br_decisions++;
+    stats.br_cands += last_dec_candidates;
+    stats.br_dec_level_sum += dec_level();
+    const double td_s = use_td ? td_weight*tdscore[best_var] : 0;
+    const double act_s = var_act(best_var)/conf.act_score_divisor;
+    const double freq_s = (double)comp_manager->freq_score_of(best_var)/conf.freq_score_divisor;
+    const double tot = td_s + act_s + freq_s;
+    if (tot > 0) {
+      stats.br_share_td += td_s/tot;
+      stats.br_share_act += act_s/tot;
+      stats.br_share_freq += freq_s/tot;
+    }
+    if (use_td) {
+      stats.br_td_ties += br_td_ties;
+      stats.br_td_obeyed += tdscore[best_var] == br_max_td;
+      stats.br_td_flat += br_max_td == br_min_td;
+    }
   }
 
   if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff) {

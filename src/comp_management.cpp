@@ -65,12 +65,21 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
   // Skip the hit_node store on every cache lookup in the common no-compile path.
   const bool compiling = counter->get_compiler().active();
 
+  // Branching stats, see statistics.hpp
+  uint32_t br_comps = 0;
+  uint32_t br_child_vars = 0;
+  uint32_t br_largest = 0;
+
   all_vars_in_comp(super_comp, vt) {
     debug_print("Going to NEXT var that's unvisited & set in this component... if it exists. Var: " << *vt);
     if (ana.var_unvisited_in_sup_comp(*vt) &&
         ana.explore_comp(*vt, super_comp.num_long_cls(), super_comp.num_bin_cls())) {
       Comp *p_new_comp = ana.make_comp_from_archetype();
       void* ccomp = cache->create_new_comp(*p_new_comp, hash_seed, bpc);
+      const uint32_t br_nvars = p_new_comp->nVars();
+      br_comps++;
+      br_child_vars += br_nvars;
+      br_largest = std::max(br_largest, br_nvars);
 
       // TODO Yash: count it 1-by-1 in case the number of variables & clauses is small
       //       essentially, brute-forcing the count
@@ -91,6 +100,7 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
 #endif
       } else {
         // Cache hit
+        stats.br_split_hit_vars += br_nvars;
 #ifdef VERBOSE_DEBUG
         cout << COLYEL2 "Comp already in cache."
             << " num vars: " << p_new_comp->nVars() << " vars: ";
@@ -108,4 +118,17 @@ void CompManager::record_remaining_comps_for(StackLevel &top) {
       << comp_stack.size() << ", while top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   top.set_unprocessed_comps_end(comp_stack.size());
   sort_comp_stack_range(new_comps_start_ofs, comp_stack.size());
+
+  stats.br_splits++;
+  stats.br_split_multi += br_comps >= 2;
+  stats.br_split_none += br_comps == 0;
+  stats.br_split_comps += br_comps;
+  stats.br_split_sup_vars += super_comp.nVars();
+  stats.br_split_child_vars += br_child_vars;
+  stats.br_split_largest_vars += br_largest;
+  if (counter->dec_level() <= 3) {
+    stats.br_top_splits++;
+    stats.br_top_sup_vars += super_comp.nVars();
+    stats.br_top_largest_vars += br_largest;
+  }
 }

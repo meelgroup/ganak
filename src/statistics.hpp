@@ -138,6 +138,33 @@ public:
   uint64_t comps_non_reset = 0;
   uint32_t comps_recorded = 0;
 
+  // Branching: how well does a decision (plus its propagation) cut the
+  // component it was made in. One "split" is one component analysis of a
+  // super-component, i.e. one side of a branch.
+  uint64_t br_splits = 0; // component analyses
+  uint64_t br_split_multi = 0; // ... that yielded >= 2 components
+  uint64_t br_split_none = 0; // ... that yielded no component at all (all set/free)
+  uint64_t br_split_comps = 0; // total components found (cache hit or miss)
+  uint64_t br_split_sup_vars = 0; // sum of unknown vars in super comp before the decision
+  uint64_t br_split_child_vars = 0; // sum of vars in all components found
+  uint64_t br_split_largest_vars = 0; // sum of vars of the largest component found
+  uint64_t br_split_hit_vars = 0; // sum of vars of the components that were cache hits
+  // Same, but only for the splits near the top of the search (dec level <= 3)
+  uint64_t br_top_splits = 0;
+  uint64_t br_top_sup_vars = 0;
+  uint64_t br_top_largest_vars = 0;
+
+  // Branching: what picked the decision variable
+  uint64_t br_decisions = 0; // decisions that went through score_of()
+  uint64_t br_cands = 0; // sum of candidate vars
+  uint64_t br_td_ties = 0; // sum of candidates sharing the best TD score
+  uint64_t br_td_obeyed = 0; // chosen var had the best TD score of the candidates
+  uint64_t br_td_flat = 0; // all candidates had the same TD score: TD had no say
+  double br_share_td = 0; // sum of the chosen var's score shares
+  double br_share_act = 0;
+  double br_share_freq = 0;
+  uint64_t br_dec_level_sum = 0; // sum of the decision levels of decisions
+
   uint64_t num_cached_comps = 0;
   uint64_t total_num_cached_comps = 0;
   uint64_t cache_pollutions_removed = 0;

@@ -321,8 +321,7 @@ def print_td_tables(table_todo, fname_like, verbose=False):
     headers = ["dirname", "regime", "inst", "solved", "PAR2", "med tw", "med split", "med bags"]
     rows = []
     for dir, ver in table_todo:
-        for label, where in (("dense", "td_band=1"), ("sparse", "td_band=0"),
-                             ("no TD/old log", "td_band is null")):
+        for label, where in (("dense", "td_band=1"), ("sparse", "td_band=0")):
             r = _td_rows(con, dir, ver, fname_like, where)
             if r is None or r[0] == 0:
                 continue

@@ -985,6 +985,14 @@ def _preproc_step_stats(con, dirs_sql, where_extra="", per_cnf=False):
     return result
 
 
+def print_section_header(title):
+    """Major section header, so the wall of tables can be skimmed."""
+    line = "*" * (len(title) + 8)
+    print(f"\n{GREEN}{line}{RESET}")
+    print(f"{GREEN}*** {title.upper()} ***{RESET}")
+    print(f"{GREEN}{line}{RESET}")
+
+
 def _print_table(headers, str_rows):
     widths = [max(len(h), max((len(r[i]) for r in str_rows), default=0))
               for i, h in enumerate(headers)]
@@ -2326,22 +2334,27 @@ def main():
             os.system(f"./cache_miss_bucket_summary.py {dir}")
 
     if not args.nodistribution:
+      print_section_header("distributions of key metrics")
       print_distributions(table_todo, fname_like)
 
     if args.verbose:
         print("Printing summary tables...")
+    print_section_header("solved counts, PAR2 and failures")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
     print_sigabrt_files(table_todo, fname_like)
     print_errored_files(matched_dirs)
 
     if args.verbose:
         print("Printing median tables...")
+    print_section_header("per-instance medians and sizes")
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
+    print_section_header("tree decomposition")
     print_td_tables(table_todo, fname_like, args.verbose)
     print_td_cost_table(table_todo, fname_like, args.verbose)
     td_time_cdf_chart(table_todo, fname_like, args.verbose)
     if not args.nopreproc:
+        print_section_header("preprocessing")
         print_preproc_diffs(table_todo, fname_like, args.verbose)
 
         # Preprocessing step analysis — one block per directory
@@ -2361,6 +2374,7 @@ def main():
             preproc_time_pie_chart(one)
 
     if not args.nopairwise:
+      print_section_header("pairwise comparisons")
       unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
       for dir1, dir2 in itertools.combinations(unique_dirs, 2):
           print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)

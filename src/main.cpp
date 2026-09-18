@@ -276,6 +276,7 @@ void add_ganak_options()
     add_arg("--tditers", conf.td_iters, fc_int, "TD flowcutter iterations (restarts)");
     add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
     add_arg("--tdbandpct", conf.td_band_pct, fc_int, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");
+    add_arg("--tdsepwpct", conf.td_sep_weight_pct, fc_int, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
     add_arg("--tdsplitwpct", conf.td_split_weight_pct, fc_int, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
     add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does");
     add_arg("--tdlook", conf.td_lookahead, fc_int, "-1 means never");

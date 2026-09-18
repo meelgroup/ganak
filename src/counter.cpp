@@ -276,16 +276,100 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
         << " td split: " << td_split);
   }
 
+  // Within one level of the TD, all vars used to tie. Break the tie by how
+  // much separating work the var does, in [0, 1)
+  // Always computed (it is cheap), so the log line about it is always there
+  const vector<double> sep_frac = compute_td_sep_frac(nodes, bags, adj, centroid, ord, print);
+
   // Calc td score
   for (uint32_t i = 0; i < nodes; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
+    val += sep_frac[i] * (conf.td_sep_weight_pct/100.0);
     val /= (double)max_ord;
-    assert(val > -0.01 && val < 1.01);
+    assert(val > -0.01);
 
     assert(i+1 < tdscore.size());
     tdscore[i+1] = val;
   }
+}
+
+// The depth-from-centroid order only says WHICH bag level a var belongs to. But
+// what cuts the graph are the adhesions (bag intersections along tree edges):
+// once all of parent-bag \cap child-bag is set, the child's subtree falls off.
+// A var that sits only in its top bag separates nothing, while one that sits in
+// a small adhesion in front of a large subtree separates a lot per decision.
+// So per var: sum over the tree edges whose adhesion holds it of
+//     min(vars below the edge, vars above the edge) / adhesion size
+// normalized per TD level into [0, 1).
+vector<double> Counter::compute_td_sep_frac(const uint32_t nodes,
+    const std::vector<std::vector<int>>& bags,
+    const std::vector<std::vector<int>>& adj, const int centroid,
+    const std::vector<int>& ord, bool print) {
+  const uint32_t nbags = bags.size();
+  vector<int> parent(nbags, -1);
+  vector<int> bfs_order;
+  bfs_order.reserve(nbags);
+  vector<char> seen_bag(nbags, 0);
+  bfs_order.push_back(centroid);
+  seen_bag[centroid] = 1;
+  for(size_t at = 0; at < bfs_order.size(); at++) {
+    const int b = bfs_order[at];
+    for(const auto& nb: adj[b]) if (!seen_bag[nb]) {
+      seen_bag[nb] = 1;
+      parent[nb] = b;
+      bfs_order.push_back(nb);
+    }
+  }
+
+  // Top bag of a var: the first one in BFS order that holds it. Vars below a
+  // bag: those whose top bag is in the bag's subtree
+  vector<int> top_bag(nodes, -1);
+  vector<uint32_t> below(nbags, 0);
+  for(const auto& b: bfs_order) for(const auto& v: bags[b])
+    if (top_bag[v] == -1) { top_bag[v] = b; below[b]++; }
+  for(size_t at = bfs_order.size(); at-- > 1;) {
+    const int b = bfs_order[at];
+    below[parent[b]] += below[b];
+  }
+
+  vector<double> sep(nodes, 0.0);
+  vector<char> in_parent(nodes, 0);
+  vector<int> adhesion;
+  for(const auto& b: bfs_order) {
+    if (parent[b] == -1) continue;
+    for(const auto& v: bags[parent[b]]) in_parent[v] = 1;
+    adhesion.clear();
+    for(const auto& v: bags[b]) if (in_parent[v]) adhesion.push_back(v);
+    for(const auto& v: bags[parent[b]]) in_parent[v] = 0;
+    if (adhesion.empty()) continue;
+    const double cut = std::min<double>(below[b], nodes-below[b]);
+    for(const auto& v: adhesion) sep[v] += cut/(double)adhesion.size();
+  }
+
+  // Normalize per TD level
+  const int max_o = *std::max_element(ord.begin(), ord.end());
+  vector<double> level_max(max_o+1, 0.0);
+  for(uint32_t i = 0; i < nodes; i++) level_max[ord[i]] = std::max(level_max[ord[i]], sep[i]);
+  vector<double> ret(nodes, 0.0);
+  for(uint32_t i = 0; i < nodes; i++)
+    if (level_max[ord[i]] > 0) ret[i] = 0.999*sep[i]/level_max[ord[i]];
+
+  if (print) {
+    const int min_o = *std::min_element(ord.begin(), ord.end());
+    uint32_t root_vars = 0, root_nosep = 0, root_low = 0;
+    for(uint32_t i = 0; i < nodes; i++) if (ord[i] == min_o) {
+      root_vars++;
+      root_nosep += sep[i] == 0;
+      root_low += ret[i] < 0.25;
+    }
+    verb_print(1, "[td] sep score: top level vars: " << root_vars
+        << " of which separate nothing: " << root_nosep
+        << " below 25% of best: " << root_low
+        << " children of centroid: " << adj[centroid].size()
+        << " best sep: " << level_max[min_o]);
+  }
+  return ret;
 }
 
 uint32_t Counter::td_decompose_component(bool update_score) {

@@ -103,6 +103,7 @@ struct CounterConfiguration {
   int td_band_pct = 10;
   int td_dense_pct = 30;
   int td_split_weight_pct = 100;
+  int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;

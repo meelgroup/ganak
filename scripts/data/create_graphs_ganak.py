@@ -374,6 +374,94 @@ def print_td_tables(table_todo, fname_like, verbose=False):
         _print_table(headers, rows)
 
 
+def print_td_cost_table(table_todo, fname_like, verbose=False):
+    """What the TD itself costs: time, search effort, and the runs that never
+    got past it. Reads the td_* columns, i.e. logs with a 'final TD' line."""
+    if not table_todo:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_cands" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    print(f"\n{BLUE}TD cost: time spent decomposing, and how much searching it took{RESET}")
+    headers = ["dirname", "regime", "TDs", "sum TD s", "med TD s", "max TD s",
+               "med TD % of count (>60s)", "med cands", "med acc", "killed in TD"]
+    rows = []
+    for dir, ver in table_todo:
+        for label, where in (("dense", "td_band=1"), ("sparse", "td_band=0")):
+            q = (f"select td_time, ganak_time, arjun_time, td_cands, td_accepts from data "
+                 f"where dirname='{dir}' and ganak_ver='{ver}'{fname_like} and {where}")
+            got = [r for r in con.execute(q) if r[0] is not None]
+            if not got:
+                continue
+            def med(vals):
+                vals = sorted(v for v in vals if v is not None)
+                return vals[len(vals)//2] if vals else None
+            # TD is part of the counting phase, so compare it against that.
+            # Only for instances that count for a while: on the trivial ones
+            # the TD is nearly all of a tiny number and drowns out the rest
+            shares = [100.0*r[0]/(r[1]-(r[2] or 0)) for r in got
+                      if r[1] is not None and (r[1]-(r[2] or 0)) > 60]
+            killed = con.execute(
+                f"select count(*) from data where dirname='{dir}' and ganak_ver='{ver}'"
+                f"{fname_like} and td_width is not null and td_band is null").fetchone()[0]
+            rows.append([dir.replace("out-ganak-mc", ""), label, str(len(got)),
+                         f"{sum(r[0] for r in got):.0f}", f"{med(r[0] for r in got):.2f}",
+                         f"{max(r[0] for r in got):.0f}",
+                         "-" if not shares else f"{med(shares):.1f}%",
+                         f"{med(r[3] for r in got):.0f}", f"{med(r[4] for r in got):.0f}",
+                         str(killed) if label == "dense" else ""])
+    if rows:
+        _print_table(headers, rows)
+
+
+def td_time_cdf_chart(table_todo, fname_like, verbose=False):
+    """CDF of TD time per dir: how much of the budget goes into decomposing
+    before any counting happens."""
+    if len(table_todo) < 1:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_cands" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    plots = []
+    for dir, ver in table_todo:
+        times = sorted(r[0] for r in con.execute(
+            f"select td_time from data where dirname='{dir}' and ganak_ver='{ver}'"
+            f"{fname_like} and td_time is not null") if r[0] is not None and r[0] > 0)
+        if len(times) < 10:
+            continue
+        dat = f"{TMP_DIR}/td_time_{re.sub(r'[^a-zA-Z0-9_-]', '_', dir)}.dat"
+        with open(dat, "w") as f:
+            for i, t in enumerate(times):
+                f.write(f"{t}\t{100.0*(i+1)/len(times)}\n")
+        plots.append((dat, dir.replace("out-ganak-mc", "")))
+    if not plots:
+        return
+
+    png_file = f"{TMP_DIR}/td_time_cdf.png"
+    pdf_file = f"{TMP_DIR}/td_time_cdf.pdf"
+    gp_file = f"{TMP_DIR}/td_time_cdf.gnuplot"
+    with open(gp_file, "w") as f:
+        f.write(f"""set terminal pdfcairo size 7,5
+set output '{pdf_file}'
+set title 'TD time: fraction of instances decomposed within X seconds'
+set xlabel 'TD time (s), log scale'
+set ylabel '% of instances with a TD'
+set logscale x
+set grid
+set key bottom right
+""")
+        parts = ", ".join(f"'{dat}' using 1:2 with lines lw 2 title '{gnuplot_name_cleanup(name)}'"
+                          for dat, name in plots)
+        f.write("plot " + parts + "\n")
+        f.write(f"set terminal pngcairo size 900,650\nset output '{png_file}'\nreplot\n")
+    console_title = "TD time CDF"
+    print(f"\n{BLUE}{console_title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
+
+
 def print_preproc_diffs(table_todo, fname_like, verbose=False):
     if len(table_todo) < 2:
         return
@@ -2148,9 +2236,10 @@ only_dirs = [
     # "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
     # "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
-    "out-ganak-mccomp2324-2304308-4", # new system checks including RW
+    # "out-ganak-mccomp2324-2304308-4", # new system checks including RW
     # "out-ganak-mccomp2324-2312282-3", # new setup, better TD setup, ostensibly
-    "out-ganak-mccomp2324-2329268-0", # fixing TD
+    # "out-ganak-mccomp2324-2329268-0", # fixing TD
+    "out-ganak-mccomp2324-2345011-", # more stats about TD, faster TD
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2251,6 +2340,8 @@ def main():
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
     print_td_tables(table_todo, fname_like, args.verbose)
+    print_td_cost_table(table_todo, fname_like, args.verbose)
+    td_time_cdf_chart(table_todo, fname_like, args.verbose)
     if not args.nopreproc:
         print_preproc_diffs(table_todo, fname_like, args.verbose)
 

@@ -285,6 +285,12 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   for (uint32_t i = 0; i < nodes; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
+    if (conf.td_max_levels > 0 && max_ord >= conf.td_max_levels) {
+      // Coarsen: merge neighbouring levels so that at most td_max_levels
+      // remain. Inside a merged level the dynamic scores decide.
+      const int lev = ((ord[i]-min_ord)*conf.td_max_levels)/(max_ord+1);
+      val = max_ord - (double)lev*max_ord/(double)(conf.td_max_levels-1 > 0 ? conf.td_max_levels-1 : 1);
+    }
     val += sep_frac[i] * (conf.td_sep_weight_pct/100.0);
     val /= (double)max_ord;
     assert(val > -0.01);

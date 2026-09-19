@@ -88,6 +88,7 @@ struct CounterConfiguration {
   int vsads_readjust_every = 256;
   double act_score_divisor = 3.0;
   double freq_score_divisor = 25.0;
+  int freq_short_bonus = 0; // extra frequency score for occurrences in clauses with 2 unknown lits
   uint32_t tot_used_cutoff_vivif = 50;
 
   int do_td = 1;
@@ -103,6 +104,7 @@ struct CounterConfiguration {
   int td_band_pct = 10;
   int td_dense_pct = 30;
   int td_split_weight_pct = 100;
+  int td_max_levels = 0; // merge TD levels until at most this many remain. 0 = off
   int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;

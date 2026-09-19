@@ -276,6 +276,7 @@ void add_ganak_options()
     add_arg("--tditers", conf.td_iters, fc_int, "TD flowcutter iterations (restarts)");
     add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
     add_arg("--tdbandpct", conf.td_band_pct, fc_int, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");
+    add_arg("--tdmaxlevels", conf.td_max_levels, fc_int, "TD: merge neighbouring levels of the TD order until at most this many remain, leaving the choice inside a level to the dynamic scores. 0 = off");
     add_arg("--tdsepwpct", conf.td_sep_weight_pct, fc_int, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
     add_arg("--tdsplitwpct", conf.td_split_weight_pct, fc_int, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
     add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does");
@@ -306,6 +307,7 @@ void add_ganak_options()
     add_arg("--initact", conf.do_init_activity_scores, fc_int, "Init activity scores to var freq");
     add_arg("--vsadsadjust", conf.vsads_readjust_every, fc_int, "VSADS ajust activity every N");
     add_arg("--actscorediv", conf.act_score_divisor, fc_double, "Activity score divisor");
+    add_arg("--freqshortbonus", conf.freq_short_bonus, fc_int, "Extra component frequency score for an occurrence in a clause that is down to 2 unknown literals");
     add_arg("--freqscorediv", conf.freq_score_divisor, fc_double, "Component frequency score divisor");
 
     // Cache options

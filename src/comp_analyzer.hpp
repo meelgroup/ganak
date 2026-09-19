@@ -123,7 +123,9 @@ public:
         Counter* _counter);
 
   auto freq_score_of(uint32_t v) const { return var_freq_scores[v]; }
+
   inline void bump_freq_score(uint32_t v) { var_freq_scores[v] ++; }
+  inline void bump_freq_score(uint32_t v, uint32_t by) { var_freq_scores[v] += by; }
   const CompArchetype& current_archetype() const { return archetype; }
 
   void initialize(const LiteralIndexedVector<LitWatchList> & literals,
@@ -147,9 +149,9 @@ public:
 
   // Sometimes, it's cheaper to look up the lit than the variable,
   // because we have already looked up the literal, so it's in the cache
-  void manage_occ_and_score_of(Lit l) {
+  void manage_occ_and_score_of(Lit l, uint32_t by = 1) {
     if (is_unknown(l)) {
-      bump_freq_score(l.var());
+      bump_freq_score(l.var(), by);
       manage_occ_of(l.var());
     }
   }
@@ -194,6 +196,7 @@ private:
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;
   vector<uint32_t> var_freq_scores;
+
   CompArchetype archetype;
   Counter* counter = nullptr;
 
@@ -223,8 +226,10 @@ private:
   // The clause is _definitely_ in the supercomponent
   bool search_clause(ClData& d, Lit const* cl_start) {
     bool sat = false;
+    uint32_t unk = 0;
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
         if (is_true(*it_l)) {sat = true; break;}
+        unk += is_unknown(*it_l);
     }
 
     if (sat) {
@@ -232,12 +237,14 @@ private:
       return true;
     }
 
+    // A clause that is down to 2 unknown lits propagates on the next decision
+    const uint32_t by = unk <= 2 ? 1+conf.freq_short_bonus : 1;
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
       SLOW_DEBUG_DO(
           const uint32_t v = it_l->var();
           assert(v <= max_var);
           assert(is_false(*it_l) || archetype.var_unvisited_in_sup_comp(v) || archetype.var_visited(v)));
-      manage_occ_and_score_of(*it_l);
+      manage_occ_and_score_of(*it_l, by);
     }
 
     archetype.set_clause_visited(d.id);

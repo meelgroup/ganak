@@ -107,6 +107,7 @@ struct CounterConfiguration {
   int td_band_pct = 10;
   int td_dense_pct = 30;
   int td_split_weight_pct = 100;
+  int td_flat_pct = 0; // TD width >= this % of the TD graph's nodes: TD does not guide branching. 0 = off
   int td_max_levels = 0; // merge TD levels until at most this many remain. 0 = off
   int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level
   int td_lookahead = -1;

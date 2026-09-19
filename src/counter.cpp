@@ -285,6 +285,14 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     td_weight = std::max(td_weight, 0.1);
   }
   if (td_width > conf.td_limit) td_weight = 0.1;
+  // On a dense graph, where the width is a large part of all the nodes, the
+  // TD says next to nothing about where the graph comes apart, yet with the
+  // min weight it still dictates the order. The dynamic scores do better alone.
+  if (conf.td_flat_pct > 0 && (double)td_width*100.0 >= (double)conf.td_flat_pct*(double)nodes) {
+    td_weight = 0;
+    if (print) verb_print(1, "[td] width " << td_width << " is >= " << conf.td_flat_pct
+        << "% of the " << nodes << " nodes, TD will not guide the branching");
+  }
   if (print) {
     verb_print(1,
         "[td] weight: " << td_weight
@@ -1754,8 +1762,11 @@ bool Counter::restart_if_needed() {
 
   // Decay TD weight so stale scores have less influence after each restart
   if (conf.td_weight_restart_decay < 1.0) {
+    // The floor must never RAISE the weight: it may have been set below the
+    // floor on purpose (TD wider than the indep support, dense graph, ...)
+    const double floor_w = std::min(td_weight, (double)conf.td_minweight);
     td_weight *= conf.td_weight_restart_decay;
-    td_weight = std::max(td_weight, (double)conf.td_minweight);
+    td_weight = std::max(td_weight, floor_w);
     verb_print(2, "[rst] td_weight decayed to: " << td_weight);
   }
 

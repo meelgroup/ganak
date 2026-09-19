@@ -1504,6 +1504,17 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   int32_t tw = 0;
   if (dec_level() < conf.td_lookahead) tw = td_decompose_component(false);
 
+  // Articulation vars of the component: deciding one splits it right away
+  const Comp& br_comp = comp_manager->get_super_comp(decisions.top());
+  uint32_t cut_tot = 0;
+  uint32_t cut_best = 0;
+  if (conf.do_cut_vars && br_comp.nVars() >= (uint32_t)conf.cut_min_vars) {
+    const double cut_t = cpu_time();
+    cut_tot = comp_manager->compute_cut_gains(br_comp);
+    if (conf.do_cut_vars >= 2) comp_manager->check_cut_gains(br_comp);
+    stats.br_cut_time += cpu_time()-cut_t;
+  }
+
   // Branching stats, see statistics.hpp
   const bool use_td = !tdscore.empty() && !ignore_td;
   double br_max_td = -1;
@@ -1536,6 +1547,11 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
     else score = score_of(v, ignore_td) ;
+    if (cut_tot > 0) {
+      const uint32_t gain = comp_manager->cut_gain_of(v);
+      cut_best = std::max(cut_best, gain);
+      score += conf.cut_weight * (double)gain/(double)cut_tot;
+    }
     if (use_td) {
       const double t = tdscore[v];
       if (t > br_max_td) { br_max_td = t; br_td_ties = 1; }
@@ -1554,6 +1570,15 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     return 0;
   }
 
+  if (best_var != 0 && cut_tot > 0) {
+    stats.br_cut_calls++;
+    stats.br_cut_any += cut_best > 0;
+    stats.br_cut_avail += cut_best*10 >= cut_tot;
+    stats.br_cut_best_frac += (double)cut_best/(double)cut_tot;
+    const uint32_t gain = comp_manager->cut_gain_of(best_var);
+    stats.br_cut_chosen += gain > 0;
+    stats.br_cut_chosen_best += gain > 0 && gain == cut_best;
+  }
   if (best_var != 0) {
     stats.br_decisions++;
     stats.br_cands += last_dec_candidates;

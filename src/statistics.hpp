@@ -165,6 +165,15 @@ public:
   double br_share_freq = 0;
   uint64_t br_dec_level_sum = 0; // sum of the decision levels of decisions
 
+  // Branching: articulation (cut) vars, only with --cutvars 1
+  uint64_t br_cut_calls = 0; // decisions analyzed
+  uint64_t br_cut_avail = 0; // ... where some candidate var cuts off >= 10% of the component
+  uint64_t br_cut_any = 0; // ... where some candidate var cuts off anything at all
+  double br_cut_best_frac = 0; // sum of best candidate's (vars outside largest piece)/(vars)
+  uint64_t br_cut_chosen = 0; // the chosen var was a cut var
+  uint64_t br_cut_chosen_best = 0; // the chosen var was the best cut var
+  double br_cut_time = 0;
+
   uint64_t num_cached_comps = 0;
   uint64_t total_num_cached_comps = 0;
   uint64_t cache_pollutions_removed = 0;

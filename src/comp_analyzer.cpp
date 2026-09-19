@@ -413,6 +413,204 @@ end_sat:;
       << comp_vars.size() << " long");
 }
 
+// Iterative Tarjan over the unknown vars of the comp. Binary and ternary
+// clauses are var-var edges, a longer clause is a node of its own so that it
+// costs its length, not its length squared. Reads the FULL occurrence lists
+// (orig_size) and checks satisfiedness itself, so it does not depend on, or
+// disturb, the trimmed lists explore_comp() maintains.
+uint32_t CompAnalyzer::compute_cut_gains(const Comp& comp) {
+  const uint32_t num_nodes = max_var + max_clid + 2;
+  if (cut_epoch_of.size() < num_nodes) {
+    cut_epoch_of.assign(num_nodes, 0);
+    cut_disc.resize(num_nodes);
+    cut_low.resize(num_nodes);
+    cut_subsz.resize(num_nodes);
+    cut_gain.assign(max_var+1, 0);
+    cut_sep_sum.resize(max_var+1);
+    cut_sep_max.resize(max_var+1);
+  }
+  cut_epoch++;
+  if (cut_epoch == 0) {
+    std::fill(cut_epoch_of.begin(), cut_epoch_of.end(), 0);
+    cut_epoch = 1;
+  }
+
+  uint32_t tot_unknown = 0;
+  all_vars_in_comp(comp, vt) {
+    const uint32_t root = *vt;
+    if (!is_unknown(root)) continue;
+    if (cut_epoch_of[root] == cut_epoch) continue;
+
+    uint32_t timer = 0;
+    uint32_t root_children = 0;
+    cut_tree_vars.clear();
+    cut_stack.clear();
+    auto enter = [&](const uint32_t node, const uint32_t parent, Lit const* lit_at) {
+      cut_epoch_of[node] = cut_epoch;
+      cut_disc[node] = cut_low[node] = ++timer;
+      if (node <= max_var) {
+        cut_subsz[node] = 1;
+        cut_sep_sum[node] = 0;
+        cut_sep_max[node] = 0;
+        cut_gain[node] = 0;
+        cut_tree_vars.push_back(node);
+      } else cut_subsz[node] = 0;
+      cut_stack.push_back(CutFrame{node, parent, 0, 0, lit_at});
+    };
+    // returns true if w was entered, i.e. the caller must stop and descend
+    auto visit = [&](const uint32_t u, const uint32_t parent, const uint32_t w,
+        Lit const* lit_at) -> bool {
+      if (cut_epoch_of[w] != cut_epoch) { enter(w, u, lit_at); return true; }
+      if (w != parent) cut_low[u] = std::min(cut_low[u], cut_disc[w]);
+      return false;
+    };
+
+    enter(root, 0, nullptr);
+    while (!cut_stack.empty()) {
+      // NOTE: enter() may reallocate cut_stack, so index, don't hold a ref across it
+      const size_t at = cut_stack.size()-1;
+      const uint32_t u = cut_stack[at].node;
+      const uint32_t parent = cut_stack[at].parent;
+      bool descended = false;
+
+      if (u <= max_var) {
+        uint32_t const* bins = holder.begin_bin(u);
+        const uint32_t nbins = holder.orig_size_bin(u);
+        while (!descended && cut_stack[at].i_bin < nbins) {
+          const uint32_t v2 = bins[cut_stack[at].i_bin++];
+          if (is_unknown(v2)) descended = visit(u, parent, v2, nullptr);
+        }
+        ClData const* longs = holder.begin_long(u);
+        const uint32_t nlongs = holder.orig_size_long(u);
+        while (!descended && cut_stack[at].i_long < nlongs) {
+          const ClData& d = longs[cut_stack[at].i_long++];
+          if (d.id < max_tri_clid) {
+            const Lit l1 = d.get_lit1();
+            const Lit l2 = d.get_lit2();
+            if (is_true(l1) || is_true(l2)) continue;
+            // We may descend into l1 and so never look at l2 from here. That
+            // is fine: l2 has this clause too, and l1-l2 are connected by it
+            if (is_unknown(l1)) descended = visit(u, parent, l1.var(), nullptr);
+            if (!descended && is_unknown(l2)) descended = visit(u, parent, l2.var(), nullptr);
+            else if (descended && is_unknown(l2)) cut_stack[at].i_long--; // come back for l2
+          } else {
+            if (is_true(d.blk_lit)) continue;
+            const uint32_t cnode = max_var + 1 + d.id;
+            if (cut_epoch_of[cnode] != cut_epoch) {
+              Lit const* start = long_clauses_data.data()+d.off;
+              bool sat = false;
+              for (auto it_l = start; *it_l != SENTINEL_LIT; it_l++)
+                if (is_true(*it_l)) {sat = true; break;}
+              if (sat) {
+                // mark it seen with a disc that can never lower anyone's low
+                cut_epoch_of[cnode] = cut_epoch;
+                cut_disc[cnode] = std::numeric_limits<uint32_t>::max();
+                continue;
+              }
+              enter(cnode, u, start);
+              descended = true;
+            } else if (cnode != parent) cut_low[u] = std::min(cut_low[u], cut_disc[cnode]);
+          }
+        }
+      } else {
+        while (!descended && *cut_stack[at].lit_at != SENTINEL_LIT) {
+          const Lit l = *(cut_stack[at].lit_at++);
+          if (is_unknown(l)) descended = visit(u, parent, l.var(), nullptr);
+        }
+      }
+      if (descended) continue;
+
+      // u is finished
+      cut_stack.pop_back();
+      if (cut_stack.empty()) break;
+      const uint32_t p = cut_stack.back().node;
+      cut_low[p] = std::min(cut_low[p], cut_low[u]);
+      cut_subsz[p] += cut_subsz[u];
+      if (p <= max_var) {
+        if (p == root) root_children++;
+        if (p == root || cut_low[u] >= cut_disc[p]) {
+          cut_sep_sum[p] += cut_subsz[u];
+          cut_sep_max[p] = std::max(cut_sep_max[p], cut_subsz[u]);
+        }
+      }
+    }
+
+    const uint32_t tree_sz = cut_tree_vars.size();
+    tot_unknown += tree_sz;
+    for(const auto& v: cut_tree_vars) {
+      if (cut_sep_sum[v] == 0) continue;
+      if (v == root && root_children < 2) continue;
+      const uint32_t rest = tree_sz - 1 - cut_sep_sum[v]; // 0 for the root
+      const uint32_t largest = std::max(rest, cut_sep_max[v]);
+      cut_gain[v] = tree_sz - 1 - largest;
+    }
+  }
+  return tot_unknown;
+}
+
+void CompAnalyzer::check_cut_gains(const Comp& comp) {
+  vector<uint32_t> vars;
+  all_vars_in_comp(comp, vt) if (is_unknown(*vt)) vars.push_back(*vt);
+  vector<char> seen(max_var+1, 0);
+  vector<uint32_t> todo;
+
+  // flood fill from "from", never entering "removed" (0 = nothing removed)
+  auto fill = [&](const uint32_t from, const uint32_t removed) -> uint32_t {
+    uint32_t sz = 0;
+    todo.clear();
+    todo.push_back(from);
+    seen[from] = 1;
+    auto go = [&](const uint32_t w) {
+      if (w != removed && is_unknown(w) && !seen[w]) { seen[w] = 1; todo.push_back(w); }
+    };
+    while (!todo.empty()) {
+      const uint32_t u = todo.back();
+      todo.pop_back();
+      sz++;
+      uint32_t const* bins = holder.begin_bin(u);
+      for(uint32_t i = 0; i < holder.orig_size_bin(u); i++) go(bins[i]);
+      ClData const* longs = holder.begin_long(u);
+      for(uint32_t i = 0; i < holder.orig_size_long(u); i++) {
+        const ClData& d = longs[i];
+        if (d.id < max_tri_clid) {
+          if (is_true(d.get_lit1()) || is_true(d.get_lit2())) continue;
+          go(d.get_lit1().var());
+          go(d.get_lit2().var());
+        } else {
+          Lit const* start = long_clauses_data.data()+d.off;
+          bool sat = false;
+          for (auto it_l = start; *it_l != SENTINEL_LIT; it_l++) if (is_true(*it_l)) sat = true;
+          if (sat) continue;
+          for (auto it_l = start; *it_l != SENTINEL_LIT; it_l++) go(it_l->var());
+        }
+      }
+    }
+    return sz;
+  };
+
+  for(const auto& rem: vars) {
+    // the connected piece rem lives in
+    for(const auto& v: vars) seen[v] = 0;
+    const uint32_t tree_sz = fill(rem, 0);
+    vector<uint32_t> tree;
+    for(const auto& v: vars) if (seen[v]) tree.push_back(v);
+    for(const auto& v: vars) seen[v] = 0;
+    uint32_t largest = 0;
+    uint32_t pieces = 0;
+    for(const auto& v: tree) if (v != rem && !seen[v]) {
+      largest = std::max(largest, fill(v, rem));
+      pieces++;
+    }
+    const uint32_t expect = pieces >= 2 ? tree_sz - 1 - largest : 0;
+    if (expect != cut_gain[rem]) {
+      cout << "ERROR: cut gain of var " << rem << " is " << cut_gain[rem]
+        << " but brute force says " << expect << " pieces: " << pieces
+        << " tree_sz: " << tree_sz << " largest: " << largest << endl;
+      release_assert(false);
+    }
+  }
+}
+
 // There is exactly ONE of these
 CompAnalyzer::CompAnalyzer(
     const LiteralIndexedVector<TriValue> & lit_values,

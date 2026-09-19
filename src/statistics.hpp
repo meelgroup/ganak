@@ -172,7 +172,7 @@ public:
   double br_cut_best_frac = 0; // sum of best candidate's (vars outside largest piece)/(vars)
   uint64_t br_cut_chosen = 0; // the chosen var was a cut var
   uint64_t br_cut_chosen_best = 0; // the chosen var was the best cut var
-  double br_cut_time = 0;
+  double br_cut_time = 0; // estimate, from timing 1 call in 64
 
   uint64_t num_cached_comps = 0;
   uint64_t total_num_cached_comps = 0;

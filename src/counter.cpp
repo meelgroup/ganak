@@ -146,6 +146,27 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
       for(const auto& nn: a) cout << setw(3) << nn << " ";
       cout << endl;
     });
+  if (print) {
+    // Cached counting along a rooted TD costs about sum_bags 2^|bag|, not
+    // 2^width: a TD with one wide bag beats one with many nearly-as-wide bags.
+    // Print that "soft width", and how many bags are near the width
+    double soft = 0; // log2 of the sum, accumulated stably
+    uint32_t near_width = 0;
+    bool first = true;
+    for(const auto& b: bags) {
+      const double sz = b.size();
+      if (first) { soft = sz; first = false; }
+      else {
+        const double hi = std::max(soft, sz);
+        const double lo = std::min(soft, sz);
+        soft = hi + std::log2(1.0 + std::exp2(lo-hi));
+      }
+      near_width += (int)b.size()+2 >= td_width;
+    }
+    verb_print(1, "[td] soft width (log2 sum 2^bag): " << std::fixed << std::setprecision(2) << soft
+        << " max bag: " << td_width << " bags: " << bags.size()
+        << " bags within 2 of max: " << near_width);
+  }
   td_split = tdec.splitFrac();
   tdec.centroid(conf.verb);
   std::vector<int> dists = tdec.distanceFromCentroid();
@@ -1509,10 +1530,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   uint32_t cut_tot = 0;
   uint32_t cut_best = 0;
   if (conf.do_cut_vars && br_comp.nVars() >= (uint32_t)conf.cut_min_vars) {
-    const double cut_t = cpu_time();
+    // Timing every call would cost more than the call: sample 1 in 64
+    const bool timed = (stats.decisions & 63) == 0;
+    const double cut_t = timed ? cpu_time() : 0;
     cut_tot = comp_manager->compute_cut_gains(br_comp);
     if (conf.do_cut_vars >= 2) comp_manager->check_cut_gains(br_comp);
-    stats.br_cut_time += cpu_time()-cut_t;
+    if (timed) stats.br_cut_time += (cpu_time()-cut_t)*64;
   }
 
   // Branching stats, see statistics.hpp

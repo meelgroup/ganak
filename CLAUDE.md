@@ -279,6 +279,7 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `td_width` | Tree decomposition width |
 | `td_time` | Tree decomposition time |
 | `td_levels` | Distinct levels the TD order gives the branching ("max ord diff"+1). Few levels = coarse TD, dynamic scores decide more |
+| `td_soft_width` | log2(sum over bags of 2^bag size): cost model of cached counting along the TD; one wide bag is cheaper than many nearly-as-wide ones |
 | `td_centroid_bag` | Size of the TD's centroid bag: all its vars tie on the top TD score |
 | `br_multi_pct` / `br_comps_per_split` | % of component analyses yielding >=2 components / avg components per analysis |
 | `br_largest_pct` | Size of the largest child component as % of its super component. Lower = decisions cut better |

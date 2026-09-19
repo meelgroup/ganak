@@ -2315,12 +2315,12 @@ only_dirs = [
     # "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
     # "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
-    # "out-ganak-mccomp2324-2304308-4", # new system checks including RW
+    "out-ganak-mccomp2324-2304308-", # new system checks including RW
     # "out-ganak-mccomp2324-2312282-3", # new setup, better TD setup, ostensibly
     # "out-ganak-mccomp2324-2329268-0", # fixing TD
-    "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
-    "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
-    "out-ganak-mccomp2324-2357294-", # testing more TD systems
+    # "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
+    # "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
+    "out-ganak-mccomp2324-2357294-1", # testing more TD systems
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

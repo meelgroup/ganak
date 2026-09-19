@@ -135,11 +135,13 @@ int arjun_extend_ccnr = 0;
 int cnfrw = 0;
 int cnfrw_encoder = 0;
 int cnfrw_kary = 1;
+int cnfrw_max_kary = 1000000;
 int cnfrw_pg = 1;
 int cnfrw_half = 1;
 int cnfrw_varw = 6;
 int cnfrw_clsw = 1;
 int cnfrw_max_cls_len = 0;
+int cnfrw_no_widen = -1;
 int cnfrw_tries = 6;
 int poly_nvars = -1;
 int prime_field = -1;
@@ -223,11 +225,13 @@ void add_ganak_options()
     add_arg("--cnfrw", cnfrw, fc_int, "Arjun CNF rewriting through AIG lifting, bitmask: 1 = after the first puura pass, 2 = before puura, 4 = portfolio (puura with and without the pre-puura rewrite, keep the smaller)");
     add_arg("--cnfrwenc", cnfrw_encoder, fc_int, "cnfrw encoder: 0 = AIGToCNF, 1 = cut mapper, 2 = both, keep the cheaper per gate group");
     add_arg("--cnfrwkary", cnfrw_kary, fc_int, "cnfrw: k-ary AND fusion in the encoder");
+    add_arg("--cnfrwmaxkary", cnfrw_max_kary, fc_int, "cnfrw: max width of a fused k-ary AND");
     add_arg("--cnfrwpg", cnfrw_pg, fc_int, "cnfrw: lift one-directional (Plaisted-Greenbaum) definitions of non-counted vars as gates");
     add_arg("--cnfrwhalf", cnfrw_half, fc_int, "cnfrw: re-emit non-counted gate outputs one-directionally");
     add_arg("--cnfrwvarw", cnfrw_varw, fc_int, "cnfrw: cost weight of a variable");
     add_arg("--cnfrwclsw", cnfrw_clsw, fc_int, "cnfrw: cost weight of a clause");
     add_arg("--cnfrwmaxclslen", cnfrw_max_cls_len, fc_int, "cnfrw: reject rewritten gate groups with a clause longer than this, 0 = no limit");
+    add_arg("--cnfrwnowiden", cnfrw_no_widen, fc_int, "cnfrw: reject a rewritten gate group whose longest clause is more than this longer than the longest clause it replaces. -1 = off");
     add_arg("--cnfrwtries", cnfrw_tries, fc_int, "cnfrw: encode each gate group in this many root orders, keep the cheapest");
     add_arg("--arjunextend", etof_conf.do_extend_indep, fc_int, "Extend indep via Arjun's extend system");
     add_arg("--prebackbone", do_pre_backbone, fc_int, "Perform backbone before other things");
@@ -459,6 +463,8 @@ void print_vars(vector<uint32_t> vars) {
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   double const my_time = cpu_time();
+  uint64_t lits_before = 0;
+  for(const auto& cl: cnf.get_clauses()) lits_before += cl.size();
   ArjunNS::Arjun arjun;
   ArjunNS::Arjun::InterpConf iconf;
   if (conf.verb == 0) arjun_verb = 0;
@@ -466,11 +472,13 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cnf_rewrite(cnfrw);
   arjun.set_cnfrw_encoder(cnfrw_encoder);
   arjun.set_cnfrw_kary_fusion(cnfrw_kary);
+  arjun.set_cnfrw_max_kary(cnfrw_max_kary);
   arjun.set_cnfrw_pg(cnfrw_pg);
   arjun.set_cnfrw_half(cnfrw_half);
   arjun.set_cnfrw_var_weight(cnfrw_varw);
   arjun.set_cnfrw_cls_weight(cnfrw_clsw);
   arjun.set_cnfrw_max_cls_len(cnfrw_max_cls_len);
+  arjun.set_cnfrw_no_widen(cnfrw_no_widen);
   arjun.set_cnfrw_tries(cnfrw_tries);
   arjun.set_or_gate_based(arjun_gates);
   arjun.set_xor_gates_based(arjun_gates);
@@ -496,6 +504,11 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
         << " components may be disconnected, which will interfere with proper TD weight calculation");
     cnf.renumber_sampling_vars_for_ganak();
   }
+  // Preprocessing that hands the counter a much bigger formula is a bug
+  uint64_t lits_after = 0;
+  for(const auto& cl: cnf.get_clauses()) lits_after += cl.size();
+  assert(lits_after <= 10 * lits_before + 100000);
+  (void)lits_before; (void)lits_after;
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 

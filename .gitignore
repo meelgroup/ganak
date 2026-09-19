@@ -26,3 +26,4 @@ html/ddnnf2dot.js
 /python/tests/__pycache__
 tests/__pycache__
 *.pdf
+/scripts/data/__pycache__

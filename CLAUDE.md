@@ -293,6 +293,15 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `padoa_extended` / `padoa_extend_t` | Vars added by Padoa extension + time |
 | `primal_density` / `primal_edge_var_ratio` | Primal graph density metrics |
 
+### Branching heuristic notes
+
+`scripts/data/BRANCHING_NOTES.md` records what the `br_*`/`td_*` stats showed and
+which branching experiments won or lost (with numbers), so they are not redone.
+Knobs from that work: `--tdflatpct` (default 50: TD ignored for branching when
+width >= 50% of the nodes), and the off-by-default `--tdmaxlevels`, `--tdsepwpct`,
+`--freqshortbonus`, `--cutvars`/`--cutw`/`--cutminvars` (`--cutvars 2` self-checks
+the articulation var code by brute force, use it when fuzzing that code).
+
 ## Dependencies
 
 GMP, MPFR, FLINT, cryptominisat5, arjun, approxmc, treedecomp, zlib (optional). ALL dependencies

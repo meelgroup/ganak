@@ -19,6 +19,12 @@ TMP_DIR = "tmp"
 #The run timeout, in seconds. PAR2 charges 2x this for every unsolved instance.
 TIMEOUT = 3600
 
+#--mode is set per instance type by the run scripts, it's not part of the config
+MODE_RE = r" --mode \d+"
+SQL_CALL = "ganak_call"
+for m in range(10):
+    SQL_CALL = f"replace({SQL_CALL},' --mode {m}','')"
+
 
 def convert_to_cdf(fname, fname2):
     with open(fname, "r") as f:
@@ -66,6 +72,7 @@ def get_dirs(ver: str):
         call = a[1]
         call = re.sub("././ganak", "", call)
         call = re.sub(" mc2022.*cnf.*", "", call)
+        call = re.sub(MODE_RE, "", call)
         ret.append([a[0], call])
     con.close()
     return ret
@@ -135,7 +142,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
 
     compact_cols = [
         ("replace(dirname,'out-ganak-mc','')",                       "dirname"),
-        ("replace(ganak_call,'././ganak_','')",                      "call"),
+        (f"replace({SQL_CALL},'././ganak_','')",                     "call"),
         ("sum(ganak_time is not null)",                              "solved"),
         ("COUNT(*)",                                                 "attempted"),
         ("ROUND(avg(conflicts)/(1000.0*1000.0), 2)",                 "av confM"),
@@ -2103,6 +2110,7 @@ def create_notebook(dirs):
     text = """
 # Step 1: Import necessary libraries
 import pandas as pd
+import re
 import sqlite3
 import matplotlib.pyplot as plt
 from functools import reduce
@@ -2126,7 +2134,7 @@ for d in dirs:
   df1 = pd.read_sql_query(query, conn)
   df1['num'] = range(len(df1))
   dfs.append(df1)
-  names.append(d+" " +df1['ganak_call'][0])
+  names.append(d+" " +re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
 
 for i in range(len(dfs)):
     for c in dfs[i].columns:
@@ -2175,7 +2183,7 @@ for d in dirs:
     query = f"SELECT fname, {col1}, {col2}, ganak_call FROM data WHERE {col1} IS NOT NULL AND {col2} is not NULL and dirname='{d}' ORDER BY {colname}"
     df1 = pd.read_sql_query(query, conn)
     dfs.append(df1)
-    names.append(d + " " + df1['ganak_call'][0])
+    names.append(d + " " + re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
 
 conn.close()
 

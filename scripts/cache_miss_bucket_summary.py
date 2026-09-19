@@ -60,7 +60,10 @@ def main():
                      + "\n  ".join(known))
 
     cur.execute("SELECT DISTINCT ganak_call FROM data WHERE dirname=? AND ganak_call IS NOT NULL", (args.dirname,))
-    calls = [re.sub(r" mc2022.*cnf.*", "", re.sub(r"\./\./ganak", "", r[0])) for r in cur.fetchall()]
+    #--mode is set per instance type, not part of the config
+    calls = [re.sub(r" --mode \d+", "", re.sub(r" mc2022.*cnf.*", "", re.sub(r"\./\./ganak", "", r[0])))
+             for r in cur.fetchall()]
+    calls = list(dict.fromkeys(calls))
 
     base = (f"dirname='{args.dirname}'"
             f" AND cache_miss_rate IS NOT NULL"

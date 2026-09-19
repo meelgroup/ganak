@@ -271,7 +271,6 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
     else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
-  if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) td_weight = 0.1;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
   // A TD whose centroid bag barely splits the graph says little about which
@@ -285,6 +284,13 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     td_weight = std::max(td_weight, 0.1);
   }
   if (td_width > conf.td_limit) td_weight = 0.1;
+  // This has to come AFTER the clamp to td_minweight above. It used to sit
+  // before it, and the clamp lifted the weight straight back up.
+  if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) {
+    td_weight = 0.1;
+    if (print) verb_print(1, "[td] width " << td_width << " is over the indep support size "
+        << indep_support_end-1 << ", TD weight set to 0.1");
+  }
   // On a dense graph, where the width is a large part of all the nodes, the
   // TD says next to nothing about where the graph comes apart, yet with the
   // min weight it still dictates the order. The dynamic scores do better alone.

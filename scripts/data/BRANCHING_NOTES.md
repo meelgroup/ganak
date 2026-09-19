@@ -100,11 +100,19 @@ min-degree 371K).
 
 * The restart decay of `td_weight` clamped from below to `td_minweight`, RAISING a
   weight that was set to 0.1 on purpose. Fixed.
-* `do_check_td_vs_ind` (`td_weight = 0.1` when the TD is wider than the indep support) is
-  dead code: the clamp to `td_minweight` on the next lines undoes it. Left alone on
-  purpose; `--tdflatpct` covers most of those cases and is measured.
-* `--tdlook` >= 0 (TD lookahead) asserts `dl != -1` in
-  `reactivate_comps_and_backtrack_trail()` on e.g. mc2023_track3_142.
+* `do_check_td_vs_ind` (`td_weight = 0.1` when the TD is wider than the indep support) was
+  dead code: the clamp to `td_minweight` on the next lines undid it. Fixed (moved after the
+  clamp), but now **off by default**, which is what all runs so far effectively had. The
+  indep support here is Arjun's minimized one, so the rule fires widely: 106 instances of the
+  cluster set that `--tdflatpct` does not already cover, including mc2024_track3_105/181
+  where the TD is the big win. Off vs on, 9 of those: decisions geomean x1.10, time
+  267s -> 276s, worst mc2024_track4_197 22.8s -> 32.4s (397K -> 924K decisions), best
+  mc2023_track4_115 114K -> 79K.
+* `--tdlook` >= 0 (TD lookahead) was broken four ways, one behind the other: asserted
+  `dl != -1` (probing from inside `decide_lit()` before the level's var is set), gave
+  **wrong weighted counts** (`unset_lit()` multiplied the probed lits' weights into the
+  level's count), a `setBag` assert (full-size graph given to the TD after contraction),
+  and an empty `tdscore` when the toplevel TD was skipped. All fixed, 220 fuzz cases pass.
 * The periodic stat line needed both 20M cache lookups AND 150K conflicts, so
   low-conflict timeouts left no stats at all. Either is enough now.
 * `../count_fuzzer/fuzz.py` dies in arjun: `--bveplanner 5` is not accepted any more.

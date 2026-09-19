@@ -272,7 +272,7 @@ void add_ganak_options()
     add_arg("--tdminw", conf.td_minweight, fc_double, "TD min weight");
     add_arg("--tddiv", conf.td_divider, fc_double, "TD divider");
     add_arg("--tdexpmult", conf.td_exp_mult, fc_double, "TD exponential multiplier");
-    add_arg("--tdcheckagainstind", conf.do_check_td_vs_ind, fc_int, "If the TD is wider than the indep support, set the TD weight to 0.1");
+    add_arg("--tdindtoppct", conf.td_ind_top_pct, fc_int, "If >= this % of the indep vars tie on the top TD score, the TD cannot order them: set the TD weight to 0.1. 0 = off");
     add_arg("--tditers", conf.td_iters, fc_int, "TD flowcutter iterations (restarts)");
     add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
     add_arg("--tdbandpct", conf.td_band_pct, fc_int, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");

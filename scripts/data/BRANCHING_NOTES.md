@@ -108,6 +108,12 @@ min-degree 371K).
   where the TD is the big win. Off vs on, 9 of those: decisions geomean x1.10, time
   267s -> 276s, worst mc2024_track4_197 22.8s -> 32.4s (397K -> 924K decisions), best
   mc2023_track4_115 114K -> 79K.
+  It compared the TD width over the opt-indep graph against the minimized indep set: 202
+  of 1117 TDs trip it, 106 of them with width < 50% of the graph. Replaced by
+  `--tdindtoppct N` (off by default): TD weight 0.1 when >= N% of the indep vars tie on
+  the top TD score, i.e. the TD cannot order the vars the count is over. On the misfires
+  above it stays quiet (track3_181: 32 indep vars over 4 levels, 9.4% on top). Every run
+  logs `[td] indep vars: ... pct: ... TD weight: ...`, DB columns `td_ind_*`/`td_weight`.
 * `--tdlook` >= 0 (TD lookahead) was broken four ways, one behind the other: asserted
   `dl != -1` (probing from inside `decide_lit()` before the level's var is set), gave
   **wrong weighted counts** (`unset_lit()` multiplied the probed lits' weights into the

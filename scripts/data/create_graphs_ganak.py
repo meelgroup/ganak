@@ -414,6 +414,61 @@ def print_td_cost_table(table_todo, fname_like, verbose=False):
         _print_table(headers, rows)
 
 
+def print_td_indep_tables(table_todo, fname_like, verbose=False):
+    """Whether the TD guided branching at all, and how well it orders the indep
+    vars: the count is over those, so a TD that puts most of them on its top
+    level cannot order what matters. Reads td_weight / td_ind_* columns."""
+    if not table_todo:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_ind_top_pct" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    print(f"\n{BLUE}Did the TD guide branching? (flat: width gate, --tdflatpct; "
+          f"indep tie: --tdindtoppct){RESET}")
+    headers = ["dirname", "TD role", "inst", "solved", "PAR2", "med tw", "med indep top %"]
+    rows = []
+    for dir, ver in table_todo:
+        for label, where in (("guides (weight > 0.1)", "td_weight > 0.1"),
+                             ("indep tie (weight 0.1)", "td_weight > 0 and td_weight <= 0.1"),
+                             ("flat (weight 0)", "td_weight = 0")):
+            q = (f"select ganak_time, td_width, td_ind_top_pct from data where dirname='{dir}'"
+                 f" and ganak_ver='{ver}'{fname_like} and {where}")
+            got = list(con.execute(q))
+            if not got:
+                continue
+            med = lambda vals: sorted(vals)[len(vals)//2] if vals else None
+            par2 = sum(r[0] if r[0] is not None else 2*TIMEOUT for r in got) / len(got)
+            tw = med([r[1] for r in got if r[1] is not None])
+            top = med([r[2] for r in got if r[2] is not None])
+            rows.append([dir.replace("out-ganak-mc", ""), label, str(len(got)),
+                         str(sum(1 for r in got if r[0] is not None)), f"{par2:.0f}",
+                         "-" if tw is None else str(tw), "-" if top is None else f"{top:.1f}"])
+    if rows:
+        _print_table(headers, rows)
+
+    print(f"\n{BLUE}Solve rate by % of indep vars tied on the top TD score "
+          f"(pick --tdindtoppct where it turns bad){RESET}")
+    buckets = [("<10%", 0, 10), ("10-25%", 10, 25), ("25-50%", 25, 50),
+               ("50-75%", 50, 75), (">=75%", 75, 101)]
+    headers = ["dirname"] + [b[0] for b in buckets]
+    rows = []
+    for dir, ver in table_todo:
+        cells = []
+        for _, lo, hi in buckets:
+            got = list(con.execute(
+                f"select ganak_time from data where dirname='{dir}' and ganak_ver='{ver}'"
+                f"{fname_like} and td_ind_top_pct >= {lo} and td_ind_top_pct < {hi}"))
+            if not got:
+                cells.append("-")
+                continue
+            par2 = sum(r[0] if r[0] is not None else 2*TIMEOUT for r in got) / len(got)
+            cells.append(f"{sum(1 for r in got if r[0] is not None)}/{len(got)} PAR2 {par2:.0f}")
+        rows.append([dir.replace("out-ganak-mc", "")] + cells)
+    if rows:
+        _print_table(headers, rows)
+
+
 def td_time_cdf_chart(table_todo, fname_like, verbose=False):
     """CDF of TD time per dir: how much of the budget goes into decomposing
     before any counting happens."""
@@ -2353,6 +2408,7 @@ def main():
     print_section_header("tree decomposition")
     print_td_tables(table_todo, fname_like, args.verbose)
     print_td_cost_table(table_todo, fname_like, args.verbose)
+    print_td_indep_tables(table_todo, fname_like, args.verbose)
     td_time_cdf_chart(table_todo, fname_like, args.verbose)
     if not args.nopreproc:
         print_section_header("preprocessing")

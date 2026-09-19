@@ -263,6 +263,20 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   const int max_ord = *max_it - min_ord;
   assert(max_ord >= 1);
 
+  // The count is over the indep vars, and ganak branches on the opt-indep ones
+  // the TD is built over. If most indep vars sit on the best TD level, the TD
+  // cannot order the vars the count depends on, however it looks overall
+  const uint32_t n_ind = std::min<uint32_t>(indep_support_end > 0 ? indep_support_end-1 : 0, nodes);
+  int ind_top_ord = std::numeric_limits<int>::max();
+  for (uint32_t i = 0; i < n_ind; i++) ind_top_ord = std::min(ind_top_ord, ord[i]);
+  uint32_t ind_top = 0;
+  std::set<int> ind_levels;
+  for (uint32_t i = 0; i < n_ind; i++) {
+    if (ord[i] == ind_top_ord) ind_top++;
+    ind_levels.insert(ord[i]);
+  }
+  const double ind_top_pct = n_ind ? 100.0*ind_top/n_ind : 0;
+
   // calc td weight
   double rt = 0;
   if (td_width > 0) {
@@ -284,12 +298,12 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     td_weight = std::max(td_weight, 0.1);
   }
   if (td_width > conf.td_limit) td_weight = 0.1;
-  // This has to come AFTER the clamp to td_minweight above. It used to sit
-  // before it, and the clamp lifted the weight straight back up.
-  if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) {
+  // After the clamp to td_minweight above, else the clamp lifts it straight back
+  if (conf.td_ind_top_pct > 0 && n_ind > 0 && ind_top_pct >= conf.td_ind_top_pct) {
     td_weight = 0.1;
-    if (print) verb_print(1, "[td] width " << td_width << " is over the indep support size "
-        << indep_support_end-1 << ", TD weight set to 0.1");
+    if (print) verb_print(1, "[td] " << ind_top << " of the " << n_ind << " indep vars ("
+        << std::fixed << setprecision(1) << ind_top_pct << "%) tie on the top TD score, >= "
+        << conf.td_ind_top_pct << "%, TD weight set to 0.1");
   }
   // On a dense graph, where the width is a large part of all the nodes, the
   // TD says next to nothing about where the graph comes apart, yet with the
@@ -309,6 +323,9 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
         << " conf.td_divider: " << conf.td_divider
         << " max ord diff: " << max_ord
         << " td split: " << td_split);
+    verb_print(1, "[td] indep vars: " << n_ind << " on TD levels: " << ind_levels.size()
+        << " top level holds: " << ind_top << " pct: " << std::fixed << setprecision(1)
+        << ind_top_pct << " TD weight: " << td_weight);
   }
 
   // Within one level of the TD, all vars used to tie. Break the tie by how

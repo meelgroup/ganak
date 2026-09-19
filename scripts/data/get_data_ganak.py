@@ -165,7 +165,8 @@ _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long"
                   "conflicts", "decisionsK", "compsK"]
 _COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
                       "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "td_levels",
-                      "td_centroid_bag", "td_soft_width"]
+                      "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels",
+                      "td_ind_top_pct", "td_weight"]
 _COMP_BUSIEST_KEYS = ["cache_miss_rate", "cache_avg_hit_vars", "cache_avg_store_vars",
                       "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties",
                       "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act",
@@ -321,6 +322,15 @@ def parse_ganak_output(fname):
             # number of distinct levels the TD order gives the branching
             elif line.startswith("c o [td] weight:") and " max ord diff: " in line:
                 comp()["td_levels"] = int(line.split(" max ord diff: ")[1].split()[0]) + 1
+            # how well the TD orders the indep vars, and the TD weight actually
+            # used (0: TD ignored as flat, 0.1: indep vars tie on the top level)
+            elif line.startswith("c o [td] indep vars:"):
+                f = line.split()
+                c = comp()
+                c["td_ind_n"] = int(f[5])
+                c["td_ind_levels"] = int(f[9])
+                c["td_ind_top_pct"] = float(f[15])
+                c["td_weight"] = float(f[18])
             # Branching quality stats. Printed periodically, the last one wins
             elif line.startswith("c o br splitsK/multi%/none%/comps"):
                 f = line.split()
@@ -636,7 +646,7 @@ def main():
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
             "compsK", "primal_density", "primal_edge_var_ratio", "td_width", "td_time",
             "td_nodes", "td_split", "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
-            "td_levels", "td_centroid_bag", "td_soft_width", "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
+            "td_levels", "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels", "td_ind_top_pct", "td_weight", "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
             "arjun_time", "backboneT", "backwardT", "indepsz", "optindepsz", "origprojsz",
             "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
             "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
@@ -698,6 +708,10 @@ def main():
                 g(f, "td_levels"),
                 g(f, "td_centroid_bag"),
                 g(f, "td_soft_width"),
+                g(f, "td_ind_n"),
+                g(f, "td_ind_levels"),
+                g(f, "td_ind_top_pct"),
+                g(f, "td_weight"),
                 g(f, "br_multi_pct"),
                 g(f, "br_comps_per_split"),
                 g(f, "br_largest_pct"),
@@ -829,6 +843,10 @@ def main():
           td_levels INT,
           td_centroid_bag INT,
           td_soft_width FLOAT,
+          td_ind_n INT,
+          td_ind_levels INT,
+          td_ind_top_pct FLOAT,
+          td_weight FLOAT,
           br_multi_pct FLOAT,
           br_comps_per_split FLOAT,
           br_largest_pct FLOAT,
@@ -951,6 +969,10 @@ def main():
             n(f.get("td_levels", "")),
             n(f.get("td_centroid_bag", "")),
             n(f.get("td_soft_width", "")),
+            n(f.get("td_ind_n", "")),
+            n(f.get("td_ind_levels", "")),
+            n(f.get("td_ind_top_pct", "")),
+            n(f.get("td_weight", "")),
             n(f.get("br_multi_pct", "")),
             n(f.get("br_comps_per_split", "")),
             n(f.get("br_largest_pct", "")),
@@ -999,6 +1021,10 @@ def main():
                      ("td_levels", "INT"),
                      ("td_centroid_bag", "INT"),
                      ("td_soft_width", "FLOAT"),
+                     ("td_ind_n", "INT"),
+                     ("td_ind_levels", "INT"),
+                     ("td_ind_top_pct", "FLOAT"),
+                     ("td_weight", "FLOAT"),
                      ("br_multi_pct", "FLOAT"),
                      ("br_comps_per_split", "FLOAT"),
                      ("br_largest_pct", "FLOAT"),
@@ -1019,7 +1045,8 @@ def main():
                "conflicts", "decisionsK", "compsK", "primal_density",
                "primal_edge_var_ratio", "td_width", "td_time", "td_nodes", "td_split",
                "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
-               "td_levels", "td_centroid_bag", "td_soft_width", "br_multi_pct", "br_comps_per_split", "br_largest_pct",
+               "td_levels", "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels",
+               "td_ind_top_pct", "td_weight", "br_multi_pct", "br_comps_per_split", "br_largest_pct",
                "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
                "arjun_time",
                "backbone_time", "backward_time", "indep_sz", "opt_indep_sz",

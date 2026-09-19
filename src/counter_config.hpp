@@ -104,7 +104,7 @@ struct CounterConfiguration {
   // TD wider than the indep support: TD weight 0.1. Was on, but a clamp right
   // after it undid it, so every benchmark so far effectively ran with 0. Now
   // that it works: neutral-to-worse when measured, see BRANCHING_NOTES.md
-  int do_check_td_vs_ind = 0;
+  int td_ind_top_pct = 0; // >= this % of the indep vars tie on the top TD score: TD weight 0.1. 0 = off
   int64_t td_steps = 1e5;
   int td_iters = 900;
   int td_band_pct = 10;

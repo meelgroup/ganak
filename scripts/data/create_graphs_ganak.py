@@ -424,13 +424,12 @@ def print_td_indep_tables(table_todo, fname_like, verbose=False):
     if "td_ind_top_pct" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
         return
 
-    print(f"\n{BLUE}Did the TD guide branching? (flat: width gate, --tdflatpct; "
-          f"indep tie: --tdindtoppct){RESET}")
+    print(f"\n{BLUE}Did the TD guide branching? (flat: width gate, --tdflatpct){RESET}")
     headers = ["dirname", "TD role", "inst", "solved", "PAR2", "med tw", "med indep top %"]
     rows = []
     for dir, ver in table_todo:
         for label, where in (("guides (weight > 0.1)", "td_weight > 0.1"),
-                             ("indep tie (weight 0.1)", "td_weight > 0 and td_weight <= 0.1"),
+                             ("weight 0.1", "td_weight > 0 and td_weight <= 0.1"),
                              ("flat (weight 0)", "td_weight = 0")):
             q = (f"select ganak_time, td_width, td_ind_top_pct from data where dirname='{dir}'"
                  f" and ganak_ver='{ver}'{fname_like} and {where}")
@@ -447,8 +446,7 @@ def print_td_indep_tables(table_todo, fname_like, verbose=False):
     if rows:
         _print_table(headers, rows)
 
-    print(f"\n{BLUE}Solve rate by % of indep vars tied on the top TD score "
-          f"(pick --tdindtoppct where it turns bad){RESET}")
+    print(f"\n{BLUE}Solve rate by % of indep vars tied on the top TD score{RESET}")
     buckets = [("<10%", 0, 10), ("10-25%", 10, 25), ("25-50%", 25, 50),
                ("50-75%", 50, 75), (">=75%", 75, 101)]
     headers = ["dirname"] + [b[0] for b in buckets]
@@ -1967,12 +1965,23 @@ def print_distributions(table_todo, fname_like):
     print_distribution(table_todo, fname_like, "ganak_mem_mb",     "memory usage (MB) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG mem_mb")
 
 
-def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
+def dir_pairs(dirs, pair_prefixes):
+    """All pairs, or only pairs among the dirs matching pair_prefixes.
+    A single matching dir is paired with every other dir."""
+    if not pair_prefixes:
+        return list(itertools.combinations(dirs, 2))
+    sel = [d for d in dirs if any((d + "/").startswith(p) for p in pair_prefixes)]
+    if len(sel) == 1:
+        return [(sel[0], d) for d in dirs if d != sel[0]]
+    return list(itertools.combinations(sel, 2))
+
+
+def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False, pair_prefixes=[]):
     """For every pair of matched dirs, generate a gnuplot scatter plot of
     solve times (NULL -> the timeout).  Writes a PDF and a PNG to disk and
     displays the PNG inline in the terminal (wezterm / iTerm2 protocol)."""
 
-    pairs = list(itertools.combinations(matched_dirs, 2))
+    pairs = dir_pairs(matched_dirs, pair_prefixes)
     if not pairs:
         return
 
@@ -2341,6 +2350,8 @@ def main():
                         help="Skip all preprocessing tables and graphs (preproc table)")
     parser.add_argument("--nopairwise", action="store_true",
                         help="No pairwise comparisons")
+    parser.add_argument("--pair", nargs="+", metavar="DIR", default=[],
+                        help="Pairwise-compare only these dirs (prefix match) with each other; a single dir is compared against all others")
     parser.add_argument("--nodistribution", action="store_true",
                         help="Don't print distributions of metrics")
     parser.add_argument("--cdf", action="store_true",
@@ -2361,7 +2372,7 @@ def main():
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
     if not args.cdf and not args.nopairwise:
-      scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
+      scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose, args.pair)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
     if args.cdf:
@@ -2433,7 +2444,7 @@ def main():
     if not args.nopairwise:
       print_section_header("pairwise comparisons")
       unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
-      for dir1, dir2 in itertools.combinations(unique_dirs, 2):
+      for dir1, dir2 in dir_pairs(unique_dirs, args.pair):
           print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
           print_solved_only_diffs(dir1, dir2, fname_like, args.verbose)
           print_solution_mismatches(dir1, dir2, fname_like, args.verbose)

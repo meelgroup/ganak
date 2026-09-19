@@ -331,6 +331,14 @@ def parse_ganak_output(fname):
                 c["td_ind_levels"] = int(f[9])
                 c["td_ind_top_pct"] = float(f[15])
                 c["td_weight"] = float(f[18])
+            # TD ignored before the weight is computed: all indep vars on one level
+            elif "ignoring TD" in line and line.startswith("c o "):
+                c = comp()
+                c["td_weight"] = 0.0
+                if "TD width is 0" not in line:
+                    c["td_levels"] = 1
+                    c["td_ind_levels"] = 1
+                    c["td_ind_top_pct"] = 100.0
             # Branching quality stats. Printed periodically, the last one wins
             elif line.startswith("c o br splitsK/multi%/none%/comps"):
                 f = line.split()

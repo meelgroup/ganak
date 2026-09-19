@@ -171,13 +171,13 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
   tdec.centroid(conf.verb);
   std::vector<int> dists = tdec.distanceFromCentroid();
   if (dists.empty()) {
-      if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
+      if (print) verb_print(1, "[td] All projected vars in the same bag, ignoring TD");
       return;
   }
   int const max_dist = *std::max_element(dists.begin(), dists.end());
   verb_print(2, "max_dist: " << max_dist << " td_width: " << td_width);
   if (max_dist == 0) {
-    if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");
+    if (print) verb_print(1, "[td] All projected vars are the same distance, ignoring TD");
     return;
   }
   if (conf.td_do_use_adj) compute_td_score_using_adj(nodes, bags, adj, print);
@@ -298,13 +298,6 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     td_weight = std::max(td_weight, 0.1);
   }
   if (td_width > conf.td_limit) td_weight = 0.1;
-  // After the clamp to td_minweight above, else the clamp lifts it straight back
-  if (conf.td_ind_top_pct > 0 && n_ind > 0 && ind_top_pct >= conf.td_ind_top_pct) {
-    td_weight = 0.1;
-    if (print) verb_print(1, "[td] " << ind_top << " of the " << n_ind << " indep vars ("
-        << std::fixed << setprecision(1) << ind_top_pct << "%) tie on the top TD score, >= "
-        << conf.td_ind_top_pct << "%, TD weight set to 0.1");
-  }
   // On a dense graph, where the width is a large part of all the nodes, the
   // TD says next to nothing about where the graph comes apart, yet with the
   // min weight it still dictates the order. The dynamic scores do better alone.

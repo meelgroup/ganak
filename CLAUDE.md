@@ -282,7 +282,7 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `td_soft_width` | log2(sum over bags of 2^bag size): cost model of cached counting along the TD; one wide bag is cheaper than many nearly-as-wide ones |
 | `td_centroid_bag` | Size of the TD's centroid bag: all its vars tie on the top TD score |
 | `td_ind_n` / `td_ind_levels` / `td_ind_top_pct` | Indep vars in the TD graph / distinct TD levels among them / % of them on the best level |
-| `td_weight` | TD weight actually used: 0 = TD ignored (`--tdflatpct`), 0.1 = indep vars tie (`--tdindtoppct`) |
+| `td_weight` | TD weight actually used: 0 = TD ignored (`--tdflatpct` or no usable TD) |
 | `br_multi_pct` / `br_comps_per_split` | % of component analyses yielding >=2 components / avg components per analysis |
 | `br_largest_pct` | Size of the largest child component as % of its super component. Lower = decisions cut better |
 | `br_td_ties` | Avg number of candidate vars tied on the best TD score at a decision |
@@ -300,7 +300,7 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 `scripts/data/BRANCHING_NOTES.md` records what the `br_*`/`td_*` stats showed and
 which branching experiments won or lost (with numbers), so they are not redone.
 Knobs from that work: `--tdflatpct` (default 50: TD ignored for branching when
-width >= 50% of the nodes), and the off-by-default `--tdindtoppct`, `--tdmaxlevels`, `--tdsepwpct`,
+width >= 50% of the nodes), and the off-by-default `--tdmaxlevels`, `--tdsepwpct`,
 `--freqshortbonus`, `--cutvars`/`--cutw`/`--cutminvars` (`--cutvars 2` self-checks
 the articulation var code by brute force, use it when fuzzing that code).
 

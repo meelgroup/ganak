@@ -112,7 +112,9 @@ min-degree 371K).
   of 1117 TDs trip it, 106 of them with width < 50% of the graph. Replaced by
   `--tdindtoppct N` (off by default): TD weight 0.1 when >= N% of the indep vars tie on
   the top TD score, i.e. the TD cannot order the vars the count is over. On the misfires
-  above it stays quiet (track3_181: 32 indep vars over 4 levels, 9.4% on top). Every run
+  above it stays quiet (track3_181: 32 indep vars over 4 levels, 9.4% on top).
+  Removed after batch 2357294: on top of `--tdflatpct 50` it fired on only 57 TDs and
+  solved 1202 vs 1206 without it; the flat gate already covers where it helped. Every run
   logs `[td] indep vars: ... pct: ... TD weight: ...`, DB columns `td_ind_*`/`td_weight`.
 * `--tdlook` >= 0 (TD lookahead) was broken four ways, one behind the other: asserted
   `dl != -1` (probing from inside `decide_lit()` before the level's var is set), gave

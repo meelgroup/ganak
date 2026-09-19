@@ -164,8 +164,12 @@ def td_update(c, width, t):
 _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
                   "conflicts", "decisionsK", "compsK"]
 _COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
-                      "td_bags", "td_src", "td_band", "td_cands", "td_accepts"]
-_COMP_BUSIEST_KEYS = ["cache_miss_rate", "cache_avg_hit_vars", "cache_avg_store_vars"]
+                      "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "td_levels",
+                      "td_centroid_bag"]
+_COMP_BUSIEST_KEYS = ["cache_miss_rate", "cache_avg_hit_vars", "cache_avg_store_vars",
+                      "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties",
+                      "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act",
+                      "br_share_freq"]
 
 
 # Timed-out runs only have the components that were started, so sizes are partial
@@ -309,6 +313,29 @@ def parse_ganak_output(fname):
                 c["td_band"] = 1 if f[14] == "on" else 0
                 c["td_cands"] = int(f[20])
                 c["td_accepts"] = int(f[22])
+            elif line.startswith("c o [td] centroid bag id:"):
+                comp()["td_centroid_bag"] = int(line.split()[-1])
+            # number of distinct levels the TD order gives the branching
+            elif line.startswith("c o [td] weight:") and " max ord diff: " in line:
+                comp()["td_levels"] = int(line.split(" max ord diff: ")[1].split()[0]) + 1
+            # Branching quality stats. Printed periodically, the last one wins
+            elif line.startswith("c o br splitsK/multi%/none%/comps"):
+                f = line.split()
+                comp()["br_multi_pct"] = float(f[5])
+                comp()["br_comps_per_split"] = float(f[7])
+            elif line.startswith("c o br avg sup vars/largest%/kept%"):
+                comp()["br_largest_pct"] = float(line.split()[7])
+            elif line.startswith("c o br dec avg lev/cands/td-ties"):
+                comp()["br_td_ties"] = float(line.split()[8])
+            elif line.startswith("c o br td obeyed%/td flat%"):
+                f = line.split()
+                comp()["br_td_obeyed_pct"] = float(f[6])
+                comp()["br_td_flat_pct"] = float(f[7])
+            elif line.startswith("c o br score share td/act/freq %"):
+                f = line.split()
+                comp()["br_share_td"] = float(f[7])
+                comp()["br_share_act"] = float(f[8])
+                comp()["br_share_freq"] = float(f[9])
             elif line.startswith("c o [td] decompose time:"):
                 comp()["td_time"] = float(line.split()[5])
             elif line.startswith("c o [td] Primal graph"):
@@ -606,6 +633,7 @@ def main():
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
             "compsK", "primal_density", "primal_edge_var_ratio", "td_width", "td_time",
             "td_nodes", "td_split", "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
+            "td_levels", "td_centroid_bag", "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
             "arjun_time", "backboneT", "backwardT", "indepsz", "optindepsz", "origprojsz",
             "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
             "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
@@ -664,6 +692,17 @@ def main():
                 g(f, "td_band"),
                 g(f, "td_cands"),
                 g(f, "td_accepts"),
+                g(f, "td_levels"),
+                g(f, "td_centroid_bag"),
+                g(f, "br_multi_pct"),
+                g(f, "br_comps_per_split"),
+                g(f, "br_largest_pct"),
+                g(f, "br_td_ties"),
+                g(f, "br_td_obeyed_pct"),
+                g(f, "br_td_flat_pct"),
+                g(f, "br_share_td"),
+                g(f, "br_share_act"),
+                g(f, "br_share_freq"),
                 g(f, "arjuntime"),
                 g(f, "backboneT"),
                 g(f, "backwtime"),
@@ -783,6 +822,17 @@ def main():
           td_band INT,
           td_cands INT,
           td_accepts INT,
+          td_levels INT,
+          td_centroid_bag INT,
+          br_multi_pct FLOAT,
+          br_comps_per_split FLOAT,
+          br_largest_pct FLOAT,
+          br_td_ties FLOAT,
+          br_td_obeyed_pct FLOAT,
+          br_td_flat_pct FLOAT,
+          br_share_td FLOAT,
+          br_share_act FLOAT,
+          br_share_freq FLOAT,
           arjun_time FLOAT,
           backbone_time FLOAT,
           backward_time FLOAT,
@@ -893,6 +943,17 @@ def main():
             n(f.get("td_band", "")),
             n(f.get("td_cands", "")),
             n(f.get("td_accepts", "")),
+            n(f.get("td_levels", "")),
+            n(f.get("td_centroid_bag", "")),
+            n(f.get("br_multi_pct", "")),
+            n(f.get("br_comps_per_split", "")),
+            n(f.get("br_largest_pct", "")),
+            n(f.get("br_td_ties", "")),
+            n(f.get("br_td_obeyed_pct", "")),
+            n(f.get("br_td_flat_pct", "")),
+            n(f.get("br_share_td", "")),
+            n(f.get("br_share_act", "")),
+            n(f.get("br_share_freq", "")),
             n(f.get("arjuntime", "")),
             n(f.get("backboneT", "")),
             n(f.get("backwtime", "")),
@@ -928,7 +989,18 @@ def main():
     have = {r[1] for r in conn.execute("PRAGMA table_info(data)")}
     for col, typ in (("td_nodes", "INT"), ("td_split", "FLOAT"), ("td_bags", "INT"),
                      ("td_src", "STRING"), ("td_band", "INT"), ("td_cands", "INT"),
-                     ("td_accepts", "INT")):
+                     ("td_accepts", "INT"),
+                     ("td_levels", "INT"),
+                     ("td_centroid_bag", "INT"),
+                     ("br_multi_pct", "FLOAT"),
+                     ("br_comps_per_split", "FLOAT"),
+                     ("br_largest_pct", "FLOAT"),
+                     ("br_td_ties", "FLOAT"),
+                     ("br_td_obeyed_pct", "FLOAT"),
+                     ("br_td_flat_pct", "FLOAT"),
+                     ("br_share_td", "FLOAT"),
+                     ("br_share_act", "FLOAT"),
+                     ("br_share_freq", "FLOAT")):
         if col not in have:
             conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
 
@@ -939,7 +1011,10 @@ def main():
                "ganak_mem_MB", "ganak_call", "page_faults", "signal", "ganak_ver",
                "conflicts", "decisionsK", "compsK", "primal_density",
                "primal_edge_var_ratio", "td_width", "td_time", "td_nodes", "td_split",
-               "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "arjun_time",
+               "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
+               "td_levels", "td_centroid_bag", "br_multi_pct", "br_comps_per_split", "br_largest_pct",
+               "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
+               "arjun_time",
                "backbone_time", "backward_time", "indep_sz", "opt_indep_sz",
                "orig_proj_sz", "new_nvars", "unkn_sz", "cache_del_time",
                "cache_avg_hit_vars", "cache_avg_store_vars", "cache_miss_rate",

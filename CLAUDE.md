@@ -278,6 +278,13 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `backbone_time` | Backbone computation time |
 | `td_width` | Tree decomposition width |
 | `td_time` | Tree decomposition time |
+| `td_levels` | Distinct levels the TD order gives the branching ("max ord diff"+1). Few levels = coarse TD, dynamic scores decide more |
+| `td_centroid_bag` | Size of the TD's centroid bag: all its vars tie on the top TD score |
+| `br_multi_pct` / `br_comps_per_split` | % of component analyses yielding >=2 components / avg components per analysis |
+| `br_largest_pct` | Size of the largest child component as % of its super component. Lower = decisions cut better |
+| `br_td_ties` | Avg number of candidate vars tied on the best TD score at a decision |
+| `br_td_obeyed_pct` / `br_td_flat_pct` | % decisions that picked a var with the best TD score / % where TD had no say (all tied) |
+| `br_share_td` / `br_share_act` / `br_share_freq` | Avg share (%) of the chosen var's score from TD / activity / component frequency |
 | `restarts` | Number of restarts |
 | `cubes_orig` / `cubes_final` | Cubes before/after filtering per restart |
 | `sat_called` | Number of SAT oracle calls |

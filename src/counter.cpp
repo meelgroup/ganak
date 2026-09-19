@@ -1225,8 +1225,9 @@ void Counter::print_all_levels() const {
 }
 
 void Counter::print_stat_line() {
-  if (next_print_stat_cache > stats.num_cache_look_ups) return;
-  if (next_print_stat_confl > stats.conflicts) return;
+  // Either will do: low-conflict instances would otherwise never print
+  if (next_print_stat_cache > stats.num_cache_look_ups &&
+      next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   next_print_stat_cache = stats.num_cache_look_ups + (20LL*1000LL*1000LL);
   next_print_stat_confl = stats.conflicts + 150LL*1000LL;

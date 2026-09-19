@@ -457,10 +457,23 @@ uint32_t Counter::td_decompose_component(bool update_score) {
     return 100;
   }
 
+  // Like td_decompose(): after contraction only the first "nodes" vertices
+  // are left in play, so the TD must be over exactly those. Handing over the
+  // full graph gave bags with vertex ids >= nodes, which compute_td_score()
+  // (told there are only "nodes" of them) then choked on.
+  std::unique_ptr<TWD::Graph> primal_alt = nullptr;
+  if (conf.do_td_contract) {
+    primal_alt = std::make_unique<TWD::Graph>(nodes);
+    for(uint32_t i = 0 ; i < nodes; i++)
+      for(const auto& i2: primal.get_adj_list()[i])
+        if (i2 < (int)nodes) primal_alt->addEdge(i, i2);
+  }
+  const TWD::Graph& g = conf.do_td_contract ? *primal_alt : primal;
+
   // run FlowCutter
   verb_print(2, "[td-cmp] FlowCutter is running...");
-  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), 0);
-  fc.importGraph(primal);
+  TWD::IFlowCutter fc(g.numNodes(), g.numEdges(), 0);
+  fc.importGraph(g);
 
   // Notice that this graph returned is VERY different
   auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters,
@@ -468,7 +481,12 @@ uint32_t Counter::td_decompose_component(bool update_score) {
   td.centroid(0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
 
-  if (update_score) compute_td_score(td, nodes, false);
+  if (update_score) {
+    // The toplevel TD may have been skipped (too dense, too few vars, ...),
+    // in which case there are no scores to update yet
+    if (tdscore.size() < nVars()+1) tdscore.resize(nVars()+1, 0);
+    compute_td_score(td, conf.do_td_contract ? nodes : nVars(), false);
+  }
   return td.width();
 }
 
@@ -1488,6 +1506,12 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
 
   int32_t w[2];
   int tdiff[2];
+  // We are inside decide_lit(): the new decision level is already pushed but
+  // its var is not set yet. reactivate_comps_and_backtrack_trail() finds the
+  // start of the level's trail through that var, so it must be set while we
+  // probe, like the toplevel prober does.
+  const uint32_t orig_var = decisions.top().var;
+  decisions.top().var = v;
   for(bool const b: {true, false}) {
     set_lit(Lit(v, b), dec_level());
     int const tsz = trail.size();
@@ -1495,13 +1519,20 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     if (!ret) {
       score = 1e5;
       reactivate_comps_and_backtrack_trail();
+      decisions.top().zero_out_branch_sol();
+      decisions.top().var = orig_var;
       return score;
     }
     tdiff[b] = trail.size()-tsz;
     if (tdiff[b] < 3) w[b] = base_comp_tw;
     else w[b] = td_decompose_component(false);
     reactivate_comps_and_backtrack_trail();
+    // When weighted, unset_lit() multiplies the weight of every lit it unsets
+    // into this level's count. Right for a real backtrack, but this was only
+    // a probe and the level has counted nothing yet: wipe it.
+    decisions.top().zero_out_branch_sol();
   }
+  decisions.top().var = orig_var;
   verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
     << " w[1]: " << setw(4) << w[1]
     << " trail diff: " << setw(3) << tdiff[0]

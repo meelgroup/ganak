@@ -2312,6 +2312,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-2329268-0", # fixing TD
     "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
     "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
+    "out-ganak-mccomp2324-2357294-", # testing more TD systems
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

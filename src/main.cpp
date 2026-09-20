@@ -142,6 +142,7 @@ int cnfrw_varw = 6;
 int cnfrw_clsw = 1;
 int cnfrw_max_cls_len = 0;
 int cnfrw_no_widen = -1;
+int cnfrw_edge_grow = -1;
 int cnfrw_tries = 6;
 int poly_nvars = -1;
 int prime_field = -1;
@@ -231,6 +232,7 @@ void add_ganak_options()
     add_arg("--cnfrwvarw", cnfrw_varw, fc_int, "cnfrw: cost weight of a variable");
     add_arg("--cnfrwclsw", cnfrw_clsw, fc_int, "cnfrw: cost weight of a clause");
     add_arg("--cnfrwmaxclslen", cnfrw_max_cls_len, fc_int, "cnfrw: reject rewritten gate groups with a clause longer than this, 0 = no limit");
+    add_arg("--cnfrwedgegrow", cnfrw_edge_grow, fc_int, "cnfrw: reject a rewritten gate group whose clauses add more than this percent of primal-graph edges over the clauses they replace. -1 = off");
     add_arg("--cnfrwnowiden", cnfrw_no_widen, fc_int, "cnfrw: reject a rewritten gate group whose longest clause is more than this longer than the longest clause it replaces. -1 = off");
     add_arg("--cnfrwtries", cnfrw_tries, fc_int, "cnfrw: encode each gate group in this many root orders, keep the cheapest");
     add_arg("--arjunextend", etof_conf.do_extend_indep, fc_int, "Extend indep via Arjun's extend system");
@@ -475,6 +477,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cnfrw_cls_weight(cnfrw_clsw);
   arjun.set_cnfrw_max_cls_len(cnfrw_max_cls_len);
   arjun.set_cnfrw_no_widen(cnfrw_no_widen);
+  arjun.set_cnfrw_edge_grow(cnfrw_edge_grow);
   arjun.set_cnfrw_tries(cnfrw_tries);
   arjun.set_or_gate_based(arjun_gates);
   arjun.set_xor_gates_based(arjun_gates);

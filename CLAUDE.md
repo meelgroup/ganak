@@ -57,14 +57,14 @@ catches crashes, assertion failures, OOM, and timeouts.
 
 ```
 cd ../count_fuzzer
-./fuzz.py --only 20 --exact      # quick sanity check after a build
-./fuzz.py --only 200 --exact     # thorough
+./fuzz.py --only 20              # quick sanity check after a build
+./fuzz.py --only 200             # thorough
 ./fuzz.py --unweighted           # only unweighted
 ./fuzz.py --weighted             # only weighted
 ./fuzz.py --proj | --unproj      # projected / unprojected only
-./fuzz.py --cpx                  # complex field only
+./fuzz.py --buddy                # fuzz buddy too
 ./fuzz.py --threads K            # fuzz with --threads K passed to ganak
-./fuzz.py --tout T               # per-instance timeout (default 4s)
+./fuzz.py -t T                   # per-instance timeout (default 4s)
 ./fuzz.py                        # non-stop: EVERYTHING (cpx, proj, weighted, ...)
 ```
 
@@ -227,6 +227,12 @@ code. `../count_fuzzer` is a fairly complete find-and-isolate system:
    - then add `VERBOSE_DEBUG` to read the exact trace around the failure.
 
 3. **Re-fuzz** after the fix (`./fuzz.py --only 200 ...`) before committing.
+
+## Benchmarks
+
+The model counting competition instances (gzipped CNFs, 200 per track) are at:
+- `~/media/counting/mccomp2023/mc2023-track{1-mc,2-wmc,3-pmc,4-pwmc}/`
+- `~/media/counting/mccomp2024/track{1-mc,2-wmc,2-bonus-wmc,3-pmc,4-wpmc}/`
 
 ## Data Analysis
 

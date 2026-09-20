@@ -1490,26 +1490,28 @@ void Counter::decide_lit() {
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
+Counter::ScoreParts Counter::score_parts_of(const uint32_t v, bool ignore_td) const {
+  ScoreParts p;
+  if (!tdscore.empty() && !ignore_td) p.td = td_weight*tdscore[v];
+  p.act = var_act(v)/conf.act_score_divisor;
+  p.freq = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
+  return p;
+}
+
 // The higher, the better. It is never below 0.
 double Counter::score_of(const uint32_t v, bool ignore_td) const {
   bool const print = false;
   /* if (stats.decisions % 40000 == 0) print = 1; */
   /* print = true; */
   /* print = false; */
-  double act_score = 0;
-  double td_score = 0;
-  double freq_score = 0;
-
-  if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
-  act_score = var_act(v)/conf.act_score_divisor;
-  freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
-  double const score = act_score+td_score+freq_score;
+  const ScoreParts p = score_parts_of(v, ignore_td);
+  double const score = p.total();
   if (print) cout << "v: " << setw(4) << v
     << setw(3) << " conflK: " << stats.conflicts/1000
     << setw(5) << " decK: " << stats.decisions/1000
-    << setw(6) << " act_score: " << safe_div(act_score, score)
-    << setw(6) << " freq_score: " << safe_div(freq_score, score)
-    << setw(6) << " td_score: " << safe_div(td_score, score)
+    << setw(6) << " act_score: " << safe_div(p.act, score)
+    << setw(6) << " freq_score: " << safe_div(p.freq, score)
+    << setw(6) << " td_score: " << safe_div(p.td, score)
     << setw(6) << " total: " << score
     << setw(6) << endl;
 
@@ -1661,14 +1663,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     stats.br_decisions++;
     stats.br_cands += last_dec_candidates;
     stats.br_dec_level_sum += dec_level();
-    const double td_s = use_td ? td_weight*tdscore[best_var] : 0;
-    const double act_s = var_act(best_var)/conf.act_score_divisor;
-    const double freq_s = (double)comp_manager->freq_score_of(best_var)/conf.freq_score_divisor;
-    const double tot = td_s + act_s + freq_s;
+    const ScoreParts p = score_parts_of(best_var, ignore_td);
+    const double tot = p.total();
     if (tot > 0) {
-      stats.br_share_td += td_s/tot;
-      stats.br_share_act += act_s/tot;
-      stats.br_share_freq += freq_s/tot;
+      stats.br_share_td += p.td/tot;
+      stats.br_share_act += p.act/tot;
+      stats.br_share_freq += p.freq/tot;
     }
     if (use_td) {
       stats.br_td_ties += br_td_ties;

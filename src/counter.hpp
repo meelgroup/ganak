@@ -366,6 +366,9 @@ public:
   DecisionStack decisions;
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
+  struct ScoreParts { double td = 0; double act = 0; double freq = 0;
+    double total() const { return td + act + freq; } };
+  ScoreParts score_parts_of(const uint32_t v, bool ignore_td) const;
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
   void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);

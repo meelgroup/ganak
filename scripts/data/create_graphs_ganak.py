@@ -196,6 +196,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         cols = (compact_cols[:4] + [avg_t_col if only_counted else par2_col]
                 + compact_cols[4:] + (full_only_cols if full else []))
         select_clause = ",\n        ".join(f"{expr} as '{alias}'" for expr, alias in cols)
+        order_by = "solved asc" if only_counted else '"PAR2" desc'
         gen_table = f"{TMP_DIR}/gen_table.sqlite"
         with open(gen_table, "w") as f:
             f.write(".mode table\n")
@@ -203,7 +204,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
             # f.write(".headers off\n")
             query = (f"select\n        {select_clause}\n"
                      f"        from data where dirname IN ({dirs}) and ganak_ver IN ({vers})"
-                     f" {fname_like} {counted_req}group by dirname order by solved asc")
+                     f" {fname_like} {counted_req}group by dirname order by {order_by}")
             if verbose:
                 print(f"  Summary query: {query[:120]}...")
             f.write(query)
@@ -2321,7 +2322,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
     # "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
     # "out-ganak-mccomp2324-2357294-1", # testing more TD systems -- 1206 solved, BEST
-    "out-ganak-mccomp2324-2359115-0",
+    # "out-ganak-mccomp2324-2359115-0",
     "out-ganak-mccomp2324-2362983-0",
     "out-ganak-mccomp2324-2362983-5", # testing RW stuff and another batch of branch stuff
     "out-ganak-mccomp2324-2362983-6", # testing RW stuff and another batch of branch stuff

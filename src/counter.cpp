@@ -323,7 +323,6 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
 
   // Within one level of the TD, all vars used to tie. Break the tie by how
   // much separating work the var does, in [0, 1)
-  // Always computed (it is cheap), so the log line about it is always there
   const vector<double> sep_frac = compute_td_sep_frac(nodes, bags, adj, centroid, ord, print);
 
   // Calc td score
@@ -356,7 +355,8 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
 vector<double> Counter::compute_td_sep_frac(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
     const std::vector<std::vector<int>>& adj, const int centroid,
-    const std::vector<int>& ord, bool print) {
+    const std::vector<int>& ord, bool print) const {
+  // Root the tree at the centroid: parent = towards it, subtree = away from it
   const uint32_t nbags = bags.size();
   vector<int> parent(nbags, -1);
   vector<int> bfs_order;
@@ -373,19 +373,21 @@ vector<double> Counter::compute_td_sep_frac(const uint32_t nodes,
     }
   }
 
-  // Top bag of a var: the first one in BFS order that holds it. Vars below a
-  // bag: those whose top bag is in the bag's subtree
-  vector<int> top_bag(nodes, -1);
-  vector<uint32_t> below(nbags, 0);
+  // Top bag of a var: the first in BFS order holding it -- unique, as the bags
+  // holding a var form a connected subtree. below[b]: vars in b's subtree
+  vector<int> top_bag(nodes, -1); // var -> bag
+  vector<uint32_t> nvars_below(nbags, 0); // bag -> num vars in its subtree
   for(const auto& b: bfs_order) for(const auto& v: bags[b])
-    if (top_bag[v] == -1) { top_bag[v] = b; below[b]++; }
+    if (top_bag[v] == -1) { top_bag[v] = b; nvars_below[b]++; }
   for(size_t at = bfs_order.size(); at-- > 1;) {
     const int b = bfs_order[at];
-    below[parent[b]] += below[b];
+    nvars_below[parent[b]] += nvars_below[b];
   }
 
-  vector<double> sep(nodes, 0.0);
-  vector<char> in_parent(nodes, 0);
+  // Per tree edge: value of the cut it makes, shared among its adhesion's vars,
+  // since the subtree only falls off once all of them are assigned
+  vector<double> sep(nodes, 0.0); // var -> separating work done
+  vector<char> in_parent(nodes, 0); // var -> is it in the parent bag
   vector<int> adhesion;
   for(const auto& b: bfs_order) {
     if (parent[b] == -1) continue;
@@ -394,11 +396,11 @@ vector<double> Counter::compute_td_sep_frac(const uint32_t nodes,
     for(const auto& v: bags[b]) if (in_parent[v]) adhesion.push_back(v);
     for(const auto& v: bags[parent[b]]) in_parent[v] = 0;
     if (adhesion.empty()) continue;
-    const double cut = std::min<double>(below[b], nodes-below[b]);
+    const double cut = std::min<double>(nvars_below[b], nodes-nvars_below[b]);
     for(const auto& v: adhesion) sep[v] += cut/(double)adhesion.size();
   }
 
-  // Normalize per TD level
+  // Normalize per TD level, to below 1: this only breaks ties inside a level
   const int max_o = *std::max_element(ord.begin(), ord.end());
   vector<double> level_max(max_o+1, 0.0);
   for(uint32_t i = 0; i < nodes; i++) level_max[ord[i]] = std::max(level_max[ord[i]], sep[i]);
@@ -406,6 +408,7 @@ vector<double> Counter::compute_td_sep_frac(const uint32_t nodes,
   for(uint32_t i = 0; i < nodes; i++)
     if (level_max[ord[i]] > 0) ret[i] = 0.999*sep[i]/level_max[ord[i]];
 
+  // Does the tie-break have anything to work with on the level branched first?
   if (print) {
     const int min_o = *std::min_element(ord.begin(), ord.end());
     uint32_t root_vars = 0, root_nosep = 0, root_low = 0;

@@ -378,7 +378,7 @@ public:
   vector<double> compute_td_sep_frac(const uint32_t nodes,
       const std::vector<std::vector<int>>& bags,
       const std::vector<std::vector<int>>& adj, const int centroid,
-      const std::vector<int>& ord, bool print);
+      const std::vector<int>& ord, bool print) const;
   void compute_td_score_using_raw(const uint32_t nodes,
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);

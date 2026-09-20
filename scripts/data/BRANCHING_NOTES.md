@@ -43,9 +43,7 @@ Geometric mean of decisions vs. baseline on 27 quick instances, unless noted:
 | change | result |
 |---|---|
 | `--tdsepwpct 100`: inside a TD level prefer vars in small adhesions in front of big subtrees | x1.27 on 11 inst., one x6.3. At 25%: x1.03. **Loss**: overriding the frequency score inside a bag hurts |
-| `--tdmaxlevels 5` / `10`: merge TD levels | x1.24 / x1.02, up to x13 on sparse graphs. **Loss** when width/nodes < ~0.45, no effect above (already few levels) |
 | `--freqscorediv 5`: 5x frequency weight | x1.08 |
-| `--freqshortbonus 2` / `6`: more frequency score for clauses down to 2 unknown lits | x1.04 / x1.05 |
 | `--cutvars 1 --cutw 50` / `500`: bonus for articulation vars of the component | x0.99 / x1.03, one instance 1.1M -> >13M decisions at 500 |
 | **`--tdflatpct 50`**: TD does not guide branching when width >= 50% of nodes | **-17% summed time on the 13 instances in range, see below. Now default** |
 

@@ -91,7 +91,6 @@ struct CounterConfiguration {
   int do_cut_vars = 0; // find the articulation vars of the component at each decision. 1 = stats only unless cut_weight > 0
   double cut_weight = 0; // branching score bonus for a var that cuts the component: this * (vars outside largest piece)/(vars)
   int cut_min_vars = 8; // no cut var analysis for components smaller than this
-  int freq_short_bonus = 0; // extra frequency score for occurrences in clauses with 2 unknown lits
   uint32_t tot_used_cutoff_vivif = 50;
 
   int do_td = 1;
@@ -110,7 +109,6 @@ struct CounterConfiguration {
   int td_dense_pct = 30;
   int td_split_weight_pct = 100;
   int td_flat_pct = 50; // TD width >= this % of the TD graph's nodes: TD does not guide branching. 0 = off
-  int td_max_levels = 0; // merge TD levels until at most this many remain. 0 = off
   int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;

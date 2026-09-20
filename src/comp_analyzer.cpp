@@ -298,8 +298,8 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
         if (is_unknown(v2)) {
           manage_occ_of(v2);
           archetype.num_bin_cls++;
-          bump_freq_score(v2, 1+conf.freq_short_bonus);
-          bump_freq_score(v, 1+conf.freq_short_bonus);
+          bump_freq_score(v2);
+          bump_freq_score(v);
         } else {
           /* if (update) { */
           /*   // it's satisfied */
@@ -368,14 +368,11 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
             archetype.set_cl_clear(d.id);
             sat = true;
             goto end_sat;
-          } else {
-            // v is unknown. If one of the others is false, it is a binary now
-            const uint32_t by = (is_unknown(l1) && is_unknown(l2)) ? 1 : 1+conf.freq_short_bonus;
-            bump_freq_score(v, by);
-            manage_occ_and_score_of(l1, by);
-            manage_occ_and_score_of(l2, by);
-            archetype.set_clause_visited(d.id);
           }
+          bump_freq_score(v);
+          manage_occ_and_score_of(l1);
+          manage_occ_and_score_of(l2);
+          archetype.set_clause_visited(d.id);
         } else continue;
       } else {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {

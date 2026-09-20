@@ -300,8 +300,8 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 `scripts/data/BRANCHING_NOTES.md` records what the `br_*`/`td_*` stats showed and
 which branching experiments won or lost (with numbers), so they are not redone.
 Knobs from that work: `--tdflatpct` (default 50: TD ignored for branching when
-width >= 50% of the nodes), and the off-by-default `--tdmaxlevels`, `--tdsepwpct`,
-`--freqshortbonus`, `--cutvars`/`--cutw`/`--cutminvars` (`--cutvars 2` self-checks
+width >= 50% of the nodes), and the off-by-default `--tdsepwpct`,
+`--cutvars`/`--cutw`/`--cutminvars` (`--cutvars 2` self-checks
 the articulation var code by brute force, use it when fuzzing that code).
 
 ## Dependencies

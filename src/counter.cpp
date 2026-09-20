@@ -1565,6 +1565,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
+  ScoreParts best_parts; // all-zero when the td_lookahead path picked best_var
   uint64_t* at = nullptr;
   is_indep = false;
   bool couldnt_find_indep = false; // only used when also_nonindep is true
@@ -1623,10 +1624,11 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     if (v < opt_indep_support_end) is_indep = true;
     if (v < indep_support_end) only_optional_indep = false;
     double score;
+    ScoreParts parts;
     if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
-    else score = score_of(v, ignore_td) ;
+    else { parts = score_parts_of(v, ignore_td); score = parts.total(); }
     if (cut_tot > 0) {
       const uint32_t gain = comp_manager->cut_gain_of(v);
       cut_best = std::max(cut_best, gain);
@@ -1641,6 +1643,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     if (best_var == 0 || score > best_var_score) {
       best_var = v;
       best_var_score = score;
+      best_parts = parts;
     }
   }
   VERBOSE_DEBUG_DO(cout << endl);
@@ -1663,12 +1666,11 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     stats.br_decisions++;
     stats.br_cands += last_dec_candidates;
     stats.br_dec_level_sum += dec_level();
-    const ScoreParts p = score_parts_of(best_var, ignore_td);
-    const double tot = p.total();
+    const double tot = best_parts.total();
     if (tot > 0) {
-      stats.br_share_td += p.td/tot;
-      stats.br_share_act += p.act/tot;
-      stats.br_share_freq += p.freq/tot;
+      stats.br_share_td += best_parts.td/tot;
+      stats.br_share_act += best_parts.act/tot;
+      stats.br_share_freq += best_parts.freq/tot;
     }
     if (use_td) {
       stats.br_td_ties += br_td_ties;

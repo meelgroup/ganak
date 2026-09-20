@@ -2320,7 +2320,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-2329268-0", # fixing TD
     # "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
     # "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
-    "out-ganak-mccomp2324-2357294-1", # testing more TD systems
+    "out-ganak-mccomp2324-2357294-1", # testing more TD systems -- 1206 solved, BEST
     "out-ganak-mccomp2324-2359115-0",
 ]
 # only_dirs = [

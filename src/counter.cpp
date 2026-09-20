@@ -166,6 +166,8 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
     verb_print(1, "[td] soft width (log2 sum 2^bag): " << std::fixed << std::setprecision(2) << soft
         << " max bag: " << td_width << " bags: " << bags.size()
         << " bags within 2 of max: " << near_width);
+    verb_print(1, "[td] soft ~ max bag, few near-max: one wide bag, rest cheap -> easier than width says."
+        " soft ~ max bag+log2(bags), many near-max: worst case paid over and over -> harder");
   }
   td_split = tdec.splitFrac();
   tdec.centroid(conf.verb);

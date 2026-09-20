@@ -88,9 +88,6 @@ struct CounterConfiguration {
   int vsads_readjust_every = 256;
   double act_score_divisor = 3.0;
   double freq_score_divisor = 25.0;
-  int do_cut_vars = 0; // find the articulation vars of the component at each decision. 1 = stats only unless cut_weight > 0
-  double cut_weight = 0; // branching score bonus for a var that cuts the component: this * (vars outside largest piece)/(vars)
-  int cut_min_vars = 8; // no cut var analysis for components smaller than this
   uint32_t tot_used_cutoff_vivif = 50;
 
   int do_td = 1;

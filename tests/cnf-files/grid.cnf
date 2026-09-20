@@ -17,9 +17,6 @@ c c RUN: %solver --shrink 0 --bumpreason 0 %s | %OutputCheck %s --check-prefix=I
 c c RUN: %solver --allindep 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --prob 0 %s | %OutputCheck %s --check-prefix=INT
 c c
-c c --cutvars 2 brute-force-checks the articulation-var code against the search.
-c c RUN: %solver --cutvars 2 --cutw 1 --cutminvars 2 %s | %OutputCheck %s --check-prefix=INT
-c c
 c c RUN: %solver --mode 1 %s | %OutputCheck %s --check-prefix=FRAC
 c c RUN: %solver --mode 2 %s | %OutputCheck %s --check-prefix=CPX
 c c RUN: %solver --mode 3 --npolyvars 1 %s | %OutputCheck %s --check-prefix=POLY

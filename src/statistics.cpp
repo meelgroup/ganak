@@ -146,18 +146,6 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(9) << safe_div(br_share_act*100, br_decisions) << " "
     << setw(9) << safe_div(br_share_freq*100, br_decisions));
 
-  if (br_cut_calls > 0) {
-    verb_print(1, "br cut callsK/any%/>=10%/T     "
-      << setw(9) << br_cut_calls/1000 << " "
-      << setw(9) << safe_div(br_cut_any*100, br_cut_calls) << " "
-      << setw(9) << safe_div(br_cut_avail*100, br_cut_calls) << " "
-      << setw(9) << br_cut_time);
-    verb_print(1, "br cut best%/chosen%/chose-best%"
-      << setw(8) << safe_div(br_cut_best_frac*100, br_cut_calls) << " "
-      << setw(9) << safe_div(br_cut_chosen*100, br_cut_calls) << " "
-      << setw(9) << safe_div(br_cut_chosen_best*100, br_cut_calls));
-  }
-
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
     << setw(9) << vivif_tried << " "
     << setw(9) << vivif_tried_cl << " "

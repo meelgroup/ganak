@@ -53,9 +53,6 @@ public:
   }
 
   auto freq_score_of(uint32_t v) const { return ana.freq_score_of(v); }
-  uint32_t compute_cut_gains(const Comp& comp) { return ana.compute_cut_gains(comp); }
-  void check_cut_gains(const Comp& comp) { ana.check_cut_gains(comp); }
-  uint32_t cut_gain_of(uint32_t v) const { return ana.cut_gain_of(v); }
   void initialize(const LiteralIndexedVector<LitWatchList> &watches,
     const ClauseAllocator* _alloc, const vector<ClauseOfs>& long_irred_cls);
   const auto& get_cache() const { return cache; }

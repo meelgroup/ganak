@@ -124,16 +124,6 @@ public:
 
   auto freq_score_of(uint32_t v) const { return var_freq_scores[v]; }
 
-  // Articulation ("cut") vars of a component: deciding one splits the
-  // component right away. cut_gain_of(v) is the number of vars that end up
-  // outside the largest piece once v is removed, 0 if v cuts nothing. Only
-  // valid for the unknown vars of the comp last given to compute_cut_gains(),
-  // which returns the number of unknown vars it saw.
-  uint32_t compute_cut_gains(const Comp& comp);
-  uint32_t cut_gain_of(uint32_t v) const { return cut_gain[v]; }
-  // Slow cross-check of compute_cut_gains(): removes each var in turn and
-  // flood-fills. Aborts on a mismatch. For --cutvars 2, i.e. fuzzing
-  void check_cut_gains(const Comp& comp);
   inline void bump_freq_score(uint32_t v) { var_freq_scores[v] ++; }
   const CompArchetype& current_archetype() const { return archetype; }
 
@@ -206,24 +196,6 @@ private:
   const uint32_t indep_support_end;
   vector<uint32_t> var_freq_scores;
 
-  // compute_cut_gains() scratch. Node ids: var v is v, long clause is max_var+id
-  struct CutFrame {
-    uint32_t node;
-    uint32_t parent;
-    uint32_t i_bin;
-    uint32_t i_long;
-    Lit const* lit_at; // clause nodes only
-  };
-  vector<uint32_t> cut_gain;
-  vector<uint32_t> cut_epoch_of; // node visited in this epoch?
-  vector<uint32_t> cut_disc;
-  vector<uint32_t> cut_low;
-  vector<uint32_t> cut_subsz; // vars in the DFS subtree of the node
-  vector<uint32_t> cut_sep_sum; // vars in pieces the var cuts off below itself
-  vector<uint32_t> cut_sep_max; // largest such piece
-  vector<CutFrame> cut_stack;
-  vector<uint32_t> cut_tree_vars;
-  uint32_t cut_epoch = 0;
   CompArchetype archetype;
   Counter* counter = nullptr;
 

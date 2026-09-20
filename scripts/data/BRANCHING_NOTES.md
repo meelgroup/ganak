@@ -44,7 +44,7 @@ Geometric mean of decisions vs. baseline on 27 quick instances, unless noted:
 |---|---|
 | `--tdsepwpct 100`: inside a TD level prefer vars in small adhesions in front of big subtrees | x1.27 on 11 inst., one x6.3. At 25%: x1.03. **Loss**: overriding the frequency score inside a bag hurts |
 | `--freqscorediv 5`: 5x frequency weight | x1.08 |
-| `--cutvars 1 --cutw 50` / `500`: bonus for articulation vars of the component | x0.99 / x1.03, one instance 1.1M -> >13M decisions at 500 |
+| `--cutvars 1 --cutw 50` / `500`: bonus for articulation vars of the component | x0.99 / x1.03, one instance 1.1M -> >13M decisions at 500. **Removed**, see below |
 | **`--tdflatpct 50`**: TD does not guide branching when width >= 50% of nodes | **-17% summed time on the 13 instances in range, see below. Now default** |
 
 Articulation vars are a rich signal that does not pay: on mc2023_track1_014 some
@@ -52,6 +52,27 @@ candidate would cut >= 10% off the component at 57% of all decisions (avg best c
 and we pick the best cut var only 34% of the time. But with component caching, picking
 it late does not redo the cut-off part's work (it is a cache hit later), so decisions do
 not drop, and forcing it overrides the TD order.
+
+A full cluster run (`out-ganak-mccomp2324-2362983-{0,5,6,7,8}`, 1600 runs per config)
+settled it, and `--cutvars`/`--cutw`/`--cutminvars` and the analysis code were removed:
+
+* **The analysis alone costs 1.30x**, with the search bit-for-bit unchanged (decision
+  ratio 1.000): `--cutvars 1 --cutw 0` loses 16 instances and gains 0. `compute_cut_gains`
+  was 62.6% of runtime on mc2024_track1_174, whose average super-component is 6.5 vars --
+  the cost is the per-decision long-clause satisfiedness rescan, not the component size.
+  Reading the trimmed (`size_*`) instead of the full (`orig_size_*`) occurrence lists
+  changes nothing: 1.793x either way over the 24 worst instances.
+* **The bonus splits on `td_weight`**: where the TD guides (`td_weight > 0`, 709 runs) it
+  gained 3 instances and lost 0, PAR2 1833 -> 1799; where it does not (`td_weight == 0`,
+  408 runs) it gained 1 and lost 9, PAR2 2103 -> 2318, with decisions x1.74 and conflicts
+  x2.19. `--cutw 50` is the same magnitude as the whole TD score, so with no TD to compete
+  with it becomes the sole driver.
+* **Ceiling**: zero overhead plus a `td_weight > 0` gate projects 1204 solved / PAR2 1955,
+  against baseline 1202 / 1966. The benefit is ~15 PAR2 points; the overhead costs ~83.
+  Breaking even needs a 4-5x faster `compute_cut_gains`, and even then it is +2 instances.
+
+If this is ever revisited: capture the articulation structure statically, in the TD score
+at decomposition time, instead of recomputing biconnectivity at every decision.
 
 Conclusion: inside the TD regime the var choice is at a local optimum for every knob and
 signal tried. The leverage is in WHEN the TD should be listened to, and in which TD.

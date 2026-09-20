@@ -286,9 +286,6 @@ void add_ganak_options()
     add_arg("--initact", conf.do_init_activity_scores, fc_int, "Init activity scores to var freq");
     add_arg("--vsadsadjust", conf.vsads_readjust_every, fc_int, "VSADS ajust activity every N");
     add_arg("--actscorediv", conf.act_score_divisor, fc_double, "Activity score divisor");
-    add_arg("--cutvars", conf.do_cut_vars, fc_int, "At each decision, find the articulation (cut) vars of the component. With --cutw 0 this only gathers statistics. 2 = also cross-check them by brute force (slow, for fuzzing)");
-    add_arg("--cutw", conf.cut_weight, fc_double, "Branching score bonus for a var that cuts its component in pieces: this * (vars outside the largest piece)/(vars in component)");
-    add_arg("--cutminvars", conf.cut_min_vars, fc_int, "No cut var analysis for components with fewer vars than this");
     add_arg("--freqscorediv", conf.freq_score_divisor, fc_double, "Component frequency score divisor");
 
     // Cache options

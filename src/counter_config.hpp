@@ -107,6 +107,8 @@ struct CounterConfiguration {
   int td_split_weight_pct = 100;
   int td_flat_pct = 50; // TD width >= this % of the TD graph's nodes: TD does not guide branching. 0 = off
   int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level
+  // Must be the same at TD construction and at scoring: the candidate split is measured around this bag
+  int td_new_centroid = 0;
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;

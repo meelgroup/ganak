@@ -170,7 +170,7 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
         " soft ~ max bag+log2(bags), many near-max: worst case paid over and over -> harder");
   }
   td_split = tdec.splitFrac();
-  tdec.centroid(conf.verb);
+  tdec.centroid(conf.verb, conf.td_new_centroid);
   std::vector<int> dists = tdec.distanceFromCentroid();
   if (dists.empty()) {
       if (print) verb_print(1, "[td] All projected vars in the same bag, ignoring TD");
@@ -252,7 +252,7 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     for(const auto& nn: adj[i]) dec.addEdge(i, nn);
 
   int centroid = -1;
-  auto ord = dec.getOrd(centroid);
+  auto ord = dec.getOrd(centroid, conf.td_new_centroid);
   verb_print(1, "[td] centroid bag id: " << centroid << " bag size: " << bags[centroid].size());
   if (!conf.td_visualize_dot_file.empty()) {
     dec.visualizeTree(conf.td_visualize_dot_file);
@@ -492,8 +492,8 @@ uint32_t Counter::td_decompose_component(bool update_score) {
 
   // Notice that this graph returned is VERY different
   auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters,
-        conf.td_band_pct, conf.td_dense_pct));
-  td.centroid(0);
+        conf.td_band_pct, conf.td_dense_pct, 0, conf.td_new_centroid));
+  td.centroid(0, conf.td_new_centroid);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
 
   if (update_score) {
@@ -628,7 +628,8 @@ void Counter::td_decompose() {
   fc.importGraph(*primal_alt);
 
   // Notice that this graph returned is VERY different
-  auto td = fc.constructTD(conf.td_steps, conf.td_iters, conf.td_band_pct, conf.td_dense_pct);
+  auto td = fc.constructTD(conf.td_steps, conf.td_iters, conf.td_band_pct, conf.td_dense_pct,
+      0, conf.td_new_centroid);
 
   compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);

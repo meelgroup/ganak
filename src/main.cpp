@@ -237,8 +237,6 @@ void add_ganak_options()
     add_arg("--prebackbone", do_pre_backbone, fc_int, "Perform backbone before other things");
     add_arg("--puura", do_puura, fc_int, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, fc_int, "Perform backbone in Puura");
-    add_arg("--bveplanner", simp_conf.bve_planner, fc_int, "Puura BVE elimination order: 0 = pos*neg score, 1 = literal growth");
-    add_arg("--bvecanonties", simp_conf.bve_canon_ties, fc_int, "Puura BVE: renaming-invariant tie-breaking by neighbourhood hash");
     add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, fc_int, "Max conflicts for backbone in Puura (-1 = unlimited)");
     add_arg("--puuraautarky", etof_conf.do_autarky, fc_int, "Do autarky in Puura");
     add_arg("--arjuniter1", simp_conf.iter1, fc_int, "Arjun's iter1");

@@ -1,0 +1,25 @@
+c c UNSATISFIABLE in every field mode: "s UNSATISFIABLE" plus the field's zero.
+c c RUN: %solver %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --mode 1 %s | %OutputCheck %s --check-prefix=FRAC
+c c RUN: %solver --mode 2 %s | %OutputCheck %s --check-prefix=CPX
+c c RUN: %solver --mode 3 --npolyvars 1 %s | %OutputCheck %s --check-prefix=POLY
+c c RUN: %solver --mode 4 %s | %OutputCheck %s --check-prefix=PAR
+c c RUN: %solver --mode 5 --prime 7 %s | %OutputCheck %s --check-prefix=P7
+c c RUN: %solver --mode 6 %s | %OutputCheck %s --check-prefix=CPXF
+c c RUN: %solver --mode 7 %s | %OutputCheck %s --check-prefix=REALF
+c c RUN: %solver --mode 13 --npolyvars 1 %s | %OutputCheck %s --check-prefix=LAURENT
+c c RUN: %solver --cache 0 --arjun 0 --td 0 %s | %OutputCheck %s --check-prefix=INT
+p cnf 2 3
+1 0
+-1 2 0
+-2 0
+c c INT: ^s UNSATISFIABLE$
+c c INT: ^c s exact arb int 0$
+c c FRAC: ^c s exact arb frac 0$
+c c CPX: ^c s exact arb frac 0 \+ 0i$
+c c POLY: ^c s exact poly 0$
+c c PAR: ^c s exact parity 0$
+c c P7: ^c s exact modprime 0 mod 7$
+c c CPXF: ^c s exact quadruple float 0\.00000000e\+00 \+ 0\.00000000e\+00i$
+c c REALF: ^c s exact quadruple float 0\.00000000e\+00$
+c c LAURENT: ^c s exact laurent 0$

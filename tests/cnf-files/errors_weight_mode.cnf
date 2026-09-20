@@ -1,0 +1,12 @@
+c c A weighted CNF fed to a mode whose field cannot carry those weights must
+c c error out rather than silently counting something else.
+c c RUN: not %solver --mode 0 %s 2>&1 | %OutputCheck %s --check-prefix=NOTWEIGHTED
+c c RUN: not %solver --mode 4 %s 2>&1 | %OutputCheck %s --check-prefix=BADPARSE
+c c RUN: not %solver --mode 5 --prime 7 %s 2>&1 | %OutputCheck %s --check-prefix=BADPARSE
+p cnf 2 1
+c t wmc
+c p weight 1 1/3 0
+c p weight 2 1/4 0
+1 2 0
+c c NOTWEIGHTED: ERROR: 'c t wmc' or 'c t pwmc' requires a weighted field generator
+c c BADPARSE: PARSE ERROR! expected 0 at the end of the weight.*did you forget to set the mode

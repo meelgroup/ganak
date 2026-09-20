@@ -1,0 +1,69 @@
+c c Independent sets of the 4x4 grid graph = 1234 (brute-forced).
+c c Same instance, same answer under a wide spread of search options and in
+c c every field mode -- the cross-mode/cross-option consistency test.
+c c RUN: %solver %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --cache 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --maxcache 1 --lru 1 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --threads 4 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --threads 4 --bitsjobs 4 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --debugthreads 1 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --restart 1 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --td 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --puura 0 --sbvasteps 0 --vivif 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --satsolver 0 --chronobt 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --polar 2 --decide 1 --initact 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --shrink 0 --bumpreason 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --allindep 1 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --prob 0 %s | %OutputCheck %s --check-prefix=INT
+c c
+c c --cutvars 2 brute-force-checks the articulation-var code against the search.
+c c RUN: %solver --cutvars 2 --cutw 1 --cutminvars 2 %s | %OutputCheck %s --check-prefix=INT
+c c
+c c RUN: %solver --mode 1 %s | %OutputCheck %s --check-prefix=FRAC
+c c RUN: %solver --mode 2 %s | %OutputCheck %s --check-prefix=CPX
+c c RUN: %solver --mode 3 --npolyvars 1 %s | %OutputCheck %s --check-prefix=POLY
+c c RUN: %solver --mode 4 %s | %OutputCheck %s --check-prefix=PARITY
+c c RUN: %solver --mode 5 --prime 7 %s | %OutputCheck %s --check-prefix=P7
+c c RUN: %solver --mode 5 --prime 2 %s | %OutputCheck %s --check-prefix=P2
+c c RUN: %solver --mode 5 --prime 1000003 %s | %OutputCheck %s --check-prefix=PBIG
+c c RUN: %solver --mode 6 %s | %OutputCheck %s --check-prefix=CPXF
+c c RUN: %solver --mode 7 %s | %OutputCheck %s --check-prefix=REALF
+c c RUN: %solver --mode 13 --npolyvars 1 %s | %OutputCheck %s --check-prefix=LAURENT
+p cnf 16 24
+-1 -2 0
+-1 -5 0
+-2 -3 0
+-2 -6 0
+-3 -4 0
+-3 -7 0
+-4 -8 0
+-5 -6 0
+-5 -9 0
+-6 -7 0
+-6 -10 0
+-7 -8 0
+-7 -11 0
+-8 -12 0
+-9 -10 0
+-9 -13 0
+-10 -11 0
+-10 -14 0
+-11 -12 0
+-11 -15 0
+-12 -16 0
+-13 -14 0
+-14 -15 0
+-15 -16 0
+c c INT: ^s SATISFIABLE$
+c c INT: ^c s exact arb int 1234$
+c c FRAC: ^c s exact arb frac 1234$
+c c CPX: ^c s exact arb frac 1234 \+ 0i$
+c c POLY: ^c s exact poly 1234$
+c c PARITY: ^c s exact parity 0$
+c c P7: ^c s exact modprime 2 mod 7$
+c c P2: ^c s exact modprime 0 mod 2$
+c c PBIG: ^c s exact modprime 1234 mod 1000003$
+c c CPXF: ^c s exact quadruple float 1\.23400000e\+03 \+ 0\.00000000e\+00i$
+c c REALF: ^c s exact quadruple float 1\.23400000e\+03$
+c c LAURENT: ^c s exact laurent 1234$

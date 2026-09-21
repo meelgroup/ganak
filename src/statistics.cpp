@@ -117,6 +117,35 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
         << safe_div(comps_non_reset, comps_reset+comps_non_reset));
 
+  // Branching quality. A good decision cuts its component: low "largest"
+  // ratio, many components per split
+  verb_print(1, "br splitsK/multi%/none%/comps  "
+    << setw(9) << br_splits/1000 << " "
+    << setw(9) << setprecision(2) << safe_div(br_split_multi*100, br_splits) << " "
+    << setw(9) << safe_div(br_split_none*100, br_splits) << " "
+    << setw(9) << safe_div(br_split_comps, br_splits));
+  verb_print(1, "br avg sup vars/largest%/kept% "
+    << setw(9) << safe_div(br_split_sup_vars, br_splits) << " "
+    << setw(9) << safe_div(br_split_largest_vars*100, br_split_sup_vars) << " "
+    << setw(9) << safe_div(br_split_child_vars*100, br_split_sup_vars));
+  verb_print(1, "br top(lev<=3) splits/sup/lrg% "
+    << setw(9) << br_top_splits << " "
+    << setw(9) << safe_div(br_top_sup_vars, br_top_splits) << " "
+    << setw(9) << safe_div(br_top_largest_vars*100, br_top_sup_vars));
+  verb_print(1, "br cache-hit vars % of childr  "
+    << setw(9) << safe_div(br_split_hit_vars*100, br_split_child_vars));
+  verb_print(1, "br dec avg lev/cands/td-ties   "
+    << setw(9) << safe_div(br_dec_level_sum, br_decisions) << " "
+    << setw(9) << safe_div(br_cands, br_decisions) << " "
+    << setw(9) << safe_div(br_td_ties, br_decisions));
+  verb_print(1, "br td obeyed%/td flat%         "
+    << setw(9) << safe_div(br_td_obeyed*100, br_decisions) << " "
+    << setw(9) << safe_div(br_td_flat*100, br_decisions));
+  verb_print(1, "br score share td/act/freq %   "
+    << setw(9) << safe_div(br_share_td*100, br_decisions) << " "
+    << setw(9) << safe_div(br_share_act*100, br_decisions) << " "
+    << setw(9) << safe_div(br_share_freq*100, br_decisions));
+
   verb_print(1, "vivif: try/cls/clviv/litsravg  "
     << setw(9) << vivif_tried << " "
     << setw(9) << vivif_tried_cl << " "

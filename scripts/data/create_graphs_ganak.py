@@ -19,6 +19,12 @@ TMP_DIR = "tmp"
 #The run timeout, in seconds. PAR2 charges 2x this for every unsolved instance.
 TIMEOUT = 3600
 
+#--mode is set per instance type by the run scripts, it's not part of the config
+MODE_RE = r" --mode \d+"
+SQL_CALL = "ganak_call"
+for m in range(10):
+    SQL_CALL = f"replace({SQL_CALL},' --mode {m}','')"
+
 
 def convert_to_cdf(fname, fname2):
     with open(fname, "r") as f:
@@ -66,6 +72,7 @@ def get_dirs(ver: str):
         call = a[1]
         call = re.sub("././ganak", "", call)
         call = re.sub(" mc2022.*cnf.*", "", call)
+        call = re.sub(MODE_RE, "", call)
         ret.append([a[0], call])
     con.close()
     return ret
@@ -135,7 +142,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
 
     compact_cols = [
         ("replace(dirname,'out-ganak-mc','')",                       "dirname"),
-        ("replace(ganak_call,'././ganak_','')",                      "call"),
+        (f"replace({SQL_CALL},'././ganak_','')",                     "call"),
         ("sum(ganak_time is not null)",                              "solved"),
         ("COUNT(*)",                                                 "attempted"),
         ("ROUND(avg(conflicts)/(1000.0*1000.0), 2)",                 "av confM"),
@@ -189,6 +196,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
         cols = (compact_cols[:4] + [avg_t_col if only_counted else par2_col]
                 + compact_cols[4:] + (full_only_cols if full else []))
         select_clause = ",\n        ".join(f"{expr} as '{alias}'" for expr, alias in cols)
+        order_by = "solved asc" if only_counted else '"PAR2" desc'
         gen_table = f"{TMP_DIR}/gen_table.sqlite"
         with open(gen_table, "w") as f:
             f.write(".mode table\n")
@@ -196,7 +204,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
             # f.write(".headers off\n")
             query = (f"select\n        {select_clause}\n"
                      f"        from data where dirname IN ({dirs}) and ganak_ver IN ({vers})"
-                     f" {fname_like} {counted_req}group by dirname order by solved asc")
+                     f" {fname_like} {counted_req}group by dirname order by {order_by}")
             if verbose:
                 print(f"  Summary query: {query[:120]}...")
             f.write(query)
@@ -289,6 +297,229 @@ def print_instance_stats_table(table_todo, fname_like, verbose=False):
             f.write(query + "\n")
         os.system(f"sqlite3 data.sqlite3 < {gen_table}")
         os.unlink(gen_table)
+
+
+def _td_rows(con, dir, ver, fname_like, where):
+    """(instances, solved, PAR2, median width, median split, median bags) for a TD subset."""
+    q = (f"select ganak_time, td_width, td_split, td_bags from data "
+         f"where dirname='{dir}' and ganak_ver='{ver}'{fname_like} and {where}")
+    rows = list(con.execute(q))
+    if not rows:
+        return None
+    def med(vals):
+        vals = sorted(v for v in vals if v is not None)
+        return vals[len(vals)//2] if vals else None
+    solved = sum(1 for r in rows if r[0] is not None)
+    par2 = sum(r[0] if r[0] is not None else 2*TIMEOUT for r in rows) / len(rows)
+    return (len(rows), solved, par2, med(r[1] for r in rows),
+            med(r[2] for r in rows), med(r[3] for r in rows))
+
+
+def print_td_tables(table_todo, fname_like, verbose=False):
+    """Where the TD selection acts: dense graphs (the band is on) vs sparse ones,
+    and which heuristic the chosen TD came from. Needs the td_* columns, i.e.
+    logs from a treedecomp that prints 'final TD'."""
+    if not table_todo:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_split" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    print(f"\n{BLUE}TD regime: dense (width > 30% of nodes, split decides) vs sparse{RESET}")
+    headers = ["dirname", "regime", "inst", "solved", "PAR2", "med tw", "med split", "med bags"]
+    rows = []
+    for dir, ver in table_todo:
+        for label, where in (("dense", "td_band=1"), ("sparse", "td_band=0")):
+            r = _td_rows(con, dir, ver, fname_like, where)
+            if r is None or r[0] == 0:
+                continue
+            rows.append([dir.replace("out-ganak-mc", ""), label, str(r[0]), str(r[1]),
+                         f"{r[2]:.0f}",
+                         "-" if r[3] is None else f"{r[3]:.0f}",
+                         "-" if r[4] is None else f"{r[4]:.2f}",
+                         "-" if r[5] is None else f"{r[5]:.0f}"])
+    if rows:
+        _print_table(headers, rows)
+
+    print(f"\n{BLUE}TD source: which heuristic produced the chosen TD{RESET}")
+    headers = ["dirname", "src", "inst", "solved", "PAR2", "med tw", "med split"]
+    rows = []
+    for dir, ver in table_todo:
+        srcs = [r[0] for r in con.execute(
+            f"select distinct td_src from data where dirname='{dir}' and ganak_ver='{ver}'"
+            f"{fname_like} and td_src is not null order by td_src")]
+        for src in srcs:
+            r = _td_rows(con, dir, ver, fname_like, f"td_src='{src}'")
+            if r is None:
+                continue
+            rows.append([dir.replace("out-ganak-mc", ""), src, str(r[0]), str(r[1]),
+                         f"{r[2]:.0f}",
+                         "-" if r[3] is None else f"{r[3]:.0f}",
+                         "-" if r[4] is None else f"{r[4]:.2f}"])
+    if rows:
+        _print_table(headers, rows)
+
+    print(f"\n{BLUE}Solve rate by split (largest comp left after branching on the centroid bag){RESET}")
+    headers = ["dirname", "regime", "split<0.2", "0.2-0.35", ">=0.35"]
+    rows = []
+    buckets = [("split<0.2", "td_split < 0.2"), ("0.2-0.35", "td_split >= 0.2 and td_split < 0.35"),
+               (">=0.35", "td_split >= 0.35")]
+    for dir, ver in table_todo:
+        for label, band in (("dense", "td_band=1"), ("sparse", "td_band=0")):
+            cells = []
+            any_data = False
+            for _, cond in buckets:
+                r = _td_rows(con, dir, ver, fname_like, f"{band} and {cond}")
+                if r is None or r[0] == 0:
+                    cells.append("-")
+                    continue
+                any_data = True
+                cells.append(f"{r[1]}/{r[0]} PAR2 {r[2]:.0f}")
+            if any_data:
+                rows.append([dir.replace("out-ganak-mc", ""), label] + cells)
+    if rows:
+        _print_table(headers, rows)
+
+
+def print_td_cost_table(table_todo, fname_like, verbose=False):
+    """What the TD itself costs: time, search effort, and the runs that never
+    got past it. Reads the td_* columns, i.e. logs with a 'final TD' line."""
+    if not table_todo:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_cands" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    print(f"\n{BLUE}TD cost: time spent decomposing, and how much searching it took{RESET}")
+    headers = ["dirname", "regime", "TDs", "sum TD s", "med TD s", "max TD s",
+               "med TD % of count (>60s)", "med cands", "med acc", "killed in TD"]
+    rows = []
+    for dir, ver in table_todo:
+        for label, where in (("dense", "td_band=1"), ("sparse", "td_band=0")):
+            q = (f"select td_time, ganak_time, arjun_time, td_cands, td_accepts from data "
+                 f"where dirname='{dir}' and ganak_ver='{ver}'{fname_like} and {where}")
+            got = [r for r in con.execute(q) if r[0] is not None]
+            if not got:
+                continue
+            def med(vals):
+                vals = sorted(v for v in vals if v is not None)
+                return vals[len(vals)//2] if vals else None
+            # TD is part of the counting phase, so compare it against that.
+            # Only for instances that count for a while: on the trivial ones
+            # the TD is nearly all of a tiny number and drowns out the rest
+            shares = [100.0*r[0]/(r[1]-(r[2] or 0)) for r in got
+                      if r[1] is not None and (r[1]-(r[2] or 0)) > 60]
+            killed = con.execute(
+                f"select count(*) from data where dirname='{dir}' and ganak_ver='{ver}'"
+                f"{fname_like} and td_width is not null and td_band is null").fetchone()[0]
+            rows.append([dir.replace("out-ganak-mc", ""), label, str(len(got)),
+                         f"{sum(r[0] for r in got):.0f}", f"{med(r[0] for r in got):.2f}",
+                         f"{max(r[0] for r in got):.0f}",
+                         "-" if not shares else f"{med(shares):.1f}%",
+                         f"{med(r[3] for r in got):.0f}", f"{med(r[4] for r in got):.0f}",
+                         str(killed) if label == "dense" else ""])
+    if rows:
+        _print_table(headers, rows)
+
+
+def print_td_indep_tables(table_todo, fname_like, verbose=False):
+    """Whether the TD guided branching at all, and how well it orders the indep
+    vars: the count is over those, so a TD that puts most of them on its top
+    level cannot order what matters. Reads td_weight / td_ind_* columns."""
+    if not table_todo:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_ind_top_pct" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    print(f"\n{BLUE}Did the TD guide branching? (flat: width gate, --tdflatpct){RESET}")
+    headers = ["dirname", "TD role", "inst", "solved", "PAR2", "med tw", "med indep top %"]
+    rows = []
+    for dir, ver in table_todo:
+        for label, where in (("guides (weight > 0.1)", "td_weight > 0.1"),
+                             ("weight 0.1", "td_weight > 0 and td_weight <= 0.1"),
+                             ("flat (weight 0)", "td_weight = 0")):
+            q = (f"select ganak_time, td_width, td_ind_top_pct from data where dirname='{dir}'"
+                 f" and ganak_ver='{ver}'{fname_like} and {where}")
+            got = list(con.execute(q))
+            if not got:
+                continue
+            med = lambda vals: sorted(vals)[len(vals)//2] if vals else None
+            par2 = sum(r[0] if r[0] is not None else 2*TIMEOUT for r in got) / len(got)
+            tw = med([r[1] for r in got if r[1] is not None])
+            top = med([r[2] for r in got if r[2] is not None])
+            rows.append([dir.replace("out-ganak-mc", ""), label, str(len(got)),
+                         str(sum(1 for r in got if r[0] is not None)), f"{par2:.0f}",
+                         "-" if tw is None else str(tw), "-" if top is None else f"{top:.1f}"])
+    if rows:
+        _print_table(headers, rows)
+
+    print(f"\n{BLUE}Solve rate by % of indep vars tied on the top TD score{RESET}")
+    buckets = [("<10%", 0, 10), ("10-25%", 10, 25), ("25-50%", 25, 50),
+               ("50-75%", 50, 75), (">=75%", 75, 101)]
+    headers = ["dirname"] + [b[0] for b in buckets]
+    rows = []
+    for dir, ver in table_todo:
+        cells = []
+        for _, lo, hi in buckets:
+            got = list(con.execute(
+                f"select ganak_time from data where dirname='{dir}' and ganak_ver='{ver}'"
+                f"{fname_like} and td_ind_top_pct >= {lo} and td_ind_top_pct < {hi}"))
+            if not got:
+                cells.append("-")
+                continue
+            par2 = sum(r[0] if r[0] is not None else 2*TIMEOUT for r in got) / len(got)
+            cells.append(f"{sum(1 for r in got if r[0] is not None)}/{len(got)} PAR2 {par2:.0f}")
+        rows.append([dir.replace("out-ganak-mc", "")] + cells)
+    if rows:
+        _print_table(headers, rows)
+
+
+def td_time_cdf_chart(table_todo, fname_like, verbose=False):
+    """CDF of TD time per dir: how much of the budget goes into decomposing
+    before any counting happens."""
+    if len(table_todo) < 1:
+        return
+    con = sqlite3.connect("data.sqlite3")
+    if "td_cands" not in {r[1] for r in con.execute("PRAGMA table_info(data)")}:
+        return
+
+    plots = []
+    for dir, ver in table_todo:
+        times = sorted(r[0] for r in con.execute(
+            f"select td_time from data where dirname='{dir}' and ganak_ver='{ver}'"
+            f"{fname_like} and td_time is not null") if r[0] is not None and r[0] > 0)
+        if len(times) < 10:
+            continue
+        dat = f"{TMP_DIR}/td_time_{re.sub(r'[^a-zA-Z0-9_-]', '_', dir)}.dat"
+        with open(dat, "w") as f:
+            for i, t in enumerate(times):
+                f.write(f"{t}\t{100.0*(i+1)/len(times)}\n")
+        plots.append((dat, dir.replace("out-ganak-mc", "")))
+    if not plots:
+        return
+
+    png_file = f"{TMP_DIR}/td_time_cdf.png"
+    pdf_file = f"{TMP_DIR}/td_time_cdf.pdf"
+    gp_file = f"{TMP_DIR}/td_time_cdf.gnuplot"
+    with open(gp_file, "w") as f:
+        f.write(f"""set terminal pdfcairo size 7,5
+set output '{pdf_file}'
+set title 'TD time: fraction of instances decomposed within X seconds'
+set xlabel 'TD time (s), log scale'
+set ylabel '% of instances with a TD'
+set logscale x
+set grid
+set key bottom right
+""")
+        parts = ", ".join(f"'{dat}' using 1:2 with lines lw 2 title '{gnuplot_name_cleanup(name)}'"
+                          for dat, name in plots)
+        f.write("plot " + parts + "\n")
+        f.write(f"set terminal pngcairo size 900,650\nset output '{png_file}'\nreplot\n")
+    console_title = "TD time CDF"
+    print(f"\n{BLUE}{console_title}{RESET}")
+    print(f"  PDF: {pdf_file}  PNG: {png_file}")
+    _gnuplot_run(gp_file, png_file)
 
 
 def print_preproc_diffs(table_todo, fname_like, verbose=False):
@@ -813,6 +1044,14 @@ def _preproc_step_stats(con, dirs_sql, where_extra="", per_cnf=False):
             'med_step_num': median(g['snums']) if g['snums'] else 0,
         }
     return result
+
+
+def print_section_header(title):
+    """Major section header, so the wall of tables can be skimmed."""
+    line = "*" * (len(title) + 8)
+    print(f"\n{GREEN}{line}{RESET}")
+    print(f"{GREEN}*** {title.upper()} ***{RESET}")
+    print(f"{GREEN}{line}{RESET}")
 
 
 def _print_table(headers, str_rows):
@@ -1734,12 +1973,23 @@ def print_distributions(table_todo, fname_like):
     print_distribution(table_todo, fname_like, "ganak_mem_mb",     "memory usage (MB) [log10 x-axis]", xscale="log", xmin=1, xlabel="LOG mem_mb")
 
 
-def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
+def dir_pairs(dirs, pair_prefixes):
+    """All pairs, or only pairs among the dirs matching pair_prefixes.
+    A single matching dir is paired with every other dir."""
+    if not pair_prefixes:
+        return list(itertools.combinations(dirs, 2))
+    sel = [d for d in dirs if any((d + "/").startswith(p) for p in pair_prefixes)]
+    if len(sel) == 1:
+        return [(sel[0], d) for d in dirs if d != sel[0]]
+    return list(itertools.combinations(sel, 2))
+
+
+def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False, pair_prefixes=[]):
     """For every pair of matched dirs, generate a gnuplot scatter plot of
     solve times (NULL -> the timeout).  Writes a PDF and a PNG to disk and
     displays the PNG inline in the terminal (wezterm / iTerm2 protocol)."""
 
-    pairs = list(itertools.combinations(matched_dirs, 2))
+    pairs = dir_pairs(matched_dirs, pair_prefixes)
     if not pairs:
         return
 
@@ -1794,8 +2044,8 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False):
                 f.write(f'set xlabel "{xlabel}"\n')
                 f.write(f'set ylabel "{ylabel}"\n')
                 f.write( 'set logscale xy\n')
-                f.write( 'set xrange [0.1:4000]\n')
-                f.write( 'set yrange [0.1:4000]\n')
+                f.write( 'set xrange [10:4000]\n')
+                f.write( 'set yrange [10:4000]\n')
                 f.write( 'set grid\n')
                 f.write( 'set key off\n')
                 f.write( 'set arrow 1 from 0.1,0.1 to 3600,3600 nohead lc rgb "gray50" lw 1\n')
@@ -1836,7 +2086,7 @@ def generate_gnuplot(fname2_s, verbose=False):
 
     with open(gnuplotfn, "w") as f:
         for term, out in [
-            ('pdfcairo size 45cm,65cm background "#d0d0d0"', pdf_file),
+            ('pdfcairo size 65cm,45cm background "#d0d0d0"', pdf_file),
             ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
         ]:
             f.write(f'set terminal {term}\n')
@@ -1848,7 +2098,7 @@ def generate_gnuplot(fname2_s, verbose=False):
             f.write('set ylabel "Instances counted"\n')
             f.write('set xlabel "Time (s)"\n')
             f.write('set grid\n')
-            f.write('plot [0.1:3600][0.1:]\\\n')
+            f.write('plot [100:3600][:]\\\n')
             f.write(plot_lines())
             f.write('\n\n')
     return gnuplotfn, pdf_file, png_file
@@ -1861,6 +2111,7 @@ def create_notebook(dirs):
     text = """
 # Step 1: Import necessary libraries
 import pandas as pd
+import re
 import sqlite3
 import matplotlib.pyplot as plt
 from functools import reduce
@@ -1884,7 +2135,7 @@ for d in dirs:
   df1 = pd.read_sql_query(query, conn)
   df1['num'] = range(len(df1))
   dfs.append(df1)
-  names.append(d+" " +df1['ganak_call'][0])
+  names.append(d+" " +re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
 
 for i in range(len(dfs)):
     for c in dfs[i].columns:
@@ -1933,7 +2184,7 @@ for d in dirs:
     query = f"SELECT fname, {col1}, {col2}, ganak_call FROM data WHERE {col1} IS NOT NULL AND {col2} is not NULL and dirname='{d}' ORDER BY {colname}"
     df1 = pd.read_sql_query(query, conn)
     dfs.append(df1)
-    names.append(d + " " + df1['ganak_call'][0])
+    names.append(d + " " + re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
 
 conn.close()
 
@@ -2054,7 +2305,7 @@ only_dirs = [
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 
     # final MCC
-    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
                                       # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
     # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
@@ -2062,9 +2313,18 @@ only_dirs = [
     ## other stuff
     # "out-ganak-mccomp2324-1783906-1", # kitten
     # "out-ganak-mccomp2324-1817408-0", # gates-eq + replace in the middle after gates-based eq
-    "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
+    # "out-ganak-mccomp2324-1835807-1", # --rdbclstarget check, running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-2248208-0", # new cadical, new cryptominisat
-    "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
+    # "out-ganak-mccomp2324-2275842-2", # new CMS, with new CaDiCaL
+    # "out-ganak-mccomp2324-2304308-4", # new system checks including RW
+    # "out-ganak-mccomp2324-2312282-3", # new setup, better TD setup, ostensibly
+    # "out-ganak-mccomp2324-2329268-0", # fixing TD
+    # "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
+    # "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
+    # "out-ganak-mccomp2324-2357294-1", # testing more TD systems -- 1206 solved, BEST
+    # "out-ganak-mccomp2324-2359115-0",
+    # "out-ganak-mccomp2324-2362983-0",
+    "out-ganak-mccomp2324-2366186-3",
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2103,6 +2363,8 @@ def main():
                         help="Skip all preprocessing tables and graphs (preproc table)")
     parser.add_argument("--nopairwise", action="store_true",
                         help="No pairwise comparisons")
+    parser.add_argument("--pair", nargs="+", metavar="DIR", default=[],
+                        help="Pairwise-compare only these dirs (prefix match) with each other; a single dir is compared against all others")
     parser.add_argument("--nodistribution", action="store_true",
                         help="Don't print distributions of metrics")
     parser.add_argument("--cdf", action="store_true",
@@ -2123,7 +2385,7 @@ def main():
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
     if not args.cdf and not args.nopairwise:
-      scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose)
+      scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose, args.pair)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
     if args.cdf:
@@ -2152,19 +2414,28 @@ def main():
             os.system(f"./cache_miss_bucket_summary.py {dir}")
 
     if not args.nodistribution:
+      print_section_header("distributions of key metrics")
       print_distributions(table_todo, fname_like)
 
     if args.verbose:
         print("Printing summary tables...")
+    print_section_header("solved counts, PAR2 and failures")
     print_summary_tables(table_todo, fname_like, args.full, args.verbose)
     print_sigabrt_files(table_todo, fname_like)
     print_errored_files(matched_dirs)
 
     if args.verbose:
         print("Printing median tables...")
+    print_section_header("per-instance medians and sizes")
     print_median_tables(table_todo, fname_like, args.verbose)
     print_instance_stats_table(table_todo, fname_like, args.verbose)
+    print_section_header("tree decomposition")
+    print_td_tables(table_todo, fname_like, args.verbose)
+    print_td_cost_table(table_todo, fname_like, args.verbose)
+    print_td_indep_tables(table_todo, fname_like, args.verbose)
+    td_time_cdf_chart(table_todo, fname_like, args.verbose)
     if not args.nopreproc:
+        print_section_header("preprocessing")
         print_preproc_diffs(table_todo, fname_like, args.verbose)
 
         # Preprocessing step analysis — one block per directory
@@ -2184,8 +2455,9 @@ def main():
             preproc_time_pie_chart(one)
 
     if not args.nopairwise:
+      print_section_header("pairwise comparisons")
       unique_dirs = list(dict.fromkeys(d for d, _ in table_todo))
-      for dir1, dir2 in itertools.combinations(unique_dirs, 2):
+      for dir1, dir2 in dir_pairs(unique_dirs, args.pair):
           print_two_dir_diffs(dir1, dir2, fname_like, args.verbose)
           print_solved_only_diffs(dir1, dir2, fname_like, args.verbose)
           print_solution_mismatches(dir1, dir2, fname_like, args.verbose)

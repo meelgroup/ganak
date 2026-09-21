@@ -1,0 +1,9 @@
+c c The CNF may come in on stdin instead of as a positional argument.
+c c RUN: %solver < %s | %OutputCheck %s --check-prefix=INT
+c c RUN: cat %s | %solver | %OutputCheck %s --check-prefix=INT
+p cnf 4 3
+1 2 0
+-1 3 0
+-2 -3 4 0
+c c INT: ^s SATISFIABLE$
+c c INT: ^c s exact arb int 6$

@@ -368,12 +368,11 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
             archetype.set_cl_clear(d.id);
             sat = true;
             goto end_sat;
-          } else {
-            bump_freq_score(v);
-            manage_occ_and_score_of(l1);
-            manage_occ_and_score_of(l2);
-            archetype.set_clause_visited(d.id);
           }
+          bump_freq_score(v);
+          manage_occ_and_score_of(l1);
+          manage_occ_and_score_of(l2);
+          archetype.set_clause_visited(d.id);
         } else continue;
       } else {
         if (archetype.clause_unvisited_in_sup_comp(d.id)) {

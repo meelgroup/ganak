@@ -97,9 +97,16 @@ struct CounterConfiguration {
   double td_minweight = 7;
   double td_divider = 1e3;
   double td_exp_mult = 1.1;
-  int do_check_td_vs_ind = 1;
+  // TD wider than the indep support: TD weight 0.1. Was on, but a clamp right
+  // after it undid it, so every benchmark so far effectively ran with 0. Now
+  // that it works: neutral-to-worse when measured, see BRANCHING_NOTES.md
   int64_t td_steps = 1e5;
   int td_iters = 900;
+  int td_band_pct = 10;
+  int td_dense_pct = 100; // 100: the band never turns on, the narrowest TD wins. See BRANCHING_NOTES.md
+  int td_split_weight_pct = 100;
+  int td_flat_pct = 50; // TD width >= this % of the TD graph's nodes: TD does not guide branching. 0 = off
+  int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level
   int td_lookahead = -1;
   int td_lookahead_tw_cutoff = 26;
   int td_lookahead_iters = 10;

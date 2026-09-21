@@ -57,14 +57,14 @@ catches crashes, assertion failures, OOM, and timeouts.
 
 ```
 cd ../count_fuzzer
-./fuzz.py --only 20 --exact      # quick sanity check after a build
-./fuzz.py --only 200 --exact     # thorough
+./fuzz.py --only 20              # quick sanity check after a build
+./fuzz.py --only 200             # thorough
 ./fuzz.py --unweighted           # only unweighted
 ./fuzz.py --weighted             # only weighted
 ./fuzz.py --proj | --unproj      # projected / unprojected only
-./fuzz.py --cpx                  # complex field only
+./fuzz.py --buddy                # fuzz buddy too
 ./fuzz.py --threads K            # fuzz with --threads K passed to ganak
-./fuzz.py --tout T               # per-instance timeout (default 4s)
+./fuzz.py -t T                   # per-instance timeout (default 4s)
 ./fuzz.py                        # non-stop: EVERYTHING (cpx, proj, weighted, ...)
 ```
 
@@ -228,11 +228,24 @@ code. `../count_fuzzer` is a fairly complete find-and-isolate system:
 
 3. **Re-fuzz** after the fix (`./fuzz.py --only 200 ...`) before committing.
 
+## Benchmarks
+
+The model counting competition instances (gzipped CNFs, 200 per track) are at:
+- `~/media/counting/mccomp2023/mc2023-track{1-mc,2-wmc,3-pmc,4-pwmc}/`
+- `~/media/counting/mccomp2024/track{1-mc,2-wmc,2-bonus-wmc,3-pmc,4-wpmc}/`
+
 ## Data Analysis
 
 Previous benchmark runs are stored under `build/data/` as `out-ganak-*/`
 directories. The relevant ones have already been parsed with
 `./get_data_ganak.py` into `build/data/data.sqlite3`.
+
+The exact binaries the cluster ran are in `build/oldbins/`, named as in each
+run's `ganak_call`: `ganak_<ganak>_<arjun>_<approxmc>_<cms>_<treedecomp>` (short
+SHAs; older ones use other layouts). To check a local build still behaves like a
+cluster run, run it on a few instances that run <100s in that run and diff
+conflicts/decisions/final TD/count against the run's `.out_ganak` logs; there is
+no need to rerun the old binary.
 
 To view statistics about the data:
 ```
@@ -278,12 +291,30 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `backbone_time` | Backbone computation time |
 | `td_width` | Tree decomposition width |
 | `td_time` | Tree decomposition time |
+| `td_levels` | Distinct levels the TD order gives the branching ("max ord diff"+1). Few levels = coarse TD, dynamic scores decide more |
+| `td_soft_width` | log2(sum over bags of 2^bag size): cost model of cached counting along the TD; one wide bag is cheaper than many nearly-as-wide ones |
+| `td_centroid_bag` | Size of the TD's centroid bag: all its vars tie on the top TD score |
+| `td_ind_n` / `td_ind_levels` / `td_ind_top_pct` | Indep vars in the TD graph / distinct TD levels among them / % of them on the best level |
+| `td_weight` | TD weight actually used: 0 = TD ignored (`--tdflatpct` or no usable TD) |
+| `br_multi_pct` / `br_comps_per_split` | % of component analyses yielding >=2 components / avg components per analysis |
+| `br_largest_pct` | Size of the largest child component as % of its super component. Lower = decisions cut better |
+| `br_td_ties` | Avg number of candidate vars tied on the best TD score at a decision |
+| `br_td_obeyed_pct` / `br_td_flat_pct` | % decisions that picked a var with the best TD score / % where TD had no say (all tied) |
+| `br_share_td` / `br_share_act` / `br_share_freq` | Avg share (%) of the chosen var's score from TD / activity / component frequency |
 | `restarts` | Number of restarts |
 | `cubes_orig` / `cubes_final` | Cubes before/after filtering per restart |
 | `sat_called` | Number of SAT oracle calls |
 | `gates_extended` / `gates_extend_t` | Gates added by extension + time |
 | `padoa_extended` / `padoa_extend_t` | Vars added by Padoa extension + time |
 | `primal_density` / `primal_edge_var_ratio` | Primal graph density metrics |
+
+### Branching heuristic notes
+
+`scripts/data/BRANCHING_NOTES.md` records what the `br_*`/`td_*` stats showed and
+which branching experiments won or lost (with numbers), so they are not redone.
+Knobs from that work: `--tdflatpct` (default 50: TD ignored for branching when
+width >= 50% of the nodes), `--tddensepct` (default 100: the narrowest TD always wins,
+never a wider one that splits better), and the off-by-default `--tdsepwpct`.
 
 ## Dependencies
 

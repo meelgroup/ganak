@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "mpoly.hpp"
 #include "mparity.hpp"
 #include <approxmc/approxmc.h>
+#include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
 
 static constexpr uint32_t max_digit_precision = 1e6;
@@ -155,6 +156,7 @@ string print_version()
     ss << "c o CaDiCaL SHA1: " << CMSat::SATSolver::get_cadical_version_sha1() << endl;
     ss << "c o CadiBack SHA1: " << CMSat::SATSolver::get_cadiback_version_sha1() << endl;
     ss << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
+    ss << "c o TreeDecomp SHA1: " << TWD::get_version_sha1() << endl;
     /* ss << "c o BreakID SHA1: " << BID::BreakID::get_version_sha1() << endl; */
     ss << ArjunNS::Arjun::get_thanks_info("c o ") << endl;
     ss << CMSat::SATSolver::get_thanks_info("c o ") << endl;
@@ -230,6 +232,8 @@ void add_ganak_options()
     add_arg("--xorgatemaxsize", simp_conf.xor_gate_find_maxsize, fc_int, "Max clause size for XOR-gate finding");
     add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
     add_arg("--iter2grow", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
+    add_arg("--iter2growlarge", simp_conf.bve_grow_iter2_large, fc_int, "If >= 0: used instead of --iter2grow when more than --iter2growlargevars vars are left before iter2");
+    add_arg("--iter2growlargevars", simp_conf.bve_grow_iter2_large_vars, fc_int, "Vars-left threshold for --iter2growlarge");
     add_arg("--bveocclim", simp_conf.bve_occ_cutoff, fc_int, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
     add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, fc_int, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
     add_arg("--distillremlevel", simp_conf.distill_rem_level, fc_int, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");
@@ -248,9 +252,13 @@ void add_ganak_options()
     add_arg("--tdminw", conf.td_minweight, fc_double, "TD min weight");
     add_arg("--tddiv", conf.td_divider, fc_double, "TD divider");
     add_arg("--tdexpmult", conf.td_exp_mult, fc_double, "TD exponential multiplier");
-    add_arg("--tdcheckagainstind", conf.do_check_td_vs_ind, fc_int, "Check TD against indep size");
     add_arg("--tditers", conf.td_iters, fc_int, "TD flowcutter iterations (restarts)");
     add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
+    add_arg("--tdbandpct", conf.td_band_pct, fc_int, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");
+    add_arg("--tdflatpct", conf.td_flat_pct, fc_int, "TD: if the TD's width is at least this % of the graph's nodes, the graph is too dense for the TD to say anything, and it does not guide the branching. 0 = off");
+    add_arg("--tdsepwpct", conf.td_sep_weight_pct, fc_int, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
+    add_arg("--tdsplitwpct", conf.td_split_weight_pct, fc_int, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
+    add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does. 100 = never");
     add_arg("--tdlook", conf.td_lookahead, fc_int, "-1 means never");
     add_arg("--tdlooktwcut", conf.td_lookahead_tw_cutoff, fc_int, "TD lookahead only when TW of current comp is larger than this value");
     add_arg("--tdlookiters", conf.td_lookahead_iters, fc_int, "TD lookahead iterations");
@@ -262,7 +270,7 @@ void add_ganak_options()
     add_arg("--tduseadj", conf.td_do_use_adj, fc_int, "TD should use adjacency matrix for computing TD scores");
     add_arg("--tdreadfile", conf.td_read_file, fc_string, "Read TD scores from this file");
     add_arg("--tdvis", conf.td_visualize_dot_file, fc_string, "Visualize the TD into this file in DOT format");
-    add_arg("--tddumpcnf", conf.td_dump_cnf_file, fc_string, "Dump the CNF used to build the primal graph for TD computation into this file (DIMACS)");
+    add_arg("--tddumpcnf", conf.td_dump_cnf_file, fc_string, "Dump the CNF used to build the primal graph for TD computation, one DIMACS file per component: FILE.0, FILE.1, ...");
 
     // Clause DB options
     add_arg("--rdbclstarget", conf.rdb_cls_target, fc_int, "RDB clauses target size (added to this are LBD 3 or lower)");
@@ -426,6 +434,8 @@ void print_vars(vector<uint32_t> vars) {
 
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   double const my_time = cpu_time();
+  uint64_t lits_before = 0;
+  for(const auto& cl: cnf.get_clauses()) lits_before += cl.size();
   ArjunNS::Arjun arjun;
   ArjunNS::Arjun::InterpConf iconf;
   if (conf.verb == 0) arjun_verb = 0;
@@ -454,6 +464,11 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
         << " components may be disconnected, which will interfere with proper TD weight calculation");
     cnf.renumber_sampling_vars_for_ganak();
   }
+  // Preprocessing that hands the counter a much bigger formula is a bug
+  uint64_t lits_after = 0;
+  for(const auto& cl: cnf.get_clauses()) lits_after += cl.size();
+  assert(lits_after <= 10 * lits_before + 100000);
+  (void)lits_before; (void)lits_after;
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
 }
 

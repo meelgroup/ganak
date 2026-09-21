@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cryptominisat5/cryptominisat.h>
 #include <cstdint>
 #include <ios>
@@ -145,16 +146,40 @@ void Counter::compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t node
       for(const auto& nn: a) cout << setw(3) << nn << " ";
       cout << endl;
     });
+  if (print) {
+    // Cached counting along a rooted TD costs about sum_bags 2^|bag|, not
+    // 2^width: a TD with one wide bag beats one with many nearly-as-wide bags.
+    // Print that "soft width", and how many bags are near the width
+    double soft = 0; // log2 of the sum, accumulated stably
+    uint32_t near_width = 0;
+    bool first = true;
+    for(const auto& b: bags) {
+      const double sz = b.size();
+      if (first) { soft = sz; first = false; }
+      else {
+        const double hi = std::max(soft, sz);
+        const double lo = std::min(soft, sz);
+        soft = hi + std::log2(1.0 + std::exp2(lo-hi));
+      }
+      near_width += (int)b.size()+2 >= td_width;
+    }
+    verb_print(1, "[td] soft width (log2 sum 2^bag): " << std::fixed << std::setprecision(2) << soft
+        << " max bag: " << td_width << " bags: " << bags.size()
+        << " bags within 2 of max: " << near_width);
+    verb_print(1, "[td] soft ~ max bag, few near-max: one wide bag, rest cheap -> easier than width says."
+        " soft ~ max bag+log2(bags), many near-max: worst case paid over and over -> harder");
+  }
+  td_split = tdec.splitFrac();
   tdec.centroid(conf.verb);
   std::vector<int> dists = tdec.distanceFromCentroid();
   if (dists.empty()) {
-      if (print) verb_print(1, "All projected vars in the same bag, ignoring TD");
+      if (print) verb_print(1, "[td] All projected vars in the same bag, ignoring TD");
       return;
   }
   int const max_dist = *std::max_element(dists.begin(), dists.end());
   verb_print(2, "max_dist: " << max_dist << " td_width: " << td_width);
   if (max_dist == 0) {
-    if (print) verb_print(1, "All projected vars are the same distance, ignoring TD");
+    if (print) verb_print(1, "[td] All projected vars are the same distance, ignoring TD");
     return;
   }
   if (conf.td_do_use_adj) compute_td_score_using_adj(nodes, bags, adj, print);
@@ -240,6 +265,20 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
   const int max_ord = *max_it - min_ord;
   assert(max_ord >= 1);
 
+  // The count is over the indep vars, and ganak branches on the opt-indep ones
+  // the TD is built over. If most indep vars sit on the best TD level, the TD
+  // cannot order the vars the count depends on, however it looks overall
+  const uint32_t n_ind = std::min<uint32_t>(indep_support_end > 0 ? indep_support_end-1 : 0, nodes);
+  int ind_top_ord = std::numeric_limits<int>::max();
+  for (uint32_t i = 0; i < n_ind; i++) ind_top_ord = std::min(ind_top_ord, ord[i]);
+  uint32_t ind_top = 0;
+  std::set<int> ind_levels;
+  for (uint32_t i = 0; i < n_ind; i++) {
+    if (ord[i] == ind_top_ord) ind_top++;
+    ind_levels.insert(ord[i]);
+  }
+  const double ind_top_pct = n_ind ? 100.0*ind_top/n_ind : 0;
+
   // calc td weight
   double rt = 0;
   if (td_width > 0) {
@@ -248,10 +287,27 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
     if (rt*conf.td_exp_mult > 20) td_weight = conf.td_maxweight;
     else td_weight = exp(rt*conf.td_exp_mult)/conf.td_divider;
   } else td_weight = conf.td_maxweight;
-  if (conf.do_check_td_vs_ind && (int)indep_support_end < td_width) td_weight = 0.1;
   td_weight = std::min(td_weight, conf.td_maxweight);
   td_weight = std::max(td_weight, conf.td_minweight);
+  // A TD whose centroid bag barely splits the graph says little about which
+  // vars to branch on, one that cuts it into small pieces says a lot: scale
+  // how hard the TD steers branching by that. After the clamp above, else it
+  // does nothing: on the wide TDs this is about, the weight sits at the floor.
+  // 0 = off, the weight then only depends on nodes/width
+  if (conf.td_split_weight_pct != 0 && td_split >= 0) {
+    td_weight *= 1.0 + (conf.td_split_weight_pct/100.0) * (0.5 - td_split)/0.5;
+    td_weight = std::min(td_weight, conf.td_maxweight*(1.0 + conf.td_split_weight_pct/100.0));
+    td_weight = std::max(td_weight, 0.1);
+  }
   if (td_width > conf.td_limit) td_weight = 0.1;
+  // On a dense graph, where the width is a large part of all the nodes, the
+  // TD says next to nothing about where the graph comes apart, yet with the
+  // min weight it still dictates the order. The dynamic scores do better alone.
+  if (conf.td_flat_pct > 0 && (double)td_width*100.0 >= (double)conf.td_flat_pct*(double)nodes) {
+    td_weight = 0;
+    if (print) verb_print(1, "[td] width " << td_width << " is >= " << conf.td_flat_pct
+        << "% of the " << nodes << " nodes, TD will not guide the branching");
+  }
   if (print) {
     verb_print(1,
         "[td] weight: " << td_weight
@@ -260,19 +316,110 @@ void Counter::compute_td_score_using_adj(const uint32_t nodes,
         << " rt*conf.td_exp_mult: " << rt*conf.td_exp_mult
         << " conf.td_exp_mult: " << conf.td_exp_mult
         << " conf.td_divider: " << conf.td_divider
-        << " max ord diff: " << max_ord);
+        << " max ord diff: " << max_ord
+        << " td split: " << td_split);
+    verb_print(1, "[td] indep vars: " << n_ind << " on TD levels: " << ind_levels.size()
+        << " top level holds: " << ind_top << " pct: " << std::fixed << setprecision(1)
+        << ind_top_pct << " TD weight: " << td_weight);
   }
+
+  // Within one level of the TD, all vars used to tie. Break the tie by how
+  // much separating work the var does, in [0, 1)
+  const vector<double> sep_frac = compute_td_sep_frac(nodes, bags, adj, centroid, ord, print);
 
   // Calc td score
   for (uint32_t i = 0; i < nodes; i++) {
     // Normalize
     double val = max_ord - (ord[i]-min_ord);
+    val += sep_frac[i] * (conf.td_sep_weight_pct/100.0);
     val /= (double)max_ord;
-    assert(val > -0.01 && val < 1.01);
+    assert(val > -0.01);
 
     assert(i+1 < tdscore.size());
     tdscore[i+1] = val;
   }
+}
+
+// The depth-from-centroid order only says WHICH bag level a var belongs to. But
+// what cuts the graph are the adhesions (bag intersections along tree edges):
+// once all of parent-bag \cap child-bag is set, the child's subtree falls off.
+// A var that sits only in its top bag separates nothing, while one that sits in
+// a small adhesion in front of a large subtree separates a lot per decision.
+// So per var: sum over the tree edges whose adhesion holds it of
+//     min(vars below the edge, vars above the edge) / adhesion size
+// normalized per TD level into [0, 1).
+vector<double> Counter::compute_td_sep_frac(const uint32_t nodes,
+    const std::vector<std::vector<int>>& bags,
+    const std::vector<std::vector<int>>& adj, const int centroid,
+    const std::vector<int>& ord, bool print) const {
+  // Root the tree at the centroid: parent = towards it, subtree = away from it
+  const uint32_t nbags = bags.size();
+  vector<int> parent(nbags, -1);
+  vector<int> bfs_order;
+  bfs_order.reserve(nbags);
+  vector<char> seen_bag(nbags, 0);
+  bfs_order.push_back(centroid);
+  seen_bag[centroid] = 1;
+  for(size_t at = 0; at < bfs_order.size(); at++) {
+    const int b = bfs_order[at];
+    for(const auto& nb: adj[b]) if (!seen_bag[nb]) {
+      seen_bag[nb] = 1;
+      parent[nb] = b;
+      bfs_order.push_back(nb);
+    }
+  }
+
+  // Top bag of a var: the first in BFS order holding it -- unique, as the bags
+  // holding a var form a connected subtree. below[b]: vars in b's subtree
+  vector<int> top_bag(nodes, -1); // var -> bag
+  vector<uint32_t> nvars_below(nbags, 0); // bag -> num vars in its subtree
+  for(const auto& b: bfs_order) for(const auto& v: bags[b])
+    if (top_bag[v] == -1) { top_bag[v] = b; nvars_below[b]++; }
+  for(size_t at = bfs_order.size(); at-- > 1;) {
+    const int b = bfs_order[at];
+    nvars_below[parent[b]] += nvars_below[b];
+  }
+
+  // Per tree edge: value of the cut it makes, shared among its adhesion's vars,
+  // since the subtree only falls off once all of them are assigned
+  vector<double> sep(nodes, 0.0); // var -> separating work done
+  vector<char> in_parent(nodes, 0); // var -> is it in the parent bag
+  vector<int> adhesion;
+  for(const auto& b: bfs_order) {
+    if (parent[b] == -1) continue;
+    for(const auto& v: bags[parent[b]]) in_parent[v] = 1;
+    adhesion.clear();
+    for(const auto& v: bags[b]) if (in_parent[v]) adhesion.push_back(v);
+    for(const auto& v: bags[parent[b]]) in_parent[v] = 0;
+    if (adhesion.empty()) continue;
+    const double cut = std::min<double>(nvars_below[b], nodes-nvars_below[b]);
+    for(const auto& v: adhesion) sep[v] += cut/(double)adhesion.size();
+  }
+
+  // Normalize per TD level, to below 1: this only breaks ties inside a level
+  const int max_o = *std::max_element(ord.begin(), ord.end());
+  vector<double> level_max(max_o+1, 0.0);
+  for(uint32_t i = 0; i < nodes; i++) level_max[ord[i]] = std::max(level_max[ord[i]], sep[i]);
+  vector<double> ret(nodes, 0.0);
+  for(uint32_t i = 0; i < nodes; i++)
+    if (level_max[ord[i]] > 0) ret[i] = 0.999*sep[i]/level_max[ord[i]];
+
+  // Does the tie-break have anything to work with on the level branched first?
+  if (print) {
+    const int min_o = *std::min_element(ord.begin(), ord.end());
+    uint32_t root_vars = 0, root_nosep = 0, root_low = 0;
+    for(uint32_t i = 0; i < nodes; i++) if (ord[i] == min_o) {
+      root_vars++;
+      root_nosep += sep[i] == 0;
+      root_low += ret[i] < 0.25;
+    }
+    verb_print(1, "[td] sep score: top level vars: " << root_vars
+        << " of which separate nothing: " << root_nosep
+        << " below 25% of best: " << root_low
+        << " children of centroid: " << adj[centroid].size()
+        << " best sep: " << level_max[min_o]);
+  }
+  return ret;
 }
 
 uint32_t Counter::td_decompose_component(bool update_score) {
@@ -325,21 +472,43 @@ uint32_t Counter::td_decompose_component(bool update_score) {
     return 100;
   }
 
+  // Like td_decompose(): after contraction only the first "nodes" vertices
+  // are left in play, so the TD must be over exactly those. Handing over the
+  // full graph gave bags with vertex ids >= nodes, which compute_td_score()
+  // (told there are only "nodes" of them) then choked on.
+  std::unique_ptr<TWD::Graph> primal_alt = nullptr;
+  if (conf.do_td_contract) {
+    primal_alt = std::make_unique<TWD::Graph>(nodes);
+    for(uint32_t i = 0 ; i < nodes; i++)
+      for(const auto& i2: primal.get_adj_list()[i])
+        if (i2 < (int)nodes) primal_alt->addEdge(i, i2);
+  }
+  const TWD::Graph& g = conf.do_td_contract ? *primal_alt : primal;
+
   // run FlowCutter
   verb_print(2, "[td-cmp] FlowCutter is running...");
-  TWD::IFlowCutter fc(primal.numNodes(), primal.numEdges(), 0);
-  fc.importGraph(primal);
+  TWD::IFlowCutter fc(g.numNodes(), g.numEdges(), 0);
+  fc.importGraph(g);
 
   // Notice that this graph returned is VERY different
-  auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters));
+  auto td = TWD::TreeDecomposition(fc.constructTD(conf.td_steps, conf.td_lookahead_iters,
+        conf.td_band_pct, conf.td_dense_pct));
   td.centroid(0);
   verb_print(2, "[td] FlowCutter FINISHED, TD width: " << td.width());
 
-  if (update_score) compute_td_score(td, nodes, false);
+  if (update_score) {
+    // The toplevel TD may have been skipped (too dense, too few vars, ...),
+    // in which case there are no scores to update yet
+    if (tdscore.size() < nVars()+1) tdscore.resize(nVars()+1, 0);
+    compute_td_score(td, conf.do_td_contract ? nodes : nVars(), false);
+  }
   return td.width();
 }
 
-void Counter::dump_td_cnf(const std::string& fname) const {
+void Counter::dump_td_cnf(const std::string& base_fname) const {
+  // Every component gets its own Counter and TD, possibly on other threads
+  static std::atomic<int> dump_num{0};
+  const std::string fname = base_fname + "." + std::to_string(dump_num++);
   std::ofstream out(fname);
   if (!out.is_open()) {
     cerr << "ERROR: could not open file for TD CNF dump: " << fname << endl;
@@ -371,6 +540,7 @@ void Counter::dump_td_cnf(const std::string& fname) const {
     for(const auto& l: cl) out << l << " ";
     out << "0" << endl;
   }
+  cout << "c o [td] Wrote TD-input CNF to file: " << fname << endl;
 }
 
 void Counter::td_decompose() {
@@ -379,10 +549,7 @@ void Counter::td_decompose() {
     verb_print(1, "[td] too many/few vars, not running TD");
     return;
   }
-  if (!conf.td_dump_cnf_file.empty()) {
-    dump_td_cnf(conf.td_dump_cnf_file);
-    cout << "c o [td] Wrote TD-input CNF to file: " << conf.td_dump_cnf_file << endl;
-  }
+  if (!conf.td_dump_cnf_file.empty()) dump_td_cnf(conf.td_dump_cnf_file);
 
   auto primal = std::make_unique<TWD::Graph>(nVars());
   all_lits(i) {
@@ -461,7 +628,7 @@ void Counter::td_decompose() {
   fc.importGraph(*primal_alt);
 
   // Notice that this graph returned is VERY different
-  auto td = fc.constructTD(conf.td_steps, conf.td_iters);
+  auto td = fc.constructTD(conf.td_steps, conf.td_iters, conf.td_band_pct, conf.td_dense_pct);
 
   compute_td_score(td, conf.do_td_contract ? nodes : nVars(), true);
   verb_print(1, "[td] decompose time: " << cpu_time() - my_time);
@@ -1126,8 +1293,9 @@ void Counter::print_all_levels() const {
 }
 
 void Counter::print_stat_line() {
-  if (next_print_stat_cache > stats.num_cache_look_ups) return;
-  if (next_print_stat_confl > stats.conflicts) return;
+  // Either will do: low-conflict instances would otherwise never print
+  if (next_print_stat_cache > stats.num_cache_look_ups &&
+      next_print_stat_confl > stats.conflicts) return;
   if (conf.verb) stats.print_short(this, comp_manager->get_cache());
   next_print_stat_cache = stats.num_cache_look_ups + (20LL*1000LL*1000LL);
   next_print_stat_confl = stats.conflicts + 150LL*1000LL;
@@ -1321,26 +1489,28 @@ void Counter::decide_lit() {
   assert( decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 }
 
+Counter::ScoreParts Counter::score_parts_of(const uint32_t v, bool ignore_td) const {
+  ScoreParts p;
+  if (!tdscore.empty() && !ignore_td) p.td = td_weight*tdscore[v];
+  p.act = var_act(v)/conf.act_score_divisor;
+  p.freq = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
+  return p;
+}
+
 // The higher, the better. It is never below 0.
 double Counter::score_of(const uint32_t v, bool ignore_td) const {
   bool const print = false;
   /* if (stats.decisions % 40000 == 0) print = 1; */
   /* print = true; */
   /* print = false; */
-  double act_score = 0;
-  double td_score = 0;
-  double freq_score = 0;
-
-  if (!tdscore.empty() && !ignore_td) td_score = td_weight*tdscore[v];
-  act_score = var_act(v)/conf.act_score_divisor;
-  freq_score = (double)comp_manager->freq_score_of(v)/conf.freq_score_divisor;
-  double const score = act_score+td_score+freq_score;
+  const ScoreParts p = score_parts_of(v, ignore_td);
+  double const score = p.total();
   if (print) cout << "v: " << setw(4) << v
     << setw(3) << " conflK: " << stats.conflicts/1000
     << setw(5) << " decK: " << stats.decisions/1000
-    << setw(6) << " act_score: " << safe_div(act_score, score)
-    << setw(6) << " freq_score: " << safe_div(freq_score, score)
-    << setw(6) << " td_score: " << safe_div(td_score, score)
+    << setw(6) << " act_score: " << safe_div(p.act, score)
+    << setw(6) << " freq_score: " << safe_div(p.freq, score)
+    << setw(6) << " td_score: " << safe_div(p.td, score)
     << setw(6) << " total: " << score
     << setw(6) << endl;
 
@@ -1353,6 +1523,12 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
 
   int32_t w[2];
   int tdiff[2];
+  // We are inside decide_lit(): the new decision level is already pushed but
+  // its var is not set yet. reactivate_comps_and_backtrack_trail() finds the
+  // start of the level's trail through that var, so it must be set while we
+  // probe, like the toplevel prober does.
+  const uint32_t orig_var = decisions.top().var;
+  decisions.top().var = v;
   for(bool const b: {true, false}) {
     set_lit(Lit(v, b), dec_level());
     int const tsz = trail.size();
@@ -1360,13 +1536,20 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     if (!ret) {
       score = 1e5;
       reactivate_comps_and_backtrack_trail();
+      decisions.top().zero_out_branch_sol();
+      decisions.top().var = orig_var;
       return score;
     }
     tdiff[b] = trail.size()-tsz;
     if (tdiff[b] < 3) w[b] = base_comp_tw;
     else w[b] = td_decompose_component(false);
     reactivate_comps_and_backtrack_trail();
+    // When weighted, unset_lit() multiplies the weight of every lit it unsets
+    // into this level's count. Right for a real backtrack, but this was only
+    // a probe and the level has counted nothing yet: wipe it.
+    decisions.top().zero_out_branch_sol();
   }
+  decisions.top().var = orig_var;
   verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]
     << " w[1]: " << setw(4) << w[1]
     << " trail diff: " << setw(3) << tdiff[0]
@@ -1381,6 +1564,7 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   bool only_optional_indep = true;
   uint32_t best_var = 0;
   double best_var_score = -1e8;
+  ScoreParts best_parts; // all-zero when the td_lookahead path picked best_var
   uint64_t* at = nullptr;
   is_indep = false;
   bool couldnt_find_indep = false; // only used when also_nonindep is true
@@ -1397,6 +1581,12 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
 
   int32_t tw = 0;
   if (dec_level() < conf.td_lookahead) tw = td_decompose_component(false);
+
+  // Branching stats, see statistics.hpp
+  const bool use_td = !tdscore.empty() && !ignore_td;
+  double br_max_td = -1;
+  double br_min_td = 1e9;
+  uint32_t br_td_ties = 0;
 
   all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
     const uint32_t v = *it;
@@ -1420,13 +1610,21 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
     if (v < opt_indep_support_end) is_indep = true;
     if (v < indep_support_end) only_optional_indep = false;
     double score;
+    ScoreParts parts;
     if (dec_level() < conf.td_lookahead &&
         tw > conf.td_lookahead_tw_cutoff)
       score = td_lookahead_score(v, tw);
-    else score = score_of(v, ignore_td) ;
+    else { parts = score_parts_of(v, ignore_td); score = parts.total(); }
+    if (use_td) {
+      const double t = tdscore[v];
+      if (t > br_max_td) { br_max_td = t; br_td_ties = 1; }
+      else if (t == br_max_td) br_td_ties++;
+      br_min_td = std::min(br_min_td, t);
+    }
     if (best_var == 0 || score > best_var_score) {
       best_var = v;
       best_var_score = score;
+      best_parts = parts;
     }
   }
   VERBOSE_DEBUG_DO(cout << endl);
@@ -1434,6 +1632,23 @@ uint32_t Counter::find_best_branch(const bool ignore_td, const bool also_noninde
   if (only_optional_indep && !also_nonindep) {
     is_indep = false;
     return 0;
+  }
+
+  if (best_var != 0) {
+    stats.br_decisions++;
+    stats.br_cands += last_dec_candidates;
+    stats.br_dec_level_sum += dec_level();
+    const double tot = best_parts.total();
+    if (tot > 0) {
+      stats.br_share_td += best_parts.td/tot;
+      stats.br_share_act += best_parts.act/tot;
+      stats.br_share_freq += best_parts.freq/tot;
+    }
+    if (use_td) {
+      stats.br_td_ties += br_td_ties;
+      stats.br_td_obeyed += tdscore[best_var] == br_max_td;
+      stats.br_td_flat += br_max_td == br_min_td;
+    }
   }
 
   if (dec_level() < conf.td_lookahead && tw > conf.td_lookahead_tw_cutoff) {
@@ -1568,8 +1783,11 @@ bool Counter::restart_if_needed() {
 
   // Decay TD weight so stale scores have less influence after each restart
   if (conf.td_weight_restart_decay < 1.0) {
+    // The floor must never RAISE the weight: it may have been set below the
+    // floor on purpose (TD wider than the indep support, dense graph, ...)
+    const double floor_w = std::min(td_weight, (double)conf.td_minweight);
     td_weight *= conf.td_weight_restart_decay;
-    td_weight = std::max(td_weight, (double)conf.td_minweight);
+    td_weight = std::max(td_weight, floor_w);
     verb_print(2, "[rst] td_weight decayed to: " << td_weight);
   }
 

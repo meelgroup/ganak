@@ -123,6 +123,7 @@ public:
         Counter* _counter);
 
   auto freq_score_of(uint32_t v) const { return var_freq_scores[v]; }
+
   inline void bump_freq_score(uint32_t v) { var_freq_scores[v] ++; }
   const CompArchetype& current_archetype() const { return archetype; }
 
@@ -194,6 +195,7 @@ private:
   const CounterConfiguration& conf;
   const uint32_t indep_support_end;
   vector<uint32_t> var_freq_scores;
+
   CompArchetype archetype;
   Counter* counter = nullptr;
 
@@ -222,14 +224,8 @@ private:
   // belongs to a component. It's called on every long clause.
   // The clause is _definitely_ in the supercomponent
   bool search_clause(ClData& d, Lit const* cl_start) {
-    bool sat = false;
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {
-        if (is_true(*it_l)) {sat = true; break;}
-    }
-
-    if (sat) {
-      archetype.set_cl_clear(d.id);
-      return true;
+      if (is_true(*it_l)) { archetype.set_cl_clear(d.id); return true; }
     }
 
     for (auto it_l = cl_start; *it_l != SENTINEL_LIT; it_l++) {

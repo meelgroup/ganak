@@ -155,6 +155,50 @@ def find_bad_solve(fname):
     return mem_out, not_solved, errored
 
 
+def td_update(c, width, t):
+    c["td_width"] = width
+    if t is not None:
+        c["td_iter_time"] = t
+
+
+_COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
+                  "conflicts", "decisionsK", "compsK"]
+_COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
+                      "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "td_levels",
+                      "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels",
+                      "td_ind_top_pct", "td_weight"]
+_COMP_BUSIEST_KEYS = ["cache_miss_rate", "cache_avg_hit_vars", "cache_avg_store_vars",
+                      "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties",
+                      "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act",
+                      "br_share_freq"]
+
+
+# Timed-out runs only have the components that were started, so sizes are partial
+def aggregate_comps(result, comps):
+    for k in _COMP_SUM_KEYS:
+        vals = [c[k] for c in comps if k in c]
+        if vals:
+            result[k] = sum(vals)
+
+    largest = max(comps, key=lambda c: c.get("newnvars", -1), default=None)
+    busiest = max(comps, key=lambda c: c.get("compsK", -1), default=None)
+
+    # TD runs once per component: report the largest component's, not a
+    # small side component's (and nothing if TD was skipped for it)
+    if largest is not None and "td_width" in largest:
+        result["td_width"] = largest["td_width"]
+        if "td_time" in largest:
+            result["td_time"] = largest["td_time"]
+        elif "td_iter_time" in largest:
+            result["td_time"] = largest["td_iter_time"]
+    for k in _COMP_LARGEST_KEYS:
+        if largest is not None and k in largest:
+            result[k] = largest[k]
+    for k in _COMP_BUSIEST_KEYS:
+        if busiest is not None and k in busiest:
+            result[k] = busiest[k]
+
+
 ############################
 ## ganak — single-pass parser combining all per-line extractions
 def parse_ganak_output(fname):
@@ -168,6 +212,16 @@ def parse_ganak_output(fname):
     }
     aver = None
     cver = None
+    # Ganak counts each disconnected component separately and prints the
+    # size/TD/search stats once per component, so collect them per component
+    # Stats seen before the first component (older logs, or arjun's own) go to
+    # a placeholder that the first real component replaces
+    comps = []
+
+    def comp():
+        if not comps:
+            comps.append({"pre": True})
+        return comps[-1]
 
     with open(fname, "r") as f:
         for line in f:
@@ -184,12 +238,16 @@ def parse_ganak_output(fname):
                 result["not_solved"] = False
 
             # Mutually exclusive pattern matching
-            if line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
-                result["conflicts"] = int(line.split()[4])
+            if line.startswith("c o ind size:"):
+                if len(comps) == 1 and comps[0].get("pre"):
+                    comps.clear()
+                comps.append({})
+            elif line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
+                comp()["conflicts"] = int(line.split()[4])
             elif line.startswith("c o conflicts"):
-                result["conflicts"] = int(line.split()[3])
+                comp()["conflicts"] = int(line.split()[3])
             elif line.startswith("c o decisions K"):
-                result["decisionsK"] = int(line.split()[4])
+                comp()["decisionsK"] = int(line.split()[4])
             elif line.startswith("c GANAK SHA revision"):
                 aver = line.split()[4]
             elif line.startswith("c CMS version"):
@@ -204,16 +262,16 @@ def parse_ganak_output(fname):
                 result["bdd_called"] = int(line.split()[6])
             elif line.startswith("c o buddy called"):
                 result["bdd_called"] = int(line.split()[4])
-            elif line.startswith("c o Sampling set size:") and "indepsz" not in result:
+            elif line.startswith("c o Sampling set size:") and "indepsz" not in comp():
                 indep_sz = line.split()[5].strip()
                 indep_sz = 0 if indep_sz == "" else int(indep_sz)
-                result["indepsz"] = 0 if indep_sz == 4294967295 else indep_sz
-            elif line.startswith("c o opt ind size") and "newnvars" not in result:
-                result["newnvars"] = int(line.split()[10])
-            elif line.startswith("c o Opt sampling set size:") and "optindepsz" not in result:
+                comp()["indepsz"] = 0 if indep_sz == 4294967295 else indep_sz
+            elif line.startswith("c o opt ind size") and "newnvars" not in comp():
+                comp()["newnvars"] = int(line.split()[10])
+            elif line.startswith("c o Opt sampling set size:") and "optindepsz" not in comp():
                 opt_indep_sz = line.split()[6].strip()
                 opt_indep_sz = 0 if opt_indep_sz == "" else int(opt_indep_sz)
-                result["optindepsz"] = 0 if opt_indep_sz == 4294967295 else opt_indep_sz
+                comp()["optindepsz"] = 0 if opt_indep_sz == 4294967295 else opt_indep_sz
             elif line.startswith("c o CNF projection set size:"):
                 result["origprojsz"] = int(line.split()[6])
             elif line.startswith("c o [extend-gates] Gates added to opt"):
@@ -232,22 +290,85 @@ def parse_ganak_output(fname):
                 result["backboneT"] = result.get("backboneT", 0) + float(line.split()[2])
             elif line.startswith("c o Arjun T:"):
                 result["arjuntime"] = float(line.split()[4])
-            elif line.startswith("c o [td] iter") and "best bag" in line and "td_width" not in result:
-                result["td_width"] = int(line.split()[7]) - 1
-                result["td_time"] = float(line.split()[12])
-            elif line.startswith("c o [td] iter") and "width:" in line and "td_width" not in result:
-                result["td_width"] = int(line.split()[6]) - 1
-                result["td_time"] = float(line.split()[11])
+            # Last one wins: newer treedecomp may accept a slightly wider TD
+            # that splits better, older logs only ever printed narrower ones
+            elif line.startswith("c o [td] iter") and "best bag" in line:
+                td_update(comp(), int(line.split()[7]) - 1, float(line.split()[12]))
+            elif line.startswith("c o [td] iter") and "width:" in line:
+                td_update(comp(), int(line.split()[6]) - 1, float(line.split()[11]))
+            elif line.startswith("c o [td] #bags") and " tw " in line:
+                td_update(comp(), int(line.split(" tw ")[1].split()[0].rstrip(",")) - 1, None)
+            elif line.startswith("c o [td] accepted TD,"):
+                td_update(comp(), int(line.split(" tw: ")[1].split()[0]) - 1, None)
+            # Summary of which TD the component ended up with, and why
+            elif line.startswith("c o [td] final TD:"):
+                f = line.split()
+                c = comp()
+                td_update(c, int(f[6]) - 1, None)
+                split, nodes = f[8].split("/")
+                c["td_nodes"] = int(nodes)
+                # largest comp left after branching on the centroid bag
+                c["td_split"] = int(split) / int(nodes) if int(nodes) else 0
+                c["td_bags"] = int(f[10])
+                c["td_src"] = f[12]
+                c["td_band"] = 1 if f[14] == "on" else 0
+                c["td_cands"] = int(f[20])
+                c["td_accepts"] = int(f[22])
+            # log2(sum over bags of 2^|bag|): what cached counting along the TD costs
+            elif line.startswith("c o [td] soft width"):
+                comp()["td_soft_width"] = float(line.split("): ")[1].split()[0])
+            elif line.startswith("c o [td] centroid bag id:"):
+                comp()["td_centroid_bag"] = int(line.split()[-1])
+            # number of distinct levels the TD order gives the branching
+            elif line.startswith("c o [td] weight:") and " max ord diff: " in line:
+                comp()["td_levels"] = int(line.split(" max ord diff: ")[1].split()[0]) + 1
+            # how well the TD orders the indep vars, and the TD weight actually
+            # used (0: TD ignored as flat, 0.1: indep vars tie on the top level)
+            elif line.startswith("c o [td] indep vars:"):
+                f = line.split()
+                c = comp()
+                c["td_ind_n"] = int(f[5])
+                c["td_ind_levels"] = int(f[9])
+                c["td_ind_top_pct"] = float(f[15])
+                c["td_weight"] = float(f[18])
+            # TD ignored before the weight is computed: all indep vars on one level
+            elif "ignoring TD" in line and line.startswith("c o "):
+                c = comp()
+                c["td_weight"] = 0.0
+                if "TD width is 0" not in line:
+                    c["td_levels"] = 1
+                    c["td_ind_levels"] = 1
+                    c["td_ind_top_pct"] = 100.0
+            # Branching quality stats. Printed periodically, the last one wins
+            elif line.startswith("c o br splitsK/multi%/none%/comps"):
+                f = line.split()
+                comp()["br_multi_pct"] = float(f[5])
+                comp()["br_comps_per_split"] = float(f[7])
+            elif line.startswith("c o br avg sup vars/largest%/kept%"):
+                comp()["br_largest_pct"] = float(line.split()[7])
+            elif line.startswith("c o br dec avg lev/cands/td-ties"):
+                comp()["br_td_ties"] = float(line.split()[8])
+            elif line.startswith("c o br td obeyed%/td flat%"):
+                f = line.split()
+                comp()["br_td_obeyed_pct"] = float(f[6])
+                comp()["br_td_flat_pct"] = float(f[7])
+            elif line.startswith("c o br score share td/act/freq %"):
+                f = line.split()
+                comp()["br_share_td"] = float(f[7])
+                comp()["br_share_act"] = float(f[8])
+                comp()["br_share_freq"] = float(f[9])
+            elif line.startswith("c o [td] decompose time:"):
+                comp()["td_time"] = float(line.split()[5])
             elif line.startswith("c o [td] Primal graph"):
-                result["primal_density"] = float(line.split()[10])
-                result["primal_edge_var_ratio"] = float(line.split()[12])
+                comp()["primal_density"] = float(line.split()[10])
+                comp()["primal_edge_var_ratio"] = float(line.split()[12])
             elif line.startswith("c o cache miss rate"):
-                result["cache_miss_rate"] = float(line.split()[5])
+                comp()["cache_miss_rate"] = float(line.split()[5])
             elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
-                result["compsK"] = float(line.split()[8])
+                comp()["compsK"] = float(line.split()[8])
             elif line.startswith("c o avg hit/store num vars"):
-                result["cache_avg_hit_vars"] = float(line.split()[6])
-                result["cache_avg_store_vars"] = float(line.split()[8])
+                comp()["cache_avg_hit_vars"] = float(line.split()[6])
+                comp()["cache_avg_store_vars"] = float(line.split()[8])
             elif line.startswith("c o deletion done. T:"):
                 result["cache_del_time"] += float(line.split()[5])
             elif line.startswith("c o cubes orig:"):
@@ -262,11 +383,11 @@ def parse_ganak_output(fname):
             elif line.startswith("c o sat call/sat/unsat/confl/rst"):
                 result["sat_called"] = int(line.split()[4])
                 result["satrst"] = int(line.split()[8])
-            elif line.startswith("c o Bin irred/red") and "irred_bin" not in result:
-                result["irred_bin"] = int(line.split()[4])
-            elif line.startswith("c o Long irred cls/tri") and "irred_long" not in result:
-                result["irred_long"] = int(line.split()[5])
-                result["irred_tri"] = int(line.split()[6])
+            elif line.startswith("c o Bin irred/red") and "irred_bin" not in comp():
+                comp()["irred_bin"] = int(line.split()[4])
+            elif line.startswith("c o Long irred cls/tri") and "irred_long" not in comp():
+                comp()["irred_long"] = int(line.split()[5])
+                comp()["irred_tri"] = int(line.split()[6])
             elif line.startswith("c s log10-estimate"):
                 result["mc_log10"] = float(line.split()[3])
 
@@ -275,6 +396,7 @@ def parse_ganak_output(fname):
     if cver is not None:
         cver = cver[:8]
     result["solverver"] = ["ganak", "%s-%s" % (aver, cver)]
+    aggregate_comps(result, comps)
 
     irred_bin  = result.get("irred_bin",  0)
     irred_long = result.get("irred_long", 0)
@@ -291,6 +413,50 @@ _SIMP_STATS_RE = re.compile(
     r'(?:\s+elimed_vars (\d+) replaced_vars (\d+) units (\d+) mem_MB (\d+) T:\s*([\d.]+))?'
     r'(?:\s+depth (\d+))?'
 )
+# Newer CMS: two lines per event, lowercase bef/aft, colour codes around the name
+_SIMP_STATS_NEW1_RE = re.compile(
+    r'c o \[simp-stats\] (bef|aft) (\S+)\s+'
+    r'irred_bins (\d+) irred_long_cls (\d+) irred_long_lits (\d+) units (\d+)'
+)
+_SIMP_STATS_NEW2_RE = re.compile(
+    r'c o \[simp-stats\]\s+free_vars (\d+) elimed_vars (\d+) replaced_vars (\d+) '
+    r'mem_MB (\d+) T:\s*([\d.]+)(?:\s+T-step:\s*[\d.]+)?\s+depth (\d+)'
+)
+_ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
+
+
+def _simp_stats_events(f):
+    """Yield (kind, name, core, ext, depth) for old one-line and new two-line formats."""
+    new1 = None
+    for line in f:
+        line = _ANSI_RE.sub("", line).replace("[0m", "").strip()
+        if "[simp-stats]" not in line:
+            continue
+        m = _SIMP_STATS_NEW1_RE.search(line)
+        if m:
+            new1 = m
+            continue
+        m = _SIMP_STATS_NEW2_RE.search(line)
+        if m:
+            if new1 is None:
+                continue
+            kind = "BEFORE" if new1.group(1) == "bef" else "AFTER"
+            core = (int(new1.group(3)), int(new1.group(4)), int(new1.group(5)), int(m.group(1)))
+            ext = (int(m.group(2)), int(m.group(3)), int(new1.group(6)),
+                   int(m.group(4)), float(m.group(5)))
+            yield kind, new1.group(2), core, ext, int(m.group(6))
+            new1 = None
+            continue
+        m = _SIMP_STATS_RE.search(line)
+        if not m:
+            continue
+        core = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+        ext = None
+        if m.group(7) is not None:
+            ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
+                   int(m.group(10)), float(m.group(11)))
+        depth = int(m.group(12)) if m.group(12) is not None else 0
+        yield m.group(1), m.group(2), core, ext, depth
 
 
 def parse_simp_stats(fname):
@@ -313,22 +479,7 @@ def parse_simp_stats(fname):
     last_completed_step = "none"  # tracks prev_step
 
     with open(fname, "r") as f:
-        for line in f:
-            line = line.replace("[0m", "").replace("\x1b", "").strip()
-            m = _SIMP_STATS_RE.search(line)
-            if not m:
-                continue
-            kind = m.group(1)
-            name = m.group(2)
-            # Core fields (always present)
-            core = (int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
-            # Extended fields (present in newer logs)
-            ext = None
-            if m.group(7) is not None:
-                ext = (int(m.group(7)), int(m.group(8)), int(m.group(9)),
-                       int(m.group(10)), float(m.group(11)))
-            depth = int(m.group(12)) if m.group(12) is not None else 0
-
+        for kind, name, core, ext, depth in _simp_stats_events(f):
             key = (name, depth)
             if kind == "BEFORE":
                 pending.setdefault(key, []).append((core, ext))
@@ -502,6 +653,8 @@ def main():
     cols = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time", "ganak_mem_MB",
             "ganak_call", "page_faults", "signal", "ganak_ver", "conflicts", "decisionsK",
             "compsK", "primal_density", "primal_edge_var_ratio", "td_width", "td_time",
+            "td_nodes", "td_split", "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
+            "td_levels", "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels", "td_ind_top_pct", "td_weight", "br_multi_pct", "br_comps_per_split", "br_largest_pct", "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
             "arjun_time", "backboneT", "backwardT", "indepsz", "optindepsz", "origprojsz",
             "new_nvars", "unknsz", "cache_del_time", "cache_avg_hit_vars",
             "cache_avg_store_vars", "cache_miss_rate", "bdd_called", "sat_called",
@@ -553,6 +706,29 @@ def main():
                 g(f, "primal_edge_var_ratio"),
                 g(f, "td_width"),
                 g(f, "td_time"),
+                g(f, "td_nodes"),
+                g(f, "td_split"),
+                g(f, "td_bags"),
+                g(f, "td_src"),
+                g(f, "td_band"),
+                g(f, "td_cands"),
+                g(f, "td_accepts"),
+                g(f, "td_levels"),
+                g(f, "td_centroid_bag"),
+                g(f, "td_soft_width"),
+                g(f, "td_ind_n"),
+                g(f, "td_ind_levels"),
+                g(f, "td_ind_top_pct"),
+                g(f, "td_weight"),
+                g(f, "br_multi_pct"),
+                g(f, "br_comps_per_split"),
+                g(f, "br_largest_pct"),
+                g(f, "br_td_ties"),
+                g(f, "br_td_obeyed_pct"),
+                g(f, "br_td_flat_pct"),
+                g(f, "br_share_td"),
+                g(f, "br_share_act"),
+                g(f, "br_share_freq"),
                 g(f, "arjuntime"),
                 g(f, "backboneT"),
                 g(f, "backwtime"),
@@ -665,6 +841,29 @@ def main():
           primal_edge_var_ratio FLOAT,
           td_width INT,
           td_time FLOAT,
+          td_nodes INT,
+          td_split FLOAT,
+          td_bags INT,
+          td_src STRING,
+          td_band INT,
+          td_cands INT,
+          td_accepts INT,
+          td_levels INT,
+          td_centroid_bag INT,
+          td_soft_width FLOAT,
+          td_ind_n INT,
+          td_ind_levels INT,
+          td_ind_top_pct FLOAT,
+          td_weight FLOAT,
+          br_multi_pct FLOAT,
+          br_comps_per_split FLOAT,
+          br_largest_pct FLOAT,
+          br_td_ties FLOAT,
+          br_td_obeyed_pct FLOAT,
+          br_td_flat_pct FLOAT,
+          br_share_td FLOAT,
+          br_share_act FLOAT,
+          br_share_freq FLOAT,
           arjun_time FLOAT,
           backbone_time FLOAT,
           backward_time FLOAT,
@@ -768,6 +967,29 @@ def main():
             n(f.get("primal_edge_var_ratio", "")),
             n(f.get("td_width", "")),
             n(f.get("td_time", "")),
+            n(f.get("td_nodes", "")),
+            n(f.get("td_split", "")),
+            n(f.get("td_bags", "")),
+            n(f.get("td_src", "")),
+            n(f.get("td_band", "")),
+            n(f.get("td_cands", "")),
+            n(f.get("td_accepts", "")),
+            n(f.get("td_levels", "")),
+            n(f.get("td_centroid_bag", "")),
+            n(f.get("td_soft_width", "")),
+            n(f.get("td_ind_n", "")),
+            n(f.get("td_ind_levels", "")),
+            n(f.get("td_ind_top_pct", "")),
+            n(f.get("td_weight", "")),
+            n(f.get("br_multi_pct", "")),
+            n(f.get("br_comps_per_split", "")),
+            n(f.get("br_largest_pct", "")),
+            n(f.get("br_td_ties", "")),
+            n(f.get("br_td_obeyed_pct", "")),
+            n(f.get("br_td_flat_pct", "")),
+            n(f.get("br_share_td", "")),
+            n(f.get("br_share_act", "")),
+            n(f.get("br_share_freq", "")),
             n(f.get("arjuntime", "")),
             n(f.get("backboneT", "")),
             n(f.get("backwtime", "")),
@@ -798,8 +1020,54 @@ def main():
             n(f.get("mc_log10", "")),
         ))
 
+    # an older data.sqlite3 predates the td_* columns, add them rather than
+    # forcing a full --reparse
+    have = {r[1] for r in conn.execute("PRAGMA table_info(data)")}
+    for col, typ in (("td_nodes", "INT"), ("td_split", "FLOAT"), ("td_bags", "INT"),
+                     ("td_src", "STRING"), ("td_band", "INT"), ("td_cands", "INT"),
+                     ("td_accepts", "INT"),
+                     ("td_levels", "INT"),
+                     ("td_centroid_bag", "INT"),
+                     ("td_soft_width", "FLOAT"),
+                     ("td_ind_n", "INT"),
+                     ("td_ind_levels", "INT"),
+                     ("td_ind_top_pct", "FLOAT"),
+                     ("td_weight", "FLOAT"),
+                     ("br_multi_pct", "FLOAT"),
+                     ("br_comps_per_split", "FLOAT"),
+                     ("br_largest_pct", "FLOAT"),
+                     ("br_td_ties", "FLOAT"),
+                     ("br_td_obeyed_pct", "FLOAT"),
+                     ("br_td_flat_pct", "FLOAT"),
+                     ("br_share_td", "FLOAT"),
+                     ("br_share_act", "FLOAT"),
+                     ("br_share_freq", "FLOAT")):
+        if col not in have:
+            conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
+
+    data_cols = [r[1] for r in conn.execute("PRAGMA table_info(data)")]
+    # name the columns: ALTER TABLE appends, so positions may differ from the
+    # CREATE TABLE order above
+    ordered = ["solver", "dirname", "fname", "mem_out", "errored", "ganak_time",
+               "ganak_mem_MB", "ganak_call", "page_faults", "signal", "ganak_ver",
+               "conflicts", "decisionsK", "compsK", "primal_density",
+               "primal_edge_var_ratio", "td_width", "td_time", "td_nodes", "td_split",
+               "td_bags", "td_src", "td_band", "td_cands", "td_accepts",
+               "td_levels", "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels",
+               "td_ind_top_pct", "td_weight", "br_multi_pct", "br_comps_per_split", "br_largest_pct",
+               "br_td_ties", "br_td_obeyed_pct", "br_td_flat_pct", "br_share_td", "br_share_act", "br_share_freq",
+               "arjun_time",
+               "backbone_time", "backward_time", "indep_sz", "opt_indep_sz",
+               "orig_proj_sz", "new_nvars", "unkn_sz", "cache_del_time",
+               "cache_avg_hit_vars", "cache_avg_store_vars", "cache_miss_rate",
+               "bdd_called", "sat_called", "sat_rst", "restarts", "cubes_orig",
+               "cubes_final", "gates_extended", "gates_extend_t", "padoa_extended",
+               "padoa_extend_t", "timeout_t", "irred_bin", "irred_long", "irred_tri",
+               "irred_cls", "mc_log10"]
+    assert sorted(ordered) == sorted(data_cols), (set(ordered) ^ set(data_cols))
     conn.executemany(
-        "INSERT INTO data VALUES (" + ",".join(["?"] * 46) + ")",
+        "INSERT INTO data (" + ",".join(ordered) + ") VALUES ("
+        + ",".join(["?"] * len(ordered)) + ")",
         data_rows
     )
 

@@ -1,0 +1,13 @@
+c c Every var free (the only clause is a tautology): count = 2^3 = 8.
+c c RUN: %solver %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --cache 0 --arjun 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --mode 1 %s | %OutputCheck %s --check-prefix=FRAC
+c c RUN: %solver --mode 4 %s | %OutputCheck %s --check-prefix=PAR
+c c RUN: %solver --mode 5 --prime 5 %s | %OutputCheck %s --check-prefix=P5
+p cnf 3 1
+1 -1 0
+c c INT: ^s SATISFIABLE$
+c c INT: ^c s exact arb int 8$
+c c FRAC: ^c s exact arb frac 8$
+c c PAR: ^c s exact parity 0$
+c c P5: ^c s exact modprime 3 mod 5$

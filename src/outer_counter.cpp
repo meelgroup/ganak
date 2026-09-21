@@ -163,7 +163,8 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   fc.importGraph(primal);
 
   // Compute TD with reduced steps to avoid timeout
-  auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3);
+  auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3,
+      conf.td_band_pct, conf.td_dense_pct);
 
   // Find centroid
   int const centroid_id = tdec.centroid(conf.verb);

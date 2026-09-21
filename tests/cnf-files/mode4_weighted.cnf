@@ -1,0 +1,13 @@
+c c Parity (GF(2)) counting with explicit 0/1 weights: models of (1 v 2) weighted
+c c 1*0, 1*1, 1*0 -> sum 1 mod 2.
+c c RUN: %solver --mode 4 %s | %OutputCheck %s --check-prefix=PAR
+c c RUN: %solver --mode 4 --cache 0 --arjun 0 %s | %OutputCheck %s --check-prefix=PAR
+p cnf 2 1
+c t wmc
+c p weight 1 1 0
+c p weight -1 1 0
+c p weight 2 0 0
+c p weight -2 1 0
+1 2 0
+c c PAR: ^s SATISFIABLE$
+c c PAR: ^c s exact parity 1$

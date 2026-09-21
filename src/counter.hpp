@@ -366,12 +366,19 @@ public:
   DecisionStack decisions;
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
+  struct ScoreParts { double td = 0; double act = 0; double freq = 0;
+    double total() const { return td + act + freq; } };
+  ScoreParts score_parts_of(const uint32_t v, bool ignore_td) const;
   double score_of(const uint32_t v, bool ignore_td = false) const;
   void vsads_readjust();
   void compute_td_score(TWD::TreeDecomposition& tdec, const uint32_t nodes, bool print = true);
   void compute_td_score_using_adj(const uint32_t nodes,
     const std::vector<std::vector<int>>& bags,
     const std::vector<std::vector<int>>& adj, bool print);
+  vector<double> compute_td_sep_frac(const uint32_t nodes,
+      const std::vector<std::vector<int>>& bags,
+      const std::vector<std::vector<int>>& adj, const int centroid,
+      const std::vector<int>& ord, bool print) const;
   void compute_td_score_using_raw(const uint32_t nodes,
       const std::vector<int>& dists, const int max_dist);
   void read_td_from_file(const std::string& fname);
@@ -386,6 +393,7 @@ public:
   bool get_polarity(const uint32_t var) const;
   vector<double> tdscore;
   double td_weight = 1.0;
+  double td_split = -1;
   uint64_t tstamp = 10;
   void bump_stamp() {
     decisions[dec_level()].tstamp = ++tstamp;

@@ -1,0 +1,11 @@
+c c Modes that need an extra argument must refuse to run without it.
+c c RUN: not %solver --mode 3 %s 2>&1 | %OutputCheck %s --check-prefix=POLYVARS3
+c c RUN: not %solver --mode 13 %s 2>&1 | %OutputCheck %s --check-prefix=POLYVARS13
+c c RUN: not %solver --mode 5 %s 2>&1 | %OutputCheck %s --check-prefix=NOPRIME
+c c RUN: not %solver --mode 9 %s 2>&1 | %OutputCheck %s --check-prefix=UNKNOWN
+p cnf 2 1
+1 2 0
+c c POLYVARS3: ERROR: Must provide number of polynomial vars for mode 3 via --npolyvars
+c c POLYVARS13: ERROR: Must provide number of polynomial vars for mode 13 via --npolyvars
+c c NOPRIME: ERROR: Must provide prime field for mode 5 via --prime
+c c UNKNOWN: ERROR: Unknown mode

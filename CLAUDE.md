@@ -306,7 +306,8 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 `scripts/data/BRANCHING_NOTES.md` records what the `br_*`/`td_*` stats showed and
 which branching experiments won or lost (with numbers), so they are not redone.
 Knobs from that work: `--tdflatpct` (default 50: TD ignored for branching when
-width >= 50% of the nodes), and the off-by-default `--tdsepwpct`.
+width >= 50% of the nodes), `--tddensepct` (default 100: the narrowest TD always wins,
+never a wider one that splits better), and the off-by-default `--tdsepwpct`.
 
 ## Dependencies
 

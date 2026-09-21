@@ -46,6 +46,7 @@ Geometric mean of decisions vs. baseline on 27 quick instances, unless noted:
 | `--freqscorediv 5`: 5x frequency weight | x1.08 |
 | `--cutvars 1 --cutw 50` / `500`: bonus for articulation vars of the component | x0.99 / x1.03, one instance 1.1M -> >13M decisions at 500. **Removed**, see below |
 | **`--tdflatpct 50`**: TD does not guide branching when width >= 50% of nodes | **-17% summed time on the 13 instances in range, see below. Now default** |
+| **`--tddensepct 100`**: never trade TD width for a better split, the narrowest TD wins | **time geomean x0.90 on the 98 instances it changes, 15 faster / 1 slower by >20%. Now default**, see below |
 
 Articulation vars are a rich signal that does not pay: on mc2023_track1_014 some
 candidate would cut >= 10% off the component at 57% of all decisions (avg best cut 19.7%),
@@ -73,6 +74,28 @@ settled it, and `--cutvars`/`--cutw`/`--cutminvars` and the analysis code were r
 
 If this is ever revisited: capture the articulation structure statically, in the TD score
 at decomposition time, instead of recomputing biconnectivity at every decision.
+
+### `--tddensepct`: the width-vs-split band
+
+When the narrowest TD seen is wider than `--tddensepct` % of the nodes, treedecomp's
+`TdChooser` turns on a band: a candidate up to `--tdbandpct` (10%) wider can still win if
+it leaves a smaller largest component after removing the centroid bag. At the old default
+of 30 this fired on dense graphs; at 100 it never does.
+
+Batch `out-ganak-mccomp2324-2366186-{0,3}`, same binary, 30 vs 100:
+
+* the search changed on 98 solved-by-both instances; on those, time geomean **x0.896**,
+  15 faster / 1 slower by >20%, from 10 independent instance families against 1. The
+  unchanged ones sit at x0.996, so this is well above the noise.
+* every changed instance got a **narrower** TD (161->147, 150->137, 138->126, 319->293).
+* solved 1203 -> 1205 (3 gained, 1 lost; within the +-4 run-to-run noise), PAR2 1960 -> 1950.
+  The PAR2 gain is concentrated in 5 instances; the other ~200 changed runs are a wash in
+  total seconds, as sub-20% slowdowns.
+* biggest single case, mc2024_track4_170, 3576s -> 173s: the band accepted width 202, which
+  crossed `--tdflatpct` so the TD was ignored (`td_weight` 0). The narrowest TD, 196, did not.
+
+With the band never on, `--tdbandpct` and the split-based acceptance in `TdChooser` are dead
+by default; the split is still recorded and scales the TD weight via `--tdsplitwpct`.
 
 Conclusion: inside the TD regime the var choice is at a local optimum for every knob and
 signal tried. The leverage is in WHEN the TD should be listened to, and in which TD.

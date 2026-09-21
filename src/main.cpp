@@ -259,7 +259,7 @@ void add_ganak_options()
     add_arg("--tdnewcentroid", conf.td_new_centroid, fc_int, "TD: pick the centroid bag by smallest imbalance (1) instead of the first bag found (0). Used both when choosing between TD candidates and when scoring distance from the centroid");
     add_arg("--tdsepwpct", conf.td_sep_weight_pct, fc_int, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
     add_arg("--tdsplitwpct", conf.td_split_weight_pct, fc_int, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
-    add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does");
+    add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does. 100 = never");
     add_arg("--tdlook", conf.td_lookahead, fc_int, "-1 means never");
     add_arg("--tdlooktwcut", conf.td_lookahead_tw_cutoff, fc_int, "TD lookahead only when TW of current comp is larger than this value");
     add_arg("--tdlookiters", conf.td_lookahead_iters, fc_int, "TD lookahead iterations");

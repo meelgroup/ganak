@@ -103,7 +103,7 @@ struct CounterConfiguration {
   int64_t td_steps = 1e5;
   int td_iters = 900;
   int td_band_pct = 10;
-  int td_dense_pct = 30;
+  int td_dense_pct = 100; // 100: the band never turns on, the narrowest TD wins. See BRANCHING_NOTES.md
   int td_split_weight_pct = 100;
   int td_flat_pct = 50; // TD width >= this % of the TD graph's nodes: TD does not guide branching. 0 = off
   int td_sep_weight_pct = 0; // break TD-level ties by separator efficiency. 100 = up to one full level

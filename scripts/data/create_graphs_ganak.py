@@ -2321,13 +2321,10 @@ only_dirs = [
     # "out-ganak-mccomp2324-2329268-0", # fixing TD
     # "out-ganak-mccomp2324-2345011-1", # more stats about TD, faster TD
     # "out-ganak-mccomp2324-2345011-2", # more stats about TD, faster TD
-    # "out-ganak-mccomp2324-2357294-1", # testing more TD systems -- 1206 solved, BEST
+    "out-ganak-mccomp2324-2357294-1", # testing more TD systems -- 1206 solved, BEST
     # "out-ganak-mccomp2324-2359115-0",
     "out-ganak-mccomp2324-2362983-0",
-    "out-ganak-mccomp2324-2362983-5", # testing RW stuff and another batch of branch stuff
-    "out-ganak-mccomp2324-2362983-6", # testing RW stuff and another batch of branch stuff
-    "out-ganak-mccomp2324-2362983-7", # testing RW stuff and another batch of branch stuff
-    "out-ganak-mccomp2324-2362983-8", # testing RW stuff and another batch of branch stuff
+    "out-ganak-mccomp2324-2366186-",
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

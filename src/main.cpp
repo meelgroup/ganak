@@ -256,7 +256,6 @@ void add_ganak_options()
     add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
     add_arg("--tdbandpct", conf.td_band_pct, fc_int, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");
     add_arg("--tdflatpct", conf.td_flat_pct, fc_int, "TD: if the TD's width is at least this % of the graph's nodes, the graph is too dense for the TD to say anything, and it does not guide the branching. 0 = off");
-    add_arg("--tdnewcentroid", conf.td_new_centroid, fc_int, "TD: pick the centroid bag by smallest imbalance (1) instead of the first bag found (0). Used both when choosing between TD candidates and when scoring distance from the centroid");
     add_arg("--tdsepwpct", conf.td_sep_weight_pct, fc_int, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
     add_arg("--tdsplitwpct", conf.td_split_weight_pct, fc_int, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
     add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does. 100 = never");

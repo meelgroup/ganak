@@ -164,10 +164,10 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
 
   // Compute TD with reduced steps to avoid timeout
   auto tdec  = fc.constructTD(conf.td_steps / 3, conf.td_iters / 3,
-      conf.td_band_pct, conf.td_dense_pct, 0, conf.td_new_centroid);
+      conf.td_band_pct, conf.td_dense_pct);
 
   // Find centroid
-  int const centroid_id = tdec.centroid(conf.verb, conf.td_new_centroid);
+  int const centroid_id = tdec.centroid(conf.verb);
   vector<int> centroid_bag = tdec.Bags()[centroid_id];
 
   verb_print(1, "[par] TD width: " << tdec.width()

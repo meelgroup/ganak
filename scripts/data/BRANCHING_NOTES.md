@@ -47,6 +47,7 @@ Geometric mean of decisions vs. baseline on 27 quick instances, unless noted:
 | `--cutvars 1 --cutw 50` / `500`: bonus for articulation vars of the component | x0.99 / x1.03, one instance 1.1M -> >13M decisions at 500. **Removed**, see below |
 | **`--tdflatpct 50`**: TD does not guide branching when width >= 50% of nodes | **-17% summed time on the 13 instances in range, see below. Now default** |
 | **`--tddensepct 100`**: never trade TD width for a better split, the narrowest TD wins | **time geomean x0.90 on the 98 instances it changes, 15 faster / 1 slower by >20%. Now default**, see below |
+| `--tdnewcentroid 1`: centroid = bag with the smallest largest leftover component, not the first bag whose subtree holds half the vertices | batch 2366186: time geomean x1.042 on the 205 instances it changes (6 faster / 20 slower by >20%), x1.028 with the band off. **Removed** from ganak and treedecomp |
 
 Articulation vars are a rich signal that does not pay: on mc2023_track1_014 some
 candidate would cut >= 10% off the component at 57% of all decisions (avg best cut 19.7%),

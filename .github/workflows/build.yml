@@ -142,6 +142,18 @@ jobs:
         -S ..
         cmake --build . --config ${{matrix.build_type}} -v
 
+    - name: Install mpfi (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        curl -fL -O https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
+        tar xzf mpfi-1.5.4.tar.gz
+        cd mpfi-1.5.4
+        ./configure --prefix=/mingw64 --enable-static --disable-shared
+        make -j$(nproc)
+        make install
+        cd ..
+
     - name: Build project (Windows)
       if: contains(matrix.os, 'windows')
       shell: msys2 {0}

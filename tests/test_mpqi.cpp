@@ -700,6 +700,74 @@ static void test_is_zero_interval() {
     mpqi_clear(&v);
 }
 
+static void check_rational_eq(mpqi_ptr v, int num, int den) {
+    CHECK(is_rational(*v));
+    if (!is_rational(*v)) return;
+    mpq_t q;
+    make_q(q, num, den);
+    CHECK(mpq_equal(v->qval, q));
+    mpq_clear(q);
+}
+
+static void test_interval_to_rational() {
+    begin_test("canonicalize: point intervals switch back to exact rationals, others stay intervals");
+    size_t orig_init, orig_final;
+    unsigned long orig_cross;
+    mpqi_get_parameters(&orig_init, &orig_final, &orig_cross);
+    mpqi_t v, dest;
+    mpqi_init(&v);
+    mpqi_init(&dest);
+    mpfi_t m;
+    mpfi_init2(m, 64);
+    mpq_t q;
+
+    mpfi_set_d(m, 1.5);
+    mpqi_set_m(&v, m);
+    check_rational_eq(&v, 3, 2);
+
+    mpfi_interv_d(m, 1.0, 2.0);
+    mpqi_set_m(&v, m);
+    CHECK(is_interval(v));
+
+    // interval * point interval = point interval
+    make_q(q, 2, 1);
+    mpqi_set_q(&v, q);
+    mpq_clear(q);
+    mpfi_set_d(m, 0.75);
+    mpqi_mul_mpfi(&dest, &v, m);
+    check_rational_eq(&dest, 3, 2);
+
+    // demoted interval * 0 = [0,0]
+    mpqi_set_parameters(1, 1, 0);
+    mpqi_reset();
+    make_q(q, 12345, 67891);
+    mpqi_set_q(&v, q);
+    mpq_clear(q);
+    CHECK(is_interval(v));
+    mpqi_set_parameters(orig_init, orig_final, orig_cross);
+    mpqi_reset();
+    make_q(q, 0, 1);
+    mpqi_mul_q(&dest, &v, q);
+    mpq_clear(q);
+    check_rational_eq(&dest, 0, 1);
+
+    // a point interval whose rational is over the size limit stays an interval
+    mpqi_set_parameters(1, 1, 0);
+    mpqi_reset();
+    mpfi_set_d(m, 1.5);
+    mpqi_set_m(&v, m);
+    CHECK(is_interval(v));
+    mpfi_set_si(m, 0);
+    mpqi_set_m(&v, m);
+    check_rational_eq(&v, 0, 1);
+    mpqi_set_parameters(orig_init, orig_final, orig_cross);
+    mpqi_reset();
+
+    mpfi_clear(m);
+    mpqi_clear(&v);
+    mpqi_clear(&dest);
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -734,6 +802,7 @@ int main() {
     test_arithmetic_chain();
     test_self_alias();
     test_is_zero_interval();
+    test_interval_to_rational();
 
     printf("\n=== Results: %d checks, %d failures ===\n", checks, failures);
     return failures > 0 ? 1 : 0;

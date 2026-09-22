@@ -2,7 +2,7 @@ c c Modes that need an extra argument must refuse to run without it.
 c c RUN: not %solver --mode 3 %s 2>&1 | %OutputCheck %s --check-prefix=POLYVARS3
 c c RUN: not %solver --mode 13 %s 2>&1 | %OutputCheck %s --check-prefix=POLYVARS13
 c c RUN: not %solver --mode 5 %s 2>&1 | %OutputCheck %s --check-prefix=NOPRIME
-c c RUN: not %solver --mode 9 %s 2>&1 | %OutputCheck %s --check-prefix=UNKNOWN
+c c RUN: not %solver --mode 99 %s 2>&1 | %OutputCheck %s --check-prefix=UNKNOWN
 p cnf 2 1
 1 2 0
 c c POLYVARS3: ERROR: Must provide number of polynomial vars for mode 3 via --npolyvars

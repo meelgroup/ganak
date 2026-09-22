@@ -351,10 +351,13 @@ if(NOT MPFI_FOUND)
     if(NOT MPFI_INCLUDE_DIR OR NOT MPFI_LIBRARY)
         message(FATAL_ERROR "mpfi not found")
     endif()
-    add_library(PkgConfig::MPFI INTERFACE IMPORTED)
+    # A real imported lib (not INTERFACE) so static links order mpfi before
+    # mpfr and gmp; Debian's mpfr.pc also omits gmp, hence GMP here
+    add_library(PkgConfig::MPFI UNKNOWN IMPORTED)
     set_target_properties(PkgConfig::MPFI PROPERTIES
+        IMPORTED_LOCATION "${MPFI_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${MPFI_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "${MPFI_LIBRARY};PkgConfig::MPFR")
+        INTERFACE_LINK_LIBRARIES "PkgConfig::MPFR;PkgConfig::GMP")
     message(STATUS "Found mpfi (no pkg-config): ${MPFI_LIBRARY}")
 endif()
 if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)

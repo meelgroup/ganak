@@ -161,6 +161,7 @@ cryptominisat5). `FG = unique_ptr<FieldGen>`, `FF = unique_ptr<Field>`. Field
 implementations are in:
 - `ArjunNS::FComplex` / `ArjunNS::MPFComplex` (in arjun's `arjun.h`) — complex
   rationals / complex floats
+- `fmpfi.hpp` — FLINT-based polynomial interval arithmetic
 - `mparity.hpp` — parity (mod 2) counting
 - `mpoly.hpp` — polynomials over finite fields
 
@@ -307,6 +308,7 @@ SELECT dirname, count(*), avg(ganak_time), avg(cache_miss_rate) FROM data GROUP 
 | `gates_extended` / `gates_extend_t` | Gates added by extension + time |
 | `padoa_extended` / `padoa_extend_t` | Vars added by Padoa extension + time |
 | `primal_density` / `primal_edge_var_ratio` | Primal graph density metrics |
+
 
 ### Branching heuristic notes
 

@@ -1,0 +1,12 @@
+c c w(-1) is 1 + 1e-6, which rounds to [1, 1+ulp] at 20 bits: it must not be treated as equal to w(1) = 1
+c c RUN: %solver --mode 8 --mpfrprec 20 %s | %OutputCheck %s --check-prefix=MPFI
+c c RUN: %solver --mode 9 --mpfrprec 20 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 %s | %OutputCheck %s --check-prefix=MPQI
+c c RUN: %solver --mode 9 %s | %OutputCheck %s --check-prefix=MPQIEXACT
+p cnf 2 1
+c t wmc
+1 2 0
+c p weight -1 1000001/1000000 0
+c p weight 1 1/1 0
+c c MPFI: ^c s exact single float interval \[ 3\.00000000e\+00 3\.00000382e\+00 \]$
+c c MPQI: ^c s exact single float interval \[ 3\.00000000e\+00 3\.00000382e\+00 \]$
+c c MPQIEXACT: ^c s exact arb frac 3000001/1000000$

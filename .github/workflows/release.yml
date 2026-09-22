@@ -49,7 +49,7 @@ jobs:
 
     - name: Install dependencies for Linux
       if: contains(matrix.os, 'ubuntu')
-      run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev
+      run: sudo apt-get update && sudo apt-get install -yq help2man libgmp-dev libmpfr-dev libmpfi-dev
 
     - name: Install gmp for Mac
       if: contains(matrix.os, 'macos')
@@ -84,6 +84,17 @@ jobs:
         sudo make install
         cd ..
 
+    - name: Install mpfi for Mac
+      if: contains(matrix.os, 'macos')
+      run: |
+        wget https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
+        tar xzf mpfi-1.5.4.tar.gz
+        cd mpfi-1.5.4
+        ./configure --enable-static --enable-shared
+        make -j$(sysctl -n hw.ncpu)
+        sudo make install
+        cd ..
+
     - name: Install flint
       if: "!contains(matrix.os, 'windows')"
       run: |
@@ -114,6 +125,18 @@ jobs:
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -S ..
         cmake --build . --config ${{ matrix.build_type }} -v
+
+    - name: Install mpfi (Windows)
+      if: contains(matrix.os, 'windows')
+      shell: msys2 {0}
+      run: |
+        curl -fL -O https://msoos.org/largefiles/mpfi-1.5.4.tar.gz
+        tar xzf mpfi-1.5.4.tar.gz
+        cd mpfi-1.5.4
+        ./configure --prefix=/mingw64 --enable-static --disable-shared
+        make -j$(nproc)
+        make install
+        cd ..
 
     - name: Build ganak (Windows)
       if: contains(matrix.os, 'windows')

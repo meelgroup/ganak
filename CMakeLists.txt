@@ -343,6 +343,23 @@ if(GMPXX_LIBRARY)
 endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
 pkg_check_modules(flint REQUIRED IMPORTED_TARGET flint)
+# Upstream mpfi ships no mpfi.pc (only some distros add one, e.g. not nixpkgs)
+pkg_check_modules(MPFI IMPORTED_TARGET mpfi)
+if(NOT MPFI_FOUND)
+    find_path(MPFI_INCLUDE_DIR mpfi.h)
+    find_library(MPFI_LIBRARY mpfi)
+    if(NOT MPFI_INCLUDE_DIR OR NOT MPFI_LIBRARY)
+        message(FATAL_ERROR "mpfi not found")
+    endif()
+    # A real imported lib (not INTERFACE) so static links order mpfi before
+    # mpfr and gmp; Debian's mpfr.pc also omits gmp, hence GMP here
+    add_library(PkgConfig::MPFI UNKNOWN IMPORTED)
+    set_target_properties(PkgConfig::MPFI PROPERTIES
+        IMPORTED_LOCATION "${MPFI_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${MPFI_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "PkgConfig::MPFR;PkgConfig::GMP")
+    message(STATUS "Found mpfi (no pkg-config): ${MPFI_LIBRARY}")
+endif()
 if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
     set(CMAKE_FIND_LIBRARY_SUFFIXES "${_saved_find_suffixes}")
 endif()
@@ -565,6 +582,7 @@ if(ENABLE_TESTING)
   # larger count / --maxvars (see CLAUDE.md).
   add_test(NAME ddnnf_compile_fuzz
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ddnnf_fuzz.py 40 --seed 1 --minvars 6 --maxvars 10)
+  add_subdirectory(tests/unit)
 endif()
 
 # -----------------------------------------------------------------------------

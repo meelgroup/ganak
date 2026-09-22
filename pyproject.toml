@@ -55,7 +55,7 @@ test-command = "cd /tmp && pytest {project}/python/tests -v"
 
 [tool.cibuildwheel.linux]
 # manylinux_2_34 = AlmaLinux 9; gmp-devel/mpfr-devel ship .pc files, so only FLINT
-# needs to be built from source (not packaged in the default repos).
+# and mpfi need to be built from source (not packaged in the default repos).
 manylinux-x86_64-image = "manylinux_2_34"
 manylinux-aarch64-image = "manylinux_2_34"
 before-all = """
@@ -70,6 +70,10 @@ FLINT_VER=3.1.2
 curl -fL -o flint-${FLINT_VER}.tar.gz https://github.com/flintlib/flint/releases/download/v${FLINT_VER}/flint-${FLINT_VER}.tar.gz
 tar xf flint-${FLINT_VER}.tar.gz
 cd flint-${FLINT_VER} && ./configure --prefix=/usr --disable-static --with-gmp=/usr --with-mpfr=/usr && make -j$(nproc) && make install && cd ..
+MPFI_VER=1.5.4
+curl -fL -o mpfi-${MPFI_VER}.tar.gz https://msoos.org/largefiles/mpfi-${MPFI_VER}.tar.gz
+tar xzf mpfi-${MPFI_VER}.tar.gz
+cd mpfi-${MPFI_VER} && ./configure --prefix=/usr --disable-static --with-gmp=/usr --with-mpfr=/usr && make -j$(nproc) && make install && cd ..
 ldconfig
 """
 # CCACHE_DIR must be under /project so the host-side actions/cache step can reach it.
@@ -77,6 +81,6 @@ environment = { CCACHE_DIR = "/project/.ccache" }
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
-before-all = "brew install gmp mpfr flint ccache"
+before-all = "brew install gmp mpfr flint mpfi ccache"
 environment = { CMAKE_PREFIX_PATH = "/opt/homebrew/opt/flint:/opt/homebrew", CCACHE_DIR = "~/.ccache" }
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"

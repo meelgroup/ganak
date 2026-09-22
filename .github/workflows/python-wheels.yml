@@ -27,7 +27,7 @@ jobs:
 
       - name: Install system dependencies (macOS)
         if: contains(matrix.os, 'macos')
-        run: brew install gmp mpfr flint || true
+        run: brew install gmp mpfr flint mpfi || true
 
       - name: Cache ccache
         uses: actions/cache@v4

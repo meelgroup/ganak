@@ -709,6 +709,10 @@ static void check_rational_eq(mpqi_ptr v, int num, int den) {
     mpq_clear(q);
 }
 
+// mpqi_canonicalize() runs after every op. An interval that has collapsed to a
+// point [a,a] is known exactly, so it is switched back to the rational a,
+// which makes later arithmetic exact again. [0,0] is always switched back;
+// a non-zero [a,a] only if the rational a fits the current byte limit.
 static void test_interval_to_rational() {
     begin_test("canonicalize: point intervals switch back to exact rationals, others stay intervals");
     size_t orig_init, orig_final;
@@ -721,15 +725,18 @@ static void test_interval_to_rational() {
     mpfi_init2(m, 64);
     mpq_t q;
 
+    // mpqi_set_m canonicalizes too: 1.5 is exact in binary, so [1.5,1.5] -> 3/2
     mpfi_set_d(m, 1.5);
     mpqi_set_m(&v, m);
     check_rational_eq(&v, 3, 2);
 
+    // a real interval does not pin down a value, it must stay an interval
     mpfi_interv_d(m, 1.0, 2.0);
     mpqi_set_m(&v, m);
     CHECK(is_interval(v));
 
-    // interval * point interval = point interval
+    // the switch-back also happens on the result of an op, not only on set:
+    // 2 * [0.75,0.75] = [1.5,1.5] (exact at 64 bits) -> 3/2
     make_q(q, 2, 1);
     mpqi_set_q(&v, q);
     mpq_clear(q);
@@ -737,7 +744,9 @@ static void test_interval_to_rational() {
     mpqi_mul_mpfi(&dest, &v, m);
     check_rational_eq(&dest, 3, 2);
 
-    // demoted interval * 0 = [0,0]
+    // with 1-byte limits 12345/67891 cannot stay rational and is demoted to a
+    // non-point interval; multiplying it by 0 collapses it to [0,0], which must
+    // come back as the rational 0 once the limits are normal again
     mpqi_set_parameters(1, 1, 0);
     mpqi_reset();
     make_q(q, 12345, 67891);
@@ -751,7 +760,8 @@ static void test_interval_to_rational() {
     mpq_clear(q);
     check_rational_eq(&dest, 0, 1);
 
-    // a point interval whose rational is over the size limit stays an interval
+    // a point interval whose rational is over the byte limit stays an interval,
+    // but [0,0] is switched back regardless of the limit
     mpqi_set_parameters(1, 1, 0);
     mpqi_reset();
     mpfi_set_d(m, 1.5);

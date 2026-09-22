@@ -117,21 +117,7 @@ public:
             os << str;
             free(str);
         } else {
-            mpfr_prec_t prec = mpfi_get_prec(val.mval);
-            mpfr_t left, right;
-            mpfr_init2(left, prec);
-            mpfr_init2(right, prec);
-            mpfi_get_left(left, val.mval);
-            mpfi_get_right(right, val.mval);
-            char* l_str = nullptr;
-            char* r_str = nullptr;
-            mpfr_asprintf(&l_str, "%.8Re", left);
-            mpfr_asprintf(&r_str, "%.8Re", right);
-            os << "[ " << l_str << " " << r_str << " ]";
-            mpfr_free_str(l_str);
-            mpfr_free_str(r_str);
-            mpfr_clear(left);
-            mpfr_clear(right);
+            mpfi_display(os, val.mval);
         }
         return os;
     }

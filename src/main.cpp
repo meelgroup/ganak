@@ -560,6 +560,12 @@ double digit_precision_mpfi(mpfi_srcptr v) {
     return result;
 }
 
+void print_digit_precision(const double d) {
+    cout << "c s digit precision: ";
+    if (d >= max_digit_precision) cout << "exact" << endl;
+    else cout << d << endl;
+}
+
 void print_log(const mpfi_t& val, string extra = "") {
     mpfr_t left, right;
     mpfr_init2(left, mpfr_precision);
@@ -703,14 +709,15 @@ void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, con
         assert(od != nullptr);
         print_log(od->val);
         cout << "c s exact " << mpfr_prec_name(mpfr_precision) << " interval " << *od << endl;
-        cout << "c s digit precision of interval: " << digit_precision_mpfi(od->val) << endl;
+        print_digit_precision(digit_precision_mpfi(od->val));
       } else if (mode == 9) {
         // mpqi rational/interval adaptive
         if (cnf.get_projected()) cout << "c s type pwmc" << endl;
         else cout << "c s type wmc" << endl;
         const FMpqi* od = dynamic_cast<const FMpqi*>(ptr);
-        cout << "c s exact arb frac " << *od << endl;
-        cout << "c s digit precision: " << digit_precision_mpqi(const_cast<mpqi_ptr>(&od->val)) << endl;
+        if (od->val.qsize > 0) cout << "c s exact arb frac " << *od << endl;
+        else cout << "c s exact " << mpfr_prec_name(mpfr_precision) << " interval " << *od << endl;
+        print_digit_precision(digit_precision_mpqi(&od->val));
       }
     } else if (mode == 3) {
       cout << "c s exact poly " << *cnt << endl;

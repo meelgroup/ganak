@@ -1,0 +1,32 @@
+c c Count is 1/3: the printed interval bounds must be rounded outward, so they still contain it
+c c RUN: %solver --mode 8 %s | %OutputCheck %s --check-prefix=MPFI
+c c RUN: %solver --mode 9 %s | %OutputCheck %s --check-prefix=MPQIEXACT
+c c RUN: %solver --mode 9 --mpfrprec 20 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 %s | %OutputCheck %s --check-prefix=MPQI
+c c Precision name in the interval line, same for mode 8 and for mode 9 forced to an interval
+c c RUN: %solver --mode 8 --mpfrprec 16 %s | %OutputCheck %s --check-prefix=HALF
+c c RUN: %solver --mode 9 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 --mpfrprec 16 %s | %OutputCheck %s --check-prefix=HALF
+c c RUN: %solver --mode 8 --mpfrprec 32 %s | %OutputCheck %s --check-prefix=SINGLE
+c c RUN: %solver --mode 9 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 --mpfrprec 32 %s | %OutputCheck %s --check-prefix=SINGLE
+c c RUN: %solver --mode 8 --mpfrprec 64 %s | %OutputCheck %s --check-prefix=DOUBLE
+c c RUN: %solver --mode 9 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 --mpfrprec 64 %s | %OutputCheck %s --check-prefix=DOUBLE
+c c RUN: %solver --mode 8 --mpfrprec 128 %s | %OutputCheck %s --check-prefix=QUAD
+c c RUN: %solver --mode 9 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 --mpfrprec 128 %s | %OutputCheck %s --check-prefix=QUAD
+c c RUN: %solver --mode 8 --mpfrprec 129 %s | %OutputCheck %s --check-prefix=OCT
+c c RUN: %solver --mode 9 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 --mpfrprec 129 %s | %OutputCheck %s --check-prefix=OCT
+c c RUN: %solver --mode 8 --mpfrprec 256 %s | %OutputCheck %s --check-prefix=OCT
+c c RUN: %solver --mode 9 --mpqiinitbytes 8 --mpqifinalbytes 8 --mpqicrosscount 1 --mpfrprec 256 %s | %OutputCheck %s --check-prefix=OCT
+p cnf 1 1
+c t wmc
+c p weight 1 1/3 0
+1 0
+c c MPFI: ^c s exact quadruple float interval \[ 3\.33333333e-01 3\.33333334e-01 \]$
+c c MPFI: ^c s digit precision: 38\.
+c c MPQIEXACT: ^c s exact arb frac 1/3$
+c c MPQIEXACT: ^c s digit precision: exact$
+c c MPQI: ^c s exact single float interval \[ 3\.33333015e-01 3\.33333493e-01 \]$
+c c MPQI: ^c s digit precision: 5\.84$
+c c HALF: ^c s exact half float interval \[ 3\.33328247e-01 3\.33335877e-01 \]$
+c c SINGLE: ^c s exact single float interval \[ 3\.33333333e-01 3\.33333334e-01 \]$
+c c DOUBLE: ^c s exact double float interval \[ 3\.33333333e-01 3\.33333334e-01 \]$
+c c QUAD: ^c s exact quadruple float interval \[ 3\.33333333e-01 3\.33333334e-01 \]$
+c c OCT: ^c s exact octuple float interval \[ 3\.33333333e-01 3\.33333334e-01 \]$

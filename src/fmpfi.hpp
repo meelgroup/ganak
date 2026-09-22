@@ -53,6 +53,18 @@ inline bool mpfi_point_equal(const mpfi_t a, const mpfi_t b) {
         && mpfr_equal_p(&b->left, &b->right);
 }
 
+// Round the bounds outward, or the printed interval may not contain the value
+inline std::ostream& mpfi_display(std::ostream& os, const mpfi_t& v) {
+    char* l_str = nullptr;
+    char* r_str = nullptr;
+    mpfr_asprintf(&l_str, "%.8RDe", &v->left);
+    mpfr_asprintf(&r_str, "%.8RUe", &v->right);
+    os << "[ " << l_str << " " << r_str << " ]";
+    mpfr_free_str(l_str);
+    mpfr_free_str(r_str);
+    return os;
+}
+
 class FMpfi final : public CMSat::Field {
 public:
     mpfi_t val;
@@ -137,24 +149,7 @@ public:
         return mpfi_point_equal(val, od.val);
     }
 
-    std::ostream& display(std::ostream& os) const final {
-        const auto prec = mpfi_get_prec(val);
-        mpfr_t left, right;
-        mpfr_init2(left, prec);
-        mpfr_init2(right, prec);
-        mpfi_get_left(left, val);
-        mpfi_get_right(right, val);
-        char* l_str = nullptr;
-        char* r_str = nullptr;
-        mpfr_asprintf(&l_str, "%.8Re", left);
-        mpfr_asprintf(&r_str, "%.8Re", right);
-        os << "[ " << l_str << " " << r_str << " ]";
-        mpfr_free_str(l_str);
-        mpfr_free_str(r_str);
-        mpfr_clear(left);
-        mpfr_clear(right);
-        return os;
-    }
+    std::ostream& display(std::ostream& os) const final { return mpfi_display(os, val); }
 
     std::unique_ptr<Field> dup() const final {
         return std::make_unique<FMpfi>(val);

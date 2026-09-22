@@ -159,7 +159,7 @@ public:
     }
 
     bool is_one() const final {
-        return mpfi_cmp_si(val, 1) == 0;
+        return mpfr_cmp_ui(&val->left, 1) == 0 && mpfr_cmp_ui(&val->right, 1) == 0;
     }
 
     bool parse(const std::string& str, const uint32_t line_no) final {

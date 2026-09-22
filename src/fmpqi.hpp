@@ -156,7 +156,7 @@ public:
         if (val.qsize > 0)
             return mpq_cmp_ui(val.qval, 1, 1) == 0;
         else
-            return mpfi_cmp_si(val.mval, 1) == 0;
+            return mpfr_cmp_ui(&val.mval->left, 1) == 0 && mpfr_cmp_ui(&val.mval->right, 1) == 0;
     }
 
     bool parse(const std::string& str, const uint32_t line_no) final {

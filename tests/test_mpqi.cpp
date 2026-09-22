@@ -679,6 +679,27 @@ static void test_self_alias() {
     mp_set_memory_functions(orig_alloc, orig_realloc, orig_free);
 }
 
+static void test_is_zero_interval() {
+    begin_test("mpqi_is_zero on intervals: only [0,0] is zero");
+    mpqi_t v;
+    mpqi_init(&v);
+    mpfi_t m;
+    mpfi_init2(m, 64);
+
+    mpfi_interv_si(m, -1, 1);
+    mpqi_set_m(&v, m);
+    CHECK(is_interval(v));
+    CHECK(!mpqi_is_zero(&v));
+    CHECK(mpqi_has_zero(&v));
+
+    mpfi_interv_si(m, 0, 1);
+    mpqi_set_m(&v, m);
+    CHECK(!mpqi_is_zero(&v));
+
+    mpfi_clear(m);
+    mpqi_clear(&v);
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -712,6 +733,7 @@ int main() {
     test_mpqi_mid_q_rational();
     test_arithmetic_chain();
     test_self_alias();
+    test_is_zero_interval();
 
     printf("\n=== Results: %d checks, %d failures ===\n", checks, failures);
     return failures > 0 ? 1 : 0;

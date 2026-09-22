@@ -47,6 +47,12 @@ inline unsigned int mpfi_memory_usage(const mpfi_t& val) {
     return (2 * per_mpfr_size) + mpfi_struct_size;
 }
 
+// Only point intervals are provably equal: two different values can round to the same [l, r]
+inline bool mpfi_point_equal(const mpfi_t a, const mpfi_t b) {
+    return mpfr_equal_p(&a->left, &a->right) && mpfr_equal_p(&a->left, &b->left)
+        && mpfr_equal_p(&b->left, &b->right);
+}
+
 class FMpfi final : public CMSat::Field {
 public:
     mpfi_t val;
@@ -128,7 +134,7 @@ public:
 
     bool operator==(const Field& other) const final {
         const auto& od = static_cast<const FMpfi&>(other);
-        return mpfi_cmp(val, od.val) == 0;
+        return mpfi_point_equal(val, od.val);
     }
 
     std::ostream& display(std::ostream& os) const final {

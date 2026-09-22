@@ -104,19 +104,11 @@ public:
         if (val.qsize > 0 && od.val.qsize > 0)
             return mpq_equal(val.qval, od.val.qval) != 0;
         if (val.qsize == 0 && od.val.qsize == 0)
-            return mpfi_cmp(val.mval, od.val.mval) == 0;
-        // Mixed: promote the rational to a finite-precision point interval and
-        // compare.  Can return false for mathematically equal values if the
-        // interval side was computed with rounding error (i.e. the interval is
-        // not a perfect point at the rational value).
+            return mpfi_point_equal(val.mval, od.val.mval);
         const mpqi_t* rat = val.qsize > 0 ? &val : &od.val;
         const mpqi_t* itv = val.qsize > 0 ? &od.val : &val;
-        mpfi_t tmp;
-        mpfi_init2(tmp, rat->prec);
-        mpfi_set_q(tmp, rat->qval);
-        bool result = mpfi_cmp(tmp, itv->mval) == 0;
-        mpfi_clear(tmp);
-        return result;
+        return mpfr_equal_p(&itv->mval->left, &itv->mval->right)
+            && mpfr_cmp_q(&itv->mval->left, rat->qval) == 0;
     }
 
     std::ostream& display(std::ostream& os) const final {

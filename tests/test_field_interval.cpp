@@ -1,4 +1,4 @@
-// Unit tests for the interval Fields (FMpfi, FMpqi): is_zero/is_one must be exact.
+// Unit tests for the interval Fields (FMpfi, FMpqi): is_zero/is_one/operator== must be exact.
 
 #include "../src/fmpqi.hpp"
 
@@ -83,10 +83,25 @@ static void test_fmpqi() {
     CHECK(!near_zero->is_one());
 }
 
+static void test_equality() {
+    printf("Testing: FMpfi/FMpqi operator== is exact\n");
+    CHECK(FMpfi(1L, prec) == FMpfi(1L, prec));
+    CHECK(!(FMpfi(1L, prec) == *mpfi_interval(1, 60)));
+    CHECK(!(*mpfi_interval(1, 60) == FMpfi(1L, prec)));
+    // identical non-point intervals may hold different values
+    CHECK(!(*mpfi_interval(1, 60) == *mpfi_interval(1, 60)));
+
+    CHECK(FMpqi(1L, prec) == FMpqi(1L, prec));
+    CHECK(!(FMpqi(1L, prec) == *mpqi_interval(1, 60)));
+    CHECK(!(*mpqi_interval(1, 60) == FMpqi(1L, prec)));
+    CHECK(!(*mpqi_interval(1, 60) == *mpqi_interval(1, 60)));
+}
+
 int main() {
     printf("=== interval Field unit tests ===\n\n");
     test_fmpfi();
     test_fmpqi();
+    test_equality();
     printf("\n=== Results: %d checks, %d failures ===\n", checks, failures);
     return failures > 0 ? 1 : 0;
 }

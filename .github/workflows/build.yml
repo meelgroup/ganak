@@ -194,6 +194,16 @@ jobs:
         $EXE --help
         echo $?
 
+    - name: Check the binary is statically linked (Linux)
+      if: contains(matrix.os, 'ubuntu') && matrix.shared_libs == 'OFF'
+      run: |
+        file ./project/build/ganak
+        if ! file ./project/build/ganak | grep -q "statically linked"; then
+          echo "ERROR: ganak is not statically linked"
+          ldd ./project/build/ganak || true
+          exit 1
+        fi
+
 
     - name: Upload Artifact - Linux
       if: contains(matrix.os, 'ubuntu') && matrix.shared_libs == 'OFF' && !contains(matrix.os, 'arm')

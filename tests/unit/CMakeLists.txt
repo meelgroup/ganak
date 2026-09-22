@@ -5,11 +5,9 @@ add_executable(test_mpqi
 target_include_directories(test_mpqi PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/src
-    ${GMP_INCLUDE_DIR}
-    ${MPFI_INCLUDES}
 )
 target_link_libraries(test_mpqi PRIVATE
-    ${MPFI_LIBRARIES}
+    PkgConfig::MPFI
     PkgConfig::MPFR
     PkgConfig::GMP
 )

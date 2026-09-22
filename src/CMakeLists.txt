@@ -145,7 +145,6 @@ target_link_libraries(example-c-bin
 target_include_directories(ganak-bin PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${MPFI_INCLUDES}
 )
 target_include_directories(example-bin PRIVATE
     ${PROJECT_SOURCE_DIR}

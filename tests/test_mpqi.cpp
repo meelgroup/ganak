@@ -609,6 +609,76 @@ static void test_arithmetic_chain() {
     mpqi_clear(&a); mpqi_clear(&b); mpqi_clear(&c); mpqi_clear(&tmp);
 }
 
+// Freed GMP memory is scribbled so a read-after-free gives a wrong value instead of stale data.
+static void *(*orig_alloc)(size_t);
+static void *(*orig_realloc)(void *, size_t, size_t);
+static void (*orig_free)(void *, size_t);
+static void scribbling_free(void *p, size_t n) { memset(p, 0xA5, n); orig_free(p, n); }
+static void *scribbling_realloc(void *p, size_t old_n, size_t new_n) {
+    void *q = orig_alloc(new_n);
+    memcpy(q, p, old_n < new_n ? old_n : new_n);
+    scribbling_free(p, old_n);
+    return q;
+}
+
+static bool contains(mpqi_ptr v, double exact) {
+    const double slack = 1e-12 * (std::fabs(exact) + 1.0);
+    return mpqi_left_d(v) <= exact + slack && exact - slack <= mpqi_right_d(v);
+}
+
+// arg_check() in the op demotes the rational arg to an interval and frees
+// its qval, which the aliased operand still points at
+enum class AliasOp { mul, add, sub };
+static void check_self_alias(AliasOp op, bool via_q) {
+    size_t orig_init, orig_final;
+    unsigned long orig_cross;
+    mpqi_get_parameters(&orig_init, &orig_final, &orig_cross);
+    mpqi_set_parameters(10000, 40, 1);
+    mpqi_reset();
+
+    mpqi_t v;
+    mpqi_init(&v);
+    mpq_t q;
+    make_q(q, 12345, 67891);
+    mpqi_set_q(&v, q);
+    CHECK(is_rational(v));
+
+    const double x = 12345.0 / 67891.0;
+    double exact = 0;
+    switch (op) {
+        case AliasOp::mul:
+            exact = x * x;
+            if (via_q) mpqi_mul_q(&v, &v, v.qval); else mpqi_mul(&v, &v, &v);
+            break;
+        case AliasOp::add:
+            exact = x + x;
+            if (via_q) mpqi_add_q(&v, &v, v.qval); else mpqi_add(&v, &v, &v);
+            break;
+        case AliasOp::sub:
+            if (via_q) mpqi_sub_q(&v, &v, v.qval); else mpqi_sub(&v, &v, &v);
+            break;
+    }
+    CHECK(is_interval(v));
+    CHECK(contains(&v, exact));
+
+    mpq_clear(q);
+    mpqi_clear(&v);
+    mpqi_set_parameters(orig_init, orig_final, orig_cross);
+    mpqi_reset();
+}
+
+static void test_self_alias() {
+    begin_test("self-aliasing x*x, x+x, x-x while the arg is demoted to interval");
+    mp_get_memory_functions(&orig_alloc, &orig_realloc, &orig_free);
+    mp_set_memory_functions(orig_alloc, scribbling_realloc, scribbling_free);
+    for (int via_q = 0; via_q < 2; via_q++) {
+        check_self_alias(AliasOp::mul, via_q);
+        check_self_alias(AliasOp::add, via_q);
+        check_self_alias(AliasOp::sub, via_q);
+    }
+    mp_set_memory_functions(orig_alloc, orig_realloc, orig_free);
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -641,6 +711,7 @@ int main() {
     test_crossover_uses_final_limit();
     test_mpqi_mid_q_rational();
     test_arithmetic_chain();
+    test_self_alias();
 
     printf("\n=== Results: %d checks, %d failures ===\n", checks, failures);
     return failures > 0 ? 1 : 0;

@@ -212,7 +212,7 @@ void mpqi_mid_q(mpq_ptr mid, mpqi_srcptr mp) {
     }
 }
 
-void mpqi_mul_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+static void mpqi_mul_q_noalias(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     mpqi_arg_check(arg);
     bool clear_m = false;
     bool clear_q = false;
@@ -236,6 +236,18 @@ void mpqi_mul_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     if (clear_q)
         mpq_clear(dest->qval);
     mpqi_canonicalize(dest);
+}
+
+void mpqi_mul_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+    // mpqi_arg_check(arg) may free arg->qval, so q must not point into it
+    if (q == arg->qval) {
+        mpq_t qcopy;
+        mpq_init(qcopy);
+        mpq_set(qcopy, q);
+        mpqi_mul_q_noalias(dest, arg, qcopy);
+        mpq_clear(qcopy);
+    } else
+        mpqi_mul_q_noalias(dest, arg, q);
 }
 
 void mpqi_mul_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
@@ -262,7 +274,7 @@ void mpqi_mul(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2) {
         mpqi_mul_mpfi(dest, arg1, arg2->mval);
 }
 
-void mpqi_add_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+static void mpqi_add_q_noalias(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     mpqi_arg_check(arg);
     bool clear_q = false;
     bool clear_m = false;
@@ -286,6 +298,18 @@ void mpqi_add_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     if (clear_q)
         mpq_clear(dest->qval);
     mpqi_canonicalize(dest);
+}
+
+void mpqi_add_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+    // mpqi_arg_check(arg) may free arg->qval, so q must not point into it
+    if (q == arg->qval) {
+        mpq_t qcopy;
+        mpq_init(qcopy);
+        mpq_set(qcopy, q);
+        mpqi_add_q_noalias(dest, arg, qcopy);
+        mpq_clear(qcopy);
+    } else
+        mpqi_add_q_noalias(dest, arg, q);
 }
 
 void mpqi_add_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {
@@ -312,7 +336,7 @@ void mpqi_add(mpqi_ptr dest, mpqi_ptr arg1, mpqi_srcptr arg2) {
         mpqi_add_mpfi(dest, arg1, arg2->mval);
 }
 
-void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+static void mpqi_sub_q_noalias(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     mpqi_arg_check(arg);
     bool clear_m = false;
     bool clear_q = false;
@@ -336,6 +360,18 @@ void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
     if (clear_q)
         mpq_clear(dest->qval);
     mpqi_canonicalize(dest);
+}
+
+void mpqi_sub_q(mpqi_ptr dest, mpqi_ptr arg, mpq_srcptr q) {
+    // mpqi_arg_check(arg) may free arg->qval, so q must not point into it
+    if (q == arg->qval) {
+        mpq_t qcopy;
+        mpq_init(qcopy);
+        mpq_set(qcopy, q);
+        mpqi_sub_q_noalias(dest, arg, qcopy);
+        mpq_clear(qcopy);
+    } else
+        mpqi_sub_q_noalias(dest, arg, q);
 }
 
 void mpqi_sub_mpfi(mpqi_ptr dest, mpqi_ptr arg, mpfi_srcptr v) {

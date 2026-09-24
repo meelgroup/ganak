@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <mpfr.h>
 #include <charconv>
+#include <type_traits>
 /* #include <breakid/breakid.hpp> */
 #include <arjun/arjun.h>
 #include "src/argparse.hpp"
@@ -56,22 +57,29 @@ using std::setprecision;
 #include <cfenv>
 #endif
 
-static int fc_int(const std::string& s) {
-    int val = 0;
-    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), val);
-    if (ec != std::errc{}) throw std::invalid_argument("not an integer: " + s);
-    if (ptr != s.data() + s.size()) throw std::invalid_argument("trailing characters in integer: " + s);
-    return val;
+template<class T> static T parse_opt(const std::string& s) {
+    if constexpr (std::is_same_v<T, std::string>) {
+        return s;
+    } else if constexpr (std::is_same_v<T, bool>) {
+        return parse_opt<int>(s) != 0;
+    } else if constexpr (std::is_floating_point_v<T>) {
+        size_t pos = 0;
+        double val;
+        try { val = std::stod(s, &pos); }
+        catch (const std::exception&) { throw std::invalid_argument("not a number: " + s); }
+        if (pos != s.size()) throw std::invalid_argument("trailing characters in number: " + s);
+        return val;
+    } else if constexpr (std::is_integral_v<T>) {
+        T val{};
+        auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), val);
+        if (ec == std::errc::result_out_of_range) throw std::invalid_argument("integer out of range: " + s);
+        if (ec != std::errc{}) throw std::invalid_argument("not an integer: " + s);
+        if (ptr != s.data() + s.size()) throw std::invalid_argument("trailing characters in integer: " + s);
+        return val;
+    } else {
+        static_assert(sizeof(T) == 0, "parse_opt: unsupported option type");
+    }
 }
-static double fc_double(const std::string& s) {
-    size_t pos = 0;
-    double val;
-    try { val = std::stod(s, &pos); }
-    catch (const std::exception&) { throw std::invalid_argument("not a double: " + s); }
-    if (pos != s.size()) throw std::invalid_argument("trailing characters in double: " + s);
-    return val;
-}
-static const std::string& fc_string(const std::string& s) { return s; }
 
 using std::string;
 using std::vector;
@@ -79,27 +87,17 @@ argparse::ArgumentParser program = argparse::ArgumentParser("ganak",
         GANAK::get_version_sha1(),
         argparse::default_arguments::help);
 
-template<typename T, typename F>
-void add_arg(const char* name, T& var, F fun, const char* hhelp) {
-    using r = std::decay_t<std::invoke_result_t<F, const std::string&>>;
-    static_assert(std::is_floating_point_v<r> == std::is_floating_point_v<T>,
-        "Floating-point mismatch: use fc_double for floating-point vars, fc_int for integral vars");
-    static_assert(std::is_integral_v<r> == std::is_integral_v<T>,
-        "Integral/string mismatch: use fc_int for integral vars, fc_string for string vars");
+template<typename T>
+void add_arg(const char* name, T& var, const char* hhelp) {
     program.add_argument(name)
-        .action([&var, fun](const auto& a) { var = fun(a); })
+        .action([&var](const std::string& a) { var = parse_opt<T>(a); })
         .default_value(var)
         .help(hhelp);
 }
-template<typename T, typename F>
-void add_arg2(const char* name1, const char* name2, T& var, F fun, const char* hhelp) {
-    using r = std::decay_t<std::invoke_result_t<F, const std::string&>>;
-    static_assert(std::is_floating_point_v<r> == std::is_floating_point_v<T>,
-        "Floating-point mismatch: use fc_double for floating-point vars, fc_int for integral vars");
-    static_assert(std::is_integral_v<r> == std::is_integral_v<T>,
-        "Integral/string mismatch: use fc_int for integral vars, fc_string for string vars");
+template<typename T>
+void add_arg2(const char* name1, const char* name2, T& var, const char* hhelp) {
     program.add_argument(name1, name2)
-        .action([&var, fun](const auto& a) { var = fun(a); })
+        .action([&var](const std::string& a) { var = parse_opt<T>(a); })
         .default_value(var)
         .help(hhelp);
 }
@@ -171,13 +169,13 @@ void add_ganak_options()
     std::ostringstream my_delta;
     my_delta << setprecision(8) << conf.delta;
 
-    add_arg2("-v", "--verb", conf.verb, fc_int, "Verbosity");
-    add_arg2("-s", "--seed", conf.seed, fc_int, "Seed");
+    add_arg2("-v", "--verb", conf.verb, "Verbosity");
+    add_arg2("-s", "--seed", conf.seed, "Seed");
     program.add_argument("-v", "--version")
         .action([&](const auto&) {cout << print_version(); exit(EXIT_SUCCESS);})
         .flag()
         .help("Print version and exit");
-    add_arg("--mode", mode , fc_int, R"delimiter(0=integer counting,
+    add_arg("--mode", mode , R"delimiter(0=integer counting,
 1=weighted counting over the rationals,
 2=complex rational numbers,
 3=multivariate polynomials over the rational field,
@@ -187,14 +185,14 @@ void add_ganak_options()
 7=mpfr floating point real numbers (see --mpfrprec),
 13=multivariate Laurent polynomials over the rational field (see --npolyvars)
 )delimiter");
-    add_arg("--prime", prime_field, fc_int, "Prime for prime field counting");
-    add_arg("--npolyvars", poly_nvars, fc_int, "Number of variables in the polynomial field");
-    add_arg("--delta", conf.delta, fc_double, "Delta");
-    /* add_arg("--breakid", do_breakid, fc_int, "Enable BreakID"); */
-    add_arg("--appmct", conf.appmc_timeout, fc_double, "after K seconds");
-    add_arg("--epsilon", conf.appmc_epsilon, fc_double, "AppMC epsilon");
-    add_arg("--chronobt", conf.do_chronobt, fc_int, "ChronoBT. SAT must be DISABLED or this will fail");
-    add_arg("--prob", conf.do_probabilistic_hashing, fc_int, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
+    add_arg("--prime", prime_field, "Prime for prime field counting");
+    add_arg("--npolyvars", poly_nvars, "Number of variables in the polynomial field");
+    add_arg("--delta", conf.delta, "Delta");
+    /* add_arg("--breakid", do_breakid, "Enable BreakID"); */
+    add_arg("--appmct", conf.appmc_timeout, "after K seconds");
+    add_arg("--epsilon", conf.appmc_epsilon, "AppMC epsilon");
+    add_arg("--chronobt", conf.do_chronobt, "ChronoBT. SAT must be DISABLED or this will fail");
+    add_arg("--prob", conf.do_probabilistic_hashing, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
     program.add_argument("--fast")
         .action([&](const auto&) {
           arjun_cms_glob_mult = 0.1;
@@ -205,155 +203,155 @@ void add_ganak_options()
         .help("Optimize for quick/easy instances (<5 mins)");
 
     // d-DNNF compilation
-    add_arg("--compile", conf.compile_fname, fc_string, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
+    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
 
     // Arjun options
-    add_arg("--arjun", do_arjun, fc_int, "Use arjun");
-    add_arg("--arjunverb", arjun_verb, fc_int, "Arjun verb");
-    add_arg("--arjungates", arjun_gates, fc_int, "Use arjun's gate detection");
-    add_arg("--arjunextend", etof_conf.do_extend_indep, fc_int, "Extend indep via Arjun's extend system");
-    add_arg("--prebackbone", do_pre_backbone, fc_int, "Perform backbone before other things");
-    add_arg("--puura", do_puura, fc_int, "Run Puura");
-    add_arg("--puurabackbone", simp_conf.do_backbone_puura, fc_int, "Perform backbone in Puura");
-    add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, fc_int, "Max conflicts for backbone in Puura (-1 = unlimited)");
-    add_arg("--puuraautarky", etof_conf.do_autarky, fc_int, "Do autarky in Puura");
-    add_arg("--arjuniter1", simp_conf.iter1, fc_int, "Arjun's iter1");
-    add_arg("--arjuniter2", simp_conf.iter2, fc_int, "Arjun's iter2");
-    add_arg("--arjunprobe", do_probe_based, fc_int, "Probe based arjun");
-    add_arg("--arjunsimplev", arjun_simp_level, fc_int, "Arjun simp level");
-    add_arg("--arjunbackwmaxc", arjun_backw_maxc, fc_int, "Arjun backw max confl");
-    add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, fc_int, "Arjun's oracle should find bins or not");
-    add_arg("--arjunoraclemult", simp_conf.oracle_mult, fc_double, "Multiplier for Arjun's oracle timeout when it is called from Puura");
-    add_arg("--puuraoraclevivif", simp_conf.oracle_vivify, fc_int, "Run Puura's main oracle vivification pass");
-    add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, fc_int, "Run Puura's main oracle sparsification pass");
-    add_arg("--puurabve", simp_conf.do_bve, fc_int, "Run BVE in Puura");
-    add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, fc_int, "Puura BVE max resolvent size in literals. -1 == no limit");
-    add_arg("--bveresolvmaxsz2", simp_conf.bve_too_large_resolvent2, fc_int, "Like --bveresolvmaxsz, for the 2nd elim pass");
-    add_arg("--xorgatemaxsize", simp_conf.xor_gate_find_maxsize, fc_int, "Max clause size for XOR-gate finding");
-    add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, fc_int, "Puura BVE growth allowance iter1");
-    add_arg("--iter2grow", simp_conf.bve_grow_iter2, fc_int, "Puura BVE growth allowance iter2");
-    add_arg("--iter2growlarge", simp_conf.bve_grow_iter2_large, fc_int, "If >= 0: used instead of --iter2grow when more than --iter2growlargevars vars are left before iter2");
-    add_arg("--iter2growlargevars", simp_conf.bve_grow_iter2_large_vars, fc_int, "Vars-left threshold for --iter2growlarge");
-    add_arg("--bveocclim", simp_conf.bve_occ_cutoff, fc_int, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
-    add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, fc_int, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
-    add_arg("--distillremlevel", simp_conf.distill_rem_level, fc_int, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");
-    add_arg("--extraoracle", simp_conf.oracle_extra, fc_int, "Extra oracle at the end of puura");
-    add_arg("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, fc_int, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
-    add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, fc_int, "Arjun's oracle should get learnts");
-    add_arg("--arjundebugcnf", debug_arjun_cnf, fc_string, "Write debug arjun CNF into this file");
-    add_arg("--arjuncmsmult", arjun_cms_glob_mult, fc_double,  "Pass this multiplier to CMSat through Arjun");
-    add_arg("--arjunsamplcutoff", arjun_further_min_cutoff, fc_int,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
-    add_arg("--arjunextendccnr", arjun_extend_ccnr, fc_int,  "Filter extend of ccnr gates via CCNR mems, in the millions");
-    add_arg("--arjunweakenlim", simp_conf.weaken_limit, fc_int,  "Arjun's weaken limitation");
+    add_arg("--arjun", do_arjun, "Use arjun");
+    add_arg("--arjunverb", arjun_verb, "Arjun verb");
+    add_arg("--arjungates", arjun_gates, "Use arjun's gate detection");
+    add_arg("--arjunextend", etof_conf.do_extend_indep, "Extend indep via Arjun's extend system");
+    add_arg("--prebackbone", do_pre_backbone, "Perform backbone before other things");
+    add_arg("--puura", do_puura, "Run Puura");
+    add_arg("--puurabackbone", simp_conf.do_backbone_puura, "Perform backbone in Puura");
+    add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, "Max conflicts for backbone in Puura (-1 = unlimited)");
+    add_arg("--puuraautarky", etof_conf.do_autarky, "Do autarky in Puura");
+    add_arg("--arjuniter1", simp_conf.iter1, "Arjun's iter1");
+    add_arg("--arjuniter2", simp_conf.iter2, "Arjun's iter2");
+    add_arg("--arjunprobe", do_probe_based, "Probe based arjun");
+    add_arg("--arjunsimplev", arjun_simp_level, "Arjun simp level");
+    add_arg("--arjunbackwmaxc", arjun_backw_maxc, "Arjun backw max confl");
+    add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, "Arjun's oracle should find bins or not");
+    add_arg("--arjunoraclemult", simp_conf.oracle_mult, "Multiplier for Arjun's oracle timeout when it is called from Puura");
+    add_arg("--puuraoraclevivif", simp_conf.oracle_vivify, "Run Puura's main oracle vivification pass");
+    add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, "Run Puura's main oracle sparsification pass");
+    add_arg("--puurabve", simp_conf.do_bve, "Run BVE in Puura");
+    add_arg("--bveresolvmaxsz", simp_conf.bve_too_large_resolvent, "Puura BVE max resolvent size in literals. -1 == no limit");
+    add_arg("--bveresolvmaxsz2", simp_conf.bve_too_large_resolvent2, "Like --bveresolvmaxsz, for the 2nd elim pass");
+    add_arg("--xorgatemaxsize", simp_conf.xor_gate_find_maxsize, "Max clause size for XOR-gate finding");
+    add_arg("--bvegrowiter1", simp_conf.bve_grow_iter1, "Puura BVE growth allowance iter1");
+    add_arg("--iter2grow", simp_conf.bve_grow_iter2, "Puura BVE growth allowance iter2");
+    add_arg("--iter2growlarge", simp_conf.bve_grow_iter2_large, "If >= 0: used instead of --iter2grow when more than --iter2growlargevars vars are left before iter2");
+    add_arg("--iter2growlargevars", simp_conf.bve_grow_iter2_large_vars, "Vars-left threshold for --iter2growlarge");
+    add_arg("--bveocclim", simp_conf.bve_occ_cutoff, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
+    add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
+    add_arg("--distillremlevel", simp_conf.distill_rem_level, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");
+    add_arg("--extraoracle", simp_conf.oracle_extra, "Extra oracle at the end of puura");
+    add_arg("--resolvsub", simp_conf.do_subs_with_resolvent_clauses, "Sets relevant CMS option: subsume other clauses with resolvent clauses");
+    add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, "Arjun's oracle should get learnts");
+    add_arg("--arjundebugcnf", debug_arjun_cnf, "Write debug arjun CNF into this file");
+    add_arg("--arjuncmsmult", arjun_cms_glob_mult,  "Pass this multiplier to CMSat through Arjun");
+    add_arg("--arjunsamplcutoff", arjun_further_min_cutoff,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
+    add_arg("--arjunextendccnr", arjun_extend_ccnr,  "Filter extend of ccnr gates via CCNR mems, in the millions");
+    add_arg("--arjunweakenlim", simp_conf.weaken_limit,  "Arjun's weaken limitation");
 
     // TD options
-    add_arg("--td", conf.do_td, fc_int, "Run TD decompose");
-    add_arg("--tdmaxw", conf.td_maxweight, fc_double, "TD max weight");
-    add_arg("--tdminw", conf.td_minweight, fc_double, "TD min weight");
-    add_arg("--tddiv", conf.td_divider, fc_double, "TD divider");
-    add_arg("--tdexpmult", conf.td_exp_mult, fc_double, "TD exponential multiplier");
-    add_arg("--tditers", conf.td_iters, fc_int, "TD flowcutter iterations (restarts)");
-    add_arg("--tdsteps", conf.td_steps, fc_int, "TD flowcutter number of steps at most");
-    add_arg("--tdbandpct", conf.td_band_pct, fc_int, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");
-    add_arg("--tdflatpct", conf.td_flat_pct, fc_int, "TD: if the TD's width is at least this % of the graph's nodes, the graph is too dense for the TD to say anything, and it does not guide the branching. 0 = off");
-    add_arg("--tdsepwpct", conf.td_sep_weight_pct, fc_int, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
-    add_arg("--tdsplitwpct", conf.td_split_weight_pct, fc_int, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
-    add_arg("--tddensepct", conf.td_dense_pct, fc_int, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does. 100 = never");
-    add_arg("--tdlook", conf.td_lookahead, fc_int, "-1 means never");
-    add_arg("--tdlooktwcut", conf.td_lookahead_tw_cutoff, fc_int, "TD lookahead only when TW of current comp is larger than this value");
-    add_arg("--tdlookiters", conf.td_lookahead_iters, fc_int, "TD lookahead iterations");
-    add_arg("--tdcontract", conf.do_td_contract, fc_int, "TD contract over opt indep set");
-    add_arg("--tdlimit", conf.td_limit, fc_int, "If TD is over this, reduce weight to 0.1");
-    add_arg("--tdoptindep", conf.do_td_use_opt_indep, fc_int, "Use opt indep for TD computation");
-    add_arg("--tdmaxdensity", conf.td_max_density, fc_double, "Max density for TD computation");
-    add_arg("--tdmaxedgeratio", conf.td_max_edge_var_ratio, fc_int, "Max edge to var ratio for TD computation");
-    add_arg("--tduseadj", conf.td_do_use_adj, fc_int, "TD should use adjacency matrix for computing TD scores");
-    add_arg("--tdreadfile", conf.td_read_file, fc_string, "Read TD scores from this file");
-    add_arg("--tdvis", conf.td_visualize_dot_file, fc_string, "Visualize the TD into this file in DOT format");
-    add_arg("--tddumpcnf", conf.td_dump_cnf_file, fc_string, "Dump the CNF used to build the primal graph for TD computation, one DIMACS file per component: FILE.0, FILE.1, ...");
+    add_arg("--td", conf.do_td, "Run TD decompose");
+    add_arg("--tdmaxw", conf.td_maxweight, "TD max weight");
+    add_arg("--tdminw", conf.td_minweight, "TD min weight");
+    add_arg("--tddiv", conf.td_divider, "TD divider");
+    add_arg("--tdexpmult", conf.td_exp_mult, "TD exponential multiplier");
+    add_arg("--tditers", conf.td_iters, "TD flowcutter iterations (restarts)");
+    add_arg("--tdsteps", conf.td_steps, "TD flowcutter number of steps at most");
+    add_arg("--tdbandpct", conf.td_band_pct, "TD: a candidate up to this % wider than the narrowest TD seen can still win, by splitting better");
+    add_arg("--tdflatpct", conf.td_flat_pct, "TD: if the TD's width is at least this % of the graph's nodes, the graph is too dense for the TD to say anything, and it does not guide the branching. 0 = off");
+    add_arg("--tdsepwpct", conf.td_sep_weight_pct, "TD: within one level of the TD, prefer vars that do more separating work (small adhesion in front of a large subtree). In % of one TD level. 0 = off");
+    add_arg("--tdsplitwpct", conf.td_split_weight_pct, "TD: scale the TD branching weight by how well the TD splits the graph, by up to this %. 0 = off");
+    add_arg("--tddensepct", conf.td_dense_pct, "TD: the split only decides when the width is over this % of the graph's nodes, below it the width alone does. 100 = never");
+    add_arg("--tdlook", conf.td_lookahead, "-1 means never");
+    add_arg("--tdlooktwcut", conf.td_lookahead_tw_cutoff, "TD lookahead only when TW of current comp is larger than this value");
+    add_arg("--tdlookiters", conf.td_lookahead_iters, "TD lookahead iterations");
+    add_arg("--tdcontract", conf.do_td_contract, "TD contract over opt indep set");
+    add_arg("--tdlimit", conf.td_limit, "If TD is over this, reduce weight to 0.1");
+    add_arg("--tdoptindep", conf.do_td_use_opt_indep, "Use opt indep for TD computation");
+    add_arg("--tdmaxdensity", conf.td_max_density, "Max density for TD computation");
+    add_arg("--tdmaxedgeratio", conf.td_max_edge_var_ratio, "Max edge to var ratio for TD computation");
+    add_arg("--tduseadj", conf.td_do_use_adj, "TD should use adjacency matrix for computing TD scores");
+    add_arg("--tdreadfile", conf.td_read_file, "Read TD scores from this file");
+    add_arg("--tdvis", conf.td_visualize_dot_file, "Visualize the TD into this file in DOT format");
+    add_arg("--tddumpcnf", conf.td_dump_cnf_file, "Dump the CNF used to build the primal graph for TD computation, one DIMACS file per component: FILE.0, FILE.1, ...");
 
     // Clause DB options
-    add_arg("--rdbclstarget", conf.rdb_cls_target, fc_int, "RDB clauses target size (added to this are LBD 3 or lower)");
-    add_arg("--rdbeveryn", conf.reduce_db_everyN, fc_int, "Reduce the clause DB every N conflicts");
-    add_arg("--rdbkeepused", conf.rdb_keep_used, fc_int, "RDB keeps clauses that are used");
-    add_arg("--consolidateeveryn", conf.consolidate_every_n, fc_int, "Consolidate memory after every N learnt clause");
-    add_arg("--lbd", conf.base_lbd_cutoff, fc_int, "Initial LBD cutoff");
-    add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, fc_int, "Update lbd cutoff");
+    add_arg("--rdbclstarget", conf.rdb_cls_target, "RDB clauses target size (added to this are LBD 3 or lower)");
+    add_arg("--rdbeveryn", conf.reduce_db_everyN, "Reduce the clause DB every N conflicts");
+    add_arg("--rdbkeepused", conf.rdb_keep_used, "RDB keeps clauses that are used");
+    add_arg("--consolidateeveryn", conf.consolidate_every_n, "Consolidate memory after every N learnt clause");
+    add_arg("--lbd", conf.base_lbd_cutoff, "Initial LBD cutoff");
+    add_arg("--updatelbdcutoff", conf.do_update_lbd_cutoff, "Update lbd cutoff");
 
     // Decision options
-    add_arg("--polar", conf.polar_type, fc_int, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
-    add_arg("--decide", conf.decide, fc_int, "ignore or not ignore TD");
-    add_arg("--initact", conf.do_init_activity_scores, fc_int, "Init activity scores to var freq");
-    add_arg("--vsadsadjust", conf.vsads_readjust_every, fc_int, "VSADS ajust activity every N");
-    add_arg("--actscorediv", conf.act_score_divisor, fc_double, "Activity score divisor");
-    add_arg("--freqscorediv", conf.freq_score_divisor, fc_double, "Component frequency score divisor");
+    add_arg("--polar", conf.polar_type, "0=standard_polarity, 1=polar cache, 2=false, 3=true");
+    add_arg("--decide", conf.decide, "ignore or not ignore TD");
+    add_arg("--initact", conf.do_init_activity_scores, "Init activity scores to var freq");
+    add_arg("--vsadsadjust", conf.vsads_readjust_every, "VSADS ajust activity every N");
+    add_arg("--actscorediv", conf.act_score_divisor, "Activity score divisor");
+    add_arg("--freqscorediv", conf.freq_score_divisor, "Component frequency score divisor");
 
     // Cache options
-    add_arg("--cache", conf.do_use_cache, fc_int, "Use (i.e. store and retrieve) cache");
-    add_arg("--maxcache", conf.maximum_cache_size_MB, fc_int, "Max cache size in MB");
-    add_arg("--cachetime", conf.cache_time_update, fc_int, "2 = set to mid-point");
-    add_arg("--lru", conf.lru_eviction, fc_int, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
+    add_arg("--cache", conf.do_use_cache, "Use (i.e. store and retrieve) cache");
+    add_arg("--maxcache", conf.maximum_cache_size_MB, "Max cache size in MB");
+    add_arg("--cachetime", conf.cache_time_update, "2 = set to mid-point");
+    add_arg("--lru", conf.lru_eviction, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
     // BuDDy options
-    add_arg("--buddy", conf.do_buddy, fc_int, "Run BuDDy");
-    add_arg("--buddymaxcls", conf.buddy_max_cls, fc_int, "Run BuDDy");
+    add_arg("--buddy", conf.do_buddy, "Run BuDDy");
+    add_arg("--buddymaxcls", conf.buddy_max_cls, "Run BuDDy");
 
     // Shrinking options
-    add_arg("--shrink", conf.do_shrink, fc_int, "Block-wise secondary UIP shrinking (CaDiCaL-style)");
-    add_arg("--bumpreason", conf.do_bump_reason, fc_int, "Bump reason clause literals during conflict analysis (CaDiCaL-style)");
+    add_arg("--shrink", conf.do_shrink, "Block-wise secondary UIP shrinking (CaDiCaL-style)");
+    add_arg("--bumpreason", conf.do_bump_reason, "Bump reason clause literals during conflict analysis (CaDiCaL-style)");
 
     // Vivif options -- inprocessing during Ganak
-    add_arg("--vivif", conf.do_vivify, fc_int, "Vivify clauses");
-    add_arg("--vivifevery", conf.vivif_every, fc_int, "Vivify every N conflicts");
-    add_arg("--vivifmult", conf.vivif_mult, fc_double, "How much to multiply timeout for vivif");
-    add_arg("--vivifoutern", conf.vivif_outer_every_n, fc_int, "How many restarts between outer vivif");
-    add_arg("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, fc_int, "Total used vivif cutoff");
+    add_arg("--vivif", conf.do_vivify, "Vivify clauses");
+    add_arg("--vivifevery", conf.vivif_every, "Vivify every N conflicts");
+    add_arg("--vivifmult", conf.vivif_mult, "How much to multiply timeout for vivif");
+    add_arg("--vivifoutern", conf.vivif_outer_every_n, "How many restarts between outer vivif");
+    add_arg("--totusedcutoffvivif", conf.tot_used_cutoff_vivif, "Total used vivif cutoff");
 
     // SBVA options
-    add_arg("--sbvasteps", etof_conf.num_sbva_steps, fc_int, "SBVA steps. 0 = no SBVA");
-    add_arg("--sbvaclcut", etof_conf.sbva_cls_cutoff, fc_int, "SBVA cls cutoff");
-    add_arg("--sbvalitcut", etof_conf.sbva_lits_cutoff, fc_int, "SBVA lits cutoff");
-    add_arg("--sbvabreak", etof_conf.sbva_tiebreak, fc_int, "1 = sbva");
-    add_arg("--sbvamaxnewvars", etof_conf.sbva_max_new_vars, fc_int, "Max number of new variables SBVA may add. 0 = no limit");
+    add_arg("--sbvasteps", etof_conf.num_sbva_steps, "SBVA steps. 0 = no SBVA");
+    add_arg("--sbvaclcut", etof_conf.sbva_cls_cutoff, "SBVA cls cutoff");
+    add_arg("--sbvalitcut", etof_conf.sbva_lits_cutoff, "SBVA lits cutoff");
+    add_arg("--sbvabreak", etof_conf.sbva_tiebreak, "1 = sbva");
+    add_arg("--sbvamaxnewvars", etof_conf.sbva_max_new_vars, "Max number of new variables SBVA may add. 0 = no limit");
 
     // SAT solver options
-    add_arg("--satsolver", conf.do_use_sat_solver, fc_int, "Use SAT solver when all minimal indep set has been set");
-    add_arg("--satrst", conf.do_sat_restart, fc_int, "Inside SAT solver, perform restarts");
-    add_arg("--satrstmult", conf.sat_restart_mult, fc_int, "SAT restart multiplier");
-    add_arg("--satpolarcache", conf.do_sat_polar_cache, fc_int, "Inside SAT solver, use polarity cache");
-    add_arg("--satvsids", conf.do_sat_vsids, fc_int, "Inside SAT solver, use VSIDS, not VSADS");
+    add_arg("--satsolver", conf.do_use_sat_solver, "Use SAT solver when all minimal indep set has been set");
+    add_arg("--satrst", conf.do_sat_restart, "Inside SAT solver, perform restarts");
+    add_arg("--satrstmult", conf.sat_restart_mult, "SAT restart multiplier");
+    add_arg("--satpolarcache", conf.do_sat_polar_cache, "Inside SAT solver, use polarity cache");
+    add_arg("--satvsids", conf.do_sat_vsids, "Inside SAT solver, use VSIDS, not VSADS");
 
     // Opt independent set options
-    add_arg("--allindep", etof_conf.all_indep, fc_int, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
-    add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, fc_int, "Max number of conflicts per extend operation in Arjun");
-    add_arg("--arjunextend", etof_conf.do_extend_indep, fc_int, "Max number of conflicts per extend operation in Arjun");
-    add_arg("--stripoptindep", strip_opt_indep, fc_int, "Strip optional indep support");
+    add_arg("--allindep", etof_conf.all_indep, "All variables can be made part of the indepedent support. Indep support is given ONLY to help the solver.");
+    add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, "Max number of conflicts per extend operation in Arjun");
+    add_arg("--arjunextend", etof_conf.do_extend_indep, "Max number of conflicts per extend operation in Arjun");
+    add_arg("--stripoptindep", strip_opt_indep, "Strip optional indep support");
 
     // Analyze candidates options
-    add_arg("--analyzecand", conf.analyze_cand_update, fc_int, "Update analyze candidates if more than N vars are still undecided from opt indep set");
+    add_arg("--analyzecand", conf.analyze_cand_update, "Update analyze candidates if more than N vars are still undecided from opt indep set");
 
     // Restart options
-    add_arg("--rstfirst", conf.first_restart, fc_int, "Run restarts");
-    add_arg("--restart", conf.do_restart, fc_int, "Run restarts");
-    add_arg("--rsttype", conf.restart_type, fc_int, "Check count at every step");
-    add_arg("--rstcheckcnt", conf.do_cube_check_count, fc_int, "Check the count of each cube. 1 = use ganak itself without restart. 2 = use CMS one-by-one counting");
-    add_arg("--rstreadjust", conf.do_readjust_for_restart, fc_int, "Readjust params for restart");
-    add_arg("--maxrst", conf.max_num_rst, fc_int, "Max number of restarts");
-    add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart, fc_int,  "Max number of cubes per restart");
-    add_arg("--extendcubes", conf.do_extend_cubes, fc_int,  "Extend cubes");
-    add_arg("--cuberesolve", conf.do_cube_resolve, fc_int, "Resolution-merge cubes that differ in exactly one blocking literal");
-    add_arg("--cubeflp", conf.do_cube_flp, fc_int, "Failed-literal probing to remove forced blocking literals from cubes");
-    add_arg("--smallcubedisable", conf.do_small_cube_disable, fc_int, "Disable cubes beyond max-num-cubes-per-restart (sorted by LBD)");
-    add_arg("--tdwrstdecay", conf.td_weight_restart_decay, fc_double, "Multiply td_weight by this after each restart (1.0=no decay, 0.5=halve)");
+    add_arg("--rstfirst", conf.first_restart, "Run restarts");
+    add_arg("--restart", conf.do_restart, "Run restarts");
+    add_arg("--rsttype", conf.restart_type, "Check count at every step");
+    add_arg("--rstcheckcnt", conf.do_cube_check_count, "Check the count of each cube. 1 = use ganak itself without restart. 2 = use CMS one-by-one counting");
+    add_arg("--rstreadjust", conf.do_readjust_for_restart, "Readjust params for restart");
+    add_arg("--maxrst", conf.max_num_rst, "Max number of restarts");
+    add_arg("--maxcubesperrst", conf.max_num_cubes_per_restart,  "Max number of cubes per restart");
+    add_arg("--extendcubes", conf.do_extend_cubes,  "Extend cubes");
+    add_arg("--cuberesolve", conf.do_cube_resolve, "Resolution-merge cubes that differ in exactly one blocking literal");
+    add_arg("--cubeflp", conf.do_cube_flp, "Failed-literal probing to remove forced blocking literals from cubes");
+    add_arg("--smallcubedisable", conf.do_small_cube_disable, "Disable cubes beyond max-num-cubes-per-restart (sorted by LBD)");
+    add_arg("--tdwrstdecay", conf.td_weight_restart_decay, "Multiply td_weight by this after each restart (1.0=no decay, 0.5=halve)");
 
     // Multi-threading options
-    add_arg("--threads", num_threads, fc_int, "Number of threads to use. -1 = all available cores");
-    add_arg("--bitsjobs", bits_jobs, fc_int, "Number of variables to multi-thread on (8 = 256 jobs)");
-    add_arg("--debugthreads", debug_threads, fc_int, "Debug threads -- use thread system, even though only one thread is allowed");
+    add_arg("--threads", num_threads, "Number of threads to use. -1 = all available cores");
+    add_arg("--bitsjobs", bits_jobs, "Number of variables to multi-thread on (8 = 256 jobs)");
+    add_arg("--debugthreads", debug_threads, "Debug threads -- use thread system, even though only one thread is allowed");
     program.add_argument("inputfile").remaining().help("input CNF");
 
     // Minor options
-    add_arg("--mpfrprec", mpfr_precision, fc_int, "MPFR precision in bits");
+    add_arg("--mpfrprec", mpfr_precision, "MPFR precision in bits");
 }
 
 void parse_supported_options(int argc, char** argv) {

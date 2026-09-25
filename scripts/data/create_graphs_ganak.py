@@ -2305,7 +2305,7 @@ only_dirs = [
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 
     # final MCC
-    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
                                       # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
     # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
@@ -2325,6 +2325,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-2359115-0",
     # "out-ganak-mccomp2324-2362983-0",
     "out-ganak-mccomp2324-2366186-3",
+    "out-ganak-mccomp2324-2423773-0", # significantly changed CMS
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

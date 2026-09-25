@@ -242,9 +242,9 @@ def parse_ganak_output(fname):
                 if len(comps) == 1 and comps[0].get("pre"):
                     comps.clear()
                 comps.append({})
-            elif line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
+            elif line.startswith("c o conflicts ") and line.split()[3] == ":":  # cryptominisat style
                 comp()["conflicts"] = int(line.split()[4])
-            elif line.startswith("c o conflicts"):
+            elif line.startswith("c o conflicts ") and line.split()[3].isdigit():
                 comp()["conflicts"] = int(line.split()[3])
             elif line.startswith("c o decisions K"):
                 comp()["decisionsK"] = int(line.split()[4])

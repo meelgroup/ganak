@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include <gmpxx.h>
 #include <mpfr.h>
 #include <charconv>
+#include <random>
 #include <type_traits>
 /* #include <breakid/breakid.hpp> */
 #include <arjun/arjun.h>
@@ -126,6 +127,10 @@ ArjunNS::SimpConf simp_conf;
 string debug_arjun_cnf;
 int arjun_oracle_find_bins = 6;
 double arjun_cms_glob_mult = -1.0;
+int arjun_cms_abs_budget = 1;
+double arjun_cms_abs_budget_mult = 1.0;
+int arjun_cms_distill_bin_single = 1;
+int arjun_cms_sweep = 0;
 int do_puura = 1;
 bool disconnected_allowed = false;
 uint32_t arjun_further_min_cutoff = 10;
@@ -133,6 +138,7 @@ int arjun_extend_ccnr = 0;
 int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
+uint32_t shuffle_vars_seed = 0;
 FG fg = nullptr;
 
 // threads
@@ -240,6 +246,10 @@ void add_ganak_options()
     add_arg("--arjunoraclegetlearnt", simp_conf.oracle_vivify_get_learnts, "Arjun's oracle should get learnts");
     add_arg("--arjundebugcnf", debug_arjun_cnf, "Write debug arjun CNF into this file");
     add_arg("--arjuncmsmult", arjun_cms_glob_mult,  "Pass this multiplier to CMSat through Arjun");
+    add_arg("--arjuncmsabsbudget", arjun_cms_abs_budget, "CMSat inside Arjun: absolute intree/distill budgets instead of search-relative ones");
+    add_arg("--arjuncmsabsbudgetmult", arjun_cms_abs_budget_mult, "CMSat inside Arjun: multiply the absolute intree/distill budgets by this");
+    add_arg("--arjuncmsdistillbinsingle", arjun_cms_distill_bin_single, "CMSat inside Arjun: distill each binary clause with its own propagation");
+    add_arg("--arjuncmssweep", arjun_cms_sweep, "CMSat inside Arjun: SAT sweeping (occ-sweep)");
     add_arg("--arjunsamplcutoff", arjun_further_min_cutoff,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     add_arg("--arjunextendccnr", arjun_extend_ccnr,  "Filter extend of ccnr gates via CCNR mems, in the millions");
     add_arg("--arjunweakenlim", simp_conf.weaken_limit,  "Arjun's weaken limitation");
@@ -326,6 +336,7 @@ void add_ganak_options()
     add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, "Max number of conflicts per extend operation in Arjun");
     add_arg("--arjunextend", etof_conf.do_extend_indep, "Max number of conflicts per extend operation in Arjun");
     add_arg("--stripoptindep", strip_opt_indep, "Strip optional indep support");
+    add_arg("--shufflevars", shuffle_vars_seed, "After Arjun, randomly renumber vars (within the no-touch/indep/opt-indep/rest blocks) and shuffle clause order, with this seed. The count is unchanged: measures how much solve time depends on presentation. 0 = off");
 
     // Analyze candidates options
     add_arg("--analyzecand", conf.analyze_cand_update, "Update analyze candidates if more than N vars are still undecided from opt indep set");
@@ -430,6 +441,31 @@ void print_vars(vector<uint32_t> vars) {
   for(const auto& v: vars) cout << v+1 << " ";
 }
 
+// Ganak expects no-touch vars, then indep, then opt-indep, then the rest: permute within each
+static void shuffle_vars(ArjunNS::SimplifiedCNF& cnf, uint32_t seed) {
+  std::mt19937 rnd(seed);
+  const uint32_t nv = cnf.nVars();
+  std::vector<int> cls(nv, 3);
+  for(const auto& v: cnf.get_opt_sampl_vars()) cls[v] = 2;
+  for(const auto& v: cnf.get_sampl_vars()) cls[v] = 1;
+  for(const auto& v: cnf.get_no_touch_cur()) cls[v] = 0;
+  std::vector<uint32_t> map_here_to_there(nv);
+  for(int c = 0; c <= 3; c++) {
+    std::vector<uint32_t> vs;
+    for(uint32_t v = 0; v < nv; v++) if (cls[v] == c) vs.push_back(v);
+    auto to = vs;
+    if (c != 0) std::shuffle(to.begin(), to.end(), rnd);
+    for(size_t i = 0; i < vs.size(); i++) map_here_to_there[vs[i]] = to[i];
+  }
+  cnf.renumber_vars(map_here_to_there, nv);
+  auto irred = cnf.get_clauses();
+  auto red = cnf.get_red_clauses();
+  std::shuffle(irred.begin(), irred.end(), rnd);
+  std::shuffle(red.begin(), red.end(), rnd);
+  cnf.set_all_clauses(std::move(irred), std::move(red));
+  verb_print(1, "[shuffle] renumbered " << nv << " vars and shuffled clauses, seed " << seed);
+}
+
 void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   double const my_time = cpu_time();
   uint64_t lits_before = 0;
@@ -448,6 +484,10 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_backw_max_confl(arjun_backw_maxc);
   arjun.set_oracle_find_bins(arjun_oracle_find_bins);
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
+  arjun.set_cms_abs_budget(arjun_cms_abs_budget);
+  arjun.set_cms_abs_budget_mult(arjun_cms_abs_budget_mult);
+  arjun.set_cms_distill_bin_single(arjun_cms_distill_bin_single);
+  arjun.set_cms_sweep(arjun_cms_sweep);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
@@ -759,6 +799,7 @@ int main(int argc, char *argv[]) {
   } else run_arjun(cnf);
   cnf.remove_equiv_weights();
   if (strip_opt_indep) cnf.strip_opt_sampling_vars();
+  if (shuffle_vars_seed) shuffle_vars(cnf, shuffle_vars_seed);
   if (conf.verb >= 2) {
     cout << "c o sampl_vars: "; print_vars(cnf.get_sampl_vars()); cout << endl;
     if (cnf.get_opt_sampl_vars_set()) {

@@ -131,6 +131,7 @@ int arjun_cms_abs_budget = 1;
 double arjun_cms_abs_budget_mult = 1.0;
 int arjun_cms_distill_bin_single = 0;
 int arjun_cms_sweep = 0;
+int arjun_cms_congruence = 0;
 int do_puura = 1;
 bool disconnected_allowed = false;
 uint32_t arjun_further_min_cutoff = 10;
@@ -249,6 +250,7 @@ void add_ganak_options()
     add_arg("--arjuncmsabsbudget", arjun_cms_abs_budget, "CMSat inside Arjun: absolute intree/distill budgets instead of search-relative ones");
     add_arg("--arjuncmsabsbudgetmult", arjun_cms_abs_budget_mult, "CMSat inside Arjun: multiply the absolute intree/distill budgets by this");
     add_arg("--arjuncmsdistillbinsingle", arjun_cms_distill_bin_single, "CMSat inside Arjun: distill each binary clause with its own propagation");
+    add_arg("--arjuncmscongruence", arjun_cms_congruence, "CMSat inside Arjun: congruence closure over AND/XOR gates at the start of each Puura BVE round");
     add_arg("--arjuncmssweep", arjun_cms_sweep, "CMSat inside Arjun: SAT sweeping (occ-sweep). 0 = off, 1 = in CMS's default schedule (before BVE), 2 = once in Puura after its first BVE rounds");
     add_arg("--arjunsamplcutoff", arjun_further_min_cutoff,  "Only perform further arjun-based minimization in case the minimized indep support is larger or equal to this");
     add_arg("--arjunextendccnr", arjun_extend_ccnr,  "Filter extend of ccnr gates via CCNR mems, in the millions");
@@ -488,6 +490,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_abs_budget_mult(arjun_cms_abs_budget_mult);
   arjun.set_cms_distill_bin_single(arjun_cms_distill_bin_single);
   arjun.set_cms_sweep(arjun_cms_sweep);
+  arjun.set_cms_congruence(arjun_cms_congruence);
   if (do_pre_backbone) arjun.standalone_backbone(cnf);
   arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);

@@ -50,6 +50,18 @@ def get_versions():
     return vers
 
 
+def dirs_from_args(names):
+    all_dirs = get_matching_dirs([])
+    out = []
+    for n in names:
+        hits = [d for d in all_dirs if d.startswith(n)] or [d for d in all_dirs if n in d]
+        if not hits:
+            print(f"ERROR: no run dir matches '{n}'")
+            exit(-1)
+        out.extend(hits)
+    return out
+
+
 def get_matching_dirs(only_dirs):
     """Return all dirnames from DB prefixed by any entry in only_dirs.
     Returns all dirnames if only_dirs is empty."""
@@ -2325,8 +2337,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-2359115-0",
     # "out-ganak-mccomp2324-2362983-0",
     "out-ganak-mccomp2324-2366186-3",
-    "out-ganak-mccomp2324-2423773-0", # significantly changed CMS
-    "out-ganak-mccomp2324-2425144-", # fixing up ganak after CMS change. missing -4
+    # "out-ganak-mccomp2324-2423773-0", # significantly changed CMS
+    # "out-ganak-mccomp2324-2425144-", # fixing up ganak after CMS change. missing -4
+    "out-ganak-mccomp2324-2449947-", # fixing up ganak after CMS change + congruence closure
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2371,6 +2384,8 @@ def main():
                         help="Don't print distributions of metrics")
     parser.add_argument("--cdf", action="store_true",
                         help="ONLY generate the PAR2/solved summary table and the CDF graph; skip everything else")
+    parser.add_argument("dirs", nargs="*", metavar="DIR",
+                        help="Only these run dirs instead of the only_dirs list: a dirname prefix, or any substring of one, e.g. 2449947-4")
     args = parser.parse_args()
 
     os.makedirs(TMP_DIR, exist_ok=True)
@@ -2381,7 +2396,7 @@ def main():
     else:
         fname_like = ""
 
-    matched_dirs = get_matching_dirs(only_dirs)
+    matched_dirs = get_matching_dirs(dirs_from_args(args.dirs) if args.dirs else only_dirs)
     if args.verbose:
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")

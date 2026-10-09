@@ -242,9 +242,9 @@ def parse_ganak_output(fname):
                 if len(comps) == 1 and comps[0].get("pre"):
                     comps.clear()
                 comps.append({})
-            elif line.startswith("c o conflicts") and " :" in line:  # cryptominisat style
+            elif line.startswith("c o conflicts ") and line.split()[3] == ":":  # cryptominisat style
                 comp()["conflicts"] = int(line.split()[4])
-            elif line.startswith("c o conflicts"):
+            elif line.startswith("c o conflicts ") and line.split()[3].isdigit():
                 comp()["conflicts"] = int(line.split()[3])
             elif line.startswith("c o decisions K"):
                 comp()["decisionsK"] = int(line.split()[4])
@@ -290,6 +290,21 @@ def parse_ganak_output(fname):
                 result["backboneT"] = result.get("backboneT", 0) + float(line.split()[2])
             elif line.startswith("c o Arjun T:"):
                 result["arjuntime"] = float(line.split()[4])
+            elif line.startswith("c o [congruence] gates"):
+                w = line.split()
+                val = lambda k: w[w.index(k) + 1]
+                if "cong_calls" not in result:
+                    result["cong_and"] = int(val("and:"))
+                    result["cong_xor"] = int(val("xor:"))
+                result["cong_calls"] = result.get("cong_calls", 0) + 1
+                result["cong_merged"] = result.get("cong_merged", 0) + int(val("merged:"))
+                result["cong_units"] = result.get("cong_units", 0) + int(val("units:"))
+                result["cong_time"] = result.get("cong_time", 0) + float(val("T:"))
+            elif "[autarky] Found autarkies:" in line:
+                w = line.split()
+                if "autarky_vars" not in result:
+                    result["autarky_vars"] = int(w[w.index("vars:") + 1])
+                    result["autarky_time"] = float(w[w.index("T:") + 1])
             # Last one wins: newer treedecomp may accept a slightly wider TD
             # that splits better, older logs only ever printed narrower ones
             elif line.startswith("c o [td] iter") and "best bag" in line:
@@ -891,7 +906,15 @@ def main():
           irred_long INT,
           irred_tri INT,
           irred_cls INT,
-          mc_log10 FLOAT
+          mc_log10 FLOAT,
+          cong_calls INT,
+          cong_and INT,
+          cong_xor INT,
+          cong_merged INT,
+          cong_units INT,
+          cong_time FLOAT,
+          autarky_vars INT,
+          autarky_time FLOAT
         );
         CREATE TABLE IF NOT EXISTS preproc (
           dirname STRING NOT NULL,
@@ -1018,6 +1041,14 @@ def main():
             n(f.get("irred_tri", "")),
             n(f.get("irred_cls", "")),
             n(f.get("mc_log10", "")),
+            n(f.get("cong_calls", "")),
+            n(f.get("cong_and", "")),
+            n(f.get("cong_xor", "")),
+            n(f.get("cong_merged", "")),
+            n(f.get("cong_units", "")),
+            n(f.get("cong_time", "")),
+            n(f.get("autarky_vars", "")),
+            n(f.get("autarky_time", "")),
         ))
 
     # an older data.sqlite3 predates the td_* columns, add them rather than
@@ -1041,7 +1072,10 @@ def main():
                      ("br_td_flat_pct", "FLOAT"),
                      ("br_share_td", "FLOAT"),
                      ("br_share_act", "FLOAT"),
-                     ("br_share_freq", "FLOAT")):
+                     ("br_share_freq", "FLOAT"),
+                     ("cong_calls", "INT"), ("cong_and", "INT"), ("cong_xor", "INT"),
+                     ("cong_merged", "INT"), ("cong_units", "INT"), ("cong_time", "FLOAT"),
+                     ("autarky_vars", "INT"), ("autarky_time", "FLOAT")):
         if col not in have:
             conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
 
@@ -1063,7 +1097,8 @@ def main():
                "bdd_called", "sat_called", "sat_rst", "restarts", "cubes_orig",
                "cubes_final", "gates_extended", "gates_extend_t", "padoa_extended",
                "padoa_extend_t", "timeout_t", "irred_bin", "irred_long", "irred_tri",
-               "irred_cls", "mc_log10"]
+               "irred_cls", "mc_log10", "cong_calls", "cong_and", "cong_xor",
+               "cong_merged", "cong_units", "cong_time", "autarky_vars", "autarky_time"]
     assert sorted(ordered) == sorted(data_cols), (set(ordered) ^ set(data_cols))
     conn.executemany(
         "INSERT INTO data (" + ",".join(ordered) + ") VALUES ("

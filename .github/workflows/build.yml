@@ -55,14 +55,7 @@ jobs:
 
     - name: Install gmp for Mac
       if: contains(matrix.os, 'macos')
-      run: |
-        wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
-        tar xf gmp-6.3.0.tar.xz
-        cd gmp-6.3.0
-        ./configure --enable-static --enable-cxx --enable-shared --with-pic
-        make -j8
-        sudo make install
-        cd ..
+      run: brew install gmp
 
     - name: Install zlib for Mac dynamic
       if: contains(matrix.os, 'macos') && matrix.shared_libs == 'ON'
@@ -88,14 +81,7 @@ jobs:
 
     - name: Install mpfr for Mac
       if: contains(matrix.os, 'macos')
-      run: |
-        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
-        tar xf mpfr-4.2.1.tar.xz
-        cd mpfr-4.2.1
-        ./configure --enable-static --enable-cxx --enable-shared
-        make -j8
-        sudo make install
-        cd ..
+      run: brew install mpfr
 
     - name: Install dependencies for Linux
       if: contains(matrix.os, 'ubuntu')
@@ -107,7 +93,11 @@ jobs:
         wget https://github.com/flintlib/flint/releases/download/v3.2.0-rc1/flint-3.2.0-rc1.tar.gz
         tar xzf flint-3.2.0-rc1.tar.gz
         cd flint-3.2.0-rc1
-        ./configure --enable-static --enable-shared
+        if [ "$RUNNER_OS" = macOS ]; then
+          ./configure --enable-static --enable-shared --with-gmp=$(brew --prefix gmp) --with-mpfr=$(brew --prefix mpfr)
+        else
+          ./configure --enable-static --enable-shared
+        fi
         make -j8
         sudo make install
         cd ..

@@ -119,6 +119,7 @@ int arjun_gates = 1;
 /* int do_breakid = 0; */
 int arjun_extend_max_confl = 30000;
 int do_pre_backbone = 0;
+int64_t pre_backbone_max_confl = 20000;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
@@ -215,6 +216,7 @@ void add_ganak_options()
     add_arg("--arjungates", arjun_gates, "Use arjun's gate detection");
     add_arg("--arjunextend", etof_conf.do_extend_indep, "Extend indep via Arjun's extend system");
     add_arg("--prebackbone", do_pre_backbone, "Perform backbone before other things");
+    add_arg("--prebackbonemaxconfl", pre_backbone_max_confl, "Max conflicts for --prebackbone (-1 = unlimited)");
     add_arg("--puura", do_puura, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, "Perform backbone in Puura");
     add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, "Max conflicts for backbone in Puura (-1 = unlimited)");
@@ -482,7 +484,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   arjun.set_cms_abs_budget(arjun_cms_abs_budget);
   arjun.set_cms_sweep(arjun_cms_sweep);
-  if (do_pre_backbone) arjun.standalone_backbone(cnf);
+  if (do_pre_backbone) arjun.standalone_backbone(cnf, pre_backbone_max_confl);
   arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {

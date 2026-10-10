@@ -485,12 +485,21 @@ void CompCache<T>::test_descendantstree_consistency() {
 
 template<typename T>
 uint64_t CompCache<T>::calc_cutoff() const {
+  // The median of a fixed-stride sample: collecting every entry's time took
+  // 8 bytes per entry, a transient well above the cache budget.
+  constexpr uint64_t max_samples = 1ULL << 18;
   vector<uint64_t> scores;
-  // skip index 0 (dummy) and 1 (root formula, never deletable)
-  for (auto it = entry_base.begin() + 2; it != entry_base.end(); ++it)
-    if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
+  uint64_t stride = std::max<uint64_t>(1, entry_base.size() / max_samples);
+  while (true) {
+    // skip index 0 (dummy) and 1 (root formula, never deletable)
+    for (uint64_t id = 2; id < entry_base.size(); id += stride)
+      if (!entry_base[id].is_free() && entry_base[id].is_deletable())
+        scores.push_back(entry_base[id].last_used_time());
+    if (!scores.empty() || stride == 1) break;
+    stride = 1;
+  }
   if (scores.empty()) return 0;
-  verb_print(1, "deletable:           " << scores.size());
+  verb_print(1, "deletable sampled:   " << scores.size() << " stride: " << stride);
   const auto mid_idx = scores.size() / 2;
   std::nth_element(scores.begin(), scores.begin() + mid_idx, scores.end());
   return scores[mid_idx];

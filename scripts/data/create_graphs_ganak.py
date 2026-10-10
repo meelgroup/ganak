@@ -2340,6 +2340,7 @@ only_dirs = [
     # "out-ganak-mccomp2324-2423773-0", # significantly changed CMS
     # "out-ganak-mccomp2324-2425144-", # fixing up ganak after CMS change. missing -4
     "out-ganak-mccomp2324-2449947-0", # fixing up ganak after CMS change + congruence closure
+    "out-ganak-mccomp2324-2531742-" # after release, checking CCNR limitation + (limited) pre-cadiback
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

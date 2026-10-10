@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 #include <cryptominisat5/solvertypesmini.h>
+#include <arjun/arjun.h>
 #include <memory>
 
 class FPrime final : public CMSat::Field {
@@ -106,12 +107,8 @@ public:
     void set_zero() final { val = false; }
     void set_one() final { val = true; }
 
-    inline uint64_t helper(const mpz_class& v) const {
-      return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-    }
-
     uint64_t bytes_used() const final {
-      return sizeof(FPrime);
+      return ArjunNS::heap_bytes(sizeof(FPrime));
     }
 };
 
@@ -217,12 +214,8 @@ public:
     void set_zero() final { val = false; }
     void set_one() final { val = true; }
 
-    inline uint64_t helper(const mpz_class& v) const {
-      return v.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
-    }
-
     uint64_t bytes_used() const final {
-      return sizeof(val);
+      return ArjunNS::heap_bytes(sizeof(FParity));
     }
 };
 

@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "common.hpp"
 #include "comp.hpp"
 #include "hashval.hpp"
+#include <arjun/arjun.h>
 
 namespace GanakInt {
 
@@ -99,7 +100,7 @@ public:
   }
 
   uint64_t comp_bytes() const {
-    return data_size * sizeof(uint32_t);
+    return ArjunNS::heap_bytes(data_size * sizeof(uint32_t));
   }
 
   void set_free() {

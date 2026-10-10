@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <flint/fmpq_mpoly.h>
 #include <flint/mpoly_types.h>
 #include <cryptominisat5/solvertypesmini.h>
+#include <arjun/arjun.h>
 #include <memory>
 #include <cstdlib>
 #include <vector>
@@ -175,7 +176,7 @@ public:
   void set_one() final { fmpq_mpoly_one(val, ctx->ctx); }
 
   uint64_t bytes_used() const final {
-    return sizeof(FPoly) + fmpq_mpoly_length(val, ctx->ctx) * 100;
+    return ArjunNS::heap_bytes(sizeof(FPoly)) + fmpq_mpoly_length(val, ctx->ctx) * 100;
   }
 };
 
@@ -371,9 +372,9 @@ public:
   }
 
   uint64_t bytes_used() const final {
-    return sizeof(LaurentPoly)
+    return ArjunNS::heap_bytes(sizeof(LaurentPoly))
         + fmpq_mpoly_length(poly, ctx->ctx) * 100
-        + shift.size() * sizeof(slong);
+        + ArjunNS::heap_bytes(shift.capacity() * sizeof(slong));
   }
 
   // Display as: c1*z0^e0*z1^e1 + c2*z0^f0 - ...

@@ -239,6 +239,7 @@ void add_ganak_options()
     add_arg("--iter2growlarge", simp_conf.bve_grow_iter2_large, "If >= 0: used instead of --iter2grow when more than --iter2growlargevars vars are left before iter2");
     add_arg("--iter2growlargevars", simp_conf.bve_grow_iter2_large_vars, "Vars-left threshold for --iter2growlarge");
     add_arg("--bveocclim", simp_conf.bve_occ_cutoff, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
+    add_arg("--bvetieminocc", simp_conf.bve_tie_min_occ, "BVE: among equal-size clauses, take first the one whose rarest var occurs the least. 0 = order them by clause ID");
     add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
     add_arg("--distillremlevel", simp_conf.distill_rem_level, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");
     add_arg("--extraoracle", simp_conf.oracle_extra, "Extra oracle at the end of puura");

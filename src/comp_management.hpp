@@ -59,10 +59,10 @@ public:
   const CompAnalyzer& get_ana() const { return ana; }
   CompAnalyzer& get_ana() { return ana; }
 
-  void save_count(const uint64_t stack_comp_id, const FF& value) {
+  void save_count(const uint64_t stack_comp_id, const FF& value, const bool unsat) {
     debug_print(COLYEL2 << "Store. comp ID: " << stack_comp_id
         << " cache ID: " << comp_stack[stack_comp_id]->id() << " cnt: " << *value);
-    cache->store_value(comp_stack[stack_comp_id]->id(), value);
+    cache->store_value(comp_stack[stack_comp_id]->id(), value, unsat);
   }
 
   // d-DNNF: record a component's compiled node so future cache hits reuse it.
@@ -149,7 +149,7 @@ inline bool CompManager::find_next_remain_comp_of(StackLevel& top) {
         << " top.remaining_comps_ofs(): " << top.remaining_comps_ofs());
   }
 
-  if (top.branch_found_unsat() || top.branch_is_zero()) return false;
+  if (top.branch_found_unsat() || top.branch_is_abandoned()) return false;
   if (top.has_unproc_comps()) {
     debug_print(COLREDBG"-*-> Finished find_next_remain_comp_of, has_unproc_comps.");
     return true;

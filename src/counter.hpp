@@ -195,6 +195,18 @@ public:
   bool weighted() const { return fg->weighted(); }
   DataAndStatistics& get_stats() { return stats; }
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
+  // Number of propagations and conflicts caused by redundant (learnt) clauses
+  // so far, see zero_branch_needs_check()
+  uint64_t derived_cl_props = 0;
+  // Set once learnt information has been folded into irredundant clauses
+  // (vivification, subsumption): then every branch counts as impure
+  bool irred_db_derived = false;
+  bool zero_branch_needs_check() const;
+  bool zero_branch_probe(const uint64_t comp_at);
+  uint64_t zero_branches_abandoned = 0;
+  uint64_t zero_branches_checked = 0;
+  uint64_t zero_probes = 0;
+  uint64_t zero_probes_sat = 0;
 
   // d-DNNF compile observer. Never null (NullCompiler by default). See compiler.hpp.
   Compiler& get_compiler() { return *compiler; }

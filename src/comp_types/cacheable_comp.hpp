@@ -62,6 +62,7 @@ public:
     T::set_free();
     model_count_.reset();
     model_count_is_zero_ = false; // also clear zero-count sentinel
+    unsat_ = false;
   }
   // low 64-bit word -- used to index the cache hash table (table is power-of-two sized)
   uint64_t get_hashkey() const  { return hashkey.hash; }

@@ -50,6 +50,25 @@ public:
   const FG& fg;
   uint64_t tstamp;
   bool is_indep;
+  // The count of the parent's branch is already zero, so only the
+  // satisfiability of this level's component matters: counts are 0/1 as for
+  // non-indep levels, the right branch is skipped once the left one is
+  // satisfiable, and nothing is stored in the cache (see include_solution())
+  bool sat_only = false;
+  [[nodiscard]] bool counts_are_01() const { return !is_indep || sat_only; }
+  // Counter::derived_cl_props when the current child level of the active
+  // branch was pushed, and whether a child of the active branch was computed
+  // with learnt-clause propagation, see Counter::zero_branch_needs_check()
+  uint64_t derived_at_child_start = 0;
+  bool impure_siblings = false;
+  void start_branch(const uint64_t derived_props) {
+    derived_at_child_start = derived_props;
+    impure_siblings = false;
+  }
+  void child_started(const uint64_t derived_props) { derived_at_child_start = derived_props; }
+  void child_done(const uint64_t derived_props) {
+    if (derived_props > derived_at_child_start) impure_siblings = true;
+  }
 
   [[nodiscard]] inline FF val_or_zero(const bool b) const {
     if (branch_mc[b] == nullptr) return fg->zero();
@@ -71,6 +90,8 @@ public:
     act_branch = 0;
     branch_unsat = {};
     branch_zero = {};
+    branch_abandoned = {};
+    branch_checking = {};
     branch_mc = {};
   }
 private:
@@ -85,6 +106,10 @@ private:
   array<FF,2> branch_mc = {};
   array<bool,2> branch_unsat = {};
   array<bool,2> branch_zero = {};
+  // zero branch whose remaining comps are not looked at, see abandon_branch()
+  array<bool,2> branch_abandoned = {};
+  // zero branch whose remaining comps are being checked for satisfiability
+  array<bool,2> branch_checking = {};
 
   /// remaining Comps
 
@@ -131,15 +156,29 @@ public:
     return unprocessed_comps_end_ - 1;
   }
 
-  void change_to_right_branch() {
+  void change_to_right_branch(const uint64_t derived_props) {
     assert(act_branch == false);
     act_branch = true;
+    start_branch(derived_props);
     SLOW_DEBUG_DO(assert(is_zero(act_branch)));
   }
 
   [[nodiscard]] bool another_comp_possible() const {
-    return !branch_found_unsat() && !branch_is_zero() && has_unproc_comps();
+    // NOTE: a zero (but not UNSAT) branch must still look at its remaining
+    // components unless it has been abandoned, see include_solution() and
+    // Counter::zero_branch_needs_check()
+    return !branch_found_unsat() && !branch_is_abandoned() && has_unproc_comps();
   }
+
+  // Give up on the remaining components of the zero active branch: the count
+  // is final and nothing computed so far can be wrong
+  void abandon_branch() {
+    assert(branch_is_zero());
+    branch_abandoned[act_branch] = true;
+  }
+  [[nodiscard]] bool branch_is_abandoned() const { return branch_abandoned[act_branch]; }
+  void start_branch_check() { branch_checking[act_branch] = true; }
+  [[nodiscard]] bool branch_check_started() const { return branch_checking[act_branch]; }
 
   inline void common_print(const FF& before) {
     cout << "now "
@@ -164,7 +203,7 @@ public:
       assert(is_zero(act_branch));
       return;
     }
-    if (!is_indep || is_zero(act_branch))
+    if (counts_are_01() || is_zero(act_branch))
       branch_mc[act_branch] = fg->one();
     VERBOSE_DEBUG_DO(common_print(before));
   }
@@ -184,11 +223,30 @@ public:
     }
 
     if (cnt_is_zero(solutions)) {
-      branch_zero[act_branch] = true;
-      branch_mc[act_branch] = nullptr;
-    } else if (!is_indep) {
+      if (!fg->weighted() || sat_only) {
+        // Unweighted counting (and sat_only levels, whose counts are 0/1): a
+        // zero count means the component is UNSAT, i.e. the current assignment
+        // is inconsistent. Treat it like a conflict so that backtrack() removes
+        // the cache entries computed under this assignment (they may have been
+        // pruned by learnt clauses that only hold because the assignment is
+        // inconsistent).
+        mark_branch_unsat();
+      } else {
+        // Weighted counting: a zero count does NOT mean UNSAT (parity counting,
+        // negative weights, ...). The count of this branch stays zero, but
+        // skipping its remaining components could hide an UNSAT component,
+        // and then cache entries computed in this branch under the
+        // inconsistent assignment would never be removed. So they are still
+        // checked for satisfiability (see another_comp_possible() and
+        // sat_only) unless that cannot matter, see
+        // Counter::zero_branch_needs_check().
+        branch_zero[act_branch] = true;
+        branch_mc[act_branch] = nullptr;
+      }
+    } else if (counts_are_01()) {
       // For non-indep levels, only track satisfiability (0/1): the projected count
       // is semantically 0 or 1 when no indep vars remain in the component.
+      // Same for sat_only levels, where only satisfiability is needed.
       branch_mc[act_branch] = fg->one();
     } else {
       if (is_zero(act_branch) || is_one(act_branch)) {
@@ -212,7 +270,7 @@ public:
       return;
     }
 
-    if (is_indep) {
+    if (!counts_are_01()) {
       if (!is_zero(0)) *branch_mc[0] /= *div_by;
     }
     VERBOSE_DEBUG_DO(cout << "now "
@@ -224,6 +282,8 @@ public:
   }
 
   [[nodiscard]] bool branch_is_zero() const { return branch_zero[act_branch]; }
+  // the level's component has no model at all
+  [[nodiscard]] bool both_branches_unsat() const { return branch_unsat[0] && branch_unsat[1]; }
   [[nodiscard]] bool branch_found_unsat() const { return branch_unsat[act_branch]; }
   void mark_branch_unsat() {
     branch_unsat[act_branch] = true;
@@ -231,9 +291,16 @@ public:
   }
   [[nodiscard]] const FF& get_branch_sols() const { return branch_mc[act_branch]; }
   [[nodiscard]] const FF& get_model_side(int side) const { return branch_mc[side]; }
-  void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
+  // The active branch is being recomputed from scratch (backjump): forget
+  // its count and everything decided about it
+  void zero_out_branch_sol() {
+    branch_mc[act_branch] = nullptr;
+    branch_zero[act_branch] = false;
+    branch_abandoned[act_branch] = false;
+    branch_checking[act_branch] = false;
+  }
   [[nodiscard]] FF total_model_count() const {
-    if (is_indep) {
+    if (!counts_are_01()) {
       if (is_zero(0)) return val_or_zero(1);
       else if (is_zero(1)) return val_or_zero(0);
       return branch_mc[0]->add(*branch_mc[1]);

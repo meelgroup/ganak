@@ -1223,6 +1223,10 @@ FF Counter::outer_count() {
   }
   compiler->finalize_and_write(/*unsat=*/false);
   if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
+  verb_print(1, "zero branches abandoned: " << zero_branches_abandoned
+      << " checked for satisfiability: " << zero_branches_checked
+      << " probes: " << zero_probes << " of which SAT: " << zero_probes_sat
+      << " learnt cl props: " << derived_cl_props);
   return cnt;
 }
 
@@ -1330,6 +1334,26 @@ void Counter::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
+      if (decisions.top().branch_is_zero() && !compiler->active()) {
+        if (!decisions.top().branch_check_started()) {
+          if (zero_branch_needs_check()) {
+            zero_branches_checked++;
+            decisions.top().start_branch_check();
+          } else {
+            zero_branches_abandoned++;
+            decisions.top().abandon_branch();
+            goto backtrack;
+          }
+        }
+        // Only satisfiability of the remaining comps is needed. Try the cheap
+        // way first (unless it keeps failing), otherwise the comp is explored
+        // below as a sat_only level
+        if ((zero_probes < 1000 || zero_probes_sat * 2 >= zero_probes) &&
+            zero_branch_probe(decisions.top().curr_remain_comp())) {
+          decisions.top().next_unproc_comp();
+          continue;
+        }
+      }
       decide_lit();
       if (!is_indep && conf.do_use_sat_solver) {
         if (run_sat_solver(state)) goto backtrack;
@@ -1460,6 +1484,14 @@ void Counter::decide_lit() {
   decisions.push_back(
     StackLevel(decisions.top().curr_remain_comp(), comp_manager->comp_stack_size(),
       is_indep, tstamp, fg));
+  (decisions.end() - 2)->child_started(derived_cl_props);
+  decisions.top().start_branch(derived_cl_props);
+  // Below a zero (but not UNSAT) branch only satisfiability matters, see
+  // StackLevel::include_solution()
+  if (!compiler->active()) {
+    const auto& parent = *(decisions.end() - 2);
+    decisions.top().sat_only = parent.sat_only || parent.branch_is_zero();
+  }
 
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
@@ -2145,13 +2177,53 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     return cnt;
 }
 
+// A zero (but not UNSAT) branch may hide an UNSAT component among the ones it
+// has not processed yet, i.e. the assignment may be inconsistent. That only
+// matters for cache entries computed under this assignment with the help of
+// learnt clauses: a learnt clause may prune models of a component that are
+// valid for the component on its own, but only if the assignment is
+// inconsistent. Without learnt-clause propagation the count of a component
+// is exact whatever the rest of the formula does. The entries at risk are
+// those of the components processed before the current one, at this level and
+// at every level above it. Level 0 is excluded: its assignment is consistent,
+// the formula is known to be satisfiable.
+bool Counter::zero_branch_needs_check() const {
+  if (irred_db_derived) return true;
+  for (int32_t i = 1; i <= dec_level(); i++)
+    if (decisions[i].impure_siblings) return true;
+  return false;
+}
+
+// Cheap satisfiability test of a remaining component of a zero branch: set
+// its variables to their saved polarity one by one and propagate. A complete
+// assignment without conflict is a model of the component. A conflict proves
+// nothing (a learnt clause may be involved), the comp is then explored.
+bool Counter::zero_branch_probe(const uint64_t comp_at) {
+  zero_probes++;
+  const Comp& c = *comp_manager->at(comp_at);
+  decisions.push_back(StackLevel(comp_at, comp_manager->comp_stack_size(), true, tstamp, fg));
+  bool first = true;
+  bool sat = true;
+  all_vars_in_comp(c, it) {
+    const uint32_t v = *it;
+    if (val(v) != X_TRI) continue;
+    if (first) { decisions.top().var = v; first = false; }
+    set_lit(Lit(v, var(v).last_polarity), dec_level());
+    if (!propagate()) { sat = false; break; }
+  }
+  if (!first) reactivate_comps_and_backtrack_trail(false);
+  decisions.pop_back();
+  zero_probes_sat += sat;
+  return sat;
+}
+
 RetState Counter::backtrack() {
   debug_print("in " << __FUNCTION__ << " now. Dec lev: " << dec_level());
   assert(decisions.top().remaining_comps_ofs() <= comp_manager->comp_stack_size());
 
   //When we enter, either it must be UNSAT, or there must be no other component possible.
   //As we backtrack, another component can become possible
-  assert(decisions.top().branch_found_unsat() || decisions.top().branch_is_zero() ||
+  assert(decisions.top().branch_found_unsat() ||
       !decisions.top().another_comp_possible() || dec_level() == 0);
   do {
 #ifdef VERBOSE_DEBUG
@@ -2176,8 +2248,9 @@ RetState Counter::backtrack() {
     }
 
     // We have NOT explored the other side and it hasn't been re-written to be
-    // propagation.
-    if (!decisions.top().is_right_branch() && var(top_dec_lit()).ante.isNull()) {
+    // propagation. For a sat_only level, a satisfiable left branch is all we need.
+    if (!decisions.top().is_right_branch() && var(top_dec_lit()).ante.isNull() &&
+        !(decisions.top().sat_only && !decisions.top().is_zero(0))) {
       debug_print("[backtrack] We have NOT explored the right branch (isSecondBranch==false). Let's do it!"
           << " -- dec lev: " << dec_level());
       const Lit lit = top_dec_lit();
@@ -2194,7 +2267,7 @@ RetState Counter::backtrack() {
       // 10 (right hand branch, setting y = 0, forcing x = 1), but not 11.
       compiler->save_left_lits();
       reactivate_comps_and_backtrack_trail(false);
-      decisions.top().change_to_right_branch();
+      decisions.top().change_to_right_branch(derived_cl_props);
       bool const ret = propagate(true);
       assert(ret);
       debug_print("[backtrack] Flipping lit to: " << lit.neg() << " val is: " << val_to_str(val(lit)));
@@ -2224,7 +2297,12 @@ RetState Counter::backtrack() {
     compiler->build_level_node();
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
-    if (conf.do_use_cache) {
+    // An UNSAT component is passed up as such (sharpSAT semantics): a zero
+    // count alone does not mean UNSAT in weighted fields, but an UNSAT
+    // component makes the assignment inconsistent, and then the cache entries
+    // of the parent's other components must go, see the top of this loop
+    const bool unsat = decisions.top().both_branches_unsat();
+    if (conf.do_use_cache && !decisions.top().sat_only) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
       all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) cout << *it << " ";
@@ -2243,9 +2321,9 @@ RetState Counter::backtrack() {
             }
           }
         }
-        comp_manager->save_count(decisions.top().super_comp(), cnt);
+        comp_manager->save_count(decisions.top().super_comp(), cnt, unsat);
       } else {
-        comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
+        comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count(), unsat);
       }
       compiler->record_comp_node();
     }
@@ -2255,7 +2333,9 @@ RetState Counter::backtrack() {
     const auto parent_count_before_left = (decisions.end() - 2)->left_model_count()->dup();
     const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
-    (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    (decisions.end() - 2)->child_done(derived_cl_props);
+    if (unsat) (decisions.end() - 2)->mark_branch_unsat();
+    else (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
     compiler->attach_to_parent();
     decisions.pop_back();
 
@@ -2378,6 +2458,7 @@ void Counter::go_back_to(int32_t backj) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
       decisions.top().reset_remain_comps();
+      decisions.top().start_branch(derived_cl_props);
     }
     debug_print("now at dec lit: " << top_dec_lit() << " lev: " << dec_level()
         << " cnt:" <<  *decisions.top().total_model_count());
@@ -2602,7 +2683,7 @@ RetState Counter::resolve_conflict() {
   }
 
   reactivate_comps_and_backtrack_trail(false);
-  decisions.top().change_to_right_branch();
+  decisions.top().change_to_right_branch(derived_cl_props);
   set_lit(uip_clause[0], lev_to_set, ant);
 
 #ifdef VERBOSE_DEBUG
@@ -2644,9 +2725,11 @@ bool Counter::propagate(bool out_of_order) {
       const auto lval = val(l);
       if (lval == F_TRI) {
         set_confl_state(plit, l);
+        derived_cl_props += bincl.red();
         VERBOSE_DEBUG_DO(cout << "Bin confl. otherlit: " << l << endl);
       } else if (lval == X_TRI) {
         set_lit(l, lev, Antecedent(plit));
+        derived_cl_props += bincl.red();
         VERBOSE_DEBUG_DO(cout << "Bin prop: " << l << " lev: " << lev << endl);
       }
     }
@@ -2711,12 +2794,14 @@ bool Counter::propagate(bool out_of_order) {
         if (val(c[0]) == F_TRI) {
           debug_print("Conflicting state from norm cl offs: " << ofs);
           set_confl_state(&c);
+          derived_cl_props += c.red;
           it++;
           break;
         }
         {
           assert(val(c[0]) == X_TRI);
           debug_print("prop long lev: " << lev << " dec_stack.get_lev : " << dec_level());
+          derived_cl_props += c.red;
           if (lev_at_declev) {
             set_lit(c[0], lev, Antecedent(ofs));
             debug_print("Norm long prop: " << c[0] << " lev: " << lev);
@@ -3192,6 +3277,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     VERBOSE_DEBUG_DO(cout << "orig CL: " << endl; v_print_cl(cl));
     stats.vivif_cl_minim++;
     stats.vivif_lit_rem += removable;
+    if (!cl.red) irred_db_derived = true;
     std::copy(v_tmp.begin(), v_tmp.end(), cl.begin());
     cl.resize(v_tmp.size());
     assert(cl.sz >= 2);
@@ -3764,7 +3850,7 @@ void Counter::backw_subsume_cl(ClauseOfs off) {
     Clause& check_cl = *alloc->ptr(check.off);
     if (check_cl.freed) continue;
     if (subset(cl, check_cl)) {
-      if (cl.red && !check_cl.red) cl.red = false;
+      if (cl.red && !check_cl.red) { cl.red = false; irred_db_derived = true; }
       if (cl.red && check_cl.red) {
         cl.used |= check_cl.used;
         cl.total_used += check_cl.total_used;
@@ -3788,7 +3874,7 @@ void Counter::backw_subsume_cl_with_bin(BinClSub& cl) {
     Clause& check_cl = *alloc->ptr(check.off);
     if (check_cl.freed) continue;
     if (subset(cl, check_cl)) {
-      if (cl.red && !check_cl.red) cl.red = false;
+      if (cl.red && !check_cl.red) { cl.red = false; irred_db_derived = true; }
       debug_print( "Subsumed cl: " << check_cl << endl
                 << "->by cl    : " << cl);
       alloc->clause_free(&check_cl);
@@ -4001,8 +4087,10 @@ bool Counter::run_sat_solver(RetState& state) {
   debug_print("Entering SAT mode. Declev: " << dec_level() << " trail follows.");
   VERBOSE_DEBUG_DO(print_trail());
   bool sat = false;
+  (decisions.end() - 1)->child_started(derived_cl_props);
   decisions.push_back(StackLevel(decisions.top().curr_remain_comp(),
         comp_manager->comp_stack_size(), true, tstamp, fg));
+  decisions.top().start_branch(derived_cl_props);
   sat_start_dec_level = dec_level();
 
   if (conf.do_sat_vsids) {
@@ -4104,7 +4192,7 @@ bool Counter::run_sat_solver(RetState& state) {
     decisions.top().var = 0;
     var(0).sublevel = old_sublev; // hack not to re-propagate everything.
     decisions.top().reset();
-    decisions.top().change_to_right_branch();
+    decisions.top().change_to_right_branch(derived_cl_props);
     decisions.top().include_solution(cnt);
     if (!weighted()) assert(decisions.top().total_model_count()->is_one());
     compiler->sat_witness_apply();
@@ -4187,11 +4275,11 @@ bool Counter::do_buddy_count() {
   if (cnt > 0) {
     FF ff_cnt = std::make_unique<ArjunNS::FMpz>(mpz_class(cnt));
     decisions.top().reset();
-    decisions.top().change_to_right_branch();
+    decisions.top().change_to_right_branch(derived_cl_props);
     decisions.top().include_solution(ff_cnt);
   } else {
     decisions.top().mark_branch_unsat();
-    decisions.top().change_to_right_branch();
+    decisions.top().change_to_right_branch(derived_cl_props);
     decisions.top().mark_branch_unsat();
   }
   return cnt > 0;
@@ -5056,7 +5144,7 @@ void Counter::init_decision_stack() {
 
   // This is needed so the system later knows it's fully counted
   // since this is only a dummy.
-  decisions.back().change_to_right_branch();
+  decisions.back().change_to_right_branch(derived_cl_props);
 }
 
 string Counter::lit_val_str(Lit lit) const {

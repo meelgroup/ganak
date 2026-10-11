@@ -117,7 +117,9 @@ public:
         stats.incorporate_cache_hit(nvars);
         update_entry_time(act_id);
         debug_print(COLYEL2 << "Cache hit. cache ID: " << act_id);
-        top.include_solution(entry(act_id).model_count());
+        if (entry(act_id).is_unsat()) top.mark_branch_unsat();
+        else if (top.sat_only) top.include_solution(top.fg->one()); // satisfiable, count irrelevant
+        else top.include_solution(entry(act_id).model_count());
         if (out_node != nullptr) *out_node = (act_id < compile_nodes.size()) ? compile_nodes[act_id] : -1;
         return true;
       }
@@ -153,7 +155,7 @@ public:
   }
 
   // store the number in model_count as the model count of CacheEntryID id
-  void store_value(const CacheEntryID id, const FF& model_count) override;
+  void store_value(const CacheEntryID id, const FF& model_count, const bool unsat) override;
 
   [[nodiscard]] uint64_t calc_cutoff() const override;
   bool delete_some_entries() override;
@@ -392,14 +394,14 @@ void CompCache<T>::unlink(CacheEntryID id) {
 }
 
 template<typename T>
-void CompCache<T>::store_value(const CacheEntryID id, const FF& model_count) {
+void CompCache<T>::store_value(const CacheEntryID id, const FF& model_count, const bool unsat) {
   consider_table_resize();
   uint32_t table_ofs = table_pos(id);
   // when storing the new model count the size of the model count
   // and hence that of the comp will change
   SLOW_DEBUG_DO(assert(!entry(id).is_free()));
   stats.sum_extra_bytes -= entry(id).extra_bytes();
-  entry(id).set_model_count(model_count);
+  entry(id).set_model_count(model_count, unsat);
   entry(id).set_last_used_time(my_time);
   entry(id).set_next_bucket_element(table[table_ofs]);
   table[table_ofs] = id;

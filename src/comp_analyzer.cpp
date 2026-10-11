@@ -204,6 +204,8 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
         }
       );
       archetype.stack_level().include_solution(counter->get_fg()->one());
+    } else if (archetype.stack_level().sat_only) {
+      archetype.stack_level().include_solution(counter->get_fg()->one());
     } else {
       if (counter->weighted()) archetype.stack_level().include_solution(counter->get_weight(v));
       else archetype.stack_level().include_solution(counter->get_two());

@@ -241,7 +241,7 @@ directories. The relevant ones have already been parsed with
 `./get_data_ganak.py` into `build/data/data.sqlite3`.
 
 The exact binaries the cluster ran are in `build/oldbins/`, named as in each
-run's `ganak_call`: `ganak_<ganak>_<arjun>_<approxmc>_<cms>_<treedecomp>` (short
+run's `ganak_call`: `ganak_<ganak>_<arjun>_<approxmc>_<cms>_<treedecomp>_<cadiback>` (short
 SHAs; older ones use other layouts). To check a local build still behaves like a
 cluster run, run it on a few instances that run <100s in that run and diff
 conflicts/decisions/final TD/count against the run's `.out_ganak` logs; there is

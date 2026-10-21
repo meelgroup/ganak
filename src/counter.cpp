@@ -1331,7 +1331,7 @@ void Counter::count_loop() {
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
       decide_lit();
-      if (!is_indep && conf.do_use_sat_solver) {
+      if (!is_indep) {
         if (run_sat_solver(state)) goto backtrack;
         else goto start11;
       }
@@ -1464,8 +1464,8 @@ void Counter::decide_lit() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   switch (static_cast<DecideType>(conf.decide)) {
-    case DecideType::td:        v = find_best_branch(false, !conf.do_use_sat_solver); break;
-    case DecideType::ignore_td: v = find_best_branch(true,  !conf.do_use_sat_solver); break;
+    case DecideType::td:        v = find_best_branch(false, false); break;
+    case DecideType::ignore_td: v = find_best_branch(true,  false); break;
     default: assert(false);
   }
 
@@ -2103,11 +2103,6 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       *tmp *= *dec_w;
       *after_mul += *tmp;
     }
-    if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
-      assert(!weighted() && "SAT solver cannot be turned off in weighted mode");
-      if (!after_mul->is_zero()) after_mul = fg->one();
-      else after_mul = fg->zero();
-    }
     debug_print("correct                            : " << setprecision(10) << *cnt);
     debug_print("after_mul:                         : " << *after_mul);
     debug_print("dec_w                              : " << *dec_w);
@@ -2119,13 +2114,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     // and the count cannot be checked
     if (solution_exist) {
       if (!weighted()) {
-        // When !is_indep && !do_use_sat_solver, the DPLL tree only tracks satisfiability
-        // (0/1) not the exact count. Collapse cnt to 0/1 to match before comparing.
-        FF cnt_cmp = cnt->dup();
-        if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
-          if (!cnt_cmp->is_zero()) cnt_cmp = fg->one();
-        }
-        assert(*decisions.top().total_model_count() == *cnt_cmp);
+        assert(*decisions.top().total_model_count() == *cnt);
       }
       else {
         bool okay = true;
@@ -2528,16 +2517,6 @@ RetState Counter::resolve_conflict() {
   bool const flipped_declit = (
       uip_clause[0].var() == decisions.at(backj).var
            && lev_to_set == backj-1);
-  if (!conf.do_chronobt && !flipped_declit) {
-    // This is the case where non-chnorobt throws away the clause
-    assert(!conf.do_use_sat_solver && "If not using chronobt, SAT solver MUST be off");
-    debug_print(COLRED "No chronobt, not flipped declit.");
-    go_back_to(backj);
-    decisions.top().mark_branch_unsat();
-    decisions.top().zero_out_branch_sol();
-    compiler->branch_reset(); // TODO remove non-chronobt, then we can remove this
-    return BACKTRACK;
-  }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail(true, false));
@@ -4050,7 +4029,7 @@ bool Counter::run_sat_solver(RetState& state) {
 
     while (!propagate()) {
       start1:
-      if (conf.do_chronobt && chrono_check()) continue;  // will DEFINITELY conflict if TRUE
+      if (chrono_check()) continue;  // will DEFINITELY conflict if TRUE
       state = resolve_conflict();
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;

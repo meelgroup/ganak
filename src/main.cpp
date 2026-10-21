@@ -196,7 +196,6 @@ void add_ganak_options()
     /* add_arg("--breakid", do_breakid, "Enable BreakID"); */
     add_arg("--appmct", conf.appmc_timeout, "after K seconds");
     add_arg("--epsilon", conf.appmc_epsilon, "AppMC epsilon");
-    add_arg("--chronobt", conf.do_chronobt, "ChronoBT. SAT must be DISABLED or this will fail");
     add_arg("--prob", conf.do_probabilistic_hashing, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
     program.add_argument("--fast")
         .action([&](const auto&) {
@@ -324,7 +323,6 @@ void add_ganak_options()
     add_arg("--sbvamaxnewvars", etof_conf.sbva_max_new_vars, "Max number of new variables SBVA may add. 0 = no limit");
 
     // SAT solver options
-    add_arg("--satsolver", conf.do_use_sat_solver, "Use SAT solver when all minimal indep set has been set");
     add_arg("--satrst", conf.do_sat_restart, "Inside SAT solver, perform restarts");
     add_arg("--satrstmult", conf.sat_restart_mult, "SAT restart multiplier");
     add_arg("--satpolarcache", conf.do_sat_polar_cache, "Inside SAT solver, use polarity cache");
@@ -400,10 +398,6 @@ void parse_supported_options(int argc, char** argv) {
       do_puura = 0;
       num_threads = 1;
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
-    }
-    if (conf.do_use_sat_solver && !conf.do_chronobt) {
-      cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
-      exit(EXIT_FAILURE);
     }
     if (bits_jobs < 0 || bits_jobs > 20) {
       cerr << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;

@@ -1330,9 +1330,15 @@ void Counter::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
+      // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache
+      if (decisions.top().branch_is_zero()) {
+        is_indep = false;
+        if (run_sat_solver(state, true)) continue;
+        goto start11;
+      }
       decide_lit();
       if (!is_indep) {
-        if (run_sat_solver(state)) goto backtrack;
+        if (run_sat_solver(state, false)) goto backtrack;
         else goto start11;
       }
 
@@ -2153,6 +2159,8 @@ RetState Counter::backtrack() {
         << " dec lev: " << dec_level());
     }
 #endif
+    // unweighted, zero == UNSAT
+    if (!weighted() && decisions.top().branch_is_zero()) decisions.top().mark_branch_unsat();
     if (decisions.top().branch_found_unsat()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
     } else if (decisions.top().another_comp_possible()) {
@@ -2244,7 +2252,9 @@ RetState Counter::backtrack() {
     const auto parent_count_before_left = (decisions.end() - 2)->left_model_count()->dup();
     const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
-    (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    // so the parent's cache cleanup runs
+    if (decisions.top().comp_unsat()) (decisions.end() - 2)->mark_branch_unsat();
+    else (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
     compiler->attach_to_parent();
     decisions.pop_back();
 
@@ -3965,8 +3975,9 @@ void Counter::vsads_readjust() {
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
-// because ONLY non-independent variables remain
-bool Counter::run_sat_solver(RetState& state) {
+// because ONLY non-independent variables remain, or (sat_check) the count is
+// already known to be zero
+bool Counter::run_sat_solver(RetState& state, const bool sat_check) {
   assert(!is_indep);
   assert(order_heap.empty());
   assert(!decisions.empty());
@@ -3990,7 +4001,7 @@ bool Counter::run_sat_solver(RetState& state) {
       debug_print("checking var to put in order_heap: " << *it << " val: "
         << val_to_str(val(*it)));
       if (val(*it) != X_TRI) continue;
-      if (*it < opt_indep_support_end)
+      if (*it < opt_indep_support_end && !sat_check)
         assert(*it >= indep_support_end && "only optional indep or non-indep remains");
       order_heap.insert(*it);
     }
@@ -4050,6 +4061,21 @@ bool Counter::run_sat_solver(RetState& state) {
     }
   }
 
+  if (sat_check) {
+    // Only the model's existence mattered. Undo our level while still in SAT
+    // mode, so unset_lit() does no weight bookkeeping
+    state = RESOLVED;
+    go_back_to(sat_start_dec_level);
+    decisions.top().var = 0;
+    var(0).sublevel = old_sublev;
+    reactivate_comps_and_backtrack_trail(false);
+    decisions.pop_back();
+    decisions.top().next_unproc_comp();
+    bool const ret = propagate();
+    assert(ret);
+    goto end;
+  }
+
   {
     state = RESOLVED;
     auto cnt = fg->one();
@@ -4099,6 +4125,10 @@ end:
   VERBOSE_DEBUG_DO(print_trail());
   if (sat) stats.sat_found_sat++;
   else stats.sat_found_unsat++;
+  if (sat_check) {
+    stats.zero_sat_checks++;
+    stats.zero_sat_unsat += !sat;
+  }
   stats.sat_conflicts += stats.conflicts-conflicts_before;
 
   debug_print("after SAT mode. cnt dec: " << *decisions.top().total_model_count()

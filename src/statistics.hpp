@@ -110,6 +110,8 @@ public:
   uint64_t sat_found_sat = 0;
   uint64_t sat_found_unsat = 0;
   uint64_t sat_conflicts = 0;
+  uint64_t zero_sat_checks = 0;
+  uint64_t zero_sat_unsat = 0;
   uint64_t sat_rst = 0;
 
   // buddy stats

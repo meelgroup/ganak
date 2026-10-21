@@ -84,6 +84,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(5) << sat_found_unsat << " "
     << setw(5) << sat_conflicts << " "
     << setw(5) << sat_rst << " ");
+  verb_print(1, "zero branch SAT checks/unsat   "
+    << setw(5) << zero_sat_checks << " / " << setw(5) << zero_sat_unsat);
   verb_print(1, "buddy called /unsat ratio           "
     << setw(5) << buddy_called << " / "
     << setw(5) << safe_div(buddy_unsat, buddy_called) << " ");

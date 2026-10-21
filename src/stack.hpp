@@ -138,7 +138,8 @@ public:
   }
 
   [[nodiscard]] bool another_comp_possible() const {
-    return !branch_found_unsat() && !branch_is_zero() && has_unproc_comps();
+    // weighted zero branch: comps still checked for a model, see Counter::count_loop()
+    return !branch_found_unsat() && (!branch_is_zero() || fg->weighted()) && has_unproc_comps();
   }
 
   inline void common_print(const FF& before) {
@@ -225,6 +226,8 @@ public:
 
   [[nodiscard]] bool branch_is_zero() const { return branch_zero[act_branch]; }
   [[nodiscard]] bool branch_found_unsat() const { return branch_unsat[act_branch]; }
+  // an unexplored right branch was implied away, i.e. it's UNSAT too
+  [[nodiscard]] bool comp_unsat() const { return branch_unsat[0] && (!act_branch || branch_unsat[1]); }
   void mark_branch_unsat() {
     branch_unsat[act_branch] = true;
     branch_mc[act_branch] = nullptr;

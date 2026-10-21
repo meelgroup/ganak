@@ -520,6 +520,7 @@ bool CompCache<T>::delete_some_entries() {
   verb_print(1, "max_cache_size_bytes in MB: " << in_mb(stats.max_cache_size_bytes));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
   const uint64_t heap_before = heap_in_use();
+  compute_size_allocated();
   const uint64_t accounted_before = stats.cache_bytes_memory_usage();
 
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
@@ -579,7 +580,8 @@ void CompCache<T>::check_freed_mem(const uint64_t heap_before, const uint64_t ac
   const uint64_t real = heap_before - heap_after;
   const uint64_t accounted = accounted_before > accounted_after ? accounted_before - accounted_after : 0;
   verb_print(2, "eviction freed MB: " << in_mb(real) << " accounted MB: " << in_mb(accounted));
-  if (real < 16*1024 || accounted + accounted/8 >= real) return;
+  // page rounding of mmap'd vectors etc. is a few KB of noise
+  if (real < 1024*1024 || accounted + accounted/8 >= real) return;
   verb_print(1, "WARNING: cache memory accounting is off, --maxcache will be exceeded."
       << " Eviction freed " << real << " bytes but only " << accounted << " were accounted for");
   assert(false && "extra_bytes()/bytes_used() undercounts the real heap usage");

@@ -171,6 +171,8 @@ string print_version()
 
 void add_ganak_options()
 {
+    etof_conf.cover_drop_mticks = 200;
+    etof_conf.cover_drop_max_cubes = 1000;
     std::ostringstream my_delta;
     my_delta << setprecision(8) << conf.delta;
 
@@ -214,6 +216,8 @@ void add_ganak_options()
     add_arg("--arjunverb", arjun_verb, "Arjun verb");
     add_arg("--arjungates", arjun_gates, "Use arjun's gate detection");
     add_arg("--arjunextend", etof_conf.do_extend_indep, "Extend indep via Arjun's extend system");
+    add_arg("--coverdrop", etof_conf.cover_drop_mticks, "After Puura, remove the clauses of non-sampling vars that every allowed sampling assignment can satisfy, checked by model covering (2QBF). Its budget in millions of SAT solver ticks, 0 = off");
+    add_arg("--coverdropcubes", etof_conf.cover_drop_max_cubes, "With --coverdrop, also replace the clauses by at most this many clauses over the sampling vars that rule out the assignments with no model of them. 0 = only remove");
     add_arg("--prebackbone", do_pre_backbone, "Perform backbone before other things");
     add_arg("--prebackbonemaxconfl", pre_backbone_max_confl, "Max conflicts for --prebackbone (-1 = unlimited)");
     add_arg("--puura", do_puura, "Run Puura");

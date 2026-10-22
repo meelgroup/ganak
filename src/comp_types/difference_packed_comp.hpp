@@ -26,6 +26,9 @@ THE SOFTWARE.
 #include "comp.hpp"
 #include "hashval.hpp"
 #include <arjun/arjun.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 
 namespace GanakInt {
 
@@ -100,6 +103,11 @@ public:
   }
 
   uint64_t comp_bytes() const {
+#ifdef __GLIBC__
+    // best fit may hand out a chunk 16B bigger than asked for, which adds up
+    // when lots of freed 48B MPFR temporaries are around
+    if (data) return malloc_usable_size(data) + sizeof(size_t);
+#endif
     return ArjunNS::heap_bytes(data_size * sizeof(uint32_t));
   }
 

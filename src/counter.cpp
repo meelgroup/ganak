@@ -5047,7 +5047,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
       print_trail(false, false);assert(false);});
   if (!sat_mode()) comp_manager->clean_remain_comps_of(decisions.top());
   trail.resize(jt - trail.begin());
-  if (bce) bce->backtrack(values, keep_from);
+  if (bce) bce->backtrack(keep_from);
   if (dec_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
   if (!sat_mode()) decisions.top().reset_remain_comps();

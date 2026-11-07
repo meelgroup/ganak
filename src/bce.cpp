@@ -26,11 +26,12 @@ THE SOFTWARE.
 
 using namespace GanakInt;
 
-void BCE::init(uint32_t nvars, uint32_t blk_var_start,
+void BCE::init(const LiteralIndexedVector<TriValue>* _vals, uint32_t nvars, uint32_t blk_var_start,
     const std::vector<std::vector<Lit>>& cls, uint32_t _first_bin,
     const std::vector<uint32_t>& _bin_pair, uint32_t num_pairs,
     uint64_t occ_prod_lim, uint64_t cand_lim) {
   const double my_time = cpu_time();
+  vals = _vals;
   first_bin = _first_bin;
   bin_pair = _bin_pair;
   pair_blocked.assign(num_pairs, 0);
@@ -65,6 +66,7 @@ void BCE::init(uint32_t nvars, uint32_t blk_var_start,
   trail_pos = 0;
   q.clear();
   to_recheck.clear();
+  reproc.clear();
   cur_blocked = 0;
 
   std::vector<uint32_t> mark(nlits, 0);
@@ -179,25 +181,28 @@ void BCE::recheck(uint32_t t) {
   block(tr.cl, t);
 }
 
+void BCE::proc_lit(const Lit l, const uint32_t g) {
+  const uint32_t v = l.var();
+  if (proc_grp[v] != NONE) return;
+  proc_grp[v] = g;
+  evs.push_back({EV_PROC, v, NONE});
+  for (uint32_t k = occ_off[l.raw()]; k < occ_off[l.raw()+1]; k++) {
+    const uint32_t c = occ[k];
+    if (st[c] & INACT) continue;
+    st[c] |= INACT;
+    evs.push_back({EV_SAT, c, NONE});
+    q.push_back(c);
+  }
+}
+
 void BCE::propagate(const std::vector<Lit>& trail) {
-  if (trail_pos >= trail.size() && to_recheck.empty()) return;
+  if (trail_pos >= trail.size() && to_recheck.empty() && reproc.empty()) return;
   const uint32_t g = grp_start.size();
   grp_start.push_back(evs.size());
 
-  for (uint32_t i = trail_pos; i < trail.size(); i++) {
-    const Lit l = trail[i];
-    const uint32_t v = l.var();
-    if (proc_grp[v] != NONE) continue;
-    proc_grp[v] = g;
-    evs.push_back({EV_PROC, v, NONE});
-    for (uint32_t k = occ_off[l.raw()]; k < occ_off[l.raw()+1]; k++) {
-      const uint32_t c = occ[k];
-      if (st[c] & INACT) continue;
-      st[c] |= INACT;
-      evs.push_back({EV_SAT, c, NONE});
-      q.push_back(c);
-    }
-  }
+  for (const Lit l : reproc) if ((*vals)[l] == T_TRI) proc_lit(l, g);
+  reproc.clear();
+  for (uint32_t i = trail_pos; i < trail.size(); i++) proc_lit(trail[i], g);
   trail_pos = trail.size();
 
   tmp_recheck.swap(to_recheck);
@@ -210,7 +215,7 @@ void BCE::propagate(const std::vector<Lit>& trail) {
   if (evs.size() == grp_start.back()) grp_start.pop_back();
 }
 
-void BCE::backtrack(const LiteralIndexedVector<TriValue>& vals, uint32_t keep_from) {
+void BCE::backtrack(uint32_t keep_from) {
   if (keep_from < trail_pos) trail_pos = keep_from;
   if (min_grp == NONE) return;
   assert(min_grp < grp_start.size());
@@ -222,8 +227,11 @@ void BCE::backtrack(const LiteralIndexedVector<TriValue>& vals, uint32_t keep_fr
     switch (e.kind) {
       case EV_PROC:
         proc_grp[e.id] = NONE;
-        // chrono BT keeps it on the trail, somewhere before trail_pos
-        if (vals[Lit(e.id, true)] != X_TRI) { trail_pos = 0; stats.reproc++; }
+        // chrono BT kept it on the trail, possibly before trail_pos
+        if ((*vals)[Lit(e.id, true)] != X_TRI) {
+          reproc.push_back(Lit(e.id, (*vals)[Lit(e.id, true)] == T_TRI));
+          stats.reproc++;
+        }
         break;
       case EV_SAT:
         st[e.id] = 0;

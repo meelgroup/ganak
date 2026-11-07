@@ -63,7 +63,7 @@ public:
 
   // cls[id] for id in [1, cls.size()), cls[0] unused. Ids >= first_bin are binary
   // clauses, and bin_pair[id-first_bin] is the analyzer's var-pair id of that clause.
-  void init(uint32_t nvars, uint32_t blk_var_start,
+  void init(const LiteralIndexedVector<TriValue>* vals, uint32_t nvars, uint32_t blk_var_start,
       const std::vector<std::vector<Lit>>& cls, uint32_t first_bin,
       const std::vector<uint32_t>& bin_pair, uint32_t num_pairs,
       uint64_t occ_prod_lim, uint64_t cand_lim);
@@ -76,7 +76,7 @@ public:
     if (proc_grp[v] != NONE && proc_grp[v] < min_grp) min_grp = proc_grp[v];
   }
   // After the trail has been truncated/compacted. Kept lits were moved to keep_from.
-  void backtrack(const LiteralIndexedVector<TriValue>& vals, uint32_t keep_from);
+  void backtrack(uint32_t keep_from);
   void propagate(const std::vector<Lit>& trail);
 
   const BCEStats& get_stats() const { return stats; }
@@ -97,12 +97,14 @@ private:
     uint32_t pos;     // index of watcher in cands
   };
 
+  void proc_lit(Lit l, uint32_t g);
   void process_wl(uint32_t c);
   void recheck(uint32_t t);
   void block(uint32_t cl, uint32_t t);
   uint32_t find_active(Tri& tr, uint32_t& pos) const;
   bool is_bin(uint32_t id) const { return id >= first_bin; }
 
+  const LiteralIndexedVector<TriValue>* vals = nullptr;
   uint32_t first_bin = 0;
   std::vector<uint32_t> cl_off;    // lits of clause id: lits[cl_off[id] .. cl_off[id+1])
   std::vector<Lit> lits;
@@ -122,6 +124,7 @@ private:
   uint32_t min_grp = NONE;
   uint32_t trail_pos = 0;
 
+  std::vector<Lit> reproc; // popped but still assigned: must be processed again
   std::vector<uint32_t> q;
   std::vector<uint32_t> to_recheck;
   std::vector<uint32_t> tmp_recheck;

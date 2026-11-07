@@ -260,7 +260,7 @@ void CompAnalyzer::init_bce(const LiteralIndexedVector<LitWatchList>& watches,
   }
 
   bce = std::make_unique<BCE>();
-  bce->init(max_var, counter->get_opt_indep_support_end(), bce_cls, first_bin,
+  bce->init(&values, max_var, counter->get_opt_indep_support_end(), bce_cls, first_bin,
       bin_pair, pair_of.size(), conf.bce_occ_lim, conf.bce_cand_lim);
   bce_st = bce->state();
   bce_pair_blocked = bce->pair_blocked_data();

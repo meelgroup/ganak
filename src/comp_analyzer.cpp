@@ -262,13 +262,21 @@ void CompAnalyzer::init_bce(const LiteralIndexedVector<LitWatchList>& watches,
   bce = std::make_unique<BCE>();
   bce->init(&values, max_var, counter->get_opt_indep_support_end(), bce_cls, first_bin,
       bin_pair, pair_of.size(), conf.bce_occ_lim, conf.bce_cand_lim);
-  bce_st = bce->state();
-  bce_pair_blocked = bce->pair_blocked_data();
   const auto& s = bce->get_stats();
   verb_print(1, "[bce] blk vars from: " << counter->get_opt_indep_support_end()
       << " cls: " << bce_cls.size()-1 << " bins: " << bce_cls.size()-first_bin
       << " triples: " << s.triples << " cand entries: " << s.cand_entries
-      << " skipped lits: " << s.skipped_lits << " T: " << std::fixed << std::setprecision(2) << s.init_time);
+      << " tracked cls: " << s.rel_cls
+      << " skipped lits: " << s.skipped_lits << " T: " << s.init_time);
+  if (bce->useless()) {
+    bce.reset();
+    bin_pair_ids.clear();
+    bin_pair_start.clear();
+    bin_pair_total.clear();
+    return;
+  }
+  bce_st = bce->state();
+  bce_pair_blocked = bce->pair_blocked_data();
 }
 
 // Each variable knows the level it was visited at, and the stimestamp at the time
@@ -341,9 +349,15 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       if (reset) assert(holder.size_bin(v) == holder.orig_size_bin(v));
     );
 
-    // With BCE, the bin count of the super comp is not an upper bound we can stop at:
-    // blocked status of bins is not part of the super comp's data
-    if (bce_st || sup_comp_bin_cls != archetype.num_bin_cls) {
+    // Stopping at the super comp's bin count is fine with BCE too: nothing blocked when the
+    // super comp was analysed can be unblocked while we are inside it. SLOW_DEBUG traverses
+    // all bins so the assert below checks exactly that.
+#ifdef SLOW_DEBUG
+    const bool all_bins = bce_st != nullptr;
+#else
+    constexpr bool all_bins = false;
+#endif
+    if (all_bins || sup_comp_bin_cls != archetype.num_bin_cls) {
       // we have not seen all binary clauses
       // traverse binary clauses
       uint32_t* bins = holder.begin_bin(v);

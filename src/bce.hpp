@@ -48,6 +48,7 @@ struct BCEStats {
   uint64_t blocked = 0;
   uint64_t triples = 0;
   uint64_t cand_entries = 0;
+  uint64_t rel_cls = 0;
   uint64_t skipped_lits = 0;
   uint64_t pops = 0;
   uint64_t reproc = 0;
@@ -80,6 +81,7 @@ public:
   void propagate(const std::vector<Lit>& trail);
 
   const BCEStats& get_stats() const { return stats; }
+  bool useless() const { return tri.empty(); }
   uint32_t num_blocked_now() const { return cur_blocked; }
 
 private:
@@ -119,6 +121,7 @@ private:
   std::vector<std::vector<uint32_t>> wl;
 
   std::vector<uint32_t> proc_grp;
+  std::vector<uint8_t> var_rel;
   std::vector<Ev> evs;
   std::vector<uint32_t> grp_start;
   uint32_t min_grp = NONE;

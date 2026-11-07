@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "bce.hpp"
 #include "time_mem.hpp"
+#include <algorithm>
 #include <cassert>
 
 using namespace GanakInt;
@@ -116,6 +117,28 @@ void BCE::init(const LiteralIndexedVector<TriValue>* _vals, uint32_t nvars, uint
   }
   stats.triples = tri.size();
   stats.cand_entries = cands.size();
+
+  // Only clauses in some triple are ever read, so the rest need no satisfaction tracking.
+  // A var with no such clause needs no PROC event either, so its unset pops nothing.
+  std::vector<uint8_t> rel(ncls, 0);
+  for (const auto& tr : tri) rel[tr.cl] = 1;
+  for (const auto& c : cands) rel[c] = 1;
+  std::vector<uint32_t> new_off(nlits+1, 0);
+  uint32_t at = 0;
+  for (uint32_t li = 0; li < nlits; li++) {
+    new_off[li] = at;
+    for (uint32_t k = occ_off[li]; k < occ_off[li+1]; k++) if (rel[occ[k]]) occ[at++] = occ[k];
+  }
+  new_off[nlits] = at;
+  occ.resize(at);
+  occ.shrink_to_fit();
+  occ_off.swap(new_off);
+  var_rel.assign(nvars+1, 0);
+  for (uint32_t v = 1; v <= nvars; v++) {
+    const Lit l(v, false);
+    var_rel[v] = occ_off[l.raw()] != occ_off[l.raw()+2];
+  }
+  stats.rel_cls = std::count(rel.begin(), rel.end(), 1);
   stats.init_time = cpu_time() - my_time;
 }
 
@@ -183,7 +206,7 @@ void BCE::recheck(uint32_t t) {
 
 void BCE::proc_lit(const Lit l, const uint32_t g) {
   const uint32_t v = l.var();
-  if (proc_grp[v] != NONE) return;
+  if (!var_rel[v] || proc_grp[v] != NONE) return;
   proc_grp[v] = g;
   evs.push_back({EV_PROC, v, NONE});
   for (uint32_t k = occ_off[l.raw()]; k < occ_off[l.raw()+1]; k++) {

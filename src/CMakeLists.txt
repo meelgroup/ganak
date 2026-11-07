@@ -37,6 +37,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
 set(SOURCES
+    bce.cpp
     comp_analyzer.cpp
     comp_types/comp_archetype.cpp
     comp_management.cpp

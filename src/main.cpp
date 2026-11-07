@@ -311,6 +311,9 @@ void add_ganak_options()
 
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, "Run BuDDy");
+    add_arg("--bce", conf.do_bce, "Dynamic blocked clause elimination on non-indep vars during search");
+    add_arg("--bceocclim", conf.bce_occ_lim, "BCE: skip a literal as blocking literal if |occ(l)|*|occ(~l)| is above this");
+    add_arg("--bcecandlim", conf.bce_cand_lim, "BCE: stop setting up blocking literals once this many resolution candidates are stored");
     add_arg("--buddymaxcls", conf.buddy_max_cls, "Run BuDDy");
 
     // Shrinking options

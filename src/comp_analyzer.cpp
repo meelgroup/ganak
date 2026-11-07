@@ -29,6 +29,8 @@ THE SOFTWARE.
 #include <algorithm>
 #include <cstdint>
 #include <numeric>
+#include <iomanip>
+#include <unordered_map>
 
 using namespace GanakInt;
 
@@ -62,6 +64,9 @@ void CompAnalyzer::initialize(
 
   max_clid = 1;
   max_tri_clid = 1;
+  const bool use_bce = conf.do_bce && conf.compile_fname.empty();
+  vector<vector<Lit>> bce_cls;
+  if (use_bce) bce_cls.emplace_back();
   vector<vector<ClData>> unif_occ_long(n);
   long_clauses_data.clear();
   long_clauses_data.push_back(SENTINEL_LIT); // MUST start with a sentinel!
@@ -69,6 +74,7 @@ void CompAnalyzer::initialize(
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
     const uint32_t long_cl_off = long_clauses_data.size();
+    if (use_bce) bce_cls.emplace_back(cl.begin(), cl.end());
     if (cl.size() > 3) {
       Lit const blk_lit = cl[cl.size()/2];
       for(const auto&l: cl) long_clauses_data.push_back(l);
@@ -127,6 +133,8 @@ void CompAnalyzer::initialize(
 
     unif_occ_bin[v] = tmp2;
   }
+
+  if (use_bce) init_bce(watches, unif_occ_bin, bce_cls);
 
   // fill holder
   assert(unif_occ_bin.size() == unif_occ_long.size());
@@ -215,6 +223,54 @@ bool CompAnalyzer::explore_comp(const uint32_t v, const uint32_t sup_comp_long_c
   return true;
 }
 
+void CompAnalyzer::init_bce(const LiteralIndexedVector<LitWatchList>& watches,
+    const vector<vector<uint32_t>>& unif_occ_bin, vector<vector<Lit>>& bce_cls) {
+  const uint32_t n = max_var+1;
+  std::unordered_map<uint64_t, uint32_t> pair_of;
+  auto pkey = [](uint32_t a, uint32_t b) {
+    if (a > b) std::swap(a, b);
+    return ((uint64_t)a << 32) | b;
+  };
+  bin_pair_start.assign(n+1, 0);
+  bin_pair_ids.clear();
+  for (uint32_t v = 0; v < n; v++) {
+    bin_pair_start[v] = bin_pair_ids.size();
+    for (const auto& v2 : unif_occ_bin[v]) {
+      auto it = pair_of.find(pkey(v, v2));
+      uint32_t p;
+      if (it == pair_of.end()) { p = pair_of.size(); pair_of[pkey(v, v2)] = p; }
+      else p = it->second;
+      bin_pair_ids.push_back(p);
+    }
+  }
+  bin_pair_start[n] = bin_pair_ids.size();
+  bin_pair_total.assign(pair_of.size(), 0);
+
+  const uint32_t first_bin = bce_cls.size();
+  vector<uint32_t> bin_pair;
+  for (uint32_t v = 1; v < n; v++) for (const bool sign : {false, true}) {
+    const Lit l(v, sign);
+    for (const auto& bincl : watches[l].binaries) {
+      if (!bincl.irred() || !(l < bincl.lit())) continue;
+      const uint32_t p = pair_of.at(pkey(v, bincl.lit().var()));
+      bin_pair_total[p]++;
+      bin_pair.push_back(p);
+      bce_cls.push_back({l, bincl.lit()});
+    }
+  }
+
+  bce = std::make_unique<BCE>();
+  bce->init(max_var, counter->get_opt_indep_support_end(), bce_cls, first_bin,
+      bin_pair, pair_of.size(), conf.bce_occ_lim, conf.bce_cand_lim);
+  bce_st = bce->state();
+  bce_pair_blocked = bce->pair_blocked_data();
+  const auto& s = bce->get_stats();
+  verb_print(1, "[bce] blk vars from: " << counter->get_opt_indep_support_end()
+      << " cls: " << bce_cls.size()-1 << " bins: " << bce_cls.size()-first_bin
+      << " triples: " << s.triples << " cand entries: " << s.cand_entries
+      << " skipped lits: " << s.skipped_lits << " T: " << std::fixed << std::setprecision(2) << s.init_time);
+}
+
 // Each variable knows the level it was visited at, and the stimestamp at the time
 // Each level knows the HIGHEST stamp it has been seen
 // When checking a var, we go to the level, see the stamp, if it's larger than the stamp of the var,
@@ -285,17 +341,22 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       if (reset) assert(holder.size_bin(v) == holder.orig_size_bin(v));
     );
 
-    if (sup_comp_bin_cls != archetype.num_bin_cls) {
+    // With BCE, the bin count of the super comp is not an upper bound we can stop at:
+    // blocked status of bins is not part of the super comp's data
+    if (bce_st || sup_comp_bin_cls != archetype.num_bin_cls) {
       // we have not seen all binary clauses
       // traverse binary clauses
       uint32_t* bins = holder.begin_bin(v);
       uint32_t const* bins_end = bins + holder.size_bin(v);
+      uint32_t bin_i = 0;
       while(bins != bins_end) {
         uint32_t const v2 = *(bins++);
+        const uint32_t this_i = bin_i++;
         // v2 must be true or unknown, because if it's false, this variable would be TRUE, and that' not the case
         // assigned vars are never marked unvisited-in-sup-comp, so manage_occ_of()
         // is a no-op for them
         if (is_unknown(v2)) {
+          if (bce_st && !bin_pair_alive(v, this_i)) continue;
           manage_occ_of(v2);
           archetype.num_bin_cls++;
           bump_freq_score(v2);
@@ -358,6 +419,7 @@ void CompAnalyzer::record_comp(const uint32_t var, const uint32_t sup_comp_long_
       SLOW_DEBUG_DO(assert(archetype.num_long_cls <= sup_comp_long_cls));
       ClData& d = *longs;
       longs++;
+      if (bce_st && (bce_st[d.id] & BCE::BLOCKED)) continue;
       bool sat = false;
       if (d.id < max_tri_clid) {
         // traverse ternary clauses

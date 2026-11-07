@@ -187,6 +187,7 @@ public:
     return fg->larger_than(*fst, *snd);
   }
   auto get_indep_support_end() const { return indep_support_end; }
+  const vector<Lit>& get_trail() const { return trail; }
   auto get_opt_indep_support_end() const { return opt_indep_support_end; }
   int32_t dec_level() const { return decisions.get_decision_level(); }
   void print_trail(bool check_entail = true, bool check_anything = true) const;
@@ -212,6 +213,8 @@ private:
   std::mt19937_64 mtrand;
   std::unique_ptr<CMSat::SATSolver> sat_solver;
   std::unique_ptr<CompManager> comp_manager;
+  BCE* bce = nullptr; // owned by comp_manager's analyzer
+  void collect_bce_stats();
   FF count_using_cms();
 
   // ReduceDB

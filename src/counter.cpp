@@ -1222,6 +1222,8 @@ FF Counter::outer_count() {
     } else *cnt += *do_appmc_count();
   }
   compiler->finalize_and_write(/*unsat=*/false);
+  collect_bce_stats();
+  bce = nullptr;
   if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
@@ -4684,6 +4686,16 @@ void Counter::check_cls_deriveable() const {
 }
 #endif
 
+void Counter::collect_bce_stats() {
+  if (!bce) return;
+  const auto& s = bce->get_stats();
+  stats.bce_blocked += s.blocked;
+  stats.bce_pops += s.pops;
+  stats.bce_reproc += s.reproc;
+  stats.bce_moves += s.moves;
+  stats.bce_init_time += s.init_time;
+}
+
 void Counter::init_and_preproc() {
   VERY_SLOW_DEBUG_DO(
       check_cls_deriveable();
@@ -4694,12 +4706,15 @@ void Counter::init_and_preproc() {
   seen.resize(2*(nVars()+2), 0);
   shrink_seen.assign(nVars()+2, 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
+  collect_bce_stats();
+  bce = nullptr;
   comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
   init_decision_stack();
   simple_preprocess();
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc.get(), long_irred_cls);
+  bce = comp_manager->get_ana().get_bce();
   for(const auto& l: unit_cls) {
     if (val(l) == X_TRI) set_lit(l, 0);
     auto ret = propagate();
@@ -5006,6 +5021,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
   debug_print("->reactivate and backtrack. Dec lev: " << dec_level() << " top declevel sublev: " << var(decisions.top().var).sublevel <<  "...");
   auto jt = top_declevel_trail_begin();
   auto it = jt;
+  const uint32_t keep_from = jt - trail.begin();
   int32_t off_by = 0;
   for (; it != trail.end(); it++) {
     debug_print("Backing up, checking lit: " << setw(5) << *it << " at: " << it-trail.begin());
@@ -5023,6 +5039,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
           << " lev: " << setw(4) << var(*it).decision_level
           << " ante was: " << var(*it).ante);
       if (sat_mode() && !order_heap.in_heap(it->var())) order_heap.insert(it->var());
+      if (bce) bce->note_unset(it->var());
       unset_lit(*it);
     }
   }
@@ -5030,6 +5047,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
       print_trail(false, false);assert(false);});
   if (!sat_mode()) comp_manager->clean_remain_comps_of(decisions.top());
   trail.resize(jt - trail.begin());
+  if (bce) bce->backtrack(values, keep_from);
   if (dec_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
   if (!sat_mode()) decisions.top().reset_remain_comps();

@@ -118,6 +118,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setprecision(2));
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
         << safe_div(comps_non_reset, comps_reset+comps_non_reset));
+  if (bce_init_time > 0 || bce_blocked > 0)
+    verb_print(1, "bce blockedK/movesK/pops/reproc/T " << bce_blocked/1000 << " / "
+      << bce_moves/1000 << " / " << bce_pops << " / " << bce_reproc << " / " << bce_init_time);
 
   // Branching quality. A good decision cuts its component: low "largest"
   // ratio, many components per split

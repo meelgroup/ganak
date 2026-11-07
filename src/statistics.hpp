@@ -139,6 +139,11 @@ public:
   uint64_t comps_reset = 0;
   uint64_t comps_non_reset = 0;
   uint32_t comps_recorded = 0;
+  uint64_t bce_blocked = 0;
+  uint64_t bce_pops = 0;
+  uint64_t bce_reproc = 0;
+  uint64_t bce_moves = 0;
+  double bce_init_time = 0;
 
   // Branching: how well does a decision (plus its propagation) cut the
   // component it was made in. One "split" is one component analysis of a

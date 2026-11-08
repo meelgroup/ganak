@@ -46,9 +46,14 @@ inline std::atomic<int> num_live_caches{0};
 
 // Bytes malloc has handed out, main arena only. 0 if we cannot tell.
 inline uint64_t heap_in_use() {
-#if defined(__GLIBC__) && __GLIBC_PREREQ(2, 33)
+// Nested: without glibc, __GLIBC_PREREQ is undefined and the && does not save the #if
+#if defined(__GLIBC__)
+#if __GLIBC_PREREQ(2, 33)
   const auto mi = mallinfo2();
   return mi.uordblks + mi.hblkhd;
+#else
+  return 0;
+#endif
 #else
   return 0;
 #endif

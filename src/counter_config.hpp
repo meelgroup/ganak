@@ -76,7 +76,7 @@ struct CounterConfiguration {
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;
   int do_buddy = 0;
-  int do_bce = 0;
+  int do_bce = 1;
   uint64_t bce_occ_lim = 10000;
   uint64_t bce_cand_lim = 20000000;
   uint32_t buddy_max_cls = 6;

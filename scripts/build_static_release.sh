@@ -37,7 +37,8 @@ ARJUN_SHA=$(echo "$HASHES" | grep "Arjun SHA1" | grep -oP '[0-9a-f]{40}' | cut -
 CMS_SHA=$(echo "$HASHES" | grep "CMS SHA1" | grep -oP '[0-9a-f]{40}' | cut -c1-8)
 APPROXMC_SHA=$(echo "$HASHES" | grep "ApproxMC SHA1" | grep -oP '[0-9a-f]{40}' | cut -c1-8)
 TD_SHA=$(echo "$HASHES" | grep "TreeDecomp SHA1" | grep -oP '[0-9a-f]{40}' | cut -c1-8)
+CADIBACK_SHA=$(echo "$HASHES" | grep "CadiBack SHA1" | grep -oP '[0-9a-f]{40}' | cut -c1-8)
 
-DEST="ganak_${GANAK_SHA}_${ARJUN_SHA}_${APPROXMC_SHA}_${CMS_SHA}_${TD_SHA}"
+DEST="ganak_${GANAK_SHA}_${ARJUN_SHA}_${APPROXMC_SHA}_${CMS_SHA}_${TD_SHA}_${CADIBACK_SHA}"
 cp ganak "$DEST"
 echo "Copied to $DEST"

@@ -534,6 +534,254 @@ set key bottom right
     _gnuplot_run(gp_file, png_file)
 
 
+def _bce_dirs(con, table_todo, fname_like):
+    """BCE runs have bce_triples set. The baseline is a run of a BCE-capable
+    binary (count_time set) where it is NULL, i.e. --bce 0."""
+    have = {r[1] for r in con.execute("PRAGMA table_info(data)")}
+    if "bce_triples" not in have:
+        return None, []
+    base, bce = None, []
+    for dir, ver in table_todo:
+        n_tri, n_ct = con.execute(
+            f"select count(bce_triples), count(count_time) from data "
+            f"where dirname='{dir}' and ganak_ver='{ver}'{fname_like}").fetchone()
+        if n_tri > 0:
+            bce.append((dir, ver))
+        elif n_ct > 0 and base is None:
+            base = (dir, ver)
+    return base, bce
+
+
+def _bce_bucket(triples, blockedK):
+    # blockedK is in thousands, so 0 or NULL both mean "fewer than 1000 blocked"
+    if triples is None:
+        return None
+    if triples == 0:
+        return "no cands"
+    if not blockedK:
+        return "<1K blocked"
+    return ">=1K blocked"
+
+
+_BCE_BUCKETS = ["no cands", "<1K blocked", ">=1K blocked"]
+
+
+def _bce_pairs(con, base, bce, fname_like):
+    """fname -> (base solve time, base count time, bce solve time, bce count time,
+    bucket, blockedK, skipped lits); solve time is None when unsolved."""
+    q = ("select fname, ganak_time, count_time, bce_triples, bce_blockedK, bce_skipped_lits "
+         "from data where dirname='{}' and ganak_ver='{}'" + fname_like)
+    b = {r[0]: r for r in con.execute(q.format(*base))}
+    out = {}
+    for r in con.execute(q.format(*bce)):
+        if r[0] not in b:
+            continue
+        rb = b[r[0]]
+        out[r[0]] = (rb[1], rb[2], r[1], r[2], _bce_bucket(r[3], r[4]), r[4], r[5])
+    return out
+
+
+def _bce_ratio(p):
+    """bce/base counting time when both solved and it isn't sub-second noise."""
+    if p[0] is None or p[2] is None or p[1] is None or p[3] is None:
+        return None
+    if max(p[1], p[3]) < 1.0:
+        return None
+    return max(p[3], 0.01) / max(p[1], 0.01)
+
+
+def _short(dir):
+    return dir.replace("out-ganak-mc", "")
+
+
+def print_bce_tables(table_todo, fname_like, verbose=False):
+    """Dynamic BCE (--bce 1) vs the --bce 0 baseline, paired by instance.
+    Counting time excludes Arjun, which is the same for both."""
+    con = sqlite3.connect("data.sqlite3")
+    base, bce = _bce_dirs(con, table_todo, fname_like)
+    if not bce:
+        return
+
+    def med(vals):
+        vals = sorted(v for v in vals if v is not None)
+        return vals[len(vals)//2] if vals else None
+
+    def fmt(v, f="{:.2f}"):
+        return "-" if v is None else f.format(v)
+
+    print(f"\n{BLUE}BCE activity (no cands: no blocking literal at all; 'K' = thousands of clauses){RESET}")
+    headers = ["dirname", "inst", "no cands", "<1K blocked", ">=1K blocked", "occlim skipped", "med blockedK"]
+    rows = []
+    for dir, ver in bce:
+        rs = list(con.execute(
+            f"select bce_triples, bce_blockedK, bce_skipped_lits from data "
+            f"where dirname='{dir}' and ganak_ver='{ver}'{fname_like}"))
+        cnt = {k: 0 for k in _BCE_BUCKETS}
+        for r in rs:
+            k = _bce_bucket(r[0], r[1])
+            if k:
+                cnt[k] += 1
+        rows.append([_short(dir), str(len(rs))] + [str(cnt[k]) for k in _BCE_BUCKETS] +
+                    [str(sum(1 for r in rs if r[2])),
+                     fmt(med(r[1] for r in rs if r[1]), "{:.0f}")])
+    _print_table(headers, rows)
+
+    if base is None:
+        print(f"{RED}No --bce 0 run of a BCE-capable binary among the dirs, skipping the paired tables{RESET}")
+        return
+    print(f"\n{BLUE}BCE vs baseline {_short(base[0])}, by what BCE did "
+          f"(ratio = bce/base counting time, both solved, <1 = BCE faster){RESET}")
+    headers = ["dirname", "bucket", "inst", "solved base", "solved bce", "gained", "lost",
+               "med ratio", "faster/slower", "PAR2 base", "PAR2 bce"]
+    rows = []
+    all_pairs = {}
+    for dir, ver in bce:
+        pairs = _bce_pairs(con, base, (dir, ver), fname_like)
+        all_pairs[dir] = pairs
+        for k in _BCE_BUCKETS + ["all"]:
+            ps = [p for p in pairs.values() if k == "all" or p[4] == k]
+            if not ps:
+                continue
+            ratios = [x for x in (_bce_ratio(p) for p in ps) if x is not None]
+            par2 = lambda i: sum(p[i] if p[i] is not None else 2*TIMEOUT for p in ps) / len(ps)
+            rows.append([_short(dir), k, str(len(ps)),
+                         str(sum(1 for p in ps if p[0] is not None)),
+                         str(sum(1 for p in ps if p[2] is not None)),
+                         str(sum(1 for p in ps if p[0] is None and p[2] is not None)),
+                         str(sum(1 for p in ps if p[0] is not None and p[2] is None)),
+                         fmt(med(ratios)),
+                         f"{sum(1 for x in ratios if x < 0.9)}/{sum(1 for x in ratios if x > 1.1)}",
+                         f"{par2(0):.0f}", f"{par2(2):.0f}"])
+    _print_table(headers, rows)
+
+    print(f"\n{BLUE}BCE vs baseline, by track (instances where BCE blocked >=1K clauses){RESET}")
+    headers = ["dirname", "track", "inst", "gained", "lost", "med ratio", "faster/slower"]
+    rows = []
+    for dir, _ in bce:
+        for tr in ("track1", "track2", "track3", "track4"):
+            ps = [p for f, p in all_pairs[dir].items() if tr in f and p[4] == ">=1K blocked"]
+            if not ps:
+                continue
+            ratios = [x for x in (_bce_ratio(p) for p in ps) if x is not None]
+            rows.append([_short(dir), tr, str(len(ps)),
+                         str(sum(1 for p in ps if p[0] is None and p[2] is not None)),
+                         str(sum(1 for p in ps if p[0] is not None and p[2] is None)),
+                         fmt(med(ratios)),
+                         f"{sum(1 for x in ratios if x < 0.9)}/{sum(1 for x in ratios if x > 1.1)}"])
+    if rows:
+        _print_table(headers, rows)
+
+    for dir, _ in bce:
+        pairs = all_pairs[dir]
+        flips = [(f, p) for f, p in pairs.items() if (p[0] is None) != (p[2] is None)]
+        timed = [(f, p, _bce_ratio(p)) for f, p in pairs.items()
+                 if _bce_ratio(p) is not None and max(p[1], p[3]) >= 10]
+        timed.sort(key=lambda x: x[2])
+        print(f"\n{BLUE}{_short(dir)}: solved by one side only, and the 5 biggest wins/losses "
+              f"(counting time >= 10s){RESET}")
+        headers = ["fname", "what", "base t", "bce t", "base count t", "bce count t", "bucket", "blockedK"]
+        rows = []
+        for f, p in sorted(flips):
+            rows.append([f, "gained" if p[2] is not None else "lost", fmt(p[0], "{:.0f}"),
+                         fmt(p[2], "{:.0f}"), fmt(p[1], "{:.1f}"), fmt(p[3], "{:.1f}"),
+                         p[4] or "-", fmt(p[5], "{:.0f}")])
+        for label, sel in (("win", timed[:5]), ("loss", list(reversed(timed[-5:])))):
+            for f, p, x in sel:
+                if (label == "win" and x >= 1) or (label == "loss" and x <= 1):
+                    continue
+                rows.append([f, f"{label} x{1/x:.1f}" if label == "win" else f"{label} x{x:.1f}",
+                             fmt(p[0], "{:.0f}"), fmt(p[2], "{:.0f}"), fmt(p[1], "{:.1f}"),
+                             fmt(p[3], "{:.1f}"), p[4] or "-", fmt(p[5], "{:.0f}")])
+        if rows:
+            _print_table(headers, rows)
+
+
+def bce_charts(table_todo, fname_like, verbose=False):
+    """Scatter of counting time, baseline vs each BCE config (unsolved at the
+    TO line), and the CDF of the per-instance speedup."""
+    con = sqlite3.connect("data.sqlite3")
+    base, bce = _bce_dirs(con, table_todo, fname_like)
+    if base is None or not bce:
+        return
+    to_pos = TIMEOUT * 1.5
+    scat, cdf = [], []
+    for dir, ver in bce:
+        pairs = _bce_pairs(con, base, (dir, ver), fname_like)
+        tag = re.sub(r'[^a-zA-Z0-9_-]', '_', dir)
+        for k in _BCE_BUCKETS:
+            if k == "no cands":
+                continue
+            dat = f"{TMP_DIR}/bce_scatter_{tag}_{re.sub(r'[^a-zA-Z0-9]', '_', k)}.dat"
+            n = 0
+            with open(dat, "w") as fh:
+                for p in pairs.values():
+                    if p[4] != k or (p[0] is None and p[2] is None):
+                        continue
+                    x = to_pos if p[0] is None else max(p[1] if p[1] is not None else p[0], 0.1)
+                    y = to_pos if p[2] is None else max(p[3] if p[3] is not None else p[2], 0.1)
+                    fh.write(f"{x}\t{y}\n")
+                    n += 1
+            if n:
+                scat.append((dat, f"{_short(dir)} {k} ({n})"))
+        ratios = sorted(1/x for x in (_bce_ratio(p) for p in pairs.values()
+                                      if p[4] == ">=1K blocked") if x is not None)
+        if len(ratios) >= 5:
+            dat = f"{TMP_DIR}/bce_cdf_{tag}.dat"
+            with open(dat, "w") as fh:
+                for i, r in enumerate(ratios):
+                    fh.write(f"{r}\t{100.0*(i+1)/len(ratios)}\n")
+            cdf.append((dat, f"{_short(dir)} ({len(ratios)})"))
+
+    if scat:
+        png, pdf, gp = (f"{TMP_DIR}/bce_scatter.{e}" for e in ("png", "pdf", "gnuplot"))
+        with open(gp, "w") as f:
+            f.write(f"""set terminal pdfcairo size 7,6
+set output '{pdf}'
+set title 'Counting time (no Arjun): --bce 0 vs --bce 1. Below the diagonal = BCE faster. Unsolved at TO'
+set xlabel '{gnuplot_name_cleanup(_short(base[0]))} (s)'
+set ylabel 'with BCE (s)'
+set logscale xy
+set xrange [0.1:{to_pos*1.3}]
+set yrange [0.1:{to_pos*1.3}]
+set size square
+set grid
+set key top left font ',8'
+set arrow from {TIMEOUT},0.1 to {TIMEOUT},{to_pos*1.3} nohead dt 3
+set arrow from 0.1,{TIMEOUT} to {to_pos*1.3},{TIMEOUT} nohead dt 3
+""")
+            parts = [f"'{d}' using 1:2 with points pt 7 ps 0.4 title '{gnuplot_name_cleanup(n)}'"
+                     for d, n in scat]
+            parts += ["x with lines lc 'black' notitle",
+                      "x/2 with lines lc 'gray' dt 2 notitle",
+                      "x*2 with lines lc 'gray' dt 2 notitle"]
+            f.write("plot " + ", ".join(parts) + "\n")
+            f.write(f"set terminal pngcairo size 850,800\nset output '{png}'\nreplot\n")
+        print(f"\n{BLUE}BCE counting time scatter (dashed: 2x faster/slower){RESET}")
+        print(f"  PDF: {pdf}  PNG: {png}")
+        _gnuplot_run(gp, png)
+
+    if cdf:
+        png, pdf, gp = (f"{TMP_DIR}/bce_speedup_cdf.{e}" for e in ("png", "pdf", "gnuplot"))
+        with open(gp, "w") as f:
+            f.write(f"""set terminal pdfcairo size 7,5
+set output '{pdf}'
+set title 'Speedup of counting time from BCE (base/bce), both solved, >=1K clauses blocked'
+set xlabel 'speedup, log scale (>1 = BCE faster)'
+set ylabel '% of instances'
+set logscale x
+set yrange [0:100]
+set grid
+set key bottom right
+set arrow from 1,0 to 1,100 nohead lc 'black'
+""")
+            f.write("plot " + ", ".join(
+                f"'{d}' using 1:2 with steps lw 2 title '{gnuplot_name_cleanup(n)}'" for d, n in cdf) + "\n")
+            f.write(f"set terminal pngcairo size 900,650\nset output '{png}'\nreplot\n")
+        print(f"\n{BLUE}BCE speedup CDF{RESET}")
+        print(f"  PDF: {pdf}  PNG: {png}")
+        _gnuplot_run(gp, png)
+
+
 def print_preproc_diffs(table_todo, fname_like, verbose=False):
     if len(table_todo) < 2:
         return
@@ -2317,7 +2565,7 @@ only_dirs = [
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 
     # final MCC
-    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
                                       # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
     # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
@@ -2336,10 +2584,17 @@ only_dirs = [
     # "out-ganak-mccomp2324-2357294-1", # testing more TD systems -- 1206 solved, BEST
     # "out-ganak-mccomp2324-2359115-0",
     # "out-ganak-mccomp2324-2362983-0",
-    "out-ganak-mccomp2324-2366186-3",
+    # "out-ganak-mccomp2324-2366186-3",
     # "out-ganak-mccomp2324-2423773-0", # significantly changed CMS
     # "out-ganak-mccomp2324-2425144-", # fixing up ganak after CMS change. missing -4
-    "out-ganak-mccomp2324-2449947-0", # fixing up ganak after CMS change + congruence closure
+    # "out-ganak-mccomp2324-2449947-0", # fixing up ganak after CMS change + congruence closure
+    # "out-ganak-mccomp2324-2531742-", # after release, checking CCNR limitation + (limited) pre-cadiback
+    # "out-ganak-mccomp2324-2535065-", # tighter memory, maybe fix BVE order?
+    # "out-ganak-mccomp2324-2634304-", # new cover stuff
+    # "out-ganak-mccomp2324-2638326-1", #more cover
+    # "out-ganak-mccomp2324-2791823-2", # local search cover
+    "out-ganak-mccomp2324-2799164-1", # bce
+
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc
@@ -2384,6 +2639,8 @@ def main():
                         help="Don't print distributions of metrics")
     parser.add_argument("--cdf", action="store_true",
                         help="ONLY generate the PAR2/solved summary table and the CDF graph; skip everything else")
+    parser.add_argument("--bce", action="store_true",
+                        help="ONLY the summary table and the BCE (--bce 1 vs --bce 0) tables and graphs")
     parser.add_argument("dirs", nargs="*", metavar="DIR",
                         help="Only these run dirs instead of the only_dirs list: a dirname prefix, or any substring of one, e.g. 2449947-4")
     args = parser.parse_args()
@@ -2401,7 +2658,7 @@ def main():
         print(f"Found {len(versions)} versions in database")
         print(f"Matched {len(matched_dirs)} dirs from only_dirs prefixes")
         print("Building CSV data...")
-    if not args.cdf and not args.nopairwise:
+    if not args.cdf and not args.bce and not args.nopairwise:
       scatter_plot_time_pairs(matched_dirs, fname_like, args.verbose, args.pair)
     fname2_s, table_todo = build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fname_like, args.verbose)
 
@@ -2420,6 +2677,12 @@ def main():
         print(f"\n{BLUE}{console_title}{RESET}")
         print(f"  PDF: {pdf_file}  PNG: {png_file}")
         _display_png(png_file)
+        return
+
+    if args.bce:
+        print_summary_tables(table_todo, fname_like, args.full, args.verbose)
+        print_bce_tables(table_todo, fname_like, args.verbose)
+        bce_charts(table_todo, fname_like, args.verbose)
         return
 
     if args.verbose:
@@ -2451,6 +2714,9 @@ def main():
     print_td_cost_table(table_todo, fname_like, args.verbose)
     print_td_indep_tables(table_todo, fname_like, args.verbose)
     td_time_cdf_chart(table_todo, fname_like, args.verbose)
+    print_section_header("dynamic blocked clause elimination")
+    print_bce_tables(table_todo, fname_like, args.verbose)
+    bce_charts(table_todo, fname_like, args.verbose)
     if not args.nopreproc:
         print_section_header("preprocessing")
         print_preproc_diffs(table_todo, fname_like, args.verbose)

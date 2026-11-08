@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include "containers.hpp"
 #include "stack.hpp"
 #include "structures.hpp"
+#include "bce.hpp"
 
 using std::map;
 using std::pair;
@@ -178,6 +179,7 @@ public:
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }
   uint32_t get_max_var() const { return max_var; }
   CompArchetype& get_archetype() { return archetype; }
+  BCE* get_bce() { return bce.get(); }
 
 private:
   // the id of the last clause
@@ -199,6 +201,17 @@ private:
   CompArchetype archetype;
   Counter* counter = nullptr;
 
+  std::unique_ptr<BCE> bce;
+  const uint8_t* bce_st = nullptr;
+  const uint32_t* bce_pair_blocked = nullptr;
+  vector<uint32_t> bin_pair_total;
+  vector<uint32_t> bin_pair_start; // per var, into bin_pair_ids, parallel to holder's bins
+  vector<uint32_t> bin_pair_ids;
+  bool bin_pair_alive(uint32_t v, uint32_t i) const {
+    const uint32_t p = bin_pair_ids[bin_pair_start[v]+i];
+    return bce_pair_blocked[p] < bin_pair_total[p];
+  }
+
   // Quick lookup of cl based on ID
 
   // Used to figure out which vars are in a component
@@ -212,6 +225,8 @@ private:
   bool is_unknown(const Lit lit) const { return tri_is_unknown(values[lit]); }
   bool is_unknown(const uint32_t v) const { return tri_is_unknown(values[Lit(v, true)]); }
   void bump_var_occs(const uint32_t v);
+  void init_bce(const LiteralIndexedVector<LitWatchList>& watches,
+      const vector<vector<uint32_t>>& unif_occ_bin, vector<vector<Lit>>& bce_cls);
 
   // stores all information about the comp of var
   // in variables_seen_, clauses_seen_ and

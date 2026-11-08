@@ -1222,6 +1222,8 @@ FF Counter::outer_count() {
     } else *cnt += *do_appmc_count();
   }
   compiler->finalize_and_write(/*unsat=*/false);
+  collect_bce_stats();
+  bce = nullptr;
   if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
@@ -1330,9 +1332,15 @@ void Counter::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
+      // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache
+      if (decisions.top().branch_is_zero()) {
+        is_indep = false;
+        if (run_sat_solver(state, true)) continue;
+        goto start11;
+      }
       decide_lit();
-      if (!is_indep && conf.do_use_sat_solver) {
-        if (run_sat_solver(state)) goto backtrack;
+      if (!is_indep) {
+        if (run_sat_solver(state, false)) goto backtrack;
         else goto start11;
       }
 
@@ -1464,8 +1472,8 @@ void Counter::decide_lit() {
   // The decision literal is now ready. Deal with it.
   uint32_t v = 0;
   switch (static_cast<DecideType>(conf.decide)) {
-    case DecideType::td:        v = find_best_branch(false, !conf.do_use_sat_solver); break;
-    case DecideType::ignore_td: v = find_best_branch(true,  !conf.do_use_sat_solver); break;
+    case DecideType::td:        v = find_best_branch(false, false); break;
+    case DecideType::ignore_td: v = find_best_branch(true,  false); break;
     default: assert(false);
   }
 
@@ -2103,11 +2111,6 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
       *tmp *= *dec_w;
       *after_mul += *tmp;
     }
-    if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
-      assert(!weighted() && "SAT solver cannot be turned off in weighted mode");
-      if (!after_mul->is_zero()) after_mul = fg->one();
-      else after_mul = fg->zero();
-    }
     debug_print("correct                            : " << setprecision(10) << *cnt);
     debug_print("after_mul:                         : " << *after_mul);
     debug_print("dec_w                              : " << *dec_w);
@@ -2119,13 +2122,7 @@ FF Counter::check_count(const bool also_incl_curr_and_later_dec) {
     // and the count cannot be checked
     if (solution_exist) {
       if (!weighted()) {
-        // When !is_indep && !do_use_sat_solver, the DPLL tree only tracks satisfiability
-        // (0/1) not the exact count. Collapse cnt to 0/1 to match before comparing.
-        FF cnt_cmp = cnt->dup();
-        if (!decisions.top().is_indep && !conf.do_use_sat_solver) {
-          if (!cnt_cmp->is_zero()) cnt_cmp = fg->one();
-        }
-        assert(*decisions.top().total_model_count() == *cnt_cmp);
+        assert(*decisions.top().total_model_count() == *cnt);
       }
       else {
         bool okay = true;
@@ -2164,6 +2161,8 @@ RetState Counter::backtrack() {
         << " dec lev: " << dec_level());
     }
 #endif
+    // unweighted, zero == UNSAT
+    if (!weighted() && decisions.top().branch_is_zero()) decisions.top().mark_branch_unsat();
     if (decisions.top().branch_found_unsat()) {
       comp_manager->remove_cache_pollutions_of(decisions.top());
     } else if (decisions.top().another_comp_possible()) {
@@ -2255,7 +2254,9 @@ RetState Counter::backtrack() {
     const auto parent_count_before_left = (decisions.end() - 2)->left_model_count()->dup();
     const auto parent_count_before_right = (decisions.end() - 2)->right_model_count()->dup();
 #endif
-    (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    // so the parent's cache cleanup runs
+    if (decisions.top().comp_unsat()) (decisions.end() - 2)->mark_branch_unsat();
+    else (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
     compiler->attach_to_parent();
     decisions.pop_back();
 
@@ -2528,16 +2529,6 @@ RetState Counter::resolve_conflict() {
   bool const flipped_declit = (
       uip_clause[0].var() == decisions.at(backj).var
            && lev_to_set == backj-1);
-  if (!conf.do_chronobt && !flipped_declit) {
-    // This is the case where non-chnorobt throws away the clause
-    assert(!conf.do_use_sat_solver && "If not using chronobt, SAT solver MUST be off");
-    debug_print(COLRED "No chronobt, not flipped declit.");
-    go_back_to(backj);
-    decisions.top().mark_branch_unsat();
-    decisions.top().zero_out_branch_sol();
-    compiler->branch_reset(); // TODO remove non-chronobt, then we can remove this
-    return BACKTRACK;
-  }
   if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail(true, false));
@@ -3986,8 +3977,9 @@ void Counter::vsads_readjust() {
 }
 
 // At this point, the problem is either SAT or UNSAT, we only care about 1 or 0,
-// because ONLY non-independent variables remain
-bool Counter::run_sat_solver(RetState& state) {
+// because ONLY non-independent variables remain, or (sat_check) the count is
+// already known to be zero
+bool Counter::run_sat_solver(RetState& state, const bool sat_check) {
   assert(!is_indep);
   assert(order_heap.empty());
   assert(!decisions.empty());
@@ -4011,7 +4003,7 @@ bool Counter::run_sat_solver(RetState& state) {
       debug_print("checking var to put in order_heap: " << *it << " val: "
         << val_to_str(val(*it)));
       if (val(*it) != X_TRI) continue;
-      if (*it < opt_indep_support_end)
+      if (*it < opt_indep_support_end && !sat_check)
         assert(*it >= indep_support_end && "only optional indep or non-indep remains");
       order_heap.insert(*it);
     }
@@ -4050,7 +4042,7 @@ bool Counter::run_sat_solver(RetState& state) {
 
     while (!propagate()) {
       start1:
-      if (conf.do_chronobt && chrono_check()) continue;  // will DEFINITELY conflict if TRUE
+      if (chrono_check()) continue;  // will DEFINITELY conflict if TRUE
       state = resolve_conflict();
       if (state == GO_AGAIN) goto start1;
       if (state == BACKTRACK) break;
@@ -4069,6 +4061,21 @@ bool Counter::run_sat_solver(RetState& state) {
       num_rst++;
       continue;
     }
+  }
+
+  if (sat_check) {
+    // Only the model's existence mattered. Undo our level while still in SAT
+    // mode, so unset_lit() does no weight bookkeeping
+    state = RESOLVED;
+    go_back_to(sat_start_dec_level);
+    decisions.top().var = 0;
+    var(0).sublevel = old_sublev;
+    reactivate_comps_and_backtrack_trail(false);
+    decisions.pop_back();
+    decisions.top().next_unproc_comp();
+    bool const ret = propagate();
+    assert(ret);
+    goto end;
   }
 
   {
@@ -4120,6 +4127,10 @@ end:
   VERBOSE_DEBUG_DO(print_trail());
   if (sat) stats.sat_found_sat++;
   else stats.sat_found_unsat++;
+  if (sat_check) {
+    stats.zero_sat_checks++;
+    stats.zero_sat_unsat += !sat;
+  }
   stats.sat_conflicts += stats.conflicts-conflicts_before;
 
   debug_print("after SAT mode. cnt dec: " << *decisions.top().total_model_count()
@@ -4675,6 +4686,16 @@ void Counter::check_cls_deriveable() const {
 }
 #endif
 
+void Counter::collect_bce_stats() {
+  if (!bce) return;
+  const auto& s = bce->get_stats();
+  stats.bce_blocked += s.blocked;
+  stats.bce_pops += s.pops;
+  stats.bce_reproc += s.reproc;
+  stats.bce_moves += s.moves;
+  stats.bce_init_time += s.init_time;
+}
+
 void Counter::init_and_preproc() {
   VERY_SLOW_DEBUG_DO(
       check_cls_deriveable();
@@ -4685,12 +4706,15 @@ void Counter::init_and_preproc() {
   seen.resize(2*(nVars()+2), 0);
   shrink_seen.assign(nVars()+2, 0);
   stats.max_cache_size_bytes = conf.maximum_cache_size_MB*1024*1024;
+  collect_bce_stats();
+  bce = nullptr;
   comp_manager = std::make_unique<CompManager>(conf, stats, values, this);
   init_decision_stack();
   simple_preprocess();
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc.get(), long_irred_cls);
+  bce = comp_manager->get_ana().get_bce();
   for(const auto& l: unit_cls) {
     if (val(l) == X_TRI) set_lit(l, 0);
     auto ret = propagate();
@@ -4997,6 +5021,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
   debug_print("->reactivate and backtrack. Dec lev: " << dec_level() << " top declevel sublev: " << var(decisions.top().var).sublevel <<  "...");
   auto jt = top_declevel_trail_begin();
   auto it = jt;
+  const uint32_t keep_from = jt - trail.begin();
   int32_t off_by = 0;
   for (; it != trail.end(); it++) {
     debug_print("Backing up, checking lit: " << setw(5) << *it << " at: " << it-trail.begin());
@@ -5014,6 +5039,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
           << " lev: " << setw(4) << var(*it).decision_level
           << " ante was: " << var(*it).ante);
       if (sat_mode() && !order_heap.in_heap(it->var())) order_heap.insert(it->var());
+      if (bce) bce->note_unset(it->var());
       unset_lit(*it);
     }
   }
@@ -5021,6 +5047,7 @@ void Counter::reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_w
       print_trail(false, false);assert(false);});
   if (!sat_mode()) comp_manager->clean_remain_comps_of(decisions.top());
   trail.resize(jt - trail.begin());
+  if (bce) bce->backtrack(keep_from);
   if (dec_level() == 0) qhead = 0;
   else qhead = std::min<int32_t>(trail.size()-off_by, qhead);
   if (!sat_mode()) decisions.top().reset_remain_comps();

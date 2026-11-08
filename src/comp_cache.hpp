@@ -29,6 +29,10 @@ THE SOFTWARE.
 #include "Vec.hpp"
 #include <algorithm>
 #include <numeric>
+#include <atomic>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 #include <gmpxx.h>
 #include "structures.hpp"
 #include "time_mem.hpp"
@@ -38,12 +42,31 @@ THE SOFTWARE.
 #include "stack.hpp"
 namespace GanakInt {
 
+inline std::atomic<int> num_live_caches{0};
+
+// Bytes malloc has handed out, main arena only. 0 if we cannot tell.
+inline uint64_t heap_in_use() {
+// Nested: without glibc, __GLIBC_PREREQ is undefined and the && does not save the #if
+#if defined(__GLIBC__)
+#if __GLIBC_PREREQ(2, 33)
+  const auto mi = mallinfo2();
+  return mi.uordblks + mi.hblkhd;
+#else
+  return 0;
+#endif
+#else
+  return 0;
+#endif
+}
+
 // There is EXACTLY ONE of this
 template<typename T>
 class CompCache final: public CompCacheIF {
 public:
-  CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) { }
-  ~CompCache() override = default;
+  CompCache(DataAndStatistics &_stats, const CounterConfiguration &_conf) : stats(_stats), conf(_conf) {
+    num_live_caches++;
+  }
+  ~CompCache() override { num_live_caches--; }
 
   void init(Comp &super_comp, uint32_t hash_seed, const BPCSizes& bpc) override;
   [[nodiscard]] uint64_t get_num_entries_used() const override {
@@ -174,6 +197,7 @@ public:
 
 private:
   [[nodiscard]] uint64_t calc_extra_mem_after_push() const;
+  void check_freed_mem(uint64_t heap_before, uint64_t accounted_before) const;
   T& entry(CacheEntryID id) { return entry_base[id]; }
   const T &entry(CacheEntryID id) const { return entry_base[id]; }
   T& entry(const Comp& comp) { return entry(comp.id()); }
@@ -466,12 +490,21 @@ void CompCache<T>::test_descendantstree_consistency() {
 
 template<typename T>
 uint64_t CompCache<T>::calc_cutoff() const {
+  // The median of a fixed-stride sample: collecting every entry's time took
+  // 8 bytes per entry, a transient well above the cache budget.
+  constexpr uint64_t max_samples = 1ULL << 18;
   vector<uint64_t> scores;
-  // skip index 0 (dummy) and 1 (root formula, never deletable)
-  for (auto it = entry_base.begin() + 2; it != entry_base.end(); ++it)
-    if (!it->is_free() && it->is_deletable()) scores.push_back(it->last_used_time());
+  uint64_t stride = std::max<uint64_t>(1, entry_base.size() / max_samples);
+  while (true) {
+    // skip index 0 (dummy) and 1 (root formula, never deletable)
+    for (uint64_t id = 2; id < entry_base.size(); id += stride)
+      if (!entry_base[id].is_free() && entry_base[id].is_deletable())
+        scores.push_back(entry_base[id].last_used_time());
+    if (!scores.empty() || stride == 1) break;
+    stride = 1;
+  }
   if (scores.empty()) return 0;
-  verb_print(1, "deletable:           " << scores.size());
+  verb_print(1, "deletable sampled:   " << scores.size() << " stride: " << stride);
   const auto mid_idx = scores.size() / 2;
   std::nth_element(scores.begin(), scores.begin() + mid_idx, scores.end());
   return scores[mid_idx];
@@ -491,6 +524,9 @@ bool CompCache<T>::delete_some_entries() {
   verb_print(1, "cache_bytes_memory_usage() in MB: " << in_mb(stats.cache_bytes_memory_usage()));
   verb_print(1, "max_cache_size_bytes in MB: " << in_mb(stats.max_cache_size_bytes));
   verb_print(1, "free entries before: " << free_entry_base_slots.size());
+  const uint64_t heap_before = heap_in_use();
+  compute_size_allocated();
+  const uint64_t accounted_before = stats.cache_bytes_memory_usage();
 
   // note we start at index 2, since index 1 is the whole formula, should always stay here!
   uint64_t tot = 0;
@@ -532,8 +568,28 @@ bool CompCache<T>::delete_some_entries() {
   stats.sum_extra_bytes = std::accumulate(entry_base.begin(), entry_base.end(), 0ULL,
       [](uint64_t s, const auto& e) { return e.is_free() ? s : s + e.extra_bytes(); });
   compute_size_allocated();
+  check_freed_mem(heap_before, accounted_before);
   verb_print(1, "deletion done. T: " << cpu_time()-start_del_time);
   return num > 0;
+}
+
+// The cache budget is only as good as extra_bytes(). An eviction frees nothing
+// but cache memory, so malloc must agree with what we think we just freed.
+template<typename T>
+void CompCache<T>::check_freed_mem(const uint64_t heap_before, const uint64_t accounted_before) const {
+  // mallinfo2 is process-wide, other caches (i.e. threads) would pollute it
+  if (num_live_caches != 1) return;
+  const uint64_t heap_after = heap_in_use();
+  const uint64_t accounted_after = stats.cache_bytes_memory_usage();
+  if (heap_before <= heap_after) return;
+  const uint64_t real = heap_before - heap_after;
+  const uint64_t accounted = accounted_before > accounted_after ? accounted_before - accounted_after : 0;
+  verb_print(2, "eviction freed MB: " << in_mb(real) << " accounted MB: " << in_mb(accounted));
+  // page rounding of mmap'd vectors etc. is a few KB of noise
+  if (real < 1024*1024 || accounted + accounted/8 >= real) return;
+  verb_print(1, "WARNING: cache memory accounting is off, --maxcache will be exceeded."
+      << " Eviction freed " << real << " bytes but only " << accounted << " were accounted for");
+  assert(false && "extra_bytes()/bytes_used() undercounts the real heap usage");
 }
 
 template<typename T>

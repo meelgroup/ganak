@@ -39,6 +39,9 @@ public:
   CacheableComp(CacheableComp&&) noexcept = default;
   CacheableComp(const CacheableComp&) = default;
   CacheableComp& operator=(const CacheableComp&) = default;
+  // without this, std::swap in add_new_comp copy-assigns, which reallocates the packed
+  // data, and its malloc_usable_size can differ from what was accounted for
+  CacheableComp& operator=(CacheableComp&&) noexcept = default;
   CacheableComp(const Comp &comp, const uint32_t hash_seed, const BPCSizes& bpc) {
     hashkey = T::set_comp(comp, hash_seed, bpc);
   }

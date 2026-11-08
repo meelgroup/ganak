@@ -53,6 +53,17 @@ public:
     b.delete_permitted = false;
     b.model_count_is_zero_ = false;
   }
+  BaseComp& operator=(BaseComp&& b) noexcept {
+    if (this == &b) return *this;
+    model_count_ = std::move(b.model_count_);
+    last_used_time_ = b.last_used_time_;
+    delete_permitted = b.delete_permitted;
+    model_count_is_zero_ = b.model_count_is_zero_;
+    b.last_used_time_ = 1;
+    b.delete_permitted = false;
+    b.model_count_is_zero_ = false;
+    return *this;
+  }
   BaseComp(const BaseComp& b) { *this = b; }
   uint64_t last_used_time() const { return last_used_time_; }
   const FF& model_count() const { return model_count_; }

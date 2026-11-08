@@ -37,7 +37,6 @@ struct CounterConfiguration {
   std::string compile_fname;
 
   int do_restart = 0;
-  int do_chronobt = 1;
   uint64_t first_restart = 20000U;
   uint64_t maximum_cache_size_MB = 2500;
   int restart_type = 7; // conflicts, luby
@@ -77,6 +76,9 @@ struct CounterConfiguration {
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;
   int do_buddy = 0;
+  int do_bce = 1;
+  uint64_t bce_occ_lim = 10000;
+  uint64_t bce_cand_lim = 20000000;
   uint32_t buddy_max_cls = 6;
 #ifdef CHECK_COUNT
   int do_cube_check_count = 1;
@@ -120,7 +122,6 @@ struct CounterConfiguration {
   std::string td_read_file = "";
   std::string td_dump_cnf_file = "";
 
-  int do_use_sat_solver = 1;
   int sat_restart_mult = 300;
   int do_sat_restart = 1;
   int do_sat_polar_cache = 1;

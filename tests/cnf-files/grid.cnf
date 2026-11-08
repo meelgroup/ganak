@@ -11,7 +11,6 @@ c c RUN: %solver --restart 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --td 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --puura 0 --sbvasteps 0 --vivif 0 %s | %OutputCheck %s --check-prefix=INT
-c c RUN: %solver --satsolver 0 --chronobt 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --polar 2 --decide 1 --initact 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --shrink 0 --bumpreason 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --allindep 1 %s | %OutputCheck %s --check-prefix=INT

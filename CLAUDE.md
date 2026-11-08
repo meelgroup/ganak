@@ -236,12 +236,18 @@ The model counting competition instances (gzipped CNFs, 200 per track) are at:
 
 ## Data Analysis
 
-Previous benchmark runs are stored under `build/data/` as `out-ganak-*/`
-directories. The relevant ones have already been parsed with
-`./get_data_ganak.py` into `build/data/data.sqlite3`.
+Cluster runs are set up in `../pbs-scripts/`: `creator_ganak.sh` (binary name,
+`opts_arr` of configs, benchmark set, per-job timeout) and
+`run-ganak-trillium.slurm` (`--time` must cover configs x per-job timeout).
+Cluster runs always land in `build/data/`. The raw per-instance logs are always
+there as `build/data/out-ganak-*/<fname>.out_ganak` (plus `.timeout_ganak`):
+grep these for anything not in the DB (e.g. `[cover-drop]`/`[cover]` lines with
+`--arjunverb 2`). They are parsed into `build/data/data.sqlite3` by
+`./get_data_ganak.py` (run it in `build/data/` if a new run is missing from the
+DB). Note `fname` in the DB drops the `.gz`.
 
 The exact binaries the cluster ran are in `build/oldbins/`, named as in each
-run's `ganak_call`: `ganak_<ganak>_<arjun>_<approxmc>_<cms>_<treedecomp>` (short
+run's `ganak_call`: `ganak_<ganak>_<arjun>_<approxmc>_<cms>_<treedecomp>_<cadiback>` (short
 SHAs; older ones use other layouts). To check a local build still behaves like a
 cluster run, run it on a few instances that run <100s in that run and diff
 conflicts/decisions/final TD/count against the run's `.out_ganak` logs; there is

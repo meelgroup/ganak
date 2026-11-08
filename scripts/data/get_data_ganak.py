@@ -162,7 +162,9 @@ def td_update(c, width, t):
 
 
 _COMP_SUM_KEYS = ["newnvars", "indepsz", "optindepsz", "irred_bin", "irred_long", "irred_tri",
-                  "conflicts", "decisionsK", "compsK"]
+                  "conflicts", "decisionsK", "compsK",
+                  "bce_blockedK", "bce_pops", "bce_reproc", "bce_triples", "bce_skipped_lits",
+                  "count_time"]
 _COMP_LARGEST_KEYS = ["primal_density", "primal_edge_var_ratio", "td_nodes", "td_split",
                       "td_bags", "td_src", "td_band", "td_cands", "td_accepts", "td_levels",
                       "td_centroid_bag", "td_soft_width", "td_ind_n", "td_ind_levels",
@@ -377,6 +379,18 @@ def parse_ganak_output(fname):
             elif line.startswith("c o [td] Primal graph"):
                 comp()["primal_density"] = float(line.split()[10])
                 comp()["primal_edge_var_ratio"] = float(line.split()[12])
+            # BCE and count time: per Counter, printed with every stats block, last one wins
+            elif line.startswith("c o bce blockedK/movesK/pops/reproc/T"):
+                f = line.split()
+                comp()["bce_blockedK"] = int(f[4])
+                comp()["bce_pops"] = int(f[8])
+                comp()["bce_reproc"] = int(f[10])
+            elif line.startswith("c o [bce] blk vars from:"):
+                w = line.split()
+                comp()["bce_triples"] = int(w[w.index("triples:") + 1])
+                comp()["bce_skipped_lits"] = int(w[w.index("lits:") + 1])
+            elif line.startswith("c o count time:"):
+                comp()["count_time"] = float(line.split()[4])
             elif line.startswith("c o cache miss rate"):
                 comp()["cache_miss_rate"] = float(line.split()[5])
             elif line.startswith("c o cache K (lookup/ stores/ hits/ dels)"):
@@ -914,7 +928,13 @@ def main():
           cong_units INT,
           cong_time FLOAT,
           autarky_vars INT,
-          autarky_time FLOAT
+          autarky_time FLOAT,
+          bce_blockedK INT,
+          bce_pops INT,
+          bce_reproc INT,
+          bce_triples INT,
+          bce_skipped_lits INT,
+          count_time FLOAT
         );
         CREATE TABLE IF NOT EXISTS preproc (
           dirname STRING NOT NULL,
@@ -1049,6 +1069,12 @@ def main():
             n(f.get("cong_time", "")),
             n(f.get("autarky_vars", "")),
             n(f.get("autarky_time", "")),
+            n(f.get("bce_blockedK", "")),
+            n(f.get("bce_pops", "")),
+            n(f.get("bce_reproc", "")),
+            n(f.get("bce_triples", "")),
+            n(f.get("bce_skipped_lits", "")),
+            n(f.get("count_time", "")),
         ))
 
     # an older data.sqlite3 predates the td_* columns, add them rather than
@@ -1075,7 +1101,10 @@ def main():
                      ("br_share_freq", "FLOAT"),
                      ("cong_calls", "INT"), ("cong_and", "INT"), ("cong_xor", "INT"),
                      ("cong_merged", "INT"), ("cong_units", "INT"), ("cong_time", "FLOAT"),
-                     ("autarky_vars", "INT"), ("autarky_time", "FLOAT")):
+                     ("autarky_vars", "INT"), ("autarky_time", "FLOAT"),
+                     ("bce_blockedK", "INT"), ("bce_pops", "INT"), ("bce_reproc", "INT"),
+                     ("bce_triples", "INT"), ("bce_skipped_lits", "INT"),
+                     ("count_time", "FLOAT")):
         if col not in have:
             conn.execute(f"ALTER TABLE data ADD COLUMN {col} {typ}")
 
@@ -1098,7 +1127,9 @@ def main():
                "cubes_final", "gates_extended", "gates_extend_t", "padoa_extended",
                "padoa_extend_t", "timeout_t", "irred_bin", "irred_long", "irred_tri",
                "irred_cls", "mc_log10", "cong_calls", "cong_and", "cong_xor",
-               "cong_merged", "cong_units", "cong_time", "autarky_vars", "autarky_time"]
+               "cong_merged", "cong_units", "cong_time", "autarky_vars", "autarky_time",
+               "bce_blockedK", "bce_pops", "bce_reproc", "bce_triples", "bce_skipped_lits",
+               "count_time"]
     assert sorted(ordered) == sorted(data_cols), (set(ordered) ^ set(data_cols))
     conn.executemany(
         "INSERT INTO data (" + ",".join(ordered) + ") VALUES ("

@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <flint/fmpq_mpoly.h>
 #include <flint/mpoly_types.h>
 #include <cryptominisat5/solvertypesmini.h>
+#include <arjun/arjun.h>
 #include <memory>
 #include <cstdlib>
 #include <vector>
@@ -175,7 +176,7 @@ public:
   void set_one() final { fmpq_mpoly_one(val, ctx->ctx); }
 
   uint64_t bytes_used() const final {
-    return sizeof(FPoly) + fmpq_mpoly_length(val, ctx->ctx) * 100;
+    return ArjunNS::heap_bytes(sizeof(FPoly)) + fmpq_mpoly_length(val, ctx->ctx) * 100;
   }
 };
 
@@ -371,9 +372,9 @@ public:
   }
 
   uint64_t bytes_used() const final {
-    return sizeof(LaurentPoly)
+    return ArjunNS::heap_bytes(sizeof(LaurentPoly))
         + fmpq_mpoly_length(poly, ctx->ctx) * 100
-        + shift.size() * sizeof(slong);
+        + ArjunNS::heap_bytes(shift.capacity() * sizeof(slong));
   }
 
   // Display as: c1*z0^e0*z1^e1 + c2*z0^f0 - ...
@@ -485,6 +486,15 @@ public:
       return true;
     };
 
+    auto expect_var = [&](size_t& p) {
+      skip_ws(p);
+      if (p >= s.size() || s[p] != 'z') {
+        std::cerr << "Error: expected variable after '*' on line "
+            << line_no << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    };
+
     size_t pos = 0;
     while (pos < s.size()) {
       skip_ws(pos);
@@ -504,12 +514,25 @@ public:
       if (pos < s.size() && isdigit((unsigned char)s[pos])) {
         size_t rewind = pos;
         slong n; parse_digits(pos, n);
+        size_t after_ws = pos;
+        skip_ws(after_ws);
 
         if (pos < s.size() && s[pos] == '/') {
-          // rational p/q
           ++pos;
-          slong d; parse_digits(pos, d);
+          slong d;
+          if (!parse_digits(pos, d) || d == 0) {
+            std::cerr << "Error: expected non-zero denominator after '/' on line "
+                << line_no << std::endl;
+            exit(EXIT_FAILURE);
+          }
           term.num = sign * n; term.den = d;
+          have_coeff = true; sign = 1;
+          skip_ws(pos);
+          if (pos < s.size() && s[pos] == '*') { ++pos; expect_var(pos); }
+        } else if (after_ws < s.size() && s[after_ws] == '*') {
+          pos = after_ws + 1;
+          expect_var(pos);
+          term.num = sign * n; term.den = 1;
           have_coeff = true; sign = 1;
         } else if (pos >= s.size() || s[pos]=='+' || s[pos]=='-'
                    || s[pos]==' '  || s[pos]=='\t') {
@@ -517,11 +540,6 @@ public:
           term.num = sign * n; term.den = 1;
           terms.push_back(term);
           continue;
-        } else if (s[pos] == '*') {
-          // coefficient followed by '*'
-          ++pos;
-          term.num = sign * n; term.den = 1;
-          have_coeff = true; sign = 1;
         } else {
           // digits were not a coefficient (unexpected char) – rewind
           pos = rewind;

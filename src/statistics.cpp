@@ -36,6 +36,7 @@ using namespace GanakInt;
 
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
   verb_print(1, "total time so far: " << cpu_time());
+  verb_print(1, "count time: " << cpu_time() - counter->get_start_time());
   verb_print(1, "decisions K                    "
     << std::left << setw(9) << decisions/1000
     << setw(16) << " -- Kdec/s: "
@@ -84,6 +85,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(5) << sat_found_unsat << " "
     << setw(5) << sat_conflicts << " "
     << setw(5) << sat_rst << " ");
+  verb_print(1, "zero branch SAT checks/unsat   "
+    << setw(5) << zero_sat_checks << " / " << setw(5) << zero_sat_unsat);
   verb_print(1, "buddy called /unsat ratio           "
     << setw(5) << buddy_called << " / "
     << setw(5) << safe_div(buddy_unsat, buddy_called) << " ");
@@ -116,6 +119,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setprecision(2));
   verb_print(1, "comps recordK/non-reset ratio  " << comps_recorded/1000 << " / "
         << safe_div(comps_non_reset, comps_reset+comps_non_reset));
+  if (bce_init_time > 0 || bce_blocked > 0)
+    verb_print(1, "bce blockedK/movesK/pops/reproc/T " << bce_blocked/1000 << " / "
+      << bce_moves/1000 << " / " << bce_pops << " / " << bce_reproc << " / " << bce_init_time);
 
   // Branching quality. A good decision cuts its component: low "largest"
   // ratio, many components per split

@@ -119,6 +119,7 @@ int arjun_gates = 1;
 /* int do_breakid = 0; */
 int arjun_extend_max_confl = 30000;
 int do_pre_backbone = 0;
+int64_t pre_backbone_max_confl = 20000;
 int do_probe_based = 1;
 int arjun_simp_level = 2;
 int arjun_backw_maxc = 20000;
@@ -170,6 +171,8 @@ string print_version()
 
 void add_ganak_options()
 {
+    etof_conf.cover_drop_mticks = 10000;
+    etof_conf.cover_drop_max_cubes = 1000000;
     std::ostringstream my_delta;
     my_delta << setprecision(8) << conf.delta;
 
@@ -195,7 +198,6 @@ void add_ganak_options()
     /* add_arg("--breakid", do_breakid, "Enable BreakID"); */
     add_arg("--appmct", conf.appmc_timeout, "after K seconds");
     add_arg("--epsilon", conf.appmc_epsilon, "AppMC epsilon");
-    add_arg("--chronobt", conf.do_chronobt, "ChronoBT. SAT must be DISABLED or this will fail");
     add_arg("--prob", conf.do_probabilistic_hashing, "Use probabilistic hashing. When set to 0, we are not running in probabilistic mode, but in deterministic mode, i.e. delta is 0 in Ganak mode (not in case we switch to ApproxMC mode via --appmct)");
     program.add_argument("--fast")
         .action([&](const auto&) {
@@ -214,7 +216,15 @@ void add_ganak_options()
     add_arg("--arjunverb", arjun_verb, "Arjun verb");
     add_arg("--arjungates", arjun_gates, "Use arjun's gate detection");
     add_arg("--arjunextend", etof_conf.do_extend_indep, "Extend indep via Arjun's extend system");
+    add_arg("--coverdrop", etof_conf.cover_drop_mticks, "After Puura, remove the clauses of non-sampling vars that every allowed sampling assignment can satisfy, checked by model covering (2QBF). Its budget in millions of SAT solver ticks, 0 = off");
+    add_arg("--coverdropcubes", etof_conf.cover_drop_max_cubes, "With --coverdrop, also replace the clauses by at most this many clauses over the sampling vars that rule out the assignments with no model of them. 0 = only remove");
+    add_arg("--coverdropw", etof_conf.cover_drop_weighted_as_x, "With --coverdrop, take the weighted defined vars as sampling ones, so that the parts with them can also be removed or replaced");
+    add_arg("--coverdropminimsat", etof_conf.cover_drop_sat_minim, "With --coverdrop, shorten a refinement by SAT calls for a model of the same input whose existentials satisfy more clauses");
+    add_arg("--coverdropsls", etof_conf.cover_drop_sls_flips, "With --coverdrop, shorten a refinement by local search before --coverdropminimsat: at most this many flips per round. 0 = off");
+    add_arg("--coverdropslsstall", etof_conf.cover_drop_sls_stall, "--coverdropsls stops after this many flips that find no better model");
+    add_arg("--coverdropminimcubes", etof_conf.cover_drop_minim_cubes, "With --coverdropcubes, shorten each kept cube by SAT calls");
     add_arg("--prebackbone", do_pre_backbone, "Perform backbone before other things");
+    add_arg("--prebackbonemaxconfl", pre_backbone_max_confl, "Max conflicts for --prebackbone (-1 = unlimited)");
     add_arg("--puura", do_puura, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, "Perform backbone in Puura");
     add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, "Max conflicts for backbone in Puura (-1 = unlimited)");
@@ -237,6 +247,7 @@ void add_ganak_options()
     add_arg("--iter2growlarge", simp_conf.bve_grow_iter2_large, "If >= 0: used instead of --iter2grow when more than --iter2growlargevars vars are left before iter2");
     add_arg("--iter2growlargevars", simp_conf.bve_grow_iter2_large_vars, "Vars-left threshold for --iter2growlarge");
     add_arg("--bveocclim", simp_conf.bve_occ_cutoff, "BVE: refuse a var whose more frequent polarity occurs more than this often (CaDiCaL's elimocclim). 0 = no such limit");
+    add_arg("--bvetieminocc", simp_conf.bve_tie_min_occ, "BVE: among equal-size clauses, take first the one whose rarest var occurs the least. 0 = order them by clause ID");
     add_arg("--bveclsmaxsz", simp_conf.bve_cls_max_size, "BVE: refuse a var that occurs in a clause longer than this. 0 = no limit");
     add_arg("--distillremlevel", simp_conf.distill_rem_level, "Clause removal during Puura's distillation. 0 = never, 1 = only on a real conflict, 2 = also when a literal is positively implied. Levels below 2 keep gate clauses that BVE needs to recover definitions");
     add_arg("--extraoracle", simp_conf.oracle_extra, "Extra oracle at the end of puura");
@@ -300,6 +311,9 @@ void add_ganak_options()
 
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, "Run BuDDy");
+    add_arg("--bce", conf.do_bce, "Dynamic blocked clause elimination on non-indep vars during search");
+    add_arg("--bceocclim", conf.bce_occ_lim, "BCE: skip a literal as blocking literal if |occ(l)|*|occ(~l)| is above this");
+    add_arg("--bcecandlim", conf.bce_cand_lim, "BCE: stop setting up blocking literals once this many resolution candidates are stored");
     add_arg("--buddymaxcls", conf.buddy_max_cls, "Run BuDDy");
 
     // Shrinking options
@@ -321,7 +335,6 @@ void add_ganak_options()
     add_arg("--sbvamaxnewvars", etof_conf.sbva_max_new_vars, "Max number of new variables SBVA may add. 0 = no limit");
 
     // SAT solver options
-    add_arg("--satsolver", conf.do_use_sat_solver, "Use SAT solver when all minimal indep set has been set");
     add_arg("--satrst", conf.do_sat_restart, "Inside SAT solver, perform restarts");
     add_arg("--satrstmult", conf.sat_restart_mult, "SAT restart multiplier");
     add_arg("--satpolarcache", conf.do_sat_polar_cache, "Inside SAT solver, use polarity cache");
@@ -397,10 +410,6 @@ void parse_supported_options(int argc, char** argv) {
       do_puura = 0;
       num_threads = 1;
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
-    }
-    if (conf.do_use_sat_solver && !conf.do_chronobt) {
-      cerr << "ERROR: When chronobt is disabled, SAT solver cannot be used" << endl;
-      exit(EXIT_FAILURE);
     }
     if (bits_jobs < 0 || bits_jobs > 20) {
       cerr << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;
@@ -482,7 +491,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.set_cms_glob_mult(arjun_cms_glob_mult);
   arjun.set_cms_abs_budget(arjun_cms_abs_budget);
   arjun.set_cms_sweep(arjun_cms_sweep);
-  if (do_pre_backbone) arjun.standalone_backbone(cnf);
+  if (do_pre_backbone) arjun.standalone_backbone(cnf, pre_backbone_max_confl);
   arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {

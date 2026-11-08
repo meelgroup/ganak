@@ -486,6 +486,15 @@ public:
       return true;
     };
 
+    auto expect_var = [&](size_t& p) {
+      skip_ws(p);
+      if (p >= s.size() || s[p] != 'z') {
+        std::cerr << "Error: expected variable after '*' on line "
+            << line_no << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    };
+
     size_t pos = 0;
     while (pos < s.size()) {
       skip_ws(pos);
@@ -505,12 +514,25 @@ public:
       if (pos < s.size() && isdigit((unsigned char)s[pos])) {
         size_t rewind = pos;
         slong n; parse_digits(pos, n);
+        size_t after_ws = pos;
+        skip_ws(after_ws);
 
         if (pos < s.size() && s[pos] == '/') {
-          // rational p/q
           ++pos;
-          slong d; parse_digits(pos, d);
+          slong d;
+          if (!parse_digits(pos, d) || d == 0) {
+            std::cerr << "Error: expected non-zero denominator after '/' on line "
+                << line_no << std::endl;
+            exit(EXIT_FAILURE);
+          }
           term.num = sign * n; term.den = d;
+          have_coeff = true; sign = 1;
+          skip_ws(pos);
+          if (pos < s.size() && s[pos] == '*') { ++pos; expect_var(pos); }
+        } else if (after_ws < s.size() && s[after_ws] == '*') {
+          pos = after_ws + 1;
+          expect_var(pos);
+          term.num = sign * n; term.den = 1;
           have_coeff = true; sign = 1;
         } else if (pos >= s.size() || s[pos]=='+' || s[pos]=='-'
                    || s[pos]==' '  || s[pos]=='\t') {
@@ -518,11 +540,6 @@ public:
           term.num = sign * n; term.den = 1;
           terms.push_back(term);
           continue;
-        } else if (s[pos] == '*') {
-          // coefficient followed by '*'
-          ++pos;
-          term.num = sign * n; term.den = 1;
-          have_coeff = true; sign = 1;
         } else {
           // digits were not a coefficient (unexpected char) – rewind
           pos = rewind;

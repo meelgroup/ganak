@@ -171,8 +171,8 @@ string print_version()
 
 void add_ganak_options()
 {
-    etof_conf.cover_drop_mticks = 200;
-    etof_conf.cover_drop_max_cubes = 1000;
+    etof_conf.cover_drop_mticks = 10000;
+    etof_conf.cover_drop_max_cubes = 1000000;
     std::ostringstream my_delta;
     my_delta << setprecision(8) << conf.delta;
 

@@ -2343,7 +2343,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-2531742-", # after release, checking CCNR limitation + (limited) pre-cadiback
     # "out-ganak-mccomp2324-2535065-", # tighter memory, maybe fix BVE order?
     # "out-ganak-mccomp2324-2634304-", # new cover stuff
-    "out-ganak-mccomp2324-2638326-", #more cover
+    "out-ganak-mccomp2324-2638326-1", #more cover
+    "out-ganak-mccomp2324-2791823-2", # local search cover
+
 ]
 # only_dirs = [
 #      "mei-march-2026-1239767-1", # gpmc

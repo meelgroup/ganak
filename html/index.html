@@ -231,6 +231,47 @@ c p show 1 2 3 0
             return URL.createObjectURL(blob);
         }
 
+        (function() {
+            const ANSI_COLORS = {
+                30: '#555', 31: '#c00', 32: '#0a0', 33: '#990',
+                34: '#00c', 35: '#909', 36: '#099', 37: '#ccc',
+                90: '#888', 91: '#f44', 92: '#4f4', 93: '#ff4',
+                94: '#44f', 95: '#f4f', 96: '#4ff', 97: '#fff',
+            };
+            const escapeHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            window.ansiToHtml = function(text) {
+                let result = '';
+                let openSpans = 0;
+                const parts = text.split(/\x1b\[([0-9;]*)m/);
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 0) {
+                        result += escapeHtml(parts[i]);
+                        continue;
+                    }
+                    for (const code of parts[i].split(';').map(Number)) {
+                        if (code === 0) {
+                            while (openSpans > 0) { result += '</span>'; openSpans--; }
+                        } else if (code === 1) {
+                            result += '<span style="font-weight:bold">';
+                            openSpans++;
+                        } else if (ANSI_COLORS[code]) {
+                            result += `<span style="color:${ANSI_COLORS[code]}">`;
+                            openSpans++;
+                        } else if (ANSI_COLORS[code - 10]) {
+                            result += `<span style="background-color:${ANSI_COLORS[code - 10]}">`;
+                            openSpans++;
+                        }
+                    }
+                }
+                while (openSpans-- > 0) result += '</span>';
+                return result;
+            };
+            window.appendOutput = function(div, text) {
+                div.insertAdjacentHTML('beforeend', ansiToHtml(text) + '\n');
+                div.scrollTop = div.scrollHeight;
+            };
+        })();
+
         const fun = function(mode) {
             const inputContent = document.getElementById('input-content').value;
             const outputDiv = document.getElementById('output');
@@ -255,8 +296,7 @@ c p show 1 2 3 0
                 switch (e.data.type) {
                     case 'output':
                         console.log('Output:', e.data.content);
-                        outputDiv.textContent += e.data.content + '\n';
-                        outputDiv.scrollTop = outputDiv.scrollHeight;
+                        appendOutput(outputDiv, e.data.content);
                         break;
                     case 'ready':
                         //console.log('ready. Sending input:', inputContent);
@@ -273,7 +313,7 @@ c p show 1 2 3 0
                         URL.revokeObjectURL(workerUrl);
                         break;
                     case 'error':
-                        outputDiv.textContent += 'Error: ' + e.data.content + '\n';
+                        appendOutput(outputDiv, 'Error: ' + e.data.content);
                         document.getElementById('status').textContent = 'Failed';
                         document.getElementById('run-button-w').disabled = false;
                         worker.terminate();
@@ -396,10 +436,7 @@ c p show 1 2 3 0
                 return;
             }
 
-            const append = function(text) {
-                outputDiv.textContent += text + '\n';
-                outputDiv.scrollTop = outputDiv.scrollHeight;
-            };
+            const append = text => appendOutput(outputDiv, text);
 
             outputDiv.textContent = '';
             document.getElementById('graph-section').style.display = 'none';

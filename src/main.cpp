@@ -165,6 +165,7 @@ string print_version()
     ss << CMSat::SATSolver::get_thanks_info("c o ") << endl;
     ss << "c o Using Graph library by Tuukka Korhonen and Matti Jarvisalo" << endl;
     ss << "c o Using Flowcutter by Ben Strasser" << endl;
+    ss << "c o Using dynamic blocked clause elimination by Lagniez, Marquis and Biere, SAT'24" << endl;
     ss << "c o Ganak compilation env " << GANAK::get_compilation_env() << endl;
     return ss.str();
 }

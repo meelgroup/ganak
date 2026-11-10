@@ -316,8 +316,9 @@ exercise to do.
 
 Ganak can compile its search trace into a
 [d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit in the d4 `.nnf`
-format, for reuse in repeated queries, model enumeration, or functional
-synthesis.
+format of [Lagniez and Marquis, "An Improved Decision-DNNF Compiler", IJCAI
+2017](https://www.ijcai.org/proceedings/2017/93), for reuse in repeated
+queries, model enumeration, or functional synthesis.
 
 **1. Dump** (still prints the count; streamed to disk, so it is not held in
 memory). The output is a faithful d-DNNF:

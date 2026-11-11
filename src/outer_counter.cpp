@@ -102,7 +102,7 @@ FF OuterCounter::count_regular() {
   return ret;
 }
 
-void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
+void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb, int backbone_lucky) {
   /* double my_time = cpu_time(); */
   ArjunNS::Arjun arjun;
   arjun.set_verb(verb >= 3 ? verb : 0);
@@ -120,6 +120,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
   ArjunNS::SimpConf simp_conf;
   /* simp_conf.iter1 = 1; */
   simp_conf.iter1 = 0;
+  simp_conf.backbone_lucky = backbone_lucky;
   ArjunNS::Arjun::ElimToFileConf const etof_conf;
   ArjunNS::Arjun::InterpConf iconf;
   arjun.standalone_minimize_indep(cnf, iconf, false);
@@ -241,7 +242,7 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     }
     for (const auto& [cl, lbd] : red_cls)
       cnf.add_red_clause(ganak_to_cms_cl(cl));
-    run_arjun(cnf, conf.verb >= 5 ? conf.verb : 0);
+    run_arjun(cnf, conf.verb >= 5 ? conf.verb : 0, conf.backbone_lucky);
     FF ret = cnf.get_multiplier_weight()->dup();
     if (!ret->is_zero()) {
       auto local_conf = conf;

@@ -229,6 +229,7 @@ void add_ganak_options()
     add_arg("--puura", do_puura, "Run Puura");
     add_arg("--puurabackbone", simp_conf.do_backbone_puura, "Perform backbone in Puura");
     add_arg("--puurabackbonemaxconfl", simp_conf.backbone_max_confl, "Max conflicts for backbone in Puura (-1 = unlimited)");
+    add_arg("--puurabackbonelucky", conf.backbone_lucky, "CaDiCaL's lucky phases in cadiback's backbone in Puura");
     add_arg("--puuraautarky", etof_conf.do_autarky, "Do autarky in Puura");
     add_arg("--arjuniter1", simp_conf.iter1, "Arjun's iter1");
     add_arg("--arjuniter2", simp_conf.iter2, "Arjun's iter2");
@@ -496,6 +497,7 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   arjun.standalone_minimize_indep(cnf, iconf, etof_conf.all_indep);
   arjun.set_extend_ccnr(arjun_extend_ccnr);
   if (cnf.get_sampl_vars().size() >= arjun_further_min_cutoff && do_puura) {
+    simp_conf.backbone_lucky = conf.backbone_lucky;
     arjun.standalone_elim_to_file(cnf, etof_conf, simp_conf, iconf);
   } else {
     disconnected_allowed = true;

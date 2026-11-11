@@ -1,37 +1,21 @@
 #!/usr/bin/env python3
-"""Verify a d4 .nnf circuit from `ganak --compile`.
+"""Verify a BDNNF circuit from `ganak --compile` (d4-shaped in-memory model).
 
 parse() -> (nodes, arcs, root); count() = structural count (OR=sum, AND=product,
 t=1, f=0, arc lits ignored); models() = exact model set (small inputs) using arc
 lits. Counting is structural: free vars are explicit OR(v,-v), so no smoothing.
 """
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import bdnnf  # noqa: E402
 
 
 def parse(path):
-    nodes = {}                  # id -> 'o'|'a'|'t'|'f'
-    arcs = {}                   # id -> list of (child_id, [lits])
-    root = None
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            toks = line.split()
-            if toks[0] == 'c':
-                continue
-            if toks[0] in ('o', 'a', 't', 'f'):
-                nid = int(toks[1])
-                nodes[nid] = toks[0]
-                arcs.setdefault(nid, [])
-                if root is None:
-                    root = nid      # first declared node is the root
-            else:
-                parent = int(toks[0])
-                child = int(toks[1])
-                lits = [int(x) for x in toks[2:] if x != '0']
-                arcs.setdefault(parent, []).append((child, lits))
-    return nodes, arcs, root
+    """(nodes, arcs, root): nodes id -> 'o'|'a'|'t'|'f', arcs id -> [(child, [lits])].
+    Ids 0/1 are FALSE/TRUE; free vars are synthetic OR(v, -v) nodes."""
+    return bdnnf.to_d4_model(bdnnf.read(path))
 
 
 def count(nodes, arcs, root):
@@ -274,21 +258,27 @@ def reachable_nodes(nodes, arcs, root):
 def unreachable_nodes(nodes, arcs, root):
     """Declared-but-unreachable ("dead") node ids. Empty for a cleaned circuit;
     raw `ganak --compile` output may have some. Asserts ddnnf-cleanup drops them."""
-    return set(nodes) - reachable_nodes(nodes, arcs, root)
+    return {n for n in nodes if n >= 2} - reachable_nodes(nodes, arcs, root)
 
 
 def check_decomposable(nodes, arcs, root):
-    """Strict d-DNNF: every AND node's children have pairwise-disjoint variable sets."""
+    """Strict d-DNNF: every AND node's children have pairwise-disjoint variable
+    sets, and no arc's literals share a var with each other or with its child."""
     sv = subtree_vars(nodes, arcs, root)
     for nid, t in nodes.items():
-        if t != 'a':
-            continue
         if nid not in sv:           # unreachable ("dead") node: not part of the circuit
             continue
-        seen = set()
-        for c, _ in arcs.get(nid, []):
+        for c, lits in arcs.get(nid, []):
+            lv = [abs(x) for x in lits]
             cp, cn = sv[c]
-            cvars = cp | cn
+            if len(set(lv)) != len(lv) or set(lv) & (cp | cn):
+                return False, f"node {nid} arc {lits} overlaps its child {c}"
+        if t != 'a':
+            continue
+        seen = set()
+        for c, lits in arcs.get(nid, []):
+            cp, cn = sv[c]
+            cvars = cp | cn | {abs(x) for x in lits}
             if seen & cvars:
                 return False, f"AND {nid} children share var(s) {sorted(seen & cvars)}"
             seen |= cvars
@@ -376,9 +366,9 @@ def brute_models(nvars, clauses):
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser(
-        description="Verify a d4 .nnf circuit from `ganak --compile`. With no "
+        description="Verify a BDNNF circuit from `ganak --compile`. With no "
                     "check flag, just prints the structural model count.")
-    ap.add_argument('nnf')
+    ap.add_argument('bdnnf')
     ap.add_argument('--expect-count', type=int, default=None,
                     help="assert the circuit's structural model count equals N")
     ap.add_argument('--cnf', default=None,
@@ -388,11 +378,11 @@ if __name__ == '__main__':
     ap.add_argument('--check-decomposable', action='store_true',
                     help="assert strict decomposability (AND children var-disjoint)")
     ap.add_argument('--strict', action='store_true',
-                    help="assert canonical cleaned form: no dead nodes, root id 1, ids 1..N contiguous")
+                    help="assert cleaned form: no dead nodes, root is the last node")
     ap.add_argument('-q', '--quiet', action='store_true')
     args = ap.parse_args()
 
-    nodes, arcs, root = parse(args.nnf)
+    nodes, arcs, root = parse(args.bdnnf)
     c = count(nodes, arcs, root)
 
     any_check = (args.expect_count is not None or args.cnf or args.check_decomposable
@@ -427,10 +417,9 @@ if __name__ == '__main__':
         dead = unreachable_nodes(nodes, arcs, root)
         if dead:
             fail("%d dead node(s) present: %s" % (len(dead), sorted(dead)[:8]))
-        if root != 1:
-            fail("root id %d != 1" % root)
-        if set(nodes) != set(range(1, len(nodes) + 1)):
-            fail("node ids not contiguous 1..N")
+        real = [n for n in nodes if n >= 2]
+        if real and root != max(real):
+            fail("root %d is not the last node" % root)
 
     if not args.quiet:
         print("ddnnf-verify: OK (count=%d, nodes=%d)" % (c, len(nodes)))

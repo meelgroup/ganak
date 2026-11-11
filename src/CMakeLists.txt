@@ -114,7 +114,17 @@ add_executable(example-c-bin example.c)
 add_executable(ddnnf-cleanup-bin ddnnf_cleanup.cpp)
 add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
 add_executable(ddnnf-verify-bin ddnnf_verify.cpp)
+add_executable(ddnnf-dump-bin ddnnf_dump.cpp)
+add_executable(ddnnf-to-d4-bin ddnnf_to_d4.cpp)
 target_link_libraries(ddnnf-verify-bin PRIVATE PkgConfig::GMP)
+if(ZSTD_FOUND)
+  # Plain library paths, not an imported target: keeps the exported static
+  # ganak target usable without a matching find_dependency.
+  foreach(t ganak ddnnf-cleanup-bin ddnnf2dot-bin ddnnf-verify-bin ddnnf-dump-bin ddnnf-to-d4-bin)
+    target_include_directories(${t} PRIVATE ${ZSTD_INCLUDE_DIRS})
+    target_link_libraries(${t} PRIVATE ${ZSTD_LIBRARY})
+  endforeach()
+endif()
 
 target_link_libraries(ganak-bin
     PRIVATE
@@ -203,6 +213,16 @@ set_target_properties(ddnnf-verify-bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+set_target_properties(ddnnf-dump-bin PROPERTIES
+  OUTPUT_NAME ddnnf-dump
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+set_target_properties(ddnnf-to-d4-bin PROPERTIES
+  OUTPUT_NAME ddnnf-to-d4
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   target_link_options(ddnnf-cleanup-bin PRIVATE
     "SHELL:-s WASM=1"
@@ -211,6 +231,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     "SHELL:-s FORCE_FILESYSTEM=1"
   )
   target_link_options(ddnnf2dot-bin PRIVATE
+    "SHELL:-s WASM=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
+    "SHELL:-s FORCE_FILESYSTEM=1"
+  )
+  target_link_options(ddnnf-dump-bin PRIVATE
     "SHELL:-s WASM=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
@@ -291,6 +317,11 @@ install(TARGETS ddnnf2dot-bin
 )
 
 install(TARGETS ddnnf-verify-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ddnnf-dump-bin ddnnf-to-d4-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

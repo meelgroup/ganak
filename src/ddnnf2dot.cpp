@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf2dot: render a d4 .nnf circuit (raw from `ganak --compile` or cleaned by
+// ddnnf2dot: render a BDNNF circuit (raw from `ganak --compile` or cleaned by
 // `ddnnf-cleanup`) as a Graphviz DOT graph.
 //
 //   OR ('o') -> blue ellipse "∨";  AND ('a') -> yellow box "∧";  FALSE ('f') -> "⊥"
@@ -37,13 +37,16 @@ THE SOFTWARE.
 // directly on that leaf; a multi-literal one fans out through a fresh AND with a
 // "{v}" leaf per literal. A ⊤ node is kept only for the degenerate cases (a
 // literal-free terminal arc, or a whole-circuit tautology). Operator/FALSE nodes
-// carry the .nnf node id as a small gray "#<id>" under the symbol; variables
+// carry their node id as a small gray "#<id>" under the symbol; variables
 // still appear only on edges/leaves.
 //
 // Pure pretty-printer (no structural change); does not require a clean circuit.
 //
-// Usage:  ddnnf2dot <in.nnf> [out.dot]      ("-" or omitted out => stdout)
+// Free variables of an AND are drawn as OR(v, -v) nodes.
+//
+// Usage:  ddnnf2dot <in.bdnnf> [out.dot]      ("-" or omitted out => stdout)
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -69,22 +72,25 @@ using ddnnf_io::Arc;
 
 int main(int argc, char** argv) {
   if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: " << argv[0] << " <in.nnf> [out.dot]   (\"-\"/omitted out => stdout)"
+    std::cerr << "Usage: " << argv[0] << " <in.bdnnf> [out.dot]   (\"-\"/omitted out => stdout)"
               << std::endl;
     return EXIT_FAILURE;
   }
   const std::string in_path = argv[1];
   const std::string out_path = (argc == 3) ? argv[2] : "-";
 
-  std::ifstream in(in_path);
-  if (!in.good()) die("cannot open input file: " + in_path);
-
-  std::vector<char> type;                          // node id -> 'f'|'t'|'a'|'o' (0 = no node)
-  std::vector<std::vector<Arc>> arcs;              // node id -> outgoing arcs
-  std::vector<int> order;                          // node ids in declaration order
+  ddnnf_io::Circuit c;
   std::string err;
-  const int root = ddnnf_io::parse_nnf(in, type, arcs, order, err);
-  if (root == -1) die(err);
+  if (!ddnnf_io::load(in_path, c, err)) die(err);
+  const std::vector<char>& type = c.type;
+  const std::vector<std::vector<Arc>>& arcs = c.arcs;
+  const int root = c.root;
+  std::vector<int> order;  // reachable nodes, root first
+  {
+    std::vector<char> done(type.size(), 0);
+    ddnnf_io::post_order(c, done, [&](int n) { order.push_back(n); });
+    std::reverse(order.begin(), order.end());
+  }
 
   std::ofstream fout;
   std::ostream* outp = &std::cout;

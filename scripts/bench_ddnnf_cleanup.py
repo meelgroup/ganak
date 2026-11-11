@@ -5,7 +5,7 @@ What this does
 --------------
 1. Generates random uniform 3-CNFs at sizes nv in [40, 70, 80, 90, 100] (configurable),
    nc = 3*nv. CNFs go to /tmp and are NOT committed -- they regenerate each run.
-2. Compiles each with `ganak --compile` to a .nnf.
+2. Compiles each with `ganak --compile` to a .bdnnf.
 3. Runs `ddnnf-cleanup` twice per CNF: default (= strict-decomp ON) and
    `--no-strict-decomp` (= just BFS-renumber + drop dead nodes).
 4. Records best-of-3 wall time and peak RSS for each, plus output file size,
@@ -30,14 +30,17 @@ by hand when:
   - touching the strict-decomp algorithm (compute_subtree_vars, compute_forced,
     scrub_var, cleanup_decomp) in src/ddnnf_cleanup.cpp;
   - changing the bitset representation (VarSet/LitSet);
-  - investigating a memory blow-up on a large .nnf;
-  - or just to grab a reproducible big-circuit .cnf/.nnf for local hacking
+  - investigating a memory blow-up on a large .bdnnf;
+  - or just to grab a reproducible big-circuit .cnf/.bdnnf for local hacking
     (use --gen-only).
 
 Usage:  ./scripts/bench_ddnnf_cleanup.py [--sizes 50,70,80,90,100] [--reps 3]
                                          [--timeout 180] [--seed 1]
                                          [--gen-only [--compile]] [--keep]
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "tests"))
+import bdnnf  # noqa: E402
 import argparse
 import os
 import random
@@ -149,9 +152,9 @@ def run_one(name, cnf, nnf, args):
     if not os.path.exists(nnf):
         print(f"  {name}: ganak compile FAILED", file=sys.stderr)
         return None
-    nodes = sum(1 for line in open(nnf) if line[:1] in "oatf")
+    nodes = len(bdnnf.read(nnf).nodes) - 2
     in_size = os.path.getsize(nnf)
-    vlog(f"  raw .nnf: {nodes} nodes, {in_size/1024/1024:.2f} MB")
+    vlog(f"  raw .bdnnf: {nodes} nodes, {in_size/1024/1024:.2f} MB")
 
     # warmup so file is in page cache
     with open(nnf, "rb") as f: f.read()
@@ -209,14 +212,14 @@ def main():
                    help="RNG seed for CNF generation; default 1 makes runs "
                         "byte-reproducible (default: %(default)s)")
     p.add_argument("--keep", action="store_true",
-                   help="don't delete the generated /tmp CNFs + .nnf outputs on exit")
+                   help="don't delete the generated /tmp CNFs + .bdnnf outputs on exit")
     p.add_argument("--gen-only", action="store_true",
-                   help="only generate the CNFs (and optionally the .nnf with "
+                   help="only generate the CNFs (and optionally the .bdnnf with "
                         "--compile); skip the cleanup bench entirely. Implies "
                         "--keep so the files survive for local inspection.")
     p.add_argument("--compile", action="store_true",
                    help="(with --gen-only) also run `ganak --compile` to "
-                        "produce the raw .nnf for each generated CNF")
+                        "produce the raw .bdnnf for each generated CNF")
     p.add_argument("-v", "--verbose", action="store_true",
                    help="print each subprocess invocation, per-rep timings, "
                         "and intermediate sizes/counts to stderr as the bench "
@@ -252,7 +255,7 @@ def main():
         shutil.copy(REGRESSION_CNF, reg_cnf)
         print(f"regression(16v/40c)  cnf={reg_cnf}")
         if args.compile:
-            nnf = os.path.join(TMP, "regression.nnf")
+            nnf = os.path.join(TMP, "regression.bdnnf")
             vlog(f"ganak --compile {nnf} {reg_cnf}")
             t0 = time.time()
             subprocess.run([GANAK, "--compile", nnf, reg_cnf], capture_output=True)
@@ -265,7 +268,7 @@ def main():
             gen_cnf(cnf, nv, nc, 3, rng)
             print(f"nv={nv}/nc={nc:<6}    cnf={cnf}")
             if args.compile:
-                nnf = os.path.join(TMP, f"random_nv{nv}.nnf")
+                nnf = os.path.join(TMP, f"random_nv{nv}.bdnnf")
                 vlog(f"ganak --compile {nnf} {cnf}")
                 t0 = time.time()
                 subprocess.run([GANAK, "--compile", nnf, cnf], capture_output=True, timeout=600)
@@ -273,7 +276,7 @@ def main():
                 if os.path.exists(nnf):
                     print(f"                     nnf={nnf}  ({os.path.getsize(nnf)/1024/1024:.1f} MB)")
                 else:
-                    print(f"                     ganak compile FAILED (no .nnf written)")
+                    print(f"                     ganak compile FAILED (no .bdnnf written)")
         return
 
     rows = []
@@ -281,7 +284,7 @@ def main():
     # Regression instance first (small, fast, repairs a real violation).
     reg_cnf = os.path.join(TMP, "regression.cnf")
     shutil.copy(REGRESSION_CNF, reg_cnf)
-    nnf = os.path.join(TMP, "regression.nnf")
+    nnf = os.path.join(TMP, "regression.bdnnf")
     row = run_one("regression(16v/40c)", reg_cnf, nnf, args)
     if row:
         rows.append(row)
@@ -291,7 +294,7 @@ def main():
         nc = nv * 3
         cnf = os.path.join(TMP, f"random_nv{nv}.cnf")
         gen_cnf(cnf, nv, nc, 3, rng)
-        nnf = os.path.join(TMP, f"random_nv{nv}.nnf")
+        nnf = os.path.join(TMP, f"random_nv{nv}.bdnnf")
         row = run_one(f"nv={nv}/nc={nc}", cnf, nnf, args)
         if row:
             rows.append(row)

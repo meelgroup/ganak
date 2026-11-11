@@ -315,16 +315,16 @@ exercise to do.
 ## Compiling to a d-DNNF circuit
 
 Ganak can compile its search trace into a
-[d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit in the d4 `.nnf`
-format of [Lagniez and Marquis, "An Improved Decision-DNNF Compiler", IJCAI
-2017](https://www.ijcai.org/proceedings/2017/93), for reuse in repeated
-queries, model enumeration, or functional synthesis.
+[d-DNNF](https://en.wikipedia.org/wiki/Decision-DNNF) circuit, for reuse in
+repeated queries, model enumeration, or functional synthesis. The circuit is
+written in BDNNF, a compact binary format that is streamed to disk as Ganak
+runs and can be queried without loading it into memory. See
+[spec-bdnnf.md](spec-bdnnf.md) for the format.
 
-**1. Dump** (still prints the count; streamed to disk, so it is not held in
-memory). The output is a faithful d-DNNF:
+**1. Compile** (still prints the count). The output is a faithful d-DNNF:
 
 ```shell
-./ganak --compile out.nnf in.cnf
+./ganak --compile out.bdnnf in.cnf
 ```
 
 For a projected CNF (inputs `< indep_support_end`, outputs `>= indep_support_end`),
@@ -333,20 +333,28 @@ leaf, so the same faithful circuit is also a sound Boolean functional-synthesis
 compiler — read a Skolem witness off the circuit with
 `tests/ddnnf_verify.synthesize()`.
 
-**2. Fix up.** The raw file is correct from the root but keeps Ganak's internal
-ids and may carry unreachable "dead" nodes. `ddnnf-cleanup` drops them and
-renumbers `root = 1`, contiguous, yielding a strict d4 file:
+**2. Clean up.** The raw file is correct from the root, but may carry
+unreachable "dead" nodes, and learnt clauses can leave it not strictly
+decomposable. `ddnnf-cleanup` fixes both, and flags the result `DECOMPOSABLE`,
+`DETERMINISTIC`, `SMOOTH` and `CLEAN` as it checks them:
 
 ```shell
-./ddnnf-cleanup out.nnf clean.nnf      # omit 2nd arg (or "-") to write to stdout
+./ddnnf-cleanup out.bdnnf clean.bdnnf
 ```
 
-**3. Verify.** `tests/ddnnf_verify.py` prints the circuit's structural count,
-which must match Ganak's. It accepts both the raw and cleaned files:
+**3. Use.**
 
 ```shell
-python3 tests/ddnnf_verify.py clean.nnf
+./ddnnf-verify clean.bdnnf                      # structural count, one streamed pass
+python3 tests/bdnnf.py count clean.bdnnf --cnf in.cnf   # (weighted) count, independent
+python3 tests/bdnnf.py check clean.bdnnf        # strict format + property check
+./ddnnf-dump clean.bdnnf                        # human-readable text form
+./ddnnf2dot clean.bdnnf out.dot                 # Graphviz rendering
+./ddnnf-to-d4 clean.bdnnf clean.nnf             # d4 .nnf for legacy tools
 ```
+
+The d4 `.nnf` format is that of [Lagniez and Marquis, "An Improved
+Decision-DNNF Compiler", IJCAI 2017](https://www.ijcai.org/proceedings/2017/93).
 
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter

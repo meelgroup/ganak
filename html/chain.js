@@ -1,6 +1,6 @@
 // Headless (Node.js) test of the in-browser d-DNNF pipeline. Runs the same chain
 // the page does, without a browser:
-//   ganak --compile (raw d4 .nnf) -> ddnnf-cleanup (strict d4) -> ddnnf2dot (DOT)
+//   ganak --compile (raw BDNNF) -> ddnnf-cleanup (clean BDNNF) -> ddnnf2dot (DOT)
 // using the same Emscripten modules shipped here. A smoke test after rebuilding wasm.
 //
 // These are non-MODULARIZE Emscripten CLI modules expecting a global `Module`. The
@@ -43,7 +43,8 @@ function runTool(jsFile, args, inFiles, outFile) {
         try {
           for (const p in inFiles) Module.FS.writeFile(p, inFiles[p]);
           Module.callMain(args);
-          resolve(outFile ? Module.FS.readFile(outFile, { encoding: 'utf8' }) : null);
+          resolve(!outFile ? null : outFile.endsWith('.bdnnf') ? Module.FS.readFile(outFile)
+                                   : Module.FS.readFile(outFile, { encoding: 'utf8' }));
         } catch (e) { reject(e); }
       }
     };
@@ -59,20 +60,20 @@ function runTool(jsFile, args, inFiles, outFile) {
   const outPath = process.argv[3];
   const cnf = inPath ? fs.readFileSync(inPath, 'utf8') : DEFAULT_CNF;
 
-  // 1. ganak --compile: dump the raw d4 .nnf (faithful by default).
+  // 1. ganak --compile: the raw binary BDNNF circuit (faithful by default).
   //    --mode 1 (weighted rational) handles both weighted and plain CNFs.
   const raw = await runTool('ganak.js',
-    ['--verb', '1', '--mode', '1', '--compile', '/out.nnf', '/input.cnf'],
-    { '/input.cnf': cnf }, '/out.nnf');
-  process.stderr.write('\n=== RAW NNF (' + raw.length + ' bytes) ===\n');
+    ['--verb', '1', '--mode', '1', '--compile', '/out.bdnnf', '/input.cnf'],
+    { '/input.cnf': cnf }, '/out.bdnnf');
+  process.stderr.write('\n=== RAW BDNNF (' + raw.length + ' bytes) ===\n');
 
-  // 2. ddnnf-cleanup: drop dead nodes, renumber root=1 contiguous -> strict d4.
+  // 2. ddnnf-cleanup: repair decomposability, drop dead nodes.
   const cleaned = await runTool('ddnnf-cleanup.js',
-    ['/in.nnf', '/out.nnf'], { '/in.nnf': raw }, '/out.nnf');
+    ['/in.bdnnf', '/out.bdnnf'], { '/in.bdnnf': raw }, '/out.bdnnf');
 
   // 3. ddnnf2dot: render the cleaned circuit as Graphviz DOT.
   const dot = await runTool('ddnnf2dot.js',
-    ['/in.nnf', '/out.dot'], { '/in.nnf': cleaned }, '/out.dot');
+    ['/in.bdnnf', '/out.dot'], { '/in.bdnnf': cleaned }, '/out.dot');
 
   if (outPath) {
     fs.writeFileSync(outPath, dot);

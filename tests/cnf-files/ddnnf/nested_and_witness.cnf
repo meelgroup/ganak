@@ -10,11 +10,11 @@ c c ddnnf-cleanup's flatten_ands pass must collapse it, and --strict verificatio
 c c must then confirm no literal-free AND->AND arc survives. Projected count = 4.
 c t pwmc
 c p show 1 2 3 0
-c c RUN: %solver --mode 1 --compile %t.nnf %s
-c c RUN: %ddnnf_verify %t.nnf --expect-count 4 --no-strict
-c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
-c c RUN: %ddnnf_verify %t.clean.nnf --expect-count 4 --check-decomposable --strict
-c c RUN: %ddnnf2dot %t.clean.nnf %t.dot
+c c RUN: %solver --mode 1 --compile %t.bdnnf %s
+c c RUN: %ddnnf_verify %t.bdnnf --expect-count 4 --no-strict
+c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
+c c RUN: %ddnnf_verify %t.clean.bdnnf --expect-count 4 --check-decomposable --strict
+c c RUN: %ddnnf2dot %t.clean.bdnnf %t.dot
 p cnf 6 2
 1 2 0
 -3 -1 -2 0

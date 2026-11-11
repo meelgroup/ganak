@@ -210,7 +210,7 @@ void add_ganak_options()
         .help("Optimize for quick/easy instances (<5 mins)");
 
     // d-DNNF compilation
-    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (d4 .nnf format). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
+    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
 
     // Arjun options
     add_arg("--arjun", do_arjun, "Use arjun");

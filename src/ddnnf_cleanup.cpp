@@ -20,12 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-cleanup: post-process a d4 .nnf circuit from `ganak --compile`.
+// ddnnf-cleanup: post-process a BDNNF circuit from `ganak --compile`.
 //
-// The streaming compiler writes a valid-but-loose file: root declared first (d4
-// convention), but with the internal node ids and possibly unreachable ("dead")
-// nodes (orphaned when an AND short-circuited to FALSE). Harmless to a root count,
-// but a strict d4 reader wants a clean circuit. Cleanup steps:
+// The streaming compiler writes a valid-but-loose file: possibly unreachable
+// ("dead") nodes (orphaned when an AND short-circuited to FALSE), and ANDs that
+// are not strictly decomposable. Cleanup steps:
 //
 //   1. STRICT-DECOMP REPAIR: when an AND node's children share a variable (a
 //      known artifact of conflict-learned clauses bridging vars across the
@@ -38,13 +37,13 @@ THE SOFTWARE.
 //      are preserved (each AND-of-siblings model is unchanged). O(iters * N *
 //      V) per pass with hash-set var/lit sets; can be slow + memory-hungry on
 //      multi-million-node circuits, so pass --no-strict-decomp to skip it.
-//   2. DEAD-NODE DROP + RENUMBER: BFS from the root, keep only reachable nodes,
-//      renumber to root=1 contiguous (breadth-first).
+//   2. FLATTEN nested ANDs, ELIDE unary ANDs into their parent arcs.
+//   3. DEAD-NODE DROP: only nodes reachable from the root are written, root last.
 //
-// Final output is the classic two-section d4 file (all declarations, then all
-// arcs).
+// Output is a BDNNF file flagged CLEAN, plus whichever of DECOMPOSABLE,
+// DETERMINISTIC, SMOOTH it was checked to satisfy.
 //
-// Usage:  ddnnf-cleanup [--no-strict-decomp] <in.nnf> [out.nnf]
+// Usage:  ddnnf-cleanup [--no-strict-decomp] <in.bdnnf> [out.bdnnf]
 //                                                  ("-" or omitted => stdout)
 
 #include <algorithm>
@@ -341,10 +340,9 @@ void compute_ambient_forced(
 //
 // In each arc within the subtree:
 //   - Drop the redundant (forced-polarity) literal from arc lits.
-//   - If the OPPOSITE-polarity literal appears, the arc is dead under the
-//     enclosing AND -- drop the arc entirely.
-// An OR whose arcs all get dropped becomes FALSE. Nodes with multiple parents
-// (DAG sharing) get cloned before modification so other parents stay correct.
+//   - If the OPPOSITE-polarity literal appears, the arc is dead: an OR drops
+//     the arc, an AND (whose conjunct it is) becomes FALSE.
+// An OR whose arcs all get dropped becomes FALSE. Every changed node is cloned.
 int scrub_var(
     int nid, int var, bool polarity,
     std::vector<char>& type,
@@ -402,9 +400,11 @@ int scrub_var(
     const auto& orig = arcs[n];
     std::vector<Arc> new_arcs;
     bool changed = false;
+    bool contradicted = false;  // an AND conjunct says -forced: the AND is FALSE
     for (const auto& a : orig) {
       if (std::find(a.lits.begin(), a.lits.end(), opposite_lit) != a.lits.end()) {
         changed = true;
+        if (t == 'a') { contradicted = true; break; }
         continue;
       }
       Arc na{a.child, {}};
@@ -416,11 +416,14 @@ int scrub_var(
       new_arcs.push_back(std::move(na));
     }
     if (!changed) { remap[n] = n; continue; }
-    int p_count = (n < (int)parent_count.size()) ? parent_count[n] : 1;
-    int target = (p_count <= 1) ? n : (++max_id);
+    // Always clone: a node with one parent can still be reached through a shared
+    // ancestor that keeps its id, so changing it in place would change that
+    // ancestor's other parents too. The originals die and are dropped on save.
+    (void)parent_count;
+    int target = ++max_id;
     ensure_node_slot(target);
     type[target] = t;
-    if (t == 'o' && new_arcs.empty()) {
+    if (contradicted || (t == 'o' && new_arcs.empty())) {
       type[target] = 'f';
       arcs[target].clear();
     } else {
@@ -489,82 +492,100 @@ int cleanup_decomp(
       // NB: do NOT hold a reference into `arcs` across scrub_var() -- it may
       // call arcs.resize() to clone a node, which reallocates the outer vector
       // and invalidates any reference/pointer into it. Index via arcs[nid].
+      // A conjunct is an arc: its literals AND its child.
+      auto conj_vars = [&](size_t i) {
+        VarSet v = subtree_vars[arcs[nid][i].child];
+        for (int l : arcs[nid][i].lits) v.set(std::abs(l));
+        return v;
+      };
+      auto arc_has = [&](size_t i, int l) {
+        const auto& ls = arcs[nid][i].lits;
+        return std::find(ls.begin(), ls.end(), l) != ls.end();
+      };
+      auto forces = [&](size_t i, int l) {
+        const int ch = arcs[nid][i].child;
+        return arc_has(i, l) || (!is_false[ch] && forced[ch].has(l));
+      };
+      auto mentions = [&](size_t i, int l) {
+        return arc_has(i, l) || subtree_lits[arcs[nid][i].child].has(l);
+      };
       for (size_t i = 0; i < arcs[nid].size(); i++) {
         for (size_t j = i + 1; j < arcs[nid].size(); j++) {
           int ci = arcs[nid][i].child, cj = arcs[nid][j].child;
           // A prior scrub_var in this pass may have cloned a child to a fresh
-          // id (> sz - 1) and re-pointed an arc here. Per-node scratch
-          // (touched/subtree_vars/subtree_lits/forced/ambient) is sized to sz,
-          // so anything past that is OOB. Skip; the next iteration's recompute
-          // sees the new id and handles it then.
+          // id past sz (the per-node scratch size); the next iteration sees it.
           if (ci >= (int)sz || cj >= (int)sz) continue;
           if (touched[ci] || touched[cj]) continue;
-          int shared_var = subtree_vars[ci].first_intersect_var(subtree_vars[cj]);
-          if (shared_var == 0) continue;
+          const int v = conj_vars(i).first_intersect_var(conj_vars(j));
+          if (v == 0) continue;
           int pi = 0, pj = 0;
-          if (!is_false[ci]) {
-            if (forced[ci].has(shared_var))  pi = +1;
-            if (forced[ci].has(-shared_var)) pi = -1;
-          }
-          if (!is_false[cj]) {
-            if (forced[cj].has(shared_var))  pj = +1;
-            if (forced[cj].has(-shared_var)) pj = -1;
-          }
-          int scrub_child = 0;
+          if (forces(i, v)) pi = +1;
+          if (forces(i, -v)) pi = -1;
+          if (forces(j, v)) pj = +1;
+          if (forces(j, -v)) pj = -1;
+          size_t scrub = 0;
           bool polarity = true;
-          if (pi != 0)      { scrub_child = cj; polarity = (pi > 0); }
-          else if (pj != 0) { scrub_child = ci; polarity = (pj > 0); }
+          if (pi != 0)      { scrub = j; polarity = (pi > 0); }
+          else if (pj != 0) { scrub = i; polarity = (pj > 0); }
           else {
-            // Neither child *forces* v in its own subtree. Try, in order:
+            // Neither conjunct *forces* v. Try, in order:
             //   1. Ambient context (ancestor arc-lit on every path) pins v.
-            //   2. Arc-lit residue: one side has v in arc lits as a SINGLE
-            //      polarity (= no choice OR(v,-v) inside; it's learnt-clause
-            //      BCP residue). Scrub that side. The other side may have v
-            //      as residue too (same polarity) OR as a real choice node /
-            //      free-var OR (both polarities visible) -- scrubbing only
-            //      the residue side preserves the count contribution from
-            //      the choice side.
-            bool i_pos = subtree_lits[ci].has(shared_var);
-            bool i_neg = subtree_lits[ci].has(-shared_var);
-            bool j_pos = subtree_lits[cj].has(shared_var);
-            bool j_neg = subtree_lits[cj].has(-shared_var);
-            bool i_single_pos = i_pos && !i_neg;
-            bool i_single_neg = i_neg && !i_pos;
-            bool j_single_pos = j_pos && !j_neg;
-            bool j_single_neg = j_neg && !j_pos;
-            bool amb_pos = ambient[nid].has(shared_var);
-            bool amb_neg = ambient[nid].has(-shared_var);
-
-            if (amb_pos || amb_neg) {
-              scrub_child = ci;
-              polarity = amb_pos;
-            }
-            else if (i_single_pos) { scrub_child = ci; polarity = true; }
-            else if (i_single_neg) { scrub_child = ci; polarity = false; }
-            else if (j_single_pos) { scrub_child = cj; polarity = true; }
-            else if (j_single_neg) { scrub_child = cj; polarity = false; }
+            //   2. Learnt-clause BCP residue: one side mentions v in a SINGLE
+            //      polarity (no choice OR(v,-v) inside). Scrub that side; the
+            //      other may hold the real choice, whose count must survive.
+            const bool i_pos = mentions(i, v), i_neg = mentions(i, -v);
+            const bool j_pos = mentions(j, v), j_neg = mentions(j, -v);
+            const bool amb_pos = ambient[nid].has(v), amb_neg = ambient[nid].has(-v);
+            if (amb_pos || amb_neg)    { scrub = i; polarity = amb_pos; }
+            else if (i_pos && !i_neg)  { scrub = i; polarity = true; }
+            else if (i_neg && !i_pos)  { scrub = i; polarity = false; }
+            else if (j_pos && !j_neg)  { scrub = j; polarity = true; }
+            else if (j_neg && !j_pos)  { scrub = j; polarity = false; }
             else {
-              std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var "
-                        << shared_var << " [arc-pols ci=" << ci << ":"
-                        << (i_pos?"+":"") << (i_neg?"-":"")
-                        << (!i_pos && !i_neg ? "none" : "")
-                        << " cj=" << cj << ":" << (j_pos?"+":"") << (j_neg?"-":"")
-                        << (!j_pos && !j_neg ? "none" : "")
-                        << "; ambient=" << (amb_pos?"+":"") << (amb_neg?"-":"")
-                        << (!amb_pos && !amb_neg ? "none" : "")
-                        << "; forced ci=" << pi << " cj=" << pj
+              std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " shares var " << v
+                        << " [ci=" << ci << ":" << (i_pos ? "+" : "") << (i_neg ? "-" : "")
+                        << " cj=" << cj << ":" << (j_pos ? "+" : "") << (j_neg ? "-" : "")
+                        << "; ambient=" << (amb_pos ? "+" : "") << (amb_neg ? "-" : "")
                         << "]; leaving as-is" << std::endl;
               continue;
             }
           }
-          int new_scrub = scrub_var(scrub_child, shared_var, polarity, type, arcs,
-                                    parent_count, max_id);
-          if (new_scrub != scrub_child) {
-            for (auto& a : arcs[nid]) if (a.child == scrub_child) a.child = new_scrub;
+          const int keep = polarity ? v : -v;
+          const int sc = arcs[nid][scrub].child;
+          if (arc_has(scrub, -keep)) {
+            std::cerr << "ddnnf-cleanup: WARN: AND " << nid << " conjuncts contradict on var "
+                      << v << "; leaving as-is" << std::endl;
+            continue;
           }
-          touched[scrub_child] = 1;
-          if (new_scrub < (int)sz) touched[new_scrub] = 1;
+          {
+            auto& ls = arcs[nid][scrub].lits;
+            ls.erase(std::remove(ls.begin(), ls.end(), keep), ls.end());
+          }
+          if (subtree_vars[sc].test(v)) {
+            const int ns = scrub_var(sc, v, polarity, type, arcs, parent_count, max_id);
+            arcs[nid][scrub].child = ns;
+            if (ns < (int)sz) touched[ns] = 1;
+          }
+          touched[sc] = 1;
           fixes++;
+        }
+      }
+    }
+    // An arc is the AND of its literals and its child, so a literal whose var
+    // also occurs below the child (learnt-clause residue, like the AND case)
+    // is fixed the same way: condition the child on that literal.
+    for (int nid : post) {
+      for (size_t i = 0; i < arcs[nid].size(); i++) {
+        const int ci = arcs[nid][i].child;
+        if (ci >= (int)sz || touched[ci]) continue;
+        for (int l : arcs[nid][i].lits) {
+          if (!subtree_vars[ci].test(std::abs(l))) continue;
+          const int ns = scrub_var(ci, std::abs(l), l > 0, type, arcs, parent_count, max_id);
+          arcs[nid][i].child = ns;
+          touched[ci] = 1;
+          if (ns < (int)sz) touched[ns] = 1;
+          fixes++;
+          break;
         }
       }
     }
@@ -667,22 +688,19 @@ int main(int argc, char** argv) {
   }
   if (argc - argi < 1 || argc - argi > 2) {
     std::cerr << "Usage: " << argv[0]
-              << " [--no-strict-decomp] <in.nnf> [out.nnf]"
+              << " [--no-strict-decomp] <in.bdnnf> [out.bdnnf]"
                  "   (\"-\"/omitted out => stdout)" << std::endl;
     return EXIT_FAILURE;
   }
   const std::string in_path = argv[argi];
   const std::string out_path = (argc - argi == 2) ? argv[argi + 1] : "-";
 
-  std::ifstream in(in_path);
-  if (!in.good()) die("cannot open input file: " + in_path);
-
-  std::vector<char> type;                          // node id -> 'f'|'t'|'a'|'o' (0 = no node)
-  std::vector<std::vector<Arc>> arcs;              // node id -> outgoing arcs
-  std::vector<int> decl_order;                     // declaration order (unused; we renumber by BFS)
+  ddnnf_io::Circuit c;
   std::string err;
-  int root = ddnnf_io::parse_nnf(in, type, arcs, decl_order, err);
-  if (root == -1) die(err);
+  if (!ddnnf_io::load(in_path, c, err)) die(err);
+  int root = c.root;
+  auto& type = c.type;
+  auto& arcs = c.arcs;
 
   if (do_strict_decomp) root = cleanup_decomp(root, type, arcs);
 
@@ -698,54 +716,16 @@ int main(int argc, char** argv) {
   } while (f || u);
   std::cerr << "ddnnf-cleanup: flattened-nested-and arcs=" << flat
             << " elided-unary-and=" << unary << std::endl;
+  c.root = root;
 
-  // BFS renumber from the root: root => 1, then children in arc order. Unvisited
-  // (dead) nodes get no id and are dropped. `newid` indexed by node id; 0 = not
-  // yet reached (real new ids start at 1 so this is a safe sentinel).
-  std::vector<int> newid(type.size(), 0);
-  std::vector<int> order;                           // new-id order -> old id
-  std::queue<int> q;
-  newid[root] = 1;
-  order.push_back(root);
-  q.push(root);
-  while (!q.empty()) {
-    int nid = q.front();
-    q.pop();
-    if (nid >= (int)arcs.size()) continue;
-    for (const auto& a : arcs[nid]) {
-      if (newid[a.child] == 0) {
-        newid[a.child] = (int)order.size() + 1;
-        order.push_back(a.child);
-        q.push(a.child);
-      }
-    }
-  }
+  uint64_t props = bdnnf::P_CLEAN;
+  if (ddnnf_io::check_decomposable(c).first) props |= bdnnf::P_DECOMPOSABLE;
+  else std::cerr << "ddnnf-cleanup: WARN: output is not decomposable" << std::endl;
+  if ((c.props & bdnnf::P_DETERMINISTIC) && ddnnf_io::check_deterministic(c).first)
+    props |= bdnnf::P_DETERMINISTIC;
+  if (ddnnf_io::check_smooth(c).first) props |= bdnnf::P_SMOOTH;
 
-  std::ofstream fout;
-  std::ostream* out = &std::cout;
-  if (out_path != "-") {
-    fout.open(out_path);
-    if (!fout.good()) die("cannot open output file: " + out_path);
-    out = &fout;
-  }
-
-  // Section 1: declarations in new-id order.
-  for (int oldid : order) *out << type[oldid] << " " << newid[oldid] << " 0\n";
-  // Section 2: arcs in new-id order, with ids remapped.
-  for (int oldid : order) {
-    for (const auto& a : arcs[oldid]) {
-      *out << newid[oldid] << " " << newid[a.child];
-      for (int l : a.lits) *out << " " << l;
-      *out << " 0\n";
-    }
-  }
-  out->flush();
-
-  // `type` includes 0-sentinels for unused ids; count the real declarations.
-  size_t declared = 0;
-  for (char c : type) if (c != 0) declared++;
-  std::cerr << "ddnnf-cleanup: declared=" << declared
-            << " reachable=" << order.size()
-            << " dropped=" << (declared - order.size()) << std::endl;
+  if (!ddnnf_io::save(out_path, c, props, "ddnnf-cleanup", err, c.footer_kv)) die(err);
+  std::cerr << "ddnnf-cleanup: input nodes=" << c.nfile << " props=" << props << std::endl;
   return EXIT_SUCCESS;
 }

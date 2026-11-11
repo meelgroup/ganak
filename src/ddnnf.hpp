@@ -23,103 +23,96 @@ THE SOFTWARE.
 #pragma once
 
 #include "common.hpp"
+#include "bdnnf.hpp"
+#include "GitSHA1.hpp"
 
 #include <vector>
 #include <array>
 #include <cstdint>
 #include <cstdlib>
-#include <cstdio>
 #include <string>
-#include <fstream>
 #include <iostream>
 #include <unordered_set>
-#include <unistd.h>
 
 namespace GanakInt {
 
-// Builds a (Decision-)d-DNNF circuit from Ganak's search trace and STREAMS it to
-// disk in d4 `.nnf` format ("DPLL trace = Decision-DNNF", Huang & Darwiche 2005):
+// Builds a (Decision-)d-DNNF circuit from Ganak's search trace and streams it to
+// disk as BDNNF (spec-bdnnf.md), Huang & Darwiche 2005 style:
 //   decision          -> OR node (arcs carry decision + implied lits)
-//   AND-decomposition -> AND node (no arc lits)
-//   free var          -> OR(v->T, -v->T) (factor 2)
+//   AND-decomposition -> AND node
+//   free var          -> free var of the enclosing AND (factor 2)
 //   SAT leaf -> TRUE;  conflict -> FALSE;  cache hit -> shared edge
-// Counting structurally (OR=sum, AND=product, T=1, F=0; arc lits ignored)
-// reproduces count().
+// Every node is complete at creation and its children already exist, so it is
+// written out immediately. The structural count reproduces count().
 //
-// STREAMING: the DAG is never fully in memory. Nodes are complete at creation and
-// every arc points to a lower id (children exist first), so each node is emitted
-// as it is built. Declarations stream to one temp file, arcs to another;
-// write_d4() stitches them with the root declared first (d4 convention).
-//
-// The file may contain unreachable ("dead") nodes (mk_and short-circuits to FALSE,
-// orphaning siblings); harmless to a root traversal, and `ddnnf-cleanup` removes
-// them + renumbers root=1 for strict d4 consumers.
+// Free vars are returned by mk_free_var() as the pseudo-id -v and only become
+// part of a node in mk_and(); they never reach the cache or an OR arc.
 class DDNNFCircuit {
 public:
-  enum NType : uint8_t { N_FALSE = 0, N_TRUE = 1, N_AND = 2, N_OR = 3 };
   struct Arc {
     int child;
     std::vector<int> lits; // DIMACS literals true on this arc
   };
 
-  explicit DDNNFCircuit(const std::string& target_fname) {
-    open_temps(target_fname);
-    false_node = emit(N_FALSE, {});
-    true_node = emit(N_TRUE, {});
+  DDNNFCircuit(const std::string& fname, uint32_t _nvars) : nvars(_nvars) {
+    guard([&] {
+      w.open(fname, nvars, {{"producer", std::string("ganak ") +
+          GANAK::get_version_tag() + " " + GANAK::get_version_sha1()}});
+    });
   }
 
-  int false_node = -1;
-  int true_node = -1;
+  static constexpr int false_node = 0;
+  static constexpr int true_node = 1;
   int root = -1;
-  int nvars = 0;
+  uint32_t nvars;
 
-  // AND of children (no arc lits): drop TRUE; any FALSE -> FALSE; empty -> TRUE;
-  // single child -> that child.
+  // AND of children: drop TRUE; any FALSE -> FALSE; empty -> TRUE;
+  // single real child -> that child.
   int mk_and(const std::vector<int>& comps) {
-    std::vector<Arc> arcs;
-    arcs.reserve(comps.size());
+    kids.clear();
+    frees.clear();
     for (int c : comps) {
       if (c == true_node) continue;
       if (c == false_node) return false_node;
-      arcs.push_back(Arc{c, {}});
+      if (c < 0) frees.push_back(-c);
+      else kids.push_back(c);
     }
-    if (arcs.empty()) return true_node;
-    if (arcs.size() == 1) return arcs[0].child;
-    int id = emit(N_AND, arcs);
-    // SLOW_DEBUG: strict d-DNNF requires the child subtrees to be pairwise
-    // var-disjoint. Catches the violation at emission time (decision context
-    // still live) instead of after-the-fact via ddnnf_verify.py.
-    SLOW_DEBUG_DO(check_decomposable_at_and(id, arcs));
+    if (kids.empty() && frees.empty()) return true_node;
+    if (kids.size() == 1 && frees.empty()) return kids[0];
+    const int id = emit_and(kids, no_lits, frees);
+    SLOW_DEBUG_DO(check_decomposable_at_and(id, kids, no_lits, frees));
     return id;
   }
 
   // OR of (literal-set -> child) arcs. Drop arcs to FALSE; empty -> FALSE.
   int mk_or(std::vector<Arc>&& arcs) {
-    std::vector<Arc> kept;
-    kept.reserve(arcs.size());
-    for (auto& a : arcs) {
-      if (a.child == false_node) continue;
-      kept.push_back(std::move(a));
+    size_t kept = 0;
+    for (const auto& a : arcs) {
+      assert(a.child >= 0);
+      if (a.child != false_node) kept++;
     }
-    if (kept.empty()) return false_node;
-    return emit(N_OR, kept);
+    if (kept == 0) return false_node;
+    int id = -1;
+    guard([&] {
+      w.begin_or();
+      for (const auto& a : arcs) if (a.child != false_node) w.or_arc(a.lits, (uint64_t)a.child);
+      id = check_id(w.end_or());
+    });
+    SLOW_DEBUG_DO(record_or(id, arcs));
+    return id;
   }
 
-  // Free (unconstrained) variable: factor of two.
-  int mk_free_var(int dimacs_var) {
-    std::vector<Arc> arcs;
-    arcs.push_back(Arc{true_node, {dimacs_var}});
-    arcs.push_back(Arc{true_node, {-dimacs_var}});
-    return emit(N_OR, arcs);
-  }
+  static int mk_free_var(int dimacs_var) { return -dimacs_var; }
 
-  // Wrap a node under a single AND arc carrying `lits` (e.g. level-0 implied lits).
+  // inner AND lits (e.g. level-0 implied lits, or a SAT witness on TRUE).
   int wrap_lits(int inner, const std::vector<int>& lits) {
     if (lits.empty()) return inner;
     if (inner == false_node) return false_node;
-    std::vector<Arc> arcs;
-    arcs.push_back(Arc{inner, lits});
-    return emit(N_AND, arcs);
+    kids.clear();
+    if (inner != true_node) kids.push_back(inner);
+    const int id = emit_and(kids, lits, no_lits);
+    SLOW_DEBUG_DO(check_decomposable_at_and(id, kids, lits, no_lits, false));
+    return id;
   }
 
   // ---- per-search bookkeeping (not part of the emitted DAG) ----
@@ -162,165 +155,86 @@ public:
     children[lev][branch].push_back(node);
   }
 
-  size_t num_nodes() const { return n_nodes; }
-  size_t num_edges() const { return n_edges; }
+  [[nodiscard]] uint64_t num_nodes() const { return w.num_nodes(); }
+  [[nodiscard]] uint64_t num_edges() const { return w.num_edges(); }
 
-  // Stitch the temp files into the final d4 .nnf at `fname`, root declared first.
-  // O(1) memory: two passes over the decls temp + a raw copy of the arcs temp.
-  void write_d4(const std::string& fname) {
-    decl_out.flush();
-    arc_out.flush();
-    decl_out.close();
-    arc_out.close();
-    int r = (root < 0) ? false_node : root;
-
-    // Pass 1: find the root's type char.
-    char root_char = (r == false_node) ? 'f' : (r == true_node) ? 't' : 'o';
-    {
-      std::ifstream d(decl_path);
-      std::string line;
-      while (std::getline(d, line)) {
-        if (line.empty()) continue;
-        int id = decl_line_id(line);
-        if (id == r) { root_char = line[0]; break; }
-      }
-    }
-
-    std::ofstream o(fname);
-    o << root_char << " " << r << " 0\n";
-    // Pass 2: copy every declaration except the root's.
-    {
-      std::ifstream d(decl_path);
-      std::string line;
-      while (std::getline(d, line)) {
-        if (line.empty()) continue;
-        if (decl_line_id(line) == r) continue;
-        o << line << "\n";
-      }
-    }
-    // Append all arc lines verbatim.
-    {
-      std::ifstream a(arc_path, std::ios::binary);
-      o << a.rdbuf();
-    }
-    o.close();
-    unlink(decl_path.c_str());
-    unlink(arc_path.c_str());
+  void finish() {
+    const int r = (root < 0) ? false_node : root;
+    // Decision ORs split on x / -x, so they are deterministic. Decomposability is
+    // not guaranteed: learnt clauses can bridge components (ddnnf-cleanup fixes it).
+    guard([&] { w.finish((uint64_t)r, bdnnf::P_DETERMINISTIC); });
   }
 
 private:
-  int next_id = 0;
-  size_t n_nodes = 0;
-  size_t n_edges = 0;
-  std::ofstream decl_out;
-  std::ofstream arc_out;
-  std::string decl_path;
-  std::string arc_path;
+  bdnnf::Writer w;
+  std::vector<int> kids;
+  std::vector<int> frees;
+  const std::vector<int> no_lits;
+
+  template <class F>
+  static void guard(F&& f) {
+    try {
+      f();
+    } catch (const bdnnf::Error& e) {
+      std::cerr << "ERROR: writing d-DNNF: " << e.what() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  static int check_id(uint64_t id) {
+    if (id > (uint64_t)INT32_MAX) {
+      std::cerr << "ERROR: d-DNNF has more than 2^31 nodes" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    return (int)id;
+  }
+
+  int emit_and(const std::vector<int>& k, const std::vector<int>& units,
+               const std::vector<int>& fr) {
+    int id = -1;
+    guard([&] { id = check_id(w.add_and(k, units, fr)); });
+    return id;
+  }
 
 #ifdef SLOW_DEBUG
-  // Per-node set of vars reachable in its subtree (arc lits + child subtree vars).
-  // Built incrementally because every arc points to a lower id (children always
-  // exist when we add an arc).
+  // Per-node set of vars in its subtree. Children always exist before parents.
   std::vector<std::unordered_set<int>> subtree_vars;
-  void record_subtree(int id, const std::vector<Arc>& arcs) {
+  std::unordered_set<int>& slot(int id) {
     if ((int)subtree_vars.size() <= id) subtree_vars.resize(id + 1);
-    auto& vs = subtree_vars[id];
+    return subtree_vars[id];
+  }
+  void record_or(int id, const std::vector<Arc>& arcs) {
+    auto& vs = slot(id);
     for (const auto& a : arcs) {
       for (int l : a.lits) vs.insert(std::abs(l));
-      if (a.child >= 0 && a.child < (int)subtree_vars.size())
+      if (a.child < (int)subtree_vars.size())
         for (int v : subtree_vars[a.child]) vs.insert(v);
     }
   }
-  void check_decomposable_at_and(int id, const std::vector<Arc>& arcs) {
-    std::vector<std::unordered_set<int>> kid_vars(arcs.size());
-    for (size_t i = 0; i < arcs.size(); i++) {
-      for (int l : arcs[i].lits) kid_vars[i].insert(std::abs(l));
-      if (arcs[i].child >= 0 && arcs[i].child < (int)subtree_vars.size())
-        for (int v : subtree_vars[arcs[i].child]) kid_vars[i].insert(v);
+  // Strict d-DNNF: the AND's children, units and free vars must be pairwise
+  // var-disjoint. Catches a violation at emission time, decision context live.
+  void check_decomposable_at_and(int id, const std::vector<int>& k,
+      const std::vector<int>& units, const std::vector<int>& fr, bool check = true) {
+    std::vector<std::unordered_set<int>> parts;
+    std::vector<std::string> names;
+    for (int c : k) {
+      parts.emplace_back(c < (int)subtree_vars.size() ? subtree_vars[c] : std::unordered_set<int>{});
+      names.push_back("node " + std::to_string(c));
     }
-    for (size_t i = 0; i < arcs.size(); i++) {
-      for (size_t j = i + 1; j < arcs.size(); j++) {
-        for (int v : kid_vars[i]) if (kid_vars[j].count(v)) {
+    for (int l : units) { parts.push_back({std::abs(l)}); names.push_back("unit " + std::to_string(l)); }
+    for (int v : fr) { parts.push_back({v}); names.push_back("free " + std::to_string(v)); }
+    auto& vs = slot(id);
+    for (const auto& p : parts) vs.insert(p.begin(), p.end());
+    if (!check) return;
+    for (size_t i = 0; i < parts.size(); i++)
+      for (size_t j = i + 1; j < parts.size(); j++)
+        for (int v : parts[i]) if (parts[j].count(v)) {
           std::cerr << "*** STRICT-DECOMP VIOLATION at AND node " << id
-                    << ": var " << v << " in both child " << i
-                    << " (node " << arcs[i].child << ") and child " << j
-                    << " (node " << arcs[j].child << ").\n    arcs:";
-          for (const auto& a : arcs) {
-            std::cerr << " (->n" << a.child << " lits:";
-            for (int l : a.lits) std::cerr << " " << l;
-            std::cerr << ")";
-          }
-          std::cerr << "\n";
+                    << ": var " << v << " in both " << names[i] << " and " << names[j] << "\n";
           std::abort();
         }
-      }
-    }
   }
 #endif
-
-  static char type_char(NType t) {
-    switch (t) {
-      case N_FALSE: return 'f';
-      case N_TRUE:  return 't';
-      case N_AND:   return 'a';
-      default:      return 'o';
-    }
-  }
-
-  // Parse the node id (second token) out of a declaration line "<c> <id> 0".
-  static int decl_line_id(const std::string& line) {
-    size_t i = 0;
-    while (i < line.size() && line[i] != ' ') i++;     // skip type char
-    while (i < line.size() && line[i] == ' ') i++;      // skip spaces
-    int id = 0;
-    bool any = false;
-    while (i < line.size() && line[i] >= '0' && line[i] <= '9') {
-      id = id * 10 + (line[i] - '0'); i++; any = true;
-    }
-    return any ? id : -1;
-  }
-
-  void open_temps(const std::string& target_fname) {
-    decl_path = mk_temp(target_fname + ".declXXXXXX");
-    arc_path = mk_temp(target_fname + ".arcXXXXXX");
-    decl_out.open(decl_path, std::ios::trunc);
-    arc_out.open(arc_path, std::ios::trunc);
-    if (!decl_out.good() || !arc_out.good()) {
-      std::cerr << "ERROR: could not open d-DNNF temp files next to "
-                << target_fname << std::endl;
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  // Reserve a unique temp path atomically (mkstemp), close the fd, return name.
-  static std::string mk_temp(const std::string& tmpl) {
-    std::vector<char> buf(tmpl.begin(), tmpl.end());
-    buf.push_back('\0');
-    int fd = mkstemp(buf.data());
-    if (fd < 0) {
-      std::cerr << "ERROR: mkstemp failed for d-DNNF temp file " << tmpl << std::endl;
-      exit(EXIT_FAILURE);
-    }
-    close(fd);
-    return std::string(buf.data());
-  }
-
-  // Assign an id, stream the declaration + arc lines, and bump the counters.
-  int emit(NType t, const std::vector<Arc>& arcs) {
-    int id = next_id++;
-    decl_out << type_char(t) << " " << id << " 0\n";
-    for (const auto& a : arcs) {
-      arc_out << id << " " << a.child;
-      for (int l : a.lits) arc_out << " " << l;
-      arc_out << " 0\n";
-      n_edges++;
-    }
-    n_nodes++;
-    // SLOW_DEBUG: maintain per-node subtree var sets so check_decomposable_at_and
-    // sees correct child sets even when a child is a leaf (TRUE/FALSE) or OR.
-    SLOW_DEBUG_DO(record_subtree(id, arcs));
-    return id;
-  }
 };
 
 }

@@ -20,26 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-verify: structural-count + invariant checker for d4 .nnf files from
-// `ganak --compile`. C++ port of tests/ddnnf_verify.py (CLI surface only). The
-// Python version stays for tiny-N programmatic use from ddnnf_fuzz.py; this
-// binary handles the big-circuit cases (multi-million-node
-// random_nvN benches) that exhaust Python's stack and dict overhead.
+// ddnnf-verify: structural count + invariant checker for BDNNF circuits
+// (spec-bdnnf.md), raw from `ganak --compile` or cleaned by ddnnf-cleanup.
 //
-// Usage:  ddnnf-verify <in.nnf>                       (default: --check-decomposable
-//                                                      and --strict are both ON)
-//         ddnnf-verify <in.nnf> --expect-count N
-//         ddnnf-verify <in.nnf> --cnf <c.cnf>         (small CNFs only: brute-forces
-//                                                      the model set 2^nvars)
-//         ddnnf-verify <in.nnf> --no-check-decomposable   (opt out of decomp check)
-//         ddnnf-verify <in.nnf> --no-strict           (opt out of strict-form check:
-//                                                      root id 1, ids 1..N contiguous,
-//                                                      no dead nodes)
-//         ddnnf-verify <in.nnf> -q | --quiet          (suppress final "OK" message)
-//
-// `--check-decomposable` and `--strict` are accepted as no-ops for back-compat
-// (they used to be opt-in). To get the raw structural count alone, opt out of
-// both checks: `ddnnf-verify in.nnf --no-check-decomposable --no-strict`.
+// Usage:  ddnnf-verify <in.bdnnf>             streamed structural count only
+//         ddnnf-verify <in.bdnnf> [--expect-count N] [--cnf <c.cnf>]
+//                      [--no-check-decomposable] [--no-strict] [-q]
+// Any checking option loads the circuit and runs every check that is not opted
+// out of, plus a check of each property the file claims. --cnf brute-forces the
+// model set (small CNFs only). --strict: the circuit is CLEAN (root is the last
+// node, no dead nodes) and canonical (no nested or non-root unary ANDs).
 
 #include <cctype>
 #include <cstdint>
@@ -59,27 +49,7 @@ THE SOFTWARE.
 namespace {
 
 using ddnnf_io::Arc;
-
-// Compact bitset over [0, nvars]. Fixed word count is set once per pass so the
-// inner loops are word-parallel ORs/ANDs (same trick as ddnnf-cleanup).
-struct VarSet {
-  std::vector<uint64_t> w;
-  void resize(size_t words) { w.assign(words, 0); }
-  void set(int v) { w[v >> 6] |= 1ULL << (v & 63); }
-  void or_with(const VarSet& o) {
-    const size_t n = w.size();
-    for (size_t i = 0; i < n; i++) w[i] |= o.w[i];
-  }
-  // Returns any var in (this & o), else 0.
-  [[nodiscard]] int first_intersect_var(const VarSet& o) const {
-    const size_t n = w.size();
-    for (size_t i = 0; i < n; i++) {
-      uint64_t b = w[i] & o.w[i];
-      if (b) return (int)(i * 64) + __builtin_ctzll(b);
-    }
-    return 0;
-  }
-};
+using ddnnf_io::Circuit;
 
 void fail(const std::string& msg) {
   std::cout << "ddnnf-verify: FAIL: " << msg << "\n";
@@ -91,173 +61,84 @@ void die(const std::string& msg) {
   std::exit(EXIT_FAILURE);
 }
 
-// Iterative post-order DFS body. Visits children before parents; calls
-// `on_emit(n)` exactly once per reachable node, with all of n's children
-// already emitted. `done` marks emitted nodes (sized to at least max_id+1
-// by caller, zero-initialized). Avoids the 8 MB stack blowup at 14M nodes.
-template <class OnEmit>
-void post_order_visit(int root,
-                      const std::vector<std::vector<Arc>>& arcs,
-                      std::vector<char>& done,
-                      OnEmit on_emit) {
-  std::vector<std::pair<int, int>> stack;
-  stack.reserve(64);
-  if (done[root]) return;
-  stack.emplace_back(root, 0);
-  while (!stack.empty()) {
-    auto& top = stack.back();
-    int n = top.first;
-    int idx = top.second;
-    if (done[n]) { stack.pop_back(); continue; }
-    int sz = (n < (int)arcs.size()) ? (int)arcs[n].size() : 0;
-    if (idx >= sz) {
-      on_emit(n);
-      done[n] = 1;
-      stack.pop_back();
-      continue;
+// Structural count straight off the file in one forward scan, no graph built.
+// Also checks syntactic determinism per node if the file claims DETERMINISTIC.
+mpz_class streamed_count(const std::string& path, uint64_t& nnodes, std::string* det_err = nullptr,
+                         bdnnf::KV* footer_kv = nullptr) {
+  bdnnf::Reader r;
+  r.open(path);
+  const bool check_det = det_err && (r.props & bdnnf::P_DETERMINISTIC);
+  std::vector<mpz_class> val(r.have_footer ? r.nnodes + 2 : 2);
+  val[0] = 0;
+  val[1] = 1;
+  r.scan([&](uint64_t id, const bdnnf::Node& n) {
+    if (id >= val.size()) val.resize(id + 1);
+    mpz_class x;
+    if (n.kind == bdnnf::K_AND) {
+      x = 1;
+      for (uint64_t k : n.kids) x *= val[k];
+      x <<= n.free.size();
+    } else {
+      x = 0;
+      for (const auto& a : n.arcs) x += val[a.child];
+      if (check_det && det_err->empty())
+        for (size_t i = 0; i < n.arcs.size(); i++)
+          for (size_t j = i + 1; j < n.arcs.size(); j++) {
+            bool clash = false;
+            for (int l : n.arcs[i].lits)
+              for (int m : n.arcs[j].lits) clash |= (l == -m);
+            if (!clash)
+              *det_err = "OR " + std::to_string(id) + " arcs " + std::to_string(i) + " and " +
+                         std::to_string(j) + " share no complementary literal";
+          }
     }
-    int c = arcs[n][idx].child;
-    top.second = idx + 1;
-    if (!done[c]) stack.emplace_back(c, 0);
-  }
+    val[id] = std::move(x);
+  });
+  nnodes = r.nnodes;
+  if (footer_kv) *footer_kv = r.footer_kv;
+  return val[r.root];
 }
 
-// Structural model count with GMP big-int memo (OR=sum, AND=product, t=1, f=0;
-// arc literals ignored). Free vars are explicit OR(v,-v), so no smoothing.
-mpz_class structural_count(int root,
-                           const std::vector<char>& type,
-                           const std::vector<std::vector<Arc>>& arcs) {
-  std::vector<mpz_class> memo(type.size());
-  std::vector<char> done(type.size(), 0);
-  post_order_visit(root, arcs, done, [&](int n) {
-    char t = type[n];
-    if (t == 't')      memo[n] = 1;
+mpz_class structural_count(const Circuit& c) {
+  std::vector<mpz_class> memo(c.type.size());
+  std::vector<char> done(c.type.size(), 0);
+  ddnnf_io::post_order(c, done, [&](int n) {
+    const char t = c.type[n];
+    if (t == 't') memo[n] = 1;
     else if (t == 'f') memo[n] = 0;
     else if (t == 'o') {
       mpz_class r = 0;
-      for (const auto& a : arcs[n]) r += memo[a.child];
+      for (const auto& a : c.arcs[n]) r += memo[a.child];
       memo[n] = std::move(r);
-    } else { // 'a'
+    } else {
       mpz_class r = 1;
-      for (const auto& a : arcs[n]) r *= memo[a.child];
+      for (const auto& a : c.arcs[n]) r *= memo[a.child];
       memo[n] = std::move(r);
     }
   });
-  return memo[root];
+  return memo[c.root];
 }
 
-// Reachable-from-root marker, indexed by node id. Iterative DFS.
-std::vector<char> reachable_mask(int root,
-                                 const std::vector<std::vector<Arc>>& arcs,
-                                 size_t sz) {
-  std::vector<char> seen(sz, 0);
-  std::vector<int> stack = {root};
-  while (!stack.empty()) {
-    int n = stack.back(); stack.pop_back();
-    if (seen[n]) continue;
-    seen[n] = 1;
-    if (n < (int)arcs.size())
-      for (const auto& a : arcs[n]) stack.push_back(a.child);
-  }
-  return seen;
-}
-
-// Strict d-DNNF check: every reachable AND node's children must have pairwise
-// var-disjoint subtree variable sets (where a child's vars = arc lits ∪ that
-// child's subtree vars). Returns (true, "") or (false, msg).
-std::pair<bool, std::string> check_decomposable(
-    int root,
-    const std::vector<char>& type,
-    const std::vector<std::vector<Arc>>& arcs) {
-  int max_var = 0;
-  for (const auto& kids : arcs)
-    for (const auto& a : kids)
-      for (int l : a.lits) { int v = l > 0 ? l : -l; if (v > max_var) max_var = v; }
-  const size_t words = (size_t)(max_var / 64) + 1;
-
-  std::vector<VarSet> sv(type.size());
-  std::vector<char> done(type.size(), 0);
-  post_order_visit(root, arcs, done, [&](int n) {
-    sv[n].resize(words);
-    for (const auto& a : arcs[n]) {
-      for (int l : a.lits) sv[n].set(l > 0 ? l : -l);
-      sv[n].or_with(sv[a.child]);
-    }
-  });
-
-  for (int n = 0; n < (int)type.size(); n++) {
-    if (!done[n] || type[n] != 'a') continue;
-    VarSet seen; seen.resize(words);
-    for (const auto& a : arcs[n]) {
-      // child_vars = arc lits ∪ subtree(a.child)
-      VarSet cv = sv[a.child];
-      for (int l : a.lits) cv.set(l > 0 ? l : -l);
-      int v = seen.first_intersect_var(cv);
-      if (v != 0) {
+std::pair<bool, std::string> check_strict(const Circuit& c) {
+  if (!(c.props & bdnnf::P_CLEAN)) return {false, "file is not flagged CLEAN"};
+  if (c.nfile > 0 && c.root != c.nfile + 1)
+    return {false, "root " + std::to_string(c.root) + " is not the last node"};
+  std::vector<char> seen(c.type.size(), 0);
+  ddnnf_io::post_order(c, seen, [](int) {});
+  for (int id = 2; id < c.nfile + 2; id++)
+    if (!seen[id]) return {false, "1 or more dead node(s) present; first: " + std::to_string(id)};
+  for (int n = 0; n < (int)c.type.size(); n++) {
+    if (!seen[n] || c.type[n] != 'a') continue;
+    for (const auto& a : c.arcs[n])
+      if (a.lits.empty() && c.type[a.child] == 'a') {
         std::ostringstream m;
-        m << "AND " << n << " children share var " << v;
+        m << "nested AND: AND " << n << " has a literal-free arc to AND " << a.child
+          << " (should be flattened)";
         return {false, m.str()};
       }
-      seen.or_with(cv);
-    }
-  }
-  return {true, ""};
-}
-
-// Strict-form check: matches what ddnnf-cleanup produces -- root id 1, ids
-// 1..N contiguous (all declared), no dead (unreachable) nodes.
-std::pair<bool, std::string> check_strict(
-    int root,
-    const std::vector<char>& type,
-    const std::vector<std::vector<Arc>>& arcs) {
-  if (root != 1) return {false, "root id " + std::to_string(root) + " != 1"};
-  // declared = nonzero type slots
-  std::vector<int> declared;
-  declared.reserve(type.size());
-  for (int i = 0; i < (int)type.size(); i++) if (type[i] != 0) declared.push_back(i);
-  // contiguous 1..N
-  for (size_t k = 0; k < declared.size(); k++) {
-    if (declared[k] != (int)k + 1) {
+    if (n != c.root && c.arcs[n].size() == 1) {
       std::ostringstream m;
-      m << "node ids not contiguous 1..N (first gap before id " << declared[k] << ")";
-      return {false, m.str()};
-    }
-  }
-  // dead nodes: declared - reachable
-  auto seen = reachable_mask(root, arcs, type.size());
-  for (int id : declared) if (!seen[id]) {
-    std::ostringstream m;
-    m << "1 or more dead node(s) present; first: " << id;
-    return {false, m.str()};
-  }
-  // nested AND: a literal-free arc from an AND to another AND is associatively
-  // redundant -- the inner AND's conjuncts belong directly in the parent. The
-  // streaming compiler emits these (e.g. wrap_lits() witness wrappers conjoined
-  // by mk_and()); ddnnf-cleanup's flatten_ands pass removes them. A surviving one
-  // means a non-canonical circuit (or a regression in that pass).
-  for (int n = 0; n < (int)type.size(); n++) {
-    if (!seen[n] || type[n] != 'a') continue;
-    for (const auto& a : arcs[n]) {
-      if (a.lits.empty() && a.child >= 0 && a.child < (int)type.size()
-          && type[a.child] == 'a') {
-        std::ostringstream m;
-        m << "nested AND: AND " << n << " has a literal-free arc to AND "
-          << a.child << " (should be flattened)";
-        return {false, m.str()};
-      }
-    }
-  }
-  // unary AND: an AND with a single arc conjoins nothing -- it is its child plus
-  // the arc's literals, so it belongs folded into its parent edge. wrap_lits()
-  // emits these for projected / SAT-witnessed components; ddnnf-cleanup's
-  // elide_unary_ands pass removes every non-root one. (The root may stay unary:
-  // it carries the top-level literals and has no parent to fold into.)
-  for (int n = 0; n < (int)type.size(); n++) {
-    if (!seen[n] || type[n] != 'a' || n == root) continue;
-    if (arcs[n].size() == 1) {
-      std::ostringstream m;
-      m << "unary AND: AND " << n << " has a single arc (should be elided into "
-           "its parent edge)";
+      m << "unary AND: AND " << n << " has a single conjunct (should be elided into its parent edge)";
       return {false, m.str()};
     }
   }
@@ -341,13 +222,13 @@ bool apply_arc_lits(PM& m, const std::vector<int>& lits) {
 // Circuit model set: walk the DAG considering arc lits, produce partial models
 // per node, then expand free vars. For tiny CNFs only (exponential in
 // unconstrained-var count per partial). Mirrors models() in ddnnf_verify.py.
-std::set<uint64_t> circuit_models(int root,
-                                  const std::vector<char>& type,
-                                  const std::vector<std::vector<Arc>>& arcs,
-                                  int nvars) {
+std::set<uint64_t> circuit_models(const ddnnf_io::Circuit& cc, int nvars) {
+  const auto& type = cc.type;
+  const auto& arcs = cc.arcs;
+  const int root = cc.root;
   std::vector<std::vector<PM>> memo(type.size());
   std::vector<char> done(type.size(), 0);
-  post_order_visit(root, arcs, done, [&](int n) {
+  ddnnf_io::post_order(cc, done, [&](int n) {
     char t = type[n];
     auto& res = memo[n];
     if (t == 't') { res.push_back({0, 0}); return; }
@@ -405,86 +286,114 @@ std::set<uint64_t> circuit_models(int root,
 } // namespace
 
 int main(int argc, char** argv) {
-  // ---- arg parse: <nnf> + optional flags ----
-  std::string nnf_path;
+  std::string path;
   std::string cnf_path;
   mpz_class expect_count;
   bool have_expect = false;
   bool check_decomp = true;
   bool strict = true;
   bool quiet = false;
+  bool any_opt = false;
 
   auto usage = [&]() {
     std::cerr <<
-      "Usage: " << argv[0] << " <in.nnf>\n"
+      "Usage: " << argv[0] << " <in.bdnnf>\n"
       "         [--expect-count N] [--cnf <file>]\n"
       "         [--no-check-decomposable] [--no-strict] [-q|--quiet]\n"
       "\n"
-      "--check-decomposable and --strict are ON by default. Opt out with\n"
-      "--no-check-decomposable / --no-strict; opt out of BOTH to print just\n"
-      "the structural count.\n";
+      "With no option, prints the structural count (streamed, no graph built).\n";
     std::exit(EXIT_FAILURE);
   };
 
   for (int i = 1; i < argc; i++) {
     std::string a = argv[i];
     if (a == "-h" || a == "--help") usage();
-    else if (a == "-q" || a == "--quiet") quiet = true;
-    else if (a == "--check-decomposable") check_decomp = true;   // no-op, kept for back-compat
-    else if (a == "--strict") strict = true;                     // no-op, kept for back-compat
-    else if (a == "--no-check-decomposable") check_decomp = false;
-    else if (a == "--no-strict") strict = false;
+    else if (a == "-q" || a == "--quiet") { quiet = true; any_opt = true; }
+    else if (a == "--check-decomposable") { check_decomp = true; any_opt = true; }
+    else if (a == "--strict") { strict = true; any_opt = true; }
+    else if (a == "--no-check-decomposable") { check_decomp = false; any_opt = true; }
+    else if (a == "--no-strict") { strict = false; any_opt = true; }
     else if (a == "--expect-count") {
       if (i + 1 >= argc) usage();
       expect_count.set_str(argv[++i], 10);
       have_expect = true;
+      any_opt = true;
     }
     else if (a == "--cnf") {
       if (i + 1 >= argc) usage();
       cnf_path = argv[++i];
+      any_opt = true;
     }
-    else if (a.size() > 0 && a[0] == '-') {
+    else if (!a.empty() && a[0] == '-' && a != "-") {
       std::cerr << "ddnnf-verify: unknown option: " << a << "\n";
       usage();
     }
-    else if (nnf_path.empty()) nnf_path = a;
+    else if (path.empty()) path = a;
     else { std::cerr << "ddnnf-verify: unexpected positional: " << a << "\n"; usage(); }
   }
-  if (nnf_path.empty()) usage();
+  if (path.empty()) usage();
 
-  // ---- parse the .nnf ----
-  std::ifstream in(nnf_path);
-  if (!in.good()) die("cannot open: " + nnf_path);
-  std::vector<char> type;
-  std::vector<std::vector<Arc>> arcs;
-  std::vector<int> order;
-  std::string err;
-  int root = ddnnf_io::parse_nnf(in, type, arcs, order, err);
-  if (root == -1) die(err);
-
-  // ---- structural count (always) ----
-  mpz_class c = structural_count(root, type, arcs);
-
-  const bool any_check = have_expect || !cnf_path.empty() || check_decomp || strict;
-  if (!any_check) {
-    // Bare invocation: print the count, exit 0 (matches Python's behavior).
-    std::cout << c.get_str() << "\n";
+  if (!any_opt) {
+    try {
+      uint64_t nn;
+      std::cout << streamed_count(path, nn).get_str() << "\n";
+    } catch (const bdnnf::Error& e) {
+      die(path + ": " + e.what());
+    }
     return EXIT_SUCCESS;
   }
 
-  if (have_expect && c != expect_count) {
-    fail("count " + c.get_str() + " != expected " + expect_count.get_str());
+  uint64_t props = 0;
+  try {
+    bdnnf::Reader pr;
+    pr.open(path);
+    props = pr.props;
+  } catch (const bdnnf::Error& e) {
+    die(path + ": " + e.what());
   }
+  const bool need_graph = !cnf_path.empty() || check_decomp || strict ||
+                          (props & (bdnnf::P_DECOMPOSABLE | bdnnf::P_SMOOTH));
+  if (!need_graph) {
+    uint64_t nn = 0;
+    std::string det_err;
+    bdnnf::KV fkv;
+    mpz_class sc;
+    try { sc = streamed_count(path, nn, &det_err, &fkv); } catch (const bdnnf::Error& e) { die(e.what()); }
+    if (!det_err.empty()) fail("flagged DETERMINISTIC but " + det_err);
+    const std::string fc = bdnnf::Reader().get(fkv, "count");
+    if (!fc.empty() && mpz_class(fc, 10) != sc) fail("count " + sc.get_str() + " != footer count " + fc);
+    if (have_expect && sc != expect_count)
+      fail("count " + sc.get_str() + " != expected " + expect_count.get_str());
+    if (!quiet) std::cout << "ddnnf-verify: OK (count=" << sc.get_str() << ", nodes=" << nn << ", streamed)\n";
+    return EXIT_SUCCESS;
+  }
+
+  Circuit c;
+  std::string err;
+  if (!ddnnf_io::load(path, c, err)) die(err);
+
+  const mpz_class cnt = structural_count(c);
+  {
+    uint64_t nn;
+    mpz_class sc;
+    try { sc = streamed_count(path, nn); } catch (const bdnnf::Error& e) { die(e.what()); }
+    if (sc != cnt) fail("streamed count " + sc.get_str() + " != graph count " + cnt.get_str());
+  }
+  const std::string fcount = bdnnf::Reader().get(c.footer_kv, "count");
+  if (!fcount.empty() && mpz_class(fcount, 10) != cnt)
+    fail("count " + cnt.get_str() + " != footer count " + fcount);
+
+  if (have_expect && cnt != expect_count)
+    fail("count " + cnt.get_str() + " != expected " + expect_count.get_str());
 
   if (!cnf_path.empty()) {
     Cnf cnf = read_cnf(cnf_path);
     if (cnf.nvars > 30) die("--cnf brute-force only supports nvars <= 30 (got "
                             + std::to_string(cnf.nvars) + ")");
     auto true_models = cnf_brute_models(cnf);
-    if (c != (long)true_models.size()) {
-      fail("count " + c.get_str() + " != #models(CNF) " + std::to_string(true_models.size()));
-    }
-    auto circ = circuit_models(root, type, arcs, cnf.nvars);
+    if (cnt != (long)true_models.size())
+      fail("count " + cnt.get_str() + " != #models(CNF) " + std::to_string(true_models.size()));
+    auto circ = circuit_models(c, cnf.nvars);
     if (circ != true_models) {
       size_t extra = 0, missing = 0;
       for (auto x : circ) if (!true_models.count(x)) extra++;
@@ -494,21 +403,24 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (check_decomp) {
-    auto [ok, msg] = check_decomposable(root, type, arcs);
+  if (check_decomp || (c.props & bdnnf::P_DECOMPOSABLE)) {
+    auto [ok, msg] = ddnnf_io::check_decomposable(c);
     if (!ok) fail("not decomposable: " + msg);
   }
-
+  if (c.props & bdnnf::P_SMOOTH) {
+    auto [ok, msg] = ddnnf_io::check_smooth(c);
+    if (!ok) fail("flagged SMOOTH but " + msg);
+  }
+  if (c.props & bdnnf::P_DETERMINISTIC) {
+    auto [ok, msg] = ddnnf_io::check_deterministic(c);
+    if (!ok) fail("flagged DETERMINISTIC but " + msg);
+  }
   if (strict) {
-    auto [ok, msg] = check_strict(root, type, arcs);
+    auto [ok, msg] = check_strict(c);
     if (!ok) fail(msg);
   }
 
-  if (!quiet) {
-    size_t nodes = 0;
-    for (char t : type) if (t != 0) nodes++;
-    std::cout << "ddnnf-verify: OK (count=" << c.get_str()
-              << ", nodes=" << nodes << ")\n";
-  }
+  if (!quiet)
+    std::cout << "ddnnf-verify: OK (count=" << cnt.get_str() << ", nodes=" << c.nfile << ")\n";
   return EXIT_SUCCESS;
 }

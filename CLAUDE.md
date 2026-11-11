@@ -74,7 +74,9 @@ cd ../count_fuzzer
 
 Validates the `--compile` (d-DNNF) feature specifically. It generates random
 CNFs, brute-forces the true model count + model set as an oracle, and checks the
-emitted d4 `.nnf` circuit (parsed/counted by `tests/ddnnf_verify.py`):
+emitted BDNNF circuit (`spec-bdnnf.md`; parsed by the independent Python
+reader `tests/bdnnf.py`, which also checks the format, the claimed properties
+and a smoothing (weighted) count, and is diffed against `ddnnf-dump`):
 
 ```
 python3 tests/ddnnf_fuzz.py 200            # circuit count == true count, model set
@@ -86,12 +88,12 @@ python3 tests/ddnnf_fuzz.py 200 --maxvars 14  # cap var count (oracle is 2^nv, s
                                            #   also --minvars N)
 ```
 
-`ganak --compile out.nnf in.cnf` writes a faithful d-DNNF.
+`ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF.
 `--ddnfcheck 1` makes Ganak cross-check each decision
 level's circuit sub-count against its own count (debugging the compiler). Temp
 files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
 processes can run concurrently. Failing cases are copied to
-`/tmp/ddnnf_fuzz/fail_*.{cnf,nnf}`.
+`/tmp/ddnnf_fuzz/fz_*.{cnf,bdnnf}` (the reserved temp files of the failing run).
 
 ## Running Tests
 ```
@@ -110,14 +112,14 @@ cd build && lit tests/cnf-files/a.cnf
 
 `ctest` also runs deterministic d-DNNF compile/cleanup checks. They assert only
 *semantic* invariants of the emitted circuit (model count, model set,
-decomposability, canonical cleaned form) — never the byte-exact `.nnf` — so they
+decomposability, canonical cleaned form) — never the byte-exact `.bdnnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
   `ddnnf-verify` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify the
   cleaned file `--strict`, and `ddnnf2dot`. `ddnnf-verify` is a C++ binary
   (`build/ddnnf-verify`, source `src/ddnnf_verify.cpp`); CLI flags
   `--expect-count`, `--cnf`, `--check-decomposable`, `--strict`; bare
-  invocation prints the structural model count. `tests/ddnnf_verify.py`
+  invocation prints the structural model count, streamed. `tests/ddnnf_verify.py`
   remains for tiny-N programmatic use (it's what `ddnnf_fuzz.py` imports —
   `models`, etc.); use the binary for large circuits where Python recursion +
   dict overhead blow up.

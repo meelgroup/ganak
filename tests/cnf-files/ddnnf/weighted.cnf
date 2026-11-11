@@ -1,10 +1,12 @@
 c c d-DNNF compile in weighted mode: Ganak must still report the weighted count
 c c (143/840) while the emitted circuit is the unweighted structure -- its model
 c c count is the plain model count (10), not the weighted one.
-c c RUN: %solver --mode 1 --compile %t.nnf %s | %OutputCheck %s --check-prefix=FRAC
-c c RUN: %ddnnf_verify %t.nnf --cnf %s --expect-count 10 --no-strict
-c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
-c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --expect-count 10 --check-decomposable --strict
+c c RUN: %solver --mode 1 --compile %t.bdnnf %s | %OutputCheck %s --check-prefix=FRAC
+c c RUN: %ddnnf_verify %t.bdnnf --cnf %s --expect-count 10 --no-strict
+c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
+c c RUN: %ddnnf_verify %t.clean.bdnnf --cnf %s --expect-count 10 --check-decomposable --strict
+c c RUN: python3 %S/../../bdnnf.py count %t.clean.bdnnf --cnf %s | %OutputCheck %s --check-prefix=PYW
+c c RUN: python3 %S/../../bdnnf.py check %t.clean.bdnnf
 p cnf 6 6
 c t wmc
 c p weight 1 1/2 0
@@ -21,3 +23,4 @@ c p weight 6 5/6 0
 6 1 0
 c c FRAC: ^s SATISFIABLE$
 c c FRAC: ^c s exact arb frac 143/840$
+c c PYW: ^143/840$

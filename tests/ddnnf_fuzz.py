@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Fuzz-test Ganak's faithful d-DNNF compilation (`ganak --compile`).
 
-For each random CNF: brute-force the count + model set (oracle), compile to a d4
-.nnf, then check it is strictly decomposable, its count and model set match the
-oracle, and it is faithful as a Boolean function. Also cross-checks ddnnf-cleanup.
+For each random CNF: brute-force the count + model set (oracle), compile to
+BDNNF, then check its count and model set match the oracle and it is faithful as
+a Boolean function. Also cross-checks ddnnf-cleanup, the independent Python
+reader/checker/counter (bdnnf.py) and ddnnf-dump.
 
 Usage: ddnnf_fuzz.py [num_tests] [--seed N]
 """
@@ -16,10 +17,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ddnnf_verify as dv
+import bdnnf
 
 GANAK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ganak")
 CLEANUP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ddnnf-cleanup")
 VERIFY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ddnnf-verify")
+DUMP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "ddnnf-dump")
 TMP = "/tmp/ddnnf_fuzz"
 os.makedirs(TMP, exist_ok=True)
 
@@ -124,7 +127,7 @@ def run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit):
     if r.returncode < 0:
         crash_exit(r, "--compile", t, nv, nc, k)
     if not produced(nnf):
-        return False, f"no .nnf produced. stderr tail:\n{r.stderr[-1500:]}"
+        return False, f"no .bdnnf produced. stderr tail:\n{r.stderr[-1500:]}"
     # Raw circuit may not be strict / decomposable; check count only.
     rv = subprocess.run([VERIFY, nnf, "--expect-count", str(gc),
                          "--no-strict", "--no-check-decomposable"],
@@ -149,7 +152,36 @@ def run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit):
         crash_exit(rv, "ddnnf-verify(clean)", t, nv, nc, k)
     if rv.returncode != 0:
         return False, f"cleaned verify failed:\n{rv.stdout}{rv.stderr}"
+    msg = py_checks(clean, gc, True)
+    if msg:
+        return False, msg
     return True, ""
+
+
+def py_checks(path, expect, cleaned):
+    """Independent Python side: strict format check, claimed properties, smoothing
+    count (cleaned only: needs decomposability), C++ vs Python dump. Returns an
+    error message or ''."""
+    try:
+        c = bdnnf.read(path)
+    except bdnnf.FormatError as e:
+        return f"bdnnf.py format error on {path}: {e}"
+    errs = bdnnf.check_props(c)
+    if errs:
+        return f"bdnnf.py property errors on {path}: {errs[:3]}"
+    if bdnnf.structural_count(c) != expect:
+        return f"bdnnf.py structural count {bdnnf.structural_count(c)} != {expect}"
+    if cleaned:
+        wc = bdnnf.weighted_count(c)
+        if wc != expect:
+            return f"bdnnf.py smoothing count {wc} != {expect} on {path}"
+    import io
+    buf = io.StringIO()
+    bdnnf.dump(c, buf)
+    rd = subprocess.run([DUMP, path], capture_output=True, text=True)
+    if rd.returncode != 0 or rd.stdout != buf.getvalue():
+        return f"ddnnf-dump differs from bdnnf.py dump on {path} (exit {rd.returncode})"
+    return ""
 
 
 def main():
@@ -187,18 +219,18 @@ def main():
 
     # Reserve race-proof temp paths for this process (atomic O_CREAT|O_EXCL), so
     # many fuzzers (e.g. one per tmux window) never clobber each other's files.
-    # The .nnf / .clean outputs are reserved the same way; they are emptied with
+    # The .bdnnf / .clean outputs are reserved the same way; they are emptied with
     # reset() (not unlinked) between iterations to keep the reservation valid.
     cnf = unique_file("fz", ".cnf")
-    nnf = unique_file("fz", ".nnf")
-    clean = unique_file("fz", ".clean.nnf")
+    nnf = unique_file("fz", ".bdnnf")
+    clean = unique_file("fz", ".clean.bdnnf")
 
     def repro():
         """Any failure exits immediately, so the reserved temp files still hold
         the failing instance -- they ARE the reproducer, no copying needed."""
         lines = [f"    CNF:         {cnf}"]
         if produced(nnf):
-            lines.append(f"    nnf:         {nnf}")
+            lines.append(f"    bdnnf:       {nnf}")
         lines.append(f"    rerun batch: {sys.argv[0]} {n} --seed {seed}")
         return "\n".join(lines)
 
@@ -214,7 +246,7 @@ def main():
               f"nv={nv} nc={nc} k={k}")
         cmd = {"--compile": f"{GANAK} --compile {nnf} {cnf}",
                "count": f"{GANAK} {cnf}",
-               "ddnnf-cleanup": f"{CLEANUP} {nnf} /tmp/out.clean.nnf"}.get(how)
+               "ddnnf-cleanup": f"{CLEANUP} {nnf} /tmp/out.clean.bdnnf"}.get(how)
         if cmd is None and how.startswith("ddnnf-verify"):
             cmd = f"{VERIFY} {nnf if 'raw' in how else clean}"
         if cmd:
@@ -246,7 +278,7 @@ def main():
         if r.returncode < 0:
             crash_exit(r, "--compile", t, nv, nc, k)
         if not produced(nnf):
-            fail(t, nv, nc, k, f"no .nnf produced. stderr:\n{r.stderr}")
+            fail(t, nv, nc, k, f"no .bdnnf produced. stderr:\n{r.stderr}")
         nodes, arcs, root = dv.parse(nnf)
         sc = dv.count(nodes, arcs, root)
 
@@ -276,9 +308,9 @@ def main():
             fail(t, nv, nc, k, f"strong circuit not faithful as a function "
                  f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")
 
-        # CLEANUP TOOL: the raw .nnf keeps internal ids and may carry dead nodes.
-        # `ddnnf-cleanup` must drop them and renumber root=1. Check strictly: no
-        # dead nodes, still decomposable, same count + model set.
+        # CLEANUP TOOL: the raw file may carry dead nodes and non-decomposable
+        # ANDs/arcs. `ddnnf-cleanup` must fix both. Check strictly: no dead
+        # nodes, decomposable, same count + model set.
         reset(clean)
         rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
         if rc.returncode < 0:
@@ -304,6 +336,9 @@ def main():
             fail(t, nv, nc, k, f"cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
         if dv.models(cn, ca, cr, nv) != bmodels:
             fail(t, nv, nc, k, "cleaned model-set mismatch")
+        msg = py_checks(nnf, bc, False) or py_checks(clean, bc, True)
+        if msg:
+            fail(t, nv, nc, k, msg)
 
     print(f"done {n} {'big' if big_mode else 'strong'} tests, all passed")
     return 0

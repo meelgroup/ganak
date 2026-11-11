@@ -41,8 +41,7 @@ public:
   DDNNFCompiler(Counter& _counter, const std::string& _fname)
       : counter(_counter), fname(_fname) {
     active_ = true;
-    circuit = std::make_unique<DDNNFCircuit>(fname);
-    circuit->nvars = counter.nVars();
+    circuit = std::make_unique<DDNNFCircuit>(fname, counter.nVars());
   }
 
   void do_new_decision_level() override { circuit->on_new_level(counter.dec_level()); }
@@ -103,7 +102,7 @@ public:
   void do_free_var(uint32_t v) override {
     // From the analyzer on a free var (factor two = OR(v, -v)).
     circuit->add_child(counter.dec_level(), counter.decisions.top().is_right_branch(),
-        circuit->mk_free_var((int)v));
+        DDNNFCircuit::mk_free_var((int)v));
   }
 
   void do_cache_hit(int node) override {
@@ -141,12 +140,10 @@ public:
   void do_finalize_and_write(bool unsat) override {
     if (unsat) {
       circuit->root = circuit->false_node;
-      circuit->write_d4(fname);
+      circuit->finish();
       return;
     }
-    if (circuit->root < 0) circuit->root = circuit->false_node;
-    circuit->nvars = counter.nVars();
-    circuit->write_d4(fname);
+    circuit->finish();
     const auto& conf = counter.get_conf();
     verb_print(0, "[compile] d-DNNF written to " << fname
         << " nodes: " << circuit->num_nodes() << " edges: " << circuit->num_edges());

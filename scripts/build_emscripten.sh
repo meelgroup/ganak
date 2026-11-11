@@ -31,5 +31,7 @@ cp ddnnf-cleanup.wasm ../html
 cp ddnnf-cleanup.js ../html
 cp ddnnf2dot.wasm ../html
 cp ddnnf2dot.js ../html
+cp ddnnf-dump.wasm ../html
+cp ddnnf-dump.js ../html
 cp ganak.wasm ../html
 cp $EMINSTALL/bin/ganak.js ../html

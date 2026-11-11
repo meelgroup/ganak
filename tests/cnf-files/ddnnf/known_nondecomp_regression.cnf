@@ -16,10 +16,10 @@ c c strictly decomposable.
 c c
 c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
 c c
-c c RUN: %solver --compile %t.nnf %s
-c c RUN: %ddnnf_verify %t.nnf --cnf %s --no-strict --no-check-decomposable
-c c RUN: %ddnnf_cleanup %t.nnf %t.clean.nnf
-c c RUN: %ddnnf_verify %t.clean.nnf --cnf %s --check-decomposable --strict
+c c RUN: %solver --compile %t.bdnnf %s
+c c RUN: %ddnnf_verify %t.bdnnf --cnf %s --no-strict --no-check-decomposable
+c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
+c c RUN: %ddnnf_verify %t.clean.bdnnf --cnf %s --check-decomposable --strict
 p cnf 16 40
 -6 -14 2 4 0
 9 14 -10 -1 0

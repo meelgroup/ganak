@@ -358,7 +358,45 @@ if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))
     endif()
 endif()
 
+
 include(FetchContent)
+
+option(NOZSTD "Don't use zstd (BDNNF d-DNNF frames are then written uncompressed)" OFF)
+set(ZSTD_FOUND OFF)
+if(NOT NOZSTD)
+    if(STATIC_BINARY)
+        find_library(ZSTD_LIBRARY NAMES libzstd.a)
+    else()
+        find_library(ZSTD_LIBRARY NAMES zstd)
+    endif()
+    find_path(ZSTD_INCLUDE_DIRS zstd.h)
+    if(ZSTD_LIBRARY AND ZSTD_INCLUDE_DIRS)
+        set(ZSTD_FOUND ON)
+        message(STATUS "OK, Found zstd: ${ZSTD_LIBRARY}")
+    elseif(STATIC_BINARY)
+        message(STATUS "No static libzstd.a found, fetching zstd")
+        set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+        set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(ZSTD_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(ZSTD_LEGACY_SUPPORT OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(zstd
+            GIT_REPOSITORY https://github.com/facebook/zstd.git
+            GIT_TAG        v1.5.7
+            GIT_SHALLOW    TRUE
+            SOURCE_SUBDIR  build/cmake)
+        FetchContent_MakeAvailable(zstd)
+        # BUILD_INTERFACE: keeps the fetched target out of ganak's export set.
+        set(ZSTD_LIBRARY $<BUILD_INTERFACE:libzstd_static>)
+        set(ZSTD_INCLUDE_DIRS ${zstd_SOURCE_DIR}/lib)
+        set(ZSTD_FOUND ON)
+    endif()
+    if(ZSTD_FOUND)
+        add_compile_definitions(USE_ZSTD)
+    else()
+        message(STATUS "WARNING: Did not find zstd, BDNNF files will be written uncompressed")
+    endif()
+endif()
 # FetchContent_Populate with declared details is deprecated in CMake 3.30+ (CMP0169).
 # We call it intentionally to clone-only without add_subdirectory, so silence the warning.
 if(POLICY CMP0169)

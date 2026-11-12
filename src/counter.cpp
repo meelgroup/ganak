@@ -1332,8 +1332,9 @@ void Counter::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
-      // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache
-      if (decisions.top().branch_is_zero()) {
+      // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache.
+      // --compile must still compile these comps: the circuit can't depend on weights.
+      if (decisions.top().branch_is_zero() && conf.compile_fname.empty()) {
         is_indep = false;
         if (run_sat_solver(state, true)) continue;
         goto start11;
@@ -5064,7 +5065,9 @@ void Counter::set_lit_weight(Lit l, const FF& w) {
   }
   verb_print(2, "Setting weight of " << l << " to " << *w);
   weights[l.raw()] = w->dup();
-  if (w->is_zero()) {
+  // --compile: the circuit must not depend on the weights, so a zero weight
+  // must not strengthen the formula; unset_lit() multiplies the zero in instead.
+  if (w->is_zero() && conf.compile_fname.empty()) {
     add_irred_cl({l.neg()});
     verb_print(3, "Weight is zero, adding clause: " << l.neg());
   }

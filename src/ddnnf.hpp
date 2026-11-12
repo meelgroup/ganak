@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "bdnnf.hpp"
 #include "GitSHA1.hpp"
 
+#include <algorithm>
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -54,7 +55,9 @@ public:
     std::vector<int> lits; // DIMACS literals true on this arc
   };
 
-  DDNNFCircuit(const std::string& fname, uint32_t _nvars) : nvars(_nvars) {
+  DDNNFCircuit(const std::string& fname, uint32_t _nvars, std::vector<int> _lit_map)
+      : nvars(_nvars), lit_map(std::move(_lit_map)) {
+    for (int l : lit_map) nvars = std::max<uint32_t>(nvars, (uint32_t)std::abs(l));
     guard([&] {
       w.open(fname, nvars, {{"producer", std::string("ganak ") +
           GANAK::get_version_tag() + " " + GANAK::get_version_sha1()}});
@@ -95,7 +98,7 @@ public:
     int id = -1;
     guard([&] {
       w.begin_or();
-      for (const auto& a : arcs) if (a.child != false_node) w.or_arc(a.lits, (uint64_t)a.child);
+      for (const auto& a : arcs) if (a.child != false_node) w.or_arc(mapped(a.lits), (uint64_t)a.child);
       id = check_id(w.end_or());
     });
     SLOW_DEBUG_DO(record_or(id, arcs));
@@ -167,6 +170,8 @@ public:
 
 private:
   bdnnf::Writer w;
+  std::vector<int> lit_map;
+  std::vector<int> scratch_lits;
   std::vector<int> kids;
   std::vector<int> frees;
   const std::vector<int> no_lits;
@@ -189,10 +194,24 @@ private:
     return (int)id;
   }
 
+  // Internal DIMACS literals -> the input's numbering.
+  const std::vector<int>& mapped(const std::vector<int>& lits) {
+    if (lit_map.empty()) return lits;
+    scratch_lits.clear();
+    for (int l : lits) {
+      const int m = lit_map[std::abs(l) - 1];
+      scratch_lits.push_back(l > 0 ? m : -m);
+    }
+    return scratch_lits;
+  }
+
   int emit_and(const std::vector<int>& k, const std::vector<int>& units,
                const std::vector<int>& fr) {
     int id = -1;
-    guard([&] { id = check_id(w.add_and(k, units, fr)); });
+    std::vector<int> mu = mapped(units);
+    std::vector<int> mf = mapped(fr);
+    for (int& v : mf) v = std::abs(v);
+    guard([&] { id = check_id(w.add_and(k, mu, mf)); });
     return id;
   }
 

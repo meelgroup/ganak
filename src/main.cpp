@@ -601,7 +601,10 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
 
 void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
     FF cnt = cnf.get_multiplier_weight()->dup();
-    if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
+    // --compile writes the circuit as a side effect of counting: count even when
+    // the weights already make the result zero.
+    if (!cnt->is_zero() || !conf.compile_fname.empty())
+      *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 
@@ -822,6 +825,12 @@ int main(int argc, char *argv[]) {
 
   // Run Ganak
   conf.disconnected_allowed = disconnected_allowed;
+  if (!conf.compile_fname.empty()) {
+    conf.compile_lit_map.resize(cnf.nVars());
+    for (uint32_t v = 0; v < cnf.nVars(); v++) conf.compile_lit_map[v] = (int)v + 1;
+    for (const auto& [nv, ol] : cnf.get_new_to_orig_var())
+      if (nv < cnf.nVars()) conf.compile_lit_map[nv] = ol.sign() ? -(int)(ol.var() + 1) : (int)(ol.var() + 1);
+  }
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);

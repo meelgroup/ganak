@@ -41,7 +41,7 @@ public:
   DDNNFCompiler(Counter& _counter, const std::string& _fname)
       : counter(_counter), fname(_fname) {
     active_ = true;
-    circuit = std::make_unique<DDNNFCircuit>(fname, counter.nVars());
+    circuit = std::make_unique<DDNNFCircuit>(fname, counter.nVars(), counter.get_conf().compile_lit_map);
   }
 
   void do_new_decision_level() override { circuit->on_new_level(counter.dec_level()); }
@@ -64,8 +64,14 @@ public:
     // SAT-oracle leaf: level solved by the SAT solver, which recorded a witness for
     // the synthesized vars. Use that leaf instead of an OR over (stale) children.
     if (int ov = circuit->take_override(lev); ov >= 0) { compiled_node = ov; return; }
-    int left  = top.is_zero(0) ? circuit->false_node : circuit->mk_and(circuit->children[lev][0]);
-    int right = top.is_zero(1) ? circuit->false_node : circuit->mk_and(circuit->children[lev][1]);
+    // A zero count only means UNSAT when unweighted (or at a non-projected
+    // level, where counts are existence): weights can make a SAT branch zero,
+    // and its circuit must not depend on the weights.
+    auto dead = [&](bool b) {
+      return top.side_unsat(b) || (top.is_zero(b) && (!counter.weighted() || !top.is_indep));
+    };
+    int left  = dead(0) ? circuit->false_node : circuit->mk_and(circuit->children[lev][0]);
+    int right = dead(1) ? circuit->false_node : circuit->mk_and(circuit->children[lev][1]);
     std::vector<DDNNFCircuit::Arc> arcs;
     if (left  != circuit->false_node) arcs.push_back(DDNNFCircuit::Arc{left,  circuit->left_lits[lev]});
     if (right != circuit->false_node) arcs.push_back(DDNNFCircuit::Arc{right, right_lits});

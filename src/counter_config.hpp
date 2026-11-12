@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace GanakInt {
 
@@ -35,6 +36,10 @@ struct CounterConfiguration {
 
   // d-DNNF: if non-empty, emit the search trace as a BDNNF d-DNNF circuit to this file.
   std::string compile_fname;
+  // d-DNNF: DIMACS literal of the input var behind each internal var (index =
+  // internal 0-based var), so the circuit uses the input's numbering, not the
+  // renumbered one (sampling vars first). Empty = identity.
+  std::vector<int> compile_lit_map;
 
   int do_restart = 0;
   uint64_t first_restart = 20000U;

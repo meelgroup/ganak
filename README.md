@@ -253,17 +253,17 @@ two systems' counts to get the final count.
 
 ## Supported Weights
 
-| Mode | Flag | Field | Weight format example | Notes |
-|------|------|-------|-----------------------|-------|
-| 0 | `--mode 0` | Integer | _unweighted_ | Default; weights not supported. Supports `--appmct` |
-| 1 | `--mode 1` | Rational (exact) | `c p weight 1 1/4 0` | No floating-point error |
-| 2 | `--mode 2` | Complex rational | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi` |
-| 3 | `--mode 3` | Polynomial over rationals | `c p weight 9 1/2*x0+4*x1+2 0` | Requires `--npolyvars N` |
-| 4 | `--mode 4` | Parity (mod 2) | `c p weight 1 1 0` | |
-| 5 | `--mode 5` | Integer mod prime | `c p weight 1 3 0` | Requires `--prime X` |
-| 6 | `--mode 6` | Complex float (MPFR) | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi`; see `--mpfrprec` |
-| 7 | `--mode 7` | Real float (MPFR) | `c p weight 1 0.3 0` | See `--mpfrprec` |
-| 13 | `--mode 13` | Laurent polynomial over rationals | `c p weight 9 1/2*z0^2-3*z1^-1 0` | Requires `--npolyvars N`; exponents may be negative |
+| Mode | Field | Weight format example | Notes |
+|------|-------|-----------------------|-------|
+| 0 | Integer | _unweighted_ | Default; weights not supported. Supports `--appmct` |
+| 1 | Rational (exact) | `c p weight 1 1/4 0` | No floating-point error |
+| 2 | Complex rational | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi` |
+| 3 | Polynomial over rationals | `c p weight 9 1/2*x0+4*x1+2 0` | Requires `--npolyvars N` |
+| 4 | Parity (mod 2) | `c p weight 1 1 0` | |
+| 5 | Integer mod prime | `c p weight 1 3 0` | Requires `--prime X` |
+| 6 | Complex float (MPFR) | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi`; see `--mpfrprec` |
+| 7 | Real float (MPFR) | `c p weight 1 0.3 0` | See `--mpfrprec` |
+| 13 | Laurent polynomial over rationals | `c p weight 9 1/2*z0^2-3*z1^-1 0` | Requires `--npolyvars N`; exponents may be negative |
 
 ### Laurent polynomial counting (`--mode 13`)
 

@@ -1,9 +1,10 @@
 c c d-DNNF compile: two variable-disjoint sub-problems ({1,2} and {3,4}).
 c c Exercises AND-node component decomposition; structural count = product.
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %ddnnf_verify %t.bdnnf --cnf %s --no-strict
+c c RUN: %ddnnf_verify %t.bdnnf --expect-count 4 --no-strict
+c c RUN: %ddnnf_count %t.bdnnf --cnf %s --sample 300
 c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
-c c RUN: %ddnnf_verify %t.clean.bdnnf --cnf %s --check-decomposable --strict
+c c RUN: %ddnnf_verify %t.clean.bdnnf --expect-count 4 --check-decomposable --strict
 c c RUN: %ddnnf2dot %t.clean.bdnnf %t.dot
 p cnf 4 4
 1 2 0

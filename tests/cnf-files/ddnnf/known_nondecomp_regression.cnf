@@ -17,9 +17,10 @@ c c
 c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
 c c
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %ddnnf_verify %t.bdnnf --cnf %s --no-strict --no-check-decomposable
+c c RUN: %ddnnf_verify %t.bdnnf --expect-count 5897 --no-strict
+c c RUN: %ddnnf_count %t.bdnnf --cnf %s --sample 300
 c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
-c c RUN: %ddnnf_verify %t.clean.bdnnf --cnf %s --check-decomposable --strict
+c c RUN: %ddnnf_verify %t.clean.bdnnf --expect-count 5897 --check-decomposable --strict
 p cnf 16 40
 -6 -14 2 4 0
 9 14 -10 -1 0

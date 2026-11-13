@@ -327,11 +327,9 @@ runs and can be queried without loading it into memory. See
 ./ganak --compile out.bdnnf in.cnf
 ```
 
-For a projected CNF (inputs `< indep_support_end`, outputs `>= indep_support_end`),
-the SAT oracle records one example assignment of the output vars at each SAT
-leaf, so the same faithful circuit is also a sound Boolean functional-synthesis
-compiler — read a Skolem witness off the circuit with
-`tests/ddnnf_verify.synthesize()`.
+For a projected CNF, the SAT oracle records one example assignment of the
+non-projected vars at each SAT leaf, so every model of the circuit extends to a
+model of the CNF (`ddnnf-count --sample` checks this).
 
 **2. Clean up.** The raw file is correct from the root, but may carry
 unreachable "dead" nodes, and learnt clauses can leave it not strictly

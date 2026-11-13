@@ -70,30 +70,22 @@ cd ../count_fuzzer
 
 `fuzz_session_ganak.sh` runs a longer pre-canned session.
 
-### 2. d-DNNF compilation fuzzer (`tests/ddnnf_fuzz.py`)
+### 2. d-DNNF compilation (`--compile`)
 
-Validates the `--compile` (d-DNNF) feature specifically. It generates random
-CNFs, brute-forces the true model count + model set as an oracle, and checks the
-emitted BDNNF circuit (`spec-bdnnf.md`; parsed by the independent Python
-reader `tests/bdnnf.py`, which also checks the format, the claimed properties
-and a smoothing (weighted) count, and is diffed against `ddnnf-dump`):
+count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
+for all): it compiles with ganak, then checks the raw and the cleaned circuit
+with scalable C++ tools only — `ddnnf-verify` (format + every claimed property,
+streamed) and `ddnnf-count` (the weighted/projected count, `--sample N` models
+checked against the clauses, `--assume` conditioning on random literals, and the
+count under fresh random weights), all against ganak. `tests/bdnnf.py` is an
+independent Python cross-check, run only on small files. Use `--big` (bigger
+CNFs, 5x timeout) for large circuits. Minimize a failure with
+`./minim_bdnnf.py file.cnf [--check clean|decomp|structural|weights]`.
 
-```
-python3 tests/ddnnf_fuzz.py 200            # circuit count == true count, model set
-                                           #   == true models (validates arc literals),
-                                           #   strictly decomposable, faithful as a fn
-python3 tests/ddnnf_fuzz.py 200 --seed N   # reproduce a specific run
-python3 tests/ddnnf_fuzz.py 200 --maxvars 14  # cap var count (oracle is 2^nv, so
-                                           #   this is the main runtime/coverage knob;
-                                           #   also --minvars N)
-```
-
-`ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF.
-`--ddnfcheck 1` makes Ganak cross-check each decision
-level's circuit sub-count against its own count (debugging the compiler). Temp
-files are reserved race-proof (atomic `O_CREAT|O_EXCL`) so multiple fuzzer
-processes can run concurrently. Failing cases are copied to
-`/tmp/ddnnf_fuzz/fz_*.{cnf,bdnnf}` (the reserved temp files of the failing run).
+`ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF (`spec-bdnnf.md`).
+Building with `SLOW_DEBUG` checks every node at emission: decomposability, arc
+literals vs the child, smoothness of unprojected ORs, and each level's count
+against ganak's.
 
 ## Running Tests
 ```
@@ -111,20 +103,14 @@ cd build && lit tests/cnf-files/a.cnf
 ### d-DNNF compile tests
 
 `ctest` also runs deterministic d-DNNF compile/cleanup checks. They assert only
-*semantic* invariants of the emitted circuit (model count, model set,
-decomposability, canonical cleaned form) — never the byte-exact `.bdnnf` — so they
+*semantic* invariants of the emitted circuit (count, sampled models,
+properties, canonical cleaned form) — never the byte-exact `.bdnnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
-  `ddnnf-verify` (count/model-set/decomposable), `ddnnf-cleanup`, re-verify the
-  cleaned file `--strict`, and `ddnnf2dot`. `ddnnf-verify` is a C++ binary
-  (`build/ddnnf-verify`, source `src/ddnnf_verify.cpp`); CLI flags
-  `--expect-count`, `--cnf`, `--check-decomposable`, `--strict`; bare
-  invocation prints the structural model count, streamed. `tests/ddnnf_verify.py`
-  remains for tiny-N programmatic use (it's what `ddnnf_fuzz.py` imports —
-  `models`, etc.); use the binary for large circuits where Python recursion +
-  dict overhead blow up.
-- ctest target `ddnnf_compile_fuzz` — the property fuzzer runs seeded (so a
-  regression reproduces) and self-checks against a brute-force oracle.
+  `ddnnf-verify --expect-count N` (format, count, claimed properties),
+  `ddnnf-count --sample` (sampled models satisfy the CNF), `ddnnf-cleanup`,
+  re-verify the cleaned file `--strict`, and `ddnnf2dot`. All the tools stream
+  the file, with one var bitset per node at most.
 
 ## Architecture
 

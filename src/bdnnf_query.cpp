@@ -245,6 +245,60 @@ std::vector<mpq_class> lit_counts(bdnnf::Reader& r, const std::vector<mpq_class>
   return cnt;
 }
 
+// k-best combination of independent factors: each list sorted descending; a
+// stage keeps, for each of its best k sums, the indices it came from.
+struct KItem {
+  mpq_class v;
+  uint32_t a, b;
+};
+using KStage = std::vector<KItem>;
+
+void kcombine(const std::vector<mpq_class>& A, const std::vector<mpq_class>& B, size_t k, KStage& out) {
+  out.clear();
+  for (uint32_t i = 0; i < A.size(); i++)
+    for (uint32_t j = 0; j < B.size(); j++) out.push_back({A[i] + B[j], i, j});
+  const size_t m = std::min(k, out.size());
+  std::partial_sort(out.begin(), out.begin() + (long)m, out.end(), [](const KItem& x, const KItem& y) {
+    return x.v != y.v ? x.v > y.v : (x.a != y.a ? x.a < y.a : x.b < y.b);
+  });
+  out.resize(m);
+}
+
+struct KFactor {
+  uint64_t child = 0;            // a node, or 0 for a var
+  std::vector<int> lits;         // a var: the literal of each entry
+  std::vector<mpq_class> vals;
+};
+
+// The stages of base + factors[0] + factors[1] + ...; the last one is the list.
+void kseq(const std::vector<KFactor>& fs, const mpq_class& base, size_t k, std::vector<KStage>& st) {
+  st.assign(fs.size() + 1, {});
+  st[0] = {{base, 0, 0}};
+  std::vector<mpq_class> cur{base};
+  for (size_t i = 0; i < fs.size(); i++) {
+    kcombine(cur, fs[i].vals, k, st[i + 1]);
+    cur.clear();
+    for (const auto& it : st[i + 1]) cur.push_back(it.v);
+  }
+}
+
+std::map<int, mpq_class> read_objective(const std::string& path, uint32_t nv) {
+  std::ifstream f(path);
+  if (!f.good()) die("cannot open " + path);
+  std::map<int, mpq_class> o;
+  std::string line;
+  while (std::getline(f, line)) {
+    std::istringstream ss(line);
+    std::string a, b;
+    if (!(ss >> a) || a[0] == 'c') continue;
+    if (!(ss >> b)) die("objective line without a value: " + line);
+    const long l = std::stol(a);
+    if (l == 0 || (uint64_t)std::abs(l) > nv) die("bad objective literal: " + a);
+    o[(int)l] = parse_num(b);
+  }
+  return o;
+}
+
 std::vector<std::vector<int>> read_queries(const std::string& path, const std::vector<char>& in_proj) {
   std::ifstream f(path);
   if (!f.good()) die("cannot open " + path);
@@ -385,11 +439,15 @@ int bdnnf_query(int argc, char** argv) {
   const std::string cmd = argv[0];
   const bool enumerating = cmd == "enum";
   const bool atomic = cmd == "atomic";
+  const bool opt = cmd == "opt";
   const bool sampling = cmd == "sample" || enumerating || atomic;
   const bool lits = cmd == "lits" || cmd == "core";
   const bool core = cmd == "core";
   const bool is_batch = cmd == "batch";
-  const std::string usage = atomic
+  const std::string usage = opt
+    ? "usage: bdnnf opt <in.bdnnf> --obj <file> [-k K] [--min] [--full] [--cnf <file.cnf>] [--assume L1,L2,...]"
+      "   (obj file: lines of 'literal value')"
+    : atomic
     ? "usage: bdnnf atomic <in.bdnnf> [--cross] [--cnf <file.cnf>] [--assume L1,L2,...]"
     : enumerating
     ? "usage: bdnnf enum <in.bdnnf> [-n N] [--start I] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
@@ -401,7 +459,9 @@ int bdnnf_query(int argc, char** argv) {
   std::string path, cnf, out_path;
   uint64_t num = enumerating ? UINT64_MAX : atomic ? 64 : 1, seed = 1;
   mpz_class start = 0;
-  bool full = false, sat = false, cross = false;
+  bool full = false, sat = false, cross = false, minimize = false;
+  std::string obj_path;
+  size_t kbest = 1;
   std::string queries;
   std::vector<int> assume;
   for (int i = 1; i < argc; i++) {
@@ -421,11 +481,15 @@ int bdnnf_query(int argc, char** argv) {
     }
     else if (is_batch && a == "--sat") sat = true;
     else if (atomic && a == "--cross") cross = true;
+    else if (opt && a == "--obj" && i + 1 < argc) obj_path = argv[++i];
+    else if (opt && a == "-k" && i + 1 < argc) kbest = std::stoull(argv[++i]);
+    else if (opt && a == "--min") minimize = true;
+    else if (opt && a == "--full") full = true;
     else if (path.empty() && (a == "-" || a.empty() || a[0] != '-')) path = a;
     else if (is_batch && queries.empty() && (a.empty() || a[0] != '-')) queries = a;
     else die(usage);
   }
-  if (path.empty() || (is_batch && queries.empty())) die(usage);
+  if (path.empty() || (is_batch && queries.empty()) || (opt && (obj_path.empty() || kbest == 0))) die(usage);
   try {
     bdnnf::Reader r;
     r.open(path);
@@ -452,7 +516,7 @@ int bdnnf_query(int argc, char** argv) {
     for (const auto& [v, rf] : r.defs.defs)
       if (W.in_proj[v]) die("var " + std::to_string(v) + " is in the projection but defined: "
                             "its count is not a d-DNNF query");
-    if (core || enumerating || atomic) {
+    if (core || enumerating || atomic || opt) {
       W.weighted = false;
       W.w.clear();
     }
@@ -549,6 +613,163 @@ int bdnnf_query(int argc, char** argv) {
       for (uint32_t v = 1; v <= nv; v++)
         if (W.in_proj[v] && !has(row(r.root), v)) res *= both(v);
     res.canonicalize();
+    if (opt) {
+      if (res == 0) die("no model");
+      std::map<int, mpq_class> obj = read_objective(obj_path, nv);
+      if (minimize) for (auto& [l, x] : obj) x = -x;
+      auto ov = [&](int l) -> mpq_class {
+        if (!W.in_proj[(uint32_t)std::abs(l)]) return 0;
+        auto it = obj.find(l);
+        return it == obj.end() ? mpq_class(0) : it->second;
+      };
+      auto var_factor = [&](uint32_t v) {
+        KFactor f;
+        for (int l : {(int)v, -(int)v}) if (w(l) != 0) f.lits.push_back(l);
+        if (f.lits.size() == 2 && ov(f.lits[1]) > ov(f.lits[0])) std::swap(f.lits[0], f.lits[1]);
+        for (int l : f.lits) f.vals.push_back(ov(l));
+        return f;
+      };
+      std::vector<std::vector<mpq_class>> kb(n);
+      auto list_of = [&](const KStage& st) {
+        std::vector<mpq_class> l;
+        for (const auto& it : st) l.push_back(it.v);
+        return l;
+      };
+      std::vector<KFactor> fs;
+      std::vector<KStage> st;
+      auto and_factors = [&](const bdnnf::Node& nd, mpq_class& base) {
+        fs.clear();
+        base = 0;
+        for (int l : nd.units) base += ov(l);
+        for (uint64_t c : nd.kids) { KFactor f; f.child = c; f.vals = kb[c]; fs.push_back(std::move(f)); }
+        for (uint32_t v : nd.free) if (W.in_proj[v]) fs.push_back(var_factor(v));
+      };
+      auto arc_factors = [&](const uint64_t* me, const bdnnf::Arc& a, mpq_class& base) {
+        fs.clear();
+        base = 0;
+        for (int l : a.lits) base += ov(l);
+        KFactor f;
+        f.child = a.child;
+        f.vals = kb[a.child];
+        fs.push_back(std::move(f));
+        const uint64_t* cv = row(a.child);
+        av.assign(cv, cv + WD);
+        for (int l : a.lits) {
+          const uint32_t v = (uint32_t)std::abs(l);
+          if (W.in_proj[v]) set(av.data(), v);
+        }
+        for (size_t q = 0; q < WD; q++)
+          for (uint64_t m = me[q] & ~av[q]; m; m &= m - 1) fs.push_back(var_factor((uint32_t)(q * 64 + __builtin_ctzll(m))));
+      };
+      // the arcs' k-best lists merged: (value, arc, rank in the arc's list)
+      auto or_merge = [&](uint64_t id, const bdnnf::Node& nd, KStage& out) {
+        out.clear();
+        mpq_class base;
+        for (uint32_t ai = 0; ai < nd.arcs.size(); ai++) {
+          if (arc_val(row(id), nd.arcs[ai]) == 0) continue;
+          arc_factors(row(id), nd.arcs[ai], base);
+          kseq(fs, base, kbest, st);
+          for (uint32_t j = 0; j < st.back().size(); j++) out.push_back({st.back()[j].v, ai, j});
+        }
+        const size_t m = std::min(kbest, out.size());
+        std::partial_sort(out.begin(), out.begin() + (long)m, out.end(), [](const KItem& x, const KItem& y) {
+          return x.v != y.v ? x.v > y.v : (x.a != y.a ? x.a < y.a : x.b < y.b);
+        });
+        out.resize(m);
+      };
+      kb[1] = {0};
+      KStage merged;
+      r.scan([&](uint64_t id, const bdnnf::Node& nd) {
+        if (dead[id] || val[id] == 0) return;
+        if (nd.kind == bdnnf::K_AND) {
+          mpq_class base;
+          and_factors(nd, base);
+          kseq(fs, base, kbest, st);
+          kb[id] = list_of(st.back());
+          return;
+        }
+        or_merge(id, nd, merged);
+        kb[id] = list_of(merged);
+      });
+      std::vector<KFactor> root_fs(1);
+      root_fs[0].child = r.root;
+      root_fs[0].vals = kb[r.root];
+      for (uint32_t v = 1; v <= nv; v++)
+        if (W.in_proj[v] && !has(row(r.root), v)) root_fs.push_back(var_factor(v));
+      std::vector<KStage> root_st;
+      kseq(root_fs, 0, kbest, root_st);
+      const auto cls = cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf);
+      NodeAccess acc(r);
+      bdnnf::Node nd;
+      std::vector<signed char> val2(nv + 1);
+      std::vector<char> defined(nv + 1, 0);
+      for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
+      std::vector<std::pair<uint64_t, uint32_t>> stk;
+      std::string line;
+      auto setl = [&](int l) {
+        if (val2[std::abs(l)] == (l > 0 ? -1 : 1)) die("FAIL: conflicting lits on the path");
+        val2[std::abs(l)] = l > 0 ? 1 : -1;
+      };
+      // walk the stages back from rank j: each factor's rank, then recurse
+      auto unwind = [&](const std::vector<KFactor>& f, const std::vector<KStage>& sts, uint32_t j) {
+        for (size_t s = f.size(); s > 0; s--) {
+          const KItem& it = sts[s][j];
+          if (f[s - 1].child) stk.push_back({f[s - 1].child, it.b});
+          else setl(f[s - 1].lits[it.b]);
+          j = it.a;
+        }
+      };
+      for (uint32_t rank = 0; rank < root_st.back().size(); rank++) {
+        std::fill(val2.begin(), val2.end(), 0);
+        stk.clear();
+        unwind(root_fs, root_st, rank);
+        while (!stk.empty()) {
+          const auto [x, j] = stk.back();
+          stk.pop_back();
+          if (x <= 1) { if (x == 0) die("FAIL: reached FALSE"); continue; }
+          acc.get(x, nd);
+          mpq_class base;
+          if (nd.kind == bdnnf::K_AND) {
+            for (int l : nd.units) setl(l);
+            and_factors(nd, base);
+            kseq(fs, base, kbest, st);
+            const auto f = fs;
+            unwind(f, st, j);
+            continue;
+          }
+          or_merge(x, nd, merged);
+          const KItem pick = merged[j];
+          const auto& a = nd.arcs[pick.a];
+          for (int l : a.lits) setl(l);
+          arc_factors(row(x), a, base);
+          kseq(fs, base, kbest, st);
+          const auto f = fs;
+          unwind(f, st, pick.b);
+        }
+        for (uint32_t v = 1; v <= nv; v++) {
+          if (val2[v] || defined[v]) continue;
+          if (W.in_proj[v]) die("FAIL: optimum leaves var " + std::to_string(v) + " open");
+          val2[v] = -1;
+        }
+        bdnnf::eval_defs(r.defs, nv, val2);
+        for (const auto& cl : cls) {
+          bool ok = false;
+          for (int l : cl) ok |= (val2[std::abs(l)] == (l > 0 ? 1 : -1));
+          if (!ok) die("FAIL: optimal model " + std::to_string(rank) + " violates a clause");
+        }
+        mpq_class value = root_st.back()[rank].v;
+        if (minimize) value = -value;
+        value.canonicalize();
+        line = "c value " + value.get_str() + "\n";
+        for (uint32_t v = 1; v <= nv; v++) {
+          if (!full && !W.in_proj[v]) continue;
+          line += (val2[v] < 0 ? "-" : "") + std::to_string(v) + " ";
+        }
+        std::cout << line << "0\n";
+      }
+      std::cout << std::flush;
+      return EXIT_SUCCESS;
+    }
     if (is_batch) {
       std::vector<std::string> ans;
       batch(r, dead, vs, WD, W.in_proj, w, read_queries(queries, W.in_proj), sat, assume, ans);

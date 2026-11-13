@@ -186,10 +186,21 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string,
   return e;
 }
 
+// html/version.txt, written by the build; without it nothing is cached
+let version = String(Date.now());
+async function loadVersion() {
+  try {
+    const r = await fetch("version.txt", { cache: "no-store" });
+    if (r.ok) version = (await r.text()).trim();
+  } catch {
+    // keep the timestamp
+  }
+}
+
 function runTool(tool: string, args: string[], files: Record<string, string | Uint8Array>,
     outFiles: string[] = []): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    const w = new Worker("worker.js");
+    const w = new Worker("worker.js?v=" + encodeURIComponent(version));
     const t0 = performance.now();
     w.onmessage = (e) => {
       w.terminate();
@@ -199,7 +210,7 @@ function runTool(tool: string, args: string[], files: Record<string, string | Ui
       w.terminate();
       reject(new Error(e.message || "worker error"));
     };
-    w.postMessage({ tool, args, files, outFiles });
+    w.postMessage({ version, tool, args, files, outFiles });
   });
 }
 
@@ -510,7 +521,7 @@ const QUERIES: Query[] = [
   },
 ];
 
-let current: Query = QUERIES[0];
+let current: Query = QUERIES.find((q) => q.id === "sample")!;
 
 function buildQueryButtons() {
   const box = $("query-buttons");
@@ -609,7 +620,9 @@ function setCnf(text: string) {
   setBusy(false);
 }
 
-function init() {
+async function init() {
+  await loadVersion();
+  $("version").textContent = "build " + version;
   const sel = $<HTMLSelectElement>("examples");
   EXAMPLES.forEach((x, i) => sel.append(el("option", { value: String(i) }, x.name)));
   const ta = $<HTMLTextAreaElement>("cnf");
@@ -634,7 +647,7 @@ function init() {
   buildQueryButtons();
   ta.value = EXAMPLES[0].cnf;
   setCnf(ta.value);
-  selectQuery(QUERIES[0]);
+  selectQuery(QUERIES.find((q) => q.id === "sample")!);
 }
 
 init();

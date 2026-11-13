@@ -2,6 +2,7 @@
 // input files, call main, return stdout/stderr, the exit status and the output files.
 
 interface RunRequest {
+  version: string;
   tool: string;
   args: string[];
   files: Record<string, string | Uint8Array>;
@@ -14,6 +15,8 @@ self.onmessage = (e: MessageEvent<RunRequest>) => {
   const err: string[] = [];
   const mod: any = {
     noInitialRun: true,
+    // the build's version stamp in every URL: a new build is never served from cache
+    locateFile: (p: string) => p + "?v=" + encodeURIComponent(req.version),
     print: (t: string) => out.push(t),
     printErr: (t: string) => {
       if (!t.includes("__syscall_getrusage")) err.push(t);
@@ -44,5 +47,5 @@ self.onmessage = (e: MessageEvent<RunRequest>) => {
     },
   };
   (self as any).Module = mod;
-  importScripts(req.tool + ".js");
+  importScripts(req.tool + ".js?v=" + encodeURIComponent(req.version));
 };

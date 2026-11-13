@@ -145,8 +145,17 @@
     <a href="https://github.com/meelgroup/ganak">Ganak</a> ·
     queries modelled on <a href="https://github.com/practical-kc/ddnnife">ddnnife</a>
     (Sundermann, Raab, Heß, Thüm and Schaefer, ACM TOSEM 2024) ·
-    <a href="https://github.com/meelgroup/ganak/blob/master/BDNNF-TOOL.md">bdnnf reference</a>
+    <a href="https://github.com/meelgroup/ganak/blob/master/BDNNF-TOOL.md">bdnnf reference</a> ·
+    <span id="version"></span>
   </footer>
-  <script type="module" src="app.js"></script>
+  <script type="module">
+    // the build's version stamp keeps a new build from being served from cache
+    let v = String(Date.now());
+    try {
+      const r = await fetch("version.txt", { cache: "no-store" });
+      if (r.ok) v = (await r.text()).trim();
+    } catch {}
+    await import("./app.js?v=" + encodeURIComponent(v));
+  </script>
 </body>
 </html>

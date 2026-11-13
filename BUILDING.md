@@ -104,6 +104,10 @@ and `scripts/build_emscripten.sh` copies `ganak.js`/`ganak.wasm` and
 `bdnnf.js`/`bdnnf.wasm` into `html/` and compiles the page's TypeScript
 (`html/src/`, needs `tsc`). Serve `html/` over HTTP (e.g.
 `python3 -m http.server -d html`): the page runs each tool in a web worker.
+Once the dependencies are installed for wasm, `scripts/build_wasm.sh` rebuilds
+just Ganak's wasm in a separate `build-wasm/`, leaving the native `build/` alone.
+Each build writes `html/version.txt`, which the page puts in every script URL,
+so browsers never run a stale build.
 
 ## Useful CMake options
 

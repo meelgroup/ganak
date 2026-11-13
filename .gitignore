@@ -22,6 +22,8 @@ html/ganak.js
 html/bdnnf.wasm
 html/bdnnf.js
 html/app.js
+html/version.txt
+build-wasm/
 html/worker.js
 /python/tests/__pycache__
 tests/__pycache__

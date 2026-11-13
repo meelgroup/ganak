@@ -339,6 +339,8 @@ the circuit, completed by the definitions, is a model of the CNF
 ```shell
 ./bdnnf count out.bdnnf [--cnf in.cnf] [--assume 3,-5]      # (weighted, projected) count
 ./bdnnf sample out.bdnnf -n 100 [--cnf in.cnf] [--assume 3]  # weighted/uniform models
+./bdnnf enum out.bdnnf [-n N] [--start I]   # the models, in a fixed order
+./bdnnf batch out.bdnnf queries.txt [--sat] # one count (or SAT) per line of literals
 ./bdnnf lits out.bdnnf [--cnf in.cnf]       # count of the models with each literal
 ./bdnnf core out.bdnnf [--assume 3]         # literals true in all models (core/dead)
 ./bdnnf verify out.bdnnf                    # format + every claimed property

@@ -33,6 +33,7 @@ THE SOFTWARE.
 // random. Models are printed as DIMACS lines over the projection (--full: all
 // vars), to stdout or -o. With --cnf, each is checked against the clauses.
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
@@ -245,25 +246,166 @@ std::vector<mpq_class> lit_counts(bdnnf::Reader& r, const std::vector<mpq_class>
   return cnt;
 }
 
+std::vector<std::vector<int>> read_queries(const std::string& path, const std::vector<char>& in_proj) {
+  std::ifstream f(path);
+  if (!f.good()) die("cannot open " + path);
+  std::vector<std::vector<int>> qs;
+  std::string line;
+  while (std::getline(f, line)) {
+    if (!line.empty() && line[0] == 'c') continue;
+    std::istringstream ss(line);
+    std::vector<int> q;
+    long l;
+    while (ss >> l && l != 0) {
+      if ((size_t)std::abs(l) >= in_proj.size() || !in_proj[(size_t)std::abs(l)])
+        die("query literal " + std::to_string(l) + " is not of a projection var");
+      q.push_back((int)l);
+    }
+    qs.push_back(std::move(q));
+  }
+  return qs;
+}
+
+// Answers the queries (assumption sets) in chunks, one forward scan per chunk:
+// --sat with one bit per query and node, 64 per scan; counts with one
+// rational per query and node, as many per scan as fit kMaxVals.
+template <class WFn>
+void batch(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<uint64_t>& vs,
+           size_t WD, const std::vector<char>& in_proj, WFn&& w,
+           const std::vector<std::vector<int>>& qs, bool sat, std::ostream& out) {
+  constexpr size_t kMaxVals = 1 << 22;
+  const uint32_t nv = r.nvars;
+  const size_t n = dead.size();
+  auto row = [&](uint64_t id) { return vs.data() + id * WD; };
+  auto has = [](const uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
+  auto conflicting = [](const std::vector<int>& ls) {
+    for (size_t p = 0; p < ls.size(); p++)
+      for (size_t q = p + 1; q < ls.size(); q++) if (ls[p] == -ls[q]) return true;
+    return false;
+  };
+  const size_t K = sat ? 64 : std::max<size_t>(1, std::min<size_t>(64, kMaxVals / n));
+  // kill[lit]: the queries of the chunk that assume -lit
+  std::vector<uint64_t> kill(2 * (size_t)nv + 2);
+  auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
+  std::vector<uint64_t> sm(sat ? n : 0);
+  std::vector<mpq_class> val(sat ? 0 : n * K);
+  std::vector<uint32_t> gap;
+  std::vector<uint64_t> av(WD);
+  for (size_t q0 = 0; q0 < qs.size(); q0 += K) {
+    const size_t k = std::min(K, qs.size() - q0);
+    const uint64_t all = k == 64 ? ~0ULL : (1ULL << k) - 1;
+    std::fill(kill.begin(), kill.end(), 0);
+    for (size_t j = 0; j < k; j++)
+      for (int l : qs[q0 + j]) kill[lidx(-l)] |= 1ULL << j;
+    auto wj = [&](int l, size_t j) -> mpq_class {
+      if (!in_proj[(uint32_t)std::abs(l)]) return 1;
+      return (kill[lidx(l)] >> j) & 1 ? mpq_class(0) : w(l);
+    };
+    auto bothj = [&](uint32_t v, size_t j) -> mpq_class { return wj((int)v, j) + wj(-(int)v, j); };
+    auto killed = [&](const std::vector<int>& ls) {
+      uint64_t m = 0;
+      for (int l : ls) if (in_proj[(uint32_t)std::abs(l)]) m |= kill[lidx(l)];
+      return m;
+    };
+    if (sat) { sm[0] = 0; sm[1] = all; }
+    else for (size_t j = 0; j < K; j++) { val[j] = 0; val[K + j] = 1; }
+    r.scan([&](uint64_t id, const bdnnf::Node& nd) {
+      if (dead[id]) {
+        if (sat) sm[id] = 0;
+        else for (size_t j = 0; j < k; j++) val[id * K + j] = 0;
+        return;
+      }
+      if (nd.kind == bdnnf::K_AND) {
+        if (sat) {
+          uint64_t m = all & ~killed(nd.units);
+          for (uint64_t c : nd.kids) m &= sm[c];
+          sm[id] = m;
+          return;
+        }
+        for (size_t j = 0; j < k; j++) {
+          mpq_class x = 1;
+          for (uint64_t c : nd.kids) x *= val[c * K + j];
+          for (int l : nd.units) x *= wj(l, j);
+          for (uint32_t v : nd.free) if (in_proj[v]) x *= bothj(v, j);
+          val[id * K + j] = std::move(x);
+        }
+        return;
+      }
+      if (sat) {
+        uint64_t m = 0;
+        for (const auto& a : nd.arcs)
+          if (!dead[a.child] && !conflicting(a.lits)) m |= sm[a.child] & ~killed(a.lits);
+        sm[id] = m;
+        return;
+      }
+      const uint64_t* me = row(id);
+      for (size_t j = 0; j < k; j++) val[id * K + j] = 0;
+      for (const auto& a : nd.arcs) {
+        if (dead[a.child] || conflicting(a.lits)) continue;
+        const uint64_t* cv = row(a.child);
+        av.assign(cv, cv + WD);
+        for (int l : a.lits) {
+          const uint32_t v = (uint32_t)std::abs(l);
+          if (in_proj[v]) av[v >> 6] |= 1ULL << (v & 63);
+        }
+        gap.clear();
+        for (size_t q = 0; q < WD; q++)
+          for (uint64_t m = me[q] & ~av[q]; m; m &= m - 1) gap.push_back((uint32_t)(q * 64 + __builtin_ctzll(m)));
+        for (size_t j = 0; j < k; j++) {
+          mpq_class y = val[a.child * K + j];
+          for (int l : a.lits) y *= wj(l, j);
+          for (uint32_t v : gap) y *= bothj(v, j);
+          val[id * K + j] += y;
+        }
+      }
+    });
+    for (size_t j = 0; j < k; j++) {
+      if (sat) {
+        const bool ok = !dead[r.root] && ((sm[r.root] >> j) & 1);
+        bool conflict = false;
+        for (int l : qs[q0 + j]) conflict |= (kill[lidx(l)] >> j) & 1;
+        out << (ok && !conflict ? "SAT" : "UNSAT") << "\n";
+        continue;
+      }
+      mpq_class x = dead[r.root] ? mpq_class(0) : val[r.root * K + j];
+      if (!dead[r.root])
+        for (uint32_t v = 1; v <= nv; v++)
+          if (in_proj[v] && !has(row(r.root), v)) x *= bothj(v, j);
+      x.canonicalize();
+      out << x.get_str() << "\n";
+    }
+  }
+  out.flush();
+}
+
 }  // namespace
 
 int bdnnf_query(int argc, char** argv) {
   const std::string cmd = argv[0];
-  const bool sampling = cmd == "sample";
+  const bool enumerating = cmd == "enum";
+  const bool sampling = cmd == "sample" || enumerating;
   const bool lits = cmd == "lits" || cmd == "core";
   const bool core = cmd == "core";
-  const std::string usage = sampling
+  const bool is_batch = cmd == "batch";
+  const std::string usage = enumerating
+    ? "usage: bdnnf enum <in.bdnnf> [-n N] [--start I] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
+    : sampling
     ? "usage: bdnnf sample <in.bdnnf> [-n N] [--seed S] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
+    : is_batch
+    ? "usage: bdnnf batch <in.bdnnf> <queries> [--sat] [--cnf <file.cnf>]   (a query: a line of literals)"
     : "usage: bdnnf " + cmd + " <in.bdnnf> [--cnf <file.cnf>] [--assume L1,L2,...]";
   std::string path, cnf, out_path;
-  uint64_t num = 1, seed = 1;
-  bool full = false;
+  uint64_t num = enumerating ? UINT64_MAX : 1, seed = 1;
+  mpz_class start = 0;
+  bool full = false, sat = false;
+  std::string queries;
   std::vector<int> assume;
   for (int i = 1; i < argc; i++) {
     const std::string a = argv[i];
     if (a == "--cnf" && i + 1 < argc) cnf = argv[++i];
     else if (sampling && (a == "-n" || a == "--num") && i + 1 < argc) num = std::stoull(argv[++i]);
-    else if (sampling && a == "--seed" && i + 1 < argc) seed = std::stoull(argv[++i]);
+    else if (sampling && !enumerating && a == "--seed" && i + 1 < argc) seed = std::stoull(argv[++i]);
+    else if (enumerating && a == "--start" && i + 1 < argc) start = mpz_class(argv[++i], 10);
     else if (sampling && a == "--full") full = true;
     else if (sampling && a == "-o" && i + 1 < argc) out_path = argv[++i];
     else if (a == "--assume" && i + 1 < argc) {
@@ -273,10 +415,12 @@ int bdnnf_query(int argc, char** argv) {
       long l;
       while (ss >> l) if (l != 0) assume.push_back((int)l);
     }
+    else if (is_batch && a == "--sat") sat = true;
     else if (path.empty() && (a == "-" || a.empty() || a[0] != '-')) path = a;
+    else if (is_batch && queries.empty() && (a.empty() || a[0] != '-')) queries = a;
     else die(usage);
   }
-  if (path.empty()) die(usage);
+  if (path.empty() || (is_batch && queries.empty())) die(usage);
   try {
     bdnnf::Reader r;
     r.open(path);
@@ -303,7 +447,7 @@ int bdnnf_query(int argc, char** argv) {
     for (const auto& [v, rf] : r.defs.defs)
       if (W.in_proj[v]) die("var " + std::to_string(v) + " is in the projection but defined: "
                             "its count is not a d-DNNF query");
-    if (core) {
+    if (core || enumerating) {
       W.weighted = false;
       W.w.clear();
     }
@@ -315,7 +459,7 @@ int bdnnf_query(int argc, char** argv) {
       if (!W.w.count(l)) W.w[l] = 1;
       W.w[-l] = 0;
     }
-    if (sampling)
+    if (sampling && !enumerating)
       for (const auto& [l, x] : W.w)
         if (x < 0 && W.in_proj[(uint32_t)std::abs(l)])
           die("negative weight on literal " + std::to_string(l) + ": cannot sample");
@@ -400,6 +544,10 @@ int bdnnf_query(int argc, char** argv) {
       for (uint32_t v = 1; v <= nv; v++)
         if (W.in_proj[v] && !has(row(r.root), v)) res *= both(v);
     res.canonicalize();
+    if (is_batch) {
+      batch(r, dead, vs, WD, W.in_proj, w, read_queries(queries, W.in_proj), sat, std::cout);
+      return EXIT_SUCCESS;
+    }
     if (lits) {
       const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w, res);
       std::string line;
@@ -428,7 +576,11 @@ int bdnnf_query(int argc, char** argv) {
       std::cout << res.get_str() << std::endl;
       return EXIT_SUCCESS;
     }
-    if (res == 0) die("no model of non-zero weight");
+    if (res == 0 && !enumerating) die("no model of non-zero weight");
+    if (enumerating) {
+      const mpz_class left = start < res.get_num() ? mpz_class(res.get_num() - start) : mpz_class(0);
+      if (left < num) num = left.get_ui();
+    }
 
     const auto cls = cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf);
     NodeAccess acc(r);
@@ -457,6 +609,15 @@ int bdnnf_query(int argc, char** argv) {
     std::vector<signed char> val2(nv + 1);
     std::vector<char> rnd_set(nv + 1);
     std::vector<uint64_t> stk, path_nodes;
+    std::vector<mpz_class> istk;
+    std::vector<uint64_t> cav(WD);
+    // Unranking: the models of a node are numbered in mixed radix over its
+    // factors (children, then free vars, each var a digit of radix w(v)+w(-v)).
+    auto digit = [](mpz_class& i, const mpz_class& radix) {
+      mpz_class d;
+      mpz_fdiv_qr(i.get_mpz_t(), d.get_mpz_t(), i.get_mpz_t(), radix.get_mpz_t());
+      return d;
+    };
     std::ofstream of;
     if (!out_path.empty() && out_path != "-") {
       of.open(out_path);
@@ -472,39 +633,76 @@ int bdnnf_query(int argc, char** argv) {
         if (val2[std::abs(l)] == -want) die("FAIL: sampled path has conflicting lits");
         val2[std::abs(l)] = want;
       };
+      // a free var of the unranked model: radix 2, or 1 when one literal has weight 0
+      auto set_free = [&](uint32_t v, mpz_class& i) {
+        const mpz_class rad = both(v).get_num();
+        setl(rad == 1 ? (w((int)v) == 0 ? -(int)v : (int)v) : (digit(i, rad) == 1 ? (int)v : -(int)v));
+      };
       stk.assign(1, r.root);
+      istk.clear();
+      if (enumerating) {
+        mpz_class i = start + smp;
+        for (uint32_t v = 1; v <= nv; v++)
+          if (W.in_proj[v] && !has(row(r.root), v)) set_free(v, i);
+        istk.push_back(i);
+      }
       path_nodes.clear();
       while (!stk.empty()) {
         const uint64_t x = stk.back();
         stk.pop_back();
+        mpz_class i;
+        if (enumerating) { i = istk.back(); istk.pop_back(); }
         path_nodes.push_back(x);
         if (x <= 1) { if (x == 0) die("FAIL: sampled into FALSE"); continue; }
         acc.get(x, nd);
         if (nd.kind == bdnnf::K_AND) {
           for (int l : nd.units) setl(l);
-          for (uint64_t k : nd.kids) stk.push_back(k);
+          for (uint64_t k : nd.kids) {
+            stk.push_back(k);
+            if (enumerating) istk.push_back(digit(i, val[k].get_num()));
+          }
+          if (enumerating) for (uint32_t v : nd.free) if (W.in_proj[v]) set_free(v, i);
           continue;
         }
         ys.clear();
         for (const auto& a : nd.arcs) ys.push_back(arc_val(row(x), a));
-        const auto& a = nd.arcs[pick()];
+        size_t ai = 0;
+        if (!enumerating) ai = pick();
+        else
+          while (i >= ys[ai].get_num()) { i -= ys[ai].get_num(); ai++; }
+        const auto& a = nd.arcs[ai];
         for (int l : a.lits) setl(l);
         stk.push_back(a.child);
+        if (enumerating) {
+          istk.push_back(digit(i, val[a.child].get_num()));
+          const uint64_t* cv = row(a.child);
+          cav.assign(cv, cv + WD);
+          for (int l : a.lits) {
+            const uint32_t v = (uint32_t)std::abs(l);
+            if (W.in_proj[v]) set(cav.data(), v);
+          }
+          const uint64_t* me = row(x);
+          for (size_t q = 0; q < WD; q++)
+            for (uint64_t m = me[q] & ~cav[q]; m; m &= m - 1) set_free((uint32_t)(q * 64 + __builtin_ctzll(m)), i);
+        }
       }
       // Projection vars off the path are free: each is drawn by its weight.
       for (uint32_t v = 1; v <= nv; v++) {
         if (val2[v] || defined[v]) continue;
         rnd_set[v] = 1;
-        if (W.in_proj[v]) {
+        if (enumerating) {
+          if (W.in_proj[v]) die("FAIL: model " + mpz_class(start + smp).get_str() + " leaves var " + std::to_string(v) + " open");
+          val2[v] = -1;
+        } else if (W.in_proj[v]) {
           ys.assign({w(-(int)v), w((int)v)});
           val2[v] = pick() == 1 ? 1 : -1;
         } else val2[v] = rnd.get_z_bits(1) == 1 ? 1 : -1;
       }
       bdnnf::eval_defs(r.defs, nv, val2);
       for (const auto& cl : cls) {
-        bool sat = false;
-        for (int l : cl) sat |= (val2[std::abs(l)] == (l > 0 ? 1 : -1));
-        if (sat) continue;
+        bool ok = false;
+        for (int l : cl) ok |= (val2[std::abs(l)] == (l > 0 ? 1 : -1));
+        if (ok) continue;
         std::ostringstream m;
         m << "FAIL: sample " << smp << " violates clause";
         for (int l : cl) m << " " << l << (rnd_set[std::abs(l)] ? "(not on path)" : "");
@@ -525,7 +723,7 @@ int bdnnf_query(int argc, char** argv) {
     out.flush();
     if (!out) die("write error");
     if (!cls.empty())
-      std::cerr << "bdnnf sample: " << num << " sampled models satisfy the CNF" << std::endl;
+      std::cerr << "bdnnf " << cmd << ": " << num << " models satisfy the CNF" << std::endl;
   } catch (const bdnnf::Error& e) {
     die(path + ": " + e.what());
   }

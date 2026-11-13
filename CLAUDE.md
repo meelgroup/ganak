@@ -77,8 +77,8 @@ for all): it compiles with ganak, then checks the circuit
 with scalable C++ tools only — `bdnnf verify` (format + every claimed property,
 streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the
-count under fresh random weights), all against ganak; `bdnnf lits`/`core`
-against `bdnnf count --assume`. `tests/bdnnf.py` is an
+count under fresh random weights), all against ganak; `bdnnf lits`/`core`/`batch`
+against `bdnnf count --assume`, `bdnnf enum` for distinct models, as many as counted. `tests/bdnnf.py` is an
 independent Python cross-check, run only on small files. Use `--big` (bigger
 CNFs, 5x timeout) for large circuits. Minimize a failure with
 `./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.

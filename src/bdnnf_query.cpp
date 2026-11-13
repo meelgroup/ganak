@@ -53,6 +53,19 @@ THE SOFTWARE.
 
 namespace {
 
+// gmpxx has no unsigned long long operators, and uint64_t is one on wasm32
+mpz_class mpz_u64(uint64_t x) {
+  mpz_class z = (unsigned long)(x >> 32);
+  z <<= 32;
+  z += (unsigned long)(x & 0xffffffffULL);
+  return z;
+}
+uint64_t u64_mpz(const mpz_class& z) {
+  const mpz_class hi = z >> 32;
+  const mpz_class lo = z - (hi << 32);
+  return ((uint64_t)hi.get_ui() << 32) | (uint64_t)lo.get_ui();
+}
+
 struct QueryError : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
@@ -1169,7 +1182,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     if (res == 0 && !enumerating) die(atomic ? "no model" : "no model of non-zero weight");
     if (enumerating) {
       const mpz_class left = start < res.get_num() ? mpz_class(res.get_num() - start) : mpz_class(0);
-      if (left < num) num = left.get_ui();
+      if (left < mpz_u64(num)) num = u64_mpz(left);
     }
 
     const auto cls = cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf);
@@ -1258,7 +1271,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       stk.assign(1, r.root);
       istk.clear();
       if (enumerating) {
-        mpz_class i = start + smp;
+        mpz_class i = start + mpz_u64(smp);
         for (uint32_t v = 1; v <= nv; v++)
           if (W.in_proj[v] && !has(row(r.root), v)) set_free(v, i);
         istk.push_back(i);
@@ -1316,7 +1329,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
         if (val2[v] || defined[v]) continue;
         rnd_set[v] = 1;
         if (enumerating) {
-          if (W.in_proj[v]) die("FAIL: model " + mpz_class(start + smp).get_str() + " leaves var " + std::to_string(v) + " open");
+          if (W.in_proj[v]) die("FAIL: model " + mpz_class(start + mpz_u64(smp)).get_str() + " leaves var " + std::to_string(v) + " open");
           val2[v] = -1;
         } else if (W.in_proj[v]) {
           if (var_cum[v].empty()) cumulate({w(-(int)v), w((int)v)}, var_cum[v]);

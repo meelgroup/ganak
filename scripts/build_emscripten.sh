@@ -29,5 +29,6 @@ emmake make -j$(nproc)
 emmake make install
 cp bdnnf.wasm ../html
 cp bdnnf.js ../html
+(cd ../html && tsc -p tsconfig.json && tsc -p tsconfig.worker.json)
 cp ganak.wasm ../html
 cp $EMINSTALL/bin/ganak.js ../html

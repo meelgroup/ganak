@@ -101,7 +101,9 @@ first be built for wasm and installed into `$EMINSTALL` (Emscripten's sysroot);
 `.github/workflows/build-emscripten.yml` has the exact steps. Then
 `scripts/rebuild_emcripten_all.sh` builds every dependency and Ganak for wasm,
 and `scripts/build_emscripten.sh` copies `ganak.js`/`ganak.wasm` and
-`bdnnf.js`/`bdnnf.wasm` into `html/`.
+`bdnnf.js`/`bdnnf.wasm` into `html/` and compiles the page's TypeScript
+(`html/src/`, needs `tsc`). Serve `html/` over HTTP (e.g.
+`python3 -m http.server -d html`): the page runs each tool in a web worker.
 
 ## Useful CMake options
 

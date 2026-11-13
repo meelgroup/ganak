@@ -201,7 +201,10 @@ set_target_properties(bdnnf-bin PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  # bdnnf reports query errors by throwing; wasm disables catching by default
+  target_compile_options(bdnnf-bin PRIVATE -fexceptions)
   target_link_options(bdnnf-bin PRIVATE
+    "-fexceptions"
     "SHELL:-s WASM=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"

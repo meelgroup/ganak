@@ -20,12 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-verify: checks a BDNNF circuit (spec-bdnnf.md) in streamed passes, with
+// bdnnf verify: checks a BDNNF circuit (spec-bdnnf.md) in streamed passes, with
 // one var bitset per node: the format, the structural count, and every
 // property the file claims (DECOMPOSABLE, DETERMINISTIC, SMOOTH, CLEAN).
 //
-// Usage:  ddnnf-verify <in.bdnnf>               streamed structural count only
-//         ddnnf-verify <in.bdnnf> [--expect-count N] [--no-check-decomposable]
+// Usage:  bdnnf verify <in.bdnnf>               streamed structural count only
+//         bdnnf verify <in.bdnnf> [--expect-count N] [--no-check-decomposable]
 //                      [--no-strict] [-q]
 // --strict (default with any option): CLEAN, no dead nodes, root last, and
 // canonical (no AND under an AND, no non-root single-conjunct AND).
@@ -44,12 +44,12 @@ THE SOFTWARE.
 namespace {
 
 void fail(const std::string& msg) {
-  std::cout << "ddnnf-verify: FAIL: " << msg << "\n";
+  std::cout << "bdnnf verify: FAIL: " << msg << "\n";
   std::exit(EXIT_FAILURE);
 }
 
 void die(const std::string& msg) {
-  std::cerr << "ddnnf-verify: " << msg << "\n";
+  std::cerr << "bdnnf verify: " << msg << "\n";
   std::exit(EXIT_FAILURE);
 }
 
@@ -196,7 +196,7 @@ std::string check_strict(const std::string& path, const Streamed& st) {
 
 }  // namespace
 
-int main(int argc, char** argv) {
+int bdnnf_verify(int argc, char** argv) {
   std::string path;
   mpz_class expect_count;
   bool have_expect = false;
@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
 
   auto usage = [&]() {
     std::cerr <<
-      "Usage: " << argv[0] << " <in.bdnnf>\n"
+      "Usage: bdnnf verify <in.bdnnf>\n"
       "         [--expect-count N] [--no-check-decomposable] [--no-strict] [-q|--quiet]\n"
       "\n"
       "With no option, prints the structural count.\n";
@@ -229,11 +229,11 @@ int main(int argc, char** argv) {
       any_opt = true;
     }
     else if (!a.empty() && a[0] == '-' && a != "-") {
-      std::cerr << "ddnnf-verify: unknown option: " << a << "\n";
+      std::cerr << "bdnnf verify: unknown option: " << a << "\n";
       usage();
     }
     else if (path.empty()) path = a;
-    else { std::cerr << "ddnnf-verify: unexpected positional: " << a << "\n"; usage(); }
+    else { std::cerr << "bdnnf verify: unexpected positional: " << a << "\n"; usage(); }
   }
   if (path.empty()) usage();
 
@@ -261,7 +261,7 @@ int main(int argc, char** argv) {
       if (!e.empty() && (strict || e.rfind("file is not", 0) != 0)) fail(e);
     }
     if (!quiet)
-      std::cout << "ddnnf-verify: OK (count=" << st.count.get_str() << ", nodes=" << st.nnodes << ")\n";
+      std::cout << "bdnnf verify: OK (count=" << st.count.get_str() << ", nodes=" << st.nnodes << ")\n";
   } catch (const bdnnf::Error& e) {
     die(path + ": " + e.what());
   }

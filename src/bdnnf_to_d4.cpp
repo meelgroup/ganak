@@ -20,12 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-to-d4: convert a BDNNF file to the d4 .nnf text format, for legacy
+// bdnnf to-d4: convert a BDNNF file to the d4 .nnf text format, for legacy
 // consumers (ddnnife and co.). Root = 1, ids contiguous, reachable nodes only;
-// free variables become OR(v, -v) nodes. Run ddnnf-cleanup first if the
+// free variables become OR(v, -v) nodes. Run bdnnf cleanup first if the
 // consumer needs strict decomposability.
 //
-// Usage:  ddnnf-to-d4 <in.bdnnf> [out.nnf]      ("-" or omitted out => stdout)
+// Usage:  bdnnf to-d4 <in.bdnnf> [out.nnf]      ("-" or omitted out => stdout)
 
 #include <cstdlib>
 #include <fstream>
@@ -34,19 +34,19 @@ THE SOFTWARE.
 
 #include "ddnnf_io.hpp"
 
-int main(int argc, char** argv) {
+int bdnnf_to_d4(int argc, char** argv) {
   if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: " << argv[0] << " <in.bdnnf> [out.nnf]" << std::endl;
+    std::cerr << "Usage: bdnnf to-d4 <in.bdnnf> [out.nnf]" << std::endl;
     return EXIT_FAILURE;
   }
   ddnnf_io::Circuit c;
   std::string err;
   if (!ddnnf_io::load(argv[1], c, err)) {
-    std::cerr << "ddnnf-to-d4: " << err << std::endl;
+    std::cerr << "bdnnf to-d4: " << err << std::endl;
     return EXIT_FAILURE;
   }
   if (!c.defs.empty()) {
-    std::cerr << "ddnnf-to-d4: " << argv[1] << " defines vars by AIGs (a definitions frame), "
+    std::cerr << "bdnnf to-d4: " << argv[1] << " defines vars by AIGs (a definitions frame), "
                  "which the d4 format cannot hold" << std::endl;
     return EXIT_FAILURE;
   }
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
   if (out_path != "-") {
     fout.open(out_path);
     if (!fout.good()) {
-      std::cerr << "ddnnf-to-d4: cannot open " << out_path << std::endl;
+      std::cerr << "bdnnf to-d4: cannot open " << out_path << std::endl;
       return EXIT_FAILURE;
     }
   }
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   ddnnf_io::write_d4(out, c);
   out.flush();
   if (!out.good()) {
-    std::cerr << "ddnnf-to-d4: write error" << std::endl;
+    std::cerr << "bdnnf to-d4: write error" << std::endl;
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;

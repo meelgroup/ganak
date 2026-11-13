@@ -62,6 +62,31 @@ struct Error : std::runtime_error {
 
 using KV = std::vector<std::pair<std::string, std::string>>;
 
+// The "projection" header key: the projection vars, decimal, space-separated.
+inline std::string var_list_str(const std::vector<uint32_t>& vs) {
+  std::string s;
+  for (uint32_t v : vs) {
+    if (!s.empty()) s += ' ';
+    s += std::to_string(v);
+  }
+  return s;
+}
+
+inline std::vector<uint32_t> parse_var_list(const std::string& s) {
+  std::vector<uint32_t> vs;
+  uint64_t x = 0;
+  bool in = false;
+  for (char ch : s) {
+    if (ch >= '0' && ch <= '9') { x = x * 10 + (uint64_t)(ch - '0'); in = true; continue; }
+    if (ch != ' ') throw Error("bad var list: " + s.substr(0, 40));
+    if (in) vs.push_back((uint32_t)x);
+    x = 0;
+    in = false;
+  }
+  if (in) vs.push_back((uint32_t)x);
+  return vs;
+}
+
 inline const uint32_t* crc_tables() {
   static const std::vector<uint32_t> t = [] {
     std::vector<uint32_t> tab(8 * 256);

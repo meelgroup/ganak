@@ -332,27 +332,22 @@ never eliminates a projection variable: for a projected CNF, the variables it
 does eliminate get AIG (Skolem) definitions in the file, and Ganak's SAT oracle
 records one example assignment of the others at each SAT leaf, so every model of
 the circuit, completed by the definitions, is a model of the CNF
-(`ddnnf-count --sample` checks this).
+(`bdnnf sample --cnf` checks this).
 
-**2. Clean up.** The raw file is correct from the root, but may carry
-unreachable "dead" nodes, and learnt clauses can leave it not strictly
-decomposable. `ddnnf-cleanup` fixes both, and flags the result `DECOMPOSABLE`,
-`DETERMINISTIC`, `SMOOTH` and `CLEAN` as it checks them:
+**2. Use.** The `bdnnf` tool works on the file as written, streaming it:
 
 ```shell
-./ddnnf-cleanup out.bdnnf clean.bdnnf
+./bdnnf count out.bdnnf [--cnf in.cnf] [--assume 3,-5]      # (weighted, projected) count
+./bdnnf sample out.bdnnf -n 100 [--cnf in.cnf] [--assume 3]  # weighted/uniform models
+./bdnnf verify out.bdnnf                    # format + every claimed property
+./bdnnf dump out.bdnnf                      # human-readable text form
+./bdnnf dot out.bdnnf out.dot               # Graphviz rendering
+./bdnnf to-d4 out.bdnnf out.nnf             # d4 .nnf for legacy tools
+./bdnnf cleanup out.bdnnf clean.bdnnf       # smaller: flattened, no dead nodes
 ```
 
-**3. Use.**
-
-```shell
-./ddnnf-verify clean.bdnnf                      # structural count, one streamed pass
-python3 tests/bdnnf.py count clean.bdnnf --cnf in.cnf   # (weighted) count, independent
-python3 tests/bdnnf.py check clean.bdnnf        # strict format + property check
-./ddnnf-dump clean.bdnnf                        # human-readable text form
-./ddnnf2dot clean.bdnnf out.dot                 # Graphviz rendering
-./ddnnf-to-d4 clean.bdnnf clean.nnf             # d4 .nnf for legacy tools
-```
+Weights come from `--cnf`; the projection is stored in the file.
+`python3 tests/bdnnf.py check|count` is an independent reader for cross-checks.
 
 The d4 `.nnf` format is that of [Lagniez and Marquis, "An Improved
 Decision-DNNF Compiler", IJCAI 2017](https://www.ijcai.org/proceedings/2017/93).

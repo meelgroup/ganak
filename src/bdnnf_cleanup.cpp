@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-cleanup: canonicalise a BDNNF circuit from `ganak --compile`.
+// bdnnf cleanup: canonicalise a BDNNF circuit from `ganak --compile`.
 //
 //   1. FLATTEN nested ANDs and ELIDE unary ANDs into their parent arcs.
 //   2. DROP dead (unreachable) nodes: only the part reachable from the root is
@@ -29,7 +29,7 @@ THE SOFTWARE.
 // Output is flagged CLEAN, plus whichever of DECOMPOSABLE, DETERMINISTIC,
 // SMOOTH it was checked to satisfy.
 //
-// Usage:  ddnnf-cleanup <in.bdnnf> [out.bdnnf]      ("-" or omitted out => stdout)
+// Usage:  bdnnf cleanup <in.bdnnf> [out.bdnnf]      ("-" or omitted out => stdout)
 
 #include <cstdlib>
 #include <iostream>
@@ -44,7 +44,7 @@ namespace {
 using ddnnf_io::Arc;
 
 [[noreturn]] void die(const std::string& msg) {
-  std::cerr << "ddnnf-cleanup: " << msg << std::endl;
+  std::cerr << "bdnnf cleanup: " << msg << std::endl;
   exit(EXIT_FAILURE);
 }
 
@@ -55,7 +55,7 @@ using ddnnf_io::Arc;
 // witness lits), then mk_and() conjoins it with its sibling components, giving
 // AND( AND(TRUE; witness), sibling... ). Inlining rewrites the parent's arc to
 // that wrapper into a direct arc carrying the witness lits, dropping a whole AND
-// layer (the "AND -> AND -> literals" stack seen in ddnnf2dot output).
+// layer (the "AND -> AND -> literals" stack seen in bdnnf dot output).
 //
 // mk_and() always emits literal-free AND arcs, so this catches every such stack.
 // Count, model set, per-path literals and strict decomposability are preserved:
@@ -149,12 +149,12 @@ int merge_true_arcs(std::vector<char>& type, std::vector<std::vector<Arc>>& arcs
 
 } // namespace
 
-int main(int argc, char** argv) {
+int bdnnf_cleanup(int argc, char** argv) {
   int argi = 1;
   // Accepted for old scripts: there is no repair pass any more.
   if (argi < argc && std::string(argv[argi]) == "--no-strict-decomp") argi++;
   if (argc - argi < 1 || argc - argi > 2) {
-    std::cerr << "Usage: " << argv[0] << " <in.bdnnf> [out.bdnnf]" << std::endl;
+    std::cerr << "Usage: bdnnf cleanup <in.bdnnf> [out.bdnnf]" << std::endl;
     return EXIT_FAILURE;
   }
   const std::string in_path = argv[argi];
@@ -172,17 +172,17 @@ int main(int argc, char** argv) {
     flat += f;
     unary += u;
   } while (f || u);
-  std::cerr << "ddnnf-cleanup: flattened-nested-and arcs=" << flat
+  std::cerr << "bdnnf cleanup: flattened-nested-and arcs=" << flat
             << " elided-unary-and=" << unary << std::endl;
 
   uint64_t props = bdnnf::P_CLEAN;
   if (ddnnf_io::check_decomposable(c).first) props |= bdnnf::P_DECOMPOSABLE;
-  else std::cerr << "ddnnf-cleanup: WARN: input is not decomposable" << std::endl;
+  else std::cerr << "bdnnf cleanup: WARN: input is not decomposable" << std::endl;
   if ((c.props & bdnnf::P_DETERMINISTIC) && ddnnf_io::check_deterministic(c).first)
     props |= bdnnf::P_DETERMINISTIC;
   if (ddnnf_io::check_smooth(c).first) props |= bdnnf::P_SMOOTH;
 
-  if (!ddnnf_io::save(out_path, c, props, "ddnnf-cleanup", err, c.footer_kv)) die(err);
-  std::cerr << "ddnnf-cleanup: input nodes=" << c.nfile << " props=" << props << std::endl;
+  if (!ddnnf_io::save(out_path, c, props, "bdnnf cleanup", err, c.footer_kv)) die(err);
+  std::cerr << "bdnnf cleanup: input nodes=" << c.nfile << " props=" << props << std::endl;
   return EXIT_SUCCESS;
 }

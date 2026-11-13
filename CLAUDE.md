@@ -74,8 +74,8 @@ cd ../count_fuzzer
 
 count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
 for all): it compiles with ganak, then checks the raw and the cleaned circuit
-with scalable C++ tools only — `ddnnf-verify` (format + every claimed property,
-streamed) and `ddnnf-count` (the weighted/projected count, `--sample N` models
+with scalable C++ tools only — `bdnnf verify` (format + every claimed property,
+streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the
 count under fresh random weights), all against ganak. `tests/bdnnf.py` is an
 independent Python cross-check, run only on small files. Use `--big` (bigger
@@ -107,9 +107,9 @@ cd build && lit tests/cnf-files/a.cnf
 properties, canonical cleaned form) — never the byte-exact `.bdnnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
-  `ddnnf-verify --expect-count N` (format, count, claimed properties),
-  `ddnnf-count --sample` (sampled models satisfy the CNF), `ddnnf-cleanup`,
-  re-verify the cleaned file `--strict`, and `ddnnf2dot`. All the tools stream
+  `bdnnf verify --expect-count N` (format, count, claimed properties),
+  `bdnnf sample --cnf` (sampled models satisfy the CNF), `bdnnf cleanup`,
+  re-verify the cleaned file `--strict`, and `bdnnf dot`. All the tools stream
   the file, with one var bitset per node at most.
 
 ## Architecture

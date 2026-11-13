@@ -44,6 +44,7 @@ struct CounterConfiguration {
   uint32_t compile_nvars = 0;
   std::vector<int> compile_root_units;
   std::vector<int> compile_root_free;
+  std::vector<uint32_t> compile_proj;  // input projection vars, empty if unprojected
   std::vector<std::pair<uint64_t, uint64_t>> compile_def_nodes;
   std::vector<std::pair<uint32_t, uint64_t>> compile_defs;
   // d-DNNF: check every node as it is written, abort at the first wrong one.

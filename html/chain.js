@@ -1,6 +1,6 @@
 // Headless (Node.js) test of the in-browser d-DNNF pipeline. Runs the same chain
 // the page does, without a browser:
-//   ganak --compile (raw BDNNF) -> ddnnf-cleanup (clean BDNNF) -> ddnnf2dot (DOT)
+//   ganak --compile (raw BDNNF) -> bdnnf cleanup (clean BDNNF) -> bdnnf dot (DOT)
 // using the same Emscripten modules shipped here. A smoke test after rebuilding wasm.
 //
 // These are non-MODULARIZE Emscripten CLI modules expecting a global `Module`. The
@@ -67,13 +67,13 @@ function runTool(jsFile, args, inFiles, outFile) {
     { '/input.cnf': cnf }, '/out.bdnnf');
   process.stderr.write('\n=== RAW BDNNF (' + raw.length + ' bytes) ===\n');
 
-  // 2. ddnnf-cleanup: repair decomposability, drop dead nodes.
-  const cleaned = await runTool('ddnnf-cleanup.js',
-    ['/in.bdnnf', '/out.bdnnf'], { '/in.bdnnf': raw }, '/out.bdnnf');
+  // 2. bdnnf cleanup: flatten, drop dead nodes.
+  const cleaned = await runTool('bdnnf.js',
+    ['cleanup', '/in.bdnnf', '/out.bdnnf'], { '/in.bdnnf': raw }, '/out.bdnnf');
 
-  // 3. ddnnf2dot: render the cleaned circuit as Graphviz DOT.
-  const dot = await runTool('ddnnf2dot.js',
-    ['/in.bdnnf', '/out.dot'], { '/in.bdnnf': cleaned }, '/out.dot');
+  // 3. bdnnf dot: render the cleaned circuit as Graphviz DOT.
+  const dot = await runTool('bdnnf.js',
+    ['dot', '/in.bdnnf', '/out.dot'], { '/in.bdnnf': cleaned }, '/out.dot');
 
   if (outPath) {
     fs.writeFileSync(outPath, dot);

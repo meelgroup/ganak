@@ -1,10 +1,10 @@
 c c d-DNNF compile: UNSAT formula -> circuit is the FALSE leaf, count 0.
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %ddnnf_verify %t.bdnnf --expect-count 0 --no-strict
-c c RUN: %ddnnf_count %t.bdnnf --cnf %s --sample 300
-c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
-c c RUN: %ddnnf_verify %t.clean.bdnnf --expect-count 0 --check-decomposable --strict
-c c RUN: %ddnnf2dot %t.clean.bdnnf %t.dot
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 0 --no-strict
+c c RUN: %bdnnf count %t.bdnnf --cnf %s
+c c RUN: %bdnnf cleanup %t.bdnnf %t.clean.bdnnf
+c c RUN: %bdnnf verify %t.clean.bdnnf --expect-count 0 --check-decomposable --strict
+c c RUN: %bdnnf dot %t.clean.bdnnf %t.dot
 p cnf 2 2
 1 0
 -1 0

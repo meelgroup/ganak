@@ -928,6 +928,8 @@ int main(int argc, char *argv[]) {
   cnf.check_cnf_sampl_sanity();
   cnf.check_cnf_vars();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
+  if (!conf.compile_fname.empty() && cnf.get_sampl_vars().size() < cnf.nVars())
+    for (const auto& v : cnf.get_sampl_vars()) conf.compile_proj.push_back(v + 1);
 
   // Run Arjun
   if (compile_arjun) run_arjun_compile(cnf);

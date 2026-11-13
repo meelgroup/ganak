@@ -99,7 +99,9 @@ Header payload:
     nkv * (varint klen, klen bytes key, varint vlen, vlen bytes value)
 
 Keys and values are UTF-8 strings. Defined keys: `producer` (e.g.
-`ganak 1.2.3 <sha>`). Readers ignore unknown keys. Unknown `version` values
+`ganak 1.2.3 <sha>`), and `projection`: the projection variables, decimal,
+space-separated (absent: all of `1..nvars`). Projected queries (count, sample,
+conditioning) are over these variables. Readers ignore unknown keys. Unknown `version` values
 must be rejected.
 
 The non-ASCII first byte and the `\r\n` let tools detect text-mode
@@ -242,7 +244,7 @@ that references it), so the evaluator can drop values once they are dead.
 
 ## 7. Text form
 
-`ddnnf-dump` prints a file as text, one node per line, with ids absolute and
+`bdnnf dump` prints a file as text, one node per line, with ids absolute and
 `F`/`T` for the constants:
 
     bdnnf 1 nvars 3

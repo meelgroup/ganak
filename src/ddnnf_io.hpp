@@ -54,6 +54,7 @@ struct Circuit {
   uint32_t nvars = 0;
   uint64_t props = 0;
   int nfile = 0;  // ids [2, nfile + 2) are nodes stored in the file
+  bdnnf::KV header_kv;
   bdnnf::KV footer_kv;
   bdnnf::Defs defs;  // passed through unchanged
 
@@ -102,6 +103,7 @@ inline bool load(const std::string& path, Circuit& c, std::string& err) {
     });
     c.root = (int)r.root;
     c.props = r.props;
+    c.header_kv = r.header_kv;
     c.footer_kv = r.footer_kv;
     c.defs = r.defs;
   } catch (const bdnnf::Error& e) {
@@ -140,7 +142,9 @@ inline bool save(const std::string& path, const Circuit& c, uint64_t props,
   std::vector<int> kids, units, frees;
   try {
     bdnnf::Writer w;
-    w.open(path, c.nvars, {{"producer", producer}});
+    bdnnf::KV hkv{{"producer", producer}};
+    for (const auto& kv : c.header_kv) if (kv.first != "producer") hkv.push_back(kv);
+    w.open(path, c.nvars, hkv);
     auto mapped = [&](int x) -> uint64_t {
       if (c.type[x] == 'f') return 0;
       if (c.type[x] == 't') return 1;

@@ -59,7 +59,8 @@ public:
 
   // The circuit is written over the input's vars (see CounterConfiguration).
   DDNNFCircuit(const std::string& fname, uint32_t _nvars, std::vector<std::vector<int>> _lit_map,
-               std::vector<int> _root_units, std::vector<int> _root_free, bdnnf::Defs _defs)
+               std::vector<int> _root_units, std::vector<int> _root_free, bdnnf::Defs _defs,
+               std::vector<uint32_t> proj)
       : nvars(_nvars), lit_map(std::move(_lit_map)), root_units(std::move(_root_units)),
         root_free(std::move(_root_free)), defs(std::move(_defs)) {
     for (const auto& ls : lit_map)
@@ -67,8 +68,10 @@ public:
     for (int l : root_units) nvars = std::max<uint32_t>(nvars, (uint32_t)std::abs(l));
     for (int v : root_free) nvars = std::max<uint32_t>(nvars, (uint32_t)v);
     guard([&] {
-      w.open(fname, nvars, {{"producer", std::string("ganak ") +
-          GANAK::get_version_tag() + " " + GANAK::get_version_sha1()}});
+      bdnnf::KV kv{{"producer", std::string("ganak ") +
+          GANAK::get_version_tag() + " " + GANAK::get_version_sha1()}};
+      if (!proj.empty()) kv.emplace_back("projection", bdnnf::var_list_str(proj));
+      w.open(fname, nvars, kv);
     });
   }
 

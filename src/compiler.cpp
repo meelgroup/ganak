@@ -47,7 +47,8 @@ public:
     defs.nodes = c.compile_def_nodes;
     defs.defs = c.compile_defs;
     circuit = std::make_unique<DDNNFCircuit>(fname, std::max(c.compile_nvars, counter.nVars()),
-        c.compile_lit_map, c.compile_root_units, c.compile_root_free, std::move(defs));
+        c.compile_lit_map, c.compile_root_units, c.compile_root_free, std::move(defs),
+        c.compile_proj);
     bool check = counter.get_conf().compile_check;
     SLOW_DEBUG_DO(check = true);
     // Unprojected, ganak's ORs are smooth: both arcs cover the comp's vars.

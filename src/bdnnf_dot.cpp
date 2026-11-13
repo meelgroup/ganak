@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf2dot: render a BDNNF circuit (raw from `ganak --compile` or cleaned by
-// `ddnnf-cleanup`) as a Graphviz DOT graph.
+// bdnnf dot: render a BDNNF circuit (raw from `ganak --compile` or cleaned by
+// `bdnnf cleanup`) as a Graphviz DOT graph.
 //
 //   OR ('o') -> blue ellipse "∨";  AND ('a') -> yellow box "∧";  FALSE ('f') -> "⊥"
 //   No operator arc carries literals. An OR branch that fixes literal(s) and
@@ -44,7 +44,7 @@ THE SOFTWARE.
 //
 // Free variables of an AND are drawn as OR(v, -v) nodes.
 //
-// Usage:  ddnnf2dot <in.bdnnf> [out.dot]      ("-" or omitted out => stdout)
+// Usage:  bdnnf dot <in.bdnnf> [out.dot]      ("-" or omitted out => stdout)
 
 #include <algorithm>
 #include <cstdlib>
@@ -64,15 +64,15 @@ namespace {
 using ddnnf_io::Arc;
 
 [[noreturn]] void die(const std::string& msg) {
-  std::cerr << "ddnnf2dot: " << msg << std::endl;
+  std::cerr << "bdnnf dot: " << msg << std::endl;
   exit(EXIT_FAILURE);
 }
 
 } // namespace
 
-int main(int argc, char** argv) {
+int bdnnf_dot(int argc, char** argv) {
   if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: " << argv[0] << " <in.bdnnf> [out.dot]   (\"-\"/omitted out => stdout)"
+    std::cerr << "Usage: bdnnf dot <in.bdnnf> [out.dot]   (\"-\"/omitted out => stdout)"
               << std::endl;
     return EXIT_FAILURE;
   }

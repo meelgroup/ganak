@@ -3,11 +3,11 @@ c c The circuit's structural count AND full model set must match the CNF, the
 c c circuit must be (strictly) decomposable, and after cleanup it must be in
 c c canonical form (no dead nodes, root id 1, ids contiguous).
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %ddnnf_verify %t.bdnnf --expect-count 4 --no-strict
-c c RUN: %ddnnf_count %t.bdnnf --cnf %s --sample 300
-c c RUN: %ddnnf_cleanup %t.bdnnf %t.clean.bdnnf
-c c RUN: %ddnnf_verify %t.clean.bdnnf --expect-count 4 --check-decomposable --strict
-c c RUN: %ddnnf2dot %t.clean.bdnnf %t.dot
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 4 --no-strict
+c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
+c c RUN: %bdnnf cleanup %t.bdnnf %t.clean.bdnnf
+c c RUN: %bdnnf verify %t.clean.bdnnf --expect-count 4 --check-decomposable --strict
+c c RUN: %bdnnf dot %t.clean.bdnnf %t.dot
 p cnf 3 2
 1 2 0
 -2 3 0

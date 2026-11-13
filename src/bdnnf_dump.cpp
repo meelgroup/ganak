@@ -20,9 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// ddnnf-dump: print a BDNNF file as text (spec-bdnnf.md, section 7), streaming.
+// bdnnf dump: print a BDNNF file as text (spec-bdnnf.md, section 7), streaming.
 //
-// Usage:  ddnnf-dump <in.bdnnf | -> [out.txt]      ("-" or omitted out => stdout)
+// Usage:  bdnnf dump <in.bdnnf | -> [out.txt]      ("-" or omitted out => stdout)
 
 #include <cstdlib>
 #include <cstdio>
@@ -42,9 +42,9 @@ std::string ref(uint64_t r) {
 
 }  // namespace
 
-int main(int argc, char** argv) {
+int bdnnf_dump(int argc, char** argv) {
   if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: " << argv[0] << " <in.bdnnf | -> [out.txt]" << std::endl;
+    std::cerr << "Usage: bdnnf dump <in.bdnnf | -> [out.txt]" << std::endl;
     return EXIT_FAILURE;
   }
   std::ios::sync_with_stdio(false);
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   if (argc == 3 && std::string(argv[2]) != "-") {
     fout.open(argv[2]);
     if (!fout.good()) {
-      std::cerr << "ddnnf-dump: cannot open " << argv[2] << std::endl;
+      std::cerr << "bdnnf dump: cannot open " << argv[2] << std::endl;
       return EXIT_FAILURE;
     }
   }
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     for (const auto& [k, v] : r.footer_kv) out << "meta " << k << " " << v << "\n";
   } catch (const bdnnf::Error& e) {
     out.flush();
-    std::cerr << "ddnnf-dump: " << argv[1] << ": " << e.what() << std::endl;
+    std::cerr << "bdnnf dump: " << argv[1] << ": " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
   out.flush();

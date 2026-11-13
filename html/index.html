@@ -123,7 +123,7 @@
         href="https://mccompetition.org/assets/files/mccomp_format_24.pdf">here</a>.
         Click "Compile &amp; visualize d-DNNF" to compile the formula into a
         <a href="https://en.wikipedia.org/wiki/Decision-DNNF">d-DNNF</a> circuit
-        (<code>ganak --compile</code>), tidy it up (<code>ddnnf-cleanup</code>),
+        (<code>ganak --compile</code>), tidy it up (<code>bdnnf cleanup</code>),
         and draw it as a graph (shown above the buttons) &mdash; all in your
         browser.</div>
 
@@ -144,7 +144,7 @@ c p show 1 2 3 0
             <label>d-DNNF circuit:</label>
             <div id="graph-output"></div>
             <details>
-                <summary>Cleaned BDNNF circuit, as text (after ddnnf-cleanup)</summary>
+                <summary>Cleaned BDNNF circuit, as text (after bdnnf cleanup)</summary>
                 <div id="ddnnf-text"></div>
             </details>
         </div>
@@ -333,7 +333,7 @@ c p show 1 2 3 0
         };
 
         // ---- generic "run a wasm CLI tool" helper -----------------------------
-        // ganak.js / ddnnf-cleanup.js are Emscripten CLI modules expecting a global
+        // ganak.js / bdnnf.js are Emscripten CLI modules expecting a global
         // `Module`; each runs in its own Web Worker. Write inputs to its FS, call
         // main, read an output file back. Returns a Promise of that file's contents.
         function createGenericWorker() {
@@ -427,7 +427,7 @@ c p show 1 2 3 0
             graphDiv.appendChild(svg);
         }
 
-        // Pipeline: ganak --compile (raw BDNNF) -> ddnnf-cleanup (clean BDNNF) ->
+        // Pipeline: ganak --compile (raw BDNNF) -> bdnnf cleanup (clean BDNNF) ->
         // DOT -> rendered SVG. Each wasm tool runs in its own worker.
         async function compileAndVisualize() {
             const inputContent = document.getElementById('input-content').value;
@@ -458,26 +458,26 @@ c p show 1 2 3 0
                     { '/input.cnf': inputContent }, '/out.bdnnf', append);
                 if (!rawNnf || !rawNnf.length) throw new Error('empty d-DNNF output');
 
-                // 2. ddnnf-cleanup: repair decomposability, drop dead nodes.
+                // 2. bdnnf cleanup: flatten, drop dead nodes.
                 status.textContent = 'Cleaning up...';
-                append('\n=== ddnnf-cleanup ===');
+                append('\n=== bdnnf cleanup ===');
                 const cleaned = await runWasmTool(
-                    'ddnnf-cleanup.js', 'ddnnf-cleanup.wasm',
-                    ['/in.bdnnf', '/out.bdnnf'],
+                    'bdnnf.js', 'bdnnf.wasm',
+                    ['cleanup', '/in.bdnnf', '/out.bdnnf'],
                     { '/in.bdnnf': rawNnf }, '/out.bdnnf', append);
                 if (!cleaned || !cleaned.length) throw new Error('empty cleaned d-DNNF');
                 const cleanedText = await runWasmTool(
-                    'ddnnf-dump.js', 'ddnnf-dump.wasm',
-                    ['/in.bdnnf', '/out.txt'],
+                    'bdnnf.js', 'bdnnf.wasm',
+                    ['dump', '/in.bdnnf', '/out.txt'],
                     { '/in.bdnnf': cleaned }, '/out.txt', append);
                 document.getElementById('ddnnf-text').textContent = cleanedText;
 
-                // 3. ddnnf2dot: translate the cleaned circuit into Graphviz DOT.
+                // 3. bdnnf dot: translate the cleaned circuit into Graphviz DOT.
                 status.textContent = 'Rendering...';
-                append('\n=== ddnnf2dot ===');
+                append('\n=== bdnnf dot ===');
                 const dot = await runWasmTool(
-                    'ddnnf2dot.js', 'ddnnf2dot.wasm',
-                    ['/in.bdnnf', '/out.dot'],
+                    'bdnnf.js', 'bdnnf.wasm',
+                    ['dot', '/in.bdnnf', '/out.dot'],
                     { '/in.bdnnf': cleaned }, '/out.dot', append);
                 if (!dot || !dot.trim()) throw new Error('empty DOT output');
 

@@ -83,6 +83,8 @@ must be UNSAT), `bdnnf stream` against separate runs, `bdnnf enum` for distinct 
 independent Python cross-check, run only on small files. Use `--big` (bigger
 CNFs, 5x timeout) for large circuits. Minimize a failure with
 `./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.
+`./ddnnife_diff.py --num 500` compares `bdnnf` with ddnnife (built in
+`../ddnnife` with `cargo build --release -p ddnnife_cli`, nightly cargo).
 
 `ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF (`spec-bdnnf.md`).
 Building with `SLOW_DEBUG` checks every node at emission: decomposability, arc

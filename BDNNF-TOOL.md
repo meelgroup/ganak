@@ -77,7 +77,11 @@ while evaluating.
 
 As a cross-check, `bdnnf lits` on ddnnife's `example_input/auto1.cnf`
 (compiled by Ganak) gives, for all 2513 features, the counts in ddnnife's
-reference `tests/data/auto1_sb_fs.csv`.
+reference `tests/data/auto1_sb_fs.csv`. count_fuzzer's `ddnnife_diff.py`
+compares the two tools on random unweighted, unprojected CNFs, through
+`bdnnf to-d4`: counts, conditioned counts, query files, SAT queries, core
+literals, feature counts, atomic sets and enumeration must agree, and both
+tools' t-wise samples must cover every satisfiable pair.
 
 ## References
 

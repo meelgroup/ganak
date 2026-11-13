@@ -41,6 +41,8 @@ THE SOFTWARE.
 #include <map>
 #include <random>
 #include <tuple>
+#include <type_traits>
+#include <unordered_map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -57,6 +59,12 @@ struct QueryError : std::runtime_error {
 
 // throws, so that bdnnf stream survives a bad query
 [[noreturn]] void die(const std::string& msg) { throw QueryError(msg); }
+
+// cheap internal checks, on in every build
+#define BDNNF_CHECK(c) \
+  do { \
+    if (!(c)) die(std::string("internal error: ") + #c + " (" + __FILE__ + ":" + std::to_string(__LINE__) + ")"); \
+  } while (0)
 
 // "a", "a/b", "-0.25", "1e-3"-free decimals.
 mpq_class parse_num(const std::string& s) {
@@ -531,7 +539,7 @@ std::vector<std::vector<int>> read_queries(const std::string& path, const std::v
     while (ss >> l && l != 0) {
       if ((size_t)std::abs(l) >= in_proj.size() || !in_proj[(size_t)std::abs(l)])
         die("query literal " + std::to_string(l) + " is not of a projection var");
-      q.push_back((int)l);
+      if (std::find(q.begin(), q.end(), (int)l) == q.end()) q.push_back((int)l);
     }
     qs.push_back(std::move(q));
   }
@@ -541,113 +549,215 @@ std::vector<std::vector<int>> read_queries(const std::string& path, const std::v
 // Answers the queries (assumption sets) in chunks, one forward scan per chunk:
 // --sat with one bit per query and node, 64 per scan; counts with one
 // rational per query and node, as many per scan as fit kMaxVals.
-template <class WFn>
-void batch(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<uint64_t>& vs,
-           size_t WD, const std::vector<char>& in_proj, WFn&& w,
-           const std::vector<std::vector<int>>& qs, bool sat, const std::vector<int>& assume,
-           std::vector<std::string>& out) {
-  constexpr size_t kMaxVals = 1 << 22;
+// Count queries (assumption sets) as in ddnnife's marking: per node, a mask of
+// the queries of the chunk that mention a var under it; only those get their
+// own value there, the others read the unconditioned one (`base`). Num is
+// mpz_class for unweighted counts, where free and smoothing vars are shifts.
+template <class Num, class WFn>
+void batch_counts(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<uint64_t>& vs,
+                  size_t WD, const std::vector<char>& in_proj, WFn&& w, const std::vector<Num>& base,
+                  const std::vector<std::vector<int>>& qs, std::vector<std::string>& out) {
+  constexpr bool unw = std::is_same_v<Num, mpz_class>;
   const uint32_t nv = r.nvars;
   const size_t n = dead.size();
   auto row = [&](uint64_t id) { return vs.data() + id * WD; };
   auto has = [](const uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
+  auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
+  auto pv = [&](int l) { return in_proj[(uint32_t)std::abs(l)] != 0; };
+  std::vector<mpq_class> wl(unw ? 0 : 2 * (size_t)nv + 2);
+  if (!unw) for (uint32_t v = 1; v <= nv; v++) { wl[lidx((int)v)] = w((int)v); wl[lidx(-(int)v)] = w(-(int)v); }
+  const mpq_class zero = 0;
+  // a node stores values only for the queries touching it, so memory is the
+  // marking work and every chunk can take 64
+  constexpr size_t K = 64;
+  std::vector<uint64_t> kill(2 * (size_t)nv + 2), qm(nv + 1), touch(n);
+  std::vector<uint32_t> slot(n);
+  std::vector<Num> pool;
+  std::vector<uint32_t> gap;
+  std::vector<uint64_t> av(WD);
+  Num total;  // the unconditioned count, for queries that touch nothing
+  {
+    Num m = 1;
+    if (!dead[r.root])
+      for (uint32_t v = 1; v <= nv; v++)
+        if (in_proj[v] && !has(row(r.root), v)) {
+          if constexpr (unw) m <<= 1; else m *= wl[lidx((int)v)] + wl[lidx(-(int)v)];
+        }
+    total = dead[r.root] ? Num(0) : Num(base[r.root] * m);
+  }
+  for (size_t q0 = 0; q0 < qs.size(); q0 += K) {
+    const size_t k = std::min(K, qs.size() - q0);
+    std::fill(kill.begin(), kill.end(), 0);
+    std::fill(qm.begin(), qm.end(), 0);
+    uint64_t conflict = 0;
+    for (size_t j = 0; j < k; j++)
+      for (int l : qs[q0 + j]) {
+        kill[lidx(-l)] |= 1ULL << j;
+        qm[(uint32_t)std::abs(l)] |= 1ULL << j;
+      }
+    for (size_t j = 0; j < k; j++)
+      for (int l : qs[q0 + j]) if ((kill[lidx(l)] >> j) & 1) conflict |= 1ULL << j;
+    std::vector<std::vector<uint32_t>> qv(k);  // each query's distinct vars
+    for (size_t j = 0; j < k; j++)
+      for (int l : qs[q0 + j]) {
+        const uint32_t v = (uint32_t)std::abs(l);
+        if (std::find(qv[j].begin(), qv[j].end(), v) == qv[j].end()) qv[j].push_back(v);
+      }
+    auto wj = [&](int l, size_t j) -> const mpq_class& {
+      return (kill[lidx(l)] >> j) & 1 ? zero : wl[lidx(l)];
+    };
+    auto lit_mask = [&](const std::vector<int>& ls) {
+      uint64_t m = 0;
+      for (int l : ls) if (pv(l)) m |= qm[(uint32_t)std::abs(l)];
+      return m;
+    };
+    pool.clear();
+    auto lane = [](uint64_t t, size_t j) { return (size_t)__builtin_popcountll(t & ((1ULL << j) - 1)); };
+    auto get = [&](uint64_t c, size_t j) -> const Num& {
+      return (touch[c] >> j) & 1 ? pool[slot[c] + lane(touch[c], j)] : base[c];
+    };
+    // the factor of the free/gap vars `vs_` (membership: in_vs) for query j
+    auto gap_factor = [&](const std::vector<uint32_t>& vs_, auto&& in_vs, size_t j, Num& f) {
+      if constexpr (unw) {
+        unsigned long sh = vs_.size();
+        for (uint32_t v : qv[j])
+          if (in_vs(v)) {
+            BDNNF_CHECK(sh > 0);
+            sh--;
+          }
+        f = 1;
+        f <<= sh;
+      } else {
+        f = 1;
+        for (uint32_t v : vs_) f *= wj((int)v, j) + wj(-(int)v, j);
+      }
+    };
+    touch[0] = touch[1] = 0;
+    r.scan([&](uint64_t id, const bdnnf::Node& nd) {
+      if (dead[id]) { touch[id] = 0; return; }
+      uint64_t t;
+      if (nd.kind == bdnnf::K_AND) {
+        t = lit_mask(nd.units);
+        for (uint64_t c : nd.kids) t |= touch[c];
+        gap.clear();
+        for (uint32_t v : nd.free) if (in_proj[v]) { gap.push_back(v); t |= qm[v]; }
+      } else {
+        t = 0;
+        for (const auto& a : nd.arcs) if (!dead[a.child]) t |= touch[a.child] | lit_mask(a.lits);
+      }
+      touch[id] = t;
+      if (!t) return;
+      BDNNF_CHECK(pool.size() + 64 < UINT32_MAX);
+      slot[id] = (uint32_t)pool.size();
+      pool.resize(pool.size() + (size_t)__builtin_popcountll(t));
+      Num f;
+      if (nd.kind == bdnnf::K_AND) {
+        for (size_t j = 0; j < k; j++) {
+          if (!((t >> j) & 1)) continue;
+          Num x = 1;
+          for (uint64_t c : nd.kids) x *= get(c, j);
+          for (int l : nd.units) {
+            if (!pv(l)) continue;
+            if constexpr (unw) { if ((kill[lidx(l)] >> j) & 1) x = 0; }
+            else x *= wj(l, j);
+          }
+          gap_factor(gap, [&](uint32_t v) { return std::find(gap.begin(), gap.end(), v) != gap.end(); }, j, f);
+          pool[slot[id] + lane(t, j)] = x * f;
+        }
+        return;
+      }
+      const uint64_t* me = row(id);
+      for (const auto& a : nd.arcs) {
+        if (dead[a.child]) continue;
+        bool cf = false;
+        for (size_t p = 0; p < a.lits.size() && !cf; p++)
+          for (size_t q = p + 1; q < a.lits.size(); q++) cf |= a.lits[p] == -a.lits[q];
+        if (cf) continue;
+        const uint64_t* cv = row(a.child);
+        av.assign(cv, cv + WD);
+        for (int l : a.lits) if (pv(l)) { const uint32_t v = (uint32_t)std::abs(l); av[v >> 6] |= 1ULL << (v & 63); }
+        gap.clear();
+        for (size_t q = 0; q < WD; q++)
+          for (uint64_t m = me[q] & ~av[q]; m; m &= m - 1) gap.push_back((uint32_t)(q * 64 + __builtin_ctzll(m)));
+        for (size_t j = 0; j < k; j++) {
+          if (!((t >> j) & 1)) continue;
+          Num y = get(a.child, j);
+          for (int l : a.lits) {
+            if (!pv(l)) continue;
+            if constexpr (unw) { if ((kill[lidx(l)] >> j) & 1) y = 0; }
+            else y *= wj(l, j);
+          }
+          gap_factor(gap, [&](uint32_t v) { return has(me, v) && !has(av.data(), v); }, j, f);
+          pool[slot[id] + lane(t, j)] += y * f;
+        }
+      }
+    });
+    std::vector<uint32_t> missing;
+    if (!dead[r.root])
+      for (uint32_t v = 1; v <= nv; v++) if (in_proj[v] && !has(row(r.root), v)) missing.push_back(v);
+    for (size_t j = 0; j < k; j++) {
+      Num x;
+      if (dead[r.root] || ((conflict >> j) & 1)) x = 0;
+      else if (!((touch[r.root] >> j) & 1) && qs[q0 + j].empty()) x = total;
+      else {
+        Num f;
+        gap_factor(missing, [&](uint32_t v) { return !has(row(r.root), v); }, j, f);
+        x = get(r.root, j) * f;
+      }
+      if constexpr (!unw) x.canonicalize();
+      out.push_back(x.get_str());
+    }
+  }
+}
+
+// SAT queries (assumption sets, plus --assume), 64 per forward scan with one
+// bit per query and node.
+void batch_sat(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<char>& in_proj,
+               const std::vector<std::vector<int>>& qs, const std::vector<int>& assume,
+               std::vector<std::string>& out) {
+  const uint32_t nv = r.nvars;
+  const size_t n = dead.size();
   auto conflicting = [](const std::vector<int>& ls) {
     for (size_t p = 0; p < ls.size(); p++)
       for (size_t q = p + 1; q < ls.size(); q++) if (ls[p] == -ls[q]) return true;
     return false;
   };
-  const size_t K = sat ? 64 : std::max<size_t>(1, std::min<size_t>(64, kMaxVals / n));
   // kill[lit]: the queries of the chunk that assume -lit
-  std::vector<uint64_t> kill(2 * (size_t)nv + 2);
+  std::vector<uint64_t> kill(2 * (size_t)nv + 2), sm(n);
   auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
-  std::vector<uint64_t> sm(sat ? n : 0);
-  std::vector<mpq_class> val(sat ? 0 : n * K);
-  std::vector<uint32_t> gap;
-  std::vector<uint64_t> av(WD);
-  for (size_t q0 = 0; q0 < qs.size(); q0 += K) {
-    const size_t k = std::min(K, qs.size() - q0);
+  for (size_t q0 = 0; q0 < qs.size(); q0 += 64) {
+    const size_t k = std::min<size_t>(64, qs.size() - q0);
     const uint64_t all = k == 64 ? ~0ULL : (1ULL << k) - 1;
     std::fill(kill.begin(), kill.end(), 0);
     for (size_t j = 0; j < k; j++)
       for (int l : qs[q0 + j]) kill[lidx(-l)] |= 1ULL << j;
-    if (sat) for (int l : assume) kill[lidx(-l)] |= all;
-    auto wj = [&](int l, size_t j) -> mpq_class {
-      if (!in_proj[(uint32_t)std::abs(l)]) return 1;
-      return (kill[lidx(l)] >> j) & 1 ? mpq_class(0) : w(l);
-    };
-    auto bothj = [&](uint32_t v, size_t j) -> mpq_class { return wj((int)v, j) + wj(-(int)v, j); };
+    for (int l : assume) kill[lidx(-l)] |= all;
     auto killed = [&](const std::vector<int>& ls) {
       uint64_t m = 0;
       for (int l : ls) if (in_proj[(uint32_t)std::abs(l)]) m |= kill[lidx(l)];
       return m;
     };
-    if (sat) { sm[0] = 0; sm[1] = all; }
-    else for (size_t j = 0; j < K; j++) { val[j] = 0; val[K + j] = 1; }
+    sm[0] = 0;
+    sm[1] = all;
     r.scan([&](uint64_t id, const bdnnf::Node& nd) {
-      if (dead[id]) {
-        if (sat) sm[id] = 0;
-        else for (size_t j = 0; j < k; j++) val[id * K + j] = 0;
-        return;
-      }
+      if (dead[id]) { sm[id] = 0; return; }
+      uint64_t m;
       if (nd.kind == bdnnf::K_AND) {
-        if (sat) {
-          uint64_t m = all & ~killed(nd.units);
-          for (uint64_t c : nd.kids) m &= sm[c];
-          sm[id] = m;
-          return;
-        }
-        for (size_t j = 0; j < k; j++) {
-          mpq_class x = 1;
-          for (uint64_t c : nd.kids) x *= val[c * K + j];
-          for (int l : nd.units) x *= wj(l, j);
-          for (uint32_t v : nd.free) if (in_proj[v]) x *= bothj(v, j);
-          val[id * K + j] = std::move(x);
-        }
-        return;
-      }
-      if (sat) {
-        uint64_t m = 0;
+        m = all & ~killed(nd.units);
+        for (uint64_t c : nd.kids) m &= sm[c];
+      } else {
+        m = 0;
         for (const auto& a : nd.arcs)
           if (!dead[a.child] && !conflicting(a.lits)) m |= sm[a.child] & ~killed(a.lits);
-        sm[id] = m;
-        return;
       }
-      const uint64_t* me = row(id);
-      for (size_t j = 0; j < k; j++) val[id * K + j] = 0;
-      for (const auto& a : nd.arcs) {
-        if (dead[a.child] || conflicting(a.lits)) continue;
-        const uint64_t* cv = row(a.child);
-        av.assign(cv, cv + WD);
-        for (int l : a.lits) {
-          const uint32_t v = (uint32_t)std::abs(l);
-          if (in_proj[v]) av[v >> 6] |= 1ULL << (v & 63);
-        }
-        gap.clear();
-        for (size_t q = 0; q < WD; q++)
-          for (uint64_t m = me[q] & ~av[q]; m; m &= m - 1) gap.push_back((uint32_t)(q * 64 + __builtin_ctzll(m)));
-        for (size_t j = 0; j < k; j++) {
-          mpq_class y = val[a.child * K + j];
-          for (int l : a.lits) y *= wj(l, j);
-          for (uint32_t v : gap) y *= bothj(v, j);
-          val[id * K + j] += y;
-        }
-      }
+      sm[id] = m;
     });
     for (size_t j = 0; j < k; j++) {
-      if (sat) {
-        const bool ok = !dead[r.root] && ((sm[r.root] >> j) & 1);
-        bool conflict = false;
-        for (int l : qs[q0 + j]) conflict |= (kill[lidx(l)] >> j) & 1;
-        for (int l : assume) conflict |= (kill[lidx(l)] >> j) & 1;
-        out.push_back(ok && !conflict ? "SAT" : "UNSAT");
-        continue;
-      }
-      mpq_class x = dead[r.root] ? mpq_class(0) : val[r.root * K + j];
-      if (!dead[r.root])
-        for (uint32_t v = 1; v <= nv; v++)
-          if (in_proj[v] && !has(row(r.root), v)) x *= bothj(v, j);
-      x.canonicalize();
-      out.push_back(x.get_str());
+      const bool ok = !dead[r.root] && ((sm[r.root] >> j) & 1);
+      bool conflict = false;
+      for (int l : qs[q0 + j]) conflict |= (kill[lidx(l)] >> j) & 1;
+      for (int l : assume) conflict |= (kill[lidx(l)] >> j) & 1;
+      out.push_back(ok && !conflict ? "SAT" : "UNSAT");
     }
   }
 }
@@ -954,6 +1064,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       // walk the stages back from rank j: each factor's rank, then recurse
       auto unwind = [&](const std::vector<KFactor>& f, const std::vector<KStage>& sts, uint32_t j) {
         for (size_t s = f.size(); s > 0; s--) {
+          BDNNF_CHECK(j < sts[s].size());
           const KItem& it = sts[s][j];
           if (f[s - 1].child) stk.push_back({f[s - 1].child, it.b});
           else setl(f[s - 1].lits[it.b]);
@@ -979,6 +1090,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
             continue;
           }
           or_merge(x, nd, merged);
+          BDNNF_CHECK(j < merged.size());
           const KItem pick = merged[j];
           const auto& a = nd.arcs[pick.a];
           for (int l : a.lits) setl(l);
@@ -1013,7 +1125,14 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     }
     if (is_batch) {
       std::vector<std::string> ans;
-      batch(r, dead, vs, WD, W.in_proj, w, read_queries(queries, W.in_proj), sat, assume, ans);
+      const auto qs = read_queries(queries, W.in_proj);
+      if (sat) batch_sat(r, dead, W.in_proj, qs, assume, ans);
+      else if (!W.weighted) {
+        std::vector<mpz_class> base(val.size());
+        for (size_t i = 0; i < val.size(); i++) base[i] = val[i].get_num();
+        batch_counts<mpz_class>(r, dead, vs, WD, W.in_proj, w, base, qs, ans);
+      } else batch_counts<mpq_class>(r, dead, vs, WD, W.in_proj, w, val, qs, ans);
+      BDNNF_CHECK(ans.size() == qs.size());
       std::string o;
       for (const auto& a : ans) { o += a; o += '\n'; }
       std::cout << o << std::flush;
@@ -1055,26 +1174,51 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
 
     const auto cls = cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf);
     NodeAccess acc(r);
-    bdnnf::Node nd;
     gmp_randclass rnd(gmp_randinit_default);
     rnd.seed(seed);
-    std::vector<mpq_class> ys;
-    std::vector<mpz_class> zs;
-    // index i with probability ys[i] / sum(ys)
-    auto pick = [&]() -> size_t {
-      mpz_class den = 1, tot = 0;
+    // Per node visited, decoded once; per OR node, its arc weights, and for
+    // sampling scaled to integers with prefix sums.
+    struct OrW {
+      std::vector<mpq_class> ys;
+      std::vector<mpz_class> cum;
+    };
+    std::unordered_map<uint64_t, bdnnf::Node> ncache;
+    std::unordered_map<uint64_t, OrW> orw;
+    auto node_of = [&](uint64_t x) -> const bdnnf::Node& {
+      auto it = ncache.find(x);
+      if (it != ncache.end()) return it->second;
+      bdnnf::Node dec;
+      acc.get(x, dec);
+      return ncache.emplace(x, std::move(dec)).first->second;
+    };
+    // cumulative integer weights of ys, the same ratios
+    auto cumulate = [](const std::vector<mpq_class>& ys, std::vector<mpz_class>& cum) {
+      mpz_class den = 1;
       for (const auto& y : ys) mpz_lcm(den.get_mpz_t(), den.get_mpz_t(), y.get_den_mpz_t());
-      zs.clear();
+      cum.clear();
+      mpz_class acc_ = 0;
       for (const auto& y : ys) {
-        zs.push_back(y.get_num() * (den / y.get_den()));
-        tot += zs.back();
+        acc_ += y.get_num() * (den / y.get_den());
+        cum.push_back(acc_);
       }
-      if (tot <= 0) die("sampled into a node of weight 0");
-      mpz_class p = rnd.get_z_range(tot);
-      size_t i = 0;
-      while (p >= zs[i]) { p -= zs[i]; i++; }
+      if (cum.empty() || cum.back() <= 0) die("sampled into a node of weight 0");
+    };
+    // index i with probability (cum[i] - cum[i-1]) / cum.back()
+    auto pick = [&](const std::vector<mpz_class>& cum) -> size_t {
+      const mpz_class p = rnd.get_z_range(cum.back());
+      const size_t i = (size_t)(std::upper_bound(cum.begin(), cum.end(), p) - cum.begin());
+      BDNNF_CHECK(i < cum.size());
       return i;
     };
+    auto or_weights = [&](uint64_t x, const bdnnf::Node& nd) -> const OrW& {
+      auto it = orw.find(x);
+      if (it != orw.end()) return it->second;
+      OrW o;
+      for (const auto& a : nd.arcs) o.ys.push_back(arc_val(row(x), a));
+      if (!enumerating) cumulate(o.ys, o.cum);
+      return orw.emplace(x, std::move(o)).first->second;
+    };
+    std::vector<std::vector<mpz_class>> var_cum(nv + 1);  // free projection var: w(-v), w(v)
     std::vector<char> defined(nv + 1, 0);
     for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
     std::vector<signed char> val2(nv + 1);
@@ -1108,6 +1252,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       // a free var of the unranked model: radix 2, or 1 when one literal has weight 0
       auto set_free = [&](uint32_t v, mpz_class& i) {
         const mpz_class rad = both(v).get_num();
+        BDNNF_CHECK(rad == 1 || rad == 2);
         setl(rad == 1 ? (w((int)v) == 0 ? -(int)v : (int)v) : (digit(i, rad) == 1 ? (int)v : -(int)v));
       };
       stk.assign(1, r.root);
@@ -1125,8 +1270,12 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
         mpz_class i;
         if (enumerating) { i = istk.back(); istk.pop_back(); }
         path_nodes.push_back(x);
-        if (x <= 1) { if (x == 0) die("FAIL: sampled into FALSE"); continue; }
-        acc.get(x, nd);
+        if (x <= 1) {
+          if (x == 0) die("FAIL: sampled into FALSE");
+          if (enumerating) BDNNF_CHECK(i == 0);
+          continue;
+        }
+        const bdnnf::Node& nd = node_of(x);
         if (nd.kind == bdnnf::K_AND) {
           for (int l : nd.units) setl(l);
           for (uint64_t k : nd.kids) {
@@ -1136,12 +1285,16 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
           if (enumerating) for (uint32_t v : nd.free) if (W.in_proj[v]) set_free(v, i);
           continue;
         }
-        ys.clear();
-        for (const auto& a : nd.arcs) ys.push_back(arc_val(row(x), a));
+        const OrW& ow = or_weights(x, nd);
+        const auto& ys = ow.ys;
         size_t ai = 0;
-        if (!enumerating) ai = pick();
+        if (!enumerating) ai = pick(ow.cum);
         else
-          while (i >= ys[ai].get_num()) { i -= ys[ai].get_num(); ai++; }
+          while (i >= ys[ai].get_num()) {
+            i -= ys[ai].get_num();
+            ai++;
+            BDNNF_CHECK(ai < ys.size());
+          }
         const auto& a = nd.arcs[ai];
         for (int l : a.lits) setl(l);
         stk.push_back(a.child);
@@ -1166,8 +1319,8 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
           if (W.in_proj[v]) die("FAIL: model " + mpz_class(start + smp).get_str() + " leaves var " + std::to_string(v) + " open");
           val2[v] = -1;
         } else if (W.in_proj[v]) {
-          ys.assign({w(-(int)v), w((int)v)});
-          val2[v] = pick() == 1 ? 1 : -1;
+          if (var_cum[v].empty()) cumulate({w(-(int)v), w((int)v)}, var_cum[v]);
+          val2[v] = pick(var_cum[v]) == 1 ? 1 : -1;
         } else val2[v] = rnd.get_z_bits(1) == 1 ? 1 : -1;
       }
       bdnnf::eval_defs(r.defs, nv, val2);
@@ -1218,7 +1371,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
             qs.push_back({-g[0], g[i]});
           }
         std::vector<std::string> ans;
-        batch(r, dead, vs, WD, W.in_proj, w, qs, true, assume, ans);
+        batch_sat(r, dead, W.in_proj, qs, assume, ans);
         size_t qi = 0;
         for (const auto& g : cand) {
           std::vector<int> eq{g[0]}, rest;

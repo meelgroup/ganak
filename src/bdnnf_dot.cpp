@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-// bdnnf dot: render a BDNNF circuit (raw from `ganak --compile` or cleaned by
-// `bdnnf cleanup`) as a Graphviz DOT graph.
+// bdnnf dot: render the part of a BDNNF circuit reachable from the root as a
+// Graphviz DOT graph.
 //
 //   OR ('o') -> blue ellipse "∨";  AND ('a') -> yellow box "∧";  FALSE ('f') -> "⊥"
 //   No operator arc carries literals. An OR branch that fixes literal(s) and

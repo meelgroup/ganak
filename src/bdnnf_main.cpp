@@ -29,7 +29,6 @@ THE SOFTWARE.
 
 int bdnnf_verify(int argc, char** argv);
 int bdnnf_query(int argc, char** argv);
-int bdnnf_cleanup(int argc, char** argv);
 int bdnnf_dump(int argc, char** argv);
 int bdnnf_to_d4(int argc, char** argv);
 int bdnnf_dot(int argc, char** argv);
@@ -44,7 +43,6 @@ const Cmd cmds[] = {
   {"verify", bdnnf_verify, "check the format and every claimed property"},
   {"count", bdnnf_query, "weighted/projected model count, under --assume"},
   {"sample", bdnnf_query, "weighted/uniform random models, under --assume"},
-  {"cleanup", bdnnf_cleanup, "flatten, fold unary ANDs, drop dead nodes"},
   {"dump", bdnnf_dump, "print as text"},
   {"to-d4", bdnnf_to_d4, "convert to d4 .nnf"},
   {"dot", bdnnf_dot, "render as Graphviz DOT"},

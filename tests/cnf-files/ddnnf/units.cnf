@@ -2,11 +2,9 @@ c c d-DNNF compile: a unit-propagation chain (1 forces 2 forces 3), one model.
 c c Validates that the propagated literals are recorded on the arcs (the model
 c c set check fails if any arc literal is wrong).
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --expect-count 1 --no-strict
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 1 --check-decomposable
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
-c c RUN: %bdnnf cleanup %t.bdnnf %t.clean.bdnnf
-c c RUN: %bdnnf verify %t.clean.bdnnf --expect-count 1 --check-decomposable --strict
-c c RUN: %bdnnf dot %t.clean.bdnnf %t.dot
+c c RUN: %bdnnf dot %t.bdnnf %t.dot
 p cnf 3 3
 1 0
 -1 2 0

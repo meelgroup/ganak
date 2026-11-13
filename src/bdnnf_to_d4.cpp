@@ -22,8 +22,7 @@ THE SOFTWARE.
 
 // bdnnf to-d4: convert a BDNNF file to the d4 .nnf text format, for legacy
 // consumers (ddnnife and co.). Root = 1, ids contiguous, reachable nodes only;
-// free variables become OR(v, -v) nodes. Run bdnnf cleanup first if the
-// consumer needs strict decomposability.
+// free variables become OR(v, -v) nodes.
 //
 // Usage:  bdnnf to-d4 <in.bdnnf> [out.nnf]      ("-" or omitted out => stdout)
 

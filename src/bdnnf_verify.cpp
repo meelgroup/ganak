@@ -26,9 +26,7 @@ THE SOFTWARE.
 //
 // Usage:  bdnnf verify <in.bdnnf>               streamed structural count only
 //         bdnnf verify <in.bdnnf> [--expect-count N] [--no-check-decomposable]
-//                      [--no-strict] [-q]
-// --strict (default with any option): CLEAN, no dead nodes, root last, and
-// canonical (no AND under an AND, no non-root single-conjunct AND).
+//                      [-q]
 
 #include <algorithm>
 #include <cstdint>
@@ -62,8 +60,6 @@ struct Streamed {
   uint64_t props = 0;
   bdnnf::KV footer_kv;
   std::string err;
-  // Per node: is an AND; AND with an AND child (nested); AND with one conjunct.
-  std::vector<char> is_and, nested, unary;
 };
 Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smooth) {
   bdnnf::Reader r;
@@ -81,15 +77,9 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
   auto bit = [](uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
   auto set = [](uint64_t* s, uint32_t v) { s[v >> 6] |= 1ULL << (v & 63); };
   auto fail_once = [&](const std::string& m) { if (out.err.empty()) out.err = m; };
-  out.is_and.assign(n, 0);
-  out.nested.assign(n, 0);
-  out.unary.assign(n, 0);
   r.scan([&](uint64_t id, const bdnnf::Node& nd) {
     mpz_class x;
     if (nd.kind == bdnnf::K_AND) {
-      out.is_and[id] = 1;
-      for (uint64_t k : nd.kids) out.nested[id] |= out.is_and[k];
-      out.unary[id] = nd.kids.size() + (nd.units.empty() ? 0 : 1) + nd.free.size() == 1;
       x = 1;
       for (uint64_t k : nd.kids) x *= val[k];
       x <<= nd.free.size();
@@ -168,10 +158,8 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
   return out;
 }
 
-// Backward scan from the root: reachable nodes (one bit each), then the strict
-// form on them.
-std::string check_strict(const std::string& path, const Streamed& st) {
-  if (!(st.props & bdnnf::P_CLEAN)) return "file is not flagged CLEAN";
+// CLEAN: root last, no dead nodes (backward scan, one bit per node).
+std::string check_clean(const std::string& path, const Streamed& st) {
   if (st.nnodes > 0 && st.root != st.nnodes + 1)
     return "root " + std::to_string(st.root) + " is not the last node";
   std::vector<char> reach(st.nnodes + 2, 0);
@@ -184,10 +172,6 @@ std::string check_strict(const std::string& path, const Streamed& st) {
       if (err.empty()) err = "1 or more dead node(s) present; first: " + std::to_string(id);
       return;
     }
-    if (st.nested[id] && err.empty())
-      err = "nested AND: AND " + std::to_string(id) + " has an AND child (should be flattened)";
-    if (st.unary[id] && id != st.root && err.empty())
-      err = "unary AND: AND " + std::to_string(id) + " has a single conjunct (should be elided into its parent edge)";
     if (nd.kind == bdnnf::K_AND) for (uint64_t k : nd.kids) reach[k] = 1;
     else for (const auto& a : nd.arcs) reach[a.child] = 1;
   });
@@ -201,14 +185,13 @@ int bdnnf_verify(int argc, char** argv) {
   mpz_class expect_count;
   bool have_expect = false;
   bool check_decomp = true;
-  bool strict = true;
   bool quiet = false;
   bool any_opt = false;
 
   auto usage = [&]() {
     std::cerr <<
       "Usage: bdnnf verify <in.bdnnf>\n"
-      "         [--expect-count N] [--no-check-decomposable] [--no-strict] [-q|--quiet]\n"
+      "         [--expect-count N] [--no-check-decomposable] [-q|--quiet]\n"
       "\n"
       "With no option, prints the structural count.\n";
     std::exit(EXIT_FAILURE);
@@ -219,9 +202,7 @@ int bdnnf_verify(int argc, char** argv) {
     if (a == "-h" || a == "--help") usage();
     else if (a == "-q" || a == "--quiet") { quiet = true; any_opt = true; }
     else if (a == "--check-decomposable") { check_decomp = true; any_opt = true; }
-    else if (a == "--strict") { strict = true; any_opt = true; }
     else if (a == "--no-check-decomposable") { check_decomp = false; any_opt = true; }
-    else if (a == "--no-strict") { strict = false; any_opt = true; }
     else if (a == "--expect-count") {
       if (i + 1 >= argc) usage();
       expect_count.set_str(argv[++i], 10);
@@ -256,9 +237,9 @@ int bdnnf_verify(int argc, char** argv) {
       fail("count " + st.count.get_str() + " != footer count " + fc);
     if (have_expect && st.count != expect_count)
       fail("count " + st.count.get_str() + " != expected " + expect_count.get_str());
-    if (strict || (props & bdnnf::P_CLEAN)) {
-      const std::string e = check_strict(path, st);
-      if (!e.empty() && (strict || e.rfind("file is not", 0) != 0)) fail(e);
+    if (props & bdnnf::P_CLEAN) {
+      const std::string e = check_clean(path, st);
+      if (!e.empty()) fail(e);
     }
     if (!quiet)
       std::cout << "bdnnf verify: OK (count=" << st.count.get_str() << ", nodes=" << st.nnodes << ")\n";

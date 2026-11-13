@@ -73,14 +73,14 @@ cd ../count_fuzzer
 ### 2. d-DNNF compilation (`--compile`)
 
 count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
-for all): it compiles with ganak, then checks the raw and the cleaned circuit
+for all): it compiles with ganak, then checks the circuit
 with scalable C++ tools only — `bdnnf verify` (format + every claimed property,
 streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the
 count under fresh random weights), all against ganak. `tests/bdnnf.py` is an
 independent Python cross-check, run only on small files. Use `--big` (bigger
 CNFs, 5x timeout) for large circuits. Minimize a failure with
-`./minim_bdnnf.py file.cnf [--check clean|decomp|structural|weights]`.
+`./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.
 
 `ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF (`spec-bdnnf.md`).
 Building with `SLOW_DEBUG` checks every node at emission: decomposability, arc
@@ -102,14 +102,14 @@ cd build && lit tests/cnf-files/a.cnf
 
 ### d-DNNF compile tests
 
-`ctest` also runs deterministic d-DNNF compile/cleanup checks. They assert only
+`ctest` also runs deterministic d-DNNF compile checks. They assert only
 *semantic* invariants of the emitted circuit (count, sampled models,
-properties, canonical cleaned form) — never the byte-exact `.bdnnf` — so they
+properties) — never the byte-exact `.bdnnf` — so they
 do not break when search heuristics reshape the circuit:
 - `tests/cnf-files/ddnnf/*.cnf` — lit fixtures: `--compile`, then
   `bdnnf verify --expect-count N` (format, count, claimed properties),
-  `bdnnf sample --cnf` (sampled models satisfy the CNF), `bdnnf cleanup`,
-  re-verify the cleaned file `--strict`, and `bdnnf dot`. All the tools stream
+  `bdnnf sample --cnf` (sampled models satisfy the CNF), and `bdnnf dot`.
+  All the tools stream
   the file, with one var bitset per node at most.
 
 ## Architecture

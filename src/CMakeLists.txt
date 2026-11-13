@@ -111,7 +111,7 @@ endif()
 add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
-add_executable(bdnnf-bin bdnnf_main.cpp bdnnf_verify.cpp bdnnf_query.cpp bdnnf_cleanup.cpp
+add_executable(bdnnf-bin bdnnf_main.cpp bdnnf_verify.cpp bdnnf_query.cpp
   bdnnf_dump.cpp bdnnf_to_d4.cpp bdnnf_dot.cpp)
 target_link_libraries(bdnnf-bin PRIVATE PkgConfig::GMP)
 if(ZSTD_FOUND)

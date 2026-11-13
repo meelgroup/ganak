@@ -1,26 +1,11 @@
-c c Strict-decomp regression: faithful --compile of this CNF emits a circuit
-c c whose model count + model SET are correct (5897, matches brute force) but
-c c which violates strict d-DNNF decomposability: some AND node has two children
-c c whose subtrees both mention var 16. Root cause: conflict-learned (redundant)
-c c clauses can bridge variables that CompAnalyzer placed in different
-c c sub-components (the analyzer only sees irreducible clauses). Propagation
-c c inside one sub-component then sets a variable that "belongs" to another
-c c sub-component, which leaks into the OR's arc-lits.
-c c
-c c ddnnf-cleanup REPAIRS this post hoc by default: its strict-decomp pass
-c c scrubs the shared var from the child that doesn't force it (the other
-c c child's models all imply that var-polarity, so the scrub preserves count
-c c + model set). The first two RUN lines exercise the raw circuit (count
-c c + set still correct), the rest assert that after cleanup the circuit is
-c c strictly decomposable.
-c c
-c c Originally surfaced by `python3 tests/ddnnf_fuzz.py 500 --seed 207900131`.
+c c Decomposability regression: learnt clauses bridge vars of different
+c c components, so propagation inside one component used to set a var of
+c c another one, which leaked into the arc-lits (var 16 in two AND children).
+c c The circuit must be decomposable as written.
 c c
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --expect-count 5897 --no-strict
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 5897 --check-decomposable
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
-c c RUN: %bdnnf cleanup %t.bdnnf %t.clean.bdnnf
-c c RUN: %bdnnf verify %t.clean.bdnnf --expect-count 5897 --check-decomposable --strict
 p cnf 16 40
 -6 -14 2 4 0
 9 14 -10 -1 0

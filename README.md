@@ -343,7 +343,6 @@ the circuit, completed by the definitions, is a model of the CNF
 ./bdnnf dump out.bdnnf                      # human-readable text form
 ./bdnnf dot out.bdnnf out.dot               # Graphviz rendering
 ./bdnnf to-d4 out.bdnnf out.nnf             # d4 .nnf for legacy tools
-./bdnnf cleanup out.bdnnf clean.bdnnf       # smaller: flattened, no dead nodes
 ```
 
 Weights come from `--cnf`; the projection is stored in the file.

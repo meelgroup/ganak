@@ -123,8 +123,7 @@
         href="https://mccompetition.org/assets/files/mccomp_format_24.pdf">here</a>.
         Click "Compile &amp; visualize d-DNNF" to compile the formula into a
         <a href="https://en.wikipedia.org/wiki/Decision-DNNF">d-DNNF</a> circuit
-        (<code>ganak --compile</code>), tidy it up (<code>bdnnf cleanup</code>),
-        and draw it as a graph (shown above the buttons) &mdash; all in your
+        (<code>ganak --compile</code>) and draw it as a graph (shown above the buttons) &mdash; all in your
         browser.</div>
 
         <div>
@@ -144,7 +143,7 @@ c p show 1 2 3 0
             <label>d-DNNF circuit:</label>
             <div id="graph-output"></div>
             <details>
-                <summary>Cleaned BDNNF circuit, as text (after bdnnf cleanup)</summary>
+                <summary>BDNNF circuit, as text</summary>
                 <div id="ddnnf-text"></div>
             </details>
         </div>
@@ -427,7 +426,7 @@ c p show 1 2 3 0
             graphDiv.appendChild(svg);
         }
 
-        // Pipeline: ganak --compile (raw BDNNF) -> bdnnf cleanup (clean BDNNF) ->
+        // Pipeline: ganak --compile (BDNNF) -> bdnnf dump/dot ->
         // DOT -> rendered SVG. Each wasm tool runs in its own worker.
         async function compileAndVisualize() {
             const inputContent = document.getElementById('input-content').value;
@@ -458,27 +457,20 @@ c p show 1 2 3 0
                     { '/input.cnf': inputContent }, '/out.bdnnf', append);
                 if (!rawNnf || !rawNnf.length) throw new Error('empty d-DNNF output');
 
-                // 2. bdnnf cleanup: flatten, drop dead nodes.
-                status.textContent = 'Cleaning up...';
-                append('\n=== bdnnf cleanup ===');
-                const cleaned = await runWasmTool(
-                    'bdnnf.js', 'bdnnf.wasm',
-                    ['cleanup', '/in.bdnnf', '/out.bdnnf'],
-                    { '/in.bdnnf': rawNnf }, '/out.bdnnf', append);
-                if (!cleaned || !cleaned.length) throw new Error('empty cleaned d-DNNF');
-                const cleanedText = await runWasmTool(
+                // 2. bdnnf dump: the circuit as text.
+                const circuitText = await runWasmTool(
                     'bdnnf.js', 'bdnnf.wasm',
                     ['dump', '/in.bdnnf', '/out.txt'],
-                    { '/in.bdnnf': cleaned }, '/out.txt', append);
-                document.getElementById('ddnnf-text').textContent = cleanedText;
+                    { '/in.bdnnf': rawNnf }, '/out.txt', append);
+                document.getElementById('ddnnf-text').textContent = circuitText;
 
-                // 3. bdnnf dot: translate the cleaned circuit into Graphviz DOT.
+                // 3. bdnnf dot: translate the circuit into Graphviz DOT.
                 status.textContent = 'Rendering...';
                 append('\n=== bdnnf dot ===');
                 const dot = await runWasmTool(
                     'bdnnf.js', 'bdnnf.wasm',
                     ['dot', '/in.bdnnf', '/out.dot'],
-                    { '/in.bdnnf': cleaned }, '/out.dot', append);
+                    { '/in.bdnnf': rawNnf }, '/out.dot', append);
                 if (!dot || !dot.trim()) throw new Error('empty DOT output');
 
                 // 4. Render the DOT to SVG.

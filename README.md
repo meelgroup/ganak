@@ -259,16 +259,32 @@ Compiling still prints the count:
 
 ### Querying the circuit: `bdnnf`
 
-`bdnnf` counts, samples, enumerates and answers other queries (literal counts,
-core/dead literals, atomic sets, optimisation, t-wise sampling) on the circuit:
+`bdnnf` answers queries on the circuit. Weights come from `--cnf`; the
+projection set is stored in the circuit. Queries take `--assume L1,L2,...` to
+condition on literals.
+
+| Command | What it does |
+|---|---|
+| `count` | weighted, projected model count |
+| `sample -n N` | weighted (or uniform) random models |
+| `enum [-n N] [--start I]` | the models, in a fixed order; resumes from model I |
+| `lits` | the count of the models containing each literal |
+| `core` | literals true in every model (core; negated: dead) |
+| `batch FILE [--sat]` | a count (or SAT) per line of literals, many per pass |
+| `atomic [--cross]` | sets of vars equal (or opposite) in every model |
+| `opt --obj F [-k K] [--min]` | the k best models under a sum of literal values |
+| `twise -t T` | samples covering every satisfiable t-tuple of literals |
+| `stream` | the queries above, one per stdin line, circuit held in memory |
+| `verify` | check the format and every property the file claims |
+| `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` for legacy tools |
 
 ```shell
 ./bdnnf count out.bdnnf --cnf in.cnf --assume 3,-5
 ./bdnnf sample out.bdnnf -n 100 --cnf in.cnf
 ```
 
-See [BDNNF-TOOL.md](BDNNF-TOOL.md) for all commands and options, and for how
-they correspond to those of [ddnnife](https://github.com/practical-kc/ddnnife).
+See [BDNNF-TOOL.md](BDNNF-TOOL.md) for all options, and for how the commands
+correspond to those of [ddnnife](https://github.com/practical-kc/ddnnife).
 
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter

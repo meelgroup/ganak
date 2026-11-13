@@ -321,7 +321,7 @@ written in BDNNF, a compact binary format that is streamed to disk as Ganak
 runs and can be queried without loading it into memory. See
 [spec-bdnnf.md](spec-bdnnf.md) for the format.
 
-**1. Compile** (still prints the count). The output is a faithful d-DNNF:
+Compiling still prints the count. The output is a faithful d-DNNF:
 
 ```shell
 ./ganak --compile out.bdnnf in.cnf
@@ -334,26 +334,34 @@ records one example assignment of the others at each SAT leaf, so every model of
 the circuit, completed by the definitions, is a model of the CNF
 (`bdnnf sample --cnf` checks this).
 
-**2. Use.** The `bdnnf` tool works on the file as written, streaming it:
+### Querying the circuit: `bdnnf`
+
+`bdnnf` answers queries on the file exactly as Ganak writes it, with no cleanup
+or conversion step. It streams the file, keeping a few values per node rather
+than the graph.
+Weights come from `--cnf`; the projection set is stored in the file. Queries
+take `--assume L1,L2,...` to condition on literals.
+
+| Command | What it does |
+|---|---|
+| `count` | weighted, projected model count |
+| `sample -n N` | weighted (or uniform) random models |
+| `enum [-n N] [--start I]` | the models, in a fixed order; resumes from model I |
+| `lits` | the count of the models containing each literal |
+| `core` | literals true in every model (core; negated: dead) |
+| `batch FILE [--sat]` | a count (or SAT) per line of literals, many per pass |
+| `atomic [--cross]` | sets of vars equal (or opposite) in every model |
+| `opt --obj F [-k K] [--min]` | the k best models under a sum of literal values |
+| `twise -t T` | samples covering every satisfiable t-tuple of literals |
+| `stream` | the queries above, one per stdin line, circuit held in memory |
+| `verify` | check the format and every property the file claims |
+| `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` for legacy tools |
 
 ```shell
-./bdnnf count out.bdnnf [--cnf in.cnf] [--assume 3,-5]      # (weighted, projected) count
-./bdnnf sample out.bdnnf -n 100 [--cnf in.cnf] [--assume 3]  # weighted/uniform models
-./bdnnf enum out.bdnnf [-n N] [--start I]   # the models, in a fixed order
-./bdnnf batch out.bdnnf queries.txt [--sat] # one count (or SAT) per line of literals
-./bdnnf lits out.bdnnf [--cnf in.cnf]       # count of the models with each literal
-./bdnnf core out.bdnnf [--assume 3]         # literals true in all models (core/dead)
-./bdnnf atomic out.bdnnf [--cross]          # vars equal (or opposite) in all models
-./bdnnf opt out.bdnnf --obj o.txt [-k 3]    # best models by a sum of literal values
-./bdnnf twise out.bdnnf -t 2                # samples covering every satisfiable pair
-./bdnnf stream out.bdnnf [--cnf in.cnf]     # the queries above from stdin, in memory
-./bdnnf verify out.bdnnf                    # format + every claimed property
-./bdnnf dump out.bdnnf                      # human-readable text form
-./bdnnf dot out.bdnnf out.dot               # Graphviz rendering
-./bdnnf to-d4 out.bdnnf out.nnf             # d4 .nnf for legacy tools
+./bdnnf count out.bdnnf --cnf in.cnf --assume 3,-5
+./bdnnf sample out.bdnnf -n 100 --cnf in.cnf
 ```
 
-Weights come from `--cnf`; the projection is stored in the file.
 The queries follow [ddnnife](https://github.com/practical-kc/ddnnife)
 (Sundermann, Raab, Heß, Thüm and Schaefer, "Reusing d-DNNFs for Efficient
 Feature-Model Counting", ACM TOSEM 2024), extended to weights and projection.

@@ -51,6 +51,7 @@ struct Compiler {
   void branch_reset()          { if (active_) do_branch_reset(); }
   void comps_split()           { if (active_) do_comps_split(); }
   void free_var(uint32_t v)    { if (active_) do_free_var(v); }
+  void free_proj_var(uint32_t v) { if (active_) do_free_proj_var(v); }
   void cache_hit(int node)     { if (active_) do_cache_hit(node); }
   void sat_witness_capture(int sat_start_dec_level) {
     if (active_) do_sat_witness_capture(sat_start_dec_level);
@@ -74,6 +75,7 @@ protected:
   virtual void do_branch_reset() {}
   virtual void do_comps_split() {}
   virtual void do_free_var(uint32_t /*v*/) {}
+  virtual void do_free_proj_var(uint32_t /*v*/) {}
   virtual void do_cache_hit(int /*node*/) {}
   virtual void do_sat_witness_capture(int /*sat_start_dec_level*/) {}
   virtual void do_sat_witness_apply() {}

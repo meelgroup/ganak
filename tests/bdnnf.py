@@ -106,6 +106,10 @@ class Circuit:
         self.nedges = 0
         self.nlits = 0
         self.frames = []        # (offset, size, first_id, nnodes, codec)
+        # definitions frame: AND nodes (ref, ref) and (var, ref); see eval_defs
+        self.def_nodes = []
+        self.defs = []
+        self.defs_size = 0
 
     def meta(self, key):
         for k, v in self.footer_kv:
@@ -172,6 +176,64 @@ def _decode_node(b, nid, nvars):
     raise FormatError("unknown node kind %d at node %d" % (kind, nid))
 
 
+def _decode_defs(b, c):
+    nv = c.nvars
+    for j in range(b.varint()):
+        x, y = b.varint(), b.varint()
+        if x >> 1 >= nv + 1 + j or y >> 1 >= nv + 1 + j:
+            raise FormatError("definition AIG node refers to a later node")
+        c.def_nodes.append((x, y))
+    seen = set()
+    for _ in range(b.varint()):
+        v, r = b.varint(), b.varint()
+        if v < 1 or v > nv or v in seen:
+            raise FormatError("bad or repeated defined var %d" % v)
+        if r >> 1 > nv + len(c.def_nodes):
+            raise FormatError("definition ref out of range")
+        seen.add(v)
+        c.defs.append((v, r))
+    if not b.done():
+        raise FormatError("trailing bytes in definitions frame")
+
+
+def eval_defs(c, val):
+    """val: dict var -> bool for the circuit's vars; adds the defined vars."""
+    nv = c.nvars
+    defs = dict(c.defs)
+    node_val = {}
+    busy = set()
+
+    def ref(r):
+        k = r >> 1
+        if k == 0:
+            x = True
+        elif k <= nv:
+            x = var(k)
+        else:
+            j = k - nv - 1
+            if j not in node_val:
+                a, b2 = c.def_nodes[j]
+                node_val[j] = ref(a) and ref(b2)
+            x = node_val[j]
+        return (not x) if r & 1 else x
+
+    def var(v):
+        if v in val:
+            return val[v]
+        if v not in defs:
+            return False
+        if v in busy:
+            raise FormatError("definitions are cyclic")
+        busy.add(v)
+        val[v] = ref(defs[v])
+        busy.discard(v)
+        return val[v]
+
+    for v in defs:
+        var(v)
+    return val
+
+
 def read(path):
     """Parses and validates everything the spec makes checkable from the bytes."""
     with open(path, "rb") as f:
@@ -197,7 +259,7 @@ def read(path):
         if pos + 20 > len(data):
             raise FormatError("unexpected end of file (no footer: incomplete file?)")
         kind, codec, res, nn, slen, rlen, crc = struct.unpack_from("<BBHIIII", data, pos)
-        if kind not in (1, 2):
+        if kind not in (1, 2, 3):
             raise FormatError("bad frame kind %d at offset %d" % (kind, pos))
         if res != 0:
             raise FormatError("reserved frame bits set")
@@ -223,6 +285,11 @@ def read(path):
             if nn != 0:
                 raise FormatError("footer frame with nnodes != 0")
             footer = (raw, pos)
+        elif kind == 3:
+            if c.defs or c.def_nodes:
+                raise FormatError("two definitions frames")
+            defs_pos, c.defs_size = pos, slen + 24
+            _decode_defs(Buf(raw), c)
         else:
             if nn == 0:
                 raise FormatError("empty node frame")
@@ -245,6 +312,11 @@ def read(path):
         raise FormatError("unknown property bits")
     nframes = b.varint()
     index = [(b.varint(), b.varint()) for _ in range(nframes)]
+    defs_size = b.varint()
+    if defs_size != c.defs_size:
+        raise FormatError("footer definitions size %d != definitions frame %d" % (defs_size, c.defs_size))
+    if defs_size and defs_pos + defs_size != foff:
+        raise FormatError("definitions frame is not right before the footer")
     c.footer_kv = b.kv()
     if not b.done():
         raise FormatError("trailing bytes in footer")
@@ -259,7 +331,7 @@ def read(path):
     toff, = struct.unpack_from("<Q", data, pos)
     if data[pos + 8:pos + 16] != END_MAGIC or toff != foff:
         raise FormatError("bad trailer")
-    if data_start + sum(s for (s, _) in index) != foff:
+    if data_start + sum(s for (s, _) in index) + defs_size != foff:
         raise FormatError("frame sizes do not add up to the footer offset")
     edges = lits = 0
     for n in c.nodes[2:]:
@@ -535,6 +607,10 @@ def dump(c, out):
             s = "%d or" % nid + " ;".join(
                 "".join(" %d" % l for l in lits) + " -> " + ref(ch) for lits, ch in n[1])
         out.write(s + "\n")
+    for j, (x, y) in enumerate(c.def_nodes):
+        out.write("defnode %d %d %d\n" % (c.nvars + 1 + j, x, y))
+    for v, r in c.defs:
+        out.write("def %d %d\n" % (v, r))
     out.write("root %s\n" % ref(c.root))
     out.write("props" + "".join(" " + p for i, p in enumerate(PROPS) if c.props >> i & 1) + "\n")
     for k, v in c.footer_kv:

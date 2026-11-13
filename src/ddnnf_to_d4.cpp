@@ -45,6 +45,11 @@ int main(int argc, char** argv) {
     std::cerr << "ddnnf-to-d4: " << err << std::endl;
     return EXIT_FAILURE;
   }
+  if (!c.defs.empty()) {
+    std::cerr << "ddnnf-to-d4: " << argv[1] << " defines vars by AIGs (a definitions frame), "
+                 "which the d4 format cannot hold" << std::endl;
+    return EXIT_FAILURE;
+  }
   const std::string out_path = argc == 3 ? argv[2] : "-";
   std::ofstream fout;
   if (out_path != "-") {

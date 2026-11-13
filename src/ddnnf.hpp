@@ -57,9 +57,15 @@ public:
     std::vector<int> lits; // DIMACS literals true on this arc
   };
 
-  DDNNFCircuit(const std::string& fname, uint32_t _nvars, std::vector<int> _lit_map)
-      : nvars(_nvars), lit_map(std::move(_lit_map)) {
-    for (int l : lit_map) nvars = std::max<uint32_t>(nvars, (uint32_t)std::abs(l));
+  // The circuit is written over the input's vars (see CounterConfiguration).
+  DDNNFCircuit(const std::string& fname, uint32_t _nvars, std::vector<std::vector<int>> _lit_map,
+               std::vector<int> _root_units, std::vector<int> _root_free, bdnnf::Defs _defs)
+      : nvars(_nvars), lit_map(std::move(_lit_map)), root_units(std::move(_root_units)),
+        root_free(std::move(_root_free)), defs(std::move(_defs)) {
+    for (const auto& ls : lit_map)
+      for (int l : ls) nvars = std::max<uint32_t>(nvars, (uint32_t)std::abs(l));
+    for (int l : root_units) nvars = std::max<uint32_t>(nvars, (uint32_t)std::abs(l));
+    for (int v : root_free) nvars = std::max<uint32_t>(nvars, (uint32_t)v);
     guard([&] {
       w.open(fname, nvars, {{"producer", std::string("ganak ") +
           GANAK::get_version_tag() + " " + GANAK::get_version_sha1()}});
@@ -111,6 +117,14 @@ public:
   }
 
   static int mk_free_var(int dimacs_var) { return -dimacs_var; }
+
+  // One value for a free var outside the projection: only needed when it stands
+  // for several input vars, which must agree.
+  int mk_witness_var(int dimacs_var) {
+    if (lit_map.empty() || lit_map[dimacs_var - 1].size() <= 1) return true_node;
+    const std::vector<int> lits{dimacs_var};
+    return emit_and({}, lits, no_lits);
+  }
 
   // inner AND lits (e.g. level-0 implied lits, or a SAT witness on TRUE).
   int wrap_lits(int inner, const std::vector<int>& lits) {
@@ -178,17 +192,27 @@ public:
   [[nodiscard]] uint64_t num_edges() const { return w.num_edges(); }
 
   void finish() {
-    const int r = (root < 0) ? false_node : root;
+    int r = (root < 0) ? false_node : root;
+    // Input vars outside the simplified CNF: constants and unconstrained ones.
+    if (r != false_node && (!root_units.empty() || !root_free.empty())) {
+      std::vector<int> kids;
+      if (r != true_node) kids.push_back(r);
+      guard([&] { r = check_id(w.add_and(kids, root_units, root_free)); });
+      if (chk) chk->on_and((uint64_t)r, kids, root_units, root_free);
+    }
     // Decision ORs split on x / -x. Arcs carry only their own component's lits of
     // their own level, and --compile does no chronological backtracking, so no
     // lit is recorded twice: decomposable (checked by --compilecheck and the fuzzers).
-    guard([&] { w.finish((uint64_t)r, bdnnf::P_DETERMINISTIC | bdnnf::P_DECOMPOSABLE); });
+    guard([&] { w.finish((uint64_t)r, bdnnf::P_DETERMINISTIC | bdnnf::P_DECOMPOSABLE, {}, &defs); });
   }
 
 private:
   bdnnf::Writer w;
   std::unique_ptr<DDNNFChecker> chk;
-  std::vector<int> lit_map;
+  std::vector<std::vector<int>> lit_map;
+  std::vector<int> root_units;
+  std::vector<int> root_free;
+  bdnnf::Defs defs;
   std::vector<int> scratch_lits;
   std::vector<int> kids;
   std::vector<int> frees;
@@ -213,22 +237,40 @@ private:
   }
 
   // Internal DIMACS literals -> the input's numbering.
+  // An internal lit stands for all the input lits equivalent to it.
   const std::vector<int>& mapped(const std::vector<int>& lits) {
     if (lit_map.empty()) return lits;
     scratch_lits.clear();
-    for (int l : lits) {
-      const int m = lit_map[std::abs(l) - 1];
-      scratch_lits.push_back(l > 0 ? m : -m);
-    }
+    for (int l : lits)
+      for (int m : lit_map[std::abs(l) - 1]) scratch_lits.push_back(l > 0 ? m : -m);
     return scratch_lits;
   }
 
-  int emit_and(const std::vector<int>& k, const std::vector<int>& units,
+  int emit_and(const std::vector<int>& k0, const std::vector<int>& units,
                const std::vector<int>& fr) {
     int id = -1;
     std::vector<int> mu = mapped(units);
-    std::vector<int> mf = mapped(fr);
-    for (int& v : mf) v = std::abs(v);
+    // A free internal var equivalent to several input vars is a choice between
+    // all of them true and all of them false, not several free vars.
+    std::vector<int> k = k0;
+    std::vector<int> mf;
+    for (int v : fr) {
+      if (lit_map.empty() || lit_map[v - 1].size() == 1) {
+        mf.push_back(lit_map.empty() ? v : std::abs(lit_map[v - 1][0]));
+        continue;
+      }
+      std::vector<Arc> arcs(2);
+      arcs[0].child = arcs[1].child = true_node;
+      for (int l : lit_map[v - 1]) { arcs[0].lits.push_back(l); arcs[1].lits.push_back(-l); }
+      int oid = -1;
+      guard([&] {
+        w.begin_or();
+        for (const auto& a : arcs) w.or_arc(a.lits, (uint64_t)true_node);
+        oid = check_id(w.end_or());
+      });
+      if (chk) chk->on_or((uint64_t)oid, arcs);
+      k.push_back(oid);
+    }
     guard([&] { id = check_id(w.add_and(k, mu, mf)); });
     if (chk) chk->on_and((uint64_t)id, k, mu, mf);
     return id;

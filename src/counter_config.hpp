@@ -36,10 +36,16 @@ struct CounterConfiguration {
 
   // d-DNNF: if non-empty, emit the search trace as a BDNNF d-DNNF circuit to this file.
   std::string compile_fname;
-  // d-DNNF: DIMACS literal of the input var behind each internal var (index =
-  // internal 0-based var), so the circuit uses the input's numbering, not the
-  // renumbered one (sampling vars first). Empty = identity.
-  std::vector<int> compile_lit_map;
+  // d-DNNF, in the input's numbering: the input literals equivalent to each
+  // internal var (index = internal 0-based var; empty = identity), units and
+  // free vars of the input that are not in the simplified CNF, and the AIG
+  // definitions of eliminated vars (refs as in spec-bdnnf.md).
+  std::vector<std::vector<int>> compile_lit_map;
+  uint32_t compile_nvars = 0;
+  std::vector<int> compile_root_units;
+  std::vector<int> compile_root_free;
+  std::vector<std::pair<uint64_t, uint64_t>> compile_def_nodes;
+  std::vector<std::pair<uint32_t, uint64_t>> compile_defs;
   // d-DNNF: check every node as it is written, abort at the first wrong one.
   int compile_check = 0;
 

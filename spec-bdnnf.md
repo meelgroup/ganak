@@ -48,7 +48,20 @@ The **root** is given in the footer (section 4). It can be any node, including
 Nodes not reachable from the root ("dead nodes") are allowed; a writer can
 avoid declaring them by flagging the file `CLEAN` (section 4.1).
 
-### 1.1 Structural count
+### 1.1 Defined variables
+
+A file may also carry **definitions** (section 3.1): a function, given as an
+AIG, for each of some variables. A defined variable is not mentioned by any
+node. The models of the file are the models `m` of the circuit, each extended
+by setting every defined variable `v` to its function `f_v(m)`; a function may
+use other defined variables, acyclically. Counting queries are answered by the
+circuit alone, as long as no defined variable is counted over: a compiler uses
+definitions for the variables outside the projection set (Skolem functions of
+the variables it eliminated), so a projected count, conditioning on the
+projection set, and sampling all stay plain circuit queries, and a sampled
+model is completed by the definitions.
+
+### 1.2 Structural count
 
     count(FALSE) = 0,  count(TRUE) = 1
     count(AND)   = product of count(c) over children  *  2^|free|
@@ -98,7 +111,7 @@ Every frame has a 20-byte head, a payload, and a 4-byte tail:
 
 | Bytes | Field |
 |---|---|
-| 1 | `u8 kind`: 1 = node block, 2 = footer |
+| 1 | `u8 kind`: 1 = node block, 2 = footer, 3 = definitions |
 | 1 | `u8 codec`: 0 = raw, 1 = zstd (one zstd frame) |
 | 2 | `u16 reserved` = 0 |
 | 4 | `u32 nnodes`: number of node records in this frame (0 for the footer) |
@@ -156,6 +169,20 @@ written as is, each later one as `c_i - c_{i-1} - 1`.
 **varlist**: `varint n`, then the `n` variables strictly increasing: the
 first as is, each later one as `v_i - v_{i-1} - 1`.
 
+### 3.1 Definitions frame
+
+At most one, right before the footer. Its raw payload:
+
+    varint nnodes                AND nodes of the AIG
+    nnodes * (aref, aref)        the two inputs of each AND node
+    varint ndefs
+    ndefs * (varint var, aref)   var := aref
+
+An **aref** is a varint `r`: `k = r >> 1` is TRUE for `k = 0`, variable `k` for
+`1 <= k <= nvars`, and the `j`-th AND node for `k = nvars + 1 + j`; the
+reference is negated if `r & 1`. An AND node refers only to variables and to
+earlier AND nodes. Each variable is defined at most once.
+
 ## 4. Footer
 
 The footer frame's raw payload:
@@ -167,6 +194,7 @@ The footer frame's raw payload:
     varint props         property flags, section 4.1
     varint nframes       node frames
     nframes * (varint frame_size, varint frame_nnodes)
+    varint defs_size     full size of the definitions frame, 0 if there is none
     varint nkv
     nkv * (varint klen, key, varint vlen, value)
 
@@ -232,4 +260,6 @@ conjoins that with the free variable 3: (2 + 1) * 2 = 6 models.
 AND lines are `<id> and <kids...> [units <lits...>] [free <vars...>]`. OR
 lines are `<id> or <arc> ; <arc> ...`, where an arc is `<lits...> -> <child>`.
 Header and footer key/value pairs are printed as `meta <key> <value>` lines,
-before the nodes and after `props` respectively.
+before the nodes and after `props` respectively. Definitions are printed as
+`defnode <k> <aref> <aref>` (the AND node referred to as `k`) and
+`def <var> <aref>` lines, before `root`.

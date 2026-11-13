@@ -48,7 +48,7 @@ constexpr size_t FRAME_HEAD = 20;
 constexpr size_t FRAME_TAIL = 4;
 constexpr size_t TRAILER = 16;
 
-enum : uint8_t { FRAME_NODES = 1, FRAME_FOOTER = 2 };
+enum : uint8_t { FRAME_NODES = 1, FRAME_FOOTER = 2, FRAME_DEFS = 3 };
 enum : uint8_t { CODEC_RAW = 0, CODEC_ZSTD = 1 };
 enum : uint8_t { K_AND = 0, K_OR = 1 };
 enum : uint8_t { TAG_KIND = 3, TAG_UNITS = 4, TAG_FREE = 8 };
@@ -181,6 +181,111 @@ struct Arc {
   uint64_t child = 0;
 };
 
+// The definitions frame: AIG functions of vars not in the circuit. A ref r is
+// k = r >> 1, negated if r & 1: k = 0 is TRUE, 1..nvars a var, nvars + 1 + j
+// the j-th AND node.
+struct Defs {
+  std::vector<std::pair<uint64_t, uint64_t>> nodes;  // AND(ref, ref)
+  std::vector<std::pair<uint32_t, uint64_t>> defs;   // (var, ref)
+  [[nodiscard]] bool empty() const { return defs.empty(); }
+};
+
+inline std::vector<uint8_t> encode_defs(const Defs& d) {
+  std::vector<uint8_t> p;
+  put_varint(p, d.nodes.size());
+  for (const auto& [a, b] : d.nodes) { put_varint(p, a); put_varint(p, b); }
+  put_varint(p, d.defs.size());
+  for (const auto& [v, r] : d.defs) { put_varint(p, v); put_varint(p, r); }
+  return p;
+}
+
+// Also checks: refs in range, AND nodes in topological order, each var defined
+// once. (Acyclicity through the defined vars is left to the evaluator.)
+inline void decode_defs(const std::vector<uint8_t>& raw, uint32_t nvars, Defs& d) {
+  Cursor c(raw.data(), raw.size());
+  d.nodes.clear();
+  d.defs.clear();
+  const uint64_t nn = c.varint();
+  if (nn > raw.size()) throw Error("bad definitions frame");
+  for (uint64_t j = 0; j < nn; j++) {
+    const uint64_t a = c.varint(), b = c.varint();
+    if ((a >> 1) >= (uint64_t)nvars + 1 + j || (b >> 1) >= (uint64_t)nvars + 1 + j)
+      throw Error("definition AIG node refers to a later node");
+    d.nodes.emplace_back(a, b);
+  }
+  const uint64_t nd = c.varint();
+  std::vector<char> seen((size_t)nvars + 1, 0);
+  for (uint64_t i = 0; i < nd; i++) {
+    const uint64_t v = c.varint(), r = c.varint();
+    if (v < 1 || v > nvars) throw Error("defined var out of range");
+    if (seen[v]) throw Error("var defined twice");
+    seen[v] = 1;
+    if ((r >> 1) > (uint64_t)nvars + nn) throw Error("definition ref out of range");
+    d.defs.emplace_back((uint32_t)v, r);
+  }
+  if (!c.done()) throw Error("trailing bytes in definitions frame");
+}
+
+// Sets every defined var in val (by var: 1 true, -1 false, 0 unset) from the
+// others. Undefined vars left unset count as false. Throws on a cycle.
+inline void eval_defs(const Defs& d, uint32_t nvars, std::vector<signed char>& val) {
+  std::vector<uint64_t> def_of((size_t)nvars + 1, UINT64_MAX);
+  for (const auto& [v, r] : d.defs) def_of[v] = r;
+  std::vector<signed char> node_val(d.nodes.size(), 0);
+  std::vector<char> state((size_t)nvars + 1, 0);  // 1: being evaluated, 2: done
+  // Iterative over refs: a work stack of (ref, expanded).
+  auto value = [&](uint64_t ref0) -> bool {
+    std::vector<std::pair<uint64_t, bool>> st{{ref0 & ~1ULL, false}};
+    while (!st.empty()) {
+      auto [r, expanded] = st.back();
+      const uint64_t k = r >> 1;
+      if (k == 0) { st.pop_back(); continue; }
+      if (k <= nvars) {
+        const uint32_t v = (uint32_t)k;
+        if (def_of[v] == UINT64_MAX || state[v] == 2) { st.pop_back(); continue; }
+        if (!expanded) {
+          if (state[v] == 1) throw Error("definitions are cyclic");
+          state[v] = 1;
+          st.back().second = true;
+          st.push_back({def_of[v] & ~1ULL, false});
+          continue;
+        }
+        st.pop_back();
+        const uint64_t dr = def_of[v];
+        const uint64_t dk = dr >> 1;
+        bool x = dk == 0 ? true : dk <= nvars ? val[dk] > 0 : node_val[dk - nvars - 1] > 0;
+        if (dr & 1) x = !x;
+        val[v] = x ? 1 : -1;
+        state[v] = 2;
+        continue;
+      }
+      const size_t j = (size_t)(k - nvars - 1);
+      if (node_val[j]) { st.pop_back(); continue; }
+      const auto [a, b] = d.nodes[j];
+      if (!expanded) {
+        st.back().second = true;
+        st.push_back({a & ~1ULL, false});
+        st.push_back({b & ~1ULL, false});
+        continue;
+      }
+      st.pop_back();
+      auto lit = [&](uint64_t x) {
+        const uint64_t xk = x >> 1;
+        bool y = xk == 0 ? true : xk <= nvars ? val[xk] > 0 : node_val[xk - nvars - 1] > 0;
+        return (x & 1) ? !y : y;
+      };
+      node_val[j] = (lit(a) && lit(b)) ? 1 : -1;
+    }
+    const uint64_t k0 = ref0 >> 1;
+    bool y = k0 == 0 ? true : k0 <= nvars ? val[k0] > 0 : node_val[k0 - nvars - 1] > 0;
+    return (ref0 & 1) ? !y : y;
+  };
+  for (const auto& [v, r] : d.defs) {
+    if (state[v] == 2) continue;
+    (void)value(((uint64_t)v) << 1);
+  }
+}
+
 // Decoded node. Vectors are reused across decode() calls to avoid allocation.
 struct Node {
   uint8_t kind = K_AND;
@@ -262,10 +367,17 @@ public:
     return finish_node();
   }
 
-  void finish(uint64_t root, uint64_t props, const KV& kv = {}) {
+  void finish(uint64_t root, uint64_t props, const KV& kv = {}, const Defs* defs = nullptr) {
     if (root >= next) throw Error("root id out of range");
     if (props & ~(uint64_t)P_ALL) throw Error("unknown property bits");
     if (frame_nodes) flush_frame();
+    uint64_t defs_size = 0;
+    if (defs && !defs->empty()) {
+      const auto d = encode_defs(*defs);
+      const uint64_t before = offset;
+      write_frame(FRAME_DEFS, CODEC_RAW, 0, d.data(), d.size(), d.size(), crc32c(d.data(), d.size()));
+      defs_size = offset - before;
+    }
     std::vector<uint8_t> p;
     put_varint(p, next - 2);
     put_varint(p, nedges);
@@ -277,6 +389,7 @@ public:
       put_varint(p, sz);
       put_varint(p, nn);
     }
+    put_varint(p, defs_size);
     put_kv(p, kv);
     const uint64_t footer_off = offset;
     write_frame(FRAME_FOOTER, CODEC_RAW, 0, p.data(), p.size(), p.size(), crc32c(p.data(), p.size()));
@@ -470,6 +583,7 @@ public:
   KV footer_kv;
   std::vector<FrameInfo> frames;
   bool have_footer = false;
+  Defs defs;
 
   Reader() = default;
   Reader(const Reader&) = delete;
@@ -500,6 +614,7 @@ public:
   // Calls fn(id, node) for every node in id order, then reads the footer.
   template <class Fn>
   void scan(Fn&& fn) {
+    defs_seen = false;
     if (seekable) seek(data_start);
     pos = data_start;
     uint64_t id = 2;
@@ -509,6 +624,12 @@ public:
       uint32_t nn;
       const uint64_t off = pos;
       read_frame_at_pos(kind, nn, raw);
+      if (kind == FRAME_DEFS) {
+        if (have_footer && off + defs_size != footer_off) throw Error("definitions frame not right before the footer");
+        decode_defs(raw, nvars, defs);
+        defs_seen = true;
+        continue;
+      }
       if (kind == FRAME_FOOTER) {
         if (have_footer) {
           if (off != footer_off) throw Error("footer offset mismatch");
@@ -529,6 +650,7 @@ public:
       if (!c.done()) throw Error("trailing bytes in frame");
     }
     if (id != nnodes + 2 || fi != frames.size()) throw Error("node count does not match footer");
+    if ((defs_size != 0) != defs_seen) throw Error("definitions frame does not match the footer");
   }
 
   // Calls fn(id, node) for every node in reverse id order. Seekable files only.
@@ -576,6 +698,8 @@ private:
   uint64_t pos = 0;
   uint64_t data_start = 0;
   uint64_t footer_off = 0;
+  uint64_t defs_size = 0;
+  bool defs_seen = false;
   std::vector<uint8_t> raw, stored;
   Node node;
 
@@ -610,7 +734,7 @@ private:
     read_exact(h, FRAME_HEAD);
     kind = h[0];
     const uint8_t codec = h[1];
-    if (kind != FRAME_NODES && kind != FRAME_FOOTER) throw Error("bad frame kind");
+    if (kind != FRAME_NODES && kind != FRAME_FOOTER && kind != FRAME_DEFS) throw Error("bad frame kind");
     if (get_le(h + 2, 2) != 0) throw Error("reserved frame bits set");
     nn = (uint32_t)get_le(h + 4, 4);
     const uint32_t slen = (uint32_t)get_le(h + 8, 4);
@@ -659,7 +783,8 @@ private:
       o += sz;
       id += nn;
     }
-    if (o != off) throw Error("frame index does not add up to footer offset");
+    defs_size = c.varint();
+    if (o + defs_size != off) throw Error("frame index does not add up to footer offset");
     if (id != nnodes + 2) throw Error("frame index does not add up to node count");
     footer_kv = c.kv();
     if (!c.done()) throw Error("trailing bytes in footer");
@@ -693,6 +818,13 @@ private:
     if (kind != FRAME_FOOTER) throw Error("trailer does not point at the footer");
     if (pos + TRAILER != (uint64_t)sz) throw Error("garbage between footer and trailer");
     parse_footer(raw, off);
+    if (defs_size) {
+      seek(off - defs_size);
+      pos = off - defs_size;
+      read_frame_at_pos(kind, nn, raw);
+      if (kind != FRAME_DEFS || pos != off) throw Error("bad definitions frame");
+      decode_defs(raw, nvars, defs);
+    }
   }
 };
 

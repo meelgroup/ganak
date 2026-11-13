@@ -147,6 +147,16 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
     }
     val[id] = std::move(x);
   });
+  // A defined var is given by its definition: the circuit must not mention it.
+  if (!r.defs.empty()) {
+    std::vector<uint64_t> all(W, 0);
+    for (size_t id = 2; id < n && sets; id++)
+      for (size_t q = 0; q < W; q++) all[q] |= row(id)[q];
+    for (const auto& [v, rf] : r.defs.defs)
+      if (sets && bit(all.data(), v)) fail_once("defined var " + std::to_string(v) + " is mentioned by the circuit");
+    std::vector<signed char> assign(r.nvars + 1, 0);
+    try { bdnnf::eval_defs(r.defs, r.nvars, assign); } catch (const bdnnf::Error& e) { fail_once(e.what()); }
+  }
   if (smooth && r.root != 0)
     for (uint32_t v = 1; v <= r.nvars; v++)
       if (!bit(row(r.root), v)) { fail_once("root does not mention var " + std::to_string(v) + " (not SMOOTH)"); break; }

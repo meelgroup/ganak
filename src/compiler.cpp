@@ -42,7 +42,12 @@ public:
   DDNNFCompiler(Counter& _counter, const std::string& _fname)
       : counter(_counter), fname(_fname) {
     active_ = true;
-    circuit = std::make_unique<DDNNFCircuit>(fname, counter.nVars(), counter.get_conf().compile_lit_map);
+    const auto& c = counter.get_conf();
+    bdnnf::Defs defs;
+    defs.nodes = c.compile_def_nodes;
+    defs.defs = c.compile_defs;
+    circuit = std::make_unique<DDNNFCircuit>(fname, std::max(c.compile_nvars, counter.nVars()),
+        c.compile_lit_map, c.compile_root_units, c.compile_root_free, std::move(defs));
     bool check = counter.get_conf().compile_check;
     SLOW_DEBUG_DO(check = true);
     // Unprojected, ganak's ORs are smooth: both arcs cover the comp's vars.
@@ -133,6 +138,14 @@ public:
     // From the analyzer on a free var (factor two = OR(v, -v)).
     circuit->add_child(counter.dec_level(), counter.decisions.top().is_right_branch(),
         DDNNFCircuit::mk_free_var((int)v));
+  }
+
+  // A free var outside the projection counts once: no node, unless it stands for
+  // several input vars, which must then get one consistent value (a witness).
+  void do_free_proj_var(uint32_t v) override {
+    const int n = circuit->mk_witness_var((int)v);
+    if (n != circuit->true_node)
+      circuit->add_child(counter.dec_level(), counter.decisions.top().is_right_branch(), n);
   }
 
   void do_cache_hit(int node) override {

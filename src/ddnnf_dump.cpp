@@ -85,6 +85,9 @@ int main(int argc, char** argv) {
       }
       out << "\n";
     });
+    for (size_t j = 0; j < r.defs.nodes.size(); j++)
+      out << "defnode " << r.nvars + 1 + j << " " << r.defs.nodes[j].first << " " << r.defs.nodes[j].second << "\n";
+    for (const auto& [v, rf] : r.defs.defs) out << "def " << v << " " << rf << "\n";
     out << "root " << ref(r.root) << "\n";
     out << "props";
     const char* names[] = {"DECOMPOSABLE", "DETERMINISTIC", "SMOOTH", "CLEAN"};

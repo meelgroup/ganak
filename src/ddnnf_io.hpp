@@ -55,6 +55,7 @@ struct Circuit {
   uint64_t props = 0;
   int nfile = 0;  // ids [2, nfile + 2) are nodes stored in the file
   bdnnf::KV footer_kv;
+  bdnnf::Defs defs;  // passed through unchanged
 
   [[nodiscard]] bool is_free_or(int n) const {
     if (type[n] != 'o' || arcs[n].size() != 2) return false;
@@ -102,6 +103,7 @@ inline bool load(const std::string& path, Circuit& c, std::string& err) {
     c.root = (int)r.root;
     c.props = r.props;
     c.footer_kv = r.footer_kv;
+    c.defs = r.defs;
   } catch (const bdnnf::Error& e) {
     err = path + ": " + e.what();
     return false;
@@ -182,7 +184,7 @@ inline bool save(const std::string& path, const Circuit& c, uint64_t props,
       stack.pop_back();
       emit(n);
     }
-    w.finish(mapped(c.root), props, footer_kv);
+    w.finish(mapped(c.root), props, footer_kv, &c.defs);
   } catch (const bdnnf::Error& e) {
     err = path + ": " + e.what();
     return false;

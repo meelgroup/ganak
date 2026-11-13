@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <map>
 #include <string>
 #include <iomanip>
 #include <gmpxx.h>
@@ -409,8 +410,12 @@ void parse_supported_options(int argc, char** argv) {
       conf.do_probabilistic_hashing = 0;
       conf.do_buddy = 0;
       conf.do_vivify = 0;
-      do_arjun = 0;
-      do_puura = 0;
+      // BCE removes clauses: a SAT witness could violate one
+      conf.do_bce = 0;
+      if (shuffle_vars_seed) {
+        cout << "c o [compile] --shufflevars is ignored with --compile" << endl;
+        shuffle_vars_seed = 0;
+      }
       num_threads = 1;
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
     }
@@ -515,6 +520,113 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
   assert(lits_after <= 10 * lits_before + 100000);
   (void)lits_before; (void)lits_after;
   verb_print(1, "Arjun T: " << (cpu_time()-my_time));
+}
+
+// Compile-safe simplification: only steps whose effect on the models Arjun
+// records (need_aig) and that never take an input projection var out. No
+// independent-support minimisation or extension, SBVA or cover drop.
+void run_arjun_compile(ArjunNS::SimplifiedCNF& cnf) {
+  double const my_time = cpu_time();
+  ArjunNS::Arjun arjun;
+  if (conf.verb == 0) arjun_verb = 0;
+  arjun.set_verb(arjun_verb);
+  cnf.set_orig_clauses(cnf.get_clauses());
+  cnf.set_orig_sampl_vars(cnf.get_sampl_vars());
+  // Arjun's definitions need a satisfiable input
+  bool sat = true;
+  {
+    CMSat::SATSolver solver;
+    solver.set_verbosity(0);
+    solver.new_vars(cnf.nVars());
+    for (const auto& cl : cnf.get_clauses()) solver.add_clause(cl);
+    sat = solver.solve() != CMSat::l_False;
+  }
+  if (do_puura && sat) {
+    auto sc = simp_conf;
+    sc.keep_empty_sampl = true;
+    cnf = arjun.standalone_get_simplified_cnf(cnf, sc);
+    if (etof_conf.do_autarky) arjun.standalone_autarky(cnf);
+  }
+  cnf.renumber_sampling_vars_for_ganak();
+  disconnected_allowed = true;
+  verb_print(1, "[compile] Arjun T: " << (cpu_time() - my_time));
+}
+
+// The circuit is given over the input's vars: map each internal var to the
+// input literals equivalent to it, and give the input vars Arjun took out of
+// the CNF as root units (constants), extra equivalent literals, AIG
+// definitions, or root free vars (unconstrained).
+void set_compile_map(const ArjunNS::SimplifiedCNF& cnf, const bool with_arjun) {
+  const uint32_t onv = with_arjun ? cnf.get_orig_num_vars() : cnf.nVars();
+  conf.compile_nvars = onv;
+  auto& m = conf.compile_lit_map;
+  m.assign(cnf.nVars(), {});
+  auto vis = [](uint32_t v, bool neg) { return neg ? -(int)(v + 1) : (int)(v + 1); };
+  std::vector<char> in_cnf(std::max<size_t>(onv, cnf.get_orig_num_vars()), 0);
+  for (const auto& [nv, ols] : cnf.get_new_to_orig_var_list()) {
+    if (nv >= cnf.nVars()) continue;
+    for (const auto& ol : ols) {
+      release_assert(ol.var() < in_cnf.size());
+      m[nv].push_back(vis(ol.var(), ol.sign()));
+      in_cnf[ol.var()] = 1;
+    }
+  }
+  if (!with_arjun) {
+    for (uint32_t v = 0; v < cnf.nVars(); v++) if (m[v].empty()) m[v].push_back((int)v + 1);
+    return;
+  }
+  std::map<uint32_t, uint32_t> new_of_orig;
+  for (const auto& [o, nl] : cnf.get_orig_to_new_var())
+    if (nl != CMSat::lit_Undef) new_of_orig[o] = nl.var();
+  std::map<const ArjunNS::AIG*, uint64_t> node_ref;
+  auto& nodes = conf.compile_def_nodes;
+  // Iterative post-order: deep AIGs would blow the stack.
+  auto ref_of = [&](const ArjunNS::aig_lit& root) -> uint64_t {
+    std::vector<std::pair<const ArjunNS::aig_lit*, bool>> st{{&root, false}};
+    auto plain = [&](const ArjunNS::aig_lit& a) -> uint64_t {
+      if (a->type == ArjunNS::AIGT::t_const) return 0;
+      if (a->type == ArjunNS::AIGT::t_lit) return 2 * (uint64_t)(a->var + 1);
+      return node_ref.at(a.get());
+    };
+    while (!st.empty()) {
+      auto [a, expanded] = st.back();
+      if ((*a)->type != ArjunNS::AIGT::t_and || node_ref.count(a->get())) { st.pop_back(); continue; }
+      if (!expanded) {
+        st.back().second = true;
+        st.push_back({&(*a)->l, false});
+        st.push_back({&(*a)->r, false});
+        continue;
+      }
+      st.pop_back();
+      const uint64_t l = plain((*a)->l) ^ ((*a)->l.neg ? 1 : 0);
+      const uint64_t r = plain((*a)->r) ^ ((*a)->r.neg ? 1 : 0);
+      node_ref[a->get()] = 2 * ((uint64_t)onv + 1 + nodes.size());
+      nodes.emplace_back(l, r);
+    }
+    return plain(root) ^ (root.neg ? 1 : 0);
+  };
+  for (uint32_t o = 0; o < onv; o++) {
+    if (in_cnf[o]) continue;
+    const auto& d = cnf.get_def(o);
+    if (d == nullptr) { conf.compile_root_free.push_back((int)o + 1); continue; }
+    if (d->type == ArjunNS::AIGT::t_const) {
+      conf.compile_root_units.push_back(vis(o, d.neg));
+      continue;
+    }
+    if (d->type == ArjunNS::AIGT::t_lit && in_cnf[d->var] && new_of_orig.count(d->var)) {
+      // o = x ^ neg, and x is (or is equivalent to) an internal var
+      const uint32_t nv = new_of_orig[d->var];
+      for (int l : std::vector<int>(m[nv])) {
+        if (std::abs(l) != (int)d->var + 1) continue;
+        const bool x_neg = l < 0;
+        m[nv].push_back(vis(o, x_neg != d.neg));
+        break;
+      }
+      in_cnf[o] = 1;
+      continue;
+    }
+    conf.compile_defs.emplace_back(o + 1, ref_of(d));
+  }
 }
 
 const char* mpfr_prec_name(const int prec) {
@@ -773,24 +885,39 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
   }
   ArjunNS::SimplifiedCNF cnf(fg);
+  // --compile with Arjun: Arjun keeps an AIG definition of every input var it
+  // takes out of the CNF, so the circuit can be given over the input's vars.
+  bool compile_arjun = !conf.compile_fname.empty() && do_arjun;
+  if (compile_arjun) cnf.set_need_aig();
 
   // Parse the CNF
-  if (!program.is_used("inputfile")) read_in_a_file("-",  &cnf, etof_conf.all_indep, fg);
-  else {
+  std::string in_fname = "-";
+  if (program.is_used("inputfile")) {
     auto files = program.get<std::vector<std::string>>("inputfile");
     if (files.empty()) {
       cerr << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
       exit(EXIT_FAILURE);
-    } else if (files.size() == 1) {
-      const string& fname = files[0];
-      read_in_a_file(fname, &cnf, etof_conf.all_indep, fg);
-    } else {
+    } else if (files.size() != 1) {
         cerr << "ERROR: you must only give one CNF as input (or none, and then we read from STDIN)" << endl;
         cout << "       You provided " << files.size() << " files: ";
         for (const auto& f: files) cout << f << " ";
         cout << endl;
         exit(EXIT_FAILURE);
     }
+    in_fname = files[0];
+  }
+  read_in_a_file(in_fname, &cnf, etof_conf.all_indep, fg);
+  // Arjun keeps no definitions together with 'c p no-touch': compile without it
+  if (compile_arjun && cnf.get_num_no_touch() > 0) {
+    if (in_fname == "-") {
+      cerr << "ERROR: --compile of a CNF with 'c p no-touch' from STDIN: give it as a file" << endl;
+      exit(EXIT_FAILURE);
+    }
+    verb_print(1, "[compile] 'c p no-touch' given: compiling without Arjun");
+    compile_arjun = false;
+    do_arjun = 0;
+    cnf = ArjunNS::SimplifiedCNF(fg);
+    read_in_a_file(in_fname, &cnf, etof_conf.all_indep, fg);
   }
 
   if (cnf.get_weighted() && conf.do_buddy) {
@@ -803,7 +930,8 @@ int main(int argc, char *argv[]) {
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
   // Run Arjun
-  if (!do_arjun) {
+  if (compile_arjun) run_arjun_compile(cnf);
+  else if (!do_arjun) {
     cnf.renumber_sampling_vars_for_ganak();
     disconnected_allowed = true;
   } else run_arjun(cnf);
@@ -826,12 +954,7 @@ int main(int argc, char *argv[]) {
 
   // Run Ganak
   conf.disconnected_allowed = disconnected_allowed;
-  if (!conf.compile_fname.empty()) {
-    conf.compile_lit_map.resize(cnf.nVars());
-    for (uint32_t v = 0; v < cnf.nVars(); v++) conf.compile_lit_map[v] = (int)v + 1;
-    for (const auto& [nv, ol] : cnf.get_new_to_orig_var())
-      if (nv < cnf.nVars()) conf.compile_lit_map[nv] = ol.sign() ? -(int)(ol.var() + 1) : (int)(ol.var() + 1);
-  }
+  if (!conf.compile_fname.empty()) set_compile_map(cnf, compile_arjun);
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);

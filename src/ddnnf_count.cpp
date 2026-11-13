@@ -189,6 +189,9 @@ int main(int argc, char** argv) {
     Weights W;
     if (!cnf.empty()) W = read_cnf(cnf, nv);
     else W.in_proj.assign(nv + 1, 1);
+    for (const auto& [v, rf] : r.defs.defs)
+      if (W.in_proj[v]) die("var " + std::to_string(v) + " is in the projection but defined: "
+                            "its count is not a d-DNNF query");
     for (int l : assume) {
       if ((uint32_t)std::abs(l) > nv || !W.in_proj[(uint32_t)std::abs(l)])
         die("--assume " + std::to_string(l) + ": not a projection var");
@@ -325,9 +328,11 @@ int main(int argc, char** argv) {
           val2[std::abs(l)] = want;
         };
         stk.assign(1, r.root);
+        std::vector<uint64_t> path;
         while (!stk.empty()) {
           const uint64_t x = stk.back();
           stk.pop_back();
+          path.push_back(x);
           if (x <= 1) { if (x == 0) die("FAIL: sampled into FALSE"); continue; }
           acc.get(x, nd);
           if (nd.kind == bdnnf::K_AND) {
@@ -359,8 +364,11 @@ int main(int argc, char** argv) {
           stk.push_back(nd.arcs[i].child);
         }
         std::vector<char> rnd_set(nv + 1, 0);
+        std::vector<char> defined(nv + 1, 0);
+        for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
         for (uint32_t v = 1; v <= nv; v++)
-          if (!val2[v]) { val2[v] = (rnd.get_z_bits(1) == 1) ? 1 : -1; rnd_set[v] = 1; }
+          if (!val2[v] && !defined[v]) { val2[v] = (rnd.get_z_bits(1) == 1) ? 1 : -1; rnd_set[v] = 1; }
+        bdnnf::eval_defs(r.defs, nv, val2);
         for (const auto& cl : cls) {
           bool sat = false;
           for (int l : cl) sat |= (val2[std::abs(l)] == (l > 0 ? 1 : -1));
@@ -368,6 +376,8 @@ int main(int argc, char** argv) {
           std::ostringstream m;
           m << "FAIL: sample " << smp << " violates clause";
           for (int l : cl) m << " " << l << (rnd_set[std::abs(l)] ? "(not on path)" : "");
+          m << "; nodes visited:";
+          for (uint64_t x : path) m << " " << x;
           die(m.str());
         }
       }

@@ -6,6 +6,7 @@ c c RUN: %bdnnf verify %t.bdnnf --expect-count 10 --check-decomposable
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
 c c RUN: python3 %S/../../bdnnf.py count %t.bdnnf --cnf %s | %OutputCheck %s --check-prefix=PYW
 c c RUN: python3 %S/../../bdnnf.py check %t.bdnnf
+c c RUN: printf 'count\nexit\n' | %bdnnf stream %t.bdnnf --cnf %s | %OutputCheck %s --check-prefix=STR
 p cnf 6 6
 c t wmc
 c p weight 1 1/2 0
@@ -23,3 +24,5 @@ c p weight 6 5/6 0
 c c FRAC: ^s SATISFIABLE$
 c c FRAC: ^c s exact arb frac 143/840$
 c c PYW: ^143/840$
+c c STR: ^143/840$
+c c STR: ^c done$

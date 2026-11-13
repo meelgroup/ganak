@@ -636,9 +636,24 @@ public:
     return "";
   }
 
+  // After cache_all() every node is in memory: the scans and node() use it.
+  std::vector<Node> cache;
+  void cache_all() {
+    std::vector<Node> c;
+    c.reserve(nnodes);
+    scan([&](uint64_t, const Node& n) { c.push_back(n); });
+    cache = std::move(c);
+    cached = true;
+  }
+  [[nodiscard]] bool is_cached() const { return cached; }
+
   // Calls fn(id, node) for every node in id order, then reads the footer.
   template <class Fn>
   void scan(Fn&& fn) {
+    if (cached) {
+      for (size_t i = 0; i < cache.size(); i++) fn((uint64_t)i + 2, (const Node&)cache[i]);
+      return;
+    }
     defs_seen = false;
     if (seekable) seek(data_start);
     pos = data_start;
@@ -681,6 +696,10 @@ public:
   // Calls fn(id, node) for every node in reverse id order. Seekable files only.
   template <class Fn>
   void scan_backward(Fn&& fn) {
+    if (cached) {
+      for (size_t i = cache.size(); i-- > 0;) fn((uint64_t)i + 2, (const Node&)cache[i]);
+      return;
+    }
     if (!seekable) throw Error("backward scan needs a seekable file");
     std::vector<size_t> starts;
     for (size_t fi = frames.size(); fi-- > 0;) {
@@ -719,6 +738,7 @@ public:
 
 private:
   FILE* f = nullptr;
+  bool cached = false;
   bool seekable = false;
   uint64_t pos = 0;
   uint64_t data_start = 0;

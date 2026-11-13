@@ -49,10 +49,12 @@ THE SOFTWARE.
 
 namespace {
 
-[[noreturn]] void die(const std::string& msg) {
-  std::cerr << "bdnnf: " << msg << std::endl;
-  exit(EXIT_FAILURE);
-}
+struct QueryError : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
+// throws, so that bdnnf stream survives a bad query
+[[noreturn]] void die(const std::string& msg) { throw QueryError(msg); }
 
 // "a", "a/b", "-0.25", "1e-3"-free decimals.
 mpq_class parse_num(const std::string& s) {
@@ -139,6 +141,11 @@ struct NodeAccess {
   std::vector<size_t> starts;
   explicit NodeAccess(bdnnf::Reader& rd) : r(rd) {}
   void get(uint64_t id, bdnnf::Node& n) {
+    if (r.is_cached()) {
+      if (id < 2 || id - 2 >= r.cache.size()) throw bdnnf::Error("node id out of range");
+      n = r.cache[id - 2];
+      return;
+    }
     const size_t fi = r.frame_of(id);
     if (fi != cur) {
       r.load_frame(fi, raw);
@@ -433,9 +440,9 @@ void batch(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ui
   }
 }
 
-}  // namespace
 
-int bdnnf_query(int argc, char** argv) {
+// argv[0] is the command. `pre`: an open (cached) reader of the file to use.
+int run_query(int argc, char** argv, bdnnf::Reader* pre) {
   const std::string cmd = argv[0];
   const bool enumerating = cmd == "enum";
   const bool atomic = cmd == "atomic";
@@ -491,8 +498,9 @@ int bdnnf_query(int argc, char** argv) {
   }
   if (path.empty() || (is_batch && queries.empty()) || (opt && (obj_path.empty() || kbest == 0))) die(usage);
   try {
-    bdnnf::Reader r;
-    r.open(path);
+    bdnnf::Reader own;
+    bdnnf::Reader& r = pre ? *pre : own;
+    if (!pre) r.open(path);
     const uint32_t nv = r.nvars;
     std::vector<char> file_proj(nv + 1, 1);
     const std::string hp = r.get(r.header_kv, "projection");
@@ -1005,6 +1013,77 @@ int bdnnf_query(int argc, char** argv) {
       std::cerr << "bdnnf " << cmd << ": " << num << " models satisfy the CNF" << std::endl;
   } catch (const bdnnf::Error& e) {
     die(path + ": " + e.what());
+  }
+  return EXIT_SUCCESS;
+}
+
+}  // namespace
+
+int bdnnf_query(int argc, char** argv) {
+  try {
+    return run_query(argc, argv, nullptr);
+  } catch (const QueryError& e) {
+    std::cerr << "bdnnf: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
+}
+
+// One query per stdin line, as on the command line without the file (and
+// with the stream's --cnf unless the line gives one), on the circuit held in
+// memory. Each answer ends with a "c done" line; errors give "c error <msg>".
+int bdnnf_stream(int argc, char** argv) {
+  std::string path, cnf;
+  for (int i = 1; i < argc; i++) {
+    const std::string a = argv[i];
+    if (a == "--cnf" && i + 1 < argc) cnf = argv[++i];
+    else if (path.empty() && !a.empty() && a[0] != '-') path = a;
+    else {
+      std::cerr << "usage: bdnnf stream <in.bdnnf> [--cnf <file.cnf>]" << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
+  if (path.empty()) {
+    std::cerr << "usage: bdnnf stream <in.bdnnf> [--cnf <file.cnf>]" << std::endl;
+    return EXIT_FAILURE;
+  }
+  bdnnf::Reader r;
+  try {
+    r.open(path);
+    r.cache_all();
+  } catch (const bdnnf::Error& e) {
+    std::cerr << "bdnnf: " << path << ": " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
+  static const char* const cmds[] = {"count", "sample", "enum", "lits", "core", "batch", "atomic", "opt"};
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    std::istringstream ss(line);
+    std::vector<std::string> tok;
+    for (std::string t; ss >> t;) tok.push_back(t);
+    if (tok.empty()) continue;
+    if (tok[0] == "exit" || tok[0] == "quit") break;
+    bool known = false;
+    for (const char* c : cmds) known |= tok[0] == c;
+    if (!known) {
+      std::cout << "c error unknown query: " << tok[0] << "\nc done" << std::endl;
+      continue;
+    }
+    std::vector<std::string> args{tok[0], path};
+    bool has_cnf = false;
+    for (size_t i = 1; i < tok.size(); i++) {
+      has_cnf |= tok[i] == "--cnf";
+      args.push_back(tok[i]);
+    }
+    if (!cnf.empty() && !has_cnf) { args.push_back("--cnf"); args.push_back(cnf); }
+    std::vector<char*> av;
+    for (auto& a : args) av.push_back(a.data());
+    av.push_back(nullptr);
+    try {
+      run_query((int)args.size(), av.data(), &r);
+    } catch (const QueryError& e) {
+      std::cout << "c error " << e.what() << "\n";
+    }
+    std::cout << "c done" << std::endl;
   }
   return EXIT_SUCCESS;
 }

@@ -29,6 +29,7 @@ THE SOFTWARE.
 
 int bdnnf_verify(int argc, char** argv);
 int bdnnf_query(int argc, char** argv);
+int bdnnf_stream(int argc, char** argv);
 int bdnnf_dump(int argc, char** argv);
 int bdnnf_to_d4(int argc, char** argv);
 int bdnnf_dot(int argc, char** argv);
@@ -49,6 +50,7 @@ const Cmd cmds[] = {
   {"atomic", bdnnf_query, "atomic sets: vars equal (--cross: or opposite) in every model"},
   {"opt", bdnnf_query, "the k best models under a linear objective (--obj, --min)"},
   {"core", bdnnf_query, "literals true in every model (core; negated: dead)"},
+  {"stream", bdnnf_stream, "answer queries from stdin, the circuit held in memory"},
   {"dump", bdnnf_dump, "print as text"},
   {"to-d4", bdnnf_to_d4, "convert to d4 .nnf"},
   {"dot", bdnnf_dot, "render as Graphviz DOT"},

@@ -155,13 +155,106 @@ struct NodeAccess {
   }
 };
 
+// a * (product of fs except fs[i]) for every i, without dividing.
+void excl_products(const std::vector<mpq_class>& fs, const mpq_class& a, std::vector<mpq_class>& out) {
+  const size_t k = fs.size();
+  out.assign(k, a);
+  mpq_class acc = 1;
+  for (size_t i = 0; i < k; i++) { out[i] *= acc; acc *= fs[i]; }
+  acc = 1;
+  for (size_t i = k; i-- > 0;) { out[i] *= acc; acc *= fs[i]; }
+}
+
+// Weighted count of the models containing each projection literal (index
+// 2v for v, 2v+1 for -v): the derivatives of the count, top-down in one
+// backward scan. A literal's count is w(l) times the derivative by w(l).
+template <class WFn>
+std::vector<mpq_class> lit_counts(bdnnf::Reader& r, const std::vector<mpq_class>& val,
+                                  const std::vector<char>& dead, const std::vector<uint64_t>& vs,
+                                  size_t WD, const std::vector<char>& in_proj, WFn&& w,
+                                  const mpq_class& total) {
+  const uint32_t nv = r.nvars;
+  std::vector<mpq_class> cnt(2 * (size_t)nv + 2), dv(val.size());
+  auto row = [&](uint64_t id) { return vs.data() + id * WD; };
+  auto has = [](const uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
+  auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
+  auto both = [&](uint32_t v) -> mpq_class { return w((int)v) + w(-(int)v); };
+  std::vector<mpq_class> fs, ex;
+  std::vector<uint32_t> gap;
+  // Each var of `gap` is a factor (w(v) + w(-v)) at fs[off + i].
+  auto add_gap = [&](size_t off) {
+    for (size_t i = 0; i < gap.size(); i++) {
+      cnt[lidx((int)gap[i])] += ex[off + i] * w((int)gap[i]);
+      cnt[lidx(-(int)gap[i])] += ex[off + i] * w(-(int)gap[i]);
+    }
+  };
+  if (dead[r.root] || total == 0) return cnt;
+  fs.assign(1, val[r.root]);
+  gap.clear();
+  for (uint32_t v = 1; v <= nv; v++)
+    if (in_proj[v] && !has(row(r.root), v)) { gap.push_back(v); fs.push_back(both(v)); }
+  excl_products(fs, 1, ex);
+  dv[r.root] = ex[0];
+  add_gap(1);
+  std::vector<uint64_t> av(WD);
+  r.scan_backward([&](uint64_t id, const bdnnf::Node& nd) {
+    if (dead[id] || dv[id] == 0) return;
+    const mpq_class& g = dv[id];
+    if (nd.kind == bdnnf::K_AND) {
+      fs.clear();
+      for (uint64_t k : nd.kids) fs.push_back(val[k]);
+      gap.clear();
+      for (uint32_t v : nd.free) if (in_proj[v]) { gap.push_back(v); fs.push_back(both(v)); }
+      mpq_class u = 1;
+      for (int l : nd.units) u *= w(l);
+      excl_products(fs, g * u, ex);
+      for (size_t i = 0; i < nd.kids.size(); i++) dv[nd.kids[i]] += ex[i];
+      add_gap(nd.kids.size());
+      for (int l : nd.units) if (in_proj[(uint32_t)std::abs(l)]) cnt[lidx(l)] += g * val[id];
+      return;
+    }
+    const uint64_t* me = row(id);
+    for (const auto& a : nd.arcs) {
+      if (dead[a.child]) continue;
+      bool conflict = false;
+      for (size_t p = 0; p < a.lits.size(); p++)
+        for (size_t q = p + 1; q < a.lits.size(); q++) conflict |= a.lits[p] == -a.lits[q];
+      if (conflict) continue;
+      const uint64_t* cv = row(a.child);
+      av.assign(cv, cv + WD);
+      mpq_class u = 1;
+      for (int l : a.lits) {
+        u *= w(l);
+        const uint32_t v = (uint32_t)std::abs(l);
+        if (in_proj[v]) av[v >> 6] |= 1ULL << (v & 63);
+      }
+      fs.assign(1, val[a.child]);
+      gap.clear();
+      for (size_t q = 0; q < WD; q++)
+        for (uint64_t m = me[q] & ~av[q]; m; m &= m - 1) {
+          gap.push_back((uint32_t)(q * 64 + __builtin_ctzll(m)));
+          fs.push_back(both(gap.back()));
+        }
+      excl_products(fs, g * u, ex);
+      dv[a.child] += ex[0];
+      add_gap(1);
+      const mpq_class y = ex[0] * val[a.child];
+      for (int l : a.lits) if (in_proj[(uint32_t)std::abs(l)]) cnt[lidx(l)] += y;
+    }
+  });
+  return cnt;
+}
+
 }  // namespace
 
 int bdnnf_query(int argc, char** argv) {
-  const bool sampling = std::string(argv[0]) == "sample";
+  const std::string cmd = argv[0];
+  const bool sampling = cmd == "sample";
+  const bool lits = cmd == "lits" || cmd == "core";
+  const bool core = cmd == "core";
   const std::string usage = sampling
     ? "usage: bdnnf sample <in.bdnnf> [-n N] [--seed S] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
-    : "usage: bdnnf count <in.bdnnf> [--cnf <file.cnf>] [--assume L1,L2,...]";
+    : "usage: bdnnf " + cmd + " <in.bdnnf> [--cnf <file.cnf>] [--assume L1,L2,...]";
   std::string path, cnf, out_path;
   uint64_t num = 1, seed = 1;
   bool full = false;
@@ -210,6 +303,10 @@ int bdnnf_query(int argc, char** argv) {
     for (const auto& [v, rf] : r.defs.defs)
       if (W.in_proj[v]) die("var " + std::to_string(v) + " is in the projection but defined: "
                             "its count is not a d-DNNF query");
+    if (core) {
+      W.weighted = false;
+      W.w.clear();
+    }
     for (int l : assume) {
       if ((uint32_t)std::abs(l) > nv || !W.in_proj[(uint32_t)std::abs(l)])
         die("--assume " + std::to_string(l) + ": not a projection var");
@@ -303,6 +400,30 @@ int bdnnf_query(int argc, char** argv) {
       for (uint32_t v = 1; v <= nv; v++)
         if (W.in_proj[v] && !has(row(r.root), v)) res *= both(v);
     res.canonicalize();
+    if (lits) {
+      const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w, res);
+      std::string line;
+      if (core) {
+        if (res == 0) die("no model");
+        for (uint32_t v = 1; v <= nv; v++) {
+          if (!W.in_proj[v]) continue;
+          if (cnt[2 * v] == res) line += std::to_string(v) + " ";
+          else if (cnt[2 * v + 1] == res) line += "-" + std::to_string(v) + " ";
+        }
+        std::cout << line << "0" << std::endl;
+        return EXIT_SUCCESS;
+      }
+      for (uint32_t v = 1; v <= nv; v++) {
+        if (!W.in_proj[v]) continue;
+        mpq_class a = cnt[2 * v], b = cnt[2 * v + 1];
+        a.canonicalize();
+        b.canonicalize();
+        line = std::to_string(v) + " " + a.get_str() + "\n-" + std::to_string(v) + " " + b.get_str() + "\n";
+        std::cout << line;
+      }
+      std::cout << std::flush;
+      return EXIT_SUCCESS;
+    }
     if (!sampling) {
       std::cout << res.get_str() << std::endl;
       return EXIT_SUCCESS;

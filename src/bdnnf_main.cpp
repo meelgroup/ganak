@@ -43,6 +43,8 @@ const Cmd cmds[] = {
   {"verify", bdnnf_verify, "check the format and every claimed property"},
   {"count", bdnnf_query, "weighted/projected model count, under --assume"},
   {"sample", bdnnf_query, "weighted/uniform random models, under --assume"},
+  {"lits", bdnnf_query, "weighted/projected count of the models with each literal"},
+  {"core", bdnnf_query, "literals true in every model (core; negated: dead)"},
   {"dump", bdnnf_dump, "print as text"},
   {"to-d4", bdnnf_to_d4, "convert to d4 .nnf"},
   {"dot", bdnnf_dot, "render as Graphviz DOT"},
@@ -50,6 +52,11 @@ const Cmd cmds[] = {
 }  // namespace
 
 int main(int argc, char** argv) {
+  // stderr: stdout carries the answers
+  std::cerr << "c o bdnnf: queries on BDNNF d-DNNF circuits, from Ganak\n"
+               "c o Its queries follow ddnnife by Sundermann, Raab, Hess, Thum and Schaefer,\n"
+               "c o   \"Reusing d-DNNFs for Efficient Feature-Model Counting\", ACM TOSEM 2024,\n"
+               "c o   https://github.com/practical-kc/ddnnife\n";
   if (argc >= 2)
     for (const auto& c : cmds)
       if (std::strcmp(argv[1], c.name) == 0) return c.fn(argc - 1, argv + 1);

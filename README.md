@@ -339,6 +339,8 @@ the circuit, completed by the definitions, is a model of the CNF
 ```shell
 ./bdnnf count out.bdnnf [--cnf in.cnf] [--assume 3,-5]      # (weighted, projected) count
 ./bdnnf sample out.bdnnf -n 100 [--cnf in.cnf] [--assume 3]  # weighted/uniform models
+./bdnnf lits out.bdnnf [--cnf in.cnf]       # count of the models with each literal
+./bdnnf core out.bdnnf [--assume 3]         # literals true in all models (core/dead)
 ./bdnnf verify out.bdnnf                    # format + every claimed property
 ./bdnnf dump out.bdnnf                      # human-readable text form
 ./bdnnf dot out.bdnnf out.dot               # Graphviz rendering
@@ -346,6 +348,9 @@ the circuit, completed by the definitions, is a model of the CNF
 ```
 
 Weights come from `--cnf`; the projection is stored in the file.
+The queries follow [ddnnife](https://github.com/practical-kc/ddnnife)
+(Sundermann, Raab, Heß, Thüm and Schaefer, "Reusing d-DNNFs for Efficient
+Feature-Model Counting", ACM TOSEM 2024), extended to weights and projection.
 `python3 tests/bdnnf.py check|count` is an independent reader for cross-checks.
 
 The d4 `.nnf` format is that of [Lagniez and Marquis, "An Improved

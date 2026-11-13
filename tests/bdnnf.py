@@ -292,21 +292,28 @@ def reachable(c):
 
 
 def node_vars(c):
-    """vars[id]: frozenset of variables mentioned below each node (id order is topological)."""
-    vs = [frozenset(), frozenset()]
+    """vars[id]: bitmask (int, bit v = var v) of the vars below each node."""
+    vs = [0, 0]
     for n in c.nodes[2:]:
-        s = set()
+        m = 0
         if n[0] == 'and':
             for k in n[1]:
-                s |= vs[k]
-            s.update(abs(l) for l in n[2])
-            s.update(n[3])
+                m |= vs[k]
+            for l in n[2]:
+                m |= 1 << abs(l)
+            for v in n[3]:
+                m |= 1 << v
         else:
             for lits, ch in n[1]:
-                s |= vs[ch]
-                s.update(abs(l) for l in lits)
-        vs.append(frozenset(s))
+                m |= vs[ch]
+                for l in lits:
+                    m |= 1 << abs(l)
+        vs.append(m)
     return vs
+
+
+def low_var(m):
+    return (m & -m).bit_length() - 1
 
 
 def check_props(c):
@@ -322,23 +329,32 @@ def check_props(c):
     for nid in sorted(reach):
         n = c.nodes[nid]
         if n[0] == 'and' and c.props & P_DECOMPOSABLE:
-            parts = [vs[k] for k in n[1]] + [{abs(l)} for l in n[2]] + [{v} for v in n[3]]
-            seen = set()
+            parts = [vs[k] for k in n[1]] + [1 << abs(l) for l in n[2]] + [1 << v for v in n[3]]
+            seen = 0
             for p in parts:
                 if seen & p:
-                    errs.append("DECOMPOSABLE but AND %d shares var %d" % (nid, min(seen & p)))
+                    errs.append("DECOMPOSABLE but AND %d shares var %d" % (nid, low_var(seen & p)))
                     break
                 seen |= p
         if n[0] == 'or' and c.props & P_DECOMPOSABLE:
             for lits, ch in n[1]:
-                lv = [abs(x) for x in lits]
-                if len(set(lv)) != len(lv) or set(lv) & vs[ch]:
+                lm = 0
+                bad = False
+                for x in lits:
+                    bad |= bool(lm >> abs(x) & 1)
+                    lm |= 1 << abs(x)
+                if bad or lm & vs[ch]:
                     errs.append("DECOMPOSABLE but OR %d arc %s overlaps its child %d"
                                 % (nid, lits, ch))
         if n[0] == 'or':
             live = [(l, ch) for l, ch in n[1] if ch != 0]
             if c.props & P_SMOOTH:
-                sets = {vs[ch] | {abs(x) for x in l} for l, ch in live}
+                sets = set()
+                for l, ch in live:
+                    m = vs[ch]
+                    for x in l:
+                        m |= 1 << abs(x)
+                    sets.add(m)
                 if len(sets) > 1:
                     errs.append("SMOOTH but OR %d arcs mention different vars" % nid)
             if c.props & P_DETERMINISTIC:
@@ -349,9 +365,9 @@ def check_props(c):
                             errs.append("DETERMINISTIC but OR %d arcs %d, %d share no "
                                         "complementary literal" % (nid, i, j))
     if c.props & P_SMOOTH and c.root != 0:
-        missing = set(range(1, c.nvars + 1)) - vs[c.root]
+        missing = ((1 << (c.nvars + 1)) - 2) & ~vs[c.root]
         if missing:
-            errs.append("SMOOTH but the root misses var %d" % min(missing))
+            errs.append("SMOOTH but the root misses var %d" % low_var(missing))
     return errs
 
 
@@ -416,12 +432,16 @@ def weighted_count(c, weights=None, proj=None):
         return w(v) + w(-v)
 
     # A logically FALSE subtree mentions no vars: counting its vars into an OR's
-    # scope would make that scope overlap AND siblings further up.
+    # scope would make that scope overlap AND siblings further up. Scopes are
+    # int bitmasks restricted to P.
+    pmask = 0
+    for v in P:
+        pmask |= 1 << v
     val = [0 * one, one]
-    vs = [frozenset(), frozenset()]
+    vs = [0, 0]
     dead = [True, False]
     for n in c.nodes[2:]:
-        s = set()
+        m = 0
         if n[0] == 'and':
             unit_set = set(n[2])
             is_dead = any(dead[k] for k in n[1]) or any(-l in unit_set for l in unit_set)
@@ -430,43 +450,47 @@ def weighted_count(c, weights=None, proj=None):
                 x = one
                 for k in n[1]:
                     x *= val[k]
-                    s |= vs[k]
+                    m |= vs[k]
                 for l in n[2]:
                     x *= w(l)
-                    if abs(l) in P:
-                        s.add(abs(l))
+                    m |= (1 << abs(l)) & pmask
                 for v in n[3]:
                     if v in P:
                         x *= both(v)
-                        s.add(v)
+                        m |= 1 << v
         else:
             arcs = []
             for lits, ch in n[1]:
                 ls = set(lits)
                 if dead[ch] or any(-l in ls for l in ls):
                     continue
-                av = set(vs[ch])
-                av.update(abs(l) for l in lits if abs(l) in P)
-                s |= av
-                arcs.append((lits, ch, av))
+                am = vs[ch]
+                for l in lits:
+                    am |= (1 << abs(l)) & pmask
+                m |= am
+                arcs.append((lits, ch, am))
             is_dead = not arcs
             x = 0 * one
-            for lits, ch, av in arcs:
+            for lits, ch, am in arcs:
                 y = val[ch]
                 for l in lits:
                     y *= w(l)
-                for v in s - av:
-                    y *= both(v)
+                miss = m & ~am
+                while miss:
+                    low = miss & -miss
+                    y *= both(low.bit_length() - 1)
+                    miss ^= low
                 x += y
         if is_dead:
-            s = set()
+            m = 0
         val.append(x)
-        vs.append(frozenset(s))
+        vs.append(m)
         dead.append(is_dead)
     r = val[c.root]
     if not dead[c.root]:
-        for v in P - vs[c.root]:
-            r *= both(v)
+        for v in P:
+            if not vs[c.root] >> v & 1:
+                r *= both(v)
     return r
 
 

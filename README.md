@@ -327,9 +327,12 @@ runs and can be queried without loading it into memory. See
 ./ganak --compile out.bdnnf in.cnf
 ```
 
-For a projected CNF, the SAT oracle records one example assignment of the
-non-projected vars at each SAT leaf, so every model of the circuit extends to a
-model of the CNF (`ddnnf-count --sample` checks this).
+The circuit is over the input's variables. Arjun simplifies the CNF first, but
+never eliminates a projection variable: for a projected CNF, the variables it
+does eliminate get AIG (Skolem) definitions in the file, and Ganak's SAT oracle
+records one example assignment of the others at each SAT leaf, so every model of
+the circuit, completed by the definitions, is a model of the CNF
+(`ddnnf-count --sample` checks this).
 
 **2. Clean up.** The raw file is correct from the root, but may carry
 unreachable "dead" nodes, and learnt clauses can leave it not strictly

@@ -212,7 +212,7 @@ void add_ganak_options()
 
     // d-DNNF compilation
     add_arg("--compilecheck", conf.compile_check, "With --compile, check every node of the circuit as it is written (decomposable, deterministic, smooth if unprojected, and counting what was counted for its level), and abort at the first wrong one");
-    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify, no Arjun/Puura). SAT oracle stays on (witnesses synthesized vars on projected inputs).");
+    add_arg("--compile", conf.compile_fname, "Compile the search trace into a (Decision-)d-DNNF circuit and write it to this file (BDNNF binary format, see spec-bdnnf.md). Forces a clean single-threaded search (no restarts, exact cache, no BuDDy/vivify/BCE). Arjun only runs steps that keep every model, and never eliminates a projection var; the circuit is over the input's vars, with AIG (Skolem) definitions for the eliminated non-projection vars.");
 
     // Arjun options
     add_arg("--arjun", do_arjun, "Use arjun");

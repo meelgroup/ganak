@@ -39,6 +39,8 @@ THE SOFTWARE.
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <random>
+#include <tuple>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -306,6 +308,216 @@ std::map<int, mpq_class> read_objective(const std::string& path, uint32_t nv) {
   return o;
 }
 
+// The t-subsets of {0..p-1} in colex order: rank increases by one per next().
+struct Combo {
+  std::vector<uint32_t> c;
+  uint32_t p;
+  Combo(uint32_t t, uint32_t _p) : p(_p) { for (uint32_t i = 0; i < t; i++) c.push_back(i); }
+  bool next() {
+    const size_t t = c.size();
+    for (size_t i = 0; i < t; i++) {
+      const uint32_t lim = i + 1 < t ? c[i + 1] : p;
+      if (c[i] + 1 < lim) {
+        c[i]++;
+        for (size_t j = 0; j < i; j++) c[j] = (uint32_t)j;
+        return true;
+      }
+    }
+    return false;
+  }
+};
+
+// t-wise sampling, greedy as in YASA: take the first t-tuple of projection
+// literals no sample covers, add further uncovered tuples while the circuit
+// says the set stays satisfiable (64 sets per boolean pass), then complete
+// it to a model by a random walk over satisfiable arcs. A tuple unsatisfiable
+// on its own is skipped. Every satisfiable tuple ends up covered.
+void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<char>& in_proj,
+           const std::vector<int>& assume, uint32_t t, uint64_t seed, bool full,
+           const std::vector<std::vector<int>>& cls, std::ostream& out) {
+  const uint32_t nv = r.nvars;
+  std::vector<char> defined(nv + 1, 0);
+  for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
+  std::vector<uint32_t> P;
+  for (uint32_t v = 1; v <= nv; v++) if (in_proj[v] && !defined[v]) P.push_back(v);
+  const uint32_t p = (uint32_t)P.size();
+  t = std::min(t, p);
+  uint64_t ncombo = 1;
+  for (uint32_t i = 0; i < t; i++) {
+    ncombo = ncombo * (p - i) / (i + 1);
+    if (ncombo > (1ULL << 32)) die("too many t-wise interactions");
+  }
+  const uint64_t total = ncombo << t;
+  std::vector<uint64_t> covered((total >> 6) + 1), infeasible((total >> 6) + 1);
+  auto bit = [](const std::vector<uint64_t>& b, uint64_t i) { return (b[i >> 6] >> (i & 63)) & 1; };
+  auto setbit = [](std::vector<uint64_t>& b, uint64_t i) { b[i >> 6] |= 1ULL << (i & 63); };
+  auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
+  std::vector<uint64_t> kill(2 * (size_t)nv + 2), sm(dead.size());
+  auto killed = [&](const std::vector<int>& ls) {
+    uint64_t m = 0;
+    for (int l : ls) if (in_proj[(uint32_t)std::abs(l)]) m |= kill[lidx(l)];
+    return m;
+  };
+  auto conflicting = [](const std::vector<int>& ls) {
+    for (size_t a = 0; a < ls.size(); a++)
+      for (size_t b = a + 1; b < ls.size(); b++) if (ls[a] == -ls[b]) return true;
+    return false;
+  };
+  // bit j of the result: set j (plus --assume) is satisfiable
+  auto sat_pass = [&](const std::vector<std::vector<int>>& sets) {
+    const size_t k = sets.size();
+    const uint64_t all = k == 64 ? ~0ULL : (1ULL << k) - 1;
+    std::fill(kill.begin(), kill.end(), 0);
+    for (size_t j = 0; j < k; j++) for (int l : sets[j]) kill[lidx(-l)] |= 1ULL << j;
+    for (int l : assume) kill[lidx(-l)] |= all;
+    sm[0] = 0;
+    sm[1] = all;
+    r.scan([&](uint64_t id, const bdnnf::Node& nd) {
+      if (dead[id]) { sm[id] = 0; return; }
+      uint64_t m;
+      if (nd.kind == bdnnf::K_AND) {
+        m = all & ~killed(nd.units);
+        for (uint64_t c : nd.kids) m &= sm[c];
+      } else {
+        m = 0;
+        for (const auto& a : nd.arcs)
+          if (!dead[a.child] && !conflicting(a.lits)) m |= sm[a.child] & ~killed(a.lits);
+      }
+      sm[id] = m;
+    });
+    uint64_t res = dead[r.root] ? 0 : sm[r.root];
+    for (size_t j = 0; j < k; j++) {
+      for (int l : sets[j]) if ((kill[lidx(l)] >> j) & 1) res &= ~(1ULL << j);
+      for (int l : assume) if ((kill[lidx(l)] >> j) & 1) res &= ~(1ULL << j);
+    }
+    return res;
+  };
+  auto tuple = [&](const Combo& c, uint32_t pol) {
+    std::vector<int> ls;
+    for (uint32_t i = 0; i < t; i++) ls.push_back((pol >> i) & 1 ? -(int)P[c.c[i]] : (int)P[c.c[i]]);
+    return ls;
+  };
+  auto compatible = [](const std::vector<int>& a, const std::vector<int>& b) {
+    for (int x : a) for (int y : b) if (x == -y) return false;
+    return true;
+  };
+  NodeAccess acc(r);
+  bdnnf::Node nd;
+  std::mt19937_64 rng(seed);
+  std::vector<signed char> val(nv + 1);
+  std::vector<uint64_t> stk;
+  std::vector<size_t> ok_arcs;
+  uint64_t nsamples = 0;
+  Combo it(t, p);
+  for (uint64_t rank = 0; rank < ncombo; rank++, it.next()) {
+    for (uint32_t pol = 0; pol < (1U << t); pol++) {
+      const uint64_t idx = (rank << t) | pol;
+      if (bit(covered, idx) || bit(infeasible, idx)) continue;
+      std::vector<int> A = tuple(it, pol);
+      // the cursor walks the later tuples; an unsatisfiable candidate stays so
+      Combo cur = it;
+      uint64_t crank = rank;
+      uint32_t cpol = pol;
+      auto advance = [&]() {
+        if (++cpol < (1U << t)) return true;
+        cpol = 0;
+        crank++;
+        return cur.next();
+      };
+      bool more = advance();
+      for (int round = 0; round < 16; round++) {
+        std::vector<std::vector<int>> sets{A};
+        std::vector<std::tuple<Combo, uint64_t, uint32_t>> pos;
+        while (more && sets.size() < 64) {
+          const uint64_t ci = (crank << t) | cpol;
+          if (!bit(covered, ci) && !bit(infeasible, ci)) {
+            const auto U = tuple(cur, cpol);
+            if (compatible(A, U)) {
+              std::vector<int> AU = A;
+              for (int l : U) if (std::find(AU.begin(), AU.end(), l) == AU.end()) AU.push_back(l);
+              sets.push_back(std::move(AU));
+              pos.emplace_back(cur, crank, cpol);
+            }
+          }
+          more = advance();
+        }
+        const uint64_t res = sat_pass(sets);
+        if (!(res & 1)) {
+          setbit(infeasible, idx);
+          break;
+        }
+        size_t first = 1;
+        while (first < sets.size() && !((res >> first) & 1)) first++;
+        if (first == sets.size()) {
+          if (!more) break;
+          continue;
+        }
+        A = sets[first];
+        std::tie(cur, crank, cpol) = pos[first - 1];
+        more = advance();
+      }
+      if (bit(infeasible, idx)) continue;
+      if (!(sat_pass({A}) & 1)) die("internal: t-wise set became unsatisfiable");
+      std::fill(val.begin(), val.end(), 0);
+      auto setl = [&](int l) {
+        if (val[std::abs(l)] == (l > 0 ? -1 : 1)) die("FAIL: t-wise walk has conflicting lits");
+        val[std::abs(l)] = l > 0 ? 1 : -1;
+      };
+      stk.assign(1, r.root);
+      while (!stk.empty()) {
+        const uint64_t x = stk.back();
+        stk.pop_back();
+        if (x <= 1) { if (x == 0) die("FAIL: t-wise walk reached FALSE"); continue; }
+        acc.get(x, nd);
+        if (nd.kind == bdnnf::K_AND) {
+          for (int l : nd.units) setl(l);
+          for (uint64_t k : nd.kids) stk.push_back(k);
+          continue;
+        }
+        ok_arcs.clear();
+        for (size_t ai = 0; ai < nd.arcs.size(); ai++) {
+          const auto& a = nd.arcs[ai];
+          if (!dead[a.child] && !conflicting(a.lits) && (sm[a.child] & 1) && !(killed(a.lits) & 1)) ok_arcs.push_back(ai);
+        }
+        if (ok_arcs.empty()) die("FAIL: t-wise walk found no satisfiable arc");
+        const auto& a = nd.arcs[ok_arcs[rng() % ok_arcs.size()]];
+        for (int l : a.lits) setl(l);
+        stk.push_back(a.child);
+      }
+      for (uint32_t v = 1; v <= nv; v++) {
+        if (val[v] || defined[v]) continue;
+        if (!in_proj[v]) { val[v] = -1; continue; }
+        if (kill[lidx((int)v)] & 1) val[v] = -1;
+        else if (kill[lidx(-(int)v)] & 1) val[v] = 1;
+        else val[v] = (rng() & 1) ? 1 : -1;
+      }
+      bdnnf::eval_defs(r.defs, nv, val);
+      for (const auto& cl : cls) {
+        bool ok = false;
+        for (int l : cl) ok |= (val[std::abs(l)] == (l > 0 ? 1 : -1));
+        if (!ok) die("FAIL: t-wise sample " + std::to_string(nsamples) + " violates a clause");
+      }
+      Combo cv(t, p);
+      for (uint64_t rk = 0; rk < ncombo; rk++, cv.next()) {
+        uint32_t pl = 0;
+        for (uint32_t i = 0; i < t; i++) if (val[P[cv.c[i]]] < 0) pl |= 1U << i;
+        setbit(covered, (rk << t) | pl);
+      }
+      if (!bit(covered, idx)) die("internal: t-wise sample misses its own tuple");
+      std::string line;
+      for (uint32_t v = 1; v <= nv; v++) {
+        if (!full && !in_proj[v]) continue;
+        line += (val[v] < 0 ? "-" : "") + std::to_string(v) + " ";
+      }
+      out << line << "0\n";
+      nsamples++;
+    }
+  }
+  out.flush();
+  std::cerr << "bdnnf twise: " << nsamples << " samples cover every satisfiable " << t
+            << "-tuple of the " << p << " projection vars" << std::endl;
+}
+
 std::vector<std::vector<int>> read_queries(const std::string& path, const std::vector<char>& in_proj) {
   std::ifstream f(path);
   if (!f.good()) die("cannot open " + path);
@@ -447,11 +659,14 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
   const bool enumerating = cmd == "enum";
   const bool atomic = cmd == "atomic";
   const bool opt = cmd == "opt";
+  const bool tw = cmd == "twise";
   const bool sampling = cmd == "sample" || enumerating || atomic;
   const bool lits = cmd == "lits" || cmd == "core";
   const bool core = cmd == "core";
   const bool is_batch = cmd == "batch";
-  const std::string usage = opt
+  const std::string usage = tw
+    ? "usage: bdnnf twise <in.bdnnf> [-t T] [--seed S] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
+    : opt
     ? "usage: bdnnf opt <in.bdnnf> --obj <file> [-k K] [--min] [--full] [--cnf <file.cnf>] [--assume L1,L2,...]"
       "   (obj file: lines of 'literal value')"
     : atomic
@@ -469,6 +684,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
   bool full = false, sat = false, cross = false, minimize = false;
   std::string obj_path;
   size_t kbest = 1;
+  uint32_t tdeg = 2;
   std::string queries;
   std::vector<int> assume;
   for (int i = 1; i < argc; i++) {
@@ -489,6 +705,10 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     else if (is_batch && a == "--sat") sat = true;
     else if (atomic && a == "--cross") cross = true;
     else if (opt && a == "--obj" && i + 1 < argc) obj_path = argv[++i];
+    else if (tw && a == "-t" && i + 1 < argc) tdeg = (uint32_t)std::stoul(argv[++i]);
+    else if (tw && a == "--seed" && i + 1 < argc) seed = std::stoull(argv[++i]);
+    else if (tw && a == "--full") full = true;
+    else if (tw && a == "-o" && i + 1 < argc) out_path = argv[++i];
     else if (opt && a == "-k" && i + 1 < argc) kbest = std::stoull(argv[++i]);
     else if (opt && a == "--min") minimize = true;
     else if (opt && a == "--full") full = true;
@@ -524,7 +744,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     for (const auto& [v, rf] : r.defs.defs)
       if (W.in_proj[v]) die("var " + std::to_string(v) + " is in the projection but defined: "
                             "its count is not a d-DNNF query");
-    if (core || enumerating || atomic || opt) {
+    if (core || enumerating || atomic || opt || tw) {
       W.weighted = false;
       W.w.clear();
     }
@@ -621,6 +841,18 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       for (uint32_t v = 1; v <= nv; v++)
         if (W.in_proj[v] && !has(row(r.root), v)) res *= both(v);
     res.canonicalize();
+    if (tw) {
+      if (res == 0) die("no model");
+      if (tdeg == 0) die("-t must be at least 1");
+      std::ofstream of;
+      if (!out_path.empty() && out_path != "-") {
+        of.open(out_path);
+        if (!of) die("cannot open " + out_path);
+      }
+      twise(r, dead, W.in_proj, assume, tdeg, seed, full,
+            cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf), of.is_open() ? of : std::cout);
+      return EXIT_SUCCESS;
+    }
     if (opt) {
       if (res == 0) die("no model");
       std::map<int, mpq_class> obj = read_objective(obj_path, nv);
@@ -1054,7 +1286,7 @@ int bdnnf_stream(int argc, char** argv) {
     std::cerr << "bdnnf: " << path << ": " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
-  static const char* const cmds[] = {"count", "sample", "enum", "lits", "core", "batch", "atomic", "opt"};
+  static const char* const cmds[] = {"count", "sample", "enum", "lits", "core", "batch", "atomic", "opt", "twise"};
   std::string line;
   while (std::getline(std::cin, line)) {
     std::istringstream ss(line);

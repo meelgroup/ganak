@@ -78,7 +78,8 @@ with scalable C++ tools only — `bdnnf verify` (format + every claimed property
 streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the
 count under fresh random weights), all against ganak; `bdnnf lits`/`core`/`batch`/`atomic`/`opt`
-against `bdnnf count --assume`/`opt --assume`, `bdnnf enum` for distinct models, as many as counted. `tests/bdnnf.py` is an
+against `bdnnf count --assume`/`opt --assume`, `bdnnf twise` (uncovered tuples
+must be UNSAT), `bdnnf stream` against separate runs, `bdnnf enum` for distinct models, as many as counted. `tests/bdnnf.py` is an
 independent Python cross-check, run only on small files. Use `--big` (bigger
 CNFs, 5x timeout) for large circuits. Minimize a failure with
 `./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.

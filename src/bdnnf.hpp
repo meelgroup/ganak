@@ -631,6 +631,10 @@ public:
     if (seekable) read_footer_via_trailer();
   }
 
+  [[nodiscard]] bool has(const KV& kv, const std::string& key) const {
+    for (const auto& [k, v] : kv) if (k == key) return true;
+    return false;
+  }
   [[nodiscard]] std::string get(const KV& kv, const std::string& key) const {
     for (const auto& [k, v] : kv) if (k == key) return v;
     return "";

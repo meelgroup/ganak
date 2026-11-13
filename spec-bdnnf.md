@@ -100,7 +100,7 @@ Header payload:
 
 Keys and values are UTF-8 strings. Defined keys: `producer` (e.g.
 `ganak 1.2.3 <sha>`), and `projection`: the projection variables, decimal,
-space-separated (absent: all of `1..nvars`). Projected queries (count, sample,
+space-separated (may be empty; absent: all of `1..nvars`). Projected queries (count, sample,
 conditioning) are over these variables. Readers ignore unknown keys. Unknown `version` values
 must be rejected.
 

@@ -1,0 +1,14 @@
+c c An empty projection: the circuit must record it (an absent key would mean
+c c all vars), so counting with or without the CNF gives 1.
+c c RUN: %solver --compile %t.bdnnf %s
+c c RUN: %bdnnf count %t.bdnnf | %OutputCheck %s --check-prefix=NOCNF
+c c RUN: %bdnnf count %t.bdnnf --cnf %s | %OutputCheck %s --check-prefix=CNF
+c c RUN: %solver --arjun 0 --compile %t.na.bdnnf %s
+c c RUN: %bdnnf count %t.na.bdnnf --cnf %s | %OutputCheck %s --check-prefix=CNF
+c c NOCNF: ^1$
+c c CNF: ^1$
+p cnf 3 2
+c t pmc
+c p show 0
+1 2 0
+-1 3 0

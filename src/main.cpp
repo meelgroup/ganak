@@ -524,12 +524,21 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf) {
 
 // Compile-safe simplification: only steps whose effect on the models Arjun
 // records (need_aig) and that never take an input projection var out. No
-// independent-support minimisation or extension, SBVA or cover drop.
+// independent-support minimisation, SBVA or cover drop. Extension is safe: it
+// only lets ganak branch on vars defined by the projection, which splits the
+// projected models disjointly.
 void run_arjun_compile(ArjunNS::SimplifiedCNF& cnf) {
   double const my_time = cpu_time();
   ArjunNS::Arjun arjun;
+  ArjunNS::Arjun::InterpConf iconf;
   if (conf.verb == 0) arjun_verb = 0;
   arjun.set_verb(arjun_verb);
+  arjun.set_or_gate_based(arjun_gates);
+  arjun.set_xor_gates_based(arjun_gates);
+  arjun.set_ite_gate_based(arjun_gates);
+  arjun.set_irreg_gate_based(arjun_gates);
+  arjun.set_extend_max_confl(arjun_extend_max_confl);
+  arjun.set_extend_ccnr(arjun_extend_ccnr);
   cnf.set_orig_clauses(cnf.get_clauses());
   cnf.set_orig_sampl_vars(cnf.get_sampl_vars());
   // Arjun's definitions need a satisfiable input
@@ -541,11 +550,14 @@ void run_arjun_compile(ArjunNS::SimplifiedCNF& cnf) {
     for (const auto& cl : cnf.get_clauses()) solver.add_clause(cl);
     sat = solver.solve() != CMSat::l_False;
   }
+  if (do_pre_backbone && sat) arjun.standalone_backbone(cnf, pre_backbone_max_confl);
   if (do_puura && sat) {
     auto sc = simp_conf;
     sc.keep_empty_sampl = true;
     cnf = arjun.standalone_get_simplified_cnf(cnf, sc);
     if (etof_conf.do_autarky) arjun.standalone_autarky(cnf);
+    if (etof_conf.do_extend_indep && cnf.get_opt_sampl_vars().size() != cnf.nVars())
+      arjun.standalone_extend_sampl_set(cnf, iconf);
   }
   cnf.renumber_sampling_vars_for_ganak();
   disconnected_allowed = true;
@@ -928,8 +940,10 @@ int main(int argc, char *argv[]) {
   cnf.check_cnf_sampl_sanity();
   cnf.check_cnf_vars();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
-  if (!conf.compile_fname.empty() && cnf.get_sampl_vars().size() < cnf.nVars())
+  if (!conf.compile_fname.empty() && cnf.get_sampl_vars().size() < cnf.nVars()) {
+    conf.compile_projected = true;
     for (const auto& v : cnf.get_sampl_vars()) conf.compile_proj.push_back(v + 1);
+  }
 
   // Run Arjun
   if (compile_arjun) run_arjun_compile(cnf);

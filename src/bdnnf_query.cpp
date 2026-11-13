@@ -723,8 +723,9 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     if (!pre) r.open(path);
     const uint32_t nv = r.nvars;
     std::vector<char> file_proj(nv + 1, 1);
+    const bool file_projected = r.has(r.header_kv, "projection");
     const std::string hp = r.get(r.header_kv, "projection");
-    if (!hp.empty()) {
+    if (file_projected) {
       file_proj.assign(nv + 1, 0);
       for (uint32_t v : bdnnf::parse_var_list(hp)) {
         if (v == 0 || v > nv) die("projection var out of range: " + std::to_string(v));
@@ -738,7 +739,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
         if (W.in_proj[v] != file_proj[v])
           die("the CNF's projection differs from the circuit's (var " + std::to_string(v) + ")");
     } else {
-      W.projected = !hp.empty();
+      W.projected = file_projected;
       W.in_proj = file_proj;
     }
     for (const auto& [v, rf] : r.defs.defs)

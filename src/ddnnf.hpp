@@ -24,10 +24,11 @@ THE SOFTWARE.
 
 #include "common.hpp"
 #include "bdnnf.hpp"
-#include <gmpxx.h>
+#include "ddnnf_check.hpp"
 #include "GitSHA1.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -84,7 +85,6 @@ public:
     if (kids.empty() && frees.empty()) return true_node;
     if (kids.size() == 1 && frees.empty()) return kids[0];
     const int id = emit_and(kids, no_lits, frees);
-    SLOW_DEBUG_DO(check_decomposable_at_and(id, kids, no_lits, frees));
     return id;
   }
 
@@ -97,12 +97,16 @@ public:
     }
     if (kept == 0) return false_node;
     int id = -1;
+    std::vector<Arc> written;
     guard([&] {
       w.begin_or();
-      for (const auto& a : arcs) if (a.child != false_node) w.or_arc(mapped(a.lits), (uint64_t)a.child);
+      for (const auto& a : arcs) if (a.child != false_node) {
+        w.or_arc(mapped(a.lits), (uint64_t)a.child);
+        if (chk) written.push_back(Arc{a.child, mapped(a.lits)});
+      }
       id = check_id(w.end_or());
     });
-    SLOW_DEBUG_DO(record_or(id, arcs));
+    if (chk) chk->on_or((uint64_t)id, written);
     return id;
   }
 
@@ -115,7 +119,6 @@ public:
     kids.clear();
     if (inner != true_node) kids.push_back(inner);
     const int id = emit_and(kids, lits, no_lits);
-    SLOW_DEBUG_DO(check_decomposable_at_and(id, kids, lits, no_lits, false));
     return id;
   }
 
@@ -168,18 +171,23 @@ public:
   }
 
   [[nodiscard]] uint64_t num_nodes() const { return w.num_nodes(); }
+
+  // --compilecheck: check every node as it is written (see ddnnf_check.hpp).
+  void enable_check(bool expect_smooth) { chk = std::make_unique<DDNNFChecker>(nvars, expect_smooth); }
+  [[nodiscard]] DDNNFChecker* checker() const { return chk.get(); }
   [[nodiscard]] uint64_t num_edges() const { return w.num_edges(); }
 
   void finish() {
     const int r = (root < 0) ? false_node : root;
     // Decision ORs split on x / -x. Arcs carry only their own component's lits of
     // their own level, and --compile does no chronological backtracking, so no
-    // lit is recorded twice: decomposable (checked by SLOW_DEBUG and the fuzzers).
+    // lit is recorded twice: decomposable (checked by --compilecheck and the fuzzers).
     guard([&] { w.finish((uint64_t)r, bdnnf::P_DETERMINISTIC | bdnnf::P_DECOMPOSABLE); });
   }
 
 private:
   bdnnf::Writer w;
+  std::unique_ptr<DDNNFChecker> chk;
   std::vector<int> lit_map;
   std::vector<int> scratch_lits;
   std::vector<int> kids;
@@ -222,95 +230,11 @@ private:
     std::vector<int> mf = mapped(fr);
     for (int& v : mf) v = std::abs(v);
     guard([&] { id = check_id(w.add_and(k, mu, mf)); });
+    if (chk) chk->on_and((uint64_t)id, k, mu, mf);
     return id;
   }
 
-#ifdef SLOW_DEBUG
-public:
-  // Unprojected: every OR's live arcs cover exactly the comp's vars.
-  bool expect_smooth = false;
-  [[nodiscard]] std::string slow_count(int id) const {
-    if (id == false_node) return "0";
-    if (id == true_node) return "1";
-    return id < (int)scount.size() ? scount[id].get_str() : "?";
-  }
-private:
-  // Structural count of every node.
-  std::vector<mpz_class> scount;
-  mpz_class& cslot(int id) {
-    if ((int)scount.size() <= id) scount.resize(id + 1);
-    return scount[id];
-  }
-  [[nodiscard]] mpz_class cval(int id) const {
-    if (id == false_node) return 0;
-    if (id == true_node) return 1;
-    return scount[id];
-  }
-  // Per-node set of vars in its subtree. Children always exist before parents.
-  std::vector<std::unordered_set<int>> subtree_vars;
-  std::unordered_set<int>& slot(int id) {
-    if ((int)subtree_vars.size() <= id) subtree_vars.resize(id + 1);
-    return subtree_vars[id];
-  }
-  void record_or(int id, const std::vector<Arc>& arcs) {
-    auto& vs = slot(id);
-    auto& cnt = cslot(id);
-    cnt = 0;
-    const std::unordered_set<int>* first = nullptr;
-    std::vector<std::unordered_set<int>> arc_vars;
-    arc_vars.reserve(arcs.size());
-    for (const auto& a : arcs) {
-      if (a.child == false_node) continue;
-      cnt += cval(a.child);
-      arc_vars.emplace_back(a.child < (int)subtree_vars.size() ? subtree_vars[a.child] : std::unordered_set<int>{});
-      for (int l : a.lits) arc_vars.back().insert(std::abs(l));
-      if (!first) first = &arc_vars.front();
-      else if (expect_smooth && arc_vars.back() != *first) {
-        std::cerr << "*** SMOOTHNESS VIOLATION at OR node " << id
-                  << ": its arcs cover different vars (a dropped arc lit?)\n";
-        std::abort();
-      }
-    }
-    for (const auto& a : arcs) {
-      if (a.child >= 0 && a.child < (int)subtree_vars.size())
-        for (int l : a.lits) if (subtree_vars[a.child].count(std::abs(l))) {
-          std::cerr << "*** ARC-DECOMP VIOLATION at OR node " << id << ": arc lit " << l
-                    << " also below its child " << a.child << "\n";
-          std::abort();
-        }
-      for (int l : a.lits) vs.insert(std::abs(l));
-      if (a.child < (int)subtree_vars.size())
-        for (int v : subtree_vars[a.child]) vs.insert(v);
-    }
-  }
-  // Strict d-DNNF: the AND's children, units and free vars must be pairwise
-  // var-disjoint. Catches a violation at emission time, decision context live.
-  void check_decomposable_at_and(int id, const std::vector<int>& k,
-      const std::vector<int>& units, const std::vector<int>& fr, bool check = true) {
-    std::vector<std::unordered_set<int>> parts;
-    std::vector<std::string> names;
-    for (int c : k) {
-      parts.emplace_back(c < (int)subtree_vars.size() ? subtree_vars[c] : std::unordered_set<int>{});
-      names.push_back("node " + std::to_string(c));
-    }
-    for (int l : units) { parts.push_back({std::abs(l)}); names.push_back("unit " + std::to_string(l)); }
-    for (int v : fr) { parts.push_back({v}); names.push_back("free " + std::to_string(v)); }
-    auto& vs = slot(id);
-    for (const auto& p : parts) vs.insert(p.begin(), p.end());
-    auto& cnt = cslot(id);
-    cnt = 1;
-    for (int c : k) cnt *= cval(c);
-    cnt <<= (unsigned long)fr.size();
-    if (!check) return;
-    for (size_t i = 0; i < parts.size(); i++)
-      for (size_t j = i + 1; j < parts.size(); j++)
-        for (int v : parts[i]) if (parts[j].count(v)) {
-          std::cerr << "*** STRICT-DECOMP VIOLATION at AND node " << id
-                    << ": var " << v << " in both " << names[i] << " and " << names[j] << "\n";
-          std::abort();
-        }
-  }
-#endif
+
 };
 
 }

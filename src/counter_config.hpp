@@ -40,6 +40,8 @@ struct CounterConfiguration {
   // internal 0-based var), so the circuit uses the input's numbering, not the
   // renumbered one (sampling vars first). Empty = identity.
   std::vector<int> compile_lit_map;
+  // d-DNNF: check every node as it is written, abort at the first wrong one.
+  int compile_check = 0;
 
   int do_restart = 0;
   uint64_t first_restart = 20000U;

@@ -43,7 +43,10 @@ public:
       : counter(_counter), fname(_fname) {
     active_ = true;
     circuit = std::make_unique<DDNNFCircuit>(fname, counter.nVars(), counter.get_conf().compile_lit_map);
-    SLOW_DEBUG_DO(circuit->expect_smooth = counter.get_indep_support_end() > counter.nVars());
+    bool check = counter.get_conf().compile_check;
+    SLOW_DEBUG_DO(check = true);
+    // Unprojected, ganak's ORs are smooth: both arcs cover the comp's vars.
+    if (check) circuit->enable_check(counter.get_indep_support_end() > counter.nVars());
   }
 
   void do_new_decision_level() override { circuit->on_new_level(counter.dec_level()); }
@@ -91,15 +94,11 @@ public:
     });
     compiled_node = circuit->mk_or(std::move(arcs));
     // The node must count what ganak counted for this level.
-    SLOW_DEBUG_DO(if (!counter.weighted() && top.is_indep) {
+    if (circuit->checker() && !counter.weighted() && top.is_indep) {
       std::stringstream ss;
       ss << *top.total_model_count();
-      if (ss.str() != circuit->slow_count(compiled_node)) {
-        std::cerr << "*** COUNT MISMATCH at OR node " << compiled_node << " lev " << lev
-                  << ": circuit " << circuit->slow_count(compiled_node) << " ganak " << ss.str() << "\n";
-        std::abort();
-      }
-    });
+      circuit->checker()->expect_count((uint64_t)compiled_node, ss.str());
+    }
   }
 
   void do_record_comp_node() override {

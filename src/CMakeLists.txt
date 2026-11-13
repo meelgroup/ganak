@@ -116,11 +116,13 @@ add_executable(ddnnf2dot-bin ddnnf2dot.cpp)
 add_executable(ddnnf-verify-bin ddnnf_verify.cpp)
 add_executable(ddnnf-dump-bin ddnnf_dump.cpp)
 add_executable(ddnnf-to-d4-bin ddnnf_to_d4.cpp)
+add_executable(ddnnf-count-bin ddnnf_count.cpp)
+target_link_libraries(ddnnf-count-bin PRIVATE PkgConfig::GMP)
 target_link_libraries(ddnnf-verify-bin PRIVATE PkgConfig::GMP)
 if(ZSTD_FOUND)
   # Plain library paths, not an imported target: keeps the exported static
   # ganak target usable without a matching find_dependency.
-  foreach(t ganak ddnnf-cleanup-bin ddnnf2dot-bin ddnnf-verify-bin ddnnf-dump-bin ddnnf-to-d4-bin)
+  foreach(t ganak ddnnf-cleanup-bin ddnnf2dot-bin ddnnf-verify-bin ddnnf-dump-bin ddnnf-to-d4-bin ddnnf-count-bin)
     target_include_directories(${t} PRIVATE ${ZSTD_INCLUDE_DIRS})
     target_link_libraries(${t} PRIVATE ${ZSTD_LIBRARY})
   endforeach()
@@ -223,6 +225,11 @@ set_target_properties(ddnnf-to-d4-bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+set_target_properties(ddnnf-count-bin PROPERTIES
+  OUTPUT_NAME ddnnf-count
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   target_link_options(ddnnf-cleanup-bin PRIVATE
     "SHELL:-s WASM=1"
@@ -321,7 +328,7 @@ install(TARGETS ddnnf-verify-bin
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(TARGETS ddnnf-dump-bin ddnnf-to-d4-bin
+install(TARGETS ddnnf-dump-bin ddnnf-to-d4-bin ddnnf-count-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

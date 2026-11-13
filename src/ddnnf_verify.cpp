@@ -31,6 +31,7 @@ THE SOFTWARE.
 // model set (small CNFs only). --strict: the circuit is CLEAN (root is the last
 // node, no dead nodes) and canonical (no nested or non-root unary ANDs).
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <cstdlib>
@@ -61,42 +62,97 @@ void die(const std::string& msg) {
   std::exit(EXIT_FAILURE);
 }
 
-// Structural count straight off the file in one forward scan, no graph built.
-// Also checks syntactic determinism per node if the file claims DETERMINISTIC.
-mpz_class streamed_count(const std::string& path, uint64_t& nnodes, std::string* det_err = nullptr,
-                         bdnnf::KV* footer_kv = nullptr) {
+// One forward scan, no graph built: structural count, plus the per-node property
+// checks asked for (memory: one var bitset per node for decomposable/smooth).
+struct Streamed {
+  mpz_class count;
+  uint64_t nnodes = 0;
+  bdnnf::KV footer_kv;
+  std::string err;
+};
+Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smooth) {
   bdnnf::Reader r;
   r.open(path);
-  const bool check_det = det_err && (r.props & bdnnf::P_DETERMINISTIC);
-  std::vector<mpz_class> val(r.have_footer ? r.nnodes + 2 : 2);
+  Streamed out;
+  const size_t n = r.have_footer ? (size_t)r.nnodes + 2 : 2;
+  std::vector<mpz_class> val(n);
   val[0] = 0;
   val[1] = 1;
-  r.scan([&](uint64_t id, const bdnnf::Node& n) {
-    if (id >= val.size()) val.resize(id + 1);
+  const bool sets = decomp || smooth;
+  const size_t W = (size_t)r.nvars / 64 + 1;
+  std::vector<uint64_t> vs(sets ? n * W : 0, 0);
+  std::vector<uint64_t> seen(W), av(W), first(W);
+  auto row = [&](uint64_t id) { return vs.data() + id * W; };
+  auto bit = [](uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
+  auto set = [](uint64_t* s, uint32_t v) { s[v >> 6] |= 1ULL << (v & 63); };
+  auto fail_once = [&](const std::string& m) { if (out.err.empty()) out.err = m; };
+  r.scan([&](uint64_t id, const bdnnf::Node& nd) {
     mpz_class x;
-    if (n.kind == bdnnf::K_AND) {
+    if (nd.kind == bdnnf::K_AND) {
       x = 1;
-      for (uint64_t k : n.kids) x *= val[k];
-      x <<= n.free.size();
+      for (uint64_t k : nd.kids) x *= val[k];
+      x <<= nd.free.size();
+      if (sets) {
+        uint64_t* me = row(id);
+        auto add = [&](uint32_t v) {
+          if (decomp && bit(me, v)) fail_once("AND " + std::to_string(id) + " conjuncts share var " + std::to_string(v));
+          set(me, v);
+        };
+        for (uint64_t k : nd.kids) {
+          const uint64_t* kv = row(k);
+          for (size_t w = 0; w < W; w++) {
+            if (decomp && (me[w] & kv[w]))
+              fail_once("AND " + std::to_string(id) + " children share var " +
+                        std::to_string(w * 64 + __builtin_ctzll(me[w] & kv[w])));
+            me[w] |= kv[w];
+          }
+        }
+        for (int l : nd.units) add((uint32_t)std::abs(l));
+        for (uint32_t v : nd.free) add(v);
+      }
     } else {
       x = 0;
-      for (const auto& a : n.arcs) x += val[a.child];
-      if (check_det && det_err->empty())
-        for (size_t i = 0; i < n.arcs.size(); i++)
-          for (size_t j = i + 1; j < n.arcs.size(); j++) {
+      for (const auto& a : nd.arcs) x += val[a.child];
+      if (det)
+        for (size_t i = 0; i < nd.arcs.size(); i++)
+          for (size_t j = i + 1; j < nd.arcs.size(); j++) {
             bool clash = false;
-            for (int l : n.arcs[i].lits)
-              for (int m : n.arcs[j].lits) clash |= (l == -m);
+            for (int l : nd.arcs[i].lits)
+              for (int m : nd.arcs[j].lits) clash |= (l == -m);
             if (!clash)
-              *det_err = "OR " + std::to_string(id) + " arcs " + std::to_string(i) + " and " +
-                         std::to_string(j) + " share no complementary literal";
+              fail_once("OR " + std::to_string(id) + " arcs " + std::to_string(i) + " and " +
+                        std::to_string(j) + " share no complementary literal (not DETERMINISTIC)");
           }
+      if (sets) {
+        uint64_t* me = row(id);
+        bool have_first = false;
+        for (const auto& a : nd.arcs) {
+          const uint64_t* cv = row(a.child);
+          std::copy(cv, cv + W, av.begin());
+          for (int l : a.lits) {
+            const uint32_t v = (uint32_t)std::abs(l);
+            if (decomp && bit(av.data(), v))
+              fail_once("OR " + std::to_string(id) + " arc literal on var " + std::to_string(v) +
+                        " also occurs below its child " + std::to_string(a.child));
+            set(av.data(), v);
+          }
+          for (size_t w = 0; w < W; w++) me[w] |= av[w];
+          if (smooth && a.child != 0) {
+            if (!have_first) { first = av; have_first = true; }
+            else if (first != av) fail_once("OR " + std::to_string(id) + " arcs mention different vars (not SMOOTH)");
+          }
+        }
+      }
     }
     val[id] = std::move(x);
   });
-  nnodes = r.nnodes;
-  if (footer_kv) *footer_kv = r.footer_kv;
-  return val[r.root];
+  if (smooth && r.root != 0)
+    for (uint32_t v = 1; v <= r.nvars; v++)
+      if (!bit(row(r.root), v)) { fail_once("root does not mention var " + std::to_string(v) + " (not SMOOTH)"); break; }
+  out.count = val[r.root];
+  out.nnodes = r.nnodes;
+  out.footer_kv = r.footer_kv;
+  return out;
 }
 
 mpz_class structural_count(const Circuit& c) {
@@ -335,8 +391,7 @@ int main(int argc, char** argv) {
 
   if (!any_opt) {
     try {
-      uint64_t nn;
-      std::cout << streamed_count(path, nn).get_str() << "\n";
+      std::cout << streamed_check(path, false, false, false).count.get_str() << "\n";
     } catch (const bdnnf::Error& e) {
       die(path + ": " + e.what());
     }
@@ -351,16 +406,17 @@ int main(int argc, char** argv) {
   } catch (const bdnnf::Error& e) {
     die(path + ": " + e.what());
   }
-  const bool need_graph = !cnf_path.empty() || check_decomp || strict ||
-                          (props & (bdnnf::P_DECOMPOSABLE | bdnnf::P_SMOOTH));
-  if (!need_graph) {
-    uint64_t nn = 0;
-    std::string det_err;
-    bdnnf::KV fkv;
-    mpz_class sc;
-    try { sc = streamed_count(path, nn, &det_err, &fkv); } catch (const bdnnf::Error& e) { die(e.what()); }
-    if (!det_err.empty()) fail("flagged DETERMINISTIC but " + det_err);
-    const std::string fc = bdnnf::Reader().get(fkv, "count");
+  // The graph is only needed for the model set and the strict (canonical) form.
+  if (cnf_path.empty() && !strict) {
+    Streamed st;
+    try {
+      st = streamed_check(path, props & bdnnf::P_DETERMINISTIC,
+                          check_decomp || (props & bdnnf::P_DECOMPOSABLE), props & bdnnf::P_SMOOTH);
+    } catch (const bdnnf::Error& e) { die(e.what()); }
+    if (!st.err.empty()) fail(st.err);
+    const mpz_class& sc = st.count;
+    const uint64_t nn = st.nnodes;
+    const std::string fc = bdnnf::Reader().get(st.footer_kv, "count");
     if (!fc.empty() && mpz_class(fc, 10) != sc) fail("count " + sc.get_str() + " != footer count " + fc);
     if (have_expect && sc != expect_count)
       fail("count " + sc.get_str() + " != expected " + expect_count.get_str());
@@ -374,9 +430,8 @@ int main(int argc, char** argv) {
 
   const mpz_class cnt = structural_count(c);
   {
-    uint64_t nn;
     mpz_class sc;
-    try { sc = streamed_count(path, nn); } catch (const bdnnf::Error& e) { die(e.what()); }
+    try { sc = streamed_check(path, false, false, false).count; } catch (const bdnnf::Error& e) { die(e.what()); }
     if (sc != cnt) fail("streamed count " + sc.get_str() + " != graph count " + cnt.get_str());
   }
   const std::string fcount = bdnnf::Reader().get(c.footer_kv, "count");

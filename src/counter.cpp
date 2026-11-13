@@ -2536,7 +2536,12 @@ RetState Counter::resolve_conflict() {
     VERBOSE_DEBUG_DO(print_conflict_info());
     debug_print("Not flipped. backj: " << backj << " lev_to_set: " << lev_to_set
       << " current lev: " << dec_level());
-    go_back_to(backj-1);
+    // --compile: no chronological backtracking. A lit asserted below the
+    // current level would be recorded both by the children already compiled
+    // (which derived it themselves) and by its own level: not decomposable.
+    // Backjumping to its level resets that branch, so it is compiled once.
+    // (Also in SAT mode: a lit it asserts below its start would be lost too.)
+    go_back_to(compiler->active() ? lev_to_set : backj-1);
     auto ant = add_uip_confl_cl(uip_clause);
     set_lit(uip_clause[0], lev_to_set, ant);
     VERBOSE_DEBUG_DO(print_trail());

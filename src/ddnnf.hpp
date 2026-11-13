@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include "common.hpp"
 #include "bdnnf.hpp"
+#include <gmpxx.h>
 #include "GitSHA1.hpp"
 
 #include <algorithm>
@@ -126,6 +127,11 @@ public:
   std::vector<std::vector<int>> left_lits;
   // override_node[lev] >= 0: SAT oracle solved this level; node is a witness leaf
   std::vector<int> override_node;
+  // split_lits[lev][branch]: the branch's lits when it was (last) split into
+  // comps, i.e. the assignment its count is based on; valid if has_split.
+  std::vector<std::array<std::vector<int>, 2>> split_lits;
+  std::vector<std::array<char, 2>> has_split;
+
 
   // TODO this should be insert, for mem perf
   void ensure_level(int lev) {
@@ -133,6 +139,8 @@ public:
       children.resize(lev + 1);
       left_lits.resize(lev + 1);
       override_node.resize(lev + 1, -1);
+      split_lits.resize(lev + 1);
+      has_split.resize(lev + 1, {0, 0});
     }
   }
   void on_new_level(int lev) {
@@ -141,6 +149,7 @@ public:
     children[lev][1].clear();
     left_lits[lev].clear();
     override_node[lev] = -1;
+    has_split[lev] = {0, 0};
   }
   void set_override(int lev, int node) {
     ensure_level(lev);
@@ -163,9 +172,10 @@ public:
 
   void finish() {
     const int r = (root < 0) ? false_node : root;
-    // Decision ORs split on x / -x, so they are deterministic. Decomposability is
-    // not guaranteed: learnt clauses can bridge components (ddnnf-cleanup fixes it).
-    guard([&] { w.finish((uint64_t)r, bdnnf::P_DETERMINISTIC); });
+    // Decision ORs split on x / -x. Arcs carry only their own component's lits of
+    // their own level, and --compile does no chronological backtracking, so no
+    // lit is recorded twice: decomposable (checked by SLOW_DEBUG and the fuzzers).
+    guard([&] { w.finish((uint64_t)r, bdnnf::P_DETERMINISTIC | bdnnf::P_DECOMPOSABLE); });
   }
 
 private:
@@ -216,6 +226,26 @@ private:
   }
 
 #ifdef SLOW_DEBUG
+public:
+  // Unprojected: every OR's live arcs cover exactly the comp's vars.
+  bool expect_smooth = false;
+  [[nodiscard]] std::string slow_count(int id) const {
+    if (id == false_node) return "0";
+    if (id == true_node) return "1";
+    return id < (int)scount.size() ? scount[id].get_str() : "?";
+  }
+private:
+  // Structural count of every node.
+  std::vector<mpz_class> scount;
+  mpz_class& cslot(int id) {
+    if ((int)scount.size() <= id) scount.resize(id + 1);
+    return scount[id];
+  }
+  [[nodiscard]] mpz_class cval(int id) const {
+    if (id == false_node) return 0;
+    if (id == true_node) return 1;
+    return scount[id];
+  }
   // Per-node set of vars in its subtree. Children always exist before parents.
   std::vector<std::unordered_set<int>> subtree_vars;
   std::unordered_set<int>& slot(int id) {
@@ -224,7 +254,30 @@ private:
   }
   void record_or(int id, const std::vector<Arc>& arcs) {
     auto& vs = slot(id);
+    auto& cnt = cslot(id);
+    cnt = 0;
+    const std::unordered_set<int>* first = nullptr;
+    std::vector<std::unordered_set<int>> arc_vars;
+    arc_vars.reserve(arcs.size());
     for (const auto& a : arcs) {
+      if (a.child == false_node) continue;
+      cnt += cval(a.child);
+      arc_vars.emplace_back(a.child < (int)subtree_vars.size() ? subtree_vars[a.child] : std::unordered_set<int>{});
+      for (int l : a.lits) arc_vars.back().insert(std::abs(l));
+      if (!first) first = &arc_vars.front();
+      else if (expect_smooth && arc_vars.back() != *first) {
+        std::cerr << "*** SMOOTHNESS VIOLATION at OR node " << id
+                  << ": its arcs cover different vars (a dropped arc lit?)\n";
+        std::abort();
+      }
+    }
+    for (const auto& a : arcs) {
+      if (a.child >= 0 && a.child < (int)subtree_vars.size())
+        for (int l : a.lits) if (subtree_vars[a.child].count(std::abs(l))) {
+          std::cerr << "*** ARC-DECOMP VIOLATION at OR node " << id << ": arc lit " << l
+                    << " also below its child " << a.child << "\n";
+          std::abort();
+        }
       for (int l : a.lits) vs.insert(std::abs(l));
       if (a.child < (int)subtree_vars.size())
         for (int v : subtree_vars[a.child]) vs.insert(v);
@@ -244,6 +297,10 @@ private:
     for (int v : fr) { parts.push_back({v}); names.push_back("free " + std::to_string(v)); }
     auto& vs = slot(id);
     for (const auto& p : parts) vs.insert(p.begin(), p.end());
+    auto& cnt = cslot(id);
+    cnt = 1;
+    for (int c : k) cnt *= cval(c);
+    cnt <<= (unsigned long)fr.size();
     if (!check) return;
     for (size_t i = 0; i < parts.size(); i++)
       for (size_t j = i + 1; j < parts.size(); j++)

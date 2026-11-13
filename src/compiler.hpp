@@ -49,6 +49,7 @@ struct Compiler {
   void record_comp_node()      { if (active_) do_record_comp_node(); }
   void attach_to_parent()      { if (active_) do_attach_to_parent(); }
   void branch_reset()          { if (active_) do_branch_reset(); }
+  void comps_split()           { if (active_) do_comps_split(); }
   void free_var(uint32_t v)    { if (active_) do_free_var(v); }
   void cache_hit(int node)     { if (active_) do_cache_hit(node); }
   void sat_witness_capture(int sat_start_dec_level) {
@@ -71,6 +72,7 @@ protected:
   virtual void do_record_comp_node() {}
   virtual void do_attach_to_parent() {}
   virtual void do_branch_reset() {}
+  virtual void do_comps_split() {}
   virtual void do_free_var(uint32_t /*v*/) {}
   virtual void do_cache_hit(int /*node*/) {}
   virtual void do_sat_witness_capture(int /*sat_start_dec_level*/) {}

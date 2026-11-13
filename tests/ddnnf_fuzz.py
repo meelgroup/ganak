@@ -128,9 +128,8 @@ def run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit):
         crash_exit(r, "--compile", t, nv, nc, k)
     if not produced(nnf):
         return False, f"no .bdnnf produced. stderr tail:\n{r.stderr[-1500:]}"
-    # Raw circuit may not be strict / decomposable; check count only.
-    rv = subprocess.run([VERIFY, nnf, "--expect-count", str(gc),
-                         "--no-strict", "--no-check-decomposable"],
+    # Raw circuit: count + decomposability (streamed), not the strict form.
+    rv = subprocess.run([VERIFY, nnf, "--expect-count", str(gc), "--no-strict"],
                         capture_output=True, text=True)
     if rv.returncode < 0:
         crash_exit(rv, "ddnnf-verify(raw)", t, nv, nc, k)
@@ -156,6 +155,7 @@ def run_big(t, nv, nc, k, cnf, nnf, clean, crash_exit):
     if msg:
         return False, msg
     return True, ""
+
 
 
 def py_checks(path, expect, cleaned):
@@ -284,12 +284,7 @@ def main():
 
         ok, msg = dv.check_decomposable(nodes, arcs, root)
         if not ok:
-            # Raw circuit may transiently violate strict-decomposability because
-            # conflict-learned (redundant) clauses can propagate "cross-component"
-            # vars into an OR's arc-lits (CompAnalyzer only sees irreducible clauses).
-            # The count + model-set checks below still apply -- the function is
-            # right. `ddnnf-cleanup` repairs the violation below.
-            print(f"NOTE[{t}] raw circuit not strict-decomposable (will check post-cleanup): {msg}")
+            fail(t, nv, nc, k, f"raw circuit not decomposable: {msg}")
 
         if sc != bc:
             fail(t, nv, nc, k, f"structural count {sc} != brute {bc}")
@@ -308,9 +303,9 @@ def main():
             fail(t, nv, nc, k, f"strong circuit not faithful as a function "
                  f"|circuit|={len(fmodels)} |brute|={len(bmodels)}")
 
-        # CLEANUP TOOL: the raw file may carry dead nodes and non-decomposable
-        # ANDs/arcs. `ddnnf-cleanup` must fix both. Check strictly: no dead
-        # nodes, decomposable, same count + model set.
+        # CLEANUP TOOL: the raw file may carry dead nodes and nested/unary ANDs.
+        # `ddnnf-cleanup` must remove them. Check strictly: no dead nodes,
+        # decomposable, same count + model set.
         reset(clean)
         rc = subprocess.run([CLEANUP, nnf, clean], capture_output=True, text=True)
         if rc.returncode < 0:
@@ -336,7 +331,7 @@ def main():
             fail(t, nv, nc, k, f"cleaned structural count {dv.count(cn, ca, cr)} != brute {bc}")
         if dv.models(cn, ca, cr, nv) != bmodels:
             fail(t, nv, nc, k, "cleaned model-set mismatch")
-        msg = py_checks(nnf, bc, False) or py_checks(clean, bc, True)
+        msg = py_checks(nnf, bc, True) or py_checks(clean, bc, True)
         if msg:
             fail(t, nv, nc, k, msg)
 

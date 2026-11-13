@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "compiler.hpp"
 #include "counter.hpp"
 #include "ddnnf.hpp"
+#include <sstream>
 
 #include <vector>
 
@@ -42,6 +43,7 @@ public:
       : counter(_counter), fname(_fname) {
     active_ = true;
     circuit = std::make_unique<DDNNFCircuit>(fname, counter.nVars(), counter.get_conf().compile_lit_map);
+    SLOW_DEBUG_DO(circuit->expect_smooth = counter.get_indep_support_end() > counter.nVars());
   }
 
   void do_new_decision_level() override { circuit->on_new_level(counter.dec_level()); }
@@ -58,7 +60,9 @@ public:
     // branch's literals). The result is held until record_comp_node() /
     // attach_to_parent() consume it.
     const int lev = counter.dec_level();
-    const auto right_lits = cur_level_lits();
+    circuit->ensure_level(lev);
+    const auto right_lits = circuit->has_split[lev][1] ? circuit->split_lits[lev][1] : cur_level_lits();
+    const auto& left_lits = circuit->has_split[lev][0] ? circuit->split_lits[lev][0] : circuit->left_lits[lev];
     auto& top = counter.decisions.top();
     circuit->ensure_level(lev);
     // SAT-oracle leaf: level solved by the SAT solver, which recorded a witness for
@@ -73,7 +77,7 @@ public:
     int left  = dead(0) ? circuit->false_node : circuit->mk_and(circuit->children[lev][0]);
     int right = dead(1) ? circuit->false_node : circuit->mk_and(circuit->children[lev][1]);
     std::vector<DDNNFCircuit::Arc> arcs;
-    if (left  != circuit->false_node) arcs.push_back(DDNNFCircuit::Arc{left,  circuit->left_lits[lev]});
+    if (left  != circuit->false_node) arcs.push_back(DDNNFCircuit::Arc{left,  left_lits});
     if (right != circuit->false_node) arcs.push_back(DDNNFCircuit::Arc{right, right_lits});
     VERBOSE_DEBUG_DO({
       std::cerr << "[OR-build] lev=" << lev << " super_comp_id=" << top.super_comp() << " super_vars={";
@@ -86,6 +90,16 @@ public:
       std::cerr << " } left_kid=" << left << " right_kid=" << right << "\n";
     });
     compiled_node = circuit->mk_or(std::move(arcs));
+    // The node must count what ganak counted for this level.
+    SLOW_DEBUG_DO(if (!counter.weighted() && top.is_indep) {
+      std::stringstream ss;
+      ss << *top.total_model_count();
+      if (ss.str() != circuit->slow_count(compiled_node)) {
+        std::cerr << "*** COUNT MISMATCH at OR node " << compiled_node << " lev " << lev
+                  << ": circuit " << circuit->slow_count(compiled_node) << " ganak " << ss.str() << "\n";
+        std::abort();
+      }
+    });
   }
 
   void do_record_comp_node() override {
@@ -95,6 +109,17 @@ public:
   void do_attach_to_parent() override {
     circuit->add_child(counter.dec_level() - 1,
         (counter.decisions.end() - 2)->is_right_branch(), compiled_node);
+  }
+
+  // The lits are taken when the branch is split into components: that is the
+  // assignment its count is based on. A conflict that backjumps here resets the
+  // branch, which re-splits it.
+  void do_comps_split() override {
+    const int lev = counter.dec_level();
+    circuit->ensure_level(lev);
+    const bool b = counter.decisions.top().is_right_branch();
+    circuit->split_lits[lev][b] = cur_level_lits();
+    circuit->has_split[lev][b] = 1;
   }
 
   void do_branch_reset() override {
@@ -140,7 +165,10 @@ public:
     // components accumulate there.
     const bool b = counter.decisions.top().is_right_branch();
     int inner = circuit->mk_and(circuit->children[0][b]);
-    circuit->root = circuit->wrap_lits(inner, level0_lits());
+    // Like every level, level 0's lits are those of its (last) split: a unit
+    // learnt later is recorded by the level whose split saw it.
+    circuit->root = circuit->wrap_lits(inner,
+        circuit->has_split[0][b] ? circuit->split_lits[0][b] : level0_lits());
   }
 
   void do_finalize_and_write(bool unsat) override {
@@ -156,13 +184,27 @@ public:
   }
 
 private:
-  // Current top decision level's trail lits.
-  std::vector<int> cur_level_lits() const {
+  // Current top decision level's trail lits, of the vars of its component only.
+  // A learnt clause can imply a var y of another component C2 here, but then the
+  // assignment so far, being C2's vars disjoint from ours, makes either this
+  // branch UNSAT or C2 entail y: C2's own subtree has y, and recording it here
+  // too would break decomposability.
+  std::vector<int> cur_level_lits() {
+    if (comp_mark.size() <= counter.nVars()) comp_mark.resize(counter.nVars() + 1, 0);
+    if (++mark == 0) { std::fill(comp_mark.begin(), comp_mark.end(), 0); mark = 1; }
+    all_vars_in_comp(counter.comp_manager->get_super_comp(counter.decisions.top()), vp)
+      comp_mark[*vp] = mark;
+    // Level 0 has no decision var: top_declevel_trail_begin() would read var 0's
+    // sublevel, which the SAT oracle overwrites.
+    auto begin = counter.dec_level() == 0 ? counter.trail.begin() : counter.top_declevel_trail_begin();
+    if (begin > counter.trail.end()) begin = counter.trail.end();
     std::vector<int> r;
-    for (auto it = counter.top_declevel_trail_begin(); it != counter.trail.end(); ++it)
-      r.push_back(it->to_visual_int());
+    for (auto it = begin; it != counter.trail.end(); ++it)
+      if (comp_mark[it->var()] == mark) r.push_back(it->to_visual_int());
     return r;
   }
+  std::vector<uint32_t> comp_mark;
+  uint32_t mark = 0;
   // Literals forced at decision level 0.
   std::vector<int> level0_lits() const {
     std::vector<int> r;

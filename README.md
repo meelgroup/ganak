@@ -251,18 +251,11 @@ written in BDNNF, a compact binary format that is streamed to disk as Ganak
 runs and can be queried without loading it into memory. See
 [spec-bdnnf.md](spec-bdnnf.md) for the format.
 
-Compiling still prints the count. The output is a faithful d-DNNF:
+Compiling still prints the count:
 
 ```shell
 ./ganak --compile out.bdnnf in.cnf
 ```
-
-The circuit is over the input's variables. Arjun simplifies the CNF first, but
-never eliminates a projection variable: for a projected CNF, the variables it
-does eliminate get AIG (Skolem) definitions in the file, and Ganak's SAT oracle
-records one example assignment of the others at each SAT leaf, so every model of
-the circuit, completed by the definitions, is a model of the CNF
-(`bdnnf sample --cnf` checks this).
 
 ### Querying the circuit: `bdnnf`
 

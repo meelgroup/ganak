@@ -283,8 +283,9 @@ condition on literals.
 ./bdnnf sample out.bdnnf -n 100 --cnf in.cnf
 ```
 
-See [BDNNF-TOOL.md](BDNNF-TOOL.md) for all options, and for how the commands
-correspond to those of [ddnnife](https://github.com/practical-kc/ddnnife).
+See [BDNNF-TOOL.md](BDNNF-TOOL.md) for all options, and its [comparison with
+ddnnife](BDNNF-TOOL.md#comparison-with-ddnnife) for how the commands correspond
+to those of [ddnnife](https://github.com/practical-kc/ddnnife).
 
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter

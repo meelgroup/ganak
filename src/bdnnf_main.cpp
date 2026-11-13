@@ -46,6 +46,7 @@ const Cmd cmds[] = {
   {"enum", bdnnf_query, "enumerate the models, from --start I, -n at most"},
   {"lits", bdnnf_query, "weighted/projected count of the models with each literal"},
   {"batch", bdnnf_query, "answer a file of count (or --sat) queries, many per pass"},
+  {"atomic", bdnnf_query, "atomic sets: vars equal (--cross: or opposite) in every model"},
   {"core", bdnnf_query, "literals true in every model (core; negated: dead)"},
   {"dump", bdnnf_dump, "print as text"},
   {"to-d4", bdnnf_to_d4, "convert to d4 .nnf"},

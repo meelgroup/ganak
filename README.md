@@ -343,6 +343,7 @@ the circuit, completed by the definitions, is a model of the CNF
 ./bdnnf batch out.bdnnf queries.txt [--sat] # one count (or SAT) per line of literals
 ./bdnnf lits out.bdnnf [--cnf in.cnf]       # count of the models with each literal
 ./bdnnf core out.bdnnf [--assume 3]         # literals true in all models (core/dead)
+./bdnnf atomic out.bdnnf [--cross]          # vars equal (or opposite) in all models
 ./bdnnf verify out.bdnnf                    # format + every claimed property
 ./bdnnf dump out.bdnnf                      # human-readable text form
 ./bdnnf dot out.bdnnf out.dot               # Graphviz rendering

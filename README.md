@@ -367,9 +367,6 @@ The queries follow [ddnnife](https://github.com/practical-kc/ddnnife)
 Feature-Model Counting", ACM TOSEM 2024), extended to weights and projection.
 `python3 tests/bdnnf.py check|count` is an independent reader for cross-checks.
 
-The d4 `.nnf` format is that of [Lagniez and Marquis, "An Improved
-Decision-DNNF Compiler", IJCAI 2017](https://www.ijcai.org/proceedings/2017/93).
-
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter
 fuzzer, developed by [Anna Latour](https://scholar.google.com/citations?user=nf5lfegAAAAJ&hl=nl)

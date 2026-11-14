@@ -48,26 +48,26 @@ operations to `bdnnf`.
 | ddnnife | bdnnf | Notes |
 |---|---|---|
 | `count -a A` | `count --assume A` | |
-| `count` with a list of literals | `lits --assume A` | `lits` gives the count of every literal |
+| `count` with literals | `lits --assume A` | all literals at once |
 | `count-features` | `lits` | |
-| `count-queries FILE` | `batch FILE` | ddnnife can use several threads; bdnnf evaluates up to 64 queries per pass |
+| `count-queries FILE` | `batch FILE` | ddnnife: threads; bdnnf: 64 per pass |
 | `sat FILE` | `batch FILE --sat` | |
 | `core` | `core` | |
-| `atomic-sets [--cross]` | `atomic [--cross]` | ddnnife can restrict the candidates; bdnnf cannot yet |
+| `atomic-sets [--cross]` | `atomic [--cross]` | ddnnife can restrict candidates |
 | `anomalies` | `core`, `atomic` | |
 | `urs -n N -s S` | `sample -n N --seed S` | |
-| stream `enum` | `enum -n N --start I` | ddnnife continues across stream calls; bdnnf resumes by index |
-| `t-wise -t T` | `twise -t T` | different constructions: ddnnife merges partial samples bottom-up, bdnnf covers tuples greedily (as in YASA); ddnnife can restrict the covered literals or variables |
+| stream `enum` | `enum -n N --start I` | bdnnf resumes by index |
+| `t-wise -t T` | `twise -t T` | different algorithms; ddnnife can restrict literals |
 | `t-wise-check` | — | |
-| stream fitness / top-k configurations | `opt --obj FILE -k K` | |
-| `stream`, `stream-queries FILE` | `stream` (and `stream < FILE`) | different line syntax; ddnnife recounts incrementally (marking), bdnnf recomputes each query |
-| stream `v` (per-variable answers) | partly | `lits` and `core` answer for all variables |
+| stream fitness, top-k | `opt --obj FILE -k K` | |
+| `stream`, `stream-queries` | `stream` | different syntax; ddnnife recounts incrementally |
+| stream `v` | partly | `lits`, `core` cover all variables |
 | `mermaid` | `dot` | |
 | `statistics` | — | |
 | `to-cnf` | — | |
 | `--save-ddnnf` (c2d) | `to-d4` (d4) | |
-| reads c2d and d4 `.nnf`, and CNF via d4 | reads BDNNF from `ganak --compile` | |
-| Rust API, Python and Kotlin bindings | — | |
+| input: c2d/d4 `.nnf`, CNF via d4 | input: BDNNF | |
+| Rust, Python, Kotlin APIs | — | |
 
 Differences in scope: Ganak's circuits can be weighted and projected, so
 `bdnnf` takes literal weights and a projection set, and completes models over

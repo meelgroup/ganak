@@ -85,6 +85,10 @@ CNFs, 5x timeout) for large circuits. Minimize a failure with
 `./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.
 `./ddnnife_diff.py --num 500` compares `bdnnf` with ddnnife (built in
 `../ddnnife` with `cargo build --release -p ddnnife_cli`, nightly cargo).
+d4 (the d-DNNF compiler, for comparisons) is in `../d4-mccomp2026`: build with
+`cd c++/compiler && ./build.sh -j`, then
+`c++/compiler/build/compiler -i in.cnf --compiler.dump-file=out.nnf` writes a
+d4 `.nnf` that ddnnife reads with `-t <nvars>`.
 
 `ganak --compile out.bdnnf in.cnf` writes a faithful d-DNNF (`spec-bdnnf.md`).
 Building with `SLOW_DEBUG` checks every node at emission: decomposability, arc

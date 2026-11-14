@@ -213,12 +213,16 @@ lets a consumer check its own count). Readers ignore unknown keys.
 
 ### 4.1 Property flags
 
+For nodes reachable from the root:
+
 | Bit | Name | Promise |
 |---|---|---|
-| 0 | `DECOMPOSABLE` | For every AND reachable from the root, its children, its units and its free variables mention pairwise disjoint variable sets; and for every OR arc, its literals are on distinct variables that its child does not mention. |
-| 1 | `DETERMINISTIC` | For every OR reachable from the root, the arcs are pairwise logically inconsistent. |
-| 2 | `SMOOTH` | Every reachable OR's arcs mention the same variables, and the root mentions all of `1..nvars`. Together with bits 0–1 this makes the structural count the model count. |
-| 3 | `CLEAN` | No dead nodes, and the root is the last stored node. |
+| 0 | `DECOMPOSABLE` | An AND's parts (children, units, free vars) share no variable; an OR arc's literals are on distinct variables, none in its child. |
+| 1 | `DETERMINISTIC` | An OR's arcs are pairwise inconsistent. |
+| 2 | `SMOOTH` | An OR's arcs mention the same variables; the root mentions all of `1..nvars`. |
+| 3 | `CLEAN` | No dead nodes; the root is the last node. |
+
+Bits 0–2 together make the structural count the model count.
 
 A writer sets only the bits it guarantees. Other bits are reserved and are 0.
 

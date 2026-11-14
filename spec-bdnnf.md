@@ -101,7 +101,10 @@ Header payload:
 Keys and values are UTF-8 strings. Defined keys: `producer` (e.g.
 `ganak 1.2.3 <sha>`), and `projection`: the projection variables, decimal,
 space-separated (may be empty; absent: all of `1..nvars`). Projected queries (count, sample,
-conditioning) are over these variables. Readers ignore unknown keys. Unknown `version` values
+conditioning) are over these variables. Readers ignore unknown keys. Ganak
+also writes `input` (the CNF file), `command` (its command line), and the
+version (SHA1) of each component: `arjun`, `sbva`, `cryptominisat`, `cadical`,
+`cadiback`, `approxmc`, `treedecomp`. Unknown `version` values
 must be rejected.
 
 The non-ASCII first byte and the `\r\n` let tools detect text-mode

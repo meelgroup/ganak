@@ -45,6 +45,8 @@ struct CounterConfiguration {
   std::vector<int> compile_root_units;
   std::vector<int> compile_root_free;
   bool compile_projected = false;
+  // extra BDNNF header keys: input file, command line, component versions
+  std::vector<std::pair<std::string, std::string>> compile_meta;
   std::vector<uint32_t> compile_proj;  // input projection vars (may be empty)
   std::vector<std::pair<uint64_t, uint64_t>> compile_def_nodes;
   std::vector<std::pair<uint32_t, uint64_t>> compile_defs;

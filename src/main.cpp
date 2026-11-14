@@ -970,7 +970,22 @@ int main(int argc, char *argv[]) {
 
   // Run Ganak
   conf.disconnected_allowed = disconnected_allowed;
-  if (!conf.compile_fname.empty()) set_compile_map(cnf, compile_arjun);
+  if (!conf.compile_fname.empty()) {
+    set_compile_map(cnf, compile_arjun);
+    std::string command;
+    for (int i = 0; i < argc; i++) command += (i ? " " : "") + std::string(argv[i]);
+    conf.compile_meta = {
+      {"input", in_fname},
+      {"command", command},
+      {"arjun", ArjunNS::Arjun::get_version_sha1()},
+      {"sbva", ArjunNS::Arjun::get_sbva_version_sha1()},
+      {"cryptominisat", CMSat::SATSolver::get_version_sha1()},
+      {"cadical", CMSat::SATSolver::get_cadical_version_sha1()},
+      {"cadiback", CMSat::SATSolver::get_cadiback_version_sha1()},
+      {"approxmc", ApproxMC::AppMC::get_version_sha1()},
+      {"treedecomp", TWD::get_version_sha1()},
+    };
+  }
   Ganak counter(conf, fg);
   setup_ganak(cnf, counter);
   run_weighted_counter(counter, cnf, start_time);

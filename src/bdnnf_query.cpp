@@ -369,7 +369,19 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
     if (ncombo > (1ULL << 32)) die("too many t-wise interactions");
   }
   const uint64_t total = ncombo << t;
-  std::vector<uint64_t> covered((total >> 6) + 1), infeasible((total >> 6) + 1);
+  std::vector<uint64_t> infeasible((total >> 6) + 1);
+  // smask[2i + neg]: the samples containing the literal of P[i]; a tuple is
+  // covered when its literals' masks intersect
+  std::vector<std::vector<uint64_t>> smask(2 * (size_t)p);
+  auto covered = [&](const Combo& c, uint32_t pol) {
+    const size_t words = smask.empty() ? 0 : smask[0].size();
+    for (size_t w = 0; w < words; w++) {
+      uint64_t m = ~0ULL;
+      for (uint32_t i = 0; i < t && m; i++) m &= smask[2 * (size_t)c.c[i] + ((pol >> i) & 1)][w];
+      if (m) return true;
+    }
+    return false;
+  };
   auto bit = [](const std::vector<uint64_t>& b, uint64_t i) { return (b[i >> 6] >> (i & 63)) & 1; };
   auto setbit = [](std::vector<uint64_t>& b, uint64_t i) { b[i >> 6] |= 1ULL << (i & 63); };
   auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
@@ -433,7 +445,7 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
   for (uint64_t rank = 0; rank < ncombo; rank++, it.next()) {
     for (uint32_t pol = 0; pol < (1U << t); pol++) {
       const uint64_t idx = (rank << t) | pol;
-      if (bit(covered, idx) || bit(infeasible, idx)) continue;
+      if (bit(infeasible, idx) || covered(it, pol)) continue;
       std::vector<int> A = tuple(it, pol);
       // the cursor walks the later tuples; an unsatisfiable candidate stays so
       Combo cur = it;
@@ -451,7 +463,7 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
         std::vector<std::tuple<Combo, uint64_t, uint32_t>> pos;
         while (more && sets.size() < 64) {
           const uint64_t ci = (crank << t) | cpol;
-          if (!bit(covered, ci) && !bit(infeasible, ci)) {
+          if (!bit(infeasible, ci) && !covered(cur, cpol)) {
             const auto U = tuple(cur, cpol);
             if (compatible(A, U)) {
               std::vector<int> AU = A;
@@ -518,13 +530,14 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
         for (int l : cl) ok |= (val[std::abs(l)] == (l > 0 ? 1 : -1));
         if (!ok) die("FAIL: t-wise sample " + std::to_string(nsamples) + " violates a clause");
       }
-      Combo cv(t, p);
-      for (uint64_t rk = 0; rk < ncombo; rk++, cv.next()) {
-        uint32_t pl = 0;
-        for (uint32_t i = 0; i < t; i++) if (val[P[cv.c[i]]] < 0) pl |= 1U << i;
-        setbit(covered, (rk << t) | pl);
+      for (size_t i = 0; i < p; i++) {
+        auto& m = smask[2 * i + (val[P[i]] < 0 ? 1 : 0)];
+        auto& o = smask[2 * i + (val[P[i]] < 0 ? 0 : 1)];
+        m.resize((nsamples >> 6) + 1, 0);
+        o.resize((nsamples >> 6) + 1, 0);
+        m[nsamples >> 6] |= 1ULL << (nsamples & 63);
       }
-      if (!bit(covered, idx)) die("internal: t-wise sample misses its own tuple");
+      if (!covered(it, pol)) die("internal: t-wise sample misses its own tuple");
       std::string line;
       for (uint32_t v = 1; v <= nv; v++) {
         if (!full && !in_proj[v]) continue;
@@ -973,6 +986,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
         of.open(out_path);
         if (!of) die("cannot open " + out_path);
       }
+      if (!r.is_cached()) r.cache_all();  // many passes: decode once
       twise(r, dead, W.in_proj, assume, tdeg, seed, full,
             cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf), of.is_open() ? of : std::cout);
       return EXIT_SUCCESS;
@@ -1363,6 +1377,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       out << line;
     }
     if (atomic) {
+      if (!r.is_cached()) r.cache_all();  // many SAT passes: decode once
       const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w);
       // Candidates: same literal count, same values in every sample. With
       // --cross each var is taken by its literal true in the first sample.

@@ -100,14 +100,13 @@ The in-browser version is built with Emscripten. GMP, MPFR and FLINT must
 first be built for wasm and installed into `$EMINSTALL` (Emscripten's sysroot);
 `.github/workflows/build-emscripten.yml` has the exact steps. Then
 `scripts/rebuild_emcripten_all.sh` builds every dependency and Ganak for wasm,
-and `scripts/build_emscripten.sh` copies `ganak.js`/`ganak.wasm` and
-`bdnnf.js`/`bdnnf.wasm` into `html/` and compiles the page's TypeScript
-(`html/src/`, needs `tsc`). Serve `html/` over HTTP (e.g.
-`python3 -m http.server -d html`): the page runs each tool in a web worker.
-Once the dependencies are installed for wasm, `scripts/build_wasm.sh` rebuilds
-just Ganak's wasm in a separate `build-wasm/`, leaving the native `build/` alone.
-Each build writes `html/version.txt`, which the page puts in every script URL,
-so browsers never run a stale build.
+each in its own `build-wasm/`, so the native `build/` directories stay. After
+changing only Ganak or the page, `scripts/build_emscripten.sh` rebuilds just
+Ganak. It puts `ganak.js`/`bdnnf.js` and their `.wasm` into `html/`, writes
+`html/version.txt` (the page puts it in every script URL, so browsers never run
+a stale build), and compiles the page's TypeScript (`html/src/`, needs `tsc`).
+Serve `html/` over HTTP (e.g. `python3 -m http.server -d html`): the page runs
+each tool in a web worker.
 
 ## Useful CMake options
 

@@ -39,6 +39,7 @@ all variables). The tools stream the file, keeping a few values per node.
 | `verify` | check the format and every property the file claims |
 | `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` |
 
+
 ## Comparison with ddnnife
 
 ddnnife [[1]](#references) is a d-DNNF reasoner for feature-model analysis; the

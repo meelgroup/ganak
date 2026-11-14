@@ -1334,7 +1334,7 @@ void Counter::count_loop() {
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
       // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache.
       // --compile must still compile these comps: the circuit can't depend on weights.
-      if (decisions.top().branch_is_zero() && conf.compile_fname.empty()) {
+      if (decisions.top().branch_is_zero() && !compiler->active()) {
         is_indep = false;
         if (run_sat_solver(state, true)) continue;
         goto start11;

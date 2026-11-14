@@ -1,10 +1,20 @@
 c c d-DNNF compile: small satisfiable unprojected formula.
 c c The circuit's structural count AND full model set must match the CNF, the
-c c circuit must be decomposable.
+c c circuit must be decomposable. enum lists the 4 models, model i is the same
+c c from any --start, and under --assume -2 it lists the 2 models with -2.
 c c RUN: %solver --compile %t.bdnnf %s
 c c RUN: %bdnnf verify %t.bdnnf --expect-count 4 --check-decomposable
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
 c c RUN: %bdnnf dot %t.bdnnf %t.dot
+c c RUN: %bdnnf enum %t.bdnnf --cnf %s -o %t.enum
+c c RUN: sort -u %t.enum | wc -l | %OutputCheck %s --check-prefix=ENUM
+c c RUN: %bdnnf enum %t.bdnnf --start 1 -n 2 -o %t.win
+c c RUN: sed -n 2,3p %t.enum | diff - %t.win
+c c RUN: %bdnnf enum %t.bdnnf --cnf %s --assume -2 -o %t.a
+c c RUN: wc -l < %t.a | %OutputCheck %s --check-prefix=ASSUME
+c c RUN: grep -c -- "-2 " %t.a | %OutputCheck %s --check-prefix=ASSUME
+c c ENUM: ^4$
+c c ASSUME: ^2$
 p cnf 3 2
 1 2 0
 -2 3 0

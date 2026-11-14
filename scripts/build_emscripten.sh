@@ -29,7 +29,7 @@ emmake make -j$(nproc)
 emmake make install
 cp bdnnf.wasm ../html
 cp bdnnf.js ../html
-echo "$(git rev-parse --short HEAD)-$(date +%Y%m%d%H%M%S)" > ../html/version.txt
+echo "$(git rev-parse --short HEAD)$(git diff --quiet HEAD -- || echo -dirty)-$(date +%Y%m%d%H%M%S)" > ../html/version.txt
 (cd ../html && tsc -p tsconfig.json && tsc -p tsconfig.worker.json)
 cp ganak.wasm ../html
 cp $EMINSTALL/bin/ganak.js ../html

@@ -622,7 +622,10 @@ function setCnf(text: string) {
 
 async function init() {
   await loadVersion();
-  $("version").textContent = "build " + version;
+  // version.txt: <ganak commit>[-dirty]-<build time>; page and wasm share the commit
+  const m = version.match(/^([0-9a-f]+(?:-dirty)?)-(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)\d\d$/);
+  $("version").textContent = m ? `ganak ${m[1]} · built ${m[2]}-${m[3]}-${m[4]} ${m[5]}:${m[6]}`
+    : "no version.txt: nothing is cached";
   const sel = $<HTMLSelectElement>("examples");
   EXAMPLES.forEach((x, i) => sel.append(el("option", { value: String(i) }, x.name)));
   const ta = $<HTMLTextAreaElement>("cnf");

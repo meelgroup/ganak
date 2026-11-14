@@ -1,0 +1,15 @@
+c c Sampling distribution with weights: the marginals are worked out by hand.
+c c Models of (1 v 2): weights .9*.75, .9*.25, .1*.75 (sum .975); of (-3 v 4):
+c c three, weight 1 each. So P(1) = .9/.975 = 12/13, P(2) = .75/.975 = 10/13,
+c c P(3) = 1/3, P(4) = 2/3. Fixed seed, 20000 samples, tolerance 0.02 (> 4 sigma).
+c c RUN: %solver --mode 1 --compile %t.bdnnf %s
+c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 20000 --seed 1 -o %t.samples
+c c RUN: python3 %S/../../sample_marginals.py %t.samples --tol 0.02 1=12/13 2=10/13 3=1/3 4=2/3
+c c RUN: %bdnnf sample %t.bdnnf -n 20000 --seed 2 -o %t.u.samples
+c c RUN: python3 %S/../../sample_marginals.py %t.u.samples --tol 0.02 1=2/3 2=2/3 3=1/3 4=2/3
+p cnf 4 2
+c t wmc
+c p weight 1 0.9 0
+c p weight -2 0.25 0
+1 2 0
+-3 4 0

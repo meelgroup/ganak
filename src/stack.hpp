@@ -226,6 +226,7 @@ public:
 
   [[nodiscard]] bool branch_is_zero() const { return branch_zero[act_branch]; }
   [[nodiscard]] bool branch_found_unsat() const { return branch_unsat[act_branch]; }
+  [[nodiscard]] bool side_unsat(bool b) const { return branch_unsat[b]; }
   // an unexplored right branch was implied away, i.e. it's UNSAT too
   [[nodiscard]] bool comp_unsat() const { return branch_unsat[0] && (!act_branch || branch_unsat[1]); }
   void mark_branch_unsat() {

@@ -56,6 +56,7 @@ void CompManager::remove_cache_pollutions_of(const StackLevel &top, bool skip_mi
 void CompManager::record_remaining_comps_for(StackLevel &top) {
   const Comp& super_comp = get_super_comp(top);
   const uint64_t new_comps_start_ofs = comp_stack.size();
+  counter->get_compiler().comps_split();
   if (BCE* bce = ana.get_bce()) bce->propagate(counter->get_trail());
 
   // This reinitializes archetype, sets up seen[] or all cls&vars unvisited (if unset), etc.

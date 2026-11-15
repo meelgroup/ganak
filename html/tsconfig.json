@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "module": "ES2022",
+    "strict": true,
+    "outDir": ".",
+    "rootDir": "src",
+    "skipLibCheck": true,
+    "declaration": true
+  },
+  "files": [
+    "src/app.ts"
+  ]
+}

@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace GanakInt {
 
@@ -33,8 +34,24 @@ enum class DecideType : int { td = 0, ignore_td = 1 };
 struct CounterConfiguration {
   int verb = 1;
 
-  // d-DNNF: if non-empty, emit the search trace as a d4 .nnf circuit to this file.
+  // d-DNNF: if non-empty, emit the search trace as a BDNNF d-DNNF circuit to this file.
   std::string compile_fname;
+  // d-DNNF, in the input's numbering: the input literals equivalent to each
+  // internal var (index = internal 0-based var; empty = identity), units and
+  // free vars of the input that are not in the simplified CNF, and the AIG
+  // definitions of eliminated vars (refs as in spec-bdnnf.md).
+  std::vector<std::vector<int>> compile_lit_map;
+  uint32_t compile_nvars = 0;
+  std::vector<int> compile_root_units;
+  std::vector<int> compile_root_free;
+  bool compile_projected = false;
+  // extra BDNNF header keys: input file, command line, component versions
+  std::vector<std::pair<std::string, std::string>> compile_meta;
+  std::vector<uint32_t> compile_proj;  // input projection vars (may be empty)
+  std::vector<std::pair<uint64_t, uint64_t>> compile_def_nodes;
+  std::vector<std::pair<uint32_t, uint64_t>> compile_defs;
+  // d-DNNF: check every node as it is written, abort at the first wrong one.
+  int compile_check = 0;
 
   int do_restart = 0;
   uint64_t first_restart = 20000U;
@@ -77,6 +94,7 @@ struct CounterConfiguration {
   uint32_t vivif_outer_every_n = 1;
   int do_buddy = 0;
   int do_bce = 1;
+  int backbone_lucky = 0;
   uint64_t bce_occ_lim = 10000;
   uint64_t bce_cand_lim = 20000000;
   uint32_t buddy_max_cls = 6;

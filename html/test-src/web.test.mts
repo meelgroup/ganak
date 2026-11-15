@@ -117,13 +117,20 @@ test("parseModels reads DIMACS model lines", () => {
 });
 
 const counts: [string, string][] = [["Car", "45"], ["Weighted", "62/125"], ["Parity", "128"],
-  ["Graph", "30"], ["Pigeonhole", "0"]];
+  ["Graph", "30"], ["Grid", "580986"], ["Pigeonhole", "0"]];
 for (const [name, want] of counts)
   test(`example "${name}" compiles, with Ganak's count ${want}`, async () => {
     const r = await compile(example(name));
     assert.equal(r.count, want);
     assert.ok(r.bdnnf && r.bdnnf.length > 0);
   });
+
+test("the grid example is the large one: over 1000 nodes, named cells", async () => {
+  const grid = example("Grid");
+  assert.equal(parseCnf(grid).names.get(1), "r1c1.red");
+  const d = await bdnnf(grid, ["dump", "/c.bdnnf"]);
+  assert.ok(d.stdout.split("\n").filter((l) => /^\d+ (and|or)/.test(l)).length > 1000);
+});
 
 test("every page query runs on the car example", async () => {
   for (const q of QUERIES) {

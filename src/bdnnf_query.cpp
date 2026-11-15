@@ -355,7 +355,8 @@ struct Combo {
 // on its own is skipped. Every satisfiable tuple ends up covered.
 void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<char>& in_proj,
            const std::vector<int>& assume, uint32_t t, uint64_t seed, bool full,
-           const std::vector<std::vector<int>>& cls, std::ostream& out) {
+           const std::vector<std::vector<int>>& cls, const std::vector<char>& lit_dead,
+           std::ostream& out) {
   const uint32_t nv = r.nvars;
   std::vector<char> defined(nv + 1, 0);
   for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
@@ -369,7 +370,8 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
     if (ncombo > (1ULL << 32)) die("too many t-wise interactions");
   }
   const uint64_t total = ncombo << t;
-  std::vector<uint64_t> infeasible((total >> 6) + 1);
+  // infeasible: unsatisfiable on its own; feasible: known satisfiable on its own
+  std::vector<uint64_t> infeasible((total >> 6) + 1), feasible((total >> 6) + 1);
   // smask[2i + neg]: the samples containing the literal of P[i]; a tuple is
   // covered when its literals' masks intersect
   std::vector<std::vector<uint64_t>> smask(2 * (size_t)p);
@@ -425,6 +427,12 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
     }
     return res;
   };
+  // a tuple with a literal in no model is unsatisfiable, no pass needed
+  auto has_dead = [&](const Combo& c, uint32_t pol) {
+    for (uint32_t i = 0; i < t; i++)
+      if (lit_dead[lidx((pol >> i) & 1 ? -(int)P[c.c[i]] : (int)P[c.c[i]])]) return true;
+    return false;
+  };
   auto tuple = [&](const Combo& c, uint32_t pol) {
     std::vector<int> ls;
     for (uint32_t i = 0; i < t; i++) ls.push_back((pol >> i) & 1 ? -(int)P[c.c[i]] : (int)P[c.c[i]]);
@@ -433,6 +441,33 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
   auto compatible = [](const std::vector<int>& a, const std::vector<int>& b) {
     for (int x : a) for (int y : b) if (x == -y) return false;
     return true;
+  };
+  // Tests the next up to 64 tuples of unknown status from (c0, rank0, pol0)
+  // on their own in one pass, so the unsatisfiable ones cost one pass in all.
+  auto prefilter = [&](const Combo& c0, uint64_t rank0, uint32_t pol0) {
+    Combo c = c0;
+    uint64_t rk = rank0;
+    uint32_t pl = pol0;
+    std::vector<std::vector<int>> sets;
+    std::vector<uint64_t> ids;
+    for (uint64_t scanned = 0; sets.size() < 64 && scanned < (1u << 16); scanned++) {
+      const uint64_t ci = (rk << t) | pl;
+      if (!bit(infeasible, ci) && !bit(feasible, ci) && !covered(c, pl)) {
+        if (has_dead(c, pl)) setbit(infeasible, ci);
+        else {
+          sets.push_back(tuple(c, pl));
+          ids.push_back(ci);
+        }
+      }
+      if (++pl == (1U << t)) {
+        pl = 0;
+        rk++;
+        if (!c.next()) break;
+      }
+    }
+    if (sets.empty()) return;
+    const uint64_t res = sat_pass(sets);
+    for (size_t j = 0; j < ids.size(); j++) setbit((res >> j) & 1 ? feasible : infeasible, ids[j]);
   };
   NodeAccess acc(r);
   bdnnf::Node nd;
@@ -446,6 +481,12 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
     for (uint32_t pol = 0; pol < (1U << t); pol++) {
       const uint64_t idx = (rank << t) | pol;
       if (bit(infeasible, idx) || covered(it, pol)) continue;
+      if (has_dead(it, pol)) {
+        setbit(infeasible, idx);
+        continue;
+      }
+      if (!bit(feasible, idx)) prefilter(it, rank, pol);
+      if (bit(infeasible, idx)) continue;
       std::vector<int> A = tuple(it, pol);
       // the cursor walks the later tuples; an unsatisfiable candidate stays so
       Combo cur = it;
@@ -463,7 +504,7 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
         std::vector<std::tuple<Combo, uint64_t, uint32_t>> pos;
         while (more && sets.size() < 64) {
           const uint64_t ci = (crank << t) | cpol;
-          if (!bit(infeasible, ci) && !covered(cur, cpol)) {
+          if (!bit(infeasible, ci) && !has_dead(cur, cpol) && !covered(cur, cpol)) {
             const auto U = tuple(cur, cpol);
             if (compatible(A, U)) {
               std::vector<int> AU = A;
@@ -987,8 +1028,12 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
         if (!of) die("cannot open " + out_path);
       }
       if (!r.is_cached()) r.cache_all();  // many passes: decode once
+      const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w);
+      std::vector<char> lit_dead(2 * (size_t)nv + 2, 0);
+      for (size_t i = 2; i < lit_dead.size(); i++) lit_dead[i] = cnt[i] == 0;
       twise(r, dead, W.in_proj, assume, tdeg, seed, full,
-            cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf), of.is_open() ? of : std::cout);
+            cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf), lit_dead,
+            of.is_open() ? of : std::cout);
       return EXIT_SUCCESS;
     }
     if (opt) {

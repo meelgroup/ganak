@@ -86,9 +86,9 @@ CNFs, 5x timeout) for large circuits. Minimize a failure with
 `./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.
 `./ddnnife_diff.py --num 500` compares `bdnnf` with ddnnife (built in
 `../ddnnife` with `cargo build --release -p ddnnife_cli`, nightly cargo).
-`scripts/bench_bdnnf.py` (about 2 min) shrinks a few competition CNFs by
-fixing some vars to a model's values, compiles them, and compares every
-`bdnnf` query with ddnnife's: times, memory, agreement, t-wise sample sizes.
+`scripts/bench_bdnnf.py` (about 6 min) compiles a few competition CNFs (full
+ones for most queries, shrunk ones for 2-wise) and compares every `bdnnf`
+query with ddnnife's: times, memory, agreement, t-wise sample sizes.
 d4 (the d-DNNF compiler, for comparisons) is in `../d4-mccomp2026`: build with
 `cd c++/compiler && ./build.sh -j`, then
 `c++/compiler/build/compiler -i in.cnf --compiler.dump-file=out.nnf` writes a

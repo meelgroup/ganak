@@ -374,6 +374,10 @@ struct Combo {
 // says the set stays satisfiable (64 sets per boolean pass), then complete
 // it to a model by a random walk over satisfiable arcs. A tuple unsatisfiable
 // on its own is skipped. Every satisfiable tuple ends up covered.
+// For t = 2 (if the pair matrix fits in 512 MB) the set instead grows by the
+// literals that cover most uncovered pairs with it, among those a backward
+// pass shows to be in a model of it, and the walk picks arcs and free vars by
+// the uncovered pairs they make.
 void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<char>& in_proj,
            const std::vector<int>& assume, uint32_t t, uint64_t seed, bool full,
            const std::vector<std::vector<int>>& cls, const std::vector<char>& lit_dead,
@@ -396,7 +400,17 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
   // smask[2i + neg]: the samples containing the literal of P[i]; a tuple is
   // covered when its literals' masks intersect
   std::vector<std::vector<uint64_t>> smask(2 * (size_t)p);
+  // t = 2: cov[a] has bit b when literals a and b (2i + neg for P[i]) share a
+  // sample, and the config grows by the possible literals that cover most
+  // uncovered pairs with it
+  const size_t np2 = 2 * (size_t)p, cw = (np2 + 63) / 64;
+  const bool greedy2 = t == 2 && np2 * cw <= (64ULL << 20);
+  std::vector<uint64_t> cov(greedy2 ? np2 * cw : 0);
   auto covered = [&](const Combo& c, uint32_t pol) {
+    if (greedy2) {
+      const size_t a = 2 * (size_t)c.c[0] + (pol & 1), b = 2 * (size_t)c.c[1] + ((pol >> 1) & 1);
+      return ((cov[a * cw + (b >> 6)] >> (b & 63)) & 1) != 0;
+    }
     const size_t words = smask.empty() ? 0 : smask[0].size();
     for (size_t w = 0; w < words; w++) {
       uint64_t m = ~0ULL;
@@ -416,11 +430,8 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
   };
   auto conflicting = has_conflict;
   // bit j of the result: set j (plus --assume) is satisfiable
-  auto sat_pass = [&](const std::vector<std::vector<int>>& sets) {
-    const size_t k = sets.size();
-    const uint64_t all = k == 64 ? ~0ULL : (1ULL << k) - 1;
-    std::fill(kill.begin(), kill.end(), 0);
-    for (size_t j = 0; j < k; j++) for (int l : sets[j]) kill[lidx(-l)] |= 1ULL << j;
+  // with kill set up for the sets in the lanes of `all`
+  auto scan_pass = [&](uint64_t all) {
     for (int l : assume) kill[lidx(-l)] |= all;
     sm[0] = 0;
     sm[1] = all;
@@ -438,10 +449,17 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
       sm[id] = m;
     });
     uint64_t res = dead[r.root] ? 0 : sm[r.root];
-    for (size_t j = 0; j < k; j++) {
+    for (int l : assume) res &= ~kill[lidx(l)];
+    return res;
+  };
+  auto sat_pass = [&](const std::vector<std::vector<int>>& sets) {
+    const size_t k = sets.size();
+    const uint64_t all = k == 64 ? ~0ULL : (1ULL << k) - 1;
+    std::fill(kill.begin(), kill.end(), 0);
+    for (size_t j = 0; j < k; j++) for (int l : sets[j]) kill[lidx(-l)] |= 1ULL << j;
+    uint64_t res = scan_pass(all);
+    for (size_t j = 0; j < k; j++)
       for (int l : sets[j]) if ((kill[lidx(l)] >> j) & 1) res &= ~(1ULL << j);
-      for (int l : assume) if ((kill[lidx(l)] >> j) & 1) res &= ~(1ULL << j);
-    }
     return res;
   };
   // a tuple with a literal in no model is unsatisfiable, no pass needed
@@ -486,6 +504,55 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
     const uint64_t res = sat_pass(sets);
     for (size_t j = 0; j < ids.size(); j++) setbit((res >> j) & 1 ? feasible : infeasible, ids[j]);
   };
+  std::vector<int32_t> pidx(nv + 1, -1);
+  for (uint32_t i = 0; i < p; i++) pidx[P[i]] = (int32_t)i;
+  std::vector<uint64_t> reach(dead.size()), posm(2 * (size_t)nv + 2), seen(nv + 1);
+  auto plit = [&](size_t li) { return li & 1 ? -(int)P[li >> 1] : (int)P[li >> 1]; };
+  auto pli = [&](int l) { return 2 * (size_t)pidx[std::abs(l)] + (l < 0 ? 1 : 0); };
+  // After scan_pass gave the satisfiable lanes res: which literals occur in a
+  // model of each, posm per mentioned literal, seen per var (an unseen var is free)
+  auto back_pass = [&](uint64_t res) {
+    std::fill(reach.begin(), reach.end(), 0);
+    std::fill(posm.begin(), posm.end(), 0);
+    std::fill(seen.begin(), seen.end(), 0);
+    if (dead[r.root]) return res;
+    reach[r.root] = res;
+    r.scan_backward([&](uint64_t id, const bdnnf::Node& nd) {
+      const uint64_t m = reach[id];
+      if (!m) return;
+      if (nd.kind == bdnnf::K_AND) {
+        for (int l : nd.units) { posm[lidx(l)] |= m; seen[std::abs(l)] |= m; }
+        for (uint64_t c : nd.kids) reach[c] |= m;
+        return;
+      }
+      for (const auto& a : nd.arcs) {
+        for (int l : a.lits) seen[std::abs(l)] |= m;
+        if (dead[a.child] || conflicting(a.lits)) continue;
+        const uint64_t am = m & sm[a.child] & ~killed(a.lits);
+        if (!am) continue;
+        for (int l : a.lits) posm[lidx(l)] |= am;
+        reach[a.child] |= am;
+      }
+    });
+    return res;
+  };
+  // lane 0 is A, lane i + 1 is A plus picks[0..i] (no two of them clash)
+  auto poss_pass = [&](const std::vector<int>& A, const std::vector<size_t>& picks) {
+    const uint64_t all = picks.size() == 63 ? ~0ULL : (2ULL << picks.size()) - 1;
+    std::fill(kill.begin(), kill.end(), 0);
+    for (int l : A) kill[lidx(-l)] = all;
+    for (size_t i = 0; i < picks.size(); i++) kill[lidx(-plit(picks[i]))] = all & ~((2ULL << i) - 1);
+    return back_pass(scan_pass(all));
+  };
+  // literal li of P is in a model of set j (after poss_pass)
+  auto possible = [&](size_t li, uint32_t j) {
+    const int l = plit(li);
+    if ((kill[lidx(l)] >> j) & 1) return false;
+    return ((posm[lidx(l)] >> j) & 1) || !((seen[std::abs(l)] >> j) & 1);
+  };
+  std::vector<int32_t> gain(np2), tg(np2);
+  std::vector<char> inA(np2);
+  std::vector<uint64_t> cs(cw);
   NodeAccess acc(r);
   bdnnf::Node nd;
   std::mt19937_64 rng(seed);
@@ -493,6 +560,182 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
   std::vector<uint64_t> stk;
   std::vector<size_t> ok_arcs;
   uint64_t nsamples = 0;
+  // grows A greedily; false if A itself is unsatisfiable
+  auto grow2 = [&](std::vector<int>& A) {
+    std::fill(gain.begin(), gain.end(), 0);
+    std::fill(inA.begin(), inA.end(), 0);
+    auto add_gain = [&](std::vector<int32_t>& g, size_t a) {
+      const uint64_t* row = &cov[a * cw];
+      for (size_t w = 0; w < cw; w++) {
+        uint64_t x = ~row[w];
+        if (w + 1 == cw && (np2 & 63)) x &= (1ULL << (np2 & 63)) - 1;
+        if (x == ~0ULL) { for (size_t b = w * 64; b < w * 64 + 64; b++) g[b]++; continue; }
+        for (; x; x &= x - 1) g[w * 64 + (size_t)__builtin_ctzll(x)]++;
+      }
+    };
+    auto addA = [&](int l) {
+      const size_t li = pli(l);
+      inA[li] = inA[li ^ 1] = 1;
+      add_gain(gain, li);
+    };
+    for (int l : A) addA(l);
+    std::vector<size_t> picks, cand;
+    int lane = -1;  // lane of the last pass that holds A, -1 before the first
+    while (true) {
+      cand.clear();
+      for (size_t b = 0; b < np2; b++) {
+        if (inA[b] || gain[b] == 0) continue;
+        if (lane >= 0 ? !possible(b, (uint32_t)lane) : lit_dead[lidx(plit(b))]) continue;
+        cand.push_back(b);
+        tg[b] = gain[b];
+      }
+      picks.clear();
+      while (picks.size() < 63 && !cand.empty()) {
+        size_t bi = 0;
+        int32_t bg = 0;
+        uint64_t ties = 0;
+        for (size_t i = 0; i < cand.size(); i++) {
+          const int32_t g = tg[cand[i]];
+          if (g > bg) { bg = g; bi = i; ties = 1; }
+          else if (g == bg && rng() % ++ties == 0) bi = i;
+        }
+        if (bg == 0) break;
+        const size_t best = cand[bi];
+        picks.push_back(best);
+        const uint64_t* row = &cov[best * cw];
+        size_t o = 0;
+        for (size_t b : cand) {
+          if (b == best || b == (best ^ 1)) continue;
+          tg[b] += !((row[b >> 6] >> (b & 63)) & 1);
+          cand[o++] = b;
+        }
+        cand.resize(o);
+      }
+      if (lane >= 0 && picks.empty()) {
+        // a literal may be possible although its var is seen only with the
+        // other sign (projected ORs need not be smooth): probe the best ones
+        cand.clear();
+        for (size_t b = 0; b < np2; b++)
+          if (!inA[b] && gain[b] > 0 && !lit_dead[lidx(plit(b))] && !possible(b, (uint32_t)lane))
+            cand.push_back(b);
+        if (cand.empty()) break;
+        const size_t m = std::min<size_t>(64, cand.size());
+        std::partial_sort(cand.begin(), cand.begin() + (long)m, cand.end(),
+                          [&](size_t x, size_t y) { return gain[x] > gain[y]; });
+        std::vector<std::vector<int>> sets(m, A);
+        for (size_t i = 0; i < m; i++) sets[i].push_back(plit(cand[i]));
+        const uint64_t res = sat_pass(sets);
+        if (!res) break;
+        A.push_back(plit(cand[(size_t)__builtin_ctzll(res)]));
+        addA(A.back());
+        poss_pass(A, {});
+        lane = 0;
+        continue;
+      }
+      const uint64_t res = poss_pass(A, picks);
+      if (!(res & 1)) {
+        return false;
+      }
+      size_t k = 0;
+      while (k < picks.size() && ((res >> (k + 1)) & 1)) k++;
+      for (size_t i = 0; i < k; i++) {
+        A.push_back(plit(picks[i]));
+        addA(A.back());
+      }
+      lane = (int)k;
+      if (picks.empty()) break;
+    }
+    return true;
+  };
+  // completes the satisfiable set A to a sample and writes it
+  auto emit = [&](const std::vector<int>& A) {
+    if (!(sat_pass({A}) & 1)) die("internal: t-wise set became unsatisfiable");
+    std::fill(val.begin(), val.end(), 0);
+    // t = 2: arcs and free vars are chosen by the uncovered pairs they make
+    // with the literals set so far (cs), ties at random
+    std::fill(cs.begin(), cs.end(), 0);
+    auto setl = [&](int l) {
+      if (val[std::abs(l)] == (l > 0 ? -1 : 1)) die("FAIL: t-wise walk has conflicting lits");
+      val[std::abs(l)] = l > 0 ? 1 : -1;
+      if (greedy2 && pidx[std::abs(l)] >= 0) cs[pli(l) >> 6] |= 1ULL << (pli(l) & 63);
+    };
+    auto score = [&](int l) {
+      if (!greedy2 || pidx[std::abs(l)] < 0 || val[std::abs(l)]) return (uint64_t)0;
+      const uint64_t* row = &cov[pli(l) * cw];
+      uint64_t n = 0;
+      for (size_t w = 0; w < cw; w++) n += (uint64_t)__builtin_popcountll(cs[w] & ~row[w]);
+      return n;
+    };
+    if (greedy2) for (int l : A) setl(l);
+    stk.assign(1, r.root);
+    while (!stk.empty()) {
+      const uint64_t x = stk.back();
+      stk.pop_back();
+      if (x <= 1) { if (x == 0) die("FAIL: t-wise walk reached FALSE"); continue; }
+      acc.get(x, nd);
+      if (nd.kind == bdnnf::K_AND) {
+        for (int l : nd.units) setl(l);
+        for (uint64_t k : nd.kids) stk.push_back(k);
+        continue;
+      }
+      ok_arcs.clear();
+      for (size_t ai = 0; ai < nd.arcs.size(); ai++) {
+        const auto& a = nd.arcs[ai];
+        if (!dead[a.child] && !conflicting(a.lits) && (sm[a.child] & 1) && !(killed(a.lits) & 1)) ok_arcs.push_back(ai);
+      }
+      if (ok_arcs.empty()) die("FAIL: t-wise walk found no satisfiable arc");
+      size_t pick = ok_arcs[rng() % ok_arcs.size()];
+      if (greedy2 && ok_arcs.size() > 1) {
+        uint64_t bs = 0, ties = 0;
+        for (size_t ai : ok_arcs) {
+          uint64_t sc = 0;
+          for (int l : nd.arcs[ai].lits) sc += score(l);
+          if (sc > bs || ties == 0) { bs = sc; pick = ai; ties = 1; }
+          else if (sc == bs && rng() % ++ties == 0) pick = ai;
+        }
+      }
+      const auto& a = nd.arcs[pick];
+      for (int l : a.lits) setl(l);
+      stk.push_back(a.child);
+    }
+    for (uint32_t v = 1; v <= nv; v++) {
+      if (val[v] || defined[v]) continue;
+      if (!in_proj[v]) { val[v] = -1; continue; }
+      if (kill[lidx((int)v)] & 1) val[v] = -1;
+      else if (kill[lidx(-(int)v)] & 1) val[v] = 1;
+      else if (greedy2) {
+        const uint64_t sp = score((int)v), sn = score(-(int)v);
+        setl(sp > sn || (sp == sn && (rng() & 1)) ? (int)v : -(int)v);
+      } else val[v] = (rng() & 1) ? 1 : -1;
+    }
+    bdnnf::eval_defs(r.defs, nv, val);
+    for (const auto& cl : cls) {
+      bool ok = false;
+      for (int l : cl) ok |= (val[std::abs(l)] == (l > 0 ? 1 : -1));
+      if (!ok) die("FAIL: t-wise sample " + std::to_string(nsamples) + " violates a clause");
+    }
+    if (greedy2) {
+      std::fill(cs.begin(), cs.end(), 0);
+      for (size_t i = 0; i < p; i++) setl(val[P[i]] < 0 ? -(int)P[i] : (int)P[i]);
+      for (size_t i = 0; i < p; i++) {
+        uint64_t* row = &cov[(2 * i + (val[P[i]] < 0 ? 1 : 0)) * cw];
+        for (size_t w = 0; w < cw; w++) row[w] |= cs[w];
+      }
+    } else for (size_t i = 0; i < p; i++) {
+      auto& m = smask[2 * i + (val[P[i]] < 0 ? 1 : 0)];
+      auto& o = smask[2 * i + (val[P[i]] < 0 ? 0 : 1)];
+      m.resize((nsamples >> 6) + 1, 0);
+      o.resize((nsamples >> 6) + 1, 0);
+      m[nsamples >> 6] |= 1ULL << (nsamples & 63);
+    }
+    std::string line;
+    for (uint32_t v = 1; v <= nv; v++) {
+      if (!full && !in_proj[v]) continue;
+      line += (val[v] < 0 ? "-" : "") + std::to_string(v) + " ";
+    }
+    out << line << "0\n";
+    nsamples++;
+  };
   Combo it(t, p);
   for (uint64_t rank = 0; rank < ncombo; rank++, it.next()) {
     for (uint32_t pol = 0; pol < (1U << t); pol++) {
@@ -505,6 +748,12 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
       if (!bit(feasible, idx)) prefilter(it, rank, pol);
       if (bit(infeasible, idx)) continue;
       std::vector<int> A = tuple(it, pol);
+      if (greedy2) {
+        if (!grow2(A)) setbit(infeasible, idx);
+        else emit(A);
+        if (!bit(infeasible, idx) && !covered(it, pol)) die("internal: t-wise sample misses its own tuple");
+        continue;
+      }
       // the cursor walks the later tuples; an unsatisfiable candidate stays so
       Combo cur = it;
       uint64_t crank = rank;
@@ -548,61 +797,8 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
         more = advance();
       }
       if (bit(infeasible, idx)) continue;
-      if (!(sat_pass({A}) & 1)) die("internal: t-wise set became unsatisfiable");
-      std::fill(val.begin(), val.end(), 0);
-      auto setl = [&](int l) {
-        if (val[std::abs(l)] == (l > 0 ? -1 : 1)) die("FAIL: t-wise walk has conflicting lits");
-        val[std::abs(l)] = l > 0 ? 1 : -1;
-      };
-      stk.assign(1, r.root);
-      while (!stk.empty()) {
-        const uint64_t x = stk.back();
-        stk.pop_back();
-        if (x <= 1) { if (x == 0) die("FAIL: t-wise walk reached FALSE"); continue; }
-        acc.get(x, nd);
-        if (nd.kind == bdnnf::K_AND) {
-          for (int l : nd.units) setl(l);
-          for (uint64_t k : nd.kids) stk.push_back(k);
-          continue;
-        }
-        ok_arcs.clear();
-        for (size_t ai = 0; ai < nd.arcs.size(); ai++) {
-          const auto& a = nd.arcs[ai];
-          if (!dead[a.child] && !conflicting(a.lits) && (sm[a.child] & 1) && !(killed(a.lits) & 1)) ok_arcs.push_back(ai);
-        }
-        if (ok_arcs.empty()) die("FAIL: t-wise walk found no satisfiable arc");
-        const auto& a = nd.arcs[ok_arcs[rng() % ok_arcs.size()]];
-        for (int l : a.lits) setl(l);
-        stk.push_back(a.child);
-      }
-      for (uint32_t v = 1; v <= nv; v++) {
-        if (val[v] || defined[v]) continue;
-        if (!in_proj[v]) { val[v] = -1; continue; }
-        if (kill[lidx((int)v)] & 1) val[v] = -1;
-        else if (kill[lidx(-(int)v)] & 1) val[v] = 1;
-        else val[v] = (rng() & 1) ? 1 : -1;
-      }
-      bdnnf::eval_defs(r.defs, nv, val);
-      for (const auto& cl : cls) {
-        bool ok = false;
-        for (int l : cl) ok |= (val[std::abs(l)] == (l > 0 ? 1 : -1));
-        if (!ok) die("FAIL: t-wise sample " + std::to_string(nsamples) + " violates a clause");
-      }
-      for (size_t i = 0; i < p; i++) {
-        auto& m = smask[2 * i + (val[P[i]] < 0 ? 1 : 0)];
-        auto& o = smask[2 * i + (val[P[i]] < 0 ? 0 : 1)];
-        m.resize((nsamples >> 6) + 1, 0);
-        o.resize((nsamples >> 6) + 1, 0);
-        m[nsamples >> 6] |= 1ULL << (nsamples & 63);
-      }
+      emit(A);
       if (!covered(it, pol)) die("internal: t-wise sample misses its own tuple");
-      std::string line;
-      for (uint32_t v = 1; v <= nv; v++) {
-        if (!full && !in_proj[v]) continue;
-        line += (val[v] < 0 ? "-" : "") + std::to_string(v) + " ";
-      }
-      out << line << "0\n";
-      nsamples++;
     }
   }
   out.flush();

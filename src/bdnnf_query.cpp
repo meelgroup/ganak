@@ -830,18 +830,108 @@ void batch_sat(bdnnf::Reader& r, const std::vector<char>& dead, const std::vecto
 }
 
 
+// Checks t-wise samples (DIMACS lines) against the circuit: every t-tuple of
+// projection literals no sample covers must be unsatisfiable. Returns the
+// number of satisfiable uncovered tuples, after printing a summary.
+uint64_t twise_check(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<char>& in_proj,
+                     const std::vector<int>& assume, uint32_t t, const std::string& samples_path,
+                     const std::vector<char>& lit_dead) {
+  const uint32_t nv = r.nvars;
+  std::vector<char> defined(nv + 1, 0);
+  for (const auto& [v, rf] : r.defs.defs) defined[v] = 1;
+  std::vector<uint32_t> P;
+  std::vector<int64_t> pos(nv + 1, -1);
+  for (uint32_t v = 1; v <= nv; v++)
+    if (in_proj[v] && !defined[v]) { pos[v] = (int64_t)P.size(); P.push_back(v); }
+  const uint32_t p = (uint32_t)P.size();
+  t = std::min(t, p);
+  std::ifstream f(samples_path);
+  if (!f.good()) die("cannot open " + samples_path);
+  // smask[2i + neg]: the samples containing the literal of P[i]
+  std::vector<std::vector<uint64_t>> smask(2 * (size_t)p);
+  uint64_t ns = 0;
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == 'c') continue;
+    std::istringstream ss(line);
+    long l;
+    for (auto& m : smask) m.resize((ns >> 6) + 1, 0);
+    while (ss >> l && l != 0) {
+      const uint64_t v = (uint64_t)std::abs(l);
+      if (v > nv) die("sample literal out of range: " + std::to_string(l));
+      if (pos[v] >= 0) smask[2 * (size_t)pos[v] + (l < 0 ? 1 : 0)][ns >> 6] |= 1ULL << (ns & 63);
+    }
+    ns++;
+  }
+  auto lit_of = [&](const Combo& c, uint32_t pol, uint32_t i) {
+    return (pol >> i) & 1 ? -(int)P[c.c[i]] : (int)P[c.c[i]];
+  };
+  std::vector<std::vector<int>> qs;
+  uint64_t bad = 0, unc = 0;
+  std::vector<int> example;
+  std::vector<std::string> ans;
+  auto flush = [&]() {
+    if (qs.empty()) return;
+    ans.clear();
+    batch_sat(r, dead, in_proj, qs, assume, ans);
+    for (size_t j = 0; j < qs.size(); j++)
+      if (ans[j] == "SAT") {
+        if (!bad) example = qs[j];
+        bad++;
+      }
+    qs.clear();
+  };
+  Combo c(t, p);
+  bool more = p > 0;
+  while (more) {
+    for (uint32_t pol = 0; pol < (1U << t); pol++) {
+      bool cov = false;
+      for (size_t w = 0; w < smask[0].size() && !cov; w++) {
+        uint64_t m = ~0ULL;
+        for (uint32_t i = 0; i < t && m; i++) m &= smask[2 * (size_t)c.c[i] + ((pol >> i) & 1)][w];
+        cov = m != 0;
+      }
+      if (cov) continue;
+      unc++;
+      std::vector<int> q;
+      bool dl = false;
+      for (uint32_t i = 0; i < t; i++) {
+        q.push_back(lit_of(c, pol, i));
+        dl |= lit_dead[2 * (size_t)std::abs(q.back()) + (q.back() < 0 ? 1 : 0)] != 0;
+      }
+      if (dl) continue;
+      qs.push_back(std::move(q));
+      if (qs.size() == 1024) flush();
+    }
+    more = c.next();
+  }
+  flush();
+  std::cout << ns << " samples, " << unc << " uncovered " << t << "-tuples, " << bad
+            << " of them satisfiable";
+  if (bad) {
+    std::cout << " (e.g.";
+    for (int l : example) std::cout << " " << l;
+    std::cout << ")";
+  }
+  std::cout << std::endl;
+  return bad;
+}
+
 // argv[0] is the command. `pre`: an open (cached) reader of the file to use.
 int run_query(int argc, char** argv, bdnnf::Reader* pre) {
   const std::string cmd = argv[0];
   const bool enumerating = cmd == "enum";
   const bool atomic = cmd == "atomic";
   const bool opt = cmd == "opt";
-  const bool tw = cmd == "twise";
+  const bool tw_check = cmd == "twise-check";
+  const bool tw = cmd == "twise" || tw_check;
   const bool sampling = cmd == "sample" || enumerating || atomic;
   const bool lits = cmd == "lits" || cmd == "core";
   const bool core = cmd == "core";
   const bool is_batch = cmd == "batch";
-  const std::string usage = tw
+  const std::string usage = tw_check
+    ? "usage: bdnnf twise-check <in.bdnnf> <samples> [-t T] [--cnf <file.cnf>] [--assume L1,L2,...]"
+    : tw
     ? "usage: bdnnf twise <in.bdnnf> [-t T] [--seed S] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
     : opt
     ? "usage: bdnnf opt <in.bdnnf> --obj <file> [-k K] [--min] [--full] [--cnf <file.cnf>] [--assume L1,L2,...]"
@@ -890,10 +980,10 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     else if (opt && a == "--min") minimize = true;
     else if (opt && a == "--full") full = true;
     else if (path.empty() && (a == "-" || a.empty() || a[0] != '-')) path = a;
-    else if (is_batch && queries.empty() && (a.empty() || a[0] != '-')) queries = a;
+    else if ((is_batch || tw_check) && queries.empty() && (a.empty() || a[0] != '-')) queries = a;
     else die(usage);
   }
-  if (path.empty() || (is_batch && queries.empty()) || (opt && (obj_path.empty() || kbest == 0))) die(usage);
+  if (path.empty() || ((is_batch || tw_check) && queries.empty()) || (opt && (obj_path.empty() || kbest == 0))) die(usage);
   try {
     bdnnf::Reader own;
     bdnnf::Reader& r = pre ? *pre : own;
@@ -1031,6 +1121,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w);
       std::vector<char> lit_dead(2 * (size_t)nv + 2, 0);
       for (size_t i = 2; i < lit_dead.size(); i++) lit_dead[i] = cnt[i] == 0;
+      if (tw_check) return twise_check(r, dead, W.in_proj, assume, tdeg, queries, lit_dead) ? EXIT_FAILURE : EXIT_SUCCESS;
       twise(r, dead, W.in_proj, assume, tdeg, seed, full,
             cnf.empty() ? std::vector<std::vector<int>>{} : read_clauses(cnf), lit_dead,
             of.is_open() ? of : std::cout);
@@ -1513,7 +1604,7 @@ int bdnnf_stream(int argc, char** argv) {
     std::cerr << "bdnnf: " << path << ": " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
-  static const char* const cmds[] = {"count", "sample", "enum", "lits", "core", "batch", "atomic", "opt", "twise"};
+  static const char* const cmds[] = {"count", "sample", "enum", "lits", "core", "batch", "atomic", "opt", "twise", "twise-check"};
   std::string line;
   while (std::getline(std::cin, line)) {
     std::istringstream ss(line);

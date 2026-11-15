@@ -49,6 +49,7 @@ const Cmd cmds[] = {
   {"batch", bdnnf_query, "answer a file of count (or --sat) queries, many per pass"},
   {"atomic", bdnnf_query, "atomic sets: vars equal (--cross: or opposite) in every model"},
   {"twise", bdnnf_query, "samples covering every satisfiable t-tuple of literals (-t)"},
+  {"twise-check", bdnnf_query, "check that samples cover every satisfiable t-tuple (-t)"},
   {"opt", bdnnf_query, "the k best models under a linear objective (--obj, --min)"},
   {"core", bdnnf_query, "literals true in every model (core; negated: dead)"},
   {"stream", bdnnf_stream, "answer queries from stdin, the circuit held in memory"},

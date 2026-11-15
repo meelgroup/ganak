@@ -13,6 +13,10 @@ c c RUN: sed -n 2,3p %t.enum | diff - %t.win
 c c RUN: %bdnnf enum %t.bdnnf --cnf %s --assume -2 -o %t.a
 c c RUN: wc -l < %t.a | %OutputCheck %s --check-prefix=ASSUME
 c c RUN: grep -c -- "-2 " %t.a | %OutputCheck %s --check-prefix=ASSUME
+c c RUN: %bdnnf twise %t.bdnnf -t 2 -o %t.tw
+c c RUN: %bdnnf twise-check %t.bdnnf %t.tw -t 2
+c c RUN: head -1 %t.tw > %t.tw1
+c c RUN: not %bdnnf twise-check %t.bdnnf %t.tw1 -t 2
 c c ENUM: ^4$
 c c ASSUME: ^2$
 p cnf 3 2

@@ -138,6 +138,21 @@ test("verify accepts the compiled circuit", async () => {
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
 
+test("compact: the page's command; the result verifies and answers the same", async () => {
+  for (const cnf of [CAR, PWMC, example("Graph")]) {
+    const { args } = pageArgs("compact");
+    const r = await bdnnf(cnf, args, {}, ["/cc.bdnnf"]);
+    assert.equal(r.status, 0, r.stderr);
+    const cc = r.files["/cc.bdnnf"];
+    assert.ok(cc && cc.length <= (await circuit(cnf)).length);
+    const on = (c: Uint8Array, a: string[]) => runTool("bdnnf", a, { "/c.bdnnf": c, "/in.cnf": cnf });
+    assert.equal((await on(cc, ["verify", "/c.bdnnf", "-q"])).status, 0);
+    for (const q of [["count", "/c.bdnnf", "--cnf", "/in.cnf"], ["lits", "/c.bdnnf"],
+                     ["sample", "/c.bdnnf", "-n", "10", "--seed", "3"]])
+      assert.equal((await on(cc, q)).stdout, (await bdnnf(cnf, q)).stdout, q.join(" "));
+  }
+});
+
 test("count, and count under an assumption", async () => {
   assert.equal((await bdnnf(CAR, ["count", "/c.bdnnf"])).stdout.trim(), "45");
   assert.equal((await bdnnf(CAR, ["count", "/c.bdnnf", "--assume", "3"])).stdout.trim(), "9");

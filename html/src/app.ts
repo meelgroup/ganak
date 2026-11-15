@@ -353,20 +353,32 @@ async function compile() {
     }
     circuit = r.files["/out.bdnnf"];
     $("circuit-hint").textContent = "";
-    const v = await bdnnf(["verify", "/c.bdnnf", "-q"], false);
-    const d = await bdnnf(["dump", "/c.bdnnf"], false);
-    const short: Record<string, string> = { DECOMPOSABLE: "DEC", DETERMINISTIC: "DET", SMOOTH: "SMOOTH", CLEAN: "CLEAN" };
-    const props = (d?.stdout.match(/^props (.*)$/m) ?? ["", ""])[1].split(/\s+/).map((p) => short[p] ?? p).join(" ");
-    const nodes = d ? d.stdout.split("\n").filter((l) => /^\d+ (and|or)/.test(l)).length : 0;
-    $("circuit-info").append(
-      el("div", { class: "stats" },
-        stat("count", m ? m[1] : "?"), stat("compile", `${r.ms.toFixed(0)} ms`),
-        stat("nodes", String(nodes)), stat("size", `${circuit.length} B`),
-        stat("properties", props || "-"), stat("verify", v && v.status === 0 ? "OK" : "FAILED")));
+    circuitCount = m ? m[1] : "?";
+    compileMs = r.ms;
+    await describeCircuit();
     showResult("Compiled", r.ms, el("div", {}, "The circuit is ready: pick a query on the right."));
   } finally {
     setBusy(false);
   }
+}
+
+let circuitCount = "?", compileMs = 0;
+
+// the stats box of the current circuit; returns its node count
+async function describeCircuit(): Promise<number> {
+  if (!circuit) return 0;
+  const v = await bdnnf(["verify", "/c.bdnnf", "-q"], false);
+  const d = await bdnnf(["dump", "/c.bdnnf"], false);
+  const short: Record<string, string> = { DECOMPOSABLE: "DEC", DETERMINISTIC: "DET", SMOOTH: "SMOOTH", CLEAN: "CLEAN" };
+  const props = (d?.stdout.match(/^props (.*)$/m) ?? ["", ""])[1].split(/\s+/).map((p) => short[p] ?? p).join(" ");
+  const nodes = d ? d.stdout.split("\n").filter((l) => /^\d+ (and|or)/.test(l)).length : 0;
+  $("circuit-info").innerHTML = "";
+  $("circuit-info").append(
+    el("div", { class: "stats" },
+      stat("count", circuitCount), stat("compile", `${compileMs.toFixed(0)} ms`),
+      stat("nodes", String(nodes)), stat("size", `${circuit.length} B`),
+      stat("properties", props || "-"), stat("verify", v && v.status === 0 ? "OK" : "FAILED")));
+  return nodes;
 }
 
 function stat(k: string, v: string): HTMLElement {
@@ -515,6 +527,11 @@ export const QUERIES: Query[] = [
     render: () => el("div", {}),
   },
   {
+    id: "compact", label: "Compact", desc: "Shrinks the circuit: drops the nodes no query can reach and merges identical copies of the same subcircuit. Every answer stays the same; the queries and the download then use the compacted circuit.", params: [], assume: false,
+    args: () => ["compact", "/c.bdnnf", "/cc.bdnnf"],
+    render: (r) => el("pre", {}, (r.stderr.split("\n").find((l) => l.startsWith("bdnnf compact")) ?? "").replace("bdnnf compact: ", "")),
+  },
+  {
     id: "dump", label: "Circuit text", desc: "The compiled circuit as text, one node per line (the BDNNF format's text form).", params: [], assume: false,
     args: () => ["dump", "/c.bdnnf"],
     render: (r) => el("pre", { class: "dump" }, r.stdout),
@@ -569,10 +586,10 @@ async function runQuery() {
     const a = $<HTMLInputElement>("assume").value.trim().split(/[\s,]+/).filter((x) => x);
     if (a.length) args.push("--assume", a.join(","));
   }
-  if ($<HTMLInputElement>("use-cnf").checked && !["graph", "dump"].includes(q.id)) args.push("--cnf", "/in.cnf");
+  if ($<HTMLInputElement>("use-cnf").checked && !["graph", "dump", "compact"].includes(q.id)) args.push("--cnf", "/in.cnf");
   setBusy(true, `Running ${q.label.toLowerCase()}...`);
   try {
-    const outFiles = q.id === "graph" ? ["/c.dot"] : [];
+    const outFiles = q.id === "graph" ? ["/c.dot"] : q.id === "compact" ? ["/cc.bdnnf"] : [];
     const r = await bdnnf(args, true, q.files ? q.files(p) : {}, outFiles);
     if (!r) return;
     if (r.status !== 0) {
@@ -582,6 +599,14 @@ async function runQuery() {
     if (q.id === "graph") {
       const dot = new TextDecoder().decode(r.files["/c.dot"]);
       showResult(q.label, r.ms, await renderDot(dot));
+      return;
+    }
+    if (q.id === "compact" && r.files["/cc.bdnnf"]) {
+      const before = circuit!.length;
+      circuit = r.files["/cc.bdnnf"];
+      await describeCircuit();
+      showResult(q.label, r.ms, el("div", {}, q.render(r, p),
+        el("div", { class: "muted" }, `${before} B → ${circuit.length} B; the queries now use the compacted circuit`)));
       return;
     }
     showResult(q.label, r.ms, q.render(r, p));

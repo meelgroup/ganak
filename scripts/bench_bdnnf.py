@@ -117,6 +117,7 @@ def one(job):
             continue
         sub = lambda a: [x.replace("{c}", bd).replace("{q}", q) for x in a]
         b = timed([BDNNF] + sub(ba), tl)
+        b0 = timed([BDNNF] + sub(ba) + ["--cache", "0"], tl)
         d = timed([DDNNIFE, "-i", nnf, "-t", str(nv)] + sub(da), tl)
         note = ""
         if label == "2-wise":
@@ -142,7 +143,7 @@ def one(job):
                 if label == "SAT queries":
                     do = ["SAT" if x == "true" else "UNSAT" for x in do]
             note = "agree" if bo == do else "DISAGREE"
-        res[label] = (b[0], b[1], d[0], d[1], note.strip())
+        res[label] = (b[0], b[1], d[0], d[1], note.strip(), b0[0], b0[1])
     return name, res
 
 
@@ -172,23 +173,25 @@ def main():
         tc, mc, sz = r["compile"]
         print(f"| {n} | {r['nv']} | {fmt(tc)}, {mc or 0:.0f} MB | {sz / 1024:.0f} KB |")
     print()
-    print("| query | instance | bdnnf | ddnnife | notes |")
-    print("|---|---|---|---|---|")
+    print("| query | instance | bdnnf | bdnnf --cache 0 | ddnnife | notes |")
+    print("|---|---|---|---|---|---|")
     for label, _, _ in QUERIES:
         for n, r in results.items():
             if label not in r:
                 continue
-            bt, bm, dt, dm, note = r[label]
-            print(f"| {label} | {n} | {fmt(bt)}, {bm or 0:.0f} MB | {fmt(dt)}, {dm or 0:.0f} MB | {note} |")
+            bt, bm, dt, dm, note, ct, cm = r[label]
+            print(f"| {label} | {n} | {fmt(bt)}, {bm or 0:.0f} MB | {fmt(ct)}, {cm or 0:.0f} MB | "
+                  f"{fmt(dt)}, {dm or 0:.0f} MB | {note} |")
     print()
-    print("| query | bdnnf total | ddnnife total | bdnnf faster | timeouts (bdnnf/ddnnife) |")
-    print("|---|---|---|---|---|")
+    print("| query | bdnnf total | bdnnf --cache 0 total | ddnnife total | bdnnf faster | "
+          "timeouts (bdnnf / --cache 0 / ddnnife) |")
+    print("|---|---|---|---|---|---|")
     for label, _, _ in QUERIES:
         rs = [r[label] for r in results.values() if label in r]
-        both = [x for x in rs if x[0] is not None and x[2] is not None]
-        print(f"| {label} | {fmt(sum(x[0] for x in both))} | {fmt(sum(x[2] for x in both))} | "
-              f"{sum(x[0] < x[2] for x in both)}/{len(both)} | "
-              f"{sum(x[0] is None for x in rs)}/{sum(x[2] is None for x in rs)} |")
+        all3 = [x for x in rs if x[0] is not None and x[2] is not None and x[5] is not None]
+        print(f"| {label} | {fmt(sum(x[0] for x in all3))} | {fmt(sum(x[5] for x in all3))} | "
+              f"{fmt(sum(x[2] for x in all3))} | {sum(x[0] < x[2] for x in all3)}/{len(all3)} | "
+              f"{sum(x[0] is None for x in rs)} / {sum(x[5] is None for x in rs)} / {sum(x[2] is None for x in rs)} |")
 
 
 if __name__ == "__main__":

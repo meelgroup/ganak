@@ -20,9 +20,12 @@ below.
   projection set is stored in the circuit; a CNF with a different one is refused.
   Commands that print models also check each one against the CNF's clauses.
 - `--assume L1,L2,...`: condition the query on literals of projection variables.
+- `--cache GB` (default 5): queries that make many passes (`batch`, `atomic`,
+  `twise`, `sample`, `enum`, `stream`) keep the circuit in memory if the file is
+  at most this many GB; `--cache 0` never does, and memory stays bounded.
 
 Models are printed as DIMACS lines over the projection variables (`--full`:
-all variables). The tools stream the file, keeping a few values per node.
+all variables). Otherwise the tools stream the file, keeping a few values per node.
 
 | Command | What it does |
 |---|---|

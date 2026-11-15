@@ -35,6 +35,7 @@ THE SOFTWARE.
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -64,6 +65,29 @@ uint64_t u64_mpz(const mpz_class& z) {
   const mpz_class hi = z >> 32;
   const mpz_class lo = z - (hi << 32);
   return ((uint64_t)hi.get_ui() << 32) | (uint64_t)lo.get_ui();
+}
+
+// Whether a literal list holds a literal and its negation, in linear time
+// (arcs can carry hundreds of implied literals).
+bool has_conflict(const std::vector<int>& ls) {
+  if (ls.size() < 16) {
+    for (size_t a = 0; a < ls.size(); a++)
+      for (size_t b = a + 1; b < ls.size(); b++) if (ls[a] == -ls[b]) return true;
+    return false;
+  }
+  static thread_local std::vector<uint32_t> stamp;
+  static thread_local uint32_t cur = 0;
+  if (++cur == 0) {
+    std::fill(stamp.begin(), stamp.end(), 0);
+    cur = 1;
+  }
+  for (int l : ls) {
+    const size_t i = 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0);
+    if (i + 2 > stamp.size()) stamp.resize(2 * (i + 2), 0);
+    if (stamp[i ^ 1] == cur) return true;
+    stamp[i] = cur;
+  }
+  return false;
 }
 
 struct QueryError : std::runtime_error {
@@ -246,10 +270,7 @@ std::vector<mpq_class> lit_counts(bdnnf::Reader& r, const std::vector<mpq_class>
     const uint64_t* me = row(id);
     for (const auto& a : nd.arcs) {
       if (dead[a.child]) continue;
-      bool conflict = false;
-      for (size_t p = 0; p < a.lits.size(); p++)
-        for (size_t q = p + 1; q < a.lits.size(); q++) conflict |= a.lits[p] == -a.lits[q];
-      if (conflict) continue;
+      if (has_conflict(a.lits)) continue;
       const uint64_t* cv = row(a.child);
       av.assign(cv, cv + WD);
       mpq_class u = 1;
@@ -393,11 +414,7 @@ void twise(bdnnf::Reader& r, const std::vector<char>& dead, const std::vector<ch
     for (int l : ls) if (in_proj[(uint32_t)std::abs(l)]) m |= kill[lidx(l)];
     return m;
   };
-  auto conflicting = [](const std::vector<int>& ls) {
-    for (size_t a = 0; a < ls.size(); a++)
-      for (size_t b = a + 1; b < ls.size(); b++) if (ls[a] == -ls[b]) return true;
-    return false;
-  };
+  auto conflicting = has_conflict;
   // bit j of the result: set j (plus --assume) is satisfiable
   auto sat_pass = [&](const std::vector<std::vector<int>>& sets) {
     const size_t k = sets.size();
@@ -736,10 +753,7 @@ void batch_counts(bdnnf::Reader& r, const std::vector<char>& dead, const std::ve
       const uint64_t* me = row(id);
       for (const auto& a : nd.arcs) {
         if (dead[a.child]) continue;
-        bool cf = false;
-        for (size_t p = 0; p < a.lits.size() && !cf; p++)
-          for (size_t q = p + 1; q < a.lits.size(); q++) cf |= a.lits[p] == -a.lits[q];
-        if (cf) continue;
+        if (has_conflict(a.lits)) continue;
         const uint64_t* cv = row(a.child);
         av.assign(cv, cv + WD);
         for (int l : a.lits) if (pv(l)) { const uint32_t v = (uint32_t)std::abs(l); av[v >> 6] |= 1ULL << (v & 63); }
@@ -784,11 +798,7 @@ void batch_sat(bdnnf::Reader& r, const std::vector<char>& dead, const std::vecto
                std::vector<std::string>& out) {
   const uint32_t nv = r.nvars;
   const size_t n = dead.size();
-  auto conflicting = [](const std::vector<int>& ls) {
-    for (size_t p = 0; p < ls.size(); p++)
-      for (size_t q = p + 1; q < ls.size(); q++) if (ls[p] == -ls[q]) return true;
-    return false;
-  };
+  auto conflicting = has_conflict;
   // kill[lit]: the queries of the chunk that assume -lit
   std::vector<uint64_t> kill(2 * (size_t)nv + 2), sm(n);
   auto lidx = [](int l) { return 2 * (size_t)std::abs(l) + (l < 0 ? 1 : 0); };
@@ -943,12 +953,13 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     : sampling
     ? "usage: bdnnf sample <in.bdnnf> [-n N] [--seed S] [--cnf <file.cnf>] [--assume L1,L2,...] [--full] [-o out]"
     : is_batch
-    ? "usage: bdnnf batch <in.bdnnf> <queries> [--sat] [--cnf <file.cnf>]   (a query: a line of literals)"
+    ? "usage: bdnnf batch <in.bdnnf> <queries> [--sat] [--cnf <file.cnf>] [--cache GB]   (a query: a line of literals)"
     : "usage: bdnnf " + cmd + " <in.bdnnf> [--cnf <file.cnf>] [--assume L1,L2,...]";
   std::string path, cnf, out_path;
   uint64_t num = enumerating ? UINT64_MAX : atomic ? 64 : 1, seed = 1;
   mpz_class start = 0;
   bool full = false, sat = false, cross = false, minimize = false;
+  double cache_gb = 5;  // --cache: load circuits up to this size into memory
   std::string obj_path;
   size_t kbest = 1;
   uint32_t tdeg = 2;
@@ -962,6 +973,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     else if (enumerating && a == "--start" && i + 1 < argc) start = mpz_class(argv[++i], 10);
     else if (sampling && a == "--full") full = true;
     else if (sampling && a == "-o" && i + 1 < argc) out_path = argv[++i];
+    else if (a == "--cache" && i + 1 < argc) cache_gb = std::stod(argv[++i]);
     else if (a == "--assume" && i + 1 < argc) {
       std::string t = argv[++i];
       for (char& ch : t) if (ch == ',') ch = ' ';
@@ -988,6 +1000,12 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     bdnnf::Reader own;
     bdnnf::Reader& r = pre ? *pre : own;
     if (!pre) r.open(path);
+    // queries making many passes keep the circuit in memory if it is small enough
+    const bool can_cache = path != "-" && cache_gb > 0 &&
+        (double)std::filesystem::file_size(path) <= cache_gb * (1ULL << 30);
+    auto maybe_cache = [&]() {
+      if (can_cache && !r.is_cached()) r.cache_all();
+    };
     const uint32_t nv = r.nvars;
     std::vector<char> file_proj(nv + 1, 1);
     const bool file_projected = r.has(r.header_kv, "projection");
@@ -1048,11 +1066,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     auto row = [&](uint64_t id) { return vs.data() + id * WD; };
     auto set = [](uint64_t* s, uint32_t v) { s[v >> 6] |= 1ULL << (v & 63); };
     auto has = [](const uint64_t* s, uint32_t v) { return (s[v >> 6] >> (v & 63)) & 1; };
-    auto conflicting = [](const std::vector<int>& ls) {
-      for (size_t p = 0; p < ls.size(); p++)
-        for (size_t q = p + 1; q < ls.size(); q++) if (ls[p] == -ls[q]) return true;
-      return false;
-    };
+    auto conflicting = has_conflict;
     std::vector<uint64_t> av;
     // weight of an OR arc, smoothed over the vars of its node `me`
     auto arc_val = [&](const uint64_t* me, const bdnnf::Arc& a) -> mpq_class {
@@ -1117,7 +1131,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
         of.open(out_path);
         if (!of) die("cannot open " + out_path);
       }
-      if (!r.is_cached()) r.cache_all();  // many passes: decode once
+      maybe_cache();
       const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w);
       std::vector<char> lit_dead(2 * (size_t)nv + 2, 0);
       for (size_t i = 2; i < lit_dead.size(); i++) lit_dead[i] = cnt[i] == 0;
@@ -1289,6 +1303,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     if (is_batch) {
       std::vector<std::string> ans;
       const auto qs = read_queries(queries, W.in_proj);
+      if (qs.size() > 64) maybe_cache();
       if (sat) batch_sat(r, dead, W.in_proj, qs, assume, ans);
       else if (!W.weighted) {
         std::vector<mpz_class> base(val.size());
@@ -1345,9 +1360,15 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       std::vector<mpq_class> ys;
       std::vector<mpz_class> cum;
     };
+    maybe_cache();
+    // uncached: the nodes visited, decoded, and the OR nodes' weights, each
+    // bounded (cleared when full)
+    constexpr size_t kMaxCached = 1 << 20;
     std::unordered_map<uint64_t, bdnnf::Node> ncache;
     std::unordered_map<uint64_t, OrW> orw;
     auto node_of = [&](uint64_t x) -> const bdnnf::Node& {
+      if (r.is_cached()) return r.cache[x - 2];
+      if (ncache.size() >= kMaxCached) ncache.clear();
       auto it = ncache.find(x);
       if (it != ncache.end()) return it->second;
       bdnnf::Node dec;
@@ -1374,6 +1395,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       return i;
     };
     auto or_weights = [&](uint64_t x, const bdnnf::Node& nd) -> const OrW& {
+      if (orw.size() >= kMaxCached) orw.clear();
       auto it = orw.find(x);
       if (it != orw.end()) return it->second;
       OrW o;
@@ -1513,7 +1535,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
       out << line;
     }
     if (atomic) {
-      if (!r.is_cached()) r.cache_all();  // many SAT passes: decode once
+      maybe_cache();
       const auto cnt = lit_counts(r, val, dead, vs, WD, W.in_proj, w);
       // Candidates: same literal count, same values in every sample. With
       // --cross each var is taken by its literal true in the first sample.
@@ -1583,23 +1605,25 @@ int bdnnf_query(int argc, char** argv) {
 // memory. Each answer ends with a "c done" line; errors give "c error <msg>".
 int bdnnf_stream(int argc, char** argv) {
   std::string path, cnf;
+  double cache_gb = 5;
   for (int i = 1; i < argc; i++) {
     const std::string a = argv[i];
     if (a == "--cnf" && i + 1 < argc) cnf = argv[++i];
+    else if (a == "--cache" && i + 1 < argc) cache_gb = std::stod(argv[++i]);
     else if (path.empty() && !a.empty() && a[0] != '-') path = a;
     else {
-      std::cerr << "usage: bdnnf stream <in.bdnnf> [--cnf <file.cnf>]" << std::endl;
+      std::cerr << "usage: bdnnf stream <in.bdnnf> [--cnf <file.cnf>] [--cache GB]" << std::endl;
       return EXIT_FAILURE;
     }
   }
   if (path.empty()) {
-    std::cerr << "usage: bdnnf stream <in.bdnnf> [--cnf <file.cnf>]" << std::endl;
+    std::cerr << "usage: bdnnf stream <in.bdnnf> [--cnf <file.cnf>] [--cache GB]" << std::endl;
     return EXIT_FAILURE;
   }
   bdnnf::Reader r;
   try {
     r.open(path);
-    r.cache_all();
+    if (cache_gb > 0 && (double)std::filesystem::file_size(path) <= cache_gb * (1ULL << 30)) r.cache_all();
   } catch (const bdnnf::Error& e) {
     std::cerr << "bdnnf: " << path << ": " << e.what() << std::endl;
     return EXIT_FAILURE;

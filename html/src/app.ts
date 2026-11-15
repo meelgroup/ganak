@@ -9,7 +9,7 @@ interface RunResult {
   ms: number;
 }
 
-const EXAMPLES: { name: string; cnf: string }[] = [
+export const EXAMPLES: { name: string; cnf: string }[] = [
   {
     name: "Car configurator (feature model)",
     cnf: `c A small feature model: a car with an engine, a transmission and options.
@@ -216,14 +216,14 @@ function runTool(tool: string, args: string[], files: Record<string, string | Ui
 
 // ---- the CNF ----
 
-interface CnfInfo {
+export interface CnfInfo {
   nvars: number;
   names: Map<number, string>;
   weighted: boolean;
   projection: number[] | null;
 }
 
-function parseCnf(text: string): CnfInfo {
+export function parseCnf(text: string): CnfInfo {
   let nvars = 0;
   const names = new Map<number, string>();
   let weighted = false;
@@ -279,7 +279,7 @@ function showError(title: string, r: RunResult | null, msg = "") {
 
 // ---- rendering ----
 
-function fracDecimal(s: string): string {
+export function fracDecimal(s: string): string {
   const [n, d] = s.split("/");
   if (!d) return "";
   const N = BigInt(n), D = BigInt(d);
@@ -296,7 +296,7 @@ function bigNumber(s: string): HTMLElement {
     s.length > 60 ? el("div", { class: "muted" }, `${s.replace("/", "").length} digits`) : "");
 }
 
-function parseModels(out: string): number[][] {
+export function parseModels(out: string): number[][] {
   return out.split("\n").filter((l) => l.trim() && !l.startsWith("c")).map((l) =>
     l.trim().split(/\s+/).map(Number).filter((x) => x !== 0));
 }
@@ -384,7 +384,7 @@ async function bdnnf(args: string[], show = true, extraFiles: Record<string, str
 
 // ---- queries ----
 
-interface Param {
+export interface Param {
   key: string;
   label: string;
   kind: "number" | "text" | "check" | "area";
@@ -392,7 +392,7 @@ interface Param {
   hint?: string;
 }
 
-interface Query {
+export interface Query {
   id: string;
   label: string;
   desc: string;
@@ -407,26 +407,26 @@ function lines(s: string) {
   return s.split("\n").map((l) => l.trim()).filter((l) => l);
 }
 
-const QUERIES: Query[] = [
+export const QUERIES: Query[] = [
   {
-    id: "count", label: "Count", desc: "The (weighted, projected) model count.", params: [], assume: true,
+    id: "count", label: "Count", desc: "How many solutions (models) the formula has, or their total weight when weights are used. With assumptions, it counts only the solutions that satisfy them, e.g. how many car configurations have an electric engine.", params: [], assume: true,
     args: () => ["count", "/c.bdnnf"],
     render: (r) => bigNumber(lines(r.stdout)[0] ?? "?"),
   },
   {
-    id: "sample", label: "Sample", desc: "Random models, uniformly (or by weight when weights are used).",
+    id: "sample", label: "Sample", desc: "Draws solutions at random, each equally likely (or in proportion to its weight). Useful for testing a product line on typical configurations, or for estimating how often a property holds.",
     params: [{ key: "n", label: "models", kind: "number", value: "20" }, { key: "seed", label: "seed", kind: "number", value: "1" }],
     assume: true, args: (p) => ["sample", "/c.bdnnf", "-n", p.n, "--seed", p.seed],
     render: (r) => modelGrid(parseModels(r.stdout)),
   },
   {
-    id: "enum", label: "Enumerate", desc: "The models in a fixed order, from model number “start”.",
+    id: "enum", label: "Enumerate", desc: "Lists the solutions one by one, in a fixed order; “start” skips to solution number start, so a long list can be read in pages.",
     params: [{ key: "n", label: "models", kind: "number", value: "50" }, { key: "start", label: "start", kind: "number", value: "0" }],
     assume: true, args: (p) => ["enum", "/c.bdnnf", "-n", p.n, "--start", p.start],
     render: (r) => modelGrid(parseModels(r.stdout)),
   },
   {
-    id: "lits", label: "Feature counts", desc: "For each literal, the count of the models containing it.", params: [], assume: true,
+    id: "lits", label: "Feature counts", desc: "For every feature, how many solutions include it and how many exclude it. Shows which options are popular, rare, or always on.", params: [], assume: true,
     args: () => ["lits", "/c.bdnnf"],
     render: (r) => {
       const c = new Map<number, string>();
@@ -452,7 +452,7 @@ const QUERIES: Query[] = [
     },
   },
   {
-    id: "core", label: "Core / dead", desc: "Features in every model (core) and in none (dead).", params: [], assume: true,
+    id: "core", label: "Core / dead", desc: "Core features are in every solution, dead features in none. Dead features usually point to a modelling mistake; core ones need no choice at all.", params: [], assume: true,
     args: () => ["core", "/c.bdnnf"],
     render: (r) => {
       const ls = (lines(r.stdout)[0] ?? "").split(/\s+/).map(Number).filter((x) => x !== 0);
@@ -461,7 +461,7 @@ const QUERIES: Query[] = [
     },
   },
   {
-    id: "atomic", label: "Atomic sets", desc: "Groups of features that are equal in every model.",
+    id: "atomic", label: "Atomic sets", desc: "Groups of features that are always on or off together, so they behave as a single feature. With --cross, also features that are always opposite.",
     params: [{ key: "cross", label: "also opposite (--cross)", kind: "check", value: "" }], assume: true,
     args: (p) => ["atomic", "/c.bdnnf", ...(p.cross ? ["--cross"] : [])],
     render: (r) => {
@@ -470,7 +470,7 @@ const QUERIES: Query[] = [
     },
   },
   {
-    id: "batch", label: "Query batch", desc: "One count (or SAT/UNSAT) per line of literals.",
+    id: "batch", label: "Query batch", desc: "Answers many questions at once: each line is a set of literals, and the answer is how many solutions satisfy it (or just whether any does).",
     params: [{ key: "q", label: "queries", kind: "area", value: "1 -2\n3\n-1 -3" }, { key: "sat", label: "SAT only", kind: "check", value: "" }],
     assume: false, files: (p) => ({ "/q.txt": p.q + "\n" }),
     args: (p) => ["batch", "/c.bdnnf", "/q.txt", ...(p.sat ? ["--sat"] : [])],
@@ -483,7 +483,7 @@ const QUERIES: Query[] = [
     },
   },
   {
-    id: "opt", label: "Optimise", desc: "The best models under a sum of per-literal values (lines of “literal value”).",
+    id: "opt", label: "Optimise", desc: "Finds the k best solutions when each literal has a value (e.g. a cost or a benefit per feature), lines of “literal value”; for instance the cheapest valid car.",
     params: [{ key: "obj", label: "objective", kind: "area", value: "3 5\n4 2\n9 3\n-11 1" },
       { key: "k", label: "best k", kind: "number", value: "3" }, { key: "min", label: "minimise", kind: "check", value: "" }],
     assume: true, files: (p) => ({ "/obj.txt": p.obj + "\n" }),
@@ -500,7 +500,7 @@ const QUERIES: Query[] = [
     },
   },
   {
-    id: "twise", label: "t-wise sample", desc: "Samples covering every satisfiable t-tuple of literals.",
+    id: "twise", label: "t-wise sample", desc: "A small set of solutions such that every combination of t options that can occur together appears in at least one of them. The usual way to test configurable software: 2-wise covers every pair of choices.",
     params: [{ key: "t", label: "t", kind: "number", value: "2" }, { key: "seed", label: "seed", kind: "number", value: "1" }],
     assume: true, args: (p) => ["twise", "/c.bdnnf", "-t", p.t, "--seed", p.seed],
     render: (r) => {
@@ -510,12 +510,12 @@ const QUERIES: Query[] = [
     },
   },
   {
-    id: "graph", label: "Draw circuit", desc: "The circuit as a graph (Graphviz).", params: [], assume: false,
+    id: "graph", label: "Draw circuit", desc: "Draws the compiled circuit: decision (OR) and decomposition (AND) nodes, the structure every query above runs on.", params: [], assume: false,
     args: () => ["dot", "/c.bdnnf", "/c.dot"],
     render: () => el("div", {}),
   },
   {
-    id: "dump", label: "Circuit text", desc: "The circuit in BDNNF's text form.", params: [], assume: false,
+    id: "dump", label: "Circuit text", desc: "The compiled circuit as text, one node per line (the BDNNF format's text form).", params: [], assume: false,
     args: () => ["dump", "/c.bdnnf"],
     render: (r) => el("pre", { class: "dump" }, r.stdout),
   },
@@ -653,4 +653,5 @@ async function init() {
   selectQuery(QUERIES.find((q) => q.id === "sample")!);
 }
 
-init();
+// the tests import this file in Node, without a page
+if (typeof document !== "undefined") init();

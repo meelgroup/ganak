@@ -106,7 +106,8 @@ Ganak. It puts `ganak.js`/`bdnnf.js` and their `.wasm` into `html/`, writes
 `html/version.txt` (the page puts it in every script URL, so browsers never run
 a stale build), and compiles the page's TypeScript (`html/src/`, needs `tsc`).
 Serve `html/` over HTTP (e.g. `python3 -m http.server -d html`): the page runs
-each tool in a web worker.
+each tool in a web worker. `cd html && npm install && npm test` checks the page's logic
+against the wasm tools in Node (no browser needed).
 
 ## Useful CMake options
 

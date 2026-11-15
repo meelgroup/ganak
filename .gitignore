@@ -22,6 +22,9 @@ html/ganak.js
 html/bdnnf.wasm
 html/bdnnf.js
 html/app.js
+html/app.d.ts
+html/test/
+html/node_modules/
 html/version.txt
 build-wasm/
 html/worker.js

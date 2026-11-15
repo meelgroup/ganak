@@ -73,7 +73,8 @@ cd ../count_fuzzer
 ### 2. d-DNNF compilation (`--compile`)
 
 count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
-for all): it compiles with ganak, then checks the circuit
+for all; `--compile` for all, skipping the other counters so it runs several
+times more compile tests per minute): it compiles with ganak, then checks the circuit
 with scalable C++ tools only — `bdnnf verify` (format + every claimed property,
 streamed), `bdnnf count` and `bdnnf sample` (the weighted/projected count, N sampled models
 checked against the clauses, `--assume` conditioning on random literals, and the

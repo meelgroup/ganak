@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 // bdnnf: queries and conversions of BDNNF circuits (spec-bdnnf.md).
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -69,8 +70,10 @@ int main(int argc, char** argv) {
     for (const auto& c : cmds)
       if (std::strcmp(argv[1], c.name) == 0) return c.fn(argc - 1, argv + 1);
   std::cerr << "Usage: bdnnf <command> [args]   (bdnnf <command> -h for its args)\n\n";
-  for (const auto& c : cmds) std::cerr << "  " << c.name << std::string(9 - std::strlen(c.name), ' ')
-                                       << c.help << "\n";
+  size_t w = 0;
+  for (const auto& c : cmds) w = std::max(w, std::strlen(c.name));
+  for (const auto& c : cmds)
+    std::cerr << "  " << c.name << std::string(w + 2 - std::strlen(c.name), ' ') << c.help << "\n";
   return argc >= 2 && (std::strcmp(argv[1], "-h") == 0 || std::strcmp(argv[1], "--help") == 0)
              ? EXIT_SUCCESS : EXIT_FAILURE;
 }

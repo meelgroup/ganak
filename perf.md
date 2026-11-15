@@ -19,7 +19,7 @@ t-wise sample passes `twise-check`.
 | atomic sets | 9.29s | 20.1s | 61.6s | 5/5 | 0 / 0 / 0 |
 | 2-wise | 19.1s | 52.6s | 218.8s | 6/6 | 0 / 0 / 0 |
 
-Peak memory: bdnnf 7-296 MB, with `--cache 0` 6-250 MB, ddnnife 0-3605 MB.
+Peak memory: bdnnf 7-296 MB, with `--cache 0` 6-250 MB, ddnnife 38-3605 MB (one timed-out run not counted).
 
 2-wise sample sizes (smaller is better):
 

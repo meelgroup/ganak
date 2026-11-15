@@ -235,7 +235,7 @@ two systems' counts to get the final count.
 | 5 | Integer mod prime | `c p weight 1 3 0` | Requires `--prime X` |
 | 6 | Complex float (MPFR) | `c p weight 9 1/2+4i 0` | Must give both parts: `a+bi` or `a-bi`; see `--mpfrprec` |
 | 7 | Real float (MPFR) | `c p weight 1 0.3 0` | See `--mpfrprec` |
-| 13 | Laurent polynomial over rationals | `c p weight 9 1/2*z0^2-3*z1^-1 0` | Requires `--npolyvars N`; exponents may be negative. See [LAURENT.md](LAURENT.md) |
+| 13 | Laurent polynomial over rationals | `c p weight 9 1/2*z0^2-3*z1^-1 0` | Requires `--npolyvars N`; exponents may be negative. See [LAURENT-POLYNOMIALS.md](LAURENT-POLYNOMIALS.md) |
 
 You can also write your own field by implementing the `Field` and `FieldGen`
 interfaces. Absolutely _any_ field will work, and it's as easy as implementing

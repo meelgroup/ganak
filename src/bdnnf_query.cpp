@@ -656,6 +656,8 @@ void batch_counts(bdnnf::Reader& r, const std::vector<char>& dead, const std::ve
   constexpr size_t K = 64;
   std::vector<uint64_t> kill(2 * (size_t)nv + 2), qm(nv + 1), touch(n);
   std::vector<uint32_t> slot(n);
+  std::vector<uint8_t> nconf(n, 0);  // per node: 0 unknown, 1 no conflicting arc, 2 some
+  mpz_class tmpz;
   std::vector<Num> pool;
   std::vector<uint32_t> gap;
   std::vector<uint64_t> av(WD);
@@ -695,10 +697,20 @@ void batch_counts(bdnnf::Reader& r, const std::vector<char>& dead, const std::ve
       for (int l : ls) if (pv(l)) m |= qm[(uint32_t)std::abs(l)];
       return m;
     };
-    pool.clear();
+    size_t psz = 0;  // pool in use; its numbers are kept across chunks, so their storage is reused
     auto lane = [](uint64_t t, size_t j) { return (size_t)__builtin_popcountll(t & ((1ULL << j) - 1)); };
     auto get = [&](uint64_t c, size_t j) -> const Num& {
       return (touch[c] >> j) & 1 ? pool[slot[c] + lane(touch[c], j)] : base[c];
+    };
+    // unweighted: the factor of the free/gap vars `vs_` for query j is 2^shift
+    auto gap_shift = [&](const std::vector<uint32_t>& vs_, auto&& in_vs, size_t j) {
+      unsigned long sh = vs_.size();
+      for (uint32_t v : qv[j])
+        if (in_vs(v)) {
+          BDNNF_CHECK(sh > 0);
+          sh--;
+        }
+      return sh;
     };
     // the factor of the free/gap vars `vs_` (membership: in_vs) for query j
     auto gap_factor = [&](const std::vector<uint32_t>& vs_, auto&& in_vs, size_t j, Num& f) {
@@ -732,46 +744,77 @@ void batch_counts(bdnnf::Reader& r, const std::vector<char>& dead, const std::ve
       touch[id] = t;
       if (!t) return;
       BDNNF_CHECK(pool.size() + 64 < UINT32_MAX);
-      slot[id] = (uint32_t)pool.size();
-      pool.resize(pool.size() + (size_t)__builtin_popcountll(t));
+      slot[id] = (uint32_t)psz;
+      psz += (size_t)__builtin_popcountll(t);
+      if (pool.size() < psz) pool.resize(psz);
       Num f;
       if (nd.kind == bdnnf::K_AND) {
+        // once per node: the lanes a unit kills, and the units' weight
+        uint64_t uk = 0;
+        Num uw = 1;
+        for (int l : nd.units) {
+          if (!pv(l)) continue;
+          uk |= kill[lidx(l)];
+          if constexpr (!unw) uw *= wl[lidx(l)];
+        }
         for (size_t j = 0; j < k; j++) {
           if (!((t >> j) & 1)) continue;
-          Num x = 1;
-          for (uint64_t c : nd.kids) x *= get(c, j);
-          for (int l : nd.units) {
-            if (!pv(l)) continue;
-            if constexpr (unw) { if ((kill[lidx(l)] >> j) & 1) x = 0; }
-            else x *= wj(l, j);
+          Num& x = pool[slot[id] + lane(t, j)];
+          if ((uk >> j) & 1) { x = 0; continue; }
+          auto in_gap = [&](uint32_t v) { return std::find(gap.begin(), gap.end(), v) != gap.end(); };
+          if constexpr (unw) {
+            mpz_set_ui(x.get_mpz_t(), 1);
+            for (uint64_t c : nd.kids) mpz_mul(x.get_mpz_t(), x.get_mpz_t(), get(c, j).get_mpz_t());
+            mpz_mul_2exp(x.get_mpz_t(), x.get_mpz_t(), gap_shift(gap, in_gap, j));
+          } else {
+            x = 1;
+            for (uint64_t c : nd.kids) x *= get(c, j);
+            x *= uw;
+            gap_factor(gap, in_gap, j, f);
+            x *= f;
           }
-          gap_factor(gap, [&](uint32_t v) { return std::find(gap.begin(), gap.end(), v) != gap.end(); }, j, f);
-          pool[slot[id] + lane(t, j)] = x * f;
         }
         return;
       }
       const uint64_t* me = row(id);
+      for (size_t i = 0; i < (size_t)__builtin_popcountll(t); i++) pool[slot[id] + i] = 0;
+      bool any_conflict = false;
       for (const auto& a : nd.arcs) {
         if (dead[a.child]) continue;
-        if (has_conflict(a.lits)) continue;
+        if (nconf[id] != 1 && has_conflict(a.lits)) {
+          any_conflict = true;
+          continue;
+        }
         const uint64_t* cv = row(a.child);
         av.assign(cv, cv + WD);
         for (int l : a.lits) if (pv(l)) { const uint32_t v = (uint32_t)std::abs(l); av[v >> 6] |= 1ULL << (v & 63); }
         gap.clear();
         for (size_t q = 0; q < WD; q++)
           for (uint64_t m = me[q] & ~av[q]; m; m &= m - 1) gap.push_back((uint32_t)(q * 64 + __builtin_ctzll(m)));
+        // once per arc: the lanes its literals kill, and their weight
+        uint64_t ak = 0;
+        Num aw = 1;
+        for (int l : a.lits) {
+          if (!pv(l)) continue;
+          ak |= kill[lidx(l)];
+          if constexpr (!unw) aw *= wl[lidx(l)];
+        }
+        auto in_gap = [&](uint32_t v) { return has(me, v) && !has(av.data(), v); };
         for (size_t j = 0; j < k; j++) {
-          if (!((t >> j) & 1)) continue;
-          Num y = get(a.child, j);
-          for (int l : a.lits) {
-            if (!pv(l)) continue;
-            if constexpr (unw) { if ((kill[lidx(l)] >> j) & 1) y = 0; }
-            else y *= wj(l, j);
+          if (!((t >> j) & 1) || ((ak >> j) & 1)) continue;
+          Num& acc = pool[slot[id] + lane(t, j)];
+          if constexpr (unw) {
+            mpz_mul_2exp(tmpz.get_mpz_t(), get(a.child, j).get_mpz_t(), gap_shift(gap, in_gap, j));
+            mpz_add(acc.get_mpz_t(), acc.get_mpz_t(), tmpz.get_mpz_t());
+          } else {
+            Num y = get(a.child, j);
+            y *= aw;
+            gap_factor(gap, in_gap, j, f);
+            acc += y * f;
           }
-          gap_factor(gap, [&](uint32_t v) { return has(me, v) && !has(av.data(), v); }, j, f);
-          pool[slot[id] + lane(t, j)] += y * f;
         }
       }
+      if (!nconf[id]) nconf[id] = any_conflict ? 2 : 1;
     });
     std::vector<uint32_t> missing;
     if (!dead[r.root])

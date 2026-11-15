@@ -1,19 +1,33 @@
 # bdnnf vs ddnnife: performance
 
-From `scripts/bench_bdnnf.py` (ganak c1be5e32, ddnnife 7ae78cd). Most queries
+From `scripts/bench_bdnnf.py` (ganak 23868bba, ddnnife 7ae78cd). Most queries
 run on five full MC2023 track-1 circuits (t015, t066, t076, t084, t102;
-0.15–3.2 MB as BDNNF), the batch queries on 10000 samples/queries; 2-wise on
-six shrunk instances. ddnnife reads `bdnnf to-d4`'s output. All answers agree.
+0.15-3.2 MB as BDNNF); samples and the batch queries are 10000 each; 2-wise
+runs on six shrunk instances. ddnnife reads `bdnnf to-d4`'s output. bdnnf
+keeps the circuit in memory for multi-pass queries by default (`--cache`);
+`--cache 0` streams the file on every pass. All answers agree, and every
+t-wise sample passes `twise-check`.
 
-| Query | bdnnf total | ddnnife total | bdnnf faster | Notes |
-|---|---|---|---|---|
-| count | 2.9 s | 16.3 s | 5/5 | |
-| feature counts | 6.2 s | 28.9 s | 5/5 | |
-| core | 6.1 s | 16.2 s | 5/5 | |
-| atomic sets | 34.7 s | 57.5 s | 4/5 | |
-| 2-wise | 34.7 s | 223 s | 6/6 | bdnnf's samples 1.2–4.6× larger |
-| 10000 samples | 35.2 s | 35.2 s | 2/5 | |
-| 10000 count queries | 177 s | 137 s | 0/4 | ddnnife timed out on t084 |
-| 10000 SAT queries | 74.8 s | 30.9 s | 1/5 | |
+| query | bdnnf total | bdnnf --cache 0 total | ddnnife total | bdnnf faster | timeouts (bdnnf / --cache 0 / ddnnife) |
+|---|---|---|---|---|---|
+| count | 2.41s | 2.41s | 15.9s | 5/5 | 0 / 0 / 0 |
+| features | 5.37s | 5.36s | 28.6s | 5/5 | 0 / 0 / 0 |
+| core | 5.41s | 5.34s | 15.7s | 5/5 | 0 / 0 / 0 |
+| samples | 11.3s | 34.5s | 34.6s | 5/5 | 0 / 0 / 0 |
+| count queries | 138.5s | 153.4s | 141.6s | 2/4 | 0 / 0 / 1 |
+| SAT queries | 10.5s | 28.9s | 31.3s | 5/5 | 0 / 0 / 0 |
+| atomic sets | 9.29s | 20.1s | 61.6s | 5/5 | 0 / 0 / 0 |
+| 2-wise | 19.1s | 52.6s | 218.8s | 6/6 | 0 / 0 / 0 |
 
-Peak memory: bdnnf 20–250 MB, ddnnife 150 MB–3.2 GB.
+Peak memory: bdnnf 7-296 MB, with `--cache 0` 6-250 MB, ddnnife 0-3605 MB.
+
+2-wise sample sizes (smaller is better):
+
+| instance | bdnnf | ddnnife |
+|---|---|---|
+| auto1-s | 3109 | 809 |
+| t015-s | 18 | 14 |
+| t027-s | 451 | 94 |
+| t028-s | 2672 | 2168 |
+| t066-s | 381 | 184 |
+| t003-s | 208 | 162 |

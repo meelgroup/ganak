@@ -274,6 +274,7 @@ condition on literals.
 | `atomic [--cross]` | sets of vars equal (or opposite) in every model |
 | `opt --obj F [-k K] [--min]` | the k best models under a sum of literal values |
 | `twise -t T` | samples covering every satisfiable t-tuple of literals |
+| `twise-check FILE` | check that samples cover every satisfiable t-tuple |
 | `stream` | the queries above, one per stdin line, circuit held in memory |
 | `verify` | check the format and every property the file claims |
 | `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` for legacy tools |

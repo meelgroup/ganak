@@ -35,6 +35,7 @@ all variables). The tools stream the file, keeping a few values per node.
 | `atomic [--cross]` | sets of variables equal (with `--cross`: or opposite) in every model |
 | `opt --obj FILE [-k K] [--min]` | the k best models under a sum of per-literal values (`literal value` lines) |
 | `twise [-t T] [--seed S] [-o out]` | samples covering every satisfiable t-tuple of literals |
+| `twise-check SAMPLES [-t T]` | check that samples (any tool's) cover every satisfiable t-tuple |
 | `stream` | the queries above, one per stdin line (`count --assume 3`, ...), circuit held in memory; each answer ends with `c done` |
 | `verify` | check the format and every property the file claims |
 | `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` |
@@ -59,7 +60,7 @@ operations to `bdnnf`.
 | `urs -n N -s S` | `sample -n N --seed S` | |
 | stream `enum` | `enum -n N --start I` | bdnnf resumes by index |
 | `t-wise -t T` | `twise -t T` | different algorithms; ddnnife can restrict literals |
-| `t-wise-check` | — | |
+| `t-wise-check` | `twise-check SAMPLES` | |
 | stream fitness, top-k | `opt --obj FILE -k K` | |
 | `stream`, `stream-queries` | `stream` | different syntax; ddnnife recounts incrementally |
 | stream `v` | partly | `lits`, `core` cover all variables |

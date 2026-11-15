@@ -41,6 +41,7 @@ all variables). Otherwise the tools stream the file, keeping a few values per no
 | `twise-check SAMPLES [-t T]` | check that samples (any tool's) cover every satisfiable t-tuple |
 | `stream` | the queries above, one per stdin line (`count --assume 3`, ...), circuit held in memory; each answer ends with `c done` |
 | `verify` | check the format and every property the file claims |
+| `compact OUT` | drop the nodes the root does not reach, merge structurally identical ones |
 | `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` |
 
 

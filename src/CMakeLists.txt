@@ -112,12 +112,14 @@ add_executable(ganak-bin main.cpp)
 add_executable(example-bin example.cpp)
 add_executable(example-c-bin example.c)
 add_executable(bdnnf-bin bdnnf_main.cpp bdnnf_verify.cpp bdnnf_query.cpp
-  bdnnf_dump.cpp bdnnf_to_d4.cpp bdnnf_dot.cpp)
+  bdnnf_dump.cpp bdnnf_to_d4.cpp bdnnf_dot.cpp bdnnf_compact.cpp)
 target_link_libraries(bdnnf-bin PRIVATE PkgConfig::GMP)
+add_executable(bdnnf-compact-fuzz bdnnf_compact_fuzz.cpp)
+set_target_properties(bdnnf-compact-fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 if(ZSTD_FOUND)
   # Plain library paths, not an imported target: keeps the exported static
   # ganak target usable without a matching find_dependency.
-  foreach(t ganak bdnnf-bin)
+  foreach(t ganak bdnnf-bin bdnnf-compact-fuzz)
     target_include_directories(${t} PRIVATE ${ZSTD_INCLUDE_DIRS})
     target_link_libraries(${t} PRIVATE ${ZSTD_LIBRARY})
   endforeach()

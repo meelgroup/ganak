@@ -277,6 +277,7 @@ condition on literals.
 | `twise-check FILE` | check that samples cover every satisfiable t-tuple |
 | `stream` | the queries above, one per stdin line, circuit held in memory |
 | `verify` | check the format and every property the file claims |
+| `compact OUT` | drop the nodes the root does not reach, merge identical ones |
 | `dump`, `dot`, `to-d4` | text form, Graphviz rendering, d4 `.nnf` for legacy tools |
 
 ```shell

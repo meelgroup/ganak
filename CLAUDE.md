@@ -84,6 +84,10 @@ must be UNSAT), `bdnnf stream` against separate runs, `bdnnf enum` for distinct 
 independent Python cross-check, run only on small files. Use `--big` (bigger
 CNFs, 5x timeout) for large circuits. Minimize a failure with
 `./minim_bdnnf.py file.cnf [--check verify|count|sample|structural|weights]`.
+`bdnnf compact` has its own fuzzer, `build/bdnnf-compact-fuzz [--num N]`
+(target `bdnnf-compact-fuzz`): random d-DNNFs full of dead and duplicate
+nodes; checks per-node values under random weights, scopes, no leftover
+duplicates, idempotence, and `bdnnf verify` on input and output.
 `./ddnnife_diff.py --num 500` compares `bdnnf` with ddnnife (built in
 `../ddnnife` with `cargo build --release -p ddnnife_cli`, nightly cargo).
 `scripts/bench_bdnnf.py` (about 6 min) compiles a few competition CNFs (full

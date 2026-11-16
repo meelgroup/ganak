@@ -172,7 +172,9 @@ public:
 
   // We *genuinely* found a solution. It's NOT UNSAT. But
   // it may be that this weighted solution is zero
-  void include_solution(const FF& solutions) {
+  void include_solution(const FF& solutions) { include_solution(solutions.get()); }
+  // nullptr means zero
+  void include_solution(const CMSat::Field* solutions) {
 #ifdef VERBOSE_DEBUG
     if (solutions == nullptr) cout << COLRED << "incl sol: " << "0" << " ind: " << is_indep << COLDEF << " ";
     else cout << COLRED << "incl sol: " << *solutions << " ind: " << is_indep << COLDEF << " ";
@@ -184,7 +186,7 @@ public:
       return;
     }
 
-    if (cnt_is_zero(solutions)) {
+    if (solutions == nullptr || solutions->is_zero()) {
       branch_zero[act_branch] = true;
       branch_mc[act_branch] = nullptr;
     } else if (!is_indep) {

@@ -37,34 +37,29 @@ public:
   CompCacheIF();
   virtual ~CompCacheIF();
 
-  virtual CacheEntryID add_new_comp(void* comp, CacheEntryID super_comp_id) = 0;
-  virtual uint64_t get_extra_bytes(void* comp) const = 0;
-  virtual bool find_comp_and_incorporate_cnt(StackLevel &top, const uint32_t nvars, const void* comp,
+  virtual void init(Comp &super_comp, uint32_t hash_seed, const BPCSizes& bpc,
+      const vector<Comp*>* comp_stack) = 0;
+  // Builds the lookup key of comp, used by the next find_probe()/add_probe()
+  virtual void set_probe(const Comp &comp, uint32_t hash_seed, const BPCSizes& bpc) = 0;
+  virtual bool find_probe_and_incorporate_cnt(StackLevel &top, uint32_t nvars,
       int* out_node = nullptr) = 0;
+  // May evict, which moves entries: the ids of the comps on comp_stack are updated
+  virtual CacheEntryID add_probe(uint32_t nvars, const Comp& super_comp) = 0;
   // d-DNNF: associate a circuit node id with a cache entry (retrieved on a hit via
   // out_node above). No-op unless compiling.
   virtual void set_compile_node(CacheEntryID, int) {}
-  virtual void* create_new_comp(const Comp &comp, uint32_t hash_seed, const BPCSizes& bpc) = 0;
-  virtual void free_comp(void* comp) = 0;
-
   virtual void make_entry_deletable(CacheEntryID id) = 0;
-  virtual void init(Comp &super_comp, uint32_t hash_seed, const BPCSizes& bpc) = 0;
-  virtual uint64_t get_num_entries_used() const = 0;
-  virtual uint64_t get_max_num_entries() const = 0;
-  virtual uint64_t compute_size_allocated() = 0;
-  virtual bool cache_full(uint64_t extra_will_be_added = 0) const = 0;
-  virtual bool exists(CacheEntryID id) const = 0;
-  virtual void unlink(CacheEntryID id) = 0;
-  virtual uint64_t clean_pollutions_involving(CacheEntryID id) = 0;
-  virtual void erase(CacheEntryID id) = 0;
-  virtual void store_value(const CacheEntryID id, const FF& model_count) = 0;
-  virtual uint64_t calc_cutoff() const = 0;
-  virtual bool delete_some_entries() = 0;
-  virtual uint64_t unlink_from_tree(CacheEntryID id) = 0;
-  virtual uint64_t num_direct_children(CacheEntryID id, uint64_t limit) = 0;
-  virtual uint64_t num_siblings(CacheEntryID id, uint64_t limit) = 0;
-  virtual void test_descendantstree_consistency() = 0;
+  [[nodiscard]] virtual uint64_t get_num_entries_used() const = 0;
+  [[nodiscard]] virtual uint64_t get_max_num_entries() const = 0;
+  [[nodiscard]] virtual bool exists(CacheEntryID id) const = 0;
+  // Removes every entry with id >= from. Entries are kept in creation order, so
+  // these are the comps created since `from` was, and all their descendants.
+  virtual uint64_t remove_from(CacheEntryID from) = 0;
+  virtual void store_value(CacheEntryID id, const FF& model_count) = 0;
   virtual void debug_mem_data() const = 0;
+#ifdef SLOW_DEBUG
+  virtual void check_removal(CacheEntryID from, const vector<CacheEntryID>& roots) const = 0;
+#endif
 };
 
 }

@@ -70,38 +70,6 @@ class DiffPackedComp  {
 
 
 public:
-  DiffPackedComp() = default;
-  ~DiffPackedComp() { delete[] data; }
-  DiffPackedComp(const DiffPackedComp& other) : data_size(other.data_size) {
-    if (data_size > 0) {
-      data = new uint32_t[data_size];
-      std::memcpy(data, other.data, data_size * sizeof(uint32_t));
-    }
-  }
-  DiffPackedComp& operator=(const DiffPackedComp& other) {
-    if (this == &other) return *this;
-    delete[] data;
-    data_size = other.data_size;
-    data = (data_size > 0) ? new uint32_t[data_size] : nullptr;
-    if (data_size > 0) std::memcpy(data, other.data, data_size * sizeof(uint32_t));
-    return *this;
-  }
-  DiffPackedComp(DiffPackedComp&& other) noexcept
-      : data(other.data), data_size(other.data_size) {
-    other.data = nullptr;
-    other.data_size = 0;
-  }
-  DiffPackedComp& operator=(DiffPackedComp&& other) noexcept {
-    if (this != &other) {
-      delete[] data;
-      data = other.data;
-      data_size = other.data_size;
-      other.data = nullptr;
-      other.data_size = 0;
-    }
-    return *this;
-  }
-
   uint64_t comp_bytes() const {
 #ifdef __GLIBC__
     // best fit may hand out a chunk 16B bigger than asked for, which adds up
@@ -111,8 +79,11 @@ public:
     return ArjunNS::heap_bytes(data_size * sizeof(uint32_t));
   }
 
-  void set_free() {
+  void release() {
     delete[] data;
+    forget();
+  }
+  void forget() {
     data = nullptr;
     data_size = 0;
   }

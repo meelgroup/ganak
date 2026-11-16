@@ -128,6 +128,7 @@ public:
   uint64_t max_cache_size_bytes = 0;
   uint64_t num_cache_hits = 0;
   uint64_t num_cache_dels = 0;
+  uint64_t cache_inline_cnts = 0;
   uint64_t num_cache_look_ups = 0;
   uint64_t last_restart_num_cache_look_ups = 0;
   uint64_t sum_cache_hit_sizes = 0;

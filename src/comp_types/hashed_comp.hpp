@@ -30,10 +30,6 @@ namespace GanakInt {
 
 class HashedComp  {
 public:
-  HashedComp() = default;
-  HashedComp(const HashedComp&) = default;
-  HashedComp& operator=(const HashedComp&) = default;
-  HashedComp(HashedComp&&) noexcept = default;
   static HashVal set_comp(const Comp& comp, const uint32_t hash_seed, const BPCSizes& /*bpc*/) {
     return murmur3_128(comp.get_raw_data(), (size_t)comp.get_size()*4, hash_seed);
   }
@@ -41,7 +37,8 @@ public:
     return true;
   }
   uint64_t comp_bytes() const { return 0; }
-  void set_free() { }
+  void release() { }
+  void forget() { }
 };
 
 }

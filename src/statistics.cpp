@@ -191,6 +191,8 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setprecision(2) << setw(9) << std::left
     << safe_div(num_cache_look_ups,(1000.0*(cpu_time()-counter->get_start_time())))
   );
+  verb_print(1, "cache stores w/ inline cnt %   "
+    << setprecision(3) << safe_div(100.0*(double)cache_inline_cnts, (double)total_num_cached_comps));
   verb_print(1, "cache miss rate                "
     << setprecision(3) << cache_miss_rate());
   verb_print(1, "avg hit/store num vars "

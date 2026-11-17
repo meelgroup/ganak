@@ -468,7 +468,13 @@ public:
   bool v_propagate();
   void v_backtrack();
   void v_unset_lit(const Lit l);
-  void v_enqueue(const Lit l);
+  void v_enqueue(const Lit l, Antecedent ante = Antecedent());
+  void v_analyze_into_tmp(Lit true_lit);
+  vector<Antecedent> v_reasons;
+  vector<uint8_t> v_seen;
+  ClauseOfs v_ignore = std::numeric_limits<ClauseOfs>::max();
+  Antecedent v_confl;
+  Lit v_confl_lit = NOT_A_LIT;
   TriValue v_val(const Lit l) const { return v_values[l]; }
   void v_new_lev();
   void v_backup();
@@ -512,6 +518,18 @@ public:
   template<class T2> bool v_cl_satisfied(const T2& cl) const;
   void vivif_backtrack();
   void toplevel_vivify_subsume_fullprobe();
+#ifdef CHECK_VIVIF
+  struct VivifSnap {
+    vector<Lit> trail;
+    vector<int32_t> levs;
+    vector<Antecedent> antes;
+    vector<vector<Lit>> irred;
+    vector<vector<Lit>> red;
+  };
+  VivifSnap vivif_snap() const;
+  void check_vivif_state(const char* where) const;
+  void check_vivif_vs_snap(const VivifSnap& s);
+#endif
   vector<Lit> v_trail;
   uint32_t v_qhead;
   uint32_t v_lev;

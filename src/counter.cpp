@@ -2862,9 +2862,9 @@ void Counter::vivify_cls(vector<ClauseOfs>& cls) {
     if (!rem) cls[j++] = off;
   }
 
+  cls.resize(j);
   // We didn't timeout, reset vivified flag.
   if (v_tout > 0) for(const auto& off: cls) alloc->ptr(off)->vivified = 0;
-  cls.resize(j);
 }
 
 void Counter::vivif_setup() {
@@ -2874,6 +2874,8 @@ void Counter::vivif_setup() {
   v_levs.resize(nVars()+1, -1);
   v_values.clear();
   v_values.resize(nVars()+1, X_TRI);
+  v_reasons.assign(nVars()+1, Antecedent());
+  v_seen.assign(nVars()+1, 0);
   v_qhead = 0;
 
   // Set up units
@@ -2887,6 +2889,10 @@ void Counter::vivif_setup() {
 bool Counter::vivify_all(bool force, bool only_irred) {
   VERY_SLOW_DEBUG_DO(check_trail(true, true));
   if (!force && last_confl_vivif + conf.vivif_every > stats.conflicts) return false;
+#ifdef CHECK_VIVIF
+  check_vivif_state("before");
+  VivifSnap const vsnap = vivif_snap();
+#endif
 
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   double const my_time = cpu_time();
@@ -2970,6 +2976,7 @@ bool Counter::vivify_all(bool force, bool only_irred) {
       << " T: " << (cpu_time()-my_time));
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   VERY_SLOW_DEBUG_DO(check_trail(true, true));
+  CHECK_VIVIF_DO(check_vivif_state("after"); check_vivif_vs_snap(vsnap));
   return (stats.vivif_cl_minim > last_vivif_cl_minim);
 }
 
@@ -3114,6 +3121,207 @@ bool Counter::propagation_correctness_of_vivified(const T2& cl) const {
   });
 }
 
+#ifdef CHECK_VIVIF
+Counter::VivifSnap Counter::vivif_snap() const {
+  VivifSnap s;
+  s.trail = trail;
+  for(const auto& l: trail) {
+    s.levs.push_back(var(l).decision_level);
+    s.antes.push_back(var(l).ante);
+  }
+  for(const auto& off: long_irred_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    s.irred.emplace_back(cl.begin(), cl.end());
+  }
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& b: watches[lit].binaries)
+      if (b.irred() && lit < b.lit()) s.irred.push_back({lit, b.lit()});
+  }
+  for(const auto& l: unit_cls) s.irred.push_back({l});
+  for(const auto& off: long_red_cls) {
+    const Clause& cl = *alloc->ptr(off);
+    s.red.emplace_back(cl.begin(), cl.end());
+  }
+  for(auto* v: {&s.irred, &s.red}) {
+    for(auto& c: *v) std::sort(c.begin(), c.end());
+    std::sort(v->begin(), v->end());
+  }
+  return s;
+}
+
+// Static check of the search state: lists, watches, reasons, and that the
+// watches stay valid after popping any number of levels, given that a pop
+// re-propagates only the kept lits from the popped decision's trail position on.
+void Counter::check_vivif_state(const char* where) const {
+  auto lit_to_str = [](Lit l) { std::ostringstream o; o << l; return o.str(); };
+  auto fail = [&](const string& msg, const Clause* cl = nullptr) {
+    cerr << "ERROR [check-vivif " << where << "] " << msg
+      << " dec_level: " << dec_level() << " conflicts: " << stats.conflicts << endl;
+    if (cl) for(const auto& l: *cl)
+      cerr << "  lit " << l << " val: " << lit_val_str(l)
+        << " lev: " << var(l).decision_level << " sublev: " << var(l).sublevel << endl;
+    release_assert(false);
+  };
+  if (decisions.empty()) return;
+
+  std::unordered_map<ClauseOfs, uint32_t> watched; // bit0: cl[0] watched, bit1: cl[1]
+  auto chk_list = [&](const vector<ClauseOfs>& cls, bool red) {
+    for(const auto& off: cls) {
+      const Clause& cl = *alloc->ptr(off);
+      if (cl.freed) fail("freed clause in list, off: " + std::to_string(off));
+      if (cl.sz < 3) fail("short clause in long list", &cl);
+      if (cl.red != red) fail("red flag mismatch", &cl);
+      if (!watched.emplace(off, 0).second) fail("clause twice in lists", &cl);
+      for(uint32_t i = 0; i < cl.sz; i++) {
+        if (cl[i].var() == 0 || cl[i].var() > nVars()) fail("bad var in clause", &cl);
+        for(uint32_t j = i+1; j < cl.sz; j++)
+          if (cl[i].var() == cl[j].var()) fail("var twice in clause", &cl);
+      }
+    }
+  };
+  chk_list(long_irred_cls, false);
+  chk_list(long_red_cls, true);
+
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& w: watches[lit].watch_list_) {
+      auto it = watched.find(w.ofs);
+      if (it == watched.end()) fail("watched clause not in lists, off: " + std::to_string(w.ofs));
+      const Clause& cl = *alloc->ptr(w.ofs);
+      uint32_t const bit = (cl[0] == lit) ? 1 : ((cl[1] == lit) ? 2 : 0);
+      if (bit == 0) fail("clause watched by lit " + lit_to_str(lit) + " not at pos 0/1", &cl);
+      if (it->second & bit) fail("clause watched twice by " + lit_to_str(lit), &cl);
+      it->second |= bit;
+      if (std::find(cl.begin(), cl.end(), w.blckLit) == cl.end())
+        fail("blocker " + lit_to_str(w.blckLit) + " not in clause", &cl);
+    }
+  }
+  for(const auto& [off, bits]: watched)
+    if (bits != 3) fail("clause not watched by both cl[0] and cl[1]", alloc->ptr(off));
+
+  if (qhead != trail.size()) fail("qhead not at end of trail");
+  for(uint32_t pos = 0; pos < trail.size(); pos++) {
+    Lit const l = trail[pos];
+    const auto& vd = var(l);
+    if (val(l) != T_TRI) fail("trail lit not true: " + lit_to_str(l));
+    if (vd.sublevel != pos) fail("sublevel != trail pos for " + lit_to_str(l));
+    if (vd.decision_level > dec_level()) fail("too high level: " + lit_to_str(l));
+    if (vd.decision_level == 0) continue;
+    if (vd.ante.isAClause()) {
+      if (!watched.count(vd.ante.as_cl())) fail("reason clause not in lists for " + lit_to_str(l));
+      const Clause& cl = *alloc->ptr(vd.ante.as_cl());
+      bool found = false;
+      for(const auto& l2: cl) {
+        if (l2 == l) {found = true; continue;}
+        if (val(l2) != F_TRI || var(l2).decision_level > vd.decision_level)
+          fail("bad reason clause for " + lit_to_str(l), &cl);
+      }
+      if (!found) fail("reason clause lacks " + lit_to_str(l), &cl);
+    } else if (vd.ante.isALit()) {
+      Lit const o = vd.ante.as_lit();
+      if (val(o) != F_TRI || var(o).decision_level > vd.decision_level)
+        fail("bad binary reason for " + lit_to_str(l));
+    }
+  }
+
+  // Full state: nothing unit, nothing conflicting.
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    if (val(lit) != F_TRI) continue;
+    for(const auto& b: watches[lit].binaries)
+      if (val(b.lit()) != T_TRI) fail("binary unit/conflict: " + lit_to_str(lit) + " " + lit_to_str(b.lit()));
+  }
+  auto chk_prop = [&](const vector<ClauseOfs>& cls) {
+    for(const auto& off: cls) {
+      const Clause& cl = *alloc->ptr(off);
+      uint32_t undef = 0;
+      bool sat = false;
+      for(const auto& l: cl) { if (val(l) == T_TRI) sat = true; else if (val(l) == X_TRI) undef++; }
+      if (!sat && undef <= 1) fail("long clause unit/conflict", &cl);
+    }
+  };
+  chk_prop(long_irred_cls);
+  chk_prop(long_red_cls);
+
+  // After popping levels >= k, the lits before decision k's trail pos stay
+  // propagated. A false watch among them needs a true lit at level < k.
+  vector<uint32_t> pos_of_dec(dec_level()+2, trail.size());
+  for(int32_t k = 1; k <= dec_level(); k++) {
+    uint32_t const dv = decisions[k].var;
+    // The flipped decision may since have been implied at a lower level.
+    // Backtracking still starts the pop at its trail pos.
+    if (dv == 0 || values[Lit(dv, true)] == X_TRI) fail("decision var unassigned at level " + std::to_string(k));
+    pos_of_dec[k] = var_data[dv].sublevel;
+  }
+  for(int32_t k = 1; k <= dec_level()+1; k++) {
+    uint32_t const p = pos_of_dec[k];
+    for(uint32_t pos = 0; pos < p; pos++) if (var(trail[pos]).decision_level >= k)
+      fail("lit before decision " + std::to_string(k) + " has level >= k: " + lit_to_str(trail[pos]));
+    auto chk_cls = [&](const vector<ClauseOfs>& cls) {
+      for(const auto& off: cls) {
+        const Clause& cl = *alloc->ptr(off);
+        bool bad_watch = false;
+        for(uint32_t w = 0; w < 2; w++)
+          if (val(cl[w]) == F_TRI && var(cl[w]).sublevel < p) bad_watch = true;
+        if (!bad_watch) continue;
+        bool sat = std::any_of(cl.begin(), cl.end(), [&](Lit l) {
+            return val(l) == T_TRI && var(l).decision_level < k; });
+        if (!sat) fail("propagated false watch without true lit below level "
+            + std::to_string(k) + " (popping would miss a propagation)", &cl);
+      }
+    };
+    chk_cls(long_irred_cls);
+    chk_cls(long_red_cls);
+  }
+}
+
+// Same trail and reasons as before, and the irred formula is equivalent.
+void Counter::check_vivif_vs_snap(const VivifSnap& s) {
+  auto lit_to_str = [](Lit l) { std::ostringstream o; o << l; return o.str(); };
+  auto lits_to_str = [](const vector<Lit>& c) { std::ostringstream o; for(const auto& l: c) o << l << " "; return o.str(); };
+  auto same_ante = [](const Antecedent& a, const Antecedent& b) {
+    if (a.isNull() || b.isNull()) return a.isNull() && b.isNull();
+    if (a.isAClause() != b.isAClause()) return false;
+    return a.isAClause() ? a.as_cl() == b.as_cl() : a.as_lit() == b.as_lit();
+  };
+  auto fail = [&](const string& msg) {
+    cerr << "ERROR [check-vivif snap] " << msg << endl;
+    release_assert(false);
+  };
+  if (s.trail != trail) fail("trail changed");
+  for(uint32_t i = 0; i < trail.size(); i++) {
+    if (var(trail[i]).decision_level != s.levs[i]) fail("level changed: " + lit_to_str(trail[i]));
+    if (!same_ante(var(trail[i]).ante, s.antes[i])) fail("reason changed: " + lit_to_str(trail[i]));
+  }
+  VivifSnap const now = vivif_snap();
+  vector<vector<Lit>> added, removed;
+  std::set_difference(now.irred.begin(), now.irred.end(), s.irred.begin(), s.irred.end(),
+      std::back_inserter(added));
+  std::set_difference(s.irred.begin(), s.irred.end(), now.irred.begin(), now.irred.end(),
+      std::back_inserter(removed));
+  for(const auto& c: added) if (!is_implied(c)) fail("new irred clause not implied: " + lits_to_str(c));
+  vector<vector<Lit>> added_red;
+  std::set_difference(now.red.begin(), now.red.end(), s.red.begin(), s.red.end(),
+      std::back_inserter(added_red));
+  for(const auto& c: added_red) if (!is_implied(c)) fail("new red clause not implied: " + lits_to_str(c));
+  if (removed.empty()) return;
+  CMSat::SATSolver s2;
+  s2.new_vars(nVars()+1);
+  vector<CMSat::Lit> tmp;
+  for(const auto& c: now.irred) {
+    tmp.clear();
+    for(const auto& l: c) tmp.push_back(ganak_to_cms_lit(l));
+    s2.add_clause(tmp);
+  }
+  for(const auto& c: removed) {
+    tmp.clear();
+    for(const auto& l: c) tmp.push_back(~ganak_to_cms_lit(l));
+    if (s2.solve(&tmp) != CMSat::l_False) fail("removed irred clause not implied by the new formula: " + lits_to_str(c));
+  }
+}
+#endif
+
 // Returns TRUE if we can remove the clause
 bool Counter::vivify_cl(const ClauseOfs off) {
   SLOW_DEBUG_DO(for(auto& l: seen) assert(l == 0));
@@ -3144,18 +3352,20 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   debug_print("vivifying cl offs: " << off);
   VERBOSE_DEBUG_DO(print_cl(cl));
 
-  v_tmp.push_back(v_tmp2[0]);
-  v_tmp.push_back(v_tmp2[1]);
+  // The clause itself is ignored, otherwise it would just propagate its own
+  // last literal. If nothing conflicts, every literal ends up false, so the
+  // clause itself is the conflict.
+  v_ignore = off;
   v_enqueue(v_tmp2[0].neg());
   v_enqueue(v_tmp2[1].neg());
   bool ret = v_propagate();
+  Lit true_lit = NOT_A_LIT;
   if (ret) {
     for(uint32_t i = 2; i < v_tmp2.size(); i++) {
       const auto& l = v_tmp2[i];
       debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
-      if (v_val(l) == T_TRI) {v_tmp.push_back(l);break;}
+      if (v_val(l) == T_TRI) {true_lit = l; break;}
       if (v_val(l) == F_TRI) continue;
-      v_tmp.push_back(l);
       v_enqueue(l.neg());
       ret = v_propagate();
       if (!ret) {
@@ -3163,7 +3373,17 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         break;
       }
     }
+    if (ret && true_lit == NOT_A_LIT) {
+      v_confl = Antecedent(off);
+      v_confl_lit = NOT_A_LIT;
+    }
   }
+  v_ignore = std::numeric_limits<ClauseOfs>::max();
+  v_analyze_into_tmp(true_lit);
+  // A unit can't be added mid-search; keep it 2-long.
+  if (v_tmp.size() == 1) stats.vivif_unit_dropped++;
+  for(uint32_t i = 0; i < 2 && v_tmp.size() < 2; i++)
+    if (std::find(v_tmp.begin(), v_tmp.end(), v_tmp2[i]) == v_tmp.end()) v_tmp.push_back(v_tmp2[i]);
   v_backtrack();
   VERBOSE_DEBUG_DO(cout << "new vivified CL offs: " << off << endl; print_cl(v_tmp));
   uip_clause.clear();
@@ -3209,14 +3429,9 @@ bool Counter::vivify_cl(const ClauseOfs off) {
         // cannot propagate!
         assert(false);
       }
-      for(uint32_t v = 1; v < var_data.size(); v++) {
-        auto& vdat = var_data[v];
-        if (vdat.ante.isAClause() && vdat.ante.as_cl() == off) {
-          assert(v == cl[0].var() || v == cl[1].var());
-          Lit const other_lit = (v == cl[0].var()) ? cl[1] : cl[0];
-          vdat.ante = Antecedent(other_lit);
-        }
-      }
+      // Reasons are never vivified (they are currently_propagating).
+      SLOW_DEBUG_DO(for(const auto& l: trail)
+          assert(!(var(l).ante.isAClause() && var(l).ante.as_cl() == off)));
       alloc->clause_free(off);
       fun_ret = true;
     } else {
@@ -3232,6 +3447,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     ret = v_propagate();
     assert(ret);
   } else {
+    if (removable != 0) stats.vivif_cl_rejected++;
     VERBOSE_DEBUG_DO(cout << "Can't vivify." << endl);
   }
 
@@ -3240,10 +3456,36 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   return fun_ret;
 }
 
-void Counter::v_enqueue(const Lit l) {
+// Fills v_tmp with the clause lits whose (negated) decisions the conflict, or
+// the implication of true_lit, depends on.
+void Counter::v_analyze_into_tmp(const Lit true_lit) {
+  v_tmp.clear();
+  auto mark = [&](const Lit l) { if (v_levs[l.var()] == 1) v_seen[l.var()] = 1; };
+  if (true_lit != NOT_A_LIT) {
+    v_tmp.push_back(true_lit);
+    mark(true_lit);
+  } else if (v_confl.isAClause()) {
+    for(const auto& l: *alloc->ptr(v_confl.as_cl())) mark(l);
+  } else {
+    mark(v_confl.as_lit());
+    mark(v_confl_lit);
+  }
+  for(uint32_t i = v_trail.size(); i-- > v_backtrack_to;) {
+    const Lit t = v_trail[i];
+    if (!v_seen[t.var()]) continue;
+    v_seen[t.var()] = 0;
+    const Antecedent& r = v_reasons[t.var()];
+    if (r.isNull()) v_tmp.push_back(t.neg());
+    else if (r.isALit()) mark(r.as_lit());
+    else for(const auto& l: *alloc->ptr(r.as_cl())) if (l != t) mark(l);
+  }
+}
+
+void Counter::v_enqueue(const Lit l, Antecedent ante) {
   debug_print("v-enq: " << l << " lev: " << v_lev);
   assert(v_val(l) == X_TRI);
   v_levs[l.var()] = v_lev;
+  v_reasons[l.var()] = ante;
   v_trail.push_back(l);
   v_values[l] = T_TRI;
   v_values[l.neg()] = F_TRI;
@@ -3261,10 +3503,12 @@ bool Counter::v_propagate() {
       const auto& l = bincl.lit();
       if (v_val(l) == F_TRI) {
         debug_print("v Conflict from bin.");
+        v_confl = Antecedent(l);
+        v_confl_lit = plit;
         return false;
       }
       if (v_val(l) == X_TRI) {
-        v_enqueue(l);
+        v_enqueue(l, Antecedent(plit));
         debug_print("v Bin prop: " << l);
       }
     }
@@ -3290,6 +3534,7 @@ bool Counter::v_propagate() {
       if (v_val(it->blckLit) == T_TRI) { *it2++ = *it; continue; }
 
       const auto ofs = it->ofs;
+      if (ofs == v_ignore) { *it2++ = *it; continue; }
       Clause& c = *alloc->ptr(ofs);
       if (c[0] == plit) { std::swap(c[0], c[1]); }
       v_tout--;
@@ -3322,13 +3567,15 @@ bool Counter::v_propagate() {
         *it2++ = *it;
         if (v_val(c[0]) == F_TRI) {
           debug_print("v Conflicting state from norm cl offs: " << ofs);
+          v_confl = Antecedent(ofs);
+          v_confl_lit = NOT_A_LIT;
           ret = false;
           it++;
           break;
         }
         assert(v_val(c[0]) == X_TRI);
         debug_print("v prop long");
-        v_enqueue(c[0]);
+        v_enqueue(c[0], Antecedent(ofs));
       }
     }
     while(it != ws.end()) *it2++ = *it++;

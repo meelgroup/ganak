@@ -64,6 +64,7 @@ constexpr uint32_t td_at_or_above_indep = 10;
 
 // I suggest disabling the cache separately with --cache 0
 /* #define CHECK_COUNT */
+/* #define CHECK_VIVIF */
 
 #ifdef CHECK_COUNT
 constexpr bool must_check_count = true;
@@ -94,6 +95,12 @@ constexpr bool must_check_count = false;
 #define analyze_verb(x) do { x; } while (0)
 #else
 #define analyze_verb(x) do { } while (0)
+#endif
+
+#ifdef CHECK_VIVIF
+#define CHECK_VIVIF_DO(x) do { x; } while (0)
+#else
+#define CHECK_VIVIF_DO(x) do { } while (0)
 #endif
 
 #ifdef CHECK_IMPLIED

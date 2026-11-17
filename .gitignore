@@ -33,3 +33,5 @@ tests/__pycache__
 *.pdf
 /scripts/data/__pycache__
 presentation
+build-vivif/
+fuzz-vivif-out/

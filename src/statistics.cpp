@@ -152,12 +152,13 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(9) << safe_div(br_share_act*100, br_decisions) << " "
     << setw(9) << safe_div(br_share_freq*100, br_decisions));
 
-  verb_print(1, "vivif: try/cls/clviv/litsravg  "
+  verb_print(1, "vivif: try/cls/clviv/litsravg/rej/unit  "
     << setw(9) << vivif_tried << " "
     << setw(9) << vivif_tried_cl << " "
     << setw(9) << vivif_cl_minim << " "
-    << setw(9) << safe_div(vivif_cl_minim, vivif_lit_rem) << " "
-  );
+    << setw(9) << safe_div(vivif_lit_rem, vivif_cl_minim) << " "
+    << setw(9) << vivif_cl_rejected << " "
+    << setw(9) << vivif_unit_dropped);
 
   verb_print(1, "toplev subs runs/bins/long-cls "
     << setw(9) << subsume_runs << " "

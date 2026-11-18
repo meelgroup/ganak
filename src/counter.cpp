@@ -21,7 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "counter.hpp"
-#include "frontier.hpp"
+#include "frontier_tables.hpp"
 #include "grouped_sweep.hpp"
 
 #include <algorithm>
@@ -1228,6 +1228,9 @@ FF Counter::outer_count() {
          << " peak " << sweep_peak << " separator " << separator_choices
          << " cpu " << frontier_seconds << endl;
   if (conf.grouped_sweep) cout << "c grouped residual " << grouped_attempts << " " << grouped_finished << endl;
+  if (conf.frontier_profile)
+    cout << "c frontier finished words " << word_finished << " buckets " << bucket_finished
+         << " sparse " << sweep_finished-word_finished-bucket_finished << endl;
   if (conf.frontier_profile) for (unsigned n=4; n<=62; ++n) {
     if (sweep_calls_by_size[n]) cout << "c sweep_profile " << n << " " << sweep_calls_by_size[n]
         << " " << sweep_rows_by_size[n] << " " << sweep_time_by_size[n] << endl;
@@ -1337,14 +1340,20 @@ bool Counter::try_frontier(uint32_t& separator_var) {
   const unsigned n = comp.nVars();
   if (weighted() || compiler->active() || n < 4 || n > 62) return false;
   const unsigned num_clauses = comp.num_long_cls() + comp.num_bin_cls()/2;
-  const bool sweep_candidate = conf.frontier_states > 0 && int(n) >= conf.frontier_min_vars && num_clauses <= 64;
+  const bool sweep_enabled = conf.frontier_states > 0 && int(n) >= conf.frontier_min_vars;
+  bool wide_candidate = sweep_enabled && num_clauses > 64 && num_clauses <= 256;
+  if (wide_candidate && wide_skip) {
+    --wide_skip;
+    wide_candidate = false;
+  }
+  const bool sweep_candidate = (sweep_enabled && num_clauses <= 64) || wide_candidate;
   const bool separator_candidate = conf.separator_branch && dec_level() < 8 && n >= 12
                                    && num_clauses <= 256;
   bool grouped_candidate=conf.grouped_sweep && grouped_attempts<32 && num_clauses>64;
   if (!sweep_candidate && !separator_candidate && !grouped_candidate) return false;
   const auto* vars = comp.vars_begin();
   if (vars[n-1] >= indep_support_end) return false;
-  if (!dynamic_cast<const ArjunNS::FMpz*>(fg->one().get())) return false;
+  if (!dynamic_cast<const ArjunNS::FMpz*>(two.get())) return false;
 
   const bool adaptive = conf.grouped_sweep == 2;
   if (adaptive && grouped_candidate) {
@@ -1358,6 +1367,17 @@ bool Counter::try_frontier(uint32_t& separator_var) {
       grouped_misses = std::min(4u, grouped_misses + 1);
       grouped_skip = (1u << (grouped_misses - 1)) - 1;
     }
+  }
+  // Time eligible snapshots and kernels. Avoid two system calls on every
+  // cache miss whose component size already rules out all frontier methods.
+  struct HookTimer {
+    double& total;
+    double start;
+    ~HookTimer() { total += cpu_time() - start; }
+  } timer{frontier_seconds, cpu_time()};
+  if (wide_candidate) {
+    wide_misses = std::min(7u, wide_misses + 1);
+    wide_skip = (1u << (wide_misses - 1)) - 1;
   }
   std::vector<frontier::Clause> clauses;
   if (num_clauses>65536) return false; // bound residual snapshot memory
@@ -1430,15 +1450,32 @@ bool Counter::try_frontier(uint32_t& separator_var) {
   if (sweep_candidate) {
     ++sweep_attempts;
     const double t = conf.frontier_profile ? cpu_time() : 0;
-    auto result = frontier::sweep(n, clauses, conf.frontier_states, sweep_peak,
-                                  conf.frontier_profile ? &sweep_rows_by_size[n] : nullptr);
+    const unsigned limit = conf.frontier_states;
+    auto result = frontier::word_count(n, clauses, limit);
+    if (result) ++word_finished;
+    if (!result && (wide_candidate || n >= 20)) {
+      result = frontier::bucket_count(n, clauses, limit);
+      if (result) ++bucket_finished;
+    }
+    if (!result && num_clauses <= 64) {
+      // On binary-heavy residuals many open clauses can share one boundary
+      // variable. The assignment bound makes that visible to the orderer.
+      const bool variable_bound = n >= 20 && 2*std::count_if(clauses.begin(), clauses.end(),
+          [](auto c) { return std::popcount(c.vars()) == 2; }) >= num_clauses;
+      result = frontier::sweep(n, clauses, limit, sweep_peak,
+                               conf.frontier_profile ? &sweep_rows_by_size[n] : nullptr,
+                               variable_bound);
+    }
     if (conf.frontier_profile) {
       ++sweep_calls_by_size[n];
       sweep_time_by_size[n] += cpu_time()-t;
     }
     if (result) {
       ++sweep_finished;
-      finish(mpz_class(std::to_string(*result)));
+      if (wide_candidate) wide_misses = wide_skip = 0;
+      mpz_class exact;
+      mpz_import(exact.get_mpz_t(), 1, 1, sizeof(*result), 0, 0, &*result);
+      finish(exact);
       return true;
     }
   }
@@ -1471,9 +1508,7 @@ void Counter::count_loop() {
         goto start11;
       }
       if (conf.frontier_states > 0 || conf.separator_branch || (conf.grouped_sweep && grouped_attempts<32)) {
-        const double start = cpu_time();
         const bool solved = try_frontier(separator_var);
-        frontier_seconds += cpu_time() - start;
         if (solved) {
           if (decisions.top().branch_found_unsat()) goto backtrack;
           continue;

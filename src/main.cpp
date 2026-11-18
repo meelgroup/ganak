@@ -315,7 +315,7 @@ void add_ganak_options()
     add_arg("--mixedjobs", conf.mixed_jobs, "Job split: 0 variables, 1 most frequent OR, 2 worst-first propagation score, 3 aggregate score with one-variable slack");
     add_arg("--profilejobs", conf.profile_jobs, "Report parallel makespan diagnostics");
     add_arg("--groupedsweep", conf.grouped_sweep, "Grouped dense sweep: 0 off, 1 fixed planning, 2 adaptive planning and residual probes");
-    add_arg("--frontierstates", conf.frontier_states, "Maximum live sweep states (0 disables)");
+    add_arg("--frontierstates", conf.frontier_states, "Maximum sparse states or outgoing table entries per layer (0 disables)");
     add_arg("--separatorbranch", conf.separator_branch, "Prefer balanced one- or two-variable separators");
 
     // BuDDy options

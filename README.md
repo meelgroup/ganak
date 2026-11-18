@@ -95,10 +95,28 @@ different counters may give different results.
 
 ### Experimental frontier sweeps
 
-For exact unweighted counting, use `--prob 0 --frontierstates 8192` to try
-a variable sweep on small residual components. The argument limits the number
-of distinct open-clause states in each layer. If a layer exceeds the limit,
-Ganak resumes its usual component search.
+For exact unweighted counting, `--prob 0 --frontierstates 8192` tries
+bounded counting on residual cache misses with 4–62 variables. The solver
+chooses a method from the component it actually sees after propagation.
+
+* Small assignment spaces use 64-bit truth tables. Above 12 variables the
+  solver estimates the number of word updates before choosing this method.
+* For a larger residual, a minimum-degree elimination order estimates the
+  size of each intermediate table. Ganak uses this order if every outgoing
+  table fits the state limit and the sum of input table sizes fits a separate
+  work budget (16 times the state limit). Eliminating one binary variable
+  takes two input entries per outgoing entry.
+* For up to 64 clauses, the sparse sweep stores distinct sets of pending
+  clauses. It prefers variables that leave a small frontier and breaks ties by
+  closing the most clauses. For binary-heavy components it also considers how
+  many assigned variables can still affect the frontier.
+* Residuals with 65–256 clauses can use the truth tables or elimination.
+  Consecutive unsuccessful wide probes increase the interval between attempts.
+  If no bounded method completes, Ganak continues its ordinary component search.
+
+`--frontierprofile 1` reports completions by method. The per-size row counter
+counts visited sparse states. Hook CPU time covers eligible component snapshots
+and counting, excluding cache misses rejected by the initial size checks.
 
 Use `--groupedsweep 1` to combine clauses over the same variables into a
 factor and try a bounded dense sweep before preprocessing and on eligible

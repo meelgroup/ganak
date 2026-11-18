@@ -371,6 +371,8 @@ public:
   uint64_t sweep_attempts=0, sweep_finished=0, sweep_peak=0, separator_choices=0;
   uint32_t grouped_attempts=0, grouped_finished=0;
   unsigned grouped_misses=0, grouped_skip=0;
+  unsigned wide_misses=0, wide_skip=0;
+  uint64_t word_finished=0, bucket_finished=0;
   double frontier_seconds=0;
   uint64_t sweep_calls_by_size[63]{}, sweep_rows_by_size[63]{};
   double sweep_time_by_size[63]{};

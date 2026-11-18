@@ -25,6 +25,11 @@ THE SOFTWARE.
 #include <algorithm>
 #include <set>
 #include <future>
+#include <numeric>
+#include <tuple>
+#include <map>
+#include <sstream>
+#include <chrono>
 #include <thread>
 #include <treedecomp/TreeDecomposition.hpp>
 #include <treedecomp/IFlowCutter.hpp>
@@ -133,6 +138,103 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb) {
   /* verb_print(1, "Arjun T: " << (cpu_time()-my_time)); */
 }
 
+// Cheap residual-work proxy: after propagation, measure the largest connected
+// variable set and the sum of squared component sizes. This is only a ranking
+// heuristic; probes never modify the CNF or contribute to the count.
+static std::pair<unsigned, uint64_t> probe_job(const vector<vector<Lit>> &cs, unsigned n,
+                                               const vector<Lit> &prefix, const vector<Lit> &predicate,
+                                               bool truth, uint64_t &budget) {
+  vector<int8_t> values(n + 1, -1);
+  auto assign = [&](Lit l) { values[l.var()] = !l.sign(); };
+  for (auto l : prefix)
+    assign(l);
+  if (!truth || predicate.size() == 1)
+    for (auto l : predicate)
+      assign(truth ? l : l.neg());
+  vector<unsigned> parent(n + 1), size(n + 1, 1);
+  std::iota(parent.begin(), parent.end(), 0);
+  auto root = [&](unsigned v) {
+    while (parent[v] != v) {
+      parent[v] = parent[parent[v]];
+      v = parent[v];
+    }
+    return v;
+  };
+  vector<bool> active(n + 1);
+  bool changed;
+  do {
+    changed = false;
+    for (size_t i = 0; i < cs.size() + unsigned(truth && predicate.size() > 1); ++i) {
+      const auto &c = i == cs.size() ? predicate : cs[i];
+      if (budget < c.size() + 1) {
+        budget = 0;
+        return {};
+      }
+      budget -= c.size() + 1;
+      unsigned unknown = 0;
+      Lit last;
+      bool satisfied = false, has_a = false, has_b = false;
+      for (Lit l : c) {
+        if (values[l.var()] < 0) {
+          ++unknown;
+          last = l;
+        } else if (bool(values[l.var()]) != l.sign()) {
+          satisfied = true;
+          break;
+        }
+        if (truth && predicate.size() == 2 && i != cs.size()) {
+          has_a |= l == predicate[0];
+          has_b |= l == predicate[1];
+        }
+      }
+      if (satisfied || (has_a && has_b)) continue;
+      if (!unknown) return {};
+      if (unknown == 1) {
+        assign(last);
+        changed = true;
+      }
+    }
+  } while (changed);
+  for (size_t i = 0; i < cs.size() + unsigned(truth && predicate.size() > 1); ++i) {
+    const auto &c = i == cs.size() ? predicate : cs[i];
+    if (budget < c.size() + 1) {
+      budget = 0;
+      return {};
+    }
+    budget -= c.size() + 1;
+    if (std::any_of(c.begin(), c.end(),
+                    [&](Lit l) { return values[l.var()] >= 0 && bool(values[l.var()]) != l.sign(); }))
+      continue;
+    if (truth && predicate.size() == 2 && i != cs.size() &&
+        std::find(c.begin(), c.end(), predicate[0]) != c.end() &&
+        std::find(c.begin(), c.end(), predicate[1]) != c.end())
+      continue;
+    unsigned first = 0;
+    for (auto l : c)
+      if (values[l.var()] < 0) {
+        unsigned v = l.var();
+        active[v] = true;
+        if (!first)
+          first = v;
+        else {
+          unsigned a = root(first), b = root(v);
+          if (a != b) {
+            parent[b] = a;
+            size[a] += size[b];
+          }
+        }
+      }
+  }
+  unsigned largest = 0;
+  uint64_t total = 0;
+  for (unsigned v = 1; v <= n; ++v)
+    if (active[v] && parent[v] == v) {
+      largest = std::max(largest, size[v]);
+      total += uint64_t(size[v]) * size[v];
+    }
+  return {largest, total};
+}
+
 FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
   assert(conf.appmc_timeout < 0 && "TD-parallel not compatible with AppMC");
   assert(bits_jobs > 0);
@@ -217,7 +319,87 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     indep_support.insert(lit.var());
   }
 
+  // Keep the first k-1 centroid bits. Pair the last one with a literal
+  // from an incident clause; maximize the number of clauses discharged
+  // when this OR is true. A counted-variable predicate preserves disjointness
+  // even when input assignments are projected onto the sampling set.
+  vector<Lit> gate;
+  if (conf.mixed_jobs && !fg->weighted() && bits_jobs > 0) {
+    const uint32_t pivot = centroid_bag[bits_jobs-1]+1;
+    const set<int> fixed(centroid_bag.begin(), centroid_bag.begin()+bits_jobs-1);
+    std::map<std::pair<Lit,Lit>, unsigned> freq;
+    if (indep_support.count(pivot)) for (const auto& cl : irred_cls) {
+      if (cl.size() < 3) continue;
+      auto p = std::find_if(cl.begin(),cl.end(),[&](Lit l){return l.var()==pivot;});
+      if (p==cl.end()) continue;
+      for (Lit l : cl) {
+        if (l.var()==pivot || fixed.count(l.var()-1) || !indep_support.count(l.var())) continue;
+        ++freq[{*p,l}];
+      }
+    }
+    if (conf.mixed_jobs == 1) {
+      unsigned best = 0;
+      for (const auto &[pair, score] : freq)
+        if (score > best) {
+          best = score;
+          gate = {pair.first, pair.second};
+        }
+    } else if (!freq.empty()) {
+      // Use the same prefix cubes for every candidate. With more than two
+      // prefix bits use four fixed samples spanning the job range.
+      uint64_t budget = 8000000;
+      const unsigned prefix_jobs = 1u << (bits_jobs - 1), samples = std::min(prefix_jobs, 4u);
+      auto score = [&](const vector<Lit> &pred) {
+        unsigned worst = 0;
+        uint64_t squares = 0;
+        for (unsigned j = 0; j < samples && budget; ++j) {
+          unsigned mask = samples == 1 ? 0 : j * (prefix_jobs - 1) / (samples - 1);
+          vector<Lit> prefix;
+          for (unsigned i = 0; i + 1 < bits_jobs; ++i)
+            prefix.emplace_back(centroid_bag[i] + 1, (mask >> i) & 1);
+          for (bool truth : {false, true}) {
+            auto [width, work] = probe_job(irred_cls, nvars, prefix, pred, truth, budget);
+            worst = std::max(worst, width);
+            squares += work;
+          }
+        }
+        return std::pair{worst, squares};
+      };
+      auto best = score({Lit(pivot, false)});
+      const unsigned variable_width = best.first;
+      if (conf.profile_jobs >= 3)
+        cout << "c gate_probe variable " << pivot << " " << best.first << " " << best.second << endl;
+      vector<std::pair<unsigned, std::pair<Lit, Lit>>> candidates;
+      for (const auto &[pair, hits] : freq)
+        candidates.emplace_back(hits, pair);
+      std::stable_sort(candidates.begin(), candidates.end(),
+                       [](auto &a, auto &b) { return a.first > b.first; });
+      for (unsigned i = 0; i < std::min<size_t>(8, candidates.size()) && budget; ++i) {
+        auto [a, b] = candidates[i].second;
+        vector<Lit> candidate{a, b};
+        auto rank = score(candidate);
+        if (conf.profile_jobs >= 3 && budget)
+          cout << "c gate_probe or " << a << " " << b << " " << rank.first << " " << rank.second << endl;
+        // A true OR can leave both inputs live, where a variable decision
+        // necessarily removes one. Allow this single-variable difference in
+        // mode 3, then compare the aggregate post-propagation cost.
+        const bool improves = conf.mixed_jobs == 3 ? rank.first <= variable_width + 1 &&
+                                                         std::tie(rank.second, rank.first) <
+                                                             std::tie(best.second, best.first)
+                                                   : rank < best;
+        if (budget && improves) {
+          best = rank;
+          gate = candidate;
+        }
+      }
+    }
+  }
+  using JobClock = std::chrono::steady_clock;
+  vector<double> job_seconds(conf.profile_jobs ? num_jobs : 0);
+  vector<std::string> job_counts(conf.profile_jobs > 1 ? num_jobs : 0);
   auto worker = [&](const uint64_t num) -> FF {
+    auto start = conf.profile_jobs ? JobClock::now() : JobClock::time_point{};
+    const bool gate_true = ((num >> (bits_jobs-1)) & 1) == 0;
     // Each thread needs its own FieldGen copy: fg may have mutable internal state
     FG thread_fg = fg->dup();
     ArjunNS::SimplifiedCNF cnf(thread_fg);
@@ -228,10 +410,22 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
       for (const auto& [lit, weight] : lit_weights)
         cnf.set_lit_weight(ganak_to_cms_lit(lit), weight->dup());
     }
-    for (const auto& cl : irred_cls) cnf.add_clause(ganak_to_cms_cl(cl));
+    for (const auto& cl : irred_cls) {
+      // Under gate=true these clauses are already satisfied. When false,
+      // the two unit assumptions below let propagation shorten them.
+      if (!gate.empty() && gate_true &&
+          std::find(cl.begin(),cl.end(),gate[0]) != cl.end() &&
+          std::find(cl.begin(),cl.end(),gate[1]) != cl.end()) continue;
+      cnf.add_clause(ganak_to_cms_cl(cl));
+    }
 
     // Add unit clauses that differentiates this thread
     for (size_t i = 0; i < bits_jobs; i++) {
+      if (!gate.empty() && i+1 == bits_jobs) {
+        if (gate_true) cnf.add_clause(ganak_to_cms_cl(gate));
+        else for (Lit l : gate) cnf.add_clause({ganak_to_cms_lit(l.neg())});
+        continue;
+      }
       const uint32_t var = centroid_bag[i];
       const bool sign = (num >> i) & 1;
       CMSat::Lit const unit_lit(var, sign);
@@ -257,6 +451,13 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
         count_is_approximate |= counter->get_is_approximate();
       }
     }
+    if (conf.profile_jobs > 1) {
+      std::ostringstream text;
+      text << *ret;
+      job_counts[num] = text.str();
+    }
+    if (conf.profile_jobs)
+      job_seconds[num] = std::chrono::duration<double>(JobClock::now()-start).count();
     return ret;
   };
 
@@ -303,6 +504,15 @@ FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
     }
   }
 
+  if (conf.profile_jobs > 1) {
+    if (!gate.empty()) cout << "c job_gate " << gate[0] << " " << gate[1] << endl;
+    for (uint64_t i=0; i<num_jobs; ++i)
+      cout << "c job_detail " << i << " " << job_seconds[i] << " " << job_counts[i] << endl;
+  }
+  if (conf.profile_jobs) {
+    cout << "c job_profile " << num_jobs << " " << !gate.empty() << " "
+         << *std::max_element(job_seconds.begin(),job_seconds.end()) << endl;
+  }
   return total_count;
 }
 

@@ -1,0 +1,5 @@
+c c RUN: %solver --groupedsweep 1 %s | %OutputCheck %s
+c c CHECK: ^c grouped root scopes 1$
+c c CHECK: ^c s exact arb int 1020847100762815390390123822295304634368$
+p cnf 130 1
+1 2 0

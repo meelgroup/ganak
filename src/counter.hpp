@@ -470,6 +470,7 @@ public:
   void v_unset_lit(const Lit l);
   void v_enqueue(const Lit l, Antecedent ante = Antecedent());
   void v_analyze_into_tmp(Lit true_lit);
+  void v_undo_to(uint32_t pos);
   vector<Antecedent> v_reasons;
   vector<uint8_t> v_seen;
   ClauseOfs v_ignore = std::numeric_limits<ClauseOfs>::max();

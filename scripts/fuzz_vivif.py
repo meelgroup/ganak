@@ -48,6 +48,7 @@ def gen_random_cnf(rnd, path, proj):
 def stress_opts(rnd):
     o = {
         "vivifevery": rnd.choice(["1", "1", "2", "5", "30"]),
+        "vivifinst": rnd.choice(["0", "1", "1"]),
         "vivifmult": rnd.choice(["0.001", "0.05", "1", "10"]),
         "totusedcutoffvivif": rnd.choice(["0", "5", "50"]),
         "vivifoutern": rnd.choice(["1", "1", "2"]),

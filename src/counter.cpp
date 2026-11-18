@@ -3080,6 +3080,13 @@ void Counter::v_unset_lit(const Lit l) {
   v_values[l.neg()] = X_TRI;
 }
 
+void Counter::v_undo_to(const uint32_t pos) {
+  assert(v_lev == 1 && pos >= v_backtrack_to && pos <= v_trail.size());
+  std::for_each(v_trail.begin() + pos, v_trail.end(), [this](const Lit& l){ v_unset_lit(l); });
+  v_trail.resize(pos);
+  v_qhead = pos;
+}
+
 void Counter::v_backtrack() {
   assert(v_lev == 1);
   std::for_each(v_trail.begin() + v_backtrack_to, v_trail.end(),
@@ -3360,12 +3367,16 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   v_enqueue(v_tmp2[1].neg());
   bool ret = v_propagate();
   Lit true_lit = NOT_A_LIT;
+  Lit last_dec = NOT_A_LIT;
+  uint32_t last_dec_pos = 0;
   if (ret) {
     for(uint32_t i = 2; i < v_tmp2.size(); i++) {
       const auto& l = v_tmp2[i];
       debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
       if (v_val(l) == T_TRI) {true_lit = l; break;}
       if (v_val(l) == F_TRI) continue;
+      last_dec = l;
+      last_dec_pos = v_trail.size();
       v_enqueue(l.neg());
       ret = v_propagate();
       if (!ret) {
@@ -3378,8 +3389,21 @@ bool Counter::vivify_cl(const ClauseOfs off) {
       v_confl_lit = NOT_A_LIT;
     }
   }
-  v_ignore = std::numeric_limits<ClauseOfs>::max();
   v_analyze_into_tmp(true_lit);
+  // Instantiation: v_tmp contains last_dec. If last_dec true conflicts with the
+  // other decisions, resolving that with v_tmp on last_dec removes it.
+  if (conf.vivif_inst && ret && true_lit == NOT_A_LIT && last_dec != NOT_A_LIT) {
+    stats.vivif_inst_tried++;
+    v_undo_to(last_dec_pos);
+    v_enqueue(last_dec);
+    if (!v_propagate()) {
+      auto it2 = std::find(v_tmp.begin(), v_tmp.end(), last_dec);
+      assert(it2 != v_tmp.end());
+      v_tmp.erase(it2);
+      stats.vivif_inst_lit_rem++;
+    }
+  }
+  v_ignore = std::numeric_limits<ClauseOfs>::max();
   // A unit can't be added mid-search; keep it 2-long.
   if (v_tmp.size() == 1) stats.vivif_unit_dropped++;
   for(uint32_t i = 0; i < 2 && v_tmp.size() < 2; i++)

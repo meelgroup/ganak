@@ -167,6 +167,7 @@ string print_version()
     ss << "c o Using Graph library by Tuukka Korhonen and Matti Jarvisalo" << endl;
     ss << "c o Using Flowcutter by Ben Strasser" << endl;
     ss << "c o Using dynamic blocked clause elimination by Lagniez, Marquis and Biere, SAT'24" << endl;
+    ss << "c o Using vivification by Piette, Hamadi and Sais, ECAI'08" << endl;
     ss << "c o Ganak compilation env " << GANAK::get_compilation_env() << endl;
     return ss.str();
 }
@@ -326,6 +327,7 @@ void add_ganak_options()
 
     // Vivif options -- inprocessing during Ganak
     add_arg("--vivif", conf.do_vivify, "Vivify clauses");
+    add_arg("--vivifinst", conf.vivif_inst, "Vivification instantiation: if all literals end up false, set the last decided one true; a conflict removes it");
     add_arg("--vivifevery", conf.vivif_every, "Vivify every N conflicts");
     add_arg("--vivifmult", conf.vivif_mult, "How much to multiply timeout for vivif");
     add_arg("--vivifoutern", conf.vivif_outer_every_n, "How many restarts between outer vivif");

@@ -159,6 +159,9 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(9) << safe_div(vivif_lit_rem, vivif_cl_minim) << " "
     << setw(9) << vivif_cl_rejected << " "
     << setw(9) << vivif_unit_dropped);
+  verb_print(1, "vivif inst: tried/litrem          "
+    << setw(9) << vivif_inst_tried << " "
+    << setw(9) << vivif_inst_lit_rem);
 
   verb_print(1, "toplev subs runs/bins/long-cls "
     << setw(9) << subsume_runs << " "

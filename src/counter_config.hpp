@@ -89,6 +89,7 @@ struct CounterConfiguration {
   int do_update_lbd_cutoff = 0;
 
   int do_vivify = 1;
+  int vivif_inst = 0;
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;

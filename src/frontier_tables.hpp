@@ -69,7 +69,8 @@ struct BucketMessage {
 inline std::optional<Mask> bucket_count(unsigned n, const std::vector<Clause>& clauses,
                                         unsigned state_limit) {
   if (n > 62 || !state_limit) return {};
-  const unsigned max_width = std::min<unsigned>(15, std::bit_width(state_limit)-1);
+  constexpr unsigned max_bucket_width = 15;
+  const unsigned max_width = std::min<unsigned>(max_bucket_width, std::bit_width(state_limit)-1);
   std::array<Mask, 62> adjacency{}, later{}, rank_bit{};
   for (auto c : clauses) {
     Mask vars = c.vars();
@@ -126,8 +127,25 @@ inline std::optional<Mask> bucket_count(unsigned n, const std::vector<Clause>& c
     }
     for (const auto& msg : incoming[step]) {
       Mask selector = extract_bits(msg.scope, bag);
+#if defined(__BMI2__) && defined(__x86_64__)
       for (unsigned i = 0; i < size; ++i)
         table[i] *= msg.counts[extract_bits(i, selector)];
+#else
+      // Incrementing i flips its low bits through the first carry. In message
+      // coordinates these are precisely the low selected bits of that prefix.
+      std::array<unsigned, max_bucket_width + 1> carry_mask;
+      unsigned selected = 0;
+      for (unsigned j = 0; (1u << j) < size; ++j) {
+        selected += bool(selector & bit(j));
+        carry_mask[j] = (1u << selected) - 1;
+      }
+      unsigned index = 0;
+      table[0] *= msg.counts[0];
+      for (unsigned i = 1; i < size; ++i) {
+        index ^= carry_mask[std::countr_zero(i)];
+        table[i] *= msg.counts[index];
+      }
+#endif
     }
     incoming[step].clear();
     for (unsigned i = 0; i < size/2; ++i) table[i] = table[2*i]+table[2*i+1];

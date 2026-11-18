@@ -328,6 +328,8 @@ void add_ganak_options()
     // Vivif options -- inprocessing during Ganak
     add_arg("--vivif", conf.do_vivify, "Vivify clauses");
     add_arg("--vivifinst", conf.vivif_inst, "Vivification instantiation: if all literals end up false, set the last decided one true; a conflict removes it");
+    add_arg("--vivifsubs", conf.vivif_subs, "Vivification: delete the clause if a clause of the derivation subsumes it (a red subsumer of an irred clause becomes irred)");
+    add_arg("--vivifimpl", conf.vivif_impl, "Vivification: delete a clause that is implied by propagation over the others and cannot be shortened (irred: only if the derivation uses no red clause)");
     add_arg("--vivifevery", conf.vivif_every, "Vivify every N conflicts");
     add_arg("--vivifmult", conf.vivif_mult, "How much to multiply timeout for vivif");
     add_arg("--vivifoutern", conf.vivif_outer_every_n, "How many restarts between outer vivif");

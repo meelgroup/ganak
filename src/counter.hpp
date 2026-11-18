@@ -468,10 +468,30 @@ public:
   bool v_propagate();
   void v_backtrack();
   void v_unset_lit(const Lit l);
-  void v_enqueue(const Lit l, Antecedent ante = Antecedent());
+  void v_enqueue(const Lit l, Antecedent ante = Antecedent(), bool red = false);
   void v_analyze_into_tmp(Lit true_lit);
   void v_undo_to(uint32_t pos);
+  void v_del_subsumed(ClauseOfs off);
   vector<Antecedent> v_reasons;
+  vector<uint8_t> v_reason_red;
+  // Level 0 only: the lit is not a permanent consequence of the irred
+  // clauses. It came from a red clause or from a trail lit not in unit_cls,
+  // which is lost at the next restart.
+  vector<uint8_t> v_l0_red;
+  bool v_confl_red = false;
+  bool v_used_red = false; // the derivation of the last analysis used one of the above
+  // A clause of the last derivation that is a subset of the candidate, up
+  // to lits false at level 0.
+  struct VSub {
+    bool found = false;
+    bool bin = false;
+    bool red = false;
+    bool l0_red = false;
+    ClauseOfs off = 0;
+    Lit a, b;
+  };
+  VSub v_sub;
+  vector<ClauseOfs> v_promoted;
   vector<uint8_t> v_seen;
   ClauseOfs v_ignore = std::numeric_limits<ClauseOfs>::max();
   Antecedent v_confl;

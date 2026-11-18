@@ -162,6 +162,13 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
   verb_print(1, "vivif inst: tried/litrem          "
     << setw(9) << vivif_inst_tried << " "
     << setw(9) << vivif_inst_lit_rem);
+  verb_print(1, "vivif subs red/irred/promoted      "
+    << setw(9) << vivif_subs_red << " "
+    << setw(9) << vivif_subs_irred << " "
+    << setw(9) << vivif_subs_promoted);
+  verb_print(1, "vivif impl-del red/irred           "
+    << setw(9) << vivif_impl_red << " "
+    << setw(9) << vivif_impl_irred);
 
   verb_print(1, "toplev subs runs/bins/long-cls "
     << setw(9) << subsume_runs << " "

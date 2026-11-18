@@ -30,7 +30,9 @@ THE SOFTWARE.
 #include <iomanip>
 #include <limits>
 #include <numeric>
+#include <map>
 #include <set>
+#include <tuple>
 #include <unordered_set>
 #include <memory>
 #include <utility>
@@ -2875,13 +2877,17 @@ void Counter::vivif_setup() {
   v_values.clear();
   v_values.resize(nVars()+1, X_TRI);
   v_reasons.assign(nVars()+1, Antecedent());
+  v_reason_red.assign(nVars()+1, 0);
+  v_l0_red.assign(nVars()+1, 0);
   v_seen.assign(nVars()+1, 0);
   v_qhead = 0;
 
   // Set up units
   v_trail.clear();
-  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l);
+  for(const auto& l: unit_cls) seen[l.raw()] = 1;
+  for(const auto& l: trail) if (var(l).decision_level == 0) v_enqueue(l, Antecedent(), !seen[l.raw()]);
   for(const auto& l: unit_cls) if (v_val(l) == X_TRI) v_enqueue(l);
+  for(const auto& l: unit_cls) seen[l.raw()] = 0;
   bool const ret = v_propagate();
   assert(ret);
 }
@@ -2935,6 +2941,11 @@ bool Counter::vivify_all(bool force, bool only_irred) {
   if (force) v_tout *= vivif_irred_budget_force_mult;
   vivify_cls(long_irred_cls);
   bool const tout_irred = (v_tout <= 0);
+  if (!v_promoted.empty()) {
+    long_irred_cls.insert(long_irred_cls.end(), v_promoted.begin(), v_promoted.end());
+    std::erase_if(long_red_cls, [this](ClauseOfs o) { return !alloc->ptr(o)->red; });
+    v_promoted.clear();
+  }
   verb_print(2, "[vivif] irred vivif remain: " << v_tout/1000 << "K T: " << (cpu_time()-my_time));
 
   bool tout_red = false;
@@ -3207,6 +3218,19 @@ void Counter::check_vivif_state(const char* where) const {
   for(const auto& [off, bits]: watched)
     if (bits != 3) fail("clause not watched by both cl[0] and cl[1]", alloc->ptr(off));
 
+  std::map<std::tuple<uint32_t, uint32_t, bool>, int64_t> bin_bal;
+  all_lits(i) {
+    Lit const lit(i/2, i%2);
+    for(const auto& b: watches[lit].binaries) {
+      if (b.lit().var() == lit.var()) fail("binary on one var: " + lit_to_str(lit));
+      auto const lo = std::min(lit.raw(), b.lit().raw()), hi = std::max(lit.raw(), b.lit().raw());
+      bin_bal[{lo, hi, b.red()}] += (lit.raw() == lo) ? 1 : -1;
+    }
+  }
+  for(const auto& [k, bal]: bin_bal) if (bal != 0)
+    fail("binary watched asymmetrically (or red flags differ): "
+        + lit_to_str(Lit::toLit(std::get<0>(k))) + " " + lit_to_str(Lit::toLit(std::get<1>(k))));
+
   if (qhead != trail.size()) fail("qhead not at end of trail");
   for(uint32_t pos = 0; pos < trail.size(); pos++) {
     Lit const l = trail[pos];
@@ -3387,9 +3411,24 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     if (ret && true_lit == NOT_A_LIT) {
       v_confl = Antecedent(off);
       v_confl_lit = NOT_A_LIT;
+      v_confl_red = cl.red;
     }
   }
+  for(const auto& l: v_tmp2) seen[l.raw()] = 1;
+  // The earliest true lit depends on the fewest decisions
+  if (true_lit != NOT_A_LIT && v_levs[true_lit.var()] == 1) {
+    for(uint32_t i = v_backtrack_to; i < v_trail.size(); i++)
+      if (seen[v_trail[i].raw()]) {true_lit = v_trail[i]; break;}
+  }
   v_analyze_into_tmp(true_lit);
+  bool const implied = (true_lit != NOT_A_LIT && v_levs[true_lit.var()] == 1) || !ret;
+  for(const auto& l: v_tmp2) seen[l.raw()] = 0;
+  if (v_sub.found && (cl.red || !v_sub.l0_red)) {
+    v_ignore = std::numeric_limits<ClauseOfs>::max();
+    v_backtrack();
+    v_del_subsumed(off);
+    return true;
+  }
   // Instantiation: v_tmp contains last_dec. If last_dec true conflicts with the
   // other decisions, resolving that with v_tmp on last_dec removes it.
   if (conf.vivif_inst && ret && true_lit == NOT_A_LIT && last_dec != NOT_A_LIT) {
@@ -3423,7 +3462,17 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     }
   }
 
-  if (removable != 0 &&
+  if (removable == 0 && implied && conf.vivif_impl
+      && (cl.red ? true_lit != NOT_A_LIT : !v_used_red)) {
+    if (cl.red) stats.vivif_impl_red++;
+    else stats.vivif_impl_irred++;
+    watches[cl[0]].del_c(off);
+    watches[cl[1]].del_c(off);
+    SLOW_DEBUG_DO(for(const auto& l: trail)
+        assert(!(var(l).ante.isAClause() && var(l).ante.as_cl() == off)));
+    alloc->clause_free(off);
+    fun_ret = true;
+  } else if (removable != 0 &&
       // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
       //      so we must skip this
       !propagating_cl(v_tmp) && !conflicting_cl(v_tmp) &&
@@ -3481,35 +3530,123 @@ bool Counter::vivify_cl(const ClauseOfs off) {
 }
 
 // Fills v_tmp with the clause lits whose (negated) decisions the conflict, or
-// the implication of true_lit, depends on.
+// the implication of true_lit, depends on. The candidate's lits must be marked
+// in seen; sets v_sub and v_used_red.
 void Counter::v_analyze_into_tmp(const Lit true_lit) {
   v_tmp.clear();
-  auto mark = [&](const Lit l) { if (v_levs[l.var()] == 1) v_seen[l.var()] = 1; };
+  v_used_red = false;
+  v_sub = VSub();
+  bool in_cand = true;
+  bool l0_red = false;
+  auto visit = [&](const Lit l, bool mark) {
+    if (v_levs[l.var()] == 0) {
+      // Reason and conflict lits at level 0 are false
+      assert(v_val(l) == F_TRI);
+      l0_red |= v_l0_red[l.var()];
+      return;
+    }
+    if (!seen[l.raw()]) in_cand = false;
+    if (mark) v_seen[l.var()] = 1;
+  };
+  auto done_cl = [&](bool red, bool bin, ClauseOfs off, Lit a, Lit b) {
+    v_used_red |= red || l0_red;
+    if (!v_sub.found && in_cand && conf.vivif_subs) {
+      v_sub.found = true;
+      v_sub.bin = bin;
+      v_sub.red = red;
+      v_sub.l0_red = l0_red;
+      v_sub.off = off;
+      v_sub.a = a;
+      v_sub.b = b;
+    }
+    in_cand = true;
+    l0_red = false;
+  };
+
   if (true_lit != NOT_A_LIT) {
     v_tmp.push_back(true_lit);
-    mark(true_lit);
+    if (v_levs[true_lit.var()] == 1) v_seen[true_lit.var()] = 1;
   } else if (v_confl.isAClause()) {
-    for(const auto& l: *alloc->ptr(v_confl.as_cl())) mark(l);
+    if (v_confl.as_cl() == v_ignore) {
+      for(const auto& l: *alloc->ptr(v_confl.as_cl()))
+        if (v_levs[l.var()] == 1) v_seen[l.var()] = 1;
+    } else {
+      for(const auto& l: *alloc->ptr(v_confl.as_cl())) visit(l, true);
+      done_cl(v_confl_red, false, v_confl.as_cl(), NOT_A_LIT, NOT_A_LIT);
+    }
   } else {
-    mark(v_confl.as_lit());
-    mark(v_confl_lit);
+    visit(v_confl.as_lit(), true);
+    visit(v_confl_lit, true);
+    done_cl(v_confl_red, true, 0, v_confl.as_lit(), v_confl_lit);
   }
   for(uint32_t i = v_trail.size(); i-- > v_backtrack_to;) {
     const Lit t = v_trail[i];
     if (!v_seen[t.var()]) continue;
     v_seen[t.var()] = 0;
     const Antecedent& r = v_reasons[t.var()];
-    if (r.isNull()) v_tmp.push_back(t.neg());
-    else if (r.isALit()) mark(r.as_lit());
-    else for(const auto& l: *alloc->ptr(r.as_cl())) if (l != t) mark(l);
+    if (r.isNull()) {v_tmp.push_back(t.neg()); continue;}
+    visit(t, false);
+    if (r.isALit()) {
+      visit(r.as_lit(), true);
+      done_cl(v_reason_red[t.var()], true, 0, t, r.as_lit());
+    } else {
+      for(const auto& l: *alloc->ptr(r.as_cl())) if (l != t) visit(l, true);
+      done_cl(v_reason_red[t.var()], false, r.as_cl(), NOT_A_LIT, NOT_A_LIT);
+    }
   }
 }
 
-void Counter::v_enqueue(const Lit l, Antecedent ante) {
+// The candidate at off is subsumed by v_sub: delete it, and make v_sub irred if
+// the candidate was.
+void Counter::v_del_subsumed(const ClauseOfs off) {
+  Clause& cl = *alloc->ptr(off);
+  if (cl.red) stats.vivif_subs_red++;
+  else stats.vivif_subs_irred++;
+  if (v_sub.bin) {
+    if (!cl.red && v_sub.red) {
+      stats.vivif_subs_promoted++;
+      auto promote = [&](Lit x, Lit y) {
+        auto& bins = watches[x].binaries;
+        auto* it = std::find_if(bins.begin(), bins.end(),
+            [y](const BinCl& b) { return b.lit() == y && b.red(); });
+        assert(it != bins.end());
+        *it = BinCl(y, false);
+      };
+      promote(v_sub.a, v_sub.b);
+      promote(v_sub.b, v_sub.a);
+    }
+  } else {
+    Clause& d = *alloc->ptr(v_sub.off);
+    if (d.red) {
+      if (!cl.red) {
+        stats.vivif_subs_promoted++;
+        d.red = false;
+        v_promoted.push_back(v_sub.off);
+      } else {
+        d.update_lbd(cl.lbd);
+        d.used |= cl.used;
+        d.total_used += cl.total_used;
+      }
+    }
+  }
+  watches[cl[0]].del_c(off);
+  watches[cl[1]].del_c(off);
+  SLOW_DEBUG_DO(for(const auto& l: trail)
+      assert(!(var(l).ante.isAClause() && var(l).ante.as_cl() == off)));
+  alloc->clause_free(off);
+}
+
+void Counter::v_enqueue(const Lit l, Antecedent ante, bool red) {
   debug_print("v-enq: " << l << " lev: " << v_lev);
   assert(v_val(l) == X_TRI);
   v_levs[l.var()] = v_lev;
   v_reasons[l.var()] = ante;
+  v_reason_red[l.var()] = red;
+  if (v_lev == 0) {
+    if (ante.isALit()) red |= v_l0_red[ante.as_lit().var()];
+    else if (ante.isAClause()) for(const auto& l2: *alloc->ptr(ante.as_cl())) if (l2 != l) red |= v_l0_red[l2.var()];
+    v_l0_red[l.var()] = red;
+  }
   v_trail.push_back(l);
   v_values[l] = T_TRI;
   v_values[l.neg()] = F_TRI;
@@ -3529,10 +3666,11 @@ bool Counter::v_propagate() {
         debug_print("v Conflict from bin.");
         v_confl = Antecedent(l);
         v_confl_lit = plit;
+        v_confl_red = bincl.red();
         return false;
       }
       if (v_val(l) == X_TRI) {
-        v_enqueue(l, Antecedent(plit));
+        v_enqueue(l, Antecedent(plit), bincl.red());
         debug_print("v Bin prop: " << l);
       }
     }
@@ -3593,13 +3731,14 @@ bool Counter::v_propagate() {
           debug_print("v Conflicting state from norm cl offs: " << ofs);
           v_confl = Antecedent(ofs);
           v_confl_lit = NOT_A_LIT;
+          v_confl_red = c.red;
           ret = false;
           it++;
           break;
         }
         assert(v_val(c[0]) == X_TRI);
         debug_print("v prop long");
-        v_enqueue(c[0], Antecedent(ofs));
+        v_enqueue(c[0], Antecedent(ofs), c.red);
       }
     }
     while(it != ws.end()) *it2++ = *it++;

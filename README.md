@@ -93,6 +93,23 @@ count, i.e. all variables are assumed to be in the projection set.
 Beware to ALWAYS give the weight of both the literal and its negation or
 different counters may give different results.
 
+### Experimental frontier sweeps
+
+For exact unweighted counting, use `--prob 0 --frontierstates 8192` to try
+a variable sweep on small residual components. The argument limits the number
+of distinct open-clause states in each layer. If a layer exceeds the limit,
+Ganak resumes its usual component search.
+
+Use `--groupedsweep 1` to combine clauses over the same variables into a
+factor and try a bounded dense sweep before preprocessing and on eligible
+residuals. Mode `2` adjusts the amount of ordering search and spaces out
+unsuccessful residual probes. Both sweep options default to zero and can be
+enabled together with the following command.
+
+```shell
+ganak --prob 0 --frontierstates 8192 --groupedsweep 1 input.cnf
+```
+
 ### Accepted header directives
 
 | Directive | Meaning |

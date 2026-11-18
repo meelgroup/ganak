@@ -2,10 +2,11 @@
 #pragma once
 #include <algorithm>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
-#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace GanakInt::frontier {
@@ -15,6 +16,48 @@ struct Clause {
   Mask vars() const { return pos | neg; }
 };
 inline Mask bit(unsigned i) { return Mask{1} << i; }
+
+// Keep frontier states contiguous for iteration. The hash index stores entry
+// indices plus one, so every 64-bit clause mask is a valid key (including zero).
+class StateTable {
+  using Entry = std::pair<Mask, Mask>;
+  std::vector<Entry> entries;
+  std::vector<std::size_t> slots = std::vector<std::size_t>(16);
+
+  std::size_t find_slot(Mask key) const {
+    // Clause masks often differ only in their high bits.
+    Mask hash = (key ^ (key >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    hash = (hash ^ (hash >> 27)) * 0x94d049bb133111ebULL;
+    std::size_t slot = (hash ^ (hash >> 31)) & (slots.size() - 1);
+    while (slots[slot] && entries[slots[slot] - 1].first != key)
+      slot = (slot + 1) & (slots.size() - 1);
+    return slot;
+  }
+
+public:
+  auto begin() const { return entries.begin(); }
+  auto end() const { return entries.end(); }
+  std::size_t size() const { return entries.size(); }
+  void clear() {
+    entries.clear();
+    std::fill(slots.begin(), slots.end(), 0);
+  }
+  void add(Mask key, Mask count) {
+    std::size_t slot = find_slot(key);
+    if (slots[slot]) {
+      entries[slots[slot] - 1].second += count;
+      return;
+    }
+    if (entries.size() >= slots.size() - slots.size() / 4) {
+      slots.assign(slots.size() * 2, 0);
+      for (std::size_t i = 0; i < entries.size(); ++i)
+        slots[find_slot(entries[i].first)] = i + 1;
+      slot = find_slot(key);
+    }
+    entries.emplace_back(key, count);
+    slots[slot] = entries.size();
+  }
+};
 
 // Bits in a DP key are open clauses whose processed literals are all false.
 // With at most 62 variables, even an unconstrained count fits in uint64_t.
@@ -32,7 +75,8 @@ inline std::optional<Mask> sweep(unsigned n, const std::vector<Clause>& clauses,
     }
   }
   Mask seen = 0, remaining = bit(n)-1;
-  std::unordered_map<Mask, Mask> counts{{0,1}}, next;
+  StateTable counts, next;
+  counts.add(0, 1);
   while (remaining) {
     // Prefix/suffix unions give the clauses remaining after each candidate.
     Mask suffix = 0;
@@ -58,17 +102,17 @@ inline std::optional<Mask> sweep(unsigned n, const std::vector<Clause>& clauses,
     for (auto [owed, count] : counts) {
       for (Mask satisfied : {pos[best], neg[best]}) {
         Mask pending = (owed | opened) & ~satisfied;
-        if (!(pending & closed)) next[pending] += count;
+        if (!(pending & closed)) next.add(pending, count);
       }
       if (next.size() > state_limit) return {};
     }
     peak = std::max<uint64_t>(peak, next.size());
-    if (next.empty()) return 0;
-    counts.swap(next);
+    if (next.size() == 0) return 0;
+    std::swap(counts, next);
     seen |= touched;
     remaining &= ~bit(best);
   }
-  return counts.at(0);
+  return counts.begin()->second; // All clauses have closed; only key zero survives.
 }
 
 // Find one- or two-variable separators. Require at least a quarter of the

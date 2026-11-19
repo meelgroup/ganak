@@ -3091,13 +3091,6 @@ void Counter::v_unset_lit(const Lit l) {
   v_values[l.neg()] = X_TRI;
 }
 
-void Counter::v_undo_to(const uint32_t pos) {
-  assert(v_lev == 1 && pos >= v_backtrack_to && pos <= v_trail.size());
-  std::for_each(v_trail.begin() + pos, v_trail.end(), [this](const Lit& l){ v_unset_lit(l); });
-  v_trail.resize(pos);
-  v_qhead = pos;
-}
-
 void Counter::v_backtrack() {
   assert(v_lev == 1);
   std::for_each(v_trail.begin() + v_backtrack_to, v_trail.end(),
@@ -3391,16 +3384,12 @@ bool Counter::vivify_cl(const ClauseOfs off) {
   v_enqueue(v_tmp2[1].neg());
   bool ret = v_propagate();
   Lit true_lit = NOT_A_LIT;
-  Lit last_dec = NOT_A_LIT;
-  uint32_t last_dec_pos = 0;
   if (ret) {
     for(uint32_t i = 2; i < v_tmp2.size(); i++) {
       const auto& l = v_tmp2[i];
       debug_print("Vivif lit l: " << l << " val: " << val_to_str(v_val(l)));
       if (v_val(l) == T_TRI) {true_lit = l; break;}
       if (v_val(l) == F_TRI) continue;
-      last_dec = l;
-      last_dec_pos = v_trail.size();
       v_enqueue(l.neg());
       ret = v_propagate();
       if (!ret) {
@@ -3421,26 +3410,12 @@ bool Counter::vivify_cl(const ClauseOfs off) {
       if (seen[v_trail[i].raw()]) {true_lit = v_trail[i]; break;}
   }
   v_analyze_into_tmp(true_lit);
-  bool const implied = (true_lit != NOT_A_LIT && v_levs[true_lit.var()] == 1) || !ret;
   for(const auto& l: v_tmp2) seen[l.raw()] = 0;
   if (v_sub.found && (cl.red || !v_sub.l0_red)) {
     v_ignore = std::numeric_limits<ClauseOfs>::max();
     v_backtrack();
     v_del_subsumed(off);
     return true;
-  }
-  // Instantiation: v_tmp contains last_dec. If last_dec true conflicts with the
-  // other decisions, resolving that with v_tmp on last_dec removes it.
-  if (conf.vivif_inst && ret && true_lit == NOT_A_LIT && last_dec != NOT_A_LIT) {
-    stats.vivif_inst_tried++;
-    v_undo_to(last_dec_pos);
-    v_enqueue(last_dec);
-    if (!v_propagate()) {
-      auto it2 = std::find(v_tmp.begin(), v_tmp.end(), last_dec);
-      assert(it2 != v_tmp.end());
-      v_tmp.erase(it2);
-      stats.vivif_inst_lit_rem++;
-    }
   }
   v_ignore = std::numeric_limits<ClauseOfs>::max();
   // A unit can't be added mid-search; keep it 2-long.
@@ -3462,17 +3437,7 @@ bool Counter::vivify_cl(const ClauseOfs off) {
     }
   }
 
-  if (removable == 0 && implied && conf.vivif_impl
-      && (cl.red ? true_lit != NOT_A_LIT : !v_used_red)) {
-    if (cl.red) stats.vivif_impl_red++;
-    else stats.vivif_impl_irred++;
-    watches[cl[0]].del_c(off);
-    watches[cl[1]].del_c(off);
-    SLOW_DEBUG_DO(for(const auto& l: trail)
-        assert(!(var(l).ante.isAClause() && var(l).ante.as_cl() == off)));
-    alloc->clause_free(off);
-    fun_ret = true;
-  } else if (removable != 0 &&
+  if (removable != 0 &&
       // TODO once chronological backtracking works, we can have level-0 stuff. Not now.
       //      so we must skip this
       !propagating_cl(v_tmp) && !conflicting_cl(v_tmp) &&
@@ -3531,10 +3496,9 @@ bool Counter::vivify_cl(const ClauseOfs off) {
 
 // Fills v_tmp with the clause lits whose (negated) decisions the conflict, or
 // the implication of true_lit, depends on. The candidate's lits must be marked
-// in seen; sets v_sub and v_used_red.
+// in seen; sets v_sub.
 void Counter::v_analyze_into_tmp(const Lit true_lit) {
   v_tmp.clear();
-  v_used_red = false;
   v_sub = VSub();
   bool in_cand = true;
   bool l0_red = false;
@@ -3549,7 +3513,6 @@ void Counter::v_analyze_into_tmp(const Lit true_lit) {
     if (mark) v_seen[l.var()] = 1;
   };
   auto done_cl = [&](bool red, bool bin, ClauseOfs off, Lit a, Lit b) {
-    v_used_red |= red || l0_red;
     if (!v_sub.found && in_cand && conf.vivif_subs) {
       v_sub.found = true;
       v_sub.bin = bin;

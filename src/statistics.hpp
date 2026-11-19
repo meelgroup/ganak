@@ -88,13 +88,9 @@ public:
   uint64_t vivif_lit_rem = 0;
   uint64_t vivif_cl_rejected = 0;
   uint64_t vivif_unit_dropped = 0;
-  uint64_t vivif_inst_tried = 0;
-  uint64_t vivif_inst_lit_rem = 0;
   uint64_t vivif_subs_red = 0;
   uint64_t vivif_subs_irred = 0;
   uint64_t vivif_subs_promoted = 0;
-  uint64_t vivif_impl_red = 0;
-  uint64_t vivif_impl_irred = 0;
 
   // Toplevel probing
   uint64_t toplevel_probe_runs = 0;

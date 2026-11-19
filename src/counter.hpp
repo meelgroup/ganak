@@ -470,7 +470,6 @@ public:
   void v_unset_lit(const Lit l);
   void v_enqueue(const Lit l, Antecedent ante = Antecedent(), bool red = false);
   void v_analyze_into_tmp(Lit true_lit);
-  void v_undo_to(uint32_t pos);
   void v_del_subsumed(ClauseOfs off);
   vector<Antecedent> v_reasons;
   vector<uint8_t> v_reason_red;
@@ -479,7 +478,6 @@ public:
   // which is lost at the next restart.
   vector<uint8_t> v_l0_red;
   bool v_confl_red = false;
-  bool v_used_red = false; // the derivation of the last analysis used one of the above
   // A clause of the last derivation that is a subset of the candidate, up
   // to lits false at level 0.
   struct VSub {

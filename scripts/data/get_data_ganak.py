@@ -407,6 +407,8 @@ def parse_ganak_output(fname):
                 result["restarts"] = int(line.split()[4])
             elif line.startswith("c o [rst-cube] Num restarts:"):
                 result["restarts"] = int(line.split()[5])
+            elif line.startswith("c o tot restarts"):
+                result["restarts"] = int(line.split()[4])
             elif line.startswith("c o sat called/sat/unsat/conflK"):
                 result["sat_called"] = int(line.split()[4])
             elif line.startswith("c o sat call/sat/unsat/confl/rst"):

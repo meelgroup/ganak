@@ -45,6 +45,7 @@ THE SOFTWARE.
 namespace GanakInt {
 
 inline std::atomic<int> num_live_caches{0};
+inline std::atomic<int> num_parallel_counts{0}; // OuterCounter::count_with_parallel() is running
 
 // Bytes malloc has handed out, main arena only. 0 if we cannot tell.
 inline uint64_t heap_in_use() {
@@ -405,8 +406,9 @@ void CompCache<T>::remap_stack_ids() {
 // but cache memory, so malloc must agree with what we think we just freed.
 template<typename T>
 void CompCache<T>::check_freed_mem(const uint64_t heap_before, const uint64_t accounted_before) const {
-  // mallinfo2 is process-wide, other caches (i.e. threads) would pollute it
-  if (num_live_caches != 1) return;
+  // mallinfo2 is process-wide: other threads would pollute it, also those
+  // that have no cache yet
+  if (num_live_caches != 1 || num_parallel_counts != 0) return;
   const uint64_t heap_after = heap_in_use();
   const uint64_t accounted_after = stats.cache_bytes_memory_usage();
   if (heap_before <= heap_after) return;

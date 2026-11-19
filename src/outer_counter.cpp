@@ -135,6 +135,8 @@ void run_arjun(ArjunNS::SimplifiedCNF& cnf, uint32_t verb, int backbone_lucky) {
 }
 
 FF OuterCounter::count_with_parallel(uint8_t bits_jobs, int num_threads) {
+  num_parallel_counts++;
+  struct Done { ~Done() { num_parallel_counts--; } } done;
   assert(conf.appmc_timeout < 0 && "TD-parallel not compatible with AppMC");
   assert(bits_jobs > 0);
   assert(bits_jobs <= 20);

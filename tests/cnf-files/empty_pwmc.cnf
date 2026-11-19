@@ -1,0 +1,9 @@
+c c RUN: %solver --mode 1 %s | %OutputCheck %s
+c c RUN: %solver %s | %OutputCheck %s --check-prefix=CHECK-INT
+p cnf 0 0
+c t pmc
+c p show 0
+c MUST MULTIPLY BY 4 0
+c c CHECK: ^s SATISFIABLE$
+c c CHECK: ^c s exact arb frac 4$
+c c CHECK-INT: ^c s exact arb int 4$

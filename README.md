@@ -124,7 +124,10 @@ A pair assignment describes a binary subcube. Each block counts subcubes that
 avoid its forbidden points, and a subset transform combines the independent
 blocks while counting every allowed choice of selectors. Recognition checks
 every clause. The implementation accepts up to eight blocks of at most 32 pairs
-and at most 20 selector rows. A separate work budget bounds the attempt.
+and at most 20 selector rows for the subset transform. With two or three
+blocks and 21–32 rows, it instead branches on the row with the fewest feasible
+blocks. A branch can stop as soon as a block’s required points force it to
+contain a forbidden point. Both algorithms enforce a work budget.
 
 Grouped counting also combines clauses over the same variables into a
 factor and tries a bounded dense sweep before preprocessing and on eligible

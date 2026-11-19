@@ -832,7 +832,9 @@ int main(int argc, char *argv[]) {
     if (result)
       cout << "c grouped root selector blocks " << selector_stats.blocks
            << " pairs-per-block " << selector_stats.pairs_per_block
-           << " rows " << selector_stats.rows << " work " << selector_stats.work << endl;
+           << " rows " << selector_stats.rows
+           << " method " << (selector_stats.witness_search ? "witness-search" : "subset-transform")
+           << " work " << selector_stats.work << endl;
     else if (eligible) {
       result = GanakInt::grouped::solve(groups, cnf.nVars(), conf.grouped_sweep == 2);
       if (result) cout << "c grouped root scopes " << groups.factors.size() << endl;

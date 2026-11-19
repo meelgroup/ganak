@@ -90,9 +90,85 @@ static void check_encoding(std::mt19937& rng) {
   }
 }
 
+// Count by enumerating the 3^width actual subcubes in each block, then
+// counting nonempty choices of witnesses for each row independently.
+static mpz_class enumerate_witnesses(unsigned width,
+                                    const std::vector<GanakInt::selector::Block>& blocks) {
+  std::vector<std::vector<Point>> masks(blocks.size());
+  const Point full = (1u << width)-1;
+  for (unsigned b = 0; b < blocks.size(); ++b) {
+    const auto& block = blocks[b];
+    for (Point fixed = 0; fixed <= full; ++fixed) {
+      for (Point value = fixed;; value = (value-1) & fixed) {
+        bool legal = std::none_of(block.forbidden.begin(), block.forbidden.end(),
+            [&](Point p) { return (p & fixed) == value; });
+        if (legal) {
+          Point mask = 0;
+          for (unsigned r = 0; r < block.required.size(); ++r)
+            if ((block.required[r] & fixed) == value) mask |= Point{1} << r;
+          masks[b].push_back(mask);
+        }
+        if (!value) break;
+      }
+    }
+  }
+  if (blocks.size() == 2) masks.push_back({0});
+  mpz_class sum = 0;
+  for (Point a : masks[0]) for (Point b : masks[1]) for (Point c : masks[2]) {
+    mpz_class ways = 1;
+    for (unsigned r = 0; r < blocks[0].required.size() && ways != 0; ++r) {
+      unsigned count = ((a >> r) & 1) + ((b >> r) & 1) + ((c >> r) & 1);
+      ways *= (1u << count)-1;
+    }
+    sum += ways;
+  }
+  return sum;
+}
+
+static void check_search(std::mt19937& rng) {
+  using GanakInt::selector::Block;
+  using GanakInt::selector::WitnessSearch;
+  for (unsigned trial = 0; trial < 120; ++trial) {
+    const unsigned width = trial%10 == 0 ? 3 : 2;
+    const unsigned rows = 1 + trial%32;
+    std::vector<Block> blocks(2 + trial%2);
+    for (unsigned b = 0; b < blocks.size(); ++b) {
+      if (b && trial%3 == 0) { blocks[b] = blocks.front(); continue; }
+      for (unsigned p = 0; p < (1u << width); ++p)
+        if (rng()%4 == 0) blocks[b].forbidden.push_back(p);
+      for (unsigned r = 0; r < rows; ++r)
+        blocks[b].required.push_back(rng() % (1u << width));
+    }
+    Budget budget{250000000};
+    WitnessSearch search(width, blocks, budget);
+    if (search.count(rows) != enumerate_witnesses(width, blocks))
+      throw std::runtime_error("incorrect hull search count");
+  }
+
+  // The normal recognizer must choose the search for a 32-row CNF.
+  constexpr unsigned rows = 32;
+  Encoding encoding(8 + 2*rows);
+  for (int v = 1; v <= 8; v += 2) encoding.add({v, v+1});
+  std::vector<Block> blocks(2);
+  for (unsigned r = 0; r < rows; ++r) {
+    int z = int(9 + 2*r);
+    encoding.add({z, z+1});
+    for (unsigned b = 0; b < 2; ++b) {
+      Point p = (r+b) % 4;
+      blocks[b].required.push_back(p);
+      for (unsigned j = 0; j < 2; ++j)
+        encoding.add({-(z+int(b)), int(1 + 4*b + 2*j + ((p >> j) & 1))});
+    }
+  }
+  auto actual = encoding.solve();
+  if (!actual || *actual != enumerate_witnesses(2, blocks) || encoding.solve(nullptr, 1))
+    throw std::runtime_error("incorrect 32-row dispatch or fallback");
+}
+
 int main() {
   std::mt19937 rng(20261119);
   check_block(rng);
   check_encoding(rng);
+  check_search(rng);
   std::cout << "Selector count checks passed\n";
 }

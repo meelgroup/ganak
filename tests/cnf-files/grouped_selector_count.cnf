@@ -1,5 +1,5 @@
 c c RUN: %solver --prob 0 --groupedsweep 1 %s | %OutputCheck %s
-c c CHECK: ^c grouped root selector blocks 2 pairs-per-block 2 rows 2 work [0-9]+$
+c c CHECK: ^c grouped root selector blocks 2 pairs-per-block 2 rows 2 method subset-transform work [0-9]+$
 c c CHECK: ^c s exact arb int 12$
 p cnf 12 17
 1 2 0

@@ -110,7 +110,7 @@ inline std::optional<Mask> sweep(unsigned n, const std::vector<Clause>& clauses,
     }
     Mask prefix = 0;
     unsigned best = 0;
-    std::tuple<int, int, int> best_score{65, 65, 0};
+    std::tuple<int, int, int> best_score{std::numeric_limits<int>::max(), 0, 0};
     for (Mask vs = remaining; vs; vs &= vs-1) {
       unsigned v = std::countr_zero(vs);
       others[v] |= prefix;
@@ -121,8 +121,10 @@ inline std::optional<Mask> sweep(unsigned n, const std::vector<Clause>& clauses,
         int next_boundary = boundary - int(drops[v]) + bool(neighbors[v] & (remaining ^ bit(v)));
         bound = std::min(width, next_boundary);
       }
-      // Closing clauses can reject or merge assignments on this very layer.
-      auto score = std::tuple{bound, width, -std::popcount(touched & ~others[v])};
+      // Closing clauses can reject or merge states immediately. Give two
+      // closures the same weight as reducing the frontier bound by one.
+      int closed = std::popcount(touched & ~others[v]);
+      auto score = std::tuple{2*bound - closed, width, -std::popcount(touched & seen)};
       if (score < best_score) { best_score = score; best = v; }
       prefix |= touched;
     }

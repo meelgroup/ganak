@@ -107,9 +107,10 @@ chooses a method from the component it actually sees after propagation.
   work budget (16 times the state limit). Eliminating one binary variable
   takes two input entries per outgoing entry.
 * For up to 64 clauses, the sparse sweep stores distinct sets of pending
-  clauses. It prefers variables that leave a small frontier and breaks ties by
-  closing the most clauses. For binary-heavy components it also considers how
-  many assigned variables can still affect the frontier.
+  clauses. It minimizes twice the estimated frontier width minus the number of
+  clauses the variable closes. Ties favor fewer open clauses, then variables
+  touching more previously seen clauses. For large binary-heavy components,
+  the number of assigned variables still touching the suffix also bounds the width.
 * Residuals with 65–256 clauses can use the truth tables or elimination.
   Consecutive unsuccessful wide probes increase the interval between attempts.
   If no bounded method completes, Ganak continues its ordinary component search.

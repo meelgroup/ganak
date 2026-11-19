@@ -118,8 +118,16 @@ chooses a method from the component it actually sees after propagation.
 counts visited sparse states. Hook CPU time covers eligible component snapshots
 and counting, excluding cache misses rejected by the initial size checks.
 
-Use `--groupedsweep 1` to combine clauses over the same variables into a
-factor and try a bounded dense sweep before preprocessing and on eligible
+Use `--groupedsweep 1` to enable grouped counting. At the root it recognizes
+disjoint blocks of positive variable pairs connected by selector clauses.
+A pair assignment describes a binary subcube. Each block counts subcubes that
+avoid its forbidden points, and a subset transform combines the independent
+blocks while counting every allowed choice of selectors. Recognition checks
+every clause. The implementation accepts up to eight blocks of at most 32 pairs
+and at most 20 selector rows. A separate work budget bounds the attempt.
+
+Grouped counting also combines clauses over the same variables into a
+factor and tries a bounded dense sweep before preprocessing and on eligible
 residuals. Mode `2` adjusts the amount of ordering search and spaces out
 unsuccessful residual probes. Both sweep options default to zero and can be
 enabled together with the following command.

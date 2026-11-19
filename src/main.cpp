@@ -27,6 +27,7 @@ THE SOFTWARE.
 
 #include "ganak.hpp"
 #include "grouped_sweep.hpp"
+#include "selector_sweep.hpp"
 #include "GitSHA1.hpp"
 #include "common.hpp"
 #include "time_mem.hpp"
@@ -314,7 +315,7 @@ void add_ganak_options()
     add_arg("--frontierprofile", conf.frontier_profile, "Print per-size sweep profile");
     add_arg("--mixedjobs", conf.mixed_jobs, "Job split: 0 variables, 1 most frequent OR, 2 worst-first propagation score, 3 aggregate score with one-variable slack");
     add_arg("--profilejobs", conf.profile_jobs, "Report parallel makespan diagnostics");
-    add_arg("--groupedsweep", conf.grouped_sweep, "Grouped dense sweep: 0 off, 1 fixed planning, 2 adaptive planning and residual probes");
+    add_arg("--groupedsweep", conf.grouped_sweep, "Grouped root and residual counting: 0 off, 1 fixed planning, 2 adaptive planning and probes");
     add_arg("--frontierstates", conf.frontier_states, "Maximum sparse states or outgoing table entries per layer (0 disables)");
     add_arg("--separatorbranch", conf.separator_branch, "Prefer balanced one- or two-variable separators");
 
@@ -815,23 +816,31 @@ int main(int argc, char *argv[]) {
       conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
     GanakInt::grouped::Factors groups;
     bool eligible = true;
+    std::optional<GanakInt::selector::Encoding> selectors;
+    if (GanakInt::selector::Encoding::fits(cnf.nVars(), cnf.get_clauses().size()))
+      selectors.emplace(cnf.nVars());
     for (const auto &cl : cnf.get_clauses()) {
       std::vector<int> lits;
       for (auto l : cl)
         lits.push_back((l.sign() ? -1 : 1) * int(l.var() + 1));
-      if (!groups.add(lits)) {
-        eligible = false;
-        break;
-      }
+      if (selectors && !selectors->add(lits)) selectors.reset();
+      if (eligible) eligible = groups.add(lits);
+      if (!eligible && !selectors) break;
     }
-    if (eligible) {
-      auto result = GanakInt::grouped::solve(groups, cnf.nVars(), conf.grouped_sweep == 2);
-      if (result) {
-        cout << "c grouped root scopes " << groups.factors.size() << endl;
-        Ganak counter(conf, fg);
-        run_weighted_counter(counter, cnf, start_time, &*result);
-        return 0;
-      }
+    GanakInt::selector::RootStats selector_stats;
+    auto result = selectors ? selectors->solve(&selector_stats) : std::nullopt;
+    if (result)
+      cout << "c grouped root selector blocks " << selector_stats.blocks
+           << " pairs-per-block " << selector_stats.pairs_per_block
+           << " rows " << selector_stats.rows << " work " << selector_stats.work << endl;
+    else if (eligible) {
+      result = GanakInt::grouped::solve(groups, cnf.nVars(), conf.grouped_sweep == 2);
+      if (result) cout << "c grouped root scopes " << groups.factors.size() << endl;
+    }
+    if (result) {
+      Ganak counter(conf, fg);
+      run_weighted_counter(counter, cnf, start_time, &*result);
+      return 0;
     }
   }
   // Run Arjun

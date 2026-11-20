@@ -1240,7 +1240,7 @@ int run_query(int argc, char** argv, bdnnf::Reader* pre) {
     bdnnf::Reader& r = pre ? *pre : own;
     if (!pre) r.open(path);
     // queries making many passes keep the circuit in memory if it is small enough
-    const bool can_cache = path != "-" && cache_gb > 0 &&
+    const bool can_cache = cache_gb > 0 &&
         (double)std::filesystem::file_size(path) <= cache_gb * (1ULL << 30);
     auto maybe_cache = [&]() {
       if (can_cache && !r.is_cached()) r.cache_all();

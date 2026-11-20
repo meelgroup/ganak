@@ -9,9 +9,9 @@ c c "AND -> AND -> literals" chain. Projected count = 4.
 c t pwmc
 c p show 1 2 3 0
 c c RUN: %solver --mode 1 --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --expect-count 4 --check-decomposable
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 4
 c c RUN: %bdnnf dot %t.bdnnf %t.dot
-p cnf 6 2
+p cnf 6 5
 1 2 0
 -3 -1 -2 0
 1 4 5 0

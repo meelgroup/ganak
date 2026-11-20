@@ -25,7 +25,7 @@ c 9 Navigation
 c 10 Sunroof
 c 11 Cabrio
 c 12 Screen
-p cnf 12 22
+p cnf 12 23
 1 0
 -1 2 0
 -2 1 0

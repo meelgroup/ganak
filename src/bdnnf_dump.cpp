@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 // bdnnf dump: print a BDNNF file as text (spec-bdnnf.md, section 7), streaming.
 //
-// Usage:  bdnnf dump <in.bdnnf | -> [out.txt]      ("-" or omitted out => stdout)
+// Usage:  bdnnf dump <in.bdnnf> [out.txt]      ("-" or omitted out => stdout)
 
 #include <cstdlib>
 #include <cstdio>
@@ -44,7 +44,11 @@ std::string ref(uint64_t r) {
 
 int bdnnf_dump(int argc, char** argv) {
   if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: bdnnf dump <in.bdnnf | -> [out.txt]" << std::endl;
+    std::cerr << "Usage: bdnnf dump <in.bdnnf> [out.txt]" << std::endl;
+    return EXIT_FAILURE;
+  }
+  if (argc == 3 && (std::string(argv[1]) == argv[2] || bdnnf::same_file(argv[1], argv[2]))) {
+    std::cerr << "bdnnf dump: input and output must differ" << std::endl;
     return EXIT_FAILURE;
   }
   std::ios::sync_with_stdio(false);

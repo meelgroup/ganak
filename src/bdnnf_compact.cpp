@@ -34,7 +34,7 @@ int bdnnf_compact(int argc, char** argv) {
                  "Drops the nodes the root does not reach and merges identical ones.\n";
     return EXIT_FAILURE;
   }
-  if (std::string(argv[1]) == argv[2]) {
+  if (std::string(argv[1]) == argv[2] || bdnnf::same_file(argv[1], argv[2])) {
     std::cerr << "bdnnf compact: input and output must differ" << std::endl;
     return EXIT_FAILURE;
   }

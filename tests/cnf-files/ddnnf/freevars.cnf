@@ -1,7 +1,7 @@
 c c d-DNNF compile: all variables free (the only clause is a tautology), so the
 c c count is 2^3 = 8. Exercises the free-variable OR(v,-v) factor-of-two nodes.
 c c RUN: %solver --compile %t.bdnnf %s
-c c RUN: %bdnnf verify %t.bdnnf --expect-count 8 --check-decomposable
+c c RUN: %bdnnf verify %t.bdnnf --expect-count 8
 c c RUN: %bdnnf sample %t.bdnnf --cnf %s -n 300 -o %t.samples
 c c RUN: %bdnnf dot %t.bdnnf %t.dot
 p cnf 3 1

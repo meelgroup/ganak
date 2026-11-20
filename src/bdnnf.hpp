@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <iterator>
 #include <stdexcept>
 #include <string>
@@ -59,6 +60,13 @@ enum : uint64_t {
 struct Error : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
+
+// Opening the output truncates it, so it must not be the input under another
+// spelling (./a.bdnnf, a symlink, a hard link).
+inline bool same_file(const std::string& a, const std::string& b) {
+  std::error_code ec;
+  return std::filesystem::equivalent(a, b, ec);
+}
 
 using KV = std::vector<std::pair<std::string, std::string>>;
 
@@ -607,28 +615,23 @@ public:
   uint64_t nnodes = 0, nedges = 0, nlits = 0, root = 0, props = 0;
   KV footer_kv;
   std::vector<FrameInfo> frames;
-  bool have_footer = false;
   Defs defs;
 
   Reader() = default;
   Reader(const Reader&) = delete;
   Reader& operator=(const Reader&) = delete;
   ~Reader() {
-    if (f && f != stdin) fclose(f);
+    if (f) fclose(f);
   }
 
-  // "-" reads stdin as a stream: only scan() works, the footer arrives at its end.
+  // Every query needs the footer (node count, frame index) before the first
+  // node, and stdin cannot seek to it.
   void open(const std::string& path) {
-    if (path == "-") {
-      f = stdin;
-      seekable = false;
-    } else {
-      f = fopen(path.c_str(), "rb");
-      if (!f) throw Error("cannot open: " + path);
-      seekable = true;
-    }
+    if (path == "-") throw Error("cannot read a circuit from stdin, give a file");
+    f = fopen(path.c_str(), "rb");
+    if (!f) throw Error("cannot open: " + path);
     read_header();
-    if (seekable) read_footer_via_trailer();
+    read_footer_via_trailer();
   }
 
   [[nodiscard]] bool has(const KV& kv, const std::string& key) const {
@@ -659,7 +662,7 @@ public:
       return;
     }
     defs_seen = false;
-    if (seekable) seek(data_start);
+    seek(data_start);
     pos = data_start;
     uint64_t id = 2;
     size_t fi = 0;
@@ -669,21 +672,16 @@ public:
       const uint64_t off = pos;
       read_frame_at_pos(kind, nn, raw);
       if (kind == FRAME_DEFS) {
-        if (have_footer && off + defs_size != footer_off) throw Error("definitions frame not right before the footer");
+        if (off + defs_size != footer_off) throw Error("definitions frame not right before the footer");
         decode_defs(raw, nvars, defs);
         defs_seen = true;
         continue;
       }
       if (kind == FRAME_FOOTER) {
-        if (have_footer) {
-          if (off != footer_off) throw Error("footer offset mismatch");
-        } else {
-          parse_footer(raw, off);
-          read_trailer_stream(off);
-        }
+        if (off != footer_off) throw Error("footer offset mismatch");
         break;
       }
-      if (have_footer && (fi >= frames.size() || frames[fi].offset != off || frames[fi].nnodes != nn))
+      if ((fi >= frames.size() || frames[fi].offset != off || frames[fi].nnodes != nn))
         throw Error("frame does not match footer index");
       fi++;
       Cursor c(raw.data(), raw.size());
@@ -697,14 +695,13 @@ public:
     if ((defs_size != 0) != defs_seen) throw Error("definitions frame does not match the footer");
   }
 
-  // Calls fn(id, node) for every node in reverse id order. Seekable files only.
+  // Calls fn(id, node) for every node in reverse id order.
   template <class Fn>
   void scan_backward(Fn&& fn) {
     if (cached) {
       for (size_t i = cache.size(); i-- > 0;) fn((uint64_t)i + 2, (const Node&)cache[i]);
       return;
     }
-    if (!seekable) throw Error("backward scan needs a seekable file");
     std::vector<size_t> starts;
     for (size_t fi = frames.size(); fi-- > 0;) {
       load_frame(fi, raw);
@@ -731,7 +728,6 @@ public:
   }
 
   void load_frame(size_t fi, std::vector<uint8_t>& out) {
-    if (!seekable) throw Error("random access needs a seekable file");
     seek(frames[fi].offset);
     pos = frames[fi].offset;
     uint8_t kind;
@@ -743,7 +739,6 @@ public:
 private:
   FILE* f = nullptr;
   bool cached = false;
-  bool seekable = false;
   uint64_t pos = 0;
   uint64_t data_start = 0;
   uint64_t footer_off = 0;
@@ -838,13 +833,6 @@ private:
     footer_kv = c.kv();
     if (!c.done()) throw Error("trailing bytes in footer");
     footer_off = off;
-    have_footer = true;
-  }
-
-  void read_trailer_stream(uint64_t off) {
-    uint8_t t[TRAILER];
-    read_exact(t, TRAILER);
-    if (memcmp(t + 8, END_MAGIC, 8) != 0 || get_le(t, 8) != off) throw Error("bad trailer");
   }
 
   void read_footer_via_trailer() {

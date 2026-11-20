@@ -25,8 +25,7 @@ THE SOFTWARE.
 // property the file claims (DECOMPOSABLE, DETERMINISTIC, SMOOTH, CLEAN).
 //
 // Usage:  bdnnf verify <in.bdnnf>               streamed structural count only
-//         bdnnf verify <in.bdnnf> [--expect-count N] [--no-check-decomposable]
-//                      [-q]
+//         bdnnf verify <in.bdnnf> [--expect-count N] [-q]
 
 #include <algorithm>
 #include <cstdint>
@@ -65,7 +64,7 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
   bdnnf::Reader r;
   r.open(path);
   Streamed out;
-  const size_t n = r.have_footer ? (size_t)r.nnodes + 2 : 2;
+  const size_t n = (size_t)r.nnodes + 2;
   std::vector<mpz_class> val(n);
   val[0] = 0;
   val[1] = 1;
@@ -184,14 +183,13 @@ int bdnnf_verify(int argc, char** argv) {
   std::string path;
   mpz_class expect_count;
   bool have_expect = false;
-  bool check_decomp = true;
   bool quiet = false;
   bool any_opt = false;
 
   auto usage = [&]() {
     std::cerr <<
       "Usage: bdnnf verify <in.bdnnf>\n"
-      "         [--expect-count N] [--no-check-decomposable] [-q|--quiet]\n"
+      "         [--expect-count N] [-q|--quiet]\n"
       "\n"
       "With no option, prints the structural count.\n";
     std::exit(EXIT_FAILURE);
@@ -201,11 +199,15 @@ int bdnnf_verify(int argc, char** argv) {
     std::string a = argv[i];
     if (a == "-h" || a == "--help") usage();
     else if (a == "-q" || a == "--quiet") { quiet = true; any_opt = true; }
-    else if (a == "--check-decomposable") { check_decomp = true; any_opt = true; }
-    else if (a == "--no-check-decomposable") { check_decomp = false; any_opt = true; }
     else if (a == "--expect-count") {
       if (i + 1 >= argc) usage();
-      expect_count.set_str(argv[++i], 10);
+      const std::string n = argv[++i];
+      // set_str alone skips whitespace and needs a separate result check
+      if (n.empty() || !std::all_of(n.begin(), n.end(), [](unsigned char ch) { return ch >= '0' && ch <= '9'; })
+          || expect_count.set_str(n, 10) != 0) {
+        std::cerr << "bdnnf verify: --expect-count needs a non-negative integer, got: " << n << "\n";
+        usage();
+      }
       have_expect = true;
       any_opt = true;
     }
@@ -230,7 +232,7 @@ int bdnnf_verify(int argc, char** argv) {
       props = pr.props;
     }
     const Streamed st = streamed_check(path, props & bdnnf::P_DETERMINISTIC,
-        check_decomp || (props & bdnnf::P_DECOMPOSABLE), props & bdnnf::P_SMOOTH);
+        true, props & bdnnf::P_SMOOTH);
     if (!st.err.empty()) fail(st.err);
     const std::string fc = bdnnf::Reader().get(st.footer_kv, "count");
     if (!fc.empty() && mpz_class(fc, 10) != st.count)

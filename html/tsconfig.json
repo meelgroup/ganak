@@ -13,6 +13,7 @@
     "declaration": true
   },
   "files": [
-    "src/app.ts"
+    "src/app.ts",
+    "src/model.ts"
   ]
 }

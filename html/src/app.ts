@@ -562,10 +562,12 @@ function setBusy(b: boolean, msg = "") {
   $("status").textContent = msg;
 }
 
-function log(title: string, r: RunResult) {
+function log(title: string, r: RunResult, box = "log") {
   const pre = el("pre", {}, `$ ${title}  (${r.ms.toFixed(0)} ms, exit ${r.status})\n` +
     (r.stdout ? r.stdout + "\n" : "") + (r.stderr ? r.stderr + "\n" : ""));
-  $("log").prepend(pre);
+  const b = $(box);
+  b.prepend(pre);
+  while (b.childElementCount > 40) b.lastElementChild!.remove();
 }
 
 function showResult(title: string, ms: number, body: Node) {
@@ -920,7 +922,7 @@ async function runQuery() {
 }
 
 let viz: any = null;
-async function renderDot(dot: string): Promise<Node> {
+async function renderDot(dot: string): Promise<HTMLElement> {
   if (!viz) {
     const m: any = await import("https://cdn.jsdelivr.net/npm/@viz-js/viz@3.7.0/+esm" as any);
     viz = await m.instance();
@@ -978,6 +980,26 @@ async function init() {
   ta.value = EXAMPLES[0].cnf;
   setCnf(ta.value);
   selectQuery(QUERIES.find((q) => q.id === "sample")!);
+  const tabs = document.querySelectorAll<HTMLButtonElement>("nav.tabs button");
+  const show = (id: string) => {
+    tabs.forEach((b) => b.classList.toggle("active", b.dataset.tab === id));
+    document.querySelectorAll<HTMLElement>("main.tab").forEach((m) => (m.hidden = m.id !== "tab-" + id));
+    try { localStorage.setItem("ganak-tab", id); } catch { /* private mode */ }
+  };
+  tabs.forEach((b) => b.addEventListener("click", () => show(b.dataset.tab!)));
+  let saved = "model";
+  try { saved = localStorage.getItem("ganak-tab") ?? "model"; } catch { /* private mode */ }
+  show(saved === "cnf" ? "cnf" : "model");
+  // the version stamp keeps a new build's model.js from being served from cache
+  const M: typeof import("./model.js") = await import(("./model.js?v=" + encodeURIComponent(version)) as string);
+  M.initModelTab({
+    runTool, renderDot, log: (t, r) => log(t, r, "gm-log"),
+    openInCnf: (cnf) => {
+      ta.value = cnf;
+      setCnf(cnf);
+      show("cnf");
+    },
+  });
 }
 
 // the tests import this file in Node, without a page

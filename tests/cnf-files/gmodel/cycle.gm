@@ -1,0 +1,6 @@
+# RUN: not %gmodel %s 2>&1 | %GMCheck %s
+event e 0.5
+a = b | e
+b = c
+c = a & e
+# CHECK-L: error: cycle: a -> b -> c -> a

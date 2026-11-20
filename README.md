@@ -289,6 +289,39 @@ See [BDNNF-TOOL.md](BDNNF-TOOL.md) for all options, and its [comparison with
 ddnnife](BDNNF-TOOL.md#comparison-with-ddnnife) for how the commands correspond
 to those of [ddnnife](https://github.com/practical-kc/ddnnife).
 
+## Probabilistic models: `ganak-model`
+
+`ganak-model` turns a readable probabilistic model into a weighted projected
+CNF, and with `--solve` computes its probabilities exactly with Ganak. Events
+are independent, everything else is defined from them:
+
+```
+event eng1 "Engine 1 shuts down" 2e-5
+event eng2 "Engine 2 shuts down" 2e-5
+event dual "Both engines lost"   1e-7
+eng1_out = eng1 | dual
+eng2_out = eng2 | dual
+no_thrust = eng1_out & eng2_out
+query no_thrust
+query dual given no_thrust
+require no_thrust < 1e-8
+```
+
+```shell
+./ganak-model --solve model.gm          # exact answers, requirements PASS/FAIL
+./ganak-model model.gm -o model.cnf     # the CNF, for ganak --compile and bdnnf
+```
+
+Here the requirement fails: the common cause `dual` (1e-7) dominates both
+engines failing independently (4e-10).
+
+The language also has `choice` variables, `flip(p)`, `if-then-else`,
+`atleast/atmost/exactly k of`, noisy-OR `rule`s and `constraint`s; see
+[spec-ganak-model.md](spec-ganak-model.md) and the
+[examples](examples/models/). The web page has an editor for it that draws the
+model, conditions on evidence by clicking nodes, and shows how much each event moves
+an outcome, all from the d-DNNF Ganak compiles.
+
 ## Fuzzing
 We use the [SharpVelvet](https://github.com/meelgroup/SharpVelvet) model counter
 fuzzer, developed by [Anna Latour](https://scholar.google.com/citations?user=nf5lfegAAAAJ&hl=nl)

@@ -1,0 +1,4 @@
+# The web page's running example.
+# RUN: not %gmodel --solve %S/../../../examples/models/hydraulics.gm | %GMCheck %s
+# CHECK-L: P(lost) = 1260800407259559027271693566674542840180999/500000000000000000000000000000000000000000000000000 ~ 2.52160e-09
+# CHECK-L: require P(lost) < 1.00e-09: FAIL

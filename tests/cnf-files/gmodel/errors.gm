@@ -1,0 +1,18 @@
+# RUN: not %gmodel --check %s 2>&1 | %GMCheck %s
+event eng1 0.1
+event eng1 0.2
+event big 1.5
+x = eng2 | y
+y = x & eng1
+choice c { a 0.5, b 0.4 }
+z = c
+rule eng1 -> x
+q = (eng1 &
+query zz
+# CHECK-L: errors.gm:3:7: error: 'eng1' is already declared at line 2
+# CHECK-L: errors.gm:4:11: error: probability 1.5 is not between 0 and 1
+# CHECK-L: errors.gm:5:5: error: unknown name 'eng2' (did you mean 'eng1'?)
+# CHECK-L: errors.gm:7:8: error: the probabilities of choice 'c' sum to 9/10, not 1
+# CHECK-L: errors.gm:8:5: error: 'c' is a choice: use one of its values, e.g. c.a
+# CHECK-L: errors.gm:9:1: error: 'x' is defined with '=' at line 5, so it cannot also have rules
+# CHECK-L: errors.gm:11:1: error: expected an expression, found 'query'

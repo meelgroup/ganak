@@ -4,57 +4,8 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { EXAMPLES, QUERIES, parseCnf, fracDecimal, parseModels } from "../app.js";
-
-const HTML = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const req = createRequire(import.meta.url);
-
-interface Run {
-  status: number;
-  stdout: string;
-  stderr: string;
-  files: Record<string, Uint8Array>;
-}
-
-// One Emscripten CLI module per call, as the page's worker does.
-function runTool(tool: string, args: string[], files: Record<string, string | Uint8Array>,
-    outFiles: string[] = []): Promise<Run> {
-  return new Promise((resolve) => {
-    const js = path.join(HTML, tool + ".js");
-    const out: string[] = [];
-    const err: string[] = [];
-    const mod: any = {
-      noInitialRun: true,
-      arguments: [],
-      print: (t: string) => out.push(t),
-      printErr: (t: string) => err.push(t),
-      quit: (_s: number, e: unknown) => { throw e; },
-      onRuntimeInitialized: () => {
-        for (const [p, d] of Object.entries(files)) mod.FS.writeFile(p, d);
-        let status = 0;
-        try {
-          const r = mod.callMain([...args]);  // callMain changes the array
-          if (typeof r === "number") status = r;
-        } catch (x: any) {
-          if (x && typeof x.status === "number") status = x.status;
-          else { err.push(String(x)); status = -1; }
-        }
-        process.exitCode = 0;  // Emscripten sets it on exit(); the tests decide
-        const got: Record<string, Uint8Array> = {};
-        for (const p of outFiles) { try { got[p] = mod.FS.readFile(p); } catch { /* not written */ } }
-        resolve({ status, stdout: out.join("\n"), stderr: err.join("\n"), files: got });
-      },
-    };
-    const argv = process.argv;
-    process.argv = [argv[0]];
-    new Function("Module", "require", "__dirname", "__filename", readFileSync(js, "utf8"))(mod, req, HTML, js);
-    process.argv = argv;
-  });
-}
+import { runTool } from "./tools.mjs";
 
 const example = (prefix: string) => {
   const e = EXAMPLES.find((x) => x.name.startsWith(prefix));

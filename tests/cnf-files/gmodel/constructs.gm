@@ -1,0 +1,61 @@
+# Every construct, with answers worked out by hand.
+# RUN: not %gmodel --solve %s | %GMCheck %s
+event a "A" 1/2
+event b 25%
+event c .1
+choice w "Weather" { sun 0.7, rain 0.2, snow 0.1 }
+x = a & b
+y = a or b
+z = a ^ b
+i = if a then b else c
+k = atleast 2 of (a, b, c)
+e = exactly 1 (a, b, c)
+m = atmost 0 of (a, b)
+wet = w.rain | w.snow
+f = flip(0.3) & a
+rule wet -> slippery 0.5
+rule c -> slippery
+event s 0.1
+rule a -> s 0.5
+long = a &
+       !b
+query x
+query y
+query z
+query i
+query k
+query e
+query m
+query wet
+query f
+query slippery
+query s
+query long
+query a given x
+query a given y
+query w.snow given wet
+query a -> b
+query a <-> b
+query not (a and b) given c, !w.sun
+require slippery <= 0.25
+require slippery > 0.25
+# CHECK-L: P(x) = 1/8
+# CHECK-L: P(y) = 5/8
+# CHECK-L: P(z) = 1/2
+# CHECK-L: P(i) = 7/40
+# CHECK-L: P(k) = 7/40
+# CHECK-L: P(e) = 39/80
+# CHECK-L: P(m) = 3/8
+# CHECK-L: P(wet) = 3/10
+# CHECK-L: P(f) = 3/20
+# CHECK-L: P(slippery) = 47/200
+# CHECK-L: P(s) = 13/40
+# CHECK-L: P(long) = 3/8
+# CHECK-L: P(a | x) = 1 ~
+# CHECK-L: P(a | y) = 4/5
+# CHECK-L: P(w.snow | wet) = 1/3
+# CHECK-L: P(a -> b) = 5/8
+# CHECK-L: P(a <-> b) = 1/2
+# CHECK-L: P(not (a and b) | c, !w.sun) = 7/8
+# CHECK-L: require P(slippery) <= 2.50e-01: PASS
+# CHECK-L: require P(slippery) > 2.50e-01: FAIL

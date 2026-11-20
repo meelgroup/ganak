@@ -10,5 +10,5 @@
     "outDir": "test",
     "rootDir": "test-src"
   },
-  "files": ["test-src/web.test.mts"]
+  "files": ["test-src/web.test.mts", "test-src/model.test.mts"]
 }

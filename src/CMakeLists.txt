@@ -114,6 +114,7 @@ add_executable(example-c-bin example.c)
 add_executable(bdnnf-bin bdnnf_main.cpp bdnnf_verify.cpp bdnnf_query.cpp
   bdnnf_dump.cpp bdnnf_to_d4.cpp bdnnf_dot.cpp bdnnf_compact.cpp)
 target_link_libraries(bdnnf-bin PRIVATE PkgConfig::GMP)
+add_executable(ganak-model-bin gmodel_main.cpp gmodel_parse.cpp gmodel_encode.cpp)
 add_executable(bdnnf-compact-fuzz bdnnf_compact_fuzz.cpp)
 set_target_properties(bdnnf-compact-fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 if(ZSTD_FOUND)
@@ -134,6 +135,20 @@ target_link_libraries(ganak-bin
       PkgConfig::GMP
       approxmc
       treedecomp
+)
+target_link_libraries(ganak-model-bin
+    PRIVATE
+      ganak
+      arjun
+      PkgConfig::flint
+      PkgConfig::MPFR
+      PkgConfig::GMP
+      approxmc
+      treedecomp
+)
+target_include_directories(ganak-model-bin PRIVATE
+    ${PROJECT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(example-bin
     PRIVATE
@@ -197,6 +212,22 @@ set_target_properties(example-c-bin PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
   C_STANDARD 11
 )
+set_target_properties(ganak-model-bin PROPERTIES
+  OUTPUT_NAME ganak-model
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  # the parser reports errors by throwing; wasm disables catching by default
+  target_compile_options(ganak-model-bin PRIVATE -fexceptions)
+  target_link_options(ganak-model-bin PRIVATE
+    "-fexceptions"
+    "SHELL:-s WASM=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
+    "SHELL:-s FORCE_FILESYSTEM=1"
+  )
+endif()
 set_target_properties(bdnnf-bin PROPERTIES
   OUTPUT_NAME bdnnf
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
@@ -277,6 +308,11 @@ install(TARGETS ganak-bin
 )
 
 install(TARGETS bdnnf-bin
+    EXPORT ${GANAK_EXPORT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS ganak-model-bin
     EXPORT ${GANAK_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

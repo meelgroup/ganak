@@ -21,8 +21,12 @@ html/ganak.wasm
 html/ganak.js
 html/bdnnf.wasm
 html/bdnnf.js
+html/ganak-model.wasm
+html/ganak-model.js
 html/app.js
 html/app.d.ts
+html/model.js
+html/model.d.ts
 html/test/
 html/node_modules/
 html/version.txt
@@ -35,3 +39,4 @@ tests/__pycache__
 presentation
 build-vivif/
 fuzz-vivif-out/
+fuzz-gmodel-out/

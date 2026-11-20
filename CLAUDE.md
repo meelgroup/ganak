@@ -77,6 +77,15 @@ cd ../count_fuzzer
 nearly every conflict on random CNFs, and compares counts with
 `build/ganak --vivif 0`. Failures land in `fuzz-vivif-out/`.
 
+### ganak-model fuzzer (after touching `src/gmodel_*` or the web page's model tab)
+
+`scripts/fuzz_gmodel.py --num 500` builds random models (its own syntax trees,
+printed as `.gm`), and checks against brute-force enumeration with exact
+fractions: `ganak-model --solve`, the page's route (`ganak --compile` + `bdnnf
+count`/`lits`), and mangled
+input (must give errors, never crash). Failures land in `fuzz-gmodel-out/`.
+Uses `build/ganak-model`, `build/ganak`, `build/bdnnf`.
+
 ### 2. d-DNNF compilation (`--compile`)
 
 count_fuzzer checks it with `--bdnnf PERC` (default 20% of tests; `--bdnnf 100`
@@ -167,6 +176,13 @@ The counting pipeline flows through these layers:
     throughout solving.
 11. **`structures.hpp`** — Core data structures: `LitWatchList`,
     `DecisionLevel`, `TriValue` (true/false/undef), `LiteralIndexedVector`.
+
+### ganak-model (`src/gmodel_*.cpp`, `spec-ganak-model.md`)
+Probabilistic models to weighted projected CNF (full Tseitin, exact rational
+weights, show set = random vars + names + query vars). `gmodel_parse.cpp` is
+the parser, `gmodel_encode.cpp` the encoder and writers, `gmodel_main.cpp` the CLI with `--solve` (Ganak
+API). Lit tests: `tests/cnf-files/gmodel/`.
+The web page's model tab is `html/src/model.ts`.
 
 ### Field system
 All arithmetic is polymorphic over `CMSat::Field` / `CMSat::FieldGen` (from

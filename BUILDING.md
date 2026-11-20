@@ -102,7 +102,7 @@ first be built for wasm and installed into `$EMINSTALL` (Emscripten's sysroot);
 `scripts/rebuild_emcripten_all.sh` builds every dependency and Ganak for wasm,
 each in its own `build-wasm/`, so the native `build/` directories stay. After
 changing only Ganak or the page, `scripts/build_emscripten.sh` rebuilds just
-Ganak. It puts `ganak.js`/`bdnnf.js` and their `.wasm` into `html/`, writes
+Ganak. It puts `ganak.js`/`bdnnf.js`/`ganak-model.js` and their `.wasm` into `html/`, writes
 `html/version.txt` (the page puts it in every script URL, so browsers never run
 a stale build), and compiles the page's TypeScript (`html/src/`, needs `tsc`).
 Serve `html/` over HTTP (e.g. `python3 -m http.server -d html`): the page runs

@@ -82,16 +82,113 @@
     .graph svg { max-width: 100%; height: auto; }
     details summary { cursor: pointer; color: var(--muted); }
     footer { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; color: var(--muted); font-size: 13px; }
+    nav.tabs { max-width: 1400px; margin: 10px auto 0; padding: 0 24px; display: flex; gap: 6px; flex-wrap: wrap; }
+    nav.tabs button { border-radius: 8px 8px 0 0; padding: 8px 16px; }
+    nav.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    main.tab[hidden] { display: none; }
+    #tab-model { grid-template-columns: minmax(320px, 7fr) minmax(300px, 5fr); }
+    @media (max-width: 900px) { #tab-model { grid-template-columns: 1fr; } }
+    #gm-text { height: 460px; resize: vertical; line-height: 1.45; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+    #gm-errors { color: var(--off); background: var(--off-soft); border-radius: 6px; padding: 6px 10px;
+      font-family: ui-monospace, monospace; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
+    #gm-errors a { color: var(--off); font-weight: 600; }
+    #gm-results.stale { opacity: .55; transition: opacity .2s; }
+    .p { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .card.wide { grid-column: 1 / -1; }
+    .big-p { font-size: 16px; font-weight: 600; }
+    table.answers td { vertical-align: middle; }
+    table.answers a.line { color: var(--text); text-decoration: none; font-family: ui-monospace, monospace; font-size: 13px; }
+    table.answers a.line:hover { color: var(--accent); }
+    .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .badge.pass { background: var(--on-soft); color: var(--on); }
+    .badge.fail { background: var(--off-soft); color: var(--off); }
+    td.hi-up .p { color: var(--off); font-weight: 600; }
+    td.hi-down .p { color: var(--on); font-weight: 600; }
+    .chips.inline { display: inline-flex; margin: 0; }
+    button.chip { border: none; cursor: pointer; }
+    #gm-evidence { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+    #gm-graph .graph { max-height: none; }
+    #gm-graph svg { max-width: 100%; height: auto; }
+    #gm-graph g.node:hover polygon, #gm-graph g.node:hover path, #gm-graph g.node:hover ellipse { stroke: var(--accent); stroke-width: 2.5; }
+    .cheat { font-size: 13px; }
+    .cheat code { background: var(--code); padding: 0 4px; border-radius: 4px; }
+    .cheat table td { padding: 2px 8px 2px 0; vertical-align: top; }
   </style>
 </head>
 <body>
   <header>
     <h1>Ganak in your browser</h1>
-    <p>Count the models of a CNF, compile it to a d-DNNF circuit, and query the circuit:
-      sampling, enumeration, feature counts, core and dead features, atomic sets, optimisation
-      and t-wise sampling. Everything runs locally, in WebAssembly.</p>
+    <p>Write a probabilistic model and get exact probabilities, or count the models of a CNF and
+      query its d-DNNF circuit. Everything runs locally, in WebAssembly.</p>
   </header>
-  <main>
+  <nav class="tabs">
+    <button data-tab="model">Probability models</button>
+    <button data-tab="cnf">CNF and circuits</button>
+  </nav>
+  <main id="tab-model" class="tab">
+    <div class="col">
+      <section class="card">
+        <h2>1. Model</h2>
+        <div class="row">
+          <select id="gm-examples" aria-label="Example models"></select>
+          <label class="muted">or open <input type="file" id="gm-file" accept=".gm,.txt"></label>
+        </div>
+        <p class="muted">A <code>.gm</code> model. Answers update as you type.</p>
+        <textarea id="gm-text" spellcheck="false" aria-label="Model"></textarea>
+        <div id="gm-errors" hidden></div>
+        <div class="row" style="margin-top:8px">
+          <button id="gm-compute" class="primary">Compute</button>
+          <button id="gm-cnf" title="Open the generated CNF in the CNF tab">Show the CNF</button>
+          <button id="gm-download">Download .gm</button>
+          <span id="gm-status" class="muted"></span>
+        </div>
+      </section>
+    </div>
+    <div class="col" id="gm-results">
+      <section class="card">
+        <h2>2. Answers</h2>
+        <div id="gm-answers" class="muted">Answers appear here.</div>
+      </section>
+    </div>
+    <section class="card wide" id="gm-graph-card">
+      <h2>3. Graph</h2>
+      <div id="gm-evidence"></div>
+      <div id="gm-graph"></div>
+      <p class="muted" style="font-size:13px">Rounded boxes are definitions, ovals random events, double-bordered boxes what a query or requirement asks about, yellow hexagons constraints; an arrow points
+        from a definition to what it uses (left to right), dashed with a circle where it uses the negation. Each node shows its
+        probability given the evidence, with ▲/▼ where the evidence changed it.</p>
+    </section>
+    <section class="card wide">
+      <h2>4. What matters</h2>
+      <div class="row" style="margin-bottom:10px">
+        <label for="gm-top" class="muted">for</label>
+        <select id="gm-top"></select>
+      </div>
+      <div id="gm-analysis"></div>
+    </section>
+    <section class="card cheat wide">
+      <h2>The language</h2>
+      <table>
+        <tr><td><code>event eng1 "Engine 1 fails" 2e-5</code></td><td>an independent event and its probability</td></tr>
+        <tr><td><code>out = eng1 | dual</code></td><td>a definition: <code>!</code> <code>&amp;</code> <code>|</code> <code>^</code> <code>-&gt;</code> <code>&lt;-&gt;</code>, also <code>not and or xor</code></td></tr>
+        <tr><td><code>atleast 2 of (a, b, c)</code></td><td>also <code>atmost</code>, <code>exactly</code></td></tr>
+        <tr><td><code>if a then flip(0.9) else flip(0.05)</code></td><td>a conditional probability: <code>flip(p)</code> is a fresh event</td></tr>
+        <tr><td><code>choice load { low 0.7, high 0.3 }</code></td><td>a variable with several values: <code>load.high</code></td></tr>
+        <tr><td><code>rule overheat -&gt; fire 0.02</code></td><td>a cause: overheat causes fire with probability 0.02</td></tr>
+        <tr><td><code>constraint !(a &amp; b)</code></td><td>condition everything on a fact</td></tr>
+        <tr><td><code>query lost given eng1_out</code></td><td>P(lost | eng1_out)</td></tr>
+        <tr><td><code>require lost &lt; 1e-9</code></td><td>a requirement, shown as pass or fail</td></tr>
+      </table>
+      <p class="muted">The full description is in
+        <a href="https://github.com/meelgroup/ganak/blob/master/spec-ganak-model.md">spec-ganak-model.md</a>;
+        the command-line tool is <code>ganak-model</code>.</p>
+    </section>
+    <section class="card wide">
+      <h2>Log</h2>
+      <details><summary>tool runs (stdout, stderr)</summary><div id="gm-log"></div></details>
+    </section>
+  </main>
+  <main id="tab-cnf" class="tab" hidden>
     <div class="col">
       <section class="card">
         <h2>1. Formula</h2>
@@ -143,6 +240,7 @@
   </main>
   <footer>
     <a href="https://github.com/meelgroup/ganak">Ganak</a> ·
+    <a href="https://github.com/meelgroup/ganak/blob/master/spec-ganak-model.md">model language</a> ·
     queries modelled on <a href="https://github.com/practical-kc/ddnnife">ddnnife</a>
     (Sundermann, Raab, Heß, Thüm and Schaefer, ACM TOSEM 2024) ·
     <a href="https://github.com/meelgroup/ganak/blob/master/BDNNF-TOOL.md">bdnnf reference</a> ·

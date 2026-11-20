@@ -1,0 +1,12 @@
+# Constraints condition every answer; impossible conditions are reported.
+# RUN: %gmodel --solve %s | %GMCheck %s
+event a 1/2
+event b 1/4
+constraint a | b
+query a
+query b given !a
+query a given !a & !b
+# CHECK-L: P(constraints) = 5/8
+# CHECK-L: P(a) = 4/5
+# CHECK-L: P(b | !a) = 1 ~
+# CHECK-L: P(a | !a & !b) is undefined

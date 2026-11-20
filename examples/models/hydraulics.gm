@@ -1,0 +1,45 @@
+# Hydraulic power for the flight controls of a twin-engine airliner, per flight.
+# Three independent hydraulic systems (green, yellow, blue). The numbers are
+# illustrative, not data of any real aircraft.
+
+event eng1   "Engine 1 shuts down"              2e-5
+event eng2   "Engine 2 shuts down"              2e-5
+event dual   "Both engines lost (birds, ash)"   1e-7
+event apu    "APU fails to start"               5e-2
+event edp_g  "Green engine-driven pump fails"   1e-4
+event edp_y  "Yellow engine-driven pump fails"  1e-4
+event epmp_y "Yellow electric pump fails"       2e-4
+event epmp_b "Blue electric pump fails"         2e-4
+event rat    "Ram air turbine fails"            1e-3
+event ptu    "Power transfer unit fails"        1e-3
+event leak_g "Green fluid loss"                 5e-5
+event leak_y "Yellow fluid loss"                5e-5
+event leak_b "Blue fluid loss"                  5e-5
+
+eng1_out "Engine 1 out" = eng1 | dual
+eng2_out "Engine 2 out" = eng2 | dual
+ac_power "AC electrical power" = !eng1_out | !eng2_out | !apu
+
+# Pressure sources. The PTU lets a pressurised system drive the other one.
+g_src "Green source" = !eng1_out & !edp_g
+y_src "Yellow source" = (!eng2_out & !edp_y) | (ac_power & !epmp_y)
+green  "Green pressure"  = !leak_g & (g_src | (y_src & !leak_y & !ptu))
+yellow "Yellow pressure" = !leak_y & (y_src | (g_src & !leak_g & !ptu))
+blue   "Blue pressure"   = !leak_b & ((ac_power & !epmp_b) | !rat)
+
+elevator "Elevator powered" = green | blue
+ailerons "Ailerons powered" = green | blue
+rudder   "Rudder powered"   = atleast 1 of (green, blue, yellow)
+lost "Loss of control" = !(elevator & ailerons & rudder)
+land_asap "Land at the nearest airport" = atmost 1 of (green, blue, yellow)
+
+query lost
+query land_asap
+query lost given eng1_out
+query lost given dual
+query dual given !green, !yellow
+
+# Catastrophic failure conditions must stay below 1e-9 per flight. This one
+# fails: "What matters" below the graph shows why. Powering the elevator and the
+# ailerons from all three systems brings it down to about 6e-12.
+require lost < 1e-9

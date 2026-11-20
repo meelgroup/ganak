@@ -1,0 +1,18 @@
+# The CNF, compiled by ganak and queried with bdnnf, the web page's route.
+# RUN: %gmodel %s -o %t.cnf
+# RUN: %GMCheck --check-prefix=CNF %s < %t.cnf
+# RUN: %solver --mode 1 --compile %t.bdnnf %t.cnf | %GMCheck --check-prefix=COUNT %s
+# RUN: %bdnnf verify %t.bdnnf -q
+# RUN: %bdnnf count %t.bdnnf --cnf %t.cnf --assume 4 | %GMCheck --check-prefix=TOP %s
+event a 2e-5
+event b 1/1000
+top = a | b
+query top
+# CNF: c t pwmc
+# CNF: c p weight 1 1/50000 0
+# CNF: c p weight -1 49999/50000 0
+# CNF: c p show 1 2 4 0
+# CNF: c 4 top
+# CNF: c gm query 1 4
+# COUNT: c s exact arb frac 1
+# TOP: 50999/50000000

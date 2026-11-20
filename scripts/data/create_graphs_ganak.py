@@ -2565,7 +2565,7 @@ only_dirs = [
     # 0b4881b4_11e203ea_67c5648a_5e1ee18e
 
     # final MCC
-    "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
+    # "out-ganak-mccomp2324-1783906-0", # final competition stuff: norm and trying kitten. Slowdown is purely machine failure/CPU overload
                                       # running ganak_0b4881b4_11e203ea_67c5648a_5e1ee18e
     # "out-ganak-mccomp2324-1812040-0", # 2 min timeout
     # "out-ganak-mccomp2324-1812431-4", # 2 min timeout, more configs
@@ -2593,11 +2593,12 @@ only_dirs = [
     # "out-ganak-mccomp2324-2634304-", # new cover stuff
     # "out-ganak-mccomp2324-2638326-1", #more cover
     # "out-ganak-mccomp2324-2791823-2", # local search cover
-    "out-ganak-mccomp2324-2799164-1", # bce
-    "out-ganak-mccomp2324-2827345-", # update arjun, other stuff(?)
+    # "out-ganak-mccomp2324-2799164-1", # bce
+    # "out-ganak-mccomp2324-2827345-", # update arjun, other stuff(?)
     "out-ganak-mccomp2324-2872197-1", # new cache
     "out-ganak-mccomp2324-2887638", # improved vivif
     "out-ganak-mccomp2324-2890750", # improved subsume
+    "out-ganak-mccomp2324-2893602",  # subsumption, chris-sweep
 
 ]
 # only_dirs = [

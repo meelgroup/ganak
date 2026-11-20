@@ -68,7 +68,7 @@ def lane(cpu):
                 with stream(r) as f,path.open('wb') as out:
                     while chunk:=f.read(1<<20):
                         h.update(chunk);out.write(chunk)
-                s=json.loads(r['stock']) if r['stock'] else runarm('stock',path,600)
+                s=json.loads(r['stock']) if r['stock'] else runarm('stock',path,600,n)
                 c.execute('update jobs set stock=?,sha=? where id=?',(json.dumps(s),h.hexdigest(),n))
                 if s['status']!='solved' or s['wall']<60:
                     state='fast' if s['status']=='solved' else s['status']
@@ -81,7 +81,7 @@ def lane(cpu):
                 if dup:continue
                 okay=True
                 for a in (('sweep','combined') if int(r['ord'][0],16)%2 else ('combined','sweep')):
-                    v=json.loads(r[a]) if r[a] else runarm(a,path,600)
+                    v=json.loads(r[a]) if r[a] else runarm(a,path,600,n)
                     c.execute('update jobs set '+a+'=? where id=?',(json.dumps(v),n))
                     if v['status']=='error' or (v['status']=='solved' and v['count']!=s['count']):okay=False
                 c.execute('update jobs set state=? where id=?',('done' if okay else 'error',n))

@@ -79,6 +79,7 @@ struct CounterConfiguration {
   int frontier_states = 0;
   int frontier_min_vars = 4;
   int frontier_profile = 0;
+  int frontier_bucket = 1;
   int mixed_jobs = 0;
   int profile_jobs = 0;
   int separator_branch = 0;

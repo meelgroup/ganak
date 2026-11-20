@@ -270,6 +270,7 @@ private:
 
   //Debug stuff
 public:
+  void print_frontier_sample(const char* phase) const;
   void check_trail(bool check_entail = true, bool force_check_units = false) const;
   void check_opt_sampling_determined() const;
   FF check_count_cms(const Cube& c);
@@ -373,7 +374,10 @@ public:
   unsigned grouped_misses=0, grouped_skip=0;
   unsigned wide_misses=0, wide_skip=0;
   uint64_t word_finished=0, bucket_finished=0;
+  uint64_t bucket_attempts=0, sparse_attempts=0, frontier_call_id=0;
+  FF outer_count_impl();
   double frontier_seconds=0;
+  double word_seconds=0, bucket_seconds=0, sparse_seconds=0;
   uint64_t sweep_calls_by_size[63]{}, sweep_rows_by_size[63]{};
   double sweep_time_by_size[63]{};
   void decide_lit(uint32_t separator_var);

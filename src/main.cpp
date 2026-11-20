@@ -312,7 +312,8 @@ void add_ganak_options()
     add_arg("--lru", conf.lru_eviction, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
     add_arg("--frontierminvars", conf.frontier_min_vars, "Minimum component variables for sweep");
-    add_arg("--frontierprofile", conf.frontier_profile, "Print per-size sweep profile");
+    add_arg("--frontierbucket", conf.frontier_bucket, "Enable the Boolean bucket kernel (0 skips it and continues to sparse sweep)");
+    add_arg("--frontierprofile", conf.frontier_profile, "Sweep diagnostics: 1 counts and size profiles, 2 also times each Boolean kernel");
     add_arg("--mixedjobs", conf.mixed_jobs, "Job split: 0 variables, 1 most frequent OR, 2 worst-first propagation score, 3 aggregate score with one-variable slack");
     add_arg("--profilejobs", conf.profile_jobs, "Report parallel makespan diagnostics");
     add_arg("--groupedsweep", conf.grouped_sweep, "Grouped root and residual counting: 0 off, 1 fixed planning, 2 adaptive planning and probes");
@@ -814,6 +815,7 @@ int main(int argc, char *argv[]) {
   if (conf.grouped_sweep && mode == 0 && !cnf.get_weighted() && !cnf.get_projected() &&
       cnf.get_sampl_vars().size() == cnf.nVars() && cnf.nVars() <= 200000 &&
       conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+    const double root_start = conf.frontier_profile ? cpu_time() : 0;
     GanakInt::grouped::Factors groups;
     bool eligible = true;
     std::optional<GanakInt::selector::Encoding> selectors;
@@ -839,6 +841,9 @@ int main(int argc, char *argv[]) {
       result = GanakInt::grouped::solve(groups, cnf.nVars(), conf.grouped_sweep == 2);
       if (result) cout << "c grouped root scopes " << groups.factors.size() << endl;
     }
+    if (conf.frontier_profile)
+      cout << "c grouped root result " << (result ? "finished" : "declined")
+           << " cpu " << cpu_time() - root_start << endl;
     if (result) {
       Ganak counter(conf, fg);
       run_weighted_counter(counter, cnf, start_time, &*result);

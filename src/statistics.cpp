@@ -35,6 +35,7 @@ using std::setprecision;
 using namespace GanakInt;
 
 void DataAndStatistics::print_short(const Counter* counter, const std::unique_ptr<CompCacheIF>& cache) const {
+  counter->print_frontier_sample("snapshot");
   verb_print(1, "total time so far: " << cpu_time());
   verb_print(1, "count time: " << cpu_time() - counter->get_start_time());
   verb_print(1, "decisions K                    "

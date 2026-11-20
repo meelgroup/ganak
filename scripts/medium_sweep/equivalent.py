@@ -37,14 +37,22 @@ def collapse(n,clauses):
     if size==n:return n,clauses
     return size,[tuple(mapped[x] if x>0 else -mapped[-x] for x in c) for c in clauses]
 
-def reduce(n,clauses):
-    free=units=merged=0
+def reduce_units(initial):
+    if initial is None:
+        return None
+    n, clauses, free, units = initial
+    merged = 0
     while True:
-        z=simplify(n,clauses)
-        if z is None:return None
-        n,clauses,f,u=z;free+=f;units+=u
-        z=collapse(n,clauses)
-        if z is None:return None
-        size,clauses=z
-        if size==n:return n,clauses,free,units,merged
-        merged+=n-size;n=size
+        result = collapse(n, clauses)
+        if result is None:
+            return None
+        size, clauses = result
+        if size == n:
+            return n, clauses, free, units, merged
+        merged += n - size
+        result = simplify(size, clauses)
+        if result is None:
+            return None
+        n, clauses, f, u = result
+        free += f
+        units += u

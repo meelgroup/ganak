@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "counter.hpp"
 #include "frontier_tables.hpp"
 #include "grouped_sweep.hpp"
+#include <atomic>
 
 #include <algorithm>
 #include <atomic>
@@ -1126,7 +1127,35 @@ void Counter::fix_weights() {
   debug_print("Fixed weights via " << __func__);
 }
 
+void Counter::print_frontier_sample(const char* phase) const {
+  if (!conf.frontier_profile) return;
+  cout << "c frontier sample phase=" << phase << " call=" << frontier_call_id
+       << " decisions=" << stats.decisions << " lookups=" << stats.num_cache_look_ups
+       << " hits=" << stats.num_cache_hits
+       << " word_calls=" << sweep_attempts << " word_returns=" << word_finished
+       << " bucket_calls=" << bucket_attempts << " bucket_returns=" << bucket_finished
+       << " sparse_calls=" << sparse_attempts
+       << " sparse_returns=" << (sweep_finished - word_finished - bucket_finished)
+       << " grouped_attempts=" << grouped_attempts << " grouped_returns=" << grouped_finished
+       << " hook_cpu_s=" << frontier_seconds;
+  if (conf.frontier_profile >= 2)
+    cout << " word_cpu_s=" << word_seconds << " bucket_cpu_s=" << bucket_seconds
+         << " sparse_cpu_s=" << sparse_seconds;
+  cout << endl;
+}
+
 FF Counter::outer_count() {
+  if (conf.frontier_profile) {
+    static std::atomic<uint64_t> serial{0};
+    frontier_call_id = ++serial;
+    print_frontier_sample("begin");
+  }
+  auto count = outer_count_impl();
+  print_frontier_sample("end");
+  return count;
+}
+
+FF Counter::outer_count_impl() {
   fix_weights();
   if (!conf.compile_fname.empty()) compiler = make_ddnnf_compiler(*this, conf.compile_fname);
   if (!ok) {
@@ -1228,7 +1257,7 @@ FF Counter::outer_count() {
          << " peak " << sweep_peak << " separator " << separator_choices
          << " cpu " << frontier_seconds << endl;
   if (conf.grouped_sweep) cout << "c grouped residual " << grouped_attempts << " " << grouped_finished << endl;
-  if (conf.frontier_profile)
+  if (conf.frontier_states > 0 || conf.frontier_profile)
     cout << "c frontier finished words " << word_finished << " buckets " << bucket_finished
          << " sparse " << sweep_finished-word_finished-bucket_finished << endl;
   if (conf.frontier_profile) for (unsigned n=4; n<=62; ++n) {
@@ -1452,12 +1481,23 @@ bool Counter::try_frontier(uint32_t& separator_var) {
     const double t = conf.frontier_profile ? cpu_time() : 0;
     const unsigned limit = conf.frontier_states;
     auto result = frontier::word_count(n, clauses, limit);
+    const bool time_kernels = conf.frontier_profile >= 2;
+    double split = t;
+    auto account = [&](double& seconds) {
+      const double now = cpu_time();
+      seconds += now - split;
+      split = now;
+    };
+    if (time_kernels) account(word_seconds);
     if (result) ++word_finished;
-    if (!result && (wide_candidate || n >= 20)) {
+    if (!result && conf.frontier_bucket && (wide_candidate || n >= 20)) {
+      ++bucket_attempts;
       result = frontier::bucket_count(n, clauses, limit);
+      if (time_kernels) account(bucket_seconds);
       if (result) ++bucket_finished;
     }
     if (!result && num_clauses <= 64) {
+      ++sparse_attempts;
       // On binary-heavy residuals many open clauses can share one boundary
       // variable. The assignment bound makes that visible to the orderer.
       const bool variable_bound = n >= 20 && 2*std::count_if(clauses.begin(), clauses.end(),
@@ -1465,6 +1505,7 @@ bool Counter::try_frontier(uint32_t& separator_var) {
       result = frontier::sweep(n, clauses, limit, sweep_peak,
                                conf.frontier_profile ? &sweep_rows_by_size[n] : nullptr,
                                variable_bound);
+      if (time_kernels) account(sparse_seconds);
     }
     if (conf.frontier_profile) {
       ++sweep_calls_by_size[n];

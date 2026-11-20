@@ -387,11 +387,14 @@ interface State {
   pe: Q | null;
   evidence: Map<string, boolean>;
   gen: number;
+  ev: number;
+  wm: number;
   baseLits: Map<number, Q> | null;
+  baseEv: number;
 }
 
 const S: State = { text: "", model: null, cnf: "", circuit: null, z: Q.one, prior: null, marg: null, pe: null,
-  evidence: new Map(), gen: 0, baseLits: null };
+  evidence: new Map(), gen: 0, ev: 0, wm: 0, baseLits: null, baseEv: -1 };
 let D: Deps;
 let timer: number | undefined;
 
@@ -487,21 +490,27 @@ export async function compute() {
     $("gm-results").classList.add("stale");
     return;
   }
-  S.model = model;
-  S.cnf = dec(r1.files["/m.cnf"]);
-  for (const k of [...S.evidence.keys()]) if (!model.nodes.some((n) => n.name === k)) S.evidence.delete(k);
+  const cnf = dec(r1.files["/m.cnf"]);
   status("Compiling...");
   const r2 = await D.runTool("ganak", ["--verb", "1", "--mode", "1", "--compile", "/out.bdnnf", "/m.cnf"],
-    { "/m.cnf": S.cnf }, ["/out.bdnnf"]);
+    { "/m.cnf": cnf }, ["/out.bdnnf"]);
   if (g !== S.gen) return;
   D.log("ganak --mode 1 --compile out.bdnnf m.cnf", r2);
   const cm = r2.stdout.match(/c s exact arb \S+ (\S+)/);
   if (r2.status !== 0 || !r2.files["/out.bdnnf"] || !cm) {
     showErrors([], "Ganak failed:\n" + r2.stderr.split("\n").slice(-5).join("\n"));
     status("");
+    $("gm-results").classList.add("stale");
     return;
   }
+  // Variable numbers change with the model, so the model, its CNF and its
+  // circuit are only ever replaced together.
+  S.model = model;
+  S.cnf = cnf;
   S.circuit = r2.files["/out.bdnnf"];
+  S.prior = null;
+  S.baseLits = null;
+  for (const k of [...S.evidence.keys()]) if (!model.nodes.some((n) => n.name === k)) S.evidence.delete(k);
   S.z = Q.parse(cm[1]);
   const compileMs = r2.ms;
   status("Answering...");
@@ -553,10 +562,12 @@ function stat(k: string, v: string): HTMLElement {
 }
 
 async function updateEvidence(g = S.gen) {
+  const e = ++S.ev;
   const ev = evidenceLits();
   const r = await bdnnf(["lits", "/c.bdnnf", "--cnf", "/m.cnf", ...assumeArgs(ev)], {}, ev.length > 0);
-  if (g !== S.gen) return;
+  if (g !== S.gen || e !== S.ev) return;
   S.baseLits = parseLits(r.stdout);
+  S.baseEv = e;
   const { marg, total } = margMap(S.baseLits);
   S.pe = S.z.isZero() ? null : total.div(S.z);
   S.marg = marg;
@@ -580,15 +591,16 @@ async function updateEvidence(g = S.gen) {
     box.append(clear, el("span", { class: "muted" }, " P(evidence) = "),
       S.pe && !S.pe.isZero() ? pq(S.pe) : el("span", { class: "error" }, "0: impossible evidence"));
   }
-  await drawGraph();
+  if (!await drawGraph(e)) return;
   await whatMatters(g);
 }
 
-async function drawGraph() {
+async function drawGraph(e: number): Promise<boolean> {
   const m = S.model!;
   const zeroEv = S.evidence.size > 0 && (!S.pe || S.pe.isZero());
   const dot = modelDot(m, zeroEv ? null : S.marg, S.prior, S.evidence);
   const g = await D.renderDot(dot);
+  if (e !== S.ev) return false;
   g.querySelectorAll<SVGGElement>("g.node").forEach((node) => {
     const i = Number((node.id || "").replace(/^gm/, ""));
     const n = m.nodes[i];
@@ -605,6 +617,7 @@ async function drawGraph() {
   const box = $("gm-graph");
   box.innerHTML = "";
   box.append(g);
+  return true;
 }
 
 function fillTops() {
@@ -621,13 +634,15 @@ function fillTops() {
 
 async function whatMatters(g = S.gen) {
   const box = $("gm-analysis");
-  const top = S.model && S.baseLits ? nodeByName($<HTMLSelectElement>("gm-top").value) : undefined;
+  const top = S.model && S.baseLits && S.baseEv === S.ev ? nodeByName($<HTMLSelectElement>("gm-top").value) : undefined;
   if (!top) {
     box.innerHTML = "";
     return;
   }
+  const e = S.ev, w = ++S.wm;
   const r = await bdnnf(["lits", "/c.bdnnf", "--cnf", "/m.cnf", ...assumeArgs([...evidenceLits(), top.var])], {}, false);
-  if (g !== S.gen) return;
+  // the base marginals must be for the same evidence as this run
+  if (g !== S.gen || e !== S.ev || w !== S.wm || S.baseEv !== e) return;
   const { pT, rows } = impacts(S.model!, S.baseLits!, parseLits(r.stdout));
   const name = `“${top.label || top.name}”`;
   box.innerHTML = "";

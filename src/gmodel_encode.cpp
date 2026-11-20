@@ -243,6 +243,7 @@ struct Enc {
       return l;
     }
     const int v = fresh();
+    owned.insert(v);
     if (l == TL) cl({v});
     else if (l == -TL) cl({-v});
     else {
@@ -351,6 +352,12 @@ void deps(const Model& m, int e, int pol, std::map<int, int>& out) {
       deps(m, x.kids[0], 3, out);
       deps(m, x.kids[1], pol, out);
       deps(m, x.kids[2], pol, out);
+      return;
+    case Op::AtMost:
+      for (const int k : x.kids) deps(m, k, pol == 1 ? 2 : pol == 2 ? 1 : pol, out);
+      return;
+    case Op::Exactly:
+      for (const int k : x.kids) deps(m, k, 3, out);
       return;
     default:
       for (const int k : x.kids) deps(m, k, pol, out);

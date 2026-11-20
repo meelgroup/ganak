@@ -1,6 +1,7 @@
 """Bounded structural prepass for ordinary unweighted DIMACS."""
 import argparse
 import gzip
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -57,6 +58,12 @@ def count(path, cap, ganak=None, *, trace=False, buckets=True, previous=False, k
             values = ' '.join(f'{key}={value}' for key, value in fields.items())
             print(f'c medium event={name} wall_s={time.monotonic()-start:.6f} {values}', flush=True)
 
+    if trace:
+        digest = hashlib.sha256()
+        for name in ('policy.py','algo.py','equivalent.py','components.py','encode.py'):
+            digest.update((P/name).read_bytes())
+            digest.update(b'\0')
+        event('source', sha256=digest.hexdigest())
     event('begin', policy=2, reduction='previous' if previous else 'conservative',
           buckets=int(buckets), kernel_timing=int(kernel_timing), node_cap=1 << 24)
     with tempfile.TemporaryDirectory() as directory:
@@ -98,7 +105,7 @@ def count(path, cap, ganak=None, *, trace=False, buckets=True, previous=False, k
                     return 1 << free
                 data = ''.join(' '.join(map(str,c))+' 0\n' for c in cs)
                 if all((len(c)==2 and min(c)>0) or (len(c)>2 and max(c)<0) for c in cs):
-                    event('probe', method='enumerate')
+                    event('probe', method='enumerate', helper_sha256=hashlib.sha256((P/'enumerate').read_bytes()).hexdigest() if trace else '')
                     try:
                         p = subprocess.run([P/'enumerate'], input=f'{v} {len(cs)}\n'+data,
                                            text=True, capture_output=True, timeout=min(5,left()), check=True)
@@ -113,7 +120,7 @@ def count(path, cap, ganak=None, *, trace=False, buckets=True, previous=False, k
         elif n<=2000 and all((len(c)==2 and max(c)<0) or (c and min(c)>0) for c in clauses):
             z = packet(n, clauses)
             if z:
-                event('probe', method='adaptive_domain')
+                event('probe', method='adaptive_domain', helper_sha256=hashlib.sha256((P/'resume').read_bytes()).hexdigest() if trace else '')
                 p = subprocess.run([P/'resume','adaptive',str(1<<24)], input=z,
                                    capture_output=True, check=True, timeout=left())
                 status, value, nodes, *_ = p.stdout.split()

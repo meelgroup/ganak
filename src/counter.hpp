@@ -250,7 +250,12 @@ private:
   inline bool add_bin_cl(Lit a, Lit b, bool red);
 
   // DNF Cube stuff
-  bool restart_if_needed();
+  enum class RstRet { none, end, backtrack };
+  RstRet restart_if_needed();
+  bool restart_due() const;
+  void restart_with_cubes();
+  RstRet restart_in_search();
+  void readjust_for_restart();
   vector<Cube> mini_cubes;
   uint32_t disable_small_cubes(vector<Cube>& cubes) const;
   void disable_smaller_cube_if_overlap(uint32_t i, uint32_t i2, vector<Cube>& cubes);

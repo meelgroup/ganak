@@ -1364,7 +1364,11 @@ void Counter::count_loop() {
       // (chrono_check may have resolved without updating state)
       if (state != BACKTRACK && state != PROCESS_COMPONENT) state = RESOLVED;
       if (state == BACKTRACK) goto backtrack;
-      if (state == RESOLVED && restart_if_needed()) goto end;
+      if (state == RESOLVED) {
+        const RstRet r = restart_if_needed();
+        if (r == RstRet::end) goto end;
+        if (r == RstRet::backtrack) goto backtrack;
+      }
 
       if (state != PROCESS_COMPONENT && state != RESOLVED) {
         cerr << "ERROR: state: " << state << endl;
@@ -1685,16 +1689,21 @@ static double luby(double y, int x){
   return pow(y, seq);
 }
 
-bool Counter::restart_if_needed() {
-  if (!appmc_timeout_fired && conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst)
-    return false;
-  if (!appmc_timeout_fired && (!conf.do_restart || td_width < 20)) return false;
-
-  bool restart = false;
+Counter::RstRet Counter::restart_if_needed() {
   if (appmc_timeout_fired) {
     verb_print(1, "[rst] AppMC timeout fired. Restarting.");
-    restart = true;
+    restart_with_cubes();
+    return RstRet::end;
   }
+  if (!restart_due()) return RstRet::none;
+  return restart_in_search();
+}
+
+bool Counter::restart_due() const {
+  if (conf.max_num_rst > 0 && (int32_t)stats.num_restarts > conf.max_num_rst) return false;
+  if (!conf.do_restart || td_width < conf.rst_min_tw) return false;
+
+  bool restart = false;
 
   // Conflicts, luby
   if (conf.restart_type == 7) {
@@ -1733,7 +1742,12 @@ bool Counter::restart_if_needed() {
     }
   }
 
-  if (!restart) return false;
+  return restart;
+}
+
+// The AppMC fallback: what was counted becomes cubes, they are blocked, and
+// the counter (and its cache) is rebuilt
+void Counter::restart_with_cubes() {
   verb_print(2, "************* Restarting.  **************");
   verb_print(2, "Num decisions since last restart: "
     << stats.decisions-stats.last_restart_num_decisions << endl
@@ -1791,7 +1805,66 @@ bool Counter::restart_if_needed() {
   assert(ret && "never UNSAT");
   CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
   stats.num_restarts++;
+  readjust_for_restart();
+}
 
+// Backtracks to level 0 inside the search, keeping every finished comp's
+// cached count. Abandoning a branch normally drops all that was counted in
+// it: if a comp not yet counted there is UNSAT, learnt clauses over lits
+// outside a finished comp may have pruned some of its models. With a model of
+// the trail's decisions, every comp not yet counted is SAT, so no cached count
+// is too low. If CMS says UNSAT, the failed assumptions show the branch of
+// their highest level is UNSAT: we go there, and the caller backtracks out of
+// it as if a conflict had shown it.
+Counter::RstRet Counter::restart_in_search() {
+  const double my_time = cpu_time();
+  stats.last_restart_num_conflicts = stats.conflicts;
+  stats.last_restart_num_decisions = stats.decisions;
+  stats.last_restart_num_cache_look_ups = stats.num_cache_look_ups;
+
+  vector<CMSat::Lit> ass;
+  for (const auto& l: trail)
+    if (var(l).decision_level > 0 && var(l).ante.isNull()) ass.push_back(ganak_to_cms_lit(l));
+  sat_solver->set_max_confl(conf.rst_sat_confl);
+  const auto sat = sat_solver->solve(&ass);
+  if (sat == CMSat::l_False) {
+    int32_t lev = 0;
+    for (const auto& l: sat_solver->get_conflict())
+      lev = std::max(lev, var(l.var()+1).decision_level);
+    release_assert(lev > 0 && "the formula is SAT");
+    verb_print(2, "[rst] trail UNSAT, highest lev in core: " << lev
+        << " dec lev: " << dec_level() << " core sz: " << sat_solver->get_conflict().size());
+    stats.rst_unsat++;
+    go_back_to(lev);
+    decisions.top().mark_branch_unsat();
+    stats.rst_time += cpu_time() - my_time;
+    return RstRet::backtrack;
+  }
+  if (sat == CMSat::l_Undef) {
+    stats.rst_skip_sat++;
+    stats.rst_time += cpu_time() - my_time;
+    return RstRet::none;
+  }
+
+  stats.num_restarts++;
+  readjust_for_restart();
+  verb_print(2, "[rst] restarting from lev " << dec_level() << " confl: " << stats.conflicts);
+  stats.rst_levels_undone += dec_level();
+  while (dec_level() > 0) {
+    reactivate_comps_and_backtrack_trail(false);
+    decisions.pop_back();
+  }
+  decisions.top().reset_act_branch();
+  comp_manager->clean_remain_comps_of(decisions.top());
+  decisions.top().reset_remain_comps();
+  bool const ret = propagate();
+  assert(ret && "the trail is a subset of a propagated one");
+  CHECK_PROPAGATED_DO(check_all_propagated_conflicted());
+  stats.rst_time += cpu_time() - my_time;
+  return RstRet::none;
+}
+
+void Counter::readjust_for_restart() {
   // Decay TD weight so stale scores have less influence after each restart
   if (conf.td_weight_restart_decay < 1.0) {
     // The floor must never RAISE the weight: it may have been set below the
@@ -1809,7 +1882,6 @@ bool Counter::restart_if_needed() {
   }
   verb_print(2, "[rst] new config. decide: " << conf.decide
     << " polar_type: " << conf.polar_type);
-  return true;
 }
 
 // returns cube in `c`. Uses LEFT/RIGHT branch

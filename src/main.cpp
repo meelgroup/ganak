@@ -359,6 +359,8 @@ void add_ganak_options()
     // Restart options
     add_arg("--rstfirst", conf.first_restart, "Run restarts");
     add_arg("--restart", conf.do_restart, "Run restarts");
+    add_arg("--rstmintw", conf.rst_min_tw, "No restarts if the TD width is below this");
+    add_arg("--rstsatconfl", conf.rst_sat_confl, "Conflict budget of the SAT call that checks the trail extends to a model before a restart");
     add_arg("--bjdefer", conf.bj_defer, "A backjump keeps the finished comps of the level it jumps to, and they are only dropped if that level's branch turns out UNSAT");
     add_arg("--rsttype", conf.restart_type, "Check count at every step");
     add_arg("--rstcheckcnt", conf.do_cube_check_count, "Check the count of each cube. 1 = use ganak itself without restart. 2 = use CMS one-by-one counting");

@@ -54,6 +54,8 @@ struct CounterConfiguration {
   int compile_check = 0;
 
   int do_restart = 0;
+  uint64_t rst_sat_confl = 20000; // budget of the SAT call that guards the kept cache at a restart
+  int rst_min_tw = 20; // no restarts below this TD width
   int bj_defer = 1; // backjump: keep the target level's finished comps, drop them if it turns out UNSAT
   uint64_t first_restart = 20000U;
   uint64_t maximum_cache_size_MB = 2500;

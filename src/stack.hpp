@@ -243,6 +243,11 @@ public:
   [[nodiscard]] const FF& get_branch_sols() const { return branch_mc[act_branch]; }
   [[nodiscard]] const FF& get_model_side(int side) const { return branch_mc[side]; }
   void zero_out_branch_sol() { branch_mc[act_branch] = nullptr; }
+  void reset_act_branch() {
+    branch_mc[act_branch] = nullptr;
+    branch_unsat[act_branch] = false;
+    branch_zero[act_branch] = false;
+  }
   [[nodiscard]] FF total_model_count() const {
     if (is_indep) {
       if (is_zero(0)) return val_or_zero(1);

@@ -1,11 +1,17 @@
 c c Random 3-CNF, 70 vars, 280 clauses (seed 7): 2472 models, the same with
-c c --cache 0 and --td 0. It has backjumps, so it checks what --bjdefer keeps
-c c or cuts in the cache around them.
+c c --cache 0 and --td 0. It has backjumps, so it checks what --bjdefer and
+c c restarts keep or cut in the cache around them.
 c c RUN: %solver --arjun 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 --bjdefer 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 --bjdefer 1 --maxcache 1 --lru 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 --bjdefer 1 --threads 2 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --restart 1 --rstmintw 0 --rsttype 7 --rstfirst 3 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --restart 1 --rstmintw 0 --rsttype 7 --rstfirst 3 --bjdefer 0 --rstreadjust 0 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --restart 1 --rstmintw 0 --rsttype 7 --rstfirst 3 --rstsatconfl 1 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --restart 1 --rstmintw 0 --rsttype 8 --rstfirst 1 --maxcache 1 %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --arjun 0 --restart 1 --rstmintw 0 --rsttype 8 --rstfirst 1 --threads 2 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --mode 1 --arjun 0 --bjdefer 1 %s | %OutputCheck %s --check-prefix=FRAC
+c c RUN: %solver --mode 1 --arjun 0 --restart 1 --rstmintw 0 --rsttype 7 --rstfirst 3 %s | %OutputCheck %s --check-prefix=FRAC
 c c INT: ^s SATISFIABLE$
 c c INT: ^c s exact arb int 2472$
 c c FRAC: ^c s exact arb frac 2472$

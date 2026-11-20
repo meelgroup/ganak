@@ -1312,7 +1312,7 @@ bool Counter::chrono_check() {
   if (data.bOnlyOneLitFromHighest) {
     debug_print(COLYEL2  << __func__ << " -- going back to " << data.nHighestLevel-1
         << " curlev: " << dec_level());
-    go_back_to(data.nHighestLevel-1);
+    go_back_to(data.nHighestLevel-1, true);
     VERBOSE_DEBUG_DO(print_trail());
     debug_print(COLYEL2  << __func__ << " went back -- now Declev: " << dec_level());
     return true;
@@ -2364,7 +2364,7 @@ void Counter::print_trail(bool check_entail, bool check_anything) const {
   if (check_anything) check_trail(check_entail);
 }
 
-void Counter::go_back_to(int32_t backj) {
+void Counter::go_back_to(int32_t backj, bool may_keep) {
   debug_print("going back to lev: " << backj << " dec level now: " << dec_level());
   while(dec_level() > backj) {
     debug_print("at dec lit: " << top_dec_lit() << " lev: " << dec_level()
@@ -2379,7 +2379,14 @@ void Counter::go_back_to(int32_t backj) {
     decisions.top().zero_out_branch_sol();
     compiler->branch_reset();
     if (!sat_mode()) {
-      comp_manager->remove_cache_pollutions_of(decisions.top());
+      if (may_keep && dec_level() == backj && conf.bj_defer) {
+        // Its finished comps stay valid unless this branch turns out UNSAT,
+        // and then removing its pollution removes them too
+        const CacheEntryID from = comp_manager->pollution_start_of(decisions.top());
+        auto& kf = decisions.top().kept_from;
+        if (from != 0 && (kf == 0 || from < kf)) kf = from;
+        stats.bj_deferred++;
+      } else comp_manager->remove_cache_pollutions_of(decisions.top());
       comp_manager->clean_remain_comps_of(decisions.top());
       decisions.top().reset_remain_comps();
     }
@@ -2543,7 +2550,8 @@ RetState Counter::resolve_conflict() {
     // (which derived it themselves) and by its own level: not decomposable.
     // Backjumping to its level resets that branch, so it is compiled once.
     // (Also in SAT mode: a lit it asserts below its start would be lost too.)
-    go_back_to(compiler->active() ? lev_to_set : backj-1);
+    if (compiler->active()) go_back_to(lev_to_set);
+    else go_back_to(backj-1, !sat_mode());
     auto ant = add_uip_confl_cl(uip_clause);
     set_lit(uip_clause[0], lev_to_set, ant);
     VERBOSE_DEBUG_DO(print_trail());
@@ -5093,6 +5101,9 @@ void Counter::init_and_preproc() {
 
   // This below will initialize the disjoint component analyzer (ana)
   comp_manager->initialize(watches, alloc.get(), long_irred_cls);
+  comp_manager->get_cache_if().set_anchor_source([this](vector<CacheEntryID*>& a) {
+    for (auto& lev : decisions) if (lev.kept_from != 0) a.push_back(&lev.kept_from);
+  });
   bce = comp_manager->get_ana().get_bce();
   for(const auto& l: unit_cls) {
     if (val(l) == X_TRI) set_lit(l, 0);

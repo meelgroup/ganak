@@ -54,6 +54,7 @@ struct CounterConfiguration {
   int compile_check = 0;
 
   int do_restart = 0;
+  int bj_defer = 1; // backjump: keep the target level's finished comps, drop them if it turns out UNSAT
   uint64_t first_restart = 20000U;
   uint64_t maximum_cache_size_MB = 2500;
   int restart_type = 7; // conflicts, luby

@@ -104,7 +104,9 @@ public:
 
   // skip_missing=false: assert all comps exist in cache (default)
   // skip_missing=true:  silently skip comps not in cache
-  void remove_cache_pollutions_of(const StackLevel &top, bool skip_missing = false);
+  void remove_cache_pollutions_of(StackLevel &top, bool skip_missing = false);
+  CacheEntryID pollution_start_of(const StackLevel &top) const;
+  CompCacheIF& get_cache_if() { return *cache; }
 
   // MurmurHash3_x64_128's API takes a 32-bit seed
   uint32_t hash_seed;

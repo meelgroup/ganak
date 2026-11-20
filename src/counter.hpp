@@ -347,7 +347,7 @@ public:
   void set_lit(const Lit lit, int32_t dec_lev, Antecedent ant = Antecedent());
   void unset_lit(Lit lit);
   LiteralIndexedVector<LitWatchList> watches;
-  void go_back_to(int32_t backj);
+  void go_back_to(int32_t backj, bool may_keep = false);
   void reactivate_comps_and_backtrack_trail([[maybe_unused]] bool check_ws = true);
   inline VarData& var(const Lit lit) { return var_data[lit.var()]; }
   inline VarData& var(const uint32_t v) { return var_data[v]; }

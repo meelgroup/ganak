@@ -104,7 +104,7 @@ public:
   void store_value(CacheEntryID id, const FF& model_count) override;
   void debug_mem_data() const override;
 #ifdef SLOW_DEBUG
-  void check_removal(CacheEntryID from, const vector<CacheEntryID>& roots) const override;
+  void check_removal(CacheEntryID from, const vector<CacheEntryID>& roots, CacheEntryID kept_father) const override;
 #endif
 
 private:
@@ -137,6 +137,7 @@ private:
   const vector<Comp*>* comp_stack = nullptr;
   // eviction: (old id, new id) of the entries that are not deletable, i.e. on the comp stack
   vector<std::pair<CacheEntryID, CacheEntryID>> moved;
+  vector<CacheEntryID*> anchors;
   // d-DNNF only: CacheEntryID -> compiled sub-DAG node id. Lazily sized; -1 = none.
   std::vector<int> compile_nodes;
 #ifdef SLOW_DEBUG
@@ -266,10 +267,15 @@ uint64_t CompCache<T>::remove_from(const CacheEntryID from) {
 // descendants: every other removed entry descends from a removed one, and a
 // descendant always has a higher id than its father
 template<typename T>
-void CompCache<T>::check_removal(const CacheEntryID from, const vector<CacheEntryID>& roots) const {
+void CompCache<T>::check_removal(const CacheEntryID from, const vector<CacheEntryID>& roots,
+    const CacheEntryID kept_father) const {
   for (CacheEntryID id = from; id < entry_base.size(); id++) {
     const bool is_root = std::find(roots.begin(), roots.end(), id) != roots.end();
     if (is_root) continue;
+    if (kept_father != 0 && dbg_father[id] == kept_father) {
+      assert(entry(id).is_deletable());
+      continue;
+    }
     assert(dbg_father[id] >= from && "removing an entry that is not a descendant");
     assert(entry(id).is_deletable() && "removing a non-root entry that is on the stack");
   }
@@ -349,9 +355,15 @@ bool CompCache<T>::delete_some_entries() {
   remap[1] = 1;
 #endif
   moved.clear();
+  anchors.clear();
+  if (anchor_source) anchor_source(anchors);
+  std::sort(anchors.begin(), anchors.end(), [](const CacheEntryID* a, const CacheEntryID* b) { return *a < *b; });
+  size_t next_anchor = 0;
   uint64_t num = 0;
   CacheEntryID w = 2;
   for (CacheEntryID r = 2; r < entry_base.size(); r++) {
+    // a truncation from r must remove what survives of r and all after it
+    while (next_anchor < anchors.size() && *anchors[next_anchor] <= r) *anchors[next_anchor++] = w;
     T& e = entry(r);
     // conf.lru_eviction=1: evict least-recently-used
     // conf.lru_eviction=0: evict most-recently-used
@@ -375,6 +387,7 @@ bool CompCache<T>::delete_some_entries() {
 #endif
     w++;
   }
+  for (; next_anchor < anchors.size(); next_anchor++) *anchors[next_anchor] = w;
   entry_base.shrink_(entry_base.size() - w);
   if (compile_nodes.size() > w) compile_nodes.resize(w);
   SLOW_DEBUG_DO(dbg_father.resize(w));

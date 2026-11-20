@@ -37,7 +37,7 @@ CompManager::CompManager(const CounterConfiguration& config,
 
 // Entries are in creation order, and everything created after top's comps is
 // their descendant: removing them all is a truncation.
-void CompManager::remove_cache_pollutions_of(const StackLevel &top, bool skip_missing) {
+void CompManager::remove_cache_pollutions_of(StackLevel &top, bool skip_missing) {
   // all processed comps are found in [top.remaining_comps_ofs(), comp_stack.size())
   assert(top.remaining_comps_ofs() <= comp_stack.size());
   assert(top.super_comp() != 0);
@@ -50,16 +50,27 @@ void CompManager::remove_cache_pollutions_of(const StackLevel &top, bool skip_mi
     release_assert(cache->exists(id));
     from = std::min(from, id);
   }
+  if (top.kept_from != 0) from = std::min<CacheEntryID>(from, top.kept_from);
   if (from != std::numeric_limits<CacheEntryID>::max()) {
 #ifdef SLOW_DEBUG
     vector<CacheEntryID> roots;
     for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++)
       roots.push_back(comp_stack[u]->id());
-    cache->check_removal(from, roots);
+    cache->check_removal(from, roots, top.kept_from ? get_super_comp(top).id() : 0);
 #endif
     stats.cache_pollutions_removed += cache->remove_from(from);
   }
+  top.kept_from = 0;
   stats.cache_pollutions_called++;
+}
+
+// Where remove_cache_pollutions_of(top) would truncate the cache from, 0 = nowhere
+CacheEntryID CompManager::pollution_start_of(const StackLevel &top) const {
+  CacheEntryID from = std::numeric_limits<CacheEntryID>::max();
+  for (uint64_t u = top.remaining_comps_ofs(); u < comp_stack.size(); u++)
+    if (cache->exists(comp_stack[u]->id())) from = std::min(from, comp_stack[u]->id());
+  if (from == std::numeric_limits<CacheEntryID>::max()) return 0;
+  return from;
 }
 
 // This creates potential component, checks if it's already in the

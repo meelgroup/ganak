@@ -112,6 +112,7 @@ void DataAndStatistics::print_short(const Counter* counter, const std::unique_pt
     << setw(5) << cube_lit_flp);
 
   verb_print(1, "tot restarts                   " << setw(5) << num_restarts);
+  verb_print(1, "bj deferred                    " << setw(5) << bj_deferred);
 
   verb_print(1, "comp sortsK/avg sz             "
     << setw(5) << comp_sorts/1000 << " / "

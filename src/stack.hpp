@@ -67,6 +67,10 @@ public:
   }
 
   uint32_t var = 0;
+  // Cache entries from this id on were kept by a backjump to this level, see
+  // Counter::go_back_to(): removing this level's cache pollution removes them
+  // too. 0 = none
+  uint32_t kept_from = 0;
   void reset() {
     act_branch = 0;
     branch_unsat = {};
@@ -134,6 +138,7 @@ public:
   void change_to_right_branch() {
     assert(act_branch == false);
     act_branch = true;
+    kept_from = 0; // the left branch finished, what it kept is like any finished comp
     SLOW_DEBUG_DO(assert(is_zero(act_branch)));
   }
 

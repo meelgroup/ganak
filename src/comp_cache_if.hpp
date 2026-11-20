@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "statistics.hpp"
 #include <gmpxx.h>
 #include "stack.hpp"
+#include <functional>
 
 namespace GanakInt {
 
@@ -49,6 +50,9 @@ public:
   // out_node above). No-op unless compiling.
   virtual void set_compile_node(CacheEntryID, int) {}
   virtual void make_entry_deletable(CacheEntryID id) = 0;
+  // Ids held outside the cache, remapped by eviction like the comp stack's
+  void set_anchor_source(std::function<void(vector<CacheEntryID*>&)> f) { anchor_source = std::move(f); }
+  std::function<void(vector<CacheEntryID*>&)> anchor_source;
   [[nodiscard]] virtual uint64_t get_num_entries_used() const = 0;
   [[nodiscard]] virtual uint64_t get_max_num_entries() const = 0;
   [[nodiscard]] virtual bool exists(CacheEntryID id) const = 0;
@@ -58,7 +62,7 @@ public:
   virtual void store_value(CacheEntryID id, const FF& model_count) = 0;
   virtual void debug_mem_data() const = 0;
 #ifdef SLOW_DEBUG
-  virtual void check_removal(CacheEntryID from, const vector<CacheEntryID>& roots) const = 0;
+  virtual void check_removal(CacheEntryID from, const vector<CacheEntryID>& roots, CacheEntryID kept_father) const = 0;
 #endif
 };
 

@@ -2595,6 +2595,9 @@ only_dirs = [
     # "out-ganak-mccomp2324-2791823-2", # local search cover
     "out-ganak-mccomp2324-2799164-1", # bce
     "out-ganak-mccomp2324-2827345-", # update arjun, other stuff(?)
+    "out-ganak-mccomp2324-2872197-1", # new cache
+    "out-ganak-mccomp2324-2887638", # improved vivif
+    "out-ganak-mccomp2324-2890750", # improved subsume
 
 ]
 # only_dirs = [

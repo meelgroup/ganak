@@ -555,6 +555,17 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+  add_executable(frontier-count-test tests/frontier_counts.cpp)
+  target_include_directories(frontier-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME frontier_counts COMMAND frontier-count-test)
+  add_executable(selector-count-test tests/selector_counts.cpp)
+  target_include_directories(selector-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(selector-count-test PRIVATE PkgConfig::GMP)
+  add_test(NAME selector_counts COMMAND selector-count-test)
+  add_executable(color-count-test tests/color_counts.cpp)
+  target_include_directories(color-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(color-count-test PRIVATE PkgConfig::GMP)
+  add_test(NAME color_counts COMMAND color-count-test)
 
   # Property-based d-DNNF tests: generate random CNFs, brute-force the true
   # count/model set as an oracle, and check the emitted circuit against it.

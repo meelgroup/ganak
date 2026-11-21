@@ -26,6 +26,9 @@ THE SOFTWARE.
 #include <cryptominisat5/solvertypesmini.h>
 
 #include "ganak.hpp"
+#include "grouped_sweep.hpp"
+#include "color_sweep.hpp"
+#include "selector_sweep.hpp"
 #include "GitSHA1.hpp"
 #include "common.hpp"
 #include "time_mem.hpp"
@@ -49,6 +52,7 @@ THE SOFTWARE.
 #include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
 
+static bool color_root = true;
 static constexpr uint32_t max_digit_precision = 1e6;
 
 using namespace GanakInt;
@@ -309,6 +313,16 @@ void add_ganak_options()
     add_arg("--cachetime", conf.cache_time_update, "2 = set to mid-point");
     add_arg("--lru", conf.lru_eviction, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
+    add_arg("--frontierminvars", conf.frontier_min_vars, "Minimum component variables for sweep");
+    add_arg("--frontierbucket", conf.frontier_bucket, "Enable the Boolean bucket kernel (0 skips it and continues to sparse sweep)");
+    add_arg("--frontierprofile", conf.frontier_profile, "Sweep diagnostics: 1 counts and size profiles, 2 also times each Boolean kernel");
+    add_arg("--mixedjobs", conf.mixed_jobs, "Job split: 0 variables, 1 most frequent OR, 2 worst-first propagation score, 3 aggregate score with one-variable slack");
+    add_arg("--profilejobs", conf.profile_jobs, "Report parallel makespan diagnostics");
+    add_arg("--colorroot", color_root, "Use verified graph-color counting at the grouped root");
+    add_arg("--groupedsweep", conf.grouped_sweep, "Grouped root and residual counting: 0 off, 1 fixed planning, 2 adaptive planning and probes");
+    add_arg("--frontierstates", conf.frontier_states, "Maximum sparse states or outgoing table entries per layer (0 disables)");
+    add_arg("--separatorbranch", conf.separator_branch, "Prefer balanced one- or two-variable separators");
+
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, "Run BuDDy");
     add_arg("--bce", conf.do_bce, "Dynamic blocked clause elimination on non-indep vars during search");
@@ -410,6 +424,10 @@ void parse_supported_options(int argc, char** argv) {
       do_puura = 0;
       num_threads = 1;
       cout << "c o [compile] d-DNNF compilation mode -> " << conf.compile_fname << endl;
+    }
+    if (conf.mixed_jobs < 0 || conf.mixed_jobs > 3) {
+      cerr << "ERROR: mixedjobs must be between 0 and 3, inclusive" << endl;
+      exit(EXIT_FAILURE);
     }
     if (bits_jobs < 0 || bits_jobs > 20) {
       cerr << "ERROR: bitsjobs must be between 0 and 20, inclusive" << endl;
@@ -596,9 +614,10 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
     mpfr_clear(e);
 }
 
-void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
+void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time, const mpz_class* grouped=nullptr) {
     FF cnt = cnf.get_multiplier_weight()->dup();
-    if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
+    if (grouped) *cnt *= ArjunNS::FMpz(*grouped);
+    else if (!cnt->is_zero()) *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
 
@@ -795,6 +814,55 @@ int main(int argc, char *argv[]) {
   cnf.check_cnf_vars();
   verb_print(1, "CNF projection set size: " << cnf.get_sampl_vars().size());
 
+  // Preserve the original scopes before preprocessing rewrites the formula.
+  if (conf.grouped_sweep && mode == 0 && !cnf.get_weighted() && !cnf.get_projected() &&
+      cnf.get_sampl_vars().size() == cnf.nVars() && cnf.nVars() <= 200000 &&
+      conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+    const double root_start = conf.frontier_profile ? cpu_time() : 0;
+    if (color_root) {
+      if (auto colors = GanakInt::color_sweep::solve(cnf.nVars(), cnf.get_clauses())) {
+        cout << "c grouped root color count finished" << endl;
+        if (conf.frontier_profile)
+          cout << "c grouped root result finished cpu " << cpu_time()-root_start << endl;
+        Ganak counter(conf, fg);
+        run_weighted_counter(counter, cnf, start_time, &*colors);
+        return 0;
+      }
+    }
+    GanakInt::grouped::Factors groups;
+    bool eligible = true;
+    std::optional<GanakInt::selector::Encoding> selectors;
+    if (GanakInt::selector::Encoding::fits(cnf.nVars(), cnf.get_clauses().size()))
+      selectors.emplace(cnf.nVars());
+    for (const auto &cl : cnf.get_clauses()) {
+      std::vector<int> lits;
+      for (auto l : cl)
+        lits.push_back((l.sign() ? -1 : 1) * int(l.var() + 1));
+      if (selectors && !selectors->add(lits)) selectors.reset();
+      if (eligible) eligible = groups.add(lits);
+      if (!eligible && !selectors) break;
+    }
+    GanakInt::selector::RootStats selector_stats;
+    auto result = selectors ? selectors->solve(&selector_stats) : std::nullopt;
+    if (result)
+      cout << "c grouped root selector blocks " << selector_stats.blocks
+           << " pairs-per-block " << selector_stats.pairs_per_block
+           << " rows " << selector_stats.rows
+           << " method " << (selector_stats.witness_search ? "witness-search" : "subset-transform")
+           << " work " << selector_stats.work << endl;
+    else if (eligible) {
+      result = GanakInt::grouped::solve(groups, cnf.nVars(), conf.grouped_sweep == 2);
+      if (result) cout << "c grouped root scopes " << groups.factors.size() << endl;
+    }
+    if (conf.frontier_profile)
+      cout << "c grouped root result " << (result ? "finished" : "declined")
+           << " cpu " << cpu_time() - root_start << endl;
+    if (result) {
+      Ganak counter(conf, fg);
+      run_weighted_counter(counter, cnf, start_time, &*result);
+      return 0;
+    }
+  }
   // Run Arjun
   if (!do_arjun) {
     cnf.renumber_sampling_vars_for_ganak();

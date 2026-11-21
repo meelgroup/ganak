@@ -176,12 +176,14 @@ public:
   }
 
   uint32_t get_max_clid() const { return max_clid; }
+  const std::vector<Lit>& frontier_clause(uint32_t id) const { return frontier_clauses.at(id); }
   uint32_t get_bin_cls() const { return archetype.num_bin_cls; }
   uint32_t get_max_var() const { return max_var; }
   CompArchetype& get_archetype() { return archetype; }
   BCE* get_bce() { return bce.get(); }
 
 private:
+  std::vector<std::vector<Lit>> frontier_clauses;
   // the id of the last clause
   // note that clause ID is the clause number,
   // different from the offset of the clause in the literal pool

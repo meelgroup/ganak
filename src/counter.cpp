@@ -21,6 +21,9 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "counter.hpp"
+#include "frontier_tables.hpp"
+#include "grouped_sweep.hpp"
+#include <atomic>
 
 #include <algorithm>
 #include <atomic>
@@ -1124,7 +1127,35 @@ void Counter::fix_weights() {
   debug_print("Fixed weights via " << __func__);
 }
 
+void Counter::print_frontier_sample(const char* phase) const {
+  if (!conf.frontier_profile) return;
+  cout << "c frontier sample phase=" << phase << " call=" << frontier_call_id
+       << " decisions=" << stats.decisions << " lookups=" << stats.num_cache_look_ups
+       << " hits=" << stats.num_cache_hits
+       << " word_calls=" << sweep_attempts << " word_returns=" << word_finished
+       << " bucket_calls=" << bucket_attempts << " bucket_returns=" << bucket_finished
+       << " sparse_calls=" << sparse_attempts
+       << " sparse_returns=" << (sweep_finished - word_finished - bucket_finished)
+       << " grouped_attempts=" << grouped_attempts << " grouped_returns=" << grouped_finished
+       << " hook_cpu_s=" << frontier_seconds;
+  if (conf.frontier_profile >= 2)
+    cout << " word_cpu_s=" << word_seconds << " bucket_cpu_s=" << bucket_seconds
+         << " sparse_cpu_s=" << sparse_seconds;
+  cout << endl;
+}
+
 FF Counter::outer_count() {
+  if (conf.frontier_profile) {
+    static std::atomic<uint64_t> serial{0};
+    frontier_call_id = ++serial;
+    print_frontier_sample("begin");
+  }
+  auto count = outer_count_impl();
+  print_frontier_sample("end");
+  return count;
+}
+
+FF Counter::outer_count_impl() {
   fix_weights();
   if (!conf.compile_fname.empty()) compiler = make_ddnnf_compiler(*this, conf.compile_fname);
   if (!ok) {
@@ -1220,6 +1251,18 @@ FF Counter::outer_count() {
       cerr << "ERROR: Not done, so we should be doing appmc, but it's weighted!!!" << endl;
       exit(EXIT_FAILURE);
     } else *cnt += *do_appmc_count();
+  }
+  if (conf.frontier_states > 0 || conf.separator_branch)
+    cout << "c frontier attempts " << sweep_attempts << " finished " << sweep_finished
+         << " peak " << sweep_peak << " separator " << separator_choices
+         << " cpu " << frontier_seconds << endl;
+  if (conf.grouped_sweep) cout << "c grouped residual " << grouped_attempts << " " << grouped_finished << endl;
+  if (conf.frontier_states > 0 || conf.frontier_profile)
+    cout << "c frontier finished words " << word_finished << " buckets " << bucket_finished
+         << " sparse " << sweep_finished-word_finished-bucket_finished << endl;
+  if (conf.frontier_profile) for (unsigned n=4; n<=62; ++n) {
+    if (sweep_calls_by_size[n]) cout << "c sweep_profile " << n << " " << sweep_calls_by_size[n]
+        << " " << sweep_rows_by_size[n] << " " << sweep_time_by_size[n] << endl;
   }
   compiler->finalize_and_write(/*unsat=*/false);
   collect_bce_stats();
@@ -1318,6 +1361,172 @@ bool Counter::chrono_check() {
   return false;
 }
 
+// Called on the cache miss selected by the parent, before pushing a decision.
+bool Counter::try_frontier(uint32_t& separator_var) {
+  auto& parent = decisions.top();
+  const auto index = parent.curr_remain_comp();
+  const auto& comp = *comp_manager->at(index);
+  const unsigned n = comp.nVars();
+  if (weighted() || compiler->active() || n < 4 || n > 62) return false;
+  const unsigned num_clauses = comp.num_long_cls() + comp.num_bin_cls()/2;
+  const bool sweep_enabled = conf.frontier_states > 0 && int(n) >= conf.frontier_min_vars;
+  bool wide_candidate = sweep_enabled && num_clauses > 64 && num_clauses <= 256;
+  if (wide_candidate && wide_skip) {
+    --wide_skip;
+    wide_candidate = false;
+  }
+  const bool sweep_candidate = (sweep_enabled && num_clauses <= 64) || wide_candidate;
+  const bool separator_candidate = conf.separator_branch && dec_level() < 8 && n >= 12
+                                   && num_clauses <= 256;
+  bool grouped_candidate=conf.grouped_sweep && grouped_attempts<32 && num_clauses>64;
+  if (!sweep_candidate && !separator_candidate && !grouped_candidate) return false;
+  const auto* vars = comp.vars_begin();
+  if (vars[n-1] >= indep_support_end) return false;
+  if (!dynamic_cast<const ArjunNS::FMpz*>(two.get())) return false;
+
+  const bool adaptive = conf.grouped_sweep == 2;
+  if (adaptive && grouped_candidate) {
+    if (grouped_skip) {
+      --grouped_skip;
+      grouped_candidate = false;
+      if (!sweep_candidate && !separator_candidate) return false;
+    } else {
+      // Count snapshot failures too. Reset the backoff on a completed sweep.
+      ++grouped_attempts;
+      grouped_misses = std::min(4u, grouped_misses + 1);
+      grouped_skip = (1u << (grouped_misses - 1)) - 1;
+    }
+  }
+  // Time eligible snapshots and kernels. Avoid two system calls on every
+  // cache miss whose component size already rules out all frontier methods.
+  struct HookTimer {
+    double& total;
+    double start;
+    ~HookTimer() { total += cpu_time() - start; }
+  } timer{frontier_seconds, cpu_time()};
+  if (wide_candidate) {
+    wide_misses = std::min(7u, wide_misses + 1);
+    wide_skip = (1u << (wide_misses - 1)) - 1;
+  }
+  std::vector<frontier::Clause> clauses;
+  if (num_clauses>65536) return false; // bound residual snapshot memory
+  clauses.reserve(num_clauses);
+  auto add_lit = [&](frontier::Clause& clause, Lit l) {
+    auto* p = std::lower_bound(vars, vars+n, l.var());
+    if (p == vars+n || *p != l.var()) return false;
+    (l.sign() ? clause.neg : clause.pos) |= frontier::bit(p-vars);
+    return true;
+  };
+  const auto& analyzer = comp_manager->get_ana();
+  for (auto it = comp.cls_begin(); *it != sentinel; ++it) {
+    frontier::Clause clause;
+    for (Lit l : analyzer.frontier_clause(*it)) {
+      if (val(l) == T_TRI) return false;
+      if (val(l) == X_TRI && !add_lit(clause, l)) return false;
+    }
+    clauses.push_back(clause);
+  }
+  for (unsigned i=0; i<n; ++i) {
+    if (val(vars[i]) != X_TRI) return false;
+    for (bool sign : {false,true}) {
+      Lit l(vars[i],sign);
+      for (const auto& w : watches[l].binaries) {
+        if (!w.irred() || val(w.lit()) == T_TRI) continue;
+        if (val(w.lit()) != X_TRI) return false;
+        if (w.lit() < l) continue;
+        frontier::Clause clause;
+        if (!add_lit(clause,l) || !add_lit(clause,w.lit())) return false;
+        clauses.push_back(clause);
+      }
+    }
+  }
+  // The analyzer counts binary incidences at both endpoints. Decline if
+  // its active component and our watch-based view disagree (e.g. BCE).
+  if (clauses.size() != num_clauses) return false;
+  auto finish = [&](const mpz_class &value) {
+    FF count = std::make_unique<ArjunNS::FMpz>(value);
+    if (conf.do_use_cache) comp_manager->save_count(index, count);
+    if (value != 0)
+      parent.include_solution(count);
+    else
+      parent.mark_branch_unsat();
+    parent.next_unproc_comp();
+  };
+  if (grouped_candidate) {
+    if (!adaptive) ++grouped_attempts;
+    grouped::Factors groups;
+    bool eligible = true;
+    for (auto clause : clauses) {
+      std::vector<int> lits;
+      for (unsigned v = 0; v < n; ++v) {
+        if (clause.pos & frontier::bit(v)) lits.push_back(int(v + 1));
+        if (clause.neg & frontier::bit(v)) lits.push_back(-int(v + 1));
+      }
+      if (!groups.add(lits)) {
+        eligible = false;
+        break;
+      }
+    }
+    if (eligible) {
+      if (auto result = grouped::solve(groups, n, adaptive)) {
+        grouped_misses = grouped_skip = 0;
+        ++grouped_finished;
+        finish(*result);
+        return true;
+      }
+    }
+  }
+  if (sweep_candidate) {
+    ++sweep_attempts;
+    const double t = conf.frontier_profile ? cpu_time() : 0;
+    const unsigned limit = conf.frontier_states;
+    auto result = frontier::word_count(n, clauses, limit);
+    const bool time_kernels = conf.frontier_profile >= 2;
+    double split = t;
+    auto account = [&](double& seconds) {
+      const double now = cpu_time();
+      seconds += now - split;
+      split = now;
+    };
+    if (time_kernels) account(word_seconds);
+    if (result) ++word_finished;
+    if (!result && conf.frontier_bucket && (wide_candidate || n >= 20)) {
+      ++bucket_attempts;
+      result = frontier::bucket_count(n, clauses, limit);
+      if (time_kernels) account(bucket_seconds);
+      if (result) ++bucket_finished;
+    }
+    if (!result && num_clauses <= 64) {
+      ++sparse_attempts;
+      // On binary-heavy residuals many open clauses can share one boundary
+      // variable. The assignment bound makes that visible to the orderer.
+      const bool variable_bound = n >= 20 && 2*std::count_if(clauses.begin(), clauses.end(),
+          [](auto c) { return std::popcount(c.vars()) == 2; }) >= num_clauses;
+      result = frontier::sweep(n, clauses, limit, sweep_peak,
+                               conf.frontier_profile ? &sweep_rows_by_size[n] : nullptr,
+                               variable_bound);
+      if (time_kernels) account(sparse_seconds);
+    }
+    if (conf.frontier_profile) {
+      ++sweep_calls_by_size[n];
+      sweep_time_by_size[n] += cpu_time()-t;
+    }
+    if (result) {
+      ++sweep_finished;
+      if (wide_candidate) wide_misses = wide_skip = 0;
+      mpz_class exact;
+      mpz_import(exact.get_mpz_t(), 1, 1, sizeof(*result), 0, 0, &*result);
+      finish(exact);
+      return true;
+    }
+  }
+  if (separator_candidate) {
+    int local = frontier::separator(n, clauses);
+    if (local >= 0) separator_var = vars[local];
+  }
+  return false;
+}
+
 void Counter::count_loop() {
   assert(mini_cubes.empty());
   RetState state = RESOLVED;
@@ -1332,13 +1541,21 @@ void Counter::count_loop() {
     // NOTE: find_next_remain_comp_of finds disjoint comps
     // we then solve them all with the decide_lit & calling findNext.. again
     while (comp_manager->find_next_remain_comp_of(decisions.top())) {
+      uint32_t separator_var = 0;
       // weighted zero != UNSAT, but an UNSAT comp here would pollute the cache
       if (decisions.top().branch_is_zero()) {
         is_indep = false;
         if (run_sat_solver(state, true)) continue;
         goto start11;
       }
-      decide_lit();
+      if (conf.frontier_states > 0 || conf.separator_branch || (conf.grouped_sweep && grouped_attempts<32)) {
+        const bool solved = try_frontier(separator_var);
+        if (solved) {
+          if (decisions.top().branch_found_unsat()) goto backtrack;
+          continue;
+        }
+      }
+      decide_lit(separator_var);
       if (!is_indep) {
         if (run_sat_solver(state, false)) goto backtrack;
         else goto start11;
@@ -1462,7 +1679,7 @@ bool Counter::get_polarity(const uint32_t v) const {
   return polarity;
 }
 
-void Counter::decide_lit() {
+void Counter::decide_lit(uint32_t separator_var) {
   VERBOSE_DEBUG_DO(print_all_levels());
   debug_print("new decision level is about to be created, lev now: " << dec_level() << " branch: " << decisions.top().is_right_branch());
   decisions.push_back(
@@ -1477,6 +1694,10 @@ void Counter::decide_lit() {
     default: assert(false);
   }
 
+  if (v && separator_var && is_indep) {
+    v = separator_var;
+    separator_choices++;
+  }
   if (v == 0) {
     decisions.pop_back();
     return;

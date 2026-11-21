@@ -93,6 +93,53 @@ count, i.e. all variables are assumed to be in the projection set.
 Beware to ALWAYS give the weight of both the literal and its negation or
 different counters may give different results.
 
+### Experimental frontier sweeps
+
+For exact unweighted counting, `--prob 0 --frontierstates 8192` tries
+bounded counting on residual cache misses with 4–62 variables. The solver
+chooses a method from the component it actually sees after propagation.
+
+* Small assignment spaces use 64-bit truth tables. Above 12 variables the
+  solver estimates the number of word updates before choosing this method.
+* For a larger residual, a minimum-degree elimination order estimates the
+  size of each intermediate table. Ganak uses this order if every outgoing
+  table fits the state limit and the sum of input table sizes fits a separate
+  work budget (16 times the state limit). Eliminating one binary variable
+  takes two input entries per outgoing entry.
+* For up to 64 clauses, the sparse sweep stores distinct sets of pending
+  clauses. It minimizes twice the estimated frontier width minus the number of
+  clauses the variable closes. Ties favor fewer open clauses, then variables
+  touching more previously seen clauses. For large binary-heavy components,
+  the number of assigned variables still touching the suffix also bounds the width.
+* Residuals with 65–256 clauses can use the truth tables or elimination.
+  Consecutive unsuccessful wide probes increase the interval between attempts.
+  If no bounded method completes, Ganak continues its ordinary component search.
+
+`--frontierprofile 1` reports completions by method. The per-size row counter
+counts visited sparse states. Hook CPU time covers eligible component snapshots
+and counting, excluding cache misses rejected by the initial size checks.
+
+Use `--groupedsweep 1` to enable grouped counting. At the root it recognizes
+disjoint blocks of positive variable pairs connected by selector clauses.
+A pair assignment describes a binary subcube. Each block counts subcubes that
+avoid its forbidden points, and a subset transform combines the independent
+blocks while counting every allowed choice of selectors. Recognition checks
+every clause. The implementation accepts up to eight blocks of at most 32 pairs
+and at most 20 selector rows for the subset transform. With two or three
+blocks and 21–32 rows, it instead branches on the row with the fewest feasible
+blocks. A branch can stop as soon as a block’s required points force it to
+contain a forbidden point. Both algorithms enforce a work budget.
+
+Grouped counting also combines clauses over the same variables into a
+factor and tries a bounded dense sweep before preprocessing and on eligible
+residuals. Mode `2` adjusts the amount of ordering search and spaces out
+unsuccessful residual probes. Both sweep options default to zero and can be
+enabled together with the following command.
+
+```shell
+ganak --prob 0 --frontierstates 8192 --groupedsweep 1 input.cnf
+```
+
 ### Accepted header directives
 
 | Directive | Meaning |

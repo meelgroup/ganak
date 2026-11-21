@@ -270,6 +270,7 @@ private:
 
   //Debug stuff
 public:
+  void print_frontier_sample(const char* phase) const;
   void check_trail(bool check_entail = true, bool force_check_units = false) const;
   void check_opt_sampling_determined() const;
   FF check_count_cms(const Cube& c);
@@ -367,7 +368,19 @@ public:
   double var_act(const uint32_t v) const {
     return lit_act.lit(v, false) + lit_act.lit(v, true); }
   DecisionStack decisions;
-  void decide_lit();
+  bool try_frontier(uint32_t& separator_var);
+  uint64_t sweep_attempts=0, sweep_finished=0, sweep_peak=0, separator_choices=0;
+  uint32_t grouped_attempts=0, grouped_finished=0;
+  unsigned grouped_misses=0, grouped_skip=0;
+  unsigned wide_misses=0, wide_skip=0;
+  uint64_t word_finished=0, bucket_finished=0;
+  uint64_t bucket_attempts=0, sparse_attempts=0, frontier_call_id=0;
+  FF outer_count_impl();
+  double frontier_seconds=0;
+  double word_seconds=0, bucket_seconds=0, sparse_seconds=0;
+  uint64_t sweep_calls_by_size[63]{}, sweep_rows_by_size[63]{};
+  double sweep_time_by_size[63]{};
+  void decide_lit(uint32_t separator_var);
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   struct ScoreParts { double td = 0; double act = 0; double freq = 0;
     double total() const { return td + act + freq; } };

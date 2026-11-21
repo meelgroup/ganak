@@ -75,6 +75,14 @@ struct CounterConfiguration {
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;
+  int grouped_sweep = 0;
+  int frontier_states = 0;
+  int frontier_min_vars = 4;
+  int frontier_profile = 0;
+  int frontier_bucket = 1;
+  int mixed_jobs = 0;
+  int profile_jobs = 0;
+  int separator_branch = 0;
   int do_buddy = 0;
   int do_bce = 1;
   uint64_t bce_occ_lim = 10000;

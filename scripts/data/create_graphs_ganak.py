@@ -16,6 +16,15 @@ RESET = "\033[0m"
 
 TMP_DIR = "tmp"
 
+#pngcairo sizes in pixels. Preproc charts scale their width (cumul: height) with the number of rows.
+PNG_SIZE = (600, 600)
+PNG_SIZE_CDF_WIDE = (900, 650)
+PNG_SIZE_BCE_SCATTER = (850, 800)
+PNG_SIZE_PIE = (800, 640)
+PNG_PREPROC_BAR_HEIGHT = 640
+PNG_PREPROC_BAR_PX_PER_CM = 40
+PNG_PREPROC_CUMUL_PX_PER_CM = 50
+
 #The run timeout, in seconds. PAR2 charges 2x this for every unsolved instance.
 TIMEOUT = 3600
 
@@ -527,7 +536,7 @@ set key bottom right
         parts = ", ".join(f"'{dat}' using 1:2 with lines lw 2 title '{gnuplot_name_cleanup(name)}'"
                           for dat, name in plots)
         f.write("plot " + parts + "\n")
-        f.write(f"set terminal pngcairo size 900,650\nset output '{png_file}'\nreplot\n")
+        f.write(f"set terminal pngcairo size {PNG_SIZE_CDF_WIDE[0]},{PNG_SIZE_CDF_WIDE[1]}\nset output '{png_file}'\nreplot\n")
     console_title = "TD time CDF"
     print(f"\n{BLUE}{console_title}{RESET}")
     print(f"  PDF: {pdf_file}  PNG: {png_file}")
@@ -755,7 +764,7 @@ set arrow from 0.1,{TIMEOUT} to {to_pos*1.3},{TIMEOUT} nohead dt 3
                       "x/2 with lines lc 'gray' dt 2 notitle",
                       "x*2 with lines lc 'gray' dt 2 notitle"]
             f.write("plot " + ", ".join(parts) + "\n")
-            f.write(f"set terminal pngcairo size 850,800\nset output '{png}'\nreplot\n")
+            f.write(f"set terminal pngcairo size {PNG_SIZE_BCE_SCATTER[0]},{PNG_SIZE_BCE_SCATTER[1]}\nset output '{png}'\nreplot\n")
         print(f"\n{BLUE}BCE counting time scatter (dashed: 2x faster/slower){RESET}")
         print(f"  PDF: {pdf}  PNG: {png}")
         _gnuplot_run(gp, png)
@@ -776,7 +785,7 @@ set arrow from 1,0 to 1,100 nohead lc 'black'
 """)
             f.write("plot " + ", ".join(
                 f"'{d}' using 1:2 with steps lw 2 title '{gnuplot_name_cleanup(n)}'" for d, n in cdf) + "\n")
-            f.write(f"set terminal pngcairo size 900,650\nset output '{png}'\nreplot\n")
+            f.write(f"set terminal pngcairo size {PNG_SIZE_CDF_WIDE[0]},{PNG_SIZE_CDF_WIDE[1]}\nset output '{png}'\nreplot\n")
         print(f"\n{BLUE}BCE speedup CDF{RESET}")
         print(f"  PDF: {pdf}  PNG: {png}")
         _gnuplot_run(gp, png)
@@ -1160,7 +1169,7 @@ def print_distribution(table_todo, fname_like, col, label, xscale="linear", xmin
         with open(gp_file, "w") as f:
             for term, out in [
                 ('pdfcairo size 52cm,40cm background "#d0d0d0"', pdf_file),
-                ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
+                (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} background "#d0d0d0"',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
                 f.write(f'set output "{out}"\n')
@@ -1757,7 +1766,7 @@ def preproc_time_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
+            (f'pngcairo size {int(width_cm * PNG_PREPROC_BAR_PX_PER_CM)},{PNG_PREPROC_BAR_HEIGHT} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1824,7 +1833,7 @@ def preproc_efficiency_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
+            (f'pngcairo size {int(width_cm * PNG_PREPROC_BAR_PX_PER_CM)},{PNG_PREPROC_BAR_HEIGHT} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -1907,7 +1916,7 @@ def preproc_time_pie_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out, sz in [
             (f'pdfcairo size 20cm,16cm font ",18" background "#d0d0d0"', pdf_file, ""),
-            (f'pngcairo size 800,640 font ",12" background "#d0d0d0"',   png_file, ""),
+            (f'pngcairo size {PNG_SIZE_PIE[0]},{PNG_SIZE_PIE[1]} font ",12" background "#d0d0d0"',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -2046,7 +2055,7 @@ def preproc_share_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm:.0f}cm,40cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {int(width_cm * 40)},640 background "#d0d0d0"', png_file),
+            (f'pngcairo size {int(width_cm * PNG_PREPROC_BAR_PX_PER_CM)},{PNG_PREPROC_BAR_HEIGHT} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -2128,7 +2137,7 @@ def preproc_cumulative_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out in [
             (f'pdfcairo size {width_cm}cm,{height_cm:.0f}cm background "#d0d0d0"', pdf_file),
-            (f'pngcairo size {width_cm * 50},{int(height_cm * 50)} background "#d0d0d0"', png_file),
+            (f'pngcairo size {width_cm * PNG_PREPROC_CUMUL_PX_PER_CM},{int(height_cm * PNG_PREPROC_CUMUL_PX_PER_CM)} background "#d0d0d0"', png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')
@@ -2296,7 +2305,7 @@ def scatter_plot_time_pairs(matched_dirs, fname_like, verbose=False, pair_prefix
         with open(gp_file, "w") as f:
             for term, out in [
                 (f'pdfcairo size 15cm,15cm background "#d0d0d0"', pdf_file),
-                (f'pngcairo size 600,600 background "#d0d0d0"',   png_file),
+                (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} background "#d0d0d0"',   png_file),
             ]:
                 f.write(f'set terminal {term}\n')
                 f.write(f'set output "{out}"\n')
@@ -2347,7 +2356,7 @@ def generate_gnuplot(fname2_s, verbose=False):
     with open(gnuplotfn, "w") as f:
         for term, out in [
             ('pdfcairo size 65cm,45cm background "#d0d0d0"', pdf_file),
-            ('pngcairo size 600,600 background "#d0d0d0"',   png_file),
+            (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} background "#d0d0d0"',   png_file),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')

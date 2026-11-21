@@ -228,6 +228,9 @@ if(NOT WIN32)
         #add_cxx_flag_if_supported("-fvisibility=hidden")
     endif()
 
+    # Everything is built -fPIC, the static binary too. Without this GCC must assume an
+    # exported function can be interposed, so it does not inline it even within its own TU.
+    add_cxx_flag_if_supported("-fno-semantic-interposition")
     add_cxx_flag_if_supported("-mpopcnt")
     add_cxx_flag_if_supported("-msse4.2")
     add_cxx_flag_if_supported("-mpclmul")

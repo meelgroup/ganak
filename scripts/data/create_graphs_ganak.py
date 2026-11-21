@@ -32,6 +32,16 @@ SQL_CALL = "ganak_call"
 for m in range(10):
     SQL_CALL = f"replace({SQL_CALL},' --mode {m}','')"
 
+#Binaries are ganak_<ganak>_<arjun>_..._<cadiback>: display only the ganak hash
+BIN_HASHES_RE = r"^(?:\./)*(?:ganak)?_([0-9a-f]+)(?:_[0-9a-f]+)+"
+def short_call(call):
+    return re.sub(BIN_HASHES_RE, r"\1", call)
+_c = f"replace({SQL_CALL},'././ganak_','')"
+_us = f"instr({_c},'_')"
+_sp = f"instr({_c}||' ',' ')"
+SQL_CALL_SHORT = (f"CASE WHEN {_us} > 0 AND {_us} < {_sp}"
+                  f" THEN substr({_c},1,{_us}-1) || substr({_c},{_sp}) ELSE {_c} END")
+
 
 def convert_to_cdf(fname, fname2):
     with open(fname, "r") as f:
@@ -150,7 +160,7 @@ def build_csv_data(todo, matched_dirs, only_calls, not_calls, not_versions, fnam
 
             fname2 = fname + ".gnuplotdata"
             num_solved = convert_to_cdf(fname, fname2)
-            fname2_s.append([fname2, call, ver[:10], num_solved, dir])
+            fname2_s.append([fname2, short_call(call), ver[:10], num_solved, dir])
             table_todo.append([dir, ver])
     return fname2_s, table_todo
 
@@ -161,7 +171,7 @@ def print_summary_tables(table_todo, fname_like, full=False, verbose=False):
 
     compact_cols = [
         ("replace(dirname,'out-ganak-mc','')",                       "dirname"),
-        (f"replace({SQL_CALL},'././ganak_','')",                     "call"),
+        (SQL_CALL_SHORT,                                             "call"),
         ("sum(ganak_time is not null)",                              "solved"),
         ("COUNT(*)",                                                 "attempted"),
         ("ROUND(avg(conflicts)/(1000.0*1000.0), 2)",                 "av confM"),
@@ -2420,7 +2430,7 @@ for d in dirs:
   df1 = pd.read_sql_query(query, conn)
   df1['num'] = range(len(df1))
   dfs.append(df1)
-  names.append(d+" " +re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
+  names.append(d+" " +re.sub(r"^(\\./)*ganak_([0-9a-f]+)(_[0-9a-f]+)*", r"\\2", re.sub(r" --mode \\d+", "", df1['ganak_call'][0])))
 
 for i in range(len(dfs)):
     for c in dfs[i].columns:
@@ -2469,7 +2479,7 @@ for d in dirs:
     query = f"SELECT fname, {col1}, {col2}, ganak_call FROM data WHERE {col1} IS NOT NULL AND {col2} is not NULL and dirname='{d}' ORDER BY {colname}"
     df1 = pd.read_sql_query(query, conn)
     dfs.append(df1)
-    names.append(d + " " + re.sub(r" --mode \\d+", "", df1['ganak_call'][0]))
+    names.append(d + " " + re.sub(r"^(\\./)*ganak_([0-9a-f]+)(_[0-9a-f]+)*", r"\\2", re.sub(r" --mode \\d+", "", df1['ganak_call'][0])))
 
 conn.close()
 

@@ -1980,8 +1980,17 @@ def _display_png(png_file):
     if os.path.exists(png_file):
         with open(png_file, "rb") as fh:
             img_b64 = base64.b64encode(fh.read()).decode()
-        w, h = _png_dimensions(png_file)
-        print(f"\033]1337;File=inline=1;width={w}px;height={h}px:{img_b64}\a")
+        if os.environ.get("TERM") == "xterm-kitty" or "KITTY_WINDOW_ID" in os.environ:
+            #kitty ignores the iTerm2 escape; its own protocol needs <=4096-byte chunks
+            chunks = [img_b64[i:i+4096] for i in range(0, len(img_b64), 4096)]
+            out = []
+            for i, c in enumerate(chunks):
+                m = 1 if i < len(chunks) - 1 else 0
+                out.append(f"\033_G{'a=T,f=100,q=2,' if i == 0 else ''}m={m};{c}\033\\")
+            print("".join(out))
+        else:
+            w, h = _png_dimensions(png_file)
+            print(f"\033]1337;File=inline=1;width={w}px;height={h}px:{img_b64}\a")
 
 
 def _png_dimensions(png_file):

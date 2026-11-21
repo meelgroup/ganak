@@ -972,6 +972,7 @@ def main():
           delta_mem_MB INT,
           step_time FLOAT
         );
+        CREATE INDEX IF NOT EXISTS preproc_dirname ON preproc(dirname);
     """)
 
     data_rows = []

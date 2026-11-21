@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import functools
 import itertools
 import math
 import os
@@ -1223,6 +1224,11 @@ def print_sigabrt_files(table_todo, fname_like):
 
 def _preproc_has_data(matched_dirs):
     """Return True if the preproc table exists and has data for any of the matched dirs."""
+    return _preproc_has_data_cached(tuple(matched_dirs))
+
+
+@functools.cache
+def _preproc_has_data_cached(matched_dirs):
     con = sqlite3.connect("data.sqlite3")
     cur = con.cursor()
     try:
@@ -1232,9 +1238,8 @@ def _preproc_has_data(matched_dirs):
         if not matched_dirs:
             return False
         dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
-        cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql})")
-        count = cur.fetchone()[0]
-        return count > 0
+        cur.execute(f"SELECT 1 FROM preproc WHERE dirname IN ({dirs_sql}) LIMIT 1")
+        return cur.fetchone() is not None
     except Exception:
         return False
     finally:
@@ -1344,14 +1349,19 @@ def _preproc_file_label(matched_dirs):
 
 def _preproc_has_step_time(matched_dirs):
     """Return True if step_time column exists and has data for matched dirs."""
+    return _preproc_has_step_time_cached(tuple(matched_dirs))
+
+
+@functools.cache
+def _preproc_has_step_time_cached(matched_dirs):
     try:
         con = sqlite3.connect("data.sqlite3")
         cur = con.cursor()
         dirs_sql = ",".join("'" + d + "'" for d in matched_dirs)
-        cur.execute(f"SELECT COUNT(*) FROM preproc WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL")
-        count = cur.fetchone()[0]
+        cur.execute(f"SELECT 1 FROM preproc WHERE dirname IN ({dirs_sql}) AND step_time IS NOT NULL LIMIT 1")
+        found = cur.fetchone() is not None
         con.close()
-        return count > 0
+        return found
     except Exception:
         return False
 

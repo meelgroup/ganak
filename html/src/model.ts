@@ -317,17 +317,18 @@ function fill(p: number) {
   return "#ffffff";
 }
 
+// impossible: the evidence has probability 0, so no node has a probability.
 export function modelDot(m: GmModel, marg: Map<string, Q> | null, prior: Map<string, Q> | null,
-    evidence: Map<string, boolean>): string {
+    evidence: Map<string, boolean>, impossible = false): string {
   const idx = new Map(m.nodes.map((n, i) => [n.name, i]));
   const asked = new Set(m.stmts.filter((s) => s.kind !== "constraint").map((s) => Math.abs(s.lit)));
   const L: string[] = ['digraph model {', '  rankdir=LR; bgcolor="transparent"; nodesep=0.18; ranksep=0.5;',
     '  node [fontname="Helvetica", fontsize=11, style="filled", color="#7b8494", penwidth=1];',
     '  edge [color="#8a94a6", arrowsize=0.6];'];
   const nodeLine = (n: GmNode, i: number) => {
-    const p = marg?.get(n.name) ?? null;
+    const p = impossible ? null : marg?.get(n.name) ?? null;
     const pr = prior?.get(n.name) ?? null;
-    let ptxt = p ? "P = " + fmtP(p) : n.p ? "p = " + fmtP(Q.parse(n.p)) : "";
+    let ptxt = impossible ? "P undefined" : p ? "P = " + fmtP(p) : n.p ? "p = " + fmtP(Q.parse(n.p)) : "";
     if (p && pr && !pr.isZero() && evidence.size && p.cmp(pr) !== 0) {
       const r = p.toNumber() / pr.toNumber();
       if (p.isZero()) ptxt += "  ▼";
@@ -335,13 +336,14 @@ export function modelDot(m: GmModel, marg: Map<string, Q> | null, prior: Map<str
     }
     const title = n.anon ? (n.label || n.name) : (n.label || n.name);
     const sub = n.label && !n.anon ? `<BR/><FONT POINT-SIZE="8" COLOR="#6b7280">${esc(n.name)}</FONT>` : "";
-    const label = `<${esc(title)}${sub}<BR/><FONT POINT-SIZE="10">${esc(ptxt)}</FONT>>`;
+    // Graphviz rejects an empty <FONT></FONT> and then drops the whole label.
+    const label = `<${esc(title)}${sub}${ptxt ? `<BR/><FONT POINT-SIZE="10">${esc(ptxt)}</FONT>` : ""}>`;
     const ev = evidence.get(n.name);
     const shape = asked.has(n.var) ? 'shape=box, style="filled", peripheries=2'
       : n.kind === "def" ? 'shape=box, style="filled,rounded"' : n.anon ? "shape=ellipse, fontsize=9" : "shape=ellipse";
     const border = ev === undefined ? "" : `, penwidth=3, color="${ev ? "#16a34a" : "#dc2626"}"`;
     const tip = n.name + (n.text ? " = " + n.text : n.p ? `, probability ${n.p}` : "");
-    return `  n${i} [id="gm${i}", ${shape}, label=${label}, fillcolor="${fill(p ? p.toNumber() : n.p ? Q.parse(n.p).toNumber() : 1)}"${border}, tooltip="${esc(tip)}"];`;
+    return `  n${i} [id="gm${i}", ${shape}, label=${label}, fillcolor="${impossible ? "#f1f3f5" : fill(p ? p.toNumber() : n.p ? Q.parse(n.p).toNumber() : 1)}"${border}, tooltip="${esc(tip)}"];`;
   };
   const inChoice = new Set<string>();
   m.choices.forEach((c, ci) => {
@@ -699,7 +701,7 @@ async function updateEvidence(g = S.gen) {
 async function drawGraph(e: number): Promise<boolean> {
   const m = S.model!;
   const zeroEv = S.evidence.size > 0 && (!S.pe || S.pe.isZero());
-  const dot = modelDot(m, zeroEv ? null : S.marg, S.prior, S.evidence);
+  const dot = modelDot(m, S.marg, S.prior, S.evidence, zeroEv);
   const g = await D.renderDot(dot);
   if (e !== S.ev) return false;
   g.querySelectorAll<SVGGElement>("g.node").forEach((node) => {

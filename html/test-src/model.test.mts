@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import {
   MODEL_EXAMPLES, Q, fmtP, parseLits, batchFile, answers, impacts,
@@ -115,6 +116,54 @@ test("constraints are drawn, linked to what they mention", async () => {
   assert.match(dot, /c\d+ \[id="gc\d+", shape=hexagon.*label=<!\(rain &amp; sun\)>/);
   assert.equal((dot.match(/shape=hexagon/g) ?? []).length, 4);
 });
+
+// The page renders with viz.js, which is Graphviz: it rejects the same labels as dot.
+const HAS_DOT = spawnSync("dot", ["-V"]).status === 0;
+
+function renderSvg(dot: string): string {
+  const r = spawnSync("dot", ["-Tsvg"], { input: dot, encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stderr, "", r.stderr);
+  return r.stdout;
+}
+
+function assertNodesLabelled(svg: string, m: GmModel) {
+  const groups = svg.split('<g id="gm').slice(1);
+  assert.equal(groups.length, m.nodes.length);
+  for (const g of groups) assert.ok(g.slice(0, g.indexOf("</g>")).includes("<text"), "unlabelled node gm" + g.slice(0, 4));
+}
+
+test("impossible evidence: every node keeps its name, no probabilities", async () => {
+  const c = await compiled(HYD);
+  const v = (n: string) => c.model.nodes.find((x) => x.name === n)!.var;
+  const r = await c.bd(["count", "/c.bdnnf", "--cnf", "/m.cnf", "--assume", `${v("lost")},${-v("land_asap")}`]);
+  assert.equal(Q.parse(r.stdout.trim()).isZero(), true);
+  const dot = modelDot(c.model, null, null, new Map([["lost", true], ["land_asap", false]]), true);
+  assert.ok(!dot.includes("<FONT POINT-SIZE=\"10\"></FONT>"));
+  const lines = dot.split("\n").filter((l) => /^\s+n\d+ \[id=/.test(l));
+  assert.equal(lines.length, c.model.nodes.length);
+  for (const l of lines) {
+    assert.ok(l.includes("P undefined"), l);
+    assert.ok(!/">[pP] = /.test(l), l);
+    assert.ok(l.includes('fillcolor="#f1f3f5"'), l);
+  }
+  assert.match(lines.find((l) => l.includes("Loss of control"))!, /penwidth=3, color="#16a34a"/);
+  assert.match(lines.find((l) => l.includes("Land at the nearest airport"))!, /penwidth=3, color="#dc2626"/);
+  if (HAS_DOT) assertNodesLabelled(renderSvg(dot), c.model);
+});
+
+for (const ex of MODEL_EXAMPLES)
+  test(`example "${ex.name}": the graph renders, every node labelled`, { skip: !HAS_DOT && "no dot" }, async () => {
+    const c = await compiled(ex.text);
+    const base = parseLits((await c.bd(["lits", "/c.bdnnf", "--cnf", "/m.cnf"])).stdout);
+    const z = (base.get(1) ?? Q.zero).add(base.get(-1) ?? Q.zero);
+    const marg = new Map<string, Q>();
+    for (const n of c.model.nodes) if (n.var) marg.set(n.name, (base.get(n.var) ?? Q.zero).div(z));
+    const ev = new Map([[c.model.nodes[c.model.nodes.length - 1].name, true]]);
+    for (const dot of [modelDot(c.model, marg, marg, new Map()), modelDot(c.model, null, null, new Map()),
+      modelDot(c.model, marg, marg, ev, true)])
+      assertNodesLabelled(renderSvg(dot), c.model);
+  });
 
 test("errors come back with line and column", async () => {
   const t = await translate("event a 0.5\nb = a & c\nevent d 2\n");

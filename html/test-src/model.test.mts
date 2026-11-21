@@ -32,6 +32,7 @@ async function compiled(text: string) {
   return { ...t, bd };
 }
 
+const HTML_PAGE = readFileSync(path.join(HTML, "index.html"), "utf8");
 const HYD = MODEL_EXAMPLES.find((e) => e.name.startsWith("Airliner"))!.text;
 
 test("Q: exact arithmetic and display", () => {
@@ -198,7 +199,12 @@ test("highlighting: classes, lossless, no errors on the examples", () => {
   ]);
   const unesc = (h: string) => h.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
   for (const x of MODEL_EXAMPLES) {
-    assert.equal(unesc(gmHighlight(x.text)), x.text + "\n", x.name);
+    assert.equal(unesc(gmHighlight(x.text)), x.text, x.name);
     assert.ok(!gmTokens(x.text).some((t) => t.cls === "bad"), x.name);
   }
+  const cheat = HTML_PAGE.slice(HTML_PAGE.indexOf("<h2>The language</h2>"));
+  const snippets = [...cheat.slice(0, cheat.indexOf("</table>")).matchAll(/<code>(.*?)<\/code>/g)]
+    .map((m) => unesc(m[1]));
+  assert.ok(snippets.length >= 10);
+  for (const c of snippets) assert.ok(!gmTokens(c).some((t) => t.cls === "bad"), c);
 });

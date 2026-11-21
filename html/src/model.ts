@@ -140,14 +140,13 @@ export function gmTokens(s: string): GmTok[] {
 
 const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// The trailing newline makes a final empty line take up room, as it does in the textarea.
 export function gmHighlight(s: string): string {
   let h = "", at = 0;
   for (const t of gmTokens(s)) {
     h += escHtml(s.slice(at, t.b)) + `<span class="t-${t.cls}">${escHtml(s.slice(t.b, t.e))}</span>`;
     at = t.e;
   }
-  return h + escHtml(s.slice(at)) + "\n";
+  return h + escHtml(s.slice(at));
 }
 
 // ---- exact rationals ----
@@ -768,7 +767,8 @@ async function whatMatters(g = S.gen) {
 }
 
 function highlight() {
-  $("gm-hl-code").innerHTML = gmHighlight($<HTMLTextAreaElement>("gm-text").value);
+  // The newline makes a final empty line take up room, as it does in the textarea.
+  $("gm-hl-code").innerHTML = gmHighlight($<HTMLTextAreaElement>("gm-text").value) + "\n";
 }
 
 function setText(t: string) {
@@ -784,6 +784,7 @@ export function initModelTab(deps: Deps) {
   const sel = $<HTMLSelectElement>("gm-examples");
   MODEL_EXAMPLES.forEach((x, i) => sel.append(el("option", { value: String(i) }, x.name)));
   sel.addEventListener("change", () => setText(MODEL_EXAMPLES[Number(sel.value)].text));
+  document.querySelectorAll(".cheat table code").forEach((c) => c.innerHTML = gmHighlight(c.textContent ?? ""));
   const ta = $<HTMLTextAreaElement>("gm-text");
   const hl = $("gm-hl"), code = $("gm-hl-code");
   new ResizeObserver(() => {

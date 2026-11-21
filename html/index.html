@@ -128,7 +128,8 @@
     #gm-evidence { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
     #gm-graph .graph { max-height: none; }
     #gm-graph svg { max-width: 100%; height: auto; }
-    #gm-graph g.node:hover polygon, #gm-graph g.node:hover path, #gm-graph g.node:hover ellipse { stroke: var(--accent); stroke-width: 2.5; }
+    #gm-graph g.node:hover :is(polygon, path, ellipse) { stroke-width: 2.5; }
+    #gm-graph g.node.ev:hover :is(polygon, path, ellipse) { stroke-width: 5.5; }
     .cheat { font-size: 13px; }
     .cheat code { background: var(--code); padding: 0 4px; border-radius: 4px; }
     .cheat table td { padding: 2px 8px 2px 0; vertical-align: top; }

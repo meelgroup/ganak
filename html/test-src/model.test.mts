@@ -149,7 +149,11 @@ test("impossible evidence: every node keeps its name, no probabilities", async (
   }
   assert.match(lines.find((l) => l.includes("Loss of control"))!, /penwidth=3, color="#16a34a"/);
   assert.match(lines.find((l) => l.includes("Land at the nearest airport"))!, /penwidth=3, color="#dc2626"/);
-  if (HAS_DOT) assertNodesLabelled(renderSvg(dot), c.model);
+  if (HAS_DOT) {
+    const svg = renderSvg(dot);
+    assertNodesLabelled(svg, c.model);
+    assert.equal((svg.match(/<g id="gm\d+" class="node ev">/g) ?? []).length, 2);
+  }
 });
 
 for (const ex of MODEL_EXAMPLES)

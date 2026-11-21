@@ -341,7 +341,7 @@ export function modelDot(m: GmModel, marg: Map<string, Q> | null, prior: Map<str
     const ev = evidence.get(n.name);
     const shape = asked.has(n.var) ? 'shape=box, style="filled", peripheries=2'
       : n.kind === "def" ? 'shape=box, style="filled,rounded"' : n.anon ? "shape=ellipse, fontsize=9" : "shape=ellipse";
-    const border = ev === undefined ? "" : `, penwidth=3, color="${ev ? "#16a34a" : "#dc2626"}"`;
+    const border = ev === undefined ? "" : `, class="ev", penwidth=3, color="${ev ? "#16a34a" : "#dc2626"}"`;
     const tip = n.name + (n.text ? " = " + n.text : n.p ? `, probability ${n.p}` : "");
     return `  n${i} [id="gm${i}", ${shape}, label=${label}, fillcolor="${impossible ? "#f1f3f5" : fill(p ? p.toNumber() : n.p ? Q.parse(n.p).toNumber() : 1)}"${border}, tooltip="${esc(tip)}"];`;
   };

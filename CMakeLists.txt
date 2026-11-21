@@ -562,6 +562,10 @@ if(ENABLE_TESTING)
   target_include_directories(selector-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(selector-count-test PRIVATE PkgConfig::GMP)
   add_test(NAME selector_counts COMMAND selector-count-test)
+  add_executable(color-count-test tests/color_counts.cpp)
+  target_include_directories(color-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(color-count-test PRIVATE PkgConfig::GMP)
+  add_test(NAME color_counts COMMAND color-count-test)
 
   # Property-based d-DNNF tests: generate random CNFs, brute-force the true
   # count/model set as an oracle, and check the emitted circuit against it.

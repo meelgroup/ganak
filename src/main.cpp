@@ -27,6 +27,7 @@ THE SOFTWARE.
 
 #include "ganak.hpp"
 #include "grouped_sweep.hpp"
+#include "color_sweep.hpp"
 #include "selector_sweep.hpp"
 #include "GitSHA1.hpp"
 #include "common.hpp"
@@ -51,6 +52,7 @@ THE SOFTWARE.
 #include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
 
+static bool color_root = true;
 static constexpr uint32_t max_digit_precision = 1e6;
 
 using namespace GanakInt;
@@ -316,6 +318,7 @@ void add_ganak_options()
     add_arg("--frontierprofile", conf.frontier_profile, "Sweep diagnostics: 1 counts and size profiles, 2 also times each Boolean kernel");
     add_arg("--mixedjobs", conf.mixed_jobs, "Job split: 0 variables, 1 most frequent OR, 2 worst-first propagation score, 3 aggregate score with one-variable slack");
     add_arg("--profilejobs", conf.profile_jobs, "Report parallel makespan diagnostics");
+    add_arg("--colorroot", color_root, "Use verified graph-color counting at the grouped root");
     add_arg("--groupedsweep", conf.grouped_sweep, "Grouped root and residual counting: 0 off, 1 fixed planning, 2 adaptive planning and probes");
     add_arg("--frontierstates", conf.frontier_states, "Maximum sparse states or outgoing table entries per layer (0 disables)");
     add_arg("--separatorbranch", conf.separator_branch, "Prefer balanced one- or two-variable separators");
@@ -816,6 +819,16 @@ int main(int argc, char *argv[]) {
       cnf.get_sampl_vars().size() == cnf.nVars() && cnf.nVars() <= 200000 &&
       conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
     const double root_start = conf.frontier_profile ? cpu_time() : 0;
+    if (color_root) {
+      if (auto colors = GanakInt::color_sweep::solve(cnf.nVars(), cnf.get_clauses())) {
+        cout << "c grouped root color count finished" << endl;
+        if (conf.frontier_profile)
+          cout << "c grouped root result finished cpu " << cpu_time()-root_start << endl;
+        Ganak counter(conf, fg);
+        run_weighted_counter(counter, cnf, start_time, &*colors);
+        return 0;
+      }
+    }
     GanakInt::grouped::Factors groups;
     bool eligible = true;
     std::optional<GanakInt::selector::Encoding> selectors;

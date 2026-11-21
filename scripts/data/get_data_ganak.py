@@ -973,6 +973,7 @@ def main():
           step_time FLOAT
         );
         CREATE INDEX IF NOT EXISTS preproc_dirname ON preproc(dirname);
+        CREATE INDEX IF NOT EXISTS data_dirname_fname ON data(dirname, fname);
     """)
 
     data_rows = []

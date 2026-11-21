@@ -2604,10 +2604,12 @@ only_dirs = [
     # "out-ganak-mccomp2324-2791823-2", # local search cover
     # "out-ganak-mccomp2324-2799164-1", # bce
     # "out-ganak-mccomp2324-2827345-", # update arjun, other stuff(?)
-    "out-ganak-mccomp2324-2872197-1", # new cache
-    "out-ganak-mccomp2324-2887638", # improved vivif
-    "out-ganak-mccomp2324-2890750", # improved subsume
-    "out-ganak-mccomp2324-2893602",  # subsumption, chris-sweep
+    # "out-ganak-mccomp2324-2872197-1", # new cache
+    # "out-ganak-mccomp2324-2887638", # improved vivif
+    # "out-ganak-mccomp2324-2890750", # improved subsume
+    "out-ganak-mccomp2324-2893602-1",  # subsumption, chris-sweep
+    "out-ganak-mccomp2324-2893602-4",  # subsumption, chris-sweep
+    "out-ganak-mccomp2324-2898948",  # merging different branches, chris v2
 
 ]
 # only_dirs = [

@@ -125,7 +125,8 @@
     td.hi-down .p { color: var(--on); font-weight: 600; }
     .chips.inline { display: inline-flex; margin: 0; }
     button.chip { border: none; cursor: pointer; }
-    #gm-evidence { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+    #gm-evidence { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px;
+      min-height: calc(1.5em + 14px); /* a button's height: the graph stays put */ }
     #gm-graph .graph { max-height: none; }
     #gm-graph svg { max-width: 100%; height: auto; }
     #gm-graph g.node:hover :is(polygon, path, ellipse) { stroke-width: 2.5; }

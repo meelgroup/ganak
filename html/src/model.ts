@@ -387,25 +387,25 @@ export const MODEL_EXAMPLES: { name: string; text: string }[] = [
   {
     name: "Weather (constraints)",
     text: `# Constraints rule out impossible weather; every answer is conditioned on them.
-event sun       "Sun shines"       0.6
-event rain      "It rains"         0.3
-event clouds    "Overcast"         0.5
-event wind      "Windy"            0.3
-event sprinkler "Sprinkler is on"  0.4
+event sun     "Sun shines"       0.6
+event rain    "It rains"         0.3
+event clouds  "Overcast"         0.5
+event wind    "Windy"            0.3
+event sprinkl "Sprinkler is on"  0.4
 
-constraint !(rain & sun)          # it never rains while the sun shines
-constraint rain -> clouds         # no rain without clouds
-constraint !(sun & clouds)        # no sunshine when overcast
-constraint rain -> !sprinkler     # the sprinkler has a rain sensor
+constraint !(rain & sun)     # it never rains while the sun shines
+constraint rain -> clouds    # no rain without clouds
+constraint !(sun & clouds)   # no sunshine when overcast
+constraint rain -> !sprinkl  # the sprinkler has a rain sensor
 
-wet "The grass is wet" = rain | sprinkler
+wet "Grass is wet" = rain | sprinkl
 picnic "Picnic in the park" = sun & !wind & !wet
 umbrella "Take an umbrella" = rain | clouds & wind
 
 query rain
 query sun
 query rain given wet
-query sprinkler given wet
+query sprinkl given wet
 query picnic
 query umbrella given !sun
 `,

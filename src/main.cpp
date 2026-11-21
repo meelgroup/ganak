@@ -241,6 +241,7 @@ void add_ganak_options()
     add_arg("--arjunbackwmaxc", arjun_backw_maxc, "Arjun backw max confl");
     add_arg("--arjunoraclefindbins", arjun_oracle_find_bins, "Arjun's oracle should find bins or not");
     add_arg("--arjunoraclemult", simp_conf.oracle_mult, "Multiplier for Arjun's oracle timeout when it is called from Puura");
+    add_arg("--arjunoraclemult2", simp_conf.oracle_mult_pass2, "Extra multiplier for Arjun's oracle timeout in Puura's second pass (after cover-drop)");
     add_arg("--puuraoraclevivif", simp_conf.oracle_vivify, "Run Puura's main oracle vivification pass");
     add_arg("--puuraoraclesparsify", simp_conf.oracle_sparsify, "Run Puura's main oracle sparsification pass");
     add_arg("--puurabve", simp_conf.do_bve, "Run BVE in Puura");

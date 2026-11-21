@@ -204,7 +204,6 @@ public:
       set_branch_one();
     } else {
       if (is_zero(act_branch) || is_one(act_branch)) {
-        // assign in place: allocating a new count here was a large part of the runtime
         if (branch_mc[act_branch]) *branch_mc[act_branch] = *solutions;
         else branch_mc[act_branch] = solutions->dup();
       } else {

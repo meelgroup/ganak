@@ -18,7 +18,6 @@ TMP_DIR = "tmp"
 
 #pngcairo sizes in pixels. Preproc charts scale their width (cumul: height) with the number of rows.
 PNG_SIZE = (600, 600)
-PNG_SIZE_CDF_WIDE = (900, 650)
 PNG_SIZE_BCE_SCATTER = (850, 800)
 PNG_SIZE_PIE = (800, 640)
 PNG_PREPROC_BAR_HEIGHT = 640
@@ -536,7 +535,7 @@ set key bottom right
         parts = ", ".join(f"'{dat}' using 1:2 with lines lw 2 title '{gnuplot_name_cleanup(name)}'"
                           for dat, name in plots)
         f.write("plot " + parts + "\n")
-        f.write(f"set terminal pngcairo size {PNG_SIZE_CDF_WIDE[0]},{PNG_SIZE_CDF_WIDE[1]}\nset output '{png_file}'\nreplot\n")
+        f.write(f"set terminal pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]}\nset output '{png_file}'\nreplot\n")
     console_title = "TD time CDF"
     print(f"\n{BLUE}{console_title}{RESET}")
     print(f"  PDF: {pdf_file}  PNG: {png_file}")
@@ -785,7 +784,7 @@ set arrow from 1,0 to 1,100 nohead lc 'black'
 """)
             f.write("plot " + ", ".join(
                 f"'{d}' using 1:2 with steps lw 2 title '{gnuplot_name_cleanup(n)}'" for d, n in cdf) + "\n")
-            f.write(f"set terminal pngcairo size {PNG_SIZE_CDF_WIDE[0]},{PNG_SIZE_CDF_WIDE[1]}\nset output '{png}'\nreplot\n")
+            f.write(f"set terminal pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]}\nset output '{png}'\nreplot\n")
         print(f"\n{BLUE}BCE speedup CDF{RESET}")
         print(f"  PDF: {pdf}  PNG: {png}")
         _gnuplot_run(gp, png)

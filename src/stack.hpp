@@ -160,6 +160,11 @@ public:
         << endl;
   }
 
+  void set_branch_one() {
+    if (branch_mc[act_branch]) branch_mc[act_branch]->set_one();
+    else branch_mc[act_branch] = fg->one();
+  }
+
   void include_one_sol() {
     VERBOSE_DEBUG_DO(cout << COLRED << "incl sol: ONE" << COLDEF << " ");
 #ifdef VERBOSE_DEBUG
@@ -170,8 +175,7 @@ public:
       assert(is_zero(act_branch));
       return;
     }
-    if (!is_indep || is_zero(act_branch))
-      branch_mc[act_branch] = fg->one();
+    if (!is_indep || is_zero(act_branch)) set_branch_one();
     VERBOSE_DEBUG_DO(common_print(before));
   }
 
@@ -197,10 +201,12 @@ public:
     } else if (!is_indep) {
       // For non-indep levels, only track satisfiability (0/1): the projected count
       // is semantically 0 or 1 when no indep vars remain in the component.
-      branch_mc[act_branch] = fg->one();
+      set_branch_one();
     } else {
       if (is_zero(act_branch) || is_one(act_branch)) {
-        branch_mc[act_branch] = solutions->dup();
+        // assign in place: allocating a new count here was a large part of the runtime
+        if (branch_mc[act_branch]) *branch_mc[act_branch] = *solutions;
+        else branch_mc[act_branch] = solutions->dup();
       } else {
         *branch_mc[act_branch] *= *solutions;
       }

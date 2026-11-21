@@ -2298,6 +2298,7 @@ RetState Counter::backtrack() {
     compiler->build_level_node();
     reactivate_comps_and_backtrack_trail(false);
     assert(dec_level() >= 1);
+    const FF tot = decisions.top().total_model_count();
     if (conf.do_use_cache) {
 #ifdef VERBOSE_DEBUG
       cout << "comp vars: ";
@@ -2305,7 +2306,7 @@ RetState Counter::backtrack() {
       cout << endl;
 #endif
       if (weighted()) {
-        FF cnt = decisions.top().total_model_count()->dup();
+        FF cnt = tot->dup();
         all_vars_in_comp(comp_manager->get_super_comp(decisions.top()), it) {
           if (val(*it) != X_TRI && var(*it).decision_level < dec_level()) {
             Lit const l(*it, val(*it) == T_TRI);
@@ -2319,7 +2320,7 @@ RetState Counter::backtrack() {
         }
         comp_manager->save_count(decisions.top().super_comp(), cnt);
       } else {
-        comp_manager->save_count(decisions.top().super_comp(), decisions.top().total_model_count());
+        comp_manager->save_count(decisions.top().super_comp(), tot);
       }
       compiler->record_comp_node();
     }
@@ -2331,7 +2332,7 @@ RetState Counter::backtrack() {
 #endif
     // so the parent's cache cleanup runs
     if (decisions.top().comp_unsat()) (decisions.end() - 2)->mark_branch_unsat();
-    else (decisions.end() - 2)->include_solution(decisions.top().total_model_count());
+    else (decisions.end() - 2)->include_solution(tot);
     compiler->attach_to_parent();
     decisions.pop_back();
 

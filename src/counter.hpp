@@ -193,7 +193,7 @@ public:
   void print_trail(bool check_entail = true, bool check_anything = true) const;
   const FG& get_fg() const { return fg; }
   const FF& get_two() const { return two; }
-  bool weighted() const { return fg->weighted(); }
+  bool weighted() const { return is_weighted; }
   DataAndStatistics& get_stats() { return stats; }
   uint32_t last_dec_candidates = 0; // heuristic to force update of comp analyzer timestamps
 
@@ -206,6 +206,7 @@ private:
   std::unique_ptr<Compiler> compiler;
 
   FG fg;
+  bool is_weighted; // fg->weighted() is virtual, and set_lit() asks it on every assignment
   FF two; //stores 1+1
   CounterConfiguration conf;
   DataAndStatistics stats;

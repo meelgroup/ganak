@@ -5200,6 +5200,7 @@ void my_gbchandler(int pre, bddGbcStat *) {
 
 Counter::Counter(const CounterConfiguration& _conf, const FG& _fg) :
     fg(_fg->dup())
+    , is_weighted(fg->weighted())
     , conf(_conf)
     , stats(_conf, _fg)
     , mtrand(_conf.seed)

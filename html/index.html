@@ -11,12 +11,14 @@
       --bg: #f6f7f9; --card: #fff; --text: #1d2430; --muted: #6b7280; --border: #e3e6ea;
       --accent: #2563eb; --accent-soft: #e8efff; --on: #16a34a; --on-soft: #dcfce7;
       --off: #dc2626; --off-soft: #fee2e2; --code: #f3f4f6;
+      --hl-kw: #7c3aed; --hl-def: #0e7490; --hl-num: #b45309; --hl-str: #15803d; --hl-op: #be185d;
     }
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #0f141b; --card: #171e27; --text: #e6e9ee; --muted: #9aa3af; --border: #283241;
         --accent: #6aa0ff; --accent-soft: #1b2a45; --on: #4ade80; --on-soft: #143022;
         --off: #f87171; --off-soft: #3a1717; --code: #121820;
+        --hl-kw: #c084fc; --hl-def: #22d3ee; --hl-num: #fbbf24; --hl-str: #4ade80; --hl-op: #f472b6;
       }
     }
     * { box-sizing: border-box; }
@@ -88,7 +90,24 @@
     main.tab[hidden] { display: none; }
     #tab-model { grid-template-columns: minmax(320px, 7fr) minmax(300px, 5fr); }
     @media (max-width: 900px) { #tab-model { grid-template-columns: 1fr; } }
-    #gm-text { height: 460px; resize: vertical; line-height: 1.45; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+    #gm-editor { position: relative; background: var(--bg); border-radius: 6px; }
+    #gm-hl, #gm-text { font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; letter-spacing: normal; tab-size: 2;
+      white-space: pre; overflow-wrap: normal; margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; }
+    #gm-hl { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none;
+      color: var(--text); border-color: transparent; }
+    #gm-hl-code { display: block; font: inherit; }
+    #gm-text { display: block; position: relative; height: 460px; resize: vertical; overflow: auto;
+      background: transparent; color: transparent; caret-color: var(--text); }
+    #gm-text::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+    .t-com { color: var(--muted); font-style: italic; }
+    .t-kw { color: var(--hl-kw); }
+    .t-kw2 { color: var(--accent); }
+    .t-def { color: var(--hl-def); }
+    .t-num, .t-const { color: var(--hl-num); }
+    .t-str { color: var(--hl-str); }
+    .t-op { color: var(--hl-op); }
+    .t-punc { color: var(--muted); }
+    .t-bad { color: var(--off); text-decoration: wavy underline; }
     #gm-errors { color: var(--off); background: var(--off-soft); border-radius: 6px; padding: 6px 10px;
       font-family: ui-monospace, monospace; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
     #gm-errors a { color: var(--off); font-weight: 600; }
@@ -134,7 +153,10 @@
           <label class="muted">or open <input type="file" id="gm-file" accept=".gm,.txt"></label>
         </div>
         <p class="muted">A <code>.gm</code> model. Answers update as you type.</p>
-        <textarea id="gm-text" spellcheck="false" aria-label="Model"></textarea>
+        <div id="gm-editor">
+          <pre id="gm-hl" aria-hidden="true"><code id="gm-hl-code"></code></pre>
+          <textarea id="gm-text" spellcheck="false" aria-label="Model"></textarea>
+        </div>
         <div id="gm-errors" hidden></div>
         <div class="row" style="margin-top:8px">
           <button id="gm-compute" class="primary">Compute</button>

@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   MODEL_EXAMPLES, Q, fmtP, parseLits, batchFile, answers, impacts,
-  modelDot, pretty, type GmModel,
+  modelDot, pretty, gmTokens, gmHighlight, type GmModel,
 } from "../model.js";
 import { HTML, runTool } from "./tools.mjs";
 
@@ -130,4 +130,22 @@ test("ganak-model.js starts fast enough to run on every edit", async () => {
   const ms = (performance.now() - t0) / 3;
   assert.ok(ms < 1500, `${ms.toFixed(0)} ms per call`);
   console.log(`# ganak-model.js: ${ms.toFixed(0)} ms per call`);
+});
+
+test("highlighting: classes, lossless, no errors on the examples", () => {
+  const src = 'event e "E \\" x" 2e-5 # c\nd = !e & (x.v | true) -> f; g = atleast 2 of (a, b)\nq = 1/3 @ "open';
+  const toks = gmTokens(src).map((t) => [t.cls, src.slice(t.b, t.e)]);
+  assert.deepEqual(toks, [
+    ["kw", "event"], ["def", "e"], ["str", '"E \\" x"'], ["num", "2e-5"], ["com", "# c"],
+    ["def", "d"], ["op", "="], ["op", "!"], ["name", "e"], ["op", "&"], ["punc", "("], ["name", "x.v"], ["op", "|"],
+    ["const", "true"], ["punc", ")"], ["op", "->"], ["name", "f"], ["punc", ";"],
+    ["def", "g"], ["op", "="], ["kw2", "atleast"], ["num", "2"], ["kw2", "of"], ["punc", "("], ["name", "a"],
+    ["punc", ","], ["name", "b"], ["punc", ")"],
+    ["def", "q"], ["op", "="], ["num", "1/3"], ["bad", "@"], ["bad", '"open'],
+  ]);
+  const unesc = (h: string) => h.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  for (const x of MODEL_EXAMPLES) {
+    assert.equal(unesc(gmHighlight(x.text)), x.text + "\n", x.name);
+    assert.ok(!gmTokens(x.text).some((t) => t.cls === "bad"), x.name);
+  }
 });

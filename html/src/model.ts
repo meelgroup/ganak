@@ -49,6 +49,107 @@ export interface GmModel {
   stmts: GmStmt[];
 }
 
+// ---- syntax highlighting (mirrors lex() in src/gmodel_parse.cpp) ----
+
+export type GmTokCls = "com" | "kw" | "kw2" | "const" | "def" | "name" | "num" | "str" | "op" | "punc" | "bad";
+export interface GmTok { cls: GmTokCls; b: number; e: number }
+
+const GM_STMT_KW = new Set(["event", "choice", "rule", "constraint", "query", "require"]);
+const GM_KW = new Set(["given", "if", "then", "else", "not", "and", "or", "xor", "flip", "atleast", "atmost", "exactly", "of"]);
+const GM_OPS = ["<->", "->", "<=", ">=", "=", "!", "~", "&", "|", "^", "<", ">"];
+const GM_PUNC = "(){},;";
+
+export function gmTokens(s: string): GmTok[] {
+  const out: GmTok[] = [];
+  const idStart = (k: number) => /^[A-Za-z_]$/.test(s[k] ?? "");
+  const idChar = (k: number) => /^[A-Za-z0-9_]$/.test(s[k] ?? "");
+  const digit = (k: number) => /^[0-9]$/.test(s[k] ?? "");
+  // A name opening a line or following event/choice is a declaration if '=' (after an optional label) comes next.
+  let lineStart = true, declNext = false, cand = -1;
+  const push = (cls: GmTokCls, b: number, e: number) => {
+    if (cand >= 0 && !(cls === "str" && cand === out.length - 1)) {
+      if (cls === "op" && s.slice(b, e) === "=") out[cand].cls = "def";
+      cand = -1;
+    }
+    out.push({ cls, b, e });
+    lineStart = false;
+  };
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i], b = i;
+    if (c === "\n") {
+      i++;
+      lineStart = true;
+    } else if (c === "#") {
+      while (i < s.length && s[i] !== "\n") i++;
+      out.push({ cls: "com", b, e: i });
+    } else if (/\s/.test(c)) {
+      i++;
+    } else if (idStart(i)) {
+      while (idChar(i)) i++;
+      while (s[i] === "." && idStart(i + 1)) {
+        i++;
+        while (idChar(i)) i++;
+      }
+      const w = s.slice(b, i), atLine = lineStart, decl = declNext;
+      declNext = w === "event" || w === "choice";
+      const cls: GmTokCls = GM_STMT_KW.has(w) ? "kw" : GM_KW.has(w) ? "kw2" : w === "true" || w === "false" ? "const"
+        : decl ? "def" : "name";
+      push(cls, b, i);
+      if (cls === "name" && atLine) cand = out.length - 1;
+    } else if (digit(i) || (c === "." && digit(i + 1))) {
+      while (digit(i)) i++;
+      if (s[i] === ".") {
+        i++;
+        while (digit(i)) i++;
+      }
+      if (s[i] === "e" || s[i] === "E") {
+        let j = i + 1;
+        if (s[j] === "+" || s[j] === "-") j++;
+        if (digit(j)) {
+          i = j;
+          while (digit(i)) i++;
+        }
+      }
+      if (s[i] === "/" && digit(i + 1)) {
+        i++;
+        while (digit(i)) i++;
+      }
+      if (s[i] === "%") i++;
+      push("num", b, i);
+    } else if (c === "\"") {
+      i++;
+      let closed = false;
+      while (i < s.length && s[i] !== "\n") {
+        if (s[i] === "\\" && (s[i + 1] === "\"" || s[i + 1] === "\\")) i += 2;
+        else if (s[i++] === "\"") {
+          closed = true;
+          break;
+        }
+      }
+      push(closed ? "str" : "bad", b, i);
+    } else {
+      const op = GM_OPS.find((o) => s.startsWith(o, i));
+      i += op ? op.length : (s.codePointAt(i) ?? 0) > 0xffff ? 2 : 1;
+      push(op ? "op" : GM_PUNC.includes(c) ? "punc" : "bad", b, i);
+      if (c === ";") lineStart = true;
+    }
+  }
+  return out;
+}
+
+const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// The trailing newline makes a final empty line take up room, as it does in the textarea.
+export function gmHighlight(s: string): string {
+  let h = "", at = 0;
+  for (const t of gmTokens(s)) {
+    h += escHtml(s.slice(at, t.b)) + `<span class="t-${t.cls}">${escHtml(s.slice(t.b, t.e))}</span>`;
+    at = t.e;
+  }
+  return h + escHtml(s.slice(at)) + "\n";
+}
+
 // ---- exact rationals ----
 
 function gcd(a: bigint, b: bigint): bigint {
@@ -664,8 +765,13 @@ async function whatMatters(g = S.gen) {
     + "green: at least 10 times less likely. Everything follows the evidence set in the graph."));
 }
 
+function highlight() {
+  $("gm-hl-code").innerHTML = gmHighlight($<HTMLTextAreaElement>("gm-text").value);
+}
+
 function setText(t: string) {
   $<HTMLTextAreaElement>("gm-text").value = t;
+  highlight();
   S.evidence.clear();
   $("gm-analysis").innerHTML = "";
   compute();
@@ -677,7 +783,17 @@ export function initModelTab(deps: Deps) {
   MODEL_EXAMPLES.forEach((x, i) => sel.append(el("option", { value: String(i) }, x.name)));
   sel.addEventListener("change", () => setText(MODEL_EXAMPLES[Number(sel.value)].text));
   const ta = $<HTMLTextAreaElement>("gm-text");
+  const hl = $("gm-hl"), code = $("gm-hl-code");
+  new ResizeObserver(() => {
+    hl.style.width = `${ta.clientWidth + 2 * ta.clientLeft}px`;
+    hl.style.height = `${ta.clientHeight + 2 * ta.clientTop}px`;
+  }).observe(ta);
+  // Translated, not scrolled: the overlay's scroll range ends earlier than the textarea's (trailing padding).
+  ta.addEventListener("scroll", () => {
+    code.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`;
+  });
   ta.addEventListener("input", () => {
+    highlight();
     $("gm-results").classList.add("stale");
     clearTimeout(timer);
     timer = window.setTimeout(compute, 700);
@@ -686,6 +802,7 @@ export function initModelTab(deps: Deps) {
     if (e.key === "Tab") {
       e.preventDefault();
       ta.setRangeText("  ", ta.selectionStart, ta.selectionEnd, "end");
+      highlight();
     }
   });
   $<HTMLInputElement>("gm-file").addEventListener("change", async (e) => {

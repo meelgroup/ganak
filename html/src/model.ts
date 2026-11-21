@@ -386,11 +386,11 @@ export const MODEL_EXAMPLES: { name: string; text: string }[] = [
   {
     name: "Weather (constraints)",
     text: `# Constraints rule out impossible weather; every answer is conditioned on them.
-event sun       "The sun shines"       0.6
-event rain      "It rains"             0.3
-event clouds    "Overcast"             0.5
-event wind      "Windy"                0.3
-event sprinkler "The sprinkler is on"  0.4
+event sun       "Sun shines"       0.6
+event rain      "It rains"         0.3
+event clouds    "Overcast"         0.5
+event wind      "Windy"            0.3
+event sprinkler "Sprinkler is on"  0.4
 
 constraint !(rain & sun)          # it never rains while the sun shines
 constraint rain -> clouds         # no rain without clouds

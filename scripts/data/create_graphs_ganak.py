@@ -18,9 +18,7 @@ RESET = "\033[0m"
 TMP_DIR = "tmp"
 
 #pngcairo sizes in pixels. Preproc charts scale their width (cumul: height) with the number of rows.
-PNG_SIZE = (600, 600)
-PNG_SIZE_BCE_SCATTER = (850, 800)
-PNG_SIZE_PIE = (800, 640)
+PNG_SIZE = (800, 800)
 PNG_PREPROC_BAR_HEIGHT = 640
 PNG_PREPROC_BAR_PX_PER_CM = 40
 PNG_PREPROC_CUMUL_PX_PER_CM = 50
@@ -764,7 +762,7 @@ set arrow from 0.1,{TIMEOUT} to {to_pos*1.3},{TIMEOUT} nohead dt 3
                       "x/2 with lines lc 'gray' dt 2 notitle",
                       "x*2 with lines lc 'gray' dt 2 notitle"]
             f.write("plot " + ", ".join(parts) + "\n")
-            f.write(f"set terminal pngcairo size {PNG_SIZE_BCE_SCATTER[0]},{PNG_SIZE_BCE_SCATTER[1]}\nset output '{png}'\nreplot\n")
+            f.write(f"set terminal pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]}\nset output '{png}'\nreplot\n")
         print(f"\n{BLUE}BCE counting time scatter (dashed: 2x faster/slower){RESET}")
         print(f"  PDF: {pdf}  PNG: {png}")
         _gnuplot_run(gp, png)
@@ -1925,7 +1923,7 @@ def preproc_time_pie_chart(matched_dirs):
     with open(gp_file, "w") as f:
         for term, out, sz in [
             (f'pdfcairo size 20cm,16cm font ",18" background "#d0d0d0"', pdf_file, ""),
-            (f'pngcairo size {PNG_SIZE_PIE[0]},{PNG_SIZE_PIE[1]} font ",12" background "#d0d0d0"',   png_file, ""),
+            (f'pngcairo size {PNG_SIZE[0]},{PNG_SIZE[1]} font ",12" background "#d0d0d0"',   png_file, ""),
         ]:
             f.write(f'set terminal {term}\n')
             f.write(f'set output "{out}"\n')

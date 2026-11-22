@@ -2615,7 +2615,10 @@ RetState Counter::resolve_conflict() {
   bool const flipped_declit = (
       uip_clause[0].var() == decisions.at(backj).var
            && lev_to_set == backj-1);
-  if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)) {
+  // --compile: a flip sets the lit at backj-1 without resetting that level, so
+  // what it implies in a sibling comp not yet searched is on no arc (issue #132)
+  if (!flipped_declit || (sat_mode() && backj-1 >= sat_start_dec_level)
+      || (compiler->active() && !sat_mode())) {
     debug_print("---- NOT FLIPPED DECLIT ----------");
     VERBOSE_DEBUG_DO(print_trail(true, false));
     VERBOSE_DEBUG_DO(print_conflict_info());

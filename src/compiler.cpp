@@ -213,8 +213,17 @@ private:
     auto begin = counter.dec_level() == 0 ? counter.trail.begin() : counter.top_declevel_trail_begin();
     if (begin > counter.trail.end()) begin = counter.trail.end();
     std::vector<int> r;
-    for (auto it = begin; it != counter.trail.end(); ++it)
+    for (auto it = begin; it != counter.trail.end(); ++it) {
       if (comp_mark[it->var()] == mark) r.push_back(it->to_visual_int());
+      // Set below this level, the lit outlives it: C2 is searched with it already
+      // set, so C2's subtree lacks it too and it is on no arc (issue #132)
+      else if (circuit->checker() && counter.var(*it).decision_level < counter.dec_level()) {
+        std::cerr << "*** d-DNNF CHECK FAILED: lit " << it->to_visual_int() << " of another comp, set at level "
+          << counter.var(*it).decision_level << " while at level " << counter.dec_level()
+          << ", is on no arc" << std::endl;
+        std::abort();
+      }
+    }
     return r;
   }
   std::vector<uint32_t> comp_mark;

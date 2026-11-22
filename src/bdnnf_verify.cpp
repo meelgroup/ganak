@@ -157,6 +157,79 @@ Streamed streamed_check(const std::string& path, bool det, bool decomp, bool smo
   return out;
 }
 
+// Unweighted projected count, right for a file not flagged SMOOTH too
+// (unlike the structural count).
+mpz_class model_count(const std::string& path) {
+  bdnnf::Reader r;
+  r.open(path);
+  const uint32_t nv = r.nvars;
+  std::vector<char> in_proj(nv + 1, 1);
+  if (r.has(r.header_kv, "projection")) {
+    in_proj.assign(nv + 1, 0);
+    for (uint32_t v : bdnnf::parse_var_list(r.get(r.header_kv, "projection")))
+      if (v >= 1 && v <= nv) in_proj[v] = 1;
+  }
+  for (const auto& [v, rf] : r.defs.defs) in_proj[v] = 0;
+  in_proj[0] = 0;
+  const size_t n = (size_t)r.nnodes + 2;
+  const size_t W = (size_t)nv / 64 + 1;
+  std::vector<mpz_class> val(n);
+  std::vector<uint64_t> vs(n * W, 0);
+  std::vector<char> dead(n, 0);
+  val[1] = 1;
+  dead[0] = 1;
+  auto row = [&](uint64_t id) { return vs.data() + id * W; };
+  auto set = [](uint64_t* s, uint32_t v) { s[v >> 6] |= 1ULL << (v & 63); };
+  auto conflicting = [](const std::vector<int>& ls) {
+    for (size_t i = 0; i < ls.size(); i++)
+      for (size_t j = i + 1; j < ls.size(); j++) if (ls[i] == -ls[j]) return true;
+    return false;
+  };
+  auto pv = [&](int l) { return in_proj[(uint32_t)std::abs(l)] != 0; };
+  std::vector<uint64_t> av(W);
+  r.scan([&](uint64_t id, const bdnnf::Node& nd) {
+    uint64_t* me = row(id);
+    if (nd.kind == bdnnf::K_AND) {
+      bool d = conflicting(nd.units);
+      for (uint64_t k : nd.kids) d |= dead[k] != 0;
+      if (d) { dead[id] = 1; return; }
+      mpz_class x = 1;
+      for (uint64_t k : nd.kids) {
+        x *= val[k];
+        for (size_t q = 0; q < W; q++) me[q] |= row(k)[q];
+      }
+      for (int l : nd.units) if (pv(l)) set(me, (uint32_t)std::abs(l));
+      for (uint32_t v : nd.free) if (in_proj[v]) { x <<= 1; set(me, v); }
+      val[id] = std::move(x);
+      return;
+    }
+    bool any = false;
+    for (const auto& a : nd.arcs) {
+      if (dead[a.child] || conflicting(a.lits)) continue;
+      any = true;
+      for (size_t q = 0; q < W; q++) me[q] |= row(a.child)[q];
+      for (int l : a.lits) if (pv(l)) set(me, (uint32_t)std::abs(l));
+    }
+    if (!any) { dead[id] = 1; return; }
+    mpz_class x = 0;
+    for (const auto& a : nd.arcs) {
+      if (dead[a.child] || conflicting(a.lits)) continue;
+      std::copy(row(a.child), row(a.child) + W, av.begin());
+      for (int l : a.lits) if (pv(l)) set(av.data(), (uint32_t)std::abs(l));
+      size_t gap = 0;
+      for (size_t q = 0; q < W; q++) gap += __builtin_popcountll(me[q] & ~av[q]);
+      x += mpz_class(val[a.child]) << gap;
+    }
+    val[id] = std::move(x);
+  });
+  if (dead[r.root]) return 0;
+  mpz_class res = val[r.root];
+  size_t gap = 0;
+  for (uint32_t v = 1; v <= nv; v++)
+    if (in_proj[v] && !((row(r.root)[v >> 6] >> (v & 63)) & 1)) gap++;
+  return res << gap;
+}
+
 // CLEAN: root last, no dead nodes (backward scan, one bit per node).
 std::string check_clean(const std::string& path, const Streamed& st) {
   if (st.nnodes > 0 && st.root != st.nnodes + 1)
@@ -239,6 +312,14 @@ int bdnnf_verify(int argc, char** argv) {
       fail("count " + st.count.get_str() + " != footer count " + fc);
     if (have_expect && st.count != expect_count)
       fail("count " + st.count.get_str() + " != expected " + expect_count.get_str());
+    // The structural count is the model count only for a d-DNNF that is smooth too
+    const uint64_t all3 = bdnnf::P_DECOMPOSABLE | bdnnf::P_DETERMINISTIC | bdnnf::P_SMOOTH;
+    if (have_expect && (props & all3) != all3) {
+      const mpz_class mc = model_count(path);
+      if (mc != expect_count)
+        fail("model count " + mc.get_str() + " != expected " + expect_count.get_str() +
+             " (structural count " + st.count.get_str() + ")");
+    }
     if (props & bdnnf::P_CLEAN) {
       const std::string e = check_clean(path, st);
       if (!e.empty()) fail(e);

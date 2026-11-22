@@ -91,7 +91,8 @@ void Counter::set_optional_indep_support(const set<uint32_t> &indeps) {
     cerr << "ERROR: The optional indeps MUST contain ALL indeps, plus the optional ones" << endl;
     release_assert(false);
   }
-  if (tmp.empty()) { opt_indep_support_end = 0; return; }
+  // Vars start at 1, so 1 is empty; 0 would wrap end-1 (--compile counts 0-var CNFs)
+  if (tmp.empty()) { opt_indep_support_end = 1; return; }
   opt_indep_support_end = tmp.back()+1;
 
   verb_print(1, "opt ind size: " << std::max<int>((int)opt_indep_support_end-1, 0) << " ind size: " << std::max<int>((int)indep_support_end-1, 0)
@@ -102,8 +103,8 @@ void Counter::set_indep_support(const set<uint32_t> &indeps) {
   opt_indep_support_end = nVars()+1;
   auto tmp = common_indep_code(indeps);
   if (tmp.empty()) {
-    indep_support_end = 0;
-    opt_indep_support_end = 0;
+    indep_support_end = 1;
+    opt_indep_support_end = 1;
     return;
   }
   indep_support_end = tmp.back()+1;
@@ -486,6 +487,7 @@ uint32_t Counter::td_decompose_component(bool update_score) {
         if (i2 < (int)nodes) primal_alt->addEdge(i, i2);
   }
   const TWD::Graph& g = conf.do_td_contract ? *primal_alt : primal;
+  if (g.numNodes() == 0) return 0;
 
   // run FlowCutter
   verb_print(2, "[td-cmp] FlowCutter is running...");

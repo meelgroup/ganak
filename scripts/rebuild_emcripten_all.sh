@@ -15,4 +15,5 @@ source ~/emscripten.sh
 "$BASE_DIR/treedecomp/scripts/build_emscripten.sh"
 "$BASE_DIR/arjun/scripts/build_emscripten.sh"
 "$BASE_DIR/approxmc/scripts/build_emscripten.sh"
+"$BASE_DIR/unigen/scripts/build_emscripten.sh"
 "$BASE_DIR/ganak/scripts/build_emscripten.sh"

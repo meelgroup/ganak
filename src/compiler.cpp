@@ -157,12 +157,13 @@ public:
   }
 
   void do_sat_witness_capture(int sat_start_dec_level) override {
-    // Record the SAT oracle's witness for this component's synthesized vars
-    // (>= opt_indep_support_end) before backtracking.
+    // Record the SAT oracle's witness for this component's non-projection vars
+    // before backtracking. That includes the optional indep ones: the oracle
+    // sets those too, and nothing else would give them a value (issue #131).
     sat_witness.clear();
     all_vars_in_comp(counter.comp_manager->get_super_comp(counter.decisions.at(sat_start_dec_level)), it) {
       uint32_t const v = *it;
-      if (v >= counter.opt_indep_support_end && counter.val(v) != X_TRI)
+      if (v >= counter.indep_support_end && counter.val(v) != X_TRI)
         sat_witness.push_back(Lit(v, counter.val(v) == T_TRI).to_visual_int());
     }
   }

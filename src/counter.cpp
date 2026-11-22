@@ -1551,7 +1551,7 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     if (!ret) {
       score = 1e5;
       reactivate_comps_and_backtrack_trail();
-      decisions.top().zero_out_branch_sol();
+      decisions.top().reset_act_branch();
       decisions.top().var = orig_var;
       return score;
     }
@@ -1561,8 +1561,9 @@ double Counter::td_lookahead_score(const uint32_t v, const uint32_t base_comp_tw
     reactivate_comps_and_backtrack_trail();
     // When weighted, unset_lit() multiplies the weight of every lit it unsets
     // into this level's count. Right for a real backtrack, but this was only
-    // a probe and the level has counted nothing yet: wipe it.
-    decisions.top().zero_out_branch_sol();
+    // a probe and the level has counted nothing yet: wipe it. With --compile a
+    // zero weight is multiplied in too, marking the branch zero: reset that too.
+    decisions.top().reset_act_branch();
   }
   decisions.top().var = orig_var;
   verb_print(1, "var: " << setw(4) << v << " w[0]: " << setw(4) << w[0]

@@ -77,6 +77,15 @@ cd ../count_fuzzer
 nearly every conflict on random CNFs, and compares counts with
 `build/ganak --vivif 0`. Failures land in `fuzz-vivif-out/`.
 
+### Graph-coloring fuzzer (after touching `src/color_count.hpp`)
+
+`--colorcnt` (on by default) counts the colorings directly when the whole
+unweighted, unprojected input is a bit-plane or one-hot graph-coloring
+encoding. count_fuzzer never generates those, so use `scripts/fuzz_color.py
+--num 300`: random graphs in both encodings, some mutated so they must not be
+recognized, random `--colornodes`/`--colordomnodes` budgets, checked against
+`--colorcnt 0`. Failures land in `fuzz-color-out/`.
+
 ### ganak-model fuzzer (after touching `src/gmodel_*` or the web page's model tab)
 
 `scripts/fuzz_gmodel.py --num 500` builds random models (its own syntax trees,

@@ -1,0 +1,46 @@
+c c One-hot 3-coloring of the 5-cycle: (k-1)^n + (-1)^n (k-1) = 30.
+c c RUN: %solver %s | %OutputCheck %s --check-prefix=DIRECT
+c c RUN: %solver --colornodes 0 %s | %OutputCheck %s --check-prefix=FALLBACK
+c c RUN: %solver --colorcnt 0 %s | %OutputCheck %s --check-prefix=NORMAL
+p cnf 15 35
+1 2 3 0
+-2 -1 0
+-3 -1 0
+-3 -2 0
+4 5 6 0
+-5 -4 0
+-6 -4 0
+-6 -5 0
+7 8 9 0
+-8 -7 0
+-9 -7 0
+-9 -8 0
+10 11 12 0
+-11 -10 0
+-12 -10 0
+-12 -11 0
+13 14 15 0
+-14 -13 0
+-15 -13 0
+-15 -14 0
+-1 -4 0
+-2 -5 0
+-3 -6 0
+-4 -7 0
+-5 -8 0
+-6 -9 0
+-7 -10 0
+-8 -11 0
+-9 -12 0
+-10 -13 0
+-11 -14 0
+-12 -15 0
+-13 -1 0
+-14 -2 0
+-15 -3 0
+c c DIRECT: 3-coloring of 5 vertices, 5 edges: counted
+c c DIRECT: ^c s exact arb int 30$
+c c FALLBACK: over budget, counting normally
+c c FALLBACK: ^c s exact arb int 30$
+c c NORMAL-NOT: \[color\]
+c c NORMAL: ^c s exact arb int 30$

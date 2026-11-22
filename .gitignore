@@ -40,4 +40,5 @@ presentation
 build-vivif/
 fuzz-vivif-out/
 fuzz-gmodel-out/
+fuzz-color-out/
 /build-*

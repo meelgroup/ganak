@@ -1,0 +1,31 @@
+c c Bit-plane 4-coloring of the 5-cycle (vertex v = vars v+1, v+6): 3^5 - 3 = 240.
+c c RUN: %solver %s | %OutputCheck %s --check-prefix=DIRECT
+c c RUN: %solver --colornodes 0 %s | %OutputCheck %s --check-prefix=DOMAIN
+c c RUN: %solver --colornodes 0 --colordomnodes 1 %s | %OutputCheck %s --check-prefix=FALLBACK
+p cnf 10 20
+1 6 2 7 0
+-1 6 -2 7 0
+1 -6 2 -7 0
+-1 -6 -2 -7 0
+2 7 3 8 0
+-2 7 -3 8 0
+2 -7 3 -8 0
+-2 -7 -3 -8 0
+3 8 4 9 0
+-3 8 -4 9 0
+3 -8 4 -9 0
+-3 -8 -4 -9 0
+4 9 5 10 0
+-4 9 -5 10 0
+4 -9 5 -10 0
+-4 -9 -5 -10 0
+5 10 1 6 0
+-5 10 -1 6 0
+5 -10 1 -6 0
+-5 -10 -1 -6 0
+c c DIRECT: 4-coloring of 5 vertices, 5 edges: counted
+c c DIRECT: ^c s exact arb int 240$
+c c DOMAIN: 4-coloring of 5 vertices, 5 edges: counted
+c c DOMAIN: ^c s exact arb int 240$
+c c FALLBACK: over budget, counting normally
+c c FALLBACK: ^c s exact arb int 240$

@@ -49,6 +49,7 @@ THE SOFTWARE.
 #include <approxmc/approxmc.h>
 #include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
+#include "color_count.hpp"
 
 static constexpr uint32_t max_digit_precision = 1e6;
 
@@ -138,6 +139,9 @@ int arjun_extend_ccnr = 0;
 int poly_nvars = -1;
 int prime_field = -1;
 int strip_opt_indep = 0;
+int color_cnt = 1;
+uint64_t color_nodes = 250000;
+uint64_t color_dom_nodes = 180000000;
 uint32_t shuffle_vars_seed = 0;
 FG fg = nullptr;
 
@@ -352,6 +356,9 @@ void add_ganak_options()
     add_arg("--arjunextendmaxconfl", arjun_extend_max_confl, "Max number of conflicts per extend operation in Arjun");
     add_arg("--arjunextend", etof_conf.do_extend_indep, "Max number of conflicts per extend operation in Arjun");
     add_arg("--stripoptindep", strip_opt_indep, "Strip optional indep support");
+    add_arg("--colorcnt", color_cnt, "If the whole (unweighted, unprojected) input CNF is a graph coloring encoding, count the colorings directly");
+    add_arg("--colornodes", color_nodes, "Node budget of the direct coloring search before the domain search");
+    add_arg("--colordomnodes", color_dom_nodes, "Node budget of the 4/5-color domain search, 0 = unlimited. Over budget: fall back to normal counting");
     add_arg("--shufflevars", shuffle_vars_seed, "After Arjun, randomly renumber vars (within the no-touch/indep/opt-indep/rest blocks) and shuffle clause order, with this seed. The count is unchanged: measures how much solve time depends on presentation. 0 = off");
 
     // Analyze candidates options
@@ -731,11 +738,13 @@ void compute_collision_prob(mpfr_t result, const uint64_t lookups, uint64_t elem
     mpfr_clear(e);
 }
 
-void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time) {
+void run_weighted_counter(Ganak& counter, const ArjunNS::SimplifiedCNF& cnf, const double start_time,
+    const mpz_class* precomputed = nullptr) {
     FF cnt = cnf.get_multiplier_weight()->dup();
+    if (precomputed) *cnt *= ArjunNS::FMpz(*precomputed);
     // --compile writes the circuit as a side effect of counting: count even when
     // the weights already make the result zero.
-    if (!cnt->is_zero() || !conf.compile_fname.empty())
+    else if (!cnt->is_zero() || !conf.compile_fname.empty())
       *cnt *= *counter.count(bits_jobs, num_threads, debug_threads);
     cout << "c o Total time [Arjun+GANAK]: " << setprecision(2)
         << std::fixed << (cpu_time() - start_time) << endl;
@@ -950,6 +959,25 @@ int main(int argc, char *argv[]) {
   if (!conf.compile_fname.empty() && cnf.get_sampl_vars().size() < cnf.nVars()) {
     conf.compile_projected = true;
     for (const auto& v : cnf.get_sampl_vars()) conf.compile_proj.push_back(v + 1);
+  }
+
+  if (color_cnt && mode == 0 && !cnf.get_weighted() && !cnf.get_projected()
+      && cnf.get_sampl_vars().size() == cnf.nVars() && cnf.get_red_clauses().empty()
+      && conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+    if (auto g = GanakInt::color::decode(cnf.nVars(), cnf.get_clauses())) {
+      const double t = cpu_time();
+      uint64_t edges = 0;
+      for (const auto& e : g->edges) edges += e.size();
+      auto c = GanakInt::color::count(*g, color_nodes, color_dom_nodes);
+      verb_print(1, "[color] input is a " << g->colors << "-coloring of "
+        << g->edges.size() << " vertices, " << edges/2 << " edges: "
+        << (c ? "counted" : "over budget, counting normally") << " T: " << (cpu_time()-t));
+      if (c) {
+        Ganak counter(conf, fg);
+        run_weighted_counter(counter, cnf, start_time, &*c);
+        return 0;
+      }
+    }
   }
 
   // Run Arjun

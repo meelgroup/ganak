@@ -21,8 +21,8 @@ THE SOFTWARE.
 ***********************************************/
 
 // Counts proper k-colorings of a graph recognized as the WHOLE input CNF
-// (idea from PR #129). The decoders only accept a CNF whose models are in
-// bijection with the proper colorings; anything else declines.
+// (by Christian Reitwiessner, PR #129). The decoders only accept a CNF whose
+// models are in bijection with the proper colorings; anything else declines.
 #pragma once
 
 #include <algorithm>

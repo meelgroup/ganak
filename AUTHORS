@@ -1,7 +1,8 @@
 This codebase has many authors. All authors licensed their works with MIT except BreakID, which is licensed with GPL.
 
 The authors are:
-* GANAK-specific code by: Mate Soos, Kuldeep S. Meel, Subhajit Roy, Shubham Sharma
+* GANAK-specific code by: Mate Soos, Kuldeep S. Meel, Subhajit Roy, Shubham Sharma, Christian Reitwiessner
+* Specialized solvers for structured inputs (graph coloring) by Christian Reitwiessner
 * CryptoMiniSat maintained by Mate Soos, see CryptoMiniSat's AUTHORS file for list of authors
 * Arjun preprocessor by Mate Soos and Kuldeep S. Meel.
 * Top-down search idea by Davis, Putnam, Logemann, and Loveland

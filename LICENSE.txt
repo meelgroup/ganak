@@ -6,7 +6,7 @@ For the rest of Ganak:
 ## All of Ganak without FLOW CUTTER code
 MIT License
 
-Copyright (c) 2018-2025 Mate Soos, Kuldeep S. Meel, Subhajit Roy, Shubham Sharma
+Copyright (c) 2018-2026 Mate Soos, Kuldeep S. Meel, Subhajit Roy, Shubham Sharma, Christian Reitwiessner
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

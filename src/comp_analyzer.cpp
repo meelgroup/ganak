@@ -62,7 +62,7 @@ void CompAnalyzer::initialize(
   auto long_irred_cls = _long_irred_cls;
   std::sort(long_irred_cls.begin(), long_irred_cls.end(), mysorter);
 
-  const bool sweep_enabled = conf.frontier_states > 0;
+  const bool sweep_enabled = conf.frontier_states > 0 || conf.grouped_sweep;
   frontier_clauses.clear();
   if (sweep_enabled) frontier_clauses.emplace_back(); // clause IDs start at one
   max_clid = 1;

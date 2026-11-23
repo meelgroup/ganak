@@ -2,6 +2,7 @@ c c Independent sets of the 4x4 grid graph = 1234 (brute-forced).
 c c Same instance, same answer under a wide spread of search options and in
 c c every field mode -- the cross-mode/cross-option consistency test.
 c c RUN: %solver %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --groupedsweep 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --cache 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --maxcache 1 --lru 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --threads 4 %s | %OutputCheck %s --check-prefix=INT

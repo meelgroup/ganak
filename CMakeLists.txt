@@ -599,6 +599,10 @@ if(ENABLE_TESTING)
   add_executable(frontier-count-test tests/frontier_counts.cpp)
   target_include_directories(frontier-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   add_test(NAME frontier_counts COMMAND frontier-count-test)
+  add_executable(selector-count-test tests/selector_counts.cpp)
+  target_include_directories(selector-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(selector-count-test PRIVATE PkgConfig::GMP)
+  add_test(NAME selector_counts COMMAND selector-count-test)
 
 endif()
 

@@ -99,6 +99,7 @@ struct CounterConfiguration {
   int frontier_states = 0;   // 0 disables the bounded residual counters
   int frontier_min_vars = 4;
   int frontier_bucket = 1;
+  int grouped_sweep = 0;     // 0 off, 1 fixed planning, 2 adaptive planning
   int do_buddy = 0;
   int do_bce = 1;
   int backbone_lucky = 0;

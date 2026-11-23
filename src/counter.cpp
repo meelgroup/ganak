@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "counter.hpp"
 #include "frontier_tables.hpp"
+#include "grouped_sweep.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -1330,6 +1331,9 @@ void Counter::print_sweep_stats() const {
     verb_print(1, "[sweep] residual attempts " << s.attempts << " finished " << s.finished
       << " (words " << s.word << " buckets " << s.bucket << " sparse " << s.sparse << ")"
       << " peak states " << s.peak << " T: " << s.cpu);
+  if (conf.grouped_sweep)
+    verb_print(1, "[sweep] grouped residual attempts " << s.grouped_attempts
+      << " finished " << s.grouped_finished);
 }
 
 // Count the cache miss selected by the parent with a bounded table method
@@ -1350,11 +1354,25 @@ bool Counter::try_sweep() {
     wide_candidate = false;
   }
   const bool sweep_candidate = (sweep_enabled && num_clauses <= 64) || wide_candidate;
-  if (!sweep_candidate) return false;
+  bool grouped_candidate = conf.grouped_sweep && sweep_stats.grouped_attempts < 32 && num_clauses > 64;
+  if (!sweep_candidate && !grouped_candidate) return false;
   const auto* vars = comp.vars_begin();
   if (vars[n-1] >= indep_support_end) return false;
   if (!dynamic_cast<const ArjunNS::FMpz*>(two.get())) return false;
 
+  const bool adaptive = conf.grouped_sweep == 2;
+  if (adaptive && grouped_candidate) {
+    if (grouped_skip) {
+      --grouped_skip;
+      grouped_candidate = false;
+      if (!sweep_candidate) return false;
+    } else {
+      // Count snapshot failures too. Reset the backoff on a completed sweep.
+      ++sweep_stats.grouped_attempts;
+      grouped_misses = std::min(4u, grouped_misses + 1);
+      grouped_skip = (1u << (grouped_misses - 1)) - 1;
+    }
+  }
   struct SweepTimer {
     double& total;
     double start;
@@ -1407,6 +1425,31 @@ bool Counter::try_sweep() {
     else parent.mark_branch_unsat();
     parent.next_unproc_comp();
   };
+  if (grouped_candidate) {
+    if (!adaptive) ++sweep_stats.grouped_attempts;
+    grouped::Factors groups;
+    bool eligible = true;
+    for (auto clause : clauses) {
+      std::vector<int> lits;
+      for (unsigned v = 0; v < n; ++v) {
+        if (clause.pos & frontier::bit(v)) lits.push_back(int(v + 1));
+        if (clause.neg & frontier::bit(v)) lits.push_back(-int(v + 1));
+      }
+      if (!groups.add(lits)) {
+        eligible = false;
+        break;
+      }
+    }
+    if (eligible) {
+      if (auto result = grouped::solve(groups, n, adaptive)) {
+        grouped_misses = grouped_skip = 0;
+        ++sweep_stats.grouped_finished;
+        finish(*result);
+        return true;
+      }
+    }
+  }
+  if (!sweep_candidate) return false;
   ++sweep_stats.attempts;
   const unsigned limit = conf.frontier_states;
   auto result = frontier::word_count(n, clauses, limit);
@@ -1453,7 +1496,8 @@ void Counter::count_loop() {
         if (run_sat_solver(state, true)) continue;
         goto start11;
       }
-      if (conf.frontier_states > 0 && try_sweep()) {
+      if ((conf.frontier_states > 0 || (conf.grouped_sweep && sweep_stats.grouped_attempts < 32))
+          && try_sweep()) {
         if (decisions.top().branch_found_unsat()) goto backtrack;
         continue;
       }

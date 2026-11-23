@@ -86,13 +86,15 @@ encoding. count_fuzzer never generates those, so use `scripts/fuzz_color.py
 recognized, random `--colornodes`/`--colordomnodes` budgets, checked against
 `--colorcnt 0`. Failures land in `fuzz-color-out/`.
 
-### Table-counter fuzzer (after touching `src/frontier*.hpp` or `Counter::try_sweep`)
+### Table-counter fuzzer (after touching `src/frontier*.hpp`, `src/grouped_sweep.hpp`, `src/selector_*.hpp` or `Counter::try_sweep`)
 
-`--frontierstates N` (off by default) counts residual components of at most
-62 independent vars with bounded table methods. `scripts/fuzz_sweep.py --num 1000`
+`--frontierstates N` counts residual components of at most 62 independent
+vars with bounded table methods, and `--groupedsweep 1|2` counts the whole
+input (and wide residuals) by a sweep over equal-scope clause groups or
+selector blocks. Both are off by default. `scripts/fuzz_sweep.py --num 1000`
 generates CNFs shaped for each method (small k-CNFs, binary-heavy residuals,
-banded clauses, some projected), runs random budgets with and without Arjun,
-and checks against `--frontierstates 0`.
+banded clause groups, selector blocks, some projected), runs random budgets
+with and without Arjun, and checks against `--frontierstates 0 --groupedsweep 0`.
 It prints how often each method fired. Failures land in `fuzz-sweep-out/`.
 
 ### ganak-model fuzzer (after touching `src/gmodel_*` or the web page's model tab)

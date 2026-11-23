@@ -50,6 +50,8 @@ THE SOFTWARE.
 #include <treedecomp/treedecomp_version.hpp>
 #include "file_read_helper.h"
 #include "color_count.hpp"
+#include "grouped_sweep.hpp"
+#include "selector_sweep.hpp"
 
 static constexpr uint32_t max_digit_precision = 1e6;
 
@@ -323,6 +325,7 @@ void add_ganak_options()
     add_arg("--frontierstates", conf.frontier_states, "Count residual components of at most 62 independent vars with bounded table methods (word table, bucket elimination, clause-frontier sweep); the max states or table entries per step. 0 = off");
     add_arg("--frontierminvars", conf.frontier_min_vars, "Smallest residual component (in vars) that --frontierstates tries to count");
     add_arg("--frontierbucket", conf.frontier_bucket, "Try bucket elimination on residual components of at least 20 vars, or more than 64 clauses");
+    add_arg("--groupedsweep", conf.grouped_sweep, "Count the whole input, and residuals with more than 64 clauses, by a table sweep over groups of clauses with equal scope, or over selector blocks. 0 = off");
 
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, "Run BuDDy");
@@ -982,6 +985,43 @@ int main(int argc, char *argv[]) {
         run_weighted_counter(counter, cnf, start_time, &*c);
         return 0;
       }
+    }
+  }
+
+  // Grouped root count: needs the original clause scopes, before preprocessing
+  if (conf.grouped_sweep && mode == 0 && !cnf.get_weighted() && !cnf.get_projected()
+      && cnf.get_sampl_vars().size() == cnf.nVars() && cnf.get_red_clauses().empty()
+      && cnf.nVars() <= 200000 && conf.compile_fname.empty() && debug_arjun_cnf.empty()) {
+    const double t = cpu_time();
+    GanakInt::grouped::Factors groups;
+    bool eligible = true;
+    std::optional<GanakInt::selector::Encoding> selectors;
+    if (GanakInt::selector::Encoding::fits(cnf.nVars(), cnf.get_clauses().size()))
+      selectors.emplace(cnf.nVars());
+    for (const auto &cl : cnf.get_clauses()) {
+      std::vector<int> lits;
+      for (auto l : cl) lits.push_back((l.sign() ? -1 : 1) * int(l.var() + 1));
+      if (selectors && !selectors->add(lits)) selectors.reset();
+      if (eligible) eligible = groups.add(lits);
+      if (!eligible && !selectors) break;
+    }
+    GanakInt::selector::RootStats selector_stats;
+    auto result = selectors ? selectors->solve(&selector_stats) : std::nullopt;
+    if (result)
+      verb_print(1, "[sweep] grouped root selector blocks " << selector_stats.blocks
+           << " pairs-per-block " << selector_stats.pairs_per_block
+           << " rows " << selector_stats.rows
+           << " method " << (selector_stats.witness_search ? "witness-search" : "subset-transform")
+           << " work " << selector_stats.work);
+    else if (eligible) {
+      result = GanakInt::grouped::solve(groups, cnf.nVars());
+      if (result) verb_print(1, "[sweep] grouped root scopes " << groups.factors.size());
+    }
+    verb_print(1, "[sweep] grouped root " << (result ? "counted" : "declined") << " T: " << (cpu_time()-t));
+    if (result) {
+      Ganak counter(conf, fg);
+      run_weighted_counter(counter, cnf, start_time, &*result);
+      return 0;
     }
   }
 

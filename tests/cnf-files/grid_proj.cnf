@@ -1,5 +1,6 @@
 c c Projected count of the same 4x4-grid instance over {1,2,3,4} = 8 (brute-forced).
 c c RUN: %solver %s | %OutputCheck %s --check-prefix=INT
+c c RUN: %solver --groupedsweep 1 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 --frontierstates 2 %s | %OutputCheck %s --check-prefix=INT
 c c RUN: %solver --arjun 0 --frontierstates 8192 %s | %OutputCheck %s --check-prefix=INT

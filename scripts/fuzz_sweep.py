@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# Fuzz the bounded table counters (--frontierstates) against normal counting.
-# Random CNFs shaped to reach each method: small random k-CNFs and
-# binary-heavy residuals (word table, bucket elimination, clause frontier),
-# banded clauses, and selector blocks. Random budgets, with and without
-# Arjun, sometimes projected (the counters must decline).
+# Fuzz the bounded table counters (--frontierstates, --groupedsweep) against
+# normal counting. Random CNFs shaped to reach each method: small random
+# k-CNFs and binary-heavy residuals (word table, bucket elimination, clause
+# frontier), banded equal-scope clause groups (grouped root and residual
+# sweep), and selector blocks (grouped root selector count). Random budgets,
+# with and without Arjun, sometimes projected (the counters must decline).
 # Usage: scripts/fuzz_sweep.py [--num N] [--ganak build/ganak] [-j 16]
 import argparse, os, random, re, subprocess, sys
 from multiprocessing.pool import ThreadPool as Pool  # workers only wait on subprocesses
@@ -101,20 +102,23 @@ def one(args):
     opts = common + [
         "--frontierstates", str(rng.choice([0, 1, 2, 64, 8192, 8192, 1 << 20])),
         "--frontierminvars", str(rng.choice([4, 4, 12, 30])),
-        "--frontierbucket", str(rng.choice([0, 1, 1]))]
+        "--frontierbucket", str(rng.choice([0, 1, 1])),
+        "--groupedsweep", str(rng.choice([0, 1]))]
     got, out = run(ganak, opts, fname, timeout)
-    ref, _ = run(ganak, common + ["--frontierstates", "0"], fname, timeout)
+    ref, _ = run(ganak, common + ["--frontierstates", "0", "--groupedsweep", "0"], fname, timeout)
     msg = None
     if got == "NOCOUNT" or ref == "NOCOUNT":
         msg = f"no count / crash: {out[-500:]}"
     elif got is not None and ref is not None and got != ref:
         msg = f"WRONG: sweep {got} vs normal {ref}"
     used = set()
+    if "grouped root selector" in out: used.add("root-selector")
+    if "grouped root scopes" in out: used.add("root-grouped")
     m = re.search(r"residual attempts \d+ finished \d+ \(words (\d+) buckets (\d+) sparse (\d+)", out)
     if m:
         for name, k in zip(("word", "bucket", "sparse"), m.groups()):
             if int(k): used.add(name)
-
+    if re.search(r"grouped residual attempts \d+ finished [1-9]", out): used.add("residual-grouped")
     if msg is None:
         os.unlink(fname)
         return seed, None, used

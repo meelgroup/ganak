@@ -42,3 +42,4 @@ fuzz-vivif-out/
 fuzz-gmodel-out/
 fuzz-color-out/
 /build-*
+fuzz-placement-out/

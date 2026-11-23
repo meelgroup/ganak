@@ -1444,12 +1444,16 @@ bool Counter::try_sweep() {
     result = frontier::bucket_count(n, clauses, limit);
     if (result) ++sweep_stats.bucket;
   }
-  if (!result && num_clauses <= 64) {
+  if (!result && num_clauses <= frontier::max_sweep_clauses) {
     // On binary-heavy residuals many open clauses can share one boundary
     // variable. The assignment bound makes that visible to the orderer.
     const bool variable_bound = n >= 20 && 2*std::count_if(clauses.begin(), clauses.end(),
         [](auto c) { return std::popcount(c.vars()) == 2; }) >= num_clauses;
-    result = frontier::sweep(n, clauses, limit, sweep_stats.peak, variable_bound);
+    // Components with more than 64 clauses mostly either need a few dozen
+    // states or blow up; a small cap keeps the failed attempts cheap.
+    const unsigned wide_limit = std::min(limit, frontier::wide_sweep_states);
+    result = frontier::sweep(n, clauses, num_clauses > 64 ? wide_limit : limit,
+                             sweep_stats.peak, variable_bound);
     if (result) ++sweep_stats.sparse;
   }
   if (!result) return false;

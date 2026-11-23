@@ -26,8 +26,9 @@ static Mask brute(unsigned n, const std::vector<Clause>& clauses) {
 
 int main() {
   std::mt19937_64 rng(20261118);
-  for (unsigned trial = 0; trial < 1000; ++trial) {
-    unsigned n = 1 + rng()%12, m = rng()%129;
+  for (unsigned trial = 0; trial < 2000; ++trial) {
+    // Up to 256 clauses: the sparse sweep uses 64-, 128- and 256-bit clause masks
+    unsigned n = 1 + rng()%(trial < 1000 ? 12 : 16), m = rng()%257;
     std::vector<Clause> clauses(m);
     for (auto& c : clauses) {
       unsigned arity = 1 + rng()%6;
@@ -35,15 +36,14 @@ int main() {
         (rng()%2 ? c.pos : c.neg) |= bit(rng()%n);
     }
     Mask expected = brute(n, clauses);
-    check(word_count(n, clauses, 8192), expected, "word", trial);
-    check(bucket_count(n, clauses, 8192), expected, "bucket", trial);
+    // Above 12 variables the word table and buckets may decline (work caps)
+    check(word_count(n, clauses, 8192), expected, "word", trial, n <= 12);
+    check(bucket_count(n, clauses, 8192), expected, "bucket", trial, n <= 12);
     check(bucket_count(n, clauses, 2), expected, "bounded bucket", trial, false);
-    if (m <= 64) {
-      for (bool variable_bound : {false, true}) {
-        uint64_t peak = 0;
-        check(sweep(n, clauses, 8192, peak, variable_bound), expected, "sparse", trial);
-        check(sweep(n, clauses, 2, peak, variable_bound), expected, "bounded sparse", trial, false);
-      }
+    for (bool variable_bound : {false, true}) {
+      uint64_t peak = 0;
+      check(sweep(n, clauses, 1u << 20, peak, variable_bound), expected, "sparse", trial);
+      check(sweep(n, clauses, 2, peak, variable_bound), expected, "bounded sparse", trial, false);
     }
   }
 
@@ -60,5 +60,8 @@ int main() {
   check(word_count(16, {{bit(15), 0}, {0, bit(0)}}, 8192), bit(14), "word blocks", 0);
   if (bucket_count(30, {{bit(30)-1, 0}}, 8192))
     throw std::runtime_error("wide clique exceeded the table limit");
+  uint64_t peak = 0;
+  if (sweep(4, std::vector<Clause>(257, Clause{bit(0), 0}), 8192, peak))
+    throw std::runtime_error("sweep accepted more than 256 clauses");
   std::cout << "Frontier count checks passed\n";
 }

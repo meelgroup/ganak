@@ -62,6 +62,9 @@ void CompAnalyzer::initialize(
   auto long_irred_cls = _long_irred_cls;
   std::sort(long_irred_cls.begin(), long_irred_cls.end(), mysorter);
 
+  const bool sweep_enabled = conf.frontier_states > 0;
+  frontier_clauses.clear();
+  if (sweep_enabled) frontier_clauses.emplace_back(); // clause IDs start at one
   max_clid = 1;
   max_tri_clid = 1;
   const bool use_bce = conf.do_bce && conf.compile_fname.empty();
@@ -74,6 +77,7 @@ void CompAnalyzer::initialize(
     const Clause& cl = *alloc->ptr(off);
     assert(cl.size() > 2);
     const uint32_t long_cl_off = long_clauses_data.size();
+    if (sweep_enabled) frontier_clauses.emplace_back(cl.begin(), cl.end());
     if (use_bce) bce_cls.emplace_back(cl.begin(), cl.end());
     if (cl.size() > 3) {
       Lit const blk_lit = cl[cl.size()/2];

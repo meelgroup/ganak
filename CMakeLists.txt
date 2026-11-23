@@ -596,6 +596,9 @@ if(ENABLE_TESTING)
   message(STATUS "Python 3 -- Python3_NumPy_VERSION=${Python3_NumPy_VERSION}")
   enable_testing()
   add_subdirectory(tests/cnf-files)
+  add_executable(frontier-count-test tests/frontier_counts.cpp)
+  target_include_directories(frontier-count-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME frontier_counts COMMAND frontier-count-test)
 
 endif()
 

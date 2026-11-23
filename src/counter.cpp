@@ -21,6 +21,7 @@ THE SOFTWARE.
 ***********************************************/
 
 #include "counter.hpp"
+#include "frontier_tables.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -1228,6 +1229,7 @@ FF Counter::outer_count() {
   compiler->finalize_and_write(/*unsat=*/false);
   collect_bce_stats();
   bce = nullptr;
+  print_sweep_stats();
   if (conf.verb && comp_manager) stats.print_short(this, comp_manager->get_cache());
   return cnt;
 }
@@ -1322,6 +1324,114 @@ bool Counter::chrono_check() {
   return false;
 }
 
+void Counter::print_sweep_stats() const {
+  const auto& s = sweep_stats;
+  if (conf.frontier_states > 0)
+    verb_print(1, "[sweep] residual attempts " << s.attempts << " finished " << s.finished
+      << " (words " << s.word << " buckets " << s.bucket << " sparse " << s.sparse << ")"
+      << " peak states " << s.peak << " T: " << s.cpu);
+}
+
+// Count the cache miss selected by the parent with a bounded table method
+// instead of branching on it. Returns true if the component was counted.
+// Only unweighted components over independent variables, of at most 62
+// variables, qualify; each method gives up as soon as it exceeds its bound.
+bool Counter::try_sweep() {
+  auto& parent = decisions.top();
+  const auto index = parent.curr_remain_comp();
+  const auto& comp = *comp_manager->at(index);
+  const unsigned n = comp.nVars();
+  if (weighted() || compiler->active() || n < 4 || n > 62) return false;
+  const unsigned num_clauses = comp.num_long_cls() + comp.num_bin_cls()/2;
+  const bool sweep_enabled = conf.frontier_states > 0 && int(n) >= conf.frontier_min_vars;
+  bool wide_candidate = sweep_enabled && num_clauses > 64 && num_clauses <= 256;
+  if (wide_candidate && wide_skip) {
+    --wide_skip;
+    wide_candidate = false;
+  }
+  const bool sweep_candidate = (sweep_enabled && num_clauses <= 64) || wide_candidate;
+  if (!sweep_candidate) return false;
+  const auto* vars = comp.vars_begin();
+  if (vars[n-1] >= indep_support_end) return false;
+  if (!dynamic_cast<const ArjunNS::FMpz*>(two.get())) return false;
+
+  struct SweepTimer {
+    double& total;
+    double start;
+    ~SweepTimer() { total += cpu_time() - start; }
+  } timer{sweep_stats.cpu, cpu_time()};
+  // Wide components rarely finish: back off exponentially after each failure
+  if (wide_candidate) {
+    wide_misses = std::min(7u, wide_misses + 1);
+    wide_skip = (1u << (wide_misses - 1)) - 1;
+  }
+  if (num_clauses > 65536) return false; // bound the snapshot's memory
+  std::vector<frontier::Clause> clauses;
+  clauses.reserve(num_clauses);
+  auto add_lit = [&](frontier::Clause& clause, Lit l) {
+    auto* p = std::lower_bound(vars, vars+n, l.var());
+    if (p == vars+n || *p != l.var()) return false;
+    (l.sign() ? clause.neg : clause.pos) |= frontier::bit(p-vars);
+    return true;
+  };
+  const auto& analyzer = comp_manager->get_ana();
+  for (auto it = comp.cls_begin(); *it != sentinel; ++it) {
+    frontier::Clause clause;
+    for (Lit l : analyzer.frontier_clause(*it)) {
+      if (val(l) == T_TRI) return false;
+      if (val(l) == X_TRI && !add_lit(clause, l)) return false;
+    }
+    clauses.push_back(clause);
+  }
+  for (unsigned i=0; i<n; ++i) {
+    if (val(vars[i]) != X_TRI) return false;
+    for (bool sign : {false,true}) {
+      Lit l(vars[i],sign);
+      for (const auto& w : watches[l].binaries) {
+        if (!w.irred() || val(w.lit()) == T_TRI) continue;
+        if (val(w.lit()) != X_TRI) return false;
+        if (w.lit() < l) continue;
+        frontier::Clause clause;
+        if (!add_lit(clause,l) || !add_lit(clause,w.lit())) return false;
+        clauses.push_back(clause);
+      }
+    }
+  }
+  // The analyzer counts binary incidences at both endpoints. Decline if
+  // its active component and our watch-based view disagree (e.g. BCE).
+  if (clauses.size() != num_clauses) return false;
+  auto finish = [&](const mpz_class &value) {
+    FF count = std::make_unique<ArjunNS::FMpz>(value);
+    if (conf.do_use_cache) comp_manager->save_count(index, count);
+    if (value != 0) parent.include_solution(count);
+    else parent.mark_branch_unsat();
+    parent.next_unproc_comp();
+  };
+  ++sweep_stats.attempts;
+  const unsigned limit = conf.frontier_states;
+  auto result = frontier::word_count(n, clauses, limit);
+  if (result) ++sweep_stats.word;
+  if (!result && conf.frontier_bucket && (wide_candidate || n >= 20)) {
+    result = frontier::bucket_count(n, clauses, limit);
+    if (result) ++sweep_stats.bucket;
+  }
+  if (!result && num_clauses <= 64) {
+    // On binary-heavy residuals many open clauses can share one boundary
+    // variable. The assignment bound makes that visible to the orderer.
+    const bool variable_bound = n >= 20 && 2*std::count_if(clauses.begin(), clauses.end(),
+        [](auto c) { return std::popcount(c.vars()) == 2; }) >= num_clauses;
+    result = frontier::sweep(n, clauses, limit, sweep_stats.peak, variable_bound);
+    if (result) ++sweep_stats.sparse;
+  }
+  if (!result) return false;
+  ++sweep_stats.finished;
+  if (wide_candidate) wide_misses = wide_skip = 0;
+  mpz_class exact;
+  mpz_import(exact.get_mpz_t(), 1, 1, sizeof(*result), 0, 0, &*result);
+  finish(exact);
+  return true;
+}
+
 void Counter::count_loop() {
   assert(mini_cubes.empty());
   RetState state = RESOLVED;
@@ -1342,6 +1452,10 @@ void Counter::count_loop() {
         is_indep = false;
         if (run_sat_solver(state, true)) continue;
         goto start11;
+      }
+      if (conf.frontier_states > 0 && try_sweep()) {
+        if (decisions.top().branch_found_unsat()) goto backtrack;
+        continue;
       }
       decide_lit();
       if (!is_indep) {

@@ -41,4 +41,5 @@ build-vivif/
 fuzz-vivif-out/
 fuzz-gmodel-out/
 fuzz-color-out/
+fuzz-sweep-out/
 /build-*

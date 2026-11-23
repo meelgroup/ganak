@@ -319,6 +319,11 @@ void add_ganak_options()
     add_arg("--cachetime", conf.cache_time_update, "2 = set to mid-point");
     add_arg("--lru", conf.lru_eviction, "Cache eviction: 1 = LRU (evict oldest), 0 = reverse-LRU/default (evict newest)");
 
+    // Bounded table counters
+    add_arg("--frontierstates", conf.frontier_states, "Count residual components of at most 62 independent vars with bounded table methods (word table, bucket elimination, clause-frontier sweep); the max states or table entries per step. 0 = off");
+    add_arg("--frontierminvars", conf.frontier_min_vars, "Smallest residual component (in vars) that --frontierstates tries to count");
+    add_arg("--frontierbucket", conf.frontier_bucket, "Try bucket elimination on residual components of at least 20 vars, or more than 64 clauses");
+
     // BuDDy options
     add_arg("--buddy", conf.do_buddy, "Run BuDDy");
     add_arg("--bce", conf.do_bce, "Dynamic blocked clause elimination on non-indep vars during search");

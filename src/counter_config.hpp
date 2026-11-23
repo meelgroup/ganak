@@ -96,6 +96,9 @@ struct CounterConfiguration {
   uint32_t vivif_every = 60000;
   double vivif_mult = 1.0;
   uint32_t vivif_outer_every_n = 1;
+  int frontier_states = 0;   // 0 disables the bounded residual counters
+  int frontier_min_vars = 4;
+  int frontier_bucket = 1;
   int do_buddy = 0;
   int do_bce = 1;
   int backbone_lucky = 0;

@@ -373,6 +373,15 @@ public:
   double var_act(const uint32_t v) const {
     return lit_act.lit(v, false) + lit_act.lit(v, true); }
   DecisionStack decisions;
+  // Bounded residual counters (--frontierstates), see try_sweep()
+  bool try_sweep();
+  void print_sweep_stats() const;
+  struct SweepStats {
+    uint64_t attempts = 0, finished = 0, peak = 0;
+    uint64_t word = 0, bucket = 0, sparse = 0;
+    double cpu = 0;
+  } sweep_stats;
+  unsigned wide_misses = 0, wide_skip = 0;
   void decide_lit();
   uint32_t find_best_branch(const bool ignore_td = false, const bool also_nonindep = false);
   struct ScoreParts { double td = 0; double act = 0; double freq = 0;

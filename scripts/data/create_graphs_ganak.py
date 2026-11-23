@@ -2633,9 +2633,10 @@ only_dirs = [
     # "out-ganak-mccomp2324-2872197-1", # new cache
     # "out-ganak-mccomp2324-2887638", # improved vivif
     # "out-ganak-mccomp2324-2890750", # improved subsume
-    "out-ganak-mccomp2324-2893602-1",  # subsumption, chris-sweep
-    "out-ganak-mccomp2324-2893602-4",  # subsumption, chris-sweep
-    "out-ganak-mccomp2324-2898948",  # merging different branches, chris v2
+    # "out-ganak-mccomp2324-2893602-1",  # subsumption, chris-sweep
+    # "out-ganak-mccomp2324-2893602-4",  # subsumption, chris-sweep
+    "out-ganak-mccomp2324-2898948-0",  # merging different branches, chris v2
+    "out-ganak-mccomp2324-2906509", # more
 
 ]
 # only_dirs = [

@@ -988,6 +988,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // --placementcnt by Christian Reitwiessner, PR #133
   if (placement_cnt && whole_unweighted_cnf) {
     const double t = cpu_time();
     if (auto p = GanakInt::placement::decode(cnf.nVars(), cnf.get_clauses())) {

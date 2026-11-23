@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Fuzz the placement counter (--placementcnt) against normal counting.
+# By Christian Reitwiessner, PR #133.
 # Random Sudoku-like labeled exact covers (Latin squares, Sudokus with any box
 # shape, diagonal and irregular-region variants, cells that exclude some
 # labels), in the pairwise and the capacity encoding, with random clues,

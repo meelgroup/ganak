@@ -22,7 +22,8 @@ THE SOFTWARE.
 
 // Counts the models of a WHOLE input CNF that encodes a labeled exact cover,
 // such as a Sudoku, Latin square or quasigroup completion, by branching on
-// complete placements of a label instead of on single variables.
+// complete placements of a label instead of on single variables
+// (by Christian Reitwiessner, PR #133).
 //
 // Accepted shape: every clause is a unit, a negative binary or an all-positive
 // clause, and the CNF proves every positive clause exactly-one (all of its

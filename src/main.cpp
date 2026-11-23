@@ -144,7 +144,7 @@ int color_cnt = 1;
 uint64_t color_nodes = 250000;
 uint64_t color_dom_nodes = 180000000;
 int placement_cnt = 1;
-uint64_t placement_budget = 2000000000;
+uint64_t placement_budget = 30000000000;
 uint64_t placement_max_domain = 200000;
 uint32_t shuffle_vars_seed = 0;
 FG fg = nullptr;
@@ -364,7 +364,7 @@ void add_ganak_options()
     add_arg("--colornodes", color_nodes, "Node budget of the direct coloring search before the domain search");
     add_arg("--colordomnodes", color_dom_nodes, "Node budget of the 4/5-color domain search, 0 = unlimited. Over budget: fall back to normal counting");
     add_arg("--placementcnt", placement_cnt, "If the whole (unweighted, unprojected) input CNF is a labeled exact cover (Sudoku, Latin square, ...), count by branching on whole placements of a label");
-    add_arg("--placementbudget", placement_budget, "Work budget of the placement counter. Over budget: fall back to normal counting");
+    add_arg("--placementbudget", placement_budget, "Work budget of the placement counter, in placement comparisons. Over budget: fall back to normal counting");
     add_arg("--placementdomain", placement_max_domain, "Maximum placements per label in the placement counter. More: fall back to normal counting");
     add_arg("--shufflevars", shuffle_vars_seed, "After Arjun, randomly renumber vars (within the no-touch/indep/opt-indep/rest blocks) and shuffle clause order, with this seed. The count is unchanged: measures how much solve time depends on presentation. 0 = off");
 
@@ -997,7 +997,8 @@ int main(int argc, char *argv[]) {
       for (auto d : st.domains) doms << " " << d;
       verb_print(1, "[placement] " << p->certificate << " exact cover: " << p->cells << " cells, "
         << p->scopes.size() << " labels, placements per label:" << doms.str()
-        << " enum nodes: " << st.enum_nodes << " join nodes: " << st.join_nodes
+        << " enum nodes: " << st.enum_nodes << " estimated join work: " << std::setprecision(3) << st.estimate
+        << " join nodes: " << st.join_nodes << " memo hits: " << st.memo_hits
         << (st.fast_join ? " (bit-parallel join)" : "") << ": "
         << (c ? "counted" : "over budget, counting normally") << " T: " << (cpu_time()-t));
       if (c) {

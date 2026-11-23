@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include <cstdint>
 #include <numeric>
 #include <optional>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include <gmpxx.h>
@@ -63,7 +64,8 @@ struct Structure {
 
 struct Stats {
   std::vector<uint64_t> domains;
-  uint64_t enum_nodes = 0, join_nodes = 0;
+  uint64_t enum_nodes = 0, join_nodes = 0, memo_hits = 0;
+  double estimate = 0; // estimated join work, in placement comparisons
   bool fast_join = false;
 };
 
@@ -386,7 +388,6 @@ class Counter {
   uint64_t budget;
   Stats& st;
   bool exhausted = false;
-  std::vector<std::vector<C>> dom;  // placements per label, in join order
   C all;
 
   // Exact covers of one label's constraints.
@@ -454,46 +455,43 @@ class Counter {
     return !e.fail;
   }
 
-  // Generic join: the last label's placement is forced to the uncovered cells.
-  std::unordered_set<C, CellsHash<W>> last_set;
-  void generic(uint32_t depth, const C& occupied, mpz_class& total) {
-    if (exhausted) return;
-    if (!budget--) { exhausted = true; return; }
-    st.join_nodes++;
-    if (depth + 1 == dom.size()) {
-      if (last_set.count(all.minus(occupied))) total += 1;
-      return;
-    }
-    for (const auto& p : dom[depth]) if (occupied.disjoint(p)) {
-      generic(depth+1, occupied | p, total);
-      if (exhausted) return;
-    }
+  // Join: choose placements label by label, always for the label with the
+  // fewest placements left after removing those that overlap the cells taken
+  // so far (forward checking). A branch dies as soon as some label has none.
+  // The last label is forced to the uncovered cells.
+  std::vector<std::vector<C>> base;                          // per label
+  std::vector<std::unordered_set<C, CellsHash<W>>> member;   // per label, lazily
+  std::vector<uint8_t> free_ok; // forced placement of this label always valid
+  bool uniform_all = false;
+  struct Live { uint32_t label; const std::vector<C>* dom; };
+  std::vector<std::vector<std::vector<C>>> bufs; // per depth, per remaining label
+  uint32_t probe_base = 0;
+  static constexpr double estimate_slack = 4;
+
+  bool forced_valid(uint32_t l, const C& occupied) {
+    if (free_ok[l]) return true;
+    if (member[l].empty()) member[l].insert(base[l].begin(), base[l].end());
+    return member[l].count(all.minus(occupied));
   }
 
-  // When every label has the same constraints, all of size k, and the last
+  // When every label has the same constraints, all of size k, and the forced
   // label may take any cell no other label is forced into, the uncovered cells
-  // always form a valid last placement: each constraint has k cells and the
+  // always form a valid placement for it: each constraint has k cells and the
   // other k-1 labels take exactly one each. The last four free labels are then
   // counted with bit-parallel compatibility masks over 64 placements at a time.
   struct Option { C cells; uint64_t compatible; };
-  std::array<std::vector<C>,4> avail;
   std::array<std::vector<Option>,3> rows;
-  uint64_t finish(const C& occupied) {
-    const uint32_t b = dom.size() - 5;
-    for (uint32_t i = 0; i < 4; i++) {
-      avail[i].clear();
-      for (const auto& p : dom[b+i]) if (occupied.disjoint(p)) avail[i].push_back(p);
-      if (avail[i].empty()) return 0;
-    }
-    std::array<uint32_t,4> ord{0,1,2,3};
-    std::sort(ord.begin(), ord.end(), [&](uint32_t x, uint32_t y){ return avail[x].size() < avail[y].size(); });
-    const auto& last = avail[ord[3]];
+  uint64_t finish(std::array<const std::vector<C>*,4> avail) {
+    std::sort(avail.begin(), avail.end(), [](auto x, auto y){ return x->size() < y->size(); });
+    const auto& last = *avail[3];
     uint64_t total = 0;
     for (size_t start = 0; start < last.size(); start += 64) {
       const size_t len = std::min<size_t>(64, last.size()-start);
       for (uint32_t i = 0; i < 3; i++) {
         rows[i].clear();
-        for (const auto& p : avail[ord[i]]) {
+        if (budget < avail[i]->size()*len) { exhausted = true; return 0; }
+        budget -= avail[i]->size()*len;
+        for (const auto& p : *avail[i]) {
           uint64_t mask = 0;
           for (size_t j = 0; j < len; j++) mask |= uint64_t(p.disjoint(last[start+j])) << j;
           if (mask) rows[i].push_back({p, mask});
@@ -502,7 +500,8 @@ class Counter {
       for (const auto& x : rows[0]) for (const auto& y : rows[1]) {
         const uint64_t shared = x.compatible & y.compatible;
         if (!shared || !x.cells.disjoint(y.cells)) continue;
-        if (!budget--) { exhausted = true; return 0; }
+        if (budget < rows[2].size()+1) { exhausted = true; return 0; }
+        budget -= rows[2].size()+1;
         st.join_nodes++;
         const C used = x.cells | y.cells;
         for (const auto& z : rows[2]) if (used.disjoint(z.cells))
@@ -511,20 +510,113 @@ class Counter {
     }
     return total;
   }
-  void fast(uint32_t depth, const C& occupied, mpz_class& total) {
-    if (exhausted) return;
-    if (!budget--) { exhausted = true; return; }
+
+  // Which label to branch on, and whether the finish applies here.
+  uint32_t pick(const std::vector<Live>& live) const {
+    uint32_t best = 0;
+    for (uint32_t i = 1; i < live.size(); i++)
+      if (live[i].dom->size() < live[best].dom->size()) best = i;
+    return best;
+  }
+  int32_t finish_forced(const std::vector<Live>& live) const {
+    if (!uniform_all || live.size() != 5) return -1;
+    int32_t f = -1;
+    for (uint32_t i = 0; i < 5; i++) if (free_ok[live[i].label])
+      if (f == -1 || live[i].dom->size() > live[f].dom->size()) f = i;
+    return f;
+  }
+  // Filter the other labels' placements by p into bufs[depth]; false if one empties
+  bool branch(uint32_t depth, const std::vector<Live>& live, uint32_t skip, const C& p,
+      std::vector<Live>& next) {
+    // Sized up front: children keep pointers into these buffers
+    auto& b = bufs[depth];
+    next.clear();
+    for (uint32_t i = 0; i < live.size(); i++) if (i != skip) {
+      const auto& d = *live[i].dom;
+      if (budget < d.size()) { exhausted = true; return false; }
+      budget -= d.size();
+      b[i].clear();
+      for (const auto& q : d) if (p.disjoint(q)) b[i].push_back(q);
+      if (b[i].empty()) return false;
+      next.push_back({live[i].label, &b[i]});
+    }
+    return true;
+  }
+
+  // Two labels can swap placements and leave the same cells to the same
+  // remaining labels; the subtree below depends only on that pair, since the
+  // filtered domains and so every later choice are functions of it.
+  struct Key {
+    C occupied; uint64_t labels;
+    bool operator==(const Key& o) const { return labels == o.labels && occupied == o.occupied; }
+  };
+  struct KeyHash {
+    size_t operator()(const Key& k) const { return CellsHash<W>()(k.occupied) ^ (k.labels * 0x9e3779b97f4a7c15ULL); }
+  };
+  std::unordered_map<Key, mpz_class, KeyHash> memo;
+  static constexpr size_t max_memo = 1u << 20;
+
+  mpz_class join(uint32_t depth, const C& occupied, const std::vector<Live>& live) {
+    if (exhausted) return 0;
     st.join_nodes++;
-    if (depth + 5 == dom.size()) {
-      const uint64_t t = finish(occupied);
+    if (live.size() == 1) return forced_valid(live[0].label, occupied) ? 1 : 0;
+    Key key{occupied, 0};
+    for (const auto& l : live) key.labels |= uint64_t(1) << l.label;
+    if (auto it = memo.find(key); it != memo.end()) { st.memo_hits++; return it->second; }
+    mpz_class total = 0;
+    if (const int32_t f = finish_forced(live); f >= 0) {
+      std::array<const std::vector<C>*,4> four;
+      for (uint32_t i = 0, j = 0; i < 5; i++) if ((int32_t)i != f) four[j++] = live[i].dom;
       static_assert(sizeof(unsigned long) == 8);
-      if (t) total += mpz_class((unsigned long)t);
-      return;
+      if (const uint64_t t = finish(four)) total = mpz_class((unsigned long)t);
+    } else {
+      const uint32_t b = pick(live);
+      std::vector<Live> next;
+      for (const auto& p : *live[b].dom) {
+        if (branch(depth, live, b, p, next)) total += join(depth+1, occupied | p, next);
+        if (exhausted) return 0;
+      }
     }
-    for (const auto& p : dom[depth]) if (occupied.disjoint(p)) {
-      fast(depth+1, occupied | p, total);
-      if (exhausted) return;
+    if (!exhausted && memo.size() < max_memo) memo.emplace(key, total);
+    return total;
+  }
+
+  // Knuth's estimator: follow random paths and weigh each node's work by the
+  // product of the branching factors above it. Averaged over probes this is an
+  // unbiased estimate of the join's total work, used to decline up front.
+  double estimate(const std::vector<Live>& root, uint32_t probes) {
+    uint64_t rng = 0x2545F4914F6CDD1DULL;
+    auto next_rand = [&]{ rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; return rng; };
+    const uint64_t saved = budget;
+    double sum = 0;
+    for (uint32_t pr = 0; pr < probes && !exhausted; pr++) {
+      std::vector<Live> live = root, next;
+      double weight = 1, work = 0;
+      for (uint32_t depth = 0; live.size() > 1; depth++) {
+        if (finish_forced(live) >= 0) {
+          std::array<double,4> sz{};
+          const int32_t f = finish_forced(live);
+          for (uint32_t i = 0, j = 0; i < 5; i++) if ((int32_t)i != f) sz[j++] = live[i].dom->size();
+          std::sort(sz.begin(), sz.end());
+          work += weight * (sz[0]*sz[1] + (sz[0]+sz[1]+sz[2])*std::min(64.0, sz[3]));
+          break;
+        }
+        const uint32_t b = pick(live);
+        double others = 0;
+        for (uint32_t i = 0; i < live.size(); i++) if (i != b) others += live[i].dom->size();
+        const double fan = live[b].dom->size();
+        work += weight * fan * others;
+        weight *= fan;
+        const C& p = (*live[b].dom)[next_rand() % live[b].dom->size()];
+        // Probe paths use the second half of the buffers
+        if (!branch(probe_base + depth, live, b, p, next)) break;
+        live = next;
+      }
+      sum += work;
     }
+    budget = saved;
+    exhausted = false;
+    return sum / probes;
   }
 
   bool uniform() const {
@@ -547,39 +639,35 @@ public:
   std::optional<mpz_class> count(uint64_t max_domain) {
     const uint32_t k = s.scopes.size();
     for (uint32_t c = 0; c < s.cells; c++) all.add(c);
-    std::vector<std::vector<C>> d(k);
+    base.resize(k);
     for (uint32_t l = 0; l < k; l++) {
-      if (!enumerate(l, d[l], max_domain)) return {};
-      st.domains.push_back(d[l].size());
-      if (d[l].empty()) return mpz_class(0);
+      if (!enumerate(l, base[l], max_domain)) return {};
+      st.domains.push_back(base[l].size());
+      if (base[l].empty()) return mpz_class(0);
     }
-    std::vector<uint32_t> order(k);
-    std::iota(order.begin(), order.end(), 0u);
-    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b){ return d[a].size() < d[b].size(); });
-    const uint32_t last = order.back();
-    for (auto l : order) dom.push_back(std::move(d[l]));
-    mpz_class total = 0;
-    bool fast_ok = uniform();
-    if (fast_ok) {
-      // The last label must be able to take every cell not forced elsewhere
+    member.resize(k);
+    free_ok.assign(k, 0);
+    uniform_all = uniform();
+    if (uniform_all) for (uint32_t l = 0; l < k; l++) {
+      // The forced label must be able to take every cell not forced elsewhere
+      bool ok = true;
       for (uint32_t c = 0; c < s.cells; c++) {
         bool forced_elsewhere = false;
-        for (uint32_t l = 0; l < k; l++) if (l != last && s.required[l][c]) forced_elsewhere = true;
-        if (!forced_elsewhere && !s.allowed[last][c]) fast_ok = false;
+        for (uint32_t o = 0; o < k; o++) if (o != l && s.required[o][c]) forced_elsewhere = true;
+        if (!forced_elsewhere && !s.allowed[l][c]) ok = false;
       }
+      free_ok[l] = ok;
     }
-    st.fast_join = fast_ok;
-    // The search branches over the first labels' placements; their product
-    // bounds its prefixes. Decline at once when that alone exceeds the budget.
-    const uint32_t searched = fast_ok ? k-5 : k-1;
-    unsigned __int128 prefixes = 1;
-    for (uint32_t i = 0; i < searched && prefixes <= budget; i++) prefixes *= dom[i].size();
-    if (prefixes > budget) return {};
-    if (fast_ok) fast(0, C{}, total);
-    else {
-      last_set.insert(dom.back().begin(), dom.back().end());
-      generic(0, C{}, total);
-    }
+    st.fast_join = uniform_all && std::count(free_ok.begin(), free_ok.end(), 1);
+    std::vector<Live> root;
+    for (uint32_t l = 0; l < k; l++) root.push_back({l, &base[l]});
+    probe_base = k+1;
+    bufs.assign(2*(k+1), std::vector<std::vector<C>>(k));
+    // The estimate ignores the memo, so it only rules out hopeless joins;
+    // the budget still bounds the actual work.
+    st.estimate = estimate(root, 64);
+    if (st.estimate > estimate_slack * (double)budget) return {};
+    mpz_class total = join(0, C{}, root);
     if (exhausted) return {};
     return total;
   }
